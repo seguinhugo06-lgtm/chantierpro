@@ -32,7 +32,7 @@ const DEFAULT_COEFFICIENTS = {
   'Peinture': 1.8, 'Menuiserie': 1.5, 'Matériaux': 1.3, 'Autre': 1.5
 };
 
-export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: addCatalogueItemProp, updateCatalogueItem: updateCatalogueItemProp, deleteCatalogueItem: deleteCatalogueItemProp, couleur, isDark, setPage, chantiers = [], equipe = [], modeDiscret, devis = [] }) {
+export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: addCatalogueItemProp, updateCatalogueItem: updateCatalogueItemProp, deleteCatalogueItem: deleteCatalogueItemProp, couleur, isDark, setPage, chantiers = [], equipe = [], modeDiscret, devis = [], updateDevis, clients = [] }) {
   const { confirm } = useConfirm();
   const { showToast } = useToast();
 
@@ -140,6 +140,11 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
   const [packForm, setPackForm] = useState({ nom: '', description: '', articles: [], prixVente: '' });
   const [editPackId, setEditPackId] = useState(null);
 
+  // ====== AJOUTER AU DEVIS ======
+  const [addToDevisModal, setAddToDevisModal] = useState(null); // article object or null
+  const [addToDevisQty, setAddToDevisQty] = useState(1);
+  const [addToDevisSelected, setAddToDevisSelected] = useState(null); // devis id
+
   // ====== INVENTAIRE ======
   const [inventaireMode, setInventaireMode] = useState(false);
   const [inventaireCounts, setInventaireCounts] = useState({});
@@ -184,6 +189,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
+        if (addToDevisModal) { setAddToDevisModal(null); setAddToDevisQty(1); setAddToDevisSelected(null); return; }
         if (showImport) { setShowImport(false); return; }
         if (showArticlePicker) { setShowArticlePicker(false); return; }
         if (showMouvementForm) { setShowMouvementForm(false); return; }
@@ -195,7 +201,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showImport, showArticlePicker, showMouvementForm, showFournisseurForm, showPackForm, articleDetail, show]);
+  }, [showImport, showArticlePicker, showMouvementForm, showFournisseurForm, showPackForm, articleDetail, show, addToDevisModal]);
 
   // ====== DYNAMIC CATEGORIES (include all used + base) ======
   const CATEGORIES = useMemo(() => {
@@ -648,19 +654,31 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
   // ====== PACKS ======
   const addPack = () => {
     if (!packForm.nom || packForm.articles.length === 0) return showToast('Nom et articles requis', 'error');
-    const totalCost = packForm.articles.reduce((s, a) => {
+    // Enrich articles with snapshot data (nom, prix, unite) for resilience
+    const enrichedArticles = packForm.articles.map(a => {
       const item = catalogue.find(c => c.id === a.articleId);
-      return s + (item?.prixAchat || 0) * (a.quantite || 1);
-    }, 0);
-    const totalVente = packForm.articles.reduce((s, a) => {
+      return {
+        ...a,
+        label: item?.nom || a.label || '?',
+        prixSnapshot: item?.prix || a.prixSnapshot || 0,
+        prixAchatSnapshot: item?.prixAchat || a.prixAchatSnapshot || 0,
+        unite: item?.unite || a.unite || 'u',
+      };
+    });
+    const totalCost = enrichedArticles.reduce((s, a) => {
       const item = catalogue.find(c => c.id === a.articleId);
-      return s + (item?.prix || 0) * (a.quantite || 1);
+      return s + ((item?.prixAchat ?? a.prixAchatSnapshot) || 0) * (a.quantite || 1);
     }, 0);
+    const totalVente = enrichedArticles.reduce((s, a) => {
+      const item = catalogue.find(c => c.id === a.articleId);
+      return s + ((item?.prix ?? a.prixSnapshot) || 0) * (a.quantite || 1);
+    }, 0);
+    const packData = { ...packForm, articles: enrichedArticles, totalCost, totalVenteSuggere: totalVente, prixVente: parseFloat(packForm.prixVente) || totalVente };
     if (editPackId) {
-      setPacks(prev => prev.map(p => p.id === editPackId ? { ...p, ...packForm, totalCost, totalVenteSuggere: totalVente, prixVente: parseFloat(packForm.prixVente) || totalVente, updatedAt: new Date().toISOString() } : p));
+      setPacks(prev => prev.map(p => p.id === editPackId ? { ...p, ...packData, updatedAt: new Date().toISOString() } : p));
       showToast('Pack modifié', 'success');
     } else {
-      const newPack = { id: generateId(), ...packForm, totalCost, totalVenteSuggere: totalVente, prixVente: parseFloat(packForm.prixVente) || totalVente, createdAt: new Date().toISOString() };
+      const newPack = { id: generateId(), ...packData, createdAt: new Date().toISOString() };
       setPacks(prev => [...prev, newPack]);
       showToast('Pack créé', 'success');
     }
@@ -673,6 +691,55 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
     const newPack = { ...pack, id: generateId(), nom: `${pack.nom} (copie)`, createdAt: new Date().toISOString() };
     setPacks(prev => [...prev, newPack]);
     showToast(`Pack "${pack.nom}" dupliqué`, 'success');
+  };
+
+  // ====== AJOUTER AU DEVIS ======
+  const devisBrouillons = useMemo(() => {
+    return (devis || []).filter(d => (d.statut || d.status || '').toLowerCase() === 'brouillon');
+  }, [devis]);
+
+  const handleAddToDevis = async () => {
+    if (!addToDevisSelected || !addToDevisModal) return;
+    const targetDevis = devis.find(d => d.id === addToDevisSelected);
+    if (!targetDevis) { showToast('Devis introuvable', 'error'); return; }
+
+    const article = addToDevisModal;
+    const newLigne = {
+      id: generateId(),
+      catalogueId: article.id,
+      designation: article.nom,
+      description: article.description || '',
+      quantite: addToDevisQty,
+      unite: article.unite || 'u',
+      prixUnitaire: parseFloat(article.prix) || 0,
+      prix_unitaire: parseFloat(article.prix) || 0,
+      tva: parseFloat(article.tva_rate || article.tva || 20),
+    };
+
+    const existingLignes = targetDevis.lignes || targetDevis.items || targetDevis.articles || [];
+    const updatedLignes = [...existingLignes, newLigne];
+    const updatedDevis = { ...targetDevis, lignes: updatedLignes };
+
+    // Recalculate totals
+    const totalHt = updatedLignes.reduce((s, l) => s + ((l.prixUnitaire || l.prix_unitaire || 0) * (l.quantite || 1)), 0);
+    updatedDevis.totalHt = totalHt;
+    updatedDevis.total_ht = totalHt;
+
+    if (updateDevis) {
+      await updateDevis(targetDevis.id, updatedDevis);
+    }
+
+    const numero = targetDevis.numero || targetDevis.reference || targetDevis.id?.slice(0, 8);
+    showToast(`Article ajouté au devis ${numero}`, 'success');
+    setAddToDevisModal(null);
+    setAddToDevisQty(1);
+    setAddToDevisSelected(null);
+  };
+
+  const openAddToDevisModal = (article) => {
+    setAddToDevisModal(article);
+    setAddToDevisQty(1);
+    setAddToDevisSelected(devisBrouillons.length > 0 ? devisBrouillons[0].id : null);
   };
 
   // ====== INVENTAIRE ======
@@ -861,9 +928,16 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
   };
 
   // ====== ARTICLE DETAIL VIEW ======
+  // Clear stale articleDetail via effect (not during render to avoid React warnings)
+  useEffect(() => {
+    if (articleDetail && !catalogue.find(c => c.id === articleDetail)) {
+      setArticleDetail(null);
+    }
+  }, [articleDetail, catalogue]);
+
   if (articleDetail) {
     const item = catalogue.find(c => c.id === articleDetail);
-    if (!item) { setArticleDetail(null); return null; }
+    if (!item) return null;
     const marge = getMargeBrute(item.prix, item.prixAchat);
     const itemFournisseurs = articleFournisseurs.filter(af => af.articleId === item.id).map(af => ({ ...af, fournisseur: fournisseurs.find(f => f.id === af.fournisseurId) })).filter(af => af.fournisseur);
     const itemMouvements = mouvements.filter(m => m.articleId === item.id).slice(0, 15);
@@ -910,16 +984,10 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
             <button onClick={() => { setArticleDetail(null); startEdit(item); }} className="px-4 py-2 rounded-xl text-sm font-medium" style={{ background: `${couleur}15`, color: couleur }}>
               <Edit3 size={14} className="inline mr-1" /> Modifier
             </button>
-            {/* Créer devis button */}
-            {setPage && (
-              <button onClick={() => {
-                // Navigate to devis with this article prefilled
-                if (setPage) setPage('devis');
-                showToast(`Article "${item.nom}" prêt pour ajout au devis`, 'success');
-              }} className="px-4 py-2 rounded-xl text-sm font-medium text-white flex items-center gap-1.5 shadow-md" style={{ background: '#22c55e' }}>
-                <FileText size={14} /> Créer devis
-              </button>
-            )}
+            {/* Ajouter au devis button */}
+            <button onClick={() => openAddToDevisModal(item)} className="px-4 py-2 rounded-xl text-sm font-medium text-white flex items-center gap-1.5 shadow-md" style={{ background: '#22c55e' }}>
+              <FileText size={14} /> Ajouter au devis
+            </button>
           </div>
         </div>
 
@@ -1782,6 +1850,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                           )}
                           <td className="px-4 py-3">
                             <div className="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button onClick={(e) => { e.stopPropagation(); openAddToDevisModal(item); }} title="Ajouter au devis" className={`p-2.5 min-w-[44px] min-h-[44px] rounded-lg flex items-center justify-center ${isDark ? 'hover:bg-emerald-900/40 text-slate-400 hover:text-emerald-400' : 'hover:bg-emerald-50 text-slate-500 hover:text-emerald-600'}`}><FileText size={18} /></button>
                               <button onClick={(e) => { e.stopPropagation(); startEdit(item); }} className={`p-2.5 min-w-[44px] min-h-[44px] rounded-lg flex items-center justify-center ${isDark ? 'hover:bg-blue-900/40 text-slate-400 hover:text-blue-400' : 'hover:bg-blue-50 text-slate-500 hover:text-blue-600'}`}><Edit3 size={18} /></button>
                               <button onClick={(e) => { e.stopPropagation(); deleteItem(item.id); }} className={`p-2.5 min-w-[44px] min-h-[44px] rounded-lg flex items-center justify-center ${isDark ? 'text-slate-400 hover:text-red-400 hover:bg-red-900/40' : 'text-slate-500 hover:text-red-600 hover:bg-red-50'}`}><Trash2 size={18} /></button>
                             </div>
@@ -2261,14 +2330,14 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
           ) : (
             <div className="grid gap-3 sm:grid-cols-2">
               {packs.map(pack => {
-                // Calculate pack totals dynamically from articles
+                // Calculate pack totals dynamically from articles (with snapshot fallback)
                 const totalVente = pack.articles.reduce((s, a) => {
                   const item = catalogue.find(c => c.id === a.articleId);
-                  return s + (item?.prix || 0) * (a.quantite || 1);
+                  return s + ((item?.prix ?? a.prixSnapshot) || 0) * (a.quantite || 1);
                 }, 0);
                 const totalCout = pack.articles.reduce((s, a) => {
                   const item = catalogue.find(c => c.id === a.articleId);
-                  return s + (item?.prixAchat || 0) * (a.quantite || 1);
+                  return s + ((item?.prixAchat ?? a.prixAchatSnapshot) || 0) * (a.quantite || 1);
                 }, 0);
                 const prixVente = pack.prixVente || totalVente;
                 const marge = totalCout > 0 ? ((prixVente - totalCout) / prixVente * 100) : null;
@@ -2292,10 +2361,11 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                     <div className="space-y-1 mb-3">
                       {pack.articles.map((a, i) => {
                         const item = catalogue.find(c => c.id === a.articleId);
+                        const artPrix = (item?.prix ?? a.prixSnapshot) || 0;
                         return (
                           <p key={i} className={`text-xs ${textMuted} flex items-center justify-between`}>
                             <span>• {a.quantite}× {item?.nom || a.label || '?'}</span>
-                            <span className={`font-medium ${textPrimary}`}>{((item?.prix || 0) * (a.quantite || 1)).toFixed(0)} €</span>
+                            <span className={`font-medium ${textPrimary}`}>{(artPrix * (a.quantite || 1)).toFixed(0)} €</span>
                           </p>
                         );
                       })}
@@ -2806,6 +2876,86 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                     </div>
                   )}
                 </div>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Ajouter au devis Modal */}
+      <AnimatePresence>
+        {addToDevisModal && (
+          <motion.div className="fixed inset-0 z-50 flex items-center justify-center p-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <div className="absolute inset-0 bg-black/50" onClick={() => { setAddToDevisModal(null); setAddToDevisQty(1); setAddToDevisSelected(null); }} />
+            <motion.div className={`relative w-full max-w-md rounded-2xl p-6 ${isDark ? 'bg-slate-800' : 'bg-white'} shadow-2xl`} initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }}>
+              <h3 className={`font-bold text-lg mb-1 ${textPrimary}`}>Ajouter au devis</h3>
+              <p className={`text-sm ${textMuted} mb-4`}>
+                <span className="font-medium" style={{ color: couleur }}>{addToDevisModal.nom}</span> — {addToDevisModal.prix}€/{addToDevisModal.unite || 'u'}
+              </p>
+
+              {devisBrouillons.length === 0 ? (
+                <div className={`text-center py-6 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+                  <FileText size={32} className={`mx-auto mb-2 ${textMuted}`} />
+                  <p className={`text-sm font-medium ${textPrimary}`}>Aucun devis brouillon</p>
+                  <p className={`text-xs ${textMuted} mt-1`}>Créez d'abord un devis pour y ajouter des articles.</p>
+                  <button onClick={() => { setAddToDevisModal(null); if (setPage) setPage('devis'); }} className="mt-3 px-4 py-2 text-white rounded-xl text-sm font-medium" style={{ background: couleur }}>
+                    Créer un devis
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <div className="space-y-3">
+                    <div>
+                      <label className={`text-xs font-medium ${textMuted} mb-1 block`}>Devis cible</label>
+                      <select
+                        className={`w-full px-4 py-3 border rounded-xl ${inputBg}`}
+                        value={addToDevisSelected || ''}
+                        onChange={e => setAddToDevisSelected(e.target.value)}
+                      >
+                        {devisBrouillons.map(d => {
+                          const client = clients.find(c => c.id === (d.clientId || d.client_id));
+                          const clientNom = client?.nom || client?.name || d.clientNom || '';
+                          return (
+                            <option key={d.id} value={d.id}>
+                              {d.numero || d.reference || `DEV-${d.id?.slice(0, 6)}`}{clientNom ? ` — ${clientNom}` : ''}
+                            </option>
+                          );
+                        })}
+                      </select>
+                    </div>
+                    <div>
+                      <label className={`text-xs font-medium ${textMuted} mb-1 block`}>Quantité</label>
+                      <input
+                        type="number"
+                        min="1"
+                        className={`w-full px-4 py-3 border rounded-xl ${inputBg}`}
+                        value={addToDevisQty}
+                        onChange={e => setAddToDevisQty(Math.max(1, parseInt(e.target.value) || 1))}
+                      />
+                    </div>
+                    <div className={`p-3 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+                      <div className="flex items-center justify-between">
+                        <span className={`text-sm ${textMuted}`}>Sous-total HT</span>
+                        <span className={`text-lg font-bold`} style={{ color: couleur }}>
+                          {((parseFloat(addToDevisModal.prix) || 0) * addToDevisQty).toFixed(2)} €
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex gap-3 mt-5">
+                    <button onClick={() => { setAddToDevisModal(null); setAddToDevisQty(1); setAddToDevisSelected(null); }} className={`flex-1 py-3 rounded-xl font-medium ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-700'}`}>
+                      Annuler
+                    </button>
+                    <button
+                      onClick={handleAddToDevis}
+                      disabled={!addToDevisSelected}
+                      className="flex-1 py-3 text-white rounded-xl font-medium flex items-center justify-center gap-2 disabled:opacity-50"
+                      style={{ background: couleur }}
+                    >
+                      <Plus size={16} /> Ajouter
+                    </button>
+                  </div>
+                </>
               )}
             </motion.div>
           </motion.div>
