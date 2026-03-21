@@ -1364,7 +1364,7 @@ export default function App() {
           {/* Planning & Tâches group */}
           <nav className="space-y-0.5 mb-1" aria-label="Organisation">
             <p className={`px-3 pt-1.5 pb-1 text-[11px] font-medium uppercase tracking-wider md:hidden xl:block ${isDark ? 'text-slate-500' : 'text-[#999]'}`}>Organisation</p>
-            {nav.filter(n => n.id === 'planning' || n.id === 'memos').map(n => (
+            {nav.filter(n => n.id === 'tasks').map(n => (
               <button
                 key={n.id}
                 onClick={() => { setPage(n.id); setSidebarOpen(false); setSelectedChantier(null); }}
@@ -1391,7 +1391,7 @@ export default function App() {
           {/* Secondary navigation */}
           <nav className="space-y-0.5" aria-label="Gestion">
             <p className={`px-3 pt-1.5 pb-1 text-[11px] font-medium uppercase tracking-wider md:hidden xl:block ${isDark ? 'text-slate-500' : 'text-[#999]'}`}>Gestion</p>
-            {nav.filter(n => !['dashboard','devis','chantiers','clients','planning','memos','profil','plan'].includes(n.id)).map(n => (
+            {nav.filter(n => !['dashboard','devis','chantiers','clients','tasks','planning','memos','profil','plan'].includes(n.id)).map(n => (
               <button
                 key={n.id}
                 onClick={() => { setPage(n.id); setSidebarOpen(false); setSelectedChantier(null); }}
