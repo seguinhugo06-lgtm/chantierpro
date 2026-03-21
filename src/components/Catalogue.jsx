@@ -997,7 +997,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
             { label: 'Prix vente', value: modeDiscret ? '·····' : `${item.prix} €`, sub: `/${item.unite}`, color: couleur },
             { label: 'Prix achat', value: modeDiscret ? '·····' : `${item.prixAchat || '—'} €`, sub: !modeDiscret && item.prixAchat ? `/${item.unite}` : '', color: '#94A3B8' },
             { label: 'Marge', value: modeDiscret ? '·····' : (marge !== null ? `${marge.toFixed(0)}%` : '—'), sub: !modeDiscret && marge !== null ? `${(item.prix - (item.prixAchat || 0)).toFixed(2)} €/${item.unite}` : '', color: marge >= 25 ? '#22c55e' : '#ef4444' },
-            { label: 'Stock', value: item.stock_actuel !== undefined ? item.stock_actuel.toString() : '—', sub: item.stock_actuel !== undefined && item.stock_seuil_alerte ? (item.stock_actuel < item.stock_seuil_alerte ? 'Stock bas' : 'En stock') : (item.stock_seuil_alerte ? `Min: ${item.stock_seuil_alerte}` : ''), color: (item.stock_actuel !== undefined && item.stock_seuil_alerte && item.stock_actuel < item.stock_seuil_alerte) ? '#ef4444' : '#22c55e' }
+            { label: 'Stock', value: item.stock_actuel != null ? String(item.stock_actuel) : '—', sub: item.stock_actuel != null && item.stock_seuil_alerte ? (item.stock_actuel < item.stock_seuil_alerte ? 'Stock bas' : 'En stock') : (item.stock_seuil_alerte ? `Min: ${item.stock_seuil_alerte}` : ''), color: (item.stock_actuel != null && item.stock_seuil_alerte && item.stock_actuel < item.stock_seuil_alerte) ? '#ef4444' : '#22c55e' }
           ].map((kpi, i) => (
             <div key={i} className={`${cardBg} rounded-xl border p-4`}>
               <p className={`text-xs ${textMuted} mb-1`}>{kpi.label}</p>

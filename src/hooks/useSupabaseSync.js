@@ -215,7 +215,7 @@ export const FIELD_MAPPINGS = {
         acompte_pct: item.acompte_pct || null,
         echeancier_id: item.echeancier_id || null,
         mode_facturation: item.mode_facturation || null,
-        acomptes_ids: item.acomptes_ids || [],
+        // acomptes_ids: kept client-side only (column may not exist in DB)
         facture_solde_id: item.facture_solde_id || null,
         montant_facture: item.montant_facture || 0,
         montant_paye: item.montant_paye || 0,
