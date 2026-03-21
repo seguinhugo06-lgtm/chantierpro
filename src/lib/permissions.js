@@ -25,6 +25,7 @@ const PERMISSION_MATRIX = {
   devis:      { owner: 'full', admin: 'full', comptable: 'full', chef_chantier: 'view_no_prices', ouvrier: false, readonly: 'view' },
   chantiers:  { owner: 'full', admin: 'full', comptable: false, chef_chantier: 'full', ouvrier: 'assigned', readonly: 'view' },
   clients:    { owner: 'full', admin: 'full', comptable: 'full', chef_chantier: 'view', ouvrier: false, readonly: 'view' },
+  tasks:      { owner: 'full', admin: 'full', comptable: false, chef_chantier: 'full', ouvrier: 'own', readonly: 'view' },
   planning:   { owner: 'full', admin: 'full', comptable: false, chef_chantier: 'full', ouvrier: 'own', readonly: 'view' },
   memos:      { owner: 'full', admin: 'full', comptable: false, chef_chantier: 'full', ouvrier: 'assigned', readonly: 'view' },
   equipe:     { owner: 'full', admin: 'full', comptable: false, chef_chantier: 'view', ouvrier: false, readonly: 'view' },
