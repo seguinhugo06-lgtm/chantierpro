@@ -7,7 +7,7 @@ import {
   Home, Settings, HardHat, ChevronRight, Command, ArrowUp, ArrowDown,
   Zap, Receipt, Clock, BarChart3, History, Star, Wallet, Library,
   UserCheck, ShoppingCart, Camera, ClipboardList, PenTool, Download, Sparkles,
-  RotateCcw, CreditCard, Bell
+  RotateCcw, CreditCard, Bell, CalendarCheck
 } from 'lucide-react';
 
 /**
@@ -115,13 +115,13 @@ export default function CommandPalette({
     { id: 'new-facture', label: 'Créer une facture', keywords: 'nouvelle facture créer facturer encaisser', icon: Receipt, shortcut: '⌘F', action: () => { onNewDevis?.('facture'); onClose(); }, color: '#8b5cf6' },
     { id: 'new-client', label: 'Ajouter un client', keywords: 'nouveau client ajouter contact prospect', icon: Users, shortcut: '⌘C', action: () => { onNewClient?.(); onClose(); }, color: '#3b82f6' },
     { id: 'new-chantier', label: 'Créer un chantier', keywords: 'nouveau chantier créer projet travaux intervention', icon: Building2, shortcut: '⌘H', action: () => { onNewChantier?.(); onClose(); }, color: '#22c55e' },
-    { id: 'new-memo', label: 'Nouveau mémo', keywords: 'memo note rappel tâche todo', icon: ClipboardList, shortcut: '⌘M', action: () => { setPage('memos'); onClose(); }, color: '#f59e0b' },
+    { id: 'new-memo', label: 'Nouveau mémo', keywords: 'memo note rappel tâche todo', icon: ClipboardList, shortcut: '⌘M', action: () => { setPage('tasks'); onClose(); }, color: '#f59e0b' },
     { id: 'filter-devis-attente', label: 'Devis en attente de réponse', keywords: 'devis envoyés attente relancer relance', icon: Clock, action: () => { setPage('devis'); onClose(); }, color: '#f59e0b' },
     { id: 'filter-en-relance', label: 'Documents en relance auto', keywords: 'relance automatique rappel impayé suivi', icon: Bell, action: () => { setPage('devis'); onClose(); }, color: '#f97316' },
     { id: 'filter-factures-impayees', label: 'Factures impayées', keywords: 'factures impayées retard paiement encaissement', icon: Wallet, action: () => { setPage('devis'); onClose(); }, color: '#ef4444' },
     { id: 'filter-avoirs', label: 'Voir les avoirs', keywords: 'avoirs notes crédit remboursement annulation avoir', icon: RotateCcw, action: () => { setPage('devis'); onClose(); }, color: '#dc2626' },
     { id: 'filter-situations', label: 'Factures de situation', keywords: 'situations avancement travaux progressif facturation situation', icon: BarChart3, action: () => { setPage('devis'); onClose(); }, color: '#f97316' },
-    { id: 'action-planning', label: 'Planifier une intervention', keywords: 'planifier rdv rendez-vous intervention agenda', icon: Calendar, action: () => { setPage('planning'); onClose(); }, color: '#6366f1' },
+    { id: 'action-planning', label: 'Planifier une intervention', keywords: 'planifier rdv rendez-vous intervention agenda', icon: Calendar, action: () => { setPage('tasks'); onClose(); }, color: '#6366f1' },
     { id: 'action-pointage', label: 'Saisir un pointage', keywords: 'pointage heures temps travail equipe', icon: Clock, action: () => { setPage('dashboard'); onClose(); }, color: '#14b8a6' },
   ], [onNewDevis, onNewClient, onNewChantier, onClose, setPage]);
 
@@ -131,8 +131,7 @@ export default function CommandPalette({
     { id: 'nav-devis', label: 'Devis & Factures', keywords: 'documents devis factures liste', icon: FileText, action: () => { setPage('devis'); onClose(); } },
     { id: 'nav-chantiers', label: 'Chantiers', keywords: 'projets travaux chantier oeuvre', icon: Building2, action: () => { setPage('chantiers'); onClose(); } },
     { id: 'nav-clients', label: 'Clients', keywords: 'contacts clients annuaire sous-traitants', icon: Users, action: () => { setPage('clients'); onClose(); } },
-    { id: 'nav-planning', label: 'Planning', keywords: 'calendrier agenda planning semaine mois jour', icon: Calendar, action: () => { setPage('planning'); onClose(); } },
-    { id: 'nav-memos', label: 'Mémos', keywords: 'mémos notes rappels tâches todo inbox', icon: ClipboardList, action: () => { setPage('memos'); onClose(); } },
+    { id: 'nav-tasks', label: 'Tâches & Planning', keywords: 'calendrier agenda planning semaine mois jour mémos notes rappels tâches todo inbox', icon: CalendarCheck, action: () => { setPage('tasks'); onClose(); } },
     { id: 'nav-catalogue', label: 'Catalogue', keywords: 'produits articles fournitures matériaux stock ouvrages bibliothèque', icon: Package, action: () => { setPage('catalogue'); onClose(); } },
     { id: 'nav-finances', label: 'Finances', keywords: 'trésorerie cash flow finances tréso banque export comptabilité fec csv statistiques analytique', icon: Wallet, action: () => { setPage('finances'); onClose(); } },
     { id: 'nav-paiements', label: 'Paiements en ligne', keywords: 'paiements stripe gocardless sepa carte bancaire prélèvement lien paiement', icon: CreditCard, action: () => { setPage('finances'); onClose(); }, color: '#8b5cf6' },
@@ -323,7 +322,7 @@ export default function CommandPalette({
           sublabel: m.category || (m.due_date ? `📅 ${new Date(m.due_date).toLocaleDateString('fr-FR')}` : ''),
           icon: ClipboardList,
           color: '#f59e0b',
-          action: () => { setPage('memos'); onClose(); }
+          action: () => { setPage('tasks'); onClose(); }
         }));
       }
 

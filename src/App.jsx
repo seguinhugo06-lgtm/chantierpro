@@ -30,7 +30,7 @@ const lazyWithRetry = (importFn, name) => lazy(() =>
 
 // Lazy load heavy page components for code splitting
 const Chantiers = lazyWithRetry(() => import('./components/Chantiers'), 'Chantiers');
-const Planning = lazyWithRetry(() => import('./components/Planning'), 'Planning');
+const TasksAndPlanning = lazyWithRetry(() => import('./components/tasks/TasksAndPlanning'), 'Tâches');
 const Clients = lazyWithRetry(() => import('./components/Clients'), 'Clients');
 const DevisPage = lazyWithRetry(() => import('./components/DevisPage'), 'DevisPage');
 const Equipe = lazyWithRetry(() => import('./components/Equipe'), 'Équipe');
@@ -59,7 +59,7 @@ const ImportModal = lazyWithRetry(() => import('./components/ImportModal'), 'Imp
 const LegalPages = lazyWithRetry(() => import('./components/LegalPages'), 'Legal');
 const Changelog = lazyWithRetry(() => import('./components/Changelog'), 'Changelog');
 const FinancesPage = lazyWithRetry(() => import('./components/FinancesPage'), 'Finances');
-const MemosPage = lazyWithRetry(() => import('./components/MemosPage'), 'Mémos');
+// MemosPage replaced by TasksAndPlanning
 const ShortcutsHelp = lazyWithRetry(() => import('./components/ShortcutsHelp'), 'Raccourcis');
 const PipelineKanban = lazyWithRetry(() => import('./components/pipeline/PipelineKanban'), 'Pipeline');
 const AvisGoogle = lazyWithRetry(() => import('./components/avis/AvisGoogle'), 'AvisGoogle');
@@ -84,7 +84,7 @@ import { usePermissions } from './hooks/usePermissions';
 import { PermissionGate } from './components/ui/PermissionGate';
 import { fetchSubscription, fetchUsage, computeLiveUsage } from './services/subscriptionsApi';
 import { isDraftChantier } from './lib/utils';
-import { Home, FileText, Building2, Calendar, Users, Package, HardHat, Settings as SettingsIcon, Eye, EyeOff, Sun, Moon, LogOut, Menu, Bell, Plus, ChevronRight, ChevronDown, BarChart3, HelpCircle, Search, X, CheckCircle, AlertCircle, Info, Clock, Receipt, Wifi, WifiOff, Palette, Wallet, Library, UserCheck, ShoppingCart, Camera, ClipboardList, PenTool, Download, Share, Smartphone, CreditCard, Tag, Sparkles, Kanban, Star, User, MessageCircle, Shield } from 'lucide-react';
+import { Home, FileText, Building2, Calendar, Users, Package, HardHat, Settings as SettingsIcon, Eye, EyeOff, Sun, Moon, LogOut, Menu, Bell, Plus, ChevronRight, ChevronDown, BarChart3, HelpCircle, Search, X, CheckCircle, AlertCircle, Info, Clock, Receipt, Wifi, WifiOff, Palette, Wallet, Library, UserCheck, ShoppingCart, Camera, ClipboardList, PenTool, Download, Share, Smartphone, CreditCard, Tag, Sparkles, Kanban, Star, User, MessageCircle, Shield, CalendarCheck } from 'lucide-react';
 import { usePWA } from './hooks/usePWA';
 import { registerNetworkListeners, getPendingCount, syncQueue, clearAllMutations, checkConnectivity } from './lib/offline/sync';
 import OfflineIndicator from './components/ui/OfflineIndicator';
@@ -874,7 +874,7 @@ export default function App() {
       // Cmd/Ctrl + M for memos
       if ((e.metaKey || e.ctrlKey) && e.key === 'm' && !isInput) {
         e.preventDefault();
-        setPage('memos');
+        setPage('tasks');
         return;
       }
 
@@ -915,8 +915,9 @@ export default function App() {
       devis: 'Devis & Factures',
       chantiers: 'Chantiers',
       clients: 'Clients',
-      planning: 'Planning',
-      memos: 'Tâches',
+      tasks: 'Tâches & Planning',
+      planning: 'Tâches & Planning',
+      memos: 'Tâches & Planning',
       equipe: 'Équipe',
       catalogue: 'Catalogue',
       finances: 'Finances',
@@ -1175,20 +1176,15 @@ export default function App() {
     },
     { id: 'clients', icon: Users, label: 'Clients' },
     {
-      id: 'planning',
-      icon: Calendar,
-      label: 'Planning',
-      badge: todayEvents,
-      badgeColor: '#3b82f6',
-      badgeTitle: `${todayEvents} événement${todayEvents > 1 ? 's' : ''} aujourd'hui`
-    },
-    {
-      id: 'memos',
-      icon: ClipboardList,
-      label: 'Tâches',
-      badge: memosOverdueCount,
-      badgeColor: '#ef4444',
-      badgeTitle: memosOverdueCount > 0 ? `${memosOverdueCount} tâche${memosOverdueCount > 1 ? 's' : ''} en retard` : ''
+      id: 'tasks',
+      icon: CalendarCheck,
+      label: 'Tâches & Planning',
+      badge: (memosOverdueCount || 0) + (todayEvents || 0),
+      badgeColor: memosOverdueCount > 0 ? '#ef4444' : '#3b82f6',
+      badgeTitle: [
+        memosOverdueCount > 0 ? `${memosOverdueCount} tâche${memosOverdueCount > 1 ? 's' : ''} en retard` : '',
+        todayEvents > 0 ? `${todayEvents} événement${todayEvents > 1 ? 's' : ''} aujourd'hui` : '',
+      ].filter(Boolean).join(' · ')
     },
     { id: 'messagerie', icon: MessageCircle, label: 'Messagerie' },
     { id: 'equipe', icon: HardHat, label: 'Équipe' },
@@ -1688,8 +1684,17 @@ export default function App() {
               {page === 'dashboard' && <Dashboard clients={clients} devis={devis} chantiers={chantiers} events={planningEvents} depenses={depenses} pointages={pointages} equipe={equipe} ajustements={ajustements} catalogue={catalogue} entreprise={entreprise} getChantierBilan={getChantierBilan} addDevis={addDevis} setPage={setPage} setSelectedChantier={setSelectedChantier} setSelectedDevis={setSelectedDevis} setCreateMode={setCreateMode} setAiPrefill={setAiPrefill} modeDiscret={modeDiscret} setModeDiscret={setModeDiscret} couleur={couleur} isDark={isDark} showHelp={showHelp} setShowHelp={setShowHelp} user={user} onOpenSearch={() => setShowSearch(true)} memos={memos} addMemo={addMemo} toggleMemo={toggleMemo} />}
               {page === 'devis' && <DevisPage clients={clients} setClients={setClients} addClient={addClient} devis={devis} setDevis={setDevis} chantiers={chantiers} catalogue={catalogue} entreprise={entreprise} onSubmit={addDevis} onUpdate={updateDevis} onDelete={deleteDevis} modeDiscret={modeDiscret} selectedDevis={selectedDevis} setSelectedDevis={setSelectedDevis} isDark={isDark} couleur={couleur} createMode={createMode.devis} setCreateMode={(v) => setCreateMode(p => ({...p, devis: v}))} addChantier={addChantier} setPage={setPage} setSelectedChantier={setSelectedChantier} addEchange={addEchange} paiements={paiements} addPaiement={addPaiement} generateNextNumero={generateNextNumero} aiPrefill={aiPrefill} setAiPrefill={setAiPrefill} />}
               {page === 'chantiers' && <Chantiers chantiers={chantiers} addChantier={addChantier} updateChantier={updateChantier} clients={clients} depenses={depenses} setDepenses={setDepenses} pointages={pointages} setPointages={setPointages} equipe={equipe} devis={devis} ajustements={ajustements} addAjustement={addAjustement} deleteAjustement={deleteAjustement} getChantierBilan={getChantierBilan} couleur={couleur} modeDiscret={modeDiscret} entreprise={entreprise} selectedChantier={selectedChantier} setSelectedChantier={setSelectedChantier} catalogue={catalogue} deductStock={deductStock} isDark={isDark} createMode={createMode.chantier} setCreateMode={(v) => setCreateMode(p => ({...p, chantier: v}))} setPage={setPage} memos={memos} addMemo={addMemo} updateMemo={updateMemo} deleteMemo={deleteMemo} toggleMemo={toggleMemo} onPlanEvent={(data) => { setPlanningPrefill(data); setPage('planning'); }} addDevis={addDevis} generateNextNumero={generateNextNumero} />}
-              {page === 'planning' && <Planning events={planningEvents} setEvents={setPlanningEvents} addEvent={addEvent} updateEvent={updateEvent} deleteEvent={deleteEvent} chantiers={chantiers} clients={clients} equipe={equipe} memos={memos} toggleMemo={toggleMemo} updateMemo={updateMemo} setPage={setPage} setSelectedChantier={setSelectedChantier} updateChantier={updateChantier} couleur={couleur} isDark={isDark} prefill={planningPrefill} clearPrefill={() => setPlanningPrefill(null)} devis={devis} />}
-              {page === 'memos' && <MemosPage memos={memos} addMemo={addMemo} updateMemo={updateMemo} deleteMemo={deleteMemo} toggleMemo={toggleMemo} chantiers={chantiers} clients={clients} setPage={setPage} couleur={couleur} isDark={isDark} />}
+              {(page === 'tasks' || page === 'planning' || page === 'memos') && (
+                <TasksAndPlanning
+                  memos={memos} addMemo={addMemo} updateMemo={updateMemo} deleteMemo={deleteMemo} toggleMemo={toggleMemo}
+                  events={planningEvents} setEvents={setPlanningEvents} addEvent={addEvent} updateEvent={updateEvent} deleteEvent={deleteEvent}
+                  chantiers={chantiers} clients={clients} equipe={equipe} devis={devis}
+                  setPage={setPage} setSelectedChantier={setSelectedChantier} updateChantier={updateChantier}
+                  isDark={isDark} couleur={couleur} showToast={showToast}
+                  prefill={planningPrefill} clearPrefill={() => setPlanningPrefill(null)}
+                  initialView={page === 'planning' ? 'calendar' : page === 'memos' ? 'list' : undefined}
+                />
+              )}
               {page === 'clients' && <Clients clients={clients} setClients={setClients} updateClient={updateClient} deleteClient={deleteClient} devis={devis} chantiers={chantiers} echanges={echanges} onSubmit={addClient} couleur={couleur} setPage={setPage} setSelectedChantier={setSelectedChantier} setSelectedDevis={setSelectedDevis} isDark={isDark} modeDiscret={modeDiscret} createMode={createMode.client} setCreateMode={(v) => setCreateMode(p => ({...p, client: v}))} memos={memos} addMemo={addMemo} updateMemo={updateMemo} deleteMemo={deleteMemo} toggleMemo={toggleMemo} onImportClients={() => { setImportType('clients'); setShowImport(true); }} />}
               {page === 'bibliotheque' && <BibliothequePrix isDark={isDark} couleur={couleur} setPage={setPage} devis={devis} addDevis={addDevis} />}
               {page === 'catalogue' && <Catalogue catalogue={catalogue} setCatalogue={setCatalogue} addCatalogueItem={addCatalogueItem} updateCatalogueItem={updateCatalogueItem} deleteCatalogueItem={deleteCatalogueItem} chantiers={chantiers} equipe={equipe} devis={devis} couleur={couleur} isDark={isDark} modeDiscret={modeDiscret} setPage={setPage} />}
@@ -2046,7 +2051,7 @@ export default function App() {
             { id: 'dashboard', icon: Home, label: 'Accueil' },
             { id: 'devis', icon: FileText, label: 'Devis' },
             { id: 'chantiers', icon: Building2, label: 'Chantiers' },
-            { id: 'planning', icon: Calendar, label: 'Planning' },
+            { id: 'tasks', icon: CalendarCheck, label: 'Tâches' },
           ].map(item => (
             <button
               key={item.id}

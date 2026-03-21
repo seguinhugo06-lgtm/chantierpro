@@ -4546,7 +4546,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                     <div className={`p-4 rounded-xl text-center ${isDark ? 'bg-slate-800/30' : 'bg-slate-50'}`}>
                       <p className={`text-sm ${textMuted}`}>
                         Aucun événement planning cette semaine.{' '}
-                        <button onClick={() => setPage('planning')} className="underline font-medium" style={{ color: couleur }}>
+                        <button onClick={() => setPage('tasks')} className="underline font-medium" style={{ color: couleur }}>
                           Aller au planning
                         </button>
                       </p>

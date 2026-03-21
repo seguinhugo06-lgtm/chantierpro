@@ -1094,7 +1094,7 @@ export default function Dashboard({
           setPage?.('devis');
           break;
         case 'weather_alert':
-          setPage?.('planning');
+          setPage?.('tasks');
           break;
         case 'low_margin':
           setPage?.('chantiers');
@@ -1464,7 +1464,7 @@ export default function Dashboard({
               iconComponent: ClipboardList,
               title: m.text,
               subtitle: isOverdue ? 'En retard' : 'Aujourd\'hui',
-              action: () => setPage?.('memos'),
+              action: () => setPage?.('tasks'),
               actionLabel: 'Voir',
             });
           });
@@ -1538,7 +1538,7 @@ export default function Dashboard({
                   })}
                   {totalActions > 3 && (
                     <button
-                      onClick={() => setPage?.('memos')}
+                      onClick={() => setPage?.('tasks')}
                       className={`w-full text-center py-2 text-xs font-semibold rounded-lg transition-colors ${isDark ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'}`}
                     >
                       Voir toutes les {totalActions} actions →
@@ -1556,7 +1556,7 @@ export default function Dashboard({
             {[
               { icon: Users, label: '+ Client', action: () => { setCreateMode?.((p) => ({ ...p, client: true })); setPage?.('clients'); } },
               { icon: HardHat, label: '+ Chantier', action: () => { setCreateMode?.((p) => ({ ...p, chantier: true })); setPage?.('chantiers'); } },
-              { icon: ClipboardList, label: '+ Mémo', action: () => setPage?.('memos') },
+              { icon: ClipboardList, label: '+ Mémo', action: () => setPage?.('tasks') },
               { icon: FileText, label: '+ Devis rapide', action: () => setPage?.('devis') },
             ].map((s) => (
               <button
