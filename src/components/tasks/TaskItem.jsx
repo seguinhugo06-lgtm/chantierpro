@@ -73,8 +73,8 @@ export default function TaskItem({
             {memo.recurrence && <span className="mr-1" title="Récurrent">🔄</span>}
             {memo.text}
           </p>
-          {/* Status badge */}
-          {status && !memo.is_done && (
+          {/* Status badge — visible for ALL statuses */}
+          {status && (
             <span
               className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full flex-shrink-0"
               style={{ backgroundColor: status.color + '18', color: status.color }}

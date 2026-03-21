@@ -1211,6 +1211,8 @@ export function DataProvider({ children, initialData = {} }) {
 
   // ============ MEMO OPERATIONS ============
   const addMemo = useCallback(async (data) => {
+    const status = data.status || 'a_faire';
+    const isDone = data.is_done != null ? data.is_done : status === 'termine';
     const newMemo = {
       id: crypto.randomUUID(),
       text: data.text || '',
@@ -1221,8 +1223,9 @@ export function DataProvider({ children, initialData = {} }) {
       category: data.category || null,
       chantier_id: data.chantier_id || null,
       client_id: data.client_id || null,
-      is_done: false,
-      done_at: null,
+      is_done: isDone,
+      done_at: isDone ? new Date().toISOString() : null,
+      status,
       position: 0,
       subtasks: data.subtasks || [],
       recurrence: data.recurrence || null,

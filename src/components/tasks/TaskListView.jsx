@@ -95,6 +95,7 @@ export default function TaskListView({
   const [newMemoText, setNewMemoText] = useState('');
   const [collapsedSections, setCollapsedSections] = useState({ done: true });
   const [sortBy, setSortBy] = useState('recent');
+  const [quickFilter, setQuickFilter] = useState('all');
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [dragOverIndex, setDragOverIndex] = useState(null);
@@ -386,8 +387,24 @@ export default function TaskListView({
       }
     }
 
+    // Quick filter (time-based)
+    if (quickFilter !== 'all') {
+      const todayStr = today();
+      if (quickFilter === 'today') {
+        list = list.filter(m => m.due_date && m.due_date <= todayStr);
+      } else if (quickFilter === 'week') {
+        const now = new Date();
+        const endOfWeek = new Date(now);
+        endOfWeek.setDate(now.getDate() + (7 - now.getDay()));
+        const endOfWeekStr = endOfWeek.toISOString().split('T')[0];
+        list = list.filter(m => m.due_date && m.due_date <= endOfWeekStr);
+      } else if (quickFilter === 'overdue') {
+        list = list.filter(m => !m.is_done && m.due_date && m.due_date < todayStr);
+      }
+    }
+
     return list;
-  }, [memos, debouncedSearch, filters, chantiers, clients]);
+  }, [memos, debouncedSearch, filters, chantiers, clients, quickFilter]);
 
   // ── Sorting ──
   const sortMemos = useCallback((list) => {
@@ -567,6 +584,31 @@ export default function TaskListView({
             </span>
           </div>
         )}
+      </div>
+
+      {/* Quick time filters */}
+      <div className="flex items-center gap-2 mb-3 flex-wrap">
+        {[
+          { id: 'all', label: 'Tout' },
+          { id: 'today', label: "Aujourd'hui" },
+          { id: 'week', label: 'Cette semaine' },
+          { id: 'overdue', label: 'En retard' },
+        ].map(f => (
+          <button
+            key={f.id}
+            onClick={() => setQuickFilter(f.id)}
+            className={`text-xs font-medium px-3 py-1.5 rounded-full border transition-all ${
+              quickFilter === f.id
+                ? 'text-white border-transparent'
+                : isDark
+                  ? 'text-slate-300 border-slate-600 hover:border-slate-500'
+                  : 'text-slate-600 border-slate-200 hover:border-slate-300'
+            }`}
+            style={quickFilter === f.id ? { background: couleur, borderColor: couleur } : {}}
+          >
+            {f.label}
+          </button>
+        ))}
       </div>
 
       {/* Sort control */}

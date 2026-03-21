@@ -15,6 +15,7 @@ import {
   Circle, Clock, CheckCircle, Plus, GripVertical,
   Calendar, Tag, AlertCircle, ListTodo,
 } from 'lucide-react';
+import TaskDetail from './TaskDetail';
 
 // ─── Column definitions ─────────────────────────────────────────────────────
 
@@ -46,7 +47,7 @@ const CATEGORY_COLORS = {
 
 // ─── KanbanCard ──────────────────────────────────────────────────────────────
 
-function KanbanCard({ memo, chantier, isDark, couleur, onSelect, onDragStart }) {
+function KanbanCard({ memo, chantier, isDark, couleur, onSelect, onDragStart, isTermine }) {
   const isOverdue = useMemo(() => {
     if (!memo.due_date) return false;
     return new Date(memo.due_date) < new Date() && memo.status !== 'termine';
@@ -78,9 +79,11 @@ function KanbanCard({ memo, chantier, isDark, couleur, onSelect, onDragStart }) 
       }}
       onClick={() => onSelect?.(memo.id)}
       className={`group cursor-grab active:cursor-grabbing rounded-lg border p-3 transition-all hover:shadow-md ${
-        isDark
-          ? 'bg-slate-800 border-slate-700 hover:border-slate-600'
-          : 'bg-white border-slate-200 hover:border-slate-300'
+        isTermine
+          ? (isDark ? 'bg-slate-800/40 border-slate-700 opacity-60' : 'bg-slate-50 border-slate-200 opacity-60')
+          : isDark
+            ? 'bg-slate-800 border-slate-700 hover:border-slate-600'
+            : 'bg-white border-slate-200 hover:border-slate-300'
       } ${isOverdue ? (isDark ? 'border-red-500/50' : 'border-red-300') : ''}`}
     >
       {/* Header: priority dot + grip */}
@@ -93,7 +96,7 @@ function KanbanCard({ memo, chantier, isDark, couleur, onSelect, onDragStart }) 
             title={PRIORITY_LABELS[memo.priority] || 'Moyenne'}
           />
           {/* Title */}
-          <p className={`text-sm font-medium line-clamp-2 ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
+          <p className={`text-sm font-medium line-clamp-2 ${isTermine ? 'line-through' : ''} ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
             {memo.title || memo.text || 'Sans titre'}
           </p>
         </div>
@@ -105,6 +108,13 @@ function KanbanCard({ memo, chantier, isDark, couleur, onSelect, onDragStart }) 
 
       {/* Badges row */}
       <div className="flex items-center gap-1.5 flex-wrap mt-2">
+        {/* Completed badge */}
+        {isTermine && (
+          <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-green-100 text-green-600">
+            <CheckCircle size={8} />
+            Termine
+          </span>
+        )}
         {/* Category badge */}
         {memo.category && (
           <span
@@ -258,6 +268,7 @@ function KanbanColumn({
               couleur={couleur}
               onSelect={onSelect}
               onDragStart={onDragStart}
+              isTermine={column.id === 'termine'}
             />
           ))
         )}
@@ -375,6 +386,7 @@ export default function TaskKanbanView({
     updateMemo(memoId, {
       status: newStatus,
       is_done: newStatus === 'termine',
+      done_at: newStatus === 'termine' ? new Date().toISOString() : null,
     });
     setDragId(null);
   }, [updateMemo]);
@@ -393,25 +405,43 @@ export default function TaskKanbanView({
     onSelectMemo?.(memoId);
   }, [onSelectMemo]);
 
+  const selectedMemo = memos.find(m => m.id === selectedMemoId);
+
   return (
-    <div
-      className="flex gap-3 overflow-x-auto pb-4 snap-x snap-mandatory"
-      style={{ scrollbarWidth: 'thin' }}
-    >
-      {COLUMNS.map((col) => (
-        <KanbanColumn
-          key={col.id}
-          column={col}
-          cards={columnData[col.id] || []}
+    <>
+      <div
+        className="flex gap-3 overflow-x-auto pb-4 snap-x snap-mandatory"
+        style={{ scrollbarWidth: 'thin' }}
+      >
+        {COLUMNS.map((col) => (
+          <KanbanColumn
+            key={col.id}
+            column={col}
+            cards={columnData[col.id] || []}
+            chantiers={chantiers}
+            isDark={isDark}
+            couleur={couleur}
+            onSelect={handleSelectMemo}
+            onDragStart={setDragId}
+            onDrop={handleDrop}
+            onAddMemo={handleAddMemo}
+          />
+        ))}
+      </div>
+
+      {/* Detail panel */}
+      {selectedMemo && (
+        <TaskDetail
+          memo={selectedMemo}
+          onUpdate={updateMemo}
+          onDelete={deleteMemo}
+          onClose={() => onSelectMemo(null)}
           chantiers={chantiers}
-          isDark={isDark}
+          clients={clients}
           couleur={couleur}
-          onSelect={handleSelectMemo}
-          onDragStart={setDragId}
-          onDrop={handleDrop}
-          onAddMemo={handleAddMemo}
+          isDark={isDark}
         />
-      ))}
-    </div>
+      )}
+    </>
   );
 }
