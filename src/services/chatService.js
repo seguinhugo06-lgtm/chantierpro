@@ -615,18 +615,16 @@ export async function sendMessage(supabase, { channelId, userId, content, conten
       user_id: userId,
       content,
       content_type: contentType,
-      attachments: attachments || [],
-      voice_duration_ms: voiceDurationMs || null,
-      reply_to_id: replyToId || null,
     };
+    // Only include optional columns if they have values (avoids schema cache issues)
+    if (attachments && attachments.length > 0) messageData.attachments = attachments;
+    if (voiceDurationMs) messageData.voice_duration_ms = voiceDurationMs;
+    if (replyToId) messageData.reply_to_id = replyToId;
 
     const { data: msg, error } = await supabase
       .from('chat_messages')
       .insert(messageData)
-      .select(`
-        *,
-        chat_reactions(id, user_id, emoji, created_at)
-      `)
+      .select('*')
       .single();
 
     if (error) {
