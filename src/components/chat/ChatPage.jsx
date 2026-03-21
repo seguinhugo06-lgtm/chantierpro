@@ -81,7 +81,7 @@ const ChatPage = memo(function ChatPage({
     if (!userId) { setLoadingChannels(false); return; }
     try {
       const data = await loadChannels(supabase, { userId, orgId });
-      setChannels(Array.isArray(data) ? data : []);
+      setChannels(Array.isArray(data) ? data.filter(Boolean) : []);
     } catch (err) {
       console.warn('[ChatPage] Load channels error:', err?.message || err);
       setChannels([]);
@@ -348,6 +348,10 @@ const ChatPage = memo(function ChatPage({
         description,
         memberIds,
       });
+      if (!channel) {
+        showToast?.('La messagerie nécessite une configuration serveur. Contactez le support.', 'error');
+        return;
+      }
       await refreshChannels();
       handleSelectChannel(channel.id);
       setShowNewChannel(false);
