@@ -81,7 +81,8 @@ const ChatMessageList = memo(function ChatMessageList({
     const groups = [];
     let lastDate = null;
 
-    messages.forEach((msg, i) => {
+    messages.filter(Boolean).forEach((msg, i) => {
+      if (!msg || !msg.createdAt) return;
       const msgDate = new Date(msg.createdAt);
       const dateStr = msgDate.toLocaleDateString('fr-FR', {
         weekday: 'long', day: 'numeric', month: 'long',

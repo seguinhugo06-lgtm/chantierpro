@@ -261,6 +261,11 @@ const ChatPage = memo(function ChatPage({
         replyToId,
       });
 
+      if (!msg) {
+        showToast?.('Message non envoyé — réessayez', 'error');
+        return;
+      }
+
       setMessages(prev => [...prev, msg]);
 
       // Update channel preview
