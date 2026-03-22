@@ -140,10 +140,15 @@ export default function useBibliotheque() {
 
     // 3. Sort
     items = [...items].sort((a, b) => {
-      let valA = a[sortBy];
-      let valB = b[sortBy];
+      const field = sortBy === 'prix' ? 'prixUnitaireHT' : sortBy;
+      let valA = a[field];
+      let valB = b[field];
 
-      if (typeof valA === 'string') {
+      // Numeric comparison for price fields
+      if (field === 'prixUnitaireHT') {
+        valA = parseFloat(valA) || 0;
+        valB = parseFloat(valB) || 0;
+      } else if (typeof valA === 'string') {
         valA = valA.toLowerCase();
         valB = (valB || '').toLowerCase();
       }

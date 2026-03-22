@@ -9,6 +9,9 @@ import {
   X,
   Library,
   ChevronDown,
+  FileText,
+  Plus,
+  ShoppingCart,
 } from 'lucide-react';
 import useBibliotheque from '../../hooks/useBibliotheque';
 import ArbreNomenclature from './ArbreNomenclature';
@@ -49,7 +52,7 @@ function getDeptByCode(code) {
 // Bibliotheque — Main page component
 // =============================================================================
 
-export default function Bibliotheque({ isDark, couleur = '#f97316', setPage, devis, addDevis }) {
+export default function Bibliotheque({ isDark, couleur = '#f97316', setPage, devis, addDevis, updateDevis, clients, showToast }) {
   // ── Hook state ──────────────────────────────────────────────────────────────
   const {
     selectedNodeId,
@@ -86,11 +89,71 @@ export default function Bibliotheque({ isDark, couleur = '#f97316', setPage, dev
   const [showDeptDropdown, setShowDeptDropdown] = useState(false);
   const [selectedOuvrage, setSelectedOuvrage] = useState(null);
 
+  // ── Add to devis state ────────────────────────────────────────────────────
+  const [addToDevisModal, setAddToDevisModal] = useState(null);
+  const [addToDevisQty, setAddToDevisQty] = useState(1);
+  const [addToDevisSelected, setAddToDevisSelected] = useState(null);
+
   // ── Derived ─────────────────────────────────────────────────────────────────
   const activeDept = useMemo(() => getDeptByCode(selectedDept), [selectedDept]);
   const hasActiveCoeff = coefficientGeo != null && coefficientGeo !== 1;
 
   const regions = useMemo(() => getRegions(), []);
+
+  // ── Add to devis logic ────────────────────────────────────────────────────
+  const devisBrouillons = useMemo(() => {
+    return (devis || []).filter(d => (d.statut || d.status || '').toLowerCase() === 'brouillon');
+  }, [devis]);
+
+  const openAddToDevisModal = useCallback((ouvrage) => {
+    setAddToDevisModal(ouvrage);
+    setAddToDevisQty(1);
+    setAddToDevisSelected(devisBrouillons.length > 0 ? devisBrouillons[0].id : null);
+  }, [devisBrouillons]);
+
+  const closeAddToDevisModal = useCallback(() => {
+    setAddToDevisModal(null);
+    setAddToDevisQty(1);
+    setAddToDevisSelected(null);
+  }, []);
+
+  const handleAddToDevis = useCallback(async () => {
+    if (!addToDevisSelected || !addToDevisModal) return;
+    const targetDevis = devis.find(d => d.id === addToDevisSelected);
+    if (!targetDevis) {
+      if (showToast) showToast('Devis introuvable', 'error');
+      return;
+    }
+
+    const ouvr = addToDevisModal;
+    const prix = parseFloat(ouvr.prixUnitaireHT) || 0;
+    const newLigne = {
+      id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+      designation: ouvr.nom,
+      description: ouvr.description || '',
+      quantite: addToDevisQty,
+      unite: ouvr.unite || 'u',
+      prixUnitaire: prix,
+      prix_unitaire: prix,
+      tva: parseFloat(ouvr.tva || 10),
+    };
+
+    const existingLignes = targetDevis.lignes || targetDevis.items || targetDevis.articles || [];
+    const updatedLignes = [...existingLignes, newLigne];
+    const updatedDevisObj = { ...targetDevis, lignes: updatedLignes };
+
+    const totalHt = updatedLignes.reduce((s, l) => s + ((l.prixUnitaire || l.prix_unitaire || 0) * (l.quantite || 1)), 0);
+    updatedDevisObj.totalHt = totalHt;
+    updatedDevisObj.total_ht = totalHt;
+
+    if (updateDevis) {
+      await updateDevis(targetDevis.id, updatedDevisObj);
+    }
+
+    const numero = targetDevis.numero || targetDevis.reference || targetDevis.id?.slice(0, 8);
+    if (showToast) showToast(`Ouvrage ajouté au devis ${numero}`, 'success');
+    closeAddToDevisModal();
+  }, [addToDevisSelected, addToDevisModal, addToDevisQty, devis, updateDevis, showToast, closeAddToDevisModal]);
 
   // ── Theme helpers ───────────────────────────────────────────────────────────
   const pageBg = isDark ? 'bg-gray-900 text-gray-100' : 'bg-gray-50 text-gray-900';
@@ -441,7 +504,7 @@ export default function Bibliotheque({ isDark, couleur = '#f97316', setPage, dev
       <div className="flex flex-1 px-4 sm:px-6 gap-0 lg:gap-6">
         {/* ── Sidebar (desktop only) ──────────────────────────────────── */}
         <aside
-          className={`hidden lg:flex flex-col w-72 flex-shrink-0 border-r rounded-xl overflow-hidden ${sidebarBg}`}
+          className={`hidden lg:flex flex-col w-72 flex-shrink-0 border-r rounded-xl overflow-hidden sticky top-4 self-start ${sidebarBg}`}
           style={{ maxHeight: 'calc(100vh - 140px)' }}
         >
           {/* Sidebar search (with autocomplete) */}
@@ -561,6 +624,94 @@ export default function Bibliotheque({ isDark, couleur = '#f97316', setPage, dev
       {/* ── Mobile tree drawer overlay ──────────────────────────────────── */}
       {TreeDrawer}
 
+      {/* ── Add to devis modal ─────────────────────────────────────────── */}
+      {addToDevisModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={closeAddToDevisModal} />
+          <div className={`relative w-full max-w-md rounded-2xl p-6 shadow-2xl ${isDark ? 'bg-gray-800' : 'bg-white'}`}>
+            <h3 className={`font-bold text-lg mb-1 ${isDark ? 'text-white' : 'text-gray-900'}`}>Ajouter au devis</h3>
+            <p className={`text-sm mb-4 ${textSecondary}`}>
+              <span className="font-medium" style={{ color: couleur }}>{addToDevisModal.nom}</span>
+              {' — '}
+              {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(addToDevisModal.prixUnitaireHT || 0)}
+              /{addToDevisModal.unite || 'u'}
+            </p>
+
+            {devisBrouillons.length === 0 ? (
+              <div className={`text-center py-6 rounded-xl ${isDark ? 'bg-gray-700/50' : 'bg-gray-50'}`}>
+                <FileText size={32} className={`mx-auto mb-2 ${textSecondary}`} />
+                <p className={`text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>Aucun devis brouillon</p>
+                <p className={`text-xs mt-1 ${textSecondary}`}>Créez d'abord un devis pour y ajouter des ouvrages.</p>
+                <button
+                  onClick={() => { closeAddToDevisModal(); if (setPage) setPage('devis'); }}
+                  className="mt-3 px-4 py-2 text-white rounded-xl text-sm font-medium"
+                  style={{ backgroundColor: couleur }}
+                >
+                  Créer un devis
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="space-y-3">
+                  <div>
+                    <label className={`text-xs font-medium mb-1 block ${textSecondary}`}>Devis cible</label>
+                    <select
+                      className={`w-full px-4 py-3 border rounded-xl ${inputBg}`}
+                      value={addToDevisSelected || ''}
+                      onChange={e => setAddToDevisSelected(e.target.value)}
+                    >
+                      {devisBrouillons.map(d => {
+                        const client = (clients || []).find(c => c.id === (d.clientId || d.client_id));
+                        const clientNom = client?.nom || client?.name || d.clientNom || '';
+                        return (
+                          <option key={d.id} value={d.id}>
+                            {d.numero || d.reference || `DEV-${d.id?.slice(0, 6)}`}{clientNom ? ` — ${clientNom}` : ''}
+                          </option>
+                        );
+                      })}
+                    </select>
+                  </div>
+                  <div>
+                    <label className={`text-xs font-medium mb-1 block ${textSecondary}`}>Quantité</label>
+                    <input
+                      type="number"
+                      min="1"
+                      className={`w-full px-4 py-3 border rounded-xl ${inputBg}`}
+                      value={addToDevisQty}
+                      onChange={e => setAddToDevisQty(Math.max(1, parseInt(e.target.value) || 1))}
+                    />
+                  </div>
+                  <div className={`p-3 rounded-xl ${isDark ? 'bg-gray-700/50' : 'bg-gray-50'}`}>
+                    <div className="flex items-center justify-between">
+                      <span className={`text-sm ${textSecondary}`}>Sous-total HT</span>
+                      <span className="text-lg font-bold" style={{ color: couleur }}>
+                        {((parseFloat(addToDevisModal.prixUnitaireHT) || 0) * addToDevisQty).toFixed(2)} €
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex gap-3 mt-5">
+                  <button
+                    onClick={closeAddToDevisModal}
+                    className={`flex-1 py-3 rounded-xl font-medium ${isDark ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-700'}`}
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    onClick={handleAddToDevis}
+                    disabled={!addToDevisSelected}
+                    className="flex-1 py-3 text-white rounded-xl font-medium flex items-center justify-center gap-2 disabled:opacity-50"
+                    style={{ backgroundColor: couleur }}
+                  >
+                    <Plus size={16} /> Ajouter
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* ── Ouvrage detail modal ────────────────────────────────────────── */}
       <OuvrageDetail
         ouvrage={selectedOuvrage}
@@ -571,9 +722,9 @@ export default function Bibliotheque({ isDark, couleur = '#f97316', setPage, dev
         coefficientGeo={coefficientGeo}
         selectedDept={selectedDept}
         breadcrumb={ouvrageBreadcrumb}
-        onAddToDevis={addDevis ? (ouvrage) => {
-          // TODO: Phase 3 — proper AddToDevisModal
+        onAddToDevis={(updateDevis || addDevis) ? (ouvrage) => {
           handleCloseDetail();
+          openAddToDevisModal(ouvrage);
         } : undefined}
       />
     </div>

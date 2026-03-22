@@ -158,15 +158,15 @@ const OuvrageCard = React.memo(function OuvrageCard({
           {code}
         </span>
 
-        {/* Nom */}
-        <span className={`flex-1 min-w-0 truncate text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
-          {nom}
-        </span>
-
-        {/* Unité */}
-        <span className={`text-xs w-12 text-center shrink-0 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-          {unite}
-        </span>
+        {/* Nom / Unité */}
+        <div className="flex-1 min-w-0">
+          <p className={`text-sm font-medium truncate ${isDark ? 'text-white' : 'text-gray-900'}`}>
+            {nom || description || '—'}
+          </p>
+          <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+            {unite || '—'}
+          </p>
+        </div>
 
         {/* Prix HT */}
         <span className="w-24 text-right shrink-0 text-sm font-semibold" style={{ color: couleur }}>

@@ -53,8 +53,7 @@ function ListHeader({ isDark }) {
       } ${textClass}`}
     >
       <span className="w-20 shrink-0">Code</span>
-      <span className="flex-1 min-w-0">Nom</span>
-      <span className="w-12 text-center shrink-0">Unité</span>
+      <span className="flex-1 min-w-0">Nom / Unité</span>
       <span className="w-24 text-right shrink-0">Prix HT</span>
       <span className="w-32 shrink-0 hidden md:block">F / MO / Mat</span>
       <span className="w-14 text-center shrink-0 hidden sm:block">Temps</span>
