@@ -96,7 +96,8 @@ function applyFilters(memos, filters) {
   return memos.filter(m => {
     // Bug 1 fix: only require due_date — if no due_date_end, we'll default to +1 day
     if (!m.due_date) return false;
-    if (m.is_done && filters.status !== 'termine') return false;
+    // Show all tasks by default; only hide done when a specific non-termine filter is active
+    if (filters.status && filters.status !== 'termine' && (m.is_done || m.status === 'termine')) return false;
     if (filters.search) {
       const s = filters.search.toLowerCase();
       // Bug 2 fix: search in memo.text (the actual title field), not memo.title
@@ -142,8 +143,11 @@ function generateTimeline(startDate, endDate, zoom) {
 
 // ── Tooltip component ──
 
+const STATUS_LABELS = { a_faire: 'À faire', en_cours: 'En cours', termine: 'Terminé' };
+
 function Tooltip({ memo, x, y, isDark }) {
-  const status = memo.status || (memo.is_done ? 'Terminé' : 'À faire');
+  const rawStatus = memo.status || (memo.is_done ? 'termine' : 'a_faire');
+  const status = STATUS_LABELS[rawStatus] || rawStatus;
   const priorityLabel = memo.priority === 'haute' ? 'Haute' : memo.priority === 'moyenne' ? 'Moyenne' : memo.priority === 'basse' ? 'Basse' : '';
   const title = memo.text || memo.title || 'Sans titre';
 
@@ -506,7 +510,7 @@ export default function TaskGanttView({
                     key={memo.id}
                     className={`absolute rounded-md cursor-pointer transition-opacity hover:opacity-90 overflow-hidden ${
                       selectedMemoId === memo.id ? 'ring-2 ring-offset-1' : ''
-                    }`}
+                    } ${memo.is_done ? 'opacity-50' : ''}`}
                     style={{
                       left: x,
                       top: y,
