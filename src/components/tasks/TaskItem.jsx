@@ -1,4 +1,4 @@
-import { Calendar, Tag, Building2, Users, CheckCircle2, Circle, Clock } from 'lucide-react';
+import { Calendar, Tag, Building2, Users, CheckCircle2, Circle, Clock, Repeat } from 'lucide-react';
 import { CATEGORIES, PRIORITIES, TASK_STATUSES } from './constants';
 import { isOverdue, isToday, formatDateFR, formatTimeFR, today } from './helpers';
 
@@ -70,7 +70,11 @@ export default function TaskItem({
         <div className="flex items-center gap-1.5">
           <p className={`text-sm leading-snug flex-1 ${memo.is_done ? 'line-through' : ''} ${isDark ? 'text-white' : 'text-slate-900'}`}>
             {priority && <span className="mr-1.5" title={`Priorité ${priority.label}`}>{priority.dot}</span>}
-            {memo.recurrence && <span className="mr-1" title="Récurrent">🔄</span>}
+            {memo.recurrence && (
+              <span className="mr-1 inline-flex items-center" title="Récurrent">
+                <Repeat size={12} style={{ color: couleur }} />
+              </span>
+            )}
             {memo.text}
           </p>
           {/* Status badge — visible for ALL statuses */}
@@ -92,8 +96,15 @@ export default function TaskItem({
               {isOverdue(memo) ? (() => {
                 const diffDays = Math.ceil((new Date(today() + 'T00:00:00') - new Date(memo.due_date + 'T00:00:00')) / 86400000);
                 return `En retard de ${diffDays} jour${diffDays > 1 ? 's' : ''}`;
-              })() : formatDateFR(memo.due_date)}
-              {memo.due_time && !isOverdue(memo) && <span>à {formatTimeFR(memo.due_time)}</span>}
+              })() : (
+                <>
+                  {formatDateFR(memo.due_date)}
+                  {memo.due_date_end && memo.due_date_end >= memo.due_date && (
+                    <span>{'\u2192'} {formatDateFR(memo.due_date_end)}</span>
+                  )}
+                </>
+              )}
+              {memo.due_time && !isOverdue(memo) && !memo.due_date_end && <span>à {formatTimeFR(memo.due_time)}</span>}
             </span>
           )}
           {category && (

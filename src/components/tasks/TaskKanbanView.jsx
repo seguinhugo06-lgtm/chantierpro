@@ -13,7 +13,7 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import {
   Circle, Clock, CheckCircle, Plus, GripVertical,
-  Calendar, Tag, AlertCircle, ListTodo,
+  Calendar, Tag, AlertCircle, ListTodo, Repeat,
 } from 'lucide-react';
 import TaskDetail from './TaskDetail';
 
@@ -97,6 +97,11 @@ function KanbanCard({ memo, chantier, isDark, couleur, onSelect, onDragStart, is
           />
           {/* Title */}
           <p className={`text-sm font-medium line-clamp-2 ${isTermine ? 'line-through' : ''} ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
+            {memo.recurrence && (
+              <span className="mr-1 inline-flex items-center align-middle" title="Récurrent">
+                <Repeat size={12} style={{ color: couleur }} />
+              </span>
+            )}
             {memo.title || memo.text || 'Sans titre'}
           </p>
         </div>
@@ -142,6 +147,10 @@ function KanbanCard({ memo, chantier, isDark, couleur, onSelect, onDragStart, is
           >
             <Calendar size={8} />
             {formatDate(memo.due_date)}
+            {memo.due_date_end && memo.due_date_end >= memo.due_date && (() => {
+              const diffDays = Math.round((new Date(memo.due_date_end + 'T00:00:00') - new Date(memo.due_date + 'T00:00:00')) / 86400000) + 1;
+              return <span className="font-semibold">{diffDays}j</span>;
+            })()}
           </span>
         )}
 

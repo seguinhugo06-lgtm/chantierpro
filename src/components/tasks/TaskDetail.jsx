@@ -479,6 +479,33 @@ export default function TaskDetail({ memo, onUpdate, onDelete, onClose, chantier
             </div>
           </div>
 
+          {/* Date de fin (multi-jours) */}
+          <div>
+            <label className={`block text-xs font-medium mb-1 ${tc.muted}`}>Date de fin (optionnel)</label>
+            <input
+              type="date"
+              value={memo.due_date_end || ''}
+              onChange={(e) => handleImmediateUpdate('due_date_end', e.target.value)}
+              className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${tc.input}`}
+              style={{ '--tw-ring-color': couleur }}
+            />
+            {memo.due_date && memo.due_date_end && memo.due_date_end < memo.due_date && (
+              <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+                <AlertCircle size={12} />
+                La date de fin est antérieure à la date de début
+              </p>
+            )}
+            {memo.due_date && memo.due_date_end && memo.due_date_end >= memo.due_date && (() => {
+              const diffMs = new Date(memo.due_date_end + 'T00:00:00') - new Date(memo.due_date + 'T00:00:00');
+              const diffDays = Math.round(diffMs / 86400000) + 1;
+              return (
+                <p className={`text-xs mt-1 ${tc.muted}`}>
+                  Durée : {diffDays} jour{diffDays > 1 ? 's' : ''}
+                </p>
+              );
+            })()}
+          </div>
+
           {/* Recurrence */}
           <div>
             <label className={`block text-xs font-medium mb-1 ${tc.muted}`}>Récurrence</label>
