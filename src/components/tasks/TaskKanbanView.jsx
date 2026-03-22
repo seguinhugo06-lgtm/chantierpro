@@ -47,7 +47,8 @@ const CATEGORY_COLORS = {
 
 // ─── KanbanCard ──────────────────────────────────────────────────────────────
 
-function KanbanCard({ memo, chantier, isDark, couleur, onSelect, onDragStart, isTermine }) {
+function KanbanCard({ memo, chantier, equipe, isDark, couleur, onSelect, onDragStart, isTermine }) {
+  const assignedMember = memo.assigned_to ? (equipe || []).find(m => m.id === memo.assigned_to) : null;
   const isOverdue = useMemo(() => {
     if (!memo.due_date) return false;
     return new Date(memo.due_date) < new Date() && memo.status !== 'termine';
@@ -180,12 +181,22 @@ function KanbanCard({ memo, chantier, isDark, couleur, onSelect, onDragStart, is
         </div>
       )}
 
-      {/* Chantier link */}
-      {chantier && (
-        <p className={`text-xs mt-2 truncate ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-          {chantier.nom || chantier.name || ''}
-        </p>
-      )}
+      {/* Chantier link + assigned member */}
+      <div className="flex items-center justify-between mt-2">
+        {chantier ? (
+          <p className={`text-xs truncate ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+            {chantier.nom || chantier.name || ''}
+          </p>
+        ) : <span />}
+        {assignedMember && (
+          <span
+            className="w-6 h-6 rounded-full bg-slate-600 text-white text-[10px] flex items-center justify-center flex-shrink-0"
+            title={`${assignedMember.prenom} ${assignedMember.nom}`}
+          >
+            {assignedMember.prenom?.[0]}{assignedMember.nom?.[0]}
+          </span>
+        )}
+      </div>
     </div>
   );
 }
@@ -193,7 +204,7 @@ function KanbanCard({ memo, chantier, isDark, couleur, onSelect, onDragStart, is
 // ─── KanbanColumn ────────────────────────────────────────────────────────────
 
 function KanbanColumn({
-  column, cards, chantiers, isDark, couleur,
+  column, cards, chantiers, equipe, isDark, couleur,
   onSelect, onDragStart, onDrop, onAddMemo,
 }) {
   const [isDragOver, setIsDragOver] = useState(false);
@@ -273,6 +284,7 @@ function KanbanColumn({
               chantier={chantiers?.find(c =>
                 c.id === memo.chantier_id || c.id === memo.chantierId
               )}
+              equipe={equipe}
               isDark={isDark}
               couleur={couleur}
               onSelect={onSelect}
@@ -311,6 +323,7 @@ export default function TaskKanbanView({
   toggleMemo,
   chantiers = [],
   clients = [],
+  equipe = [],
   isDark,
   couleur,
   filters = {},
@@ -341,6 +354,11 @@ export default function TaskKanbanView({
     // Priority filter
     if (filters.priority && filters.priority !== 'all') {
       items = items.filter(m => m.priority === filters.priority);
+    }
+
+    // Assigned to filter
+    if (filters.assignedTo) {
+      items = items.filter(m => m.assigned_to === filters.assignedTo);
     }
 
     return items;
@@ -428,6 +446,7 @@ export default function TaskKanbanView({
             column={col}
             cards={columnData[col.id] || []}
             chantiers={chantiers}
+            equipe={equipe}
             isDark={isDark}
             couleur={couleur}
             onSelect={handleSelectMemo}
@@ -447,6 +466,7 @@ export default function TaskKanbanView({
           onClose={() => onSelectMemo(null)}
           chantiers={chantiers}
           clients={clients}
+          equipe={equipe}
           couleur={couleur}
           isDark={isDark}
         />

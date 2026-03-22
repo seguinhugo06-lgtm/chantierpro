@@ -109,7 +109,7 @@ function SubtaskList({ subtasks = [], onUpdate, couleur, isDark }) {
 // ════════════════════════════════════════════════════════
 // TaskDetail — Slide-in detail panel
 // ════════════════════════════════════════════════════════
-export default function TaskDetail({ memo, onUpdate, onDelete, onClose, chantiers, clients, couleur, isDark }) {
+export default function TaskDetail({ memo, onUpdate, onDelete, onClose, chantiers, clients, equipe, couleur, isDark }) {
   const [text, setText] = useState(memo.text || '');
   const [notes, setNotes] = useState(memo.notes || '');
   const debouncedText = useDebounce(text, 800);
@@ -601,6 +601,22 @@ export default function TaskDetail({ memo, onUpdate, onDelete, onClose, chantier
               <option value="">Aucun</option>
               {clients.map(cl => (
                 <option key={cl.id} value={cl.id}>{cl.nom} {cl.prenom || ''}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Assigné à */}
+          <div>
+            <label className={`block text-xs font-medium mb-1 ${tc.muted}`}>Assigné à</label>
+            <select
+              value={memo.assigned_to || ''}
+              onChange={(e) => handleImmediateUpdate('assigned_to', e.target.value)}
+              className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${tc.input}`}
+              style={{ '--tw-ring-color': couleur }}
+            >
+              <option value="">Non assigné</option>
+              {(equipe || []).map(m => (
+                <option key={m.id} value={m.id}>{m.prenom} {m.nom}</option>
               ))}
             </select>
           </div>

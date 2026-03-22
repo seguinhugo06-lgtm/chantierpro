@@ -1,10 +1,12 @@
 import React, { useState, useMemo, lazy, Suspense } from 'react';
-import { List, Kanban, Calendar, CalendarCheck } from 'lucide-react';
+import { List, Kanban, Calendar, CalendarCheck, GanttChart, Users } from 'lucide-react';
 import TaskFilters from './TaskFilters';
 
 const TaskListView = lazy(() => import('./TaskListView'));
 const TaskKanbanView = lazy(() => import('./TaskKanbanView'));
 const TaskCalendarView = lazy(() => import('./TaskCalendarView'));
+const TaskGanttView = lazy(() => import('./TaskGanttView'));
+const TaskTeamView = lazy(() => import('./TaskTeamView'));
 
 // ════════════════════════════════════════════════════════
 // TasksAndPlanning — Unified parent for tasks + planning
@@ -14,6 +16,8 @@ const TaskCalendarView = lazy(() => import('./TaskCalendarView'));
 const VIEW_MODES = [
   { id: 'list', icon: List, label: 'Liste' },
   { id: 'kanban', icon: Kanban, label: 'Kanban' },
+  { id: 'gantt', icon: GanttChart, label: 'Gantt' },
+  { id: 'team', icon: Users, label: 'Equipe' },
   { id: 'calendar', icon: Calendar, label: 'Calendrier' },
 ];
 
@@ -97,8 +101,8 @@ export default function TasksAndPlanning({
         </div>
       </div>
 
-      {/* Filters (only for list/kanban views) */}
-      {(viewMode === 'list' || viewMode === 'kanban') && (
+      {/* Filters (for list/kanban/gantt/team views) */}
+      {(viewMode === 'list' || viewMode === 'kanban' || viewMode === 'gantt' || viewMode === 'team') && (
         <div className="mb-4">
           <TaskFilters filters={filters} onFiltersChange={setFilters} isDark={isDark} couleur={couleur} />
         </div>
@@ -137,6 +141,33 @@ export default function TasksAndPlanning({
             addMemo={addMemo}
             deleteMemo={deleteMemo}
             toggleMemo={toggleMemo}
+            chantiers={chantiers}
+            clients={clients}
+            isDark={isDark}
+            couleur={couleur}
+            filters={filters}
+            selectedMemoId={selectedMemoId}
+            onSelectMemo={setSelectedMemoId}
+          />
+        )}
+        {viewMode === 'gantt' && (
+          <TaskGanttView
+            memos={memos}
+            updateMemo={updateMemo}
+            chantiers={chantiers}
+            clients={clients}
+            isDark={isDark}
+            couleur={couleur}
+            filters={filters}
+            onSelectMemo={setSelectedMemoId}
+          />
+        )}
+        {viewMode === 'team' && (
+          <TaskTeamView
+            memos={memos}
+            updateMemo={updateMemo}
+            deleteMemo={deleteMemo}
+            equipe={equipe}
             chantiers={chantiers}
             clients={clients}
             isDark={isDark}

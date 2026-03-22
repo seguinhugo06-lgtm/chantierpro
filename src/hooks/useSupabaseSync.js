@@ -873,6 +873,7 @@ export const FIELD_MAPPINGS = {
       subtasks: item.subtasks ? JSON.stringify(item.subtasks) : '[]',
       recurrence: item.recurrence ? JSON.stringify(item.recurrence) : null,
       sort_order: item.sort_order || 0,
+      assigned_to: item.assigned_to || null,
     }),
     fromSupabase: (row) => ({
       id: row.id,
@@ -892,6 +893,7 @@ export const FIELD_MAPPINGS = {
       subtasks: row.subtasks ? (typeof row.subtasks === 'string' ? JSON.parse(row.subtasks) : row.subtasks) : [],
       recurrence: row.recurrence ? (typeof row.recurrence === 'string' ? JSON.parse(row.recurrence) : row.recurrence) : null,
       sort_order: row.sort_order || 0,
+      assigned_to: row.assigned_to || null,
       created_at: row.created_at,
       updated_at: row.updated_at,
     }),

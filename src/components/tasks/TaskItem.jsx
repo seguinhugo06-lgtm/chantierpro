@@ -6,12 +6,13 @@ import { isOverdue, isToday, formatDateFR, formatTimeFR, today } from './helpers
 // TaskItem — Single task row with quick actions + status badge
 // ════════════════════════════════════════════════════════
 export default function TaskItem({
-  memo, onToggle, onSelect, isSelected, chantiers, clients, couleur, isDark,
+  memo, onToggle, onSelect, isSelected, chantiers, clients, equipe, couleur, isDark,
   onQuickDate, onQuickPriority, onQuickDelete, setPage,
   selectionMode, isMultiSelected, onMultiSelect,
 }) {
   const chantier = memo.chantier_id ? chantiers.find(c => c.id === memo.chantier_id) : null;
   const client = memo.client_id ? clients.find(c => c.id === memo.client_id) : null;
+  const assignedMember = memo.assigned_to ? (equipe || []).find(m => m.id === memo.assigned_to) : null;
   const priority = PRIORITIES.find(p => p.value === memo.priority);
   const category = CATEGORIES.find(c => c.value === memo.category);
   const subtasks = memo.subtasks || [];
@@ -145,6 +146,14 @@ export default function TaskItem({
               }`}
             >
               {stDone === stTotal ? '☑' : '◻'} {stDone}/{stTotal}
+            </span>
+          )}
+          {assignedMember && (
+            <span
+              className="w-5 h-5 rounded-full bg-slate-600 text-white text-[10px] flex items-center justify-center flex-shrink-0"
+              title={`${assignedMember.prenom} ${assignedMember.nom}`}
+            >
+              {assignedMember.prenom?.[0]}{assignedMember.nom?.[0]}
             </span>
           )}
         </div>

@@ -4,8 +4,8 @@ import { CATEGORIES, PRIORITIES, TASK_STATUSES } from './constants';
 // ════════════════════════════════════════════════════════
 // TaskFilters — Search, category, priority, status filters
 // ════════════════════════════════════════════════════════
-export default function TaskFilters({ filters, onFiltersChange, isDark, couleur }) {
-  const { search = '', category = '', priority = '', status = '' } = filters;
+export default function TaskFilters({ filters, onFiltersChange, equipe = [], isDark, couleur }) {
+  const { search = '', category = '', priority = '', status = '', assignedTo = '' } = filters;
 
   const tc = {
     muted: isDark ? 'text-slate-400' : 'text-slate-500',
@@ -16,7 +16,7 @@ export default function TaskFilters({ filters, onFiltersChange, isDark, couleur 
     onFiltersChange({ ...filters, [key]: value });
   };
 
-  const hasActive = search || category || priority || status;
+  const hasActive = search || category || priority || status || assignedTo;
 
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -80,10 +80,25 @@ export default function TaskFilters({ filters, onFiltersChange, isDark, couleur 
         ))}
       </select>
 
+      {/* Membre */}
+      {equipe.length > 0 && (
+        <select
+          value={assignedTo}
+          onChange={(e) => update('assignedTo', e.target.value)}
+          className={`px-2 py-1.5 rounded-lg border text-xs focus:outline-none focus:ring-2 ${tc.input}`}
+          style={{ '--tw-ring-color': couleur }}
+        >
+          <option value="">Membre</option>
+          {equipe.map(m => (
+            <option key={m.id} value={m.id}>{m.prenom} {m.nom}</option>
+          ))}
+        </select>
+      )}
+
       {/* Reset */}
       {hasActive && (
         <button
-          onClick={() => onFiltersChange({ search: '', category: '', priority: '', status: '' })}
+          onClick={() => onFiltersChange({ search: '', category: '', priority: '', status: '', assignedTo: '' })}
           className={`text-xs px-2 py-1.5 rounded-lg text-red-500 ${isDark ? 'hover:bg-red-500/10' : 'hover:bg-red-50'}`}
         >
           Réinitialiser

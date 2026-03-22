@@ -85,6 +85,7 @@ export default function TaskListView({
   toggleMemo,
   chantiers = [],
   clients = [],
+  equipe = [],
   isDark = false,
   couleur = '#f97316',
   filters = {},
@@ -376,6 +377,11 @@ export default function TaskListView({
       list = list.filter(m => m.priority === filters.priority);
     }
 
+    // Assigned to
+    if (filters.assignedTo) {
+      list = list.filter(m => m.assigned_to === filters.assignedTo);
+    }
+
     // Status filter
     if (filters.status) {
       if (filters.status === 'termine') {
@@ -500,6 +506,7 @@ export default function TaskListView({
                       isSelected={selectedMemoId === m.id}
                       chantiers={chantiers}
                       clients={clients}
+                      equipe={equipe}
                       couleur={couleur}
                       isDark={isDark}
                       onQuickDate={handleQuickDate}
@@ -689,6 +696,7 @@ export default function TaskListView({
           onClose={() => onSelectMemo(null)}
           chantiers={chantiers}
           clients={clients}
+          equipe={equipe}
           couleur={couleur}
           isDark={isDark}
         />
