@@ -697,8 +697,8 @@ const ChatPage = memo(function ChatPage({
               </div>
             )}
 
-            {/* Input */}
-            <div className="relative z-10">
+            {/* Input — z-50 to stay above sync bar (z-40) */}
+            <div className="relative z-50 pb-1">
             <ChatInput
               onSend={handleSend}
               onTyping={handleTyping}
@@ -812,7 +812,7 @@ const ChatPage = memo(function ChatPage({
             </h5>
             <div className="space-y-2">
               {(activeChannel.members || []).map((member) => {
-                const name = member.name || member.email || 'Utilisateur';
+                const name = member.userName || member.user_name || member.name || member.userEmail || member.email || 'Membre';
                 const initials = name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
                 return (
                   <div key={member.id || member.userId} className="flex items-center gap-2.5">
