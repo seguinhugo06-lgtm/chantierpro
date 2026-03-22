@@ -1230,6 +1230,7 @@ export function DataProvider({ children, initialData = {} }) {
       subtasks: data.subtasks || [],
       recurrence: data.recurrence || null,
       sort_order: data.sort_order || 0,
+      assigned_to: data.assigned_to || null,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
