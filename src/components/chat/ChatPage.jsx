@@ -486,7 +486,7 @@ const ChatPage = memo(function ChatPage({
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className={`${bgClass} -m-3 sm:-m-4 lg:-m-6 -mb-14 lg:-mb-6 flex h-[calc(100vh-56px-56px)] lg:h-[calc(100vh-56px)] overflow-hidden rounded-none`}>
+    <div className={`${bgClass} -m-3 sm:-m-4 lg:-m-6 -mb-14 lg:-mb-6 flex h-[calc(100vh-56px-96px)] lg:h-[calc(100vh-56px-40px)] overflow-hidden rounded-none`}>
       {/* Mobile sidebar overlay */}
       {showMobileSidebar && (
         <div className="lg:hidden absolute inset-0 z-30">
@@ -697,8 +697,8 @@ const ChatPage = memo(function ChatPage({
               </div>
             )}
 
-            {/* Input — z-50 to stay above sync bar (z-40) */}
-            <div className="relative z-50 pb-1">
+            {/* Input — sticky bottom with solid bg, z-50 above sync bar */}
+            <div className={`relative z-50 pb-2 ${isDark ? 'bg-slate-900' : 'bg-white'}`}>
             <ChatInput
               onSend={handleSend}
               onTyping={handleTyping}
