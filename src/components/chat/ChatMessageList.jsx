@@ -26,6 +26,8 @@ const ChatMessageList = memo(function ChatMessageList({
   typingUsers = [],
   isDark = false,
   couleur = '#f97316',
+  highlightTerm = null,
+  highlightMessageId = null,
 }) {
   const containerRef = useRef(null);
   const bottomRef = useRef(null);
@@ -164,38 +166,24 @@ const ChatMessageList = memo(function ChatMessageList({
           }
 
           return (
-            <ChatMessageBubble
-              key={item.key}
-              message={item.message}
-              isOwn={item.message.userId === currentUserId}
-              showAvatar={item.showAvatar}
-              showName={item.showName}
-              onReply={onReply}
-              onReact={onReact}
-              onEdit={onEdit}
-              onDelete={onDelete}
-              isDark={isDark}
-              couleur={couleur}
-            />
+            <div key={item.key} id={`msg-${item.message.id}`}>
+              <ChatMessageBubble
+                message={item.message}
+                isOwn={item.message.userId === currentUserId}
+                showAvatar={item.showAvatar}
+                showName={item.showName}
+                onReply={onReply}
+                onReact={onReact}
+                onEdit={onEdit}
+                onDelete={onDelete}
+                isDark={isDark}
+                couleur={couleur}
+                highlightTerm={highlightTerm}
+                isHighlighted={item.message.id === highlightMessageId}
+              />
+            </div>
           );
         })}
-
-        {/* Typing indicator */}
-        {typingUsers.length > 0 && (
-          <div className="flex items-center gap-2 px-4 py-1">
-            <div className="flex gap-0.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '0ms' }} />
-              <span className="w-1.5 h-1.5 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '150ms' }} />
-              <span className="w-1.5 h-1.5 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '300ms' }} />
-            </div>
-            <span className={`text-[10px] ${isDark ? 'text-slate-500' : 'text-gray-400'}`}>
-              {typingUsers.length === 1
-                ? `${typingUsers[0]} écrit...`
-                : `${typingUsers.length} personnes écrivent...`
-              }
-            </span>
-          </div>
-        )}
 
         <div ref={bottomRef} />
       </div>

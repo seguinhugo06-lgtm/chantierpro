@@ -1,7 +1,8 @@
 /**
  * ChatInput.jsx — Message composition bar
  *
- * Features: text input, file upload, voice recording, emoji, reply preview.
+ * Features: text input, file upload, voice recording, emoji, reply preview,
+ *           keyboard shortcuts (Escape, Arrow Up).
  */
 
 import React, { useState, useRef, useCallback, useEffect, memo } from 'react';
@@ -18,7 +19,11 @@ const ChatInput = memo(function ChatInput({
   onTyping,
   replyTo,
   onCancelReply,
+  editingMessage,
+  onCancelEdit,
   onUploadFile,
+  messages = [],
+  currentUserId,
   isDark = false,
   couleur = '#f97316',
   disabled = false,
@@ -117,8 +122,35 @@ const ChatInput = memo(function ChatInput({
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
+      return;
     }
-  }, [handleSend]);
+
+    // Escape: cancel reply or edit
+    if (e.key === 'Escape') {
+      if (replyTo && onCancelReply) {
+        onCancelReply();
+      } else if (editingMessage && onCancelEdit) {
+        onCancelEdit();
+      }
+      return;
+    }
+
+    // Arrow Up on empty input: edit last own message
+    if (e.key === 'ArrowUp' && !text.trim() && messages.length > 0) {
+      const lastOwnMsg = [...messages].reverse().find(
+        m => m.userId === currentUserId && m.contentType === 'text' && !m.deletedAt
+      );
+      if (lastOwnMsg) {
+        e.preventDefault();
+        // Trigger edit mode on the last own message
+        if (typeof onCancelEdit === 'function' || typeof onCancelReply === 'function') {
+          // Set editing via parent — we dispatch a custom event
+          const event = new CustomEvent('chat:edit-last-message', { detail: lastOwnMsg });
+          window.dispatchEvent(event);
+        }
+      }
+    }
+  }, [handleSend, replyTo, onCancelReply, editingMessage, onCancelEdit, text, messages, currentUserId]);
 
   const handleFileSelect = useCallback((e) => {
     const files = Array.from(e.target.files || []);

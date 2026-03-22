@@ -1,23 +1,42 @@
 /**
  * ChatSidebar.jsx — Channel list sidebar for the messaging page
  *
- * Shows: channel list grouped by type, search, new channel button.
+ * Shows: channel list grouped into collapsible sections:
+ *   - Pinned, Team, Chantiers, Clients, Archived
  * Handles: channel selection, unread badges, muted state.
+ * Section collapse state persisted to localStorage.
  */
 
-import React, { useState, useMemo, memo, useCallback } from 'react';
+import React, { useState, useMemo, memo, useCallback, useEffect } from 'react';
 import {
   Search, Plus, Hash, Users, MessageCircle, Building2,
-  ChevronRight, Volume2, VolumeX, MoreHorizontal, Archive, Bell, BellOff,
-  X,
+  ChevronRight, ChevronDown, VolumeX, X, Pin, Archive, User,
 } from 'lucide-react';
 
-const CHANNEL_TYPE_CONFIG = {
-  equipe: { icon: Users, label: 'Équipe', color: '#3b82f6' },
-  chantier: { icon: Building2, label: 'Chantiers', color: '#22c55e' },
-  direct: { icon: MessageCircle, label: 'Messages directs', color: '#f97316' },
-  custom: { icon: Hash, label: 'Canaux', color: '#8b5cf6' },
-};
+const STORAGE_KEY = 'chat_sidebar_collapsed';
+
+const SECTION_CONFIG = [
+  { key: 'pinned', label: 'Epingles', icon: Pin, color: '#eab308' },
+  { key: 'equipe', label: 'Equipe', icon: Users, color: '#3b82f6' },
+  { key: 'chantier', label: 'Chantiers', icon: Building2, color: '#22c55e' },
+  { key: 'direct', label: 'Clients', icon: User, color: '#f97316' },
+  { key: 'archived', label: 'Archives', icon: Archive, color: '#6b7280' },
+];
+
+function loadCollapsedState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveCollapsedState(state) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch { /* ignore */ }
+}
 
 const ChatSidebar = memo(function ChatSidebar({
   channels = [],
@@ -33,12 +52,19 @@ const ChatSidebar = memo(function ChatSidebar({
   currentUserId,
 }) {
   const [searchQuery, setSearchQuery] = useState('');
-  const [expandedTypes, setExpandedTypes] = useState({
-    equipe: true,
-    chantier: true,
-    direct: true,
-    custom: true,
-  });
+  const [collapsedSections, setCollapsedSections] = useState(() => loadCollapsedState());
+
+  // Persist collapsed state
+  useEffect(() => {
+    saveCollapsedState(collapsedSections);
+  }, [collapsedSections]);
+
+  const toggleSection = useCallback((key) => {
+    setCollapsedSections(prev => {
+      const next = { ...prev, [key]: !prev[key] };
+      return next;
+    });
+  }, []);
 
   // Filter channels by search
   const filteredChannels = useMemo(() => {
@@ -51,20 +77,30 @@ const ChatSidebar = memo(function ChatSidebar({
     );
   }, [channels, searchQuery]);
 
-  // Group by type
-  const groupedChannels = useMemo(() => {
-    const groups = {};
-    filteredChannels.forEach(ch => {
-      const type = ch.type || 'custom';
-      if (!groups[type]) groups[type] = [];
-      groups[type].push(ch);
-    });
-    return groups;
-  }, [filteredChannels]);
+  // Group channels into sections
+  const sections = useMemo(() => {
+    const pinned = [];
+    const equipe = [];
+    const chantier = [];
+    const direct = [];
+    const archived = [];
 
-  const toggleExpand = useCallback((type) => {
-    setExpandedTypes(prev => ({ ...prev, [type]: !prev[type] }));
-  }, []);
+    filteredChannels.forEach(ch => {
+      if (ch.archived) {
+        archived.push(ch);
+      } else if (ch.pinned) {
+        pinned.push(ch);
+      } else {
+        const type = ch.type || 'custom';
+        if (type === 'equipe' || type === 'custom') equipe.push(ch);
+        else if (type === 'chantier') chantier.push(ch);
+        else if (type === 'direct') direct.push(ch);
+        else equipe.push(ch);
+      }
+    });
+
+    return { pinned, equipe, chantier, direct, archived };
+  }, [filteredChannels]);
 
   // ── Render ──────────────────────────────────────────────────────────────────
 
@@ -121,57 +157,71 @@ const ChatSidebar = memo(function ChatSidebar({
         </div>
       </div>
 
-      {/* Channel list */}
+      {/* Channel list by sections */}
       <div className="flex-1 overflow-y-auto px-2 pb-2">
-        {Object.entries(CHANNEL_TYPE_CONFIG).map(([type, config]) => {
-          const typeChannels = groupedChannels[type];
-          if (!typeChannels || typeChannels.length === 0) return null;
+        {SECTION_CONFIG.map(({ key, label, icon: SectionIcon, color }) => {
+          const sectionChannels = sections[key] || [];
+          const isCollapsed = !!collapsedSections[key];
+          const sectionUnread = sectionChannels.reduce((sum, c) => sum + (c.unreadCount || 0), 0);
+          const isEmpty = sectionChannels.length === 0;
 
-          const TypeIcon = config.icon;
-          const typeUnread = typeChannels.reduce((sum, c) => sum + (c.unreadCount || 0), 0);
+          // Always show equipe/chantier/direct sections even if empty
+          const alwaysShow = ['equipe', 'chantier', 'direct'].includes(key);
+          // Hide pinned/archived if empty
+          if (isEmpty && !alwaysShow) return null;
 
           return (
-            <div key={type} className="mb-1">
+            <div key={key} className="mb-1">
               {/* Section header */}
               <button
-                onClick={() => toggleExpand(type)}
-                className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-[11px] font-semibold uppercase tracking-wide ${textMuted} hover:${isDark ? 'bg-slate-700/50' : 'bg-gray-50'}`}
+                onClick={() => toggleSection(key)}
+                className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-[11px] font-semibold uppercase tracking-wide transition-colors ${textMuted} ${isDark ? 'hover:bg-slate-700/50' : 'hover:bg-gray-50'}`}
               >
-                <ChevronRight
-                  size={12}
-                  className={`transition-transform ${expandedTypes[type] ? 'rotate-90' : ''}`}
-                />
-                <TypeIcon size={12} />
-                <span>{config.label}</span>
-                {typeUnread > 0 && (
+                {isCollapsed ? (
+                  <ChevronRight size={12} className="flex-shrink-0" />
+                ) : (
+                  <ChevronDown size={12} className="flex-shrink-0" />
+                )}
+                <SectionIcon size={12} style={{ color }} className="flex-shrink-0" />
+                <span>{label}</span>
+                {sectionUnread > 0 && (
                   <span className="ml-auto text-[9px] px-1.5 py-0.5 rounded-full bg-red-500 text-white font-bold">
-                    {typeUnread}
+                    {sectionUnread}
                   </span>
                 )}
               </button>
 
-              {/* Channel items */}
-              {expandedTypes[type] && typeChannels.map(channel => (
-                <ChannelItem
-                  key={channel.id}
-                  channel={channel}
-                  isActive={channel.id === activeChannelId}
-                  isDark={isDark}
-                  couleur={couleur}
-                  currentUserId={currentUserId}
-                  onSelect={() => onSelectChannel(channel.id)}
-                />
-              ))}
+              {/* Channel items or empty message */}
+              {!isCollapsed && (
+                <>
+                  {sectionChannels.map(channel => (
+                    <ChannelItem
+                      key={channel.id}
+                      channel={channel}
+                      isActive={channel.id === activeChannelId}
+                      isDark={isDark}
+                      couleur={couleur}
+                      currentUserId={currentUserId}
+                      onSelect={() => onSelectChannel(channel.id)}
+                    />
+                  ))}
+                  {isEmpty && (
+                    <p className={`text-[11px] px-4 py-2 ${isDark ? 'text-slate-600' : 'text-gray-400'}`}>
+                      Aucun canal
+                    </p>
+                  )}
+                </>
+              )}
             </div>
           );
         })}
 
-        {/* Empty state */}
-        {filteredChannels.length === 0 && (
+        {/* Global empty state (no channels at all) */}
+        {filteredChannels.length === 0 && searchQuery && (
           <div className="flex flex-col items-center justify-center py-8">
             <MessageCircle size={32} className={textMuted} />
             <p className={`text-sm mt-2 ${textMuted}`}>
-              {searchQuery ? 'Aucun résultat' : 'Aucun canal'}
+              Aucun resultat
             </p>
           </div>
         )}
@@ -254,6 +304,9 @@ const ChannelItem = memo(function ChannelItem({
           }`}>
             {displayName}
           </span>
+          {channel.pinned && (
+            <Pin size={10} className={isDark ? 'text-yellow-500' : 'text-yellow-600'} />
+          )}
           {channel.muted && (
             <VolumeX size={10} className={isDark ? 'text-slate-600' : 'text-gray-300'} />
           )}

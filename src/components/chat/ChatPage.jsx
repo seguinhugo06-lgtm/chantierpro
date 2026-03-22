@@ -10,7 +10,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef, memo } from '
 import {
   MessageCircle, Plus, Search, Users, Hash, Building2, X,
   ArrowLeft, Settings, UserPlus, Info, Loader2, Menu,
-  MessageSquarePlus, Zap,
+  MessageSquarePlus, Zap, ChevronUp, ChevronDown,
 } from 'lucide-react';
 import supabase, { isDemo } from '../../supabaseClient';
 import { useOrg } from '../../context/OrgContext';
@@ -62,8 +62,14 @@ const ChatPage = memo(function ChatPage({
   const [showMobileSidebar, setShowMobileSidebar] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState(null);
+  const [showChannelSearch, setShowChannelSearch] = useState(false);
+  const [channelSearchQuery, setChannelSearchQuery] = useState('');
+  const [channelSearchResults, setChannelSearchResults] = useState([]);
+  const [channelSearchIndex, setChannelSearchIndex] = useState(0);
+  const [showChannelInfo, setShowChannelInfo] = useState(false);
 
   const subscriptionRef = useRef(null);
+  const channelSearchInputRef = useRef(null);
   const unreadSubRef = useRef(null);
   const messageCursorRef = useRef(null);
   const typingTimeoutsRef = useRef({});
@@ -149,6 +155,10 @@ const ChatPage = memo(function ChatPage({
     setEditingMessage(null);
     setSearchResults(null);
     setShowMobileSidebar(false);
+    setShowChannelSearch(false);
+    setChannelSearchQuery('');
+    setChannelSearchResults([]);
+    setShowChannelInfo(false);
     loadChannelMessages(channelId);
   }, [loadChannelMessages]);
 
@@ -382,11 +392,86 @@ const ChatPage = memo(function ChatPage({
     }
   }, [userId]);
 
+  // ── Channel search (local filter) ────────────────────────────────────────
+
+  const handleChannelSearchToggle = useCallback(() => {
+    setShowChannelSearch(prev => {
+      if (!prev) {
+        // Opening: reset
+        setChannelSearchQuery('');
+        setChannelSearchResults([]);
+        setChannelSearchIndex(0);
+        setTimeout(() => channelSearchInputRef.current?.focus(), 50);
+      }
+      return !prev;
+    });
+  }, []);
+
+  const handleChannelSearchChange = useCallback((query) => {
+    setChannelSearchQuery(query);
+    if (!query.trim()) {
+      setChannelSearchResults([]);
+      setChannelSearchIndex(0);
+      return;
+    }
+    const lower = query.toLowerCase();
+    const results = messages
+      .map((m, idx) => ({ ...m, _idx: idx }))
+      .filter(m => m.content && !m.deletedAt && m.content.toLowerCase().includes(lower));
+    setChannelSearchResults(results);
+    setChannelSearchIndex(0);
+
+    // Scroll to first result
+    if (results.length > 0) {
+      const el = document.getElementById(`msg-${results[0].id}`);
+      el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [messages]);
+
+  const handleChannelSearchNav = useCallback((direction) => {
+    if (channelSearchResults.length === 0) return;
+    const next = direction === 'next'
+      ? (channelSearchIndex + 1) % channelSearchResults.length
+      : (channelSearchIndex - 1 + channelSearchResults.length) % channelSearchResults.length;
+    setChannelSearchIndex(next);
+    const msg = channelSearchResults[next];
+    if (msg) {
+      const el = document.getElementById(`msg-${msg.id}`);
+      el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [channelSearchResults, channelSearchIndex]);
+
+  // ── Keyboard shortcuts ───────────────────────────────────────────────────
+
+  // Listen for "edit last own message" from ChatInput ArrowUp
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.detail) setEditingMessage(e.detail);
+    };
+    window.addEventListener('chat:edit-last-message', handler);
+    return () => window.removeEventListener('chat:edit-last-message', handler);
+  }, []);
+
+  // Global Escape: close channel search, reply, edit
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.key === 'Escape') {
+        if (showChannelSearch) {
+          setShowChannelSearch(false);
+        }
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [showChannelSearch]);
+
   // ── Theme ─────────────────────────────────────────────────────────────────
 
   const bgClass = isDark ? 'bg-slate-900' : 'bg-gray-50';
   const textPrimary = isDark ? 'text-white' : 'text-gray-900';
   const textMuted = isDark ? 'text-slate-400' : 'text-gray-500';
+  const cardBg = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200';
+  const inputBg = isDark ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400';
 
   // ── Loading state ─────────────────────────────────────────────────────────
 
@@ -469,7 +554,11 @@ const ChatPage = memo(function ChatPage({
                 )?.charAt(0).toUpperCase() || '?'}
               </div>
 
-              <div className="flex-1 min-w-0">
+              <button
+                className="flex-1 min-w-0 text-left cursor-pointer"
+                onClick={() => setShowChannelInfo(prev => !prev)}
+                title="Infos du canal"
+              >
                 <h3 className={`text-sm font-semibold ${textPrimary} truncate`}>
                   {activeChannel.type === 'direct'
                     ? activeChannel.otherUser?.name || 'Direct'
@@ -481,19 +570,91 @@ const ChatPage = memo(function ChatPage({
                     {activeChannel.description}
                   </p>
                 )}
-              </div>
+              </button>
 
               {/* Channel actions */}
               <div className="flex items-center gap-1">
                 <button
-                  onClick={() => handleSearch('')}
-                  className={`p-2 rounded-xl transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-gray-100 text-gray-400'}`}
-                  title="Rechercher"
+                  onClick={handleChannelSearchToggle}
+                  className={`p-2 rounded-xl transition-colors ${
+                    showChannelSearch
+                      ? 'text-white'
+                      : isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-gray-100 text-gray-400'
+                  }`}
+                  style={showChannelSearch ? { backgroundColor: couleur } : undefined}
+                  title="Rechercher dans le canal"
                 >
                   <Search size={16} />
                 </button>
+                <button
+                  onClick={() => setShowChannelInfo(prev => !prev)}
+                  className={`p-2 rounded-xl transition-colors ${
+                    showChannelInfo
+                      ? 'text-white'
+                      : isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-gray-100 text-gray-400'
+                  }`}
+                  style={showChannelInfo ? { backgroundColor: couleur } : undefined}
+                  title="Infos du canal"
+                >
+                  <Info size={16} />
+                </button>
               </div>
             </div>
+
+            {/* Channel search bar */}
+            {showChannelSearch && (
+              <div className={`flex items-center gap-2 px-4 py-2 border-b flex-shrink-0 ${cardBg}`}>
+                <Search size={14} className={textMuted} />
+                <input
+                  ref={channelSearchInputRef}
+                  type="text"
+                  value={channelSearchQuery}
+                  onChange={(e) => handleChannelSearchChange(e.target.value)}
+                  placeholder="Rechercher dans les messages..."
+                  className={`flex-1 text-sm border rounded-lg px-3 py-1.5 outline-none focus:ring-1 ${inputBg}`}
+                  style={{ '--tw-ring-color': couleur }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleChannelSearchNav('next');
+                    if (e.key === 'Escape') {
+                      setShowChannelSearch(false);
+                      setChannelSearchQuery('');
+                      setChannelSearchResults([]);
+                    }
+                  }}
+                />
+                {channelSearchQuery && (
+                  <span className={`text-xs whitespace-nowrap ${textMuted}`}>
+                    {channelSearchResults.length > 0
+                      ? `${channelSearchIndex + 1}/${channelSearchResults.length}`
+                      : '0 résultat'}
+                  </span>
+                )}
+                <button
+                  onClick={() => handleChannelSearchNav('prev')}
+                  disabled={channelSearchResults.length === 0}
+                  className={`p-1 rounded transition-colors disabled:opacity-30 ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-gray-100 text-gray-400'}`}
+                >
+                  <ChevronUp size={16} />
+                </button>
+                <button
+                  onClick={() => handleChannelSearchNav('next')}
+                  disabled={channelSearchResults.length === 0}
+                  className={`p-1 rounded transition-colors disabled:opacity-30 ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-gray-100 text-gray-400'}`}
+                >
+                  <ChevronDown size={16} />
+                </button>
+                <button
+                  onClick={() => {
+                    setShowChannelSearch(false);
+                    setChannelSearchQuery('');
+                    setChannelSearchResults([]);
+                  }}
+                  className={`p-1 rounded transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-gray-100 text-gray-400'}`}
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            )}
 
             {/* Messages */}
             {loadingMessages ? (
@@ -514,19 +675,44 @@ const ChatPage = memo(function ChatPage({
                 typingUsers={typingUsers}
                 isDark={isDark}
                 couleur={couleur}
+                highlightTerm={showChannelSearch && channelSearchQuery ? channelSearchQuery : null}
+                highlightMessageId={channelSearchResults[channelSearchIndex]?.id || null}
               />
             )}
 
+            {/* Typing indicator */}
+            {typingUsers.length > 0 && (
+              <div className={`flex items-center gap-2 px-4 py-1.5 ${isDark ? 'bg-slate-800/50' : 'bg-gray-50/80'}`}>
+                <div className="flex gap-0.5">
+                  <span className={`w-1.5 h-1.5 rounded-full animate-bounce ${isDark ? 'bg-slate-500' : 'bg-gray-400'}`} style={{ animationDelay: '0ms' }} />
+                  <span className={`w-1.5 h-1.5 rounded-full animate-bounce ${isDark ? 'bg-slate-500' : 'bg-gray-400'}`} style={{ animationDelay: '150ms' }} />
+                  <span className={`w-1.5 h-1.5 rounded-full animate-bounce ${isDark ? 'bg-slate-500' : 'bg-gray-400'}`} style={{ animationDelay: '300ms' }} />
+                </div>
+                <span className={`text-[11px] ${textMuted}`}>
+                  {typingUsers.length === 1
+                    ? `${typingUsers[0]} est en train d'écrire...`
+                    : `${typingUsers.length} personnes écrivent...`
+                  }
+                </span>
+              </div>
+            )}
+
             {/* Input */}
+            <div className="relative z-10">
             <ChatInput
               onSend={handleSend}
               onTyping={handleTyping}
               replyTo={replyTo}
               onCancelReply={() => setReplyTo(null)}
+              editingMessage={editingMessage}
+              onCancelEdit={() => setEditingMessage(null)}
               onUploadFile={handleUploadFile}
+              messages={messages}
+              currentUserId={userId}
               isDark={isDark}
               couleur={couleur}
             />
+            </div>
           </>
         ) : (
           /* No channel selected — onboarding empty state */
@@ -571,6 +757,87 @@ const ChatPage = memo(function ChatPage({
           </div>
         )}
       </div>
+
+      {/* Channel info panel */}
+      {showChannelInfo && activeChannel && (
+        <div className={`w-72 sm:w-80 flex-shrink-0 border-l flex flex-col overflow-y-auto ${cardBg}`}>
+          {/* Panel header */}
+          <div className={`flex items-center justify-between px-4 py-3 border-b ${
+            isDark ? 'border-slate-700' : 'border-gray-200'
+          }`}>
+            <h3 className={`text-sm font-bold ${textPrimary}`}>Infos du canal</h3>
+            <button
+              onClick={() => setShowChannelInfo(false)}
+              className={`p-1.5 rounded-lg transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-gray-100 text-gray-400'}`}
+            >
+              <X size={16} />
+            </button>
+          </div>
+
+          {/* Channel name + description */}
+          <div className="px-4 py-4">
+            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-white text-lg font-bold mb-3 ${
+              activeChannel.type === 'direct'
+                ? 'bg-gradient-to-br from-orange-400 to-orange-600'
+                : activeChannel.type === 'equipe'
+                  ? 'bg-gradient-to-br from-blue-400 to-blue-600'
+                  : activeChannel.type === 'chantier'
+                    ? 'bg-gradient-to-br from-emerald-400 to-emerald-600'
+                    : 'bg-gradient-to-br from-purple-400 to-purple-600'
+            }`}>
+              {(activeChannel.type === 'direct'
+                ? activeChannel.otherUser?.name
+                : activeChannel.name
+              )?.charAt(0).toUpperCase() || '?'}
+            </div>
+            <h4 className={`text-base font-bold ${textPrimary}`}>
+              {activeChannel.type === 'direct'
+                ? activeChannel.otherUser?.name || 'Direct'
+                : activeChannel.name}
+            </h4>
+            {activeChannel.description && (
+              <p className={`text-sm mt-1 ${textMuted}`}>{activeChannel.description}</p>
+            )}
+            <p className={`text-xs mt-2 ${textMuted}`}>
+              {activeChannel.type === 'direct' ? 'Message direct' :
+               activeChannel.type === 'equipe' ? 'Canal d\'equipe' :
+               activeChannel.type === 'chantier' ? 'Canal chantier' : 'Canal'}
+            </p>
+          </div>
+
+          {/* Members */}
+          <div className={`px-4 py-3 border-t ${isDark ? 'border-slate-700' : 'border-gray-200'}`}>
+            <h5 className={`text-xs font-semibold uppercase tracking-wider mb-3 ${textMuted}`}>
+              Membres {activeChannel.members?.length ? `(${activeChannel.members.length})` : ''}
+            </h5>
+            <div className="space-y-2">
+              {(activeChannel.members || []).map((member) => {
+                const name = member.name || member.email || 'Utilisateur';
+                const initials = name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+                return (
+                  <div key={member.id || member.userId} className="flex items-center gap-2.5">
+                    <div
+                      className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-semibold flex-shrink-0"
+                      style={{ backgroundColor: couleur }}
+                    >
+                      {initials}
+                    </div>
+                    <div className="min-w-0">
+                      <p className={`text-sm font-medium truncate ${textPrimary}`}>{name}</p>
+                      {member.role && (
+                        <p className={`text-[11px] ${textMuted}`}>{member.role}</p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+              {(!activeChannel.members || activeChannel.members.length === 0) && (
+                <p className={`text-sm ${textMuted}`}>Aucun membre</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* New channel modal */}
       {showNewChannel && (

@@ -2,7 +2,8 @@
  * ChatMessageBubble.jsx — Single message bubble
  *
  * Handles: text, images, files, voice, system messages.
- * Shows: reactions, edit/delete actions, reply reference.
+ * Shows: reactions, edit/delete actions, reply reference,
+ *        read receipts (check marks), lightweight Markdown.
  */
 
 import React, { useState, memo, useCallback, useRef, useEffect } from 'react';
@@ -15,6 +16,39 @@ import EmojiPicker from './EmojiPicker';
 
 const QUICK_REACTIONS = ['👍', '❤️', '😂', '✅', '👀'];
 
+/**
+ * Lightweight Markdown renderer.
+ * Sanitizes HTML entities first, then applies simple formatting.
+ */
+function renderMarkdown(text) {
+  if (!text) return '';
+  // Escape HTML to prevent XSS
+  let html = text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+
+  // Bold: **text**
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  // Italic: *text* (but not inside bold)
+  html = html.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, '<em>$1</em>');
+  // Inline code: `text`
+  html = html.replace(/`(.+?)`/g, '<code class="bg-slate-700/30 px-1 rounded text-[13px] font-mono">$1</code>');
+  // Bullet lists: lines starting with "- "
+  html = html.replace(/^- (.+)$/gm, '<li class="ml-3 list-disc list-inside">$1</li>');
+
+  return html;
+}
+
+/** Check if text contains any Markdown formatting */
+function hasMarkdown(text) {
+  if (!text) return false;
+  return /\*\*.+?\*\*/.test(text) ||
+    /(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/.test(text) ||
+    /`.+?`/.test(text) ||
+    /^- .+$/m.test(text);
+}
+
 const ChatMessageBubble = memo(function ChatMessageBubble({
   message,
   isOwn,
@@ -26,6 +60,8 @@ const ChatMessageBubble = memo(function ChatMessageBubble({
   onDelete,
   isDark = false,
   couleur = '#f97316',
+  highlightTerm = null,
+  isHighlighted = false,
 }) {
   const [showActions, setShowActions] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -97,13 +133,35 @@ const ChatMessageBubble = memo(function ChatMessageBubble({
     if (r.userId === message._currentUserId) reactionGroups[r.emoji].hasOwn = true;
   });
 
+  // Highlight search terms in text
+  const renderHighlightedText = (text) => {
+    if (!highlightTerm || !text) return text;
+    const regex = new RegExp(`(${highlightTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+    const parts = text.split(regex);
+    if (parts.length <= 1) return text;
+    return parts.map((part, i) =>
+      regex.test(part)
+        ? <mark key={i} className="bg-yellow-300 text-gray-900 rounded px-0.5">{part}</mark>
+        : part
+    );
+  };
+
   const bubbleBg = isOwn
     ? `text-white`
     : isDark ? 'bg-slate-700 text-white' : 'bg-gray-100 text-gray-900';
 
+  // Read receipt status: "sent" (single check) or "read" (double check blue)
+  // For now, all own messages are marked "sent". "read" will be wired with Supabase Realtime.
+  const readStatus = isOwn ? (message.readBy?.length > 0 ? 'read' : 'sent') : null;
+
+  // Determine if content should use Markdown rendering
+  const useMarkdownRendering = message.contentType === 'text' && hasMarkdown(message.content);
+
   return (
     <div
-      className={`group flex ${isOwn ? 'justify-end' : 'justify-start'} mb-1 px-2`}
+      className={`group flex ${isOwn ? 'justify-end' : 'justify-start'} mb-1 px-2 ${
+        isHighlighted ? 'rounded-xl ring-2 ring-yellow-400 bg-yellow-400/10' : ''
+      } transition-all duration-300`}
       onMouseEnter={() => setShowActions(true)}
       onMouseLeave={() => { setShowActions(false); setShowMenu(false); }}
     >
@@ -140,9 +198,16 @@ const ChatMessageBubble = memo(function ChatMessageBubble({
           }`}
           style={isOwn ? { background: couleur } : {}}
         >
-          {/* Text content */}
+          {/* Text content — with optional Markdown */}
           {message.contentType === 'text' && (
-            <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
+            useMarkdownRendering ? (
+              <p
+                className="text-sm whitespace-pre-wrap break-words chat-markdown"
+                dangerouslySetInnerHTML={{ __html: renderMarkdown(message.content) }}
+              />
+            ) : (
+              <p className="text-sm whitespace-pre-wrap break-words">{renderHighlightedText(message.content)}</p>
+            )
           )}
 
           {/* Image content */}
@@ -210,6 +275,13 @@ const ChatMessageBubble = memo(function ChatMessageBubble({
           }`}>
             <span className="text-[9px]">{formatTime(message.createdAt)}</span>
             {message.editedAt && <span className="text-[9px]">(modifié)</span>}
+            {/* Read receipts for own messages */}
+            {readStatus === 'sent' && (
+              <Check size={12} className="text-white/50" />
+            )}
+            {readStatus === 'read' && (
+              <CheckCheck size={12} className="text-blue-300" />
+            )}
           </div>
         </div>
 
