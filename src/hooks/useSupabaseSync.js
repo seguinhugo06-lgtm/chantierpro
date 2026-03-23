@@ -219,13 +219,13 @@ export const FIELD_MAPPINGS = {
         facture_solde_id: item.facture_solde_id || null,
         montant_facture: item.montant_facture || 0,
         montant_paye: item.montant_paye || 0,
-        // Avoir-specific fields
-        avoir_source_id: item.avoir_source_id || null,
-        avoir_type: item.avoir_type || null,
-        avoir_motif: item.avoir_motif || null,
-        avoir_motif_detail: item.avoir_motif_detail || null,
-        // Situation-specific fields
-        situation_numero: item.situation_numero || null,
+        // Avoir-specific fields (columns may not exist yet — excluded to prevent schema errors)
+        // avoir_source_id: item.avoir_source_id || null,
+        // avoir_type: item.avoir_type || null,
+        // avoir_motif: item.avoir_motif || null,
+        // avoir_motif_detail: item.avoir_motif_detail || null,
+        // Situation-specific fields (column may not exist yet)
+        // situation_numero: item.situation_numero || null,
         // Payment tracking (date_paiement + mode_paiement exist in DB, reference_paiement is local-only)
         date_paiement: item.date_paiement || null,
         mode_paiement: item.mode_paiement || null,
