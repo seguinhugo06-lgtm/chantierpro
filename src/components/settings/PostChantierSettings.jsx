@@ -1,7 +1,7 @@
 /**
  * PostChantierSettings - Configuration de la sequence post-chantier
  *
- * Permet de configurer les actions automatiques declenchees apres
+ * Permet de configurer les actions automatiques déclenchées après
  * la fin d'un chantier (remerciement, avis Google, rapport, entretien, anniversaire).
  *
  * @module PostChantierSettings
@@ -36,7 +36,7 @@ const DEFAULT_SEQUENCE = [
     type: 'email',
     active: true,
     icon: 'mail',
-    template: 'Bonjour {prenom_client}, merci pour votre confiance pour votre {type_chantier}. Comment evaluez-vous notre travail ? (1-5 etoiles)',
+    template: 'Bonjour {prenom_client}, merci pour votre confiance pour votre {type_chantier}. Comment évaluez-vous notre travail ? (1-5 étoiles)',
   },
   {
     id: 2,
@@ -72,7 +72,7 @@ const DEFAULT_SEQUENCE = [
     type: 'sms',
     active: false,
     icon: 'cake',
-    template: "Cela fait 1 an que nous avons termine votre {type_chantier}. Tout va bien ? Besoin d'un entretien ?",
+    template: "Cela fait 1 an que nous avons terminé votre {type_chantier}. Tout va bien ? Besoin d'un entretien ?",
   },
 ];
 
@@ -93,7 +93,7 @@ const TYPE_OPTIONS = [
 ];
 
 const TEMPLATE_VARIABLES = [
-  { var: '{prenom_client}', desc: 'Prenom du client' },
+  { var: '{prenom_client}', desc: 'Prénom du client' },
   { var: '{nom_client}', desc: 'Nom du client' },
   { var: '{nom_chantier}', desc: 'Nom du chantier' },
   { var: '{type_chantier}', desc: 'Type de chantier' },
@@ -105,7 +105,7 @@ const TEMPLATE_VARIABLES = [
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function loadSequence() {
+function loadSéquence() {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
@@ -120,7 +120,7 @@ function loadSequence() {
   return { enabled: true, steps: DEFAULT_SEQUENCE };
 }
 
-function saveSequence(data) {
+function saveSéquence(data) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 }
 
@@ -134,7 +134,7 @@ function formatDelay(days) {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function PostChantierSettings({ isDark, couleur, showToast }) {
-  const [config, setConfig] = useState(loadSequence);
+  const [config, setConfig] = useState(loadSéquence);
   const [editingStep, setEditingStep] = useState(null);
   const [editForm, setEditForm] = useState(null);
   const [showVars, setShowVars] = useState(false);
@@ -151,7 +151,7 @@ export default function PostChantierSettings({ isDark, couleur, showToast }) {
 
   // Persist on change
   useEffect(() => {
-    saveSequence(config);
+    saveSéquence(config);
   }, [config]);
 
   const toggleGlobal = useCallback(() => {
@@ -186,13 +186,13 @@ export default function PostChantierSettings({ isDark, couleur, showToast }) {
         s.id === editForm.id ? { ...editForm } : s
       ),
     }));
-    if (showToast) showToast('Etape mise a jour', 'success');
+    if (showToast) showToast('Étape mise à jour', 'success');
     closeEdit();
   }, [editForm, showToast, closeEdit]);
 
   const resetDefaults = useCallback(() => {
     setConfig({ enabled: true, steps: DEFAULT_SEQUENCE });
-    if (showToast) showToast('Sequence reinitialisee', 'success');
+    if (showToast) showToast('Séquence réinitialisée', 'success');
   }, [showToast]);
 
   const StepIcon = useCallback(({ icon, size = 18 }) => {
@@ -214,10 +214,10 @@ export default function PostChantierSettings({ isDark, couleur, showToast }) {
             </div>
             <div>
               <h3 className={`font-semibold text-base sm:text-lg ${textPrimary}`}>
-                Sequence post-chantier
+                Séquence post-chantier
               </h3>
               <p className={`text-xs sm:text-sm ${textSecondary}`}>
-                Actions automatiques apres la fin d'un chantier
+                Actions automatiques après la fin d'un chantier
               </p>
             </div>
           </div>
@@ -226,15 +226,15 @@ export default function PostChantierSettings({ isDark, couleur, showToast }) {
             <button
               onClick={resetDefaults}
               className={`text-xs px-3 py-1.5 rounded-lg border ${cardBg} ${textMuted} ${hoverBg} transition-colors`}
-              title="Reinitialiser les valeurs par defaut"
+              title="Réinitialiser les valeurs par defaut"
             >
               <RotateCcw size={14} className="inline mr-1" />
-              Reinitialiser
+              Réinitialiser
             </button>
             <button
               onClick={toggleGlobal}
               className="flex items-center gap-2 transition-colors"
-              title={config.enabled ? 'Desactiver la sequence' : 'Activer la sequence'}
+              title={config.enabled ? 'Désactiver la sequence' : 'Activer la sequence'}
             >
               {config.enabled ? (
                 <ToggleRight size={28} style={{ color: couleur }} />
@@ -320,7 +320,7 @@ export default function PostChantierSettings({ isDark, couleur, showToast }) {
                         <button
                           onClick={() => toggleStep(step.id)}
                           className="transition-colors"
-                          title={step.active ? 'Desactiver' : 'Activer'}
+                          title={step.active ? 'Désactiver' : 'Activer'}
                         >
                           {step.active ? (
                             <ToggleRight size={22} style={{ color: couleur }} />
@@ -363,11 +363,11 @@ export default function PostChantierSettings({ isDark, couleur, showToast }) {
           <Clock size={16} className="shrink-0 mt-0.5" style={{ color: couleur }} />
           <div>
             <p className="font-medium" style={{ color: couleur }}>
-              Comment ca marche ?
+              Comment ça marche ?
             </p>
             <p className="mt-1">
-              Quand vous marquez un chantier comme "Termine", les etapes actives se declenchent
-              automatiquement au delai configure. Les messages utilisent les variables du chantier
+              Quand vous marquez un chantier comme "Terminé", les étapes actives se déclenchent
+              automatiquement au délai configuré. Les messages utilisent les variables du chantier
               et du client.
             </p>
           </div>
@@ -376,7 +376,7 @@ export default function PostChantierSettings({ isDark, couleur, showToast }) {
 
       {/* Edit Modal */}
       {editingStep && editForm && (
-        <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 ${overlayBg}`}>
+        <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 ${overlayBg}`} onClick={closeEdit}>
           <div
             className={`w-full max-w-lg rounded-2xl border shadow-2xl ${modalBg} ${isDark ? 'border-slate-700' : 'border-slate-200'}`}
             onClick={(e) => e.stopPropagation()}
@@ -407,7 +407,7 @@ export default function PostChantierSettings({ isDark, couleur, showToast }) {
               {/* Label */}
               <div>
                 <label className={`block text-sm font-medium mb-1.5 ${textPrimary}`}>
-                  Nom de l'etape
+                  Nom de l'étape
                 </label>
                 <input
                   type="text"
@@ -421,7 +421,7 @@ export default function PostChantierSettings({ isDark, couleur, showToast }) {
               <div className="flex gap-3">
                 <div className="flex-1">
                   <label className={`block text-sm font-medium mb-1.5 ${textPrimary}`}>
-                    Delai (jours)
+                    Délai (jours)
                   </label>
                   <input
                     type="number"

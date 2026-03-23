@@ -192,15 +192,6 @@ export default function FormFiller({ template, isDark, couleur, showToast, onSub
       createdAt: new Date().toISOString(),
     };
 
-    // Sauvegarder dans localStorage (mode offline)
-    try {
-      const existing = JSON.parse(localStorage.getItem('cp_form_submissions') || '[]');
-      existing.push(submission);
-      localStorage.setItem('cp_form_submissions', JSON.stringify(existing));
-    } catch (e) {
-      // Silent fail
-    }
-
     onSubmit?.(submission);
     showToast?.(draft ? 'Brouillon enregistré' : 'Formulaire soumis', 'success');
   };

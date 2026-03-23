@@ -86,7 +86,7 @@ export default function FormulairesPage({ isDark, couleur, showToast, user, chan
   const filteredTemplates = templates.filter(t =>
     !searchQuery ||
     t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    t.categorie.toLowerCase().includes(searchQuery.toLowerCase())
+    (t.categorie || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const templateSubmissionCount = (templateId) => {
@@ -259,7 +259,7 @@ export default function FormulairesPage({ isDark, couleur, showToast, user, chan
                   >
                     <ClipboardCheck size={18} style={{ color: catColor }} />
                   </div>
-                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+                  <div className="flex gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
                     <button
                       onClick={() => { setEditingTemplate(template); setView('builder'); }}
                       className={`p-1.5 rounded-lg transition-colors ${isDark ? 'hover:bg-slate-600 text-slate-400' : 'hover:bg-slate-100 text-slate-400'}`}

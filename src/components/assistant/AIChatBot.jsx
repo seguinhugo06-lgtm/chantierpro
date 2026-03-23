@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Sparkles, X, Send, Trash2, ChevronDown } from 'lucide-react';
+import { Sparkles, X, Send, Trash2 } from 'lucide-react';
 
 const STORAGE_KEY = 'cp_ai_chat_history';
 const MAX_MESSAGES = 50;

@@ -34,7 +34,7 @@ export default function SiteVitrine({ isDark, couleur, entreprise, chantiers = [
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <button
-            onClick={() => setPage('dashboard')}
+            onClick={() => setPage?.('dashboard')}
             className={`p-2 rounded-xl border transition-colors ${cardBg} hover:opacity-80`}
             aria-label="Retour au tableau de bord"
           >

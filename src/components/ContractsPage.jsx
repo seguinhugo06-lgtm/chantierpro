@@ -1,8 +1,8 @@
 import { useState, useMemo, useCallback } from 'react';
 import {
-  Plus, Search, X, Edit2, Trash2, FileCheck, Filter,
+  Plus, Search, X, Edit2, Trash2, FileCheck,
   Calendar, RefreshCw, AlertTriangle, CheckCircle, Clock,
-  TrendingUp, ChevronDown, MoreVertical, ArrowUpRight
+  TrendingUp, ChevronDown, MoreVertical
 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
@@ -255,8 +255,8 @@ export default function ContractsPage({ isDark, couleur, showToast, user, client
       clientId: contrat.clientId || '',
       clientName: contrat.clientName || '',
       objet: contrat.objet || '',
-      montantHt: contrat.montantHt || '',
-      tva: contrat.tva || 20,
+      montantHt: contrat.montantHt ?? '',
+      tva: contrat.tva ?? 20,
       recurrence: contrat.recurrence || 'annuel',
       debut: contrat.debut || '',
       fin: contrat.fin || '',
@@ -271,7 +271,7 @@ export default function ContractsPage({ isDark, couleur, showToast, user, client
 
   const handleSave = () => {
     if (!form.objet.trim() || !form.montantHt || !form.debut || !form.fin) {
-      showToast('Veuillez remplir les champs obligatoires', 'error');
+      showToast?.('Veuillez remplir les champs obligatoires', 'error');
       return;
     }
     // Resolve client name
@@ -286,7 +286,7 @@ export default function ContractsPage({ isDark, couleur, showToast, user, client
         c.id === editingId ? { ...c, ...form, clientName, montantHt: Number(form.montantHt) } : c
       );
       persist(updated);
-      showToast('Contrat modifié', 'success');
+      showToast?.('Contrat modifié', 'success');
     } else {
       const newContrat = {
         ...form,
@@ -295,7 +295,7 @@ export default function ContractsPage({ isDark, couleur, showToast, user, client
         montantHt: Number(form.montantHt),
       };
       persist([...contrats, newContrat]);
-      showToast('Contrat créé', 'success');
+      showToast?.('Contrat créé', 'success');
     }
     setShowForm(false);
     setEditingId(null);
@@ -303,7 +303,7 @@ export default function ContractsPage({ isDark, couleur, showToast, user, client
 
   const handleDelete = (id) => {
     persist(contrats.filter(c => c.id !== id));
-    showToast('Contrat supprimé', 'success');
+    showToast?.('Contrat supprimé', 'success');
     setMenuOpen(null);
   };
 
