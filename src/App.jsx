@@ -991,18 +991,7 @@ export default function App() {
 
   // Notifications are now computed via useMemo (see above) — no useEffect needed
 
-  // Loading screen
-  if (loading) return (
-    <div className="min-h-screen bg-[#f5f5f5] flex items-center justify-center">
-      <Building2 size={48} className="text-orange-500 animate-bounce" />
-    </div>
-  );
-
-  const isDark = theme === 'dark';
-  const tc = getThemeClasses(isDark);
-
-  // Client Portal — public page accessible via token (no auth required)
-  // Detect portal token from URL: /portal/{token} or ?portal={token}
+  // Portal token — MUST be before loading early return (React hooks order #310)
   const portalToken = useMemo(() => {
     try {
       const path = window.location.pathname;
@@ -1012,6 +1001,16 @@ export default function App() {
       return params.get('portal') || null;
     } catch { return null; }
   }, []);
+
+  // Loading screen (after ALL hooks)
+  if (loading) return (
+    <div className="min-h-screen bg-[#f5f5f5] flex items-center justify-center">
+      <Building2 size={48} className="text-orange-500 animate-bounce" />
+    </div>
+  );
+
+  const isDark = theme === 'dark';
+  const tc = getThemeClasses(isDark);
 
   if (page === 'client-portal' || portalToken) return (
     <Suspense fallback={<div className="min-h-screen bg-[#f5f5f5] flex items-center justify-center"><Building2 size={48} className="text-orange-500 animate-bounce" /></div>}>
