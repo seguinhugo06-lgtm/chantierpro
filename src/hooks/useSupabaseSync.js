@@ -1277,14 +1277,12 @@ export async function saveItem(table, item, userId, orgId) {
             console.warn(`⚠️ ${table}: column "${badCol}" not in DB, stripping and retrying`);
             delete supabaseData[badCol];
             strippedCols.push(badCol);
-          } else {
-            // Column is NOT in payload but a trigger references it → add it
-            // This happens when a DB trigger does NEW.col = ... but the column
-            // doesn't exist in the table (or hasn't been added via migration yet).
-            console.warn(`⚠️ ${table}: trigger references "${badCol}" not in payload, adding default and retrying`);
-            supabaseData[badCol] = badCol.includes('_at') || badCol === 'updated_at' || badCol === 'created_at'
-              ? new Date().toISOString()
-              : null;
+          } else if (!strippedCols.includes(badCol)) {
+            // Column is NOT in payload — likely a DB trigger referencing a missing column.
+            // Skip this error rather than adding the column (which makes it worse).
+            console.warn(`⚠️ ${table}: trigger/schema references "${badCol}" — not in payload, skipping retry`);
+            strippedCols.push(badCol);
+            break; // Stop retrying — this is a DB schema issue, not fixable client-side
             strippedCols.push(`+${badCol}`);
           }
           continue;
