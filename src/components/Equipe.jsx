@@ -1671,7 +1671,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
               <div className="flex gap-2">
                 <motion.button
                   onClick={togglePause}
-                  className={`p-3 min-w-[48px] min-h-[48px] flex items-center justify-center rounded-xl ${chrono.paused ? 'bg-emerald-500' : 'bg-white/20 hover:bg-white/30'} transition-colors`}
+                  className={`p-3 rounded-xl ${chrono.paused ? 'bg-emerald-500' : 'bg-white/20 hover:bg-white/30'} transition-colors`}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   title={chrono.paused ? 'Reprendre' : 'Pause'}
@@ -1680,7 +1680,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                 </motion.button>
                 <motion.button
                   onClick={handleStopChrono}
-                  className="px-5 py-3 min-h-[48px] bg-red-500 rounded-xl font-medium flex items-center gap-2 shadow-lg"
+                  className="px-5 py-3 bg-red-500 rounded-xl font-medium flex items-center gap-2 shadow-lg"
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >
@@ -1816,7 +1816,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                 if (e.key === 'ArrowRight') { e.preventDefault(); setTab(tabKeys[(idx + 1) % tabKeys.length]); }
                 if (e.key === 'ArrowLeft') { e.preventDefault(); setTab(tabKeys[(idx - 1 + tabKeys.length) % tabKeys.length]); }
               }}
-              className={`relative flex items-center gap-1 sm:gap-1.5 px-3 sm:px-4 py-2.5 sm:py-2.5 rounded-xl font-medium whitespace-nowrap min-h-[44px] transition-all ${
+              className={`relative flex items-center gap-1 sm:gap-1.5 px-2 sm:px-4 py-2 sm:py-2.5 rounded-xl font-medium whitespace-nowrap min-h-[40px] sm:min-h-[44px] transition-all ${
                 tab === key
                   ? 'text-white shadow-lg'
                   : isDark
@@ -2064,39 +2064,39 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                         )}
 
                         {/* Action buttons - ALWAYS VISIBLE on mobile */}
-                        <div className="absolute top-3 right-3 flex gap-1.5 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                        <div className="absolute top-3 right-3 flex gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                           {/* Quick timer button */}
                           {!isSousTraitants && !chrono.running && (
                             <button
                               onClick={() => quickStartTimer(e.id)}
-                              className={`p-2.5 min-w-[44px] min-h-[44px] sm:p-2 sm:min-w-0 sm:min-h-0 rounded-lg flex items-center justify-center transition-colors shadow-sm ${isDark ? 'bg-emerald-900/70 hover:bg-emerald-800 text-emerald-300' : 'bg-emerald-100 hover:bg-emerald-200 text-emerald-700'}`}
+                              className={`p-2 rounded-lg transition-colors shadow-sm ${isDark ? 'bg-emerald-900/70 hover:bg-emerald-800 text-emerald-300' : 'bg-emerald-100 hover:bg-emerald-200 text-emerald-700'}`}
                               title="Demarrer le chrono"
                             >
-                              <Play size={16} fill="currentColor" className="sm:w-3.5 sm:h-3.5" />
+                              <Play size={14} fill="currentColor" />
                             </button>
                           )}
                           {e.telephone && (
                             <button
                               onClick={() => callPhone(e.telephone)}
-                              className={`p-2.5 min-w-[44px] min-h-[44px] sm:p-2 sm:min-w-0 sm:min-h-0 rounded-lg flex items-center justify-center transition-colors shadow-sm ${isDark ? 'bg-slate-700 hover:bg-emerald-900/50 text-emerald-400' : 'bg-white hover:bg-emerald-50 text-emerald-600'}`}
+                              className={`p-2 rounded-lg transition-colors shadow-sm ${isDark ? 'bg-slate-700 hover:bg-emerald-900/50 text-emerald-400' : 'bg-white hover:bg-emerald-50 text-emerald-600'}`}
                               title="Appeler"
                             >
-                              <Phone size={16} className="sm:w-3.5 sm:h-3.5" />
+                              <Phone size={14} />
                             </button>
                           )}
                           <button
                             onClick={() => startEdit(e)}
-                            className={`p-2.5 min-w-[44px] min-h-[44px] sm:p-2 sm:min-w-0 sm:min-h-0 rounded-lg flex items-center justify-center transition-colors shadow-sm ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-white hover:bg-slate-50 text-slate-500'}`}
+                            className={`p-2 rounded-lg transition-colors shadow-sm ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-white hover:bg-slate-50 text-slate-500'}`}
                             title="Modifier"
                           >
-                            <Edit3 size={16} className="sm:w-3.5 sm:h-3.5" />
+                            <Edit3 size={14} />
                           </button>
                           <button
                             onClick={() => deleteEmploye(e.id)}
-                            className={`p-2.5 min-w-[44px] min-h-[44px] sm:p-2 sm:min-w-0 sm:min-h-0 rounded-lg flex items-center justify-center transition-colors shadow-sm ${isDark ? 'bg-slate-700 hover:bg-red-900/50 text-red-400' : 'bg-white hover:bg-red-50 text-red-500'}`}
+                            className={`p-2 rounded-lg transition-colors shadow-sm ${isDark ? 'bg-slate-700 hover:bg-red-900/50 text-red-400' : 'bg-white hover:bg-red-50 text-red-500'}`}
                             title="Supprimer"
                           >
-                            <Trash2 size={16} className="sm:w-3.5 sm:h-3.5" />
+                            <Trash2 size={14} />
                           </button>
                         </div>
 
@@ -2721,7 +2721,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                       <motion.button
                         onClick={startChrono}
                         title="Démarrer le chronomètre"
-                        className="px-8 py-4 min-h-[56px] text-white rounded-2xl text-lg font-semibold flex items-center gap-3 shadow-lg disabled:opacity-40 disabled:cursor-not-allowed"
+                        className="px-8 py-4 text-white rounded-2xl text-lg font-semibold flex items-center gap-3 shadow-lg disabled:opacity-40 disabled:cursor-not-allowed"
                         style={{ background: chrono.employeId ? couleur : '#94a3b8' }}
                         whileHover={chrono.employeId ? { scale: 1.02 } : {}}
                         whileTap={chrono.employeId ? { scale: 0.98 } : {}}
@@ -2735,7 +2735,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                         <motion.button
                           onClick={togglePause}
                           title={chrono.paused ? 'Reprendre le chronomètre' : 'Mettre en pause'}
-                          className={`px-6 py-4 min-h-[56px] rounded-2xl text-lg font-semibold flex items-center gap-3 shadow-lg ${
+                          className={`px-6 py-4 rounded-2xl text-lg font-semibold flex items-center gap-3 shadow-lg ${
                             chrono.paused
                               ? 'bg-emerald-500 text-white'
                               : isDark ? 'bg-slate-700 text-white' : 'bg-slate-200 text-slate-700'
@@ -2757,7 +2757,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                         </motion.button>
                         <motion.button
                           onClick={handleStopChrono}
-                          className="px-8 py-4 min-h-[56px] bg-red-500 text-white rounded-2xl text-lg font-semibold flex items-center gap-3 shadow-lg"
+                          className="px-8 py-4 bg-red-500 text-white rounded-2xl text-lg font-semibold flex items-center gap-3 shadow-lg"
                           whileHover={{ scale: 1.02 }}
                           whileTap={{ scale: 0.98 }}
                         >
