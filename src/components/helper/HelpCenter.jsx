@@ -178,7 +178,7 @@ export default function HelpCenter({
 
   const handleArticleFeedback = (articleId, helpful) => {
     setArticleFeedback(prev => ({ ...prev, [articleId]: helpful }));
-    console.log('Analytics: help_center_article_feedback', { articleId, helpful });
+    // Analytics: help_center_article_feedback
   };
 
   if (!isOpen) return null;

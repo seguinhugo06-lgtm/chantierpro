@@ -121,7 +121,6 @@ export function addToSyncQueue(type, data) {
   queue.push(operation);
   localStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(queue));
 
-  console.log(`[Sync] Added to queue: ${type}`, id);
   return id;
 }
 
@@ -145,7 +144,7 @@ export function getSyncQueue() {
 export function removeFromSyncQueue(id) {
   const queue = getSyncQueue().filter(op => op.id !== id);
   localStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(queue));
-  console.log(`[Sync] Removed from queue: ${id}`);
+  // Sync: removed from queue
 }
 
 /**
@@ -153,7 +152,7 @@ export function removeFromSyncQueue(id) {
  */
 export function clearSyncQueue() {
   localStorage.removeItem(SYNC_QUEUE_KEY);
-  console.log('[Sync] Queue cleared');
+  // Sync: queue cleared
 }
 
 /**

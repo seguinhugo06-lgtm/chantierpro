@@ -33,7 +33,7 @@ import FAQSection from './FAQSection';
 import FinalCta from './FinalCta';
 import FooterSection from './FooterSection';
 
-export default function LandingPage({ onLogin, onSignup }) {
+export default function LandingPage({ onLogin, onSignup, onNavigate }) {
   return (
     <div className="min-h-screen bg-white" style={{ scrollBehavior: 'smooth' }}>
       <LandingNav onLogin={onLogin} onSignup={onSignup} />
@@ -49,7 +49,7 @@ export default function LandingPage({ onLogin, onSignup }) {
         <FAQSection />
         <FinalCta onSignup={onSignup} />
       </main>
-      <FooterSection />
+      <FooterSection onNavigate={onNavigate} />
     </div>
   );
 }

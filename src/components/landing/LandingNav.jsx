@@ -222,38 +222,49 @@ export default function LandingNav({ onLogin, onSignup }) {
       {/* Mobile menu */}
       <AnimatePresence>
         {menuOpen && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-            className="md:hidden bg-white border-t border-slate-100 shadow-lg overflow-hidden"
-          >
-            <div className="px-4 py-3 space-y-1">
-              {NAV_LINKS.map((link) => (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="md:hidden fixed inset-0 top-[56px] bg-black/20 z-40"
+              onClick={() => setMenuOpen(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+              className="md:hidden bg-white border-t border-slate-100 shadow-lg overflow-hidden relative z-50"
+            >
+              <div className="px-4 py-3 space-y-1">
+                {NAV_LINKS.map((link) => (
+                  <button
+                    key={link.href}
+                    onClick={() => scrollTo(link.href, true)}
+                    className="w-full text-left px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50 rounded-lg font-medium transition-colors"
+                  >
+                    {link.label}
+                  </button>
+                ))}
+                <hr className="my-2 border-slate-100" />
                 <button
-                  key={link.href}
-                  onClick={() => scrollTo(link.href, true)}
-                  className="w-full text-left px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50 rounded-lg font-medium"
+                  onClick={() => { setMenuOpen(false); onLogin(); }}
+                  className="w-full text-left px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50 rounded-lg transition-colors"
                 >
-                  {link.label}
+                  Connexion
                 </button>
-              ))}
-              <hr className="my-2 border-slate-100" />
-              <button
-                onClick={() => { setMenuOpen(false); onLogin(); }}
-                className="w-full text-left px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50 rounded-lg"
-              >
-                Connexion
-              </button>
-              <button
-                onClick={() => { setMenuOpen(false); onSignup(); }}
-                className="w-full px-3 py-2.5 text-sm text-white bg-orange-500 hover:bg-orange-600 rounded-lg font-medium"
-              >
-                Essai gratuit
-              </button>
-            </div>
-          </motion.div>
+                <button
+                  onClick={() => { setMenuOpen(false); onSignup(); }}
+                  className="w-full px-3 py-2.5 text-sm text-white bg-orange-500 hover:bg-orange-600 rounded-lg font-medium transition-colors"
+                >
+                  Essai gratuit
+                </button>
+              </div>
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
     </nav>

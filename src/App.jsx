@@ -63,6 +63,7 @@ const FinancesPage = lazyWithRetry(() => import('./components/FinancesPage'), 'F
 const ShortcutsHelp = lazyWithRetry(() => import('./components/ShortcutsHelp'), 'Raccourcis');
 const PipelineKanban = lazyWithRetry(() => import('./components/pipeline/PipelineKanban'), 'Pipeline');
 const AvisGoogle = lazyWithRetry(() => import('./components/avis/AvisGoogle'), 'AvisGoogle');
+const ClientPortal = lazyWithRetry(() => import('./components/portal/ClientPortal'), 'ClientPortal');
 const ChatPage = lazyWithRetry(() => import('./components/chat/ChatPage'), 'Messagerie');
 const GarantiesDashboard = lazyWithRetry(() => import('./components/chantiers/GarantiesDashboard'), 'Garanties');
 const ProfilePage = lazyWithRetry(() => import('./components/profil/ProfilePage'), 'Profil');
@@ -84,7 +85,7 @@ import { usePermissions } from './hooks/usePermissions';
 import { PermissionGate } from './components/ui/PermissionGate';
 import { fetchSubscription, fetchUsage, computeLiveUsage } from './services/subscriptionsApi';
 import { isDraftChantier } from './lib/utils';
-import { Home, FileText, Building2, Calendar, Users, Package, HardHat, Settings as SettingsIcon, Eye, EyeOff, Sun, Moon, LogOut, Menu, Bell, Plus, ChevronRight, ChevronDown, BarChart3, HelpCircle, Search, X, CheckCircle, AlertCircle, Info, Clock, Receipt, Wifi, WifiOff, Palette, Wallet, Library, UserCheck, ShoppingCart, Camera, ClipboardList, PenTool, Download, Share, Smartphone, CreditCard, Tag, Sparkles, Kanban, Star, User, MessageCircle, Shield, CalendarCheck } from 'lucide-react';
+import { Home, FileText, Building2, Calendar, Users, Package, HardHat, Settings as SettingsIcon, Eye, EyeOff, Sun, Moon, LogOut, Menu, Bell, Plus, ChevronRight, ChevronDown, BarChart3, HelpCircle, Search, X, CheckCircle, AlertCircle, Info, Clock, Receipt, Wifi, WifiOff, Palette, Wallet, Library, UserCheck, ShoppingCart, Camera, ClipboardList, PenTool, Download, Share, Smartphone, CreditCard, Tag, Sparkles, Kanban, Star, User, MessageCircle, Shield, CalendarCheck, Megaphone } from 'lucide-react';
 import { usePWA } from './hooks/usePWA';
 import { registerNetworkListeners, getPendingCount, syncQueue, clearAllMutations, checkConnectivity } from './lib/offline/sync';
 import OfflineIndicator from './components/ui/OfflineIndicator';
@@ -95,7 +96,7 @@ const safeStr = (v, fallback = '') => {
   if (v == null) return fallback;
   if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') return v;
   if (v instanceof Date) return v.toLocaleDateString('fr-FR');
-  if (typeof v === 'object') { console.warn('[#310 guard] Object rendered as child:', v); return JSON.stringify(v); }
+  if (typeof v === 'object') { return JSON.stringify(v); }
   return String(v);
 };
 
@@ -943,6 +944,7 @@ export default function App() {
       'checkout-success': 'Paiement confirmé',
       messagerie: 'Messagerie',
       garanties: 'Garanties',
+      'avis-google': 'Marketing',
     };
     const title = PAGE_TITLES[page] || page.charAt(0).toUpperCase() + page.slice(1);
     document.title = `${title} — BatiGesti`;
@@ -990,6 +992,24 @@ export default function App() {
 
   const isDark = theme === 'dark';
   const tc = getThemeClasses(isDark);
+
+  // Client Portal — public page accessible via token (no auth required)
+  // Detect portal token from URL: /portal/{token} or ?portal={token}
+  const portalToken = useMemo(() => {
+    try {
+      const path = window.location.pathname;
+      const portalMatch = path.match(/^\/portal\/([a-zA-Z0-9_-]+)/);
+      if (portalMatch) return portalMatch[1];
+      const params = new URLSearchParams(window.location.search);
+      return params.get('portal') || null;
+    } catch { return null; }
+  }, []);
+
+  if (page === 'client-portal' || portalToken) return (
+    <Suspense fallback={<div className="min-h-screen bg-[#f5f5f5] flex items-center justify-center"><Building2 size={48} className="text-orange-500 animate-bounce" /></div>}>
+      <ClientPortal token={portalToken || 'demo'} />
+    </Suspense>
+  );
 
   // Legal / public pages (accessible without auth)
   const publicPages = ['cgv', 'cgu', 'confidentialite', 'mentions-legales', 'changelog'];
@@ -1190,7 +1210,7 @@ export default function App() {
     { id: 'equipe', icon: HardHat, label: 'Équipe' },
     { id: 'bibliotheque', icon: Library, label: 'Bibliothèque' },
     { id: 'catalogue', icon: Package, label: 'Catalogue' },
-    { id: 'avis-google', icon: Star, label: 'Avis Google', feature: 'avis_google' },
+    { id: 'avis-google', icon: Megaphone, label: 'Marketing', feature: 'avis_google' },
     { id: 'finances', icon: Wallet, label: 'Finances' },
     { id: 'plan', icon: CreditCard, label: 'Mon plan' },
     (() => {
@@ -1224,7 +1244,8 @@ export default function App() {
   const unreadNotifs = notifications.filter(n => !n.read);
 
   // LEGAL-001: CGU acceptance check — block app until accepted or when version changes
-  const needsCguAcceptance = !isDemo && user && entrepriseId && (
+  // Wait for entreprise context to finish loading before showing modal
+  const needsCguAcceptance = !isDemo && user && entrepriseId && !entrepriseLoading && (
     !entreprise.cguAcceptedAt || entreprise.cguVersion !== CGU_VERSION
   );
 
@@ -1696,7 +1717,7 @@ export default function App() {
                 />
               )}
               {page === 'clients' && <Clients clients={clients} setClients={setClients} updateClient={updateClient} deleteClient={deleteClient} devis={devis} chantiers={chantiers} echanges={echanges} onSubmit={addClient} couleur={couleur} setPage={setPage} setSelectedChantier={setSelectedChantier} setSelectedDevis={setSelectedDevis} isDark={isDark} modeDiscret={modeDiscret} createMode={createMode.client} setCreateMode={(v) => setCreateMode(p => ({...p, client: v}))} memos={memos} addMemo={addMemo} updateMemo={updateMemo} deleteMemo={deleteMemo} toggleMemo={toggleMemo} onImportClients={() => { setImportType('clients'); setShowImport(true); }} />}
-              {page === 'bibliotheque' && <BibliothequePrix isDark={isDark} couleur={couleur} setPage={setPage} devis={devis} addDevis={addDevis} updateDevis={updateDevis} clients={clients} showToast={showToast} />}
+              {page === 'bibliotheque' && <BibliothequePrix isDark={isDark} couleur={couleur} setPage={setPage} devis={devis} addDevis={addDevis} />}
               {page === 'catalogue' && <Catalogue catalogue={catalogue} setCatalogue={setCatalogue} addCatalogueItem={addCatalogueItem} updateCatalogueItem={updateCatalogueItem} deleteCatalogueItem={deleteCatalogueItem} chantiers={chantiers} equipe={equipe} devis={devis} updateDevis={updateDevis} clients={clients} couleur={couleur} isDark={isDark} modeDiscret={modeDiscret} setPage={setPage} />}
               {page === 'ouvrages' && <BibliothequeOuvrages catalogue={catalogue} ouvragesProp={ouvrages} setOuvragesProp={setOuvrages} addOuvrage={dataAddOuvrage} updateOuvrage={dataUpdateOuvrage} deleteOuvrage={dataDeleteOuvrage} isDark={isDark} couleur={couleur} />}
               {page === 'soustraitants' && <FeatureGuard feature="sous_traitants"><SousTraitantsModule chantiers={chantiers} isDark={isDark} couleur={couleur} setPage={setPage} /></FeatureGuard>}
@@ -1750,7 +1771,7 @@ export default function App() {
 
         {/* Mobile Bottom Navigation Bar — replaces sidebar on small screens */}
         <nav className={`fixed bottom-0 left-0 right-0 z-40 md:hidden border-t backdrop-blur-lg ${isDark ? 'bg-slate-900/95 border-slate-700' : 'bg-white/95 border-[#ebebeb]'} pb-[env(safe-area-inset-bottom)]`}>
-          <div className="flex items-center justify-around h-14">
+          <div className="flex items-stretch justify-around h-14">
             {[
               { id: 'dashboard', icon: Home, label: 'Accueil' },
               { id: 'devis', icon: FileText, label: 'Devis' },
@@ -1783,7 +1804,7 @@ export default function App() {
                   >
                     <item.icon size={21} strokeWidth={isActive ? 2.5 : 1.5} />
                   </div>
-                  <span className={`text-[10px] mt-0.5 ${isActive ? 'font-bold' : 'font-medium'}`}>{item.label}</span>
+                  <span className={`text-[10px] mt-0.5 whitespace-nowrap ${isActive ? 'font-bold' : 'font-medium'}`}>{item.label}</span>
                 </button>
               );
             })}
@@ -1810,7 +1831,7 @@ export default function App() {
                   >
                     <Menu size={21} strokeWidth={isPlusActive ? 2.5 : 1.5} />
                   </div>
-                  <span className={`text-[10px] mt-0.5 ${isPlusActive ? 'font-bold' : 'font-medium'}`}>Plus</span>
+                  <span className={`text-[10px] mt-0.5 whitespace-nowrap ${isPlusActive ? 'font-bold' : 'font-medium'}`}>Plus</span>
                 </button>
               );
             })()}
@@ -2044,28 +2065,6 @@ export default function App() {
         </div>
       )}
 
-      {/* Mobile Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 z-30 lg:hidden" aria-label="Navigation rapide">
-        <div className={`flex items-center justify-around px-1 py-1 border-t ${isDark ? 'bg-slate-900/95 border-slate-700 backdrop-blur' : 'bg-white/95 border-[#ebebeb] backdrop-blur'}`}>
-          {[
-            { id: 'dashboard', icon: Home, label: 'Accueil' },
-            { id: 'devis', icon: FileText, label: 'Devis' },
-            { id: 'chantiers', icon: Building2, label: 'Chantiers' },
-            { id: 'tasks', icon: CalendarCheck, label: 'Tâches' },
-          ].map(item => (
-            <button
-              key={item.id}
-              onClick={() => { setPage(item.id); setSelectedChantier(null); }}
-              className={`flex flex-col items-center justify-center py-1.5 px-3 rounded-lg min-h-[44px] transition-colors ${page === item.id ? 'text-white' : isDark ? 'text-slate-500' : 'text-[#999]'}`}
-              style={page === item.id ? { color: couleur } : {}}
-            >
-              <item.icon size={20} />
-              <span className="text-[10px] mt-0.5 font-medium">{item.label}</span>
-            </button>
-          ))}
-        </div>
-      </nav>
-
       {/* Toast Notifications */}
       {toast && (
         <div className="fixed bottom-16 lg:bottom-4 right-4 z-50">
@@ -2165,7 +2164,6 @@ export default function App() {
         }}
         errorDetails={syncErrorDetails}
         isDark={isDark}
-        position="top"
       />
 
       {/* Cookie Consent Banner (RGPD) */}

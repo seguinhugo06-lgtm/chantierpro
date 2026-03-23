@@ -129,7 +129,7 @@ export default function TeamManagement({ isDark, couleur = '#F97316' }) {
             console.warn('[TeamManagement] Edge Function error:', fnError);
             showToast('Invitation créée mais l\'email n\'a pas pu être envoyé', 'warning');
           } else {
-            console.log('[TeamManagement] Email sent successfully:', fnData);
+            // Email sent successfully
           }
         } catch (fnErr) {
           console.warn('[TeamManagement] Edge Function unavailable:', fnErr.message);

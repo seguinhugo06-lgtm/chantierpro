@@ -50,11 +50,11 @@ export default function Assistant({
     setIsOpen(false);
     setIsPulsing(false);
 
-    console.log('Analytics: helper_assistant_suggestion_dismissed', { suggestionId });
+    // Analytics: helper_assistant_suggestion_dismissed
   };
 
   const handleAction = (action, suggestionId) => {
-    console.log('Analytics: helper_assistant_action_clicked', { action, suggestionId });
+    // Analytics: helper_assistant_action_clicked
     onAction?.(action);
     handleDismiss(suggestionId);
   };
@@ -62,12 +62,7 @@ export default function Assistant({
   const toggleOpen = () => {
     setIsOpen(!isOpen);
     setIsPulsing(false);
-
-    if (!isOpen && currentSuggestion) {
-      console.log('Analytics: helper_assistant_suggestion_viewed', {
-        suggestionId: currentSuggestion.id
-      });
-    }
+    // Analytics: helper_assistant_suggestion_viewed
   };
 
   const getIcon = (iconType) => {

@@ -109,7 +109,7 @@ export default function HeroSection({ onSignup }) {
       </div>
 
       {/* Content */}
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 pt-28 sm:pt-36 pb-16 sm:pb-24">
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 pt-20 sm:pt-36 pb-12 sm:pb-24">
         <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
           {/* Left — Text content */}
           <motion.div style={{ opacity: textOpacity, scale: textScale }}>
@@ -118,7 +118,7 @@ export default function HeroSection({ onSignup }) {
               initial={{ opacity: 0, scale: 0.8, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-orange-50 border border-orange-200/60 text-orange-600 text-xs font-semibold mb-6"
+              className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-orange-50 border border-orange-200/60 text-orange-600 text-[11px] sm:text-xs font-semibold mb-4 sm:mb-6"
             >
               <Sparkles size={14} />
               Nouveau : Devis IA par reconnaissance vocale
@@ -129,7 +129,7 @@ export default function HeroSection({ onSignup }) {
               variants={textVariants}
               initial="hidden"
               animate="visible"
-              className="text-3xl sm:text-5xl lg:text-[3.5rem] font-bold text-slate-900 leading-[1.1] mb-6"
+              className="text-2xl sm:text-5xl lg:text-[3.5rem] font-bold text-slate-900 leading-[1.1] mb-5 sm:mb-6"
             >
               {headlineWords.map((word, i) => (
                 <motion.span key={i} variants={wordVariant} className="inline-block mr-[0.3em]">
@@ -161,7 +161,7 @@ export default function HeroSection({ onSignup }) {
               variants={fadeUp}
               initial="hidden"
               animate="visible"
-              className="text-base sm:text-lg text-slate-500 mb-8 max-w-lg leading-relaxed"
+              className="text-sm sm:text-lg text-slate-500 mb-6 sm:mb-8 max-w-lg leading-relaxed"
             >
               Devis, factures, chantiers, tr&eacute;sorerie — tout au m&ecirc;me endroit.
               L'outil con&ccedil;u par et pour les artisans du b&acirc;timent, qui vous fait gagner 2h par jour.

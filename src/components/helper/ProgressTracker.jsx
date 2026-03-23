@@ -298,7 +298,7 @@ export function useMilestones() {
     setMilestones(newMilestones);
     localStorage.setItem('milestones_completed', JSON.stringify(newMilestones));
 
-    console.log('Analytics: milestone_completed', { milestoneId });
+    // Analytics: milestone_completed
 
     return true;
   };

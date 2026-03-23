@@ -95,7 +95,6 @@ function ConversationHeader({
       <button
         onClick={() => {
           // Navigate to listing (would use router in production)
-          console.log('View listing:', conversation.listing_id);
         }}
         className={cn(
           'p-2 rounded-lg transition-colors hidden sm:flex',

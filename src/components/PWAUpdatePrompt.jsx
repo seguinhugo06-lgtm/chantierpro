@@ -103,18 +103,7 @@ export default function PWAUpdatePrompt({ syncHandlers = {}, className, isDark =
     setDismissedInStorage();
   };
 
-  // Debug logging
-  React.useEffect(() => {
-    if (showDelayed) {
-      console.log('PWA Install Debug:', {
-        platform,
-        canInstall,
-        isInstalled,
-        dismissed: dismissed.install,
-        showDelayed
-      });
-    }
-  }, [platform, canInstall, isInstalled, dismissed.install, showDelayed]);
+  // PWA install debug removed for production
 
   // Show install prompt for:
   // 1. Chrome/Android with native prompt (canInstall)

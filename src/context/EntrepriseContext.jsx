@@ -109,7 +109,7 @@ export function EntrepriseProvider({ children }) {
         migrationDoneRef.current = true;
         try {
           await migrateFromLocalStorage(sb, { userId: uid, orgId: oid });
-          console.log('[EntrepriseContext] Migration from localStorage completed');
+          // Migration from localStorage completed
         } catch (err) {
           console.warn('[EntrepriseContext] Migration skipped or failed:', err.message);
         }

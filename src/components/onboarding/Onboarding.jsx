@@ -24,31 +24,27 @@ export default function Onboarding({
   });
   const [startTime] = useState(Date.now());
 
-  // Track analytics
-  useEffect(() => {
-    console.log('Analytics: onboarding_started');
-  }, []);
+  // Analytics: onboarding_started
+  useEffect(() => {}, []);
 
   const handleStartTour = () => {
-    console.log('Analytics: onboarding_step_completed', { step: 'splash' });
+    // Analytics: onboarding_step_completed (splash)
     setCurrentStep('tour');
   };
 
   const handleTourComplete = () => {
-    console.log('Analytics: onboarding_step_completed', { step: 'tour' });
+    // Analytics: onboarding_step_completed (tour)
     setCurrentStep('setup');
   };
 
   const handleSetupComplete = (data) => {
     setUserData(data);
-    console.log('Analytics: onboarding_step_completed', { step: 'setup' });
+    // Analytics: onboarding_step_completed (setup)
     setCurrentStep('complete');
   };
 
   const handleFinalComplete = () => {
-    const duration = Math.round((Date.now() - startTime) / 1000);
-    console.log('Analytics: onboarding_completed', { duration, userData });
-
+    // Analytics: onboarding_completed
     // Save to localStorage
     localStorage.setItem('batigesti_onboarding_complete', 'true');
     localStorage.setItem('batigesti_user_data', JSON.stringify(userData));
@@ -57,7 +53,7 @@ export default function Onboarding({
   };
 
   const handleSkip = () => {
-    console.log('Analytics: onboarding_skipped', { step: currentStep });
+    // Analytics: onboarding_skipped
     localStorage.setItem('batigesti_onboarding_skipped', 'true');
     onSkip?.();
   };

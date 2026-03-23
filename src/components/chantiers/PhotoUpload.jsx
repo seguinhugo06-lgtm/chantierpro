@@ -503,7 +503,7 @@ export default function PhotoUpload({
     const queue = JSON.parse(localStorage.getItem(OFFLINE_QUEUE_KEY) || '[]');
     if (queue.length === 0) return;
 
-    console.log(`Processing ${queue.length} offline photos`);
+    // Processing offline photos queue
 
     for (const item of queue) {
       // Convert base64 back to blob

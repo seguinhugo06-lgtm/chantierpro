@@ -48,13 +48,11 @@ export function SmartTooltip({
     if (showOnce) {
       localStorage.setItem(`tooltip_dismissed_${id}`, 'true');
     }
-    console.log('Analytics: helper_tooltip_dismissed', { tooltipId: id });
+    // Analytics: helper_tooltip_dismissed
   };
 
   useEffect(() => {
-    if (isVisible) {
-      console.log('Analytics: helper_tooltip_viewed', { tooltipId: id });
-    }
+    // Analytics: helper_tooltip_viewed
   }, [isVisible, id]);
 
   const positionClasses = {

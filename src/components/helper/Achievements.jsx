@@ -300,7 +300,7 @@ export function useAchievements() {
     setPendingToast(achievement);
 
     // Log analytics
-    console.log('Analytics: achievement_unlocked', { achievementId });
+    // Analytics: achievement_unlocked
   }, [unlockedAchievements]);
 
   // Dismiss toast

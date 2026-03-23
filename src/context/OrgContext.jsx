@@ -116,7 +116,7 @@ export function OrgProvider({ children }) {
 
       // If RPC doesn't exist (404) or fails, fallback to owner mode
       if (orgError) {
-        console.log('[OrgContext] Org RPC unavailable, using owner fallback');
+        // Org RPC unavailable, using owner fallback
         sessionStorage.setItem(orgUnavailableKey, '1');
         setRole('owner');
         setLoading(false);

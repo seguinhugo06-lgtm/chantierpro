@@ -1023,7 +1023,6 @@ export default function Marketplace({
   // Handle view listing
   const handleViewListing = useCallback((listing) => {
     // Navigate to detail page (would be implemented with routing)
-    console.log('View listing:', listing.id);
     showToast?.(`Voir annonce: ${listing.titre}`, 'info');
   }, [showToast]);
 
