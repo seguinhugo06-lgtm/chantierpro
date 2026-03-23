@@ -983,17 +983,7 @@ export default function App() {
 
   // Notifications are now computed via useMemo (see above) — no useEffect needed
 
-  // Loading screen
-  if (loading) return (
-    <div className="min-h-screen bg-[#f5f5f5] flex items-center justify-center">
-      <Building2 size={48} className="text-orange-500 animate-bounce" />
-    </div>
-  );
-
-  const isDark = theme === 'dark';
-  const tc = getThemeClasses(isDark);
-
-  // Client Portal — detect token from URL: /portal/{token} or ?portal={token}
+  // Client Portal — detect token from URL (must be before any early returns)
   const portalToken = useMemo(() => {
     try {
       const path = window.location.pathname;
@@ -1004,6 +994,16 @@ export default function App() {
     } catch { return null; }
   }, []);
   const isPortalMode = page === 'client-portal' || !!portalToken;
+
+  // Loading screen
+  if (loading) return (
+    <div className="min-h-screen bg-[#f5f5f5] flex items-center justify-center">
+      <Building2 size={48} className="text-orange-500 animate-bounce" />
+    </div>
+  );
+
+  const isDark = theme === 'dark';
+  const tc = getThemeClasses(isDark);
 
   // Legal / public pages (accessible without auth)
   const publicPages = ['cgv', 'cgu', 'confidentialite', 'mentions-legales', 'changelog'];
