@@ -40,7 +40,7 @@ export default function DashboardMemos({ memos = [], toggleMemo, setPage, couleu
           )}
         </div>
         <button
-          onClick={() => setPage('memos')}
+          onClick={() => setPage('tasks')}
           className={`inline-flex items-center gap-1 text-xs font-medium rounded-lg px-2 py-1 transition-colors ${isDark ? 'text-slate-300 hover:bg-slate-700' : 'text-slate-600 hover:bg-slate-100'}`}
         >
           Voir tout
@@ -57,7 +57,7 @@ export default function DashboardMemos({ memos = [], toggleMemo, setPage, couleu
               <div
                 key={m.id}
                 className={`flex items-center gap-2.5 px-2.5 py-2 rounded-lg cursor-pointer transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}
-                onClick={() => setPage('memos')}
+                onClick={() => setPage('tasks')}
               >
                 <button
                   onClick={(e) => { e.stopPropagation(); toggleMemo(m.id); }}
