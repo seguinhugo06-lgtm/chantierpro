@@ -68,6 +68,7 @@ const ChatPage = lazyWithRetry(() => import('./components/chat/ChatPage'), 'Mess
 const GarantiesDashboard = lazyWithRetry(() => import('./components/chantiers/GarantiesDashboard'), 'Garanties');
 const ProfilePage = lazyWithRetry(() => import('./components/profil/ProfilePage'), 'Profil');
 const PlanPage = lazyWithRetry(() => import('./components/profil/PlanPage'), 'Plan');
+const AIChatBot = lazyWithRetry(() => import('./components/assistant/AIChatBot'), 'AIChatBot');
 import CookieConsent from './components/CookieConsent';
 import CGUAcceptanceModal, { CGU_VERSION } from './components/CGUAcceptanceModal';
 import { useConfirm, useToast } from './context/AppContext';
@@ -983,18 +984,6 @@ export default function App() {
 
   // Notifications are now computed via useMemo (see above) — no useEffect needed
 
-  // Client Portal — detect token from URL (must be before any early returns)
-  const portalToken = useMemo(() => {
-    try {
-      const path = window.location.pathname;
-      const portalMatch = path.match(/^\/portal\/([a-zA-Z0-9_-]+)/);
-      if (portalMatch) return portalMatch[1];
-      const params = new URLSearchParams(window.location.search);
-      return params.get('portal') || null;
-    } catch { return null; }
-  }, []);
-  const isPortalMode = page === 'client-portal' || !!portalToken;
-
   // Loading screen
   if (loading) return (
     <div className="min-h-screen bg-[#f5f5f5] flex items-center justify-center">
@@ -1004,6 +993,24 @@ export default function App() {
 
   const isDark = theme === 'dark';
   const tc = getThemeClasses(isDark);
+
+  // Client Portal — public page accessible via token (no auth required)
+  // Detect portal token from URL: /portal/{token} or ?portal={token}
+  const portalToken = useMemo(() => {
+    try {
+      const path = window.location.pathname;
+      const portalMatch = path.match(/^\/portal\/([a-zA-Z0-9_-]+)/);
+      if (portalMatch) return portalMatch[1];
+      const params = new URLSearchParams(window.location.search);
+      return params.get('portal') || null;
+    } catch { return null; }
+  }, []);
+
+  if (page === 'client-portal' || portalToken) return (
+    <Suspense fallback={<div className="min-h-screen bg-[#f5f5f5] flex items-center justify-center"><Building2 size={48} className="text-orange-500 animate-bounce" /></div>}>
+      <ClientPortal token={portalToken || 'demo'} />
+    </Suspense>
+  );
 
   // Legal / public pages (accessible without auth)
   const publicPages = ['cgv', 'cgu', 'confidentialite', 'mentions-legales', 'changelog'];
@@ -1257,15 +1264,6 @@ export default function App() {
     // Also update local state so the modal closes immediately
     setEntreprise(prev => ({ ...prev, ...cguData }));
   };
-
-  // Client Portal — render before anything else if in portal mode
-  if (isPortalMode) {
-    return (
-      <Suspense fallback={<div className="min-h-screen bg-[#f5f5f5] flex items-center justify-center"><Building2 size={48} className="text-orange-500 animate-bounce" /></div>}>
-        <ClientPortal token={portalToken || 'demo'} />
-      </Suspense>
-    );
-  }
 
   return (
     <div className={`min-h-screen ${tc.bg}`}>
@@ -2168,6 +2166,18 @@ export default function App() {
         errorDetails={syncErrorDetails}
         isDark={isDark}
       />
+
+      {/* AI Chatbot Assistant */}
+      <Suspense fallback={null}>
+        <AIChatBot
+          isDark={isDark}
+          couleur={couleur}
+          devis={devis}
+          chantiers={chantiers}
+          clients={clients}
+          entreprise={entreprise}
+        />
+      </Suspense>
 
       {/* Cookie Consent Banner (RGPD) */}
       <CookieConsent isDark={isDark} couleur={couleur} setPage={setPage} />

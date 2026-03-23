@@ -754,6 +754,49 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                 <p className={`text-sm ${textMuted}`}>Adresse non renseignée</p>
               )}
             </div>
+
+            {/* === Actions terrain : Prévenir le client === */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <div className="w-1.5 h-1.5 rounded-full" style={{ background: couleur }} />
+                <span className={`text-[10px] font-semibold uppercase tracking-wider ${textMuted}`}>Actions terrain</span>
+              </div>
+              <div className="flex gap-2 flex-wrap">
+                <button
+                  onClick={() => {
+                    const cl = clients.find(c => c.id === ch.client_id);
+                    const msg = `Bonjour ${cl?.prenom || 'M./Mme'}, votre artisan ${entreprise?.nom || ''} est en route. Arrivée estimée dans 30 minutes.`;
+                    navigator.clipboard?.writeText(msg);
+                    showToast(`Message "En route" copié — envoyez-le par SMS à ${cl?.prenom || 'votre client'}`, 'success');
+                  }}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium ${isDark ? 'bg-slate-700 text-orange-400' : 'bg-orange-50 text-orange-700'}`}
+                >
+                  <Navigation size={16} /> En route
+                </button>
+                <button
+                  onClick={() => {
+                    const cl = clients.find(c => c.id === ch.client_id);
+                    const msg = `Bonjour, votre artisan est arrivé sur le chantier "${ch.nom}".`;
+                    navigator.clipboard?.writeText(msg);
+                    showToast(`Message "Arrivé" copié — envoyez-le par SMS à ${cl?.prenom || 'votre client'}`, 'success');
+                  }}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium ${isDark ? 'bg-slate-700 text-emerald-400' : 'bg-emerald-50 text-emerald-700'}`}
+                >
+                  <MapPin size={16} /> Arrivé
+                </button>
+                <button
+                  onClick={() => {
+                    const cl = clients.find(c => c.id === ch.client_id);
+                    const msg = `Bonne nouvelle ! Les travaux sur votre chantier "${ch.nom}" sont terminés. N'hésitez pas à nous contacter.`;
+                    navigator.clipboard?.writeText(msg);
+                    showToast(`Message "Terminé" copié — envoyez-le par SMS à ${cl?.prenom || 'votre client'}`, 'success');
+                  }}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium ${isDark ? 'bg-slate-700 text-blue-400' : 'bg-blue-50 text-blue-700'}`}
+                >
+                  <CheckCircle size={16} /> Terminé
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
