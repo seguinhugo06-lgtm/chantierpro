@@ -623,7 +623,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                         })()}
                       </div>
                       <div className="space-y-px">
-                        {dayEvents.slice(0, 3).map(ev => {
+                        {dayEvents.slice(0, window.innerWidth < 640 ? 2 : 3).map(ev => {
                           const allDay = isAllDayEvent(ev);
                           return (
                             <div key={ev.id} onClick={(e) => handleEventClick(e, ev)} draggable onDragStart={e => e.dataTransfer.setData('eventId', ev.id)}
@@ -639,13 +639,13 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                             </div>
                           );
                         })}
-                        {dayEvents.length > 3 && (
+                        {dayEvents.length > (window.innerWidth < 640 ? 2 : 3) && (
                           <button
                             onClick={(e) => { e.stopPropagation(); setDate(new Date(year, month, day)); setViewMode('day'); }}
                             className={`text-[10px] font-semibold px-1.5 py-0 rounded transition-colors ${isDark ? 'text-slate-400 hover:text-slate-200' : 'hover:underline'}`}
                             style={{ color: couleur }}
                           >
-                            +{dayEvents.length - 3}
+                            +{dayEvents.length - (window.innerWidth < 640 ? 2 : 3)}
                           </button>
                         )}
                       </div>

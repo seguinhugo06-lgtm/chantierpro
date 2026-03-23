@@ -160,22 +160,23 @@ function KpiCard({ label, value, icon: Icon, trend, trendLabel, color, isDark, a
   const isPositive = trend > 0;
   const isNegative = trend < 0;
   return (
-    <div className={`relative overflow-hidden rounded-2xl p-5 border transition-shadow ${isDark ? 'bg-slate-800 border-slate-700 hover:shadow-lg hover:shadow-slate-900/30' : 'bg-white border-gray-200 hover:shadow-lg hover:shadow-gray-200/60'}`}>
+    <div className={`relative overflow-hidden rounded-xl sm:rounded-2xl p-3 sm:p-5 border transition-shadow ${isDark ? 'bg-slate-800 border-slate-700 hover:shadow-lg hover:shadow-slate-900/30' : 'bg-white border-gray-200 hover:shadow-lg hover:shadow-gray-200/60'}`}>
       <div className="absolute top-0 left-0 right-0 h-1" style={{ backgroundColor: accent || color }} />
-      <div className="flex items-start justify-between mb-3">
-        <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${color}20`, color }}>
-          <Icon size={20} />
+      <div className="flex items-start justify-between mb-2 sm:mb-3">
+        <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl flex items-center justify-center" style={{ backgroundColor: `${color}20`, color }}>
+          <Icon size={18} className="sm:hidden" />
+          <Icon size={20} className="hidden sm:block" />
         </div>
         {trend !== undefined && trend !== null && isFinite(trend) && (
-          <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-full ${isPositive ? isDark ? 'bg-emerald-500/20 text-emerald-400' : 'bg-emerald-100 text-emerald-700' : isNegative ? isDark ? 'bg-red-500/20 text-red-400' : 'bg-red-100 text-red-700' : isDark ? 'bg-gray-700 text-gray-400' : 'bg-gray-100 text-gray-500'}`}>
-            {isPositive ? <ArrowUpRight size={14} /> : isNegative ? <ArrowDownRight size={14} /> : null}
+          <span className={`inline-flex items-center gap-1 text-[10px] sm:text-xs font-semibold px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full ${isPositive ? isDark ? 'bg-emerald-500/20 text-emerald-400' : 'bg-emerald-100 text-emerald-700' : isNegative ? isDark ? 'bg-red-500/20 text-red-400' : 'bg-red-100 text-red-700' : isDark ? 'bg-gray-700 text-gray-400' : 'bg-gray-100 text-gray-500'}`}>
+            {isPositive ? <ArrowUpRight size={12} /> : isNegative ? <ArrowDownRight size={12} /> : null}
             {isPositive ? '+' : ''}{Math.round(trend)}%
           </span>
         )}
       </div>
-      <p className={`text-xs font-semibold uppercase tracking-wide mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{label}</p>
-      <p className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>{value}</p>
-      {trendLabel && <p className={`text-xs mt-1 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{trendLabel}</p>}
+      <p className={`text-[10px] sm:text-xs font-semibold uppercase tracking-wide mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{label}</p>
+      <p className={`text-lg sm:text-2xl font-bold truncate ${isDark ? 'text-white' : 'text-gray-900'}`}>{value}</p>
+      {trendLabel && <p className={`text-[10px] sm:text-xs mt-1 hidden sm:block ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{trendLabel}</p>}
     </div>
   );
 }
@@ -1947,7 +1948,7 @@ export default function TresorerieModule({
       )}
 
       {/* ── KPI Cards ──────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <KpiCard label="Solde actuel" value={formatMoney(soldeActuel)} icon={Wallet}
           trend={modeDiscret ? undefined : trendSolde} trendLabel="vs mois dernier" color={soldeActuel < 0 ? '#ef4444' : soldeActuel < (settings.seuilAlerte || 5000) ? '#f97316' : '#3b82f6'} isDark={isDark} />
         <KpiCard label="Entrées prévues" value={formatMoney(entreesPrevues)} icon={ArrowDown}
@@ -2081,7 +2082,11 @@ export default function TresorerieModule({
           </div>
         </div>
         {monthlyData.length > 0 && monthlyData.some(d => d.entrees > 0 || d.sorties > 0) ? (
-          <CashFlowChart data={monthlyData} isDark={isDark} couleur={couleur} />
+          <div className="overflow-x-auto" style={{ minHeight: 200, WebkitOverflowScrolling: 'touch' }}>
+            <div style={{ minWidth: 500 }}>
+              <CashFlowChart data={monthlyData} isDark={isDark} couleur={couleur} />
+            </div>
+          </div>
         ) : (
           <div className="flex flex-col items-center justify-center py-10 px-4 text-center">
             <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4" style={{ backgroundColor: `${couleur}15`, color: couleur }}>
@@ -2208,8 +2213,8 @@ export default function TresorerieModule({
               )}
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm" aria-label="Prévisions de trésorerie">
+            <div className="overflow-x-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
+              <table className="w-full text-sm min-w-[640px]" aria-label="Prévisions de trésorerie">
                 <thead>
                   <tr className={`text-xs uppercase tracking-wide ${textSecondary} border-b ${borderColor}`}>
                     <th className="text-left py-3 pr-4 font-semibold">Échéance</th>
@@ -2381,8 +2386,8 @@ export default function TresorerieModule({
               </button>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm" aria-label="Mouvements de trésorerie">
+            <div className="overflow-x-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
+              <table className="w-full text-sm min-w-[640px]" aria-label="Mouvements de trésorerie">
                 <thead>
                   <tr className={`text-xs uppercase tracking-wide ${textSecondary} border-b ${borderColor}`}>
                     <th className="text-left py-3 pr-4 font-semibold">Date</th>
@@ -2597,12 +2602,16 @@ export default function TresorerieModule({
                   )}
                 </div>
               </div>
-              <ProjectionChart
-                baseline={baselineProjections}
-                scenario={scenarioProjections}
-                isDark={isDark}
-                couleur={couleur}
-              />
+              <div className="overflow-x-auto" style={{ minHeight: 180, WebkitOverflowScrolling: 'touch' }}>
+                <div style={{ minWidth: 500 }}>
+                  <ProjectionChart
+                    baseline={baselineProjections}
+                    scenario={scenarioProjections}
+                    isDark={isDark}
+                    couleur={couleur}
+                  />
+                </div>
+              </div>
             </div>
           )}
 
@@ -2651,8 +2660,8 @@ export default function TresorerieModule({
           {/* Monthly Breakdown Table */}
           <div className={`rounded-2xl border ${cardBg} p-5`}>
             <h3 className={`text-sm font-bold mb-4 ${textPrimary}`}>Détail mensuel du scénario</h3>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm" aria-label="Projections mensuelles">
+            <div className="overflow-x-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
+              <table className="w-full text-sm min-w-[640px]" aria-label="Projections mensuelles">
                 <thead>
                   <tr className={`text-xs uppercase tracking-wide ${textSecondary} border-b ${borderColor}`}>
                     <th className="text-left py-3 pr-4 font-semibold">Mois</th>
@@ -2803,8 +2812,8 @@ export default function TresorerieModule({
               </div>
 
               {/* TVA Table — quarterly or monthly based on regime */}
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm" aria-label="TVA par période">
+              <div className="overflow-x-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
+                <table className="w-full text-sm min-w-[640px]" aria-label="TVA par période">
                   <thead>
                     <tr className={`text-xs uppercase tracking-wide ${textSecondary} border-b ${borderColor}`}>
                       <th className="text-left py-3 pr-4 font-semibold">Période</th>

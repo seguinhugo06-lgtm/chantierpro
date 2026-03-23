@@ -39,6 +39,7 @@ import {
 import { cn } from '../../lib/utils';
 import { useToast } from '../../context/AppContext';
 import { useData } from '../../context/DataContext';
+import { captureException } from '../../lib/sentry';
 import {
   generateSuggestions,
   getSuggestionConfig,
@@ -497,7 +498,7 @@ export default function SuggestionsSection({
 
       setInternalSuggestions(filtered);
     } catch (err) {
-      console.error('Error fetching suggestions:', err);
+      captureException(err, { context: 'SuggestionsSection: Error fetching suggestions' });
       setError(err.message || 'Erreur de chargement');
     } finally {
       setLoading(false);
@@ -542,7 +543,7 @@ export default function SuggestionsSection({
         showToast(`Action: ${suggestion.action.modalId}`, 'info');
       }
     } catch (err) {
-      console.error('Error executing action:', err);
+      captureException(err, { context: 'SuggestionsSection: Error executing action' });
       showToast('Erreur lors de l\'exécution', 'error');
     } finally {
       setActioningId(null);
@@ -560,7 +561,7 @@ export default function SuggestionsSection({
       setInternalSuggestions(prev => prev.filter(s => s.id !== suggestionId));
       showToast('Suggestion ignorée', 'info');
     } catch (err) {
-      console.error('Error dismissing suggestion:', err);
+      captureException(err, { context: 'SuggestionsSection: Error dismissing suggestion' });
       showToast('Erreur lors de la suppression', 'error');
     } finally {
       setDismissingId(null);
@@ -583,7 +584,7 @@ export default function SuggestionsSection({
         showToast('📅 Reporté à demain', 'success');
       }
     } catch (err) {
-      console.error('Error postponing suggestion:', err);
+      captureException(err, { context: 'SuggestionsSection: Error postponing suggestion' });
       showToast('Erreur lors du report', 'error');
     } finally {
       setPostponingId(null);

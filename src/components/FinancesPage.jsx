@@ -40,10 +40,10 @@ export default function FinancesPage({ devis, depenses, clients, chantiers, entr
   return (
     <div>
       {/* Header */}
-      <div className="flex items-start justify-between mb-5">
-        <div>
-          <h1 className={`text-2xl font-bold ${textPrimary}`}>Finances</h1>
-          <p className={`text-sm ${textMuted}`}>Pilotez votre trésorerie, anticipez vos flux et exportez pour votre expert-comptable</p>
+      <div className="flex items-start justify-between gap-3 mb-4 sm:mb-5">
+        <div className="min-w-0">
+          <h1 className={`text-lg sm:text-2xl font-bold ${textPrimary}`}>Finances</h1>
+          <p className={`text-xs sm:text-sm ${textMuted} hidden sm:block`}>Pilotez votre trésorerie, anticipez vos flux et exportez pour votre expert-comptable</p>
         </div>
         <button
           onClick={() => setLocalDiscret(d => !d)}
@@ -59,8 +59,8 @@ export default function FinancesPage({ devis, depenses, clients, chantiers, entr
         </button>
       </div>
 
-      {/* Tab buttons */}
-      <div className={`inline-flex items-center gap-1 p-1 rounded-2xl mb-6 ${isDark ? 'bg-slate-800' : 'bg-slate-100'}`}>
+      {/* Tab buttons — scrollable on mobile */}
+      <div className={`flex items-center gap-1 p-1 rounded-2xl mb-6 overflow-x-auto ${isDark ? 'bg-slate-800' : 'bg-slate-100'}`} style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' }}>
         {TAB_CONFIG.map(tab => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.key;
@@ -68,14 +68,14 @@ export default function FinancesPage({ devis, depenses, clients, chantiers, entr
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`inline-flex items-center justify-center whitespace-nowrap px-4 py-2.5 text-sm font-medium transition-all duration-200 rounded-xl ${
+              className={`inline-flex items-center justify-center whitespace-nowrap px-3 sm:px-4 py-2.5 text-sm font-medium transition-all duration-200 rounded-xl shrink-0 ${
                 isActive
                   ? 'text-white shadow-sm'
                   : isDark ? 'text-slate-300 hover:text-white hover:bg-slate-700' : 'text-slate-600 hover:text-slate-900 hover:bg-white'
               }`}
               style={isActive ? { backgroundColor: couleur } : undefined}
             >
-              <Icon size={16} className="mr-1.5" />
+              <Icon size={16} className="sm:mr-1.5" />
               <span className="hidden sm:inline">{tab.label}</span>
             </button>
           );

@@ -298,7 +298,7 @@ export default function RevenueChartWidget({ setPage, isDark = false, couleur = 
         ) : (
           <div className="space-y-5">
             {/* Area chart */}
-            <div className="h-52">
+            <div className="h-[200px] sm:h-52">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={chartData} margin={{ top: 8, right: 4, left: -20, bottom: 0 }}>
                   <defs>
@@ -354,7 +354,7 @@ export default function RevenueChartWidget({ setPage, isDark = false, couleur = 
 
             {/* Mini stats row */}
             <div className={cn(
-              'flex items-center gap-6 pt-4 border-t',
+              'grid grid-cols-2 sm:flex sm:items-center gap-3 sm:gap-6 pt-4 border-t',
               isDark ? 'border-slate-700' : 'border-gray-100'
             )}>
               <MiniStat

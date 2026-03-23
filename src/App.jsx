@@ -2165,6 +2165,7 @@ export default function App() {
         }}
         errorDetails={syncErrorDetails}
         isDark={isDark}
+        position="top"
       />
 
       {/* Cookie Consent Banner (RGPD) */}

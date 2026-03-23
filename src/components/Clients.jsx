@@ -1516,9 +1516,9 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
 
       {/* Duplicate confirmation modal */}
       {showDupeConfirm && pendingSubmit && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4">
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => { setShowDupeConfirm(false); setPendingSubmit(null); }} />
-          <div className={`relative w-full max-w-md rounded-2xl shadow-2xl border ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+          <div className={`relative w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl shadow-2xl border max-h-[90vh] overflow-y-auto ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
             <div className="p-6">
               <div className="flex items-center gap-3 mb-4">
                 <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isDark ? 'bg-amber-900/40' : 'bg-amber-100'}`}>
@@ -1781,12 +1781,12 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
         </div>
         {/* Row 2: Type + Status filters */}
         {displayClients.length > 1 && (
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5">
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
             {/* Type filter dropdown */}
-            <div className="relative">
+            <div className="relative flex-shrink-0">
               <button
                 onClick={() => setShowTypePicker(!showTypePicker)}
-                className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs border transition-colors ${filterCategorie ? 'text-white' : isDark ? 'border-slate-600 text-slate-300' : 'border-slate-200 text-slate-600'}`}
+                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs border whitespace-nowrap transition-colors min-h-[36px] ${filterCategorie ? 'text-white' : isDark ? 'border-slate-600 text-slate-300' : 'border-slate-200 text-slate-600'}`}
                 style={filterCategorie ? { background: couleur, borderColor: couleur } : {}}
               >
                 {filterCategorie ? `${TYPE_ICONS[filterCategorie] || ''} ${filterCategorie}` : 'Type'}
@@ -1825,7 +1825,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
               <button
                 key={opt.key}
                 onClick={() => setFilterStatus(opt.key)}
-                className={`px-2.5 py-1.5 rounded-lg text-xs whitespace-nowrap transition-colors min-h-[36px] active:scale-95 ${filterStatus === opt.key ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}
+                className={`px-2.5 py-1.5 rounded-lg text-xs whitespace-nowrap flex-shrink-0 transition-colors min-h-[36px] active:scale-95 ${filterStatus === opt.key ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}
                 style={filterStatus === opt.key ? { background: couleur } : {}}
               >
                 {opt.label}
@@ -2013,11 +2013,11 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                       <Smartphone size={13} className={textMuted} />
                       <HighlightText text={c.telephone} query={debouncedSearch} className={`text-sm ${textSecondary} flex-1`} />
                       <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-                        <button onClick={() => callPhone(c.telephone)} aria-label="Appeler" className={`w-9 h-9 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center transition-all ${isDark ? 'hover:bg-blue-900/40' : 'hover:bg-blue-50'}`} title="Appeler">
-                          <Phone size={15} className="text-blue-500" />
+                        <button onClick={() => callPhone(c.telephone)} aria-label="Appeler" className={`w-11 h-11 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center transition-all ${isDark ? 'hover:bg-blue-900/40' : 'hover:bg-blue-50'}`} title="Appeler">
+                          <Phone size={16} className="text-blue-500" />
                         </button>
-                        <button onClick={() => sendWhatsApp(c.telephone, c.prenom)} aria-label="WhatsApp" className={`w-9 h-9 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center transition-all ${isDark ? 'hover:bg-green-900/40' : 'hover:bg-green-50'}`} title="WhatsApp">
-                          <MessageCircle size={15} className="text-green-500" />
+                        <button onClick={() => sendWhatsApp(c.telephone, c.prenom)} aria-label="WhatsApp" className={`w-11 h-11 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center transition-all ${isDark ? 'hover:bg-green-900/40' : 'hover:bg-green-50'}`} title="WhatsApp">
+                          <MessageCircle size={16} className="text-green-500" />
                         </button>
                       </div>
                     </div>
@@ -2175,8 +2175,8 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                   </div>
                   <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
                     {c.telephone && (
-                      <button onClick={() => callPhone(c.telephone)} className={`w-10 h-10 rounded-lg flex items-center justify-center ${isDark ? 'hover:bg-blue-900/40' : 'hover:bg-blue-50'}`}>
-                        <Phone size={16} className="text-blue-500" />
+                      <button onClick={() => callPhone(c.telephone)} className={`w-11 h-11 rounded-lg flex items-center justify-center ${isDark ? 'hover:bg-blue-900/40' : 'hover:bg-blue-50'}`}>
+                        <Phone size={18} className="text-blue-500" />
                       </button>
                     )}
                   </div>

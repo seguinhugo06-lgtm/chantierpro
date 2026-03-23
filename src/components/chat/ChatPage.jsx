@@ -487,13 +487,13 @@ const ChatPage = memo(function ChatPage({
 
   return (
     <div className={`${bgClass} -m-3 sm:-m-4 lg:-m-6 -mb-14 lg:-mb-6 flex h-[calc(100vh-56px-96px)] lg:h-[calc(100vh-56px-40px)] overflow-hidden rounded-none`}>
-      {/* Mobile sidebar overlay */}
+      {/* Mobile sidebar — drawer overlay */}
       {showMobileSidebar && (
-        <div className="lg:hidden absolute inset-0 z-30">
-          <div className="absolute inset-0 bg-black/30" onClick={() => {
+        <div className="lg:hidden fixed inset-0 z-50">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => {
             if (activeChannelId) setShowMobileSidebar(false);
           }} />
-          <div className="relative w-80 h-full">
+          <div className="relative w-80 max-w-[85vw] h-full shadow-xl">
             <ChatSidebar
               channels={channels}
               activeChannelId={activeChannelId}
@@ -697,8 +697,8 @@ const ChatPage = memo(function ChatPage({
               </div>
             )}
 
-            {/* Input — sticky bottom with solid bg, z-50 above sync bar */}
-            <div className={`relative z-50 pb-2 ${isDark ? 'bg-slate-900' : 'bg-white'}`}>
+            {/* Input — sticky bottom with solid bg, safe-area for iPhone */}
+            <div className={`relative z-50 flex-shrink-0 ${isDark ? 'bg-slate-900' : 'bg-white'}`} style={{ paddingBottom: 'max(8px, env(safe-area-inset-bottom))' }}>
             <ChatInput
               onSend={handleSend}
               onTyping={handleTyping}
@@ -758,9 +758,11 @@ const ChatPage = memo(function ChatPage({
         )}
       </div>
 
-      {/* Channel info panel */}
+      {/* Channel info panel — fullscreen on mobile, side panel on desktop */}
       {showChannelInfo && activeChannel && (
-        <div className={`w-72 sm:w-80 flex-shrink-0 border-l flex flex-col overflow-y-auto ${cardBg}`}>
+        <div className={`fixed inset-0 z-50 lg:relative lg:inset-auto lg:z-auto lg:w-80 flex-shrink-0 lg:border-l flex flex-col overflow-y-auto ${
+          isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'
+        }`}>
           {/* Panel header */}
           <div className={`flex items-center justify-between px-4 py-3 border-b ${
             isDark ? 'border-slate-700' : 'border-gray-200'

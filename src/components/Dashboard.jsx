@@ -118,6 +118,7 @@ import {
   transformSuggestions,
 } from '../lib/actionSuggestions';
 import { normalizeDevisRef, formatDevisNumber, formatClientName } from '../lib/formatters';
+import { captureException } from '../lib/sentry';
 import { calcConversion } from '../lib/statsUtils';
 import { isDraftChantier } from '../lib/utils';
 import { useData } from '../context/DataContext';
@@ -1223,7 +1224,7 @@ export default function Dashboard({
                 </div>
                 <button
                   onClick={() => navigateToSettingsTab(missingRequiredFields[0]?.tab || 'identite', missingRequiredFields[0]?.key)}
-                  className="w-full sm:w-auto px-4 py-2 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
+                  className="w-full sm:w-auto px-4 py-2.5 min-h-[44px] rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
                   style={{ backgroundColor: couleur }}
                 >
                   Compléter →
@@ -1528,7 +1529,7 @@ export default function Dashboard({
                         </div>
                         <button
                           onClick={item.action}
-                          className={`ml-auto rounded-lg px-3 py-1.5 text-xs font-medium transition-all active:scale-95 outline-none focus-visible:ring-2 focus-visible:ring-offset-2`}
+                          className={`ml-auto rounded-lg px-3 py-2 min-h-[44px] min-w-[44px] text-xs font-medium transition-all active:scale-95 outline-none focus-visible:ring-2 focus-visible:ring-offset-2`}
                           style={{ backgroundColor: `${couleur}15`, color: couleur, '--tw-ring-color': couleur }}
                         >
                           {item.actionLabel}
@@ -1552,7 +1553,7 @@ export default function Dashboard({
 
         {/* ========== SECONDARY SHORTCUTS — compact 4-icon bar ========== */}
         <section className="px-4 sm:px-6 mb-6">
-          <div className="flex gap-2">
+          <div className="grid grid-cols-2 sm:flex gap-2">
             {[
               { icon: Users, label: '+ Client', action: () => { setCreateMode?.((p) => ({ ...p, client: true })); setPage?.('clients'); } },
               { icon: HardHat, label: '+ Chantier', action: () => { setCreateMode?.((p) => ({ ...p, chantier: true })); setPage?.('chantiers'); } },
@@ -1562,7 +1563,7 @@ export default function Dashboard({
               <button
                 key={s.label}
                 onClick={s.action}
-                className={`group flex-1 flex flex-col items-center gap-1.5 py-3 rounded-xl text-xs font-medium transition-all border outline-none focus-visible:ring-2 focus-visible:ring-offset-2 hover:-translate-y-0.5 hover:shadow-sm ${
+                className={`group sm:flex-1 flex flex-col items-center gap-1.5 min-h-[56px] py-3 rounded-xl text-xs font-medium transition-all border outline-none focus-visible:ring-2 focus-visible:ring-offset-2 hover:-translate-y-0.5 hover:shadow-sm ${
                   isDark
                     ? 'bg-slate-800 border-slate-700 text-slate-300 hover:border-slate-600 focus-visible:ring-orange-400'
                     : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300 focus-visible:ring-orange-500'
@@ -1574,7 +1575,7 @@ export default function Dashboard({
                 >
                   <s.icon size={20} style={{ color: couleur }} />
                 </div>
-                <span className="leading-none">{s.label}</span>
+                <span className="leading-none truncate max-w-full px-1">{s.label}</span>
               </button>
             ))}
           </div>
@@ -1714,7 +1715,7 @@ export default function Dashboard({
                 </div>
                 <button
                   onClick={() => navigateToSettingsTab(missingRequiredFields[0]?.tab || 'identite', missingRequiredFields[0]?.key)}
-                  className="w-full sm:w-auto px-4 py-2 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
+                  className="w-full sm:w-auto px-4 py-2.5 min-h-[44px] rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
                   style={{ backgroundColor: couleur }}
                 >
                   Compléter →
@@ -1875,7 +1876,7 @@ export default function Dashboard({
                     style={dragWidget === idx ? { ringColor: couleur } : undefined}
                   >
                     <GripVertical size={14} className={`flex-shrink-0 ${isDark ? 'text-slate-600' : 'text-slate-300'}`} />
-                    <button onClick={() => toggleWidgetVisibility(w.id)} className="flex-shrink-0">
+                    <button onClick={() => toggleWidgetVisibility(w.id)} className="flex-shrink-0 p-1 min-h-[44px] min-w-[44px] flex items-center justify-center">
                       {w.visible
                         ? <Eye size={16} className="text-green-500" />
                         : <EyeOff size={16} className={isDark ? 'text-slate-600' : 'text-slate-300'} />
@@ -2098,7 +2099,7 @@ export default function Dashboard({
                         ) : (
                           <button
                             onClick={(e) => { e.stopPropagation(); setPage('equipe'); }}
-                            className={`text-[10px] font-medium px-2 py-1 rounded-lg transition-colors outline-none focus-visible:ring-2 focus-visible:ring-offset-1 ${isDark ? 'text-slate-500 hover:bg-slate-700 hover:text-slate-300 focus-visible:ring-orange-400' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600 focus-visible:ring-orange-500'}`}
+                            className={`text-[10px] font-medium px-2 py-1.5 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg transition-colors outline-none focus-visible:ring-2 focus-visible:ring-offset-1 ${isDark ? 'text-slate-500 hover:bg-slate-700 hover:text-slate-300 focus-visible:ring-orange-400' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600 focus-visible:ring-orange-500'}`}
                           >
                             Assigner
                           </button>
@@ -2442,7 +2443,7 @@ export default function Dashboard({
               return false;
             }
           } catch (err) {
-            console.error('DevisExpress creation failed:', err);
+            captureException(err, { context: 'DevisExpress creation failed' });
             showToast(`Erreur création devis : ${err.message || 'erreur inconnue'}`, 'error');
             throw err; // Re-throw so modal can show inline error
           }

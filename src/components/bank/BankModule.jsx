@@ -469,8 +469,8 @@ export default function BankModule({ devis, depenses, clients, entreprise, paiem
             <p className={tc.textMuted}>Aucune transaction trouvée</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+          <div className="overflow-x-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
+            <table className="w-full text-sm min-w-[640px]">
               <thead>
                 <tr className={isDark ? 'bg-slate-700/50' : 'bg-slate-50'}>
                   <th className={`text-left py-3 px-4 font-medium ${tc.textMuted}`}>Date</th>

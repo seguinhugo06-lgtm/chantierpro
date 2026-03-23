@@ -8,6 +8,7 @@ import { FileText, TrendingUp, Wallet, HardHat, Download, ChevronRight, Loader2 
 import Widget, { WidgetHeader, WidgetContent, WidgetFooter, WidgetEmptyState } from './Widget';
 import supabase, { isDemo } from '../../supabaseClient';
 import { cn } from '../../lib/utils';
+import { captureException } from '../../lib/sentry';
 
 const TYPE_ICONS = {
   activite: TrendingUp,
@@ -60,7 +61,7 @@ export default function ReportsWidget({ isDark = false, setPage }) {
         .limit(3);
       if (data) setReports(data);
     } catch (e) {
-      console.error('Error fetching reports for widget:', e);
+      captureException(e, { context: 'ReportsWidget: Error fetching reports' });
     } finally {
       setLoading(false);
     }

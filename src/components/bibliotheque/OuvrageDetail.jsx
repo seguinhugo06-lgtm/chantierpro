@@ -184,7 +184,7 @@ export default function OuvrageDetail({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4"
       onKeyDown={handleKeyDown}
       role="dialog"
       aria-modal="true"
@@ -198,7 +198,7 @@ export default function OuvrageDetail({
 
       {/* Modal content */}
       <div
-        className={`relative max-w-3xl w-full max-h-[90vh] overflow-y-auto rounded-2xl shadow-2xl ${bg}`}
+        className={`relative w-full h-full sm:h-auto sm:max-w-3xl sm:max-h-[90vh] overflow-y-auto rounded-t-2xl sm:rounded-2xl shadow-2xl ${bg}`}
       >
         {/* ── Header ──────────────────────────────────────────────────────── */}
         <div

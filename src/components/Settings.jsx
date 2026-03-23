@@ -484,7 +484,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                       </p>
                       <div className="space-y-1">
                         {missingRequired.map(f => (
-                          <button key={f.key} onClick={() => { setTab(f.tab); setShowProfileDetail(false); }} className={`w-full text-left px-3 py-1.5 rounded-lg text-sm transition-colors flex items-center justify-between ${isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-50 text-slate-700'}`}>
+                          <button key={f.key} onClick={() => { setTab(f.tab); const g = TAB_GROUPS.find(gr => gr.tabs.some(t => t.key === f.tab)); if (g) setMobileGroupOpen(g.id); setShowProfileDetail(false); setTimeout(() => { const el = document.getElementById('settings-field-' + f.key); if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.focus(); } }, 200); }} className={`w-full text-left px-3 py-1.5 rounded-lg text-sm transition-colors flex items-center justify-between ${isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-50 text-slate-700'}`}>
                             <span>{f.label}</span>
                             <span className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>→ {f.tab === 'identite' ? 'Identité' : f.tab === 'legal' ? 'Légal' : 'Assurances'}</span>
                           </button>
@@ -500,7 +500,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                       </p>
                       <div className="space-y-1">
                         {missingRecommended.map(f => (
-                          <button key={f.key} onClick={() => { setTab(f.tab); setShowProfileDetail(false); }} className={`w-full text-left px-3 py-1.5 rounded-lg text-sm transition-colors flex items-center justify-between ${isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-50 text-slate-700'}`}>
+                          <button key={f.key} onClick={() => { setTab(f.tab); const g = TAB_GROUPS.find(gr => gr.tabs.some(t => t.key === f.tab)); if (g) setMobileGroupOpen(g.id); setShowProfileDetail(false); setTimeout(() => { const el = document.getElementById('settings-field-' + f.key); if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.focus(); } }, 200); }} className={`w-full text-left px-3 py-1.5 rounded-lg text-sm transition-colors flex items-center justify-between ${isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-50 text-slate-700'}`}>
                             <span>{f.label}</span>
                             <span className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>→ {f.tab === 'identite' ? 'Identité' : f.tab === 'legal' ? 'Légal' : 'Assurances'}</span>
                           </button>
@@ -553,10 +553,13 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
               const firstMissing = missingRequired[0] || missingFields[0];
               if (firstMissing) {
                 setTab(firstMissing.tab);
+                // Open the correct accordion group on mobile
+                const group = TAB_GROUPS.find(g => g.tabs.some(t => t.key === firstMissing.tab));
+                if (group) setMobileGroupOpen(group.id);
                 setTimeout(() => {
                   const el = document.getElementById('settings-field-' + firstMissing.key);
                   if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.focus(); }
-                }, 150);
+                }, 200);
               }
             }}
             className="self-end sm:self-auto px-4 py-2 text-white rounded-xl text-sm font-semibold transition-colors whitespace-nowrap shrink-0 min-h-[44px]"
@@ -698,12 +701,12 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
               </div>
               <div>
                 <p className="text-sm font-medium mb-2">Couleur principale</p>
-                <div className="flex gap-2 flex-wrap">
+                <div className="flex gap-2.5 sm:gap-2 flex-wrap">
                   {COULEURS.map(c => (
                     <button
                       key={c}
                       onClick={() => updateEntreprise(p => ({...p, couleur: c}))}
-                      className={`w-10 h-10 rounded-xl transition-all duration-200 hover:scale-110 flex items-center justify-center ${entreprise.couleur === c ? 'ring-2 ring-offset-2 scale-110 shadow-lg' : 'hover:shadow-md'}`}
+                      className={`w-11 h-11 sm:w-10 sm:h-10 rounded-xl transition-all duration-200 hover:scale-110 flex items-center justify-center ${entreprise.couleur === c ? 'ring-2 ring-offset-2 scale-110 shadow-lg' : 'hover:shadow-md'}`}
                       style={{ background: c, ringColor: c }}
                       title={entreprise.couleur === c ? 'Couleur sélectionnée' : 'Sélectionner cette couleur'}
                     >

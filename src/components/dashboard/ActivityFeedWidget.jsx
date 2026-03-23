@@ -3,6 +3,7 @@ import { Activity, FileText, Users, HardHat, Receipt, Clock, ChevronRight, Refre
 import { getRecentActivity, ACTION_LABELS, ACTION_ICONS, ENTITY_LABELS } from '../../lib/auditService';
 import supabase, { isDemo } from '../../supabaseClient';
 import { formatMoney } from '../../lib/formatters';
+import { captureException } from '../../lib/sentry';
 
 const sb = isDemo ? null : supabase;
 
@@ -93,7 +94,7 @@ const ActivityFeedWidget = memo(function ActivityFeedWidget({
       });
       setEntries(data || []);
     } catch (err) {
-      console.error('ActivityFeedWidget: failed to load', err);
+      captureException(err, { context: 'ActivityFeedWidget: failed to load' });
       setError(err);
     } finally {
       setIsLoading(false);

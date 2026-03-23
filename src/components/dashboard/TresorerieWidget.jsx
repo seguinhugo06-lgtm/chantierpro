@@ -38,6 +38,7 @@ import Widget, {
 } from './Widget';
 import Modal, { ModalHeader, ModalTitle, ModalBody, ModalFooter } from '../ui/Modal';
 import supabase, { isDemo } from '../../supabaseClient';
+import { captureException } from '../../lib/sentry';
 
 // Age group configurations with colors - Based on invoice age (time since issued)
 const AGE_GROUPS = {
@@ -495,7 +496,7 @@ export default function TresorerieWidget({ userId, className, setPage, isDark = 
         setUnpaidData(data);
       }
     } catch (err) {
-      console.error('Error fetching unpaid data:', err);
+      captureException(err, { context: 'TresorerieWidget: Error fetching unpaid data' });
       setError(err.message || 'Erreur de chargement');
     } finally {
       setLoading(false);

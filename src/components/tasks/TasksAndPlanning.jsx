@@ -154,22 +154,17 @@ export default function TasksAndPlanning({
           <TaskGanttView
             memos={memos}
             updateMemo={updateMemo}
-            deleteMemo={deleteMemo}
-            toggleMemo={toggleMemo}
             chantiers={chantiers}
             clients={clients}
-            equipe={equipe}
             isDark={isDark}
             couleur={couleur}
             filters={filters}
-            selectedMemoId={selectedMemoId}
             onSelectMemo={setSelectedMemoId}
           />
         )}
         {viewMode === 'team' && (
           <TaskTeamView
             memos={memos}
-            addMemo={addMemo}
             updateMemo={updateMemo}
             deleteMemo={deleteMemo}
             equipe={equipe}

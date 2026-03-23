@@ -11,6 +11,7 @@ import {
   rescheduleChantier,
   notifyWeatherAlert,
 } from '../../lib/weatherAlerts';
+import { captureException } from '../../lib/sentry';
 
 /**
  * @typedef {Object} WeatherAlert
@@ -246,7 +247,7 @@ export default function WeatherAlertsWidget({ userId, daysAhead = 7, onRefreshCa
       );
       setAlerts(filteredAlerts);
     } catch (err) {
-      console.error('WeatherAlertsWidget: Error fetching alerts:', err);
+      captureException(err, { context: 'WeatherAlertsWidget: Error fetching alerts' });
       setError(err.message);
     } finally {
       setLoading(false);
@@ -282,7 +283,7 @@ export default function WeatherAlertsWidget({ userId, daysAhead = 7, onRefreshCa
         onRefreshCalendar();
       }
     } catch (err) {
-      console.error('WeatherAlertsWidget: Error rescheduling:', err);
+      captureException(err, { context: 'WeatherAlertsWidget: Error rescheduling' });
       setError(`Erreur lors du report: ${err.message}`);
     } finally {
       setActionLoading(false);
@@ -309,7 +310,7 @@ export default function WeatherAlertsWidget({ userId, daysAhead = 7, onRefreshCa
       // Remove from list
       setAlerts((prev) => prev.filter((a) => a.chantier.id !== alert.chantier.id));
     } catch (err) {
-      console.error('WeatherAlertsWidget: Error notifying:', err);
+      captureException(err, { context: 'WeatherAlertsWidget: Error notifying' });
     } finally {
       setActionLoading(false);
     }
@@ -462,7 +463,7 @@ export function WeatherAlertsBadge({ userId, onClick }) {
         setCount(significant.length);
         setCriticalCount(alerts.filter((a) => a.impact?.level === 'critical').length);
       } catch (err) {
-        console.error('WeatherAlertsBadge: Error:', err);
+        captureException(err, { context: 'WeatherAlertsBadge: Error' });
       }
     };
 

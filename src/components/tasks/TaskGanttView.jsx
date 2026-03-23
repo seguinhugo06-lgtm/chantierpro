@@ -1,7 +1,6 @@
 import { useState, useMemo, useRef, useCallback } from 'react';
 import { ZoomIn, ZoomOut, ChevronLeft, ChevronRight } from 'lucide-react';
 import { CATEGORIES } from './constants';
-import TaskDetail from './TaskDetail';
 
 // ════════════════════════════════════════════════════════
 // TaskGanttView — Custom Gantt chart (HTML/CSS, no lib)
@@ -21,12 +20,6 @@ const NAME_COL_WIDTH = 200;
 const CATEGORY_COLORS = Object.fromEntries(
   CATEGORIES.map(c => [c.value, c.color])
 );
-
-const STATUS_COLORS = {
-  a_faire: null, // will use couleur accent
-  en_cours: '#f59e0b',
-  termine: '#10b981',
-};
 
 // ── Date helpers ──
 
@@ -94,16 +87,11 @@ function isWeekend(d) {
 
 function applyFilters(memos, filters) {
   return memos.filter(m => {
-    // Bug 1 fix: only require due_date — if no due_date_end, we'll default to +1 day
     if (!m.due_date) return false;
-    // Show all tasks by default; only hide done when a specific non-termine filter is active
-    if (filters.status && filters.status !== 'termine' && (m.is_done || m.status === 'termine')) return false;
+    if (m.is_done && filters.status !== 'termine') return false;
     if (filters.search) {
       const s = filters.search.toLowerCase();
-      // Bug 2 fix: search in memo.text (the actual title field), not memo.title
-      const title = (m.text || m.title || '').toLowerCase();
-      const content = (m.content || '').toLowerCase();
-      if (!title.includes(s) && !content.includes(s)) return false;
+      if (!(m.title || '').toLowerCase().includes(s) && !(m.content || '').toLowerCase().includes(s)) return false;
     }
     if (filters.category && m.category !== filters.category) return false;
     if (filters.priority && m.priority !== filters.priority) return false;
@@ -143,13 +131,9 @@ function generateTimeline(startDate, endDate, zoom) {
 
 // ── Tooltip component ──
 
-const STATUS_LABELS = { a_faire: 'À faire', en_cours: 'En cours', termine: 'Terminé' };
-
 function Tooltip({ memo, x, y, isDark }) {
-  const rawStatus = memo.status || (memo.is_done ? 'termine' : 'a_faire');
-  const status = STATUS_LABELS[rawStatus] || rawStatus;
+  const status = memo.status || (memo.is_done ? 'Terminé' : 'À faire');
   const priorityLabel = memo.priority === 'haute' ? 'Haute' : memo.priority === 'moyenne' ? 'Moyenne' : memo.priority === 'basse' ? 'Basse' : '';
-  const title = memo.text || memo.title || 'Sans titre';
 
   return (
     <div
@@ -158,7 +142,7 @@ function Tooltip({ memo, x, y, isDark }) {
       }`}
       style={{ left: x + 12, top: y - 10 }}
     >
-      <div className="font-semibold mb-1 truncate">{title}</div>
+      <div className="font-semibold mb-1 truncate">{memo.title}</div>
       <div className={isDark ? 'text-slate-300' : 'text-slate-500'}>
         {memo.due_date}{memo.due_date_end ? ` → ${memo.due_date_end}` : ''}
       </div>
@@ -173,20 +157,7 @@ function Tooltip({ memo, x, y, isDark }) {
 
 // ── Main component ──
 
-export default function TaskGanttView({
-  memos,
-  updateMemo,
-  deleteMemo,
-  toggleMemo,
-  chantiers,
-  clients,
-  equipe = [],
-  isDark,
-  couleur,
-  filters,
-  selectedMemoId,
-  onSelectMemo,
-}) {
+export default function TaskGanttView({ memos, updateMemo, chantiers, clients, isDark, couleur, filters, onSelectMemo }) {
   const [zoom, setZoom] = useState('day');
   const scrollRef = useRef(null);
   const [tooltip, setTooltip] = useState(null);
@@ -194,7 +165,7 @@ export default function TaskGanttView({
   const zoomLevel = ZOOM_LEVELS.find(z => z.id === zoom);
   const cellWidth = zoomLevel.cellWidth;
 
-  // Filtered memos (only those with at least a due_date)
+  // Filtered memos (only those with dates)
   const filteredMemos = useMemo(() => applyFilters(memos, filters), [memos, filters]);
 
   // Sort by due_date
@@ -213,8 +184,7 @@ export default function TaskGanttView({
     }
     const dates = sortedMemos.flatMap(m => {
       const start = parseDate(m.due_date);
-      // Bug 1 fix: if no due_date_end, use due_date + 1 day as default end
-      const end = parseDate(m.due_date_end) || (start ? addDays(start, 1) : null);
+      const end = parseDate(m.due_date_end) || start;
       return [start, end].filter(Boolean);
     });
     const minDate = new Date(Math.min(...dates.map(d => d.getTime())));
@@ -244,8 +214,7 @@ export default function TaskGanttView({
   const getBarProps = useCallback((memo) => {
     const start = parseDate(memo.due_date);
     if (!start) return null;
-    // Bug 1 fix: default end = start + 1 day when no due_date_end
-    const end = parseDate(memo.due_date_end) || addDays(start, 1);
+    const end = parseDate(memo.due_date_end) || start;
 
     let x, width;
     if (zoom === 'day') {
@@ -273,27 +242,17 @@ export default function TaskGanttView({
     if (!memo.subtasks || memo.subtasks.length === 0) {
       return memo.is_done ? 1 : 0;
     }
-    const done = memo.subtasks.filter(s => s.done || s.is_done).length;
+    const done = memo.subtasks.filter(s => s.done).length;
     return done / memo.subtasks.length;
   };
 
-  // Bug 3 fix: bar color by category, then by status
+  // Bar color by category
   const getBarColor = (memo) => {
-    // First priority: category color
     if (memo.category && CATEGORY_COLORS[memo.category]) {
       return CATEGORY_COLORS[memo.category];
     }
-    // Second priority: status color
-    const status = memo.status || (memo.is_done ? 'termine' : 'a_faire');
-    if (STATUS_COLORS[status]) {
-      return STATUS_COLORS[status];
-    }
-    // Fallback: accent color
     return couleur || '#f97316';
   };
-
-  // Helper to get memo title — Bug 2 fix: use memo.text as primary field
-  const getMemoTitle = (memo) => memo.text || memo.title || 'Sans titre';
 
   const handleMouseEnter = (e, memo) => {
     setTooltip({ memo, x: e.clientX, y: e.clientY });
@@ -342,9 +301,6 @@ export default function TaskGanttView({
   const textMuted = isDark ? 'text-slate-400' : 'text-slate-500';
   const nameBg = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200';
 
-  // Bug 4: find selected memo for TaskDetail
-  const selectedMemo = memos.find(m => m.id === selectedMemoId);
-
   if (sortedMemos.length === 0) {
     return (
       <div className={`rounded-xl border p-8 text-center ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
@@ -359,217 +315,196 @@ export default function TaskGanttView({
   }
 
   return (
-    <>
-      <div className={`rounded-xl border overflow-hidden ${bgMain} ${gridBorder}`}>
-        {/* Toolbar */}
-        <div className={`flex items-center justify-between px-3 py-2 border-b ${bgHeader} ${gridBorder}`}>
-          <div className="flex items-center gap-1">
-            {ZOOM_LEVELS.map(z => (
-              <button
-                key={z.id}
-                onClick={() => setZoom(z.id)}
-                className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
-                  zoom === z.id
-                    ? 'text-white shadow-sm'
-                    : isDark ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-700' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'
-                }`}
-                style={zoom === z.id ? { background: couleur } : {}}
-              >
-                {z.label}
-              </button>
-            ))}
+    <div className={`rounded-xl border overflow-hidden ${bgMain} ${gridBorder}`}>
+      {/* Toolbar */}
+      <div className={`flex items-center justify-between px-3 py-2 border-b ${bgHeader} ${gridBorder}`}>
+        <div className="flex items-center gap-1">
+          {ZOOM_LEVELS.map(z => (
+            <button
+              key={z.id}
+              onClick={() => setZoom(z.id)}
+              className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
+                zoom === z.id
+                  ? 'text-white shadow-sm'
+                  : isDark ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-700' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'
+              }`}
+              style={zoom === z.id ? { background: couleur } : {}}
+            >
+              {z.label}
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={scrollLeft}
+            className={`p-1.5 rounded-lg transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}
+          >
+            <ChevronLeft size={16} />
+          </button>
+          <button
+            onClick={() => {
+              if (scrollRef.current) {
+                const scrollTo = Math.max(0, todayOffset - scrollRef.current.clientWidth / 3);
+                scrollRef.current.scrollTo({ left: scrollTo, behavior: 'smooth' });
+              }
+            }}
+            className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-100 text-slate-600'}`}
+          >
+            Aujourd'hui
+          </button>
+          <button
+            onClick={scrollRight}
+            className={`p-1.5 rounded-lg transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}
+          >
+            <ChevronRight size={16} />
+          </button>
+        </div>
+      </div>
+
+      {/* Gantt body */}
+      <div className="flex overflow-hidden" style={{ height: Math.min(totalHeight + 40, 600) }}>
+        {/* Name column (hidden on mobile) */}
+        <div
+          className={`hidden sm:block flex-shrink-0 border-r overflow-hidden ${nameBg}`}
+          style={{ width: NAME_COL_WIDTH }}
+        >
+          {/* Header spacer */}
+          <div className={`h-10 border-b ${gridBorder} flex items-center px-3`}>
+            <span className={`text-xs font-semibold ${textMuted}`}>Tâche</span>
           </div>
-          <div className="flex items-center gap-1">
-            <button
-              onClick={scrollLeft}
-              className={`p-1.5 rounded-lg transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}
-            >
-              <ChevronLeft size={16} />
-            </button>
-            <button
-              onClick={() => {
-                if (scrollRef.current) {
-                  const scrollTo = Math.max(0, todayOffset - scrollRef.current.clientWidth / 3);
-                  scrollRef.current.scrollTo({ left: scrollTo, behavior: 'smooth' });
-                }
-              }}
-              className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-100 text-slate-600'}`}
-            >
-              Aujourd'hui
-            </button>
-            <button
-              onClick={scrollRight}
-              className={`p-1.5 rounded-lg transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}
-            >
-              <ChevronRight size={16} />
-            </button>
+          {/* Task names */}
+          <div className="overflow-y-auto" style={{ height: Math.min(totalHeight, 560) }}>
+            {sortedMemos.map(memo => (
+              <div
+                key={memo.id}
+                className={`flex items-center px-3 border-b cursor-pointer transition-colors ${gridBorder} ${
+                  isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'
+                }`}
+                style={{ height: ROW_HEIGHT }}
+                onClick={() => onSelectMemo?.(memo.id)}
+              >
+                <div
+                  className="w-2 h-2 rounded-full flex-shrink-0 mr-2"
+                  style={{ background: getBarColor(memo) }}
+                />
+                <span className={`text-xs truncate ${textColor}`}>
+                  {memo.title || 'Sans titre'}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
 
-        {/* Gantt body */}
-        <div className="flex overflow-hidden" style={{ height: Math.min(totalHeight + 40, 600) }}>
-          {/* Name column (hidden on mobile) */}
-          <div
-            className={`hidden sm:block flex-shrink-0 border-r overflow-hidden ${nameBg}`}
-            style={{ width: NAME_COL_WIDTH }}
-          >
-            {/* Header spacer */}
-            <div className={`h-10 border-b ${gridBorder} flex items-center px-3`}>
-              <span className={`text-xs font-semibold ${textMuted}`}>Tâche</span>
-            </div>
-            {/* Task names */}
-            <div className="overflow-y-auto" style={{ height: Math.min(totalHeight, 560) }}>
-              {sortedMemos.map(memo => (
+        {/* Timeline area */}
+        <div
+          ref={setScrollRef}
+          className="flex-1 overflow-auto"
+          onMouseMove={handleMouseMove}
+        >
+          {/* Timeline header */}
+          <div className={`sticky top-0 z-10 h-10 border-b ${bgHeader} ${gridBorder}`} style={{ width: totalWidth }}>
+            <div className="flex h-full">
+              {timeline.map((cell, i) => (
                 <div
-                  key={memo.id}
-                  className={`flex items-center px-3 border-b cursor-pointer transition-colors ${gridBorder} ${
-                    isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'
-                  } ${selectedMemoId === memo.id ? (isDark ? 'bg-slate-700' : 'bg-slate-100') : ''}`}
-                  style={{ height: ROW_HEIGHT }}
-                  onClick={() => onSelectMemo?.(memo.id)}
+                  key={i}
+                  className={`flex-shrink-0 flex items-center justify-center border-r text-xs ${gridBorder} ${
+                    cell.isWeekend
+                      ? isDark ? 'text-slate-500' : 'text-slate-400'
+                      : textMuted
+                  }`}
+                  style={{ width: cellWidth }}
                 >
-                  <div
-                    className="w-2 h-2 rounded-full flex-shrink-0 mr-2"
-                    style={{ background: getBarColor(memo) }}
-                  />
-                  <span className={`text-xs truncate ${memo.is_done ? 'line-through opacity-60' : ''} ${textColor}`}>
-                    {getMemoTitle(memo)}
-                  </span>
+                  {cell.label}
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Timeline area */}
-          <div
-            ref={setScrollRef}
-            className="flex-1 overflow-auto"
-            onMouseMove={handleMouseMove}
-          >
-            {/* Timeline header */}
-            <div className={`sticky top-0 z-10 h-10 border-b ${bgHeader} ${gridBorder}`} style={{ width: totalWidth }}>
-              <div className="flex h-full">
-                {timeline.map((cell, i) => (
-                  <div
-                    key={i}
-                    className={`flex-shrink-0 flex items-center justify-center border-r text-xs ${gridBorder} ${
-                      cell.isWeekend
-                        ? isDark ? 'text-slate-500' : 'text-slate-400'
-                        : textMuted
-                    }`}
-                    style={{ width: cellWidth }}
+          {/* Rows */}
+          <div className="relative" style={{ width: totalWidth, height: totalHeight }}>
+            {/* Grid lines */}
+            {timeline.map((cell, i) => (
+              <div
+                key={i}
+                className={`absolute top-0 bottom-0 border-r ${gridBorder} ${
+                  cell.isWeekend ? (isDark ? 'bg-slate-800/50' : 'bg-slate-50/80') : ''
+                }`}
+                style={{ left: i * cellWidth, width: cellWidth }}
+              />
+            ))}
+
+            {/* Row dividers */}
+            {sortedMemos.map((_, i) => (
+              <div
+                key={i}
+                className={`absolute left-0 right-0 border-b ${gridBorder}`}
+                style={{ top: (i + 1) * ROW_HEIGHT }}
+              />
+            ))}
+
+            {/* Today line */}
+            {todayOffset >= 0 && todayOffset <= totalWidth && (
+              <div
+                className="absolute top-0 bottom-0 z-20 pointer-events-none"
+                style={{ left: todayOffset, width: 2, background: '#ef4444', opacity: 0.5 }}
+              />
+            )}
+
+            {/* Task bars */}
+            {sortedMemos.map((memo, i) => {
+              const barProps = getBarProps(memo);
+              if (!barProps) return null;
+              const { x, width } = barProps;
+              const color = getBarColor(memo);
+              const progress = getProgress(memo);
+              const y = i * ROW_HEIGHT + BAR_Y_OFFSET;
+
+              return (
+                <div
+                  key={memo.id}
+                  className="absolute rounded-md cursor-pointer transition-opacity hover:opacity-90 overflow-hidden"
+                  style={{
+                    left: x,
+                    top: y,
+                    width: Math.max(width, 4),
+                    height: BAR_HEIGHT,
+                    background: `${color}40`,
+                    border: `1px solid ${color}80`,
+                  }}
+                  onClick={() => onSelectMemo?.(memo.id)}
+                  onMouseEnter={(e) => handleMouseEnter(e, memo)}
+                  onMouseLeave={handleMouseLeave}
+                >
+                  {/* Progress fill */}
+                  {progress > 0 && (
+                    <div
+                      className="absolute inset-y-0 left-0 rounded-l-md"
+                      style={{
+                        width: `${progress * 100}%`,
+                        background: `${color}90`,
+                      }}
+                    />
+                  )}
+                  {/* Title text */}
+                  <span
+                    className="absolute inset-0 flex items-center px-1.5 text-[10px] font-medium truncate z-10"
+                    style={{ color: isDark ? '#f1f5f9' : '#1e293b' }}
                   >
-                    {cell.label}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Rows */}
-            <div className="relative" style={{ width: totalWidth, height: totalHeight }}>
-              {/* Grid lines */}
-              {timeline.map((cell, i) => (
-                <div
-                  key={i}
-                  className={`absolute top-0 bottom-0 border-r ${gridBorder} ${
-                    cell.isWeekend ? (isDark ? 'bg-slate-800/50' : 'bg-slate-50/80') : ''
-                  }`}
-                  style={{ left: i * cellWidth, width: cellWidth }}
-                />
-              ))}
-
-              {/* Row dividers */}
-              {sortedMemos.map((_, i) => (
-                <div
-                  key={i}
-                  className={`absolute left-0 right-0 border-b ${gridBorder}`}
-                  style={{ top: (i + 1) * ROW_HEIGHT }}
-                />
-              ))}
-
-              {/* Today line */}
-              {todayOffset >= 0 && todayOffset <= totalWidth && (
-                <div
-                  className="absolute top-0 bottom-0 z-20 pointer-events-none"
-                  style={{ left: todayOffset, width: 2, background: '#ef4444', opacity: 0.5 }}
-                />
-              )}
-
-              {/* Task bars */}
-              {sortedMemos.map((memo, i) => {
-                const barProps = getBarProps(memo);
-                if (!barProps) return null;
-                const { x, width } = barProps;
-                const color = getBarColor(memo);
-                const progress = getProgress(memo);
-                const y = i * ROW_HEIGHT + BAR_Y_OFFSET;
-                const title = getMemoTitle(memo);
-
-                return (
-                  <div
-                    key={memo.id}
-                    className={`absolute rounded-md cursor-pointer transition-opacity hover:opacity-90 overflow-hidden ${
-                      selectedMemoId === memo.id ? 'ring-2 ring-offset-1' : ''
-                    } ${memo.is_done ? 'opacity-50' : ''}`}
-                    style={{
-                      left: x,
-                      top: y,
-                      width: Math.max(width, 4),
-                      height: BAR_HEIGHT,
-                      background: `${color}30`,
-                      border: `1.5px solid ${color}90`,
-                      ...(selectedMemoId === memo.id ? { ringColor: color } : {}),
-                    }}
-                    onClick={() => onSelectMemo?.(memo.id)}
-                    onMouseEnter={(e) => handleMouseEnter(e, memo)}
-                    onMouseLeave={handleMouseLeave}
-                  >
-                    {/* Bug 5: Progress fill based on subtasks */}
-                    {progress > 0 && (
-                      <div
-                        className="absolute inset-y-0 left-0 rounded-l-md"
-                        style={{
-                          width: `${progress * 100}%`,
-                          background: `${color}90`,
-                        }}
-                      />
+                    {/* On mobile, always show name; on desktop, only if bar is wide enough */}
+                    <span className="sm:hidden truncate">{memo.title || 'Sans titre'}</span>
+                    {width >= 50 && (
+                      <span className="hidden sm:inline truncate">{memo.title || 'Sans titre'}</span>
                     )}
-                    {/* Title text */}
-                    <span
-                      className="absolute inset-0 flex items-center px-1.5 text-[10px] font-medium truncate z-10"
-                      style={{ color: isDark ? '#f1f5f9' : '#1e293b' }}
-                    >
-                      {/* On mobile, always show name; on desktop, only if bar is wide enough */}
-                      <span className="sm:hidden truncate">{title}</span>
-                      {width >= 50 && (
-                        <span className="hidden sm:inline truncate">{title}</span>
-                      )}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
+                  </span>
+                </div>
+              );
+            })}
           </div>
         </div>
-
-        {/* Tooltip */}
-        {tooltip && <Tooltip memo={tooltip.memo} x={tooltip.x} y={tooltip.y} isDark={isDark} />}
       </div>
 
-      {/* Bug 4: Detail panel — same pattern as TaskKanbanView */}
-      {selectedMemo && (
-        <TaskDetail
-          memo={selectedMemo}
-          onUpdate={updateMemo}
-          onDelete={deleteMemo}
-          onClose={() => onSelectMemo(null)}
-          chantiers={chantiers}
-          clients={clients}
-          equipe={equipe}
-          couleur={couleur}
-          isDark={isDark}
-        />
-      )}
-    </>
+      {/* Tooltip */}
+      {tooltip && <Tooltip memo={tooltip.memo} x={tooltip.x} y={tooltip.y} isDark={isDark} />}
+    </div>
   );
 }

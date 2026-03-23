@@ -39,6 +39,7 @@ import Widget, {
   WidgetLink,
 } from './Widget';
 import supabase, { isDemo } from '../../supabaseClient';
+import { captureException } from '../../lib/sentry';
 
 /**
  * @typedef {Object} ChantiersWidgetProps
@@ -267,7 +268,7 @@ async function fetchWeatherForCity(city, date) {
     }
     return weather;
   } catch (error) {
-    console.warn('Weather fetch failed:', error);
+    // Weather fetch failed silently — non-critical
     return null;
   }
 }
@@ -636,7 +637,7 @@ export default function ChantiersWidget({
         setUpcomingChantiers(data || []);
       }
     } catch (err) {
-      console.error('Error fetching chantiers:', err);
+      captureException(err, { context: 'ChantiersWidget: Error fetching chantiers' });
       setError(err.message || 'Erreur de chargement');
     } finally {
       setLoading(false);

@@ -13,7 +13,7 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import {
   Circle, Clock, CheckCircle, Plus, GripVertical,
-  Calendar, Tag, AlertCircle, ListTodo, Repeat,
+  Calendar, Tag, AlertCircle, ListTodo,
 } from 'lucide-react';
 import TaskDetail from './TaskDetail';
 
@@ -47,8 +47,7 @@ const CATEGORY_COLORS = {
 
 // ─── KanbanCard ──────────────────────────────────────────────────────────────
 
-function KanbanCard({ memo, chantier, equipe, isDark, couleur, onSelect, onDragStart, isTermine }) {
-  const assignedMember = memo.assigned_to ? (equipe || []).find(m => m.id === memo.assigned_to) : null;
+function KanbanCard({ memo, chantier, isDark, couleur, onSelect, onDragStart, isTermine }) {
   const isOverdue = useMemo(() => {
     if (!memo.due_date) return false;
     return new Date(memo.due_date) < new Date() && memo.status !== 'termine';
@@ -98,11 +97,6 @@ function KanbanCard({ memo, chantier, equipe, isDark, couleur, onSelect, onDragS
           />
           {/* Title */}
           <p className={`text-sm font-medium line-clamp-2 ${isTermine ? 'line-through' : ''} ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
-            {memo.recurrence && (
-              <span className="mr-1 inline-flex items-center align-middle" title="Récurrent">
-                <Repeat size={12} style={{ color: couleur }} />
-              </span>
-            )}
             {memo.title || memo.text || 'Sans titre'}
           </p>
         </div>
@@ -148,10 +142,6 @@ function KanbanCard({ memo, chantier, equipe, isDark, couleur, onSelect, onDragS
           >
             <Calendar size={8} />
             {formatDate(memo.due_date)}
-            {memo.due_date_end && memo.due_date_end >= memo.due_date && (() => {
-              const diffDays = Math.round((new Date(memo.due_date_end + 'T00:00:00') - new Date(memo.due_date + 'T00:00:00')) / 86400000) + 1;
-              return <span className="font-semibold">{diffDays}j</span>;
-            })()}
           </span>
         )}
 
@@ -181,22 +171,12 @@ function KanbanCard({ memo, chantier, equipe, isDark, couleur, onSelect, onDragS
         </div>
       )}
 
-      {/* Chantier link + assigned member */}
-      <div className="flex items-center justify-between mt-2">
-        {chantier ? (
-          <p className={`text-xs truncate ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-            {chantier.nom || chantier.name || ''}
-          </p>
-        ) : <span />}
-        {assignedMember && (
-          <span
-            className="w-6 h-6 rounded-full bg-slate-600 text-white text-[10px] flex items-center justify-center flex-shrink-0"
-            title={`${assignedMember.prenom} ${assignedMember.nom}`}
-          >
-            {assignedMember.prenom?.[0]}{assignedMember.nom?.[0]}
-          </span>
-        )}
-      </div>
+      {/* Chantier link */}
+      {chantier && (
+        <p className={`text-xs mt-2 truncate ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+          {chantier.nom || chantier.name || ''}
+        </p>
+      )}
     </div>
   );
 }
@@ -204,7 +184,7 @@ function KanbanCard({ memo, chantier, equipe, isDark, couleur, onSelect, onDragS
 // ─── KanbanColumn ────────────────────────────────────────────────────────────
 
 function KanbanColumn({
-  column, cards, chantiers, equipe, isDark, couleur,
+  column, cards, chantiers, isDark, couleur,
   onSelect, onDragStart, onDrop, onAddMemo,
 }) {
   const [isDragOver, setIsDragOver] = useState(false);
@@ -284,7 +264,6 @@ function KanbanColumn({
               chantier={chantiers?.find(c =>
                 c.id === memo.chantier_id || c.id === memo.chantierId
               )}
-              equipe={equipe}
               isDark={isDark}
               couleur={couleur}
               onSelect={onSelect}
@@ -323,7 +302,6 @@ export default function TaskKanbanView({
   toggleMemo,
   chantiers = [],
   clients = [],
-  equipe = [],
   isDark,
   couleur,
   filters = {},
@@ -354,11 +332,6 @@ export default function TaskKanbanView({
     // Priority filter
     if (filters.priority && filters.priority !== 'all') {
       items = items.filter(m => m.priority === filters.priority);
-    }
-
-    // Assigned to filter
-    if (filters.assignedTo) {
-      items = items.filter(m => m.assigned_to === filters.assignedTo);
     }
 
     return items;
@@ -446,7 +419,6 @@ export default function TaskKanbanView({
             column={col}
             cards={columnData[col.id] || []}
             chantiers={chantiers}
-            equipe={equipe}
             isDark={isDark}
             couleur={couleur}
             onSelect={handleSelectMemo}
@@ -466,7 +438,6 @@ export default function TaskKanbanView({
           onClose={() => onSelectMemo(null)}
           chantiers={chantiers}
           clients={clients}
-          equipe={equipe}
           couleur={couleur}
           isDark={isDark}
         />

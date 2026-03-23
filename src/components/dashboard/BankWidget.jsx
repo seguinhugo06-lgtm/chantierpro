@@ -27,6 +27,7 @@ import Widget, {
 import { cn } from '../../lib/utils';
 import { isDemo } from '../../supabaseClient';
 import { getConnections, getTransactions, syncAll } from '../../lib/integrations/saltedge';
+import { captureException } from '../../lib/sentry';
 
 // ============================================================================
 // Utility
@@ -85,7 +86,7 @@ export default function BankWidget({
         setTransactions(txs);
       }
     } catch (e) {
-      console.warn('[BankWidget] load not available:', e.message);
+      // Bank widget load not available — non-critical
     }
     setLoading(false);
   }, []);
@@ -105,7 +106,7 @@ export default function BankWidget({
       const txs = await getTransactions(connection.id);
       setTransactions(txs);
     } catch (e) {
-      console.error('Sync error:', e);
+      captureException(e, { context: 'BankWidget: Sync error' });
     }
     setSyncing(false);
   };

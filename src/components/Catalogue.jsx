@@ -945,19 +945,21 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
 
     return (
       <div className="space-y-6">
-        <div className="flex items-center gap-4">
-          <button onClick={() => setArticleDetail(null)} className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
-            <ArrowLeft size={20} className={textPrimary} />
-          </button>
-          <div className="flex-1">
-            <h2 className={`text-xl font-bold ${textPrimary}`}>{item.nom}</h2>
-            <p className={`text-sm ${textMuted}`}>
-              {item.reference && <span className="font-mono mr-1">{item.reference} ·</span>}
-              {item.categorie} · {item.unite} · TVA {item.tva_rate || item.tva || 20}%
-            </p>
-            {item.description && <p className={`text-sm ${textMuted} mt-1`}>{item.description}</p>}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+          <div className="flex items-center gap-3 flex-1 min-w-0">
+            <button onClick={() => setArticleDetail(null)} className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl flex-shrink-0 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
+              <ArrowLeft size={20} className={textPrimary} />
+            </button>
+            <div className="min-w-0">
+              <h2 className={`text-lg sm:text-xl font-bold ${textPrimary} truncate`}>{item.nom}</h2>
+              <p className={`text-xs sm:text-sm ${textMuted}`}>
+                {item.reference && <span className="font-mono mr-1">{item.reference} ·</span>}
+                {item.categorie} · {item.unite} · TVA {item.tva_rate || item.tva || 20}%
+              </p>
+              {item.description && <p className={`text-xs sm:text-sm ${textMuted} mt-1 line-clamp-2`}>{item.description}</p>}
+            </div>
           </div>
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap flex-shrink-0">
             {/* Devis usage badge */}
             {devisUsageMap[item.id] > 0 && (
               <span className={`px-2.5 py-1.5 rounded-lg text-xs font-bold ${isDark ? 'bg-blue-900/30 text-blue-400' : 'bg-blue-50 text-blue-600'}`}>

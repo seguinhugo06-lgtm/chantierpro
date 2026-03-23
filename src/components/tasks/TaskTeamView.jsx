@@ -92,7 +92,7 @@ function MiniTaskCard({ memo, isDark, couleur, onSelect, onDragStart }) {
       draggable
       onDragStart={(e) => {
         e.dataTransfer.setData('memoId', memo.id);
-        e.dataTransfer.setData('sourceAssignee', memo.assigned_to || '');
+        e.dataTransfer.setData('sourceAssignee', memo.assignedTo || memo.employe_id || '');
         e.dataTransfer.setData('sourceDate', memo.due_date || '');
         e.dataTransfer.effectAllowed = 'move';
         onDragStart?.(memo.id);
@@ -151,7 +151,7 @@ function LoadIndicator({ hours, capacity, isDark }) {
 
 // ─── DayCell ─────────────────────────────────────────────────────────────────
 
-function DayCell({ memos, dateStr, isToday, isDark, couleur, onSelect, onDragStart, onDrop, onCellClick }) {
+function DayCell({ memos, dateStr, isToday, isDark, couleur, onSelect, onDragStart, onDrop }) {
   const [isDragOver, setIsDragOver] = useState(false);
 
   const handleDragOver = (e) => {
@@ -180,18 +180,13 @@ function DayCell({ memos, dateStr, isToday, isDark, couleur, onSelect, onDragSta
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
-      onClick={() => {
-        if (memos.length === 0) onCellClick?.(dateStr);
-      }}
-      className={`min-h-[60px] p-1 border-r last:border-r-0 transition-colors cursor-pointer ${
+      className={`min-h-[60px] p-1 border-r last:border-r-0 transition-colors ${
         isDragOver
           ? isDark ? 'bg-slate-700/50' : 'bg-blue-50/50'
           : isToday
             ? isDark ? 'bg-slate-700/30' : 'bg-orange-50/30'
             : ''
-      } ${isDark ? 'border-slate-700' : 'border-slate-200'} ${
-        memos.length === 0 ? (isDark ? 'hover:bg-slate-700/20' : 'hover:bg-slate-50') : ''
-      }`}
+      } ${isDark ? 'border-slate-700' : 'border-slate-200'}`}
     >
       {memos.map(memo => (
         <MiniTaskCard
@@ -209,7 +204,7 @@ function DayCell({ memos, dateStr, isToday, isDark, couleur, onSelect, onDragSta
 
 // ─── MemberRow (Desktop) ────────────────────────────────────────────────────
 
-function MemberRow({ membre, weekDays, memosByDay, totalHours, isDark, couleur, onSelect, onDragStart, onDropToCell, onCellClick }) {
+function MemberRow({ membre, weekDays, memosByDay, totalHours, isDark, couleur, onSelect, onDragStart, onDropToCell }) {
   const todayStr = toDateStr(new Date());
   const displayName = membre
     ? `${membre.prenom || ''} ${(membre.nom || '').charAt(0)}.`.trim()
@@ -266,7 +261,6 @@ function MemberRow({ membre, weekDays, memosByDay, totalHours, isDark, couleur, 
             onDrop={(memoId, newDate, srcAssignee, srcDate) => {
               onDropToCell(memoId, membre?.id || null, newDate);
             }}
-            onCellClick={(cellDate) => onCellClick?.(membre?.id || null, cellDate)}
           />
         );
       })}
@@ -365,7 +359,6 @@ function MemberAccordion({ membre, weekDays, memosByDay, totalHours, isDark, cou
 
 export default function TaskTeamView({
   memos = [],
-  addMemo,
   updateMemo,
   equipe = [],
   isDark,
@@ -441,7 +434,7 @@ export default function TaskTeamView({
     });
 
     filteredMemos.forEach(memo => {
-      const assignee = memo.assigned_to || null;
+      const assignee = memo.assignedTo || memo.employe_id || null;
       const dateStr = memo.due_date || '';
       if (!dateSet.has(dateStr)) return; // not in current range
 
@@ -494,9 +487,10 @@ export default function TaskTeamView({
     const memo = memos.find(m => m.id === memoId);
     if (!memo) return;
 
-    const currentAssignee = memo.assigned_to || null;
+    const currentAssignee = memo.assignedTo || memo.employe_id || null;
     if (newAssigneeId !== currentAssignee) {
-      updates.assigned_to = newAssigneeId;
+      updates.assignedTo = newAssigneeId;
+      updates.employe_id = newAssigneeId;
     }
     if (newDate && newDate !== memo.due_date) {
       updates.due_date = newDate;
@@ -506,20 +500,6 @@ export default function TaskTeamView({
     }
     setDragId(null);
   }, [updateMemo, memos]);
-
-  // Handle click on empty cell — create pre-filled task and open detail
-  const handleCellClick = useCallback(async (memberId, cellDate) => {
-    if (!addMemo) return;
-    const newMemo = await addMemo({
-      text: '',
-      due_date: cellDate,
-      assigned_to: memberId,
-      status: 'a_faire',
-    });
-    if (newMemo?.id) {
-      onSelectMemo?.(newMemo.id);
-    }
-  }, [addMemo, onSelectMemo]);
 
   const selectedMemo = memos.find(m => m.id === selectedMemoId);
   const todayStr = toDateStr(new Date());
@@ -640,7 +620,6 @@ export default function TaskTeamView({
             onSelect={onSelectMemo}
             onDragStart={setDragId}
             onDropToCell={handleDropToCell}
-            onCellClick={handleCellClick}
           />
         ))}
 
@@ -657,7 +636,6 @@ export default function TaskTeamView({
             onSelect={onSelectMemo}
             onDragStart={setDragId}
             onDropToCell={handleDropToCell}
-            onCellClick={handleCellClick}
           />
         )}
 
@@ -721,7 +699,6 @@ export default function TaskTeamView({
           onClose={() => onSelectMemo(null)}
           chantiers={chantiers}
           clients={clients}
-          equipe={equipe}
           couleur={couleur}
           isDark={isDark}
         />

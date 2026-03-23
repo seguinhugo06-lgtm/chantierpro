@@ -426,7 +426,7 @@ export default function AnalyticsPage({ devis = [], clients = [], chantiers = []
         {/* Monthly Revenue Chart (with depenses overlay) */}
         <div className={`${cardClass} lg:col-span-2`}>
           <h2 className={`text-lg font-semibold mb-4 ${textPrimary}`}>CA & Dépenses mensuels</h2>
-          <div className="h-72">
+          <div className="h-56 sm:h-72" style={{ minHeight: 220 }}>
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={monthlyRevenue} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke={isDark ? '#334155' : '#e2e8f0'} />
@@ -657,8 +657,8 @@ export default function AnalyticsPage({ devis = [], clients = [], chantiers = []
             <Building2 size={18} style={{ color: couleur }} />
             <h2 className={`text-lg font-semibold ${textPrimary}`}>Rentabilité par chantier</h2>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+          <div className="overflow-x-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
+            <table className="w-full text-sm min-w-[640px]">
               <thead>
                 <tr className={`text-xs uppercase tracking-wide ${textSecondary} border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
                   <th className="text-left py-3 pr-4 font-semibold">Chantier</th>

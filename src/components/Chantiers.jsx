@@ -19,6 +19,7 @@ import ChantierJournal from './audit/ChantierJournal';
 import { getUserWeather, getChantierWeather } from '../services/WeatherService';
 import { usePermissions } from '../hooks/usePermissions';
 import { ReadOnlyBanner } from './ui/PermissionGate';
+import ErrorBoundary from './ui/ErrorBoundary';
 import ChantierGarantiesTab from './chantiers/ChantierGarantiesTab';
 import ReceptionForm from './chantiers/ReceptionForm';
 import InterventionForm from './chantiers/InterventionForm';
@@ -2719,35 +2720,35 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
           <div className={`flex rounded-xl border overflow-hidden ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
             <button
               onClick={() => setViewMode('list')}
-              className={`p-2.5 min-w-[40px] min-h-[40px] flex items-center justify-center transition-colors ${viewMode === 'list' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200 bg-slate-800' : 'text-slate-500 hover:text-slate-700 bg-white'}`}
+              className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors ${viewMode === 'list' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200 bg-slate-800' : 'text-slate-500 hover:text-slate-700 bg-white'}`}
               style={viewMode === 'list' ? { background: couleur } : {}}
               title="Vue liste"
             >
-              <List size={16} />
+              <List size={18} />
             </button>
             <button
               onClick={() => setViewMode('gantt')}
-              className={`p-2.5 min-w-[40px] min-h-[40px] flex items-center justify-center transition-colors ${viewMode === 'gantt' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200 bg-slate-800' : 'text-slate-500 hover:text-slate-700 bg-white'}`}
+              className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors ${viewMode === 'gantt' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200 bg-slate-800' : 'text-slate-500 hover:text-slate-700 bg-white'}`}
               style={viewMode === 'gantt' ? { background: couleur } : {}}
               title="Vue Gantt"
             >
-              <BarChart3 size={16} />
+              <BarChart3 size={18} />
             </button>
             <button
               onClick={() => setViewMode('map')}
-              className={`p-2.5 min-w-[40px] min-h-[40px] flex items-center justify-center transition-colors ${viewMode === 'map' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200 bg-slate-800' : 'text-slate-500 hover:text-slate-700 bg-white'}`}
+              className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors ${viewMode === 'map' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200 bg-slate-800' : 'text-slate-500 hover:text-slate-700 bg-white'}`}
               style={viewMode === 'map' ? { background: couleur } : {}}
               title="Vue carte"
             >
-              <Map size={16} />
+              <Map size={18} />
             </button>
             <button
               onClick={() => setViewMode('garanties')}
-              className={`p-2.5 min-w-[40px] min-h-[40px] flex items-center justify-center transition-colors ${viewMode === 'garanties' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200 bg-slate-800' : 'text-slate-500 hover:text-slate-700 bg-white'}`}
+              className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors ${viewMode === 'garanties' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200 bg-slate-800' : 'text-slate-500 hover:text-slate-700 bg-white'}`}
               style={viewMode === 'garanties' ? { background: couleur } : {}}
               title="Vue garanties"
             >
-              <Shield size={16} />
+              <Shield size={18} />
             </button>
           </div>
           {canPerform('chantier', 'create') && (
@@ -2949,7 +2950,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                 <button
                   key={tab.key}
                   onClick={() => setFilterStatus(tab.key)}
-                  className={`px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-medium whitespace-nowrap transition-all min-h-[36px] sm:min-h-[40px] flex items-center gap-1.5 ${
+                  className={`px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-medium whitespace-nowrap transition-all min-h-[44px] flex items-center gap-1.5 ${
                     filterStatus === tab.key
                       ? 'text-white shadow-md'
                       : isDark
@@ -2967,7 +2968,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
             </div>
 
             {/* Client filter + Titre section + Tri */}
-            <div className="flex items-center justify-between gap-2 flex-wrap">
+            <div className="flex items-center justify-between gap-2 flex-wrap overflow-x-auto">
               <div className="flex items-center gap-2">
                 <div className="w-1.5 h-1.5 rounded-full" style={{ background: couleur }} />
                 <span className={`text-[10px] font-semibold uppercase tracking-wider ${textMuted}`}>{filterStatus === 'all' ? 'Tous les chantiers' : filterStatus === 'cette_semaine' ? 'Cette semaine' : filterStatus === 'en_cours' ? 'Chantiers en cours' : filterStatus === 'prospect' ? 'Prospects' : filterStatus === 'archive' ? 'Archivés' : filterStatus === 'brouillons' ? 'Brouillons / Tests' : 'Chantiers terminés'}</span>
@@ -2979,7 +2980,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                   <select
                     value={filterClient}
                     onChange={(e) => setFilterClient(e.target.value)}
-                    className={`px-2.5 py-1.5 rounded-lg text-xs border min-h-[36px] ${isDark ? 'bg-slate-700 border-slate-600 text-slate-300' : 'bg-white border-slate-200 text-slate-600'}`}
+                    className={`px-2.5 py-1.5 rounded-lg text-xs border min-h-[44px] sm:min-h-[36px] ${isDark ? 'bg-slate-700 border-slate-600 text-slate-300' : 'bg-white border-slate-200 text-slate-600'}`}
                   >
                     <option value="">Tous les clients</option>
                     {clients.map(c => (
@@ -2992,7 +2993,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                   <select
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value)}
-                    className={`px-2.5 py-1.5 rounded-lg text-xs border min-h-[36px] ${isDark ? 'bg-slate-700 border-slate-600 text-slate-300' : 'bg-white border-slate-200 text-slate-600'}`}
+                    className={`px-2.5 py-1.5 rounded-lg text-xs border min-h-[44px] sm:min-h-[36px] ${isDark ? 'bg-slate-700 border-slate-600 text-slate-300' : 'bg-white border-slate-200 text-slate-600'}`}
                   >
                     <option value="recent">Plus récent</option>
                     <option value="name">Nom A-Z</option>
@@ -3020,17 +3021,30 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
 
           {/* Map View */}
           {viewMode === 'map' && (
-            <Suspense fallback={<div className={`h-[500px] rounded-xl flex items-center justify-center ${isDark ? 'bg-slate-800' : 'bg-slate-100'}`}><div className="w-6 h-6 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: `${couleur} transparent ${couleur} ${couleur}` }} /></div>}>
-              <ChantierMap
-                chantiers={getFilteredAndSortedChantiers()}
-                clients={clients}
-                onSelectChantier={(id) => setView(id)}
-                isDark={isDark}
-                couleur={couleur}
-                formatMoney={formatMoney}
-                modeDiscret={modeDiscret}
-              />
-            </Suspense>
+            <ErrorBoundary
+              isDark={isDark}
+              fallback={
+                <div className={`h-[500px] rounded-xl flex flex-col items-center justify-center gap-3 ${isDark ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>
+                  <AlertTriangle size={32} className="text-amber-500" />
+                  <p className="font-medium">La carte n'a pas pu se charger</p>
+                  <button onClick={() => setViewMode('list')} className="px-4 py-2 rounded-xl text-sm font-medium text-white" style={{ background: couleur }}>
+                    Revenir à la liste
+                  </button>
+                </div>
+              }
+            >
+              <Suspense fallback={<div className={`h-[500px] rounded-xl flex items-center justify-center ${isDark ? 'bg-slate-800' : 'bg-slate-100'}`}><div className="w-6 h-6 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: `${couleur} transparent ${couleur} ${couleur}` }} /></div>}>
+                <ChantierMap
+                  chantiers={getFilteredAndSortedChantiers()}
+                  clients={clients}
+                  onSelectChantier={(id) => setView(id)}
+                  isDark={isDark}
+                  couleur={couleur}
+                  formatMoney={formatMoney}
+                  modeDiscret={modeDiscret}
+                />
+              </Suspense>
+            </ErrorBoundary>
           )}
 
           {/* Garanties Dashboard View */}
@@ -3209,7 +3223,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                   )}
                   {ch.statut === 'en_cours' && (avancement > 0 || allTasks.length > 0) && (
                     <div className="flex items-center gap-2 flex-1 min-w-0">
-                      <div className={`flex-1 h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
+                      <div className={`flex-1 h-2 sm:h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
                         <div className={`h-full rounded-full transition-all ${avancement > 0 ? 'min-w-[4px]' : ''}`} style={{ width: `${Math.min(100, Math.max(3, avancement))}%`, background: couleur }} />
                       </div>
                       <span className="text-xs font-semibold tabular-nums whitespace-nowrap" style={{ color: couleur }}>{avancement}%</span>
@@ -3241,28 +3255,28 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
 
                 {/* CTA for Prospect: create devis, start chantier, view detail */}
                 {ch.statut === 'prospect' && (
-                  <div className="flex gap-2 mt-2">
+                  <div className="flex flex-col sm:flex-row gap-2 mt-2">
                     {setPage && (
                     <button
                       onClick={(e) => { e.stopPropagation(); setPage('devis', { chantier_id: ch.id, client_id: ch.client_id, objet: ch.nom }); }}
-                      className="flex-1 py-1.5 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 border transition-all hover:shadow-sm active:scale-[0.98]"
+                      className="flex-1 py-2.5 sm:py-1.5 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 border transition-all hover:shadow-sm active:scale-[0.98] min-h-[44px] sm:min-h-0"
                       style={{ borderColor: couleur, color: couleur }}
                     >
-                      <FileText size={13} /> Créer un devis
+                      <FileText size={14} /> Créer un devis
                     </button>
                     )}
                     <button
                       onClick={(e) => { e.stopPropagation(); updateChantier(ch.id, { statut: 'en_cours', dateDebut: new Date().toISOString().split('T')[0] }); showToast('Chantier démarré !', 'success'); }}
-                      className="flex-1 py-1.5 rounded-lg text-xs font-semibold text-white flex items-center justify-center gap-1.5 transition-all hover:opacity-90 active:scale-[0.98]"
+                      className="flex-1 py-2.5 sm:py-1.5 rounded-lg text-xs font-semibold text-white flex items-center justify-center gap-1.5 transition-all hover:opacity-90 active:scale-[0.98] min-h-[44px] sm:min-h-0"
                       style={{ background: couleur }}
                     >
-                      <Zap size={13} /> Démarrer
+                      <Zap size={14} /> Démarrer
                     </button>
                     <button
                       onClick={(e) => { e.stopPropagation(); setView(ch.id); }}
-                      className={`py-1.5 px-3 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 transition-all ${isDark ? 'text-slate-400 hover:bg-slate-700' : 'text-slate-500 hover:bg-slate-100'}`}
+                      className={`py-2.5 sm:py-1.5 px-3 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 transition-all min-h-[44px] sm:min-h-0 ${isDark ? 'text-slate-400 hover:bg-slate-700' : 'text-slate-500 hover:bg-slate-100'}`}
                     >
-                      <ChevronRight size={13} />
+                      <ChevronRight size={14} />
                     </button>
                   </div>
                 )}

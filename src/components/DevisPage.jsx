@@ -3447,8 +3447,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 
         {/* Modal Acompte */}
         {showAcompteModal && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className={`${cardBg} rounded-2xl p-6 w-full max-w-md`}>
+          <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+            <div className={`${cardBg} rounded-t-2xl sm:rounded-2xl p-6 w-full sm:max-w-md`}>
               <h3 className="font-bold text-lg mb-2"> Facture d'acompte</h3>
               <p className={`mb-4 text-sm ${textMuted}`}>Sécurisez votre engagement avant les travaux</p>
               <div className="space-y-3 mb-4">
@@ -3503,8 +3503,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 
         {/* Modal Preview */}
         {showPreview && (
-          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+          <div className="fixed inset-0 bg-black/80 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+            <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-4xl h-[95vh] sm:h-auto sm:max-h-[90vh] overflow-hidden flex flex-col">
               <div className="flex items-center justify-between p-4 border-b">
                 <h3 className="font-bold">Aperçu {selected.type === 'facture' ? 'Facture' : 'Devis'}</h3>
                 <div className="flex gap-2">
@@ -3590,8 +3590,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 
         {/* PDF Preview Modal */}
         {showPdfPreview && (
-          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in" onClick={() => setShowPdfPreview(false)}>
-            <div className={`${isDark ? 'bg-slate-800' : 'bg-slate-100'} rounded-2xl w-full max-w-4xl h-[90vh] shadow-2xl flex flex-col overflow-hidden`} onClick={e => e.stopPropagation()}>
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4 animate-fade-in" onClick={() => setShowPdfPreview(false)}>
+            <div className={`${isDark ? 'bg-slate-800' : 'bg-slate-100'} rounded-t-2xl sm:rounded-2xl w-full sm:max-w-4xl h-[95vh] sm:h-[90vh] shadow-2xl flex flex-col overflow-hidden`} onClick={e => e.stopPropagation()}>
               <div className={`p-3 sm:p-4 border-b ${isDark ? 'border-slate-700 bg-slate-800' : 'border-slate-200 bg-white'} flex items-center justify-between gap-2 flex-shrink-0`}>
                 <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                   <div className="p-2 rounded-lg flex-shrink-0" style={{ background: `${couleur}20` }}>
@@ -3639,8 +3639,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         {/* Signature Link Modal */}
         {/* Creation success modal */}
         {showCreationSuccess && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowCreationSuccess(null)}>
-            <div className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-2xl w-full max-w-sm shadow-2xl p-6`} onClick={e => e.stopPropagation()}>
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={() => setShowCreationSuccess(null)}>
+            <div className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-t-2xl sm:rounded-2xl w-full sm:max-w-sm shadow-2xl p-6`} onClick={e => e.stopPropagation()}>
               {/* Success animation */}
               <div className="flex justify-center mb-4">
                 <div className="w-16 h-16 rounded-full flex items-center justify-center" style={{ backgroundColor: `${couleur}15` }}>
@@ -3679,8 +3679,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 
         {/* Pre-send validation issues modal */}
         {sendValidationIssues && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setSendValidationIssues(null)}>
-            <div className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-2xl w-full max-w-md shadow-2xl`} onClick={e => e.stopPropagation()}>
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={() => setSendValidationIssues(null)}>
+            <div className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md shadow-2xl`} onClick={e => e.stopPropagation()}>
               <div className="p-6">
                 {/* Header */}
                 <div className="flex items-center gap-3 mb-4">
@@ -3795,8 +3795,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 
         {/* Post-send confirmation modal */}
         {showSendConfirmation && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowSendConfirmation(null)}>
-            <div className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-2xl w-full max-w-sm shadow-2xl p-6`} onClick={e => e.stopPropagation()}>
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={() => setShowSendConfirmation(null)}>
+            <div className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-t-2xl sm:rounded-2xl w-full sm:max-w-sm shadow-2xl p-6`} onClick={e => e.stopPropagation()}>
               {/* Success icon */}
               <div className="flex justify-center mb-4">
                 <div className="w-14 h-14 rounded-full flex items-center justify-center" style={{ backgroundColor: `${couleur}15` }}>
@@ -3872,8 +3872,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         )}
 
         {showSignatureLinkModal && signatureLinkUrl && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowSignatureLinkModal(false)}>
-            <div className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-2xl w-full max-w-md shadow-2xl p-5`} onClick={e => e.stopPropagation()}>
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={() => setShowSignatureLinkModal(false)}>
+            <div className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md shadow-2xl p-5`} onClick={e => e.stopPropagation()}>
               <div className="flex items-center justify-between mb-4">
                 <h3 className={`text-lg font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>Lien de signature</h3>
                 <button onClick={() => setShowSignatureLinkModal(false)} className={`p-1 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
@@ -4422,7 +4422,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
             </div>
           </div>
         </div>
-        {showClientModal && <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"><div className={`${cardBg} rounded-2xl p-6 w-full max-w-md`}><h3 className="font-bold mb-4">Nouveau client</h3><div className="space-y-4"><input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="Nom *" value={newClient.nom} onChange={e => setNewClient(p => ({...p, nom: e.target.value}))} /><input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="Téléphone" value={newClient.telephone} onChange={e => setNewClient(p => ({...p, telephone: e.target.value}))} /></div><div className="flex justify-end gap-3 mt-6"><button onClick={() => setShowClientModal(false)} className={`px-4 py-2 rounded-xl ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`}>Annuler</button><button onClick={() => { if (newClient.nom) { const c = { id: generateId(), ...newClient }; setClients(prev => [...prev, c]); setForm(p => ({...p, clientId: c.id})); setShowClientModal(false); setNewClient({ nom: '', telephone: '' }); }}} className="px-4 py-2 text-white rounded-xl" style={{background: couleur}}>Créer</button></div></div></div>}
+        {showClientModal && <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4"><div className={`${cardBg} rounded-t-2xl sm:rounded-2xl p-6 w-full sm:max-w-md`}><h3 className="font-bold mb-4">Nouveau client</h3><div className="space-y-4"><input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="Nom *" value={newClient.nom} onChange={e => setNewClient(p => ({...p, nom: e.target.value}))} /><input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="Téléphone" value={newClient.telephone} onChange={e => setNewClient(p => ({...p, telephone: e.target.value}))} /></div><div className="flex justify-end gap-3 mt-6"><button onClick={() => setShowClientModal(false)} className={`px-4 py-2 rounded-xl ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`}>Annuler</button><button onClick={() => { if (newClient.nom) { const c = { id: generateId(), ...newClient }; setClients(prev => [...prev, c]); setForm(p => ({...p, clientId: c.id})); setShowClientModal(false); setNewClient({ nom: '', telephone: '' }); }}} className="px-4 py-2 text-white rounded-xl" style={{background: couleur}}>Créer</button></div></div></div>}
 
         {/* Template Selector Modal - also needed in create mode */}
         <TemplateSelector
@@ -4726,7 +4726,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           )}
         </div>
         {/* Row 2: Type filter pills */}
-        <div className="flex gap-1 overflow-x-auto pb-0.5 -mx-1 px-1">
+        <div className="flex gap-1 overflow-x-auto pb-0.5 -mx-1 px-1 scrollbar-hide" style={{ WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none' }}>
           {[['all', 'Tous'], ['devis', 'Devis'], ['factures', 'Factures'], ['acomptes', 'Acomptes'], ['situations', 'Situations'], ['avoirs', 'Avoirs'], ['attente', 'En attente'], ['a_traiter', 'À traiter'], ...(relances.isEnabled && relances.counts.total > 0 ? [['en_relance', 'En relance']] : [])].map(([k, v]) => {
             const count = k === 'en_relance' ? relances.counts.total : (filterCounts[k] || 0);
             if (k === 'acomptes' && count === 0) return null;
@@ -4926,7 +4926,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           </div>
         </div>
       ) : (
-        <div className="space-y-2">{filtered.map(d => {
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">{filtered.map(d => {
           const client = clients.find(c => c.id === d.client_id);
           const hasAcompte = d.type === 'devis' && getAcompteFacture(d.id);
           const chantier = chantiers.find(ch => ch.id === d.chantier_id);
@@ -5089,8 +5089,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 
       {/* B1: Assign client dropdown modal */}
       {assigningClientDevisId && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setAssigningClientDevisId(null)}>
-          <div className={`${cardBg} border rounded-2xl w-full max-w-sm shadow-2xl`} onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={() => setAssigningClientDevisId(null)}>
+          <div className={`${cardBg} border rounded-t-2xl sm:rounded-2xl w-full sm:max-w-sm shadow-2xl`} onClick={e => e.stopPropagation()}>
             <div className={`p-4 border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
               <h3 className={`font-bold ${textPrimary}`}>Assigner un client</h3>
               <p className={`text-xs ${textMuted} mt-1`}>Sélectionnez le client pour ce devis</p>
@@ -5193,8 +5193,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 
       {/* Save as Template Modal */}
       {showSaveTemplateModal && selected && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
-          <div className={`${cardBg} rounded-2xl w-full max-w-md shadow-2xl overflow-hidden`}>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4 animate-fade-in">
+          <div className={`${cardBg} rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md shadow-2xl overflow-hidden`}>
             <div className={`p-5 border-b flex items-center justify-between ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${couleur}20` }}>

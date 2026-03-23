@@ -33,6 +33,7 @@ import {
   formatCurrency,
   getPriorityColor,
 } from '../../lib/stockAlerts';
+import { captureException } from '../../lib/sentry';
 
 /**
  * @typedef {Object} StockWidgetProps
@@ -415,7 +416,7 @@ export default function StockWidget({ userId, className, setPage, isDark = false
       setPredictions(predictionsData.slice(0, 5)); // Top 5
       setOpportunities(opportunitiesData.slice(0, 1)); // Top 1
     } catch (err) {
-      console.error('Error fetching stock data:', err);
+      captureException(err, { context: 'StockWidget: Error fetching stock data' });
       setError('Erreur de chargement');
     } finally {
       setLoading(false);
@@ -456,8 +457,7 @@ export default function StockWidget({ userId, className, setPage, isDark = false
 
   // Handle order
   const handleOrder = (alert, quantity) => {
-    console.log('Order placed:', { alert, quantity });
-    // In real app: create order in database, update predicted stock
+    // TODO: create order in database, update predicted stock
   };
 
   // Handle navigate
