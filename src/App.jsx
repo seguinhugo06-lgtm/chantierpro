@@ -990,18 +990,11 @@ export default function App() {
 
   // Notifications are now computed via useMemo (see above) — no useEffect needed
 
-  // Loading screen
-  if (loading) return (
-    <div className="min-h-screen bg-[#f5f5f5] flex items-center justify-center">
-      <Building2 size={48} className="text-orange-500 animate-bounce" />
-    </div>
-  );
-
-  const isDark = theme === 'dark';
-  const tc = getThemeClasses(isDark);
-
-  // Client Portal — public page accessible via token (no auth required)
-  // Detect portal token from URL: /portal/{token} or ?portal={token}
+  // ╔════════════════════════════════════════════════════════════════╗
+  // ║ ⚠️  CRITICAL: portalToken MUST be BEFORE if(loading) return  ║
+  // ║ Moving it after causes React Error #310 (hook count mismatch)║
+  // ║ This has been broken and fixed 5 TIMES. DO NOT MOVE.         ║
+  // ╚════════════════════════════════════════════════════════════════╝
   const portalToken = useMemo(() => {
     try {
       const path = window.location.pathname;
@@ -1011,6 +1004,16 @@ export default function App() {
       return params.get('portal') || null;
     } catch { return null; }
   }, []);
+
+  // Loading screen — AFTER all hooks
+  if (loading) return (
+    <div className="min-h-screen bg-[#f5f5f5] flex items-center justify-center">
+      <Building2 size={48} className="text-orange-500 animate-bounce" />
+    </div>
+  );
+
+  const isDark = theme === 'dark';
+  const tc = getThemeClasses(isDark);
 
   if (page === 'client-portal' || portalToken) {
     const portalClientId = (() => {
