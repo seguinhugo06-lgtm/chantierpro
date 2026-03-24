@@ -599,7 +599,7 @@ export default function Dashboard({
   const [ceMoisModalOpen, setCeMoisModalOpen] = useState(false);
   const [marginAnalysisModal, setMarginAnalysisModal] = useState({ isOpen: false, chantierId: null, chantierNom: null });
   const [showWidgetConfig, setShowWidgetConfig] = useState(false);
-  const [showOverviewSection, setShowOverviewSection] = useState(true);
+  const [showOverviewSection, setShowOverviewSection] = useState(false);
   const [dragWidget, setDragWidget] = useState(null); // UX-004: drag & drop widget reorder
   const [showAIChat, setShowAIChat] = useState(false);
   const [showDevisExpress, setShowDevisExpress] = useState(false);
@@ -1206,7 +1206,7 @@ export default function Dashboard({
 
         {/* ========== PROFILE COMPLETION BANNER — TOP PRIORITY when < 50% ========== */}
         {profileCompletude < 50 && (
-          <section className="px-4 sm:px-6 mb-6">
+          <section className="px-4 sm:px-6 mb-3">
             <div className={`rounded-xl border p-4 ${
               profileCompletude < 30
                 ? isDark ? 'bg-red-900/20 border-red-800/50' : 'bg-red-50 border-red-200'
@@ -1258,7 +1258,7 @@ export default function Dashboard({
 
         {/* ========== URGENT ACTION BANNER ========== */}
         {urgentAction && (
-          <section className="px-4 sm:px-6 mb-6">
+          <section className="px-4 sm:px-6 mb-3">
             <div className={`rounded-xl overflow-hidden border-l-4 border-red-500 shadow-md ${isDark ? 'bg-red-500/10' : 'bg-red-50'}`}>
               <div className="p-4">
                 <div className="flex flex-wrap sm:flex-nowrap items-center gap-3">
@@ -1282,9 +1282,9 @@ export default function Dashboard({
           </section>
         )}
 
-        {/* ========== HERO DUO — Devis IA + Devis Express — hidden for non-devis roles ========== */}
-        {canCreateDevis && (
-        <section className="px-4 sm:px-6 pb-6">
+        {/* ========== HERO DUO — Devis IA + Devis Express — HIDDEN (already in sidebar) ========== */}
+        {false && canCreateDevis && (
+        <section className="px-4 sm:px-6 pb-3">
           <div className="grid grid-cols-2 gap-3">
             {/* Devis IA — subtle violet gradient */}
             <button
@@ -1329,7 +1329,7 @@ export default function Dashboard({
         )}
 
         {/* ========== MINI KPI DUO — À encaisser + Ce mois — hidden for non-finance roles ========== */}
-        {canSeeFinances && <section className="px-4 sm:px-6 pb-6">
+        {canSeeFinances && <section className="px-4 sm:px-6 pb-3">
           <div className="grid grid-cols-2 gap-3">
             {/* KPI cards with staggered animation */}
             {/* À encaisser */}
@@ -1458,8 +1458,8 @@ export default function Dashboard({
                     Voir détails →
                   </button>
                 </div>
-                <div style={{ width: '100%', height: 140 }}>
-                  <ResponsiveContainer width="100%" height={140}>
+                <div style={{ width: '100%', height: 110 }}>
+                  <ResponsiveContainer width="100%" height={110}>
                     <AreaChart data={months} margin={{ top: 5, right: 5, bottom: 0, left: -15 }}>
                       <defs>
                         <linearGradient id="caGradient" x1="0" y1="0" x2="0" y2="1">
@@ -1606,7 +1606,7 @@ export default function Dashboard({
           };
 
           return (
-            <section className="px-4 sm:px-6 mb-6">
+            <section className="px-4 sm:px-6 mb-3">
               <div className={`rounded-xl border p-4 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200/70'}`}>
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
@@ -1666,14 +1666,14 @@ export default function Dashboard({
         })()}
 
         {/* ========== 2-COLUMN GRID LAYOUT — Desktop: main + sidebar ========== */}
-        <div className="px-4 sm:px-6 mb-6">
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-6">
+        <div className="px-4 sm:px-6 mb-3">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-3">
 
         {/* ────── LEFT COLUMN — Actions + Charts ────── */}
-        <div className="space-y-6">
+        <div className="space-y-3">
 
-        {/* ========== SECONDARY SHORTCUTS — compact 4-icon bar ========== */}
-        <section>
+        {/* ========== SECONDARY SHORTCUTS — HIDDEN (already in +Nouveau header button) ========== */}
+        <section className="hidden">
           <div className="grid grid-cols-2 sm:flex gap-2">
             {[
               { icon: Users, label: '+ Client', action: () => { setCreateMode?.((p) => ({ ...p, client: true })); setPage?.('clients'); } },
@@ -1705,7 +1705,7 @@ export default function Dashboard({
         </div>{/* end LEFT COLUMN */}
 
         {/* ────── RIGHT COLUMN — Chantiers + Onboarding ────── */}
-        <div className="space-y-6">
+        <div className="space-y-3">
 
         {/* ========== CHANTIERS EN COURS — top 3 with progress bars ========== */}
         <section>
@@ -1802,7 +1802,7 @@ export default function Dashboard({
         </section>
 
         {/* ========== ONBOARDING — shows for new users, auto-dismisses ========== */}
-        <section className="px-4 sm:px-6 mb-6">
+        <section className="px-4 sm:px-6 mb-3">
           <OnboardingChecklist
             clients={clients}
             chantiers={chantiers}
@@ -1816,7 +1816,7 @@ export default function Dashboard({
 
         {/* ========== PROFILE COMPLETION BANNER — visible when >= 50% and < 80% (< 50% shown above KPIs) ========== */}
         {profileCompletude >= 50 && profileCompletude < 80 && (
-          <section className="px-4 sm:px-6 mb-6">
+          <section className="px-4 sm:px-6 mb-3">
             <div className={`rounded-xl border p-4 ${
               profileCompletude < 60
                 ? isDark ? 'bg-amber-900/20 border-amber-800/50' : 'bg-amber-50 border-amber-200'
@@ -1887,7 +1887,7 @@ export default function Dashboard({
           const f26score = Math.round((f26done / f26criteriaEval.length) * 100);
           if (f26score >= 100 || daysLeft <= 0) return null;
           return (
-            <section className="px-4 sm:px-6 mb-6">
+            <section className="px-4 sm:px-6 mb-3">
               <div className={`rounded-xl border p-4 ${
                 f26score < 50
                   ? isDark ? 'bg-red-900/20 border-red-800/50' : 'bg-red-50 border-red-200'
@@ -1980,7 +1980,7 @@ export default function Dashboard({
         {showOverviewSection && (<>
         {/* Widget Configuration Panel */}
         {showWidgetConfig && (
-          <section className="px-4 sm:px-6 pb-6">
+          <section className="px-4 sm:px-6 pb-3">
             <div className={`rounded-xl border p-4 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
               <div className="flex items-center justify-between mb-3">
                 <h2 className={`font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>Widgets du tableau de bord</h2>
@@ -2033,7 +2033,7 @@ export default function Dashboard({
 
         {/* Overview Widget - Single unified card */}
         {isWidgetVisible('overview') && (
-          <section className="px-4 sm:px-6 pb-6">
+          <section className="px-4 sm:px-6 pb-3">
             <OverviewWidget
               setPage={setPage}
               isDark={isDark}
@@ -2042,7 +2042,7 @@ export default function Dashboard({
         )}
 
         {/* Consolidated Widget - Multi-entreprise view */}
-        <section className="px-4 sm:px-6 pb-6">
+        <section className="px-4 sm:px-6 pb-3">
           <ConsolidatedWidget
             devis={devis}
             isDark={isDark}
