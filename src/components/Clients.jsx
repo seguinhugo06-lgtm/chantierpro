@@ -109,7 +109,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 300);
   const [activeTab, setActiveTab] = useState('historique');
-  const [form, setForm] = useState({ nom: '', prenom: '', entreprise: '', email: '', telephone: '', adresse: '', notes: '', categorie: '' });
+  const [form, setForm] = useState({ nom: '', prenom: '', entreprise: '', email: '', telephone: '', adresse: '', notes: '', categorie: '', siret: '', typeLogement: '', source: '' });
   const [sortBy, setSortBy] = useState('recent'); // recent, name, ca, activite
   const [sortDir, setSortDir] = useState('desc'); // 'asc' | 'desc'
   const [filterCategorie, setFilterCategorie] = useState('');
@@ -119,6 +119,8 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
   const [selectedEchange, setSelectedEchange] = useState(null); // P1.1: échange detail drawer
   const [showTypePicker, setShowTypePicker] = useState(false); // P1.2: custom type picker (filter)
   const [showFormTypePicker, setShowFormTypePicker] = useState(false); // P1.2: custom type picker (form)
+  const [historyFilter, setHistoryFilter] = useState('tout'); // Historique filter
+  const [showAdvanced, setShowAdvanced] = useState(false); // Form advanced section
   const [duplicateDismissed, setDuplicateDismissed] = useState(() => localStorage.getItem('clientDuplicateDismissed') === 'true');
 
   // Duplicate detection for form fields (telephone, email, nom)
@@ -133,7 +135,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
         if (selectedEchange) { setSelectedEchange(null); }
         else if (showTypePicker) { setShowTypePicker(false); }
         else if (showFormTypePicker) { setShowFormTypePicker(false); }
-        else if (show) { setShow(false); setEditId(null); setForm({ nom: '', prenom: '', entreprise: '', email: '', telephone: '', adresse: '', notes: '', categorie: '' }); clearErrors(); clearDupes(); }
+        else if (show) { setShow(false); setEditId(null); setForm({ nom: '', prenom: '', entreprise: '', email: '', telephone: '', adresse: '', notes: '', categorie: '', siret: '', typeLogement: '', source: '' }); clearErrors(); clearDupes(); }
         else if (viewId) { setViewId(null); }
         else if (showQuickModal) { setShowQuickModal(false); }
       }
@@ -178,6 +180,42 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
   const getClientStats = (id) => {
     return clientStatsMap.get(id) || { devis: 0, factures: 0, ca: 0, chantiers: 0, chantiersEnCours: 0, chantiersActifs: 0, devisActifs: 0 };
   };
+
+  // Scoring client automatique
+  const clientScores = useMemo(() => {
+    const maxCA = Math.max(1, ...clients.map(c => {
+      const ca = devis.filter(d => d.client_id === c.id && ['signe', 'facture'].includes(d.statut))
+        .reduce((s, d) => s + (d.total_ttc || 0), 0);
+      return ca;
+    }));
+
+    return clients.map(c => {
+      const clientDevis = devis.filter(d => d.client_id === c.id);
+      const signes = clientDevis.filter(d => ['signe', 'facture'].includes(d.statut));
+      const ca = signes.reduce((s, d) => s + (d.total_ttc || 0), 0);
+      const nbChantiers = chantiers.filter(ch => ch.client_id === c.id).length;
+      const lastDevis = clientDevis.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0))[0];
+      const joursSansActivite = lastDevis ? Math.round((new Date() - new Date(lastDevis.date)) / 86400000) : 999;
+      const anciennete = c.created_at ? Math.round((new Date() - new Date(c.created_at)) / 86400000) : 0;
+
+      // Score 0-100
+      const scoreCa = Math.min(30, (ca / maxCA) * 30);
+      const scoreConversion = clientDevis.length > 0 ? (signes.length / clientDevis.length) * 25 : 0;
+      const scoreFraicheur = Math.max(0, 20 - (joursSansActivite / 30) * 10);
+      const scoreChantiers = Math.min(15, nbChantiers * 5);
+      const scoreAnciennete = Math.min(10, anciennete / 365 * 10);
+      const score = Math.round(scoreCa + scoreConversion + scoreFraicheur + scoreChantiers + scoreAnciennete);
+
+      let classification = 'nouveau';
+      if (anciennete < 30) classification = 'nouveau';
+      else if (score >= 80) classification = 'vip';
+      else if (score >= 50) classification = 'regulier';
+      else if (score >= 20) classification = 'occasionnel';
+      else classification = 'dormant';
+
+      return { clientId: c.id, score, classification, ca, joursSansActivite };
+    });
+  }, [clients, devis, chantiers]);
 
   const getClientStatus = (clientId) => {
     const s = getClientStats(clientId);
@@ -432,7 +470,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
       return;
     }
     setShow(false);
-    setForm({ nom: '', prenom: '', entreprise: '', email: '', telephone: '', adresse: '', notes: '', categorie: '' });
+    setForm({ nom: '', prenom: '', entreprise: '', email: '', telephone: '', adresse: '', notes: '', categorie: '', siret: '', typeLogement: '', source: '' });
     clearErrors();
     clearDupes();
     showToast(wasEditing ? 'Client modifié avec succès' : 'Client créé avec succès', 'success');
@@ -465,7 +503,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
   };
 
   const startEdit = (client) => {
-    setForm({ nom: client.nom || '', prenom: client.prenom || '', entreprise: client.entreprise || '', email: client.email || '', telephone: client.telephone || '', adresse: client.adresse || '', notes: client.notes || '', categorie: client.categorie || '' });
+    setForm({ nom: client.nom || '', prenom: client.prenom || '', entreprise: client.entreprise || '', email: client.email || '', telephone: client.telephone || '', adresse: client.adresse || '', notes: client.notes || '', categorie: client.categorie || '', siret: client.siret || '', typeLogement: client.typeLogement || '', source: client.source || '' });
     clearErrors();
     setEditId(client.id);
     setViewId(null); // Close detail view to show edit form
@@ -474,6 +512,20 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
   const openGPS = (adresse) => { if (!adresse) return; window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(adresse)}`, '_blank'); };
   const callPhone = (tel) => { if (!tel) return; window.location.href = `tel:${tel.replace(/\s/g, '')}`; };
   const sendWhatsApp = (tel, nom) => { if (!tel) return; const phone = tel.replace(/\s/g, '').replace(/^0/, '33'); window.open(`https://wa.me/${phone}?text=${encodeURIComponent(`Bonjour ${nom || ''},`)}`, '_blank'); };
+
+  // Log échange automatique dans localStorage
+  const logEchange = (type, client) => {
+    const logs = JSON.parse(localStorage.getItem('cp_echanges') || '[]');
+    logs.unshift({
+      id: Date.now(),
+      clientId: client.id,
+      type, // 'appel', 'whatsapp', 'sms', 'email'
+      date: new Date().toISOString(),
+      note: '',
+    });
+    localStorage.setItem('cp_echanges', JSON.stringify(logs.slice(0, 200)));
+  };
+
   const handleDeleteClient = async (id) => {
     const client = clients.find(c => c.id === id);
     const stats = getClientStats(id);
@@ -568,7 +620,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
             {/* GPS first on mobile via order */}
             <button
               onClick={() => client.adresse ? openGPS(client.adresse) : startEdit(client)}
-              className={`flex flex-col items-center justify-center gap-1.5 py-3 sm:py-4 rounded-xl min-h-[44px] transition-all shadow-md hover:shadow-lg order-first sm:order-last ${client.adresse ? 'text-white' : ''}`}
+              className={`flex flex-col items-center justify-center gap-1.5 py-3 sm:py-2 rounded-xl min-h-[44px] transition-all shadow-md hover:shadow-lg order-first sm:order-last ${client.adresse ? 'text-white' : ''}`}
               style={client.adresse
                 ? { background: 'linear-gradient(135deg, #f97316, #ea580c)' }
                 : { background: isDark ? '#1e293b' : '#f1f5f9', border: '1px dashed', borderColor: isDark ? '#475569' : '#cbd5e1' }
@@ -587,24 +639,24 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
               )}
             </button>
             <button
-              onClick={() => client.telephone ? callPhone(client.telephone) : null}
+              onClick={() => { if (client.telephone) { callPhone(client.telephone); logEchange('appel', client); } }}
               disabled={!client.telephone}
-              className={`flex flex-col items-center justify-center gap-1.5 py-3 sm:py-4 rounded-xl min-h-[44px] transition-all text-white shadow-md ${client.telephone ? 'hover:shadow-lg cursor-pointer' : 'opacity-40 cursor-not-allowed'}`}
+              className={`flex flex-col items-center justify-center gap-1.5 py-3 sm:py-2 rounded-xl min-h-[44px] transition-all text-white shadow-md ${client.telephone ? 'hover:shadow-lg cursor-pointer' : 'opacity-40 cursor-not-allowed'}`}
               style={{ background: 'linear-gradient(135deg, #3b82f6, #2563eb)' }}
               title={!client.telephone ? 'Aucun numéro renseigné' : 'Appeler'}
             >
-              <Phone size={20} />
-              <span className="text-xs font-medium">Appeler</span>
+              <Phone size={20} className="sm:w-4 sm:h-4" />
+              <span className="text-xs sm:text-sm font-medium">Appeler</span>
             </button>
             <button
-              onClick={() => client.telephone ? sendWhatsApp(client.telephone, client.prenom) : null}
+              onClick={() => { if (client.telephone) { sendWhatsApp(client.telephone, client.prenom); logEchange('whatsapp', client); } }}
               disabled={!client.telephone}
-              className={`flex flex-col items-center justify-center gap-1.5 py-3 sm:py-4 rounded-xl min-h-[44px] transition-all text-white shadow-md ${client.telephone ? 'hover:shadow-lg cursor-pointer' : 'opacity-40 cursor-not-allowed'}`}
+              className={`flex flex-col items-center justify-center gap-1.5 py-3 sm:py-2 rounded-xl min-h-[44px] transition-all text-white shadow-md ${client.telephone ? 'hover:shadow-lg cursor-pointer' : 'opacity-40 cursor-not-allowed'}`}
               style={{ background: 'linear-gradient(135deg, #22c55e, #16a34a)' }}
               title={!client.telephone ? 'Aucun numéro renseigné' : 'WhatsApp'}
             >
-              <MessageCircle size={20} />
-              <span className="text-xs font-medium">WhatsApp</span>
+              <MessageCircle size={20} className="sm:w-4 sm:h-4" />
+              <span className="text-xs sm:text-sm font-medium">WhatsApp</span>
             </button>
           </div>
 
@@ -847,6 +899,26 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
           }));
           timeline.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
 
+          // Filter timeline by historyFilter
+          const filteredTimeline = historyFilter === 'tout'
+            ? timeline
+            : timeline.filter(item => {
+                if (historyFilter === 'devis') return item.type === 'devis';
+                if (historyFilter === 'factures') return item.type === 'facture';
+                if (historyFilter === 'chantiers') return item.type === 'chantier';
+                return true;
+              });
+
+          // Lifetime value stats
+          const nbDevis = clientDevis.filter(d => d.type === 'devis').length;
+          const nbFactures = clientDevis.filter(d => d.type === 'facture').length;
+          const caTotal = clientDevis
+            .filter(d => d.type === 'facture' && d.statut === 'payee')
+            .reduce((sum, d) => sum + (d.total_ttc || d.montant_ttc || (d.total_ht ? d.total_ht * 1.2 : 0)), 0);
+          const dateCreation = client.created_at
+            ? new Date(client.created_at).toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' })
+            : '—';
+
           const statusLabel = (s) => ({
             brouillon: 'Brouillon', envoye: 'Envoyé', vu: 'Vu', accepte: 'Signé',
             refuse: 'Refusé', payee: 'Payée', facturee: 'Facturé',
@@ -865,7 +937,29 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
 
           return (
             <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-3 sm:p-5`}>
-              {timeline.length === 0 ? (
+              {/* Lifetime value summary */}
+              <div className={`text-xs mb-3 p-2 rounded-lg ${isDark ? 'bg-slate-700/50 text-slate-300' : 'bg-slate-50 text-slate-600'}`}>
+                Valeur client : <strong>{formatMoney(caTotal)}</strong> · {nbDevis} devis · {nbFactures} facture{nbFactures > 1 ? 's' : ''} · Depuis {dateCreation}
+              </div>
+
+              {/* Filter chips */}
+              <div className="flex gap-2 mb-3 overflow-x-auto">
+                {['Tout', 'Devis', 'Factures', 'Chantiers'].map(f => (
+                  <button key={f}
+                    onClick={() => setHistoryFilter(f.toLowerCase())}
+                    className={`text-xs px-3 py-1 rounded-full whitespace-nowrap ${
+                      historyFilter === f.toLowerCase()
+                        ? 'text-white'
+                        : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'
+                    }`}
+                    style={historyFilter === f.toLowerCase() ? { background: couleur } : {}}
+                  >
+                    {f}
+                  </button>
+                ))}
+              </div>
+
+              {filteredTimeline.length === 0 ? (
                 <div className="text-center py-10">
                   <div className={`w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
                     <History size={28} className={isDark ? 'text-slate-500' : 'text-slate-400'} />
@@ -875,7 +969,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {timeline.map(item => (
+                  {filteredTimeline.map(item => (
                     <button
                       key={item.id}
                       onClick={item.onClick}
@@ -1019,31 +1113,49 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
             {(() => {
               const clientEchanges = echanges.filter(e => e.client_id === client.id).sort((a, b) => new Date(b.date) - new Date(a.date));
 
-              // Quick action buttons for contacting
+              // Local exchange logs from localStorage
+              const localLogs = JSON.parse(localStorage.getItem('cp_echanges') || '[]')
+                .filter(e => e.clientId === client.id);
+
+              // Merge: local logs as lightweight entries alongside real echanges
+              const allEchanges = [
+                ...clientEchanges.map(e => ({ ...e, source: 'db' })),
+                ...localLogs.map(l => ({
+                  id: l.id,
+                  client_id: l.clientId,
+                  type: l.type,
+                  date: l.date,
+                  objet: l.note || '',
+                  direction: 'out',
+                  source: 'local',
+                })),
+              ].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+              // Quick action buttons for contacting — with logEchange
               const contactButtons = (
                 <div className="flex gap-2 flex-wrap">
                   {client.telephone && (
                     <>
-                      <a href={`tel:${client.telephone.replace(/\s/g, '')}`} className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-colors ${CHANNEL_CONFIG.appel.btnBg}`}>
+                      <a href={`tel:${client.telephone.replace(/\s/g, '')}`} onClick={() => logEchange('appel', client)} className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-colors ${CHANNEL_CONFIG.appel.btnBg}`}>
                         <Phone size={14} /> Appeler
                       </a>
-                      <a href={`sms:${client.telephone.replace(/\s/g, '')}`} className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-colors ${CHANNEL_CONFIG.sms.btnBg}`}>
+                      <a href={`sms:${client.telephone.replace(/\s/g, '')}`} onClick={() => logEchange('sms', client)} className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-colors ${CHANNEL_CONFIG.sms.btnBg}`}>
                         <MessageCircle size={14} /> SMS
                       </a>
-                      <a href={`https://wa.me/${client.telephone.replace(/\s/g, '').replace(/^0/, '33')}`} target="_blank" rel="noopener noreferrer" className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-colors ${CHANNEL_CONFIG.whatsapp.btnBg}`}>
+                      <a href={`https://wa.me/${client.telephone.replace(/\s/g, '').replace(/^0/, '33')}`} onClick={() => logEchange('whatsapp', client)} target="_blank" rel="noopener noreferrer" className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-colors ${CHANNEL_CONFIG.whatsapp.btnBg}`}>
                         <MessageCircle size={14} /> WhatsApp
                       </a>
                     </>
                   )}
                   {client.email && (
-                    <a href={`mailto:${client.email}`} className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-colors ${CHANNEL_CONFIG.email.btnBg}`}>
+                    <a href={`mailto:${client.email}`} onClick={() => logEchange('email', client)} className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-colors ${CHANNEL_CONFIG.email.btnBg}`}>
                       <Mail size={14} /> Email
                     </a>
                   )}
                 </div>
               );
 
-              if (clientEchanges.length === 0) return (
+              if (allEchanges.length === 0) return (
                 <div className="text-center py-10">
                   <div className={`w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
                     <MessageSquare size={28} className={isDark ? 'text-slate-500' : 'text-slate-400'} />
@@ -1059,10 +1171,10 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
               return (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
-                    <p className={`text-sm font-medium ${textPrimary}`}>{clientEchanges.length} échange{clientEchanges.length > 1 ? 's' : ''}</p>
+                    <p className={`text-sm font-medium ${textPrimary}`}>{allEchanges.length} échange{allEchanges.length > 1 ? 's' : ''}</p>
                     {contactButtons}
                   </div>
-                  {clientEchanges.map(e => {
+                  {allEchanges.map(e => {
                     const channel = CHANNEL_CONFIG[e.type] || CHANNEL_CONFIG.email;
                     const ChannelIcon = channel.icon;
                     const dirIn = e.direction === 'in' || e.direction === 'entrant';
@@ -1409,7 +1521,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
   if (show) return (
     <div className="space-y-6">
       <div className="flex items-center gap-2 sm:gap-4">
-        <button onClick={() => { setShow(false); setEditId(null); setForm({ nom: '', prenom: '', entreprise: '', email: '', telephone: '', adresse: '', notes: '', categorie: '' }); }} className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
+        <button onClick={() => { setShow(false); setEditId(null); setForm({ nom: '', prenom: '', entreprise: '', email: '', telephone: '', adresse: '', notes: '', categorie: '', siret: '', typeLogement: '', source: '' }); }} className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
           <ArrowLeft size={20} className={textPrimary} />
         </button>
         <h2 className={`text-2xl font-bold ${textPrimary}`}>{editId ? 'Modifier' : 'Nouveau'} client</h2>
@@ -1497,6 +1609,44 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                 {form.notes?.length || 0} / 500
               </span>
             </div>
+          </div>
+
+          {/* Section avancée collapsible */}
+          <div className="sm:col-span-2">
+            <button type="button" onClick={() => setShowAdvanced(!showAdvanced)} className={`flex items-center gap-2 w-full text-xs font-medium py-2 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+              <ChevronDown size={14} className={`transition-transform ${showAdvanced ? '' : '-rotate-90'}`} />
+              Informations avancées
+            </button>
+            {showAdvanced && (
+              <div className="space-y-3 pl-2 border-l-2" style={{ borderColor: `${couleur}30` }}>
+                <div>
+                  <label htmlFor="client-siret" className={`block text-sm font-medium mb-1 ${textPrimary}`}>SIRET</label>
+                  <input id="client-siret" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="XXX XXX XXX XXXXX" value={form.siret || ''} onChange={e => setForm(p => ({...p, siret: e.target.value}))} />
+                </div>
+                <div>
+                  <label htmlFor="client-typeLogement" className={`block text-sm font-medium mb-1 ${textPrimary}`}>Type de logement</label>
+                  <select id="client-typeLogement" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.typeLogement || ''} onChange={e => setForm(p => ({...p, typeLogement: e.target.value}))}>
+                    <option value="">Non spécifié</option>
+                    <option>Maison</option>
+                    <option>Appartement</option>
+                    <option>Commerce</option>
+                    <option>Bureau</option>
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor="client-source" className={`block text-sm font-medium mb-1 ${textPrimary}`}>Source d&apos;acquisition</label>
+                  <select id="client-source" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.source || ''} onChange={e => setForm(p => ({...p, source: e.target.value}))}>
+                    <option value="">Non spécifié</option>
+                    <option>Bouche-à-oreille</option>
+                    <option>Site web</option>
+                    <option>Réseaux sociaux</option>
+                    <option>Pages Jaunes</option>
+                    <option>Recommandation</option>
+                    <option>Autre</option>
+                  </select>
+                </div>
+              </div>
+            )}
           </div>
         </div>
         <div className={`flex justify-end gap-3 mt-6 pt-6 border-t ${isDark ? 'border-slate-700' : ''}`}>
@@ -1980,9 +2130,22 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                           <Building2 size={11} /> {c.entreprise}
                         </p>
                       )}
-                      {/* Badges row — Order: Status → Type → Doublon */}
+                      {/* Badges row — Order: Score → Status → Type → Doublon */}
                       <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                        {/* Status badge (always first) with tooltip */}
+                        {/* Score badge */}
+                        {(() => {
+                          const cs = clientScores.find(sc => sc.clientId === c.id);
+                          if (!cs) return null;
+                          const scoreColors = { vip: '#f59e0b', regulier: '#10b981', occasionnel: '#3b82f6', dormant: '#ef4444', nouveau: '#8b5cf6' };
+                          const scoreLabels = { vip: 'VIP', regulier: 'Fidele', occasionnel: 'Occasionnel', dormant: 'Dormant', nouveau: 'Nouveau' };
+                          return (
+                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
+                              style={{ backgroundColor: `${scoreColors[cs.classification]}20`, color: scoreColors[cs.classification] }}>
+                              {scoreLabels[cs.classification]} {cs.score}
+                            </span>
+                          );
+                        })()}
+                        {/* Status badge with tooltip */}
                         <span
                           className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${isDark ? statusColor.darkBg + ' ' + statusColor.darkText : statusColor.bg + ' ' + statusColor.text}`}
                           title={STATUS_TOOLTIPS[status] || ''}
@@ -2043,19 +2206,11 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                   )}
                 </div>
 
-                {/* Stats footer */}
+                {/* Stats footer — readable text */}
                 <div className={`px-4 py-2.5 border-t flex items-center justify-between mt-auto ${isDark ? 'border-slate-700/50 bg-slate-900/30' : 'border-slate-100 bg-slate-50/50'}`}>
-                  <div className="flex gap-3">
-                    <span className={`flex items-center gap-1 text-xs ${s.chantiers > 0 ? textSecondary : textMuted}`} title="Chantiers">
-                      <Home size={12} className={s.chantiers > 0 ? 'text-emerald-500' : ''} /> {s.chantiers}
-                    </span>
-                    <span className={`flex items-center gap-1 text-xs ${s.devis > 0 ? textSecondary : textMuted}`} title="Devis">
-                      <FileText size={12} className={s.devis > 0 ? 'text-blue-500' : ''} /> {s.devis}
-                    </span>
-                    <span className={`flex items-center gap-1 text-xs ${s.factures > 0 ? textSecondary : textMuted}`} title="Factures">
-                      <Receipt size={12} className={s.factures > 0 ? 'text-purple-500' : ''} /> {s.factures}
-                    </span>
-                  </div>
+                  <span className={`text-xs ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
+                    {s.chantiers} {s.chantiers > 1 ? 'chantiers' : 'chantier'} · {s.devis} {s.devis > 1 ? 'devis' : 'devis'} · {s.factures} {s.factures > 1 ? 'factures' : 'facture'}
+                  </span>
                   <span className={`font-bold text-xs ${s.ca === 0 ? textMuted : ''}`} style={s.ca > 0 ? { color: couleur } : {}}>{formatMoney(s.ca)}</span>
                 </div>
               </article>
