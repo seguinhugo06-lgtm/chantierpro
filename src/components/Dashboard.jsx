@@ -99,7 +99,10 @@ import {
 } from './dashboard/index';
 
 // Recharts for sparkline
-import { AreaChart, Area, XAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+
+// Framer Motion for animations
+import { motion, AnimatePresence } from 'framer-motion';
 
 // UI Components
 import { Button } from './ui/Button';
@@ -596,6 +599,7 @@ export default function Dashboard({
   const [ceMoisModalOpen, setCeMoisModalOpen] = useState(false);
   const [marginAnalysisModal, setMarginAnalysisModal] = useState({ isOpen: false, chantierId: null, chantierNom: null });
   const [showWidgetConfig, setShowWidgetConfig] = useState(false);
+  const [showOverviewSection, setShowOverviewSection] = useState(true);
   const [dragWidget, setDragWidget] = useState(null); // UX-004: drag & drop widget reorder
   const [showAIChat, setShowAIChat] = useState(false);
   const [showDevisExpress, setShowDevisExpress] = useState(false);
@@ -1327,6 +1331,7 @@ export default function Dashboard({
         {/* ========== MINI KPI DUO — À encaisser + Ce mois — hidden for non-finance roles ========== */}
         {canSeeFinances && <section className="px-4 sm:px-6 pb-6">
           <div className="grid grid-cols-2 gap-3">
+            {/* KPI cards with staggered animation */}
             {/* À encaisser */}
             <button
               onClick={() => setEncaisserModalOpen(true)}
@@ -1434,31 +1439,44 @@ export default function Dashboard({
             }
             const hasData = months.some(m => m.ca > 0);
             if (!hasData) return null;
+            const totalCA = months.reduce((s, m) => s + m.ca, 0);
             return (
-              <div className={`mt-3 rounded-xl border p-3 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
-                <div className="flex items-center justify-between mb-2">
-                  <span className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>CA 6 derniers mois</span>
-                  <button onClick={() => setPage?.('finances')} className={`text-xs ${isDark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-400 hover:text-slate-600'}`}>
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2, duration: 0.4 }}
+                className={`mt-3 rounded-xl border p-4 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <div>
+                    <span className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>CA 6 derniers mois</span>
+                    <p className={`text-lg font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                      {modeDiscret ? '•••••' : new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(totalCA)}
+                    </p>
+                  </div>
+                  <button onClick={() => setPage?.('finances')} className={`text-xs px-2 py-1 rounded-lg transition-colors ${isDark ? 'text-slate-500 hover:text-slate-300 hover:bg-slate-700' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'}`}>
                     Voir détails →
                   </button>
                 </div>
-                <div style={{ width: '100%', height: 100 }}>
-                  <ResponsiveContainer width="100%" height={100}>
-                    <AreaChart data={months} margin={{ top: 5, right: 5, bottom: 0, left: 5 }}>
+                <div style={{ width: '100%', height: 140 }}>
+                  <ResponsiveContainer width="100%" height={140}>
+                    <AreaChart data={months} margin={{ top: 5, right: 5, bottom: 0, left: -15 }}>
                       <defs>
                         <linearGradient id="caGradient" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor={couleur} stopOpacity={0.3} />
+                          <stop offset="0%" stopColor={couleur} stopOpacity={0.25} />
                           <stop offset="100%" stopColor={couleur} stopOpacity={0.02} />
                         </linearGradient>
                       </defs>
-                      <Area type="monotone" dataKey="ca" stroke={couleur} strokeWidth={2} fill="url(#caGradient)" dot={false} isAnimationActive={true} animationDuration={800} />
+                      <Area type="monotone" dataKey="ca" stroke={couleur} strokeWidth={2.5} strokeLinecap="round" fill="url(#caGradient)" dot={{ r: 3, fill: couleur, strokeWidth: 0 }} activeDot={{ r: 5, fill: couleur, stroke: isDark ? '#1e293b' : '#fff', strokeWidth: 2 }} isAnimationActive={true} animationDuration={800} />
                       <XAxis dataKey="label" tick={{ fontSize: 10, fill: isDark ? '#94a3b8' : '#94a3b8' }} axisLine={false} tickLine={false} />
+                      <YAxis tick={{ fontSize: 9, fill: isDark ? '#64748b' : '#94a3b8' }} axisLine={false} tickLine={false} tickFormatter={v => v >= 1000 ? `${(v/1000).toFixed(0)}k` : v} width={35} />
                       <Tooltip
-                        content={({ active, payload }) => {
+                        content={({ active, payload, label }) => {
                           if (!active || !payload?.length) return null;
                           return (
-                            <div className={`rounded-lg shadow-lg px-3 py-2 text-xs ${isDark ? 'bg-slate-700 text-white' : 'bg-white text-slate-900 border border-slate-200'}`}>
-                              <p className="font-semibold">{new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(payload[0].value)}</p>
+                            <div className={`rounded-xl shadow-xl px-4 py-2.5 text-xs ${isDark ? 'bg-slate-700 text-white border border-slate-600' : 'bg-white text-slate-900 border border-slate-200'}`}>
+                              <p className={`text-[10px] mb-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{label}</p>
+                              <p className="font-bold text-sm">{new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(payload[0].value)}</p>
                             </div>
                           );
                         }}
@@ -1466,36 +1484,50 @@ export default function Dashboard({
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
-              </div>
+              </motion.div>
             );
           })()}
-          {/* Mini Pipeline Funnel */}
+          {/* Mini Pipeline Funnel with montants */}
           {(() => {
             const pipeline = [
-              { label: 'Brouillons', count: devis.filter(d => d.statut === 'brouillon').length, color: '#94a3b8' },
-              { label: 'Envoyés', count: devis.filter(d => d.statut === 'envoye').length, color: '#3b82f6' },
-              { label: 'Signés', count: devis.filter(d => ['signe'].includes(d.statut)).length, color: '#10b981' },
-              { label: 'Facturés', count: devis.filter(d => d.statut === 'facture').length, color: '#8b5cf6' },
+              { label: 'Brouillons', count: devis.filter(d => d.statut === 'brouillon').length, montant: devis.filter(d => d.statut === 'brouillon').reduce((s, d) => s + (d.total_ttc || 0), 0), color: '#94a3b8' },
+              { label: 'Envoyés', count: devis.filter(d => d.statut === 'envoye').length, montant: devis.filter(d => d.statut === 'envoye').reduce((s, d) => s + (d.total_ttc || 0), 0), color: '#3b82f6' },
+              { label: 'Signés', count: devis.filter(d => ['signe'].includes(d.statut)).length, montant: devis.filter(d => ['signe'].includes(d.statut)).reduce((s, d) => s + (d.total_ttc || 0), 0), color: '#10b981' },
+              { label: 'Facturés', count: devis.filter(d => d.statut === 'facture').length, montant: devis.filter(d => d.statut === 'facture').reduce((s, d) => s + (d.total_ttc || 0), 0), color: '#8b5cf6' },
+              { label: 'Payés', count: devis.filter(d => d.statut === 'paye' || (d.statut === 'facture' && d.montant_paye > 0)).length, montant: devis.filter(d => d.statut === 'paye' || (d.statut === 'facture' && d.montant_paye > 0)).reduce((s, d) => s + (d.montant_paye || d.total_ttc || 0), 0), color: '#06b6d4' },
             ];
             const total = pipeline.reduce((s, p) => s + p.count, 0);
             if (total === 0) return null;
             return (
-              <div className={`mt-3 rounded-xl border p-3 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
-                <span className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Pipeline commercial</span>
-                <div className="flex mt-2 rounded-full overflow-hidden h-3">
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3, duration: 0.4 }}
+                className={`mt-3 rounded-xl border p-4 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <span className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Pipeline commercial</span>
+                  <button onClick={() => setPage?.('devis')} className={`text-xs px-2 py-1 rounded-lg transition-colors ${isDark ? 'text-slate-500 hover:text-slate-300 hover:bg-slate-700' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'}`}>
+                    Pipeline →
+                  </button>
+                </div>
+                <div className="flex mt-1 rounded-full overflow-hidden h-3">
                   {pipeline.filter(p => p.count > 0).map(p => (
-                    <div key={p.label} style={{ width: `${(p.count / total) * 100}%`, backgroundColor: p.color }} title={`${p.label}: ${p.count}`} />
+                    <div key={p.label} style={{ width: `${Math.max((p.count / total) * 100, 3)}%`, backgroundColor: p.color }} title={`${p.label}: ${p.count}`} className="transition-all duration-500" />
                   ))}
                 </div>
-                <div className="flex justify-between mt-1.5">
+                <div className="flex justify-between mt-2">
                   {pipeline.map(p => (
-                    <div key={p.label} className="text-center">
-                      <span className={`text-xs font-bold ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{p.count}</span>
+                    <button key={p.label} onClick={() => setPage?.('devis')} className={`text-center flex-1 py-1 rounded-lg transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}>
+                      <span className={`text-xs font-bold block ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{p.count}</span>
                       <span className={`text-[9px] block ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{p.label}</span>
-                    </div>
+                      <span className={`text-[9px] font-medium block ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                        {modeDiscret ? '•••' : p.montant >= 1000 ? `${(p.montant/1000).toFixed(1)}k€` : `${Math.round(p.montant)}€`}
+                      </span>
+                    </button>
                   ))}
                 </div>
-              </div>
+              </motion.div>
             );
           })()}
         </section>}
@@ -1923,12 +1955,13 @@ export default function Dashboard({
         </div>{/* end grid */}
         </div>{/* end grid wrapper */}
 
-        {/* Vue d'ensemble header with Personnaliser button */}
+        {/* Vue d'ensemble header with Personnaliser button + collapsible toggle */}
         <section className="px-4 sm:px-6 pb-2 flex items-center justify-between">
-          <div className="flex items-center gap-2">
+          <button onClick={() => setShowOverviewSection(p => !p)} className="flex items-center gap-2 group">
             <LayoutDashboard size={15} style={{ color: couleur }} />
             <h2 className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>Tableau de bord</h2>
-          </div>
+            <ChevronDown size={14} className={`transition-transform duration-200 ${isDark ? 'text-slate-500' : 'text-slate-400'} ${showOverviewSection ? '' : '-rotate-90'}`} />
+          </button>
           <button
             onClick={() => setShowWidgetConfig(!showWidgetConfig)}
             className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
@@ -1943,6 +1976,8 @@ export default function Dashboard({
           </button>
         </section>
 
+        {/* Widget Configuration Panel — all wrapped in collapsible */}
+        {showOverviewSection && (<>
         {/* Widget Configuration Panel */}
         {showWidgetConfig && (
           <section className="px-4 sm:px-6 pb-6">
@@ -2373,6 +2408,7 @@ export default function Dashboard({
             )}
           </div>
         </section>
+        </>)}{/* end showOverviewSection collapsible */}
       </div>
 
       {/* Relance Modal */}
