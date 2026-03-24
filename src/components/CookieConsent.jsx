@@ -144,7 +144,7 @@ export default function CookieConsent({ isDark = false, couleur = '#f97316', set
             exit={{ scale: 0, opacity: 0 }}
             transition={{ type: 'spring', stiffness: 300, damping: 25 }}
             onClick={handleReopen}
-            className={`fixed bottom-4 left-4 z-[60] flex items-center gap-2 px-3 py-2 rounded-full shadow-lg border text-sm font-medium transition-colors ${
+            className={`fixed bottom-4 left-4 z-[1050] flex items-center gap-2 px-3 py-2 rounded-full shadow-lg border text-sm font-medium transition-colors ${
               isDark
                 ? 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'
                 : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
@@ -165,7 +165,7 @@ export default function CookieConsent({ isDark = false, couleur = '#f97316', set
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 100, opacity: 0 }}
             transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-            className="fixed bottom-0 left-0 right-0 z-[60] p-0 sm:p-4"
+            className="fixed bottom-0 left-0 right-0 z-[1050] p-0 sm:p-4"
           >
             <div
               className={`max-w-2xl mx-auto rounded-t-2xl sm:rounded-2xl border shadow-2xl backdrop-blur-sm ${cardBg}`}

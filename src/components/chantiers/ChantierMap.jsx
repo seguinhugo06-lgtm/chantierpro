@@ -178,7 +178,7 @@ export default function ChantierMap({ chantiers, clients, onSelectChantier, isDa
       `}</style>
 
       {loading && (
-        <div className={`absolute top-3 left-1/2 -translate-x-1/2 z-[1000] px-4 py-2 rounded-xl text-sm font-medium shadow-lg ${isDark ? 'bg-slate-700 text-slate-200' : 'bg-white text-slate-700'}`}>
+        <div className={`absolute top-3 left-1/2 -translate-x-1/2 z-[1030] px-4 py-2 rounded-xl text-sm font-medium shadow-lg ${isDark ? 'bg-slate-700 text-slate-200' : 'bg-white text-slate-700'}`}>
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: `${couleur} transparent ${couleur} ${couleur}` }} />
             Géolocalisation des chantiers...
@@ -187,7 +187,7 @@ export default function ChantierMap({ chantiers, clients, onSelectChantier, isDa
       )}
 
       {/* Filter overlay buttons */}
-      <div className={`absolute top-3 left-3 z-[1000] flex gap-1.5`}>
+      <div className={`absolute top-3 left-3 z-[1030] flex gap-1.5`}>
         {[
           { key: 'all', label: 'Tous', color: couleur },
           { key: 'en_cours', label: 'En cours', color: STATUS_COLORS.en_cours },
@@ -211,7 +211,7 @@ export default function ChantierMap({ chantiers, clients, onSelectChantier, isDa
       </div>
 
       {/* Counter + Legend */}
-      <div className={`absolute bottom-6 left-3 z-[1000] px-3 py-2 rounded-xl text-xs shadow-lg ${isDark ? 'bg-slate-800/95 text-slate-300' : 'bg-white/95 text-slate-600'}`}>
+      <div className={`absolute bottom-6 left-3 z-[1030] px-3 py-2 rounded-xl text-xs shadow-lg ${isDark ? 'bg-slate-800/95 text-slate-300' : 'bg-white/95 text-slate-600'}`}>
         <div className="flex items-center gap-2 mb-1.5">
           <MapPin size={12} />
           <span className="font-medium">{positions.filter(ch => mapFilter === 'all' || ch.statut === mapFilter).length} sur la carte</span>
@@ -236,7 +236,7 @@ export default function ChantierMap({ chantiers, clients, onSelectChantier, isDa
       </div>
 
       {positions.length === 0 && !loading && (
-        <div className={`absolute inset-0 z-[1000] flex items-center justify-center ${isDark ? 'bg-slate-800/80' : 'bg-white/80'}`}>
+        <div className={`absolute inset-0 z-[1030] flex items-center justify-center ${isDark ? 'bg-slate-800/80' : 'bg-white/80'}`}>
           <div className="text-center p-6">
             <AlertTriangle size={32} className={textMuted + ' mx-auto mb-2'} />
             <p className={`font-medium ${textPrimary}`}>Aucun chantier géolocalisé</p>

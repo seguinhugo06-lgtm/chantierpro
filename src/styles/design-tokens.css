@@ -37,6 +37,16 @@
   --color-danger-600: #dc2626;
   --color-danger-700: #b91c1c;
 
+  /* Info - Bleu */
+  --color-info-50: #eff6ff;
+  --color-info-500: #3b82f6;
+  --color-info-600: #2563eb;
+
+  /* Accent - Violet */
+  --color-accent-50: #f5f3ff;
+  --color-accent-500: #8b5cf6;
+  --color-accent-600: #7c3aed;
+
   /* Neutral - Gris (Slate) */
   --color-gray-50: #f8fafc;
   --color-gray-100: #f1f5f9;

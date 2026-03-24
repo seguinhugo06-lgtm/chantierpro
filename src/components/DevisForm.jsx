@@ -1,131 +1,5 @@
 import React, { memo } from 'react';
 
-const styles = {
-  container: {
-    background: '#fff',
-    padding: '30px',
-    borderRadius: '12px',
-    border: '1px solid #e5e7eb',
-    maxWidth: '1000px'
-  },
-  formRow: {
-    display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
-    gap: '20px',
-    marginBottom: '30px'
-  },
-  formGroup: {
-    display: 'flex',
-    flexDirection: 'column'
-  },
-  label: {
-    display: 'block',
-    fontSize: '14px',
-    fontWeight: '500',
-    marginBottom: '8px',
-    color: '#374151'
-  },
-  input: {
-    width: '100%',
-    padding: '12px',
-    border: '1px solid #d1d5db',
-    borderRadius: '8px',
-    fontSize: '16px',
-    outline: 'none',
-    boxSizing: 'border-box'
-  },
-  sectionTitle: {
-    fontSize: '18px',
-    fontWeight: 'bold',
-    marginBottom: '16px',
-    color: '#111'
-  },
-  ligneForm: {
-    background: '#f9fafb',
-    padding: '20px',
-    borderRadius: '8px',
-    marginBottom: '20px',
-    display: 'grid',
-    gridTemplateColumns: '2fr 1fr 1fr auto',
-    gap: '12px',
-    alignItems: 'end'
-  },
-  addButton: {
-    padding: '10px 20px',
-    background: '#f97316',
-    color: '#fff',
-    border: 'none',
-    borderRadius: '6px',
-    cursor: 'pointer',
-    fontWeight: '600',
-    fontSize: '18px'
-  },
-  table: {
-    width: '100%',
-    borderCollapse: 'collapse',
-    border: '1px solid #e5e7eb',
-    borderRadius: '8px',
-    overflow: 'hidden',
-    marginBottom: '20px'
-  },
-  tableHead: {
-    background: '#f9fafb'
-  },
-  th: {
-    padding: '12px',
-    textAlign: 'left',
-    fontSize: '12px',
-    fontWeight: '600',
-    color: '#666'
-  },
-  td: {
-    padding: '12px',
-    borderTop: '1px solid #e5e7eb'
-  },
-  deleteButton: {
-    background: 'none',
-    border: 'none',
-    cursor: 'pointer',
-    fontSize: '18px'
-  },
-  totaux: {
-    background: '#f9fafb',
-    padding: '20px',
-    borderTop: '2px solid #e5e7eb',
-    display: 'flex',
-    justifyContent: 'flex-end',
-    gap: '40px',
-    fontSize: '16px'
-  },
-  totalTTC: {
-    fontSize: '20px',
-    color: '#f97316',
-    fontWeight: 'bold'
-  },
-  submitButton: {
-    width: '100%',
-    padding: '16px',
-    background: 'linear-gradient(135deg, #f97316 0%, #dc2626 100%)',
-    color: '#fff',
-    border: 'none',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    fontSize: '16px',
-    fontWeight: '600'
-  },
-  submitButtonDisabled: {
-    width: '100%',
-    padding: '16px',
-    background: '#d1d5db',
-    color: '#fff',
-    border: 'none',
-    borderRadius: '8px',
-    cursor: 'not-allowed',
-    fontSize: '16px',
-    fontWeight: '600'
-  }
-};
-
 const DevisForm = memo(({
   devisForm,
   setDevisForm,
@@ -137,7 +11,7 @@ const DevisForm = memo(({
   onSubmit,
   calculerTotaux
 }) => {
-  
+
   const totaux = calculerTotaux(devisForm.lignes);
   const canSubmit = devisForm.clientId && devisForm.lignes.length > 0;
 
@@ -146,22 +20,22 @@ const DevisForm = memo(({
   };
 
   const handleLigneChange = (field) => (e) => {
-    const value = field === 'quantite' || field === 'prixUnitaire' 
-      ? parseFloat(e.target.value) || 0 
+    const value = field === 'quantite' || field === 'prixUnitaire'
+      ? parseFloat(e.target.value) || 0
       : e.target.value;
     setCurrentLigne(prev => ({ ...prev, [field]: value }));
   };
 
   return (
-    <div style={styles.container}>
-      <div style={styles.formRow}>
-        <div style={styles.formGroup}>
-          <label style={styles.label}>Client *</label>
-          <select 
-            value={devisForm.clientId} 
+    <div className="bg-white p-8 rounded-xl border border-slate-200 max-w-[1000px]">
+      <div className="grid grid-cols-2 gap-5 mb-8">
+        <div className="flex flex-col">
+          <label className="block text-sm font-medium mb-2 text-gray-700">Client *</label>
+          <select
+            value={devisForm.clientId}
             onChange={handleDevisChange('clientId')}
-            required 
-            style={styles.input}
+            required
+            className="w-full p-3 border border-gray-300 rounded-lg text-base outline-none box-border"
           >
             <option value="">Sélectionner...</option>
             {clients.map(c => (
@@ -171,24 +45,24 @@ const DevisForm = memo(({
             ))}
           </select>
         </div>
-        <div style={styles.formGroup}>
-          <label style={styles.label}>Date</label>
-          <input 
-            type="date" 
-            value={devisForm.date} 
+        <div className="flex flex-col">
+          <label className="block text-sm font-medium mb-2 text-gray-700">Date</label>
+          <input
+            type="date"
+            value={devisForm.date}
             onChange={handleDevisChange('date')}
-            style={styles.input} 
+            className="w-full p-3 border border-gray-300 rounded-lg text-base outline-none box-border"
           />
         </div>
       </div>
 
-      <h3 style={styles.sectionTitle}>Lignes du devis</h3>
-      <div style={styles.ligneForm}>
+      <h3 className="text-lg font-bold mb-4 text-gray-900">Lignes du devis</h3>
+      <div className="bg-gray-50 p-5 rounded-lg mb-5 grid grid-cols-[2fr_1fr_1fr_auto] gap-3 items-end">
         <input
           placeholder="Description"
           value={currentLigne.description}
           onChange={handleLigneChange('description')}
-          style={styles.input}
+          className="w-full p-3 border border-gray-300 rounded-lg text-base outline-none box-border"
         />
         <input
           type="number"
@@ -196,7 +70,7 @@ const DevisForm = memo(({
           value={currentLigne.quantite}
           onChange={handleLigneChange('quantite')}
           min="1"
-          style={styles.input}
+          className="w-full p-3 border border-gray-300 rounded-lg text-base outline-none box-border"
         />
         <input
           type="number"
@@ -205,61 +79,69 @@ const DevisForm = memo(({
           value={currentLigne.prixUnitaire}
           onChange={handleLigneChange('prixUnitaire')}
           min="0"
-          style={styles.input}
+          className="w-full p-3 border border-gray-300 rounded-lg text-base outline-none box-border"
         />
-        <button onClick={onAddLigne} type="button" style={styles.addButton}>
+        <button
+          onClick={onAddLigne}
+          type="button"
+          className="px-5 py-2.5 bg-orange-500 text-white border-none rounded-md cursor-pointer font-semibold text-lg"
+        >
           +
         </button>
       </div>
 
       {devisForm.lignes.length > 0 && (
         <div className="overflow-x-auto -mx-2 px-2">
-          <table style={{ ...styles.table, minWidth: '480px' }} aria-label="Lignes du devis en cours">
-            <thead style={styles.tableHead}>
+          <table className="w-full border-collapse border border-slate-200 rounded-lg overflow-hidden mb-5 min-w-[480px]" aria-label="Lignes du devis en cours">
+            <thead className="bg-gray-50">
               <tr>
-                <th scope="col" style={styles.th}>Description</th>
-                <th scope="col" style={{ ...styles.th, textAlign: 'right' }}>Qté</th>
-                <th scope="col" style={{ ...styles.th, textAlign: 'right' }}>Prix HT</th>
-                <th scope="col" style={{ ...styles.th, textAlign: 'right' }}>Total</th>
-                <th scope="col" style={{ ...styles.th, width: '50px' }}></th>
+                <th scope="col" className="p-3 text-left text-xs font-semibold text-gray-500">Description</th>
+                <th scope="col" className="p-3 text-right text-xs font-semibold text-gray-500">Qté</th>
+                <th scope="col" className="p-3 text-right text-xs font-semibold text-gray-500">Prix HT</th>
+                <th scope="col" className="p-3 text-right text-xs font-semibold text-gray-500">Total</th>
+                <th scope="col" className="p-3 text-left text-xs font-semibold text-gray-500 w-[50px]"></th>
               </tr>
             </thead>
             <tbody>
               {devisForm.lignes.map((ligne, index) => (
                 <tr key={index}>
-                  <td style={styles.td}>{ligne.description}</td>
-                  <td style={{ ...styles.td, textAlign: 'right' }}>{ligne.quantite}</td>
-                  <td style={{ ...styles.td, textAlign: 'right' }}>{ligne.prixUnitaire.toFixed(2)}€</td>
-                  <td style={{ ...styles.td, textAlign: 'right', fontWeight: '600' }}>
+                  <td className="p-3 border-t border-slate-200">{ligne.description}</td>
+                  <td className="p-3 border-t border-slate-200 text-right">{ligne.quantite}</td>
+                  <td className="p-3 border-t border-slate-200 text-right">{ligne.prixUnitaire.toFixed(2)}€</td>
+                  <td className="p-3 border-t border-slate-200 text-right font-semibold">
                     {ligne.montant.toFixed(2)}€
                   </td>
-                  <td style={{ ...styles.td, textAlign: 'center' }}>
-                    <button 
-                      onClick={() => onDeleteLigne(index)} 
-                      type="button" 
-                      style={styles.deleteButton}
+                  <td className="p-3 border-t border-slate-200 text-center">
+                    <button
+                      onClick={() => onDeleteLigne(index)}
+                      type="button"
+                      className="bg-transparent border-none cursor-pointer text-lg"
                     >
-                      
+
                     </button>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-          <div style={styles.totaux}>
+          <div className="bg-gray-50 p-5 border-t-2 border-slate-200 flex justify-end gap-10 text-base">
             <div>Total HT: <strong>{totaux.totalHT.toFixed(2)}€</strong></div>
             <div>TVA (20%): <strong>{totaux.tva.toFixed(2)}€</strong></div>
-            <div style={styles.totalTTC}>
+            <div className="text-xl text-orange-500 font-bold">
               Total TTC: <strong>{totaux.totalTTC.toFixed(2)}€</strong>
             </div>
           </div>
         </div>
       )}
 
-      <button 
+      <button
         onClick={onSubmit}
         disabled={!canSubmit}
-        style={canSubmit ? styles.submitButton : styles.submitButtonDisabled}
+        className={`w-full p-4 text-white border-none rounded-lg text-base font-semibold ${
+          canSubmit
+            ? 'bg-gradient-to-br from-orange-500 to-red-600 cursor-pointer'
+            : 'bg-gray-300 cursor-not-allowed'
+        }`}
       >
         Créer le devis
       </button>

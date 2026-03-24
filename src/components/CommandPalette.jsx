@@ -398,7 +398,7 @@ export default function CommandPalette({
     <AnimatePresence mode="wait">
       {isOpen && (
         <motion.div
-          className="fixed inset-0 flex items-start justify-center z-[100] pt-0 sm:pt-20 px-0 sm:px-4"
+          className="fixed inset-0 flex items-start justify-center z-[1030] pt-0 sm:pt-20 px-0 sm:px-4"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}

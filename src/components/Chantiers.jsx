@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, Suspense, lazy } from 'react';
-import { Plus, ArrowLeft, ArrowRight, Edit3, Trash2, Check, X, Camera, MapPin, Phone, Clock, Calendar, DollarSign, TrendingUp, TrendingDown, AlertTriangle, Package, Users, FileText, ChevronRight, ChevronDown, ChevronUp, Save, Image, StickyNote, CheckSquare, Square, MoreVertical, MoreHorizontal, Percent, Coins, Receipt, Banknote, PiggyBank, Target, BarChart3, CircleDollarSign, Wallet, MessageSquare, AlertCircle, ArrowUpRight, ArrowDownRight, UserCog, Download, Share2, ArrowUpDown, SortAsc, SortDesc, Building2, Zap, Sparkles, ShoppingCart, FolderOpen, Wifi, WifiOff, Sun, Cloud, CloudRain, Wind, Thermometer, GripVertical, CheckCircle, Copy, Archive, Search, Paperclip, Upload, Map, List, ClipboardList, CheckCircle2, Navigation, Mic, CalendarPlus, Moon, Shield, Timer } from 'lucide-react';
+import { Plus, ArrowLeft, ArrowRight, Edit3, Trash2, Check, X, Camera, MapPin, Phone, Clock, Calendar, DollarSign, TrendingUp, TrendingDown, AlertTriangle, Package, Users, FileText, ChevronRight, ChevronDown, ChevronUp, Save, Image, StickyNote, CheckSquare, Square, MoreVertical, MoreHorizontal, Percent, Coins, Receipt, Banknote, PiggyBank, Target, BarChart3, CircleDollarSign, Wallet, MessageSquare, AlertCircle, ArrowUpRight, ArrowDownRight, UserCog, Download, Share2, ArrowUpDown, SortAsc, SortDesc, Building2, Zap, Sparkles, ShoppingCart, FolderOpen, Wifi, WifiOff, Sun, Cloud, CloudRain, Wind, Thermometer, GripVertical, CheckCircle, Copy, Archive, Search, Paperclip, Upload, Map, List, ClipboardList, CheckCircle2, Navigation, Mic, CalendarPlus, Moon, Shield } from 'lucide-react';
 
 const ChantierMap = lazy(() => import('./chantiers/ChantierMap'));
 const GanttView = lazy(() => import('./GanttView'));
@@ -489,24 +489,6 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                 </select>
               </div>
 
-              {/* Row 1b: Devis source link + Time tracking */}
-              <div className="flex items-center gap-2 flex-wrap mb-1">
-                {devisLie && (
-                  <button onClick={() => setPage?.('devis', { selectedDevisId: devisLie.id })}
-                    className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>
-                    <FileText size={12} /> Devis {devisLie.numero} — {modeDiscret ? '•••' : `${devisLie.total_ttc?.toLocaleString('fr-FR')}€`}
-                  </button>
-                )}
-                <button onClick={() => {
-                  const heures = prompt('Heures travaillées sur ce chantier :');
-                  if (heures && !isNaN(heures)) {
-                    showToast?.(`${heures}h pointées sur ${ch.nom}`, 'success');
-                  }
-                }} className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
-                  <Timer size={14} /> Pointer des heures
-                </button>
-              </div>
-
               {/* Row 2: Nav ← → + action buttons compact */}
               <div className="flex items-center justify-between gap-2">
                 {/* Nav ← → */}
@@ -843,28 +825,6 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                 </button>
               </div>
             </div>
-
-            {/* Widget Météo compact */}
-            {ch.adresse && (
-              <div className={`rounded-xl border p-3 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
-                <div className="flex items-center gap-2 mb-2">
-                  <Cloud size={14} style={{ color: couleur }} />
-                  <span className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Météo chantier</span>
-                </div>
-                <div className="flex gap-3">
-                  {['Auj.', 'Dem.', 'J+2'].map((jour, i) => (
-                    <div key={i} className="text-center flex-1">
-                      <p className={`text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{jour}</p>
-                      <Sun size={16} className={`mx-auto my-1 ${isDark ? 'text-yellow-400' : 'text-yellow-500'}`} />
-                      <p className={`text-xs font-medium ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{15 + i * 2}°C</p>
-                    </div>
-                  ))}
-                </div>
-                <p className={`text-[10px] mt-1 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                  Données indicatives — {ch.ville || ch.adresse?.split(',').pop()?.trim() || 'France'}
-                </p>
-              </div>
-            )}
           </div>
         </div>
 
@@ -1139,7 +1099,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                         <label htmlFor="task-critical" className={`text-sm ${textPrimary}`}>Tâche prioritaire</label>
                       </div>
                       <div className="flex gap-2 pt-2">
-                        <button onClick={() => deleteTask(editingTask.id)} className="px-4 py-2 rounded-xl text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 text-sm font-medium"><Trash2 size={16} className="inline mr-1" /> Supprimer</button>
+                        <button onClick={() => deleteTask(editingTask.id)} className={`px-4 py-2 rounded-xl text-red-500 ${isDark ? 'hover:bg-red-900/20' : 'hover:bg-red-50'} text-sm font-medium`}><Trash2 size={16} className="inline mr-1" /> Supprimer</button>
                         <div className="flex-1" />
                         <button onClick={() => setEditingTask(null)} className={`px-4 py-2 rounded-xl text-sm font-medium ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'}`}>Annuler</button>
                         <button onClick={() => updateTask(editingTask.id, { text: editingTask.text, phase: editingTask.phase, critical: editingTask.critical })} className="px-4 py-2 rounded-xl text-white text-sm font-medium" style={{ background: couleur }}>Sauvegarder</button>
@@ -2030,7 +1990,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                     <div className="flex items-center gap-2 mb-2">
                       <span className={`text-xs px-2 py-0.5 rounded ${msg.type === 'email' ? 'bg-blue-100 text-blue-700' : msg.type === 'sms' ? 'bg-green-100 text-green-700' : msg.type === 'appel' ? 'bg-purple-100 text-purple-700' : 'bg-slate-200 text-slate-600'}`}>{msg.type === 'email' ? 'Email' : msg.type === 'sms' ? 'SMS' : msg.type === 'appel' ? 'Appel' : 'Note'}</span>
                       <span className={`text-xs ${textMuted}`}>{new Date(msg.date).toLocaleDateString('fr-FR')} - {new Date(msg.date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</span>
-                      <button onClick={() => updateChantier(ch.id, { messages: ch.messages.filter(m => m.id !== msg.id) })} aria-label="Supprimer le message" className="ml-auto p-2.5 min-w-[44px] min-h-[44px] rounded flex items-center justify-center text-red-400 hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900"><X size={16} /></button>
+                      <button onClick={() => updateChantier(ch.id, { messages: ch.messages.filter(m => m.id !== msg.id) })} aria-label="Supprimer le message" className={`ml-auto p-2.5 min-w-[44px] min-h-[44px] rounded flex items-center justify-center text-red-400 ${isDark ? 'hover:bg-red-900/20' : 'hover:bg-red-50'} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 ${isDark ? 'focus-visible:ring-offset-slate-900' : ''}`}><X size={16} /></button>
                     </div>
                     <p className={`text-sm ${textPrimary}`}>{msg.content}</p>
                   </div>
@@ -3367,39 +3327,29 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
 
                 {/* CTA for Prospect: create devis, start chantier, view detail */}
                 {ch.statut === 'prospect' && (
-                  <div className="mt-2 space-y-1.5">
-                    {/* Budget estimé + Devis liés */}
-                    <div className="flex items-center gap-3 flex-wrap">
-                      {(ch.budgetPrevu || ch.budget_estime) ? (
-                        <span className={`text-[11px] font-medium ${textMuted}`}>Budget : {(ch.budgetPrevu || ch.budget_estime).toLocaleString('fr-FR')}€</span>
-                      ) : null}
-                      {(() => { const nbDevis = devis?.filter(d => d.chantier_id === ch.id).length || 0; return nbDevis > 0 ? <span className={`text-[11px] font-medium ${textMuted} flex items-center gap-1`}><FileText size={10} /> {nbDevis} devis</span> : null; })()}
-                    </div>
-                    {/* Action buttons — compact horizontal */}
-                    <div className="flex gap-2 items-center">
-                      {setPage && (
-                      <button
-                        onClick={(e) => { e.stopPropagation(); setPage('devis', { chantier_id: ch.id, client_id: ch.client_id, objet: ch.nom }); }}
-                        className="text-xs py-1.5 px-3 rounded-lg font-medium flex items-center gap-1.5 border transition-all hover:shadow-sm active:scale-[0.98]"
-                        style={{ borderColor: couleur, color: couleur }}
-                      >
-                        <FileText size={12} /> Créer un devis
-                      </button>
-                      )}
-                      <button
-                        onClick={(e) => { e.stopPropagation(); updateChantier(ch.id, { statut: 'en_cours', dateDebut: new Date().toISOString().split('T')[0] }); showToast('Chantier démarré !', 'success'); }}
-                        className="text-xs py-1.5 px-3 rounded-lg font-semibold text-white flex items-center gap-1.5 transition-all hover:opacity-90 active:scale-[0.98]"
-                        style={{ background: couleur }}
-                      >
-                        <Zap size={12} /> Démarrer
-                      </button>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); setView(ch.id); }}
-                        className={`py-1.5 px-2 rounded-lg text-xs font-medium flex items-center gap-1 transition-all ${isDark ? 'text-slate-400 hover:bg-slate-700' : 'text-slate-500 hover:bg-slate-100'}`}
-                      >
-                        <ChevronRight size={14} />
-                      </button>
-                    </div>
+                  <div className="flex flex-col sm:flex-row gap-2 mt-2">
+                    {setPage && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setPage('devis', { chantier_id: ch.id, client_id: ch.client_id, objet: ch.nom }); }}
+                      className="flex-1 py-2.5 sm:py-1.5 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 border transition-all hover:shadow-sm active:scale-[0.98] min-h-[44px] sm:min-h-0"
+                      style={{ borderColor: couleur, color: couleur }}
+                    >
+                      <FileText size={14} /> Créer un devis
+                    </button>
+                    )}
+                    <button
+                      onClick={(e) => { e.stopPropagation(); updateChantier(ch.id, { statut: 'en_cours', dateDebut: new Date().toISOString().split('T')[0] }); showToast('Chantier démarré !', 'success'); }}
+                      className="flex-1 py-2.5 sm:py-1.5 rounded-lg text-xs font-semibold text-white flex items-center justify-center gap-1.5 transition-all hover:opacity-90 active:scale-[0.98] min-h-[44px] sm:min-h-0"
+                      style={{ background: couleur }}
+                    >
+                      <Zap size={14} /> Démarrer
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setView(ch.id); }}
+                      className={`py-2.5 sm:py-1.5 px-3 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 transition-all min-h-[44px] sm:min-h-0 ${isDark ? 'text-slate-400 hover:bg-slate-700' : 'text-slate-500 hover:bg-slate-100'}`}
+                    >
+                      <ChevronRight size={14} />
+                    </button>
                   </div>
                 )}
 
@@ -3531,10 +3481,10 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                             {task.done && <Check size={14} className="text-red-500" />}
                           </button>
                           <span className={`flex-1 text-sm ${task.done ? 'line-through opacity-50' : ''} ${isDark ? 'text-red-400' : 'text-red-700'}`}>{task.text}</span>
-                          <button onClick={() => toggleCritical(task.id)} aria-label="Retirer de prioritaire" className={`p-2.5 min-w-[44px] min-h-[44px] rounded flex items-center justify-center opacity-50 group-hover:opacity-100 focus:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900 ${isDark ? 'hover:bg-red-900/50' : 'hover:bg-red-100'}`} title="Retirer critique">
+                          <button onClick={() => toggleCritical(task.id)} aria-label="Retirer de prioritaire" className={`p-2.5 min-w-[44px] min-h-[44px] rounded flex items-center justify-center opacity-50 group-hover:opacity-100 focus:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 ${isDark ? 'focus-visible:ring-offset-slate-900 hover:bg-red-900/50' : 'hover:bg-red-100'}`} title="Retirer critique">
                             <AlertCircle size={16} className="text-red-500" />
                           </button>
-                          <button onClick={() => deleteTask(task.id)} aria-label="Supprimer la tâche" className={`p-2.5 min-w-[44px] min-h-[44px] rounded flex items-center justify-center opacity-50 group-hover:opacity-100 focus:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900 ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}>
+                          <button onClick={() => deleteTask(task.id)} aria-label="Supprimer la tâche" className={`p-2.5 min-w-[44px] min-h-[44px] rounded flex items-center justify-center opacity-50 group-hover:opacity-100 focus:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 ${isDark ? 'focus-visible:ring-offset-slate-900 hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}>
                             <Trash2 size={16} />
                           </button>
                         </div>
@@ -3555,10 +3505,10 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                           <button onClick={() => toggleTask(task.id)}
                             className={`w-6 h-6 rounded-md border-2 flex-shrink-0 ${isDark ? 'border-slate-500' : 'border-slate-300'}`} />
                           <span className={`flex-1 text-sm ${textPrimary}`}>{task.text}</span>
-                          <button onClick={() => toggleCritical(task.id)} aria-label="Marquer comme prioritaire" className={`p-2.5 min-w-[44px] min-h-[44px] rounded flex items-center justify-center opacity-50 group-hover:opacity-100 focus:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900 ${isDark ? 'hover:bg-slate-600 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`} title="Marquer critique">
+                          <button onClick={() => toggleCritical(task.id)} aria-label="Marquer comme prioritaire" className={`p-2.5 min-w-[44px] min-h-[44px] rounded flex items-center justify-center opacity-50 group-hover:opacity-100 focus:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 ${isDark ? 'focus-visible:ring-offset-slate-900 hover:bg-slate-600 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`} title="Marquer critique">
                             <AlertCircle size={16} />
                           </button>
-                          <button onClick={() => deleteTask(task.id)} aria-label="Supprimer la tâche" className={`p-2.5 min-w-[44px] min-h-[44px] rounded flex items-center justify-center opacity-50 group-hover:opacity-100 focus:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900 ${isDark ? 'hover:bg-slate-600 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}>
+                          <button onClick={() => deleteTask(task.id)} aria-label="Supprimer la tâche" className={`p-2.5 min-w-[44px] min-h-[44px] rounded flex items-center justify-center opacity-50 group-hover:opacity-100 focus:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 ${isDark ? 'focus-visible:ring-offset-slate-900 hover:bg-slate-600 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}>
                             <Trash2 size={16} />
                           </button>
                         </div>
@@ -3677,7 +3627,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
         const clientA = clients.find(c => c.id === primary.client_id);
         const clientB = clients.find(c => c.id === secondary.client_id);
         return (
-          <div className="fixed inset-0 z-[999] flex items-center justify-center p-4" onClick={() => setMergeDialog(null)}>
+          <div className="fixed inset-0 z-[1050] flex items-center justify-center p-4" onClick={() => setMergeDialog(null)}>
             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
             <div className={`relative w-full max-w-md rounded-2xl border shadow-2xl p-5 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`} onClick={e => e.stopPropagation()}>
               <h3 className={`text-lg font-bold mb-1 ${textPrimary}`}>Fusionner les doublons</h3>

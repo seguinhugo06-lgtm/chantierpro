@@ -1,16 +1,17 @@
 /**
  * ChatPage.jsx — Main messagerie page
  *
- * Full-screen layout: sidebar + message panel.
+ * Full-screen layout: sidebar + message panel + thread panel.
  * Responsive: sidebar becomes a drawer on mobile.
  * Handles all chat state + realtime subscriptions.
+ * Pro features: threads, @mentions, pinned messages, /templates.
  */
 
 import React, { useState, useEffect, useCallback, useMemo, useRef, memo } from 'react';
 import {
   MessageCircle, Plus, Search, Users, Hash, Building2, X,
   ArrowLeft, Settings, UserPlus, Info, Loader2, Menu,
-  MessageSquarePlus, Zap, ChevronUp, ChevronDown,
+  MessageSquarePlus, Zap, MessageSquare,
 } from 'lucide-react';
 import supabase, { isDemo } from '../../supabaseClient';
 import { useOrg } from '../../context/OrgContext';
@@ -25,6 +26,7 @@ import {
   createChannel,
   uploadChatFile,
   searchMessages,
+  loadChannelMembers,
   DEMO_USERS,
 } from '../../services/chatService';
 import {
@@ -35,6 +37,113 @@ import ChatSidebar from './ChatSidebar';
 import ChatMessageList from './ChatMessageList';
 import ChatInput from './ChatInput';
 import NewChannelModal from './NewChannelModal';
+
+// ── Thread Panel sub-component ────────────────────────────────────────────────
+
+const ThreadPanel = memo(function ThreadPanel({
+  parentMessage,
+  threadMessages,
+  currentUserId,
+  onSendReply,
+  onClose,
+  onReact,
+  isDark,
+  couleur,
+}) {
+  const cardBg = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200';
+  const textPrimary = isDark ? 'text-white' : 'text-gray-900';
+  const textMuted = isDark ? 'text-slate-400' : 'text-gray-500';
+  const bottomRef = useRef(null);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'instant' });
+  }, [threadMessages.length]);
+
+  const handleSend = useCallback(async ({ content, contentType, attachments }) => {
+    await onSendReply?.({
+      content,
+      contentType,
+      attachments,
+      replyToId: parentMessage.id,
+    });
+  }, [onSendReply, parentMessage?.id]);
+
+  if (!parentMessage) return null;
+
+  return (
+    <div className={`w-80 flex-shrink-0 flex flex-col border-l h-full ${cardBg}`}>
+      {/* Header */}
+      <div className={`flex items-center gap-2 px-3 py-3 border-b ${isDark ? 'border-slate-700' : 'border-gray-200'}`}>
+        <MessageSquare size={16} style={{ color: couleur }} />
+        <h4 className={`text-sm font-semibold flex-1 ${textPrimary}`}>Thread</h4>
+        <button
+          onClick={onClose}
+          className={`p-1 rounded-lg transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-gray-100 text-gray-400'}`}
+        >
+          <X size={16} />
+        </button>
+      </div>
+
+      {/* Parent message */}
+      <div className={`px-3 py-2 border-b ${isDark ? 'border-slate-700 bg-slate-800/50' : 'border-gray-100 bg-gray-50/50'}`}>
+        <div className="flex items-center gap-2 mb-1">
+          <div className="w-6 h-6 rounded-full bg-gradient-to-br from-slate-400 to-slate-500 flex items-center justify-center text-white text-[9px] font-bold">
+            {(parentMessage.userName || '?').charAt(0).toUpperCase()}
+          </div>
+          <span className={`text-xs font-semibold ${textPrimary}`}>{parentMessage.userName}</span>
+          <span className={`text-[10px] ${textMuted}`}>
+            {parentMessage.createdAt && new Date(parentMessage.createdAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+          </span>
+        </div>
+        <p className={`text-xs ${isDark ? 'text-slate-300' : 'text-gray-700'} whitespace-pre-wrap`}>
+          {parentMessage.content}
+        </p>
+      </div>
+
+      {/* Thread replies */}
+      <div className="flex-1 overflow-y-auto px-3 py-2">
+        {threadMessages.length === 0 && (
+          <p className={`text-xs text-center mt-4 ${textMuted}`}>Aucune réponse pour le moment</p>
+        )}
+        {threadMessages.map(msg => (
+          <div key={msg.id} className="mb-3">
+            <div className="flex items-center gap-2 mb-0.5">
+              <div className="w-5 h-5 rounded-full bg-gradient-to-br from-slate-400 to-slate-500 flex items-center justify-center text-white text-[8px] font-bold">
+                {(msg.userName || '?').charAt(0).toUpperCase()}
+              </div>
+              <span className={`text-[10px] font-semibold ${textPrimary}`}>{msg.userName}</span>
+              <span className={`text-[9px] ${textMuted}`}>
+                {msg.createdAt && new Date(msg.createdAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+              </span>
+            </div>
+            <div className={`ml-7 px-2.5 py-1.5 rounded-xl text-xs ${
+              msg.userId === currentUserId
+                ? 'text-white rounded-br-sm'
+                : isDark ? 'bg-slate-700 text-slate-200 rounded-bl-sm' : 'bg-gray-100 text-gray-800 rounded-bl-sm'
+            }`}
+              style={msg.userId === currentUserId ? { background: couleur } : {}}
+            >
+              {msg.content}
+            </div>
+          </div>
+        ))}
+        <div ref={bottomRef} />
+      </div>
+
+      {/* Thread input */}
+      <div className={`border-t ${isDark ? 'border-slate-700' : 'border-gray-200'}`}>
+        <ChatInput
+          onSend={handleSend}
+          isDark={isDark}
+          couleur={couleur}
+          disabled={false}
+        />
+      </div>
+    </div>
+  );
+});
+
+// ── Main ChatPage ─────────────────────────────────────────────────────────────
 
 const ChatPage = memo(function ChatPage({
   isDark = false,
@@ -62,14 +171,14 @@ const ChatPage = memo(function ChatPage({
   const [showMobileSidebar, setShowMobileSidebar] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState(null);
-  const [showChannelSearch, setShowChannelSearch] = useState(false);
-  const [channelSearchQuery, setChannelSearchQuery] = useState('');
-  const [channelSearchResults, setChannelSearchResults] = useState([]);
-  const [channelSearchIndex, setChannelSearchIndex] = useState(0);
-  const [showChannelInfo, setShowChannelInfo] = useState(false);
+
+  // Thread state
+  const [threadMessage, setThreadMessage] = useState(null);
+
+  // Channel members (for @mentions)
+  const [channelMembers, setChannelMembers] = useState([]);
 
   const subscriptionRef = useRef(null);
-  const channelSearchInputRef = useRef(null);
   const unreadSubRef = useRef(null);
   const messageCursorRef = useRef(null);
   const typingTimeoutsRef = useRef({});
@@ -80,6 +189,12 @@ const ChatPage = memo(function ChatPage({
     channels.find(c => c.id === activeChannelId),
     [channels, activeChannelId]
   );
+
+  // Thread messages (replies to the thread parent)
+  const threadMessages = useMemo(() => {
+    if (!threadMessage) return [];
+    return messages.filter(m => m.replyToId === threadMessage.id);
+  }, [messages, threadMessage]);
 
   // ── Load channels ─────────────────────────────────────────────────────────
 
@@ -125,6 +240,19 @@ const ChatPage = memo(function ChatPage({
     }
   }, [userId]);
 
+  // ── Load channel members (for @mentions) ──────────────────────────────────
+
+  const loadMembers = useCallback(async (channelId) => {
+    if (!channelId) return;
+    try {
+      const members = await loadChannelMembers(supabase, { channelId });
+      setChannelMembers(members);
+    } catch (err) {
+      console.warn('[ChatPage] Load members error:', err?.message || err);
+      setChannelMembers([]);
+    }
+  }, []);
+
   // ── Load more messages (infinite scroll) ──────────────────────────────────
 
   const handleLoadMore = useCallback(async () => {
@@ -154,13 +282,11 @@ const ChatPage = memo(function ChatPage({
     setReplyTo(null);
     setEditingMessage(null);
     setSearchResults(null);
+    setThreadMessage(null);
     setShowMobileSidebar(false);
-    setShowChannelSearch(false);
-    setChannelSearchQuery('');
-    setChannelSearchResults([]);
-    setShowChannelInfo(false);
     loadChannelMessages(channelId);
-  }, [loadChannelMessages]);
+    loadMembers(channelId);
+  }, [loadChannelMessages, loadMembers]);
 
   // ── Realtime subscriptions ────────────────────────────────────────────────
 
@@ -208,7 +334,6 @@ const ChatPage = memo(function ChatPage({
       },
       onReactionChanged: ({ messageId }) => {
         // Refetch reactions for this message (simplified)
-        // In production, we'd refetch from DB; for now just trigger re-render
       },
       onTyping: ({ userId: typingUserId, userName, isTyping }) => {
         if (typingUserId === userId) return;
@@ -217,7 +342,6 @@ const ChatPage = memo(function ChatPage({
             if (prev.includes(userName)) return prev;
             return [...prev, userName];
           });
-          // Clear after 3 seconds
           if (typingTimeoutsRef.current[typingUserId]) {
             clearTimeout(typingTimeoutsRef.current[typingUserId]);
           }
@@ -234,7 +358,6 @@ const ChatPage = memo(function ChatPage({
 
     return () => {
       sub.unsubscribe();
-      // Clear typing timeouts
       Object.values(typingTimeoutsRef.current).forEach(clearTimeout);
       typingTimeoutsRef.current = {};
       setTypingUsers([]);
@@ -318,7 +441,6 @@ const ChatPage = memo(function ChatPage({
 
   const handleEdit = useCallback((message) => {
     setEditingMessage(message);
-    // The edit UI is handled in ChatInput
   }, []);
 
   // ── Delete ────────────────────────────────────────────────────────────────
@@ -338,6 +460,25 @@ const ChatPage = memo(function ChatPage({
       showToast?.('Erreur de suppression', 'error');
     }
   }, [userId, showToast]);
+
+  // ── Pin / Unpin ───────────────────────────────────────────────────────────
+
+  const handlePin = useCallback((message) => {
+    setMessages(prev => prev.map(m =>
+      m.id === message.id ? { ...m, pinned: !m.pinned } : m
+    ));
+    showToast?.(message.pinned ? 'Message désépinglé' : 'Message épinglé', 'success');
+  }, [showToast]);
+
+  // ── Thread ────────────────────────────────────────────────────────────────
+
+  const handleOpenThread = useCallback((message) => {
+    setThreadMessage(message);
+  }, []);
+
+  const handleCloseThread = useCallback(() => {
+    setThreadMessage(null);
+  }, []);
 
   // ── File upload ───────────────────────────────────────────────────────────
 
@@ -392,86 +533,11 @@ const ChatPage = memo(function ChatPage({
     }
   }, [userId]);
 
-  // ── Channel search (local filter) ────────────────────────────────────────
-
-  const handleChannelSearchToggle = useCallback(() => {
-    setShowChannelSearch(prev => {
-      if (!prev) {
-        // Opening: reset
-        setChannelSearchQuery('');
-        setChannelSearchResults([]);
-        setChannelSearchIndex(0);
-        setTimeout(() => channelSearchInputRef.current?.focus(), 50);
-      }
-      return !prev;
-    });
-  }, []);
-
-  const handleChannelSearchChange = useCallback((query) => {
-    setChannelSearchQuery(query);
-    if (!query.trim()) {
-      setChannelSearchResults([]);
-      setChannelSearchIndex(0);
-      return;
-    }
-    const lower = query.toLowerCase();
-    const results = messages
-      .map((m, idx) => ({ ...m, _idx: idx }))
-      .filter(m => m.content && !m.deletedAt && m.content.toLowerCase().includes(lower));
-    setChannelSearchResults(results);
-    setChannelSearchIndex(0);
-
-    // Scroll to first result
-    if (results.length > 0) {
-      const el = document.getElementById(`msg-${results[0].id}`);
-      el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-  }, [messages]);
-
-  const handleChannelSearchNav = useCallback((direction) => {
-    if (channelSearchResults.length === 0) return;
-    const next = direction === 'next'
-      ? (channelSearchIndex + 1) % channelSearchResults.length
-      : (channelSearchIndex - 1 + channelSearchResults.length) % channelSearchResults.length;
-    setChannelSearchIndex(next);
-    const msg = channelSearchResults[next];
-    if (msg) {
-      const el = document.getElementById(`msg-${msg.id}`);
-      el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-  }, [channelSearchResults, channelSearchIndex]);
-
-  // ── Keyboard shortcuts ───────────────────────────────────────────────────
-
-  // Listen for "edit last own message" from ChatInput ArrowUp
-  useEffect(() => {
-    const handler = (e) => {
-      if (e.detail) setEditingMessage(e.detail);
-    };
-    window.addEventListener('chat:edit-last-message', handler);
-    return () => window.removeEventListener('chat:edit-last-message', handler);
-  }, []);
-
-  // Global Escape: close channel search, reply, edit
-  useEffect(() => {
-    const handler = (e) => {
-      if (e.key === 'Escape') {
-        if (showChannelSearch) {
-          setShowChannelSearch(false);
-        }
-      }
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [showChannelSearch]);
-
   // ── Theme ─────────────────────────────────────────────────────────────────
 
   const bgClass = isDark ? 'bg-slate-900' : 'bg-gray-50';
   const textPrimary = isDark ? 'text-white' : 'text-gray-900';
   const textMuted = isDark ? 'text-slate-400' : 'text-gray-500';
-  const cardBg = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200';
-  const inputBg = isDark ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400';
 
   // ── Loading state ─────────────────────────────────────────────────────────
 
@@ -486,14 +552,14 @@ const ChatPage = memo(function ChatPage({
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className={`${bgClass} -m-3 sm:-m-4 lg:-m-6 -mb-14 lg:-mb-6 flex h-[calc(100vh-56px-96px)] lg:h-[calc(100vh-56px-40px)] overflow-hidden rounded-none`}>
-      {/* Mobile sidebar — drawer overlay */}
+    <div className={`${bgClass} -m-3 sm:-m-4 lg:-m-6 -mb-14 lg:-mb-6 flex h-[calc(100vh-56px-56px)] lg:h-[calc(100vh-56px)] overflow-hidden rounded-none`}>
+      {/* Mobile sidebar overlay */}
       {showMobileSidebar && (
-        <div className="lg:hidden fixed inset-0 z-50">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => {
+        <div className="lg:hidden absolute inset-0 z-30">
+          <div className="absolute inset-0 bg-black/30" onClick={() => {
             if (activeChannelId) setShowMobileSidebar(false);
           }} />
-          <div className="relative w-80 max-w-[85vw] h-full shadow-xl">
+          <div className="relative w-80 h-full">
             <ChatSidebar
               channels={channels}
               activeChannelId={activeChannelId}
@@ -554,11 +620,7 @@ const ChatPage = memo(function ChatPage({
                 )?.charAt(0).toUpperCase() || '?'}
               </div>
 
-              <button
-                className="flex-1 min-w-0 text-left cursor-pointer"
-                onClick={() => setShowChannelInfo(prev => !prev)}
-                title="Infos du canal"
-              >
+              <div className="flex-1 min-w-0">
                 <h3 className={`text-sm font-semibold ${textPrimary} truncate`}>
                   {activeChannel.type === 'direct'
                     ? activeChannel.otherUser?.name || 'Direct'
@@ -570,91 +632,19 @@ const ChatPage = memo(function ChatPage({
                     {activeChannel.description}
                   </p>
                 )}
-              </button>
+              </div>
 
               {/* Channel actions */}
               <div className="flex items-center gap-1">
                 <button
-                  onClick={handleChannelSearchToggle}
-                  className={`p-2 rounded-xl transition-colors ${
-                    showChannelSearch
-                      ? 'text-white'
-                      : isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-gray-100 text-gray-400'
-                  }`}
-                  style={showChannelSearch ? { backgroundColor: couleur } : undefined}
-                  title="Rechercher dans le canal"
+                  onClick={() => handleSearch('')}
+                  className={`p-2 rounded-xl transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-gray-100 text-gray-400'}`}
+                  title="Rechercher"
                 >
                   <Search size={16} />
                 </button>
-                <button
-                  onClick={() => setShowChannelInfo(prev => !prev)}
-                  className={`p-2 rounded-xl transition-colors ${
-                    showChannelInfo
-                      ? 'text-white'
-                      : isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-gray-100 text-gray-400'
-                  }`}
-                  style={showChannelInfo ? { backgroundColor: couleur } : undefined}
-                  title="Infos du canal"
-                >
-                  <Info size={16} />
-                </button>
               </div>
             </div>
-
-            {/* Channel search bar */}
-            {showChannelSearch && (
-              <div className={`flex items-center gap-2 px-4 py-2 border-b flex-shrink-0 ${cardBg}`}>
-                <Search size={14} className={textMuted} />
-                <input
-                  ref={channelSearchInputRef}
-                  type="text"
-                  value={channelSearchQuery}
-                  onChange={(e) => handleChannelSearchChange(e.target.value)}
-                  placeholder="Rechercher dans les messages..."
-                  className={`flex-1 text-sm border rounded-lg px-3 py-1.5 outline-none focus:ring-1 ${inputBg}`}
-                  style={{ '--tw-ring-color': couleur }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') handleChannelSearchNav('next');
-                    if (e.key === 'Escape') {
-                      setShowChannelSearch(false);
-                      setChannelSearchQuery('');
-                      setChannelSearchResults([]);
-                    }
-                  }}
-                />
-                {channelSearchQuery && (
-                  <span className={`text-xs whitespace-nowrap ${textMuted}`}>
-                    {channelSearchResults.length > 0
-                      ? `${channelSearchIndex + 1}/${channelSearchResults.length}`
-                      : '0 résultat'}
-                  </span>
-                )}
-                <button
-                  onClick={() => handleChannelSearchNav('prev')}
-                  disabled={channelSearchResults.length === 0}
-                  className={`p-1 rounded transition-colors disabled:opacity-30 ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-gray-100 text-gray-400'}`}
-                >
-                  <ChevronUp size={16} />
-                </button>
-                <button
-                  onClick={() => handleChannelSearchNav('next')}
-                  disabled={channelSearchResults.length === 0}
-                  className={`p-1 rounded transition-colors disabled:opacity-30 ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-gray-100 text-gray-400'}`}
-                >
-                  <ChevronDown size={16} />
-                </button>
-                <button
-                  onClick={() => {
-                    setShowChannelSearch(false);
-                    setChannelSearchQuery('');
-                    setChannelSearchResults([]);
-                  }}
-                  className={`p-1 rounded transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-gray-100 text-gray-400'}`}
-                >
-                  <X size={16} />
-                </button>
-              </div>
-            )}
 
             {/* Messages */}
             {loadingMessages ? (
@@ -672,45 +662,25 @@ const ChatPage = memo(function ChatPage({
                 onReact={handleReact}
                 onEdit={handleEdit}
                 onDelete={handleDelete}
+                onPin={handlePin}
+                onOpenThread={handleOpenThread}
                 typingUsers={typingUsers}
                 isDark={isDark}
                 couleur={couleur}
-                highlightTerm={showChannelSearch && channelSearchQuery ? channelSearchQuery : null}
-                highlightMessageId={channelSearchResults[channelSearchIndex]?.id || null}
               />
             )}
 
-            {/* Typing indicator */}
-            {typingUsers.length > 0 && (
-              <div className={`flex items-center gap-2 px-4 py-1.5 ${isDark ? 'bg-slate-800/50' : 'bg-gray-50/80'}`}>
-                <div className="flex gap-0.5">
-                  <span className={`w-1.5 h-1.5 rounded-full animate-bounce ${isDark ? 'bg-slate-500' : 'bg-gray-400'}`} style={{ animationDelay: '0ms' }} />
-                  <span className={`w-1.5 h-1.5 rounded-full animate-bounce ${isDark ? 'bg-slate-500' : 'bg-gray-400'}`} style={{ animationDelay: '150ms' }} />
-                  <span className={`w-1.5 h-1.5 rounded-full animate-bounce ${isDark ? 'bg-slate-500' : 'bg-gray-400'}`} style={{ animationDelay: '300ms' }} />
-                </div>
-                <span className={`text-[11px] ${textMuted}`}>
-                  {typingUsers.length === 1
-                    ? `${typingUsers[0]} est en train d'écrire...`
-                    : `${typingUsers.length} personnes écrivent...`
-                  }
-                </span>
-              </div>
-            )}
-
-            {/* Input — sticky bottom with solid bg, safe-area for iPhone */}
-            <div className={`relative z-50 flex-shrink-0 ${isDark ? 'bg-slate-900' : 'bg-white'}`} style={{ paddingBottom: 'max(8px, env(safe-area-inset-bottom))' }}>
+            {/* Input */}
+            <div className="relative z-10">
             <ChatInput
               onSend={handleSend}
               onTyping={handleTyping}
               replyTo={replyTo}
               onCancelReply={() => setReplyTo(null)}
-              editingMessage={editingMessage}
-              onCancelEdit={() => setEditingMessage(null)}
               onUploadFile={handleUploadFile}
-              messages={messages}
-              currentUserId={userId}
               isDark={isDark}
               couleur={couleur}
+              channelMembers={channelMembers}
             />
             </div>
           </>
@@ -758,87 +728,18 @@ const ChatPage = memo(function ChatPage({
         )}
       </div>
 
-      {/* Channel info panel — fullscreen on mobile, side panel on desktop */}
-      {showChannelInfo && activeChannel && (
-        <div className={`fixed inset-0 z-50 lg:relative lg:inset-auto lg:z-auto lg:w-80 flex-shrink-0 lg:border-l flex flex-col overflow-y-auto ${
-          isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'
-        }`}>
-          {/* Panel header */}
-          <div className={`flex items-center justify-between px-4 py-3 border-b ${
-            isDark ? 'border-slate-700' : 'border-gray-200'
-          }`}>
-            <h3 className={`text-sm font-bold ${textPrimary}`}>Infos du canal</h3>
-            <button
-              onClick={() => setShowChannelInfo(false)}
-              className={`p-1.5 rounded-lg transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-gray-100 text-gray-400'}`}
-            >
-              <X size={16} />
-            </button>
-          </div>
-
-          {/* Channel name + description */}
-          <div className="px-4 py-4">
-            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-white text-lg font-bold mb-3 ${
-              activeChannel.type === 'direct'
-                ? 'bg-gradient-to-br from-orange-400 to-orange-600'
-                : activeChannel.type === 'equipe'
-                  ? 'bg-gradient-to-br from-blue-400 to-blue-600'
-                  : activeChannel.type === 'chantier'
-                    ? 'bg-gradient-to-br from-emerald-400 to-emerald-600'
-                    : 'bg-gradient-to-br from-purple-400 to-purple-600'
-            }`}>
-              {(activeChannel.type === 'direct'
-                ? activeChannel.otherUser?.name
-                : activeChannel.name
-              )?.charAt(0).toUpperCase() || '?'}
-            </div>
-            <h4 className={`text-base font-bold ${textPrimary}`}>
-              {activeChannel.type === 'direct'
-                ? activeChannel.otherUser?.name || 'Direct'
-                : activeChannel.name}
-            </h4>
-            {activeChannel.description && (
-              <p className={`text-sm mt-1 ${textMuted}`}>{activeChannel.description}</p>
-            )}
-            <p className={`text-xs mt-2 ${textMuted}`}>
-              {activeChannel.type === 'direct' ? 'Message direct' :
-               activeChannel.type === 'equipe' ? 'Canal d\'equipe' :
-               activeChannel.type === 'chantier' ? 'Canal chantier' : 'Canal'}
-            </p>
-          </div>
-
-          {/* Members */}
-          <div className={`px-4 py-3 border-t ${isDark ? 'border-slate-700' : 'border-gray-200'}`}>
-            <h5 className={`text-xs font-semibold uppercase tracking-wider mb-3 ${textMuted}`}>
-              Membres {activeChannel.members?.length ? `(${activeChannel.members.length})` : ''}
-            </h5>
-            <div className="space-y-2">
-              {(activeChannel.members || []).map((member) => {
-                const name = member.userName || member.user_name || member.name || member.userEmail || member.email || 'Membre';
-                const initials = name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
-                return (
-                  <div key={member.id || member.userId} className="flex items-center gap-2.5">
-                    <div
-                      className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-semibold flex-shrink-0"
-                      style={{ backgroundColor: couleur }}
-                    >
-                      {initials}
-                    </div>
-                    <div className="min-w-0">
-                      <p className={`text-sm font-medium truncate ${textPrimary}`}>{name}</p>
-                      {member.role && (
-                        <p className={`text-[11px] ${textMuted}`}>{member.role}</p>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-              {(!activeChannel.members || activeChannel.members.length === 0) && (
-                <p className={`text-sm ${textMuted}`}>Aucun membre</p>
-              )}
-            </div>
-          </div>
-        </div>
+      {/* Thread panel (slide-in from right) */}
+      {threadMessage && activeChannel && (
+        <ThreadPanel
+          parentMessage={threadMessage}
+          threadMessages={threadMessages}
+          currentUserId={userId}
+          onSendReply={handleSend}
+          onClose={handleCloseThread}
+          onReact={handleReact}
+          isDark={isDark}
+          couleur={couleur}
+        />
       )}
 
       {/* New channel modal */}

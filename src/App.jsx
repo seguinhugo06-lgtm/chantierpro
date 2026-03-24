@@ -990,9 +990,18 @@ export default function App() {
 
   // Notifications are now computed via useMemo (see above) — no useEffect needed
 
-  // ⚠️ CRITICAL: This useMemo MUST stay BEFORE the if(loading) return below!
-  // Moving it after causes React Error #310 (hook count mismatch between renders).
-  // This has been broken and fixed 4 times already. DO NOT MOVE.
+  // Loading screen
+  if (loading) return (
+    <div className="min-h-screen bg-[#f5f5f5] flex items-center justify-center">
+      <Building2 size={48} className="text-orange-500 animate-bounce" />
+    </div>
+  );
+
+  const isDark = theme === 'dark';
+  const tc = getThemeClasses(isDark);
+
+  // Client Portal — public page accessible via token (no auth required)
+  // Detect portal token from URL: /portal/{token} or ?portal={token}
   const portalToken = useMemo(() => {
     try {
       const path = window.location.pathname;
@@ -1002,16 +1011,6 @@ export default function App() {
       return params.get('portal') || null;
     } catch { return null; }
   }, []);
-
-  // Loading screen (AFTER all hooks above)
-  if (loading) return (
-    <div className="min-h-screen bg-[#f5f5f5] flex items-center justify-center">
-      <Building2 size={48} className="text-orange-500 animate-bounce" />
-    </div>
-  );
-
-  const isDark = theme === 'dark';
-  const tc = getThemeClasses(isDark);
 
   if (page === 'client-portal' || portalToken) {
     const portalClientId = (() => {
@@ -1239,7 +1238,6 @@ export default function App() {
     { id: 'catalogue', icon: Package, label: 'Catalogue' },
     { id: 'avis-google', icon: Megaphone, label: 'Marketing', feature: 'avis_google' },
     { id: 'finances', icon: Wallet, label: 'Finances' },
-    { id: 'profil', icon: User, label: 'Mon profil' },
     { id: 'plan', icon: CreditCard, label: 'Mon plan' },
     (() => {
       // Compute Facture 2026 compliance score for badge
@@ -1301,7 +1299,7 @@ export default function App() {
       {/* Skip to main content link for accessibility */}
       <a
         href="#main-content"
-        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:px-4 focus:py-2 focus:bg-white focus:text-[#1a1a1a] focus:rounded-lg focus:shadow-lg focus:outline-none"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[1030] focus:px-4 focus:py-2 focus:bg-white focus:text-[#1a1a1a] focus:rounded-lg focus:shadow-lg focus:outline-none"
       >
         Aller au contenu principal
       </a>
@@ -1970,7 +1968,7 @@ export default function App() {
 
       {/* Notifications Modal - Rendered at root level for proper z-index */}
       {showNotifs && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
+        <div className="fixed inset-0 z-[1030] flex items-center justify-center p-4 sm:p-6">
           {/* Dark Backdrop */}
           <div
             className="absolute inset-0 bg-black/60 backdrop-blur-sm"
@@ -2691,7 +2689,7 @@ function OnboardingModal({ setShowOnboarding, isDark, couleur }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[60] p-4 animate-fade-in">
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[1050] p-4 animate-fade-in">
       <div className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden relative`}>
         {/* Close button */}
         <button

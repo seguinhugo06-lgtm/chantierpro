@@ -92,7 +92,7 @@ export default function ToastContainer({ position = 'bottom-right', isDark = fal
 
   return (
     <div
-      className={`fixed z-[200] flex flex-col gap-2 ${positionClasses[position]}`}
+      className={`fixed z-[1080] flex flex-col gap-2 ${positionClasses[position]}`}
       role="region"
       aria-label="Notifications"
       aria-live="polite"
