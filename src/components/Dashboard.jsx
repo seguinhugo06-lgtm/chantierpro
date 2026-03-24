@@ -1314,17 +1314,19 @@ export default function Dashboard({
                 </div>
                 <span className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>À encaisser</span>
               </div>
-              <p className={`text-lg font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                {formatMoney(stats.enAttente, modeDiscret)}
-              </p>
+              <div className="flex items-baseline gap-1.5">
+                <p className={`text-lg font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                  {formatMoney(stats.enAttente, modeDiscret)}
+                </p>
+                {stats.montantOverdue > 0 && (
+                  <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded-full ${isDark ? 'text-red-400 bg-red-500/15' : 'text-red-600 bg-red-50'}`}>
+                    🔴 {formatMoney(stats.montantOverdue, modeDiscret)} retard
+                  </span>
+                )}
+              </div>
               {stats.facturesEnAttente?.length > 0 && (
                 <p className={`text-[11px] mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                  {stats.facturesEnAttente.length} facture{stats.facturesEnAttente.length > 1 ? 's' : ''} en attente
-                </p>
-              )}
-              {stats.montantOverdue > 0 && (
-                <p className="text-[11px] text-red-500 font-medium mt-0.5">
-                  dont {formatMoney(stats.montantOverdue, modeDiscret)} en retard +30j
+                  {stats.facturesEnAttente.length} facture{stats.facturesEnAttente.length > 1 ? 's' : ''}
                 </p>
               )}
             </button>
@@ -1743,32 +1745,12 @@ export default function Dashboard({
               </div>
             </div>
           ) : (
-            <div className={`rounded-2xl border p-6 text-center ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
-              <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-3 ${isDark ? 'bg-slate-700/50' : 'bg-slate-100'}`}>
-                <Calendar size={28} className={isDark ? 'text-slate-500' : 'text-slate-400'} />
-              </div>
-              <h3 className={`text-sm font-semibold mb-1 ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                Planifiez votre semaine
-              </h3>
-              <p className={`text-xs mb-4 max-w-xs mx-auto ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                Ajoutez des dates à vos chantiers en cours pour les voir apparaître ici
-              </p>
-              <div className="flex items-center justify-center gap-2">
-                <button
-                  onClick={() => { setCreateMode?.((p) => ({ ...p, chantier: true })); setPage?.('chantiers'); }}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold text-white transition-opacity hover:opacity-90 outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
-                  style={{ backgroundColor: couleur, '--tw-ring-color': couleur }}
-                >
-                  Planifier un chantier
-                </button>
-                <button
-                  onClick={() => setPage?.('chantiers')}
-                  className={`px-4 py-2 rounded-xl text-xs font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${isDark ? 'text-slate-400 hover:text-white hover:bg-slate-700 focus-visible:ring-orange-400' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100 focus-visible:ring-orange-500'}`}
-                >
-                  Voir mes chantiers →
-                </button>
-              </div>
-            </div>
+            <button onClick={() => setPage?.('chantiers')}
+              className={`w-full rounded-xl border p-3 flex items-center gap-3 text-left transition-all hover:shadow-sm ${isDark ? 'bg-slate-800 border-slate-700 hover:bg-slate-750' : 'bg-white border-slate-200 hover:bg-slate-50'}`}>
+              <Calendar size={16} className={isDark ? 'text-slate-500' : 'text-slate-400'} />
+              <span className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Aucun chantier planifié</span>
+              <span className="text-xs font-medium ml-auto" style={{ color: couleur }}>+ Planifier</span>
+            </button>
           )}
         </section>
 
