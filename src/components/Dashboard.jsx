@@ -98,6 +98,9 @@ import {
   CeMoisModal,
 } from './dashboard/index';
 
+// Recharts for sparkline
+import { AreaChart, Area, XAxis, Tooltip, ResponsiveContainer } from 'recharts';
+
 // UI Components
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
@@ -1180,7 +1183,7 @@ export default function Dashboard({
   }
 
   return (
-    <div className={`pb-20 lg:pb-0 ${isDark ? 'bg-slate-900' : 'bg-slate-50'}`}>
+    <div className={`pb-20 lg:pb-0 ${isDark ? 'bg-slate-900' : 'bg-[#F5F7FA]'}`}>
       {/* ========== HERO SECTION — Compact greeting ========== */}
       <HeroSection
         userName={user?.user_metadata?.prenom || user?.user_metadata?.first_name || entreprise?.nom?.split(' ')[0] || 'Artisan'}
@@ -1416,6 +1419,85 @@ export default function Dashboard({
               </div>
             </button>
           )}
+          {/* Sparkline CA 6 derniers mois */}
+          {(() => {
+            const months = [];
+            const now = new Date();
+            for (let i = 5; i >= 0; i--) {
+              const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+              const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+              const label = d.toLocaleDateString('fr-FR', { month: 'short' });
+              const ca = devis
+                .filter(dv => ['signe', 'facture'].includes(dv.statut) && dv.date?.startsWith(key))
+                .reduce((sum, dv) => sum + (dv.total_ttc || 0), 0);
+              months.push({ label, ca });
+            }
+            const hasData = months.some(m => m.ca > 0);
+            if (!hasData) return null;
+            return (
+              <div className={`mt-3 rounded-xl border p-3 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+                <div className="flex items-center justify-between mb-2">
+                  <span className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>CA 6 derniers mois</span>
+                  <button onClick={() => setPage?.('finances')} className={`text-xs ${isDark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-400 hover:text-slate-600'}`}>
+                    Voir détails →
+                  </button>
+                </div>
+                <div style={{ width: '100%', height: 100 }}>
+                  <ResponsiveContainer width="100%" height={100}>
+                    <AreaChart data={months} margin={{ top: 5, right: 5, bottom: 0, left: 5 }}>
+                      <defs>
+                        <linearGradient id="caGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor={couleur} stopOpacity={0.3} />
+                          <stop offset="100%" stopColor={couleur} stopOpacity={0.02} />
+                        </linearGradient>
+                      </defs>
+                      <Area type="monotone" dataKey="ca" stroke={couleur} strokeWidth={2} fill="url(#caGradient)" dot={false} isAnimationActive={true} animationDuration={800} />
+                      <XAxis dataKey="label" tick={{ fontSize: 10, fill: isDark ? '#94a3b8' : '#94a3b8' }} axisLine={false} tickLine={false} />
+                      <Tooltip
+                        content={({ active, payload }) => {
+                          if (!active || !payload?.length) return null;
+                          return (
+                            <div className={`rounded-lg shadow-lg px-3 py-2 text-xs ${isDark ? 'bg-slate-700 text-white' : 'bg-white text-slate-900 border border-slate-200'}`}>
+                              <p className="font-semibold">{new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(payload[0].value)}</p>
+                            </div>
+                          );
+                        }}
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            );
+          })()}
+          {/* Mini Pipeline Funnel */}
+          {(() => {
+            const pipeline = [
+              { label: 'Brouillons', count: devis.filter(d => d.statut === 'brouillon').length, color: '#94a3b8' },
+              { label: 'Envoyés', count: devis.filter(d => d.statut === 'envoye').length, color: '#3b82f6' },
+              { label: 'Signés', count: devis.filter(d => ['signe'].includes(d.statut)).length, color: '#10b981' },
+              { label: 'Facturés', count: devis.filter(d => d.statut === 'facture').length, color: '#8b5cf6' },
+            ];
+            const total = pipeline.reduce((s, p) => s + p.count, 0);
+            if (total === 0) return null;
+            return (
+              <div className={`mt-3 rounded-xl border p-3 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+                <span className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Pipeline commercial</span>
+                <div className="flex mt-2 rounded-full overflow-hidden h-3">
+                  {pipeline.filter(p => p.count > 0).map(p => (
+                    <div key={p.label} style={{ width: `${(p.count / total) * 100}%`, backgroundColor: p.color }} title={`${p.label}: ${p.count}`} />
+                  ))}
+                </div>
+                <div className="flex justify-between mt-1.5">
+                  {pipeline.map(p => (
+                    <div key={p.label} className="text-center">
+                      <span className={`text-xs font-bold ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{p.count}</span>
+                      <span className={`text-[9px] block ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{p.label}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
         </section>}
 
         {/* ========== ACTIONS DU JOUR — Linear-style action cards ========== */}

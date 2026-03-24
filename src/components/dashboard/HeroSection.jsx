@@ -90,6 +90,17 @@ export default function HeroSection({
           </button>
         </div>
 
+        {/* Résumé intelligent */}
+        {(devisEnAttente > 0 || facturesEnRetard > 0) && (
+          <p className={`text-sm mt-2 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+            {[
+              facturesEnRetard > 0 ? `${facturesEnRetard} facture${facturesEnRetard > 1 ? 's' : ''} en retard` : null,
+              devisEnAttente > 0 ? `${devisEnAttente} devis en attente` : null,
+              memosAujourdhui > 0 ? `${memosAujourdhui} tâche${memosAujourdhui > 1 ? 's' : ''} aujourd'hui` : null,
+            ].filter(Boolean).join(' · ')}
+          </p>
+        )}
+
         {/* Contextual Recap Badges — rounded-md, text-[11px] */}
         {recapBadges.length > 0 && (
           <div className="flex items-center gap-2 flex-wrap mt-2.5">
