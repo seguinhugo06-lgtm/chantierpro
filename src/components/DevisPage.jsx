@@ -214,6 +214,18 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   const [showSaveTemplateModal, setShowSaveTemplateModal] = useState(false);
   const [editingDevis, setEditingDevis] = useState(null); // devis being edited in wizard
 
+  // Multi-select state (table view)
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const toggleSelectId = (id) => setSelectedIds(prev => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next; });
+  const toggleSelectAll = (items) => setSelectedIds(prev => prev.size === items.length ? new Set() : new Set(items.map(d => d.id)));
+
+  // Client & chantier filters
+  const [clientFilter, setClientFilter] = useState('');
+  const [chantierFilter, setChantierFilter] = useState('');
+
+  // Status color bar map for cards
+  const STATUS_BAR_COLORS = { brouillon: '#94a3b8', envoye: '#3b82f6', vu: '#3b82f6', signe: '#10b981', accepte: '#10b981', facture: '#8b5cf6', refuse: '#ef4444', expire: '#f59e0b', payee: '#10b981', acompte_facture: '#8b5cf6' };
+
   // Versioning state
   const [devisSnapshots, setDevisSnapshots] = useState([]);
   const [viewingSnapshot, setViewingSnapshot] = useState(null);
@@ -454,6 +466,10 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     if (filter === 'factures_impayees' && !(d.type === 'facture' && d.statut !== 'payee')) return false;
     if (filter === 'en_relance' && !relances.getDocumentPending(d.id)) return false;
     if (filter === 'conversion' && !(d.type === 'devis' && ['envoye', 'vu', 'refuse'].includes(d.statut))) return false;
+    // Client filter
+    if (clientFilter && d.client_id !== clientFilter) return false;
+    // Chantier filter
+    if (chantierFilter && d.chantier_id !== chantierFilter) return false;
     // Search by numero, client name/entreprise, chantier name, and objet
     if (debouncedSearch) {
       const client = clients.find(c => c.id === d.client_id);
@@ -3445,6 +3461,32 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           </Tabs>
         </div>
 
+        {/* Section Relances — visible pour les devis envoyés */}
+        {['envoye', 'vu'].includes(selected.statut) && (
+          <div className={`rounded-xl border p-4 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                Relances
+              </h3>
+              <button
+                onClick={() => showToast?.('Relance programmée', 'success')}
+                className="text-xs font-medium px-3 py-1.5 rounded-lg"
+                style={{ background: `${couleur}15`, color: couleur }}
+              >
+                + Programmer
+              </button>
+            </div>
+            <div className={`text-xs space-y-2 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+              <p className="flex items-center gap-1.5"><Mail size={12} /> J+7 : Rappel amical (automatique)</p>
+              <p className="flex items-center gap-1.5"><Mail size={12} /> J+15 : Deuxième relance</p>
+              <p className="flex items-center gap-1.5"><Mail size={12} /> J+30 : Relance ferme</p>
+            </div>
+            <p className={`text-xs mt-3 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+              Les relances automatiques sont configurables dans Paramètres &rarr; Documents &rarr; Relances
+            </p>
+          </div>
+        )}
+
         {/* Modal Acompte */}
         {showAcompteModal && (
           <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
@@ -4472,7 +4514,27 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
             </button>
           )}
           <div>
-            <h1 className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>Devis & Factures</h1>
+            <h1 className={`text-xl sm:text-2xl font-bold ${textPrimary} inline-flex items-center gap-2`}>
+              Devis & Factures
+              {complianceDismissed && (() => {
+                const missing = [];
+                if (!entreprise?.siret) missing.push('SIRET');
+                if (!entreprise?.adresse) missing.push('Adresse');
+                if (!entreprise?.formeJuridique) missing.push('Forme juridique');
+                if (!entreprise?.decennaleAssureur) missing.push('Assurance décennale');
+                if (missing.length === 0) return null;
+                return (
+                  <span
+                    className="relative inline-block cursor-pointer"
+                    title={`Profil incomplet : ${missing.join(', ')}`}
+                    onClick={() => setPage?.('settings')}
+                  >
+                    <span className="w-2.5 h-2.5 rounded-full inline-block" style={{ background: couleur }} />
+                    <span className="absolute inset-0 w-2.5 h-2.5 rounded-full animate-ping opacity-50" style={{ background: couleur }} />
+                  </span>
+                );
+              })()}
+            </h1>
             <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Gérez vos documents commerciaux</p>
           </div>
         </div>
@@ -4593,18 +4655,53 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         const totalEnvoyes = conversionResult.envoyes;
         const tauxConversion = totalEnvoyes > 0 ? conversionResult.taux : null;
 
+        // Trend computation: compare current month vs previous month
+        const now = new Date();
+        const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const thisMonthDevis = cleanDevis.filter(d => new Date(d.date) >= thisMonthStart);
+        const prevMonthDevis = cleanDevis.filter(d => { const dt = new Date(d.date); return dt >= prevMonthStart && dt < thisMonthStart; });
+        const calcTrend = (curr, prev) => prev === 0 ? (curr > 0 ? 100 : 0) : Math.round(((curr - prev) / prev) * 100);
+        const trendCA = calcTrend(
+          thisMonthDevis.filter(d => d.type === 'facture' && d.statut === 'payee').reduce((s, f) => s + (f.total_ttc || 0), 0),
+          prevMonthDevis.filter(d => d.type === 'facture' && d.statut === 'payee').reduce((s, f) => s + (f.total_ttc || 0), 0)
+        );
+        const trendEnCours = calcTrend(
+          thisMonthDevis.filter(d => d.type === 'devis' && ['envoye', 'vu'].includes(d.statut)).length,
+          prevMonthDevis.filter(d => d.type === 'devis' && ['envoye', 'vu'].includes(d.statut)).length
+        );
+        const trendAEncaisser = calcTrend(
+          thisMonthDevis.filter(d => d.type === 'facture' && d.statut !== 'payee').reduce((s, f) => s + (f.total_ttc || 0), 0),
+          prevMonthDevis.filter(d => d.type === 'facture' && d.statut !== 'payee').reduce((s, f) => s + (f.total_ttc || 0), 0)
+        );
+        const TrendBadge = ({ value }) => {
+          if (value === 0) return null;
+          const isUp = value > 0;
+          return (
+            <span className={`text-[9px] font-semibold px-1 py-0.5 rounded-md inline-flex items-center gap-0.5 ${isUp ? (isDark ? 'bg-emerald-900/50 text-emerald-400' : 'bg-emerald-50 text-emerald-600') : (isDark ? 'bg-red-900/50 text-red-400' : 'bg-red-50 text-red-600')}`}>
+              {isUp ? '↗' : '↘'} {isUp ? '+' : ''}{value}%
+            </span>
+          );
+        };
+
         return (
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5 sm:gap-2">
             {/* CA encaissé */}
             <button onClick={() => setFilter('factures')} className={`${cardBg} rounded-xl border px-2 sm:px-3 py-2 text-left transition-all hover:shadow-md ${filter === 'factures' ? 'ring-2' : ''}`} style={filter === 'factures' ? { '--tw-ring-color': couleur } : {}}>
-              <p className={`text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider ${textMuted} leading-none`}>CA encaissé</p>
+              <div className="flex items-center justify-between">
+                <p className={`text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider ${textMuted} leading-none`}>CA encaissé</p>
+                <TrendBadge value={trendCA} />
+              </div>
               <p className="text-xs sm:text-base font-bold leading-tight mt-0.5 truncate" style={{ color: couleur }}>{!canViewPrices ? '—' : modeDiscret ? '···' : formatMoney(montantPayees)}</p>
               <p className={`text-[10px] ${textMuted} leading-none mt-0.5`}>{facturesPayees.length} fact.</p>
             </button>
 
             {/* En cours */}
             <button onClick={() => setFilter('attente')} className={`${cardBg} rounded-xl border px-2 sm:px-3 py-2 text-left transition-all hover:shadow-md ${filter === 'attente' ? 'ring-2' : ''}`} style={filter === 'attente' ? { '--tw-ring-color': couleur } : {}}>
-              <p className={`text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider ${textMuted} leading-none`}>En cours</p>
+              <div className="flex items-center justify-between">
+                <p className={`text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider ${textMuted} leading-none`}>En cours</p>
+                <TrendBadge value={trendEnCours} />
+              </div>
               <p className="text-xs sm:text-base font-bold text-blue-600 leading-tight mt-0.5">{devisEnvoye.length}</p>
               <p className={`text-[10px] ${textMuted} leading-none mt-0.5 truncate`}>{!canViewPrices ? '—' : modeDiscret ? '···' : formatMoney(montantEnCours)}</p>
             </button>
@@ -4620,7 +4717,10 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 
             {/* À encaisser */}
             <button onClick={() => setFilter('factures_impayees')} className={`${cardBg} rounded-xl border px-2 sm:px-3 py-2 text-left transition-all hover:shadow-md ${facturesEnRetard.length > 0 ? (isDark ? 'border-red-800' : 'border-red-300') : ''} ${filter === 'factures_impayees' ? 'ring-2' : ''}`} style={filter === 'factures_impayees' ? { '--tw-ring-color': couleur } : {}}>
-              <p className={`text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider ${textMuted} leading-none`}>À encaisser</p>
+              <div className="flex items-center justify-between">
+                <p className={`text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider ${textMuted} leading-none`}>À encaisser</p>
+                <TrendBadge value={trendAEncaisser} />
+              </div>
               <p className={`text-xs sm:text-base font-bold leading-tight mt-0.5 truncate ${facturesEnRetard.length > 0 ? 'text-red-600' : 'text-violet-600'}`}>
                 {!canViewPrices ? '—' : modeDiscret ? '···' : formatMoney(montantAEncaisser)}
               </p>
@@ -4722,6 +4822,45 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                   {actionLoading === 'batch' ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />} PDF ({filtered.length})
                 </button>
               </div>
+            </div>
+          )}
+        </div>
+        {/* Row 1.5: Client & Chantier filters */}
+        <div className="flex gap-2 items-center flex-wrap">
+          <select value={clientFilter} onChange={e => { setClientFilter(e.target.value); setSelectedIds(new Set()); }} className={`px-2 py-1 rounded-lg text-xs border max-w-[160px] ${isDark ? 'bg-slate-700 border-slate-600 text-slate-300' : 'bg-white border-slate-200 text-slate-600'}`}>
+            <option value="">Tous les clients</option>
+            {clients.filter(c => c.nom).sort((a, b) => (a.nom || '').localeCompare(b.nom || '', 'fr')).map(c => (
+              <option key={c.id} value={c.id}>{c.prenom ? `${c.prenom} ${c.nom}` : c.nom}</option>
+            ))}
+          </select>
+          <select value={chantierFilter} onChange={e => { setChantierFilter(e.target.value); setSelectedIds(new Set()); }} className={`px-2 py-1 rounded-lg text-xs border max-w-[160px] ${isDark ? 'bg-slate-700 border-slate-600 text-slate-300' : 'bg-white border-slate-200 text-slate-600'}`}>
+            <option value="">Tous les chantiers</option>
+            {chantiers.sort((a, b) => (a.nom || '').localeCompare(b.nom || '', 'fr')).map(c => (
+              <option key={c.id} value={c.id}>{c.nom}</option>
+            ))}
+          </select>
+          {(clientFilter || chantierFilter) && (
+            <div className="flex gap-1 items-center flex-wrap">
+              {clientFilter && (() => {
+                const cl = clients.find(c => c.id === clientFilter);
+                return (
+                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-700'}`}>
+                    <Building2 size={10} />
+                    {cl ? (cl.prenom ? `${cl.prenom} ${cl.nom}` : cl.nom) : 'Client'}
+                    <button onClick={() => setClientFilter('')} className={`ml-0.5 rounded-full p-0.5 ${isDark ? 'hover:bg-slate-600' : 'hover:bg-slate-200'}`}><X size={10} /></button>
+                  </span>
+                );
+              })()}
+              {chantierFilter && (() => {
+                const ch = chantiers.find(c => c.id === chantierFilter);
+                return (
+                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-700'}`}>
+                    <ClipboardList size={10} />
+                    {ch?.nom || 'Chantier'}
+                    <button onClick={() => setChantierFilter('')} className={`ml-0.5 rounded-full p-0.5 ${isDark ? 'hover:bg-slate-600' : 'hover:bg-slate-200'}`}><X size={10} /></button>
+                  </span>
+                );
+              })()}
             </div>
           )}
         </div>
@@ -4827,6 +4966,40 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         </div>
       ) : viewMode === 'pipeline' ? (
         /* ========== PIPELINE VIEW (Kanban) ========== */
+        <div>
+          {/* Pipeline funnel bar */}
+          {(() => {
+            const pipelineStatuses = [
+              { id: 'brouillon', label: 'Brouillon', color: '#94a3b8' },
+              { id: 'envoye', label: 'Envoyé', color: '#3b82f6' },
+              { id: 'accepte', label: 'Signé', color: '#10b981' },
+              { id: 'facture', label: 'Facturé', color: '#8b5cf6' },
+              { id: 'refuse', label: 'Refusé', color: '#ef4444' },
+            ];
+            const devisOnly = devis.filter(d => d.type === 'devis');
+            const total = devisOnly.length || 1;
+            const pipeline = pipelineStatuses.map(s => ({
+              ...s,
+              count: devisOnly.filter(d => s.id === 'accepte' ? ['accepte', 'signe', 'acompte_facture'].includes(d.statut) : s.id === 'envoye' ? ['envoye', 'vu'].includes(d.statut) : s.id === 'facture' ? d.statut === 'facture' : d.statut === s.id).length,
+            })).map(s => ({ ...s, pct: Math.max((s.count / total) * 100, s.count > 0 ? 2 : 0) }));
+            return (
+              <div className="mb-4">
+                <div className="flex rounded-full overflow-hidden h-2">
+                  {pipeline.map(col => col.pct > 0 && (
+                    <div key={col.id} title={`${col.label}: ${col.count}`} style={{ width: `${col.pct}%`, backgroundColor: col.color }} className="transition-all duration-300" />
+                  ))}
+                </div>
+                <div className="flex justify-between mt-1">
+                  {pipeline.filter(p => p.count > 0).map(p => (
+                    <span key={p.id} className={`text-[10px] ${textMuted} flex items-center gap-1`}>
+                      <span className="w-2 h-2 rounded-full inline-block" style={{ backgroundColor: p.color }} />
+                      {p.label} ({p.count})
+                    </span>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
         <Suspense fallback={<div className="flex items-center justify-center py-12"><div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: `${couleur}33`, borderTopColor: couleur }} /></div>}>
           <PipelineKanban
             devis={devis}
@@ -4838,13 +5011,43 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
             onUpdateDevis={onUpdate}
           />
         </Suspense>
+        </div>
       ) : viewMode === 'table' ? (
         /* ========== TABLE VIEW ========== */
+        <div className="relative">
+          {/* Multi-select action bar */}
+          {selectedIds.size > 0 && (
+            <div className={`sticky top-0 z-20 flex items-center gap-3 px-4 py-2.5 rounded-xl mb-2 ${isDark ? 'bg-slate-700 border border-slate-600' : 'bg-slate-100 border border-slate-200'}`}>
+              <span className={`text-sm font-semibold ${textPrimary}`}>{selectedIds.size} élément{selectedIds.size > 1 ? 's' : ''} sélectionné{selectedIds.size > 1 ? 's' : ''}</span>
+              <div className="flex-1" />
+              <button onClick={() => batchExportPDF(filtered.filter(d => selectedIds.has(d.id)))} className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white flex items-center gap-1.5" style={{ background: couleur }}>
+                <Download size={13} /> Exporter PDF
+              </button>
+              {!isViewOnly && canPerform('devis', 'delete') && (
+                <button onClick={async () => {
+                  const ok = await confirm(`Supprimer ${selectedIds.size} document${selectedIds.size > 1 ? 's' : ''} ?`);
+                  if (ok) {
+                    for (const id of selectedIds) { onDelete(id); }
+                    setSelectedIds(new Set());
+                    showToast(`${selectedIds.size} document(s) supprimé(s)`, 'success');
+                  }
+                }} className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 ${isDark ? 'bg-red-900/50 text-red-300 hover:bg-red-800/60' : 'bg-red-50 text-red-600 hover:bg-red-100'}`}>
+                  <Trash2 size={13} /> Supprimer
+                </button>
+              )}
+              <button onClick={() => setSelectedIds(new Set())} className={`p-1.5 rounded-lg ${isDark ? 'hover:bg-slate-600' : 'hover:bg-slate-200'}`}>
+                <X size={14} className={textMuted} />
+              </button>
+            </div>
+          )}
         <div className={`${cardBg} rounded-xl border overflow-hidden`}>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className={isDark ? 'bg-slate-700/50' : 'bg-slate-50'}>
+                  <th className="px-2 py-2.5 w-8">
+                    <input type="checkbox" checked={filtered.length > 0 && selectedIds.size === filtered.length} onChange={() => toggleSelectAll(filtered)} className="rounded border-slate-300 cursor-pointer" />
+                  </th>
                   {[
                     { key: 'numero', label: 'N°' },
                     { key: 'client', label: 'Client' },
@@ -4886,6 +5089,9 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                       className={`cursor-pointer transition-colors ${isDark ? (idx % 2 === 0 ? 'bg-slate-800' : 'bg-slate-800/50') : (idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50')} ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}
                       style={{ borderLeft: `4px solid ${rowBorderColor}` }}
                     >
+                      <td className="px-2 py-2.5 w-8">
+                        <input type="checkbox" checked={selectedIds.has(d.id)} onChange={(e) => { e.stopPropagation(); toggleSelectId(d.id); }} onClick={(e) => e.stopPropagation()} className="rounded border-slate-300 cursor-pointer" />
+                      </td>
                       <td className={`px-3 py-2.5 font-medium text-xs whitespace-nowrap ${textPrimary}`}>
                         <span className="inline-flex items-center gap-1.5">
                           {isAvoirItem ? <RotateCcw size={12} className="text-red-500" /> : d.type === 'facture' ? <Receipt size={12} className="text-violet-500" /> : <FileText size={12} style={{ color: couleur }} />}
@@ -4902,9 +5108,21 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                         {!canViewPrices ? '—' : modeDiscret ? '···' : isAvoirItem ? `-${formatMoney(Math.abs(getDevisTTC(d)))}` : formatMoney(getDevisTTC(d))}
                       </td>
                       <td className="px-3 py-2.5">
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium whitespace-nowrap ${isDark ? `${statusColor.darkBg} ${statusColor.darkText}` : `${statusColor.bg} ${statusColor.text}`}`}>
-                          {statusLabel}
-                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium whitespace-nowrap ${isDark ? `${statusColor.darkBg} ${statusColor.darkText}` : `${statusColor.bg} ${statusColor.text}`}`}>
+                            {statusLabel}
+                          </span>
+                          {d.statut === 'envoye' && (() => {
+                            const sentDate = d.updated_at || d.date;
+                            const daysSent = Math.floor((Date.now() - new Date(sentDate)) / 86400000);
+                            if (daysSent <= 7) return null;
+                            return (
+                              <span className="text-[10px] text-amber-500 flex items-center gap-0.5 whitespace-nowrap">
+                                <Clock size={10} /> J+{daysSent}
+                              </span>
+                            );
+                          })()}
+                        </div>
                       </td>
                       <td className="px-3 py-2.5 text-right">
                         <div className="flex items-center justify-end gap-1">
@@ -4924,6 +5142,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
               </tbody>
             </table>
           </div>
+        </div>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">{filtered.map(d => {
@@ -4976,15 +5195,43 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           const isNameless = client && !clientName;
 
           return (
-            <div key={d.id} onClick={() => { setSelected(d); setMode('preview'); if (d.statut === 'envoye' && d.type === 'devis') markAsViewed(d); }} className={`${cardBg} rounded-xl border cursor-pointer hover:shadow-md transition-all duration-200 px-3 py-2.5`} style={{ borderLeftWidth: '3px', borderLeftColor }}>
-              <div className="flex items-center gap-2.5">
-                {/* Content — single dense row */}
+            <div key={d.id} onClick={() => { setSelected(d); setMode('preview'); if (d.statut === 'envoye' && d.type === 'devis') markAsViewed(d); }} className={`${cardBg} rounded-xl border cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all duration-150 overflow-hidden`}>
+              {/* Status color bar at top */}
+              <div className="h-[3px] w-full" style={{ backgroundColor: STATUS_BAR_COLORS[isExpired(d) ? 'expire' : d.statut] || '#94a3b8' }} />
+              <div className="px-3 py-2.5">
+              <div className="flex items-start gap-2.5">
+                {/* Content */}
                 <div className="flex-1 min-w-0">
-                  {/* Row 1: Numero + badges — stacked on mobile, inline on sm+ */}
+                  {/* Row 0: Client name (prominent) + Amount TTC */}
+                  <div className="flex items-start justify-between gap-2 mb-0.5">
+                    <div className="flex-1 min-w-0">
+                      {(isOrphan || isNameless) ? (
+                        <span className="inline-flex items-center gap-1">
+                          <span className={`text-xs ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>
+                            {isOrphan ? 'Aucun client' : 'Client sans nom'}
+                          </span>
+                          <button onClick={(e) => { e.stopPropagation(); setAssigningClientDevisId(d.id); }} className={`text-xs font-medium underline ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>
+                            Assigner
+                          </button>
+                        </span>
+                      ) : (
+                        <p className={`text-base font-semibold truncate ${textPrimary}`}>{clientName}</p>
+                      )}
+                    </div>
+                    {/* Amount TTC aligned right — large */}
+                    {!canViewPrices ? null : getDevisTTC(d) <= 0 ? (
+                      <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-lg shrink-0 ${isDark ? 'bg-amber-900/40 text-amber-400' : 'bg-amber-50 text-amber-600'}`}>0 €</span>
+                    ) : (
+                      <p className="text-lg font-bold text-right tabular-nums whitespace-nowrap shrink-0" style={{color: isAvoirItem ? '#dc2626' : couleur}}>
+                        {isAvoirItem ? `-${formatMoney(Math.abs(getDevisTTC(d)))}` : formatMoney(getDevisTTC(d))}
+                      </p>
+                    )}
+                  </div>
+                  {/* Row 1: Numero (small, muted) + badges */}
                   <div className="flex flex-col sm:flex-row sm:items-center gap-0.5 sm:gap-1.5">
                     <div className="flex items-center gap-1.5 min-w-0">
                       {isAvoirItem ? <RotateCcw size={13} className="text-red-500 shrink-0" /> : isSituationItem ? <BarChart3 size={13} className="text-orange-500 shrink-0" /> : <span className={`text-xs shrink-0 ${d.type === 'facture' ? 'text-violet-500' : textMuted}`}>{d.type === 'facture' ? '📄' : '📋'}</span>}
-                      <p className={`font-semibold text-xs sm:text-sm truncate ${textPrimary}`}>{cleanNumero(d.numero)}</p>
+                      <p className={`text-xs truncate ${isDark ? 'text-slate-500' : 'text-gray-500'}`}>{cleanNumero(d.numero)}</p>
                     </div>
                     <div className="flex items-center gap-1 flex-wrap">
                       <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isDark ? `${statusColor.darkBg} ${statusColor.darkText}` : `${statusColor.bg} ${statusColor.text}`}`}>{statusLabel}</span>
@@ -5013,30 +5260,26 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                           </span>
                         );
                       })()}
+                      {d.statut === 'envoye' && (() => {
+                        const sentDate = d.updated_at || d.date;
+                        const daysSent = Math.floor((Date.now() - new Date(sentDate)) / 86400000);
+                        if (daysSent <= 7) return null;
+                        return (
+                          <span className="text-[10px] text-amber-500 flex items-center gap-0.5">
+                            <Clock size={10} /> Relance J+{daysSent}
+                          </span>
+                        );
+                      })()}
                     </div>
                   </div>
-                  {/* Row 2: Client · Chantier · Date · Follow-up */}
+                  {/* Row 2: Chantier · Date · Follow-up */}
                   <div className={`text-xs ${textMuted} truncate mt-0.5 flex items-center gap-1 flex-wrap`}>
-                    {(isOrphan || isNameless) ? (
-                      <span className="inline-flex items-center gap-1">
-                        <span className={`text-[10px] ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>
-                          {isOrphan ? 'Aucun client' : 'Client sans nom'}
-                        </span>
-                        <span className={`text-[10px] ${isDark ? 'text-slate-600' : 'text-slate-300'}`}>—</span>
-                        <button onClick={(e) => { e.stopPropagation(); setAssigningClientDevisId(d.id); }} className={`text-[10px] font-medium underline ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>
-                          Assigner →
-                        </button>
-                      </span>
-                    ) : (
-                      <span>{clientName}</span>
-                    )}
                     {chantier && (
                       <>
-                        <span>·</span>
                         <span className={`italic truncate max-w-[120px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{chantier.nom}</span>
+                        <span>·</span>
                       </>
                     )}
-                    <span>·</span>
                     <span>{new Date(d.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</span>
                     {followUp && (
                       <>
@@ -5047,8 +5290,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                   </div>
                 </div>
 
-                {/* Right: Amount + Action (button always at far right) */}
-                <div className="flex items-center gap-2 flex-shrink-0">
+                {/* Right: Action buttons */}
+                <div className="flex items-center gap-1.5 flex-shrink-0 mt-1">
                   {d.signature_token && (
                     <button onClick={(e) => {
                       e.stopPropagation();
@@ -5057,15 +5300,6 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                     }} className={`p-1.5 rounded-lg transition-all ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`} title="Copier le lien de signature">
                       <Link2 size={13} className={isDark ? 'text-slate-500' : 'text-slate-400'} />
                     </button>
-                  )}
-                  {!canViewPrices ? null : getDevisTTC(d) <= 0 ? (
-                    <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-lg ${isDark ? 'bg-amber-900/40 text-amber-400' : 'bg-amber-50 text-amber-600'}`}>
-                      0 €
-                    </span>
-                  ) : (
-                    <p className="text-xs sm:text-sm font-bold text-right tabular-nums whitespace-nowrap" style={{color: isAvoirItem ? '#dc2626' : couleur}}>
-                      {isAvoirItem ? `-${formatMoney(Math.abs(getDevisTTC(d)))}` : formatMoney(getDevisTTC(d))}
-                    </p>
                   )}
                   {qa ? (
                     <button onClick={qa.fn} className={`px-2.5 py-1.5 rounded-lg text-[11px] font-semibold flex items-center gap-1 min-h-[32px] transition-all ${qa.cls}`} style={qa.style}>
@@ -5080,6 +5314,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                     </button>
                   )}
                 </div>
+              </div>
               </div>
             </div>
           );
