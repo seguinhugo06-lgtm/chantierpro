@@ -1,5 +1,5 @@
 /**
- * PostChantierSettings - Configuration de la sequence post-chantier
+ * PostChantierSettings - Configuration de la séquence post-chantier
  *
  * Permet de configurer les actions automatiques déclenchées après
  * la fin d'un chantier (remerciement, avis Google, rapport, entretien, anniversaire).
@@ -226,7 +226,7 @@ export default function PostChantierSettings({ isDark, couleur, showToast }) {
             <button
               onClick={resetDefaults}
               className={`text-xs px-3 py-1.5 rounded-lg border ${cardBg} ${textMuted} ${hoverBg} transition-colors`}
-              title="Réinitialiser les valeurs par defaut"
+              title="Réinitialiser les valeurs par défaut"
             >
               <RotateCcw size={14} className="inline mr-1" />
               Réinitialiser
@@ -234,7 +234,7 @@ export default function PostChantierSettings({ isDark, couleur, showToast }) {
             <button
               onClick={toggleGlobal}
               className="flex items-center gap-2 transition-colors"
-              title={config.enabled ? 'Désactiver la sequence' : 'Activer la sequence'}
+              title={config.enabled ? 'Désactiver la séquence' : 'Activer la séquence'}
             >
               {config.enabled ? (
                 <ToggleRight size={28} style={{ color: couleur }} />

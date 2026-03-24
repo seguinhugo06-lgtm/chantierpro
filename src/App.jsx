@@ -65,12 +65,10 @@ const PipelineKanban = lazyWithRetry(() => import('./components/pipeline/Pipelin
 const AvisGoogle = lazyWithRetry(() => import('./components/avis/AvisGoogle'), 'AvisGoogle');
 const ClientPortal = lazyWithRetry(() => import('./components/portal/ClientPortal'), 'ClientPortal');
 const ChatPage = lazyWithRetry(() => import('./components/chat/ChatPage'), 'Messagerie');
-const FormulairesPage = lazyWithRetry(() => import('./components/forms/FormulairesPage'), 'Formulaires');
 const GarantiesDashboard = lazyWithRetry(() => import('./components/chantiers/GarantiesDashboard'), 'Garanties');
 const ProfilePage = lazyWithRetry(() => import('./components/profil/ProfilePage'), 'Profil');
 const PlanPage = lazyWithRetry(() => import('./components/profil/PlanPage'), 'Plan');
 const AIChatBot = lazyWithRetry(() => import('./components/assistant/AIChatBot'), 'AIChatBot');
-const SiteVitrine = lazyWithRetry(() => import('./components/site/SiteVitrine'), 'SiteVitrine');
 import CookieConsent from './components/CookieConsent';
 import CGUAcceptanceModal, { CGU_VERSION } from './components/CGUAcceptanceModal';
 import { useConfirm, useToast } from './context/AppContext';
@@ -88,7 +86,7 @@ import { usePermissions } from './hooks/usePermissions';
 import { PermissionGate } from './components/ui/PermissionGate';
 import { fetchSubscription, fetchUsage, computeLiveUsage } from './services/subscriptionsApi';
 import { isDraftChantier } from './lib/utils';
-import { Home, FileText, Building2, Calendar, Users, Package, HardHat, Settings as SettingsIcon, Eye, EyeOff, Sun, Moon, LogOut, Menu, Bell, Plus, ChevronRight, ChevronDown, BarChart3, HelpCircle, Search, X, CheckCircle, AlertCircle, Info, Clock, Receipt, Wifi, WifiOff, Palette, Wallet, Library, UserCheck, ShoppingCart, Camera, ClipboardList, ClipboardCheck, PenTool, Download, Share, Smartphone, CreditCard, Tag, Sparkles, Kanban, Star, User, MessageCircle, Shield, CalendarCheck, Megaphone, Globe } from 'lucide-react';
+import { Home, FileText, Building2, Calendar, Users, Package, HardHat, Settings as SettingsIcon, Eye, EyeOff, Sun, Moon, LogOut, Menu, Bell, Plus, ChevronRight, ChevronDown, BarChart3, HelpCircle, Search, X, CheckCircle, AlertCircle, Info, Clock, Receipt, Wifi, WifiOff, Palette, Wallet, Library, UserCheck, ShoppingCart, Camera, ClipboardList, PenTool, Download, Share, Smartphone, CreditCard, Tag, Sparkles, Kanban, Star, User, MessageCircle, Shield, CalendarCheck, Megaphone } from 'lucide-react';
 import { usePWA } from './hooks/usePWA';
 import { registerNetworkListeners, getPendingCount, syncQueue, clearAllMutations, checkConnectivity } from './lib/offline/sync';
 import OfflineIndicator from './components/ui/OfflineIndicator';
@@ -940,11 +938,6 @@ export default function App() {
       ouvrages: "Bibliothèque d'ouvrages",
       admin: 'Administration',
       'design-system': 'Design System',
-      'bibliotheque': 'Bibliothèque',
-      'pipeline': 'Pipeline',
-      'site-web': 'Site web',
-      'formulaires': 'Formulaires',
-      'contrats': 'Contrats',
       cgv: 'CGV',
       cgu: 'CGU',
       confidentialite: 'Confidentialité',
@@ -953,6 +946,11 @@ export default function App() {
       messagerie: 'Messagerie',
       garanties: 'Garanties',
       'avis-google': 'Marketing',
+      'bibliotheque': 'Bibliothèque',
+      'pipeline': 'Pipeline',
+      'site-web': 'Site web',
+      'formulaires': 'Formulaires',
+      'contrats': 'Contrats',
     };
     const title = PAGE_TITLES[page] || page.charAt(0).toUpperCase() + page.slice(1);
     document.title = `${title} — BatiGesti`;
@@ -991,7 +989,18 @@ export default function App() {
 
   // Notifications are now computed via useMemo (see above) — no useEffect needed
 
-  // Portal token — MUST be before loading early return (React hooks order #310)
+  // Loading screen
+  if (loading) return (
+    <div className="min-h-screen bg-[#f5f5f5] flex items-center justify-center">
+      <Building2 size={48} className="text-orange-500 animate-bounce" />
+    </div>
+  );
+
+  const isDark = theme === 'dark';
+  const tc = getThemeClasses(isDark);
+
+  // Client Portal — public page accessible via token (no auth required)
+  // Detect portal token from URL: /portal/{token} or ?portal={token}
   const portalToken = useMemo(() => {
     try {
       const path = window.location.pathname;
@@ -1001,16 +1010,6 @@ export default function App() {
       return params.get('portal') || null;
     } catch { return null; }
   }, []);
-
-  // Loading screen (after ALL hooks)
-  if (loading) return (
-    <div className="min-h-screen bg-[#f5f5f5] flex items-center justify-center">
-      <Building2 size={48} className="text-orange-500 animate-bounce" />
-    </div>
-  );
-
-  const isDark = theme === 'dark';
-  const tc = getThemeClasses(isDark);
 
   if (page === 'client-portal' || portalToken) return (
     <Suspense fallback={<div className="min-h-screen bg-[#f5f5f5] flex items-center justify-center"><Building2 size={48} className="text-orange-500 animate-bounce" /></div>}>
@@ -1214,12 +1213,10 @@ export default function App() {
       ].filter(Boolean).join(' · ')
     },
     { id: 'messagerie', icon: MessageCircle, label: 'Messagerie' },
-    { id: 'formulaires', icon: ClipboardCheck, label: 'Formulaires' },
     { id: 'equipe', icon: HardHat, label: 'Équipe' },
     { id: 'bibliotheque', icon: Library, label: 'Bibliothèque' },
     { id: 'catalogue', icon: Package, label: 'Catalogue' },
     { id: 'avis-google', icon: Megaphone, label: 'Marketing', feature: 'avis_google' },
-    { id: 'site-web', icon: Globe, label: 'Site web' },
     { id: 'finances', icon: Wallet, label: 'Finances' },
     { id: 'plan', icon: CreditCard, label: 'Mon plan' },
     (() => {
@@ -1738,14 +1735,12 @@ export default function App() {
               {page === 'export' && <FeatureGuard feature="export_comptable"><ExportComptable devis={devis} depenses={depenses} chantiers={chantiers} clients={clients} entreprise={entreprise} isDark={isDark} couleur={couleur} /></FeatureGuard>}
               {page === 'pipeline' && <FeatureGuard feature="pipeline"><PipelineKanban devis={devis} clients={clients} isDark={isDark} couleur={couleur} setPage={setPage} setSelectedDevis={setSelectedDevis} onUpdateDevis={updateDevis} /></FeatureGuard>}
               {page === 'avis-google' && <FeatureGuard feature="avis_google"><AvisGoogle chantiers={chantiers} clients={clients} entreprise={entreprise} isDark={isDark} couleur={couleur} /></FeatureGuard>}
-              {page === 'site-web' && <SiteVitrine entreprise={entreprise} chantiers={chantiers} catalogue={catalogue} isDark={isDark} couleur={couleur} setPage={setPage} />}
               {page === 'profil' && <ProfilePage user={user} entreprise={entreprise} devis={devis} clients={clients} chantiers={chantiers} catalogue={catalogue} depenses={depenses} paiements={paiements} equipe={equipe} isDark={isDark} couleur={couleur} setPage={setPage} modeDiscret={modeDiscret} />}
               {page === 'plan' && <PlanPage isDark={isDark} couleur={couleur} />}
               {page === 'analytique' && <AnalyticsPage devis={devis} clients={clients} chantiers={chantiers} depenses={depenses} equipe={equipe} paiements={paiements} entreprise={entreprise} isDark={isDark} couleur={couleur} setPage={setPage} modeDiscret={modeDiscret} />}
               {page === 'finances' && <FinancesPage devis={devis} depenses={depenses} clients={clients} chantiers={chantiers} entreprise={entreprise} equipe={equipe} paiements={paiements} pointages={pointages} isDark={isDark} couleur={couleur} setPage={setPage} modeDiscret={modeDiscret} />}
               {page === 'equipe' && <Equipe equipe={equipe} setEquipe={setEquipe} addEmployee={addEmployee} updateEmployee={updateEmployee} deleteEmployee={deleteEmployee} pointages={pointages} setPointages={setPointages} addPointage={addPointage} chantiers={chantiers} planningEvents={planningEvents} couleur={couleur} isDark={isDark} modeDiscret={modeDiscret} setPage={setPage} />}
               {page === 'messagerie' && <ChatPage isDark={isDark} couleur={couleur} showToast={showToast} user={user} equipe={equipe} />}
-              {page === 'formulaires' && <FormulairesPage isDark={isDark} couleur={couleur} showToast={showToast} user={user} chantiers={chantiers} clients={clients} />}
               {page === 'garanties' && <GarantiesDashboard isDark={isDark} couleur={couleur} showToast={showToast} user={user} chantiers={chantiers} />}
               {page === 'admin' && <AdminHelp chantiers={chantiers} clients={clients} devis={devis} factures={devis.filter(d => d.type === 'facture')} depenses={depenses} entreprise={entreprise} isDark={isDark} couleur={couleur} />}
               {page === 'pricing' && <PricingPage isDark={isDark} couleur={couleur} setPage={setPage} />}
