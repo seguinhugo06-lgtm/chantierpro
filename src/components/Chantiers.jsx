@@ -110,7 +110,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
   const inputBg = isDark ? "bg-slate-700 border-slate-600 text-white placeholder-slate-400" : "bg-white border-slate-300";
   const textPrimary = isDark ? "text-slate-100" : "text-slate-900";
   const textSecondary = isDark ? "text-slate-300" : "text-slate-600";
-  const textMuted = isDark ? "text-slate-400" : "text-slate-600";
+  const textMuted = isDark ? "text-slate-300" : "text-slate-600";
 
   // C1: Duplicate chantier detection
   const duplicateMap = React.useMemo(() => findDuplicateChantiers(chantiers || []), [chantiers]);
@@ -460,7 +460,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
             <div className={`sticky top-0 z-20 -mx-4 px-4 py-3 sm:-mx-6 sm:px-6 ${isDark ? 'bg-slate-900/95' : 'bg-slate-50/95'} backdrop-blur-md border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
               {/* Row 1: Back + Status + Title (wraps on mobile) */}
               <div className="flex items-center gap-2 mb-1 sm:mb-2 flex-wrap">
-                <button onClick={() => { setView(null); setSelectedChantier?.(null); }} className={`p-2 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'} rounded-xl min-w-[40px] min-h-[40px] flex items-center justify-center shrink-0`}>
+                <button onClick={() => { setView(null); setSelectedChantier?.(null); }} className={`p-2 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'} rounded-xl min-w-[40px] min-h-[44px] flex items-center justify-center shrink-0`}>
                   <ArrowLeft size={20} className={textPrimary} />
                 </button>
                 {/* Sync status dot */}
@@ -474,7 +474,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                     if (newStatus === 'termine') triggerPostChantierSequence(ch);
                     showToast(`Statut changé: ${CHANTIER_STATUS_LABELS[newStatus]}`, 'success');
                   }}
-                  className={`px-3 py-1.5 rounded-full text-xs font-medium cursor-pointer border-0 outline-none appearance-none pr-6 bg-no-repeat bg-right min-h-[36px] shrink-0 ${
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium cursor-pointer border-0 outline-none appearance-none pr-6 bg-no-repeat bg-right min-h-[44px] shrink-0 ${
                     ch.statut === 'en_cours' ? (isDark ? 'bg-orange-900/50 text-orange-400' : 'bg-orange-100 text-orange-700')
                     : ch.statut === 'termine' ? (isDark ? 'bg-emerald-900/50 text-emerald-400' : 'bg-emerald-100 text-emerald-700')
                     : ch.statut === 'abandonne' ? (isDark ? 'bg-red-900/50 text-red-400' : 'bg-red-100 text-red-700')
@@ -496,11 +496,11 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                   <button
                     onClick={() => prevChantier && setView(prevChantier.id)}
                     disabled={!prevChantier}
-                    className={`px-2 py-1.5 rounded-lg text-xs flex items-center gap-1 transition-all min-h-[32px] ${
+                    className={`px-2 py-1.5 rounded-lg text-xs flex items-center gap-1 transition-all min-h-[44px] min-w-[44px] ${
                       prevChantier
                         ? isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-200 text-slate-600'
                         : 'opacity-30 cursor-not-allowed'
-                    } ${isDark ? 'text-slate-400' : 'text-slate-500'}`}
+                    } ${isDark ? 'text-slate-300' : 'text-slate-500'}`}
                     title={prevChantier ? `← ${prevChantier.nom}` : ''}
                   >
                     <ArrowLeft size={14} />
@@ -509,11 +509,11 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                   <button
                     onClick={() => nextChantier && setView(nextChantier.id)}
                     disabled={!nextChantier}
-                    className={`px-2 py-1.5 rounded-lg text-xs flex items-center gap-1 transition-all min-h-[32px] ${
+                    className={`px-2 py-1.5 rounded-lg text-xs flex items-center gap-1 transition-all min-h-[44px] min-w-[44px] ${
                       nextChantier
                         ? isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-200 text-slate-600'
                         : 'opacity-30 cursor-not-allowed'
-                    } ${isDark ? 'text-slate-400' : 'text-slate-500'}`}
+                    } ${isDark ? 'text-slate-300' : 'text-slate-500'}`}
                     title={nextChantier ? `${nextChantier.nom} →` : ''}
                   >
                     <span className="hidden sm:inline max-w-[120px] truncate">{nextChantier?.nom || ''}</span>
@@ -525,7 +525,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                 <div className="flex items-center gap-1">
                   {/* Desktop: icon buttons visible */}
                   <div className="hidden sm:flex items-center gap-1">
-                    <button onClick={() => setEditingChantier(ch)} className={`p-2 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-200'} rounded-lg min-w-[44px] min-h-[44px] sm:min-w-[36px] sm:min-h-[36px] flex items-center justify-center`} title="Modifier">
+                    <button onClick={() => setEditingChantier(ch)} className={`p-2 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-200'} rounded-lg min-w-[44px] min-h-[44px] flex items-center justify-center`} title="Modifier">
                       <Edit3 size={16} className={textMuted} />
                     </button>
                     <button
@@ -535,29 +535,29 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                         showToast(`Chantier dupliqué : "${clone.nom}"`, 'success');
                         if (newCh?.id) setView(newCh.id);
                       }}
-                      className={`p-2 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-200'} rounded-lg min-w-[44px] min-h-[44px] sm:min-w-[36px] sm:min-h-[36px] flex items-center justify-center`} title="Dupliquer"
+                      className={`p-2 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-200'} rounded-lg min-w-[44px] min-h-[44px] flex items-center justify-center`} title="Dupliquer"
                     >
                       <Copy size={16} className={textMuted} />
                     </button>
                     {(ch.statut === 'en_cours' || ch.statut === 'termine') && !chantierReception && (
-                      <button onClick={() => setShowReceptionForm(true)} className={`p-2 ${isDark ? 'hover:bg-blue-900/50' : 'hover:bg-blue-50'} rounded-lg min-w-[44px] min-h-[44px] sm:min-w-[36px] sm:min-h-[36px] flex items-center justify-center`} title="Réceptionner le chantier">
+                      <button onClick={() => setShowReceptionForm(true)} className={`p-2 ${isDark ? 'hover:bg-blue-900/50' : 'hover:bg-blue-50'} rounded-lg min-w-[44px] min-h-[44px] flex items-center justify-center`} title="Réceptionner le chantier">
                         <Shield size={16} className="text-blue-500" />
                       </button>
                     )}
                     {ch.statut === 'en_cours' && (
-                      <button onClick={async () => { const confirmed = await confirm({ title: 'Terminer le chantier', message: `Marquer "${ch.nom}" comme terminé ? La date de fin sera mise à aujourd'hui.` }); if (confirmed) { updateChantier(ch.id, { statut: 'termine', date_fin: new Date().toISOString().split('T')[0] }); triggerPostChantierSequence(ch); showToast('Chantier marqué comme terminé', 'success'); } }} className={`p-2 ${isDark ? 'hover:bg-emerald-900/50' : 'hover:bg-emerald-50'} rounded-lg min-w-[44px] min-h-[44px] sm:min-w-[36px] sm:min-h-[36px] flex items-center justify-center`} title="Marquer comme terminé">
+                      <button onClick={async () => { const confirmed = await confirm({ title: 'Terminer le chantier', message: `Marquer "${ch.nom}" comme terminé ? La date de fin sera mise à aujourd'hui.` }); if (confirmed) { updateChantier(ch.id, { statut: 'termine', date_fin: new Date().toISOString().split('T')[0] }); triggerPostChantierSequence(ch); showToast('Chantier marqué comme terminé', 'success'); } }} className={`p-2 ${isDark ? 'hover:bg-emerald-900/50' : 'hover:bg-emerald-50'} rounded-lg min-w-[44px] min-h-[44px] flex items-center justify-center`} title="Marquer comme terminé">
                         <CheckCircle size={16} className="text-emerald-500" />
                       </button>
                     )}
                     {ch.statut !== 'archive' && (
-                      <button onClick={async () => { const confirmed = await confirm({ title: 'Archiver', message: `Archiver le chantier "${ch.nom}" ? Il ne sera plus visible dans la liste active.` }); if (confirmed) { updateChantier(ch.id, { statut: 'archive' }); showToast('Chantier archivé', 'success'); setView(null); } }} className={`p-2 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-200'} rounded-lg min-w-[44px] min-h-[44px] sm:min-w-[36px] sm:min-h-[36px] flex items-center justify-center`} title="Archiver">
+                      <button onClick={async () => { const confirmed = await confirm({ title: 'Archiver', message: `Archiver le chantier "${ch.nom}" ? Il ne sera plus visible dans la liste active.` }); if (confirmed) { updateChantier(ch.id, { statut: 'archive' }); showToast('Chantier archivé', 'success'); setView(null); } }} className={`p-2 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-200'} rounded-lg min-w-[44px] min-h-[44px] flex items-center justify-center`} title="Archiver">
                         <Archive size={16} className={textMuted} />
                       </button>
                     )}
                   </div>
                   {/* Mobile: ⋮ dropdown menu with labels */}
                   <div className="relative sm:hidden">
-                    <button onClick={() => setShowMobileActions(prev => prev === ch.id ? null : ch.id)} className={`p-2 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-200'} rounded-lg min-w-[44px] min-h-[44px] sm:min-w-[36px] sm:min-h-[36px] flex items-center justify-center`}>
+                    <button onClick={() => setShowMobileActions(prev => prev === ch.id ? null : ch.id)} aria-label="Plus d'actions" className={`p-2 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-200'} rounded-lg min-w-[44px] min-h-[44px] flex items-center justify-center`}>
                       <MoreVertical size={18} className={textMuted} />
                     </button>
                     {showMobileActions === ch.id && (
@@ -565,19 +565,19 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                         <div className="fixed inset-0 z-10" onClick={() => setShowMobileActions(null)} />
                         <div className={`absolute right-0 top-full mt-1 z-20 py-1 rounded-xl shadow-lg border min-w-[180px] ${isDark ? 'bg-slate-800 border-slate-600' : 'bg-white border-slate-200'}`}>
                           <button onClick={() => { setEditingChantier(ch); setShowMobileActions(null); }} className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm ${isDark ? 'text-slate-300 hover:bg-slate-700' : 'text-slate-700 hover:bg-slate-50'}`}>
-                            <Edit3 size={15} className={textMuted} /> Modifier
+                            <Edit3 size={16} className={textMuted} /> Modifier
                           </button>
                           <button onClick={() => { const clone = { nom: `${ch.nom} (copie)`, client_id: ch.client_id, clientId: ch.client_id, adresse: ch.adresse, ville: ch.ville, codePostal: ch.codePostal, dateDebut: new Date().toISOString().split('T')[0], date_debut: new Date().toISOString().split('T')[0], dateFin: '', date_fin: '', budgetPrevu: ch.budget_estime || ch.budgetPrevu || 0, budget_estime: ch.budget_estime || ch.budgetPrevu || 0, budget_materiaux: ch.budget_materiaux || 0, heures_estimees: ch.heures_estimees || 0, description: ch.description || '', notes: ch.notes || '', taches: (ch.taches || []).map(t => ({ ...t, id: generateId(), done: false })), photos: [], documents: [], messages: [], statut: 'prospect' }; const newCh = addChantier(clone); showToast(`Chantier dupliqué`, 'success'); if (newCh?.id) setView(newCh.id); setShowMobileActions(null); }} className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm ${isDark ? 'text-slate-300 hover:bg-slate-700' : 'text-slate-700 hover:bg-slate-50'}`}>
-                            <Copy size={15} className={textMuted} /> Dupliquer
+                            <Copy size={16} className={textMuted} /> Dupliquer
                           </button>
                           {ch.statut === 'en_cours' && (
                             <button onClick={async () => { setShowMobileActions(null); const confirmed = await confirm({ title: 'Terminer', message: `Marquer "${ch.nom}" comme terminé ?` }); if (confirmed) { updateChantier(ch.id, { statut: 'termine', date_fin: new Date().toISOString().split('T')[0] }); triggerPostChantierSequence(ch); showToast('Chantier terminé', 'success'); } }} className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm ${isDark ? 'text-emerald-400 hover:bg-slate-700' : 'text-emerald-600 hover:bg-slate-50'}`}>
-                              <CheckCircle size={15} /> Terminer
+                              <CheckCircle size={16} /> Terminer
                             </button>
                           )}
                           {ch.statut !== 'archive' && (
-                            <button onClick={async () => { setShowMobileActions(null); const confirmed = await confirm({ title: 'Archiver', message: `Archiver "${ch.nom}" ?` }); if (confirmed) { updateChantier(ch.id, { statut: 'archive' }); showToast('Archivé', 'success'); setView(null); } }} className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm ${isDark ? 'text-slate-400 hover:bg-slate-700' : 'text-slate-500 hover:bg-slate-50'}`}>
-                              <Archive size={15} /> Archiver
+                            <button onClick={async () => { setShowMobileActions(null); const confirmed = await confirm({ title: 'Archiver', message: `Archiver "${ch.nom}" ?` }); if (confirmed) { updateChantier(ch.id, { statut: 'archive' }); showToast('Archivé', 'success'); setView(null); } }} className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm ${isDark ? 'text-slate-300 hover:bg-slate-700' : 'text-slate-500 hover:bg-slate-50'}`}>
+                              <Archive size={16} /> Archiver
                             </button>
                           )}
                         </div>
@@ -586,7 +586,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                   </div>
                   <button
                     onClick={() => setShowTaskGenerator(true)}
-                    className="px-3 py-1.5 rounded-lg min-h-[36px] flex items-center gap-1.5 text-white text-xs font-medium transition-all hover:opacity-90"
+                    className="px-3 py-1.5 rounded-lg min-h-[44px] flex items-center gap-1.5 text-white text-xs font-medium transition-all hover:opacity-90"
                     style={{ background: couleur }}
                   >
                     <Sparkles size={14} />
@@ -614,7 +614,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                 triggerPostChantierSequence(ch);
                 showToast('Chantier marqué comme terminé', 'success');
               }}
-              className="px-4 py-2 text-sm font-medium text-white rounded-xl whitespace-nowrap min-h-[40px] hover:shadow-lg transition-all bg-emerald-500 hover:bg-emerald-600"
+              className="px-4 py-2 text-sm font-medium text-white rounded-xl whitespace-nowrap min-h-[44px] hover:shadow-lg transition-all bg-emerald-500 hover:bg-emerald-600"
             >
               Terminer
             </button>
@@ -722,14 +722,14 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <div className="w-1.5 h-1.5 rounded-full" style={{ background: couleur }} />
-                <span className={`text-[10px] font-semibold uppercase tracking-wider ${textMuted}`}>Client</span>
+                <span className={`text-xs font-semibold uppercase tracking-wider ${textMuted}`}>Client</span>
               </div>
               {client ? (
                 <div className="space-y-1.5">
                   <p className={`font-semibold ${textPrimary}`}>{formatClientName(client)}</p>
                   <div className="flex items-center gap-3 flex-wrap">
                     {client.telephone && (
-                      <a href={`tel:${client.telephone}`} className={`flex items-center gap-1.5 text-sm ${textSecondary} hover:opacity-80 min-h-[36px] px-3 py-1 rounded-lg ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+                      <a href={`tel:${client.telephone}`} className={`flex items-center gap-1.5 text-sm ${textSecondary} hover:opacity-80 min-h-[44px] px-3 py-1 rounded-lg ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
                         <Phone size={14} className="text-purple-500" />
                         {client.telephone}
                       </a>
@@ -751,7 +751,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <div className="w-1.5 h-1.5 rounded-full" style={{ background: couleur }} />
-                <span className={`text-[10px] font-semibold uppercase tracking-wider ${textMuted}`}>Adresse du chantier</span>
+                <span className={`text-xs font-semibold uppercase tracking-wider ${textMuted}`}>Adresse du chantier</span>
               </div>
               {(ch.adresse || ch.ville) ? (
                 <div className="space-y-2">
@@ -787,7 +787,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <div className="w-1.5 h-1.5 rounded-full" style={{ background: couleur }} />
-                <span className={`text-[10px] font-semibold uppercase tracking-wider ${textMuted}`}>Actions terrain</span>
+                <span className={`text-xs font-semibold uppercase tracking-wider ${textMuted}`}>Actions terrain</span>
               </div>
               <div className="flex gap-2 flex-wrap">
                 <button
@@ -876,7 +876,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
               <div className="flex items-center gap-2 mb-4">
                 <div className="flex items-center gap-2">
                   <div className="w-1.5 h-1.5 rounded-full" style={{ background: couleur }} />
-                  <span className={`text-[10px] font-semibold uppercase tracking-wider ${textMuted}`}>Tâches</span>
+                  <span className={`text-xs font-semibold uppercase tracking-wider ${textMuted}`}>Tâches</span>
                 </div>
                 <div className="flex-1" />
                 {allTasks.length > 0 && (
@@ -895,7 +895,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                 /* === EMPTY STATE: Enriched + reduced grid === */
                 <div className="text-center">
                   <div className={`py-6 rounded-xl mb-4 ${isDark ? 'bg-slate-700/30' : 'bg-gradient-to-br from-orange-50 to-amber-50'}`}>
-                    <Sparkles size={32} className="mx-auto mb-2" style={{ color: couleur }} />
+                    <Sparkles size={24} className="mx-auto mb-2" style={{ color: couleur }} />
                     <p className={`font-semibold text-base ${textPrimary} mb-1`}>Planifiez vos étapes de travail</p>
                     <p className={`text-xs ${textMuted} max-w-xs mx-auto`}>Découpez votre chantier en tâches pour suivre l'avancement et coordonner votre équipe</p>
                   </div>
@@ -965,7 +965,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                           >
                             {f.label}
                             {f.key === 'critical' && criticalTasks.length > 0 && (
-                              <span className="ml-1 px-1.5 py-0.5 rounded-full bg-red-500 text-white text-[10px]">{criticalTasks.length}</span>
+                              <span className="ml-1 px-1.5 py-0.5 rounded-full bg-red-500 text-white text-xs">{criticalTasks.length}</span>
                             )}
                           </button>
                         ))}
@@ -987,7 +987,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                                 <ChevronRight size={14} className={`transition-transform ${isCollapsed ? '' : 'rotate-90'} ${textMuted}`} />
                                 <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: phase.color }} />
                                 <span className={`text-xs font-medium flex-1 ${textPrimary}`}>{phase.label}</span>
-                                <span className={`text-[10px] ${textMuted}`}>{phaseProgress.done}/{phaseProgress.total}</span>
+                                <span className={`text-xs ${textMuted}`}>{phaseProgress.done}/{phaseProgress.total}</span>
                                 <div className={`w-10 h-1 rounded-full overflow-hidden ${isDark ? 'bg-slate-600' : 'bg-slate-200'}`}>
                                   <div className="h-full rounded-full transition-all" style={{ width: `${phaseProgress.percent}%`, background: phaseProgress.percent === 100 ? '#10b981' : phase.color }} />
                                 </div>
@@ -998,8 +998,8 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                                     <div key={t.id} className={`flex items-center gap-2 p-1.5 rounded-lg group transition-all ${t.critical ? (isDark ? 'bg-red-900/20' : 'bg-red-50') : (isDark ? 'hover:bg-slate-700/50' : 'hover:bg-slate-50')}`}>
                                       <input type="checkbox" checked={t.done} onChange={() => toggleTache(t.id)} className={`w-4 h-4 rounded border-2 cursor-pointer flex-shrink-0 ${t.critical ? 'border-red-500 text-red-500' : ''} ${animatedTaskId === t.id ? 'scale-125' : ''}`} style={{ ...((!t.critical) ? { borderColor: phase.color, accentColor: phase.color } : {}), transition: 'transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)' }} />
                                       <span onClick={() => setEditingTask(t)} className={`flex-1 text-xs cursor-pointer hover:underline ${t.done ? 'line-through opacity-50' : ''} ${t.critical ? 'font-medium' : ''} ${textPrimary}`}>{t.text}</span>
-                                      {t.critical && !t.done && <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-red-500 text-white font-medium">!</span>}
-                                      <button onClick={() => setEditingTask(t)} className={`p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity ${isDark ? 'hover:bg-slate-600' : 'hover:bg-slate-200'}`}><MoreVertical size={12} className={textMuted} /></button>
+                                      {t.critical && !t.done && <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-red-500 text-white font-medium">!</span>}
+                                      <button onClick={() => setEditingTask(t)} aria-label="Modifier la tâche" className={`p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity ${isDark ? 'hover:bg-slate-600' : 'hover:bg-slate-200'}`}><MoreVertical size={14} className={textMuted} /></button>
                                     </div>
                                   ))}
                                 </div>
@@ -1013,7 +1013,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                             <button onClick={() => togglePhase('no-phase')} className={`w-full flex items-center gap-2 p-2.5 text-left transition-all ${isDark ? 'hover:bg-slate-700/50' : 'hover:bg-slate-50'} ${collapsedPhases['no-phase'] ? 'rounded-lg' : 'rounded-t-lg'}`}>
                               <ChevronRight size={14} className={`transition-transform ${collapsedPhases['no-phase'] ? '' : 'rotate-90'} ${textMuted}`} />
                               <span className={`text-xs font-medium flex-1 ${textPrimary}`}>Autres tâches</span>
-                              <span className={`text-[10px] ${textMuted}`}>{tasksNoPhase.filter(t => t.done).length}/{tasksNoPhase.length}</span>
+                              <span className={`text-xs ${textMuted}`}>{tasksNoPhase.filter(t => t.done).length}/{tasksNoPhase.length}</span>
                             </button>
                             {!collapsedPhases['no-phase'] && (
                               <div className="px-2.5 pb-2 space-y-0.5">
@@ -1021,7 +1021,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                                   <div key={t.id} className={`flex items-center gap-2 p-1.5 rounded-lg group transition-all ${isDark ? 'hover:bg-slate-700/50' : 'hover:bg-slate-50'}`}>
                                     <input type="checkbox" checked={t.done} onChange={() => toggleTache(t.id)} className="w-4 h-4 rounded border-2 cursor-pointer flex-shrink-0" style={{ borderColor: couleur, accentColor: couleur }} />
                                     <span onClick={() => setEditingTask(t)} className={`flex-1 text-xs cursor-pointer hover:underline ${t.done ? 'line-through opacity-50' : ''} ${textPrimary}`}>{t.text}</span>
-                                    <button onClick={() => setEditingTask(t)} className={`p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity ${isDark ? 'hover:bg-slate-600' : 'hover:bg-slate-200'}`}><MoreVertical size={12} className={textMuted} /></button>
+                                    <button onClick={() => setEditingTask(t)} aria-label="Modifier la tâche" className={`p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity ${isDark ? 'hover:bg-slate-600' : 'hover:bg-slate-200'}`}><MoreVertical size={14} className={textMuted} /></button>
                                   </div>
                                 ))}
                               </div>
@@ -1062,12 +1062,12 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                   value={newTache}
                   onChange={e => setNewTache(e.target.value)}
                   onKeyPress={e => e.key === 'Enter' && addTache()}
-                  className={`flex-1 px-3 py-2 border rounded-lg text-sm min-h-[40px] ${inputBg}`}
+                  className={`flex-1 px-3 py-2 border rounded-lg text-sm min-h-[44px] ${inputBg}`}
                 />
                 <button
                   onClick={addTache}
                   disabled={!newTache.trim()}
-                  className="px-3 py-2 text-white rounded-lg min-h-[40px] disabled:opacity-50 transition-all active:scale-[0.98]"
+                  className="px-3 py-2 text-white rounded-lg min-h-[44px] disabled:opacity-50 transition-all active:scale-[0.98]"
                   style={{ background: couleur }}
                 >
                   <Plus size={16} />
@@ -1080,7 +1080,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                   <div className={`${cardBg} rounded-2xl w-full max-w-md p-4 shadow-xl`} onClick={e => e.stopPropagation()}>
                     <div className="flex items-center justify-between mb-4">
                       <h3 className={`font-semibold ${textPrimary}`}>Modifier la tâche</h3>
-                      <button onClick={() => setEditingTask(null)} className={`p-2 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}><X size={18} className={textMuted} /></button>
+                      <button onClick={() => setEditingTask(null)} aria-label="Fermer" className={`p-2 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}><X size={18} className={textMuted} /></button>
                     </div>
                     <div className="space-y-4">
                       <div>
@@ -1144,19 +1144,19 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
             {/* KPI row */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
               <div className={`rounded-lg p-2.5 ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
-                <p className={`text-[10px] font-medium uppercase tracking-wider ${textMuted}`}>Budget</p>
+                <p className={`text-xs font-medium uppercase tracking-wider ${textMuted}`}>Budget</p>
                 <p className={`text-lg font-bold tabular-nums ${textPrimary}`}>{modeDiscret ? '•••••' : formatMoney(revenuTotal)}</p>
               </div>
               <div className={`rounded-lg p-2.5 ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
-                <p className={`text-[10px] font-medium uppercase tracking-wider ${textMuted}`}>Dépensé</p>
+                <p className={`text-xs font-medium uppercase tracking-wider ${textMuted}`}>Dépensé</p>
                 <p className="text-lg font-bold tabular-nums text-red-500">{modeDiscret ? '•••••' : formatMoney(bilan.totalDepenses)}</p>
               </div>
               <div className={`rounded-lg p-2.5 ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
-                <p className={`text-[10px] font-medium uppercase tracking-wider ${textMuted}`}>Facturé</p>
+                <p className={`text-xs font-medium uppercase tracking-wider ${textMuted}`}>Facturé</p>
                 <p className="text-lg font-bold tabular-nums" style={{ color: couleur }}>{modeDiscret ? '•••••' : formatMoney(totalFacture)}</p>
               </div>
               <div className={`rounded-lg p-2.5 ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
-                <p className={`text-[10px] font-medium uppercase tracking-wider ${textMuted}`}>Marge brute</p>
+                <p className={`text-xs font-medium uppercase tracking-wider ${textMuted}`}>Marge brute</p>
                 <p className="text-lg font-bold tabular-nums" style={{ color: getHealthColor(chAlerts) }}>
                   {modeDiscret ? '•••••' : bilan.hasDepenses ? `${formatPct(bilan.tauxMarge)}` : '—'}
                 </p>
@@ -1166,21 +1166,21 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
             {revenuTotal > 0 && (
               <div className="space-y-1.5">
                 <div className="flex items-center gap-2">
-                  <span className={`text-[10px] font-medium w-16 ${textMuted}`}>Avancement</span>
+                  <span className={`text-xs font-medium w-16 ${textMuted}`}>Avancement</span>
                   <div className={`flex-1 h-2 rounded-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
                     <div className={`h-full rounded-full transition-all ${avancement > 0 ? 'min-w-[4px]' : ''}`} style={{ width: `${Math.min(100, avancement)}%`, background: couleur }} />
                   </div>
-                  <span className={`text-[10px] font-bold tabular-nums w-8 text-right`} style={{ color: couleur }}>{avancement}%</span>
+                  <span className={`text-xs font-bold tabular-nums w-8 text-right`} style={{ color: couleur }}>{avancement}%</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className={`text-[10px] font-medium w-16 ${textMuted}`}>Budget</span>
+                  <span className={`text-xs font-medium w-16 ${textMuted}`}>Budget</span>
                   <div className={`flex-1 h-2 rounded-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
                     <div className={`h-full rounded-full transition-all ${depPct > avancement && avancement > 0 ? 'bg-red-500' : depPct > 75 ? 'bg-amber-500' : 'bg-emerald-500'}`} style={{ width: `${Math.min(100, depPct)}%` }} />
                   </div>
-                  <span className={`text-[10px] font-bold tabular-nums w-8 text-right ${depPct > avancement && avancement > 0 ? 'text-red-500' : depPct > 75 ? 'text-amber-500' : 'text-emerald-500'}`}>{Math.round(depPct)}%</span>
+                  <span className={`text-xs font-bold tabular-nums w-8 text-right ${depPct > avancement && avancement > 0 ? 'text-red-500' : depPct > 75 ? 'text-amber-500' : 'text-emerald-500'}`}>{Math.round(depPct)}%</span>
                 </div>
                 {resteAFacturer > 0 && !modeDiscret && (
-                  <p className={`text-[10px] ${textMuted} text-right`}>Reste à facturer : <strong className={textPrimary}>{formatMoney(resteAFacturer)}</strong></p>
+                  <p className={`text-xs ${textMuted} text-right`}>Reste à facturer : <strong className={textPrimary}>{formatMoney(resteAFacturer)}</strong></p>
                 )}
               </div>
             )}
@@ -1190,6 +1190,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
         {/* === SECTION: FINANCES (condensé + accordion) === */}
         {(() => {
           const healthColor = !bilan.hasDepenses ? '#94a3b8' : bilan.margeBrute < 0 ? '#ef4444' : bilan.tauxMarge < 15 ? '#f59e0b' : '#10b981';
+          const margeLabel = !bilan.hasDepenses ? '' : bilan.margeBrute < 0 ? 'Négatif' : bilan.tauxMarge < 15 ? 'Faible' : bilan.tauxMarge < 30 ? 'Bon' : 'Excellent';
           const depPct = revenuTotal > 0 ? Math.min(100, (bilan.totalDepenses / revenuTotal) * 100) : 0;
           const toggleFin = (k) => setFinExpanded(p => ({ ...p, [k]: !p[k] }));
 
@@ -1199,7 +1200,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
               <div className="flex items-center gap-3 mb-3 flex-wrap">
                 <div className="flex items-center gap-2">
                   <div className="w-1.5 h-1.5 rounded-full" style={{ background: couleur }} />
-                  <span className={`text-[10px] font-semibold uppercase tracking-wider ${textMuted}`}>Finances</span>
+                  <span className={`text-xs font-semibold uppercase tracking-wider ${textMuted}`}>Finances</span>
                 </div>
                 <div className="flex-1" />
                 <div className="flex items-center gap-3 text-sm flex-wrap">
@@ -1207,6 +1208,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                   <span className={textMuted}>Dépensé <strong className="text-red-500">{formatMoney(bilan.totalDepenses)}</strong></span>
                   <span className="flex items-center gap-1.5">
                     <span className="font-bold" style={{ color: healthColor }}>{bilan.hasDepenses ? formatPct(bilan.tauxMarge) : '—'}</span>
+                    {margeLabel && <span className="text-xs font-medium" style={{ color: healthColor }}>{margeLabel}</span>}
                     <div className="w-2.5 h-2.5 rounded-full" style={{ background: healthColor }} />
                   </span>
                 </div>
@@ -1219,9 +1221,9 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                     <div className="h-full rounded-full transition-all bg-red-400" style={{ width: `${depPct}%` }} />
                   </div>
                   <div className="flex justify-between mt-1">
-                    <span className={`text-[10px] ${textMuted}`}>0 €</span>
-                    <span className={`text-[10px] font-medium ${depPct > 90 ? 'text-red-500' : textMuted}`}>{Math.round(depPct)}% consommé</span>
-                    <span className={`text-[10px] ${textMuted}`}>{formatMoney(revenuTotal)}</span>
+                    <span className={`text-xs ${textMuted}`}>0 €</span>
+                    <span className={`text-xs font-medium ${depPct > 90 ? 'text-red-500' : textMuted}`}>{Math.round(depPct)}% consommé</span>
+                    <span className={`text-xs ${textMuted}`}>{formatMoney(revenuTotal)}</span>
                   </div>
                 </div>
               )}
@@ -1262,19 +1264,19 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                 </button>
                 {finExpanded.depenses && (
                   <div className={`ml-6 p-3 rounded-lg space-y-1 ${isDark ? 'bg-slate-700/30' : 'bg-slate-50'}`}>
-                    <div className="flex justify-between items-center cursor-pointer p-1.5 rounded hover:opacity-80" onClick={() => setShowQuickMateriau(true)}>
-                      <span className={`text-xs ${textMuted} flex items-center gap-1.5`}><Package size={12} /> Matériaux</span>
+                    <button type="button" className="flex justify-between items-center w-full text-left cursor-pointer p-1.5 rounded hover:opacity-80 focus-visible:ring-2 outline-none" onClick={() => setShowQuickMateriau(true)}>
+                      <span className={`text-xs ${textMuted} flex items-center gap-1.5`}><Package size={14} /> Matériaux</span>
                       <span className={`text-xs font-medium ${textPrimary}`}>{formatMoney(bilan.coutMateriaux)}</span>
-                    </div>
-                    <div className="flex justify-between items-center cursor-pointer p-1.5 rounded hover:opacity-80" onClick={() => setShowMODetail(true)}>
-                      <span className={`text-xs ${textMuted} flex items-center gap-1.5`}><UserCog size={12} /> Main d'oeuvre ({bilan.heuresTotal}h)</span>
+                    </button>
+                    <button type="button" className="flex justify-between items-center w-full text-left cursor-pointer p-1.5 rounded hover:opacity-80 focus-visible:ring-2 outline-none" onClick={() => setShowMODetail(true)}>
+                      <span className={`text-xs ${textMuted} flex items-center gap-1.5`}><UserCog size={14} /> Main d'oeuvre ({bilan.heuresTotal}h)</span>
                       <span className={`text-xs font-medium ${textPrimary}`}>{formatMoney(bilan.coutMO)}</span>
-                    </div>
+                    </button>
                     {(bilan.coutAutres || 0) > 0 && (
-                      <div className="flex justify-between items-center cursor-pointer p-1.5 rounded hover:opacity-80" onClick={() => setShowAjustement('DEPENSE')}>
+                      <button type="button" className="flex justify-between items-center w-full text-left cursor-pointer p-1.5 rounded hover:opacity-80 focus-visible:ring-2 outline-none" onClick={() => setShowAjustement('DEPENSE')}>
                         <span className={`text-xs ${textMuted}`}>Autres frais</span>
                         <span className={`text-xs font-medium ${textPrimary}`}>{formatMoney(bilan.coutAutres)}</span>
-                      </div>
+                      </button>
                     )}
                   </div>
                 )}
@@ -1293,7 +1295,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                           <div>
                             <div className="flex justify-between items-center mb-1">
                               <span className={`text-xs ${textMuted}`}>Matériaux</span>
-                              <span className={`text-[10px] font-medium ${bilan.coutMateriaux > ch.budget_materiaux ? 'text-red-500' : 'text-emerald-500'}`}>{formatMoney(bilan.coutMateriaux)} / {formatMoney(ch.budget_materiaux)}</span>
+                              <span className={`text-xs font-medium ${bilan.coutMateriaux > ch.budget_materiaux ? 'text-red-500' : 'text-emerald-500'}`}>{formatMoney(bilan.coutMateriaux)} / {formatMoney(ch.budget_materiaux)}</span>
                             </div>
                             <div className={`h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-slate-600' : 'bg-white'}`}>
                               <div className={`h-full rounded-full ${bilan.coutMateriaux > ch.budget_materiaux ? 'bg-red-500' : 'bg-emerald-500'}`} style={{ width: `${Math.min(100, (bilan.coutMateriaux / ch.budget_materiaux) * 100)}%` }} />
@@ -1304,7 +1306,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                           <div>
                             <div className="flex justify-between items-center mb-1">
                               <span className={`text-xs ${textMuted}`}>Heures</span>
-                              <span className={`text-[10px] font-medium ${bilan.heuresTotal > ch.heures_estimees ? 'text-red-500' : 'text-emerald-500'}`}>{bilan.heuresTotal}h / {ch.heures_estimees}h</span>
+                              <span className={`text-xs font-medium ${bilan.heuresTotal > ch.heures_estimees ? 'text-red-500' : 'text-emerald-500'}`}>{bilan.heuresTotal}h / {ch.heures_estimees}h</span>
                             </div>
                             <div className={`h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-slate-600' : 'bg-white'}`}>
                               <div className={`h-full rounded-full ${bilan.heuresTotal > ch.heures_estimees ? 'bg-red-500' : 'bg-emerald-500'}`} style={{ width: `${Math.min(100, (bilan.heuresTotal / ch.heures_estimees) * 100)}%` }} />
@@ -1328,15 +1330,15 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                       <div className={`ml-6 p-3 rounded-lg ${isDark ? 'bg-slate-700/30' : 'bg-slate-50'}`}>
                         <div className="grid grid-cols-3 gap-2">
                           <div className="text-center">
-                            <p className={`text-[10px] ${textMuted}`}>Dépenses est.</p>
+                            <p className={`text-xs ${textMuted}`}>Dépenses est.</p>
                             <p className="font-bold text-sm text-red-500">{formatMoney(depensesFinalesEstimees)}</p>
                           </div>
                           <div className="text-center">
-                            <p className={`text-[10px] ${textMuted}`}>Bénéfice</p>
+                            <p className={`text-xs ${textMuted}`}>Bénéfice</p>
                             <p className={`font-bold text-sm ${tauxMargeProjecte != null ? getMargeColor(tauxMargeProjecte) : textMuted}`}>{bilan.hasDepenses ? formatMoney(beneficeProjecte) : '—'}</p>
                           </div>
                           <div className="text-center">
-                            <p className={`text-[10px] ${textMuted}`}>Marge</p>
+                            <p className={`text-xs ${textMuted}`}>Marge</p>
                             <p className={`font-bold text-sm ${tauxMargeProjecte != null ? getMargeColor(tauxMargeProjecte) : textMuted}`}>{tauxMargeProjecte != null ? formatPct(tauxMargeProjecte) : '—'}</p>
                           </div>
                         </div>
@@ -1352,7 +1354,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
         {/* === SECTION: DÉTAILS DU CHANTIER === */}
         <div className="flex items-center gap-2 mt-2 mb-2">
           <div className="w-1.5 h-1.5 rounded-full" style={{ background: couleur }} />
-          <span className={`text-[10px] font-semibold uppercase tracking-wider ${textMuted}`}>Détails du chantier</span>
+          <span className={`text-xs font-semibold uppercase tracking-wider ${textMuted}`}>Détails du chantier</span>
         </div>
         {/* Onglets — all in single scrollable bar + ••• for rare tabs */}
         {(() => {
@@ -1394,11 +1396,11 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
             <div className="relative">
               <div role="tablist" aria-label="Détails du chantier" className={`flex gap-1 border-b overflow-x-auto pb-2 -mx-3 px-3 sm:mx-0 sm:px-0 scrollbar-none ${isDark ? 'border-slate-700' : 'border-slate-200'}`} style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }} onKeyDown={(e) => handleTabKeyDown(e, allTabKeys)}>
                 {allTabs.map(({ key, label, icon: Icon, badge }) => (
-                  <button key={key} role="tab" id={`tab-${key}`} aria-selected={activeTab === key} aria-controls={`panel-${key}`} tabIndex={activeTab === key ? 0 : -1} onClick={() => { setActiveTab(key); setShowMoreTabs(false); }} className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl whitespace-nowrap text-sm font-medium min-h-[40px] transition-colors relative ${activeTab === key ? 'text-white' : isDark ? 'text-slate-400 hover:bg-slate-700 hover:text-slate-300' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'}`} style={activeTab === key ? { background: couleur } : {}}>
-                    <Icon size={15} />
+                  <button key={key} role="tab" id={`tab-${key}`} aria-selected={activeTab === key} aria-controls={`panel-${key}`} tabIndex={activeTab === key ? 0 : -1} onClick={() => { setActiveTab(key); setShowMoreTabs(false); }} className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl whitespace-nowrap text-sm font-medium min-h-[44px] transition-colors relative ${activeTab === key ? 'text-white' : isDark ? 'text-slate-400 hover:bg-slate-700 hover:text-slate-300' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'}`} style={activeTab === key ? { background: couleur } : {}}>
+                    <Icon size={16} />
                     <span className="hidden sm:inline">{label}</span>
                     {badge && (
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium min-w-[18px] text-center ${activeTab === key ? 'bg-white/25' : 'text-white'}`} style={activeTab !== key ? { background: couleur } : {}}>
+                      <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium min-w-[18px] text-center ${activeTab === key ? 'bg-white/25' : 'text-white'}`} style={activeTab !== key ? { background: couleur } : {}}>
                         {badge}
                       </span>
                     )}
@@ -1407,10 +1409,11 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                 {/* ••• compact submenu for Rapports & Mémos */}
                 <button
                   onClick={() => setShowMoreTabs(!showMoreTabs)}
-                  className={`flex items-center gap-1 px-2.5 py-2 rounded-xl whitespace-nowrap text-sm font-medium min-h-[40px] transition-colors ${isRareTabActive ? 'text-white' : isDark ? 'text-slate-400 hover:bg-slate-700 hover:text-slate-300' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'}`}
+                  aria-label="Plus d'onglets"
+                  className={`flex items-center gap-1 px-2.5 py-2 rounded-xl whitespace-nowrap text-sm font-medium min-h-[44px] transition-colors ${isRareTabActive ? 'text-white' : isDark ? 'text-slate-400 hover:bg-slate-700 hover:text-slate-300' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'}`}
                   style={isRareTabActive ? { background: couleur } : {}}
                 >
-                  <MoreHorizontal size={15} />
+                  <MoreHorizontal size={16} />
                 </button>
               </div>
               {/* Dropdown for rare tabs */}
@@ -1424,7 +1427,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                         onClick={() => { setActiveTab(key); setShowMoreTabs(false); }}
                         className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${activeTab === key ? (isDark ? 'bg-slate-700' : 'bg-slate-100') : ''} ${isDark ? 'text-slate-300 hover:bg-slate-700' : 'text-slate-700 hover:bg-slate-50'}`}
                       >
-                        <Icon size={15} className={textMuted} />
+                        <Icon size={16} className={textMuted} />
                         {label}
                       </button>
                     ))}
@@ -1439,7 +1442,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
           <div role="tabpanel" id="panel-finances" aria-labelledby="tab-finances" className="space-y-4">
             {adjRevenus.length === 0 && adjDepenses.length === 0 && chDepenses.length === 0 && (
               <div className={`${cardBg} rounded-2xl border p-8 text-center`}>
-                <Wallet size={32} className={`mx-auto mb-3 ${textMuted}`} />
+                <Wallet size={24} className={`mx-auto mb-3 ${textMuted}`} />
                 <p className={`font-medium ${textPrimary}`}>Aucune donnée financière</p>
                 <p className={`text-sm ${textMuted} mt-1`}>Ajoutez des revenus ou des dépenses pour suivre la rentabilité de ce chantier.</p>
               </div>
@@ -1552,7 +1555,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                       </p>
                       <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1">
                         {catPhotos.map(p => (
-                          <div key={p.id} className="relative group cursor-pointer flex-shrink-0" onClick={() => setPhotoPreview(p)}>
+                          <button type="button" key={p.id} className="relative group cursor-pointer flex-shrink-0 focus-visible:ring-2 outline-none rounded-xl" onClick={() => setPhotoPreview(p)} aria-label={`Voir photo ${cat}`}>
                             <img src={p.src} className="w-28 h-28 object-cover rounded-xl hover:opacity-90 transition-opacity border-2"
                                  style={{ borderColor: cat === 'litige' ? '#ef4444' : cat === 'avant' ? '#3b82f6' : cat === 'après' ? '#22c55e' : `${couleur}40` }}
                                  alt={`Photo ${cat} du chantier - ${p.date ? new Date(p.date).toLocaleDateString('fr-FR') : ''}`} />
@@ -1566,11 +1569,12 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                             {/* Delete button */}
                             <button
                               onClick={(e) => { e.stopPropagation(); deletePhoto(p.id); }}
+                              aria-label="Supprimer la photo"
                               className="absolute -top-2 -right-2 w-8 h-8 bg-red-500 text-white rounded-full text-xs sm:opacity-0 sm:group-hover:opacity-100 flex items-center justify-center shadow-lg transition-opacity"
                             >
                               <X size={16} />
                             </button>
-                          </div>
+                          </button>
                         ))}
                       </div>
                     </div>
@@ -1594,7 +1598,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                 <>
                   {docs.length === 0 ? (
                     <div className={`p-8 text-center rounded-xl ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
-                      <FolderOpen size={32} className={`mx-auto mb-2 ${textMuted}`} />
+                      <FolderOpen size={24} className={`mx-auto mb-2 ${textMuted}`} />
                       <p className={textMuted}>Aucun document</p>
                       <p className={`text-xs ${textMuted} mt-1`}>Ajoutez vos plans, permis et attestations</p>
                     </div>
@@ -1688,7 +1692,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                             addDoc(null);
                           }
                         }}
-                        className="px-4 py-2 text-white rounded-xl text-sm flex items-center gap-2 min-h-[40px]"
+                        className="px-4 py-2 text-white rounded-xl text-sm flex items-center gap-2 min-h-[44px]"
                         style={{ background: couleur }}
                       >
                         <Plus size={14} /> Ajouter
@@ -1724,7 +1728,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
               if (allSt.length === 0) {
                 return (
                   <div className={`p-8 text-center rounded-xl ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
-                    <UserCog size={32} className={`mx-auto mb-2 ${textMuted}`} />
+                    <UserCog size={24} className={`mx-auto mb-2 ${textMuted}`} />
                     <p className={`${textMuted} mb-1`}>Aucun sous-traitant affecté</p>
                     <p className={`text-xs ${textMuted}`}>Affectez des sous-traitants depuis le module Sous-traitants.</p>
                   </div>
@@ -1757,7 +1761,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                                 <span className={`text-xs font-medium ${textMuted}`}>{Number(noteQualite).toFixed(1)}</span>
                               </div>
                             )}
-                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
+                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                               stStatut === 'actif' ? 'bg-green-100 text-green-700' :
                               stStatut === 'favori' ? 'bg-yellow-100 text-yellow-700' :
                               stStatut === 'bloque' ? 'bg-red-100 text-red-700' :
@@ -1770,10 +1774,10 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                         {(st.montant_prevu || st.telephone || st.phone) && (
                           <div className={`mt-3 pt-3 border-t flex items-center gap-4 text-xs ${isDark ? 'border-slate-600' : 'border-slate-200'} ${textMuted}`}>
                             {(st.telephone || st.phone) && (
-                              <span className="flex items-center gap-1"><Phone size={12} /> {st.telephone || st.phone}</span>
+                              <span className="flex items-center gap-1"><Phone size={14} /> {st.telephone || st.phone}</span>
                             )}
                             {st.montant_prevu && (
-                              <span className="flex items-center gap-1"><DollarSign size={12} /> {Number(st.montant_prevu).toLocaleString('fr-FR')} €</span>
+                              <span className="flex items-center gap-1"><DollarSign size={14} /> {Number(st.montant_prevu).toLocaleString('fr-FR')} €</span>
                             )}
                           </div>
                         )}
@@ -1951,7 +1955,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
 
                   {chantierMemos.length === 0 && (
                     <div className={`p-8 text-center rounded-xl ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
-                      <ClipboardList size={28} className={`mx-auto mb-2 ${textMuted}`} />
+                      <ClipboardList size={24} className={`mx-auto mb-2 ${textMuted}`} />
                       <p className={textMuted}>Aucun mémo pour ce chantier</p>
                     </div>
                   )}
@@ -1981,7 +1985,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
             <div className="space-y-3 mb-4">
               {(!ch.messages || ch.messages.length === 0) ? (
                 <div className={`p-8 text-center rounded-xl ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
-                  <MessageSquare size={32} className={`mx-auto mb-2 ${textMuted}`} />
+                  <MessageSquare size={24} className={`mx-auto mb-2 ${textMuted}`} />
                   <p className={textMuted}>Aucun échange enregistré</p>
                 </div>
               ) : (
@@ -2089,7 +2093,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
 
                 {/* Proof notice */}
                 <p className="text-center text-white/60 text-xs mt-3 flex items-center justify-center gap-1">
-                  <Clock size={12} /> Photo horodatée - Valeur de preuve en cas de litige
+                  <Clock size={14} /> Photo horodatée - Valeur de preuve en cas de litige
                 </p>
               </div>
             </div>
@@ -2312,7 +2316,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                   <div className="flex items-center justify-between"><div className="flex items-center gap-3"><span>{p.approuve ? '[OK]' : '⏳'}</span>{p.manuel && <span className="text-xs bg-blue-200 text-blue-700 px-2 py-0.5 rounded">Manuel</span>}{p.verrouille && <span className="text-xs bg-slate-400 text-white px-2 py-0.5 rounded"></span>}</div>{!p.verrouille && <button onClick={() => deletePointage(p.id)} className="text-red-400"></button>}</div>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2 text-sm"><div><p className="text-xs text-slate-500">Date</p><input type="date" value={p.date} onChange={e => handleEditPointage(p.id, 'date', e.target.value)} disabled={p.verrouille} className="w-full px-2 py-1 border rounded text-xs" /></div><div><p className="text-xs text-slate-500">Employé</p><p className="font-medium">{emp?.nom}</p></div><div><p className="text-xs text-slate-500">Heures</p><input type="number" step="0.5" value={p.heures} onChange={e => handleEditPointage(p.id, 'heures', e.target.value)} disabled={p.verrouille} className="w-full px-2 py-1 border rounded" /></div><div><p className="text-xs text-slate-500">Coût</p><p className="font-bold text-blue-600">{formatMoney(p.heures * cout)}</p></div></div>
                 </div>
-              ); })}{chPointages.length === 0 && <p className={`text-center py-4 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Aucun pointage</p>}</div>
+              ); })}{chPointages.length === 0 && <p className={`text-center py-4 ${isDark ? 'text-slate-300' : 'text-slate-500'}`}>Aucun pointage</p>}</div>
               <div className="border-t pt-4 flex justify-between items-center"><span className="font-semibold">Total</span><span className="text-xl font-bold text-blue-600">{formatMoney(bilan.coutMO)}</span></div>
               <button onClick={() => setShowMODetail(false)} className={`w-full mt-4 py-2 rounded-xl ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`}>Fermer</button>
             </div>
@@ -2600,7 +2604,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
           {fabOpen ? (
             <X size={24} className="text-white" />
           ) : (
-            <Plus size={28} className="text-white" />
+            <Plus size={24} className="text-white" />
           )}
         </button>
       </div>
@@ -2775,7 +2779,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
           {setPage && (
             <button
               onClick={() => setPage('dashboard')}
-              className={`p-2 rounded-xl min-w-[40px] min-h-[40px] flex items-center justify-center transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}
+              className={`p-2 rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-100 text-slate-500'}`}
               aria-label="Retour au tableau de bord"
               title="Retour au tableau de bord"
             >
@@ -2784,7 +2788,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
           )}
           <div>
             <h1 className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>Chantiers</h1>
-            <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Suivi de vos projets</p>
+            <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Suivi de vos projets</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -2794,6 +2798,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
               onClick={() => setViewMode('list')}
               className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors ${viewMode === 'list' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200 bg-slate-800' : 'text-slate-500 hover:text-slate-700 bg-white'}`}
               style={viewMode === 'list' ? { background: couleur } : {}}
+              aria-label="Vue liste"
               title="Vue liste"
             >
               <List size={18} />
@@ -2802,6 +2807,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
               onClick={() => setViewMode('gantt')}
               className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors ${viewMode === 'gantt' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200 bg-slate-800' : 'text-slate-500 hover:text-slate-700 bg-white'}`}
               style={viewMode === 'gantt' ? { background: couleur } : {}}
+              aria-label="Vue Gantt"
               title="Vue Gantt"
             >
               <BarChart3 size={18} />
@@ -2810,6 +2816,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
               onClick={() => setViewMode('map')}
               className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors ${viewMode === 'map' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200 bg-slate-800' : 'text-slate-500 hover:text-slate-700 bg-white'}`}
               style={viewMode === 'map' ? { background: couleur } : {}}
+              aria-label="Vue carte"
               title="Vue carte"
             >
               <Map size={18} />
@@ -2818,6 +2825,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
               onClick={() => setViewMode('garanties')}
               className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors ${viewMode === 'garanties' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200 bg-slate-800' : 'text-slate-500 hover:text-slate-700 bg-white'}`}
               style={viewMode === 'garanties' ? { background: couleur } : {}}
+              aria-label="Vue garanties"
               title="Vue garanties"
             >
               <Shield size={18} />
@@ -2873,7 +2881,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
               <div className="flex items-center gap-2 shrink-0">
                 {chantiersToday.length === 0 && (
                   <span onClick={(e) => { e.stopPropagation(); setShow(true); }} className="px-2.5 py-1 rounded-lg text-xs font-medium text-white" style={{ backgroundColor: couleur }}>
-                    <Plus size={12} className="inline mr-0.5" />Créer
+                    <Plus size={14} className="inline mr-0.5" />Créer
                   </span>
                 )}
                 {chantiersToday.length > 0 && (
@@ -3032,7 +3040,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                   style={filterStatus === tab.key ? { backgroundColor: tab.color } : {}}
                 >
                   {tab.label}
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${filterStatus === tab.key ? 'bg-white/25' : isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
+                  <span className={`text-xs px-1.5 py-0.5 rounded-full ${filterStatus === tab.key ? 'bg-white/25' : isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
                     {statusCounts[tab.key]}
                   </span>
                 </button>
@@ -3043,8 +3051,8 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
             <div className="flex items-center justify-between gap-2 flex-wrap overflow-x-auto">
               <div className="flex items-center gap-2">
                 <div className="w-1.5 h-1.5 rounded-full" style={{ background: couleur }} />
-                <span className={`text-[10px] font-semibold uppercase tracking-wider ${textMuted}`}>{filterStatus === 'all' ? 'Tous les chantiers' : filterStatus === 'cette_semaine' ? 'Cette semaine' : filterStatus === 'en_cours' ? 'Chantiers en cours' : filterStatus === 'prospect' ? 'Prospects' : filterStatus === 'archive' ? 'Archivés' : filterStatus === 'brouillons' ? 'Brouillons / Tests' : 'Chantiers terminés'}</span>
-                <span className={`text-[10px] ${textMuted}`}>— {getFilteredAndSortedChantiers().length} projet{getFilteredAndSortedChantiers().length > 1 ? 's' : ''}</span>
+                <span className={`text-xs font-semibold uppercase tracking-wider ${textMuted}`}>{filterStatus === 'all' ? 'Tous les chantiers' : filterStatus === 'cette_semaine' ? 'Cette semaine' : filterStatus === 'en_cours' ? 'Chantiers en cours' : filterStatus === 'prospect' ? 'Prospects' : filterStatus === 'archive' ? 'Archivés' : filterStatus === 'brouillons' ? 'Brouillons / Tests' : 'Chantiers terminés'}</span>
+                <span className={`text-xs ${textMuted}`}>— {getFilteredAndSortedChantiers().length} projet{getFilteredAndSortedChantiers().length > 1 ? 's' : ''}</span>
               </div>
               <div className="flex items-center gap-2">
                 {/* Client filter */}
@@ -3097,7 +3105,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
               isDark={isDark}
               fallback={
                 <div className={`h-[500px] rounded-xl flex flex-col items-center justify-center gap-3 ${isDark ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>
-                  <AlertTriangle size={32} className="text-amber-500" />
+                  <AlertTriangle size={24} className="text-amber-500" />
                   <p className="font-medium">La carte n'a pas pu se charger</p>
                   <button onClick={() => setViewMode('list')} className="px-4 py-2 rounded-xl text-sm font-medium text-white" style={{ background: couleur }}>
                     Revenir à la liste
@@ -3149,7 +3157,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
           {viewMode === 'list' && <>
           {getFilteredAndSortedChantiers().length === 0 && (
             <div className={`${cardBg} rounded-2xl border p-8 text-center`}>
-              <Search size={32} className={`mx-auto mb-3 ${textMuted}`} />
+              <Search size={24} className={`mx-auto mb-3 ${textMuted}`} />
               <p className={`font-medium ${textPrimary}`}>{searchQuery ? 'Aucun résultat' : filterStatus === 'termine' ? 'Aucun chantier terminé' : filterStatus === 'archive' ? 'Aucun chantier archivé' : 'Aucun chantier trouvé'}</p>
               <p className={`text-sm ${textMuted} mt-1`}>{searchQuery ? `Aucun chantier ne correspond à "${searchQuery}"` : 'Les chantiers de cette catégorie apparaîtront ici'}</p>
               {(searchQuery || filterClient) && (
@@ -3183,7 +3191,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
               if (d < 0) return { text: `Retard +${Math.abs(d)}j`, color: 'text-red-500' };
               if (d === 0) return { text: "Échéance aujourd'hui", color: 'text-amber-500' };
               if (d <= 7) return { text: `J-${d}`, color: 'text-amber-500' };
-              return { text: `J-${d}`, color: isDark ? 'text-slate-400' : 'text-slate-500' };
+              return { text: `J-${d}`, color: isDark ? 'text-slate-300' : 'text-slate-500' };
             })();
             const statusLabel = ch.statut === 'en_cours' ? 'En cours' : ch.statut === 'termine' ? 'Terminé' : ch.statut === 'archive' ? 'Archivé' : 'Prospect';
             const statusColor = ch.statut === 'en_cours'
@@ -3215,7 +3223,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
             const dateRange = formatDateRange();
 
             return (
-              <div key={ch.id} onClick={() => setView(ch.id)} className={`${cardBg} rounded-xl border px-4 py-3 cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5 ${isDark ? 'hover:border-slate-500' : 'hover:border-orange-200'}`} style={{ borderLeftWidth: '3px', borderLeftColor: borderLeftColor }}>
+              <button type="button" key={ch.id} onClick={() => setView(ch.id)} className={`${cardBg} rounded-xl border px-4 py-3 text-left w-full focus-visible:ring-2 outline-none cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5 ${isDark ? 'hover:border-slate-500 focus-visible:ring-slate-400' : 'hover:border-orange-200 focus-visible:ring-orange-400'}`} style={{ borderLeftWidth: '3px', borderLeftColor: borderLeftColor }}>
                 {/* Row 1: Nom + Health dot */}
                 <div className="flex items-start gap-2 mb-1">
                   <div className="flex items-center gap-2 min-w-0 flex-1">
@@ -3223,29 +3231,29 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                     <div className="w-2 h-2 rounded-full shrink-0 mt-1.5" style={{ background: listHealthColor }} title={listAlerts.length ? listAlerts.map(a => a.label).join(', ') : 'OK'} />
                     <h3 className={`font-semibold text-sm leading-tight line-clamp-2 ${textPrimary}`}>{ch.nom}</h3>
                   </div>
-                  <span className={`text-[10px] font-mono shrink-0 mt-0.5 ${textMuted}`}>#{String(chantiers.indexOf(ch) + 1).padStart(3, '0')}</span>
+                  <span className={`text-xs font-mono shrink-0 mt-0.5 ${textMuted}`}>#{String(chantiers.indexOf(ch) + 1).padStart(3, '0')}</span>
                 </div>
                 {/* Row 1b: Badges */}
                 <div className="flex items-center gap-1.5 flex-wrap mb-1.5">
-                  <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium whitespace-nowrap ${statusColor}`}>
+                  <span className={`px-1.5 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${statusColor}`}>
                     {statusLabel}
                   </span>
                   {/* P3.9: Days countdown badge */}
-                  {daysInfo && <span className={`text-[10px] font-bold ${daysInfo.color}`}>{daysInfo.text}</span>}
+                  {daysInfo && <span className={`text-xs font-bold ${daysInfo.color}`}>{daysInfo.text}</span>}
                   {ch.situations_data?.mode === 'situation' && (
-                    <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium whitespace-nowrap flex items-center gap-0.5 ${isDark ? 'bg-orange-900/50 text-orange-400' : 'bg-orange-100 text-orange-700'}`}>
-                      <BarChart3 size={9} /> Situation
+                    <span className={`px-1.5 py-0.5 rounded-full text-xs font-medium whitespace-nowrap flex items-center gap-0.5 ${isDark ? 'bg-orange-900/50 text-orange-400' : 'bg-orange-100 text-orange-700'}`}>
+                      <BarChart3 size={14} /> Situation
                     </span>
                   )}
                   {isDraftChantier(ch) && (
-                    <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium whitespace-nowrap ${isDark ? 'bg-purple-900/50 text-purple-400' : 'bg-purple-100 text-purple-700'}`}>
+                    <span className={`px-1.5 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${isDark ? 'bg-purple-900/50 text-purple-400' : 'bg-purple-100 text-purple-700'}`}>
                       Brouillon
                     </span>
                   )}
                   {duplicateMap.has(ch.id) && (
                     <button
                       onClick={(e) => { e.stopPropagation(); setMergeDialog({ primaryId: ch.id, secondaryId: duplicateMap.get(ch.id)[0] }); }}
-                      className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium whitespace-nowrap cursor-pointer hover:ring-2 hover:ring-amber-400/50 transition-all ${isDark ? 'bg-amber-900/40 text-amber-400' : 'bg-amber-100 text-amber-700'}`}
+                      className={`px-1.5 py-0.5 rounded-full text-xs font-medium whitespace-nowrap cursor-pointer hover:ring-2 hover:ring-amber-400/50 transition-all ${isDark ? 'bg-amber-900/40 text-amber-400' : 'bg-amber-100 text-amber-700'}`}
                       title="Cliquez pour fusionner les doublons"
                     >
                       ⚠ Doublon
@@ -3276,7 +3284,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                   ) : (
                     <>
                       <span className={`text-xs ${textMuted}`}>·</span>
-                      <span className={`text-xs italic ${isDark ? 'text-slate-500' : 'text-slate-400'} flex items-center gap-1`}>
+                      <span className={`text-xs italic ${isDark ? 'text-slate-400' : 'text-slate-500'} flex items-center gap-1`}>
                         <MapPin size={10} className="shrink-0" />
                         Sans adresse
                       </span>
@@ -3307,7 +3315,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                   <div className="flex items-center gap-3 shrink-0">
                     {allTasks.length > 0 && (
                       <div className="flex items-center gap-1">
-                        <CheckSquare size={12} className={pendingTasks.length > 0 ? 'text-amber-500' : 'text-emerald-500'} />
+                        <CheckSquare size={14} className={pendingTasks.length > 0 ? 'text-amber-500' : 'text-emerald-500'} />
                         <span className={`text-[11px] font-medium tabular-nums ${pendingTasks.length > 0 ? 'text-amber-500' : 'text-emerald-500'}`}>
                           {tasksDone}/{allTasks.length}
                         </span>
@@ -3319,7 +3327,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                         {bilan.hasDepenses && (
                           <span className={`text-[11px] font-bold tabular-nums ${getMargeColor(bilan.tauxMarge)}`} title="Taux de marge">{formatPct(bilan.tauxMarge)} marge</span>
                         )}
-                        {hasAlert && <AlertTriangle size={12} className={`${bilan.tauxMarge < 0 ? 'text-red-500' : 'text-amber-500'}`} />}
+                        {hasAlert && <AlertTriangle size={14} className={`${bilan.tauxMarge < 0 ? 'text-red-500' : 'text-amber-500'}`} />}
                       </div>
                     )}
                   </div>
@@ -3362,7 +3370,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                     <Archive size={14} /> Restaurer
                   </button>
                 )}
-              </div>
+              </button>
             );
           })}
           </div>
@@ -3533,7 +3541,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                         <div key={task.id} className={`flex items-center gap-2 p-2 rounded-lg group ${isDark ? 'bg-slate-700/30' : 'bg-slate-50'}`}>
                           <button onClick={() => toggleTask(task.id)}
                             className="w-5 h-5 rounded-md bg-emerald-500 flex-shrink-0 flex items-center justify-center">
-                            <Check size={12} className="text-white" />
+                            <Check size={14} className="text-white" />
                           </button>
                           <span className={`flex-1 text-sm line-through ${textMuted}`}>{task.text}</span>
                         </div>
@@ -3627,7 +3635,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
         const clientA = clients.find(c => c.id === primary.client_id);
         const clientB = clients.find(c => c.id === secondary.client_id);
         return (
-          <div className="fixed inset-0 z-[1050] flex items-center justify-center p-4" onClick={() => setMergeDialog(null)}>
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setMergeDialog(null)}>
             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
             <div className={`relative w-full max-w-md rounded-2xl border shadow-2xl p-5 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`} onClick={e => e.stopPropagation()}>
               <h3 className={`text-lg font-bold mb-1 ${textPrimary}`}>Fusionner les doublons</h3>
@@ -3636,10 +3644,10 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
               <div className="grid grid-cols-2 gap-3 mb-4">
                 {[{ ch: primary, label: '✅ Principal', client: clientA, id: mergeDialog.primaryId }, { ch: secondary, label: '📦 Sera archivé', client: clientB, id: mergeDialog.secondaryId }].map(({ ch, label, client, id }) => (
                   <div key={id} className={`rounded-xl border p-3 text-center ${isDark ? 'border-slate-600 bg-slate-700/50' : 'border-slate-200 bg-slate-50'}`}>
-                    <span className={`text-[10px] font-medium block mb-1 ${id === mergeDialog.primaryId ? (isDark ? 'text-green-400' : 'text-green-700') : (isDark ? 'text-amber-400' : 'text-amber-700')}`}>{label}</span>
+                    <span className={`text-xs font-medium block mb-1 ${id === mergeDialog.primaryId ? (isDark ? 'text-green-400' : 'text-green-700') : (isDark ? 'text-amber-400' : 'text-amber-700')}`}>{label}</span>
                     <p className={`text-sm font-semibold truncate ${textPrimary}`}>{ch.nom}</p>
                     <p className={`text-xs truncate ${textMuted}`}>{client ? formatClientName(client) : '—'}</p>
-                    <div className={`text-[10px] mt-2 space-y-0.5 ${textMuted}`}>
+                    <div className={`text-xs mt-2 space-y-0.5 ${textMuted}`}>
                       <p>{(ch.taches || []).length} tâches · {(ch.photos || []).length} photos</p>
                       <p>{(ch.documents || []).length} docs · {ch.statut}</p>
                     </div>
