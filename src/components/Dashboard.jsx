@@ -1551,8 +1551,15 @@ export default function Dashboard({
           );
         })()}
 
+        {/* ========== 2-COLUMN GRID LAYOUT — Desktop: main + sidebar ========== */}
+        <div className="px-4 sm:px-6 mb-6">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-6">
+
+        {/* ────── LEFT COLUMN — Actions + Charts ────── */}
+        <div className="space-y-6">
+
         {/* ========== SECONDARY SHORTCUTS — compact 4-icon bar ========== */}
-        <section className="px-4 sm:px-6 mb-6">
+        <section>
           <div className="grid grid-cols-2 sm:flex gap-2">
             {[
               { icon: Users, label: '+ Client', action: () => { setCreateMode?.((p) => ({ ...p, client: true })); setPage?.('clients'); } },
@@ -1581,8 +1588,13 @@ export default function Dashboard({
           </div>
         </section>
 
+        </div>{/* end LEFT COLUMN */}
+
+        {/* ────── RIGHT COLUMN — Chantiers + Onboarding ────── */}
+        <div className="space-y-6">
+
         {/* ========== CHANTIERS EN COURS — top 3 with progress bars ========== */}
-        <section className="px-4 sm:px-6 mb-6">
+        <section>
           {chantiersEnCours.length > 0 ? (
             <div className={`rounded-2xl border p-4 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
               <div className="flex items-center justify-between mb-3">
@@ -1824,6 +1836,10 @@ export default function Dashboard({
             </section>
           );
         })()}
+
+        </div>{/* end RIGHT COLUMN */}
+        </div>{/* end grid */}
+        </div>{/* end grid wrapper */}
 
         {/* Vue d'ensemble header with Personnaliser button */}
         <section className="px-4 sm:px-6 pb-2 flex items-center justify-between">
