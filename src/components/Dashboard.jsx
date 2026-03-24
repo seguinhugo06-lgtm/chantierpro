@@ -1,543 +1,210 @@
 /**
- * Dashboard - Main dashboard component with new modular UX/UI
+ * Dashboard — Focus & Pulse
  *
- * Features:
- * - HeroSection with dynamic greeting
- * - Smart suggestions from actionSuggestions
- * - Enhanced KPICards with trends
- * - Modular widgets (Devis, Chantiers, Tresorerie, Stock)
- * - Inline actions with QuickActions/ActionMenu
- * - RelanceModal integration
+ * 3-zone layout:
+ * 1. Hero Pulse — greeting, score santé, 4 KPI cards, sparkline CA
+ * 2. Actions Prioritaires — unified priority list
+ * 3. Contexte — active chantier + pipeline funnel + onboarding bar
  *
  * @module Dashboard
  */
 
-import React, { useState, useMemo, useEffect, useCallback, memo } from 'react';
+import React, { useState, useMemo } from 'react';
+import { motion } from 'framer-motion';
+import { AreaChart, Area, ResponsiveContainer } from 'recharts';
 import {
-  TrendingUp,
-  TrendingDown,
   FileText,
-  Calendar,
-  Users,
-  Plus,
-  AlertTriangle,
-  Wallet,
-  Activity,
-  ChevronDown,
   HardHat,
-  Sparkles,
-  BarChart3,
-  Lightbulb,
-  Home,
-  DollarSign,
-  Hammer,
-  CheckCircle,
+  AlertTriangle,
   Clock,
-  Send,
-  HelpCircle,
-  X,
-  Receipt,
-  Timer,
-  Target,
-  Zap,
-  Settings,
+  ChevronRight,
   Eye,
   EyeOff,
-  GripVertical,
-  LayoutDashboard,
-  ShieldCheck,
-  MessageCircle,
-  ClipboardList,
-  Mic,
   ArrowRight,
-  Banknote,
-  ChevronRight,
-  RotateCcw,
+  Receipt,
+  Send,
+  ClipboardList,
+  CheckCircle,
 } from 'lucide-react';
 
-// Dashboard components
-import {
-  HeroSection,
-  HeroSectionSkeleton,
-  KPICard,
-  KPICardSkeleton,
-  MiniKPICard,
-  DevisWidget,
-  DevisWidgetSkeleton,
-  ChantiersWidget,
-  ChantiersWidgetSkeleton,
-  TresorerieWidget,
-  TresorerieWidgetSkeleton,
-  StockWidget,
-  StockWidgetSkeleton,
-  SuggestionsSection,
-  SuggestionsSectionSkeleton,
-  WeatherAlertsWidget,
-  ActionBanner,
-  ActionBannerStack,
-  // Unified overview widget
-  OverviewWidget,
-  RevenueChartWidget,
-  // Health Score Widget
-  ScoreSanteWidget,
-  // Bank Widget
-  BankWidget,
-  BankWidgetSkeleton,
-  // Relance Widget
-  RelanceWidget,
-  // Reports Widget
-  ReportsWidget,
-  // Acomptes Widget
-  AcomptesWidget,
-  // Activity Feed Widget (audit-driven)
-  ActivityFeedWidget,
-  // Consolidated Widget (multi-entreprise)
-  ConsolidatedWidget,
-  // KPI Modals
-  EncaisserModal,
-  CeMoisModal,
-} from './dashboard/index';
-
-// UI Components
-import { Button } from './ui/Button';
-import { Badge } from './ui/Badge';
-
-// Modals
-import { RelanceModal } from './modals/RelanceModal';
-import { MarginAnalysisModal } from './modals/MarginAnalysisModal';
-
-// Hooks
-import { useKPIs } from '../hooks/useKPIs';
-import { useRelances } from '../hooks/useRelances';
-import { useOrg } from '../context/OrgContext';
-
-// Services & Utils
-import { getPendingRelances, formatRelanceForDisplay } from '../services/RelanceService';
-import {
-  generateSuggestionsFromContext,
-  transformSuggestions,
-} from '../lib/actionSuggestions';
-import { normalizeDevisRef, formatDevisNumber, formatClientName } from '../lib/formatters';
-import { captureException } from '../lib/sentry';
-import { calcConversion } from '../lib/statsUtils';
-import { isDraftChantier } from '../lib/utils';
 import { useData } from '../context/DataContext';
 import { useToast } from '../context/AppContext';
-import DashboardMemos from './dashboard/DashboardMemos';
-import OnboardingChecklist from './dashboard/OnboardingChecklist';
-
-// RBAC
 import { usePermissions } from '../hooks/usePermissions';
-
-// Subscription
-import UsageAlerts from './subscription/UsageAlerts';
-
-// AI Chat
-import ChatInterface from './ai/ChatInterface';
-
-// Devis Express
-import DevisExpressModal from './DevisExpressModal';
+import { captureException } from '../lib/sentry';
+import DashboardMemos from './dashboard/DashboardMemos';
 
 // ============ CONSTANTS ============
 
-const PERIOD_OPTIONS = [
-  { value: 'month', label: 'Ce mois' },
-  { value: 'quarter', label: 'Ce trimestre' },
-  { value: 'year', label: 'Cette année' },
-];
-
-// Profile required fields — shared definition for completion %
-const PROFILE_REQUIRED_FIELDS = [
-  { key: 'nom', label: 'Nom de l\'entreprise', tab: 'identite' },
+const PROFILE_ALL_FIELDS = [
+  { key: 'nom', label: 'Nom', tab: 'identite' },
   { key: 'adresse', label: 'Adresse', tab: 'identite' },
-  { key: 'siret', label: 'N° SIRET', tab: 'legal' },
+  { key: 'siret', label: 'SIRET', tab: 'legal' },
   { key: 'tel', label: 'Téléphone', tab: 'identite' },
   { key: 'email', label: 'Email', tab: 'identite' },
-];
-
-// All profile fields for completion calculation (mirrors Settings.jsx)
-const PROFILE_ALL_FIELDS = [
-  ...PROFILE_REQUIRED_FIELDS,
   { key: 'formeJuridique', label: 'Forme juridique', tab: 'legal' },
   { key: 'codeApe', label: 'Code APE', tab: 'legal' },
-  { key: 'rcsVille', label: 'Ville RCS', tab: 'legal' },
-  { key: 'rcsNumero', label: 'N° RCS', tab: 'legal' },
-  { key: 'tvaIntra', label: 'N° TVA Intracommunautaire', tab: 'legal' },
-  { key: 'rcProAssureur', label: 'Assureur RC Pro', tab: 'assurances' },
-  { key: 'rcProNumero', label: 'N° Police RC Pro', tab: 'assurances' },
-  { key: 'decennaleAssureur', label: 'Assureur Décennale', tab: 'assurances' },
-  { key: 'decennaleNumero', label: 'N° Police Décennale', tab: 'assurances' },
+  { key: 'tvaIntra', label: 'TVA Intra', tab: 'legal' },
+  { key: 'rcProAssureur', label: 'RC Pro', tab: 'assurances' },
+  { key: 'decennaleAssureur', label: 'Décennale', tab: 'assurances' },
 ];
 
-// Facture 2026 compliance criteria → maps to Settings tabs for deep linking
 const F26_CRITERIA = [
-  { label: 'SIRET', key: 'siret', tab: 'legal', fieldId: 'siret' },
-  { label: 'N° TVA intra.', key: 'tvaIntra', tab: 'legal', fieldId: 'tvaIntra' },
-  { label: 'RCS', key: 'rcs', tab: 'legal', fieldId: 'rcs' },
-  { label: 'Coordonnées bancaires', key: 'banque', tab: 'banque', fieldId: 'iban' },
-  { label: 'Adresse complète', key: 'adresse', tab: 'identite', fieldId: 'adresse' },
-  { label: 'Assurance RC Pro', key: 'rcPro', tab: 'assurances', fieldId: 'rcPro' },
-  { label: 'Format numérotation', key: 'numerotation', tab: null, fieldId: null },
+  { label: 'SIRET', key: 'siret' },
+  { label: 'N° TVA', key: 'tvaIntra' },
+  { label: 'RCS', key: 'rcs' },
+  { label: 'Banque', key: 'banque' },
+  { label: 'Adresse', key: 'adresse' },
+  { label: 'RC Pro', key: 'rcPro' },
 ];
 
-// ============ UTILITY FUNCTIONS ============
+// ============ HELPERS ============
 
-/**
- * Format currency with French locale
- */
-function formatMoney(amount, discrete = false) {
-  if (discrete) return '·····';
+function fmt(amount, discret = false) {
+  if (discret) return '\u2022\u2022\u2022\u2022\u2022';
   return new Intl.NumberFormat('fr-FR', {
     style: 'currency',
     currency: 'EUR',
-    minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(amount || 0);
 }
 
-/**
- * Get margin color based on percentage
- */
-function getMargeColor(margin) {
-  if (margin >= 50) return '#10b981';
-  if (margin >= 30) return '#f59e0b';
-  return '#ef4444';
-}
-
-/**
- * Calculate days since date
- */
 function daysSince(date) {
+  if (!date) return 0;
   const d = date instanceof Date ? date : new Date(date);
-  const now = new Date();
-  return Math.floor((now - d) / (1000 * 60 * 60 * 24));
+  return Math.floor((new Date() - d) / (1000 * 60 * 60 * 24));
 }
 
-// ============ SUB-COMPONENTS ============
+function getPrenom(user) {
+  if (!user) return '';
+  const meta = user.user_metadata || {};
+  if (meta.prenom) return meta.prenom;
+  if (meta.full_name) return meta.full_name.split(' ')[0];
+  if (meta.name) return meta.name.split(' ')[0];
+  return (user.email || '').split('@')[0];
+}
 
-/**
- * NewUserWelcome - Welcome screen for new users
- */
-const NewUserWelcome = memo(function NewUserWelcome({ isDark, couleur, setPage, setCreateMode }) {
-  const cardBg = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200';
-  const textPrimary = isDark ? 'text-white' : 'text-slate-900';
-  const textSecondary = isDark ? 'text-slate-300' : 'text-slate-600';
-  const textMuted = isDark ? 'text-slate-400' : 'text-slate-500';
+// ============ SCORE SANTE ============
 
+function ScoreSante({ score, isDark, couleur }) {
+  const dots = Array.from({ length: 5 }, (_, i) => i < Math.round(score / 2));
+  const color = score >= 8 ? '#10b981' : score >= 5 ? '#f59e0b' : '#ef4444';
   return (
-    <div className="p-4 sm:p-6 space-y-6 max-w-4xl mx-auto">
-      {/* Welcome Card */}
-      <div className={`${cardBg} rounded-2xl border overflow-hidden`}>
-        <div
-          className="p-8 sm:p-12 text-center"
-          style={{
-            background: `linear-gradient(135deg, ${couleur}15 0%, ${couleur}05 100%)`,
-          }}
-        >
+    <div className="flex items-center gap-1.5">
+      <span className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+        {score}/10
+      </span>
+      <div className="flex gap-0.5">
+        {dots.map((filled, i) => (
           <div
-            className="w-16 h-16 rounded-2xl mx-auto mb-6 flex items-center justify-center"
-            style={{ background: couleur }}
-          >
-            <Sparkles size={32} className="text-white" />
-          </div>
-          <h1 className={`text-2xl sm:text-3xl font-bold mb-3 ${textPrimary}`}>
-            Bienvenue dans BatiGesti
-          </h1>
-          <p className={`text-base sm:text-lg ${textSecondary} max-w-lg mx-auto`}>
-            Votre assistant pour gérer devis, factures et chantiers. Commençons !
-          </p>
-        </div>
-
-        {/* Getting Started Steps */}
-        <div className={`p-6 sm:p-8 border-t ${isDark ? 'border-slate-700' : 'border-slate-100'}`}>
-          <p className={`text-xs font-medium uppercase tracking-wider mb-5 ${textMuted}`}>
-            Pour bien démarrer
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {[
-              {
-                step: 1,
-                icon: Settings,
-                title: 'Configurer mon entreprise',
-                desc: 'Nom, adresse, SIRET, logo...',
-                onClick: () => setPage?.('settings'),
-              },
-              {
-                step: 2,
-                icon: Users,
-                title: 'Ajouter un client',
-                desc: 'Créez votre premier contact',
-                onClick: () => {
-                  setCreateMode?.((p) => ({ ...p, client: true }));
-                  setPage?.('clients');
-                },
-              },
-              {
-                step: 3,
-                icon: FileText,
-                title: 'Créer un devis',
-                desc: 'Lancez votre première affaire',
-                onClick: () => {
-                  setCreateMode?.((p) => ({ ...p, devis: true }));
-                  setPage?.('devis');
-                },
-              },
-            ].map((item) => (
-              <button
-                key={item.step}
-                onClick={item.onClick}
-                className={`group p-5 rounded-xl border text-left transition-all hover:shadow-lg hover:-translate-y-1 ${
-                  isDark
-                    ? 'border-slate-700 hover:border-slate-600 bg-slate-800/50'
-                    : 'border-slate-200 hover:border-slate-300 bg-slate-50/50'
-                }`}
-              >
-                <div className="flex items-center gap-3 mb-3">
-                  <div
-                    className="w-10 h-10 rounded-xl flex items-center justify-center"
-                    style={{ background: `${couleur}20` }}
-                  >
-                    <span className="text-lg font-bold" style={{ color: couleur }}>
-                      {item.step}
-                    </span>
-                  </div>
-                  <item.icon size={20} className={textMuted} />
-                </div>
-                <h3 className={`font-semibold mb-1 ${textPrimary}`}>{item.title}</h3>
-                <p className={`text-sm ${textMuted}`}>{item.desc}</p>
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Preview Card */}
-      <div className={`${cardBg} rounded-2xl border p-6 sm:p-8`}>
-        <div className="flex items-center gap-3 mb-6">
-          <div className="p-2 rounded-xl" style={{ background: `${couleur}20` }}>
-            <BarChart3 size={20} style={{ color: couleur }} />
-          </div>
-          <div>
-            <h2 className={`font-semibold ${textPrimary}`}>Votre futur tableau de bord</h2>
-            <p className={`text-sm ${textMuted}`}>
-              Voici ce que vous verrez une fois vos données ajoutées
-            </p>
-          </div>
-        </div>
-
-        {/* Sample KPIs */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6 opacity-60">
-          {[
-            { icon: DollarSign, label: "Chiffre d'affaires", value: '12 500 €', sub: '+15% ce mois' },
-            { icon: TrendingUp, label: 'Marge nette', value: '3 750 €', sub: '30% de marge' },
-            { icon: FileText, label: 'Devis en attente', value: '3', sub: '8 500 € potentiel' },
-            { icon: Hammer, label: 'Chantiers actifs', value: '2', sub: 'En cours' },
-          ].map((kpi, i) => (
-            <div
-              key={i}
-              className={`p-4 rounded-xl border ${
-                isDark ? 'border-slate-700 bg-slate-800/50' : 'border-slate-200 bg-slate-50'
-              }`}
-            >
-              <div className="flex items-center gap-2 mb-2">
-                <kpi.icon size={16} style={{ color: couleur }} />
-                <span className={`text-xs ${textMuted}`}>{kpi.label}</span>
-              </div>
-              <p className="text-xl font-bold" style={{ color: couleur }}>
-                {kpi.value}
-              </p>
-              <p className={`text-xs ${textMuted}`}>{kpi.sub}</p>
-            </div>
-          ))}
-        </div>
-
-        <div
-          className={`p-4 rounded-xl ${
-            isDark ? 'bg-blue-900/20 border border-blue-800' : 'bg-blue-50 border border-blue-200'
-          }`}
-        >
-          <div className="flex items-start gap-3">
-            <Lightbulb size={20} className="text-blue-500 mt-0.5" />
-            <div>
-              <p className={`font-medium ${isDark ? 'text-blue-300' : 'text-blue-800'}`}>
-                Astuce de pro
-              </p>
-              <p className={`text-sm mt-1 ${isDark ? 'text-blue-200' : 'text-blue-700'}`}>
-                Commencez par remplir votre catalogue de prestations. Vous pourrez ensuite créer
-                des devis en quelques clics !
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-});
-
-/**
- * PeriodSelector - Dropdown for selecting time period
- */
-const PeriodSelector = memo(function PeriodSelector({ value, onChange, isDark }) {
-  return (
-    <div className="relative">
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className={`appearance-none pl-3 pr-8 py-2 rounded-lg border text-sm font-medium cursor-pointer ${
-          isDark
-            ? 'bg-slate-800 border-slate-700 text-white'
-            : 'bg-white border-gray-200 text-gray-700'
-        }`}
-      >
-        {PERIOD_OPTIONS.map((opt) => (
-          <option key={opt.value} value={opt.value}>
-            {opt.label}
-          </option>
+            key={i}
+            className="w-2 h-2 rounded-full transition-colors"
+            style={{ background: filled ? color : (isDark ? '#334155' : '#e2e8f0') }}
+          />
         ))}
-      </select>
-      <ChevronDown
-        size={16}
-        className={`absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none ${
-          isDark ? 'text-slate-500' : 'text-gray-400'
-        }`}
-      />
+      </div>
     </div>
   );
-});
+}
 
-/**
- * RecentActivityWidget - Shows recent activity feed
- */
-const RecentActivityWidget = memo(function RecentActivityWidget({
-  activities,
-  isDark,
-  formatMoney,
-  onActivityClick,
-}) {
-  const colorMap = {
-    emerald: {
-      bg: isDark ? 'bg-emerald-500/10' : 'bg-emerald-50',
-      icon: isDark ? 'text-emerald-400' : 'text-emerald-600',
-    },
-    blue: {
-      bg: isDark ? 'bg-blue-500/10' : 'bg-blue-50',
-      icon: isDark ? 'text-blue-400' : 'text-blue-600',
-    },
-    purple: {
-      bg: isDark ? 'bg-purple-500/10' : 'bg-purple-50',
-      icon: isDark ? 'text-purple-400' : 'text-purple-600',
-    },
-    orange: {
-      bg: isDark ? 'bg-orange-500/10' : 'bg-orange-50',
-      icon: isDark ? 'text-orange-400' : 'text-orange-600',
-    },
-  };
+// ============ KPI CARD ============
 
+function KPICard({ label, value, sub, colorClasses, isDark, delay = 0 }) {
   return (
-    <div
-      className={`
-        rounded-2xl border overflow-hidden h-full flex flex-col
-        transition-shadow duration-200 hover:shadow-md
-        ${isDark
-          ? 'bg-slate-800 border-slate-700/50'
-          : 'bg-white border-gray-100 shadow-sm'
-        }
-      `}
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay, duration: 0.4 }}
+      className={`rounded-xl border p-3 sm:p-4 ${colorClasses}`}
     >
-      {/* Header */}
-      <div className="flex items-center gap-2.5 p-5 pb-4">
-        <div
-          className={`
-            flex items-center justify-center w-9 h-9 rounded-xl
-            ${isDark ? 'bg-blue-500/10' : 'bg-blue-50'}
-          `}
-        >
-          <Activity size={18} className="text-blue-500" />
-        </div>
-        <h2 className={`text-base font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-          Activité récente
-        </h2>
-      </div>
+      <p className={`text-xs font-medium mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+        {label}
+      </p>
+      <p className={`text-xl sm:text-2xl font-bold ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
+        {value}
+      </p>
+      {sub && (
+        <p className={`text-xs mt-1 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+          {sub}
+        </p>
+      )}
+    </motion.div>
+  );
+}
 
-      {/* Body */}
-      <div className="flex-1 px-5 pb-5 overflow-auto">
-        {activities?.length > 0 ? (
-          <div className="space-y-2.5">
-            {activities.map((activity) => {
-              const colors = colorMap[activity.color] || colorMap.blue;
-              return (
-                <button
-                  key={activity.id}
-                  type="button"
-                  onClick={() => onActivityClick?.(activity)}
-                  className={`
-                    w-full text-left p-3.5 rounded-xl transition-colors duration-150 cursor-pointer
-                    ${isDark ? 'bg-slate-700/30 hover:bg-slate-700/50' : 'bg-gray-50/80 hover:bg-gray-100/80'}
-                  `}
-                >
-                  <div className="flex items-start gap-3">
-                    <div className={`flex-shrink-0 p-2 rounded-xl ${colors.bg}`}>
-                      {activity.icon && <activity.icon size={16} className={colors.icon} />}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className={`text-sm font-medium leading-snug ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                        {activity.title}
-                      </p>
-                      <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
-                        {activity.subtitle}
-                      </p>
-                      {activity.amount && (
-                        <p className={`text-sm font-semibold mt-1.5 ${colors.icon}`}>
-                          {formatMoney(activity.amount)}
-                        </p>
-                      )}
-                    </div>
-                    <span className={`text-[11px] font-medium whitespace-nowrap ${isDark ? 'text-slate-500' : 'text-gray-600'}`}>
-                      {(() => {
-                        const d = activity.date;
-                        const diffMs = Date.now() - d.getTime();
-                        const diffMin = Math.floor(diffMs / 60000);
-                        const diffH = Math.floor(diffMs / 3600000);
-                        const diffD = Math.floor(diffMs / 86400000);
-                        const hhmm = `${String(d.getHours()).padStart(2, '0')}h${String(d.getMinutes()).padStart(2, '0')}`;
-                        if (diffMin < 1) return "À l'instant";
-                        if (diffMin < 60) return `Il y a ${diffMin}min`;
-                        if (diffD === 0) return `Auj. ${hhmm}`;
-                        if (diffD === 1) return `Hier ${hhmm}`;
-                        if (diffD < 7) return `Il y a ${diffD}j`;
-                        return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
-                      })()}
-                    </span>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        ) : (
-          <div className="flex flex-col items-center justify-center py-10 text-center">
-            <div
-              className={`
-                w-14 h-14 rounded-2xl flex items-center justify-center mb-3
-                ${isDark ? 'bg-slate-700/50' : 'bg-gray-100'}
-              `}
-            >
-              <Activity size={24} className={isDark ? 'text-slate-500' : 'text-gray-300'} />
-            </div>
-            <p className={`text-sm font-medium ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
-              Aucune activité récente
-            </p>
-          </div>
+// ============ ACTION ITEM ============
+
+function ActionItem({ icon: Icon, color, label, detail, onClick, isDark }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors text-left ${
+        isDark ? 'hover:bg-slate-700/50' : 'hover:bg-slate-50'
+      }`}
+    >
+      <div
+        className="flex items-center justify-center w-8 h-8 rounded-lg flex-shrink-0"
+        style={{ background: `${color}18` }}
+      >
+        <Icon className="w-4 h-4" style={{ color }} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className={`text-sm font-medium truncate ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+          {label}
+        </p>
+        {detail && (
+          <p className={`text-xs truncate ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+            {detail}
+          </p>
         )}
       </div>
+      <ChevronRight className={`w-4 h-4 flex-shrink-0 ${isDark ? 'text-slate-600' : 'text-slate-300'}`} />
+    </button>
+  );
+}
+
+// ============ PIPELINE BAR ============
+
+function PipelineBar({ pipeline, isDark, modeDiscret }) {
+  const total = pipeline.brouillon.count + pipeline.envoye.count + pipeline.signe.count + pipeline.facture.count;
+  if (total === 0) return null;
+
+  const pct = (count) => Math.max(count / total * 100, count > 0 ? 4 : 0);
+  const segments = [
+    { key: 'brouillon', label: 'Brouillons', bg: isDark ? 'bg-gray-600' : 'bg-gray-300', ...pipeline.brouillon },
+    { key: 'envoye', label: 'Envoyés', bg: 'bg-blue-500', ...pipeline.envoye },
+    { key: 'signe', label: 'Signés', bg: 'bg-emerald-500', ...pipeline.signe },
+    { key: 'facture', label: 'Facturés', bg: 'bg-violet-500', ...pipeline.facture },
+  ].filter(s => s.count > 0);
+
+  return (
+    <div>
+      <div className="flex h-5 rounded-full overflow-hidden mb-2">
+        {segments.map(s => (
+          <div
+            key={s.key}
+            className={`${s.bg} transition-all`}
+            style={{ width: `${pct(s.count)}%` }}
+            title={`${s.label}: ${s.count}`}
+          />
+        ))}
+      </div>
+      <div className="flex flex-wrap gap-x-4 gap-y-1">
+        {segments.map(s => (
+          <div key={s.key} className="flex items-center gap-1.5">
+            <div className={`w-2 h-2 rounded-full ${s.bg}`} />
+            <span className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+              {s.label} {s.count} ({fmt(s.total, modeDiscret)})
+            </span>
+          </div>
+        ))}
+      </div>
     </div>
   );
-});
+}
 
-// ============ MAIN COMPONENT ============
+// ============ MAIN DASHBOARD ============
 
-/**
- * Dashboard - Main dashboard component
- */
 export default function Dashboard({
   chantiers = [],
   clients = [],
@@ -567,2040 +234,484 @@ export default function Dashboard({
   addMemo,
   toggleMemo,
 }) {
-  // Access dataLoading + addClient from context
-  const { dataLoading, addClient } = useData();
+  const { dataLoading } = useData();
   const { showToast } = useToast();
-
-  // RBAC permissions
-  const { canAccess, canPerform, canViewPrices, getPermission } = usePermissions();
-  const dashPerm = getPermission('dashboard'); // 'full'|'finance'|'chantier'|'pointage'|'view'
+  const { canAccess } = usePermissions();
   const canSeeFinances = canAccess('finances');
-  const canCreateDevis = canPerform('devis', 'create');
 
-  // Organization & Relances
-  const { orgId } = useOrg();
-  const relances = useRelances({
-    devis, clients, entreprise,
-    userId: user?.id,
-    orgId,
-  });
+  const [showAllActions, setShowAllActions] = useState(false);
 
-  // State
-  const [selectedPeriod, setSelectedPeriod] = useState('month');
-  const [kpiPeriod, setKpiPeriod] = useState('month'); // For KPI card period selector
-  const [relanceModal, setRelanceModal] = useState({ isOpen: false, item: null });
-  const [encaisserModalOpen, setEncaisserModalOpen] = useState(false);
-  const [ceMoisModalOpen, setCeMoisModalOpen] = useState(false);
-  const [marginAnalysisModal, setMarginAnalysisModal] = useState({ isOpen: false, chantierId: null, chantierNom: null });
-  const [showWidgetConfig, setShowWidgetConfig] = useState(false);
-  const [dragWidget, setDragWidget] = useState(null); // UX-004: drag & drop widget reorder
-  const [showAIChat, setShowAIChat] = useState(false);
-  const [showDevisExpress, setShowDevisExpress] = useState(false);
-  const [showProfileSetup, setShowProfileSetup] = useState(false);
+  // ---- Theme ----
+  const cardBg = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200';
+  const textPrimary = isDark ? 'text-slate-100' : 'text-slate-900';
+  const textSecondary = isDark ? 'text-slate-400' : 'text-slate-500';
+  const sectionBg = isDark ? 'bg-slate-800/50 border-slate-700/50' : 'bg-white border-slate-200/70';
 
-  // Profile completion calculation
-  const profileCompletude = useMemo(() => {
-    if (!entreprise) return 0;
-    const filled = PROFILE_ALL_FIELDS.filter(f => entreprise[f.key] && String(entreprise[f.key]).trim() !== '');
-    return Math.round((filled.length / PROFILE_ALL_FIELDS.length) * 100);
-  }, [entreprise]);
-
-  const missingRequiredFields = useMemo(() => {
-    if (!entreprise) return PROFILE_REQUIRED_FIELDS;
-    return PROFILE_REQUIRED_FIELDS.filter(f => !entreprise[f.key] || String(entreprise[f.key]).trim() === '');
-  }, [entreprise]);
-
-  // Show profile setup wizard automatically if profile < 30% (first launch or incomplete)
-  const [profileSetupDismissed, setProfileSetupDismissed] = useState(() => {
-    try { return localStorage.getItem('batigesti_profile_setup_dismissed') === 'true'; } catch { return false; }
-  });
-
-  useEffect(() => {
-    if (profileCompletude < 30 && !profileSetupDismissed && entreprise && !showProfileSetup) {
-      // Small delay to avoid showing immediately on first render
-      const t = setTimeout(() => setShowProfileSetup(true), 800);
-      return () => clearTimeout(t);
-    }
-  }, [profileCompletude, profileSetupDismissed, entreprise]);
-
-  // Navigate to a specific settings tab with optional field focus
-  const navigateToSettingsTab = useCallback((tab, fieldId) => {
-    setPage('settings');
-    setTimeout(() => {
-      window.dispatchEvent(new CustomEvent('navigate-settings-tab', {
-        detail: { tab, fieldId }
-      }));
-    }, 200);
-  }, [setPage]);
-
-  // Widget configuration - persisted in localStorage
-  // Default widgets — show only essential ones by default to reduce dashboard density
-  // Users can re-enable hidden widgets via "Personnaliser"
-  const DEFAULT_WIDGETS = [
-    { id: 'overview', label: 'Vue d\'ensemble', visible: true },
-    { id: 'devis', label: 'Devis & Factures', visible: true },
-    { id: 'relances', label: 'Relances', visible: true },
-    { id: 'chantiers', label: 'Chantiers', visible: true },
-    { id: 'activity', label: 'Activité récente', visible: true },
-    { id: 'conformity', label: 'Conformité', visible: true },
-    { id: 'revenue', label: 'Chiffre d\'affaires', visible: false },
-    { id: 'tresorerie', label: 'Trésorerie', visible: false },
-    { id: 'score', label: 'Score Santé', visible: false },
-    { id: 'weather', label: 'Alertes Météo', visible: false },
-    { id: 'stock', label: 'Stock', visible: false },
-    { id: 'reports', label: 'Rapports PDF', visible: false },
-    { id: 'subscription', label: 'Abonnement', visible: false },
-  ];
-
-  const [widgetConfig, setWidgetConfig] = useState(() => {
-    try {
-      const saved = localStorage.getItem('cp_dashboard_widgets');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        // Merge with defaults to handle new widgets added in updates
-        return DEFAULT_WIDGETS.map(dw => {
-          const found = parsed.find(p => p.id === dw.id);
-          return found ? { ...dw, visible: found.visible, order: found.order } : dw;
-        }).sort((a, b) => (a.order ?? 99) - (b.order ?? 99));
-      }
-      return DEFAULT_WIDGETS;
-    } catch { return DEFAULT_WIDGETS; }
-  });
-
-  const updateWidgetConfig = (newConfig) => {
-    const ordered = newConfig.map((w, i) => ({ ...w, order: i }));
-    setWidgetConfig(ordered);
-    localStorage.setItem('cp_dashboard_widgets', JSON.stringify(ordered));
-  };
-
-  const toggleWidgetVisibility = (widgetId) => {
-    const updated = widgetConfig.map(w => w.id === widgetId ? { ...w, visible: !w.visible } : w);
-    updateWidgetConfig(updated);
-  };
-
-  const moveWidget = (widgetId, direction) => {
-    const idx = widgetConfig.findIndex(w => w.id === widgetId);
-    if (idx < 0) return;
-    const newIdx = direction === 'up' ? Math.max(0, idx - 1) : Math.min(widgetConfig.length - 1, idx + 1);
-    if (newIdx === idx) return;
-    const arr = [...widgetConfig];
-    const [item] = arr.splice(idx, 1);
-    arr.splice(newIdx, 0, item);
-    updateWidgetConfig(arr);
-  };
-
-  const isWidgetVisible = (widgetId) => {
-    const w = widgetConfig.find(wc => wc.id === widgetId);
-    return w ? w.visible : true;
-  };
-
-  // Safe arrays
-  const safeChantiers = chantiers || [];
-  const safeClients = clients || [];
-  const safeDevis = devis || [];
-  const safeDepenses = depenses || [];
-  const safePointages = pointages || [];
-  const safeEquipe = equipe || [];
-  const safeCatalogue = catalogue || [];
-
-  // Use real data loading state instead of artificial delay
-  const isLoading = dataLoading;
-
-  // ============ COMPUTED STATS (via useKPIs + Dashboard-specific extras) ============
-
-  // Centralized KPIs — single source of truth for CA encaissé, à encaisser, tendance, etc.
-  const kpis = useKPIs();
-
-  const stats = useMemo(() => {
+  // ---- Computed data ----
+  const computed = useMemo(() => {
     const now = new Date();
-    const thisMonth = now.getMonth();
-    const thisYear = now.getFullYear();
 
-    // Devis by type (needed for pipeline detail & suggestions)
-    const devisOnly = safeDevis.filter((d) => d.type === 'devis');
-    const factures = safeDevis.filter((d) => d.type === 'facture');
+    // KPIs
+    const aEncaisser = devis
+      .filter(d => d.type === 'facture' && ['envoye', 'facture'].includes(d.statut))
+      .reduce((s, d) => s + (d.total_ttc || 0), 0);
 
-    // Pipeline (kept for suggestions context & CeMoisModal)
-    const devisPipeline = {
-      brouillon: devisOnly.filter((d) => d.statut === 'brouillon'),
-      envoye: devisOnly.filter((d) => d.statut === 'envoye' || d.statut === 'vu'),
-      accepte: devisOnly.filter((d) =>
-        ['accepte', 'acompte_facture', 'facture'].includes(d.statut)
-      ),
-      refuse: devisOnly.filter((d) => d.statut === 'refuse'),
-    };
+    const retard = devis
+      .filter(d => d.type === 'facture' && d.date_echeance && new Date(d.date_echeance) < now)
+      .reduce((s, d) => s + (d.total_ttc || 0), 0);
 
-    // Financial stats (Dashboard-specific: totalCA includes devis acceptés, not just factures payées)
-    const totalCA = safeDevis
-      .filter((d) => d.type === 'facture' || d.statut === 'accepte')
-      .reduce((s, d) => s + (d.total_ht || 0), 0);
+    const devisEnAttente = devis.filter(d => d.type !== 'facture' && d.statut === 'envoye');
+    const chantiersActifs = chantiers.filter(c => c.statut === 'en_cours');
 
-    const totalDep = safeDepenses.reduce((s, d) => s + (d.montant || 0), 0);
-    const totalMO = safePointages.reduce(
-      (s, p) =>
-        s + p.heures * (safeEquipe.find((e) => e.id === p.employeId)?.coutHoraireCharge || 28),
-      0
-    );
+    const envoyes = devis.filter(d => d.type !== 'facture' && ['envoye', 'signe', 'facture', 'refuse'].includes(d.statut));
+    const signesDevis = devis.filter(d => d.type !== 'facture' && ['signe', 'facture'].includes(d.statut));
+    const tauxConversion = envoyes.length > 0 ? Math.round(signesDevis.length / envoyes.length * 100) : 0;
 
-    const marge = totalCA - totalDep - totalMO;
-    const hasDepenses = (totalDep + totalMO) > 0;
-    // Si aucune dépense enregistrée, la marge n'est pas calculable (évite 100% trompeur)
-    const tauxMarge = totalCA > 0 && hasDepenses ? (marge / totalCA) * 100 : 0;
-
-    // Conversion rate — formule unifiée via calcConversion (statsUtils.js)
-    const conversionDash = calcConversion(devisOnly);
-    const devisSignes = conversionDash.signes;
-    const devisTotalEnvoyes = conversionDash.envoyes;
-    const tauxConversion = devisTotalEnvoyes > 0 ? conversionDash.taux : -1;
-
-    // CA trend — Dashboard-specific: uses total_ht including factures + devis acceptés
-    const getMonthCA = (monthOffset) => {
-      const targetMonth = new Date(thisYear, thisMonth - monthOffset, 1);
-      return safeDevis
-        .filter((d) => {
-          const dd = new Date(d.date);
-          return (
-            dd.getMonth() === targetMonth.getMonth() &&
-            dd.getFullYear() === targetMonth.getFullYear() &&
-            (d.type === 'facture' || d.statut === 'accepte')
-          );
-        })
-        .reduce((s, d) => s + (d.total_ht || 0), 0);
-    };
-
-    const lastMonthCA = getMonthCA(1);
-    const thisMonthCA = getMonthCA(0);
-
-    // Detect if we're at the beginning of month (days 1-5)
-    const dayOfMonth = now.getDate();
-    const isEarlyMonth = dayOfMonth <= 5;
-
-    // Dashboard-specific tendance for "Ce mois" card (total_ht based)
-    let tendanceDashboard = null;
-    let tendanceLabelDashboard = 'vs mois dernier';
-
-    const fmtCA = (v) => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(v);
-
-    if (isEarlyMonth) {
-      tendanceDashboard = null;
-      tendanceLabelDashboard = `Début de mois · ${fmtCA(lastMonthCA)} mois dernier`;
-    } else if (lastMonthCA > 0) {
-      if (thisMonthCA === 0) {
-        tendanceDashboard = -100;
-        tendanceLabelDashboard = `vs ${fmtCA(lastMonthCA)} mois dernier`;
-      } else {
-        const rawChange = ((thisMonthCA - lastMonthCA) / lastMonthCA) * 100;
-        if (Math.abs(rawChange) <= 200) {
-          tendanceDashboard = Math.round(rawChange);
-        }
-        tendanceLabelDashboard = `vs ${fmtCA(lastMonthCA)} mois dernier`;
-      }
-    } else {
-      tendanceLabelDashboard = thisMonthCA > 0 ? `vs 0 € mois dernier` : 'Pas de données';
-    }
-
-    // Calculate monthly objective based on average of last 3 months
-    const getLastMonthsAverage = (numMonths) => {
-      let total = 0;
-      let count = 0;
-      for (let i = 1; i <= numMonths; i++) {
-        const monthCA = getMonthCA(i);
-        if (monthCA > 0) {
-          total += monthCA;
-          count++;
-        }
-      }
-      return count > 0 ? total / count : 0;
-    };
-
-    const objectifMensuel = getLastMonthsAverage(3);
-    const progressionObjectif = objectifMensuel > 0 ? (thisMonthCA / objectifMensuel) * 100 : 0;
-
-    // Projection based on days elapsed (if past day 5)
-    const projectionMensuelle = !isEarlyMonth && dayOfMonth > 0
-      ? Math.round((thisMonthCA / dayOfMonth) * 30)
-      : null;
-
-    // Avoirs ce mois
-    const avoirsCeMois = safeDevis.filter(d => {
-      if (d.facture_type !== 'avoir') return false;
-      const dd = new Date(d.date);
-      return dd.getMonth() === thisMonth && dd.getFullYear() === thisYear;
+    // Sparkline CA 6 mois
+    const caParMois = {};
+    devis.filter(d => ['signe', 'facture'].includes(d.statut)).forEach(d => {
+      const mois = d.date?.substring(0, 7);
+      if (mois) caParMois[mois] = (caParMois[mois] || 0) + (d.total_ttc || 0);
     });
-    const montantAvoirsCeMois = avoirsCeMois.reduce((s, a) => s + Math.abs(a.total_ttc || 0), 0);
+    const sparkData = Array.from({ length: 6 }, (_, i) => {
+      const dt = new Date(now.getFullYear(), now.getMonth() - 5 + i, 1);
+      const key = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}`;
+      return { mois: dt.toLocaleDateString('fr-FR', { month: 'short' }), ca: caParMois[key] || 0 };
+    });
 
-    // Chantiers terminés (Dashboard-specific)
-    const chantiersTermines = safeChantiers.filter((c) => c.statut === 'termine').length;
+    // Pipeline
+    const pipeline = {
+      brouillon: { count: devis.filter(d => d.statut === 'brouillon').length, total: devis.filter(d => d.statut === 'brouillon').reduce((s, d) => s + (d.total_ttc || 0), 0) },
+      envoye: { count: devis.filter(d => d.statut === 'envoye').length, total: devis.filter(d => d.statut === 'envoye').reduce((s, d) => s + (d.total_ttc || 0), 0) },
+      signe: { count: devis.filter(d => d.statut === 'signe').length, total: devis.filter(d => d.statut === 'signe').reduce((s, d) => s + (d.total_ttc || 0), 0) },
+      facture: { count: devis.filter(d => d.statut === 'facture').length, total: devis.filter(d => d.statut === 'facture').reduce((s, d) => s + (d.total_ttc || 0), 0) },
+    };
 
-    // "Ce mois" tendance — use kpis (paid factures TTC) for consistency with DevisPage
-    const caCeMoisTendance = kpis.caMoisDernier > 0
-      ? Math.round(((kpis.caCeMois - kpis.caMoisDernier) / kpis.caMoisDernier) * 100)
-      : null;
+    // CA prévisionnel (signés non encore facturés + envoyés * 0.5)
+    const caPrevisionnel = pipeline.signe.total + Math.round(pipeline.envoye.total * 0.5);
 
-    const fmtKpiCA = (v) => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(v);
+    // Actions prioritaires
+    const actions = [];
 
-    let caCeMoisTendanceLabel = 'vs mois dernier';
-    if (isEarlyMonth) {
-      caCeMoisTendanceLabel = `Début de mois · ${fmtKpiCA(kpis.caMoisDernier)} mois dernier`;
-    } else if (kpis.caMoisDernier > 0) {
-      caCeMoisTendanceLabel = `vs ${fmtKpiCA(kpis.caMoisDernier)} mois dernier`;
-    } else {
-      caCeMoisTendanceLabel = kpis.caCeMois > 0 ? 'vs 0 € mois dernier' : 'Pas de données';
+    // 1. Factures en retard
+    devis
+      .filter(d => d.type === 'facture' && d.date_echeance && new Date(d.date_echeance) < now && ['envoye', 'facture'].includes(d.statut))
+      .sort((a, b) => new Date(a.date_echeance) - new Date(b.date_echeance))
+      .forEach(d => {
+        const jours = daysSince(d.date_echeance);
+        const client = clients.find(c => c.id === d.client_id);
+        actions.push({
+          priority: 1,
+          icon: AlertTriangle,
+          color: '#ef4444',
+          label: `Facture en retard de ${jours}j`,
+          detail: client ? `${client.nom || client.name} — ${fmt(d.total_ttc, modeDiscret)}` : fmt(d.total_ttc, modeDiscret),
+          onClick: () => { setSelectedDevis(d); setPage('devis'); },
+        });
+      });
+
+    // 2. Devis envoyés sans réponse > 7j
+    devisEnAttente
+      .filter(d => d.date && daysSince(d.date) > 7)
+      .sort((a, b) => daysSince(b.date) - daysSince(a.date))
+      .forEach(d => {
+        const jours = daysSince(d.date);
+        const client = clients.find(c => c.id === d.client_id);
+        actions.push({
+          priority: 2,
+          icon: Clock,
+          color: '#f97316',
+          label: `Devis sans réponse (${jours}j)`,
+          detail: client ? `${client.nom || client.name} — ${fmt(d.total_ttc, modeDiscret)}` : fmt(d.total_ttc, modeDiscret),
+          onClick: () => { setSelectedDevis(d); setPage('devis'); },
+        });
+      });
+
+    // 3. Brouillons à finaliser (groupé)
+    const brouillons = devis.filter(d => d.statut === 'brouillon' && d.type !== 'facture');
+    if (brouillons.length > 0) {
+      const totalBrouillons = brouillons.reduce((s, d) => s + (d.total_ttc || 0), 0);
+      actions.push({
+        priority: 3,
+        icon: FileText,
+        color: '#eab308',
+        label: `${brouillons.length} brouillon${brouillons.length > 1 ? 's' : ''} à finaliser`,
+        detail: fmt(totalBrouillons, modeDiscret),
+        onClick: () => setPage('devis'),
+      });
     }
+
+    // Score santé /10
+    let score = 0;
+    if (retard === 0) score += 2;
+    if (entreprise?.siret) score += 2;
+    if (chantiersActifs.length > 0) score += 2;
+    if (tauxConversion >= 40) score += 2;
+    const caCeMois = devis
+      .filter(d => ['signe', 'facture'].includes(d.statut) && d.date?.startsWith(now.toISOString().substring(0, 7)))
+      .reduce((s, d) => s + (d.total_ttc || 0), 0);
+    if (caCeMois > 0) score += 2;
+
+    // Chantier actif principal (le plus avancé)
+    const chantierPrincipal = chantiersActifs
+      .sort((a, b) => (b.avancement || 0) - (a.avancement || 0))[0] || null;
+
+    // Onboarding: profil + conformité
+    const profilComplete = entreprise
+      ? PROFILE_ALL_FIELDS.filter(f => entreprise[f.key]).length
+      : 0;
+    const profilPct = Math.round((profilComplete / PROFILE_ALL_FIELDS.length) * 100);
+
+    const f26Complete = entreprise
+      ? F26_CRITERIA.filter(c => {
+          if (c.key === 'banque') return entreprise.iban;
+          if (c.key === 'rcs') return entreprise.rcsVille || entreprise.rcsNumero;
+          if (c.key === 'rcPro') return entreprise.rcProAssureur;
+          return entreprise[c.key];
+        }).length
+      : 0;
+    const f26Pct = Math.round((f26Complete / F26_CRITERIA.length) * 100);
+    const onboardingPct = Math.round((profilPct + f26Pct) / 2);
 
     return {
-      totalCA,
-      thisMonthCA,
-      lastMonthCA,
-      marge,
-      tauxMarge,
-      hasDepenses,
-      // From useKPIs — unified definitions
-      encaisse: kpis.caEncaisse,
-      enAttente: kpis.caAEncaisser,
-      caCeMois: kpis.caCeMois, // Paid factures TTC this month (consistent with DevisPage)
-      caMoisDernier: kpis.caMoisDernier,
-      montantOverdue: kpis.facturesOverdue.reduce((s, f) => s + (f.total_ttc || f.montant_ttc || 0), 0),
-      chantiersActifs: kpis.chantiersActifs,
-      chantiersProspect: kpis.chantiersProspect,
-      chantiersTermines,
-      devisEnAttente: kpis.devisEnAttente,
-      montantDevisEnAttente: kpis.montantPipeline,
+      aEncaisser,
+      retard,
+      devisEnAttente,
+      chantiersActifs,
       tauxConversion,
-      devisSignes,
-      devisTotalEnvoyes,
-      tendance: tendanceDashboard,
-      tendanceLabel: tendanceLabelDashboard,
-      // "Ce mois" KPI tendance (paid factures TTC, matches DevisPage)
-      caCeMoisTendance: isEarlyMonth ? null : caCeMoisTendance,
-      caCeMoisTendanceLabel,
-      isEarlyMonth,
-      objectifMensuel,
-      progressionObjectif,
-      projectionMensuelle,
-      facturesPayees: kpis.facturesPayees,
-      facturesEnAttente: kpis.facturesImpayees,
-      facturesOverdue: kpis.facturesOverdue,
-      devisPipeline,
-      isNewUser: kpis.isNewUser,
-      hasRealData: kpis.hasRealData,
-      lowStockItems: kpis.lowStockItems,
-      avoirsCeMois: avoirsCeMois.length,
-      montantAvoirsCeMois,
-      // Situations de travaux
-      chantiersEnSituation: safeChantiers.filter(c => c.situations_data?.mode === 'situation' && c.statut === 'en_cours').length,
+      sparkData,
+      pipeline,
+      caPrevisionnel,
+      actions: actions.sort((a, b) => a.priority - b.priority),
+      score,
+      chantierPrincipal,
+      onboardingPct,
+      profilPct,
+      f26Pct,
+      caCeMois,
     };
-  }, [safeChantiers, safeDevis, safeDepenses, safePointages, safeEquipe, kpis]);
+  }, [devis, chantiers, clients, entreprise, modeDiscret, setSelectedDevis, setPage]);
 
-  // ============ URGENT ACTION ============
+  // ---- Greeting ----
+  const prenom = getPrenom(user);
+  const formattedDate = new Date().toLocaleDateString('fr-FR', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  });
 
-  const urgentAction = useMemo(() => {
-    if (stats.montantOverdue > 0) {
-      return {
-        type: 'payment_late',
-        title: 'Action urgente',
-        description: `${formatMoney(stats.montantOverdue)} en retard de paiement (${
-          stats.facturesOverdue?.length
-        } facture${stats.facturesOverdue?.length > 1 ? 's' : ''})`,
-        ctaLabel: 'Relancer maintenant',
-        ctaAction: () => setPage?.('devis'),
-      };
-    }
-
-    if (stats.devisEnAttente > 3) {
-      return {
-        type: 'quote_pending',
-        title: `${stats.devisEnAttente} devis en attente`,
-        description: `Valeur potentielle : ${formatMoney(stats.montantDevisEnAttente)}`,
-        ctaLabel: 'Relancer les devis',
-        ctaAction: () => setPage?.('devis'),
-      };
-    }
-
-    return null;
-  }, [stats]);
-
-  // ============ SUGGESTIONS ============
-
-  const suggestions = useMemo(() => {
-    const context = {
-      factures: stats.facturesEnAttente?.map((f) => ({
-        id: f.id,
-        clientId: f.client_id,
-        montant: f.total_ttc || 0,
-        dateEcheance: f.date_echeance || f.date,
-        statut: f.statut === 'payee' ? 'payee' : 'envoyee',
-      })) || [],
-      devis: stats.devisPipeline?.envoye?.map((d) => ({
-        id: d.id,
-        clientId: d.client_id,
-        montantHT: d.total_ht || 0,
-        dateCreation: d.date,
-        statut: 'envoye',
-      })) || [],
-      chantiers: safeChantiers.map((c) => ({
-        id: c.id,
-        nom: c.nom,
-        clientId: c.client_id,
-        statut: c.statut,
-        type: c.type_chantier,
-        margeActuelle: getChantierBilan?.(c.id)?.tauxMarge,
-        dateDebut: c.date_debut,
-      })),
-      stock: stats.lowStockItems?.map((item) => ({
-        id: item.id,
-        nom: item.nom,
-        stockActuel: item.stock || 0,
-        seuilAlerte: item.seuilAlerte || 10,
-        unite: item.unite || 'u',
-      })) || [],
-      weatherForecasts: [],
-    };
-
-    return generateSuggestionsFromContext(context);
-  }, [stats, safeChantiers, getChantierBilan]);
-
-  // ============ RECENT ACTIVITY ============
-
-  const recentActivity = useMemo(() => {
-    const activities = [];
-
-    // Recent paid invoices
-    stats.facturesPayees?.slice(0, 2).forEach((f) => {
-      const client = safeClients.find((c) => c.id === f.client_id);
-      activities.push({
-        id: `paid-${f.id}`,
-        itemId: f.id,
-        type: 'payment',
-        icon: CheckCircle,
-        title: `${formatDevisNumber(f)} payée`,
-        subtitle: client?.nom || 'Client',
-        amount: f.total_ttc,
-        date: new Date(f.date_paiement || f.date),
-        color: 'emerald',
-        page: 'devis',
-      });
-    });
-
-    // Recent sent devis (exclude 0€ devis)
-    stats.devisPipeline?.envoye
-      ?.filter((d) => (d.total_ttc || d.total_ht || 0) > 0)
-      .slice(0, 2)
-      .forEach((d) => {
-        const client = safeClients.find((c) => c.id === d.client_id);
-        activities.push({
-          id: `sent-${d.id}`,
-          itemId: d.id,
-          type: 'devis',
-          icon: Send,
-          title: `${formatDevisNumber(d)} envoyé`,
-          subtitle: client?.nom || 'Client',
-          amount: d.total_ttc || d.total_ht,
-          date: new Date(d.date),
-          color: 'blue',
-          page: 'devis',
-        });
-      });
-
-    // Recent started chantiers
-    safeChantiers
-      .filter((c) => c.statut === 'en_cours')
-      .slice(0, 1)
-      .forEach((ch) => {
-        activities.push({
-          id: `started-${ch.id}`,
-          itemId: ch.id,
-          type: 'chantier',
-          icon: HardHat,
-          title: `Chantier ${ch.nom} démarré`,
-          subtitle: ch.adresse || 'Lieu non défini',
-          date: new Date(ch.date_debut || ch.created_at || Date.now()),
-          color: 'purple',
-          page: 'chantiers',
-        });
-      });
-
-    return activities.sort((a, b) => b.date - a.date).slice(0, 4);
-  }, [stats, safeClients, safeChantiers]);
-
-  // ============ ACTIONS DU JOUR (unified priority list) ============
-
-  const staleDevis = useMemo(() => {
-    return safeDevis.filter(d => {
-      if (d.type !== 'devis' || !['envoye', 'vu'].includes(d.statut)) return false;
-      if ((d.total_ttc || d.total_ht || 0) <= 1) return false;
-      return daysSince(d.date) >= 7;
-    }).sort((a, b) => daysSince(b.date) - daysSince(a.date));
-  }, [safeDevis]);
-
-  const todayMemos = useMemo(() => {
-    const todayStr = new Date().toISOString().split('T')[0];
-    return (memos || [])
-      .filter(m => !m.is_done && m.due_date && m.due_date <= todayStr)
-      .sort((a, b) => (a.due_date || '').localeCompare(b.due_date || ''))
-      .slice(0, 5);
+  // ---- Memos du jour ----
+  const memosJour = useMemo(() => {
+    const today = new Date().toISOString().substring(0, 10);
+    return memos.filter(m => !m.done && (!m.date || m.date === today));
   }, [memos]);
 
-  // ============ CHANTIERS EN COURS (top 3 with progress) ============
+  // Merge memos into actions
+  const allActions = useMemo(() => {
+    const memoActions = memosJour.map(m => ({
+      priority: 4,
+      icon: CheckCircle,
+      color: '#10b981',
+      label: m.text || m.titre || 'Mémo',
+      detail: 'Mémo du jour',
+      onClick: () => toggleMemo?.(m.id),
+    }));
+    return [...computed.actions, ...memoActions];
+  }, [computed.actions, memosJour, toggleMemo]);
 
-  const chantiersEnCours = useMemo(() => {
-    return safeChantiers
-      .filter(c => c.statut === 'en_cours' && !isDraftChantier(c))
-      .map(c => {
-        const client = safeClients.find(cl => cl.id === (c.client_id || c.clientId));
-        const avancement = c.avancement || 0;
-        // Next deadline: date_fin_prevue or fallback
-        const prochEch = c.date_fin_prevue
-          ? new Date(c.date_fin_prevue).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
-          : null;
-        return { ...c, clientNom: formatClientName(client, ''), avancement, prochEch };
-      })
-      .sort((a, b) => (b.avancement || 0) - (a.avancement || 0))
-      .slice(0, 3);
-  }, [safeChantiers, safeClients]);
+  const visibleActions = showAllActions ? allActions : allActions.slice(0, 5);
 
-  // ============ HANDLERS ============
-
-  const handleOpenRelance = useCallback(
-    (item) => {
-      const client = safeClients.find((c) => c.id === item.client_id);
-      setRelanceModal({
-        isOpen: true,
-        item: {
-          type: item.type || 'devis',
-          id: item.id,
-          numero: item.numero,
-          client: {
-            nom: client?.nom || 'Client',
-            email: client?.email,
-            telephone: client?.telephone,
-          },
-          montant: item.total_ttc || 0,
-          dateEnvoi: item.date,
-        },
-      });
-    },
-    [safeClients]
-  );
-
-  const handleSuggestionAction = useCallback(
-    (suggestion) => {
-      const type = suggestion.type;
-
-      switch (type) {
-        case 'payment_late':
-          setPage?.('devis');
-          break;
-        case 'quote_pending':
-          setPage?.('devis');
-          break;
-        case 'weather_alert':
-          setPage?.('tasks');
-          break;
-        case 'low_margin':
-          setPage?.('chantiers');
-          break;
-        case 'stock_alert':
-          setPage?.('catalogue');
-          break;
-        default:
-          break;
-      }
-    },
-    [setPage]
-  );
-
-  // Handle activity click - navigate directly to item detail
-  const handleActivityClick = useCallback(
-    (activity) => {
-      // Select the specific item first
-      if (activity.type === 'payment' || activity.type === 'devis') {
-        const item = safeDevis.find((d) => d.id === activity.itemId);
-        if (item) {
-          setSelectedDevis?.(item);
-        }
-      } else if (activity.type === 'chantier') {
-        const item = safeChantiers.find((c) => c.id === activity.itemId);
-        if (item) {
-          setSelectedChantier?.(item);
-        }
-      }
-      // Then navigate to the page
-      if (activity.page) {
-        setPage?.(activity.page);
-      }
-    },
-    [setPage, setSelectedDevis, setSelectedChantier, safeDevis, safeChantiers]
-  );
-
-  // Handle relance from suggestions (accepts pre-formatted relance item)
-  const handleSuggestionRelance = useCallback(
-    (relanceItem) => {
-      setRelanceModal({
-        isOpen: true,
-        item: relanceItem,
-      });
-    },
-    []
-  );
-
-  // Handle margin analysis from suggestions
-  const handleOpenMarginAnalysis = useCallback(
-    (chantierId, chantierNom) => {
-      setMarginAnalysisModal({
-        isOpen: true,
-        chantierId,
-        chantierNom,
-      });
-    },
-    []
-  );
-
-  // AI Chat: navigate to DevisPage with pre-filled data (NO premature addDevis call)
-  const handleAICreateDevis = useCallback((devisData) => {
-    // Store AI data for DevisPage to pick up — devis is NOT saved to DB yet
-    setAiPrefill?.(devisData);
-    setCreateMode?.((p) => ({ ...p, devis: true }));
-    setPage?.('devis');
-  }, [setAiPrefill, setCreateMode, setPage]);
+  // ---- KPI color classes ----
+  const kpiColors = {
+    encaisser: isDark ? 'bg-red-950/30 border-red-900/50' : 'bg-red-50 border-red-100',
+    devisAttente: isDark ? 'bg-blue-950/30 border-blue-900/50' : 'bg-blue-50 border-blue-100',
+    chantiers: isDark ? 'bg-emerald-950/30 border-emerald-900/50' : 'bg-emerald-50 border-emerald-100',
+    conversion: isDark
+      ? `border-opacity-50`
+      : `border-opacity-50`,
+  };
 
   // ============ RENDER ============
 
-  // Show new user welcome — but ONLY if data has actually finished loading
-  // Prevents flash of onboarding when Supabase data is still in transit
-  if (stats.isNewUser && !dataLoading) {
-    return (
-      <NewUserWelcome
-        isDark={isDark}
-        couleur={couleur}
-        setPage={setPage}
-        setCreateMode={setCreateMode}
-      />
-    );
-  }
-
   return (
-    <div className={`pb-20 lg:pb-0 ${isDark ? 'bg-slate-900' : 'bg-slate-50'}`}>
-      {/* ========== HERO SECTION — Compact greeting ========== */}
-      <HeroSection
-        userName={user?.user_metadata?.prenom || user?.user_metadata?.first_name || entreprise?.nom?.split(' ')[0] || 'Artisan'}
-        activeChantiers={stats.chantiersActifs}
-        isDark={isDark}
-        couleur={couleur}
-        onChantiersClick={() => setPage?.('chantiers')}
-        devisEnAttente={stats.devisEnAttente || 0}
-        facturesEnRetard={(stats.facturesOverdue || []).length}
-        memosAujourdhui={todayMemos.length}
-        actionsCount={staleDevis.length + suggestions.length + todayMemos.length}
-      />
+    <div className="p-3 sm:p-5 max-w-5xl mx-auto space-y-6">
 
-      {/* Main Content */}
-      <div className="max-w-[1440px] mx-auto">
-
-        {/* ========== PROFILE COMPLETION BANNER — TOP PRIORITY when < 50% ========== */}
-        {profileCompletude < 50 && (
-          <section className="px-4 sm:px-6 mb-6">
-            <div className={`rounded-xl border p-4 ${
-              profileCompletude < 30
-                ? isDark ? 'bg-red-900/20 border-red-800/50' : 'bg-red-50 border-red-200'
-                : isDark ? 'bg-amber-900/20 border-amber-800/50' : 'bg-amber-50 border-amber-200'
-            }`}>
-              <div className="flex flex-wrap sm:flex-nowrap items-center gap-3">
-                <div className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 font-bold text-sm ${
-                  profileCompletude < 30 ? 'bg-red-500/20 text-red-500' : 'bg-amber-500/20 text-amber-600'
-                }`}>
-                  {profileCompletude}%
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className={`text-sm font-semibold ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
-                    Complétez votre profil entreprise
-                  </p>
-                  <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                    {missingRequiredFields.length > 0
-                      ? `${missingRequiredFields.length} info${missingRequiredFields.length > 1 ? 's' : ''} obligatoire${missingRequiredFields.length > 1 ? 's' : ''} manquante${missingRequiredFields.length > 1 ? 's' : ''} · Vos documents ne sont pas conformes`
-                      : 'Ajoutez vos informations complémentaires pour des documents professionnels'
-                    }
-                  </p>
-                </div>
-                <button
-                  onClick={() => navigateToSettingsTab(missingRequiredFields[0]?.tab || 'identite', missingRequiredFields[0]?.key)}
-                  className="w-full sm:w-auto px-4 py-2.5 min-h-[44px] rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
-                  style={{ backgroundColor: couleur }}
-                >
-                  Compléter →
-                </button>
-              </div>
-              {missingRequiredFields.length > 0 && (
-                <div className="mt-2.5 pt-2.5 border-t border-current/10 flex flex-wrap gap-1.5">
-                  {missingRequiredFields.map(f => (
-                    <button
-                      key={f.key}
-                      onClick={() => navigateToSettingsTab(f.tab, f.key)}
-                      className={`text-xs px-2.5 py-1 rounded-lg transition-colors ${
-                        isDark ? 'bg-slate-700/50 text-slate-300 hover:bg-slate-700' : 'bg-white/80 text-slate-600 hover:bg-white'
-                      }`}
-                    >
-                      ✗ {f.label}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          </section>
-        )}
-
-        {/* ========== URGENT ACTION BANNER ========== */}
-        {urgentAction && (
-          <section className="px-4 sm:px-6 mb-6">
-            <div className={`rounded-xl overflow-hidden border-l-4 border-red-500 shadow-md ${isDark ? 'bg-red-500/10' : 'bg-red-50'}`}>
-              <div className="p-4">
-                <div className="flex flex-wrap sm:flex-nowrap items-center gap-3">
-                  <div className={`flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center ${isDark ? 'bg-red-500/20' : 'bg-red-100'}`}>
-                    {urgentAction.type === 'payment_late' ? <Banknote size={18} className="text-red-500" /> : <FileText size={18} className="text-red-500" />}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className={`text-sm font-semibold ${isDark ? 'text-red-300' : 'text-red-800'}`}>{urgentAction.title}</p>
-                    <p className={`text-xs mt-0.5 ${isDark ? 'text-red-400/80' : 'text-red-700'}`}>{urgentAction.description}</p>
-                  </div>
-                  <button
-                    onClick={urgentAction.ctaAction}
-                    className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white text-xs font-semibold shadow-sm transition-all active:scale-95 focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-2 outline-none"
-                  >
-                    {urgentAction.ctaLabel}
-                    <ArrowRight size={14} />
-                  </button>
-                </div>
-              </div>
-            </div>
-          </section>
-        )}
-
-        {/* ========== HERO DUO — Devis IA + Devis Express — hidden for non-devis roles ========== */}
-        {canCreateDevis && (
-        <section className="px-4 sm:px-6 pb-6">
-          <div className="grid grid-cols-2 gap-3">
-            {/* Devis IA — subtle violet gradient */}
-            <button
-              onClick={() => setPage('ia-devis')}
-              className={`relative overflow-hidden rounded-xl p-4 sm:p-5 text-left min-h-[88px] transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-purple-400 focus-visible:ring-offset-2 outline-none border ${
-                isDark
-                  ? 'border-violet-500/30'
-                  : 'border-violet-200/50'
-              }`}
-              style={{ background: isDark ? 'linear-gradient(135deg, #7c3aed15, #3b82f615)' : 'linear-gradient(135deg, #7c3aed15, #3b82f615)' }}
-            >
-              <div className="relative z-10">
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-2 ${isDark ? 'bg-violet-500/20' : 'bg-violet-100'}`}>
-                  <MessageCircle size={20} className={isDark ? 'text-violet-400' : 'text-violet-600'} />
-                </div>
-                <p className={`font-semibold text-sm sm:text-base leading-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>Devis IA</p>
-                <p className={`text-[10px] sm:text-xs mt-0.5 truncate ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Décrivez vos travaux</p>
-              </div>
-              <Sparkles size={48} className={`absolute -bottom-2 -right-2 pointer-events-none ${isDark ? 'text-violet-400/10' : 'text-violet-300/20'}`} />
-            </button>
-
-            {/* Devis Express — accent border */}
-            <button
-              onClick={() => setShowDevisExpress(true)}
-              className={`relative overflow-hidden rounded-xl p-4 sm:p-5 text-left min-h-[88px] transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-offset-2 outline-none border`}
-              style={{
-                borderColor: `${couleur}30`,
-                background: isDark ? `${couleur}08` : `${couleur}05`,
-              }}
-            >
-              <div className="relative z-10">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-2" style={{ background: `${couleur}15` }}>
-                  <Zap size={20} style={{ color: couleur }} />
-                </div>
-                <p className={`font-semibold text-sm sm:text-base leading-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>Devis Express</p>
-                <p className={`text-[10px] sm:text-xs mt-0.5 truncate ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>3 clics, c'est chiffré</p>
-              </div>
-              <FileText size={44} className={`absolute -bottom-1 -right-1 pointer-events-none ${isDark ? 'text-white/5' : 'text-gray-900/5'}`} />
-            </button>
+      {/* =========== ZONE 1: HERO PULSE =========== */}
+      <section>
+        {/* Greeting + Score */}
+        <div className="flex justify-between items-start mb-5">
+          <div>
+            <h1 className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>
+              Bonjour{prenom ? `, ${prenom}` : ''} !
+            </h1>
+            <p className={`text-sm capitalize ${textSecondary}`}>{formattedDate}</p>
           </div>
-        </section>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setModeDiscret?.(!modeDiscret)}
+              className={`p-2 rounded-lg transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}
+              title={modeDiscret ? 'Afficher les montants' : 'Masquer les montants'}
+            >
+              {modeDiscret
+                ? <EyeOff className={`w-4 h-4 ${textSecondary}`} />
+                : <Eye className={`w-4 h-4 ${textSecondary}`} />
+              }
+            </button>
+            <ScoreSante score={computed.score} isDark={isDark} couleur={couleur} />
+          </div>
+        </div>
+
+        {/* 4 KPI Cards */}
+        {canSeeFinances && (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+            <KPICard
+              label="À encaisser"
+              value={fmt(computed.aEncaisser, modeDiscret)}
+              sub={computed.retard > 0 ? `dont ${fmt(computed.retard, modeDiscret)} en retard` : null}
+              colorClasses={kpiColors.encaisser}
+              isDark={isDark}
+              delay={0}
+            />
+            <KPICard
+              label="Devis en attente"
+              value={String(computed.devisEnAttente.length)}
+              sub={computed.devisEnAttente.length > 0
+                ? fmt(computed.devisEnAttente.reduce((s, d) => s + (d.total_ttc || 0), 0), modeDiscret)
+                : null
+              }
+              colorClasses={kpiColors.devisAttente}
+              isDark={isDark}
+              delay={0.05}
+            />
+            <KPICard
+              label="Chantiers actifs"
+              value={String(computed.chantiersActifs.length)}
+              sub={computed.chantiersActifs.length > 0
+                ? `${Math.round(computed.chantiersActifs.reduce((s, c) => s + (c.avancement || 0), 0) / computed.chantiersActifs.length)}% moyen`
+                : null
+              }
+              colorClasses={kpiColors.chantiers}
+              isDark={isDark}
+              delay={0.1}
+            />
+            <KPICard
+              label="Taux conversion"
+              value={`${computed.tauxConversion}%`}
+              sub={null}
+              colorClasses={isDark ? 'border-slate-700' : 'border-slate-200'}
+              isDark={isDark}
+              delay={0.15}
+            />
+          </div>
         )}
 
-        {/* ========== MINI KPI DUO — À encaisser + Ce mois — hidden for non-finance roles ========== */}
-        {canSeeFinances && <section className="px-4 sm:px-6 pb-6">
-          <div className="grid grid-cols-2 gap-3">
-            {/* À encaisser */}
-            <button
-              onClick={() => setEncaisserModalOpen(true)}
-              className={`rounded-xl border p-3.5 text-left transition-all hover:shadow-md hover:-translate-y-0.5 outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${isDark ? 'bg-slate-800 border-slate-700 focus-visible:ring-orange-400' : 'bg-white border-slate-200 focus-visible:ring-orange-500'}`}
-              style={{ borderLeftWidth: '3px', borderLeftColor: couleur }}
-            >
-              <div className="flex items-center gap-2 mb-1.5">
-                <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: `${couleur}15` }}>
-                  <Wallet size={14} style={{ color: couleur }} />
-                </div>
-                <span className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>À encaisser</span>
-              </div>
-              <p className={`text-lg font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                {formatMoney(stats.enAttente, modeDiscret)}
+        {/* Sparkline CA 6 mois */}
+        {canSeeFinances && (
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2, duration: 0.5 }}
+            className={`rounded-xl border p-4 ${sectionBg}`}
+          >
+            <div className="flex justify-between items-center mb-2">
+              <p className={`text-sm font-medium ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+                CA signé — 6 derniers mois
               </p>
-              {stats.facturesEnAttente?.length > 0 && (
-                <p className={`text-[11px] mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                  {stats.facturesEnAttente.length} facture{stats.facturesEnAttente.length > 1 ? 's' : ''} en attente
-                </p>
-              )}
-              {stats.montantOverdue > 0 && (
-                <p className="text-[11px] text-red-500 font-medium mt-0.5">
-                  dont {formatMoney(stats.montantOverdue, modeDiscret)} en retard +30j
-                </p>
-              )}
-            </button>
+              <p className={`text-lg font-bold ${textPrimary}`}>
+                {fmt(computed.sparkData.reduce((s, d) => s + d.ca, 0), modeDiscret)}
+              </p>
+            </div>
+            <ResponsiveContainer width="100%" height={120}>
+              <AreaChart data={computed.sparkData}>
+                <defs>
+                  <linearGradient id="caGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={couleur} stopOpacity={0.3} />
+                    <stop offset="100%" stopColor={couleur} stopOpacity={0.02} />
+                  </linearGradient>
+                </defs>
+                <Area
+                  type="monotone"
+                  dataKey="ca"
+                  stroke={couleur}
+                  strokeWidth={2}
+                  fill="url(#caGradient)"
+                  dot={false}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+            <div className="flex justify-between mt-1 px-1">
+              {computed.sparkData.map((d, i) => (
+                <span key={i} className={`text-[10px] ${textSecondary}`}>{d.mois}</span>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </section>
 
-            {/* Ce mois — CA encaissé (factures payées TTC ce mois) */}
-            <button
-              onClick={() => setCeMoisModalOpen(true)}
-              className={`rounded-xl border p-3.5 text-left transition-all hover:shadow-md hover:-translate-y-0.5 outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${isDark ? 'bg-slate-800 border-slate-700 focus-visible:ring-orange-400' : 'bg-white border-slate-200 focus-visible:ring-orange-500'}`}
-              style={{ borderLeftWidth: '3px', borderLeftColor: stats.caCeMoisTendance != null ? (stats.caCeMoisTendance >= 0 ? '#10b981' : '#ef4444') : '#10b981' }}
-              title="Factures payées ce mois (TTC)"
-            >
-              <div className="flex items-center gap-2 mb-1.5">
-                <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${stats.caCeMoisTendance != null ? (stats.caCeMoisTendance >= 0 ? 'bg-emerald-500/15' : 'bg-red-500/15') : 'bg-emerald-500/15'}`}>
-                  <TrendingUp size={14} className={stats.caCeMoisTendance != null ? (stats.caCeMoisTendance >= 0 ? 'text-emerald-500' : 'text-red-500') : 'text-emerald-500'} />
-                </div>
-                <span className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Ce mois</span>
-              </div>
-              <div className="flex items-baseline gap-1.5">
-                <p className={`text-lg font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                  {formatMoney(stats.caCeMois, modeDiscret)}
-                </p>
-                {stats.caCeMoisTendance != null && (
-                  <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded-full ${stats.caCeMoisTendance >= 0 ? (isDark ? 'text-emerald-400 bg-emerald-500/15' : 'text-emerald-600 bg-emerald-50') : (isDark ? 'text-red-400 bg-red-500/15' : 'text-red-600 bg-red-50')}`}>
-                    {stats.caCeMoisTendance >= 0 ? '↗' : '↘'} {stats.caCeMoisTendance >= 0 ? '+' : ''}{stats.caCeMoisTendance}%
-                  </span>
-                )}
-              </div>
-              {stats.caCeMoisTendance == null && stats.caCeMoisTendanceLabel && (
-                <p className={`text-[11px] mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                  {stats.caCeMoisTendanceLabel}
-                </p>
-              )}
-            </button>
-          </div>
-          {/* Avoirs ce mois — shown only if avoirs exist */}
-          {stats.avoirsCeMois > 0 && (
-            <button
-              onClick={() => setPage('devis')}
-              className={`mt-2 w-full flex items-center gap-2.5 rounded-xl border px-3.5 py-2.5 text-left transition-all hover:shadow-md ${isDark ? 'bg-red-900/20 border-red-800/50 hover:bg-red-900/30' : 'bg-red-50 border-red-200 hover:bg-red-100'}`}
-            >
-              <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-red-500/15">
-                <RotateCcw size={14} className="text-red-500" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <span className={`text-xs font-medium ${isDark ? 'text-red-300' : 'text-red-700'}`}>
-                  {stats.avoirsCeMois} avoir{stats.avoirsCeMois > 1 ? 's' : ''} ce mois
-                </span>
-              </div>
-              <span className={`text-sm font-bold ${isDark ? 'text-red-400' : 'text-red-600'}`}>
-                -{formatMoney(stats.montantAvoirsCeMois, modeDiscret)}
-              </span>
-            </button>
-          )}
-          {/* Chantiers en facturation par situation */}
-          {stats.chantiersEnSituation > 0 && (
-            <button
-              onClick={() => setPage('chantiers')}
-              className={`mt-2 w-full flex items-center gap-2.5 rounded-xl border px-3.5 py-2.5 text-left transition-all hover:shadow-md ${isDark ? 'bg-orange-900/20 border-orange-800/50 hover:bg-orange-900/30' : 'bg-orange-50 border-orange-200 hover:bg-orange-100'}`}
-            >
-              <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-orange-500/15">
-                <BarChart3 size={14} className="text-orange-500" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <span className={`text-xs font-medium ${isDark ? 'text-orange-300' : 'text-orange-700'}`}>
-                  {stats.chantiersEnSituation} chantier{stats.chantiersEnSituation > 1 ? 's' : ''} en situation
-                </span>
-              </div>
-            </button>
-          )}
-        </section>}
-
-        {/* ========== ACTIONS DU JOUR — Linear-style action cards ========== */}
-        {(() => {
-          const actions = [];
-
-          // Devis à relancer
-          staleDevis.slice(0, 4).forEach(d => {
-            const client = safeClients.find(c => c.id === d.client_id);
-            const days = daysSince(d.date);
-            const displayNum = formatDevisNumber(d);
-            const clientNom = formatClientName(client, 'Client');
-            actions.push({
-              id: `devis-${d.id}`,
-              priority: days > 14 ? 1 : 2,
-              color: days > 14 ? 'red' : 'amber',
-              iconComponent: FileText,
-              title: `${clientNom} · ${displayNum}`,
-              subtitle: `${formatMoney(d.total_ttc || d.total_ht || 0, modeDiscret)} · Sans réponse depuis ${days}j`,
-              action: () => handleOpenRelance(d),
-              actionLabel: 'Relancer',
-            });
-          });
-
-          // Suggestions IA
-          suggestions.slice(0, 3).forEach(s => {
-            const IconComp = s.type === 'payment_late' ? Receipt : s.type === 'low_margin' ? BarChart3 : Lightbulb;
-            actions.push({
-              id: `sug-${s.id}`,
-              priority: s.priority === 'high' ? 1 : 2,
-              color: s.priority === 'high' ? 'red' : 'amber',
-              iconComponent: IconComp,
-              title: s.title,
-              subtitle: s.description?.slice(0, 60) || '',
-              action: () => handleSuggestionAction(s),
-              actionLabel: s.ctaLabel || 'Voir',
-            });
-          });
-
-          // Mémos du jour
-          todayMemos.slice(0, 3).forEach(m => {
-            const isOverdue = m.due_date < new Date().toISOString().split('T')[0];
-            actions.push({
-              id: `memo-${m.id}`,
-              priority: isOverdue ? 2 : 3,
-              color: isOverdue ? 'amber' : 'blue',
-              iconComponent: ClipboardList,
-              title: m.text,
-              subtitle: isOverdue ? 'En retard' : 'Aujourd\'hui',
-              action: () => setPage?.('tasks'),
-              actionLabel: 'Voir',
-            });
-          });
-
-          const allSorted = actions.sort((a, b) => a.priority - b.priority);
-          const sorted = allSorted.slice(0, 3);
-          const totalActions = allSorted.length;
-          if (sorted.length === 0) return null;
-
-          const priorityBg = {
-            red: isDark ? 'bg-red-950/40' : 'bg-red-50/80',
-            amber: isDark ? 'bg-amber-950/30' : 'bg-amber-50/70',
-            blue: isDark ? 'bg-slate-800/50' : 'bg-slate-50/60',
-          };
-          const priorityHover = {
-            red: isDark ? 'hover:bg-red-950/60' : 'hover:bg-red-100/80',
-            amber: isDark ? 'hover:bg-amber-950/50' : 'hover:bg-amber-100/70',
-            blue: isDark ? 'hover:bg-slate-700/50' : 'hover:bg-slate-100/60',
-          };
-          const priorityLabels = {
-            red: 'Urgent',
-            amber: 'A surveiller',
-            blue: 'A faire',
-          };
-
-          return (
-            <section className="px-4 sm:px-6 mb-6">
-              <div className={`rounded-xl border p-4 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200/70'}`}>
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <ClipboardList size={15} style={{ color: couleur }} />
-                    <h2 className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                      Actions du jour
-                    </h2>
-                    <span className={`text-[11px] px-1.5 py-0.5 rounded-md font-medium ${isDark ? 'bg-slate-800 text-gray-400' : 'bg-gray-100 text-gray-500'}`}>
-                      {sorted.length}
-                    </span>
-                  </div>
-                </div>
-                <div className="space-y-2 max-h-[400px] overflow-y-auto overscroll-contain">
-                  {sorted.map(item => {
-                    const borderColor = item.color === 'red' ? '#ef4444' : item.color === 'amber' ? '#f59e0b' : '#3b82f6';
-                    return (
-                      <div
-                        key={item.id}
-                        className={`flex flex-wrap sm:flex-nowrap items-center gap-x-3 gap-y-1.5 p-2.5 rounded-lg transition-all duration-150 ${
-                          isDark ? 'hover:bg-slate-800' : 'hover:bg-[#fafafa]'
-                        } border ${isDark ? 'border-slate-700' : 'border-gray-200/70'}`}
-                        style={{ borderLeftWidth: '2px', borderLeftColor: borderColor }}
-                      >
-                        {item.iconComponent && (
-                          <item.iconComponent size={14} style={{ color: borderColor }} className="flex-shrink-0" />
-                        )}
-                        <div className="flex-1 min-w-0 w-[calc(100%-3rem)] sm:w-auto">
-                          <p className={`text-sm font-medium truncate ${isDark ? 'text-white' : 'text-gray-900'}`} title={item.title}>
-                            {item.title}
-                          </p>
-                          <p className={`text-xs truncate ${isDark ? 'text-gray-500' : 'text-gray-500'}`} title={item.subtitle}>
-                            {item.subtitle}
-                          </p>
-                        </div>
-                        <button
-                          onClick={item.action}
-                          className={`ml-auto rounded-lg px-3 py-2 min-h-[44px] min-w-[44px] text-xs font-medium transition-all active:scale-95 outline-none focus-visible:ring-2 focus-visible:ring-offset-2`}
-                          style={{ backgroundColor: `${couleur}15`, color: couleur, '--tw-ring-color': couleur }}
-                        >
-                          {item.actionLabel}
-                        </button>
-                      </div>
-                    );
-                  })}
-                  {totalActions > 3 && (
-                    <button
-                      onClick={() => setPage?.('tasks')}
-                      className={`w-full text-center py-2 text-xs font-semibold rounded-lg transition-colors ${isDark ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'}`}
-                    >
-                      Voir toutes les {totalActions} actions →
-                    </button>
-                  )}
-                </div>
-              </div>
-            </section>
-          );
-        })()}
-
-        {/* ========== SECONDARY SHORTCUTS — compact 4-icon bar ========== */}
-        <section className="px-4 sm:px-6 mb-6">
-          <div className="grid grid-cols-2 sm:flex gap-2">
-            {[
-              { icon: Users, label: '+ Client', action: () => { setCreateMode?.((p) => ({ ...p, client: true })); setPage?.('clients'); } },
-              { icon: HardHat, label: '+ Chantier', action: () => { setCreateMode?.((p) => ({ ...p, chantier: true })); setPage?.('chantiers'); } },
-              { icon: ClipboardList, label: '+ Mémo', action: () => setPage?.('tasks') },
-              { icon: FileText, label: '+ Devis rapide', action: () => setPage?.('devis') },
-            ].map((s) => (
-              <button
-                key={s.label}
-                onClick={s.action}
-                className={`group sm:flex-1 flex flex-col items-center gap-1.5 min-h-[56px] py-3 rounded-xl text-xs font-medium transition-all border outline-none focus-visible:ring-2 focus-visible:ring-offset-2 hover:-translate-y-0.5 hover:shadow-sm ${
-                  isDark
-                    ? 'bg-slate-800 border-slate-700 text-slate-300 hover:border-slate-600 focus-visible:ring-orange-400'
-                    : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300 focus-visible:ring-orange-500'
-                }`}
-              >
-                <div
-                  className="w-10 h-10 rounded-lg flex items-center justify-center transition-transform group-hover:scale-110"
-                  style={{ background: `${couleur}12` }}
-                >
-                  <s.icon size={20} style={{ color: couleur }} />
-                </div>
-                <span className="leading-none truncate max-w-full px-1">{s.label}</span>
-              </button>
+      {/* =========== ZONE 2: ACTIONS PRIORITAIRES =========== */}
+      {allActions.length > 0 && (
+        <motion.section
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.25, duration: 0.4 }}
+        >
+          <h2 className={`text-sm font-semibold uppercase tracking-wider mb-3 ${textSecondary}`}>
+            Actions prioritaires
+          </h2>
+          <div className={`rounded-xl border divide-y ${sectionBg} ${isDark ? 'divide-slate-700/50' : 'divide-slate-100'}`}>
+            {visibleActions.map((action, i) => (
+              <ActionItem
+                key={i}
+                icon={action.icon}
+                color={action.color}
+                label={action.label}
+                detail={action.detail}
+                onClick={action.onClick}
+                isDark={isDark}
+              />
             ))}
           </div>
-        </section>
+          {allActions.length > 5 && (
+            <button
+              type="button"
+              onClick={() => setShowAllActions(!showAllActions)}
+              className={`mt-2 text-sm font-medium transition-colors ${isDark ? 'text-slate-400 hover:text-slate-300' : 'text-slate-500 hover:text-slate-700'}`}
+            >
+              {showAllActions ? 'Voir moins' : `Voir tout (${allActions.length})`}
+            </button>
+          )}
+        </motion.section>
+      )}
 
-        {/* ========== CHANTIERS EN COURS — top 3 with progress bars ========== */}
-        <section className="px-4 sm:px-6 mb-6">
-          {chantiersEnCours.length > 0 ? (
-            <div className={`rounded-2xl border p-4 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <HardHat size={16} style={{ color: couleur }} />
-                  <h2 className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                    Chantiers en cours
-                  </h2>
-                  <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>
-                    {stats.chantiersActifs}
-                  </span>
+      {/* =========== ZONE 3: CONTEXTE =========== */}
+      <section className="grid md:grid-cols-2 gap-4">
+
+        {/* Chantier actif principal */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3, duration: 0.4 }}
+          className={`rounded-xl border p-4 ${sectionBg}`}
+        >
+          <h3 className={`text-sm font-semibold mb-3 ${textSecondary}`}>
+            Chantier en cours
+          </h3>
+          {computed.chantierPrincipal ? (() => {
+            const ch = computed.chantierPrincipal;
+            const client = clients.find(c => c.id === ch.client_id);
+            const avancement = ch.avancement || 0;
+            return (
+              <div>
+                <p className={`text-base font-semibold ${textPrimary}`}>
+                  {ch.nom || ch.name || 'Chantier'}
+                </p>
+                <p className={`text-xs mb-3 ${textSecondary}`}>
+                  {client ? (client.nom || client.name) : 'Pas de client'}
+                </p>
+                <div className="mb-2">
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className={textSecondary}>Avancement</span>
+                    <span className={`font-medium ${textPrimary}`}>{avancement}%</span>
+                  </div>
+                  <div className={`h-2 rounded-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`}>
+                    <div
+                      className="h-full rounded-full transition-all"
+                      style={{ width: `${avancement}%`, background: couleur }}
+                    />
+                  </div>
                 </div>
+                {ch.prochaineTache && (
+                  <p className={`text-xs mt-2 ${textSecondary}`}>
+                    Prochaine tache : {ch.prochaineTache}
+                  </p>
+                )}
                 <button
-                  onClick={() => setPage?.('chantiers')}
-                  className={`text-xs font-medium flex items-center gap-1 min-h-[44px] px-2 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${isDark ? 'text-slate-400 hover:text-white focus-visible:ring-orange-400' : 'text-slate-500 hover:text-slate-900 focus-visible:ring-orange-500'}`}
+                  type="button"
+                  onClick={() => { setSelectedChantier?.(ch.id); setPage('chantier-detail', { chantierId: ch.id }); }}
+                  className="mt-3 inline-flex items-center gap-1 text-sm font-medium transition-colors"
+                  style={{ color: couleur }}
                 >
-                  Voir tous <ChevronRight size={14} />
+                  Ouvrir <ArrowRight className="w-3.5 h-3.5" />
                 </button>
               </div>
-              <div className="space-y-3">
-                {chantiersEnCours.map(ch => (
-                  <button
-                    key={ch.id}
-                    onClick={() => { setSelectedChantier?.(ch); setPage?.('chantiers'); }}
-                    className={`w-full text-left p-3 rounded-xl transition-colors outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${isDark ? 'hover:bg-slate-700/50 focus-visible:ring-orange-400' : 'hover:bg-slate-50 focus-visible:ring-orange-500'}`}
-                  >
-                    <div className="flex items-center justify-between mb-1.5">
-                      <div className="flex-1 min-w-0">
-                        <p className={`text-sm font-semibold truncate ${isDark ? 'text-white' : 'text-slate-900'}`} title={ch.nom}>
-                          {ch.nom}{ch.reference ? ` · #${ch.reference}` : ch.id ? ` · #${ch.id.slice(-4).toUpperCase()}` : ''}
-                        </p>
-                        <p className={`text-[11px] truncate ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                          {ch.clientNom}{ch.prochEch ? ` · Éch. ${ch.prochEch}` : ''}
-                        </p>
-                      </div>
-                      {/* UX-002: Chantiers filtrés "en_cours" → toujours afficher l'avancement, jamais "Non démarré" */}
-                      <span className={`text-xs font-bold ml-2 flex-shrink-0 flex items-center gap-1 ${!ch.avancement ? (isDark ? 'text-slate-400' : 'text-slate-500') : ch.avancement >= 100 ? 'text-emerald-500' : ''}`} style={ch.avancement && ch.avancement < 100 ? { color: ch.avancement >= 71 ? '#10b981' : ch.avancement >= 31 ? couleur : '#3b82f6' } : undefined}>
-                        {ch.avancement >= 100 && <CheckCircle size={12} />}
-                        {ch.avancement || 0}%
-                      </span>
-                    </div>
-                    <div className={`w-full h-2 rounded-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
-                      <div
-                        className="h-full rounded-full transition-all"
-                        style={{
-                          width: `${Math.max(ch.avancement > 0 ? 4 : 0, Math.min(100, ch.avancement))}%`,
-                          background: ch.avancement >= 100
-                            ? '#10b981'
-                            : ch.avancement >= 71
-                              ? '#10b981'
-                              : ch.avancement >= 31
-                                ? couleur
-                                : ch.avancement >= 1
-                                  ? '#3b82f6'
-                                  : isDark ? '#334155' : '#cbd5e1',
-                        }}
-                      />
-                    </div>
-                  </button>
-                ))}
-              </div>
+            );
+          })() : (
+            <div className={`text-sm py-4 text-center ${textSecondary}`}>
+              Aucun chantier en cours
+              <br />
+              <button
+                type="button"
+                onClick={() => setPage('chantiers')}
+                className="mt-2 text-sm font-medium"
+                style={{ color: couleur }}
+              >
+                Créer un chantier
+              </button>
             </div>
-          ) : (
-            <div className={`rounded-2xl border p-6 text-center ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
-              <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-3 ${isDark ? 'bg-slate-700/50' : 'bg-slate-100'}`}>
-                <Calendar size={28} className={isDark ? 'text-slate-500' : 'text-slate-400'} />
-              </div>
-              <h3 className={`text-sm font-semibold mb-1 ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                Planifiez votre semaine
-              </h3>
-              <p className={`text-xs mb-4 max-w-xs mx-auto ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                Ajoutez des dates à vos chantiers en cours pour les voir apparaître ici
-              </p>
-              <div className="flex items-center justify-center gap-2">
-                <button
-                  onClick={() => { setCreateMode?.((p) => ({ ...p, chantier: true })); setPage?.('chantiers'); }}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold text-white transition-opacity hover:opacity-90 outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
-                  style={{ backgroundColor: couleur, '--tw-ring-color': couleur }}
-                >
-                  Planifier un chantier
-                </button>
-                <button
-                  onClick={() => setPage?.('chantiers')}
-                  className={`px-4 py-2 rounded-xl text-xs font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${isDark ? 'text-slate-400 hover:text-white hover:bg-slate-700 focus-visible:ring-orange-400' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100 focus-visible:ring-orange-500'}`}
-                >
-                  Voir mes chantiers →
-                </button>
+          )}
+        </motion.div>
+
+        {/* Pipeline funnel */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.35, duration: 0.4 }}
+          className={`rounded-xl border p-4 ${sectionBg}`}
+        >
+          <h3 className={`text-sm font-semibold mb-3 ${textSecondary}`}>
+            Pipeline devis
+          </h3>
+          <PipelineBar pipeline={computed.pipeline} isDark={isDark} modeDiscret={modeDiscret} />
+          {canSeeFinances && computed.caPrevisionnel > 0 && (
+            <div className={`mt-3 pt-3 border-t ${isDark ? 'border-slate-700' : 'border-slate-100'}`}>
+              <div className="flex justify-between items-center">
+                <span className={`text-xs ${textSecondary}`}>CA prévisionnel</span>
+                <span className={`text-sm font-bold ${textPrimary}`}>
+                  {fmt(computed.caPrevisionnel, modeDiscret)}
+                </span>
               </div>
             </div>
           )}
-        </section>
-
-        {/* ========== ONBOARDING — shows for new users, auto-dismisses ========== */}
-        <section className="px-4 sm:px-6 mb-6">
-          <OnboardingChecklist
-            clients={clients}
-            chantiers={chantiers}
-            devis={devis}
-            memos={memos}
-            couleur={couleur}
-            setPage={setPage}
-            isDark={isDark}
-          />
-        </section>
-
-        {/* ========== PROFILE COMPLETION BANNER — visible when >= 50% and < 80% (< 50% shown above KPIs) ========== */}
-        {profileCompletude >= 50 && profileCompletude < 80 && (
-          <section className="px-4 sm:px-6 mb-6">
-            <div className={`rounded-xl border p-4 ${
-              profileCompletude < 60
-                ? isDark ? 'bg-amber-900/20 border-amber-800/50' : 'bg-amber-50 border-amber-200'
-                : isDark ? 'bg-blue-900/20 border-blue-800/50' : 'bg-blue-50 border-blue-200'
-            }`}>
-              <div className="flex flex-wrap sm:flex-nowrap items-center gap-3">
-                <div className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 font-bold text-sm ${
-                  profileCompletude < 60 ? 'bg-amber-500/20 text-amber-600' : 'bg-blue-500/20 text-blue-500'
-                }`}>
-                  {profileCompletude}%
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className={`text-sm font-semibold ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
-                    Complétez votre profil entreprise
-                  </p>
-                  <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                    {missingRequiredFields.length > 0
-                      ? `${missingRequiredFields.length} info${missingRequiredFields.length > 1 ? 's' : ''} obligatoire${missingRequiredFields.length > 1 ? 's' : ''} manquante${missingRequiredFields.length > 1 ? 's' : ''} · Vos documents ne sont pas conformes`
-                      : 'Ajoutez vos informations complémentaires pour des documents professionnels'
-                    }
-                  </p>
-                </div>
-                <button
-                  onClick={() => navigateToSettingsTab(missingRequiredFields[0]?.tab || 'identite', missingRequiredFields[0]?.key)}
-                  className="w-full sm:w-auto px-4 py-2.5 min-h-[44px] rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
-                  style={{ backgroundColor: couleur }}
-                >
-                  Compléter →
-                </button>
-              </div>
-              {/* Missing required fields */}
-              {missingRequiredFields.length > 0 && (
-                <div className="mt-2.5 pt-2.5 border-t border-current/10 flex flex-wrap gap-1.5">
-                  {missingRequiredFields.map(f => (
-                    <button
-                      key={f.key}
-                      onClick={() => navigateToSettingsTab(f.tab, f.key)}
-                      className={`text-xs px-2.5 py-1 rounded-lg transition-colors ${
-                        isDark ? 'bg-slate-700/50 text-slate-300 hover:bg-slate-700' : 'bg-white/80 text-slate-600 hover:bg-white'
-                      }`}
-                    >
-                      ✗ {f.label}
-                    </button>
-                  ))}
-                </div>
-              )}
+          {(computed.pipeline.brouillon.count + computed.pipeline.envoye.count + computed.pipeline.signe.count + computed.pipeline.facture.count) === 0 && (
+            <div className={`text-sm py-4 text-center ${textSecondary}`}>
+              Aucun devis pour le moment
+              <br />
+              <button
+                type="button"
+                onClick={() => { setCreateMode?.({ devis: true }); setPage('devis'); }}
+                className="mt-2 text-sm font-medium"
+                style={{ color: couleur }}
+              >
+                Créer un devis
+              </button>
             </div>
-          </section>
-        )}
+          )}
+        </motion.div>
+      </section>
 
-        {/* Facture 2026 Countdown Card */}
-        {(() => {
-          const f26target = new Date('2026-09-01');
-          const now = new Date();
-          const daysLeft = Math.max(0, Math.ceil((f26target - now) / (1000 * 60 * 60 * 24)));
-          const f26criteriaEval = F26_CRITERIA.map(c => ({
-            ...c,
-            ok: c.key === 'siret' ? !!entreprise?.siret
-              : c.key === 'tvaIntra' ? !!entreprise?.tvaIntra
-              : c.key === 'rcs' ? !!(entreprise?.rcsVille && entreprise?.rcsNumero)
-              : c.key === 'banque' ? !!(entreprise?.banque || entreprise?.iban)
-              : c.key === 'adresse' ? !!entreprise?.adresse
-              : c.key === 'rcPro' ? !!entreprise?.rcProAssureur
-              : c.key === 'numerotation' ? true
-              : false,
-          }));
-          const f26done = f26criteriaEval.filter(c => c.ok).length;
-          const f26score = Math.round((f26done / f26criteriaEval.length) * 100);
-          if (f26score >= 100 || daysLeft <= 0) return null;
-          return (
-            <section className="px-4 sm:px-6 mb-6">
-              <div className={`rounded-xl border p-4 ${
-                f26score < 50
-                  ? isDark ? 'bg-red-900/20 border-red-800/50' : 'bg-red-50 border-red-200'
-                  : isDark ? 'bg-amber-900/20 border-amber-800/50' : 'bg-amber-50 border-amber-200'
-              }`}>
-                <div className="flex flex-wrap sm:flex-nowrap items-center gap-3 sm:gap-4">
-                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 font-bold text-lg ${
-                    f26score < 50 ? 'bg-red-500/20 text-red-500' : 'bg-amber-500/20 text-amber-600'
-                  }`}>
-                    {f26score}%
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className={`text-sm font-semibold ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
-                      Facture électronique obligatoire dans <strong>J-{daysLeft}</strong>
-                    </p>
-                    <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                      {f26done}/{f26criteriaEval.length} critères remplis
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => {
-                      // Find first missing criterion and navigate to its tab
-                      const firstMissing = f26criteriaEval.find(c => !c.ok && c.tab);
-                      if (firstMissing) {
-                        navigateToSettingsTab(firstMissing.tab, firstMissing.fieldId);
-                      } else {
-                        setPage('settings');
-                      }
-                    }}
-                    className="w-full sm:w-auto px-4 py-2 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
-                    style={{ backgroundColor: f26score < 50 ? '#ef4444' : '#f59e0b' }}
-                  >
-                    Compléter
-                  </button>
-                </div>
-                {/* Criteria checklist — each item links to its Settings section */}
-                <div className="mt-3 pt-3 border-t border-current/10 grid grid-cols-2 gap-1.5">
-                  {f26criteriaEval.map(c => (
-                    <button
-                      key={c.label}
-                      onClick={() => {
-                        if (!c.ok && c.tab) {
-                          navigateToSettingsTab(c.tab, c.fieldId);
-                        }
-                      }}
-                      disabled={c.ok || !c.tab}
-                      className={`flex items-center gap-1.5 text-xs text-left transition-colors rounded px-1 py-0.5 ${
-                        !c.ok && c.tab ? (isDark ? 'hover:bg-slate-700/50 cursor-pointer' : 'hover:bg-white/50 cursor-pointer') : ''
-                      }`}
-                    >
-                      <span className={c.ok ? 'text-emerald-500' : isDark ? 'text-slate-500' : 'text-slate-400'}>{c.ok ? '✓' : '✗'}</span>
-                      <span className={c.ok ? (isDark ? 'text-slate-300' : 'text-slate-600') : (isDark ? 'text-slate-500' : 'text-slate-400')}>
-                        {c.label}
-                      </span>
-                      {!c.ok && c.tab && <span className={isDark ? 'text-slate-600' : 'text-slate-300'}>→</span>}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </section>
-          );
-        })()}
-
-        {/* Vue d'ensemble header with Personnaliser button */}
-        <section className="px-4 sm:px-6 pb-2 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <LayoutDashboard size={15} style={{ color: couleur }} />
-            <h2 className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>Tableau de bord</h2>
+      {/* Onboarding bar */}
+      {computed.onboardingPct < 90 && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.4 }}
+          className={`rounded-xl border px-4 py-3 flex items-center gap-3 ${sectionBg}`}
+        >
+          <div className={`text-xs flex-1 ${textSecondary}`}>
+            Profil {computed.profilPct}%
+            <span className="mx-2">&middot;</span>
+            Conformité {computed.f26Pct}%
           </div>
           <button
-            onClick={() => setShowWidgetConfig(!showWidgetConfig)}
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
-              showWidgetConfig
-                ? `text-white`
-                : isDark ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-800 focus-visible:ring-orange-400' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100 focus-visible:ring-orange-500'
-            }`}
-            style={showWidgetConfig ? { backgroundColor: couleur, '--tw-ring-color': couleur } : {}}
+            type="button"
+            onClick={() => setPage('settings')}
+            className="inline-flex items-center gap-1 text-xs font-medium whitespace-nowrap"
+            style={{ color: couleur }}
           >
-            <Settings size={14} />
-            Personnaliser
+            Continuer <ArrowRight className="w-3 h-3" />
           </button>
-        </section>
-
-        {/* Widget Configuration Panel */}
-        {showWidgetConfig && (
-          <section className="px-4 sm:px-6 pb-6">
-            <div className={`rounded-xl border p-4 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
-              <div className="flex items-center justify-between mb-3">
-                <h2 className={`font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>Widgets du tableau de bord</h2>
-                <button onClick={() => { updateWidgetConfig(DEFAULT_WIDGETS); }} className={`text-xs px-2 py-1 rounded ${isDark ? 'text-slate-400 hover:text-white hover:bg-slate-700' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'}`}>
-                  Réinitialiser
-                </button>
-              </div>
-              <div className="space-y-1">
-                {widgetConfig.map((w, idx) => (
-                  <div
-                    key={w.id}
-                    draggable
-                    onDragStart={(e) => { setDragWidget(idx); e.dataTransfer.effectAllowed = 'move'; e.currentTarget.style.opacity = '0.5'; }}
-                    onDragEnd={(e) => { setDragWidget(null); e.currentTarget.style.opacity = '1'; }}
-                    onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      if (dragWidget === null || dragWidget === idx) return;
-                      const arr = [...widgetConfig];
-                      const [item] = arr.splice(dragWidget, 1);
-                      arr.splice(idx, 0, item);
-                      updateWidgetConfig(arr);
-                      setDragWidget(null);
-                    }}
-                    className={`flex items-center gap-3 px-3 py-2 rounded-lg cursor-grab active:cursor-grabbing transition-colors ${dragWidget === idx ? 'ring-2 ring-offset-1' : ''} ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}
-                    style={dragWidget === idx ? { ringColor: couleur } : undefined}
-                  >
-                    <GripVertical size={14} className={`flex-shrink-0 ${isDark ? 'text-slate-600' : 'text-slate-300'}`} />
-                    <button onClick={() => toggleWidgetVisibility(w.id)} className="flex-shrink-0 p-1 min-h-[44px] min-w-[44px] flex items-center justify-center">
-                      {w.visible
-                        ? <Eye size={16} className="text-green-500" />
-                        : <EyeOff size={16} className={isDark ? 'text-slate-600' : 'text-slate-300'} />
-                      }
-                    </button>
-                    <span className={`flex-1 text-sm ${w.visible ? (isDark ? 'text-white' : 'text-slate-900') : (isDark ? 'text-slate-600' : 'text-slate-300')}`}>{w.label}</span>
-                    <div className="flex gap-1">
-                      <button onClick={() => moveWidget(w.id, 'up')} disabled={idx === 0} className={`p-1 rounded ${idx === 0 ? 'opacity-20' : isDark ? 'hover:bg-slate-600 text-slate-400' : 'hover:bg-slate-200 text-slate-500'}`}>
-                        <ChevronDown size={14} className="rotate-180" />
-                      </button>
-                      <button onClick={() => moveWidget(w.id, 'down')} disabled={idx === widgetConfig.length - 1} className={`p-1 rounded ${idx === widgetConfig.length - 1 ? 'opacity-20' : isDark ? 'hover:bg-slate-600 text-slate-400' : 'hover:bg-slate-200 text-slate-500'}`}>
-                        <ChevronDown size={14} />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </section>
-        )}
-
-        {/* Overview Widget - Single unified card */}
-        {isWidgetVisible('overview') && (
-          <section className="px-4 sm:px-6 pb-6">
-            <OverviewWidget
-              setPage={setPage}
-              isDark={isDark}
-            />
-          </section>
-        )}
-
-        {/* Consolidated Widget - Multi-entreprise view */}
-        <section className="px-4 sm:px-6 pb-6">
-          <ConsolidatedWidget
-            devis={devis}
-            isDark={isDark}
-            modeDiscret={modeDiscret}
-            couleur={couleur}
-          />
-        </section>
-
-        {/* Revenue Chart - Full width — finance roles only */}
-        {canSeeFinances && isWidgetVisible('revenue') && (
-          <section className="px-4 sm:px-6 pb-8">
-            <RevenueChartWidget
-              setPage={setPage}
-              isDark={isDark}
-            />
-          </section>
-        )}
-
-        {/* Operational Widgets Grid */}
-        <section className="px-4 sm:px-6 pb-10">
-          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-            {/* Devis Widget - Actions required — hidden for ouvrier */}
-            {canAccess('devis') && isWidgetVisible('devis') && (
-              <DevisWidget
-                setPage={setPage}
-                setSelectedDevis={setSelectedDevis}
-                onRelance={handleOpenRelance}
-                isDark={isDark}
-              />
-            )}
-
-            {/* Relance Widget — shows pending relances */}
-            {canAccess('devis') && isWidgetVisible('relances') && relances.isEnabled && (
-              <RelanceWidget
-                pending={relances.pending}
-                stats={relances.stats}
-                totalAtRisk={relances.totalAtRisk}
-                setPage={setPage}
-                setSelectedDevis={setSelectedDevis}
-                onRelance={(item) => handleOpenRelance(item.doc)}
-                isDark={isDark}
-                couleur={couleur}
-                modeDiscret={modeDiscret}
-                formatMoney={(n) => formatMoney(n, modeDiscret)}
-              />
-            )}
-
-            {/* Chantiers Widget - Upcoming — hidden if no chantiers to reduce scroll */}
-            {isWidgetVisible('chantiers') && safeChantiers.length > 0 && (
-              <ChantiersWidget
-                setPage={setPage}
-                setSelectedChantier={setSelectedChantier}
-                isDark={isDark}
-              />
-            )}
-
-            {/* Tresorerie Widget — finance roles only */}
-            {canSeeFinances && isWidgetVisible('tresorerie') && (
-              <TresorerieWidget
-                setPage={setPage}
-                isDark={isDark}
-              />
-            )}
-
-            {/* Acomptes Widget — shows pending acompte steps */}
-            {canSeeFinances && isWidgetVisible('acomptes') && (
-              <AcomptesWidget
-                devis={devis}
-                isDark={isDark}
-                couleur={couleur}
-                formatMoney={(n) => formatMoney(n, modeDiscret)}
-                setPage={setPage}
-                setSelected={setSelectedDevis}
-              />
-            )}
-
-            {/* Reports Widget — finance roles only */}
-            {canSeeFinances && isWidgetVisible('reports') && (
-              <ReportsWidget
-                isDark={isDark}
-                setPage={setPage}
-              />
-            )}
-
-            {/* Score Santé Entreprise */}
-            {isWidgetVisible('score') && (
-              <ScoreSanteWidget
-                isDark={isDark}
-                setPage={setPage}
-              />
-            )}
-
-            {/* Recent Activity — audit-driven feed */}
-            {isWidgetVisible('activity') && (
-              <ActivityFeedWidget
-                isDark={isDark}
-                modeDiscret={modeDiscret}
-                onActivityClick={handleActivityClick}
-                orgId={orgId}
-                userId={user?.id}
-              />
-            )}
-
-            {/* Weather Alerts */}
-            {isWidgetVisible('weather') && (
-              <WeatherAlertsWidget
-                setPage={setPage}
-                isDark={isDark}
-              />
-            )}
-
-            {/* Équipe en Direct Widget */}
-            {equipe.filter(e => e.actif !== false && e.contrat !== 'sous_traitant').length > 0 && (
-              <div className={`rounded-2xl border overflow-hidden ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
-                <div className="p-4 flex items-center justify-between" style={{ borderBottom: `2px solid ${isDark ? '#334155' : '#e2e8f0'}` }}>
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: `${couleur}15` }}>
-                      <Users size={16} style={{ color: couleur }} />
-                    </div>
-                    <div>
-                      <h3 className={`text-sm font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>Équipe en direct</h3>
-                      <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                        {(() => { const n = equipe.filter(e => e.actif !== false && e.contrat !== 'sous_traitant').length; return `${n} ${n > 1 ? 'membres' : 'membre'}`; })()}
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => setPage('equipe')}
-                    className={`text-xs font-medium px-2 py-1 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${isDark ? 'text-slate-400 hover:bg-slate-700 focus-visible:ring-orange-400' : 'text-slate-500 hover:bg-slate-100 focus-visible:ring-orange-500'}`}
-                  >
-                    Voir tout →
-                  </button>
-                </div>
-                <div className="p-3 space-y-1.5">
-                  {equipe.filter(e => e.actif !== false && e.contrat !== 'sous_traitant').slice(0, 6).map(emp => {
-                    // Check if this employee has an active pointage today
-                    const todayStr = new Date().toISOString().split('T')[0];
-                    const todayPts = pointages.filter(p => p.employeId === emp.id && p.date === todayStr);
-                    const totalToday = todayPts.reduce((s, p) => s + (parseFloat(p.heures) || 0), 0);
-                    const isActive = totalToday > 0;
-                    // Find which chantier they worked on most today
-                    const chantierCounts = {};
-                    todayPts.forEach(p => { if (p.chantierId) chantierCounts[p.chantierId] = (chantierCounts[p.chantierId] || 0) + (p.heures || 0); });
-                    const topChantierId = Object.entries(chantierCounts).sort((a, b) => b[1] - a[1])[0]?.[0];
-                    const chantier = topChantierId ? chantiers.find(c => c.id === topChantierId) : null;
-
-                    const roleColors = {
-                      'Chef de chantier': '#f59e0b', 'Ouvrier qualifie': '#6366f1', 'Electricien': '#eab308',
-                      'Plombier': '#3b82f6', 'Peintre': '#8b5cf6', 'Macon': '#a16207', 'Apprenti': '#10b981'
-                    };
-                    const avatarColor = roleColors[emp.role] || '#64748b';
-
-                    return (
-                      <div
-                        key={emp.id}
-                        onClick={() => setPage('equipe')}
-                        className={`flex items-center gap-2.5 p-2 rounded-xl cursor-pointer transition-colors ${isDark ? 'hover:bg-slate-700/50' : 'hover:bg-slate-50'}`}
-                      >
-                        {/* Avatar with status dot */}
-                        <div className="relative flex-shrink-0">
-                          <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold" style={{ background: avatarColor }}>
-                            {emp.prenom?.[0]}{emp.nom?.[0]}
-                          </div>
-                          <span className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 ${isDark ? 'border-slate-800' : 'border-white'} ${isActive ? 'bg-emerald-500' : 'bg-slate-400'}`} role="status" aria-label={isActive ? 'En activité' : 'Inactif'} />
-                        </div>
-                        {/* Info */}
-                        <div className="flex-1 min-w-0">
-                          <p className={`text-sm font-medium truncate ${isDark ? 'text-white' : 'text-slate-900'}`}>{emp.prenom}</p>
-                          <p className={`text-xs truncate ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                            {isActive && chantier ? chantier.nom : isActive ? `${totalToday.toFixed(1)}h aujourd'hui` : (() => {
-                              // Calculate time since last pointage
-                              const lastPt = pointages.filter(p => p.employeId === emp.id).sort((a, b) => (b.date || '').localeCompare(a.date || ''))[0];
-                              if (!lastPt) return 'Aucune activité';
-                              const lastDate = new Date(lastPt.date);
-                              const hoursAgo = Math.floor((Date.now() - lastDate.getTime()) / (1000 * 60 * 60));
-                              if (hoursAgo < 24) return `Inactif depuis ${hoursAgo}h`;
-                              const daysAgo = Math.floor(hoursAgo / 24);
-                              return `Inactif depuis ${daysAgo}j`;
-                            })()}
-                          </p>
-                        </div>
-                        {/* Duration badge or Assign button */}
-                        {isActive ? (
-                          <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${isDark ? 'bg-emerald-900/40 text-emerald-400' : 'bg-emerald-50 text-emerald-600'}`}>
-                            {totalToday.toFixed(1)}h
-                          </span>
-                        ) : (
-                          <button
-                            onClick={(e) => { e.stopPropagation(); setPage('equipe'); }}
-                            className={`text-[10px] font-medium px-2 py-1.5 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg transition-colors outline-none focus-visible:ring-2 focus-visible:ring-offset-1 ${isDark ? 'text-slate-500 hover:bg-slate-700 hover:text-slate-300 focus-visible:ring-orange-400' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600 focus-visible:ring-orange-500'}`}
-                          >
-                            Assigner
-                          </button>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Subscription Usage Widget */}
-            {isWidgetVisible('subscription') && (
-              <UsageAlerts isDark={isDark} couleur={couleur} />
-            )}
-
-            {/* Stock Widget - only if low stock */}
-            {isWidgetVisible('stock') && stats.lowStockItems?.length > 0 && (
-              <StockWidget
-                setPage={setPage}
-                isDark={isDark}
-              />
-            )}
-
-            {/* Conformity Score Widget */}
-            {isWidgetVisible('conformity') && (() => {
-              // Compute live score from entreprise data (fallback to localStorage cache)
-              let score = 0;
-              const now = new Date();
-              if (entreprise?.siret) score += 7;
-              if (entreprise?.codeApe) score += 7;
-              if (entreprise?.tvaIntra) score += 6;
-              if (entreprise?.rcProAssureur && (!entreprise.rcProValidite || new Date(entreprise.rcProValidite) > now)) score += 20;
-              if (entreprise?.decennaleAssureur && (!entreprise.decennaleValidite || new Date(entreprise.decennaleValidite) > now)) score += 20;
-              if (entreprise?.cgv) score += 10;
-              if (entreprise?.iban && entreprise?.bic) score += 10;
-              if (entreprise?.adresse && entreprise?.nom && entreprise?.tel && entreprise?.email) score += 10;
-              if (entreprise?.rcsVille || entreprise?.rcsNumero) score += 10;
-              // Override with detailed score from Admin panel if available
-              const cached = parseInt(localStorage.getItem('cp_conformity_score') || '0');
-              if (cached > 0) score = cached;
-
-              if (score === 0) return null;
-              const cardClass = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200';
-              const titleClass = isDark ? 'text-white' : 'text-slate-900';
-              const mutedClass = isDark ? 'text-slate-400' : 'text-slate-500';
-              const scoreColor = score >= 80 ? '#10b981' : score >= 50 ? '#f59e0b' : '#ef4444';
-              return (
-                <div
-                  className={`${cardClass} rounded-2xl border p-5 cursor-pointer hover:shadow-lg transition-all hover:-translate-y-0.5`}
-                  onClick={() => setPage('settings')}
-                >
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${scoreColor}15` }}>
-                      <ShieldCheck size={18} style={{ color: scoreColor }} />
-                    </div>
-                    <div>
-                      <p className={`font-semibold text-sm ${titleClass}`}>Conformité</p>
-                      <p className={`text-[11px] ${mutedClass}`}>Score réglementaire</p>
-                    </div>
-                  </div>
-                  <div className="flex items-end gap-3">
-                    <p className="text-3xl font-bold" style={{ color: scoreColor }}>{score}%</p>
-                    <div className="flex-1 pb-1.5">
-                      <div className={`w-full h-2 rounded-full ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
-                        <div
-                          className="h-2 rounded-full transition-all"
-                          style={{ width: `${Math.min(100, score)}%`, background: `linear-gradient(90deg, ${scoreColor}, ${scoreColor}cc)` }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                  <p className={`text-xs ${mutedClass} mt-2 flex items-center gap-1`}>Voir détails <ChevronRight size={12} /></p>
-                  {/* A7: Insurance expiration alerts — contextual color */}
-                  {(() => {
-                    const alerts = [];
-                    const now = new Date();
-                    const addAlert = (label, dateStr) => {
-                      if (!dateStr) return;
-                      const exp = new Date(dateStr);
-                      const daysLeft = Math.ceil((exp - now) / 86400000);
-                      if (daysLeft <= 0) alerts.push({ label, daysLeft, color: 'red', text: 'Expirée !' });
-                      else if (daysLeft <= 30) alerts.push({ label, daysLeft, color: 'red', text: `Expire dans ${daysLeft}j` });
-                      else if (daysLeft <= 90) alerts.push({ label, daysLeft, color: 'red', text: `Expire dans ${daysLeft}j` });
-                      else if (daysLeft <= 180) alerts.push({ label, daysLeft, color: 'orange', text: `Expire dans ${daysLeft}j` });
-                    };
-                    addAlert('RC Pro', entreprise?.rcProValidite);
-                    addAlert('Décennale', entreprise?.decennaleValidite);
-                    if (alerts.length > 0) {
-                      const dismissed = localStorage.getItem('cp_conformity_alert_dismissed');
-                      const dismissedDate = dismissed ? new Date(parseInt(dismissed)) : null;
-                      const canDismiss = alerts.every(a => a.daysLeft > 30);
-                      if (dismissedDate && canDismiss && (now - dismissedDate < 86400000)) return null;
-                      return (
-                        <div className={`mt-3 space-y-1.5`}>
-                          {alerts.map(a => (
-                            <div key={a.label} className={`flex items-center justify-between text-xs px-2 py-1.5 rounded-lg ${a.color === 'red' ? (isDark ? 'bg-red-900/30 text-red-400' : 'bg-red-50 text-red-700') : (isDark ? 'bg-orange-900/30 text-orange-400' : 'bg-orange-50 text-orange-700')}`}>
-                              <span className="font-medium">{a.label}</span>
-                              <span>{a.text}</span>
-                            </div>
-                          ))}
-                          {canDismiss && (
-                            <button onClick={(e) => { e.stopPropagation(); localStorage.setItem('cp_conformity_alert_dismissed', Date.now().toString()); }} className={`text-[10px] ${mutedClass}`}>Masquer 24h</button>
-                          )}
-                        </div>
-                      );
-                    }
-                    return null;
-                  })()}
-                </div>
-              );
-            })()}
-
-            {/* Sous-traitant Alerts */}
-            {(() => {
-              const sousTraitants = equipe?.filter(e => e.type === 'sous_traitant') || [];
-              if (sousTraitants.length === 0) return null;
-              const now = new Date();
-              const sixMonths = 180 * 24 * 3600 * 1000;
-              const alerts = [];
-              sousTraitants.forEach(st => {
-                if (st.decennale_expiration && new Date(st.decennale_expiration) < now) {
-                  alerts.push({ type: 'critical', msg: `Décennale expirée : ${st.prenom ? st.prenom + ' ' : ''}${st.nom}` });
-                } else if (st.decennale_expiration && new Date(st.decennale_expiration) < new Date(now.getTime() + 30 * 24 * 3600 * 1000)) {
-                  alerts.push({ type: 'warning', msg: `Décennale expire bientôt : ${st.prenom ? st.prenom + ' ' : ''}${st.nom}` });
-                }
-                if (st.urssaf_date && (now.getTime() - new Date(st.urssaf_date).getTime()) > sixMonths) {
-                  alerts.push({ type: 'warning', msg: `URSSAF >6 mois : ${st.prenom ? st.prenom + ' ' : ''}${st.nom}` });
-                }
-                if (!st.decennale_expiration && !st.urssaf_date) {
-                  alerts.push({ type: 'info', msg: `Documents manquants : ${st.prenom ? st.prenom + ' ' : ''}${st.nom}` });
-                }
-              });
-              if (alerts.length === 0) return null;
-              const cardClass = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200';
-              const titleClass = isDark ? 'text-white' : 'text-slate-900';
-              const critical = alerts.filter(a => a.type === 'critical').length;
-              const warning = alerts.filter(a => a.type === 'warning').length;
-              return (
-                <div
-                  className={`${cardClass} rounded-2xl border p-5 cursor-pointer hover:shadow-lg transition-shadow`}
-                  onClick={() => setPage('equipe')}
-                >
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className={`p-2 rounded-lg ${critical > 0 ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-600'} ${isDark ? 'bg-opacity-20' : ''}`}>
-                      <AlertTriangle size={20} />
-                    </div>
-                    <p className={`font-semibold ${titleClass}`}>Sous-traitants</p>
-                    <span className={`ml-auto text-xs px-2 py-1 rounded-full font-medium ${critical > 0 ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'} ${isDark ? 'bg-opacity-20' : ''}`}>
-                      {alerts.length} alerte{alerts.length > 1 ? 's' : ''}
-                    </span>
-                  </div>
-                  <div className="space-y-1.5">
-                    {alerts.slice(0, 3).map((a, i) => (
-                      <p key={i} className={`text-xs flex items-center gap-2 ${a.type === 'critical' ? 'text-red-500' : a.type === 'warning' ? 'text-amber-500' : isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                        <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${a.type === 'critical' ? 'bg-red-500' : a.type === 'warning' ? 'bg-amber-500' : 'bg-slate-400'}`} />
-                        {a.msg}
-                      </p>
-                    ))}
-                    {alerts.length > 3 && <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>+{alerts.length - 3} autre{alerts.length - 3 > 1 ? 's' : ''}</p>}
-                  </div>
-                </div>
-              );
-            })()}
-
-            {/* Bank Widget — hidden if no bank connected or no finance access */}
-            {canSeeFinances && (entreprise?.iban || entreprise?.banque) && (
-              <BankWidget
-                isDark={isDark}
-                onConnectBank={() => setPage('settings')}
-                onViewTransactions={() => setPage('finances')}
-              />
-            )}
-          </div>
-        </section>
-      </div>
-
-      {/* Relance Modal */}
-      <RelanceModal
-        isOpen={relanceModal.isOpen}
-        onClose={() => setRelanceModal({ isOpen: false, item: null })}
-        item={relanceModal.item}
-        entreprise={entreprise}
-        onSuccess={() => {
-          setRelanceModal({ isOpen: false, item: null });
-        }}
-      />
-
-      {/* À Encaisser Modal */}
-      <EncaisserModal
-        isOpen={encaisserModalOpen}
-        onClose={() => setEncaisserModalOpen(false)}
-        stats={stats}
-        facturesEnAttente={stats.facturesEnAttente || []}
-        facturesOverdue={stats.facturesOverdue || []}
-        clients={safeClients}
-        onViewFacture={(facture) => {
-          setEncaisserModalOpen(false);
-          setSelectedDevis?.(facture);
-          setPage?.('devis');
-        }}
-        onRelanceFacture={(facture) => {
-          setRelanceModal({ isOpen: true, item: facture });
-        }}
-        onRelanceAll={() => {
-          // Relancer toutes les factures en retard
-          if (stats.facturesOverdue?.length > 0) {
-            setRelanceModal({ isOpen: true, item: stats.facturesOverdue[0] });
-          }
-        }}
-        onCreateFacture={() => {
-          setEncaisserModalOpen(false);
-          setCreateMode?.((p) => ({ ...p, devis: true, type: 'facture' }));
-          setPage?.('devis');
-        }}
-        onViewAllFactures={() => {
-          setEncaisserModalOpen(false);
-          setPage?.('devis');
-        }}
-        isDark={isDark}
-        modeDiscret={modeDiscret}
-      />
-
-      {/* Ce Mois Modal */}
-      <CeMoisModal
-        isOpen={ceMoisModalOpen}
-        onClose={() => setCeMoisModalOpen(false)}
-        stats={stats}
-        initialPeriod={kpiPeriod}
-        onPeriodChange={(period) => setKpiPeriod(period)}
-        monthlyData={(() => {
-          const now = new Date();
-          const MONTH_NAMES = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
-          return Array.from({ length: 6 }, (_, i) => {
-            const monthOffset = 5 - i;
-            const targetMonth = new Date(now.getFullYear(), now.getMonth() - monthOffset, 1);
-            const nextMonth = new Date(now.getFullYear(), now.getMonth() - monthOffset + 1, 1);
-            // CA encaissé: factures payées (TTC) pour cohérence avec DevisPage
-            const monthCA = safeDevis
-              .filter(d => {
-                if (d.type !== 'facture' || d.statut !== 'payee') return false;
-                const dd = new Date(d.date_paiement || d.updated_at || d.date);
-                return dd >= targetMonth && dd < nextMonth;
-              })
-              .reduce((s, d) => s + (d.total_ttc || d.montant_ttc || 0), 0);
-            return { label: MONTH_NAMES[targetMonth.getMonth()], revenue: monthCA };
-          });
-        })()}
-        yearlyData={(() => {
-          const now = new Date();
-          const MONTH_NAMES = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
-          return Array.from({ length: 12 }, (_, i) => {
-            const monthOffset = 11 - i;
-            const targetMonth = new Date(now.getFullYear(), now.getMonth() - monthOffset, 1);
-            const nextMonth = new Date(now.getFullYear(), now.getMonth() - monthOffset + 1, 1);
-            const monthCA = safeDevis
-              .filter(d => {
-                if (d.type !== 'facture' || d.statut !== 'payee') return false;
-                const dd = new Date(d.date_paiement || d.updated_at || d.date);
-                return dd >= targetMonth && dd < nextMonth;
-              })
-              .reduce((s, d) => s + (d.total_ttc || d.montant_ttc || 0), 0);
-            return { label: MONTH_NAMES[targetMonth.getMonth()], revenue: monthCA };
-          });
-        })()}
-        fiveYearData={(() => {
-          const now = new Date();
-          return Array.from({ length: 5 }, (_, i) => {
-            const yearOffset = 4 - i;
-            const targetYear = now.getFullYear() - yearOffset;
-            const startOfYear = new Date(targetYear, 0, 1);
-            const endOfYear = new Date(targetYear + 1, 0, 1);
-            const yearCA = safeDevis
-              .filter(d => {
-                if (d.type !== 'facture' || d.statut !== 'payee') return false;
-                const dd = new Date(d.date_paiement || d.updated_at || d.date);
-                return dd >= startOfYear && dd < endOfYear;
-              })
-              .reduce((s, d) => s + (d.total_ttc || d.montant_ttc || 0), 0);
-            return { label: targetYear.toString(), revenue: yearCA };
-          });
-        })()}
-        devisPipeline={stats.devisPipeline || {}}
-        clients={safeClients}
-        onViewDevis={(d) => {
-          setCeMoisModalOpen(false);
-          setSelectedDevis?.(d);
-          setPage?.('devis');
-        }}
-        onCreateDevis={() => {
-          setCeMoisModalOpen(false);
-          setCreateMode?.((p) => ({ ...p, devis: true }));
-          setPage?.('devis');
-        }}
-        onViewAllDevis={() => {
-          setCeMoisModalOpen(false);
-          setPage?.('devis');
-        }}
-        onRelanceDevis={(d) => {
-          setRelanceModal({ isOpen: true, item: d });
-        }}
-        isDark={isDark}
-        modeDiscret={modeDiscret}
-        // Rentability data
-        chantiers={safeChantiers}
-        devis={safeDevis}
-        depenses={depenses}
-        pointages={pointages}
-        equipe={equipe}
-        ajustements={ajustements}
-        onSelectChantier={(id) => {
-          setCeMoisModalOpen(false);
-          setSelectedChantier?.(id);
-          setPage?.('chantiers');
-        }}
-      />
-
-      {/* ========== DEVIS EXPRESS MODAL ========== */}
-      <DevisExpressModal
-        isOpen={showDevisExpress}
-        onClose={() => setShowDevisExpress(false)}
-        onCreateDevis={async (devisData) => {
-          try {
-            const newDevis = await addDevis?.({
-              ...devisData,
-              type: 'devis',
-              statut: 'brouillon',
-              date: new Date().toISOString().split('T')[0],
-            });
-            if (newDevis?.id) {
-              // Don't close modal here — let the modal show success animation first
-              // Navigation happens after modal closes itself
-              setTimeout(() => {
-                setSelectedDevis?.(newDevis);
-                setPage?.('devis');
-              }, 1500);
-              showToast(`Devis ${newDevis.numero || ''} créé avec succès !`, 'success');
-              return true;
-            } else {
-              showToast('Erreur : impossible de créer le devis. Vérifiez le client sélectionné.', 'error');
-              return false;
-            }
-          } catch (err) {
-            captureException(err, { context: 'DevisExpress creation failed' });
-            showToast(`Erreur création devis : ${err.message || 'erreur inconnue'}`, 'error');
-            throw err; // Re-throw so modal can show inline error
-          }
-        }}
-        clients={clients}
-        addClient={addClient}
-        isDark={isDark}
-        couleur={couleur}
-      />
-
-      {/* ========== DEVIS IA CHAT MODAL ========== */}
-      {showAIChat && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowAIChat(false)} />
-          <div className="relative w-full sm:max-w-2xl h-[85vh] sm:h-[80vh] sm:max-h-[700px] rounded-t-2xl sm:rounded-2xl overflow-hidden shadow-2xl">
-            <ChatInterface
-              isDark={isDark}
-              couleur={couleur}
-              onCreateDevis={handleAICreateDevis}
-              onClose={() => setShowAIChat(false)}
-              clients={clients}
-              entreprise={entreprise}
-              compact={false}
-            />
-          </div>
-        </div>
-      )}
-
-      {/* Margin Analysis Modal */}
-      <MarginAnalysisModal
-        isOpen={marginAnalysisModal.isOpen}
-        onClose={() => setMarginAnalysisModal({ isOpen: false, chantierId: null, chantierNom: null })}
-        chantierId={marginAnalysisModal.chantierId}
-        chantierNom={marginAnalysisModal.chantierNom}
-        chantiers={safeChantiers}
-        devis={safeDevis}
-        depenses={safeDepenses}
-        pointages={safePointages}
-        equipe={safeEquipe}
-        clients={safeClients}
-        onNavigateToChantier={(id) => {
-          setMarginAnalysisModal({ isOpen: false, chantierId: null, chantierNom: null });
-          const chantier = safeChantiers.find(c => c.id === id);
-          if (chantier) {
-            setSelectedChantier?.(chantier);
-          }
-          setPage?.('chantiers');
-        }}
-        isDark={isDark}
-        modeDiscret={modeDiscret}
-      />
-
-      {/* ========== PROFILE SETUP WIZARD MODAL ========== */}
-      {/* Appears automatically when profile < 30% and not dismissed */}
-      {showProfileSetup && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => {
-            setShowProfileSetup(false);
-            setProfileSetupDismissed(true);
-            localStorage.setItem('batigesti_profile_setup_dismissed', 'true');
-          }} />
-          <div className={`relative w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden ${isDark ? 'bg-slate-800' : 'bg-white'}`}>
-            {/* Header */}
-            <div className="p-6 pb-0">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: couleur + '20' }}>
-                    <AlertTriangle size={20} style={{ color: couleur }} />
-                  </div>
-                  <div>
-                    <h2 className={`text-lg font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>Configurez votre entreprise</h2>
-                    <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Informations obligatoires pour vos documents</p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => {
-                    setShowProfileSetup(false);
-                    setProfileSetupDismissed(true);
-                    localStorage.setItem('batigesti_profile_setup_dismissed', 'true');
-                  }}
-                  className={`p-2 rounded-xl transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-400'}`}
-                >
-                  <X size={18} />
-                </button>
-              </div>
-
-              <div className={`rounded-xl border p-4 mb-4 ${isDark ? 'bg-amber-900/20 border-amber-800/50' : 'bg-amber-50 border-amber-200'}`}>
-                <p className={`text-sm ${isDark ? 'text-amber-300' : 'text-amber-800'}`}>
-                  <strong>⚠️ Attention :</strong> En France, un devis ou une facture doit obligatoirement mentionner le SIRET, l'adresse et les coordonnées de l'entreprise.
-                  Sans ces informations, vos documents ne sont <strong>pas conformes à la loi</strong>.
-                </p>
-              </div>
-            </div>
-
-            {/* Missing fields */}
-            <div className="px-6 pb-4">
-              <p className={`text-xs font-semibold uppercase tracking-wider mb-3 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                Informations manquantes ({missingRequiredFields.length})
-              </p>
-              <div className="space-y-2">
-                {missingRequiredFields.map(f => (
-                  <button
-                    key={f.key}
-                    onClick={() => {
-                      setShowProfileSetup(false);
-                      navigateToSettingsTab(f.tab, f.key);
-                    }}
-                    className={`w-full flex items-center gap-3 p-3 rounded-xl border text-left transition-all hover:shadow-sm ${
-                      isDark ? 'bg-slate-700/50 border-slate-600 hover:bg-slate-700' : 'bg-slate-50 border-slate-200 hover:bg-white'
-                    }`}
-                  >
-                    <span className="text-red-400">✗</span>
-                    <span className={`flex-1 text-sm font-medium ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{f.label}</span>
-                    <ChevronRight size={14} className={isDark ? 'text-slate-500' : 'text-slate-400'} />
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Progress bar */}
-            <div className="px-6 pb-2">
-              <div className="flex items-center justify-between mb-1.5">
-                <span className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Progression du profil</span>
-                <span className={`text-xs font-bold ${profileCompletude < 30 ? 'text-red-500' : profileCompletude < 60 ? 'text-amber-500' : 'text-emerald-500'}`}>{profileCompletude}%</span>
-              </div>
-              <div className={`h-2 rounded-full ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`}>
-                <div className="h-full rounded-full transition-all duration-500" style={{ width: `${profileCompletude}%`, background: profileCompletude < 30 ? '#ef4444' : profileCompletude < 60 ? '#f59e0b' : '#22c55e' }} />
-              </div>
-            </div>
-
-            {/* Actions */}
-            <div className={`px-6 py-4 border-t ${isDark ? 'border-slate-700 bg-slate-800/50' : 'border-slate-100 bg-slate-50'}`}>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => {
-                    setShowProfileSetup(false);
-                    setProfileSetupDismissed(true);
-                    localStorage.setItem('batigesti_profile_setup_dismissed', 'true');
-                  }}
-                  className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-colors ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'}`}
-                >
-                  Plus tard
-                </button>
-                <button
-                  onClick={() => {
-                    setShowProfileSetup(false);
-                    navigateToSettingsTab(missingRequiredFields[0]?.tab || 'identite', missingRequiredFields[0]?.key);
-                  }}
-                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
-                  style={{ background: couleur }}
-                >
-                  Compléter mon profil →
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+        </motion.div>
       )}
     </div>
   );
