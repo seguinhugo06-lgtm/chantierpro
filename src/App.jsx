@@ -1011,11 +1011,30 @@ export default function App() {
     } catch { return null; }
   }, []);
 
-  if (page === 'client-portal' || portalToken) return (
-    <Suspense fallback={<div className="min-h-screen bg-[#f5f5f5] flex items-center justify-center"><Building2 size={48} className="text-orange-500 animate-bounce" /></div>}>
-      <ClientPortal token={portalToken || 'demo'} />
-    </Suspense>
-  );
+  if (page === 'client-portal' || portalToken) {
+    const portalClientId = (() => {
+      try { return localStorage.getItem('cp_portal_client_id') || null; } catch { return null; }
+    })();
+    const portalClient = portalClientId ? clients.find(c => c.id === portalClientId) : null;
+    const portalDevis = portalClientId ? devis.filter(d => d.clientId === portalClientId) : [];
+    const portalChantiers = portalClientId ? chantiers.filter(c => c.clientId === portalClientId) : [];
+
+    return (
+      <Suspense fallback={<div className="min-h-screen bg-[#f5f5f5] flex items-center justify-center"><Building2 size={48} className="text-orange-500 animate-bounce" /></div>}>
+        <ClientPortal
+          token={portalToken || 'demo'}
+          entreprise={entreprise}
+          couleur={couleur}
+          client={portalClient}
+          devis={portalDevis}
+          chantiers={portalChantiers}
+          clients={clients}
+          showToast={showToast}
+          setPage={setPage}
+        />
+      </Suspense>
+    );
+  }
 
   // Legal / public pages (accessible without auth)
   const publicPages = ['cgv', 'cgu', 'confidentialite', 'mentions-legales', 'changelog'];

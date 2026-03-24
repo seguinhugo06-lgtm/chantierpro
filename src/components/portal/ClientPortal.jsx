@@ -3,7 +3,7 @@ import {
   FileText, Building2, Receipt, Camera, Star, Send,
   Phone, Mail, MapPin, MessageSquare, CheckCircle,
   Clock, AlertTriangle, Download, Check, X, CreditCard,
-  ExternalLink, ChevronDown, ChevronUp,
+  ExternalLink, ChevronDown, ChevronUp, ArrowLeft,
 } from 'lucide-react';
 import PortalLayout from './PortalLayout';
 import DevisCard from './DevisCard';
@@ -306,22 +306,46 @@ function AvisSection({ entreprise, couleur }) {
 // ─── Main ClientPortal ──────────────────────────────────────────────
 
 /**
- * ClientPortal - Public page accessible via token.
+ * ClientPortal - Public page accessible via token or internal navigation.
  * Displays devis, factures, chantier progress, contact form, and review prompt.
  *
  * @param {Object} props
  * @param {string} props.token - Portal access token
+ * @param {Object} [props.entreprise] - Enterprise info (nom, logo, couleur, tel, email)
+ * @param {string} [props.couleur] - Accent color hex
+ * @param {Object} [props.client] - Client object
+ * @param {Array} [props.devis] - Client devis + factures
+ * @param {Array} [props.chantiers] - Client chantiers
+ * @param {Function} [props.showToast] - Toast notification function
+ * @param {Function} [props.setPage] - Navigation function (internal mode)
  * @param {boolean} [props.isDark=false] - Unused; portal is always light mode
  */
-export default function ClientPortal({ token, isDark = false }) {
+export default function ClientPortal({
+  token,
+  entreprise: entrepriseProp,
+  couleur: couleurProp,
+  client: clientProp,
+  devis: devisProp,
+  chantiers: chantiersProp,
+  showToast,
+  setPage,
+  isDark = false,
+}) {
   const [showPhotoGallery, setShowPhotoGallery] = useState(false);
   const [selectedChantier, setSelectedChantier] = useState(null);
   const [activeSection, setActiveSection] = useState('all');
 
-  // Demo mode — use placeholder data until backend API exists
-  const data = useMemo(() => DEMO_DATA, []);
-  const { entreprise, client, devis, factures, chantiers } = data;
-  const couleur = entreprise.couleur || '#f97316';
+  // Use real props if available, otherwise fallback to demo data
+  const hasRealData = !!(clientProp && entrepriseProp);
+  const entreprise = hasRealData ? entrepriseProp : DEMO_DATA.entreprise;
+  const client = hasRealData
+    ? { prenom: clientProp.prenom || clientProp.nom?.split(' ')[0] || '', nom: clientProp.nom?.split(' ').slice(1).join(' ') || clientProp.nom || '' }
+    : DEMO_DATA.client;
+  const allDevis = hasRealData ? (devisProp || []) : DEMO_DATA.devis;
+  const devis = allDevis.filter(d => d.type !== 'facture');
+  const factures = allDevis.filter(d => d.type === 'facture');
+  const chantiers = hasRealData ? (chantiersProp || []) : DEMO_DATA.chantiers;
+  const couleur = couleurProp || entreprise.couleur || '#f97316';
 
   // Stats
   const activeChantiers = chantiers.filter(c => c.statut === 'en_cours').length;
@@ -463,12 +487,25 @@ export default function ClientPortal({ token, isDark = false }) {
 
   // ── Render ────────────────────────────────────────────────────────
 
+  const clientName = `${client.prenom} ${client.nom}`.trim();
+
   return (
     <PortalLayout
-      clientName={`${client.prenom} ${client.nom}`}
+      clientName={clientName}
       entreprise={entreprise}
       couleur={couleur}
     >
+      {/* Back button (internal navigation only) */}
+      {setPage && (
+        <button
+          onClick={() => setPage('clients')}
+          className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 mb-4 transition-colors"
+        >
+          <ArrowLeft size={16} />
+          Retour aux clients
+        </button>
+      )}
+
       {/* Stat cards */}
       <section className="mb-6 sm:mb-8">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">

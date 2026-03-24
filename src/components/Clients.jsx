@@ -746,6 +746,17 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
           >
             <Home size={14} /> Nouveau chantier
           </button>
+          <button
+            onClick={() => {
+              if (setPage) {
+                localStorage.setItem('cp_portal_client_id', client.id);
+                setPage('client-portal');
+              }
+            }}
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium min-h-[40px] border transition-all hover:shadow-sm ${isDark ? 'border-slate-600 text-slate-300 hover:bg-slate-700' : 'border-slate-300 text-slate-700 hover:bg-slate-50'}`}
+          >
+            <ExternalLink size={14} /> Portail client
+          </button>
         </div>
 
         {/* KPI Row — Clickable */}

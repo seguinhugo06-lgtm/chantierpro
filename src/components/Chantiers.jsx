@@ -79,6 +79,32 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
   const chantierPerm = getPermission('chantiers');
   const isViewOnly = chantierPerm === 'view' || chantierPerm === 'assigned';
 
+  // ── Post-chantier sequence trigger ──────────────────────────────────────────
+  const triggerPostChantierSequence = useCallback((chantier) => {
+    try {
+      const sequence = JSON.parse(localStorage.getItem('cp_post_chantier_sequence') || '[]');
+      const activeSteps = sequence.filter(s => s.active);
+      if (activeSteps.length > 0) {
+        const executions = activeSteps.map(step => ({
+          id: `exec_${Date.now()}_${step.id}`,
+          stepId: step.id,
+          chantierId: chantier.id,
+          clientId: chantier.clientId || chantier.client_id,
+          scheduledDate: new Date(Date.now() + step.delay * 86400000).toISOString(),
+          status: 'scheduled',
+          template: step.template,
+          channel: step.channel,
+          label: step.label,
+        }));
+        const existing = JSON.parse(localStorage.getItem('cp_post_chantier_executions') || '[]');
+        localStorage.setItem('cp_post_chantier_executions', JSON.stringify([...existing, ...executions]));
+        showToast(`Séquence post-chantier activée : ${activeSteps.length} étapes planifiées`, 'success');
+      }
+    } catch (e) {
+      // Silently fail — post-chantier is non-critical
+    }
+  }, [showToast]);
+
   // Theme classes
   const cardBg = isDark ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200";
   const inputBg = isDark ? "bg-slate-700 border-slate-600 text-white placeholder-slate-400" : "bg-white border-slate-300";
@@ -445,6 +471,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                   onChange={e => {
                     const newStatus = e.target.value;
                     updateChantier(ch.id, { statut: newStatus });
+                    if (newStatus === 'termine') triggerPostChantierSequence(ch);
                     showToast(`Statut changé: ${CHANTIER_STATUS_LABELS[newStatus]}`, 'success');
                   }}
                   className={`px-3 py-1.5 rounded-full text-xs font-medium cursor-pointer border-0 outline-none appearance-none pr-6 bg-no-repeat bg-right min-h-[36px] shrink-0 ${
@@ -518,7 +545,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                       </button>
                     )}
                     {ch.statut === 'en_cours' && (
-                      <button onClick={async () => { const confirmed = await confirm({ title: 'Terminer le chantier', message: `Marquer "${ch.nom}" comme terminé ? La date de fin sera mise à aujourd'hui.` }); if (confirmed) { updateChantier(ch.id, { statut: 'termine', date_fin: new Date().toISOString().split('T')[0] }); showToast('Chantier marqué comme terminé ✅', 'success'); } }} className={`p-2 ${isDark ? 'hover:bg-emerald-900/50' : 'hover:bg-emerald-50'} rounded-lg min-w-[44px] min-h-[44px] sm:min-w-[36px] sm:min-h-[36px] flex items-center justify-center`} title="Marquer comme terminé">
+                      <button onClick={async () => { const confirmed = await confirm({ title: 'Terminer le chantier', message: `Marquer "${ch.nom}" comme terminé ? La date de fin sera mise à aujourd'hui.` }); if (confirmed) { updateChantier(ch.id, { statut: 'termine', date_fin: new Date().toISOString().split('T')[0] }); triggerPostChantierSequence(ch); showToast('Chantier marqué comme terminé', 'success'); } }} className={`p-2 ${isDark ? 'hover:bg-emerald-900/50' : 'hover:bg-emerald-50'} rounded-lg min-w-[44px] min-h-[44px] sm:min-w-[36px] sm:min-h-[36px] flex items-center justify-center`} title="Marquer comme terminé">
                         <CheckCircle size={16} className="text-emerald-500" />
                       </button>
                     )}
@@ -544,7 +571,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                             <Copy size={15} className={textMuted} /> Dupliquer
                           </button>
                           {ch.statut === 'en_cours' && (
-                            <button onClick={async () => { setShowMobileActions(null); const confirmed = await confirm({ title: 'Terminer', message: `Marquer "${ch.nom}" comme terminé ?` }); if (confirmed) { updateChantier(ch.id, { statut: 'termine', date_fin: new Date().toISOString().split('T')[0] }); showToast('Chantier terminé ✅', 'success'); } }} className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm ${isDark ? 'text-emerald-400 hover:bg-slate-700' : 'text-emerald-600 hover:bg-slate-50'}`}>
+                            <button onClick={async () => { setShowMobileActions(null); const confirmed = await confirm({ title: 'Terminer', message: `Marquer "${ch.nom}" comme terminé ?` }); if (confirmed) { updateChantier(ch.id, { statut: 'termine', date_fin: new Date().toISOString().split('T')[0] }); triggerPostChantierSequence(ch); showToast('Chantier terminé', 'success'); } }} className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm ${isDark ? 'text-emerald-400 hover:bg-slate-700' : 'text-emerald-600 hover:bg-slate-50'}`}>
                               <CheckCircle size={15} /> Terminer
                             </button>
                           )}
@@ -584,6 +611,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
             <button
               onClick={() => {
                 updateChantier(ch.id, { statut: 'termine' });
+                triggerPostChantierSequence(ch);
                 showToast('Chantier marqué comme terminé', 'success');
               }}
               className="px-4 py-2 text-sm font-medium text-white rounded-xl whitespace-nowrap min-h-[40px] hover:shadow-lg transition-all bg-emerald-500 hover:bg-emerald-600"
@@ -1800,6 +1828,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                 await createReception(null, { ...data, chantierId: ch.id, userId: null, orgId: null });
                 if (ch.statut === 'en_cours') {
                   updateChantier(ch.id, { statut: 'termine', date_fin: data.dateReception });
+                  triggerPostChantierSequence(ch);
                 }
                 const [reception, garanties, interventions] = await Promise.all([
                   getReception(ch.id),
