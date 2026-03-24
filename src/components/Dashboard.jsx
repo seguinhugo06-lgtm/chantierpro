@@ -520,16 +520,9 @@ const RecentActivityWidget = memo(function RecentActivityWidget({
             })}
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center py-10 text-center">
-            <div
-              className={`
-                w-14 h-14 rounded-2xl flex items-center justify-center mb-3
-                ${isDark ? 'bg-slate-700/50' : 'bg-gray-100'}
-              `}
-            >
-              <Activity size={24} className={isDark ? 'text-slate-500' : 'text-gray-300'} />
-            </div>
-            <p className={`text-sm font-medium ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
+          <div className="flex flex-col items-center justify-center py-4 text-center">
+            <Activity size={18} className={isDark ? 'text-slate-500' : 'text-gray-300'} />
+            <p className={`text-xs mt-1 ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
               Aucune activité récente
             </p>
           </div>
@@ -1037,7 +1030,7 @@ export default function Dashboard({
       if (d.type !== 'devis' || !['envoye', 'vu'].includes(d.statut)) return false;
       if ((d.total_ttc || d.total_ht || 0) <= 1) return false;
       return daysSince(d.date) >= 7;
-    }).sort((a, b) => daysSince(b.date) - daysSince(a.date));
+    }).sort((a, b) => (b.total_ttc || b.total_ht || 0) - (a.total_ttc || a.total_ht || 0));
   }, [safeDevis]);
 
   const todayMemos = useMemo(() => {
@@ -1252,8 +1245,8 @@ export default function Dashboard({
           </section>
         )}
 
-        {/* ========== HERO DUO — Devis IA + Devis Express — HIDDEN (already in sidebar) ========== */}
-        {false && canCreateDevis && (
+        {/* ========== HERO DUO — Devis IA + Devis Express — shown only for onboarding (<5 devis) ========== */}
+        {safeDevis.length < 5 && canCreateDevis && (
         <section className="px-4 sm:px-6 pb-3">
           <div className="grid grid-cols-2 gap-3">
             {/* Devis IA — subtle violet gradient */}
@@ -1516,8 +1509,8 @@ export default function Dashboard({
             const clientNom = formatClientName(client, 'Client');
             actions.push({
               id: `devis-${d.id}`,
-              priority: days > 60 ? 1 : days > 14 ? 1 : 2,
-              color: days > 60 ? 'red' : days > 30 ? 'red' : days > 14 ? 'amber' : 'amber',
+              priority: days > 60 ? 1 : days > 30 ? 1 : days > 14 ? 2 : 3,
+              color: days > 60 ? 'red' : days > 30 ? 'orange' : days > 14 ? 'yellow' : 'blue',
               montant: d.total_ttc || d.total_ht || 0,
               iconComponent: FileText,
               title: `${clientNom} · ${displayNum}`,
@@ -1564,18 +1557,24 @@ export default function Dashboard({
 
           const priorityBg = {
             red: isDark ? 'bg-red-950/40' : 'bg-red-50/80',
+            orange: isDark ? 'bg-orange-950/30' : 'bg-orange-50/70',
+            yellow: isDark ? 'bg-yellow-950/30' : 'bg-yellow-50/70',
             amber: isDark ? 'bg-amber-950/30' : 'bg-amber-50/70',
             blue: isDark ? 'bg-slate-800/50' : 'bg-slate-50/60',
           };
           const priorityHover = {
             red: isDark ? 'hover:bg-red-950/60' : 'hover:bg-red-100/80',
+            orange: isDark ? 'hover:bg-orange-950/50' : 'hover:bg-orange-100/70',
+            yellow: isDark ? 'hover:bg-yellow-950/50' : 'hover:bg-yellow-100/70',
             amber: isDark ? 'hover:bg-amber-950/50' : 'hover:bg-amber-100/70',
             blue: isDark ? 'hover:bg-slate-700/50' : 'hover:bg-slate-100/60',
           };
           const priorityLabels = {
             red: 'Urgent',
+            orange: 'Moyen',
+            yellow: 'A surveiller',
             amber: 'A surveiller',
-            blue: 'A faire',
+            blue: 'Récent',
           };
 
           return (
@@ -1594,14 +1593,14 @@ export default function Dashboard({
                 </div>
                 <div className="space-y-2 max-h-[400px] overflow-y-auto overscroll-contain">
                   {sorted.map(item => {
-                    const borderColor = item.color === 'red' ? '#ef4444' : item.color === 'amber' ? '#f59e0b' : '#3b82f6';
+                    const borderColor = item.color === 'red' ? '#ef4444' : item.color === 'orange' ? '#f97316' : item.color === 'yellow' ? '#eab308' : item.color === 'amber' ? '#f59e0b' : '#3b82f6';
                     return (
                       <div
                         key={item.id}
                         className={`flex flex-wrap sm:flex-nowrap items-center gap-x-3 gap-y-1.5 p-2.5 rounded-lg transition-all duration-150 ${
                           isDark ? 'hover:bg-slate-800' : 'hover:bg-[#fafafa]'
                         } border ${isDark ? 'border-slate-700' : 'border-gray-200/70'}`}
-                        style={{ borderLeftWidth: '2px', borderLeftColor: borderColor }}
+                        style={{ borderLeftWidth: '4px', borderLeftColor: borderColor }}
                       >
                         {item.iconComponent && (
                           <item.iconComponent size={14} style={{ color: borderColor }} className="flex-shrink-0" />
@@ -1680,9 +1679,8 @@ export default function Dashboard({
         {/* ────── RIGHT COLUMN — Chantiers + Onboarding ────── */}
         <div className="space-y-3">
 
-        {/* ========== CHANTIERS EN COURS — top 3 with progress bars ========== */}
-        <section>
-          {chantiersEnCours.length > 0 ? (
+        {/* ========== CHANTIERS EN COURS — top 3 with progress bars (hidden if empty) ========== */}
+        {chantiersEnCours.length > 0 && <section>
             <div className={`rounded-2xl border p-4 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
@@ -1744,15 +1742,7 @@ export default function Dashboard({
                 ))}
               </div>
             </div>
-          ) : (
-            <button onClick={() => setPage?.('chantiers')}
-              className={`w-full rounded-xl border p-3 flex items-center gap-3 text-left transition-all hover:shadow-sm ${isDark ? 'bg-slate-800 border-slate-700 hover:bg-slate-750' : 'bg-white border-slate-200 hover:bg-slate-50'}`}>
-              <Calendar size={16} className={isDark ? 'text-slate-500' : 'text-slate-400'} />
-              <span className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Aucun chantier planifié</span>
-              <span className="text-xs font-medium ml-auto" style={{ color: couleur }}>+ Planifier</span>
-            </button>
-          )}
-        </section>
+        </section>}
 
         {/* ========== ONBOARDING — shows for new users, auto-dismisses ========== */}
         <section className="px-4 sm:px-6 mb-3">
@@ -1767,55 +1757,25 @@ export default function Dashboard({
           />
         </section>
 
-        {/* ========== PROFILE COMPLETION BANNER — visible when >= 50% and < 80% (< 50% shown above KPIs) ========== */}
+        {/* ========== PROFILE COMPLETION BANNER — compact single-line (>= 50% and < 80%) ========== */}
         {profileCompletude >= 50 && profileCompletude < 80 && (
-          <section className="px-4 sm:px-6 mb-3">
-            <div className={`rounded-xl border p-4 ${
+          <section className="px-4 sm:px-6 mb-2">
+            <div className={`rounded-lg flex items-center gap-3 px-3 py-2 ${
               profileCompletude < 60
-                ? isDark ? 'bg-amber-900/20 border-amber-800/50' : 'bg-amber-50 border-amber-200'
-                : isDark ? 'bg-blue-900/20 border-blue-800/50' : 'bg-blue-50 border-blue-200'
+                ? isDark ? 'bg-amber-900/15 border border-amber-800/30' : 'bg-amber-50 border border-amber-200'
+                : isDark ? 'bg-blue-900/15 border border-blue-800/30' : 'bg-blue-50 border border-blue-200'
             }`}>
-              <div className="flex flex-wrap sm:flex-nowrap items-center gap-3">
-                <div className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 font-bold text-sm ${
-                  profileCompletude < 60 ? 'bg-amber-500/20 text-amber-600' : 'bg-blue-500/20 text-blue-500'
-                }`}>
-                  {profileCompletude}%
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className={`text-sm font-semibold ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
-                    Complétez votre profil entreprise
-                  </p>
-                  <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                    {missingRequiredFields.length > 0
-                      ? `${missingRequiredFields.length} info${missingRequiredFields.length > 1 ? 's' : ''} obligatoire${missingRequiredFields.length > 1 ? 's' : ''} manquante${missingRequiredFields.length > 1 ? 's' : ''} · Vos documents ne sont pas conformes`
-                      : 'Ajoutez vos informations complémentaires pour des documents professionnels'
-                    }
-                  </p>
-                </div>
-                <button
-                  onClick={() => navigateToSettingsTab(missingRequiredFields[0]?.tab || 'identite', missingRequiredFields[0]?.key)}
-                  className="w-full sm:w-auto px-4 py-2.5 min-h-[44px] rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
-                  style={{ backgroundColor: couleur }}
-                >
-                  Compléter →
-                </button>
-              </div>
-              {/* Missing required fields */}
-              {missingRequiredFields.length > 0 && (
-                <div className="mt-2.5 pt-2.5 border-t border-current/10 flex flex-wrap gap-1.5">
-                  {missingRequiredFields.map(f => (
-                    <button
-                      key={f.key}
-                      onClick={() => navigateToSettingsTab(f.tab, f.key)}
-                      className={`text-xs px-2.5 py-1 rounded-lg transition-colors ${
-                        isDark ? 'bg-slate-700/50 text-slate-300 hover:bg-slate-700' : 'bg-white/80 text-slate-600 hover:bg-white'
-                      }`}
-                    >
-                      ✗ {f.label}
-                    </button>
-                  ))}
-                </div>
-              )}
+              <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 text-xs font-bold ${
+                profileCompletude < 60 ? 'bg-amber-500/20 text-amber-600' : 'bg-blue-500/20 text-blue-500'
+              }`}>{profileCompletude}%</div>
+              <span className={`text-xs truncate flex-1 ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+                Profil {profileCompletude}% — {missingRequiredFields.length} champ{missingRequiredFields.length > 1 ? 's' : ''} manquant{missingRequiredFields.length > 1 ? 's' : ''}
+              </span>
+              <button
+                onClick={() => navigateToSettingsTab(missingRequiredFields[0]?.tab || 'identite', missingRequiredFields[0]?.key)}
+                className="text-xs font-semibold px-3 py-1.5 rounded-lg text-white flex-shrink-0" style={{ backgroundColor: couleur }}>
+                Compléter
+              </button>
             </div>
           </section>
         )}
@@ -1965,7 +1925,7 @@ export default function Dashboard({
 
         {/* Revenue Chart - Full width — finance roles only */}
         {canSeeFinances && isWidgetVisible('revenue') && (
-          <section className="px-4 sm:px-6 pb-8">
+          <section className="px-4 sm:px-6 pb-3">
             <RevenueChartWidget
               setPage={setPage}
               isDark={isDark}
@@ -1974,8 +1934,8 @@ export default function Dashboard({
         )}
 
         {/* Operational Widgets Grid */}
-        <section className="px-4 sm:px-6 pb-10">
-          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+        <section className="px-4 sm:px-6 pb-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-3">
             {/* Devis Widget - Actions required — hidden for ouvrier */}
             {canAccess('devis') && isWidgetVisible('devis') && (
               <DevisWidget
