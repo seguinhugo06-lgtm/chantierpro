@@ -1204,54 +1204,24 @@ export default function Dashboard({
       {/* Main Content */}
       <div className="max-w-[1440px] mx-auto">
 
-        {/* ========== PROFILE COMPLETION BANNER — TOP PRIORITY when < 50% ========== */}
-        {profileCompletude < 50 && (
-          <section className="px-4 sm:px-6 mb-3">
-            <div className={`rounded-xl border p-4 ${
-              profileCompletude < 30
-                ? isDark ? 'bg-red-900/20 border-red-800/50' : 'bg-red-50 border-red-200'
-                : isDark ? 'bg-amber-900/20 border-amber-800/50' : 'bg-amber-50 border-amber-200'
+        {/* ========== PROFILE COMPLETION — COMPACT INLINE BANNER (48px max) ========== */}
+        {profileCompletude < 80 && (
+          <section className="px-4 sm:px-6 mb-2">
+            <div className={`rounded-lg flex items-center gap-3 px-3 py-2 ${
+              isDark ? 'bg-amber-900/15 border border-amber-800/30' : 'bg-amber-50 border border-amber-200'
             }`}>
-              <div className="flex flex-wrap sm:flex-nowrap items-center gap-3">
-                <div className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 font-bold text-sm ${
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 text-xs font-bold ${
                   profileCompletude < 30 ? 'bg-red-500/20 text-red-500' : 'bg-amber-500/20 text-amber-600'
-                }`}>
-                  {profileCompletude}%
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className={`text-sm font-semibold ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
-                    Complétez votre profil entreprise
-                  </p>
-                  <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                    {missingRequiredFields.length > 0
-                      ? `${missingRequiredFields.length} info${missingRequiredFields.length > 1 ? 's' : ''} obligatoire${missingRequiredFields.length > 1 ? 's' : ''} manquante${missingRequiredFields.length > 1 ? 's' : ''} · Vos documents ne sont pas conformes`
-                      : 'Ajoutez vos informations complémentaires pour des documents professionnels'
-                    }
-                  </p>
-                </div>
-                <button
-                  onClick={() => navigateToSettingsTab(missingRequiredFields[0]?.tab || 'identite', missingRequiredFields[0]?.key)}
-                  className="w-full sm:w-auto px-4 py-2.5 min-h-[44px] rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
-                  style={{ backgroundColor: couleur }}
-                >
-                  Compléter →
-                </button>
+                }`}>{profileCompletude}%</div>
+                <span className={`text-xs truncate ${isDark ? 'text-amber-300' : 'text-amber-800'}`}>
+                  Profil {profileCompletude}% — {missingRequiredFields.length} champ{missingRequiredFields.length > 1 ? 's' : ''} manquant{missingRequiredFields.length > 1 ? 's' : ''}
+                </span>
               </div>
-              {missingRequiredFields.length > 0 && (
-                <div className="mt-2.5 pt-2.5 border-t border-current/10 flex flex-wrap gap-1.5">
-                  {missingRequiredFields.map(f => (
-                    <button
-                      key={f.key}
-                      onClick={() => navigateToSettingsTab(f.tab, f.key)}
-                      className={`text-xs px-2.5 py-1 rounded-lg transition-colors ${
-                        isDark ? 'bg-slate-700/50 text-slate-300 hover:bg-slate-700' : 'bg-white/80 text-slate-600 hover:bg-white'
-                      }`}
-                    >
-                      ✗ {f.label}
-                    </button>
-                  ))}
-                </div>
-              )}
+              <button onClick={() => navigateToSettingsTab(missingRequiredFields[0]?.tab || 'identite', missingRequiredFields[0]?.key)}
+                className="text-xs font-semibold px-3 py-1.5 rounded-lg text-white flex-shrink-0" style={{ backgroundColor: couleur }}>
+                Compléter
+              </button>
             </div>
           </section>
         )}
@@ -1544,11 +1514,12 @@ export default function Dashboard({
             const clientNom = formatClientName(client, 'Client');
             actions.push({
               id: `devis-${d.id}`,
-              priority: days > 14 ? 1 : 2,
-              color: days > 14 ? 'red' : 'amber',
+              priority: days > 60 ? 1 : days > 14 ? 1 : 2,
+              color: days > 60 ? 'red' : days > 30 ? 'red' : days > 14 ? 'amber' : 'amber',
+              montant: d.total_ttc || d.total_ht || 0,
               iconComponent: FileText,
               title: `${clientNom} · ${displayNum}`,
-              subtitle: `${formatMoney(d.total_ttc || d.total_ht || 0, modeDiscret)} · Sans réponse depuis ${days}j`,
+              subtitle: `${formatMoney(d.total_ttc || d.total_ht || 0, modeDiscret)} · ${days}j sans réponse`,
               action: () => handleOpenRelance(d),
               actionLabel: 'Relancer',
             });
@@ -1584,7 +1555,7 @@ export default function Dashboard({
             });
           });
 
-          const allSorted = actions.sort((a, b) => a.priority - b.priority);
+          const allSorted = actions.sort((a, b) => a.priority - b.priority || (b.montant || 0) - (a.montant || 0));
           const sorted = allSorted.slice(0, 3);
           const totalActions = allSorted.length;
           if (sorted.length === 0) return null;
@@ -1887,65 +1858,24 @@ export default function Dashboard({
           const f26score = Math.round((f26done / f26criteriaEval.length) * 100);
           if (f26score >= 100 || daysLeft <= 0) return null;
           return (
-            <section className="px-4 sm:px-6 mb-3">
-              <div className={`rounded-xl border p-4 ${
-                f26score < 50
-                  ? isDark ? 'bg-red-900/20 border-red-800/50' : 'bg-red-50 border-red-200'
-                  : isDark ? 'bg-amber-900/20 border-amber-800/50' : 'bg-amber-50 border-amber-200'
+            <section className="px-4 sm:px-6 mb-2">
+              <div className={`rounded-lg flex items-center gap-3 px-3 py-2 ${
+                isDark ? 'bg-slate-700/50 border border-slate-600/50' : 'bg-slate-100 border border-slate-200'
               }`}>
-                <div className="flex flex-wrap sm:flex-nowrap items-center gap-3 sm:gap-4">
-                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 font-bold text-lg ${
-                    f26score < 50 ? 'bg-red-500/20 text-red-500' : 'bg-amber-500/20 text-amber-600'
-                  }`}>
-                    {f26score}%
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className={`text-sm font-semibold ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
-                      Facture électronique obligatoire dans <strong>J-{daysLeft}</strong>
-                    </p>
-                    <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                      {f26done}/{f26criteriaEval.length} critères remplis
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => {
-                      // Find first missing criterion and navigate to its tab
-                      const firstMissing = f26criteriaEval.find(c => !c.ok && c.tab);
-                      if (firstMissing) {
-                        navigateToSettingsTab(firstMissing.tab, firstMissing.fieldId);
-                      } else {
-                        setPage('settings');
-                      }
-                    }}
-                    className="w-full sm:w-auto px-4 py-2 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
-                    style={{ backgroundColor: f26score < 50 ? '#ef4444' : '#f59e0b' }}
-                  >
-                    Compléter
-                  </button>
-                </div>
-                {/* Criteria checklist — each item links to its Settings section */}
-                <div className="mt-3 pt-3 border-t border-current/10 grid grid-cols-2 gap-1.5">
-                  {f26criteriaEval.map(c => (
-                    <button
-                      key={c.label}
-                      onClick={() => {
-                        if (!c.ok && c.tab) {
-                          navigateToSettingsTab(c.tab, c.fieldId);
-                        }
-                      }}
-                      disabled={c.ok || !c.tab}
-                      className={`flex items-center gap-1.5 text-xs text-left transition-colors rounded px-1 py-0.5 ${
-                        !c.ok && c.tab ? (isDark ? 'hover:bg-slate-700/50 cursor-pointer' : 'hover:bg-white/50 cursor-pointer') : ''
-                      }`}
-                    >
-                      <span className={c.ok ? 'text-emerald-500' : isDark ? 'text-slate-500' : 'text-slate-400'}>{c.ok ? '✓' : '✗'}</span>
-                      <span className={c.ok ? (isDark ? 'text-slate-300' : 'text-slate-600') : (isDark ? 'text-slate-500' : 'text-slate-400')}>
-                        {c.label}
-                      </span>
-                      {!c.ok && c.tab && <span className={isDark ? 'text-slate-600' : 'text-slate-300'}>→</span>}
-                    </button>
-                  ))}
-                </div>
+                <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 text-xs font-bold ${
+                  f26score < 50 ? 'bg-red-500/20 text-red-500' : 'bg-amber-500/20 text-amber-600'
+                }`}>{f26score}%</div>
+                <span className={`text-xs truncate flex-1 ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+                  Facture élec. J-{daysLeft} · {f26done}/{f26criteriaEval.length} critères
+                </span>
+                <button onClick={() => {
+                  const firstMissing = f26criteriaEval.find(c => !c.ok && c.tab);
+                  if (firstMissing) navigateToSettingsTab(firstMissing.tab, firstMissing.fieldId);
+                  else setPage('settings');
+                }} className="text-xs font-semibold px-3 py-1.5 rounded-lg text-white flex-shrink-0"
+                  style={{ backgroundColor: f26score < 50 ? '#ef4444' : '#f59e0b' }}>
+                  Voir
+                </button>
               </div>
             </section>
           );
