@@ -318,11 +318,10 @@ const Widget = React.forwardRef(
       <div
         ref={ref}
         className={cn(
-          // Base styles — Logip-inspired clean cards
-          'rounded-2xl overflow-hidden',
-          isDark
-            ? 'bg-slate-800 border border-slate-700/50'
-            : 'bg-white shadow-[0_1px_3px_rgba(0,0,0,0.06)]',
+          // Base styles — Linear-inspired
+          'rounded-xl overflow-hidden border',
+          isDark ? 'bg-slate-800 border-slate-700/50' : 'bg-white border-gray-200/70',
+          'shadow-[0_1px_2px_rgba(0,0,0,0.04)]',
           'hover:shadow-[0_4px_12px_rgba(0,0,0,0.06)] hover:-translate-y-[1px]',
           'p-5 sm:p-6',
           'transition-all duration-200',

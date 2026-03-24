@@ -74,10 +74,10 @@ function CustomTooltip({ active, payload, label, isDark }) {
     return (
       <div
         className={cn(
-          'px-4 py-3 rounded-xl shadow-lg border text-sm',
+          'px-3.5 py-2.5 rounded-lg shadow-lg border text-sm',
           isDark
             ? 'bg-slate-800 border-slate-700'
-            : 'bg-white border-gray-100 shadow-[0_4px_16px_rgba(0,0,0,0.1)]'
+            : 'bg-white border-[#ebebeb]'
         )}
       >
         <p className={cn(
@@ -298,7 +298,7 @@ export default function RevenueChartWidget({ setPage, isDark = false, couleur = 
         ) : (
           <div className="space-y-5">
             {/* Area chart */}
-            <div className="h-[220px] sm:h-[250px]">
+            <div className="h-[200px] sm:h-52">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={chartData} margin={{ top: 8, right: 4, left: -20, bottom: 0 }}>
                   <defs>
@@ -310,7 +310,7 @@ export default function RevenueChartWidget({ setPage, isDark = false, couleur = 
                   <CartesianGrid
                     horizontal={true}
                     vertical={false}
-                    stroke={isDark ? '#1e293b' : '#f0f0f0'}
+                    stroke={isDark ? '#1e293b' : '#f5f5f5'}
                     strokeDasharray=""
                   />
                   <XAxis
@@ -330,7 +330,7 @@ export default function RevenueChartWidget({ setPage, isDark = false, couleur = 
                     type="monotone"
                     dataKey="revenue"
                     stroke={couleur}
-                    strokeWidth={2.5}
+                    strokeWidth={2}
                     strokeLinecap="round"
                     fill="url(#revenueGradient)"
                     dot={(props) => {

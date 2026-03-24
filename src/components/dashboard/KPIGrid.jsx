@@ -82,32 +82,32 @@ function ProgressBar({ value, max, color, isDark }) {
 
 function KPICardItem({ icon: Icon, iconColor, label, value, trend, children, isDark, onClick, modeDiscret }) {
   const cardBg = isDark
-    ? 'bg-slate-800 border border-slate-700/50'
-    : 'bg-white shadow-[0_1px_3px_rgba(0,0,0,0.06)]';
-  const labelColor = isDark ? 'text-slate-400' : 'text-gray-500';
-  const valueColor = isDark ? 'text-slate-100' : 'text-gray-900';
+    ? 'bg-slate-800 border-slate-700/50'
+    : 'bg-white border-gray-200/70 shadow-[0_1px_2px_rgba(0,0,0,0.04)]';
+  const labelColor = isDark ? 'text-slate-500' : 'text-[#999]';
+  const valueColor = isDark ? 'text-slate-100' : 'text-[#1a1a1a]';
 
   return (
     <div
-      className={`rounded-2xl p-5 sm:p-6 transition-all duration-200 hover:shadow-[0_4px_12px_rgba(0,0,0,0.08)] hover:-translate-y-[1px] cursor-pointer ${cardBg}`}
+      className={`rounded-xl border p-4 sm:p-5 transition-all duration-200 hover:shadow-[0_4px_12px_rgba(0,0,0,0.06)] hover:-translate-y-[1px] cursor-pointer ${cardBg}`}
       onClick={onClick}
     >
       <div className="flex items-start justify-between">
         <div
           className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-          style={{ background: `${iconColor}15` }}
+          style={{ background: `${iconColor}12` }}
         >
           <Icon size={20} style={{ color: iconColor }} />
         </div>
         {trend != null && <TrendBadge value={trend} isDark={isDark} />}
       </div>
 
-      <p className={`text-sm font-medium mt-4 ${labelColor}`}>
+      <p className={`text-[11px] font-semibold uppercase tracking-wider mt-3 ${labelColor}`}>
         {label}
       </p>
 
       <p
-        className={`text-2xl font-bold tracking-tight mt-1 ${valueColor}`}
+        className={`text-2xl sm:text-[28px] font-extrabold tracking-tight mt-0.5 ${valueColor}`}
         style={modeDiscret ? { filter: 'blur(6px)', userSelect: 'none' } : undefined}
       >
         {value}
@@ -151,7 +151,7 @@ export default function KPIGrid({
   const badgeBg = isDark ? 'bg-slate-700 text-slate-400' : 'bg-[#f5f5f5] text-[#666]';
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
       {/* CA ce mois */}
       <KPICardItem
         icon={Wallet}
