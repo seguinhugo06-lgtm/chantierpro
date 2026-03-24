@@ -177,7 +177,7 @@ const ActivityFeedWidget = memo(function ActivityFeedWidget({
           <button
             onClick={loadActivity}
             className={`p-1.5 rounded-lg transition-colors ${
-              isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-gray-100 text-gray-400'
+              isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-gray-100 text-gray-400'
             }`}
             title="Rafraîchir"
           >
@@ -233,7 +233,7 @@ const ActivityFeedWidget = memo(function ActivityFeedWidget({
                       <p className={`text-sm font-medium leading-snug ${isDark ? 'text-white' : 'text-gray-900'}`}>
                         {description}
                       </p>
-                      <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
+                      <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-300' : 'text-gray-500'}`}>
                         {ENTITY_LABELS[entry.entity_type] || entry.entity_type}
                         {entry.metadata?.ref && ` · ${entry.metadata.ref}`}
                       </p>
@@ -261,7 +261,7 @@ const ActivityFeedWidget = memo(function ActivityFeedWidget({
             >
               <Activity size={24} className={isDark ? 'text-slate-500' : 'text-gray-300'} />
             </div>
-            <p className={`text-sm font-medium ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
+            <p className={`text-sm font-medium ${isDark ? 'text-slate-300' : 'text-gray-500'}`}>
               Aucune activité récente
             </p>
             <p className={`text-xs mt-1 ${isDark ? 'text-slate-500' : 'text-gray-400'}`}>

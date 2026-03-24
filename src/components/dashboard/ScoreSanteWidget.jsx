@@ -155,7 +155,7 @@ function CircularGauge({ score, size = 100, strokeWidth = 8, isDark }) {
         >
           {Math.round(score)}
         </span>
-        <span className={`text-[10px] mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+        <span className={`text-[10px] mt-0.5 ${isDark ? 'text-slate-300' : 'text-slate-500'}`}>
           / 100
         </span>
       </div>
@@ -221,7 +221,7 @@ function IndicatorRow({ config, score, isDark, onClick }) {
         </div>
         <MiniProgressBar value={displayScore} color={getScoreColor(displayScore)} isDark={isDark} />
       </div>
-      <ChevronRight size={14} className={`flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity ${isDark ? 'text-slate-400' : 'text-slate-400'}`} />
+      <ChevronRight size={14} className={`flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity ${isDark ? 'text-slate-300' : 'text-slate-400'}`} />
     </button>
   );
 }
@@ -392,7 +392,7 @@ export function ScoreSanteWidget({ isDark, setPage, couleur }) {
               Score Santé
             </h2>
             <p
-              className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}
+              className={`text-xs ${isDark ? 'text-slate-300' : 'text-slate-500'}`}
             >
               {scoreLabel}
             </p>

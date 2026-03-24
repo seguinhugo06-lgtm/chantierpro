@@ -104,7 +104,7 @@ const getStatusConfig = (isDark) => ({
   archive: {
     color: 'bg-slate-400',
     borderColor: 'border-l-slate-400',
-    textColor: isDark ? 'text-slate-400' : 'text-slate-500',
+    textColor: isDark ? 'text-slate-300' : 'text-slate-500',
     bgColor: isDark ? 'bg-slate-800/30' : 'bg-slate-50/50',
     label: 'Archivé',
     icon: CheckCircle2,
@@ -112,7 +112,7 @@ const getStatusConfig = (isDark) => ({
   brouillon: {
     color: 'bg-slate-300',
     borderColor: 'border-l-slate-300',
-    textColor: isDark ? 'text-slate-400' : 'text-slate-500',
+    textColor: isDark ? 'text-slate-300' : 'text-slate-500',
     bgColor: isDark ? 'bg-slate-800/20' : 'bg-slate-50/50',
     label: 'Brouillon',
     icon: Clock,

@@ -143,7 +143,7 @@ function DonutTooltip({ active, payload, isDark }) {
         <p className={cn('text-sm font-medium', isDark ? 'text-white' : 'text-gray-900')}>
           {data.label}
         </p>
-        <p className={cn('text-xs', isDark ? 'text-slate-400' : 'text-gray-500')}>
+        <p className={cn('text-xs', isDark ? 'text-slate-300' : 'text-gray-500')}>
           {formatCurrency(data.value)} ({data.count} facture{data.count > 1 ? 's' : ''})
         </p>
       </div>
@@ -351,7 +351,7 @@ function RelanceModal({ isOpen, onClose, factures, getClient, onRelance, isDark 
         <ModalTitle>Factures à relancer</ModalTitle>
       </ModalHeader>
       <ModalBody>
-        <p className={cn('text-sm mb-4', isDark ? 'text-slate-400' : 'text-gray-600')}>
+        <p className={cn('text-sm mb-4', isDark ? 'text-slate-300' : 'text-gray-600')}>
           {factures.length} facture{factures.length > 1 ? 's' : ''} impayée{factures.length > 1 ? 's' : ''} depuis plus de 60 jours
         </p>
 
@@ -370,7 +370,7 @@ function RelanceModal({ isOpen, onClose, factures, getClient, onRelance, isDark 
                   <p className={cn('text-sm font-medium', isDark ? 'text-white' : 'text-gray-900')}>
                     {formatDevisNumber(facture)}
                     <span className={cn('mx-1', isDark ? 'text-slate-500' : 'text-gray-400')}>•</span>
-                    <span className={isDark ? 'text-slate-400' : 'text-gray-600'}>
+                    <span className={isDark ? 'text-slate-300' : 'text-gray-600'}>
                       {client?.nom || 'Client inconnu'}
                     </span>
                   </p>

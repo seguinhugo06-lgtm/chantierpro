@@ -228,7 +228,7 @@ const NewUserWelcome = memo(function NewUserWelcome({ isDark, couleur, setPage, 
   const cardBg = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200';
   const textPrimary = isDark ? 'text-white' : 'text-slate-900';
   const textSecondary = isDark ? 'text-slate-300' : 'text-slate-600';
-  const textMuted = isDark ? 'text-slate-400' : 'text-slate-500';
+  const textMuted = isDark ? 'text-slate-300' : 'text-slate-500';
 
   return (
     <div className="p-4 sm:p-6 space-y-6 max-w-4xl mx-auto">
@@ -489,7 +489,7 @@ const RecentActivityWidget = memo(function RecentActivityWidget({
                       <p className={`text-sm font-medium leading-snug ${isDark ? 'text-white' : 'text-gray-900'}`}>
                         {activity.title}
                       </p>
-                      <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
+                      <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-300' : 'text-gray-500'}`}>
                         {activity.subtitle}
                       </p>
                       {activity.amount && (
@@ -522,7 +522,7 @@ const RecentActivityWidget = memo(function RecentActivityWidget({
         ) : (
           <div className="flex flex-col items-center justify-center py-4 text-center">
             <Activity size={18} className={isDark ? 'text-slate-500' : 'text-gray-300'} />
-            <p className={`text-xs mt-1 ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
+            <p className={`text-xs mt-1 ${isDark ? 'text-slate-300' : 'text-gray-500'}`}>
               Aucune activité récente
             </p>
           </div>
@@ -1305,7 +1305,7 @@ export default function Dashboard({
                 <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: `${couleur}15` }}>
                   <Wallet size={14} style={{ color: couleur }} />
                 </div>
-                <span className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>À encaisser</span>
+                <span className={`text-xs font-medium ${isDark ? 'text-slate-300' : 'text-slate-500'}`}>À encaisser</span>
               </div>
               <div className="flex items-baseline gap-1.5">
                 <p className={`text-lg font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
@@ -1318,7 +1318,7 @@ export default function Dashboard({
                 )}
               </div>
               {stats.facturesEnAttente?.length > 0 && (
-                <p className={`text-[11px] mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                <p className={`text-[11px] mt-0.5 ${isDark ? 'text-slate-300' : 'text-slate-500'}`}>
                   {stats.facturesEnAttente.length} facture{stats.facturesEnAttente.length > 1 ? 's' : ''}
                 </p>
               )}
@@ -1335,7 +1335,7 @@ export default function Dashboard({
                 <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${stats.caCeMoisTendance != null ? (stats.caCeMoisTendance >= 0 ? 'bg-emerald-500/15' : 'bg-red-500/15') : 'bg-emerald-500/15'}`}>
                   <TrendingUp size={14} className={stats.caCeMoisTendance != null ? (stats.caCeMoisTendance >= 0 ? 'text-emerald-500' : 'text-red-500') : 'text-emerald-500'} />
                 </div>
-                <span className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Ce mois</span>
+                <span className={`text-xs font-medium ${isDark ? 'text-slate-300' : 'text-slate-500'}`}>Ce mois</span>
               </div>
               <div className="flex items-baseline gap-1.5">
                 <p className={`text-lg font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
@@ -1348,7 +1348,7 @@ export default function Dashboard({
                 )}
               </div>
               {stats.caCeMoisTendance == null && stats.caCeMoisTendanceLabel && (
-                <p className={`text-[11px] mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                <p className={`text-[11px] mt-0.5 ${isDark ? 'text-slate-300' : 'text-slate-500'}`}>
                   {stats.caCeMoisTendanceLabel}
                 </p>
               )}
@@ -1414,16 +1414,16 @@ export default function Dashboard({
               >
                 <div className="flex items-center justify-between mb-1">
                   <div>
-                    <span className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>CA 6 derniers mois</span>
+                    <span className={`text-xs font-medium ${isDark ? 'text-slate-300' : 'text-slate-500'}`}>CA 6 derniers mois</span>
                     <p className={`text-lg font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
                       {modeDiscret ? '•••••' : new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(totalCA)}
                     </p>
                   </div>
-                  <button onClick={() => setPage?.('finances')} className={`text-xs px-2 py-1 rounded-lg transition-colors ${isDark ? 'text-slate-500 hover:text-slate-300 hover:bg-slate-700' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'}`}>
+                  <button onClick={() => setPage?.('finances')} className={`text-xs px-2 py-1 min-h-[44px] rounded-lg transition-colors ${isDark ? 'text-slate-500 hover:text-slate-300 hover:bg-slate-700' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'}`}>
                     Voir détails →
                   </button>
                 </div>
-                <div style={{ width: '100%', height: 110 }}>
+                <div style={{ width: '100%', height: 110 }} role="img" aria-label="Graphique du chiffre d'affaires sur 6 mois">
                   <ResponsiveContainer width="100%" height={110}>
                     <AreaChart data={months} margin={{ top: 5, right: 5, bottom: 0, left: -15 }}>
                       <defs>
@@ -1440,7 +1440,7 @@ export default function Dashboard({
                           if (!active || !payload?.length) return null;
                           return (
                             <div className={`rounded-xl shadow-xl px-4 py-2.5 text-xs ${isDark ? 'bg-slate-700 text-white border border-slate-600' : 'bg-white text-slate-900 border border-slate-200'}`}>
-                              <p className={`text-[10px] mb-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{label}</p>
+                              <p className={`text-[10px] mb-0.5 ${isDark ? 'text-slate-300' : 'text-slate-500'}`}>{label}</p>
                               <p className="font-bold text-sm">{new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(payload[0].value)}</p>
                             </div>
                           );
@@ -1471,8 +1471,8 @@ export default function Dashboard({
                 className={`mt-3 rounded-xl border p-4 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}
               >
                 <div className="flex items-center justify-between mb-2">
-                  <span className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Pipeline commercial</span>
-                  <button onClick={() => setPage?.('devis')} className={`text-xs px-2 py-1 rounded-lg transition-colors ${isDark ? 'text-slate-500 hover:text-slate-300 hover:bg-slate-700' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'}`}>
+                  <span className={`text-xs font-medium ${isDark ? 'text-slate-300' : 'text-slate-500'}`}>Pipeline commercial</span>
+                  <button onClick={() => setPage?.('devis')} className={`text-xs px-2 py-1 min-h-[44px] rounded-lg transition-colors ${isDark ? 'text-slate-500 hover:text-slate-300 hover:bg-slate-700' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'}`}>
                     Pipeline →
                   </button>
                 </div>
@@ -1486,7 +1486,7 @@ export default function Dashboard({
                     <button key={p.label} onClick={() => setPage?.('devis')} className={`text-center flex-1 py-1 rounded-lg transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}>
                       <span className={`text-xs font-bold block ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{p.count}</span>
                       <span className={`text-[9px] block ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{p.label}</span>
-                      <span className={`text-[9px] font-medium block ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                      <span className={`text-[9px] font-medium block ${isDark ? 'text-slate-300' : 'text-slate-500'}`}>
                         {modeDiscret ? '•••' : p.montant >= 1000 ? `${(p.montant/1000).toFixed(1)}k€` : `${Math.round(p.montant)}€`}
                       </span>
                     </button>
@@ -1626,7 +1626,7 @@ export default function Dashboard({
                   {totalActions > 3 && (
                     <button
                       onClick={() => setPage?.('tasks')}
-                      className={`w-full text-center py-2 text-xs font-semibold rounded-lg transition-colors ${isDark ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'}`}
+                      className={`w-full text-center py-2 text-xs font-semibold rounded-lg transition-colors ${isDark ? 'text-slate-300 hover:text-slate-200 hover:bg-slate-700/50' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'}`}
                     >
                       Voir toutes les {totalActions} actions →
                     </button>
@@ -1694,7 +1694,7 @@ export default function Dashboard({
                 </div>
                 <button
                   onClick={() => setPage?.('chantiers')}
-                  className={`text-xs font-medium flex items-center gap-1 min-h-[44px] px-2 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${isDark ? 'text-slate-400 hover:text-white focus-visible:ring-orange-400' : 'text-slate-500 hover:text-slate-900 focus-visible:ring-orange-500'}`}
+                  className={`text-xs font-medium flex items-center gap-1 min-h-[44px] px-2 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${isDark ? 'text-slate-300 hover:text-white focus-visible:ring-orange-400' : 'text-slate-500 hover:text-slate-900 focus-visible:ring-orange-500'}`}
                 >
                   Voir tous <ChevronRight size={14} />
                 </button>
@@ -1711,12 +1711,12 @@ export default function Dashboard({
                         <p className={`text-sm font-semibold truncate ${isDark ? 'text-white' : 'text-slate-900'}`} title={ch.nom}>
                           {ch.nom}{ch.reference ? ` · #${ch.reference}` : ch.id ? ` · #${ch.id.slice(-4).toUpperCase()}` : ''}
                         </p>
-                        <p className={`text-[11px] truncate ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                        <p className={`text-[11px] truncate ${isDark ? 'text-slate-300' : 'text-slate-500'}`}>
                           {ch.clientNom}{ch.prochEch ? ` · Éch. ${ch.prochEch}` : ''}
                         </p>
                       </div>
                       {/* UX-002: Chantiers filtrés "en_cours" → toujours afficher l'avancement, jamais "Non démarré" */}
-                      <span className={`text-xs font-bold ml-2 flex-shrink-0 flex items-center gap-1 ${!ch.avancement ? (isDark ? 'text-slate-400' : 'text-slate-500') : ch.avancement >= 100 ? 'text-emerald-500' : ''}`} style={ch.avancement && ch.avancement < 100 ? { color: ch.avancement >= 71 ? '#10b981' : ch.avancement >= 31 ? couleur : '#3b82f6' } : undefined}>
+                      <span className={`text-xs font-bold ml-2 flex-shrink-0 flex items-center gap-1 ${!ch.avancement ? (isDark ? 'text-slate-300' : 'text-slate-500') : ch.avancement >= 100 ? 'text-emerald-500' : ''}`} style={ch.avancement && ch.avancement < 100 ? { color: ch.avancement >= 71 ? '#10b981' : ch.avancement >= 31 ? couleur : '#3b82f6' } : undefined}>
                         {ch.avancement >= 100 && <CheckCircle size={12} />}
                         {ch.avancement || 0}%
                       </span>
@@ -1829,17 +1829,18 @@ export default function Dashboard({
 
         {/* Vue d'ensemble header with Personnaliser button + collapsible toggle */}
         <section className="px-4 sm:px-6 pb-2 flex items-center justify-between">
-          <button onClick={() => setShowOverviewSection(p => !p)} className="flex items-center gap-2 group">
+          <button onClick={() => setShowOverviewSection(p => !p)} aria-expanded={showOverviewSection} className="flex items-center gap-2 group">
             <LayoutDashboard size={15} style={{ color: couleur }} />
             <h2 className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>Tableau de bord</h2>
             <ChevronDown size={14} className={`transition-transform duration-200 ${isDark ? 'text-slate-500' : 'text-slate-400'} ${showOverviewSection ? '' : '-rotate-90'}`} />
           </button>
           <button
             onClick={() => setShowWidgetConfig(!showWidgetConfig)}
+            aria-expanded={showWidgetConfig}
             className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
               showWidgetConfig
                 ? `text-white`
-                : isDark ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-800 focus-visible:ring-orange-400' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100 focus-visible:ring-orange-500'
+                : isDark ? 'text-slate-300 hover:text-slate-200 hover:bg-slate-800 focus-visible:ring-orange-400' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100 focus-visible:ring-orange-500'
             }`}
             style={showWidgetConfig ? { backgroundColor: couleur, '--tw-ring-color': couleur } : {}}
           >
@@ -1856,7 +1857,7 @@ export default function Dashboard({
             <div className={`rounded-xl border p-4 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
               <div className="flex items-center justify-between mb-3">
                 <h2 className={`font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>Widgets du tableau de bord</h2>
-                <button onClick={() => { updateWidgetConfig(DEFAULT_WIDGETS); }} className={`text-xs px-2 py-1 rounded ${isDark ? 'text-slate-400 hover:text-white hover:bg-slate-700' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'}`}>
+                <button onClick={() => { updateWidgetConfig(DEFAULT_WIDGETS); }} className={`text-xs px-2 py-1 min-h-[44px] rounded ${isDark ? 'text-slate-300 hover:text-white hover:bg-slate-700' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'}`}>
                   Réinitialiser
                 </button>
               </div>
@@ -1889,10 +1890,10 @@ export default function Dashboard({
                     </button>
                     <span className={`flex-1 text-sm ${w.visible ? (isDark ? 'text-white' : 'text-slate-900') : (isDark ? 'text-slate-600' : 'text-slate-300')}`}>{w.label}</span>
                     <div className="flex gap-1">
-                      <button onClick={() => moveWidget(w.id, 'up')} disabled={idx === 0} className={`p-1 rounded ${idx === 0 ? 'opacity-20' : isDark ? 'hover:bg-slate-600 text-slate-400' : 'hover:bg-slate-200 text-slate-500'}`}>
+                      <button onClick={() => moveWidget(w.id, 'up')} disabled={idx === 0} className={`p-1 rounded ${idx === 0 ? 'opacity-20' : isDark ? 'hover:bg-slate-600 text-slate-300' : 'hover:bg-slate-200 text-slate-500'}`}>
                         <ChevronDown size={14} className="rotate-180" />
                       </button>
-                      <button onClick={() => moveWidget(w.id, 'down')} disabled={idx === widgetConfig.length - 1} className={`p-1 rounded ${idx === widgetConfig.length - 1 ? 'opacity-20' : isDark ? 'hover:bg-slate-600 text-slate-400' : 'hover:bg-slate-200 text-slate-500'}`}>
+                      <button onClick={() => moveWidget(w.id, 'down')} disabled={idx === widgetConfig.length - 1} className={`p-1 rounded ${idx === widgetConfig.length - 1 ? 'opacity-20' : isDark ? 'hover:bg-slate-600 text-slate-300' : 'hover:bg-slate-200 text-slate-500'}`}>
                         <ChevronDown size={14} />
                       </button>
                     </div>
@@ -2036,14 +2037,14 @@ export default function Dashboard({
                     </div>
                     <div>
                       <h3 className={`text-sm font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>Équipe en direct</h3>
-                      <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                      <p className={`text-xs ${isDark ? 'text-slate-300' : 'text-slate-500'}`}>
                         {(() => { const n = equipe.filter(e => e.actif !== false && e.contrat !== 'sous_traitant').length; return `${n} ${n > 1 ? 'membres' : 'membre'}`; })()}
                       </p>
                     </div>
                   </div>
                   <button
                     onClick={() => setPage('equipe')}
-                    className={`text-xs font-medium px-2 py-1 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${isDark ? 'text-slate-400 hover:bg-slate-700 focus-visible:ring-orange-400' : 'text-slate-500 hover:bg-slate-100 focus-visible:ring-orange-500'}`}
+                    className={`text-xs font-medium px-2 py-1 min-h-[44px] rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${isDark ? 'text-slate-300 hover:bg-slate-700 focus-visible:ring-orange-400' : 'text-slate-500 hover:bg-slate-100 focus-visible:ring-orange-500'}`}
                   >
                     Voir tout →
                   </button>
@@ -2083,7 +2084,7 @@ export default function Dashboard({
                         {/* Info */}
                         <div className="flex-1 min-w-0">
                           <p className={`text-sm font-medium truncate ${isDark ? 'text-white' : 'text-slate-900'}`}>{emp.prenom}</p>
-                          <p className={`text-xs truncate ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                          <p className={`text-xs truncate ${isDark ? 'text-slate-300' : 'text-slate-500'}`}>
                             {isActive && chantier ? chantier.nom : isActive ? `${totalToday.toFixed(1)}h aujourd'hui` : (() => {
                               // Calculate time since last pointage
                               const lastPt = pointages.filter(p => p.employeId === emp.id).sort((a, b) => (b.date || '').localeCompare(a.date || ''))[0];
@@ -2150,7 +2151,7 @@ export default function Dashboard({
               if (score === 0) return null;
               const cardClass = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200';
               const titleClass = isDark ? 'text-white' : 'text-slate-900';
-              const mutedClass = isDark ? 'text-slate-400' : 'text-slate-500';
+              const mutedClass = isDark ? 'text-slate-300' : 'text-slate-500';
               const scoreColor = score >= 80 ? '#10b981' : score >= 50 ? '#f59e0b' : '#ef4444';
               return (
                 <div
@@ -2259,7 +2260,7 @@ export default function Dashboard({
                   </div>
                   <div className="space-y-1.5">
                     {alerts.slice(0, 3).map((a, i) => (
-                      <p key={i} className={`text-xs flex items-center gap-2 ${a.type === 'critical' ? 'text-red-500' : a.type === 'warning' ? 'text-amber-500' : isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                      <p key={i} className={`text-xs flex items-center gap-2 ${a.type === 'critical' ? 'text-red-500' : a.type === 'warning' ? 'text-amber-500' : isDark ? 'text-slate-300' : 'text-slate-500'}`}>
                         <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${a.type === 'critical' ? 'bg-red-500' : a.type === 'warning' ? 'bg-amber-500' : 'bg-slate-400'}`} />
                         {a.msg}
                       </p>
@@ -2521,7 +2522,7 @@ export default function Dashboard({
                   </div>
                   <div>
                     <h2 className={`text-lg font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>Configurez votre entreprise</h2>
-                    <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Informations obligatoires pour vos documents</p>
+                    <p className={`text-sm ${isDark ? 'text-slate-300' : 'text-slate-500'}`}>Informations obligatoires pour vos documents</p>
                   </div>
                 </div>
                 <button
@@ -2530,7 +2531,7 @@ export default function Dashboard({
                     setProfileSetupDismissed(true);
                     localStorage.setItem('batigesti_profile_setup_dismissed', 'true');
                   }}
-                  className={`p-2 rounded-xl transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-400'}`}
+                  className={`p-2 rounded-xl transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-100 text-slate-400'}`}
                 >
                   <X size={18} />
                 </button>
@@ -2546,7 +2547,7 @@ export default function Dashboard({
 
             {/* Missing fields */}
             <div className="px-6 pb-4">
-              <p className={`text-xs font-semibold uppercase tracking-wider mb-3 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+              <p className={`text-xs font-semibold uppercase tracking-wider mb-3 ${isDark ? 'text-slate-300' : 'text-slate-500'}`}>
                 Informations manquantes ({missingRequiredFields.length})
               </p>
               <div className="space-y-2">
@@ -2572,7 +2573,7 @@ export default function Dashboard({
             {/* Progress bar */}
             <div className="px-6 pb-2">
               <div className="flex items-center justify-between mb-1.5">
-                <span className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Progression du profil</span>
+                <span className={`text-xs ${isDark ? 'text-slate-300' : 'text-slate-500'}`}>Progression du profil</span>
                 <span className={`text-xs font-bold ${profileCompletude < 30 ? 'text-red-500' : profileCompletude < 60 ? 'text-amber-500' : 'text-emerald-500'}`}>{profileCompletude}%</span>
               </div>
               <div className={`h-2 rounded-full ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`}>

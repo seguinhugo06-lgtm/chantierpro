@@ -79,7 +79,7 @@ export default function HeroSection({
             onClick={onChantiersClick}
             className={`inline-flex items-center gap-1.5 px-2.5 py-1 -mx-2 rounded-lg text-xs font-medium transition-all ${
               isDark
-                ? 'hover:bg-slate-800 text-slate-400 hover:text-slate-200'
+                ? 'hover:bg-slate-800 text-slate-300 hover:text-slate-200'
                 : 'hover:bg-white/80 hover:shadow-sm text-gray-500 hover:text-gray-700'
             }`}
             title="Voir tous les chantiers en cours"
@@ -92,7 +92,7 @@ export default function HeroSection({
 
         {/* Résumé intelligent */}
         {(devisEnAttente > 0 || facturesEnRetard > 0) && (
-          <p className={`text-sm mt-2 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+          <p className={`text-sm mt-2 ${isDark ? 'text-slate-300' : 'text-slate-500'}`}>
             {[
               facturesEnRetard > 0 ? `${facturesEnRetard} facture${facturesEnRetard > 1 ? 's' : ''} en retard` : null,
               devisEnAttente > 0 ? `${devisEnAttente} devis en attente` : null,

@@ -195,7 +195,7 @@ function ConfirmModal({ isOpen, onClose, onConfirm, title, children, confirmLabe
             onClick={onClose}
             className={cn('p-2 rounded-lg transition-colors', isDark ? 'hover:bg-slate-700' : 'hover:bg-gray-100')}
           >
-            <X className={cn('w-5 h-5', isDark ? 'text-slate-400' : 'text-gray-500')} />
+            <X className={cn('w-5 h-5', isDark ? 'text-slate-300' : 'text-gray-500')} />
           </button>
         </div>
 
@@ -252,7 +252,7 @@ function RelanceModal({ isOpen, onClose, onConfirm, devis, client, isLoading, is
       isDark={isDark}
     >
       <div className="space-y-4">
-        <p className={cn('text-sm', isDark ? 'text-slate-400' : 'text-gray-600')}>
+        <p className={cn('text-sm', isDark ? 'text-slate-300' : 'text-gray-600')}>
           Devis <span className="font-medium">{normalizeDevisRef(devis?.numero, devis?.type, devis?.id)}</span> • {formatMoney(devis?.total_ttc)}
         </p>
 
@@ -329,7 +329,7 @@ function ConvertModal({ isOpen, onClose, onConfirm, devis, client, isLoading, is
               <p className={cn('font-medium', isDark ? 'text-white' : 'text-gray-900')}>
                 {normalizeDevisRef(devis?.numero, devis?.type, devis?.id)}
               </p>
-              <p className={cn('text-sm', isDark ? 'text-slate-400' : 'text-gray-600')}>
+              <p className={cn('text-sm', isDark ? 'text-slate-300' : 'text-gray-600')}>
                 {client?.nom || 'Client inconnu'}
               </p>
               <p className="text-lg font-bold text-primary-600 mt-1">
@@ -339,7 +339,7 @@ function ConvertModal({ isOpen, onClose, onConfirm, devis, client, isLoading, is
           </div>
         </div>
 
-        <p className={cn('text-sm', isDark ? 'text-slate-400' : 'text-gray-600')}>
+        <p className={cn('text-sm', isDark ? 'text-slate-300' : 'text-gray-600')}>
           Cette action va créer une facture à partir de ce devis. Le devis sera marqué comme accepté.
         </p>
 

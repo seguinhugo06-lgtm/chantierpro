@@ -148,7 +148,7 @@ export default function KPIGrid({
     return currencyFormat.format(v);
   };
 
-  const badgeBg = isDark ? 'bg-slate-700 text-slate-400' : 'bg-[#f5f5f5] text-[#666]';
+  const badgeBg = isDark ? 'bg-slate-700 text-slate-300' : 'bg-[#f5f5f5] text-[#666]';
 
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
