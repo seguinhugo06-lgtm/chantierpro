@@ -63,13 +63,13 @@ export default function HeroSection({
     <section className="px-4 sm:px-6 py-4 sm:py-5">
       <div className="max-w-[1440px] mx-auto">
         {/* Greeting — font-semibold (not bold, Linear is lighter) */}
-        <h1 className={`text-2xl font-semibold tracking-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>
+        <h1 className={`text-2xl sm:text-3xl font-semibold tracking-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>
           {greeting},{' '}
           <span style={{ color: couleur }}>{userName}</span>
         </h1>
 
         {/* Date — text-sm tertiary */}
-        <div className={`flex items-center gap-3 text-sm mt-1 ${isDark ? 'text-slate-500' : 'text-gray-400'}`}>
+        <div className={`flex items-center gap-3 text-sm mt-1.5 ${isDark ? 'text-slate-500' : 'text-gray-400'}`}>
           <span className="inline-flex items-center gap-1.5">
             <CalendarDays size={13} className="flex-shrink-0 opacity-60" />
             {formattedDate}
