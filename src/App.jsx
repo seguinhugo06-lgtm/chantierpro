@@ -1239,6 +1239,7 @@ export default function App() {
     { id: 'catalogue', icon: Package, label: 'Catalogue' },
     { id: 'avis-google', icon: Megaphone, label: 'Marketing', feature: 'avis_google' },
     { id: 'finances', icon: Wallet, label: 'Finances' },
+    { id: 'profil', icon: User, label: 'Mon profil' },
     { id: 'plan', icon: CreditCard, label: 'Mon plan' },
     (() => {
       // Compute Facture 2026 compliance score for badge
