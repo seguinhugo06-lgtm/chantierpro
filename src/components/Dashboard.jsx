@@ -1180,7 +1180,7 @@ export default function Dashboard({
   }
 
   return (
-    <div className={`pb-20 lg:pb-0 ${isDark ? 'bg-slate-900' : 'bg-slate-50'}`}>
+    <div className={`pb-20 lg:pb-0 min-h-screen ${isDark ? 'bg-slate-900' : 'bg-[#F5F7FA]'}`}>
       {/* ========== HERO SECTION — Compact greeting ========== */}
       <HeroSection
         userName={user?.user_metadata?.prenom || user?.user_metadata?.first_name || entreprise?.nom?.split(' ')[0] || 'Artisan'}
@@ -1493,7 +1493,7 @@ export default function Dashboard({
 
           return (
             <section className="px-4 sm:px-6 mb-6">
-              <div className={`rounded-xl border p-4 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200/70'}`}>
+              <div className={`rounded-2xl p-5 ${isDark ? 'bg-slate-800 border border-slate-700/50' : 'bg-white shadow-[0_1px_3px_rgba(0,0,0,0.05)]'}`}>
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
                     <ClipboardList size={15} style={{ color: couleur }} />
@@ -1848,7 +1848,7 @@ export default function Dashboard({
         {/* Widget Configuration Panel */}
         {showWidgetConfig && (
           <section className="px-4 sm:px-6 pb-6">
-            <div className={`rounded-xl border p-4 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+            <div className={`rounded-2xl p-5 ${isDark ? 'bg-slate-800 border border-slate-700/50' : 'bg-white shadow-[0_1px_3px_rgba(0,0,0,0.05)]'}`}>
               <div className="flex items-center justify-between mb-3">
                 <h2 className={`font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>Widgets du tableau de bord</h2>
                 <button onClick={() => { updateWidgetConfig(DEFAULT_WIDGETS); }} className={`text-xs px-2 py-1 rounded ${isDark ? 'text-slate-400 hover:text-white hover:bg-slate-700' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'}`}>
