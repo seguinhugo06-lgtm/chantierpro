@@ -55,6 +55,7 @@ const BillingDashboard = lazyWithRetry(() => import('./components/subscription/B
 const PricingPage = lazyWithRetry(() => import('./components/subscription/PricingPage'), 'Pricing');
 const CheckoutSuccess = lazyWithRetry(() => import('./components/subscription/CheckoutSuccess'), 'Checkout');
 const AnalyticsPage = lazyWithRetry(() => import('./components/AnalyticsPage'), 'Analytique');
+const AnalyticsPremium = lazyWithRetry(() => import('./components/AnalyticsPremium'), 'AnalyticsPremium');
 const ImportModal = lazyWithRetry(() => import('./components/ImportModal'), 'Import');
 const LegalPages = lazyWithRetry(() => import('./components/LegalPages'), 'Legal');
 const Changelog = lazyWithRetry(() => import('./components/Changelog'), 'Changelog');
@@ -989,7 +990,9 @@ export default function App() {
 
   // Notifications are now computed via useMemo (see above) — no useEffect needed
 
-  // CRITICAL: portalToken hook MUST be BEFORE any early return (React #310)
+  // ⚠️ CRITICAL: This useMemo MUST stay BEFORE the if(loading) return below!
+  // Moving it after causes React Error #310 (hook count mismatch between renders).
+  // This has been broken and fixed 4 times already. DO NOT MOVE.
   const portalToken = useMemo(() => {
     try {
       const path = window.location.pathname;
@@ -1000,7 +1003,7 @@ export default function App() {
     } catch { return null; }
   }, []);
 
-  // Loading screen
+  // Loading screen (AFTER all hooks above)
   if (loading) return (
     <div className="min-h-screen bg-[#f5f5f5] flex items-center justify-center">
       <Building2 size={48} className="text-orange-500 animate-bounce" />
@@ -1755,7 +1758,7 @@ export default function App() {
               {page === 'avis-google' && <FeatureGuard feature="avis_google"><AvisGoogle chantiers={chantiers} clients={clients} entreprise={entreprise} isDark={isDark} couleur={couleur} /></FeatureGuard>}
               {page === 'profil' && <ProfilePage user={user} entreprise={entreprise} devis={devis} clients={clients} chantiers={chantiers} catalogue={catalogue} depenses={depenses} paiements={paiements} equipe={equipe} isDark={isDark} couleur={couleur} setPage={setPage} modeDiscret={modeDiscret} />}
               {page === 'plan' && <PlanPage isDark={isDark} couleur={couleur} />}
-              {page === 'analytique' && <AnalyticsPage devis={devis} clients={clients} chantiers={chantiers} depenses={depenses} equipe={equipe} paiements={paiements} entreprise={entreprise} isDark={isDark} couleur={couleur} setPage={setPage} modeDiscret={modeDiscret} />}
+              {page === 'analytique' && <AnalyticsPremium devis={devis} clients={clients} chantiers={chantiers} depenses={depenses} equipe={equipe} paiements={paiements} pointages={pointages} isDark={isDark} couleur={couleur} showToast={showToast} setPage={setPage} />}
               {page === 'finances' && <FinancesPage devis={devis} depenses={depenses} clients={clients} chantiers={chantiers} entreprise={entreprise} equipe={equipe} paiements={paiements} pointages={pointages} isDark={isDark} couleur={couleur} setPage={setPage} modeDiscret={modeDiscret} />}
               {page === 'equipe' && <Equipe equipe={equipe} setEquipe={setEquipe} addEmployee={addEmployee} updateEmployee={updateEmployee} deleteEmployee={deleteEmployee} pointages={pointages} setPointages={setPointages} addPointage={addPointage} chantiers={chantiers} planningEvents={planningEvents} couleur={couleur} isDark={isDark} modeDiscret={modeDiscret} setPage={setPage} />}
               {page === 'messagerie' && <ChatPage isDark={isDark} couleur={couleur} showToast={showToast} user={user} equipe={equipe} />}

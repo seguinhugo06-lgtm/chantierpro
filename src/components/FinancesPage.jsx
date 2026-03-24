@@ -5,7 +5,7 @@ import { usePermissions } from '../hooks/usePermissions';
 // Lazy load the 5 sub-modules
 const TresorerieModule = lazy(() => import('./tresorerie/TresorerieModule'));
 const ExportComptable = lazy(() => import('./export/ExportComptable'));
-const AnalyticsPage = lazy(() => import('./AnalyticsPage'));
+const AnalyticsPremium = lazy(() => import('./AnalyticsPremium'));
 const BankModule = lazy(() => import('./bank/BankModule'));
 const PaiementsTab = lazy(() => import('./finances/PaiementsTab'));
 const RapportsTab = lazy(() => import('./finances/RapportsTab'));
@@ -146,18 +146,17 @@ export default function FinancesPage({ devis, depenses, clients, chantiers, entr
 
       <div style={{ display: activeTab === 'analytique' ? 'block' : 'none' }}>
         <Suspense fallback={<LoadingSpinner couleur={couleur} />}>
-          <AnalyticsPage
+          <AnalyticsPremium
             devis={devis}
             clients={clients}
             chantiers={chantiers}
             depenses={depenses}
             equipe={equipe}
             paiements={paiements}
-            entreprise={entreprise}
+            pointages={pointages}
             isDark={isDark}
             couleur={couleur}
             setPage={setPage}
-            modeDiscret={modeDiscret}
           />
         </Suspense>
       </div>
