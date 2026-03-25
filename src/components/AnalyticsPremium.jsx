@@ -58,7 +58,7 @@ function CircularGauge({ value, max = 100, size = 64, strokeWidth = 6, couleur, 
   const pct = Math.min(value / max, 1);
   const offset = circumference * (1 - pct);
   return (
-    <svg width={size} height={size} className="transform -rotate-90" role="img" aria-label={`${label || 'Score'} : ${value}${max === 100 ? '%' : '/' + max}`}>
+    <svg width={size} height={size} className="transform -rotate-90" role="img" aria-label={`Score : ${value}${max === 100 ? '%' : '/' + max}`}>
       <circle
         cx={size / 2} cy={size / 2} r={radius}
         fill="none"
