@@ -12,12 +12,10 @@
  * @module Dashboard
  */
 
-import { useState, useMemo } from 'react';
-import { motion } from 'framer-motion';
+import { useMemo } from 'react';
 import {
   FileText,
   HardHat,
-  ChevronRight,
   Eye,
   EyeOff,
   Receipt,
@@ -28,7 +26,6 @@ import {
   TrendingDown,
 } from 'lucide-react';
 
-import { useData } from '../context/DataContext';
 import { useToast } from '../context/AppContext';
 import { usePermissions } from '../hooks/usePermissions';
 import NotificationStrip from './dashboard/NotificationStrip';
@@ -60,12 +57,7 @@ const F26_CRITERIA = [
 ];
 
 // ============ ANIMATION VARIANTS ============
-
-const fadeInUp = {
-  initial: { opacity: 0, y: 10 },
-  animate: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: -10 },
-};
+// (Removed unused fadeInUp — kept for reference if needed in future features)
 
 // ============ HELPERS ============
 
@@ -78,18 +70,7 @@ function fmt(amount, discret = false) {
   }).format(amount || 0);
 }
 
-/**
- * Format money for compact display in pipeline segments
- * e.g. 12500 => "12,5k €", 950 => "950 €"
- */
-function formatMoney(amount, discret = false) {
-  if (discret) return '\u2022\u2022\u2022';
-  if (!amount || amount === 0) return '0 €';
-  if (Math.abs(amount) >= 1000) {
-    return `${(amount / 1000).toFixed(1).replace('.', ',')}k €`;
-  }
-  return `${Math.round(amount)} €`;
-}
+// Compact format removed — use fmt() helper for all formatting
 
 function daysSince(date) {
   if (!date) return 0;
@@ -123,7 +104,7 @@ function computeTrend(current, previous) {
 
 // ============ SCORE SANTE ============
 
-function ScoreSante({ score, isDark, couleur }) {
+function ScoreSante({ score, isDark }) {
   const dots = Array.from({ length: 5 }, (_, i) => i < Math.round(score / 2));
   const color = score >= 8 ? '#10b981' : score >= 5 ? '#f59e0b' : '#ef4444';
   return (
@@ -145,30 +126,7 @@ function ScoreSante({ score, isDark, couleur }) {
 }
 
 // ============ TREND BADGE ============
-
-/**
- * Small badge showing a trend arrow and percentage.
- * Used in KPI cards next to the value.
- */
-function TrendBadge({ trend, isDark }) {
-  if (!trend || trend.direction === 'flat') return null;
-
-  const isUp = trend.direction === 'up';
-  const Icon = isUp ? TrendingUp : TrendingDown;
-  const bgColor = isUp
-    ? (isDark ? 'bg-emerald-900/40' : 'bg-emerald-50')
-    : (isDark ? 'bg-red-900/40' : 'bg-red-50');
-  const textColor = isUp
-    ? (isDark ? 'text-emerald-400' : 'text-emerald-600')
-    : (isDark ? 'text-red-400' : 'text-red-600');
-
-  return (
-    <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-medium ${bgColor} ${textColor}`}>
-      <Icon className="w-3 h-3" />
-      {trend.value}%
-    </span>
-  );
-}
+// (Removed — trend display now handled directly in KPIStrip component)
 
 // ============ ACTION ITEM ============
 
@@ -202,7 +160,9 @@ function ActionItem({ icon: Icon, color, label, detail, actionLabel, onClick, is
           {actionLabel}
         </span>
       )}
-      <ChevronRight className={`w-4 h-4 flex-shrink-0 ${isDark ? 'text-slate-600' : 'text-gray-300'}`} />
+      <svg className={`w-4 h-4 flex-shrink-0 ${isDark ? 'text-slate-600' : 'text-gray-300'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+      </svg>
     </button>
   );
 }
@@ -225,7 +185,7 @@ function ActionItem({ icon: Icon, color, label, detail, actionLabel, onClick, is
  * GAP 5: Button to relaunch all pending follow-ups at once.
  * Displayed when there are 2+ actions of type "Relancer".
  */
-function BatchRelaunchButton({ actions, isDark, couleur, showToast }) {
+function BatchRelaunchButton({ actions, couleur, showToast }) {
   const relanceActions = actions.filter(a => a.actionLabel === 'Relancer');
   if (relanceActions.length < 2) return null;
 
@@ -238,12 +198,7 @@ function BatchRelaunchButton({ actions, isDark, couleur, showToast }) {
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.2 }}
-      className="mt-3 flex justify-end"
-    >
+    <div className="mt-3 flex justify-end opacity-100 scale-100 transition-all duration-200">
       <button
         type="button"
         onClick={handleBatchRelaunch}
@@ -253,7 +208,7 @@ function BatchRelaunchButton({ actions, isDark, couleur, showToast }) {
         <Send className="w-3.5 h-3.5" />
         Tout relancer ({relanceActions.length})
       </button>
-    </motion.div>
+    </div>
   );
 }
 
@@ -280,32 +235,26 @@ function BatchRelaunchButton({ actions, isDark, couleur, showToast }) {
 function ActionsSection({
   allActions,
   visibleActions,
-  showAllActions,
-  setShowAllActions,
   isDark,
   couleur,
-  textSecondary,
-  sectionBg,
   showToast,
 }) {
   if (allActions.length === 0) return null;
 
+  const textSecondary = isDark ? 'text-slate-400' : 'text-gray-500';
+  const sectionBg = isDark ? 'bg-slate-800 border border-slate-700/50' : 'bg-white shadow-[0_1px_3px_rgba(0,0,0,0.06)]';
+
   return (
-    <motion.section
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.25, duration: 0.4 }}
-    >
+    <section style={{ opacity: 1, transform: 'translateY(0)' }} className="transition-all duration-400">
       <h2 className={`text-sm font-semibold uppercase tracking-wider mb-3 ${textSecondary}`}>
         Actions prioritaires
       </h2>
       <div className={`rounded-2xl divide-y ${sectionBg} ${isDark ? 'divide-slate-700/50' : 'divide-gray-100'}`}>
         {visibleActions.map((action, i) => (
-          <motion.div
+          <div
             key={i}
-            initial={{ opacity: 0, x: -10 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.25 + i * 0.03, duration: 0.3 }}
+            style={{ opacity: 1, transform: 'translateX(0)' }}
+            className="transition-all duration-300"
           >
             <ActionItem
               icon={action.icon}
@@ -316,27 +265,17 @@ function ActionsSection({
               onClick={action.onClick}
               isDark={isDark}
             />
-          </motion.div>
+          </div>
         ))}
       </div>
-      {allActions.length > 5 && (
-        <button
-          type="button"
-          onClick={() => setShowAllActions(!showAllActions)}
-          className={`mt-2 text-sm font-medium transition-colors ${isDark ? 'text-slate-400 hover:text-slate-300' : 'text-slate-500 hover:text-slate-700'}`}
-        >
-          {showAllActions ? 'Voir moins' : `Voir tout (${allActions.length})`}
-        </button>
-      )}
 
       {/* GAP 5: Batch relaunch button */}
       <BatchRelaunchButton
         actions={allActions}
-        isDark={isDark}
         couleur={couleur}
         showToast={showToast}
       />
-    </motion.section>
+    </section>
   );
 }
 
@@ -353,41 +292,20 @@ export default function Dashboard({
   chantiers = [],
   clients = [],
   devis = [],
-  depenses = [],
-  pointages = [],
-  equipe = [],
-  ajustements = [],
-  catalogue = [],
   entreprise,
-  getChantierBilan,
-  addDevis,
   couleur = '#8b5cf6',
   modeDiscret,
   setModeDiscret,
-  setSelectedChantier,
   setPage,
   setSelectedDevis,
-  setCreateMode,
-  setAiPrefill,
   isDark = false,
-  showHelp = false,
-  setShowHelp,
   user,
-  onOpenSearch,
   memos = [],
-  addMemo,
   toggleMemo,
 }) {
-  const { dataLoading } = useData();
   const { showToast } = useToast();
   const { canAccess } = usePermissions();
   const canSeeFinances = canAccess('finances');
-
-  const [showAllActions, setShowAllActions] = useState(false);
-
-  // ---- Theme ----
-  const textSecondary = isDark ? 'text-slate-400' : 'text-gray-500';
-  const sectionBg = isDark ? 'bg-slate-800 border border-slate-700/50' : 'bg-white shadow-[0_1px_3px_rgba(0,0,0,0.06)]';
 
   // ---- Computed data ----
   const computed = useMemo(() => {
@@ -696,12 +614,8 @@ export default function Dashboard({
             <ActionsSection
               allActions={allActions}
               visibleActions={allActions.slice(0, 3)}
-              showAllActions={false}
-              setShowAllActions={setShowAllActions}
               isDark={isDark}
               couleur={couleur}
-              textSecondary={isDark ? 'text-slate-400' : 'text-gray-500'}
-              sectionBg={isDark ? 'bg-slate-800 border border-slate-700/50' : 'bg-white shadow-[0_1px_3px_rgba(0,0,0,0.06)]'}
               showToast={showToast}
             />
           </div>

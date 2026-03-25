@@ -69,7 +69,6 @@ const NotificationStrip = memo(function NotificationStrip({
   _couleur,
   notifications = [],
   onDismiss,
-  onAction,
 }) {
   if (!notifications || notifications.length === 0) return null;
 
@@ -84,39 +83,43 @@ const NotificationStrip = memo(function NotificationStrip({
   const IconComponent = notif.icon || TYPE_ICONS[type] || Info;
 
   return (
-    <div
-      className={`flex items-center gap-3 px-4 py-3 rounded-xl border-l-4 max-h-[56px] ${styles.text}`}
-      style={{
-        borderLeftColor: styles.border,
-        backgroundColor: styles.bg,
-      }}
-      role="alert"
-    >
-      <IconComponent size={18} className="flex-shrink-0" style={{ color: styles.border }} />
+    <div className="px-4 sm:px-6 py-4">
+      <div
+        className={`flex items-center gap-3 px-4 py-3 rounded-xl border-l-4 max-h-[56px] ${styles.text}`}
+        style={{
+          borderLeftColor: styles.border,
+          backgroundColor: styles.bg,
+        }}
+        role="alert"
+      >
+        <IconComponent size={18} className="flex-shrink-0" style={{ color: styles.border }} />
 
-      <p className="flex-1 text-sm font-medium truncate">{notif.message}</p>
+        <p className="flex-1 text-sm font-medium truncate">{notif.message}</p>
 
-      {notif.ctaLabel && onAction && (
-        <button
-          onClick={() => onAction(notif)}
-          className="flex-shrink-0 text-xs font-semibold text-white px-3 py-1.5 rounded-lg transition-opacity hover:opacity-90"
-          style={{ backgroundColor: styles.ctaBg }}
-        >
-          {notif.ctaLabel}
-        </button>
-      )}
+        {notif.ctaLabel && notif.onAction && (
+          <button
+            onClick={() => notif.onAction?.()}
+            className="flex-shrink-0 text-xs font-semibold text-white px-3 py-1.5 rounded-lg transition-opacity hover:opacity-90"
+            style={{ backgroundColor: styles.ctaBg }}
+            type="button"
+          >
+            {notif.ctaLabel}
+          </button>
+        )}
 
-      {onDismiss && (
-        <button
-          onClick={() => onDismiss(notif.id)}
-          className={`flex-shrink-0 p-1 rounded-lg transition-colors ${
-            isDark ? 'hover:bg-white/10' : 'hover:bg-black/5'
-          }`}
-          aria-label="Fermer la notification"
-        >
-          <X size={16} />
-        </button>
-      )}
+        {onDismiss && (
+          <button
+            onClick={() => onDismiss(notif.id)}
+            className={`flex-shrink-0 p-1 rounded-lg transition-colors ${
+              isDark ? 'hover:bg-white/10' : 'hover:bg-black/5'
+            }`}
+            aria-label="Fermer la notification"
+            type="button"
+          >
+            <X size={16} />
+          </button>
+        )}
+      </div>
     </div>
   );
 });

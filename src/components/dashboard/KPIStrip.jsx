@@ -25,23 +25,25 @@ const KPIStrip = memo(function KPIStrip({ isDark, couleur, kpis = [] }) {
   if (!kpis || kpis.length === 0) return null;
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-      {kpis.slice(0, 4).map((kpi, idx) => {
-        const IconComponent = kpi.icon;
-        const isClickable = typeof kpi.onClick === 'function';
-        const Tag = isClickable ? 'button' : 'div';
+    <div className="px-4 sm:px-6 py-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {kpis.slice(0, 4).map((kpi, idx) => {
+          const IconComponent = kpi.icon;
+          const isClickable = typeof kpi.onClick === 'function';
+          const Tag = isClickable ? 'button' : 'div';
 
-        return (
-          <Tag
-            key={kpi.label || idx}
-            onClick={isClickable ? kpi.onClick : undefined}
-            className={`${cardBg} rounded-xl border p-4 text-left transition-all duration-150 ${
-              isClickable
-                ? 'cursor-pointer hover:shadow-md hover:-translate-y-0.5 active:scale-[0.98] outline-none focus-visible:ring-2 focus-visible:ring-offset-2'
-                : ''
-            }`}
-            style={isClickable ? { '--tw-ring-color': couleur } : undefined}
-          >
+          return (
+            <Tag
+              key={kpi.label || idx}
+              onClick={isClickable ? kpi.onClick : undefined}
+              className={`${cardBg} rounded-xl border p-4 text-left transition-all duration-150 ${
+                isClickable
+                  ? 'cursor-pointer hover:shadow-md hover:-translate-y-0.5 active:scale-[0.98] outline-none focus-visible:ring-2 focus-visible:ring-offset-2'
+                  : ''
+              }`}
+              style={isClickable ? { '--tw-ring-color': couleur } : undefined}
+              type={isClickable ? 'button' : undefined}
+            >
             {/* Icon circle + trend */}
             <div className="flex items-center justify-between mb-2">
               {IconComponent && (
@@ -81,9 +83,10 @@ const KPIStrip = memo(function KPIStrip({ isDark, couleur, kpis = [] }) {
 
             {/* Label */}
             <p className={`text-xs mt-0.5 ${textMuted}`}>{kpi.label}</p>
-          </Tag>
-        );
-      })}
+            </Tag>
+          );
+        })}
+      </div>
     </div>
   );
 });
