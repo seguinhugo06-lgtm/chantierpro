@@ -527,6 +527,7 @@ export default function BankModule({ devis, depenses, clients, entreprise, paiem
                           <div className="relative">
                             <button
                               onClick={() => setMatchingTxId(matchingTxId === tx.id ? null : tx.id)}
+                              aria-expanded={matchingTxId === tx.id}
                               className={`text-xs px-2 py-1 rounded-lg flex items-center gap-1 ${isDark ? 'hover:bg-slate-600 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}
                             >
                               <Link2 size={12} />
@@ -537,7 +538,7 @@ export default function BankModule({ devis, depenses, clients, entreprise, paiem
                             {/* Matching dropdown */}
                             {matchingTxId === tx.id && (
                               <>
-                                <div className="fixed inset-0 z-10" onClick={() => setMatchingTxId(null)} />
+                                <div className="fixed inset-0 z-10" role="presentation" onClick={() => setMatchingTxId(null)} />
                                 <div className={`absolute top-full left-0 mt-1 w-72 max-h-48 overflow-y-auto rounded-xl shadow-xl z-20 border ${tc.card}`}>
                                   {unpaidFactures.length === 0 ? (
                                     <p className={`p-3 text-xs ${tc.textMuted}`}>Aucune facture en attente</p>
@@ -578,6 +579,8 @@ export default function BankModule({ devis, depenses, clients, entreprise, paiem
                         <div className="relative">
                           <button
                             onClick={() => setActionMenuTxId(actionMenuTxId === tx.id ? null : tx.id)}
+                            aria-expanded={actionMenuTxId === tx.id}
+                            aria-label="Actions"
                             className={`p-1.5 rounded-lg transition-colors ${isDark ? 'hover:bg-slate-600' : 'hover:bg-slate-100'}`}
                           >
                             <MoreHorizontal size={14} className={tc.textMuted} />
@@ -585,7 +588,7 @@ export default function BankModule({ devis, depenses, clients, entreprise, paiem
 
                           {actionMenuTxId === tx.id && (
                             <>
-                              <div className="fixed inset-0 z-10" onClick={() => setActionMenuTxId(null)} />
+                              <div className="fixed inset-0 z-10" role="presentation" onClick={() => setActionMenuTxId(null)} />
                               <div className={`absolute right-0 top-full mt-1 w-44 rounded-xl shadow-xl z-20 border py-1 ${tc.card}`}>
                                 {tx.statut === 'rapproche' && (
                                   <button

@@ -385,14 +385,14 @@ function PrevisionModal({ isOpen, onClose, onSave, editItem, isDark, couleur }) 
   const labelCls = `block text-xs font-semibold mb-1 ${isDark ? 'text-gray-300' : 'text-gray-600'}`;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label={editItem ? 'Modifier la prévision' : 'Nouvelle prévision'}>
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" role="presentation" onClick={onClose} />
       <form onSubmit={handleSubmit} className={`relative w-full max-w-md rounded-2xl border shadow-2xl ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
         <div className={`flex items-center justify-between px-5 py-4 border-b ${isDark ? 'border-slate-700' : 'border-gray-100'}`}>
           <h3 className={`text-base font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
             {editItem ? 'Modifier la prévision' : 'Nouvelle prévision'}
           </h3>
-          <button type="button" onClick={onClose} className={`p-1.5 rounded-lg transition-colors ${isDark ? 'hover:bg-slate-700 text-gray-400' : 'hover:bg-gray-100 text-gray-500'}`}>
+          <button type="button" onClick={onClose} aria-label="Fermer" className={`min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg transition-colors ${isDark ? 'hover:bg-slate-700 text-gray-400' : 'hover:bg-gray-100 text-gray-500'}`}>
             <X size={18} />
           </button>
         </div>
@@ -410,7 +410,7 @@ function PrevisionModal({ isOpen, onClose, onSave, editItem, isDark, couleur }) 
           </div>
           <div>
             <label className={labelCls}>Description</label>
-            <input type="text" className={inputCls} placeholder="Ex: Facture chantier Dupont" value={form.description} onChange={(e) => handleChange('description', e.target.value)} required />
+            <input type="text" autoFocus className={inputCls} placeholder="Ex: Facture chantier Dupont" value={form.description} onChange={(e) => handleChange('description', e.target.value)} required />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -511,14 +511,14 @@ function MouvementModal({ isOpen, onClose, onSave, editItem, isDark, couleur }) 
   const textSecondaryLocal = isDark ? 'text-gray-400' : 'text-gray-500';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label={editItem ? 'Modifier le mouvement' : 'Nouveau mouvement'}>
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" role="presentation" onClick={onClose} />
       <form onSubmit={handleSubmit} className={`relative w-full max-w-lg rounded-2xl border shadow-2xl ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
         <div className={`flex items-center justify-between px-5 py-4 border-b ${isDark ? 'border-slate-700' : 'border-gray-100'}`}>
           <h3 className={`text-base font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
             {editItem ? 'Modifier le mouvement' : 'Nouveau mouvement'}
           </h3>
-          <button type="button" onClick={onClose} className={`p-1.5 rounded-lg transition-colors ${isDark ? 'hover:bg-slate-700 text-gray-400' : 'hover:bg-gray-100 text-gray-500'}`}>
+          <button type="button" onClick={onClose} aria-label="Fermer" className={`min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg transition-colors ${isDark ? 'hover:bg-slate-700 text-gray-400' : 'hover:bg-gray-100 text-gray-500'}`}>
             <X size={18} />
           </button>
         </div>
@@ -536,7 +536,7 @@ function MouvementModal({ isOpen, onClose, onSave, editItem, isDark, couleur }) 
           </div>
           <div>
             <label className={labelCls}>Description</label>
-            <input type="text" className={inputCls} placeholder="Ex: Paiement facture #124" value={form.description} onChange={(e) => handleChange('description', e.target.value)} required />
+            <input type="text" autoFocus className={inputCls} placeholder="Ex: Paiement facture #124" value={form.description} onChange={(e) => handleChange('description', e.target.value)} required />
           </div>
           <div className="grid grid-cols-3 gap-3">
             <div>
@@ -1589,6 +1589,7 @@ export default function TresorerieModule({
           {/* Settings */}
           <div className="relative">
             <button onClick={() => setShowSettingsPanel(!showSettingsPanel)}
+              aria-expanded={showSettingsPanel}
               className={`p-2 rounded-xl border transition-colors ${isDark ? 'border-slate-700 hover:bg-slate-700 text-slate-400' : 'border-gray-200 hover:bg-gray-50 text-gray-500'}`}
               title="Paramètres trésorerie">
               <Settings size={18} />
@@ -1681,7 +1682,7 @@ export default function TresorerieModule({
             </div>
           </div>
           <button onClick={() => { setAlertDismissed(true); try { localStorage.setItem('cp_treso_alert_dismissed', '1'); } catch {} }}
-            className={`flex-shrink-0 p-1 rounded-lg transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
+            aria-label="Fermer" className={`flex-shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
             <X size={16} className={soldeActuel < 0 ? (isDark ? 'text-red-400' : 'text-red-500') : (isDark ? 'text-amber-400' : 'text-amber-500')} />
           </button>
         </div>
@@ -1743,7 +1744,7 @@ export default function TresorerieModule({
               </React.Fragment>
             ))}
             </div>
-            <button onClick={() => setWizardMinimized(true)} className={`p-1.5 rounded-lg ml-2 ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-gray-100 text-gray-400'}`} title="Réduire">
+            <button onClick={() => setWizardMinimized(true)} className={`min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg ml-2 ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-gray-100 text-gray-400'}`} title="Réduire" aria-label="Réduire">
               <ChevronUp size={16} />
             </button>
           </div>
@@ -1799,6 +1800,7 @@ export default function TresorerieModule({
                   const isSelected = wizardCharges[tmpl.description] !== undefined;
                   return (
                     <div key={tmpl.description}
+                      role="button" tabIndex={0}
                       className={`flex items-center gap-3 px-3 py-2 rounded-xl border transition-colors cursor-pointer ${
                         isSelected
                           ? isDark ? 'border-blue-500/50 bg-blue-500/10' : 'border-blue-300 bg-blue-50'
@@ -1810,12 +1812,24 @@ export default function TresorerieModule({
                         } else {
                           setWizardCharges(prev => ({ ...prev, [tmpl.description]: tmpl.montant }));
                         }
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          if (isSelected) {
+                            setWizardCharges(prev => { const n = { ...prev }; delete n[tmpl.description]; return n; });
+                          } else {
+                            setWizardCharges(prev => ({ ...prev, [tmpl.description]: tmpl.montant }));
+                          }
+                        }
                       }}>
-                      <div className={`w-5 h-5 rounded border flex items-center justify-center flex-shrink-0 transition-colors ${
-                        isSelected ? 'border-blue-500 bg-blue-500' : isDark ? 'border-slate-500' : 'border-gray-300'
-                      }`}>
-                        {isSelected && <Check size={12} className="text-white" />}
-                      </div>
+                      <span className="min-w-[44px] min-h-[44px] flex items-center justify-center flex-shrink-0" role="checkbox" aria-checked={isSelected} aria-label={tmpl.description}>
+                        <span className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${
+                          isSelected ? 'border-blue-500 bg-blue-500' : isDark ? 'border-slate-500' : 'border-gray-300'
+                        }`}>
+                          {isSelected && <Check size={12} className="text-white" />}
+                        </span>
+                      </span>
                       <span className={`flex-1 text-sm ${textPrimary}`}>{tmpl.description}</span>
                       {isSelected ? (
                         <input type="number" value={wizardCharges[tmpl.description]}
@@ -1874,8 +1888,8 @@ export default function TresorerieModule({
               </div>
             </div>
             <button onClick={() => setShowEncaisserWidget(false)}
-              className={`p-1.5 rounded-lg transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-gray-100 text-gray-400'}`}
-              title="Fermer le widget d'encaissement">
+              className={`min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-gray-100 text-gray-400'}`}
+              aria-label="Fermer" title="Fermer le widget d'encaissement">
               <X size={16} />
             </button>
           </div>
@@ -1886,8 +1900,9 @@ export default function TresorerieModule({
               <div key={item.id} className={`flex items-center gap-3 px-5 py-3 transition-colors ${isDark ? 'hover:bg-slate-700/40' : 'hover:bg-gray-50'}`}>
                 {/* Overdue indicator */}
                 <div className="flex items-center gap-1 flex-shrink-0">
-                  <div className={`w-2.5 h-2.5 rounded-full ${item.isOverdue ? item.joursRetard > 14 ? 'bg-red-600' : item.joursRetard > 7 ? 'bg-red-500' : 'bg-orange-400' : 'bg-emerald-400'}`} />
-                  {item.isOverdue && item.joursRetard > 14 && <AlertTriangle size={12} className="text-red-500" />}
+                  <div aria-hidden="true" className={`w-2.5 h-2.5 rounded-full ${item.isOverdue ? item.joursRetard > 14 ? 'bg-red-600' : item.joursRetard > 7 ? 'bg-red-500' : 'bg-orange-400' : 'bg-emerald-400'}`} />
+                  <span className="sr-only">{item.isOverdue ? `En retard de ${item.joursRetard} jours` : 'À jour'}</span>
+                  {item.isOverdue && item.joursRetard > 14 && <AlertTriangle size={12} className="text-red-500" aria-hidden="true" />}
                 </div>
 
                 {/* Info */}
@@ -3019,8 +3034,8 @@ export default function TresorerieModule({
 
       {/* ── Prefill Confirmation Modal ──────────────────────────────── */}
       {showPrefillConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowPrefillConfirm(false)} />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label="Pré-remplir les charges BTP">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" role="presentation" onClick={() => setShowPrefillConfirm(false)} />
           <div className={`relative w-full max-w-md rounded-2xl border shadow-2xl p-6 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
             <div className="flex items-start gap-3 mb-4">
               <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${couleur}20`, color: couleur }}>
@@ -3043,7 +3058,7 @@ export default function TresorerieModule({
               ))}
             </div>
             <div className="flex items-center justify-end gap-3">
-              <button onClick={() => setShowPrefillConfirm(false)}
+              <button autoFocus onClick={() => setShowPrefillConfirm(false)}
                 className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${isDark ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-700'}`}>
                 Annuler
               </button>
