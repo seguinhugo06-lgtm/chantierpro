@@ -81,7 +81,7 @@ const NotificationStrip = memo(function NotificationStrip({
   const type = notif.type || 'info';
   const theme = isDark ? 'dark' : 'light';
   const styles = TYPE_STYLES[type]?.[theme] || TYPE_STYLES.info[theme];
-  const _IconComponent = notif.icon || TYPE_ICONS[type] || Info;
+  const IconComponent = notif.icon || TYPE_ICONS[type] || Info;
 
   return (
     <div
