@@ -1,6 +1,6 @@
 import React, { lazy, Suspense, useState } from 'react';
 import { Wallet, Download, BarChart3, Landmark, CreditCard, Eye, EyeOff, FileText } from 'lucide-react';
-import { TabBar } from './ui/TabBar';
+import TabBar from './ui/TabBar';
 import { usePermissions } from '../hooks/usePermissions';
 
 // Lazy load the 5 sub-modules

@@ -21,7 +21,7 @@ import { usePermissions } from '../hooks/usePermissions';
 import { ReadOnlyBanner } from './ui/PermissionGate';
 import ErrorBoundary from './ui/ErrorBoundary';
 import ChantierGarantiesTab from './chantiers/ChantierGarantiesTab';
-import { TabBar } from './ui/TabBar';
+import TabBar from './ui/TabBar';
 import ReceptionForm from './chantiers/ReceptionForm';
 import InterventionForm from './chantiers/InterventionForm';
 import { getReception, createReception, updateReserve as updateReserveService, leverToutesReserves } from '../services/receptionService';
