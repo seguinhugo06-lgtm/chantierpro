@@ -1869,18 +1869,7 @@ export default function Dashboard({
         </div>
       )}
 
-      {/* GAP 7: Overview widget — full width, collapsible, default closed */}
-      <OverviewWidget
-        isDark={isDark}
-        couleur={couleur}
-        textPrimary={textPrimary}
-        textSecondary={textSecondary}
-        sectionBg={sectionBg}
-        computed={computed}
-        modeDiscret={modeDiscret}
-        showOverview={showOverview}
-        setShowOverview={setShowOverview}
-      />
+      {/* OverviewWidget removed — data moved to Analytics */}
 
       {/* =========== GAP 1: 2-COLUMN GRID LAYOUT =========== */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
