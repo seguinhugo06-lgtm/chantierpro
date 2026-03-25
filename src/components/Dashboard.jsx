@@ -15,11 +15,8 @@
 import React, { useState, useMemo, useEffect, useCallback, memo } from 'react';
 import {
   TrendingUp,
-  TrendingDown,
   FileText,
-  Calendar,
   Users,
-  Plus,
   AlertTriangle,
   Wallet,
   Activity,
@@ -28,27 +25,15 @@ import {
   Sparkles,
   BarChart3,
   Lightbulb,
-  Home,
   DollarSign,
   Hammer,
   CheckCircle,
-  Clock,
   Send,
-  HelpCircle,
   X,
   Receipt,
-  Timer,
-  Target,
-  Zap,
   Settings,
-  Eye,
-  EyeOff,
-  GripVertical,
-  LayoutDashboard,
-  ShieldCheck,
   MessageCircle,
   ClipboardList,
-  Mic,
   ArrowRight,
   Banknote,
   ChevronRight,
@@ -58,41 +43,6 @@ import {
 // Dashboard components
 import {
   HeroSection,
-  HeroSectionSkeleton,
-  KPICard,
-  KPICardSkeleton,
-  MiniKPICard,
-  DevisWidget,
-  DevisWidgetSkeleton,
-  ChantiersWidget,
-  ChantiersWidgetSkeleton,
-  TresorerieWidget,
-  TresorerieWidgetSkeleton,
-  StockWidget,
-  StockWidgetSkeleton,
-  SuggestionsSection,
-  SuggestionsSectionSkeleton,
-  WeatherAlertsWidget,
-  ActionBanner,
-  ActionBannerStack,
-  // Unified overview widget
-  OverviewWidget,
-  RevenueChartWidget,
-  // Health Score Widget
-  ScoreSanteWidget,
-  // Bank Widget
-  BankWidget,
-  BankWidgetSkeleton,
-  // Relance Widget
-  RelanceWidget,
-  // Reports Widget
-  ReportsWidget,
-  // Acomptes Widget
-  AcomptesWidget,
-  // Activity Feed Widget (audit-driven)
-  ActivityFeedWidget,
-  // Consolidated Widget (multi-entreprise)
-  ConsolidatedWidget,
   // KPI Modals
   EncaisserModal,
   CeMoisModal,
@@ -102,11 +52,7 @@ import {
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
 // Framer Motion for animations
-import { motion, AnimatePresence } from 'framer-motion';
-
-// UI Components
-import { Button } from './ui/Button';
-import { Badge } from './ui/Badge';
+import { motion } from 'framer-motion';
 
 // Modals
 import { RelanceModal } from './modals/RelanceModal';
@@ -118,31 +64,24 @@ import { useRelances } from '../hooks/useRelances';
 import { useOrg } from '../context/OrgContext';
 
 // Services & Utils
-import { getPendingRelances, formatRelanceForDisplay } from '../services/RelanceService';
 import {
   generateSuggestionsFromContext,
-  transformSuggestions,
 } from '../lib/actionSuggestions';
-import { normalizeDevisRef, formatDevisNumber, formatClientName } from '../lib/formatters';
+import { formatDevisNumber, formatClientName } from '../lib/formatters';
 import { captureException } from '../lib/sentry';
 import { calcConversion } from '../lib/statsUtils';
 import { isDraftChantier } from '../lib/utils';
 import { useData } from '../context/DataContext';
 import { useToast } from '../context/AppContext';
-import DashboardMemos from './dashboard/DashboardMemos';
 import OnboardingChecklist from './dashboard/OnboardingChecklist';
 
 // RBAC
 import { usePermissions } from '../hooks/usePermissions';
 
-// Subscription
-import UsageAlerts from './subscription/UsageAlerts';
 
 // AI Chat
 import ChatInterface from './ai/ChatInterface';
 
-// Devis Express
-import DevisExpressModal from './DevisExpressModal';
 
 // ============ CONSTANTS ============
 
@@ -591,11 +530,7 @@ export default function Dashboard({
   const [encaisserModalOpen, setEncaisserModalOpen] = useState(false);
   const [ceMoisModalOpen, setCeMoisModalOpen] = useState(false);
   const [marginAnalysisModal, setMarginAnalysisModal] = useState({ isOpen: false, chantierId: null, chantierNom: null });
-  const [showWidgetConfig, setShowWidgetConfig] = useState(false);
-  const [showOverviewSection, setShowOverviewSection] = useState(false);
-  const [dragWidget, setDragWidget] = useState(null); // UX-004: drag & drop widget reorder
   const [showAIChat, setShowAIChat] = useState(false);
-  const [showDevisExpress, setShowDevisExpress] = useState(false);
   const [showProfileSetup, setShowProfileSetup] = useState(false);
 
   // Profile completion calculation
@@ -632,67 +567,6 @@ export default function Dashboard({
       }));
     }, 200);
   }, [setPage]);
-
-  // Widget configuration - persisted in localStorage
-  // Default widgets — show only essential ones by default to reduce dashboard density
-  // Users can re-enable hidden widgets via "Personnaliser"
-  const DEFAULT_WIDGETS = [
-    { id: 'overview', label: 'Vue d\'ensemble', visible: true },
-    { id: 'devis', label: 'Devis & Factures', visible: true },
-    { id: 'relances', label: 'Relances', visible: true },
-    { id: 'chantiers', label: 'Chantiers', visible: true },
-    { id: 'activity', label: 'Activité récente', visible: true },
-    { id: 'conformity', label: 'Conformité', visible: true },
-    { id: 'revenue', label: 'Chiffre d\'affaires', visible: false },
-    { id: 'tresorerie', label: 'Trésorerie', visible: false },
-    { id: 'score', label: 'Score Santé', visible: false },
-    { id: 'weather', label: 'Alertes Météo', visible: false },
-    { id: 'stock', label: 'Stock', visible: false },
-    { id: 'reports', label: 'Rapports PDF', visible: false },
-    { id: 'subscription', label: 'Abonnement', visible: false },
-  ];
-
-  const [widgetConfig, setWidgetConfig] = useState(() => {
-    try {
-      const saved = localStorage.getItem('cp_dashboard_widgets');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        // Merge with defaults to handle new widgets added in updates
-        return DEFAULT_WIDGETS.map(dw => {
-          const found = parsed.find(p => p.id === dw.id);
-          return found ? { ...dw, visible: found.visible, order: found.order } : dw;
-        }).sort((a, b) => (a.order ?? 99) - (b.order ?? 99));
-      }
-      return DEFAULT_WIDGETS;
-    } catch { return DEFAULT_WIDGETS; }
-  });
-
-  const updateWidgetConfig = (newConfig) => {
-    const ordered = newConfig.map((w, i) => ({ ...w, order: i }));
-    setWidgetConfig(ordered);
-    localStorage.setItem('cp_dashboard_widgets', JSON.stringify(ordered));
-  };
-
-  const toggleWidgetVisibility = (widgetId) => {
-    const updated = widgetConfig.map(w => w.id === widgetId ? { ...w, visible: !w.visible } : w);
-    updateWidgetConfig(updated);
-  };
-
-  const moveWidget = (widgetId, direction) => {
-    const idx = widgetConfig.findIndex(w => w.id === widgetId);
-    if (idx < 0) return;
-    const newIdx = direction === 'up' ? Math.max(0, idx - 1) : Math.min(widgetConfig.length - 1, idx + 1);
-    if (newIdx === idx) return;
-    const arr = [...widgetConfig];
-    const [item] = arr.splice(idx, 1);
-    arr.splice(newIdx, 0, item);
-    updateWidgetConfig(arr);
-  };
-
-  const isWidgetVisible = (widgetId) => {
-    const w = widgetConfig.find(wc => wc.id === widgetId);
-    return w ? w.visible : true;
-  };
 
   // Safe arrays
   const safeChantiers = chantiers || [];
@@ -1221,7 +1095,7 @@ export default function Dashboard({
 
         {/* ========== URGENT ACTION BANNER ========== */}
         {urgentAction && (
-          <section className="px-4 sm:px-6 mb-3">
+          <section className="px-4 sm:px-6 mb-5">
             <div className={`rounded-xl overflow-hidden border-l-4 border-red-500 shadow-md ${isDark ? 'bg-red-500/10' : 'bg-red-50'}`}>
               <div className="p-4">
                 <div className="flex flex-wrap sm:flex-nowrap items-center gap-3">
@@ -1245,55 +1119,10 @@ export default function Dashboard({
           </section>
         )}
 
-        {/* ========== HERO DUO — Devis IA + Devis Express — shown only for onboarding (<5 devis) ========== */}
-        {safeDevis.length < 5 && canCreateDevis && (
-        <section className="px-4 sm:px-6 pb-3">
-          <div className="grid grid-cols-2 gap-3">
-            {/* Devis IA — subtle violet gradient */}
-            <button
-              onClick={() => setPage('ia-devis')}
-              className={`relative overflow-hidden rounded-xl p-4 sm:p-5 text-left min-h-[88px] transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-purple-400 focus-visible:ring-offset-2 outline-none border ${
-                isDark
-                  ? 'border-violet-500/30'
-                  : 'border-violet-200/50'
-              }`}
-              style={{ background: isDark ? 'linear-gradient(135deg, #7c3aed15, #3b82f615)' : 'linear-gradient(135deg, #7c3aed15, #3b82f615)' }}
-            >
-              <div className="relative z-10">
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-2 ${isDark ? 'bg-violet-500/20' : 'bg-violet-100'}`}>
-                  <MessageCircle size={20} className={isDark ? 'text-violet-400' : 'text-violet-600'} />
-                </div>
-                <p className={`font-semibold text-sm sm:text-base leading-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>Devis IA</p>
-                <p className={`text-[10px] sm:text-xs mt-0.5 truncate ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Décrivez vos travaux</p>
-              </div>
-              <Sparkles size={48} className={`absolute -bottom-2 -right-2 pointer-events-none ${isDark ? 'text-violet-400/10' : 'text-violet-300/20'}`} />
-            </button>
-
-            {/* Devis Express — accent border */}
-            <button
-              onClick={() => setShowDevisExpress(true)}
-              className={`relative overflow-hidden rounded-xl p-4 sm:p-5 text-left min-h-[88px] transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-offset-2 outline-none border`}
-              style={{
-                borderColor: `${couleur}30`,
-                background: isDark ? `${couleur}08` : `${couleur}05`,
-              }}
-            >
-              <div className="relative z-10">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-2" style={{ background: `${couleur}15` }}>
-                  <Zap size={20} style={{ color: couleur }} />
-                </div>
-                <p className={`font-semibold text-sm sm:text-base leading-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>Devis Express</p>
-                <p className={`text-[10px] sm:text-xs mt-0.5 truncate ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>3 clics, c'est chiffré</p>
-              </div>
-              <FileText size={44} className={`absolute -bottom-1 -right-1 pointer-events-none ${isDark ? 'text-white/5' : 'text-gray-900/5'}`} />
-            </button>
-          </div>
-        </section>
-        )}
 
         {/* ========== MINI KPI DUO — À encaisser + Ce mois — hidden for non-finance roles ========== */}
-        {canSeeFinances && <section className="px-4 sm:px-6 pb-3">
-          <div className="grid grid-cols-2 gap-3">
+        {canSeeFinances && <section className="px-4 sm:px-6 pb-5">
+          <div className="grid grid-cols-2 gap-4">
             {/* KPI cards with staggered animation */}
             {/* À encaisser */}
             <button
@@ -1410,7 +1239,7 @@ export default function Dashboard({
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2, duration: 0.4 }}
-                className={`mt-3 rounded-xl border p-4 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}
+                className={`mt-3 rounded-xl border p-5 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}
               >
                 <div className="flex items-center justify-between mb-1">
                   <div>
@@ -1468,7 +1297,7 @@ export default function Dashboard({
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3, duration: 0.4 }}
-                className={`mt-3 rounded-xl border p-4 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}
+                className={`mt-3 rounded-xl border p-5 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}
               >
                 <div className="flex items-center justify-between mb-2">
                   <span className={`text-xs font-medium ${isDark ? 'text-slate-300' : 'text-slate-500'}`}>Pipeline commercial</span>
@@ -1578,8 +1407,8 @@ export default function Dashboard({
           };
 
           return (
-            <section className="px-4 sm:px-6 mb-3">
-              <div className={`rounded-xl border p-4 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200/70'}`}>
+            <section className="px-4 sm:px-6 mb-5">
+              <div className={`rounded-xl border p-5 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200/70'}`}>
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
                     <ClipboardList size={15} style={{ color: couleur }} />
@@ -1637,51 +1466,11 @@ export default function Dashboard({
           );
         })()}
 
-        {/* ========== 2-COLUMN GRID LAYOUT — Desktop: main + sidebar ========== */}
-        <div className="px-4 sm:px-6 mb-3">
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-3">
-
-        {/* ────── LEFT COLUMN — Actions + Charts ────── */}
-        <div className="space-y-3">
-
-        {/* ========== SECONDARY SHORTCUTS — HIDDEN (already in +Nouveau header button) ========== */}
-        <section className="hidden">
-          <div className="grid grid-cols-2 sm:flex gap-2">
-            {[
-              { icon: Users, label: '+ Client', action: () => { setCreateMode?.((p) => ({ ...p, client: true })); setPage?.('clients'); } },
-              { icon: HardHat, label: '+ Chantier', action: () => { setCreateMode?.((p) => ({ ...p, chantier: true })); setPage?.('chantiers'); } },
-              { icon: ClipboardList, label: '+ Mémo', action: () => setPage?.('tasks') },
-              { icon: FileText, label: '+ Devis rapide', action: () => setPage?.('devis') },
-            ].map((s) => (
-              <button
-                key={s.label}
-                onClick={s.action}
-                className={`group sm:flex-1 flex flex-col items-center gap-1.5 min-h-[56px] py-3 rounded-xl text-xs font-medium transition-all border outline-none focus-visible:ring-2 focus-visible:ring-offset-2 hover:-translate-y-0.5 hover:shadow-sm ${
-                  isDark
-                    ? 'bg-slate-800 border-slate-700 text-slate-300 hover:border-slate-600 focus-visible:ring-orange-400'
-                    : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300 focus-visible:ring-orange-500'
-                }`}
-              >
-                <div
-                  className="w-10 h-10 rounded-lg flex items-center justify-center transition-transform group-hover:scale-110"
-                  style={{ background: `${couleur}12` }}
-                >
-                  <s.icon size={20} style={{ color: couleur }} />
-                </div>
-                <span className="leading-none truncate max-w-full px-1">{s.label}</span>
-              </button>
-            ))}
-          </div>
-        </section>
-
-        </div>{/* end LEFT COLUMN */}
-
-        {/* ────── RIGHT COLUMN — Chantiers + Onboarding ────── */}
-        <div className="space-y-3">
+        {/* ========== CHANTIERS + ONBOARDING ========== */}
 
         {/* ========== CHANTIERS EN COURS — top 3 with progress bars (hidden if empty) ========== */}
         {chantiersEnCours.length > 0 && <section>
-            <div className={`rounded-2xl border p-4 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+            <div className={`rounded-2xl border p-5 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <HardHat size={16} style={{ color: couleur }} />
@@ -1745,7 +1534,7 @@ export default function Dashboard({
         </section>}
 
         {/* ========== ONBOARDING — shows for new users, auto-dismisses ========== */}
-        <section className="px-4 sm:px-6 mb-3">
+        <section className="px-4 sm:px-6 mb-5">
           <OnboardingChecklist
             clients={clients}
             chantiers={chantiers}
@@ -1823,465 +1612,7 @@ export default function Dashboard({
           );
         })()}
 
-        </div>{/* end RIGHT COLUMN */}
-        </div>{/* end grid */}
-        </div>{/* end grid wrapper */}
 
-        {/* Vue d'ensemble header with Personnaliser button + collapsible toggle */}
-        <section className="px-4 sm:px-6 pb-2 flex items-center justify-between">
-          <button onClick={() => setShowOverviewSection(p => !p)} aria-expanded={showOverviewSection} className="flex items-center gap-2 group">
-            <LayoutDashboard size={15} style={{ color: couleur }} />
-            <h2 className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>Tableau de bord</h2>
-            <ChevronDown size={14} className={`transition-transform duration-200 ${isDark ? 'text-slate-500' : 'text-slate-400'} ${showOverviewSection ? '' : '-rotate-90'}`} />
-          </button>
-          <button
-            onClick={() => setShowWidgetConfig(!showWidgetConfig)}
-            aria-expanded={showWidgetConfig}
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
-              showWidgetConfig
-                ? `text-white`
-                : isDark ? 'text-slate-300 hover:text-slate-200 hover:bg-slate-800 focus-visible:ring-orange-400' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100 focus-visible:ring-orange-500'
-            }`}
-            style={showWidgetConfig ? { backgroundColor: couleur, '--tw-ring-color': couleur } : {}}
-          >
-            <Settings size={14} />
-            Personnaliser
-          </button>
-        </section>
-
-        {/* Widget Configuration Panel — all wrapped in collapsible */}
-        {showOverviewSection && (<>
-        {/* Widget Configuration Panel */}
-        {showWidgetConfig && (
-          <section className="px-4 sm:px-6 pb-3">
-            <div className={`rounded-xl border p-4 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
-              <div className="flex items-center justify-between mb-3">
-                <h2 className={`font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>Widgets du tableau de bord</h2>
-                <button onClick={() => { updateWidgetConfig(DEFAULT_WIDGETS); }} className={`text-xs px-2 py-1 min-h-[44px] rounded ${isDark ? 'text-slate-300 hover:text-white hover:bg-slate-700' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'}`}>
-                  Réinitialiser
-                </button>
-              </div>
-              <div className="space-y-1">
-                {widgetConfig.map((w, idx) => (
-                  <div
-                    key={w.id}
-                    draggable
-                    onDragStart={(e) => { setDragWidget(idx); e.dataTransfer.effectAllowed = 'move'; e.currentTarget.style.opacity = '0.5'; }}
-                    onDragEnd={(e) => { setDragWidget(null); e.currentTarget.style.opacity = '1'; }}
-                    onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      if (dragWidget === null || dragWidget === idx) return;
-                      const arr = [...widgetConfig];
-                      const [item] = arr.splice(dragWidget, 1);
-                      arr.splice(idx, 0, item);
-                      updateWidgetConfig(arr);
-                      setDragWidget(null);
-                    }}
-                    className={`flex items-center gap-3 px-3 py-2 rounded-lg cursor-grab active:cursor-grabbing transition-colors ${dragWidget === idx ? 'ring-2 ring-offset-1' : ''} ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}
-                    style={dragWidget === idx ? { ringColor: couleur } : undefined}
-                  >
-                    <GripVertical size={14} className={`flex-shrink-0 ${isDark ? 'text-slate-600' : 'text-slate-300'}`} />
-                    <button onClick={() => toggleWidgetVisibility(w.id)} className="flex-shrink-0 p-1 min-h-[44px] min-w-[44px] flex items-center justify-center">
-                      {w.visible
-                        ? <Eye size={16} className="text-green-500" />
-                        : <EyeOff size={16} className={isDark ? 'text-slate-600' : 'text-slate-300'} />
-                      }
-                    </button>
-                    <span className={`flex-1 text-sm ${w.visible ? (isDark ? 'text-white' : 'text-slate-900') : (isDark ? 'text-slate-600' : 'text-slate-300')}`}>{w.label}</span>
-                    <div className="flex gap-1">
-                      <button onClick={() => moveWidget(w.id, 'up')} disabled={idx === 0} className={`p-1 rounded ${idx === 0 ? 'opacity-20' : isDark ? 'hover:bg-slate-600 text-slate-300' : 'hover:bg-slate-200 text-slate-500'}`}>
-                        <ChevronDown size={14} className="rotate-180" />
-                      </button>
-                      <button onClick={() => moveWidget(w.id, 'down')} disabled={idx === widgetConfig.length - 1} className={`p-1 rounded ${idx === widgetConfig.length - 1 ? 'opacity-20' : isDark ? 'hover:bg-slate-600 text-slate-300' : 'hover:bg-slate-200 text-slate-500'}`}>
-                        <ChevronDown size={14} />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </section>
-        )}
-
-        {/* Overview Widget - Single unified card */}
-        {isWidgetVisible('overview') && (
-          <section className="px-4 sm:px-6 pb-3">
-            <OverviewWidget
-              setPage={setPage}
-              isDark={isDark}
-            />
-          </section>
-        )}
-
-        {/* Consolidated Widget - Multi-entreprise view */}
-        <section className="px-4 sm:px-6 pb-3">
-          <ConsolidatedWidget
-            devis={devis}
-            isDark={isDark}
-            modeDiscret={modeDiscret}
-            couleur={couleur}
-          />
-        </section>
-
-        {/* Revenue Chart - Full width — finance roles only */}
-        {canSeeFinances && isWidgetVisible('revenue') && (
-          <section className="px-4 sm:px-6 pb-3">
-            <RevenueChartWidget
-              setPage={setPage}
-              isDark={isDark}
-            />
-          </section>
-        )}
-
-        {/* Operational Widgets Grid */}
-        <section className="px-4 sm:px-6 pb-4">
-          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-3">
-            {/* Devis Widget - Actions required — hidden for ouvrier */}
-            {canAccess('devis') && isWidgetVisible('devis') && (
-              <DevisWidget
-                setPage={setPage}
-                setSelectedDevis={setSelectedDevis}
-                onRelance={handleOpenRelance}
-                isDark={isDark}
-              />
-            )}
-
-            {/* Relance Widget — shows pending relances */}
-            {canAccess('devis') && isWidgetVisible('relances') && relances.isEnabled && (
-              <RelanceWidget
-                pending={relances.pending}
-                stats={relances.stats}
-                totalAtRisk={relances.totalAtRisk}
-                setPage={setPage}
-                setSelectedDevis={setSelectedDevis}
-                onRelance={(item) => handleOpenRelance(item.doc)}
-                isDark={isDark}
-                couleur={couleur}
-                modeDiscret={modeDiscret}
-                formatMoney={(n) => formatMoney(n, modeDiscret)}
-              />
-            )}
-
-            {/* Chantiers Widget - Upcoming — hidden if no chantiers to reduce scroll */}
-            {isWidgetVisible('chantiers') && safeChantiers.length > 0 && (
-              <ChantiersWidget
-                setPage={setPage}
-                setSelectedChantier={setSelectedChantier}
-                isDark={isDark}
-              />
-            )}
-
-            {/* Tresorerie Widget — finance roles only */}
-            {canSeeFinances && isWidgetVisible('tresorerie') && (
-              <TresorerieWidget
-                setPage={setPage}
-                isDark={isDark}
-              />
-            )}
-
-            {/* Acomptes Widget — shows pending acompte steps */}
-            {canSeeFinances && isWidgetVisible('acomptes') && (
-              <AcomptesWidget
-                devis={devis}
-                isDark={isDark}
-                couleur={couleur}
-                formatMoney={(n) => formatMoney(n, modeDiscret)}
-                setPage={setPage}
-                setSelected={setSelectedDevis}
-              />
-            )}
-
-            {/* Reports Widget — finance roles only */}
-            {canSeeFinances && isWidgetVisible('reports') && (
-              <ReportsWidget
-                isDark={isDark}
-                setPage={setPage}
-              />
-            )}
-
-            {/* Score Santé Entreprise */}
-            {isWidgetVisible('score') && (
-              <ScoreSanteWidget
-                isDark={isDark}
-                setPage={setPage}
-              />
-            )}
-
-            {/* Recent Activity — audit-driven feed */}
-            {isWidgetVisible('activity') && (
-              <ActivityFeedWidget
-                isDark={isDark}
-                modeDiscret={modeDiscret}
-                onActivityClick={handleActivityClick}
-                orgId={orgId}
-                userId={user?.id}
-              />
-            )}
-
-            {/* Weather Alerts */}
-            {isWidgetVisible('weather') && (
-              <WeatherAlertsWidget
-                setPage={setPage}
-                isDark={isDark}
-              />
-            )}
-
-            {/* Équipe en Direct Widget */}
-            {equipe.filter(e => e.actif !== false && e.contrat !== 'sous_traitant').length > 0 && (
-              <div className={`rounded-2xl border overflow-hidden ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
-                <div className="p-4 flex items-center justify-between" style={{ borderBottom: `2px solid ${isDark ? '#334155' : '#e2e8f0'}` }}>
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: `${couleur}15` }}>
-                      <Users size={16} style={{ color: couleur }} />
-                    </div>
-                    <div>
-                      <h3 className={`text-sm font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>Équipe en direct</h3>
-                      <p className={`text-xs ${isDark ? 'text-slate-300' : 'text-slate-500'}`}>
-                        {(() => { const n = equipe.filter(e => e.actif !== false && e.contrat !== 'sous_traitant').length; return `${n} ${n > 1 ? 'membres' : 'membre'}`; })()}
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => setPage('equipe')}
-                    className={`text-xs font-medium px-2 py-1 min-h-[44px] rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${isDark ? 'text-slate-300 hover:bg-slate-700 focus-visible:ring-orange-400' : 'text-slate-500 hover:bg-slate-100 focus-visible:ring-orange-500'}`}
-                  >
-                    Voir tout →
-                  </button>
-                </div>
-                <div className="p-3 space-y-1.5">
-                  {equipe.filter(e => e.actif !== false && e.contrat !== 'sous_traitant').slice(0, 6).map(emp => {
-                    // Check if this employee has an active pointage today
-                    const todayStr = new Date().toISOString().split('T')[0];
-                    const todayPts = pointages.filter(p => p.employeId === emp.id && p.date === todayStr);
-                    const totalToday = todayPts.reduce((s, p) => s + (parseFloat(p.heures) || 0), 0);
-                    const isActive = totalToday > 0;
-                    // Find which chantier they worked on most today
-                    const chantierCounts = {};
-                    todayPts.forEach(p => { if (p.chantierId) chantierCounts[p.chantierId] = (chantierCounts[p.chantierId] || 0) + (p.heures || 0); });
-                    const topChantierId = Object.entries(chantierCounts).sort((a, b) => b[1] - a[1])[0]?.[0];
-                    const chantier = topChantierId ? chantiers.find(c => c.id === topChantierId) : null;
-
-                    const roleColors = {
-                      'Chef de chantier': '#f59e0b', 'Ouvrier qualifie': '#6366f1', 'Electricien': '#eab308',
-                      'Plombier': '#3b82f6', 'Peintre': '#8b5cf6', 'Macon': '#a16207', 'Apprenti': '#10b981'
-                    };
-                    const avatarColor = roleColors[emp.role] || '#64748b';
-
-                    return (
-                      <div
-                        key={emp.id}
-                        onClick={() => setPage('equipe')}
-                        className={`flex items-center gap-2.5 p-2 rounded-xl cursor-pointer transition-colors ${isDark ? 'hover:bg-slate-700/50' : 'hover:bg-slate-50'}`}
-                      >
-                        {/* Avatar with status dot */}
-                        <div className="relative flex-shrink-0">
-                          <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold" style={{ background: avatarColor }}>
-                            {emp.prenom?.[0]}{emp.nom?.[0]}
-                          </div>
-                          <span className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 ${isDark ? 'border-slate-800' : 'border-white'} ${isActive ? 'bg-emerald-500' : 'bg-slate-400'}`} role="status" aria-label={isActive ? 'En activité' : 'Inactif'} />
-                        </div>
-                        {/* Info */}
-                        <div className="flex-1 min-w-0">
-                          <p className={`text-sm font-medium truncate ${isDark ? 'text-white' : 'text-slate-900'}`}>{emp.prenom}</p>
-                          <p className={`text-xs truncate ${isDark ? 'text-slate-300' : 'text-slate-500'}`}>
-                            {isActive && chantier ? chantier.nom : isActive ? `${totalToday.toFixed(1)}h aujourd'hui` : (() => {
-                              // Calculate time since last pointage
-                              const lastPt = pointages.filter(p => p.employeId === emp.id).sort((a, b) => (b.date || '').localeCompare(a.date || ''))[0];
-                              if (!lastPt) return 'Aucune activité';
-                              const lastDate = new Date(lastPt.date);
-                              const hoursAgo = Math.floor((Date.now() - lastDate.getTime()) / (1000 * 60 * 60));
-                              if (hoursAgo < 24) return `Inactif depuis ${hoursAgo}h`;
-                              const daysAgo = Math.floor(hoursAgo / 24);
-                              return `Inactif depuis ${daysAgo}j`;
-                            })()}
-                          </p>
-                        </div>
-                        {/* Duration badge or Assign button */}
-                        {isActive ? (
-                          <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${isDark ? 'bg-emerald-900/40 text-emerald-400' : 'bg-emerald-50 text-emerald-600'}`}>
-                            {totalToday.toFixed(1)}h
-                          </span>
-                        ) : (
-                          <button
-                            onClick={(e) => { e.stopPropagation(); setPage('equipe'); }}
-                            className={`text-[10px] font-medium px-2 py-1.5 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg transition-colors outline-none focus-visible:ring-2 focus-visible:ring-offset-1 ${isDark ? 'text-slate-500 hover:bg-slate-700 hover:text-slate-300 focus-visible:ring-orange-400' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600 focus-visible:ring-orange-500'}`}
-                          >
-                            Assigner
-                          </button>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Subscription Usage Widget */}
-            {isWidgetVisible('subscription') && (
-              <UsageAlerts isDark={isDark} couleur={couleur} />
-            )}
-
-            {/* Stock Widget - only if low stock */}
-            {isWidgetVisible('stock') && stats.lowStockItems?.length > 0 && (
-              <StockWidget
-                setPage={setPage}
-                isDark={isDark}
-              />
-            )}
-
-            {/* Conformity Score Widget */}
-            {isWidgetVisible('conformity') && (() => {
-              // Compute live score from entreprise data (fallback to localStorage cache)
-              let score = 0;
-              const now = new Date();
-              if (entreprise?.siret) score += 7;
-              if (entreprise?.codeApe) score += 7;
-              if (entreprise?.tvaIntra) score += 6;
-              if (entreprise?.rcProAssureur && (!entreprise.rcProValidite || new Date(entreprise.rcProValidite) > now)) score += 20;
-              if (entreprise?.decennaleAssureur && (!entreprise.decennaleValidite || new Date(entreprise.decennaleValidite) > now)) score += 20;
-              if (entreprise?.cgv) score += 10;
-              if (entreprise?.iban && entreprise?.bic) score += 10;
-              if (entreprise?.adresse && entreprise?.nom && entreprise?.tel && entreprise?.email) score += 10;
-              if (entreprise?.rcsVille || entreprise?.rcsNumero) score += 10;
-              // Override with detailed score from Admin panel if available
-              const cached = parseInt(localStorage.getItem('cp_conformity_score') || '0');
-              if (cached > 0) score = cached;
-
-              if (score === 0) return null;
-              const cardClass = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200';
-              const titleClass = isDark ? 'text-white' : 'text-slate-900';
-              const mutedClass = isDark ? 'text-slate-300' : 'text-slate-500';
-              const scoreColor = score >= 80 ? '#10b981' : score >= 50 ? '#f59e0b' : '#ef4444';
-              return (
-                <div
-                  className={`${cardClass} rounded-2xl border p-5 cursor-pointer hover:shadow-lg transition-all hover:-translate-y-0.5`}
-                  onClick={() => setPage('settings')}
-                >
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${scoreColor}15` }}>
-                      <ShieldCheck size={18} style={{ color: scoreColor }} />
-                    </div>
-                    <div>
-                      <p className={`font-semibold text-sm ${titleClass}`}>Conformité</p>
-                      <p className={`text-[11px] ${mutedClass}`}>Score réglementaire</p>
-                    </div>
-                  </div>
-                  <div className="flex items-end gap-3">
-                    <p className="text-3xl font-bold" style={{ color: scoreColor }}>{score}%</p>
-                    <div className="flex-1 pb-1.5">
-                      <div className={`w-full h-2 rounded-full ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
-                        <div
-                          className="h-2 rounded-full transition-all"
-                          style={{ width: `${Math.min(100, score)}%`, background: `linear-gradient(90deg, ${scoreColor}, ${scoreColor}cc)` }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                  <p className={`text-xs ${mutedClass} mt-2 flex items-center gap-1`}>Voir détails <ChevronRight size={12} /></p>
-                  {/* A7: Insurance expiration alerts — contextual color */}
-                  {(() => {
-                    const alerts = [];
-                    const now = new Date();
-                    const addAlert = (label, dateStr) => {
-                      if (!dateStr) return;
-                      const exp = new Date(dateStr);
-                      const daysLeft = Math.ceil((exp - now) / 86400000);
-                      if (daysLeft <= 0) alerts.push({ label, daysLeft, color: 'red', text: 'Expirée !' });
-                      else if (daysLeft <= 30) alerts.push({ label, daysLeft, color: 'red', text: `Expire dans ${daysLeft}j` });
-                      else if (daysLeft <= 90) alerts.push({ label, daysLeft, color: 'red', text: `Expire dans ${daysLeft}j` });
-                      else if (daysLeft <= 180) alerts.push({ label, daysLeft, color: 'orange', text: `Expire dans ${daysLeft}j` });
-                    };
-                    addAlert('RC Pro', entreprise?.rcProValidite);
-                    addAlert('Décennale', entreprise?.decennaleValidite);
-                    if (alerts.length > 0) {
-                      const dismissed = localStorage.getItem('cp_conformity_alert_dismissed');
-                      const dismissedDate = dismissed ? new Date(parseInt(dismissed)) : null;
-                      const canDismiss = alerts.every(a => a.daysLeft > 30);
-                      if (dismissedDate && canDismiss && (now - dismissedDate < 86400000)) return null;
-                      return (
-                        <div className={`mt-3 space-y-1.5`}>
-                          {alerts.map(a => (
-                            <div key={a.label} className={`flex items-center justify-between text-xs px-2 py-1.5 rounded-lg ${a.color === 'red' ? (isDark ? 'bg-red-900/30 text-red-400' : 'bg-red-50 text-red-700') : (isDark ? 'bg-orange-900/30 text-orange-400' : 'bg-orange-50 text-orange-700')}`}>
-                              <span className="font-medium">{a.label}</span>
-                              <span>{a.text}</span>
-                            </div>
-                          ))}
-                          {canDismiss && (
-                            <button onClick={(e) => { e.stopPropagation(); localStorage.setItem('cp_conformity_alert_dismissed', Date.now().toString()); }} className={`text-[10px] ${mutedClass}`}>Masquer 24h</button>
-                          )}
-                        </div>
-                      );
-                    }
-                    return null;
-                  })()}
-                </div>
-              );
-            })()}
-
-            {/* Sous-traitant Alerts */}
-            {(() => {
-              const sousTraitants = equipe?.filter(e => e.type === 'sous_traitant') || [];
-              if (sousTraitants.length === 0) return null;
-              const now = new Date();
-              const sixMonths = 180 * 24 * 3600 * 1000;
-              const alerts = [];
-              sousTraitants.forEach(st => {
-                if (st.decennale_expiration && new Date(st.decennale_expiration) < now) {
-                  alerts.push({ type: 'critical', msg: `Décennale expirée : ${st.prenom ? st.prenom + ' ' : ''}${st.nom}` });
-                } else if (st.decennale_expiration && new Date(st.decennale_expiration) < new Date(now.getTime() + 30 * 24 * 3600 * 1000)) {
-                  alerts.push({ type: 'warning', msg: `Décennale expire bientôt : ${st.prenom ? st.prenom + ' ' : ''}${st.nom}` });
-                }
-                if (st.urssaf_date && (now.getTime() - new Date(st.urssaf_date).getTime()) > sixMonths) {
-                  alerts.push({ type: 'warning', msg: `URSSAF >6 mois : ${st.prenom ? st.prenom + ' ' : ''}${st.nom}` });
-                }
-                if (!st.decennale_expiration && !st.urssaf_date) {
-                  alerts.push({ type: 'info', msg: `Documents manquants : ${st.prenom ? st.prenom + ' ' : ''}${st.nom}` });
-                }
-              });
-              if (alerts.length === 0) return null;
-              const cardClass = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200';
-              const titleClass = isDark ? 'text-white' : 'text-slate-900';
-              const critical = alerts.filter(a => a.type === 'critical').length;
-              const warning = alerts.filter(a => a.type === 'warning').length;
-              return (
-                <div
-                  className={`${cardClass} rounded-2xl border p-5 cursor-pointer hover:shadow-lg transition-shadow`}
-                  onClick={() => setPage('equipe')}
-                >
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className={`p-2 rounded-lg ${critical > 0 ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-600'} ${isDark ? 'bg-opacity-20' : ''}`}>
-                      <AlertTriangle size={20} />
-                    </div>
-                    <p className={`font-semibold ${titleClass}`}>Sous-traitants</p>
-                    <span className={`ml-auto text-xs px-2 py-1 rounded-full font-medium ${critical > 0 ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'} ${isDark ? 'bg-opacity-20' : ''}`}>
-                      {alerts.length} alerte{alerts.length > 1 ? 's' : ''}
-                    </span>
-                  </div>
-                  <div className="space-y-1.5">
-                    {alerts.slice(0, 3).map((a, i) => (
-                      <p key={i} className={`text-xs flex items-center gap-2 ${a.type === 'critical' ? 'text-red-500' : a.type === 'warning' ? 'text-amber-500' : isDark ? 'text-slate-300' : 'text-slate-500'}`}>
-                        <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${a.type === 'critical' ? 'bg-red-500' : a.type === 'warning' ? 'bg-amber-500' : 'bg-slate-400'}`} />
-                        {a.msg}
-                      </p>
-                    ))}
-                    {alerts.length > 3 && <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>+{alerts.length - 3} autre{alerts.length - 3 > 1 ? 's' : ''}</p>}
-                  </div>
-                </div>
-              );
-            })()}
-
-            {/* Bank Widget — hidden if no bank connected or no finance access */}
-            {canSeeFinances && (entreprise?.iban || entreprise?.banque) && (
-              <BankWidget
-                isDark={isDark}
-                onConnectBank={() => setPage('settings')}
-                onViewTransactions={() => setPage('finances')}
-              />
-            )}
-          </div>
-        </section>
-        </>)}{/* end showOverviewSection collapsible */}
       </div>
 
       {/* Relance Modal */}
@@ -2424,42 +1755,6 @@ export default function Dashboard({
         }}
       />
 
-      {/* ========== DEVIS EXPRESS MODAL ========== */}
-      <DevisExpressModal
-        isOpen={showDevisExpress}
-        onClose={() => setShowDevisExpress(false)}
-        onCreateDevis={async (devisData) => {
-          try {
-            const newDevis = await addDevis?.({
-              ...devisData,
-              type: 'devis',
-              statut: 'brouillon',
-              date: new Date().toISOString().split('T')[0],
-            });
-            if (newDevis?.id) {
-              // Don't close modal here — let the modal show success animation first
-              // Navigation happens after modal closes itself
-              setTimeout(() => {
-                setSelectedDevis?.(newDevis);
-                setPage?.('devis');
-              }, 1500);
-              showToast(`Devis ${newDevis.numero || ''} créé avec succès !`, 'success');
-              return true;
-            } else {
-              showToast('Erreur : impossible de créer le devis. Vérifiez le client sélectionné.', 'error');
-              return false;
-            }
-          } catch (err) {
-            captureException(err, { context: 'DevisExpress creation failed' });
-            showToast(`Erreur création devis : ${err.message || 'erreur inconnue'}`, 'error');
-            throw err; // Re-throw so modal can show inline error
-          }
-        }}
-        clients={clients}
-        addClient={addClient}
-        isDark={isDark}
-        couleur={couleur}
-      />
 
       {/* ========== DEVIS IA CHAT MODAL ========== */}
       {showAIChat && (
