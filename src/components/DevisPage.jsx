@@ -4539,7 +4539,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           </div>
         </div>
 
-        {/* Devis IA + Split-button: + Nouveau devis — hidden for view-only roles */}
+        {/* Devis IA + Devis Express + Split-button: + Nouveau devis — hidden for view-only roles */}
         {canPerform('devis', 'create') && (
         <div className="flex items-center gap-2">
           <button
@@ -4549,6 +4549,16 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           >
             <Sparkles size={14} />
             <span className="hidden sm:inline">Devis IA</span>
+          </button>
+
+          <button
+            onClick={() => setShowDevisExpressModal(true)}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold text-white min-h-[44px] transition-all hover:opacity-90"
+            style={{ backgroundColor: couleur }}
+            aria-label="Créer un devis express"
+          >
+            <Zap size={14} />
+            <span className="hidden sm:inline">Devis Express</span>
           </button>
         <div className="relative">
           <div className="flex items-stretch">

@@ -1,4 +1,4 @@
-import React, { memo } from 'react';
+import { memo } from 'react';
 import { X, AlertTriangle, Info, Bell } from 'lucide-react';
 
 /**
@@ -66,7 +66,7 @@ const TYPE_ICONS = {
 
 const NotificationStrip = memo(function NotificationStrip({
   isDark,
-  couleur,
+  _couleur,
   notifications = [],
   onDismiss,
   onAction,
@@ -81,7 +81,7 @@ const NotificationStrip = memo(function NotificationStrip({
   const type = notif.type || 'info';
   const theme = isDark ? 'dark' : 'light';
   const styles = TYPE_STYLES[type]?.[theme] || TYPE_STYLES.info[theme];
-  const IconComponent = notif.icon || TYPE_ICONS[type] || Info;
+  const _IconComponent = notif.icon || TYPE_ICONS[type] || Info;
 
   return (
     <div

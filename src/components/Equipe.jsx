@@ -16,7 +16,7 @@ import { generateId } from '../lib/utils';
 import { useFormValidation, employeeSchema, email as emailValidator, phone as phoneValidator } from '../lib/validation';
 import { usePermissions } from '../hooks/usePermissions';
 import { ReadOnlyBanner } from './ui/PermissionGate';
-import { TabBar } from './ui/TabBar';
+import TabBar from './ui/TabBar';
 
 // Lazy-load optional heavy dependencies to prevent crashes
 let NoteModal = null;

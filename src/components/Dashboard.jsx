@@ -1,50 +1,39 @@
 /**
- * Dashboard — Focus & Pulse
+ * Dashboard — 5-zone layout
  *
- * 3-zone layout:
- * 1. Hero Pulse — greeting, score santé, 4 KPI cards, sparkline CA
- * 2. Actions Prioritaires — unified priority list
- * 3. Contexte — active chantier + pipeline funnel + onboarding bar
+ * 1. Header Greeting — greeting, score santé, mode discret toggle
+ * 2. Notification Strip — urgent/warning banners (factures en retard, conformité)
+ * 3. KPI Strip — 4 KPI cards (À encaisser, CA ce mois, Devis en attente, Chantiers actifs)
+ * 4. Actions du jour — prioritized actions list (max 3 visible, expandable)
+ * 5. Dashboard Grid — main content grid (pipeline, chantier actif, activities, onboarding)
  *
- * 2-column layout on desktop (lg:):
- *  - Left column: KPIs, sparkline CA, pipeline, actions du jour, promo cards
- *  - Right column: chantier actif, onboarding
- *  - Banners (profile < 50%, urgent) stay full-width above the grid
+ * Responsive: single column on mobile, optimized layout on desktop.
  *
  * @module Dashboard
  */
 
-import React, { useState, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useMemo } from 'react';
+import { motion } from 'framer-motion';
 import {
   FileText,
   HardHat,
-  AlertTriangle,
-  AlertCircle,
-  Clock,
   ChevronRight,
-  ChevronDown,
-  ChevronUp,
   Eye,
   EyeOff,
-  ArrowRight,
   Receipt,
   Send,
   ClipboardList,
   CheckCircle,
   TrendingUp,
   TrendingDown,
-  Minus,
-  Zap,
-  Sparkles,
-  BarChart3,
 } from 'lucide-react';
 
 import { useData } from '../context/DataContext';
 import { useToast } from '../context/AppContext';
 import { usePermissions } from '../hooks/usePermissions';
-import { captureException } from '../lib/sentry';
-import DashboardMemos from './dashboard/DashboardMemos';
+import NotificationStrip from './dashboard/NotificationStrip';
+import KPIStrip from './dashboard/KPIStrip';
+import DashboardGrid from './dashboard/DashboardGrid';
 
 // ============ CONSTANTS ============
 
@@ -76,19 +65,6 @@ const fadeInUp = {
   initial: { opacity: 0, y: 10 },
   animate: { opacity: 1, y: 0 },
   exit: { opacity: 0, y: -10 },
-};
-
-const staggerContainer = {
-  animate: {
-    transition: {
-      staggerChildren: 0.05,
-    },
-  },
-};
-
-const staggerItem = {
-  initial: { opacity: 0, y: 10 },
-  animate: { opacity: 1, y: 0 },
 };
 
 // ============ HELPERS ============
@@ -194,34 +170,6 @@ function TrendBadge({ trend, isDark }) {
   );
 }
 
-// ============ KPI CARD (enhanced with trend) ============
-
-function KPICard({ label, value, sub, trend, colorClasses, isDark, delay = 0 }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay, duration: 0.4 }}
-      className={`rounded-2xl p-4 sm:p-5 ${colorClasses}`}
-    >
-      <p className={`text-sm font-medium ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
-        {label}
-      </p>
-      <div className="flex items-center gap-2 mt-1">
-        <p className={`text-2xl font-bold ${isDark ? 'text-slate-100' : 'text-gray-900'}`}>
-          {value}
-        </p>
-        {trend && <TrendBadge trend={trend} isDark={isDark} />}
-      </div>
-      {sub && (
-        <p className={`text-xs mt-1.5 ${isDark ? 'text-slate-500' : 'text-gray-400'}`}>
-          {sub}
-        </p>
-      )}
-    </motion.div>
-  );
-}
-
 // ============ ACTION ITEM ============
 
 function ActionItem({ icon: Icon, color, label, detail, actionLabel, onClick, isDark }) {
@@ -259,274 +207,9 @@ function ActionItem({ icon: Icon, color, label, detail, actionLabel, onClick, is
   );
 }
 
-// ============ OVERVIEW WIDGET (collapsible) ============
 
-/**
- * GAP 7: Compact overview widget that can be toggled open/closed.
- * Summarizes key business metrics in a dense layout.
- */
-function OverviewWidget({
-  isDark,
-  couleur,
-  textPrimary,
-  textSecondary,
-  sectionBg,
-  computed,
-  modeDiscret,
-  showOverview,
-  setShowOverview,
-}) {
-  const cardBg = isDark
-    ? 'bg-slate-800/60 border border-slate-700/40'
-    : 'bg-slate-50 border border-slate-100';
-
-  // Summary items for the overview grid
-  const overviewItems = useMemo(() => [
-    {
-      label: 'CA total 6 mois',
-      value: fmt(computed.caSigne || 0, modeDiscret),
-      icon: BarChart3,
-      color: couleur,
-    },
-    {
-      label: 'CA prévisionnel',
-      value: fmt(computed.caPrevisionnel, modeDiscret),
-      icon: TrendingUp,
-      color: '#10b981',
-    },
-    {
-      label: 'Factures en retard',
-      value: fmt(computed.retard, modeDiscret),
-      icon: AlertTriangle,
-      color: computed.retard > 0 ? '#ef4444' : '#10b981',
-    },
-    {
-      label: 'Chantiers actifs',
-      value: String(computed.chantiersActifs.length),
-      icon: HardHat,
-      color: '#3b82f6',
-    },
-    {
-      label: 'Devis en attente',
-      value: String(computed.devisEnAttente.length),
-      icon: FileText,
-      color: '#f97316',
-    },
-    {
-      label: 'Taux de conversion',
-      value: `${computed.tauxConversion}%`,
-      icon: Zap,
-      color: computed.tauxConversion >= 50 ? '#10b981' : '#f59e0b',
-    },
-  ], [computed, modeDiscret, couleur]);
-
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.3 }}
-      className={`rounded-2xl overflow-hidden ${sectionBg}`}
-    >
-      {/* Toggle header */}
-      <button
-        type="button"
-        onClick={() => setShowOverview(!showOverview)}
-        className={`w-full flex items-center justify-between px-5 py-3.5 transition-colors ${
-          isDark ? 'hover:bg-slate-700/30' : 'hover:bg-gray-50/50'
-        }`}
-      >
-        <div className="flex items-center gap-2">
-          <BarChart3 className="w-4 h-4" style={{ color: couleur }} />
-          <span className={`text-sm font-semibold ${textPrimary}`}>
-            Tableau de bord
-          </span>
-          <span className={`text-xs px-1.5 py-0.5 rounded-full ${isDark ? 'bg-slate-700 text-slate-400' : 'bg-slate-100 text-slate-500'}`}>
-            Vue d'ensemble
-          </span>
-        </div>
-        <motion.div
-          animate={{ rotate: showOverview ? 180 : 0 }}
-          transition={{ duration: 0.2 }}
-        >
-          <ChevronDown className={`w-4 h-4 ${textSecondary}`} />
-        </motion.div>
-      </button>
-
-      {/* Collapsible content */}
-      <AnimatePresence initial={false}>
-        {showOverview && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.25, ease: 'easeInOut' }}
-            className="overflow-hidden"
-          >
-            <div className="px-5 pb-5">
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {overviewItems.map((item, idx) => {
-                  const ItemIcon = item.icon;
-                  return (
-                    <motion.div
-                      key={item.label}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: idx * 0.05, duration: 0.3 }}
-                      className={`rounded-xl p-3.5 ${cardBg}`}
-                    >
-                      <div className="flex items-center gap-2 mb-1.5">
-                        <div
-                          className="w-6 h-6 rounded-lg flex items-center justify-center"
-                          style={{ background: `${item.color}15` }}
-                        >
-                          <ItemIcon className="w-3.5 h-3.5" style={{ color: item.color }} />
-                        </div>
-                        <span className={`text-[10px] uppercase tracking-wider font-medium ${textSecondary}`}>
-                          {item.label}
-                        </span>
-                      </div>
-                      <p className={`text-lg font-bold ${textPrimary}`}>
-                        {item.value}
-                      </p>
-                    </motion.div>
-                  );
-                })}
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </motion.div>
-  );
-}
-
-// ============ PROMO CARDS (Devis IA / Express) ============
-
-/**
- * Promo cards displayed in the left column.
- * These promote features like AI-powered quotes and express invoicing.
- */
-function PromoCards({ isDark, couleur, setPage, setCreateMode, setAiPrefill }) {
-  const cardBg = isDark
-    ? 'bg-slate-800 border border-slate-700/50'
-    : 'bg-white shadow-[0_1px_3px_rgba(0,0,0,0.06)]';
-  const textPrimary = isDark ? 'text-slate-100' : 'text-gray-900';
-  const textSecondary = isDark ? 'text-slate-400' : 'text-gray-500';
-
-  return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-      {/* Devis IA card */}
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.4, duration: 0.3 }}
-        className={`rounded-2xl p-4 sm:p-5 cursor-pointer transition-transform hover:scale-[1.01] ${cardBg}`}
-        onClick={() => {
-          setAiPrefill?.({ active: true });
-          setPage('devis');
-        }}
-      >
-        <div className="flex items-start gap-3">
-          <div
-            className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-            style={{ background: `${couleur}15` }}
-          >
-            <Sparkles className="w-5 h-5" style={{ color: couleur }} />
-          </div>
-          <div>
-            <h4 className={`text-sm font-semibold ${textPrimary}`}>
-              Devis IA
-            </h4>
-            <p className={`text-xs mt-1 ${textSecondary}`}>
-              Générez un devis professionnel en quelques secondes grâce à l'intelligence artificielle
-            </p>
-            <span
-              className="inline-flex items-center gap-1 text-xs font-medium mt-2"
-              style={{ color: couleur }}
-            >
-              Essayer <ArrowRight className="w-3 h-3" />
-            </span>
-          </div>
-        </div>
-      </motion.div>
-
-      {/* Devis Express card */}
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.45, duration: 0.3 }}
-        className={`rounded-2xl p-4 sm:p-5 cursor-pointer transition-transform hover:scale-[1.01] ${cardBg}`}
-        onClick={() => {
-          setCreateMode?.({ devis: true });
-          setPage('devis');
-        }}
-      >
-        <div className="flex items-start gap-3">
-          <div
-            className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-            style={{ background: '#10b98115' }}
-          >
-            <Zap className="w-5 h-5" style={{ color: '#10b981' }} />
-          </div>
-          <div>
-            <h4 className={`text-sm font-semibold ${textPrimary}`}>
-              Devis Express
-            </h4>
-            <p className={`text-xs mt-1 ${textSecondary}`}>
-              Créez un devis rapide à partir de vos modèles et votre catalogue
-            </p>
-            <span
-              className="inline-flex items-center gap-1 text-xs font-medium mt-2"
-              style={{ color: '#10b981' }}
-            >
-              Créer <ArrowRight className="w-3 h-3" />
-            </span>
-          </div>
-        </div>
-      </motion.div>
-    </div>
-  );
-}
 
 // ============ URGENT BANNER ============
-
-/**
- * Full-width banner shown when there are critical actions needed.
- * Displayed above the 2-column grid.
- */
-function UrgentBanner({ count, totalRetard, isDark, modeDiscret, couleur, onClick }) {
-  if (count === 0) return null;
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: -10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-      className={`rounded-2xl px-5 py-4 flex items-center gap-4 cursor-pointer transition-transform hover:scale-[1.005] ${
-        isDark
-          ? 'bg-red-900/20 border border-red-800/30'
-          : 'bg-red-50 border border-red-100'
-      }`}
-      onClick={onClick}
-    >
-      <div
-        className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-        style={{ background: '#ef444420' }}
-      >
-        <AlertTriangle className="w-5 h-5 text-red-500" />
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className={`text-sm font-semibold ${isDark ? 'text-red-300' : 'text-red-700'}`}>
-          {count} facture{count > 1 ? 's' : ''} en retard
-        </p>
-        <p className={`text-xs mt-0.5 ${isDark ? 'text-red-400/70' : 'text-red-500/70'}`}>
-          Total : {fmt(totalRetard, modeDiscret)}
-        </p>
-      </div>
-      <ChevronRight className={`w-5 h-5 flex-shrink-0 ${isDark ? 'text-red-500/50' : 'text-red-400'}`} />
-    </motion.div>
-  );
-}
 
 // ============ PROFILE COMPLETION BANNER ============
 
@@ -582,146 +265,6 @@ function BatchRelaunchButton({ actions, isDark, couleur, showToast }) {
  * Displays the main active chantier with progress bar.
  * Shows a "create" CTA when no chantier is active.
  */
-function ChantierActifWidget({
-  chantierPrincipal,
-  chantiersActifs,
-  clients,
-  isDark,
-  couleur,
-  textPrimary,
-  textSecondary,
-  sectionBg,
-  setSelectedChantier,
-  setPage,
-}) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.3, duration: 0.4 }}
-      className={`rounded-2xl p-5 ${sectionBg}`}
-    >
-      <h3 className={`text-sm font-semibold mb-3 ${textSecondary}`}>
-        Chantier en cours
-      </h3>
-      {chantierPrincipal ? (() => {
-        const ch = chantierPrincipal;
-        const client = clients.find(c => c.id === ch.client_id);
-        const avancement = ch.avancement || 0;
-        return (
-          <div>
-            <p className={`text-base font-semibold ${textPrimary}`}>
-              {ch.nom || ch.name || 'Chantier'}
-            </p>
-            <p className={`text-xs mb-3 ${textSecondary}`}>
-              {client ? (client.nom || client.name) : 'Pas de client'}
-            </p>
-            <div className="mb-2">
-              <div className="flex justify-between text-xs mb-1">
-                <span className={textSecondary}>Avancement</span>
-                <span className={`font-medium ${textPrimary}`}>{avancement}%</span>
-              </div>
-              <div className={`h-2 rounded-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`}>
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${avancement}%` }}
-                  transition={{ duration: 0.6, ease: 'easeOut' }}
-                  className="h-full rounded-full transition-all"
-                  style={{ background: couleur }}
-                />
-              </div>
-            </div>
-            {ch.prochaineTache && (
-              <p className={`text-xs mt-2 ${textSecondary}`}>
-                Prochaine tache : {ch.prochaineTache}
-              </p>
-            )}
-            <button
-              type="button"
-              onClick={() => { setSelectedChantier?.(ch.id); setPage('chantier-detail', { chantierId: ch.id }); }}
-              className="mt-3 inline-flex items-center gap-1 text-sm font-medium transition-colors"
-              style={{ color: couleur }}
-            >
-              Ouvrir <ArrowRight className="w-3.5 h-3.5" />
-            </button>
-
-            {/* Additional active chantiers */}
-            {chantiersActifs.length > 1 && (
-              <div className={`mt-4 pt-3 border-t ${isDark ? 'border-slate-700' : 'border-slate-100'}`}>
-                <p className={`text-xs mb-2 ${textSecondary}`}>
-                  {chantiersActifs.length - 1} autre{chantiersActifs.length > 2 ? 's' : ''} chantier{chantiersActifs.length > 2 ? 's' : ''} actif{chantiersActifs.length > 2 ? 's' : ''}
-                </p>
-                <div className="space-y-2">
-                  {chantiersActifs
-                    .filter(c => c.id !== ch.id)
-                    .slice(0, 3)
-                    .map((otherCh) => {
-                      const otherClient = clients.find(c => c.id === otherCh.client_id);
-                      const otherAvancement = otherCh.avancement || 0;
-                      return (
-                        <button
-                          key={otherCh.id}
-                          type="button"
-                          onClick={() => { setSelectedChantier?.(otherCh.id); setPage('chantier-detail', { chantierId: otherCh.id }); }}
-                          className={`w-full text-left flex items-center gap-3 py-2 px-3 rounded-xl transition-colors ${
-                            isDark ? 'hover:bg-slate-700/50' : 'hover:bg-gray-50'
-                          }`}
-                        >
-                          <div className="flex-1 min-w-0">
-                            <p className={`text-xs font-medium truncate ${textPrimary}`}>
-                              {otherCh.nom || otherCh.name || 'Chantier'}
-                            </p>
-                            <p className={`text-[10px] truncate ${textSecondary}`}>
-                              {otherClient ? (otherClient.nom || otherClient.name) : ''}
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-2 flex-shrink-0">
-                            <div className={`w-12 h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`}>
-                              <div
-                                className="h-full rounded-full"
-                                style={{ width: `${otherAvancement}%`, background: couleur }}
-                              />
-                            </div>
-                            <span className={`text-[10px] font-medium ${textSecondary}`}>
-                              {otherAvancement}%
-                            </span>
-                          </div>
-                        </button>
-                      );
-                    })}
-                </div>
-                {chantiersActifs.length > 4 && (
-                  <button
-                    type="button"
-                    onClick={() => setPage('chantiers')}
-                    className="mt-2 text-xs font-medium"
-                    style={{ color: couleur }}
-                  >
-                    Voir tous les chantiers ({chantiersActifs.length})
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-        );
-      })() : (
-        <div className={`text-sm py-4 text-center ${textSecondary}`}>
-          Aucun chantier en cours
-          <br />
-          <button
-            type="button"
-            onClick={() => setPage('chantiers')}
-            className="mt-2 text-sm font-medium"
-            style={{ color: couleur }}
-          >
-            Créer un chantier
-          </button>
-        </div>
-      )}
-    </motion.div>
-  );
-}
-
 // ============ PIPELINE WIDGET ============
 
 /**
@@ -803,739 +346,6 @@ function ActionsSection({
  * Recent activity timeline showing the latest business events.
  * Helps user see what happened recently at a glance.
  */
-function ActivityTimeline({
-  devis,
-  chantiers,
-  clients,
-  isDark,
-  couleur,
-  textPrimary,
-  textSecondary,
-  sectionBg,
-  modeDiscret,
-  setPage,
-  setSelectedDevis,
-  setSelectedChantier,
-}) {
-  // Build activity items from recent devis and chantier changes
-  const activities = useMemo(() => {
-    const items = [];
-    const now = new Date();
-    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-
-    // Recent devis activity
-    devis
-      .filter(d => d.date && new Date(d.date) > thirtyDaysAgo)
-      .sort((a, b) => new Date(b.date) - new Date(a.date))
-      .slice(0, 8)
-      .forEach(d => {
-        const client = clients.find(c => c.id === d.client_id);
-        const clientName = client ? (client.nom || client.name) : 'Client inconnu';
-        let actionText = '';
-        let actionIcon = FileText;
-        let actionColor = couleur;
-
-        switch (d.statut) {
-          case 'brouillon':
-            actionText = `Brouillon créé`;
-            actionIcon = FileText;
-            actionColor = '#94a3b8';
-            break;
-          case 'envoye':
-            actionText = `Devis envoyé`;
-            actionIcon = Send;
-            actionColor = '#3b82f6';
-            break;
-          case 'signe':
-            actionText = `Devis signé`;
-            actionIcon = CheckCircle;
-            actionColor = '#10b981';
-            break;
-          case 'facture':
-            actionText = `Facture émise`;
-            actionIcon = Receipt;
-            actionColor = '#8b5cf6';
-            break;
-          case 'refuse':
-            actionText = `Devis refusé`;
-            actionIcon = AlertTriangle;
-            actionColor = '#ef4444';
-            break;
-          default:
-            actionText = `Devis mis à jour`;
-            actionIcon = FileText;
-            actionColor = couleur;
-        }
-
-        items.push({
-          id: `devis-${d.id}`,
-          date: d.date,
-          text: `${actionText} — ${clientName}`,
-          amount: d.total_ttc,
-          icon: actionIcon,
-          color: actionColor,
-          type: 'devis',
-          onClick: () => { setSelectedDevis(d); setPage('devis'); },
-        });
-      });
-
-    // Recent chantier activity
-    chantiers
-      .filter(c => c.date_debut && new Date(c.date_debut) > thirtyDaysAgo)
-      .sort((a, b) => new Date(b.date_debut) - new Date(a.date_debut))
-      .slice(0, 4)
-      .forEach(c => {
-        const client = clients.find(cl => cl.id === c.client_id);
-        const clientName = client ? (client.nom || client.name) : '';
-
-        items.push({
-          id: `chantier-${c.id}`,
-          date: c.date_debut,
-          text: `Chantier démarré : ${c.nom || c.name || 'Sans nom'}`,
-          amount: null,
-          icon: HardHat,
-          color: '#3b82f6',
-          type: 'chantier',
-          onClick: () => { setSelectedChantier?.(c.id); setPage('chantier-detail', { chantierId: c.id }); },
-        });
-      });
-
-    // Sort all activities by date descending
-    return items.sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 8);
-  }, [devis, chantiers, clients, couleur, setSelectedDevis, setSelectedChantier, setPage]);
-
-  if (activities.length === 0) return null;
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.5, duration: 0.4 }}
-      className={`rounded-2xl p-5 ${sectionBg}`}
-    >
-      <h3 className={`text-sm font-semibold mb-4 ${textSecondary}`}>
-        Activité récente
-      </h3>
-      <div className="relative">
-        {/* Timeline line */}
-        <div
-          className={`absolute left-4 top-0 bottom-0 w-px ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`}
-        />
-
-        {/* Timeline items */}
-        <div className="space-y-1">
-          {activities.map((activity, idx) => {
-            const ActivityIcon = activity.icon;
-            const dateStr = activity.date
-              ? new Date(activity.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
-              : '';
-            return (
-              <motion.button
-                key={activity.id}
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.5 + idx * 0.04, duration: 0.25 }}
-                type="button"
-                onClick={activity.onClick}
-                className={`w-full text-left flex items-start gap-3 pl-1 pr-3 py-2.5 rounded-xl transition-colors relative ${
-                  isDark ? 'hover:bg-slate-700/30' : 'hover:bg-gray-50'
-                }`}
-              >
-                {/* Timeline dot */}
-                <div
-                  className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 relative z-10"
-                  style={{ background: `${activity.color}15` }}
-                >
-                  <ActivityIcon className="w-3.5 h-3.5" style={{ color: activity.color }} />
-                </div>
-
-                {/* Content */}
-                <div className="flex-1 min-w-0 pt-0.5">
-                  <p className={`text-xs font-medium truncate ${textPrimary}`}>
-                    {activity.text}
-                  </p>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <span className={`text-[10px] ${textSecondary}`}>
-                      {dateStr}
-                    </span>
-                    {activity.amount > 0 && (
-                      <span className={`text-[10px] font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                        {fmt(activity.amount, modeDiscret)}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </motion.button>
-            );
-          })}
-        </div>
-      </div>
-    </motion.div>
-  );
-}
-
-// ============ EQUIPE SUMMARY WIDGET ============
-
-/**
- * Compact summary of team members and their current assignments.
- * Only shown when there is team data available.
- */
-function EquipeSummary({
-  equipe,
-  chantiers,
-  isDark,
-  couleur,
-  textPrimary,
-  textSecondary,
-  sectionBg,
-  setPage,
-}) {
-  if (!equipe || equipe.length === 0) return null;
-
-  const chantiersActifs = chantiers.filter(c => c.statut === 'en_cours');
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.55, duration: 0.4 }}
-      className={`rounded-2xl p-5 ${sectionBg}`}
-    >
-      <div className="flex justify-between items-center mb-3">
-        <h3 className={`text-sm font-semibold ${textSecondary}`}>
-          Équipe
-        </h3>
-        <span className={`text-xs px-2 py-0.5 rounded-full ${isDark ? 'bg-slate-700 text-slate-400' : 'bg-slate-100 text-slate-500'}`}>
-          {equipe.length} membre{equipe.length > 1 ? 's' : ''}
-        </span>
-      </div>
-      <div className="space-y-2">
-        {equipe.slice(0, 5).map((membre, idx) => {
-          // Find if member is assigned to an active chantier
-          const assignedChantier = chantiersActifs.find(c =>
-            c.equipe_ids?.includes(membre.id) || c.responsable_id === membre.id
-          );
-          return (
-            <motion.div
-              key={membre.id || idx}
-              initial={{ opacity: 0, x: 10 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.55 + idx * 0.04, duration: 0.25 }}
-              className={`flex items-center gap-3 px-3 py-2 rounded-xl ${
-                isDark ? 'bg-slate-800/60' : 'bg-slate-50'
-              }`}
-            >
-              {/* Avatar placeholder */}
-              <div
-                className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold text-white"
-                style={{ background: couleur }}
-              >
-                {(membre.prenom || membre.nom || 'U').charAt(0).toUpperCase()}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className={`text-xs font-medium truncate ${textPrimary}`}>
-                  {membre.prenom || ''} {membre.nom || 'Membre'}
-                </p>
-                <p className={`text-[10px] truncate ${textSecondary}`}>
-                  {membre.role || membre.poste || 'Équipe'}
-                </p>
-              </div>
-              {assignedChantier && (
-                <span className={`text-[10px] px-2 py-0.5 rounded-full flex-shrink-0 ${
-                  isDark ? 'bg-emerald-900/30 text-emerald-400' : 'bg-emerald-50 text-emerald-600'
-                }`}>
-                  En chantier
-                </span>
-              )}
-            </motion.div>
-          );
-        })}
-      </div>
-      {equipe.length > 5 && (
-        <button
-          type="button"
-          onClick={() => setPage('equipe')}
-          className="mt-3 w-full text-center text-xs font-medium"
-          style={{ color: couleur }}
-        >
-          Voir toute l'équipe ({equipe.length})
-        </button>
-      )}
-    </motion.div>
-  );
-}
-
-// ============ UPCOMING DEADLINES WIDGET ============
-
-/**
- * Shows upcoming invoice deadlines and devis expiration dates.
- * Helps prioritize follow-ups.
- */
-function UpcomingDeadlines({
-  devis,
-  clients,
-  isDark,
-  couleur,
-  textPrimary,
-  textSecondary,
-  sectionBg,
-  modeDiscret,
-  setPage,
-  setSelectedDevis,
-}) {
-  const upcoming = useMemo(() => {
-    const now = new Date();
-    const nextWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-    const nextMonth = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
-
-    return devis
-      .filter(d => {
-        if (d.type === 'facture' && d.date_echeance) {
-          const echeance = new Date(d.date_echeance);
-          return echeance > now && echeance < nextMonth && ['envoye', 'facture'].includes(d.statut);
-        }
-        return false;
-      })
-      .map(d => {
-        const echeance = new Date(d.date_echeance);
-        const joursRestants = Math.ceil((echeance - now) / (1000 * 60 * 60 * 24));
-        const client = clients.find(c => c.id === d.client_id);
-        const isUrgent = joursRestants <= 3;
-        const isSoon = joursRestants <= 7;
-
-        return {
-          id: d.id,
-          devis: d,
-          clientName: client ? (client.nom || client.name) : 'Client inconnu',
-          joursRestants,
-          amount: d.total_ttc,
-          isUrgent,
-          isSoon,
-          color: isUrgent ? '#ef4444' : isSoon ? '#f97316' : '#3b82f6',
-        };
-      })
-      .sort((a, b) => a.joursRestants - b.joursRestants)
-      .slice(0, 5);
-  }, [devis, clients]);
-
-  if (upcoming.length === 0) return null;
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.6, duration: 0.4 }}
-      className={`rounded-2xl p-5 ${sectionBg}`}
-    >
-      <h3 className={`text-sm font-semibold mb-3 ${textSecondary}`}>
-        Échéances à venir
-      </h3>
-      <div className="space-y-2">
-        {upcoming.map((item, idx) => (
-          <motion.button
-            key={item.id || idx}
-            initial={{ opacity: 0, x: 10 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.6 + idx * 0.04, duration: 0.25 }}
-            type="button"
-            onClick={() => { setSelectedDevis(item.devis); setPage('devis'); }}
-            className={`w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors ${
-              isDark ? 'hover:bg-slate-700/50' : 'hover:bg-gray-50'
-            }`}
-          >
-            {/* Urgency indicator */}
-            <div
-              className="w-2 h-2 rounded-full flex-shrink-0"
-              style={{ background: item.color }}
-            />
-            <div className="flex-1 min-w-0">
-              <p className={`text-xs font-medium truncate ${textPrimary}`}>
-                {item.clientName}
-              </p>
-              <p className={`text-[10px] ${textSecondary}`}>
-                {item.isUrgent
-                  ? `Urgent — ${item.joursRestants}j restant${item.joursRestants > 1 ? 's' : ''}`
-                  : `Dans ${item.joursRestants} jours`
-                }
-              </p>
-            </div>
-            <span className={`text-xs font-bold flex-shrink-0 ${textPrimary}`}>
-              {fmt(item.amount, modeDiscret)}
-            </span>
-          </motion.button>
-        ))}
-      </div>
-    </motion.div>
-  );
-}
-
-// ============ WEEKLY STATS WIDGET ============
-
-/**
- * Shows a summary of this week's activity:
- * - Devis sent
- * - Devis signed
- * - Chantiers started
- * - Revenue generated
- */
-function WeeklyStats({
-  devis,
-  chantiers,
-  isDark,
-  couleur,
-  textPrimary,
-  textSecondary,
-  sectionBg,
-  modeDiscret,
-}) {
-  const stats = useMemo(() => {
-    const now = new Date();
-    const startOfWeek = new Date(now);
-    const dayOfWeek = now.getDay();
-    const diff = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Monday as start
-    startOfWeek.setDate(now.getDate() - diff);
-    startOfWeek.setHours(0, 0, 0, 0);
-
-    const devisCetteSemaine = devis.filter(d => d.date && new Date(d.date) >= startOfWeek);
-    const devisEnvoyes = devisCetteSemaine.filter(d => d.statut === 'envoye').length;
-    const devisSignes = devisCetteSemaine.filter(d => ['signe', 'facture'].includes(d.statut)).length;
-    const caSemaine = devisCetteSemaine
-      .filter(d => ['signe', 'facture'].includes(d.statut))
-      .reduce((s, d) => s + (d.total_ttc || 0), 0);
-    const chantiersLances = chantiers.filter(c =>
-      c.date_debut && new Date(c.date_debut) >= startOfWeek
-    ).length;
-
-    return {
-      devisEnvoyes,
-      devisSignes,
-      caSemaine,
-      chantiersLances,
-    };
-  }, [devis, chantiers]);
-
-  // Don't show if no activity this week
-  if (stats.devisEnvoyes === 0 && stats.devisSignes === 0 && stats.chantiersLances === 0) {
-    return null;
-  }
-
-  const statItems = [
-    {
-      label: 'Devis envoyés',
-      value: stats.devisEnvoyes,
-      icon: Send,
-      color: '#3b82f6',
-    },
-    {
-      label: 'Devis signés',
-      value: stats.devisSignes,
-      icon: CheckCircle,
-      color: '#10b981',
-    },
-    {
-      label: 'CA généré',
-      value: fmt(stats.caSemaine, modeDiscret),
-      icon: TrendingUp,
-      color: couleur,
-    },
-    {
-      label: 'Chantiers lancés',
-      value: stats.chantiersLances,
-      icon: HardHat,
-      color: '#8b5cf6',
-    },
-  ].filter(item => {
-    if (typeof item.value === 'number') return item.value > 0;
-    return true;
-  });
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.38, duration: 0.4 }}
-      className={`rounded-2xl p-5 ${sectionBg}`}
-    >
-      <h3 className={`text-sm font-semibold mb-3 ${textSecondary}`}>
-        Cette semaine
-      </h3>
-      <div className="grid grid-cols-2 gap-3">
-        {statItems.map((item, idx) => {
-          const StatIcon = item.icon;
-          return (
-            <motion.div
-              key={item.label}
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.38 + idx * 0.05, duration: 0.3 }}
-              className={`rounded-xl p-3 ${isDark ? 'bg-slate-800/60 border border-slate-700/40' : 'bg-slate-50 border border-slate-100'}`}
-            >
-              <div className="flex items-center gap-2 mb-1">
-                <StatIcon className="w-3.5 h-3.5" style={{ color: item.color }} />
-                <span className={`text-[10px] uppercase tracking-wider ${textSecondary}`}>
-                  {item.label}
-                </span>
-              </div>
-              <p className={`text-lg font-bold ${textPrimary}`}>
-                {item.value}
-              </p>
-            </motion.div>
-          );
-        })}
-      </div>
-    </motion.div>
-  );
-}
-
-// ============ CATALOGUE SUMMARY ============
-
-/**
- * Quick glance at catalogue items count and categories.
- * Links to the catalogue page.
- */
-function CatalogueSummary({
-  catalogue,
-  isDark,
-  couleur,
-  textPrimary,
-  textSecondary,
-  sectionBg,
-  setPage,
-}) {
-  if (!catalogue || catalogue.length === 0) return null;
-
-  // Group by category
-  const categories = useMemo(() => {
-    const cats = {};
-    catalogue.forEach(item => {
-      const cat = item.categorie || item.category || 'Sans catégorie';
-      if (!cats[cat]) cats[cat] = { name: cat, count: 0 };
-      cats[cat].count++;
-    });
-    return Object.values(cats)
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 4);
-  }, [catalogue]);
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.65, duration: 0.4 }}
-      className={`rounded-2xl p-5 ${sectionBg}`}
-    >
-      <div className="flex justify-between items-center mb-3">
-        <h3 className={`text-sm font-semibold ${textSecondary}`}>
-          Catalogue
-        </h3>
-        <span className={`text-xs font-medium ${textPrimary}`}>
-          {catalogue.length} article{catalogue.length > 1 ? 's' : ''}
-        </span>
-      </div>
-      <div className="space-y-2">
-        {categories.map((cat, idx) => (
-          <motion.div
-            key={cat.name}
-            initial={{ opacity: 0, x: 10 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.65 + idx * 0.04, duration: 0.25 }}
-            className="flex items-center justify-between"
-          >
-            <span className={`text-xs ${textSecondary}`}>
-              {cat.name}
-            </span>
-            <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-              isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'
-            }`}>
-              {cat.count}
-            </span>
-          </motion.div>
-        ))}
-      </div>
-      <button
-        type="button"
-        onClick={() => setPage('catalogue')}
-        className="mt-3 w-full text-center text-xs font-medium inline-flex items-center justify-center gap-1"
-        style={{ color: couleur }}
-      >
-        Ouvrir le catalogue <ArrowRight className="w-3 h-3" />
-      </button>
-    </motion.div>
-  );
-}
-
-// ============ CLIENT STATS WIDGET ============
-
-/**
- * Summary of client base metrics.
- * Shows total clients, new this month, active clients.
- */
-function ClientStats({
-  clients,
-  chantiers,
-  devis,
-  isDark,
-  couleur,
-  textPrimary,
-  textSecondary,
-  sectionBg,
-  setPage,
-}) {
-  const stats = useMemo(() => {
-    const now = new Date();
-    const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-
-    const totalClients = clients.length;
-    const newThisMonth = clients.filter(c =>
-      c.created_at && c.created_at.startsWith(currentMonthKey)
-    ).length;
-
-    // Active = has a devis or chantier in progress
-    const activeClientIds = new Set();
-    devis.filter(d => ['envoye', 'signe', 'facture'].includes(d.statut)).forEach(d => {
-      if (d.client_id) activeClientIds.add(d.client_id);
-    });
-    chantiers.filter(c => c.statut === 'en_cours').forEach(c => {
-      if (c.client_id) activeClientIds.add(c.client_id);
-    });
-
-    return {
-      total: totalClients,
-      newThisMonth,
-      active: activeClientIds.size,
-    };
-  }, [clients, chantiers, devis]);
-
-  if (stats.total === 0) return null;
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.6, duration: 0.4 }}
-      className={`rounded-2xl p-5 ${sectionBg}`}
-    >
-      <div className="flex justify-between items-center mb-4">
-        <h3 className={`text-sm font-semibold ${textSecondary}`}>
-          Clients
-        </h3>
-        <button
-          type="button"
-          onClick={() => setPage('clients')}
-          className="text-xs font-medium"
-          style={{ color: couleur }}
-        >
-          Voir tout
-        </button>
-      </div>
-      <div className="grid grid-cols-3 gap-3">
-        <div className={`rounded-xl p-3 text-center ${isDark ? 'bg-slate-800/60' : 'bg-slate-50'}`}>
-          <p className={`text-lg font-bold ${textPrimary}`}>{stats.total}</p>
-          <p className={`text-[10px] ${textSecondary}`}>Total</p>
-        </div>
-        <div className={`rounded-xl p-3 text-center ${isDark ? 'bg-slate-800/60' : 'bg-slate-50'}`}>
-          <p className={`text-lg font-bold ${textPrimary}`}>{stats.active}</p>
-          <p className={`text-[10px] ${textSecondary}`}>Actifs</p>
-        </div>
-        <div className={`rounded-xl p-3 text-center ${isDark ? 'bg-slate-800/60' : 'bg-slate-50'}`}>
-          <p className={`text-lg font-bold ${textPrimary}`}>{stats.newThisMonth}</p>
-          <p className={`text-[10px] ${textSecondary}`}>Ce mois</p>
-        </div>
-      </div>
-    </motion.div>
-  );
-}
-
-// ============ CONVERSION FUNNEL MINI ============
-
-/**
- * Visual mini funnel showing conversion rates step by step.
- */
-function ConversionFunnel({
-  pipeline,
-  isDark,
-  couleur,
-  textPrimary,
-  textSecondary,
-  sectionBg,
-}) {
-  const totalDevis = pipeline.brouillon.count + pipeline.envoye.count + pipeline.signe.count + pipeline.facture.count;
-  if (totalDevis === 0) return null;
-
-  const steps = [
-    {
-      label: 'Créés',
-      count: totalDevis,
-      pct: 100,
-      color: isDark ? '#64748b' : '#94a3b8',
-    },
-    {
-      label: 'Envoyés',
-      count: pipeline.envoye.count + pipeline.signe.count + pipeline.facture.count,
-      pct: totalDevis > 0 ? Math.round(((pipeline.envoye.count + pipeline.signe.count + pipeline.facture.count) / totalDevis) * 100) : 0,
-      color: '#3b82f6',
-    },
-    {
-      label: 'Signés',
-      count: pipeline.signe.count + pipeline.facture.count,
-      pct: totalDevis > 0 ? Math.round(((pipeline.signe.count + pipeline.facture.count) / totalDevis) * 100) : 0,
-      color: '#10b981',
-    },
-    {
-      label: 'Facturés',
-      count: pipeline.facture.count,
-      pct: totalDevis > 0 ? Math.round((pipeline.facture.count / totalDevis) * 100) : 0,
-      color: '#8b5cf6',
-    },
-  ];
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.42, duration: 0.4 }}
-      className={`rounded-2xl p-5 ${sectionBg}`}
-    >
-      <h3 className={`text-sm font-semibold mb-4 ${textSecondary}`}>
-        Entonnoir de conversion
-      </h3>
-      <div className="space-y-2.5">
-        {steps.map((step, idx) => (
-          <motion.div
-            key={step.label}
-            initial={{ opacity: 0, scaleX: 0 }}
-            animate={{ opacity: 1, scaleX: 1 }}
-            transition={{ delay: 0.42 + idx * 0.08, duration: 0.4, ease: 'easeOut' }}
-            style={{ transformOrigin: 'left' }}
-          >
-            <div className="flex justify-between items-center mb-1">
-              <span className={`text-xs font-medium ${textPrimary}`}>
-                {step.label}
-              </span>
-              <div className="flex items-center gap-2">
-                <span className={`text-xs font-bold ${textPrimary}`}>
-                  {step.count}
-                </span>
-                <span className={`text-[10px] ${textSecondary}`}>
-                  ({step.pct}%)
-                </span>
-              </div>
-            </div>
-            <div className={`h-2 rounded-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`}>
-              <motion.div
-                initial={{ width: 0 }}
-                animate={{ width: `${step.pct}%` }}
-                transition={{ delay: 0.5 + idx * 0.1, duration: 0.5, ease: 'easeOut' }}
-                className="h-full rounded-full"
-                style={{ background: step.color }}
-              />
-            </div>
-          </motion.div>
-        ))}
-      </div>
-    </motion.div>
-  );
-}
 
 // ============ MAIN DASHBOARD ============
 
@@ -1575,14 +385,7 @@ export default function Dashboard({
 
   const [showAllActions, setShowAllActions] = useState(false);
 
-  // Onboarding state removed — replaced by compact bandeau
-
-  // GAP 7: Overview collapsible state (default closed)
-  const [showOverview, setShowOverview] = useState(false);
-
   // ---- Theme ----
-  const cardBg = isDark ? 'bg-slate-800 border border-slate-700/50' : 'bg-white shadow-[0_1px_3px_rgba(0,0,0,0.06)]';
-  const textPrimary = isDark ? 'text-slate-100' : 'text-gray-900';
   const textSecondary = isDark ? 'text-slate-400' : 'text-gray-500';
   const sectionBg = isDark ? 'bg-slate-800 border border-slate-700/50' : 'bg-white shadow-[0_1px_3px_rgba(0,0,0,0.06)]';
 
@@ -1786,530 +589,142 @@ export default function Dashboard({
     return [...computed.actions, ...memoActions];
   }, [computed.actions, memosJour, toggleMemo]);
 
-  const visibleActions = showAllActions ? allActions : allActions.slice(0, 5);
-
-  // ---- KPI color classes ----
-  const kpiCardClass = isDark
-    ? 'bg-slate-800 border border-slate-700/50'
-    : 'bg-white shadow-[0_1px_3px_rgba(0,0,0,0.06)]';
-  const kpiColors = {
-    encaisser: kpiCardClass,
-    devisAttente: kpiCardClass,
-    chantiers: kpiCardClass,
-    conversion: kpiCardClass,
-  };
-
   // ============ RENDER ============
 
   return (
-    <div className={`p-4 sm:p-6 max-w-7xl mx-auto space-y-6 min-h-screen ${isDark ? 'bg-slate-900' : 'bg-[#F5F7FA]'}`}>
+    <div className={`pb-20 lg:pb-0 min-h-screen ${isDark ? 'bg-slate-900' : 'bg-[#F5F7FA]'}`}>
 
-      {/* =========== GREETING + SCORE (full width) =========== */}
-      <section>
-        <div className="flex justify-between items-start mb-5">
+      {/* =========== ZONE 1: Header Greeting =========== */}
+      <header className={`px-4 sm:px-6 py-4 ${isDark ? 'bg-slate-900' : 'bg-[#F5F7FA]'}`}>
+        <div className="max-w-[1440px] mx-auto flex justify-between items-start">
           <div>
-            <motion.h1
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4 }}
-              className={`text-2xl sm:text-3xl font-semibold tracking-tight ${textPrimary}`}
-            >
+            <h1 className={`text-xl sm:text-2xl font-semibold tracking-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>
               Bonjour{prenom ? `, ${prenom}` : ''}
-            </motion.h1>
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.1, duration: 0.3 }}
-              className={`text-sm capitalize mt-1 ${isDark ? 'text-slate-500' : 'text-gray-400'}`}
-            >
+            </h1>
+            <p className={`text-sm capitalize mt-0.5 ${isDark ? 'text-slate-500' : 'text-gray-400'}`}>
               {formattedDate}
-            </motion.p>
+            </p>
           </div>
           <div className="flex items-center gap-3">
             <button
               type="button"
               onClick={() => setModeDiscret?.(!modeDiscret)}
-              className={`p-2 rounded-lg transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}
+              className={`min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}
               title={modeDiscret ? 'Afficher les montants' : 'Masquer les montants'}
+              aria-label={modeDiscret ? 'Afficher les montants' : 'Masquer les montants'}
             >
               {modeDiscret
-                ? <EyeOff className={`w-4 h-4 ${textSecondary}`} />
-                : <Eye className={`w-4 h-4 ${textSecondary}`} />
+                ? <EyeOff className={`w-5 h-5 ${isDark ? 'text-slate-400' : 'text-gray-500'}`} />
+                : <Eye className={`w-5 h-5 ${isDark ? 'text-slate-400' : 'text-gray-500'}`} />
               }
             </button>
             <ScoreSante score={computed.score} isDark={isDark} couleur={couleur} />
           </div>
         </div>
-      </section>
+      </header>
 
-      {/* =========== FULL-WIDTH BANNERS (above the grid) =========== */}
+      <div className="max-w-[1440px] mx-auto">
 
-      {/* GAP 1: Urgent banner — full width */}
-      <UrgentBanner
-        count={computed.facturesEnRetardCount}
-        totalRetard={computed.retard}
-        isDark={isDark}
-        modeDiscret={modeDiscret}
-        couleur={couleur}
-        onClick={() => setPage('devis')}
-      />
+        {/* =========== ZONE 2: Notification Strip =========== */}
+        <NotificationStrip
+          isDark={isDark}
+          couleur={couleur}
+          notifications={[
+            // Urgent: factures en retard
+            ...(computed.facturesEnRetardCount > 0 ? [{
+              id: 'factures-retard',
+              type: 'urgent',
+              message: `${computed.facturesEnRetardCount} facture${computed.facturesEnRetardCount > 1 ? 's' : ''} en retard — Total : ${fmt(computed.retard, modeDiscret)}`,
+              ctaLabel: 'Voir',
+              onAction: () => setPage('devis'),
+            }] : []),
+            // Warning: profil incomplet ou conformité
+            ...((computed.profilPct < 80 || computed.f26Pct < 100) ? [{
+              id: 'profil-conformite',
+              type: 'warning',
+              message: [
+                computed.profilPct < 80 ? `Profil ${computed.profilPct}%` : '',
+                computed.f26Pct < 100 ? `Conformité ${computed.f26Pct}%` : '',
+              ].filter(Boolean).join(' · '),
+              ctaLabel: 'Compléter',
+              onAction: () => setPage('settings'),
+            }] : []),
+          ]}
+        />
 
-      {/* Compact onboarding bandeau */}
-      {(computed.profilPct < 80 || computed.f26Pct < 100) && (
-        <div className={`mx-4 sm:mx-6 mb-5 rounded-xl border-l-4 border-amber-500 px-4 py-2.5 flex items-center gap-3 ${isDark ? 'bg-amber-500/10' : 'bg-amber-50'}`}>
-          <AlertCircle size={16} className="text-amber-500 flex-shrink-0" />
-          <p className={`text-sm flex-1 ${isDark ? 'text-amber-300' : 'text-amber-800'}`}>
-            {computed.profilPct < 80 ? `Profil ${computed.profilPct}%` : ''}
-            {computed.profilPct < 80 && computed.f26Pct < 100 ? ' \u00b7 ' : ''}
-            {computed.f26Pct < 100 ? `Conformit\u00e9 ${computed.f26Pct}%` : ''}
-          </p>
-          <button onClick={() => setPage('settings')} className="text-xs font-semibold px-3 py-1.5 rounded-lg text-white min-h-[36px]" style={{ background: couleur }}>
-            Compl\u00e9ter
-          </button>
-        </div>
-      )}
+        {/* =========== ZONE 3: KPI Strip =========== */}
+        {canSeeFinances && (
+          <KPIStrip
+            isDark={isDark}
+            couleur={couleur}
+            kpis={[
+              {
+                label: 'À encaisser',
+                value: fmt(computed.aEncaisser, modeDiscret),
+                icon: FileText,
+                onClick: () => setPage('devis'),
+                trend: computed.aEncaisserTrend ? `${computed.aEncaisserTrend.direction === 'up' ? '+' : ''}${computed.aEncaisserTrend.value}%` : null,
+                trendUp: computed.aEncaisserTrend?.direction === 'up',
+              },
+              {
+                label: 'CA ce mois',
+                value: fmt(computed.caCeMois, modeDiscret),
+                icon: TrendingUp,
+                onClick: () => setPage('finances'),
+                trend: computed.caCeMoisTrend ? `${computed.caCeMoisTrend.direction === 'up' ? '+' : ''}${computed.caCeMoisTrend.value}%` : null,
+                trendUp: computed.caCeMoisTrend?.direction === 'up',
+              },
+              {
+                label: 'Devis en attente',
+                value: String(computed.devisEnAttente.length),
+                icon: Send,
+                onClick: () => setPage('devis'),
+              },
+              {
+                label: 'Chantiers actifs',
+                value: String(computed.chantiersActifs.length),
+                icon: HardHat,
+                onClick: () => setPage('chantiers'),
+              },
+            ]}
+          />
+        )}
 
-      {/* OverviewWidget removed — data moved to Analytics */}
-
-      {/* =========== GAP 1: 2-COLUMN GRID LAYOUT =========== */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-
-        {/* ===== LEFT COLUMN (3/5) — KPIs, sparkline, pipeline, actions, promo ===== */}
-        <div className="lg:col-span-3 space-y-6">
-
-          {/* 4 KPI Cards with trends (GAP 2 + GAP 9) */}
-          {canSeeFinances && (
-            <motion.div
-              variants={staggerContainer}
-              initial="initial"
-              animate="animate"
-            >
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-5">
-                <KPICard
-                  label="À encaisser"
-                  value={fmt(computed.aEncaisser, modeDiscret)}
-                  sub={computed.retard > 0 ? `dont ${fmt(computed.retard, modeDiscret)} en retard` : null}
-                  trend={computed.aEncaisserTrend}
-                  colorClasses={kpiColors.encaisser}
-                  isDark={isDark}
-                  delay={0}
-                />
-                <KPICard
-                  label="Ce mois"
-                  value={fmt(computed.caCeMois, modeDiscret)}
-                  sub={computed.lastMonthCA > 0 ? `vs ${fmt(computed.lastMonthCA, modeDiscret)} mois dernier` : null}
-                  trend={computed.caCeMoisTrend}
-                  colorClasses={kpiColors.encaisser}
-                  isDark={isDark}
-                  delay={0.05}
-                />
-                <KPICard
-                  label="Chantiers actifs"
-                  value={String(computed.chantiersActifs.length)}
-                  sub={computed.chantiersActifs.length > 0
-                    ? `${Math.round(computed.chantiersActifs.reduce((s, c) => s + (c.avancement || 0), 0) / computed.chantiersActifs.length)}% moyen`
-                    : null
-                  }
-                  colorClasses={kpiColors.chantiers}
-                  isDark={isDark}
-                  delay={0.1}
-                />
-                <KPICard
-                  label="Taux conversion"
-                  value={`${computed.tauxConversion}%`}
-                  sub={null}
-                  colorClasses={kpiColors.conversion}
-                  isDark={isDark}
-                  delay={0.15}
-                />
-              </div>
-            </motion.div>
-          )}
-
-          {/* Actions prioritaires (GAP 5: differentiated icons + batch relaunch) */}
-          {/* GAP 8: Only show if there are actions */}
-          {allActions.length > 0 && (
+        {/* =========== ZONE 4: Actions du jour (max 3) =========== */}
+        {allActions.length > 0 && (
+          <div className="px-4 sm:px-6 mb-6">
             <ActionsSection
               allActions={allActions}
-              visibleActions={visibleActions}
-              showAllActions={showAllActions}
+              visibleActions={allActions.slice(0, 3)}
+              showAllActions={false}
               setShowAllActions={setShowAllActions}
               isDark={isDark}
               couleur={couleur}
-              textSecondary={textSecondary}
-              sectionBg={sectionBg}
+              textSecondary={isDark ? 'text-slate-400' : 'text-gray-500'}
+              sectionBg={isDark ? 'bg-slate-800 border border-slate-700/50' : 'bg-white shadow-[0_1px_3px_rgba(0,0,0,0.06)]'}
               showToast={showToast}
             />
-          )}
+          </div>
+        )}
 
-          {/* Weekly stats summary */}
-          <WeeklyStats
-            devis={devis}
-            chantiers={chantiers}
-            isDark={isDark}
-            couleur={couleur}
-            textPrimary={textPrimary}
-            textSecondary={textSecondary}
-            sectionBg={sectionBg}
-            modeDiscret={modeDiscret}
-          />
-
-          {/* Conversion funnel */}
-          <ConversionFunnel
-            pipeline={computed.pipeline}
-            isDark={isDark}
-            couleur={couleur}
-            textPrimary={textPrimary}
-            textSecondary={textSecondary}
-            sectionBg={sectionBg}
-          />
-
-          {/* Activity timeline */}
-          <ActivityTimeline
-            devis={devis}
-            chantiers={chantiers}
-            clients={clients}
-            isDark={isDark}
-            couleur={couleur}
-            textPrimary={textPrimary}
-            textSecondary={textSecondary}
-            sectionBg={sectionBg}
-            modeDiscret={modeDiscret}
-            setPage={setPage}
-            setSelectedDevis={setSelectedDevis}
-            setSelectedChantier={setSelectedChantier}
-          />
-
-          {/* Promo cards (Devis IA / Express) — in left column */}
-          <PromoCards
-            isDark={isDark}
-            couleur={couleur}
-            setPage={setPage}
-            setCreateMode={setCreateMode}
-            setAiPrefill={setAiPrefill}
-          />
-        </div>
-
-        {/* ===== RIGHT COLUMN (2/5) — chantier actif, onboarding ===== */}
-        <div className="lg:col-span-2 space-y-6">
-
-          {/* Chantier actif principal */}
-          {/* GAP 8: Only show if there are active chantiers */}
-          {computed.chantiersActifs.length > 0 && (
-            <ChantierActifWidget
-              chantierPrincipal={computed.chantierPrincipal}
-              chantiersActifs={computed.chantiersActifs}
-              clients={clients}
-              isDark={isDark}
-              couleur={couleur}
-              textPrimary={textPrimary}
-              textSecondary={textSecondary}
-              sectionBg={sectionBg}
-              setSelectedChantier={setSelectedChantier}
-              setPage={setPage}
-            />
-          )}
-
-          {/* GAP 8: Show CTA when no chantier */}
-          {computed.chantiersActifs.length === 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3, duration: 0.4 }}
-              className={`rounded-2xl p-5 ${sectionBg}`}
-            >
-              <h3 className={`text-sm font-semibold mb-3 ${textSecondary}`}>
-                Chantier en cours
-              </h3>
-              <div className={`text-sm py-4 text-center ${textSecondary}`}>
-                Aucun chantier en cours
-                <br />
-                <button
-                  type="button"
-                  onClick={() => setPage('chantiers')}
-                  className="mt-2 text-sm font-medium"
-                  style={{ color: couleur }}
-                >
-                  Créer un chantier
-                </button>
-              </div>
-            </motion.div>
-          )}
-
-
-          {/* Devis en attente summary card */}
-          {computed.devisEnAttente.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4, duration: 0.4 }}
-              className={`rounded-2xl p-5 ${sectionBg}`}
-            >
-              <h3 className={`text-sm font-semibold mb-3 ${textSecondary}`}>
-                Devis en attente
-              </h3>
-              <div className="space-y-2.5">
-                {computed.devisEnAttente.slice(0, 5).map((d, idx) => {
-                  const client = clients.find(c => c.id === d.client_id);
-                  const jours = daysSince(d.date);
-                  return (
-                    <motion.button
-                      key={d.id || idx}
-                      initial={{ opacity: 0, x: 10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.4 + idx * 0.05, duration: 0.3 }}
-                      type="button"
-                      onClick={() => { setSelectedDevis(d); setPage('devis'); }}
-                      className={`w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors ${
-                        isDark ? 'hover:bg-slate-700/50' : 'hover:bg-gray-50'
-                      }`}
-                    >
-                      <div
-                        className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                        style={{ background: `${couleur}12` }}
-                      >
-                        <FileText className="w-4 h-4" style={{ color: couleur }} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className={`text-xs font-medium truncate ${textPrimary}`}>
-                          {client ? (client.nom || client.name) : 'Client inconnu'}
-                        </p>
-                        <p className={`text-[10px] ${textSecondary}`}>
-                          {jours > 0 ? `Envoyé il y a ${jours}j` : 'Envoyé aujourd\'hui'}
-                        </p>
-                      </div>
-                      <span className={`text-xs font-bold flex-shrink-0 ${textPrimary}`}>
-                        {fmt(d.total_ttc, modeDiscret)}
-                      </span>
-                    </motion.button>
-                  );
-                })}
-              </div>
-              {computed.devisEnAttente.length > 5 && (
-                <button
-                  type="button"
-                  onClick={() => setPage('devis')}
-                  className="mt-3 w-full text-center text-xs font-medium"
-                  style={{ color: couleur }}
-                >
-                  Voir les {computed.devisEnAttente.length} devis en attente
-                </button>
-              )}
-            </motion.div>
-          )}
-
-          {/* Memos du jour */}
-          {memosJour.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.45, duration: 0.4 }}
-              className={`rounded-2xl p-5 ${sectionBg}`}
-            >
-              <h3 className={`text-sm font-semibold mb-3 ${textSecondary}`}>
-                Mémos du jour
-              </h3>
-              <div className="space-y-2">
-                {memosJour.map((m, idx) => (
-                  <motion.div
-                    key={m.id || idx}
-                    initial={{ opacity: 0, x: 10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.45 + idx * 0.05, duration: 0.3 }}
-                    className={`flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-colors ${
-                      isDark ? 'hover:bg-slate-700/50' : 'hover:bg-gray-50'
-                    }`}
-                    onClick={() => toggleMemo?.(m.id)}
-                  >
-                    <div
-                      className="w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors"
-                      style={{ borderColor: m.done ? '#10b981' : (isDark ? '#475569' : '#cbd5e1') }}
-                    >
-                      {m.done && <CheckCircle className="w-3 h-3 text-emerald-500" />}
-                    </div>
-                    <span className={`text-sm flex-1 ${m.done ? 'line-through' : ''} ${isDark ? 'text-slate-300' : 'text-gray-700'}`}>
-                      {m.text || m.titre || 'Mémo'}
-                    </span>
-                  </motion.div>
-                ))}
-              </div>
-            </motion.div>
-          )}
-
-          {/* Quick action card: Créer un devis */}
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5, duration: 0.4 }}
-            className={`rounded-2xl p-5 ${sectionBg}`}
-          >
-            <h3 className={`text-sm font-semibold mb-3 ${textSecondary}`}>
-              Actions rapides
-            </h3>
-            <div className="space-y-2">
-              <button
-                type="button"
-                onClick={() => { setCreateMode?.({ devis: true }); setPage('devis'); }}
-                className={`w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors ${
-                  isDark ? 'hover:bg-slate-700/50' : 'hover:bg-gray-50'
-                }`}
-              >
-                <div
-                  className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                  style={{ background: `${couleur}12` }}
-                >
-                  <FileText className="w-4 h-4" style={{ color: couleur }} />
-                </div>
-                <span className={`text-sm font-medium ${textPrimary}`}>
-                  Nouveau devis
-                </span>
-                <ArrowRight className={`w-3.5 h-3.5 ml-auto ${textSecondary}`} />
-              </button>
-              <button
-                type="button"
-                onClick={() => setPage('chantiers')}
-                className={`w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors ${
-                  isDark ? 'hover:bg-slate-700/50' : 'hover:bg-gray-50'
-                }`}
-              >
-                <div
-                  className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                  style={{ background: '#3b82f612' }}
-                >
-                  <HardHat className="w-4 h-4" style={{ color: '#3b82f6' }} />
-                </div>
-                <span className={`text-sm font-medium ${textPrimary}`}>
-                  Nouveau chantier
-                </span>
-                <ArrowRight className={`w-3.5 h-3.5 ml-auto ${textSecondary}`} />
-              </button>
-              <button
-                type="button"
-                onClick={() => setPage('clients')}
-                className={`w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors ${
-                  isDark ? 'hover:bg-slate-700/50' : 'hover:bg-gray-50'
-                }`}
-              >
-                <div
-                  className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                  style={{ background: '#8b5cf612' }}
-                >
-                  <ClipboardList className="w-4 h-4" style={{ color: '#8b5cf6' }} />
-                </div>
-                <span className={`text-sm font-medium ${textPrimary}`}>
-                  Nouveau client
-                </span>
-                <ArrowRight className={`w-3.5 h-3.5 ml-auto ${textSecondary}`} />
-              </button>
-            </div>
-          </motion.div>
-
-          {/* Upcoming deadlines */}
-          <UpcomingDeadlines
-            devis={devis}
-            clients={clients}
-            isDark={isDark}
-            couleur={couleur}
-            textPrimary={textPrimary}
-            textSecondary={textSecondary}
-            sectionBg={sectionBg}
-            modeDiscret={modeDiscret}
-            setPage={setPage}
-            setSelectedDevis={setSelectedDevis}
-          />
-
-          {/* Client stats */}
-          <ClientStats
-            clients={clients}
-            chantiers={chantiers}
-            devis={devis}
-            isDark={isDark}
-            couleur={couleur}
-            textPrimary={textPrimary}
-            textSecondary={textSecondary}
-            sectionBg={sectionBg}
-            setPage={setPage}
-          />
-
-          {/* Equipe summary */}
-          <EquipeSummary
-            equipe={equipe}
-            chantiers={chantiers}
-            isDark={isDark}
-            couleur={couleur}
-            textPrimary={textPrimary}
-            textSecondary={textSecondary}
-            sectionBg={sectionBg}
-            setPage={setPage}
-          />
-
-          {/* Catalogue summary */}
-          <CatalogueSummary
-            catalogue={catalogue}
-            isDark={isDark}
-            couleur={couleur}
-            textPrimary={textPrimary}
-            textSecondary={textSecondary}
-            sectionBg={sectionBg}
-            setPage={setPage}
-          />
-
-          {/* Monthly summary card */}
-          {canSeeFinances && (
-            <motion.div
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.55, duration: 0.4 }}
-              className={`rounded-2xl p-5 ${sectionBg}`}
-            >
-              <h3 className={`text-sm font-semibold mb-4 ${textSecondary}`}>
-                Résumé mensuel
-              </h3>
-              <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className={`text-xs ${textSecondary}`}>CA ce mois</span>
-                  <div className="flex items-center gap-2">
-                    <span className={`text-sm font-bold ${textPrimary}`}>
-                      {fmt(computed.caCeMois, modeDiscret)}
-                    </span>
-                    <TrendBadge trend={computed.caCeMoisTrend} isDark={isDark} />
-                  </div>
-                </div>
-                <div className={`h-px ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`} />
-                <div className="flex justify-between items-center">
-                  <span className={`text-xs ${textSecondary}`}>Mois précédent</span>
-                  <span className={`text-sm font-medium ${textSecondary}`}>
-                    {fmt(computed.lastMonthCA, modeDiscret)}
-                  </span>
-                </div>
-                <div className={`h-px ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`} />
-                <div className="flex justify-between items-center">
-                  <span className={`text-xs ${textSecondary}`}>CA prévisionnel</span>
-                  <span className={`text-sm font-bold ${textPrimary}`}>
-                    {fmt(computed.caPrevisionnel, modeDiscret)}
-                  </span>
-                </div>
-                <div className={`h-px ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`} />
-                <div className="flex justify-between items-center">
-                  <span className={`text-xs ${textSecondary}`}>Devis en attente</span>
-                  <span className={`text-sm font-medium ${textPrimary}`}>
-                    {computed.devisEnAttente.length} ({fmt(computed.devisEnAttente.reduce((s, d) => s + (d.total_ttc || 0), 0), modeDiscret)})
-                  </span>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setPage('finances')}
-                className="mt-4 w-full text-center inline-flex items-center justify-center gap-1 text-sm font-medium"
-                style={{ color: couleur }}
-              >
-                Voir les finances <ArrowRight className="w-3.5 h-3.5" />
-              </button>
-            </motion.div>
-          )}
-        </div>
+        {/* =========== ZONE 5: Dashboard Grid 2x2 =========== */}
+        <DashboardGrid
+          isDark={isDark}
+          couleur={couleur}
+          setPage={setPage}
+          devis={devis}
+          chantiers={chantiers}
+          clients={clients}
+          stats={{
+            aEncaisser: computed.aEncaisser,
+            caMois: computed.caCeMois,
+            caPrev: computed.caPrevisionnel,
+            moisPrecedent: computed.lastMonthCA,
+          }}
+          activities={[]}
+          modeDiscret={modeDiscret}
+        />
       </div>
-
     </div>
   );
 }
