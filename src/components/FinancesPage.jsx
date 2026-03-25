@@ -1,5 +1,6 @@
 import React, { lazy, Suspense, useState } from 'react';
 import { Wallet, Download, BarChart3, Landmark, CreditCard, Eye, EyeOff, FileText } from 'lucide-react';
+import { TabBar } from './ui/TabBar';
 import { usePermissions } from '../hooks/usePermissions';
 
 // Lazy load the 5 sub-modules
@@ -59,28 +60,15 @@ export default function FinancesPage({ devis, depenses, clients, chantiers, entr
         </button>
       </div>
 
-      {/* Tab buttons — scrollable on mobile */}
-      <div className={`flex items-center gap-1 p-1 rounded-2xl mb-6 overflow-x-auto ${isDark ? 'bg-slate-800' : 'bg-slate-100'}`} style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' }}>
-        {TAB_CONFIG.map(tab => {
-          const Icon = tab.icon;
-          const isActive = activeTab === tab.key;
-          return (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
-              className={`inline-flex items-center justify-center whitespace-nowrap px-3 sm:px-4 py-2.5 text-sm font-medium transition-all duration-200 rounded-xl shrink-0 ${
-                isActive
-                  ? 'text-white shadow-sm'
-                  : isDark ? 'text-slate-300 hover:text-white hover:bg-slate-700' : 'text-slate-600 hover:text-slate-900 hover:bg-white'
-              }`}
-              style={isActive ? { backgroundColor: couleur } : undefined}
-            >
-              <Icon size={16} className="sm:mr-1.5" />
-              <span className="hidden sm:inline">{tab.label}</span>
-            </button>
-          );
-        })}
-      </div>
+      {/* Tab navigation */}
+      <TabBar
+        tabs={TAB_CONFIG}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        maxVisible={4}
+        isDark={isDark}
+        couleur={couleur}
+      />
 
       {/* Tab content — kept mounted, hidden via CSS to preserve state */}
       <div style={{ display: activeTab === 'tresorerie' ? 'block' : 'none' }}>

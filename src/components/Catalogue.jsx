@@ -15,6 +15,7 @@ import ArticlePicker from './ArticlePicker';
 import { ALL_ARTICLES_BTP, CATEGORIES_METIERS, getSousCategories, getArticlesBySousCategorie } from '../lib/data';
 import { usePermissions } from '../hooks/usePermissions';
 import { ReadOnlyBanner } from './ui/PermissionGate';
+import { TabBar } from './ui/TabBar';
 
 const BASE_CATEGORIES = ['Plomberie', 'Électricité', 'Maçonnerie', 'Carrelage', 'Peinture', 'Menuiserie', 'Matériaux', 'Isolation', 'Main d\'œuvre', 'Autre'];
 const UNITES = [
@@ -1503,28 +1504,22 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
       </div>
 
       {/* Tab Navigation */}
-      <div className={`p-1.5 rounded-2xl relative ${isDark ? 'bg-slate-800' : 'bg-slate-100'}`}>
-        <div className={`absolute right-0 top-0 bottom-0 w-8 pointer-events-none z-10 rounded-r-2xl bg-gradient-to-l ${isDark ? 'from-slate-800' : 'from-slate-100'} sm:hidden`} />
-        <div className="flex gap-1 overflow-x-auto scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-          {[
-            { key: 'catalogue', label: 'Articles', icon: Package, count: catalogue.length },
-            { key: 'fournisseurs', label: 'Fournisseurs', icon: Truck, count: fournisseurs.length },
-            { key: 'mouvements', label: 'Mouvements', icon: ArrowRightLeft, count: mouvements.length },
-            { key: 'packs', label: 'Packs', icon: Layers, count: packs.length },
-            { key: 'favoris', label: 'Favoris', icon: Star, count: favoris.length },
-            { key: 'inventaire', label: 'Inventaire', icon: ClipboardList },
-            { key: 'parametres', label: 'Coefs', icon: Settings }
-          ].map(({ key, label, icon: Icon, count }) => (
-            <button key={key} onClick={() => setActiveTab(key)} className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium whitespace-nowrap min-h-[44px] transition-all ${activeTab === key ? 'text-white shadow-lg' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-700'}`} style={activeTab === key ? { background: couleur } : {}}>
-              <Icon size={16} />
-              <span className="hidden sm:inline">{label}</span>
-              {count !== undefined && count > 0 && (
-                <span className={`min-w-[20px] h-5 px-1.5 rounded-full text-xs font-bold flex items-center justify-center ${activeTab === key ? 'bg-white/20 text-white' : isDark ? 'bg-slate-600 text-slate-300' : 'bg-slate-200 text-slate-600'}`}>{count}</span>
-              )}
-            </button>
-          ))}
-        </div>
-      </div>
+      <TabBar
+        tabs={[
+          { key: 'catalogue', label: 'Articles', icon: Package, badge: catalogue.length },
+          { key: 'fournisseurs', label: 'Fournisseurs', icon: Truck, badge: fournisseurs.length },
+          { key: 'mouvements', label: 'Mouvements', icon: ArrowRightLeft, badge: mouvements.length },
+          { key: 'packs', label: 'Packs', icon: Layers, badge: packs.length },
+          { key: 'inventaire', label: 'Inventaire', icon: ClipboardList },
+          { key: 'favoris', label: 'Favoris', icon: Star, badge: favoris.length },
+          { key: 'parametres', label: 'Coefs', icon: Percent },
+        ]}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        maxVisible={5}
+        isDark={isDark}
+        couleur={couleur}
+      />
 
       {/* ====== ARTICLES TAB ====== */}
       {activeTab === 'catalogue' && (

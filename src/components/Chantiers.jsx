@@ -21,6 +21,7 @@ import { usePermissions } from '../hooks/usePermissions';
 import { ReadOnlyBanner } from './ui/PermissionGate';
 import ErrorBoundary from './ui/ErrorBoundary';
 import ChantierGarantiesTab from './chantiers/ChantierGarantiesTab';
+import { TabBar } from './ui/TabBar';
 import ReceptionForm from './chantiers/ReceptionForm';
 import InterventionForm from './chantiers/InterventionForm';
 import { getReception, createReception, updateReserve as updateReserveService, leverToutesReserves } from '../services/receptionService';
@@ -252,7 +253,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
   const [editingTask, setEditingTask] = useState(null); // Task being edited
   const [taskFilter, setTaskFilter] = useState('all'); // all, pending, critical
   const [fabOpen, setFabOpen] = useState(false); // FAB chantier flottant
-  const [showMoreTabs, setShowMoreTabs] = useState(false); // Dropdown "Plus" onglets
+  // showMoreTabs removed — handled by TabBar overflow menu
   const [showReceptionForm, setShowReceptionForm] = useState(false);
   const [showInterventionForm, setShowInterventionForm] = useState(null); // garantie object
   const [chantierReception, setChantierReception] = useState(null);
@@ -1360,87 +1361,27 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
           <div className="w-1.5 h-1.5 rounded-full" style={{ background: couleur }} />
           <span className={`text-xs font-semibold uppercase tracking-wider ${textMuted}`}>Détails du chantier</span>
         </div>
-        {/* Onglets — all in single scrollable bar + ••• for rare tabs */}
-        {(() => {
-          const photoCount = (ch.photos || []).length;
-          const msgCount = (ch.messages || []).filter(m => !m.read).length;
-          const allTabs = [
-            { key: 'photos', label: 'Photos', icon: Camera, badge: photoCount > 0 ? photoCount : null },
+        {/* Onglets détail chantier */}
+        <TabBar
+          tabs={[
+            { key: 'photos', label: 'Photos', icon: Camera, badge: (ch.photos || []).length > 0 ? (ch.photos || []).length : undefined },
             { key: 'finances', label: 'Finances', icon: Wallet },
             { key: 'situations', label: 'Situations', icon: Receipt },
-            { key: 'messages', label: 'Messages', icon: MessageSquare, badge: msgCount > 0 ? msgCount : null },
+            { key: 'messages', label: 'Messages', icon: MessageSquare, badge: (ch.messages || []).filter(m => !m.read).length > 0 ? (ch.messages || []).filter(m => !m.read).length : undefined },
             { key: 'documents', label: 'Documents', icon: Paperclip },
             { key: 'soustraitants', label: 'Sous-traitants', icon: UserCog },
-            ...(chantierReception || ch.statut === 'termine' ? [{ key: 'garanties', label: 'Garanties', icon: Shield, badge: chantierGaranties.filter(g => g.statut === 'active').length > 0 ? chantierGaranties.filter(g => g.statut === 'active').length : null }] : []),
+            ...(chantierReception || ch.statut === 'termine' ? [{ key: 'garanties', label: 'Garanties', icon: Shield, badge: chantierGaranties.filter(g => g.statut === 'active').length > 0 ? chantierGaranties.filter(g => g.statut === 'active').length : undefined }] : []),
             { key: 'notes', label: 'Notes', icon: StickyNote },
-          ];
-          const rareTabs = [
             { key: 'rapports', label: 'Rapports', icon: FileText },
             { key: 'memos', label: 'Mémos', icon: ClipboardList },
             { key: 'journal', label: 'Journal', icon: Clock },
-          ];
-          const isRareTabActive = rareTabs.some(t => t.key === activeTab);
-
-          // Keyboard navigation for tabs
-          const handleTabKeyDown = (e, tabKeys) => {
-            const currentIdx = tabKeys.indexOf(activeTab);
-            if (e.key === 'ArrowRight') {
-              e.preventDefault();
-              const next = tabKeys[(currentIdx + 1) % tabKeys.length];
-              setActiveTab(next);
-            } else if (e.key === 'ArrowLeft') {
-              e.preventDefault();
-              const prev = tabKeys[(currentIdx - 1 + tabKeys.length) % tabKeys.length];
-              setActiveTab(prev);
-            }
-          };
-          const allTabKeys = [...allTabs.map(t => t.key), ...rareTabs.map(t => t.key)];
-
-          return (
-            <div className="relative">
-              <div role="tablist" aria-label="Détails du chantier" className={`flex gap-1 border-b overflow-x-auto pb-2 -mx-3 px-3 sm:mx-0 sm:px-0 scrollbar-none ${isDark ? 'border-slate-700' : 'border-slate-200'}`} style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }} onKeyDown={(e) => handleTabKeyDown(e, allTabKeys)}>
-                {allTabs.map(({ key, label, icon: Icon, badge }) => (
-                  <button key={key} role="tab" id={`tab-${key}`} aria-selected={activeTab === key} aria-controls={`panel-${key}`} tabIndex={activeTab === key ? 0 : -1} onClick={() => { setActiveTab(key); setShowMoreTabs(false); }} className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl whitespace-nowrap text-sm font-medium min-h-[44px] transition-colors relative ${activeTab === key ? 'text-white' : isDark ? 'text-slate-300 hover:bg-slate-700 hover:text-slate-200' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'}`} style={activeTab === key ? { background: couleur } : {}}>
-                    <Icon size={16} />
-                    <span className="hidden sm:inline">{label}</span>
-                    {badge && (
-                      <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium min-w-[18px] text-center ${activeTab === key ? 'bg-white/25' : 'text-white'}`} style={activeTab !== key ? { background: couleur } : {}}>
-                        {badge}
-                      </span>
-                    )}
-                  </button>
-                ))}
-                {/* ••• compact submenu for Rapports & Mémos */}
-                <button
-                  onClick={() => setShowMoreTabs(!showMoreTabs)}
-                  aria-label="Plus d'onglets"
-                  className={`flex items-center gap-1 px-2.5 py-2 rounded-xl whitespace-nowrap text-sm font-medium min-h-[44px] transition-colors ${isRareTabActive ? 'text-white' : isDark ? 'text-slate-300 hover:bg-slate-700 hover:text-slate-200' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'}`}
-                  style={isRareTabActive ? { background: couleur } : {}}
-                >
-                  <MoreHorizontal size={16} />
-                </button>
-              </div>
-              {/* Dropdown for rare tabs */}
-              {showMoreTabs && (
-                <>
-                  <div className="fixed inset-0 z-10" onClick={() => setShowMoreTabs(false)} />
-                  <div className={`absolute right-0 top-full mt-1 z-20 py-1 rounded-xl shadow-lg border min-w-[160px] ${isDark ? 'bg-slate-800 border-slate-600' : 'bg-white border-slate-200'}`}>
-                    {rareTabs.map(({ key, label, icon: Icon }) => (
-                      <button
-                        key={key}
-                        onClick={() => { setActiveTab(key); setShowMoreTabs(false); }}
-                        className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${activeTab === key ? (isDark ? 'bg-slate-700' : 'bg-slate-100') : ''} ${isDark ? 'text-slate-300 hover:bg-slate-700' : 'text-slate-700 hover:bg-slate-50'}`}
-                      >
-                        <Icon size={16} className={textMuted} />
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
-          );
-        })()}
+          ]}
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          maxVisible={6}
+          isDark={isDark}
+          couleur={couleur}
+        />
 
         {activeTab === 'finances' && (
           <div role="tabpanel" id="panel-finances" aria-labelledby="tab-finances" className="space-y-4">
