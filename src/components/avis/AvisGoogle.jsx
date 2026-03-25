@@ -9,7 +9,7 @@
  *  - Visibilite: (coming soon)
  */
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import {
   Star, Send, CheckCircle, Clock, ExternalLink, Copy,
   MessageCircle, Mail, Settings, AlertCircle, Search,
@@ -749,6 +749,18 @@ function CampagnesTab({ clients = [], chantiers = [], entreprise = {}, isDark, c
     setEditingCampaign(null);
   };
 
+  // Escape handler for modal
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && showModal) {
+        setShowModal(false);
+        resetForm();
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [showModal]);
+
   const openNewCampaign = (template) => {
     resetForm();
     if (template) {
@@ -980,7 +992,7 @@ function CampagnesTab({ clients = [], chantiers = [], entreprise = {}, isDark, c
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="fixed inset-0 bg-black/50" onClick={() => { setShowModal(false); resetForm(); }} />
-          <div className={`relative w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-2xl border p-5 sm:p-6 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+          <div role="dialog" aria-modal="true" className={`relative w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-2xl border p-5 sm:p-6 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
             <div className="flex items-center justify-between mb-5">
               <h3 className={`text-lg font-bold ${textPrimary}`}>
                 {editingCampaign ? 'Modifier la campagne' : 'Nouvelle campagne'}

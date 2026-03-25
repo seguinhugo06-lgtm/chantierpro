@@ -468,6 +468,20 @@ export default function CarnetEntretien({ chantiers = [], clients = [], isDark =
   useEffect(() => { saveToStorage(STORAGE_KEY_CARNETS, carnets); }, [carnets]);
   useEffect(() => { saveToStorage(STORAGE_KEY_TACHES, taches); }, [taches]);
 
+  // ---- Escape handler for modals ----
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        if (showDeleteConfirm) setShowDeleteConfirm(null);
+        else if (showTaskModal) setShowTaskModal(false);
+        else if (showTemplateModal) setShowTemplateModal(false);
+        else if (showCarnetModal) setShowCarnetModal(false);
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [showCarnetModal, showTaskModal, showDeleteConfirm, showTemplateModal]);
+
   // ---- Theme classes ----
   const cardCls = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200';
   const inputCls = isDark ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400' : 'bg-white border-slate-300 text-slate-900';
@@ -725,6 +739,8 @@ export default function CarnetEntretien({ chantiers = [], clients = [], isDark =
     return (
       <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 ${overlayBg}`} onClick={() => setShowCarnetModal(false)}>
         <div
+          role="dialog"
+          aria-modal="true"
           className={`w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-xl border shadow-xl ${cardCls}`}
           onClick={e => e.stopPropagation()}
         >
@@ -892,6 +908,8 @@ export default function CarnetEntretien({ chantiers = [], clients = [], isDark =
     return (
       <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 ${overlayBg}`} onClick={() => setShowTaskModal(false)}>
         <div
+          role="dialog"
+          aria-modal="true"
           className={`w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-xl border shadow-xl ${cardCls}`}
           onClick={e => e.stopPropagation()}
         >
@@ -1049,8 +1067,8 @@ export default function CarnetEntretien({ chantiers = [], clients = [], isDark =
     if (!showDeleteConfirm) return null;
     const isCarnet = showDeleteConfirm.type === 'carnet';
     return (
-      <div className={`fixed inset-0 z-[60] flex items-center justify-center p-4 ${overlayBg}`} onClick={() => setShowDeleteConfirm(null)}>
-        <div className={`w-full max-w-sm rounded-xl border shadow-xl p-6 ${cardCls}`} onClick={e => e.stopPropagation()}>
+      <div className={`fixed inset-0 z-[1050] flex items-center justify-center p-4 ${overlayBg}`} onClick={() => setShowDeleteConfirm(null)}>
+        <div role="dialog" aria-modal="true" className={`w-full max-w-sm rounded-xl border shadow-xl p-6 ${cardCls}`} onClick={e => e.stopPropagation()}>
           <div className="flex items-center gap-3 mb-4">
             <div className="p-2 rounded-full bg-red-100">
               <AlertTriangle size={20} className="text-red-500" />
@@ -1382,7 +1400,7 @@ export default function CarnetEntretien({ chantiers = [], clients = [], isDark =
       {/* Template Modal */}
       {showTemplateModal && selectedCarnet && (
         <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 ${overlayBg}`} onClick={() => setShowTemplateModal(false)}>
-          <div className={`w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-xl border shadow-xl ${cardCls}`} onClick={e => e.stopPropagation()}>
+          <div role="dialog" aria-modal="true" className={`w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-xl border shadow-xl ${cardCls}`} onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: isDark ? '#334155' : '#e2e8f0' }}>
               <div className="flex items-center gap-2">
                 <Sparkles size={18} style={{ color: couleur }} />

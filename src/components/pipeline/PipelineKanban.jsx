@@ -55,6 +55,8 @@ function KanbanCard({ devis, client, isDark, couleur, onOpenDevis, onDragStart }
 
   return (
     <div
+      role="button"
+      tabIndex={0}
       draggable
       onDragStart={(e) => {
         e.dataTransfer.setData('devisId', devis.id);
@@ -62,6 +64,7 @@ function KanbanCard({ devis, client, isDark, couleur, onOpenDevis, onDragStart }
         onDragStart?.(devis.id);
       }}
       onClick={() => onOpenDevis?.(devis)}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpenDevis?.(devis); } }}
       className={`group cursor-pointer rounded-xl border p-3 transition-all hover:shadow-md hover:scale-[1.01] active:scale-[0.98] ${
         isDark
           ? 'bg-slate-800 border-slate-700 hover:border-slate-500'
@@ -93,7 +96,7 @@ function KanbanCard({ devis, client, isDark, couleur, onOpenDevis, onDragStart }
         <span className="text-sm font-bold" style={{ color: couleur }}>
           {(devis.total_ttc || 0).toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} €
         </span>
-        <div className={`flex items-center gap-1 text-[10px] ${
+        <div className={`flex items-center gap-1 text-[11px] ${
           isVeryLate ? 'text-red-500' : isLate ? 'text-amber-500' : 'text-slate-400'
         }`}>
           {(isLate || isVeryLate) && <AlertTriangle size={10} />}

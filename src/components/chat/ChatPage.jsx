@@ -78,6 +78,7 @@ const ThreadPanel = memo(function ThreadPanel({
         <h4 className={`text-sm font-semibold flex-1 ${textPrimary}`}>Thread</h4>
         <button
           onClick={onClose}
+          aria-label="Fermer"
           className={`p-1 rounded-lg transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-gray-100 text-gray-400'}`}
         >
           <X size={16} />
@@ -87,11 +88,11 @@ const ThreadPanel = memo(function ThreadPanel({
       {/* Parent message */}
       <div className={`px-3 py-2 border-b ${isDark ? 'border-slate-700 bg-slate-800/50' : 'border-gray-100 bg-gray-50/50'}`}>
         <div className="flex items-center gap-2 mb-1">
-          <div className="w-6 h-6 rounded-full bg-gradient-to-br from-slate-400 to-slate-500 flex items-center justify-center text-white text-[9px] font-bold">
+          <div className="w-6 h-6 rounded-full bg-gradient-to-br from-slate-400 to-slate-500 flex items-center justify-center text-white text-[11px] font-bold">
             {(parentMessage.userName || '?').charAt(0).toUpperCase()}
           </div>
           <span className={`text-xs font-semibold ${textPrimary}`}>{parentMessage.userName}</span>
-          <span className={`text-[10px] ${textMuted}`}>
+          <span className={`text-[11px] ${textMuted}`}>
             {parentMessage.createdAt && new Date(parentMessage.createdAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
           </span>
         </div>
@@ -111,8 +112,8 @@ const ThreadPanel = memo(function ThreadPanel({
               <div className="w-5 h-5 rounded-full bg-gradient-to-br from-slate-400 to-slate-500 flex items-center justify-center text-white text-[8px] font-bold">
                 {(msg.userName || '?').charAt(0).toUpperCase()}
               </div>
-              <span className={`text-[10px] font-semibold ${textPrimary}`}>{msg.userName}</span>
-              <span className={`text-[9px] ${textMuted}`}>
+              <span className={`text-[11px] font-semibold ${textPrimary}`}>{msg.userName}</span>
+              <span className={`text-[11px] ${textMuted}`}>
                 {msg.createdAt && new Date(msg.createdAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
               </span>
             </div>
@@ -599,6 +600,7 @@ const ChatPage = memo(function ChatPage({
               {/* Mobile back button */}
               <button
                 onClick={() => setShowMobileSidebar(true)}
+                aria-label="Retour"
                 className={`lg:hidden p-1.5 rounded-lg ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-gray-100 text-gray-400'}`}
               >
                 <ArrowLeft size={18} />
@@ -640,6 +642,7 @@ const ChatPage = memo(function ChatPage({
                   onClick={() => handleSearch('')}
                   className={`p-2 rounded-xl transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-gray-100 text-gray-400'}`}
                   title="Rechercher"
+                  aria-label="Rechercher"
                 >
                   <Search size={16} />
                 </button>

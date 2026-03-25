@@ -124,11 +124,11 @@ export default function PlanPage({ isDark, couleur = '#f97316' }) {
                 <div className="flex items-center gap-2">
                   <h3 className={`text-lg font-bold ${textPrimary}`}>Plan {plan.name}</h3>
                   {sub?.cancel_at_period_end ? (
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-700">
+                    <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-red-100 text-red-700">
                       ANNULATION PRÉVUE
                     </span>
                   ) : (
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${isDark ? 'bg-emerald-500/20 text-emerald-300' : 'bg-emerald-50 text-emerald-700'}`}>
+                    <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${isDark ? 'bg-emerald-500/20 text-emerald-300' : 'bg-emerald-50 text-emerald-700'}`}>
                       ACTIF
                     </span>
                   )}
@@ -196,6 +196,7 @@ export default function PlanPage({ isDark, couleur = '#f97316' }) {
             <span className={`text-xs font-medium ${billing === 'monthly' ? textPrimary : textMuted}`}>Mensuel</span>
             <button
               onClick={() => setBilling(b => b === 'monthly' ? 'yearly' : 'monthly')}
+              aria-label="Basculer facturation mensuelle/annuelle"
               className={`relative w-12 h-7 rounded-full transition-colors ${billing === 'yearly' ? '' : isDark ? 'bg-slate-600' : 'bg-slate-300'}`}
               style={billing === 'yearly' ? { backgroundColor: couleur } : {}}
             >
@@ -203,7 +204,7 @@ export default function PlanPage({ isDark, couleur = '#f97316' }) {
             </button>
             <span className={`text-xs font-medium ${billing === 'yearly' ? textPrimary : textMuted}`}>
               Annuel
-              <span className={`ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold ${isDark ? 'bg-green-500/20 text-green-300' : 'bg-green-50 text-green-700'}`}>
+              <span className={`ml-1 px-1.5 py-0.5 rounded-full text-[11px] font-bold ${isDark ? 'bg-green-500/20 text-green-300' : 'bg-green-50 text-green-700'}`}>
                 -{YEARLY_DISCOUNT}%
               </span>
             </span>
@@ -237,7 +238,7 @@ export default function PlanPage({ isDark, couleur = '#f97316' }) {
                 >
                   {p.badge && !isCurrent && (
                     <span
-                      className="absolute -top-2.5 right-3 px-2.5 py-0.5 text-[10px] font-bold rounded-full text-white"
+                      className="absolute -top-2.5 right-3 px-2.5 py-0.5 text-[11px] font-bold rounded-full text-white"
                       style={{ backgroundColor: p.color }}
                     >
                       {p.badge}
@@ -245,7 +246,7 @@ export default function PlanPage({ isDark, couleur = '#f97316' }) {
                   )}
                   {isCurrent && (
                     <span
-                      className="absolute -top-2.5 right-3 px-2.5 py-0.5 text-[10px] font-bold rounded-full text-white"
+                      className="absolute -top-2.5 right-3 px-2.5 py-0.5 text-[11px] font-bold rounded-full text-white"
                       style={{ backgroundColor: p.color }}
                     >
                       ACTUEL
@@ -337,7 +338,7 @@ export default function PlanPage({ isDark, couleur = '#f97316' }) {
           </button>
 
           {isDemo && (
-            <p className={`text-[10px] mt-3 ${textMuted}`}>Mode démo — données de simulation</p>
+            <p className={`text-[11px] mt-3 ${textMuted}`}>Mode démo — données de simulation</p>
           )}
         </div>
       </section>

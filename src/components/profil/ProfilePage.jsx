@@ -504,7 +504,7 @@ export default function ProfilePage({
             <div className="flex items-center justify-between mb-4">
               <h3 className={`text-sm font-semibold ${textPrimary}`}>Utilisation du plan</h3>
               <span
-                className="px-2 py-0.5 rounded-full text-[10px] font-bold text-white"
+                className="px-2 py-0.5 rounded-full text-[11px] font-bold text-white"
                 style={{ backgroundColor: plan.color }}
               >
                 {plan.name}
