@@ -284,7 +284,7 @@ function OverviewWidget({
   const overviewItems = useMemo(() => [
     {
       label: 'CA total 6 mois',
-      value: fmt(computed.sparkData.reduce((s, d) => s + d.ca, 0), modeDiscret),
+      value: fmt(computed.caSigne || 0, modeDiscret),
       icon: BarChart3,
       color: couleur,
     },
@@ -1731,6 +1731,11 @@ export default function Dashboard({
     const facturesEnRetard = devis
       .filter(d => d.type === 'facture' && d.date_echeance && new Date(d.date_echeance) < now && ['envoye', 'facture'].includes(d.statut));
 
+    // CA total signé/facturé
+    const caSigne = devis
+      .filter(d => ['signe', 'facture'].includes(d.statut))
+      .reduce((s, d) => s + (d.total_ttc || 0), 0);
+
     return {
       aEncaisser,
       aEncaisserTrend,
@@ -1740,6 +1745,7 @@ export default function Dashboard({
       tauxConversion,
       pipeline,
       caPrevisionnel,
+      caSigne,
       actions: actions.sort((a, b) => a.priority - b.priority),
       score,
       chantierPrincipal,
