@@ -84,3 +84,30 @@ export const STOCK_COLORS = {
   bas: { hex: '#f59e0b', label: 'Bas' },
   epuise: { hex: '#94a3b8', label: 'Rupture' },
 };
+
+// Rôles employés
+export const ROLE_COLORS = {
+  'Chef de chantier': '#f59e0b',
+  'Ouvrier qualifié': '#6366f1',
+  'Ouvrier qualifie': '#6366f1',
+  'Électricien': '#eab308',
+  'Electricien': '#eab308',
+  'Plombier': '#3b82f6',
+  'Peintre': '#8b5cf6',
+  'Maçon': '#a16207',
+  'Macon': '#a16207',
+  'Carreleur': '#78716c',
+  'Menuisier': '#92400e',
+  'Apprenti': '#10b981',
+  'default': '#64748b',
+};
+
+// Types de congés
+export const CONGE_TYPE_COLORS = {
+  conge_paye: '#3b82f6',
+  rtt: '#8b5cf6',
+  maladie: '#ef4444',
+  sans_solde: '#64748b',
+  formation: '#f59e0b',
+  autre: '#6b7280',
+};

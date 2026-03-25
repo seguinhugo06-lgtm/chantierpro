@@ -16,6 +16,8 @@ import { generateId } from '../lib/utils';
 import { useFormValidation, employeeSchema, email as emailValidator, phone as phoneValidator } from '../lib/validation';
 import { usePermissions } from '../hooks/usePermissions';
 import { ReadOnlyBanner } from './ui/PermissionGate';
+import useFocusTrap from '../hooks/useFocusTrap';
+import { ROLE_COLORS, CONGE_TYPE_COLORS } from '../constants/colors';
 
 // Lazy-load optional heavy dependencies to prevent crashes
 let NoteModal = null;
@@ -162,6 +164,13 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
 
   // Smart Clocking hook (stubbed - full version loads lazily)
   const smartClocking = useSmartClockingStub();
+
+  // Focus traps for modals
+  const signatureTrapRef = useFocusTrap(signatureModal.open);
+  const congeTrapRef = useFocusTrap(showCongeForm);
+  const pointerTrapRef = useFocusTrap(showPointerModal);
+  const employeeFormTrapRef = useFocusTrap(showAdd);
+  const employeeDetailTrapRef = useFocusTrap(!!selectedEmployee);
 
   // Role configuration with icons and colors
   const roleConfig = {
@@ -1005,7 +1014,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
 
   // Employee add/edit form
   if (showAdd) return (
-    <div className="space-y-6">
+    <div ref={employeeFormTrapRef} className="space-y-6" role="dialog" aria-modal="true" aria-label={editId ? 'Modifier un employé' : isSousTraitants ? 'Nouveau sous-traitant' : 'Nouvel employé'}>
       <div className="flex items-center gap-4">
         <button onClick={() => { setShowAdd(false); setEditId(null); setForm({ nom: '', prenom: '', telephone: '', email: '', role: '', contrat: '', tauxHoraire: '', coutHoraireCharge: '', dateEmbauche: '', competences: '', certifications: '', notes: '', siret: '', decennale_assureur: '', decennale_numero: '', decennale_expiration: '', urssaf_date: '', tarif_type: 'horaire', tarif_forfait: '' }); }} className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
           <ArrowLeft size={20} className={textPrimary} />
@@ -1192,7 +1201,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
 
   // Bulk entry modal
   if (showBulkEntry) return (
-    <div className="space-y-6">
+    <div className="space-y-6" role="dialog" aria-modal="true" aria-label="Saisie groupée de pointages">
       <div className="flex items-center gap-4">
         <button onClick={() => setShowBulkEntry(false)} className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
           <ArrowLeft size={20} className={textPrimary} />
@@ -1309,7 +1318,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
           {setPage && (
             <button
               onClick={() => setPage('dashboard')}
-              className={`p-2 rounded-xl min-w-[40px] min-h-[40px] flex items-center justify-center transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}
+              className={`p-2 rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}
               aria-label="Retour au tableau de bord"
               title="Retour au tableau de bord"
             >
@@ -1397,8 +1406,9 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
     <div className="space-y-6">
       {/* Note Modal - inline fallback */}
       {noteModalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => { setNoteModalOpen(false); setPendingStopChrono(false); }}>
-          <div className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-2xl p-6 w-full max-w-md`} onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
+          <div className="absolute inset-0 bg-black/50" role="presentation" aria-hidden="true" onClick={() => { setNoteModalOpen(false); setPendingStopChrono(false); }} />
+          <div className={`relative ${isDark ? 'bg-slate-800' : 'bg-white'} rounded-2xl p-6 w-full max-w-md`} role="dialog" aria-modal="true" aria-label="Fin du pointage" onClick={e => e.stopPropagation()}>
             <h3 className={`text-lg font-bold mb-3 ${isDark ? 'text-white' : 'text-slate-900'}`}>Fin du pointage</h3>
             <textarea
               autoFocus
@@ -1421,7 +1431,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
           {setPage && (
             <button
               onClick={() => setPage('dashboard')}
-              className={`p-2 rounded-xl min-w-[40px] min-h-[40px] flex items-center justify-center transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}
+              className={`p-2 rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}
               aria-label="Retour au tableau de bord"
               title="Retour au tableau de bord"
             >
@@ -1505,7 +1515,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
             /* ── Compact mode: single line when no hours ── */
             <div className="relative flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
-                <button onClick={() => setWeekOffset(o => o - 1)} className="w-8 h-8 rounded-lg bg-white/20 hover:bg-white/30 transition-colors flex items-center justify-center" aria-label="Semaine précédente">
+                <button onClick={() => setWeekOffset(o => o - 1)} className="min-w-[44px] min-h-[44px] rounded-lg bg-white/20 hover:bg-white/30 transition-colors flex items-center justify-center" aria-label="Semaine précédente">
                   <ChevronLeft size={16} className="text-white" />
                 </button>
                 <div className="flex items-center gap-2">
@@ -1514,7 +1524,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                     {weekOffset === 0 ? 'Cette semaine' : `${weekStart.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })} — ${weekEnd.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}`}
                   </p>
                 </div>
-                <button onClick={() => setWeekOffset(o => Math.min(o + 1, 0))} disabled={weekOffset >= 0} className="w-8 h-8 rounded-lg bg-white/20 hover:bg-white/30 transition-colors flex items-center justify-center disabled:opacity-40" aria-label="Semaine suivante">
+                <button onClick={() => setWeekOffset(o => Math.min(o + 1, 0))} disabled={weekOffset >= 0} className="min-w-[44px] min-h-[44px] rounded-lg bg-white/20 hover:bg-white/30 transition-colors flex items-center justify-center disabled:opacity-40" aria-label="Semaine suivante">
                   <ChevronRight size={16} className="text-white" />
                 </button>
               </div>
@@ -1598,7 +1608,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                     <div
                       key={e.id}
                       className="w-6 h-6 rounded-full border-2 flex items-center justify-center text-[10px] font-bold text-white"
-                      style={{ background: config.color, borderColor: isDark ? '#1e293b' : '#fff', zIndex: 3 - i }}
+                      style={{ background: config.color, borderColor: isDark ? '#1e293b' : '#fff', zIndex: Math.max(1, 10 - i) }}
                     >
                       {e.nom?.[0]}
                     </div>
@@ -1705,7 +1715,8 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
             <div className="flex items-center justify-between mb-4">
               <h3 className={`text-sm font-semibold flex items-center gap-2 ${textPrimary}`}>
                 <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${isDark ? 'bg-emerald-900/40' : 'bg-emerald-100'}`}>
-                  <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" aria-hidden="true" />
+                  <span className="sr-only">En ligne</span>
                 </div>
                 Équipe active maintenant
               </h3>
@@ -1816,7 +1827,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                 if (e.key === 'ArrowRight') { e.preventDefault(); setTab(tabKeys[(idx + 1) % tabKeys.length]); }
                 if (e.key === 'ArrowLeft') { e.preventDefault(); setTab(tabKeys[(idx - 1 + tabKeys.length) % tabKeys.length]); }
               }}
-              className={`relative flex items-center gap-1 sm:gap-1.5 px-2 sm:px-4 py-2 sm:py-2.5 rounded-xl font-medium whitespace-nowrap min-h-[40px] sm:min-h-[44px] transition-all ${
+              className={`relative flex items-center gap-1 sm:gap-1.5 px-2 sm:px-4 py-2 sm:py-2.5 rounded-xl font-medium whitespace-nowrap min-h-[44px] transition-all ${
                 tab === key
                   ? 'text-white shadow-lg'
                   : isDark
@@ -1828,11 +1839,11 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
               <Icon size={15} />
               {mobileLabel ? (
                 <>
-                  <span className="text-[10px] sm:hidden">{mobileLabel}</span>
+                  <span className="text-[11px] sm:hidden" title={label}>{mobileLabel}</span>
                   <span className="hidden sm:inline text-sm">{label}</span>
                 </>
               ) : (
-                <span className="text-[10px] sm:text-sm">{label}</span>
+                <span className="text-[11px] sm:text-sm" title={label}>{label}</span>
               )}
               {count !== undefined && count > 0 && (
                 <span className={`min-w-[20px] h-5 px-1.5 rounded-full text-xs font-bold flex items-center justify-center ${
@@ -1851,7 +1862,9 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                 </span>
               )}
               {alert && tab !== key && (
-                <span className="absolute top-1 right-1 w-2 h-2 bg-amber-500 rounded-full animate-pulse" />
+                <span className="absolute top-1 right-1 w-2 h-2 bg-amber-500 rounded-full animate-pulse" aria-hidden="true">
+                  <span className="sr-only">Notification</span>
+                </span>
               )}
             </button>
           ))}
@@ -2058,8 +2071,8 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                         {/* Status badge */}
                         {isActiveToday && (
                           <div className={`absolute top-3 left-3 px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${isDark ? 'bg-emerald-900/70 text-emerald-300' : 'bg-emerald-100 text-emerald-700'}`}>
-                            <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-                            Actif
+                            <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" aria-hidden="true" />
+                            <span className="sr-only">En ligne — </span>Actif
                           </div>
                         )}
 
@@ -2069,8 +2082,9 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                           {!isSousTraitants && !chrono.running && (
                             <button
                               onClick={() => quickStartTimer(e.id)}
-                              className={`p-2 rounded-lg transition-colors shadow-sm ${isDark ? 'bg-emerald-900/70 hover:bg-emerald-800 text-emerald-300' : 'bg-emerald-100 hover:bg-emerald-200 text-emerald-700'}`}
-                              title="Demarrer le chrono"
+                              className={`min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg transition-colors shadow-sm ${isDark ? 'bg-emerald-900/70 hover:bg-emerald-800 text-emerald-300' : 'bg-emerald-100 hover:bg-emerald-200 text-emerald-700'}`}
+                              title="Démarrer le chrono"
+                              aria-label="Démarrer le chrono"
                             >
                               <Play size={14} fill="currentColor" />
                             </button>
@@ -2078,23 +2092,26 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                           {e.telephone && (
                             <button
                               onClick={() => callPhone(e.telephone)}
-                              className={`p-2 rounded-lg transition-colors shadow-sm ${isDark ? 'bg-slate-700 hover:bg-emerald-900/50 text-emerald-400' : 'bg-white hover:bg-emerald-50 text-emerald-600'}`}
+                              className={`min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg transition-colors shadow-sm ${isDark ? 'bg-slate-700 hover:bg-emerald-900/50 text-emerald-400' : 'bg-white hover:bg-emerald-50 text-emerald-600'}`}
                               title="Appeler"
+                              aria-label="Appeler"
                             >
                               <Phone size={14} />
                             </button>
                           )}
                           <button
                             onClick={() => startEdit(e)}
-                            className={`p-2 rounded-lg transition-colors shadow-sm ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-white hover:bg-slate-50 text-slate-500'}`}
-                            title="Modifier"
+                            className={`min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg transition-colors shadow-sm ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-white hover:bg-slate-50 text-slate-500'}`}
+                            title="Modifier l'employé"
+                            aria-label="Modifier l'employé"
                           >
                             <Edit3 size={14} />
                           </button>
                           <button
                             onClick={() => deleteEmploye(e.id)}
-                            className={`p-2 rounded-lg transition-colors shadow-sm ${isDark ? 'bg-slate-700 hover:bg-red-900/50 text-red-400' : 'bg-white hover:bg-red-50 text-red-500'}`}
-                            title="Supprimer"
+                            className={`min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg transition-colors shadow-sm ${isDark ? 'bg-slate-700 hover:bg-red-900/50 text-red-400' : 'bg-white hover:bg-red-50 text-red-500'}`}
+                            title="Supprimer l'employé"
+                            aria-label="Supprimer l'employé"
                           >
                             <Trash2 size={14} />
                           </button>
@@ -3133,12 +3150,16 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                 >
-                  <div className="absolute inset-0 bg-black/50" onClick={() => { setSignatureModal({ open: false, pointageIds: [], employeId: null }); setSignatureData(null); }} />
+                  <div className="absolute inset-0 bg-black/50" role="presentation" aria-hidden="true" onClick={() => { setSignatureModal({ open: false, pointageIds: [], employeId: null }); setSignatureData(null); }} />
                   <motion.div
+                    ref={signatureTrapRef}
                     className={`relative w-full max-w-lg rounded-2xl p-6 ${isDark ? 'bg-slate-800' : 'bg-white'} shadow-2xl`}
                     initial={{ scale: 0.9, y: 20 }}
                     animate={{ scale: 1, y: 0 }}
                     exit={{ scale: 0.9, y: 20 }}
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label="Signature employé"
                   >
                     <div className="flex items-center justify-between mb-4">
                       <div>
@@ -3408,7 +3429,10 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                         <span
                           className={`w-2 h-2 rounded-full flex-shrink-0 ${p.manuel ? 'bg-blue-500' : 'bg-orange-500'}`}
                           title={p.manuel ? 'Saisie manuelle' : 'Chronomètre'}
-                        />
+                          aria-hidden="true"
+                        >
+                          <span className="sr-only">{p.manuel ? 'Manuel' : 'Automatique'}</span>
+                        </span>
 
                         {/* Hours */}
                         <div className="w-16 text-right flex-shrink-0">
@@ -3680,12 +3704,16 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                   <AnimatePresence>
                     {showCongeForm && (
                       <motion.div className="fixed inset-0 z-50 flex items-center justify-center p-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                        <div className="absolute inset-0 bg-black/50" onClick={() => setShowCongeForm(false)} />
+                        <div className="absolute inset-0 bg-black/50" role="presentation" aria-hidden="true" onClick={() => setShowCongeForm(false)} />
                         <motion.div
+                          ref={congeTrapRef}
                           className={`relative w-full max-w-md rounded-2xl p-6 ${isDark ? 'bg-slate-800' : 'bg-white'} shadow-2xl`}
                           initial={{ scale: 0.9, y: 20 }}
                           animate={{ scale: 1, y: 0 }}
                           exit={{ scale: 0.9, y: 20 }}
+                          role="dialog"
+                          aria-modal="true"
+                          aria-label="Nouvelle demande de congé"
                         >
                           <div className="flex items-center justify-between mb-5">
                             <div className="flex items-center gap-3">
@@ -3849,10 +3877,14 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
       <AnimatePresence>
         {showPointerModal && (
           <motion.div className="fixed inset-0 z-50 flex items-center justify-center p-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            <div className="absolute inset-0 bg-black/50" onClick={() => setShowPointerModal(false)} />
+            <div className="absolute inset-0 bg-black/50" role="presentation" aria-hidden="true" onClick={() => setShowPointerModal(false)} />
             <motion.div
+              ref={pointerTrapRef}
               className={`relative w-full max-w-md rounded-2xl ${isDark ? 'bg-slate-800' : 'bg-white'} shadow-2xl overflow-hidden`}
               initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Saisie rapide de pointage"
             >
               <div className="p-5 text-white" style={{ background: 'linear-gradient(135deg, #059669, #047857)' }}>
                 <div className="flex items-center justify-between">
@@ -3984,12 +4016,15 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
       <AnimatePresence>
         {showTerrainView && (
           <motion.div className="fixed inset-0 z-50 flex flex-col" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            <div className="absolute inset-0 bg-black/60" onClick={() => setShowTerrainView(false)} />
+            <div className="absolute inset-0 bg-black/60" role="presentation" aria-hidden="true" onClick={() => setShowTerrainView(false)} />
             <motion.div
               className={`relative flex-1 flex flex-col w-full max-w-lg mx-auto ${isDark ? 'bg-slate-900' : 'bg-white'} overflow-hidden`}
               initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
               style={{ maxHeight: '100vh' }}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Vue Terrain"
             >
               {/* Terrain Header */}
               <div className="p-4 text-white flex items-center justify-between" style={{ background: 'linear-gradient(135deg, #059669, #047857)' }}>
@@ -4126,8 +4161,9 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
 
           return (
             <motion.div className="fixed inset-0 z-50 flex items-start justify-center p-4 overflow-y-auto" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              <div className="absolute inset-0 bg-black/50" onClick={() => setSelectedEmployee(null)} />
+              <div className="absolute inset-0 bg-black/50" role="presentation" aria-hidden="true" onClick={() => setSelectedEmployee(null)} />
               <motion.div
+                ref={employeeDetailTrapRef}
                 className={`relative w-full max-w-lg rounded-2xl my-8 ${isDark ? 'bg-slate-800' : 'bg-white'} shadow-2xl overflow-hidden`}
                 initial={{ scale: 0.9, y: 40 }}
                 animate={{ scale: 1, y: 0 }}
