@@ -58,7 +58,7 @@ function CircularGauge({ value, max = 100, size = 64, strokeWidth = 6, couleur, 
   const pct = Math.min(value / max, 1);
   const offset = circumference * (1 - pct);
   return (
-    <svg width={size} height={size} className="transform -rotate-90">
+    <svg width={size} height={size} className="transform -rotate-90" role="img" aria-label={`${label || 'Score'} : ${value}${max === 100 ? '%' : '/' + max}`}>
       <circle
         cx={size / 2} cy={size / 2} r={radius}
         fill="none"
@@ -189,7 +189,7 @@ export default function AnalyticsPremium({
             <button
               key={opt.key}
               onClick={() => setPeriod(opt.key)}
-              className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
+              className={`min-h-[44px] px-4 py-2.5 text-xs font-medium rounded-lg transition-all ${
                 period === opt.key
                   ? 'text-white shadow-sm'
                   : isDark ? 'text-slate-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'
@@ -255,7 +255,7 @@ export default function AnalyticsPremium({
                   <span className={`text-xs font-medium ${textSecondary}`}>{step.etape}</span>
                   <div className="flex items-center gap-2">
                     {convRate !== null && i > 0 && (
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
+                      <span className={`text-[11px] px-1.5 py-0.5 rounded-full ${
                         isDark ? 'bg-slate-700 text-slate-400' : 'bg-gray-100 text-gray-500'
                       }`}>
                         {convRate}%
@@ -349,7 +349,7 @@ export default function AnalyticsPremium({
                   <div className="flex items-center justify-between mb-1">
                     <span className={`text-xs font-medium truncate ${textPrimary}`}>{cl.nom}</span>
                     <div className="flex items-center gap-2 shrink-0">
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
+                      <span className={`text-[11px] px-1.5 py-0.5 rounded-full ${
                         isDark ? 'bg-slate-700 text-slate-400' : 'bg-gray-100 text-gray-500'
                       }`}>
                         {cl.tauxConversion}%
@@ -393,7 +393,7 @@ export default function AnalyticsPremium({
                   </p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                  <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${
                     isDark ? 'bg-red-500/20 text-red-400' : 'bg-red-100 text-red-700'
                   }`}>
                     Dormant
@@ -405,7 +405,7 @@ export default function AnalyticsPremium({
                       }
                       if (showToast) showToast(`${cl.nom} copié`, 'success');
                     }}
-                    className={`text-[11px] px-2 py-1 rounded-lg font-medium transition-colors ${
+                    className={`text-[11px] min-h-[44px] px-3 py-2 rounded-lg font-medium transition-colors ${
                       isDark ? 'bg-slate-600 text-slate-200 hover:bg-slate-500' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                     }`}
                   >
@@ -433,7 +433,7 @@ export default function AnalyticsPremium({
                 <div className="flex items-center justify-between mb-1">
                   <span className={`text-xs font-medium truncate max-w-[60%] ${textPrimary}`}>{p.nom}</span>
                   <div className="flex items-center gap-3 shrink-0">
-                    <span className={`text-[10px] ${textMuted}`}>{p.count}x</span>
+                    <span className={`text-[11px] ${textMuted}`}>{p.count}x</span>
                     <span className={`text-xs font-semibold ${textPrimary}`}>{formatCompact(p.ca)}</span>
                   </div>
                 </div>
@@ -461,6 +461,7 @@ export default function AnalyticsPremium({
         <div className="space-y-2">
           {rentabiliteChantiers.slice(0, 15).map(ch => {
             const margeColor = ch.margePct > 20 ? '#22c55e' : ch.margePct >= 0 ? '#f59e0b' : '#ef4444';
+            const margeLabel = ch.margePct > 20 ? 'Bonne marge' : ch.margePct >= 0 ? 'Marge faible' : 'Marge négative';
             return (
               <div
                 key={ch.id}
@@ -470,7 +471,7 @@ export default function AnalyticsPremium({
               >
                 <div className="flex items-center gap-2 min-w-0 sm:w-1/3">
                   <span
-                    className="text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0"
+                    className="text-[11px] font-semibold px-2 py-0.5 rounded-full shrink-0"
                     style={{
                       background: `${margeColor}20`,
                       color: margeColor,
@@ -478,12 +479,13 @@ export default function AnalyticsPremium({
                   >
                     {STATUT_LABELS[ch.statut] || ch.statut}
                   </span>
+                  <span className="sr-only">{margeLabel}</span>
                   <span className={`text-sm font-medium truncate ${textPrimary}`}>{ch.nom}</span>
                 </div>
                 <div className="flex items-center gap-3 sm:w-1/3">
                   <div className="flex-1">
                     <div className="flex items-center justify-between mb-1">
-                      <span className={`text-[10px] ${textMuted}`}>Marge</span>
+                      <span className={`text-[11px] ${textMuted}`}>Marge</span>
                       <span className="text-[11px] font-bold" style={{ color: margeColor }}>
                         {ch.margePct}%
                       </span>
@@ -527,19 +529,21 @@ export default function AnalyticsPremium({
         <div className="space-y-3">
           {productivite.map(m => {
             const barColor = m.taux > 100 ? '#ef4444' : m.taux >= 80 ? '#f59e0b' : '#22c55e';
+            const chargeLabel = m.taux > 100 ? 'Surcharge' : 'Charge normale';
             return (
               <div key={m.id} className="flex items-center gap-3">
                 <div className="w-24 sm:w-32 shrink-0">
                   <p className={`text-xs font-medium truncate ${textPrimary}`}>{m.nom}</p>
-                  <p className={`text-[10px] ${textMuted}`}>{m.role}</p>
+                  <p className={`text-[11px] ${textMuted}`}>{m.role}</p>
                 </div>
                 <div className="flex-1">
                   <div className="flex items-center justify-between mb-1">
-                    <span className={`text-[10px] ${textMuted}`}>{m.heures}h / {m.capacite}h</span>
+                    <span className={`text-[11px] ${textMuted}`}>{m.heures}h / {m.capacite}h</span>
                     <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-bold" style={{ color: barColor }}>{m.taux}%</span>
+                      <span className="text-[11px] font-bold" style={{ color: barColor }}>{m.taux}%</span>
+                      <span className="sr-only">{chargeLabel}</span>
                       {m.cout > 0 && (
-                        <span className={`text-[10px] ${textMuted}`}>{formatCompact(m.cout)}</span>
+                        <span className={`text-[11px] ${textMuted}`}>{formatCompact(m.cout)}</span>
                       )}
                     </div>
                   </div>
@@ -560,7 +564,7 @@ export default function AnalyticsPremium({
             <div className={`text-center py-8 ${textMuted}`}>
               <Zap size={24} className="mx-auto mb-2 opacity-40" />
               <p className="text-xs">Aucun pointage enregistré</p>
-              <p className="text-[10px] mt-1">Les données apparaîtront quand l'équipe pointera ses heures</p>
+              <p className="text-[11px] mt-1">Les données apparaîtront quand l'équipe pointera ses heures</p>
             </div>
           )}
         </div>
