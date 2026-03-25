@@ -119,6 +119,7 @@ function MemoItem({
           : isDark ? 'hover:bg-slate-800' : 'hover:bg-slate-50'
       } ${memo.is_done ? 'opacity-60' : ''}`}
       onClick={() => selectionMode ? onMultiSelect(memo.id) : onSelect(memo.id)}
+      role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectionMode ? onMultiSelect(memo.id) : onSelect(memo.id); } }}
     >
       {/* Checkbox or selection checkbox */}
       {selectionMode ? (
@@ -213,18 +214,21 @@ function MemoItem({
         <div className="hidden sm:flex opacity-0 group-hover:opacity-100 items-center gap-0.5 flex-shrink-0 transition-opacity">
           <button
             onClick={(e) => { e.stopPropagation(); onQuickDate(memo.id); }}
-            className={`p-1 rounded text-xs ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-200'}`}
-            title="Mettre à aujourd'hui"
+            className={`p-1 rounded text-xs min-w-[44px] min-h-[44px] flex items-center justify-center ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-200'}`}
+            title="Planifier"
+            aria-label="Planifier"
           >📅</button>
           <button
             onClick={(e) => { e.stopPropagation(); onQuickPriority(memo.id); }}
-            className={`p-1 rounded text-xs ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-200'}`}
+            className={`p-1 rounded text-xs min-w-[44px] min-h-[44px] flex items-center justify-center ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-200'}`}
             title="Priorité haute"
+            aria-label="Priorité haute"
           >🔴</button>
           <button
             onClick={(e) => { e.stopPropagation(); onQuickDelete(memo.id); }}
-            className={`p-1 rounded text-xs ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-200'}`}
+            className={`p-1 rounded text-xs min-w-[44px] min-h-[44px] flex items-center justify-center ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-200'}`}
             title="Supprimer"
+            aria-label="Supprimer"
           >🗑️</button>
         </div>
       )}
@@ -277,7 +281,8 @@ function SubtaskList({ subtasks = [], onUpdate, couleur, isDark }) {
         <div className={`h-1 rounded-full mb-2 ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
           <div
             className="h-full rounded-full transition-all duration-300"
-            style={{ width: `${progress}%`, backgroundColor: done === total ? '#22c55e' : couleur }}
+            className={done === total ? 'bg-green-500' : ''}
+            style={{ width: `${progress}%`, ...(done !== total ? { backgroundColor: couleur } : {}) }}
           />
         </div>
       )}
@@ -288,22 +293,26 @@ function SubtaskList({ subtasks = [], onUpdate, couleur, isDark }) {
           <div key={st.id} className="group flex items-center gap-2 py-1">
             <button
               onClick={() => toggleSubtask(st.id)}
-              className={`flex-shrink-0 w-4 h-4 rounded border flex items-center justify-center transition-colors ${
+              className="flex-shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center"
+              aria-label={st.done ? 'Marquer sous-tâche comme non faite' : 'Marquer sous-tâche comme faite'}
+            >
+              <span className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${
                 st.done
                   ? 'border-green-500 bg-green-500 text-white'
                   : isDark ? 'border-slate-500' : 'border-slate-300'
-              }`}
-            >
-              {st.done && <CheckCircle2 size={10} />}
+              }`}>
+                {st.done && <CheckCircle2 size={12} />}
+              </span>
             </button>
             <span className={`text-sm flex-1 ${st.done ? 'line-through opacity-50' : ''} ${isDark ? 'text-white' : 'text-slate-900'}`}>
               {st.text}
             </span>
             <button
               onClick={() => deleteSubtask(st.id)}
-              className={`opacity-0 group-hover:opacity-100 p-0.5 rounded text-red-400 hover:text-red-500 transition-opacity`}
+              className="opacity-0 group-hover:opacity-100 min-w-[44px] min-h-[44px] flex items-center justify-center rounded text-red-400 hover:text-red-500 transition-opacity"
+              aria-label="Supprimer la sous-tâche"
             >
-              <X size={12} />
+              <X size={14} />
             </button>
           </div>
         ))}
@@ -833,7 +842,7 @@ function StatsBar({ memos, isDark, couleur }) {
       </div>
 
       {/* #1: En retard — conditional color */}
-      <div className={`rounded-xl border px-3 py-2.5 text-center transition-all ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`} style={{ borderLeftWidth: '3px', borderLeftColor: overdueNeutral ? (isDark ? '#475569' : '#cbd5e1') : '#ef4444' }}>
+      <div className={`rounded-xl border px-3 py-2.5 text-center transition-all border-l-[3px] ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'} ${overdueNeutral ? (isDark ? 'border-l-slate-600' : 'border-l-slate-300') : 'border-l-red-500'}`}>
         <div className={`text-lg font-bold ${overdueNeutral ? (isDark ? 'text-slate-500' : 'text-slate-400') : 'text-red-500'}`}>{stats.overdueCount}</div>
         <div className={`text-[10px] font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>En retard</div>
       </div>
@@ -865,7 +874,7 @@ function BulkActionBar({ count, onDate, onCategory, onPriority, onComplete, onDe
 
       {/* Date */}
       <div className="relative">
-        <button onClick={() => setShowDatePicker(!showDatePicker)} className="text-sm hover:text-amber-300 transition-colors" title="Date">📅</button>
+        <button onClick={() => setShowDatePicker(!showDatePicker)} className="text-sm hover:text-amber-300 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center" title="Date" aria-label="Planifier">📅</button>
         {showDatePicker && (
           <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-gray-800 rounded-lg p-2 shadow-lg min-w-[120px]">
             <button onClick={() => { onDate(today()); setShowDatePicker(false); }} className="w-full text-left text-xs px-2 py-1.5 rounded hover:bg-gray-700">Aujourd'hui</button>
@@ -877,7 +886,7 @@ function BulkActionBar({ count, onDate, onCategory, onPriority, onComplete, onDe
 
       {/* Category */}
       <div className="relative">
-        <button onClick={() => setShowCategoryPicker(!showCategoryPicker)} className="text-sm hover:text-purple-300 transition-colors" title="Catégorie">🏷️</button>
+        <button onClick={() => setShowCategoryPicker(!showCategoryPicker)} className="text-sm hover:text-purple-300 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center" title="Catégorie" aria-label="Catégorie">🏷️</button>
         {showCategoryPicker && (
           <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-gray-800 rounded-lg p-2 shadow-lg min-w-[120px]">
             {CATEGORIES.map(c => (
@@ -890,7 +899,7 @@ function BulkActionBar({ count, onDate, onCategory, onPriority, onComplete, onDe
 
       {/* Priority */}
       <div className="relative">
-        <button onClick={() => setShowPriorityPicker(!showPriorityPicker)} className="text-sm hover:text-yellow-300 transition-colors" title="Priorité">⚡</button>
+        <button onClick={() => setShowPriorityPicker(!showPriorityPicker)} className="text-sm hover:text-yellow-300 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center" title="Priorité" aria-label="Priorité">⚡</button>
         {showPriorityPicker && (
           <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-gray-800 rounded-lg p-2 shadow-lg min-w-[120px]">
             {PRIORITIES.map(p => (
@@ -901,8 +910,8 @@ function BulkActionBar({ count, onDate, onCategory, onPriority, onComplete, onDe
         )}
       </div>
 
-      <button onClick={onComplete} className="text-sm hover:text-green-300 transition-colors" title="Terminer">✅</button>
-      <button onClick={onDelete} className="text-sm text-red-400 hover:text-red-300 transition-colors" title="Supprimer">🗑️</button>
+      <button onClick={onComplete} className="text-sm hover:text-green-300 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center" title="Terminer" aria-label="Terminer">✅</button>
+      <button onClick={onDelete} className="text-sm text-red-400 hover:text-red-300 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center" title="Supprimer" aria-label="Supprimer">🗑️</button>
       <div className="w-px h-5 bg-gray-600" />
       <button onClick={onCancel} className="text-sm hover:text-gray-300 transition-colors"><X size={14} /></button>
     </div>
