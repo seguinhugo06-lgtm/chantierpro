@@ -330,7 +330,7 @@ export default function PostChantierSettings({ isDark, couleur, showToast }) {
                         </button>
                         <button
                           onClick={() => openEdit(step)}
-                          className={`text-xs px-2.5 py-1.5 rounded-lg border transition-colors ${cardBg} ${textSecondary} ${hoverBg}`}
+                          className={`text-xs px-2.5 min-h-[44px] rounded-lg border transition-colors ${cardBg} ${textSecondary} ${hoverBg}`}
                         >
                           <Pencil size={13} className="inline mr-1" />
                           Modifier
@@ -396,7 +396,8 @@ export default function PostChantierSettings({ isDark, couleur, showToast }) {
               </div>
               <button
                 onClick={closeEdit}
-                className={`p-1.5 rounded-lg transition-colors ${hoverBg} ${textMuted}`}
+                className={`min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg transition-colors ${hoverBg} ${textMuted}`}
+                aria-label="Fermer"
               >
                 <X size={18} />
               </button>

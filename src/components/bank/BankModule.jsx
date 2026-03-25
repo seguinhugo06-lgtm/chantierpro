@@ -581,7 +581,7 @@ export default function BankModule({ devis, depenses, clients, entreprise, paiem
                             onClick={() => setActionMenuTxId(actionMenuTxId === tx.id ? null : tx.id)}
                             aria-expanded={actionMenuTxId === tx.id}
                             aria-label="Actions"
-                            className={`p-1.5 rounded-lg transition-colors ${isDark ? 'hover:bg-slate-600' : 'hover:bg-slate-100'}`}
+                            className={`min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg transition-colors ${isDark ? 'hover:bg-slate-600' : 'hover:bg-slate-100'}`}
                           >
                             <MoreHorizontal size={14} className={tc.textMuted} />
                           </button>
@@ -763,8 +763,9 @@ function BankConnectModal({ isOpen, onClose, onConnected, isDark, couleur }) {
   );
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
-      <div className={`${cardBg} rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden max-h-[90vh] flex flex-col`}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in" role="dialog" aria-modal="true" aria-label="Connexion bancaire">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" role="presentation" onClick={onClose} />
+      <div className={`relative ${cardBg} rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden max-h-[90vh] flex flex-col`}>
         {/* Header */}
         <div className="p-5 border-b flex items-center justify-between flex-shrink-0" style={{ borderColor: isDark ? '#334155' : '#e2e8f0' }}>
           <div className="flex items-center gap-3">
@@ -778,7 +779,7 @@ function BankConnectModal({ isOpen, onClose, onConnected, isDark, couleur }) {
               </p>
             </div>
           </div>
-          <button onClick={onClose} className={`p-2 rounded-xl ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'} transition-colors`}>
+          <button onClick={onClose} aria-label="Fermer" className={`min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'} transition-colors`}>
             <X size={20} className={textMuted} />
           </button>
         </div>

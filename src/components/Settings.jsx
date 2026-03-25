@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
+import useFocusTrap from '../hooks/useFocusTrap';
 import { useToast } from '../context/AppContext';
 import { Download, FileSpreadsheet, FileText, RefreshCw, CheckCircle, AlertCircle, Calendar, ExternalLink, Calculator, Building2, ArrowLeft, Trash2, Shield, Search, ChevronDown, ChevronRight, Zap, Palette, FileCheck, BellRing, Package, Check, X, Loader2, Home, Smartphone, Fuel, Archive, Landmark, BarChart3, CreditCard, Users, Link2, Settings2, HardDrive, FolderOpen, Construction, Receipt, Mail, Sparkles, ClipboardList, GraduationCap } from 'lucide-react';
 import supabase, { auth, isDemo } from '../supabaseClient';
@@ -474,7 +475,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                 <div className="p-4 space-y-3">
                   <div className="flex items-center justify-between">
                     <p className={`text-sm font-semibold ${textPrimary}`}>Champs manquants ({missingFields.length})</p>
-                    <button onClick={() => setShowProfileDetail(false)} className={`p-1 rounded-lg text-xs ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}>✕</button>
+                    <button onClick={() => setShowProfileDetail(false)} className={`min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-xs ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`} aria-label="Fermer">✕</button>
                   </div>
 
                   {missingRequired.length > 0 && (
@@ -703,7 +704,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                     <button
                       key={c}
                       onClick={() => updateEntreprise(p => ({...p, couleur: c}))}
-                      className={`w-10 h-10 rounded-xl transition-all duration-200 hover:scale-110 flex items-center justify-center ${entreprise.couleur === c ? 'ring-2 ring-offset-2 scale-110 shadow-lg' : 'hover:shadow-md'}`}
+                      className={`w-11 h-11 rounded-xl transition-all duration-200 hover:scale-110 flex items-center justify-center ${entreprise.couleur === c ? 'ring-2 ring-offset-2 scale-110 shadow-lg' : 'hover:shadow-md'}`}
                       style={{ background: c, ringColor: c }}
                       title={entreprise.couleur === c ? 'Couleur sélectionnée' : 'Sélectionner cette couleur'}
                     >
@@ -1929,7 +1930,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             {entreprise.tvaIntra && <p>TVA Intracommunautaire: {entreprise.tvaIntra}</p>}
             {entreprise.tel && <p>Tél: {entreprise.tel} {entreprise.email && `· ${entreprise.email}`}</p>}
             {(entreprise.rcProAssureur || entreprise.decennaleAssureur) && (
-              <p className="pt-1 text-[10px]">
+              <p className="pt-1 text-[11px]">
                 {entreprise.rcProAssureur && `RC Pro: ${entreprise.rcProAssureur} N°${entreprise.rcProNumero}`}
                 {entreprise.rcProAssureur && entreprise.decennaleAssureur && ' · '}
                 {entreprise.decennaleAssureur && `Décennale: ${entreprise.decennaleAssureur} N°${entreprise.decennaleNumero}${entreprise.decennaleValidite ? ` (Valide: ${new Date(entreprise.decennaleValidite).toLocaleDateString('fr-FR')})` : ''}`}
@@ -1985,7 +1986,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
               <div className="px-5 pb-2 pt-2">
                 <div className="flex items-center justify-between mb-1">
                   <p className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Étape {safeStep + 1}/{totalSteps}</p>
-                  <button onClick={() => setShowSetupWizard(false)} className={`p-1.5 rounded-lg ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}>
+                  <button onClick={() => setShowSetupWizard(false)} className={`min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`} aria-label="Fermer">
                     <X size={16} />
                   </button>
                 </div>
@@ -2025,7 +2026,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                       <div className="flex gap-2 flex-wrap">
                         {COULEURS.map(c => (
                           <button key={c} onClick={() => updateEntreprise(p => ({ ...p, couleur: c }))}
-                            className={`w-9 h-9 rounded-xl transition-all ${entreprise.couleur === c ? 'ring-2 ring-offset-2 scale-110' : 'opacity-70 hover:opacity-100'}`}
+                            className={`w-11 h-11 rounded-xl transition-all ${entreprise.couleur === c ? 'ring-2 ring-offset-2 scale-110' : 'opacity-70 hover:opacity-100'}`}
                             style={{ backgroundColor: c, ringColor: c }} />
                         ))}
                       </div>
@@ -2098,11 +2099,19 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                       ].map(toggle => (
                         <label key={toggle.key} className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-colors ${isDark ? 'border-slate-600 hover:bg-slate-700/50' : 'border-slate-200 hover:bg-slate-50'}`}>
                           <span className={`text-sm font-medium ${textPrimary}`}>{toggle.label}</span>
-                          <div className={`relative w-11 h-6 rounded-full transition-colors ${entreprise[toggle.key] ? '' : isDark ? 'bg-slate-600' : 'bg-slate-300'}`}
-                            style={entreprise[toggle.key] ? { backgroundColor: couleur } : undefined}
-                            onClick={(e) => { e.preventDefault(); updateEntreprise(p => ({ ...p, [toggle.key]: !p[toggle.key] })); }}>
-                            <div className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform shadow-sm ${entreprise[toggle.key] ? 'translate-x-5' : ''}`} />
-                          </div>
+                          <span className="relative inline-flex items-center">
+                            <input
+                              type="checkbox"
+                              role="switch"
+                              className="sr-only peer"
+                              checked={!!entreprise[toggle.key]}
+                              onChange={() => updateEntreprise(p => ({ ...p, [toggle.key]: !p[toggle.key] }))}
+                            />
+                            <div className={`w-11 h-6 rounded-full transition-colors peer-checked:opacity-100 ${isDark ? 'bg-slate-600' : 'bg-slate-300'}`}
+                              style={entreprise[toggle.key] ? { backgroundColor: couleur } : undefined}>
+                              <div className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform shadow-sm ${entreprise[toggle.key] ? 'translate-x-5' : ''}`} />
+                            </div>
+                          </span>
                         </label>
                       ))}
                     </div>
@@ -2141,11 +2150,19 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                         <p className={`text-sm font-semibold ${textPrimary}`}>Activer les relances automatiques</p>
                         <p className={`text-xs ${textMuted}`}>(recommandé)</p>
                       </div>
-                      <div className={`relative w-11 h-6 rounded-full transition-colors ${entreprise.relancesActives ? '' : isDark ? 'bg-slate-600' : 'bg-slate-300'}`}
-                        style={entreprise.relancesActives ? { backgroundColor: '#22c55e' } : undefined}
-                        onClick={(e) => { e.preventDefault(); updateEntreprise(p => ({ ...p, relancesActives: !p.relancesActives })); }}>
-                        <div className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform shadow-sm ${entreprise.relancesActives ? 'translate-x-5' : ''}`} />
-                      </div>
+                      <span className="relative inline-flex items-center">
+                        <input
+                          type="checkbox"
+                          role="switch"
+                          className="sr-only peer"
+                          checked={!!entreprise.relancesActives}
+                          onChange={() => updateEntreprise(p => ({ ...p, relancesActives: !p.relancesActives }))}
+                        />
+                        <div className={`w-11 h-6 rounded-full transition-colors ${isDark ? 'bg-slate-600' : 'bg-slate-300'}`}
+                          style={entreprise.relancesActives ? { backgroundColor: couleur } : undefined}>
+                          <div className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform shadow-sm ${entreprise.relancesActives ? 'translate-x-5' : ''}`} />
+                        </div>
+                      </span>
                     </label>
                   </>
                 )}
