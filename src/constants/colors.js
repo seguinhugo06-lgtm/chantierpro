@@ -51,3 +51,21 @@ export const EVENT_TYPE_COLORS = {
   autre: '#6b7280',
   deadline: '#ec4899',
 };
+
+// Score client (classification)
+export const CLIENT_SCORE_COLORS = {
+  vip: '#f59e0b',
+  regulier: '#10b981',
+  occasionnel: '#3b82f6',
+  dormant: '#ef4444',
+  nouveau: '#8b5cf6',
+};
+
+// Canaux de communication
+export const CHANNEL_COLORS = {
+  email: '#3b82f6',
+  sms: '#22c55e',
+  whatsapp: '#25d366',
+  appel: '#8b5cf6',
+  visite: '#f97316',
+};

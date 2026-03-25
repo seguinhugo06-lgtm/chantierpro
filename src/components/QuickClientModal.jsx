@@ -251,6 +251,7 @@ export default function QuickClientModal({
             </div>
             <button
               onClick={onClose}
+              aria-label="Fermer"
               className="p-3 hover:bg-white/20 rounded-xl transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
             >
               <X size={20} className="text-white" />

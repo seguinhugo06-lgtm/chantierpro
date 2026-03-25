@@ -10,6 +10,7 @@ import AuditTimeline from './audit/AuditTimeline';
 import { getEntityHistory, getEntitiesHistory } from '../lib/auditService';
 import supabase, { isDemo } from '../supabaseClient';
 import { CLIENT_TYPE_COLORS, CLIENT_STATUS_LABELS, CLIENT_STATUS_COLORS, CLIENT_TYPES, DEVIS_EN_ATTENTE } from '../lib/constants';
+import { CLIENT_SCORE_COLORS } from '../constants/colors';
 import { formatClientName } from '../lib/formatters';
 import { usePermissions } from '../hooks/usePermissions';
 import { ReadOnlyBanner } from './ui/PermissionGate';
@@ -582,7 +583,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
         {/* Sticky Header */}
         <div className={`sticky top-0 z-20 -mx-4 px-4 py-3 backdrop-blur-md ${isDark ? 'bg-slate-900/80' : 'bg-white/80'} border-b ${isDark ? 'border-slate-700/50' : 'border-slate-200/50'}`}>
           <div className="flex items-center gap-2 sm:gap-3">
-            <button onClick={() => setViewId(null)} className={`p-2 min-w-[40px] min-h-[40px] flex items-center justify-center rounded-xl transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
+            <button onClick={() => setViewId(null)} aria-label="Retour" className={`p-2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
               <ArrowLeft size={20} className={textPrimary} />
             </button>
             <div className="flex-1 min-w-0">
@@ -591,7 +592,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                 {client.entreprise && <span className={`${textMuted} flex items-center gap-1 text-xs`}><Building2 size={12} />{client.entreprise}</span>}
                 {/* Status badge */}
                 <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${isDark ? clientStatusColor.darkBg + ' ' + clientStatusColor.darkText : clientStatusColor.bg + ' ' + clientStatusColor.text}`}>
-                  <span className={`w-1.5 h-1.5 rounded-full ${clientStatusColor.dot}`} />
+                  <span className={`w-1.5 h-1.5 rounded-full ${clientStatusColor.dot}`} aria-hidden="true" />
                   {CLIENT_STATUS_LABELS[clientStatus]}
                 </span>
                 {/* Type badge */}
@@ -603,10 +604,10 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
               </div>
             </div>
             <div className="flex items-center gap-1.5">
-              <button onClick={() => startEdit(client)} className="px-3 py-2 text-sm rounded-xl min-h-[40px] flex items-center justify-center gap-1.5 hover:shadow-md transition-all" style={{ background: `${couleur}15`, color: couleur }}>
+              <button onClick={() => startEdit(client)} className="px-3 py-2 text-sm rounded-xl min-h-[44px] flex items-center justify-center gap-1.5 hover:shadow-md transition-all" style={{ background: `${couleur}15`, color: couleur }}>
                 <Edit3 size={14} /><span className="hidden sm:inline">Modifier</span>
               </button>
-              <button onClick={() => handleDeleteClient(client.id)} className={`p-2 rounded-xl min-h-[40px] min-w-[40px] flex items-center justify-center transition-all ${isDark ? 'hover:bg-red-900/30 text-slate-400 hover:text-red-400' : 'hover:bg-red-50 text-slate-400 hover:text-red-500'}`} title="Supprimer">
+              <button onClick={() => handleDeleteClient(client.id)} aria-label="Supprimer ce client" className={`p-2 rounded-xl min-h-[44px] min-w-[44px] flex items-center justify-center transition-all ${isDark ? 'hover:bg-red-900/30 text-slate-400 hover:text-red-400' : 'hover:bg-red-50 text-slate-400 hover:text-red-500'}`} title="Supprimer">
                 <Trash2 size={14} />
               </button>
             </div>
@@ -634,7 +635,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
               ) : (
                 <>
                   <Plus size={18} className={isDark ? 'text-slate-400' : 'text-slate-500'} />
-                  <span className={`text-[10px] font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Ajouter adresse</span>
+                  <span className={`text-[11px] font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Ajouter adresse</span>
                 </>
               )}
             </button>
@@ -832,8 +833,8 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                   <Icon size={14} style={{ color: kpi.color }} />
                 </div>
                 <p className={`text-lg font-bold ${kpi.value === 0 || kpi.value === '0 €' ? textMuted : ''}`} style={kpi.value !== 0 && kpi.value !== '0 €' ? { color: kpi.color } : {}}>{kpi.value}</p>
-                <p className={`text-[10px] ${textMuted}`}>{kpi.label}</p>
-                {kpi.sub && <p className={`text-[10px] font-medium mt-0.5`} style={{ color: kpi.color }}>{kpi.sub}</p>}
+                <p className={`text-[11px] ${textMuted}`}>{kpi.label}</p>
+                {kpi.sub && <p className={`text-[11px] font-medium mt-0.5`} style={{ color: kpi.color }}>{kpi.sub}</p>}
               </button>
             );
           })}
@@ -1033,8 +1034,9 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                 </div>
                 <div className="space-y-2">
                   {clientChantiers.map(ch => (
-                    <div key={ch.id} onClick={() => { if (setSelectedChantier) setSelectedChantier(ch.id); if (setPage) setPage('chantiers'); }} className={`flex items-center gap-4 p-3 rounded-xl cursor-pointer transition-all hover:shadow-md hover:-translate-y-0.5 ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-50 hover:bg-slate-100'}`}>
-                      <span className={`w-3 h-3 rounded-full ${ch.statut === 'en_cours' ? 'bg-emerald-500' : ch.statut === 'termine' ? 'bg-slate-400' : 'bg-blue-500'}`}></span>
+                    <div key={ch.id} role="button" tabIndex={0} onClick={() => { if (setSelectedChantier) setSelectedChantier(ch.id); if (setPage) setPage('chantiers'); }} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (setSelectedChantier) setSelectedChantier(ch.id); if (setPage) setPage('chantiers'); } }} className={`flex items-center gap-4 p-3 rounded-xl cursor-pointer transition-all hover:shadow-md hover:-translate-y-0.5 ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-50 hover:bg-slate-100'}`}>
+                      <span className={`w-3 h-3 rounded-full ${ch.statut === 'en_cours' ? 'bg-emerald-500' : ch.statut === 'termine' ? 'bg-slate-400' : 'bg-blue-500'}`} aria-hidden="true"></span>
+                      <span className="sr-only">{ch.statut === 'en_cours' ? 'En cours' : ch.statut === 'termine' ? 'Termine' : 'Prospect'}</span>
                       <div className="flex-1">
                         <p className={`font-medium ${textPrimary}`}>{ch.nom}</p>
                         <p className={`text-xs ${textMuted}`}>{ch.statut === 'en_cours' ? 'En cours' : ch.statut === 'termine' ? 'Terminé' : 'Prospect'}</p>
@@ -1088,12 +1090,13 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                   {clientDevis.map(d => {
                     const StatusIcon = { brouillon: 'text-slate-400', envoye: 'text-blue-500', accepte: 'text-emerald-500', payee: 'text-emerald-600', refuse: 'text-red-500' }[d.statut] || 'text-slate-400';
                     return (
-                      <div key={d.id} onClick={() => openDocument(d)} className={`flex items-center gap-4 p-3 rounded-xl cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-50 hover:bg-slate-100'}`}>
+                      <div key={d.id} role="button" tabIndex={0} onClick={() => openDocument(d)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDocument(d); } }} className={`flex items-center gap-4 p-3 rounded-xl cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-50 hover:bg-slate-100'}`}>
                         <FileText size={20} className={d.type === 'facture' ? 'text-purple-500' : 'text-blue-500'} />
                         <div className="flex-1">
                           <div className="flex items-center gap-2">
                             <p className={`font-medium ${textPrimary}`}>{d.numero}</p>
-                            <span className={`w-2 h-2 rounded-full ${StatusIcon.replace('text-', 'bg-')}`}></span>
+                            <span className={`w-2 h-2 rounded-full ${StatusIcon.replace('text-', 'bg-')}`} aria-hidden="true"></span>
+                            <span className="sr-only">{d.statut}</span>
                           </div>
                           <p className={`text-xs ${textMuted}`}>{new Date(d.date).toLocaleDateString('fr-FR')}</p>
                         </div>
@@ -1195,7 +1198,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                             <div className="flex items-center gap-2 min-w-0">
                               <p className={`font-medium text-sm ${textPrimary}`}>{channel.label}</p>
                               {(dirIn || dirOut) && (
-                                <span className={`inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-full font-medium ${dirOut ? (isDark ? 'bg-blue-900/30 text-blue-300' : 'bg-blue-50 text-blue-600') : (isDark ? 'bg-amber-900/30 text-amber-300' : 'bg-amber-50 text-amber-600')}`}>
+                                <span className={`inline-flex items-center gap-0.5 text-[11px] px-1.5 py-0.5 rounded-full font-medium ${dirOut ? (isDark ? 'bg-blue-900/30 text-blue-300' : 'bg-blue-50 text-blue-600') : (isDark ? 'bg-amber-900/30 text-amber-300' : 'bg-amber-50 text-amber-600')}`}>
                                   {dirOut ? <><ArrowUpRight size={9} /> Envoyé</> : <><ArrowDownLeft size={9} /> Reçu</>}
                                 </span>
                               )}
@@ -1256,7 +1259,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                     <div className="flex items-center gap-2">
                       <p className={`font-semibold ${textPrimary}`}>{channel.label}</p>
                       {(dirIn || dirOut) && (
-                        <span className={`inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-full font-medium ${dirOut ? (isDark ? 'bg-blue-900/30 text-blue-300' : 'bg-blue-50 text-blue-600') : (isDark ? 'bg-amber-900/30 text-amber-300' : 'bg-amber-50 text-amber-600')}`}>
+                        <span className={`inline-flex items-center gap-0.5 text-[11px] px-1.5 py-0.5 rounded-full font-medium ${dirOut ? (isDark ? 'bg-blue-900/30 text-blue-300' : 'bg-blue-50 text-blue-600') : (isDark ? 'bg-amber-900/30 text-amber-300' : 'bg-amber-50 text-amber-600')}`}>
                           {dirOut ? <><ArrowUpRight size={9} /> Envoyé</> : <><ArrowDownLeft size={9} /> Reçu</>}
                         </span>
                       )}
@@ -1502,7 +1505,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                   )}
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3">
                     {allPhotos.map(p => (
-                      <div key={p.id} className="relative group cursor-pointer" onClick={() => { if (setSelectedChantier && p.chantierId) { setSelectedChantier(p.chantierId); setPage?.('chantiers'); } }}>
+                      <div key={p.id} role="button" tabIndex={0} className="relative group cursor-pointer" onClick={() => { if (setSelectedChantier && p.chantierId) { setSelectedChantier(p.chantierId); setPage?.('chantiers'); } }} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (setSelectedChantier && p.chantierId) { setSelectedChantier(p.chantierId); setPage?.('chantiers'); } } }}>
                         <img src={p.src} className="w-full h-24 object-cover rounded-xl" alt={`Photo du chantier ${p.chantierNom}`} onError={(e) => { e.target.style.display = 'none'; }} />
                         <p className={`text-xs ${textMuted} mt-1 truncate`}>{p.chantierNom}</p>
                       </div>
@@ -1521,7 +1524,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
   if (show) return (
     <div className="space-y-6">
       <div className="flex items-center gap-2 sm:gap-4">
-        <button onClick={() => { setShow(false); setEditId(null); setForm({ nom: '', prenom: '', entreprise: '', email: '', telephone: '', adresse: '', notes: '', categorie: '', siret: '', typeLogement: '', source: '' }); }} className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
+        <button onClick={() => { setShow(false); setEditId(null); setForm({ nom: '', prenom: '', entreprise: '', email: '', telephone: '', adresse: '', notes: '', categorie: '', siret: '', typeLogement: '', source: '' }); }} aria-label="Fermer le formulaire" className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
           <ArrowLeft size={20} className={textPrimary} />
         </button>
         <h2 className={`text-2xl font-bold ${textPrimary}`}>{editId ? 'Modifier' : 'Nouveau'} client</h2>
@@ -1737,7 +1740,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
           {setPage && (
             <button
               onClick={() => setPage('dashboard')}
-              className={`p-2 rounded-xl min-w-[40px] min-h-[40px] flex items-center justify-center transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}
+              className={`p-2 rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}
               aria-label="Retour au tableau de bord"
             >
               <ArrowLeft size={20} />
@@ -1753,6 +1756,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
             <button
               onClick={onImportClients}
               className={`p-2 rounded-xl transition-all border ${isDark ? 'border-slate-600 text-slate-300 hover:bg-slate-700' : 'border-slate-300 text-slate-600 hover:bg-slate-50'}`}
+              aria-label="Importer des clients (CSV)"
               title="Importer (CSV)"
             >
               <Upload size={16} />
@@ -1761,6 +1765,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
           {canPerform('client', 'create') && (
           <button
             onClick={() => setShowQuickModal(true)}
+            aria-label="Nouveau client"
             className="w-11 h-11 sm:w-auto sm:h-11 sm:px-4 text-white rounded-xl text-sm font-semibold flex items-center justify-center sm:gap-2 hover:opacity-90 hover:shadow-lg transition-all"
             style={{ background: couleur }}
           >
@@ -1808,8 +1813,8 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                   title={kpi.tooltip}
                 >
                   <p className={`${kpi.key === 'top' ? 'text-xs' : 'text-base'} font-bold truncate leading-tight`} style={{ color: couleur }}>{kpi.value}</p>
-                  <p className={`text-[10px] ${textMuted} leading-tight`}>{kpi.label}</p>
-                  {kpi.sub && <p className={`text-[9px] font-medium`} style={{ color: couleur }}>{kpi.sub}</p>}
+                  <p className={`text-[11px] ${textMuted} leading-tight`}>{kpi.label}</p>
+                  {kpi.sub && <p className={`text-[11px] font-medium`} style={{ color: couleur }}>{kpi.sub}</p>}
                 </button>
               );
             })}
@@ -1903,25 +1908,33 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
               className={`w-full pl-8 pr-8 py-2 border rounded-xl text-sm ${inputBg}`}
             />
             {search && (
-              <button onClick={() => setSearch('')} className={`absolute right-2 top-1/2 -translate-y-1/2 ${textMuted} hover:text-red-400`}>
+              <button onClick={() => setSearch('')} aria-label="Effacer la recherche" className={`absolute right-2 top-1/2 -translate-y-1/2 ${textMuted} hover:text-red-400`}>
                 <X size={14} />
               </button>
             )}
           </div>
+          {/* Filtered results counter */}
+          {(debouncedSearch || kpiFilter || filterCategorie || filterStatus) && (
+            <span className={`text-xs font-medium whitespace-nowrap ${textMuted}`}>
+              {filtered.length} client{filtered.length !== 1 ? 's' : ''}
+            </span>
+          )}
           {/* Grid/List toggle */}
           <div className={`flex rounded-lg border overflow-hidden ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
             <button
               onClick={() => setViewMode('grid')}
-              className={`p-1.5 flex items-center justify-center transition-colors ${viewMode === 'grid' ? 'text-white' : isDark ? 'text-slate-400' : 'text-slate-500'}`}
+              className={`p-2 min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors ${viewMode === 'grid' ? 'text-white' : isDark ? 'text-slate-400' : 'text-slate-500'}`}
               style={viewMode === 'grid' ? { background: couleur } : {}}
+              aria-label="Vue grille"
               title="Vue grille"
             >
               <LayoutGrid size={14} />
             </button>
             <button
               onClick={() => setViewMode('list')}
-              className={`p-1.5 flex items-center justify-center transition-colors ${viewMode === 'list' ? 'text-white' : isDark ? 'text-slate-400' : 'text-slate-500'}`}
+              className={`p-2 min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors ${viewMode === 'list' ? 'text-white' : isDark ? 'text-slate-400' : 'text-slate-500'}`}
               style={viewMode === 'list' ? { background: couleur } : {}}
+              aria-label="Vue liste"
               title="Vue liste"
             >
               <List size={14} />
@@ -2136,11 +2149,10 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                         {(() => {
                           const cs = clientScores.find(sc => sc.clientId === c.id);
                           if (!cs) return null;
-                          const scoreColors = { vip: '#f59e0b', regulier: '#10b981', occasionnel: '#3b82f6', dormant: '#ef4444', nouveau: '#8b5cf6' };
                           const scoreLabels = { vip: 'VIP', regulier: 'Fidele', occasionnel: 'Occasionnel', dormant: 'Dormant', nouveau: 'Nouveau' };
                           return (
                             <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
-                              style={{ backgroundColor: `${scoreColors[cs.classification]}20`, color: scoreColors[cs.classification] }}>
+                              style={{ backgroundColor: `${CLIENT_SCORE_COLORS[cs.classification]}20`, color: CLIENT_SCORE_COLORS[cs.classification] }}>
                               {scoreLabels[cs.classification]} {cs.score}
                             </span>
                           );
@@ -2150,13 +2162,13 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                           className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${isDark ? statusColor.darkBg + ' ' + statusColor.darkText : statusColor.bg + ' ' + statusColor.text}`}
                           title={STATUS_TOOLTIPS[status] || ''}
                         >
-                          <span className={`w-1.5 h-1.5 rounded-full ${statusColor.dot}`} />
+                          <span className={`w-1.5 h-1.5 rounded-full ${statusColor.dot}`} aria-hidden="true" />
                           {statusLabel}
                         </span>
                         {/* Type badge */}
                         {c.categorie && typeColor && (
                           <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${isDark ? typeColor.darkBg + ' ' + typeColor.darkText : typeColor.bg + ' ' + typeColor.text}`}>
-                            <span className="text-[9px]">{TYPE_ICONS[c.categorie] || ''}</span> {c.categorie}
+                            <span className="text-[11px]">{TYPE_ICONS[c.categorie] || ''}</span> {c.categorie}
                           </span>
                         )}
                         {/* Duplicate warning badge (last) */}
@@ -2187,10 +2199,10 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                       <Smartphone size={13} className={textMuted} />
                       <HighlightText text={c.telephone} query={debouncedSearch} className={`text-sm ${textSecondary} flex-1`} />
                       <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-                        <button onClick={() => callPhone(c.telephone)} aria-label="Appeler" className={`w-11 h-11 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center transition-all ${isDark ? 'hover:bg-blue-900/40' : 'hover:bg-blue-50'}`} title="Appeler">
+                        <button onClick={() => callPhone(c.telephone)} aria-label="Appeler" className={`w-11 h-11 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center transition-all ${isDark ? 'hover:bg-blue-900/40' : 'hover:bg-blue-50'}`} title="Appeler">
                           <Phone size={16} className="text-blue-500" />
                         </button>
-                        <button onClick={() => sendWhatsApp(c.telephone, c.prenom)} aria-label="WhatsApp" className={`w-11 h-11 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center transition-all ${isDark ? 'hover:bg-green-900/40' : 'hover:bg-green-50'}`} title="WhatsApp">
+                        <button onClick={() => sendWhatsApp(c.telephone, c.prenom)} aria-label="WhatsApp" className={`w-11 h-11 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center transition-all ${isDark ? 'hover:bg-green-900/40' : 'hover:bg-green-50'}`} title="WhatsApp">
                           <MessageCircle size={16} className="text-green-500" />
                         </button>
                       </div>
@@ -2257,7 +2269,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                     <div className="flex items-center gap-2">
                       <HighlightText text={formatClientName(c)} query={debouncedSearch} className={`font-medium text-sm ${textPrimary} truncate`} />
                       <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium ${isDark ? statusColor.darkBg + ' ' + statusColor.darkText : statusColor.bg + ' ' + statusColor.text}`} title={STATUS_TOOLTIPS[status] || ''}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${statusColor.dot}`} />
+                        <span className={`w-1.5 h-1.5 rounded-full ${statusColor.dot}`} aria-hidden="true" />
                         {CLIENT_STATUS_LABELS[status]}
                       </span>
                       {hasDuplicates && (
@@ -2332,7 +2344,8 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <HighlightText text={formatClientName(c)} query={debouncedSearch} className={`font-medium text-sm ${textPrimary} truncate`} />
-                      <span className={`w-2 h-2 rounded-full flex-shrink-0 ${statusColor.dot}`} />
+                      <span className={`w-2 h-2 rounded-full flex-shrink-0 ${statusColor.dot}`} aria-hidden="true" />
+                      <span className="sr-only">{CLIENT_STATUS_LABELS[status]}</span>
                     </div>
                     <div className="flex items-center gap-2 mt-0.5">
                       {c.entreprise && <span className={`text-xs ${textMuted} truncate`}>{c.entreprise}</span>}
