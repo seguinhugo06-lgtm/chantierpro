@@ -198,14 +198,14 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
     return alerts;
   }, []);
 
-  // P0.1: Worst severity determines health color
+  // P0.1: Worst severity determines health color (hex for inline styles)
   const getHealthColor = (alerts) => {
-    if (!alerts.length) return '#10b981'; // green
+    if (!alerts.length) return '#10b981'; // emerald-500
     const hasCritical = alerts.some(a => a.severity === 'critical');
     const hasWarning = alerts.some(a => a.severity === 'warning');
-    if (hasCritical) return '#ef4444'; // red
-    if (hasWarning) return '#f59e0b'; // amber
-    return '#eab308'; // yellow (caution)
+    if (hasCritical) return '#ef4444'; // red-500
+    if (hasWarning) return '#f59e0b'; // amber-500
+    return '#eab308'; // yellow-500 (caution)
   };
 
   const [view, setView] = useState(selectedChantier || null);
@@ -326,6 +326,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
     return Math.abs(value - rounded) < 0.1 ? `${rounded}%` : `${value.toFixed(1)}%`;
   };
   const getMargeColor = (t) => t < 0 ? 'text-red-500' : t < 15 ? 'text-amber-500' : 'text-emerald-500';
+  const getMargeLabel = (t) => t < 0 ? 'Négatif' : t < 15 ? 'Faible' : t < 30 ? 'Bon' : 'Excellent';
   const getMargeBg = (t) => t < 0 ? 'bg-red-50' : t < 15 ? 'bg-amber-50' : 'bg-emerald-50';
 
   // Handlers
@@ -460,7 +461,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
             <div className={`sticky top-0 z-20 -mx-4 px-4 py-3 sm:-mx-6 sm:px-6 ${isDark ? 'bg-slate-900/95' : 'bg-slate-50/95'} backdrop-blur-md border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
               {/* Row 1: Back + Status + Title (wraps on mobile) */}
               <div className="flex items-center gap-2 mb-1 sm:mb-2 flex-wrap">
-                <button onClick={() => { setView(null); setSelectedChantier?.(null); }} className={`p-2 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'} rounded-xl min-w-[40px] min-h-[44px] flex items-center justify-center shrink-0`}>
+                <button onClick={() => { setView(null); setSelectedChantier?.(null); }} className={`p-2 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'} rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center shrink-0`} aria-label="Retour à la liste">
                   <ArrowLeft size={20} className={textPrimary} />
                 </button>
                 {/* Sync status dot */}
@@ -496,6 +497,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                   <button
                     onClick={() => prevChantier && setView(prevChantier.id)}
                     disabled={!prevChantier}
+                    aria-label={prevChantier ? `Chantier précédent : ${prevChantier.nom}` : 'Chantier précédent'}
                     className={`px-2 py-1.5 rounded-lg text-xs flex items-center gap-1 transition-all min-h-[44px] min-w-[44px] ${
                       prevChantier
                         ? isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-200 text-slate-600'
@@ -509,6 +511,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                   <button
                     onClick={() => nextChantier && setView(nextChantier.id)}
                     disabled={!nextChantier}
+                    aria-label={nextChantier ? `Chantier suivant : ${nextChantier.nom}` : 'Chantier suivant'}
                     className={`px-2 py-1.5 rounded-lg text-xs flex items-center gap-1 transition-all min-h-[44px] min-w-[44px] ${
                       nextChantier
                         ? isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-200 text-slate-600'
@@ -997,9 +1000,9 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                                   {filteredPhaseTasks.map(t => (
                                     <div key={t.id} className={`flex items-center gap-2 p-1.5 rounded-lg group transition-all ${t.critical ? (isDark ? 'bg-red-900/20' : 'bg-red-50') : (isDark ? 'hover:bg-slate-700/50' : 'hover:bg-slate-50')}`}>
                                       <input type="checkbox" checked={t.done} onChange={() => toggleTache(t.id)} className={`w-4 h-4 rounded border-2 cursor-pointer flex-shrink-0 ${t.critical ? 'border-red-500 text-red-500' : ''} ${animatedTaskId === t.id ? 'scale-125' : ''}`} style={{ ...((!t.critical) ? { borderColor: phase.color, accentColor: phase.color } : {}), transition: 'transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)' }} />
-                                      <span onClick={() => setEditingTask(t)} className={`flex-1 text-xs cursor-pointer hover:underline ${t.done ? 'line-through opacity-50' : ''} ${t.critical ? 'font-medium' : ''} ${textPrimary}`}>{t.text}</span>
+                                      <button type="button" onClick={() => setEditingTask(t)} className={`flex-1 text-xs text-left cursor-pointer hover:underline ${t.done ? 'line-through opacity-50' : ''} ${t.critical ? 'font-medium' : ''} ${textPrimary}`}>{t.text}</button>
                                       {t.critical && !t.done && <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-red-500 text-white font-medium">!</span>}
-                                      <button onClick={() => setEditingTask(t)} aria-label="Modifier la tâche" className={`p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity ${isDark ? 'hover:bg-slate-600' : 'hover:bg-slate-200'}`}><MoreVertical size={14} className={textMuted} /></button>
+                                      <button onClick={() => setEditingTask(t)} aria-label="Modifier la tâche" className={`p-2.5 min-w-[44px] min-h-[44px] rounded flex items-center justify-center opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity ${isDark ? 'hover:bg-slate-600' : 'hover:bg-slate-200'}`}><MoreVertical size={14} className={textMuted} /></button>
                                     </div>
                                   ))}
                                 </div>
@@ -1020,8 +1023,8 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                                 {getFilteredTasks(tasksNoPhase).map(t => (
                                   <div key={t.id} className={`flex items-center gap-2 p-1.5 rounded-lg group transition-all ${isDark ? 'hover:bg-slate-700/50' : 'hover:bg-slate-50'}`}>
                                     <input type="checkbox" checked={t.done} onChange={() => toggleTache(t.id)} className="w-4 h-4 rounded border-2 cursor-pointer flex-shrink-0" style={{ borderColor: couleur, accentColor: couleur }} />
-                                    <span onClick={() => setEditingTask(t)} className={`flex-1 text-xs cursor-pointer hover:underline ${t.done ? 'line-through opacity-50' : ''} ${textPrimary}`}>{t.text}</span>
-                                    <button onClick={() => setEditingTask(t)} aria-label="Modifier la tâche" className={`p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity ${isDark ? 'hover:bg-slate-600' : 'hover:bg-slate-200'}`}><MoreVertical size={14} className={textMuted} /></button>
+                                    <button type="button" onClick={() => setEditingTask(t)} className={`flex-1 text-xs text-left cursor-pointer hover:underline ${t.done ? 'line-through opacity-50' : ''} ${textPrimary}`}>{t.text}</button>
+                                    <button onClick={() => setEditingTask(t)} aria-label="Modifier la tâche" className={`p-2.5 min-w-[44px] min-h-[44px] rounded flex items-center justify-center opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity ${isDark ? 'hover:bg-slate-600' : 'hover:bg-slate-200'}`}><MoreVertical size={14} className={textMuted} /></button>
                                   </div>
                                 ))}
                               </div>
@@ -1189,8 +1192,9 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
 
         {/* === SECTION: FINANCES (condensé + accordion) === */}
         {(() => {
-          const healthColor = !bilan.hasDepenses ? '#94a3b8' : bilan.margeBrute < 0 ? '#ef4444' : bilan.tauxMarge < 15 ? '#f59e0b' : '#10b981';
-          const margeLabel = !bilan.hasDepenses ? '' : bilan.margeBrute < 0 ? 'Négatif' : bilan.tauxMarge < 15 ? 'Faible' : bilan.tauxMarge < 30 ? 'Bon' : 'Excellent';
+          const healthColor = !bilan.hasDepenses ? 'text-slate-400' : bilan.margeBrute < 0 ? 'text-red-500' : bilan.tauxMarge < 15 ? 'text-amber-500' : 'text-emerald-500';
+          const healthBg = !bilan.hasDepenses ? 'bg-slate-400' : bilan.margeBrute < 0 ? 'bg-red-500' : bilan.tauxMarge < 15 ? 'bg-amber-500' : 'bg-emerald-500';
+          const margeLabel = !bilan.hasDepenses ? '' : getMargeLabel(bilan.tauxMarge);
           const depPct = revenuTotal > 0 ? Math.min(100, (bilan.totalDepenses / revenuTotal) * 100) : 0;
           const toggleFin = (k) => setFinExpanded(p => ({ ...p, [k]: !p[k] }));
 
@@ -1207,9 +1211,9 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                   <span className={textMuted}>Budget <strong className={textPrimary}>{formatMoney(revenuTotal)}</strong></span>
                   <span className={textMuted}>Dépensé <strong className="text-red-500">{formatMoney(bilan.totalDepenses)}</strong></span>
                   <span className="flex items-center gap-1.5">
-                    <span className="font-bold" style={{ color: healthColor }}>{bilan.hasDepenses ? formatPct(bilan.tauxMarge) : '—'}</span>
-                    {margeLabel && <span className="text-xs font-medium" style={{ color: healthColor }}>{margeLabel}</span>}
-                    <div className="w-2.5 h-2.5 rounded-full" style={{ background: healthColor }} />
+                    <span className={`font-bold ${healthColor}`}>{bilan.hasDepenses ? formatPct(bilan.tauxMarge) : '—'}</span>
+                    {margeLabel && <span className={`text-xs font-medium ${healthColor}`}>{margeLabel}</span>}
+                    <div className={`w-2.5 h-2.5 rounded-full ${healthBg}`} />
                   </span>
                 </div>
               </div>
@@ -1396,7 +1400,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
             <div className="relative">
               <div role="tablist" aria-label="Détails du chantier" className={`flex gap-1 border-b overflow-x-auto pb-2 -mx-3 px-3 sm:mx-0 sm:px-0 scrollbar-none ${isDark ? 'border-slate-700' : 'border-slate-200'}`} style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }} onKeyDown={(e) => handleTabKeyDown(e, allTabKeys)}>
                 {allTabs.map(({ key, label, icon: Icon, badge }) => (
-                  <button key={key} role="tab" id={`tab-${key}`} aria-selected={activeTab === key} aria-controls={`panel-${key}`} tabIndex={activeTab === key ? 0 : -1} onClick={() => { setActiveTab(key); setShowMoreTabs(false); }} className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl whitespace-nowrap text-sm font-medium min-h-[44px] transition-colors relative ${activeTab === key ? 'text-white' : isDark ? 'text-slate-400 hover:bg-slate-700 hover:text-slate-300' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'}`} style={activeTab === key ? { background: couleur } : {}}>
+                  <button key={key} role="tab" id={`tab-${key}`} aria-selected={activeTab === key} aria-controls={`panel-${key}`} tabIndex={activeTab === key ? 0 : -1} onClick={() => { setActiveTab(key); setShowMoreTabs(false); }} className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl whitespace-nowrap text-sm font-medium min-h-[44px] transition-colors relative ${activeTab === key ? 'text-white' : isDark ? 'text-slate-300 hover:bg-slate-700 hover:text-slate-200' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'}`} style={activeTab === key ? { background: couleur } : {}}>
                     <Icon size={16} />
                     <span className="hidden sm:inline">{label}</span>
                     {badge && (
@@ -1410,7 +1414,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                 <button
                   onClick={() => setShowMoreTabs(!showMoreTabs)}
                   aria-label="Plus d'onglets"
-                  className={`flex items-center gap-1 px-2.5 py-2 rounded-xl whitespace-nowrap text-sm font-medium min-h-[44px] transition-colors ${isRareTabActive ? 'text-white' : isDark ? 'text-slate-400 hover:bg-slate-700 hover:text-slate-300' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'}`}
+                  className={`flex items-center gap-1 px-2.5 py-2 rounded-xl whitespace-nowrap text-sm font-medium min-h-[44px] transition-colors ${isRareTabActive ? 'text-white' : isDark ? 'text-slate-300 hover:bg-slate-700 hover:text-slate-200' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'}`}
                   style={isRareTabActive ? { background: couleur } : {}}
                 >
                   <MoreHorizontal size={16} />
@@ -1450,13 +1454,13 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
             {adjRevenus.length > 0 && (
               <div className={`${cardBg} rounded-2xl border p-5`}>
                 <h3 className="font-semibold mb-3 text-emerald-600"> Ajustements Revenus</h3>
-                {adjRevenus.map(a => (<div key={a.id} className="flex items-center justify-between py-2 border-b last:border-0"><span>{a.libelle}</span><div className="flex items-center gap-3"><span className="font-bold text-emerald-600">+{formatMoney(a.montant_ht)}</span><button onClick={() => handleDeleteAjustement(a.id)} className="text-red-400 hover:text-red-600">x</button></div></div>))}
+                {adjRevenus.map(a => (<div key={a.id} className="flex items-center justify-between py-2 border-b last:border-0"><span>{a.libelle}</span><div className="flex items-center gap-3"><span className="font-bold text-emerald-600">+{formatMoney(a.montant_ht)}</span><button onClick={() => handleDeleteAjustement(a.id)} aria-label="Supprimer l'ajustement" className="text-red-400 hover:text-red-600 min-w-[44px] min-h-[44px] flex items-center justify-center">x</button></div></div>))}
               </div>
             )}
             {adjDepenses.length > 0 && (
               <div className={`${cardBg} rounded-2xl border p-5`}>
                 <h3 className="font-semibold mb-3 text-red-600"> Ajustements Dépenses</h3>
-                {adjDepenses.map(a => (<div key={a.id} className="flex items-center justify-between py-2 border-b last:border-0"><span>{a.libelle}</span><div className="flex items-center gap-3"><span className="font-bold text-red-600">-{formatMoney(a.montant_ht)}</span><button onClick={() => handleDeleteAjustement(a.id)} className="text-red-400 hover:text-red-600">x</button></div></div>))}
+                {adjDepenses.map(a => (<div key={a.id} className="flex items-center justify-between py-2 border-b last:border-0"><span>{a.libelle}</span><div className="flex items-center gap-3"><span className="font-bold text-red-600">-{formatMoney(a.montant_ht)}</span><button onClick={() => handleDeleteAjustement(a.id)} aria-label="Supprimer l'ajustement" className="text-red-400 hover:text-red-600 min-w-[44px] min-h-[44px] flex items-center justify-center">x</button></div></div>))}
               </div>
             )}
             <div className={`${cardBg} rounded-2xl border p-5`}>
@@ -1570,7 +1574,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                             <button
                               onClick={(e) => { e.stopPropagation(); deletePhoto(p.id); }}
                               aria-label="Supprimer la photo"
-                              className="absolute -top-2 -right-2 w-8 h-8 bg-red-500 text-white rounded-full text-xs sm:opacity-0 sm:group-hover:opacity-100 flex items-center justify-center shadow-lg transition-opacity"
+                              className="absolute -top-2 -right-2 w-11 h-11 bg-red-500 text-white rounded-full text-xs sm:opacity-0 sm:group-hover:opacity-100 flex items-center justify-center shadow-lg transition-opacity"
                             >
                               <X size={16} />
                             </button>
@@ -2110,7 +2114,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                 <input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="Ex: Travaux supplémentaires, Remise..." value={adjForm.libelle} onChange={e => setAdjForm(p => ({...p, libelle: e.target.value}))} />
                 <input type="number" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="Montant € HT" value={adjForm.montant_ht} onChange={e => setAdjForm(p => ({...p, montant_ht: e.target.value}))} />
               </div>
-              <div className="flex justify-end gap-3 mt-6"><button onClick={() => { setShowAjustement(null); setAdjForm({ libelle: '', montant_ht: '' }); }} className={`px-4 py-2 rounded-xl ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`}>Annuler</button><button onClick={handleAddAjustement} className="px-4 py-2 text-white rounded-xl" style={{background: showAjustement === 'REVENU' ? '#22c55e' : '#ef4444'}}>Ajouter</button></div>
+              <div className="flex justify-end gap-3 mt-6"><button onClick={() => { setShowAjustement(null); setAdjForm({ libelle: '', montant_ht: '' }); }} className={`px-4 py-2 rounded-xl ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`}>Annuler</button><button onClick={handleAddAjustement} className={`px-4 py-2 text-white rounded-xl ${showAjustement === 'REVENU' ? 'bg-emerald-500' : 'bg-red-500'}`}>Ajouter</button></div>
             </div>
           </div>
         )}
@@ -2313,7 +2317,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
               <div className="flex justify-between items-center mb-4"><h3 className="text-lg font-bold">⏱ Détail Main d'oeuvre</h3><button onClick={() => setShowAddMO(true)} className="px-3 py-1.5 text-sm text-white rounded-lg" style={{background: couleur}}>+ Heures</button></div>
               <div className="space-y-2 mb-4">{chPointages.map(p => { const emp = equipe.find(e => e.id === p.employeId); const cout = emp?.coutHoraireCharge || 28; return (
                 <div key={p.id} className={`p-3 rounded-xl ${p.manuel ? 'bg-blue-50' : 'bg-slate-50'} ${p.verrouille ? 'opacity-60' : ''}`}>
-                  <div className="flex items-center justify-between"><div className="flex items-center gap-3"><span>{p.approuve ? '[OK]' : '⏳'}</span>{p.manuel && <span className="text-xs bg-blue-200 text-blue-700 px-2 py-0.5 rounded">Manuel</span>}{p.verrouille && <span className="text-xs bg-slate-400 text-white px-2 py-0.5 rounded"></span>}</div>{!p.verrouille && <button onClick={() => deletePointage(p.id)} className="text-red-400"></button>}</div>
+                  <div className="flex items-center justify-between"><div className="flex items-center gap-3"><span>{p.approuve ? '[OK]' : '⏳'}</span>{p.manuel && <span className="text-xs bg-blue-200 text-blue-700 px-2 py-0.5 rounded">Manuel</span>}{p.verrouille && <span className="text-xs bg-slate-400 text-white px-2 py-0.5 rounded"></span>}</div>{!p.verrouille && <button onClick={() => deletePointage(p.id)} aria-label="Supprimer le pointage" className="text-red-400 min-w-[44px] min-h-[44px] flex items-center justify-center"></button>}</div>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2 text-sm"><div><p className="text-xs text-slate-500">Date</p><input type="date" value={p.date} onChange={e => handleEditPointage(p.id, 'date', e.target.value)} disabled={p.verrouille} className="w-full px-2 py-1 border rounded text-xs" /></div><div><p className="text-xs text-slate-500">Employé</p><p className="font-medium">{emp?.nom}</p></div><div><p className="text-xs text-slate-500">Heures</p><input type="number" step="0.5" value={p.heures} onChange={e => handleEditPointage(p.id, 'heures', e.target.value)} disabled={p.verrouille} className="w-full px-2 py-1 border rounded" /></div><div><p className="text-xs text-slate-500">Coût</p><p className="font-bold text-blue-600">{formatMoney(p.heures * cout)}</p></div></div>
                 </div>
               ); })}{chPointages.length === 0 && <p className={`text-center py-4 ${isDark ? 'text-slate-300' : 'text-slate-500'}`}>Aucun pointage</p>}</div>
@@ -2788,7 +2792,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
           )}
           <div>
             <h1 className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>Chantiers</h1>
-            <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Suivi de vos projets</p>
+            <p className={`text-xs ${isDark ? 'text-slate-300' : 'text-slate-500'}`}>Suivi de vos projets</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -2796,7 +2800,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
           <div className={`flex rounded-xl border overflow-hidden ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
             <button
               onClick={() => setViewMode('list')}
-              className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors ${viewMode === 'list' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200 bg-slate-800' : 'text-slate-500 hover:text-slate-700 bg-white'}`}
+              className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors ${viewMode === 'list' ? 'text-white' : isDark ? 'text-slate-300 hover:text-slate-200 bg-slate-800' : 'text-slate-500 hover:text-slate-700 bg-white'}`}
               style={viewMode === 'list' ? { background: couleur } : {}}
               aria-label="Vue liste"
               title="Vue liste"
@@ -2805,7 +2809,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
             </button>
             <button
               onClick={() => setViewMode('gantt')}
-              className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors ${viewMode === 'gantt' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200 bg-slate-800' : 'text-slate-500 hover:text-slate-700 bg-white'}`}
+              className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors ${viewMode === 'gantt' ? 'text-white' : isDark ? 'text-slate-300 hover:text-slate-200 bg-slate-800' : 'text-slate-500 hover:text-slate-700 bg-white'}`}
               style={viewMode === 'gantt' ? { background: couleur } : {}}
               aria-label="Vue Gantt"
               title="Vue Gantt"
@@ -2814,7 +2818,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
             </button>
             <button
               onClick={() => setViewMode('map')}
-              className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors ${viewMode === 'map' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200 bg-slate-800' : 'text-slate-500 hover:text-slate-700 bg-white'}`}
+              className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors ${viewMode === 'map' ? 'text-white' : isDark ? 'text-slate-300 hover:text-slate-200 bg-slate-800' : 'text-slate-500 hover:text-slate-700 bg-white'}`}
               style={viewMode === 'map' ? { background: couleur } : {}}
               aria-label="Vue carte"
               title="Vue carte"
@@ -2823,7 +2827,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
             </button>
             <button
               onClick={() => setViewMode('garanties')}
-              className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors ${viewMode === 'garanties' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200 bg-slate-800' : 'text-slate-500 hover:text-slate-700 bg-white'}`}
+              className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors ${viewMode === 'garanties' ? 'text-white' : isDark ? 'text-slate-300 hover:text-slate-200 bg-slate-800' : 'text-slate-500 hover:text-slate-700 bg-white'}`}
               style={viewMode === 'garanties' ? { background: couleur } : {}}
               aria-label="Vue garanties"
               title="Vue garanties"
@@ -2880,9 +2884,9 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 {chantiersToday.length === 0 && (
-                  <span onClick={(e) => { e.stopPropagation(); setShow(true); }} className="px-2.5 py-1 rounded-lg text-xs font-medium text-white" style={{ backgroundColor: couleur }}>
+                  <button type="button" onClick={(e) => { e.stopPropagation(); setShow(true); }} className="px-2.5 py-1.5 rounded-lg text-xs font-medium text-white min-h-[44px] flex items-center" style={{ backgroundColor: couleur }}>
                     <Plus size={14} className="inline mr-0.5" />Créer
-                  </span>
+                  </button>
                 )}
                 {chantiersToday.length > 0 && (
                   todayCollapsed ? <ChevronDown size={14} className={textMuted} /> : <ChevronUp size={14} className={textMuted} />
@@ -2895,7 +2899,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                 {chantiersToday.slice(0, 4).map(c => {
                   const cl = clients.find(cl => cl.id === c.client_id);
                   return (
-                    <div key={c.id} className={`px-4 py-2 flex items-center gap-3 ${isDark ? 'hover:bg-slate-700/50' : 'hover:bg-slate-50'} transition-colors cursor-pointer`} onClick={() => setView(c.id)}>
+                    <button type="button" key={c.id} className={`px-4 py-2 flex items-center gap-3 w-full text-left ${isDark ? 'hover:bg-slate-700/50' : 'hover:bg-slate-50'} transition-colors cursor-pointer focus-visible:ring-2 outline-none ${isDark ? 'focus-visible:ring-slate-400' : 'focus-visible:ring-orange-400'}`} onClick={() => setView(c.id)}>
                       <div className="flex-1 min-w-0">
                         <p className={`text-sm font-medium line-clamp-2 ${textPrimary}`}>{c.nom}</p>
                         <p className={`text-xs ${textMuted} truncate`}>
@@ -2913,14 +2917,15 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                             else if (isAndroid) window.open(`geo:0,0?q=${address}`, '_blank');
                             else window.open(`https://www.google.com/maps/search/?api=1&query=${address}`, '_blank');
                           }}
-                          className="w-10 h-10 rounded-lg flex items-center justify-center text-white shrink-0"
+                          className="w-11 h-11 rounded-lg flex items-center justify-center text-white shrink-0"
                           style={{ backgroundColor: couleur }}
+                          aria-label="Ouvrir dans GPS"
                           title="GPS"
                         >
                           <Navigation size={14} />
                         </button>
                       )}
-                    </div>
+                    </button>
                   );
                 })}
                 {chantiersToday.length > 4 && (
@@ -2945,7 +2950,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
             style={{ '--tw-ring-color': `${couleur}40` }}
           />
           {searchQuery && (
-            <button onClick={() => setSearchQuery('')} className={`absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full ${isDark ? 'hover:bg-slate-600' : 'hover:bg-slate-200'}`}>
+            <button onClick={() => setSearchQuery('')} aria-label="Effacer la recherche" className={`absolute right-3 top-1/2 -translate-y-1/2 p-2.5 min-w-[44px] min-h-[44px] rounded-full flex items-center justify-center ${isDark ? 'hover:bg-slate-600' : 'hover:bg-slate-200'}`}>
               <X size={14} className={textMuted} />
             </button>
           )}
@@ -3034,7 +3039,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                     filterStatus === tab.key
                       ? 'text-white shadow-md'
                       : isDark
-                        ? 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700'
+                        ? 'bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700'
                         : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200 hover:border-slate-300'
                   }`}
                   style={filterStatus === tab.key ? { backgroundColor: tab.color } : {}}
@@ -3146,7 +3151,8 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
               <span className="flex-1">{Math.ceil(duplicateMap.size / 2)} doublon{Math.ceil(duplicateMap.size / 2) > 1 ? 's' : ''} détecté{Math.ceil(duplicateMap.size / 2) > 1 ? 's' : ''} · Les badges ⚠ Doublon vous permettent de fusionner</span>
               <button
                 onClick={() => { setChantierDuplicateDismissed(true); try { localStorage.setItem('chantierDuplicateDismissed', 'true'); } catch {} }}
-                className={`shrink-0 p-1 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-amber-100'}`}
+                aria-label="Fermer l'alerte doublons"
+                className={`shrink-0 p-2.5 min-w-[44px] min-h-[44px] rounded-lg flex items-center justify-center ${isDark ? 'hover:bg-slate-700' : 'hover:bg-amber-100'}`}
               >
                 <X size={14} />
               </button>
@@ -3199,7 +3205,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
               : ch.statut === 'termine'
               ? (isDark ? 'bg-emerald-900/50 text-emerald-400' : 'bg-emerald-100 text-emerald-700')
               : ch.statut === 'archive'
-              ? (isDark ? 'bg-slate-700 text-slate-400' : 'bg-slate-200 text-slate-600')
+              ? (isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-200 text-slate-600')
               : (isDark ? 'bg-blue-900/50 text-blue-400' : 'bg-blue-100 text-blue-700');
 
             // Task counts
@@ -3268,7 +3274,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                     <>
                       <span className={`text-xs ${textMuted}`}>·</span>
                       <span className={`text-xs ${textMuted} flex items-center gap-1`}>
-                        <Calendar size={11} />
+                        <Calendar size={14} />
                         {dateRange}
                       </span>
                     </>
@@ -3277,15 +3283,15 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                     <>
                       <span className={`text-xs ${textMuted}`}>·</span>
                       <span className={`text-xs ${textMuted} flex items-center gap-1 truncate max-w-[50%]`} title={[ch.adresse, ch.ville].filter(Boolean).join(', ')}>
-                        <MapPin size={10} className="shrink-0" />
+                        <MapPin size={14} className="shrink-0" />
                         {ch.ville || ch.adresse}
                       </span>
                     </>
                   ) : (
                     <>
                       <span className={`text-xs ${textMuted}`}>·</span>
-                      <span className={`text-xs italic ${isDark ? 'text-slate-400' : 'text-slate-500'} flex items-center gap-1`}>
-                        <MapPin size={10} className="shrink-0" />
+                      <span className={`text-xs italic ${isDark ? 'text-slate-300' : 'text-slate-500'} flex items-center gap-1`}>
+                        <MapPin size={14} className="shrink-0" />
                         Sans adresse
                       </span>
                     </>
@@ -3354,7 +3360,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                     </button>
                     <button
                       onClick={(e) => { e.stopPropagation(); setView(ch.id); }}
-                      className={`py-2.5 sm:py-1.5 px-3 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 transition-all min-h-[44px] sm:min-h-0 ${isDark ? 'text-slate-400 hover:bg-slate-700' : 'text-slate-500 hover:bg-slate-100'}`}
+                      className={`py-2.5 sm:py-1.5 px-3 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 transition-all min-h-[44px] sm:min-h-0 ${isDark ? 'text-slate-300 hover:bg-slate-700' : 'text-slate-500 hover:bg-slate-100'}`}
                     >
                       <ChevronRight size={14} />
                     </button>
@@ -3465,7 +3471,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                   className={`mt-2 text-xs flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors ${
                     newTaskCritical
                       ? (isDark ? 'bg-red-900/30 text-red-400' : 'bg-red-100 text-red-600')
-                      : (isDark ? 'text-slate-400 hover:bg-slate-700' : 'text-slate-500 hover:bg-slate-100')
+                      : (isDark ? 'text-slate-300 hover:bg-slate-700' : 'text-slate-500 hover:bg-slate-100')
                   }`}
                 >
                   <AlertCircle size={14} />
@@ -3492,7 +3498,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                           <button onClick={() => toggleCritical(task.id)} aria-label="Retirer de prioritaire" className={`p-2.5 min-w-[44px] min-h-[44px] rounded flex items-center justify-center opacity-50 group-hover:opacity-100 focus:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 ${isDark ? 'focus-visible:ring-offset-slate-900 hover:bg-red-900/50' : 'hover:bg-red-100'}`} title="Retirer critique">
                             <AlertCircle size={16} className="text-red-500" />
                           </button>
-                          <button onClick={() => deleteTask(task.id)} aria-label="Supprimer la tâche" className={`p-2.5 min-w-[44px] min-h-[44px] rounded flex items-center justify-center opacity-50 group-hover:opacity-100 focus:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 ${isDark ? 'focus-visible:ring-offset-slate-900 hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}>
+                          <button onClick={() => deleteTask(task.id)} aria-label="Supprimer la tâche" className={`p-2.5 min-w-[44px] min-h-[44px] rounded flex items-center justify-center opacity-50 group-hover:opacity-100 focus:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 ${isDark ? 'focus-visible:ring-offset-slate-900 hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-100 text-slate-500'}`}>
                             <Trash2 size={16} />
                           </button>
                         </div>
@@ -3513,10 +3519,10 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                           <button onClick={() => toggleTask(task.id)}
                             className={`w-6 h-6 rounded-md border-2 flex-shrink-0 ${isDark ? 'border-slate-500' : 'border-slate-300'}`} />
                           <span className={`flex-1 text-sm ${textPrimary}`}>{task.text}</span>
-                          <button onClick={() => toggleCritical(task.id)} aria-label="Marquer comme prioritaire" className={`p-2.5 min-w-[44px] min-h-[44px] rounded flex items-center justify-center opacity-50 group-hover:opacity-100 focus:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 ${isDark ? 'focus-visible:ring-offset-slate-900 hover:bg-slate-600 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`} title="Marquer critique">
+                          <button onClick={() => toggleCritical(task.id)} aria-label="Marquer comme prioritaire" className={`p-2.5 min-w-[44px] min-h-[44px] rounded flex items-center justify-center opacity-50 group-hover:opacity-100 focus:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 ${isDark ? 'focus-visible:ring-offset-slate-900 hover:bg-slate-600 text-slate-300' : 'hover:bg-slate-100 text-slate-500'}`} title="Marquer critique">
                             <AlertCircle size={16} />
                           </button>
-                          <button onClick={() => deleteTask(task.id)} aria-label="Supprimer la tâche" className={`p-2.5 min-w-[44px] min-h-[44px] rounded flex items-center justify-center opacity-50 group-hover:opacity-100 focus:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 ${isDark ? 'focus-visible:ring-offset-slate-900 hover:bg-slate-600 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}>
+                          <button onClick={() => deleteTask(task.id)} aria-label="Supprimer la tâche" className={`p-2.5 min-w-[44px] min-h-[44px] rounded flex items-center justify-center opacity-50 group-hover:opacity-100 focus:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 ${isDark ? 'focus-visible:ring-offset-slate-900 hover:bg-slate-600 text-slate-300' : 'hover:bg-slate-100 text-slate-500'}`}>
                             <Trash2 size={16} />
                           </button>
                         </div>
@@ -3532,7 +3538,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                       <p className={`text-xs font-bold uppercase tracking-wider ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>
                         ✓ Terminées ({completedTasks.length})
                       </p>
-                      <button onClick={clearCompleted} className={`text-xs ${isDark ? 'text-slate-400 hover:text-red-400' : 'text-slate-500 hover:text-red-500'}`}>
+                      <button onClick={clearCompleted} className={`text-xs ${isDark ? 'text-slate-300 hover:text-red-400' : 'text-slate-500 hover:text-red-500'}`}>
                         Supprimer
                       </button>
                     </div>
@@ -3658,7 +3664,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
               {/* Swap button */}
               <button
                 onClick={() => setMergeDialog({ primaryId: mergeDialog.secondaryId, secondaryId: mergeDialog.primaryId })}
-                className={`w-full text-xs py-1.5 rounded-lg mb-4 ${isDark ? 'text-slate-400 hover:bg-slate-700' : 'text-slate-500 hover:bg-slate-100'}`}
+                className={`w-full text-xs py-1.5 rounded-lg mb-4 ${isDark ? 'text-slate-300 hover:bg-slate-700' : 'text-slate-500 hover:bg-slate-100'}`}
               >
                 ↔ Inverser principal / secondaire
               </button>

@@ -52,20 +52,35 @@ export const EVENT_TYPE_COLORS = {
   deadline: '#ec4899',
 };
 
-// Score client (classification)
+// Score client
 export const CLIENT_SCORE_COLORS = {
-  vip: '#f59e0b',
-  regulier: '#10b981',
-  occasionnel: '#3b82f6',
-  dormant: '#ef4444',
-  nouveau: '#8b5cf6',
+  vip: { hex: '#f59e0b', bg: 'bg-amber-500', text: 'text-amber-500' },
+  regulier: { hex: '#10b981', bg: 'bg-emerald-500', text: 'text-emerald-500' },
+  occasionnel: { hex: '#3b82f6', bg: 'bg-blue-500', text: 'text-blue-500' },
+  dormant: { hex: '#ef4444', bg: 'bg-red-500', text: 'text-red-500' },
+  nouveau: { hex: '#8b5cf6', bg: 'bg-violet-500', text: 'text-violet-500' },
 };
 
-// Canaux de communication
+// Canaux communication
 export const CHANNEL_COLORS = {
-  email: '#3b82f6',
-  sms: '#22c55e',
-  whatsapp: '#25d366',
-  appel: '#8b5cf6',
-  visite: '#f97316',
+  email: { hex: '#3b82f6', bg: 'bg-blue-500', text: 'text-blue-500' },
+  sms: { hex: '#22c55e', bg: 'bg-green-500', text: 'text-green-500' },
+  whatsapp: { hex: '#25d366', bg: 'bg-emerald-500', text: 'text-emerald-500' },
+  appel: { hex: '#8b5cf6', bg: 'bg-violet-500', text: 'text-violet-500' },
+};
+
+// Marge article
+export const MARGE_COLORS = {
+  excellente: { hex: '#8b5cf6', label: 'Excellente', min: 60 },
+  bonne: { hex: '#16a34a', label: 'Bonne', min: 40 },
+  correcte: { hex: '#22c55e', label: 'Correcte', min: 25 },
+  faible: { hex: '#f59e0b', label: 'Faible', min: 0 },
+  negative: { hex: '#ef4444', label: 'Négative', min: -Infinity },
+};
+
+// Stock
+export const STOCK_COLORS = {
+  ok: { hex: '#22c55e', label: 'OK' },
+  bas: { hex: '#f59e0b', label: 'Bas' },
+  epuise: { hex: '#94a3b8', label: 'Rupture' },
 };
