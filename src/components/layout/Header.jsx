@@ -198,7 +198,7 @@ export default function Header({
               isDark ? 'bg-slate-700 text-gray-400' : 'bg-gray-200 text-gray-500'
             )}
           >
-            <span className="text-xs">⌘</span>K
+            <span className="text-xs">{navigator.platform?.includes('Mac') ? '⌘' : 'Ctrl+'}</span>K
           </kbd>
         </button>
       </div>
