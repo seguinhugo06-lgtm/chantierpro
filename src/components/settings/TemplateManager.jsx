@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Plus, Trash2, Edit3, X, Check, Star, ChevronDown, ChevronUp, Search, Copy, FileText, TrendingUp } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 import { formatMoney } from '../../lib/formatters';
+import EmptyState from '../ui/EmptyState';
 
 /**
  * TemplateManager — manage custom devis templates
@@ -124,18 +125,16 @@ export default function TemplateManager({ isDark, couleur, modeDiscret }) {
 
       {/* Templates list */}
       {sortedTemplates.length === 0 ? (
-        <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-8 text-center`}>
-          <FileText size={48} className={`mx-auto mb-4 ${textMuted}`} />
-          <h4 className={`font-medium mb-2 ${textPrimary}`}>
-            {searchQuery ? 'Aucun modèle trouvé' : 'Aucun modèle personnalisé'}
-          </h4>
-          <p className={`text-sm ${textMuted} max-w-sm mx-auto`}>
-            {searchQuery
-              ? `Aucun modèle ne correspond à "${searchQuery}"`
-              : 'Créez vos premiers modèles depuis un devis existant en utilisant le menu ⋮ → "Sauvegarder comme modèle".'
-            }
-          </p>
-        </div>
+        <EmptyState
+          icon={FileText}
+          title={searchQuery ? 'Aucun modèle trouvé' : 'Aucun modèle personnalisé'}
+          description={searchQuery
+            ? `Aucun modèle ne correspond à "${searchQuery}"`
+            : 'Créez vos premiers modèles depuis un devis existant en utilisant le menu ⋮ → "Sauvegarder comme modèle".'
+          }
+          isDark={isDark}
+          couleur={couleur}
+        />
       ) : (
         <div className="space-y-3">
           {sortedTemplates.map(t => {

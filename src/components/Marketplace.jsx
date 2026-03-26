@@ -390,7 +390,7 @@ function ListingCard({ listing, isFavorite, onToggleFavorite, onContact, onView,
           onClick={(e) => { e.stopPropagation(); onToggleFavorite(); }}
           className={cn(
             'absolute top-3 right-3 p-2 rounded-full transition-all',
-            isFavorite ? 'bg-red-500 text-white' : 'bg-white/90 text-gray-600 hover:bg-white'
+            isFavorite ? 'bg-red-500 text-white' : isDark ? 'bg-slate-700/90 text-slate-300 hover:bg-slate-600' : 'bg-white/90 text-gray-600 hover:bg-white'
           )}
         >
           <Heart size={18} className={isFavorite ? 'fill-current' : ''} />

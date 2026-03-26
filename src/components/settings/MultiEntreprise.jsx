@@ -19,6 +19,7 @@ import {
   Save,
   ArrowLeft
 } from 'lucide-react';
+import EmptyState from '../ui/EmptyState';
 
 const LS_KEY_ENTREPRISES = 'cp_entreprises';
 const LS_KEY_ACTIVE = 'cp_entreprise_active';
@@ -672,11 +673,13 @@ export default function MultiEntreprise({ entreprise = {}, setEntreprise, isDark
 
         {/* Entreprises cards */}
         {entreprises.length === 0 ? (
-          <div className={`${cardBg} border rounded-2xl p-8 text-center`}>
-            <Building2 size={40} className={`mx-auto mb-3 ${textMuted}`} />
-            <p className={`font-medium ${textPrimary}`}>Aucune entreprise</p>
-            <p className={`text-sm ${textMuted} mt-1`}>Ajoutez votre première entreprise pour commencer.</p>
-          </div>
+          <EmptyState
+            icon={Building2}
+            title="Aucune entreprise"
+            description="Ajoutez votre première entreprise pour commencer."
+            isDark={isDark}
+            couleur={couleur}
+          />
         ) : (
           <div className="space-y-3">
             {entreprises.map(ent => {

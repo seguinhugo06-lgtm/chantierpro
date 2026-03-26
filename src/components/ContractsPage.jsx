@@ -4,6 +4,7 @@ import {
   Calendar, RefreshCw, AlertTriangle, CheckCircle, Clock,
   TrendingUp, ChevronDown, MoreVertical
 } from 'lucide-react';
+import EmptyState from './ui/EmptyState';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 // ---------------------------------------------------------------------------
@@ -440,13 +441,13 @@ export default function ContractsPage({ isDark, couleur, showToast, user, client
 
         {/* Contracts list */}
         {filtered.length === 0 ? (
-          <div className={`${cardBg} border rounded-xl p-8 text-center`}>
-            <FileCheck size={40} className={`mx-auto mb-3 ${textMuted}`} />
-            <p className={`font-medium ${textPrimary}`}>Aucun contrat</p>
-            <p className={`text-sm ${textSecondary} mt-1`}>
-              {search || filtre !== 'tous' ? 'Modifiez vos filtres pour voir des résultats' : 'Créez votre premier contrat de maintenance'}
-            </p>
-          </div>
+          <EmptyState
+            icon={FileCheck}
+            title="Aucun contrat"
+            description={search || filtre !== 'tous' ? 'Modifiez vos filtres pour voir des résultats' : 'Créez votre premier contrat de maintenance'}
+            isDark={isDark}
+            couleur={couleur}
+          />
         ) : (
           <div className="grid gap-3">
             {filtered.map(contrat => {
