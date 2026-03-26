@@ -344,11 +344,6 @@ export async function deductStockFromDevis(devisId, userId, options = {}) {
       .update({ stock_deduit: true, stock_deduit_at: new Date().toISOString() })
       .eq('id', devisId);
 
-      totalDeducted: result.totalDeducted,
-      totalValue: result.totalValue,
-      alertsCount: result.alerts.length,
-    });
-
     return result;
   } catch (error) {
     console.error('[StockAutoDeduction] Error:', error);
