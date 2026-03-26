@@ -988,7 +988,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
               <Edit3 size={14} className="inline mr-1" /> Modifier
             </button>
             {/* Ajouter au devis button */}
-            <button onClick={() => openAddToDevisModal(item)} className="px-4 py-2 rounded-xl text-sm font-medium text-white flex items-center gap-1.5 shadow-md" style={{ background: '#22c55e' }}>
+            <button onClick={() => openAddToDevisModal(item)} className="px-4 py-2 rounded-xl text-sm font-medium text-white flex items-center gap-1.5 shadow-md" style={{ background: couleur }}>
               <FileText size={14} /> Ajouter au devis
             </button>
           </div>

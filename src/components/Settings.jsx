@@ -526,13 +526,13 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
 
       {/* Alertes assurances critiques */}
       {alertesAssurances.filter(a => a.severity === 'critical').map((alert, i) => (
-        <div key={i} className="bg-red-50 border-2 border-red-300 rounded-xl p-4 flex items-center gap-3 animate-pulse">
-          <span className="text-2xl"></span>
-          <div className="flex-1">
-            <p className="font-bold text-red-800">{alert.message}</p>
-            <p className="text-sm text-red-600">Date d'expiration: {alert.date.toLocaleDateString('fr-FR')}</p>
+        <div key={i} className={`border-2 rounded-xl p-4 flex items-center gap-3 ${isDark ? 'bg-red-900/30 border-red-700' : 'bg-red-50 border-red-300'}`}>
+          <span className="text-2xl shrink-0">🚨</span>
+          <div className="flex-1 min-w-0">
+            <p className={`font-bold ${isDark ? 'text-red-300' : 'text-red-800'}`}>{alert.message}</p>
+            <p className={`text-sm ${isDark ? 'text-red-400' : 'text-red-600'}`}>Date d'expiration: {alert.date.toLocaleDateString('fr-FR')}</p>
           </div>
-          <button onClick={() => setTab('assurances')} className="px-4 py-2 bg-red-500 text-white rounded-xl text-sm">Renouveler</button>
+          <button onClick={() => setTab('assurances')} className="px-4 py-2 bg-red-500 text-white rounded-xl text-sm font-medium shrink-0 min-h-[44px]">Renouveler</button>
         </div>
       ))}
 
@@ -568,15 +568,37 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
         </div>
       )}
 
+      {/* Breadcrumb navigation */}
+      {(() => {
+        const activeGroup = visibleTabGroups.find(g => g.tabs.some(t => t.key === tab));
+        const activeTab = activeGroup?.tabs.find(t => t.key === tab);
+        if (!activeGroup || !activeTab) return null;
+        return (
+          <nav aria-label="Fil d'Ariane paramètres" className={`text-xs ${textMuted} flex items-center gap-1.5`}>
+            <span>Paramètres</span>
+            <ChevronRight size={12} />
+            <span style={{ color: couleur }} className="font-medium">{activeGroup.label}</span>
+            {activeGroup.tabs.length > 1 && (
+              <>
+                <ChevronRight size={12} />
+                <span className={textPrimary + ' font-medium'}>{activeTab.label}</span>
+              </>
+            )}
+          </nav>
+        );
+      })()}
+
       {/* Tabs — Desktop: 2-level grouped navigation (4 groups → sub-tabs) */}
       {/* Level 1: Group pills (hidden on mobile) */}
       <div className={`hidden sm:block border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
-        <div className="flex gap-0.5">
+        <div className="flex gap-0.5" role="tablist" aria-label="Catégories de paramètres">
           {visibleTabGroups.map(group => {
             const activeInGroup = group.tabs.some(t => t.key === tab);
             return (
               <button
                 key={group.id}
+                role="tab"
+                aria-selected={activeInGroup}
                 onClick={() => { if (!activeInGroup) setTab(group.tabs[0].key); }}
                 className={`relative px-4 py-2.5 font-medium whitespace-nowrap min-h-[44px] text-sm transition-all rounded-t-lg ${activeInGroup ? 'font-semibold' : `${isDark ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'}`}`}
                 style={activeInGroup ? { color: entreprise.couleur } : {}}
@@ -594,10 +616,12 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
           const activeGroup = visibleTabGroups.find(g => g.tabs.some(t => t.key === tab));
           if (!activeGroup || activeGroup.tabs.length <= 1) return null;
           return (
-            <div className={`flex gap-1 px-2 py-2 ${isDark ? 'bg-slate-800/30' : 'bg-slate-50/80'}`}>
+            <div className={`flex gap-1 px-2 py-2 ${isDark ? 'bg-slate-800/30' : 'bg-slate-50/80'}`} role="tablist" aria-label={`Sous-onglets ${activeGroup.label}`}>
               {activeGroup.tabs.map(t => (
                 <button
                   key={t.key}
+                  role="tab"
+                  aria-selected={tab === t.key}
                   data-tab={t.key}
                   onClick={() => setTab(t.key)}
                   className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${tab === t.key ? 'text-white shadow-sm' : isDark ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-700' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200'} ${t.key === 'assurances' && hasAssuranceAlerts ? 'text-red-500' : ''}`}

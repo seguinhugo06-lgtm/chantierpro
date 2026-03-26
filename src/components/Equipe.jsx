@@ -1496,7 +1496,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
       {!isSousTraitants && (<div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {/* Week Hero Card with Navigation — compact when no data */}
         <motion.div
-          className={`col-span-2 rounded-2xl text-white relative overflow-hidden shadow-lg ${totalWeekHours === 0 && approvedWeekHours === 0 ? 'p-4' : 'p-5 sm:p-6'}`}
+          className={`col-span-2 rounded-2xl text-white relative overflow-hidden shadow-lg ${totalWeekHours === 0 && approvedWeekHours === 0 ? 'p-4' : 'p-4 sm:p-6'}`}
           style={{ background: getBannerGradient() }}
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -1527,27 +1527,27 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
           ) : (
             /* ── Full mode: detailed stats when hours exist ── */
             <>
-              <div className="absolute top-0 right-0 w-32 h-32 rounded-full bg-white/10 -mr-10 -mt-10" />
-              <div className="absolute bottom-0 left-0 w-24 h-24 rounded-full bg-black/10 -ml-8 -mb-8" />
+              <div className="absolute top-0 right-0 w-20 sm:w-32 h-20 sm:h-32 rounded-full bg-white/10 -mr-10 -mt-10" />
+              <div className="absolute bottom-0 left-0 w-16 sm:w-24 h-16 sm:h-24 rounded-full bg-black/10 -ml-8 -mb-8" />
               <div className="relative">
-                <div className="flex items-center justify-between mb-4">
-                  <button onClick={() => setWeekOffset(o => o - 1)} className="w-12 h-12 rounded-xl bg-white/90 hover:bg-white transition-colors flex items-center justify-center shadow-lg" aria-label="Semaine précédente">
-                    <ChevronLeft size={24} className="text-orange-600" />
+                <div className="flex items-center justify-between mb-3 sm:mb-4">
+                  <button onClick={() => setWeekOffset(o => o - 1)} className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-white/90 hover:bg-white transition-colors flex items-center justify-center shadow-lg" aria-label="Semaine précédente">
+                    <ChevronLeft size={20} className="text-orange-600" />
                   </button>
-                  <div className="flex items-center gap-2 px-5 py-2.5 bg-black/20 rounded-xl backdrop-blur-sm">
-                    <Calendar size={16} className="text-white" />
-                    <p className="text-sm text-white font-bold">
+                  <div className="flex items-center gap-2 px-3 sm:px-5 py-2 sm:py-2.5 bg-black/20 rounded-xl backdrop-blur-sm">
+                    <Calendar size={14} className="text-white" />
+                    <p className="text-xs sm:text-sm text-white font-bold">
                       {weekOffset === 0 ? 'Cette semaine' : `Du ${weekStart.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })} au ${weekEnd.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}`}
                     </p>
                   </div>
-                  <button onClick={() => setWeekOffset(o => Math.min(o + 1, 0))} disabled={weekOffset >= 0} className="w-12 h-12 rounded-xl bg-white/90 hover:bg-white transition-colors flex items-center justify-center shadow-lg disabled:opacity-50 disabled:cursor-not-allowed" aria-label="Semaine suivante">
-                    <ChevronRight size={24} className="text-orange-600" />
+                  <button onClick={() => setWeekOffset(o => Math.min(o + 1, 0))} disabled={weekOffset >= 0} className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-white/90 hover:bg-white transition-colors flex items-center justify-center shadow-lg disabled:opacity-50 disabled:cursor-not-allowed" aria-label="Semaine suivante">
+                    <ChevronRight size={20} className="text-orange-600" />
                   </button>
                 </div>
-                <div className="flex items-end justify-between mb-4">
+                <div className="flex items-end justify-between mb-3 sm:mb-4">
                   <div>
-                    <p className="text-5xl sm:text-6xl font-black text-white" style={{textShadow: '0 2px 4px rgba(0,0,0,0.3)'}}>{totalWeekHours.toFixed(0)}<span className="text-3xl">h</span></p>
-                    <p className="text-sm text-white/95 mt-2 font-semibold" style={{textShadow: '0 1px 2px rgba(0,0,0,0.2)'}}>
+                    <p className="text-3xl sm:text-5xl font-black text-white" style={{textShadow: '0 2px 4px rgba(0,0,0,0.3)'}}>{totalWeekHours.toFixed(0)}<span className="text-xl sm:text-3xl">h</span></p>
+                    <p className="text-xs sm:text-sm text-white/95 mt-1 sm:mt-2 font-semibold" style={{textShadow: '0 1px 2px rgba(0,0,0,0.2)'}}>
                       {`${equipe.length} membre${equipe.length > 1 ? 's' : ''} dans l'équipe`}
                     </p>
                   </div>
