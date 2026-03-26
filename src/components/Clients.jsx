@@ -362,6 +362,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
   };
 
   // In production, filter out test clients from the main list
+  // eslint-disable-next-line no-undef
   const isProduction = typeof __DEV__ !== 'undefined' ? !__DEV__ : (import.meta.env?.PROD ?? true);
   const displayClients = useMemo(() => {
     if (isProduction) return clients.filter(c => !isTestClient(c));
