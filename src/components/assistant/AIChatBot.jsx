@@ -142,9 +142,30 @@ export default function AIChatBot({ isDark, couleur, devis, chantiers, clients, 
   const [messages, setMessages] = useState(loadHistory);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [inputFocused, setInputFocused] = useState(false);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
   const accentColor = couleur || '#f97316';
+
+  // Hide floating button when a form input is focused (mobile keyboard covers it)
+  useEffect(() => {
+    const handleFocusIn = (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') {
+        setInputFocused(true);
+      }
+    };
+    const handleFocusOut = (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') {
+        setTimeout(() => setInputFocused(false), 200);
+      }
+    };
+    document.addEventListener('focusin', handleFocusIn);
+    document.addEventListener('focusout', handleFocusOut);
+    return () => {
+      document.removeEventListener('focusin', handleFocusIn);
+      document.removeEventListener('focusout', handleFocusOut);
+    };
+  }, []);
 
   // Theme variables
   const panelBg = isDark ? 'bg-slate-800' : 'bg-white';
@@ -209,11 +230,11 @@ export default function AIChatBot({ isDark, couleur, devis, chantiers, clients, 
 
   return (
     <>
-      {/* Floating button */}
+      {/* Floating button — hidden on mobile when a form field is focused */}
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-20 right-4 z-50 flex items-center justify-center w-14 h-14 rounded-full shadow-lg transition-all duration-300 hover:scale-110 active:scale-95"
+          className={`fixed bottom-20 right-4 z-50 items-center justify-center w-14 h-14 rounded-full shadow-lg transition-all duration-300 hover:scale-110 active:scale-95 ${inputFocused ? 'hidden sm:flex' : 'flex'}`}
           style={{ background: accentColor }}
           aria-label="Ouvrir l'assistant IA"
         >

@@ -78,6 +78,56 @@ const FRAIS_ITEMS = [
 // Villes RCS principales France
 const VILLES_RCS = ['Paris', 'Lyon', 'Marseille', 'Toulouse', 'Nice', 'Nantes', 'Strasbourg', 'Montpellier', 'Bordeaux', 'Lille', 'Rennes', 'Reims', 'Toulon', 'Saint-Étienne', 'Le Havre', 'Grenoble', 'Dijon', 'Angers', 'Nîmes', 'Villeurbanne', 'Clermont-Ferrand', 'Aix-en-Provence', 'Brest', 'Tours', 'Amiens', 'Limoges', 'Annecy', 'Perpignan', 'Boulogne-Billancourt', 'Metz', 'Besançon', 'Orléans', 'Rouen', 'Mulhouse', 'Caen', 'Nancy', 'Saint-Denis', 'Argenteuil', 'Roubaix', 'Tourcoing', 'Montreuil', 'Avignon', 'Créteil', 'Poitiers', 'Fort-de-France', 'Versailles', 'Courbevoie', 'Vitry-sur-Seine', 'Colombes', 'Pau'];
 
+// Debounced input to prevent re-render on every keystroke (mobile perf)
+function DebouncedInput({ value, onChange, delay = 800, ...props }) {
+  const [localValue, setLocalValue] = useState(value ?? '');
+  const timerRef = useRef(null);
+
+  useEffect(() => {
+    setLocalValue(value ?? '');
+  }, [value]);
+
+  const handleChange = (e) => {
+    const newVal = e.target.value;
+    setLocalValue(newVal);
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => {
+      onChange(newVal);
+    }, delay);
+  };
+
+  useEffect(() => {
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+  }, []);
+
+  return <input {...props} value={localValue} onChange={handleChange} />;
+}
+
+// Same for textarea
+function DebouncedTextarea({ value, onChange, delay = 800, ...props }) {
+  const [localValue, setLocalValue] = useState(value ?? '');
+  const timerRef = useRef(null);
+
+  useEffect(() => {
+    setLocalValue(value ?? '');
+  }, [value]);
+
+  const handleChange = (e) => {
+    const newVal = e.target.value;
+    setLocalValue(newVal);
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => {
+      onChange(newVal);
+    }, delay);
+  };
+
+  useEffect(() => {
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+  }, []);
+
+  return <textarea {...props} value={localValue} onChange={handleChange} />;
+}
+
 export default function Settings({ entreprise, setEntreprise, user, devis = [], depenses = [], clients = [], chantiers = [], onExportComptable, isDark, couleur, setPage, modeDiscret }) {
   const { showToast } = useToast();
   const { canManageTeam } = usePermissions();
@@ -301,8 +351,9 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
   const missingRequired = missingFields.filter(f => f.required);
   const missingRecommended = missingFields.filter(f => !f.required);
   const getCompletude = () => {
-    const filled = PROFILE_FIELDS.filter(f => entreprise[f.key] && String(entreprise[f.key]).trim() !== '');
-    return Math.round((filled.length / PROFILE_FIELDS.length) * 100);
+    const required = PROFILE_FIELDS.filter(f => f.required);
+    const filled = required.filter(f => entreprise[f.key] && String(entreprise[f.key]).trim() !== '');
+    return Math.round((filled.length / required.length) * 100);
   };
   const completude = getCompletude();
 
@@ -726,7 +777,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium mb-1">Nom de l'entreprise <span className="text-red-500">*</span></label>
-                <input id="settings-field-nom" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="Ex: Dupont Rénovation" value={entreprise.nom || ''} onChange={e => updateEntreprise(p => ({...p, nom: e.target.value}))} />
+                <DebouncedInput id="settings-field-nom" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="Ex: Dupont Rénovation" value={entreprise.nom || ''} onChange={val => updateEntreprise(p => ({...p, nom: val}))} />
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Statut juridique <span className="text-red-500">*</span></label>
@@ -748,19 +799,19 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                   Capital (optionnel)
                 </label>
                 <div className="flex">
-                  <input type="number" className={`flex-1 px-4 py-2.5 border rounded-l-xl ${inputBg}`} placeholder="10000" value={entreprise.capital || ''} onChange={e => updateEntreprise(p => ({...p, capital: e.target.value}))} />
+                  <DebouncedInput type="number" className={`flex-1 px-4 py-2.5 border rounded-l-xl ${inputBg}`} placeholder="10000" value={entreprise.capital || ''} onChange={val => updateEntreprise(p => ({...p, capital: val}))} />
                   <span className={`px-4 py-2.5 border-y border-r rounded-r-xl ${isDark ? 'bg-slate-600 text-slate-300 border-slate-600' : 'bg-slate-100 text-slate-500 border-slate-300'}`}>€</span>
                 </div>
               </div>
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium mb-1">Adresse siège social <span className="text-red-500">*</span></label>
-                <textarea id="settings-field-adresse" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} rows={2} placeholder="12 rue des Artisans&#10;75001 Paris&#10;FRANCE" value={entreprise.adresse || ''} onChange={e => updateEntreprise(p => ({...p, adresse: e.target.value}))} />
+                <DebouncedTextarea id="settings-field-adresse" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} rows={2} placeholder="12 rue des Artisans&#10;75001 Paris&#10;FRANCE" value={entreprise.adresse || ''} onChange={val => updateEntreprise(p => ({...p, adresse: val}))} />
                 <p className="text-xs text-slate-500 mt-1">Inclure "FRANCE" pour les documents internationaux</p>
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Téléphone <span className="text-red-500">*</span></label>
                 <div className="relative">
-                  <input id="settings-field-tel" type="tel" className={`w-full px-4 py-2.5 border rounded-xl text-base sm:text-sm ${inputBg}`} placeholder="06 12 34 56 78" value={entreprise.tel || ''} onChange={e => updateEntreprise(p => ({...p, tel: e.target.value}))} />
+                  <DebouncedInput id="settings-field-tel" type="tel" className={`w-full px-4 py-2.5 border rounded-xl text-base sm:text-sm ${inputBg}`} placeholder="06 12 34 56 78" value={entreprise.tel || ''} onChange={val => updateEntreprise(p => ({...p, tel: val}))} />
                   {entreprise.tel && /^(?:\+33|0)\s*[1-9](?:[\s.-]*\d{2}){4}$/.test((entreprise.tel || '').trim()) && (
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-green-500 text-white flex items-center justify-center text-xs font-bold" aria-label="Valide"><Check size={12} /></span>
                   )}
@@ -769,7 +820,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
               <div>
                 <label className="block text-sm font-medium mb-1">Email <span className="text-red-500">*</span></label>
                 <div className="relative">
-                  <input id="settings-field-email" type="email" className={`w-full px-4 py-2.5 border rounded-xl text-base sm:text-sm ${inputBg}`} placeholder="contact@monentreprise.fr" value={entreprise.email || ''} onChange={e => updateEntreprise(p => ({...p, email: e.target.value}))} />
+                  <DebouncedInput id="settings-field-email" type="email" className={`w-full px-4 py-2.5 border rounded-xl text-base sm:text-sm ${inputBg}`} placeholder="contact@monentreprise.fr" value={entreprise.email || ''} onChange={val => updateEntreprise(p => ({...p, email: val}))} />
                   {entreprise.email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test((entreprise.email || '').trim()) && (
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-green-500 text-white flex items-center justify-center text-xs font-bold" aria-label="Valide"><Check size={12} /></span>
                   )}
@@ -777,11 +828,11 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Site web</label>
-                <input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="www.monentreprise.fr" value={entreprise.siteWeb || ''} onChange={e => updateEntreprise(p => ({...p, siteWeb: e.target.value}))} />
+                <DebouncedInput className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="www.monentreprise.fr" value={entreprise.siteWeb || ''} onChange={val => updateEntreprise(p => ({...p, siteWeb: val}))} />
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Slogan (optionnel)</label>
-                <input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="Votre artisan de confiance" value={entreprise.slogan || ''} onChange={e => updateEntreprise(p => ({...p, slogan: e.target.value}))} />
+                <DebouncedInput className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="Votre artisan de confiance" value={entreprise.slogan || ''} onChange={val => updateEntreprise(p => ({...p, slogan: val}))} />
               </div>
             </div>
           </div>
@@ -797,7 +848,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
               <div>
                 <label className="block text-sm font-medium mb-1">SIRET (14 chiffres) <span className="text-red-500">*</span></label>
                 <div className="relative">
-                  <input id="settings-field-siret" className={`w-full px-4 py-2.5 border rounded-xl font-mono text-base sm:text-sm ${entreprise.siret && !validateSIRET(entreprise.siret) ? 'border-red-300 bg-red-50' : inputBg}`} placeholder="123 456 789 00012" maxLength={17} value={entreprise.siret || ''} onChange={e => updateEntreprise(p => ({...p, siret: e.target.value}))} />
+                  <DebouncedInput id="settings-field-siret" className={`w-full px-4 py-2.5 border rounded-xl font-mono text-base sm:text-sm ${entreprise.siret && !validateSIRET(entreprise.siret) ? 'border-red-300 bg-red-50' : inputBg}`} placeholder="123 456 789 00012" maxLength={17} value={entreprise.siret || ''} onChange={val => updateEntreprise(p => ({...p, siret: val}))} />
                   {entreprise.siret && validateSIRET(entreprise.siret) && (
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-green-500 text-white flex items-center justify-center text-xs font-bold" aria-label="Valide"><Check size={12} /></span>
                   )}
@@ -808,7 +859,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Code APE/NAF</label>
-                <input className={`w-full px-4 py-2.5 border rounded-xl font-mono ${inputBg}`} placeholder="4339Z" maxLength={5} value={entreprise.codeApe || ''} onChange={e => updateEntreprise(p => ({...p, codeApe: e.target.value.toUpperCase()}))} />
+                <DebouncedInput className={`w-full px-4 py-2.5 border rounded-xl font-mono ${inputBg}`} placeholder="4339Z" maxLength={5} value={entreprise.codeApe || ''} onChange={val => updateEntreprise(p => ({...p, codeApe: val.toUpperCase()}))} />
               </div>
             </div>
           </div>
@@ -836,7 +887,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Numéro (9 chiffres)</label>
-                <input className={`w-full px-4 py-2.5 border rounded-xl font-mono ${inputBg}`} placeholder="123 456 789" maxLength={11} value={entreprise.rcsNumero || ''} onChange={e => updateEntreprise(p => ({...p, rcsNumero: e.target.value}))} />
+                <DebouncedInput className={`w-full px-4 py-2.5 border rounded-xl font-mono ${inputBg}`} placeholder="123 456 789" maxLength={11} value={entreprise.rcsNumero || ''} onChange={val => updateEntreprise(p => ({...p, rcsNumero: val}))} />
               </div>
             </div>
             {getRCSComplet() && (
@@ -856,7 +907,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             <h3 className="font-semibold mb-4">TVA Intracommunautaire</h3>
             <div>
               <label className="block text-sm font-medium mb-1">Numéro TVA</label>
-              <input id="settings-field-tvaIntra" className={`w-full px-4 py-2.5 border rounded-xl font-mono ${entreprise.tvaIntra && !validateTVA(entreprise.tvaIntra) ? 'border-amber-300 bg-amber-50' : inputBg}`} placeholder="FR 12 345678901" value={entreprise.tvaIntra || ''} onChange={e => updateEntreprise(p => ({...p, tvaIntra: e.target.value.toUpperCase()}))} />
+              <DebouncedInput id="settings-field-tvaIntra" className={`w-full px-4 py-2.5 border rounded-xl font-mono ${entreprise.tvaIntra && !validateTVA(entreprise.tvaIntra) ? 'border-amber-300 bg-amber-50' : inputBg}`} placeholder="FR 12 345678901" value={entreprise.tvaIntra || ''} onChange={val => updateEntreprise(p => ({...p, tvaIntra: val.toUpperCase()}))} />
               <p className="text-xs text-slate-500 mt-1">Format: FR + 11 chiffres (ex: FR12345678901)</p>
               {entreprise.tvaIntra && validateTVA(entreprise.tvaIntra) && (
                 <p className="text-xs text-green-600 mt-1">“ Format valide</p>
@@ -876,7 +927,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1">Numéro RGE</label>
-                <input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="E-12345" value={entreprise.rge || ''} onChange={e => updateEntreprise(p => ({...p, rge: e.target.value}))} />
+                <DebouncedInput className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="E-12345" value={entreprise.rge || ''} onChange={val => updateEntreprise(p => ({...p, rge: val}))} />
                 <p className="text-xs text-slate-500 mt-1">Reconnu Garant de l'Environnement</p>
               </div>
               <div>
@@ -940,11 +991,11 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1">Compagnie d'assurance <span className="text-red-500">*</span></label>
-                <input id="settings-field-rcPro" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="AXA, MAAF, MMA..." value={entreprise.rcProAssureur || ''} onChange={e => updateEntreprise(p => ({...p, rcProAssureur: e.target.value}))} />
+                <DebouncedInput id="settings-field-rcPro" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="AXA, MAAF, MMA..." value={entreprise.rcProAssureur || ''} onChange={val => updateEntreprise(p => ({...p, rcProAssureur: val}))} />
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Numéro de contrat <span className="text-red-500">*</span></label>
-                <input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="RC-123456789" value={entreprise.rcProNumero || ''} onChange={e => updateEntreprise(p => ({...p, rcProNumero: e.target.value}))} />
+                <DebouncedInput className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="RC-123456789" value={entreprise.rcProNumero || ''} onChange={val => updateEntreprise(p => ({...p, rcProNumero: val}))} />
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Date de validité <span className="text-red-500">*</span></label>
@@ -953,13 +1004,13 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
               <div>
                 <label className="block text-sm font-medium mb-1">Montant de garantie</label>
                 <div className="flex">
-                  <input type="number" className={`flex-1 px-4 py-2.5 border rounded-l-xl ${inputBg}`} placeholder="300000" value={entreprise.rcProMontantGarantie || ''} onChange={e => updateEntreprise(p => ({...p, rcProMontantGarantie: e.target.value}))} />
+                  <DebouncedInput type="number" className={`flex-1 px-4 py-2.5 border rounded-l-xl ${inputBg}`} placeholder="300000" value={entreprise.rcProMontantGarantie || ''} onChange={val => updateEntreprise(p => ({...p, rcProMontantGarantie: val}))} />
                   <span className={`px-4 py-2.5 border-y border-r rounded-r-xl ${isDark ? 'bg-slate-600 text-slate-300 border-slate-600' : 'bg-slate-100 text-slate-500 border-slate-300'}`}>€</span>
                 </div>
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Zone géographique</label>
-                <input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="France entière" value={entreprise.rcProZone || 'France entière'} onChange={e => updateEntreprise(p => ({...p, rcProZone: e.target.value}))} />
+                <DebouncedInput className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="France entière" value={entreprise.rcProZone || 'France entière'} onChange={val => updateEntreprise(p => ({...p, rcProZone: val}))} />
               </div>
             </div>
           </div>
@@ -979,11 +1030,11 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1">Compagnie d'assurance <span className="text-red-500">*</span></label>
-                <input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="SMABTP, AXA..." value={entreprise.decennaleAssureur || ''} onChange={e => updateEntreprise(p => ({...p, decennaleAssureur: e.target.value}))} />
+                <DebouncedInput className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="SMABTP, AXA..." value={entreprise.decennaleAssureur || ''} onChange={val => updateEntreprise(p => ({...p, decennaleAssureur: val}))} />
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Numéro de contrat <span className="text-red-500">*</span></label>
-                <input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="DEC-987654321" value={entreprise.decennaleNumero || ''} onChange={e => updateEntreprise(p => ({...p, decennaleNumero: e.target.value}))} />
+                <DebouncedInput className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="DEC-987654321" value={entreprise.decennaleNumero || ''} onChange={val => updateEntreprise(p => ({...p, decennaleNumero: val}))} />
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Date de validité <span className="text-red-500">*</span></label>
@@ -991,7 +1042,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Activités couvertes</label>
-                <input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="Tous corps d'état" value={entreprise.decennaleActivites || ''} onChange={e => updateEntreprise(p => ({...p, decennaleActivites: e.target.value}))} />
+                <DebouncedInput className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="Tous corps d'état" value={entreprise.decennaleActivites || ''} onChange={val => updateEntreprise(p => ({...p, decennaleActivites: val}))} />
               </div>
             </div>
           </div>
@@ -1006,22 +1057,22 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium mb-1">Banque</label>
-              <input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="Crédit Agricole, BNP..." value={entreprise.banque || ''} onChange={e => updateEntreprise(p => ({...p, banque: e.target.value}))} />
+              <DebouncedInput className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="Crédit Agricole, BNP..." value={entreprise.banque || ''} onChange={val => updateEntreprise(p => ({...p, banque: val}))} />
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Titulaire du compte</label>
-              <input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder={entreprise.nom || 'Nom du titulaire'} value={entreprise.titulaireBanque || ''} onChange={e => updateEntreprise(p => ({...p, titulaireBanque: e.target.value}))} />
+              <DebouncedInput className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder={entreprise.nom || 'Nom du titulaire'} value={entreprise.titulaireBanque || ''} onChange={val => updateEntreprise(p => ({...p, titulaireBanque: val}))} />
             </div>
             <div className="md:col-span-2">
               <label className="block text-sm font-medium mb-1">IBAN</label>
-              <input id="settings-field-iban" className={`w-full px-4 py-2.5 border rounded-xl font-mono ${entreprise.iban && !/^FR\d{2}\s?([A-Z0-9]{4}\s?){5}[A-Z0-9]{3}$/.test(entreprise.iban.replace(/\s/g, '').match(/^FR\d{2}/) ? entreprise.iban : '') && entreprise.iban.replace(/\s/g, '').length > 4 ? 'border-amber-300' : ''} ${inputBg}`} placeholder="FR76 1234 5678 9012 3456 7890 123" value={modeDiscret ? '···· ···· ···· ···· ···· ···· ···' : (entreprise.iban || '')} onChange={e => updateEntreprise(p => ({...p, iban: e.target.value.toUpperCase()}))} readOnly={modeDiscret} />
+              <DebouncedInput id="settings-field-iban" className={`w-full px-4 py-2.5 border rounded-xl font-mono ${entreprise.iban && !/^FR\d{2}\s?([A-Z0-9]{4}\s?){5}[A-Z0-9]{3}$/.test(entreprise.iban.replace(/\s/g, '').match(/^FR\d{2}/) ? entreprise.iban : '') && entreprise.iban.replace(/\s/g, '').length > 4 ? 'border-amber-300' : ''} ${inputBg}`} placeholder="FR76 1234 5678 9012 3456 7890 123" value={modeDiscret ? '···· ···· ···· ···· ···· ···· ···' : (entreprise.iban || '')} onChange={val => updateEntreprise(p => ({...p, iban: val.toUpperCase()}))} readOnly={modeDiscret} />
               {entreprise.iban && entreprise.iban.replace(/\s/g, '').length === 27 && entreprise.iban.replace(/\s/g, '').startsWith('FR') && (
                 <p className="text-xs text-green-600 mt-1">✓ Format IBAN valide</p>
               )}
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">BIC/SWIFT</label>
-              <input className={`w-full px-4 py-2.5 border rounded-xl font-mono ${inputBg}`} placeholder="AGRIFRPP" value={modeDiscret ? '········' : (entreprise.bic || '')} onChange={e => updateEntreprise(p => ({...p, bic: e.target.value.toUpperCase()}))} readOnly={modeDiscret} />
+              <DebouncedInput className={`w-full px-4 py-2.5 border rounded-xl font-mono ${inputBg}`} placeholder="AGRIFRPP" value={modeDiscret ? '········' : (entreprise.bic || '')} onChange={val => updateEntreprise(p => ({...p, bic: val.toUpperCase()}))} readOnly={modeDiscret} />
             </div>
           </div>
           <div className={`mt-4 rounded-xl p-3 flex items-start gap-2 ${isDark ? 'bg-blue-900/20 border border-blue-800' : 'bg-blue-50 border border-blue-200'}`}>
@@ -1157,11 +1208,11 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1">Nom du médiateur</label>
-                <input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="Médiation de la consommation" value={entreprise.mediateur || ''} onChange={e => updateEntreprise(p => ({...p, mediateur: e.target.value}))} />
+                <DebouncedInput className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="Médiation de la consommation" value={entreprise.mediateur || ''} onChange={val => updateEntreprise(p => ({...p, mediateur: val}))} />
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Site web / Adresse</label>
-                <input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="www.mediateur-consommation.fr" value={entreprise.mediateurContact || ''} onChange={e => updateEntreprise(p => ({...p, mediateurContact: e.target.value}))} />
+                <DebouncedInput className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="www.mediateur-consommation.fr" value={entreprise.mediateurContact || ''} onChange={val => updateEntreprise(p => ({...p, mediateurContact: val}))} />
               </div>
             </div>
           </div>
@@ -1169,7 +1220,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
           {/* CGV */}
           <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
             <h3 className="font-semibold mb-4">Conditions générales personnalisées</h3>
-            <textarea className={`w-full px-4 py-3 border rounded-xl ${inputBg}`} rows={4} placeholder="Ajoutez ici vos conditions générales personnalisées qui apparaîtront sur tous vos devis et factures..." value={entreprise.cgv || ''} onChange={e => updateEntreprise(p => ({...p, cgv: e.target.value}))} />
+            <DebouncedTextarea className={`w-full px-4 py-3 border rounded-xl ${inputBg}`} rows={4} placeholder="Ajoutez ici vos conditions générales personnalisées qui apparaîtront sur tous vos devis et factures..." value={entreprise.cgv || ''} onChange={val => updateEntreprise(p => ({...p, cgv: val}))} />
             <p className={`text-xs ${textMuted} mt-2`}>Ce texte sera ajouté après les mentions légales obligatoires.</p>
           </div>
         </div>
@@ -2011,7 +2062,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                   <>
                     <div>
                       <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Nom de l’entreprise *</label>
-                      <input type="text" value={entreprise.nom || ''} onChange={e => updateEntreprise(p => ({ ...p, nom: e.target.value }))}
+                      <DebouncedInput type="text" value={entreprise.nom || ''} onChange={val => updateEntreprise(p => ({ ...p, nom: val }))}
                         placeholder="Ex : Martin Rénovation" className={`w-full px-4 py-2.5 border rounded-xl text-sm ${inputBg}`} />
                     </div>
                     <div>
@@ -2049,7 +2100,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                     <div>
                       <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>N° SIRET *</label>
                       <div className="flex gap-2">
-                        <input type="text" value={entreprise.siret || ''} onChange={e => updateEntreprise(p => ({ ...p, siret: e.target.value }))}
+                        <DebouncedInput type="text" value={entreprise.siret || ''} onChange={val => updateEntreprise(p => ({ ...p, siret: val }))}
                           placeholder="123 456 789 00012" className={`flex-1 px-4 py-2.5 border rounded-xl text-sm ${inputBg}`} />
                         <button
                           onClick={lookupSIRENE}
@@ -2073,7 +2124,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                     ].map(f => (
                       <div key={f.key}>
                         <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>{f.label}</label>
-                        <input type="text" value={entreprise[f.key] || ''} onChange={e => updateEntreprise(p => ({ ...p, [f.key]: e.target.value }))}
+                        <DebouncedInput type="text" value={entreprise[f.key] || ''} onChange={val => updateEntreprise(p => ({ ...p, [f.key]: val }))}
                           placeholder={f.placeholder} className={`w-full px-4 py-2.5 border rounded-xl text-sm ${inputBg}`} />
                       </div>
                     ))}
