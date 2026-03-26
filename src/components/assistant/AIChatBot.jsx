@@ -14,6 +14,11 @@ const QUICK_SUGGESTIONS = [
 function getAIResponse(question, context) {
   const q = question.toLowerCase();
 
+  // Aide / suggestions contextuelles
+  if (q.includes('aide') || q.includes('quoi') || q.includes('faire') || (q.includes('?') && q.length < 20)) {
+    return 'Je peux vous aider avec :\n\u2022 \ud83d\udcca "Quel est mon CA ce mois ?"\n\u2022 \ud83d\udccb "Quels devis sont en attente ?"\n\u2022 \ud83c\udfd7\ufe0f "Mes chantiers en cours"\n\u2022 \ud83d\udcb0 "Factures en retard"\n\u2022 \ud83d\udc65 "Combien de clients actifs ?"\n\nPosez-moi une question !';
+  }
+
   if (q.includes('ca') || q.includes('chiffre') || q.includes('revenu')) {
     const ca = context.caMois ?? 0;
     const trend = context.caTrend ?? 0;
@@ -22,7 +27,15 @@ function getAIResponse(question, context) {
   }
 
   if (q.includes('devis') && (q.includes('attente') || q.includes('retard') || q.includes('en cours'))) {
-    return `Vous avez ${context.devisEnAttente ?? 0} devis en attente de r\u00e9ponse.${context.oldestDevisDate ? ` Le plus ancien date du ${context.oldestDevisDate}.` : ''}`;
+    const enAttente = (context._rawDevis || []).filter(d => {
+      const s = d.statut || d.status;
+      return s === 'envoye' || s === 'envoy\u00e9' || s === 'sent' || s === 'brouillon' || s === 'draft';
+    });
+    if (enAttente.length === 0) return 'Aucun devis en attente. Bravo ! \ud83c\udf89';
+    const top3 = enAttente.slice(0, 3).map(d =>
+      `\u2022 ${d.client_nom || d.clientNom || 'Client'} \u2014 ${(d.totalTTC || d.total_ttc || d.total || 0).toLocaleString('fr-FR')}\u20ac (${d.numero || d.reference || 'N/A'})`
+    ).join('\n');
+    return `${enAttente.length} devis en attente :\n${top3}${enAttente.length > 3 ? `\n... et ${enAttente.length - 3} autres` : ''}`;
   }
 
   if (q.includes('devis') && (q.includes('cr\u00e9er') || q.includes('rapide') || q.includes('nouveau'))) {
@@ -30,19 +43,32 @@ function getAIResponse(question, context) {
   }
 
   if (q.includes('chantier')) {
-    const actifs = context.chantiersActifs ?? 0;
-    const msg = `${actifs} chantier${actifs > 1 ? 's' : ''} en cours.`;
-    return context.prochainChantier
-      ? `${msg} Le prochain \u00e0 terminer est "${context.prochainChantier}".`
-      : msg;
+    const actifs = (context._rawChantiers || []).filter(c => {
+      const s = c.statut || c.status;
+      return s === 'en_cours' || s === 'actif' || s === 'in_progress';
+    });
+    if (actifs.length === 0) return 'Aucun chantier en cours actuellement.';
+    const list = actifs.slice(0, 3).map(c =>
+      `\u2022 ${c.nom || c.name || 'Chantier'} \u2014 ${c.avancement || 0}% (${c.adresse || c.address || 'Adresse non renseign\u00e9e'})`
+    ).join('\n');
+    return `${actifs.length} chantier${actifs.length > 1 ? 's' : ''} en cours :\n${list}${actifs.length > 3 ? `\n... et ${actifs.length - 3} autres` : ''}`;
   }
 
   if (q.includes('facture') && (q.includes('retard') || q.includes('impay\u00e9'))) {
-    const nb = context.facturesRetard ?? 0;
-    const montant = context.montantRetard ?? 0;
-    return nb > 0
-      ? `${nb} facture${nb > 1 ? 's' : ''} en retard pour un total de ${montant.toLocaleString('fr-FR')} \u20ac.`
-      : 'Aucune facture en retard. Tout est \u00e0 jour !';
+    const factures = (context._rawDevis || []).filter(d => {
+      const s = d.statut || d.status;
+      if (s === 'retard' || s === 'overdue' || s === 'impay\u00e9') return true;
+      if (d.type === 'facture' && d.date_echeance && new Date(d.date_echeance) < new Date()) return true;
+      if (d.type === 'facture' && d.dateEcheance && new Date(d.dateEcheance) < new Date()) return true;
+      return false;
+    });
+    if (factures.length === 0) return 'Aucune facture en retard. Tout est \u00e0 jour ! \u2705';
+    const list = factures.slice(0, 3).map(f => {
+      const echeance = f.date_echeance || f.dateEcheance;
+      const jours = echeance ? Math.round((new Date() - new Date(echeance)) / 86400000) : '?';
+      return `\u2022 ${f.client_nom || f.clientNom || 'Client'} \u2014 ${(f.totalTTC || f.total_ttc || f.total || 0).toLocaleString('fr-FR')}\u20ac (${jours}j de retard)`;
+    }).join('\n');
+    return `${factures.length} facture${factures.length > 1 ? 's' : ''} en retard :\n${list}${factures.length > 3 ? `\n... et ${factures.length - 3} autres` : ''}`;
   }
 
   if (q.includes('client')) {
@@ -83,44 +109,14 @@ function buildContext(devis, chantiers, clients) {
   const caLastMonth = devisAcceptedLastMonth.reduce((sum, d) => sum + (d.totalTTC || d.total || 0), 0);
   const caTrend = caMois - caLastMonth;
 
-  // Devis en attente
-  const devisEnAttente = (devis || []).filter(d => {
-    const s = d.statut || d.status;
-    return s === 'envoye' || s === 'envoy\u00e9' || s === 'sent' || s === 'brouillon' || s === 'draft';
-  });
-  const oldestDevis = devisEnAttente.sort((a, b) =>
-    new Date(a.dateCreation || a.date || a.created_at) - new Date(b.dateCreation || b.date || b.created_at)
-  )[0];
-  const oldestDevisDate = oldestDevis
-    ? new Date(oldestDevis.dateCreation || oldestDevis.date || oldestDevis.created_at).toLocaleDateString('fr-FR')
-    : null;
-
-  // Chantiers actifs
-  const chantiersActifs = (chantiers || []).filter(c => {
-    const s = c.statut || c.status;
-    return s === 'en_cours' || s === 'actif' || s === 'in_progress';
-  });
-  const prochainChantier = chantiersActifs
-    .filter(c => c.dateFin || c.date_fin)
-    .sort((a, b) => new Date(a.dateFin || a.date_fin) - new Date(b.dateFin || b.date_fin))[0];
-
-  // Factures en retard (devis factur\u00e9s non pay\u00e9s)
-  const facturesRetard = (devis || []).filter(d => {
-    const s = d.statut || d.status;
-    return s === 'retard' || s === 'overdue' || s === 'impay\u00e9';
-  });
-  const montantRetard = facturesRetard.reduce((sum, d) => sum + (d.totalTTC || d.total || 0), 0);
-
   return {
     caMois,
     caTrend,
-    devisEnAttente: devisEnAttente.length,
-    oldestDevisDate,
-    chantiersActifs: chantiersActifs.length,
-    prochainChantier: prochainChantier?.nom || prochainChantier?.name || null,
-    facturesRetard: facturesRetard.length,
-    montantRetard,
     totalClients: (clients || []).length,
+    // Pass raw data for detailed responses
+    _rawDevis: devis || [],
+    _rawChantiers: chantiers || [],
+    _rawClients: clients || [],
   };
 }
 
@@ -325,7 +321,9 @@ export default function AIChatBot({ isDark, couleur, devis, chantiers, clients, 
                     }`}
                     style={msg.role === 'user' ? { background: accentColor } : undefined}
                   >
-                    {msg.content}
+                    {msg.content.split('\n').map((line, j) => (
+                      <span key={j}>{line}{j < msg.content.split('\n').length - 1 && <br />}</span>
+                    ))}
                   </div>
                 </div>
               ))}

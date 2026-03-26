@@ -56,6 +56,16 @@ export default function SiteVitrine({ isDark, couleur, entreprise, chantiers = [
         </button>
       </div>
 
+      {/* SEO Preview */}
+      <div className={`rounded-xl border p-4 mb-4 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+        <p className={`text-xs font-medium mb-2 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Aperçu Google</p>
+        <p className="text-blue-600 text-base font-medium">{entreprise?.nom || 'Mon Entreprise'} — Artisan BTP</p>
+        <p className="text-green-700 text-xs">batigesti.site/{(entreprise?.nom || 'mon-entreprise').toLowerCase().replace(/\s+/g, '-')}</p>
+        <p className={`text-xs mt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+          {entreprise?.nom || 'Mon Entreprise'} est votre artisan de confiance pour tous vos travaux de bâtiment. Devis gratuit, intervention rapide.
+        </p>
+      </div>
+
       {/* Browser mockup frame */}
       <div className={`rounded-2xl border overflow-hidden shadow-lg ${cardBg}`}>
         {/* Browser chrome */}
@@ -148,6 +158,23 @@ export default function SiteVitrine({ isDark, couleur, entreprise, chantiers = [
                 <MapPin size={14} style={{ color: couleur }} />
                 {adresse}
               </p>
+            </div>
+            <div className="bg-gray-50 rounded-xl p-6 mt-4">
+              <h3 className="text-lg font-semibold mb-3">Demander un devis gratuit</h3>
+              <div className="space-y-3">
+                <input className="w-full px-4 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="Votre nom" />
+                <input className="w-full px-4 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="Votre téléphone" />
+                <input className="w-full px-4 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="Votre email" />
+                <select className="w-full px-4 py-2.5 rounded-lg border border-gray-200 text-sm">
+                  <option>Type de travaux...</option>
+                  <option>Plomberie</option><option>Électricité</option><option>Maçonnerie</option>
+                  <option>Peinture</option><option>Carrelage</option><option>Autre</option>
+                </select>
+                <textarea className="w-full px-4 py-2.5 rounded-lg border border-gray-200 text-sm" rows={3} placeholder="Décrivez votre projet..." />
+                <button className="w-full py-3 rounded-lg text-white font-semibold" style={{ background: couleur }}>
+                  Envoyer ma demande
+                </button>
+              </div>
             </div>
           </div>
 

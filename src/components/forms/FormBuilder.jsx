@@ -64,6 +64,36 @@ const TEMPLATES = [
       { id: '7', type: 'date', label: 'Prochaine visite', obligatoire: false },
     ],
   },
+  {
+    name: 'Bon de livraison',
+    categorie: 'Livraison',
+    champs: [
+      { id: '1', type: 'texte', label: 'Fournisseur', obligatoire: true },
+      { id: '2', type: 'texte', label: 'N° commande', obligatoire: false },
+      { id: '3', type: 'date', label: 'Date de livraison', obligatoire: true },
+      { id: '4', type: 'texte', label: 'Articles livrés', obligatoire: true },
+      { id: '5', type: 'nombre', label: 'Quantité', obligatoire: true },
+      { id: '6', type: 'checkbox', label: 'Conforme à la commande', obligatoire: false },
+      { id: '7', type: 'texte', label: 'Remarques', obligatoire: false },
+      { id: '8', type: 'photo', label: 'Photo du bon', obligatoire: false },
+      { id: '9', type: 'signature', label: 'Signature réceptionnaire', obligatoire: true },
+    ],
+  },
+  {
+    name: 'Fiche sécurité chantier',
+    categorie: 'Sécurité',
+    champs: [
+      { id: '1', type: 'texte', label: 'Nom du chantier', obligatoire: true },
+      { id: '2', type: 'date', label: 'Date', obligatoire: true },
+      { id: '3', type: 'checkbox', label: 'EPI portés (casque, gants, chaussures)', obligatoire: true },
+      { id: '4', type: 'checkbox', label: 'Zone de travail sécurisée', obligatoire: true },
+      { id: '5', type: 'checkbox', label: 'Extincteur accessible', obligatoire: false },
+      { id: '6', type: 'checkbox', label: 'Signalisation en place', obligatoire: false },
+      { id: '7', type: 'texte', label: 'Risques identifiés', obligatoire: false },
+      { id: '8', type: 'photo', label: 'Photo des conditions', obligatoire: false },
+      { id: '9', type: 'signature', label: 'Signature responsable sécurité', obligatoire: true },
+    ],
+  },
 ];
 
 let nextFieldId = 100;

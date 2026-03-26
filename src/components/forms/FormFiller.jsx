@@ -100,7 +100,8 @@ function SignatureField({ isDark, couleur, value, onChange }) {
   );
 }
 
-export default function FormFiller({ template, isDark, couleur, showToast, onSubmit, chantierId, clientId }) {
+export default function FormFiller({ template, isDark, couleur, showToast, onSubmit, chantierId, clientId, chantiers = [] }) {
+  const [selectedChantierId, setSelectedChantierId] = useState(chantierId || '');
   const [values, setValues] = useState(() => {
     const init = {};
     (template?.champs || []).forEach(c => {
@@ -185,7 +186,7 @@ export default function FormFiller({ template, isDark, couleur, showToast, onSub
       id: `sub_${Date.now()}`,
       templateId: template?.id,
       templateName: template?.name,
-      chantierId: chantierId || null,
+      chantierId: selectedChantierId || chantierId || null,
       clientId: clientId || null,
       values,
       status: draft ? 'brouillon' : 'soumis',
@@ -353,6 +354,30 @@ export default function FormFiller({ template, isDark, couleur, showToast, onSub
         <h2 className={`text-lg font-bold ${textPrimary}`}>{template.name}</h2>
         <p className={`text-sm mt-0.5 ${textSecondary}`}>{template.categorie}</p>
       </div>
+
+      {/* Chantier associé */}
+      {chantiers.length > 0 && (
+        <div className={`rounded-xl border p-4 ${cardBg}`}>
+          <label className={`flex items-center gap-1.5 text-sm font-medium mb-2 ${textPrimary}`}>
+            Chantier associé
+          </label>
+          <div className="relative">
+            <select
+              value={selectedChantierId}
+              onChange={(e) => setSelectedChantierId(e.target.value)}
+              className={`w-full px-3 py-2.5 rounded-xl border text-sm appearance-none ${inputBg} focus:outline-none focus:ring-2`}
+            >
+              <option value="">Aucun chantier</option>
+              {chantiers.map(c => (
+                <option key={c.id} value={c.id}>
+                  {c.name || c.nom || c.titre || `Chantier ${c.id?.slice(0, 8)}`}
+                </option>
+              ))}
+            </select>
+            <ChevronDown size={16} className={`absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none ${textSecondary}`} />
+          </div>
+        </div>
+      )}
 
       {/* Fields */}
       <div className="space-y-4">

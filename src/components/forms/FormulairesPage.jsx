@@ -132,6 +132,7 @@ export default function FormulairesPage({ isDark, couleur, showToast, user, chan
           couleur={couleur}
           showToast={showToast}
           onSubmit={handleSubmitForm}
+          chantiers={chantiers || []}
         />
       </div>
     );
