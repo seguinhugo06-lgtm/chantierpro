@@ -68,11 +68,11 @@ export const CHANTIER_STATUS_LABELS = {
 };
 
 export const CHANTIER_STATUS_COLORS = {
-  [CHANTIER_STATUS.PROSPECT]: { bg: 'bg-blue-100', text: 'text-blue-600', dot: 'bg-blue-500' },
-  [CHANTIER_STATUS.EN_COURS]: { bg: 'bg-emerald-100', text: 'text-emerald-600', dot: 'bg-emerald-500' },
-  [CHANTIER_STATUS.TERMINE]: { bg: 'bg-slate-100', text: 'text-slate-600', dot: 'bg-slate-400' },
-  [CHANTIER_STATUS.ABANDONNE]: { bg: 'bg-red-100', text: 'text-red-600', dot: 'bg-red-400' },
-  [CHANTIER_STATUS.ARCHIVE]: { bg: 'bg-gray-100', text: 'text-gray-500', dot: 'bg-gray-400' }
+  [CHANTIER_STATUS.PROSPECT]: { bg: 'bg-blue-100', text: 'text-blue-600', dot: 'bg-blue-500', darkBg: 'bg-blue-900/50', darkText: 'text-blue-300' },
+  [CHANTIER_STATUS.EN_COURS]: { bg: 'bg-emerald-100', text: 'text-emerald-600', dot: 'bg-emerald-500', darkBg: 'bg-emerald-900/50', darkText: 'text-emerald-300' },
+  [CHANTIER_STATUS.TERMINE]: { bg: 'bg-slate-100', text: 'text-slate-600', dot: 'bg-slate-400', darkBg: 'bg-slate-700', darkText: 'text-slate-300' },
+  [CHANTIER_STATUS.ABANDONNE]: { bg: 'bg-red-100', text: 'text-red-600', dot: 'bg-red-400', darkBg: 'bg-red-900/50', darkText: 'text-red-300' },
+  [CHANTIER_STATUS.ARCHIVE]: { bg: 'bg-gray-100', text: 'text-gray-500', dot: 'bg-gray-400', darkBg: 'bg-gray-800', darkText: 'text-gray-400' }
 };
 
 // Valid status transitions

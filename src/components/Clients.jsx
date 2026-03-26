@@ -14,6 +14,7 @@ import { CLIENT_SCORE_COLORS } from '../constants/colors';
 import { formatClientName } from '../lib/formatters';
 import { usePermissions } from '../hooks/usePermissions';
 import { ReadOnlyBanner } from './ui/PermissionGate';
+import TabBar from './ui/TabBar';
 
 // Skeleton loader for client cards
 function ClientSkeleton({ isDark, count = 6 }) {
@@ -841,40 +842,29 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
         </div>
 
         {/* Tabs with badges */}
-        <div className={`flex gap-1 border-b pb-2 overflow-x-auto scrollbar-none ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
-          {(() => {
-            // Compute badge counts
-            const photoCount = clientChantiers.reduce((sum, ch) => sum + (ch.photos?.length || 0), 0);
-            const echangeCount = (echanges || []).filter(e => e.client_id === client.id).length;
-            const memoCount = (memos || []).filter(m => m.client_id === client.id).length;
-
-            const tabs = [
-              { key: 'historique', icon: <History size={14} />, label: 'Historique', badge: 0 },
-              { key: 'chantiers', icon: <Home size={14} />, label: 'Chantiers', badge: stats.chantiers },
-              { key: 'documents', icon: <FileText size={14} />, label: 'Documents', badge: stats.devis + stats.factures },
-              { key: 'echanges', icon: <MessageSquare size={14} />, label: 'Échanges', badge: echangeCount },
-              { key: 'photos', icon: <Camera size={14} />, label: 'Photos', badge: photoCount },
-              { key: 'memos', icon: <ClipboardList size={14} />, label: 'Tâches', badge: memoCount },
-              { key: 'activite', icon: <Clock size={14} />, label: 'Activité', badge: 0 },
-            ];
-
-            return tabs.map(tab => (
-              <button
-                key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
-                className={`px-3 py-2 rounded-t-lg text-sm font-medium whitespace-nowrap min-h-[40px] flex items-center gap-1.5 transition-colors ${activeTab === tab.key ? (isDark ? 'bg-slate-800 border border-b-slate-800 border-slate-700 text-white' : 'bg-white border border-b-white border-slate-200') + ' -mb-[3px]' : (isDark ? 'text-slate-400 hover:text-slate-300' : 'text-slate-500 hover:text-slate-700')}`}
-              >
-                {tab.icon}
-                <span className="hidden sm:inline">{tab.label}</span>
-                {tab.badge > 0 && (
-                  <span className={`ml-0.5 min-w-[18px] h-[18px] rounded-full text-[10px] font-bold flex items-center justify-center px-1 ${activeTab === tab.key ? 'text-white' : isDark ? 'bg-slate-600 text-slate-300' : 'bg-slate-200 text-slate-600'}`} style={activeTab === tab.key ? { background: couleur } : {}}>
-                    {tab.badge}
-                  </span>
-                )}
-              </button>
-            ));
-          })()}
-        </div>
+        {(() => {
+          const photoCount = clientChantiers.reduce((sum, ch) => sum + (ch.photos?.length || 0), 0);
+          const echangeCount = (echanges || []).filter(e => e.client_id === client.id).length;
+          const memoCount = (memos || []).filter(m => m.client_id === client.id).length;
+          return (
+            <TabBar
+              tabs={[
+                { key: 'historique', icon: History, label: 'Historique' },
+                { key: 'chantiers', icon: Home, label: 'Chantiers', badge: stats.chantiers },
+                { key: 'documents', icon: FileText, label: 'Documents', badge: stats.devis + stats.factures },
+                { key: 'echanges', icon: MessageSquare, label: 'Échanges', badge: echangeCount },
+                { key: 'photos', icon: Camera, label: 'Photos', badge: photoCount },
+                { key: 'memos', icon: ClipboardList, label: 'Tâches', badge: memoCount },
+                { key: 'activite', icon: Clock, label: 'Activité' },
+              ]}
+              activeTab={activeTab}
+              onTabChange={setActiveTab}
+              maxVisible={5}
+              isDark={isDark}
+              couleur={couleur}
+            />
+          );
+        })()}
 
         {activeTab === 'historique' && (() => {
           const timeline = [];
