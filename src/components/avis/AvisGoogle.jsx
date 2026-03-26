@@ -93,7 +93,7 @@ const TABS = [
   { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { key: 'avis', label: 'Avis & Réputation', icon: ThumbsUp },
   { key: 'campagnes', label: 'Campagnes', icon: Rocket },
-  { key: 'acquisition', label: 'Acquisition', icon: UserPlus },
+  { key: 'parrainage', label: 'Parrainage', icon: Gift },
   { key: 'visibilite', label: 'Visibilité', icon: Eye },
 ];
 
@@ -1253,13 +1253,19 @@ export default function AvisGoogle({ chantiers = [], clients = [], entreprise = 
         />
       )}
 
-      {activeTab === 'acquisition' && (
-        <EmptyState
-          icon={UserPlus}
-          title="Acquisition clients"
-          description="Suivez vos sources d'acquisition, mesurez le ROI de vos actions marketing et identifiez les canaux les plus performants. Bientôt disponible."
-          isDark={isDark}
-        />
+      {activeTab === 'parrainage' && (
+        <div className={`rounded-xl border p-5 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+          <div className="text-center py-8">
+            <Gift size={32} style={{ color: couleur }} className="mx-auto mb-3" />
+            <h3 className={`text-lg font-semibold mb-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>Programme de parrainage</h3>
+            <p className={`text-sm mb-4 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+              Récompensez vos clients qui vous recommandent. Chaque parrainage réussi = une réduction sur le prochain devis.
+            </p>
+            <button className="px-4 py-2 rounded-xl text-sm font-semibold text-white min-h-[44px]" style={{ background: couleur }}>
+              Configurer le parrainage
+            </button>
+          </div>
+        </div>
       )}
 
       {activeTab === 'visibilite' && (

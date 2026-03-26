@@ -1,5 +1,4 @@
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
-import useFocusTrap from '../hooks/useFocusTrap';
 import { useToast } from '../context/AppContext';
 import { Download, FileSpreadsheet, FileText, RefreshCw, CheckCircle, AlertCircle, Calendar, ExternalLink, Calculator, Building2, ArrowLeft, Trash2, Shield, Search, ChevronDown, ChevronRight, Zap, Palette, FileCheck, BellRing, Package, Check, X, Loader2, Home, Smartphone, Fuel, Archive, Landmark, BarChart3, CreditCard, Users, Link2, Settings2, HardDrive, FolderOpen, Construction, Receipt, Mail, Sparkles, ClipboardList, GraduationCap } from 'lucide-react';
 import supabase, { auth, isDemo } from '../supabaseClient';
@@ -22,6 +21,7 @@ import { useRelances } from '../hooks/useRelances';
 import { useOrg } from '../context/OrgContext';
 import TemplateManager from './settings/TemplateManager';
 import IntegrationsHub from './integrations/IntegrationsHub';
+import PostChantierSettings from './settings/PostChantierSettings';
 
 // ── Tab groups for mobile navigation ────────────────────────────────────────
 const TAB_GROUPS = [
@@ -36,6 +36,7 @@ const TAB_GROUPS = [
     { key: 'templates', label: 'Modèles', icon: ClipboardList },
     { key: 'facture2026', label: 'Facture 2026', icon: Receipt },
     { key: 'relances', label: 'Relances', icon: Mail },
+    { key: 'postchantier', label: 'Post-chantier', icon: Construction },
   ]},
   { id: 'finance', label: 'Finance', icon: Calculator, tabs: [
     { key: 'comptabilite', label: 'Comptabilité', icon: Calculator },
@@ -422,7 +423,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
   };
 
   return (
-    <div className="space-y-4 sm:space-y-6 animate-page-enter">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header avec score */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-3">
@@ -475,7 +476,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                 <div className="p-4 space-y-3">
                   <div className="flex items-center justify-between">
                     <p className={`text-sm font-semibold ${textPrimary}`}>Champs manquants ({missingFields.length})</p>
-                    <button onClick={() => setShowProfileDetail(false)} className={`min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-xs ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`} aria-label="Fermer">✕</button>
+                    <button onClick={() => setShowProfileDetail(false)} className={`p-1 rounded-lg text-xs ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}>✕</button>
                   </div>
 
                   {missingRequired.length > 0 && (
@@ -526,13 +527,13 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
 
       {/* Alertes assurances critiques */}
       {alertesAssurances.filter(a => a.severity === 'critical').map((alert, i) => (
-        <div key={i} className={`border-2 rounded-xl p-4 flex items-center gap-3 ${isDark ? 'bg-red-900/30 border-red-700' : 'bg-red-50 border-red-300'}`}>
-          <span className="text-2xl shrink-0">🚨</span>
-          <div className="flex-1 min-w-0">
-            <p className={`font-bold ${isDark ? 'text-red-300' : 'text-red-800'}`}>{alert.message}</p>
-            <p className={`text-sm ${isDark ? 'text-red-400' : 'text-red-600'}`}>Date d'expiration: {alert.date.toLocaleDateString('fr-FR')}</p>
+        <div key={i} className="bg-red-50 border-2 border-red-300 rounded-xl p-4 flex items-center gap-3 animate-pulse">
+          <span className="text-2xl"></span>
+          <div className="flex-1">
+            <p className="font-bold text-red-800">{alert.message}</p>
+            <p className="text-sm text-red-600">Date d'expiration: {alert.date.toLocaleDateString('fr-FR')}</p>
           </div>
-          <button onClick={() => setTab('assurances')} className="px-4 py-2 bg-red-500 text-white rounded-xl text-sm font-medium shrink-0 min-h-[44px]">Renouveler</button>
+          <button onClick={() => setTab('assurances')} className="px-4 py-2 bg-red-500 text-white rounded-xl text-sm">Renouveler</button>
         </div>
       ))}
 
@@ -568,37 +569,15 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
         </div>
       )}
 
-      {/* Breadcrumb navigation */}
-      {(() => {
-        const activeGroup = visibleTabGroups.find(g => g.tabs.some(t => t.key === tab));
-        const activeTab = activeGroup?.tabs.find(t => t.key === tab);
-        if (!activeGroup || !activeTab) return null;
-        return (
-          <nav aria-label="Fil d'Ariane paramètres" className={`text-xs ${textMuted} flex items-center gap-1.5`}>
-            <span>Paramètres</span>
-            <ChevronRight size={12} />
-            <span style={{ color: couleur }} className="font-medium">{activeGroup.label}</span>
-            {activeGroup.tabs.length > 1 && (
-              <>
-                <ChevronRight size={12} />
-                <span className={textPrimary + ' font-medium'}>{activeTab.label}</span>
-              </>
-            )}
-          </nav>
-        );
-      })()}
-
       {/* Tabs — Desktop: 2-level grouped navigation (4 groups → sub-tabs) */}
       {/* Level 1: Group pills (hidden on mobile) */}
       <div className={`hidden sm:block border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
-        <div className="flex gap-0.5" role="tablist" aria-label="Catégories de paramètres">
+        <div className="flex gap-0.5">
           {visibleTabGroups.map(group => {
             const activeInGroup = group.tabs.some(t => t.key === tab);
             return (
               <button
                 key={group.id}
-                role="tab"
-                aria-selected={activeInGroup}
                 onClick={() => { if (!activeInGroup) setTab(group.tabs[0].key); }}
                 className={`relative px-4 py-2.5 font-medium whitespace-nowrap min-h-[44px] text-sm transition-all rounded-t-lg ${activeInGroup ? 'font-semibold' : `${isDark ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'}`}`}
                 style={activeInGroup ? { color: entreprise.couleur } : {}}
@@ -616,12 +595,10 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
           const activeGroup = visibleTabGroups.find(g => g.tabs.some(t => t.key === tab));
           if (!activeGroup || activeGroup.tabs.length <= 1) return null;
           return (
-            <div className={`flex gap-1 px-2 py-2 ${isDark ? 'bg-slate-800/30' : 'bg-slate-50/80'}`} role="tablist" aria-label={`Sous-onglets ${activeGroup.label}`}>
+            <div className={`flex gap-1 px-2 py-2 ${isDark ? 'bg-slate-800/30' : 'bg-slate-50/80'}`}>
               {activeGroup.tabs.map(t => (
                 <button
                   key={t.key}
-                  role="tab"
-                  aria-selected={tab === t.key}
                   data-tab={t.key}
                   onClick={() => setTab(t.key)}
                   className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${tab === t.key ? 'text-white shadow-sm' : isDark ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-700' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200'} ${t.key === 'assurances' && hasAssuranceAlerts ? 'text-red-500' : ''}`}
@@ -728,7 +705,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                     <button
                       key={c}
                       onClick={() => updateEntreprise(p => ({...p, couleur: c}))}
-                      className={`w-11 h-11 rounded-xl transition-all duration-200 hover:scale-110 flex items-center justify-center ${entreprise.couleur === c ? 'ring-2 ring-offset-2 scale-110 shadow-lg' : 'hover:shadow-md'}`}
+                      className={`w-10 h-10 rounded-xl transition-all duration-200 hover:scale-110 flex items-center justify-center ${entreprise.couleur === c ? 'ring-2 ring-offset-2 scale-110 shadow-lg' : 'hover:shadow-md'}`}
                       style={{ background: c, ringColor: c }}
                       title={entreprise.couleur === c ? 'Couleur sélectionnée' : 'Sélectionner cette couleur'}
                     >
@@ -820,7 +797,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
               <div>
                 <label className="block text-sm font-medium mb-1">SIRET (14 chiffres) <span className="text-red-500">*</span></label>
                 <div className="relative">
-                  <input id="settings-field-siret" className={`w-full px-4 py-2.5 border rounded-xl font-mono text-base sm:text-sm ${entreprise.siret && !validateSIRET(entreprise.siret) ? (isDark ? 'border-red-700 bg-red-900/30 text-white' : 'border-red-300 bg-red-50') : inputBg}`} placeholder="123 456 789 00012" maxLength={17} value={entreprise.siret || ''} onChange={e => updateEntreprise(p => ({...p, siret: e.target.value}))} />
+                  <input id="settings-field-siret" className={`w-full px-4 py-2.5 border rounded-xl font-mono text-base sm:text-sm ${entreprise.siret && !validateSIRET(entreprise.siret) ? 'border-red-300 bg-red-50' : inputBg}`} placeholder="123 456 789 00012" maxLength={17} value={entreprise.siret || ''} onChange={e => updateEntreprise(p => ({...p, siret: e.target.value}))} />
                   {entreprise.siret && validateSIRET(entreprise.siret) && (
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-green-500 text-white flex items-center justify-center text-xs font-bold" aria-label="Valide"><Check size={12} /></span>
                   )}
@@ -863,8 +840,8 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
               </div>
             </div>
             {getRCSComplet() && (
-              <div className={`mt-4 p-3 rounded-xl ${isDark ? 'bg-green-900/30' : 'bg-green-50'}`}>
-                <p className={`text-sm ${isDark ? 'text-green-400' : 'text-green-700'}`}>" Sera affiché: <strong>{getRCSComplet()}</strong></p>
+              <div className="mt-4 p-3 bg-green-50 rounded-xl">
+                <p className="text-sm text-green-700">" Sera affiché: <strong>{getRCSComplet()}</strong></p>
               </div>
             )}
           </div>
@@ -888,9 +865,9 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
           </div>
 
           {entreprise.formeJuridique === 'Micro-entreprise' && (
-            <div className={`rounded-xl p-4 border ${isDark ? 'bg-blue-900/30 border-blue-800' : 'bg-blue-50 border-blue-200'}`}>
-              <p className={`font-medium ${isDark ? 'text-blue-300' : 'text-blue-800'}`}> Micro-entreprise</p>
-              <p className={`text-sm mt-1 ${isDark ? 'text-blue-400' : 'text-blue-700'}`}>La mention "TVA non applicable, article 293 B du CGI" sera automatiquement ajoutée sur vos devis et factures.</p>
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+              <p className="font-medium text-blue-800"> Micro-entreprise</p>
+              <p className="text-sm text-blue-700 mt-1">La mention "TVA non applicable, article 293 B du CGI" sera automatiquement ajoutée sur vos devis et factures.</p>
             </div>
           )}
 
@@ -925,18 +902,16 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             <div className="space-y-3">
               {alertesAssurances.map((alert, i) => (
                 <div key={i} className={`rounded-xl p-4 flex items-center gap-3 ${
-                  alert.severity === 'critical'
-                    ? (isDark ? 'bg-red-900/30 border-2 border-red-800' : 'bg-red-50 border-2 border-red-300')
-                    : alert.severity === 'warning'
-                    ? (isDark ? 'bg-amber-900/30 border border-amber-800' : 'bg-amber-50 border border-amber-300')
-                    : (isDark ? 'bg-blue-900/30 border border-blue-800' : 'bg-blue-50 border border-blue-200')
+                  alert.severity === 'critical' ? 'bg-red-50 border-2 border-red-300' :
+                  alert.severity === 'warning' ? 'bg-amber-50 border border-amber-300' :
+                  'bg-blue-50 border border-blue-200'
                 }`}>
                   <span className="text-xl">{alert.severity === 'critical' ? '' : alert.severity === 'warning' ? '⚠️ ' : 'ℹ'}</span>
                   <div className="flex-1">
-                    <p className={`font-medium ${alert.severity === 'critical' ? (isDark ? 'text-red-300' : 'text-red-800') : alert.severity === 'warning' ? (isDark ? 'text-amber-300' : 'text-amber-800') : (isDark ? 'text-blue-300' : 'text-blue-800')}`}>
+                    <p className={`font-medium ${alert.severity === 'critical' ? 'text-red-800' : alert.severity === 'warning' ? 'text-amber-800' : 'text-blue-800'}`}>
                       {alert.message}
                     </p>
-                    <p className={`text-sm ${alert.severity === 'critical' ? (isDark ? 'text-red-400' : 'text-red-600') : alert.severity === 'warning' ? (isDark ? 'text-amber-400' : 'text-amber-600') : (isDark ? 'text-blue-400' : 'text-blue-600')}`}>
+                    <p className={`text-sm ${alert.severity === 'critical' ? 'text-red-600' : alert.severity === 'warning' ? 'text-amber-600' : 'text-blue-600'}`}>
                       Expiration: {alert.date.toLocaleDateString('fr-FR')}
                     </p>
                   </div>
@@ -1232,6 +1207,14 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
           clients={clients}
           devis={devis}
           modeDiscret={modeDiscret}
+        />
+      )}
+
+      {tab === 'postchantier' && (
+        <PostChantierSettings
+          isDark={isDark}
+          couleur={couleur}
+          showToast={showToast}
         />
       )}
 
@@ -1956,7 +1939,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             {entreprise.tvaIntra && <p>TVA Intracommunautaire: {entreprise.tvaIntra}</p>}
             {entreprise.tel && <p>Tél: {entreprise.tel} {entreprise.email && `· ${entreprise.email}`}</p>}
             {(entreprise.rcProAssureur || entreprise.decennaleAssureur) && (
-              <p className="pt-1 text-[11px]">
+              <p className="pt-1 text-[10px]">
                 {entreprise.rcProAssureur && `RC Pro: ${entreprise.rcProAssureur} N°${entreprise.rcProNumero}`}
                 {entreprise.rcProAssureur && entreprise.decennaleAssureur && ' · '}
                 {entreprise.decennaleAssureur && `Décennale: ${entreprise.decennaleAssureur} N°${entreprise.decennaleNumero}${entreprise.decennaleValidite ? ` (Valide: ${new Date(entreprise.decennaleValidite).toLocaleDateString('fr-FR')})` : ''}`}
@@ -2012,7 +1995,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
               <div className="px-5 pb-2 pt-2">
                 <div className="flex items-center justify-between mb-1">
                   <p className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Étape {safeStep + 1}/{totalSteps}</p>
-                  <button onClick={() => setShowSetupWizard(false)} className={`min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`} aria-label="Fermer">
+                  <button onClick={() => setShowSetupWizard(false)} className={`p-1.5 rounded-lg ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}>
                     <X size={16} />
                   </button>
                 </div>
@@ -2052,7 +2035,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                       <div className="flex gap-2 flex-wrap">
                         {COULEURS.map(c => (
                           <button key={c} onClick={() => updateEntreprise(p => ({ ...p, couleur: c }))}
-                            className={`w-11 h-11 rounded-xl transition-all ${entreprise.couleur === c ? 'ring-2 ring-offset-2 scale-110' : 'opacity-70 hover:opacity-100'}`}
+                            className={`w-9 h-9 rounded-xl transition-all ${entreprise.couleur === c ? 'ring-2 ring-offset-2 scale-110' : 'opacity-70 hover:opacity-100'}`}
                             style={{ backgroundColor: c, ringColor: c }} />
                         ))}
                       </div>
@@ -2125,19 +2108,11 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                       ].map(toggle => (
                         <label key={toggle.key} className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-colors ${isDark ? 'border-slate-600 hover:bg-slate-700/50' : 'border-slate-200 hover:bg-slate-50'}`}>
                           <span className={`text-sm font-medium ${textPrimary}`}>{toggle.label}</span>
-                          <span className="relative inline-flex items-center">
-                            <input
-                              type="checkbox"
-                              role="switch"
-                              className="sr-only peer"
-                              checked={!!entreprise[toggle.key]}
-                              onChange={() => updateEntreprise(p => ({ ...p, [toggle.key]: !p[toggle.key] }))}
-                            />
-                            <div className={`w-11 h-6 rounded-full transition-colors peer-checked:opacity-100 ${isDark ? 'bg-slate-600' : 'bg-slate-300'}`}
-                              style={entreprise[toggle.key] ? { backgroundColor: couleur } : undefined}>
-                              <div className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform shadow-sm ${entreprise[toggle.key] ? 'translate-x-5' : ''}`} />
-                            </div>
-                          </span>
+                          <div className={`relative w-11 h-6 rounded-full transition-colors ${entreprise[toggle.key] ? '' : isDark ? 'bg-slate-600' : 'bg-slate-300'}`}
+                            style={entreprise[toggle.key] ? { backgroundColor: couleur } : undefined}
+                            onClick={(e) => { e.preventDefault(); updateEntreprise(p => ({ ...p, [toggle.key]: !p[toggle.key] })); }}>
+                            <div className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform shadow-sm ${entreprise[toggle.key] ? 'translate-x-5' : ''}`} />
+                          </div>
                         </label>
                       ))}
                     </div>
@@ -2176,19 +2151,11 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                         <p className={`text-sm font-semibold ${textPrimary}`}>Activer les relances automatiques</p>
                         <p className={`text-xs ${textMuted}`}>(recommandé)</p>
                       </div>
-                      <span className="relative inline-flex items-center">
-                        <input
-                          type="checkbox"
-                          role="switch"
-                          className="sr-only peer"
-                          checked={!!entreprise.relancesActives}
-                          onChange={() => updateEntreprise(p => ({ ...p, relancesActives: !p.relancesActives }))}
-                        />
-                        <div className={`w-11 h-6 rounded-full transition-colors ${isDark ? 'bg-slate-600' : 'bg-slate-300'}`}
-                          style={entreprise.relancesActives ? { backgroundColor: couleur } : undefined}>
-                          <div className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform shadow-sm ${entreprise.relancesActives ? 'translate-x-5' : ''}`} />
-                        </div>
-                      </span>
+                      <div className={`relative w-11 h-6 rounded-full transition-colors ${entreprise.relancesActives ? '' : isDark ? 'bg-slate-600' : 'bg-slate-300'}`}
+                        style={entreprise.relancesActives ? { backgroundColor: '#22c55e' } : undefined}
+                        onClick={(e) => { e.preventDefault(); updateEntreprise(p => ({ ...p, relancesActives: !p.relancesActives })); }}>
+                        <div className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform shadow-sm ${entreprise.relancesActives ? 'translate-x-5' : ''}`} />
+                      </div>
                     </label>
                   </>
                 )}
