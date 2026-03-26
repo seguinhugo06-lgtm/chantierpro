@@ -198,7 +198,7 @@ function BatchRelaunchButton({ actions, couleur, showToast }) {
   };
 
   return (
-    <div className="mt-3 flex justify-end opacity-100 scale-100 transition-all duration-200">
+    <div className="flex justify-end opacity-100 scale-100 transition-all duration-200">
       <button
         type="button"
         onClick={handleBatchRelaunch}
@@ -246,7 +246,7 @@ function ActionsSection({
 
   return (
     <section style={{ opacity: 1, transform: 'translateY(0)' }} className="transition-all duration-400">
-      <h2 className={`text-sm font-semibold uppercase tracking-wider mb-3 ${textSecondary}`}>
+      <h2 className={`text-sm font-semibold mb-3 ${textSecondary}`}>
         Actions prioritaires
       </h2>
       <div className={`rounded-2xl divide-y ${sectionBg} ${isDark ? 'divide-slate-700/50' : 'divide-gray-100'}`}>
@@ -267,14 +267,16 @@ function ActionsSection({
             />
           </div>
         ))}
-      </div>
 
-      {/* GAP 5: Batch relaunch button */}
-      <BatchRelaunchButton
-        actions={allActions}
-        couleur={couleur}
-        showToast={showToast}
-      />
+        {/* GAP 5: Batch relaunch button inside card */}
+        <div className="pt-2">
+          <BatchRelaunchButton
+            actions={allActions}
+            couleur={couleur}
+            showToast={showToast}
+          />
+        </div>
+      </div>
     </section>
   );
 }
@@ -507,6 +509,63 @@ export default function Dashboard({
     return [...computed.actions, ...memoActions];
   }, [computed.actions, memosJour, toggleMemo]);
 
+  // Compute recent activities from devis and chantiers
+  const recentActivities = useMemo(() => {
+    const items = [];
+
+    // Recent devis changes
+    devis
+      .slice()
+      .sort((a, b) => new Date(b.updated_at || b.date) - new Date(a.updated_at || a.date))
+      .slice(0, 5)
+      .forEach(d => {
+        const client = clients.find(c => c.id === d.client_id);
+        const statusLabels = {
+          brouillon: 'Brouillon créé',
+          envoye: 'Devis envoyé',
+          signe: 'Devis signé',
+          facture: 'Devis facturé',
+          paye: 'Devis payé',
+        };
+        items.push({
+          icon: FileText,
+          title: statusLabels[d.statut] || 'Devis mis à jour',
+          subtitle: client ? (client.nom || client.name) : d.numero || '',
+          time: d.updated_at || d.date,
+        });
+      });
+
+    // Recent chantier changes
+    chantiers
+      .slice()
+      .sort((a, b) => new Date(b.updated_at || b.date_debut) - new Date(a.updated_at || a.date_debut))
+      .slice(0, 3)
+      .forEach(c => {
+        const statusLabels = {
+          en_cours: 'Chantier en cours',
+          termine: 'Chantier terminé',
+          suspendu: 'Chantier suspendu',
+        };
+        items.push({
+          icon: HardHat,
+          title: statusLabels[c.statut] || 'Chantier mis à jour',
+          subtitle: c.nom || c.name || '',
+          time: c.updated_at || c.date_debut,
+        });
+      });
+
+    // Sort all items by time (most recent first) and take top 4
+    return items
+      .sort((a, b) => new Date(b.time) - new Date(a.time))
+      .slice(0, 4)
+      .map(item => {
+        // Format time as "il y a Xj" or date
+        const days = daysSince(item.time);
+        const formattedTime = days > 0 ? `il y a ${days}j` : 'Aujourd\'hui';
+        return { ...item, time: formattedTime };
+      });
+  }, [devis, chantiers, clients]);
+
   // ============ RENDER ============
 
   return (
@@ -635,7 +694,7 @@ export default function Dashboard({
             caPrev: computed.caPrevisionnel,
             moisPrecedent: computed.lastMonthCA,
           }}
-          activities={[]}
+          activities={recentActivities}
           modeDiscret={modeDiscret}
         />
       </div>

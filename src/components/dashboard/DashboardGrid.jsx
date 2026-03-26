@@ -118,9 +118,18 @@ export default function DashboardGrid({
   const textSecondary = isDark ? 'text-slate-400' : 'text-slate-600';
 
   // Get recent devis (last 3, excluding factures)
+  // Priority: envoye > signe > brouillon, then sorted by date descending
   const recentDevis = devis
     .filter((d) => d.type !== 'facture')
-    .sort((a, b) => new Date(b.date) - new Date(a.date))
+    .sort((a, b) => {
+      // Status priority: envoye (0), signe (1), brouillon (2), others (3)
+      const statusOrder = { envoye: 0, signe: 1, brouillon: 2 };
+      const aPriority = statusOrder[a.statut] ?? 3;
+      const bPriority = statusOrder[b.statut] ?? 3;
+      if (aPriority !== bPriority) return aPriority - bPriority;
+      // Within same status, sort by date descending
+      return new Date(b.date) - new Date(a.date);
+    })
     .slice(0, 3);
 
   // Get active chantiers (last 3)
@@ -252,7 +261,7 @@ export default function DashboardGrid({
         >
           <div className="space-y-3">
             <div className={`p-3 rounded-lg ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
-              <p className={`text-[10px] font-medium uppercase tracking-wider ${textSecondary}`}>
+              <p className={`text-[10px] font-medium ${textSecondary}`}>
                 À encaisser
               </p>
               <p className={`text-sm font-bold mt-1 ${textPrimary}`}>
@@ -260,7 +269,7 @@ export default function DashboardGrid({
               </p>
             </div>
             <div className={`p-3 rounded-lg ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
-              <p className={`text-[10px] font-medium uppercase tracking-wider ${textSecondary}`}>
+              <p className={`text-[10px] font-medium ${textSecondary}`}>
                 CA ce mois
               </p>
               <p className={`text-sm font-bold mt-1 ${textPrimary}`}>
@@ -268,7 +277,7 @@ export default function DashboardGrid({
               </p>
             </div>
             <div className={`p-3 rounded-lg ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
-              <p className={`text-[10px] font-medium uppercase tracking-wider ${textSecondary}`}>
+              <p className={`text-[10px] font-medium ${textSecondary}`}>
                 CA prévisionnel
               </p>
               <p className={`text-sm font-bold mt-1 ${textPrimary}`}>
@@ -312,11 +321,9 @@ export default function DashboardGrid({
                         {activity.subtitle}
                       </p>
                     )}
-                    {activity.time && (
-                      <p className={`text-[10px] mt-1 ${textSecondary}`}>
-                        {activity.time}
-                      </p>
-                    )}
+                    <p className={`text-[10px] mt-1 ${textSecondary}`}>
+                      {activity.time || 'Récent'}
+                    </p>
                   </div>
                 </div>
               );
