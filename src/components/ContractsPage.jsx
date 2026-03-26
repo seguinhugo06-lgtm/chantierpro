@@ -330,7 +330,7 @@ export default function ContractsPage({ isDark, couleur, showToast, user, client
   // ---------------------------------------------------------------------------
 
   return (
-    <div className={`min-h-full ${pageBg}`}>
+    <div className={`min-h-full ${pageBg} animate-page-enter`}>
       <div className="max-w-7xl mx-auto p-3 sm:p-6 space-y-4 sm:space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -349,7 +349,7 @@ export default function ContractsPage({ isDark, couleur, showToast, user, client
         </div>
 
         {/* KPIs */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 animate-stagger">
           {[
             { label: 'Actifs', value: kpis.actifs, icon: CheckCircle, color: '#22c55e' },
             { label: 'À renouveler', value: kpis.aRenouveler, icon: AlertTriangle, color: '#f59e0b' },
@@ -361,7 +361,7 @@ export default function ContractsPage({ isDark, couleur, showToast, user, client
                 <kpi.icon size={16} style={{ color: kpi.color }} />
                 <span className={`text-xs font-medium ${textMuted}`}>{kpi.label}</span>
               </div>
-              <p className={`text-lg sm:text-xl font-bold ${textPrimary}`}>{kpi.value}</p>
+              <p className={`text-lg sm:text-xl font-bold ${textPrimary} animate-count-up`}>{kpi.value}</p>
               {kpi.sub && <p className={`text-xs ${textMuted} mt-0.5`}>{kpi.sub}</p>}
             </div>
           ))}
@@ -460,7 +460,7 @@ export default function ContractsPage({ isDark, couleur, showToast, user, client
               return (
                 <div
                   key={contrat.id}
-                  className={`${cardBg} border rounded-xl p-4 sm:p-5 hover:shadow-md transition-shadow relative group`}
+                  className={`${cardBg} border rounded-xl p-4 sm:p-5 hover:shadow-md hover:-translate-y-0.5 transition-all relative group`}
                 >
                   <div className="flex flex-col sm:flex-row sm:items-start gap-3">
                     {/* Left */}

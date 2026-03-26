@@ -4500,7 +4500,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 
   // === LIST VIEW ===
   return (
-    <div className="space-y-4 sm:space-y-6">
+    <div className="space-y-4 sm:space-y-6 animate-page-enter">
       {/* ========== HEADER COMPACT ========== */}
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
@@ -5166,7 +5166,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         </div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">{filtered.map(d => {
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 animate-stagger">{filtered.map(d => {
           const client = clients.find(c => c.id === d.client_id);
           const hasAcompte = d.type === 'devis' && getAcompteFacture(d.id);
           const chantier = chantiers.find(ch => ch.id === d.chantier_id);

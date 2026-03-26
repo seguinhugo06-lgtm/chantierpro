@@ -296,7 +296,7 @@ function ListingCard({ listing, isFavorite, onToggleFavorite, onContact, onView,
 
   if (viewMode === 'list') {
     return (
-      <div className={cn('flex gap-4 p-4 border rounded-xl', cardBg, 'hover:shadow-md transition-shadow cursor-pointer')} onClick={onView}>
+      <div className={cn('flex gap-4 p-4 border rounded-xl', cardBg, 'hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer')} onClick={onView}>
         {/* Image */}
         <div className="relative w-32 h-32 flex-shrink-0">
           <img
@@ -367,7 +367,7 @@ function ListingCard({ listing, isFavorite, onToggleFavorite, onContact, onView,
 
   // Grid view (default)
   return (
-    <div className={cn('border rounded-xl overflow-hidden', cardBg, 'hover:shadow-lg transition-shadow cursor-pointer group')} onClick={onView}>
+    <div className={cn('border rounded-xl overflow-hidden', cardBg, 'hover:shadow-lg hover:-translate-y-1 transition-all cursor-pointer group')} onClick={onView}>
       {/* Image */}
       <div className="relative aspect-[4/3]">
         <img
@@ -1046,7 +1046,7 @@ export default function Marketplace({
     priceRange.min || priceRange.max || livraisonOnly;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-page-enter">
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3">
@@ -1371,7 +1371,7 @@ export default function Marketplace({
         ) : (
           <>
             <div className={cn(
-              'grid gap-4',
+              'grid gap-4 animate-stagger',
               viewMode === 'grid' ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'
             )}>
               {listings.map(listing => (

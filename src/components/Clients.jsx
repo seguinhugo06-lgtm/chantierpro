@@ -834,7 +834,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                 <div className="flex items-center justify-center gap-1.5 mb-1">
                   <Icon size={14} style={{ color: kpi.color }} />
                 </div>
-                <p className={`text-lg font-bold ${kpi.value === 0 || kpi.value === '0 €' ? textMuted : ''}`} style={kpi.value !== 0 && kpi.value !== '0 €' ? { color: kpi.color } : {}}>{kpi.value}</p>
+                <p className={`text-lg font-bold animate-count-up ${kpi.value === 0 || kpi.value === '0 €' ? textMuted : ''}`} style={kpi.value !== 0 && kpi.value !== '0 €' ? { color: kpi.color } : {}}>{kpi.value}</p>
                 <p className={`text-[11px] ${textMuted}`}>{kpi.label}</p>
                 {kpi.sub && <p className={`text-[11px] font-medium mt-0.5`} style={{ color: kpi.color }}>{kpi.sub}</p>}
               </button>
@@ -1657,7 +1657,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
 
   // Liste
   return (
-    <div className="space-y-4 sm:space-y-6">
+    <div className="space-y-4 sm:space-y-6 animate-page-enter">
       {/* Quick Client Modal */}
       <QuickClientModal
         isOpen={showQuickModal}
@@ -1803,7 +1803,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                   style={isActive ? { borderColor: couleur, '--tw-ring-color': couleur } : {}}
                   title={kpi.tooltip}
                 >
-                  <p className={`${kpi.key === 'top' ? 'text-xs' : 'text-base'} font-bold truncate leading-tight`} style={{ color: couleur }}>{kpi.value}</p>
+                  <p className={`${kpi.key === 'top' ? 'text-xs' : 'text-base'} font-bold truncate leading-tight animate-count-up`} style={{ color: couleur }}>{kpi.value}</p>
                   <p className={`text-[11px] ${textMuted} leading-tight`}>{kpi.label}</p>
                   {kpi.sub && <p className={`text-[11px] font-medium`} style={{ color: couleur }}>{kpi.sub}</p>}
                 </button>
@@ -2105,7 +2105,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
           })()}
         </div>
       ) : viewMode === 'grid' ? (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 animate-stagger">
           {getSortedClients().map(c => {
             const s = getClientStats(c.id);
             const status = getClientStatus(c.id);

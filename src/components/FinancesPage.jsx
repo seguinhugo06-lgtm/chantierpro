@@ -59,7 +59,7 @@ export default function FinancesPage({ devis, depenses, clients, chantiers, entr
   const finPerm = getPermission('finances');
 
   return (
-    <div>
+    <div className="animate-page-enter">
       {/* Header */}
       <div className="flex items-start justify-between gap-3 mb-4 sm:mb-5">
         <div className="min-w-0">

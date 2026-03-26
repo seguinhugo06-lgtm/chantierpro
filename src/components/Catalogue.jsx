@@ -1429,7 +1429,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
 
   // ====== MAIN VIEW ======
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-page-enter">
       {/* Header */}
       <div className="flex justify-between items-center flex-wrap gap-4">
         <div className="flex items-center gap-3">
@@ -1717,13 +1717,19 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
 
           {/* Sort */}
           {catalogue.length > 1 && (
-            <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-1">
-              <span className={`text-xs sm:text-sm ${textMuted} flex items-center gap-1 shrink-0`}><ArrowUpDown size={14} /> Trier:</span>
-              {[{ key: 'name', label: 'Nom' }, { key: 'price', label: 'Prix' }, { key: 'stock', label: 'Stock' }, { key: 'margin', label: 'Marge' }, { key: 'usage', label: 'Utilisé' }].map(opt => (
-                <button key={opt.key} onClick={() => setSortBy(opt.key)} className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm whitespace-nowrap ${sortBy === opt.key ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`} style={sortBy === opt.key ? { background: couleur } : {}}>
-                  {opt.label}
-                </button>
-              ))}
+            <div className="flex items-center gap-2">
+              <select
+                value={sortBy}
+                onChange={e => setSortBy(e.target.value)}
+                className={`px-3 py-2 rounded-xl text-sm border min-h-[40px] cursor-pointer ${isDark ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-slate-200 text-slate-700'}`}
+                aria-label="Trier par"
+              >
+                <option value="name">Nom A-Z</option>
+                <option value="price">Prix</option>
+                <option value="stock">Stock</option>
+                <option value="margin">Marge</option>
+                <option value="usage">Plus utilisé</option>
+              </select>
             </div>
           )}
 
@@ -1797,7 +1803,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                       <th className="w-28"></th>
                     </tr>
                   </thead>
-                  <tbody>
+                  <tbody className="animate-stagger">
                     {/* #9: Paginated list */}
                     {filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map(item => {
                       const marge = getMargeBrute(item.prix, item.prixAchat);

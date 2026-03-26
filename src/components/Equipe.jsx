@@ -1395,7 +1395,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-page-enter">
       {/* Note Modal - inline fallback */}
       {noteModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => { setNoteModalOpen(false); setPendingStopChrono(false); }}>
@@ -1493,7 +1493,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
       </div>
 
       {/* Visual Stats Dashboard — only for employes mode */}
-      {!isSousTraitants && (<div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      {!isSousTraitants && (<div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 animate-stagger">
         {/* Week Hero Card with Navigation — compact when no data */}
         <motion.div
           className={`col-span-2 rounded-2xl text-white relative overflow-hidden shadow-lg ${totalWeekHours === 0 && approvedWeekHours === 0 ? 'p-4' : 'p-4 sm:p-6'}`}
@@ -1714,7 +1714,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                 {activeEmployeesToday.length} sur le terrain
               </span>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 animate-stagger">
               {equipe.filter(e => activeEmployeesToday.includes(e.id)).map((e, index) => {
                 const currentCh = getEmployeeCurrentChantier(e.id);
                 const todayH = getEmployeeTodayHours(e.id);
@@ -1846,31 +1846,16 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
               </button>
 
               {/* Sort controls */}
-              <div className="flex gap-1">
-                {[
-                  { key: 'name', label: 'Nom', icon: User },
-                  { key: 'active', label: 'Actif', icon: Zap },
-                  { key: 'hours', label: 'Heures', icon: Clock }
-                ].map(opt => {
-                  const OptIcon = opt.icon;
-                  return (
-                    <button
-                      key={opt.key}
-                      onClick={() => setSortBy(opt.key)}
-                      className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm min-h-[40px] transition-all ${
-                        sortBy === opt.key
-                          ? 'text-white shadow-md'
-                          : isDark ? 'text-slate-400 hover:bg-slate-700' : 'text-slate-500 hover:bg-white'
-                      }`}
-                      style={sortBy === opt.key ? { background: couleur } : {}}
-                      title={`Trier par ${opt.label.toLowerCase()}`}
-                    >
-                      <OptIcon size={14} />
-                      <span className="hidden lg:inline">{opt.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
+              <select
+                value={sortBy}
+                onChange={e => setSortBy(e.target.value)}
+                className={`px-3 py-2 rounded-xl text-sm border min-h-[40px] cursor-pointer ${isDark ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-slate-200 text-slate-700'}`}
+                aria-label="Trier par"
+              >
+                <option value="name">Nom A-Z</option>
+                <option value="active">Plus actif</option>
+                <option value="hours">Plus d'heures</option>
+              </select>
             </div>
 
             {/* Role Filter Pills */}

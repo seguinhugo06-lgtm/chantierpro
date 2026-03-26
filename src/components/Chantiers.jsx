@@ -2718,7 +2718,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
 
   // Liste
   return (
-    <div className="space-y-4 sm:space-y-6">
+    <div className="space-y-4 sm:space-y-6 animate-page-enter">
       <div className="flex justify-between items-center gap-3">
         <div className="flex items-center gap-3">
           {setPage && (
@@ -2786,7 +2786,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
 
       {/* === KPI STRIP === */}
       {chantiers.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 animate-stagger">
           {[
             { label: 'En cours', value: statusCounts.en_cours, icon: Building2, color: '#f59e0b' },
             { label: 'Cette semaine', value: statusCounts.cette_semaine, icon: Calendar, color: couleur },
@@ -2802,7 +2802,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                 <kpi.icon size={18} style={{ color: kpi.color }} />
               </div>
               <div className="min-w-0">
-                <p className={`text-lg font-bold leading-tight ${textPrimary}`}>{kpi.value}</p>
+                <p className={`text-lg font-bold leading-tight ${textPrimary} animate-count-up`}>{kpi.value}</p>
                 <p className={`text-xs ${textMuted} truncate`}>{kpi.label}</p>
               </div>
             </div>
@@ -3140,7 +3140,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
               )}
             </div>
           )}
-          <div className="grid gap-3 sm:gap-4">
+          <div className="grid gap-3 sm:gap-4 animate-stagger">
           {getFilteredAndSortedChantiers().map(ch => {
             const client = clients.find(c => c.id === ch.client_id);
             const bilanRaw3 = getChantierBilan(ch.id);
