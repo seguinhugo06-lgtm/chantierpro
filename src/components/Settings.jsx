@@ -820,7 +820,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
               <div>
                 <label className="block text-sm font-medium mb-1">SIRET (14 chiffres) <span className="text-red-500">*</span></label>
                 <div className="relative">
-                  <input id="settings-field-siret" className={`w-full px-4 py-2.5 border rounded-xl font-mono text-base sm:text-sm ${entreprise.siret && !validateSIRET(entreprise.siret) ? 'border-red-300 bg-red-50' : inputBg}`} placeholder="123 456 789 00012" maxLength={17} value={entreprise.siret || ''} onChange={e => updateEntreprise(p => ({...p, siret: e.target.value}))} />
+                  <input id="settings-field-siret" className={`w-full px-4 py-2.5 border rounded-xl font-mono text-base sm:text-sm ${entreprise.siret && !validateSIRET(entreprise.siret) ? (isDark ? 'border-red-700 bg-red-900/30 text-white' : 'border-red-300 bg-red-50') : inputBg}`} placeholder="123 456 789 00012" maxLength={17} value={entreprise.siret || ''} onChange={e => updateEntreprise(p => ({...p, siret: e.target.value}))} />
                   {entreprise.siret && validateSIRET(entreprise.siret) && (
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-green-500 text-white flex items-center justify-center text-xs font-bold" aria-label="Valide"><Check size={12} /></span>
                   )}
@@ -863,8 +863,8 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
               </div>
             </div>
             {getRCSComplet() && (
-              <div className="mt-4 p-3 bg-green-50 rounded-xl">
-                <p className="text-sm text-green-700">" Sera affiché: <strong>{getRCSComplet()}</strong></p>
+              <div className={`mt-4 p-3 rounded-xl ${isDark ? 'bg-green-900/30' : 'bg-green-50'}`}>
+                <p className={`text-sm ${isDark ? 'text-green-400' : 'text-green-700'}`}>" Sera affiché: <strong>{getRCSComplet()}</strong></p>
               </div>
             )}
           </div>
@@ -888,9 +888,9 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
           </div>
 
           {entreprise.formeJuridique === 'Micro-entreprise' && (
-            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-              <p className="font-medium text-blue-800"> Micro-entreprise</p>
-              <p className="text-sm text-blue-700 mt-1">La mention "TVA non applicable, article 293 B du CGI" sera automatiquement ajoutée sur vos devis et factures.</p>
+            <div className={`rounded-xl p-4 border ${isDark ? 'bg-blue-900/30 border-blue-800' : 'bg-blue-50 border-blue-200'}`}>
+              <p className={`font-medium ${isDark ? 'text-blue-300' : 'text-blue-800'}`}> Micro-entreprise</p>
+              <p className={`text-sm mt-1 ${isDark ? 'text-blue-400' : 'text-blue-700'}`}>La mention "TVA non applicable, article 293 B du CGI" sera automatiquement ajoutée sur vos devis et factures.</p>
             </div>
           )}
 
@@ -925,16 +925,18 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             <div className="space-y-3">
               {alertesAssurances.map((alert, i) => (
                 <div key={i} className={`rounded-xl p-4 flex items-center gap-3 ${
-                  alert.severity === 'critical' ? 'bg-red-50 border-2 border-red-300' :
-                  alert.severity === 'warning' ? 'bg-amber-50 border border-amber-300' :
-                  'bg-blue-50 border border-blue-200'
+                  alert.severity === 'critical'
+                    ? (isDark ? 'bg-red-900/30 border-2 border-red-800' : 'bg-red-50 border-2 border-red-300')
+                    : alert.severity === 'warning'
+                    ? (isDark ? 'bg-amber-900/30 border border-amber-800' : 'bg-amber-50 border border-amber-300')
+                    : (isDark ? 'bg-blue-900/30 border border-blue-800' : 'bg-blue-50 border border-blue-200')
                 }`}>
                   <span className="text-xl">{alert.severity === 'critical' ? '' : alert.severity === 'warning' ? '⚠️ ' : 'ℹ'}</span>
                   <div className="flex-1">
-                    <p className={`font-medium ${alert.severity === 'critical' ? 'text-red-800' : alert.severity === 'warning' ? 'text-amber-800' : 'text-blue-800'}`}>
+                    <p className={`font-medium ${alert.severity === 'critical' ? (isDark ? 'text-red-300' : 'text-red-800') : alert.severity === 'warning' ? (isDark ? 'text-amber-300' : 'text-amber-800') : (isDark ? 'text-blue-300' : 'text-blue-800')}`}>
                       {alert.message}
                     </p>
-                    <p className={`text-sm ${alert.severity === 'critical' ? 'text-red-600' : alert.severity === 'warning' ? 'text-amber-600' : 'text-blue-600'}`}>
+                    <p className={`text-sm ${alert.severity === 'critical' ? (isDark ? 'text-red-400' : 'text-red-600') : alert.severity === 'warning' ? (isDark ? 'text-amber-400' : 'text-amber-600') : (isDark ? 'text-blue-400' : 'text-blue-600')}`}>
                       Expiration: {alert.date.toLocaleDateString('fr-FR')}
                     </p>
                   </div>

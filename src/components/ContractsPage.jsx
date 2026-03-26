@@ -531,7 +531,7 @@ export default function ContractsPage({ isDark, couleur, showToast, user, client
                             </button>
                             <button
                               onClick={() => handleDelete(contrat.id)}
-                              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-500 hover:bg-red-50"
+                              className={`w-full flex items-center gap-2 px-3 py-2 text-sm text-red-500 ${isDark ? 'hover:bg-red-900/30' : 'hover:bg-red-50'}`}
                             >
                               <Trash2 size={14} /> Supprimer
                             </button>
