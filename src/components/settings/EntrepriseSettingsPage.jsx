@@ -209,7 +209,7 @@ const EntrepriseSettingsPage = memo(function EntrepriseSettingsPage({
                     <button
                       onClick={() => handleActivate(ent.id)}
                       disabled={isProcessing}
-                      className={`p-2 rounded-lg transition-colors ${
+                      className={`min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg transition-colors ${
                         isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-gray-100 text-gray-400'
                       }`}
                       title="Activer cette entreprise"
@@ -219,7 +219,7 @@ const EntrepriseSettingsPage = memo(function EntrepriseSettingsPage({
                   )}
                   <button
                     onClick={() => handleEdit(ent)}
-                    className={`p-2 rounded-lg transition-colors ${
+                    className={`min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg transition-colors ${
                       isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-gray-100 text-gray-400'
                     }`}
                     title="Modifier"
@@ -228,7 +228,7 @@ const EntrepriseSettingsPage = memo(function EntrepriseSettingsPage({
                   </button>
                   <button
                     onClick={() => setExpandedId(isExpanded ? null : ent.id)}
-                    className={`p-2 rounded-lg transition-colors ${
+                    className={`min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg transition-colors ${
                       isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-gray-100 text-gray-400'
                     }`}
                     title={isExpanded ? 'Réduire' : 'Détails'}

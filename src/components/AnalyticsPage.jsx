@@ -82,7 +82,7 @@ function ComparisonBadge({ value, isDark, suffix = '%', invert = false }) {
   if (value === null || value === undefined || !isFinite(value)) return null;
   const isPositive = invert ? value < 0 : value >= 0;
   return (
-    <span className={`inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
+    <span className={`inline-flex items-center gap-0.5 text-[11px] font-semibold px-1.5 py-0.5 rounded-full ${
       isPositive
         ? isDark ? 'bg-emerald-500/20 text-emerald-400' : 'bg-emerald-100 text-emerald-700'
         : isDark ? 'bg-red-500/20 text-red-400' : 'bg-red-100 text-red-700'
@@ -246,7 +246,7 @@ export default function AnalyticsPage({ devis = [], clients = [], chantiers = []
               <button
                 key={opt.key}
                 onClick={() => setPeriod(opt.key)}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                className={`min-h-[44px] px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
                   period === opt.key
                     ? 'text-white shadow-sm'
                     : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-700'
@@ -263,7 +263,7 @@ export default function AnalyticsPage({ devis = [], clients = [], chantiers = []
           <button
             onClick={handleExportPDF}
             disabled={exportingPDF}
-            className={`ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+            className={`ml-auto flex items-center gap-1.5 min-h-[44px] px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
               isDark ? 'bg-slate-800 border border-slate-700 text-slate-300 hover:bg-slate-700' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 shadow-sm'
             } disabled:opacity-50`}
             title="Exporter en PDF"
@@ -310,14 +310,14 @@ export default function AnalyticsPage({ devis = [], clients = [], chantiers = []
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-1.5">
               <span className={`text-sm font-medium ${textSecondary}`}>Taux de conversion</span>
-              <div className="relative">
-                <Info size={13} className={`${textSecondary} opacity-60 cursor-help`} />
-                <div className={`absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 rounded-lg text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-20 shadow-lg ${isDark ? 'bg-slate-700 text-slate-200 border border-slate-600' : 'bg-gray-800 text-white'}`}>
+              <button type="button" className="relative" aria-label="Détails du calcul du taux de conversion">
+                <Info size={13} className={`${textSecondary} opacity-60`} />
+                <div role="tooltip" className={`absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 rounded-lg text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity z-20 shadow-lg ${isDark ? 'bg-slate-700 text-slate-200 border border-slate-600' : 'bg-gray-800 text-white'}`}>
                   <p className="font-semibold mb-1">Calcul :</p>
                   <p>Devis signés ({kpis.signedCount}) / Devis envoyés ({kpis.totalDevisEnvoyes})</p>
                   <p className="mt-1 opacity-70">Brouillons exclus du calcul ({kpis.brouillonsCount})</p>
                 </div>
-              </div>
+              </button>
             </div>
             <div className="p-2 rounded-lg" style={{ backgroundColor: `${couleur}20` }}>
               <Target size={18} style={{ color: couleur }} />
@@ -481,8 +481,9 @@ export default function AnalyticsPage({ devis = [], clients = [], chantiers = []
                       />
                     </div>
                     {client.margePercent != null && (
-                      <span className={`text-[10px] font-medium ${client.margePercent >= 20 ? 'text-green-500' : client.margePercent >= 0 ? (isDark ? 'text-amber-400' : 'text-amber-600') : 'text-red-500'}`}>
+                      <span className={`text-[11px] font-medium ${client.margePercent >= 20 ? 'text-green-500' : client.margePercent >= 0 ? (isDark ? 'text-amber-400' : 'text-amber-600') : 'text-red-500'}`}>
                         marge {client.margePercent.toFixed(0)}%
+                        <span className="sr-only">{client.margePercent >= 20 ? 'Bonne marge' : client.margePercent >= 0 ? 'Marge faible' : 'Marge négative'}</span>
                       </span>
                     )}
                   </div>
@@ -673,6 +674,7 @@ export default function AnalyticsPage({ devis = [], clients = [], chantiers = []
                 {rentabiliteChantiers.map((r) => {
                   const noDepenses = !r.hasDepenses;
                   const margeColor = noDepenses ? textSecondary : r.margePercent >= 30 ? 'text-green-500' : r.margePercent >= 15 ? (isDark ? 'text-amber-400' : 'text-amber-600') : r.margePercent >= 0 ? (isDark ? 'text-orange-400' : 'text-orange-600') : 'text-red-500';
+                  const margeSrLabel = noDepenses ? '' : r.margePercent >= 15 ? 'Bonne marge' : r.margePercent >= 0 ? 'Marge faible' : 'Marge négative';
                   const barColor = noDepenses ? '#94a3b8' : r.margePercent >= 30 ? '#22c55e' : r.margePercent >= 15 ? '#f59e0b' : r.margePercent >= 0 ? '#f97316' : '#ef4444';
                   const barWidth = r.ca > 0 ? Math.max(Math.min((r.ca / rentaMaxCA) * 100, 100), 5) : 5;
                   return (
@@ -680,14 +682,14 @@ export default function AnalyticsPage({ devis = [], clients = [], chantiers = []
                       <td className="py-3 pr-4">
                         <p className={`font-medium ${textPrimary}`}>{r.nom}</p>
                         {r.clientNom && <p className={`text-xs ${textSecondary}`}>{r.clientNom}</p>}
-                        <span className={`inline-block mt-0.5 text-[10px] px-1.5 py-0.5 rounded font-medium ${
+                        <span className={`inline-block mt-0.5 text-[11px] px-1.5 py-0.5 rounded font-medium ${
                           r.statut === 'termine' ? isDark ? 'bg-green-900/30 text-green-400' : 'bg-green-100 text-green-700'
                           : isDark ? 'bg-blue-900/30 text-blue-400' : 'bg-blue-100 text-blue-700'
                         }`}>{r.statut === 'termine' ? 'Terminé' : 'En cours'}{r.avancement > 0 ? ` — ${r.avancement}%` : ''}</span>
                       </td>
                       <td className={`py-3 pr-4 text-right font-semibold whitespace-nowrap ${textPrimary}`}>{formatEUR(r.ca)}</td>
                       <td className={`py-3 pr-4 text-right whitespace-nowrap ${r.depenses > 0 ? 'text-red-500' : textSecondary}`}>{formatEUR(r.depenses)}</td>
-                      <td className={`py-3 pr-4 text-right font-bold whitespace-nowrap ${margeColor}`}>{noDepenses ? '—' : formatEUR(r.marge)}</td>
+                      <td className={`py-3 pr-4 text-right font-bold whitespace-nowrap ${margeColor}`}>{noDepenses ? '—' : formatEUR(r.marge)}{margeSrLabel && <span className="sr-only">{margeSrLabel}</span>}</td>
                       <td className={`py-3 pr-4 text-right font-bold whitespace-nowrap ${margeColor}`}>
                         {noDepenses ? (
                           <span title="Ajoutez des dépenses pour ce chantier">—</span>
@@ -702,7 +704,7 @@ export default function AnalyticsPage({ devis = [], clients = [], chantiers = []
                         <div className={`h-4 rounded-full ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
                           <div className="h-4 rounded-full transition-all flex items-center justify-end pr-1.5"
                             style={{ width: `${barWidth}%`, backgroundColor: barColor }}>
-                            {r.ca > rentaMaxCA * 0.15 && <span className="text-[9px] text-white font-bold">{formatCompact(r.ca)}</span>}
+                            {r.ca > rentaMaxCA * 0.15 && <span className="text-[11px] text-white font-bold">{formatCompact(r.ca)}</span>}
                           </div>
                         </div>
                       </td>
@@ -771,6 +773,7 @@ export default function AnalyticsPage({ devis = [], clients = [], chantiers = []
             <p className={`text-sm mb-2 ${textSecondary}`}>Solde net</p>
             <p className={`text-xl font-bold mb-2 ${cashFlow.solde === 0 ? textSecondary : cashFlow.solde > 0 ? 'text-green-500' : 'text-red-500'}`}>
               {formatEUR(cashFlow.solde)}
+              <span className="sr-only">{cashFlow.solde >= 0 ? 'Positif' : 'Négatif'}</span>
             </p>
             <div className={`h-3 rounded-full ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
               <div
