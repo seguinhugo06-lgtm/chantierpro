@@ -1656,7 +1656,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
 
   // Liste
   return (
-    <div className="space-y-3">
+    <div className="space-y-4 sm:space-y-6">
       {/* Quick Client Modal */}
       <QuickClientModal
         isOpen={showQuickModal}

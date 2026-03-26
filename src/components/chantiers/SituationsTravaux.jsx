@@ -1226,7 +1226,7 @@ function SituationDetail({
                     <td className={`px-4 py-3 ${textPrimary}`}>
                       <div className="font-medium text-sm">{l.description}</div>
                       <div className={`mt-1.5 h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`}>
-                        <div className="h-full rounded-full" style={{ width: `${l.cumulActuel || 0}%`, backgroundColor: couleur }} />
+                        <div className="h-full rounded-full transition-all duration-300" style={{ width: `${l.cumulActuel || 0}%`, backgroundColor: couleur }} />
                       </div>
                     </td>
                     <td className={`text-right px-3 py-3 ${textMuted} tabular-nums`}>{(l.cumulPrecedent || 0).toFixed(0)}%</td>
@@ -1252,7 +1252,7 @@ function SituationDetail({
               <div key={l.ligneId} className={`p-3 rounded-xl ${isDark ? 'bg-slate-700/30' : 'bg-slate-50'}`}>
                 <div className={`font-medium text-sm ${textPrimary} mb-1`}>{l.description}</div>
                 <div className={`h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-200'} mb-1.5`}>
-                  <div className="h-full rounded-full" style={{ width: `${l.cumulActuel || 0}%`, backgroundColor: couleur }} />
+                  <div className="h-full rounded-full transition-all duration-300" style={{ width: `${l.cumulActuel || 0}%`, backgroundColor: couleur }} />
                 </div>
                 <div className="flex justify-between text-xs">
                   <span className={textMuted}>{(l.cumulPrecedent || 0).toFixed(0)}% \u2192 <strong style={{ color: couleur }}>{(l.cumulActuel || 0).toFixed(0)}%</strong></span>

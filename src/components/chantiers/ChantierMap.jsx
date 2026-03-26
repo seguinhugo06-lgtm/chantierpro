@@ -437,7 +437,7 @@ export default function ChantierMap({ chantiers, clients, onSelectChantier, isDa
                   <span className="font-semibold" style={{ color: couleur }}>{avancement}%</span>
                 </div>
                 <div className={`h-2 rounded-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
-                  <div className="h-full rounded-full" style={{ width: `${Math.max(3, avancement)}%`, background: couleur }} />
+                  <div className="h-full rounded-full transition-all duration-300" style={{ width: `${Math.max(3, avancement)}%`, background: couleur }} />
                 </div>
               </div>
             )}

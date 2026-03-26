@@ -432,7 +432,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
   const upcomingEvents = allEvents.filter(e => new Date(e.date) >= new Date()).sort((a, b) => new Date(a.date) - new Date(b.date));
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header compact — titre + contrôles fusionnés */}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-2">

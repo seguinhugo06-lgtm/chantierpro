@@ -4499,7 +4499,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 
   // === LIST VIEW ===
   return (
-    <div className="space-y-3">
+    <div className="space-y-4 sm:space-y-6">
       {/* ========== HEADER COMPACT ========== */}
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
