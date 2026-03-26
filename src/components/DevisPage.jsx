@@ -5218,7 +5218,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
             <div key={d.id} onClick={() => { setSelected(d); setMode('preview'); if (d.statut === 'envoye' && d.type === 'devis') markAsViewed(d); }} className={`${cardBg} rounded-xl border cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all duration-150 overflow-hidden`}>
               {/* Status color bar at top */}
               <div className="h-[3px] w-full" style={{ backgroundColor: STATUS_BAR_COLORS[isExpired(d) ? 'expire' : d.statut] || '#94a3b8' }} />
-              <div className="px-3 py-2.5">
+              <div className="px-4 py-3">
               <div className="flex items-start gap-2.5">
                 {/* Content */}
                 <div className="flex-1 min-w-0">

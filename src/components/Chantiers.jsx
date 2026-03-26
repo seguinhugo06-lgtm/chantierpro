@@ -1171,14 +1171,14 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
               <div className="space-y-1.5">
                 <div className="flex items-center gap-2">
                   <span className={`text-xs font-medium w-16 ${textMuted}`}>Avancement</span>
-                  <div className={`flex-1 h-2 rounded-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
+                  <div className={`flex-1 h-3 rounded-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
                     <div className={`h-full rounded-full transition-all ${avancement > 0 ? 'min-w-[4px]' : ''}`} style={{ width: `${Math.min(100, avancement)}%`, background: couleur }} />
                   </div>
                   <span className={`text-xs font-bold tabular-nums w-8 text-right`} style={{ color: couleur }}>{avancement}%</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className={`text-xs font-medium w-16 ${textMuted}`}>Budget</span>
-                  <div className={`flex-1 h-2 rounded-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
+                  <div className={`flex-1 h-3 rounded-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
                     <div className={`h-full rounded-full transition-all ${depPct > avancement && avancement > 0 ? 'bg-red-500' : depPct > 75 ? 'bg-amber-500' : 'bg-emerald-500'}`} style={{ width: `${Math.min(100, depPct)}%` }} />
                   </div>
                   <span className={`text-xs font-bold tabular-nums w-8 text-right ${depPct > avancement && avancement > 0 ? 'text-red-500' : depPct > 75 ? 'text-amber-500' : 'text-emerald-500'}`}>{Math.round(depPct)}%</span>
@@ -2784,6 +2784,32 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
         </div>
       </div>
 
+      {/* === KPI STRIP === */}
+      {chantiers.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {[
+            { label: 'En cours', value: statusCounts.en_cours, icon: Building2, color: '#f59e0b' },
+            { label: 'Cette semaine', value: statusCounts.cette_semaine, icon: Calendar, color: couleur },
+            { label: 'Prospects', value: statusCounts.prospect, icon: Target, color: '#3b82f6' },
+            { label: 'Terminés', value: statusCounts.termine, icon: CheckCircle, color: '#10b981' },
+          ].map(kpi => (
+            <div
+              key={kpi.label}
+              className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all hover:shadow-md ${isDark ? 'bg-slate-800/60 border-slate-700 hover:border-slate-600' : 'bg-white border-slate-200 hover:border-slate-300'}`}
+              onClick={() => setFilterStatus(kpi.label === 'En cours' ? 'en_cours' : kpi.label === 'Prospects' ? 'prospect' : kpi.label === 'Terminés' ? 'termine' : 'all')}
+            >
+              <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: `${kpi.color}15` }}>
+                <kpi.icon size={18} style={{ color: kpi.color }} />
+              </div>
+              <div className="min-w-0">
+                <p className={`text-lg font-bold leading-tight ${textPrimary}`}>{kpi.value}</p>
+                <p className={`text-xs ${textMuted} truncate`}>{kpi.label}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* === BANDEAU AUJOURD'HUI — compact sticky 60px === */}
       {(() => {
         const today = new Date().toISOString().split('T')[0];
@@ -3250,7 +3276,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                   )}
                   {ch.statut === 'en_cours' && (avancement > 0 || allTasks.length > 0) && (
                     <div className="flex items-center gap-2 flex-1 min-w-0">
-                      <div className={`flex-1 h-2 sm:h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
+                      <div className={`flex-1 h-3 sm:h-2.5 rounded-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
                         <div className={`h-full rounded-full transition-all ${avancement > 0 ? 'min-w-[4px]' : ''}`} style={{ width: `${Math.min(100, Math.max(3, avancement))}%`, background: couleur }} />
                       </div>
                       <span className="text-xs font-semibold tabular-nums whitespace-nowrap" style={{ color: couleur }}>{avancement}%</span>

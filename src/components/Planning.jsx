@@ -559,6 +559,38 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
         </div>
       </div>
 
+      {/* KPI Strip */}
+      {allEvents.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {(() => {
+            const todayCount = todayEvents.length;
+            const weekCount = weekDays.flatMap(d => getEventsForDate(d)).length;
+            const chantierCount = allEvents.filter(e => e.type === 'chantier').length;
+            const urgentCount = allEvents.filter(e => e.type === 'urgence').length;
+            const kpis = [
+              { label: "Aujourd'hui", value: todayCount, icon: CalendarDays, color: couleur },
+              { label: 'Cette semaine', value: weekCount, icon: Calendar, color: '#3b82f6' },
+              { label: 'Chantiers', value: chantierCount, icon: Home, color: '#f59e0b' },
+              { label: 'Urgences', value: urgentCount, icon: Zap, color: urgentCount > 0 ? '#ef4444' : '#10b981' },
+            ];
+            return kpis.map(kpi => (
+              <div
+                key={kpi.label}
+                className={`flex items-center gap-3 p-3 rounded-xl border ${isDark ? 'bg-slate-800/60 border-slate-700' : 'bg-white border-slate-200'}`}
+              >
+                <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: `${kpi.color}15` }}>
+                  <kpi.icon size={18} style={{ color: kpi.color }} />
+                </div>
+                <div className="min-w-0">
+                  <p className={`text-lg font-bold leading-tight ${textPrimary}`}>{kpi.value}</p>
+                  <p className={`text-xs ${textMuted} truncate`}>{kpi.label}</p>
+                </div>
+              </div>
+            ));
+          })()}
+        </div>
+      )}
+
       {/* Calendar */}
       <div className={`${cardBg} rounded-xl sm:rounded-2xl border overflow-hidden`}>
         <div className={`flex items-center justify-between px-3 sm:px-5 py-2 border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>

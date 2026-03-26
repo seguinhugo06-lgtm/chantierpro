@@ -1526,7 +1526,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
         <>
           {/* Catalogue Stats */}
           {catalogue.length > 0 && (
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {(() => {
                 const totalArticles = catalogue.length;
                 // E1 fix: only count items with both defined stock AND prixAchat
@@ -1542,12 +1542,12 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                   }, 0) / withMargin.length;
                 })();
                 return [
-                  { label: 'Articles catalogue', value: totalArticles, color: couleur },
-                  { label: 'Valeur stock', value: modeDiscret ? '·····' : (stockWithPrice.length === 0 && stockItems.length > 0 ? 'N/A' : totalStockValue > 0 ? `${(totalStockValue / 1000).toFixed(1)}k€` : '—'), color: couleur, title: stockWithPrice.length < stockItems.length ? `${stockItems.length - stockWithPrice.length} article(s) sans prix d'achat` : 'Valeur totale au prix d\'achat' },
-                  { label: 'Marge moy.', value: modeDiscret ? '·····' : (avgMargin ? `${avgMargin.toFixed(0)}%` : '—'), color: avgMargin && avgMargin >= 25 ? '#22c55e' : '#f59e0b' },
-                  { label: 'Stock bas', value: alertesStock.length, color: alertesStock.length > 0 ? '#ef4444' : '#22c55e', title: 'Articles en dessous du seuil minimum de stock' },
-                  { label: 'Favoris', value: favoris.length, color: '#f59e0b', onClick: () => setActiveTab('favoris') },
-                ].map((s, i) => (
+                  { label: 'Articles catalogue', value: totalArticles, color: couleur, show: true },
+                  { label: 'Valeur stock', value: modeDiscret ? '·····' : (stockWithPrice.length === 0 && stockItems.length > 0 ? 'N/A' : totalStockValue > 0 ? `${(totalStockValue / 1000).toFixed(1)}k€` : null), color: couleur, title: stockWithPrice.length < stockItems.length ? `${stockItems.length - stockWithPrice.length} article(s) sans prix d'achat` : 'Valeur totale au prix d\'achat', show: totalStockValue > 0 || stockItems.length > 0 },
+                  { label: 'Marge moy.', value: modeDiscret ? '·····' : (avgMargin ? `${avgMargin.toFixed(0)}%` : null), color: avgMargin && avgMargin >= 25 ? '#22c55e' : '#f59e0b', show: !!avgMargin },
+                  { label: 'Stock bas', value: alertesStock.length, color: alertesStock.length > 0 ? '#ef4444' : '#22c55e', title: 'Articles en dessous du seuil minimum de stock', show: true },
+                  { label: 'Favoris', value: favoris.length, color: '#f59e0b', onClick: () => setActiveTab('favoris'), show: favoris.length > 0 },
+                ].filter(s => s.show && s.value !== null).map((s, i) => (
                   <div key={i} className={`p-3 rounded-xl border ${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-slate-200'} ${s.onClick ? 'cursor-pointer hover:shadow-md transition-shadow' : ''}`} onClick={s.onClick} title={s.title}>
                     <p className={`text-[11px] font-medium ${textMuted}`}>{s.label}</p>
                     <p className="text-xl font-bold" style={{ color: s.color }}>{s.value}</p>
