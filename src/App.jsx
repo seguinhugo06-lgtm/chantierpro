@@ -993,6 +993,18 @@ export default function App() {
 
   // Notifications are now computed via useMemo (see above) — no useEffect needed
 
+  // Client Portal — detect portal token from URL: /portal/{token} or ?portal={token}
+  // Must be BEFORE any conditional return to respect React hooks rules
+  const portalToken = useMemo(() => {
+    try {
+      const path = window.location.pathname;
+      const portalMatch = path.match(/^\/portal\/([a-zA-Z0-9_-]+)/);
+      if (portalMatch) return portalMatch[1];
+      const params = new URLSearchParams(window.location.search);
+      return params.get('portal') || null;
+    } catch { return null; }
+  }, []);
+
   // Loading screen
   if (loading) return (
     <div className="min-h-screen bg-[#f5f5f5] flex items-center justify-center">
@@ -1004,16 +1016,6 @@ export default function App() {
   const tc = getThemeClasses(isDark);
 
   // Client Portal — public page accessible via token (no auth required)
-  // Detect portal token from URL: /portal/{token} or ?portal={token}
-  const portalToken = useMemo(() => {
-    try {
-      const path = window.location.pathname;
-      const portalMatch = path.match(/^\/portal\/([a-zA-Z0-9_-]+)/);
-      if (portalMatch) return portalMatch[1];
-      const params = new URLSearchParams(window.location.search);
-      return params.get('portal') || null;
-    } catch { return null; }
-  }, []);
 
   if (page === 'client-portal' || portalToken) {
     const portalClientId = (() => {

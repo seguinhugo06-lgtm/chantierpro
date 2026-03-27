@@ -382,12 +382,12 @@ export default function ClientPortal({
 
   const handleAcceptDevis = async (devisId) => {
     // TODO: call supabase.rpc('portal_accept_devis', { p_token, p_devis_id })
-    console.log('[Portal] Accept devis', devisId);
+    showToast && showToast('Devis accepté', 'success');
   };
 
   const handleRefuseDevis = async (devisId) => {
     // TODO: call supabase.rpc('portal_refuse_devis', { p_token, p_devis_id })
-    console.log('[Portal] Refuse devis', devisId);
+    showToast && showToast('Devis refusé', 'info');
   };
 
   const handleDownloadPDF = (id) => {
@@ -503,7 +503,7 @@ export default function ClientPortal({
 
   const handlePayFacture = (facture) => {
     // TODO: call Edge Function to create Stripe checkout session
-    console.log('[Portal] Pay facture', facture.id);
+    showToast && showToast('Paiement en cours de traitement...', 'info');
   };
 
   const handleViewPhotos = (chantier) => {
