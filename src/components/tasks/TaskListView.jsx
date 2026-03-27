@@ -604,7 +604,8 @@ export default function TaskListView({
           <button
             key={f.id}
             onClick={() => setQuickFilter(f.id)}
-            className={`text-xs font-medium px-3 py-1.5 rounded-full border transition-all ${
+            aria-pressed={quickFilter === f.id}
+            className={`text-xs font-medium px-3 py-1.5 rounded-full border transition-all min-h-[44px] ${
               quickFilter === f.id
                 ? 'text-white border-transparent'
                 : isDark
@@ -623,8 +624,8 @@ export default function TaskListView({
         <select
           value={sortBy}
           onChange={(e) => setSortBy(e.target.value)}
-          className={`text-xs px-2 py-1.5 rounded-lg border ${tc.input} cursor-pointer`}
-          title="Trier par"
+          className={`text-xs px-2 py-1.5 rounded-lg border min-h-[44px] ${tc.input} cursor-pointer`}
+          aria-label="Trier par"
         >
           {SORT_OPTIONS.map(s => (
             <option key={s.value} value={s.value}>{s.label}</option>

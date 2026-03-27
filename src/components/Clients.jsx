@@ -1789,17 +1789,17 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
         {/* Row 1: Search + View toggle + Sort */}
         <div className="flex gap-2 items-center">
           <div className="relative flex-1">
-            <Search size={14} className={`absolute left-3 top-1/2 -translate-y-1/2 ${textMuted}`} />
+            <Search size={16} className={`absolute left-3 top-1/2 -translate-y-1/2 ${textMuted}`} />
             <input
               type="text"
               placeholder="Rechercher..."
-              aria-label="Rechercher un client"
+              aria-label="Rechercher"
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className={`w-full pl-8 pr-8 py-2 border rounded-xl text-sm ${inputBg}`}
+              className={`w-full pl-9 pr-10 py-2 border rounded-xl text-sm ${inputBg}`}
             />
             {search && (
-              <button onClick={() => setSearch('')} className={`absolute right-2 top-1/2 -translate-y-1/2 ${textMuted} hover:text-red-400`}>
+              <button onClick={() => setSearch('')} aria-label="Effacer la recherche" className={`absolute right-2 top-1/2 -translate-y-1/2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full ${isDark ? 'hover:bg-slate-600' : 'hover:bg-slate-200'} ${textMuted}`}>
                 <X size={14} />
               </button>
             )}
@@ -1808,17 +1808,21 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
           <div className={`flex rounded-lg border overflow-hidden ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
             <button
               onClick={() => setViewMode('grid')}
-              className={`p-1.5 flex items-center justify-center transition-colors ${viewMode === 'grid' ? 'text-white' : isDark ? 'text-slate-400' : 'text-slate-500'}`}
+              className={`p-2 min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors ${viewMode === 'grid' ? 'text-white' : isDark ? 'text-slate-400' : 'text-slate-500'}`}
               style={viewMode === 'grid' ? { background: couleur } : {}}
               title="Vue grille"
+              aria-label="Vue grille"
+              aria-pressed={viewMode === 'grid'}
             >
               <LayoutGrid size={14} />
             </button>
             <button
               onClick={() => setViewMode('list')}
-              className={`p-1.5 flex items-center justify-center transition-colors ${viewMode === 'list' ? 'text-white' : isDark ? 'text-slate-400' : 'text-slate-500'}`}
+              className={`p-2 min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors ${viewMode === 'list' ? 'text-white' : isDark ? 'text-slate-400' : 'text-slate-500'}`}
               style={viewMode === 'list' ? { background: couleur } : {}}
               title="Vue liste"
+              aria-label="Vue liste"
+              aria-pressed={viewMode === 'list'}
             >
               <List size={14} />
             </button>
@@ -1827,7 +1831,8 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
           <select
             value={`${sortBy}-${sortDir}`}
             onChange={(e) => { const [s, d] = e.target.value.split('-'); setSortBy(s); setSortDir(d); }}
-            className={`px-2 py-2 sm:py-1.5 rounded-lg text-xs border min-h-[36px] ${isDark ? 'bg-slate-700 border-slate-600 text-slate-300' : 'bg-white border-slate-200 text-slate-600'}`}
+            aria-label="Trier par"
+            className={`px-2 py-2 sm:py-1.5 rounded-lg text-xs border min-h-[44px] ${isDark ? 'bg-slate-700 border-slate-600 text-slate-300' : 'bg-white border-slate-200 text-slate-600'}`}
           >
             <option value="recent-desc">Récent</option>
             <option value="name-asc">Nom A-Z</option>
@@ -1882,7 +1887,8 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
               <button
                 key={opt.key}
                 onClick={() => setFilterStatus(opt.key)}
-                className={`px-2.5 py-1.5 rounded-lg text-xs whitespace-nowrap flex-shrink-0 transition-colors min-h-[36px] active:scale-95 ${filterStatus === opt.key ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}
+                aria-pressed={filterStatus === opt.key}
+                className={`px-3 py-1.5 rounded-lg text-xs whitespace-nowrap flex-shrink-0 transition-colors min-h-[44px] active:scale-95 ${filterStatus === opt.key ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}
                 style={filterStatus === opt.key ? { background: couleur } : {}}
               >
                 {opt.label}

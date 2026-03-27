@@ -87,7 +87,9 @@ export default function TasksAndPlanning({
             <button
               key={v.id}
               onClick={() => handleViewChange(v.id)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              aria-label={`Vue ${v.label}`}
+              aria-pressed={viewMode === v.id}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all min-w-[44px] min-h-[44px] ${
                 viewMode === v.id
                   ? 'text-white shadow-sm'
                   : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-700'

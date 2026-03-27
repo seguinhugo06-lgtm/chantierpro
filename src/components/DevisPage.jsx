@@ -4747,13 +4747,18 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       <div className="space-y-2">
         {/* Row 1: Search + Period filters + Sort + Export */}
         <div className="flex gap-2 items-center">
-          <div className="relative flex-1 max-w-[200px]">
-            <Search size={14} className={`absolute left-3 top-1/2 -translate-y-1/2 ${textMuted}`} />
-            <input placeholder="Rechercher..." aria-label="Rechercher un document" value={search} onChange={e => setSearch(e.target.value)} className={`w-full pl-8 pr-3 py-1.5 border rounded-xl text-sm ${inputBg}`} />
+          <div className="relative flex-1">
+            <Search size={16} className={`absolute left-3 top-1/2 -translate-y-1/2 ${textMuted}`} />
+            <input placeholder="Rechercher..." aria-label="Rechercher" value={search} onChange={e => setSearch(e.target.value)} className={`w-full pl-9 pr-10 py-1.5 border rounded-xl text-sm ${inputBg}`} />
+            {search && (
+              <button onClick={() => setSearch('')} aria-label="Effacer la recherche" className={`absolute right-2 top-1/2 -translate-y-1/2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full ${isDark ? 'hover:bg-slate-600' : 'hover:bg-slate-200'}`}>
+                <X size={14} className={textMuted} />
+              </button>
+            )}
           </div>
           <div role="group" aria-label="Filtrer par période" className="flex gap-1">
             {[['all', 'Tout'], ['month', 'Ce mois'], ['quarter', 'Trim.'], ['year', 'Année']].map(([k, v]) => (
-              <button key={k} onClick={() => setPeriodFilter(k)} aria-pressed={periodFilter === k} className={`px-2 py-1 rounded-lg text-xs whitespace-nowrap ${periodFilter === k ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`} style={periodFilter === k ? {background: couleur} : {}}>
+              <button key={k} onClick={() => setPeriodFilter(k)} aria-pressed={periodFilter === k} className={`px-3 py-1 rounded-lg text-xs whitespace-nowrap min-h-[44px] ${periodFilter === k ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`} style={periodFilter === k ? {background: couleur} : {}}>
                 {v}
               </button>
             ))}
@@ -4763,7 +4768,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           <div className={`flex rounded-lg border overflow-hidden ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
             <button
               onClick={() => setViewMode('cards')}
-              className={`p-1.5 transition-colors ${viewMode === 'cards' ? (isDark ? 'bg-slate-600 text-white' : 'bg-slate-200 text-slate-800') : (isDark ? 'bg-slate-700 text-slate-400 hover:text-slate-300' : 'bg-white text-slate-400 hover:text-slate-600')}`}
+              className={`p-2 min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors ${viewMode === 'cards' ? 'text-white' : (isDark ? 'bg-slate-700 text-slate-400 hover:text-slate-300' : 'bg-white text-slate-400 hover:text-slate-600')}`}
+              style={viewMode === 'cards' ? { background: couleur } : {}}
               title="Vue cartes"
               aria-label="Vue cartes"
               aria-pressed={viewMode === 'cards'}
@@ -4772,7 +4778,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
             </button>
             <button
               onClick={() => setViewMode('table')}
-              className={`p-1.5 transition-colors border-l ${viewMode === 'table' ? (isDark ? 'bg-slate-600 text-white border-slate-500' : 'bg-slate-200 text-slate-800 border-slate-300') : (isDark ? 'bg-slate-700 text-slate-400 hover:text-slate-300 border-slate-600' : 'bg-white text-slate-400 hover:text-slate-600 border-slate-200')}`}
+              className={`p-2 min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors border-l ${viewMode === 'table' ? 'text-white' : (isDark ? 'bg-slate-700 text-slate-400 hover:text-slate-300 border-slate-600' : 'bg-white text-slate-400 hover:text-slate-600 border-slate-200')}`}
+              style={viewMode === 'table' ? { background: couleur, borderColor: couleur } : {}}
               title="Vue tableau"
               aria-label="Vue tableau"
               aria-pressed={viewMode === 'table'}
@@ -4781,7 +4788,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
             </button>
             <button
               onClick={() => setViewMode('pipeline')}
-              className={`p-1.5 transition-colors border-l ${viewMode === 'pipeline' ? (isDark ? 'bg-slate-600 text-white border-slate-500' : 'bg-slate-200 text-slate-800 border-slate-300') : (isDark ? 'bg-slate-700 text-slate-400 hover:text-slate-300 border-slate-600' : 'bg-white text-slate-400 hover:text-slate-600 border-slate-200')}`}
+              className={`p-2 min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors border-l ${viewMode === 'pipeline' ? 'text-white' : (isDark ? 'bg-slate-700 text-slate-400 hover:text-slate-300 border-slate-600' : 'bg-white text-slate-400 hover:text-slate-600 border-slate-200')}`}
+              style={viewMode === 'pipeline' ? { background: couleur, borderColor: couleur } : {}}
               title="Vue pipeline"
               aria-label="Vue pipeline"
               aria-pressed={viewMode === 'pipeline'}
@@ -4793,7 +4801,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value)}
-            className={`px-2 py-1 rounded-lg text-xs border min-w-[75px] ${isDark ? 'bg-slate-700 border-slate-600 text-slate-300' : 'bg-white border-slate-200 text-slate-600'}`}
+            aria-label="Trier par"
+            className={`px-2 py-1 rounded-lg text-xs border min-w-[75px] min-h-[44px] ${isDark ? 'bg-slate-700 border-slate-600 text-slate-300' : 'bg-white border-slate-200 text-slate-600'}`}
           >
             <option value="recent">Récent</option>
             <option value="status">Statut</option>
@@ -4870,7 +4879,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
             const count = k === 'en_relance' ? relances.counts.total : (filterCounts[k] || 0);
             if (k === 'acomptes' && count === 0) return null;
             return (
-              <button key={k} onClick={() => setFilter(k)} aria-pressed={filter === k} className={`px-2.5 py-1 rounded-lg text-xs whitespace-nowrap flex items-center gap-1 ${filter === k ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`} style={filter === k ? {background: couleur} : {}}>
+              <button key={k} onClick={() => setFilter(k)} aria-pressed={filter === k} className={`px-3 py-1 rounded-lg text-xs whitespace-nowrap flex items-center gap-1 min-h-[44px] ${filter === k ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`} style={filter === k ? {background: couleur} : {}}>
                 {k === 'acomptes' && <CreditCard size={11} />}
                 {k === 'situations' && <BarChart3 size={11} />}
                 {k === 'avoirs' && <RotateCcw size={11} />}

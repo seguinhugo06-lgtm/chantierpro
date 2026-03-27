@@ -1630,8 +1630,13 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
           <div className="space-y-3">
             <div className="flex gap-2">
               <div className="relative flex-1">
-                <Search size={18} className={`absolute left-3 top-1/2 -translate-y-1/2 ${textMuted}`} />
-                <input type="text" placeholder="Rechercher un article, référence, catégorie..." value={search} onChange={e => setSearch(e.target.value)} className={`w-full pl-10 pr-4 py-2.5 border rounded-xl ${inputBg}`} />
+                <Search size={16} className={`absolute left-3 top-1/2 -translate-y-1/2 ${textMuted}`} />
+                <input type="text" placeholder="Rechercher un article, référence, catégorie..." aria-label="Rechercher" value={search} onChange={e => setSearch(e.target.value)} className={`w-full pl-10 pr-12 py-2.5 border rounded-xl ${inputBg}`} />
+                {search && (
+                  <button onClick={() => setSearch('')} aria-label="Effacer la recherche" className={`absolute right-2 top-1/2 -translate-y-1/2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full ${isDark ? 'hover:bg-slate-600' : 'hover:bg-slate-200'}`}>
+                    <X size={14} className={textMuted} />
+                  </button>
+                )}
               </div>
               {/* #8: Enhanced tooltips on filter icons */}
               <button onClick={() => setShowFilters(!showFilters)} title="Filtres avancés (prix, marge, stock)" aria-label="Filtres avancés" aria-expanded={showFilters} className={`px-4 py-2.5 rounded-xl flex items-center gap-2 font-medium transition-all ${showFilters ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`} style={showFilters ? { background: couleur } : {}}>
@@ -1701,7 +1706,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                           role="tab"
                           aria-selected={catFilter === cat}
                           title={cat}
-                          className={`whitespace-nowrap px-2.5 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium min-h-[36px] transition-colors ${catFilter === cat ? 'text-white shadow-sm' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}
+                          className={`whitespace-nowrap px-3 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium min-h-[44px] transition-colors ${catFilter === cat ? 'text-white shadow-sm' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}
                           style={catFilter === cat ? {background: couleur} : {}}
                         >
                           <span className="sm:hidden">{SHORT_LABELS[cat] || cat}</span>
@@ -1721,7 +1726,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
               <select
                 value={sortBy}
                 onChange={e => setSortBy(e.target.value)}
-                className={`px-3 py-2 rounded-xl text-sm border min-h-[40px] cursor-pointer ${isDark ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-slate-200 text-slate-700'}`}
+                className={`px-3 py-2 rounded-xl text-sm border min-h-[44px] cursor-pointer ${isDark ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-slate-200 text-slate-700'}`}
                 aria-label="Trier par"
               >
                 <option value="name">Nom A-Z</option>

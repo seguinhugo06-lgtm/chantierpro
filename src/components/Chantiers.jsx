@@ -4,6 +4,7 @@ import { Plus, ArrowLeft, ArrowRight, Edit3, Trash2, Check, X, Camera, MapPin, P
 const ChantierMap = lazy(() => import('./chantiers/ChantierMap'));
 const GanttView = lazy(() => import('./GanttView'));
 const GarantiesDashboard = lazy(() => import('./chantiers/GarantiesDashboard'));
+import { useDebounce } from '../hooks/useDebounce';
 import { useOnlineStatus } from '../hooks/useNetworkStatus';
 import { useConfirm, useToast } from '../context/AppContext';
 import supabase, { isDemo } from '../supabaseClient';
@@ -239,6 +240,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
   const [filterStatus, setFilterStatus] = useState('all'); // all, en_cours, prospect, termine
   const [filterClient, setFilterClient] = useState(''); // Filter by client_id
   const [searchQuery, setSearchQuery] = useState(''); // Text search
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
   const [viewMode, setViewMode] = useState('list'); // list, map, or gantt
   const [ganttTasks, setGanttTasks] = useState(() => {
     try { return JSON.parse(localStorage.getItem('cp_gantt_tasks') || '[]'); } catch { return []; }
@@ -2722,8 +2724,8 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
       filtered = filtered.filter(c => c.client_id === filterClient);
     }
     // Text search
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase().trim();
+    if (debouncedSearchQuery.trim()) {
+      const q = debouncedSearchQuery.toLowerCase().trim();
       filtered = filtered.filter(c => {
         const client = clients.find(cl => cl.id === c.client_id);
         return (c.nom || '').toLowerCase().includes(q)
@@ -2791,6 +2793,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
               className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors ${viewMode === 'list' ? 'text-white' : isDark ? 'text-slate-300 hover:text-slate-200 bg-slate-800' : 'text-slate-500 hover:text-slate-700 bg-white'}`}
               style={viewMode === 'list' ? { background: couleur } : {}}
               aria-label="Vue liste"
+              aria-pressed={viewMode === 'list'}
               title="Vue liste"
             >
               <List size={18} />
@@ -2800,6 +2803,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
               className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors ${viewMode === 'gantt' ? 'text-white' : isDark ? 'text-slate-300 hover:text-slate-200 bg-slate-800' : 'text-slate-500 hover:text-slate-700 bg-white'}`}
               style={viewMode === 'gantt' ? { background: couleur } : {}}
               aria-label="Vue Gantt"
+              aria-pressed={viewMode === 'gantt'}
               title="Vue Gantt"
             >
               <BarChart3 size={18} />
@@ -2809,6 +2813,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
               className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors ${viewMode === 'map' ? 'text-white' : isDark ? 'text-slate-300 hover:text-slate-200 bg-slate-800' : 'text-slate-500 hover:text-slate-700 bg-white'}`}
               style={viewMode === 'map' ? { background: couleur } : {}}
               aria-label="Vue carte"
+              aria-pressed={viewMode === 'map'}
               title="Vue carte"
             >
               <Map size={18} />
@@ -2818,6 +2823,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
               className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors ${viewMode === 'garanties' ? 'text-white' : isDark ? 'text-slate-300 hover:text-slate-200 bg-slate-800' : 'text-slate-500 hover:text-slate-700 bg-white'}`}
               style={viewMode === 'garanties' ? { background: couleur } : {}}
               aria-label="Vue garanties"
+              aria-pressed={viewMode === 'garanties'}
               title="Vue garanties"
             >
               <Shield size={18} />
@@ -2934,7 +2940,8 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             placeholder="Rechercher un chantier, client, adresse..."
-            className={`w-full pl-10 pr-4 py-2.5 rounded-xl border text-sm ${inputBg} focus:ring-2 focus:ring-offset-0`}
+            aria-label="Rechercher"
+            className={`w-full pl-10 pr-12 py-2.5 rounded-xl border text-sm ${inputBg} focus:ring-2 focus:ring-offset-0`}
             style={{ '--tw-ring-color': `${couleur}40` }}
           />
           {searchQuery && (
@@ -3023,6 +3030,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                 <button
                   key={tab.key}
                   onClick={() => setFilterStatus(tab.key)}
+                  aria-pressed={filterStatus === tab.key}
                   className={`px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-medium whitespace-nowrap transition-all min-h-[44px] flex items-center gap-1.5 ${
                     filterStatus === tab.key
                       ? 'text-white shadow-md'
@@ -3053,7 +3061,8 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                   <select
                     value={filterClient}
                     onChange={(e) => setFilterClient(e.target.value)}
-                    className={`px-2.5 py-1.5 rounded-lg text-xs border min-h-[44px] sm:min-h-[36px] ${isDark ? 'bg-slate-700 border-slate-600 text-slate-300' : 'bg-white border-slate-200 text-slate-600'}`}
+                    aria-label="Filtrer par client"
+                    className={`px-2.5 py-1.5 rounded-lg text-xs border min-h-[44px] ${isDark ? 'bg-slate-700 border-slate-600 text-slate-300' : 'bg-white border-slate-200 text-slate-600'}`}
                   >
                     <option value="">Tous les clients</option>
                     {clients.map(c => (
@@ -3066,7 +3075,8 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                   <select
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value)}
-                    className={`px-2.5 py-1.5 rounded-lg text-xs border min-h-[44px] sm:min-h-[36px] ${isDark ? 'bg-slate-700 border-slate-600 text-slate-300' : 'bg-white border-slate-200 text-slate-600'}`}
+                    aria-label="Trier par"
+                    className={`px-2.5 py-1.5 rounded-lg text-xs border min-h-[44px] ${isDark ? 'bg-slate-700 border-slate-600 text-slate-300' : 'bg-white border-slate-200 text-slate-600'}`}
                   >
                     <option value="recent">Plus récent</option>
                     <option value="name">Nom A-Z</option>
