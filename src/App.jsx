@@ -1770,8 +1770,8 @@ export default function App() {
               {page === 'equipe' && <Equipe equipe={equipe} setEquipe={setEquipe} addEmployee={addEmployee} updateEmployee={updateEmployee} deleteEmployee={deleteEmployee} pointages={pointages} setPointages={setPointages} addPointage={addPointage} chantiers={chantiers} planningEvents={planningEvents} couleur={couleur} isDark={isDark} modeDiscret={modeDiscret} setPage={setPage} />}
               {page === 'messagerie' && <ChatPage isDark={isDark} couleur={couleur} showToast={showToast} user={user} equipe={equipe} />}
               {page === 'garanties' && <GarantiesDashboard isDark={isDark} couleur={couleur} showToast={showToast} user={user} chantiers={chantiers} />}
-              {page === 'contrats' && <ContractsPage isDark={isDark} couleur={couleur} showToast={showToast} clients={clients} chantiers={chantiers} setPage={setPage} />}
-              {page === 'formulaires' && <FormulairesPage isDark={isDark} couleur={couleur} showToast={showToast} clients={clients} chantiers={chantiers} setPage={setPage} />}
+              {page === 'contrats' && <ContractsPage isDark={isDark} couleur={couleur} showToast={showToast} user={user} entreprise={entreprise} clients={clients} chantiers={chantiers} setPage={setPage} />}
+              {page === 'formulaires' && <FormulairesPage isDark={isDark} couleur={couleur} showToast={showToast} user={user} entreprise={entreprise} clients={clients} chantiers={chantiers} setPage={setPage} />}
               {page === 'site-web' && <SiteVitrine isDark={isDark} couleur={couleur} showToast={showToast} entreprise={entreprise} setPage={setPage} />}
               {page === 'admin' && <AdminHelp chantiers={chantiers} clients={clients} devis={devis} factures={devis.filter(d => d.type === 'facture')} depenses={depenses} entreprise={entreprise} isDark={isDark} couleur={couleur} />}
               {page === 'pricing' && <PricingPage isDark={isDark} couleur={couleur} setPage={setPage} />}

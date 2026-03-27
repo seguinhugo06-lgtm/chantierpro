@@ -1,24 +1,25 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, FileText, ArrowLeft, Trash2, Edit3, ClipboardCheck, Calendar, Tag, Clock, ChevronRight, Search } from 'lucide-react';
 import FormBuilder from './FormBuilder';
 import FormFiller from './FormFiller';
+import supabase, { isDemo } from '../../supabaseClient';
 
 const STORAGE_KEY = 'cp_form_templates';
 const SUBMISSIONS_KEY = 'cp_form_submissions';
 
-function loadTemplates() {
+function loadTemplatesLocal() {
   try {
     return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
   } catch { return []; }
 }
 
-function saveTemplates(templates) {
+function saveTemplatesLocal(templates) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(templates));
   } catch { /* silent */ }
 }
 
-function loadSubmissions() {
+function loadSubmissionsLocal() {
   try {
     return JSON.parse(localStorage.getItem(SUBMISSIONS_KEY) || '[]');
   } catch { return []; }
@@ -33,13 +34,52 @@ const CATEGORIE_COLORS = {
   Autre: '#6b7280',
 };
 
-export default function FormulairesPage({ isDark, couleur, showToast, user, chantiers, clients }) {
-  const [templates, setTemplates] = useState(loadTemplates);
-  const [submissions, setSubmissions] = useState(loadSubmissions);
+export default function FormulairesPage({ isDark, couleur, showToast, user, entreprise, chantiers, clients }) {
+  const [templates, setTemplates] = useState(loadTemplatesLocal);
+  const [submissions, setSubmissions] = useState(loadSubmissionsLocal);
   const [view, setView] = useState('list'); // 'list' | 'builder' | 'filler' | 'submissions'
   const [editingTemplate, setEditingTemplate] = useState(null);
   const [fillingTemplate, setFillingTemplate] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Load from Supabase
+  useEffect(() => {
+    async function loadFromSupabase() {
+      if (isDemo || !supabase || !user?.id) return;
+
+      try {
+        const [tplRes, subRes] = await Promise.all([
+          supabase.from('form_templates').select('*').order('created_at', { ascending: false }),
+          supabase.from('form_submissions').select('*').order('created_at', { ascending: false }),
+        ]);
+
+        if (!tplRes.error && tplRes.data?.length > 0) {
+          setTemplates(tplRes.data.map(t => ({
+            id: t.id,
+            name: t.name,
+            categorie: t.categorie,
+            champs: typeof t.champs === 'string' ? JSON.parse(t.champs) : t.champs,
+            updatedAt: t.updated_at,
+          })));
+        }
+
+        if (!subRes.error && subRes.data?.length > 0) {
+          setSubmissions(subRes.data.map(s => ({
+            id: s.id,
+            templateId: s.template_id,
+            templateName: s.template_name,
+            responses: typeof s.responses === 'string' ? JSON.parse(s.responses) : s.responses,
+            chantierId: s.chantier_id,
+            status: s.status,
+            createdAt: s.created_at,
+          })));
+        }
+      } catch (e) {
+        console.warn('[FormulairesPage] Load failed:', e.message);
+      }
+    }
+    loadFromSupabase();
+  }, [user?.id]);
 
   // Theme
   const cardBg = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200';
@@ -51,10 +91,10 @@ export default function FormulairesPage({ isDark, couleur, showToast, user, chan
 
   // Sync templates to localStorage
   useEffect(() => {
-    saveTemplates(templates);
+    saveTemplatesLocal(templates);
   }, [templates]);
 
-  const handleSaveTemplate = (template) => {
+  const handleSaveTemplate = async (template) => {
     setTemplates(prev => {
       const exists = prev.findIndex(t => t.id === template.id);
       if (exists >= 0) {
@@ -66,14 +106,39 @@ export default function FormulairesPage({ isDark, couleur, showToast, user, chan
     });
     setView('list');
     setEditingTemplate(null);
+
+    // Persist to Supabase
+    if (!isDemo && supabase && user?.id) {
+      try {
+        await supabase.from('form_templates').upsert({
+          id: template.id,
+          user_id: user.id,
+          entreprise_id: entreprise?.id,
+          name: template.name,
+          categorie: template.categorie,
+          champs: JSON.stringify(template.champs || []),
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'id' });
+      } catch (e) {
+        console.warn('[FormulairesPage] Save template failed:', e.message);
+      }
+    }
   };
 
-  const handleDeleteTemplate = (id) => {
+  const handleDeleteTemplate = async (id) => {
     setTemplates(prev => prev.filter(t => t.id !== id));
     showToast?.('Formulaire supprimé', 'success');
+
+    if (!isDemo && supabase && user?.id) {
+      try {
+        await supabase.from('form_templates').delete().eq('id', id);
+      } catch (e) {
+        console.warn('[FormulairesPage] Delete template failed:', e.message);
+      }
+    }
   };
 
-  const handleSubmitForm = (submission) => {
+  const handleSubmitForm = async (submission) => {
     setSubmissions(prev => {
       const next = [...prev, submission];
       try { localStorage.setItem(SUBMISSIONS_KEY, JSON.stringify(next)); } catch {}
@@ -81,6 +146,25 @@ export default function FormulairesPage({ isDark, couleur, showToast, user, chan
     });
     setView('list');
     setFillingTemplate(null);
+
+    // Persist to Supabase
+    if (!isDemo && supabase && user?.id) {
+      try {
+        await supabase.from('form_submissions').upsert({
+          id: submission.id,
+          user_id: user.id,
+          entreprise_id: entreprise?.id,
+          template_id: submission.templateId,
+          template_name: submission.templateName,
+          responses: JSON.stringify(submission.responses || {}),
+          chantier_id: submission.chantierId || null,
+          status: submission.status || 'soumis',
+          created_at: submission.createdAt || new Date().toISOString(),
+        }, { onConflict: 'id' });
+      } catch (e) {
+        console.warn('[FormulairesPage] Save submission failed:', e.message);
+      }
+    }
   };
 
   const filteredTemplates = templates.filter(t =>

@@ -1,10 +1,10 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import supabase, { isDemo } from '../supabaseClient';
 import {
   Plus, Search, X, Edit2, Trash2, FileCheck,
   Calendar, RefreshCw, AlertTriangle, CheckCircle, Clock,
   TrendingUp, ChevronDown, MoreVertical
 } from 'lucide-react';
-import EmptyState from './ui/EmptyState';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 // ---------------------------------------------------------------------------
@@ -182,7 +182,7 @@ function generateMrrChart(contrats) {
 // Component
 // ---------------------------------------------------------------------------
 
-export default function ContractsPage({ isDark, couleur, showToast, user, clients = [], chantiers = [], setPage }) {
+export default function ContractsPage({ isDark, couleur, showToast, user, entreprise, clients = [], chantiers = [], setPage }) {
   // Theme
   const cardBg = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200';
   const inputBg = isDark ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400' : 'bg-white border-slate-300';
@@ -206,7 +206,48 @@ export default function ContractsPage({ isDark, couleur, showToast, user, client
   const [form, setForm] = useState(EMPTY_FORM);
   const [menuOpen, setMenuOpen] = useState(null);
 
-  // Persist
+  // Load from Supabase
+  useEffect(() => {
+    async function loadContracts() {
+      if (isDemo || !supabase || !user?.id) {
+        try {
+          const saved = localStorage.getItem(STORAGE_KEY);
+          if (saved) setContrats(JSON.parse(saved));
+        } catch { /* ignore */ }
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('contrats')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (!error && data) {
+          setContrats(data.map(c => ({
+            id: c.id,
+            clientName: clients?.find(cl => cl.id === c.client_id)?.nom || 'Client',
+            clientId: c.client_id,
+            objet: c.objet,
+            montantHt: c.montant_ht,
+            tva: c.tva,
+            recurrence: c.recurrence,
+            debut: c.debut,
+            fin: c.fin,
+            statut: c.statut,
+            autoRenouvellement: c.auto_renouvellement,
+            conditions: c.conditions,
+            chantierId: c.chantier_id,
+          })));
+        }
+      } catch (e) {
+        console.warn('[ContractsPage] Load failed:', e.message);
+      }
+    }
+    loadContracts();
+  }, [user?.id, clients]);
+
+  // Persist to localStorage + Supabase
   const persist = useCallback((data) => {
     setContrats(data);
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch { /* ignore */ }
@@ -270,7 +311,7 @@ export default function ContractsPage({ isDark, couleur, showToast, user, client
     setMenuOpen(null);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.objet.trim() || !form.montantHt || !form.debut || !form.fin) {
       showToast?.('Veuillez remplir les champs obligatoires', 'error');
       return;
@@ -282,30 +323,68 @@ export default function ContractsPage({ isDark, couleur, showToast, user, client
       if (cl) clientName = cl.nom || cl.name || `${cl.prenom || ''} ${cl.nom || ''}`.trim();
     }
 
+    const montantHt = Number(form.montantHt);
+    let contractId = editingId;
+
     if (editingId) {
       const updated = contrats.map(c =>
-        c.id === editingId ? { ...c, ...form, clientName, montantHt: Number(form.montantHt) } : c
+        c.id === editingId ? { ...c, ...form, clientName, montantHt } : c
       );
       persist(updated);
       showToast?.('Contrat modifié', 'success');
     } else {
+      contractId = crypto.randomUUID?.() || `contrat-${Date.now()}`;
       const newContrat = {
         ...form,
-        id: `contrat-${Date.now()}`,
+        id: contractId,
         clientName,
-        montantHt: Number(form.montantHt),
+        montantHt,
       };
       persist([...contrats, newContrat]);
       showToast?.('Contrat créé', 'success');
     }
+
+    // Persist to Supabase
+    if (!isDemo && supabase && user?.id) {
+      try {
+        await supabase.from('contrats').upsert({
+          id: contractId,
+          user_id: user.id,
+          entreprise_id: entreprise?.id,
+          client_id: form.clientId || null,
+          objet: form.objet,
+          montant_ht: montantHt,
+          tva: form.tva,
+          montant_ttc: montantHt * (1 + form.tva / 100),
+          recurrence: form.recurrence,
+          debut: form.debut,
+          fin: form.fin,
+          statut: form.statut || 'actif',
+          auto_renouvellement: form.autoRenouvellement,
+          conditions: form.conditions,
+          chantier_id: form.chantierId || null,
+        }, { onConflict: 'id' });
+      } catch (e) {
+        console.warn('[ContractsPage] Save failed:', e.message);
+      }
+    }
+
     setShowForm(false);
     setEditingId(null);
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
     persist(contrats.filter(c => c.id !== id));
     showToast?.('Contrat supprimé', 'success');
     setMenuOpen(null);
+
+    if (!isDemo && supabase && user?.id) {
+      try {
+        await supabase.from('contrats').delete().eq('id', id);
+      } catch (e) {
+        console.warn('[ContractsPage] Delete failed:', e.message);
+      }
+    }
   };
 
   const updateField = (field, value) => {
@@ -330,7 +409,7 @@ export default function ContractsPage({ isDark, couleur, showToast, user, client
   // ---------------------------------------------------------------------------
 
   return (
-    <div className={`min-h-full ${pageBg} animate-page-enter`}>
+    <div className={`min-h-full ${pageBg}`}>
       <div className="max-w-7xl mx-auto p-3 sm:p-6 space-y-4 sm:space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -349,7 +428,7 @@ export default function ContractsPage({ isDark, couleur, showToast, user, client
         </div>
 
         {/* KPIs */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 animate-stagger">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
             { label: 'Actifs', value: kpis.actifs, icon: CheckCircle, color: '#22c55e' },
             { label: 'À renouveler', value: kpis.aRenouveler, icon: AlertTriangle, color: '#f59e0b' },
@@ -361,7 +440,7 @@ export default function ContractsPage({ isDark, couleur, showToast, user, client
                 <kpi.icon size={16} style={{ color: kpi.color }} />
                 <span className={`text-xs font-medium ${textMuted}`}>{kpi.label}</span>
               </div>
-              <p className={`text-lg sm:text-xl font-bold ${textPrimary} animate-count-up`}>{kpi.value}</p>
+              <p className={`text-lg sm:text-xl font-bold ${textPrimary}`}>{kpi.value}</p>
               {kpi.sub && <p className={`text-xs ${textMuted} mt-0.5`}>{kpi.sub}</p>}
             </div>
           ))}
@@ -441,13 +520,13 @@ export default function ContractsPage({ isDark, couleur, showToast, user, client
 
         {/* Contracts list */}
         {filtered.length === 0 ? (
-          <EmptyState
-            icon={FileCheck}
-            title="Aucun contrat"
-            description={search || filtre !== 'tous' ? 'Modifiez vos filtres pour voir des résultats' : 'Créez votre premier contrat de maintenance'}
-            isDark={isDark}
-            couleur={couleur}
-          />
+          <div className={`${cardBg} border rounded-xl p-8 text-center`}>
+            <FileCheck size={40} className={`mx-auto mb-3 ${textMuted}`} />
+            <p className={`font-medium ${textPrimary}`}>Aucun contrat</p>
+            <p className={`text-sm ${textSecondary} mt-1`}>
+              {search || filtre !== 'tous' ? 'Modifiez vos filtres pour voir des résultats' : 'Créez votre premier contrat de maintenance'}
+            </p>
+          </div>
         ) : (
           <div className="grid gap-3">
             {filtered.map(contrat => {
@@ -460,7 +539,7 @@ export default function ContractsPage({ isDark, couleur, showToast, user, client
               return (
                 <div
                   key={contrat.id}
-                  className={`${cardBg} border rounded-xl p-4 sm:p-5 hover:shadow-md hover:-translate-y-0.5 transition-all relative group`}
+                  className={`${cardBg} border rounded-xl p-4 sm:p-5 hover:shadow-md transition-shadow relative group`}
                 >
                   <div className="flex flex-col sm:flex-row sm:items-start gap-3">
                     {/* Left */}
@@ -531,7 +610,7 @@ export default function ContractsPage({ isDark, couleur, showToast, user, client
                             </button>
                             <button
                               onClick={() => handleDelete(contrat.id)}
-                              className={`w-full flex items-center gap-2 px-3 py-2 text-sm text-red-500 ${isDark ? 'hover:bg-red-900/30' : 'hover:bg-red-50'}`}
+                              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-500 hover:bg-red-50"
                             >
                               <Trash2 size={14} /> Supprimer
                             </button>
