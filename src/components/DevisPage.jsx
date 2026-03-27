@@ -1212,8 +1212,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     const allAcomptes = getAllAcompteFactures(selected.id);
     const totalAcomptesTTC = allAcomptes.reduce((s, a) => s + (a.total_ttc || 0), 0);
     const reste = allAcomptes.length > 0 ? selected.total_ttc - totalAcomptesTTC : selected.total_ttc;
-    const soldeClient = clients.find(c => c.id === selected.client_id);
-    const clientName = soldeClient ? `${soldeClient.prenom || ''} ${soldeClient.nom || ''}`.trim() : 'le client';
+    const clientName = client ? `${client.prenom || ''} ${client.nom || ''}`.trim() : 'le client';
     const label = allAcomptes.length > 0 ? `Facturer le solde de ${formatMoney(reste)}` : `Créer la facture complète de ${formatMoney(selected.total_ttc)}`;
     const ok = await confirm({
       title: allAcomptes.length > 0 ? 'Facturer le solde ?' : 'Créer la facture complète ?',
@@ -4057,7 +4056,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
             modeDiscret={modeDiscret}
             onClose={() => setViewingSnapshot(null)}
             onRestore={async (snap) => {
-              const confirmed = await confirm({ title: 'Restaurer cette version ?', message: 'Les données actuelles seront remplacées par cette version. Cette action est irréversible.' });
+              const confirmed = await showConfirm('Restaurer cette version ?', 'Les données actuelles seront remplacées par cette version. Cette action est irréversible.');
               if (!confirmed) return;
               const restoreData = { ...snap.data };
               delete restoreData.id;
@@ -4500,7 +4499,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 
   // === LIST VIEW ===
   return (
-    <div className="space-y-4 sm:space-y-6 animate-page-enter">
+    <div className="space-y-3">
       {/* ========== HEADER COMPACT ========== */}
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
@@ -4540,27 +4539,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           </div>
         </div>
 
-        {/* Devis IA + Devis Express + Split-button: + Nouveau devis — hidden for view-only roles */}
+        {/* Split-button: + Nouveau devis — hidden for view-only roles */}
         {canPerform('devis', 'create') && (
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setPage?.('ia-devis')}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold text-white min-h-[44px]"
-            style={{ background: 'linear-gradient(135deg, #8b5cf6, #3b82f6)' }}
-          >
-            <Sparkles size={14} />
-            <span className="hidden sm:inline">Devis IA</span>
-          </button>
-
-          <button
-            onClick={() => setShowDevisExpressModal(true)}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold text-white min-h-[44px] transition-all hover:opacity-90"
-            style={{ backgroundColor: couleur }}
-            aria-label="Créer un devis express"
-          >
-            <Zap size={14} />
-            <span className="hidden sm:inline">Devis Express</span>
-          </button>
         <div className="relative">
           <div className="flex items-stretch">
             <button
@@ -4619,7 +4599,6 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
               </div>
             </>
           )}
-        </div>
         </div>
         )}
       </div>
@@ -5166,7 +5145,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         </div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 animate-stagger">{filtered.map(d => {
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">{filtered.map(d => {
           const client = clients.find(c => c.id === d.client_id);
           const hasAcompte = d.type === 'devis' && getAcompteFacture(d.id);
           const chantier = chantiers.find(ch => ch.id === d.chantier_id);
@@ -5219,7 +5198,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
             <div key={d.id} onClick={() => { setSelected(d); setMode('preview'); if (d.statut === 'envoye' && d.type === 'devis') markAsViewed(d); }} className={`${cardBg} rounded-xl border cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all duration-150 overflow-hidden`}>
               {/* Status color bar at top */}
               <div className="h-[3px] w-full" style={{ backgroundColor: STATUS_BAR_COLORS[isExpired(d) ? 'expire' : d.statut] || '#94a3b8' }} />
-              <div className="px-4 py-3">
+              <div className="px-3 py-2.5">
               <div className="flex items-start gap-2.5">
                 {/* Content */}
                 <div className="flex-1 min-w-0">

@@ -26,7 +26,7 @@ const KPIStrip = memo(function KPIStrip({ isDark, couleur, kpis = [] }) {
 
   return (
     <div className="px-4 sm:px-6 py-4">
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {kpis.slice(0, 4).map((kpi, idx) => {
           const IconComponent = kpi.icon;
           const isClickable = typeof kpi.onClick === 'function';
@@ -36,7 +36,7 @@ const KPIStrip = memo(function KPIStrip({ isDark, couleur, kpis = [] }) {
             <Tag
               key={kpi.label || idx}
               onClick={isClickable ? kpi.onClick : undefined}
-              className={`${cardBg} rounded-xl border p-4 text-left transition-all duration-150 ${
+              className={`${cardBg} rounded-2xl border p-5 text-left transition-all duration-200 ${
                 isClickable
                   ? 'cursor-pointer hover:shadow-md hover:-translate-y-0.5 active:scale-[0.98] outline-none focus-visible:ring-2 focus-visible:ring-offset-2'
                   : ''

@@ -1,338 +1,436 @@
-/* eslint-disable no-unused-vars */
+/**
+ * DashboardGrid - Customizable widget grid with drag-and-drop support
+ * Orchestrates rendering of all dashboard widgets in a responsive grid
+ *
+ * @module DashboardGrid
+ */
+
+import React, { useCallback, useMemo } from 'react';
 import {
-  TrendingUp,
-  FileText,
-  Briefcase,
-  Activity,
-  ChevronRight,
-} from 'lucide-react';
-/* eslint-enable no-unused-vars */
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  rectSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { GripVertical, X, Eye, EyeOff } from 'lucide-react';
+import { cn } from '../../lib/utils';
+import { WIDGET_REGISTRY, SIZE_CLASSES } from './widgetRegistry';
 
-// Helper to format currency
-const formatMoney = (value, modeDiscret) => {
-  if (modeDiscret) return '***';
-  if (!value) return '0 €';
-  return new Intl.NumberFormat('fr-FR', {
-    style: 'currency',
-    currency: 'EUR',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(value);
+// Widget components
+import HeroSection from './HeroSection';
+import KPIEncaisserWidget from './KPIEncaisserWidget';
+import KPIFactureWidget from './KPIFactureWidget';
+import SuggestionsSection from './SuggestionsSection';
+import OverviewWidget from './OverviewWidget';
+import RevenueChartWidget from './RevenueChartWidget';
+import DevisWidget from './DevisWidget';
+import ChantiersWidget from './ChantiersWidget';
+import TresorerieWidget from './TresorerieWidget';
+import RecentActivityWidget from './RecentActivityWidget';
+import WeatherAlertsWidget from './WeatherAlertsWidget';
+import ScoreSanteWidget from './ScoreSanteWidget';
+import MemosWidget from './MemosWidget';
+import PlanLimitsWidget from './PlanLimitsWidget';
+
+const WIDGET_COMPONENTS = {
+  'hero': HeroSection,
+  'kpi-encaisser': KPIEncaisserWidget,
+  'kpi-facture': KPIFactureWidget,
+  'suggestions': SuggestionsSection,
+  'overview': OverviewWidget,
+  'revenue-chart': RevenueChartWidget,
+  'devis': DevisWidget,
+  'chantiers': ChantiersWidget,
+  'tresorerie': TresorerieWidget,
+  'activite': RecentActivityWidget,
+  'meteo': WeatherAlertsWidget,
+  'score-sante': ScoreSanteWidget,
+  'memos': MemosWidget,
+  'plan-limits': PlanLimitsWidget,
 };
 
-// Helper to calculate days since a date
-const daysSince = (date) => {
-  if (!date) return 0;
-  const d = new Date(date);
-  const now = new Date();
-  const diff = now - d;
-  return Math.floor(diff / (1000 * 60 * 60 * 24));
-};
+// ============ SORTABLE WIDGET WRAPPER ============
 
-// Status badge with color mapping
-// eslint-disable-next-line no-unused-vars
-const StatusBadge = ({ status, isDark }) => {
-  const statusColors = {
-    brouillon: isDark ? 'bg-slate-700 text-slate-200' : 'bg-slate-100 text-slate-700',
-    envoye: isDark ? 'bg-blue-900/50 text-blue-200' : 'bg-blue-100 text-blue-700',
-    accepte: isDark ? 'bg-blue-900/50 text-blue-200' : 'bg-blue-100 text-blue-700',
-    signe: isDark ? 'bg-emerald-900/50 text-emerald-200' : 'bg-emerald-100 text-emerald-700',
-    facture: isDark ? 'bg-emerald-900/50 text-emerald-200' : 'bg-emerald-100 text-emerald-700',
-    payee: isDark ? 'bg-emerald-900/50 text-emerald-200' : 'bg-emerald-100 text-emerald-700',
-    refuse: isDark ? 'bg-red-900/50 text-red-200' : 'bg-red-100 text-red-700',
-    vu: isDark ? 'bg-purple-900/50 text-purple-200' : 'bg-purple-100 text-purple-700',
+function SortableWidget({ id, isEditMode, isDark, onRemove, children }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id, disabled: !isEditMode });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 50 : 'auto',
+    opacity: isDragging ? 0.7 : 1,
   };
 
-  const statusLabels = {
-    brouillon: 'Brouillon',
-    envoye: 'Envoyé',
-    accepte: 'Accepté',
-    vu: 'Vu',
-    signe: 'Signé',
-    facture: 'Facturé',
-    payee: 'Payé',
-    refuse: 'Refusé',
-  };
-
-  const colorClass = statusColors[status] || statusColors.brouillon;
-  const label = statusLabels[status] || status;
+  const registry = WIDGET_REGISTRY[id];
+  const sizeClass = SIZE_CLASSES[registry?.defaultSize || 'third'];
 
   return (
-    <span className={`inline-block px-2.5 py-1 text-xs font-medium rounded-full ${colorClass}`}>
-      {label}
-    </span>
-  );
-};
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        sizeClass,
+        isEditMode && 'relative group',
+        isEditMode && (isDark
+          ? 'ring-2 ring-dashed ring-blue-500/40 rounded-2xl'
+          : 'ring-2 ring-dashed ring-blue-400/50 rounded-2xl'
+        ),
+        isDragging && 'shadow-2xl',
+      )}
+    >
+      {/* Edit mode overlay: drag handle + remove button */}
+      {isEditMode && (
+        <>
+          {/* Drag handle */}
+          <div
+            {...attributes}
+            {...listeners}
+            className={cn(
+              'absolute top-2 left-1/2 -translate-x-1/2 z-10',
+              'flex items-center gap-1 px-3 py-1.5 rounded-full',
+              'cursor-grab active:cursor-grabbing',
+              'transition-opacity duration-200',
+              'opacity-70 group-hover:opacity-100',
+              isDark
+                ? 'bg-blue-600/90 text-white'
+                : 'bg-blue-500/90 text-white',
+              'shadow-lg',
+              'text-xs font-medium',
+            )}
+          >
+            <GripVertical size={14} />
+            <span className="hidden sm:inline">Glisser</span>
+          </div>
 
-// Card wrapper component
-// eslint-disable-next-line no-unused-vars
-const DashboardCard = ({ isDark, title, icon: Icon, couleur, children, onViewAll }) => {
-  const cardBg = isDark
-    ? 'bg-slate-800 border-slate-700'
-    : 'bg-white border-slate-200';
-  const textPrimary = isDark ? 'text-white' : 'text-slate-900';
-
-  return (
-    <div className={`rounded-xl border p-5 ${cardBg}`}>
-      <div className="flex items-center justify-between mb-4">
-        <h3 className={`text-sm font-semibold ${textPrimary} flex items-center gap-2`}>
-          {Icon && (
-            <Icon size={16} style={{ color: couleur }} />
-          )}
-          {title}
-        </h3>
-        <button
-          onClick={onViewAll}
-          className={`text-xs font-medium min-h-[44px] min-w-[44px] flex items-center justify-center rounded transition-colors ${
-            isDark
-              ? 'hover:bg-slate-700'
-              : 'hover:bg-slate-100'
-          }`}
-          style={{ color: couleur }}
-          type="button"
-        >
-          Voir tout
-          {' '}
-          <ChevronRight size={14} className="ml-1" />
-        </button>
-      </div>
-      <div className="space-y-3">
-        {children}
-      </div>
+          {/* Remove button */}
+          <button
+            type="button"
+            onClick={() => onRemove?.(id)}
+            className={cn(
+              'absolute top-2 right-2 z-10',
+              'w-7 h-7 rounded-full flex items-center justify-center',
+              'transition-all duration-200',
+              'opacity-0 group-hover:opacity-100',
+              isDark
+                ? 'bg-red-700/90 hover:bg-red-800 text-white'
+                : 'bg-red-700/90 hover:bg-red-800 text-white',
+              'shadow-md',
+            )}
+            title="Masquer ce widget"
+          >
+            <EyeOff size={14} />
+          </button>
+        </>
+      )}
+      {children}
     </div>
   );
-};
+}
+
+// ============ WIDGET RENDERER ============
+
+function WidgetRenderer({ widgetId, widgetProps }) {
+  const Component = WIDGET_COMPONENTS[widgetId];
+  if (!Component) return null;
+
+  // Each widget type gets different props
+  const propsMap = {
+    'hero': {
+      userName: widgetProps.userName,
+      activeChantiers: widgetProps.stats?.chantiersActifs,
+      urgentAction: widgetProps.urgentAction,
+      devisEnAttente: widgetProps.devisEnAttente || 0,
+      facturesEnRetard: (widgetProps.stats?.facturesOverdue || []).length,
+      memosAujourdhui: widgetProps.memosAujourdhui || 0,
+      actionsCount: widgetProps.actionsCount || 0,
+      isDark: widgetProps.isDark,
+      onChantiersClick: () => widgetProps.setPage?.('chantiers'),
+    },
+    'kpi-encaisser': {
+      stats: widgetProps.stats,
+      clients: widgetProps.clients,
+      isDark: widgetProps.isDark,
+      modeDiscret: widgetProps.modeDiscret,
+      formatMoney: widgetProps.formatMoney,
+      setSelectedDevis: widgetProps.setSelectedDevis,
+      setPage: widgetProps.setPage,
+      onOpenEncaisser: widgetProps.onOpenEncaisser,
+    },
+    'kpi-facture': {
+      stats: widgetProps.stats,
+      devis: widgetProps.devis,
+      isDark: widgetProps.isDark,
+      modeDiscret: widgetProps.modeDiscret,
+      formatMoney: widgetProps.formatMoney,
+      onOpenCeMois: widgetProps.onOpenCeMois,
+    },
+    'suggestions': {
+      suggestions: widgetProps.suggestions,
+      isDark: widgetProps.isDark,
+      couleur: widgetProps.couleur,
+      setPage: widgetProps.setPage,
+      onOpenRelance: widgetProps.onOpenRelance,
+      onOpenMarginAnalysis: widgetProps.onOpenMarginAnalysis,
+    },
+    'overview': {
+      setPage: widgetProps.setPage,
+      isDark: widgetProps.isDark,
+    },
+    'revenue-chart': {
+      setPage: widgetProps.setPage,
+      isDark: widgetProps.isDark,
+    },
+    'devis': {
+      setPage: widgetProps.setPage,
+      setSelectedDevis: widgetProps.setSelectedDevis,
+      onRelance: widgetProps.onRelance,
+      isDark: widgetProps.isDark,
+    },
+    'chantiers': {
+      setPage: widgetProps.setPage,
+      setSelectedChantier: widgetProps.setSelectedChantier,
+      isDark: widgetProps.isDark,
+    },
+    'tresorerie': {
+      setPage: widgetProps.setPage,
+      isDark: widgetProps.isDark,
+    },
+    'activite': {
+      activities: widgetProps.recentActivity,
+      isDark: widgetProps.isDark,
+      formatMoney: widgetProps.formatMoneyDiscret,
+      onActivityClick: widgetProps.onActivityClick,
+    },
+    'meteo': {
+      setPage: widgetProps.setPage,
+      isDark: widgetProps.isDark,
+    },
+    'score-sante': {
+      isDark: widgetProps.isDark,
+      setPage: widgetProps.setPage,
+      couleur: widgetProps.couleur,
+      entreprise: widgetProps.entreprise,
+    },
+    'memos': {
+      isDark: widgetProps.isDark,
+      couleur: widgetProps.couleur,
+    },
+    'plan-limits': {
+      isDark: widgetProps.isDark,
+      couleur: widgetProps.couleur,
+    },
+  };
+
+  const specificProps = propsMap[widgetId] || { isDark: widgetProps.isDark };
+
+  return <Component {...specificProps} />;
+}
+
+// ============ DASHBOARD GRID ============
 
 export default function DashboardGrid({
-  isDark = false,
-  couleur = '#8b5cf6',
-  setPage = () => {},
-  devis = [],
-  chantiers = [],
-  stats = {},
-  activities = [],
-  modeDiscret = false,
-  clients = [],
+  visibleWidgets,
+  isEditMode,
+  isDark,
+  widgetProps,
+  onReorder,
+  onToggleWidget,
 }) {
-  const textPrimary = isDark ? 'text-slate-100' : 'text-slate-900';
-  const textSecondary = isDark ? 'text-slate-400' : 'text-slate-600';
-
-  // Get recent devis (last 3, excluding factures)
-  // Priority: envoye > signe > brouillon, then sorted by date descending
-  const recentDevis = devis
-    .filter((d) => d.type !== 'facture')
-    .sort((a, b) => {
-      // Status priority: envoye (0), signe (1), brouillon (2), others (3)
-      const statusOrder = { envoye: 0, signe: 1, brouillon: 2 };
-      const aPriority = statusOrder[a.statut] ?? 3;
-      const bPriority = statusOrder[b.statut] ?? 3;
-      if (aPriority !== bPriority) return aPriority - bPriority;
-      // Within same status, sort by date descending
-      return new Date(b.date) - new Date(a.date);
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
     })
-    .slice(0, 3);
+  );
 
-  // Get active chantiers (last 3)
-  const activeChantiers = chantiers
-    .filter((c) => c.statut === 'en_cours')
-    .sort((a, b) => new Date(b.date_debut) - new Date(a.date_debut))
-    .slice(0, 3);
+  const handleDragEnd = useCallback((event) => {
+    const { active, over } = event;
+    if (active && over && active.id !== over.id) {
+      onReorder?.(active.id, over.id);
+    }
+  }, [onReorder]);
 
-  // Get recent activities (last 3)
-  const recentActivities = activities.slice(0, 3);
+  const widgetIds = useMemo(
+    () => visibleWidgets.map(w => w.id),
+    [visibleWidgets]
+  );
 
-  // Destructure stats
-  const {
-    aEncaisser = 0,
-    caMois = 0,
-    caPrev = 0,
-    _moisPrecedent = 0,
-  } = stats;
+  // Group widgets by size for proper grid rendering
+  // Full-width widgets break out of the grid, half widgets are in 2-col grid,
+  // third widgets are in 3-col grid
+  const groupedWidgets = useMemo(() => {
+    const groups = [];
+    let currentThirds = [];
 
-  return (
-    <div className="px-4 sm:px-6 pb-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* 1. Devis récents */}
-        <DashboardCard
-          isDark={isDark}
-          title="Devis récents"
-          icon={FileText}
-          couleur={couleur}
-          onViewAll={() => setPage('devis')}
-        >
-          {recentDevis.length > 0 ? (
-            recentDevis.map((d) => {
-              const client = clients.find((c) => c.id === d.client_id);
-              const jours = daysSince(d.date);
+    visibleWidgets.forEach(widget => {
+      const registry = WIDGET_REGISTRY[widget.id];
+      const size = registry?.defaultSize || 'third';
 
-              return (
-                <div
-                  key={d.id}
-                  className={`flex items-start gap-3 pb-3 border-b last:border-b-0 last:pb-0 ${
-                    isDark ? 'border-slate-700' : 'border-slate-100'
-                  }`}
-                >
-                  <div className="flex-1 min-w-0">
-                    <p className={`text-xs font-medium truncate ${textPrimary}`}>
-                      {client ? (client.nom || client.name) : 'Client inconnu'}
-                    </p>
-                    <p className={`text-[10px] mt-0.5 ${textSecondary}`}>
-                      {jours > 0 ? `Envoyé il y a ${jours}j` : 'Envoyé aujourd\'hui'}
-                    </p>
-                  </div>
-                  <div className="text-right flex-shrink-0">
-                    <p className={`text-xs font-semibold ${textPrimary}`}>
-                      {formatMoney(d.total_ttc, modeDiscret)}
-                    </p>
-                    <div className="mt-1">
-                      <StatusBadge status={d.statut} isDark={isDark} />
-                    </div>
-                  </div>
+      if (size === 'full') {
+        // Flush accumulated thirds
+        if (currentThirds.length > 0) {
+          groups.push({ type: 'grid', widgets: [...currentThirds] });
+          currentThirds = [];
+        }
+        groups.push({ type: 'full', widget });
+      } else if (size === 'half') {
+        // Flush accumulated thirds
+        if (currentThirds.length > 0) {
+          groups.push({ type: 'grid', widgets: [...currentThirds] });
+          currentThirds = [];
+        }
+        groups.push({ type: 'half', widget });
+      } else {
+        currentThirds.push(widget);
+      }
+    });
+
+    // Flush remaining thirds
+    if (currentThirds.length > 0) {
+      groups.push({ type: 'grid', widgets: [...currentThirds] });
+    }
+
+    return groups;
+  }, [visibleWidgets]);
+
+  const content = (
+    <div className="space-y-6">
+      {/* Collect half widgets to render in pairs */}
+      {(() => {
+        const elements = [];
+        let halfBuffer = [];
+
+        groupedWidgets.forEach((group, gi) => {
+          if (group.type === 'full') {
+            // Flush half buffer
+            if (halfBuffer.length > 0) {
+              elements.push(
+                <div key={`half-group-${gi}`} className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  {halfBuffer.map(widget => (
+                    <SortableWidget
+                      key={widget.id}
+                      id={widget.id}
+                      isEditMode={isEditMode}
+                      isDark={isDark}
+                      onRemove={onToggleWidget}
+                    >
+                      <WidgetRenderer widgetId={widget.id} widgetProps={widgetProps} />
+                    </SortableWidget>
+                  ))}
                 </div>
               );
-            })
-          ) : (
-            <p className={`text-xs ${textSecondary}`}>Aucun devis</p>
-          )}
-        </DashboardCard>
+              halfBuffer = [];
+            }
 
-        {/* 2. Chantiers actifs */}
-        <DashboardCard
-          isDark={isDark}
-          title="Chantiers actifs"
-          icon={Briefcase}
-          couleur={couleur}
-          onViewAll={() => setPage('chantiers')}
-        >
-          {activeChantiers.length > 0 ? (
-            activeChantiers.map((c) => {
-              const client = clients.find((cl) => cl.id === c.client_id);
-              const progress = c.avancement || 0;
+            elements.push(
+              <SortableWidget
+                key={group.widget.id}
+                id={group.widget.id}
+                isEditMode={isEditMode}
+                isDark={isDark}
+                onRemove={onToggleWidget}
+              >
+                <WidgetRenderer widgetId={group.widget.id} widgetProps={widgetProps} />
+              </SortableWidget>
+            );
+          } else if (group.type === 'half') {
+            halfBuffer.push(group.widget);
+          } else if (group.type === 'grid') {
+            // Flush half buffer
+            if (halfBuffer.length > 0) {
+              elements.push(
+                <div key={`half-group-${gi}`} className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  {halfBuffer.map(widget => (
+                    <SortableWidget
+                      key={widget.id}
+                      id={widget.id}
+                      isEditMode={isEditMode}
+                      isDark={isDark}
+                      onRemove={onToggleWidget}
+                    >
+                      <WidgetRenderer widgetId={widget.id} widgetProps={widgetProps} />
+                    </SortableWidget>
+                  ))}
+                </div>
+              );
+              halfBuffer = [];
+            }
 
-              return (
-                <div
-                  key={c.id}
-                  className={`pb-3 border-b last:border-b-0 last:pb-0 ${
-                    isDark ? 'border-slate-700' : 'border-slate-100'
-                  }`}
-                >
-                  <div className="flex items-start justify-between mb-2">
-                    <div className="flex-1 min-w-0">
-                      <p className={`text-xs font-medium truncate ${textPrimary}`}>
-                        {c.nom || c.name || 'Chantier'}
-                      </p>
-                      <p className={`text-[10px] mt-0.5 ${textSecondary}`}>
-                        {client ? (client.nom || client.name) : 'Pas de client'}
-                      </p>
-                    </div>
-                    <span className={`text-xs font-semibold ml-2 flex-shrink-0 ${textPrimary}`}>
-                      {progress}
-                      %
-                    </span>
-                  </div>
-                  <div
-                    className={`w-full h-2 rounded-full overflow-hidden ${
-                      isDark ? 'bg-slate-700' : 'bg-slate-200'
-                    }`}
+            elements.push(
+              <div key={`grid-${gi}`} className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                {group.widgets.map(widget => (
+                  <SortableWidget
+                    key={widget.id}
+                    id={widget.id}
+                    isEditMode={isEditMode}
+                    isDark={isDark}
+                    onRemove={onToggleWidget}
                   >
-                    <div
-                      className="h-full rounded-full transition-all"
-                      style={{
-                        width: `${Math.min(progress, 100)}%`,
-                        backgroundColor: couleur,
-                      }}
-                    />
-                  </div>
-                </div>
-              );
-            })
-          ) : (
-            <p className={`text-xs ${textSecondary}`}>Aucun chantier actif</p>
-          )}
-        </DashboardCard>
+                    <WidgetRenderer widgetId={widget.id} widgetProps={widgetProps} />
+                  </SortableWidget>
+                ))}
+              </div>
+            );
+          }
+        });
 
-        {/* 3. Trésorerie */}
-        <DashboardCard
-          isDark={isDark}
-          title="Trésorerie"
-          icon={TrendingUp}
-          couleur={couleur}
-          onViewAll={() => setPage('finances')}
-        >
-          <div className="space-y-3">
-            <div className={`p-3 rounded-lg ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
-              <p className={`text-[10px] font-medium ${textSecondary}`}>
-                À encaisser
-              </p>
-              <p className={`text-sm font-bold mt-1 ${textPrimary}`}>
-                {formatMoney(aEncaisser, modeDiscret)}
-              </p>
-            </div>
-            <div className={`p-3 rounded-lg ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
-              <p className={`text-[10px] font-medium ${textSecondary}`}>
-                CA ce mois
-              </p>
-              <p className={`text-sm font-bold mt-1 ${textPrimary}`}>
-                {formatMoney(caMois, modeDiscret)}
-              </p>
-            </div>
-            <div className={`p-3 rounded-lg ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
-              <p className={`text-[10px] font-medium ${textSecondary}`}>
-                CA prévisionnel
-              </p>
-              <p className={`text-sm font-bold mt-1 ${textPrimary}`}>
-                {formatMoney(caPrev, modeDiscret)}
-              </p>
-            </div>
-          </div>
-        </DashboardCard>
-
-        {/* 4. Activité récente */}
-        <DashboardCard
-          isDark={isDark}
-          title="Activité récente"
-          icon={Activity}
-          couleur={couleur}
-          onViewAll={() => setPage('activity')}
-        >
-          {recentActivities.length > 0 ? (
-            recentActivities.map((activity, idx) => {
-              // eslint-disable-next-line no-unused-vars
-              const ActivityIcon = activity.icon || Activity;
-
-              return (
-                <div
-                  key={activity.id || idx}
-                  className={`flex items-start gap-3 pb-3 border-b last:border-b-0 last:pb-0 ${
-                    isDark ? 'border-slate-700' : 'border-slate-100'
-                  }`}
+        // Flush remaining halves
+        if (halfBuffer.length > 0) {
+          elements.push(
+            <div key="half-group-final" className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              {halfBuffer.map(widget => (
+                <SortableWidget
+                  key={widget.id}
+                  id={widget.id}
+                  isEditMode={isEditMode}
+                  isDark={isDark}
+                  onRemove={onToggleWidget}
                 >
-                  <ActivityIcon
-                    size={14}
-                    className="mt-0.5 flex-shrink-0"
-                    style={{ color: couleur }}
-                  />
-                  <div className="flex-1 min-w-0">
-                    <p className={`text-xs font-medium ${textPrimary}`}>
-                      {activity.title}
-                    </p>
-                    {activity.subtitle && (
-                      <p className={`text-[10px] mt-0.5 truncate ${textSecondary}`}>
-                        {activity.subtitle}
-                      </p>
-                    )}
-                    <p className={`text-[10px] mt-1 ${textSecondary}`}>
-                      {activity.time || 'Récent'}
-                    </p>
-                  </div>
-                </div>
-              );
-            })
-          ) : (
-            <p className={`text-xs ${textSecondary}`}>Aucune activité</p>
-          )}
-        </DashboardCard>
-      </div>
+                  <WidgetRenderer widgetId={widget.id} widgetProps={widgetProps} />
+                </SortableWidget>
+              ))}
+            </div>
+          );
+        }
+
+        return elements;
+      })()}
     </div>
   );
+
+  if (isEditMode) {
+    return (
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext items={widgetIds} strategy={rectSortingStrategy}>
+          {content}
+        </SortableContext>
+      </DndContext>
+    );
+  }
+
+  return content;
 }
