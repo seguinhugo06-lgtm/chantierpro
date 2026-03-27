@@ -9,12 +9,11 @@ import FormError from './ui/FormError';
 import AuditTimeline from './audit/AuditTimeline';
 import { getEntityHistory, getEntitiesHistory } from '../lib/auditService';
 import supabase, { isDemo } from '../supabaseClient';
+import { generatePortalToken, sendPortalInvite } from '../services/portalService';
 import { CLIENT_TYPE_COLORS, CLIENT_STATUS_LABELS, CLIENT_STATUS_COLORS, CLIENT_TYPES, DEVIS_EN_ATTENTE } from '../lib/constants';
-import { CLIENT_SCORE_COLORS } from '../constants/colors';
 import { formatClientName } from '../lib/formatters';
 import { usePermissions } from '../hooks/usePermissions';
 import { ReadOnlyBanner } from './ui/PermissionGate';
-import TabBar from './ui/TabBar';
 
 // Skeleton loader for client cards
 function ClientSkeleton({ isDark, count = 6 }) {
@@ -71,7 +70,7 @@ function HighlightText({ text, query, className = '' }) {
   );
 }
 
-export default function Clients({ clients, setClients, updateClient, deleteClient: deleteClientProp, devis, chantiers, echanges = [], onSubmit, couleur, setPage, setSelectedChantier, setSelectedDevis, isDark, createMode, setCreateMode, modeDiscret, memos = [], addMemo, updateMemo, deleteMemo, toggleMemo, onImportClients }) {
+export default function Clients({ clients, setClients, updateClient, deleteClient: deleteClientProp, devis, chantiers, echanges = [], onSubmit, couleur, setPage, setSelectedChantier, setSelectedDevis, isDark, createMode, setCreateMode, modeDiscret, memos = [], addMemo, updateMemo, deleteMemo, toggleMemo, onImportClients, entreprise }) {
   const { confirm } = useConfirm();
   const { showToast } = useToast();
   const { errors, validate, validateAll, clearErrors, clearFieldError } = useFormValidation(clientSchema);
@@ -111,7 +110,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 300);
   const [activeTab, setActiveTab] = useState('historique');
-  const [form, setForm] = useState({ nom: '', prenom: '', entreprise: '', email: '', telephone: '', adresse: '', notes: '', categorie: '', siret: '', typeLogement: '', source: '' });
+  const [form, setForm] = useState({ nom: '', prenom: '', entreprise: '', email: '', telephone: '', adresse: '', notes: '', categorie: '' });
   const [sortBy, setSortBy] = useState('recent'); // recent, name, ca, activite
   const [sortDir, setSortDir] = useState('desc'); // 'asc' | 'desc'
   const [filterCategorie, setFilterCategorie] = useState('');
@@ -121,8 +120,6 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
   const [selectedEchange, setSelectedEchange] = useState(null); // P1.1: échange detail drawer
   const [showTypePicker, setShowTypePicker] = useState(false); // P1.2: custom type picker (filter)
   const [showFormTypePicker, setShowFormTypePicker] = useState(false); // P1.2: custom type picker (form)
-  const [historyFilter, setHistoryFilter] = useState('tout'); // Historique filter
-  const [showAdvanced, setShowAdvanced] = useState(false); // Form advanced section
   const [duplicateDismissed, setDuplicateDismissed] = useState(() => localStorage.getItem('clientDuplicateDismissed') === 'true');
 
   // Duplicate detection for form fields (telephone, email, nom)
@@ -137,7 +134,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
         if (selectedEchange) { setSelectedEchange(null); }
         else if (showTypePicker) { setShowTypePicker(false); }
         else if (showFormTypePicker) { setShowFormTypePicker(false); }
-        else if (show) { setShow(false); setEditId(null); setForm({ nom: '', prenom: '', entreprise: '', email: '', telephone: '', adresse: '', notes: '', categorie: '', siret: '', typeLogement: '', source: '' }); clearErrors(); clearDupes(); }
+        else if (show) { setShow(false); setEditId(null); setForm({ nom: '', prenom: '', entreprise: '', email: '', telephone: '', adresse: '', notes: '', categorie: '' }); clearErrors(); clearDupes(); }
         else if (viewId) { setViewId(null); }
         else if (showQuickModal) { setShowQuickModal(false); }
       }
@@ -182,42 +179,6 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
   const getClientStats = (id) => {
     return clientStatsMap.get(id) || { devis: 0, factures: 0, ca: 0, chantiers: 0, chantiersEnCours: 0, chantiersActifs: 0, devisActifs: 0 };
   };
-
-  // Scoring client automatique
-  const clientScores = useMemo(() => {
-    const maxCA = Math.max(1, ...clients.map(c => {
-      const ca = devis.filter(d => d.client_id === c.id && ['signe', 'facture'].includes(d.statut))
-        .reduce((s, d) => s + (d.total_ttc || 0), 0);
-      return ca;
-    }));
-
-    return clients.map(c => {
-      const clientDevis = devis.filter(d => d.client_id === c.id);
-      const signes = clientDevis.filter(d => ['signe', 'facture'].includes(d.statut));
-      const ca = signes.reduce((s, d) => s + (d.total_ttc || 0), 0);
-      const nbChantiers = chantiers.filter(ch => ch.client_id === c.id).length;
-      const lastDevis = clientDevis.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0))[0];
-      const joursSansActivite = lastDevis ? Math.round((new Date() - new Date(lastDevis.date)) / 86400000) : 999;
-      const anciennete = c.created_at ? Math.round((new Date() - new Date(c.created_at)) / 86400000) : 0;
-
-      // Score 0-100
-      const scoreCa = Math.min(30, (ca / maxCA) * 30);
-      const scoreConversion = clientDevis.length > 0 ? (signes.length / clientDevis.length) * 25 : 0;
-      const scoreFraicheur = Math.max(0, 20 - (joursSansActivite / 30) * 10);
-      const scoreChantiers = Math.min(15, nbChantiers * 5);
-      const scoreAnciennete = Math.min(10, anciennete / 365 * 10);
-      const score = Math.round(scoreCa + scoreConversion + scoreFraicheur + scoreChantiers + scoreAnciennete);
-
-      let classification = 'nouveau';
-      if (anciennete < 30) classification = 'nouveau';
-      else if (score >= 80) classification = 'vip';
-      else if (score >= 50) classification = 'regulier';
-      else if (score >= 20) classification = 'occasionnel';
-      else classification = 'dormant';
-
-      return { clientId: c.id, score, classification, ca, joursSansActivite };
-    });
-  }, [clients, devis, chantiers]);
 
   const getClientStatus = (clientId) => {
     const s = getClientStats(clientId);
@@ -362,7 +323,6 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
   };
 
   // In production, filter out test clients from the main list
-  // eslint-disable-next-line no-undef
   const isProduction = typeof __DEV__ !== 'undefined' ? !__DEV__ : (import.meta.env?.PROD ?? true);
   const displayClients = useMemo(() => {
     if (isProduction) return clients.filter(c => !isTestClient(c));
@@ -473,7 +433,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
       return;
     }
     setShow(false);
-    setForm({ nom: '', prenom: '', entreprise: '', email: '', telephone: '', adresse: '', notes: '', categorie: '', siret: '', typeLogement: '', source: '' });
+    setForm({ nom: '', prenom: '', entreprise: '', email: '', telephone: '', adresse: '', notes: '', categorie: '' });
     clearErrors();
     clearDupes();
     showToast(wasEditing ? 'Client modifié avec succès' : 'Client créé avec succès', 'success');
@@ -506,7 +466,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
   };
 
   const startEdit = (client) => {
-    setForm({ nom: client.nom || '', prenom: client.prenom || '', entreprise: client.entreprise || '', email: client.email || '', telephone: client.telephone || '', adresse: client.adresse || '', notes: client.notes || '', categorie: client.categorie || '', siret: client.siret || '', typeLogement: client.typeLogement || '', source: client.source || '' });
+    setForm({ nom: client.nom || '', prenom: client.prenom || '', entreprise: client.entreprise || '', email: client.email || '', telephone: client.telephone || '', adresse: client.adresse || '', notes: client.notes || '', categorie: client.categorie || '' });
     clearErrors();
     setEditId(client.id);
     setViewId(null); // Close detail view to show edit form
@@ -515,20 +475,6 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
   const openGPS = (adresse) => { if (!adresse) return; window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(adresse)}`, '_blank'); };
   const callPhone = (tel) => { if (!tel) return; window.location.href = `tel:${tel.replace(/\s/g, '')}`; };
   const sendWhatsApp = (tel, nom) => { if (!tel) return; const phone = tel.replace(/\s/g, '').replace(/^0/, '33'); window.open(`https://wa.me/${phone}?text=${encodeURIComponent(`Bonjour ${nom || ''},`)}`, '_blank'); };
-
-  // Log échange automatique dans localStorage
-  const logEchange = (type, client) => {
-    const logs = JSON.parse(localStorage.getItem('cp_echanges') || '[]');
-    logs.unshift({
-      id: Date.now(),
-      clientId: client.id,
-      type, // 'appel', 'whatsapp', 'sms', 'email'
-      date: new Date().toISOString(),
-      note: '',
-    });
-    localStorage.setItem('cp_echanges', JSON.stringify(logs.slice(0, 200)));
-  };
-
   const handleDeleteClient = async (id) => {
     const client = clients.find(c => c.id === id);
     const stats = getClientStats(id);
@@ -585,7 +531,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
         {/* Sticky Header */}
         <div className={`sticky top-0 z-20 -mx-4 px-4 py-3 backdrop-blur-md ${isDark ? 'bg-slate-900/80' : 'bg-white/80'} border-b ${isDark ? 'border-slate-700/50' : 'border-slate-200/50'}`}>
           <div className="flex items-center gap-2 sm:gap-3">
-            <button onClick={() => setViewId(null)} aria-label="Retour" className={`p-2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
+            <button onClick={() => setViewId(null)} className={`p-2 min-w-[40px] min-h-[40px] flex items-center justify-center rounded-xl transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
               <ArrowLeft size={20} className={textPrimary} />
             </button>
             <div className="flex-1 min-w-0">
@@ -594,7 +540,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                 {client.entreprise && <span className={`${textMuted} flex items-center gap-1 text-xs`}><Building2 size={12} />{client.entreprise}</span>}
                 {/* Status badge */}
                 <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${isDark ? clientStatusColor.darkBg + ' ' + clientStatusColor.darkText : clientStatusColor.bg + ' ' + clientStatusColor.text}`}>
-                  <span className={`w-1.5 h-1.5 rounded-full ${clientStatusColor.dot}`} aria-hidden="true" />
+                  <span className={`w-1.5 h-1.5 rounded-full ${clientStatusColor.dot}`} />
                   {CLIENT_STATUS_LABELS[clientStatus]}
                 </span>
                 {/* Type badge */}
@@ -606,10 +552,10 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
               </div>
             </div>
             <div className="flex items-center gap-1.5">
-              <button onClick={() => startEdit(client)} className="px-3 py-2 text-sm rounded-xl min-h-[44px] flex items-center justify-center gap-1.5 hover:shadow-md transition-all" style={{ background: `${couleur}15`, color: couleur }}>
+              <button onClick={() => startEdit(client)} className="px-3 py-2 text-sm rounded-xl min-h-[40px] flex items-center justify-center gap-1.5 hover:shadow-md transition-all" style={{ background: `${couleur}15`, color: couleur }}>
                 <Edit3 size={14} /><span className="hidden sm:inline">Modifier</span>
               </button>
-              <button onClick={() => handleDeleteClient(client.id)} aria-label="Supprimer ce client" className={`p-2 rounded-xl min-h-[44px] min-w-[44px] flex items-center justify-center transition-all ${isDark ? 'hover:bg-red-900/30 text-slate-400 hover:text-red-400' : 'hover:bg-red-50 text-slate-400 hover:text-red-500'}`} title="Supprimer">
+              <button onClick={() => handleDeleteClient(client.id)} className={`p-2 rounded-xl min-h-[40px] min-w-[40px] flex items-center justify-center transition-all ${isDark ? 'hover:bg-red-900/30 text-slate-400 hover:text-red-400' : 'hover:bg-red-50 text-slate-400 hover:text-red-500'}`} title="Supprimer">
                 <Trash2 size={14} />
               </button>
             </div>
@@ -623,7 +569,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
             {/* GPS first on mobile via order */}
             <button
               onClick={() => client.adresse ? openGPS(client.adresse) : startEdit(client)}
-              className={`flex flex-col items-center justify-center gap-1.5 py-3 sm:py-2 rounded-xl min-h-[44px] transition-all shadow-md hover:shadow-lg order-first sm:order-last ${client.adresse ? 'text-white' : ''}`}
+              className={`flex flex-col items-center justify-center gap-1.5 py-3 sm:py-4 rounded-xl min-h-[44px] transition-all shadow-md hover:shadow-lg order-first sm:order-last ${client.adresse ? 'text-white' : ''}`}
               style={client.adresse
                 ? { background: 'linear-gradient(135deg, #f97316, #ea580c)' }
                 : { background: isDark ? '#1e293b' : '#f1f5f9', border: '1px dashed', borderColor: isDark ? '#475569' : '#cbd5e1' }
@@ -637,29 +583,29 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
               ) : (
                 <>
                   <Plus size={18} className={isDark ? 'text-slate-400' : 'text-slate-500'} />
-                  <span className={`text-[11px] font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Ajouter adresse</span>
+                  <span className={`text-[10px] font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Ajouter adresse</span>
                 </>
               )}
             </button>
             <button
-              onClick={() => { if (client.telephone) { callPhone(client.telephone); logEchange('appel', client); } }}
+              onClick={() => client.telephone ? callPhone(client.telephone) : null}
               disabled={!client.telephone}
-              className={`flex flex-col items-center justify-center gap-1.5 py-3 sm:py-2 rounded-xl min-h-[44px] transition-all text-white shadow-md ${client.telephone ? 'hover:shadow-lg cursor-pointer' : 'opacity-40 cursor-not-allowed'}`}
+              className={`flex flex-col items-center justify-center gap-1.5 py-3 sm:py-4 rounded-xl min-h-[44px] transition-all text-white shadow-md ${client.telephone ? 'hover:shadow-lg cursor-pointer' : 'opacity-40 cursor-not-allowed'}`}
               style={{ background: 'linear-gradient(135deg, #3b82f6, #2563eb)' }}
               title={!client.telephone ? 'Aucun numéro renseigné' : 'Appeler'}
             >
-              <Phone size={20} className="sm:w-4 sm:h-4" />
-              <span className="text-xs sm:text-sm font-medium">Appeler</span>
+              <Phone size={20} />
+              <span className="text-xs font-medium">Appeler</span>
             </button>
             <button
-              onClick={() => { if (client.telephone) { sendWhatsApp(client.telephone, client.prenom); logEchange('whatsapp', client); } }}
+              onClick={() => client.telephone ? sendWhatsApp(client.telephone, client.prenom) : null}
               disabled={!client.telephone}
-              className={`flex flex-col items-center justify-center gap-1.5 py-3 sm:py-2 rounded-xl min-h-[44px] transition-all text-white shadow-md ${client.telephone ? 'hover:shadow-lg cursor-pointer' : 'opacity-40 cursor-not-allowed'}`}
+              className={`flex flex-col items-center justify-center gap-1.5 py-3 sm:py-4 rounded-xl min-h-[44px] transition-all text-white shadow-md ${client.telephone ? 'hover:shadow-lg cursor-pointer' : 'opacity-40 cursor-not-allowed'}`}
               style={{ background: 'linear-gradient(135deg, #22c55e, #16a34a)' }}
               title={!client.telephone ? 'Aucun numéro renseigné' : 'WhatsApp'}
             >
-              <MessageCircle size={20} className="sm:w-4 sm:h-4" />
-              <span className="text-xs sm:text-sm font-medium">WhatsApp</span>
+              <MessageCircle size={20} />
+              <span className="text-xs font-medium">WhatsApp</span>
             </button>
           </div>
 
@@ -802,10 +748,55 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
             <Home size={14} /> Nouveau chantier
           </button>
           <button
-            onClick={() => {
-              if (setPage) {
+            onClick={async () => {
+              if (!setPage) return;
+
+              // Mode demo : navigation directe
+              if (isDemo || !supabase) {
                 localStorage.setItem('cp_portal_client_id', client.id);
                 setPage('client-portal');
+                return;
+              }
+
+              // Générer un token portail
+              const tokenData = await generatePortalToken(supabase, {
+                clientId: client.id,
+                entrepriseId: entreprise?.id,
+              });
+
+              if (!tokenData) {
+                // Fallback navigation interne si la génération échoue
+                localStorage.setItem('cp_portal_client_id', client.id);
+                setPage('client-portal');
+                return;
+              }
+
+              const portalUrl = `${window.location.origin}/?portal=${tokenData.token}`;
+
+              // Copier dans le presse-papier
+              try {
+                await navigator.clipboard?.writeText(portalUrl);
+                showToast(`Lien portail copié ! Envoyez-le à ${client.prenom || client.nom}`, 'success');
+              } catch {
+                showToast('Lien portail généré', 'success');
+              }
+
+              // Si le client a un email, proposer l'envoi
+              if (client.email) {
+                const send = window.confirm(`Envoyer le lien par email à ${client.email} ?`);
+                if (send) {
+                  const sent = await sendPortalInvite(supabase, {
+                    clientEmail: client.email,
+                    clientName: client.prenom || client.nom,
+                    portalUrl,
+                    entrepriseName: entreprise?.nom || 'BatiGesti',
+                  });
+                  if (sent) {
+                    showToast('Invitation envoyée par email', 'success');
+                  } else {
+                    showToast('Erreur lors de l\'envoi de l\'invitation', 'error');
+                  }
+                }
               }
             }}
             className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium min-h-[40px] border transition-all hover:shadow-sm ${isDark ? 'border-slate-600 text-slate-300 hover:bg-slate-700' : 'border-slate-300 text-slate-700 hover:bg-slate-50'}`}
@@ -834,38 +825,49 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                 <div className="flex items-center justify-center gap-1.5 mb-1">
                   <Icon size={14} style={{ color: kpi.color }} />
                 </div>
-                <p className={`text-lg font-bold animate-count-up ${kpi.value === 0 || kpi.value === '0 €' ? textMuted : ''}`} style={kpi.value !== 0 && kpi.value !== '0 €' ? { color: kpi.color } : {}}>{kpi.value}</p>
-                <p className={`text-[11px] ${textMuted}`}>{kpi.label}</p>
-                {kpi.sub && <p className={`text-[11px] font-medium mt-0.5`} style={{ color: kpi.color }}>{kpi.sub}</p>}
+                <p className={`text-lg font-bold ${kpi.value === 0 || kpi.value === '0 €' ? textMuted : ''}`} style={kpi.value !== 0 && kpi.value !== '0 €' ? { color: kpi.color } : {}}>{kpi.value}</p>
+                <p className={`text-[10px] ${textMuted}`}>{kpi.label}</p>
+                {kpi.sub && <p className={`text-[10px] font-medium mt-0.5`} style={{ color: kpi.color }}>{kpi.sub}</p>}
               </button>
             );
           })}
         </div>
 
         {/* Tabs with badges */}
-        {(() => {
-          const photoCount = clientChantiers.reduce((sum, ch) => sum + (ch.photos?.length || 0), 0);
-          const echangeCount = (echanges || []).filter(e => e.client_id === client.id).length;
-          const memoCount = (memos || []).filter(m => m.client_id === client.id).length;
-          return (
-            <TabBar
-              tabs={[
-                { key: 'historique', icon: History, label: 'Historique' },
-                { key: 'chantiers', icon: Home, label: 'Chantiers', badge: stats.chantiers },
-                { key: 'documents', icon: FileText, label: 'Documents', badge: stats.devis + stats.factures },
-                { key: 'echanges', icon: MessageSquare, label: 'Échanges', badge: echangeCount },
-                { key: 'photos', icon: Camera, label: 'Photos', badge: photoCount },
-                { key: 'memos', icon: ClipboardList, label: 'Tâches', badge: memoCount },
-                { key: 'activite', icon: Clock, label: 'Activité' },
-              ]}
-              activeTab={activeTab}
-              onTabChange={setActiveTab}
-              maxVisible={5}
-              isDark={isDark}
-              couleur={couleur}
-            />
-          );
-        })()}
+        <div className={`flex gap-1 border-b pb-2 overflow-x-auto scrollbar-none ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+          {(() => {
+            // Compute badge counts
+            const photoCount = clientChantiers.reduce((sum, ch) => sum + (ch.photos?.length || 0), 0);
+            const echangeCount = (echanges || []).filter(e => e.client_id === client.id).length;
+            const memoCount = (memos || []).filter(m => m.client_id === client.id).length;
+
+            const tabs = [
+              { key: 'historique', icon: <History size={14} />, label: 'Historique', badge: 0 },
+              { key: 'chantiers', icon: <Home size={14} />, label: 'Chantiers', badge: stats.chantiers },
+              { key: 'documents', icon: <FileText size={14} />, label: 'Documents', badge: stats.devis + stats.factures },
+              { key: 'echanges', icon: <MessageSquare size={14} />, label: 'Échanges', badge: echangeCount },
+              { key: 'photos', icon: <Camera size={14} />, label: 'Photos', badge: photoCount },
+              { key: 'memos', icon: <ClipboardList size={14} />, label: 'Tâches', badge: memoCount },
+              { key: 'activite', icon: <Clock size={14} />, label: 'Activité', badge: 0 },
+            ];
+
+            return tabs.map(tab => (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className={`px-3 py-2 rounded-t-lg text-sm font-medium whitespace-nowrap min-h-[40px] flex items-center gap-1.5 transition-colors ${activeTab === tab.key ? (isDark ? 'bg-slate-800 border border-b-slate-800 border-slate-700 text-white' : 'bg-white border border-b-white border-slate-200') + ' -mb-[3px]' : (isDark ? 'text-slate-400 hover:text-slate-300' : 'text-slate-500 hover:text-slate-700')}`}
+              >
+                {tab.icon}
+                <span className="hidden sm:inline">{tab.label}</span>
+                {tab.badge > 0 && (
+                  <span className={`ml-0.5 min-w-[18px] h-[18px] rounded-full text-[10px] font-bold flex items-center justify-center px-1 ${activeTab === tab.key ? 'text-white' : isDark ? 'bg-slate-600 text-slate-300' : 'bg-slate-200 text-slate-600'}`} style={activeTab === tab.key ? { background: couleur } : {}}>
+                    {tab.badge}
+                  </span>
+                )}
+              </button>
+            ));
+          })()}
+        </div>
 
         {activeTab === 'historique' && (() => {
           const timeline = [];
@@ -891,26 +893,6 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
           }));
           timeline.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
 
-          // Filter timeline by historyFilter
-          const filteredTimeline = historyFilter === 'tout'
-            ? timeline
-            : timeline.filter(item => {
-                if (historyFilter === 'devis') return item.type === 'devis';
-                if (historyFilter === 'factures') return item.type === 'facture';
-                if (historyFilter === 'chantiers') return item.type === 'chantier';
-                return true;
-              });
-
-          // Lifetime value stats
-          const nbDevis = clientDevis.filter(d => d.type === 'devis').length;
-          const nbFactures = clientDevis.filter(d => d.type === 'facture').length;
-          const caTotal = clientDevis
-            .filter(d => d.type === 'facture' && d.statut === 'payee')
-            .reduce((sum, d) => sum + (d.total_ttc || d.montant_ttc || (d.total_ht ? d.total_ht * 1.2 : 0)), 0);
-          const dateCreation = client.created_at
-            ? new Date(client.created_at).toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' })
-            : '—';
-
           const statusLabel = (s) => ({
             brouillon: 'Brouillon', envoye: 'Envoyé', vu: 'Vu', accepte: 'Signé',
             refuse: 'Refusé', payee: 'Payée', facturee: 'Facturé',
@@ -929,29 +911,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
 
           return (
             <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-3 sm:p-5`}>
-              {/* Lifetime value summary */}
-              <div className={`text-xs mb-3 p-2 rounded-lg ${isDark ? 'bg-slate-700/50 text-slate-300' : 'bg-slate-50 text-slate-600'}`}>
-                Valeur client : <strong>{formatMoney(caTotal)}</strong> · {nbDevis} devis · {nbFactures} facture{nbFactures > 1 ? 's' : ''} · Depuis {dateCreation}
-              </div>
-
-              {/* Filter chips */}
-              <div className="flex gap-2 mb-3 overflow-x-auto">
-                {['Tout', 'Devis', 'Factures', 'Chantiers'].map(f => (
-                  <button key={f}
-                    onClick={() => setHistoryFilter(f.toLowerCase())}
-                    className={`text-xs px-3 py-1 rounded-full whitespace-nowrap ${
-                      historyFilter === f.toLowerCase()
-                        ? 'text-white'
-                        : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'
-                    }`}
-                    style={historyFilter === f.toLowerCase() ? { background: couleur } : {}}
-                  >
-                    {f}
-                  </button>
-                ))}
-              </div>
-
-              {filteredTimeline.length === 0 ? (
+              {timeline.length === 0 ? (
                 <div className="text-center py-10">
                   <div className={`w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
                     <History size={28} className={isDark ? 'text-slate-500' : 'text-slate-400'} />
@@ -961,7 +921,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {filteredTimeline.map(item => (
+                  {timeline.map(item => (
                     <button
                       key={item.id}
                       onClick={item.onClick}
@@ -1025,9 +985,8 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                 </div>
                 <div className="space-y-2">
                   {clientChantiers.map(ch => (
-                    <div key={ch.id} role="button" tabIndex={0} onClick={() => { if (setSelectedChantier) setSelectedChantier(ch.id); if (setPage) setPage('chantiers'); }} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (setSelectedChantier) setSelectedChantier(ch.id); if (setPage) setPage('chantiers'); } }} className={`flex items-center gap-4 p-3 rounded-xl cursor-pointer transition-all hover:shadow-md hover:-translate-y-0.5 ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-50 hover:bg-slate-100'}`}>
-                      <span className={`w-3 h-3 rounded-full ${ch.statut === 'en_cours' ? 'bg-emerald-500' : ch.statut === 'termine' ? 'bg-slate-400' : 'bg-blue-500'}`} aria-hidden="true"></span>
-                      <span className="sr-only">{ch.statut === 'en_cours' ? 'En cours' : ch.statut === 'termine' ? 'Termine' : 'Prospect'}</span>
+                    <div key={ch.id} onClick={() => { if (setSelectedChantier) setSelectedChantier(ch.id); if (setPage) setPage('chantiers'); }} className={`flex items-center gap-4 p-3 rounded-xl cursor-pointer transition-all hover:shadow-md hover:-translate-y-0.5 ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-50 hover:bg-slate-100'}`}>
+                      <span className={`w-3 h-3 rounded-full ${ch.statut === 'en_cours' ? 'bg-emerald-500' : ch.statut === 'termine' ? 'bg-slate-400' : 'bg-blue-500'}`}></span>
                       <div className="flex-1">
                         <p className={`font-medium ${textPrimary}`}>{ch.nom}</p>
                         <p className={`text-xs ${textMuted}`}>{ch.statut === 'en_cours' ? 'En cours' : ch.statut === 'termine' ? 'Terminé' : 'Prospect'}</p>
@@ -1081,13 +1040,12 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                   {clientDevis.map(d => {
                     const StatusIcon = { brouillon: 'text-slate-400', envoye: 'text-blue-500', accepte: 'text-emerald-500', payee: 'text-emerald-600', refuse: 'text-red-500' }[d.statut] || 'text-slate-400';
                     return (
-                      <div key={d.id} role="button" tabIndex={0} onClick={() => openDocument(d)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDocument(d); } }} className={`flex items-center gap-4 p-3 rounded-xl cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-50 hover:bg-slate-100'}`}>
+                      <div key={d.id} onClick={() => openDocument(d)} className={`flex items-center gap-4 p-3 rounded-xl cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-50 hover:bg-slate-100'}`}>
                         <FileText size={20} className={d.type === 'facture' ? 'text-purple-500' : 'text-blue-500'} />
                         <div className="flex-1">
                           <div className="flex items-center gap-2">
                             <p className={`font-medium ${textPrimary}`}>{d.numero}</p>
-                            <span className={`w-2 h-2 rounded-full ${StatusIcon.replace('text-', 'bg-')}`} aria-hidden="true"></span>
-                            <span className="sr-only">{d.statut}</span>
+                            <span className={`w-2 h-2 rounded-full ${StatusIcon.replace('text-', 'bg-')}`}></span>
                           </div>
                           <p className={`text-xs ${textMuted}`}>{new Date(d.date).toLocaleDateString('fr-FR')}</p>
                         </div>
@@ -1107,49 +1065,31 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
             {(() => {
               const clientEchanges = echanges.filter(e => e.client_id === client.id).sort((a, b) => new Date(b.date) - new Date(a.date));
 
-              // Local exchange logs from localStorage
-              const localLogs = JSON.parse(localStorage.getItem('cp_echanges') || '[]')
-                .filter(e => e.clientId === client.id);
-
-              // Merge: local logs as lightweight entries alongside real echanges
-              const allEchanges = [
-                ...clientEchanges.map(e => ({ ...e, source: 'db' })),
-                ...localLogs.map(l => ({
-                  id: l.id,
-                  client_id: l.clientId,
-                  type: l.type,
-                  date: l.date,
-                  objet: l.note || '',
-                  direction: 'out',
-                  source: 'local',
-                })),
-              ].sort((a, b) => new Date(b.date) - new Date(a.date));
-
-              // Quick action buttons for contacting — with logEchange
+              // Quick action buttons for contacting
               const contactButtons = (
                 <div className="flex gap-2 flex-wrap">
                   {client.telephone && (
                     <>
-                      <a href={`tel:${client.telephone.replace(/\s/g, '')}`} onClick={() => logEchange('appel', client)} className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-colors ${CHANNEL_CONFIG.appel.btnBg}`}>
+                      <a href={`tel:${client.telephone.replace(/\s/g, '')}`} className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-colors ${CHANNEL_CONFIG.appel.btnBg}`}>
                         <Phone size={14} /> Appeler
                       </a>
-                      <a href={`sms:${client.telephone.replace(/\s/g, '')}`} onClick={() => logEchange('sms', client)} className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-colors ${CHANNEL_CONFIG.sms.btnBg}`}>
+                      <a href={`sms:${client.telephone.replace(/\s/g, '')}`} className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-colors ${CHANNEL_CONFIG.sms.btnBg}`}>
                         <MessageCircle size={14} /> SMS
                       </a>
-                      <a href={`https://wa.me/${client.telephone.replace(/\s/g, '').replace(/^0/, '33')}`} onClick={() => logEchange('whatsapp', client)} target="_blank" rel="noopener noreferrer" className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-colors ${CHANNEL_CONFIG.whatsapp.btnBg}`}>
+                      <a href={`https://wa.me/${client.telephone.replace(/\s/g, '').replace(/^0/, '33')}`} target="_blank" rel="noopener noreferrer" className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-colors ${CHANNEL_CONFIG.whatsapp.btnBg}`}>
                         <MessageCircle size={14} /> WhatsApp
                       </a>
                     </>
                   )}
                   {client.email && (
-                    <a href={`mailto:${client.email}`} onClick={() => logEchange('email', client)} className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-colors ${CHANNEL_CONFIG.email.btnBg}`}>
+                    <a href={`mailto:${client.email}`} className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-colors ${CHANNEL_CONFIG.email.btnBg}`}>
                       <Mail size={14} /> Email
                     </a>
                   )}
                 </div>
               );
 
-              if (allEchanges.length === 0) return (
+              if (clientEchanges.length === 0) return (
                 <div className="text-center py-10">
                   <div className={`w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
                     <MessageSquare size={28} className={isDark ? 'text-slate-500' : 'text-slate-400'} />
@@ -1165,10 +1105,10 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
               return (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
-                    <p className={`text-sm font-medium ${textPrimary}`}>{allEchanges.length} échange{allEchanges.length > 1 ? 's' : ''}</p>
+                    <p className={`text-sm font-medium ${textPrimary}`}>{clientEchanges.length} échange{clientEchanges.length > 1 ? 's' : ''}</p>
                     {contactButtons}
                   </div>
-                  {allEchanges.map(e => {
+                  {clientEchanges.map(e => {
                     const channel = CHANNEL_CONFIG[e.type] || CHANNEL_CONFIG.email;
                     const ChannelIcon = channel.icon;
                     const dirIn = e.direction === 'in' || e.direction === 'entrant';
@@ -1189,7 +1129,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                             <div className="flex items-center gap-2 min-w-0">
                               <p className={`font-medium text-sm ${textPrimary}`}>{channel.label}</p>
                               {(dirIn || dirOut) && (
-                                <span className={`inline-flex items-center gap-0.5 text-[11px] px-1.5 py-0.5 rounded-full font-medium ${dirOut ? (isDark ? 'bg-blue-900/30 text-blue-300' : 'bg-blue-50 text-blue-600') : (isDark ? 'bg-amber-900/30 text-amber-300' : 'bg-amber-50 text-amber-600')}`}>
+                                <span className={`inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-full font-medium ${dirOut ? (isDark ? 'bg-blue-900/30 text-blue-300' : 'bg-blue-50 text-blue-600') : (isDark ? 'bg-amber-900/30 text-amber-300' : 'bg-amber-50 text-amber-600')}`}>
                                   {dirOut ? <><ArrowUpRight size={9} /> Envoyé</> : <><ArrowDownLeft size={9} /> Reçu</>}
                                 </span>
                               )}
@@ -1250,7 +1190,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                     <div className="flex items-center gap-2">
                       <p className={`font-semibold ${textPrimary}`}>{channel.label}</p>
                       {(dirIn || dirOut) && (
-                        <span className={`inline-flex items-center gap-0.5 text-[11px] px-1.5 py-0.5 rounded-full font-medium ${dirOut ? (isDark ? 'bg-blue-900/30 text-blue-300' : 'bg-blue-50 text-blue-600') : (isDark ? 'bg-amber-900/30 text-amber-300' : 'bg-amber-50 text-amber-600')}`}>
+                        <span className={`inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-full font-medium ${dirOut ? (isDark ? 'bg-blue-900/30 text-blue-300' : 'bg-blue-50 text-blue-600') : (isDark ? 'bg-amber-900/30 text-amber-300' : 'bg-amber-50 text-amber-600')}`}>
                           {dirOut ? <><ArrowUpRight size={9} /> Envoyé</> : <><ArrowDownLeft size={9} /> Reçu</>}
                         </span>
                       )}
@@ -1496,7 +1436,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                   )}
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3">
                     {allPhotos.map(p => (
-                      <div key={p.id} role="button" tabIndex={0} className="relative group cursor-pointer" onClick={() => { if (setSelectedChantier && p.chantierId) { setSelectedChantier(p.chantierId); setPage?.('chantiers'); } }} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (setSelectedChantier && p.chantierId) { setSelectedChantier(p.chantierId); setPage?.('chantiers'); } } }}>
+                      <div key={p.id} className="relative group cursor-pointer" onClick={() => { if (setSelectedChantier && p.chantierId) { setSelectedChantier(p.chantierId); setPage?.('chantiers'); } }}>
                         <img src={p.src} className="w-full h-24 object-cover rounded-xl" alt={`Photo du chantier ${p.chantierNom}`} onError={(e) => { e.target.style.display = 'none'; }} />
                         <p className={`text-xs ${textMuted} mt-1 truncate`}>{p.chantierNom}</p>
                       </div>
@@ -1515,7 +1455,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
   if (show) return (
     <div className="space-y-6">
       <div className="flex items-center gap-2 sm:gap-4">
-        <button onClick={() => { setShow(false); setEditId(null); setForm({ nom: '', prenom: '', entreprise: '', email: '', telephone: '', adresse: '', notes: '', categorie: '', siret: '', typeLogement: '', source: '' }); }} aria-label="Fermer le formulaire" className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
+        <button onClick={() => { setShow(false); setEditId(null); setForm({ nom: '', prenom: '', entreprise: '', email: '', telephone: '', adresse: '', notes: '', categorie: '' }); }} className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
           <ArrowLeft size={20} className={textPrimary} />
         </button>
         <h2 className={`text-2xl font-bold ${textPrimary}`}>{editId ? 'Modifier' : 'Nouveau'} client</h2>
@@ -1604,44 +1544,6 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
               </span>
             </div>
           </div>
-
-          {/* Section avancée collapsible */}
-          <div className="sm:col-span-2">
-            <button type="button" onClick={() => setShowAdvanced(!showAdvanced)} className={`flex items-center gap-2 w-full text-xs font-medium py-2 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-              <ChevronDown size={14} className={`transition-transform ${showAdvanced ? '' : '-rotate-90'}`} />
-              Informations avancées
-            </button>
-            {showAdvanced && (
-              <div className="space-y-3 pl-2 border-l-2" style={{ borderColor: `${couleur}30` }}>
-                <div>
-                  <label htmlFor="client-siret" className={`block text-sm font-medium mb-1 ${textPrimary}`}>SIRET</label>
-                  <input id="client-siret" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="XXX XXX XXX XXXXX" value={form.siret || ''} onChange={e => setForm(p => ({...p, siret: e.target.value}))} />
-                </div>
-                <div>
-                  <label htmlFor="client-typeLogement" className={`block text-sm font-medium mb-1 ${textPrimary}`}>Type de logement</label>
-                  <select id="client-typeLogement" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.typeLogement || ''} onChange={e => setForm(p => ({...p, typeLogement: e.target.value}))}>
-                    <option value="">Non spécifié</option>
-                    <option>Maison</option>
-                    <option>Appartement</option>
-                    <option>Commerce</option>
-                    <option>Bureau</option>
-                  </select>
-                </div>
-                <div>
-                  <label htmlFor="client-source" className={`block text-sm font-medium mb-1 ${textPrimary}`}>Source d&apos;acquisition</label>
-                  <select id="client-source" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.source || ''} onChange={e => setForm(p => ({...p, source: e.target.value}))}>
-                    <option value="">Non spécifié</option>
-                    <option>Bouche-à-oreille</option>
-                    <option>Site web</option>
-                    <option>Réseaux sociaux</option>
-                    <option>Pages Jaunes</option>
-                    <option>Recommandation</option>
-                    <option>Autre</option>
-                  </select>
-                </div>
-              </div>
-            )}
-          </div>
         </div>
         <div className={`flex justify-end gap-3 mt-6 pt-6 border-t ${isDark ? 'border-slate-700' : ''}`}>
           <button onClick={() => { setShow(false); setEditId(null); }} className={`px-4 py-2.5 rounded-xl flex items-center gap-1.5 min-h-[44px] transition-colors ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'}`}>
@@ -1657,7 +1559,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
 
   // Liste
   return (
-    <div className="space-y-4 sm:space-y-6 animate-page-enter">
+    <div className="space-y-3">
       {/* Quick Client Modal */}
       <QuickClientModal
         isOpen={showQuickModal}
@@ -1731,7 +1633,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
           {setPage && (
             <button
               onClick={() => setPage('dashboard')}
-              className={`p-2 rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}
+              className={`p-2 rounded-xl min-w-[40px] min-h-[40px] flex items-center justify-center transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}
               aria-label="Retour au tableau de bord"
             >
               <ArrowLeft size={20} />
@@ -1747,7 +1649,6 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
             <button
               onClick={onImportClients}
               className={`p-2 rounded-xl transition-all border ${isDark ? 'border-slate-600 text-slate-300 hover:bg-slate-700' : 'border-slate-300 text-slate-600 hover:bg-slate-50'}`}
-              aria-label="Importer des clients (CSV)"
               title="Importer (CSV)"
             >
               <Upload size={16} />
@@ -1756,7 +1657,6 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
           {canPerform('client', 'create') && (
           <button
             onClick={() => setShowQuickModal(true)}
-            aria-label="Nouveau client"
             className="w-11 h-11 sm:w-auto sm:h-11 sm:px-4 text-white rounded-xl text-sm font-semibold flex items-center justify-center sm:gap-2 hover:opacity-90 hover:shadow-lg transition-all"
             style={{ background: couleur }}
           >
@@ -1803,9 +1703,9 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                   style={isActive ? { borderColor: couleur, '--tw-ring-color': couleur } : {}}
                   title={kpi.tooltip}
                 >
-                  <p className={`${kpi.key === 'top' ? 'text-xs' : 'text-base'} font-bold truncate leading-tight animate-count-up`} style={{ color: couleur }}>{kpi.value}</p>
-                  <p className={`text-[11px] ${textMuted} leading-tight`}>{kpi.label}</p>
-                  {kpi.sub && <p className={`text-[11px] font-medium`} style={{ color: couleur }}>{kpi.sub}</p>}
+                  <p className={`${kpi.key === 'top' ? 'text-xs' : 'text-base'} font-bold truncate leading-tight`} style={{ color: couleur }}>{kpi.value}</p>
+                  <p className={`text-[10px] ${textMuted} leading-tight`}>{kpi.label}</p>
+                  {kpi.sub && <p className={`text-[9px] font-medium`} style={{ color: couleur }}>{kpi.sub}</p>}
                 </button>
               );
             })}
@@ -1899,33 +1799,25 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
               className={`w-full pl-8 pr-8 py-2 border rounded-xl text-sm ${inputBg}`}
             />
             {search && (
-              <button onClick={() => setSearch('')} aria-label="Effacer la recherche" className={`absolute right-2 top-1/2 -translate-y-1/2 ${textMuted} hover:text-red-400`}>
+              <button onClick={() => setSearch('')} className={`absolute right-2 top-1/2 -translate-y-1/2 ${textMuted} hover:text-red-400`}>
                 <X size={14} />
               </button>
             )}
           </div>
-          {/* Filtered results counter */}
-          {(debouncedSearch || kpiFilter || filterCategorie || filterStatus) && (
-            <span className={`text-xs font-medium whitespace-nowrap ${textMuted}`}>
-              {filtered.length} client{filtered.length !== 1 ? 's' : ''}
-            </span>
-          )}
           {/* Grid/List toggle */}
           <div className={`flex rounded-lg border overflow-hidden ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
             <button
               onClick={() => setViewMode('grid')}
-              className={`p-2 min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors ${viewMode === 'grid' ? 'text-white' : isDark ? 'text-slate-400' : 'text-slate-500'}`}
+              className={`p-1.5 flex items-center justify-center transition-colors ${viewMode === 'grid' ? 'text-white' : isDark ? 'text-slate-400' : 'text-slate-500'}`}
               style={viewMode === 'grid' ? { background: couleur } : {}}
-              aria-label="Vue grille"
               title="Vue grille"
             >
               <LayoutGrid size={14} />
             </button>
             <button
               onClick={() => setViewMode('list')}
-              className={`p-2 min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors ${viewMode === 'list' ? 'text-white' : isDark ? 'text-slate-400' : 'text-slate-500'}`}
+              className={`p-1.5 flex items-center justify-center transition-colors ${viewMode === 'list' ? 'text-white' : isDark ? 'text-slate-400' : 'text-slate-500'}`}
               style={viewMode === 'list' ? { background: couleur } : {}}
-              aria-label="Vue liste"
               title="Vue liste"
             >
               <List size={14} />
@@ -2105,7 +1997,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
           })()}
         </div>
       ) : viewMode === 'grid' ? (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 animate-stagger">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           {getSortedClients().map(c => {
             const s = getClientStats(c.id);
             const status = getClientStatus(c.id);
@@ -2134,32 +2026,20 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                           <Building2 size={11} /> {c.entreprise}
                         </p>
                       )}
-                      {/* Badges row — Order: Score → Status → Type → Doublon */}
+                      {/* Badges row — Order: Status → Type → Doublon */}
                       <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                        {/* Score badge */}
-                        {(() => {
-                          const cs = clientScores.find(sc => sc.clientId === c.id);
-                          if (!cs) return null;
-                          const scoreLabels = { vip: 'VIP', regulier: 'Fidele', occasionnel: 'Occasionnel', dormant: 'Dormant', nouveau: 'Nouveau' };
-                          return (
-                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
-                              style={{ backgroundColor: `${CLIENT_SCORE_COLORS[cs.classification]}20`, color: CLIENT_SCORE_COLORS[cs.classification] }}>
-                              {scoreLabels[cs.classification]} {cs.score}
-                            </span>
-                          );
-                        })()}
-                        {/* Status badge with tooltip */}
+                        {/* Status badge (always first) with tooltip */}
                         <span
                           className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${isDark ? statusColor.darkBg + ' ' + statusColor.darkText : statusColor.bg + ' ' + statusColor.text}`}
                           title={STATUS_TOOLTIPS[status] || ''}
                         >
-                          <span className={`w-1.5 h-1.5 rounded-full ${statusColor.dot}`} aria-hidden="true" />
+                          <span className={`w-1.5 h-1.5 rounded-full ${statusColor.dot}`} />
                           {statusLabel}
                         </span>
                         {/* Type badge */}
                         {c.categorie && typeColor && (
                           <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${isDark ? typeColor.darkBg + ' ' + typeColor.darkText : typeColor.bg + ' ' + typeColor.text}`}>
-                            <span className="text-[11px]">{TYPE_ICONS[c.categorie] || ''}</span> {c.categorie}
+                            <span className="text-[9px]">{TYPE_ICONS[c.categorie] || ''}</span> {c.categorie}
                           </span>
                         )}
                         {/* Duplicate warning badge (last) */}
@@ -2190,10 +2070,10 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                       <Smartphone size={13} className={textMuted} />
                       <HighlightText text={c.telephone} query={debouncedSearch} className={`text-sm ${textSecondary} flex-1`} />
                       <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-                        <button onClick={() => callPhone(c.telephone)} aria-label="Appeler" className={`w-11 h-11 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center transition-all ${isDark ? 'hover:bg-blue-900/40' : 'hover:bg-blue-50'}`} title="Appeler">
+                        <button onClick={() => callPhone(c.telephone)} aria-label="Appeler" className={`w-11 h-11 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center transition-all ${isDark ? 'hover:bg-blue-900/40' : 'hover:bg-blue-50'}`} title="Appeler">
                           <Phone size={16} className="text-blue-500" />
                         </button>
-                        <button onClick={() => sendWhatsApp(c.telephone, c.prenom)} aria-label="WhatsApp" className={`w-11 h-11 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center transition-all ${isDark ? 'hover:bg-green-900/40' : 'hover:bg-green-50'}`} title="WhatsApp">
+                        <button onClick={() => sendWhatsApp(c.telephone, c.prenom)} aria-label="WhatsApp" className={`w-11 h-11 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center transition-all ${isDark ? 'hover:bg-green-900/40' : 'hover:bg-green-50'}`} title="WhatsApp">
                           <MessageCircle size={16} className="text-green-500" />
                         </button>
                       </div>
@@ -2209,11 +2089,19 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                   )}
                 </div>
 
-                {/* Stats footer — readable text */}
+                {/* Stats footer */}
                 <div className={`px-4 py-2.5 border-t flex items-center justify-between mt-auto ${isDark ? 'border-slate-700/50 bg-slate-900/30' : 'border-slate-100 bg-slate-50/50'}`}>
-                  <span className={`text-xs ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
-                    {s.chantiers} {s.chantiers > 1 ? 'chantiers' : 'chantier'} · {s.devis} {s.devis > 1 ? 'devis' : 'devis'} · {s.factures} {s.factures > 1 ? 'factures' : 'facture'}
-                  </span>
+                  <div className="flex gap-3">
+                    <span className={`flex items-center gap-1 text-xs ${s.chantiers > 0 ? textSecondary : textMuted}`} title="Chantiers">
+                      <Home size={12} className={s.chantiers > 0 ? 'text-emerald-500' : ''} /> {s.chantiers}
+                    </span>
+                    <span className={`flex items-center gap-1 text-xs ${s.devis > 0 ? textSecondary : textMuted}`} title="Devis">
+                      <FileText size={12} className={s.devis > 0 ? 'text-blue-500' : ''} /> {s.devis}
+                    </span>
+                    <span className={`flex items-center gap-1 text-xs ${s.factures > 0 ? textSecondary : textMuted}`} title="Factures">
+                      <Receipt size={12} className={s.factures > 0 ? 'text-purple-500' : ''} /> {s.factures}
+                    </span>
+                  </div>
                   <span className={`font-bold text-xs ${s.ca === 0 ? textMuted : ''}`} style={s.ca > 0 ? { color: couleur } : {}}>{formatMoney(s.ca)}</span>
                 </div>
               </article>
@@ -2260,7 +2148,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                     <div className="flex items-center gap-2">
                       <HighlightText text={formatClientName(c)} query={debouncedSearch} className={`font-medium text-sm ${textPrimary} truncate`} />
                       <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium ${isDark ? statusColor.darkBg + ' ' + statusColor.darkText : statusColor.bg + ' ' + statusColor.text}`} title={STATUS_TOOLTIPS[status] || ''}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${statusColor.dot}`} aria-hidden="true" />
+                        <span className={`w-1.5 h-1.5 rounded-full ${statusColor.dot}`} />
                         {CLIENT_STATUS_LABELS[status]}
                       </span>
                       {hasDuplicates && (
@@ -2335,8 +2223,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <HighlightText text={formatClientName(c)} query={debouncedSearch} className={`font-medium text-sm ${textPrimary} truncate`} />
-                      <span className={`w-2 h-2 rounded-full flex-shrink-0 ${statusColor.dot}`} aria-hidden="true" />
-                      <span className="sr-only">{CLIENT_STATUS_LABELS[status]}</span>
+                      <span className={`w-2 h-2 rounded-full flex-shrink-0 ${statusColor.dot}`} />
                     </div>
                     <div className="flex items-center gap-2 mt-0.5">
                       {c.entreprise && <span className={`text-xs ${textMuted} truncate`}>{c.entreprise}</span>}

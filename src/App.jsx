@@ -993,12 +993,18 @@ export default function App() {
 
   // Notifications are now computed via useMemo (see above) — no useEffect needed
 
-  // ╔═══════════════════════════════════════════════════════════════╗
-  // ║ ⚠️  CRITICAL: portalToken useMemo MUST be BEFORE              ║
-  // ║     the if(loading) return below! Moving it after causes      ║
-  // ║     React Error #310 (hook count mismatch). This has been     ║
-  // ║     broken and fixed 6+ times. DO NOT MOVE THIS HOOK.        ║
-  // ╚═══════════════════════════════════════════════════════════════╝
+  // Loading screen
+  if (loading) return (
+    <div className="min-h-screen bg-[#f5f5f5] flex items-center justify-center">
+      <Building2 size={48} className="text-orange-500 animate-bounce" />
+    </div>
+  );
+
+  const isDark = theme === 'dark';
+  const tc = getThemeClasses(isDark);
+
+  // Client Portal — public page accessible via token (no auth required)
+  // Detect portal token from URL: /portal/{token} or ?portal={token}
   const portalToken = useMemo(() => {
     try {
       const path = window.location.pathname;
@@ -1008,16 +1014,6 @@ export default function App() {
       return params.get('portal') || null;
     } catch { return null; }
   }, []);
-
-  // Loading screen (AFTER all hooks)
-  if (loading) return (
-    <div className="min-h-screen bg-[#f5f5f5] flex items-center justify-center">
-      <Building2 size={48} className="text-orange-500 animate-bounce" />
-    </div>
-  );
-
-  const isDark = theme === 'dark';
-  const tc = getThemeClasses(isDark);
 
   if (page === 'client-portal' || portalToken) {
     const portalClientId = (() => {
@@ -1248,7 +1244,6 @@ export default function App() {
     { id: 'formulaires', icon: ClipboardCheck, label: 'Formulaires' },
     { id: 'site-web', icon: Globe, label: 'Site web' },
     { id: 'finances', icon: Wallet, label: 'Finances' },
-    { id: 'profil', icon: User, label: 'Mon profil' },
     { id: 'plan', icon: CreditCard, label: 'Mon plan' },
     (() => {
       // Compute Facture 2026 compliance score for badge
@@ -1753,7 +1748,7 @@ export default function App() {
                   initialView={page === 'planning' ? 'calendar' : page === 'memos' ? 'list' : undefined}
                 />
               )}
-              {page === 'clients' && <Clients clients={clients} setClients={setClients} updateClient={updateClient} deleteClient={deleteClient} devis={devis} chantiers={chantiers} echanges={echanges} onSubmit={addClient} couleur={couleur} setPage={setPage} setSelectedChantier={setSelectedChantier} setSelectedDevis={setSelectedDevis} isDark={isDark} modeDiscret={modeDiscret} createMode={createMode.client} setCreateMode={(v) => setCreateMode(p => ({...p, client: v}))} memos={memos} addMemo={addMemo} updateMemo={updateMemo} deleteMemo={deleteMemo} toggleMemo={toggleMemo} onImportClients={() => { setImportType('clients'); setShowImport(true); }} />}
+              {page === 'clients' && <Clients clients={clients} setClients={setClients} updateClient={updateClient} deleteClient={deleteClient} devis={devis} chantiers={chantiers} echanges={echanges} onSubmit={addClient} couleur={couleur} setPage={setPage} setSelectedChantier={setSelectedChantier} setSelectedDevis={setSelectedDevis} isDark={isDark} modeDiscret={modeDiscret} createMode={createMode.client} setCreateMode={(v) => setCreateMode(p => ({...p, client: v}))} memos={memos} addMemo={addMemo} updateMemo={updateMemo} deleteMemo={deleteMemo} toggleMemo={toggleMemo} onImportClients={() => { setImportType('clients'); setShowImport(true); }} entreprise={entreprise} />}
               {page === 'bibliotheque' && <BibliothequePrix isDark={isDark} couleur={couleur} setPage={setPage} devis={devis} addDevis={addDevis} />}
               {page === 'catalogue' && <Catalogue catalogue={catalogue} setCatalogue={setCatalogue} addCatalogueItem={addCatalogueItem} updateCatalogueItem={updateCatalogueItem} deleteCatalogueItem={deleteCatalogueItem} chantiers={chantiers} equipe={equipe} devis={devis} updateDevis={updateDevis} clients={clients} couleur={couleur} isDark={isDark} modeDiscret={modeDiscret} setPage={setPage} />}
               {page === 'ouvrages' && <BibliothequeOuvrages catalogue={catalogue} ouvragesProp={ouvrages} setOuvragesProp={setOuvrages} addOuvrage={dataAddOuvrage} updateOuvrage={dataUpdateOuvrage} deleteOuvrage={dataDeleteOuvrage} isDark={isDark} couleur={couleur} />}

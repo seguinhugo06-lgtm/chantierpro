@@ -1,15 +1,17 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   FileText, Building2, Receipt, Camera, Star, Send,
   Phone, Mail, MapPin, MessageSquare, CheckCircle,
   Clock, AlertTriangle, Download, Check, X, CreditCard,
-  ExternalLink, ChevronDown, ChevronUp, ArrowLeft,
+  ExternalLink, ChevronDown, ChevronUp, ArrowLeft, Loader2,
 } from 'lucide-react';
 import PortalLayout from './PortalLayout';
 import DevisCard from './DevisCard';
 import FactureCard from './FactureCard';
 import ChantierTimeline from './ChantierTimeline';
 import PhotoGallery from './PhotoGallery';
+import supabase from '../../supabaseClient';
+import { getPortalData } from '../../services/portalService';
 
 // ─── Demo data ──────────────────────────────────────────────────────
 const DEMO_DATA = {
@@ -334,18 +336,42 @@ export default function ClientPortal({
   const [showPhotoGallery, setShowPhotoGallery] = useState(false);
   const [selectedChantier, setSelectedChantier] = useState(null);
   const [activeSection, setActiveSection] = useState('all');
+  const [portalData, setPortalData] = useState(null);
+  const [loading, setLoading] = useState(!!token && token !== 'demo');
+  const [expired, setExpired] = useState(false);
+
+  // Load real data from token via Supabase
+  useEffect(() => {
+    let cancelled = false;
+    async function loadPortal() {
+      if (token && token !== 'demo' && supabase) {
+        const data = await getPortalData(supabase, token);
+        if (cancelled) return;
+        if (data) {
+          setPortalData(data);
+        } else {
+          setExpired(true);
+        }
+      }
+      if (!cancelled) setLoading(false);
+    }
+    loadPortal();
+    return () => { cancelled = true; };
+  }, [token]);
 
   // Use real props if available, otherwise fallback to demo data
-  const hasRealData = !!(clientProp && entrepriseProp);
-  const entreprise = hasRealData ? entrepriseProp : DEMO_DATA.entreprise;
-  const client = hasRealData
-    ? { prenom: clientProp.prenom || clientProp.nom?.split(' ')[0] || '', nom: clientProp.nom?.split(' ').slice(1).join(' ') || clientProp.nom || '' }
-    : DEMO_DATA.client;
-  const allDevis = hasRealData ? (devisProp || []) : DEMO_DATA.devis;
-  const devis = allDevis.filter(d => d.type !== 'facture');
-  const factures = allDevis.filter(d => d.type === 'facture');
-  const chantiers = hasRealData ? (chantiersProp || []) : DEMO_DATA.chantiers;
-  const couleur = couleurProp || entreprise.couleur || '#f97316';
+  const hasRealData = !!(portalData || (clientProp && entrepriseProp));
+  const entreprise = portalData?.entreprise || (clientProp && entrepriseProp ? entrepriseProp : DEMO_DATA.entreprise);
+  const client = portalData?.client
+    ? { prenom: portalData.client.prenom || portalData.client.nom?.split(' ')[0] || '', nom: portalData.client.nom?.split(' ').slice(1).join(' ') || portalData.client.nom || '' }
+    : clientProp
+      ? { prenom: clientProp.prenom || clientProp.nom?.split(' ')[0] || '', nom: clientProp.nom?.split(' ').slice(1).join(' ') || clientProp.nom || '' }
+      : DEMO_DATA.client;
+  const allDevis = portalData ? [...(portalData.devis || []), ...(portalData.factures || [])] : (clientProp && entrepriseProp) ? (devisProp || []) : DEMO_DATA.devis;
+  const devis = portalData ? (portalData.devis || []) : allDevis.filter(d => d.type !== 'facture');
+  const factures = portalData ? (portalData.factures || []) : allDevis.filter(d => d.type === 'facture');
+  const chantiers = portalData?.chantiers || ((clientProp && entrepriseProp) ? (chantiersProp || []) : DEMO_DATA.chantiers);
+  const couleur = couleurProp || entreprise?.couleur || '#f97316';
 
   // Stats
   const activeChantiers = chantiers.filter(c => c.statut === 'en_cours').length;
@@ -486,6 +512,40 @@ export default function ClientPortal({
   };
 
   // ── Render ────────────────────────────────────────────────────────
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#f5f5f5] flex flex-col items-center justify-center gap-4">
+        <Loader2 className="w-10 h-10 animate-spin" style={{ color: couleurProp || '#f97316' }} />
+        <p className="text-slate-600 text-sm">Chargement de votre espace client...</p>
+      </div>
+    );
+  }
+
+  // Expired / invalid token state
+  if (expired) {
+    return (
+      <div className="min-h-screen bg-[#f5f5f5] flex flex-col items-center justify-center gap-4 px-4">
+        <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center max-w-md">
+          <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-4">
+            <AlertTriangle className="w-8 h-8 text-red-500" />
+          </div>
+          <h2 className="text-xl font-bold text-slate-900 mb-2">Lien expiré</h2>
+          <p className="text-slate-600 text-sm mb-6">
+            Ce lien d'accès au portail client n'est plus valide ou a expiré. Veuillez contacter votre artisan pour obtenir un nouveau lien.
+          </p>
+          <button
+            onClick={() => window.close()}
+            className="px-5 py-2.5 text-sm font-medium text-white rounded-lg transition-opacity hover:opacity-90"
+            style={{ background: couleurProp || '#f97316' }}
+          >
+            Fermer
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const clientName = `${client.prenom} ${client.nom}`.trim();
 
