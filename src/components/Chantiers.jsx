@@ -6,6 +6,7 @@ const GanttView = lazy(() => import('./GanttView'));
 const GarantiesDashboard = lazy(() => import('./chantiers/GarantiesDashboard'));
 import { useOnlineStatus } from '../hooks/useNetworkStatus';
 import { useConfirm, useToast } from '../context/AppContext';
+import supabase, { isDemo } from '../supabaseClient';
 import { generateId, findDuplicateChantiers } from '../lib/utils';
 import QuickChantierModal from './QuickChantierModal';
 import { getTaskTemplatesForMetier, QUICK_TASKS, suggestTasksFromDevis, PHASES, getAllTasksByPhase, calculateProgressByPhase, generateSmartTasks, getAvailableProjectTypes } from '../lib/templates/task-templates-v2';
@@ -794,39 +795,85 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                 <span className={`text-xs font-semibold uppercase tracking-wider ${textMuted}`}>Actions terrain</span>
               </div>
               <div className="flex gap-2 flex-wrap">
-                <button
-                  onClick={() => {
-                    const cl = clients.find(c => c.id === ch.client_id);
-                    const msg = `Bonjour ${cl?.prenom || 'M./Mme'}, votre artisan ${entreprise?.nom || ''} est en route. Arrivée estimée dans 30 minutes.`;
-                    navigator.clipboard?.writeText(msg);
-                    showToast(`Message "En route" copié — envoyez-le par SMS à ${cl?.prenom || 'votre client'}`, 'success');
-                  }}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium ${isDark ? 'bg-slate-700 text-orange-400' : 'bg-orange-50 text-orange-700'}`}
-                >
-                  <Navigation size={16} /> En route
-                </button>
-                <button
-                  onClick={() => {
-                    const cl = clients.find(c => c.id === ch.client_id);
-                    const msg = `Bonjour, votre artisan est arrivé sur le chantier "${ch.nom}".`;
-                    navigator.clipboard?.writeText(msg);
-                    showToast(`Message "Arrivé" copié — envoyez-le par SMS à ${cl?.prenom || 'votre client'}`, 'success');
-                  }}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium ${isDark ? 'bg-slate-700 text-emerald-400' : 'bg-emerald-50 text-emerald-700'}`}
-                >
-                  <MapPin size={16} /> Arrivé
-                </button>
-                <button
-                  onClick={() => {
-                    const cl = clients.find(c => c.id === ch.client_id);
-                    const msg = `Bonne nouvelle ! Les travaux sur votre chantier "${ch.nom}" sont terminés. N'hésitez pas à nous contacter.`;
-                    navigator.clipboard?.writeText(msg);
-                    showToast(`Message "Terminé" copié — envoyez-le par SMS à ${cl?.prenom || 'votre client'}`, 'success');
-                  }}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium ${isDark ? 'bg-slate-700 text-blue-400' : 'bg-blue-50 text-blue-700'}`}
-                >
-                  <CheckCircle size={16} /> Terminé
-                </button>
+                {(() => {
+                  const handleNotifyClient = async (type) => {
+                    const client = clients?.find(c => c.id === (ch.clientId || ch.client_id));
+                    const templates = {
+                      en_route: `Bonjour ${client?.prenom || 'M./Mme'}, votre artisan ${entreprise?.nom || ''} est en route. Arrivée estimée dans 30 minutes.`,
+                      arrive: `Bonjour, votre artisan est arrivé sur le chantier "${ch.nom}".`,
+                      termine: `Bonne nouvelle ! Les travaux sur votre chantier "${ch.nom}" sont terminés. N'hésitez pas à nous contacter.`,
+                    };
+                    const message = templates[type];
+                    const clientTel = client?.telephone || client?.tel;
+
+                    // Try to send SMS via Edge Function
+                    if (!isDemo && supabase && clientTel) {
+                      try {
+                        const { data, error } = await supabase.functions.invoke('send-sms', {
+                          body: { action: 'send_jarrive', to: clientTel, message, entreprise_nom: entreprise?.nom }
+                        });
+                        if (!error && data?.success) {
+                          showToast(`SMS "${type === 'en_route' ? 'En route' : type === 'arrive' ? 'Arrivé' : 'Terminé'}" envoyé à ${client?.prenom || 'votre client'}`, 'success');
+                          // Log the notification
+                          supabase.from('notifications_client').insert({
+                            entreprise_id: entreprise?.id,
+                            client_id: client?.id,
+                            chantier_id: ch.id,
+                            type: type,
+                            canal: 'sms',
+                            message,
+                            sent_at: new Date().toISOString(),
+                            statut: 'sent',
+                          }).then(() => {}).catch(() => {});
+                          return;
+                        }
+                      } catch (e) {
+                        // Twilio not configured — fallback to clipboard
+                      }
+                    }
+
+                    // Log the notification attempt even on clipboard fallback
+                    if (!isDemo && supabase) {
+                      supabase.from('notifications_client').insert({
+                        entreprise_id: entreprise?.id,
+                        client_id: client?.id,
+                        chantier_id: ch.id,
+                        type: type,
+                        canal: clientTel ? 'sms' : 'email',
+                        message,
+                        sent_at: new Date().toISOString(),
+                        statut: 'clipboard',
+                      }).then(() => {}).catch(() => {});
+                    }
+
+                    // Fallback: copy to clipboard
+                    await navigator.clipboard?.writeText(message);
+                    showToast(`Message copié — envoyez-le par SMS à ${client?.prenom || 'votre client'}`, 'info');
+                  };
+
+                  return (
+                    <>
+                      <button
+                        onClick={() => handleNotifyClient('en_route')}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium ${isDark ? 'bg-slate-700 text-orange-400' : 'bg-orange-50 text-orange-700'}`}
+                      >
+                        <Navigation size={16} /> En route
+                      </button>
+                      <button
+                        onClick={() => handleNotifyClient('arrive')}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium ${isDark ? 'bg-slate-700 text-emerald-400' : 'bg-emerald-50 text-emerald-700'}`}
+                      >
+                        <MapPin size={16} /> Arrivé
+                      </button>
+                      <button
+                        onClick={() => handleNotifyClient('termine')}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium ${isDark ? 'bg-slate-700 text-blue-400' : 'bg-blue-50 text-blue-700'}`}
+                      >
+                        <CheckCircle size={16} /> Terminé
+                      </button>
+                    </>
+                  );
+                })()}
               </div>
             </div>
           </div>
@@ -1171,14 +1218,14 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
               <div className="space-y-1.5">
                 <div className="flex items-center gap-2">
                   <span className={`text-xs font-medium w-16 ${textMuted}`}>Avancement</span>
-                  <div className={`flex-1 h-3 rounded-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
+                  <div className={`flex-1 h-2 rounded-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
                     <div className={`h-full rounded-full transition-all ${avancement > 0 ? 'min-w-[4px]' : ''}`} style={{ width: `${Math.min(100, avancement)}%`, background: couleur }} />
                   </div>
                   <span className={`text-xs font-bold tabular-nums w-8 text-right`} style={{ color: couleur }}>{avancement}%</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className={`text-xs font-medium w-16 ${textMuted}`}>Budget</span>
-                  <div className={`flex-1 h-3 rounded-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
+                  <div className={`flex-1 h-2 rounded-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
                     <div className={`h-full rounded-full transition-all ${depPct > avancement && avancement > 0 ? 'bg-red-500' : depPct > 75 ? 'bg-amber-500' : 'bg-emerald-500'}`} style={{ width: `${Math.min(100, depPct)}%` }} />
                   </div>
                   <span className={`text-xs font-bold tabular-nums w-8 text-right ${depPct > avancement && avancement > 0 ? 'text-red-500' : depPct > 75 ? 'text-amber-500' : 'text-emerald-500'}`}>{Math.round(depPct)}%</span>
@@ -2718,7 +2765,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
 
   // Liste
   return (
-    <div className="space-y-4 sm:space-y-6 animate-page-enter">
+    <div className="space-y-4 sm:space-y-6">
       <div className="flex justify-between items-center gap-3">
         <div className="flex items-center gap-3">
           {setPage && (
@@ -2783,32 +2830,6 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
           )}
         </div>
       </div>
-
-      {/* === KPI STRIP === */}
-      {chantiers.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 animate-stagger">
-          {[
-            { label: 'En cours', value: statusCounts.en_cours, icon: Building2, color: '#f59e0b' },
-            { label: 'Cette semaine', value: statusCounts.cette_semaine, icon: Calendar, color: couleur },
-            { label: 'Prospects', value: statusCounts.prospect, icon: Target, color: '#3b82f6' },
-            { label: 'Terminés', value: statusCounts.termine, icon: CheckCircle, color: '#10b981' },
-          ].map(kpi => (
-            <div
-              key={kpi.label}
-              className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all hover:shadow-md ${isDark ? 'bg-slate-800/60 border-slate-700 hover:border-slate-600' : 'bg-white border-slate-200 hover:border-slate-300'}`}
-              onClick={() => setFilterStatus(kpi.label === 'En cours' ? 'en_cours' : kpi.label === 'Prospects' ? 'prospect' : kpi.label === 'Terminés' ? 'termine' : 'all')}
-            >
-              <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: `${kpi.color}15` }}>
-                <kpi.icon size={18} style={{ color: kpi.color }} />
-              </div>
-              <div className="min-w-0">
-                <p className={`text-lg font-bold leading-tight ${textPrimary} animate-count-up`}>{kpi.value}</p>
-                <p className={`text-xs ${textMuted} truncate`}>{kpi.label}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
 
       {/* === BANDEAU AUJOURD'HUI — compact sticky 60px === */}
       {(() => {
@@ -3140,7 +3161,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
               )}
             </div>
           )}
-          <div className="grid gap-3 sm:gap-4 animate-stagger">
+          <div className="grid gap-3 sm:gap-4">
           {getFilteredAndSortedChantiers().map(ch => {
             const client = clients.find(c => c.id === ch.client_id);
             const bilanRaw3 = getChantierBilan(ch.id);
@@ -3276,7 +3297,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                   )}
                   {ch.statut === 'en_cours' && (avancement > 0 || allTasks.length > 0) && (
                     <div className="flex items-center gap-2 flex-1 min-w-0">
-                      <div className={`flex-1 h-3 sm:h-2.5 rounded-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
+                      <div className={`flex-1 h-2 sm:h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
                         <div className={`h-full rounded-full transition-all ${avancement > 0 ? 'min-w-[4px]' : ''}`} style={{ width: `${Math.min(100, Math.max(3, avancement))}%`, background: couleur }} />
                       </div>
                       <span className="text-xs font-semibold tabular-nums whitespace-nowrap" style={{ color: couleur }}>{avancement}%</span>

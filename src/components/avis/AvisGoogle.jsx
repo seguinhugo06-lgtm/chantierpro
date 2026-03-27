@@ -18,6 +18,8 @@ import {
   ArrowRight, Wrench, Gift, Tag, Users, Plus, Calendar,
   Trash2, Edit3, Filter, BarChart3
 } from 'lucide-react';
+import supabase, { isDemo } from '../../supabaseClient';
+import { useToast } from '../../context/AppContext';
 
 // ─── Storage helpers ─────────────────────────────────────────────────────────
 
@@ -345,7 +347,7 @@ function ConfigPanel({ config, setConfig, isDark, onClose }) {
 
 // ─── Avis Request Card ───────────────────────────────────────────────────────
 
-function AvisRequestCard({ chantier, client, avisData, config, isDark, couleur, entrepriseName, onSend }) {
+function AvisRequestCard({ chantier, client, avisData, config, isDark, couleur, entrepriseName, onSend, showToast }) {
   const [showMessage, setShowMessage] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -372,7 +374,30 @@ function AvisRequestCard({ chantier, client, avisData, config, isDark, couleur, 
     setShowMessage(false);
   };
 
-  const handleEmail = () => {
+  const handleEmail = async () => {
+    // Try to send via Edge Function first
+    if (!isDemo && supabase && client?.email) {
+      try {
+        const { data, error } = await supabase.functions.invoke('send-email', {
+          body: {
+            action: 'send_review_request',
+            to: client.email,
+            subject: `${entrepriseName || 'BatiGesti'} — Votre avis compte !`,
+            html: `<p>${message.replace(/\n/g, '<br>')}</p>`,
+            from_name: entrepriseName,
+          }
+        });
+        if (!error && data?.success) {
+          showToast?.('Demande d\'avis envoyée par email', 'success');
+          handleSend();
+          return;
+        }
+      } catch (e) {
+        // Edge Function not configured — fallback to mailto
+      }
+    }
+
+    // Fallback: open mailto
     const subject = encodeURIComponent(`Votre avis nous intéresse — ${entrepriseName || 'BatiGesti'}`);
     const body = encodeURIComponent(message);
     const email = client?.email || '';
@@ -468,7 +493,7 @@ function AvisRequestCard({ chantier, client, avisData, config, isDark, couleur, 
 
 // ─── Avis & Reputation Tab (former AvisGoogle content) ──────────────────────
 
-function AvisReputationTab({ chantiers, clients, entreprise, isDark, couleur }) {
+function AvisReputationTab({ chantiers, clients, entreprise, isDark, couleur, showToast }) {
   const [avisData, setAvisData] = useState(() => loadAvisData());
   const [config, setConfig] = useState(() => loadConfig());
   const [showConfig, setShowConfig] = useState(false);
@@ -669,6 +694,7 @@ function AvisReputationTab({ chantiers, clients, entreprise, isDark, couleur }) 
                 couleur={couleur}
                 entrepriseName={entrepriseName}
                 onSend={handleSend}
+                showToast={showToast}
               />
             );
           })}
@@ -680,7 +706,7 @@ function AvisReputationTab({ chantiers, clients, entreprise, isDark, couleur }) 
 
 // ─── Campagnes Tab ──────────────────────────────────────────────────────────
 
-function CampagnesTab({ clients = [], chantiers = [], entreprise = {}, isDark, couleur }) {
+function CampagnesTab({ clients = [], chantiers = [], entreprise = {}, isDark, couleur, showToast, user }) {
   const [campaigns, setCampaigns] = useState(() => loadCampaigns());
   const [showModal, setShowModal] = useState(false);
   const [editingCampaign, setEditingCampaign] = useState(null);
@@ -783,11 +809,23 @@ function CampagnesTab({ clients = [], chantiers = [], entreprise = {}, isDark, c
     setShowModal(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!formName.trim() || !formSubject.trim()) return;
 
     const now = new Date().toISOString();
     const isScheduled = formSchedule === 'later' && formScheduleDate;
+
+    // Determine recipients
+    let recipients = [];
+    if (formFilter === 'manual') {
+      recipients = clients.filter(c => formSelectedClients.includes(c.id) && c.email);
+    } else if (formFilter === 'active') {
+      recipients = clients.filter(c => activeClientIds.has(c.id) && c.email);
+    } else if (formFilter === 'inactive') {
+      recipients = clients.filter(c => inactiveClientIds.has(c.id) && c.email);
+    } else {
+      recipients = clients.filter(c => c.email);
+    }
 
     const campaignData = {
       id: editingCampaign ? editingCampaign.id : `camp_${Date.now()}`,
@@ -815,6 +853,57 @@ function CampagnesTab({ clients = [], chantiers = [], entreprise = {}, isDark, c
     saveCampaigns(updated);
     setShowModal(false);
     resetForm();
+
+    // Send emails via Edge Function if not scheduled and not demo
+    if (!isScheduled && !isDemo && supabase && recipients.length > 0) {
+      // Save campaign to DB
+      supabase.from('campagnes_email').insert({
+        entreprise_id: entreprise?.id,
+        user_id: user?.id,
+        nom: formName.trim(),
+        sujet: formSubject.trim(),
+        contenu_html: formBody.trim(),
+        segment: { type: formFilter },
+        statut: 'envoyee',
+        sent_at: now,
+        stats: { sent: recipients.length, opened: 0, clicked: 0, errors: 0 },
+      }).then(() => {}).catch(() => {});
+
+      let sent = 0, errors = 0;
+      for (const recipient of recipients) {
+        try {
+          const { data, error } = await supabase.functions.invoke('send-email', {
+            body: {
+              action: 'send_campaign',
+              to: recipient.email,
+              subject: formSubject.trim(),
+              html: formBody.trim()
+                .replace(/\{prenom_client\}/g, recipient.prenom || '')
+                .replace(/\{nom_entreprise\}/g, entrepriseName || '')
+                .replace(/\n/g, '<br>'),
+              from_name: entrepriseName,
+            }
+          });
+          if (!error && data?.success) {
+            sent++;
+          } else {
+            errors++;
+          }
+        } catch {
+          errors++;
+        }
+      }
+
+      if (sent > 0) {
+        showToast?.(`Campagne envoyée : ${sent} email${sent > 1 ? 's' : ''}${errors > 0 ? `, ${errors} erreur${errors > 1 ? 's' : ''}` : ''}`, 'success');
+      } else if (errors > 0) {
+        showToast?.('Erreur lors de l\'envoi de la campagne — emails non configurés', 'error');
+      }
+    } else if (!isScheduled) {
+      showToast?.(`Campagne "${formName.trim()}" enregistrée (${recipientCount} destinataires)`, 'success');
+    } else {
+      showToast?.(`Campagne "${formName.trim()}" programmée`, 'success');
+    }
   };
 
   const handleDelete = (id) => {
@@ -1186,8 +1275,9 @@ function CampagnesTab({ clients = [], chantiers = [], entreprise = {}, isDark, c
 
 // ─── Main AvisGoogle (Marketing & Reputation) ───────────────────────────────
 
-export default function AvisGoogle({ chantiers = [], clients = [], entreprise = {}, isDark, couleur }) {
+export default function AvisGoogle({ chantiers = [], clients = [], entreprise = {}, isDark, couleur, user }) {
   const [activeTab, setActiveTab] = useState('dashboard');
+  const { showToast } = useToast();
 
   const textPrimary = isDark ? 'text-white' : 'text-slate-900';
   const textMuted = isDark ? 'text-slate-400' : 'text-slate-500';
@@ -1240,6 +1330,7 @@ export default function AvisGoogle({ chantiers = [], clients = [], entreprise = 
           entreprise={entreprise}
           isDark={isDark}
           couleur={couleur}
+          showToast={showToast}
         />
       )}
 
@@ -1250,6 +1341,8 @@ export default function AvisGoogle({ chantiers = [], clients = [], entreprise = 
           entreprise={entreprise}
           isDark={isDark}
           couleur={couleur}
+          showToast={showToast}
+          user={user}
         />
       )}
 
