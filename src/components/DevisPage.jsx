@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo, Suspense, lazy } from 'react';
-import { Plus, ArrowLeft, Download, Trash2, Send, Mail, MessageCircle, Edit3, Check, X, FileText, Receipt, Clock, Search, ChevronRight, ChevronUp, ChevronDown, Star, Filter, Eye, Pen, CreditCard, Banknote, CheckCircle, AlertCircle, AlertTriangle, XCircle, Building2, Copy, TrendingUp, QrCode, Sparkles, PenTool, MoreVertical, Loader2, Link2, Mic, Zap, ArrowUpDown, Bell, RotateCcw, BarChart3, BellRing, ClipboardList, Circle, LayoutGrid, List, Kanban } from 'lucide-react';
+import { Plus, ArrowLeft, Download, Trash2, Send, Mail, MessageCircle, Edit3, Check, X, FileText, Receipt, Clock, Search, ChevronRight, ChevronUp, ChevronDown, Star, Filter, Eye, Pen, CreditCard, Banknote, CheckCircle, AlertCircle, AlertTriangle, XCircle, Building2, Copy, TrendingUp, QrCode, Sparkles, PenTool, MoreVertical, Loader2, Link2, Mic, Zap, ArrowUpDown, Bell, RotateCcw, BarChart3, BellRing, ClipboardList, Circle, LayoutGrid, List, Kanban, Droplets, Paintbrush } from 'lucide-react';
 import supabase, { isDemo } from '../supabaseClient';
 const PipelineKanban = lazy(() => import('./pipeline/PipelineKanban'));
 import { DEVIS_STATUS_COLORS, DEVIS_STATUS_LABELS } from '../lib/constants';
@@ -633,6 +633,48 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         if (target < 0 || target >= arr.length) return s;
         [arr[ligneIdx], arr[target]] = [arr[target], arr[ligneIdx]];
         return { ...s, lignes: arr };
+      })
+    }));
+  };
+
+  // === Sub-items (sous-lignes informatives) ===
+  const addSubItem = (sectionId, ligneId) => {
+    setForm(prev => ({
+      ...prev,
+      sections: prev.sections.map(s => {
+        if (s.id !== sectionId) return s;
+        return { ...s, lignes: s.lignes.map(l => {
+          if (l.id !== ligneId) return l;
+          return { ...l, subItems: [...(l.subItems || []), { id: `sub_${Date.now()}`, description: '', quantite: 1, prixUnitaire: 0 }] };
+        })};
+      })
+    }));
+  };
+
+  const updateSubItem = (sectionId, ligneId, subIdx, field, value) => {
+    setForm(prev => ({
+      ...prev,
+      sections: prev.sections.map(s => {
+        if (s.id !== sectionId) return s;
+        return { ...s, lignes: s.lignes.map(l => {
+          if (l.id !== ligneId) return l;
+          const subItems = [...(l.subItems || [])];
+          subItems[subIdx] = { ...subItems[subIdx], [field]: value };
+          return { ...l, subItems };
+        })};
+      })
+    }));
+  };
+
+  const removeSubItem = (sectionId, ligneId, subIdx) => {
+    setForm(prev => ({
+      ...prev,
+      sections: prev.sections.map(s => {
+        if (s.id !== sectionId) return s;
+        return { ...s, lignes: s.lignes.map(l => {
+          if (l.id !== ligneId) return l;
+          return { ...l, subItems: (l.subItems || []).filter((_, i) => i !== subIdx) };
+        })};
       })
     }));
   };
@@ -4100,7 +4142,36 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     const catalogueFiltered = catalogue?.filter(c => !debouncedCatalogueSearch || c.nom?.toLowerCase().includes(debouncedCatalogueSearch.toLowerCase())) || [];
     return (
       <div className="space-y-6">
-        <div className="flex items-center gap-2 sm:gap-4"><button onClick={() => setMode('list')} className={`p-2.5 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'} rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors`}><ArrowLeft size={20} /></button><h2 className={`text-lg sm:text-2xl font-bold ${textPrimary}`}>Nouveau {form.type}</h2></div>
+        <div className="flex items-center gap-2 sm:gap-4">
+          <button onClick={() => {
+            const hasData = form.clientId || (form.sections?.[0]?.lignes?.length > 0);
+            if (hasData) {
+              if (window.confirm('Abandonner ce devis ? Les données non sauvegardées seront perdues.')) {
+                setMode('list');
+                setForm({ type: 'devis', clientId: '', chantierId: '', date: new Date().toISOString().split('T')[0], validite: entreprise?.validiteDevis || 30, sections: [{ id: '1', titre: '', lignes: [] }], tvaDefaut: entreprise?.tvaDefaut || 10, remise: 0, retenueGarantie: false, conditionsPaiement: entreprise?.conditionsPaiementDefaut || '30_jours', notes: '' });
+              }
+            } else {
+              setMode('list');
+            }
+          }} className={`p-2.5 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'} rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors`}><ArrowLeft size={20} /></button>
+          <h2 className={`text-lg sm:text-2xl font-bold ${textPrimary}`}>Nouveau {form.type}</h2>
+          <button
+            onClick={() => {
+              const hasData = form.clientId || (form.sections?.[0]?.lignes?.length > 0);
+              if (hasData) {
+                if (window.confirm('Abandonner ce devis ? Les données non sauvegardées seront perdues.')) {
+                  setMode('list');
+                  setForm({ type: 'devis', clientId: '', chantierId: '', date: new Date().toISOString().split('T')[0], validite: entreprise?.validiteDevis || 30, sections: [{ id: '1', titre: '', lignes: [] }], tvaDefaut: entreprise?.tvaDefaut || 10, remise: 0, retenueGarantie: false, conditionsPaiement: entreprise?.conditionsPaiementDefaut || '30_jours', notes: '' });
+                }
+              } else {
+                setMode('list');
+              }
+            }}
+            className={`text-sm px-3 py-1.5 rounded-lg min-h-[44px] ${isDark ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-700' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'}`}
+          >
+            Annuler
+          </button>
+        </div>
 
         {/* Template Options */}
         <div className="grid sm:grid-cols-2 gap-3">
@@ -4133,6 +4204,44 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
             </div>
             <ChevronRight size={18} className={`${textMuted} group-hover:translate-x-1 transition-transform flex-shrink-0`} />
           </button>
+        </div>
+
+        {/* Modèles métier prédéfinis */}
+        <div>
+          <p className={`text-xs font-medium mb-2 ${textMuted}`}>Modèles métier</p>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {[
+              { label: 'Rénovation SDB', icon: Droplets, sections: [{ titre: 'Démolition', items: [{ description: 'Dépose sanitaires existants' }, { description: 'Démolition carrelage mural et sol' }] }, { titre: 'Plomberie', items: [{ description: 'Alimentation eau chaude/froide' }, { description: 'Évacuation' }] }, { titre: 'Carrelage', items: [{ description: 'Pose carrelage sol' }, { description: 'Pose faïence murale' }] }, { titre: 'Sanitaires', items: [{ description: 'Pose douche italienne' }, { description: 'Pose meuble vasque' }, { description: 'Pose WC suspendu' }] }] },
+              { label: 'Peinture', icon: Paintbrush, sections: [{ titre: 'Préparation', items: [{ description: 'Protection sols et meubles' }, { description: 'Lessivage murs' }, { description: 'Rebouchage fissures' }] }, { titre: 'Peinture', items: [{ description: 'Peinture murs 2 couches' }, { description: 'Peinture plafond' }, { description: 'Peinture boiseries' }] }] },
+              { label: 'Électricité', icon: Zap, sections: [{ titre: 'Installation', items: [{ description: 'Pose tableau électrique' }, { description: 'Tirage de câbles' }, { description: 'Pose prises et interrupteurs' }, { description: 'Pose éclairages' }] }] },
+              { label: 'Devis vierge', icon: FileText, sections: [{ titre: 'Prestations', items: [] }] },
+            ].map(tpl => (
+              <button
+                key={tpl.label}
+                onClick={() => {
+                  const sections = tpl.sections.map(s => ({
+                    id: `sec_${Date.now()}_${Math.random().toString(36).slice(2,6)}`,
+                    titre: s.titre,
+                    lignes: s.items.map(item => ({
+                      id: `item_${Date.now()}_${Math.random().toString(36).slice(2,6)}`,
+                      description: item.description || '',
+                      quantite: 1,
+                      unite: 'u',
+                      prixUnitaire: 0,
+                      tva: form.tvaDefaut || 10,
+                      subItems: [],
+                    })),
+                  }));
+                  setForm(prev => ({ ...prev, sections }));
+                  showToast?.(`Modèle "${tpl.label}" chargé`, 'success');
+                }}
+                className={`p-3 rounded-xl border text-center transition-all hover:shadow-md ${isDark ? 'border-slate-600 hover:border-slate-500 bg-slate-800' : 'border-slate-200 hover:border-slate-300 bg-white'}`}
+              >
+                <tpl.icon size={20} className="mx-auto mb-1" style={{ color: couleur }} />
+                <p className={`text-xs font-medium ${textPrimary}`}>{tpl.label}</p>
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6 space-y-4 sm:space-y-6`}>
@@ -4342,6 +4451,51 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                         })}
                       </div>
                     </div>
+
+                    {/* Sous-lignes (informatives, non comptées dans le total) */}
+                    {(l.subItems || []).length > 0 && (
+                      <div className="pl-8 mt-2 space-y-1.5">
+                        {l.subItems.map((sub, subIdx) => (
+                          <div key={sub.id} className={`flex items-center gap-2 py-1.5 px-3 rounded-lg ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+                            <span className={`text-xs ${textMuted}`}>↳</span>
+                            <input
+                              value={sub.description}
+                              onChange={e => updateSubItem(section.id, l.id, subIdx, 'description', e.target.value)}
+                              placeholder="Détail..."
+                              className={`flex-1 px-2 py-1 border rounded text-xs ${inputBg}`}
+                            />
+                            <input
+                              type="number"
+                              value={sub.quantite || ''}
+                              onChange={e => updateSubItem(section.id, l.id, subIdx, 'quantite', e.target.value === '' ? 0 : parseFloat(e.target.value) || 0)}
+                              className={`w-14 px-2 py-1 border rounded text-xs text-center ${inputBg}`}
+                              placeholder="Qté"
+                            />
+                            <input
+                              type="number"
+                              value={sub.prixUnitaire || ''}
+                              onChange={e => updateSubItem(section.id, l.id, subIdx, 'prixUnitaire', e.target.value === '' ? 0 : parseFloat(e.target.value) || 0)}
+                              className={`w-20 px-2 py-1 border rounded text-xs text-right ${inputBg}`}
+                              placeholder="Prix"
+                            />
+                            <span className={`text-xs ${textMuted}`}>€</span>
+                            <button
+                              onClick={() => removeSubItem(section.id, l.id, subIdx)}
+                              className={`p-1 rounded transition-colors ${isDark ? 'hover:bg-red-900/30 text-red-400' : 'hover:bg-red-50 text-red-400 hover:text-red-600'}`}
+                              aria-label="Supprimer la sous-ligne"
+                            >
+                              <X size={14} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <button
+                      onClick={() => addSubItem(section.id, l.id)}
+                      className={`mt-1 ml-8 text-xs px-2 py-1 rounded-lg transition-colors ${isDark ? 'text-slate-400 hover:text-slate-300 hover:bg-slate-700' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'}`}
+                    >
+                      + Sous-ligne
+                    </button>
                   </div>
                 ))}
               </div>
@@ -4747,18 +4901,13 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       <div className="space-y-2">
         {/* Row 1: Search + Period filters + Sort + Export */}
         <div className="flex gap-2 items-center">
-          <div className="relative flex-1">
-            <Search size={16} className={`absolute left-3 top-1/2 -translate-y-1/2 ${textMuted}`} />
-            <input placeholder="Rechercher..." aria-label="Rechercher" value={search} onChange={e => setSearch(e.target.value)} className={`w-full pl-9 pr-10 py-1.5 border rounded-xl text-sm ${inputBg}`} />
-            {search && (
-              <button onClick={() => setSearch('')} aria-label="Effacer la recherche" className={`absolute right-2 top-1/2 -translate-y-1/2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full ${isDark ? 'hover:bg-slate-600' : 'hover:bg-slate-200'}`}>
-                <X size={14} className={textMuted} />
-              </button>
-            )}
+          <div className="relative flex-1 max-w-[200px]">
+            <Search size={14} className={`absolute left-3 top-1/2 -translate-y-1/2 ${textMuted}`} />
+            <input placeholder="Rechercher..." aria-label="Rechercher un document" value={search} onChange={e => setSearch(e.target.value)} className={`w-full pl-8 pr-3 py-1.5 border rounded-xl text-sm ${inputBg}`} />
           </div>
           <div role="group" aria-label="Filtrer par période" className="flex gap-1">
             {[['all', 'Tout'], ['month', 'Ce mois'], ['quarter', 'Trim.'], ['year', 'Année']].map(([k, v]) => (
-              <button key={k} onClick={() => setPeriodFilter(k)} aria-pressed={periodFilter === k} className={`px-3 py-1 rounded-lg text-xs whitespace-nowrap min-h-[44px] ${periodFilter === k ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`} style={periodFilter === k ? {background: couleur} : {}}>
+              <button key={k} onClick={() => setPeriodFilter(k)} aria-pressed={periodFilter === k} className={`px-2 py-1 rounded-lg text-xs whitespace-nowrap ${periodFilter === k ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`} style={periodFilter === k ? {background: couleur} : {}}>
                 {v}
               </button>
             ))}
@@ -4768,8 +4917,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           <div className={`flex rounded-lg border overflow-hidden ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
             <button
               onClick={() => setViewMode('cards')}
-              className={`p-2 min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors ${viewMode === 'cards' ? 'text-white' : (isDark ? 'bg-slate-700 text-slate-400 hover:text-slate-300' : 'bg-white text-slate-400 hover:text-slate-600')}`}
-              style={viewMode === 'cards' ? { background: couleur } : {}}
+              className={`p-1.5 transition-colors ${viewMode === 'cards' ? (isDark ? 'bg-slate-600 text-white' : 'bg-slate-200 text-slate-800') : (isDark ? 'bg-slate-700 text-slate-400 hover:text-slate-300' : 'bg-white text-slate-400 hover:text-slate-600')}`}
               title="Vue cartes"
               aria-label="Vue cartes"
               aria-pressed={viewMode === 'cards'}
@@ -4778,8 +4926,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
             </button>
             <button
               onClick={() => setViewMode('table')}
-              className={`p-2 min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors border-l ${viewMode === 'table' ? 'text-white' : (isDark ? 'bg-slate-700 text-slate-400 hover:text-slate-300 border-slate-600' : 'bg-white text-slate-400 hover:text-slate-600 border-slate-200')}`}
-              style={viewMode === 'table' ? { background: couleur, borderColor: couleur } : {}}
+              className={`p-1.5 transition-colors border-l ${viewMode === 'table' ? (isDark ? 'bg-slate-600 text-white border-slate-500' : 'bg-slate-200 text-slate-800 border-slate-300') : (isDark ? 'bg-slate-700 text-slate-400 hover:text-slate-300 border-slate-600' : 'bg-white text-slate-400 hover:text-slate-600 border-slate-200')}`}
               title="Vue tableau"
               aria-label="Vue tableau"
               aria-pressed={viewMode === 'table'}
@@ -4788,8 +4935,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
             </button>
             <button
               onClick={() => setViewMode('pipeline')}
-              className={`p-2 min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors border-l ${viewMode === 'pipeline' ? 'text-white' : (isDark ? 'bg-slate-700 text-slate-400 hover:text-slate-300 border-slate-600' : 'bg-white text-slate-400 hover:text-slate-600 border-slate-200')}`}
-              style={viewMode === 'pipeline' ? { background: couleur, borderColor: couleur } : {}}
+              className={`p-1.5 transition-colors border-l ${viewMode === 'pipeline' ? (isDark ? 'bg-slate-600 text-white border-slate-500' : 'bg-slate-200 text-slate-800 border-slate-300') : (isDark ? 'bg-slate-700 text-slate-400 hover:text-slate-300 border-slate-600' : 'bg-white text-slate-400 hover:text-slate-600 border-slate-200')}`}
               title="Vue pipeline"
               aria-label="Vue pipeline"
               aria-pressed={viewMode === 'pipeline'}
@@ -4801,8 +4947,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value)}
-            aria-label="Trier par"
-            className={`px-2 py-1 rounded-lg text-xs border min-w-[75px] min-h-[44px] ${isDark ? 'bg-slate-700 border-slate-600 text-slate-300' : 'bg-white border-slate-200 text-slate-600'}`}
+            className={`px-2 py-1 rounded-lg text-xs border min-w-[75px] ${isDark ? 'bg-slate-700 border-slate-600 text-slate-300' : 'bg-white border-slate-200 text-slate-600'}`}
           >
             <option value="recent">Récent</option>
             <option value="status">Statut</option>
@@ -4879,7 +5024,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
             const count = k === 'en_relance' ? relances.counts.total : (filterCounts[k] || 0);
             if (k === 'acomptes' && count === 0) return null;
             return (
-              <button key={k} onClick={() => setFilter(k)} aria-pressed={filter === k} className={`px-3 py-1 rounded-lg text-xs whitespace-nowrap flex items-center gap-1 min-h-[44px] ${filter === k ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`} style={filter === k ? {background: couleur} : {}}>
+              <button key={k} onClick={() => setFilter(k)} aria-pressed={filter === k} className={`px-2.5 py-1 rounded-lg text-xs whitespace-nowrap flex items-center gap-1 ${filter === k ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`} style={filter === k ? {background: couleur} : {}}>
                 {k === 'acomptes' && <CreditCard size={11} />}
                 {k === 'situations' && <BarChart3 size={11} />}
                 {k === 'avoirs' && <RotateCcw size={11} />}
