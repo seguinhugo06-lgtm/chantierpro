@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { ArrowLeft, ArrowRight, Check, X, Plus, User, FileText, Receipt, Search, Star, Trash2, ChevronDown, ChevronUp, Sparkles, Clock, RotateCcw, AlertCircle, Mic, Zap, Edit3 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, X, Plus, User, FileText, Receipt, Search, Star, Trash2, ChevronDown, ChevronUp, Sparkles, Clock, RotateCcw, AlertCircle, Mic, Zap, Edit3, Camera } from 'lucide-react';
 import FormError from './ui/FormError';
 import QuickClientModal from './QuickClientModal';
 import CatalogBrowser from './CatalogBrowser';
@@ -1061,6 +1061,68 @@ function LigneCard({ ligne, index, onUpdate, onRemove, isDark, couleur, tvaDefau
           </button>
         ))}
       </div>
+
+      {/* Sub-items */}
+      {(ligne.subItems || []).length > 0 && (
+        <div className="pl-6 mt-2 space-y-1.5">
+          {ligne.subItems.map((sub, si) => (
+            <div key={sub.id || si} className={`flex items-center gap-2 py-1.5 px-2 rounded-lg text-xs ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+              <span className={textMuted}>↳</span>
+              <input value={sub.description || ''} onChange={e => {
+                const subs = [...(ligne.subItems || [])];
+                subs[si] = { ...subs[si], description: e.target.value };
+                onUpdate('subItems', subs);
+              }} placeholder="Détail..." className={`flex-1 px-2 py-1 border rounded text-xs ${inputBg}`} />
+              <button onClick={() => {
+                const subs = (ligne.subItems || []).filter((_, i) => i !== si);
+                onUpdate('subItems', subs);
+              }} className="p-1 text-red-400 hover:text-red-600"><X size={12} /></button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Action buttons */}
+      <div className="flex items-center gap-2 mt-2">
+        <button
+          onClick={() => {
+            const subs = [...(ligne.subItems || []), { id: Date.now(), description: '', quantite: 1, prixUnitaire: 0 }];
+            onUpdate('subItems', subs);
+          }}
+          className={`flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg transition-colors ${isDark ? 'text-slate-400 hover:text-slate-300 hover:bg-slate-700' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'}`}
+        >
+          <Plus size={12} /> Sous-ligne
+        </button>
+        <label className={`flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg transition-colors cursor-pointer ${isDark ? 'text-slate-400 hover:text-slate-300 hover:bg-slate-700' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'}`}>
+          <Camera size={12} /> Photo
+          <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+              const photos = ligne.photos || [];
+              onUpdate('photos', [...photos, { id: Date.now(), url: ev.target.result, name: file.name }]);
+            };
+            reader.readAsDataURL(file);
+            e.target.value = '';
+          }} />
+        </label>
+      </div>
+
+      {/* Photos */}
+      {ligne.photos?.length > 0 && (
+        <div className="flex gap-2 mt-2 flex-wrap">
+          {ligne.photos.map((photo) => (
+            <div key={photo.id} className="relative group">
+              <img src={photo.url} alt="" className="w-14 h-14 rounded-lg object-cover border" />
+              <button onClick={() => onUpdate('photos', ligne.photos.filter(p => p.id !== photo.id))}
+                className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                <X size={8} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
