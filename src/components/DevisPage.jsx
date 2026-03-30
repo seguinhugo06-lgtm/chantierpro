@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo, Suspense, lazy } from 'react';
-import { Plus, ArrowLeft, Download, Trash2, Send, Mail, MessageCircle, Edit3, Check, X, FileText, Receipt, Clock, Search, ChevronRight, ChevronUp, ChevronDown, Star, Filter, Eye, Pen, CreditCard, Banknote, CheckCircle, AlertCircle, AlertTriangle, XCircle, Building2, Copy, TrendingUp, QrCode, Sparkles, PenTool, MoreVertical, Loader2, Link2, Mic, Zap, ArrowUpDown, Bell, RotateCcw, BarChart3, BellRing, ClipboardList, Circle, LayoutGrid, List, Kanban, Droplets, Paintbrush } from 'lucide-react';
+import { Plus, ArrowLeft, Download, Trash2, Send, Mail, MessageCircle, Edit3, Check, X, FileText, Receipt, Clock, Search, ChevronRight, ChevronUp, ChevronDown, Star, Filter, Eye, Pen, CreditCard, Banknote, CheckCircle, AlertCircle, AlertTriangle, XCircle, Building2, Copy, TrendingUp, QrCode, Sparkles, PenTool, MoreVertical, Loader2, Link2, Mic, Zap, ArrowUpDown, Bell, RotateCcw, BarChart3, BellRing, ClipboardList, Circle, LayoutGrid, List, Kanban, Droplets, Paintbrush, Camera } from 'lucide-react';
 import supabase, { isDemo } from '../supabaseClient';
 const PipelineKanban = lazy(() => import('./pipeline/PipelineKanban'));
 import { DEVIS_STATUS_COLORS, DEVIS_STATUS_LABELS } from '../lib/constants';
@@ -4490,12 +4490,54 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                         ))}
                       </div>
                     )}
-                    <button
-                      onClick={() => addSubItem(section.id, l.id)}
-                      className={`mt-1 ml-8 text-xs px-2 py-1 rounded-lg transition-colors ${isDark ? 'text-slate-400 hover:text-slate-300 hover:bg-slate-700' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'}`}
-                    >
-                      + Sous-ligne
-                    </button>
+                    {/* Action buttons: sub-line + photo */}
+                    <div className="flex items-center gap-2 mt-2">
+                      <button
+                        onClick={() => addSubItem(section.id, l.id)}
+                        className={`flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg transition-colors min-h-[36px] ${isDark ? 'text-slate-400 hover:text-slate-300 hover:bg-slate-700' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'}`}
+                      >
+                        <Plus size={12} /> Sous-ligne
+                      </button>
+                      <label
+                        className={`flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg transition-colors min-h-[36px] cursor-pointer ${isDark ? 'text-slate-400 hover:text-slate-300 hover:bg-slate-700' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'}`}
+                      >
+                        <Camera size={12} /> Photo
+                        <input
+                          type="file"
+                          accept="image/*"
+                          capture="environment"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            const reader = new FileReader();
+                            reader.onload = (ev) => {
+                              const photos = l.photos || [];
+                              updateLigne(section.id, l.id, 'photos', [...photos, { id: Date.now(), url: ev.target.result, name: file.name }]);
+                            };
+                            reader.readAsDataURL(file);
+                            e.target.value = '';
+                          }}
+                        />
+                      </label>
+                    </div>
+                    {/* Photos attached to this line */}
+                    {l.photos?.length > 0 && (
+                      <div className="flex gap-2 mt-2 flex-wrap">
+                        {l.photos.map((photo) => (
+                          <div key={photo.id} className="relative group">
+                            <img src={photo.url} alt={photo.name || 'Photo'} className="w-16 h-16 rounded-lg object-cover border" style={{ borderColor: isDark ? '#334155' : '#e2e8f0' }} />
+                            <button
+                              onClick={() => updateLigne(section.id, l.id, 'photos', l.photos.filter(p => p.id !== photo.id))}
+                              className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                              aria-label="Supprimer la photo"
+                            >
+                              <X size={10} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
