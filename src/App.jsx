@@ -1246,6 +1246,7 @@ export default function App() {
     { id: 'formulaires', icon: ClipboardCheck, label: 'Formulaires' },
     { id: 'site-web', icon: Globe, label: 'Site web' },
     { id: 'finances', icon: Wallet, label: 'Finances' },
+    { id: 'profil', icon: User, label: 'Mon profil' },
     { id: 'plan', icon: CreditCard, label: 'Mon plan' },
     (() => {
       // Compute Facture 2026 compliance score for badge

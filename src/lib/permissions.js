@@ -48,6 +48,11 @@ const PERMISSION_MATRIX = {
   bibliotheque:   { owner: 'full', admin: 'full', comptable: false, chef_chantier: 'view', ouvrier: false, readonly: 'view' },
   pipeline:       { owner: 'full', admin: 'full', comptable: 'full', chef_chantier: false, ouvrier: false, readonly: 'view' },
   'avis-google':  { owner: 'full', admin: 'full', comptable: false, chef_chantier: false, ouvrier: false, readonly: false },
+  contrats:       { owner: 'full', admin: 'full', comptable: 'full', chef_chantier: false, ouvrier: false, readonly: 'view' },
+  formulaires:    { owner: 'full', admin: 'full', comptable: false, chef_chantier: 'full', ouvrier: 'full', readonly: 'view' },
+  'site-web':     { owner: 'full', admin: 'full', comptable: false, chef_chantier: false, ouvrier: false, readonly: false },
+  'client-portal': { owner: 'full', admin: 'full', comptable: false, chef_chantier: false, ouvrier: false, readonly: false },
+  analytique:     { owner: 'full', admin: 'full', comptable: 'full', chef_chantier: false, ouvrier: false, readonly: 'view' },
 };
 
 /**
