@@ -284,7 +284,7 @@ function OverviewWidget({
   const overviewItems = useMemo(() => [
     {
       label: 'CA total 6 mois',
-      value: fmt(computed.sparkData.reduce((s, d) => s + d.ca, 0), modeDiscret),
+      value: fmt(computed.caCeMois || 0, modeDiscret),
       icon: BarChart3,
       color: couleur,
     },
