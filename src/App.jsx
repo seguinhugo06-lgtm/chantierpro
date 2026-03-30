@@ -1773,7 +1773,7 @@ export default function App() {
               {page === 'garanties' && <GarantiesDashboard isDark={isDark} couleur={couleur} showToast={showToast} user={user} chantiers={chantiers} />}
               {page === 'contrats' && <ContractsPage isDark={isDark} couleur={couleur} showToast={showToast} user={user} entreprise={entreprise} clients={clients} chantiers={chantiers} setPage={setPage} />}
               {page === 'formulaires' && <FormulairesPage isDark={isDark} couleur={couleur} showToast={showToast} user={user} entreprise={entreprise} clients={clients} chantiers={chantiers} setPage={setPage} />}
-              {page === 'site-web' && <SiteVitrine isDark={isDark} couleur={couleur} showToast={showToast} entreprise={entreprise} setPage={setPage} />}
+              {page === 'site-web' && <SiteVitrine isDark={isDark} couleur={couleur} showToast={showToast} entreprise={entreprise} chantiers={chantiers} catalogue={catalogue} setPage={setPage} />}
               {page === 'admin' && <AdminHelp chantiers={chantiers} clients={clients} devis={devis} factures={devis.filter(d => d.type === 'facture')} depenses={depenses} entreprise={entreprise} isDark={isDark} couleur={couleur} />}
               {page === 'pricing' && <PricingPage isDark={isDark} couleur={couleur} setPage={setPage} />}
               {page === 'billing' && <BillingDashboard isDark={isDark} couleur={couleur} />}
