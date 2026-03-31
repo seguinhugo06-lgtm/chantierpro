@@ -63,10 +63,15 @@ export default function PaiementsTab({ devis = [], clients = [], isDark, couleur
         .order('created_at', { ascending: false })
         .limit(200);
 
-      if (error) throw error;
-      setTransactions(data || []);
+      if (error) {
+        console.warn('[PaiementsTab] Load failed:', error.message);
+        setTransactions([]);
+      } else {
+        setTransactions(data || []);
+      }
     } catch (err) {
-      console.error('Error loading transactions:', err);
+      console.warn('[PaiementsTab] Load failed:', err.message);
+      setTransactions([]);
     } finally {
       setLoading(false);
     }

@@ -1826,7 +1826,7 @@ export default function App() {
                     setSelectedChantier(null);
                     setSelectedDevis(null);
                   }}
-                  className={`flex flex-col items-center justify-center flex-1 h-full transition-all relative ${
+                  className={`flex flex-col items-center justify-center flex-1 min-w-0 h-full transition-all relative ${
                     isActive
                       ? ''
                       : isDark ? 'text-slate-500 active:text-slate-400' : 'text-[#999] active:text-[#666]'
@@ -1837,12 +1837,12 @@ export default function App() {
                     <div className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full" style={{ backgroundColor: couleur }} />
                   )}
                   <div
-                    className={`flex items-center justify-center w-12 h-7 rounded-full transition-all ${isActive ? '' : ''}`}
+                    className={`flex items-center justify-center w-10 h-7 rounded-full transition-all ${isActive ? '' : ''}`}
                     style={isActive ? { backgroundColor: `${couleur}15` } : {}}
                   >
-                    <item.icon size={21} strokeWidth={isActive ? 2.5 : 1.5} />
+                    <item.icon size={20} strokeWidth={isActive ? 2.5 : 1.5} />
                   </div>
-                  <span className={`text-[10px] mt-0.5 whitespace-nowrap ${isActive ? 'font-bold' : 'font-medium'}`}>{item.label}</span>
+                  <span className={`text-[10px] mt-0.5 truncate max-w-full px-0.5 ${isActive ? 'font-bold' : 'font-medium'}`}>{item.label}</span>
                 </button>
               );
             })}
@@ -1853,7 +1853,7 @@ export default function App() {
               return (
                 <button
                   onClick={() => setSidebarOpen(true)}
-                  className={`flex flex-col items-center justify-center flex-1 h-full transition-all relative ${
+                  className={`flex flex-col items-center justify-center flex-1 min-w-0 h-full transition-all relative ${
                     isPlusActive
                       ? ''
                       : isDark ? 'text-slate-500 active:text-slate-400' : 'text-[#999] active:text-[#666]'
@@ -1864,12 +1864,12 @@ export default function App() {
                     <div className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full" style={{ backgroundColor: couleur }} />
                   )}
                   <div
-                    className="flex items-center justify-center w-12 h-7 rounded-full"
+                    className="flex items-center justify-center w-10 h-7 rounded-full"
                     style={isPlusActive ? { backgroundColor: `${couleur}15` } : {}}
                   >
-                    <Menu size={21} strokeWidth={isPlusActive ? 2.5 : 1.5} />
+                    <Menu size={20} strokeWidth={isPlusActive ? 2.5 : 1.5} />
                   </div>
-                  <span className={`text-[10px] mt-0.5 whitespace-nowrap ${isPlusActive ? 'font-bold' : 'font-medium'}`}>Plus</span>
+                  <span className={`text-[10px] mt-0.5 truncate max-w-full px-0.5 ${isPlusActive ? 'font-bold' : 'font-medium'}`}>Plus</span>
                 </button>
               );
             })()}

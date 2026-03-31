@@ -1855,10 +1855,10 @@ export default function Dashboard({
           <p className={`text-sm flex-1 ${isDark ? 'text-amber-300' : 'text-amber-800'}`}>
             {computed.profilPct < 80 ? `Profil ${computed.profilPct}%` : ''}
             {computed.profilPct < 80 && computed.f26Pct < 100 ? ' \u00b7 ' : ''}
-            {computed.f26Pct < 100 ? `Conformit\u00e9 ${computed.f26Pct}%` : ''}
+            {computed.f26Pct < 100 ? `Conformité ${computed.f26Pct}%` : ''}
           </p>
           <button onClick={() => setPage('settings')} className="text-xs font-semibold px-3 py-1.5 rounded-lg text-white min-h-[36px]" style={{ background: couleur }}>
-            Compl\u00e9ter
+            Compléter
           </button>
         </div>
       )}

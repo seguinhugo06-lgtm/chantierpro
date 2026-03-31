@@ -162,6 +162,9 @@ export default function GanttView({
     };
   };
 
+  // Render header with dates
+  const cellWidth = viewMode === 'week' ? 60 : 30;
+
   // Calculate "today" line position in px from left of timeline
   const todayLinePos = useMemo(() => {
     const today = new Date();
@@ -171,9 +174,10 @@ export default function GanttView({
     const rangeEnd = new Date(dateRange[dateRange.length - 1]);
     rangeEnd.setHours(23, 59, 59, 999);
     if (today < rangeStart || today > rangeEnd) return null;
+    const cw = viewMode === 'week' ? 60 : 30;
     const dayOffset = Math.floor((today - rangeStart) / (1000 * 60 * 60 * 24));
-    return dayOffset * cellWidth + cellWidth / 2;
-  }, [dateRange, cellWidth]);
+    return dayOffset * cw + cw / 2;
+  }, [dateRange, viewMode]);
 
   // Get chantier bar style with progress split
   const getChantierBarStyle = (chantier) => {
@@ -274,9 +278,6 @@ export default function GanttView({
     en_cours: { bg: 'bg-amber-100', text: 'text-amber-700' },
     termine: { bg: 'bg-emerald-100', text: 'text-emerald-700' }
   };
-
-  // Render header with dates
-  const cellWidth = viewMode === 'week' ? 60 : 30;
 
   return (
     <div className="space-y-6">

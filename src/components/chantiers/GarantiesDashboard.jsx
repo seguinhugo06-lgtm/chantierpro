@@ -243,10 +243,18 @@ export default function GarantiesDashboard({ isDark = false, couleur, showToast,
       if (filters.statut === 'expiree') queryFilters.statut = 'expiree';
       if (filters.search) queryFilters.search = filters.search;
 
-      const [statsResult, garantiesResult] = await Promise.all([
-        getDashboardStats(supabase, { userId, orgId }),
-        getAll(supabase, { userId, orgId, filters: queryFilters }),
-      ]);
+      let statsResult = null;
+      let garantiesResult = [];
+      try {
+        [statsResult, garantiesResult] = await Promise.all([
+          getDashboardStats(supabase, { userId, orgId }),
+          getAll(supabase, { userId, orgId, filters: queryFilters }),
+        ]);
+      } catch (innerErr) {
+        console.warn('[GarantiesDashboard] Load failed:', innerErr.message);
+        statsResult = { activesTotal: 0, parfaitAchevementCount: 0, biennaleCount: 0, decennaleCount: 0, expiring90j: [] };
+        garantiesResult = [];
+      }
 
       setStats(statsResult);
 
