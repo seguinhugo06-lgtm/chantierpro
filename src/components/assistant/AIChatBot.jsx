@@ -274,7 +274,7 @@ export default function AIChatBot({ isDark, couleur, devis, chantiers, clients, 
                 </div>
                 <div>
                   <h3 className={`text-sm font-semibold ${textPrimary}`}>Assistant {entrepriseNom}</h3>
-                  <p className={`text-xs ${textSecondary}`}>IA locale - Mode d\u00e9mo</p>
+                  <p className={`text-xs ${textSecondary}`}>IA locale - Mode démo</p>
                 </div>
               </div>
               <div className="flex items-center gap-1">

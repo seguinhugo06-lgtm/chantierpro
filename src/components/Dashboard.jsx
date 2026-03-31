@@ -40,6 +40,7 @@ import {
   BarChart3,
 } from 'lucide-react';
 
+import { AreaChart, Area, ResponsiveContainer, XAxis, Tooltip } from 'recharts';
 import { useData } from '../context/DataContext';
 import { useToast } from '../context/AppContext';
 import { usePermissions } from '../hooks/usePermissions';
@@ -81,7 +82,7 @@ const fadeInUp = {
 const staggerContainer = {
   animate: {
     transition: {
-      staggerChildren: 0.05,
+      staggerChildren: 0.03,
     },
   },
 };
@@ -121,13 +122,15 @@ function daysSince(date) {
   return Math.floor((new Date() - d) / (1000 * 60 * 60 * 24));
 }
 
-function getPrenom(user) {
+function getPrenom(user, entreprise) {
   if (!user) return '';
   const meta = user.user_metadata || {};
   if (meta.prenom) return meta.prenom;
+  if (meta.first_name) return meta.first_name;
   if (meta.full_name) return meta.full_name.split(' ')[0];
   if (meta.name) return meta.name.split(' ')[0];
-  return (user.email || '').split('@')[0];
+  if (entreprise?.nom) return entreprise.nom.split(' ')[0];
+  return (user.email || '').split('@')[0] || 'Artisan';
 }
 
 /**
@@ -196,16 +199,26 @@ function TrendBadge({ trend, isDark }) {
 
 // ============ KPI CARD (enhanced with trend) ============
 
-function KPICard({ label, value, sub, trend, colorClasses, isDark, delay = 0 }) {
+function KPICard({ label, shortLabel, value, sub, trend, colorClasses, isDark, delay = 0, onClick }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay, duration: 0.4 }}
-      className={`rounded-2xl p-4 sm:p-5 ${colorClasses}`}
+      className={`rounded-2xl p-4 sm:p-5 ${onClick ? 'cursor-pointer hover:ring-2 ring-offset-2' : ''} ${colorClasses}`}
+      onClick={onClick}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={onClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } } : undefined}
+      style={onClick ? { ringColor: 'currentColor' } : undefined}
     >
       <p className={`text-sm font-medium ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
-        {label}
+        {shortLabel ? (
+          <>
+            <span className="hidden sm:inline">{label}</span>
+            <span className="sm:hidden">{shortLabel}</span>
+          </>
+        ) : label}
       </p>
       <div className="flex items-center gap-2 mt-1">
         <p className={`text-2xl font-bold ${isDark ? 'text-slate-100' : 'text-gray-900'}`}>
@@ -284,7 +297,7 @@ function OverviewWidget({
   const overviewItems = useMemo(() => [
     {
       label: 'CA total 6 mois',
-      value: fmt(computed.caCeMois || 0, modeDiscret),
+      value: fmt(computed.sparkData.reduce((s, d) => s + d.ca, 0), modeDiscret),
       icon: BarChart3,
       color: couleur,
     },
@@ -331,16 +344,13 @@ function OverviewWidget({
       <button
         type="button"
         onClick={() => setShowOverview(!showOverview)}
-        className={`w-full flex items-center justify-between px-5 py-3.5 transition-colors ${
+        className={`w-full flex items-center justify-between px-4 py-2.5 transition-colors ${
           isDark ? 'hover:bg-slate-700/30' : 'hover:bg-gray-50/50'
         }`}
       >
         <div className="flex items-center gap-2">
-          <BarChart3 className="w-4 h-4" style={{ color: couleur }} />
-          <span className={`text-sm font-semibold ${textPrimary}`}>
-            Tableau de bord
-          </span>
-          <span className={`text-xs px-1.5 py-0.5 rounded-full ${isDark ? 'bg-slate-700 text-slate-400' : 'bg-slate-100 text-slate-500'}`}>
+          <BarChart3 className="w-3.5 h-3.5" style={{ color: couleur }} />
+          <span className={`text-xs font-semibold ${textSecondary}`}>
             Vue d'ensemble
           </span>
         </div>
@@ -348,7 +358,7 @@ function OverviewWidget({
           animate={{ rotate: showOverview ? 180 : 0 }}
           transition={{ duration: 0.2 }}
         >
-          <ChevronDown className={`w-4 h-4 ${textSecondary}`} />
+          <ChevronDown className={`w-3.5 h-3.5 ${textSecondary}`} />
         </motion.div>
       </button>
 
@@ -494,15 +504,15 @@ function PromoCards({ isDark, couleur, setPage, setCreateMode, setAiPrefill }) {
  * Full-width banner shown when there are critical actions needed.
  * Displayed above the 2-column grid.
  */
-function UrgentBanner({ count, totalRetard, isDark, modeDiscret, couleur, onClick }) {
-  if (count === 0) return null;
+function UrgentBanner({ count, totalRetard, isDark, modeDiscret, couleur, onClick, dismissed, onDismiss }) {
+  if (count === 0 || dismissed) return null;
 
   return (
     <motion.div
       initial={{ opacity: 0, y: -10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className={`rounded-2xl px-5 py-4 flex items-center gap-4 cursor-pointer transition-transform hover:scale-[1.005] ${
+      className={`rounded-xl px-4 py-2.5 flex items-center gap-3 cursor-pointer transition-transform hover:scale-[1.005] ${
         isDark
           ? 'bg-red-900/20 border border-red-800/30'
           : 'bg-red-50 border border-red-100'
@@ -510,20 +520,28 @@ function UrgentBanner({ count, totalRetard, isDark, modeDiscret, couleur, onClic
       onClick={onClick}
     >
       <div
-        className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+        className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
         style={{ background: '#ef444420' }}
       >
-        <AlertTriangle className="w-5 h-5 text-red-500" />
+        <AlertTriangle className="w-4 h-4 text-red-500" />
       </div>
       <div className="flex-1 min-w-0">
         <p className={`text-sm font-semibold ${isDark ? 'text-red-300' : 'text-red-700'}`}>
           {count} facture{count > 1 ? 's' : ''} en retard
-        </p>
-        <p className={`text-xs mt-0.5 ${isDark ? 'text-red-400/70' : 'text-red-500/70'}`}>
-          Total : {fmt(totalRetard, modeDiscret)}
+          <span className={`font-normal ml-2 ${isDark ? 'text-red-400/70' : 'text-red-500/70'}`}>
+            {fmt(totalRetard, modeDiscret)}
+          </span>
         </p>
       </div>
-      <ChevronRight className={`w-5 h-5 flex-shrink-0 ${isDark ? 'text-red-500/50' : 'text-red-400'}`} />
+      <ChevronRight className={`w-4 h-4 flex-shrink-0 ${isDark ? 'text-red-500/50' : 'text-red-400'}`} />
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); onDismiss(); }}
+        className={`p-1 rounded-lg transition-colors flex-shrink-0 ${isDark ? 'hover:bg-red-800/30 text-red-400' : 'hover:bg-red-100 text-red-400'}`}
+        aria-label="Fermer"
+      >
+        <span className="text-sm font-bold leading-none">&times;</span>
+      </button>
     </motion.div>
   );
 }
@@ -1574,6 +1592,11 @@ export default function Dashboard({
   const canSeeFinances = canAccess('finances');
 
   const [showAllActions, setShowAllActions] = useState(false);
+  const [dismissedNotif, setDismissedNotif] = useState(() => {
+    const ts = localStorage.getItem('cp_notif_dismissed');
+    // Auto-reset after 24h
+    return ts && (Date.now() - Number(ts)) < 86400000;
+  });
 
   // Onboarding state removed — replaced by compact bandeau
 
@@ -1731,6 +1754,18 @@ export default function Dashboard({
     const facturesEnRetard = devis
       .filter(d => d.type === 'facture' && d.date_echeance && new Date(d.date_echeance) < now && ['envoye', 'facture'].includes(d.statut));
 
+    // Sparkline data: CA par mois (6 derniers mois)
+    const sparkData = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      const label = d.toLocaleDateString('fr-FR', { month: 'short' });
+      const ca = devis
+        .filter(dv => ['signe', 'facture'].includes(dv.statut) && dv.date?.startsWith(key))
+        .reduce((sum, dv) => sum + (dv.total_ttc || 0), 0);
+      sparkData.push({ label, ca });
+    }
+
     return {
       aEncaisser,
       aEncaisserTrend,
@@ -1749,16 +1784,19 @@ export default function Dashboard({
       caCeMoisTrend,
       lastMonthCA,
       facturesEnRetardCount: facturesEnRetard.length,
+      sparkData,
     };
   }, [devis, chantiers, clients, entreprise, modeDiscret, setSelectedDevis, setPage]);
 
   // ---- Greeting ----
-  const prenom = getPrenom(user);
-  const formattedDate = new Date().toLocaleDateString('fr-FR', {
+  const prenom = getPrenom(user, entreprise);
+  const capitalize = s => s.charAt(0).toUpperCase() + s.slice(1);
+  const formattedDate = capitalize(new Date().toLocaleDateString('fr-FR', {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
-  });
+    year: 'numeric',
+  }));
 
   // ---- Memos du jour ----
   const memosJour = useMemo(() => {
@@ -1814,7 +1852,7 @@ export default function Dashboard({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.1, duration: 0.3 }}
-              className={`text-sm capitalize mt-1 ${isDark ? 'text-slate-500' : 'text-gray-400'}`}
+              className={`text-sm mt-1 ${isDark ? 'text-slate-500' : 'text-gray-400'}`}
             >
               {formattedDate}
             </motion.p>
@@ -1831,7 +1869,16 @@ export default function Dashboard({
                 : <Eye className={`w-4 h-4 ${textSecondary}`} />
               }
             </button>
-            <ScoreSante score={computed.score} isDark={isDark} couleur={couleur} />
+            <div
+              className="cursor-pointer"
+              onClick={() => setPage('settings')}
+              role="button"
+              tabIndex={0}
+              title="Cliquez pour améliorer votre score"
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setPage('settings'); } }}
+            >
+              <ScoreSante score={computed.score} isDark={isDark} couleur={couleur} />
+            </div>
           </div>
         </div>
       </section>
@@ -1846,6 +1893,8 @@ export default function Dashboard({
         modeDiscret={modeDiscret}
         couleur={couleur}
         onClick={() => setPage('devis')}
+        dismissed={dismissedNotif}
+        onDismiss={() => { setDismissedNotif(true); localStorage.setItem('cp_notif_dismissed', String(Date.now())); }}
       />
 
       {/* Compact onboarding bandeau */}
@@ -1855,10 +1904,10 @@ export default function Dashboard({
           <p className={`text-sm flex-1 ${isDark ? 'text-amber-300' : 'text-amber-800'}`}>
             {computed.profilPct < 80 ? `Profil ${computed.profilPct}%` : ''}
             {computed.profilPct < 80 && computed.f26Pct < 100 ? ' \u00b7 ' : ''}
-            {computed.f26Pct < 100 ? `Conformité ${computed.f26Pct}%` : ''}
+            {computed.f26Pct < 100 ? `Conformit\u00e9 ${computed.f26Pct}%` : ''}
           </p>
           <button onClick={() => setPage('settings')} className="text-xs font-semibold px-3 py-1.5 rounded-lg text-white min-h-[36px]" style={{ background: couleur }}>
-            Compléter
+            Compl\u00e9ter
           </button>
         </div>
       )}
@@ -1892,12 +1941,14 @@ export default function Dashboard({
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-5">
                 <KPICard
                   label="À encaisser"
+                  shortLabel="Encaisser"
                   value={fmt(computed.aEncaisser, modeDiscret)}
                   sub={computed.retard > 0 ? `dont ${fmt(computed.retard, modeDiscret)} en retard` : null}
                   trend={computed.aEncaisserTrend}
                   colorClasses={kpiColors.encaisser}
                   isDark={isDark}
                   delay={0}
+                  onClick={() => setPage('devis')}
                 />
                 <KPICard
                   label="Ce mois"
@@ -1907,9 +1958,11 @@ export default function Dashboard({
                   colorClasses={kpiColors.encaisser}
                   isDark={isDark}
                   delay={0.05}
+                  onClick={() => setPage('finances')}
                 />
                 <KPICard
                   label="Chantiers actifs"
+                  shortLabel="Chantiers"
                   value={String(computed.chantiersActifs.length)}
                   sub={computed.chantiersActifs.length > 0
                     ? `${Math.round(computed.chantiersActifs.reduce((s, c) => s + (c.avancement || 0), 0) / computed.chantiersActifs.length)}% moyen`
@@ -1918,17 +1971,46 @@ export default function Dashboard({
                   colorClasses={kpiColors.chantiers}
                   isDark={isDark}
                   delay={0.1}
+                  onClick={() => setPage('chantiers')}
                 />
                 <KPICard
                   label="Taux conversion"
+                  shortLabel="Conversion"
                   value={`${computed.tauxConversion}%`}
                   sub={null}
                   colorClasses={kpiColors.conversion}
                   isDark={isDark}
                   delay={0.15}
+                  onClick={() => setPage('devis')}
                 />
               </div>
             </motion.div>
+          )}
+
+          {/* CA sparkline chart (6 derniers mois) */}
+          {computed.sparkData.some(m => m.ca > 0) && (
+            <div className={`rounded-xl p-4 ${isDark ? 'bg-slate-800 border border-slate-700' : 'bg-white border border-slate-200'}`}>
+              <p className={`text-xs font-medium mb-2 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>CA 6 derniers mois</p>
+              <div style={{ height: 120 }}>
+                <ResponsiveContainer width="100%" height={120}>
+                  <AreaChart data={computed.sparkData}>
+                    <defs>
+                      <linearGradient id="caGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor={couleur} stopOpacity={0.3} />
+                        <stop offset="100%" stopColor={couleur} stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <Area type="monotone" dataKey="ca" stroke={couleur} strokeWidth={2} fill="url(#caGrad)" dot={{ r: 3, fill: couleur }} />
+                    <XAxis dataKey="label" tick={{ fontSize: 10, fill: isDark ? '#94a3b8' : '#94a3b8' }} axisLine={false} tickLine={false} />
+                    <Tooltip content={({ active, payload }) => active && payload?.length ? (
+                      <div className={`rounded-lg shadow-lg px-3 py-2 text-xs ${isDark ? 'bg-slate-700 text-white' : 'bg-white text-slate-900 border border-slate-200'}`}>
+                        <p className="font-bold">{new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(payload[0].value)}</p>
+                      </div>
+                    ) : null} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
           )}
 
           {/* Actions prioritaires (GAP 5: differentiated icons + batch relaunch) */}
@@ -2054,7 +2136,7 @@ export default function Dashboard({
                 Devis en attente
               </h3>
               <div className="space-y-2.5">
-                {computed.devisEnAttente.slice(0, 5).map((d, idx) => {
+                {computed.devisEnAttente.slice(0, 3).map((d, idx) => {
                   const client = clients.find(c => c.id === d.client_id);
                   const jours = daysSince(d.date);
                   return (
@@ -2090,7 +2172,7 @@ export default function Dashboard({
                   );
                 })}
               </div>
-              {computed.devisEnAttente.length > 5 && (
+              {computed.devisEnAttente.length > 3 && (
                 <button
                   type="button"
                   onClick={() => setPage('devis')}
@@ -2115,7 +2197,7 @@ export default function Dashboard({
                 Mémos du jour
               </h3>
               <div className="space-y-2">
-                {memosJour.map((m, idx) => (
+                {memosJour.slice(0, 3).map((m, idx) => (
                   <motion.div
                     key={m.id || idx}
                     initial={{ opacity: 0, x: 10 }}
@@ -2223,41 +2305,7 @@ export default function Dashboard({
             setSelectedDevis={setSelectedDevis}
           />
 
-          {/* Client stats */}
-          <ClientStats
-            clients={clients}
-            chantiers={chantiers}
-            devis={devis}
-            isDark={isDark}
-            couleur={couleur}
-            textPrimary={textPrimary}
-            textSecondary={textSecondary}
-            sectionBg={sectionBg}
-            setPage={setPage}
-          />
-
-          {/* Equipe summary */}
-          <EquipeSummary
-            equipe={equipe}
-            chantiers={chantiers}
-            isDark={isDark}
-            couleur={couleur}
-            textPrimary={textPrimary}
-            textSecondary={textSecondary}
-            sectionBg={sectionBg}
-            setPage={setPage}
-          />
-
-          {/* Catalogue summary */}
-          <CatalogueSummary
-            catalogue={catalogue}
-            isDark={isDark}
-            couleur={couleur}
-            textPrimary={textPrimary}
-            textSecondary={textSecondary}
-            sectionBg={sectionBg}
-            setPage={setPage}
-          />
+          {/* ClientStats, EquipeSummary, CatalogueSummary removed — redundant with sidebar */}
 
           {/* Monthly summary card */}
           {canSeeFinances && (
