@@ -346,8 +346,10 @@ export default function DevisWizard({
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-fade-in" onClick={onClose} />
 
-      {/* Modal */}
-      <div className={`relative w-full sm:max-w-2xl max-h-[95vh] sm:max-h-[90vh] ${cardBg} rounded-t-3xl sm:rounded-2xl shadow-2xl flex flex-col animate-slide-up overflow-hidden`}>
+      {/* Modal — split screen on desktop: form left + preview right */}
+      <div className={`relative w-full sm:max-w-6xl max-h-[95vh] sm:max-h-[90vh] ${cardBg} rounded-t-3xl sm:rounded-2xl shadow-2xl flex flex-col sm:flex-row animate-slide-up overflow-hidden`}>
+      {/* Left panel — Form */}
+      <div className="flex-1 sm:max-w-2xl flex flex-col overflow-hidden">
 
         {/* Header with gradient and progress */}
         <div className="px-5 pt-5 pb-4" style={{ background: `linear-gradient(135deg, ${couleur}, ${couleur}dd)` }}>
@@ -930,7 +932,89 @@ export default function DevisWizard({
             </button>
           </div>
         )}
+      </div>{/* end left panel */}
+
+      {/* Right panel — Live Preview (desktop only) */}
+      <div className={`hidden lg:flex flex-col w-[380px] border-l overflow-y-auto ${isDark ? 'border-slate-700 bg-slate-900' : 'border-slate-200 bg-slate-50'}`}>
+        <div className="p-4 border-b" style={{ borderColor: isDark ? '#334155' : '#e2e8f0' }}>
+          <p className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>Aperçu en direct</p>
+          <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Le document se met à jour automatiquement</p>
+        </div>
+        <div className="flex-1 p-4 overflow-y-auto">
+          {/* Mini preview document */}
+          <div className={`rounded-xl border p-5 text-xs space-y-4 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+            {/* Header */}
+            <div className="flex justify-between items-start">
+              <div>
+                <p className={`font-bold text-sm ${isDark ? 'text-white' : 'text-slate-900'}`}>{entreprise?.nom || 'Mon entreprise'}</p>
+                <p className={isDark ? 'text-slate-400' : 'text-slate-500'}>{entreprise?.adresse || ''}</p>
+                <p className={isDark ? 'text-slate-400' : 'text-slate-500'}>{entreprise?.tel || ''}</p>
+              </div>
+              <div className="text-right">
+                <p className="font-bold text-sm" style={{ color: couleur }}>{form.type === 'facture' ? 'FACTURE' : 'DEVIS'}</p>
+                <p className={isDark ? 'text-slate-400' : 'text-slate-500'}>{form.date}</p>
+              </div>
+            </div>
+
+            {/* Client */}
+            {selectedClient && (
+              <div className={`p-3 rounded-lg ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+                <p className={`font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>{formatClientName(selectedClient)}</p>
+                {selectedClient.adresse && <p className={isDark ? 'text-slate-400' : 'text-slate-500'}>{selectedClient.adresse}</p>}
+              </div>
+            )}
+
+            {/* Lines */}
+            {form.lignes.length > 0 ? (
+              <div className="space-y-2">
+                <div className={`flex justify-between font-semibold pb-1 border-b ${isDark ? 'text-slate-300 border-slate-600' : 'text-slate-700 border-slate-200'}`}>
+                  <span>Description</span>
+                  <span>Montant</span>
+                </div>
+                {form.lignes.map(l => (
+                  <div key={l.id} className={`flex justify-between py-1 ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+                    <div className="flex-1 truncate pr-2">
+                      <span>{l.description || 'Article'}</span>
+                      <span className={`ml-1 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                        {l.quantite || 1} × {(l.prixUnitaire || 0).toLocaleString('fr-FR')}€
+                      </span>
+                    </div>
+                    <span className="font-medium whitespace-nowrap">
+                      {((l.quantite || 1) * (l.prixUnitaire || 0)).toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className={`text-center py-4 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Aucun article</p>
+            )}
+
+            {/* Totals */}
+            <div className={`pt-3 border-t space-y-1 ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
+              <div className="flex justify-between">
+                <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>Total HT</span>
+                <span className={`font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                  {totals.totalHT.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>TVA ({form.tvaDefaut}%)</span>
+                <span className={isDark ? 'text-slate-300' : 'text-slate-700'}>
+                  {totals.totalTVA.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
+                </span>
+              </div>
+              <div className="flex justify-between text-sm font-bold pt-1">
+                <span className={isDark ? 'text-white' : 'text-slate-900'}>Total TTC</span>
+                <span style={{ color: couleur }}>
+                  {totals.totalTTC.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
+
+      </div>{/* end modal flex container */}
 
       {/* Quick Client Modal */}
       <QuickClientModal
