@@ -994,19 +994,19 @@ export default function DevisWizard({
               <div className="flex justify-between">
                 <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>Total HT</span>
                 <span className={`font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                  {totals.totalHT.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
+                  {(totals?.totalHT || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>TVA ({form.tvaDefaut}%)</span>
+                <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>TVA ({form.tvaDefaut || 10}%)</span>
                 <span className={isDark ? 'text-slate-300' : 'text-slate-700'}>
-                  {totals.totalTVA.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
+                  {(totals?.totalTVA || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
                 </span>
               </div>
               <div className="flex justify-between text-sm font-bold pt-1">
                 <span className={isDark ? 'text-white' : 'text-slate-900'}>Total TTC</span>
                 <span style={{ color: couleur }}>
-                  {totals.totalTTC.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
+                  {(totals?.totalTTC || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
                 </span>
               </div>
             </div>
