@@ -1852,7 +1852,7 @@ export default function Dashboard({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.1, duration: 0.3 }}
-              className={`text-sm mt-1 ${isDark ? 'text-slate-500' : 'text-gray-400'}`}
+              className={`text-sm mt-1 ${isDark ? 'text-slate-400' : 'text-gray-500'}`}
             >
               {formattedDate}
             </motion.p>
