@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { ArrowLeft, ArrowRight, Check, X, Plus, User, FileText, Receipt, Search, Star, Trash2, ChevronDown, ChevronUp, Sparkles, Clock, RotateCcw, AlertCircle, Mic, Zap, Edit3, Camera } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, X, Plus, User, FileText, Receipt, Search, Star, Trash2, ChevronDown, ChevronUp, Sparkles, Clock, RotateCcw, AlertCircle, Mic, Zap, Edit3 } from 'lucide-react';
 import FormError from './ui/FormError';
 import QuickClientModal from './QuickClientModal';
 import CatalogBrowser from './CatalogBrowser';
@@ -254,6 +254,16 @@ export default function DevisWizard({
     setForm(p => ({ ...p, lignes: p.lignes.filter(l => l.id !== id) }));
   };
 
+  const moveLigne = (index, direction) => {
+    setForm(p => {
+      const newLignes = [...p.lignes];
+      const newIndex = index + direction;
+      if (newIndex < 0 || newIndex >= newLignes.length) return p;
+      [newLignes[index], newLignes[newIndex]] = [newLignes[newIndex], newLignes[index]];
+      return { ...p, lignes: newLignes };
+    });
+  };
+
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async () => {
@@ -346,10 +356,8 @@ export default function DevisWizard({
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-fade-in" onClick={onClose} />
 
-      {/* Modal — split screen on desktop: form left + preview right */}
-      <div className={`relative w-full sm:max-w-6xl max-h-[95vh] sm:max-h-[90vh] ${cardBg} rounded-t-3xl sm:rounded-2xl shadow-2xl flex flex-col sm:flex-row animate-slide-up overflow-hidden`}>
-      {/* Left panel — Form */}
-      <div className="flex-1 sm:max-w-2xl flex flex-col overflow-hidden">
+      {/* Modal */}
+      <div className={`relative w-full sm:max-w-2xl max-h-[95vh] sm:max-h-[90vh] ${cardBg} rounded-t-3xl sm:rounded-2xl shadow-2xl flex flex-col animate-slide-up overflow-hidden`}>
 
         {/* Header with gradient and progress */}
         <div className="px-5 pt-5 pb-4" style={{ background: `linear-gradient(135deg, ${couleur}, ${couleur}dd)` }}>
@@ -382,12 +390,18 @@ export default function DevisWizard({
             return (
               <div className="flex gap-1">
                 {steps.map((s, i) => (
-                  <div key={s.idx} className="flex-1 flex flex-col items-center gap-1">
+                  <button
+                    key={s.idx}
+                    type="button"
+                    onClick={() => s.idx < step && setStep(s.idx)}
+                    disabled={s.idx > step}
+                    className={`flex-1 flex flex-col items-center gap-1 transition-all ${s.idx < step ? 'cursor-pointer hover:opacity-80' : s.idx === step ? '' : 'opacity-50 cursor-default'}`}
+                  >
                     <div className={`w-full h-1 rounded-full transition-all ${s.idx <= step ? 'bg-white' : 'bg-white/30'}`} />
                     <span className={`text-[10px] font-medium transition-all ${s.idx <= step ? 'text-white' : 'text-white/40'}`}>
                       {s.label}
                     </span>
-                  </div>
+                  </button>
                 ))}
               </div>
             );
@@ -678,8 +692,11 @@ export default function DevisWizard({
                     key={ligne.id}
                     ligne={ligne}
                     index={index}
+                    totalLignes={form.lignes.length}
                     onUpdate={(field, value) => updateLigne(ligne.id, field, value)}
                     onRemove={() => removeLigne(ligne.id)}
+                    onMoveUp={() => moveLigne(index, -1)}
+                    onMoveDown={() => moveLigne(index, 1)}
                     isDark={isDark}
                     couleur={couleur}
                     tvaDefaut={form.tvaDefaut}
@@ -699,9 +716,19 @@ export default function DevisWizard({
               {/* Running total */}
               {form.lignes.length > 0 && (
                 <div className={`p-4 rounded-xl ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
-                  <div className="flex justify-between items-center">
-                    <span className={textSecondary}>Total HT</span>
-                    <span className={`text-xl font-bold ${textPrimary}`}>{totals.totalHT.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR</span>
+                  <div className="space-y-1">
+                    <div className="flex justify-between items-center">
+                      <span className={textSecondary}>Total HT</span>
+                      <span className={`font-medium ${textPrimary}`}>{totals.totalHT.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className={`text-sm ${textMuted}`}>TVA</span>
+                      <span className={`text-sm ${textSecondary}`}>{totals.tvaTotal.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR</span>
+                    </div>
+                    <div className={`flex justify-between items-center pt-1 border-t ${isDark ? 'border-slate-600' : 'border-slate-300'}`}>
+                      <span className={`font-semibold ${textPrimary}`}>Total TTC</span>
+                      <span className="text-xl font-bold" style={{ color: couleur }}>{totals.totalTTC.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR</span>
+                    </div>
                   </div>
                 </div>
               )}
@@ -932,89 +959,7 @@ export default function DevisWizard({
             </button>
           </div>
         )}
-      </div>{/* end left panel */}
-
-      {/* Right panel — Live Preview (desktop only) */}
-      <div className={`hidden lg:flex flex-col w-[380px] border-l overflow-y-auto ${isDark ? 'border-slate-700 bg-slate-900' : 'border-slate-200 bg-slate-50'}`}>
-        <div className="p-4 border-b" style={{ borderColor: isDark ? '#334155' : '#e2e8f0' }}>
-          <p className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>Aperçu en direct</p>
-          <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Le document se met à jour automatiquement</p>
-        </div>
-        <div className="flex-1 p-4 overflow-y-auto">
-          {/* Mini preview document */}
-          <div className={`rounded-xl border p-5 text-xs space-y-4 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
-            {/* Header */}
-            <div className="flex justify-between items-start">
-              <div>
-                <p className={`font-bold text-sm ${isDark ? 'text-white' : 'text-slate-900'}`}>{entreprise?.nom || 'Mon entreprise'}</p>
-                <p className={isDark ? 'text-slate-400' : 'text-slate-500'}>{entreprise?.adresse || ''}</p>
-                <p className={isDark ? 'text-slate-400' : 'text-slate-500'}>{entreprise?.tel || ''}</p>
-              </div>
-              <div className="text-right">
-                <p className="font-bold text-sm" style={{ color: couleur }}>{form.type === 'facture' ? 'FACTURE' : 'DEVIS'}</p>
-                <p className={isDark ? 'text-slate-400' : 'text-slate-500'}>{form.date}</p>
-              </div>
-            </div>
-
-            {/* Client */}
-            {selectedClient && (
-              <div className={`p-3 rounded-lg ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
-                <p className={`font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>{formatClientName(selectedClient)}</p>
-                {selectedClient.adresse && <p className={isDark ? 'text-slate-400' : 'text-slate-500'}>{selectedClient.adresse}</p>}
-              </div>
-            )}
-
-            {/* Lines */}
-            {form.lignes.length > 0 ? (
-              <div className="space-y-2">
-                <div className={`flex justify-between font-semibold pb-1 border-b ${isDark ? 'text-slate-300 border-slate-600' : 'text-slate-700 border-slate-200'}`}>
-                  <span>Description</span>
-                  <span>Montant</span>
-                </div>
-                {form.lignes.map(l => (
-                  <div key={l.id} className={`flex justify-between py-1 ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-                    <div className="flex-1 truncate pr-2">
-                      <span>{l.description || 'Article'}</span>
-                      <span className={`ml-1 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                        {l.quantite || 1} × {(l.prixUnitaire || 0).toLocaleString('fr-FR')}€
-                      </span>
-                    </div>
-                    <span className="font-medium whitespace-nowrap">
-                      {((l.quantite || 1) * (l.prixUnitaire || 0)).toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
-                    </span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className={`text-center py-4 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Aucun article</p>
-            )}
-
-            {/* Totals */}
-            <div className={`pt-3 border-t space-y-1 ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
-              <div className="flex justify-between">
-                <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>Total HT</span>
-                <span className={`font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                  {(totals?.totalHT || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>TVA ({form.tvaDefaut || 10}%)</span>
-                <span className={isDark ? 'text-slate-300' : 'text-slate-700'}>
-                  {(totals?.totalTVA || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
-                </span>
-              </div>
-              <div className="flex justify-between text-sm font-bold pt-1">
-                <span className={isDark ? 'text-white' : 'text-slate-900'}>Total TTC</span>
-                <span style={{ color: couleur }}>
-                  {(totals?.totalTTC || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
-
-      </div>{/* end modal flex container */}
 
       {/* Quick Client Modal */}
       <QuickClientModal
@@ -1049,7 +994,7 @@ export default function DevisWizard({
 }
 
 // Ligne card component
-function LigneCard({ ligne, index, onUpdate, onRemove, isDark, couleur, tvaDefaut }) {
+function LigneCard({ ligne, index, totalLignes, onUpdate, onRemove, onMoveUp, onMoveDown, isDark, couleur, tvaDefaut }) {
   const textPrimary = isDark ? 'text-white' : 'text-slate-900';
   const textMuted = isDark ? 'text-slate-400' : 'text-slate-600';
   const inputBg = isDark ? 'bg-slate-600 border-slate-500 text-white' : 'bg-white border-slate-200';
@@ -1069,6 +1014,20 @@ function LigneCard({ ligne, index, onUpdate, onRemove, isDark, couleur, tvaDefau
           placeholder="Ex: Pose carrelage, Peinture murale..."
           className={`flex-1 px-3 py-2 border rounded-lg text-sm font-medium ${inputBg}`}
         />
+        {totalLignes > 1 && (
+          <div className="flex flex-col gap-0.5">
+            {index > 0 && (
+              <button onClick={onMoveUp} className={`p-1 rounded transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-400'}`} aria-label="Monter la ligne">
+                <ChevronUp size={14} />
+              </button>
+            )}
+            {index < totalLignes - 1 && (
+              <button onClick={onMoveDown} className={`p-1 rounded transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-400'}`} aria-label="Descendre la ligne">
+                <ChevronDown size={14} />
+              </button>
+            )}
+          </div>
+        )}
         <button
           onClick={onRemove}
           className={`p-2 rounded-lg transition-colors ${isDark ? 'hover:bg-red-900/30 text-red-400' : 'hover:bg-red-50 text-red-500'}`}
@@ -1145,68 +1104,6 @@ function LigneCard({ ligne, index, onUpdate, onRemove, isDark, couleur, tvaDefau
           </button>
         ))}
       </div>
-
-      {/* Sub-items */}
-      {(ligne.subItems || []).length > 0 && (
-        <div className="pl-6 mt-2 space-y-1.5">
-          {ligne.subItems.map((sub, si) => (
-            <div key={sub.id || si} className={`flex items-center gap-2 py-1.5 px-2 rounded-lg text-xs ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
-              <span className={textMuted}>↳</span>
-              <input value={sub.description || ''} onChange={e => {
-                const subs = [...(ligne.subItems || [])];
-                subs[si] = { ...subs[si], description: e.target.value };
-                onUpdate('subItems', subs);
-              }} placeholder="Détail..." className={`flex-1 px-2 py-1 border rounded text-xs ${inputBg}`} />
-              <button onClick={() => {
-                const subs = (ligne.subItems || []).filter((_, i) => i !== si);
-                onUpdate('subItems', subs);
-              }} className="p-1 text-red-400 hover:text-red-600"><X size={12} /></button>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Action buttons */}
-      <div className="flex items-center gap-2 mt-2">
-        <button
-          onClick={() => {
-            const subs = [...(ligne.subItems || []), { id: Date.now(), description: '', quantite: 1, prixUnitaire: 0 }];
-            onUpdate('subItems', subs);
-          }}
-          className={`flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg transition-colors ${isDark ? 'text-slate-400 hover:text-slate-300 hover:bg-slate-700' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'}`}
-        >
-          <Plus size={12} /> Sous-ligne
-        </button>
-        <label className={`flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg transition-colors cursor-pointer ${isDark ? 'text-slate-400 hover:text-slate-300 hover:bg-slate-700' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'}`}>
-          <Camera size={12} /> Photo
-          <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = (ev) => {
-              const photos = ligne.photos || [];
-              onUpdate('photos', [...photos, { id: Date.now(), url: ev.target.result, name: file.name }]);
-            };
-            reader.readAsDataURL(file);
-            e.target.value = '';
-          }} />
-        </label>
-      </div>
-
-      {/* Photos */}
-      {ligne.photos?.length > 0 && (
-        <div className="flex gap-2 mt-2 flex-wrap">
-          {ligne.photos.map((photo) => (
-            <div key={photo.id} className="relative group">
-              <img src={photo.url} alt="" className="w-14 h-14 rounded-lg object-cover border" />
-              <button onClick={() => onUpdate('photos', ligne.photos.filter(p => p.id !== photo.id))}
-                className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                <X size={8} />
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   );
 }

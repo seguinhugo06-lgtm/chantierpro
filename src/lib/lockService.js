@@ -70,7 +70,7 @@ export async function acquireLock(supabase, { entityType, entityId, userId, user
       localStorage.setItem(DEMO_KEY, JSON.stringify(locks));
       return { acquired: true, lock: null, lockedBy: null };
     } catch (e) {
-      console.error('[lockService] Demo acquireLock error:', e);
+      console.warn('[lockService] Demo acquireLock error:', e.message);
       return { acquired: true, lock: null, lockedBy: null };
     }
   }
@@ -104,7 +104,7 @@ export async function acquireLock(supabase, { entityType, entityId, userId, user
       .eq('id', existing.id);
 
     if (error) {
-      console.error('[lockService] acquireLock update error:', error);
+      console.warn('[lockService] acquireLock update not available:', error.message);
     }
     return { acquired: true, lock: null, lockedBy: null };
   }
@@ -127,7 +127,7 @@ export async function acquireLock(supabase, { entityType, entityId, userId, user
     if (error.code === '23505') {
       return { acquired: false, lock: null, lockedBy: 'un autre utilisateur' };
     }
-    console.error('[lockService] acquireLock insert error:', error);
+    console.warn('[lockService] acquireLock insert not available:', error.message);
   }
 
   return { acquired: true, lock: null, lockedBy: null };
@@ -152,7 +152,7 @@ export async function releaseLock(supabase, { entityType, entityId, userId }) {
       );
       localStorage.setItem(DEMO_KEY, JSON.stringify(filtered));
     } catch (e) {
-      console.error('[lockService] Demo releaseLock error:', e);
+      console.warn('[lockService] Demo releaseLock error:', e.message);
     }
     return;
   }
@@ -165,7 +165,7 @@ export async function releaseLock(supabase, { entityType, entityId, userId }) {
     .eq('user_id', userId);
 
   if (error) {
-    console.error('[lockService] releaseLock error:', error);
+    console.warn('[lockService] releaseLock not available:', error.message);
   }
 }
 
@@ -252,7 +252,7 @@ export async function forceReleaseLock(supabase, { entityType, entityId }) {
       );
       localStorage.setItem(DEMO_KEY, JSON.stringify(filtered));
     } catch (e) {
-      console.error('[lockService] Demo forceReleaseLock error:', e);
+      console.warn('[lockService] Demo forceReleaseLock error:', e.message);
     }
     return;
   }
@@ -264,7 +264,7 @@ export async function forceReleaseLock(supabase, { entityType, entityId }) {
     .eq('entity_id', entityId);
 
   if (error) {
-    console.error('[lockService] forceReleaseLock error:', error);
+    console.warn('[lockService] forceReleaseLock not available:', error.message);
   }
 }
 
@@ -293,7 +293,7 @@ export async function cleanupExpiredLocks(supabase) {
     .delete()
     .lt('expires_at', now)
     .catch((err) => {
-      console.error('[lockService] cleanupExpiredLocks error:', err);
+      console.warn('[lockService] cleanupExpiredLocks not available:', err.message);
     });
 }
 

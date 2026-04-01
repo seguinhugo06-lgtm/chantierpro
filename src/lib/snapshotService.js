@@ -90,7 +90,7 @@ export async function createSnapshot(supabase, {
       if (snapshots.length > 200) snapshots.length = 200;
       localStorage.setItem(DEMO_KEY, JSON.stringify(snapshots));
     } catch (e) {
-      console.error('[snapshotService] Demo save error:', e);
+      console.warn('[snapshotService] Demo save error:', e.message);
     }
     return entry;
   }
@@ -112,7 +112,7 @@ export async function createSnapshot(supabase, {
     .single();
 
   if (error) {
-    console.error('[snapshotService] createSnapshot error:', error);
+    console.warn('[snapshotService] createSnapshot not available:', error.message);
     return null;
   }
 
@@ -156,7 +156,7 @@ export async function getSnapshots(supabase, entityType, entityId, { userId = nu
 
   const { data, error } = await query;
   if (error) {
-    console.error('[snapshotService] getSnapshots error:', error);
+    console.warn('[snapshotService] getSnapshots not available:', error.message);
     return [];
   }
 
@@ -188,7 +188,7 @@ export async function getSnapshot(supabase, snapshotId) {
     .single();
 
   if (error) {
-    console.error('[snapshotService] getSnapshot error:', error);
+    console.warn('[snapshotService] getSnapshot not available:', error.message);
     return null;
   }
 

@@ -24,7 +24,7 @@ const COLUMNS = [
   { id: 'brouillon', label: 'Brouillon', icon: FileText, color: '#94a3b8', bgLight: 'bg-slate-50', bgDark: 'bg-slate-800/50' },
   { id: 'envoye', label: 'Envoyé', icon: Send, color: '#3b82f6', bgLight: 'bg-blue-50', bgDark: 'bg-blue-900/20' },
   { id: 'vu', label: 'Vu', icon: Eye, color: '#8b5cf6', bgLight: 'bg-purple-50', bgDark: 'bg-purple-900/20' },
-  { id: 'accepte', label: 'Accepté', icon: CheckCircle, color: '#22c55e', bgLight: 'bg-green-50', bgDark: 'bg-green-900/20' },
+  { id: 'accepte', label: 'Signé', icon: CheckCircle, color: '#22c55e', bgLight: 'bg-green-50', bgDark: 'bg-green-900/20' },
   { id: 'facture', label: 'Facturé', icon: Receipt, color: '#f97316', bgLight: 'bg-orange-50', bgDark: 'bg-orange-900/20' },
   { id: 'payee', label: 'Payé', icon: Banknote, color: '#10b981', bgLight: 'bg-emerald-50', bgDark: 'bg-emerald-900/20' },
   { id: 'refuse', label: 'Refusé', icon: XCircle, color: '#ef4444', bgLight: 'bg-red-50', bgDark: 'bg-red-900/20' },

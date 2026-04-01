@@ -96,7 +96,7 @@ export async function logAction(supabase, {
       if (logs.length > 500) logs.length = 500;
       localStorage.setItem(DEMO_KEY, JSON.stringify(logs));
     } catch (e) {
-      console.error('[auditService] Demo save error:', e);
+      console.warn('[auditService] Demo save error:', e.message);
     }
     return entry;
   }
@@ -119,7 +119,7 @@ export async function logAction(supabase, {
     .single();
 
   if (error) {
-    console.error('[auditService] logAction error:', error);
+    console.warn('[auditService] logAction not available:', error.message);
     return null;
   }
 
@@ -165,7 +165,7 @@ export async function getEntityHistory(supabase, entityType, entityId, { limit =
 
   const { data, error } = await query;
   if (error) {
-    console.error('[auditService] getEntityHistory error:', error);
+    console.warn('[auditService] getEntityHistory not available:', error.message);
     return [];
   }
 
@@ -259,7 +259,7 @@ export async function getEntitiesHistory(supabase, entityType, entityIds, { limi
 
   const { data, error } = await query;
   if (error) {
-    console.error('[auditService] getEntitiesHistory error:', error);
+    console.warn('[auditService] getEntitiesHistory not available:', error.message);
     return [];
   }
 
