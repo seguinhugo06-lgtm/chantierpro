@@ -1682,7 +1682,7 @@ export default function Dashboard({
           icon: Receipt,  // GAP 5: Receipt for invoices
           color: '#ef4444',
           label: `Facture en retard de ${jours}j`,
-          detail: client ? `${client.nom || client.name} — ${fmt(d.total_ttc, modeDiscret)}` : fmt(d.total_ttc, modeDiscret),
+          detail: `${client ? `${client.prenom || ''} ${client.nom || client.name || ''}`.trim() : d.client_nom || 'Client'} — ${fmt(d.total_ttc, modeDiscret)}`,
           actionLabel: 'Relancer',
           onClick: () => { setSelectedDevis(d); setPage('devis'); },
         });
@@ -1700,7 +1700,7 @@ export default function Dashboard({
           icon: Send,  // GAP 5: Send for follow-ups
           color: '#f97316',
           label: `Devis sans réponse (${jours}j)`,
-          detail: client ? `${client.nom || client.name} — ${fmt(d.total_ttc, modeDiscret)}` : fmt(d.total_ttc, modeDiscret),
+          detail: `${client ? `${client.prenom || ''} ${client.nom || client.name || ''}`.trim() : d.client_nom || 'Client'} — ${fmt(d.total_ttc, modeDiscret)}`,
           actionLabel: 'Relancer',
           onClick: () => { setSelectedDevis(d); setPage('devis'); },
         });
@@ -2159,7 +2159,7 @@ export default function Dashboard({
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className={`text-xs font-medium truncate ${textPrimary}`}>
-                          {client ? (client.nom || client.name) : 'Client inconnu'}
+                          {client ? `${client.prenom || ''} ${client.nom || client.name || ''}`.trim() : d.client_nom || 'Client inconnu'}
                         </p>
                         <p className={`text-[10px] ${textSecondary}`}>
                           {jours > 0 ? `Envoyé il y a ${jours}j` : 'Envoyé aujourd\'hui'}
