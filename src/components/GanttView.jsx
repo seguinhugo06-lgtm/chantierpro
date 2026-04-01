@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useCallback } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { ChevronLeft, ChevronRight, Calendar, Plus, Edit2, Trash2, X, Check, Users, Building2, Clock, AlertTriangle, GripVertical } from 'lucide-react';
 import { useConfirm } from '../context/AppContext';
 import { generateId } from '../lib/utils';
@@ -24,8 +24,6 @@ export default function GanttView({
   const [editingTask, setEditingTask] = useState(null);
   const [draggedTask, setDraggedTask] = useState(null);
   const containerRef = useRef(null);
-  const [hoveredBar, setHoveredBar] = useState(null); // { id, x, y, data }
-
   const [form, setForm] = useState({
     nom: '',
     chantierId: '',
@@ -134,7 +132,9 @@ export default function GanttView({
 
   // Calculate task position and width
   const getTaskStyle = (task) => {
+    if (!task || !task.debut) return null;
     const startDate = new Date(task.debut);
+    if (isNaN(startDate.getTime())) return null;
     const endDate = new Date(task.fin || task.debut);
 
     const rangeStart = dateRange[0];
@@ -161,59 +161,6 @@ export default function GanttView({
       opacity: task.statut === 'termine' ? 0.6 : 1
     };
   };
-
-  // Render header with dates
-  const cellWidth = viewMode === 'week' ? 60 : 30;
-
-  // Calculate "today" line position in px from left of timeline
-  const todayLinePos = useMemo(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const rangeStart = new Date(dateRange[0]);
-    rangeStart.setHours(0, 0, 0, 0);
-    const rangeEnd = new Date(dateRange[dateRange.length - 1]);
-    rangeEnd.setHours(23, 59, 59, 999);
-    if (today < rangeStart || today > rangeEnd) return null;
-    const cw = viewMode === 'week' ? 60 : 30;
-    const dayOffset = Math.floor((today - rangeStart) / (1000 * 60 * 60 * 24));
-    return dayOffset * cw + cw / 2;
-  }, [dateRange, viewMode]);
-
-  // Get chantier bar style with progress split
-  const getChantierBarStyle = (chantier) => {
-    const base = getTaskStyle({
-      debut: chantier.dateDebut,
-      fin: chantier.dateFin || chantier.dateDebut,
-    });
-    if (!base) return null;
-    const avancement = chantier.avancement || 0;
-    return { ...base, avancement };
-  };
-
-  // Group chantier tasks by phase for sub-bars
-  const getPhaseSubBars = (chantier) => {
-    const tachesChantier = chantier.taches || [];
-    if (!tachesChantier.length) return [];
-    const phases = {};
-    tachesChantier.forEach(t => {
-      const phase = t.phase || 'Autres';
-      if (!phases[phase]) phases[phase] = { nom: phase, tasks: [] };
-      phases[phase].tasks.push(t);
-    });
-    return Object.values(phases);
-  };
-
-  // Tooltip handler
-  const handleBarHover = useCallback((e, data) => {
-    const rect = containerRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    setHoveredBar({
-      id: data.id,
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top - 10,
-      data,
-    });
-  }, []);
 
   // Handle task form
   const handleSubmit = () => {
@@ -279,6 +226,9 @@ export default function GanttView({
     termine: { bg: 'bg-emerald-100', text: 'text-emerald-700' }
   };
 
+  // Render header with dates
+  const cellWidth = viewMode === 'week' ? 60 : 30;
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -341,7 +291,7 @@ export default function GanttView({
       </div>
 
       {/* Gantt chart */}
-      <div className={`${cardBg} rounded-xl border overflow-hidden relative`}>
+      <div className={`${cardBg} rounded-xl border overflow-hidden`}>
         <div className="overflow-x-auto" ref={containerRef}>
           <div style={{ minWidth: dateRange.length * cellWidth + 200 }}>
             {/* Date header */}
@@ -349,7 +299,7 @@ export default function GanttView({
               <div className={`w-[200px] flex-shrink-0 px-4 py-3 font-medium ${textPrimary} border-r ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
                 Chantiers
               </div>
-              <div className="flex relative">
+              <div className="flex">
                 {dateRange.map((date, i) => (
                   <div
                     key={i}
@@ -374,12 +324,7 @@ export default function GanttView({
                 <p className={textMuted}>Aucun chantier actif</p>
               </div>
             ) : (
-              Object.entries(tasksByChantier).map(([chantierId, { chantier, tasks }]) => {
-                const barStyle = chantier.dateDebut ? getChantierBarStyle(chantier) : null;
-                const phases = getPhaseSubBars(chantier);
-                const client = chantier.clientNom || chantier.client || '';
-
-                return (
+              Object.entries(tasksByChantier).map(([chantierId, { chantier, tasks }]) => (
                 <div key={chantierId} className={`border-b ${isDark ? 'border-slate-700' : 'border-slate-100'}`}>
                   {/* Chantier row */}
                   <div className="flex">
@@ -389,147 +334,42 @@ export default function GanttView({
                         <span className={`font-medium truncate ${textPrimary}`}>{chantier.nom}</span>
                       </div>
                       <p className={`text-xs ${textMuted} mt-1`}>
-                        {chantier.avancement || 0}% terminé
+                        {chantier.avancement || 0}% complete
                       </p>
                     </div>
                     <div className={`relative flex-1 h-16 ${gridBg}`}>
-                      {/* Grid lines with weekend backgrounds */}
+                      {/* Grid lines */}
                       <div className="absolute inset-0 flex">
                         {dateRange.map((date, i) => (
                           <div
                             key={i}
                             className={`flex-shrink-0 h-full border-r ${isDark ? 'border-slate-700' : 'border-slate-200'} ${
-                              isWeekend(date) ? (isDark ? 'bg-slate-700/30' : 'bg-slate-200/40') : ''
+                              isToday(date) ? todayBg : isWeekend(date) ? (isDark ? 'bg-slate-800/50' : 'bg-slate-100/50') : ''
                             }`}
                             style={{ width: cellWidth }}
                           />
                         ))}
                       </div>
 
-                      {/* Chantier bar with progress */}
-                      {barStyle && (
-                        <div
-                          className="absolute top-3 h-6 rounded-full overflow-hidden cursor-pointer transition-shadow hover:shadow-md"
-                          style={{
-                            left: barStyle.left,
-                            width: barStyle.width,
-                          }}
-                          onMouseEnter={(e) => handleBarHover(e, {
-                            id: chantier.id,
-                            nom: chantier.nom,
-                            client,
-                            avancement: chantier.avancement || 0,
-                            dateDebut: chantier.dateDebut,
-                            dateFin: chantier.dateFin,
-                          })}
-                          onMouseLeave={() => setHoveredBar(null)}
-                        >
-                          {/* Completed portion */}
+                      {/* Chantier bar */}
+                      {chantier.dateDebut && (() => {
+                        const barStyle = getTaskStyle({
+                          debut: chantier.dateDebut,
+                          fin: chantier.dateFin || chantier.dateDebut
+                        });
+                        if (!barStyle) return null;
+                        return (
                           <div
-                            className="absolute inset-0 rounded-full"
+                            className="absolute top-2 h-4 rounded-full opacity-30"
                             style={{
-                              background: couleur,
-                              width: `${barStyle.avancement}%`,
-                              opacity: 1,
+                              ...barStyle,
+                              background: couleur
                             }}
                           />
-                          {/* Remaining portion */}
-                          <div
-                            className="absolute inset-0 rounded-full"
-                            style={{
-                              background: couleur,
-                              opacity: 0.2,
-                            }}
-                          />
-                          {/* Progress text */}
-                          {barStyle.width > 40 && (
-                            <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-white z-10 drop-shadow-sm">
-                              {barStyle.avancement}%
-                            </span>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Today line */}
-                      {todayLinePos !== null && (
-                        <div
-                          className="absolute top-0 bottom-0 w-0.5 z-20 pointer-events-none"
-                          style={{ left: todayLinePos, background: '#ef4444' }}
-                        />
-                      )}
+                        );
+                      })()}
                     </div>
                   </div>
-
-                  {/* Phase sub-bars (from chantier.taches grouped by phase) */}
-                  {phases.map((phase, pi) => {
-                    const doneTasks = phase.tasks.filter(t => t.done).length;
-                    const totalTasks = phase.tasks.length;
-                    const phaseAvancement = totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0;
-
-                    return (
-                      <div key={`phase-${pi}`} className="flex">
-                        <div className={`w-[200px] flex-shrink-0 px-4 py-1.5 pl-10 border-r ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
-                          <span className={`text-xs truncate ${textMuted}`}>{phase.nom}</span>
-                        </div>
-                        <div className={`relative flex-1 h-8 ${gridBg}`}>
-                          {/* Grid lines */}
-                          <div className="absolute inset-0 flex">
-                            {dateRange.map((date, i) => (
-                              <div
-                                key={i}
-                                className={`flex-shrink-0 h-full border-r ${isDark ? 'border-slate-700/50' : 'border-slate-200/50'} ${
-                                  isWeekend(date) ? (isDark ? 'bg-slate-700/30' : 'bg-slate-200/40') : ''
-                                }`}
-                                style={{ width: cellWidth }}
-                              />
-                            ))}
-                          </div>
-
-                          {/* Phase bar */}
-                          {barStyle && (
-                            <div
-                              className="absolute top-1.5 h-5 rounded overflow-hidden"
-                              style={{
-                                left: barStyle.left,
-                                width: barStyle.width,
-                              }}
-                            >
-                              {/* Completed portion */}
-                              <div
-                                className="absolute inset-0 rounded"
-                                style={{
-                                  background: couleur,
-                                  width: `${phaseAvancement}%`,
-                                  opacity: 0.7,
-                                }}
-                              />
-                              {/* Remaining */}
-                              <div
-                                className="absolute inset-0 rounded"
-                                style={{
-                                  background: couleur,
-                                  opacity: 0.12,
-                                }}
-                              />
-                              {barStyle.width > 60 && (
-                                <span className="absolute inset-0 flex items-center px-2 text-[9px] font-medium text-white z-10 drop-shadow-sm">
-                                  {phase.nom} ({phaseAvancement}%)
-                                </span>
-                              )}
-                            </div>
-                          )}
-
-                          {/* Today line */}
-                          {todayLinePos !== null && (
-                            <div
-                              className="absolute top-0 bottom-0 w-0.5 z-20 pointer-events-none"
-                              style={{ left: todayLinePos, background: '#ef4444' }}
-                            />
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
 
                   {/* Task rows */}
                   {tasks.map(task => {
@@ -551,7 +391,7 @@ export default function GanttView({
                               <div
                                 key={i}
                                 className={`flex-shrink-0 h-full border-r ${isDark ? 'border-slate-700' : 'border-slate-200'} ${
-                                  isWeekend(date) ? (isDark ? 'bg-slate-700/30' : 'bg-slate-200/40') : ''
+                                  isWeekend(date) ? (isDark ? 'bg-slate-800/50' : 'bg-slate-100/50') : ''
                                 }`}
                                 style={{ width: cellWidth }}
                               />
@@ -563,55 +403,20 @@ export default function GanttView({
                             className="absolute top-1.5 h-7 rounded-md flex items-center px-2 cursor-pointer hover:opacity-80 transition-opacity shadow-sm"
                             style={style}
                             onClick={() => openEdit(task)}
-                            onMouseEnter={(e) => handleBarHover(e, {
-                              id: task.id,
-                              nom: task.nom,
-                              avancement: task.statut === 'termine' ? 100 : task.statut === 'en_cours' ? 50 : 0,
-                              dateDebut: task.debut,
-                              dateFin: task.fin,
-                            })}
-                            onMouseLeave={() => setHoveredBar(null)}
                           >
                             <span className="text-xs text-white truncate font-medium">
                               {task.nom}
                             </span>
                           </div>
-
-                          {/* Today line */}
-                          {todayLinePos !== null && (
-                            <div
-                              className="absolute top-0 bottom-0 w-0.5 z-20 pointer-events-none"
-                              style={{ left: todayLinePos, background: '#ef4444' }}
-                            />
-                          )}
                         </div>
                       </div>
                     );
                   })}
                 </div>
-                );
-              })
+              ))
             )}
           </div>
         </div>
-
-        {/* Tooltip */}
-        {hoveredBar && (
-          <div
-            className={`absolute z-50 px-3 py-2 rounded-lg shadow-lg text-xs pointer-events-none ${isDark ? 'bg-slate-700 text-slate-100 border border-slate-600' : 'bg-white text-slate-800 border border-slate-200'}`}
-            style={{
-              left: Math.min(hoveredBar.x, (containerRef.current?.offsetWidth || 400) - 200),
-              top: hoveredBar.y - 60,
-            }}
-          >
-            <p className="font-bold">{hoveredBar.data.nom}</p>
-            {hoveredBar.data.client && <p className={textMuted}>{hoveredBar.data.client}</p>}
-            <p>Avancement : {hoveredBar.data.avancement}%</p>
-            {hoveredBar.data.dateDebut && (
-              <p>{new Date(hoveredBar.data.dateDebut).toLocaleDateString('fr-FR')} → {hoveredBar.data.dateFin ? new Date(hoveredBar.data.dateFin).toLocaleDateString('fr-FR') : '?'}</p>
-            )}
-          </div>
-        )}
       </div>
 
       {/* Legend */}

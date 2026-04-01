@@ -297,7 +297,7 @@ function OverviewWidget({
   const overviewItems = useMemo(() => [
     {
       label: 'CA total 6 mois',
-      value: fmt((computed.sparkData || []).reduce((s, d) => s + d.ca, 0), modeDiscret),
+      value: fmt(computed.sparkData.reduce((s, d) => s + d.ca, 0), modeDiscret),
       icon: BarChart3,
       color: couleur,
     },
@@ -1682,7 +1682,7 @@ export default function Dashboard({
           icon: Receipt,  // GAP 5: Receipt for invoices
           color: '#ef4444',
           label: `Facture en retard de ${jours}j`,
-          detail: `${client ? `${client.prenom || ''} ${client.nom || client.name || ''}`.trim() : d.client_nom || 'Client'} — ${fmt(d.total_ttc, modeDiscret)}`,
+          detail: client ? `${client.nom || client.name} — ${fmt(d.total_ttc, modeDiscret)}` : fmt(d.total_ttc, modeDiscret),
           actionLabel: 'Relancer',
           onClick: () => { setSelectedDevis(d); setPage('devis'); },
         });
@@ -1700,7 +1700,7 @@ export default function Dashboard({
           icon: Send,  // GAP 5: Send for follow-ups
           color: '#f97316',
           label: `Devis sans réponse (${jours}j)`,
-          detail: `${client ? `${client.prenom || ''} ${client.nom || client.name || ''}`.trim() : d.client_nom || 'Client'} — ${fmt(d.total_ttc, modeDiscret)}`,
+          detail: client ? `${client.nom || client.name} — ${fmt(d.total_ttc, modeDiscret)}` : fmt(d.total_ttc, modeDiscret),
           actionLabel: 'Relancer',
           onClick: () => { setSelectedDevis(d); setPage('devis'); },
         });
@@ -1837,7 +1837,7 @@ export default function Dashboard({
     <div className={`p-4 sm:p-6 max-w-7xl mx-auto space-y-6 min-h-screen ${isDark ? 'bg-slate-900' : 'bg-[#F5F7FA]'}`}>
 
       {/* =========== GREETING + SCORE (full width) =========== */}
-      <section>
+      <header aria-label="En-tête dashboard">
         <div className="flex justify-between items-start mb-5">
           <div>
             <motion.h1
@@ -1852,7 +1852,7 @@ export default function Dashboard({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.1, duration: 0.3 }}
-              className={`text-sm mt-1 ${isDark ? 'text-slate-400' : 'text-gray-500'}`}
+              className={`text-sm mt-1 ${isDark ? 'text-slate-500' : 'text-gray-400'}`}
             >
               {formattedDate}
             </motion.p>
@@ -1881,9 +1881,10 @@ export default function Dashboard({
             </div>
           </div>
         </div>
-      </section>
+      </header>
 
       {/* =========== FULL-WIDTH BANNERS (above the grid) =========== */}
+      <section aria-label="Notifications">
 
       {/* GAP 1: Urgent banner — full width */}
       <UrgentBanner
@@ -1903,14 +1904,15 @@ export default function Dashboard({
           <AlertCircle size={16} className="text-amber-500 flex-shrink-0" />
           <p className={`text-sm flex-1 ${isDark ? 'text-amber-300' : 'text-amber-800'}`}>
             {computed.profilPct < 80 ? `Profil ${computed.profilPct}%` : ''}
-            {computed.profilPct < 80 && computed.f26Pct < 100 ? ' · ' : ''}
-            {computed.f26Pct < 100 ? `Conformité ${computed.f26Pct}%` : ''}
+            {computed.profilPct < 80 && computed.f26Pct < 100 ? ' \u00b7 ' : ''}
+            {computed.f26Pct < 100 ? `Conformit\u00e9 ${computed.f26Pct}%` : ''}
           </p>
           <button onClick={() => setPage('settings')} className="text-xs font-semibold px-3 py-1.5 rounded-lg text-white min-h-[36px]" style={{ background: couleur }}>
-            Compléter
+            Compl\u00e9ter
           </button>
         </div>
       )}
+      </section>
 
       {/* GAP 7: Overview widget — full width, collapsible, default closed */}
       <OverviewWidget
@@ -1933,67 +1935,70 @@ export default function Dashboard({
 
           {/* 4 KPI Cards with trends (GAP 2 + GAP 9) */}
           {canSeeFinances && (
-            <motion.div
-              variants={staggerContainer}
-              initial="initial"
-              animate="animate"
-            >
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-5">
-                <KPICard
-                  label="À encaisser"
-                  shortLabel="Encaisser"
-                  value={fmt(computed.aEncaisser, modeDiscret)}
-                  sub={computed.retard > 0 ? `dont ${fmt(computed.retard, modeDiscret)} en retard` : null}
-                  trend={computed.aEncaisserTrend}
-                  colorClasses={kpiColors.encaisser}
-                  isDark={isDark}
-                  delay={0}
-                  onClick={() => setPage('devis')}
-                />
-                <KPICard
-                  label="Ce mois"
-                  value={fmt(computed.caCeMois, modeDiscret)}
-                  sub={computed.lastMonthCA > 0 ? `vs ${fmt(computed.lastMonthCA, modeDiscret)} mois dernier` : null}
-                  trend={computed.caCeMoisTrend}
-                  colorClasses={kpiColors.encaisser}
-                  isDark={isDark}
-                  delay={0.05}
-                  onClick={() => setPage('finances')}
-                />
-                <KPICard
-                  label="Chantiers actifs"
-                  shortLabel="Chantiers"
-                  value={String(computed.chantiersActifs.length)}
-                  sub={computed.chantiersActifs.length > 0
-                    ? `${Math.round(computed.chantiersActifs.reduce((s, c) => s + (c.avancement || 0), 0) / computed.chantiersActifs.length)}% moyen`
-                    : null
-                  }
-                  colorClasses={kpiColors.chantiers}
-                  isDark={isDark}
-                  delay={0.1}
-                  onClick={() => setPage('chantiers')}
-                />
-                <KPICard
-                  label="Taux conversion"
-                  shortLabel="Conversion"
-                  value={`${computed.tauxConversion}%`}
-                  sub={null}
-                  colorClasses={kpiColors.conversion}
-                  isDark={isDark}
-                  delay={0.15}
-                  onClick={() => setPage('devis')}
-                />
-              </div>
-            </motion.div>
+            <section aria-label="Indicateurs clés">
+              <motion.div
+                variants={staggerContainer}
+                initial="initial"
+                animate="animate"
+              >
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-5">
+                  <KPICard
+                    label="À encaisser"
+                    shortLabel="Encaisser"
+                    value={fmt(computed.aEncaisser, modeDiscret)}
+                    sub={computed.retard > 0 ? `dont ${fmt(computed.retard, modeDiscret)} en retard` : null}
+                    trend={computed.aEncaisserTrend}
+                    colorClasses={kpiColors.encaisser}
+                    isDark={isDark}
+                    delay={0}
+                    onClick={() => setPage('devis')}
+                  />
+                  <KPICard
+                    label="Ce mois"
+                    value={fmt(computed.caCeMois, modeDiscret)}
+                    sub={computed.lastMonthCA > 0 ? `vs ${fmt(computed.lastMonthCA, modeDiscret)} mois dernier` : null}
+                    trend={computed.caCeMoisTrend}
+                    colorClasses={kpiColors.encaisser}
+                    isDark={isDark}
+                    delay={0.05}
+                    onClick={() => setPage('finances')}
+                  />
+                  <KPICard
+                    label="Chantiers actifs"
+                    shortLabel="Chantiers"
+                    value={String(computed.chantiersActifs.length)}
+                    sub={computed.chantiersActifs.length > 0
+                      ? `${Math.round(computed.chantiersActifs.reduce((s, c) => s + (c.avancement || 0), 0) / computed.chantiersActifs.length)}% moyen`
+                      : null
+                    }
+                    colorClasses={kpiColors.chantiers}
+                    isDark={isDark}
+                    delay={0.1}
+                    onClick={() => setPage('chantiers')}
+                  />
+                  <KPICard
+                    label="Taux conversion"
+                    shortLabel="Conversion"
+                    value={`${computed.tauxConversion}%`}
+                    sub={null}
+                    colorClasses={kpiColors.conversion}
+                    isDark={isDark}
+                    delay={0.15}
+                    onClick={() => setPage('devis')}
+                  />
+                </div>
+              </motion.div>
+            </section>
           )}
 
-          {/* CA sparkline chart (6 derniers mois) — hidden in mode discret */}
-          {computed.sparkData.some(m => m.ca > 0) && !modeDiscret && (
-            <div className={`rounded-xl p-4 pr-16 sm:pr-4 ${isDark ? 'bg-slate-800 border border-slate-700' : 'bg-white border border-slate-200'}`}>
+          {/* CA sparkline chart (6 derniers mois) */}
+          {computed.sparkData.some(m => m.ca > 0) && (
+            <section aria-label="Chiffre d'affaires">
+            <div className={`rounded-xl p-4 ${isDark ? 'bg-slate-800 border border-slate-700' : 'bg-white border border-slate-200'}`}>
               <p className={`text-xs font-medium mb-2 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>CA 6 derniers mois</p>
               <div style={{ height: 120 }}>
                 <ResponsiveContainer width="100%" height={120}>
-                  <AreaChart data={computed.sparkData} margin={{ right: 10 }}>
+                  <AreaChart data={computed.sparkData}>
                     <defs>
                       <linearGradient id="caGrad" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="0%" stopColor={couleur} stopOpacity={0.3} />
@@ -2011,11 +2016,13 @@ export default function Dashboard({
                 </ResponsiveContainer>
               </div>
             </div>
+            </section>
           )}
 
           {/* Actions prioritaires (GAP 5: differentiated icons + batch relaunch) */}
           {/* GAP 8: Only show if there are actions */}
           {allActions.length > 0 && (
+            <section aria-label="Actions prioritaires">
             <ActionsSection
               allActions={allActions}
               visibleActions={visibleActions}
@@ -2027,6 +2034,7 @@ export default function Dashboard({
               sectionBg={sectionBg}
               showToast={showToast}
             />
+            </section>
           )}
 
           {/* Weekly stats summary */}
@@ -2126,6 +2134,7 @@ export default function Dashboard({
 
           {/* Devis en attente summary card */}
           {computed.devisEnAttente.length > 0 && (
+            <section aria-label="Devis en attente">
             <motion.div
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
@@ -2159,7 +2168,7 @@ export default function Dashboard({
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className={`text-xs font-medium truncate ${textPrimary}`}>
-                          {client ? `${client.prenom || ''} ${client.nom || client.name || ''}`.trim() : d.client_nom || 'Client inconnu'}
+                          {client ? (client.nom || client.name) : 'Client inconnu'}
                         </p>
                         <p className={`text-[10px] ${textSecondary}`}>
                           {jours > 0 ? `Envoyé il y a ${jours}j` : 'Envoyé aujourd\'hui'}
@@ -2183,10 +2192,12 @@ export default function Dashboard({
                 </button>
               )}
             </motion.div>
+            </section>
           )}
 
           {/* Memos du jour */}
           {memosJour.length > 0 && (
+            <section aria-label="Mémos du jour">
             <motion.div
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
@@ -2221,6 +2232,7 @@ export default function Dashboard({
                 ))}
               </div>
             </motion.div>
+            </section>
           )}
 
           {/* Quick action card: Créer un devis */}

@@ -245,21 +245,22 @@ export default function GarantiesDashboard({ isDark = false, couleur, showToast,
 
       let statsResult = null;
       let garantiesResult = [];
+
       try {
         [statsResult, garantiesResult] = await Promise.all([
           getDashboardStats(supabase, { userId, orgId }),
           getAll(supabase, { userId, orgId, filters: queryFilters }),
         ]);
-      } catch (innerErr) {
-        console.warn('[GarantiesDashboard] Load failed:', innerErr.message);
-        statsResult = { activesTotal: 0, parfaitAchevementCount: 0, biennaleCount: 0, decennaleCount: 0, expiring90j: [] };
+      } catch (fetchErr) {
+        console.warn('[GarantiesDashboard] Failed to load:', fetchErr.message || fetchErr);
+        statsResult = null;
         garantiesResult = [];
       }
 
       setStats(statsResult);
 
       // Additional client-side filtering for 'litige' status
-      let filtered = garantiesResult;
+      let filtered = garantiesResult || [];
       if (filters.statut === 'litige') {
         filtered = filtered.filter((g) => g.statut === 'litige');
       }
@@ -269,8 +270,9 @@ export default function GarantiesDashboard({ isDark = false, couleur, showToast,
 
       setGaranties(filtered);
     } catch (err) {
-      console.error('Error loading garanties dashboard:', err);
-      if (showToast) showToast('Erreur lors du chargement des garanties', 'error');
+      console.warn('[GarantiesDashboard] Unexpected error:', err.message || err);
+      setStats(null);
+      setGaranties([]);
     } finally {
       setLoading(false);
     }
