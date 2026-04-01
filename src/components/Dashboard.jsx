@@ -297,7 +297,7 @@ function OverviewWidget({
   const overviewItems = useMemo(() => [
     {
       label: 'CA total 6 mois',
-      value: fmt(computed.sparkData.reduce((s, d) => s + d.ca, 0), modeDiscret),
+      value: fmt((computed.sparkData || []).reduce((s, d) => s + d.ca, 0), modeDiscret),
       icon: BarChart3,
       color: couleur,
     },
@@ -1903,11 +1903,11 @@ export default function Dashboard({
           <AlertCircle size={16} className="text-amber-500 flex-shrink-0" />
           <p className={`text-sm flex-1 ${isDark ? 'text-amber-300' : 'text-amber-800'}`}>
             {computed.profilPct < 80 ? `Profil ${computed.profilPct}%` : ''}
-            {computed.profilPct < 80 && computed.f26Pct < 100 ? ' \u00b7 ' : ''}
-            {computed.f26Pct < 100 ? `Conformit\u00e9 ${computed.f26Pct}%` : ''}
+            {computed.profilPct < 80 && computed.f26Pct < 100 ? ' · ' : ''}
+            {computed.f26Pct < 100 ? `Conformité ${computed.f26Pct}%` : ''}
           </p>
           <button onClick={() => setPage('settings')} className="text-xs font-semibold px-3 py-1.5 rounded-lg text-white min-h-[36px]" style={{ background: couleur }}>
-            Compl\u00e9ter
+            Compléter
           </button>
         </div>
       )}
@@ -1987,13 +1987,13 @@ export default function Dashboard({
             </motion.div>
           )}
 
-          {/* CA sparkline chart (6 derniers mois) */}
-          {computed.sparkData.some(m => m.ca > 0) && (
-            <div className={`rounded-xl p-4 ${isDark ? 'bg-slate-800 border border-slate-700' : 'bg-white border border-slate-200'}`}>
+          {/* CA sparkline chart (6 derniers mois) — hidden in mode discret */}
+          {computed.sparkData.some(m => m.ca > 0) && !modeDiscret && (
+            <div className={`rounded-xl p-4 pr-16 sm:pr-4 ${isDark ? 'bg-slate-800 border border-slate-700' : 'bg-white border border-slate-200'}`}>
               <p className={`text-xs font-medium mb-2 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>CA 6 derniers mois</p>
               <div style={{ height: 120 }}>
                 <ResponsiveContainer width="100%" height={120}>
-                  <AreaChart data={computed.sparkData}>
+                  <AreaChart data={computed.sparkData} margin={{ right: 10 }}>
                     <defs>
                       <linearGradient id="caGrad" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="0%" stopColor={couleur} stopOpacity={0.3} />

@@ -234,7 +234,7 @@ export default function AIChatBot({ isDark, couleur, devis, chantiers, clients, 
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className={`fixed bottom-20 right-4 z-50 items-center justify-center w-14 h-14 rounded-full shadow-lg transition-all duration-300 hover:scale-110 active:scale-95 ${inputFocused ? 'hidden sm:flex' : 'flex'}`}
+          className={`fixed bottom-24 md:bottom-6 right-4 z-50 items-center justify-center w-14 h-14 rounded-full shadow-lg transition-all duration-300 hover:scale-110 active:scale-95 ${inputFocused ? 'hidden sm:flex' : 'flex'}`}
           style={{ background: accentColor }}
           aria-label="Ouvrir l'assistant IA"
         >
