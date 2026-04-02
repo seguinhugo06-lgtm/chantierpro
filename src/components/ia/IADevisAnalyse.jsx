@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   ChevronLeft, Sparkles, Mic, Camera, Clock, CheckCircle, AlertCircle,
-  FileText, Trash2, Euro,
+  FileText, Trash2, Euro, RotateCcw,
 } from 'lucide-react';
 import { useVoiceInput } from '../../hooks/useVoiceInput';
 import { analyseTranscript } from '../../lib/integrations/ai-devis';
@@ -498,10 +498,63 @@ export default function IADevisAnalyse({
   // ===========================================================================
 
   // ---- DETAIL VIEW ----
+
+  // Editable lines state for detail view
+  const [detailEditableLines, setDetailEditableLines] = useState([]);
+  const [detailEditing, setDetailEditing] = useState(false);
+
+  const initDetailEditing = (lignes) => {
+    setDetailEditableLines(lignes.map((l, i) => ({
+      id: l.id || `detail_${i}_${Date.now()}`,
+      designation: l.designation || '',
+      quantite: l.quantite || 1,
+      unite: l.unite || 'u',
+      prixUnitaire: l.prixUnitaire || 0,
+    })));
+    setDetailEditing(true);
+  };
+
+  const updateDetailLine = (idx, field, value) => {
+    setDetailEditableLines(prev => prev.map((l, i) => {
+      if (i !== idx) return l;
+      return { ...l, [field]: value };
+    }));
+  };
+
+  const saveDetailEdits = () => {
+    if (!selectedAnalyse) return;
+    const updatedLignes = detailEditableLines.map(l => ({
+      ...l,
+      totalHT: Math.round((l.quantite || 0) * (l.prixUnitaire || 0) * 100) / 100,
+    }));
+    const totalHT = updatedLignes.reduce((s, l) => s + l.totalHT, 0);
+    setAnalyses(prev => prev.map(a => {
+      if (a.id !== selectedAnalyse.id) return a;
+      return {
+        ...a,
+        analyse_resultat: {
+          ...a.analyse_resultat,
+          lignes: updatedLignes,
+          totalHT,
+        },
+      };
+    }));
+    setDetailEditing(false);
+  };
+
+  const handleRefaireAnalyse = (analyse) => {
+    const sourceText = analyse.analyse_resultat?.sourceText || analyse.description || '';
+    resetNewFlow();
+    setManualText(sourceText);
+    setActiveTab('text');
+    setView('new');
+  };
+
   const renderDetailView = () => {
     if (!selectedAnalyse) return null;
     const res = selectedAnalyse.analyse_resultat;
     const lignes = res?.lignes || res?.travaux || [];
+    const inputBg = isDark ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-slate-300';
 
     return (
       <div>
@@ -516,6 +569,17 @@ export default function IADevisAnalyse({
           <StatusBadge statut={selectedAnalyse.statut} isDark={isDark} />
         </div>
 
+        {/* Confidence badge */}
+        {selectedAnalyse.confiance && (
+          <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium mb-4 ${
+            selectedAnalyse.confiance >= 80 ? (isDark ? 'bg-emerald-500/15 text-emerald-400' : 'bg-emerald-50 text-emerald-700')
+            : selectedAnalyse.confiance >= 50 ? (isDark ? 'bg-amber-500/15 text-amber-400' : 'bg-amber-50 text-amber-700')
+            : (isDark ? 'bg-red-500/15 text-red-400' : 'bg-red-50 text-red-700')
+          }`}>
+            Confiance : {selectedAnalyse.confiance}%
+          </div>
+        )}
+
         <div className={`rounded-xl border p-4 mb-4 ${cardBg}`}>
           <p className={`text-sm mb-2 ${textPrimary}`}>{selectedAnalyse.description}</p>
           <div className="flex items-center gap-3 text-xs">
@@ -528,40 +592,116 @@ export default function IADevisAnalyse({
           </div>
         </div>
 
-        {/* Lines */}
+        {/* Lines table with PU HT column and inline editing */}
         {lignes.length > 0 && (
           <div className={`rounded-xl border overflow-hidden mb-4 ${cardBg}`}>
+            {!detailEditing && (
+              <div className="flex justify-end px-3 pt-2">
+                <button
+                  onClick={() => initDetailEditing(lignes)}
+                  className={`text-xs px-2 py-1 rounded-lg ${isDark ? 'text-slate-400 hover:bg-slate-700' : 'text-slate-500 hover:bg-slate-100'}`}
+                >
+                  Modifier
+                </button>
+              </div>
+            )}
             <table className="w-full text-sm">
               <thead>
                 <tr className={isDark ? 'bg-slate-700/50' : 'bg-slate-50'}>
                   <th className={`text-left px-3 py-2 text-xs ${textMuted}`}>Désignation</th>
                   <th className={`text-right px-2 py-2 text-xs ${textMuted}`}>Qté</th>
                   <th className={`text-center px-2 py-2 text-xs ${textMuted}`}>Unité</th>
+                  <th className={`text-right px-2 py-2 text-xs ${textMuted}`}>PU HT</th>
                   <th className={`text-right px-3 py-2 text-xs ${textMuted}`}>Total HT</th>
                 </tr>
               </thead>
               <tbody>
-                {lignes.map((l, i) => (
-                  <tr key={l.id || i} className={`border-t ${isDark ? 'border-slate-700' : 'border-slate-100'}`}>
-                    <td className={`px-3 py-2 ${textPrimary}`}>{l.designation}</td>
-                    <td className={`px-2 py-2 text-right ${textMuted}`}>{l.quantite}</td>
-                    <td className={`px-2 py-2 text-center ${textMuted}`}>{l.unite}</td>
-                    <td className={`px-3 py-2 text-right font-medium ${textPrimary}`}>{fmtCurrency.format(l.quantite * l.prixUnitaire)}</td>
-                  </tr>
-                ))}
+                {detailEditing ? (
+                  detailEditableLines.map((l, i) => (
+                    <tr key={l.id || i} className={`border-t ${isDark ? 'border-slate-700' : 'border-slate-100'}`}>
+                      <td className="px-3 py-1.5">
+                        <input
+                          type="text"
+                          value={l.designation}
+                          onChange={e => updateDetailLine(i, 'designation', e.target.value)}
+                          className={`w-full px-2 py-1 rounded-lg border text-sm ${inputBg}`}
+                        />
+                      </td>
+                      <td className="px-2 py-1.5">
+                        <input
+                          type="number"
+                          value={l.quantite}
+                          onChange={e => updateDetailLine(i, 'quantite', parseFloat(e.target.value) || 0)}
+                          className={`w-16 px-2 py-1 rounded-lg border text-sm text-right ${inputBg}`}
+                          min="0"
+                          step="0.1"
+                        />
+                      </td>
+                      <td className={`px-2 py-1.5 text-center ${textMuted}`}>{l.unite}</td>
+                      <td className="px-2 py-1.5">
+                        <input
+                          type="number"
+                          value={l.prixUnitaire}
+                          onChange={e => updateDetailLine(i, 'prixUnitaire', parseFloat(e.target.value) || 0)}
+                          className={`w-20 px-2 py-1 rounded-lg border text-sm text-right ${inputBg}`}
+                          min="0"
+                          step="0.01"
+                        />
+                      </td>
+                      <td className={`px-3 py-1.5 text-right font-medium ${textPrimary}`}>
+                        {fmtCurrency.format((l.quantite || 0) * (l.prixUnitaire || 0))}
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  lignes.map((l, i) => (
+                    <tr key={l.id || i} className={`border-t ${isDark ? 'border-slate-700' : 'border-slate-100'}`}>
+                      <td className={`px-3 py-2 ${textPrimary}`}>{l.designation}</td>
+                      <td className={`px-2 py-2 text-right ${textMuted}`}>{l.quantite}</td>
+                      <td className={`px-2 py-2 text-center ${textMuted}`}>{l.unite}</td>
+                      <td className={`px-2 py-2 text-right ${textMuted}`}>
+                        {l.prixUnitaire?.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
+                      </td>
+                      <td className={`px-3 py-2 text-right font-medium ${textPrimary}`}>{fmtCurrency.format(l.quantite * l.prixUnitaire)}</td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
+            {detailEditing && (
+              <div className="flex justify-end gap-2 px-3 py-2">
+                <button
+                  onClick={() => setDetailEditing(false)}
+                  className={`px-3 py-1.5 rounded-lg text-xs ${isDark ? 'text-slate-400 hover:bg-slate-700' : 'text-slate-500 hover:bg-slate-100'}`}
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={saveDetailEdits}
+                  className="px-3 py-1.5 rounded-lg text-xs text-white font-medium"
+                  style={{ backgroundColor: couleur }}
+                >
+                  Enregistrer
+                </button>
+              </div>
+            )}
           </div>
         )}
 
         {/* Actions */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <button
             onClick={() => handleDeleteAnalyse(selectedAnalyse.id)}
             className={`px-4 py-2.5 rounded-xl text-sm text-red-500 ${isDark ? 'hover:bg-red-500/10' : 'hover:bg-red-50'}`}
           >
             <Trash2 size={14} className="inline mr-1" />
             Supprimer
+          </button>
+          <button
+            onClick={() => handleRefaireAnalyse(selectedAnalyse)}
+            className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}
+          >
+            <RotateCcw size={14} /> Refaire l'analyse
           </button>
           {selectedAnalyse.statut !== 'appliquee' && (
             <button
