@@ -610,19 +610,27 @@ export default function IADevisAnalyse({
           <StatusBadge statut={selectedAnalyse.statut} isDark={isDark} />
         </div>
 
-        {/* Confidence badge */}
-        {selectedAnalyse.confiance && (
-          <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium mb-4 ${
-            selectedAnalyse.confiance >= 80 ? (isDark ? 'bg-emerald-500/15 text-emerald-400' : 'bg-emerald-50 text-emerald-700')
-            : selectedAnalyse.confiance >= 50 ? (isDark ? 'bg-amber-500/15 text-amber-400' : 'bg-amber-50 text-amber-700')
-            : (isDark ? 'bg-red-500/15 text-red-400' : 'bg-red-50 text-red-700')
-          }`}>
-            Confiance : {selectedAnalyse.confiance}%
+        {/* Confidence badge with tooltip showing factors */}
+        {(selectedAnalyse.confiance || res?.confiance) && (
+          <div className="relative group mb-4">
+            <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium cursor-help ${
+              (selectedAnalyse.confiance || res?.confiance || 0) >= 80 ? (isDark ? 'bg-emerald-500/15 text-emerald-400' : 'bg-emerald-50 text-emerald-700')
+              : (selectedAnalyse.confiance || res?.confiance || 0) >= 50 ? (isDark ? 'bg-amber-500/15 text-amber-400' : 'bg-amber-50 text-amber-700')
+              : (isDark ? 'bg-red-500/15 text-red-400' : 'bg-red-50 text-red-700')
+            }`}>
+              Confiance : {selectedAnalyse.confiance || res?.confiance}%
+              {(selectedAnalyse.confiance || res?.confiance || 0) >= 80 ? ' — Fiable' : (selectedAnalyse.confiance || res?.confiance || 0) >= 50 ? ' — Approximatif' : ' — À vérifier'}
+            </div>
+            {/* Tooltip on hover */}
+            <div className={`absolute left-0 top-full mt-1 z-20 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none rounded-lg shadow-lg px-3 py-2 text-xs max-w-xs ${isDark ? 'bg-slate-700 text-slate-200' : 'bg-white text-slate-700 border border-slate-200'}`}>
+              {res?.mode === 'ai' ? 'Analysé par IA Claude' : 'Estimation locale (simulateur)'}
+              {res?.mode !== 'ai' && <p className="mt-1 text-amber-500">Connectez l'API IA pour des résultats plus précis</p>}
+            </div>
           </div>
         )}
-        {selectedAnalyse.confianceFactors?.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 mt-2 mb-3">
-            {selectedAnalyse.confianceFactors.map((f, i) => (
+        {(selectedAnalyse.confianceFactors || res?.confianceFactors)?.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mb-3">
+            {(selectedAnalyse.confianceFactors || res?.confianceFactors).map((f, i) => (
               <span key={i} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] ${
                 f.points >= 15
                   ? isDark ? 'bg-emerald-900/40 text-emerald-400' : 'bg-emerald-100 text-emerald-700'
