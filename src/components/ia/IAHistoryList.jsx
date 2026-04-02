@@ -142,6 +142,12 @@ export default function IAHistoryList({
       </div>
 
       {/* New analysis button or upgrade prompt */}
+      {availability.limit !== -1 && (
+        <div className={`text-xs text-center mb-2 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+          {availability.remaining}/{availability.limit} analyse{availability.remaining > 1 ? 's' : ''} restante{availability.remaining > 1 ? 's' : ''}
+          {isLifetime ? ' (total)' : ' ce mois'}
+        </div>
+      )}
       {availability.allowed ? (
         <button
           onClick={onNewAnalysis}

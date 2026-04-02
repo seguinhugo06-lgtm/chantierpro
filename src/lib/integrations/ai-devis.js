@@ -367,24 +367,24 @@ function mockAnalyse(description) {
   const descLength = (description || '').trim().length;
   const matchedCatsCount = relevantCats.length;
 
-  if (hasSurface) confianceFactors.push({ label: 'Surface detectee', points: 20 });
-  else confianceFactors.push({ label: 'Surface estimee par defaut', points: 8 });
+  if (hasSurface) confianceFactors.push({ label: 'Surface détectée', points: 20 });
+  else confianceFactors.push({ label: 'Surface estimée par défaut', points: 8 });
 
-  if (hasSpecificRoom) confianceFactors.push({ label: 'Piece identifiee', points: 20 });
-  else confianceFactors.push({ label: 'Type de piece non precise', points: 5 });
+  if (hasSpecificRoom) confianceFactors.push({ label: 'Pièce identifiée', points: 20 });
+  else confianceFactors.push({ label: 'Type de pièce non précisée', points: 5 });
 
-  if (hasSpecificWork) confianceFactors.push({ label: 'Travaux identifies', points: 20 });
-  else confianceFactors.push({ label: 'Travaux deduits du contexte', points: 8 });
+  if (hasSpecificWork) confianceFactors.push({ label: 'Travaux identifiés', points: 20 });
+  else confianceFactors.push({ label: 'Travaux déduits du contexte', points: 8 });
 
-  if (descLength > 80) confianceFactors.push({ label: 'Description detaillee', points: 15 });
+  if (descLength > 80) confianceFactors.push({ label: 'Description détaillée', points: 15 });
   else if (descLength > 30) confianceFactors.push({ label: 'Description correcte', points: 10 });
   else confianceFactors.push({ label: 'Description courte', points: 5 });
 
-  if (matchedCatsCount >= 1 && matchedCatsCount <= 3) confianceFactors.push({ label: `${matchedCatsCount} corps de metier`, points: 15 });
-  else if (matchedCatsCount > 3) confianceFactors.push({ label: `${matchedCatsCount} corps de metier`, points: 10 });
-  else confianceFactors.push({ label: 'Estimation generale', points: 5 });
+  if (matchedCatsCount >= 1 && matchedCatsCount <= 3) confianceFactors.push({ label: `${matchedCatsCount} corps de métier`, points: 15 });
+  else if (matchedCatsCount > 3) confianceFactors.push({ label: `${matchedCatsCount} corps de métier`, points: 10 });
+  else confianceFactors.push({ label: 'Estimation générale', points: 5 });
 
-  confianceFactors.push({ label: 'Prix moyens du marche', points: 10 });
+  confianceFactors.push({ label: 'Prix moyens du marché', points: 10 });
 
   const confiance = Math.min(95, confianceFactors.reduce((s, f) => s + f.points, 0));
 

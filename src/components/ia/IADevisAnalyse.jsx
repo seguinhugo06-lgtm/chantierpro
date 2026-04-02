@@ -292,6 +292,8 @@ export default function IADevisAnalyse({
   // ---- Analysis ----
 
   const handleStartAnalysis = async () => {
+    if (isAnalysing) return; // Prevent double submission
+
     const text = activeTab === 'voice'
       ? (transcript.trim() || manualText.trim())
       : activeTab === 'text'

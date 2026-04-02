@@ -267,7 +267,17 @@ serve(async (req) => {
 
     switch (action) {
       case 'transcribe': {
-        const openaiKey = getOpenAIKey();
+        const openaiKey = Deno.env.get('OPENAI_API_KEY');
+        if (!openaiKey) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Transcription vocale non disponible — clé OpenAI non configurée',
+            fallback: 'text',
+          }), {
+            status: 200,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
         const { audio } = params;
         if (!audio) throw new Error('audio (base64) requis');
         const text = await whisperTranscribe(openaiKey, audio);
