@@ -4,8 +4,9 @@ import {
   FileText, Trash2, Euro, RotateCcw,
 } from 'lucide-react';
 import { useVoiceInput } from '../../hooks/useVoiceInput';
-import { analyseTranscript } from '../../lib/integrations/ai-devis';
+import { analyseTranscript, loadAnalysesFromSupabase, saveAnalysisToSupabase, updateAnalysisInSupabase, deleteAnalysisFromSupabase } from '../../lib/integrations/ai-devis';
 import { useSubscriptionStore, PLANS } from '../../stores/subscriptionStore';
+import supabase, { isDemo } from '../../supabaseClient';
 
 // Sub-components
 import IAWelcomeScreen from './IAWelcomeScreen';
@@ -127,6 +128,8 @@ export default function IADevisAnalyse({
   generateNextNumero,
   setSelectedDevis,
   setPage,
+  user = null,
+  orgId = null,
 }) {
   // ---- Subscription ----
   const planId = useSubscriptionStore((s) => s.planId);
@@ -134,6 +137,7 @@ export default function IADevisAnalyse({
 
   // ---- State ----
   const [analyses, setAnalyses] = useState(() => loadAnalyses());
+  const [supabaseLoaded, setSupabaseLoaded] = useState(false);
   const [view, setView] = useState('list');
   const [selectedId, setSelectedId] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -178,8 +182,29 @@ export default function IADevisAnalyse({
     continuous: true,
   });
 
-  // ---- Persistence ----
-  useEffect(() => { saveAnalyses(analyses); }, [analyses]);
+  // ---- Load from Supabase on mount ----
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      if (!isDemo && user?.id) {
+        const remote = await loadAnalysesFromSupabase(user.id);
+        if (!cancelled && remote && remote.length > 0) {
+          setAnalyses(remote);
+          setSupabaseLoaded(true);
+          return;
+        }
+      }
+      // Fallback: keep localStorage data already loaded
+      if (!cancelled) setSupabaseLoaded(true);
+    };
+    load();
+    return () => { cancelled = true; };
+  }, [user?.id]);
+
+  // ---- Persistence (localStorage fallback) ----
+  useEffect(() => {
+    if (supabaseLoaded) saveAnalyses(analyses);
+  }, [analyses, supabaseLoaded]);
 
   // ---- Availability ----
   const availability = checkIAAvailability(analyses, planId);
@@ -260,6 +285,8 @@ export default function IADevisAnalyse({
   const handleDeleteAnalyse = (id) => {
     setAnalyses(prev => prev.filter(a => a.id !== id));
     if (selectedId === id) { setSelectedId(null); setView('list'); }
+    // Delete from Supabase (non-blocking)
+    deleteAnalysisFromSupabase(id);
   };
 
   // ---- Analysis ----
@@ -291,7 +318,7 @@ export default function IADevisAnalyse({
     }, 1500);
 
     try {
-      const result = await analyseTranscript(text, catalogue);
+      const result = await analyseTranscript(text, catalogue, { entreprise });
       clearInterval(labelTimer);
 
       const lignes = result.lignes || result.travaux || [];
@@ -312,9 +339,22 @@ export default function IADevisAnalyse({
         source: activeTab,
         statut: 'terminee',
         confiance: result.confiance || 75,
+        mode: result.mode || 'local',
         analyse_resultat: { ...result, lignes },
         created_at: new Date().toISOString(),
       };
+
+      // Persist to Supabase (non-blocking)
+      if (!isDemo && user?.id) {
+        saveAnalysisToSupabase(entry, user.id, orgId).then(saved => {
+          if (saved?.id) {
+            // Replace local UUID with Supabase UUID for consistency
+            setAnalyses(prev => prev.map(a => a.id === entry.id ? { ...a, id: saved.id } : a));
+            setSelectedId(saved.id);
+          }
+        });
+      }
+
       setAnalyses(prev => [entry, ...prev]);
       setSelectedId(entry.id);
       setStep(3);
@@ -452,6 +492,7 @@ export default function IADevisAnalyse({
       // Mark analysis as applied
       if (selectedId) {
         setAnalyses(prev => prev.map(a => a.id === selectedId ? { ...a, statut: 'appliquee' } : a));
+        updateAnalysisInSupabase(selectedId, { statut: 'appliquee' });
       }
 
       // Move to success step
