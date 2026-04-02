@@ -579,6 +579,21 @@ export default function IADevisAnalyse({
             Confiance : {selectedAnalyse.confiance}%
           </div>
         )}
+        {selectedAnalyse.confianceFactors?.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mt-2 mb-3">
+            {selectedAnalyse.confianceFactors.map((f, i) => (
+              <span key={i} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] ${
+                f.points >= 15
+                  ? isDark ? 'bg-emerald-900/40 text-emerald-400' : 'bg-emerald-100 text-emerald-700'
+                  : f.points >= 10
+                    ? isDark ? 'bg-blue-900/40 text-blue-400' : 'bg-blue-100 text-blue-700'
+                    : isDark ? 'bg-slate-600 text-slate-300' : 'bg-slate-200 text-slate-600'
+              }`}>
+                {f.points >= 15 ? '✓' : f.points >= 10 ? '~' : '?'} {f.label}
+              </span>
+            ))}
+          </div>
+        )}
 
         <div className={`rounded-xl border p-4 mb-4 ${cardBg}`}>
           <p className={`text-sm mb-2 ${textPrimary}`}>{selectedAnalyse.description}</p>
@@ -637,7 +652,23 @@ export default function IADevisAnalyse({
                           step="0.1"
                         />
                       </td>
-                      <td className={`px-2 py-1.5 text-center ${textMuted}`}>{l.unite}</td>
+                      <td className="px-2 py-1.5">
+                        <select
+                          value={l.unite || 'u'}
+                          onChange={e => updateDetailLine(i, 'unite', e.target.value)}
+                          className={`w-20 px-1 py-1 rounded-lg border text-sm text-center ${inputBg}`}
+                        >
+                          <option value="u">u</option>
+                          <option value="m²">m²</option>
+                          <option value="ml">ml</option>
+                          <option value="forfait">forfait</option>
+                          <option value="h">h</option>
+                          <option value="jour">jour</option>
+                          <option value="kg">kg</option>
+                          <option value="L">L</option>
+                          <option value="m³">m³</option>
+                        </select>
+                      </td>
                       <td className="px-2 py-1.5">
                         <input
                           type="number"
