@@ -233,8 +233,16 @@ export default function GarantiesDashboard({ isDark = false, couleur, showToast,
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const userId = resolvedUser?.id || 'demo-user-id';
-      const orgId = resolvedUser?.user_metadata?.organization_id || resolvedUser?.organization_id || 'demo-org-id';
+      const userId = resolvedUser?.id;
+      const orgId = resolvedUser?.user_metadata?.organization_id || resolvedUser?.organization_id;
+
+      // Skip Supabase query if no real user (demo mode)
+      if (!userId || userId === 'demo-user-id') {
+        setStats(null);
+        setGaranties([]);
+        setLoading(false);
+        return;
+      }
 
       // Build filters for getAll
       const queryFilters = {};
@@ -367,7 +375,7 @@ export default function GarantiesDashboard({ isDark = false, couleur, showToast,
               isDark={isDark}
             />
             <KPICard
-              label="Decennale"
+              label="Décennale"
               value={stats.decennaleCount}
               dot={GARANTIE_TYPES.decennale.color}
               isDark={isDark}
@@ -395,7 +403,7 @@ export default function GarantiesDashboard({ isDark = false, couleur, showToast,
               <option value="">Toutes les types</option>
               <option value="parfait_achevement">Parfait achèvement</option>
               <option value="biennale">Biennale</option>
-              <option value="decennale">Decennale</option>
+              <option value="decennale">Décennale</option>
             </select>
 
             {/* Status filter */}
