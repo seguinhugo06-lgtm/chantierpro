@@ -680,9 +680,9 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                 Météo · {ch.ville || ch.adresse?.split(',').pop()?.trim() || 'Chantier'}
               </span>
             </div>
-            {weather ? (
+            {weather?.daily?.length > 0 ? (
               <div className="flex gap-3">
-                {(weather.daily || []).slice(0, 3).map((day, i) => (
+                {weather.daily.slice(0, 3).map((day, i) => (
                   <div key={i} className="text-center flex-1">
                     <p className={`text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{['Auj.', 'Dem.', 'J+2'][i]}</p>
                     {day.icon === 'rain' ? <CloudRain size={16} className={`mx-auto my-1 ${isDark ? 'text-blue-400' : 'text-blue-500'}`} />
@@ -698,7 +698,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                   <div key={i} className="text-center flex-1">
                     <p className={`text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{jour}</p>
                     <Sun size={16} className={`mx-auto my-1 ${isDark ? 'text-yellow-400' : 'text-yellow-500'}`} />
-                    <p className={`text-xs font-medium ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{15 + i * 2}°C</p>
+                    <p className={`text-xs font-medium ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{weather?.temp ? `${Math.round(weather.temp)}°C` : `${15 + i * 2}°C`}</p>
                   </div>
                 ))}
               </div>

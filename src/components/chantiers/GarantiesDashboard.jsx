@@ -166,7 +166,7 @@ function ChantierGroup({ chantierNom, receptionDate, garanties, isDark, couleur,
           <div className="flex items-center gap-1.5 mt-1 ml-6">
             <Calendar className={`w-3 h-3 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
             <span className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-              Reception : {new Date(receptionDate).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+              Réception : {new Date(receptionDate).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
             </span>
           </div>
         )}
@@ -200,9 +200,9 @@ function EmptyState({ isDark }) {
         Aucune garantie
       </h3>
       <p className={`text-sm max-w-md ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-        Les garanties sont automatiquement creees lors de la reception d'un chantier.
-        Pour commencer : terminez un chantier, puis effectuez la reception.
-        Les 3 garanties legales (parfait achevement, biennale, decennale) seront generees automatiquement.
+        Les garanties sont automatiquement créées lors de la réception d'un chantier.
+        Pour commencer : terminez un chantier, puis effectuez la réception.
+        Les 3 garanties légales (parfait achèvement, biennale, décennale) seront générées automatiquement.
       </p>
     </div>
   );
@@ -342,7 +342,7 @@ export default function GarantiesDashboard({ isDark = false, couleur, showToast,
             Garanties
           </h1>
           <p className={`text-sm mt-1 ${textSecondary}`}>
-            Suivi des garanties legales de vos chantiers
+            Suivi des garanties légales de vos chantiers
           </p>
         </div>
 
@@ -355,7 +355,7 @@ export default function GarantiesDashboard({ isDark = false, couleur, showToast,
               isDark={isDark}
             />
             <KPICard
-              label="Parfait achevement"
+              label="Parfait achèvement"
               value={stats.parfaitAchevementCount}
               dot={GARANTIE_TYPES.parfait_achevement.color}
               isDark={isDark}
@@ -393,7 +393,7 @@ export default function GarantiesDashboard({ isDark = false, couleur, showToast,
               className={`rounded-lg border px-3 py-1.5 text-sm ${bgInput} focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none`}
             >
               <option value="">Toutes les types</option>
-              <option value="parfait_achevement">Parfait achevement</option>
+              <option value="parfait_achevement">Parfait achèvement</option>
               <option value="biennale">Biennale</option>
               <option value="decennale">Decennale</option>
             </select>
