@@ -275,10 +275,10 @@ export function getDefaultWeather() {
   return {
     temp: 15,
     condition: 'cloudy',
-    description: 'Données météo indisponibles',
+    description: 'Donnees meteo indisponibles',
     humidity: 50,
     wind: 10,
-    forecast: 'Vérifiez votre connexion internet',
+    forecast: 'Verifiez votre connexion internet',
     location: null,
     isDefault: true,
     updatedAt: new Date().toISOString()

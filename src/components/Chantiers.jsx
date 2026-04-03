@@ -4,7 +4,6 @@ import { Plus, ArrowLeft, ArrowRight, Edit3, Trash2, Check, X, Camera, MapPin, P
 const ChantierMap = lazy(() => import('./chantiers/ChantierMap'));
 const GanttView = lazy(() => import('./GanttView'));
 const GarantiesDashboard = lazy(() => import('./chantiers/GarantiesDashboard'));
-import { useDebounce } from '../hooks/useDebounce';
 import { useOnlineStatus } from '../hooks/useNetworkStatus';
 import { useConfirm, useToast } from '../context/AppContext';
 import supabase, { isDemo } from '../supabaseClient';
@@ -240,7 +239,6 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
   const [filterStatus, setFilterStatus] = useState('all'); // all, en_cours, prospect, termine
   const [filterClient, setFilterClient] = useState(''); // Filter by client_id
   const [searchQuery, setSearchQuery] = useState(''); // Text search
-  const debouncedSearchQuery = useDebounce(searchQuery, 300);
   const [viewMode, setViewMode] = useState('list'); // list, map, or gantt
   const [ganttTasks, setGanttTasks] = useState(() => {
     try { return JSON.parse(localStorage.getItem('cp_gantt_tasks') || '[]'); } catch { return []; }
@@ -471,14 +469,6 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                 {/* Sync status dot */}
                 <div className={`w-2 h-2 rounded-full shrink-0 ${isOnline ? 'bg-emerald-500' : 'bg-red-500'}`} title={isOnline ? 'En ligne' : 'Hors ligne'} />
                 <h2 className={`order-last sm:order-none w-full sm:w-auto sm:flex-1 min-w-0 text-sm sm:text-xl font-bold leading-tight line-clamp-2 sm:line-clamp-none pl-1 sm:pl-0 ${textPrimary}`}>{ch.nom}</h2>
-                {devisLie && setPage && (
-                  <button
-                    onClick={() => setPage('devis', { devisId: devisLie.id })}
-                    className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg shrink-0 ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
-                  >
-                    <FileText size={12} /> Devis {devisLie.numero}{devisLie.total_ttc ? ` — ${devisLie.total_ttc.toLocaleString('fr-FR')}€` : ''}
-                  </button>
-                )}
                 <select
                   value={ch.statut}
                   onChange={e => {
@@ -670,41 +660,6 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
             </div>
           );
         })()}
-
-        {/* === SECTION: MÉTÉO CHANTIER (fallback par adresse) === */}
-        {ch.adresse && (
-          <div className={`rounded-xl border p-3 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
-            <div className="flex items-center gap-2 mb-2">
-              <Cloud size={14} style={{ color: couleur }} />
-              <span className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                Météo · {ch.ville || ch.adresse?.split(',').pop()?.trim() || 'Chantier'}
-              </span>
-            </div>
-            {weather?.daily?.length > 0 ? (
-              <div className="flex gap-3">
-                {weather.daily.slice(0, 3).map((day, i) => (
-                  <div key={i} className="text-center flex-1">
-                    <p className={`text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{['Auj.', 'Dem.', 'J+2'][i]}</p>
-                    {day.icon === 'rain' ? <CloudRain size={16} className={`mx-auto my-1 ${isDark ? 'text-blue-400' : 'text-blue-500'}`} />
-                      : day.icon === 'cloud' ? <Cloud size={16} className={`mx-auto my-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />
-                      : <Sun size={16} className={`mx-auto my-1 ${isDark ? 'text-yellow-400' : 'text-yellow-500'}`} />}
-                    <p className={`text-xs font-medium ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{Math.round(day.temp || day.tempMax || 0)}°C</p>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="flex gap-3">
-                {['Auj.', 'Dem.', 'J+2'].map((jour, i) => (
-                  <div key={i} className="text-center flex-1">
-                    <p className={`text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{jour}</p>
-                    <Sun size={16} className={`mx-auto my-1 ${isDark ? 'text-yellow-400' : 'text-yellow-500'}`} />
-                    <p className={`text-xs font-medium ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{weather?.temp ? `${Math.round(weather.temp)}°C` : `${15 + i * 2}°C`}</p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
 
         {/* === SECTION: SITUATION AVANCEMENT BAR === */}
         {ch.situations_data?.mode === 'situation' && (() => {
@@ -900,19 +855,19 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                     <>
                       <button
                         onClick={() => handleNotifyClient('en_route')}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium min-h-[48px] ${isDark ? 'bg-slate-700 text-orange-400' : 'bg-orange-50 text-orange-700'}`}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium ${isDark ? 'bg-slate-700 text-orange-400' : 'bg-orange-50 text-orange-700'}`}
                       >
                         <Navigation size={16} /> En route
                       </button>
                       <button
                         onClick={() => handleNotifyClient('arrive')}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium min-h-[48px] ${isDark ? 'bg-slate-700 text-emerald-400' : 'bg-emerald-50 text-emerald-700'}`}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium ${isDark ? 'bg-slate-700 text-emerald-400' : 'bg-emerald-50 text-emerald-700'}`}
                       >
                         <MapPin size={16} /> Arrivé
                       </button>
                       <button
                         onClick={() => handleNotifyClient('termine')}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium min-h-[48px] ${isDark ? 'bg-slate-700 text-blue-400' : 'bg-blue-50 text-blue-700'}`}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium ${isDark ? 'bg-slate-700 text-blue-400' : 'bg-blue-50 text-blue-700'}`}
                       >
                         <CheckCircle size={16} /> Terminé
                       </button>
@@ -2767,8 +2722,8 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
       filtered = filtered.filter(c => c.client_id === filterClient);
     }
     // Text search
-    if (debouncedSearchQuery.trim()) {
-      const q = debouncedSearchQuery.toLowerCase().trim();
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
       filtered = filtered.filter(c => {
         const client = clients.find(cl => cl.id === c.client_id);
         return (c.nom || '').toLowerCase().includes(q)
@@ -2836,7 +2791,6 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
               className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors ${viewMode === 'list' ? 'text-white' : isDark ? 'text-slate-300 hover:text-slate-200 bg-slate-800' : 'text-slate-500 hover:text-slate-700 bg-white'}`}
               style={viewMode === 'list' ? { background: couleur } : {}}
               aria-label="Vue liste"
-              aria-pressed={viewMode === 'list'}
               title="Vue liste"
             >
               <List size={18} />
@@ -2846,7 +2800,6 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
               className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors ${viewMode === 'gantt' ? 'text-white' : isDark ? 'text-slate-300 hover:text-slate-200 bg-slate-800' : 'text-slate-500 hover:text-slate-700 bg-white'}`}
               style={viewMode === 'gantt' ? { background: couleur } : {}}
               aria-label="Vue Gantt"
-              aria-pressed={viewMode === 'gantt'}
               title="Vue Gantt"
             >
               <BarChart3 size={18} />
@@ -2856,7 +2809,6 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
               className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors ${viewMode === 'map' ? 'text-white' : isDark ? 'text-slate-300 hover:text-slate-200 bg-slate-800' : 'text-slate-500 hover:text-slate-700 bg-white'}`}
               style={viewMode === 'map' ? { background: couleur } : {}}
               aria-label="Vue carte"
-              aria-pressed={viewMode === 'map'}
               title="Vue carte"
             >
               <Map size={18} />
@@ -2866,7 +2818,6 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
               className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors ${viewMode === 'garanties' ? 'text-white' : isDark ? 'text-slate-300 hover:text-slate-200 bg-slate-800' : 'text-slate-500 hover:text-slate-700 bg-white'}`}
               style={viewMode === 'garanties' ? { background: couleur } : {}}
               aria-label="Vue garanties"
-              aria-pressed={viewMode === 'garanties'}
               title="Vue garanties"
             >
               <Shield size={18} />
@@ -2983,8 +2934,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             placeholder="Rechercher un chantier, client, adresse..."
-            aria-label="Rechercher"
-            className={`w-full pl-10 pr-12 py-2.5 rounded-xl border text-sm ${inputBg} focus:ring-2 focus:ring-offset-0`}
+            className={`w-full pl-10 pr-4 py-2.5 rounded-xl border text-sm ${inputBg} focus:ring-2 focus:ring-offset-0`}
             style={{ '--tw-ring-color': `${couleur}40` }}
           />
           {searchQuery && (
@@ -3073,7 +3023,6 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                 <button
                   key={tab.key}
                   onClick={() => setFilterStatus(tab.key)}
-                  aria-pressed={filterStatus === tab.key}
                   className={`px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-medium whitespace-nowrap transition-all min-h-[44px] flex items-center gap-1.5 ${
                     filterStatus === tab.key
                       ? 'text-white shadow-md'
@@ -3104,8 +3053,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                   <select
                     value={filterClient}
                     onChange={(e) => setFilterClient(e.target.value)}
-                    aria-label="Filtrer par client"
-                    className={`px-2.5 py-1.5 rounded-lg text-xs border min-h-[44px] ${isDark ? 'bg-slate-700 border-slate-600 text-slate-300' : 'bg-white border-slate-200 text-slate-600'}`}
+                    className={`px-2.5 py-1.5 rounded-lg text-xs border min-h-[44px] sm:min-h-[36px] ${isDark ? 'bg-slate-700 border-slate-600 text-slate-300' : 'bg-white border-slate-200 text-slate-600'}`}
                   >
                     <option value="">Tous les clients</option>
                     {clients.map(c => (
@@ -3118,8 +3066,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                   <select
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value)}
-                    aria-label="Trier par"
-                    className={`px-2.5 py-1.5 rounded-lg text-xs border min-h-[44px] ${isDark ? 'bg-slate-700 border-slate-600 text-slate-300' : 'bg-white border-slate-200 text-slate-600'}`}
+                    className={`px-2.5 py-1.5 rounded-lg text-xs border min-h-[44px] sm:min-h-[36px] ${isDark ? 'bg-slate-700 border-slate-600 text-slate-300' : 'bg-white border-slate-200 text-slate-600'}`}
                   >
                     <option value="recent">Plus récent</option>
                     <option value="name">Nom A-Z</option>

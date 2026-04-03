@@ -4,9 +4,8 @@ import {
   FileText, Trash2, Euro, RotateCcw,
 } from 'lucide-react';
 import { useVoiceInput } from '../../hooks/useVoiceInput';
-import { analyseTranscript, loadAnalysesFromSupabase, saveAnalysisToSupabase, updateAnalysisInSupabase, deleteAnalysisFromSupabase } from '../../lib/integrations/ai-devis';
+import { analyseTranscript } from '../../lib/integrations/ai-devis';
 import { useSubscriptionStore, PLANS } from '../../stores/subscriptionStore';
-import supabase, { isDemo } from '../../supabaseClient';
 
 // Sub-components
 import IAWelcomeScreen from './IAWelcomeScreen';
@@ -128,8 +127,6 @@ export default function IADevisAnalyse({
   generateNextNumero,
   setSelectedDevis,
   setPage,
-  user = null,
-  orgId = null,
 }) {
   // ---- Subscription ----
   const planId = useSubscriptionStore((s) => s.planId);
@@ -137,7 +134,6 @@ export default function IADevisAnalyse({
 
   // ---- State ----
   const [analyses, setAnalyses] = useState(() => loadAnalyses());
-  const [supabaseLoaded, setSupabaseLoaded] = useState(false);
   const [view, setView] = useState('list');
   const [selectedId, setSelectedId] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -182,29 +178,8 @@ export default function IADevisAnalyse({
     continuous: true,
   });
 
-  // ---- Load from Supabase on mount ----
-  useEffect(() => {
-    let cancelled = false;
-    const load = async () => {
-      if (!isDemo && user?.id) {
-        const remote = await loadAnalysesFromSupabase(user.id);
-        if (!cancelled && remote && remote.length > 0) {
-          setAnalyses(remote);
-          setSupabaseLoaded(true);
-          return;
-        }
-      }
-      // Fallback: keep localStorage data already loaded
-      if (!cancelled) setSupabaseLoaded(true);
-    };
-    load();
-    return () => { cancelled = true; };
-  }, [user?.id]);
-
-  // ---- Persistence (localStorage fallback) ----
-  useEffect(() => {
-    if (supabaseLoaded) saveAnalyses(analyses);
-  }, [analyses, supabaseLoaded]);
+  // ---- Persistence ----
+  useEffect(() => { saveAnalyses(analyses); }, [analyses]);
 
   // ---- Availability ----
   const availability = checkIAAvailability(analyses, planId);
@@ -285,15 +260,11 @@ export default function IADevisAnalyse({
   const handleDeleteAnalyse = (id) => {
     setAnalyses(prev => prev.filter(a => a.id !== id));
     if (selectedId === id) { setSelectedId(null); setView('list'); }
-    // Delete from Supabase (non-blocking)
-    deleteAnalysisFromSupabase(id);
   };
 
   // ---- Analysis ----
 
   const handleStartAnalysis = async () => {
-    if (isAnalysing) return; // Prevent double submission
-
     const text = activeTab === 'voice'
       ? (transcript.trim() || manualText.trim())
       : activeTab === 'text'
@@ -320,7 +291,7 @@ export default function IADevisAnalyse({
     }, 1500);
 
     try {
-      const result = await analyseTranscript(text, catalogue, { entreprise });
+      const result = await analyseTranscript(text, catalogue);
       clearInterval(labelTimer);
 
       const lignes = result.lignes || result.travaux || [];
@@ -341,22 +312,9 @@ export default function IADevisAnalyse({
         source: activeTab,
         statut: 'terminee',
         confiance: result.confiance || 75,
-        mode: result.mode || 'local',
         analyse_resultat: { ...result, lignes },
         created_at: new Date().toISOString(),
       };
-
-      // Persist to Supabase (non-blocking)
-      if (!isDemo && user?.id) {
-        saveAnalysisToSupabase(entry, user.id, orgId).then(saved => {
-          if (saved?.id) {
-            // Replace local UUID with Supabase UUID for consistency
-            setAnalyses(prev => prev.map(a => a.id === entry.id ? { ...a, id: saved.id } : a));
-            setSelectedId(saved.id);
-          }
-        });
-      }
-
       setAnalyses(prev => [entry, ...prev]);
       setSelectedId(entry.id);
       setStep(3);
@@ -494,7 +452,6 @@ export default function IADevisAnalyse({
       // Mark analysis as applied
       if (selectedId) {
         setAnalyses(prev => prev.map(a => a.id === selectedId ? { ...a, statut: 'appliquee' } : a));
-        updateAnalysisInSupabase(selectedId, { statut: 'appliquee' });
       }
 
       // Move to success step
@@ -612,37 +569,14 @@ export default function IADevisAnalyse({
           <StatusBadge statut={selectedAnalyse.statut} isDark={isDark} />
         </div>
 
-        {/* Confidence badge with tooltip showing factors */}
-        {(selectedAnalyse.confiance || res?.confiance) && (
-          <div className="relative group mb-4">
-            <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium cursor-help ${
-              (selectedAnalyse.confiance || res?.confiance || 0) >= 80 ? (isDark ? 'bg-emerald-500/15 text-emerald-400' : 'bg-emerald-50 text-emerald-700')
-              : (selectedAnalyse.confiance || res?.confiance || 0) >= 50 ? (isDark ? 'bg-amber-500/15 text-amber-400' : 'bg-amber-50 text-amber-700')
-              : (isDark ? 'bg-red-500/15 text-red-400' : 'bg-red-50 text-red-700')
-            }`}>
-              Confiance : {selectedAnalyse.confiance || res?.confiance}%
-              {(selectedAnalyse.confiance || res?.confiance || 0) >= 80 ? ' — Fiable' : (selectedAnalyse.confiance || res?.confiance || 0) >= 50 ? ' — Approximatif' : ' — À vérifier'}
-            </div>
-            {/* Tooltip on hover */}
-            <div className={`absolute left-0 top-full mt-1 z-20 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none rounded-lg shadow-lg px-3 py-2 text-xs max-w-xs ${isDark ? 'bg-slate-700 text-slate-200' : 'bg-white text-slate-700 border border-slate-200'}`}>
-              {res?.mode === 'ai' ? 'Analysé par IA Claude' : 'Estimation locale (simulateur)'}
-              {res?.mode !== 'ai' && <p className="mt-1 text-amber-500">Connectez l'API IA pour des résultats plus précis</p>}
-            </div>
-          </div>
-        )}
-        {(selectedAnalyse.confianceFactors || res?.confianceFactors)?.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 mb-3">
-            {(selectedAnalyse.confianceFactors || res?.confianceFactors).map((f, i) => (
-              <span key={i} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] ${
-                f.points >= 15
-                  ? isDark ? 'bg-emerald-900/40 text-emerald-400' : 'bg-emerald-100 text-emerald-700'
-                  : f.points >= 10
-                    ? isDark ? 'bg-blue-900/40 text-blue-400' : 'bg-blue-100 text-blue-700'
-                    : isDark ? 'bg-slate-600 text-slate-300' : 'bg-slate-200 text-slate-600'
-              }`}>
-                {f.points >= 15 ? '✓' : f.points >= 10 ? '~' : '?'} {f.label}
-              </span>
-            ))}
+        {/* Confidence badge */}
+        {selectedAnalyse.confiance && (
+          <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium mb-4 ${
+            selectedAnalyse.confiance >= 80 ? (isDark ? 'bg-emerald-500/15 text-emerald-400' : 'bg-emerald-50 text-emerald-700')
+            : selectedAnalyse.confiance >= 50 ? (isDark ? 'bg-amber-500/15 text-amber-400' : 'bg-amber-50 text-amber-700')
+            : (isDark ? 'bg-red-500/15 text-red-400' : 'bg-red-50 text-red-700')
+          }`}>
+            Confiance : {selectedAnalyse.confiance}%
           </div>
         )}
 
@@ -703,23 +637,7 @@ export default function IADevisAnalyse({
                           step="0.1"
                         />
                       </td>
-                      <td className="px-2 py-1.5">
-                        <select
-                          value={l.unite || 'u'}
-                          onChange={e => updateDetailLine(i, 'unite', e.target.value)}
-                          className={`w-20 px-1 py-1 rounded-lg border text-sm text-center ${inputBg}`}
-                        >
-                          <option value="u">u</option>
-                          <option value="m²">m²</option>
-                          <option value="ml">ml</option>
-                          <option value="forfait">forfait</option>
-                          <option value="h">h</option>
-                          <option value="jour">jour</option>
-                          <option value="kg">kg</option>
-                          <option value="L">L</option>
-                          <option value="m³">m³</option>
-                        </select>
-                      </td>
+                      <td className={`px-2 py-1.5 text-center ${textMuted}`}>{l.unite}</td>
                       <td className="px-2 py-1.5">
                         <input
                           type="number"
