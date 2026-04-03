@@ -53,7 +53,7 @@ import { printSituationFacture } from '../../lib/devisHtmlBuilder';
 // ---------------------------------------------------------------------------
 
 const formatDate = (iso) => {
-  if (!iso) return '\u2014';
+  if (!iso) return '—';
   return new Date(iso).toLocaleDateString('fr-FR', {
     day: '2-digit',
     month: '2-digit',
@@ -355,7 +355,7 @@ export default function SituationsTravaux({
         devis_source_id: devisSourceId || sourceDevis?.id || null,
         statut: 'facture',
         date: new Date().toISOString().split('T')[0],
-        objet: `Facture de situation n\u00b0${sit.numero}${sit.isDGD ? ' - D\u00e9compte G\u00e9n\u00e9ral D\u00e9finitif' : ''} - ${chantier?.nom || ''}`,
+        objet: `Facture de situation n°${sit.numero}${sit.isDGD ? ' - Décompte Général Définitif' : ''} - ${chantier?.nom || ''}`,
         lignes: factureLignes,
         tvaRate: sourceDevis?.tvaRate || DEFAULT_TVA_RATE,
         total_ht: totals.montantSituationHT,
@@ -381,7 +381,7 @@ export default function SituationsTravaux({
         saveSituationsData(updated);
         setSelectedId(sitId);
       } catch (err) {
-        console.error('Erreur g\u00e9n\u00e9ration facture situation:', err);
+        console.error('Erreur génération facture situation:', err);
       }
     },
     [addDevis, generateNextNumero, situations, sourceDevis, chantier, clients, devisSourceId, retenuePct, saveSituationsData]
@@ -467,8 +467,8 @@ export default function SituationsTravaux({
             Facturation par situation
           </h2>
           <p className={`text-sm ${textMuted} mb-6`}>
-            Facturez progressivement selon l'avancement r\u00e9el des travaux.
-            S\u00e9lectionnez un devis sign\u00e9 comme r\u00e9f\u00e9rence de march\u00e9.
+            Facturez progressivement selon l'avancement réel des travaux.
+            Sélectionnez un devis signé comme référence de marché.
           </p>
           {eligibleDevis.length > 0 ? (
             <button
@@ -482,7 +482,7 @@ export default function SituationsTravaux({
           ) : (
             <div className={`text-sm ${textMuted} p-4 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-amber-50'}`}>
               <AlertTriangle size={16} className="inline -mt-0.5 mr-1 text-amber-500" />
-              Aucun devis sign\u00e9 li\u00e9 \u00e0 ce chantier. Cr\u00e9ez et faites signer un devis d'abord.
+              Aucun devis signé lié à ce chantier. Créez et faites signer un devis d'abord.
             </div>
           )}
           {onClose && (
@@ -504,10 +504,10 @@ export default function SituationsTravaux({
       <div className="p-4 md:p-6">
         <div className={`rounded-2xl border ${cardBg} p-6 max-w-lg mx-auto`}>
           <h2 className={`text-lg font-bold ${textPrimary} mb-1`}>
-            S\u00e9lectionner le devis de r\u00e9f\u00e9rence
+            Sélectionner le devis de référence
           </h2>
           <p className={`text-sm ${textMuted} mb-4`}>
-            Ce devis servira de base (march\u00e9) pour toutes les situations de travaux.
+            Ce devis servira de base (marché) pour toutes les situations de travaux.
           </p>
 
           {/* Retenue de garantie */}
@@ -580,7 +580,7 @@ export default function SituationsTravaux({
   return (
     <div className="p-4 md:p-6">
       {/* ------------------------------------------------------------------ */}
-      {/* BANDEAU R\u00c9SUM\u00c9                                                       */}
+      {/* BANDEAU RÉSUMÉ                                                       */}
       {/* ------------------------------------------------------------------ */}
       <div className={`rounded-2xl border ${cardBg} p-5 mb-6`}>
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
@@ -599,8 +599,8 @@ export default function SituationsTravaux({
                 Situations de Travaux
               </h1>
               <p className={`text-sm ${textMuted}`}>
-                {chantier.nom} \u2014 {situations.length} situation{situations.length !== 1 ? 's' : ''}
-                {sourceDevis && <> \u00b7 March\u00e9 {sourceDevis.numero}</>}
+                {chantier.nom} — {situations.length} situation{situations.length !== 1 ? 's' : ''}
+                {sourceDevis && <> · Marché {sourceDevis.numero}</>}
               </p>
             </div>
           </div>
@@ -613,7 +613,7 @@ export default function SituationsTravaux({
             style={{ backgroundColor: couleur }}
           >
             <Plus size={18} />
-            Nouvelle situation n\u00b0{nextNumero}
+            Nouvelle situation n°{nextNumero}
           </button>
         </div>
 
@@ -621,19 +621,19 @@ export default function SituationsTravaux({
         {devisSourceId && (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div className={`p-3 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
-              <p className={`text-xs ${textMuted} mb-0.5`}>March\u00e9 HT</p>
+              <p className={`text-xs ${textMuted} mb-0.5`}>Marché HT</p>
               <p className={`text-sm font-bold ${textPrimary} tabular-nums`}>
                 {showMoney(totalMarcheHT)}
               </p>
             </div>
             <div className={`p-3 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
-              <p className={`text-xs ${textMuted} mb-0.5`}>Factur\u00e9 cumul\u00e9</p>
+              <p className={`text-xs ${textMuted} mb-0.5`}>Facturé cumulé</p>
               <p className={`text-sm font-bold tabular-nums`} style={{ color: couleur }}>
                 {showMoney(cumulInvoiced.totalFactureHT)}
               </p>
             </div>
             <div className={`p-3 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
-              <p className={`text-xs ${textMuted} mb-0.5`}>Reste \u00e0 facturer</p>
+              <p className={`text-xs ${textMuted} mb-0.5`}>Reste à facturer</p>
               <p className={`text-sm font-bold ${textPrimary} tabular-nums`}>
                 {showMoney(totalMarcheHT - cumulInvoiced.totalFactureHT)}
               </p>
@@ -686,9 +686,9 @@ export default function SituationsTravaux({
             {situations.length === 0 ? (
               <div className="p-6 text-center">
                 <Receipt size={32} className={`mx-auto mb-2 ${textMuted}`} />
-                <p className={`font-medium ${textPrimary} mb-1`}>Aucune situation cr\u00e9\u00e9e</p>
+                <p className={`font-medium ${textPrimary} mb-1`}>Aucune situation créée</p>
                 <p className={`text-xs ${textMuted} max-w-xs mx-auto`}>
-                  Cr\u00e9ez une premi\u00e8re situation pour commencer la facturation progressive.
+                  Créez une première situation pour commencer la facturation progressive.
                 </p>
               </div>
             ) : (
@@ -712,7 +712,7 @@ export default function SituationsTravaux({
                     >
                       <div className="flex items-center justify-between mb-1">
                         <span className={`text-sm font-semibold ${textPrimary}`}>
-                          Situation n\u00b0{sit.numero}
+                          Situation n°{sit.numero}
                           {sit.isDGD && (
                             <span className="ml-1.5 text-xs px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700">
                               DGD
@@ -763,7 +763,7 @@ export default function SituationsTravaux({
                             className="text-xs px-2 py-1 rounded-lg text-white hover:opacity-80 transition-opacity"
                             style={{ backgroundColor: couleur }}
                           >
-                            G\u00e9n\u00e9rer facture
+                            Générer facture
                           </button>
                         )}
                         {(sit.statut === SITUATION_STATUS.FACTUREE || sit.statut === SITUATION_STATUS.PAYEE) && (
@@ -796,7 +796,7 @@ export default function SituationsTravaux({
                 Suivi d'avancement
               </h3>
               <p className={`text-sm ${textMuted} max-w-md mx-auto`}>
-                S\u00e9lectionnez une situation dans l'historique ou cr\u00e9ez-en une nouvelle.
+                Sélectionnez une situation dans l'historique ou créez-en une nouvelle.
               </p>
             </div>
           )}
@@ -828,15 +828,15 @@ export default function SituationsTravaux({
                   <div>
                     <h2 className={`text-lg font-bold ${textPrimary}`}>
                       <Hash size={16} className="inline -mt-0.5 mr-1" />
-                      Situation n\u00b0{draft.numero}
+                      Situation n°{draft.numero}
                       {isDGD && (
                         <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">
-                          D\u00e9compte G\u00e9n\u00e9ral D\u00e9finitif
+                          Décompte Général Définitif
                         </span>
                       )}
                     </h2>
                     <p className={`text-sm ${textMuted}`}>
-                      {draft.lignes.length} poste{draft.lignes.length !== 1 ? 's' : ''} du march\u00e9
+                      {draft.lignes.length} poste{draft.lignes.length !== 1 ? 's' : ''} du marché
                     </p>
                   </div>
 
@@ -859,7 +859,7 @@ export default function SituationsTravaux({
                       }`}
                     >
                       <CheckCircle size={14} />
-                      DGD (tout \u00e0 100%)
+                      DGD (tout à 100%)
                     </button>
                   </div>
                 </div>
@@ -872,19 +872,19 @@ export default function SituationsTravaux({
                     <thead>
                       <tr className={isDark ? 'bg-slate-700/50' : 'bg-slate-50'}>
                         <th className={`text-left px-4 py-3 font-semibold ${textSecondary} text-xs uppercase tracking-wide`}>
-                          D\u00e9signation
+                          Désignation
                         </th>
                         <th className={`text-right px-3 py-3 font-semibold ${textSecondary} text-xs uppercase tracking-wide w-28`}>
-                          Mt march\u00e9
+                          Mt marché
                         </th>
                         <th className={`text-right px-3 py-3 font-semibold ${textSecondary} text-xs uppercase tracking-wide w-24`}>
-                          Pr\u00e9c\u00e9dent
+                          Précédent
                         </th>
                         <th className={`text-center px-3 py-3 font-semibold ${textSecondary} text-xs uppercase tracking-wide w-44`}>
                           Avancement (%)
                         </th>
                         <th className={`text-right px-3 py-3 font-semibold ${textSecondary} text-xs uppercase tracking-wide w-28`}>
-                          Mt cumul\u00e9
+                          Mt cumulé
                         </th>
                         <th className={`text-right px-4 py-3 font-semibold ${textSecondary} text-xs uppercase tracking-wide w-28`}>
                           Mt situation
@@ -905,7 +905,7 @@ export default function SituationsTravaux({
                                 {l.description}
                               </div>
                               <span className={`text-xs ${textMuted}`}>
-                                {l.quantite} {l.unite} \u00d7 {showMoney(l.prixUnitaire)}
+                                {l.quantite} {l.unite} × {showMoney(l.prixUnitaire)}
                               </span>
                             </td>
                             <td className={`text-right px-3 py-3 ${textSecondary} tabular-nums`}>
@@ -968,7 +968,7 @@ export default function SituationsTravaux({
                   <div className="p-8 text-center">
                     <FileText size={32} className={`mx-auto mb-2 ${textMuted}`} />
                     <p className={`text-sm ${textMuted}`}>
-                      Aucun poste trouv\u00e9 dans le devis de r\u00e9f\u00e9rence.
+                      Aucun poste trouvé dans le devis de référence.
                     </p>
                   </div>
                 )}
@@ -986,7 +986,7 @@ export default function SituationsTravaux({
                     <div key={l.ligneId} className={`rounded-xl border ${cardBg} p-4`}>
                       <div className={`font-medium text-sm ${textPrimary} mb-1`}>{l.description}</div>
                       <p className={`text-xs ${textMuted} mb-2`}>
-                        {l.quantite} {l.unite} \u00d7 {showMoney(l.prixUnitaire)} = {showMoney(marcheHT)} HT
+                        {l.quantite} {l.unite} × {showMoney(l.prixUnitaire)} = {showMoney(marcheHT)} HT
                       </p>
 
                       {/* Slider */}
@@ -1022,7 +1022,7 @@ export default function SituationsTravaux({
 
                       <div className="flex justify-between text-xs">
                         <span className={textMuted}>Situation : <strong className={textPrimary}>{showMoney(montantSituation)}</strong></span>
-                        <span className={textMuted}>Cumul\u00e9 : {showMoney(montantCumul)}</span>
+                        <span className={textMuted}>Cumulé : {showMoney(montantCumul)}</span>
                       </div>
                     </div>
                   );
@@ -1034,16 +1034,16 @@ export default function SituationsTravaux({
                 <div className={`rounded-2xl border ${cardBg} p-5 mb-4`}>
                   <h3 className={`text-sm font-semibold ${textPrimary} mb-4 flex items-center gap-2`}>
                     <Euro size={16} />
-                    R\u00e9capitulatif
+                    Récapitulatif
                   </h3>
 
                   <div className="space-y-2.5 text-sm">
                     <div className="flex justify-between">
-                      <span className={textSecondary}>Montant cumul\u00e9 HT</span>
+                      <span className={textSecondary}>Montant cumulé HT</span>
                       <span className={`${textPrimary} tabular-nums`}>{showMoney(draftTotals.montantCumuleHT)}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className={textSecondary}>Montant pr\u00e9c\u00e9dent HT</span>
+                      <span className={textSecondary}>Montant précédent HT</span>
                       <span className={`${textMuted} tabular-nums`}>- {showMoney(draftTotals.montantPrecedentHT)}</span>
                     </div>
 
@@ -1079,21 +1079,21 @@ export default function SituationsTravaux({
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             <Shield size={14} className="text-emerald-500" />
-                            <span className="text-emerald-600 text-sm font-medium">Retenue de garantie lib\u00e9r\u00e9e (DGD)</span>
+                            <span className="text-emerald-600 text-sm font-medium">Retenue de garantie libérée (DGD)</span>
                           </div>
-                          <span className="text-emerald-500 tabular-nums">0 \u20ac</span>
+                          <span className="text-emerald-500 tabular-nums">0 €</span>
                         </div>
                       </div>
                     )}
 
                     <div className={`border-t-2 ${isDark ? 'border-slate-600' : 'border-slate-300'}`} />
 
-                    {/* NET \u00c0 PAYER */}
+                    {/* NET À PAYER */}
                     <div
                       className="flex justify-between items-center text-base font-bold py-1 px-3 -mx-3 rounded-xl"
                       style={{ backgroundColor: `${couleur}15`, color: couleur }}
                     >
-                      <span>NET \u00c0 PAYER</span>
+                      <span>NET À PAYER</span>
                       <span className="tabular-nums">{showMoney(draftTotals.netAPayer)}</span>
                     </div>
                   </div>
@@ -1173,7 +1173,7 @@ function SituationDetail({
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
             <h2 className={`text-lg font-bold ${textPrimary} flex items-center gap-2`}>
-              Situation n\u00b0{situation.numero}
+              Situation n°{situation.numero}
               {situation.isDGD && (
                 <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">DGD</span>
               )}
@@ -1182,7 +1182,7 @@ function SituationDetail({
             <p className={`text-sm ${textMuted} mt-0.5`}>
               {formatDate(situation.date)}
               {situation.facture_numero && (
-                <> \u00b7 Facture : <strong>{situation.facture_numero}</strong></>
+                <> · Facture : <strong>{situation.facture_numero}</strong></>
               )}
             </p>
           </div>
@@ -1204,13 +1204,13 @@ function SituationDetail({
       <div className={`rounded-2xl border ${cardBg} overflow-hidden`}>
         {/* Desktop table */}
         <div className="overflow-x-auto hidden md:block">
-          <table className="w-full text-sm" aria-label="D\u00e9tail situation de travaux">
+          <table className="w-full text-sm" aria-label="Détail situation de travaux">
             <thead>
               <tr className={isDark ? 'bg-slate-700/50' : 'bg-slate-50'}>
-                <th className={`text-left px-4 py-3 font-semibold ${textSecondary} text-xs uppercase tracking-wide`}>D\u00e9signation</th>
-                <th className={`text-right px-3 py-3 font-semibold ${textSecondary} text-xs uppercase tracking-wide w-24`}>Pr\u00e9c.</th>
+                <th className={`text-left px-4 py-3 font-semibold ${textSecondary} text-xs uppercase tracking-wide`}>Désignation</th>
+                <th className={`text-right px-3 py-3 font-semibold ${textSecondary} text-xs uppercase tracking-wide w-24`}>Préc.</th>
                 <th className={`text-right px-3 py-3 font-semibold ${textSecondary} text-xs uppercase tracking-wide w-24`}>Actuel</th>
-                <th className={`text-right px-3 py-3 font-semibold ${textSecondary} text-xs uppercase tracking-wide w-28`}>Mt cumul\u00e9</th>
+                <th className={`text-right px-3 py-3 font-semibold ${textSecondary} text-xs uppercase tracking-wide w-28`}>Mt cumulé</th>
                 <th className={`text-right px-4 py-3 font-semibold ${textSecondary} text-xs uppercase tracking-wide w-28`}>Mt situation</th>
               </tr>
             </thead>
@@ -1255,7 +1255,7 @@ function SituationDetail({
                   <div className="h-full rounded-full transition-all duration-300" style={{ width: `${l.cumulActuel || 0}%`, backgroundColor: couleur }} />
                 </div>
                 <div className="flex justify-between text-xs">
-                  <span className={textMuted}>{(l.cumulPrecedent || 0).toFixed(0)}% \u2192 <strong style={{ color: couleur }}>{(l.cumulActuel || 0).toFixed(0)}%</strong></span>
+                  <span className={textMuted}>{(l.cumulPrecedent || 0).toFixed(0)}% → <strong style={{ color: couleur }}>{(l.cumulActuel || 0).toFixed(0)}%</strong></span>
                   <span className={`font-semibold ${textPrimary}`}>{showMoney(montantSituation)}</span>
                 </div>
               </div>
@@ -1286,7 +1286,7 @@ function SituationDetail({
               className="flex justify-between font-bold text-base py-1 px-3 -mx-3 rounded-xl"
               style={{ backgroundColor: `${couleur}15`, color: couleur }}
             >
-              <span>{situation.isDGD ? 'SOLDE DGD' : 'NET \u00c0 PAYER'}</span>
+              <span>{situation.isDGD ? 'SOLDE DGD' : 'NET À PAYER'}</span>
               <span className="tabular-nums">{showMoney(totals.netAPayer)}</span>
             </div>
           </div>

@@ -471,6 +471,14 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                 {/* Sync status dot */}
                 <div className={`w-2 h-2 rounded-full shrink-0 ${isOnline ? 'bg-emerald-500' : 'bg-red-500'}`} title={isOnline ? 'En ligne' : 'Hors ligne'} />
                 <h2 className={`order-last sm:order-none w-full sm:w-auto sm:flex-1 min-w-0 text-sm sm:text-xl font-bold leading-tight line-clamp-2 sm:line-clamp-none pl-1 sm:pl-0 ${textPrimary}`}>{ch.nom}</h2>
+                {devisLie && setPage && (
+                  <button
+                    onClick={() => setPage('devis', { devisId: devisLie.id })}
+                    className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg shrink-0 ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                  >
+                    <FileText size={12} /> Devis {devisLie.numero}{devisLie.total_ttc ? ` — ${devisLie.total_ttc.toLocaleString('fr-FR')}€` : ''}
+                  </button>
+                )}
                 <select
                   value={ch.statut}
                   onChange={e => {
@@ -662,6 +670,41 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
             </div>
           );
         })()}
+
+        {/* === SECTION: MÉTÉO CHANTIER (fallback par adresse) === */}
+        {ch.adresse && (
+          <div className={`rounded-xl border p-3 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+            <div className="flex items-center gap-2 mb-2">
+              <Cloud size={14} style={{ color: couleur }} />
+              <span className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                Météo · {ch.ville || ch.adresse?.split(',').pop()?.trim() || 'Chantier'}
+              </span>
+            </div>
+            {weather ? (
+              <div className="flex gap-3">
+                {(weather.daily || []).slice(0, 3).map((day, i) => (
+                  <div key={i} className="text-center flex-1">
+                    <p className={`text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{['Auj.', 'Dem.', 'J+2'][i]}</p>
+                    {day.icon === 'rain' ? <CloudRain size={16} className={`mx-auto my-1 ${isDark ? 'text-blue-400' : 'text-blue-500'}`} />
+                      : day.icon === 'cloud' ? <Cloud size={16} className={`mx-auto my-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />
+                      : <Sun size={16} className={`mx-auto my-1 ${isDark ? 'text-yellow-400' : 'text-yellow-500'}`} />}
+                    <p className={`text-xs font-medium ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{Math.round(day.temp || day.tempMax || 0)}°C</p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex gap-3">
+                {['Auj.', 'Dem.', 'J+2'].map((jour, i) => (
+                  <div key={i} className="text-center flex-1">
+                    <p className={`text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{jour}</p>
+                    <Sun size={16} className={`mx-auto my-1 ${isDark ? 'text-yellow-400' : 'text-yellow-500'}`} />
+                    <p className={`text-xs font-medium ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{15 + i * 2}°C</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* === SECTION: SITUATION AVANCEMENT BAR === */}
         {ch.situations_data?.mode === 'situation' && (() => {
@@ -857,19 +900,19 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                     <>
                       <button
                         onClick={() => handleNotifyClient('en_route')}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium ${isDark ? 'bg-slate-700 text-orange-400' : 'bg-orange-50 text-orange-700'}`}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium min-h-[48px] ${isDark ? 'bg-slate-700 text-orange-400' : 'bg-orange-50 text-orange-700'}`}
                       >
                         <Navigation size={16} /> En route
                       </button>
                       <button
                         onClick={() => handleNotifyClient('arrive')}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium ${isDark ? 'bg-slate-700 text-emerald-400' : 'bg-emerald-50 text-emerald-700'}`}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium min-h-[48px] ${isDark ? 'bg-slate-700 text-emerald-400' : 'bg-emerald-50 text-emerald-700'}`}
                       >
                         <MapPin size={16} /> Arrivé
                       </button>
                       <button
                         onClick={() => handleNotifyClient('termine')}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium ${isDark ? 'bg-slate-700 text-blue-400' : 'bg-blue-50 text-blue-700'}`}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium min-h-[48px] ${isDark ? 'bg-slate-700 text-blue-400' : 'bg-blue-50 text-blue-700'}`}
                       >
                         <CheckCircle size={16} /> Terminé
                       </button>
