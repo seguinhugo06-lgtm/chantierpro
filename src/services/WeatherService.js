@@ -223,20 +223,50 @@ export async function getUserWeather() {
  * @returns {Promise<Object>}
  */
 export async function getChantierWeather(chantier) {
-  if (!chantier?.latitude || !chantier?.longitude) {
-    return getDefaultWeather();
-  }
-
-  // Check cache first
-  const cacheKey = `chantier_${chantier.id}`;
+  const cacheKey = `chantier_${chantier?.id || 'unknown'}`;
   const cached = getCachedWeather(cacheKey);
   if (cached) return cached;
 
-  const weather = await fetchWeatherFromAPI(chantier.latitude, chantier.longitude);
+  // 1. Try with lat/lng if available
+  if (chantier?.latitude && chantier?.longitude) {
+    const weather = await fetchWeatherFromAPI(chantier.latitude, chantier.longitude);
+    if (weather) {
+      setCachedWeather(cacheKey, weather);
+      return weather;
+    }
+  }
 
-  if (weather) {
-    setCachedWeather(cacheKey, weather);
-    return weather;
+  // 2. Fallback: geocode chantier address via Open-Meteo (free, no key)
+  const address = chantier?.ville || chantier?.adresse || chantier?.code_postal || chantier?.codePostal;
+  if (address) {
+    try {
+      const encoded = encodeURIComponent(address);
+      const geoRes = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encoded}&count=1&language=fr`);
+      const geoData = await geoRes.json();
+      if (geoData.results?.length > 0) {
+        const { latitude, longitude, name } = geoData.results[0];
+        const meteoRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&daily=temperature_2m_max,temperature_2m_min,weathercode&timezone=Europe/Paris&forecast_days=3`);
+        const meteoData = await meteoRes.json();
+        if (meteoData.daily) {
+          const CODES = { 0: 'sun', 1: 'sun', 2: 'cloud', 3: 'cloud', 45: 'cloud', 48: 'cloud', 51: 'rain', 53: 'rain', 55: 'rain', 61: 'rain', 63: 'rain', 65: 'rain', 71: 'cloud', 73: 'cloud', 80: 'rain', 95: 'rain' };
+          const weather = {
+            daily: meteoData.daily.time.map((date, i) => ({
+              date,
+              temp: Math.round((meteoData.daily.temperature_2m_max[i] + meteoData.daily.temperature_2m_min[i]) / 2),
+              tempMax: Math.round(meteoData.daily.temperature_2m_max[i]),
+              tempMin: Math.round(meteoData.daily.temperature_2m_min[i]),
+              icon: CODES[meteoData.daily.weathercode[i]] || 'cloud',
+            })),
+            location: name,
+            isDefault: false,
+          };
+          setCachedWeather(cacheKey, weather);
+          return weather;
+        }
+      }
+    } catch (e) {
+      console.warn('[Weather] Geocode/Open-Meteo fallback failed:', e.message);
+    }
   }
 
   return getDefaultWeather();
