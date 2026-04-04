@@ -199,10 +199,34 @@ const ChatPage = memo(function ChatPage({
     [channels, activeChannelId]
   );
 
+  // Enrich messages with userName from channelMembers + resolve replyTo references
+  const enrichedMessages = useMemo(() => {
+    const memberMap = channelMembers.length > 0
+      ? new Map(channelMembers.map(m => [m.userId, m]))
+      : new Map();
+    // First pass: enrich userName
+    const enriched = messages.map(msg => {
+      const enrichedMsg = { ...msg };
+      if (!enrichedMsg.userName && memberMap.size > 0) {
+        const member = memberMap.get(msg.userId);
+        if (member) enrichedMsg.userName = member.userName || member.userEmail;
+      }
+      return enrichedMsg;
+    });
+    // Second pass: resolve replyTo from local messages
+    return enriched.map(msg => {
+      if (msg.replyToId && !msg.replyTo) {
+        const parent = enriched.find(m => m.id === msg.replyToId);
+        if (parent) return { ...msg, replyTo: { userName: parent.userName, content: parent.content } };
+      }
+      return msg;
+    });
+  }, [messages, channelMembers]);
+
   // Thread messages (replies to the thread parent)
   const threadMessages = useMemo(() => {
     if (!threadMessage) return [];
-    return messages.filter(m => m.replyToId === threadMessage.id);
+    return enrichedMessages.filter(m => m.replyToId === threadMessage.id);
   }, [messages, threadMessage]);
 
   // ── Load channels ─────────────────────────────────────────────────────────
@@ -393,7 +417,12 @@ const ChatPage = memo(function ChatPage({
     if (!activeChannelId || !userId) return;
 
     try {
-      const userName = user?.user_metadata?.nom || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Utilisateur';
+      // Extract user name — handle nested JSON {nom, prenom} or simple string
+      const meta = user?.user_metadata;
+      const nomField = meta?.nom;
+      const userName = (typeof nomField === 'object' && nomField)
+        ? `${nomField.prenom || ''} ${nomField.nom || ''}`.trim()
+        : nomField || meta?.full_name || user?.email?.split('@')[0] || 'Utilisateur';
       const userEmail = user?.email || null;
       const msg = await sendMessage(supabase, {
         channelId: activeChannelId,
@@ -410,6 +439,14 @@ const ChatPage = memo(function ChatPage({
       if (!msg) {
         showToast?.('Message non envoyé — réessayez', 'error');
         return;
+      }
+
+      // Enrich message with user info + reply context for immediate display
+      msg.userName = msg.userName || userName;
+      msg.userEmail = msg.userEmail || userEmail;
+      if (msg.replyToId && !msg.replyTo) {
+        const parent = messages.find(m => m.id === msg.replyToId);
+        if (parent) msg.replyTo = { userName: parent.userName, content: parent.content };
       }
 
       setMessages(prev => [...prev, msg]);
@@ -549,7 +586,11 @@ const ChatPage = memo(function ChatPage({
 
   const handleCreateChannel = useCallback(async ({ name, type, description, memberIds }) => {
     try {
-      const creatorName = user?.user_metadata?.nom || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Utilisateur';
+      const cMeta = user?.user_metadata;
+      const cNom = cMeta?.nom;
+      const creatorName = (typeof cNom === 'object' && cNom)
+        ? `${cNom.prenom || ''} ${cNom.nom || ''}`.trim()
+        : cNom || cMeta?.full_name || user?.email?.split('@')[0] || 'Utilisateur';
       const channel = await createChannel(supabase, {
         userId,
         orgId,
@@ -715,7 +756,7 @@ const ChatPage = memo(function ChatPage({
               </div>
             ) : (
               <ChatMessageList
-                messages={messages}
+                messages={enrichedMessages}
                 currentUserId={userId}
                 hasMore={hasMoreMessages}
                 isLoadingMore={loadingMore}
