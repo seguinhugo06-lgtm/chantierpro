@@ -387,6 +387,8 @@ const ChatPage = memo(function ChatPage({
     if (!activeChannelId || !userId) return;
 
     try {
+      const userName = user?.user_metadata?.nom || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Utilisateur';
+      const userEmail = user?.email || null;
       const msg = await sendMessage(supabase, {
         channelId: activeChannelId,
         userId,
@@ -395,6 +397,8 @@ const ChatPage = memo(function ChatPage({
         attachments,
         voiceDurationMs,
         replyToId,
+        userName,
+        userEmail,
       });
 
       if (!msg) {

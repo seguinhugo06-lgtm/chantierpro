@@ -55,6 +55,14 @@ const ChatInput = memo(function ChatInput({
     if (replyTo) textareaRef.current?.focus();
   }, [replyTo]);
 
+  // Pre-fill text when editing a message
+  useEffect(() => {
+    if (editingMessage) {
+      setText(editingMessage.content || '');
+      setTimeout(() => textareaRef.current?.focus(), 50);
+    }
+  }, [editingMessage]);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {

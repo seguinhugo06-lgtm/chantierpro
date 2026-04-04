@@ -310,7 +310,7 @@ const ChatMessageBubble = memo(function ChatMessageBubble({
         {showActions && (
           <div className={`absolute ${isOwn ? 'left-0 -translate-x-full' : 'right-0 translate-x-full'} top-0 flex items-center gap-0.5 px-1`}>
             {/* Quick reactions */}
-            {QUICK_REACTIONS.slice(0, 3).map(emoji => (
+            {QUICK_REACTIONS.map(emoji => (
               <button
                 key={emoji}
                 onClick={() => onReact?.(message.id, emoji)}

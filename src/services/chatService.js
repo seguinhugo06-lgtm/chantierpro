@@ -420,13 +420,21 @@ export async function createChannel(supabase, { userId, orgId, name, type, descr
       throw error;
     }
 
-    // Add creator as admin
+    // Add creator as admin + selected members
     const members = [
       { channel_id: channel.id, user_id: userId, role: 'admin' },
-      ...(memberIds || []).map(uid => ({ channel_id: channel.id, user_id: uid, role: 'member' })),
+      ...(memberIds || []).filter(uid => uid !== userId).map(uid => ({ channel_id: channel.id, user_id: uid, role: 'member' })),
     ];
 
-    await supabase.from('chat_members').insert(members);
+    const { error: memberError } = await supabase.from('chat_members').insert(members);
+    if (memberError) {
+      console.warn('[chatService] Failed to add members, retrying creator only:', memberError.message);
+      // Retry with just the creator to ensure the channel is accessible
+      await supabase.from('chat_members').upsert(
+        { channel_id: channel.id, user_id: userId, role: 'admin' },
+        { onConflict: 'channel_id,user_id' }
+      );
+    }
 
     // Add system message
     await supabase.from('chat_messages').insert({
@@ -577,7 +585,7 @@ export async function loadMessages(supabase, { channelId, cursor, limit = 30 }) 
 /**
  * Send a message
  */
-export async function sendMessage(supabase, { channelId, userId, content, contentType = 'text', attachments, voiceDurationMs, replyToId }) {
+export async function sendMessage(supabase, { channelId, userId, content, contentType = 'text', attachments, voiceDurationMs, replyToId, userName, userEmail }) {
   if (isDemo) {
     const data = getDemoData();
     const now = new Date().toISOString();
@@ -616,6 +624,9 @@ export async function sendMessage(supabase, { channelId, userId, content, conten
       content,
       content_type: contentType,
     };
+    // Include user info for display (avoids extra joins)
+    if (userName) messageData.user_name = userName;
+    if (userEmail) messageData.user_email = userEmail;
     // Only include optional columns if they have values (avoids schema cache issues)
     if (attachments && attachments.length > 0) messageData.attachments = attachments;
     if (voiceDurationMs) messageData.voice_duration_ms = voiceDurationMs;
@@ -631,6 +642,18 @@ export async function sendMessage(supabase, { channelId, userId, content, conten
       if (isTableMissing(error)) {
         console.warn('[chatService] chat_messages table not available:', error.message);
         return null;
+      }
+      // If reply_to_id FK fails, retry without it
+      if (replyToId && (error.code === '23503' || error.message?.includes('foreign key') || error.message?.includes('reply_to_id'))) {
+        console.warn('[chatService] reply_to_id FK failed, retrying without:', error.message);
+        delete messageData.reply_to_id;
+        const { data: retryMsg, error: retryError } = await supabase
+          .from('chat_messages')
+          .insert(messageData)
+          .select('*')
+          .single();
+        if (retryError) throw retryError;
+        return messageFromSupabase(retryMsg);
       }
       throw error;
     }

@@ -86,9 +86,16 @@ const ChatMessageList = memo(function ChatMessageList({
     messages.filter(Boolean).forEach((msg, i) => {
       if (!msg || !msg.createdAt) return;
       const msgDate = new Date(msg.createdAt);
-      const dateStr = msgDate.toLocaleDateString('fr-FR', {
-        weekday: 'long', day: 'numeric', month: 'long',
-      });
+      const today = new Date();
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+      const isToday = msgDate.toDateString() === today.toDateString();
+      const isYesterday = msgDate.toDateString() === yesterday.toDateString();
+      const dateStr = isToday
+        ? "Aujourd'hui"
+        : isYesterday
+          ? 'Hier'
+          : msgDate.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
 
       // Add date separator
       if (dateStr !== lastDate) {

@@ -200,7 +200,7 @@ function Modal({
   return (
     <div
       className={cn(
-        'fixed inset-0 z-modal flex',
+        'fixed inset-0 z-[1050] flex',
         centered ? 'items-center' : 'items-start pt-20',
         'justify-center p-4',
         bottomSheet && 'items-end sm:items-center'

@@ -221,7 +221,7 @@ const ChatSidebar = memo(function ChatSidebar({
           <div className="flex flex-col items-center justify-center py-8">
             <MessageCircle size={32} className={textMuted} />
             <p className={`text-sm mt-2 ${textMuted}`}>
-              Aucun resultat
+              Aucun résultat
             </p>
           </div>
         )}
