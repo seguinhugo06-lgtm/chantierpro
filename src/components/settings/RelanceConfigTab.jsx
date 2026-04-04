@@ -1056,6 +1056,35 @@ export default function RelanceConfigTab({
         />
       </div>
 
+      {/* Penalties info */}
+      <div className={cn('rounded-2xl border p-5', isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200')}>
+        <div className="flex items-center gap-3 mb-3">
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: '#ef444420' }}>
+            <AlertTriangle className="w-5 h-5 text-red-500" />
+          </div>
+          <div>
+            <h3 className={cn('text-base font-semibold', isDark ? 'text-white' : 'text-slate-900')}>Pénalités de retard</h3>
+            <p className={cn('text-xs', isDark ? 'text-slate-400' : 'text-slate-500')}>Calcul automatique selon la loi française</p>
+          </div>
+        </div>
+        <div className={cn('grid grid-cols-1 sm:grid-cols-2 gap-3')}>
+          <div className={cn('rounded-xl p-3', isDark ? 'bg-slate-700/50' : 'bg-red-50')}>
+            <p className={cn('text-xs font-medium mb-1', isDark ? 'text-slate-300' : 'text-red-800')}>Taux de pénalités</p>
+            <p className={cn('text-lg font-bold', isDark ? 'text-white' : 'text-red-900')}>11,62%</p>
+            <p className={cn('text-[11px]', isDark ? 'text-slate-400' : 'text-red-600')}>Art. L441-10 — 3× taux BCE</p>
+          </div>
+          <div className={cn('rounded-xl p-3', isDark ? 'bg-slate-700/50' : 'bg-amber-50')}>
+            <p className={cn('text-xs font-medium mb-1', isDark ? 'text-slate-300' : 'text-amber-800')}>Indemnité forfaitaire</p>
+            <p className={cn('text-lg font-bold', isDark ? 'text-white' : 'text-amber-900')}>40,00 €</p>
+            <p className={cn('text-[11px]', isDark ? 'text-slate-400' : 'text-amber-600')}>Art. D441-5 — par facture impayée</p>
+          </div>
+        </div>
+        <p className={cn('text-[11px] mt-3', isDark ? 'text-slate-500' : 'text-slate-400')}>
+          Ces montants sont mentionnés automatiquement dans les modèles de mise en demeure (J+30) et pré-contentieux (J+45).
+          Variable disponible : {'{{penalites}}'} et {'{{total_du}}'}.
+        </p>
+      </div>
+
       {/* Variables reference */}
       <VariablesCard isDark={isDark} couleur={couleur} />
 

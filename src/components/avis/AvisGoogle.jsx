@@ -143,8 +143,6 @@ function PostChantierSequences({ isDark, couleur }) {
     return Object.keys(byChantier).length;
   }, [scheduled]);
 
-  if (scheduled.length === 0) return null;
-
   const formatDate = (iso) => {
     const d = new Date(iso);
     const now = new Date();
@@ -161,17 +159,25 @@ function PostChantierSequences({ isDark, couleur }) {
         <Calendar size={16} style={{ color: couleur }} />
         <h3 className={`text-sm font-semibold ${textPrimary}`}>Séquences post-chantier</h3>
       </div>
-      <div className="flex items-center gap-4 mb-3">
-        <div>
-          <p className={`text-2xl font-bold ${textPrimary}`}>{activeSequences}</p>
-          <p className={`text-xs ${textSecondary}`}>séquence{activeSequences > 1 ? 's' : ''} active{activeSequences > 1 ? 's' : ''}</p>
-        </div>
-        <div className={`w-px h-8 ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`} />
-        <div>
-          <p className={`text-2xl font-bold ${textPrimary}`}>{scheduled.length}</p>
-          <p className={`text-xs ${textSecondary}`}>action{scheduled.length > 1 ? 's' : ''} planifiée{scheduled.length > 1 ? 's' : ''}</p>
-        </div>
-      </div>
+      {scheduled.length === 0 ? (
+        <p className={`text-xs ${textSecondary}`}>
+          Aucune séquence active. Les actions se déclenchent automatiquement quand un chantier est marqué comme "Terminé".
+        </p>
+      ) : (
+        <>
+          <div className="flex items-center gap-4 mb-3">
+            <div>
+              <p className={`text-2xl font-bold ${textPrimary}`}>{activeSequences}</p>
+              <p className={`text-xs ${textSecondary}`}>séquence{activeSequences > 1 ? 's' : ''} active{activeSequences > 1 ? 's' : ''}</p>
+            </div>
+            <div className={`w-px h-8 ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`} />
+            <div>
+              <p className={`text-2xl font-bold ${textPrimary}`}>{scheduled.length}</p>
+              <p className={`text-xs ${textSecondary}`}>action{scheduled.length > 1 ? 's' : ''} planifiée{scheduled.length > 1 ? 's' : ''}</p>
+            </div>
+          </div>
+        </>
+      )}
       {nextAction && (
         <div className={`rounded-lg p-3 ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
           <div className="flex items-center gap-2">
@@ -1310,8 +1316,10 @@ export default function AvisGoogle({ chantiers = [], clients = [], entreprise = 
                   : isDark ? 'text-slate-300 hover:text-white hover:bg-slate-700' : 'text-slate-600 hover:text-slate-900 hover:bg-white'
               }`}
               style={isActive ? { backgroundColor: couleur } : undefined}
+              aria-label={tab.label}
+              title={tab.label}
             >
-              <Icon size={16} className="mr-1.5" />
+              <Icon size={16} className="sm:mr-1.5" />
               <span className="hidden sm:inline">{tab.label}</span>
             </button>
           );
