@@ -1641,7 +1641,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
           )}
           <div>
             <h1 className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>Clients</h1>
-            <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{displayClients.length} contact{displayClients.length !== 1 ? 's' : ''}</p>
+            <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{displayClients.length} contact{displayClients.length !== 1 ? 's' : ''}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -2097,15 +2097,9 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
 
                 {/* Stats footer */}
                 <div className={`px-4 py-2.5 border-t flex items-center justify-between mt-auto ${isDark ? 'border-slate-700/50 bg-slate-900/30' : 'border-slate-100 bg-slate-50/50'}`}>
-                  <div className="flex gap-3">
-                    <span className={`flex items-center gap-1 text-xs ${s.chantiers > 0 ? textSecondary : textMuted}`} title="Chantiers">
-                      <Home size={12} className={s.chantiers > 0 ? 'text-emerald-500' : ''} /> {s.chantiers}
-                    </span>
-                    <span className={`flex items-center gap-1 text-xs ${s.devis > 0 ? textSecondary : textMuted}`} title="Devis">
-                      <FileText size={12} className={s.devis > 0 ? 'text-blue-500' : ''} /> {s.devis}
-                    </span>
-                    <span className={`flex items-center gap-1 text-xs ${s.factures > 0 ? textSecondary : textMuted}`} title="Factures">
-                      <Receipt size={12} className={s.factures > 0 ? 'text-purple-500' : ''} /> {s.factures}
+                  <div className="flex gap-1">
+                    <span className={`text-xs ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
+                      {s.chantiers} chantier{s.chantiers !== 1 ? 's' : ''} · {s.devis} devis · {s.factures} facture{s.factures !== 1 ? 's' : ''}
                     </span>
                   </div>
                   <span className={`font-bold text-xs ${s.ca === 0 ? textMuted : ''}`} style={s.ca > 0 ? { color: couleur } : {}}>{formatMoney(s.ca)}</span>

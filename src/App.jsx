@@ -1026,19 +1026,21 @@ export default function App() {
     const portalChantiers = portalClientId ? chantiers.filter(c => c.clientId === portalClientId) : [];
 
     return (
+      <ErrorBoundary>
       <Suspense fallback={<div className="min-h-screen bg-[#f5f5f5] flex items-center justify-center"><Building2 size={48} className="text-orange-500 animate-bounce" /></div>}>
         <ClientPortal
           token={portalToken || 'demo'}
-          entreprise={entreprise}
-          couleur={couleur}
+          entreprise={entreprise || {}}
+          couleur={couleur || '#f97316'}
           client={portalClient}
-          devis={portalDevis}
-          chantiers={portalChantiers}
-          clients={clients}
+          devis={portalDevis || []}
+          chantiers={portalChantiers || []}
+          clients={clients || []}
           showToast={showToast}
           setPage={setPage}
         />
       </Suspense>
+      </ErrorBoundary>
     );
   }
 
