@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { X, Clock, Euro, Tag, FileText, Percent, ArrowRight, Star, ShoppingCart } from 'lucide-react';
 import PriceDecomposition from './PriceDecomposition';
 
@@ -116,6 +116,14 @@ export default function OuvrageDetail({
   breadcrumb,
   onAddToDevis,
 }) {
+  // Close on Escape
+  useEffect(() => {
+    if (!isOpen) return;
+    const handler = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [isOpen, onClose]);
+
   if (!isOpen || !ouvrage) return null;
 
   // ── Theme classes ───────────────────────────────────────────────────────────

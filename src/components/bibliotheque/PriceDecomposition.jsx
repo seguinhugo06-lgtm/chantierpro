@@ -138,34 +138,36 @@ export default function PriceDecomposition({
       </h4>
 
       {/* ── Donut chart ───────────────────────────────────────────── */}
-      <ResponsiveContainer width="100%" height={180}>
-        <PieChart>
-          <Pie
-            data={data}
-            cx="50%"
-            cy="50%"
-            innerRadius={45}
-            outerRadius={75}
-            paddingAngle={3}
-            dataKey="value"
-            strokeWidth={0}
-          >
-            {data.map((d) => (
-              <Cell key={d.name} fill={d.color} />
-            ))}
+      <div style={{ width: '100%', height: 180, minWidth: 200 }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
+            <Pie
+              data={data}
+              cx="50%"
+              cy="50%"
+              innerRadius={45}
+              outerRadius={75}
+              paddingAngle={3}
+              dataKey="value"
+              strokeWidth={0}
+            >
+              {data.map((d) => (
+                <Cell key={d.name} fill={d.color} />
+              ))}
 
-            {/* Center label showing total */}
-            <Label
-              content={<CenterLabel total={total} isDark={isDark} />}
-              position="center"
+              {/* Center label showing total */}
+              <Label
+                content={<CenterLabel total={total} isDark={isDark} />}
+                position="center"
+              />
+            </Pie>
+            <Tooltip
+              content={<ChartTooltip total={total} />}
+              wrapperStyle={{ outline: 'none' }}
             />
-          </Pie>
-          <Tooltip
-            content={<ChartTooltip total={total} />}
-            wrapperStyle={{ outline: 'none' }}
-          />
-        </PieChart>
-      </ResponsiveContainer>
+          </PieChart>
+        </ResponsiveContainer>
+      </div>
 
       {/* ── Summary table ─────────────────────────────────────────── */}
       <table className="w-full mt-3 text-sm">

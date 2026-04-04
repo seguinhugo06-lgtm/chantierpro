@@ -304,7 +304,7 @@ export default function Bibliotheque({ isDark, couleur = '#f97316', setPage, dev
             <span className={textMuted}>/</span>
             <button
               onClick={() => handleBreadcrumbClick(node.id)}
-              className={`shrink-0 hover:underline truncate max-w-[160px] transition-colors ${
+              className={`shrink-0 hover:underline truncate max-w-[120px] sm:max-w-[200px] transition-colors ${
                 idx === breadcrumb.length - 1 ? 'font-semibold' : textSecondary
               }`}
               style={idx === breadcrumb.length - 1 ? { color: couleur } : undefined}
@@ -424,15 +424,17 @@ export default function Bibliotheque({ isDark, couleur = '#f97316', setPage, dev
       <p className={`text-sm max-w-md ${textSecondary}`}>
         {isSearching
           ? `Aucun résultat pour «\u202f${searchQuery}\u202f». Essayez un autre terme de recherche.`
-          : "Sélectionnez un lot ou un chapitre dans l'arbre de nomenclature pour afficher les ouvrages."}
+          : (filters.priceRange[0] != null || filters.priceRange[1] != null || filters.difficulty || filters.unite)
+            ? 'Aucun ouvrage ne correspond aux filtres actifs. Essayez de modifier ou réinitialiser les filtres.'
+            : "Sélectionnez un lot ou un chapitre dans l'arbre de nomenclature pour afficher les ouvrages."}
       </p>
-      {isSearching && (
+      {(isSearching || filters.priceRange[0] != null || filters.priceRange[1] != null || filters.difficulty || filters.unite) && (
         <button
-          onClick={() => setSearchQuery('')}
+          onClick={() => { setSearchQuery(''); resetFilters(); }}
           className="mt-4 text-sm font-medium px-4 py-2 rounded-lg transition-colors text-white"
           style={{ backgroundColor: couleur }}
         >
-          Effacer la recherche
+          {isSearching ? 'Effacer la recherche' : 'Réinitialiser les filtres'}
         </button>
       )}
     </div>
