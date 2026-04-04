@@ -532,8 +532,8 @@ export async function generateActivityPDF(data, entreprise, options = {}) {
   }
 
   // Free plan watermark
-  const sub = subscription?.();
-  if (sub && !sub.isPro) {
+  const isFree = subscription?.isFree?.() ?? false;
+  if (isFree) {
     for (let i = 1; i <= total; i++) {
       doc.setPage(i);
       doc.setTextColor(200, 200, 200);
@@ -650,8 +650,8 @@ export async function generateFinancialPDF(data, entreprise, options = {}) {
     addPageFooter(doc, i - 1, total - 1, entreprise?.nom);
   }
 
-  const sub = subscription?.();
-  if (sub && !sub.isPro) {
+  const isFree = subscription?.isFree?.() ?? false;
+  if (isFree) {
     for (let i = 1; i <= total; i++) {
       doc.setPage(i);
       doc.setTextColor(200, 200, 200);
@@ -792,8 +792,8 @@ export async function generateChantierPDF(data, entreprise, options = {}) {
     addPageFooter(doc, i - 1, total - 1, entreprise?.nom);
   }
 
-  const sub = subscription?.();
-  if (sub && !sub.isPro) {
+  const isFree = subscription?.isFree?.() ?? false;
+  if (isFree) {
     for (let i = 1; i <= total; i++) {
       doc.setPage(i);
       doc.setTextColor(200, 200, 200);

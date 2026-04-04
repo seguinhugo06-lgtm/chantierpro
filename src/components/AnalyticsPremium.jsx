@@ -524,6 +524,51 @@ export default function AnalyticsPremium({
         </div>
       </Section>
 
+      {/* ── Section 5b: Répartition statuts chantiers ─────── */}
+      {chantiers.length > 0 && (() => {
+        const statusMap = {};
+        const STATUS_CONFIG = {
+          en_cours: { label: 'En cours', color: '#3b82f6' },
+          termine: { label: 'Terminé', color: '#22c55e' },
+          en_attente: { label: 'En attente', color: '#f59e0b' },
+          planifie: { label: 'Planifié', color: '#8b5cf6' },
+          archive: { label: 'Archivé', color: '#94a3b8' },
+          abandonne: { label: 'Abandonné', color: '#ef4444' },
+        };
+        chantiers.forEach(ch => {
+          const s = ch.statut || 'en_attente';
+          statusMap[s] = (statusMap[s] || 0) + 1;
+        });
+        const total = chantiers.length;
+        const entries = Object.entries(statusMap).sort((a, b) => b[1] - a[1]);
+        return (
+          <Section title="Répartition chantiers" icon={HardHat} couleur={couleur} isDark={isDark}>
+            <div className="space-y-2">
+              {entries.map(([status, count]) => {
+                const cfg = STATUS_CONFIG[status] || { label: status, color: '#94a3b8' };
+                const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+                return (
+                  <div key={status} className="flex items-center gap-3">
+                    <div className="w-24 sm:w-28 shrink-0">
+                      <p className={`text-xs font-medium ${textPrimary}`}>{cfg.label}</p>
+                    </div>
+                    <div className="flex-1">
+                      <div className={`h-5 rounded-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-gray-100'}`}>
+                        <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: cfg.color }} />
+                      </div>
+                    </div>
+                    <span className={`text-xs font-bold w-16 text-right ${textPrimary}`}>{count} ({pct}%)</span>
+                  </div>
+                );
+              })}
+              {entries.length === 0 && (
+                <p className={`text-xs text-center py-4 ${textMuted}`}>Aucun chantier</p>
+              )}
+            </div>
+          </Section>
+        );
+      })()}
+
       {/* ── Section 6: Productivité équipe ─────────────────── */}
       <Section title="Productivité équipe" icon={RefreshCw} couleur={couleur} isDark={isDark}>
         <div className="space-y-3">

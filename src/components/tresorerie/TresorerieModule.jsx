@@ -150,7 +150,7 @@ const periodMonths = (key) => {
   switch (key) { case '1m': return 1; case '3m': return 3; case '6m': return 6; case '1y': return 12; default: return 6; }
 };
 
-const genId = () => `prev_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+const genId = () => typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}-${Math.random().toString(36).slice(2, 10)}-${Math.random().toString(36).slice(2, 10)}`;
 
 // ---------------------------------------------------------------------------
 // Sub-components
