@@ -1029,11 +1029,12 @@ export default function App() {
 
     // PortalLoader handles its own loading/error states via manual dynamic import.
     // This bypasses React.lazy to catch TDZ errors during module evaluation.
+    // NOTE: use entreprise.couleur directly — `const couleur` is declared later in this scope
     return (
       <PortalLoader
         token={portalToken || 'demo'}
         entreprise={entreprise || {}}
-        couleur={couleur || '#f97316'}
+        couleur={entreprise?.couleur || '#f97316'}
         client={portalClient}
         devis={portalDevis || []}
         chantiers={portalChantiers || []}
