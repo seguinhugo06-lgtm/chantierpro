@@ -110,6 +110,8 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 300);
   const [activeTab, setActiveTab] = useState('historique');
+  const [historyFilter, setHistoryFilter] = useState('tout');
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [form, setForm] = useState({ nom: '', prenom: '', entreprise: '', email: '', telephone: '', adresse: '', notes: '', categorie: '' });
   const [sortBy, setSortBy] = useState('recent'); // recent, name, ca, activite
   const [sortDir, setSortDir] = useState('desc'); // 'asc' | 'desc'
@@ -192,6 +194,39 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
     if (s.chantiersActifs > 0 || s.devisActifs > 0) return 'actif';
     return 'inactif';
   };
+
+  // Client scoring (VIP / Régulier / Occasionnel / Dormant / Nouveau)
+  const clientScores = useMemo(() => {
+    const maxCA = Math.max(1, ...clients.map(c => {
+      const s = clientStatsMap.get(c.id);
+      return s ? (devis.filter(d => d.client_id === c.id && ['signe', 'facture'].includes(d.statut)).reduce((sum, d) => sum + (d.total_ttc || 0), 0)) : 0;
+    }));
+    return clients.map(c => {
+      const clientDevis = devis.filter(d => d.client_id === c.id);
+      const signes = clientDevis.filter(d => ['signe', 'facture'].includes(d.statut));
+      const ca = signes.reduce((sum, d) => sum + (d.total_ttc || 0), 0);
+      const nbChantiers = chantiers.filter(ch => ch.client_id === c.id).length;
+      const lastDevis = clientDevis.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0))[0];
+      const joursSansActivite = lastDevis ? Math.round((new Date() - new Date(lastDevis.date)) / 86400000) : 999;
+      const anciennete = c.created_at ? Math.round((new Date() - new Date(c.created_at)) / 86400000) : 0;
+      const scoreCa = Math.min(30, (ca / maxCA) * 30);
+      const scoreConv = clientDevis.length > 0 ? (signes.length / clientDevis.length) * 25 : 0;
+      const scoreFraich = Math.max(0, 20 - (joursSansActivite / 30) * 10);
+      const scoreCh = Math.min(15, nbChantiers * 5);
+      const scoreAnc = Math.min(10, anciennete / 365 * 10);
+      const score = Math.round(scoreCa + scoreConv + scoreFraich + scoreCh + scoreAnc);
+      let classification = 'nouveau';
+      if (anciennete < 30) classification = 'nouveau';
+      else if (score >= 80) classification = 'vip';
+      else if (score >= 50) classification = 'regulier';
+      else if (score >= 20) classification = 'occasionnel';
+      else classification = 'dormant';
+      return { clientId: c.id, score, classification };
+    });
+  }, [clients, devis, chantiers, clientStatsMap]);
+
+  const SCORE_COLORS = { vip: '#f59e0b', regulier: '#10b981', occasionnel: '#3b82f6', dormant: '#ef4444', nouveau: '#8b5cf6' };
+  const SCORE_LABELS = { vip: 'VIP', regulier: 'Régulier', occasionnel: 'Occasionnel', dormant: 'Dormant', nouveau: 'Nouveau' };
 
   // Duplicate detection: same telephone OR same email
   const duplicateMap = useMemo(() => {
@@ -893,6 +928,11 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
           }));
           timeline.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
 
+          const caTotal = clientDevis.filter(d => ['signe', 'facture'].includes(d.statut)).reduce((s, d) => s + (d.total_ttc || 0), 0);
+          const nbDevis = clientDevis.filter(d => d.type === 'devis').length;
+          const nbFactures = clientDevis.filter(d => d.type === 'facture').length;
+          const dateCreation = client?.created_at ? new Date(client.created_at).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }) : '';
+
           const statusLabel = (s) => ({
             brouillon: 'Brouillon', envoye: 'Envoyé', vu: 'Vu', accepte: 'Signé',
             refuse: 'Refusé', payee: 'Payée', facturee: 'Facturé',
@@ -911,7 +951,26 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
 
           return (
             <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-3 sm:p-5`}>
-              {timeline.length === 0 ? (
+              {/* Valeur client bar */}
+              {(caTotal > 0 || nbDevis > 0) && (
+                <div className={`text-xs mb-3 p-2.5 rounded-lg ${isDark ? 'bg-slate-700/50 text-slate-300' : 'bg-slate-50 text-slate-600'}`}>
+                  Valeur client : <strong>{modeDiscret ? '•••••' : `${caTotal.toLocaleString('fr-FR')} €`}</strong> · {nbDevis} devis · {nbFactures} facture{nbFactures !== 1 ? 's' : ''}{dateCreation ? ` · Depuis ${dateCreation}` : ''}
+                </div>
+              )}
+              {/* Filters */}
+              <div className="flex gap-2 mb-3 overflow-x-auto">
+                {['tout', 'devis', 'facture', 'chantier'].map(f => (
+                  <button key={f} onClick={() => setHistoryFilter?.(prev => prev === f ? 'tout' : f)}
+                    className={`text-xs px-3 py-1 rounded-full whitespace-nowrap transition-colors ${
+                      (historyFilter || 'tout') === f ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'
+                    }`}
+                    style={(historyFilter || 'tout') === f ? { background: couleur } : {}}
+                  >
+                    {f === 'tout' ? 'Tout' : f === 'devis' ? 'Devis' : f === 'facture' ? 'Factures' : 'Chantiers'}
+                  </button>
+                ))}
+              </div>
+              {(historyFilter && historyFilter !== 'tout' ? timeline.filter(t => t.type === historyFilter) : timeline).length === 0 ? (
                 <div className="text-center py-10">
                   <div className={`w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
                     <History size={28} className={isDark ? 'text-slate-500' : 'text-slate-400'} />
@@ -921,7 +980,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {timeline.map(item => (
+                  {(historyFilter && historyFilter !== 'tout' ? timeline.filter(t => t.type === historyFilter) : timeline).map(item => (
                     <button
                       key={item.id}
                       onClick={item.onClick}
@@ -1545,6 +1604,37 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
             </div>
           </div>
         </div>
+
+        {/* Informations avancées — collapsible */}
+        <div className="mt-4">
+          <button onClick={() => setShowAdvanced(!showAdvanced)} className={`flex items-center gap-2 w-full text-xs font-medium py-2 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+            <ChevronDown size={14} className={`transition-transform ${showAdvanced ? '' : '-rotate-90'}`} />
+            Informations avancées
+          </button>
+          {showAdvanced && (
+            <div className="space-y-3 pl-2 border-l-2 mt-2" style={{ borderColor: `${couleur}30` }}>
+              <div>
+                <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>SIRET</label>
+                <input placeholder="XXX XXX XXX XXXXX" value={form.siret || ''} onChange={e => setForm(p => ({...p, siret: e.target.value}))} className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} />
+              </div>
+              <div>
+                <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Type de logement</label>
+                <select value={form.typeLogement || ''} onChange={e => setForm(p => ({...p, typeLogement: e.target.value}))} className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`}>
+                  <option value="">Non spécifié</option>
+                  <option>Maison</option><option>Appartement</option><option>Commerce</option><option>Bureau</option>
+                </select>
+              </div>
+              <div>
+                <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Source d'acquisition</label>
+                <select value={form.source || ''} onChange={e => setForm(p => ({...p, source: e.target.value}))} className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`}>
+                  <option value="">Non spécifié</option>
+                  <option>Bouche-à-oreille</option><option>Site web</option><option>Réseaux sociaux</option><option>Pages Jaunes</option><option>Recommandation</option><option>Autre</option>
+                </select>
+              </div>
+            </div>
+          )}
+        </div>
+
         <div className={`flex justify-end gap-3 mt-6 pt-6 border-t ${isDark ? 'border-slate-700' : ''}`}>
           <button onClick={() => { setShow(false); setEditId(null); }} className={`px-4 py-2.5 rounded-xl flex items-center gap-1.5 min-h-[44px] transition-colors ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'}`}>
             <X size={16} />Annuler
@@ -2032,9 +2122,20 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                           <Building2 size={11} /> {c.entreprise}
                         </p>
                       )}
-                      {/* Badges row — Order: Status → Type → Doublon */}
+                      {/* Badges row — Order: Score → Status → Type → Doublon */}
                       <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                        {/* Status badge (always first) with tooltip */}
+                        {/* Score badge */}
+                        {(() => {
+                          const cs = clientScores.find(s => s.clientId === c.id);
+                          if (!cs) return null;
+                          return (
+                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
+                              style={{ backgroundColor: `${SCORE_COLORS[cs.classification]}20`, color: SCORE_COLORS[cs.classification] }}>
+                              {SCORE_LABELS[cs.classification]} {cs.score}
+                            </span>
+                          );
+                        })()}
+                        {/* Status badge with tooltip */}
                         <span
                           className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${isDark ? statusColor.darkBg + ' ' + statusColor.darkText : statusColor.bg + ' ' + statusColor.text}`}
                           title={STATUS_TOOLTIPS[status] || ''}
