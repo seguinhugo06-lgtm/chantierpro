@@ -624,9 +624,11 @@ export async function sendMessage(supabase, { channelId, userId, content, conten
       content,
       content_type: contentType,
     };
-    // Include user info for display (avoids extra joins)
-    if (userName) messageData.user_name = userName;
-    if (userEmail) messageData.user_email = userEmail;
+    // NOTE: user_name/user_email columns may not exist on chat_messages
+    // (depends on whether migration 019 was fully applied). Store user info
+    // in chat_members instead. Only include if columns are known to exist.
+    // if (userName) messageData.user_name = userName;
+    // if (userEmail) messageData.user_email = userEmail;
     // Only include optional columns if they have values (avoids schema cache issues)
     if (attachments && attachments.length > 0) messageData.attachments = attachments;
     if (voiceDurationMs) messageData.voice_duration_ms = voiceDurationMs;

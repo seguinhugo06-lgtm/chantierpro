@@ -221,9 +221,9 @@ const NewChannelModal = memo(function NewChannelModal({
           {/* Submit */}
           <button
             onClick={handleSubmit}
-            disabled={!name.trim() || isSubmitting}
+            disabled={isSubmitting}
             className="w-full py-3 rounded-xl text-sm font-semibold text-white disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
-            style={{ background: couleur }}
+            style={{ background: couleur, opacity: isSubmitting ? 0.5 : 1 }}
           >
             {isSubmitting ? (
               <span className="animate-spin w-4 h-4 border-2 border-white/30 border-t-white rounded-full" />
