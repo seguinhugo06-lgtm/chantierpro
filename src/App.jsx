@@ -64,7 +64,9 @@ const FinancesPage = lazyWithRetry(() => import('./components/FinancesPage'), 'F
 const ShortcutsHelp = lazyWithRetry(() => import('./components/ShortcutsHelp'), 'Raccourcis');
 const PipelineKanban = lazyWithRetry(() => import('./components/pipeline/PipelineKanban'), 'Pipeline');
 const AvisGoogle = lazyWithRetry(() => import('./components/avis/AvisGoogle'), 'AvisGoogle');
-const ClientPortal = lazyWithRetry(() => import('./components/portal/ClientPortal'), 'ClientPortal');
+// ClientPortal uses PortalLoader (manual dynamic import) instead of React.lazy
+// to handle circular-dependency TDZ errors during module evaluation
+import PortalLoader from './components/portal/PortalLoader';
 const ChatPage = lazyWithRetry(() => import('./components/chat/ChatPage'), 'Messagerie');
 const GarantiesDashboard = lazyWithRetry(() => import('./components/chantiers/GarantiesDashboard'), 'Garanties');
 const ProfilePage = lazyWithRetry(() => import('./components/profil/ProfilePage'), 'Profil');
@@ -1025,33 +1027,20 @@ export default function App() {
     const portalDevis = portalClientId ? devis.filter(d => d.clientId === portalClientId) : [];
     const portalChantiers = portalClientId ? chantiers.filter(c => c.clientId === portalClientId) : [];
 
+    // PortalLoader handles its own loading/error states via manual dynamic import.
+    // This bypasses React.lazy to catch TDZ errors during module evaluation.
     return (
-      <ErrorBoundary
-        fallback={
-          <div className="min-h-screen bg-[#f5f5f5] flex items-center justify-center">
-            <div className="text-center p-8 max-w-md">
-              <Building2 size={48} className="text-orange-500 mx-auto mb-4" />
-              <h2 className="text-xl font-bold text-slate-800 mb-2">Espace client indisponible</h2>
-              <p className="text-slate-600 mb-4">Le portail client rencontre un problème technique. Veuillez réessayer.</p>
-              <button onClick={() => window.location.reload()} className="px-6 py-3 bg-orange-500 text-white rounded-xl font-medium hover:bg-orange-600 transition-colors">Recharger la page</button>
-            </div>
-          </div>
-        }
-      >
-        <Suspense fallback={<div className="min-h-screen bg-[#f5f5f5] flex items-center justify-center"><Building2 size={48} className="text-orange-500 animate-bounce" /></div>}>
-          <ClientPortal
-            token={portalToken || 'demo'}
-            entreprise={entreprise || {}}
-            couleur={couleur || '#f97316'}
-            client={portalClient}
-            devis={portalDevis || []}
-            chantiers={portalChantiers || []}
-            clients={clients || []}
-            showToast={showToast}
-            setPage={setPage}
-          />
-        </Suspense>
-      </ErrorBoundary>
+      <PortalLoader
+        token={portalToken || 'demo'}
+        entreprise={entreprise || {}}
+        couleur={couleur || '#f97316'}
+        client={portalClient}
+        devis={portalDevis || []}
+        chantiers={portalChantiers || []}
+        clients={clients || []}
+        showToast={showToast}
+        setPage={setPage}
+      />
     );
   }
 
