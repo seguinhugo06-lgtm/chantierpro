@@ -51,6 +51,12 @@ const ThreadPanel = memo(function ThreadPanel({
   isDark,
   couleur,
 }) {
+  // Close on Escape
+  useEffect(() => {
+    const handler = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [onClose]);
   const cardBg = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200';
   const textPrimary = isDark ? 'text-white' : 'text-gray-900';
   const textMuted = isDark ? 'text-slate-400' : 'text-gray-500';
@@ -543,6 +549,7 @@ const ChatPage = memo(function ChatPage({
 
   const handleCreateChannel = useCallback(async ({ name, type, description, memberIds }) => {
     try {
+      const creatorName = user?.user_metadata?.nom || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Utilisateur';
       const channel = await createChannel(supabase, {
         userId,
         orgId,
@@ -550,6 +557,8 @@ const ChatPage = memo(function ChatPage({
         type,
         description,
         memberIds,
+        userName: creatorName,
+        userEmail: user?.email,
       });
       if (!channel) {
         showToast?.('La messagerie nécessite une configuration serveur. Contactez le support.', 'error');

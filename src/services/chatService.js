@@ -367,7 +367,7 @@ export async function loadChannels(supabase, { userId, orgId }) {
 /**
  * Create a new channel
  */
-export async function createChannel(supabase, { userId, orgId, name, type, description, chantierId, memberIds }) {
+export async function createChannel(supabase, { userId, orgId, name, type, description, chantierId, memberIds, userName, userEmail }) {
   if (isDemo) {
     const data = getDemoData();
     const now = new Date().toISOString();
@@ -422,7 +422,7 @@ export async function createChannel(supabase, { userId, orgId, name, type, descr
 
     // Add creator as admin + selected members
     const members = [
-      { channel_id: channel.id, user_id: userId, role: 'admin' },
+      { channel_id: channel.id, user_id: userId, role: 'admin', user_name: userName || null, user_email: userEmail || null },
       ...(memberIds || []).filter(uid => uid !== userId).map(uid => ({ channel_id: channel.id, user_id: uid, role: 'member' })),
     ];
 
@@ -643,9 +643,9 @@ export async function sendMessage(supabase, { channelId, userId, content, conten
         console.warn('[chatService] chat_messages table not available:', error.message);
         return null;
       }
-      // If reply_to_id FK fails, retry without it
-      if (replyToId && (error.code === '23503' || error.message?.includes('foreign key') || error.message?.includes('reply_to_id'))) {
-        console.warn('[chatService] reply_to_id FK failed, retrying without:', error.message);
+      // If reply_to_id fails (FK, column missing, or any error with reply), retry without it
+      if (replyToId) {
+        console.warn('[chatService] Insert with reply_to_id failed, retrying without:', error.code, error.message);
         delete messageData.reply_to_id;
         const { data: retryMsg, error: retryError } = await supabase
           .from('chat_messages')
@@ -653,7 +653,10 @@ export async function sendMessage(supabase, { channelId, userId, content, conten
           .select('*')
           .single();
         if (retryError) throw retryError;
-        return messageFromSupabase(retryMsg);
+        // Preserve replyToId in client data even if not in DB
+        const result = messageFromSupabase(retryMsg);
+        result.replyToId = replyToId;
+        return result;
       }
       throw error;
     }

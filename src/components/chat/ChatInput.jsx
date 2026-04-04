@@ -81,19 +81,24 @@ const ChatInput = memo(function ChatInput({
     const val = e.target.value;
     setText(val);
 
-    // @mention detection
+    // @mention detection — match @ followed by letters, accents, spaces
     const cursorPos = e.target.selectionStart;
     const textBeforeCursor = val.slice(0, cursorPos);
-    const atMatch = textBeforeCursor.match(/@(\w*)$/);
+    const atMatch = textBeforeCursor.match(/@([\w\u00C0-\u024F\s]*)$/);
     if (atMatch && channelMembers.length > 0) {
-      const query = atMatch[1].toLowerCase();
+      const query = atMatch[1].toLowerCase().trim();
       const results = channelMembers.filter(m =>
         m.userId !== currentUserId &&
-        ((m.userName || '').toLowerCase().includes(query) || (m.userEmail || '').toLowerCase().includes(query))
+        ((m.userName || m.userEmail || '').toLowerCase().includes(query) || (m.userEmail || '').toLowerCase().includes(query))
       ).slice(0, 5);
-      setMentionQuery({ query, startPos: cursorPos - atMatch[0].length });
-      setMentionResults(results);
-      setMentionIndex(0);
+      if (results.length > 0) {
+        setMentionQuery({ query, startPos: cursorPos - atMatch[0].length });
+        setMentionResults(results);
+        setMentionIndex(0);
+      } else {
+        setMentionQuery(null);
+        setMentionResults([]);
+      }
     } else {
       setMentionQuery(null);
       setMentionResults([]);
@@ -151,13 +156,21 @@ const ChatInput = memo(function ChatInput({
 
   const selectMention = useCallback((member) => {
     if (!mentionQuery) return;
-    const name = member.userName || member.userEmail || 'utilisateur';
+    const name = member.userName || member.userEmail?.split('@')[0] || 'utilisateur';
     const before = text.slice(0, mentionQuery.startPos);
-    const after = text.slice(textareaRef.current?.selectionStart || mentionQuery.startPos + mentionQuery.query.length + 1);
-    setText(`${before}@${name} ${after}`);
+    const cursorPos = textareaRef.current?.selectionStart || (mentionQuery.startPos + mentionQuery.query.length + 1);
+    const after = text.slice(cursorPos);
+    const newText = `${before}@${name} ${after}`;
+    setText(newText);
     setMentionQuery(null);
     setMentionResults([]);
-    setTimeout(() => textareaRef.current?.focus(), 0);
+    setTimeout(() => {
+      if (textareaRef.current) {
+        const newPos = before.length + name.length + 2; // @name + space
+        textareaRef.current.focus();
+        textareaRef.current.setSelectionRange(newPos, newPos);
+      }
+    }, 0);
   }, [text, mentionQuery]);
 
   const handleKeyDown = useCallback((e) => {
