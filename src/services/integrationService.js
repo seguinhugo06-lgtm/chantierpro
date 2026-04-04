@@ -229,12 +229,16 @@ export async function loadIntegrations(supabase, { userId, orgId, category } = {
 
     const { data, error } = await query;
     if (error) {
-      console.error('[integrationService] loadIntegrations error:', error.message);
+      // Silently handle missing table (integrations not yet created via migration)
+      if (error.message?.includes('schema cache') || error.code === '42P01') {
+        return [];
+      }
+      console.warn('[integrationService] loadIntegrations:', error.message);
       return [];
     }
     return (data || []).map(fromSupabase);
   } catch (e) {
-    console.error('[integrationService] loadIntegrations exception:', e);
+    console.warn('[integrationService] loadIntegrations:', e?.message || e);
     return [];
   }
 }
@@ -257,11 +261,12 @@ export async function getIntegration(supabase, { userId, provider }) {
       .single();
 
     if (error && error.code !== 'PGRST116') {
-      console.error('[integrationService] getIntegration error:', error.message);
+      if (!error.message?.includes('schema cache') && error.code !== '42P01') {
+        console.warn('[integrationService] getIntegration:', error.message);
+      }
     }
     return data ? fromSupabase(data) : null;
   } catch (e) {
-    console.error('[integrationService] getIntegration exception:', e);
     return null;
   }
 }
@@ -394,11 +399,12 @@ export async function updateIntegrationConfig(supabase, { provider, config, user
       .eq('provider', provider);
 
     if (error) {
-      console.error('[integrationService] updateConfig error:', error.message);
+      if (error.message?.includes('schema cache') || error.code === '42P01') return;
+      console.warn('[integrationService] updateConfig:', error.message);
       throw new Error(error.message);
     }
   } catch (e) {
-    console.error('[integrationService] updateConfig exception:', e);
+    if (e?.message?.includes('schema cache')) return;
     throw e;
   }
 }

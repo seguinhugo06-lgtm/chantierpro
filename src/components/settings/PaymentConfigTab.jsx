@@ -70,7 +70,16 @@ export default function PaymentConfigTab({ entreprise, isDark, couleur = '#F9731
         gocardless_creditor_id: null,
       });
     } catch (err) {
-      console.error('Error loading payment config:', err);
+      // Silently handle missing table (stripe_config not yet created)
+      if (err?.message?.includes('schema cache') || err?.code === '42P01') {
+        setConfig({
+          stripe_enabled: false, stripe_account_id: null, stripe_connect_status: 'disconnected',
+          stripe_livemode: false, absorb_fees: true, gocardless_enabled: false,
+          gocardless_environment: 'sandbox', gocardless_creditor_id: null,
+        });
+      } else {
+        console.warn('[PaymentConfig] Load error:', err?.message || err);
+      }
     } finally {
       setLoading(false);
     }
