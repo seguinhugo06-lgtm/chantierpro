@@ -278,11 +278,24 @@ export default function TaskGanttView({ memos, updateMemo, chantiers, clients, i
     if (scrollRef.current) scrollRef.current.scrollLeft += cellWidth * 3;
   };
 
-  // Scroll to today on mount
+  // Scroll to today on mount or when filters/zoom change
   const scrollInitialized = useRef(false);
+  const prevMemoCount = useRef(0);
   useMemo(() => {
     scrollInitialized.current = false;
   }, [zoom]);
+  // Reset scroll when filtered results change (e.g. filter applied/cleared)
+  if (sortedMemos.length !== prevMemoCount.current) {
+    prevMemoCount.current = sortedMemos.length;
+    scrollInitialized.current = false;
+  }
+
+  const scrollToToday = useCallback(() => {
+    if (scrollRef.current) {
+      const scrollTo = Math.max(0, todayOffset - scrollRef.current.clientWidth / 3);
+      scrollRef.current.scrollTo({ left: scrollTo, behavior: 'smooth' });
+    }
+  }, [todayOffset]);
 
   const setScrollRef = useCallback((node) => {
     scrollRef.current = node;
@@ -344,12 +357,7 @@ export default function TaskGanttView({ memos, updateMemo, chantiers, clients, i
             <ChevronLeft size={16} />
           </button>
           <button
-            onClick={() => {
-              if (scrollRef.current) {
-                const scrollTo = Math.max(0, todayOffset - scrollRef.current.clientWidth / 3);
-                scrollRef.current.scrollTo({ left: scrollTo, behavior: 'smooth' });
-              }
-            }}
+            onClick={scrollToToday}
             className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-100 text-slate-600'}`}
           >
             Aujourd'hui
