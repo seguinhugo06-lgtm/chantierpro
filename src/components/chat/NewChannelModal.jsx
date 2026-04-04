@@ -142,10 +142,11 @@ const NewChannelModal = memo(function NewChannelModal({
               value={name}
               onChange={(e) => { setName(e.target.value); setNameError(''); }}
               placeholder="ex: Discussion générale"
-              className={`w-full px-3 py-2.5 rounded-xl border text-sm ${nameError ? (isDark ? 'bg-slate-700 border-red-500 text-white placeholder-slate-500' : 'bg-white border-red-500 text-gray-900 placeholder-gray-400') : inputBg}`}
+              className={`w-full px-3 py-2.5 rounded-xl border text-sm ${inputBg}`}
+              style={nameError ? { borderColor: '#ef4444', borderWidth: '2px' } : {}}
               autoFocus
             />
-            {nameError && <p className="text-xs text-red-500 mt-1">{nameError}</p>}
+            {nameError && <p className="text-xs mt-1" style={{ color: '#ef4444' }}>{nameError}</p>}
           </div>
 
           {/* Description */}
