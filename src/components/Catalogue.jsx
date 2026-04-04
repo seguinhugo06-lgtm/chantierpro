@@ -66,7 +66,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 300);
   const [catFilter, setCatFilter] = useState('Tous');
-  const [showStock, setShowStock] = useState(false);
+  const [showStock, setShowStock] = useState(true);
   const [sortBy, setSortBy] = useState('name');
   const [form, setForm] = useState({ nom: '', reference: '', description: '', prix: '', prixAchat: '', unite: 'u', categorie: 'Autre', tva_rate: '20', favori: false, stock_actuel: '', stock_seuil_alerte: '', fournisseur: '', coefAuto: true });
   const [showArticlePicker, setShowArticlePicker] = useState(false);
@@ -1512,7 +1512,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
           { key: 'packs', label: 'Packs', icon: Layers, badge: packs.length },
           { key: 'inventaire', label: 'Inventaire', icon: ClipboardList },
           { key: 'favoris', label: 'Favoris', icon: Star, badge: favoris.length },
-          { key: 'parametres', label: 'Coefs', icon: Percent },
+          { key: 'parametres', label: 'Paramètres', icon: Percent },
         ]}
         activeTab={activeTab}
         onTabChange={setActiveTab}
@@ -1858,9 +1858,9 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                           )}
                           <td className="px-4 py-3">
                             <div className="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <button onClick={(e) => { e.stopPropagation(); openAddToDevisModal(item); }} title="Ajouter au devis" className={`p-2.5 min-w-[44px] min-h-[44px] rounded-lg flex items-center justify-center ${isDark ? 'hover:bg-emerald-900/40 text-slate-400 hover:text-emerald-400' : 'hover:bg-emerald-50 text-slate-500 hover:text-emerald-600'}`}><FileText size={18} /></button>
-                              <button onClick={(e) => { e.stopPropagation(); startEdit(item); }} className={`p-2.5 min-w-[44px] min-h-[44px] rounded-lg flex items-center justify-center ${isDark ? 'hover:bg-blue-900/40 text-slate-400 hover:text-blue-400' : 'hover:bg-blue-50 text-slate-500 hover:text-blue-600'}`}><Edit3 size={18} /></button>
-                              <button onClick={(e) => { e.stopPropagation(); deleteItem(item.id); }} className={`p-2.5 min-w-[44px] min-h-[44px] rounded-lg flex items-center justify-center ${isDark ? 'text-slate-400 hover:text-red-400 hover:bg-red-900/40' : 'text-slate-500 hover:text-red-600 hover:bg-red-50'}`}><Trash2 size={18} /></button>
+                              <button onClick={(e) => { e.stopPropagation(); openAddToDevisModal(item); }} title="Ajouter au devis" aria-label={`Ajouter ${item.nom || 'article'} au devis`} className={`p-2.5 min-w-[44px] min-h-[44px] rounded-lg flex items-center justify-center ${isDark ? 'hover:bg-emerald-900/40 text-slate-400 hover:text-emerald-400' : 'hover:bg-emerald-50 text-slate-500 hover:text-emerald-600'}`}><FileText size={18} /></button>
+                              <button onClick={(e) => { e.stopPropagation(); startEdit(item); }} title="Modifier" aria-label={`Modifier ${item.nom || 'article'}`} className={`p-2.5 min-w-[44px] min-h-[44px] rounded-lg flex items-center justify-center ${isDark ? 'hover:bg-blue-900/40 text-slate-400 hover:text-blue-400' : 'hover:bg-blue-50 text-slate-500 hover:text-blue-600'}`}><Edit3 size={18} /></button>
+                              <button onClick={(e) => { e.stopPropagation(); deleteItem(item.id); }} title="Supprimer" aria-label={`Supprimer ${item.nom || 'article'}`} className={`p-2.5 min-w-[44px] min-h-[44px] rounded-lg flex items-center justify-center ${isDark ? 'text-slate-400 hover:text-red-400 hover:bg-red-900/40' : 'text-slate-500 hover:text-red-600 hover:bg-red-50'}`}><Trash2 size={18} /></button>
                             </div>
                           </td>
                         </tr>
