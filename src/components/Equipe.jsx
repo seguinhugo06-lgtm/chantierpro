@@ -219,6 +219,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
       if (saved) {
         const data = JSON.parse(saved);
         if (data.running && data.start) {
+          const pauseOffset = data.totalPauseTime || 0;
           // Restore running timer
           setChrono({
             running: true,
@@ -227,8 +228,16 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
             chantierId: data.chantierId || '',
             paused: data.paused || false,
             pausedAt: data.pausedAt || null,
-            totalPauseTime: data.totalPauseTime || 0
+            totalPauseTime: pauseOffset,
           });
+          // Restore elapsed time immediately (critical for paused timers)
+          if (data.paused && data.pausedAt) {
+            // Paused: elapsed = time from start to pause moment, minus breaks
+            setElapsed(Math.floor((data.pausedAt - data.start - pauseOffset) / 1000));
+          } else {
+            // Running: elapsed = time from start to now, minus breaks
+            setElapsed(Math.floor((Date.now() - data.start - pauseOffset) / 1000));
+          }
         }
       }
     } catch (e) {
@@ -1018,13 +1027,14 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
           <div>
             <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Nom *</label>
             <input
-              className={`w-full px-4 py-2.5 border rounded-xl min-h-[44px] ${inputBg} ${!form.nom.trim() && form.nom !== '' ? 'border-red-400' : ''}`}
+              className={`w-full px-4 py-2.5 border rounded-xl min-h-[44px] ${inputBg}`}
+              style={formErrors.nom ? { borderColor: '#ef4444' } : {}}
               value={form.nom}
               onChange={e => setForm(p => ({...p, nom: e.target.value}))}
               placeholder="Dupont"
             />
-            {!form.nom.trim() && form.nom !== '' && (
-              <p className="text-red-500 text-xs mt-1">Le nom est requis</p>
+            {formErrors.nom && (
+              <p className="text-xs mt-1" style={{ color: '#ef4444' }}>{formErrors.nom}</p>
             )}
           </div>
           <div><label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Prénom</label><input className={`w-full px-4 py-2.5 border rounded-xl min-h-[44px] ${inputBg}`} value={form.prenom} onChange={e => setForm(p => ({...p, prenom: e.target.value}))} placeholder="Marie" /></div>
@@ -1183,7 +1193,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
 
         <div className={`flex flex-col sm:flex-row justify-end gap-3 mt-6 pt-6 border-t ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
           <button onClick={() => { setShowAdd(false); setEditId(null); }} className={`px-4 py-2.5 rounded-xl min-h-[44px] ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-700'}`}>Annuler</button>
-          <button onClick={addEmploye} disabled={!form.nom.trim()} className="px-6 py-2.5 text-white rounded-xl min-h-[44px] flex items-center justify-center gap-2 disabled:opacity-50" style={{background: couleur}}>
+          <button onClick={addEmploye} disabled={false} className="px-6 py-2.5 text-white rounded-xl min-h-[44px] flex items-center justify-center gap-2" style={{background: couleur}}>
             <Check size={16} /> {editId ? 'Enregistrer' : 'Ajouter'}
           </button>
         </div>
@@ -1792,10 +1802,10 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
           { key: 'pointage', label: 'Pointage', icon: Timer },
           { key: 'conges', label: 'Congés', icon: CalendarOff },
           { key: 'validation', label: 'Validation', icon: CheckSquare, badge: pointagesEnAttente?.length || 0, alert: true },
-          { key: 'chat', label: 'Communication', icon: Phone },
+          { key: 'chat', label: 'Chat', icon: Phone },
           { key: 'competences', label: 'Compétences', icon: Award },
           { key: 'productivite', label: 'Productivité', icon: BarChart3 },
-          { key: 'historique', label: 'Export', icon: FileSpreadsheet },
+          { key: 'historique', label: 'Historique', icon: FileSpreadsheet },
         ]}
         activeTab={tab}
         onTabChange={setTab}
