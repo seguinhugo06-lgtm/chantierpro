@@ -87,7 +87,8 @@ function isWeekend(d) {
 
 function applyFilters(memos, filters) {
   return memos.filter(m => {
-    if (!m.due_date) return false;
+    // Show tasks with dates; also show undated active tasks (placed at today)
+    if (!m.due_date && (m.is_done || filters.status === 'termine')) return false;
     if (m.is_done && filters.status !== 'termine') return false;
     if (filters.search) {
       const s = filters.search.toLowerCase();
@@ -142,7 +143,7 @@ function Tooltip({ memo, x, y, isDark }) {
       }`}
       style={{ left: x + 12, top: y - 10 }}
     >
-      <div className="font-semibold mb-1 truncate">{memo.title}</div>
+      <div className="font-semibold mb-1 truncate">{memo.title || memo.text || 'Sans titre'}</div>
       <div className={isDark ? 'text-slate-300' : 'text-slate-500'}>
         {memo.due_date}{memo.due_date_end ? ` → ${memo.due_date_end}` : ''}
       </div>
@@ -183,10 +184,12 @@ export default function TaskGanttView({ memos, updateMemo, chantiers, clients, i
       return { timelineStart: s, timelineEnd: e, timeline: generateTimeline(s, e, zoom) };
     }
     const dates = sortedMemos.flatMap(m => {
-      const start = parseDate(m.due_date);
+      const start = parseDate(m.due_date) || today;
       const end = parseDate(m.due_date_end) || start;
       return [start, end].filter(Boolean);
     });
+    // Always include today so "Aujourd'hui" button works
+    dates.push(today);
     const minDate = new Date(Math.min(...dates.map(d => d.getTime())));
     const maxDate = new Date(Math.max(...dates.map(d => d.getTime())));
     const s = addDays(minDate, -7);
@@ -212,8 +215,7 @@ export default function TaskGanttView({ memos, updateMemo, chantiers, clients, i
 
   // Bar position calculator
   const getBarProps = useCallback((memo) => {
-    const start = parseDate(memo.due_date);
-    if (!start) return null;
+    const start = parseDate(memo.due_date) || startOfDay(new Date()); // undated → today
     const end = parseDate(memo.due_date_end) || start;
 
     let x, width;
@@ -388,7 +390,7 @@ export default function TaskGanttView({ memos, updateMemo, chantiers, clients, i
                   style={{ background: getBarColor(memo) }}
                 />
                 <span className={`text-xs truncate ${textColor}`}>
-                  {memo.title || 'Sans titre'}
+                  {memo.title || memo.text || 'Sans titre'}
                 </span>
               </div>
             ))}
@@ -491,9 +493,9 @@ export default function TaskGanttView({ memos, updateMemo, chantiers, clients, i
                     style={{ color: isDark ? '#f1f5f9' : '#1e293b' }}
                   >
                     {/* On mobile, always show name; on desktop, only if bar is wide enough */}
-                    <span className="sm:hidden truncate">{memo.title || 'Sans titre'}</span>
+                    <span className="sm:hidden truncate">{memo.title || memo.text || 'Sans titre'}</span>
                     {width >= 50 && (
-                      <span className="hidden sm:inline truncate">{memo.title || 'Sans titre'}</span>
+                      <span className="hidden sm:inline truncate">{memo.title || memo.text || 'Sans titre'}</span>
                     )}
                   </span>
                 </div>
