@@ -197,30 +197,33 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
 
   // Client scoring (VIP / Régulier / Occasionnel / Dormant / Nouveau)
   const clientScores = useMemo(() => {
+    // Statuts considérés comme "gagnés" : accepte, signe, acompte_facture, facture, payee
+    const STATUTS_GAGNES = ['accepte', 'signe', 'acompte_facture', 'facture', 'payee'];
     const maxCA = Math.max(1, ...clients.map(c => {
       const s = clientStatsMap.get(c.id);
-      return s ? (devis.filter(d => d.client_id === c.id && ['signe', 'facture'].includes(d.statut)).reduce((sum, d) => sum + (d.total_ttc || 0), 0)) : 0;
+      return s ? (devis.filter(d => d.client_id === c.id && STATUTS_GAGNES.includes(d.statut)).reduce((sum, d) => sum + (d.total_ttc || 0), 0)) : 0;
     }));
     return clients.map(c => {
       const clientDevis = devis.filter(d => d.client_id === c.id);
-      const signes = clientDevis.filter(d => ['signe', 'facture'].includes(d.statut));
-      const ca = signes.reduce((sum, d) => sum + (d.total_ttc || 0), 0);
+      const gagnes = clientDevis.filter(d => STATUTS_GAGNES.includes(d.statut));
+      const ca = gagnes.reduce((sum, d) => sum + (d.total_ttc || 0), 0);
       const nbChantiers = chantiers.filter(ch => ch.client_id === c.id).length;
       const lastDevis = clientDevis.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0))[0];
       const joursSansActivite = lastDevis ? Math.round((new Date() - new Date(lastDevis.date)) / 86400000) : 999;
       const anciennete = c.created_at ? Math.round((new Date() - new Date(c.created_at)) / 86400000) : 0;
       const scoreCa = Math.min(30, (ca / maxCA) * 30);
-      const scoreConv = clientDevis.length > 0 ? (signes.length / clientDevis.length) * 25 : 0;
+      const scoreConv = clientDevis.length > 0 ? (gagnes.length / clientDevis.length) * 25 : 0;
       const scoreFraich = Math.max(0, 20 - (joursSansActivite / 30) * 10);
       const scoreCh = Math.min(15, nbChantiers * 5);
       const scoreAnc = Math.min(10, anciennete / 365 * 10);
       const score = Math.round(scoreCa + scoreConv + scoreFraich + scoreCh + scoreAnc);
-      let classification = 'nouveau';
-      if (anciennete < 30) classification = 'nouveau';
-      else if (score >= 80) classification = 'vip';
-      else if (score >= 50) classification = 'regulier';
+      let classification;
+      if (score >= 70) classification = 'vip';
+      else if (score >= 45) classification = 'regulier';
       else if (score >= 20) classification = 'occasionnel';
-      else classification = 'dormant';
+      else if (anciennete < 30 && clientDevis.length === 0) classification = 'nouveau';
+      else if (joursSansActivite > 90) classification = 'dormant';
+      else classification = 'nouveau';
       return { clientId: c.id, score, classification };
     });
   }, [clients, devis, chantiers, clientStatsMap]);
@@ -560,6 +563,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
     const clientStatus = getClientStatus(client.id);
     const clientStatusColor = CLIENT_STATUS_COLORS[clientStatus];
     const clientTypeColor = CLIENT_TYPE_COLORS[client.categorie];
+    const detailScore = clientScores.find(s => s.clientId === client.id);
 
     return (
       <div className="space-y-4">
@@ -582,6 +586,16 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                 {client.categorie && clientTypeColor && (
                   <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${isDark ? clientTypeColor.darkBg + ' ' + clientTypeColor.darkText : clientTypeColor.bg + ' ' + clientTypeColor.text}`}>
                     {client.categorie}
+                  </span>
+                )}
+                {/* Score badge */}
+                {detailScore && (
+                  <span
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium"
+                    style={{ backgroundColor: `${SCORE_COLORS[detailScore.classification]}20`, color: SCORE_COLORS[detailScore.classification] }}
+                    title={`Score client : ${detailScore.score}/100`}
+                  >
+                    {SCORE_LABELS[detailScore.classification]} {detailScore.score}
                   </span>
                 )}
               </div>
