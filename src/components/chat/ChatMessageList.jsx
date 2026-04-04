@@ -23,6 +23,8 @@ const ChatMessageList = memo(function ChatMessageList({
   onReact,
   onEdit,
   onDelete,
+  onPin,
+  onOpenThread,
   typingUsers = [],
   isDark = false,
   couleur = '#f97316',
@@ -183,6 +185,7 @@ const ChatMessageList = memo(function ChatMessageList({
                 onReact={onReact}
                 onEdit={onEdit}
                 onDelete={onDelete}
+                onOpenThread={onOpenThread}
                 isDark={isDark}
                 couleur={couleur}
                 highlightTerm={highlightTerm}

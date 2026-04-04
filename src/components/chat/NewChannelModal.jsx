@@ -6,7 +6,7 @@
  */
 
 import React, { useState, useMemo, memo, useCallback } from 'react';
-import { X, Users, Hash, Check, Search } from 'lucide-react';
+import { X, Users, Hash, Check, Search, Building2, User } from 'lucide-react';
 
 const NewChannelModal = memo(function NewChannelModal({
   onSubmit,
@@ -60,8 +60,14 @@ const NewChannelModal = memo(function NewChannelModal({
     );
   }, []);
 
+  const [nameError, setNameError] = useState('');
+
   const handleSubmit = useCallback(async () => {
-    if (!name.trim()) return;
+    if (!name.trim()) {
+      setNameError('Le nom du canal est requis');
+      return;
+    }
+    setNameError('');
     setIsSubmitting(true);
     try {
       await onSubmit({
@@ -79,6 +85,8 @@ const NewChannelModal = memo(function NewChannelModal({
 
   const types = [
     { id: 'equipe', icon: Users, label: 'Équipe', desc: 'Visible par les membres ajoutés' },
+    { id: 'chantier', icon: Building2, label: 'Chantier', desc: 'Lié à un chantier spécifique' },
+    { id: 'direct', icon: User, label: 'Direct', desc: 'Discussion privée 1-à-1' },
     { id: 'custom', icon: Hash, label: 'Canal', desc: 'Canal personnalisé' },
   ];
 
@@ -132,11 +140,12 @@ const NewChannelModal = memo(function NewChannelModal({
             <input
               type="text"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => { setName(e.target.value); setNameError(''); }}
               placeholder="ex: Discussion générale"
-              className={`w-full px-3 py-2.5 rounded-xl border text-sm ${inputBg}`}
+              className={`w-full px-3 py-2.5 rounded-xl border text-sm ${inputBg} ${nameError ? 'border-red-500' : ''}`}
               autoFocus
             />
+            {nameError && <p className="text-xs text-red-500 mt-1">{nameError}</p>}
           </div>
 
           {/* Description */}

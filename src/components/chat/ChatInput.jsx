@@ -24,11 +24,15 @@ const ChatInput = memo(function ChatInput({
   onUploadFile,
   messages = [],
   currentUserId,
+  channelMembers = [],
   isDark = false,
   couleur = '#f97316',
   disabled = false,
 }) {
   const [text, setText] = useState('');
+  const [mentionQuery, setMentionQuery] = useState(null); // { query, startPos }
+  const [mentionResults, setMentionResults] = useState([]);
+  const [mentionIndex, setMentionIndex] = useState(0);
   const [isRecording, setIsRecording] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
   const [pendingFiles, setPendingFiles] = useState([]);
@@ -74,13 +78,32 @@ const ChatInput = memo(function ChatInput({
   // ── Handlers ────────────────────────────────────────────────────────────────
 
   const handleTextChange = useCallback((e) => {
-    setText(e.target.value);
+    const val = e.target.value;
+    setText(val);
+
+    // @mention detection
+    const cursorPos = e.target.selectionStart;
+    const textBeforeCursor = val.slice(0, cursorPos);
+    const atMatch = textBeforeCursor.match(/@(\w*)$/);
+    if (atMatch && channelMembers.length > 0) {
+      const query = atMatch[1].toLowerCase();
+      const results = channelMembers.filter(m =>
+        m.userId !== currentUserId &&
+        ((m.userName || '').toLowerCase().includes(query) || (m.userEmail || '').toLowerCase().includes(query))
+      ).slice(0, 5);
+      setMentionQuery({ query, startPos: cursorPos - atMatch[0].length });
+      setMentionResults(results);
+      setMentionIndex(0);
+    } else {
+      setMentionQuery(null);
+      setMentionResults([]);
+    }
 
     // Typing indicator (debounced)
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     onTyping?.(true);
     typingTimeoutRef.current = setTimeout(() => onTyping?.(false), 2000);
-  }, [onTyping]);
+  }, [onTyping, channelMembers, currentUserId]);
 
   const handleSend = useCallback(async () => {
     const trimmed = text.trim();
@@ -126,7 +149,26 @@ const ChatInput = memo(function ChatInput({
     }
   }, [text, pendingFiles, replyTo, onSend, onUploadFile, onCancelReply, onTyping]);
 
+  const selectMention = useCallback((member) => {
+    if (!mentionQuery) return;
+    const name = member.userName || member.userEmail || 'utilisateur';
+    const before = text.slice(0, mentionQuery.startPos);
+    const after = text.slice(textareaRef.current?.selectionStart || mentionQuery.startPos + mentionQuery.query.length + 1);
+    setText(`${before}@${name} ${after}`);
+    setMentionQuery(null);
+    setMentionResults([]);
+    setTimeout(() => textareaRef.current?.focus(), 0);
+  }, [text, mentionQuery]);
+
   const handleKeyDown = useCallback((e) => {
+    // @mention navigation
+    if (mentionResults.length > 0) {
+      if (e.key === 'ArrowDown') { e.preventDefault(); setMentionIndex(i => Math.min(i + 1, mentionResults.length - 1)); return; }
+      if (e.key === 'ArrowUp') { e.preventDefault(); setMentionIndex(i => Math.max(i - 1, 0)); return; }
+      if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); selectMention(mentionResults[mentionIndex]); return; }
+      if (e.key === 'Escape') { setMentionQuery(null); setMentionResults([]); return; }
+    }
+
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
@@ -354,6 +396,33 @@ const ChatInput = memo(function ChatInput({
           onChange={handleFileSelect}
           accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.zip,.rar"
         />
+
+        {/* @mention dropdown */}
+        {mentionResults.length > 0 && (
+          <div className={`absolute bottom-full left-12 mb-1 w-60 rounded-xl border shadow-lg py-1 z-50 ${
+            isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'
+          }`}>
+            {mentionResults.map((m, i) => (
+              <button
+                key={m.userId}
+                onMouseDown={(e) => { e.preventDefault(); selectMention(m); }}
+                className={`w-full flex items-center gap-2 px-3 py-2 text-xs transition-colors ${
+                  i === mentionIndex
+                    ? (isDark ? 'bg-slate-700 text-white' : 'bg-gray-100 text-gray-900')
+                    : (isDark ? 'text-slate-300 hover:bg-slate-700' : 'text-gray-700 hover:bg-gray-50')
+                }`}
+              >
+                <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0" style={{ background: couleur }}>
+                  {(m.userName || '?').charAt(0).toUpperCase()}
+                </div>
+                <div className="truncate">
+                  <span className="font-medium">{m.userName || m.userEmail}</span>
+                  {m.userName && m.userEmail && <span className={`ml-1 ${isDark ? 'text-slate-500' : 'text-gray-400'}`}>{m.userEmail}</span>}
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Textarea */}
         <div className={`flex-1 ${inputBg} border rounded-2xl overflow-hidden`}>

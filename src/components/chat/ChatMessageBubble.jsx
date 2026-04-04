@@ -8,7 +8,7 @@
 
 import React, { useState, memo, useCallback, useRef, useEffect } from 'react';
 import {
-  MoreHorizontal, Reply, Smile, Edit3, Trash2,
+  MoreHorizontal, Reply, Smile, Edit3, Trash2, MessageSquare,
   File, Image as ImageIcon, Mic, Download, Play, Pause,
   Check, CheckCheck, MapPin,
 } from 'lucide-react';
@@ -58,6 +58,7 @@ const ChatMessageBubble = memo(function ChatMessageBubble({
   onReact,
   onEdit,
   onDelete,
+  onOpenThread,
   isDark = false,
   couleur = '#f97316',
   highlightTerm = null,
@@ -332,6 +333,19 @@ const ChatMessageBubble = memo(function ChatMessageBubble({
             >
               <Reply size={12} />
             </button>
+
+            {/* Thread */}
+            {onOpenThread && (
+              <button
+                onClick={() => onOpenThread?.(message)}
+                className={`w-6 h-6 flex items-center justify-center rounded-md transition-colors ${
+                  isDark ? 'text-slate-400 hover:bg-slate-700 hover:text-white' : 'text-gray-400 hover:bg-gray-100 hover:text-gray-600'
+                }`}
+                title="Ouvrir le fil"
+              >
+                <MessageSquare size={12} />
+              </button>
+            )}
 
             {/* Emoji picker */}
             <div className="relative">

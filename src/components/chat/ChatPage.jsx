@@ -493,6 +493,40 @@ const ChatPage = memo(function ChatPage({
     setThreadMessage(null);
   }, []);
 
+  // ── Channel management ────────────────────────────────────────────────────
+
+  const handleMuteChannel = useCallback(async (channelId) => {
+    try {
+      const ch = channels.find(c => c.id === channelId);
+      const newMuted = !(ch?.muted);
+      if (!isDemo) {
+        await supabase.from('chat_members')
+          .update({ muted: newMuted })
+          .eq('channel_id', channelId)
+          .eq('user_id', userId);
+      }
+      setChannels(prev => prev.map(c => c.id === channelId ? { ...c, muted: newMuted } : c));
+      showToast?.(newMuted ? 'Canal muté' : 'Notifications réactivées', 'success');
+    } catch (err) {
+      showToast?.('Erreur', 'error');
+    }
+  }, [channels, userId, showToast]);
+
+  const handleArchiveChannel = useCallback(async (channelId) => {
+    try {
+      if (!isDemo) {
+        await supabase.from('chat_channels')
+          .update({ is_archived: true })
+          .eq('id', channelId);
+      }
+      setChannels(prev => prev.filter(c => c.id !== channelId));
+      if (activeChannelId === channelId) setActiveChannelId(null);
+      showToast?.('Canal archivé', 'success');
+    } catch (err) {
+      showToast?.('Erreur', 'error');
+    }
+  }, [activeChannelId, showToast]);
+
   // ── File upload ───────────────────────────────────────────────────────────
 
   const handleUploadFile = useCallback(async (file) => {
@@ -568,16 +602,18 @@ const ChatPage = memo(function ChatPage({
     <div className={`${bgClass} -m-3 sm:-m-4 lg:-m-6 -mb-14 lg:-mb-6 flex h-[calc(100vh-56px-56px)] lg:h-[calc(100vh-56px)] overflow-hidden rounded-none`}>
       {/* Mobile sidebar overlay */}
       {showMobileSidebar && (
-        <div className="lg:hidden absolute inset-0 z-30">
+        <div className="lg:hidden fixed inset-0 z-30">
           <div className="absolute inset-0 bg-black/30" onClick={() => {
             if (activeChannelId) setShowMobileSidebar(false);
           }} />
-          <div className="relative w-80 h-full">
+          <div className="relative w-80 h-full ml-auto sm:ml-0">
             <ChatSidebar
               channels={channels}
               activeChannelId={activeChannelId}
               onSelectChannel={handleSelectChannel}
               onCreateChannel={() => setShowNewChannel(true)}
+              onMuteChannel={handleMuteChannel}
+              onArchiveChannel={handleArchiveChannel}
               isDark={isDark}
               couleur={couleur}
               isMobile
@@ -595,6 +631,8 @@ const ChatPage = memo(function ChatPage({
           activeChannelId={activeChannelId}
           onSelectChannel={handleSelectChannel}
           onCreateChannel={() => setShowNewChannel(true)}
+          onMuteChannel={handleMuteChannel}
+          onArchiveChannel={handleArchiveChannel}
           isDark={isDark}
           couleur={couleur}
           currentUserId={userId}

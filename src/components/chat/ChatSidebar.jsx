@@ -7,10 +7,11 @@
  * Section collapse state persisted to localStorage.
  */
 
-import React, { useState, useMemo, memo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, memo, useCallback, useEffect, useRef } from 'react';
 import {
   Search, Plus, Hash, Users, MessageCircle, Building2,
   ChevronRight, ChevronDown, VolumeX, X, Pin, Archive, User,
+  MoreHorizontal, LogOut,
 } from 'lucide-react';
 
 const STORAGE_KEY = 'chat_sidebar_collapsed';
@@ -203,6 +204,8 @@ const ChatSidebar = memo(function ChatSidebar({
                       couleur={couleur}
                       currentUserId={currentUserId}
                       onSelect={() => onSelectChannel(channel.id)}
+                      onMute={onMuteChannel}
+                      onArchive={onArchiveChannel}
                     />
                   ))}
                   {isEmpty && (
@@ -239,7 +242,18 @@ const ChannelItem = memo(function ChannelItem({
   couleur,
   currentUserId,
   onSelect,
+  onMute,
+  onArchive,
 }) {
+  const [showMenu, setShowMenu] = useState(false);
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    if (!showMenu) return;
+    const handler = (e) => { if (menuRef.current && !menuRef.current.contains(e.target)) setShowMenu(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showMenu]);
   const displayName = channel.type === 'direct'
     ? channel.otherUser?.name || 'Direct'
     : channel.name;
@@ -276,7 +290,7 @@ const ChannelItem = memo(function ChannelItem({
   return (
     <button
       onClick={onSelect}
-      className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl transition-colors ${
+      className={`group w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl transition-colors ${
         isActive ? activeBg : hoverBg
       } mb-0.5`}
     >
@@ -322,11 +336,41 @@ const ChannelItem = memo(function ChannelItem({
         )}
       </div>
 
-      {/* Right side: time + unread */}
+      {/* Right side: time + unread + menu */}
       <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
-        <span className={`text-[9px] ${isDark ? 'text-slate-500' : 'text-gray-400'}`}>
-          {formatTime(channel.lastMessageAt)}
-        </span>
+        <div className="flex items-center gap-0.5">
+          <span className={`text-[9px] ${isDark ? 'text-slate-500' : 'text-gray-400'}`}>
+            {formatTime(channel.lastMessageAt)}
+          </span>
+          <div className="relative" ref={menuRef}>
+            <button
+              onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu); }}
+              className={`w-5 h-5 flex items-center justify-center rounded transition-colors opacity-0 group-hover:opacity-100 ${
+                isDark ? 'hover:bg-slate-600 text-slate-400' : 'hover:bg-gray-200 text-gray-400'
+              }`}
+            >
+              <MoreHorizontal size={12} />
+            </button>
+            {showMenu && (
+              <div className={`absolute right-0 top-full mt-1 w-36 rounded-xl border shadow-lg py-1 z-50 ${
+                isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'
+              }`} onClick={(e) => e.stopPropagation()}>
+                <button
+                  onClick={() => { onMute?.(channel.id); setShowMenu(false); }}
+                  className={`w-full flex items-center gap-2 px-3 py-2 text-xs ${isDark ? 'text-slate-300 hover:bg-slate-700' : 'text-gray-600 hover:bg-gray-50'}`}
+                >
+                  <VolumeX size={12} /> {channel.muted ? 'Réactiver' : 'Muter'}
+                </button>
+                <button
+                  onClick={() => { onArchive?.(channel.id); setShowMenu(false); }}
+                  className={`w-full flex items-center gap-2 px-3 py-2 text-xs ${isDark ? 'text-slate-300 hover:bg-slate-700' : 'text-gray-600 hover:bg-gray-50'}`}
+                >
+                  <Archive size={12} /> {channel.isArchived ? 'Désarchiver' : 'Archiver'}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
         {channel.unreadCount > 0 && (
           <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-red-500 text-white font-bold min-w-[16px] text-center">
             {channel.unreadCount > 99 ? '99+' : channel.unreadCount}
