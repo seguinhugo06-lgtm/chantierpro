@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import supabase, { isDemo } from '../../supabaseClient';
 import { useOrg } from '../../context/OrgContext';
+import { useConfirm } from '../../context/AppContext';
 import {
   loadChannels,
   loadMessages,
@@ -154,6 +155,7 @@ const ChatPage = memo(function ChatPage({
   equipe = [],
 }) {
   const { orgId } = useOrg();
+  const { confirm } = useConfirm();
   const userId = user?.id;
 
   // ── State ─────────────────────────────────────────────────────────────────
@@ -447,7 +449,13 @@ const ChatPage = memo(function ChatPage({
   // ── Delete ────────────────────────────────────────────────────────────────
 
   const handleDelete = useCallback(async (messageId) => {
-    const confirmed = window.confirm('Supprimer ce message ?');
+    const confirmed = await confirm({
+      title: 'Supprimer ce message ?',
+      message: 'Ce message sera définitivement supprimé pour tous les participants.',
+      confirmText: 'Supprimer',
+      cancelText: 'Annuler',
+      danger: true,
+    });
     if (!confirmed) return;
 
     try {
@@ -460,7 +468,7 @@ const ChatPage = memo(function ChatPage({
     } catch (err) {
       showToast?.('Erreur de suppression', 'error');
     }
-  }, [userId, showToast]);
+  }, [userId, showToast, confirm]);
 
   // ── Pin / Unpin ───────────────────────────────────────────────────────────
 
