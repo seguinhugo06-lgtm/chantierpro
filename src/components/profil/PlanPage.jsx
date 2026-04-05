@@ -18,6 +18,7 @@ import {
 } from '../../services/subscriptionsApi';
 import { toast } from '../../stores/toastStore';
 import { auth, isDemo } from '../../supabaseClient';
+import { useConfirm } from '../../context/AppContext';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -31,6 +32,8 @@ const PLAN_ICONS = { gratuit: Zap, artisan: Hammer, equipe: Users };
 // ─── Main Component ─────────────────────────────────────────────────────────
 
 export default function PlanPage({ isDark, couleur = '#f97316' }) {
+  const { confirm } = useConfirm();
+
   // Theme
   const cardBg = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200';
   const textPrimary = isDark ? 'text-slate-100' : 'text-slate-900';
@@ -78,7 +81,13 @@ export default function PlanPage({ isDark, couleur = '#f97316' }) {
   }, []);
 
   const handleCancel = useCallback(async () => {
-    if (!window.confirm('Annuler votre abonnement ? Vous conservez l\'accès jusqu\'à la fin de la période.')) return;
+    const ok = await confirm({
+      title: 'Annuler votre abonnement ?',
+      message: 'Vous conservez l\'accès à toutes les fonctionnalités jusqu\'à la fin de votre période de facturation. Vos données seront conservées.',
+      confirmText: 'Confirmer l\'annulation',
+      cancelText: 'Garder mon plan',
+    });
+    if (!ok) return;
     setCancelling(true);
     try {
       const { error } = await cancelSubscription();
@@ -87,7 +96,7 @@ export default function PlanPage({ isDark, couleur = '#f97316' }) {
       toast.success('Abonnement annulé', 'Votre plan reste actif jusqu\'à la fin de la période.');
     } catch { toast.error('Erreur', 'Impossible d\'annuler'); }
     finally { setCancelling(false); }
-  }, [sub, setSubscription]);
+  }, [sub, setSubscription, confirm]);
 
   const handleReactivate = useCallback(async () => {
     try {
@@ -99,9 +108,16 @@ export default function PlanPage({ isDark, couleur = '#f97316' }) {
   }, [sub, setSubscription]);
 
   const handleLogout = useCallback(async () => {
-    if (!window.confirm('Se déconnecter de BatiGesti ?')) return;
+    const ok = await confirm({
+      title: 'Se déconnecter ?',
+      message: 'Vous serez redirigé vers la page de connexion.',
+      confirmText: 'Se déconnecter',
+      cancelText: 'Annuler',
+      variant: 'info',
+    });
+    if (!ok) return;
     try { await auth.signOut(); } catch { window.location.reload(); }
-  }, []);
+  }, [confirm]);
 
   // ─── RENDER ───────────────────────────────────────────────────────────────
 
