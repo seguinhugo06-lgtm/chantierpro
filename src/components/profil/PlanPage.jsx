@@ -223,17 +223,30 @@ export default function PlanPage({ isDark, couleur = '#f97316', setPage }) {
         {/* Plans comparison */}
         <div className="animate-fade-slide-up" style={{ animationDelay: '100ms' }}>
           {/* Billing toggle */}
-          <div className="flex items-center justify-center gap-4 mb-5">
+          <div className="flex items-center justify-center gap-3 mb-5">
             <span className={`text-sm font-medium ${billing === 'monthly' ? textPrimary : textMuted}`}>Mensuel</span>
             <button
               onClick={() => setBilling(b => b === 'monthly' ? 'yearly' : 'monthly')}
               role="switch"
               aria-checked={billing === 'yearly'}
               aria-label="Basculer facturation mensuelle/annuelle"
-              className={`relative w-12 h-7 rounded-full transition-colors flex-shrink-0 ${billing === 'yearly' ? '' : isDark ? 'bg-slate-600' : 'bg-slate-300'}`}
-              style={billing === 'yearly' ? { backgroundColor: couleur } : {}}
+              className="relative flex-shrink-0 transition-colors rounded-full"
+              style={{
+                width: 44,
+                height: 24,
+                backgroundColor: billing === 'yearly' ? (couleur || '#22c55e') : (isDark ? '#475569' : '#cbd5e1'),
+              }}
             >
-              <span className={`absolute top-1 w-5 h-5 rounded-full bg-white shadow transition-transform ${billing === 'yearly' ? 'translate-x-[22px]' : 'translate-x-1'}`} />
+              <span
+                className="absolute rounded-full bg-white shadow-sm transition-transform"
+                style={{
+                  width: 18,
+                  height: 18,
+                  top: 3,
+                  left: 3,
+                  transform: billing === 'yearly' ? 'translateX(20px)' : 'translateX(0)',
+                }}
+              />
             </button>
             <span className={`text-sm font-medium ${billing === 'yearly' ? textPrimary : textMuted}`}>
               Annuel
