@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import supabase, { isDemo } from '../supabaseClient';
+import { useConfirm } from '../context/AppContext';
 import {
   Plus, Search, X, Edit2, Trash2, FileCheck,
   Calendar, RefreshCw, AlertTriangle, CheckCircle, Clock,
@@ -183,6 +184,8 @@ function generateMrrChart(contrats) {
 // ---------------------------------------------------------------------------
 
 export default function ContractsPage({ isDark, couleur, showToast, user, entreprise, clients = [], chantiers = [], setPage }) {
+  const { confirm } = useConfirm();
+
   // Theme
   const cardBg = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200';
   const inputBg = isDark ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400' : 'bg-white border-slate-300';
@@ -205,6 +208,14 @@ export default function ContractsPage({ isDark, couleur, showToast, user, entrep
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [menuOpen, setMenuOpen] = useState(null);
+
+  // Close modal on Escape
+  useEffect(() => {
+    if (!showForm) return;
+    const handler = (e) => { if (e.key === 'Escape') { setShowForm(false); setEditingId(null); } };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [showForm]);
 
   // Load from Supabase
   useEffect(() => {
@@ -374,9 +385,18 @@ export default function ContractsPage({ isDark, couleur, showToast, user, entrep
   };
 
   const handleDelete = async (id) => {
+    setMenuOpen(null);
+    const contrat = contrats.find(c => c.id === id);
+    const ok = await confirm({
+      title: 'Supprimer ce contrat ?',
+      message: `Le contrat "${contrat?.objet || ''}" sera supprimé définitivement.`,
+      confirmText: 'Supprimer',
+      cancelText: 'Annuler',
+    });
+    if (!ok) return;
+
     persist(contrats.filter(c => c.id !== id));
     showToast?.('Contrat supprimé', 'success');
-    setMenuOpen(null);
 
     if (!isDemo && supabase && user?.id) {
       try {
@@ -497,10 +517,10 @@ export default function ContractsPage({ isDark, couleur, showToast, user, entrep
           </div>
           <div className="flex gap-1.5 overflow-x-auto">
             {[
-              { id: 'tous', label: 'Tous' },
-              { id: 'actif', label: 'Actifs' },
-              { id: 'a_renouveler', label: 'À renouveler' },
-              { id: 'expire', label: 'Expirés' },
+              { id: 'tous', label: 'Tous', count: contrats.length },
+              { id: 'actif', label: 'Actifs', count: contrats.filter(c => computeStatut(c) === 'actif').length },
+              { id: 'a_renouveler', label: 'À renouveler', count: contrats.filter(c => computeStatut(c) === 'a_renouveler').length },
+              { id: 'expire', label: 'Expirés', count: contrats.filter(c => computeStatut(c) === 'expire').length },
             ].map(f => (
               <button
                 key={f.id}
@@ -512,7 +532,7 @@ export default function ContractsPage({ isDark, couleur, showToast, user, entrep
                 }`}
                 style={filtre === f.id ? { background: couleur } : {}}
               >
-                {f.label}
+                {f.label} ({f.count})
               </button>
             ))}
           </div>
@@ -715,6 +735,19 @@ export default function ContractsPage({ isDark, couleur, showToast, user, entrep
                   </select>
                 </div>
               </div>
+
+              {/* TTC calculation */}
+              {form.montantHt && (
+                <div className={`px-3 py-2 rounded-xl text-sm ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+                  <span className={textMuted}>Montant TTC : </span>
+                  <span className={`font-semibold ${textPrimary}`}>
+                    {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(parseFloat(form.montantHt) * (1 + (form.tva || 20) / 100))}
+                  </span>
+                  <span className={`text-xs ml-2 ${textMuted}`}>
+                    ({form.tva || 20}% TVA)
+                  </span>
+                </div>
+              )}
 
               {/* Recurrence */}
               <div>
