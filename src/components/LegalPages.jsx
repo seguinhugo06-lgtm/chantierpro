@@ -35,6 +35,7 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
     cgu: { title: "Conditions Générales d'Utilisation", icon: Scale },
     confidentialite: { title: 'Politique de Confidentialité', icon: Lock },
     'mentions-legales': { title: 'Mentions Légales', icon: Shield },
+    accessibilite: { title: 'Déclaration d\'Accessibilité', icon: Shield },
   };
 
   const config = pageConfig[page] || pageConfig.cgv;
@@ -384,6 +385,34 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
           leur entrée en vigueur.
         </P>
       </Section>
+
+      <Section title="Article 11 - Protection des données personnelles">
+        <P>
+          Le traitement des données personnelles des utilisateurs est détaillé dans notre{' '}
+          <button onClick={() => setPage('confidentialite')} style={linkStyle} className="underline font-medium">
+            Politique de Confidentialité
+          </button>, qui fait partie intégrante des présentes CGU.
+        </P>
+        <P>
+          En utilisant BatiGesti, l'utilisateur reconnaît avoir pris connaissance de cette politique
+          et consent au traitement de ses données conformément au RGPD (Règlement UE 2016/679).
+        </P>
+      </Section>
+
+      <Section title="Article 12 - Droit applicable et juridiction">
+        <P>
+          Les présentes CGU sont régies par le droit français. En cas de litige, les parties s'engagent
+          à rechercher une solution amiable avant toute action judiciaire.
+        </P>
+        <P>
+          À défaut de résolution amiable, l'utilisateur peut recourir au service de médiation de la
+          consommation : {COMPANY.mediateur}.
+        </P>
+        <P>
+          En dernier recours, le litige sera porté devant les tribunaux compétents du ressort du siège
+          social de {COMPANY.nom}, sauf disposition légale contraire au bénéfice du consommateur.
+        </P>
+      </Section>
     </>
   );
 
@@ -718,6 +747,97 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
     </>
   );
 
+  const renderAccessibilite = () => (
+    <>
+      <Section title="1. État de conformité">
+        <P>
+          BatiGesti s'engage à rendre son service accessible conformément à l'article 47 de la loi n°2005-102
+          du 11 février 2005 et au Référentiel Général d'Amélioration de l'Accessibilité (RGAA) version 4.1.
+        </P>
+        <P>
+          <strong className={textPrimary}>Niveau de conformité visé :</strong> WCAG 2.1 niveau AA (partiellement conforme).
+        </P>
+        <P>
+          Cette déclaration a été établie le 5 avril 2026. Elle a été réalisée par auto-évaluation.
+        </P>
+      </Section>
+
+      <Section title="2. Résultats des tests">
+        <P>Les points suivants ont été vérifiés :</P>
+        <UL>
+          <li>✅ Navigation au clavier fonctionnelle (Tab, Enter, Escape)</li>
+          <li>✅ Labels visibles sur tous les champs de formulaire</li>
+          <li>✅ Dark mode avec contrastes adaptés</li>
+          <li>✅ Touch targets ≥ 44px sur les boutons principaux</li>
+          <li>✅ Textes alternatifs sur les icônes interactives (aria-label)</li>
+          <li>✅ Modales fermables via Escape et bouton X</li>
+          <li>⚠️ Certains graphiques (recharts) manquent de descriptions textuelles alternatives</li>
+          <li>⚠️ Quelques contrastes insuffisants sur les textes gris clair en mode clair</li>
+        </UL>
+      </Section>
+
+      <Section title="3. Contenus non accessibles">
+        <SubSection title="Non-conformités">
+          <UL>
+            <li>Certains graphiques SVG et charts recharts ne disposent pas d'alternative textuelle complète</li>
+            <li>Quelques boutons d'icône uniquement manquent d'aria-label dans les vues secondaires</li>
+            <li>Le contraste de certains textes secondaires (gris clair) peut être insuffisant en mode clair</li>
+          </UL>
+        </SubSection>
+        <SubSection title="Dérogations">
+          <P>Aucune dérogation n'est invoquée.</P>
+        </SubSection>
+      </Section>
+
+      <Section title="4. Technologies utilisées">
+        <UL>
+          <li>HTML5</li>
+          <li>CSS3 (Tailwind CSS)</li>
+          <li>JavaScript (React 18)</li>
+          <li>SVG (graphiques et icônes)</li>
+          <li>WAI-ARIA (attributs d'accessibilité)</li>
+        </UL>
+      </Section>
+
+      <Section title="5. Environnement de test">
+        <P>Les vérifications ont été effectuées avec :</P>
+        <UL>
+          <li>Google Chrome 124+ (desktop et mobile)</li>
+          <li>Safari 17+ (iOS)</li>
+          <li>Firefox 125+</li>
+          <li>Lecteur d'écran VoiceOver (macOS/iOS)</li>
+        </UL>
+      </Section>
+
+      <Section title="6. Retour d'information et contact">
+        <P>
+          Si vous rencontrez un défaut d'accessibilité vous empêchant d'accéder à un contenu ou
+          une fonctionnalité du service, vous pouvez nous contacter :
+        </P>
+        <UL>
+          <li>Email : <span style={linkStyle}>{COMPANY.email}</span></li>
+          <li>Téléphone : {COMPANY.tel}</li>
+        </UL>
+        <P>
+          Nous nous engageons à vous répondre dans un délai de 7 jours ouvrés et à mettre en œuvre
+          une solution de contournement dans un délai raisonnable.
+        </P>
+      </Section>
+
+      <Section title="7. Voies de recours">
+        <P>
+          Si vous constatez un défaut d'accessibilité et que vous n'obtenez pas de réponse satisfaisante
+          de notre part, vous avez le droit de saisir le Défenseur des droits :
+        </P>
+        <UL>
+          <li>Formulaire en ligne : <span style={linkStyle}>https://formulaire.defenseurdesdroits.fr</span></li>
+          <li>Par courrier : Défenseur des droits, Libre réponse 71120, 75342 Paris Cedex 07</li>
+          <li>Par téléphone : 09 69 39 00 00</li>
+        </UL>
+      </Section>
+    </>
+  );
+
   const renderContent = () => {
     switch (page) {
       case 'cgv':
@@ -728,6 +848,8 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
         return renderConfidentialite();
       case 'mentions-legales':
         return renderMentionsLegales();
+      case 'accessibilite':
+        return renderAccessibilite();
       default:
         return renderCGV();
     }

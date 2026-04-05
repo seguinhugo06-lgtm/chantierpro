@@ -636,7 +636,7 @@ export default function App() {
   // RBAC: redirect to dashboard if user accesses a restricted page
   useEffect(() => {
     if (orgLoading) return; // Wait for org resolution
-    const publicPages = ['dashboard', 'profil', 'plan', 'pricing', 'checkout-success', 'cgv', 'cgu', 'confidentialite', 'mentions-legales', 'changelog', 'design-system'];
+    const publicPages = ['dashboard', 'profil', 'plan', 'pricing', 'checkout-success', 'cgv', 'cgu', 'confidentialite', 'mentions-legales', 'accessibilite', 'changelog', 'design-system'];
     // Billing is restricted to owner only
     if ((page === 'billing') && !canAccessBilling) {
       console.log('[RBAC] Billing restricted to owner, redirecting → dashboard');
@@ -1046,7 +1046,7 @@ export default function App() {
   }
 
   // Legal / public pages (accessible without auth)
-  const publicPages = ['cgv', 'cgu', 'confidentialite', 'mentions-legales', 'changelog'];
+  const publicPages = ['cgv', 'cgu', 'confidentialite', 'mentions-legales', 'accessibilite', 'changelog'];
   if (!user && !isDemo && publicPages.includes(page)) return (
     <Suspense fallback={<div className="min-h-screen bg-[#f5f5f5] flex items-center justify-center"><Building2 size={48} className="text-orange-500 animate-bounce" /></div>}>
       <div className="min-h-screen bg-[#f5f5f5] p-4 sm:p-6">
@@ -1787,6 +1787,7 @@ export default function App() {
               {page === 'cgu' && <LegalPages page="cgu" isDark={isDark} couleur={couleur} setPage={setPage} />}
               {page === 'confidentialite' && <LegalPages page="confidentialite" isDark={isDark} couleur={couleur} setPage={setPage} />}
               {page === 'mentions-legales' && <LegalPages page="mentions-legales" isDark={isDark} couleur={couleur} setPage={setPage} />}
+              {page === 'accessibilite' && <LegalPages page="accessibilite" isDark={isDark} couleur={couleur} setPage={setPage} />}
               {page === 'changelog' && <Changelog isDark={isDark} couleur={couleur} setPage={setPage} />}
             </Suspense>
           </ErrorBoundary>
