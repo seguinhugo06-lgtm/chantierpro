@@ -145,7 +145,13 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
   const textSecondary = isDark ? "text-slate-300" : "text-slate-600";
   const textMuted = isDark ? "text-slate-400" : "text-slate-600";
 
-  const [tab, setTab] = useState('identite');
+  const [tab, setTab] = useState(() => {
+    try {
+      const saved = localStorage.getItem('cp_settings_tab');
+      if (saved) { localStorage.removeItem('cp_settings_tab'); return saved; }
+    } catch {}
+    return 'identite';
+  });
   const [showExportModal, setShowExportModal] = useState(false);
   const [exportYear, setExportYear] = useState(new Date().getFullYear());
   const [showSetupWizard, setShowSetupWizard] = useState(false);
