@@ -53,6 +53,12 @@ export default function FormulairesPage({ isDark, couleur, showToast, user, entr
           supabase.from('form_submissions').select('*').order('created_at', { ascending: false }),
         ]);
 
+        if (tplRes.error && !tplRes.error.message?.includes('schema cache')) {
+          console.warn('[Forms] Templates load:', tplRes.error.message);
+        }
+        if (subRes.error && !subRes.error.message?.includes('schema cache')) {
+          console.warn('[Forms] Submissions load:', subRes.error.message);
+        }
         if (!tplRes.error && tplRes.data?.length > 0) {
           setTemplates(tplRes.data.map(t => ({
             id: t.id,
@@ -162,7 +168,10 @@ export default function FormulairesPage({ isDark, couleur, showToast, user, entr
           created_at: submission.createdAt || new Date().toISOString(),
         }, { onConflict: 'id' });
       } catch (e) {
-        console.warn('[FormulairesPage] Save submission failed:', e.message);
+        // Silently handle missing table — localStorage is the primary store
+        if (!e?.message?.includes('schema cache')) {
+          console.warn('[Forms] Save submission:', e?.message);
+        }
       }
     }
   };

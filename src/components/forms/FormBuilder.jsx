@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback } from 'react';
-import { Plus, GripVertical, Trash2, X, Type, Hash, Calendar, Camera, PenTool, CheckSquare, List, MessageSquare, FileText, ChevronDown, Copy } from 'lucide-react';
+import { Plus, GripVertical, Trash2, X, Type, Hash, Calendar, Camera, PenTool, CheckSquare, List, MessageSquare, FileText, ChevronDown, Copy, AlertCircle } from 'lucide-react';
 
 const FIELD_TYPES = [
   { value: 'texte', label: 'Texte', icon: Type },
@@ -107,6 +107,7 @@ export default function FormBuilder({ isDark, couleur, showToast, onSave, initia
   );
   const [showTypeDropdown, setShowTypeDropdown] = useState(false);
   const [showTemplateMenu, setShowTemplateMenu] = useState(false);
+  const [formError, setFormError] = useState('');
   const [editingOptions, setEditingOptions] = useState(null);
   const [optionInput, setOptionInput] = useState('');
   const dragItem = useRef(null);
@@ -168,13 +169,16 @@ export default function FormBuilder({ isDark, couleur, showToast, onSave, initia
 
   const handleSave = () => {
     if (!nom.trim()) {
+      setFormError('Le nom du formulaire est requis');
       showToast?.('Veuillez donner un nom au formulaire', 'error');
       return;
     }
     if (champs.length === 0) {
+      setFormError('Ajoutez au moins un champ au formulaire');
       showToast?.('Ajoutez au moins un champ', 'error');
       return;
     }
+    setFormError('');
     const template = {
       id: initialTemplate?.id || `form_${Date.now()}`,
       name: nom.trim(),
@@ -249,10 +253,10 @@ export default function FormBuilder({ isDark, couleur, showToast, onSave, initia
           <input
             type="text"
             value={nom}
-            onChange={(e) => setNom(e.target.value)}
+            onChange={(e) => { setNom(e.target.value); if (formError) setFormError(''); }}
             placeholder="Ex: PV de réception chantier"
             className={`w-full px-3 py-2.5 rounded-xl border text-sm ${inputBg} focus:outline-none focus:ring-2`}
-            style={{ focusRingColor: couleur }}
+            style={formError && !nom.trim() ? { borderColor: '#ef4444', focusRingColor: couleur } : { focusRingColor: couleur }}
           />
         </div>
         <div>
@@ -411,6 +415,14 @@ export default function FormBuilder({ isDark, couleur, showToast, onSave, initia
           </div>
         )}
       </div>
+
+      {/* Error message */}
+      {formError && (
+        <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-red-500/10 text-red-500 text-sm">
+          <AlertCircle size={16} className="flex-shrink-0" />
+          {formError}
+        </div>
+      )}
 
       {/* Save */}
       <div className="flex gap-3 pt-2">
