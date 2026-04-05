@@ -133,7 +133,7 @@ export const PLANS = {
       { name: 'Tout le plan Artisan', included: true },
       { name: 'Jusqu\'à 10 utilisateurs', included: true },
       { name: 'Pointage & heures équipe', included: true },
-      { name: 'Rôles & permissions (RBAC)', included: true },
+      { name: 'Gérez les accès de votre équipe', included: true },
       { name: 'Trésorerie & Bilan', included: true },
       { name: 'Export FEC comptable', included: true },
       { name: 'IA illimitée', included: true },

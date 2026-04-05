@@ -162,7 +162,7 @@ export default function PlanPage({ isDark, couleur = '#f97316' }) {
                     isDark ? 'border-slate-600 text-slate-300 hover:bg-slate-700' : 'border-slate-200 text-slate-600 hover:bg-slate-50'
                   }`}
                 >
-                  <CreditCard size={14} /> Gérer sur Stripe <ExternalLink size={11} />
+                  <CreditCard size={14} /> Mes factures et paiement <ExternalLink size={11} />
                 </button>
               )}
               {isPaid && !sub?.cancel_at_period_end && (

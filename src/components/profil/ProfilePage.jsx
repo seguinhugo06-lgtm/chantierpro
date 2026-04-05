@@ -60,12 +60,14 @@ function useCountUp(target, duration = 800) {
 }
 
 /** Stat card with animated value */
-function StatCard({ icon: Icon, label, value, suffix, color, isDark, delay = 0, modeDiscret }) {
+function StatCard({ icon: Icon, label, value, suffix, color, isDark, delay = 0, modeDiscret, onClick }) {
+  const Tag = onClick ? 'button' : 'div';
   return (
-    <div
-      className={`rounded-xl border p-4 transition-all duration-200 hover:scale-[1.02] hover:shadow-md animate-fade-slide-up ${
-        isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'
-      }`}
+    <Tag
+      onClick={onClick}
+      className={`rounded-xl border p-4 transition-all duration-200 hover:scale-[1.02] hover:shadow-md animate-fade-slide-up text-left w-full ${
+        onClick ? 'cursor-pointer' : ''
+      } ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}
       style={{ animationDelay: `${delay}ms` }}
     >
       <div className="flex items-center gap-2 mb-2">
@@ -82,7 +84,7 @@ function StatCard({ icon: Icon, label, value, suffix, color, isDark, delay = 0, 
       <p className={`text-2xl font-bold tabular-nums ${isDark ? 'text-white' : 'text-slate-900'}`}>
         {modeDiscret ? '•••' : value}{!modeDiscret && suffix ? <span className="text-sm font-medium ml-0.5">{suffix}</span> : null}
       </p>
-    </div>
+    </Tag>
   );
 }
 
@@ -103,7 +105,7 @@ function UsageRow({ icon: Icon, label, count, limit, couleur, isDark }) {
         </div>
         {isUnlimited ? (
           <span className={`text-xs font-semibold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-            {count} <span className="text-green-500">∞</span>
+            {count} · <span className="text-green-500">Illimité</span>
           </span>
         ) : (
           <span className={`text-xs font-semibold tabular-nums ${isDanger ? 'text-red-500' : isDark ? 'text-slate-400' : 'text-slate-500'}`}>
@@ -111,7 +113,11 @@ function UsageRow({ icon: Icon, label, count, limit, couleur, isDark }) {
           </span>
         )}
       </div>
-      {!isUnlimited && (
+      {isUnlimited ? (
+        <div className={`w-full h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
+          <div className="h-full rounded-full" style={{ width: '100%', background: `${couleur}30` }} />
+        </div>
+      ) : (
         <div className={`w-full h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
           <div
             className="h-full rounded-full transition-all duration-700 ease-out"
@@ -412,9 +418,10 @@ export default function ProfilePage({
             {/* Edit link */}
             <button
               onClick={() => setPage('settings')}
-              className={`mt-3 text-xs font-medium flex items-center gap-1 transition-colors ${isDark ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-900'}`}
+              className="mt-3 px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all hover:shadow-md"
+              style={{ background: `${couleur}15`, color: couleur }}
             >
-              <Settings size={12} /> Modifier dans Paramètres <ChevronRight size={12} />
+              <Settings size={13} /> Modifier mon profil <ChevronRight size={13} />
             </button>
           </div>
 
@@ -433,7 +440,7 @@ export default function ProfilePage({
                   <AlertTriangle size={16} />
                   <span>{alert.label} — {alert.date.toLocaleDateString('fr-FR')}</span>
                   <button
-                    onClick={() => setPage('settings')}
+                    onClick={() => { try { localStorage.setItem('cp_settings_tab', 'assurances'); } catch {} setPage('settings'); }}
                     className="ml-auto text-xs underline opacity-70 hover:opacity-100"
                   >
                     Mettre à jour
@@ -451,12 +458,12 @@ export default function ProfilePage({
 
         {/* KPI Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-3 sm:gap-4 mb-8">
-          <StatCard icon={Euro} label="CA Total" value={modeDiscret ? null : formatMoneyCompact(animCA)} color="#22c55e" isDark={isDark} delay={0} modeDiscret={modeDiscret} />
-          <StatCard icon={FileText} label="Devis en cours" value={String(animDevis)} color="#3b82f6" isDark={isDark} delay={80} modeDiscret={false} />
-          <StatCard icon={TrendingUp} label="Taux conversion" value={String(animConv)} suffix="%" color="#8b5cf6" isDark={isDark} delay={160} modeDiscret={false} />
-          <StatCard icon={Users} label="Clients actifs" value={String(animClients)} color="#f97316" isDark={isDark} delay={240} modeDiscret={false} />
-          <StatCard icon={Building2} label="Chantiers actifs" value={String(animChantiers)} color="#06b6d4" isDark={isDark} delay={320} modeDiscret={false} />
-          <StatCard icon={Euro} label="Devis moyen" value={modeDiscret ? null : formatMoneyCompact(animMoyen)} color="#eab308" isDark={isDark} delay={400} modeDiscret={modeDiscret} />
+          <StatCard icon={Euro} label="CA Total" value={modeDiscret ? null : formatMoneyCompact(animCA)} color="#22c55e" isDark={isDark} delay={0} modeDiscret={modeDiscret} onClick={() => setPage('finances')} />
+          <StatCard icon={FileText} label="Devis en cours" value={String(animDevis)} color="#3b82f6" isDark={isDark} delay={80} modeDiscret={false} onClick={() => setPage('devis')} />
+          <StatCard icon={TrendingUp} label="Taux conversion" value={String(animConv)} suffix="%" color="#8b5cf6" isDark={isDark} delay={160} modeDiscret={false} onClick={() => setPage('analytique')} />
+          <StatCard icon={Users} label="Clients actifs" value={String(animClients)} color="#f97316" isDark={isDark} delay={240} modeDiscret={false} onClick={() => setPage('clients')} />
+          <StatCard icon={Building2} label="Chantiers actifs" value={String(animChantiers)} color="#06b6d4" isDark={isDark} delay={320} modeDiscret={false} onClick={() => setPage('chantiers')} />
+          <StatCard icon={Euro} label="Devis moyen" value={modeDiscret ? null : formatMoneyCompact(animMoyen)} color="#eab308" isDark={isDark} delay={400} modeDiscret={modeDiscret} onClick={() => setPage('devis')} />
         </div>
 
         {/* Activity + Usage side by side */}
