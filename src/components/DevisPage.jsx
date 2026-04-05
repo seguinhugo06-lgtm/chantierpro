@@ -4695,13 +4695,22 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 
         {/* Devis IA standalone button + Split-button: + Nouveau devis — hidden for view-only roles */}
         {canPerform('devis', 'create') && (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
           <button
             onClick={() => setPage?.('ia-devis')}
-            className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-semibold text-white min-h-[44px]"
+            className="hidden sm:flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-semibold text-white min-h-[44px]"
             style={{ background: 'linear-gradient(135deg, #8b5cf6, #3b82f6)' }}
           >
             <Sparkles size={14} /> Devis IA
+          </button>
+          <button
+            onClick={() => setPage?.('ia-devis')}
+            className="sm:hidden flex items-center justify-center w-10 h-10 rounded-xl text-white"
+            style={{ background: 'linear-gradient(135deg, #8b5cf6, #3b82f6)' }}
+            aria-label="Devis IA"
+            title="Devis IA"
+          >
+            <Sparkles size={16} />
           </button>
         <div className="relative">
           <div className="flex items-stretch">

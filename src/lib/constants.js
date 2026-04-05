@@ -33,7 +33,7 @@ export const DEVIS_STATUS_LABELS = {
 };
 
 export const DEVIS_STATUS_COLORS = {
-  [DEVIS_STATUS.BROUILLON]: { bg: 'bg-slate-100', text: 'text-slate-600', dot: 'bg-slate-400', darkBg: 'bg-slate-700', darkText: 'text-slate-300' },
+  [DEVIS_STATUS.BROUILLON]: { bg: 'bg-slate-200', text: 'text-slate-700', dot: 'bg-slate-400', darkBg: 'bg-slate-600/60', darkText: 'text-slate-200' },
   [DEVIS_STATUS.ENVOYE]: { bg: 'bg-blue-100', text: 'text-blue-700', dot: 'bg-blue-500', darkBg: 'bg-blue-900/50', darkText: 'text-blue-300' },
   [DEVIS_STATUS.VU]: { bg: 'bg-purple-100', text: 'text-purple-700', dot: 'bg-purple-500', darkBg: 'bg-purple-900/50', darkText: 'text-purple-300' },
   [DEVIS_STATUS.ACCEPTE]: { bg: 'bg-emerald-100', text: 'text-emerald-700', dot: 'bg-emerald-500', darkBg: 'bg-emerald-900/50', darkText: 'text-emerald-300' },

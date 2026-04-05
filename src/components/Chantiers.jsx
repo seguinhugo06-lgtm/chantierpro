@@ -1455,7 +1455,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
             { key: 'situations', label: 'Situations', icon: Receipt },
             { key: 'messages', label: 'Messages', icon: MessageSquare, badge: (ch.messages || []).filter(m => !m.read).length > 0 ? (ch.messages || []).filter(m => !m.read).length : undefined },
             { key: 'documents', label: 'Documents', icon: Paperclip },
-            { key: 'soustraitants', label: 'Sous-traitants', icon: UserCog },
+            { key: 'soustraitants', label: 'Sous-trait.', icon: UserCog },
             ...(chantierReception || ch.statut === 'termine' ? [{ key: 'garanties', label: 'Garanties', icon: Shield, badge: chantierGaranties.filter(g => g.statut === 'active').length > 0 ? chantierGaranties.filter(g => g.statut === 'active').length : undefined }] : []),
             { key: 'notes', label: 'Notes', icon: StickyNote },
             { key: 'rapports', label: 'Rapports', icon: FileText },

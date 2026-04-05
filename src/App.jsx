@@ -1817,7 +1817,7 @@ export default function App() {
             {[
               { id: 'dashboard', icon: Home, label: 'Accueil' },
               { id: 'devis', icon: FileText, label: 'Devis' },
-              { id: 'chantiers', icon: Building2, label: 'Chantiers' },
+              { id: 'chantiers', icon: Building2, label: 'Sites' },
               { id: 'clients', icon: Users, label: 'Clients' },
             ].filter(item => canAccess(item.id)).map(item => {
               const isActive = item.id === page;
