@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { getProvider, CATEGORIES } from '../../lib/integrations/providers/index';
 import { getSyncLogs, triggerSync } from '../../services/syncService';
+import { useConfirm } from '../../context/AppContext';
 import SyncHistoryPanel from './SyncHistoryPanel';
 
 export default function IntegrationDetailPanel({
@@ -27,6 +28,7 @@ export default function IntegrationDetailPanel({
 }) {
   const provider = getProvider(providerId);
   const category = provider ? CATEGORIES[provider.category] : null;
+  const { confirm } = useConfirm();
 
   const [activeTab, setActiveTab] = useState('overview');
   const [syncLogs, setSyncLogs] = useState([]);
@@ -380,8 +382,8 @@ export default function IntegrationDetailPanel({
         {integration?.status === 'connected' && (
           <div className={`p-4 border-t ${border} ${bgCard}`}>
             <button
-              onClick={() => {
-                if (window.confirm(`Déconnecter ${provider.name} ? Les données synchronisées seront conservées.`)) {
+              onClick={async () => {
+                if (await confirm({ title: `Déconnecter ${provider.name} ?`, message: 'Les données synchronisées seront conservées.', confirmText: 'Déconnecter', cancelText: 'Annuler', variant: 'danger' })) {
                   onDisconnect(providerId);
                   onClose();
                 }

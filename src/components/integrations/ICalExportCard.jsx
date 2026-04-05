@@ -11,8 +11,10 @@ import {
   Monitor, AlertCircle, Loader2, Link2,
 } from 'lucide-react';
 import { getICalUrl, regenerateICalToken } from '../../services/syncService';
+import { useConfirm } from '../../context/AppContext';
 
 export default function ICalExportCard({ isDark, couleur }) {
+  const { confirm } = useConfirm();
   const [icalUrl, setIcalUrl] = useState('');
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
@@ -61,7 +63,7 @@ export default function ICalExportCard({ isDark, couleur }) {
   };
 
   const handleRegenerate = async () => {
-    if (!window.confirm('Régénérer le lien ? L\'ancien lien sera invalide et les calendriers abonnés ne recevront plus de mises à jour.')) {
+    if (!await confirm({ title: 'Régénérer le lien ?', message: 'L\'ancien lien sera invalide et les calendriers abonnés ne recevront plus de mises à jour.', confirmText: 'Régénérer', cancelText: 'Annuler', variant: 'danger' })) {
       return;
     }
     setRegenerating(true);

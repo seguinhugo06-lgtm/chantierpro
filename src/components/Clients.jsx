@@ -832,7 +832,12 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
 
               // Si le client a un email, proposer l'envoi
               if (client.email) {
-                const send = window.confirm(`Envoyer le lien par email à ${client.email} ?`);
+                const send = await confirm({
+                  title: 'Envoyer l\'invitation',
+                  message: `Envoyer le lien par email à ${client.email} ?`,
+                  confirmText: 'Envoyer',
+                  cancelText: 'Annuler',
+                });
                 if (send) {
                   const sent = await sendPortalInvite(supabase, {
                     clientEmail: client.email,

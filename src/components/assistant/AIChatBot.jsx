@@ -7,8 +7,8 @@ const MAX_MESSAGES = 50;
 const QUICK_SUGGESTIONS = [
   'Quel est mon CA ce mois ?',
   'Quels devis sont en attente ?',
-  'Cr\u00e9er un devis rapide',
-  'R\u00e9sumer mes chantiers actifs',
+  'Créer un devis rapide',
+  'Résumer mes chantiers actifs',
 ];
 
 function getAIResponse(question, context) {
@@ -29,7 +29,7 @@ function getAIResponse(question, context) {
   if (q.includes('devis') && (q.includes('attente') || q.includes('retard') || q.includes('en cours'))) {
     const enAttente = (context._rawDevis || []).filter(d => {
       const s = d.statut || d.status;
-      return s === 'envoye' || s === 'envoy\u00e9' || s === 'sent' || s === 'brouillon' || s === 'draft';
+      return s === 'envoye' || s === 'envoyé' || s === 'sent' || s === 'brouillon' || s === 'draft';
     });
     if (enAttente.length === 0) return 'Aucun devis en attente. Bravo ! \ud83c\udf89';
     const top3 = enAttente.slice(0, 3).map(d =>
@@ -38,8 +38,8 @@ function getAIResponse(question, context) {
     return `${enAttente.length} devis en attente :\n${top3}${enAttente.length > 3 ? `\n... et ${enAttente.length - 3} autres` : ''}`;
   }
 
-  if (q.includes('devis') && (q.includes('cr\u00e9er') || q.includes('rapide') || q.includes('nouveau'))) {
-    return 'Pour cr\u00e9er un devis, rendez-vous dans la section Devis et cliquez sur "+ Nouveau devis". Vous pouvez aussi utiliser l\'assistant IA pour g\u00e9n\u00e9rer un devis \u00e0 partir d\'une description.';
+  if (q.includes('devis') && (q.includes('créer') || q.includes('rapide') || q.includes('nouveau'))) {
+    return 'Pour créer un devis, rendez-vous dans la section Devis et cliquez sur "+ Nouveau devis". Vous pouvez aussi utiliser l\'assistant IA pour générer un devis à partir d\'une description.';
   }
 
   if (q.includes('chantier')) {
@@ -49,20 +49,20 @@ function getAIResponse(question, context) {
     });
     if (actifs.length === 0) return 'Aucun chantier en cours actuellement.';
     const list = actifs.slice(0, 3).map(c =>
-      `\u2022 ${c.nom || c.name || 'Chantier'} \u2014 ${c.avancement || 0}% (${c.adresse || c.address || 'Adresse non renseign\u00e9e'})`
+      `\u2022 ${c.nom || c.name || 'Chantier'} \u2014 ${c.avancement || 0}% (${c.adresse || c.address || 'Adresse non renseignée'})`
     ).join('\n');
     return `${actifs.length} chantier${actifs.length > 1 ? 's' : ''} en cours :\n${list}${actifs.length > 3 ? `\n... et ${actifs.length - 3} autres` : ''}`;
   }
 
-  if (q.includes('facture') && (q.includes('retard') || q.includes('impay\u00e9'))) {
+  if (q.includes('facture') && (q.includes('retard') || q.includes('impayé'))) {
     const factures = (context._rawDevis || []).filter(d => {
       const s = d.statut || d.status;
-      if (s === 'retard' || s === 'overdue' || s === 'impay\u00e9') return true;
+      if (s === 'retard' || s === 'overdue' || s === 'impayé') return true;
       if (d.type === 'facture' && d.date_echeance && new Date(d.date_echeance) < new Date()) return true;
       if (d.type === 'facture' && d.dateEcheance && new Date(d.dateEcheance) < new Date()) return true;
       return false;
     });
-    if (factures.length === 0) return 'Aucune facture en retard. Tout est \u00e0 jour ! \u2705';
+    if (factures.length === 0) return 'Aucune facture en retard. Tout est à jour ! \u2705';
     const list = factures.slice(0, 3).map(f => {
       const echeance = f.date_echeance || f.dateEcheance;
       const jours = echeance ? Math.round((new Date() - new Date(echeance)) / 86400000) : '?';
@@ -73,7 +73,7 @@ function getAIResponse(question, context) {
 
   if (q.includes('client')) {
     const nb = context.totalClients ?? 0;
-    return `Vous avez ${nb} client${nb > 1 ? 's' : ''} enregistr\u00e9${nb > 1 ? 's' : ''}.`;
+    return `Vous avez ${nb} client${nb > 1 ? 's' : ''} enregistré${nb > 1 ? 's' : ''}.`;
   }
 
   if (q.includes('bonjour') || q.includes('salut') || q.includes('hello') || q.includes('coucou')) {
@@ -81,7 +81,7 @@ function getAIResponse(question, context) {
   }
 
   if (q.includes('merci')) {
-    return 'Avec plaisir ! N\'h\u00e9sitez pas si vous avez d\'autres questions.';
+    return 'Avec plaisir ! N\'hésitez pas si vous avez d\'autres questions.';
   }
 
   return 'Je suis l\'assistant BatiGesti. Je peux vous aider avec vos devis, factures, chantiers et finances. Posez-moi une question ou utilisez les suggestions ci-dessous.';
@@ -93,18 +93,18 @@ function buildContext(devis, chantiers, clients) {
   const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
   const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
 
-  // CA ce mois (devis accept\u00e9s)
+  // CA ce mois (devis acceptés)
   const devisAcceptedThisMonth = (devis || []).filter(d => {
     const s = d.statut || d.status;
     const date = new Date(d.dateCreation || d.date || d.created_at);
-    return (s === 'accepte' || s === 'accept\u00e9' || s === 'signed') && date >= startOfMonth;
+    return (s === 'accepte' || s === 'accepté' || s === 'signed') && date >= startOfMonth;
   });
   const caMois = devisAcceptedThisMonth.reduce((sum, d) => sum + (d.totalTTC || d.total || 0), 0);
 
   const devisAcceptedLastMonth = (devis || []).filter(d => {
     const s = d.statut || d.status;
     const date = new Date(d.dateCreation || d.date || d.created_at);
-    return (s === 'accepte' || s === 'accept\u00e9' || s === 'signed') && date >= startOfLastMonth && date <= endOfLastMonth;
+    return (s === 'accepte' || s === 'accepté' || s === 'signed') && date >= startOfLastMonth && date <= endOfLastMonth;
   });
   const caLastMonth = devisAcceptedLastMonth.reduce((sum, d) => sum + (d.totalTTC || d.total || 0), 0);
   const caTrend = caMois - caLastMonth;

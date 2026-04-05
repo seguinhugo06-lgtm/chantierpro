@@ -2656,7 +2656,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
   }
 
   // Handle chantier creation from modal
-  const handleCreateChantier = (formData) => {
+  const handleCreateChantier = async (formData) => {
     // C2: Validate chantier name
     const RESERVED_WORDS = ['test', 'essai', 'demo', 'tmp', 'aaa', 'xxx', 'azerty', 'qwerty'];
     const trimmedName = (formData.nom || '').trim();
@@ -2675,7 +2675,12 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
       (c.client_id || '') === (formData.client_id || formData.clientId || '') &&
       (c.adresse || '').toLowerCase().trim() === (formData.adresse || '').toLowerCase().trim()
     );
-    if (duplicate && !window.confirm('Un chantier similaire existe déjà (même nom, client et adresse). Créer quand même ?')) {
+    if (duplicate && !await confirm({
+      title: 'Chantier similaire',
+      message: 'Un chantier similaire existe déjà (même nom, client et adresse). Créer quand même ?',
+      confirmText: 'Créer quand même',
+      cancelText: 'Annuler',
+    })) {
       return;
     }
 

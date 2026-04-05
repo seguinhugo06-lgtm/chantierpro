@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import supabase, { isDemo } from '../../supabaseClient';
 import { useOrg } from '../../context/OrgContext';
+import { useConfirm } from '../../context/AppContext';
 import {
   getSubcontractor, updateSubcontractor, toggleFavori, archiveSubcontractor,
   getReviewStats, getDocuments, uploadDocument, deleteDocument,
@@ -40,6 +41,7 @@ const SubcontractorDetailPage = memo(function SubcontractorDetailPage({
   modeDiscret = false,
 }) {
   const { orgId } = useOrg();
+  const { confirm } = useConfirm();
   const [st, setSt] = useState(null);
   const [activeTab, setActiveTab] = useState('infos');
   const [loading, setLoading] = useState(true);
@@ -77,7 +79,7 @@ const SubcontractorDetailPage = memo(function SubcontractorDetailPage({
   }, [subcontractorId, showToast]);
 
   const handleArchive = useCallback(async () => {
-    if (!window.confirm('Archiver ce sous-traitant ?')) return;
+    if (!await confirm({ title: 'Archiver ce sous-traitant ?', message: 'Le sous-traitant sera archivé et masqué des listes.', confirmText: 'Archiver', cancelText: 'Annuler', variant: 'danger' })) return;
     try {
       await archiveSubcontractor(supabase, { id: subcontractorId });
       showToast?.('Sous-traitant archivé', 'success');
@@ -112,7 +114,7 @@ const SubcontractorDetailPage = memo(function SubcontractorDetailPage({
   }, [subcontractorId, orgId, loadData, showToast]);
 
   const handleDocDelete = useCallback(async (docId, storagePath) => {
-    if (!window.confirm('Supprimer ce document ?')) return;
+    if (!await confirm({ title: 'Supprimer ce document ?', message: 'Cette action est irréversible.', confirmText: 'Supprimer', cancelText: 'Annuler', variant: 'danger' })) return;
     try {
       await deleteDocument(supabase, { id: docId, storagePath });
       await loadData();

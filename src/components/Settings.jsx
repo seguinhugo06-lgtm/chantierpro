@@ -621,7 +621,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             className="self-end sm:self-auto px-4 py-2 text-white rounded-xl text-sm font-semibold transition-colors whitespace-nowrap shrink-0 min-h-[44px]"
             style={{ background: couleur }}
           >
-            {'Compl\u00e9ter'}
+            Compléter
           </button>
         </div>
       )}

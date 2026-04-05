@@ -11,6 +11,7 @@ import {
   Phone, Mail, MapPin, ChevronDown, ChevronUp, Loader2,
 } from 'lucide-react';
 import { useEntreprise } from '../../context/EntrepriseContext';
+import { useConfirm } from '../../context/AppContext';
 import EntrepriseFormModal from './EntrepriseFormModal';
 
 const MAX_ENTREPRISES = 5;
@@ -30,8 +31,8 @@ const EntrepriseSettingsPage = memo(function EntrepriseSettingsPage({
   isDark = false,
   couleur = '#f97316',
   showToast,
-  confirm,
 }) {
+  const { confirm } = useConfirm();
   const {
     entreprises,
     activeEntreprise,
@@ -98,17 +99,12 @@ const EntrepriseSettingsPage = memo(function EntrepriseSettingsPage({
       return;
     }
 
-    let confirmed;
-    if (confirm) {
-      confirmed = await confirm({
-        title: `Archiver ${ent.nom} ?`,
-        message: 'Cette entreprise sera désactivée et masquée. Ses devis et chantiers resteront accessibles.',
-        confirmText: 'Archiver',
-        variant: 'danger',
-      });
-    } else {
-      confirmed = window.confirm(`Archiver ${ent.nom} ? Cette entreprise sera désactivée et masquée.`);
-    }
+    const confirmed = await confirm({
+      title: `Archiver ${ent.nom} ?`,
+      message: 'Cette entreprise sera désactivée et masquée. Ses devis et chantiers resteront accessibles.',
+      confirmText: 'Archiver',
+      variant: 'danger',
+    });
 
     if (!confirmed) return;
 

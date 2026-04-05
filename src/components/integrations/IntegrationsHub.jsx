@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import supabase, { isDemo } from '../../supabaseClient';
 import { useOrg } from '../../context/OrgContext';
+import { useConfirm } from '../../context/AppContext';
 import {
   PROVIDERS,
   CATEGORIES,
@@ -38,6 +39,7 @@ const IntegrationsHub = memo(function IntegrationsHub({
   user,
 }) {
   const { orgId } = useOrg();
+  const { confirm } = useConfirm();
 
   // State
   const [integrations, setIntegrations] = useState([]);
@@ -189,9 +191,13 @@ const IntegrationsHub = memo(function IntegrationsHub({
 
   const handleDisconnect = useCallback(async (providerId) => {
     const provider = PROVIDERS[providerId];
-    const confirmed = window.confirm(
-      `Déconnecter ${provider.name} ? Les données synchronisées seront conservées.`
-    );
+    const confirmed = await confirm({
+      title: `Déconnecter ${provider.name} ?`,
+      message: 'Les données synchronisées seront conservées.',
+      confirmText: 'Déconnecter',
+      cancelText: 'Annuler',
+      variant: 'danger',
+    });
     if (!confirmed) return;
 
     try {

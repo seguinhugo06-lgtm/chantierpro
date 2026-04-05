@@ -22,9 +22,11 @@ import {
   WEBHOOK_EVENTS,
 } from '../../services/webhookService';
 import { useOrg } from '../../context/OrgContext';
+import { useConfirm } from '../../context/AppContext';
 
 export default function WebhookConfigPage({ userId, isDark, couleur, showToast, onClose }) {
   const { orgId } = useOrg();
+  const { confirm } = useConfirm();
 
   const [webhooks, setWebhooks] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -108,7 +110,7 @@ export default function WebhookConfigPage({ userId, isDark, couleur, showToast, 
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Supprimer ce webhook ? Les logs seront conservés.')) return;
+    if (!await confirm({ title: 'Supprimer ce webhook ?', message: 'Les logs seront conservés.', confirmText: 'Supprimer', cancelText: 'Annuler', variant: 'danger' })) return;
     try {
       await deleteWebhook(id);
       showToast?.('Webhook supprimé', 'info');

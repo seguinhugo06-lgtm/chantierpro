@@ -6,6 +6,7 @@ import {
 import { useVoiceInput } from '../../hooks/useVoiceInput';
 import { analyseTranscript } from '../../lib/integrations/ai-devis';
 import { useSubscriptionStore, PLANS } from '../../stores/subscriptionStore';
+import { useConfirm } from '../../context/AppContext';
 
 // Sub-components
 import IAWelcomeScreen from './IAWelcomeScreen';
@@ -129,6 +130,7 @@ export default function IADevisAnalyse({
   setPage,
 }) {
   // ---- Subscription ----
+  const { confirm } = useConfirm();
   const planId = useSubscriptionStore((s) => s.planId);
   const isLifetime = planId === 'gratuit';
 
@@ -239,7 +241,7 @@ export default function IADevisAnalyse({
     setActiveTab('text');
   };
 
-  const handleBackToList = () => {
+  const handleBackToList = async () => {
     // Step 5 (success) — no confirmation needed
     if (step === 5) {
       resetNewFlow();
@@ -248,7 +250,7 @@ export default function IADevisAnalyse({
       return;
     }
     const hasWork = (manualText || transcript || '').trim().length > 0 || analyseResult || editableLines.length > 0;
-    if (hasWork && !window.confirm('Quitter sans sauvegarder ? Les données seront perdues.')) return;
+    if (hasWork && !await confirm({ title: 'Quitter sans sauvegarder ?', message: 'Les données seront perdues.', confirmText: 'Quitter', cancelText: 'Annuler' })) return;
     if (isListening) stopListening();
     resetNewFlow();
     setView('list');
@@ -486,8 +488,8 @@ export default function IADevisAnalyse({
     setView('new');
   };
 
-  const handleRefresh = () => {
-    if (!window.confirm('Refaire l\'analyse ? Les modifications actuelles seront perdues.')) return;
+  const handleRefresh = async () => {
+    if (!await confirm({ title: 'Refaire l\'analyse ?', message: 'Les modifications actuelles seront perdues.', confirmText: 'Refaire', cancelText: 'Annuler' })) return;
     setStep(1);
     setAnalyseResult(null);
     setEditableLines([]);

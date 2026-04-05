@@ -4143,10 +4143,10 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     return (
       <div className="space-y-6">
         <div className="flex items-center gap-2 sm:gap-4">
-          <button onClick={() => {
+          <button onClick={async () => {
             const hasData = form.clientId || (form.sections?.[0]?.lignes?.length > 0);
             if (hasData) {
-              if (window.confirm('Abandonner ce devis ? Les données non sauvegardées seront perdues.')) {
+              if (await confirm({ title: 'Abandonner ce devis ?', message: 'Les données non sauvegardées seront perdues.', confirmText: 'Abandonner', cancelText: 'Annuler' })) {
                 setMode('list');
                 setForm({ type: 'devis', clientId: '', chantierId: '', date: new Date().toISOString().split('T')[0], validite: entreprise?.validiteDevis || 30, sections: [{ id: '1', titre: '', lignes: [] }], tvaDefaut: entreprise?.tvaDefaut || 10, remise: 0, retenueGarantie: false, conditionsPaiement: entreprise?.conditionsPaiementDefaut || '30_jours', notes: '' });
               }
@@ -4156,10 +4156,10 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           }} className={`p-2.5 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'} rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors`}><ArrowLeft size={20} /></button>
           <h2 className={`text-lg sm:text-2xl font-bold ${textPrimary}`}>Nouveau {form.type}</h2>
           <button
-            onClick={() => {
+            onClick={async () => {
               const hasData = form.clientId || (form.sections?.[0]?.lignes?.length > 0);
               if (hasData) {
-                if (window.confirm('Abandonner ce devis ? Les données non sauvegardées seront perdues.')) {
+                if (await confirm({ title: 'Abandonner ce devis ?', message: 'Les données non sauvegardées seront perdues.', confirmText: 'Abandonner', cancelText: 'Annuler' })) {
                   setMode('list');
                   setForm({ type: 'devis', clientId: '', chantierId: '', date: new Date().toISOString().split('T')[0], validite: entreprise?.validiteDevis || 30, sections: [{ id: '1', titre: '', lignes: [] }], tvaDefaut: entreprise?.tvaDefaut || 10, remise: 0, retenueGarantie: false, conditionsPaiement: entreprise?.conditionsPaiementDefaut || '30_jours', notes: '' });
                 }

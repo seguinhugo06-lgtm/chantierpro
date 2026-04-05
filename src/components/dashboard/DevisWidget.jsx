@@ -391,11 +391,11 @@ function DevisCard({
 
   const statusLabels = {
     brouillon: 'Brouillon',
-    envoye: 'Envoy\u00e9',
+    envoye: 'Envoyé',
     vu: 'Vu',
-    accepte: 'Accept\u00e9',
-    signe: 'Sign\u00e9',
-    refuse: 'Refus\u00e9',
+    accepte: 'Accepté',
+    signe: 'Signé',
+    refuse: 'Refusé',
   };
 
   // Client initials for avatar
