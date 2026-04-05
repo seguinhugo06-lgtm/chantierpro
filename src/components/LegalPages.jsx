@@ -1,6 +1,25 @@
 import React from 'react';
 import { ArrowLeft, Shield, FileText, Scale, Lock } from 'lucide-react';
 
+// ─── BatiGesti SaaS Company Info (editor) ────────────────────────────────────
+// Update these values with the actual company details before launch
+const COMPANY = {
+  nom: 'BatiGesti SAS',
+  forme: 'SAS (Société par Actions Simplifiée)',
+  capital: '1 000',
+  adresse: '12 rue de la Tech, 75011 Paris, France',
+  siret: '123 456 789 00012',
+  rcs: 'Paris B 123 456 789',
+  tva: 'FR12 123456789',
+  email: 'contact@batigesti.fr',
+  tel: '01 23 45 67 89',
+  dpo: 'dpo@batigesti.fr',
+  directeur: 'Hugo Seguin',
+  qualite: 'Président',
+  hebergeur: 'Vercel Inc., 440 N Baxter St, Coppell, TX 75019, USA — https://vercel.com',
+  mediateur: 'CM2C — 14 rue Saint-Jean, 75017 Paris — https://cm2c.net — contact@cm2c.net',
+};
+
 export default function LegalPages({ page, isDark, couleur, setPage }) {
   // Theme classes
   const mainBg = isDark ? 'bg-slate-900' : 'bg-slate-50';
@@ -47,17 +66,17 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
     <>
       <Section title="Article 1 - Éditeur">
         <P>
-          Le site BatiGesti est édité par : <strong className={textPrimary}>[A REMPLIR - Raison sociale]</strong>
+          Le site BatiGesti est édité par : <strong className={textPrimary}>{COMPANY.nom}</strong>
         </P>
         <UL>
-          <li>Forme juridique : [A REMPLIR]</li>
-          <li>Capital social : [A REMPLIR] euros</li>
-          <li>Siège social : [A REMPLIR - Adresse complète]</li>
-          <li>SIRET : [A REMPLIR]</li>
-          <li>RCS : [A REMPLIR - Ville et numéro]</li>
-          <li>Numéro de TVA intracommunautaire : [A REMPLIR]</li>
-          <li>Email : [A REMPLIR]</li>
-          <li>Téléphone : [A REMPLIR]</li>
+          <li>Forme juridique : {COMPANY.forme}</li>
+          <li>Capital social : {COMPANY.capital} euros</li>
+          <li>Siège social : {COMPANY.adresse}</li>
+          <li>SIRET : {COMPANY.siret}</li>
+          <li>RCS : {COMPANY.rcs}</li>
+          <li>Numéro de TVA intracommunautaire : {COMPANY.tva}</li>
+          <li>Email : {COMPANY.email}</li>
+          <li>Téléphone : {COMPANY.tel}</li>
         </UL>
       </Section>
 
@@ -102,24 +121,19 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
             </thead>
             <tbody>
               <tr className={`border-b ${tableBorder}`}>
-                <td className={`px-4 py-3 font-medium ${textPrimary}`}>Découverte</td>
-                <td className={`px-4 py-3 ${textSecondary}`}>Gratuit</td>
-                <td className={`px-4 py-3 ${textSecondary}`}>Accès limité pour découvrir la plateforme. 1 chantier actif, fonctionnalités de base.</td>
+                <td className={`px-4 py-3 font-medium ${textPrimary}`}>Gratuit</td>
+                <td className={`px-4 py-3 ${textSecondary}`}>0,00 EUR / mois</td>
+                <td className={`px-4 py-3 ${textSecondary}`}>Accès limité pour découvrir la plateforme. 5 devis/mois, 10 clients, 2 chantiers actifs.</td>
               </tr>
               <tr className={`border-b ${tableBorder}`}>
                 <td className={`px-4 py-3 font-medium ${textPrimary}`}>Artisan</td>
-                <td className={`px-4 py-3 ${textSecondary}`}>29 EUR / mois HT</td>
-                <td className={`px-4 py-3 ${textSecondary}`}>Idéal pour les artisans indépendants. Chantiers illimités, devis, factures, planning, stocks.</td>
-              </tr>
-              <tr className={`border-b ${tableBorder}`}>
-                <td className={`px-4 py-3 font-medium ${textPrimary}`}>Pro</td>
-                <td className={`px-4 py-3 ${textSecondary}`}>99 EUR / mois HT</td>
-                <td className={`px-4 py-3 ${textSecondary}`}>Pour les entreprises avec équipes. Toutes les fonctionnalités, gestion d'équipe, sous-traitants, trésorerie avancée.</td>
+                <td className={`px-4 py-3 ${textSecondary}`}>14,90 EUR / mois HT (ou 149 EUR / an HT)</td>
+                <td className={`px-4 py-3 ${textSecondary}`}>Idéal pour les artisans indépendants. Devis, factures, clients et chantiers illimités, signatures électroniques, export comptable.</td>
               </tr>
               <tr>
-                <td className={`px-4 py-3 font-medium ${textPrimary}`}>Entreprise</td>
-                <td className={`px-4 py-3 ${textSecondary}`}>Sur devis</td>
-                <td className={`px-4 py-3 ${textSecondary}`}>Solution sur mesure pour les grandes entreprises. Support dédié, intégrations personnalisées, formation.</td>
+                <td className={`px-4 py-3 font-medium ${textPrimary}`}>Équipe</td>
+                <td className={`px-4 py-3 ${textSecondary}`}>29,90 EUR / mois HT (ou 299 EUR / an HT)</td>
+                <td className={`px-4 py-3 ${textSecondary}`}>Pour les entreprises avec équipes. Jusqu'à 10 utilisateurs, pointage, trésorerie, sous-traitants, portail client, analytics avancés.</td>
               </tr>
             </tbody>
           </table>
@@ -149,7 +163,7 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
         </P>
         <P>
           Pour exercer ce droit, l'utilisateur doit adresser sa demande par email à l'adresse :
-          <span style={linkStyle}> [A REMPLIR - email de contact]</span>.
+          <span style={linkStyle}> {COMPANY.email}</span>.
         </P>
         <P>
           Le remboursement sera effectué dans un délai de 14 jours suivant la réception de la demande,
@@ -216,7 +230,7 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
         </P>
         <P>
           Conformément aux dispositions du Code de la consommation concernant le règlement amiable des
-          litiges, l'utilisateur peut recourir au service de médiation : [A REMPLIR - Nom et coordonnées du médiateur].
+          litiges, l'utilisateur peut recourir au service de médiation : {COMPANY.mediateur}.
         </P>
       </Section>
     </>
@@ -380,10 +394,10 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
           Le responsable du traitement des données à caractère personnel collectées sur BatiGesti est :
         </P>
         <UL>
-          <li>Raison sociale : <strong className={textPrimary}>[A REMPLIR]</strong></li>
-          <li>Adresse : [A REMPLIR]</li>
-          <li>Email du DPO / référent données : [A REMPLIR]</li>
-          <li>Téléphone : [A REMPLIR]</li>
+          <li>Raison sociale : <strong className={textPrimary}>{COMPANY.nom}</strong></li>
+          <li>Adresse : {COMPANY.adresse}</li>
+          <li>Email du DPO / référent données : {COMPANY.dpo}</li>
+          <li>Téléphone : {COMPANY.tel}</li>
         </UL>
       </Section>
 
@@ -526,7 +540,7 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
         </UL>
         <P>
           Pour exercer ces droits, l'utilisateur peut contacter le responsable du traitement à l'adresse :
-          <span style={linkStyle}> [A REMPLIR - email DPO]</span>.
+          <span style={linkStyle}> {COMPANY.dpo}</span>.
           Une réponse sera apportée dans un délai d'un mois à compter de la réception de la demande.
         </P>
       </Section>
@@ -570,7 +584,7 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
       <Section title="Article 9 - Contact et réclamations">
         <P>
           Pour toute question relative à la protection des données personnelles, l'utilisateur peut
-          contacter : <span style={linkStyle}>[A REMPLIR - email DPO]</span>.
+          contacter : <span style={linkStyle}>{COMPANY.dpo}</span>.
         </P>
         <P>
           Si l'utilisateur estime que ses droits ne sont pas respectés, il peut introduire une
@@ -590,23 +604,23 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
       <Section title="1. Éditeur du site">
         <P>Le site BatiGesti est édité par :</P>
         <UL>
-          <li>Raison sociale : <strong className={textPrimary}>[A REMPLIR]</strong></li>
-          <li>Forme juridique : [A REMPLIR]</li>
-          <li>Capital social : [A REMPLIR] euros</li>
-          <li>Siège social : [A REMPLIR - Adresse complète]</li>
-          <li>SIRET : [A REMPLIR]</li>
-          <li>RCS : [A REMPLIR - Ville et numéro]</li>
-          <li>Numéro de TVA intracommunautaire : [A REMPLIR]</li>
-          <li>Email : <span style={linkStyle}>[A REMPLIR]</span></li>
-          <li>Téléphone : [A REMPLIR]</li>
+          <li>Raison sociale : <strong className={textPrimary}>{COMPANY.nom}</strong></li>
+          <li>Forme juridique : {COMPANY.forme}</li>
+          <li>Capital social : {COMPANY.capital} euros</li>
+          <li>Siège social : {COMPANY.adresse}</li>
+          <li>SIRET : {COMPANY.siret}</li>
+          <li>RCS : {COMPANY.rcs}</li>
+          <li>Numéro de TVA intracommunautaire : {COMPANY.tva}</li>
+          <li>Email : <span style={linkStyle}>{COMPANY.email}</span></li>
+          <li>Téléphone : {COMPANY.tel}</li>
         </UL>
       </Section>
 
       <Section title="2. Directeur de la publication">
         <UL>
-          <li>Nom : <strong className={textPrimary}>[A REMPLIR - Nom et prénom]</strong></li>
-          <li>Qualité : [A REMPLIR - Gérant / Président / etc.]</li>
-          <li>Email : <span style={linkStyle}>[A REMPLIR]</span></li>
+          <li>Nom : <strong className={textPrimary}>{COMPANY.directeur}</strong></li>
+          <li>Qualité : {COMPANY.qualite}</li>
+          <li>Email : <span style={linkStyle}>{COMPANY.email}</span></li>
         </UL>
       </Section>
 
@@ -698,7 +712,7 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
         <P>
           Pour toute question ou demande d'information concernant le site, ou tout signalement de
           contenu ou d'activités illicites, l'utilisateur peut contacter l'éditeur à l'adresse
-          email suivante : <span style={linkStyle}>[A REMPLIR]</span>.
+          email suivante : <span style={linkStyle}>{COMPANY.email}</span>.
         </P>
       </Section>
     </>
