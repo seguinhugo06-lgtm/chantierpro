@@ -31,7 +31,7 @@ const PLAN_ICONS = { gratuit: Zap, artisan: Hammer, equipe: Users };
 
 // ─── Main Component ─────────────────────────────────────────────────────────
 
-export default function PlanPage({ isDark, couleur = '#f97316' }) {
+export default function PlanPage({ isDark, couleur = '#f97316', setPage }) {
   const { confirm } = useConfirm();
 
   // Theme
@@ -74,16 +74,25 @@ export default function PlanPage({ isDark, couleur = '#f97316' }) {
     finally { setLoadingPlan(null); }
   }, [billing, planId, setSubscription]);
 
+  const [portalLoading, setPortalLoading] = useState(false);
   const handlePortal = useCallback(async () => {
-    const result = await createPortalSession();
-    if (result.error) { toast.error('Erreur', result.error.message || 'Portail indisponible'); return; }
-    if (result.url) window.location.href = result.url;
+    setPortalLoading(true);
+    try {
+      const result = await createPortalSession();
+      if (result.error) { toast.error('Erreur', result.error.message || 'Portail de facturation indisponible'); return; }
+      if (result.url) { window.open(result.url, '_blank'); }
+      else { toast.error('Erreur', 'Impossible d\'ouvrir le portail de facturation. Réessayez plus tard.'); }
+    } catch {
+      toast.error('Erreur', 'Service de facturation indisponible. Réessayez plus tard.');
+    } finally {
+      setPortalLoading(false);
+    }
   }, []);
 
   const handleCancel = useCallback(async () => {
     const ok = await confirm({
       title: 'Annuler votre abonnement ?',
-      message: 'Vous conservez l\'accès à toutes les fonctionnalités jusqu\'à la fin de votre période de facturation. Vos données seront conservées.',
+      message: `Vous conservez l'accès à toutes les fonctionnalités jusqu'au ${sub?.current_period_end ? new Date(sub.current_period_end).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : 'la fin de votre période'}. Vos données seront conservées.`,
       confirmText: 'Confirmer l\'annulation',
       cancelText: 'Garder mon plan',
     });
@@ -174,18 +183,24 @@ export default function PlanPage({ isDark, couleur = '#f97316' }) {
               {isPaid && !isDemo && (
                 <button
                   onClick={handlePortal}
-                  className={`px-4 py-2 rounded-xl text-xs font-medium flex items-center gap-1.5 border transition-colors ${
+                  disabled={portalLoading}
+                  className={`px-4 py-2.5 min-h-[44px] rounded-xl text-xs font-medium flex items-center gap-1.5 border transition-colors disabled:opacity-50 ${
                     isDark ? 'border-slate-600 text-slate-300 hover:bg-slate-700' : 'border-slate-200 text-slate-600 hover:bg-slate-50'
                   }`}
                 >
-                  <CreditCard size={14} /> Mes factures et paiement <ExternalLink size={11} />
+                  {portalLoading ? (
+                    <><span className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" /> Chargement...</>
+                  ) : (
+                    <><CreditCard size={14} /> Mes factures et paiement <ExternalLink size={11} /></>
+                  )}
                 </button>
               )}
               {isPaid && !sub?.cancel_at_period_end && (
                 <button
                   onClick={handleCancel}
                   disabled={cancelling}
-                  className={`px-4 py-2 rounded-xl text-xs font-medium transition-colors ${
+                  aria-label={`Annuler mon abonnement ${plan.name}`}
+                  className={`px-4 py-2.5 min-h-[44px] rounded-xl text-xs font-medium transition-colors ${
                     isDark ? 'text-red-400 hover:bg-red-500/10' : 'text-red-500 hover:bg-red-50'
                   }`}
                 >
@@ -208,19 +223,21 @@ export default function PlanPage({ isDark, couleur = '#f97316' }) {
         {/* Plans comparison */}
         <div className="animate-fade-slide-up" style={{ animationDelay: '100ms' }}>
           {/* Billing toggle */}
-          <div className="flex items-center justify-center gap-3 mb-5">
-            <span className={`text-xs font-medium ${billing === 'monthly' ? textPrimary : textMuted}`}>Mensuel</span>
+          <div className="flex items-center justify-center gap-4 mb-5">
+            <span className={`text-sm font-medium ${billing === 'monthly' ? textPrimary : textMuted}`}>Mensuel</span>
             <button
               onClick={() => setBilling(b => b === 'monthly' ? 'yearly' : 'monthly')}
+              role="switch"
+              aria-checked={billing === 'yearly'}
               aria-label="Basculer facturation mensuelle/annuelle"
-              className={`relative w-12 h-7 rounded-full transition-colors ${billing === 'yearly' ? '' : isDark ? 'bg-slate-600' : 'bg-slate-300'}`}
+              className={`relative w-12 h-7 rounded-full transition-colors flex-shrink-0 ${billing === 'yearly' ? '' : isDark ? 'bg-slate-600' : 'bg-slate-300'}`}
               style={billing === 'yearly' ? { backgroundColor: couleur } : {}}
             >
-              <span className={`absolute top-1 w-5 h-5 rounded-full bg-white shadow transition-transform ${billing === 'yearly' ? 'translate-x-[26px]' : 'translate-x-1'}`} />
+              <span className={`absolute top-1 w-5 h-5 rounded-full bg-white shadow transition-transform ${billing === 'yearly' ? 'translate-x-[22px]' : 'translate-x-1'}`} />
             </button>
-            <span className={`text-xs font-medium ${billing === 'yearly' ? textPrimary : textMuted}`}>
+            <span className={`text-sm font-medium ${billing === 'yearly' ? textPrimary : textMuted}`}>
               Annuel
-              <span className={`ml-1 px-1.5 py-0.5 rounded-full text-[11px] font-bold ${isDark ? 'bg-green-500/20 text-green-300' : 'bg-green-50 text-green-700'}`}>
+              <span className={`ml-1.5 px-1.5 py-0.5 rounded-full text-[11px] font-bold ${isDark ? 'bg-green-500/20 text-green-300' : 'bg-green-50 text-green-700'}`}>
                 -{YEARLY_DISCOUNT}%
               </span>
             </span>
@@ -285,7 +302,12 @@ export default function PlanPage({ isDark, couleur = '#f97316' }) {
                     </span>
                     <span className={`text-xs ${textMuted}`}> HT/mois</span>
                     {billing === 'yearly' && p.priceYearly > 0 && (
-                      <p className={`text-[11px] mt-0.5 ${textMuted}`}>Facturé {p.priceYearly}€/an</p>
+                      <>
+                        <p className={`text-[11px] mt-0.5 ${textMuted}`}>Facturé {p.priceYearly}€/an</p>
+                        <p className="text-[11px] mt-0.5 text-green-500 font-medium">
+                          Économisez {Math.round(p.priceMonthly * 12 - p.priceYearly)}€/an
+                        </p>
+                      </>
                     )}
                   </div>
 
@@ -303,7 +325,7 @@ export default function PlanPage({ isDark, couleur = '#f97316' }) {
                   {isCurrent ? (
                     <button
                       disabled
-                      className={`w-full py-2 rounded-xl text-xs font-medium border ${
+                      className={`w-full py-2.5 min-h-[44px] rounded-xl text-xs font-medium border ${
                         isDark ? 'border-slate-600 text-slate-500' : 'border-slate-200 text-slate-400'
                       }`}
                     >
@@ -313,7 +335,7 @@ export default function PlanPage({ isDark, couleur = '#f97316' }) {
                     <button
                       onClick={() => handleSelectPlan(pid)}
                       disabled={loadingPlan === pid}
-                      className="w-full py-2.5 rounded-xl text-xs font-bold text-white flex items-center justify-center gap-1.5 transition-all hover:shadow-lg hover:scale-[1.02]"
+                      className="w-full py-2.5 min-h-[44px] rounded-xl text-xs font-bold text-white flex items-center justify-center gap-1.5 transition-all hover:shadow-lg hover:scale-[1.02]"
                       style={{ backgroundColor: p.color }}
                     >
                       {loadingPlan === pid ? (
@@ -328,7 +350,7 @@ export default function PlanPage({ isDark, couleur = '#f97316' }) {
                   ) : (
                     <button
                       disabled
-                      className={`w-full py-2 rounded-xl text-xs font-medium ${
+                      className={`w-full py-2.5 min-h-[44px] rounded-xl text-xs font-medium ${
                         isDark ? 'text-slate-600' : 'text-slate-300'
                       }`}
                     >
@@ -341,8 +363,20 @@ export default function PlanPage({ isDark, couleur = '#f97316' }) {
           </div>
         </div>
 
+        {/* Trust elements */}
+        <div className={`mt-8 text-center text-xs ${textMuted} space-y-1`}>
+          <p>Sans engagement · Annulable à tout moment · Paiement sécurisé</p>
+          <p>
+            <button onClick={() => setPage?.('cgu')} className="underline hover:opacity-80">CGU</button>
+            {' · '}
+            <button onClick={() => setPage?.('cgv')} className="underline hover:opacity-80">CGV</button>
+            {' · '}
+            <button onClick={() => setPage?.('confidentialite')} className="underline hover:opacity-80">Confidentialité</button>
+          </p>
+        </div>
+
         {/* Logout */}
-        <div className="mt-10 text-center animate-fade-slide-up" style={{ animationDelay: '200ms' }}>
+        <div className="mt-6 text-center animate-fade-slide-up" style={{ animationDelay: '200ms' }}>
           <button
             onClick={handleLogout}
             className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-colors ${
