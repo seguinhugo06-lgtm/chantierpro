@@ -371,7 +371,7 @@ export default function ProfilePage({
                 <div className="flex flex-wrap gap-2 mb-2">
                   {!entreprise.decennaleAssureur && (
                     <button
-                      onClick={() => setPage('settings')}
+                      onClick={() => { try { localStorage.setItem('cp_settings_tab', 'assurances'); } catch {} setPage('settings'); }}
                       className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-colors border ${
                         isDark ? 'bg-red-500/10 border-red-500/20 text-red-300 hover:bg-red-500/20' : 'bg-red-50 border-red-200 text-red-700 hover:bg-red-100'
                       }`}
@@ -383,7 +383,7 @@ export default function ProfilePage({
                   )}
                   {!entreprise.rcProAssureur && (
                     <button
-                      onClick={() => setPage('settings')}
+                      onClick={() => { try { localStorage.setItem('cp_settings_tab', 'assurances'); } catch {} setPage('settings'); }}
                       className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-colors border ${
                         isDark ? 'bg-red-500/10 border-red-500/20 text-red-300 hover:bg-red-500/20' : 'bg-red-50 border-red-200 text-red-700 hover:bg-red-100'
                       }`}
