@@ -212,7 +212,7 @@ function KPICard({ label, shortLabel, value, sub, trend, colorClasses, isDark, d
       onKeyDown={onClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } } : undefined}
       style={onClick ? { ringColor: 'currentColor' } : undefined}
     >
-      <p className={`text-sm font-medium ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
+      <p className={`text-sm font-medium ${isDark ? 'text-slate-300' : 'text-gray-600'}`}>
         {shortLabel ? (
           <>
             <span className="hidden sm:inline">{label}</span>
@@ -1844,7 +1844,7 @@ export default function Dashboard({
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4 }}
-              className={`text-2xl sm:text-3xl font-semibold tracking-tight ${textPrimary}`}
+              className={`text-2xl sm:text-3xl font-semibold tracking-tight ${isDark ? 'text-white' : 'text-gray-900'}`}
             >
               Bonjour{prenom ? `, ${prenom}` : ''}
             </motion.h1>

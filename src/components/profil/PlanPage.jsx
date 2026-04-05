@@ -158,14 +158,14 @@ export default function PlanPage({ isDark, couleur = '#f97316', setPage }) {
                     </span>
                   )}
                 </div>
-                <p className={`text-sm ${textMuted}`}>
+                <p className={`text-sm font-medium ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
                   {isPaid
                     ? `${plan.priceMonthly}€ HT/mois · ${sub?.billing_interval === 'yearly' ? 'Annuel' : 'Mensuel'}`
                     : 'Gratuit — Découverte'
                   }
                 </p>
                 {nextBilling && !sub?.cancel_at_period_end && (
-                  <p className={`text-xs mt-0.5 ${textMuted}`}>
+                  <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
                     <Clock size={11} className="inline mr-1" />
                     Prochaine facturation : {nextBilling}
                   </p>

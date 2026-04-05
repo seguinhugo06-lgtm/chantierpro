@@ -2177,13 +2177,13 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                           <>
                             <div className="grid grid-cols-3 gap-2">
                               <div className={`p-3 rounded-xl text-center border ${isDark ? 'bg-slate-700/50 border-slate-600' : 'bg-white border-slate-200'}`} style={{ borderLeftWidth: '3px', borderLeftColor: '#10b981' }}>
-                                <p className={`text-xs font-medium ${textMuted} mb-1`}>Facturé</p>
+                                <p className={`text-xs font-medium ${isDark ? 'text-slate-300' : 'text-slate-600'} mb-1`}>Facturé</p>
                                 <p className={`text-xl font-bold ${textPrimary}`}>
                                   {modeDiscret ? '**' : e.tauxHoraire || 45}<span className="text-sm font-normal">€</span>
                                 </p>
                               </div>
                               <div className={`p-3 rounded-xl text-center border ${isDark ? 'bg-slate-700/50 border-slate-600' : 'bg-white border-slate-200'}`} style={{ borderLeftWidth: '3px', borderLeftColor: '#ef4444' }}>
-                                <p className={`text-xs font-medium ${textMuted} mb-1`}>Coût</p>
+                                <p className={`text-xs font-medium ${isDark ? 'text-slate-300' : 'text-slate-600'} mb-1`}>Coût</p>
                                 <p className={`text-xl font-bold ${textPrimary}`}>
                                   {modeDiscret ? '**' : e.coutHoraireCharge || 28}<span className="text-sm font-normal">€</span>
                                 </p>

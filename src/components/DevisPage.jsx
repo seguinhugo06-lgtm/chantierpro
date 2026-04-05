@@ -5366,7 +5366,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                 {/* Content */}
                 <div className="flex-1 min-w-0">
                   {/* Row 0: Client name (prominent) + Amount TTC */}
-                  <div className="flex items-start justify-between gap-2 mb-0.5">
+                  <div className="flex items-start justify-between gap-1.5 mb-0.5">
                     <div className="flex-1 min-w-0">
                       {(isOrphan || isNameless) ? (
                         <span className="inline-flex items-center gap-1">
@@ -5385,7 +5385,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                     {!canViewPrices ? null : getDevisTTC(d) <= 0 ? (
                       <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-lg shrink-0 ${isDark ? 'bg-amber-900/40 text-amber-400' : 'bg-amber-50 text-amber-600'}`}>0 €</span>
                     ) : (
-                      <p className="text-lg font-bold text-right tabular-nums whitespace-nowrap shrink-0" style={{color: isAvoirItem ? '#dc2626' : couleur}}>
+                      <p className="text-sm sm:text-lg font-bold text-right tabular-nums whitespace-nowrap shrink-0" style={{color: isAvoirItem ? '#dc2626' : couleur}}>
                         {isAvoirItem ? `-${formatMoney(Math.abs(getDevisTTC(d)))}` : formatMoney(getDevisTTC(d))}
                       </p>
                     )}

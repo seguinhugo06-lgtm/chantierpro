@@ -272,9 +272,9 @@ export default function ProfilePage({
 
       {/* ═══════════════════ SECTION 1: HERO ═══════════════════ */}
       <section className="relative overflow-hidden px-3 sm:px-6 pt-6 pb-8 sm:pt-10 sm:pb-10">
-        {/* Gradient background */}
-        <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${hexToRgba(couleur, 0.06)}, transparent 70%)` }} />
-        <div className="absolute top-0 right-0 w-64 h-64 rounded-full blur-3xl" style={{ background: hexToRgba(couleur, 0.08) }} />
+        {/* Gradient background — subtle, preserves text contrast */}
+        <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${hexToRgba(couleur, isDark ? 0.06 : 0.04)}, transparent 70%)` }} />
+        <div className="absolute top-0 right-0 w-64 h-64 rounded-full blur-3xl" style={{ background: hexToRgba(couleur, isDark ? 0.08 : 0.05) }} />
 
         <div className="relative max-w-4xl mx-auto">
           {/* Profile header */}
@@ -295,7 +295,7 @@ export default function ProfilePage({
               <h1 className={`text-2xl sm:text-3xl font-bold mb-1 ${textPrimary}`}>
                 {entreprise.nom || 'Mon Entreprise'}
               </h1>
-              <p className={`text-sm mb-3 ${textMuted}`}>{user?.email || ''}</p>
+              <p className={`text-sm mb-3 ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>{user?.email || ''}</p>
 
               {/* Plan badge + completeness */}
               <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
