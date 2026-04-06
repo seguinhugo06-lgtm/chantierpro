@@ -255,7 +255,14 @@ export default function FormulairesPage({ isDark, couleur, showToast, user, entr
               <div key={sub.id} className={`rounded-xl border p-4 ${cardBg}`}>
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className={`text-sm font-medium ${textPrimary}`}>{sub.templateName}</p>
+                    <div className="flex items-center gap-2">
+                      <p className={`text-sm font-medium ${textPrimary}`}>{sub.templateName}</p>
+                      {sub.numero && (
+                        <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${isDark ? 'bg-slate-700 text-slate-400' : 'bg-slate-100 text-slate-500'}`}>
+                          {sub.numero}
+                        </span>
+                      )}
+                    </div>
                     <p className={`text-xs ${textSecondary}`}>
                       {new Date(sub.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                     </p>

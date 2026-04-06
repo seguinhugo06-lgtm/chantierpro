@@ -636,7 +636,7 @@ export default function App() {
   // RBAC: redirect to dashboard if user accesses a restricted page
   useEffect(() => {
     if (orgLoading) return; // Wait for org resolution
-    const publicPages = ['dashboard', 'profil', 'plan', 'pricing', 'checkout-success', 'cgv', 'cgu', 'confidentialite', 'mentions-legales', 'accessibilite', 'changelog', 'design-system'];
+    const publicPages = ['dashboard', 'profil', 'plan', 'pricing', 'checkout-success', 'cgv', 'cgu', 'confidentialite', 'mentions-legales', 'accessibilite', 'conformite', 'changelog', 'design-system'];
     // Billing is restricted to owner only
     if ((page === 'billing') && !canAccessBilling) {
       console.log('[RBAC] Billing restricted to owner, redirecting → dashboard');
@@ -1244,6 +1244,7 @@ export default function App() {
     { id: 'equipe', icon: HardHat, label: 'Équipe' },
     { id: 'bibliotheque', icon: Library, label: 'Bibliothèque' },
     { id: 'catalogue', icon: Package, label: 'Catalogue' },
+    { id: 'commandes', icon: ShoppingCart, label: 'Commandes', feature: 'commandes' },
     { id: 'avis-google', icon: Megaphone, label: 'Marketing', feature: 'avis_google' },
     { id: 'contrats', icon: FileCheck, label: 'Contrats' },
     { id: 'formulaires', icon: ClipboardCheck, label: 'Formulaires' },

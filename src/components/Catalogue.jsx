@@ -1773,12 +1773,12 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                       📦
                     </div>
                     <div>
-                      <p className={`text-sm font-semibold ${textPrimary}`}>Votre catalogue est presque vide</p>
+                      <p className={`text-sm font-semibold ${textPrimary}`}>Complétez votre catalogue</p>
                       <p className={`text-xs ${textMuted} max-w-sm`}>
-                        Importez des articles depuis notre référentiel BTP (2 000+ articles) ou ajoutez vos propres fournitures pour créer vos devis rapidement.
+                        Importez vos tarifs fournisseurs (Rexel, Sonepar, Cedeo) via CSV, ou utilisez notre référentiel BTP avec 2 000+ articles pré-chiffrés.
                       </p>
                       <div className="flex gap-1.5 mt-1.5 flex-wrap">
-                        {['Prix à jour', 'Catégories BTP', 'Unités standards'].map(tag => (
+                        {['Tarifs Rexel/Sonepar', 'Référentiel BTP', 'Import CSV'].map(tag => (
                           <span key={tag} className={`text-[10px] px-2 py-0.5 rounded-full ${isDark ? 'bg-slate-600 text-slate-300' : 'bg-white/80 text-slate-600 border border-slate-200'}`}>{tag}</span>
                         ))}
                       </div>
@@ -1789,7 +1789,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                       <Sparkles size={14} /> Référentiel BTP
                     </button>
                     <button onClick={() => fileInputRef.current?.click()} className={`px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-2 whitespace-nowrap border ${isDark ? 'bg-slate-700 text-slate-300 border-slate-600' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}>
-                      <Upload size={14} /> Importer CSV
+                      <Upload size={14} /> Tarifs fournisseurs
                     </button>
                   </div>
                 </div>
