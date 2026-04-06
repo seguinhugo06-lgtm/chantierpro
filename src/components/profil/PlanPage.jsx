@@ -70,20 +70,27 @@ export default function PlanPage({ isDark, couleur = '#f97316', setPage }) {
         return;
       }
       if (result.url) window.location.href = result.url;
-    } catch { toast.error('Erreur', 'Une erreur est survenue'); }
+    } catch { toast.error('Paiement indisponible', 'Contactez-nous à contact@batigesti.fr pour souscrire.'); }
     finally { setLoadingPlan(null); }
   }, [billing, planId, setSubscription]);
 
   const [portalLoading, setPortalLoading] = useState(false);
   const handlePortal = useCallback(async () => {
+    if (isDemo) {
+      toast.info('Mode démo', 'Le portail de facturation n\'est pas disponible en mode démo.');
+      return;
+    }
     setPortalLoading(true);
     try {
       const result = await createPortalSession();
-      if (result.error) { toast.error('Erreur', result.error.message || 'Portail de facturation indisponible'); return; }
+      if (result.error) {
+        toast.error('Portail indisponible', 'Contactez-nous à contact@batigesti.fr pour toute question de facturation.');
+        return;
+      }
       if (result.url) { window.open(result.url, '_blank'); }
-      else { toast.error('Erreur', 'Impossible d\'ouvrir le portail de facturation. Réessayez plus tard.'); }
+      else { toast.error('Portail indisponible', 'Contactez-nous à contact@batigesti.fr pour toute question de facturation.'); }
     } catch {
-      toast.error('Erreur', 'Service de facturation indisponible. Réessayez plus tard.');
+      toast.error('Portail indisponible', 'Contactez-nous à contact@batigesti.fr pour toute question de facturation.');
     } finally {
       setPortalLoading(false);
     }
