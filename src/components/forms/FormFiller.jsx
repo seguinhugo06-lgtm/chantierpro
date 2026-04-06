@@ -182,8 +182,15 @@ export default function FormFiller({ template, isDark, couleur, showToast, onSub
       return;
     }
 
+    // Auto-generate submission number (BI-YYYY-NNNNN for bons d'intervention, FORM-YYYY-NNNNN otherwise)
+    const prefix = (template?.categorie === 'Intervention') ? 'BI' : 'FORM';
+    const year = new Date().getFullYear();
+    const seq = String(Date.now()).slice(-5);
+    const numero = `${prefix}-${year}-${seq}`;
+
     const submission = {
       id: `sub_${Date.now()}`,
+      numero,
       templateId: template?.id,
       templateName: template?.name,
       chantierId: selectedChantierId || chantierId || null,

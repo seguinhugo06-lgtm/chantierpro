@@ -36,6 +36,7 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
     confidentialite: { title: 'Politique de Confidentialité', icon: Lock },
     'mentions-legales': { title: 'Mentions Légales', icon: Shield },
     accessibilite: { title: 'Déclaration d\'Accessibilité', icon: Shield },
+    conformite: { title: 'Attestation de Conformité', icon: FileText },
   };
 
   const config = pageConfig[page] || pageConfig.cgv;
@@ -838,6 +839,101 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
     </>
   );
 
+  const renderConformite = () => (
+    <>
+      <Section title="Attestation de conformité — Article 286 du CGI">
+        <div className={`rounded-xl border-2 p-5 mb-6 ${isDark ? 'border-emerald-500/30 bg-emerald-900/10' : 'border-emerald-200 bg-emerald-50'}`}>
+          <P>
+            La présente attestation est délivrée conformément aux dispositions de l'article 286, I, 3° bis du
+            Code Général des Impôts (CGI) et du Bulletin Officiel des Finances Publiques (BOFiP) BOI-TVA-DECLA-30-10-30.
+          </P>
+          <P>
+            <strong className={textPrimary}>L'éditeur {COMPANY.nom}</strong>, dont le siège social est situé
+            au {COMPANY.adresse}, atteste que le logiciel <strong className={textPrimary}>BatiGesti</strong> satisfait
+            aux conditions d'inaltérabilité, de sécurisation, de conservation et d'archivage des données prévues
+            par les textes légaux et réglementaires en vigueur.
+          </P>
+        </div>
+      </Section>
+
+      <Section title="1. Inaltérabilité">
+        <P>
+          Le logiciel BatiGesti garantit l'inaltérabilité des données de facturation. Une fois une facture validée et
+          numérotée, son contenu ne peut être modifié. Toute correction donne lieu à l'émission d'un avoir référençant
+          la facture d'origine, conformément à l'article L441-3 du Code de Commerce.
+        </P>
+        <UL>
+          <li>Numérotation séquentielle et continue des factures (sans rupture)</li>
+          <li>Impossibilité de modifier une facture validée (statut verrouillé)</li>
+          <li>Traçabilité des modifications via historique horodaté</li>
+          <li>Les avoirs référencent systématiquement la facture d'origine</li>
+        </UL>
+      </Section>
+
+      <Section title="2. Sécurisation">
+        <P>
+          BatiGesti met en œuvre les mesures de sécurisation suivantes pour garantir l'intégrité des données :
+        </P>
+        <UL>
+          <li>Authentification obligatoire par email/mot de passe (Supabase Auth)</li>
+          <li>Chiffrement des données en transit (TLS 1.3) et au repos (AES-256)</li>
+          <li>Isolation des données par organisation (Row Level Security — RLS)</li>
+          <li>Journalisation des accès et des opérations critiques</li>
+          <li>Headers de sécurité HTTP (CSP, HSTS, X-Frame-Options)</li>
+        </UL>
+      </Section>
+
+      <Section title="3. Conservation">
+        <P>
+          Les données de facturation sont conservées conformément aux obligations légales :
+        </P>
+        <UL>
+          <li>Conservation des factures pendant <strong className={textPrimary}>10 ans</strong> (Article L123-22 du Code de Commerce)</li>
+          <li>Données stockées sur infrastructure cloud européenne (Supabase — AWS eu-west, Irlande)</li>
+          <li>Sauvegardes quotidiennes automatiques avec rétention de 30 jours</li>
+          <li>Export des données disponible à tout moment (JSON, CSV, FEC)</li>
+        </UL>
+      </Section>
+
+      <Section title="4. Archivage">
+        <P>
+          Le logiciel assure l'archivage pérenne des données via :
+        </P>
+        <UL>
+          <li>Clôture annuelle avec génération d'un export FEC (Fichier des Écritures Comptables)</li>
+          <li>Format d'archivage conforme à l'article A.47 A-1 du Livre des Procédures Fiscales</li>
+          <li>Factur-X PDF/A-3 (profil BASIC) pour l'archivage longue durée des factures</li>
+          <li>Conservation des données même après résiliation (30 jours puis suppression sur demande)</li>
+        </UL>
+      </Section>
+
+      <Section title="5. Conformité facturation électronique 2026">
+        <P>
+          BatiGesti intègre nativement le format <strong className={textPrimary}>Factur-X</strong> (norme
+          franco-allemande EN 16931) pour la facturation électronique, conformément à l'ordonnance n°2021-1190
+          du 15 septembre 2021 et au décret n°2022-1299 du 7 octobre 2022.
+        </P>
+        <UL>
+          <li>Génération de factures au format PDF/A-3 avec XML embarqué (Factur-X BASIC)</li>
+          <li>Mentions obligatoires BTP incluses (assurances, TVA réduite, acomptes)</li>
+          <li>Numéro SIRET, TVA intracommunautaire, et RCS intégrés dans les métadonnées</li>
+          <li>Score de conformité 2026 avec checklist interactive dans les paramètres</li>
+        </UL>
+      </Section>
+
+      <Section title="6. Informations de l'éditeur">
+        <UL>
+          <li>Éditeur : <strong className={textPrimary}>{COMPANY.nom}</strong></li>
+          <li>SIRET : {COMPANY.siret}</li>
+          <li>Adresse : {COMPANY.adresse}</li>
+          <li>Contact : <span style={linkStyle}>{COMPANY.email}</span></li>
+          <li>Version du logiciel : 1.0</li>
+          <li>Date de la présente attestation : 5 avril 2026</li>
+        </UL>
+      </Section>
+    </>
+  );
+
   const renderContent = () => {
     switch (page) {
       case 'cgv':
@@ -850,6 +946,8 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
         return renderMentionsLegales();
       case 'accessibilite':
         return renderAccessibilite();
+      case 'conformite':
+        return renderConformite();
       default:
         return renderCGV();
     }

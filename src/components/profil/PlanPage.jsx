@@ -389,6 +389,8 @@ export default function PlanPage({ isDark, couleur = '#f97316', setPage }) {
             <button onClick={() => setPage?.('mentions-legales')} className="underline hover:opacity-80">Mentions légales</button>
             {' · '}
             <button onClick={() => setPage?.('accessibilite')} className="underline hover:opacity-80">Accessibilité</button>
+            {' · '}
+            <button onClick={() => setPage?.('conformite')} className="underline hover:opacity-80">Conformité</button>
           </p>
         </div>
 

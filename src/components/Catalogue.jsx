@@ -1414,8 +1414,8 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
           <div className="flex items-center gap-3">
             <FileSpreadsheet size={20} className={textMuted} />
             <div>
-              <p className={`text-sm font-medium ${textPrimary}`}>Vous avez déjà un catalogue ?</p>
-              <p className={`text-xs ${textMuted}`}>Importez votre fichier CSV existant</p>
+              <p className={`text-sm font-medium ${textPrimary}`}>Importez vos tarifs fournisseurs</p>
+              <p className={`text-xs ${textMuted}`}>CSV depuis Rexel, Sonepar, Cedeo, ou votre propre fichier</p>
             </div>
           </div>
           <button onClick={() => fileInputRef.current?.click()} className={`px-4 py-2 rounded-lg text-sm font-medium ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-white border border-slate-200 hover:bg-slate-100'}`}>
@@ -1444,7 +1444,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
           <input type="file" ref={fileInputRef} accept=".csv,.txt" onChange={handleFileUpload} className="hidden" />
           {/* Desktop: 3 icon buttons */}
           {/* #2: Header icons with enhanced tooltips */}
-          <button onClick={() => fileInputRef.current?.click()} className={`hidden sm:flex w-11 h-11 rounded-xl items-center justify-center ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'}`} title="Importer des articles (CSV)" aria-label="Importer des articles depuis un fichier CSV">
+          <button onClick={() => fileInputRef.current?.click()} className={`hidden sm:flex w-11 h-11 rounded-xl items-center justify-center ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'}`} title="Importer tarifs fournisseurs (CSV Rexel, Sonepar, Cedeo...)" aria-label="Importer des tarifs fournisseurs depuis un fichier CSV">
             <Upload size={16} />
           </button>
           <button onClick={exportCSV} className={`hidden sm:flex w-11 h-11 rounded-xl items-center justify-center ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'}`} title="Exporter le catalogue (CSV/Excel)" aria-label="Exporter le catalogue en CSV">

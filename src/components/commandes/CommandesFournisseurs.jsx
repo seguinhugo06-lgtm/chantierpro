@@ -97,6 +97,8 @@ function createEmptyCommande(commandes) {
     tvaRate: 20,
     montantTTC: 0,
     statut: 'brouillon',
+    factureVerifiee: false,
+    montantFactureFournisseur: null,
     notes: '',
     createdAt: new Date().toISOString(),
   };
@@ -1093,6 +1095,39 @@ export default function CommandesFournisseurs({
                 <CheckCircle size={14} />
                 Livraison complete
               </button>
+            )}
+            {cmd.statut === 'livree' && !cmd.factureVerifiee && (
+              <button
+                onClick={() => {
+                  const montant = prompt('Montant facture fournisseur (€ HT) :');
+                  if (montant !== null) {
+                    const m = parseFloat(montant);
+                    const ecart = Math.abs(m - (cmd.montantHT || 0));
+                    const ok = ecart < 1;
+                    const updates = { factureVerifiee: true, montantFactureFournisseur: m };
+                    const updated = commandes.map(c => c.id === cmd.id ? { ...c, ...updates } : c);
+                    saveCommandes(updated);
+                    setSelectedCommande(prev => prev?.id === cmd.id ? { ...prev, ...updates } : prev);
+                    if (ok) {
+                      showToast?.('Facture conforme — écart < 1€', 'success');
+                    } else {
+                      showToast?.(`Écart de ${ecart.toFixed(2)}€ détecté (commande: ${cmd.montantHT}€, facture: ${m}€)`, 'warning');
+                    }
+                  }
+                }}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${isDark ? 'bg-amber-500/20 text-amber-300 hover:bg-amber-500/30' : 'bg-amber-50 text-amber-700 hover:bg-amber-100'}`}
+              >
+                <FileText size={14} />
+                Vérifier facture
+              </button>
+            )}
+            {cmd.factureVerifiee && (
+              <span className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium ${isDark ? 'bg-emerald-500/20 text-emerald-300' : 'bg-emerald-50 text-emerald-700'}`}>
+                <CheckCircle size={14} /> Facture vérifiée
+                {cmd.montantFactureFournisseur != null && cmd.montantHT && Math.abs(cmd.montantFactureFournisseur - cmd.montantHT) >= 1 && (
+                  <span className="text-amber-500 ml-1">(écart {Math.abs(cmd.montantFactureFournisseur - cmd.montantHT).toFixed(0)}€)</span>
+                )}
+              </span>
             )}
             {cmd.statut !== 'annulee' && cmd.statut !== 'livree' && (
               <button

@@ -1046,7 +1046,7 @@ export default function App() {
   }
 
   // Legal / public pages (accessible without auth)
-  const publicPages = ['cgv', 'cgu', 'confidentialite', 'mentions-legales', 'accessibilite', 'changelog'];
+  const publicPages = ['cgv', 'cgu', 'confidentialite', 'mentions-legales', 'accessibilite', 'conformite', 'changelog'];
   if (!user && !isDemo && publicPages.includes(page)) return (
     <Suspense fallback={<div className="min-h-screen bg-[#f5f5f5] flex items-center justify-center"><Building2 size={48} className="text-orange-500 animate-bounce" /></div>}>
       <div className="min-h-screen bg-[#f5f5f5] p-4 sm:p-6">
@@ -1788,6 +1788,7 @@ export default function App() {
               {page === 'confidentialite' && <LegalPages page="confidentialite" isDark={isDark} couleur={couleur} setPage={setPage} />}
               {page === 'mentions-legales' && <LegalPages page="mentions-legales" isDark={isDark} couleur={couleur} setPage={setPage} />}
               {page === 'accessibilite' && <LegalPages page="accessibilite" isDark={isDark} couleur={couleur} setPage={setPage} />}
+              {page === 'conformite' && <LegalPages page="conformite" isDark={isDark} couleur={couleur} setPage={setPage} />}
               {page === 'changelog' && <Changelog isDark={isDark} couleur={couleur} setPage={setPage} />}
             </Suspense>
           </ErrorBoundary>
