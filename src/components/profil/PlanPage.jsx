@@ -257,7 +257,7 @@ export default function PlanPage({ isDark, couleur = '#f97316', setPage }) {
           </div>
 
           {/* Plan cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
             {PLAN_ORDER.map((pid) => {
               const p = PLANS[pid];
               if (!p) return null;
