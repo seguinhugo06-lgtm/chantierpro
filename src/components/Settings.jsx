@@ -189,8 +189,9 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
           const current = typeof updater === 'function' ? updater(entreprise) : updater;
           const { error } = await supabase
             .from('entreprise')
-            .upsert({ user_id: user.id, settings_json: current }, { onConflict: 'user_id' });
-          if (error) console.warn('Supabase legacy entreprise sync failed:', error.message);
+            .update({ settings_json: current })
+            .eq('user_id', user.id);
+          if (error && !error.message?.includes('schema cache')) console.warn('Supabase entreprise sync:', error.message);
         } catch (e) {
           console.warn('Supabase legacy entreprise sync error:', e.message);
         }

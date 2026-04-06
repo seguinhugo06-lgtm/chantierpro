@@ -464,7 +464,8 @@ export async function saveRelanceConfigToDB(config, userId) {
 
     const { error } = await supabase
       .from('entreprise')
-      .upsert({ user_id: userId, settings_json: settings }, { onConflict: 'user_id' });
+      .update({ settings_json: settings })
+      .eq('user_id', userId);
 
     if (error && !error.message?.includes('schema cache')) {
       console.warn('[relanceEngine] Save config:', error.message);
