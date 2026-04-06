@@ -1920,7 +1920,7 @@ export default function Dashboard({
                 <h3 className={`text-sm font-bold ${textPrimary}`}>Démarrage rapide</h3>
                 <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>{completedCount}/{steps.length}</span>
               </div>
-              <button onClick={() => { localStorage.setItem('cp_onboarding_dismissed', '1'); }} className={`text-xs ${textMuted} hover:underline`}>Masquer</button>
+              <button onClick={() => { localStorage.setItem('cp_onboarding_dismissed', '1'); }} className={`text-xs ${textSecondary} hover:underline`}>Masquer</button>
             </div>
             <div className="space-y-2">
               {steps.map(s => (
