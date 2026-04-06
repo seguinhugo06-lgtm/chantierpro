@@ -2115,6 +2115,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       entreprise={entreprise}
       isDark={isDark}
       couleur={couleur}
+      setPage={setPage}
       onSwitchToAI={() => { setPage('ia-devis'); }}
       onSwitchToExpress={() => { setShowDevisExpressModal(true); }}
     />

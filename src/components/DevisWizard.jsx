@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { ArrowLeft, ArrowRight, Check, X, Plus, User, FileText, Receipt, Search, Star, Trash2, ChevronDown, ChevronUp, Sparkles, Clock, RotateCcw, AlertCircle, Mic, Zap, Edit3 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, X, Plus, User, FileText, Receipt, Search, Star, Trash2, ChevronDown, ChevronUp, ChevronRight, Sparkles, Clock, RotateCcw, AlertCircle, Mic, Zap, Edit3 } from 'lucide-react';
 import FormError from './ui/FormError';
 import QuickClientModal from './QuickClientModal';
 import CatalogBrowser from './CatalogBrowser';
@@ -29,6 +29,7 @@ export default function DevisWizard({
   entreprise = {},
   isDark = false,
   couleur = '#f97316',
+  setPage,
   onSwitchToAI,
   onSwitchToExpress
 }) {
@@ -683,6 +684,19 @@ export default function DevisWizard({
                       : `${catalogue.length} articles disponibles`}
                   </p>
                 </div>
+              </button>
+
+              {/* Link to Bibliothèque de Prix */}
+              <button
+                onClick={() => setPage?.('bibliotheque')}
+                className={`w-full p-3 rounded-xl border flex items-center gap-3 transition-all text-left ${isDark ? 'border-slate-700 hover:bg-slate-700/50' : 'border-slate-200 hover:bg-slate-50'}`}
+              >
+                <span className="text-xl">📚</span>
+                <div className="flex-1 min-w-0">
+                  <p className={`text-sm font-medium ${textPrimary}`}>Référentiel BTP</p>
+                  <p className={`text-xs ${textMuted}`}>633+ ouvrages avec prix décomposés</p>
+                </div>
+                <ChevronRight size={16} style={{ color: couleur }} />
               </button>
 
               {/* Line items as cards */}

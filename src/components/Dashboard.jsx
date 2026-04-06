@@ -1906,7 +1906,7 @@ export default function Dashboard({
           { key: 'client', label: 'Ajouter mon premier client', done: (clients?.length || 0) > 0, action: () => setPage('clients'), icon: '👤' },
           { key: 'devis', label: 'Créer mon premier devis', done: (devis?.length || 0) > 0, action: () => setPage('devis'), icon: '📄' },
           { key: 'catalogue', label: 'Parcourir le référentiel BTP', done: !!localStorage.getItem('cp_biblio_visited'), action: () => { localStorage.setItem('cp_biblio_visited', '1'); setPage('bibliotheque'); }, icon: '📚' },
-          { key: 'relances', label: 'Activer les relances automatiques', done: !!localStorage.getItem('cp_relances_configured'), action: () => { localStorage.setItem('cp_relances_configured', '1'); setPage('settings'); }, icon: '🔔' },
+          { key: 'relances', label: 'Activer les relances automatiques', done: !!(entreprise?.relanceConfig?.enabled), action: () => { try { localStorage.setItem('cp_settings_tab', 'relances'); } catch {} setPage('settings'); }, icon: '🔔' },
         ];
         const completedCount = steps.filter(s => s.done).length;
         const allDone = completedCount === steps.length;
