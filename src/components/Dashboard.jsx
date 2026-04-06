@@ -38,6 +38,7 @@ import {
   Zap,
   Sparkles,
   BarChart3,
+  Rocket,
 } from 'lucide-react';
 
 import { AreaChart, Area, ResponsiveContainer, XAxis, Tooltip } from 'recharts';
@@ -1898,20 +1899,53 @@ export default function Dashboard({
         onDismiss={() => { setDismissedNotif(true); localStorage.setItem('cp_notif_dismissed', String(Date.now())); }}
       />
 
-      {/* Compact onboarding bandeau */}
-      {(computed.profilPct < 80 || computed.f26Pct < 100) && (
-        <div className={`mx-4 sm:mx-6 mb-5 rounded-xl border-l-4 border-amber-500 px-4 py-2.5 flex items-center gap-3 ${isDark ? 'bg-amber-500/10' : 'bg-amber-50'}`}>
-          <AlertCircle size={16} className="text-amber-500 flex-shrink-0" />
-          <p className={`text-sm flex-1 ${isDark ? 'text-amber-300' : 'text-amber-800'}`}>
-            {computed.profilPct < 80 ? `Profil ${computed.profilPct}%` : ''}
-            {computed.profilPct < 80 && computed.f26Pct < 100 ? ' · ' : ''}
-            {computed.f26Pct < 100 ? `Conformité ${computed.f26Pct}%` : ''}
-          </p>
-          <button onClick={() => setPage('settings')} className="text-xs font-semibold px-3 py-1.5 rounded-lg text-white min-h-[36px]" style={{ background: couleur }}>
-            Compléter
-          </button>
-        </div>
-      )}
+      {/* Onboarding checklist — shows until all steps completed */}
+      {(() => {
+        const steps = [
+          { key: 'profil', label: 'Configurer mon entreprise', done: computed.profilPct >= 80, action: () => setPage('settings'), icon: '🏢' },
+          { key: 'client', label: 'Ajouter mon premier client', done: (clients?.length || 0) > 0, action: () => setPage('clients'), icon: '👤' },
+          { key: 'devis', label: 'Créer mon premier devis', done: (devis?.length || 0) > 0, action: () => setPage('devis'), icon: '📄' },
+          { key: 'catalogue', label: 'Parcourir le référentiel BTP', done: !!localStorage.getItem('cp_biblio_visited'), action: () => { localStorage.setItem('cp_biblio_visited', '1'); setPage('bibliotheque'); }, icon: '📚' },
+          { key: 'relances', label: 'Activer les relances automatiques', done: !!localStorage.getItem('cp_relances_configured'), action: () => { localStorage.setItem('cp_relances_configured', '1'); setPage('settings'); }, icon: '🔔' },
+        ];
+        const completedCount = steps.filter(s => s.done).length;
+        const allDone = completedCount === steps.length;
+        const dismissed = localStorage.getItem('cp_onboarding_dismissed');
+        if (allDone || dismissed) return null;
+        return (
+          <div className={`mx-4 sm:mx-6 mb-5 rounded-2xl border p-4 sm:p-5 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Rocket size={18} style={{ color: couleur }} />
+                <h3 className={`text-sm font-bold ${textPrimary}`}>Démarrage rapide</h3>
+                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>{completedCount}/{steps.length}</span>
+              </div>
+              <button onClick={() => { localStorage.setItem('cp_onboarding_dismissed', '1'); }} className={`text-xs ${textMuted} hover:underline`}>Masquer</button>
+            </div>
+            <div className="space-y-2">
+              {steps.map(s => (
+                <button
+                  key={s.key}
+                  onClick={s.done ? undefined : s.action}
+                  disabled={s.done}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left text-sm transition-all ${
+                    s.done
+                      ? isDark ? 'bg-slate-700/30 text-slate-500' : 'bg-slate-50 text-slate-400'
+                      : isDark ? 'bg-slate-700/50 hover:bg-slate-700 text-slate-200' : 'bg-slate-50 hover:bg-slate-100 text-slate-800'
+                  }`}
+                >
+                  <span className="text-base">{s.done ? '✅' : s.icon}</span>
+                  <span className={`flex-1 ${s.done ? 'line-through' : 'font-medium'}`}>{s.label}</span>
+                  {!s.done && <ChevronRight size={14} style={{ color: couleur }} />}
+                </button>
+              ))}
+            </div>
+            <div className="mt-3 h-1.5 rounded-full overflow-hidden" style={{ background: isDark ? '#334155' : '#e2e8f0' }}>
+              <div className="h-full rounded-full transition-all duration-500" style={{ width: `${(completedCount / steps.length) * 100}%`, background: couleur }} />
+            </div>
+          </div>
+        );
+      })()}
       </section>
 
       {/* GAP 7: Overview widget — full width, collapsible, default closed */}

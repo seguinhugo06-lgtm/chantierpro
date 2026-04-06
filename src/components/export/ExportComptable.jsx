@@ -16,6 +16,7 @@ import {
   Filter,
   ChevronLeft,
   ChevronRight,
+  Mail,
 } from 'lucide-react';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -1012,6 +1013,29 @@ export default function ExportComptable({
                 <Download className="w-4 h-4" />
                 Télécharger l'export
               </button>
+              {filteredEntries.length > 0 && entreprise?.emailComptable && (
+                <button
+                  onClick={() => {
+                    const subject = encodeURIComponent(`Export comptable ${selectedPeriodLabel || ''} — ${entreprise?.nom || 'BatiGesti'}`);
+                    const body = encodeURIComponent(`Bonjour,\n\nVeuillez trouver ci-joint l'export comptable pour la période sélectionnée.\n\nCordialement,\n${entreprise?.nom || ''}`);
+                    window.open(`mailto:${entreprise.emailComptable}?subject=${subject}&body=${body}`, '_blank');
+                    showToast?.('Ouvrez votre client email et joignez le fichier téléchargé', 'info');
+                  }}
+                  className={`flex items-center gap-2 px-5 py-3 rounded-xl font-medium text-sm transition-all ${isDark ? 'bg-slate-700 text-slate-200 hover:bg-slate-600' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+                >
+                  <Mail className="w-4 h-4" />
+                  Envoyer à mon comptable
+                </button>
+              )}
+              {filteredEntries.length > 0 && !entreprise?.emailComptable && (
+                <button
+                  onClick={() => setPage?.('settings')}
+                  className={`flex items-center gap-2 px-4 py-3 rounded-xl text-xs font-medium transition-all ${isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-700'}`}
+                >
+                  <Mail className="w-4 h-4" />
+                  Configurer l'email comptable →
+                </button>
+              )}
               {filteredEntries.length === 0 && (
                 <p className={`text-xs ${mutedCls}`}>Aucune écriture pour la période sélectionnée</p>
               )}

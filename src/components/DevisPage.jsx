@@ -4306,6 +4306,13 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                 <Sparkles size={18} />
                 <span className="hidden sm:inline">Parcourir</span>
               </button>
+              <button
+                onClick={() => setPage?.('bibliotheque')}
+                className={`px-3 py-2.5 rounded-xl text-xs font-medium flex items-center gap-1.5 transition-all ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                title="Référentiel BTP avec 633+ prix"
+              >
+                📚 <span className="hidden sm:inline">Réf. BTP</span>
+              </button>
             </div>
             {catalogueSearch && (
               <div className={`border rounded-xl max-h-40 overflow-y-auto ${isDark ? 'border-slate-600 bg-slate-800' : 'border-slate-200 bg-white'}`}>
