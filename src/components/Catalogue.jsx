@@ -1444,7 +1444,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
           <input type="file" ref={fileInputRef} accept=".csv,.txt" onChange={handleFileUpload} className="hidden" />
           {/* Desktop: 3 icon buttons */}
           {/* #2: Header icons with enhanced tooltips */}
-          <button onClick={() => fileInputRef.current?.click()} className={`hidden sm:flex w-11 h-11 rounded-xl items-center justify-center ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'}`} title="Importer tarifs fournisseurs (CSV Rexel, Sonepar, Cedeo...)" aria-label="Importer des tarifs fournisseurs depuis un fichier CSV">
+          <button onClick={() => fileInputRef.current?.click()} className={`hidden sm:flex w-11 h-11 rounded-xl items-center justify-center ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'}`} title="Importer tarifs fournisseurs (CSV Rexel, Sonepar, Cedeo...)" aria-label="Importer tarifs fournisseurs CSV (Rexel, Sonepar, Cedeo)">
             <Upload size={16} />
           </button>
           <button onClick={exportCSV} className={`hidden sm:flex w-11 h-11 rounded-xl items-center justify-center ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'}`} title="Exporter le catalogue (CSV/Excel)" aria-label="Exporter le catalogue en CSV">

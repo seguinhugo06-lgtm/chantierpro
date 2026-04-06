@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { generateId } from '../../lib/utils';
 import useConfirm from '../../hooks/useConfirm';
+import { useToast } from '../../context/AppContext';
 
 const STORAGE_KEY = 'cp_commandes_fournisseurs';
 
@@ -113,6 +114,7 @@ export default function CommandesFournisseurs({
   setPage,
 }) {
   const { confirm, ConfirmDialog } = useConfirm();
+  const { showToast } = useToast();
   const [commandes, setCommandes] = useState([]);
   const [view, setView] = useState('list');
   const [activeTab, setActiveTab] = useState('tous');
