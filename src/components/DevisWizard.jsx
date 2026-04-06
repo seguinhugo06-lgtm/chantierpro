@@ -688,13 +688,13 @@ export default function DevisWizard({
 
               {/* Link to Bibliothèque de Prix */}
               <button
-                onClick={() => setPage?.('bibliotheque')}
+                onClick={() => { localStorage.setItem(DRAFT_KEY, JSON.stringify(form)); setPage?.('bibliotheque'); }}
                 className={`w-full p-3 rounded-xl border flex items-center gap-3 transition-all text-left ${isDark ? 'border-slate-700 hover:bg-slate-700/50' : 'border-slate-200 hover:bg-slate-50'}`}
               >
                 <span className="text-xl">📚</span>
                 <div className="flex-1 min-w-0">
                   <p className={`text-sm font-medium ${textPrimary}`}>Référentiel BTP</p>
-                  <p className={`text-xs ${textMuted}`}>633+ ouvrages avec prix décomposés</p>
+                  <p className={`text-xs ${textMuted}`}>633+ ouvrages avec prix décomposés · Brouillon sauvegardé</p>
                 </div>
                 <ChevronRight size={16} style={{ color: couleur }} />
               </button>

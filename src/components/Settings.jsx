@@ -1254,7 +1254,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
       {tab === 'relances' && (
         <RelanceConfigTab
           entreprise={entreprise}
-          updateEntreprise={updateEntreprise}
+          setEntreprise={updateEntreprise}
           isDark={isDark}
           couleur={couleur}
           stats={relances.stats}
@@ -1378,6 +1378,23 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
       {/* COMPTABILITÉ */}
       {tab === 'comptabilite' && (
         <div className="space-y-4 sm:space-y-6">
+          {/* Email comptable */}
+          <div className={`${cardBg} rounded-xl border p-4`}>
+            <label className={`block text-sm font-medium mb-2 ${textPrimary}`}>
+              Email de mon expert-comptable
+            </label>
+            <p className={`text-xs mb-2 ${textMuted}`}>
+              Cet email sera utilisé pour envoyer vos exports comptables directement depuis l'app.
+            </p>
+            <input
+              type="email"
+              value={entreprise.emailComptable || ''}
+              onChange={e => updateEntreprise(prev => ({ ...prev, emailComptable: e.target.value }))}
+              placeholder="comptable@cabinet.fr"
+              className={`w-full px-4 py-2.5 border rounded-xl text-sm ${inputBg}`}
+            />
+          </div>
+
           {/* Sub-tabs */}
           <div className="flex gap-2 flex-wrap">
             {[
