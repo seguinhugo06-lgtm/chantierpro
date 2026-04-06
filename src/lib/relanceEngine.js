@@ -451,12 +451,25 @@ export async function loadExclusions(userId, orgId) {
 export async function saveRelanceConfigToDB(config, userId) {
   if (isDemo || !userId) return;
 
-  const { error } = await supabase
-    .from('entreprise')
-    .update({ relance_config: config })
-    .eq('user_id', userId);
+  try {
+    // relanceConfig is stored inside settings_json (no dedicated column)
+    const { data: current } = await supabase
+      .from('entreprise')
+      .select('settings_json')
+      .eq('user_id', userId)
+      .maybeSingle();
 
-  if (error) {
-    console.error('Failed to save relance config:', error);
+    const settings = current?.settings_json || {};
+    settings.relanceConfig = config;
+
+    const { error } = await supabase
+      .from('entreprise')
+      .upsert({ user_id: userId, settings_json: settings }, { onConflict: 'user_id' });
+
+    if (error && !error.message?.includes('schema cache')) {
+      console.warn('[relanceEngine] Save config:', error.message);
+    }
+  } catch (e) {
+    console.warn('[relanceEngine] Save config error:', e?.message);
   }
 }

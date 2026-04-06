@@ -156,6 +156,7 @@ export default function FinancesPage({ devis, depenses, clients, chantiers, entr
               entreprise={entreprise}
               isDark={isDark}
               couleur={couleur}
+              setPage={setPage}
             />
           </Suspense>
         </ErrorBoundary>

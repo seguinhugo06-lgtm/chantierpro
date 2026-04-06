@@ -367,6 +367,7 @@ export default function ExportComptable({
   entreprise = {},
   isDark = false,
   couleur = '#f97316',
+  setPage,
 }) {
   const now = new Date();
   const defaultRange = getPresetRange('ce-mois');
