@@ -122,6 +122,8 @@ export default function CommandesFournisseurs({
   const [showCatalogueModal, setShowCatalogueModal] = useState(false);
   const [catalogueSearch, setCatalogueSearch] = useState('');
   const [showFournisseurSuggestions, setShowFournisseurSuggestions] = useState(false);
+  const [verifyingFacture, setVerifyingFacture] = useState(null); // cmd.id being verified
+  const [factureAmount, setFactureAmount] = useState('');
 
   // Theme classes
   const cardBg = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200';
@@ -1098,28 +1100,61 @@ export default function CommandesFournisseurs({
             )}
             {cmd.statut === 'livree' && !cmd.factureVerifiee && (
               <button
-                onClick={() => {
-                  const montant = prompt('Montant facture fournisseur (€ HT) :');
-                  if (montant !== null) {
-                    const m = parseFloat(montant);
-                    const ecart = Math.abs(m - (cmd.montantHT || 0));
-                    const ok = ecart < 1;
-                    const updates = { factureVerifiee: true, montantFactureFournisseur: m };
-                    const updated = commandes.map(c => c.id === cmd.id ? { ...c, ...updates } : c);
-                    saveCommandes(updated);
-                    setSelectedCommande(prev => prev?.id === cmd.id ? { ...prev, ...updates } : prev);
-                    if (ok) {
-                      showToast?.('Facture conforme — écart < 1€', 'success');
-                    } else {
-                      showToast?.(`Écart de ${ecart.toFixed(2)}€ détecté (commande: ${cmd.montantHT}€, facture: ${m}€)`, 'warning');
-                    }
-                  }
-                }}
+                onClick={() => { setVerifyingFacture(cmd.id); setFactureAmount(''); }}
                 className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${isDark ? 'bg-amber-500/20 text-amber-300 hover:bg-amber-500/30' : 'bg-amber-50 text-amber-700 hover:bg-amber-100'}`}
               >
                 <FileText size={14} />
                 Vérifier facture
               </button>
+            )}
+            {verifyingFacture === cmd.id && (
+              <div className={`mt-2 p-3 rounded-xl border space-y-2 ${isDark ? 'bg-slate-700 border-slate-600' : 'bg-white border-slate-200 shadow-lg'}`}>
+                <label className={`block text-xs font-medium ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                  Montant facture fournisseur (€ HT)
+                </label>
+                <input
+                  type="number"
+                  value={factureAmount}
+                  onChange={(e) => setFactureAmount(e.target.value)}
+                  placeholder={`Commande : ${cmd.montantHT || 0} €`}
+                  className={`w-full px-3 py-2 rounded-lg border text-sm ${isDark ? 'bg-slate-600 border-slate-500 text-white' : 'bg-white border-slate-300'}`}
+                  autoFocus
+                  min="0"
+                  step="0.01"
+                  onKeyDown={(e) => { if (e.key === 'Escape') setVerifyingFacture(null); }}
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      const m = parseFloat(factureAmount);
+                      if (isNaN(m)) return;
+                      const ecart = Math.abs(m - (cmd.montantHT || 0));
+                      const ok = ecart < 1;
+                      const updates = { factureVerifiee: true, montantFactureFournisseur: m };
+                      const updated = commandes.map(c => c.id === cmd.id ? { ...c, ...updates } : c);
+                      saveCommandes(updated);
+                      setSelectedCommande(prev => prev?.id === cmd.id ? { ...prev, ...updates } : prev);
+                      setVerifyingFacture(null);
+                      if (ok) {
+                        showToast?.('Facture conforme — écart < 1€', 'success');
+                      } else {
+                        showToast?.(`Écart de ${ecart.toFixed(2)}€ (commande: ${cmd.montantHT}€, facture: ${m}€)`, 'warning');
+                      }
+                    }}
+                    disabled={!factureAmount || isNaN(parseFloat(factureAmount))}
+                    className="flex-1 px-3 py-2 rounded-lg text-xs font-semibold text-white disabled:opacity-50"
+                    style={{ background: couleur }}
+                  >
+                    Valider
+                  </button>
+                  <button
+                    onClick={() => setVerifyingFacture(null)}
+                    className={`px-3 py-2 rounded-lg text-xs font-medium ${isDark ? 'bg-slate-600 text-slate-300' : 'bg-slate-100 text-slate-600'}`}
+                  >
+                    Annuler
+                  </button>
+                </div>
+              </div>
             )}
             {cmd.factureVerifiee && (
               <span className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium ${isDark ? 'bg-emerald-500/20 text-emerald-300' : 'bg-emerald-50 text-emerald-700'}`}>
