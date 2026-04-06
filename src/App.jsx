@@ -757,7 +757,7 @@ export default function App() {
   // Must depend on [page] so redirects fire whenever page changes (not just on mount)
   useEffect(() => {
     const REDIRECTS = {
-      ouvrages: 'bibliotheque', commandes: 'chantiers',
+      ouvrages: 'bibliotheque',
       tresorerie: 'finances', entretien: 'dashboard',
       signatures: 'devis', export: 'finances', analytique: 'finances',
       admin: 'settings', rentabilite: 'settings',
