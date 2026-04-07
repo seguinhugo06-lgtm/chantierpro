@@ -278,7 +278,7 @@ export default function ProfilePage({
 
         <div className="relative max-w-4xl mx-auto">
           {/* Profile header */}
-          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 mb-6 animate-fade-slide-up">
+          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 mb-6">
             {/* Avatar */}
             <div
               className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl flex items-center justify-center text-white text-2xl sm:text-3xl font-bold shadow-xl flex-shrink-0 overflow-hidden"
@@ -340,7 +340,7 @@ export default function ProfilePage({
           </div>
 
           {/* Company info tags */}
-          <div className={`rounded-xl border p-4 sm:p-5 animate-fade-slide-up ${cardBg}`} style={{ animationDelay: '100ms' }}>
+          <div className={`rounded-xl border p-4 sm:p-5 ${cardBg}`}>
             <div className="flex flex-wrap gap-x-3 sm:gap-x-5 gap-y-2 text-sm">
               {entreprise.siret && (
                 <span className={`flex items-center gap-1.5 ${textMuted}`}>

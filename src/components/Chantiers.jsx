@@ -891,6 +891,12 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
               </div>
 
               {/* Weather widget */}
+              {weather === null && ch.adresse && (
+                <div className={`mt-3 rounded-xl border p-3 flex items-center gap-2 ${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
+                  <Cloud size={14} className={isDark ? 'text-slate-600' : 'text-slate-300'} />
+                  <span className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Météo indisponible pour ce chantier</span>
+                </div>
+              )}
               {weather?.daily?.length > 0 && !weather.isDefault && (
                 <div className={`mt-3 rounded-xl border p-3 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
                   <div className="flex items-center gap-2 mb-2">

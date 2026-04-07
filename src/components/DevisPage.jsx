@@ -5395,7 +5395,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                           </button>
                         </span>
                       ) : (
-                        <p className={`text-base font-semibold truncate ${textPrimary}`}>{clientName}</p>
+                        <p className={`text-sm sm:text-base font-semibold truncate min-w-[80px] ${textPrimary}`}>{clientName}</p>
                       )}
                     </div>
                     {/* Amount TTC aligned right — large */}
