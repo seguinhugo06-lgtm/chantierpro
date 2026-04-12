@@ -145,13 +145,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
   const textSecondary = isDark ? "text-slate-300" : "text-slate-600";
   const textMuted = isDark ? "text-slate-400" : "text-slate-600";
 
-  const [tab, setTab] = useState(() => {
-    try {
-      const saved = localStorage.getItem('cp_settings_tab');
-      if (saved) { localStorage.removeItem('cp_settings_tab'); return saved; }
-    } catch {}
-    return 'identite';
-  });
+  const [tab, setTab] = useState('identite');
   const [showExportModal, setShowExportModal] = useState(false);
   const [exportYear, setExportYear] = useState(new Date().getFullYear());
   const [showSetupWizard, setShowSetupWizard] = useState(false);
@@ -189,9 +183,8 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
           const current = typeof updater === 'function' ? updater(entreprise) : updater;
           const { error } = await supabase
             .from('entreprise')
-            .update({ settings_json: current })
-            .eq('user_id', user.id);
-          if (error && !error.message?.includes('schema cache')) console.warn('Supabase entreprise sync:', error.message);
+            .upsert({ user_id: user.id, settings_json: current }, { onConflict: 'user_id' });
+          if (error) console.warn('Supabase legacy entreprise sync failed:', error.message);
         } catch (e) {
           console.warn('Supabase legacy entreprise sync error:', e.message);
         }
@@ -622,7 +615,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             className="self-end sm:self-auto px-4 py-2 text-white rounded-xl text-sm font-semibold transition-colors whitespace-nowrap shrink-0 min-h-[44px]"
             style={{ background: couleur }}
           >
-            Compléter
+            {'Compl\u00e9ter'}
           </button>
         </div>
       )}
@@ -1255,7 +1248,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
       {tab === 'relances' && (
         <RelanceConfigTab
           entreprise={entreprise}
-          setEntreprise={updateEntreprise}
+          updateEntreprise={updateEntreprise}
           isDark={isDark}
           couleur={couleur}
           stats={relances.stats}
@@ -1379,23 +1372,6 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
       {/* COMPTABILITÉ */}
       {tab === 'comptabilite' && (
         <div className="space-y-4 sm:space-y-6">
-          {/* Email comptable */}
-          <div className={`${cardBg} rounded-xl border p-4`}>
-            <label className={`block text-sm font-medium mb-2 ${textPrimary}`}>
-              Email de mon expert-comptable
-            </label>
-            <p className={`text-xs mb-2 ${textMuted}`}>
-              Cet email sera utilisé pour envoyer vos exports comptables directement depuis l'app.
-            </p>
-            <input
-              type="email"
-              value={entreprise.emailComptable || ''}
-              onChange={e => updateEntreprise(prev => ({ ...prev, emailComptable: e.target.value }))}
-              placeholder="comptable@cabinet.fr"
-              className={`w-full px-4 py-2.5 border rounded-xl text-sm ${inputBg}`}
-            />
-          </div>
-
           {/* Sub-tabs */}
           <div className="flex gap-2 flex-wrap">
             {[

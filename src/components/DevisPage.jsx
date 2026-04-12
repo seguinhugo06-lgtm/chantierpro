@@ -2115,7 +2115,6 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       entreprise={entreprise}
       isDark={isDark}
       couleur={couleur}
-      setPage={setPage}
       onSwitchToAI={() => { setPage('ia-devis'); }}
       onSwitchToExpress={() => { setShowDevisExpressModal(true); }}
     />
@@ -4144,10 +4143,10 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     return (
       <div className="space-y-6">
         <div className="flex items-center gap-2 sm:gap-4">
-          <button onClick={async () => {
+          <button onClick={() => {
             const hasData = form.clientId || (form.sections?.[0]?.lignes?.length > 0);
             if (hasData) {
-              if (await confirm({ title: 'Abandonner ce devis ?', message: 'Les données non sauvegardées seront perdues.', confirmText: 'Abandonner', cancelText: 'Annuler' })) {
+              if (window.confirm('Abandonner ce devis ? Les données non sauvegardées seront perdues.')) {
                 setMode('list');
                 setForm({ type: 'devis', clientId: '', chantierId: '', date: new Date().toISOString().split('T')[0], validite: entreprise?.validiteDevis || 30, sections: [{ id: '1', titre: '', lignes: [] }], tvaDefaut: entreprise?.tvaDefaut || 10, remise: 0, retenueGarantie: false, conditionsPaiement: entreprise?.conditionsPaiementDefaut || '30_jours', notes: '' });
               }
@@ -4157,10 +4156,10 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           }} className={`p-2.5 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'} rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors`}><ArrowLeft size={20} /></button>
           <h2 className={`text-lg sm:text-2xl font-bold ${textPrimary}`}>Nouveau {form.type}</h2>
           <button
-            onClick={async () => {
+            onClick={() => {
               const hasData = form.clientId || (form.sections?.[0]?.lignes?.length > 0);
               if (hasData) {
-                if (await confirm({ title: 'Abandonner ce devis ?', message: 'Les données non sauvegardées seront perdues.', confirmText: 'Abandonner', cancelText: 'Annuler' })) {
+                if (window.confirm('Abandonner ce devis ? Les données non sauvegardées seront perdues.')) {
                   setMode('list');
                   setForm({ type: 'devis', clientId: '', chantierId: '', date: new Date().toISOString().split('T')[0], validite: entreprise?.validiteDevis || 30, sections: [{ id: '1', titre: '', lignes: [] }], tvaDefaut: entreprise?.tvaDefaut || 10, remise: 0, retenueGarantie: false, conditionsPaiement: entreprise?.conditionsPaiementDefaut || '30_jours', notes: '' });
                 }
@@ -4306,13 +4305,6 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
               >
                 <Sparkles size={18} />
                 <span className="hidden sm:inline">Parcourir</span>
-              </button>
-              <button
-                onClick={() => setPage?.('bibliotheque')}
-                className={`px-3 py-2.5 rounded-xl text-xs font-medium flex items-center gap-1.5 transition-all ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
-                title="Référentiel BTP avec 633+ prix"
-              >
-                📚 <span className="hidden sm:inline">Réf. BTP</span>
               </button>
             </div>
             {catalogueSearch && (
@@ -4703,22 +4695,13 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 
         {/* Devis IA standalone button + Split-button: + Nouveau devis — hidden for view-only roles */}
         {canPerform('devis', 'create') && (
-        <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+        <div className="flex items-center gap-2">
           <button
             onClick={() => setPage?.('ia-devis')}
-            className="hidden sm:flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-semibold text-white min-h-[44px]"
+            className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-semibold text-white min-h-[44px]"
             style={{ background: 'linear-gradient(135deg, #8b5cf6, #3b82f6)' }}
           >
             <Sparkles size={14} /> Devis IA
-          </button>
-          <button
-            onClick={() => setPage?.('ia-devis')}
-            className="sm:hidden flex items-center justify-center w-10 h-10 rounded-xl text-white"
-            style={{ background: 'linear-gradient(135deg, #8b5cf6, #3b82f6)' }}
-            aria-label="Devis IA"
-            title="Devis IA"
-          >
-            <Sparkles size={16} />
           </button>
         <div className="relative">
           <div className="flex items-stretch">
@@ -5383,7 +5366,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                 {/* Content */}
                 <div className="flex-1 min-w-0">
                   {/* Row 0: Client name (prominent) + Amount TTC */}
-                  <div className="flex items-start justify-between gap-1.5 mb-0.5">
+                  <div className="flex items-start justify-between gap-2 mb-0.5">
                     <div className="flex-1 min-w-0">
                       {(isOrphan || isNameless) ? (
                         <span className="inline-flex items-center gap-1">
@@ -5395,14 +5378,14 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                           </button>
                         </span>
                       ) : (
-                        <p className={`text-sm sm:text-base font-semibold truncate min-w-[80px] ${textPrimary}`}>{clientName}</p>
+                        <p className={`text-base font-semibold truncate ${textPrimary}`}>{clientName}</p>
                       )}
                     </div>
                     {/* Amount TTC aligned right — large */}
                     {!canViewPrices ? null : getDevisTTC(d) <= 0 ? (
                       <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-lg shrink-0 ${isDark ? 'bg-amber-900/40 text-amber-400' : 'bg-amber-50 text-amber-600'}`}>0 €</span>
                     ) : (
-                      <p className="text-sm sm:text-lg font-bold text-right tabular-nums whitespace-nowrap shrink-0" style={{color: isAvoirItem ? '#dc2626' : couleur}}>
+                      <p className="text-lg font-bold text-right tabular-nums whitespace-nowrap shrink-0" style={{color: isAvoirItem ? '#dc2626' : couleur}}>
                         {isAvoirItem ? `-${formatMoney(Math.abs(getDevisTTC(d)))}` : formatMoney(getDevisTTC(d))}
                       </p>
                     )}

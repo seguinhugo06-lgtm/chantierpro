@@ -110,8 +110,6 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 300);
   const [activeTab, setActiveTab] = useState('historique');
-  const [historyFilter, setHistoryFilter] = useState('tout');
-  const [showAdvanced, setShowAdvanced] = useState(false);
   const [form, setForm] = useState({ nom: '', prenom: '', entreprise: '', email: '', telephone: '', adresse: '', notes: '', categorie: '' });
   const [sortBy, setSortBy] = useState('recent'); // recent, name, ca, activite
   const [sortDir, setSortDir] = useState('desc'); // 'asc' | 'desc'
@@ -195,41 +193,47 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
     return 'inactif';
   };
 
-  // Client scoring (VIP / Régulier / Occasionnel / Dormant / Nouveau)
-  const clientScores = useMemo(() => {
-    // Statuts considérés comme "gagnés" : accepte, signe, acompte_facture, facture, payee
-    const STATUTS_GAGNES = ['accepte', 'signe', 'acompte_facture', 'facture', 'payee'];
-    const maxCA = Math.max(1, ...clients.map(c => {
-      const s = clientStatsMap.get(c.id);
-      return s ? (devis.filter(d => d.client_id === c.id && STATUTS_GAGNES.includes(d.statut)).reduce((sum, d) => sum + (d.total_ttc || 0), 0)) : 0;
-    }));
-    return clients.map(c => {
-      const clientDevis = devis.filter(d => d.client_id === c.id);
-      const gagnes = clientDevis.filter(d => STATUTS_GAGNES.includes(d.statut));
-      const ca = gagnes.reduce((sum, d) => sum + (d.total_ttc || 0), 0);
-      const nbChantiers = chantiers.filter(ch => ch.client_id === c.id).length;
-      const lastDevis = clientDevis.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0))[0];
-      const joursSansActivite = lastDevis ? Math.round((new Date() - new Date(lastDevis.date)) / 86400000) : 999;
-      const anciennete = c.created_at ? Math.round((new Date() - new Date(c.created_at)) / 86400000) : 0;
-      const scoreCa = Math.min(30, (ca / maxCA) * 30);
-      const scoreConv = clientDevis.length > 0 ? (gagnes.length / clientDevis.length) * 25 : 0;
-      const scoreFraich = Math.max(0, 20 - (joursSansActivite / 30) * 10);
-      const scoreCh = Math.min(15, nbChantiers * 5);
-      const scoreAnc = Math.min(10, anciennete / 365 * 10);
-      const score = Math.round(scoreCa + scoreConv + scoreFraich + scoreCh + scoreAnc);
-      let classification;
-      if (score >= 70) classification = 'vip';
-      else if (score >= 45) classification = 'regulier';
-      else if (score >= 20) classification = 'occasionnel';
-      else if (anciennete < 30 && clientDevis.length === 0) classification = 'nouveau';
-      else if (joursSansActivite > 90) classification = 'dormant';
-      else classification = 'nouveau';
-      return { clientId: c.id, score, classification };
-    });
-  }, [clients, devis, chantiers, clientStatsMap]);
+  // Client scoring & classification
+  const SCORE_CLASSES = {
+    vip: { label: 'VIP', color: '#f59e0b', bg: 'bg-amber-100 text-amber-800', darkBg: 'bg-amber-900/30 text-amber-300', icon: '⭐' },
+    regulier: { label: 'Régulier', color: '#3b82f6', bg: 'bg-blue-100 text-blue-800', darkBg: 'bg-blue-900/30 text-blue-300', icon: '🔄' },
+    occasionnel: { label: 'Occasionnel', color: '#8b5cf6', bg: 'bg-violet-100 text-violet-700', darkBg: 'bg-violet-900/30 text-violet-300', icon: '👤' },
+    nouveau: { label: 'Nouveau', color: '#22c55e', bg: 'bg-emerald-100 text-emerald-700', darkBg: 'bg-emerald-900/30 text-emerald-300', icon: '🆕' },
+    dormant: { label: 'Dormant', color: '#94a3b8', bg: 'bg-slate-100 text-slate-600', darkBg: 'bg-slate-700/50 text-slate-400', icon: '💤' },
+  };
 
-  const SCORE_COLORS = { vip: '#f59e0b', regulier: '#10b981', occasionnel: '#3b82f6', dormant: '#ef4444', nouveau: '#8b5cf6' };
-  const SCORE_LABELS = { vip: 'VIP', regulier: 'Régulier', occasionnel: 'Occasionnel', dormant: 'Dormant', nouveau: 'Nouveau' };
+  const getClientScore = (clientId) => {
+    const s = getClientStats(clientId);
+    const client = clients.find(c => c.id === clientId);
+    const clientDevis = devis?.filter(d => d.client_id === clientId) || [];
+
+    // Score computation (0-100)
+    let score = 0;
+    score += Math.min(s.chantiers * 15, 30); // max 30pts for chantiers
+    score += Math.min(s.factures * 10, 20);   // max 20pts for factures
+    score += Math.min(s.devis * 5, 15);       // max 15pts for devis
+    score += s.ca >= 50000 ? 20 : s.ca >= 10000 ? 15 : s.ca >= 2000 ? 10 : s.ca > 0 ? 5 : 0; // CA pts
+    score += s.chantiersActifs > 0 ? 10 : 0;  // active chantier bonus
+    score += s.devisActifs > 0 ? 5 : 0;       // active devis bonus
+
+    // Anciennete
+    const anciennete = client?.created_at ? (Date.now() - new Date(client.created_at).getTime()) / (1000 * 60 * 60 * 24) : 0;
+
+    // Last activity
+    const lastDevisDate = clientDevis.length > 0 ? Math.max(...clientDevis.map(d => new Date(d.updated_at || d.created_at).getTime())) : 0;
+    const joursSansActivite = lastDevisDate > 0 ? (Date.now() - lastDevisDate) / (1000 * 60 * 60 * 24) : 999;
+
+    // Classification based on SCORE first
+    let classification;
+    if (score >= 70) classification = 'vip';
+    else if (score >= 45) classification = 'regulier';
+    else if (score >= 20) classification = 'occasionnel';
+    else if (anciennete < 30 && clientDevis.length === 0) classification = 'nouveau';
+    else if (joursSansActivite > 90 && score < 10) classification = 'dormant';
+    else classification = 'nouveau';
+
+    return { score: Math.min(score, 100), classification, ...SCORE_CLASSES[classification] };
+  };
 
   // Duplicate detection: same telephone OR same email
   const duplicateMap = useMemo(() => {
@@ -563,7 +567,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
     const clientStatus = getClientStatus(client.id);
     const clientStatusColor = CLIENT_STATUS_COLORS[clientStatus];
     const clientTypeColor = CLIENT_TYPE_COLORS[client.categorie];
-    const detailScore = clientScores.find(s => s.clientId === client.id);
+    const clientScore = getClientScore(client.id);
 
     return (
       <div className="space-y-4">
@@ -589,15 +593,10 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                   </span>
                 )}
                 {/* Score badge */}
-                {detailScore && (
-                  <span
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium"
-                    style={{ backgroundColor: `${SCORE_COLORS[detailScore.classification]}20`, color: SCORE_COLORS[detailScore.classification] }}
-                    title={`Score client : ${detailScore.score}/100`}
-                  >
-                    {SCORE_LABELS[detailScore.classification]} {detailScore.score}
-                  </span>
-                )}
+                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${isDark ? clientScore.darkBg : clientScore.bg}`} title={`Score : ${clientScore.score}/100`}>
+                  <span>{clientScore.icon}</span>
+                  {clientScore.label}
+                </span>
               </div>
             </div>
             <div className="flex items-center gap-1.5">
@@ -832,12 +831,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
 
               // Si le client a un email, proposer l'envoi
               if (client.email) {
-                const send = await confirm({
-                  title: 'Envoyer l\'invitation',
-                  message: `Envoyer le lien par email à ${client.email} ?`,
-                  confirmText: 'Envoyer',
-                  cancelText: 'Annuler',
-                });
+                const send = window.confirm(`Envoyer le lien par email à ${client.email} ?`);
                 if (send) {
                   const sent = await sendPortalInvite(supabase, {
                     clientEmail: client.email,
@@ -947,11 +941,6 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
           }));
           timeline.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
 
-          const caTotal = clientDevis.filter(d => ['signe', 'facture'].includes(d.statut)).reduce((s, d) => s + (d.total_ttc || 0), 0);
-          const nbDevis = clientDevis.filter(d => d.type === 'devis').length;
-          const nbFactures = clientDevis.filter(d => d.type === 'facture').length;
-          const dateCreation = client?.created_at ? new Date(client.created_at).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }) : '';
-
           const statusLabel = (s) => ({
             brouillon: 'Brouillon', envoye: 'Envoyé', vu: 'Vu', accepte: 'Signé',
             refuse: 'Refusé', payee: 'Payée', facturee: 'Facturé',
@@ -970,26 +959,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
 
           return (
             <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-3 sm:p-5`}>
-              {/* Valeur client bar */}
-              {(caTotal > 0 || nbDevis > 0) && (
-                <div className={`text-xs mb-3 p-2.5 rounded-lg ${isDark ? 'bg-slate-700/50 text-slate-300' : 'bg-slate-50 text-slate-600'}`}>
-                  Valeur client : <strong>{modeDiscret ? '•••••' : `${caTotal.toLocaleString('fr-FR')} €`}</strong> · {nbDevis} devis · {nbFactures} facture{nbFactures !== 1 ? 's' : ''}{dateCreation ? ` · Depuis ${dateCreation}` : ''}
-                </div>
-              )}
-              {/* Filters */}
-              <div className="flex gap-2 mb-3 overflow-x-auto">
-                {['tout', 'devis', 'facture', 'chantier'].map(f => (
-                  <button key={f} onClick={() => setHistoryFilter?.(prev => prev === f ? 'tout' : f)}
-                    className={`text-xs px-3 py-1 rounded-full whitespace-nowrap transition-colors ${
-                      (historyFilter || 'tout') === f ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'
-                    }`}
-                    style={(historyFilter || 'tout') === f ? { background: couleur } : {}}
-                  >
-                    {f === 'tout' ? 'Tout' : f === 'devis' ? 'Devis' : f === 'facture' ? 'Factures' : 'Chantiers'}
-                  </button>
-                ))}
-              </div>
-              {(historyFilter && historyFilter !== 'tout' ? timeline.filter(t => t.type === historyFilter) : timeline).length === 0 ? (
+              {timeline.length === 0 ? (
                 <div className="text-center py-10">
                   <div className={`w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
                     <History size={28} className={isDark ? 'text-slate-500' : 'text-slate-400'} />
@@ -999,7 +969,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {(historyFilter && historyFilter !== 'tout' ? timeline.filter(t => t.type === historyFilter) : timeline).map(item => (
+                  {timeline.map(item => (
                     <button
                       key={item.id}
                       onClick={item.onClick}
@@ -1623,37 +1593,6 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
             </div>
           </div>
         </div>
-
-        {/* Informations avancées — collapsible */}
-        <div className="mt-4">
-          <button onClick={() => setShowAdvanced(!showAdvanced)} className={`flex items-center gap-2 w-full text-xs font-medium py-2 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-            <ChevronDown size={14} className={`transition-transform ${showAdvanced ? '' : '-rotate-90'}`} />
-            Informations avancées
-          </button>
-          {showAdvanced && (
-            <div className="space-y-3 pl-2 border-l-2 mt-2" style={{ borderColor: `${couleur}30` }}>
-              <div>
-                <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>SIRET</label>
-                <input placeholder="XXX XXX XXX XXXXX" value={form.siret || ''} onChange={e => setForm(p => ({...p, siret: e.target.value}))} className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} />
-              </div>
-              <div>
-                <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Type de logement</label>
-                <select value={form.typeLogement || ''} onChange={e => setForm(p => ({...p, typeLogement: e.target.value}))} className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`}>
-                  <option value="">Non spécifié</option>
-                  <option>Maison</option><option>Appartement</option><option>Commerce</option><option>Bureau</option>
-                </select>
-              </div>
-              <div>
-                <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Source d'acquisition</label>
-                <select value={form.source || ''} onChange={e => setForm(p => ({...p, source: e.target.value}))} className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`}>
-                  <option value="">Non spécifié</option>
-                  <option>Bouche-à-oreille</option><option>Site web</option><option>Réseaux sociaux</option><option>Pages Jaunes</option><option>Recommandation</option><option>Autre</option>
-                </select>
-              </div>
-            </div>
-          )}
-        </div>
-
         <div className={`flex justify-end gap-3 mt-6 pt-6 border-t ${isDark ? 'border-slate-700' : ''}`}>
           <button onClick={() => { setShow(false); setEditId(null); }} className={`px-4 py-2.5 rounded-xl flex items-center gap-1.5 min-h-[44px] transition-colors ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'}`}>
             <X size={16} />Annuler
@@ -1750,7 +1689,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
           )}
           <div>
             <h1 className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>Clients</h1>
-            <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{displayClients.length} contact{displayClients.length !== 1 ? 's' : ''}</p>
+            <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{displayClients.length} contact{displayClients.length !== 1 ? 's' : ''}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -1898,17 +1837,17 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
         {/* Row 1: Search + View toggle + Sort */}
         <div className="flex gap-2 items-center">
           <div className="relative flex-1">
-            <Search size={16} className={`absolute left-3 top-1/2 -translate-y-1/2 ${textMuted}`} />
+            <Search size={14} className={`absolute left-3 top-1/2 -translate-y-1/2 ${textMuted}`} />
             <input
               type="text"
               placeholder="Rechercher..."
-              aria-label="Rechercher"
+              aria-label="Rechercher un client"
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className={`w-full pl-9 pr-10 py-2 border rounded-xl text-sm ${inputBg}`}
+              className={`w-full pl-8 pr-8 py-2 border rounded-xl text-sm ${inputBg}`}
             />
             {search && (
-              <button onClick={() => setSearch('')} aria-label="Effacer la recherche" className={`absolute right-2 top-1/2 -translate-y-1/2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full ${isDark ? 'hover:bg-slate-600' : 'hover:bg-slate-200'} ${textMuted}`}>
+              <button onClick={() => setSearch('')} className={`absolute right-2 top-1/2 -translate-y-1/2 ${textMuted} hover:text-red-400`}>
                 <X size={14} />
               </button>
             )}
@@ -1917,21 +1856,17 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
           <div className={`flex rounded-lg border overflow-hidden ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
             <button
               onClick={() => setViewMode('grid')}
-              className={`p-2 min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors ${viewMode === 'grid' ? 'text-white' : isDark ? 'text-slate-400' : 'text-slate-500'}`}
+              className={`p-1.5 flex items-center justify-center transition-colors ${viewMode === 'grid' ? 'text-white' : isDark ? 'text-slate-400' : 'text-slate-500'}`}
               style={viewMode === 'grid' ? { background: couleur } : {}}
               title="Vue grille"
-              aria-label="Vue grille"
-              aria-pressed={viewMode === 'grid'}
             >
               <LayoutGrid size={14} />
             </button>
             <button
               onClick={() => setViewMode('list')}
-              className={`p-2 min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors ${viewMode === 'list' ? 'text-white' : isDark ? 'text-slate-400' : 'text-slate-500'}`}
+              className={`p-1.5 flex items-center justify-center transition-colors ${viewMode === 'list' ? 'text-white' : isDark ? 'text-slate-400' : 'text-slate-500'}`}
               style={viewMode === 'list' ? { background: couleur } : {}}
               title="Vue liste"
-              aria-label="Vue liste"
-              aria-pressed={viewMode === 'list'}
             >
               <List size={14} />
             </button>
@@ -1940,8 +1875,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
           <select
             value={`${sortBy}-${sortDir}`}
             onChange={(e) => { const [s, d] = e.target.value.split('-'); setSortBy(s); setSortDir(d); }}
-            aria-label="Trier par"
-            className={`px-2 py-2 sm:py-1.5 rounded-lg text-xs border min-h-[44px] ${isDark ? 'bg-slate-700 border-slate-600 text-slate-300' : 'bg-white border-slate-200 text-slate-600'}`}
+            className={`px-2 py-2 sm:py-1.5 rounded-lg text-xs border min-h-[36px] ${isDark ? 'bg-slate-700 border-slate-600 text-slate-300' : 'bg-white border-slate-200 text-slate-600'}`}
           >
             <option value="recent-desc">Récent</option>
             <option value="name-asc">Nom A-Z</option>
@@ -1996,8 +1930,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
               <button
                 key={opt.key}
                 onClick={() => setFilterStatus(opt.key)}
-                aria-pressed={filterStatus === opt.key}
-                className={`px-3 py-1.5 rounded-lg text-xs whitespace-nowrap flex-shrink-0 transition-colors min-h-[44px] active:scale-95 ${filterStatus === opt.key ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}
+                className={`px-2.5 py-1.5 rounded-lg text-xs whitespace-nowrap flex-shrink-0 transition-colors min-h-[36px] active:scale-95 ${filterStatus === opt.key ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}
                 style={filterStatus === opt.key ? { background: couleur } : {}}
               >
                 {opt.label}
@@ -2122,6 +2055,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
             const avatarBg = typeColor?.color || couleur;
             const initials = getInitials(c);
             const hasDuplicates = duplicateMap.has(c.id);
+            const cScore = getClientScore(c.id);
 
             return (
               <article key={c.id} role="article" aria-label={`Client ${c.nom} ${c.prenom || ''}`.trim()} className={`${cardBg} rounded-xl sm:rounded-2xl border overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group flex flex-col h-full ${hasDuplicates ? isDark ? 'border-amber-800/50' : 'border-amber-200' : ''}`} onClick={() => setViewId(c.id)} tabIndex={0} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setViewId(c.id); } }}>
@@ -2141,20 +2075,9 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                           <Building2 size={11} /> {c.entreprise}
                         </p>
                       )}
-                      {/* Badges row — Order: Score → Status → Type → Doublon */}
+                      {/* Badges row — Order: Status → Type → Doublon */}
                       <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                        {/* Score badge */}
-                        {(() => {
-                          const cs = clientScores.find(s => s.clientId === c.id);
-                          if (!cs) return null;
-                          return (
-                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
-                              style={{ backgroundColor: `${SCORE_COLORS[cs.classification]}20`, color: SCORE_COLORS[cs.classification] }}>
-                              {SCORE_LABELS[cs.classification]} {cs.score}
-                            </span>
-                          );
-                        })()}
-                        {/* Status badge with tooltip */}
+                        {/* Status badge (always first) with tooltip */}
                         <span
                           className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${isDark ? statusColor.darkBg + ' ' + statusColor.darkText : statusColor.bg + ' ' + statusColor.text}`}
                           title={STATUS_TOOLTIPS[status] || ''}
@@ -2168,6 +2091,10 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                             <span className="text-[9px]">{TYPE_ICONS[c.categorie] || ''}</span> {c.categorie}
                           </span>
                         )}
+                        {/* Score badge */}
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${isDark ? cScore.darkBg : cScore.bg}`} title={`Score : ${cScore.score}/100`}>
+                          <span className="text-[9px]">{cScore.icon}</span> {cScore.label}
+                        </span>
                         {/* Duplicate warning badge (last) */}
                         {hasDuplicates && (
                           <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${isDark ? 'bg-amber-900/30 text-amber-300' : 'bg-amber-50 text-amber-600'}`}>
@@ -2217,9 +2144,15 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
 
                 {/* Stats footer */}
                 <div className={`px-4 py-2.5 border-t flex items-center justify-between mt-auto ${isDark ? 'border-slate-700/50 bg-slate-900/30' : 'border-slate-100 bg-slate-50/50'}`}>
-                  <div className="flex gap-1">
-                    <span className={`text-xs ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
-                      {s.chantiers} chantier{s.chantiers !== 1 ? 's' : ''} · {s.devis} devis · {s.factures} facture{s.factures !== 1 ? 's' : ''}
+                  <div className="flex gap-3">
+                    <span className={`flex items-center gap-1 text-xs ${s.chantiers > 0 ? textSecondary : textMuted}`} title="Chantiers">
+                      <Home size={12} className={s.chantiers > 0 ? 'text-emerald-500' : ''} /> {s.chantiers}
+                    </span>
+                    <span className={`flex items-center gap-1 text-xs ${s.devis > 0 ? textSecondary : textMuted}`} title="Devis">
+                      <FileText size={12} className={s.devis > 0 ? 'text-blue-500' : ''} /> {s.devis}
+                    </span>
+                    <span className={`flex items-center gap-1 text-xs ${s.factures > 0 ? textSecondary : textMuted}`} title="Factures">
+                      <Receipt size={12} className={s.factures > 0 ? 'text-purple-500' : ''} /> {s.factures}
                     </span>
                   </div>
                   <span className={`font-bold text-xs ${s.ca === 0 ? textMuted : ''}`} style={s.ca > 0 ? { color: couleur } : {}}>{formatMoney(s.ca)}</span>
@@ -2250,6 +2183,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
             const avatarBg = typeColor?.color || couleur;
             const initials = getInitials(c);
             const hasDuplicates = duplicateMap.has(c.id);
+            const cScore = getClientScore(c.id);
 
             return (
               <div
@@ -2270,6 +2204,9 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                       <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium ${isDark ? statusColor.darkBg + ' ' + statusColor.darkText : statusColor.bg + ' ' + statusColor.text}`} title={STATUS_TOOLTIPS[status] || ''}>
                         <span className={`w-1.5 h-1.5 rounded-full ${statusColor.dot}`} />
                         {CLIENT_STATUS_LABELS[status]}
+                      </span>
+                      <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium ${isDark ? cScore.darkBg : cScore.bg}`} title={`Score : ${cScore.score}/100`}>
+                        <span className="text-[9px]">{cScore.icon}</span> {cScore.label}
                       </span>
                       {hasDuplicates && (
                         <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium ${isDark ? 'bg-amber-900/30 text-amber-300' : 'bg-amber-50 text-amber-600'}`}>
