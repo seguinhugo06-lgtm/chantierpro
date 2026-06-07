@@ -56,8 +56,19 @@ export const auth = {
   getCurrentUser: async () => {
     if (isDemo) return DEMO_USER;
     if (!supabase) return null;
-    const { data: { user } } = await supabase.auth.getUser();
-    return user;
+    // Lecture de la session depuis le stockage local (rapide, sans appel réseau bloquant).
+    // Protégé par un timeout : si Supabase est indisponible (projet en pause, réseau coupé),
+    // on renvoie null après 5s au lieu de laisser l'app figée sur l'écran de chargement.
+    try {
+      const sessionPromise = supabase.auth.getSession();
+      const timeoutPromise = new Promise((resolve) =>
+        setTimeout(() => resolve({ data: { session: null } }), 5000)
+      );
+      const { data } = await Promise.race([sessionPromise, timeoutPromise]);
+      return data?.session?.user ?? null;
+    } catch {
+      return null;
+    }
   },
   onAuthStateChange: (callback) => {
     if (isDemo || !supabase) return { data: { subscription: { unsubscribe: () => {} } } };

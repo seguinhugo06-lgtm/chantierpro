@@ -1,0 +1,31 @@
+name: Supabase Keep-Alive
+
+# Empêche la mise en pause automatique du projet Supabase (plan gratuit),
+# qui survient après ~7 jours sans activité. Un ping quotidien suffit à
+# réinitialiser le compteur d'inactivité.
+
+on:
+  schedule:
+    - cron: '17 6 * * *' # tous les jours à 06:17 UTC
+  workflow_dispatch: {} # permet un déclenchement manuel depuis l'onglet Actions
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase REST (garde le projet actif)
+        run: |
+          code=$(curl -sS -o /dev/null -w "%{http_code}" \
+            "${SUPABASE_URL}/rest/v1/organizations?select=id&limit=1" \
+            -H "apikey: ${SUPABASE_ANON_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_ANON_KEY}")
+          echo "Supabase a répondu HTTP $code"
+          # 200 = OK, 401/403/404 = projet actif mais réponse filtrée (RLS) — OK aussi.
+          # On échoue seulement si le projet est injoignable / en pause (5xx ou 000).
+          if [ "$code" -ge 500 ] || [ "$code" = "000" ]; then
+            echo "::error::Projet Supabase injoignable (HTTP $code)"
+            exit 1
+          fi
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
