@@ -159,7 +159,7 @@ export function OrgProvider({ children }) {
           .eq('user_id', uid)
           .maybeSingle(),
         supabase.from('organization_members')
-          .select('id, user_id, role, joined_at, equipe_member_id, equipe:equipe_member_id(nom, prenom, email)')
+          .select('id, user_id, role, joined_at, equipe_member_id')
           .eq('organization_id', resolvedOrgId)
           .order('joined_at', { ascending: true }),
       ]);
@@ -178,7 +178,25 @@ export function OrgProvider({ children }) {
       }
 
       if (membersRes.data) {
-        setMembers(membersRes.data);
+        // Jointure manuelle membres ↔ équipe : on évite l'embed PostgREST
+        // (equipe:equipe_member_id(...)) qui échouait en 400, car la relation FK
+        // equipe_member_id → equipe n'est pas déclarée en base.
+        let membersData = membersRes.data;
+        const equipeIds = [...new Set(membersData.map((m) => m.equipe_member_id).filter(Boolean))];
+        if (equipeIds.length > 0) {
+          const { data: equipeRows } = await supabase
+            .from('equipe')
+            .select('id, nom, prenom, email')
+            .in('id', equipeIds);
+          const equipeById = Object.fromEntries((equipeRows || []).map((e) => [e.id, e]));
+          membersData = membersData.map((m) => ({
+            ...m,
+            equipe: m.equipe_member_id ? equipeById[m.equipe_member_id] || null : null,
+          }));
+        } else {
+          membersData = membersData.map((m) => ({ ...m, equipe: null }));
+        }
+        setMembers(membersData);
       }
     } catch (err) {
       console.error('[OrgContext] Error resolving org:', err);
