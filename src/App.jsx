@@ -46,9 +46,7 @@ const TresorerieModule = lazyWithRetry(() => import('./components/tresorerie/Tre
 const BibliothequeOuvrages = lazyWithRetry(() => import('./components/catalogue/BibliothequeOuvrages'), 'Bibliothèque');
 const BibliothequePrix = lazyWithRetry(() => import('./components/bibliotheque/Bibliotheque'), 'BibliothèquePrix');
 const SousTraitantsModule = lazyWithRetry(() => import('./components/soustraitants/SousTraitantsModule'), 'SousTraitants');
-const CommandesFournisseurs = lazyWithRetry(() => import('./components/commandes/CommandesFournisseurs'), 'Commandes');
 const IADevisAnalyse = lazyWithRetry(() => import('./components/ia/IADevisAnalyse'), 'IADevis');
-const CarnetEntretien = lazyWithRetry(() => import('./components/entretien/CarnetEntretien'), 'CarnetEntretien');
 const SignatureModule = lazyWithRetry(() => import('./components/signatures/SignatureModule'), 'Signatures');
 const ExportComptable = lazyWithRetry(() => import('./components/export/ExportComptable'), 'ExportComptable');
 const BillingDashboard = lazyWithRetry(() => import('./components/subscription/BillingDashboard'), 'Billing');
@@ -62,19 +60,13 @@ const Changelog = lazyWithRetry(() => import('./components/Changelog'), 'Changel
 const FinancesPage = lazyWithRetry(() => import('./components/FinancesPage'), 'Finances');
 // MemosPage replaced by TasksAndPlanning
 const ShortcutsHelp = lazyWithRetry(() => import('./components/ShortcutsHelp'), 'Raccourcis');
-const PipelineKanban = lazyWithRetry(() => import('./components/pipeline/PipelineKanban'), 'Pipeline');
-const AvisGoogle = lazyWithRetry(() => import('./components/avis/AvisGoogle'), 'AvisGoogle');
 // ClientPortal uses PortalLoader (manual dynamic import) instead of React.lazy
 // to handle circular-dependency TDZ errors during module evaluation
 import PortalLoader from './components/portal/PortalLoader';
-const ChatPage = lazyWithRetry(() => import('./components/chat/ChatPage'), 'Messagerie');
 const GarantiesDashboard = lazyWithRetry(() => import('./components/chantiers/GarantiesDashboard'), 'Garanties');
 const ProfilePage = lazyWithRetry(() => import('./components/profil/ProfilePage'), 'Profil');
 const PlanPage = lazyWithRetry(() => import('./components/profil/PlanPage'), 'Plan');
 const AIChatBot = lazyWithRetry(() => import('./components/assistant/AIChatBot'), 'AIChatBot');
-const ContractsPage = lazyWithRetry(() => import('./components/ContractsPage'), 'Contrats');
-const FormulairesPage = lazyWithRetry(() => import('./components/forms/FormulairesPage'), 'Formulaires');
-const SiteVitrine = lazyWithRetry(() => import('./components/site/SiteVitrine'), 'SiteVitrine');
 import CookieConsent from './components/CookieConsent';
 import CGUAcceptanceModal, { CGU_VERSION } from './components/CGUAcceptanceModal';
 import { useConfirm, useToast } from './context/AppContext';
@@ -949,14 +941,8 @@ export default function App() {
       confidentialite: 'Confidentialité',
       'mentions-legales': 'Mentions légales',
       'checkout-success': 'Paiement confirmé',
-      messagerie: 'Messagerie',
       garanties: 'Garanties',
-      'avis-google': 'Marketing',
       'bibliotheque': 'Bibliothèque',
-      'pipeline': 'Pipeline',
-      'site-web': 'Site web',
-      'formulaires': 'Formulaires',
-      'contrats': 'Contrats',
     };
     const title = PAGE_TITLES[page] || page.charAt(0).toUpperCase() + page.slice(1);
     document.title = `${title} — BatiGesti`;
@@ -1240,15 +1226,9 @@ export default function App() {
         todayEvents > 0 ? `${todayEvents} événement${todayEvents > 1 ? 's' : ''} aujourd'hui` : '',
       ].filter(Boolean).join(' · ')
     },
-    { id: 'messagerie', icon: MessageCircle, label: 'Messagerie' },
     { id: 'equipe', icon: HardHat, label: 'Équipe' },
     { id: 'bibliotheque', icon: Library, label: 'Bibliothèque' },
     { id: 'catalogue', icon: Package, label: 'Catalogue' },
-    { id: 'commandes', icon: ShoppingCart, label: 'Commandes', feature: 'commandes' },
-    { id: 'avis-google', icon: Megaphone, label: 'Marketing', feature: 'avis_google' },
-    { id: 'contrats', icon: FileCheck, label: 'Contrats' },
-    { id: 'formulaires', icon: ClipboardCheck, label: 'Formulaires' },
-    { id: 'site-web', icon: Globe, label: 'Site web' },
     { id: 'finances', icon: Wallet, label: 'Finances' },
     { id: 'profil', icon: User, label: 'Mon profil' },
     { id: 'plan', icon: CreditCard, label: 'Mon plan' },
@@ -1760,25 +1740,17 @@ export default function App() {
               {page === 'catalogue' && <Catalogue catalogue={catalogue} setCatalogue={setCatalogue} addCatalogueItem={addCatalogueItem} updateCatalogueItem={updateCatalogueItem} deleteCatalogueItem={deleteCatalogueItem} chantiers={chantiers} equipe={equipe} devis={devis} updateDevis={updateDevis} clients={clients} couleur={couleur} isDark={isDark} modeDiscret={modeDiscret} setPage={setPage} />}
               {page === 'ouvrages' && <BibliothequeOuvrages catalogue={catalogue} ouvragesProp={ouvrages} setOuvragesProp={setOuvrages} addOuvrage={dataAddOuvrage} updateOuvrage={dataUpdateOuvrage} deleteOuvrage={dataDeleteOuvrage} isDark={isDark} couleur={couleur} />}
               {page === 'soustraitants' && <FeatureGuard feature="sous_traitants"><SousTraitantsModule chantiers={chantiers} isDark={isDark} couleur={couleur} setPage={setPage} /></FeatureGuard>}
-              {page === 'commandes' && <FeatureGuard feature="commandes"><CommandesFournisseurs chantiers={chantiers} catalogue={catalogue} entreprise={entreprise} isDark={isDark} couleur={couleur} setPage={setPage} /></FeatureGuard>}
               {page === 'tresorerie' && <FeatureGuard feature="tresorerie"><TresorerieModule devis={devis} depenses={depenses} chantiers={chantiers} clients={clients} paiements={paiements} entreprise={entreprise} isDark={isDark} couleur={couleur} setPage={setPage} modeDiscret={modeDiscret} /></FeatureGuard>}
               {page === 'ia-devis' && <FeatureGuard feature="ia_devis"><IADevisAnalyse catalogue={catalogue} clients={clients} chantiers={chantiers} entreprise={entreprise} isDark={isDark} couleur={couleur} onSubmit={addDevis} addClient={addClient} generateNextNumero={generateNextNumero} setSelectedDevis={setSelectedDevis} setPage={setPage} user={user} orgId={orgId} /></FeatureGuard>}
-              {page === 'entretien' && <FeatureGuard feature="entretien"><CarnetEntretien chantiers={chantiers} clients={clients} isDark={isDark} couleur={couleur} setPage={setPage} /></FeatureGuard>}
               {page === 'signatures' && <FeatureGuard feature="signatures"><SignatureModule devis={devis} chantiers={chantiers} clients={clients} isDark={isDark} couleur={couleur} /></FeatureGuard>}
               {page === 'export' && <FeatureGuard feature="export_comptable"><ExportComptable devis={devis} depenses={depenses} chantiers={chantiers} clients={clients} entreprise={entreprise} isDark={isDark} couleur={couleur} /></FeatureGuard>}
-              {page === 'pipeline' && <FeatureGuard feature="pipeline"><PipelineKanban devis={devis} clients={clients} isDark={isDark} couleur={couleur} setPage={setPage} setSelectedDevis={setSelectedDevis} onUpdateDevis={updateDevis} /></FeatureGuard>}
-              {page === 'avis-google' && <FeatureGuard feature="avis_google"><AvisGoogle chantiers={chantiers} clients={clients} entreprise={entreprise} isDark={isDark} couleur={couleur} user={user} /></FeatureGuard>}
-              {page === 'profil' && <ProfilePage user={user} entreprise={entreprise} devis={devis} clients={clients} chantiers={chantiers} catalogue={catalogue} depenses={depenses} paiements={paiements} equipe={equipe} isDark={isDark} couleur={couleur} setPage={setPage} modeDiscret={modeDiscret} />}
+              {page === 'profil' &&<ProfilePage user={user} entreprise={entreprise} devis={devis} clients={clients} chantiers={chantiers} catalogue={catalogue} depenses={depenses} paiements={paiements} equipe={equipe} isDark={isDark} couleur={couleur} setPage={setPage} modeDiscret={modeDiscret} />}
               {page === 'plan' && <PlanPage isDark={isDark} couleur={couleur} setPage={setPage} />}
               {page === 'analytique' && <AnalyticsPremium devis={devis} clients={clients} chantiers={chantiers} depenses={depenses} equipe={equipe} paiements={paiements} pointages={pointages} isDark={isDark} couleur={couleur} showToast={showToast} setPage={setPage} />}
               {page === 'finances' && <FinancesPage devis={devis} depenses={depenses} clients={clients} chantiers={chantiers} entreprise={entreprise} equipe={equipe} paiements={paiements} pointages={pointages} isDark={isDark} couleur={couleur} setPage={setPage} modeDiscret={modeDiscret} />}
               {page === 'equipe' && <Equipe equipe={equipe} setEquipe={setEquipe} addEmployee={addEmployee} updateEmployee={updateEmployee} deleteEmployee={deleteEmployee} pointages={pointages} setPointages={setPointages} addPointage={addPointage} chantiers={chantiers} planningEvents={planningEvents} couleur={couleur} isDark={isDark} modeDiscret={modeDiscret} setPage={setPage} />}
-              {page === 'messagerie' && <ChatPage isDark={isDark} couleur={couleur} showToast={showToast} user={user} equipe={equipe} />}
-              {page === 'garanties' && <GarantiesDashboard isDark={isDark} couleur={couleur} showToast={showToast} user={user} chantiers={chantiers} />}
-              {page === 'contrats' && <ContractsPage isDark={isDark} couleur={couleur} showToast={showToast} user={user} entreprise={entreprise} clients={clients} chantiers={chantiers} setPage={setPage} />}
-              {page === 'formulaires' && <FormulairesPage isDark={isDark} couleur={couleur} showToast={showToast} user={user} entreprise={entreprise} clients={clients} chantiers={chantiers} setPage={setPage} />}
-              {page === 'site-web' && <SiteVitrine isDark={isDark} couleur={couleur} showToast={showToast} entreprise={entreprise} chantiers={chantiers} catalogue={catalogue} setPage={setPage} />}
-              {page === 'admin' && <AdminHelp chantiers={chantiers} clients={clients} devis={devis} factures={devis.filter(d => d.type === 'facture')} depenses={depenses} entreprise={entreprise} isDark={isDark} couleur={couleur} />}
+              {page === 'garanties' &&<GarantiesDashboard isDark={isDark} couleur={couleur} showToast={showToast} user={user} chantiers={chantiers} />}
+              {page === 'admin' &&<AdminHelp chantiers={chantiers} clients={clients} devis={devis} factures={devis.filter(d => d.type === 'facture')} depenses={depenses} entreprise={entreprise} isDark={isDark} couleur={couleur} />}
               {page === 'pricing' && <PricingPage isDark={isDark} couleur={couleur} setPage={setPage} />}
               {page === 'billing' && <BillingDashboard isDark={isDark} couleur={couleur} />}
               {page === 'checkout-success' && <CheckoutSuccess isDark={isDark} couleur={couleur} setPage={setPage} />}
@@ -1809,7 +1781,7 @@ export default function App() {
             showFABDevisWizard || showFABQuickClient || showFABQuickChantier ||
             showSearch ||
             // Hide FAB on pages that have their own creation button
-            ['devis', 'chantiers', 'clients', 'equipe', 'catalogue', 'settings', 'ia-devis', 'memos', 'commandes'].includes(page)
+            ['devis', 'chantiers', 'clients', 'equipe', 'catalogue', 'settings', 'ia-devis', 'memos'].includes(page)
           }
         />
 

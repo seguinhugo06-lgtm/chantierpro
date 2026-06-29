@@ -176,12 +176,8 @@ export const PAGE_FEATURE_MAP = {
   tresorerie: 'tresorerie',
   'ia-devis': 'ia_devis',
   soustraitants: 'sous_traitants',
-  commandes: 'commandes',
-  entretien: 'entretien',
   pointages: 'pointages',
-  analytics: 'analytics',
-  pipeline: 'pipeline',
-  'avis-google': 'avis_google'
+  analytics: 'analytics'
 };
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
