@@ -58,7 +58,6 @@ window.addEventListener('unhandledrejection', (event) => {
 const ClientPortal = lazy(() => import('./components/portal/ClientPortal'))
 const DevisSignaturePage = lazy(() => import('./components/signature/DevisSignaturePage'))
 const AcceptInvitation = lazy(() => import('./components/auth/AcceptInvitation'))
-const FacturePaymentPage = lazy(() => import('./components/payment/FacturePaymentPage'))
 
 // Marketing sub-pages (lazy loaded, light-mode only)
 const FeaturesDetailPage = lazy(() => import('./components/landing/FeaturesDetailPage'))
@@ -93,13 +92,6 @@ function getInvitationToken() {
   return match ? match[1] : null
 }
 
-// Check if this is a payment URL: /pay/{token} or /facture/payer/{token}
-function getPaymentToken() {
-  const path = window.location.pathname
-  const match = path.match(/^\/(?:pay|facture\/payer)\/([a-zA-Z0-9_-]+)$/i)
-  return match ? match[1] : null
-}
-
 // Check for demo data mode via URL param: ?demo=true (only works in demo mode)
 function shouldUseDemoData() {
   const params = new URLSearchParams(window.location.search)
@@ -109,7 +101,6 @@ function shouldUseDemoData() {
 const portalToken = getPortalToken()
 const signatureToken = getSignatureToken()
 const invitationToken = getInvitationToken()
-const paymentToken = getPaymentToken()
 const marketingPage = getMarketingPage()
 
 // Determine initial data:
@@ -148,10 +139,6 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     ) : marketingPage === 'resources' ? (
       <Suspense fallback={<PublicFallback />}>
         <ResourcesPage />
-      </Suspense>
-    ) : paymentToken ? (
-      <Suspense fallback={<PublicFallback />}>
-        <FacturePaymentPage paymentToken={paymentToken} />
       </Suspense>
     ) : signatureToken ? (
       <Suspense fallback={<PublicFallback />}>

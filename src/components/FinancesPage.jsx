@@ -8,8 +8,6 @@ import { usePermissions } from '../hooks/usePermissions';
 const TresorerieModule = lazy(() => import('./tresorerie/TresorerieModule'));
 const ExportComptable = lazy(() => import('./export/ExportComptable'));
 const AnalyticsPremium = lazy(() => import('./AnalyticsPremium'));
-const BankModule = lazy(() => import('./bank/BankModule'));
-const PaiementsTab = lazy(() => import('./finances/PaiementsTab'));
 const RapportsTab = lazy(() => import('./finances/RapportsTab'));
 
 const LoadingSpinner = ({ couleur }) => (
@@ -40,8 +38,6 @@ const ModuleErrorFallback = ({ moduleName, isDark, couleur, onRetry }) => (
 
 const TAB_CONFIG = [
   { key: 'tresorerie', label: 'Trésorerie', icon: Wallet },
-  { key: 'paiements', label: 'Paiements', icon: CreditCard },
-  { key: 'banque', label: 'Banque', icon: Landmark },
   { key: 'export', label: 'Export Comptable', icon: Download },
   { key: 'analytique', label: 'Analytique', icon: BarChart3 },
   { key: 'rapports', label: 'Rapports', icon: FileText },
@@ -102,39 +98,6 @@ export default function FinancesPage({ devis, depenses, clients, chantiers, entr
               clients={clients}
               paiements={paiements}
               entreprise={entreprise}
-              isDark={isDark}
-              couleur={couleur}
-              setPage={setPage}
-              modeDiscret={modeDiscret}
-            />
-          </Suspense>
-        </ErrorBoundary>
-      </div>
-
-      <div style={{ display: activeTab === 'paiements' ? 'block' : 'none' }}>
-        <ErrorBoundary isDark={isDark} fallback={<ModuleErrorFallback moduleName="Paiements" isDark={isDark} couleur={couleur} />}>
-          <Suspense fallback={<LoadingSpinner couleur={couleur} />}>
-            <PaiementsTab
-              devis={devis}
-              clients={clients}
-              isDark={isDark}
-              couleur={couleur}
-              setPage={setPage}
-              modeDiscret={modeDiscret}
-            />
-          </Suspense>
-        </ErrorBoundary>
-      </div>
-
-      <div style={{ display: activeTab === 'banque' ? 'block' : 'none' }}>
-        <ErrorBoundary isDark={isDark} fallback={<ModuleErrorFallback moduleName="Banque" isDark={isDark} couleur={couleur} />}>
-          <Suspense fallback={<LoadingSpinner couleur={couleur} />}>
-            <BankModule
-              devis={devis}
-              depenses={depenses}
-              clients={clients}
-              entreprise={entreprise}
-              paiements={paiements}
               isDark={isDark}
               couleur={couleur}
               setPage={setPage}
