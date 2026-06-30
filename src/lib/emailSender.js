@@ -8,7 +8,6 @@
  * configuré dans Supabase, et domaine d'envoi vérifié côté Resend.
  */
 import supabase from '../supabaseClient';
-import { htmlToPdfBytes } from './facturx-pdf';
 
 // Encode un Uint8Array en base64 sans dépasser la limite d'arguments de String.fromCharCode.
 function uint8ToBase64(bytes) {
@@ -18,6 +17,52 @@ function uint8ToBase64(bytes) {
     binary += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK));
   }
   return btoa(binary);
+}
+
+// Génère un PDF (octets) à partir d'un HTML complet via html2canvas + jsPDF.
+// Approche image multi-pages : fidèle au rendu HTML et fiable
+// (l'ancienne voie jsPDF.html() produisait des pages blanches).
+async function generateDocumentPdfBytes(fullHtml) {
+  const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
+    import('html2canvas'),
+    import('jspdf'),
+  ]);
+
+  const bodyMatch = fullHtml.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+  const styleMatch = fullHtml.match(/<style[^>]*>[\s\S]*?<\/style>/gi);
+  const container = document.createElement('div');
+  container.innerHTML = (styleMatch ? styleMatch.join('') : '') + (bodyMatch ? bodyMatch[1] : fullHtml);
+  container.style.cssText = 'position:absolute;left:-9999px;top:0;width:794px;background:#ffffff;color:#1e293b;';
+  document.body.appendChild(container);
+
+  try {
+    await new Promise((r) => setTimeout(r, 80)); // laisser le layout / les polices se poser
+    const canvas = await html2canvas(container, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: '#ffffff',
+      windowWidth: 794,
+      logging: false,
+    });
+    const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+    const pageW = 210;
+    const pageH = 297;
+    const imgH = (canvas.height * pageW) / canvas.width;
+    const imgData = canvas.toDataURL('image/jpeg', 0.92);
+    let heightLeft = imgH;
+    let position = 0;
+    pdf.addImage(imgData, 'JPEG', 0, position, pageW, imgH, undefined, 'FAST');
+    heightLeft -= pageH;
+    while (heightLeft > 0) {
+      position -= pageH;
+      pdf.addPage();
+      pdf.addImage(imgData, 'JPEG', 0, position, pageW, imgH, undefined, 'FAST');
+      heightLeft -= pageH;
+    }
+    return new Uint8Array(pdf.output('arraybuffer'));
+  } finally {
+    document.body.removeChild(container);
+  }
 }
 
 /**
@@ -38,7 +83,7 @@ export async function sendDocumentEmail({ to, subject, bodyHtml, fromName, reply
 
   let attachments;
   if (pdfHtml) {
-    const pdfBytes = await htmlToPdfBytes(pdfHtml);
+    const pdfBytes = await generateDocumentPdfBytes(pdfHtml);
     attachments = [{ filename: pdfFilename || 'document.pdf', content: uint8ToBase64(pdfBytes) }];
   }
 
