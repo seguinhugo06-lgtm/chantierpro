@@ -31,7 +31,7 @@ serve(async (req) => {
       case 'send_email':
       case 'send_campaign':
       case 'send_review_request': {
-        const { to, subject, html, text, from_name, reply_to } = params;
+        const { to, subject, html, text, from_name, reply_to, attachments } = params;
 
         if (!to || !subject) {
           return new Response(
@@ -51,6 +51,12 @@ serve(async (req) => {
         if (text) emailPayload.text = text;
         if (!html && !text) emailPayload.text = subject; // Fallback
         if (reply_to) emailPayload.reply_to = reply_to;
+
+        // Pièces jointes (ex. PDF du devis/facture) : Resend attend
+        // [{ filename, content }] où content est une chaîne base64.
+        if (Array.isArray(attachments) && attachments.length > 0) {
+          emailPayload.attachments = attachments;
+        }
 
         // Add tracking pixel for campaign emails
         if (action === 'send_campaign' && html) {

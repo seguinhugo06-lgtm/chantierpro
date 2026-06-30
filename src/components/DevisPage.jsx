@@ -25,6 +25,7 @@ import { getDocumentEmailStatus } from '../services/CommunicationsService';
 import { usePermissions } from '../hooks/usePermissions';
 import { ReadOnlyBanner } from './ui/PermissionGate';
 import { printSituationFacture as printSitFacture } from '../lib/devisHtmlBuilder';
+import { sendDocumentEmail, buildDocumentEmailBody } from '../lib/emailSender';
 import RelanceTimelineWidget from './RelanceTimelineWidget';
 import { useRelances } from '../hooks/useRelances';
 import { printMiseEnDemeure } from '../lib/miseEnDemeureBuilder';
@@ -1991,23 +1992,41 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     setShowSendConfirmation({ clientName, montant: doc.total_ttc, canal: 'WhatsApp', doc });
   };
 
-  const sendEmail = (doc) => {
+  const sendEmail = async (doc) => {
     const client = clients.find(c => c.id === doc.client_id);
     if (!client) { showToast('Client introuvable. Veuillez associer un client au devis.', 'error'); return; }
-    if (!client?.email) { showToast('Aucun email client renseigne', 'error'); return; }
-    const wasBrouillon = doc.statut === 'brouillon';
-    if (wasBrouillon) {
-      onUpdate(doc.id, { statut: 'envoye' });
-      setSelected(s => s?.id === doc.id ? { ...s, statut: 'envoye' } : s);
+    if (!client?.email) { showToast('Aucun email client renseigné', 'error'); return; }
+    const isFacture = doc.type === 'facture';
+    const label = isFacture ? 'Facture' : 'Devis';
+    setActionLoading('email');
+    showToast(`Envoi du ${label.toLowerCase()} ${doc.numero}…`, 'info');
+    try {
+      // Réutilise le HTML du document (downloadPDF le construit et le retourne, sans effet de bord)
+      const pdfHtml = downloadPDF(doc);
+      const bodyHtml = buildDocumentEmailBody({ doc, client, entreprise, couleur, montantFormatte: formatMoney(doc.total_ttc) });
+      await sendDocumentEmail({
+        to: client.email,
+        subject: `${label} ${doc.numero}${entreprise?.nom ? ` — ${entreprise.nom}` : ''}`,
+        bodyHtml,
+        fromName: entreprise?.nom,
+        replyTo: entreprise?.email,
+        pdfHtml,
+        pdfFilename: `${label}-${doc.numero}.pdf`,
+      });
+      if (doc.statut === 'brouillon') {
+        onUpdate(doc.id, { statut: 'envoye' });
+        setSelected(s => s?.id === doc.id ? { ...s, statut: 'envoye' } : s);
+      }
+      if (addEchange) addEchange({ type: 'email', client_id: doc.client_id, document: doc.numero, montant: doc.total_ttc, objet: `Envoi ${isFacture ? 'facture' : 'devis'} ${doc.numero}` });
+      const clientName = `${client.prenom || ''} ${client.nom || ''}`.trim();
+      setShowSendConfirmation({ clientName, montant: doc.total_ttc, canal: 'Email', doc });
+      showToast(`${label} ${doc.numero} envoyé à ${client.email} ✓`, 'success');
+    } catch (e) {
+      console.error('[sendEmail] Error:', e);
+      showToast(`Échec de l'envoi : ${e?.message || 'erreur inconnue'}`, 'error');
+    } finally {
+      setActionLoading(null);
     }
-    if (addEchange) addEchange({ type: 'email', client_id: doc.client_id, document: doc.numero, montant: doc.total_ttc, objet: `Envoi ${doc.type === 'facture' ? 'facture' : 'devis'} ${doc.numero}` });
-    setTimeout(() => {
-      const subject = encodeURIComponent(`${doc.type === 'facture' ? 'Facture' : 'Devis'} ${doc.numero}`);
-      const body = encodeURIComponent(`Bonjour,\n\nVeuillez trouver ci-joint votre ${doc.type} ${doc.numero} d'un montant de ${formatMoney(doc.total_ttc)}.\n\nCordialement`);
-      window.open(`mailto:${client.email}?subject=${subject}&body=${body}`, '_self');
-    }, 100);
-    const clientName = `${client.prenom || ''} ${client.nom || ''}`.trim();
-    setShowSendConfirmation({ clientName, montant: doc.total_ttc, canal: 'Email', doc });
   };
 
   // SMS via native protocol (mobile only)
