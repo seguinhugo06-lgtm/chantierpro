@@ -26,3 +26,6 @@ dist-ssr
 .env.local
 .vercel
 .env*.local
+
+# Worktrees Claude imbriqués (ne pas committer)
+.claude/worktrees/
