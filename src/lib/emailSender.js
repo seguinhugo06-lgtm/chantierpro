@@ -32,7 +32,9 @@ async function generateDocumentPdfBytes(fullHtml) {
   const styleMatch = fullHtml.match(/<style[^>]*>[\s\S]*?<\/style>/gi);
   const container = document.createElement('div');
   container.innerHTML = (styleMatch ? styleMatch.join('') : '') + (bodyMatch ? bodyMatch[1] : fullHtml);
-  container.style.cssText = 'position:absolute;left:-9999px;top:0;width:794px;background:#ffffff;color:#1e293b;';
+  // Réplique le style du <body> d'origine (la règle body{} ne s'applique pas à un <div>) :
+  // box-sizing + padding pour avoir des marges (sinon le contenu touche les bords / est rogné).
+  container.style.cssText = "position:absolute;left:-9999px;top:0;width:794px;box-sizing:border-box;padding:25px;background:#ffffff;color:#1e293b;font-family:'Segoe UI',Arial,sans-serif;font-size:10pt;line-height:1.4;";
   document.body.appendChild(container);
 
   try {
