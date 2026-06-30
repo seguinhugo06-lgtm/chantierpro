@@ -47,19 +47,57 @@ async function generateDocumentPdfBytes(fullHtml) {
       logging: false,
     });
     const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
-    const pageW = 210;
-    const pageH = 297;
-    const imgH = (canvas.height * pageW) / canvas.width;
-    const imgData = canvas.toDataURL('image/jpeg', 0.92);
-    let heightLeft = imgH;
-    let position = 0;
-    pdf.addImage(imgData, 'JPEG', 0, position, pageW, imgH, undefined, 'FAST');
-    heightLeft -= pageH;
-    while (heightLeft > 0) {
-      position -= pageH;
-      pdf.addPage();
-      pdf.addImage(imgData, 'JPEG', 0, position, pageW, imgH, undefined, 'FAST');
-      heightLeft -= pageH;
+    const pageWmm = 210;
+    const pageHmm = 297;
+    const W = canvas.width;
+    const pxPerMm = W / pageWmm;
+    const pageHpx = Math.floor(pageHmm * pxPerMm);
+
+    // Données pixel pour détecter les lignes "blanches" (espaces entre blocs).
+    // Peut échouer si le canvas est "tainted" (image cross-origin) → on retombe
+    // alors sur une découpe à hauteur fixe.
+    let rowData = null;
+    try {
+      rowData = canvas.getContext('2d').getImageData(0, 0, W, canvas.height).data;
+    } catch {
+      rowData = null;
+    }
+    const sampleStep = Math.max(1, Math.floor(W / 80));
+    const isRowBlank = (y) => {
+      if (!rowData) return false;
+      const base = y * W * 4;
+      for (let x = 0; x < W; x += sampleStep) {
+        const i = base + x * 4;
+        if (rowData[i] < 245 || rowData[i + 1] < 245 || rowData[i + 2] < 245) return false;
+      }
+      return true;
+    };
+
+    // Découpe page par page en cherchant un espace blanc près de la limite A4
+    // (pour ne jamais couper au milieu d'un bloc / d'une ligne).
+    let y = 0;
+    let firstPage = true;
+    while (y < canvas.height) {
+      let sliceEnd = Math.min(y + pageHpx, canvas.height);
+      if (sliceEnd < canvas.height && rowData) {
+        const minEnd = y + Math.floor(pageHpx * 0.6);
+        for (let yy = sliceEnd; yy > minEnd; yy--) {
+          if (isRowBlank(yy)) { sliceEnd = yy; break; }
+        }
+      }
+      const sliceH = sliceEnd - y;
+      const slice = document.createElement('canvas');
+      slice.width = W;
+      slice.height = sliceH;
+      const sctx = slice.getContext('2d');
+      sctx.fillStyle = '#ffffff';
+      sctx.fillRect(0, 0, W, sliceH);
+      sctx.drawImage(canvas, 0, y, W, sliceH, 0, 0, W, sliceH);
+      const sliceImg = slice.toDataURL('image/jpeg', 0.92);
+      if (!firstPage) pdf.addPage();
+      pdf.addImage(sliceImg, 'JPEG', 0, 0, pageWmm, sliceH / pxPerMm, undefined, 'FAST');
+      firstPage = false;
+      y = sliceEnd;
     }
     return new Uint8Array(pdf.output('arraybuffer'));
   } finally {
