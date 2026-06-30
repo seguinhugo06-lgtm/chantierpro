@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <!--
+    BatiGesti Icon — Favicon / App icon
+    32×32px optimized
+  -->
+
+  <!-- B vertical pillar -->
+  <rect x="2" y="5" width="5" height="25" rx="1" fill="#1e293b" />
+
+  <!-- B upper block -->
+  <rect x="7" y="5" width="12" height="11" rx="1.5" fill="#22c55e" />
+
+  <!-- B lower block -->
+  <rect x="7" y="18" width="14" height="14" rx="1.5" fill="#1e293b" />
+
+  <!-- Équerre top bar -->
+  <rect x="2" y="1" width="20" height="4" rx="1" fill="#22c55e" />
+  <!-- Équerre vertical return -->
+  <rect x="18" y="1" width="4" height="9" rx="1" fill="#22c55e" />
+
+  <!-- Windows on lower block -->
+  <rect x="10" y="21" width="3.5" height="3.5" rx="0.5" fill="#22c55e" opacity="0.85" />
+  <rect x="15.5" y="21" width="3.5" height="3.5" rx="0.5" fill="#22c55e" opacity="0.85" />
+  <rect x="10" y="26.5" width="3.5" height="3.5" rx="0.5" fill="#22c55e" opacity="0.6" />
+  <rect x="15.5" y="26.5" width="3.5" height="3.5" rx="0.5" fill="#22c55e" opacity="0.6" />
+
+  <!-- Blueprint grid on upper block -->
+  <line x1="13" y1="6" x2="13" y2="15" stroke="#fff" stroke-width="0.5" opacity="0.3" />
+  <line x1="8" y1="10.5" x2="18" y2="10.5" stroke="#fff" stroke-width="0.5" opacity="0.3" />
+</svg>

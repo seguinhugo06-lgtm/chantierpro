@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 120" width="400" height="120">
+  <defs>
+    <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#E97C1F;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#F5A623;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="grad2" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" style="stop-color:#1B3A5C;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#2B5F8E;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <!-- Icon: stylized building / construction -->
+  <g transform="translate(16, 12)">
+    <!-- Main building block -->
+    <rect x="8" y="30" width="32" height="58" rx="2" fill="url(#grad2)" />
+    <!-- Windows -->
+    <rect x="14" y="38" width="8" height="8" rx="1" fill="#E97C1F" opacity="0.9" />
+    <rect x="26" y="38" width="8" height="8" rx="1" fill="#E97C1F" opacity="0.7" />
+    <rect x="14" y="52" width="8" height="8" rx="1" fill="#E97C1F" opacity="0.7" />
+    <rect x="26" y="52" width="8" height="8" rx="1" fill="#E97C1F" opacity="0.9" />
+    <!-- Door -->
+    <rect x="18" y="70" width="12" height="18" rx="1.5" fill="#E97C1F" />
+
+    <!-- Crane arm -->
+    <rect x="22" y="6" width="4" height="28" rx="1" fill="url(#grad2)" />
+    <!-- Horizontal arm -->
+    <rect x="10" y="6" width="56" height="4" rx="1" fill="url(#grad2)" />
+    <!-- Crane tip -->
+    <rect x="60" y="4" width="4" height="8" rx="1" fill="#E97C1F" />
+    <!-- Cable -->
+    <line x1="62" y1="12" x2="62" y2="32" stroke="#E97C1F" stroke-width="1.5" stroke-dasharray="3,2" />
+    <!-- Hook -->
+    <path d="M59,32 Q59,37 62,37 Q65,37 65,32" fill="none" stroke="#E97C1F" stroke-width="1.8" stroke-linecap="round" />
+
+    <!-- Small side block -->
+    <rect x="46" y="56" width="22" height="32" rx="2" fill="url(#grad2)" opacity="0.75" />
+    <rect x="51" y="62" width="6" height="6" rx="1" fill="#E97C1F" opacity="0.8" />
+    <rect x="51" y="74" width="12" height="14" rx="1.5" fill="#E97C1F" opacity="0.6" />
+
+    <!-- Ground line -->
+    <line x1="0" y1="90" x2="76" y2="90" stroke="#1B3A5C" stroke-width="2.5" stroke-linecap="round" />
+  </g>
+
+  <!-- Text: BatiGesti -->
+  <text x="110" y="68" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="46" font-weight="700" letter-spacing="-1">
+    <tspan fill="#1B3A5C">Bati</tspan><tspan fill="#E97C1F">Gesti</tspan>
+  </text>
+
+  <!-- Tagline -->
+  <text x="112" y="90" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="400" fill="#6B7C8E" letter-spacing="2.5">
+    GESTION DE CHANTIERS
+  </text>
+</svg>

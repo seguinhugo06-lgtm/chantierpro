@@ -20,7 +20,6 @@ import { usePermissions } from '../hooks/usePermissions';
 import { useRelances } from '../hooks/useRelances';
 import { useOrg } from '../context/OrgContext';
 import TemplateManager from './settings/TemplateManager';
-import IntegrationsHub from './integrations/IntegrationsHub';
 import PostChantierSettings from './settings/PostChantierSettings';
 
 // ── Tab groups for mobile navigation ────────────────────────────────────────
@@ -45,9 +44,6 @@ const TAB_GROUPS = [
   ]},
   { id: 'equipe', label: 'Équipe', icon: Users, tabs: [
     { key: 'team', label: 'Équipe & Accès', icon: Users },
-  ]},
-  { id: 'integrations', label: 'Intégrations', icon: Link2, tabs: [
-    { key: 'integrations', label: 'Intégrations', icon: Link2 },
   ]},
   { id: 'avance', label: 'Avancé', icon: Settings2, tabs: [
     { key: 'donnees', label: 'Données', icon: HardDrive },
@@ -1919,16 +1915,6 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
       {/* Team Management Tab */}
       {tab === 'team' && (
         <TeamManagement isDark={isDark} couleur={entreprise.couleur || couleur} />
-      )}
-
-      {/* Intégrations Tab */}
-      {tab === 'integrations' && (
-        <IntegrationsHub
-          isDark={isDark}
-          couleur={entreprise.couleur || couleur}
-          showToast={showToast}
-          user={user}
-        />
       )}
 
       {/* Multi-entreprise Tab */}

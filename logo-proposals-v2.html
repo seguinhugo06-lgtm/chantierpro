@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BatiGesti — Propositions Logo v2</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Inter', sans-serif; background: #f1f5f9; color: #1e293b; }
+
+  .hero { background: #0f172a; color: #fff; padding: 48px 40px 40px; }
+  .hero h1 { font-size: 32px; font-weight: 800; letter-spacing: -0.5px; }
+  .hero h1 span { color: #22c55e; }
+  .hero p { color: #94a3b8; margin-top: 8px; font-size: 15px; max-width: 600px; line-height: 1.6; }
+
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; padding: 32px 40px; max-width: 1200px; }
+  .proposal { background: #fff; border-radius: 16px; border: 1px solid #e2e8f0; overflow: hidden; transition: box-shadow 0.2s; }
+  .proposal:hover { box-shadow: 0 8px 32px rgba(0,0,0,0.08); }
+  .proposal-header { padding: 20px 24px 12px; display: flex; justify-content: space-between; align-items: center; }
+  .proposal-number { font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: #22c55e; background: #f0fdf4; padding: 4px 10px; border-radius: 6px; }
+  .proposal-tag { font-size: 11px; color: #94a3b8; font-style: italic; }
+  .proposal-main { padding: 32px 24px 36px; display: flex; align-items: center; justify-content: center; min-height: 130px; background: #fafbfc; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9; }
+  .proposal-variants { padding: 16px 24px; display: flex; gap: 12px; align-items: center; }
+  .variant { display: flex; align-items: center; justify-content: center; border-radius: 10px; padding: 10px 14px; }
+  .variant.light { background: #fff; border: 1px solid #e2e8f0; }
+  .variant.dark { background: #0f172a; }
+  .variant.green { background: #22c55e; }
+  .variant-label { font-size: 10px; color: #94a3b8; margin-left: 4px; }
+  .proposal-footer { padding: 16px 24px 20px; font-size: 13px; color: #64748b; line-height: 1.6; }
+  .proposal-footer strong { color: #1e293b; }
+
+  .section-title { padding: 40px 40px 0; font-size: 20px; font-weight: 700; }
+  .section-sub { padding: 4px 40px 24px; font-size: 14px; color: #64748b; }
+  .header-mocks { padding: 0 40px 24px; display: flex; gap: 20px; flex-wrap: wrap; }
+  .header-mock { border-radius: 12px; padding: 14px 24px; display: flex; align-items: center; gap: 28px; min-width: 460px; }
+  .header-mock.light { background: #fff; border: 1px solid #e2e8f0; }
+  .header-mock.dark { background: #0f172a; border: 1px solid #1e293b; }
+  .header-mock .nav { display: flex; gap: 20px; font-size: 13px; }
+  .header-mock.light .nav { color: #64748b; }
+  .header-mock.light .nav span:first-child { color: #22c55e; font-weight: 600; }
+  .header-mock.dark .nav { color: #64748b; }
+  .header-mock.dark .nav span:first-child { color: #22c55e; font-weight: 600; }
+
+  .favicon-row { padding: 0 40px 48px; display: flex; gap: 16px; align-items: flex-end; }
+  .fav-box { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .fav-box .size { font-size: 10px; color: #94a3b8; }
+  .tab-mock { background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 8px 8px 0 0; padding: 8px 14px; display: flex; align-items: center; gap: 8px; font-size: 12px; color: #475569; }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <h1>Bati<span>Gesti</span> — Nouvelles directions</h1>
+  <p>4 concepts différents : arche, dashboard, isométrique, niveaux. Toujours flat, 2 couleurs, optimisé favicon.</p>
+</div>
+
+<div class="grid">
+
+<!-- ======================= PROPOSAL 5 — ARCHE ======================= -->
+<div class="proposal">
+  <div class="proposal-header">
+    <span class="proposal-number">Proposition 5</span>
+    <span class="proposal-tag">B Arche</span>
+  </div>
+  <div class="proposal-main">
+    <svg viewBox="0 0 320 72" width="320" height="72" xmlns="http://www.w3.org/2000/svg">
+      <g transform="translate(4,2)">
+        <!-- Solid B shape -->
+        <rect x="0" y="0" width="44" height="66" rx="5" fill="#1e293b"/>
+        <!-- Arch cutout top (semicircle + rect) -->
+        <rect x="10" y="6" width="38" height="24" rx="4" fill="#fff"/>
+        <!-- Green arch fill -->
+        <rect x="10" y="6" width="28" height="24" rx="4" fill="#22c55e"/>
+        <!-- Doorway arch bottom — negative space -->
+        <rect x="10" y="38" width="38" height="30" rx="0" fill="#fff"/>
+        <rect x="10" y="38" width="32" height="28" rx="0" fill="#fff"/>
+        <!-- Arch top (semi-circle) -->
+        <path d="M10,56 L10,48 Q10,38 20,38 L32,38 Q42,38 42,48 L42,56 Z" fill="#fff"/>
+        <!-- Green door interior -->
+        <path d="M14,56 L14,50 Q14,42 22,42 L30,42 Q38,42 38,50 L38,56 Z" fill="#22c55e" opacity="0.35"/>
+        <!-- Threshold line -->
+        <rect x="10" y="62" width="32" height="4" rx="1" fill="#22c55e"/>
+      </g>
+      <text x="62" y="48" font-family="'Inter',sans-serif" font-size="38" font-weight="700" letter-spacing="-1">
+        <tspan fill="#1e293b">Bati</tspan><tspan fill="#22c55e">Gesti</tspan>
+      </text>
+    </svg>
+  </div>
+  <div class="proposal-variants">
+    <div class="variant dark">
+      <svg viewBox="0 0 48 70" width="28" height="42" xmlns="http://www.w3.org/2000/svg">
+        <g transform="translate(2,2)">
+          <rect x="0" y="0" width="44" height="66" rx="5" fill="#fff"/>
+          <rect x="10" y="6" width="38" height="24" rx="4" fill="#0f172a"/>
+          <rect x="10" y="6" width="28" height="24" rx="4" fill="#22c55e"/>
+          <path d="M10,56 L10,48 Q10,38 20,38 L32,38 Q42,38 42,48 L42,56 Z" fill="#0f172a"/>
+          <path d="M14,56 L14,50 Q14,42 22,42 L30,42 Q38,42 38,50 L38,56 Z" fill="#22c55e" opacity="0.4"/>
+          <rect x="10" y="62" width="32" height="4" rx="1" fill="#22c55e"/>
+        </g>
+      </svg>
+    </div>
+    <div class="variant green">
+      <svg viewBox="0 0 48 70" width="28" height="42" xmlns="http://www.w3.org/2000/svg">
+        <g transform="translate(2,2)">
+          <rect x="0" y="0" width="44" height="66" rx="5" fill="#fff"/>
+          <rect x="10" y="6" width="38" height="24" rx="4" fill="#22c55e"/>
+          <rect x="10" y="6" width="28" height="24" rx="4" fill="#fff" opacity="0.5"/>
+          <path d="M10,56 L10,48 Q10,38 20,38 L32,38 Q42,38 42,48 L42,56 Z" fill="#22c55e"/>
+          <path d="M14,56 L14,50 Q14,42 22,42 L30,42 Q38,42 38,50 L38,56 Z" fill="#fff" opacity="0.35"/>
+          <rect x="10" y="62" width="32" height="4" rx="1" fill="#fff" opacity="0.6"/>
+        </g>
+      </svg>
+    </div>
+    <div class="variant light" style="padding:6px;">
+      <svg viewBox="0 0 32 32" width="16" height="16" xmlns="http://www.w3.org/2000/svg">
+        <rect x="1" y="1" width="22" height="30" rx="3" fill="#1e293b"/>
+        <rect x="5" y="3.5" width="19" height="10" rx="2" fill="#fff"/>
+        <rect x="5" y="3.5" width="14" height="10" rx="2" fill="#22c55e"/>
+        <path d="M5,26 L5,21 Q5,16 10,16 L14,16 Q19,16 19,21 L19,26 Z" fill="#fff"/>
+        <path d="M7,26 L7,22 Q7,18 11,18 L13,18 Q17,18 17,22 L17,26 Z" fill="#22c55e" opacity="0.35"/>
+        <rect x="5" y="28" width="14" height="2.5" rx="0.5" fill="#22c55e"/>
+      </svg>
+    </div>
+  </div>
+  <div class="proposal-footer">
+    <strong>Concept :</strong> Le B comme une façade de bâtiment avec une arche en bas — l'entrée, le passage. En haut le bloc vert = la gestion (plein, structuré). L'arche évoque solidité et accueil. Le seuil vert connecte les deux étages.
+  </div>
+</div>
+
+<!-- ======================= PROPOSAL 6 — DASHBOARD + TOIT ======================= -->
+<div class="proposal">
+  <div class="proposal-header">
+    <span class="proposal-number">Proposition 6</span>
+    <span class="proposal-tag">Dashboard + Toit</span>
+  </div>
+  <div class="proposal-main">
+    <svg viewBox="0 0 320 72" width="320" height="72" xmlns="http://www.w3.org/2000/svg">
+      <g transform="translate(2,0)">
+        <!-- Roof / chevron -->
+        <polygon points="24,0 48,18 0,18" fill="#22c55e"/>
+
+        <!-- Dashboard grid body -->
+        <rect x="2" y="20" width="44" height="48" rx="3" fill="#1e293b"/>
+
+        <!-- Grid cells — 3x3 dashboard look -->
+        <!-- Row 1 -->
+        <rect x="6" y="24" width="18" height="10" rx="2" fill="#22c55e"/>
+        <rect x="27" y="24" width="15" height="10" rx="2" fill="#22c55e" opacity="0.4"/>
+        <!-- Row 2 -->
+        <rect x="6" y="38" width="10" height="10" rx="2" fill="#22c55e" opacity="0.4"/>
+        <rect x="19" y="38" width="10" height="10" rx="2" fill="#22c55e" opacity="0.6"/>
+        <rect x="32" y="38" width="10" height="10" rx="2" fill="#22c55e" opacity="0.3"/>
+        <!-- Row 3 -->
+        <rect x="6" y="52" width="36" height="4" rx="1.5" fill="#22c55e" opacity="0.2"/>
+        <rect x="6" y="59" width="24" height="4" rx="1.5" fill="#22c55e" opacity="0.15"/>
+      </g>
+      <text x="62" y="48" font-family="'Inter',sans-serif" font-size="38" font-weight="700" letter-spacing="-1">
+        <tspan fill="#1e293b">Bati</tspan><tspan fill="#22c55e">Gesti</tspan>
+      </text>
+    </svg>
+  </div>
+  <div class="proposal-variants">
+    <div class="variant dark">
+      <svg viewBox="0 0 50 70" width="28" height="42" xmlns="http://www.w3.org/2000/svg">
+        <g transform="translate(2,0)">
+          <polygon points="24,0 48,18 0,18" fill="#22c55e"/>
+          <rect x="2" y="20" width="44" height="48" rx="3" fill="#fff"/>
+          <rect x="6" y="24" width="18" height="10" rx="2" fill="#22c55e"/>
+          <rect x="27" y="24" width="15" height="10" rx="2" fill="#22c55e" opacity="0.4"/>
+          <rect x="6" y="38" width="10" height="10" rx="2" fill="#0f172a" opacity="0.15"/>
+          <rect x="19" y="38" width="10" height="10" rx="2" fill="#0f172a" opacity="0.2"/>
+          <rect x="32" y="38" width="10" height="10" rx="2" fill="#0f172a" opacity="0.1"/>
+          <rect x="6" y="52" width="36" height="4" rx="1.5" fill="#0f172a" opacity="0.08"/>
+          <rect x="6" y="59" width="24" height="4" rx="1.5" fill="#0f172a" opacity="0.06"/>
+        </g>
+      </svg>
+    </div>
+    <div class="variant green">
+      <svg viewBox="0 0 50 70" width="28" height="42" xmlns="http://www.w3.org/2000/svg">
+        <g transform="translate(2,0)">
+          <polygon points="24,0 48,18 0,18" fill="#fff" opacity="0.6"/>
+          <rect x="2" y="20" width="44" height="48" rx="3" fill="#fff"/>
+          <rect x="6" y="24" width="18" height="10" rx="2" fill="#22c55e" opacity="0.5"/>
+          <rect x="27" y="24" width="15" height="10" rx="2" fill="#22c55e" opacity="0.25"/>
+          <rect x="6" y="38" width="10" height="10" rx="2" fill="#22c55e" opacity="0.25"/>
+          <rect x="19" y="38" width="10" height="10" rx="2" fill="#22c55e" opacity="0.35"/>
+          <rect x="32" y="38" width="10" height="10" rx="2" fill="#22c55e" opacity="0.2"/>
+        </g>
+      </svg>
+    </div>
+    <div class="variant light" style="padding:6px;">
+      <svg viewBox="0 0 32 32" width="16" height="16" xmlns="http://www.w3.org/2000/svg">
+        <polygon points="16,0 32,12 0,12" fill="#22c55e"/>
+        <rect x="2" y="13" width="28" height="18" rx="2" fill="#1e293b"/>
+        <rect x="5" y="16" width="11" height="5" rx="1" fill="#22c55e"/>
+        <rect x="18" y="16" width="9" height="5" rx="1" fill="#22c55e" opacity="0.4"/>
+        <rect x="5" y="24" width="6" height="5" rx="1" fill="#22c55e" opacity="0.4"/>
+        <rect x="13" y="24" width="6" height="5" rx="1" fill="#22c55e" opacity="0.5"/>
+        <rect x="21" y="24" width="6" height="5" rx="1" fill="#22c55e" opacity="0.3"/>
+      </svg>
+    </div>
+  </div>
+  <div class="proposal-footer">
+    <strong>Concept :</strong> Un toit (triangle vert) qui coiffe un dashboard (grille de cellules). Fusion directe Bâtiment + Gestion digitale. Les cellules de tailles variées évoquent KPIs, widgets, modules — une app sous un toit.
+  </div>
+</div>
+
+<!-- ======================= PROPOSAL 7 — ISOMÉTRIQUE ======================= -->
+<div class="proposal">
+  <div class="proposal-header">
+    <span class="proposal-number">Proposition 7</span>
+    <span class="proposal-tag">B Isométrique</span>
+  </div>
+  <div class="proposal-main">
+    <svg viewBox="0 0 320 76" width="320" height="76" xmlns="http://www.w3.org/2000/svg">
+      <g transform="translate(6,2)">
+        <!-- 3D isometric B block -->
+        <!-- Front face -->
+        <path d="M0,16 L0,68 L36,68 L36,16 Z" fill="#1e293b"/>
+        <!-- Top face -->
+        <path d="M0,16 L14,4 L50,4 L36,16 Z" fill="#22c55e"/>
+        <!-- Right face -->
+        <path d="M36,16 L50,4 L50,56 L36,68 Z" fill="#22c55e" opacity="0.55"/>
+
+        <!-- B cutouts front face — upper -->
+        <rect x="8" y="22" width="24" height="14" rx="2.5" fill="#22c55e" opacity="0.85"/>
+        <!-- B cutouts front face — lower -->
+        <rect x="8" y="42" width="28" height="16" rx="2.5" fill="#22c55e" opacity="0.5"/>
+
+        <!-- Perspective lines on right face -->
+        <line x1="38" y1="20" x2="48" y2="10" stroke="#fff" stroke-width="0.6" opacity="0.2"/>
+        <line x1="38" y1="36" x2="48" y2="26" stroke="#fff" stroke-width="0.6" opacity="0.2"/>
+        <line x1="38" y1="52" x2="48" y2="42" stroke="#fff" stroke-width="0.6" opacity="0.2"/>
+      </g>
+      <text x="68" y="50" font-family="'Inter',sans-serif" font-size="38" font-weight="700" letter-spacing="-1">
+        <tspan fill="#1e293b">Bati</tspan><tspan fill="#22c55e">Gesti</tspan>
+      </text>
+    </svg>
+  </div>
+  <div class="proposal-variants">
+    <div class="variant dark">
+      <svg viewBox="0 0 54 72" width="30" height="42" xmlns="http://www.w3.org/2000/svg">
+        <g transform="translate(2,2)">
+          <path d="M0,16 L0,68 L36,68 L36,16 Z" fill="#fff"/>
+          <path d="M0,16 L14,4 L50,4 L36,16 Z" fill="#22c55e"/>
+          <path d="M36,16 L50,4 L50,56 L36,68 Z" fill="#22c55e" opacity="0.55"/>
+          <rect x="8" y="22" width="24" height="14" rx="2.5" fill="#0f172a" opacity="0.3"/>
+          <rect x="8" y="42" width="28" height="16" rx="2.5" fill="#0f172a" opacity="0.15"/>
+        </g>
+      </svg>
+    </div>
+    <div class="variant green">
+      <svg viewBox="0 0 54 72" width="30" height="42" xmlns="http://www.w3.org/2000/svg">
+        <g transform="translate(2,2)">
+          <path d="M0,16 L0,68 L36,68 L36,16 Z" fill="#fff"/>
+          <path d="M0,16 L14,4 L50,4 L36,16 Z" fill="#fff" opacity="0.6"/>
+          <path d="M36,16 L50,4 L50,56 L36,68 Z" fill="#fff" opacity="0.35"/>
+          <rect x="8" y="22" width="24" height="14" rx="2.5" fill="#22c55e" opacity="0.3"/>
+          <rect x="8" y="42" width="28" height="16" rx="2.5" fill="#22c55e" opacity="0.15"/>
+        </g>
+      </svg>
+    </div>
+    <div class="variant light" style="padding:6px;">
+      <svg viewBox="0 0 32 32" width="16" height="16" xmlns="http://www.w3.org/2000/svg">
+        <path d="M0,9 L0,30 L18,30 L18,9 Z" fill="#1e293b"/>
+        <path d="M0,9 L8,2 L26,2 L18,9 Z" fill="#22c55e"/>
+        <path d="M18,9 L26,2 L26,23 L18,30 Z" fill="#22c55e" opacity="0.55"/>
+        <rect x="4" y="12" width="12" height="5" rx="1" fill="#22c55e" opacity="0.85"/>
+        <rect x="4" y="20" width="13" height="7" rx="1" fill="#22c55e" opacity="0.5"/>
+      </svg>
+    </div>
+  </div>
+  <div class="proposal-footer">
+    <strong>Concept :</strong> Un B vu en perspective isométrique — comme un bâtiment vu d'en haut dans un logiciel de CAO. La face avant (slate) porte la lettre, le toit et le côté (vert) ajoutent la profondeur. Rendu tech/3D très moderne.
+  </div>
+</div>
+
+<!-- ======================= PROPOSAL 8 — NIVEAUX ======================= -->
+<div class="proposal">
+  <div class="proposal-header">
+    <span class="proposal-number">Proposition 8</span>
+    <span class="proposal-tag">B Strates</span>
+  </div>
+  <div class="proposal-main">
+    <svg viewBox="0 0 320 72" width="320" height="72" xmlns="http://www.w3.org/2000/svg">
+      <g transform="translate(2,3)">
+        <!-- B composed of horizontal stacked layers/strata -->
+        <!-- Layer 1 — top -->
+        <rect x="0" y="0" width="32" height="10" rx="3" fill="#1e293b"/>
+        <!-- Layer 2 -->
+        <rect x="0" y="13" width="26" height="10" rx="3" fill="#1e293b" opacity="0.7"/>
+        <!-- Layer 3 — ACCENT (wider, green) -->
+        <rect x="0" y="26" width="40" height="10" rx="3" fill="#22c55e"/>
+        <!-- Layer 4 -->
+        <rect x="0" y="39" width="34" height="10" rx="3" fill="#1e293b" opacity="0.7"/>
+        <!-- Layer 5 — base (widest) -->
+        <rect x="0" y="52" width="44" height="10" rx="3" fill="#1e293b"/>
+
+        <!-- Vertical alignment bar (left) -->
+        <rect x="0" y="0" width="4" height="62" rx="2" fill="#1e293b"/>
+
+        <!-- Small "check" tick on green layer — gestion = done -->
+        <rect x="34" y="28" width="6" height="5" rx="1.5" fill="#fff" opacity="0.5"/>
+      </g>
+      <text x="62" y="48" font-family="'Inter',sans-serif" font-size="38" font-weight="700" letter-spacing="-1">
+        <tspan fill="#1e293b">Bati</tspan><tspan fill="#22c55e">Gesti</tspan>
+      </text>
+    </svg>
+  </div>
+  <div class="proposal-variants">
+    <div class="variant dark">
+      <svg viewBox="0 0 48 66" width="28" height="42" xmlns="http://www.w3.org/2000/svg">
+        <g transform="translate(2,3)">
+          <rect x="0" y="0" width="32" height="10" rx="3" fill="#fff"/>
+          <rect x="0" y="13" width="26" height="10" rx="3" fill="#fff" opacity="0.5"/>
+          <rect x="0" y="26" width="40" height="10" rx="3" fill="#22c55e"/>
+          <rect x="0" y="39" width="34" height="10" rx="3" fill="#fff" opacity="0.5"/>
+          <rect x="0" y="52" width="44" height="10" rx="3" fill="#fff"/>
+          <rect x="0" y="0" width="4" height="62" rx="2" fill="#fff"/>
+        </g>
+      </svg>
+    </div>
+    <div class="variant green">
+      <svg viewBox="0 0 48 66" width="28" height="42" xmlns="http://www.w3.org/2000/svg">
+        <g transform="translate(2,3)">
+          <rect x="0" y="0" width="32" height="10" rx="3" fill="#fff"/>
+          <rect x="0" y="13" width="26" height="10" rx="3" fill="#fff" opacity="0.5"/>
+          <rect x="0" y="26" width="40" height="10" rx="3" fill="#fff" opacity="0.6"/>
+          <rect x="0" y="39" width="34" height="10" rx="3" fill="#fff" opacity="0.5"/>
+          <rect x="0" y="52" width="44" height="10" rx="3" fill="#fff"/>
+          <rect x="0" y="0" width="4" height="62" rx="2" fill="#fff"/>
+        </g>
+      </svg>
+    </div>
+    <div class="variant light" style="padding:6px;">
+      <svg viewBox="0 0 32 32" width="16" height="16" xmlns="http://www.w3.org/2000/svg">
+        <rect x="0" y="0" width="2.5" height="31" rx="1" fill="#1e293b"/>
+        <rect x="0" y="0" width="18" height="5" rx="1.5" fill="#1e293b"/>
+        <rect x="0" y="7" width="14" height="5" rx="1.5" fill="#1e293b" opacity="0.6"/>
+        <rect x="0" y="14" width="22" height="5" rx="1.5" fill="#22c55e"/>
+        <rect x="0" y="21" width="19" height="5" rx="1.5" fill="#1e293b" opacity="0.6"/>
+        <rect x="0" y="28" width="24" height="4" rx="1.5" fill="#1e293b"/>
+      </svg>
+    </div>
+  </div>
+  <div class="proposal-footer">
+    <strong>Concept :</strong> Le B est déconstruit en strates horizontales — comme les étages d'un bâtiment en coupe, ou un diagramme de Gantt. La barre verte au centre = le projet en cours. La barre verticale à gauche unifie le tout. Très "gestion de projet" dans l'ADN.
+  </div>
+</div>
+
+</div>
+
+<!-- ======================= HEADERS ======================= -->
+<div class="section-title">En contexte — Headers</div>
+<div class="section-sub">Light et dark mode</div>
+
+<div class="header-mocks">
+  <!-- P6 Light -->
+  <div class="header-mock light">
+    <svg viewBox="0 0 320 72" width="150" height="34" xmlns="http://www.w3.org/2000/svg">
+      <g transform="translate(2,0)">
+        <polygon points="24,0 48,18 0,18" fill="#22c55e"/>
+        <rect x="2" y="20" width="44" height="48" rx="3" fill="#1e293b"/>
+        <rect x="6" y="24" width="18" height="10" rx="2" fill="#22c55e"/>
+        <rect x="27" y="24" width="15" height="10" rx="2" fill="#22c55e" opacity="0.4"/>
+        <rect x="6" y="38" width="10" height="10" rx="2" fill="#22c55e" opacity="0.4"/>
+        <rect x="19" y="38" width="10" height="10" rx="2" fill="#22c55e" opacity="0.6"/>
+        <rect x="32" y="38" width="10" height="10" rx="2" fill="#22c55e" opacity="0.3"/>
+        <rect x="6" y="52" width="36" height="4" rx="1.5" fill="#22c55e" opacity="0.2"/>
+        <rect x="6" y="59" width="24" height="4" rx="1.5" fill="#22c55e" opacity="0.15"/>
+      </g>
+      <text x="62" y="48" font-family="'Inter',sans-serif" font-size="38" font-weight="700" letter-spacing="-1">
+        <tspan fill="#1e293b">Bati</tspan><tspan fill="#22c55e">Gesti</tspan>
+      </text>
+    </svg>
+    <div class="nav"><span>Chantiers</span><span>Devis</span><span>Factures</span></div>
+  </div>
+
+  <!-- P8 Light -->
+  <div class="header-mock light">
+    <svg viewBox="0 0 320 72" width="150" height="34" xmlns="http://www.w3.org/2000/svg">
+      <g transform="translate(2,3)">
+        <rect x="0" y="0" width="32" height="10" rx="3" fill="#1e293b"/>
+        <rect x="0" y="13" width="26" height="10" rx="3" fill="#1e293b" opacity="0.7"/>
+        <rect x="0" y="26" width="40" height="10" rx="3" fill="#22c55e"/>
+        <rect x="0" y="39" width="34" height="10" rx="3" fill="#1e293b" opacity="0.7"/>
+        <rect x="0" y="52" width="44" height="10" rx="3" fill="#1e293b"/>
+        <rect x="0" y="0" width="4" height="62" rx="2" fill="#1e293b"/>
+      </g>
+      <text x="62" y="48" font-family="'Inter',sans-serif" font-size="38" font-weight="700" letter-spacing="-1">
+        <tspan fill="#1e293b">Bati</tspan><tspan fill="#22c55e">Gesti</tspan>
+      </text>
+    </svg>
+    <div class="nav"><span>Chantiers</span><span>Devis</span><span>Factures</span></div>
+  </div>
+
+  <!-- P7 Dark -->
+  <div class="header-mock dark">
+    <svg viewBox="0 0 320 76" width="150" height="36" xmlns="http://www.w3.org/2000/svg">
+      <g transform="translate(6,2)">
+        <path d="M0,16 L0,68 L36,68 L36,16 Z" fill="#fff"/>
+        <path d="M0,16 L14,4 L50,4 L36,16 Z" fill="#22c55e"/>
+        <path d="M36,16 L50,4 L50,56 L36,68 Z" fill="#22c55e" opacity="0.55"/>
+        <rect x="8" y="22" width="24" height="14" rx="2.5" fill="#0f172a" opacity="0.3"/>
+        <rect x="8" y="42" width="28" height="16" rx="2.5" fill="#0f172a" opacity="0.15"/>
+      </g>
+      <text x="68" y="50" font-family="'Inter',sans-serif" font-size="38" font-weight="700" letter-spacing="-1" fill="#fff">
+        <tspan>Bati</tspan><tspan fill="#22c55e">Gesti</tspan>
+      </text>
+    </svg>
+    <div class="nav"><span>Chantiers</span><span>Devis</span><span>Factures</span></div>
+  </div>
+
+  <!-- P5 Dark -->
+  <div class="header-mock dark">
+    <svg viewBox="0 0 320 72" width="150" height="34" xmlns="http://www.w3.org/2000/svg">
+      <g transform="translate(4,2)">
+        <rect x="0" y="0" width="44" height="66" rx="5" fill="#fff"/>
+        <rect x="10" y="6" width="38" height="24" rx="4" fill="#0f172a"/>
+        <rect x="10" y="6" width="28" height="24" rx="4" fill="#22c55e"/>
+        <path d="M10,56 L10,48 Q10,38 20,38 L32,38 Q42,38 42,48 L42,56 Z" fill="#0f172a"/>
+        <path d="M14,56 L14,50 Q14,42 22,42 L30,42 Q38,42 38,50 L38,56 Z" fill="#22c55e" opacity="0.4"/>
+        <rect x="10" y="62" width="32" height="4" rx="1" fill="#22c55e"/>
+      </g>
+      <text x="62" y="48" font-family="'Inter',sans-serif" font-size="38" font-weight="700" letter-spacing="-1" fill="#fff">
+        <tspan>Bati</tspan><tspan fill="#22c55e">Gesti</tspan>
+      </text>
+    </svg>
+    <div class="nav"><span>Chantiers</span><span>Devis</span><span>Factures</span></div>
+  </div>
+</div>
+
+<!-- ======================= FAVICONS ======================= -->
+<div class="section-title">Favicons — Taille réelle</div>
+<div class="section-sub">16px dans un onglet navigateur</div>
+
+<div class="favicon-row">
+  <div class="fav-box">
+    <div class="tab-mock">
+      <svg viewBox="0 0 32 32" width="16" height="16" xmlns="http://www.w3.org/2000/svg">
+        <rect x="1" y="1" width="22" height="30" rx="3" fill="#1e293b"/>
+        <rect x="5" y="3.5" width="19" height="10" rx="2" fill="#fff"/>
+        <rect x="5" y="3.5" width="14" height="10" rx="2" fill="#22c55e"/>
+        <path d="M5,26 L5,21 Q5,16 10,16 L14,16 Q19,16 19,21 L19,26 Z" fill="#fff"/>
+        <rect x="5" y="28" width="14" height="2.5" rx="0.5" fill="#22c55e"/>
+      </svg>
+      P5 — Arche
+    </div>
+  </div>
+  <div class="fav-box">
+    <div class="tab-mock">
+      <svg viewBox="0 0 32 32" width="16" height="16" xmlns="http://www.w3.org/2000/svg">
+        <polygon points="16,0 32,12 0,12" fill="#22c55e"/>
+        <rect x="2" y="13" width="28" height="18" rx="2" fill="#1e293b"/>
+        <rect x="5" y="16" width="11" height="5" rx="1" fill="#22c55e"/>
+        <rect x="18" y="16" width="9" height="5" rx="1" fill="#22c55e" opacity="0.4"/>
+        <rect x="5" y="24" width="6" height="5" rx="1" fill="#22c55e" opacity="0.4"/>
+        <rect x="13" y="24" width="6" height="5" rx="1" fill="#22c55e" opacity="0.5"/>
+        <rect x="21" y="24" width="6" height="5" rx="1" fill="#22c55e" opacity="0.3"/>
+      </svg>
+      P6 — Dashboard
+    </div>
+  </div>
+  <div class="fav-box">
+    <div class="tab-mock">
+      <svg viewBox="0 0 32 32" width="16" height="16" xmlns="http://www.w3.org/2000/svg">
+        <path d="M0,9 L0,30 L18,30 L18,9 Z" fill="#1e293b"/>
+        <path d="M0,9 L8,2 L26,2 L18,9 Z" fill="#22c55e"/>
+        <path d="M18,9 L26,2 L26,23 L18,30 Z" fill="#22c55e" opacity="0.55"/>
+        <rect x="4" y="12" width="12" height="5" rx="1" fill="#22c55e" opacity="0.85"/>
+        <rect x="4" y="20" width="13" height="7" rx="1" fill="#22c55e" opacity="0.5"/>
+      </svg>
+      P7 — Iso
+    </div>
+  </div>
+  <div class="fav-box">
+    <div class="tab-mock">
+      <svg viewBox="0 0 32 32" width="16" height="16" xmlns="http://www.w3.org/2000/svg">
+        <rect x="0" y="0" width="2.5" height="31" rx="1" fill="#1e293b"/>
+        <rect x="0" y="0" width="18" height="5" rx="1.5" fill="#1e293b"/>
+        <rect x="0" y="7" width="14" height="5" rx="1.5" fill="#1e293b" opacity="0.6"/>
+        <rect x="0" y="14" width="22" height="5" rx="1.5" fill="#22c55e"/>
+        <rect x="0" y="21" width="19" height="5" rx="1.5" fill="#1e293b" opacity="0.6"/>
+        <rect x="0" y="28" width="24" height="4" rx="1.5" fill="#1e293b"/>
+      </svg>
+      P8 — Strates
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
