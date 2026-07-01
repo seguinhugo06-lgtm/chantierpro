@@ -1244,7 +1244,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
       {tab === 'relances' && (
         <RelanceConfigTab
           entreprise={entreprise}
-          updateEntreprise={updateEntreprise}
+          setEntreprise={updateEntreprise}
           isDark={isDark}
           couleur={couleur}
           stats={relances.stats}
