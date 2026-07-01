@@ -125,7 +125,7 @@ export const PLANS = {
       'rapports_pdf', 'relances', 'marges', 'pipeline', 'photos_gps',
       'carte_chantiers', 'avis_google', 'entretien',
       'pointages', 'rbac', 'tresorerie', 'fec_export',
-      'rapprochement_bancaire', 'sous_traitants', 'commandes',
+      'rapprochement_bancaire', 'commandes',
       'portal_client', 'alertes_stock', 'analytics'
     ],
     featureLabels: [
@@ -135,7 +135,6 @@ export const PLANS = {
       { name: 'Gérez les accès de votre équipe', included: true },
       { name: 'Trésorerie & Bilan', included: true },
       { name: 'Export FEC comptable', included: true },
-      { name: 'Sous-traitants & conformité', included: true },
       { name: 'Commandes fournisseurs', included: true },
       { name: 'Portail client', included: true },
       { name: 'Alertes de stock', included: true },
@@ -172,7 +171,6 @@ export const PAGE_FEATURE_MAP = {
   signatures: 'signatures',
   export: 'export_comptable',
   tresorerie: 'tresorerie',
-  soustraitants: 'sous_traitants',
   pointages: 'pointages',
   analytics: 'analytics'
 };
@@ -281,12 +279,6 @@ export const UPGRADE_CONTEXTS = {
     title: 'Export FEC',
     subtitle: 'Exportez vos données comptables au format FEC pour votre expert-comptable',
     highlight: 'fec_export',
-    recommendedPlan: 'equipe'
-  },
-  sous_traitants: {
-    title: 'Sous-traitants & conformité',
-    subtitle: 'Gérez vos sous-traitants, contrats et documents de conformité',
-    highlight: 'sous_traitants',
     recommendedPlan: 'equipe'
   },
   commandes: {

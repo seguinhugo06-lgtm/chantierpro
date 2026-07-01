@@ -42,10 +42,8 @@ const QuickClientModal = lazyWithRetry(() => import('./components/QuickClientMod
 const QuickChantierModal = lazyWithRetry(() => import('./components/QuickChantierModal'), 'QuickChantier');
 const CommandPalette = lazyWithRetry(() => import('./components/CommandPalette'), 'CommandPalette');
 const DesignSystemDemo = lazyWithRetry(() => import('./components/DesignSystemDemo'), 'DesignSystem');
-const TresorerieModule = lazyWithRetry(() => import('./components/tresorerie/TresorerieModule'), 'Trésorerie');
 const BibliothequeOuvrages = lazyWithRetry(() => import('./components/catalogue/BibliothequeOuvrages'), 'Bibliothèque');
 const BibliothequePrix = lazyWithRetry(() => import('./components/bibliotheque/Bibliotheque'), 'BibliothèquePrix');
-const SousTraitantsModule = lazyWithRetry(() => import('./components/soustraitants/SousTraitantsModule'), 'SousTraitants');
 const SignatureModule = lazyWithRetry(() => import('./components/signatures/SignatureModule'), 'Signatures');
 const ExportComptable = lazyWithRetry(() => import('./components/export/ExportComptable'), 'ExportComptable');
 const BillingDashboard = lazyWithRetry(() => import('./components/subscription/BillingDashboard'), 'Billing');
@@ -65,7 +63,6 @@ import PortalLoader from './components/portal/PortalLoader';
 const GarantiesDashboard = lazyWithRetry(() => import('./components/chantiers/GarantiesDashboard'), 'Garanties');
 const ProfilePage = lazyWithRetry(() => import('./components/profil/ProfilePage'), 'Profil');
 const PlanPage = lazyWithRetry(() => import('./components/profil/PlanPage'), 'Plan');
-const AIChatBot = lazyWithRetry(() => import('./components/assistant/AIChatBot'), 'AIChatBot');
 import CookieConsent from './components/CookieConsent';
 import CGUAcceptanceModal, { CGU_VERSION } from './components/CGUAcceptanceModal';
 import { useConfirm, useToast } from './context/AppContext';
@@ -925,9 +922,7 @@ export default function App() {
       pricing: 'Tarifs',
       billing: 'Abonnement',
       changelog: 'Changelog',
-      soustraitants: 'Sous-traitants',
       commandes: 'Commandes',
-      tresorerie: 'Trésorerie',
       entretien: "Carnet d'entretien",
       signatures: 'Signatures',
       export: 'Export comptable',
@@ -1724,8 +1719,6 @@ export default function App() {
               {page === 'bibliotheque' && <BibliothequePrix isDark={isDark} couleur={couleur} setPage={setPage} devis={devis} addDevis={addDevis} />}
               {page === 'catalogue' && <Catalogue catalogue={catalogue} setCatalogue={setCatalogue} addCatalogueItem={addCatalogueItem} updateCatalogueItem={updateCatalogueItem} deleteCatalogueItem={deleteCatalogueItem} chantiers={chantiers} equipe={equipe} devis={devis} updateDevis={updateDevis} clients={clients} couleur={couleur} isDark={isDark} modeDiscret={modeDiscret} setPage={setPage} />}
               {page === 'ouvrages' && <BibliothequeOuvrages catalogue={catalogue} ouvragesProp={ouvrages} setOuvragesProp={setOuvrages} addOuvrage={dataAddOuvrage} updateOuvrage={dataUpdateOuvrage} deleteOuvrage={dataDeleteOuvrage} isDark={isDark} couleur={couleur} />}
-              {page === 'soustraitants' && <FeatureGuard feature="sous_traitants"><SousTraitantsModule chantiers={chantiers} isDark={isDark} couleur={couleur} setPage={setPage} /></FeatureGuard>}
-              {page === 'tresorerie' && <FeatureGuard feature="tresorerie"><TresorerieModule devis={devis} depenses={depenses} chantiers={chantiers} clients={clients} paiements={paiements} entreprise={entreprise} isDark={isDark} couleur={couleur} setPage={setPage} modeDiscret={modeDiscret} /></FeatureGuard>}
               {page === 'signatures' && <FeatureGuard feature="signatures"><SignatureModule devis={devis} chantiers={chantiers} clients={clients} isDark={isDark} couleur={couleur} /></FeatureGuard>}
               {page === 'export' && <FeatureGuard feature="export_comptable"><ExportComptable devis={devis} depenses={depenses} chantiers={chantiers} clients={clients} entreprise={entreprise} isDark={isDark} couleur={couleur} /></FeatureGuard>}
               {page === 'profil' &&<ProfilePage user={user} entreprise={entreprise} devis={devis} clients={clients} chantiers={chantiers} catalogue={catalogue} depenses={depenses} paiements={paiements} equipe={equipe} isDark={isDark} couleur={couleur} setPage={setPage} modeDiscret={modeDiscret} />}
@@ -2165,18 +2158,6 @@ export default function App() {
         errorDetails={syncErrorDetails}
         isDark={isDark}
       />
-
-      {/* AI Chatbot Assistant */}
-      <Suspense fallback={null}>
-        <AIChatBot
-          isDark={isDark}
-          couleur={couleur}
-          devis={devis}
-          chantiers={chantiers}
-          clients={clients}
-          entreprise={entreprise}
-        />
-      </Suspense>
 
       {/* Cookie Consent Banner (RGPD) */}
       <CookieConsent isDark={isDark} couleur={couleur} setPage={setPage} />
