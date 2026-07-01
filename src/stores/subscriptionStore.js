@@ -77,7 +77,7 @@ export const PLANS = {
       'devis_basic', 'clients_basic', 'chantiers_basic', 'catalogue',
       'planning', 'taches', 'signatures', 'export_comptable',
       'rapports_pdf', 'relances', 'marges', 'pipeline', 'photos_gps',
-      'carte_chantiers', 'avis_google', 'entretien'
+      'carte_chantiers', 'entretien'
     ],
     featureLabels: [
       { name: 'Devis & factures illimités', included: true },
@@ -123,7 +123,7 @@ export const PLANS = {
       'devis_basic', 'clients_basic', 'chantiers_basic', 'catalogue',
       'planning', 'taches', 'signatures', 'export_comptable',
       'rapports_pdf', 'relances', 'marges', 'pipeline', 'photos_gps',
-      'carte_chantiers', 'avis_google', 'entretien',
+      'carte_chantiers', 'entretien',
       'pointages', 'rbac', 'tresorerie', 'fec_export',
       'rapprochement_bancaire', 'commandes',
       'portal_client', 'alertes_stock', 'analytics'

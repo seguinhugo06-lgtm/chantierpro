@@ -124,23 +124,42 @@ function setCachedWeather(key, data) {
   }
 }
 
+// Correspondance codes météo WMO (Open-Meteo) → condition + icône + libellé.
+const WMO = {
+  0:  ['sunny', 'sun', 'Ciel dégagé'],
+  1:  ['sunny', 'sun', 'Plutôt dégagé'],
+  2:  ['cloudy', 'cloud', 'Partiellement nuageux'],
+  3:  ['cloudy', 'cloud', 'Couvert'],
+  45: ['cloudy', 'cloud', 'Brouillard'],
+  48: ['cloudy', 'cloud', 'Brouillard givrant'],
+  51: ['rainy', 'rain', 'Bruine légère'],
+  53: ['rainy', 'rain', 'Bruine'],
+  55: ['rainy', 'rain', 'Bruine dense'],
+  61: ['rainy', 'rain', 'Pluie faible'],
+  63: ['rainy', 'rain', 'Pluie'],
+  65: ['rainy', 'rain', 'Pluie forte'],
+  71: ['snowy', 'cloud', 'Neige faible'],
+  73: ['snowy', 'cloud', 'Neige'],
+  75: ['snowy', 'cloud', 'Neige forte'],
+  80: ['rainy', 'rain', 'Averses'],
+  81: ['rainy', 'rain', 'Averses'],
+  82: ['rainy', 'rain', 'Averses violentes'],
+  95: ['stormy', 'rain', 'Orage'],
+  96: ['stormy', 'rain', 'Orage grêleux'],
+  99: ['stormy', 'rain', 'Orage grêleux'],
+};
+
 /**
- * Fetch weather from OpenWeatherMap API
+ * Fetch current weather from Open-Meteo (free, no API key).
  * @param {number} lat - Latitude
  * @param {number} lon - Longitude
- * @returns {Promise<Object>}
+ * @returns {Promise<Object|null>}
  */
 async function fetchWeatherFromAPI(lat, lon) {
-  const apiKey = import.meta.env.VITE_OPENWEATHERMAP_API_KEY;
-
-  if (!apiKey) {
-    console.warn('OpenWeatherMap API key not configured (VITE_OPENWEATHERMAP_API_KEY)');
-    return null;
-  }
-
   try {
     const response = await fetch(
-      `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${apiKey}&units=metric&lang=fr`
+      `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
+      `&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m&timezone=Europe/Paris`
     );
 
     if (!response.ok) {
@@ -148,18 +167,21 @@ async function fetchWeatherFromAPI(lat, lon) {
     }
 
     const data = await response.json();
+    const c = data.current;
+    if (!c) return null;
 
+    const [condition, icon, label] = WMO[c.weather_code] || ['cloudy', 'cloud', ''];
     return {
-      temp: Math.round(data.main.temp),
-      condition: getCondition(data.weather[0].id, data.wind.speed),
-      description: data.weather[0].description,
-      humidity: data.main.humidity,
-      wind: Math.round(data.wind.speed * 3.6), // Convert m/s to km/h
-      forecast: data.weather[0].description,
-      location: data.name,
-      icon: data.weather[0].icon,
-      code: data.weather[0].id,
-      feelsLike: Math.round(data.main.feels_like),
+      temp: Math.round(c.temperature_2m),
+      condition,
+      description: label,
+      humidity: c.relative_humidity_2m,
+      wind: Math.round(c.wind_speed_10m), // Open-Meteo renvoie déjà des km/h
+      forecast: label,
+      location: '',
+      icon,
+      code: c.weather_code,
+      feelsLike: Math.round(c.apparent_temperature),
       updatedAt: new Date().toISOString()
     };
   } catch (error) {

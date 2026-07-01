@@ -637,38 +637,6 @@ export default function App() {
     }
   }, [page, canAccess, canAccessBilling, orgLoading]);
 
-  // Bank callback handler - detect /bank/callback?ref=xxx and process
-  useEffect(() => {
-    const path = window.location.pathname;
-    const params = new URLSearchParams(window.location.search);
-    const ref = params.get('ref');
-    if (path === '/bank/callback' && ref) {
-      window.history.replaceState({}, '', '/');
-      setPage('finances');
-      showToast('Vérification de la connexion bancaire...', 'info');
-      import('./lib/integrations/saltedge').then(async ({ checkConnection, syncTransactions }) => {
-        try {
-          const result = await checkConnection(ref);
-          if (result.status === 'linked') {
-            console.log('[BANK] Connection successful:', result.details);
-            showToast('Compte bancaire connecté ! Synchronisation en cours...', 'success');
-            // Auto-sync transactions after successful connection
-            try {
-              await syncTransactions();
-              showToast('Transactions synchronisées avec succès', 'success');
-            } catch (syncErr) {
-              console.warn('[BANK] Auto-sync failed (can retry manually):', syncErr);
-            }
-          } else {
-            showToast('Connexion bancaire en attente — veuillez réessayer', 'warning');
-          }
-        } catch (e) {
-          console.error('[BANK] Callback error:', e);
-          showToast('Erreur lors de la connexion bancaire', 'error');
-        }
-      });
-    }
-  }, []);
 
   // Auth state listener - persists session across page refreshes
   useEffect(() => {

@@ -806,33 +806,8 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                     const message = templates[type];
                     const clientTel = client?.telephone || client?.tel;
 
-                    // Try to send SMS via Edge Function
-                    if (!isDemo && supabase && clientTel) {
-                      try {
-                        const { data, error } = await supabase.functions.invoke('send-sms', {
-                          body: { action: 'send_jarrive', to: clientTel, message, entreprise_nom: entreprise?.nom }
-                        });
-                        if (!error && data?.success) {
-                          showToast(`SMS "${type === 'en_route' ? 'En route' : type === 'arrive' ? 'Arrivé' : 'Terminé'}" envoyé à ${client?.prenom || 'votre client'}`, 'success');
-                          // Log the notification
-                          supabase.from('notifications_client').insert({
-                            entreprise_id: entreprise?.id,
-                            client_id: client?.id,
-                            chantier_id: ch.id,
-                            type: type,
-                            canal: 'sms',
-                            message,
-                            sent_at: new Date().toISOString(),
-                            statut: 'sent',
-                          }).then(() => {}).catch(() => {});
-                          return;
-                        }
-                      } catch (e) {
-                        // Twilio not configured — fallback to clipboard
-                      }
-                    }
-
-                    // Log the notification attempt even on clipboard fallback
+                    // Notification client par copie du message (à coller dans son app SMS) — aucun coût SMS.
+                    // Log the notification attempt
                     if (!isDemo && supabase) {
                       supabase.from('notifications_client').insert({
                         entreprise_id: entreprise?.id,
