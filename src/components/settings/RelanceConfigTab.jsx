@@ -64,7 +64,7 @@ Cordialement,
     delay: 15,
     delayLabel: 'J+15 après envoi',
     name: 'Relance douce',
-    channel: 'email_sms',
+    channel: 'email',
     template: `Bonjour {{client_nom}},
 
 Je me permets de revenir vers vous une nouvelle fois au sujet du devis n{{devis_numero}} ({{montant}} EUR).
@@ -117,7 +117,7 @@ Cordialement,
     delay: 15,
     delayLabel: 'J+15 après échéance',
     name: '2ème relance',
-    channel: 'email_sms',
+    channel: 'email',
     template: `Bonjour {{client_nom}},
 
 Sauf erreur de notre part, la facture n{{facture_numero}} de {{montant_ttc}} EUR TTC, échue depuis {{jours_retard}} jours, reste impayée.

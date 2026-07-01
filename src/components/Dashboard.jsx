@@ -555,43 +555,8 @@ function UrgentBanner({ count, totalRetard, isDark, modeDiscret, couleur, onClic
  */
 // ProfileBanner removed — replaced by compact onboarding bandeau
 
-// ============ BATCH RELAUNCH BUTTON ============
-
-/**
- * GAP 5: Button to relaunch all pending follow-ups at once.
- * Displayed when there are 2+ actions of type "Relancer".
- */
-function BatchRelaunchButton({ actions, isDark, couleur, showToast }) {
-  const relanceActions = actions.filter(a => a.actionLabel === 'Relancer');
-  if (relanceActions.length < 2) return null;
-
-  const handleBatchRelaunch = () => {
-    // In a real implementation, this would trigger bulk email/SMS sending
-    // For now, show a toast confirming the intent
-    if (showToast) {
-      showToast(`${relanceActions.length} relances envoyées`, 'success');
-    }
-  };
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.2 }}
-      className="mt-3 flex justify-end"
-    >
-      <button
-        type="button"
-        onClick={handleBatchRelaunch}
-        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-white transition-transform hover:scale-[1.02] active:scale-[0.98]"
-        style={{ background: couleur }}
-      >
-        <Send className="w-3.5 h-3.5" />
-        Tout relancer ({relanceActions.length})
-      </button>
-    </motion.div>
-  );
-}
+// Batch relaunch: l'envoi groupé réel se fait via le bandeau « Tout envoyer »
+// de la page Devis & Factures (useRelances.sendBulkRelances), pas depuis le dashboard.
 
 // OnboardingSection removed — replaced by compact onboarding bandeau
 
@@ -805,13 +770,6 @@ function ActionsSection({
         </button>
       )}
 
-      {/* GAP 5: Batch relaunch button */}
-      <BatchRelaunchButton
-        actions={allActions}
-        isDark={isDark}
-        couleur={couleur}
-        showToast={showToast}
-      />
     </motion.section>
   );
 }

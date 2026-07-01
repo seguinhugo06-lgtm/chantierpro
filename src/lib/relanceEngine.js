@@ -5,13 +5,11 @@
  */
 
 import { supabase, isDemo } from '../supabaseClient';
-import { sendEmail, sendSMS } from '../services/CommunicationsService';
 import {
   isDocumentEligible,
   getNextStep,
   resolveVariables,
   buildRelanceEmailHtml,
-  CHANNEL_LABELS,
 } from './relanceUtils';
 import { scopeToOrg, withOrgScope } from './queryHelper';
 
@@ -94,7 +92,7 @@ export function detectPendingRelances(devis = [], clients = [], relanceConfig = 
  * @param {Object} step - The step configuration from relanceConfig
  * @param {Object} entreprise - Company data
  * @param {Object} [options] - { userId, orgId, triggeredBy, supabaseUrl }
- * @returns {Object} { success, executionId, emailResult, smsResult, error }
+ * @returns {Object} { success, executionId, emailResult, error }
  */
 export async function executeRelance(doc, client, step, entreprise, options = {}) {
   const { userId, orgId, triggeredBy = 'manual' } = options;
@@ -106,75 +104,42 @@ export async function executeRelance(doc, client, step, entreprise, options = {}
     doc, client, entreprise
   );
 
-  // Build HTML email
+  // Construit l'email HTML. Email uniquement (le pivot coupe SMS/WhatsApp) ;
+  // le tracking pixel/désinscription arrivera en Phase 2 (Edge Function track-relance).
   const trackingToken = crypto.randomUUID();
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
-  const trackingPixelUrl = supabaseUrl
-    ? `${supabaseUrl}/functions/v1/track-relance/open/${trackingToken}`
-    : '';
-  const unsubscribeUrl = supabaseUrl
-    ? `${supabaseUrl}/functions/v1/track-relance/unsubscribe/${trackingToken}`
-    : '';
-
   const htmlEmail = buildRelanceEmailHtml(resolvedBody, entreprise, {
-    trackingPixelUrl,
-    unsubscribeUrl,
     ctaUrl: '',
     ctaLabel: doc.type === 'facture' ? 'Voir la facture' : 'Consulter le devis',
   });
 
-  // Resolve SMS body
-  const smsBody = step.smsTemplate
-    ? resolveVariables(step.smsTemplate, doc, client, entreprise)
-    : resolvedBody.substring(0, 160);
-
   let emailResult = null;
-  let smsResult = null;
   let success = false;
   let errorMessage = null;
 
   try {
-    const channel = step.channel || 'email';
-
-    // Send Email
-    if ((channel === 'email' || channel === 'email_sms') && client.email) {
+    // Envoi email via Resend (Edge Function send-email) — même canal que les devis.
+    if (client.email) {
       try {
-        emailResult = await sendEmail(client.email, resolvedSubject, htmlEmail, {
-          clientId: client.id,
-          documentId: doc.id,
-          documentType: doc.type,
+        const { data, error } = await supabase.functions.invoke('send-email', {
+          body: {
+            action: 'send_email',
+            to: client.email,
+            subject: resolvedSubject,
+            html: htmlEmail,
+            from_name: entreprise?.nom || undefined,
+            reply_to: entreprise?.email || undefined,
+          },
         });
-        if (emailResult?.success) success = true;
+        if (error) throw new Error(error.message || "Erreur d'envoi");
+        if (data?.error) throw new Error(data.error);
+        emailResult = data;
+        success = true;
       } catch (err) {
-        console.warn('Email send failed:', err.message);
+        console.warn('Relance email failed:', err.message);
         errorMessage = `Email: ${err.message}`;
       }
-    }
-
-    // Send SMS
-    if ((channel === 'sms' || channel === 'email_sms') && client.telephone) {
-      try {
-        smsResult = await sendSMS(client.telephone, smsBody, {
-          clientId: client.id,
-        });
-        if (smsResult?.success) success = true;
-      } catch (err) {
-        console.warn('SMS send failed:', err.message);
-        errorMessage = errorMessage
-          ? `${errorMessage} | SMS: ${err.message}`
-          : `SMS: ${err.message}`;
-      }
-    }
-
-    // WhatsApp: generate link but don't auto-send
-    if (channel === 'whatsapp' && client.telephone) {
-      const phone = client.telephone.replace(/\s/g, '').replace(/^0/, '33');
-      const waUrl = `https://wa.me/${phone}?text=${encodeURIComponent(resolvedBody)}`;
-      // Open in new tab for user to send manually
-      if (typeof window !== 'undefined') {
-        window.open(waUrl, '_blank');
-      }
-      success = true;
+    } else {
+      errorMessage = 'Client sans email';
     }
 
     // Record execution in DB
@@ -187,17 +152,16 @@ export async function executeRelance(doc, client, step, entreprise, options = {}
       step_name: step.name,
       step_delay: step.delay,
       sequence_type: doc.type === 'facture' ? 'facture' : 'devis',
-      channel: step.channel || 'email',
+      channel: 'email',
       status: success ? 'sent' : 'failed',
       subject: resolvedSubject,
       body: resolvedBody,
-      sms_body: (step.channel === 'sms' || step.channel === 'email_sms') ? smsBody : null,
+      sms_body: null,
       tracking_token: trackingToken,
       triggered_by: triggeredBy,
       error_message: errorMessage,
       metadata: {
-        email_provider_id: emailResult?.messageId || null,
-        sms_provider_id: smsResult?.sid || null,
+        email_provider_id: emailResult?.id || emailResult?.messageId || null,
       },
     };
 
@@ -239,10 +203,10 @@ export async function executeRelance(doc, client, step, entreprise, options = {}
       localStorage.setItem('cp_relance_executions', JSON.stringify(demoHistory));
     }
 
-    return { success, executionId, emailResult, smsResult, error: errorMessage };
+    return { success, executionId, emailResult, error: errorMessage };
   } catch (err) {
     console.error('executeRelance failed:', err);
-    return { success: false, executionId: null, emailResult, smsResult, error: err.message };
+    return { success: false, executionId: null, emailResult, error: err.message };
   }
 }
 

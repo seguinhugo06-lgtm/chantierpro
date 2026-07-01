@@ -4925,6 +4925,57 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         );
       })()}
 
+      {/* === BANDEAU RELANCES DU JOUR (envoi assisté en 1 clic) === */}
+      {relances.isEnabled && relances.counts.due > 0 && (
+        <div className={`rounded-xl sm:rounded-2xl border p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center gap-3 ${isDark ? 'bg-amber-900/20 border-amber-800' : 'bg-amber-50 border-amber-200'}`}>
+          <div className="flex items-center gap-3 flex-1 min-w-0">
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${couleur}20` }}>
+              <BellRing size={18} style={{ color: couleur }} />
+            </div>
+            <div className="min-w-0">
+              <p className={`text-sm font-semibold ${textPrimary}`}>
+                {relances.counts.due} relance{relances.counts.due > 1 ? 's' : ''} à envoyer aujourd'hui
+              </p>
+              <p className={`text-xs ${textMuted}`}>
+                {canViewPrices
+                  ? `${formatMoney(relances.totalAtRisk)} en attente de règlement ou de réponse`
+                  : 'Documents en attente de suivi'}
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            disabled={actionLoading === 'bulk-relance'}
+            onClick={async () => {
+              if (actionLoading) return;
+              setActionLoading('bulk-relance');
+              try {
+                const res = await relances.sendBulkRelances();
+                if (res.sent > 0) {
+                  showToast(
+                    `${res.sent} relance${res.sent > 1 ? 's' : ''} envoyée${res.sent > 1 ? 's' : ''}${res.failed ? ` — ${res.failed} échec${res.failed > 1 ? 's' : ''}` : ''}`,
+                    res.failed ? 'warning' : 'success'
+                  );
+                } else if (res.failed > 0) {
+                  showToast(`Échec de ${res.failed} relance${res.failed > 1 ? 's' : ''}`, 'error');
+                } else {
+                  showToast('Aucune relance à envoyer', 'info');
+                }
+              } catch {
+                showToast("Erreur lors de l'envoi des relances", 'error');
+              } finally {
+                setActionLoading(null);
+              }
+            }}
+            className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-white disabled:opacity-60 flex-shrink-0"
+            style={{ background: couleur }}
+          >
+            {actionLoading === 'bulk-relance' ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
+            {actionLoading === 'bulk-relance' ? 'Envoi…' : 'Tout envoyer'}
+          </button>
+        </div>
+      )}
+
       {/* === SEARCH + FILTERS === */}
       <div className="space-y-2">
         {/* Row 1: Search + Period filters + Sort + Export */}

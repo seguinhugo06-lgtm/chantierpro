@@ -76,6 +76,9 @@ export function fromSupabase(row) {
     assuranceDecennaleNumero: row.decennale_numero || '',
     assuranceDecennaleValidite: row.decennale_validite || '',
 
+    // Relances (config { enabled, devisSteps[], factureSteps[] })
+    relanceConfig: row.relance_config || null,
+
     // Bank
     banqueNom: row.banque_nom || '',
 
@@ -168,6 +171,9 @@ export function toSupabase(data) {
   if (data.assuranceDecennaleCompagnie !== undefined) result.decennale_assureur = data.assuranceDecennaleCompagnie;
   if (data.assuranceDecennaleNumero !== undefined) result.decennale_numero = data.assuranceDecennaleNumero;
   if (data.assuranceDecennaleValidite !== undefined) result.decennale_validite = data.assuranceDecennaleValidite || null;
+
+  // Relances
+  if (data.relanceConfig !== undefined) result.relance_config = data.relanceConfig;
 
   // Banque
   if (data.iban !== undefined) result.iban = data.iban;
