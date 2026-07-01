@@ -58,13 +58,23 @@ export function fromSupabase(row) {
     slogan: row.slogan || '',
     rcsVille: row.rcs_ville || '',
 
-    // Assurances
-    assuranceDecennaleNumero: row.assurance_decennale_numero || '',
-    assuranceDecennaleCompagnie: row.assurance_decennale_compagnie || '',
-    assuranceDecennaleValidite: row.assurance_decennale_validite || '',
-    assuranceRcProNumero: row.assurance_rc_pro_numero || '',
-    assuranceRcProCompagnie: row.assurance_rc_pro_compagnie || '',
-    assuranceRcProValidite: row.assurance_rc_pro_validite || '',
+    // Assurances — clés canoniques utilisées dans toute l'app (Settings, PDF, Dashboard…)
+    rcProAssureur: row.rc_pro_assureur || '',
+    rcProNumero: row.rc_pro_numero || '',
+    rcProValidite: row.rc_pro_validite || '',
+    rcProMontantGarantie: row.rc_pro_montant_garantie || '',
+    rcProZone: row.rc_pro_zone || '',
+    decennaleAssureur: row.decennale_assureur || '',
+    decennaleNumero: row.decennale_numero || '',
+    decennaleValidite: row.decennale_validite || '',
+    decennaleActivites: row.decennale_activites || '',
+    // Alias rétro-compat (EntrepriseFormModal, demo-data) — mêmes colonnes
+    assuranceRcProCompagnie: row.rc_pro_assureur || '',
+    assuranceRcProNumero: row.rc_pro_numero || '',
+    assuranceRcProValidite: row.rc_pro_validite || '',
+    assuranceDecennaleCompagnie: row.decennale_assureur || '',
+    assuranceDecennaleNumero: row.decennale_numero || '',
+    assuranceDecennaleValidite: row.decennale_validite || '',
 
     // Bank
     banqueNom: row.banque_nom || '',
@@ -141,13 +151,23 @@ export function toSupabase(data) {
   if (data.rcsVille !== undefined) result.rcs_ville = data.rcsVille;
   if (data.tvaIntra !== undefined) result.tva_intra = data.tvaIntra;
 
-  // Assurances
-  if (data.assuranceDecennaleNumero !== undefined) result.assurance_decennale_numero = data.assuranceDecennaleNumero;
-  if (data.assuranceDecennaleCompagnie !== undefined) result.assurance_decennale_compagnie = data.assuranceDecennaleCompagnie;
-  if (data.assuranceDecennaleValidite !== undefined) result.assurance_decennale_validite = data.assuranceDecennaleValidite || null;
-  if (data.assuranceRcProNumero !== undefined) result.assurance_rc_pro_numero = data.assuranceRcProNumero;
-  if (data.assuranceRcProCompagnie !== undefined) result.assurance_rc_pro_compagnie = data.assuranceRcProCompagnie;
-  if (data.assuranceRcProValidite !== undefined) result.assurance_rc_pro_validite = data.assuranceRcProValidite || null;
+  // Assurances — clés canoniques de l'app (rcProAssureur…) vers colonnes réelles rc_pro_* / decennale_*
+  if (data.rcProAssureur !== undefined) result.rc_pro_assureur = data.rcProAssureur;
+  if (data.rcProNumero !== undefined) result.rc_pro_numero = data.rcProNumero;
+  if (data.rcProValidite !== undefined) result.rc_pro_validite = data.rcProValidite || null;
+  if (data.rcProMontantGarantie !== undefined) result.rc_pro_montant_garantie = data.rcProMontantGarantie === '' ? null : data.rcProMontantGarantie;
+  if (data.rcProZone !== undefined) result.rc_pro_zone = data.rcProZone;
+  if (data.decennaleAssureur !== undefined) result.decennale_assureur = data.decennaleAssureur;
+  if (data.decennaleNumero !== undefined) result.decennale_numero = data.decennaleNumero;
+  if (data.decennaleValidite !== undefined) result.decennale_validite = data.decennaleValidite || null;
+  if (data.decennaleActivites !== undefined) result.decennale_activites = data.decennaleActivites;
+  // Alias rétro-compat (EntrepriseFormModal) — mêmes colonnes
+  if (data.assuranceRcProCompagnie !== undefined) result.rc_pro_assureur = data.assuranceRcProCompagnie;
+  if (data.assuranceRcProNumero !== undefined) result.rc_pro_numero = data.assuranceRcProNumero;
+  if (data.assuranceRcProValidite !== undefined) result.rc_pro_validite = data.assuranceRcProValidite || null;
+  if (data.assuranceDecennaleCompagnie !== undefined) result.decennale_assureur = data.assuranceDecennaleCompagnie;
+  if (data.assuranceDecennaleNumero !== undefined) result.decennale_numero = data.assuranceDecennaleNumero;
+  if (data.assuranceDecennaleValidite !== undefined) result.decennale_validite = data.assuranceDecennaleValidite || null;
 
   // Banque
   if (data.iban !== undefined) result.iban = data.iban;
