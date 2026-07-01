@@ -1223,39 +1223,35 @@ function extractBadColumn(msg) {
 }
 
 /**
- * Save a single item to Supabase.
- * Resilient: if a column doesn't exist (or a trigger references a missing column),
- * strips it from the payload and retries (up to 5 times).
+ * Builds the Supabase (snake_case) payload from a local item: maps fields,
+ * applies org scope, adds updated_at, and guarantees JSON-serializability.
  */
-export async function saveItem(table, item, userId, orgId) {
-  if (isDemo || !supabase || !userId) return item;
-
-  const mapping = FIELD_MAPPINGS[table];
-  if (!mapping) {
-    console.warn(`No mapping for table: ${table}`);
-    return item;
-  }
-
-  let supabaseData;
+function buildSupabasePayload(mapping, item, userId, orgId) {
+  const build = () => withOrgScope({
+    ...mapping.toSupabase(item),
+    // Always include updated_at — many tables have a BEFORE UPDATE trigger
+    // (update_updated_at_column) that sets NEW.updated_at = NOW().
+    // If the column exists, the trigger overwrites this value; if it doesn't,
+    // the retry logic below strips it automatically.
+    updated_at: new Date().toISOString(),
+  }, userId, orgId);
   try {
-    supabaseData = withOrgScope({
-      ...mapping.toSupabase(item),
-      // Always include updated_at — many tables have a BEFORE UPDATE trigger
-      // (update_updated_at_column) that sets NEW.updated_at = NOW().
-      // If the column exists, the trigger overwrites this value; if it doesn't,
-      // the retry logic below will strip it automatically.
-      updated_at: new Date().toISOString(),
-    }, userId, orgId);
-    // Verify serializable — if not, deep-sanitize
-    JSON.stringify(supabaseData);
+    const payload = build();
+    JSON.stringify(payload); // Verify serializable
+    return payload;
   } catch (serErr) {
-    console.warn(`⚠️ ${table}: payload not serializable, sanitizing...`, serErr.message);
-    supabaseData = sanitizeForJSON(withOrgScope({
-      ...mapping.toSupabase(item),
-      updated_at: new Date().toISOString(),
-    }, userId, orgId));
+    console.warn(`⚠️ Payload not serializable, sanitizing...`, serErr.message);
+    return sanitizeForJSON(build());
   }
+}
 
+/**
+ * Runs a Supabase write with column-stripping resilience: if a column doesn't
+ * exist (or a trigger references a missing column), strips it and retries.
+ * `runQuery(payload)` performs the write and resolves to { data, error }.
+ * Returns the mapped row on success, or null if it gave up.
+ */
+async function writeWithColumnRetry(table, mapping, supabaseData, runQuery) {
   const MAX_ATTEMPTS = 8;
   const strippedCols = [];
 
@@ -1263,34 +1259,28 @@ export async function saveItem(table, item, userId, orgId) {
     try {
       logger.debug(`💾 Saving to ${table} (attempt ${attempt + 1}/${MAX_ATTEMPTS}):`, Object.keys(supabaseData).join(', '));
 
-      const { data, error } = await supabase
-        .from(table)
-        .upsert(supabaseData, { onConflict: 'id' })
-        .select()
-        .single();
+      const { data, error } = await runQuery(supabaseData);
 
       if (error) {
         const badCol = extractBadColumn(error.message);
         if (badCol && attempt < MAX_ATTEMPTS - 1) {
-          if (supabaseData.hasOwnProperty(badCol)) {
+          if (Object.prototype.hasOwnProperty.call(supabaseData, badCol)) {
             // Column is in payload but not in DB → strip it
             console.warn(`⚠️ ${table}: column "${badCol}" not in DB, stripping and retrying`);
             delete supabaseData[badCol];
             strippedCols.push(badCol);
           } else if (!strippedCols.includes(badCol)) {
-            // Column is NOT in payload — likely a DB trigger referencing a missing column.
-            // Skip this error rather than adding the column (which makes it worse).
+            // Column is NOT in payload — a DB trigger/schema references a missing column.
             console.warn(`⚠️ ${table}: trigger/schema references "${badCol}" — not in payload, skipping retry`);
             strippedCols.push(badCol);
             break; // Stop retrying — this is a DB schema issue, not fixable client-side
-            strippedCols.push(`+${badCol}`);
           }
           continue;
         }
         console.error(`❌ Error saving to ${table}:`, error.message);
-        // Detect constraint violations for clearer error messages
+        // Surface constraint violations with a clearer message
         if (error.message?.includes('check constraint') || error.message?.includes('statut_check') || error.code === '23514') {
-          const detail = table === 'devis' ? ` (statut envoyé: "${supabaseData.statut}")` : '';
+          const detail = table === 'devis' ? ` (statut: "${supabaseData.statut}")` : '';
           throw new Error(`Valeur invalide${detail}: ${error.message}`);
         }
         throw new Error(`Failed to save to ${table}: ${error.message}`);
@@ -1305,7 +1295,7 @@ export async function saveItem(table, item, userId, orgId) {
       const msg = error.message || '';
       const badCol = extractBadColumn(msg);
       if (badCol && attempt < MAX_ATTEMPTS - 1) {
-        if (supabaseData.hasOwnProperty(badCol)) {
+        if (Object.prototype.hasOwnProperty.call(supabaseData, badCol)) {
           console.warn(`⚠️ ${table}: stripping "${badCol}" and retrying`);
           delete supabaseData[badCol];
           strippedCols.push(badCol);
@@ -1324,7 +1314,46 @@ export async function saveItem(table, item, userId, orgId) {
       throw error;
     }
   }
-  return item;
+  return null;
+}
+
+/**
+ * Insert/upsert an item (creation path). Upsert fires BEFORE INSERT triggers
+ * (e.g. enforce_plan_limit) — intended for new rows.
+ * Resilient to missing columns; returns the saved row (or the local item on giveup).
+ */
+export async function saveItem(table, item, userId, orgId) {
+  if (isDemo || !supabase || !userId) return item;
+  const mapping = FIELD_MAPPINGS[table];
+  if (!mapping) {
+    console.warn(`No mapping for table: ${table}`);
+    return item;
+  }
+  const payload = buildSupabasePayload(mapping, item, userId, orgId);
+  const saved = await writeWithColumnRetry(table, mapping, payload, (d) =>
+    supabase.from(table).upsert(d, { onConflict: 'id' }).select().single()
+  );
+  return saved ?? item;
+}
+
+/**
+ * Update an EXISTING item via a plain UPDATE (no upsert).
+ * Avoids BEFORE INSERT triggers (e.g. enforce_plan_limit, which silently blocked
+ * devis status updates via upsert) and doesn't require all NOT NULL columns.
+ */
+export async function updateItem(table, id, item, userId, orgId) {
+  if (isDemo || !supabase || !userId) return item;
+  const mapping = FIELD_MAPPINGS[table];
+  if (!mapping) {
+    console.warn(`No mapping for table: ${table}`);
+    return item;
+  }
+  const payload = buildSupabasePayload(mapping, item, userId, orgId);
+  delete payload.id; // id is used by the .eq() filter, not written
+  const saved = await writeWithColumnRetry(table, mapping, payload, (d) =>
+    supabase.from(table).update(d).eq('id', id).select().single()
+  );
+  return saved ?? item;
 }
 
 /**

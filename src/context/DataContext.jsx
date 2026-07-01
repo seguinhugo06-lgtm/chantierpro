@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { DEVIS_STATUS, CHANTIER_STATUS } from '../lib/constants';
 import { calculateChantierMargin } from '../lib/business/margin-calculator';
-import { loadAllData, saveItem, deleteItem, getNextNumero } from '../hooks/useSupabaseSync';
+import { loadAllData, saveItem, updateItem, deleteItem, getNextNumero } from '../hooks/useSupabaseSync';
 import { isDemo, auth, supabase } from '../supabaseClient';
 import { useOrg } from './OrgContext';
 import { useEntreprise } from './EntrepriseContext';
@@ -472,7 +472,7 @@ export function DataProvider({ children, initialData = {} }) {
         try {
           const current = clients.find(c => c.id === id);
           if (current) {
-            await saveItem('clients', { ...current, ...data }, userId, orgId);
+            await updateItem('clients', id, { ...current, ...data }, userId, orgId);
           }
         } catch (error) {
           console.error('Error updating client in Supabase:', error);
@@ -615,7 +615,7 @@ export function DataProvider({ children, initialData = {} }) {
               merged.statut = 'envoye';
             }
             logger.debug('💾 updateDevis: saving to Supabase, statut=', merged.statut);
-            await saveItem('devis', merged, userId, orgId);
+            await updateItem('devis', id, merged, userId, orgId);
             logger.debug('✅ updateDevis: saved successfully');
           }
         } catch (error) {
@@ -732,7 +732,7 @@ export function DataProvider({ children, initialData = {} }) {
           const current = chantiers.find(c => c.id === id);
           if (current) {
             logger.debug('💾 updateChantier: saving, taches count=', (data.taches || current.taches || []).length);
-            await saveItem('chantiers', { ...current, ...data }, userId, orgId);
+            await updateItem('chantiers', id, { ...current, ...data }, userId, orgId);
             logger.debug('✅ updateChantier: saved successfully');
           }
         } catch (error) {
@@ -804,7 +804,7 @@ export function DataProvider({ children, initialData = {} }) {
       try {
         const current = depenses.find(d => d.id === id);
         if (current) {
-          await saveItem('depenses', { ...current, ...data }, userId, orgId);
+          await updateItem('depenses', id, { ...current, ...data }, userId, orgId);
         }
       } catch (error) {
         console.error('Error updating depense in Supabase:', error);
@@ -866,7 +866,7 @@ export function DataProvider({ children, initialData = {} }) {
       try {
         const current = pointages.find(p => p.id === id);
         if (current) {
-          await saveItem('pointages', { ...current, ...data }, userId, orgId);
+          await updateItem('pointages', id, { ...current, ...data }, userId, orgId);
         }
       } catch (error) {
         console.error('Error updating pointage in Supabase:', error);
@@ -968,7 +968,7 @@ export function DataProvider({ children, initialData = {} }) {
       try {
         const current = equipe.find(e => e.id === id);
         if (current) {
-          await saveItem('equipe', { ...current, ...data }, userId, orgId);
+          await updateItem('equipe', id, { ...current, ...data }, userId, orgId);
         }
       } catch (error) {
         console.error('Error updating employee in Supabase:', error);
@@ -1027,7 +1027,7 @@ export function DataProvider({ children, initialData = {} }) {
       try {
         const current = catalogue.find(c => c.id === id);
         if (current) {
-          await saveItem('catalogue', { ...current, ...data }, userId, orgId);
+          await updateItem('catalogue', id, { ...current, ...data }, userId, orgId);
         }
       } catch (error) {
         console.error('Error updating catalogue item in Supabase:', error);
@@ -1133,7 +1133,7 @@ export function DataProvider({ children, initialData = {} }) {
 
     if (!isDemo && userId) {
       try {
-        await saveItem('events', updated, userId, orgId);
+        await updateItem('events', id, updated, userId, orgId);
       } catch (error) {
         console.error('Error updating planning event:', error);
         await queueOffline('update', 'events', updated);
@@ -1187,7 +1187,7 @@ export function DataProvider({ children, initialData = {} }) {
       try {
         const current = ouvrages.find(o => o.id === id);
         if (current) {
-          await saveItem('ouvrages', { ...current, ...data }, userId, orgId);
+          await updateItem('ouvrages', id, { ...current, ...data }, userId, orgId);
         }
       } catch (error) {
         console.error('Error updating ouvrage in Supabase:', error);
@@ -1261,7 +1261,7 @@ export function DataProvider({ children, initialData = {} }) {
       try {
         const current = memos.find(m => m.id === id);
         if (current) {
-          await saveItem('memos', { ...current, ...updates }, userId, orgId);
+          await updateItem('memos', id, { ...current, ...updates }, userId, orgId);
         }
       } catch (error) {
         console.error('Error updating memo in Supabase:', error);
@@ -1299,7 +1299,7 @@ export function DataProvider({ children, initialData = {} }) {
 
     if (!isDemo && userId) {
       try {
-        await saveItem('memos', { ...memo, ...updates }, userId, orgId);
+        await updateItem('memos', memo.id, { ...memo, ...updates }, userId, orgId);
       } catch (error) {
         console.error('Error toggling memo in Supabase:', error);
         await queueOffline('update', 'memos', { id, ...updates });
@@ -1350,7 +1350,7 @@ export function DataProvider({ children, initialData = {} }) {
       try {
         const current = customTemplates.find(t => t.id === id);
         if (current) {
-          await saveItem('devis_templates', { ...current, ...data }, userId, orgId);
+          await updateItem('devis_templates', id, { ...current, ...data }, userId, orgId);
         }
       } catch (error) {
         console.error('Error updating template:', error);
