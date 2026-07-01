@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { ArrowLeft, ArrowRight, Check, X, Plus, User, FileText, Receipt, Search, Star, Trash2, ChevronDown, ChevronUp, ChevronRight, Sparkles, Clock, RotateCcw, AlertCircle, Mic, Zap, Edit3 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, X, Plus, User, FileText, Receipt, Search, Star, Trash2, ChevronDown, ChevronUp, ChevronRight, Sparkles, Clock, RotateCcw, AlertCircle, Zap, Edit3 } from 'lucide-react';
 import FormError from './ui/FormError';
 import QuickClientModal from './QuickClientModal';
 import CatalogBrowser from './CatalogBrowser';
@@ -30,7 +30,6 @@ export default function DevisWizard({
   isDark = false,
   couleur = '#f97316',
   setPage,
-  onSwitchToAI,
   onSwitchToExpress
 }) {
   const isEditMode = !!initialData;
@@ -458,28 +457,6 @@ export default function DevisWizard({
                 Choisissez votre methode de creation
               </p>
               <div className="grid gap-3">
-                {/* Dicter IA */}
-                <button
-                  onClick={() => {
-                    if (onSwitchToAI) {
-                      onClose?.();
-                      onSwitchToAI();
-                    }
-                  }}
-                  className={`p-5 rounded-2xl border-2 text-left transition-all hover:shadow-lg ${isDark ? 'border-slate-700 hover:border-purple-500 bg-slate-800/50' : 'border-slate-200 hover:border-purple-400 bg-white'}`}
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-violet-600 flex items-center justify-center text-white shrink-0">
-                      <Mic size={24} />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className={`font-semibold text-base ${textPrimary}`}>Dicter avec l'IA</h3>
-                      <p className={`text-sm mt-0.5 ${textMuted}`}>Decrivez votre devis, l'IA le cree pour vous</p>
-                    </div>
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-purple-100 text-purple-700">Beta</span>
-                  </div>
-                </button>
-
                 {/* Template Express */}
                 <button
                   onClick={() => {

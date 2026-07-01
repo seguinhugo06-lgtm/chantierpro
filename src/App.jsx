@@ -46,7 +46,6 @@ const TresorerieModule = lazyWithRetry(() => import('./components/tresorerie/Tre
 const BibliothequeOuvrages = lazyWithRetry(() => import('./components/catalogue/BibliothequeOuvrages'), 'Bibliothèque');
 const BibliothequePrix = lazyWithRetry(() => import('./components/bibliotheque/Bibliotheque'), 'BibliothèquePrix');
 const SousTraitantsModule = lazyWithRetry(() => import('./components/soustraitants/SousTraitantsModule'), 'SousTraitants');
-const IADevisAnalyse = lazyWithRetry(() => import('./components/ia/IADevisAnalyse'), 'IADevis');
 const SignatureModule = lazyWithRetry(() => import('./components/signatures/SignatureModule'), 'Signatures');
 const ExportComptable = lazyWithRetry(() => import('./components/export/ExportComptable'), 'ExportComptable');
 const BillingDashboard = lazyWithRetry(() => import('./components/subscription/BillingDashboard'), 'Billing');
@@ -929,7 +928,6 @@ export default function App() {
       soustraitants: 'Sous-traitants',
       commandes: 'Commandes',
       tresorerie: 'Trésorerie',
-      'ia-devis': 'IA Devis',
       entretien: "Carnet d'entretien",
       signatures: 'Signatures',
       export: 'Export comptable',
@@ -1361,19 +1359,6 @@ export default function App() {
                 )}
               </button>
             ))}
-            {/* Devis IA — sub-item right under Devis & Factures */}
-            <button
-              onClick={() => { setPage('ia-devis'); setSidebarOpen(false); try { localStorage.setItem('cp_ia_devis_visited', '1'); } catch(e) {} }}
-              className={`w-full flex items-center gap-3 justify-start md:justify-center xl:justify-start pl-7 pr-3 md:px-3 xl:pl-7 xl:pr-3 py-2 rounded-xl text-xs font-medium transition-all active:scale-95 ${page === 'ia-devis' ? 'text-white shadow-md' : isDark ? 'text-slate-500 hover:bg-slate-800 hover:text-slate-400' : 'text-[#666] hover:bg-[#f5f5f5] hover:text-[#1a1a1a]'}`}
-              style={page === 'ia-devis' ? {background: `linear-gradient(135deg, ${couleur}, ${couleur}dd)`} : {}}
-              title="Devis IA"
-            >
-              <Sparkles size={14} className="flex-shrink-0" aria-hidden="true" />
-              <span className="flex-1 text-left md:hidden xl:inline">Devis IA</span>
-              {!localStorage.getItem('cp_ia_devis_visited') && (
-                <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-semibold md:hidden xl:inline-block ${page === 'ia-devis' ? 'bg-white/20 text-white' : 'bg-gradient-to-r from-amber-500 to-orange-500 text-white'}`}>NEW</span>
-              )}
-            </button>
             {nav.slice(2, 4).map(n => (
               <button
                 key={n.id}
@@ -1721,7 +1706,7 @@ export default function App() {
         <main id="main-content" key={page} className={`${page === 'dashboard' || page === 'profil' || page === 'plan' ? '' : 'p-3 sm:p-4 lg:p-6'} ${tc.text} max-w-[1800px] mx-auto pb-20 md:pb-0 overflow-x-hidden animate-fade-in`}>
           <ErrorBoundary isDark={isDark} showDetails={true}>
             <Suspense fallback={<div className="flex items-center justify-center py-12"><div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: `${couleur}33`, borderTopColor: couleur }} /></div>}>
-              {page === 'dashboard' && <Dashboard clients={clients} devis={devis} chantiers={chantiers} events={planningEvents} depenses={depenses} pointages={pointages} equipe={equipe} ajustements={ajustements} catalogue={catalogue} entreprise={entreprise} getChantierBilan={getChantierBilan} addDevis={addDevis} setPage={setPage} setSelectedChantier={setSelectedChantier} setSelectedDevis={setSelectedDevis} setCreateMode={setCreateMode} setAiPrefill={setAiPrefill} modeDiscret={modeDiscret} setModeDiscret={setModeDiscret} couleur={couleur} isDark={isDark} showHelp={showHelp} setShowHelp={setShowHelp} user={user} onOpenSearch={() => setShowSearch(true)} memos={memos} addMemo={addMemo} toggleMemo={toggleMemo} />}
+              {page === 'dashboard' && <Dashboard clients={clients} devis={devis} chantiers={chantiers} events={planningEvents} depenses={depenses} pointages={pointages} equipe={equipe} ajustements={ajustements} catalogue={catalogue} entreprise={entreprise} getChantierBilan={getChantierBilan} addDevis={addDevis} setPage={setPage} setSelectedChantier={setSelectedChantier} setSelectedDevis={setSelectedDevis} setCreateMode={setCreateMode} modeDiscret={modeDiscret} setModeDiscret={setModeDiscret} couleur={couleur} isDark={isDark} showHelp={showHelp} setShowHelp={setShowHelp} user={user} onOpenSearch={() => setShowSearch(true)} memos={memos} addMemo={addMemo} toggleMemo={toggleMemo} />}
               {page === 'devis' && <DevisPage clients={clients} setClients={setClients} addClient={addClient} devis={devis} setDevis={setDevis} chantiers={chantiers} catalogue={catalogue} entreprise={entreprise} onSubmit={addDevis} onUpdate={updateDevis} onDelete={deleteDevis} modeDiscret={modeDiscret} selectedDevis={selectedDevis} setSelectedDevis={setSelectedDevis} isDark={isDark} couleur={couleur} createMode={createMode.devis} setCreateMode={(v) => setCreateMode(p => ({...p, devis: v}))} addChantier={addChantier} setPage={setPage} setSelectedChantier={setSelectedChantier} addEchange={addEchange} paiements={paiements} addPaiement={addPaiement} generateNextNumero={generateNextNumero} aiPrefill={aiPrefill} setAiPrefill={setAiPrefill} />}
               {page === 'chantiers' && <Chantiers chantiers={chantiers} addChantier={addChantier} updateChantier={updateChantier} clients={clients} depenses={depenses} setDepenses={setDepenses} pointages={pointages} setPointages={setPointages} equipe={equipe} devis={devis} ajustements={ajustements} addAjustement={addAjustement} deleteAjustement={deleteAjustement} getChantierBilan={getChantierBilan} couleur={couleur} modeDiscret={modeDiscret} entreprise={entreprise} selectedChantier={selectedChantier} setSelectedChantier={setSelectedChantier} catalogue={catalogue} deductStock={deductStock} isDark={isDark} createMode={createMode.chantier} setCreateMode={(v) => setCreateMode(p => ({...p, chantier: v}))} setPage={setPage} memos={memos} addMemo={addMemo} updateMemo={updateMemo} deleteMemo={deleteMemo} toggleMemo={toggleMemo} onPlanEvent={(data) => { setPlanningPrefill(data); setPage('planning'); }} addDevis={addDevis} generateNextNumero={generateNextNumero} />}
               {(page === 'tasks' || page === 'planning' || page === 'memos') && (
@@ -1741,7 +1726,6 @@ export default function App() {
               {page === 'ouvrages' && <BibliothequeOuvrages catalogue={catalogue} ouvragesProp={ouvrages} setOuvragesProp={setOuvrages} addOuvrage={dataAddOuvrage} updateOuvrage={dataUpdateOuvrage} deleteOuvrage={dataDeleteOuvrage} isDark={isDark} couleur={couleur} />}
               {page === 'soustraitants' && <FeatureGuard feature="sous_traitants"><SousTraitantsModule chantiers={chantiers} isDark={isDark} couleur={couleur} setPage={setPage} /></FeatureGuard>}
               {page === 'tresorerie' && <FeatureGuard feature="tresorerie"><TresorerieModule devis={devis} depenses={depenses} chantiers={chantiers} clients={clients} paiements={paiements} entreprise={entreprise} isDark={isDark} couleur={couleur} setPage={setPage} modeDiscret={modeDiscret} /></FeatureGuard>}
-              {page === 'ia-devis' && <FeatureGuard feature="ia_devis"><IADevisAnalyse catalogue={catalogue} clients={clients} chantiers={chantiers} entreprise={entreprise} isDark={isDark} couleur={couleur} onSubmit={addDevis} addClient={addClient} generateNextNumero={generateNextNumero} setSelectedDevis={setSelectedDevis} setPage={setPage} user={user} orgId={orgId} /></FeatureGuard>}
               {page === 'signatures' && <FeatureGuard feature="signatures"><SignatureModule devis={devis} chantiers={chantiers} clients={clients} isDark={isDark} couleur={couleur} /></FeatureGuard>}
               {page === 'export' && <FeatureGuard feature="export_comptable"><ExportComptable devis={devis} depenses={depenses} chantiers={chantiers} clients={clients} entreprise={entreprise} isDark={isDark} couleur={couleur} /></FeatureGuard>}
               {page === 'profil' &&<ProfilePage user={user} entreprise={entreprise} devis={devis} clients={clients} chantiers={chantiers} catalogue={catalogue} depenses={depenses} paiements={paiements} equipe={equipe} isDark={isDark} couleur={couleur} setPage={setPage} modeDiscret={modeDiscret} />}
@@ -1781,7 +1765,7 @@ export default function App() {
             showFABDevisWizard || showFABQuickClient || showFABQuickChantier ||
             showSearch ||
             // Hide FAB on pages that have their own creation button
-            ['devis', 'chantiers', 'clients', 'equipe', 'catalogue', 'settings', 'ia-devis', 'memos'].includes(page)
+            ['devis', 'chantiers', 'clients', 'equipe', 'catalogue', 'settings', 'memos'].includes(page)
           }
         />
 

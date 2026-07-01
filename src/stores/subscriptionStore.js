@@ -32,7 +32,7 @@ export const PLANS = {
     },
     features: [
       'devis_basic', 'clients_basic', 'chantiers_basic', 'catalogue',
-      'planning', 'ia_devis', 'taches'
+      'planning', 'taches'
     ],
     featureLabels: [
       { name: '5 devis par mois', included: true },
@@ -75,7 +75,7 @@ export const PLANS = {
     },
     features: [
       'devis_basic', 'clients_basic', 'chantiers_basic', 'catalogue',
-      'planning', 'ia_devis', 'taches', 'signatures', 'export_comptable',
+      'planning', 'taches', 'signatures', 'export_comptable',
       'rapports_pdf', 'relances', 'marges', 'pipeline', 'photos_gps',
       'carte_chantiers', 'avis_google', 'entretien'
     ],
@@ -87,7 +87,6 @@ export const PLANS = {
       { name: 'Signatures électroniques', included: true },
       { name: 'Export comptable', included: true },
       { name: 'Analyse de marges', included: true },
-      { name: '20 analyses IA / mois', included: true },
       { name: 'Pipeline commercial', included: true },
       { name: 'Relances automatiques', included: true },
       { name: 'Photos GPS & horodatées', included: true },
@@ -122,7 +121,7 @@ export const PLANS = {
     },
     features: [
       'devis_basic', 'clients_basic', 'chantiers_basic', 'catalogue',
-      'planning', 'ia_devis', 'taches', 'signatures', 'export_comptable',
+      'planning', 'taches', 'signatures', 'export_comptable',
       'rapports_pdf', 'relances', 'marges', 'pipeline', 'photos_gps',
       'carte_chantiers', 'avis_google', 'entretien',
       'pointages', 'rbac', 'tresorerie', 'fec_export',
@@ -136,7 +135,6 @@ export const PLANS = {
       { name: 'Gérez les accès de votre équipe', included: true },
       { name: 'Trésorerie & Bilan', included: true },
       { name: 'Export FEC comptable', included: true },
-      { name: 'IA illimitée', included: true },
       { name: 'Sous-traitants & conformité', included: true },
       { name: 'Commandes fournisseurs', included: true },
       { name: 'Portail client', included: true },
@@ -174,7 +172,6 @@ export const PAGE_FEATURE_MAP = {
   signatures: 'signatures',
   export: 'export_comptable',
   tresorerie: 'tresorerie',
-  'ia-devis': 'ia_devis',
   soustraitants: 'sous_traitants',
   pointages: 'pointages',
   analytics: 'analytics'
@@ -248,12 +245,6 @@ export const UPGRADE_CONTEXTS = {
     title: 'Signatures électroniques',
     subtitle: 'Signez directement vos devis et factures avec vos clients',
     highlight: 'signatures',
-    recommendedPlan: 'artisan'
-  },
-  ia_devis: {
-    title: 'Limite d\'analyses IA atteinte',
-    subtitle: 'Passez au plan Artisan pour 20 analyses IA par mois',
-    highlight: 'ia_devis',
     recommendedPlan: 'artisan'
   },
   export_comptable: {

@@ -411,13 +411,13 @@ function OverviewWidget({
   );
 }
 
-// ============ PROMO CARDS (Devis IA / Express) ============
+// ============ PROMO CARDS (Devis Express) ============
 
 /**
  * Promo cards displayed in the left column.
- * These promote features like AI-powered quotes and express invoicing.
+ * Promote express quote creation.
  */
-function PromoCards({ isDark, couleur, setPage, setCreateMode, setAiPrefill }) {
+function PromoCards({ isDark, couleur, setPage, setCreateMode }) {
   const cardBg = isDark
     ? 'bg-slate-800 border border-slate-700/50'
     : 'bg-white shadow-[0_1px_3px_rgba(0,0,0,0.06)]';
@@ -426,41 +426,6 @@ function PromoCards({ isDark, couleur, setPage, setCreateMode, setAiPrefill }) {
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-      {/* Devis IA card */}
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.4, duration: 0.3 }}
-        className={`rounded-2xl p-4 sm:p-5 cursor-pointer transition-transform hover:scale-[1.01] ${cardBg}`}
-        onClick={() => {
-          setAiPrefill?.({ active: true });
-          setPage('devis');
-        }}
-      >
-        <div className="flex items-start gap-3">
-          <div
-            className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-            style={{ background: `${couleur}15` }}
-          >
-            <Sparkles className="w-5 h-5" style={{ color: couleur }} />
-          </div>
-          <div>
-            <h4 className={`text-sm font-semibold ${textPrimary}`}>
-              Devis IA
-            </h4>
-            <p className={`text-xs mt-1 ${textSecondary}`}>
-              Générez un devis professionnel en quelques secondes grâce à l'intelligence artificielle
-            </p>
-            <span
-              className="inline-flex items-center gap-1 text-xs font-medium mt-2"
-              style={{ color: couleur }}
-            >
-              Essayer <ArrowRight className="w-3 h-3" />
-            </span>
-          </div>
-        </div>
-      </motion.div>
-
       {/* Devis Express card */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
@@ -1535,7 +1500,6 @@ export default function Dashboard({
   setPage,
   setSelectedDevis,
   setCreateMode,
-  setAiPrefill,
   isDark = false,
   showHelp = false,
   setShowHelp,
@@ -2073,7 +2037,6 @@ export default function Dashboard({
             couleur={couleur}
             setPage={setPage}
             setCreateMode={setCreateMode}
-            setAiPrefill={setAiPrefill}
           />
         </div>
 

@@ -2134,7 +2134,6 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       entreprise={entreprise}
       isDark={isDark}
       couleur={couleur}
-      onSwitchToAI={() => { setPage('ia-devis'); }}
       onSwitchToExpress={() => { setShowDevisExpressModal(true); }}
     />
   );
@@ -4712,16 +4711,9 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           </div>
         </div>
 
-        {/* Devis IA standalone button + Split-button: + Nouveau devis — hidden for view-only roles */}
+        {/* Split-button: + Nouveau devis — hidden for view-only roles */}
         {canPerform('devis', 'create') && (
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => setPage?.('ia-devis')}
-            className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-semibold text-white min-h-[44px]"
-            style={{ background: 'linear-gradient(135deg, #8b5cf6, #3b82f6)' }}
-          >
-            <Sparkles size={14} /> Devis IA
-          </button>
         <div className="relative">
           <div className="flex items-stretch">
             <button
@@ -4748,18 +4740,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
               <div className="fixed inset-0 z-40" onClick={() => setShowCreateMenu(false)} />
               <div className={`absolute right-0 mt-1 w-56 rounded-xl border shadow-xl z-50 overflow-hidden ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
                 <button
-                  onClick={() => { setShowCreateMenu(false); setPage('ia-devis'); }}
-                  className={`w-full px-4 py-3 flex items-center gap-3 text-left transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}
-                >
-                  <Sparkles size={16} className="text-violet-500" />
-                  <div>
-                    <p className={`text-sm font-medium ${textPrimary}`}>Devis IA</p>
-                    <p className={`text-[11px] ${textMuted}`}>Photo → Devis automatique</p>
-                  </div>
-                </button>
-                <button
                   onClick={() => { setShowCreateMenu(false); setShowDevisExpressModal(true); }}
-                  className={`w-full px-4 py-3 flex items-center gap-3 text-left transition-colors border-t ${isDark ? 'hover:bg-slate-700 border-slate-700' : 'hover:bg-slate-50 border-slate-100'}`}
+                  className={`w-full px-4 py-3 flex items-center gap-3 text-left transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}
                 >
                   <Zap size={16} className="text-amber-500" />
                   <div>
