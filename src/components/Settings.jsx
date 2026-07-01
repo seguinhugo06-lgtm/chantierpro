@@ -18,6 +18,7 @@ import EntrepriseSettingsPage from './settings/EntrepriseSettingsPage';
 import TeamManagement from './settings/TeamManagement';
 import { usePermissions } from '../hooks/usePermissions';
 import { useRelances } from '../hooks/useRelances';
+import { compressImage } from '../lib/image-utils';
 import { useOrg } from '../context/OrgContext';
 import TemplateManager from './settings/TemplateManager';
 import PostChantierSettings from './settings/PostChantierSettings';
@@ -308,17 +309,37 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
     };
   });
 
-  const handleLogoUpload = (e) => {
+  const handleLogoUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 500 * 1024) {
-      showToast('Logo trop volumineux (500 Ko max)', 'error');
+    if (!file.type.startsWith('image/')) {
+      showToast('Veuillez choisir un fichier image', 'error');
       e.target.value = '';
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => setEntreprise(p => ({ ...p, logo: reader.result }));
-    reader.readAsDataURL(file);
+    try {
+      // Compresse/redimensionne le logo (≤512px) avant stockage : il est stocké en
+      // base64 dans l'entreprise, chargé sur chaque page ET intégré dans chaque PDF.
+      // Sans ça, un gros logo gonfle la base et alourdit tous les documents.
+      const blob = await compressImage(file, {
+        maxWidth: 512,
+        maxHeight: 512,
+        quality: 0.9,
+        format: file.type === 'image/png' ? 'image/png' : 'image/jpeg', // garde la transparence des PNG
+        maxSizeBytes: 200 * 1024,
+      });
+      const dataUrl = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+      setEntreprise(p => ({ ...p, logo: dataUrl }));
+    } catch (err) {
+      showToast('Erreur lors du traitement du logo', 'error');
+    } finally {
+      e.target.value = '';
+    }
   };
 
   // Helper to mask sensitive data in modeDiscret
