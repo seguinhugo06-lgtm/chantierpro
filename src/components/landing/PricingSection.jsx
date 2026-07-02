@@ -29,16 +29,14 @@ const PLANS = [
   {
     id: 'artisan',
     name: 'Artisan',
-    monthly: 14.90,
-    yearly: 149,
+    monthly: 4.99,
+    yearly: 49,
     description: 'Pour les pros qui veulent gagner du temps au quotidien',
     features: [
       'Devis & factures illimit\u00e9s',
       'Clients illimit\u00e9s',
       'Chantiers illimit\u00e9s',
-      'Signatures \u00e9lectroniques',
       'Relances automatiques',
-      'Devis IA (dict\u00e9e vocale)',
       'Conformit\u00e9 Facture 2026',
       'Catalogue complet',
     ],
@@ -49,8 +47,8 @@ const PLANS = [
   {
     id: 'equipe',
     name: '\u00c9quipe',
-    monthly: 29.90,
-    yearly: 299,
+    monthly: 9.99,
+    yearly: 99,
     description: 'G\u00e9rez votre \u00e9quipe et vos chantiers sans stress',
     features: [
       'Tout Artisan inclus',

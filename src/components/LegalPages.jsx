@@ -129,12 +129,12 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
               </tr>
               <tr className={`border-b ${tableBorder}`}>
                 <td className={`px-4 py-3 font-medium ${textPrimary}`}>Artisan</td>
-                <td className={`px-4 py-3 ${textSecondary}`}>14,90 EUR / mois HT (ou 149 EUR / an HT)</td>
+                <td className={`px-4 py-3 ${textSecondary}`}>4,99 EUR / mois HT (ou 49 EUR / an HT)</td>
                 <td className={`px-4 py-3 ${textSecondary}`}>Idéal pour les artisans indépendants. Devis, factures, clients et chantiers illimités, signatures électroniques, export comptable.</td>
               </tr>
               <tr>
                 <td className={`px-4 py-3 font-medium ${textPrimary}`}>Équipe</td>
-                <td className={`px-4 py-3 ${textSecondary}`}>29,90 EUR / mois HT (ou 299 EUR / an HT)</td>
+                <td className={`px-4 py-3 ${textSecondary}`}>9,99 EUR / mois HT (ou 99 EUR / an HT)</td>
                 <td className={`px-4 py-3 ${textSecondary}`}>Pour les entreprises avec équipes. Jusqu'à 10 utilisateurs, pointage, trésorerie, sous-traitants, portail client, analytics avancés.</td>
               </tr>
             </tbody>

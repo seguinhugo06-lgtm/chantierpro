@@ -17,8 +17,8 @@ export default function CGV() {
         </thead>
         <tbody>
           <tr><td>Gratuit</td><td>0 €</td><td>0 €</td></tr>
-          <tr><td>Artisan</td><td>14,90 €</td><td>149 €</td></tr>
-          <tr><td>Équipe</td><td>29,90 €</td><td>299 €</td></tr>
+          <tr><td>Artisan</td><td>4,99 €</td><td>49 €</td></tr>
+          <tr><td>Équipe</td><td>9,99 €</td><td>99 €</td></tr>
         </tbody>
       </table>
       <p>

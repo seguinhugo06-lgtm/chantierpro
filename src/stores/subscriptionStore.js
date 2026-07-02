@@ -6,7 +6,7 @@ import { create } from 'zustand';
  * Manages the active user plan, subscription state, usage tracking,
  * and feature-gate checks. Works in both demo and production modes.
  *
- * Plans: gratuit (free), artisan (14,90€/mois — POPULAIRE), equipe (29,90€/mois — RECOMMANDÉ)
+ * Plans: gratuit (free), artisan (4,99€/mois — POPULAIRE), equipe (9,99€/mois — RECOMMANDÉ)
  */
 
 // ─── Plan catalog (static, matches DB seed) ────────────────────────────────
@@ -60,8 +60,8 @@ export const PLANS = {
     name: 'Artisan',
     description: 'L\'essentiel pour un artisan autonome',
     target: 'Artisans indépendants',
-    priceMonthly: 14.90,
-    priceYearly: 149,
+    priceMonthly: 4.99,
+    priceYearly: 49,
     limits: {
       devis: -1,
       clients: -1,
@@ -106,8 +106,8 @@ export const PLANS = {
     name: 'Équipe',
     description: 'Pour les entreprises avec collaborateurs',
     target: 'PME du bâtiment',
-    priceMonthly: 29.90,
-    priceYearly: 299,
+    priceMonthly: 9.99,
+    priceYearly: 99,
     limits: {
       devis: -1,
       clients: -1,
