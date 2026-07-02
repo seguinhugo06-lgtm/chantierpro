@@ -180,7 +180,7 @@ async function handleSubscriptionCheckout(
   const customerId = session.customer as string;
   const subscriptionId = session.subscription as string;
 
-  if (\!userId || \!planId) {
+  if (!userId || !planId) {
     console.error('[WEBHOOK] Missing user_id or plan_id in subscription metadata');
     return { handled: false, reason: 'missing_metadata' };
   }
@@ -278,7 +278,7 @@ serve(async (req) => {
     // Get user_id from metadata or facture lookup
     let userId: string | null = session?.metadata?.user_id || null;
 
-    if (\!userId && session?.metadata?.facture_id) {
+    if (!userId && session?.metadata?.facture_id) {
       const { data: facture } = await supabase
         .from('devis')
         .select('user_id')

@@ -7,7 +7,9 @@ const STRIPE_SECRET_KEY = Deno.env.get('STRIPE_SECRET_KEY');
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
-// Stripe price IDs — configure in Stripe Dashboard
+// Stripe price IDs — optionnels (à configurer dans le Dashboard Stripe pour un
+// catalogue nommé). Si absents, on crée un prix récurrent dynamique (price_data)
+// à partir des montants ci-dessous → le checkout marche avec la seule clé secrète.
 const PRICE_IDS: Record<string, Record<string, string>> = {
   artisan: {
     monthly: Deno.env.get('STRIPE_PRICE_ARTISAN_MONTHLY') || '',
@@ -18,6 +20,13 @@ const PRICE_IDS: Record<string, Record<string, string>> = {
     yearly: Deno.env.get('STRIPE_PRICE_EQUIPE_YEARLY') || '',
   },
 };
+
+// Montants en centimes (fallback price_data dynamique) — source: PLANS front
+const PLAN_AMOUNTS: Record<string, Record<string, number>> = {
+  artisan: { monthly: 499, yearly: 4900 },
+  equipe: { monthly: 999, yearly: 9900 },
+};
+const PLAN_NAMES: Record<string, string> = { artisan: 'BatiGesti Artisan', equipe: 'BatiGesti Équipe' };
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -54,12 +63,26 @@ serve(async (req) => {
         const { planId, interval, successUrl, cancelUrl } = params;
 
         const priceId = PRICE_IDS[planId]?.[interval];
-        if (!priceId) {
+        const amount = PLAN_AMOUNTS[planId]?.[interval];
+        if (!priceId && !amount) {
           return new Response(
-            JSON.stringify({ error: `Prix non trouvé pour ${planId}/${interval}` }),
+            JSON.stringify({ error: `Plan/intervalle inconnu : ${planId}/${interval}` }),
             { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
+
+        // Ligne de commande : Price ID si configuré, sinon prix récurrent dynamique
+        const lineItem: Stripe.Checkout.SessionCreateParams.LineItem = priceId
+          ? { price: priceId, quantity: 1 }
+          : {
+              quantity: 1,
+              price_data: {
+                currency: 'eur',
+                product_data: { name: PLAN_NAMES[planId] || `BatiGesti ${planId}` },
+                unit_amount: amount,
+                recurring: { interval: interval === 'yearly' ? 'year' : 'month' },
+              },
+            };
 
         // Check if user already has a Stripe customer
         const { data: sub } = await supabase
@@ -71,7 +94,7 @@ serve(async (req) => {
         const sessionParams: Stripe.Checkout.SessionCreateParams = {
           mode: 'subscription',
           payment_method_types: ['card'],
-          line_items: [{ price: priceId, quantity: 1 }],
+          line_items: [lineItem],
           success_url: successUrl || 'https://batigesti.fr/?upgraded=true',
           cancel_url: cancelUrl || 'https://batigesti.fr/?upgrade_cancelled=true',
           client_reference_id: user.id,

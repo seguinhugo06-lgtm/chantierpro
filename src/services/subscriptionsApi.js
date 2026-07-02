@@ -189,11 +189,19 @@ export async function createCheckoutSession(planId, interval = 'monthly') {
   }
 
   try {
-    const { data, error } = await supabase.functions.invoke('create-checkout-session', {
-      body: { planId, interval }
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://batigesti.fr';
+    const { data, error } = await supabase.functions.invoke('subscription-billing', {
+      body: {
+        action: 'create-checkout',
+        planId,
+        interval,
+        successUrl: `${origin}/?upgraded=true`,
+        cancelUrl: `${origin}/?upgrade_cancelled=true`,
+      }
     });
 
     if (error) throw error;
+    if (data?.error) throw new Error(data.error);
     return { url: data.url, error: null };
   } catch (error) {
     return { url: null, error };
@@ -210,11 +218,13 @@ export async function createPortalSession() {
   }
 
   try {
-    const { data, error } = await supabase.functions.invoke('create-portal-session', {
-      body: {}
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://batigesti.fr';
+    const { data, error } = await supabase.functions.invoke('subscription-billing', {
+      body: { action: 'create-portal', returnUrl: origin }
     });
 
     if (error) throw error;
+    if (data?.error) throw new Error(data.error);
     return { url: data.url, error: null };
   } catch (error) {
     return { url: null, error };
