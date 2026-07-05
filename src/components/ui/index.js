@@ -50,6 +50,9 @@ export { Tooltip } from './Tooltip';
 export { default as Avatar } from './Avatar';
 export { default as EmptyState } from './EmptyState';
 export { default as ResponsiveTable } from './ResponsiveTable';
+export { default as KPICard } from './KPICard';
+export { default as PageHeader } from './PageHeader';
+export { default as StatusChip } from './StatusChip';
 
 // ============ ACTION COMPONENTS ============
 export { ActionMenu, ActionMenuButton } from './ActionMenu';

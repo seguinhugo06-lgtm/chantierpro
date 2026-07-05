@@ -22,8 +22,12 @@ import {
   Progress,
   Skeleton,
   Avatar,
+  KPICard,
+  PageHeader,
+  StatusChip,
+  EmptyState,
 } from './ui';
-import { Plus, ArrowRight, Trash2, Check, Edit, Settings, X, Copy, Download, Upload, Search, Filter, MoreVertical, Mail, User, Lock, Info } from 'lucide-react';
+import { Plus, ArrowRight, Trash2, Check, Edit, Settings, X, Copy, Download, Upload, Search, Filter, MoreVertical, Mail, User, Lock, Info, Wallet, TrendingUp, Users, FileText, AlertTriangle, Package, Inbox } from 'lucide-react';
 
 export default function DesignSystemDemo() {
   // State for interactive components
@@ -43,6 +47,55 @@ export default function DesignSystemDemo() {
         <p className="text-gray-600 mb-8">
           Composants UI de base pour l'application
         </p>
+
+        {/* ============ REFONTE V2 — LANGAGE ÉNERGIQUE ============ */}
+        <section className="space-y-6 mb-14 p-6 rounded-3xl bg-white border border-slate-200">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold px-2.5 py-1 rounded-full text-white" style={{ background: 'linear-gradient(135deg,#f97316,#f9731699)' }}>REFONTE V2</span>
+            <h2 className="text-xl font-bold text-slate-900">Langage « énergique &amp; coloré »</h2>
+          </div>
+
+          {/* PageHeader */}
+          <PageHeader
+            icon={Users}
+            title="Clients"
+            subtitle="48 clients · 12 actifs ce mois"
+            color="#6366f1"
+            action={
+              <button className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white" style={{ background: 'linear-gradient(135deg,#6366f1,#6366f1cc)' }}>
+                <Plus size={16} /> Nouveau client
+              </button>
+            }
+          />
+
+          {/* KPI strip — tuiles colorées par ton */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <KPICard icon={Wallet} tone="money" label="CA généré" value="84 200 €" trend="up" trendValue="+18%" />
+            <KPICard icon={TrendingUp} tone="info" label="Panier moyen" value="1 750 €" />
+            <KPICard icon={AlertTriangle} tone="warning" label="À relancer" value="3" />
+            <KPICard icon={Users} tone="money" label="Nouveaux (30j)" value="+5" trend="up" trendValue="+12%" />
+          </div>
+
+          {/* StatusChips */}
+          <div className="flex flex-wrap gap-2.5">
+            <StatusChip label="Actif" tone="money" dot />
+            <StatusChip label="À relancer" tone="warning" dot />
+            <StatusChip label="Prospect" tone="neutral" dot />
+            <StatusChip label="Payé" tone="money" icon={Check} />
+            <StatusChip label="En retard" tone="danger" icon={AlertTriangle} />
+            <StatusChip label="Devis" color="#8b5cf6" dot />
+          </div>
+
+          {/* EmptyState */}
+          <EmptyState
+            icon={Inbox}
+            title="Aucun devis pour l'instant"
+            description="Créez votre premier devis en quelques secondes — il sera prêt à envoyer par email."
+            actionLabel="Créer un devis"
+            onAction={() => {}}
+            couleur="#f97316"
+          />
+        </section>
 
         {/* BUTTONS */}
         <section className="space-y-6 mb-12">

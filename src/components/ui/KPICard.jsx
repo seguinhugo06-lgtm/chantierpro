@@ -1,15 +1,20 @@
+import { resolveTone } from '../../lib/uiTheme';
+
 /**
- * KPICard — Reusable KPI indicator card
+ * KPICard — Tuile KPI "énergique & coloré"
  *
- * Provides a consistent design for KPI cards across all pages.
+ * Design system BatiGesti : chip d'icône coloré, valeur XL, bordure teintée,
+ * pastille de tendance. Une couleur = un sens.
  *
  * @param {React.ComponentType} icon - Lucide icon component
  * @param {string} label - KPI label (e.g. "Chiffre d'affaires")
  * @param {string|number} value - KPI value (e.g. "12 450 €")
  * @param {string} [sublabel] - Optional secondary text
- * @param {string} [color] - Accent color (default: orange-500)
+ * @param {string} [color] - Accent hex (défaut orange). Ignoré si `tone` fourni.
+ * @param {string} [tone] - Ton sémantique : money|info|warning|danger|neutral|accent
  * @param {'up'|'down'|null} [trend] - Optional trend direction
  * @param {string} [trendValue] - Trend text (e.g. "+12%")
+ * @param {Function} [onClick] - Rend la tuile cliquable
  * @param {boolean} [isDark] - Dark mode
  */
 export default function KPICard({
@@ -18,45 +23,61 @@ export default function KPICard({
   value,
   sublabel,
   color = '#f97316',
+  tone,
   trend,
   trendValue,
-  isDark = false
+  onClick,
+  isDark = false,
 }) {
-  const cardBg = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200';
+  const c = resolveTone(tone, color);
+  const cardBg = isDark ? 'bg-slate-800' : 'bg-white';
   const textPrimary = isDark ? 'text-white' : 'text-slate-900';
-  const textSecondary = isDark ? 'text-slate-400' : 'text-slate-600';
+  const textSecondary = isDark ? 'text-slate-400' : 'text-slate-500';
+
+  const Comp = onClick ? 'button' : 'div';
 
   return (
-    <div className={`rounded-xl border p-4 ${cardBg}`}>
-      <div className="flex items-center gap-2 mb-1">
+    <Comp
+      onClick={onClick}
+      className={`group relative w-full text-left rounded-2xl border p-4 overflow-hidden transition-all duration-200 ${cardBg} ${
+        onClick ? 'hover:-translate-y-0.5 hover:shadow-lg cursor-pointer' : ''
+      }`}
+      style={{ borderColor: isDark ? `${c}40` : `${c}33` }}
+    >
+      {/* Wash coloré discret (énergie) */}
+      <div
+        className="pointer-events-none absolute -right-6 -top-6 w-24 h-24 rounded-full opacity-60"
+        style={{ background: `${c}14` }}
+        aria-hidden="true"
+      />
+
+      <div className="relative flex items-center justify-between mb-3">
         {Icon && (
           <div
-            className="w-8 h-8 rounded-lg flex items-center justify-center"
-            style={{ backgroundColor: color + '20' }}
+            className="w-9 h-9 rounded-xl flex items-center justify-center"
+            style={{ background: `${c}1f`, color: c }}
             aria-hidden="true"
           >
-            <Icon size={16} style={{ color }} />
+            <Icon size={18} />
           </div>
         )}
-        <span className={`text-xs font-medium uppercase tracking-wide ${textSecondary}`}>
-          {label}
-        </span>
-      </div>
-      <div className="flex items-baseline gap-2 mt-2">
-        <p className={`text-2xl font-bold ${textPrimary}`}>{value}</p>
         {trend && trendValue && (
           <span
-            className={`text-xs font-semibold px-1.5 py-0.5 rounded-full ${
+            className="text-xs font-semibold px-2 py-0.5 rounded-full"
+            style={
               trend === 'up'
-                ? (isDark ? 'bg-emerald-900/30 text-emerald-400' : 'bg-emerald-100 text-emerald-700')
-                : (isDark ? 'bg-red-900/30 text-red-400' : 'bg-red-100 text-red-700')
-            }`}
+                ? { background: '#10b98120', color: isDark ? '#34d399' : '#059669' }
+                : { background: '#ef444420', color: isDark ? '#f87171' : '#dc2626' }
+            }
           >
             {trendValue}
           </span>
         )}
       </div>
-      {sublabel && <p className={`text-xs mt-1 ${textSecondary}`}>{sublabel}</p>}
-    </div>
+
+      <p className={`relative text-2xl sm:text-3xl font-bold leading-none ${textPrimary}`}>{value}</p>
+      <p className={`relative text-xs font-medium mt-2 ${textSecondary}`}>{label}</p>
+      {sublabel && <p className={`relative text-xs mt-0.5 ${textSecondary}`}>{sublabel}</p>}
+    </Comp>
   );
 }
