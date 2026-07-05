@@ -2,6 +2,11 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Plus, ArrowLeft, Phone, MessageCircle, MapPin, Mail, Building2, User, Edit3, Trash2, ChevronRight, ChevronDown, Search, X, Check, Briefcase, FileText, Camera, Home, Users, Euro, Calendar, ExternalLink, Smartphone, ArrowUpDown, Send, MessageSquare, Zap, Tag, History, Receipt, ClipboardList, CheckCircle2, Upload, LayoutGrid, List, AlertTriangle, Info, Clock, Mic, ArrowUpRight, ArrowDownLeft, Wallet, TrendingUp } from 'lucide-react';
 import PageHeader from './ui/PageHeader';
 import KPICard from './ui/KPICard';
+import StatusChip from './ui/StatusChip';
+import { colorForString } from '../lib/uiTheme';
+
+// Couleur (hex) par statut client — pour StatusChip
+const CLIENT_STATUS_HEX = { actif: '#10b981', en_devis: '#3b82f6', prospect: '#f59e0b', inactif: '#64748b' };
 import QuickClientModal from './QuickClientModal';
 import { useConfirm, useToast } from '../context/AppContext';
 import { useDebounce } from '../hooks/useDebounce';
@@ -2054,7 +2059,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
             const statusColor = CLIENT_STATUS_COLORS[status];
             const statusLabel = CLIENT_STATUS_LABELS[status];
             const typeColor = CLIENT_TYPE_COLORS[c.categorie];
-            const avatarBg = typeColor?.color || couleur;
+            const avatarBg = colorForString(formatClientName(c) || c.nom || String(c.id));
             const initials = getInitials(c);
             const hasDuplicates = duplicateMap.has(c.id);
             const cScore = getClientScore(c.id);
@@ -2079,19 +2084,13 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                       )}
                       {/* Badges row — Order: Status → Type → Doublon */}
                       <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                        {/* Status badge (always first) with tooltip */}
-                        <span
-                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${isDark ? statusColor.darkBg + ' ' + statusColor.darkText : statusColor.bg + ' ' + statusColor.text}`}
-                          title={STATUS_TOOLTIPS[status] || ''}
-                        >
-                          <span className={`w-1.5 h-1.5 rounded-full ${statusColor.dot}`} />
-                          {statusLabel}
+                        {/* Status chip (always first) */}
+                        <span title={STATUS_TOOLTIPS[status] || ''}>
+                          <StatusChip label={statusLabel} color={CLIENT_STATUS_HEX[status] || '#64748b'} dot isDark={isDark} />
                         </span>
-                        {/* Type badge */}
+                        {/* Type chip */}
                         {c.categorie && typeColor && (
-                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${isDark ? typeColor.darkBg + ' ' + typeColor.darkText : typeColor.bg + ' ' + typeColor.text}`}>
-                            <span className="text-[9px]">{TYPE_ICONS[c.categorie] || ''}</span> {c.categorie}
-                          </span>
+                          <StatusChip label={c.categorie} color={typeColor.color} isDark={isDark} />
                         )}
                         {/* Score badge */}
                         <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${isDark ? cScore.darkBg : cScore.bg}`} title={`Score : ${cScore.score}/100`}>
@@ -2182,7 +2181,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
             const status = getClientStatus(c.id);
             const statusColor = CLIENT_STATUS_COLORS[status];
             const typeColor = CLIENT_TYPE_COLORS[c.categorie];
-            const avatarBg = typeColor?.color || couleur;
+            const avatarBg = colorForString(formatClientName(c) || c.nom || String(c.id));
             const initials = getInitials(c);
             const hasDuplicates = duplicateMap.has(c.id);
             const cScore = getClientScore(c.id);
