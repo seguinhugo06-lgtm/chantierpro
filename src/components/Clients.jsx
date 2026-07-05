@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Plus, ArrowLeft, Phone, MessageCircle, MapPin, Mail, Building2, User, Edit3, Trash2, ChevronRight, ChevronDown, Search, X, Check, Briefcase, FileText, Camera, Home, Users, Euro, Calendar, ExternalLink, Smartphone, ArrowUpDown, Send, MessageSquare, Zap, Tag, History, Receipt, ClipboardList, CheckCircle2, Upload, LayoutGrid, List, AlertTriangle, Info, Clock, Mic, ArrowUpRight, ArrowDownLeft } from 'lucide-react';
+import { Plus, ArrowLeft, Phone, MessageCircle, MapPin, Mail, Building2, User, Edit3, Trash2, ChevronRight, ChevronDown, Search, X, Check, Briefcase, FileText, Camera, Home, Users, Euro, Calendar, ExternalLink, Smartphone, ArrowUpDown, Send, MessageSquare, Zap, Tag, History, Receipt, ClipboardList, CheckCircle2, Upload, LayoutGrid, List, AlertTriangle, Info, Clock, Mic, ArrowUpRight, ArrowDownLeft, Wallet, TrendingUp } from 'lucide-react';
+import PageHeader from './ui/PageHeader';
+import KPICard from './ui/KPICard';
 import QuickClientModal from './QuickClientModal';
 import { useConfirm, useToast } from '../context/AppContext';
 import { useDebounce } from '../hooks/useDebounce';
@@ -1675,45 +1677,38 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
         </div>
       )}
 
-      {/* ========== HEADER COMPACT ========== */}
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          {setPage && (
-            <button
-              onClick={() => setPage('dashboard')}
-              className={`p-2 rounded-xl min-w-[40px] min-h-[40px] flex items-center justify-center transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}
-              aria-label="Retour au tableau de bord"
-            >
-              <ArrowLeft size={20} />
-            </button>
-          )}
-          <div>
-            <h1 className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>Clients</h1>
-            <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{displayClients.length} contact{displayClients.length !== 1 ? 's' : ''}</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          {onImportClients && (
-            <button
-              onClick={onImportClients}
-              className={`p-2 rounded-xl transition-all border ${isDark ? 'border-slate-600 text-slate-300 hover:bg-slate-700' : 'border-slate-300 text-slate-600 hover:bg-slate-50'}`}
-              title="Importer (CSV)"
-            >
-              <Upload size={16} />
-            </button>
-          )}
-          {canPerform('client', 'create') && (
-          <button
-            onClick={() => setShowQuickModal(true)}
-            className="w-11 h-11 sm:w-auto sm:h-11 sm:px-4 text-white rounded-xl text-sm font-semibold flex items-center justify-center sm:gap-2 hover:opacity-90 hover:shadow-lg transition-all"
-            style={{ background: couleur }}
-          >
-            <Plus size={16} />
-            <span className="hidden sm:inline">Nouveau client</span>
-          </button>
-          )}
-        </div>
-      </div>
+      {/* ========== HEADER (design system) ========== */}
+      <PageHeader
+        icon={Users}
+        title="Clients"
+        subtitle={`${displayClients.length} contact${displayClients.length !== 1 ? 's' : ''}`}
+        isDark={isDark}
+        color={couleur}
+        action={
+          <>
+            {onImportClients && (
+              <button
+                onClick={onImportClients}
+                className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all border ${isDark ? 'border-slate-600 text-slate-300 hover:bg-slate-700' : 'border-slate-300 text-slate-600 hover:bg-slate-50'}`}
+                title="Importer (CSV)"
+                aria-label="Importer des clients (CSV)"
+              >
+                <Upload size={16} />
+              </button>
+            )}
+            {canPerform('client', 'create') && (
+              <button
+                onClick={() => setShowQuickModal(true)}
+                className="w-11 h-11 sm:w-auto sm:h-11 sm:px-4 text-white rounded-xl text-sm font-semibold flex items-center justify-center sm:gap-2 hover:opacity-90 hover:-translate-y-0.5 hover:shadow-lg transition-all"
+                style={{ background: `linear-gradient(135deg, ${couleur}, ${couleur}d9)` }}
+              >
+                <Plus size={16} />
+                <span className="hidden sm:inline">Nouveau client</span>
+              </button>
+            )}
+          </>
+        }
+      />
 
       {/* KPI Cards — compact, clickable */}
       {displayClients.length > 0 && (() => {
@@ -1728,35 +1723,42 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
           if (totalClientCA > topCA) { topCA = totalClientCA; topClient = clients.find(c => c.id === cid); }
         });
 
-        const kpiItems = [
-          { key: 'actifs', value: clientsActifs, label: 'Actifs', sub: `/${displayClients.length}`, tooltip: 'Clients avec un chantier en cours ou un devis actif' },
-          { key: 'ca', value: formatMoney(caFacture), label: 'CA encaissé', sub: caEnAttente > 0 && !modeDiscret ? `+${formatMoney(caEnAttente)}` : null, tooltip: 'Factures payées uniquement' },
-          { key: 'top', value: modeDiscret ? '···' : formatClientName(topClient, '—'), label: 'Top client', sub: modeDiscret ? null : formatMoney(topCA), tooltip: 'Client avec le plus gros CA (encaissé + en cours)' },
-          { key: 'devis_attente', value: devisEnAttente, label: 'Devis en att.', sub: devisEnAttente > 0 ? 'à relancer' : null, tooltip: 'Devis envoyés ou vus, en attente de réponse' },
-        ];
-
         return (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            {kpiItems.map(kpi => {
-              const isActive = kpiFilter === kpi.key;
-              return (
-                <button
-                  key={kpi.key}
-                  onClick={() => {
-                    if (kpi.key === 'top' && topClient) setViewId(topClient.id);
-                    else if (kpi.key === 'devis_attente' && !isActive && setPage) setPage('devis');
-                    else setKpiFilter(isActive ? null : kpi.key);
-                  }}
-                  className={`${cardBg} rounded-xl border px-2 py-2 text-center transition-all ${isActive ? 'ring-1 shadow-sm' : 'hover:shadow-sm'}`}
-                  style={isActive ? { borderColor: couleur, '--tw-ring-color': couleur } : {}}
-                  title={kpi.tooltip}
-                >
-                  <p className={`${kpi.key === 'top' ? 'text-xs' : 'text-base'} font-bold truncate leading-tight`} style={{ color: couleur }}>{kpi.value}</p>
-                  <p className={`text-[10px] ${textMuted} leading-tight`}>{kpi.label}</p>
-                  {kpi.sub && <p className={`text-[9px] font-medium`} style={{ color: couleur }}>{kpi.sub}</p>}
-                </button>
-              );
-            })}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+            <KPICard
+              icon={Users}
+              tone="info"
+              label="Clients actifs"
+              value={`${clientsActifs}`}
+              sublabel={`sur ${displayClients.length}`}
+              isDark={isDark}
+              onClick={() => setKpiFilter(kpiFilter === 'actifs' ? null : 'actifs')}
+            />
+            <KPICard
+              icon={Wallet}
+              tone="money"
+              label="CA encaissé"
+              value={formatMoney(caFacture)}
+              sublabel={caEnAttente > 0 && !modeDiscret ? `+${formatMoney(caEnAttente)} en cours` : null}
+              isDark={isDark}
+              onClick={() => setKpiFilter(kpiFilter === 'ca' ? null : 'ca')}
+            />
+            <KPICard
+              icon={TrendingUp}
+              tone="neutral"
+              label="En cours"
+              value={formatMoney(caEnAttente)}
+              isDark={isDark}
+            />
+            <KPICard
+              icon={FileText}
+              tone="warning"
+              label="Devis en attente"
+              value={`${devisEnAttente}`}
+              sublabel={devisEnAttente > 0 ? 'à relancer' : null}
+              isDark={isDark}
+              onClick={() => { if (setPage) setPage('devis'); }}
+            />
           </div>
         );
       })()}
