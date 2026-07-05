@@ -1,39 +1,34 @@
 /**
  * RelanceModal - Universal reminder modal for devis and factures
  *
- * Allows sending reminders via Email, SMS, or both with customizable templates.
+ * Sends a customizable email reminder via the Resend `send-email` Edge Function.
+ * (SMS/Twilio was removed — email-only, aligned with the product focus.)
  *
  * @module RelanceModal
  */
 
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import {
-  X,
   Mail,
-  MessageSquare,
   Send,
-  Loader2,
   Clock,
   Euro,
   FileText,
   User,
   Edit3,
-  Check,
   History,
   AlertCircle,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import Modal, { ModalHeader, ModalTitle, ModalBody, ModalFooter } from '../ui/Modal';
 import { Button } from '../ui/Button';
-import { Badge } from '../ui/Badge';
 import { toast } from '../../stores/toastStore';
-import { sendEmail, sendSMS } from '../../services/CommunicationsService';
+import { sendDocumentEmail } from '../../lib/emailSender';
 import { createRelanceRecord } from '../../services/RelanceService';
 import { supabase, isDemo } from '../../supabaseClient';
 
 /**
  * @typedef {'devis' | 'facture'} ItemType
- * @typedef {'email' | 'sms' | 'both'} RelanceChannel
  */
 
 /**
@@ -41,7 +36,7 @@ import { supabase, isDemo } from '../../supabaseClient';
  * @property {ItemType} type - Type of item
  * @property {string} id - Item ID
  * @property {string} numero - Document number
- * @property {{ nom: string, email?: string, telephone?: string }} client - Client info
+ * @property {{ nom: string, email?: string }} client - Client info
  * @property {number} montant - Amount
  * @property {Date | string} dateEnvoi - Date sent
  */
@@ -49,7 +44,7 @@ import { supabase, isDemo } from '../../supabaseClient';
 /**
  * @typedef {Object} RelanceHistory
  * @property {Date | string} date - Relance date
- * @property {'email' | 'sms'} channel - Channel used
+ * @property {'email'} channel - Channel used
  */
 
 /**
@@ -59,7 +54,7 @@ import { supabase, isDemo } from '../../supabaseClient';
  * @property {RelanceItem} item - Item to relance
  * @property {() => void} [onSuccess] - Success callback
  * @property {RelanceHistory[]} [history] - Relance history
- * @property {{ nom: string }} [entreprise] - Company info for signature
+ * @property {{ nom: string, email?: string }} [entreprise] - Company info for signature
  */
 
 // ============ TEMPLATES ============
@@ -81,10 +76,6 @@ Pourriez-vous me confirmer le règlement ou me contacter si vous rencontrez des 
 
 Merci par avance,
 {artisan}`;
-
-const SMS_DEVIS_TEMPLATE = `Bonjour, je reviens vers vous pour le devis #{numero} de {montant}€. Avez-vous des questions ? {artisan}`;
-
-const SMS_FACTURE_TEMPLATE = `Rappel: Facture #{numero} de {montant}€ en attente de règlement. Merci de régulariser. {artisan}`;
 
 // ============ UTILITIES ============
 
@@ -148,72 +139,11 @@ function processTemplate(template, data) {
 }
 
 /**
- * Validate phone number (basic French format)
- */
-function isValidPhone(phone) {
-  if (!phone) return false;
-  const cleaned = phone.replace(/\s/g, '');
-  return /^(\+33|0)[1-9]\d{8}$/.test(cleaned);
-}
-
-/**
  * Validate email
  */
 function isValidEmail(email) {
   if (!email) return false;
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-}
-
-// ============ CHANNEL OPTION COMPONENT ============
-
-function ChannelOption({ value, selected, onChange, icon: Icon, label, description, disabled, recommended }) {
-  return (
-    <label
-      className={cn(
-        'flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all',
-        selected
-          ? 'border-primary-500 bg-primary-50'
-          : 'border-gray-200 hover:border-gray-300',
-        disabled && 'opacity-50 cursor-not-allowed'
-      )}
-    >
-      <input
-        type="radio"
-        name="relance-channel"
-        value={value}
-        checked={selected}
-        onChange={() => onChange(value)}
-        disabled={disabled}
-        className="sr-only"
-      />
-      <div
-        className={cn(
-          'w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5',
-          selected
-            ? 'border-primary-500 bg-primary-500'
-            : 'border-gray-300'
-        )}
-      >
-        {selected && <Check className="w-3 h-3 text-white" />}
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <Icon className={cn('w-4 h-4', selected ? 'text-primary-600' : 'text-gray-500')} />
-          <span className={cn('font-medium', selected ? 'text-primary-700' : 'text-gray-700')}>
-            {label}
-          </span>
-          {recommended && (
-            <Badge variant="success" size="sm">
-              Recommandé
-            </Badge>
-          )}
-        </div>
-        {description && (
-          <p className="text-xs text-gray-500 mt-0.5">{description}</p>
-        )}
-      </div>
-    </label>
-  );
 }
 
 // ============ HISTORY COMPONENT ============
@@ -237,9 +167,7 @@ function RelanceHistorySection({ history }) {
         <History className="w-4 h-4 text-gray-400" />
         <span className="text-gray-600">
           Dernière relance : {formatRelativeTime(daysSinceLast)}
-          <span className="text-gray-400 ml-1">
-            ({lastRelance.channel === 'email' ? 'Email' : 'SMS'})
-          </span>
+          <span className="text-gray-400 ml-1">(Email)</span>
         </span>
       </div>
       <div className="text-sm text-gray-500">
@@ -252,22 +180,7 @@ function RelanceHistorySection({ history }) {
 // ============ MAIN COMPONENT ============
 
 /**
- * RelanceModal - Universal reminder modal
- *
- * @example
- * <RelanceModal
- *   isOpen={isOpen}
- *   onClose={onClose}
- *   item={{
- *     type: 'devis',
- *     id: 'd1',
- *     numero: '2025-005',
- *     client: { nom: 'Dupont Marie', email: 'marie@example.com', telephone: '0612345678' },
- *     montant: 14400,
- *     dateEnvoi: new Date('2025-01-17')
- *   }}
- *   onSuccess={() => refetch()}
- * />
+ * RelanceModal - Universal reminder modal (email-only)
  *
  * @param {RelanceModalProps} props
  */
@@ -280,7 +193,6 @@ export default function RelanceModal({
   entreprise = { nom: 'Votre entreprise' },
 }) {
   // State
-  const [channel, setChannel] = useState('email');
   const [message, setMessage] = useState('');
   const [isCustomizing, setIsCustomizing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -293,7 +205,6 @@ export default function RelanceModal({
   }, [item?.dateEnvoi]);
 
   const canSendEmail = useMemo(() => isValidEmail(item?.client?.email), [item?.client?.email]);
-  const canSendSMS = useMemo(() => isValidPhone(item?.client?.telephone), [item?.client?.telephone]);
 
   // Template data
   const templateData = useMemo(() => ({
@@ -305,39 +216,24 @@ export default function RelanceModal({
   }), [item, entreprise]);
 
   // Get appropriate template
-  const getTemplate = useCallback((forSMS = false) => {
-    if (item?.type === 'facture') {
-      return forSMS ? SMS_FACTURE_TEMPLATE : FACTURE_TEMPLATE;
-    }
-    return forSMS ? SMS_DEVIS_TEMPLATE : DEVIS_TEMPLATE;
-  }, [item?.type]);
+  const getTemplate = useCallback(() => (
+    item?.type === 'facture' ? FACTURE_TEMPLATE : DEVIS_TEMPLATE
+  ), [item?.type]);
 
   // Initialize message from template
   useEffect(() => {
     if (isOpen && item) {
-      const template = getTemplate(channel === 'sms');
-      setMessage(processTemplate(template, templateData));
+      setMessage(processTemplate(getTemplate(), templateData));
       setIsCustomizing(false);
       setError(null);
     }
-  }, [isOpen, item, channel, getTemplate, templateData]);
-
-  // Handle channel change
-  const handleChannelChange = useCallback((newChannel) => {
-    setChannel(newChannel);
-    // Update message for SMS vs Email
-    if (!isCustomizing) {
-      const template = getTemplate(newChannel === 'sms');
-      setMessage(processTemplate(template, templateData));
-    }
-  }, [isCustomizing, getTemplate, templateData]);
+  }, [isOpen, item, getTemplate, templateData]);
 
   // Reset to template
   const handleResetTemplate = useCallback(() => {
-    const template = getTemplate(channel === 'sms');
-    setMessage(processTemplate(template, templateData));
+    setMessage(processTemplate(getTemplate(), templateData));
     setIsCustomizing(false);
-  }, [channel, getTemplate, templateData]);
+  }, [getTemplate, templateData]);
 
   // Validate before send
   const validate = useCallback(() => {
@@ -345,77 +241,48 @@ export default function RelanceModal({
       setError('Le message ne peut pas être vide');
       return false;
     }
-
-    if (channel === 'email' && !canSendEmail) {
+    if (!canSendEmail) {
       setError('Email du client invalide ou manquant');
       return false;
     }
-
-    if (channel === 'sms' && !canSendSMS) {
-      setError('Numéro de téléphone invalide ou manquant');
-      return false;
-    }
-
-    if (channel === 'both' && !canSendEmail && !canSendSMS) {
-      setError('Aucun moyen de contact valide');
-      return false;
-    }
-
-    // SMS length check
-    if ((channel === 'sms' || channel === 'both') && message.length > 160) {
-      setError('Le SMS doit faire moins de 160 caractères');
-      return false;
-    }
-
     setError(null);
     return true;
-  }, [message, channel, canSendEmail, canSendSMS]);
+  }, [message, canSendEmail]);
 
-  // Send relance
+  // Send relance (email via Resend)
   const handleSend = useCallback(async () => {
     if (!validate()) return;
 
     setIsLoading(true);
     setError(null);
 
+    const subject = item.type === 'facture'
+      ? `Rappel - Facture ${item.numero || '#'}`
+      : `Rappel - Devis ${item.numero || '#'}`;
+
     try {
-      const results = [];
+      const htmlMessage = message.split('\n').map(line =>
+        line.trim() ? `<p>${line}</p>` : '<br/>'
+      ).join('');
 
-      // Send email if channel includes it
-      if (channel === 'email' || channel === 'both') {
-        if (canSendEmail) {
-          const subject = item.type === 'facture'
-            ? `Rappel - Facture ${item.numero || '#'}`
-            : `Rappel - Devis ${item.numero || '#'}`;
-          const htmlMessage = message.split('\n').map(line =>
-            line.trim() ? `<p>${line}</p>` : '<br/>'
-          ).join('');
-          const emailResult = await sendEmail(item.client.email, subject, htmlMessage, { clientId: item.id, documentId: item.id, documentType: item.type });
-          results.push({ channel: 'email', ...emailResult });
-        }
-      }
-
-      // Send SMS if channel includes it
-      if (channel === 'sms' || channel === 'both') {
-        if (canSendSMS) {
-          const smsResult = await sendSMS(item.client.telephone, message, { clientId: item.id });
-          results.push({ channel: 'sms', ...smsResult });
-        }
-      }
-
-      // Check at least one succeeded
-      const anySuccess = results.some(r => r.success);
-      if (!anySuccess && results.length > 0) {
-        throw new Error(results[0]?.error || "Echec de l'envoi");
+      // Send via Resend (skip actual send in demo)
+      if (!isDemo) {
+        await sendDocumentEmail({
+          to: item.client.email,
+          subject,
+          bodyHtml: htmlMessage,
+          fromName: entreprise?.nom,
+          replyTo: entreprise?.email,
+        });
       }
 
       // Persist relance record to localStorage + DB
       try {
-        const record = createRelanceRecord(item.id, 'manual', channel);
-        const history = JSON.parse(localStorage.getItem('cp_relance_history') || '{}');
-        if (!history[item.id]) history[item.id] = [];
-        history[item.id].push(record);
-        localStorage.setItem('cp_relance_history', JSON.stringify(history));
+        const record = createRelanceRecord(item.id, 'manual', 'email');
+        const hist = JSON.parse(localStorage.getItem('cp_relance_history') || '{}');
+        if (!hist[item.id]) hist[item.id] = [];
+        hist[item.id].push(record);
+        localStorage.setItem('cp_relance_history', JSON.stringify(hist));
 
         // Also persist to relance_executions table
         if (!isDemo && supabase) {
@@ -431,7 +298,7 @@ export default function RelanceModal({
               step_name: 'Relance manuelle',
               step_delay: 0,
               sequence_type: item.type || 'devis',
-              channel: channel === 'both' ? 'email_sms' : channel,
+              channel: 'email',
               status: 'sent',
               subject: subject || '',
               body: message || '',
@@ -444,10 +311,9 @@ export default function RelanceModal({
       } catch (e) { console.warn('Failed to save relance history:', e); }
 
       // Success feedback
-      const channelLabel = channel === 'both' ? 'Email et SMS' : channel === 'email' ? 'Email' : 'SMS';
       toast.success(
         `${item?.type === 'facture' ? 'Facture' : 'Devis'} relancé !`,
-        `${channelLabel} envoyé à ${item?.client?.nom}`
+        `Email envoyé à ${item?.client?.nom}`
       );
 
       // Close and callback
@@ -460,11 +326,7 @@ export default function RelanceModal({
     } finally {
       setIsLoading(false);
     }
-  }, [validate, item, channel, message, onClose, onSuccess]);
-
-  // Character count for SMS
-  const charCount = message.length;
-  const isOverLimit = channel === 'sms' && charCount > 160;
+  }, [validate, item, message, entreprise, onClose, onSuccess]);
 
   if (!item) return null;
 
@@ -508,41 +370,14 @@ export default function RelanceModal({
           </div>
         </div>
 
-        {/* Channel Selection */}
-        <div className="space-y-3">
-          <label className="block text-sm font-medium text-gray-700">
-            Canal de relance
-          </label>
-          <div className="space-y-2">
-            <ChannelOption
-              value="email"
-              selected={channel === 'email'}
-              onChange={handleChannelChange}
-              icon={Mail}
-              label="Email"
-              description={canSendEmail ? item.client?.email : 'Email non disponible'}
-              disabled={!canSendEmail}
-              recommended={canSendEmail}
-            />
-            <ChannelOption
-              value="sms"
-              selected={channel === 'sms'}
-              onChange={handleChannelChange}
-              icon={MessageSquare}
-              label="SMS"
-              description={canSendSMS ? item.client?.telephone : 'Téléphone non disponible'}
-              disabled={!canSendSMS}
-            />
-            <ChannelOption
-              value="both"
-              selected={channel === 'both'}
-              onChange={handleChannelChange}
-              icon={Send}
-              label="Email + SMS"
-              description="Envoyer par les deux canaux"
-              disabled={!canSendEmail || !canSendSMS}
-            />
-          </div>
+        {/* Email destination */}
+        <div className="flex items-center gap-2 text-sm">
+          <Mail className="w-4 h-4 text-gray-400" />
+          <span className="text-gray-600">
+            {canSendEmail
+              ? <>Relance par email à <span className="font-medium text-gray-900">{item.client?.email}</span></>
+              : <span className="text-red-600">Email du client manquant ou invalide</span>}
+          </span>
         </div>
 
         {/* Message */}
@@ -551,16 +386,6 @@ export default function RelanceModal({
             <label className="block text-sm font-medium text-gray-700">
               Message {isCustomizing && '(personnalisé)'}
             </label>
-            {channel === 'sms' && (
-              <span
-                className={cn(
-                  'text-xs',
-                  isOverLimit ? 'text-red-500' : 'text-gray-400'
-                )}
-              >
-                {charCount}/160
-              </span>
-            )}
           </div>
 
           <textarea
@@ -569,16 +394,14 @@ export default function RelanceModal({
               setMessage(e.target.value);
               if (!isCustomizing) setIsCustomizing(true);
             }}
-            rows={channel === 'sms' ? 4 : 8}
+            rows={8}
             className={cn(
               'w-full px-4 py-3 rounded-xl border transition-colors',
               'text-sm text-gray-900',
               'bg-white',
               'placeholder-gray-400',
               'focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent',
-              isOverLimit
-                ? 'border-red-300'
-                : 'border-gray-200'
+              'border-gray-200'
             )}
           />
 
@@ -631,7 +454,7 @@ export default function RelanceModal({
           variant="primary"
           onClick={handleSend}
           isLoading={isLoading}
-          disabled={isLoading || isOverLimit}
+          disabled={isLoading || !canSendEmail}
           rightIcon={<Send className="w-4 h-4" />}
         >
           Envoyer

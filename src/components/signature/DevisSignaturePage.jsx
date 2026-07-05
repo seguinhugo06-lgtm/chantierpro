@@ -3,7 +3,6 @@ import SignatureCanvas from 'react-signature-canvas';
 import { FileText, Check, X, RotateCcw, Pen, Calendar, Info, CheckCircle, AlertCircle, Loader2, ArrowRight, ArrowLeft, Shield, Download } from 'lucide-react';
 import { supabase } from '../../supabaseClient';
 import { buildDevisHtml } from '../../lib/devisHtmlBuilder';
-import { notifyArtisanSignature } from '../../services/CommunicationsService';
 
 /**
  * Page publique de signature électronique de devis
@@ -123,14 +122,6 @@ export default function DevisSignaturePage({ signatureToken }) {
           }
         }));
         setStep('success');
-
-        // Notify artisan in background (don't block success page)
-        notifyArtisanSignature({
-          entreprise,
-          devis,
-          client,
-          signataire: signataire.trim()
-        }).catch(err => console.warn('Failed to notify artisan:', err));
       }
     } catch (err) {
       console.error('Error signing devis:', err);

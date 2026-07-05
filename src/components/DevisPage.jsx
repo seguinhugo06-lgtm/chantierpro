@@ -21,7 +21,6 @@ import { calcConversion, formatConversion } from '../lib/statsUtils';
 import { useDebounce } from '../hooks/useDebounce';
 import { useDevisModals } from '../hooks/useDevisModals';
 import { isFacturXCompliant } from '../lib/facturx';
-import { getDocumentEmailStatus } from '../services/CommunicationsService';
 import { usePermissions } from '../hooks/usePermissions';
 import { ReadOnlyBanner } from './ui/PermissionGate';
 import { printSituationFacture as printSitFacture } from '../lib/devisHtmlBuilder';
@@ -53,6 +52,10 @@ import LockBanner from './audit/LockBanner';
 import { getEntityHistory } from '../lib/auditService';
 import { getSnapshots } from '../lib/snapshotService';
 import { isProviderSyncReady, createSignatureRequest as createYousignSignature } from '../services/syncService';
+
+// Email tracking : l'envoi passe par Resend (send-email) ; l'historique par document
+// n'est pas persisté côté client → statut vide (l'onglet « Emails » reste masqué).
+const getDocumentEmailStatus = () => ({ sent: 0, records: [] });
 
 // Valid status transitions — enforced on buttons and dropdown
 const VALID_TRANSITIONS = {

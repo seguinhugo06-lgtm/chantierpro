@@ -2,21 +2,19 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   CreditCard, Building2, Shield, ExternalLink, CheckCircle, XCircle,
   AlertTriangle, Loader2, Link2, Unlink, Info, ToggleLeft, ToggleRight,
-  RefreshCw, ArrowRight, Globe, Lock, Zap, Landmark, Eye, Copy, Check
+  RefreshCw, ArrowRight, Globe, Lock, Zap, Eye, Copy, Check
 } from 'lucide-react';
 import supabase, { isDemo } from '../../supabaseClient';
 
 /**
  * PaymentConfigTab — Settings > Finance > Paiements en ligne
  *
- * 3 sections:
+ * 2 sections:
  * 1. Stripe Connect Standard (CB payments)
- * 2. GoCardless (SEPA direct debit)
- * 3. Aperçu & options générales
+ * 2. Aperçu & options générales
  */
 
 const STRIPE_CONNECT_CLIENT_ID = import.meta.env.VITE_STRIPE_CONNECT_CLIENT_ID || '';
-const GOCARDLESS_CLIENT_ID = import.meta.env.VITE_GOCARDLESS_CLIENT_ID || '';
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || '';
 
 export default function PaymentConfigTab({ entreprise, isDark, couleur = '#F97316', user, modeDiscret }) {
@@ -42,9 +40,6 @@ export default function PaymentConfigTab({ entreprise, isDark, couleur = '#F9731
         stripe_connect_status: 'disconnected',
         stripe_livemode: false,
         absorb_fees: true,
-        gocardless_enabled: false,
-        gocardless_environment: 'sandbox',
-        gocardless_creditor_id: null,
       });
       setLoading(false);
       return;
@@ -53,7 +48,7 @@ export default function PaymentConfigTab({ entreprise, isDark, couleur = '#F9731
     try {
       const { data, error } = await supabase
         .from('stripe_config')
-        .select('stripe_enabled, stripe_account_id, stripe_connect_status, stripe_livemode, absorb_fees, gocardless_enabled, gocardless_environment, gocardless_creditor_id')
+        .select('stripe_enabled, stripe_account_id, stripe_connect_status, stripe_livemode, absorb_fees')
         .eq('user_id', user.id)
         .maybeSingle();
 
@@ -65,17 +60,13 @@ export default function PaymentConfigTab({ entreprise, isDark, couleur = '#F9731
         stripe_connect_status: 'disconnected',
         stripe_livemode: false,
         absorb_fees: true,
-        gocardless_enabled: false,
-        gocardless_environment: 'sandbox',
-        gocardless_creditor_id: null,
       });
     } catch (err) {
       // Silently handle missing table (stripe_config not yet created)
       if (err?.message?.includes('schema cache') || err?.code === '42P01') {
         setConfig({
           stripe_enabled: false, stripe_account_id: null, stripe_connect_status: 'disconnected',
-          stripe_livemode: false, absorb_fees: true, gocardless_enabled: false,
-          gocardless_environment: 'sandbox', gocardless_creditor_id: null,
+          stripe_livemode: false, absorb_fees: true,
         });
       } else {
         console.warn('[PaymentConfig] Load error:', err?.message || err);
@@ -165,38 +156,6 @@ export default function PaymentConfigTab({ entreprise, isDark, couleur = '#F9731
     });
   };
 
-  // GoCardless Connect OAuth
-  const handleGoCardlessConnect = () => {
-    if (!GOCARDLESS_CLIENT_ID || isDemo) {
-      alert('Configuration GoCardless manquante. Ajoutez VITE_GOCARDLESS_CLIENT_ID dans votre .env');
-      return;
-    }
-
-    const redirectUri = `${SUPABASE_URL}/functions/v1/gocardless-connect`;
-    const state = user?.id || 'unknown';
-    const env = config?.gocardless_environment === 'live' ? '' : 'sandbox.';
-
-    const params = new URLSearchParams({
-      response_type: 'code',
-      client_id: GOCARDLESS_CLIENT_ID,
-      scope: 'read_write',
-      redirect_uri: redirectUri,
-      state,
-    });
-
-    window.location.href = `https://${env}connect.gocardless.com/oauth/authorize?${params.toString()}`;
-  };
-
-  // GoCardless Disconnect
-  const handleGoCardlessDisconnect = async () => {
-    if (!confirm('Voulez-vous vraiment déconnecter GoCardless ? Les prélèvements SEPA ne fonctionneront plus.')) return;
-
-    await updateConfig({
-      gocardless_enabled: false,
-      gocardless_creditor_id: null,
-    });
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16">
@@ -206,8 +165,6 @@ export default function PaymentConfigTab({ entreprise, isDark, couleur = '#F9731
   }
 
   const isStripeConnected = config?.stripe_connect_status === 'connected' && config?.stripe_account_id;
-  const isGoCardlessConnected = config?.gocardless_enabled && config?.gocardless_creditor_id;
-  const hasAnyPaymentMethod = isStripeConnected || isGoCardlessConnected;
 
   return (
     <div className="space-y-6">
@@ -220,7 +177,7 @@ export default function PaymentConfigTab({ entreprise, isDark, couleur = '#F9731
           <div className="flex-1 min-w-0">
             <h3 className={`text-lg font-bold ${textPrimary}`}>Paiements en ligne</h3>
             <p className={`text-sm ${textMuted} mt-1`}>
-              Permettez à vos clients de payer vos factures en ligne par carte bancaire ou prélèvement SEPA. Le virement bancaire reste toujours disponible.
+              Permettez à vos clients de payer vos factures en ligne par carte bancaire. Le virement bancaire reste toujours disponible.
             </p>
             {/* Status badges */}
             <div className="flex flex-wrap gap-2 mt-3">
@@ -231,14 +188,6 @@ export default function PaymentConfigTab({ entreprise, isDark, couleur = '#F9731
               }`}>
                 <CreditCard size={12} />
                 CB {isStripeConnected ? '✓' : '—'}
-              </span>
-              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
-                isGoCardlessConnected
-                  ? (isDark ? 'bg-emerald-900/40 text-emerald-400' : 'bg-emerald-50 text-emerald-700')
-                  : (isDark ? 'bg-slate-700 text-slate-400' : 'bg-slate-100 text-slate-500')
-              }`}>
-                <Landmark size={12} />
-                SEPA {isGoCardlessConnected ? '✓' : '—'}
               </span>
               <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
                 isDark ? 'bg-emerald-900/40 text-emerald-400' : 'bg-emerald-50 text-emerald-700'
@@ -258,7 +207,7 @@ export default function PaymentConfigTab({ entreprise, isDark, couleur = '#F9731
           <div>
             <p className={`text-sm font-medium ${isDark ? 'text-amber-300' : 'text-amber-800'}`}>Mode démonstration</p>
             <p className={`text-xs mt-1 ${isDark ? 'text-amber-400' : 'text-amber-700'}`}>
-              En mode démo, les connexions Stripe et GoCardless ne sont pas fonctionnelles. Passez en mode production pour activer les paiements.
+              En mode démo, la connexion Stripe n'est pas fonctionnelle. Passez en mode production pour activer les paiements.
             </p>
           </div>
         </div>
@@ -380,112 +329,7 @@ export default function PaymentConfigTab({ entreprise, isDark, couleur = '#F9731
         </div>
       </div>
 
-      {/* ── Section 2: GoCardless (SEPA) ──────────────── */}
-      <div className={`${cardBg} rounded-2xl border overflow-hidden`}>
-        <div className="p-5 border-b" style={{ borderColor: isDark ? '#334155' : '#e2e8f0' }}>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-teal-500/10">
-              <Landmark size={20} className="text-teal-500" />
-            </div>
-            <div className="flex-1">
-              <h4 className={`font-semibold ${textPrimary}`}>Prélèvement SEPA — GoCardless</h4>
-              <p className={`text-xs ${textMuted}`}>Prélèvement automatique sur le compte du client</p>
-            </div>
-            {isGoCardlessConnected && (
-              <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold ${
-                isDark ? 'bg-emerald-900/40 text-emerald-400' : 'bg-emerald-50 text-emerald-700'
-              }`}>
-                <CheckCircle size={14} />
-                Connecté
-              </span>
-            )}
-          </div>
-        </div>
-
-        <div className="p-5 space-y-4">
-          {!isGoCardlessConnected ? (
-            <>
-              <div className={`rounded-xl p-4 ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
-                <div className="flex items-start gap-3">
-                  <Info size={16} className={`flex-shrink-0 mt-0.5 ${textMuted}`} />
-                  <div className={`text-sm ${textSecondary}`}>
-                    <p className="font-medium mb-1">Prélèvement SEPA</p>
-                    <ul className="space-y-1 text-xs list-disc ml-4">
-                      <li>Le client autorise un prélèvement via son IBAN</li>
-                      <li>Idéal pour les paiements récurrents et les gros montants</li>
-                      <li>Frais réduits : 0,2% + 0,20€ par transaction (max 5€)</li>
-                      <li>Délai d'encaissement : 3-5 jours ouvrés</li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
-
-              {/* Environment toggle */}
-              <div className={`rounded-xl p-4 flex items-center justify-between ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
-                <div>
-                  <p className={`text-sm font-medium ${textPrimary}`}>Environnement</p>
-                  <p className={`text-xs ${textMuted}`}>
-                    {config?.gocardless_environment === 'live' ? 'Production — prélèvements réels' : 'Sandbox — tests uniquement'}
-                  </p>
-                </div>
-                <button
-                  onClick={() => updateConfig({
-                    gocardless_environment: config?.gocardless_environment === 'live' ? 'sandbox' : 'live'
-                  })}
-                  className="flex-shrink-0"
-                >
-                  {config?.gocardless_environment === 'live' ? (
-                    <ToggleRight size={32} className="text-emerald-500" />
-                  ) : (
-                    <ToggleLeft size={32} className={textMuted} />
-                  )}
-                </button>
-              </div>
-
-              <button
-                onClick={handleGoCardlessConnect}
-                disabled={isDemo}
-                className="w-full py-3.5 px-6 rounded-xl font-semibold text-white flex items-center justify-center gap-2 transition-all hover:shadow-lg disabled:opacity-50 bg-teal-600 hover:bg-teal-700"
-              >
-                <Landmark size={18} />
-                Connecter GoCardless
-                <ArrowRight size={16} />
-              </button>
-            </>
-          ) : (
-            <>
-              {/* Connected state */}
-              <div className="grid sm:grid-cols-2 gap-4">
-                <div className={`rounded-xl p-4 ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
-                  <p className={`text-xs ${textMuted} mb-1`}>Creditor ID</p>
-                  <p className={`text-sm font-mono font-medium ${textPrimary}`}>
-                    {modeDiscret ? '••••••••••••' : config.gocardless_creditor_id}
-                  </p>
-                </div>
-                <div className={`rounded-xl p-4 ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
-                  <p className={`text-xs ${textMuted} mb-1`}>Environnement</p>
-                  <p className={`text-sm font-medium flex items-center gap-1.5 ${config.gocardless_environment === 'live' ? 'text-emerald-500' : 'text-amber-500'}`}>
-                    {config.gocardless_environment === 'live' ? <Globe size={14} /> : <Lock size={14} />}
-                    {config.gocardless_environment === 'live' ? 'Production' : 'Sandbox'}
-                  </p>
-                </div>
-              </div>
-
-              <button
-                onClick={handleGoCardlessDisconnect}
-                className={`w-full py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-colors ${
-                  isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
-                }`}
-              >
-                <Unlink size={14} />
-                Déconnecter GoCardless
-              </button>
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* ── Section 3: Aperçu & Options ──────────────── */}
+      {/* ── Section 2: Aperçu & Options ──────────────── */}
       <div className={`${cardBg} rounded-2xl border p-5`}>
         <h4 className={`font-semibold mb-4 ${textPrimary}`}>Récapitulatif</h4>
 
@@ -498,16 +342,6 @@ export default function PaymentConfigTab({ entreprise, isDark, couleur = '#F9731
               description="Visa, Mastercard, Amex"
               enabled={!!isStripeConnected}
               fees="1,5% + 0,25€"
-              isDark={isDark}
-              textPrimary={textPrimary}
-              textMuted={textMuted}
-            />
-            <PaymentMethodRow
-              icon={<Landmark size={18} className="text-teal-500" />}
-              label="Prélèvement SEPA"
-              description="Débit direct (IBAN)"
-              enabled={!!isGoCardlessConnected}
-              fees="0,2% + 0,20€ (max 5€)"
               isDark={isDark}
               textPrimary={textPrimary}
               textMuted={textMuted}
@@ -545,7 +379,7 @@ export default function PaymentConfigTab({ entreprise, isDark, couleur = '#F9731
               <ul className="space-y-0.5">
                 <li>• PCI DSS SAQ-A : aucune donnée carte ne transite par BatiGesti</li>
                 <li>• Authentification forte (SCA/3D Secure) conforme PSD2</li>
-                <li>• Paiements sécurisés par Stripe et GoCardless</li>
+                <li>• Paiements sécurisés par Stripe</li>
               </ul>
             </div>
           </div>

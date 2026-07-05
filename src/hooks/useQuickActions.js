@@ -207,11 +207,11 @@ export function useQuickActions(config) {
   // ============ ACTIONS ============
 
   /**
-   * Relancer - Send reminder email/SMS
+   * Relancer - Send reminder email
    */
   const relancer = useCallback(
     async (id = itemId) => {
-      // Open the RelanceModal which handles actual send via CommunicationsService
+      // Open the RelanceModal which sends the reminder email via Resend
       relanceModal.open({ itemId: id, type });
       return true;
     },
