@@ -2,6 +2,7 @@ import React, { lazy, Suspense, useState } from 'react';
 import { Wallet, Download, BarChart3, Landmark, CreditCard, Eye, EyeOff, FileText, AlertTriangle, RefreshCw } from 'lucide-react';
 import TabBar from './ui/TabBar';
 import ErrorBoundary from './ui/ErrorBoundary';
+import PageHeader from './ui/PageHeader';
 import { usePermissions } from '../hooks/usePermissions';
 
 // Lazy load the 5 sub-modules
@@ -56,26 +57,29 @@ export default function FinancesPage({ devis, depenses, clients, chantiers, entr
 
   return (
     <div className="animate-page-enter">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-3 mb-4 sm:mb-5">
-        <div className="min-w-0">
-          <h1 className={`text-lg sm:text-2xl font-bold ${textPrimary}`}>Finances</h1>
-          <p className={`text-xs sm:text-sm ${textMuted} hidden sm:block`}>Pilotez votre trésorerie, anticipez vos flux et exportez pour votre expert-comptable</p>
-        </div>
-        <button
-          onClick={() => setLocalDiscret(d => !d)}
-          aria-label={modeDiscret ? 'Afficher les montants' : 'Masquer les montants'}
-          title={modeDiscret ? 'Afficher les montants' : 'Masquer les montants'}
-          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-all ${
-            isDark
-              ? modeDiscret ? 'bg-slate-700 text-slate-200' : 'bg-slate-800 text-slate-400 hover:text-slate-200'
-              : modeDiscret ? 'bg-slate-200 text-slate-800' : 'bg-slate-100 text-slate-500 hover:text-slate-700'
-          }`}
-        >
-          {modeDiscret ? <EyeOff size={16} /> : <Eye size={16} />}
-          <span className="hidden sm:inline">{modeDiscret ? 'Montants masqués' : 'Masquer les montants'}</span>
-        </button>
-      </div>
+      {/* Header (design system) */}
+      <PageHeader
+        icon={Wallet}
+        title="Finances"
+        subtitle="Pilotez votre trésorerie, anticipez vos flux et exportez pour votre expert-comptable"
+        isDark={isDark}
+        color={couleur}
+        action={
+          <button
+            onClick={() => setLocalDiscret(d => !d)}
+            aria-label={modeDiscret ? 'Afficher les montants' : 'Masquer les montants'}
+            title={modeDiscret ? 'Afficher les montants' : 'Masquer les montants'}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-all ${
+              isDark
+                ? modeDiscret ? 'bg-slate-700 text-slate-200' : 'bg-slate-800 text-slate-400 hover:text-slate-200'
+                : modeDiscret ? 'bg-slate-200 text-slate-800' : 'bg-slate-100 text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            {modeDiscret ? <EyeOff size={16} /> : <Eye size={16} />}
+            <span className="hidden sm:inline">{modeDiscret ? 'Montants masqués' : 'Masquer les montants'}</span>
+          </button>
+        }
+      />
 
       {/* Tab navigation */}
       <TabBar

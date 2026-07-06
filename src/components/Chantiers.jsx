@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, Suspense, lazy } from 'react';
 import { Plus, ArrowLeft, ArrowRight, Edit3, Trash2, Check, X, Camera, MapPin, Phone, Clock, Calendar, DollarSign, TrendingUp, TrendingDown, AlertTriangle, Package, Users, FileText, ChevronRight, ChevronDown, ChevronUp, Save, Image, StickyNote, CheckSquare, Square, MoreVertical, MoreHorizontal, Percent, Coins, Receipt, Banknote, PiggyBank, Target, BarChart3, CircleDollarSign, Wallet, MessageSquare, AlertCircle, ArrowUpRight, ArrowDownRight, UserCog, Download, Share2, ArrowUpDown, SortAsc, SortDesc, Building2, Zap, Sparkles, ShoppingCart, FolderOpen, Wifi, WifiOff, Sun, Cloud, CloudRain, Wind, Thermometer, GripVertical, CheckCircle, Copy, Archive, Search, Paperclip, Upload, Map, List, ClipboardList, CheckCircle2, Navigation, Mic, CalendarPlus, Moon, Shield } from 'lucide-react';
+import PageHeader from './ui/PageHeader';
 
 const ChantierMap = lazy(() => import('./chantiers/ChantierMap'));
 const GanttView = lazy(() => import('./GanttView'));
@@ -2791,23 +2792,13 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
   // Liste
   return (
     <div className="space-y-4 sm:space-y-6">
-      <div className="flex justify-between items-center gap-3">
-        <div className="flex items-center gap-3">
-          {setPage && (
-            <button
-              onClick={() => setPage('dashboard')}
-              className={`p-2 rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-100 text-slate-500'}`}
-              aria-label="Retour au tableau de bord"
-              title="Retour au tableau de bord"
-            >
-              <ArrowLeft size={20} />
-            </button>
-          )}
-          <div>
-            <h1 className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>Chantiers</h1>
-            <p className={`text-xs ${isDark ? 'text-slate-300' : 'text-slate-500'}`}>Suivi de vos projets</p>
-          </div>
-        </div>
+      <PageHeader
+        icon={Building2}
+        title="Chantiers"
+        subtitle="Suivi de vos projets"
+        isDark={isDark}
+        color={couleur}
+        action={
         <div className="flex items-center gap-2">
           {/* List/Map toggle */}
           <div className={`flex rounded-xl border overflow-hidden ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
@@ -2854,7 +2845,8 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
           </button>
           )}
         </div>
-      </div>
+        }
+      />
 
       {/* === BANDEAU AUJOURD'HUI — compact sticky 60px === */}
       {(() => {

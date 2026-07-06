@@ -1,6 +1,7 @@
 import React, { useState, useMemo, lazy, Suspense } from 'react';
 import { List, Kanban, Calendar, CalendarCheck, GanttChart, Users } from 'lucide-react';
 import TaskFilters from './TaskFilters';
+import PageHeader from '../ui/PageHeader';
 
 const TaskListView = lazy(() => import('./TaskListView'));
 const TaskKanbanView = lazy(() => import('./TaskKanbanView'));
@@ -64,24 +65,15 @@ export default function TasksAndPlanning({
 
   return (
     <div className="pb-4">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 px-1">
-        <div className="flex items-center gap-3">
-          <CalendarCheck size={24} style={{ color: couleur }} />
-          <div>
-            <h1 className={`text-xl sm:text-2xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-              Tâches & Planning
-            </h1>
-            <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-              {taskStats.totalActive} tâche{taskStats.totalActive !== 1 ? 's' : ''}
-              {taskStats.overdueCount > 0 && (
-                <span className="text-red-500"> · {taskStats.overdueCount} en retard</span>
-              )}
-            </p>
-          </div>
-        </div>
-
-        {/* View toggle */}
+      {/* Header (design system) */}
+      <PageHeader
+        icon={CalendarCheck}
+        title="Tâches & Planning"
+        subtitle={`${taskStats.totalActive} tâche${taskStats.totalActive !== 1 ? 's' : ''}${taskStats.overdueCount > 0 ? ` · ${taskStats.overdueCount} en retard` : ''}`}
+        isDark={isDark}
+        color={couleur}
+        action={
+        /* View toggle */
         <div className={`flex rounded-xl border p-1 ${cardBg}`}>
           {VIEW_MODES.map(v => (
             <button
@@ -101,7 +93,8 @@ export default function TasksAndPlanning({
             </button>
           ))}
         </div>
-      </div>
+        }
+      />
 
       {/* Filters (for list/kanban/gantt/team views) */}
       {(viewMode === 'list' || viewMode === 'kanban' || viewMode === 'gantt' || viewMode === 'team') && (
