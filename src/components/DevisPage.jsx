@@ -23,6 +23,7 @@ import { useDevisModals } from '../hooks/useDevisModals';
 import { isFacturXCompliant } from '../lib/facturx';
 import { usePermissions } from '../hooks/usePermissions';
 import { ReadOnlyBanner } from './ui/PermissionGate';
+import PageHeader from './ui/PageHeader';
 import { printSituationFacture as printSitFacture } from '../lib/devisHtmlBuilder';
 import { sendDocumentEmail, buildDocumentEmailBody } from '../lib/emailSender';
 import RelanceTimelineWidget from './RelanceTimelineWidget';
@@ -4676,46 +4677,35 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   return (
     <div className="space-y-3">
       {/* ========== HEADER COMPACT ========== */}
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          {setPage && (
-            <button
-              onClick={() => setPage('dashboard')}
-              className={`p-2 rounded-xl min-w-[40px] min-h-[40px] flex items-center justify-center transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}
-              title="Retour au tableau de bord"
-              aria-label="Retour au tableau de bord"
-            >
-              <ArrowLeft size={20} />
-            </button>
-          )}
-          <div>
-            <h1 className={`text-xl sm:text-2xl font-bold ${textPrimary} inline-flex items-center gap-2`}>
-              Devis & Factures
-              {complianceDismissed && (() => {
-                const missing = [];
-                if (!entreprise?.siret) missing.push('SIRET');
-                if (!entreprise?.adresse) missing.push('Adresse');
-                if (!entreprise?.formeJuridique) missing.push('Forme juridique');
-                if (!entreprise?.decennaleAssureur) missing.push('Assurance décennale');
-                if (missing.length === 0) return null;
-                return (
-                  <span
-                    className="relative inline-block cursor-pointer"
-                    title={`Profil incomplet : ${missing.join(', ')}`}
-                    onClick={() => setPage?.('settings')}
-                  >
-                    <span className="w-2.5 h-2.5 rounded-full inline-block" style={{ background: couleur }} />
-                    <span className="absolute inset-0 w-2.5 h-2.5 rounded-full animate-ping opacity-50" style={{ background: couleur }} />
-                  </span>
-                );
-              })()}
-            </h1>
-            <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Gérez vos documents commerciaux</p>
-          </div>
-        </div>
-
-        {/* Split-button: + Nouveau devis — hidden for view-only roles */}
-        {canPerform('devis', 'create') && (
+      <PageHeader
+        icon={FileText}
+        isDark={isDark}
+        color={couleur}
+        subtitle="Gérez vos documents commerciaux"
+        title={
+          <span className="inline-flex items-center gap-2">
+            Devis & Factures
+            {complianceDismissed && (() => {
+              const missing = [];
+              if (!entreprise?.siret) missing.push('SIRET');
+              if (!entreprise?.adresse) missing.push('Adresse');
+              if (!entreprise?.formeJuridique) missing.push('Forme juridique');
+              if (!entreprise?.decennaleAssureur) missing.push('Assurance décennale');
+              if (missing.length === 0) return null;
+              return (
+                <span
+                  className="relative inline-block cursor-pointer"
+                  title={`Profil incomplet : ${missing.join(', ')}`}
+                  onClick={() => setPage?.('settings')}
+                >
+                  <span className="w-2.5 h-2.5 rounded-full inline-block" style={{ background: couleur }} />
+                  <span className="absolute inset-0 w-2.5 h-2.5 rounded-full animate-ping opacity-50" style={{ background: couleur }} />
+                </span>
+              );
+            })()}
+          </span>
+        }
+        action={canPerform('devis', 'create') && (
         <div className="flex items-center gap-2">
         <div className="relative">
           <div className="flex items-stretch">
@@ -4768,7 +4758,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         </div>
         </div>
         )}
-      </div>
+      />
 
       {/* RBAC: ReadOnly banner for view-only users */}
       {isViewOnly && <ReadOnlyBanner />}
