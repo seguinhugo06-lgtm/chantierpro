@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback, Suspense, lazy } from 
 import { Plus, ArrowLeft, ArrowRight, Edit3, Trash2, Check, X, Camera, MapPin, Phone, Clock, Calendar, DollarSign, TrendingUp, TrendingDown, AlertTriangle, Package, Users, FileText, ChevronRight, ChevronDown, ChevronUp, Save, Image, StickyNote, CheckSquare, Square, MoreVertical, MoreHorizontal, Percent, Coins, Receipt, Banknote, PiggyBank, Target, BarChart3, CircleDollarSign, Wallet, MessageSquare, AlertCircle, ArrowUpRight, ArrowDownRight, UserCog, Download, Share2, ArrowUpDown, SortAsc, SortDesc, Building2, Zap, Sparkles, ShoppingCart, FolderOpen, Wifi, WifiOff, Sun, Cloud, CloudRain, Wind, Thermometer, GripVertical, CheckCircle, Copy, Archive, Search, Paperclip, Upload, Map, List, ClipboardList, CheckCircle2, Navigation, Mic, CalendarPlus, Moon, Shield } from 'lucide-react';
 import PageHeader from './ui/PageHeader';
 import StatusChip from './ui/StatusChip';
+import { useSubscriptionStore } from '../stores/subscriptionStore';
 
 const ChantierMap = lazy(() => import('./chantiers/ChantierMap'));
 const GanttView = lazy(() => import('./GanttView'));
@@ -334,7 +335,24 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
   const getMargeBg = (t) => t < 0 ? 'bg-red-50' : t < 15 ? 'bg-amber-50' : 'bg-emerald-50';
 
   // Handlers
-  const handlePhotoAdd = (e, cat = 'pendant') => { const file = e.target.files?.[0]; if (!file) return; const reader = new FileReader(); reader.onload = () => { const ch = chantiers.find(c => c.id === view); if (ch) updateChantier(view, { photos: [...(ch.photos || []), { id: generateId(), src: reader.result, categorie: cat, date: new Date().toISOString() }] }); }; reader.readAsDataURL(file); };
+  const handlePhotoAdd = (e, cat = 'pendant') => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    // Limite photos par plan (gratuit = 50). Comptée sur tous les chantiers.
+    const photoLimit = useSubscriptionStore.getState().getLimit('photos');
+    if (photoLimit !== -1) {
+      const totalPhotos = chantiers.reduce((s, c) => s + (c.photos?.length || 0), 0);
+      if (totalPhotos >= photoLimit) {
+        showToast(`Limite de ${photoLimit} photos atteinte — passez à un plan supérieur pour en ajouter plus`, 'warning');
+        useSubscriptionStore.getState().openUpgradeModal('photos');
+        if (e.target) e.target.value = '';
+        return;
+      }
+    }
+    const reader = new FileReader();
+    reader.onload = () => { const ch = chantiers.find(c => c.id === view); if (ch) updateChantier(view, { photos: [...(ch.photos || []), { id: generateId(), src: reader.result, categorie: cat, date: new Date().toISOString() }] }); };
+    reader.readAsDataURL(file);
+  };
   const deletePhoto = (id) => { const ch = chantiers.find(c => c.id === view); if (ch) updateChantier(view, { photos: ch.photos.filter(p => p.id !== id) }); };
   const addTache = (phase = 'second-oeuvre') => { if (!newTache.trim()) return; const ch = chantiers.find(c => c.id === view); if (ch) { updateChantier(view, { taches: [...(ch.taches || []), { id: generateId(), text: newTache, done: false, critical: newTaskCritical, phase }] }); setNewTache(''); setNewTaskCritical(false); } };
   const toggleTache = (id) => {
@@ -1521,6 +1539,23 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                 <h3 className={`font-semibold ${textPrimary}`}>📸 Carnet Photos</h3>
                 <p className={`text-xs ${textMuted} mt-1`}>Photos horodatées = preuves en cas de litige</p>
               </div>
+              {(() => {
+                const photoLimit = useSubscriptionStore.getState().getLimit('photos');
+                if (photoLimit === -1) return null;
+                const totalPhotos = chantiers.reduce((s, c) => s + (c.photos?.length || 0), 0);
+                const atLimit = totalPhotos >= photoLimit;
+                const near = totalPhotos >= photoLimit * 0.8;
+                return (
+                  <button
+                    type="button"
+                    onClick={atLimit ? () => useSubscriptionStore.getState().openUpgradeModal('photos') : undefined}
+                    className={`text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap ${atLimit ? 'bg-red-100 text-red-700' : near ? 'bg-amber-100 text-amber-700' : (isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600')}`}
+                    title={atLimit ? 'Limite atteinte — passer à un plan supérieur' : `${totalPhotos} photos sur ${photoLimit}`}
+                  >
+                    {totalPhotos} / {photoLimit} photos{atLimit ? ' — Upgrade' : ''}
+                  </button>
+                );
+              })()}
             </div>
 
             {/* Photo capture buttons - Big touch targets */}
