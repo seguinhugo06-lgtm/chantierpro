@@ -24,6 +24,7 @@ import { isFacturXCompliant } from '../lib/facturx';
 import { usePermissions } from '../hooks/usePermissions';
 import { ReadOnlyBanner } from './ui/PermissionGate';
 import PageHeader from './ui/PageHeader';
+import KPICard from './ui/KPICard';
 import { printSituationFacture as printSitFacture } from '../lib/devisHtmlBuilder';
 import { sendDocumentEmail, buildDocumentEmailBody } from '../lib/emailSender';
 import RelanceTimelineWidget from './RelanceTimelineWidget';
@@ -4831,70 +4832,48 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           thisMonthDevis.filter(d => d.type === 'facture' && d.statut !== 'payee').reduce((s, f) => s + (f.total_ttc || 0), 0),
           prevMonthDevis.filter(d => d.type === 'facture' && d.statut !== 'payee').reduce((s, f) => s + (f.total_ttc || 0), 0)
         );
-        const TrendBadge = ({ value }) => {
-          if (value === 0) return null;
-          const isUp = value > 0;
-          return (
-            <span className={`text-[9px] font-semibold px-1 py-0.5 rounded-md inline-flex items-center gap-0.5 ${isUp ? (isDark ? 'bg-emerald-900/50 text-emerald-400' : 'bg-emerald-50 text-emerald-600') : (isDark ? 'bg-red-900/50 text-red-400' : 'bg-red-50 text-red-600')}`}>
-              {isUp ? '↗' : '↘'} {isUp ? '+' : ''}{value}%
-            </span>
-          );
-        };
+        const trendProps = (v) => v === 0 ? {} : { trend: v > 0 ? 'up' : 'down', trendValue: `${v > 0 ? '+' : ''}${v}%` };
+        const convColor = tauxConversion != null ? (tauxConversion >= 50 ? '#10b981' : tauxConversion >= 25 ? '#f59e0b' : '#ef4444') : '#64748b';
+        const hidePrice = (v) => !canViewPrices ? '—' : modeDiscret ? '···' : v;
 
         return (
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5 sm:gap-2">
-            {/* CA encaissé */}
-            <button onClick={() => setFilter('factures')} className={`${cardBg} rounded-xl border px-2 sm:px-3 py-2 text-left transition-all hover:shadow-md ${filter === 'factures' ? 'ring-2' : ''}`} style={filter === 'factures' ? { '--tw-ring-color': couleur } : {}}>
-              <div className="flex items-center justify-between">
-                <p className={`text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider ${textMuted} leading-none`}>CA encaissé</p>
-                <TrendBadge value={trendCA} />
-              </div>
-              <p className="text-xs sm:text-base font-bold leading-tight mt-0.5 truncate" style={{ color: couleur }}>{!canViewPrices ? '—' : modeDiscret ? '···' : formatMoney(montantPayees)}</p>
-              <p className={`text-[10px] ${textMuted} leading-none mt-0.5`}>{facturesPayees.length} fact.</p>
-            </button>
-
-            {/* En cours */}
-            <button onClick={() => setFilter('attente')} className={`${cardBg} rounded-xl border px-2 sm:px-3 py-2 text-left transition-all hover:shadow-md ${filter === 'attente' ? 'ring-2' : ''}`} style={filter === 'attente' ? { '--tw-ring-color': couleur } : {}}>
-              <div className="flex items-center justify-between">
-                <p className={`text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider ${textMuted} leading-none`}>En cours</p>
-                <TrendBadge value={trendEnCours} />
-              </div>
-              <p className="text-xs sm:text-base font-bold text-blue-600 leading-tight mt-0.5">{devisEnvoye.length}</p>
-              <p className={`text-[10px] ${textMuted} leading-none mt-0.5 truncate`}>{!canViewPrices ? '—' : modeDiscret ? '···' : formatMoney(montantEnCours)}</p>
-            </button>
-
-            {/* Conversion */}
-            <button onClick={() => setFilter('conversion')} className={`${cardBg} rounded-xl border px-2 sm:px-3 py-2 text-left transition-all hover:shadow-md ${filter === 'conversion' ? 'ring-2' : ''}`} style={filter === 'conversion' ? { '--tw-ring-color': couleur } : {}}>
-              <p className={`text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider ${textMuted} leading-none`}>Conversion</p>
-              <p className={`text-xs sm:text-base font-bold leading-tight mt-0.5 ${tauxConversion != null ? (tauxConversion >= 50 ? 'text-emerald-600' : tauxConversion >= 25 ? 'text-amber-600' : 'text-red-500') : textMuted}`}>
-                {formatConversion(tauxConversion)}
-              </p>
-              <p className={`text-[10px] ${textMuted} leading-none mt-0.5`}>{conversionResult.signes}/{totalEnvoyes}</p>
-            </button>
-
-            {/* À encaisser */}
-            <button onClick={() => setFilter('factures_impayees')} className={`${cardBg} rounded-xl border px-2 sm:px-3 py-2 text-left transition-all hover:shadow-md ${facturesEnRetard.length > 0 ? (isDark ? 'border-red-800' : 'border-red-300') : ''} ${filter === 'factures_impayees' ? 'ring-2' : ''}`} style={filter === 'factures_impayees' ? { '--tw-ring-color': couleur } : {}}>
-              <div className="flex items-center justify-between">
-                <p className={`text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider ${textMuted} leading-none`}>À encaisser</p>
-                <TrendBadge value={trendAEncaisser} />
-              </div>
-              <p className={`text-xs sm:text-base font-bold leading-tight mt-0.5 truncate ${facturesEnRetard.length > 0 ? 'text-red-600' : 'text-violet-600'}`}>
-                {!canViewPrices ? '—' : modeDiscret ? '···' : formatMoney(montantAEncaisser)}
-              </p>
-              <p className={`text-[10px] leading-none mt-0.5 ${facturesEnRetard.length > 0 ? 'text-red-500 font-medium' : textMuted}`}>
-                {facturesEnRetard.length > 0 ? `${facturesEnRetard.length} retard` : `${facturesEnAttente.length} att.`}
-              </p>
-            </button>
-
-            {/* Avoirs */}
+          <div className={`grid grid-cols-2 ${avoirsEmis.length > 0 ? 'sm:grid-cols-5' : 'sm:grid-cols-4'} gap-3 sm:gap-4`}>
+            <KPICard
+              icon={CheckCircle} tone="money" label="CA encaissé"
+              value={hidePrice(formatMoney(montantPayees))}
+              sublabel={`${facturesPayees.length} fact.`}
+              {...trendProps(trendCA)} isDark={isDark}
+              onClick={() => setFilter('factures')}
+            />
+            <KPICard
+              icon={Send} tone="info" label="En cours"
+              value={String(devisEnvoye.length)}
+              sublabel={hidePrice(formatMoney(montantEnCours))}
+              {...trendProps(trendEnCours)} isDark={isDark}
+              onClick={() => setFilter('attente')}
+            />
+            <KPICard
+              icon={TrendingUp} color={convColor} label="Conversion"
+              value={formatConversion(tauxConversion)}
+              sublabel={`${conversionResult.signes}/${totalEnvoyes}`}
+              isDark={isDark}
+              onClick={() => setFilter('conversion')}
+            />
+            <KPICard
+              icon={CreditCard} color={facturesEnRetard.length > 0 ? '#ef4444' : '#8b5cf6'} label="À encaisser"
+              value={hidePrice(formatMoney(montantAEncaisser))}
+              sublabel={facturesEnRetard.length > 0 ? `${facturesEnRetard.length} en retard` : `${facturesEnAttente.length} att.`}
+              {...trendProps(trendAEncaisser)} isDark={isDark}
+              onClick={() => setFilter('factures_impayees')}
+            />
             {avoirsEmis.length > 0 && (
-            <button onClick={() => setFilter('avoirs')} className={`${cardBg} rounded-xl border px-2 sm:px-3 py-2 text-left transition-all hover:shadow-md ${filter === 'avoirs' ? 'ring-2' : ''}`} style={filter === 'avoirs' ? { '--tw-ring-color': couleur } : {}}>
-              <p className={`text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider ${textMuted} leading-none`}>Avoirs</p>
-              <p className="text-xs sm:text-base font-bold text-red-500 leading-tight mt-0.5 truncate">
-                {!canViewPrices ? '—' : modeDiscret ? '···' : `-${formatMoney(montantAvoirs)}`}
-              </p>
-              <p className={`text-[10px] ${textMuted} leading-none mt-0.5`}>{avoirsEmis.length} avoir{avoirsEmis.length > 1 ? 's' : ''}</p>
-            </button>
+              <KPICard
+                icon={RotateCcw} tone="danger" label="Avoirs"
+                value={hidePrice(`-${formatMoney(montantAvoirs)}`)}
+                sublabel={`${avoirsEmis.length} avoir${avoirsEmis.length > 1 ? 's' : ''}`}
+                isDark={isDark}
+                onClick={() => setFilter('avoirs')}
+              />
             )}
           </div>
         );
