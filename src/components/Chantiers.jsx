@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback, Suspense, lazy } from 
 import { Plus, ArrowLeft, ArrowRight, Edit3, Trash2, Check, X, Camera, MapPin, Phone, Clock, Calendar, DollarSign, TrendingUp, TrendingDown, AlertTriangle, Package, Users, FileText, ChevronRight, ChevronDown, ChevronUp, Save, Image, StickyNote, CheckSquare, Square, MoreVertical, MoreHorizontal, Percent, Coins, Receipt, Banknote, PiggyBank, Target, BarChart3, CircleDollarSign, Wallet, MessageSquare, AlertCircle, ArrowUpRight, ArrowDownRight, UserCog, Download, Share2, ArrowUpDown, SortAsc, SortDesc, Building2, Zap, Sparkles, ShoppingCart, FolderOpen, Wifi, WifiOff, Sun, Cloud, CloudRain, Wind, Thermometer, GripVertical, CheckCircle, Copy, Archive, Search, Paperclip, Upload, Map, List, ClipboardList, CheckCircle2, Navigation, Mic, CalendarPlus, Moon, Shield } from 'lucide-react';
 import PageHeader from './ui/PageHeader';
 import StatusChip from './ui/StatusChip';
+import KPICard from './ui/KPICard';
 import { useSubscriptionStore } from '../stores/subscriptionStore';
 
 const ChantierMap = lazy(() => import('./chantiers/ChantierMap'));
@@ -2824,6 +2825,9 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
     brouillons: brouillonsCount,
     archive: archivedCount,
   };
+  const budgetEnCours = nonDraftNonArchive
+    .filter(c => c.statut === 'en_cours')
+    .reduce((s, c) => s + (c.budget_estime || c.budgetPrevu || 0), 0);
 
   // Liste
   return (
@@ -2883,6 +2887,35 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
         </div>
         }
       />
+
+      {/* === BANDE KPI (design system énergique) === */}
+      {nonDraftNonArchive.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+          <KPICard
+            icon={Building2} color={couleur} label="En cours"
+            value={String(statusCounts.en_cours)}
+            isDark={isDark}
+            onClick={() => setFilterStatus(filterStatus === 'en_cours' ? 'all' : 'en_cours')}
+          />
+          <KPICard
+            icon={Wallet} tone="money" label="Budget en cours"
+            value={modeDiscret ? '···' : formatMoney(budgetEnCours)}
+            isDark={isDark}
+          />
+          <KPICard
+            icon={Target} tone="info" label="Prospects"
+            value={String(statusCounts.prospect)}
+            isDark={isDark}
+            onClick={() => setFilterStatus(filterStatus === 'prospect' ? 'all' : 'prospect')}
+          />
+          <KPICard
+            icon={CheckCircle} tone="money" label="Terminés"
+            value={String(statusCounts.termine)}
+            isDark={isDark}
+            onClick={() => setFilterStatus(filterStatus === 'termine' ? 'all' : 'termine')}
+          />
+        </div>
+      )}
 
       {/* === BANDEAU AUJOURD'HUI — compact sticky 60px === */}
       {(() => {
