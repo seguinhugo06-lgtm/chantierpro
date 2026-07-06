@@ -43,7 +43,6 @@ const QuickChantierModal = lazyWithRetry(() => import('./components/QuickChantie
 const CommandPalette = lazyWithRetry(() => import('./components/CommandPalette'), 'CommandPalette');
 const DesignSystemDemo = lazyWithRetry(() => import('./components/DesignSystemDemo'), 'DesignSystem');
 const BibliothequeOuvrages = lazyWithRetry(() => import('./components/catalogue/BibliothequeOuvrages'), 'Bibliothèque');
-const BibliothequePrix = lazyWithRetry(() => import('./components/bibliotheque/Bibliotheque'), 'BibliothèquePrix');
 const SignatureModule = lazyWithRetry(() => import('./components/signatures/SignatureModule'), 'Signatures');
 const ExportComptable = lazyWithRetry(() => import('./components/export/ExportComptable'), 'ExportComptable');
 const BillingDashboard = lazyWithRetry(() => import('./components/subscription/BillingDashboard'), 'Billing');
@@ -713,7 +712,7 @@ export default function App() {
   // Must depend on [page] so redirects fire whenever page changes (not just on mount)
   useEffect(() => {
     const REDIRECTS = {
-      ouvrages: 'bibliotheque',
+      ouvrages: 'catalogue', bibliotheque: 'catalogue',
       tresorerie: 'finances', entretien: 'dashboard',
       signatures: 'devis', export: 'finances', analytique: 'finances',
       admin: 'settings', rentabilite: 'settings',
@@ -1188,7 +1187,6 @@ export default function App() {
       ].filter(Boolean).join(' · ')
     },
     { id: 'equipe', icon: HardHat, label: 'Équipe' },
-    { id: 'bibliotheque', icon: Library, label: 'Bibliothèque' },
     { id: 'catalogue', icon: Package, label: 'Catalogue' },
     { id: 'finances', icon: Wallet, label: 'Finances' },
     { id: 'profil', icon: User, label: 'Mon profil' },
@@ -1684,7 +1682,6 @@ export default function App() {
                 />
               )}
               {page === 'clients' && <Clients clients={clients} setClients={setClients} updateClient={updateClient} deleteClient={deleteClient} devis={devis} chantiers={chantiers} echanges={echanges} onSubmit={addClient} couleur={couleur} setPage={setPage} setSelectedChantier={setSelectedChantier} setSelectedDevis={setSelectedDevis} isDark={isDark} modeDiscret={modeDiscret} createMode={createMode.client} setCreateMode={(v) => setCreateMode(p => ({...p, client: v}))} memos={memos} addMemo={addMemo} updateMemo={updateMemo} deleteMemo={deleteMemo} toggleMemo={toggleMemo} onImportClients={() => { setImportType('clients'); setShowImport(true); }} entreprise={entreprise} />}
-              {page === 'bibliotheque' && <BibliothequePrix isDark={isDark} couleur={couleur} setPage={setPage} devis={devis} addDevis={addDevis} />}
               {page === 'catalogue' && <Catalogue catalogue={catalogue} setCatalogue={setCatalogue} addCatalogueItem={addCatalogueItem} updateCatalogueItem={updateCatalogueItem} deleteCatalogueItem={deleteCatalogueItem} chantiers={chantiers} equipe={equipe} devis={devis} updateDevis={updateDevis} clients={clients} couleur={couleur} isDark={isDark} modeDiscret={modeDiscret} setPage={setPage} />}
               {page === 'ouvrages' && <BibliothequeOuvrages catalogue={catalogue} ouvragesProp={ouvrages} setOuvragesProp={setOuvrages} addOuvrage={dataAddOuvrage} updateOuvrage={dataUpdateOuvrage} deleteOuvrage={dataDeleteOuvrage} isDark={isDark} couleur={couleur} />}
               {page === 'signatures' && <FeatureGuard feature="signatures"><SignatureModule devis={devis} chantiers={chantiers} clients={clients} isDark={isDark} couleur={couleur} /></FeatureGuard>}

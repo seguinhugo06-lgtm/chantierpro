@@ -6,7 +6,7 @@ import {
   TrendingUp, TrendingDown, BarChart3, Layers, ClipboardList, ShoppingCart,
   Truck, History, DollarSign, Percent, Check, ChevronRight, Eye, Hash,
   PackagePlus, ArrowRightLeft, AlertCircle, FileSpreadsheet, Settings, RefreshCw,
-  Camera, Scan, FileText, Bell, BellOff, Zap, MoreHorizontal
+  Camera, Scan, FileText, Bell, BellOff, Zap, MoreHorizontal, Library
 } from 'lucide-react';
 import { useConfirm, useToast } from '../context/AppContext';
 import { generateId } from '../lib/utils';
@@ -17,6 +17,7 @@ import { usePermissions } from '../hooks/usePermissions';
 import { ReadOnlyBanner } from './ui/PermissionGate';
 import TabBar from './ui/TabBar';
 import PageHeader from './ui/PageHeader';
+import Bibliotheque from './bibliotheque/Bibliotheque';
 
 const BASE_CATEGORIES = ['Plomberie', 'Électricité', 'Maçonnerie', 'Carrelage', 'Peinture', 'Menuiserie', 'Matériaux', 'Isolation', 'Main d\'œuvre', 'Autre'];
 const UNITES = [
@@ -1506,6 +1507,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
       <TabBar
         tabs={[
           { key: 'catalogue', label: 'Articles', icon: Package, badge: catalogue.length },
+          { key: 'bibliotheque', label: 'Référentiel', icon: Library },
           { key: 'fournisseurs', label: 'Fournisseurs', icon: Truck, badge: fournisseurs.length },
           { key: 'mouvements', label: 'Mouvements', icon: ArrowRightLeft, badge: mouvements.length },
           { key: 'packs', label: 'Packs', icon: Layers, badge: packs.length },
@@ -1519,6 +1521,19 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
         isDark={isDark}
         couleur={couleur}
       />
+
+      {/* ====== RÉFÉRENTIEL (Bibliothèque d'ouvrages) TAB ====== */}
+      {activeTab === 'bibliotheque' && (
+        <Bibliotheque
+          isDark={isDark}
+          couleur={couleur}
+          setPage={setPage}
+          devis={devis}
+          updateDevis={updateDevis}
+          clients={clients}
+          showToast={showToast}
+        />
+      )}
 
       {/* ====== ARTICLES TAB ====== */}
       {activeTab === 'catalogue' && (
