@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, Suspense, lazy } from 'react';
 import { Plus, ArrowLeft, ArrowRight, Edit3, Trash2, Check, X, Camera, MapPin, Phone, Clock, Calendar, DollarSign, TrendingUp, TrendingDown, AlertTriangle, Package, Users, FileText, ChevronRight, ChevronDown, ChevronUp, Save, Image, StickyNote, CheckSquare, Square, MoreVertical, MoreHorizontal, Percent, Coins, Receipt, Banknote, PiggyBank, Target, BarChart3, CircleDollarSign, Wallet, MessageSquare, AlertCircle, ArrowUpRight, ArrowDownRight, UserCog, Download, Share2, ArrowUpDown, SortAsc, SortDesc, Building2, Zap, Sparkles, ShoppingCart, FolderOpen, Wifi, WifiOff, Sun, Cloud, CloudRain, Wind, Thermometer, GripVertical, CheckCircle, Copy, Archive, Search, Paperclip, Upload, Map, List, ClipboardList, CheckCircle2, Navigation, Mic, CalendarPlus, Moon, Shield } from 'lucide-react';
 import PageHeader from './ui/PageHeader';
+import StatusChip from './ui/StatusChip';
 
 const ChantierMap = lazy(() => import('./chantiers/ChantierMap'));
 const GanttView = lazy(() => import('./GanttView'));
@@ -3205,13 +3206,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
               return { text: `J-${d}`, color: isDark ? 'text-slate-300' : 'text-slate-500' };
             })();
             const statusLabel = ch.statut === 'en_cours' ? 'En cours' : ch.statut === 'termine' ? 'Terminé' : ch.statut === 'archive' ? 'Archivé' : 'Prospect';
-            const statusColor = ch.statut === 'en_cours'
-              ? (isDark ? 'bg-orange-900/50 text-orange-400' : 'bg-orange-100 text-orange-700')
-              : ch.statut === 'termine'
-              ? (isDark ? 'bg-emerald-900/50 text-emerald-400' : 'bg-emerald-100 text-emerald-700')
-              : ch.statut === 'archive'
-              ? (isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-200 text-slate-600')
-              : (isDark ? 'bg-blue-900/50 text-blue-400' : 'bg-blue-100 text-blue-700');
+            const statusHex = ch.statut === 'en_cours' ? couleur : ch.statut === 'termine' ? '#10b981' : ch.statut === 'archive' ? '#94a3b8' : '#3b82f6';
 
             // Task counts
             const allTasks = ch.taches || [];
@@ -3246,9 +3241,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                 </div>
                 {/* Row 1b: Badges */}
                 <div className="flex items-center gap-1.5 flex-wrap mb-1.5">
-                  <span className={`px-1.5 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${statusColor}`}>
-                    {statusLabel}
-                  </span>
+                  <StatusChip label={statusLabel} color={statusHex} dot isDark={isDark} />
                   {/* P3.9: Days countdown badge */}
                   {daysInfo && <span className={`text-xs font-bold ${daysInfo.color}`}>{daysInfo.text}</span>}
                   {ch.situations_data?.mode === 'situation' && (
