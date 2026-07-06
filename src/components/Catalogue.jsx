@@ -16,6 +16,7 @@ import { ALL_ARTICLES_BTP, CATEGORIES_METIERS, getSousCategories, getArticlesByS
 import { usePermissions } from '../hooks/usePermissions';
 import { ReadOnlyBanner } from './ui/PermissionGate';
 import TabBar from './ui/TabBar';
+import PageHeader from './ui/PageHeader';
 
 const BASE_CATEGORIES = ['Plomberie', 'Électricité', 'Maçonnerie', 'Carrelage', 'Peinture', 'Menuiserie', 'Matériaux', 'Isolation', 'Main d\'œuvre', 'Autre'];
 const UNITES = [
@@ -1430,16 +1431,13 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
   // ====== MAIN VIEW ======
   return (
     <div className="space-y-6 animate-page-enter">
-      {/* Header */}
-      <div className="flex justify-between items-center flex-wrap gap-4">
-        <div className="flex items-center gap-3">
-          {setPage && (
-            <button onClick={() => setPage('dashboard')} className={`p-2.5 rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}>
-              <ArrowLeft size={20} />
-            </button>
-          )}
-          <h1 className={`text-2xl font-bold ${textPrimary}`}>Catalogue ({catalogue.length})</h1>
-        </div>
+      {/* Header (design system) */}
+      <PageHeader
+        icon={Package}
+        title={`Catalogue (${catalogue.length})`}
+        isDark={isDark}
+        color={couleur}
+        action={
         <div className="flex gap-2 flex-wrap">
           <input type="file" ref={fileInputRef} accept=".csv,.txt" onChange={handleFileUpload} className="hidden" />
           {/* Desktop: 3 icon buttons */}
@@ -1501,7 +1499,8 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
           </button>
           )}
         </div>
-      </div>
+        }
+      />
 
       {/* Tab Navigation */}
       <TabBar
