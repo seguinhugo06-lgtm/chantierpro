@@ -16,6 +16,7 @@ import { generateId } from '../lib/utils';
 import { useFormValidation, employeeSchema, email as emailValidator, phone as phoneValidator } from '../lib/validation';
 import { usePermissions } from '../hooks/usePermissions';
 import { ReadOnlyBanner } from './ui/PermissionGate';
+import PageHeader from './ui/PageHeader';
 import TabBar from './ui/TabBar';
 
 // Lazy-load optional heavy dependencies to prevent crashes
@@ -1315,23 +1316,13 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
   // Empty state
   if (equipe.length === 0) return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div className="flex items-center gap-3">
-          {setPage && (
-            <button
-              onClick={() => setPage('dashboard')}
-              className={`p-2 rounded-xl min-w-[40px] min-h-[40px] flex items-center justify-center transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}
-              aria-label="Retour au tableau de bord"
-              title="Retour au tableau de bord"
-            >
-              <ArrowLeft size={20} />
-            </button>
-          )}
-          <h1 className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>Équipe</h1>
-          {!isSousTraitants && <span className="flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium" style={{ background: `${couleur}20`, color: couleur }}>{employesList.length} membre{employesList.length > 1 ? 's' : ''}</span>}
-        </div>
-
-        {/* Toggle Équipe / Sous-traitants */}
+      <PageHeader
+        icon={HardHat}
+        title="Équipe"
+        subtitle="Gestion de votre équipe et sous-traitants"
+        isDark={isDark}
+        color={couleur}
+        action={
         <div className={`flex p-1 rounded-xl ${isDark ? 'bg-slate-800' : 'bg-slate-100'}`}>
           <button
             onClick={() => { setViewMode('employes'); setTab('overview'); }}
@@ -1350,7 +1341,8 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
             <span className={`min-w-[20px] h-5 px-1.5 rounded-full text-xs font-bold flex items-center justify-center ${isSousTraitants ? 'bg-white/20 text-white' : isDark ? 'bg-slate-700 text-slate-400' : 'bg-slate-200 text-slate-600'}`}>{sousTraitantsList.length}</span>
           </button>
         </div>
-      </div>
+        }
+      />
 
       <div className={`${cardBg} rounded-2xl border overflow-hidden`}>
         <div className="p-8 sm:p-12 text-center relative" style={{ background: `linear-gradient(135deg, ${couleur}15, ${couleur}05)` }}>
@@ -1427,22 +1419,14 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
       )}
 
       {/* Header */}
-      <div className="flex justify-between items-center flex-wrap gap-4">
-        <div className="flex items-center gap-3">
-          {setPage && (
-            <button
-              onClick={() => setPage('dashboard')}
-              className={`p-2 rounded-xl min-w-[40px] min-h-[40px] flex items-center justify-center transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}
-              aria-label="Retour au tableau de bord"
-              title="Retour au tableau de bord"
-            >
-              <ArrowLeft size={20} />
-            </button>
-          )}
-          <div>
-            <h1 className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>Équipe</h1>
-            <p className={`text-sm ${textMuted} hidden sm:block`}>Gestion de votre équipe et sous-traitants</p>
-          </div>
+      <PageHeader
+        icon={HardHat}
+        title="Équipe"
+        subtitle="Gestion de votre équipe et sous-traitants"
+        isDark={isDark}
+        color={couleur}
+        action={
+        <div className="flex gap-2 flex-wrap items-center">
           {/* Offline indicator — only shown when disconnected */}
           {!isOnline && (
             <span
@@ -1457,8 +1441,6 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
               Hors ligne
             </span>
           )}
-        </div>
-        <div className="flex gap-2">
           {/* Équipe / Sous-traitants toggle */}
           <div className={`flex rounded-xl overflow-hidden border ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
             <button
@@ -1500,7 +1482,8 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
           </button>
           )}
         </div>
-      </div>
+        }
+      />
 
       {/* Visual Stats Dashboard — only for employes mode */}
       {!isSousTraitants && (<div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 animate-stagger">
