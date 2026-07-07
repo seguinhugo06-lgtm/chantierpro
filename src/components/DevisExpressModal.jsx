@@ -3,10 +3,13 @@
  * Flow: Métier → Modèle → Personnalisation → Création
  */
 
-import React, { useState, useMemo, useEffect } from 'react';
-import { X, ChevronLeft, ChevronRight, Search, Check, FileText, Euro, TrendingUp, Minus, Plus, Trash2, Edit3, FolderOpen, UserPlus, Loader2, Star, Clock } from 'lucide-react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { X, ChevronLeft, ChevronRight, Search, Check, FileText, Euro, TrendingUp, Minus, Plus, Trash2, Edit3, FolderOpen, UserPlus, Loader2, Star, Clock, RotateCcw } from 'lucide-react';
 import { MODELES_DEVIS, getMetiersWithModeles, getModelesByMetier, prepareModeleLignes, calculateModeleTotal, calculateModeleMarge, searchModeles } from '../lib/data/modeles-devis';
 import { formatClientName } from '../lib/formatters';
+
+// Clé de sauvegarde du brouillon Express (distincte de celle du wizard)
+const EXPRESS_DRAFT_KEY = 'batigesti_devis_express_draft';
 import TemplateSelector from './TemplateSelector';
 import QuickClientModal from './QuickClientModal';
 
@@ -39,6 +42,7 @@ export default function DevisExpressModal({
   const [isCreating, setIsCreating] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [creationError, setCreationError] = useState(null);
+  const [draftRestored, setDraftRestored] = useState(false);
 
   // Theme classes
   const bgMain = isDark ? 'bg-slate-900' : 'bg-white';
@@ -49,6 +53,65 @@ export default function DevisExpressModal({
   const textMuted = isDark ? 'text-slate-400' : 'text-slate-500';
   const borderColor = isDark ? 'border-slate-700' : 'border-slate-200';
   const inputBg = isDark ? 'bg-slate-800 border-slate-600' : 'bg-white border-slate-300';
+
+  // Restaure le brouillon Express à l'ouverture (le travail n'est jamais perdu)
+  useEffect(() => {
+    if (!isOpen) return;
+    try {
+      const saved = localStorage.getItem(EXPRESS_DRAFT_KEY);
+      if (!saved) return;
+      const draft = JSON.parse(saved);
+      if (!draft || !(draft.lignes?.length > 0)) return;
+      setSelectedMetier(draft.selectedMetier || null);
+      setSelectedModele(draft.selectedModele || null);
+      setSelectedClient(draft.selectedClientId ? (clients.find(c => c.id === draft.selectedClientId) || null) : null);
+      setLignes(draft.lignes || []);
+      setNotes(draft.notes || '');
+      setRemise(draft.remise || 0);
+      setModeleQtys(draft.modeleQtys || {});
+      setStep(draft.step || 3);
+      setDraftRestored(true);
+    } catch { /* draft illisible — on ignore */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
+
+  // Sauvegarde automatique (débounce) tant qu'il y a du travail en cours
+  useEffect(() => {
+    if (!isOpen || lignes.length === 0) return;
+    const t = setTimeout(() => {
+      try {
+        localStorage.setItem(EXPRESS_DRAFT_KEY, JSON.stringify({
+          step,
+          selectedMetier: selectedMetier ? { id: selectedMetier.id, nom: selectedMetier.nom } : null,
+          selectedModele: selectedModele ? { id: selectedModele.id, nom: selectedModele.nom, description: selectedModele.description } : null,
+          selectedClientId: selectedClient?.id || null,
+          lignes,
+          notes,
+          remise,
+          modeleQtys,
+        }));
+      } catch { /* quota dépassé / mode privé — non bloquant */ }
+    }, 500);
+    return () => clearTimeout(t);
+  }, [isOpen, step, selectedMetier, selectedModele, selectedClient, lignes, notes, remise, modeleQtys]);
+
+  const clearExpressDraft = useCallback(() => {
+    try { localStorage.removeItem(EXPRESS_DRAFT_KEY); } catch { /* ignore */ }
+  }, []);
+
+  // « Recommencer » : jette le brouillon et repart de zéro (sans fermer)
+  const handleDiscardDraft = () => {
+    clearExpressDraft();
+    setDraftRestored(false);
+    setStep(1);
+    setSelectedMetier(null);
+    setSelectedModele(null);
+    setSelectedClient(null);
+    setLignes([]);
+    setNotes('');
+    setRemise(0);
+    setModeleQtys({});
+  };
 
   // Reset state
   const handleClose = () => {
@@ -67,6 +130,7 @@ export default function DevisExpressModal({
     setIsCreating(false);
     setShowSuccess(false);
     setCreationError(null);
+    setDraftRestored(false);
     onClose();
   };
 
@@ -206,7 +270,8 @@ export default function DevisExpressModal({
         return;
       }
 
-      // Success — show checkmark animation then close
+      // Success — brouillon consommé, on l'efface + animation puis fermeture
+      clearExpressDraft();
       setIsCreating(false);
       setShowSuccess(true);
 
@@ -307,6 +372,22 @@ export default function DevisExpressModal({
             ))}
           </div>
         </div>
+
+        {/* Brouillon restauré */}
+        {draftRestored && (
+          <div className={`px-4 py-2.5 border-b ${borderColor} flex items-center justify-between gap-3 ${isDark ? 'bg-slate-800' : 'bg-amber-50'}`}>
+            <div className="flex items-center gap-2 min-w-0">
+              <Clock size={16} style={{ color: couleur }} className="flex-shrink-0" />
+              <p className={`text-xs sm:text-sm truncate ${textSecondary}`}>Brouillon restauré — reprenez où vous vous étiez arrêté.</p>
+            </div>
+            <button
+              onClick={handleDiscardDraft}
+              className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-lg flex-shrink-0 ${bgHover} ${textMuted}`}
+            >
+              <RotateCcw size={14} /> Recommencer
+            </button>
+          </div>
+        )}
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-4">
