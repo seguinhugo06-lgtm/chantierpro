@@ -12,12 +12,20 @@ button, a, input, select, textarea {
   transition: all 0.2s ease;
 }
 
-/* Better focus states for accessibility */
-button:focus-visible, 
-input:focus-visible, 
-select:focus-visible, 
+/* Better focus states for accessibility (WCAG 2.4.7)
+   Fixed accent colour + offset so the ring is ALWAYS visible — `currentColor`
+   was invisible when text matched the background (e.g. white text on an accent
+   button in light mode). Also covers links and role=button, previously missed.
+   Components using ui/ primitives override this with `focus-visible:outline-none
+   + ring-*`, so there is no double ring. */
+button:focus-visible,
+a:focus-visible,
+[role="button"]:focus-visible,
+[tabindex]:not([tabindex="-1"]):focus-visible,
+input:focus-visible,
+select:focus-visible,
 textarea:focus-visible {
-  outline: 2px solid currentColor;
+  outline: 2px solid #f97316;
   outline-offset: 2px;
 }
 
