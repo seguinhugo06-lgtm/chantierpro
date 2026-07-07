@@ -37,7 +37,6 @@ import {
   Wallet,
 } from 'lucide-react';
 
-import { AreaChart, Area, ResponsiveContainer, XAxis, Tooltip } from 'recharts';
 import { useData } from '../context/DataContext';
 import { useToast } from '../context/AppContext';
 import { usePermissions } from '../hooks/usePermissions';
@@ -680,27 +679,33 @@ export default function Dashboard({
             {/* CA 6 mois */}
             <div className={`rounded-2xl p-4 sm:p-5 ${cardCls}`}>
               <p className={`text-xs font-medium mb-3 ${subText}`}>CA 6 derniers mois</p>
-              {computed.sparkData.some(m => m.ca > 0) ? (
-                <div style={{ height: 120 }}>
-                  <ResponsiveContainer width="100%" height={120}>
-                    <AreaChart data={computed.sparkData}>
+              {computed.sparkData.some(m => m.ca > 0) ? (() => {
+                // Sparkline SVG inline (léger — évite de charger recharts sur l'accueil)
+                const data = computed.sparkData;
+                const max = Math.max(...data.map(d => d.ca), 1);
+                const W = 300, H = 96, pad = 3, n = data.length;
+                const px = i => pad + (i * (W - 2 * pad)) / (n - 1);
+                const py = v => H - pad - (v / max) * (H - 2 * pad - 4);
+                const line = data.map((d, i) => `${px(i)},${py(d.ca)}`).join(' ');
+                const area = `${pad},${H - pad} ${line} ${W - pad},${H - pad}`;
+                return (
+                  <div>
+                    <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={110} preserveAspectRatio="none" role="img" aria-label="Chiffre d'affaires, 6 derniers mois">
                       <defs>
-                        <linearGradient id="caGradNew" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor={couleur} stopOpacity={0.3} />
-                          <stop offset="100%" stopColor={couleur} stopOpacity={0} />
+                        <linearGradient id="caSpark" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor={couleur} stopOpacity="0.28" />
+                          <stop offset="100%" stopColor={couleur} stopOpacity="0" />
                         </linearGradient>
                       </defs>
-                      <Area type="monotone" dataKey="ca" stroke={couleur} strokeWidth={2} fill="url(#caGradNew)" dot={{ r: 3, fill: couleur }} />
-                      <XAxis dataKey="label" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-                      <Tooltip content={({ active, payload }) => active && payload?.length ? (
-                        <div className={`rounded-lg shadow-lg px-3 py-2 text-xs ${isDark ? 'bg-slate-700 text-white' : 'bg-white text-slate-900 border border-slate-200'}`}>
-                          <p className="font-bold">{new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(payload[0].value)}</p>
-                        </div>
-                      ) : null} />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-              ) : (
+                      <polygon points={area} fill="url(#caSpark)" />
+                      <polyline points={line} fill="none" stroke={couleur} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+                    </svg>
+                    <div className="flex justify-between mt-1.5">
+                      {data.map((d, i) => <span key={i} className={`text-[10px] ${subText}`}>{d.label}</span>)}
+                    </div>
+                  </div>
+                );
+              })() : (
                 <div className={`flex items-center justify-center text-xs ${subText}`} style={{ height: 120 }}>Pas encore de chiffre d'affaires</div>
               )}
             </div>
