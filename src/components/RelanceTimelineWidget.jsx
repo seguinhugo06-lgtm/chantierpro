@@ -83,6 +83,11 @@ export default function RelanceTimelineWidget({
   const textMuted = isDark ? 'text-slate-400' : 'text-slate-500';
   const cardBg = isDark ? 'bg-slate-800/50' : 'bg-white';
   const borderColor = isDark ? 'border-slate-700' : 'border-slate-200';
+  // Anneau de focus clavier visible (a11y — WCAG 2.4.7), cohérent avec ui/
+  const focusRing = cn(
+    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2',
+    isDark ? 'focus-visible:ring-offset-slate-800' : 'focus-visible:ring-offset-white'
+  );
 
   const showMoney = (v) => modeDiscret ? '***' : (formatMoneyProp ? formatMoneyProp(v) : `${v} €`);
 
@@ -159,8 +164,11 @@ export default function RelanceTimelineWidget({
             <button
               type="button"
               onClick={() => setShowExcludeMenu(!showExcludeMenu)}
+              aria-haspopup="menu"
+              aria-expanded={showExcludeMenu}
               className={cn(
-                'flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-colors',
+                'flex items-center gap-1 px-2 py-1 min-h-[32px] rounded-lg text-xs font-medium transition-colors',
+                focusRing,
                 isDark ? 'text-slate-400 hover:bg-slate-700' : 'text-slate-500 hover:bg-slate-100'
               )}
             >
@@ -169,32 +177,49 @@ export default function RelanceTimelineWidget({
               <ChevronDown className="w-3 h-3" />
             </button>
             {showExcludeMenu && (
-              <div className={cn(
-                'absolute right-0 top-full mt-1 w-52 rounded-lg border shadow-lg z-20 py-1',
-                isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'
-              )}>
-                {[
-                  { scope: 'document', reason: 'manual', label: 'Exclure ce document' },
-                  { scope: 'client', reason: 'manual', label: 'Exclure ce client' },
-                  { scope: 'document', reason: 'arrangement', label: 'Arrangement de paiement' },
-                  { scope: 'document', reason: 'dispute', label: 'Litige en cours' },
-                ].map(opt => (
-                  <button
-                    key={`${opt.scope}-${opt.reason}`}
-                    type="button"
-                    onClick={() => {
-                      onExclude(opt.scope, opt.reason);
-                      setShowExcludeMenu(false);
-                    }}
-                    className={cn(
-                      'w-full text-left px-3 py-2 text-xs transition-colors',
-                      isDark ? 'text-slate-300 hover:bg-slate-700' : 'text-slate-700 hover:bg-slate-50'
-                    )}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
+              <>
+                {/* Backdrop : ferme au clic extérieur (a11y — dismiss) */}
+                <button
+                  type="button"
+                  aria-hidden="true"
+                  tabIndex={-1}
+                  onClick={() => setShowExcludeMenu(false)}
+                  className="fixed inset-0 z-10 cursor-default"
+                />
+                <div
+                  role="menu"
+                  aria-label="Exclure des relances"
+                  onKeyDown={(e) => { if (e.key === 'Escape') setShowExcludeMenu(false); }}
+                  className={cn(
+                    'absolute right-0 top-full mt-1 w-52 rounded-lg border shadow-lg z-20 py-1',
+                    isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'
+                  )}
+                >
+                  {[
+                    { scope: 'document', reason: 'manual', label: 'Exclure ce document' },
+                    { scope: 'client', reason: 'manual', label: 'Exclure ce client' },
+                    { scope: 'document', reason: 'arrangement', label: 'Arrangement de paiement' },
+                    { scope: 'document', reason: 'dispute', label: 'Litige en cours' },
+                  ].map(opt => (
+                    <button
+                      key={`${opt.scope}-${opt.reason}`}
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        onExclude(opt.scope, opt.reason);
+                        setShowExcludeMenu(false);
+                      }}
+                      className={cn(
+                        'w-full text-left px-3 py-2 min-h-[40px] text-xs transition-colors',
+                        focusRing,
+                        isDark ? 'text-slate-300 hover:bg-slate-700' : 'text-slate-700 hover:bg-slate-50'
+                      )}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </>
             )}
           </div>
         )}
@@ -328,7 +353,10 @@ export default function RelanceTimelineWidget({
             <button
               type="button"
               onClick={onSendNow}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+              className={cn(
+                'flex items-center gap-1.5 px-3 py-1.5 min-h-[40px] sm:min-h-[32px] rounded-lg text-xs font-medium transition-colors',
+                focusRing
+              )}
               style={{ backgroundColor: `${couleur}15`, color: couleur }}
             >
               <Zap className="w-3.5 h-3.5" />
@@ -340,7 +368,8 @@ export default function RelanceTimelineWidget({
               type="button"
               onClick={onSkipToNext}
               className={cn(
-                'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors',
+                'flex items-center gap-1.5 px-3 py-1.5 min-h-[40px] sm:min-h-[32px] rounded-lg text-xs font-medium transition-colors',
+                focusRing,
                 isDark ? 'text-slate-400 hover:bg-slate-700' : 'text-slate-500 hover:bg-slate-100'
               )}
             >
