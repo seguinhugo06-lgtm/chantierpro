@@ -1647,10 +1647,10 @@ export default function App() {
             {/* User avatar */}
             <button
               onClick={() => setPage('profil')}
-              className="w-11 h-11 rounded-xl flex items-center justify-center text-white font-semibold text-sm transition-all hover:scale-105 hover:shadow-lg"
-              style={{background: couleur}}
-              title={user?.email || 'Mon profil'}
-              aria-label="Mon profil"
+              className="w-11 h-11 rounded-full flex items-center justify-center font-semibold text-sm transition-all hover:scale-105"
+              style={{ background: `${couleur}22`, color: couleur }}
+              title={user?.email || 'Mon compte'}
+              aria-label="Mon compte"
             >
               {user?.email?.charAt(0).toUpperCase() || 'U'}
             </button>

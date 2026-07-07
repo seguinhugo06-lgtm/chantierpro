@@ -437,7 +437,7 @@ export default function Dashboard({
   const onboardingSteps = [
     { key: 'profil', label: 'Configurer mon entreprise', done: computed.profilPct >= 80, action: () => setPage('settings') },
     { key: 'client', label: 'Ajouter mon premier client', done: (clients?.length || 0) > 0, action: () => setPage('clients') },
-    { key: 'devis', label: 'Creer mon premier devis', done: (devis?.length || 0) > 0, action: () => { setCreateMode?.(p => ({ ...p, devis: true })); setPage('devis'); } },
+    { key: 'devis', label: 'Créer mon premier devis', done: (devis?.length || 0) > 0, action: () => { setCreateMode?.(p => ({ ...p, devis: true })); setPage('devis'); } },
     { key: 'relances', label: 'Activer les relances automatiques', done: !!(entreprise?.relanceConfig?.enabled), action: () => { try { localStorage.setItem('cp_settings_tab', 'relances'); } catch { /* noop */ } setPage('settings'); } },
   ];
   const onboardingDone = onboardingSteps.filter(s => s.done).length;
@@ -446,9 +446,9 @@ export default function Dashboard({
   // Pipeline compact
   const pl = computed.pipeline;
   const pipeRows = [
-    { label: 'Envoyes', count: pl.envoye.count, color: isDark ? '#60a5fa' : '#3b82f6' },
-    { label: 'Signes', count: pl.signe.count + pl.facture.count + pl.paye.count, color: couleur },
-    { label: 'Factures', count: pl.facture.count + pl.paye.count, color: isDark ? '#34d399' : '#10b981' },
+    { label: 'Envoyés', count: pl.envoye.count, color: isDark ? '#60a5fa' : '#3b82f6' },
+    { label: 'Signés', count: pl.signe.count + pl.facture.count + pl.paye.count, color: couleur },
+    { label: 'Facturés', count: pl.facture.count + pl.paye.count, color: isDark ? '#34d399' : '#10b981' },
   ];
   const pipeMax = Math.max(1, ...pipeRows.map(r => r.count));
   const activeChantiers = computed.chantiersActifs;
@@ -495,7 +495,7 @@ export default function Dashboard({
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <Rocket size={18} style={{ color: couleur }} />
-              <h3 className={`text-sm font-bold ${heroText}`}>Demarrage rapide</h3>
+              <h3 className={`text-sm font-bold ${heroText}`}>Démarrage rapide</h3>
               <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>{onboardingDone}/{onboardingSteps.length}</span>
             </div>
             <button
@@ -547,7 +547,7 @@ export default function Dashboard({
             >
               <div className="flex items-center gap-2 mb-1.5">
                 <Wallet className="w-4 h-4" style={{ color: couleur }} />
-                <span className={`text-xs font-medium ${subText}`}>A encaisser</span>
+                <span className={`text-xs font-medium ${subText}`}>À encaisser</span>
               </div>
               <div className={`text-2xl sm:text-[28px] font-bold leading-none ${heroText}`}>{fmt(computed.aEncaisser, modeDiscret)}</div>
               {computed.retard > 0 ? (
@@ -568,7 +568,7 @@ export default function Dashboard({
             >
               <div className="flex items-center gap-2 mb-1.5">
                 <TrendingUp className="w-4 h-4" style={{ color: couleur }} />
-                <span className={`text-xs font-medium ${subText}`}>Encaisse ce mois</span>
+                <span className={`text-xs font-medium ${subText}`}>Encaissé ce mois</span>
               </div>
               <div className={`text-2xl sm:text-[28px] font-bold leading-none ${heroText}`}>{fmt(computed.caCeMois, modeDiscret)}</div>
               <div className={`mt-2 text-xs ${subText}`}>
@@ -587,16 +587,16 @@ export default function Dashboard({
                 <span className={`text-xs font-medium ${subText}`}>Devis en attente</span>
               </div>
               <div className={`text-2xl sm:text-[28px] font-bold leading-none ${heroText}`}>{fmt(computed.devisEnAttente.reduce((s, d) => s + (d.total_ttc || 0), 0), modeDiscret)}</div>
-              <div className={`mt-2 text-xs ${subText}`}>{computed.devisEnAttente.length} devis envoye{computed.devisEnAttente.length > 1 ? 's' : ''}</div>
+              <div className={`mt-2 text-xs ${subText}`}>{computed.devisEnAttente.length} devis envoyé{computed.devisEnAttente.length > 1 ? 's' : ''}</div>
             </button>
           </div>
         </section>
       )}
 
       {/* ===== A FAIRE AUJOURD'HUI : le cockpit ===== */}
-      <section aria-label="A faire aujourd'hui">
+      <section aria-label="À faire aujourd'hui">
         <div className="flex items-center justify-between mb-2.5 px-0.5">
-          <h2 className={`text-sm font-bold ${heroText}`}>A faire aujourd'hui</h2>
+          <h2 className={`text-sm font-bold ${heroText}`}>À faire aujourd'hui</h2>
           {hasAnyAction && (
             <span className={`text-xs ${subText}`}>{relancesDue + allActions.length} action{(relancesDue + allActions.length) > 1 ? 's' : ''}</span>
           )}
@@ -610,8 +610,8 @@ export default function Dashboard({
                 <BellRing className="w-5 h-5 text-red-500" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className={`text-sm font-semibold ${heroText}`}>{relancesDue} relance{relancesDue > 1 ? 's' : ''} a envoyer</p>
-                <p className="text-xs text-red-500/90 truncate">{relancesRisk > 0 ? `${fmt(relancesRisk, modeDiscret)} concernes` : 'impayes + devis sans reponse'}</p>
+                <p className={`text-sm font-semibold ${heroText}`}>{relancesDue} relance{relancesDue > 1 ? 's' : ''} à envoyer</p>
+                <p className="text-xs text-red-500/90 truncate">{relancesRisk > 0 ? `${fmt(relancesRisk, modeDiscret)} concernés` : 'impayés + devis sans réponse'}</p>
               </div>
               <button
                 type="button"
@@ -666,8 +666,8 @@ export default function Dashboard({
               <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-3" style={{ background: `${couleur}12` }}>
                 <CheckCircle className="w-6 h-6" style={{ color: couleur }} />
               </div>
-              <p className={`text-sm font-semibold ${heroText}`}>Tout est a jour</p>
-              <p className={`text-xs mt-0.5 ${subText}`}>Rien a faire dans l'immediat. Beau travail !</p>
+              <p className={`text-sm font-semibold ${heroText}`}>Tout est à jour</p>
+              <p className={`text-xs mt-0.5 ${subText}`}>Rien à faire dans l'immédiat. Beau travail !</p>
             </div>
           )}
         </div>

@@ -39,31 +39,32 @@ export default function KPICard({
   return (
     <Comp
       onClick={onClick}
-      className={`group relative w-full text-left rounded-2xl border p-4 overflow-hidden transition-all duration-200 ${cardBg} ${
+      className={`group relative w-full text-left rounded-xl sm:rounded-2xl border p-3 sm:p-4 overflow-hidden transition-all duration-200 ${cardBg} ${
         onClick ? 'hover:-translate-y-0.5 hover:shadow-lg cursor-pointer' : ''
       }`}
       style={{ borderColor: isDark ? `${c}40` : `${c}33` }}
     >
       {/* Wash coloré discret (énergie) */}
       <div
-        className="pointer-events-none absolute -right-6 -top-6 w-24 h-24 rounded-full opacity-60"
+        className="pointer-events-none absolute -right-6 -top-6 w-16 h-16 sm:w-24 sm:h-24 rounded-full opacity-60"
         style={{ background: `${c}14` }}
         aria-hidden="true"
       />
 
-      <div className="relative flex items-center justify-between mb-3">
+      <div className="relative flex items-center justify-between mb-2 sm:mb-3">
         {Icon && (
           <div
-            className="w-9 h-9 rounded-xl flex items-center justify-center"
+            className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl flex items-center justify-center"
             style={{ background: `${c}1f`, color: c }}
             aria-hidden="true"
           >
-            <Icon size={18} />
+            <Icon size={16} className="sm:hidden" />
+            <Icon size={18} className="hidden sm:block" />
           </div>
         )}
         {trend && trendValue && (
           <span
-            className="text-xs font-semibold px-2 py-0.5 rounded-full"
+            className="text-[10px] sm:text-xs font-semibold px-1.5 sm:px-2 py-0.5 rounded-full"
             style={
               trend === 'up'
                 ? { background: '#10b98120', color: isDark ? '#34d399' : '#059669' }
@@ -75,9 +76,9 @@ export default function KPICard({
         )}
       </div>
 
-      <p className={`relative text-2xl sm:text-3xl font-bold leading-none ${textPrimary}`}>{value}</p>
-      <p className={`relative text-xs font-medium mt-2 ${textSecondary}`}>{label}</p>
-      {sublabel && <p className={`relative text-xs mt-0.5 ${textSecondary}`}>{sublabel}</p>}
+      <p className={`relative text-xl sm:text-3xl font-bold leading-none truncate ${textPrimary}`}>{value}</p>
+      <p className={`relative text-[11px] sm:text-xs font-medium mt-1.5 sm:mt-2 ${textSecondary}`}>{label}</p>
+      {sublabel && <p className={`relative text-[10px] sm:text-xs mt-0.5 truncate ${textSecondary}`}>{sublabel}</p>}
     </Comp>
   );
 }

@@ -4196,43 +4196,25 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           </button>
         </div>
 
-        {/* Template Options */}
-        <div className="grid sm:grid-cols-2 gap-3">
-          {/* Smart Template Wizard - Full guided flow */}
-          <button
-            onClick={() => setShowSmartWizard(true)}
-            className={`p-4 rounded-xl border-2 flex items-center gap-3 transition-all hover:shadow-lg group text-left ${isDark ? 'border-orange-500/50 hover:border-orange-400 bg-gradient-to-r from-orange-900/20 to-amber-900/20' : 'border-orange-300 hover:border-orange-400 bg-gradient-to-r from-orange-50 to-amber-50'}`}
-          >
-            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center bg-gradient-to-br from-orange-500 to-red-500 group-hover:scale-110 transition-transform flex-shrink-0">
-              <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className={`font-semibold ${textPrimary} text-sm sm:text-base`}>Devis Express</p>
-              <p className={`text-xs sm:text-sm ${textMuted}`}>Devis complet en 2 clics</p>
-            </div>
-            <ChevronRight size={18} className={`${textMuted} group-hover:translate-x-1 transition-transform flex-shrink-0`} />
-          </button>
+        {/* Chemin rapide : Devis Express (guidé, plein largeur) */}
+        <button
+          onClick={() => setShowSmartWizard(true)}
+          className={`w-full p-4 rounded-xl border-2 flex items-center gap-3 transition-all hover:shadow-lg group text-left ${isDark ? 'border-orange-500/50 hover:border-orange-400 bg-gradient-to-r from-orange-900/20 to-amber-900/20' : 'border-orange-300 hover:border-orange-400 bg-gradient-to-r from-orange-50 to-amber-50'}`}
+        >
+          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center bg-gradient-to-br from-orange-500 to-red-500 group-hover:scale-110 transition-transform flex-shrink-0">
+            <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className={`font-semibold ${textPrimary} text-sm sm:text-base`}>Devis Express</p>
+            <p className={`text-xs sm:text-sm ${textMuted}`}>Le plus rapide — devis guidé en 2 clics</p>
+          </div>
+          <ChevronRight size={18} className={`${textMuted} group-hover:translate-x-1 transition-transform flex-shrink-0`} />
+        </button>
 
-          {/* Load Template - Add lines to current form */}
-          <button
-            onClick={() => setShowTemplateSelector(true)}
-            className={`p-4 rounded-xl border-2 flex items-center gap-3 transition-all hover:shadow-lg group text-left ${isDark ? 'border-blue-500/50 hover:border-blue-400 bg-gradient-to-r from-blue-900/20 to-indigo-900/20' : 'border-blue-300 hover:border-blue-400 bg-gradient-to-r from-blue-50 to-indigo-50'}`}
-          >
-            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center bg-gradient-to-br from-blue-500 to-indigo-500 group-hover:scale-110 transition-transform flex-shrink-0">
-              <FileText className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className={`font-semibold ${textPrimary} text-sm sm:text-base`}>Charger un modèle</p>
-              <p className={`text-xs sm:text-sm ${textMuted}`}>Ajouter des lignes métier</p>
-            </div>
-            <ChevronRight size={18} className={`${textMuted} group-hover:translate-x-1 transition-transform flex-shrink-0`} />
-          </button>
-        </div>
-
-        {/* Modèles métier prédéfinis */}
+        {/* Ou partir d'un modèle métier */}
         <div>
-          <p className={`text-xs font-medium mb-2 ${textMuted}`}>Modèles métier</p>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <p className={`text-xs font-medium mb-2 ${textMuted}`}>Ou partir d'un modèle</p>
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
             {[
               { label: 'Rénovation SDB', icon: Droplets, sections: [{ titre: 'Démolition', items: [{ description: 'Dépose sanitaires existants' }, { description: 'Démolition carrelage mural et sol' }] }, { titre: 'Plomberie', items: [{ description: 'Alimentation eau chaude/froide' }, { description: 'Évacuation' }] }, { titre: 'Carrelage', items: [{ description: 'Pose carrelage sol' }, { description: 'Pose faïence murale' }] }, { titre: 'Sanitaires', items: [{ description: 'Pose douche italienne' }, { description: 'Pose meuble vasque' }, { description: 'Pose WC suspendu' }] }] },
               { label: 'Peinture', icon: Paintbrush, sections: [{ titre: 'Préparation', items: [{ description: 'Protection sols et meubles' }, { description: 'Lessivage murs' }, { description: 'Rebouchage fissures' }] }, { titre: 'Peinture', items: [{ description: 'Peinture murs 2 couches' }, { description: 'Peinture plafond' }, { description: 'Peinture boiseries' }] }] },
@@ -4264,13 +4246,21 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                 <p className={`text-xs font-medium ${textPrimary}`}>{tpl.label}</p>
               </button>
             ))}
+            {/* Accès au sélecteur de modèles complet (bibliothèque + enregistrés) */}
+            <button
+              onClick={() => setShowTemplateSelector(true)}
+              className={`p-3 rounded-xl border border-dashed text-center transition-all hover:shadow-md ${isDark ? 'border-slate-600 hover:border-slate-500 bg-slate-800' : 'border-slate-300 hover:border-slate-400 bg-white'}`}
+            >
+              <FileText size={20} className={`mx-auto mb-1 ${textMuted}`} />
+              <p className={`text-xs font-medium ${textMuted}`}>Autres modèles</p>
+            </button>
           </div>
         </div>
 
         <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6 space-y-4 sm:space-y-6`}>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
             <div><label className={`block text-sm mb-1 ${textPrimary}`}>Type</label><select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.type} onChange={e => setForm(p => ({...p, type: e.target.value}))}><option value="devis">Devis</option><option value="facture">Facture</option></select></div>
-            <div><label className={`block text-sm mb-1 ${textPrimary}`}>Client *</label><div className="flex gap-2"><select className={`flex-1 px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.clientId} onChange={e => setForm(p => ({...p, clientId: e.target.value}))}><option value="">Choisir...</option>{clients.map(c => <option key={c.id} value={c.id}>{c.nom}</option>)}</select><button onClick={() => setShowClientModal(true)} className="px-3 py-2 rounded-xl min-h-[44px] flex items-center justify-center hover:shadow-md transition-all" style={{background: `${couleur}20`, color: couleur}}><Plus size={18} /></button></div></div>
+            <div><label className={`block text-sm mb-1 ${textPrimary}`}>Client *</label><div className="flex gap-2"><select className={`flex-1 min-w-0 px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.clientId} onChange={e => setForm(p => ({...p, clientId: e.target.value}))}><option value="">Choisir...</option>{clients.map(c => <option key={c.id} value={c.id}>{c.nom}</option>)}</select><button onClick={() => setShowClientModal(true)} aria-label="Nouveau client" title="Nouveau client" className="px-3 py-2 rounded-xl min-h-[44px] flex items-center justify-center flex-shrink-0 hover:shadow-md transition-all" style={{background: `${couleur}20`, color: couleur}}><Plus size={18} /></button></div></div>
             <div><label className={`block text-sm mb-1 ${textPrimary}`}>Chantier</label><select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.chantierId} onChange={e => setForm(p => ({...p, chantierId: e.target.value}))}><option value="">Aucun</option>{chantiers.map(c => <option key={c.id} value={c.id}>{c.nom}</option>)}</select></div>
             <div><label className={`block text-sm mb-1 ${textPrimary}`}>Date</label><input type="date" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.date} onChange={e => setForm(p => ({...p, date: e.target.value}))} /></div>
           </div>
