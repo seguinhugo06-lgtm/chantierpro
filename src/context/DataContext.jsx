@@ -10,6 +10,7 @@ import { createSnapshot } from '../lib/snapshotService';
 import { logger } from '../lib/logger';
 import { queueMutation } from '../lib/offline/sync';
 import { toast } from '../stores/toastStore';
+import { celebrateMilestone } from '../lib/celebrate';
 
 /**
  * DataContext - Global data state (clients, devis, chantiers, etc.)
@@ -597,6 +598,17 @@ export function DataProvider({ children, initialData = {} }) {
       // Auto-snapshot on status changes (envoyé, signé, facturé)
       if (isStatusChange && ['envoye', 'accepte', 'signe', 'acompte_facture', 'facture'].includes(data.statut)) {
         _snapshot(sb, { entityType: 'devis', entityId: id, data: { ...oldDevis, ...data }, trigger: 'auto_status_change', userId, orgId });
+      }
+      // Délice : célébrer les moments qui rapportent (devis signé / facture payée)
+      if (isStatusChange) {
+        const isDevisSigned = oldDevis.type !== 'facture'
+          && (data.statut === 'accepte' || data.statut === 'signe')
+          && !['accepte', 'signe'].includes(oldDevis.statut);
+        const isFacturePaid = oldDevis.type === 'facture'
+          && data.statut === 'payee'
+          && oldDevis.statut !== 'payee';
+        if (isDevisSigned) celebrateMilestone('devis_signe', toast);
+        else if (isFacturePaid) celebrateMilestone('facture_payee', toast);
       }
     }
 
