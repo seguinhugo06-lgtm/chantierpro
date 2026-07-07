@@ -116,7 +116,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
   const [viewId, setViewId] = useState(null);
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 300);
-  const [activeTab, setActiveTab] = useState('historique');
+  const [activeTab, setActiveTab] = useState('documents');
   const [form, setForm] = useState({ nom: '', prenom: '', entreprise: '', email: '', telephone: '', adresse: '', notes: '', categorie: '' });
   const [sortBy, setSortBy] = useState('recent'); // recent, name, ca, activite
   const [sortDir, setSortDir] = useState('desc'); // 'asc' | 'desc'
@@ -897,13 +897,12 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
             const memoCount = (memos || []).filter(m => m.client_id === client.id).length;
 
             const tabs = [
-              { key: 'historique', icon: <History size={14} />, label: 'Historique', badge: 0 },
-              { key: 'chantiers', icon: <Home size={14} />, label: 'Chantiers', badge: stats.chantiers },
               { key: 'documents', icon: <FileText size={14} />, label: 'Documents', badge: stats.devis + stats.factures },
-              { key: 'echanges', icon: <MessageSquare size={14} />, label: 'Échanges', badge: echangeCount },
+              { key: 'chantiers', icon: <Home size={14} />, label: 'Chantiers', badge: stats.chantiers },
+              { key: 'activite', icon: <Clock size={14} />, label: 'Activité', badge: 0 },
               { key: 'photos', icon: <Camera size={14} />, label: 'Photos', badge: photoCount },
               { key: 'memos', icon: <ClipboardList size={14} />, label: 'Tâches', badge: memoCount },
-              { key: 'activite', icon: <Clock size={14} />, label: 'Activité', badge: 0 },
+              { key: 'echanges', icon: <MessageSquare size={14} />, label: 'Échanges', badge: echangeCount },
             ];
 
             return tabs.map(tab => (
