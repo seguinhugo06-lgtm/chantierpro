@@ -170,7 +170,7 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mod
   <title>${isFacture ? 'Facture' : 'Devis'} ${doc.numero}</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 10pt; color: #1e293b; padding: 25px; line-height: 1.4; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 10pt; color: #1e293b; background: #ffffff; padding: 25px; line-height: 1.4; }
     .header { display: flex; justify-content: space-between; margin-bottom: 25px; padding-bottom: 15px; border-bottom: 3px solid ${color}; }
     .logo-section { max-width: 55%; }
     .logo { font-size: 16pt; font-weight: bold; color: ${color}; margin-bottom: 8px; }
@@ -533,7 +533,7 @@ export function buildSituationFactureHtml({ situation, parentDevis, client, chan
   <title>Facture de Situation n°${situation.numero}</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 9pt; color: #1e293b; padding: 20px; line-height: 1.4; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 9pt; color: #1e293b; background: #ffffff; padding: 20px; line-height: 1.4; }
     .header { display: flex; justify-content: space-between; margin-bottom: 20px; padding-bottom: 12px; border-bottom: 3px solid ${color}; }
     .logo-section { max-width: 55%; }
     .logo { font-size: 16pt; font-weight: bold; color: ${color}; margin-bottom: 8px; }
