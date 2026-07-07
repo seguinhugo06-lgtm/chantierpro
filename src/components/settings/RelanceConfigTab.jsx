@@ -34,6 +34,7 @@ import {
   UserX,
   FileX,
   X,
+  Zap,
 } from 'lucide-react';
 import { EXCLUSION_REASONS } from '../../lib/relanceUtils';
 import { formatMoney } from '../../lib/formatters';
@@ -956,6 +957,10 @@ export default function RelanceConfigTab({
     updateConfig({ enabled: !relanceConfig.enabled });
   }, [relanceConfig.enabled, updateConfig]);
 
+  const handleAutoSendToggle = useCallback(() => {
+    updateConfig({ autoSend: !relanceConfig.autoSend });
+  }, [relanceConfig.autoSend, updateConfig]);
+
   const handleDevisStepsChange = useCallback(
     (newSteps) => {
       updateConfig({ devisSteps: newSteps });
@@ -1026,6 +1031,35 @@ export default function RelanceConfigTab({
           <p className={cn('text-sm', isDark ? 'text-green-300' : 'text-green-800')}>
             Les relances automatiques sont actives. Vos clients seront relancés selon les scénarios ci-dessous.
           </p>
+        </div>
+      )}
+
+      {/* Envoi 100% automatique (cron quotidien) */}
+      {relanceConfig.enabled && (
+        <div
+          className={cn(
+            'flex items-start justify-between gap-4 p-4 rounded-xl border',
+            relanceConfig.autoSend
+              ? (isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200')
+              : (isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-slate-50 border-slate-200')
+          )}
+        >
+          <div className="flex items-start gap-3 min-w-0">
+            <Zap className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: relanceConfig.autoSend ? couleur : '#94a3b8' }} />
+            <div className="min-w-0">
+              <p className={cn('text-sm font-semibold', textPrimary)}>Envoi 100&nbsp;% automatique</p>
+              <p className={cn('text-xs mt-1', textMuted)}>
+                {relanceConfig.autoSend
+                  ? 'Chaque jour, les relances dues sont envoyées automatiquement par email — vous n\'avez rien à faire.'
+                  : 'Activez pour que les relances dues partent seules chaque jour. Sinon, vous les envoyez en un clic depuis le tableau de bord.'}
+              </p>
+            </div>
+          </div>
+          <Toggle
+            enabled={!!relanceConfig.autoSend}
+            onToggle={handleAutoSendToggle}
+            couleur={couleur}
+          />
         </div>
       )}
 
