@@ -12,33 +12,36 @@
 --     select vault.create_secret('<CRON_SECRET>', 'cron_secret_relances');
 -- ============================================================
 
+-- NB : en prod le job est DÉJÀ programmé (installé une fois via une fonction Edge
+-- admin qui a inliné le secret). Cette migration est donc « set up si absent » :
+-- elle ne reprogramme PAS un job existant (pour ne pas écraser la version live),
+-- et sert au provisioning d'un environnement neuf (là, le secret vient du Vault :
+--     select vault.create_secret('<CRON_SECRET>', 'cron_secret_relances');).
+
 CREATE EXTENSION IF NOT EXISTS pg_cron;
 CREATE EXTENSION IF NOT EXISTS pg_net;
 
--- Idempotent : retire un éventuel job homonyme avant de (re)programmer.
 DO $$
 BEGIN
-  IF EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'send-scheduled-relances-daily') THEN
-    PERFORM cron.unschedule('send-scheduled-relances-daily');
+  IF NOT EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'send-scheduled-relances-daily') THEN
+    PERFORM cron.schedule(
+      'send-scheduled-relances-daily',
+      '0 8 * * *',
+      $cron$
+      SELECT net.http_post(
+        url     := 'https://kofsbgxkrmryfetevetn.supabase.co/functions/v1/send-scheduled-relances',
+        headers := '{"Content-Type":"application/json"}'::jsonb,
+        body    := jsonb_build_object(
+          'dryRun', false,
+          'cronSecret', COALESCE(
+            (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'cron_secret_relances'),
+            ''
+          )
+        )
+      );
+      $cron$
+    );
   END IF;
 END $$;
-
-SELECT cron.schedule(
-  'send-scheduled-relances-daily',
-  '0 8 * * *',
-  $cron$
-  SELECT net.http_post(
-    url     := 'https://kofsbgxkrmryfetevetn.supabase.co/functions/v1/send-scheduled-relances',
-    headers := '{"Content-Type":"application/json"}'::jsonb,
-    body    := jsonb_build_object(
-      'dryRun', false,
-      'cronSecret', COALESCE(
-        (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'cron_secret_relances'),
-        ''
-      )
-    )
-  );
-  $cron$
-);
 
 -- Pour désactiver : SELECT cron.unschedule('send-scheduled-relances-daily');
