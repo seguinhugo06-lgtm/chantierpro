@@ -29,6 +29,7 @@ import { useTresorerie } from '../../hooks/useTresorerie';
 import { useTVA } from '../../hooks/useTVA';
 import { useExportComptable } from '../../hooks/useExportComptable';
 import { formatClientName } from '../../lib/formatters';
+import KPICard from '../ui/KPICard';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -156,28 +157,21 @@ const genId = () => typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.
 // Sub-components
 // ---------------------------------------------------------------------------
 
-function KpiCard({ label, value, icon: Icon, trend, trendLabel, color, isDark, accent }) {
-  const isPositive = trend > 0;
-  const isNegative = trend < 0;
+// Délègue à la tuile KPICard partagée (design system « énergique & coloré »).
+function KpiCard({ label, value, icon, trend, trendLabel, color, isDark }) {
+  const trendProps = (trend !== undefined && trend !== null && isFinite(trend) && trend !== 0)
+    ? { trend: trend > 0 ? 'up' : 'down', trendValue: `${trend > 0 ? '+' : ''}${Math.round(trend)}%` }
+    : {};
   return (
-    <div className={`relative overflow-hidden rounded-xl sm:rounded-2xl p-3 sm:p-5 border transition-shadow ${isDark ? 'bg-slate-800 border-slate-700 hover:shadow-lg hover:shadow-slate-900/30' : 'bg-white border-gray-200 hover:shadow-lg hover:shadow-gray-200/60'}`}>
-      <div className="absolute top-0 left-0 right-0 h-1" style={{ backgroundColor: accent || color }} />
-      <div className="flex items-start justify-between mb-2 sm:mb-3">
-        <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl flex items-center justify-center" style={{ backgroundColor: `${color}20`, color }}>
-          <Icon size={18} className="sm:hidden" />
-          <Icon size={20} className="hidden sm:block" />
-        </div>
-        {trend !== undefined && trend !== null && isFinite(trend) && (
-          <span className={`inline-flex items-center gap-1 text-[10px] sm:text-xs font-semibold px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full ${isPositive ? isDark ? 'bg-emerald-500/20 text-emerald-400' : 'bg-emerald-100 text-emerald-700' : isNegative ? isDark ? 'bg-red-500/20 text-red-400' : 'bg-red-100 text-red-700' : isDark ? 'bg-gray-700 text-gray-400' : 'bg-gray-100 text-gray-500'}`}>
-            {isPositive ? <ArrowUpRight size={12} /> : isNegative ? <ArrowDownRight size={12} /> : null}
-            {isPositive ? '+' : ''}{Math.round(trend)}%
-          </span>
-        )}
-      </div>
-      <p className={`text-[10px] sm:text-xs font-semibold uppercase tracking-wide mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{label}</p>
-      <p className={`text-lg sm:text-2xl font-bold truncate ${isDark ? 'text-white' : 'text-gray-900'}`}>{value}</p>
-      {trendLabel && <p className={`text-[10px] sm:text-xs mt-1 hidden sm:block ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{trendLabel}</p>}
-    </div>
+    <KPICard
+      icon={icon}
+      label={label}
+      value={value}
+      sublabel={trendLabel}
+      color={color}
+      isDark={isDark}
+      {...trendProps}
+    />
   );
 }
 
