@@ -14,7 +14,7 @@ import {
   Calendar,
   Users,
   TrendingUp,
-  Mic,
+  Package,
   Bell,
   ArrowRight,
   Play,
@@ -31,7 +31,7 @@ import { ScrollReveal, StaggerReveal, fadeInUp } from './animations';
 const SCREENSHOTS = [
   { id: 'dashboard', label: 'Dashboard', icon: Monitor, src: '/screenshots/dashboard.png', description: 'Vue d\'ensemble de votre activit\u00e9 avec 14+ widgets personnalisables.' },
   { id: 'devis', label: 'Devis', icon: FileText, src: '/screenshots/devis-editor.png', description: '\u00c9diteur de devis intuitif avec calcul automatique et g\u00e9n\u00e9ration PDF.' },
-  { id: 'devis-ia', label: 'Devis IA', icon: Mic, src: '/screenshots/devis-ia.png', description: 'Dictez vos travaux et l\'IA g\u00e9n\u00e8re le devis chiffr\u00e9 automatiquement.' },
+  { id: 'catalogue', label: 'Catalogue', icon: Package, src: '/screenshots/catalogue.png', description: 'Catalogue BTP pr\u00eat \u00e0 l\'emploi : 600+ articles chiffr\u00e9s par m\u00e9tier.' },
   { id: 'chantier', label: 'Chantier', icon: Building2, src: '/screenshots/chantier-detail.png', description: 'Suivi complet de chantier : avancement, marge, photos, documents.' },
   { id: 'planning', label: 'Planning', icon: Calendar, src: '/screenshots/planning.png', description: 'Calendrier interactif avec drag-and-drop et vue par \u00e9quipe.' },
   { id: 'clients', label: 'Clients', icon: Users, src: '/screenshots/clients.png', description: 'CRM int\u00e9gr\u00e9 avec historique des projets et d\u00e9tection de doublons.' },
@@ -244,10 +244,10 @@ export default function ResourcesPage() {
                 tag: 'D\u00e9butant',
               },
               {
-                icon: Mic,
-                title: 'Utiliser le Devis IA',
-                description: 'Apprenez \u00e0 utiliser la dict\u00e9e vocale pour g\u00e9n\u00e9rer des devis en quelques secondes.',
-                tag: 'Avanc\u00e9',
+                icon: Package,
+                title: 'Composer un devis depuis le catalogue',
+                description: 'Partez du catalogue BTP pr\u00e9-chiffr\u00e9 et montez un devis complet en quelques clics.',
+                tag: 'D\u00e9butant',
               },
               {
                 icon: TrendingUp,

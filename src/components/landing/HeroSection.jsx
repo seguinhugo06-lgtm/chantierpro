@@ -121,7 +121,7 @@ export default function HeroSection({ onSignup }) {
               className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-orange-50 border border-orange-200/60 text-orange-600 text-[11px] sm:text-xs font-semibold mb-4 sm:mb-6"
             >
               <Sparkles size={14} />
-              Nouveau : Devis IA par reconnaissance vocale
+              Nouveau : Relances 100&nbsp;% automatiques
             </motion.div>
 
             {/* Animated headline */}

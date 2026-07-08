@@ -31,8 +31,8 @@ const FAQ_ITEMS = [
   },
   {
     category: 'features',
-    q: 'Comment fonctionne le Devis IA ?',
-    a: 'Vous dictez votre devis par la voix ou le tapez en texte libre directement sur le chantier. L\'intelligence artificielle analyse votre description, identifie les mat\u00e9riaux, quantit\u00e9s et prix, puis g\u00e9n\u00e8re les lignes du devis automatiquement. Vous pouvez ensuite affiner avec le chat IA ou modifier manuellement.',
+    q: 'Est-ce que je pars d\'une page blanche pour mes devis ?',
+    a: 'Non. BatiGesti est livr\u00e9 avec un catalogue BTP de plus de 600 articles et prestations d\u00e9j\u00e0 chiffr\u00e9s, organis\u00e9s par m\u00e9tier. \u00c0 l\'inscription, vous choisissez votre corps de m\u00e9tier et vos articles sont pr\u00e9-remplis. Vous composez alors un devis en quelques clics, et vous ajoutez vos propres articles ou importez vos tarifs fournisseurs par CSV.',
   },
   {
     category: 'features',

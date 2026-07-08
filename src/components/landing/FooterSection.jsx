@@ -11,7 +11,7 @@ const COLUMNS = [
     links: [
       { label: 'Fonctionnalit\u00e9s', href: '/fonctionnalites', isPage: true },
       { label: 'Tarifs', href: '#pricing' },
-      { label: 'Devis IA', href: '#features' },
+      { label: 'Relances automatiques', href: '#features' },
       { label: 'Conformit\u00e9 2026', href: '#features' },
     ],
   },

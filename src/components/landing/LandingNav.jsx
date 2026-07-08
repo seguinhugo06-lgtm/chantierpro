@@ -10,7 +10,7 @@ import {
   Menu,
   X,
   FileText,
-  Mic,
+  Bell,
   Building,
   Calendar,
   Users,
@@ -28,7 +28,7 @@ const NAV_LINKS = [
 
 const FEATURE_DROPDOWN = [
   { icon: FileText, label: 'Devis & Factures', description: 'Cr\u00e9ation, PDF, signatures', href: '#features' },
-  { icon: Mic, label: 'Devis IA', description: 'Dict\u00e9e vocale intelligente', href: '#features' },
+  { icon: Bell, label: 'Relances auto', description: 'Encaissez sans relancer \u00e0 la main', href: '#features' },
   { icon: Building, label: 'Chantiers', description: 'Suivi, rentabilit\u00e9, photos', href: '#features' },
   { icon: Calendar, label: 'Planning', description: 'Calendrier, drag-and-drop', href: '#features' },
   { icon: Users, label: 'Clients & CRM', description: 'Contacts, historique', href: '#features' },

@@ -8,7 +8,7 @@
 import React from 'react';
 import {
   FileText,
-  Mic,
+  Package,
   Building2,
   Calendar,
   Users,
@@ -38,20 +38,20 @@ const FEATURES = [
     screenshotSrc: '/screenshots/devis-editor.png',
   },
   {
-    icon: Mic,
+    icon: Package,
     iconColor: '#8b5cf6',
     iconBg: 'bg-violet-50',
-    badge: 'Intelligence artificielle',
-    title: 'Devis IA : dictez, c\'est chiffr\u00e9',
+    badge: 'Pr\u00eat \u00e0 l\'emploi',
+    title: 'Catalogue BTP livr\u00e9 avec l\'app',
     description:
-      'Dictez vos travaux par reconnaissance vocale ou d\u00e9crivez-les en texte libre. L\'IA analyse, structure et chiffre automatiquement votre devis avec mat\u00e9riaux et main d\'\u0153uvre.',
+      'D\u00e9marrez avec des centaines d\'articles et prestations chiffr\u00e9s par m\u00e9tier. Choisissez le v\u00f4tre \u00e0 l\'inscription, et vos devis se composent en quelques clics \u2014 plus jamais la page blanche.',
     bullets: [
-      'Reconnaissance vocale directement sur le chantier',
-      'Analyse IA des travaux avec chiffrage automatique',
-      'Int\u00e9gration avec votre catalogue de prestations',
-      'Modification et ajustement en temps r\u00e9el',
+      'Plus de 600 articles BTP pr\u00e9-chiffr\u00e9s par m\u00e9tier',
+      'Import en un clic selon votre corps de m\u00e9tier',
+      'Prix d\'achat et marge calcul\u00e9s automatiquement',
+      'Vos propres articles + import CSV fournisseurs',
     ],
-    screenshotSrc: '/screenshots/devis-ia.png',
+    screenshotSrc: '/screenshots/catalogue.png',
   },
   {
     icon: Building2,

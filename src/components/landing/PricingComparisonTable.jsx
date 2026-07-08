@@ -19,7 +19,7 @@ const CATEGORIES = [
       { name: 'Cr\u00e9ation de devis', values: ['5/mois', 'Illimit\u00e9', 'Illimit\u00e9'] },
       { name: 'Cr\u00e9ation de factures', values: ['5/mois', 'Illimit\u00e9', 'Illimit\u00e9'] },
       { name: 'G\u00e9n\u00e9ration PDF', values: [true, true, true] },
-      { name: 'Devis IA (dict\u00e9e vocale)', values: [false, true, true] },
+      { name: 'Relances automatiques', values: [false, true, true] },
       { name: 'Signature \u00e9lectronique', values: [false, true, true] },
       { name: 'Envoi par email', values: [true, true, true] },
       { name: 'Duplication & versioning', values: [false, true, true] },

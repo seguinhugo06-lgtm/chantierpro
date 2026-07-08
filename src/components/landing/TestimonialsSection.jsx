@@ -16,7 +16,7 @@ const TESTIMONIALS = [
     role: 'Plombier',
     city: 'Bordeaux',
     stars: 5,
-    quote: 'Avant BatiGesti, je passais 2h par jour sur mes devis. Maintenant c\'est 15 minutes. Le Devis IA est bluffant.',
+    quote: 'Avant BatiGesti, je passais 2h par jour sur mes devis. Maintenant c\'est 15 minutes grâce au catalogue prêt à l\'emploi.',
     avatar: 'JM',
     gradient: 'from-orange-400 to-orange-600',
   },

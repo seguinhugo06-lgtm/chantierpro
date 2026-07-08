@@ -9,7 +9,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   FileText,
-  Mic,
+  Package,
   Building2,
   Calendar,
   Users,
@@ -48,13 +48,13 @@ const FEATURES = [
   },
   {
     category: 'devis',
-    icon: Mic,
+    icon: Package,
     color: '#8b5cf6',
     bg: 'bg-violet-50',
-    title: 'Devis IA par reconnaissance vocale',
-    description: 'Dictez vos travaux directement sur le chantier. L\'intelligence artificielle analyse, structure et chiffre automatiquement votre devis avec mat\u00e9riaux et main d\'\u0153uvre.',
-    benefits: ['Reconnaissance vocale', 'Chiffrage automatique IA', 'Int\u00e9gration catalogue', 'Chat IA pour ajustements'],
-    screenshot: '/screenshots/devis-ia.png',
+    title: 'Catalogue BTP pr\u00eat \u00e0 l\'emploi',
+    description: 'D\u00e9marrez avec des centaines d\'articles et prestations chiffr\u00e9s par m\u00e9tier. Composez vos devis en quelques clics, sans jamais partir de la page blanche.',
+    benefits: ['600+ articles BTP pr\u00e9-chiffr\u00e9s', 'Import par m\u00e9tier en un clic', 'Prix d\'achat et marge automatiques', 'Import CSV fournisseurs'],
+    screenshot: '/screenshots/catalogue.png',
   },
   {
     category: 'devis',
