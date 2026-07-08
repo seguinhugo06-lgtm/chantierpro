@@ -367,7 +367,7 @@ export default function TeamManagement({ isDark, couleur = '#F97316' }) {
                     {getRoleLabel(member.role)}
                   </span>
                 </div>
-                {canManageTeam && !isCurrentUserOwner && (
+                {canManageTeam && member.role !== 'owner' && (
                   <div className="flex items-center gap-1.5">
                     <select
                       value={member.role}
