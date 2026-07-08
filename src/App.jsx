@@ -1614,6 +1614,8 @@ export default function App() {
                 className="w-11 h-11 sm:w-auto sm:h-11 sm:px-4 text-white rounded-xl flex items-center justify-center sm:gap-2 transition-all hover:shadow-lg"
                 style={{background: couleur}}
                 aria-label="Créer nouveau"
+                aria-haspopup="true"
+                aria-expanded={showQuickAdd}
               >
                 <Plus size={18} />
                 <span className="hidden sm:inline text-sm font-medium">Nouveau</span>
@@ -1621,8 +1623,8 @@ export default function App() {
 
               {showQuickAdd && (
                 <>
-                  <div className="fixed inset-0 z-40" onClick={() => setShowQuickAdd(false)} />
-                  <div className={`absolute right-0 top-full mt-2 w-48 sm:w-56 max-w-[calc(100vw-1rem)] rounded-2xl shadow-2xl z-50 py-2 overflow-hidden ${isDark ? 'bg-slate-800 border border-slate-700' : 'bg-white border border-[#ebebeb]'}`}>
+                  <div className="fixed inset-0 z-40" aria-hidden="true" onClick={() => setShowQuickAdd(false)} />
+                  <div onKeyDown={(e) => { if (e.key === 'Escape') setShowQuickAdd(false); }} className={`absolute right-0 top-full mt-2 w-48 sm:w-56 max-w-[calc(100vw-1rem)] rounded-2xl shadow-2xl z-50 py-2 overflow-hidden ${isDark ? 'bg-slate-800 border border-slate-700' : 'bg-white border border-[#ebebeb]'}`}>
                     {[
                       { label: 'Nouveau devis', icon: FileText, p: 'devis', create: 'devis' },
                       { label: 'Nouveau client', icon: Users, p: 'clients', create: 'client' },

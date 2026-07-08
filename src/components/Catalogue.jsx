@@ -1470,13 +1470,13 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
           </button>
           {/* Mobile: overflow menu */}
           <div className="relative sm:hidden">
-            <button onClick={() => setShowMobileMenu(!showMobileMenu)} className={`w-11 h-11 rounded-xl flex items-center justify-center ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'}`}>
+            <button onClick={() => setShowMobileMenu(!showMobileMenu)} aria-label="Plus d'actions" aria-haspopup="true" aria-expanded={showMobileMenu} className={`w-11 h-11 rounded-xl flex items-center justify-center ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'}`}>
               <MoreHorizontal size={16} />
             </button>
             {showMobileMenu && (
               <>
-                <div className="fixed inset-0 z-40" onClick={() => setShowMobileMenu(false)} />
-                <div className={`absolute right-0 top-full mt-1 w-56 rounded-xl border shadow-lg z-50 py-1 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+                <div className="fixed inset-0 z-40" aria-hidden="true" onClick={() => setShowMobileMenu(false)} />
+                <div onKeyDown={(e) => { if (e.key === 'Escape') setShowMobileMenu(false); }} className={`absolute right-0 top-full mt-1 w-56 rounded-xl border shadow-lg z-50 py-1 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
                   <button onClick={() => { fileInputRef.current?.click(); setShowMobileMenu(false); }} className={`w-full flex items-center gap-3 px-4 py-3 text-sm ${textPrimary} ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}>
                     <Upload size={16} className={textMuted} /> Importer (CSV/Excel)
                   </button>

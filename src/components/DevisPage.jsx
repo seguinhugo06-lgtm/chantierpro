@@ -2425,13 +2425,15 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                   onClick={() => setShowActionsMenu(!showActionsMenu)}
                   className={`p-2.5 rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}
                   aria-label="Plus d'actions"
+                  aria-haspopup="true"
+                  aria-expanded={showActionsMenu}
                 >
                   <MoreVertical size={18} />
                 </button>
                 {showActionsMenu && (
                   <>
-                    <div className="fixed inset-0 z-40" onClick={() => setShowActionsMenu(false)} />
-                    <div className={`absolute right-0 top-11 z-50 rounded-xl shadow-xl border overflow-hidden min-w-[160px] ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+                    <div className="fixed inset-0 z-40" aria-hidden="true" onClick={() => setShowActionsMenu(false)} />
+                    <div onKeyDown={(e) => { if (e.key === 'Escape') setShowActionsMenu(false); }} className={`absolute right-0 top-11 z-50 rounded-xl shadow-xl border overflow-hidden min-w-[160px] ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
                       {canPerform('devis', 'create') && (
                       <button onClick={async () => { setActionLoading('duplicate'); setShowActionsMenu(false); try { await duplicateDocument(selected); } finally { setActionLoading(null); } }} disabled={actionLoading === 'duplicate'} className={`w-full px-4 py-3 text-left text-sm flex items-center gap-2 ${isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-50 text-slate-700'}`}>
                         {actionLoading === 'duplicate' ? <Loader2 size={16} className="animate-spin" /> : <Copy size={16} />} Dupliquer
@@ -2581,13 +2583,16 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                           onClick={() => setShowChannelDropdown(!showChannelDropdown)}
                           className="ml-1 px-2 py-2.5 min-h-[44px] rounded-xl text-white transition-all hover:opacity-90"
                           style={{ backgroundColor: couleur }}
+                          aria-label="Autres canaux d'envoi"
+                          aria-haspopup="true"
+                          aria-expanded={showChannelDropdown}
                         >
                           <ChevronDown size={16} />
                         </button>
                         {showChannelDropdown && (
                           <>
-                          <div className="fixed inset-0 z-40" onClick={() => setShowChannelDropdown(false)} />
-                          <div className={`absolute right-0 top-full mt-1 w-48 rounded-xl shadow-xl border z-50 overflow-hidden ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+                          <div className="fixed inset-0 z-40" aria-hidden="true" onClick={() => setShowChannelDropdown(false)} />
+                          <div onKeyDown={(e) => { if (e.key === 'Escape') setShowChannelDropdown(false); }} className={`absolute right-0 top-full mt-1 w-48 rounded-xl shadow-xl border z-50 overflow-hidden ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
                             <button onClick={() => { trySend(selected, sendWhatsApp); setShowChannelDropdown(false); }} className={`w-full px-4 py-3 text-left text-sm flex items-center gap-3 transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-200' : 'hover:bg-slate-50 text-slate-700'}`}>
                               <span className="w-8 h-8 rounded-lg bg-green-500 text-white flex items-center justify-center"><MessageCircle size={14} /></span>
                               WhatsApp
@@ -4714,6 +4719,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
               className="px-2 text-white rounded-r-xl border-l border-white/20 hover:opacity-80 transition-all"
               style={{ background: couleur }}
               aria-label="Options de création"
+              aria-haspopup="true"
+              aria-expanded={showCreateMenu}
             >
               <ChevronDown size={14} />
             </button>
@@ -4721,8 +4728,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           {/* Dropdown menu */}
           {showCreateMenu && (
             <>
-              <div className="fixed inset-0 z-40" onClick={() => setShowCreateMenu(false)} />
-              <div className={`absolute right-0 mt-1 w-56 rounded-xl border shadow-xl z-50 overflow-hidden ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+              <div className="fixed inset-0 z-40" aria-hidden="true" onClick={() => setShowCreateMenu(false)} />
+              <div onKeyDown={(e) => { if (e.key === 'Escape') setShowCreateMenu(false); }} className={`absolute right-0 mt-1 w-56 rounded-xl border shadow-xl z-50 overflow-hidden ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
                 <button
                   onClick={() => { setShowCreateMenu(false); setShowDevisExpressModal(true); }}
                   className={`w-full px-4 py-3 flex items-center gap-3 text-left transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}

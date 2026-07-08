@@ -367,6 +367,9 @@ export default function RelancerDevisModal({
           <div className="relative">
             <button
               onClick={() => setShowSortMenu(!showSortMenu)}
+              aria-haspopup="true"
+              aria-expanded={showSortMenu}
+              aria-label="Trier"
               className={cn(
                 'inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors duration-150',
                 isDark
@@ -379,7 +382,9 @@ export default function RelancerDevisModal({
               {showSortMenu ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
             </button>
             {showSortMenu && (
-              <div className={cn(
+              <>
+              <div className="fixed inset-0 z-[9]" aria-hidden="true" onClick={() => setShowSortMenu(false)} />
+              <div onKeyDown={(e) => { if (e.key === 'Escape') setShowSortMenu(false); }} className={cn(
                 'absolute right-0 top-full mt-1 border rounded-xl shadow-lg z-10 py-1 min-w-[150px]',
                 isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'
               )}>
@@ -402,6 +407,7 @@ export default function RelancerDevisModal({
                   </button>
                 ))}
               </div>
+              </>
             )}
           </div>
         </div>

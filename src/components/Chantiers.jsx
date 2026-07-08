@@ -583,13 +583,13 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                   </div>
                   {/* Mobile: ⋮ dropdown menu with labels */}
                   <div className="relative sm:hidden">
-                    <button onClick={() => setShowMobileActions(prev => prev === ch.id ? null : ch.id)} aria-label="Plus d'actions" className={`p-2 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-200'} rounded-lg min-w-[44px] min-h-[44px] flex items-center justify-center`}>
+                    <button onClick={() => setShowMobileActions(prev => prev === ch.id ? null : ch.id)} aria-label="Plus d'actions" aria-haspopup="true" aria-expanded={showMobileActions === ch.id} className={`p-2 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-200'} rounded-lg min-w-[44px] min-h-[44px] flex items-center justify-center`}>
                       <MoreVertical size={18} className={textMuted} />
                     </button>
                     {showMobileActions === ch.id && (
                       <>
-                        <div className="fixed inset-0 z-10" onClick={() => setShowMobileActions(null)} />
-                        <div className={`absolute right-0 top-full mt-1 z-20 py-1 rounded-xl shadow-lg border min-w-[180px] ${isDark ? 'bg-slate-800 border-slate-600' : 'bg-white border-slate-200'}`}>
+                        <div className="fixed inset-0 z-10" aria-hidden="true" onClick={() => setShowMobileActions(null)} />
+                        <div onKeyDown={(e) => { if (e.key === 'Escape') setShowMobileActions(null); }} className={`absolute right-0 top-full mt-1 z-20 py-1 rounded-xl shadow-lg border min-w-[180px] ${isDark ? 'bg-slate-800 border-slate-600' : 'bg-white border-slate-200'}`}>
                           <button onClick={() => { setEditingChantier(ch); setShowMobileActions(null); }} className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm ${isDark ? 'text-slate-300 hover:bg-slate-700' : 'text-slate-700 hover:bg-slate-50'}`}>
                             <Edit3 size={16} className={textMuted} /> Modifier
                           </button>
