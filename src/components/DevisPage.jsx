@@ -1260,6 +1260,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     const allAcomptes = getAllAcompteFactures(selected.id);
     const totalAcomptesTTC = allAcomptes.reduce((s, a) => s + (a.total_ttc || 0), 0);
     const reste = allAcomptes.length > 0 ? selected.total_ttc - totalAcomptesTTC : selected.total_ttc;
+    const client = clients.find(c => c.id === selected.client_id);
     const clientName = client ? `${client.prenom || ''} ${client.nom || ''}`.trim() : 'le client';
     const label = allAcomptes.length > 0 ? `Facturer le solde de ${formatMoney(reste)}` : `Créer la facture complète de ${formatMoney(selected.total_ttc)}`;
     const ok = await confirm({
@@ -4126,7 +4127,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
             modeDiscret={modeDiscret}
             onClose={() => setViewingSnapshot(null)}
             onRestore={async (snap) => {
-              const confirmed = await showConfirm('Restaurer cette version ?', 'Les données actuelles seront remplacées par cette version. Cette action est irréversible.');
+              const confirmed = await confirm({ title: 'Restaurer cette version ?', message: 'Les données actuelles seront remplacées par cette version. Cette action est irréversible.' });
               if (!confirmed) return;
               const restoreData = { ...snap.data };
               delete restoreData.id;
