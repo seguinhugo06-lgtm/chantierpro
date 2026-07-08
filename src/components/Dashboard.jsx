@@ -653,6 +653,7 @@ export default function Dashboard({
             <button
               type="button"
               onClick={() => setShowAllActions(v => !v)}
+              aria-expanded={showAllActions}
               className={`w-full text-center text-xs font-medium py-2.5 ${subText} hover:underline`}
             >
               {showAllActions ? 'Voir moins' : `Voir tout (${allActions.length})`}
