@@ -3161,7 +3161,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 
         {/* ============ ZONE 3: TABBED DOCUMENT VIEW ============ */}
         <div className={`rounded-xl sm:rounded-2xl border overflow-hidden ${cardBg}`}>
-          <Tabs defaultValue="document">
+          <Tabs defaultValue="document" isDark={isDark}>
             <div className={`px-4 pt-4 border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
               <TabsList variant="underline" className="w-full justify-start gap-4">
                 <TabsTrigger value="document" variant="underline" className="pb-3">Document</TabsTrigger>

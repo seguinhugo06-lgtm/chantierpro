@@ -53,10 +53,13 @@ export const TabsList = React.forwardRef(
     const context = React.useContext(TabsContext);
     const isDark = isDarkProp ?? context?.isDark ?? false;
 
+    // `overflow-y-hidden` paired with `overflow-x-auto` avoids a spurious
+    // vertical scrollbar: CSS promotes overflow-y to `auto` when only overflow-x
+    // is set, and the tab border/margin math overflows the row by ~2px.
     const variantStyles = {
-      default: cn('p-1 rounded-xl overflow-x-auto flex-nowrap', isDark ? 'bg-slate-800' : 'bg-gray-100'),
-      underline: cn('border-b overflow-x-auto flex-nowrap', isDark ? 'border-slate-700' : 'border-gray-200'),
-      pills: 'gap-2 overflow-x-auto flex-nowrap',
+      default: cn('p-1 rounded-xl overflow-x-auto overflow-y-hidden flex-nowrap', isDark ? 'bg-slate-800' : 'bg-gray-100'),
+      underline: cn('border-b overflow-x-auto overflow-y-hidden flex-nowrap', isDark ? 'border-slate-700' : 'border-gray-200'),
+      pills: 'gap-2 overflow-x-auto overflow-y-hidden flex-nowrap',
     };
 
     return (
