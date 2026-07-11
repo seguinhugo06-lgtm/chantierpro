@@ -92,7 +92,7 @@ export default function FinancesPage({ devis, depenses, clients, chantiers, entr
       />
 
       {/* Tab content — kept mounted, hidden via CSS to preserve state */}
-      <div style={{ display: activeTab === 'tresorerie' ? 'block' : 'none' }}>
+      <div className="mt-6" style={{ display: activeTab === 'tresorerie' ? 'block' : 'none' }}>
         <ErrorBoundary isDark={isDark} fallback={<ModuleErrorFallback moduleName="Trésorerie" isDark={isDark} couleur={couleur} />}>
           <Suspense fallback={<LoadingSpinner couleur={couleur} />}>
             <TresorerieModule
@@ -111,7 +111,7 @@ export default function FinancesPage({ devis, depenses, clients, chantiers, entr
         </ErrorBoundary>
       </div>
 
-      <div style={{ display: activeTab === 'export' ? 'block' : 'none' }}>
+      <div className="mt-6" style={{ display: activeTab === 'export' ? 'block' : 'none' }}>
         <ErrorBoundary isDark={isDark} fallback={<ModuleErrorFallback moduleName="Export Comptable" isDark={isDark} couleur={couleur} />}>
           <Suspense fallback={<LoadingSpinner couleur={couleur} />}>
             <ExportComptable
@@ -129,7 +129,7 @@ export default function FinancesPage({ devis, depenses, clients, chantiers, entr
         </ErrorBoundary>
       </div>
 
-      <div style={{ display: activeTab === 'analytique' ? 'block' : 'none' }}>
+      <div className="mt-6" style={{ display: activeTab === 'analytique' ? 'block' : 'none' }}>
         <ErrorBoundary isDark={isDark} fallback={<ModuleErrorFallback moduleName="Analytique" isDark={isDark} couleur={couleur} />}>
           <Suspense fallback={<LoadingSpinner couleur={couleur} />}>
             <AnalyticsPremium
@@ -148,7 +148,7 @@ export default function FinancesPage({ devis, depenses, clients, chantiers, entr
         </ErrorBoundary>
       </div>
 
-      <div style={{ display: activeTab === 'rapports' ? 'block' : 'none' }}>
+      <div className="mt-6" style={{ display: activeTab === 'rapports' ? 'block' : 'none' }}>
         <ErrorBoundary isDark={isDark} fallback={<ModuleErrorFallback moduleName="Rapports" isDark={isDark} couleur={couleur} />}>
           <Suspense fallback={<LoadingSpinner couleur={couleur} />}>
             <RapportsTab
