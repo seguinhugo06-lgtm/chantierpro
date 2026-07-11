@@ -42,7 +42,7 @@ export default function TabBar({ tabs = [], activeTab, onTabChange, maxVisible =
 
   return (
     <div className="relative" role="tablist" aria-label="Navigation par onglets">
-      <div className={`flex items-center gap-1 border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+      <div className={`flex items-center gap-1 sm:gap-2 border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
         {displayVisible.map(tab => {
           const isActive = activeTab === tab.key;
           const Icon = tab.icon;
@@ -52,7 +52,7 @@ export default function TabBar({ tabs = [], activeTab, onTabChange, maxVisible =
               role="tab"
               aria-selected={isActive}
               onClick={() => onTabChange(tab.key)}
-              className={`flex items-center gap-2 px-3 sm:px-4 min-h-[48px] text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+              className={`flex items-center gap-2.5 px-3.5 sm:px-5 min-h-[48px] text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
                 isActive
                   ? 'border-current'
                   : `border-transparent ${isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-700'}`
