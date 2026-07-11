@@ -1,0 +1,631 @@
+/**
+ * DevisComposer — Éditeur de devis single-canvas, fluide et vivant.
+ *
+ * Un seul écran : client + lignes éditables inline avec autocomplétion
+ * catalogue instantanée + barre de total live animée. Pensé rapide,
+ * agréable, mobile-first. Produit des devis 100% compatibles (même
+ * format de données que DevisWizard).
+ *
+ * @module DevisComposer
+ */
+
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import {
+  ArrowLeft, Plus, Search, Trash2, ChevronUp, ChevronDown, User,
+  UserPlus, FileText, Receipt, Check, Loader2, Percent, StickyNote,
+  Package, Zap, CornerDownLeft,
+} from 'lucide-react';
+import QuickClientModal from './QuickClientModal';
+import { generateId } from '../lib/utils';
+import { formatClientName } from '../lib/formatters';
+
+const DRAFT_KEY = 'batigesti_devis_composer_draft';
+const MRU_KEY = 'batigesti_recent_clients';
+
+const eur = (v) => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v || 0);
+
+/** Nombre animé (tween) — l'effet « chiffres qui montent » qui rend la barre de total vivante. */
+function useAnimatedNumber(value, duration = 450) {
+  const [display, setDisplay] = useState(value);
+  const fromRef = useRef(value);
+  const startRef = useRef(0);
+  const rafRef = useRef(0);
+  useEffect(() => {
+    if (typeof window === 'undefined' || (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)) {
+      setDisplay(value); return;
+    }
+    cancelAnimationFrame(rafRef.current);
+    const from = fromRef.current;
+    startRef.current = performance.now();
+    const tick = (now) => {
+      const t = Math.min(1, (now - startRef.current) / duration);
+      const eased = 1 - Math.pow(1 - t, 3);
+      setDisplay(from + (value - from) * eased);
+      if (t < 1) rafRef.current = requestAnimationFrame(tick);
+      else fromRef.current = value;
+    };
+    rafRef.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [value, duration]);
+  useEffect(() => { fromRef.current = display; }); // keep ref fresh between renders
+  return display;
+}
+
+export default function DevisComposer({
+  isOpen,
+  onClose,
+  onSubmit,
+  onUpdate,
+  initialData = null,
+  clients = [],
+  addClient,
+  catalogue = [],
+  entreprise = {},
+  isDark = false,
+  couleur = '#f97316',
+  onPreview,
+}) {
+  const isEditMode = !!initialData;
+
+  const blankForm = () => ({
+    type: 'devis',
+    clientId: '',
+    chantierId: '',
+    date: new Date().toISOString().split('T')[0],
+    validite: entreprise?.validiteDevis || entreprise?.validite_devis || 30,
+    tvaDefaut: entreprise?.tvaDefaut || entreprise?.tva_defaut || 10,
+    lignes: [],
+    remise: 0,
+    notes: '',
+  });
+
+  const [form, setForm] = useState(blankForm);
+  const [showClientPicker, setShowClientPicker] = useState(false);
+  const [clientSearch, setClientSearch] = useState('');
+  const [showQuickClient, setShowQuickClient] = useState(false);
+  const [showOptions, setShowOptions] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [draftRestored, setDraftRestored] = useState(false);
+  const [error, setError] = useState('');
+
+  // ── Theme ──
+  const cardBg = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200';
+  const inputBg = isDark ? 'bg-slate-900/60 border-slate-700 text-white placeholder-slate-500' : 'bg-white border-slate-200 text-slate-900 placeholder-slate-400';
+  const textPrimary = isDark ? 'text-white' : 'text-slate-900';
+  const textMuted = isDark ? 'text-slate-400' : 'text-slate-500';
+  const rowHover = isDark ? 'hover:bg-slate-800/60' : 'hover:bg-slate-50';
+
+  // ── Load initialData / restore draft ──
+  useEffect(() => {
+    if (!isOpen) return;
+    if (initialData) {
+      setForm({
+        type: initialData.type || 'devis',
+        clientId: initialData.client_id || '',
+        chantierId: initialData.chantier_id || '',
+        date: initialData.date || new Date().toISOString().split('T')[0],
+        validite: initialData.validite || entreprise?.validiteDevis || 30,
+        tvaDefaut: initialData.tvaRate || initialData.tva_rate || entreprise?.tvaDefaut || 10,
+        lignes: (initialData.lignes || []).map((l, i) => ({
+          id: l.id || `line-${i}`,
+          description: l.description || '',
+          quantite: l.quantite ?? 1,
+          unite: l.unite || 'u',
+          prixUnitaire: l.prixUnitaire ?? 0,
+          prixAchat: l.prixAchat ?? 0,
+          tva: l.tva !== undefined ? l.tva : (initialData.tvaRate || 10),
+        })),
+        remise: initialData.remise || 0,
+        notes: initialData.notes || '',
+      });
+      return;
+    }
+    try {
+      const saved = localStorage.getItem(DRAFT_KEY);
+      const draft = saved ? JSON.parse(saved) : null;
+      if (draft && (draft.clientId || draft.lignes?.length > 0)) {
+        setForm({ ...blankForm(), ...draft, date: new Date().toISOString().split('T')[0] });
+        setDraftRestored(true);
+        setTimeout(() => setDraftRestored(false), 5000);
+      } else {
+        // Pas de brouillon : repartir d'un formulaire vierge (le composant reste monté entre deux ouvertures)
+        setForm(blankForm());
+      }
+    } catch {
+      setForm(blankForm());
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, initialData]);
+
+  // ── Autosave draft (create mode only) ──
+  useEffect(() => {
+    if (!isOpen || isEditMode) return;
+    if (!form.clientId && form.lignes.length === 0) return;
+    const t = setTimeout(() => {
+      try { localStorage.setItem(DRAFT_KEY, JSON.stringify(form)); } catch { /* quota */ }
+    }, 500);
+    return () => clearTimeout(t);
+  }, [form, isOpen, isEditMode]);
+
+  const clearDraft = useCallback(() => { try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ } }, []);
+
+  // ── Totals ──
+  const totals = useMemo(() => {
+    let totalHT = 0, tvaTotal = 0, totalCost = 0;
+    form.lignes.forEach(l => {
+      const montant = (Number(l.quantite) || 0) * (Number(l.prixUnitaire) || 0);
+      const taux = l.tva !== undefined ? l.tva : form.tvaDefaut;
+      totalHT += montant;
+      totalCost += (Number(l.quantite) || 0) * (Number(l.prixAchat) || 0);
+      tvaTotal += montant * (taux / 100);
+    });
+    const remiseAmount = totalHT * (form.remise / 100);
+    const htApresRemise = totalHT - remiseAmount;
+    const tvaApresRemise = tvaTotal * (1 - form.remise / 100);
+    const totalTTC = htApresRemise + tvaApresRemise;
+    const costAfterRemise = totalCost * (1 - form.remise / 100);
+    const margePercent = htApresRemise > 0 ? ((htApresRemise - costAfterRemise) / htApresRemise) * 100 : 0;
+    return { totalHT, tvaTotal, remiseAmount, htApresRemise, tvaApresRemise, totalTTC, margePercent };
+  }, [form.lignes, form.tvaDefaut, form.remise]);
+
+  const animatedTTC = useAnimatedNumber(totals.totalTTC);
+
+  // ── Clients ──
+  const selectedClient = clients.find(c => c.id === form.clientId);
+  const recentClients = useMemo(() => {
+    try {
+      const ids = JSON.parse(localStorage.getItem(MRU_KEY) || '[]');
+      return ids.map(id => clients.find(c => c.id === id)).filter(Boolean);
+    } catch { return []; }
+  }, [clients]);
+  const filteredClients = useMemo(() => {
+    const q = clientSearch.trim().toLowerCase();
+    if (!q) return clients;
+    return clients.filter(c => (c.nom || '').toLowerCase().includes(q) || (c.prenom || '').toLowerCase().includes(q) || (c.entreprise || '').toLowerCase().includes(q));
+  }, [clients, clientSearch]);
+
+  const selectClient = (id) => {
+    setForm(p => ({ ...p, clientId: id }));
+    try {
+      const recent = JSON.parse(localStorage.getItem(MRU_KEY) || '[]').filter(x => x !== id);
+      recent.unshift(id);
+      localStorage.setItem(MRU_KEY, JSON.stringify(recent.slice(0, 5)));
+    } catch { /* ignore */ }
+    setShowClientPicker(false);
+    setClientSearch('');
+  };
+
+  // ── Lignes ──
+  const addLigne = (item = {}) => {
+    setForm(p => ({
+      ...p,
+      lignes: [...p.lignes, {
+        id: generateId(),
+        description: item.nom || item.description || '',
+        quantite: item.quantite || 1,
+        unite: item.unite || 'u',
+        prixUnitaire: item.prix ?? item.prixUnitaire ?? 0,
+        prixAchat: item.prixAchat ?? 0,
+        tva: p.tvaDefaut,
+      }],
+    }));
+  };
+  const updateLigne = (id, field, value) => setForm(p => ({ ...p, lignes: p.lignes.map(l => l.id === id ? { ...l, [field]: value } : l) }));
+  const removeLigne = (id) => setForm(p => ({ ...p, lignes: p.lignes.filter(l => l.id !== id) }));
+  const moveLigne = (index, dir) => setForm(p => {
+    const n = [...p.lignes]; const j = index + dir;
+    if (j < 0 || j >= n.length) return p;
+    [n[index], n[j]] = [n[j], n[index]];
+    return { ...p, lignes: n };
+  });
+  const duplicateLigne = (id) => setForm(p => {
+    const i = p.lignes.findIndex(l => l.id === id);
+    if (i < 0) return p;
+    const copy = { ...p.lignes[i], id: generateId() };
+    const n = [...p.lignes]; n.splice(i + 1, 0, copy);
+    return { ...p, lignes: n };
+  });
+
+  // ── Submit ──
+  const handleSubmit = async (thenPreview = false) => {
+    if (!form.clientId) { setError('Choisissez un client.'); setShowClientPicker(true); return; }
+    const valid = form.lignes.filter(l => (l.description || '').trim());
+    if (valid.length === 0) { setError('Ajoutez au moins une ligne.'); return; }
+    setError('');
+    const roundEuro = (v) => Math.round((v + Number.EPSILON) * 100) / 100;
+    const lignesFormatted = valid.map(l => ({
+      ...l,
+      quantite: Math.max(0, Number(l.quantite) || 0),
+      prixUnitaire: Math.max(0, Number(l.prixUnitaire) || 0),
+      montant: (Number(l.quantite) || 0) * (Number(l.prixUnitaire) || 0),
+    }));
+    const devisData = {
+      type: form.type,
+      client_id: form.clientId,
+      chantier_id: form.chantierId || undefined,
+      date: form.date,
+      validite: form.validite,
+      statut: isEditMode ? initialData.statut : 'brouillon',
+      tvaRate: form.tvaDefaut,
+      lignes: lignesFormatted,
+      sections: [{ id: '1', titre: '', lignes: lignesFormatted }],
+      remise: form.remise,
+      notes: form.notes,
+      total_ht: roundEuro(totals.htApresRemise),
+      tva: roundEuro(totals.tvaApresRemise),
+      total_ttc: roundEuro(totals.totalTTC),
+    };
+    setIsSubmitting(true);
+    try {
+      let result;
+      if (isEditMode) result = await onUpdate?.(initialData.id, devisData);
+      else result = await onSubmit?.(devisData);
+      if (result === false) { setError('Échec de l\'enregistrement. Réessayez.'); setIsSubmitting(false); return; }
+      if (!isEditMode) clearDraft();
+      if (thenPreview && onPreview) onPreview(result || { ...devisData, id: isEditMode ? initialData.id : result?.id });
+      onClose?.();
+    } catch (e) {
+      setError(e?.message || 'Erreur lors de l\'enregistrement.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  if (!isOpen) return null;
+  const isFacture = form.type === 'facture';
+
+  return (
+    <div className="fixed inset-0 z-[1000] flex flex-col" style={{ background: isDark ? '#0b1220' : '#f8fafc' }}>
+      {/* ── Top bar ── */}
+      <header className={`flex items-center gap-3 px-3 sm:px-5 h-14 border-b ${isDark ? 'border-slate-800 bg-slate-900' : 'border-slate-200 bg-white'} flex-shrink-0`}>
+        <button onClick={onClose} aria-label="Fermer" className={`p-2 rounded-lg ${rowHover} ${textMuted} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`}>
+          <ArrowLeft size={20} />
+        </button>
+        <div className="flex-1 min-w-0">
+          <h1 className={`text-base font-bold truncate ${textPrimary}`}>{isEditMode ? 'Modifier' : 'Nouveau'} {isFacture ? 'facture' : 'devis'}</h1>
+        </div>
+        {/* Type toggle */}
+        {!isEditMode && (
+          <div className={`hidden sm:flex items-center rounded-xl p-0.5 ${isDark ? 'bg-slate-800' : 'bg-slate-100'}`}>
+            {[{ v: 'devis', label: 'Devis', Icon: FileText }, { v: 'facture', label: 'Facture', Icon: Receipt }].map(({ v, label, Icon }) => (
+              <button key={v} onClick={() => setForm(p => ({ ...p, type: v }))}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${form.type === v ? 'text-white shadow' : textMuted}`}
+                style={form.type === v ? { background: couleur } : undefined}>
+                <Icon size={14} /> {label}
+              </button>
+            ))}
+          </div>
+        )}
+        <button onClick={() => handleSubmit(false)} disabled={isSubmitting}
+          className="flex items-center gap-2 px-4 h-9 rounded-xl text-white text-sm font-semibold shadow-lg disabled:opacity-60 transition-all hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+          style={{ background: couleur }}>
+          {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+          <span className="hidden sm:inline">{isEditMode ? 'Enregistrer' : 'Créer'}</span>
+        </button>
+      </header>
+
+      {draftRestored && (
+        <div className="px-3 sm:px-5 py-2 text-xs flex items-center justify-between bg-amber-500/10 border-b border-amber-500/20">
+          <span className={isDark ? 'text-amber-300' : 'text-amber-700'}>Brouillon restauré — reprenez où vous en étiez.</span>
+          <button onClick={() => { clearDraft(); setForm(blankForm()); setDraftRestored(false); }} className={`font-medium ${isDark ? 'text-amber-300' : 'text-amber-700'} hover:underline`}>Recommencer</button>
+        </div>
+      )}
+
+      {/* ── Canvas ── */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-3xl mx-auto px-3 sm:px-5 py-4 sm:py-6 space-y-4 pb-40">
+
+          {/* Client + date */}
+          <div className={`rounded-2xl border p-3 sm:p-4 ${cardBg}`}>
+            <div className="grid sm:grid-cols-2 gap-3">
+              <ClientField
+                selectedClient={selectedClient} couleur={couleur} isDark={isDark} textPrimary={textPrimary} textMuted={textMuted}
+                open={showClientPicker} setOpen={setShowClientPicker}
+                clientSearch={clientSearch} setClientSearch={setClientSearch} inputBg={inputBg}
+                recentClients={recentClients} filteredClients={filteredClients}
+                onSelect={selectClient} onQuickAdd={() => { setShowClientPicker(false); setShowQuickClient(true); }}
+              />
+              <div>
+                <label className={`block text-[11px] font-semibold uppercase tracking-wide mb-1.5 ${textMuted}`}>Date</label>
+                <input type="date" value={form.date} onChange={e => setForm(p => ({ ...p, date: e.target.value }))}
+                  className={`w-full px-3 h-11 rounded-xl border text-sm ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`} />
+              </div>
+            </div>
+          </div>
+
+          {/* Lignes */}
+          <div className={`rounded-2xl border ${cardBg}`}>
+            {/* header row (desktop) */}
+            {form.lignes.length > 0 && (
+              <div className={`hidden sm:grid grid-cols-[1fr_72px_88px_64px_100px_36px] gap-2 px-4 py-2 rounded-t-2xl text-[11px] font-semibold uppercase tracking-wide ${textMuted} ${isDark ? 'bg-slate-800/50' : 'bg-slate-50'} border-b ${isDark ? 'border-slate-700' : 'border-slate-100'}`}>
+                <span>Désignation</span><span className="text-center">Qté</span><span className="text-center">PU HT</span><span className="text-center">TVA</span><span className="text-right">Total HT</span><span />
+              </div>
+            )}
+            <div>
+              {form.lignes.map((ligne, index) => (
+                <LigneRow key={ligne.id} ligne={ligne} index={index} total={form.lignes.length}
+                  isDark={isDark} couleur={couleur} inputBg={inputBg} textPrimary={textPrimary} textMuted={textMuted} rowHover={rowHover}
+                  onUpdate={(f, v) => updateLigne(ligne.id, f, v)} onRemove={() => removeLigne(ligne.id)}
+                  onMoveUp={() => moveLigne(index, -1)} onMoveDown={() => moveLigne(index, 1)} onDuplicate={() => duplicateLigne(ligne.id)} />
+              ))}
+            </div>
+
+            {/* Add line with catalogue autocomplete */}
+            <AddLineRow catalogue={catalogue} isDark={isDark} couleur={couleur} inputBg={inputBg} textPrimary={textPrimary} textMuted={textMuted} onAdd={addLigne} empty={form.lignes.length === 0} />
+          </div>
+
+          {/* Options (remise / notes) */}
+          <div className={`rounded-2xl border ${cardBg}`}>
+            <button onClick={() => setShowOptions(o => !o)} className={`w-full flex items-center justify-between px-4 py-3 text-sm font-medium ${textPrimary}`}>
+              <span className="flex items-center gap-2"><Percent size={15} style={{ color: couleur }} /> Remise, notes & options</span>
+              <ChevronDown size={16} className={`${textMuted} transition-transform ${showOptions ? 'rotate-180' : ''}`} />
+            </button>
+            {showOptions && (
+              <div className={`px-4 pb-4 space-y-3 border-t ${isDark ? 'border-slate-700' : 'border-slate-100'} pt-3`}>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className={`block text-[11px] font-semibold uppercase tracking-wide mb-1.5 ${textMuted}`}>Remise %</label>
+                    <input type="number" min="0" max="100" value={form.remise || ''} onChange={e => setForm(p => ({ ...p, remise: Math.min(100, Math.max(0, parseFloat(e.target.value) || 0)) }))}
+                      placeholder="0" className={`w-full px-3 h-10 rounded-xl border text-sm ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`} />
+                  </div>
+                  {!isFacture && (
+                    <div>
+                      <label className={`block text-[11px] font-semibold uppercase tracking-wide mb-1.5 ${textMuted}`}>Validité (jours)</label>
+                      <input type="number" min="1" value={form.validite} onChange={e => setForm(p => ({ ...p, validite: parseInt(e.target.value) || 30 }))}
+                        className={`w-full px-3 h-10 rounded-xl border text-sm ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`} />
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <label className={`block text-[11px] font-semibold uppercase tracking-wide mb-1.5 ${textMuted}`}><StickyNote size={12} className="inline mr-1" />Notes (visibles sur le PDF)</label>
+                  <textarea value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} rows={2}
+                    placeholder="Conditions particulières, délais…" className={`w-full px-3 py-2 rounded-xl border text-sm resize-none ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`} />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {error && (
+            <div className="rounded-xl px-4 py-3 text-sm bg-red-500/10 border border-red-500/30 text-red-500 font-medium">{error}</div>
+          )}
+        </div>
+      </div>
+
+      {/* ── Sticky total bar ── */}
+      <footer className={`flex-shrink-0 border-t ${isDark ? 'border-slate-800 bg-slate-900' : 'border-slate-200 bg-white'} shadow-[0_-4px_20px_rgba(0,0,0,0.06)]`}>
+        <div className="max-w-3xl mx-auto px-3 sm:px-5 py-3 flex items-center gap-3 sm:gap-5">
+          <div className="flex-1 min-w-0 flex items-baseline gap-3 sm:gap-5 flex-wrap">
+            <div className="hidden sm:flex items-baseline gap-1.5">
+              <span className={`text-xs ${textMuted}`}>HT</span>
+              <span className={`text-sm font-semibold ${textPrimary}`}>{eur(totals.htApresRemise)}</span>
+            </div>
+            {form.remise > 0 && (
+              <div className="hidden sm:flex items-baseline gap-1.5">
+                <span className="text-xs text-red-500">−{form.remise}%</span>
+              </div>
+            )}
+            <div className="hidden sm:flex items-baseline gap-1.5">
+              <span className={`text-xs ${textMuted}`}>TVA</span>
+              <span className={`text-sm font-semibold ${textPrimary}`}>{eur(totals.tvaApresRemise)}</span>
+            </div>
+            <div className="flex items-baseline gap-1.5">
+              <span className={`text-xs font-semibold uppercase ${textMuted}`}>TTC</span>
+              <span className="text-2xl sm:text-3xl font-extrabold tabular-nums" style={{ color: couleur }}>{eur(animatedTTC)}</span>
+            </div>
+            {totals.margePercent > 0 && form.lignes.some(l => l.prixAchat > 0) && (
+              <div className={`hidden md:flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold ${totals.margePercent >= 25 ? 'bg-emerald-500/15 text-emerald-500' : totals.margePercent >= 10 ? 'bg-amber-500/15 text-amber-500' : 'bg-red-500/15 text-red-500'}`}>
+                <Zap size={11} /> {Math.round(totals.margePercent)}% marge
+              </div>
+            )}
+          </div>
+          {onPreview && (
+            <button onClick={() => handleSubmit(true)} disabled={isSubmitting}
+              className={`hidden sm:flex items-center gap-2 px-4 h-11 rounded-xl text-sm font-semibold border transition-all ${isDark ? 'border-slate-700 text-slate-200 hover:bg-slate-800' : 'border-slate-200 text-slate-700 hover:bg-slate-50'}`}>
+              Aperçu
+            </button>
+          )}
+          <button onClick={() => handleSubmit(false)} disabled={isSubmitting}
+            className="flex items-center gap-2 px-5 h-11 rounded-xl text-white text-sm font-bold shadow-lg disabled:opacity-60 transition-all hover:opacity-90"
+            style={{ background: couleur }}>
+            {isSubmitting ? <Loader2 size={18} className="animate-spin" /> : <Check size={18} />}
+            {isEditMode ? 'Enregistrer' : 'Créer le ' + (isFacture ? 'facture' : 'devis')}
+          </button>
+        </div>
+      </footer>
+
+      {showQuickClient && (
+        <QuickClientModal
+          isOpen={showQuickClient}
+          onClose={() => setShowQuickClient(false)}
+          onSubmit={(data) => { const c = addClient?.(data); if (c?.id) selectClient(c.id); setShowQuickClient(false); }}
+          isDark={isDark} couleur={couleur}
+        />
+      )}
+    </div>
+  );
+}
+
+/* ── Client field (inline picker) ── */
+function ClientField({ selectedClient, couleur, isDark, textPrimary, textMuted, open, setOpen, clientSearch, setClientSearch, inputBg, recentClients, filteredClients, onSelect, onQuickAdd }) {
+  const ref = useRef(null);
+  useEffect(() => {
+    if (!open) return;
+    const h = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, [open, setOpen]);
+  const list = clientSearch.trim() ? filteredClients : (recentClients.length ? recentClients : filteredClients);
+  return (
+    <div className="relative" ref={ref}>
+      <label className={`block text-[11px] font-semibold uppercase tracking-wide mb-1.5 ${textMuted}`}>Client</label>
+      <button onClick={() => setOpen(o => !o)}
+        className={`w-full flex items-center gap-2.5 px-3 h-11 rounded-xl border text-sm text-left transition-all ${isDark ? 'bg-slate-900/60 border-slate-700' : 'bg-white border-slate-200'} hover:border-current focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`}
+        style={selectedClient ? { borderColor: `${couleur}55` } : undefined} aria-haspopup="true" aria-expanded={open}>
+        {selectedClient ? (
+          <>
+            <span className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style={{ background: couleur }}>
+              {(selectedClient.nom || '?')[0]?.toUpperCase()}
+            </span>
+            <span className={`flex-1 truncate font-medium ${textPrimary}`}>{formatClientName(selectedClient)}</span>
+          </>
+        ) : (
+          <><User size={16} className={textMuted} /><span className={`flex-1 ${textMuted}`}>Choisir un client…</span></>
+        )}
+        <ChevronDown size={16} className={textMuted} />
+      </button>
+      {open && (
+        <div className={`absolute left-0 right-0 top-full mt-1 z-30 rounded-xl border shadow-xl overflow-hidden ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+          <div className={`p-2 border-b ${isDark ? 'border-slate-700' : 'border-slate-100'}`}>
+            <div className="relative">
+              <Search size={15} className={`absolute left-3 top-1/2 -translate-y-1/2 ${textMuted}`} />
+              <input autoFocus value={clientSearch} onChange={e => setClientSearch(e.target.value)} placeholder="Rechercher un client…"
+                className={`w-full pl-9 pr-3 h-10 rounded-lg border text-sm ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`} />
+            </div>
+          </div>
+          <div className="max-h-56 overflow-y-auto py-1">
+            {!clientSearch.trim() && recentClients.length > 0 && (
+              <p className={`px-3 pt-1 pb-1 text-[10px] font-semibold uppercase tracking-wide ${textMuted}`}>Récents</p>
+            )}
+            {list.map(c => (
+              <button key={c.id} onClick={() => onSelect(c.id)} className={`w-full flex items-center gap-2.5 px-3 py-2 text-left text-sm ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}>
+                <span className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style={{ background: couleur }}>{(c.nom || '?')[0]?.toUpperCase()}</span>
+                <span className="flex-1 min-w-0">
+                  <span className={`block truncate font-medium ${textPrimary}`}>{formatClientName(c)}</span>
+                  {c.entreprise && <span className={`block truncate text-xs ${textMuted}`}>{c.entreprise}</span>}
+                </span>
+              </button>
+            ))}
+            {list.length === 0 && <p className={`px-3 py-4 text-center text-sm ${textMuted}`}>Aucun client</p>}
+          </div>
+          <button onClick={onQuickAdd} className={`w-full flex items-center gap-2 px-3 py-2.5 text-sm font-semibold border-t ${isDark ? 'border-slate-700 hover:bg-slate-700' : 'border-slate-100 hover:bg-slate-50'}`} style={{ color: couleur }}>
+            <UserPlus size={16} /> Nouveau client
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── Editable line row ── */
+function LigneRow({ ligne, index, total, isDark, couleur, inputBg, textPrimary, textMuted, rowHover, onUpdate, onRemove, onMoveUp, onMoveDown, onDuplicate }) {
+  const lineTotal = (Number(ligne.quantite) || 0) * (Number(ligne.prixUnitaire) || 0);
+  const numCls = `w-full h-9 rounded-lg border text-sm text-center ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`;
+  return (
+    <div className={`group border-b last:border-b-0 ${isDark ? 'border-slate-800' : 'border-slate-100'} ${rowHover} transition-colors`}>
+      {/* Desktop grid */}
+      <div className="hidden sm:grid grid-cols-[1fr_72px_88px_64px_100px_36px] gap-2 items-center px-4 py-2">
+        <input value={ligne.description} onChange={e => onUpdate('description', e.target.value)} placeholder="Désignation…"
+          className={`w-full h-9 px-2 rounded-lg border text-sm ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`} />
+        <input type="number" min="0" step="any" value={ligne.quantite} onChange={e => onUpdate('quantite', e.target.value === '' ? '' : parseFloat(e.target.value))} className={numCls} />
+        <input type="number" min="0" step="any" value={ligne.prixUnitaire} onChange={e => onUpdate('prixUnitaire', e.target.value === '' ? '' : parseFloat(e.target.value))} className={numCls} />
+        <select value={ligne.tva} onChange={e => onUpdate('tva', parseFloat(e.target.value))} className={`w-full h-9 rounded-lg border text-xs text-center ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`}>
+          {[0, 5.5, 10, 20].map(t => <option key={t} value={t}>{t}%</option>)}
+        </select>
+        <span className={`text-sm font-semibold text-right tabular-nums ${textPrimary}`}>{eur(lineTotal)}</span>
+        <LineMenu isDark={isDark} textMuted={textMuted} index={index} total={total} onMoveUp={onMoveUp} onMoveDown={onMoveDown} onDuplicate={onDuplicate} onRemove={onRemove} />
+      </div>
+      {/* Mobile card */}
+      <div className="sm:hidden p-3 space-y-2">
+        <div className="flex items-start gap-2">
+          <input value={ligne.description} onChange={e => onUpdate('description', e.target.value)} placeholder="Désignation…"
+            className={`flex-1 h-10 px-3 rounded-lg border text-sm ${inputBg}`} />
+          <button onClick={onRemove} aria-label="Supprimer" className="p-2 rounded-lg text-red-500 hover:bg-red-500/10"><Trash2 size={16} /></button>
+        </div>
+        <div className="grid grid-cols-3 gap-2">
+          <div><span className={`block text-[10px] mb-0.5 ${textMuted}`}>Qté</span><input type="number" min="0" step="any" value={ligne.quantite} onChange={e => onUpdate('quantite', e.target.value === '' ? '' : parseFloat(e.target.value))} className={`w-full h-9 px-2 rounded-lg border text-sm ${inputBg}`} /></div>
+          <div><span className={`block text-[10px] mb-0.5 ${textMuted}`}>PU HT</span><input type="number" min="0" step="any" value={ligne.prixUnitaire} onChange={e => onUpdate('prixUnitaire', e.target.value === '' ? '' : parseFloat(e.target.value))} className={`w-full h-9 px-2 rounded-lg border text-sm ${inputBg}`} /></div>
+          <div><span className={`block text-[10px] mb-0.5 ${textMuted}`}>TVA</span><select value={ligne.tva} onChange={e => onUpdate('tva', parseFloat(e.target.value))} className={`w-full h-9 rounded-lg border text-sm ${inputBg}`}>{[0, 5.5, 10, 20].map(t => <option key={t} value={t}>{t}%</option>)}</select></div>
+        </div>
+        <div className="flex justify-end"><span className={`text-sm font-bold ${textPrimary}`}>{eur(lineTotal)}</span></div>
+      </div>
+    </div>
+  );
+}
+
+function LineMenu({ isDark, textMuted, index, total, onMoveUp, onMoveDown, onDuplicate, onRemove }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  useEffect(() => { if (!open) return; const h = e => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); }; document.addEventListener('mousedown', h); return () => document.removeEventListener('mousedown', h); }, [open]);
+  return (
+    <div className="relative flex justify-center" ref={ref}>
+      <button onClick={() => setOpen(o => !o)} aria-label="Actions de ligne" aria-haspopup="true" aria-expanded={open}
+        className={`p-1.5 rounded-lg opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity ${textMuted} ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
+        <span className="text-lg leading-none">⋯</span>
+      </button>
+      {open && (
+        <div onKeyDown={e => e.key === 'Escape' && setOpen(false)} role="menu" className={`absolute right-0 top-full mt-1 z-30 w-40 rounded-lg border shadow-lg py-1 text-sm ${isDark ? 'bg-slate-800 border-slate-700 text-slate-200' : 'bg-white border-slate-200 text-slate-700'}`}>
+          <button role="menuitem" disabled={index === 0} onClick={() => { onMoveUp(); setOpen(false); }} className={`w-full flex items-center gap-2 px-3 py-2 text-left disabled:opacity-40 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}><ChevronUp size={14} /> Monter</button>
+          <button role="menuitem" disabled={index === total - 1} onClick={() => { onMoveDown(); setOpen(false); }} className={`w-full flex items-center gap-2 px-3 py-2 text-left disabled:opacity-40 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}><ChevronDown size={14} /> Descendre</button>
+          <button role="menuitem" onClick={() => { onDuplicate(); setOpen(false); }} className={`w-full flex items-center gap-2 px-3 py-2 text-left ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}><Plus size={14} /> Dupliquer</button>
+          <button role="menuitem" onClick={() => { onRemove(); setOpen(false); }} className={`w-full flex items-center gap-2 px-3 py-2 text-left text-red-500 ${isDark ? 'hover:bg-red-900/30' : 'hover:bg-red-50'}`}><Trash2 size={14} /> Supprimer</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── Add-line row with catalogue autocomplete ── */
+function AddLineRow({ catalogue, isDark, couleur, inputBg, textPrimary, textMuted, onAdd, empty }) {
+  const [q, setQ] = useState('');
+  const [highlight, setHighlight] = useState(0);
+  const inputRef = useRef(null);
+  const suggestions = useMemo(() => {
+    const query = q.trim().toLowerCase();
+    if (!query) return [];
+    return catalogue
+      .filter(a => (a.nom || a.designation || '').toLowerCase().includes(query) || (a.reference || '').toLowerCase().includes(query))
+      .slice(0, 6);
+  }, [q, catalogue]);
+  const showFree = q.trim().length > 0;
+
+  const pick = (item) => { onAdd(item); setQ(''); setHighlight(0); inputRef.current?.focus(); };
+  const pickFree = () => { onAdd({ nom: q.trim() }); setQ(''); setHighlight(0); inputRef.current?.focus(); };
+
+  const onKeyDown = (e) => {
+    const max = suggestions.length + (showFree ? 1 : 0);
+    if (e.key === 'ArrowDown') { e.preventDefault(); setHighlight(h => Math.min(max - 1, h + 1)); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); setHighlight(h => Math.max(0, h - 1)); }
+    else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (suggestions.length && highlight < suggestions.length) pick(suggestions[highlight]);
+      else if (q.trim()) pickFree();
+    } else if (e.key === 'Escape') { setQ(''); }
+  };
+
+  return (
+    <div className="relative">
+      <div className={`flex items-center gap-2 px-3 sm:px-4 py-2.5 ${empty ? '' : `border-t ${isDark ? 'border-slate-800' : 'border-slate-100'}`}`}>
+        <span className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${couleur}18`, color: couleur }}>
+          <Plus size={16} />
+        </span>
+        <input ref={inputRef} value={q} onChange={e => { setQ(e.target.value); setHighlight(0); }} onKeyDown={onKeyDown}
+          placeholder={catalogue.length ? 'Ajouter une prestation… (tapez pour chercher dans le catalogue)' : 'Ajouter une ligne… (désignation libre)'}
+          className={`flex-1 h-9 px-2 rounded-lg border-0 bg-transparent text-sm ${textPrimary} placeholder:${textMuted} focus:outline-none`} />
+        {q.trim() && <button onClick={pickFree} className="flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-lg" style={{ color: couleur }}><CornerDownLeft size={13} /> Ajouter</button>}
+      </div>
+
+      {(suggestions.length > 0 || showFree) && (
+        <div className={`absolute left-2 right-2 sm:left-4 sm:right-4 top-full z-30 rounded-xl border shadow-xl overflow-hidden ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+          {suggestions.map((a, i) => (
+            <button key={a.id || i} onMouseEnter={() => setHighlight(i)} onClick={() => pick(a)}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 text-left ${highlight === i ? (isDark ? 'bg-slate-700' : 'bg-slate-50') : ''}`}>
+              <Package size={16} style={{ color: couleur }} className="flex-shrink-0" />
+              <span className="flex-1 min-w-0">
+                <span className={`block truncate text-sm font-medium ${textPrimary}`}>{a.nom || a.designation}</span>
+                {a.categorie && <span className={`block truncate text-xs ${textMuted}`}>{a.categorie}</span>}
+              </span>
+              <span className={`text-sm font-semibold whitespace-nowrap ${textPrimary}`}>{eur(a.prix ?? a.prixUnitaire ?? 0)}<span className={`text-xs font-normal ${textMuted}`}>/{a.unite || 'u'}</span></span>
+            </button>
+          ))}
+          {showFree && (
+            <button onMouseEnter={() => setHighlight(suggestions.length)} onClick={pickFree}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 text-left border-t ${isDark ? 'border-slate-700' : 'border-slate-100'} ${highlight === suggestions.length ? (isDark ? 'bg-slate-700' : 'bg-slate-50') : ''}`}>
+              <Plus size={16} style={{ color: couleur }} className="flex-shrink-0" />
+              <span className={`text-sm ${textPrimary}`}>Créer <span className="font-semibold">« {q.trim()} »</span> <span className={textMuted}>(ligne libre)</span></span>
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}

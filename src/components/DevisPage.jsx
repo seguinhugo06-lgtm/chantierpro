@@ -8,6 +8,7 @@ import TemplateSelector from './TemplateSelector';
 import SignaturePad from './SignaturePad';
 import SmartTemplateWizard from './SmartTemplateWizard';
 import DevisWizard from './DevisWizard';
+import DevisComposer from './DevisComposer';
 import CatalogBrowser from './CatalogBrowser';
 import DevisExpressModal from './DevisExpressModal';
 import AvoirCreationModal from './modals/AvoirCreationModal';
@@ -198,6 +199,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 
   // DevisWizard uses direct useState (NOT useDevisModals) to avoid centralized modal conflicts
   const [showDevisWizard, setShowDevisWizard] = useState(false);
+  // DevisComposer — nouveau parcours de création single-canvas (banger)
+  const [showDevisComposer, setShowDevisComposer] = useState(false);
 
   // Échéancier d'acomptes
   const [showEcheancierModal, setShowEcheancierModal] = useState(false);
@@ -2141,6 +2144,45 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       isDark={isDark}
       couleur={couleur}
       onSwitchToExpress={() => { setShowDevisExpressModal(true); }}
+    />
+  );
+
+  // === DEVIS COMPOSER (nouveau parcours single-canvas) ===
+  const devisComposerElement = (
+    <DevisComposer
+      isOpen={showDevisComposer}
+      onClose={() => { setShowDevisComposer(false); setEditingDevis(null); }}
+      initialData={editingDevis}
+      onSubmit={async (devisData) => {
+        const numero = await generateNumero(devisData.type);
+        const newDevis = await onSubmit({ ...devisData, numero });
+        if (!newDevis?.id) {
+          throw new Error('Le devis n\'a pas pu etre cree. Verifiez les donnees et reessayez.');
+        }
+        setSelected(newDevis);
+        setMode('preview');
+        setShowCreationSuccess({ devis: newDevis, numero });
+        return newDevis;
+      }}
+      onUpdate={async (id, devisData) => {
+        await onUpdate(id, devisData);
+        setSelected(prev => prev ? { ...prev, ...devisData } : prev);
+        setDevis(prev => prev.map(d => d.id === id ? { ...d, ...devisData, updatedAt: new Date().toISOString() } : d));
+        setEditingDevis(null);
+        setShowDevisComposer(false);
+        showToast('Document modifié avec succès', 'success');
+      }}
+      clients={clients}
+      addClient={(data) => {
+        const c = { id: generateId(), ...data };
+        setClients(prev => [...prev, c]);
+        return c;
+      }}
+      catalogue={catalogue}
+      chantiers={chantiers}
+      entreprise={entreprise}
+      isDark={isDark}
+      couleur={couleur}
     />
   );
 
@@ -4161,6 +4203,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         )}
       </div>
       {devisWizardElement}
+      {devisComposerElement}
     </>
     );
   }
@@ -4707,7 +4750,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         <div className="relative">
           <div className="flex items-stretch">
             <button
-              onClick={() => { setEditingDevis(null); setShowDevisWizard(true); }}
+              onClick={() => { setEditingDevis(null); setShowDevisComposer(true); }}
               className="px-4 py-2.5 text-white rounded-l-xl text-sm font-semibold flex items-center gap-2 hover:opacity-90 transition-all"
               style={{ background: couleur }}
             >
@@ -5127,7 +5170,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
               </div>
 
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                <button onClick={() => { setEditingDevis(null); setShowDevisWizard(true); }} className="px-6 py-3 text-white rounded-xl flex items-center justify-center gap-2 hover:shadow-lg transition-all font-medium" style={{ background: couleur }}>
+                <button onClick={() => { setEditingDevis(null); setShowDevisComposer(true); }} className="px-6 py-3 text-white rounded-xl flex items-center justify-center gap-2 hover:shadow-lg transition-all font-medium" style={{ background: couleur }}>
                   <FileText size={18} />
                   Créer mon premier devis
                 </button>
@@ -5142,7 +5185,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           {/* Simple CTA for filtered empty state */}
           {(search || filter !== 'all') && (
             <div className={`p-6 border-t ${isDark ? 'border-slate-700' : 'border-slate-100'} text-center`}>
-              <button onClick={() => { setEditingDevis(null); setShowDevisWizard(true); }} className="px-6 py-3 text-white rounded-xl flex items-center justify-center gap-2 mx-auto hover:shadow-lg transition-all font-medium" style={{ background: couleur }}>
+              <button onClick={() => { setEditingDevis(null); setShowDevisComposer(true); }} className="px-6 py-3 text-white rounded-xl flex items-center justify-center gap-2 mx-auto hover:shadow-lg transition-all font-medium" style={{ background: couleur }}>
                 <Plus size={18} />
                 Créer un nouveau document
               </button>
@@ -5711,6 +5754,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 
       {/* Devis Wizard - uses extracted variable (shared with preview mode) */}
       {devisWizardElement}
+      {/* Devis Composer - nouveau parcours single-canvas (shared with preview mode) */}
+      {devisComposerElement}
 
       {/* Signature Pad Modal */}
       <SignaturePad
