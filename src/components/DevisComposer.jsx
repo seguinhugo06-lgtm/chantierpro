@@ -73,6 +73,9 @@ export default function DevisComposer({
   catalogue = [],
   chantiers = [],
   entreprise = {},
+  customTemplates = [],
+  addTemplate,
+  showToast,
   isDark = false,
   couleur = '#f97316',
   onPreview,
@@ -96,6 +99,7 @@ export default function DevisComposer({
   const [form, setForm] = useState(blankForm);
   const [focusLotId, setFocusLotId] = useState(null);
   const [metreLineId, setMetreLineId] = useState(null);
+  const [showSaveTemplate, setShowSaveTemplate] = useState(false);
   const [showClientPicker, setShowClientPicker] = useState(false);
   const [clientSearch, setClientSearch] = useState('');
   const [showQuickClient, setShowQuickClient] = useState(false);
@@ -259,6 +263,39 @@ export default function DevisComposer({
         id: generateId(), description: desc, quantite: 1, unite: 'u', prixUnitaire: 0, prixAchat: 0, tva: p.tvaDefaut,
       })),
     }));
+  };
+
+  // Charger un modèle perso (lignes chiffrées enregistrées par l'artisan)
+  const applyPersoTemplate = (tpl) => {
+    const lignes = (tpl.lignes || []).map(l => ({
+      id: generateId(),
+      description: l.description || '',
+      quantite: l.quantite ?? 1,
+      unite: l.unite || 'u',
+      prixUnitaire: l.prixUnitaire ?? l.prix ?? 0,
+      prixAchat: l.prixAchat ?? 0,
+      tva: l.tva !== undefined ? l.tva : (tpl.tva_defaut || form.tvaDefaut),
+    }));
+    setForm(p => ({ ...p, lignes, tvaDefaut: tpl.tva_defaut || tpl.tvaDefaut || p.tvaDefaut, notes: tpl.notes || p.notes }));
+  };
+
+  const saveAsTemplate = async (nom, categorie) => {
+    const priced = form.lignes.filter(l => !l._isSection && (l.description || '').trim());
+    if (!priced.length) { showToast?.('Ajoutez des lignes avant d\'enregistrer un modèle', 'error'); return; }
+    try {
+      await addTemplate?.({
+        nom: (nom || '').trim(),
+        categorie: (categorie || '').trim() || 'Mes modèles',
+        description: 'Créé depuis le composer',
+        lignes: priced.map(l => ({ description: l.description, quantite: Number(l.quantite) || 1, unite: l.unite || 'u', prixUnitaire: Math.abs(Number(l.prixUnitaire) || 0), prixAchat: Number(l.prixAchat) || 0, tva: l.tva })),
+        tva_defaut: form.tvaDefaut,
+        notes: form.notes || '',
+      });
+      setShowSaveTemplate(false);
+      showToast?.(`Modèle « ${(nom || '').trim()} » enregistré`, 'success');
+    } catch {
+      showToast?.('Erreur lors de l\'enregistrement du modèle', 'error');
+    }
   };
   const updateLigne = (id, field, value) => setForm(p => ({ ...p, lignes: p.lignes.map(l => l.id === id ? { ...l, [field]: value } : l) }));
   const removeLigne = (id) => setForm(p => ({ ...p, lignes: p.lignes.filter(l => l.id !== id) }));
@@ -463,22 +500,28 @@ export default function DevisComposer({
             {/* Add line with catalogue autocomplete */}
             <AddLineRow catalogue={catalogue} isDark={isDark} couleur={couleur} inputBg={inputBg} textPrimary={textPrimary} textMuted={textMuted} onAdd={addLigne} empty={form.lignes.length === 0} />
 
-            {/* Ajouter un lot (regrouper par pièce / corps d'état) */}
+            {/* Ajouter un lot / enregistrer comme modèle */}
             {form.lignes.length > 0 && (
-              <div className={`px-3 sm:px-4 pb-3 ${hasLots ? '' : 'pt-0'}`}>
+              <div className={`px-3 sm:px-4 pb-3 flex flex-wrap items-center gap-2 ${hasLots ? '' : 'pt-0'}`}>
                 <button type="button" onClick={addLot}
                   className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg border transition-all ${isDark ? 'border-slate-700 text-slate-300 hover:bg-slate-800' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
                   <Plus size={13} /> Ajouter un lot
                 </button>
-                {!hasLots && <span className={`ml-2 text-[11px] ${textMuted}`}>Regroupez par pièce ou corps d'état (Salle de bain, Cuisine…)</span>}
+                {addTemplate && (
+                  <button type="button" onClick={() => setShowSaveTemplate(true)}
+                    className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg border transition-all ${isDark ? 'border-slate-700 text-slate-300 hover:bg-slate-800' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
+                    <Star size={13} /> Enregistrer comme modèle
+                  </button>
+                )}
+                {!hasLots && <span className={`text-[11px] ${textMuted}`}>Regroupez par pièce ou corps d'état (Salle de bain, Cuisine…)</span>}
               </div>
             )}
 
             {/* Démarrage éclair (uniquement quand le devis est vide) */}
             {form.lignes.length === 0 && (
               <div className={`border-t ${isDark ? 'border-slate-800' : 'border-slate-100'} p-3 sm:p-4`}>
-                <QuickStart templates={METIER_TEMPLATES} articles={quickArticles}
-                  onApplyTemplate={applyTemplate} onAddArticle={addLigne}
+                <QuickStart templates={METIER_TEMPLATES} articles={quickArticles} persoTemplates={customTemplates}
+                  onApplyTemplate={applyTemplate} onApplyPerso={applyPersoTemplate} onAddArticle={addLigne}
                   isDark={isDark} couleur={couleur} textPrimary={textPrimary} textMuted={textMuted} />
               </div>
             )}
@@ -601,6 +644,15 @@ export default function DevisComposer({
             if (unite) updateLigne(metreLineId, 'unite', unite);
             setMetreLineId(null);
           }}
+        />
+      )}
+
+      {showSaveTemplate && (
+        <SaveTemplateModal
+          isDark={isDark} couleur={couleur} inputBg={inputBg} textPrimary={textPrimary} textMuted={textMuted}
+          defaultName={form.lignes.find(l => !l._isSection && (l.description || '').trim())?.description || ''}
+          onClose={() => setShowSaveTemplate(false)}
+          onSave={saveAsTemplate}
         />
       )}
     </div>,
@@ -807,13 +859,66 @@ function MetreModal({ isDark, couleur, inputBg, textPrimary, textMuted, onClose,
   );
 }
 
+/* ── Enregistrer le devis courant comme modèle perso ── */
+function SaveTemplateModal({ isDark, couleur, inputBg, textPrimary, textMuted, defaultName, onClose, onSave }) {
+  const [nom, setNom] = useState(defaultName || '');
+  const [categorie, setCategorie] = useState('');
+  const ref = useRef(null);
+  useEffect(() => {
+    ref.current?.focus(); ref.current?.select();
+    const onKey = e => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
+  const card = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200';
+  const fieldCls = `w-full px-3 h-11 rounded-xl border text-sm ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`;
+  const labelCls = `block text-[11px] font-semibold uppercase tracking-wide mb-1.5 ${textMuted}`;
+  return (
+    <div className="fixed inset-0 z-[1100] flex items-end sm:items-center justify-center sm:p-4" role="dialog" aria-modal="true" aria-label="Enregistrer comme modèle">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className={`relative w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl border shadow-2xl ${card}`}>
+        <div className={`flex items-center justify-between px-5 py-4 border-b ${isDark ? 'border-slate-700' : 'border-slate-100'}`}>
+          <h3 className={`text-base font-bold flex items-center gap-2 ${textPrimary}`}><Star size={18} style={{ color: couleur }} /> Enregistrer comme modèle</h3>
+          <button onClick={onClose} aria-label="Fermer" className={`p-1.5 rounded-lg ${textMuted} ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}><X size={18} /></button>
+        </div>
+        <div className="p-5 space-y-4">
+          <div><label className={labelCls}>Nom du modèle</label><input ref={ref} value={nom} onChange={e => setNom(e.target.value)} placeholder="ex : Rénovation salle de bain type" className={fieldCls} /></div>
+          <div><label className={labelCls}>Catégorie — option</label><input value={categorie} onChange={e => setCategorie(e.target.value)} placeholder="Mes modèles" className={fieldCls} /></div>
+          <p className={`text-xs ${textMuted}`}>Les lignes chiffrées du devis seront enregistrées. Vous les retrouverez dans « Vos modèles » au prochain devis.</p>
+        </div>
+        <div className={`flex gap-2 px-5 py-4 border-t ${isDark ? 'border-slate-700' : 'border-slate-100'}`}>
+          <button onClick={onClose} className={`flex-1 h-11 rounded-xl border text-sm font-semibold ${isDark ? 'border-slate-700 text-slate-200 hover:bg-slate-700' : 'border-slate-200 text-slate-700 hover:bg-slate-50'}`}>Annuler</button>
+          <button onClick={() => onSave(nom, categorie)} disabled={!nom.trim()}
+            className="flex-1 h-11 rounded-xl text-white text-sm font-bold disabled:opacity-50 transition-all" style={{ background: couleur }}>Enregistrer</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ── Démarrage éclair : modèles métier + articles fréquents ── */
-function QuickStart({ templates, articles, onApplyTemplate, onAddArticle, isDark, couleur, textPrimary, textMuted }) {
+function QuickStart({ templates, articles, persoTemplates = [], onApplyTemplate, onApplyPerso, onAddArticle, isDark, couleur, textPrimary, textMuted }) {
   return (
     <div className="space-y-4">
+      {persoTemplates.length > 0 && (
+        <div>
+          <p className={`text-[11px] font-semibold uppercase tracking-wide mb-2 flex items-center gap-1.5 ${textMuted}`}>
+            <FileText size={12} style={{ color: couleur }} /> Vos modèles
+          </p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            {persoTemplates.slice(0, 6).map(tpl => (
+              <button key={tpl.id} type="button" onClick={() => onApplyPerso(tpl)}
+                className={`group flex flex-col items-start gap-0.5 p-3 rounded-xl border text-left transition-all hover:-translate-y-0.5 hover:shadow-md active:scale-95 ${isDark ? 'bg-slate-800 border-slate-700 hover:border-slate-600' : 'bg-white border-slate-200 hover:border-slate-300'}`}>
+                <span className={`text-sm font-semibold truncate w-full ${textPrimary}`}>{tpl.nom}</span>
+                <span className={`text-[10px] ${textMuted}`}>{(tpl.lignes || []).length} lignes{tpl.categorie ? ` · ${tpl.categorie}` : ''}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
       <div>
         <p className={`text-[11px] font-semibold uppercase tracking-wide mb-2 flex items-center gap-1.5 ${textMuted}`}>
-          <Sparkles size={12} style={{ color: couleur }} /> Démarrer avec un modèle
+          <Sparkles size={12} style={{ color: couleur }} /> Démarrer avec un modèle métier
         </p>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           {templates.map(tpl => (

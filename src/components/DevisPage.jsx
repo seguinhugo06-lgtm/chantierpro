@@ -2195,6 +2195,9 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       catalogue={catalogue}
       chantiers={chantiers}
       entreprise={entreprise}
+      customTemplates={ctxTemplates}
+      addTemplate={addTemplate}
+      showToast={showToast}
       isDark={isDark}
       couleur={couleur}
     />
