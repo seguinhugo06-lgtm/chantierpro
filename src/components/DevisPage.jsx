@@ -371,7 +371,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   };
 
   useEffect(() => { if (snackbar) { const t = setTimeout(() => setSnackbar(null), 8000); return () => clearTimeout(t); } }, [snackbar]);
-  useEffect(() => { if (createMode) { setMode('create'); setCreateMode?.(false); } }, [createMode, setCreateMode]);
+  useEffect(() => { if (createMode) { setEditingDevis(null); setShowDevisComposer(true); setCreateMode?.(false); } }, [createMode, setCreateMode]);
 
   // AI Prefill: populate form with IA-generated data (devis stays local until user confirms)
   useEffect(() => {

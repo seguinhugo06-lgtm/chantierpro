@@ -10,10 +10,11 @@
  */
 
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import {
   ArrowLeft, Plus, Search, Trash2, ChevronUp, ChevronDown, User,
   UserPlus, FileText, Receipt, Check, Loader2, Percent, StickyNote,
-  Package, Zap, CornerDownLeft,
+  Package, Zap, CornerDownLeft, Droplets, Paintbrush, Hammer, Star, Sparkles,
 } from 'lucide-react';
 import QuickClientModal from './QuickClientModal';
 import { generateId } from '../lib/utils';
@@ -21,6 +22,15 @@ import { formatClientName } from '../lib/formatters';
 
 const DRAFT_KEY = 'batigesti_devis_composer_draft';
 const MRU_KEY = 'batigesti_recent_clients';
+const RECENT_ARTICLES_KEY = 'batigesti_recent_articles';
+
+/** Modèles métier : squelettes de devis prêts à chiffrer (mêmes trames que le formulaire classique). */
+const METIER_TEMPLATES = [
+  { label: 'Rénovation SDB', Icon: Droplets, lignes: ['Dépose sanitaires existants', 'Démolition carrelage mural et sol', 'Alimentation eau chaude/froide', 'Évacuation', 'Pose carrelage sol', 'Pose faïence murale', 'Pose douche italienne', 'Pose meuble vasque', 'Pose WC suspendu'] },
+  { label: 'Peinture', Icon: Paintbrush, lignes: ['Protection sols et meubles', 'Lessivage des murs', 'Rebouchage fissures', 'Peinture murs 2 couches', 'Peinture plafond', 'Peinture boiseries'] },
+  { label: 'Électricité', Icon: Zap, lignes: ['Pose tableau électrique', 'Tirage de câbles', 'Pose prises et interrupteurs', 'Pose points d\'éclairage'] },
+  { label: 'Démolition', Icon: Hammer, lignes: ['Dépose des revêtements existants', 'Évacuation des gravats', 'Nettoyage du chantier'] },
+];
 
 const eur = (v) => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v || 0);
 
@@ -195,8 +205,30 @@ export default function DevisComposer({
     setClientSearch('');
   };
 
+  // ── Articles fréquents (favoris + récemment utilisés) ──
+  const rememberArticle = useCallback((item) => {
+    if (!item || !item.id) return;
+    try {
+      const prev = JSON.parse(localStorage.getItem(RECENT_ARTICLES_KEY) || '[]').filter(x => x && x.id !== item.id);
+      prev.unshift({ id: item.id, nom: item.nom || item.designation || '', prix: item.prix ?? item.prixUnitaire ?? 0, unite: item.unite || 'u', prixAchat: item.prixAchat ?? 0, categorie: item.categorie || '' });
+      localStorage.setItem(RECENT_ARTICLES_KEY, JSON.stringify(prev.slice(0, 8)));
+    } catch { /* ignore */ }
+  }, []);
+
+  const quickArticles = useMemo(() => {
+    let recents = [];
+    try { recents = JSON.parse(localStorage.getItem(RECENT_ARTICLES_KEY) || '[]'); } catch { /* ignore */ }
+    const favs = (catalogue || []).filter(c => c.favori);
+    const seen = new Set();
+    const merged = [];
+    [...recents, ...favs].forEach(a => { if (a && a.id && !seen.has(a.id)) { seen.add(a.id); merged.push(a); } });
+    return merged.slice(0, 10);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [catalogue, isOpen]);
+
   // ── Lignes ──
   const addLigne = (item = {}) => {
+    if (item.id) rememberArticle(item);
     setForm(p => ({
       ...p,
       lignes: [...p.lignes, {
@@ -208,6 +240,15 @@ export default function DevisComposer({
         prixAchat: item.prixAchat ?? 0,
         tva: p.tvaDefaut,
       }],
+    }));
+  };
+
+  const applyTemplate = (tpl) => {
+    setForm(p => ({
+      ...p,
+      lignes: tpl.lignes.map(desc => ({
+        id: generateId(), description: desc, quantite: 1, unite: 'u', prixUnitaire: 0, prixAchat: 0, tva: p.tvaDefaut,
+      })),
     }));
   };
   const updateLigne = (id, field, value) => setForm(p => ({ ...p, lignes: p.lignes.map(l => l.id === id ? { ...l, [field]: value } : l) }));
@@ -271,10 +312,10 @@ export default function DevisComposer({
     }
   };
 
-  if (!isOpen) return null;
+  if (!isOpen || typeof document === 'undefined') return null;
   const isFacture = form.type === 'facture';
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-[1000] flex flex-col" style={{ background: isDark ? '#0b1220' : '#f8fafc' }}>
       {/* ── Top bar ── */}
       <header className={`flex items-center gap-3 px-3 sm:px-5 h-14 border-b ${isDark ? 'border-slate-800 bg-slate-900' : 'border-slate-200 bg-white'} flex-shrink-0`}>
@@ -352,6 +393,15 @@ export default function DevisComposer({
 
             {/* Add line with catalogue autocomplete */}
             <AddLineRow catalogue={catalogue} isDark={isDark} couleur={couleur} inputBg={inputBg} textPrimary={textPrimary} textMuted={textMuted} onAdd={addLigne} empty={form.lignes.length === 0} />
+
+            {/* Démarrage éclair (uniquement quand le devis est vide) */}
+            {form.lignes.length === 0 && (
+              <div className={`border-t ${isDark ? 'border-slate-800' : 'border-slate-100'} p-3 sm:p-4`}>
+                <QuickStart templates={METIER_TEMPLATES} articles={quickArticles}
+                  onApplyTemplate={applyTemplate} onAddArticle={addLigne}
+                  isDark={isDark} couleur={couleur} textPrimary={textPrimary} textMuted={textMuted} />
+              </div>
+            )}
           </div>
 
           {/* Options (remise / notes) */}
@@ -441,7 +491,8 @@ export default function DevisComposer({
           isDark={isDark} couleur={couleur}
         />
       )}
-    </div>
+    </div>,
+    document.body
   );
 }
 
@@ -564,11 +615,62 @@ function LineMenu({ isDark, textMuted, index, total, onMoveUp, onMoveDown, onDup
   );
 }
 
+/* ── Démarrage éclair : modèles métier + articles fréquents ── */
+function QuickStart({ templates, articles, onApplyTemplate, onAddArticle, isDark, couleur, textPrimary, textMuted }) {
+  return (
+    <div className="space-y-4">
+      <div>
+        <p className={`text-[11px] font-semibold uppercase tracking-wide mb-2 flex items-center gap-1.5 ${textMuted}`}>
+          <Sparkles size={12} style={{ color: couleur }} /> Démarrer avec un modèle
+        </p>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          {templates.map(tpl => (
+            <button key={tpl.label} type="button" onClick={() => onApplyTemplate(tpl)}
+              className={`group flex flex-col items-center gap-1.5 p-3 rounded-xl border transition-all hover:-translate-y-0.5 hover:shadow-md active:scale-95 ${isDark ? 'bg-slate-800 border-slate-700 hover:border-slate-600' : 'bg-white border-slate-200 hover:border-slate-300'}`}>
+              <span className="w-9 h-9 rounded-lg flex items-center justify-center transition-transform group-hover:scale-110" style={{ background: `${couleur}18`, color: couleur }}>
+                <tpl.Icon size={18} />
+              </span>
+              <span className={`text-xs font-medium text-center leading-tight ${textPrimary}`}>{tpl.label}</span>
+              <span className={`text-[10px] ${textMuted}`}>{tpl.lignes.length} lignes</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {articles.length > 0 && (
+        <div>
+          <p className={`text-[11px] font-semibold uppercase tracking-wide mb-2 flex items-center gap-1.5 ${textMuted}`}>
+            <Star size={12} style={{ color: couleur }} /> Vos articles fréquents
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {articles.map(a => (
+              <button key={a.id} type="button" onClick={() => onAddArticle(a)}
+                className={`group flex items-center gap-2 pl-3 pr-2 h-9 rounded-full border text-sm transition-all hover:-translate-y-0.5 hover:shadow-sm active:scale-95 ${isDark ? 'bg-slate-800 border-slate-700 hover:border-slate-600' : 'bg-white border-slate-200 hover:border-slate-300'}`}>
+                <span className={`font-medium truncate max-w-[180px] ${textPrimary}`}>{a.nom}</span>
+                <span className="font-bold text-xs" style={{ color: couleur }}>{eur(a.prix ?? a.prixUnitaire ?? 0)}</span>
+                <span className="w-5 h-5 rounded-full flex items-center justify-center transition-transform group-hover:scale-110" style={{ background: `${couleur}18`, color: couleur }}><Plus size={12} /></span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ── Add-line row with catalogue autocomplete ── */
 function AddLineRow({ catalogue, isDark, couleur, inputBg, textPrimary, textMuted, onAdd, empty }) {
   const [q, setQ] = useState('');
   const [highlight, setHighlight] = useState(0);
   const inputRef = useRef(null);
+  // Auto-focus la recherche à l'ouverture (desktop uniquement, pour ne pas ouvrir le clavier mobile d'office)
+  useEffect(() => {
+    if (empty && typeof window !== 'undefined' && window.innerWidth >= 640) {
+      const t = setTimeout(() => inputRef.current?.focus(), 80);
+      return () => clearTimeout(t);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const suggestions = useMemo(() => {
     const query = q.trim().toLowerCase();
     if (!query) return [];
