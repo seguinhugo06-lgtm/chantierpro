@@ -86,7 +86,8 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mod
   // Filter out section markers, null/undefined, and lines with no description
   lignes = filterValidLignes(lignes);
 
-  const lignesHTML = lignes.map(l => {
+  // Rendu d'une ligne
+  const renderRow = (l) => {
     const pu = getLinePU(l);
     const total = getLineTotal(l);
     return `
@@ -98,7 +99,28 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mod
       <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${isMicro ? '-' : (l.tva !== undefined ? l.tva : (doc.tvaRate || doc.tva_rate || 10)) + '%'}</td>
       <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:right;font-weight:600;${total < 0 ? 'color:#dc2626;' : ''}">${total.toFixed(2)} €</td>
     </tr>`;
-  }).join('');
+  };
+
+  // Lots (sections avec titre) : entête + sous-total par lot. Sinon rendu à plat (comportement historique).
+  const docSections = Array.isArray(doc.sections) ? doc.sections : null;
+  const lotSections = docSections
+    ? docSections.map(s => ({ titre: (s.titre || '').trim(), lignes: filterValidLignes(s.lignes || []) })).filter(s => s.lignes.length)
+    : [];
+  const hasLots = lotSections.some(s => s.titre) && lotSections.length > 0;
+
+  const lignesHTML = hasLots
+    ? lotSections.map(s => {
+        const sub = s.lignes.reduce((sum, l) => sum + getLineTotal(l), 0);
+        const header = s.titre
+          ? `<tr><td colspan="6" style="padding:14px 8px 6px;font-weight:700;font-size:10.5pt;color:${couleur};border-bottom:2px solid ${couleur}">${s.titre}</td></tr>`
+          : '';
+        const rows = s.lignes.map(renderRow).join('');
+        const subtotal = s.titre
+          ? `<tr><td colspan="5" style="padding:6px 8px;text-align:right;font-size:8.5pt;color:#64748b;font-style:italic">Sous-total ${s.titre}</td><td style="padding:6px 8px;text-align:right;font-weight:700;font-size:9pt">${sub.toFixed(2)} €</td></tr>`
+          : '';
+        return header + rows + subtotal;
+      }).join('')
+    : lignes.map(renderRow).join('');
 
   const totalHT = doc.total_ht || 0;
   const totalTTC = doc.total_ttc || 0;

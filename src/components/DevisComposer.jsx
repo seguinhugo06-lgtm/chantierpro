@@ -169,6 +169,7 @@ export default function DevisComposer({
   const totals = useMemo(() => {
     let totalHT = 0, tvaTotal = 0, totalCost = 0;
     form.lignes.forEach(l => {
+      if (l._isSection) return; // les titres de lot ne comptent pas
       const montant = (Number(l.quantite) || 0) * (Number(l.prixUnitaire) || 0);
       const taux = l.tva !== undefined ? l.tva : form.tvaDefaut;
       totalHT += montant;
@@ -272,20 +273,51 @@ export default function DevisComposer({
     const n = [...p.lignes]; n.splice(i + 1, 0, copy);
     return { ...p, lignes: n };
   });
+  // ── Lots (titres de section) ──
+  const addLot = () => setForm(p => ({ ...p, lignes: [...p.lignes, { id: generateId(), _isSection: true, description: '' }] }));
+
+  // Sous-total par lot : index du marqueur → somme des lignes qui le suivent jusqu'au prochain lot
+  const sectionSubtotals = useMemo(() => {
+    const res = {};
+    form.lignes.forEach((l, i) => {
+      if (!l._isSection) return;
+      let sum = 0;
+      for (let j = i + 1; j < form.lignes.length; j++) {
+        if (form.lignes[j]._isSection) break;
+        sum += (Number(form.lignes[j].quantite) || 0) * (Number(form.lignes[j].prixUnitaire) || 0);
+      }
+      res[i] = sum;
+    });
+    return res;
+  }, [form.lignes]);
+  const hasLots = form.lignes.some(l => l._isSection);
 
   // ── Submit ──
   const handleSubmit = async (thenPreview = false) => {
     if (!form.clientId) { setError('Choisissez un client.'); setShowClientPicker(true); return; }
-    const valid = form.lignes.filter(l => (l.description || '').trim());
-    if (valid.length === 0) { setError('Ajoutez au moins une ligne.'); return; }
+    const priced = form.lignes.filter(l => !l._isSection && (l.description || '').trim());
+    if (priced.length === 0) { setError('Ajoutez au moins une ligne.'); return; }
     setError('');
     const roundEuro = (v) => Math.round((v + Number.EPSILON) * 100) / 100;
-    const lignesFormatted = valid.map(l => ({
+    const fmt = (l) => ({
       ...l,
       quantite: Math.max(0, Number(l.quantite) || 0),
       prixUnitaire: Math.max(0, Number(l.prixUnitaire) || 0),
       montant: (Number(l.quantite) || 0) * (Number(l.prixUnitaire) || 0),
-    }));
+    });
+    // Découpe la liste plate en lots (sections) au niveau des marqueurs _isSection
+    const sections = [];
+    let cur = { id: generateId(), titre: '', lignes: [] };
+    form.lignes.forEach(l => {
+      if (l._isSection) {
+        if (cur.lignes.length) sections.push(cur);
+        cur = { id: l.id, titre: (l.description || '').trim(), lignes: [] };
+      } else if ((l.description || '').trim()) {
+        cur.lignes.push(fmt(l));
+      }
+    });
+    if (cur.lignes.length) sections.push(cur);
+    const lignesFormatted = sections.flatMap(s => s.lignes);
     const devisData = {
       type: form.type,
       client_id: form.clientId,
@@ -295,7 +327,7 @@ export default function DevisComposer({
       statut: isEditMode ? initialData.statut : 'brouillon',
       tvaRate: form.tvaDefaut,
       lignes: lignesFormatted,
-      sections: [{ id: '1', titre: '', lignes: lignesFormatted }],
+      sections: sections.length ? sections : [{ id: '1', titre: '', lignes: lignesFormatted }],
       remise: form.remise,
       acompte_pct: form.acompte || undefined,
       conditions: form.conditions || undefined,
@@ -407,15 +439,33 @@ export default function DevisComposer({
             )}
             <div>
               {form.lignes.map((ligne, index) => (
-                <LigneRow key={ligne.id} ligne={ligne} index={index} total={form.lignes.length}
-                  isDark={isDark} couleur={couleur} inputBg={inputBg} textPrimary={textPrimary} textMuted={textMuted} rowHover={rowHover}
-                  onUpdate={(f, v) => updateLigne(ligne.id, f, v)} onRemove={() => removeLigne(ligne.id)}
-                  onMoveUp={() => moveLigne(index, -1)} onMoveDown={() => moveLigne(index, 1)} onDuplicate={() => duplicateLigne(ligne.id)} />
+                ligne._isSection ? (
+                  <SectionRow key={ligne.id} ligne={ligne} index={index} total={form.lignes.length} subtotal={sectionSubtotals[index] || 0}
+                    isDark={isDark} couleur={couleur} inputBg={inputBg} textPrimary={textPrimary} textMuted={textMuted}
+                    onUpdate={(v) => updateLigne(ligne.id, 'description', v)} onRemove={() => removeLigne(ligne.id)}
+                    onMoveUp={() => moveLigne(index, -1)} onMoveDown={() => moveLigne(index, 1)} />
+                ) : (
+                  <LigneRow key={ligne.id} ligne={ligne} index={index} total={form.lignes.length}
+                    isDark={isDark} couleur={couleur} inputBg={inputBg} textPrimary={textPrimary} textMuted={textMuted} rowHover={rowHover}
+                    onUpdate={(f, v) => updateLigne(ligne.id, f, v)} onRemove={() => removeLigne(ligne.id)}
+                    onMoveUp={() => moveLigne(index, -1)} onMoveDown={() => moveLigne(index, 1)} onDuplicate={() => duplicateLigne(ligne.id)} />
+                )
               ))}
             </div>
 
             {/* Add line with catalogue autocomplete */}
             <AddLineRow catalogue={catalogue} isDark={isDark} couleur={couleur} inputBg={inputBg} textPrimary={textPrimary} textMuted={textMuted} onAdd={addLigne} empty={form.lignes.length === 0} />
+
+            {/* Ajouter un lot (regrouper par pièce / corps d'état) */}
+            {form.lignes.length > 0 && (
+              <div className={`px-3 sm:px-4 pb-3 ${hasLots ? '' : 'pt-0'}`}>
+                <button type="button" onClick={addLot}
+                  className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg border transition-all ${isDark ? 'border-slate-700 text-slate-300 hover:bg-slate-800' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
+                  <Plus size={13} /> Ajouter un lot
+                </button>
+                {!hasLots && <span className={`ml-2 text-[11px] ${textMuted}`}>Regroupez par pièce ou corps d'état (Salle de bain, Cuisine…)</span>}
+              </div>
+            )}
 
             {/* Démarrage éclair (uniquement quand le devis est vide) */}
             {form.lignes.length === 0 && (
@@ -596,6 +646,25 @@ function ClientField({ selectedClient, couleur, isDark, textPrimary, textMuted, 
           </button>
         </div>
       )}
+    </div>
+  );
+}
+
+/* ── Titre de lot (section) ── */
+function SectionRow({ ligne, index, total, subtotal, isDark, couleur, textPrimary, textMuted, onUpdate, onRemove, onMoveUp, onMoveDown }) {
+  return (
+    <div className={`group border-b ${isDark ? 'border-slate-800 bg-slate-800/40' : 'border-slate-100 bg-slate-50/80'}`}>
+      <div className="flex items-center gap-2 px-3 sm:px-4 py-2">
+        <span className="w-1.5 h-5 rounded-full flex-shrink-0" style={{ background: couleur }} />
+        <input value={ligne.description} onChange={e => onUpdate(e.target.value)} placeholder="Titre du lot (ex : Salle de bain)"
+          className={`flex-1 min-w-0 h-8 px-2 rounded-lg border-0 bg-transparent text-sm font-bold ${textPrimary} placeholder:font-normal focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`} />
+        <span className={`text-sm font-bold tabular-nums ${textPrimary}`}>{eur(subtotal)}</span>
+        <div className="flex items-center flex-shrink-0">
+          <button onClick={onMoveUp} disabled={index === 0} aria-label="Monter le lot" className={`p-1 rounded ${textMuted} disabled:opacity-30 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}><ChevronUp size={14} /></button>
+          <button onClick={onMoveDown} disabled={index === total - 1} aria-label="Descendre le lot" className={`p-1 rounded ${textMuted} disabled:opacity-30 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}><ChevronDown size={14} /></button>
+          <button onClick={onRemove} aria-label="Supprimer le lot" className="p-1 rounded text-red-500 hover:bg-red-500/10"><Trash2 size={14} /></button>
+        </div>
+      </div>
     </div>
   );
 }
