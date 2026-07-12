@@ -175,12 +175,16 @@ export default function App() {
     switchEntreprise,
     refreshEntreprises,
     updateEntreprise: ctxUpdateEntreprise,
+    addEntreprise: ctxAddEntreprise,
     loading: entrepriseLoading,
   } = useEntreprise();
 
-  // Entreprise defaults — fallback when context hasn't loaded yet
+  // Entreprise defaults — fallback when context hasn't loaded yet.
+  // nom stays EMPTY: never inject a placeholder company name (it would leak
+  // onto a new user's devis/PDF as "BatiGesti"). The "Profil incomplet" nudge
+  // prompts them to fill it.
   const ENTREPRISE_DEFAULTS = {
-    nom: 'BatiGesti', logo: '', couleur: '#f97316',
+    nom: '', logo: '', couleur: '#f97316',
     formeJuridique: '', capital: '', adresse: '', codePostal: '', ville: '',
     tel: '', email: '', siteWeb: '', siret: '', codeApe: '', rcs: '',
     tvaIntra: '', validiteDevis: 30, tvaDefaut: 10, delaiPaiement: 30,
@@ -194,13 +198,29 @@ export default function App() {
     return { ...ENTREPRISE_DEFAULTS, ...activeEntreprise };
   }, [activeEntreprise]);
 
-  // setEntreprise: backward-compat wrapper that updates via context
-  const setEntreprise = useCallback((updater) => {
+  // setEntreprise: backward-compat wrapper that updates via context.
+  // On a brand-new account there is no entreprise row yet (nothing provisions
+  // one at signup) — so the FIRST save creates it. Without this, every settings
+  // save silently no-op'd (statut juridique, etc.) and data was lost on reload.
+  const creatingEntRef = useRef(false);
+  const setEntreprise = useCallback(async (updater) => {
     const newVal = typeof updater === 'function' ? updater(entreprise) : updater;
     if (entrepriseId) {
       ctxUpdateEntreprise(entrepriseId, newVal);
+      return;
     }
-  }, [entreprise, entrepriseId, ctxUpdateEntreprise]);
+    // No entreprise yet → provision it with the entered data (guarded against
+    // concurrent debounced saves creating duplicates).
+    if (creatingEntRef.current) return;
+    creatingEntRef.current = true;
+    try {
+      await ctxAddEntreprise?.({ ...newVal, nom: newVal?.nom || '' });
+    } catch (e) {
+      console.warn('[App] setEntreprise: entreprise provisioning failed:', e?.message);
+    } finally {
+      creatingEntRef.current = false;
+    }
+  }, [entreprise, entrepriseId, ctxUpdateEntreprise, ctxAddEntreprise]);
   // Track which notification IDs have been read (persisted in localStorage)
   const [readNotifIds, setReadNotifIds] = useState(() => {
     try { return JSON.parse(localStorage.getItem('cp_read_notifs') || '[]'); } catch { return []; }

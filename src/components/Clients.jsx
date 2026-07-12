@@ -474,11 +474,13 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
           setClients(clients.map(c => c.id === editId ? { ...c, ...trimmedForm } : c));
         }
       } else {
-        onSubmit(trimmedForm);
+        // Await so a failed Supabase save surfaces here (error toast) instead of
+        // showing a false "créé avec succès" while the client silently vanishes.
+        await onSubmit(trimmedForm);
       }
     } catch (error) {
       console.error('Error saving client:', error);
-      showToast('Erreur lors de la sauvegarde du client', 'error');
+      showToast(error?.message || 'Erreur lors de la sauvegarde du client', 'error');
       return;
     }
     setShow(false);

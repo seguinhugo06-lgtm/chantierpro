@@ -1271,9 +1271,11 @@ async function writeWithColumnRetry(table, mapping, supabaseData, runQuery) {
             strippedCols.push(badCol);
           } else if (!strippedCols.includes(badCol)) {
             // Column is NOT in payload — a DB trigger/schema references a missing column.
-            console.warn(`⚠️ ${table}: trigger/schema references "${badCol}" — not in payload, skipping retry`);
-            strippedCols.push(badCol);
-            break; // Stop retrying — this is a DB schema issue, not fixable client-side
+            // Not fixable client-side. Break and THROW after the loop (below) so the
+            // caller surfaces an error + queues the item offline instead of losing it silently.
+            console.error(`❌ ${table}: DB trigger/schema references missing column "${badCol}" — not fixable client-side`);
+            strippedCols.push(`!${badCol}`);
+            break;
           }
           continue;
         }
@@ -1314,7 +1316,10 @@ async function writeWithColumnRetry(table, mapping, supabaseData, runQuery) {
       throw error;
     }
   }
-  return null;
+  // Gave up (e.g. a DB trigger references a missing column). Throw so the caller
+  // surfaces the error + queues the item offline — never silently "succeed".
+  const broken = strippedCols.find(c => c.startsWith('!'));
+  throw new Error(`Échec de sauvegarde (${table})${broken ? ` : la base référence une colonne manquante « ${broken.slice(1)} »` : ''}.`);
 }
 
 /**
