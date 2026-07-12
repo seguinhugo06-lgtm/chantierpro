@@ -15,10 +15,12 @@ import {
   ArrowLeft, Plus, Search, Trash2, ChevronUp, ChevronDown, User,
   UserPlus, FileText, Receipt, Check, Loader2, Percent, StickyNote,
   Package, Zap, CornerDownLeft, Droplets, Paintbrush, Hammer, Star, Sparkles, Ruler, X,
+  Eye, AlertTriangle,
 } from 'lucide-react';
 import QuickClientModal from './QuickClientModal';
 import { generateId } from '../lib/utils';
 import { formatClientName } from '../lib/formatters';
+import { buildDevisHtml } from '../lib/devisHtmlBuilder';
 
 const DRAFT_KEY = 'batigesti_devis_composer_draft';
 const MRU_KEY = 'batigesti_recent_clients';
@@ -76,6 +78,7 @@ export default function DevisComposer({
   customTemplates = [],
   addTemplate,
   showToast,
+  onCompleteProfile,
   isDark = false,
   couleur = '#f97316',
   onPreview,
@@ -100,6 +103,10 @@ export default function DevisComposer({
   const [focusLotId, setFocusLotId] = useState(null);
   const [metreLineId, setMetreLineId] = useState(null);
   const [showSaveTemplate, setShowSaveTemplate] = useState(false);
+  // Boucle clavier : après ajout d'une ligne, focus Qté (article chiffré) ou PU (ligne libre)
+  const [focusField, setFocusField] = useState(null); // { lineId, field }
+  const [focusSearchTick, setFocusSearchTick] = useState(0); // incrément → refocus la recherche
+  const [showPdfPreview, setShowPdfPreview] = useState(false);
   const [showClientPicker, setShowClientPicker] = useState(false);
   const [clientSearch, setClientSearch] = useState('');
   const [showQuickClient, setShowQuickClient] = useState(false);
@@ -242,18 +249,22 @@ export default function DevisComposer({
   // ── Lignes ──
   const addLigne = (item = {}) => {
     if (item.id) rememberArticle(item);
+    const newId = generateId();
+    const prix = item.prix ?? item.prixUnitaire ?? 0;
     setForm(p => ({
       ...p,
       lignes: [...p.lignes, {
-        id: generateId(),
+        id: newId,
         description: item.nom || item.description || '',
         quantite: item.quantite || 1,
         unite: item.unite || 'u',
-        prixUnitaire: item.prix ?? item.prixUnitaire ?? 0,
+        prixUnitaire: prix,
         prixAchat: item.prixAchat ?? 0,
         tva: p.tvaDefaut,
       }],
     }));
+    // Article chiffré → la prochaine saisie est la quantité ; ligne libre → le prix
+    setFocusField({ lineId: newId, field: prix > 0 ? 'quantite' : 'prixUnitaire' });
   };
 
   const applyTemplate = (tpl) => {
@@ -335,12 +346,8 @@ export default function DevisComposer({
   }, [form.lignes]);
   const hasLots = form.lignes.some(l => l._isSection);
 
-  // ── Submit ──
-  const handleSubmit = async (thenPreview = false) => {
-    if (!form.clientId) { setError('Choisissez un client.'); setShowClientPicker(true); return; }
-    const priced = form.lignes.filter(l => !l._isSection && (l.description || '').trim());
-    if (priced.length === 0) { setError('Ajoutez au moins une ligne.'); return; }
-    setError('');
+  // ── Construction du devisData (partagée entre Créer et Aperçu) ──
+  const buildDevisData = () => {
     const roundEuro = (v) => Math.round((v + Number.EPSILON) * 100) / 100;
     const fmt = (l) => ({
       ...l,
@@ -361,7 +368,7 @@ export default function DevisComposer({
     });
     if (cur.lignes.length) sections.push(cur);
     const lignesFormatted = sections.flatMap(s => s.lignes);
-    const devisData = {
+    return {
       type: form.type,
       client_id: form.clientId,
       chantier_id: form.chantierId || undefined,
@@ -379,6 +386,15 @@ export default function DevisComposer({
       tva: roundEuro(totals.tvaApresRemise),
       total_ttc: roundEuro(totals.totalTTC),
     };
+  };
+
+  // ── Submit ──
+  const handleSubmit = async (thenPreview = false) => {
+    if (!form.clientId) { setError('Choisissez un client.'); setShowClientPicker(true); return; }
+    const priced = form.lignes.filter(l => !l._isSection && (l.description || '').trim());
+    if (priced.length === 0) { setError('Ajoutez au moins une ligne.'); return; }
+    setError('');
+    const devisData = buildDevisData();
     setIsSubmitting(true);
     try {
       let result;
@@ -394,6 +410,16 @@ export default function DevisComposer({
       setIsSubmitting(false);
     }
   };
+
+  // Mentions légales manquantes — prévenir PENDANT la composition, pas au moment d'envoyer
+  const legalMissing = useMemo(() => {
+    const missing = [];
+    if (!entreprise?.siret) missing.push('SIRET');
+    if (!entreprise?.adresse) missing.push('adresse');
+    if (!(entreprise?.formeJuridique || entreprise?.forme_juridique)) missing.push('forme juridique');
+    if (!(entreprise?.decennaleAssureur || entreprise?.decennale_assureur) || !(entreprise?.decennaleNumero || entreprise?.decennale_numero)) missing.push('assurance décennale');
+    return missing;
+  }, [entreprise]);
 
   if (!isOpen || typeof document === 'undefined') return null;
   const isFacture = form.type === 'facture';
@@ -432,6 +458,20 @@ export default function DevisComposer({
         <div className="px-3 sm:px-5 py-2 text-xs flex items-center justify-between bg-amber-500/10 border-b border-amber-500/20">
           <span className={isDark ? 'text-amber-300' : 'text-amber-700'}>Brouillon restauré — reprenez où vous en étiez.</span>
           <button onClick={() => { clearDraft(); setForm(blankForm()); setDraftRestored(false); }} className={`font-medium ${isDark ? 'text-amber-300' : 'text-amber-700'} hover:underline`}>Recommencer</button>
+        </div>
+      )}
+
+      {legalMissing.length > 0 && (
+        <div className="px-3 sm:px-5 py-2 text-xs flex items-center gap-2 bg-amber-500/10 border-b border-amber-500/20">
+          <AlertTriangle size={13} className="text-amber-500 flex-shrink-0" />
+          <span className={`flex-1 min-w-0 truncate ${isDark ? 'text-amber-300' : 'text-amber-700'}`}>
+            L'envoi sera bloqué — profil incomplet : {legalMissing.join(', ')}.
+          </span>
+          {onCompleteProfile && (
+            <button onClick={onCompleteProfile} className={`font-semibold whitespace-nowrap ${isDark ? 'text-amber-300' : 'text-amber-700'} hover:underline`}>
+              Compléter →
+            </button>
+          )}
         </div>
       )}
 
@@ -492,13 +532,16 @@ export default function DevisComposer({
                     isDark={isDark} couleur={couleur} inputBg={inputBg} textPrimary={textPrimary} textMuted={textMuted} rowHover={rowHover}
                     onUpdate={(f, v) => updateLigne(ligne.id, f, v)} onRemove={() => removeLigne(ligne.id)}
                     onMoveUp={() => moveLigne(index, -1)} onMoveDown={() => moveLigne(index, 1)} onDuplicate={() => duplicateLigne(ligne.id)}
-                    onMetre={() => setMetreLineId(ligne.id)} />
+                    onMetre={() => setMetreLineId(ligne.id)}
+                    focusField={focusField && focusField.lineId === ligne.id ? focusField.field : null}
+                    onFocusHandled={() => setFocusField(null)}
+                    onLineEnter={() => setFocusSearchTick(t => t + 1)} />
                 )
               ))}
             </div>
 
             {/* Add line with catalogue autocomplete */}
-            <AddLineRow catalogue={catalogue} isDark={isDark} couleur={couleur} inputBg={inputBg} textPrimary={textPrimary} textMuted={textMuted} onAdd={addLigne} empty={form.lignes.length === 0} />
+            <AddLineRow catalogue={catalogue} isDark={isDark} couleur={couleur} inputBg={inputBg} textPrimary={textPrimary} textMuted={textMuted} onAdd={addLigne} empty={form.lignes.length === 0} focusSignal={focusSearchTick} />
 
             {/* Ajouter un lot / enregistrer comme modèle */}
             {form.lignes.length > 0 && (
@@ -611,17 +654,18 @@ export default function DevisComposer({
               </div>
             )}
           </div>
-          {onPreview && (
-            <button onClick={() => handleSubmit(true)} disabled={isSubmitting}
-              className={`hidden sm:flex items-center gap-2 px-4 h-11 rounded-xl text-sm font-semibold border transition-all ${isDark ? 'border-slate-700 text-slate-200 hover:bg-slate-800' : 'border-slate-200 text-slate-700 hover:bg-slate-50'}`}>
-              Aperçu
+          {form.lignes.some(l => !l._isSection && (l.description || '').trim()) && (
+            <button onClick={() => setShowPdfPreview(true)} disabled={isSubmitting}
+              aria-label="Aperçu du document"
+              className={`flex items-center gap-2 px-3 sm:px-4 h-11 rounded-xl text-sm font-semibold border transition-all ${isDark ? 'border-slate-700 text-slate-200 hover:bg-slate-800' : 'border-slate-200 text-slate-700 hover:bg-slate-50'}`}>
+              <Eye size={16} /> <span className="hidden sm:inline">Aperçu</span>
             </button>
           )}
           <button onClick={() => handleSubmit(false)} disabled={isSubmitting}
             className="flex items-center gap-2 px-5 h-11 rounded-xl text-white text-sm font-bold shadow-lg disabled:opacity-60 transition-all hover:opacity-90"
             style={{ background: couleur }}>
             {isSubmitting ? <Loader2 size={18} className="animate-spin" /> : <Check size={18} />}
-            {isEditMode ? 'Enregistrer' : 'Créer le ' + (isFacture ? 'facture' : 'devis')}
+            {isEditMode ? 'Enregistrer' : (isFacture ? 'Créer la facture' : 'Créer le devis')}
           </button>
         </div>
       </footer>
@@ -653,6 +697,19 @@ export default function DevisComposer({
           defaultName={form.lignes.find(l => !l._isSection && (l.description || '').trim())?.description || ''}
           onClose={() => setShowSaveTemplate(false)}
           onSave={saveAsTemplate}
+        />
+      )}
+
+      {showPdfPreview && (
+        <PdfPreviewModal
+          isDark={isDark} couleur={couleur} textPrimary={textPrimary} textMuted={textMuted}
+          html={buildDevisHtml({
+            doc: { ...buildDevisData(), numero: isEditMode ? initialData?.numero : 'Aperçu' },
+            client: selectedClient || {},
+            chantier: chantiers.find(c => c.id === form.chantierId) || null,
+            entreprise, couleur,
+          })}
+          onClose={() => setShowPdfPreview(false)}
         />
       )}
     </div>,
@@ -743,19 +800,30 @@ function SectionRow({ ligne, index, total, subtotal, shouldFocus, isDark, couleu
 }
 
 /* ── Editable line row ── */
-function LigneRow({ ligne, index, total, isDark, couleur, inputBg, textPrimary, textMuted, rowHover, onUpdate, onRemove, onMoveUp, onMoveDown, onDuplicate, onMetre }) {
+function LigneRow({ ligne, index, total, isDark, couleur, inputBg, textPrimary, textMuted, rowHover, onUpdate, onRemove, onMoveUp, onMoveDown, onDuplicate, onMetre, focusField, onFocusHandled, onLineEnter }) {
   const lineTotal = (Number(ligne.quantite) || 0) * (Number(ligne.prixUnitaire) || 0);
   const numCls = `w-full h-9 rounded-lg border text-sm text-center ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`;
+  // Boucle clavier : focus + sélection du champ demandé (desktop OU mobile selon visibilité)
+  const qtyDesktopRef = useRef(null), qtyMobileRef = useRef(null), puDesktopRef = useRef(null), puMobileRef = useRef(null);
+  useEffect(() => {
+    if (!focusField) return;
+    const pair = focusField === 'quantite' ? [qtyDesktopRef, qtyMobileRef] : [puDesktopRef, puMobileRef];
+    const el = pair.map(r => r.current).find(x => x && x.offsetParent !== null);
+    if (el) { el.focus(); el.select?.(); }
+    onFocusHandled?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusField]);
+  const numKeyDown = (e) => { if (e.key === 'Enter') { e.preventDefault(); onLineEnter?.(); } };
   return (
     <div className={`group border-b last:border-b-0 ${isDark ? 'border-slate-800' : 'border-slate-100'} ${rowHover} transition-colors`}>
       {/* Desktop grid */}
       <div className="hidden sm:grid grid-cols-[1fr_52px_60px_74px_54px_92px_30px] gap-2 items-center px-4 py-2">
         <input value={ligne.description} onChange={e => onUpdate('description', e.target.value)} placeholder="Désignation…"
           className={`w-full h-9 px-2 rounded-lg border text-sm ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`} />
-        <input type="number" min="0" step="any" value={ligne.quantite} onChange={e => onUpdate('quantite', e.target.value === '' ? '' : parseFloat(e.target.value))} className={numCls} />
+        <input ref={qtyDesktopRef} type="number" min="0" step="any" value={ligne.quantite} onChange={e => onUpdate('quantite', e.target.value === '' ? '' : parseFloat(e.target.value))} onKeyDown={numKeyDown} className={numCls} />
         <input list="devis-unites" value={ligne.unite || ''} onChange={e => onUpdate('unite', e.target.value)} aria-label="Unité"
           className={`w-full h-9 px-1.5 rounded-lg border text-sm text-center ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`} />
-        <input type="number" min="0" step="any" value={ligne.prixUnitaire} onChange={e => onUpdate('prixUnitaire', e.target.value === '' ? '' : parseFloat(e.target.value))} className={numCls} />
+        <input ref={puDesktopRef} type="number" min="0" step="any" value={ligne.prixUnitaire} onChange={e => onUpdate('prixUnitaire', e.target.value === '' ? '' : parseFloat(e.target.value))} onKeyDown={numKeyDown} className={numCls} />
         <select value={ligne.tva} onChange={e => onUpdate('tva', parseFloat(e.target.value))} className={`w-full h-9 rounded-lg border text-xs text-center ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`}>
           {[0, 5.5, 10, 20].map(t => <option key={t} value={t}>{t}%</option>)}
         </select>
@@ -771,9 +839,9 @@ function LigneRow({ ligne, index, total, isDark, couleur, inputBg, textPrimary, 
           <button onClick={onRemove} aria-label="Supprimer" className="p-2 rounded-lg text-red-500 hover:bg-red-500/10"><Trash2 size={16} /></button>
         </div>
         <div className="grid grid-cols-2 gap-2">
-          <div><span className={`block text-[10px] mb-0.5 ${textMuted}`}>Qté</span><input type="number" min="0" step="any" value={ligne.quantite} onChange={e => onUpdate('quantite', e.target.value === '' ? '' : parseFloat(e.target.value))} className={`w-full h-9 px-2 rounded-lg border text-sm ${inputBg}`} /></div>
+          <div><span className={`block text-[10px] mb-0.5 ${textMuted}`}>Qté</span><input ref={qtyMobileRef} type="number" min="0" step="any" value={ligne.quantite} onChange={e => onUpdate('quantite', e.target.value === '' ? '' : parseFloat(e.target.value))} onKeyDown={numKeyDown} className={`w-full h-9 px-2 rounded-lg border text-sm ${inputBg}`} /></div>
           <div><span className={`block text-[10px] mb-0.5 ${textMuted}`}>Unité</span><input list="devis-unites" value={ligne.unite || ''} onChange={e => onUpdate('unite', e.target.value)} className={`w-full h-9 px-2 rounded-lg border text-sm ${inputBg}`} /></div>
-          <div><span className={`block text-[10px] mb-0.5 ${textMuted}`}>PU HT</span><input type="number" min="0" step="any" value={ligne.prixUnitaire} onChange={e => onUpdate('prixUnitaire', e.target.value === '' ? '' : parseFloat(e.target.value))} className={`w-full h-9 px-2 rounded-lg border text-sm ${inputBg}`} /></div>
+          <div><span className={`block text-[10px] mb-0.5 ${textMuted}`}>PU HT</span><input ref={puMobileRef} type="number" min="0" step="any" value={ligne.prixUnitaire} onChange={e => onUpdate('prixUnitaire', e.target.value === '' ? '' : parseFloat(e.target.value))} onKeyDown={numKeyDown} className={`w-full h-9 px-2 rounded-lg border text-sm ${inputBg}`} /></div>
           <div><span className={`block text-[10px] mb-0.5 ${textMuted}`}>TVA</span><select value={ligne.tva} onChange={e => onUpdate('tva', parseFloat(e.target.value))} className={`w-full h-9 rounded-lg border text-sm ${inputBg}`}>{[0, 5.5, 10, 20].map(t => <option key={t} value={t}>{t}%</option>)}</select></div>
         </div>
         <div className="flex justify-end"><span className={`text-sm font-bold ${textPrimary}`}>{eur(lineTotal)}</span></div>
@@ -854,6 +922,30 @@ function MetreModal({ isDark, couleur, inputBg, textPrimary, textMuted, onClose,
             Appliquer
           </button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── Aperçu PDF live (ce que le client recevra), sans créer le devis ── */
+function PdfPreviewModal({ isDark, couleur, textPrimary, textMuted, html, onClose }) {
+  useEffect(() => {
+    const onKey = e => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
+  return (
+    <div className="fixed inset-0 z-[1100] flex flex-col" role="dialog" aria-modal="true" aria-label="Aperçu du document">
+      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
+      <div className={`relative m-2 sm:m-6 flex-1 flex flex-col rounded-2xl overflow-hidden border shadow-2xl ${isDark ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-200'}`}>
+        <div className={`flex items-center justify-between px-4 sm:px-5 py-3 border-b flex-shrink-0 ${isDark ? 'border-slate-700' : 'border-slate-100'}`}>
+          <div className="min-w-0">
+            <h3 className={`text-sm sm:text-base font-bold flex items-center gap-2 ${textPrimary}`}><Eye size={17} style={{ color: couleur }} /> Ce que votre client recevra</h3>
+            <p className={`text-[11px] ${textMuted} hidden sm:block`}>Aperçu en direct — rien n'est encore créé</p>
+          </div>
+          <button onClick={onClose} aria-label="Fermer l'aperçu" className={`p-2 rounded-lg flex-shrink-0 ${textMuted} ${isDark ? 'hover:bg-slate-800' : 'hover:bg-slate-100'}`}><X size={18} /></button>
+        </div>
+        <iframe srcDoc={html} title="Aperçu du devis" className="flex-1 w-full border-0 bg-white" />
       </div>
     </div>
   );
@@ -956,7 +1048,7 @@ function QuickStart({ templates, articles, persoTemplates = [], onApplyTemplate,
 }
 
 /* ── Add-line row with catalogue autocomplete ── */
-function AddLineRow({ catalogue, isDark, couleur, inputBg, textPrimary, textMuted, onAdd, empty }) {
+function AddLineRow({ catalogue, isDark, couleur, inputBg, textPrimary, textMuted, onAdd, empty, focusSignal }) {
   const [q, setQ] = useState('');
   const [highlight, setHighlight] = useState(0);
   const inputRef = useRef(null);
@@ -968,6 +1060,10 @@ function AddLineRow({ catalogue, isDark, couleur, inputBg, textPrimary, textMute
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  // Boucle clavier : Entrée dans Qté/PU d'une ligne → retour à la recherche
+  useEffect(() => {
+    if (focusSignal) inputRef.current?.focus();
+  }, [focusSignal]);
   const suggestions = useMemo(() => {
     const query = q.trim().toLowerCase();
     if (!query) return [];

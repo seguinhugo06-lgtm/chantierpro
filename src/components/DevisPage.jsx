@@ -2198,6 +2198,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       customTemplates={ctxTemplates}
       addTemplate={addTemplate}
       showToast={showToast}
+      onCompleteProfile={setPage ? () => { setShowDevisComposer(false); setPage('settings'); } : undefined}
       isDark={isDark}
       couleur={couleur}
     />
