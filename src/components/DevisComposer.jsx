@@ -23,6 +23,7 @@ import { formatClientName } from '../lib/formatters';
 const DRAFT_KEY = 'batigesti_devis_composer_draft';
 const MRU_KEY = 'batigesti_recent_clients';
 const RECENT_ARTICLES_KEY = 'batigesti_recent_articles';
+const UNITES = ['u', 'm²', 'ml', 'm³', 'h', 'j', 'forfait', 'ens.', 'pièce', 'kg', 'L', 'lot'];
 
 /** Modèles métier : squelettes de devis prêts à chiffrer (mêmes trames que le formulaire classique). */
 const METIER_TEMPLATES = [
@@ -70,6 +71,7 @@ export default function DevisComposer({
   clients = [],
   addClient,
   catalogue = [],
+  chantiers = [],
   entreprise = {},
   isDark = false,
   couleur = '#f97316',
@@ -86,6 +88,8 @@ export default function DevisComposer({
     tvaDefaut: entreprise?.tvaDefaut || entreprise?.tva_defaut || 10,
     lignes: [],
     remise: 0,
+    acompte: 0,
+    conditions: '',
     notes: '',
   });
 
@@ -126,6 +130,8 @@ export default function DevisComposer({
           tva: l.tva !== undefined ? l.tva : (initialData.tvaRate || 10),
         })),
         remise: initialData.remise || 0,
+        acompte: initialData.acompte_pct || initialData.acompte || 0,
+        conditions: initialData.conditions || '',
         notes: initialData.notes || '',
       });
       return;
@@ -291,6 +297,8 @@ export default function DevisComposer({
       lignes: lignesFormatted,
       sections: [{ id: '1', titre: '', lignes: lignesFormatted }],
       remise: form.remise,
+      acompte_pct: form.acompte || undefined,
+      conditions: form.conditions || undefined,
       notes: form.notes,
       total_ht: roundEuro(totals.htApresRemise),
       tva: roundEuro(totals.tvaApresRemise),
@@ -325,14 +333,14 @@ export default function DevisComposer({
         <div className="flex-1 min-w-0">
           <h1 className={`text-base font-bold truncate ${textPrimary}`}>{isEditMode ? 'Modifier' : 'Nouveau'} {isFacture ? 'facture' : 'devis'}</h1>
         </div>
-        {/* Type toggle */}
+        {/* Type toggle (visible aussi en mobile) */}
         {!isEditMode && (
-          <div className={`hidden sm:flex items-center rounded-xl p-0.5 ${isDark ? 'bg-slate-800' : 'bg-slate-100'}`}>
+          <div className={`flex items-center rounded-xl p-0.5 ${isDark ? 'bg-slate-800' : 'bg-slate-100'}`}>
             {[{ v: 'devis', label: 'Devis', Icon: FileText }, { v: 'facture', label: 'Facture', Icon: Receipt }].map(({ v, label, Icon }) => (
-              <button key={v} onClick={() => setForm(p => ({ ...p, type: v }))}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${form.type === v ? 'text-white shadow' : textMuted}`}
+              <button key={v} onClick={() => setForm(p => ({ ...p, type: v }))} aria-label={label} aria-pressed={form.type === v}
+                className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${form.type === v ? 'text-white shadow' : textMuted}`}
                 style={form.type === v ? { background: couleur } : undefined}>
-                <Icon size={14} /> {label}
+                <Icon size={14} /> <span className="hidden sm:inline">{label}</span>
               </button>
             ))}
           </div>
@@ -356,6 +364,11 @@ export default function DevisComposer({
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-3xl mx-auto px-3 sm:px-5 py-4 sm:py-6 space-y-4 pb-40">
 
+          {/* Unités proposées (partagé par toutes les lignes) */}
+          <datalist id="devis-unites">
+            {UNITES.map(u => <option key={u} value={u} />)}
+          </datalist>
+
           {/* Client + date */}
           <div className={`rounded-2xl border p-3 sm:p-4 ${cardBg}`}>
             <div className="grid sm:grid-cols-2 gap-3">
@@ -372,14 +385,24 @@ export default function DevisComposer({
                   className={`w-full px-3 h-11 rounded-xl border text-sm ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`} />
               </div>
             </div>
+            {chantiers.length > 0 && (
+              <div className="mt-3">
+                <label className={`block text-[11px] font-semibold uppercase tracking-wide mb-1.5 ${textMuted}`}>Chantier — adresse des travaux</label>
+                <select value={form.chantierId} onChange={e => setForm(p => ({ ...p, chantierId: e.target.value }))}
+                  className={`w-full px-3 h-11 rounded-xl border text-sm ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`}>
+                  <option value="">Aucun — utiliser l'adresse du client</option>
+                  {chantiers.map(c => <option key={c.id} value={c.id}>{c.nom}</option>)}
+                </select>
+              </div>
+            )}
           </div>
 
           {/* Lignes */}
           <div className={`rounded-2xl border ${cardBg}`}>
             {/* header row (desktop) */}
             {form.lignes.length > 0 && (
-              <div className={`hidden sm:grid grid-cols-[1fr_72px_88px_64px_100px_36px] gap-2 px-4 py-2 rounded-t-2xl text-[11px] font-semibold uppercase tracking-wide ${textMuted} ${isDark ? 'bg-slate-800/50' : 'bg-slate-50'} border-b ${isDark ? 'border-slate-700' : 'border-slate-100'}`}>
-                <span>Désignation</span><span className="text-center">Qté</span><span className="text-center">PU HT</span><span className="text-center">TVA</span><span className="text-right">Total HT</span><span />
+              <div className={`hidden sm:grid grid-cols-[1fr_52px_60px_74px_54px_92px_30px] gap-2 px-4 py-2 rounded-t-2xl text-[11px] font-semibold uppercase tracking-wide ${textMuted} ${isDark ? 'bg-slate-800/50' : 'bg-slate-50'} border-b ${isDark ? 'border-slate-700' : 'border-slate-100'}`}>
+                <span>Désignation</span><span className="text-center">Qté</span><span className="text-center">Unité</span><span className="text-center">PU HT</span><span className="text-center">TVA</span><span className="text-right">Total HT</span><span />
               </div>
             )}
             <div>
@@ -425,6 +448,26 @@ export default function DevisComposer({
                         className={`w-full px-3 h-10 rounded-xl border text-sm ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`} />
                     </div>
                   )}
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  {!isFacture && (
+                    <div>
+                      <label className={`block text-[11px] font-semibold uppercase tracking-wide mb-1.5 ${textMuted}`}>Acompte demandé %</label>
+                      <input type="number" min="0" max="100" value={form.acompte || ''} onChange={e => setForm(p => ({ ...p, acompte: Math.min(100, Math.max(0, parseFloat(e.target.value) || 0)) }))}
+                        placeholder="0" className={`w-full px-3 h-10 rounded-xl border text-sm ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`} />
+                    </div>
+                  )}
+                  <div>
+                    <label className={`block text-[11px] font-semibold uppercase tracking-wide mb-1.5 ${textMuted}`}>Conditions de règlement</label>
+                    <select value={form.conditions} onChange={e => setForm(p => ({ ...p, conditions: e.target.value }))}
+                      className={`w-full px-3 h-10 rounded-xl border text-sm ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`}>
+                      <option value="">Standard — à réception</option>
+                      <option value="Paiement à réception de facture">À réception de facture</option>
+                      <option value="Paiement à 30 jours">Paiement à 30 jours</option>
+                      <option value="Acompte à la commande, solde à la livraison">Acompte + solde à la livraison</option>
+                      <option value="Paiement échelonné selon l'avancement des travaux">Échelonné selon l'avancement</option>
+                    </select>
+                  </div>
                 </div>
                 <div>
                   <label className={`block text-[11px] font-semibold uppercase tracking-wide mb-1.5 ${textMuted}`}><StickyNote size={12} className="inline mr-1" />Notes (visibles sur le PDF)</label>
@@ -564,10 +607,12 @@ function LigneRow({ ligne, index, total, isDark, couleur, inputBg, textPrimary, 
   return (
     <div className={`group border-b last:border-b-0 ${isDark ? 'border-slate-800' : 'border-slate-100'} ${rowHover} transition-colors`}>
       {/* Desktop grid */}
-      <div className="hidden sm:grid grid-cols-[1fr_72px_88px_64px_100px_36px] gap-2 items-center px-4 py-2">
+      <div className="hidden sm:grid grid-cols-[1fr_52px_60px_74px_54px_92px_30px] gap-2 items-center px-4 py-2">
         <input value={ligne.description} onChange={e => onUpdate('description', e.target.value)} placeholder="Désignation…"
           className={`w-full h-9 px-2 rounded-lg border text-sm ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`} />
         <input type="number" min="0" step="any" value={ligne.quantite} onChange={e => onUpdate('quantite', e.target.value === '' ? '' : parseFloat(e.target.value))} className={numCls} />
+        <input list="devis-unites" value={ligne.unite || ''} onChange={e => onUpdate('unite', e.target.value)} aria-label="Unité"
+          className={`w-full h-9 px-1.5 rounded-lg border text-sm text-center ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`} />
         <input type="number" min="0" step="any" value={ligne.prixUnitaire} onChange={e => onUpdate('prixUnitaire', e.target.value === '' ? '' : parseFloat(e.target.value))} className={numCls} />
         <select value={ligne.tva} onChange={e => onUpdate('tva', parseFloat(e.target.value))} className={`w-full h-9 rounded-lg border text-xs text-center ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`}>
           {[0, 5.5, 10, 20].map(t => <option key={t} value={t}>{t}%</option>)}
@@ -582,8 +627,9 @@ function LigneRow({ ligne, index, total, isDark, couleur, inputBg, textPrimary, 
             className={`flex-1 h-10 px-3 rounded-lg border text-sm ${inputBg}`} />
           <button onClick={onRemove} aria-label="Supprimer" className="p-2 rounded-lg text-red-500 hover:bg-red-500/10"><Trash2 size={16} /></button>
         </div>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 gap-2">
           <div><span className={`block text-[10px] mb-0.5 ${textMuted}`}>Qté</span><input type="number" min="0" step="any" value={ligne.quantite} onChange={e => onUpdate('quantite', e.target.value === '' ? '' : parseFloat(e.target.value))} className={`w-full h-9 px-2 rounded-lg border text-sm ${inputBg}`} /></div>
+          <div><span className={`block text-[10px] mb-0.5 ${textMuted}`}>Unité</span><input list="devis-unites" value={ligne.unite || ''} onChange={e => onUpdate('unite', e.target.value)} className={`w-full h-9 px-2 rounded-lg border text-sm ${inputBg}`} /></div>
           <div><span className={`block text-[10px] mb-0.5 ${textMuted}`}>PU HT</span><input type="number" min="0" step="any" value={ligne.prixUnitaire} onChange={e => onUpdate('prixUnitaire', e.target.value === '' ? '' : parseFloat(e.target.value))} className={`w-full h-9 px-2 rounded-lg border text-sm ${inputBg}`} /></div>
           <div><span className={`block text-[10px] mb-0.5 ${textMuted}`}>TVA</span><select value={ligne.tva} onChange={e => onUpdate('tva', parseFloat(e.target.value))} className={`w-full h-9 rounded-lg border text-sm ${inputBg}`}>{[0, 5.5, 10, 20].map(t => <option key={t} value={t}>{t}%</option>)}</select></div>
         </div>
