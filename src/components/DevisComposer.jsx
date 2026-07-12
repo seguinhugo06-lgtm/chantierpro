@@ -94,6 +94,7 @@ export default function DevisComposer({
   });
 
   const [form, setForm] = useState(blankForm);
+  const [focusLotId, setFocusLotId] = useState(null);
   const [showClientPicker, setShowClientPicker] = useState(false);
   const [clientSearch, setClientSearch] = useState('');
   const [showQuickClient, setShowQuickClient] = useState(false);
@@ -274,7 +275,11 @@ export default function DevisComposer({
     return { ...p, lignes: n };
   });
   // ── Lots (titres de section) ──
-  const addLot = () => setForm(p => ({ ...p, lignes: [...p.lignes, { id: generateId(), _isSection: true, description: '' }] }));
+  const addLot = () => {
+    const id = generateId();
+    setForm(p => ({ ...p, lignes: [...p.lignes, { id, _isSection: true, description: '' }] }));
+    setFocusLotId(id);
+  };
 
   // Sous-total par lot : index du marqueur → somme des lignes qui le suivent jusqu'au prochain lot
   const sectionSubtotals = useMemo(() => {
@@ -441,7 +446,7 @@ export default function DevisComposer({
               {form.lignes.map((ligne, index) => (
                 ligne._isSection ? (
                   <SectionRow key={ligne.id} ligne={ligne} index={index} total={form.lignes.length} subtotal={sectionSubtotals[index] || 0}
-                    isDark={isDark} couleur={couleur} inputBg={inputBg} textPrimary={textPrimary} textMuted={textMuted}
+                    shouldFocus={ligne.id === focusLotId} isDark={isDark} couleur={couleur} textPrimary={textPrimary} textMuted={textMuted}
                     onUpdate={(v) => updateLigne(ligne.id, 'description', v)} onRemove={() => removeLigne(ligne.id)}
                     onMoveUp={() => moveLigne(index, -1)} onMoveDown={() => moveLigne(index, 1)} />
                 ) : (
@@ -651,12 +656,14 @@ function ClientField({ selectedClient, couleur, isDark, textPrimary, textMuted, 
 }
 
 /* ── Titre de lot (section) ── */
-function SectionRow({ ligne, index, total, subtotal, isDark, couleur, textPrimary, textMuted, onUpdate, onRemove, onMoveUp, onMoveDown }) {
+function SectionRow({ ligne, index, total, subtotal, shouldFocus, isDark, couleur, textPrimary, textMuted, onUpdate, onRemove, onMoveUp, onMoveDown }) {
+  const inputRef = useRef(null);
+  useEffect(() => { if (shouldFocus) inputRef.current?.focus(); }, [shouldFocus]);
   return (
     <div className={`group border-b ${isDark ? 'border-slate-800 bg-slate-800/40' : 'border-slate-100 bg-slate-50/80'}`}>
       <div className="flex items-center gap-2 px-3 sm:px-4 py-2">
         <span className="w-1.5 h-5 rounded-full flex-shrink-0" style={{ background: couleur }} />
-        <input value={ligne.description} onChange={e => onUpdate(e.target.value)} placeholder="Titre du lot (ex : Salle de bain)"
+        <input ref={inputRef} value={ligne.description} onChange={e => onUpdate(e.target.value)} placeholder="Titre du lot (ex : Salle de bain)"
           className={`flex-1 min-w-0 h-8 px-2 rounded-lg border-0 bg-transparent text-sm font-bold ${textPrimary} placeholder:font-normal focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`} />
         <span className={`text-sm font-bold tabular-nums ${textPrimary}`}>{eur(subtotal)}</span>
         <div className="flex items-center flex-shrink-0">
