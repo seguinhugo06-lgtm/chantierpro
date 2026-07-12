@@ -14,7 +14,7 @@ import { createPortal } from 'react-dom';
 import {
   ArrowLeft, Plus, Search, Trash2, ChevronUp, ChevronDown, User,
   UserPlus, FileText, Receipt, Check, Loader2, Percent, StickyNote,
-  Package, Zap, CornerDownLeft, Droplets, Paintbrush, Hammer, Star, Sparkles,
+  Package, Zap, CornerDownLeft, Droplets, Paintbrush, Hammer, Star, Sparkles, Ruler, X,
 } from 'lucide-react';
 import QuickClientModal from './QuickClientModal';
 import { generateId } from '../lib/utils';
@@ -95,6 +95,7 @@ export default function DevisComposer({
 
   const [form, setForm] = useState(blankForm);
   const [focusLotId, setFocusLotId] = useState(null);
+  const [metreLineId, setMetreLineId] = useState(null);
   const [showClientPicker, setShowClientPicker] = useState(false);
   const [clientSearch, setClientSearch] = useState('');
   const [showQuickClient, setShowQuickClient] = useState(false);
@@ -453,7 +454,8 @@ export default function DevisComposer({
                   <LigneRow key={ligne.id} ligne={ligne} index={index} total={form.lignes.length}
                     isDark={isDark} couleur={couleur} inputBg={inputBg} textPrimary={textPrimary} textMuted={textMuted} rowHover={rowHover}
                     onUpdate={(f, v) => updateLigne(ligne.id, f, v)} onRemove={() => removeLigne(ligne.id)}
-                    onMoveUp={() => moveLigne(index, -1)} onMoveDown={() => moveLigne(index, 1)} onDuplicate={() => duplicateLigne(ligne.id)} />
+                    onMoveUp={() => moveLigne(index, -1)} onMoveDown={() => moveLigne(index, 1)} onDuplicate={() => duplicateLigne(ligne.id)}
+                    onMetre={() => setMetreLineId(ligne.id)} />
                 )
               ))}
             </div>
@@ -589,6 +591,18 @@ export default function DevisComposer({
           isDark={isDark} couleur={couleur}
         />
       )}
+
+      {metreLineId && (
+        <MetreModal
+          isDark={isDark} couleur={couleur} inputBg={inputBg} textPrimary={textPrimary} textMuted={textMuted}
+          onClose={() => setMetreLineId(null)}
+          onApply={(qty, unite) => {
+            updateLigne(metreLineId, 'quantite', qty);
+            if (unite) updateLigne(metreLineId, 'unite', unite);
+            setMetreLineId(null);
+          }}
+        />
+      )}
     </div>,
     document.body
   );
@@ -677,7 +691,7 @@ function SectionRow({ ligne, index, total, subtotal, shouldFocus, isDark, couleu
 }
 
 /* ── Editable line row ── */
-function LigneRow({ ligne, index, total, isDark, couleur, inputBg, textPrimary, textMuted, rowHover, onUpdate, onRemove, onMoveUp, onMoveDown, onDuplicate }) {
+function LigneRow({ ligne, index, total, isDark, couleur, inputBg, textPrimary, textMuted, rowHover, onUpdate, onRemove, onMoveUp, onMoveDown, onDuplicate, onMetre }) {
   const lineTotal = (Number(ligne.quantite) || 0) * (Number(ligne.prixUnitaire) || 0);
   const numCls = `w-full h-9 rounded-lg border text-sm text-center ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`;
   return (
@@ -694,13 +708,14 @@ function LigneRow({ ligne, index, total, isDark, couleur, inputBg, textPrimary, 
           {[0, 5.5, 10, 20].map(t => <option key={t} value={t}>{t}%</option>)}
         </select>
         <span className={`text-sm font-semibold text-right tabular-nums ${textPrimary}`}>{eur(lineTotal)}</span>
-        <LineMenu isDark={isDark} textMuted={textMuted} index={index} total={total} onMoveUp={onMoveUp} onMoveDown={onMoveDown} onDuplicate={onDuplicate} onRemove={onRemove} />
+        <LineMenu isDark={isDark} textMuted={textMuted} index={index} total={total} onMoveUp={onMoveUp} onMoveDown={onMoveDown} onDuplicate={onDuplicate} onRemove={onRemove} onMetre={onMetre} />
       </div>
       {/* Mobile card */}
       <div className="sm:hidden p-3 space-y-2">
         <div className="flex items-start gap-2">
           <input value={ligne.description} onChange={e => onUpdate('description', e.target.value)} placeholder="Désignation…"
             className={`flex-1 h-10 px-3 rounded-lg border text-sm ${inputBg}`} />
+          <button onClick={onMetre} aria-label="Métré" className={`p-2 rounded-lg ${isDark ? 'text-slate-400 hover:bg-slate-700' : 'text-slate-500 hover:bg-slate-100'}`}><Ruler size={16} /></button>
           <button onClick={onRemove} aria-label="Supprimer" className="p-2 rounded-lg text-red-500 hover:bg-red-500/10"><Trash2 size={16} /></button>
         </div>
         <div className="grid grid-cols-2 gap-2">
@@ -715,7 +730,7 @@ function LigneRow({ ligne, index, total, isDark, couleur, inputBg, textPrimary, 
   );
 }
 
-function LineMenu({ isDark, textMuted, index, total, onMoveUp, onMoveDown, onDuplicate, onRemove }) {
+function LineMenu({ isDark, textMuted, index, total, onMoveUp, onMoveDown, onDuplicate, onRemove, onMetre }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
   useEffect(() => { if (!open) return; const h = e => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); }; document.addEventListener('mousedown', h); return () => document.removeEventListener('mousedown', h); }, [open]);
@@ -727,12 +742,67 @@ function LineMenu({ isDark, textMuted, index, total, onMoveUp, onMoveDown, onDup
       </button>
       {open && (
         <div onKeyDown={e => e.key === 'Escape' && setOpen(false)} role="menu" className={`absolute right-0 top-full mt-1 z-30 w-40 rounded-lg border shadow-lg py-1 text-sm ${isDark ? 'bg-slate-800 border-slate-700 text-slate-200' : 'bg-white border-slate-200 text-slate-700'}`}>
+          {onMetre && <button role="menuitem" onClick={() => { onMetre(); setOpen(false); }} className={`w-full flex items-center gap-2 px-3 py-2 text-left ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}><Ruler size={14} /> Métré L × l</button>}
           <button role="menuitem" disabled={index === 0} onClick={() => { onMoveUp(); setOpen(false); }} className={`w-full flex items-center gap-2 px-3 py-2 text-left disabled:opacity-40 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}><ChevronUp size={14} /> Monter</button>
           <button role="menuitem" disabled={index === total - 1} onClick={() => { onMoveDown(); setOpen(false); }} className={`w-full flex items-center gap-2 px-3 py-2 text-left disabled:opacity-40 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}><ChevronDown size={14} /> Descendre</button>
           <button role="menuitem" onClick={() => { onDuplicate(); setOpen(false); }} className={`w-full flex items-center gap-2 px-3 py-2 text-left ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}><Plus size={14} /> Dupliquer</button>
           <button role="menuitem" onClick={() => { onRemove(); setOpen(false); }} className={`w-full flex items-center gap-2 px-3 py-2 text-left text-red-500 ${isDark ? 'hover:bg-red-900/30' : 'hover:bg-red-50'}`}><Trash2 size={14} /> Supprimer</button>
         </div>
       )}
+    </div>
+  );
+}
+
+/* ── Métré express : quantité depuis les dimensions (L × l × h) ── */
+function MetreModal({ isDark, couleur, inputBg, textPrimary, textMuted, onClose, onApply }) {
+  const [L, setL] = useState('');
+  const [larg, setLarg] = useState('');
+  const [haut, setHaut] = useState('');
+  const [nb, setNb] = useState('1');
+  const [chutes, setChutes] = useState('');
+  const firstRef = useRef(null);
+  useEffect(() => {
+    firstRef.current?.focus();
+    const onKey = e => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
+  const nL = parseFloat(L) || 0, nl = parseFloat(larg) || 0, nh = parseFloat(haut) || 0, nN = parseFloat(nb) || 1, nC = parseFloat(chutes) || 0;
+  const has3d = nh > 0;
+  const qty = Math.round(nL * nl * (has3d ? nh : 1) * nN * (1 + nC / 100) * 100) / 100;
+  const unite = has3d ? 'm³' : 'm²';
+  const card = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200';
+  const fieldCls = `w-full px-3 h-11 rounded-xl border text-sm ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`;
+  const labelCls = `block text-[11px] font-semibold uppercase tracking-wide mb-1.5 ${textMuted}`;
+  return (
+    <div className="fixed inset-0 z-[1100] flex items-end sm:items-center justify-center sm:p-4" role="dialog" aria-modal="true" aria-label="Métré express">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className={`relative w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl border shadow-2xl ${card}`}>
+        <div className={`flex items-center justify-between px-5 py-4 border-b ${isDark ? 'border-slate-700' : 'border-slate-100'}`}>
+          <h3 className={`text-base font-bold flex items-center gap-2 ${textPrimary}`}><Ruler size={18} style={{ color: couleur }} /> Métré express</h3>
+          <button onClick={onClose} aria-label="Fermer" className={`p-1.5 rounded-lg ${textMuted} ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}><X size={18} /></button>
+        </div>
+        <div className="p-5 space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div><label className={labelCls}>Longueur (m)</label><input ref={firstRef} type="number" min="0" step="any" inputMode="decimal" value={L} onChange={e => setL(e.target.value)} placeholder="0" className={fieldCls} /></div>
+            <div><label className={labelCls}>Largeur (m)</label><input type="number" min="0" step="any" inputMode="decimal" value={larg} onChange={e => setLarg(e.target.value)} placeholder="0" className={fieldCls} /></div>
+            <div><label className={labelCls}>Hauteur (m) — option</label><input type="number" min="0" step="any" inputMode="decimal" value={haut} onChange={e => setHaut(e.target.value)} placeholder="—" className={fieldCls} /></div>
+            <div><label className={labelCls}>Nombre</label><input type="number" min="0" step="any" inputMode="decimal" value={nb} onChange={e => setNb(e.target.value)} placeholder="1" className={fieldCls} /></div>
+          </div>
+          <div><label className={labelCls}>Chutes / pertes %</label><input type="number" min="0" step="any" inputMode="decimal" value={chutes} onChange={e => setChutes(e.target.value)} placeholder="0" className={fieldCls} /></div>
+          <div className={`rounded-xl px-4 py-3 flex items-center justify-between ${isDark ? 'bg-slate-900/60' : 'bg-slate-50'}`}>
+            <span className={`text-sm ${textMuted}`}>Quantité calculée</span>
+            <span className="text-2xl font-extrabold tabular-nums" style={{ color: couleur }}>{qty.toLocaleString('fr-FR')} <span className="text-sm font-semibold">{unite}</span></span>
+          </div>
+        </div>
+        <div className={`flex gap-2 px-5 py-4 border-t ${isDark ? 'border-slate-700' : 'border-slate-100'}`}>
+          <button onClick={onClose} className={`flex-1 h-11 rounded-xl border text-sm font-semibold ${isDark ? 'border-slate-700 text-slate-200 hover:bg-slate-700' : 'border-slate-200 text-slate-700 hover:bg-slate-50'}`}>Annuler</button>
+          <button onClick={() => onApply(qty, unite)} disabled={qty <= 0}
+            className="flex-1 h-11 rounded-xl text-white text-sm font-bold disabled:opacity-50 transition-all" style={{ background: couleur }}>
+            Appliquer
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
