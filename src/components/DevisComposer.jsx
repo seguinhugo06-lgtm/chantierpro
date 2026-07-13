@@ -21,6 +21,7 @@ import QuickClientModal from './QuickClientModal';
 import { generateId } from '../lib/utils';
 import { formatClientName } from '../lib/formatters';
 import { buildDevisHtml } from '../lib/devisHtmlBuilder';
+import { SMART_TEMPLATES } from '../lib/templates/smart-templates';
 
 const DRAFT_KEY = 'batigesti_devis_composer_draft';
 const MRU_KEY = 'batigesti_recent_clients';
@@ -36,6 +37,16 @@ const METIER_TEMPLATES = [
 ];
 
 const eur = (v) => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v || 0);
+
+/** Parse un nombre saisi à la française : accepte « 1,5 » comme « 1.5 ». */
+const num = (v) => {
+  if (typeof v === 'number') return isNaN(v) ? 0 : v;
+  const n = parseFloat(String(v ?? '').replace(/\s/g, '').replace(',', '.'));
+  return isNaN(n) ? 0 : n;
+};
+
+/** Normalise pour recherche : minuscules + sans accents (« faience » trouve « faïence »). */
+const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
 /** Nombre animé (tween) — l'effet « chiffres qui montent » qui rend la barre de total vivante. */
 function useAnimatedNumber(value, duration = 450) {
@@ -183,10 +194,10 @@ export default function DevisComposer({
     let totalHT = 0, tvaTotal = 0, totalCost = 0;
     form.lignes.forEach(l => {
       if (l._isSection) return; // les titres de lot ne comptent pas
-      const montant = (Number(l.quantite) || 0) * (Number(l.prixUnitaire) || 0);
+      const montant = num(l.quantite) * num(l.prixUnitaire);
       const taux = l.tva !== undefined ? l.tva : form.tvaDefaut;
       totalHT += montant;
-      totalCost += (Number(l.quantite) || 0) * (Number(l.prixAchat) || 0);
+      totalCost += num(l.quantite) * num(l.prixAchat);
       tvaTotal += montant * (taux / 100);
     });
     const remiseAmount = totalHT * (form.remise / 100);
@@ -298,7 +309,7 @@ export default function DevisComposer({
         nom: (nom || '').trim(),
         categorie: (categorie || '').trim() || 'Mes modèles',
         description: 'Créé depuis le composer',
-        lignes: priced.map(l => ({ description: l.description, quantite: Number(l.quantite) || 1, unite: l.unite || 'u', prixUnitaire: Math.abs(Number(l.prixUnitaire) || 0), prixAchat: Number(l.prixAchat) || 0, tva: l.tva })),
+        lignes: priced.map(l => ({ description: l.description, quantite: num(l.quantite) || 1, unite: l.unite || 'u', prixUnitaire: Math.abs(num(l.prixUnitaire)), prixAchat: num(l.prixAchat), tva: l.tva })),
         tva_defaut: form.tvaDefaut,
         notes: form.notes || '',
       });
@@ -338,7 +349,7 @@ export default function DevisComposer({
       let sum = 0;
       for (let j = i + 1; j < form.lignes.length; j++) {
         if (form.lignes[j]._isSection) break;
-        sum += (Number(form.lignes[j].quantite) || 0) * (Number(form.lignes[j].prixUnitaire) || 0);
+        sum += num(form.lignes[j].quantite) * num(form.lignes[j].prixUnitaire);
       }
       res[i] = sum;
     });
@@ -351,9 +362,10 @@ export default function DevisComposer({
     const roundEuro = (v) => Math.round((v + Number.EPSILON) * 100) / 100;
     const fmt = (l) => ({
       ...l,
-      quantite: Math.max(0, Number(l.quantite) || 0),
-      prixUnitaire: Math.max(0, Number(l.prixUnitaire) || 0),
-      montant: (Number(l.quantite) || 0) * (Number(l.prixUnitaire) || 0),
+      quantite: Math.max(0, num(l.quantite)),
+      prixUnitaire: Math.max(0, num(l.prixUnitaire)),
+      prixAchat: num(l.prixAchat),
+      montant: num(l.quantite) * num(l.prixUnitaire),
     });
     // Découpe la liste plate en lots (sections) au niveau des marqueurs _isSection
     const sections = [];
@@ -479,11 +491,6 @@ export default function DevisComposer({
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-3xl mx-auto px-3 sm:px-5 py-4 sm:py-6 space-y-4 pb-40">
 
-          {/* Unités proposées (partagé par toutes les lignes) */}
-          <datalist id="devis-unites">
-            {UNITES.map(u => <option key={u} value={u} />)}
-          </datalist>
-
           {/* Client + date */}
           <div className={`rounded-2xl border p-3 sm:p-4 ${cardBg}`}>
             <div className="grid sm:grid-cols-2 gap-3">
@@ -578,6 +585,19 @@ export default function DevisComposer({
             </button>
             {showOptions && (
               <div className={`px-4 pb-4 space-y-3 border-t ${isDark ? 'border-slate-700' : 'border-slate-100'} pt-3`}>
+                <div>
+                  <label className={`block text-[11px] font-semibold uppercase tracking-wide mb-1.5 ${textMuted}`}>TVA — appliquer à tout le devis</label>
+                  <div className="flex gap-1.5 flex-wrap">
+                    {[{ v: 20, sub: 'neuf' }, { v: 10, sub: 'réno' }, { v: 5.5, sub: 'éco-réno' }, { v: 0, sub: 'exonéré' }].map(({ v, sub }) => (
+                      <button key={v} type="button"
+                        onClick={() => setForm(p => ({ ...p, tvaDefaut: v, lignes: p.lignes.map(l => l._isSection ? l : { ...l, tva: v }) }))}
+                        className={`px-3 h-9 rounded-lg text-xs font-semibold border transition-all ${form.tvaDefaut === v && form.lignes.every(l => l._isSection || l.tva === v) ? 'text-white' : isDark ? 'border-slate-700 text-slate-300 hover:bg-slate-800' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+                        style={form.tvaDefaut === v && form.lignes.every(l => l._isSection || l.tva === v) ? { background: couleur, borderColor: couleur } : undefined}>
+                        {String(v).replace('.', ',')} % <span className="font-normal opacity-70">{sub}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className={`block text-[11px] font-semibold uppercase tracking-wide mb-1.5 ${textMuted}`}>Remise %</label>
@@ -801,7 +821,7 @@ function SectionRow({ ligne, index, total, subtotal, shouldFocus, isDark, couleu
 
 /* ── Editable line row ── */
 function LigneRow({ ligne, index, total, isDark, couleur, inputBg, textPrimary, textMuted, rowHover, onUpdate, onRemove, onMoveUp, onMoveDown, onDuplicate, onMetre, focusField, onFocusHandled, onLineEnter }) {
-  const lineTotal = (Number(ligne.quantite) || 0) * (Number(ligne.prixUnitaire) || 0);
+  const lineTotal = num(ligne.quantite) * num(ligne.prixUnitaire);
   const numCls = `w-full h-9 rounded-lg border text-sm text-center ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`;
   // Boucle clavier : focus + sélection du champ demandé (desktop OU mobile selon visibilité)
   const qtyDesktopRef = useRef(null), qtyMobileRef = useRef(null), puDesktopRef = useRef(null), puMobileRef = useRef(null);
@@ -820,10 +840,13 @@ function LigneRow({ ligne, index, total, isDark, couleur, inputBg, textPrimary, 
       <div className="hidden sm:grid grid-cols-[1fr_52px_60px_74px_54px_92px_30px] gap-2 items-center px-4 py-2">
         <input value={ligne.description} onChange={e => onUpdate('description', e.target.value)} placeholder="Désignation…"
           className={`w-full h-9 px-2 rounded-lg border text-sm ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`} />
-        <input ref={qtyDesktopRef} type="number" min="0" step="any" value={ligne.quantite} onChange={e => onUpdate('quantite', e.target.value === '' ? '' : parseFloat(e.target.value))} onKeyDown={numKeyDown} className={numCls} />
-        <input list="devis-unites" value={ligne.unite || ''} onChange={e => onUpdate('unite', e.target.value)} aria-label="Unité"
-          className={`w-full h-9 px-1.5 rounded-lg border text-sm text-center ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`} />
-        <input ref={puDesktopRef} type="number" min="0" step="any" value={ligne.prixUnitaire} onChange={e => onUpdate('prixUnitaire', e.target.value === '' ? '' : parseFloat(e.target.value))} onKeyDown={numKeyDown} className={numCls} />
+        <input ref={qtyDesktopRef} type="text" inputMode="decimal" value={ligne.quantite} onChange={e => onUpdate('quantite', e.target.value)} onKeyDown={numKeyDown} aria-label="Quantité" className={numCls} />
+        <select value={UNITES.includes(ligne.unite) ? ligne.unite : (ligne.unite ? '__autre' : 'u')} onChange={e => onUpdate('unite', e.target.value === '__autre' ? (ligne.unite || '') : e.target.value)} aria-label="Unité"
+          className={`w-full h-9 px-1 rounded-lg border text-xs text-center ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`}>
+          {UNITES.map(u => <option key={u} value={u}>{u}</option>)}
+          {ligne.unite && !UNITES.includes(ligne.unite) && <option value="__autre">{ligne.unite}</option>}
+        </select>
+        <input ref={puDesktopRef} type="text" inputMode="decimal" value={ligne.prixUnitaire} onChange={e => onUpdate('prixUnitaire', e.target.value)} onKeyDown={numKeyDown} aria-label="Prix unitaire HT" className={numCls} />
         <select value={ligne.tva} onChange={e => onUpdate('tva', parseFloat(e.target.value))} className={`w-full h-9 rounded-lg border text-xs text-center ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`}>
           {[0, 5.5, 10, 20].map(t => <option key={t} value={t}>{t}%</option>)}
         </select>
@@ -839,9 +862,9 @@ function LigneRow({ ligne, index, total, isDark, couleur, inputBg, textPrimary, 
           <button onClick={onRemove} aria-label="Supprimer" className="p-2 rounded-lg text-red-500 hover:bg-red-500/10"><Trash2 size={16} /></button>
         </div>
         <div className="grid grid-cols-2 gap-2">
-          <div><span className={`block text-[10px] mb-0.5 ${textMuted}`}>Qté</span><input ref={qtyMobileRef} type="number" min="0" step="any" value={ligne.quantite} onChange={e => onUpdate('quantite', e.target.value === '' ? '' : parseFloat(e.target.value))} onKeyDown={numKeyDown} className={`w-full h-9 px-2 rounded-lg border text-sm ${inputBg}`} /></div>
-          <div><span className={`block text-[10px] mb-0.5 ${textMuted}`}>Unité</span><input list="devis-unites" value={ligne.unite || ''} onChange={e => onUpdate('unite', e.target.value)} className={`w-full h-9 px-2 rounded-lg border text-sm ${inputBg}`} /></div>
-          <div><span className={`block text-[10px] mb-0.5 ${textMuted}`}>PU HT</span><input ref={puMobileRef} type="number" min="0" step="any" value={ligne.prixUnitaire} onChange={e => onUpdate('prixUnitaire', e.target.value === '' ? '' : parseFloat(e.target.value))} onKeyDown={numKeyDown} className={`w-full h-9 px-2 rounded-lg border text-sm ${inputBg}`} /></div>
+          <div><span className={`block text-[10px] mb-0.5 ${textMuted}`}>Qté</span><input ref={qtyMobileRef} type="text" inputMode="decimal" value={ligne.quantite} onChange={e => onUpdate('quantite', e.target.value)} onKeyDown={numKeyDown} className={`w-full h-9 px-2 rounded-lg border text-sm ${inputBg}`} /></div>
+          <div><span className={`block text-[10px] mb-0.5 ${textMuted}`}>Unité</span><select value={UNITES.includes(ligne.unite) ? ligne.unite : (ligne.unite ? '__autre' : 'u')} onChange={e => onUpdate('unite', e.target.value === '__autre' ? (ligne.unite || '') : e.target.value)} className={`w-full h-9 px-1 rounded-lg border text-sm ${inputBg}`}>{UNITES.map(u => <option key={u} value={u}>{u}</option>)}{ligne.unite && !UNITES.includes(ligne.unite) && <option value="__autre">{ligne.unite}</option>}</select></div>
+          <div><span className={`block text-[10px] mb-0.5 ${textMuted}`}>PU HT</span><input ref={puMobileRef} type="text" inputMode="decimal" value={ligne.prixUnitaire} onChange={e => onUpdate('prixUnitaire', e.target.value)} onKeyDown={numKeyDown} className={`w-full h-9 px-2 rounded-lg border text-sm ${inputBg}`} /></div>
           <div><span className={`block text-[10px] mb-0.5 ${textMuted}`}>TVA</span><select value={ligne.tva} onChange={e => onUpdate('tva', parseFloat(e.target.value))} className={`w-full h-9 rounded-lg border text-sm ${inputBg}`}>{[0, 5.5, 10, 20].map(t => <option key={t} value={t}>{t}%</option>)}</select></div>
         </div>
         <div className="flex justify-end"><span className={`text-sm font-bold ${textPrimary}`}>{eur(lineTotal)}</span></div>
@@ -990,6 +1013,10 @@ function SaveTemplateModal({ isDark, couleur, inputBg, textPrimary, textMuted, d
 
 /* ── Démarrage éclair : modèles métier + articles fréquents ── */
 function QuickStart({ templates, articles, persoTemplates = [], onApplyTemplate, onApplyPerso, onAddArticle, isDark, couleur, textPrimary, textMuted }) {
+  const [tradeOpen, setTradeOpen] = useState(false);
+  const [trade, setTrade] = useState(null); // clé SMART_TEMPLATES sélectionnée
+  const trades = Object.entries(SMART_TEMPLATES);
+  const cardCls = `group flex flex-col items-center gap-1.5 p-3 rounded-xl border transition-all hover:-translate-y-0.5 hover:shadow-md active:scale-95 ${isDark ? 'bg-slate-800 border-slate-700 hover:border-slate-600' : 'bg-white border-slate-200 hover:border-slate-300'}`;
   return (
     <div className="space-y-4">
       {persoTemplates.length > 0 && (
@@ -998,7 +1025,7 @@ function QuickStart({ templates, articles, persoTemplates = [], onApplyTemplate,
             <FileText size={12} style={{ color: couleur }} /> Vos modèles
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-            {persoTemplates.slice(0, 6).map(tpl => (
+            {persoTemplates.map(tpl => (
               <button key={tpl.id} type="button" onClick={() => onApplyPerso(tpl)}
                 className={`group flex flex-col items-start gap-0.5 p-3 rounded-xl border text-left transition-all hover:-translate-y-0.5 hover:shadow-md active:scale-95 ${isDark ? 'bg-slate-800 border-slate-700 hover:border-slate-600' : 'bg-white border-slate-200 hover:border-slate-300'}`}>
                 <span className={`text-sm font-semibold truncate w-full ${textPrimary}`}>{tpl.nom}</span>
@@ -1014,8 +1041,7 @@ function QuickStart({ templates, articles, persoTemplates = [], onApplyTemplate,
         </p>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           {templates.map(tpl => (
-            <button key={tpl.label} type="button" onClick={() => onApplyTemplate(tpl)}
-              className={`group flex flex-col items-center gap-1.5 p-3 rounded-xl border transition-all hover:-translate-y-0.5 hover:shadow-md active:scale-95 ${isDark ? 'bg-slate-800 border-slate-700 hover:border-slate-600' : 'bg-white border-slate-200 hover:border-slate-300'}`}>
+            <button key={tpl.label} type="button" onClick={() => onApplyTemplate(tpl)} className={cardCls}>
               <span className="w-9 h-9 rounded-lg flex items-center justify-center transition-transform group-hover:scale-110" style={{ background: `${couleur}18`, color: couleur }}>
                 <tpl.Icon size={18} />
               </span>
@@ -1024,6 +1050,43 @@ function QuickStart({ templates, articles, persoTemplates = [], onApplyTemplate,
             </button>
           ))}
         </div>
+
+        {/* Tous les métiers (bibliothèque SMART_TEMPLATES : 17 métiers, missions chiffrées) */}
+        <button type="button" onClick={() => { setTradeOpen(o => !o); if (tradeOpen) setTrade(null); }}
+          className={`mt-2 inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg border transition-all ${isDark ? 'border-slate-700 text-slate-300 hover:bg-slate-800' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
+          <ChevronDown size={13} className={`transition-transform ${tradeOpen ? 'rotate-180' : ''}`} />
+          {tradeOpen ? 'Masquer les métiers' : `Tous les métiers (${trades.length})`}
+        </button>
+
+        {tradeOpen && (
+          <div className="mt-2 space-y-2">
+            <div className="flex flex-wrap gap-1.5">
+              {trades.map(([key, t]) => (
+                <button key={key} type="button" onClick={() => setTrade(trade === key ? null : key)}
+                  className={`flex items-center gap-1.5 px-2.5 h-8 rounded-full border text-xs font-medium transition-all ${trade === key ? 'text-white' : isDark ? 'bg-slate-800 border-slate-700 text-slate-300 hover:border-slate-600' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}`}
+                  style={trade === key ? { background: couleur, borderColor: couleur } : undefined}>
+                  <span aria-hidden="true">{t.icon}</span> {t.nom}
+                </button>
+              ))}
+            </div>
+            {trade && SMART_TEMPLATES[trade] && (
+              <div className={`rounded-xl border divide-y ${isDark ? 'bg-slate-800/60 border-slate-700 divide-slate-700' : 'bg-white border-slate-200 divide-slate-100'}`}>
+                {SMART_TEMPLATES[trade].missions.map(m => {
+                  const prix = Math.round((m.prixMin + m.prixMax) / 2);
+                  return (
+                    <button key={m.id} type="button" onClick={() => onAddArticle({ nom: m.nom, prix, unite: m.unite || 'forfait' })}
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 text-left text-sm transition-colors ${isDark ? 'hover:bg-slate-700/60' : 'hover:bg-slate-50'}`}>
+                      <Plus size={14} style={{ color: couleur }} className="flex-shrink-0" />
+                      <span className={`flex-1 min-w-0 truncate ${textPrimary}`}>{m.nom}</span>
+                      <span className="text-xs font-semibold whitespace-nowrap" style={{ color: couleur }}>~{prix.toLocaleString('fr-FR')} €</span>
+                    </button>
+                  );
+                })}
+                <p className={`px-3 py-2 text-[10px] ${textMuted}`}>Prix indicatifs moyens — ajustez le PU après ajout.</p>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {articles.length > 0 && (
@@ -1065,10 +1128,10 @@ function AddLineRow({ catalogue, isDark, couleur, inputBg, textPrimary, textMute
     if (focusSignal) inputRef.current?.focus();
   }, [focusSignal]);
   const suggestions = useMemo(() => {
-    const query = q.trim().toLowerCase();
+    const query = norm(q.trim());
     if (!query) return [];
     return catalogue
-      .filter(a => (a.nom || a.designation || '').toLowerCase().includes(query) || (a.reference || '').toLowerCase().includes(query))
+      .filter(a => norm(a.nom || a.designation).includes(query) || norm(a.reference).includes(query))
       .slice(0, 6);
   }, [q, catalogue]);
   const showFree = q.trim().length > 0;
