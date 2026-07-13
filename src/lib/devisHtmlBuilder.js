@@ -92,7 +92,7 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mod
     const total = getLineTotal(l);
     return `
     <tr>
-      <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;vertical-align:top">${l.description || ''}</td>
+      <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;vertical-align:top;white-space:pre-line">${l.description || ''}</td>
       <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${l.quantite || ''}</td>
       <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${l.unite || 'unité'}</td>
       <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:right">${pu.toFixed(2)} €</td>

@@ -113,6 +113,7 @@ export default function DevisComposer({
   const [form, setForm] = useState(blankForm);
   const [focusLotId, setFocusLotId] = useState(null);
   const [metreLineId, setMetreLineId] = useState(null);
+  const [margeLineId, setMargeLineId] = useState(null);
   const [showSaveTemplate, setShowSaveTemplate] = useState(false);
   // Boucle clavier : après ajout d'une ligne, focus Qté (article chiffré) ou PU (ligne libre)
   const [focusField, setFocusField] = useState(null); // { lineId, field }
@@ -137,22 +138,34 @@ export default function DevisComposer({
   useEffect(() => {
     if (!isOpen) return;
     if (initialData) {
+      const tvaDef = initialData.tvaRate || initialData.tva_rate || entreprise?.tvaDefaut || 10;
+      const mapLigne = (l, i) => ({
+        id: l.id || `line-${i}-${Date.now()}`,
+        description: l.description || '',
+        quantite: l.quantite ?? 1,
+        unite: l.unite || 'u',
+        prixUnitaire: l.prixUnitaire ?? 0,
+        prixAchat: l.prixAchat ?? 0,
+        tva: l.tva !== undefined ? l.tva : tvaDef,
+      });
+      // Restaurer les lots : si le devis a des sections titrées, reconstruire la
+      // liste plate avec les marqueurs _isSection (sinon l'édition perdrait les lots).
+      const secs = Array.isArray(initialData.sections) ? initialData.sections.filter(s => (s?.lignes || []).length) : [];
+      const hasTitledLots = secs.some(s => (s.titre || '').trim());
+      const lignes = hasTitledLots
+        ? secs.flatMap((s, si) => [
+            ...((s.titre || '').trim() ? [{ id: s.id || `sec-${si}`, _isSection: true, description: (s.titre || '').trim() }] : []),
+            ...s.lignes.map(mapLigne),
+          ])
+        : (initialData.lignes || []).map(mapLigne);
       setForm({
         type: initialData.type || 'devis',
         clientId: initialData.client_id || '',
         chantierId: initialData.chantier_id || '',
         date: initialData.date || new Date().toISOString().split('T')[0],
         validite: initialData.validite || entreprise?.validiteDevis || 30,
-        tvaDefaut: initialData.tvaRate || initialData.tva_rate || entreprise?.tvaDefaut || 10,
-        lignes: (initialData.lignes || []).map((l, i) => ({
-          id: l.id || `line-${i}`,
-          description: l.description || '',
-          quantite: l.quantite ?? 1,
-          unite: l.unite || 'u',
-          prixUnitaire: l.prixUnitaire ?? 0,
-          prixAchat: l.prixAchat ?? 0,
-          tva: l.tva !== undefined ? l.tva : (initialData.tvaRate || 10),
-        })),
+        tvaDefaut: tvaDef,
+        lignes,
         remise: initialData.remise || 0,
         acompte: initialData.acompte_pct || initialData.acompte || 0,
         conditions: initialData.conditions || '',
@@ -335,6 +348,15 @@ export default function DevisComposer({
     return { ...p, lignes: n };
   });
   // ── Lots (titres de section) ──
+  const insertLotAbove = (index) => {
+    const id = generateId();
+    setForm(p => {
+      const n = [...p.lignes];
+      n.splice(index, 0, { id, _isSection: true, description: '' });
+      return { ...p, lignes: n };
+    });
+    setFocusLotId(id);
+  };
   const addLot = () => {
     const id = generateId();
     setForm(p => ({ ...p, lignes: [...p.lignes, { id, _isSection: true, description: '' }] }));
@@ -540,6 +562,8 @@ export default function DevisComposer({
                     onUpdate={(f, v) => updateLigne(ligne.id, f, v)} onRemove={() => removeLigne(ligne.id)}
                     onMoveUp={() => moveLigne(index, -1)} onMoveDown={() => moveLigne(index, 1)} onDuplicate={() => duplicateLigne(ligne.id)}
                     onMetre={() => setMetreLineId(ligne.id)}
+                    onInsertLot={() => insertLotAbove(index)}
+                    onMarge={() => setMargeLineId(ligne.id)}
                     focusField={focusField && focusField.lineId === ligne.id ? focusField.field : null}
                     onFocusHandled={() => setFocusField(null)}
                     onLineEnter={() => setFocusSearchTick(t => t + 1)} />
@@ -711,6 +735,18 @@ export default function DevisComposer({
         />
       )}
 
+      {margeLineId && (() => {
+        const l = form.lignes.find(x => x.id === margeLineId);
+        return l ? (
+          <MargeModal
+            isDark={isDark} couleur={couleur} inputBg={inputBg} textPrimary={textPrimary} textMuted={textMuted}
+            ligne={l}
+            onClose={() => setMargeLineId(null)}
+            onApply={(pa) => { updateLigne(margeLineId, 'prixAchat', pa); setMargeLineId(null); }}
+          />
+        ) : null;
+      })()}
+
       {showSaveTemplate && (
         <SaveTemplateModal
           isDark={isDark} couleur={couleur} inputBg={inputBg} textPrimary={textPrimary} textMuted={textMuted}
@@ -820,7 +856,7 @@ function SectionRow({ ligne, index, total, subtotal, shouldFocus, isDark, couleu
 }
 
 /* ── Editable line row ── */
-function LigneRow({ ligne, index, total, isDark, couleur, inputBg, textPrimary, textMuted, rowHover, onUpdate, onRemove, onMoveUp, onMoveDown, onDuplicate, onMetre, focusField, onFocusHandled, onLineEnter }) {
+function LigneRow({ ligne, index, total, isDark, couleur, inputBg, textPrimary, textMuted, rowHover, onUpdate, onRemove, onMoveUp, onMoveDown, onDuplicate, onMetre, onInsertLot, onMarge, focusField, onFocusHandled, onLineEnter }) {
   const lineTotal = num(ligne.quantite) * num(ligne.prixUnitaire);
   const numCls = `w-full h-9 rounded-lg border text-sm text-center ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`;
   // Boucle clavier : focus + sélection du champ demandé (desktop OU mobile selon visibilité)
@@ -838,8 +874,9 @@ function LigneRow({ ligne, index, total, isDark, couleur, inputBg, textPrimary, 
     <div className={`group border-b last:border-b-0 ${isDark ? 'border-slate-800' : 'border-slate-100'} ${rowHover} transition-colors`}>
       {/* Desktop grid */}
       <div className="hidden sm:grid grid-cols-[1fr_52px_60px_74px_54px_92px_30px] gap-2 items-center px-4 py-2">
-        <input value={ligne.description} onChange={e => onUpdate('description', e.target.value)} placeholder="Désignation…"
-          className={`w-full h-9 px-2 rounded-lg border text-sm ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`} />
+        <textarea value={ligne.description} onChange={e => onUpdate('description', e.target.value)} placeholder="Désignation…" rows={1}
+          onInput={e => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
+          className={`w-full min-h-[36px] px-2 py-1.5 rounded-lg border text-sm resize-none overflow-hidden leading-snug ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`} />
         <input ref={qtyDesktopRef} type="text" inputMode="decimal" value={ligne.quantite} onChange={e => onUpdate('quantite', e.target.value)} onKeyDown={numKeyDown} aria-label="Quantité" className={numCls} />
         <select value={UNITES.includes(ligne.unite) ? ligne.unite : (ligne.unite ? '__autre' : 'u')} onChange={e => onUpdate('unite', e.target.value === '__autre' ? (ligne.unite || '') : e.target.value)} aria-label="Unité"
           className={`w-full h-9 px-1 rounded-lg border text-xs text-center ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`}>
@@ -851,13 +888,14 @@ function LigneRow({ ligne, index, total, isDark, couleur, inputBg, textPrimary, 
           {[0, 5.5, 10, 20].map(t => <option key={t} value={t}>{t}%</option>)}
         </select>
         <span className={`text-sm font-semibold text-right tabular-nums ${textPrimary}`}>{eur(lineTotal)}</span>
-        <LineMenu isDark={isDark} textMuted={textMuted} index={index} total={total} onMoveUp={onMoveUp} onMoveDown={onMoveDown} onDuplicate={onDuplicate} onRemove={onRemove} onMetre={onMetre} />
+        <LineMenu isDark={isDark} textMuted={textMuted} index={index} total={total} onMoveUp={onMoveUp} onMoveDown={onMoveDown} onDuplicate={onDuplicate} onRemove={onRemove} onMetre={onMetre} onInsertLot={onInsertLot} onMarge={onMarge} />
       </div>
       {/* Mobile card */}
       <div className="sm:hidden p-3 space-y-2">
         <div className="flex items-start gap-2">
-          <input value={ligne.description} onChange={e => onUpdate('description', e.target.value)} placeholder="Désignation…"
-            className={`flex-1 h-10 px-3 rounded-lg border text-sm ${inputBg}`} />
+          <textarea value={ligne.description} onChange={e => onUpdate('description', e.target.value)} placeholder="Désignation…" rows={1}
+            onInput={e => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
+            className={`flex-1 min-h-[40px] px-3 py-2 rounded-lg border text-sm resize-none overflow-hidden leading-snug ${inputBg}`} />
           <button onClick={onMetre} aria-label="Métré" className={`p-2 rounded-lg ${isDark ? 'text-slate-400 hover:bg-slate-700' : 'text-slate-500 hover:bg-slate-100'}`}><Ruler size={16} /></button>
           <button onClick={onRemove} aria-label="Supprimer" className="p-2 rounded-lg text-red-500 hover:bg-red-500/10"><Trash2 size={16} /></button>
         </div>
@@ -873,7 +911,7 @@ function LigneRow({ ligne, index, total, isDark, couleur, inputBg, textPrimary, 
   );
 }
 
-function LineMenu({ isDark, textMuted, index, total, onMoveUp, onMoveDown, onDuplicate, onRemove, onMetre }) {
+function LineMenu({ isDark, textMuted, index, total, onMoveUp, onMoveDown, onDuplicate, onRemove, onMetre, onInsertLot, onMarge }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
   useEffect(() => { if (!open) return; const h = e => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); }; document.addEventListener('mousedown', h); return () => document.removeEventListener('mousedown', h); }, [open]);
@@ -886,6 +924,8 @@ function LineMenu({ isDark, textMuted, index, total, onMoveUp, onMoveDown, onDup
       {open && (
         <div onKeyDown={e => e.key === 'Escape' && setOpen(false)} role="menu" className={`absolute right-0 top-full mt-1 z-30 w-40 rounded-lg border shadow-lg py-1 text-sm ${isDark ? 'bg-slate-800 border-slate-700 text-slate-200' : 'bg-white border-slate-200 text-slate-700'}`}>
           {onMetre && <button role="menuitem" onClick={() => { onMetre(); setOpen(false); }} className={`w-full flex items-center gap-2 px-3 py-2 text-left ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}><Ruler size={14} /> Métré L × l</button>}
+          {onMarge && <button role="menuitem" onClick={() => { onMarge(); setOpen(false); }} className={`w-full flex items-center gap-2 px-3 py-2 text-left ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}><Zap size={14} /> Prix d'achat / marge</button>}
+          {onInsertLot && <button role="menuitem" onClick={() => { onInsertLot(); setOpen(false); }} className={`w-full flex items-center gap-2 px-3 py-2 text-left ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}><Plus size={14} /> Lot au-dessus</button>}
           <button role="menuitem" disabled={index === 0} onClick={() => { onMoveUp(); setOpen(false); }} className={`w-full flex items-center gap-2 px-3 py-2 text-left disabled:opacity-40 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}><ChevronUp size={14} /> Monter</button>
           <button role="menuitem" disabled={index === total - 1} onClick={() => { onMoveDown(); setOpen(false); }} className={`w-full flex items-center gap-2 px-3 py-2 text-left disabled:opacity-40 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}><ChevronDown size={14} /> Descendre</button>
           <button role="menuitem" onClick={() => { onDuplicate(); setOpen(false); }} className={`w-full flex items-center gap-2 px-3 py-2 text-left ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}><Plus size={14} /> Dupliquer</button>
@@ -969,6 +1009,53 @@ function PdfPreviewModal({ isDark, couleur, textPrimary, textMuted, html, onClos
           <button onClick={onClose} aria-label="Fermer l'aperçu" className={`p-2 rounded-lg flex-shrink-0 ${textMuted} ${isDark ? 'hover:bg-slate-800' : 'hover:bg-slate-100'}`}><X size={18} /></button>
         </div>
         <iframe srcDoc={html} title="Aperçu du devis" className="flex-1 w-full border-0 bg-white" />
+      </div>
+    </div>
+  );
+}
+
+/* ── Prix d'achat / marge d'une ligne ── */
+function MargeModal({ isDark, couleur, inputBg, textPrimary, textMuted, ligne, onClose, onApply }) {
+  const [pa, setPa] = useState(ligne.prixAchat ? String(ligne.prixAchat) : '');
+  const ref = useRef(null);
+  useEffect(() => {
+    ref.current?.focus(); ref.current?.select();
+    const onKey = e => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
+  const pu = num(ligne.prixUnitaire);
+  const npa = num(pa);
+  const margePct = pu > 0 ? Math.round(((pu - npa) / pu) * 100) : 0;
+  const margeEur = (pu - npa) * num(ligne.quantite);
+  const card = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200';
+  return (
+    <div className="fixed inset-0 z-[1100] flex items-end sm:items-center justify-center sm:p-4" role="dialog" aria-modal="true" aria-label="Prix d'achat et marge">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className={`relative w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl border shadow-2xl ${card}`}>
+        <div className={`flex items-center justify-between px-5 py-4 border-b ${isDark ? 'border-slate-700' : 'border-slate-100'}`}>
+          <h3 className={`text-base font-bold flex items-center gap-2 ${textPrimary}`}><Zap size={18} style={{ color: couleur }} /> Prix d'achat / marge</h3>
+          <button onClick={onClose} aria-label="Fermer" className={`p-1.5 rounded-lg ${textMuted} ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}><X size={18} /></button>
+        </div>
+        <div className="p-5 space-y-4">
+          <p className={`text-sm truncate ${textMuted}`}>{ligne.description || 'Ligne sans désignation'} — vendu {eur(pu)}/{ligne.unite || 'u'}</p>
+          <div>
+            <label className={`block text-[11px] font-semibold uppercase tracking-wide mb-1.5 ${textMuted}`}>Votre coût d'achat (HT, par {ligne.unite || 'u'})</label>
+            <input ref={ref} type="text" inputMode="decimal" value={pa} onChange={e => setPa(e.target.value)} placeholder="0"
+              className={`w-full px-3 h-11 rounded-xl border text-sm ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`} />
+          </div>
+          <div className={`rounded-xl px-4 py-3 flex items-center justify-between ${isDark ? 'bg-slate-900/60' : 'bg-slate-50'}`}>
+            <span className={`text-sm ${textMuted}`}>Marge sur la ligne</span>
+            <span className={`text-xl font-extrabold tabular-nums ${margePct >= 25 ? 'text-emerald-500' : margePct >= 10 ? 'text-amber-500' : 'text-red-500'}`}>
+              {margePct} % <span className="text-sm font-semibold">({eur(margeEur)})</span>
+            </span>
+          </div>
+          <p className={`text-[11px] ${textMuted}`}>Jamais visible par le client — sert uniquement au badge de marge du devis.</p>
+        </div>
+        <div className={`flex gap-2 px-5 py-4 border-t ${isDark ? 'border-slate-700' : 'border-slate-100'}`}>
+          <button onClick={onClose} className={`flex-1 h-11 rounded-xl border text-sm font-semibold ${isDark ? 'border-slate-700 text-slate-200 hover:bg-slate-700' : 'border-slate-200 text-slate-700 hover:bg-slate-50'}`}>Annuler</button>
+          <button onClick={() => onApply(npa)} className="flex-1 h-11 rounded-xl text-white text-sm font-bold transition-all" style={{ background: couleur }}>Appliquer</button>
+        </div>
       </div>
     </div>
   );

@@ -201,6 +201,12 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   const [showDevisWizard, setShowDevisWizard] = useState(false);
   // DevisComposer — nouveau parcours de création single-canvas (banger)
   const [showDevisComposer, setShowDevisComposer] = useState(false);
+  // Édition : composer pour devis/factures, wizard pour les avoirs (montants négatifs)
+  const openEditor = (doc) => {
+    setEditingDevis(doc);
+    if (doc?.facture_type === 'avoir') setShowDevisWizard(true);
+    else setShowDevisComposer(true);
+  };
 
   // Échéancier d'acomptes
   const [showEcheancierModal, setShowEcheancierModal] = useState(false);
@@ -1421,7 +1427,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 
     const renderRow = (l) => `
       <tr>
-        <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;vertical-align:top">${l.description || ''}</td>
+        <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;vertical-align:top;white-space:pre-line">${l.description || ''}</td>
         <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${l.quantite || 0}</td>
         <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${l.unite||'unité'}</td>
         <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:right">${formatMoney(parseFloat(l.prixUnitaire||l.prix_unitaire||0))}</td>
@@ -2468,10 +2474,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
               {/* Modifier button - only for editable statuses + edit permission */}
               {canPerform('devis', 'edit') && ['brouillon', 'envoye', 'vu'].includes(selected.statut) && (
                 <button
-                  onClick={() => {
-                    setEditingDevis(selected);
-                    setShowDevisWizard(true);
-                  }}
+                  onClick={() => openEditor(selected)}
                   className="min-w-[44px] min-h-[44px] sm:px-3 rounded-xl transition-colors flex items-center justify-center gap-2 text-white hover:shadow-lg"
                   style={{ backgroundColor: couleur }}
                   title="Modifier ce document"
@@ -3318,7 +3321,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                       <tbody>
                         {filterValidLignes(section.lignes).map((l, i) => (
                           <tr key={i} className={`border-b ${isDark ? 'border-slate-700' : 'border-slate-100'}`}>
-                            <td className={`py-2.5 ${textPrimary}`}>{l.description || ''}</td>
+                            <td className={`py-2.5 whitespace-pre-line ${textPrimary}`}>{l.description || ''}</td>
                             <td className={`text-right ${textSecondary}`}>{l.quantite || 0} {l.unite || ''}</td>
                             <td className={`text-right ${textSecondary}`}>{formatMoney(parseFloat(l.prixUnitaire || l.prix_unitaire || 0))}</td>
                             <td className={`text-right font-medium ${getLineTotal(l) < 0 ? 'text-red-500' : textPrimary}`}>{formatMoney(getLineTotal(l))}</td>
@@ -3928,10 +3931,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                           onClick={() => {
                             const doc = sendValidationIssues.doc;
                             setSendValidationIssues(null);
-                            if (doc) {
-                              setEditingDevis(doc);
-                              setShowDevisWizard(true);
-                            }
+                            if (doc) openEditor(doc);
                           }}
                           className="text-xs font-medium px-2.5 py-1 rounded-lg shrink-0 transition-colors"
                           style={{ color: couleur, backgroundColor: `${couleur}15` }}
@@ -5376,7 +5376,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                             <Eye size={14} className={isDark ? 'text-slate-400' : 'text-slate-500'} />
                           </button>
                           {!isViewOnly && canPerform('devis', 'edit') && (
-                            <button onClick={(e) => { e.stopPropagation(); setEditingDevis(d); setShowDevisWizard(true); }} className={`p-1.5 rounded-lg transition-all ${isDark ? 'hover:bg-slate-600' : 'hover:bg-slate-200'}`} title="Modifier">
+                            <button onClick={(e) => { e.stopPropagation(); openEditor(d); }} className={`p-1.5 rounded-lg transition-all ${isDark ? 'hover:bg-slate-600' : 'hover:bg-slate-200'}`} title="Modifier">
                               <Edit3 size={14} className={isDark ? 'text-slate-400' : 'text-slate-500'} />
                             </button>
                           )}
