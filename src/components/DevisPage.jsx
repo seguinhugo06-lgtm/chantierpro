@@ -113,7 +113,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   const { orgId } = useOrg();
 
   // Template operations from DataContext
-  const { customTemplates: ctxTemplates, addTemplate, deleteTemplate: deleteCtxTemplate, templateUsages, trackTemplateUsage } = useData();
+  const { customTemplates: ctxTemplates, addTemplate, deleteTemplate: deleteCtxTemplate, templateUsages, trackTemplateUsage, updateClient: ctxUpdateClient } = useData();
 
   // Enrich template usages with actual template data for "recently used" display
   const enrichedRecentTemplates = useMemo(() => {
@@ -1895,6 +1895,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 
   // ============ PRE-SEND VALIDATION ============
   const [sendValidationIssues, setSendValidationIssues] = useState(null); // null or { issues: [], doc }
+  const [askEmail, setAskEmail] = useState(null); // { doc } — client sans email au moment d'envoyer
+  const [askEmailValue, setAskEmailValue] = useState('');
 
   /**
    * validateDevisForSend — checks all prerequisites before allowing send
@@ -2021,12 +2023,26 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     setShowSendConfirmation({ clientName, montant: doc.total_ttc, canal: 'WhatsApp', doc });
   };
 
-  const sendEmail = async (doc) => {
+  const sendEmail = async (doc, emailOverride = null) => {
     const client = clients.find(c => c.id === doc.client_id);
     if (!client) { showToast('Client introuvable. Veuillez associer un client au devis.', 'error'); return; }
-    if (!client?.email) { showToast('Aucun email client renseigné', 'error'); return; }
+    const toEmail = emailOverride || client?.email;
+    // Pas d'email ? On le demande ici même (et on l'enregistre sur la fiche client) au lieu d'un cul-de-sac.
+    if (!toEmail) { setAskEmailValue(''); setAskEmail({ doc }); return; }
     const isFacture = doc.type === 'facture';
     const label = isFacture ? 'Facture' : 'Devis';
+    // Mode démo : pas de serveur d'envoi — on simule pour que la boucle complète soit vivable.
+    if (isDemo || !supabase) {
+      if (doc.statut === 'brouillon') {
+        onUpdate(doc.id, { statut: 'envoye' });
+        setSelected(s => s?.id === doc.id ? { ...s, statut: 'envoye' } : s);
+      }
+      if (addEchange) addEchange({ type: 'email', client_id: doc.client_id, document: doc.numero, montant: doc.total_ttc, objet: `Envoi ${isFacture ? 'facture' : 'devis'} ${doc.numero}` });
+      const clientName = `${client.prenom || ''} ${client.nom || ''}`.trim();
+      setShowSendConfirmation({ clientName, montant: doc.total_ttc, canal: 'Email (démo)', doc });
+      showToast(`Mode démo : envoi simulé à ${toEmail} ✓`, 'success');
+      return;
+    }
     setActionLoading('email');
     showToast(`Envoi du ${label.toLowerCase()} ${doc.numero}…`, 'info');
     try {
@@ -2034,7 +2050,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       const pdfHtml = downloadPDF(doc);
       const bodyHtml = buildDocumentEmailBody({ doc, client, entreprise, couleur, montantFormatte: formatMoney(doc.total_ttc) });
       await sendDocumentEmail({
-        to: client.email,
+        to: toEmail,
         subject: `${label} ${doc.numero}${entreprise?.nom ? ` — ${entreprise.nom}` : ''}`,
         bodyHtml,
         fromName: entreprise?.nom,
@@ -2049,7 +2065,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       if (addEchange) addEchange({ type: 'email', client_id: doc.client_id, document: doc.numero, montant: doc.total_ttc, objet: `Envoi ${isFacture ? 'facture' : 'devis'} ${doc.numero}` });
       const clientName = `${client.prenom || ''} ${client.nom || ''}`.trim();
       setShowSendConfirmation({ clientName, montant: doc.total_ttc, canal: 'Email', doc });
-      showToast(`${label} ${doc.numero} envoyé à ${client.email} ✓`, 'success');
+      showToast(`${label} ${doc.numero} envoyé à ${toEmail} ✓`, 'success');
     } catch (e) {
       console.error('[sendEmail] Error:', e);
       showToast(`Échec de l'envoi : ${e?.message || 'erreur inconnue'}`, 'error');
@@ -3836,7 +3852,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
               <button
                 onClick={() => {
                   setShowCreationSuccess(null);
-                  if (showCreationSuccess.devis) sendEmail(showCreationSuccess.devis);
+                  if (showCreationSuccess.devis) trySend(showCreationSuccess.devis, sendEmail);
                 }}
                 className="w-full py-3 rounded-xl text-white font-semibold flex items-center justify-center gap-2 transition-all hover:opacity-90 shadow-md mb-3"
                 style={{ backgroundColor: couleur }}
@@ -3848,6 +3864,42 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                 className={`w-full py-2.5 rounded-xl text-sm font-medium transition-colors ${isDark ? 'text-slate-400 hover:text-slate-300' : 'text-slate-500 hover:text-slate-700'}`}
               >
                 Plus tard
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Email client manquant — saisie inline + enregistrement sur la fiche */}
+        {askEmail && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={() => setAskEmail(null)}>
+            <div className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-t-2xl sm:rounded-2xl w-full sm:max-w-sm shadow-2xl p-6`} onClick={e => e.stopPropagation()}>
+              <h3 className={`text-lg font-bold mb-1 ${textPrimary}`}>Email du client ?</h3>
+              <p className={`text-sm mb-4 ${textMuted}`}>
+                {(() => { const c = clients.find(x => x.id === askEmail.doc?.client_id); return `${formatClientName(c) || 'Ce client'} n'a pas d'email enregistré. Saisissez-le pour envoyer le ${askEmail.doc?.type === 'facture' ? 'la facture' : 'devis'} — il sera ajouté à sa fiche.`; })()}
+              </p>
+              <input
+                type="email" autoFocus value={askEmailValue}
+                onChange={e => setAskEmailValue(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Escape') setAskEmail(null); }}
+                placeholder="client@exemple.fr"
+                className={`w-full px-4 py-3 border rounded-xl mb-4 ${inputBg}`}
+              />
+              <button
+                disabled={!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(askEmailValue.trim())}
+                onClick={async () => {
+                  const email = askEmailValue.trim();
+                  const doc = askEmail.doc;
+                  setAskEmail(null);
+                  try { await ctxUpdateClient?.(doc.client_id, { email }); } catch { /* l'envoi reste possible */ }
+                  sendEmail(doc, email);
+                }}
+                className="w-full py-3 rounded-xl text-white font-semibold flex items-center justify-center gap-2 transition-all hover:opacity-90 shadow-md disabled:opacity-50 mb-2"
+                style={{ backgroundColor: couleur }}
+              >
+                <Send size={16} /> Enregistrer et envoyer
+              </button>
+              <button onClick={() => setAskEmail(null)} className={`w-full py-2.5 rounded-xl text-sm font-medium ${isDark ? 'text-slate-400 hover:text-slate-300' : 'text-slate-500 hover:text-slate-700'}`}>
+                Annuler
               </button>
             </div>
           </div>
