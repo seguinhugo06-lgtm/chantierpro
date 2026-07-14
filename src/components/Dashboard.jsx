@@ -434,7 +434,9 @@ export default function Dashboard({
 
   // Onboarding (nouveaux comptes uniquement)
   const onboardingSteps = [
-    { key: 'profil', label: 'Configurer mon entreprise', done: computed.profilPct >= 80, action: () => setPage('settings') },
+    // « Fait » = les champs qui débloquent l'ENVOI d'un devis (mêmes règles que le garde légal),
+    // pas un simple % de profil — sinon l'étape se coche alors que l'envoi restera bloqué.
+    { key: 'profil', label: 'Configurer mon entreprise', done: !!(entreprise?.nom && entreprise?.siret && entreprise?.adresse && (entreprise?.formeJuridique || entreprise?.forme_juridique) && (entreprise?.decennaleAssureur || entreprise?.decennale_assureur) && (entreprise?.decennaleNumero || entreprise?.decennale_numero)), action: () => setPage('settings') },
     { key: 'client', label: 'Ajouter mon premier client', done: (clients?.length || 0) > 0, action: () => setPage('clients') },
     { key: 'devis', label: 'Créer mon premier devis', done: (devis?.length || 0) > 0, action: () => { setCreateMode?.(p => ({ ...p, devis: true })); setPage('devis'); } },
     { key: 'relances', label: 'Activer les relances automatiques', done: !!(entreprise?.relanceConfig?.enabled), action: () => { try { localStorage.setItem('cp_settings_tab', 'relances'); } catch { /* noop */ } setPage('settings'); } },

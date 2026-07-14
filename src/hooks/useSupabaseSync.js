@@ -1209,6 +1209,10 @@ export async function getNextNumero(type, userId, localDevis = [], entrepriseId 
 function extractBadColumn(msg) {
   if (!msg) return null;
   const patterns = [
+    // PostgREST PGRST204 : « Could not find the 'X' column of 'table' » — le nom
+    // de colonne précède le mot "column" ; ce pattern DOIT passer avant le suivant
+    // (qui capturerait sinon le nom de la table).
+    /['"](\w+)['"] column of/i,
     /Could not find.*?column.*?['"](\w+)['"]/i,
     /column "(\w+)" of relation/i,
     /column ['"]?(\w+)['"]? does not exist/i,

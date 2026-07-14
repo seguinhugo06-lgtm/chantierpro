@@ -28,7 +28,7 @@ const FEATURES = [
   {
     icon: Puzzle,
     title: 'Int\u00e9grations',
-    description: 'Stripe, GoCardless, Twilio SMS, SendGrid, m\u00e9t\u00e9o et plus.',
+    description: 'Paiement en ligne Stripe, envoi d\u2019emails avec PDF, m\u00e9t\u00e9o chantier.',
     color: '#3b82f6',
     bg: 'bg-blue-50',
   },

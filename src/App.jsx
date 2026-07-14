@@ -162,6 +162,21 @@ export default function App() {
       return newPage;
     });
   }, []);
+
+  // La page courante est persistée par NAVIGATEUR (cp_current_page) : si un autre
+  // utilisateur se connecte sur le même poste, il hériterait de la dernière page du
+  // compte précédent (ex : atterrir sur « Mon Plan »). On repart sur l'Accueil.
+  useEffect(() => {
+    if (!user?.id) return;
+    try {
+      const owner = localStorage.getItem('cp_page_owner');
+      if (owner !== user.id) {
+        localStorage.setItem('cp_page_owner', user.id);
+        if (owner) setPage('dashboard');
+      }
+    } catch { /* noop */ }
+  }, [user?.id, setPage]);
+
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedChantier, setSelectedChantier] = useState(null);
   const [selectedDevis, setSelectedDevis] = useState(null);

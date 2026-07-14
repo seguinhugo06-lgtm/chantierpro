@@ -43,7 +43,7 @@ const TESTIMONIALS = [
     role: 'Ma\u00e7on',
     city: 'Marseille',
     stars: 5,
-    quote: 'Je dicte mes travaux sur le chantier et le devis est pr\u00eat en 2 minutes. Mes clients sont impressionn\u00e9s par la rapidit\u00e9.',
+    quote: 'Avec les mod\u00e8les par m\u00e9tier, mon devis est pr\u00eat en 5 minutes depuis le chantier, sur mon t\u00e9l\u00e9phone. Mes clients sont impressionn\u00e9s par la rapidit\u00e9.',
     avatar: 'KB',
     gradient: 'from-violet-400 to-violet-600',
   },
