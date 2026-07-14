@@ -18,3 +18,15 @@ ALTER TABLE clients ALTER COLUMN adresse   DROP NOT NULL;
 -- plus tard) → prix par défaut 0 et nullable pour éviter le même rejet.
 ALTER TABLE catalogue ALTER COLUMN prix_unitaire_ht SET DEFAULT 0;
 ALTER TABLE catalogue ALTER COLUMN prix_unitaire_ht DROP NOT NULL;
+
+-- ============================================================
+-- 2e cause du bug « client disparaît » : la table clients n'avait PAS de
+-- colonne updated_at, alors que l'app l'inclut TOUJOURS dans le payload
+-- (pour le trigger update_updated_at). Résultat : PGRST204 « column
+-- updated_at not found » → 100% des INSERT clients rejetés → tout client
+-- créé disparaissait au reload. On ajoute la colonne + le trigger standard.
+-- ============================================================
+ALTER TABLE clients ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT now();
+DROP TRIGGER IF EXISTS update_clients_updated_at ON clients;
+CREATE TRIGGER update_clients_updated_at BEFORE UPDATE ON clients
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
