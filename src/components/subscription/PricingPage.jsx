@@ -8,7 +8,7 @@
 import React, { useState, useCallback, useRef } from 'react';
 import {
   Check, X, ChevronDown, ArrowRight, Zap, Hammer, Users,
-  Star, Shield, Clock, CreditCard, MessageCircle
+  Shield, Clock, CreditCard, MessageCircle
 } from 'lucide-react';
 import { useSubscriptionStore, PLANS, PLAN_ORDER, YEARLY_DISCOUNT } from '../../stores/subscriptionStore';
 import { createCheckoutSession } from '../../services/subscriptionsApi';
@@ -195,7 +195,7 @@ function PricingCard({ plan, billing, isCurrent, isLoading, onSelect }) {
 const FAQ_ITEMS = [
   {
     q: 'Puis-je tester gratuitement ?',
-    a: 'Oui ! Les plans Artisan et Équipe incluent 14 jours d\'essai gratuit sans carte bancaire. Toutes les fonctionnalités sont accessibles pendant l\'essai. À la fin, vous passez automatiquement au plan Gratuit si vous ne souscrivez pas.'
+    a: 'Oui ! Le plan Gratuit est disponible sans limite de temps et sans carte bancaire : 5 devis par mois, 10 clients, 2 chantiers. Passez à Artisan ou Équipe quand vous en avez besoin — et revenez au plan Gratuit à tout moment, sans perdre vos données.'
   },
   {
     q: 'Quelle est la différence entre Artisan et Équipe ?',
@@ -203,7 +203,7 @@ const FAQ_ITEMS = [
   },
   {
     q: 'Puis-je changer de plan à tout moment ?',
-    a: 'Oui, vous pouvez monter ou descendre de plan à tout moment. Si vous annulez, votre plan reste actif jusqu\'à la fin de la période payée. Vos données restent accessibles en lecture seule pendant 30 jours.'
+    a: 'Oui, vous pouvez monter ou descendre de plan à tout moment. Si vous annulez, votre plan reste actif jusqu\'à la fin de la période payée, puis votre compte repasse au plan Gratuit : vos données restent accessibles et exportables.'
   },
   {
     q: 'Comment fonctionne la facturation ?',
@@ -215,7 +215,7 @@ const FAQ_ITEMS = [
   },
   {
     q: 'Mes données sont-elles sécurisées ?',
-    a: 'Absolument. Vos données sont hébergées en Europe, chiffrées en transit et au repos. Nous sommes conformes RGPD avec export et suppression de données sur demande.'
+    a: 'Absolument. Vos données sont hébergées en France (région AWS Paris), chiffrées en transit et au repos. Nous sommes conformes RGPD avec export et suppression de données sur demande.'
   }
 ];
 
@@ -259,79 +259,11 @@ function FAQSection({ isDark }) {
   );
 }
 
-// ─── Testimonials Section ───────────────────────────────────────────────────
-
-const TESTIMONIALS = [
-  {
-    name: 'Martin Dubois',
-    job: 'Electricien',
-    text: 'BatiGesti a transformé ma façon de travailler. Fini les devis sur papier, mes clients sont impressionnés par le professionnalisme.',
-    stars: 5,
-    color: '#F97316'
-  },
-  {
-    name: 'Sophie Laurent',
-    job: 'Plombière',
-    text: 'Le suivi de chantier en temps réel me fait gagner au moins 2h par semaine. L\'export comptable est un vrai plus.',
-    stars: 5,
-    color: '#3B82F6'
-  },
-  {
-    name: 'Pierre Moreau',
-    job: 'Charpentier',
-    text: 'Le plan Artisan est parfait pour un artisan seul. J\'ai tout ce qu\'il me faut pour gérer mes chantiers sereinement.',
-    stars: 5,
-    color: '#8B5CF6'
-  }
-];
-
-function TestimonialsSection({ isDark }) {
-  return (
-    <section className={`py-16 ${isDark ? 'bg-slate-800/50' : 'bg-slate-50'} rounded-2xl my-8`}>
-      <h2 className={`text-2xl font-bold text-center mb-10 ${isDark ? 'text-white' : 'text-slate-900'}`}>
-        Nos utilisateurs adorent BatiGesti
-      </h2>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto px-6">
-        {TESTIMONIALS.map((t, i) => (
-          <div
-            key={i}
-            className={`rounded-xl p-6 ${isDark ? 'bg-slate-800 border border-slate-700' : 'bg-white border border-slate-200'} shadow-sm`}
-          >
-            {/* Stars */}
-            <div className="flex gap-0.5 mb-3">
-              {Array.from({ length: t.stars }).map((_, j) => (
-                <Star key={j} size={14} className="text-yellow-400 fill-yellow-400" />
-              ))}
-            </div>
-            {/* Quote */}
-            <p className={`text-sm italic leading-relaxed mb-4 ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-              &ldquo;{t.text}&rdquo;
-            </p>
-            {/* Author */}
-            <div className="flex items-center gap-3">
-              <div
-                className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm"
-                style={{ backgroundColor: t.color }}
-              >
-                {t.name.charAt(0)}
-              </div>
-              <div>
-                <p className={`font-semibold text-sm ${isDark ? 'text-white' : 'text-slate-900'}`}>{t.name}</p>
-                <p className="text-xs text-slate-500">{t.job}</p>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}
-
 // ─── Trust Section ──────────────────────────────────────────────────────────
 
 const TRUST_ITEMS = [
   { icon: Shield, label: 'Paiement sécurisé', desc: 'Stripe' },
-  { icon: Clock, label: 'Essai 14 jours', desc: 'Sans CB' },
+  { icon: Clock, label: 'Gratuit pour démarrer', desc: 'Sans CB' },
   { icon: CreditCard, label: 'Sans engagement', desc: 'Annulez quand vous voulez' },
   { icon: MessageCircle, label: 'Support réactif', desc: 'Réponse < 24h' }
 ];
@@ -449,9 +381,6 @@ export default function PricingPage({ isDark, couleur, setPage }) {
           />
         ))}
       </div>
-
-      {/* Testimonials */}
-      <TestimonialsSection isDark={isDark} />
 
       {/* FAQ */}
       <FAQSection isDark={isDark} />

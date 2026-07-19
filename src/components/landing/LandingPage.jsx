@@ -28,7 +28,7 @@ import QuickFeaturesGrid from './QuickFeaturesGrid';
 import CtaBanner from './CtaBanner';
 import PricingSection from './PricingSection';
 import PricingComparisonTable from './PricingComparisonTable';
-import TestimonialsSection from './TestimonialsSection';
+import EarlyAdoptersSection from './EarlyAdoptersSection';
 import FAQSection from './FAQSection';
 import FinalCta from './FinalCta';
 import FooterSection from './FooterSection';
@@ -45,7 +45,7 @@ export default function LandingPage({ onLogin, onSignup, onNavigate }) {
         <CtaBanner onSignup={onSignup} />
         <PricingSection onSignup={onSignup} />
         <PricingComparisonTable />
-        <TestimonialsSection />
+        <EarlyAdoptersSection onSignup={onSignup} />
         <FAQSection />
         <FinalCta onSignup={onSignup} />
       </main>

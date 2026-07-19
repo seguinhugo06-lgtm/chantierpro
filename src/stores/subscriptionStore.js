@@ -40,7 +40,6 @@ export const PLANS = {
       { name: '2 chantiers actifs', included: true },
       { name: '30 articles catalogue', included: true },
       { name: 'Planning basique', included: true },
-      { name: '3 analyses IA / mois', included: true },
       { name: '100 Mo stockage', included: true },
       { name: 'Signatures électroniques', included: false },
       { name: 'Export comptable', included: false },

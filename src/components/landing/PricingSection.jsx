@@ -21,7 +21,7 @@ const PLANS = [
       '10 clients',
       '2 chantiers actifs',
       'Planning basique',
-      'Catalogue 50 articles',
+      'Catalogue 30 articles',
     ],
     cta: 'Commencer gratuitement — 0 \u20ac',
     highlighted: false,
@@ -40,7 +40,7 @@ const PLANS = [
       'Conformit\u00e9 Facture 2026',
       'Catalogue complet',
     ],
-    cta: 'Essayer gratuitement 14 jours',
+    cta: 'Commencer avec Artisan',
     highlighted: true,
     badge: 'Le plus populaire',
   },
@@ -60,7 +60,7 @@ const PLANS = [
       'Portail client',
       'Journal d\'audit',
     ],
-    cta: 'Essayer 14 jours gratuit',
+    cta: 'Commencer avec \u00c9quipe',
     highlighted: false,
   },
 ];
@@ -80,7 +80,7 @@ export default function PricingSection({ onSignup }) {
             Des prix simples, sans surprise
           </h2>
           <p className="text-slate-500 mb-6">
-            Tous les prix sont HT. Sans engagement, annulez &agrave; tout moment.
+            Tous les prix sont HT. Commencez gratuitement, passez au plan supérieur quand vous en avez besoin — sans engagement, annulez à tout moment.
           </p>
 
           {/* Animated toggle */}
@@ -172,7 +172,7 @@ export default function PricingSection({ onSignup }) {
                         transition={{ duration: 0.2 }}
                         className="text-3xl font-bold text-slate-900 inline-block"
                       >
-                        {price === 0 ? '0' : price.toFixed(price % 1 ? 2 : 0)} &euro;
+                        {price === 0 ? '0' : price.toLocaleString('fr-FR', { minimumFractionDigits: price % 1 ? 2 : 0 })} &euro;
                       </motion.span>
                     </AnimatePresence>
                     {price > 0 && (

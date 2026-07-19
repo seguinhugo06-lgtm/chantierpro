@@ -123,7 +123,7 @@ const FEATURES = [
     bg: 'bg-emerald-50',
     title: 'Tr\u00e9sorerie & projections',
     description: 'Anticipez vos flux de tr\u00e9sorerie avec des projections \u00e0 30, 60 et 90 jours. D\u00e9tectez les impay\u00e9s et ma\u00eetrisez votre BFR.',
-    benefits: ['Projections automatiques', 'Suivi des impay\u00e9s', 'Tableau de bord financier', 'Rapprochement bancaire'],
+    benefits: ['Projections automatiques', 'Suivi des impay\u00e9s', 'Tableau de bord financier', 'Exports comptables'],
     screenshot: '/screenshots/tresorerie.png',
   },
   {

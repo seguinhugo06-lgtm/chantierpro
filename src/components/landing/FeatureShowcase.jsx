@@ -30,8 +30,8 @@ const FEATURES = [
       'Cr\u00e9ez des devis percutants en quelques clics, transformez-les en factures conformes, envoyez-les par email et faites-les signer \u00e9lectroniquement \u2014 tout depuis une seule interface.',
     bullets: [
       'G\u00e9n\u00e9ration PDF conforme Factur-X avec mentions obligatoires',
-      'Signature \u00e9lectronique int\u00e9gr\u00e9e (valeur l\u00e9gale)',
-      'Envoi par email avec suivi de lecture',
+      'Signature \u00e9lectronique en ligne, sur mobile ou tablette',
+      'Envoi par email avec PDF joint et historique complet',
       'Duplication, versioning et historique complet',
       'Calcul automatique TVA, remises et acomptes',
     ],
@@ -46,7 +46,7 @@ const FEATURES = [
     description:
       'D\u00e9marrez avec des centaines d\'articles et prestations chiffr\u00e9s par m\u00e9tier. Choisissez le v\u00f4tre \u00e0 l\'inscription, et vos devis se composent en quelques clics \u2014 plus jamais la page blanche.',
     bullets: [
-      'Plus de 600 articles BTP pr\u00e9-chiffr\u00e9s par m\u00e9tier',
+      'Plus de 1 000 articles et ouvrages BTP pr\u00e9-chiffr\u00e9s',
       'Import en un clic selon votre corps de m\u00e9tier',
       'Prix d\'achat et marge calcul\u00e9s automatiquement',
       'Vos propres articles + import CSV fournisseurs',
@@ -113,7 +113,6 @@ const FEATURES = [
     bullets: [
       'Projections de tr\u00e9sorerie automatiques',
       'Suivi des paiements et impay\u00e9s',
-      'Rapprochement bancaire simplifi\u00e9',
       'Tableau de bord financier en temps r\u00e9el',
     ],
     screenshotSrc: '/screenshots/tresorerie.png',

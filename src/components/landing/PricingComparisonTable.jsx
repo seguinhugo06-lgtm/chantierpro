@@ -47,10 +47,10 @@ const CATEGORIES = [
   {
     name: 'Finances',
     features: [
-      { name: 'Suivi de tr\u00e9sorerie', values: [false, 'Basique', 'Avanc\u00e9'] },
+      { name: 'Suivi de tr\u00e9sorerie', values: [false, false, true] },
+      { name: 'Analyse de marges', values: [false, true, true] },
       { name: 'Projections J+30/60/90', values: [false, false, true] },
       { name: 'Relances automatiques', values: [false, true, true] },
-      { name: 'Rapprochement bancaire', values: [false, false, true] },
     ],
   },
   {

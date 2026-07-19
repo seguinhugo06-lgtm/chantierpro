@@ -121,7 +121,7 @@ export default function HeroSection({ onSignup }) {
               className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-orange-50 border border-orange-200/60 text-orange-600 text-[11px] sm:text-xs font-semibold mb-4 sm:mb-6"
             >
               <Sparkles size={14} />
-              Nouveau : Relances 100&nbsp;% automatiques
+              Nouveau : Relances de devis automatisées
             </motion.div>
 
             {/* Animated headline */}
@@ -163,8 +163,8 @@ export default function HeroSection({ onSignup }) {
               animate="visible"
               className="text-sm sm:text-lg text-slate-500 mb-6 sm:mb-8 max-w-lg leading-relaxed"
             >
-              Devis, factures, chantiers, tr&eacute;sorerie — tout au m&ecirc;me endroit.
-              L'outil con&ccedil;u par et pour les artisans du b&acirc;timent, qui vous fait gagner 2h par jour.
+              Devis, factures, chantiers, tr&eacute;sorerie &mdash; tout au m&ecirc;me endroit.
+              Pens&eacute; pour les artisans du b&acirc;timent : moins de paperasse, plus de temps sur vos chantiers.
             </motion.p>
 
             {/* CTA buttons */}
@@ -182,16 +182,16 @@ export default function HeroSection({ onSignup }) {
                 {/* Shimmer effect */}
                 <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
                 <span className="relative flex items-center gap-2">
-                  Démarrer mon essai gratuit
+                  Créer mon compte gratuit
                   <ArrowRight size={18} className="group-hover:translate-x-0.5 transition-transform" />
                 </span>
               </button>
               <a
-                href="#features"
+                href="/?demo=true"
                 className="w-full sm:w-auto px-7 py-3.5 rounded-xl border border-slate-200 text-slate-700 font-medium hover:bg-slate-50 hover:border-slate-300 transition-all flex items-center justify-center gap-2"
               >
                 <Play size={16} className="text-orange-500" />
-                Voir une d&eacute;mo
+                Tester la d&eacute;mo en direct
               </a>
             </motion.div>
 

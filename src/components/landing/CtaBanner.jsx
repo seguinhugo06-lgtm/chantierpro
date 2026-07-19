@@ -51,7 +51,7 @@ export default function CtaBanner({ onSignup }) {
         <ScrollReveal>
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/15 text-white/90 text-xs font-semibold mb-6 backdrop-blur-sm">
             <Sparkles size={14} />
-            Essai gratuit, sans carte bancaire
+            Plan gratuit à vie, sans carte bancaire
           </div>
 
           <h2 className="text-2xl sm:text-4xl font-bold text-white mb-4 leading-tight">
@@ -59,7 +59,7 @@ export default function CtaBanner({ onSignup }) {
           </h2>
 
           <p className="text-base sm:text-lg text-white/80 mb-8 max-w-lg mx-auto">
-            Rejoignez des centaines d'artisans qui gagnent du temps chaque jour avec BatiGesti.
+            Créez votre premier devis en quelques minutes — gratuit, sans carte bancaire.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">

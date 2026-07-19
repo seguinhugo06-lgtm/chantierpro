@@ -21,7 +21,7 @@ import {
 const NAV_LINKS = [
   { label: 'Fonctionnalit\u00e9s', href: '#features', hasDropdown: true },
   { label: 'Tarifs', href: '#pricing' },
-  { label: 'T\u00e9moignages', href: '#testimonials' },
+  { label: 'Pourquoi BatiGesti', href: '#early-adopters' },
   { label: 'Ressources', href: '/ressources', isPage: true },
   { label: 'FAQ', href: '#faq' },
 ];
@@ -206,7 +206,7 @@ export default function LandingNav({ onLogin, onSignup }) {
             onClick={onSignup}
             className="text-sm font-medium px-4 py-2 rounded-xl bg-orange-500 text-white hover:bg-orange-600 transition-colors shadow-sm"
           >
-            Essai gratuit
+            Compte gratuit
           </button>
         </div>
 
@@ -260,7 +260,7 @@ export default function LandingNav({ onLogin, onSignup }) {
                   onClick={() => { setMenuOpen(false); onSignup(); }}
                   className="w-full px-3 py-2.5 text-sm text-white bg-orange-500 hover:bg-orange-600 rounded-lg font-medium transition-colors"
                 >
-                  Essai gratuit
+                  Compte gratuit
                 </button>
               </div>
             </motion.div>

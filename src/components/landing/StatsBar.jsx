@@ -3,27 +3,30 @@
  *
  * Placed between Hero and Features. Numbers animate from 0 to target
  * when scrolled into view using useCounter hook.
+ *
+ * IMPORTANT : uniquement des faits produit VÉRIFIABLES dans le code —
+ * pas de chiffres d'usage inventés (utilisateurs, devis/mois...).
  */
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { FileText, Users, Shield, Server } from 'lucide-react';
-import { useCounter, ScrollReveal, staggerContainer, fadeInUp } from './animations';
+import { Package, Hammer, Shield, Euro } from 'lucide-react';
+import { useCounter, staggerContainer, fadeInUp } from './animations';
 
 const STATS = [
   {
-    icon: FileText,
-    value: 10000,
+    icon: Package,
+    value: 1000,
     suffix: '+',
-    label: 'Devis cr\u00e9\u00e9s chaque mois',
+    label: 'Articles & ouvrages BTP pré-chiffrés inclus',
     color: '#f97316',
     bgColor: 'bg-orange-50',
   },
   {
-    icon: Users,
-    value: 500,
-    suffix: '+',
-    label: 'Artisans nous font confiance',
+    icon: Hammer,
+    value: 17,
+    suffix: '',
+    label: 'Métiers couverts par les modèles de devis',
     color: '#3b82f6',
     bgColor: 'bg-blue-50',
   },
@@ -31,15 +34,15 @@ const STATS = [
     icon: Shield,
     value: 100,
     suffix: '%',
-    label: 'Conforme facturation 2026',
+    label: 'Conforme facturation électronique 2026',
     color: '#22c55e',
     bgColor: 'bg-green-50',
   },
   {
-    icon: Server,
-    value: 100,
-    suffix: '%',
-    label: 'Fonctionne sur mobile et tablette',
+    icon: Euro,
+    value: 0,
+    suffix: ' €',
+    label: 'Pour démarrer — sans carte bancaire',
     color: '#8b5cf6',
     bgColor: 'bg-violet-50',
   },

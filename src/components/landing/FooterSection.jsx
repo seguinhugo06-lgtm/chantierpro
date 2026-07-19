@@ -19,7 +19,7 @@ const COLUMNS = [
     title: 'Ressources',
     links: [
       { label: 'Ressources', href: '/ressources', isPage: true },
-      { label: 'T\u00e9moignages', href: '#testimonials' },
+      { label: 'Pourquoi BatiGesti', href: '#early-adopters' },
       { label: 'FAQ', href: '#faq' },
       { label: 'Blog', href: '#', disabled: true },
     ],

@@ -32,7 +32,7 @@ const FAQ_ITEMS = [
   {
     category: 'features',
     q: 'Est-ce que je pars d\'une page blanche pour mes devis ?',
-    a: 'Non. BatiGesti est livr\u00e9 avec un catalogue BTP de plus de 600 articles et prestations d\u00e9j\u00e0 chiffr\u00e9s, organis\u00e9s par m\u00e9tier. \u00c0 l\'inscription, vous choisissez votre corps de m\u00e9tier et vos articles sont pr\u00e9-remplis. Vous composez alors un devis en quelques clics, et vous ajoutez vos propres articles ou importez vos tarifs fournisseurs par CSV.',
+    a: 'Non. BatiGesti est livr\u00e9 avec un catalogue BTP de plus de 1 000 articles et ouvrages d\u00e9j\u00e0 chiffr\u00e9s, organis\u00e9s par m\u00e9tier. \u00c0 l\'inscription, vous choisissez votre corps de m\u00e9tier et vos articles sont pr\u00e9-remplis. Vous composez alors un devis en quelques clics, et vous ajoutez vos propres articles ou importez vos tarifs fournisseurs par CSV.',
   },
   {
     category: 'features',
@@ -52,7 +52,7 @@ const FAQ_ITEMS = [
   {
     category: 'tech',
     q: 'Mes donn\u00e9es sont-elles s\u00e9curis\u00e9es ?',
-    a: 'Vos donn\u00e9es sont h\u00e9berg\u00e9es en Europe sur l\'infrastructure Supabase (PostgreSQL), avec chiffrement au repos et en transit. L\'authentification est g\u00e9r\u00e9e par JWT. Chaque utilisateur ne voit que les donn\u00e9es de son organisation gr\u00e2ce au Row Level Security. Nous respectons le RGPD.',
+    a: 'Vos donn\u00e9es sont h\u00e9berg\u00e9es en France (r\u00e9gion AWS Paris) sur l\'infrastructure Supabase (PostgreSQL), avec chiffrement au repos et en transit. L\'authentification est g\u00e9r\u00e9e par JWT. Chaque utilisateur ne voit que les donn\u00e9es de son organisation gr\u00e2ce au Row Level Security. Nous respectons le RGPD.',
   },
   {
     category: 'tech',
@@ -62,7 +62,7 @@ const FAQ_ITEMS = [
   {
     category: 'pricing',
     q: 'Puis-je essayer avant de payer ?',
-    a: 'Le plan Gratuit est disponible sans limite de temps avec 5 devis/mois, 10 clients et 2 chantiers actifs. Pour les plans payants (Artisan et \u00c9quipe), vous b\u00e9n\u00e9ficiez de 14 jours d\'essai gratuit sans engagement et sans carte bancaire.',
+    a: 'Oui, et sans limite de temps : le plan Gratuit inclut 5 devis/mois, 10 clients et 2 chantiers actifs, sans carte bancaire. Quand vous \u00eates pr\u00eat, passez \u00e0 Artisan (4,99 \u20ac/mois) ou \u00c9quipe (9,99 \u20ac/mois) \u2014 sans engagement, et vous pouvez revenir au plan Gratuit \u00e0 tout moment sans perdre vos donn\u00e9es.',
   },
   {
     category: 'pricing',
@@ -77,7 +77,7 @@ const FAQ_ITEMS = [
   {
     category: 'tech',
     q: 'Quelles int\u00e9grations sont disponibles ?',
-    a: 'BatiGesti s\'int\u00e8gre avec Stripe et GoCardless pour les paiements en ligne, SendGrid pour les emails transactionnels, Twilio pour les SMS, et OpenWeatherMap pour la m\u00e9t\u00e9o chantier. D\'autres int\u00e9grations sont en cours de d\u00e9veloppement.',
+    a: 'BatiGesti int\u00e8gre Stripe pour le paiement en ligne de vos factures, l\'envoi d\'emails avec PDF joint (devis, factures, relances), la m\u00e9t\u00e9o chantier, et des exports compatibles avec vos outils comptables (Pennylane, Indy, FEC). D\'autres int\u00e9grations sont en cours de d\u00e9veloppement.',
   },
   {
     category: 'pricing',
