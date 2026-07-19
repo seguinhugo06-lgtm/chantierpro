@@ -115,6 +115,16 @@ if (isDemo) {
   console.log('🎭 Demo mode active -', useDemoData ? 'using demo data' : 'empty data (add ?demo=true for demo data)')
   // Seed secondary localStorage data (previsions, fournisseurs, etc.) when using demo data
   if (useDemoData) {
+    // Les données démo persistées vieillissent (dates décalées au moment du seed).
+    // Au-delà de 14 jours, on repart d'un jeu frais — la démo est jetable.
+    // NB : on ne touche qu'à batigesti_demo_data (clé exclusivement démo) —
+    // cp_entreprise & co servent aussi de cache au mode réel.
+    try {
+      const seededAt = localStorage.getItem('batigesti_demo_seeded_at')
+      const stale = seededAt && (Date.now() - new Date(seededAt).getTime()) > 14 * 86400000
+      if (stale) localStorage.removeItem('batigesti_demo_data')
+      if (!seededAt || stale) localStorage.setItem('batigesti_demo_seeded_at', new Date().toISOString())
+    } catch { /* localStorage indisponible */ }
     seedSecondaryDemoData()
   }
 } else {

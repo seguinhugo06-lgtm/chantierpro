@@ -44,11 +44,11 @@ export const DEMO_EQUIPE = [
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export const DEMO_CHANTIERS = [
-  { id: 'ch1', nom: 'Rénovation cuisine Dupont', client_id: 'c1', adresse: '12 rue des Lilas, 75011 Paris', date_debut: '2026-01-10', date_fin: '2026-02-15', statut: 'en_cours', avancement: 65, notes: 'Cuisine complète avec îlot central', budget_estime: 3760 },
-  { id: 'ch2', nom: 'Salle de bain Martin', client_id: 'c2', adresse: '45 avenue Victor Hugo, 69006 Lyon', date_debut: '2026-01-20', date_fin: '2026-02-28', statut: 'en_cours', avancement: 30, notes: 'SDB avec douche italienne', budget_estime: 4475 },
+  { id: 'ch1', nom: 'Rénovation cuisine Dupont', client_id: 'c1', adresse: '12 rue des Lilas, 75011 Paris', date_debut: '2026-01-10', date_fin: '2026-03-31', statut: 'en_cours', avancement: 65, notes: 'Cuisine complète avec îlot central', budget_estime: 3760 },
+  { id: 'ch2', nom: 'Salle de bain Martin', client_id: 'c2', adresse: '45 avenue Victor Hugo, 69006 Lyon', date_debut: '2026-01-20', date_fin: '2026-03-20', statut: 'en_cours', avancement: 30, notes: 'SDB avec douche italienne', budget_estime: 4475 },
   { id: 'ch3', nom: 'Peinture appartement Bernard', client_id: 'c3', adresse: '8 place de la République, 33000 Bordeaux', date_debut: '2025-12-01', date_fin: '2025-12-20', statut: 'termine', avancement: 100, notes: 'T3, peinture complète', budget_estime: 2125 },
   { id: 'ch4', nom: 'Extension maison Petit', client_id: 'c4', adresse: '23 boulevard Gambetta, 13001 Marseille', date_debut: '2026-03-01', date_fin: '2026-06-30', statut: 'prospect', avancement: 0, notes: 'Extension 40m² + terrasse', budget_estime: 32600 },
-  { id: 'ch5', nom: 'Rénovation studio Rousseau', client_id: 'c5', adresse: '56 rue Nationale, 44000 Nantes', date_debut: '2026-01-05', date_fin: '2026-01-25', statut: 'en_cours', avancement: 85, notes: 'Studio 25m² rénovation complète', budget_estime: 8500 },
+  { id: 'ch5', nom: 'Rénovation studio Rousseau', client_id: 'c5', adresse: '56 rue Nationale, 44000 Nantes', date_debut: '2026-01-05', date_fin: '2026-03-05', statut: 'en_cours', avancement: 85, notes: 'Studio 25m² rénovation complète', budget_estime: 8500 },
   { id: 'ch6', nom: 'Aménagement bureau Lefevre', client_id: 'c6', adresse: '7 allée des Roses, 31000 Toulouse', date_debut: '2026-02-01', date_fin: '2026-02-20', statut: 'prospect', avancement: 0, notes: 'Bureau 45m² cloisons + électricité', budget_estime: 12000 },
   { id: 'ch7', nom: 'Terrasse Garcia', client_id: 'c7', adresse: '120 cours Mirabeau, 13100 Aix-en-Provence', date_debut: '2025-11-15', date_fin: '2025-12-10', statut: 'termine', avancement: 100, notes: 'Terrasse bois 30m²', budget_estime: 6800 },
   { id: 'ch8', nom: 'Rénovation appartement Dubois', client_id: 'c8', adresse: '3 place du Marché, 67000 Strasbourg', date_debut: '2026-01-15', date_fin: '2026-03-15', statut: 'en_cours', avancement: 45, notes: 'T4 rénovation complète plomberie électricité', budget_estime: 28000 },
@@ -463,6 +463,16 @@ export const DEMO_ENTREPRISE = {
   logo: '',
   rcs: 'Paris B 123 456 789',
   codeAPE: '4120A',
+  // Profil légal complet — le garde d'envoi (formeJuridique + décennale) doit
+  // être satisfait en démo : un visiteur teste l'état de réussite, pas un warning.
+  formeJuridique: 'SARL',
+  capital: '10000',
+  decennaleAssureur: 'AXA Entreprises',
+  decennaleNumero: 'DEC-2024-789456',
+  decennaleValidite: '2026-12-31',
+  rcProAssureur: 'AXA Entreprises',
+  rcProNumero: 'RC-2024-123456',
+  rcProValidite: '2026-12-31',
   assuranceDecennale: 'AXA Entreprises - Contrat n° DEC-2024-789456',
   assuranceRC: 'AXA Entreprises - Contrat n° RC-2024-123456',
   iban: 'FR76 1234 5678 9012 3456 7890 123',
@@ -482,7 +492,40 @@ export const DEMO_ENTREPRISE = {
  * Combined demo data object for DataProvider initialization.
  * This populates the main DataContext arrays.
  */
-export const DEMO_DATA = {
+// ═══════════════════════════════════════════════════════════════════════════════
+// DÉCALAGE DYNAMIQUE DES DATES
+// ═══════════════════════════════════════════════════════════════════════════════
+// Les données démo ont été écrites autour du 25 février 2026 (ancre narrative :
+// chantiers en cours, 1-2 factures en retard de quelques jours, CA récent).
+// On décale TOUTES les dates du delta ancre→aujourd'hui pour que la démo reste
+// éternellement fraîche — sans jamais réécrire les 100+ dates à la main.
+
+const DEMO_ANCHOR = new Date('2026-02-25T12:00:00Z');
+const DEMO_OFFSET_MS = Math.round((Date.now() - DEMO_ANCHOR.getTime()) / 86400000) * 86400000;
+
+const shiftIsoDate = (s) => {
+  // Ne décale que les chaînes date pures (YYYY-MM-DD, option heure) —
+  // les numéros type 'DEV-2026-00007' ne matchent pas.
+  const m = /^(\d{4}-\d{2}-\d{2})(T.*)?$/.exec(s);
+  if (!m) return s;
+  const d = new Date(m[1] + 'T12:00:00Z');
+  if (isNaN(d.getTime())) return s;
+  d.setTime(d.getTime() + DEMO_OFFSET_MS);
+  return d.toISOString().slice(0, 10) + (m[2] || '');
+};
+
+const shiftDates = (v) => {
+  if (typeof v === 'string') return shiftIsoDate(v);
+  if (Array.isArray(v)) return v.map(shiftDates);
+  if (v && typeof v === 'object') {
+    const out = {};
+    for (const [k, val] of Object.entries(v)) out[k] = shiftDates(val);
+    return out;
+  }
+  return v;
+};
+
+export const DEMO_DATA = shiftDates({
   clients: DEMO_CLIENTS,
   equipe: DEMO_EQUIPE,
   chantiers: DEMO_CHANTIERS,
@@ -494,7 +537,7 @@ export const DEMO_DATA = {
   paiements: DEMO_PAIEMENTS,
   echanges: DEMO_ECHANGES,
   ajustements: DEMO_AJUSTEMENTS,
-};
+});
 
 /**
  * Seeds secondary localStorage data that lives outside DataContext.
@@ -502,13 +545,13 @@ export const DEMO_DATA = {
  */
 export function seedSecondaryDemoData() {
   const keys = {
-    'cp_tresorerie_previsions': DEMO_PREVISIONS,
+    'cp_tresorerie_previsions': shiftDates(DEMO_PREVISIONS),
     'cp_tresorerie_settings': DEMO_TRESORERIE_SETTINGS,
     'batigesti_fournisseurs': DEMO_FOURNISSEURS,
     'batigesti_article_fournisseurs': DEMO_ARTICLE_FOURNISSEURS,
-    'batigesti_mouvements': DEMO_MOUVEMENTS,
+    'batigesti_mouvements': shiftDates(DEMO_MOUVEMENTS),
     'batigesti_packs': DEMO_PACKS,
-    'cp_entreprise': DEMO_ENTREPRISE,
+    'cp_entreprise': shiftDates(DEMO_ENTREPRISE),
   };
 
   Object.entries(keys).forEach(([key, data]) => {
@@ -517,6 +560,11 @@ export function seedSecondaryDemoData() {
       const existing = localStorage.getItem(key);
       if (!existing || existing === '[]' || existing === '{}' || existing === 'null') {
         localStorage.setItem(key, JSON.stringify(data));
+      } else if (key === 'cp_entreprise') {
+        // Migration : les anciens visiteurs démo ont un profil sans champs légaux
+        // (formeJuridique/décennale) → bandeau « Profil incomplet ». On re-seed.
+        const parsed = JSON.parse(existing);
+        if (!parsed?.formeJuridique) localStorage.setItem(key, JSON.stringify(data));
       }
     } catch { /* silent - localStorage may be full */ }
   });

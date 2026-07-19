@@ -38,6 +38,7 @@ import {
 } from 'lucide-react';
 
 import { useData } from '../context/DataContext';
+import { isDemo } from '../supabaseClient';
 import { useToast } from '../context/AppContext';
 import { usePermissions } from '../hooks/usePermissions';
 import { useRelances } from '../hooks/useRelances';
@@ -116,6 +117,10 @@ function computeTrend(current, previous) {
 }
 
 // ============ MAIN DASHBOARD ============
+
+// Statuts qui comptent dans le CA : un doc payé ('paye'/'payee') ou accepté ne
+// doit pas sortir du chiffre d'affaires quand il progresse dans le cycle.
+const CA_STATUTS = ['signe', 'accepte', 'facture', 'paye', 'payee'];
 
 export default function Dashboard({
   chantiers = [],
@@ -219,14 +224,14 @@ export default function Dashboard({
     // ---- GAP 2: CA ce mois + mois précédent pour tendance ----
     const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     const caCeMois = devis
-      .filter(d => ['signe', 'facture'].includes(d.statut) && d.date?.startsWith(currentMonthKey))
+      .filter(d => CA_STATUTS.includes(d.statut) && d.date?.startsWith(currentMonthKey))
       .reduce((s, d) => s + (d.total_ttc || 0), 0);
 
     // Last month CA for trend calculation
     const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     const lastMonthKey = `${prevMonth.getFullYear()}-${String(prevMonth.getMonth() + 1).padStart(2, '0')}`;
     const lastMonthCA = devis
-      .filter(d => ['signe', 'facture'].includes(d.statut) && d.date?.startsWith(lastMonthKey))
+      .filter(d => CA_STATUTS.includes(d.statut) && d.date?.startsWith(lastMonthKey))
       .reduce((s, d) => s + (d.total_ttc || 0), 0);
 
     // Trend for "Ce mois" KPI
@@ -348,7 +353,7 @@ export default function Dashboard({
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
       const label = d.toLocaleDateString('fr-FR', { month: 'short' });
       const ca = devis
-        .filter(dv => ['signe', 'facture'].includes(dv.statut) && dv.date?.startsWith(key))
+        .filter(dv => CA_STATUTS.includes(dv.statut) && dv.date?.startsWith(key))
         .reduce((sum, dv) => sum + (dv.total_ttc || 0), 0);
       sparkData.push({ label, ca });
     }
@@ -442,7 +447,8 @@ export default function Dashboard({
     { key: 'relances', label: 'Activer les relances automatiques', done: !!(entreprise?.relanceConfig?.enabled), action: () => { try { localStorage.setItem('cp_settings_tab', 'relances'); } catch { /* noop */ } setPage('settings'); } },
   ];
   const onboardingDone = onboardingSteps.filter(s => s.done).length;
-  const showOnboarding = !onboardingHidden && onboardingDone < onboardingSteps.length;
+  // En démo, un visiteur explore l'app — pas de checklist d'installation
+  const showOnboarding = !isDemo && !onboardingHidden && onboardingDone < onboardingSteps.length;
 
   // Pipeline compact
   const pl = computed.pipeline;
