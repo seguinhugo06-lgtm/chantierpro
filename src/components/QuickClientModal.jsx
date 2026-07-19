@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
-import { X, User, Phone, Mail, MapPin, Building2, ChevronDown, ChevronUp, Check, Sparkles, AlertTriangle, ExternalLink } from 'lucide-react';
+import { X, User, Phone, Mail, MapPin, Building2, ChevronDown, ChevronUp, Check, Sparkles, AlertTriangle, ExternalLink, Smartphone } from 'lucide-react';
 import FormError from './ui/FormError';
 import { useDuplicateCheck } from '../hooks/useDuplicateCheck';
+import { pickContacts, isContactPickerSupported } from '../lib/contactPicker';
 
 /**
  * QuickClientModal - Fast client creation with minimal friction
@@ -30,6 +31,33 @@ export default function QuickClientModal({
   });
   const [showDetails, setShowDetails] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [pickingContact, setPickingContact] = useState(false);
+  const contactPickerOk = isContactPickerSupported();
+
+  // Remplir le formulaire depuis un contact du répertoire téléphone (Chrome Android)
+  const fillFromContact = async () => {
+    setPickingContact(true);
+    try {
+      const [c] = await pickContacts({ multiple: false });
+      if (c) {
+        setForm(p => ({
+          ...p,
+          nom: c.nom || p.nom,
+          prenom: c.prenom || p.prenom,
+          telephone: c.telephone || p.telephone,
+          email: c.email || p.email,
+          adresse: c.adresse || p.adresse,
+        }));
+        if (c.adresse || c.email) setShowDetails(true);
+        setErrors({});
+        if (c.telephone) setTimeout(() => checkDuplicates('telephone', c.telephone), 0);
+      }
+    } catch {
+      // Annulation utilisateur (AbortError) → silencieux
+    } finally {
+      setPickingContact(false);
+    }
+  };
   const [errors, setErrors] = useState({});
   const [duplicates, setDuplicates] = useState([]);
   const [showDupeConfirm, setShowDupeConfirm] = useState(false);
@@ -261,6 +289,19 @@ export default function QuickClientModal({
 
         {/* Form content */}
         <div className="p-6 space-y-4">
+          {/* Import depuis le répertoire téléphone (Chrome Android uniquement) */}
+          {contactPickerOk && (
+            <button
+              type="button"
+              onClick={fillFromContact}
+              disabled={pickingContact}
+              className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed text-sm font-semibold transition-all disabled:opacity-60 active:scale-[0.99] ${isDark ? 'border-slate-600 text-slate-200 hover:bg-slate-700/60' : 'border-slate-300 text-slate-700 hover:bg-slate-50'}`}
+            >
+              <Smartphone size={17} style={{ color: couleur }} />
+              {pickingContact ? 'Ouverture du répertoire…' : 'Remplir depuis mes contacts'}
+            </button>
+          )}
+
           {/* Essential fields - always visible */}
           <div className="space-y-3">
             {/* Nom field - required */}

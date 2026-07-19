@@ -9,8 +9,10 @@ import { colorForString } from '../lib/uiTheme';
 const CLIENT_STATUS_HEX = { actif: '#10b981', en_devis: '#3b82f6', prospect: '#f59e0b', inactif: '#64748b' };
 import QuickClientModal from './QuickClientModal';
 import { useConfirm, useToast } from '../context/AppContext';
+import { useData } from '../context/DataContext';
 import { useDebounce } from '../hooks/useDebounce';
 import { useDuplicateCheck } from '../hooks/useDuplicateCheck';
+import { pickContacts, isContactPickerSupported } from '../lib/contactPicker';
 import { useFormValidation, clientSchema } from '../lib/validation';
 import FormError from './ui/FormError';
 import AuditTimeline from './audit/AuditTimeline';
@@ -80,9 +82,42 @@ function HighlightText({ text, query, className = '' }) {
 export default function Clients({ clients, setClients, updateClient, deleteClient: deleteClientProp, devis, chantiers, echanges = [], onSubmit, couleur, setPage, setSelectedChantier, setSelectedDevis, isDark, createMode, setCreateMode, modeDiscret, memos = [], addMemo, updateMemo, deleteMemo, toggleMemo, onImportClients, entreprise }) {
   const { confirm } = useConfirm();
   const { showToast } = useToast();
+  const { addClient: ctxAddClient } = useData();
   const { errors, validate, validateAll, clearErrors, clearFieldError } = useFormValidation(clientSchema);
   const [showDupeConfirm, setShowDupeConfirm] = useState(false);
   const [pendingSubmit, setPendingSubmit] = useState(null);
+  const [importingContacts, setImportingContacts] = useState(false);
+  const contactPickerOk = isContactPickerSupported();
+
+  // Import en masse depuis le répertoire téléphone (dédup + un seul toast récap)
+  const handleImportFromContacts = async () => {
+    setImportingContacts(true);
+    try {
+      const picked = await pickContacts({ multiple: true });
+      if (!picked.length) return;
+      const digits = (p) => (p || '').replace(/\D/g, '');
+      const phones = new Set((clients || []).map(c => digits(c.telephone)).filter(Boolean));
+      const emails = new Set((clients || []).map(c => (c.email || '').toLowerCase()).filter(Boolean));
+      let added = 0, skipped = 0;
+      for (const c of picked) {
+        const ph = digits(c.telephone), em = (c.email || '').toLowerCase();
+        if ((ph && phones.has(ph)) || (em && emails.has(em))) { skipped++; continue; }
+        await ctxAddClient({ ...c, categorie: 'Particulier' });
+        if (ph) phones.add(ph);
+        if (em) emails.add(em);
+        added++;
+      }
+      if (added > 0) {
+        showToast(`${added} contact${added > 1 ? 's' : ''} importé${added > 1 ? 's' : ''}${skipped ? ` · ${skipped} déjà présent${skipped > 1 ? 's' : ''}` : ''}`, 'success');
+      } else {
+        showToast('Ces contacts sont déjà dans vos clients', 'info');
+      }
+    } catch {
+      // Annulation utilisateur → silencieux
+    } finally {
+      setImportingContacts(false);
+    }
+  };
 
   // RBAC permissions
   const { canPerform, canEditData } = usePermissions();
@@ -1692,6 +1727,17 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
         color={couleur}
         action={
           <>
+            {contactPickerOk && canPerform('client', 'create') && (
+              <button
+                onClick={handleImportFromContacts}
+                disabled={importingContacts}
+                className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all border disabled:opacity-60 ${isDark ? 'border-slate-600 text-slate-300 hover:bg-slate-700' : 'border-slate-300 text-slate-600 hover:bg-slate-50'}`}
+                title="Importer depuis mes contacts"
+                aria-label="Importer des clients depuis le répertoire du téléphone"
+              >
+                <Smartphone size={16} style={{ color: couleur }} />
+              </button>
+            )}
             {onImportClients && (
               <button
                 onClick={onImportClients}
@@ -1998,6 +2044,11 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                     <button onClick={() => setShow(true)} className="px-6 py-3 text-white rounded-xl flex items-center justify-center gap-2 hover:shadow-lg transition-all font-medium" style={{ background: couleur }}>
                       <Plus size={18} /> Ajouter un client
                     </button>
+                    {contactPickerOk && (
+                      <button onClick={handleImportFromContacts} disabled={importingContacts} className={`px-6 py-3 rounded-xl flex items-center justify-center gap-2 border-2 border-dashed font-medium transition-all disabled:opacity-60 ${isDark ? 'border-slate-600 text-slate-200 hover:bg-slate-700/60' : 'border-slate-300 text-slate-700 hover:bg-white'}`}>
+                        <Smartphone size={18} style={{ color: couleur }} /> {importingContacts ? 'Ouverture…' : 'Depuis mes contacts'}
+                      </button>
+                    )}
                   </div>
                 </div>
               </>
