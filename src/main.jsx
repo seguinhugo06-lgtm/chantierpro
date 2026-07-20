@@ -61,12 +61,15 @@ const AcceptInvitation = lazy(() => import('./components/auth/AcceptInvitation')
 
 // Marketing sub-pages (lazy loaded, light-mode only)
 const FeaturesDetailPage = lazy(() => import('./components/landing/FeaturesDetailPage'))
+const FeatureDeepDivePage = lazy(() => import('./components/landing/FeatureDeepDivePage'))
 const ResourcesPage = lazy(() => import('./components/landing/ResourcesPage'))
 
 // Check if this is a marketing sub-page
 function getMarketingPage() {
   const path = window.location.pathname
   if (path === '/fonctionnalites') return 'features'
+  const featureMatch = path.match(/^\/fonctionnalites\/([a-z0-9-]+)\/?$/)
+  if (featureMatch) return { page: 'feature-detail', slug: featureMatch[1] }
   if (path === '/ressources') return 'resources'
   return null
 }
@@ -145,6 +148,10 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     {marketingPage === 'features' ? (
       <Suspense fallback={<PublicFallback />}>
         <FeaturesDetailPage />
+      </Suspense>
+    ) : marketingPage?.page === 'feature-detail' ? (
+      <Suspense fallback={<PublicFallback />}>
+        <FeatureDeepDivePage slug={marketingPage.slug} />
       </Suspense>
     ) : marketingPage === 'resources' ? (
       <Suspense fallback={<PublicFallback />}>

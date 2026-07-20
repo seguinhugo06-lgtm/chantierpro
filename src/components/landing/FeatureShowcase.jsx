@@ -8,6 +8,7 @@
 import React from 'react';
 import {
   FileText,
+  PenLine,
   Package,
   Building2,
   Calendar,
@@ -26,6 +27,7 @@ const FEATURES = [
     iconBg: 'bg-orange-50',
     badge: 'Coeur de m\u00e9tier',
     title: 'Devis & Factures professionnels',
+    href: '/fonctionnalites/devis-factures',
     description:
       'Cr\u00e9ez des devis percutants en quelques clics, transformez-les en factures conformes, envoyez-les par email et faites-les signer \u00e9lectroniquement \u2014 tout depuis une seule interface.',
     bullets: [
@@ -38,11 +40,29 @@ const FEATURES = [
     screenshotSrc: '/screenshots/devis-editor.png',
   },
   {
+    icon: PenLine,
+    iconColor: '#22c55e',
+    iconBg: 'bg-green-50',
+    badge: 'Encaissez plus vite',
+    title: 'Signature \u00e9lectronique de devis',
+    href: '/fonctionnalites/signature-electronique',
+    description:
+      'Votre client re\u00e7oit un lien s\u00e9curis\u00e9, consulte le devis sur son t\u00e9l\u00e9phone et signe du doigt \u2014 sans compte, sans impression. Le devis passe \u00ab Sign\u00e9 \u00bb dans votre app, avec horodatage.',
+    bullets: [
+      'Lien unique et s\u00e9curis\u00e9, valable 30 jours',
+      'Signature au doigt sur mobile et tablette',
+      'Nom du signataire, date et heure enregistr\u00e9s',
+      'PDF sign\u00e9 t\u00e9l\u00e9chargeable par les deux parties',
+    ],
+    screenshotSrc: '/screenshots/signature.png',
+  },
+  {
     icon: Package,
     iconColor: '#8b5cf6',
     iconBg: 'bg-violet-50',
     badge: 'Pr\u00eat \u00e0 l\'emploi',
     title: 'Catalogue BTP livr\u00e9 avec l\'app',
+    href: '/fonctionnalites/catalogue',
     description:
       'D\u00e9marrez avec des centaines d\'articles et prestations chiffr\u00e9s par m\u00e9tier. Choisissez le v\u00f4tre \u00e0 l\'inscription, et vos devis se composent en quelques clics \u2014 plus jamais la page blanche.',
     bullets: [
@@ -59,6 +79,7 @@ const FEATURES = [
     iconBg: 'bg-blue-50',
     badge: 'Suivi complet',
     title: 'Gestion de chantiers en temps r\u00e9el',
+    href: '/fonctionnalites/chantiers',
     description:
       'Suivez chaque chantier de A \u00e0 Z : avancement, rentabilit\u00e9, d\u00e9penses, photos, documents et t\u00e2ches. Tout est centralis\u00e9 dans un tableau de bord par chantier.',
     bullets: [
@@ -108,6 +129,7 @@ const FEATURES = [
     iconBg: 'bg-emerald-50',
     badge: 'Finances',
     title: 'Tr\u00e9sorerie et suivi financier',
+    href: '/fonctionnalites/tresorerie',
     description:
       'Anticipez vos flux de tr\u00e9sorerie avec des projections \u00e0 30, 60 et 90 jours. Suivez les paiements, d\u00e9tectez les impay\u00e9s et ma\u00eetrisez votre BFR.',
     bullets: [
@@ -123,6 +145,7 @@ const FEATURES = [
     iconBg: 'bg-amber-50',
     badge: 'Automatisation',
     title: 'Relances automatiques',
+    href: '/fonctionnalites/relances',
     description:
       'Ne laissez plus un devis sans r\u00e9ponse. Programmez des relances automatiques par email avec des templates personnalis\u00e9s et un calendrier adapt\u00e9.',
     bullets: [
@@ -139,6 +162,7 @@ const FEATURES = [
     iconBg: 'bg-indigo-50',
     badge: '\u00c9quipe',
     title: '\u00c9quipe & sous-traitants',
+    href: '/fonctionnalites/equipe',
     description:
       'G\u00e9rez votre \u00e9quipe et vos sous-traitants : r\u00f4les, permissions, pointage, cong\u00e9s. Chaque membre voit uniquement ce qui le concerne.',
     bullets: [

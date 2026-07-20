@@ -19,6 +19,7 @@ export default function FeatureBlock({
   iconBg = 'bg-orange-50',
   reversed = false,
   badge,
+  href,
 }) {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, amount: 0.25 });
@@ -127,6 +128,20 @@ export default function FeatureBlock({
                 </li>
               ))}
             </ul>
+          )}
+
+          {/* Lien page de détail */}
+          {href && (
+            <a
+              href={href}
+              className="inline-flex items-center gap-1.5 text-sm font-semibold mt-5 hover:gap-2.5 transition-all"
+              style={{ color: iconColor }}
+            >
+              Découvrir en détail
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                <path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </a>
           )}
         </motion.div>
       </div>

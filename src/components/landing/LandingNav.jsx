@@ -5,18 +5,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-  Building2,
-  Menu,
-  X,
-  FileText,
-  Bell,
-  Building,
-  Calendar,
-  Users,
-  TrendingUp,
-  ChevronDown,
-} from 'lucide-react';
+import { Building2, Menu, X, FileText, Bell, Building, TrendingUp, ChevronDown, PenLine, Package } from 'lucide-react';
 
 const NAV_LINKS = [
   { label: 'Fonctionnalit\u00e9s', href: '#features', hasDropdown: true },
@@ -27,12 +16,12 @@ const NAV_LINKS = [
 ];
 
 const FEATURE_DROPDOWN = [
-  { icon: FileText, label: 'Devis & Factures', description: 'Cr\u00e9ation, PDF, signatures', href: '#features' },
-  { icon: Bell, label: 'Relances auto', description: 'Encaissez sans relancer \u00e0 la main', href: '#features' },
-  { icon: Building, label: 'Chantiers', description: 'Suivi, rentabilit\u00e9, photos', href: '#features' },
-  { icon: Calendar, label: 'Planning', description: 'Calendrier, drag-and-drop', href: '#features' },
-  { icon: Users, label: 'Clients & CRM', description: 'Contacts, historique', href: '#features' },
-  { icon: TrendingUp, label: 'Tr\u00e9sorerie', description: 'Suivi financier, projections', href: '#features' },
+  { icon: FileText, label: 'Devis & Factures', description: 'Cr\u00e9ation, PDF, envoi', href: '/fonctionnalites/devis-factures' },
+  { icon: PenLine, label: 'Signature \u00e9lectronique', description: 'Vos devis sign\u00e9s en ligne', href: '/fonctionnalites/signature-electronique' },
+  { icon: Bell, label: 'Relances auto', description: 'Encaissez sans relancer \u00e0 la main', href: '/fonctionnalites/relances' },
+  { icon: Building, label: 'Chantiers', description: 'Suivi, rentabilit\u00e9, photos', href: '/fonctionnalites/chantiers' },
+  { icon: Package, label: 'Catalogue BTP', description: '1 000+ articles pr\u00e9-chiffr\u00e9s', href: '/fonctionnalites/catalogue' },
+  { icon: TrendingUp, label: 'Tr\u00e9sorerie', description: 'Projections, impay\u00e9s, exports', href: '/fonctionnalites/tresorerie' },
 ];
 
 export default function LandingNav({ onLogin, onSignup }) {
@@ -63,8 +52,9 @@ export default function LandingNav({ onLogin, onSignup }) {
     setDropdownOpen(false);
     if (href.startsWith('/')) {
       setMenuOpen(false);
-      window.history.pushState({}, '', href);
-      window.dispatchEvent(new PopStateEvent('popstate'));
+      // Pages marketing servies par main.jsx au chargement (pas de router SPA) :
+      // navigation complète obligatoire.
+      window.location.assign(href);
       return;
     }
     if (fromMobile && menuOpen) {

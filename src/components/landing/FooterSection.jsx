@@ -11,7 +11,8 @@ const COLUMNS = [
     links: [
       { label: 'Fonctionnalit\u00e9s', href: '/fonctionnalites', isPage: true },
       { label: 'Tarifs', href: '#pricing' },
-      { label: 'Relances automatiques', href: '#features' },
+      { label: 'Signature \u00e9lectronique', href: '/fonctionnalites/signature-electronique', isPage: true },
+      { label: 'Relances automatiques', href: '/fonctionnalites/relances', isPage: true },
       { label: 'Conformit\u00e9 2026', href: '#features' },
     ],
   },
@@ -38,14 +39,16 @@ const COLUMNS = [
 export default function FooterSection({ onNavigate }) {
   const year = new Date().getFullYear();
 
+  const MARKETING_ROUTES = ['/fonctionnalites', '/ressources'];
   const handleNavClick = (e, link) => {
     e.preventDefault();
     if (link.isPage) {
-      if (onNavigate) {
+      if (MARKETING_ROUTES.some(r => link.href.startsWith(r))) {
+        window.location.assign(link.href);
+      } else if (onNavigate) {
         onNavigate(link.href.replace('/', ''));
       } else {
-        window.history.pushState({}, '', link.href);
-        window.dispatchEvent(new PopStateEvent('popstate'));
+        window.location.assign(link.href);
       }
     } else if (link.href.startsWith('#')) {
       const el = document.querySelector(link.href);

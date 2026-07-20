@@ -42,6 +42,7 @@ const FEATURES = [
     color: '#f97316',
     bg: 'bg-orange-50',
     title: 'Cr\u00e9ation de devis & factures',
+    slug: 'devis-factures',
     description: 'Cr\u00e9ez des devis et factures professionnels en quelques clics. Ajoutez des lignes depuis votre catalogue, appliquez des remises, calculez automatiquement la TVA et g\u00e9n\u00e9rez un PDF conforme.',
     benefits: ['G\u00e9n\u00e9ration PDF conforme', 'Calcul automatique TVA', 'Templates personnalisables', 'Num\u00e9rotation automatique'],
     screenshot: '/screenshots/devis-editor.png',
@@ -52,8 +53,9 @@ const FEATURES = [
     color: '#8b5cf6',
     bg: 'bg-violet-50',
     title: 'Catalogue BTP pr\u00eat \u00e0 l\'emploi',
+    slug: 'catalogue',
     description: 'D\u00e9marrez avec des centaines d\'articles et prestations chiffr\u00e9s par m\u00e9tier. Composez vos devis en quelques clics, sans jamais partir de la page blanche.',
-    benefits: ['600+ articles BTP pr\u00e9-chiffr\u00e9s', 'Import par m\u00e9tier en un clic', 'Prix d\'achat et marge automatiques', 'Import CSV fournisseurs'],
+    benefits: ['1 000+ articles et ouvrages pr\u00e9-chiffr\u00e9s', 'Import par m\u00e9tier en un clic', 'Prix d\'achat et marge automatiques', 'Import CSV fournisseurs'],
     screenshot: '/screenshots/catalogue.png',
   },
   {
@@ -62,9 +64,10 @@ const FEATURES = [
     color: '#22c55e',
     bg: 'bg-green-50',
     title: 'Signature \u00e9lectronique',
+    slug: 'signature-electronique',
     description: 'Envoyez vos devis pour signature \u00e9lectronique. Vos clients signent en ligne depuis un lien s\u00e9curis\u00e9, sans cr\u00e9er de compte.',
-    benefits: ['Valeur l\u00e9gale', 'Lien s\u00e9curis\u00e9 unique', 'Notification de signature', 'Archivage automatique'],
-    screenshot: '/screenshots/devis-editor.png',
+    benefits: ['Signature au doigt sur mobile', 'Lien s\u00e9curis\u00e9 unique (30 jours)', 'Horodatage et signataire enregistr\u00e9s', 'Statut \u00ab Sign\u00e9 \u00bb automatique'],
+    screenshot: '/screenshots/signature.png',
   },
   {
     category: 'chantiers',
@@ -72,6 +75,7 @@ const FEATURES = [
     color: '#3b82f6',
     bg: 'bg-blue-50',
     title: 'Suivi de chantier complet',
+    slug: 'chantiers',
     description: 'Suivez chaque chantier de A \u00e0 Z : avancement, rentabilit\u00e9, d\u00e9penses, t\u00e2ches. Centralisez toutes les informations dans un tableau de bord par chantier.',
     benefits: ['Marge en temps r\u00e9el', 'Journal d\'activit\u00e9', 'Check-lists et t\u00e2ches', 'Statuts personnalis\u00e9s'],
     screenshot: '/screenshots/chantier-detail.png',
@@ -102,6 +106,7 @@ const FEATURES = [
     color: '#6366f1',
     bg: 'bg-indigo-50',
     title: '\u00c9quipe & sous-traitants',
+    slug: 'equipe',
     description: 'G\u00e9rez votre \u00e9quipe et vos sous-traitants : r\u00f4les, permissions, pointage, cong\u00e9s. Affectez les membres aux chantiers.',
     benefits: ['R\u00f4les & permissions', 'Pointage des heures', 'Gestion des cong\u00e9s', 'Affectation chantiers'],
     screenshot: '/screenshots/equipe.png',
@@ -122,6 +127,7 @@ const FEATURES = [
     color: '#10b981',
     bg: 'bg-emerald-50',
     title: 'Tr\u00e9sorerie & projections',
+    slug: 'tresorerie',
     description: 'Anticipez vos flux de tr\u00e9sorerie avec des projections \u00e0 30, 60 et 90 jours. D\u00e9tectez les impay\u00e9s et ma\u00eetrisez votre BFR.',
     benefits: ['Projections automatiques', 'Suivi des impay\u00e9s', 'Tableau de bord financier', 'Exports comptables'],
     screenshot: '/screenshots/tresorerie.png',
@@ -132,6 +138,7 @@ const FEATURES = [
     color: '#f59e0b',
     bg: 'bg-amber-50',
     title: 'Relances automatiques',
+    slug: 'relances',
     description: 'Programmez des relances automatiques par email avec des templates personnalis\u00e9s et des variables dynamiques.',
     benefits: ['Templates personnalisables', 'Planification intelligente', 'Variables dynamiques', 'Historique complet'],
     screenshot: '/screenshots/relances.png',
@@ -160,10 +167,13 @@ const FEATURES = [
 
 function FeatureCard({ feature }) {
   const Icon = feature.icon;
+  const Wrapper = feature.slug ? motion.a : motion.div;
+  const wrapperProps = feature.slug ? { href: `/fonctionnalites/${feature.slug}` } : {};
   return (
-    <motion.div
+    <Wrapper
+      {...wrapperProps}
       variants={fadeInUp}
-      className="group bg-white rounded-2xl border border-slate-200 overflow-hidden hover:border-orange-200 hover:shadow-xl hover:shadow-orange-500/5 transition-all"
+      className="group block bg-white rounded-2xl border border-slate-200 overflow-hidden hover:border-orange-200 hover:shadow-xl hover:shadow-orange-500/5 transition-all"
     >
       {/* Screenshot */}
       <div className="p-3 pb-0">
@@ -193,8 +203,13 @@ function FeatureCard({ feature }) {
             </li>
           ))}
         </ul>
+        {feature.slug && (
+          <p className="mt-4 inline-flex items-center gap-1 text-sm font-semibold group-hover:gap-2 transition-all" style={{ color: feature.color }}>
+            En savoir plus <ArrowRight size={15} />
+          </p>
+        )}
       </div>
-    </motion.div>
+    </Wrapper>
   );
 }
 

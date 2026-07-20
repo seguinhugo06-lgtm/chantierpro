@@ -152,17 +152,30 @@ export async function sendDocumentEmail({ to, subject, bodyHtml, fromName, reply
 /**
  * Construit un corps d'email HTML simple et lisible (compatible clients mail).
  */
-export function buildDocumentEmailBody({ doc, client, entreprise, couleur = '#f97316', montantFormatte }) {
+export function buildDocumentEmailBody({ doc, client, entreprise, couleur = '#f97316', montantFormatte, signatureUrl = null }) {
   const isFacture = doc.type === 'facture';
   const label = isFacture ? 'facture' : 'devis';
   const clientNom = `${client.prenom || ''} ${client.nom || ''}`.trim() || 'Madame, Monsieur';
   const nomEntreprise = entreprise?.nom || 'Votre artisan';
   const validite = doc.validite || entreprise?.validiteDevis || 30;
 
+  const signatureBlock = !isFacture && signatureUrl ? `
+    <div style="margin:28px 0;text-align:center">
+      <a href="${signatureUrl}"
+         style="display:inline-block;background:${couleur};color:#ffffff;text-decoration:none;font-weight:bold;font-size:16px;padding:14px 28px;border-radius:10px">
+        Consulter et signer le devis en ligne
+      </a>
+      <p style="font-size:12px;color:#64748b;margin-top:10px">
+        Signature électronique sécurisée, sans créer de compte.<br>
+        Si le bouton ne fonctionne pas : <a href="${signatureUrl}" style="color:${couleur}">${signatureUrl}</a>
+      </p>
+    </div>` : '';
+
   return `
   <div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#1e293b;line-height:1.6;max-width:560px;margin:0 auto">
     <p>Bonjour ${clientNom},</p>
     <p>Veuillez trouver ci-joint votre ${label} <strong>${doc.numero}</strong>${montantFormatte ? `, d'un montant de <strong>${montantFormatte}</strong>` : ''}.</p>
+    ${signatureBlock}
     ${isFacture
       ? `<p>Je vous remercie de votre confiance.</p>`
       : `<p>Ce devis reste valable <strong>${validite} jours</strong>. N'hésitez pas à me contacter pour toute question.</p>`}

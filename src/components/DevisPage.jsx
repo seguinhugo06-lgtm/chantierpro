@@ -1860,25 +1860,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     // Generate new token via RPC
     if (supabase && !supabase._isDemo) {
       try {
-        // Ensure entreprise config is up to date for the public signature page
-        try {
-          const { data: { user } } = await supabase.auth.getUser();
-          if (user && entreprise) {
-            await supabase.from('entreprise_config').upsert({
-              user_id: user.id,
-              nom: entreprise.nom || null,
-              logo: entreprise.logo || null,
-              adresse: entreprise.adresse || null,
-              telephone: entreprise.tel || null,
-              email: entreprise.email || null,
-              siret: entreprise.siret || null,
-              conditions_paiement: entreprise.conditionsPaiement || entreprise.conditions_paiement || null,
-              mentions_legales: entreprise.mentionsLegales || entreprise.mentions_legales || null,
-              couleur_principale: entreprise.couleur || couleur || '#f97316',
-            }, { onConflict: 'user_id' });
-          }
-        } catch (e) { /* non-critical */ }
-
+        // NB : la page publique lit l'entreprise via get_devis_for_signature (table
+        // `entreprise` jointe côté SQL) — aucun upsert préalable nécessaire.
         const { data, error } = await supabase.rpc('generate_signature_token', { p_devis_id: doc.id });
         if (!error && data) {
           const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(); // 30 days
@@ -2046,9 +2029,16 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     setActionLoading('email');
     showToast(`Envoi du ${label.toLowerCase()} ${doc.numero}…`, 'info');
     try {
+      // Devis : générer (ou réutiliser) le lien de signature pour l'inclure dans l'email —
+      // sans lui, le client reçoit le PDF mais ne peut pas signer en ligne.
+      let signatureUrl = null;
+      if (!isFacture) {
+        const sigToken = await getOrGenerateSignatureToken(doc);
+        signatureUrl = buildSignatureUrl(sigToken);
+      }
       // Réutilise le HTML du document (downloadPDF le construit et le retourne, sans effet de bord)
       const pdfHtml = downloadPDF(doc);
-      const bodyHtml = buildDocumentEmailBody({ doc, client, entreprise, couleur, montantFormatte: formatMoney(doc.total_ttc) });
+      const bodyHtml = buildDocumentEmailBody({ doc, client, entreprise, couleur, montantFormatte: formatMoney(doc.total_ttc), signatureUrl });
       await sendDocumentEmail({
         to: toEmail,
         subject: `${label} ${doc.numero}${entreprise?.nom ? ` — ${entreprise.nom}` : ''}`,
