@@ -187,3 +187,34 @@ export function buildDocumentEmailBody({ doc, client, entreprise, couleur = '#f9
     </p>
   </div>`;
 }
+
+/**
+ * Reçu de paiement envoyé au client quand l'artisan encaisse une facture.
+ */
+export function buildPaymentReceiptEmailBody({ doc, client, entreprise, couleur = '#f97316', montantFormatte, modePaiement, datePaiement }) {
+  const clientNom = `${client.prenom || ''} ${client.nom || ''}`.trim() || 'Madame, Monsieur';
+  const nomEntreprise = entreprise?.nom || 'Votre artisan';
+  const modeLabels = { virement: 'virement bancaire', cheque: 'chèque', especes: 'espèces', cb: 'carte bancaire', carte: 'carte bancaire' };
+  const modeLabel = modeLabels[modePaiement] || modePaiement || '';
+  const dateLabel = datePaiement
+    ? new Date(datePaiement).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+    : new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+
+  return `
+  <div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#1e293b;line-height:1.6;max-width:560px;margin:0 auto">
+    <p>Bonjour ${clientNom},</p>
+    <p>Nous confirmons la bonne réception de votre paiement :</p>
+    <div style="background:#ecfdf5;border:1px solid #10b981;border-radius:12px;padding:16px 20px;margin:16px 0">
+      <p style="margin:0"><strong>Facture ${doc.numero}</strong></p>
+      <p style="margin:6px 0 0;font-size:22px;font-weight:bold;color:#059669">${montantFormatte}</p>
+      <p style="margin:6px 0 0;font-size:13px;color:#475569">Reçu le ${dateLabel}${modeLabel ? ` — ${modeLabel}` : ''}</p>
+    </div>
+    <p>Merci de votre confiance !</p>
+    <p style="margin-top:24px;padding-top:16px;border-top:1px solid #e2e8f0">
+      Cordialement,<br>
+      <strong style="color:${couleur}">${nomEntreprise}</strong>
+      ${entreprise?.tel ? `<br>${entreprise.tel}` : ''}
+      ${entreprise?.email ? `<br>${entreprise.email}` : ''}
+    </p>
+  </div>`;
+}

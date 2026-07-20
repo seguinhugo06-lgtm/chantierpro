@@ -27,7 +27,7 @@ import { ReadOnlyBanner } from './ui/PermissionGate';
 import PageHeader from './ui/PageHeader';
 import KPICard from './ui/KPICard';
 import { printSituationFacture as printSitFacture } from '../lib/devisHtmlBuilder';
-import { sendDocumentEmail, buildDocumentEmailBody } from '../lib/emailSender';
+import { sendDocumentEmail, buildDocumentEmailBody, buildPaymentReceiptEmailBody } from '../lib/emailSender';
 import RelanceTimelineWidget from './RelanceTimelineWidget';
 import { useRelances } from '../hooks/useRelances';
 import { printMiseEnDemeure } from '../lib/miseEnDemeureBuilder';
@@ -1029,6 +1029,34 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 
   // Payment creation handler
   const handlePaymentCreated = (paymentData) => {
+    // Reçu de paiement au client (case cochée dans le modal d'encaissement)
+    if (paymentData.sendReceipt && selected) {
+      const receiptClient = clients.find(c => c.id === selected.client_id);
+      if (receiptClient?.email) {
+        if (isDemo || !supabase) {
+          showToast(`Mode démo : reçu simulé à ${receiptClient.email} ✓`, 'success');
+        } else {
+          const bodyHtml = buildPaymentReceiptEmailBody({
+            doc: selected,
+            client: receiptClient,
+            entreprise,
+            couleur,
+            montantFormatte: formatMoney(paymentData.amount || selected.total_ttc),
+            modePaiement: paymentData.mode_paiement,
+            datePaiement: paymentData.date_paiement,
+          });
+          sendDocumentEmail({
+            to: receiptClient.email,
+            subject: `Reçu de paiement — Facture ${selected.numero}${entreprise?.nom ? ` — ${entreprise.nom}` : ''}`,
+            bodyHtml,
+            fromName: entreprise?.nom,
+            replyTo: entreprise?.email,
+          })
+            .then(() => showToast(`Reçu envoyé à ${receiptClient.email} ✓`, 'success'))
+            .catch((e) => showToast(`Reçu non envoyé : ${e?.message || 'erreur'}`, 'error'));
+        }
+      }
+    }
     if (addPaiement) {
       addPaiement({
         ...paymentData,

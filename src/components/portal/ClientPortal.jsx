@@ -501,10 +501,9 @@ export default function ClientPortal({
     }
   };
 
-  const handlePayFacture = (facture) => {
-    // TODO: call Edge Function to create Stripe checkout session
-    showToast && showToast('Paiement en cours de traitement...', 'info');
-  };
+  // Paiement en ligne : pas encore branché (create-payment-link non déployé,
+  // page /pay/:token absente) — ne pas afficher de bouton placebo au client.
+  const handlePayFacture = null;
 
   const handleViewPhotos = (chantier) => {
     setSelectedChantier(chantier);

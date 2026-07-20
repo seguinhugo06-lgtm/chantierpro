@@ -15,6 +15,22 @@ serve(async (req) => {
   }
 
   try {
+    // Anti-relais ouvert : verify_jwt laisse passer l'anon key (JWT public,
+    // embarqué dans le bundle). On exige un utilisateur connecté ou le
+    // service_role — sinon n'importe qui peut émettre depuis notre domaine.
+    const authJwt = (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '');
+    let jwtRole = '';
+    try {
+      const payload = JSON.parse(atob(authJwt.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+      jwtRole = payload?.role || '';
+    } catch { /* jwt illisible → refus */ }
+    if (jwtRole !== 'authenticated' && jwtRole !== 'service_role') {
+      return new Response(
+        JSON.stringify({ error: 'Authentification requise' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const { action, ...params } = await req.json();
 
     const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');

@@ -90,6 +90,7 @@ export default function PaymentModal({
   const [offlineDate, setOfflineDate] = useState(new Date().toISOString().split('T')[0]);
   const [offlineReference, setOfflineReference] = useState('');
   const [offlineAmount, setOfflineAmount] = useState('');
+  const [sendReceipt, setSendReceipt] = useState(true);
 
   // Theme classes
   const cardBg = isDark ? "bg-slate-800" : "bg-white";
@@ -110,6 +111,7 @@ export default function PaymentModal({
       setOfflineDate(new Date().toISOString().split('T')[0]);
       setOfflineReference('');
       setOfflineAmount('');
+      setSendReceipt(true);
     }
   }, [isOpen, entreprise?.modePaiementDefaut]);
 
@@ -167,6 +169,7 @@ export default function PaymentModal({
       mode_paiement: offlineMode,
       date_paiement: offlineDate,
       reference_paiement: offlineReference.trim() || undefined,
+      sendReceipt: !!(sendReceipt && client?.email),
       documentId: document.id,
       documentType: document.type,
       status: 'completed',
@@ -437,6 +440,23 @@ export default function PaymentModal({
                       className={`w-full px-4 py-3 border rounded-xl ${inputBg}`}
                     />
                   </div>
+
+                  {/* Reçu par email au client */}
+                  {client?.email ? (
+                    <label className={`flex items-start gap-2.5 p-3 rounded-xl cursor-pointer ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+                      <input
+                        type="checkbox"
+                        checked={sendReceipt}
+                        onChange={e => setSendReceipt(e.target.checked)}
+                        className="mt-0.5 w-4 h-4 rounded accent-emerald-500"
+                      />
+                      <span className={`text-sm ${textSecondary}`}>
+                        Envoyer un reçu de paiement par email à <strong>{client.email}</strong>
+                      </span>
+                    </label>
+                  ) : (
+                    <p className={`text-xs ${textMuted}`}>Pas d'email client — aucun reçu ne sera envoyé.</p>
+                  )}
                 </div>
               )}
 

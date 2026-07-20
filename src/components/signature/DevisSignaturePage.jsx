@@ -122,6 +122,10 @@ export default function DevisSignaturePage({ signatureToken }) {
           }
         }));
         setStep('success');
+        // Notifier l'artisan par email (fire-and-forget — l'échec ne doit pas
+        // gêner le client qui vient de signer)
+        supabase.functions.invoke('notify-signature', { body: { token: signatureToken } })
+          .catch(() => { /* silencieux */ });
       }
     } catch (err) {
       console.error('Error signing devis:', err);
