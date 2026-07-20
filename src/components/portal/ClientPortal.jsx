@@ -501,9 +501,14 @@ export default function ClientPortal({
     }
   };
 
-  // Paiement en ligne : pas encore branché (create-payment-link non déployé,
-  // page /pay/:token absente) — ne pas afficher de bouton placebo au client.
-  const handlePayFacture = null;
+  // Paiement en ligne : ouvre la page publique /pay/:token (chaque facture
+  // reçoit un payment_token à la création — migration 067). FactureCard
+  // n'affiche le bouton que si la facture a un token (les données démo n'en
+  // ont pas).
+  const handlePayFacture = (facture) => {
+    if (!facture?.payment_token) return;
+    window.open(`${window.location.origin}/pay/${facture.payment_token}`, '_blank', 'noopener');
+  };
 
   const handleViewPhotos = (chantier) => {
     setSelectedChantier(chantier);

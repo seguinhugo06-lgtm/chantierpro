@@ -1,356 +1,222 @@
 /**
- * Edge Function: stripe-webhook
- * Handles Stripe webhook events (payment confirmations)
+ * stripe-webhook — Webhook Stripe de la PLATEFORME (abonnements SaaS uniquement).
  *
- * POST /functions/v1/stripe-webhook
- * Called by Stripe with event data + signature header
+ * Les paiements de factures des artisans passent par LEURS comptes Stripe et
+ * sont confirmés côté serveur par create-invoice-payment action 'verify' au
+ * retour de Checkout — ils n'arrivent jamais ici (aucun webhook par artisan).
  *
- * Deploy: supabase functions deploy stripe-webhook
+ * Ce webhook ne traite que les événements du compte Stripe BatiGesti :
+ *   - checkout.session.completed (metadata.plan_id) → activation abonnement
+ *   - customer.subscription.deleted → retour au plan gratuit
+ *   - customer.subscription.updated → statut (past_due, active…)
+ *
+ * Signature vérifiée avec STRIPE_WEBHOOK_SECRET (secret du endpoint configuré
+ * dans le Dashboard Stripe plateforme). Déployer avec --no-verify-jwt :
+ * Stripe n'envoie pas de JWT Supabase.
  */
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
-import { getSupabaseClient, notifyPaiementRecu } from '../_shared/communications.ts';
 
-// ============================================================================
-// STRIPE SIGNATURE VERIFICATION (without SDK)
-// ============================================================================
+const STRIPE_WEBHOOK_SECRET = Deno.env.get('STRIPE_WEBHOOK_SECRET') || '';
+
+const json = (body: Record<string, unknown>, status = 200) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+
+const supabase = createClient(
+  Deno.env.get('SUPABASE_URL') ?? '',
+  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+);
+
+// ────────────────────────────────────────────────────────────────────
+// Vérification de signature Stripe (HMAC-SHA256, sans SDK)
+// ────────────────────────────────────────────────────────────────────
 
 async function computeHmacSha256(key: string, message: string): Promise<string> {
   const encoder = new TextEncoder();
-  const keyData = encoder.encode(key);
-  const messageData = encoder.encode(message);
-
   const cryptoKey = await crypto.subtle.importKey(
     'raw',
-    keyData,
+    encoder.encode(key),
     { name: 'HMAC', hash: 'SHA-256' },
     false,
     ['sign']
   );
-
-  const signature = await crypto.subtle.sign('HMAC', cryptoKey, messageData);
-  const hashArray = Array.from(new Uint8Array(signature));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
-function parseStripeSignature(header: string): { timestamp: string; signatures: string[] } {
-  const parts = header.split(',');
-  let timestamp = '';
-  const signatures: string[] = [];
-
-  for (const part of parts) {
-    const [key, value] = part.split('=');
-    if (key === 't') timestamp = value;
-    if (key === 'v1') signatures.push(value);
-  }
-
-  return { timestamp, signatures };
+  const signature = await crypto.subtle.sign('HMAC', cryptoKey, encoder.encode(message));
+  return Array.from(new Uint8Array(signature))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
 }
 
 async function verifyStripeSignature(
   payload: string,
   signatureHeader: string,
-  webhookSecret: string,
   toleranceSeconds = 300
 ): Promise<boolean> {
-  const { timestamp, signatures } = parseStripeSignature(signatureHeader);
-
-  if (!timestamp || signatures.length === 0) {
-    return false;
+  let timestamp = '';
+  const signatures: string[] = [];
+  for (const part of signatureHeader.split(',')) {
+    const [key, value] = part.split('=');
+    if (key === 't') timestamp = value;
+    if (key === 'v1') signatures.push(value);
   }
+  if (!timestamp || signatures.length === 0) return false;
 
-  // Check timestamp tolerance (5 minutes)
-  const timestampAge = Math.floor(Date.now() / 1000) - parseInt(timestamp);
-  if (timestampAge > toleranceSeconds) {
-    console.warn(`[WEBHOOK] Timestamp too old: ${timestampAge}s`);
-    return false;
-  }
+  const age = Math.floor(Date.now() / 1000) - parseInt(timestamp, 10);
+  if (Number.isNaN(age) || age > toleranceSeconds) return false;
 
-  // Compute expected signature
-  const signedPayload = `${timestamp}.${payload}`;
-  const expectedSignature = await computeHmacSha256(webhookSecret, signedPayload);
-
-  // Compare with received signatures
-  return signatures.some(sig => sig === expectedSignature);
+  const expected = await computeHmacSha256(STRIPE_WEBHOOK_SECRET, `${timestamp}.${payload}`);
+  return signatures.some((sig) => sig === expected);
 }
 
-// ============================================================================
-// EVENT HANDLERS
-// ============================================================================
+// ────────────────────────────────────────────────────────────────────
+// Handlers abonnements SaaS
+// ────────────────────────────────────────────────────────────────────
 
-async function handleCheckoutSessionCompleted(
-  session: Record<string, unknown>,
-  supabase: ReturnType<typeof getSupabaseClient>
-) {
-  const sessionId = session.id as string;
-  const paymentIntentId = session.payment_intent as string;
-  const metadata = session.metadata as Record<string, string> || {};
-
-  console.log(`[WEBHOOK] checkout.session.completed: ${sessionId}`);
-
-  // Find the facture by stripe_session_id
-  const { data: facture, error } = await supabase
-    .from('devis')
-    .select('id, numero, statut, type')
-    .eq('stripe_session_id', sessionId)
-    .single();
-
-  if (error || !facture) {
-    console.error(`[WEBHOOK] Facture not found for session ${sessionId}:`, error);
-    return { handled: false, reason: 'facture_not_found' };
-  }
-
-  // Skip if already paid
-  if (facture.statut === 'payee') {
-    console.log(`[WEBHOOK] Facture ${facture.numero} already paid, skipping`);
-    return { handled: true, reason: 'already_paid' };
-  }
-
-  // Update facture status to paid
-  const { error: updateError } = await supabase
-    .from('devis')
-    .update({
-      statut: 'payee',
-      payment_status: 'succeeded',
-      payment_completed_at: new Date().toISOString(),
-      date_paiement: new Date().toISOString(),
-      mode_paiement: 'carte',
-      stripe_payment_intent_id: paymentIntentId,
-      payment_metadata: {
-        stripe_session_id: sessionId,
-        stripe_payment_intent_id: paymentIntentId,
-        payment_method: 'card',
-        completed_at: new Date().toISOString(),
-      },
-    })
-    .eq('id', facture.id);
-
-  if (updateError) {
-    console.error(`[WEBHOOK] Failed to update facture ${facture.numero}:`, updateError);
-    return { handled: false, reason: 'update_failed', error: updateError.message };
-  }
-
-  console.log(`[WEBHOOK] Facture ${facture.numero} marked as paid`);
-
-  // Update stripe_config stats
-  await supabase
-    .from('stripe_config')
-    .update({
-      last_payment_at: new Date().toISOString(),
-      total_payments: supabase.rpc ? undefined : undefined, // Can't increment easily, skip for now
-    });
-
-  // Send payment confirmation notification
-  try {
-    await notifyPaiementRecu(facture.id, supabase);
-    console.log(`[WEBHOOK] Payment notification sent for ${facture.numero}`);
-  } catch (notifError) {
-    console.error(`[WEBHOOK] Notification failed:`, notifError);
-  }
-
-  // Log event
-  await supabase.from('events_log').insert([{
-    event_type: 'stripe_payment_received',
-    entity_type: 'facture',
-    entity_id: facture.id,
-    success: true,
-    metadata: {
-      session_id: sessionId,
-      payment_intent_id: paymentIntentId,
-      facture_numero: facture.numero,
-    },
-    triggered_at: new Date().toISOString(),
-  }]);
-
-  return { handled: true, facture_id: facture.id, facture_numero: facture.numero };
-}
-
-
-/**
- * Handle SaaS subscription checkout (metadata.plan_id present)
- */
-async function handleSubscriptionCheckout(
-  session: Record<string, unknown>,
-  supabase: ReturnType<typeof getSupabaseClient>
-) {
-  const metadata = session.metadata as Record<string, string> || {};
+async function handleSubscriptionCheckout(session: Record<string, unknown>) {
+  const metadata = (session.metadata as Record<string, string>) || {};
   const userId = metadata.user_id;
   const planId = metadata.plan_id;
-  const customerId = session.customer as string;
-  const subscriptionId = session.subscription as string;
 
   if (!userId || !planId) {
-    console.error('[WEBHOOK] Missing user_id or plan_id in subscription metadata');
+    console.error('[WEBHOOK] user_id ou plan_id manquant dans metadata');
     return { handled: false, reason: 'missing_metadata' };
   }
 
-  console.log(`[WEBHOOK] Subscription checkout user=${userId}, plan=${planId}`);
-
-  const { error: upsertError } = await supabase
+  const { error } = await supabase
     .from('subscriptions')
     .upsert({
       user_id: userId,
       plan: planId,
       status: 'active',
-      stripe_customer_id: customerId,
-      stripe_subscription_id: subscriptionId,
+      stripe_customer_id: session.customer as string,
+      stripe_subscription_id: session.subscription as string,
       current_period_start: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     }, { onConflict: 'user_id' });
 
-  if (upsertError) {
-    console.error(`[WEBHOOK] Failed to upsert subscription:`, upsertError);
-    return { handled: false, reason: 'upsert_failed', error: upsertError.message };
+  if (error) {
+    console.error('[WEBHOOK] upsert subscription failed:', error.message);
+    return { handled: false, reason: 'upsert_failed' };
   }
 
-  console.log(`[WEBHOOK] Subscription activated: user=${userId}, plan=${planId}`);
+  console.log(`[WEBHOOK] Abonnement activé : user=${userId}, plan=${planId}`);
 
   await supabase.from('events_log').insert([{
     event_type: 'subscription_activated',
     entity_type: 'subscription',
     entity_id: userId,
     success: true,
-    metadata: { plan_id: planId, stripe_customer_id: customerId },
+    metadata: { plan_id: planId, stripe_customer_id: session.customer },
     triggered_at: new Date().toISOString(),
-  }]).catch(() => {});
+  }]).then(() => {}, () => {});
 
   return { handled: true, user_id: userId, plan: planId };
 }
 
-async function handleCheckoutSessionExpired(
-  session: Record<string, unknown>,
-  supabase: ReturnType<typeof getSupabaseClient>
-) {
-  const sessionId = session.id as string;
+async function handleSubscriptionDeleted(subscription: Record<string, unknown>) {
+  const subId = subscription.id as string;
 
-  console.log(`[WEBHOOK] checkout.session.expired: ${sessionId}`);
+  const { data: updated, error } = await supabase
+    .from('subscriptions')
+    .update({ plan: 'gratuit', status: 'canceled', updated_at: new Date().toISOString() })
+    .eq('stripe_subscription_id', subId)
+    .select('user_id');
 
-  // Update payment status
-  await supabase
-    .from('devis')
-    .update({ payment_status: 'failed' })
-    .eq('stripe_session_id', sessionId);
+  if (error) {
+    console.error('[WEBHOOK] downgrade failed:', error.message);
+    return { handled: false, reason: 'update_failed' };
+  }
+  if (!updated || updated.length === 0) {
+    return { handled: false, reason: 'subscription_not_found' };
+  }
 
-  // Log event
-  await supabase.from('events_log').insert([{
-    event_type: 'stripe_session_expired',
-    entity_type: 'facture',
-    entity_id: sessionId,
-    success: true,
-    triggered_at: new Date().toISOString(),
-  }]);
-
-  return { handled: true };
+  console.log(`[WEBHOOK] Abonnement résilié → plan gratuit : user=${updated[0].user_id}`);
+  return { handled: true, user_id: updated[0].user_id };
 }
 
-// ============================================================================
-// MAIN HANDLER
-// ============================================================================
+async function handleSubscriptionUpdated(subscription: Record<string, unknown>) {
+  const subId = subscription.id as string;
+  const stripeStatus = subscription.status as string;
+
+  // Mapping statut Stripe → statut interne (les impayés gardent l'accès
+  // pendant les retries Stripe ; 'canceled' est géré par l'event deleted)
+  const status = stripeStatus === 'active' || stripeStatus === 'trialing'
+    ? 'active'
+    : stripeStatus === 'past_due' || stripeStatus === 'unpaid'
+      ? 'past_due'
+      : null;
+  if (!status) return { handled: false, reason: `status_ignored:${stripeStatus}` };
+
+  const { error } = await supabase
+    .from('subscriptions')
+    .update({ status, updated_at: new Date().toISOString() })
+    .eq('stripe_subscription_id', subId);
+
+  if (error) {
+    console.error('[WEBHOOK] status update failed:', error.message);
+    return { handled: false, reason: 'update_failed' };
+  }
+  return { handled: true, status };
+}
+
+// ────────────────────────────────────────────────────────────────────
 
 serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
   try {
-    // Read raw body for signature verification
+    if (!STRIPE_WEBHOOK_SECRET) {
+      console.error('[WEBHOOK] STRIPE_WEBHOOK_SECRET non configuré');
+      return json({ error: 'Webhook non configuré' }, 500);
+    }
+
     const rawBody = await req.text();
     const signatureHeader = req.headers.get('stripe-signature');
-
     if (!signatureHeader) {
-      return new Response(
-        JSON.stringify({ error: 'Missing Stripe-Signature header' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return json({ error: 'Missing Stripe-Signature header' }, 400);
     }
 
-    const supabase = getSupabaseClient();
+    const isValid = await verifyStripeSignature(rawBody, signatureHeader);
+    if (!isValid) {
+      console.warn('[WEBHOOK] Signature invalide');
+      return json({ error: 'Invalid signature' }, 401);
+    }
 
-    // Parse the event first to get metadata and find the right webhook secret
     const event = JSON.parse(rawBody);
     const eventType = event.type as string;
-    const session = event.data?.object;
+    const object = event.data?.object as Record<string, unknown>;
 
-    console.log(`[WEBHOOK] Received event: ${eventType}`);
+    console.log(`[WEBHOOK] ${eventType}`);
 
-    // Get user_id from metadata or facture lookup
-    let userId: string | null = session?.metadata?.user_id || null;
-
-    if (!userId && session?.metadata?.facture_id) {
-      const { data: facture } = await supabase
-        .from('devis')
-        .select('user_id')
-        .eq('id', session.metadata.facture_id)
-        .single();
-      userId = facture?.user_id;
-    } else if (session?.id) {
-      const { data: facture } = await supabase
-        .from('devis')
-        .select('user_id')
-        .eq('stripe_session_id', session.id)
-        .single();
-      userId = facture?.user_id;
-    }
-
-    // Verify signature if we have a webhook secret
-    if (userId) {
-      const { data: stripeConfig } = await supabase.rpc('get_stripe_config_for_user', {
-        p_user_id: userId,
-      });
-
-      if (stripeConfig?.webhook_secret) {
-        const isValid = await verifyStripeSignature(rawBody, signatureHeader, stripeConfig.webhook_secret);
-        if (!isValid) {
-          console.warn(`[WEBHOOK] Invalid signature for user ${userId}`);
-          return new Response(
-            JSON.stringify({ error: 'Invalid signature' }),
-            { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-      }
-    }
-
-    // Handle event
     let result: unknown;
-
     switch (eventType) {
       case 'checkout.session.completed':
-        // Route to subscription handler if plan_id metadata is present
-        if (session?.metadata?.plan_id) {
-          result = await handleSubscriptionCheckout(session, supabase);
+        if (object?.metadata && (object.metadata as Record<string, string>).plan_id) {
+          result = await handleSubscriptionCheckout(object);
         } else {
-          result = await handleCheckoutSessionCompleted(session, supabase);
+          // Un paiement de facture artisan n'a rien à faire ici
+          result = { handled: false, reason: 'not_a_subscription_checkout' };
         }
         break;
-
-      case 'checkout.session.expired':
-        result = await handleCheckoutSessionExpired(session, supabase);
+      case 'customer.subscription.deleted':
+        result = await handleSubscriptionDeleted(object);
         break;
-
+      case 'customer.subscription.updated':
+        result = await handleSubscriptionUpdated(object);
+        break;
       default:
-        console.log(`[WEBHOOK] Unhandled event type: ${eventType}`);
         result = { handled: false, reason: 'unhandled_event_type' };
     }
 
-    return new Response(
-      JSON.stringify({ received: true, result }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200,
-      }
-    );
-
+    return json({ received: true, result });
   } catch (error) {
     console.error('[WEBHOOK] Error:', error);
-
-    return new Response(
-      JSON.stringify({ error: error.message || 'Internal error' }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 500,
-      }
-    );
+    return json({ error: (error as Error).message || 'Internal error' }, 500);
   }
 });

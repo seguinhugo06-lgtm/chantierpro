@@ -48,7 +48,8 @@ else
 fi
 
 # 4. Secrets in code
-secrets_pattern='(sk_live_|sk_test_|SUPABASE_SERVICE_ROLE|ghp_|gho_)'
+# NB : préfixe seul autorisé (validation de saisie) — on cherche de vraies clés
+secrets_pattern='(sk_live_[a-zA-Z0-9]{10,}|sk_test_[a-zA-Z0-9]{10,}|SUPABASE_SERVICE_ROLE|ghp_[a-zA-Z0-9]{10,}|gho_[a-zA-Z0-9]{10,})'
 if grep -rEn "$secrets_pattern" src/ --include="*.js" --include="*.jsx" > /dev/null 2>&1; then
   error "Secrets/tokens détectés dans le code source!"
 else

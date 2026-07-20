@@ -66,9 +66,9 @@ const getStatusInfo = (statut, echeance) => {
 export default function FactureCard({ facture, onDownload, onPay }) {
   const statusInfo = getStatusInfo(facture.statut, facture.echeance);
   const StatusIcon = statusInfo.icon;
-  // Paiement en ligne pas encore branché : le bouton ne s'affiche que si un
-  // handler réel est fourni (évite le bouton placebo « Payer maintenant »).
-  const canPay = !!onPay && (facture.statut !== 'payee');
+  // Le bouton payer n'apparaît que si la facture a un lien de paiement
+  // (payment_token) — les factures démo n'en ont pas.
+  const canPay = !!onPay && !!facture.payment_token && (facture.statut !== 'payee');
   const overdue = isOverdue(facture.echeance) && facture.statut !== 'payee';
 
   return (

@@ -282,6 +282,10 @@ export const FIELD_MAPPINGS = {
       date_paiement: row.date_paiement || null,
       mode_paiement: row.mode_paiement || null,
       reference_paiement: row.reference_paiement || null,
+      // Paiement en ligne (lecture seule côté app — le token est généré par la
+      // DB, utilisé par relanceUtils pour le lien /pay/:token dans les relances)
+      payment_token: row.payment_token || null,
+      payment_status: row.payment_status || null,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     }),

@@ -18,10 +18,13 @@ const PAYMENT_MODES = [
 ];
 
 /**
- * Create payment link via Supabase Edge Function
- * Falls back to mock in demo mode
+ * Crée un lien de paiement vers la page publique /pay/:token.
+ * Le token vient de la RPC generate_payment_token (réutilisé s'il existe déjà —
+ * chaque facture en reçoit un automatiquement à la création, migration 067).
+ * Un montant partiel est porté par ?m=<centimes> ; la page et le serveur le
+ * bornent au reste dû. Mock en mode démo.
  */
-async function createPaymentLinkEdge(documentId, montantCentimes) {
+async function createPaymentLinkEdge(documentId, montantCentimes, totalCentimes) {
   if (isDemo || !supabase) {
     // Mock for demo mode
     const token = `demo_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -33,31 +36,20 @@ async function createPaymentLinkEdge(documentId, montantCentimes) {
     };
   }
 
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) throw new Error('Non authentifié');
+  const { data: token, error } = await supabase.rpc('generate_payment_token', {
+    p_facture_id: documentId,
+  });
 
-  const res = await fetch(
-    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-payment-link`,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${session.access_token}`,
-        'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-      },
-      body: JSON.stringify({
-        document_id: documentId,
-        montant_centimes: montantCentimes,
-      }),
-    }
-  );
-
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.error || 'Erreur lors de la création du lien');
+  if (error || !token) {
+    throw new Error(error?.message || 'Erreur lors de la création du lien');
   }
 
-  return await res.json();
+  let url = buildPaymentUrl(token);
+  if (montantCentimes && totalCentimes && montantCentimes < totalCentimes) {
+    url += `?m=${montantCentimes}`;
+  }
+
+  return { token, url, link_id: token, existing: false };
 }
 
 /**
@@ -131,7 +123,7 @@ export default function PaymentModal({
 
     try {
       const montantCentimes = Math.round(amount * 100);
-      const result = await createPaymentLinkEdge(document.id, montantCentimes);
+      const result = await createPaymentLinkEdge(document.id, montantCentimes, Math.round(totalTTC * 100));
 
       setPaymentLink({
         paymentUrl: result.url,

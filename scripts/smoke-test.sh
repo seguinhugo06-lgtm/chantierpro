@@ -157,7 +157,9 @@ echo ""
 echo "🔒 5. Vérification de sécurité..."
 
 # No hardcoded secrets/tokens
-secrets_pattern='(sk_live|sk_test|SUPABASE_SERVICE_ROLE|eyJhbGciOiJ|ghp_|gho_|Bearer [a-zA-Z0-9]{20,})'
+# NB : sk_(live|test)_ exige du matériel de clé derrière — le simple préfixe
+# apparaît légitimement dans la validation de saisie (PaymentConfigTab).
+secrets_pattern='(sk_live_[a-zA-Z0-9]{10,}|sk_test_[a-zA-Z0-9]{10,}|SUPABASE_SERVICE_ROLE|eyJhbGciOiJ|ghp_[a-zA-Z0-9]{10,}|gho_[a-zA-Z0-9]{10,}|Bearer [a-zA-Z0-9]{20,})'
 secret_matches=$(grep -rEn "$secrets_pattern" src/ --include="*.js" --include="*.jsx" 2>/dev/null || true)
 if [ -n "$secret_matches" ]; then
   error "Secrets/tokens potentiels trouvés dans le code source:"
