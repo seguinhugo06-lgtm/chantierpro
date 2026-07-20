@@ -568,6 +568,50 @@ export function seedSecondaryDemoData() {
       }
     } catch { /* silent - localStorage may be full */ }
   });
+
+  // ⚠️ L'entreprise affichée vient d'EntrepriseContext, qui lit la liste
+  // `batigesti_entreprises` (format DB snake_case) — PAS `cp_entreprise` (legacy).
+  // Sans ce seed, entreprise = défauts vides → bandeau « Profil incomplet » en démo.
+  try {
+    const E = shiftDates(DEMO_ENTREPRISE);
+    const row = {
+      id: 'demo-entreprise-1',
+      nom: E.nom,
+      couleur: E.couleur,
+      forme_juridique: E.formeJuridique,
+      capital: E.capital,
+      adresse: E.adresse,
+      code_postal: E.cp,
+      ville: E.ville,
+      telephone: E.telephone,
+      email: E.email,
+      siret: E.siret,
+      code_ape: E.codeAPE,
+      rcs: E.rcs,
+      tva_intra: E.tvaIntra,
+      iban: E.iban,
+      bic: E.bic,
+      tva_defaut: E.tvaDefaut,
+      rc_pro_assureur: E.rcProAssureur,
+      rc_pro_numero: E.rcProNumero,
+      rc_pro_validite: E.rcProValidite,
+      decennale_assureur: E.decennaleAssureur,
+      decennale_numero: E.decennaleNumero,
+      decennale_validite: E.decennaleValidite,
+      is_active: true,
+      created_at: new Date().toISOString(),
+    };
+    const rawList = localStorage.getItem('batigesti_entreprises');
+    const list = rawList ? JSON.parse(rawList) : [];
+    const stale = !Array.isArray(list) || list.length === 0
+      || list.every(e => !e?.forme_juridique || !e?.decennale_assureur);
+    if (stale) {
+      localStorage.setItem('batigesti_entreprises', JSON.stringify([row]));
+      localStorage.setItem('batigesti_entreprise_active_id', row.id);
+      // Empêche la migration legacy de repasser derrière ce seed
+      localStorage.setItem('batigesti_entreprise_migrated', 'true');
+    }
+  } catch { /* silent */ }
 }
 
 export default DEMO_DATA;
