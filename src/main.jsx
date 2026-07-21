@@ -1,6 +1,5 @@
 import React, { Suspense, lazy } from 'react'
 import ReactDOM from 'react-dom/client'
-import App from './App.jsx'
 import { AppProvider } from './context/AppContext'
 import { OrgProvider } from './context/OrgContext'
 import { EntrepriseProvider } from './context/EntrepriseContext'
@@ -53,6 +52,12 @@ window.addEventListener('unhandledrejection', (event) => {
     }
   }
 });
+
+// L'app authentifiée est chargée paresseusement : sans ça, les pages publiques
+// ci-dessous (paiement, portail, signature) embarquaient tout le graphe d'App.jsx
+// — poids inutile pour le client, et un simple bloqueur de pub sur un module
+// (ex. CookieConsent) suffisait à faire un écran blanc en dev.
+const App = lazy(() => import('./App.jsx'))
 
 // Lazy load public pages (separate from main app — no AuthGuard, no DataProvider)
 const ClientPortal = lazy(() => import('./components/portal/ClientPortal'))
@@ -187,7 +192,9 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         <OrgProvider>
           <EntrepriseProvider>
             <DataProvider initialData={initialData}>
-              <App />
+              <Suspense fallback={<PublicFallback />}>
+                <App />
+              </Suspense>
             </DataProvider>
           </EntrepriseProvider>
         </OrgProvider>
