@@ -15,7 +15,7 @@ import {
   ArrowLeft, Plus, Search, Trash2, ChevronUp, ChevronDown, User,
   UserPlus, FileText, Receipt, Check, Loader2, Percent, StickyNote,
   Package, Zap, CornerDownLeft, Droplets, Paintbrush, Hammer, Star, Sparkles, Ruler, X,
-  Eye, AlertTriangle, Library, Layers,
+  Eye, AlertTriangle, Library, Layers, GripVertical,
 } from 'lucide-react';
 import QuickClientModal from './QuickClientModal';
 import { generateId } from '../lib/utils';
@@ -449,6 +449,96 @@ export default function DevisComposer({
     return n;
   });
 
+  /**
+   * Transforme une ligne existante en titre de lot : on structure un devis
+   * déjà saisi sans le retaper (« Salle de bain » devient l'en-tête, les lignes
+   * qui suivent lui appartiennent). Les montants de la ligne sont abandonnés,
+   * un lot ne porte que son sous-total.
+   */
+  const convertToLot = (id) => {
+    setForm(p => ({
+      ...p,
+      lignes: p.lignes.map(l => l.id === id
+        ? { id: l.id, _isSection: true, description: (l.description || '').trim() }
+        : l),
+    }));
+    setFocusLotId(id);
+    showToast?.('Ligne transformée en lot', 'success');
+  };
+
+  // ── Glisser-déposer ──────────────────────────────────────────────
+  // La liste est plate : l'appartenance d'une ligne à un lot découle de sa
+  // POSITION (elle suit le dernier marqueur rencontré). Déplacer une ligne
+  // suffit donc à la reclasser ; déplacer un lot doit emporter ses lignes.
+  const [dragIdx, setDragIdx] = useState(null);
+  const [overIdx, setOverIdx] = useState(null);
+
+  /** Taille du bloc à déplacer : 1 pour une ligne, le lot + ses lignes sinon. */
+  const blockSizeAt = (list, i) => {
+    if (!list[i]?._isSection) return 1;
+    let n = 1;
+    for (let j = i + 1; j < list.length; j++) {
+      if (list[j]._isSection) break;
+      n++;
+    }
+    return n;
+  };
+
+  const moveBlock = (from, to) => {
+    if (from == null || to == null) return;
+    setForm(p => {
+      const list = [...p.lignes];
+      const size = blockSizeAt(list, from);
+      // Interdit de déposer un lot à l'intérieur de lui-même
+      if (to >= from && to < from + size) return p;
+      const block = list.splice(from, size);
+      const insertAt = to > from ? to - size : to;
+      list.splice(Math.max(0, Math.min(insertAt, list.length)), 0, ...block);
+      return { ...p, lignes: list };
+    });
+  };
+
+  // Événements pointeur plutôt que l'API drag-and-drop HTML5 : celle-ci ne
+  // fonctionne pas au doigt, or l'artisan compose souvent son devis au téléphone
+  // sur le chantier. Ça la rend aussi vérifiable en test automatisé.
+  const overIdxRef = useRef(null);
+  const startRowDrag = (index) => setDragIdx(index);
+
+  useEffect(() => {
+    if (dragIdx == null) return;
+    const point = (e) => (e.touches && e.touches[0]) ? e.touches[0] : e;
+    const onMove = (e) => {
+      const p = point(e);
+      const row = document.elementFromPoint(p.clientX, p.clientY)?.closest('[data-row-index]');
+      if (!row) return;
+      const i = Number(row.dataset.rowIndex);
+      if (!Number.isNaN(i)) { overIdxRef.current = i; setOverIdx(i); }
+      if (e.cancelable) e.preventDefault(); // empêche le scroll pendant le glissement tactile
+    };
+    const onUp = () => {
+      moveBlock(dragIdx, overIdxRef.current);
+      overIdxRef.current = null;
+      setDragIdx(null);
+      setOverIdx(null);
+    };
+    document.addEventListener('pointermove', onMove, { passive: false });
+    document.addEventListener('pointerup', onUp);
+    document.addEventListener('pointercancel', onUp);
+    return () => {
+      document.removeEventListener('pointermove', onMove);
+      document.removeEventListener('pointerup', onUp);
+      document.removeEventListener('pointercancel', onUp);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dragIdx]);
+
+  const dragProps = (index) => ({
+    rowIndex: index,
+    onGrab: () => startRowDrag(index),
+    isDragged: dragIdx === index,
+    isDropTarget: overIdx === index && dragIdx !== null && dragIdx !== index,
+  });
+
   // ── Construction du devisData (partagée entre Créer et Aperçu) ──
   const buildDevisData = () => {
     const roundEuro = (v) => Math.round((v + Number.EPSILON) * 100) / 100;
@@ -627,8 +717,8 @@ export default function DevisComposer({
           <div className={`rounded-2xl border ${cardBg}`}>
             {/* header row (desktop) */}
             {form.lignes.length > 0 && (
-              <div className={`hidden sm:grid grid-cols-[1fr_52px_60px_74px_54px_92px_30px] gap-2 px-4 py-2 rounded-t-2xl text-[11px] font-semibold uppercase tracking-wide ${textMuted} ${isDark ? 'bg-slate-800/50' : 'bg-slate-50'} border-b ${isDark ? 'border-slate-700' : 'border-slate-100'}`}>
-                <span>Désignation</span><span className="text-center">Qté</span><span className="text-center">Unité</span><span className="text-center">PU HT</span><span className="text-center">TVA</span><span className="text-right">Total HT</span><span />
+              <div className={`hidden sm:grid grid-cols-[14px_1fr_52px_60px_74px_54px_92px_30px] gap-2 px-4 py-2 rounded-t-2xl text-[11px] font-semibold uppercase tracking-wide ${textMuted} ${isDark ? 'bg-slate-800/50' : 'bg-slate-50'} border-b ${isDark ? 'border-slate-700' : 'border-slate-100'}`}>
+                <span /><span>Désignation</span><span className="text-center">Qté</span><span className="text-center">Unité</span><span className="text-center">PU HT</span><span className="text-center">TVA</span><span className="text-right">Total HT</span><span />
               </div>
             )}
             <div>
@@ -638,7 +728,7 @@ export default function DevisComposer({
                     count={sectionCounts[index] || 0} collapsed={collapsedLots.has(ligne.id)} onToggle={() => toggleLot(ligne.id)}
                     shouldFocus={ligne.id === focusLotId} isDark={isDark} couleur={accent} textPrimary={textPrimary} textMuted={textMuted}
                     onUpdate={(v) => updateLigne(ligne.id, 'description', v)} onRemove={() => removeLigne(ligne.id)}
-                    onMoveUp={() => moveLigne(index, -1)} onMoveDown={() => moveLigne(index, 1)} />
+                    onMoveUp={() => moveLigne(index, -1)} onMoveDown={() => moveLigne(index, 1)} {...dragProps(index)} />
                 ) : collapsedLots.has(lotOfLine[ligne.id]) ? null : (
                   <LigneRow key={ligne.id} ligne={ligne} index={index} total={form.lignes.length}
                     isDark={isDark} couleur={couleur} inputBg={inputBg} textPrimary={textPrimary} textMuted={textMuted} rowHover={rowHover}
@@ -649,7 +739,8 @@ export default function DevisComposer({
                     onMarge={() => setMargeLineId(ligne.id)}
                     focusField={focusField && focusField.lineId === ligne.id ? focusField.field : null}
                     onFocusHandled={() => setFocusField(null)}
-                    onLineEnter={() => setFocusSearchTick(t => t + 1)} />
+                    onToLot={() => convertToLot(ligne.id)}
+                    onLineEnter={() => setFocusSearchTick(t => t + 1)} {...dragProps(index)} />
                 )
               ))}
             </div>
@@ -942,16 +1033,25 @@ function ClientField({ selectedClient, couleur, isDark, textPrimary, textMuted, 
 }
 
 /* ── Titre de lot (section) ── */
-function SectionRow({ ligne, index, total, subtotal, count = 0, collapsed = false, onToggle, shouldFocus, isDark, couleur, textPrimary, textMuted, onUpdate, onRemove, onMoveUp, onMoveDown }) {
+function SectionRow({ ligne, index, total, subtotal, count = 0, collapsed = false, onToggle, shouldFocus, isDark, couleur, textPrimary, textMuted, onUpdate, onRemove, onMoveUp, onMoveDown,
+  rowIndex, onGrab, isDragged, isDropTarget }) {
   const inputRef = useRef(null);
   useEffect(() => { if (shouldFocus) inputRef.current?.focus(); }, [shouldFocus]);
   const titre = (ligne.description || '').trim();
   return (
     // Bandeau plein + liseré coloré : un lot structure le prix, il ne doit pas
     // se lire comme une ligne de plus.
-    <div className={`group border-y ${isDark ? 'border-slate-700' : 'border-slate-200'}`}
-      style={{ background: `${couleur}14`, borderLeft: `3px solid ${couleur}` }}>
+    <div data-row-index={rowIndex}
+      className={`group border-y ${isDark ? 'border-slate-700' : 'border-slate-200'} ${isDragged ? 'opacity-40' : ''}`}
+      style={{ background: `${couleur}14`, borderLeft: `3px solid ${couleur}`, ...(isDropTarget ? { boxShadow: `inset 0 0 0 2px ${couleur}` } : null) }}>
       <div className="flex items-center gap-1.5 px-2 sm:px-3 py-2.5">
+        {/* Poignée : le glissement ne part que d'ici, sinon on ne pourrait plus
+            sélectionner le texte du titre. Le lot emporte ses lignes. */}
+        <button type="button" aria-label={`Déplacer le lot ${titre || 'sans titre'}`}
+          onPointerDown={onGrab} style={{ touchAction: 'none' }}
+          className={`p-0.5 rounded cursor-grab active:cursor-grabbing flex-shrink-0 ${textMuted} ${isDark ? 'hover:bg-slate-700' : 'hover:bg-white/70'}`}>
+          <GripVertical size={14} />
+        </button>
         <button onClick={onToggle} aria-expanded={!collapsed}
           aria-label={collapsed ? `Déplier le lot ${titre || 'sans titre'}` : `Replier le lot ${titre || 'sans titre'}`}
           className={`p-1 rounded flex-shrink-0 ${textMuted} ${isDark ? 'hover:bg-slate-700' : 'hover:bg-white/70'}`}>
@@ -975,7 +1075,8 @@ function SectionRow({ ligne, index, total, subtotal, count = 0, collapsed = fals
 }
 
 /* ── Editable line row ── */
-function LigneRow({ ligne, index, total, isDark, couleur, inputBg, textPrimary, textMuted, rowHover, onUpdate, onRemove, onMoveUp, onMoveDown, onDuplicate, onMetre, onInsertLot, onMarge, focusField, onFocusHandled, onLineEnter }) {
+function LigneRow({ ligne, index, total, isDark, couleur, inputBg, textPrimary, textMuted, rowHover, onUpdate, onRemove, onMoveUp, onMoveDown, onDuplicate, onMetre, onInsertLot, onMarge, onToLot, focusField, onFocusHandled, onLineEnter,
+  rowIndex, onGrab, isDragged, isDropTarget }) {
   const lineTotal = num(ligne.quantite) * num(ligne.prixUnitaire);
   const numCls = `w-full h-9 rounded-lg border text-sm text-center ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`;
   // Boucle clavier : focus + sélection du champ demandé (desktop OU mobile selon visibilité)
@@ -990,9 +1091,16 @@ function LigneRow({ ligne, index, total, isDark, couleur, inputBg, textPrimary, 
   }, [focusField]);
   const numKeyDown = (e) => { if (e.key === 'Enter') { e.preventDefault(); onLineEnter?.(); } };
   return (
-    <div className={`group border-b last:border-b-0 ${isDark ? 'border-slate-800' : 'border-slate-100'} ${rowHover} transition-colors`}>
-      {/* Desktop grid */}
-      <div className="hidden sm:grid grid-cols-[1fr_52px_60px_74px_54px_92px_30px] gap-2 items-center px-4 py-2">
+    <div data-row-index={rowIndex}
+      className={`group border-b last:border-b-0 ${isDark ? 'border-slate-800' : 'border-slate-100'} ${rowHover} transition-colors ${isDragged ? 'opacity-40' : ''}`}
+      style={isDropTarget ? { boxShadow: `inset 0 2px 0 0 ${couleur}` } : undefined}>
+      {/* Desktop grid — la poignée n'apparaît qu'au survol pour ne pas charger la ligne */}
+      <div className="hidden sm:grid grid-cols-[14px_1fr_52px_60px_74px_54px_92px_30px] gap-2 items-center px-4 py-2">
+        <button type="button" aria-label="Déplacer la ligne"
+          onPointerDown={onGrab} style={{ touchAction: 'none' }}
+          className={`opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity cursor-grab active:cursor-grabbing ${textMuted}`}>
+          <GripVertical size={14} />
+        </button>
         <textarea value={ligne.description} onChange={e => onUpdate('description', e.target.value)} placeholder="Désignation…" rows={1}
           onInput={e => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
           className={`w-full min-h-[36px] px-2 py-1.5 rounded-lg border text-sm resize-none overflow-hidden leading-snug ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`} />
@@ -1007,11 +1115,18 @@ function LigneRow({ ligne, index, total, isDark, couleur, inputBg, textPrimary, 
           {[0, 5.5, 10, 20].map(t => <option key={t} value={t}>{t}%</option>)}
         </select>
         <span className={`text-sm font-semibold text-right tabular-nums ${textPrimary}`}>{eur(lineTotal)}</span>
-        <LineMenu isDark={isDark} textMuted={textMuted} index={index} total={total} onMoveUp={onMoveUp} onMoveDown={onMoveDown} onDuplicate={onDuplicate} onRemove={onRemove} onMetre={onMetre} onInsertLot={onInsertLot} onMarge={onMarge} />
+        <LineMenu isDark={isDark} textMuted={textMuted} index={index} total={total} onMoveUp={onMoveUp} onMoveDown={onMoveDown} onDuplicate={onDuplicate} onRemove={onRemove} onMetre={onMetre} onInsertLot={onInsertLot} onMarge={onMarge} onToLot={onToLot} />
       </div>
       {/* Mobile card */}
       <div className="sm:hidden p-3 space-y-2">
         <div className="flex items-start gap-2">
+          {/* Réordonner au doigt : possible parce qu'on utilise les événements
+              pointeur et non l'API drag-and-drop HTML5, inopérante sur tactile. */}
+          <button type="button" aria-label="Déplacer la ligne"
+            onPointerDown={onGrab} style={{ touchAction: 'none' }}
+            className={`p-2 -ml-1 rounded-lg cursor-grab active:cursor-grabbing ${textMuted}`}>
+            <GripVertical size={16} />
+          </button>
           <textarea value={ligne.description} onChange={e => onUpdate('description', e.target.value)} placeholder="Désignation…" rows={1}
             onInput={e => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
             className={`flex-1 min-h-[40px] px-3 py-2 rounded-lg border text-sm resize-none overflow-hidden leading-snug ${inputBg}`} />
@@ -1030,7 +1145,7 @@ function LigneRow({ ligne, index, total, isDark, couleur, inputBg, textPrimary, 
   );
 }
 
-function LineMenu({ isDark, textMuted, index, total, onMoveUp, onMoveDown, onDuplicate, onRemove, onMetre, onInsertLot, onMarge }) {
+function LineMenu({ isDark, textMuted, index, total, onMoveUp, onMoveDown, onDuplicate, onRemove, onMetre, onInsertLot, onMarge, onToLot }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
   useEffect(() => { if (!open) return; const h = e => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); }; document.addEventListener('mousedown', h); return () => document.removeEventListener('mousedown', h); }, [open]);
@@ -1045,6 +1160,7 @@ function LineMenu({ isDark, textMuted, index, total, onMoveUp, onMoveDown, onDup
           {onMetre && <button role="menuitem" onClick={() => { onMetre(); setOpen(false); }} className={`w-full flex items-center gap-2 px-3 py-2 text-left ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}><Ruler size={14} /> Métré L × l</button>}
           {onMarge && <button role="menuitem" onClick={() => { onMarge(); setOpen(false); }} className={`w-full flex items-center gap-2 px-3 py-2 text-left ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}><Zap size={14} /> Prix d'achat / marge</button>}
           {onInsertLot && <button role="menuitem" onClick={() => { onInsertLot(); setOpen(false); }} className={`w-full flex items-center gap-2 px-3 py-2 text-left ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}><Plus size={14} /> Lot au-dessus</button>}
+          {onToLot && <button role="menuitem" onClick={() => { onToLot(); setOpen(false); }} className={`w-full flex items-center gap-2 px-3 py-2 text-left ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}><Layers size={14} /> Transformer en lot</button>}
           <button role="menuitem" disabled={index === 0} onClick={() => { onMoveUp(); setOpen(false); }} className={`w-full flex items-center gap-2 px-3 py-2 text-left disabled:opacity-40 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}><ChevronUp size={14} /> Monter</button>
           <button role="menuitem" disabled={index === total - 1} onClick={() => { onMoveDown(); setOpen(false); }} className={`w-full flex items-center gap-2 px-3 py-2 text-left disabled:opacity-40 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}><ChevronDown size={14} /> Descendre</button>
           <button role="menuitem" onClick={() => { onDuplicate(); setOpen(false); }} className={`w-full flex items-center gap-2 px-3 py-2 text-left ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}><Plus size={14} /> Dupliquer</button>
