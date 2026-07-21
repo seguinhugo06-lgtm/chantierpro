@@ -15,7 +15,7 @@ import {
   ArrowLeft, Plus, Search, Trash2, ChevronUp, ChevronDown, User,
   UserPlus, FileText, Receipt, Check, Loader2, Percent, StickyNote,
   Package, Zap, CornerDownLeft, Droplets, Paintbrush, Hammer, Star, Sparkles, Ruler, X,
-  Eye, AlertTriangle,
+  Eye, AlertTriangle, Library, Layers,
 } from 'lucide-react';
 import QuickClientModal from './QuickClientModal';
 import { generateId } from '../lib/utils';
@@ -35,6 +35,10 @@ const METIER_TEMPLATES = [
   { label: 'Électricité', Icon: Zap, lignes: ['Pose tableau électrique', 'Tirage de câbles', 'Pose prises et interrupteurs', 'Pose points d\'éclairage'] },
   { label: 'Démolition', Icon: Hammer, lignes: ['Dépose des revêtements existants', 'Évacuation des gravats', 'Nettoyage du chantier'] },
 ];
+
+/** Accent des factures dans l'éditeur (indigo) — distinct de la couleur devis
+ *  (celle de l'entreprise), pour qu'on ne confonde jamais les deux à l'écran. */
+const FACTURE_ACCENT = '#6366f1';
 
 const eur = (v) => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v || 0);
 
@@ -119,6 +123,10 @@ export default function DevisComposer({
   const [focusField, setFocusField] = useState(null); // { lineId, field }
   const [focusSearchTick, setFocusSearchTick] = useState(0); // incrément → refocus la recherche
   const [showPdfPreview, setShowPdfPreview] = useState(false);
+  const [showLibrary, setShowLibrary] = useState(false);
+  // Lots repliés (ids des marqueurs de section) — un gros devis tient à l'écran
+  // quand on referme les lots déjà chiffrés.
+  const [collapsedLots, setCollapsedLots] = useState(() => new Set());
   const [showClientPicker, setShowClientPicker] = useState(false);
   const [clientSearch, setClientSearch] = useState('');
   const [showQuickClient, setShowQuickClient] = useState(false);
@@ -291,12 +299,14 @@ export default function DevisComposer({
     setFocusField({ lineId: newId, field: prix > 0 ? 'quantite' : 'prixUnitaire' });
   };
 
+  // Trame de métier : structure de lignes SANS prix (l'artisan chiffre).
+  // Ajoute à la suite plutôt que d'écraser le travail déjà saisi.
   const applyTemplate = (tpl) => {
     setForm(p => ({
       ...p,
-      lignes: tpl.lignes.map(desc => ({
+      lignes: [...p.lignes, ...tpl.lignes.map(desc => ({
         id: generateId(), description: desc, quantite: 1, unite: 'u', prixUnitaire: 0, prixAchat: 0, tva: p.tvaDefaut,
-      })),
+      }))],
     }));
   };
 
@@ -363,6 +373,34 @@ export default function DevisComposer({
     setFocusLotId(id);
   };
 
+  /**
+   * Ajoute un bloc de lignes à la suite, éventuellement précédé d'un titre de lot.
+   * AJOUTE — n'écrase jamais : un devis réel s'assemble par blocs successifs
+   * (la SDB, puis l'électricité, puis la peinture).
+   */
+  const appendBloc = (lignes, lotTitre) => {
+    if (!lignes?.length) return;
+    setForm(p => {
+      const bloc = [];
+      if (lotTitre) bloc.push({ id: generateId(), _isSection: true, description: lotTitre });
+      lignes.forEach(l => bloc.push({
+        id: generateId(),
+        description: l.nom || l.description || '',
+        quantite: l.quantite ?? 1,
+        unite: l.unite || 'u',
+        prixUnitaire: l.prix ?? l.prixUnitaire ?? 0,
+        prixAchat: l.prixAchat ?? 0,
+        tva: l.tva !== undefined ? l.tva : p.tvaDefaut,
+      }));
+      return { ...p, lignes: [...p.lignes, ...bloc] };
+    });
+    showToast?.(
+      lotTitre ? `Lot « ${lotTitre} » ajouté — ${lignes.length} ligne${lignes.length > 1 ? 's' : ''}`
+               : `${lignes.length} ligne${lignes.length > 1 ? 's' : ''} ajoutée${lignes.length > 1 ? 's' : ''}`,
+      'success'
+    );
+  };
+
   // Sous-total par lot : index du marqueur → somme des lignes qui le suivent jusqu'au prochain lot
   const sectionSubtotals = useMemo(() => {
     const res = {};
@@ -378,6 +416,38 @@ export default function DevisComposer({
     return res;
   }, [form.lignes]);
   const hasLots = form.lignes.some(l => l._isSection);
+
+  /** Nombre de lignes rattachées à chaque lot (index du marqueur → compte). */
+  const sectionCounts = useMemo(() => {
+    const res = {};
+    form.lignes.forEach((l, i) => {
+      if (!l._isSection) return;
+      let n = 0;
+      for (let j = i + 1; j < form.lignes.length; j++) {
+        if (form.lignes[j]._isSection) break;
+        n++;
+      }
+      res[i] = n;
+    });
+    return res;
+  }, [form.lignes]);
+
+  /** id du lot auquel appartient chaque ligne (null hors lot) — sert au repli. */
+  const lotOfLine = useMemo(() => {
+    const res = {};
+    let current = null;
+    form.lignes.forEach(l => {
+      if (l._isSection) { current = l.id; return; }
+      res[l.id] = current;
+    });
+    return res;
+  }, [form.lignes]);
+
+  const toggleLot = (id) => setCollapsedLots(prev => {
+    const n = new Set(prev);
+    if (n.has(id)) n.delete(id); else n.add(id);
+    return n;
+  });
 
   // ── Construction du devisData (partagée entre Créer et Aperçu) ──
   const buildDevisData = () => {
@@ -457,6 +527,10 @@ export default function DevisComposer({
 
   if (!isOpen || typeof document === 'undefined') return null;
   const isFacture = form.type === 'facture';
+  // Couleur d'accent de l'ÉDITEUR uniquement : une facture engage le paiement,
+  // un devis non — les confondre coûte cher. Le PDF, lui, garde la couleur de
+  // l'entreprise (identité visuelle) : ne pas propager `accent` à buildDevisHtml.
+  const accent = isFacture ? FACTURE_ACCENT : couleur;
 
   return createPortal(
     <div className="fixed inset-0 z-[1000] flex flex-col" style={{ background: isDark ? '#0b1220' : '#f8fafc' }}>
@@ -465,8 +539,12 @@ export default function DevisComposer({
         <button onClick={onClose} aria-label="Fermer" className={`p-2 rounded-lg ${rowHover} ${textMuted} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`}>
           <ArrowLeft size={20} />
         </button>
-        <div className="flex-1 min-w-0">
-          <h1 className={`text-base font-bold truncate ${textPrimary}`}>{isEditMode ? 'Modifier' : 'Nouveau'} {isFacture ? 'facture' : 'devis'}</h1>
+        <div className="flex-1 min-w-0 flex items-center gap-2">
+          <h1 className={`text-base font-bold truncate ${textPrimary}`}>{isEditMode ? 'Modifier' : (isFacture ? 'Nouvelle' : 'Nouveau')} {isFacture ? 'facture' : 'devis'}</h1>
+          <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide text-white flex-shrink-0"
+            style={{ background: accent }}>
+            {isFacture ? <><Receipt size={10} /> Facture</> : <><FileText size={10} /> Devis</>}
+          </span>
         </div>
         {/* Type toggle (visible aussi en mobile) */}
         {!isEditMode && (
@@ -474,15 +552,19 @@ export default function DevisComposer({
             {[{ v: 'devis', label: 'Devis', Icon: FileText }, { v: 'facture', label: 'Facture', Icon: Receipt }].map(({ v, label, Icon }) => (
               <button key={v} onClick={() => setForm(p => ({ ...p, type: v }))} aria-label={label} aria-pressed={form.type === v}
                 className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${form.type === v ? 'text-white shadow' : textMuted}`}
-                style={form.type === v ? { background: couleur } : undefined}>
+                style={form.type === v ? { background: v === 'facture' ? FACTURE_ACCENT : couleur } : undefined}>
                 <Icon size={14} /> <span className="hidden sm:inline">{label}</span>
               </button>
             ))}
           </div>
         )}
+        <button onClick={() => setShowLibrary(true)} aria-label="Ouvrir la bibliothèque de modèles"
+          className={`flex items-center gap-1.5 px-2.5 sm:px-3 h-9 rounded-xl text-xs font-semibold border transition-all ${isDark ? 'border-slate-700 text-slate-200 hover:bg-slate-800' : 'border-slate-200 text-slate-700 hover:bg-slate-50'}`}>
+          <Library size={15} /> <span className="hidden md:inline">Bibliothèque</span>
+        </button>
         <button onClick={() => handleSubmit(false)} disabled={isSubmitting}
           className="flex items-center gap-2 px-4 h-9 rounded-xl text-white text-sm font-semibold shadow-lg disabled:opacity-60 transition-all hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
-          style={{ background: couleur }}>
+          style={{ background: accent }}>
           {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
           <span className="hidden sm:inline">{isEditMode ? 'Enregistrer' : 'Créer'}</span>
         </button>
@@ -553,10 +635,11 @@ export default function DevisComposer({
               {form.lignes.map((ligne, index) => (
                 ligne._isSection ? (
                   <SectionRow key={ligne.id} ligne={ligne} index={index} total={form.lignes.length} subtotal={sectionSubtotals[index] || 0}
-                    shouldFocus={ligne.id === focusLotId} isDark={isDark} couleur={couleur} textPrimary={textPrimary} textMuted={textMuted}
+                    count={sectionCounts[index] || 0} collapsed={collapsedLots.has(ligne.id)} onToggle={() => toggleLot(ligne.id)}
+                    shouldFocus={ligne.id === focusLotId} isDark={isDark} couleur={accent} textPrimary={textPrimary} textMuted={textMuted}
                     onUpdate={(v) => updateLigne(ligne.id, 'description', v)} onRemove={() => removeLigne(ligne.id)}
                     onMoveUp={() => moveLigne(index, -1)} onMoveDown={() => moveLigne(index, 1)} />
-                ) : (
+                ) : collapsedLots.has(lotOfLine[ligne.id]) ? null : (
                   <LigneRow key={ligne.id} ligne={ligne} index={index} total={form.lignes.length}
                     isDark={isDark} couleur={couleur} inputBg={inputBg} textPrimary={textPrimary} textMuted={textMuted} rowHover={rowHover}
                     onUpdate={(f, v) => updateLigne(ligne.id, f, v)} onRemove={() => removeLigne(ligne.id)}
@@ -596,6 +679,7 @@ export default function DevisComposer({
               <div className={`border-t ${isDark ? 'border-slate-800' : 'border-slate-100'} p-3 sm:p-4`}>
                 <QuickStart templates={METIER_TEMPLATES} articles={quickArticles} persoTemplates={customTemplates}
                   onApplyTemplate={applyTemplate} onApplyPerso={applyPersoTemplate} onAddArticle={addLigne}
+                  onOpenLibrary={() => setShowLibrary(true)}
                   isDark={isDark} couleur={couleur} textPrimary={textPrimary} textMuted={textMuted} />
               </div>
             )}
@@ -690,7 +774,7 @@ export default function DevisComposer({
             </div>
             <div className="flex items-baseline gap-1.5">
               <span className={`text-xs font-semibold uppercase ${textMuted}`}>TTC</span>
-              <span className="text-2xl sm:text-3xl font-extrabold tabular-nums" style={{ color: couleur }}>{eur(animatedTTC)}</span>
+              <span className="text-2xl sm:text-3xl font-extrabold tabular-nums" style={{ color: accent }}>{eur(animatedTTC)}</span>
             </div>
             {totals.margePercent > 0 && form.lignes.some(l => l.prixAchat > 0) && (
               <div className={`hidden md:flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold ${totals.margePercent >= 25 ? 'bg-emerald-500/15 text-emerald-500' : totals.margePercent >= 10 ? 'bg-amber-500/15 text-amber-500' : 'bg-red-500/15 text-red-500'}`}>
@@ -707,12 +791,23 @@ export default function DevisComposer({
           )}
           <button onClick={() => handleSubmit(false)} disabled={isSubmitting}
             className="flex items-center gap-2 px-5 h-11 rounded-xl text-white text-sm font-bold shadow-lg disabled:opacity-60 transition-all hover:opacity-90"
-            style={{ background: couleur }}>
+            style={{ background: accent }}>
             {isSubmitting ? <Loader2 size={18} className="animate-spin" /> : <Check size={18} />}
             {isEditMode ? 'Enregistrer' : (isFacture ? 'Créer la facture' : 'Créer le devis')}
           </button>
         </div>
       </footer>
+
+      <LibraryPanel
+        open={showLibrary}
+        onClose={() => setShowLibrary(false)}
+        persoTemplates={customTemplates}
+        articles={quickArticles}
+        onAppendBloc={appendBloc}
+        onAddArticle={addLigne}
+        isDark={isDark} couleur={couleur}
+        textPrimary={textPrimary} textMuted={textMuted} inputBg={inputBg}
+      />
 
       {showQuickClient && (
         <QuickClientModal
@@ -847,19 +942,31 @@ function ClientField({ selectedClient, couleur, isDark, textPrimary, textMuted, 
 }
 
 /* ── Titre de lot (section) ── */
-function SectionRow({ ligne, index, total, subtotal, shouldFocus, isDark, couleur, textPrimary, textMuted, onUpdate, onRemove, onMoveUp, onMoveDown }) {
+function SectionRow({ ligne, index, total, subtotal, count = 0, collapsed = false, onToggle, shouldFocus, isDark, couleur, textPrimary, textMuted, onUpdate, onRemove, onMoveUp, onMoveDown }) {
   const inputRef = useRef(null);
   useEffect(() => { if (shouldFocus) inputRef.current?.focus(); }, [shouldFocus]);
+  const titre = (ligne.description || '').trim();
   return (
-    <div className={`group border-b ${isDark ? 'border-slate-800 bg-slate-800/40' : 'border-slate-100 bg-slate-50/80'}`}>
-      <div className="flex items-center gap-2 px-3 sm:px-4 py-2">
-        <span className="w-1.5 h-5 rounded-full flex-shrink-0" style={{ background: couleur }} />
+    // Bandeau plein + liseré coloré : un lot structure le prix, il ne doit pas
+    // se lire comme une ligne de plus.
+    <div className={`group border-y ${isDark ? 'border-slate-700' : 'border-slate-200'}`}
+      style={{ background: `${couleur}14`, borderLeft: `3px solid ${couleur}` }}>
+      <div className="flex items-center gap-1.5 px-2 sm:px-3 py-2.5">
+        <button onClick={onToggle} aria-expanded={!collapsed}
+          aria-label={collapsed ? `Déplier le lot ${titre || 'sans titre'}` : `Replier le lot ${titre || 'sans titre'}`}
+          className={`p-1 rounded flex-shrink-0 ${textMuted} ${isDark ? 'hover:bg-slate-700' : 'hover:bg-white/70'}`}>
+          <ChevronDown size={15} className={`transition-transform ${collapsed ? '-rotate-90' : ''}`} />
+        </button>
+        <Layers size={14} style={{ color: couleur }} className="flex-shrink-0 hidden sm:block" />
         <input ref={inputRef} value={ligne.description} onChange={e => onUpdate(e.target.value)} placeholder="Titre du lot (ex : Salle de bain)"
-          className={`flex-1 min-w-0 h-8 px-2 rounded-lg border-0 bg-transparent text-sm font-bold ${textPrimary} placeholder:font-normal focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`} />
-        <span className={`text-sm font-bold tabular-nums ${textPrimary}`}>{eur(subtotal)}</span>
+          className={`flex-1 min-w-0 h-8 px-2 rounded-lg border-0 bg-transparent text-sm font-bold uppercase tracking-wide ${textPrimary} placeholder:font-normal placeholder:normal-case focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`} />
+        <span className={`text-[10px] font-semibold whitespace-nowrap px-1.5 py-0.5 rounded-full flex-shrink-0 ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-white/80 text-slate-500'}`}>
+          {count} ligne{count > 1 ? 's' : ''}
+        </span>
+        <span className={`text-sm font-extrabold tabular-nums whitespace-nowrap ${textPrimary}`}>{eur(subtotal)}</span>
         <div className="flex items-center flex-shrink-0">
-          <button onClick={onMoveUp} disabled={index === 0} aria-label="Monter le lot" className={`p-1 rounded ${textMuted} disabled:opacity-30 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}><ChevronUp size={14} /></button>
-          <button onClick={onMoveDown} disabled={index === total - 1} aria-label="Descendre le lot" className={`p-1 rounded ${textMuted} disabled:opacity-30 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}><ChevronDown size={14} /></button>
+          <button onClick={onMoveUp} disabled={index === 0} aria-label="Monter le lot" className={`p-1 rounded ${textMuted} disabled:opacity-30 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-white/70'}`}><ChevronUp size={14} /></button>
+          <button onClick={onMoveDown} disabled={index === total - 1} aria-label="Descendre le lot" className={`p-1 rounded ${textMuted} disabled:opacity-30 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-white/70'}`}><ChevronDown size={14} /></button>
           <button onClick={onRemove} aria-label="Supprimer le lot" className="p-1 rounded text-red-500 hover:bg-red-500/10"><Trash2 size={14} /></button>
         </div>
       </div>
@@ -1002,6 +1109,162 @@ function MetreModal({ isDark, couleur, inputBg, textPrimary, textMuted, onClose,
   );
 }
 
+/* ── Bibliothèque : modèles perso, métiers chiffrés et articles fréquents ──
+ *
+ * Accessible à TOUT MOMENT (pas seulement sur un devis vide) : un devis réel
+ * s'assemble par blocs successifs. Chaque modèle métier est dépliable pour voir
+ * ses missions et leurs prix AVANT de l'appliquer — on ne choisit pas « 9 lignes »
+ * à l'aveugle. Tout s'ajoute à la suite, rien n'est jamais écrasé.
+ */
+function LibraryPanel({ open, onClose, persoTemplates = [], articles = [], onAppendBloc, onAddArticle, isDark, couleur, textPrimary, textMuted, inputBg }) {
+  const [q, setQ] = useState('');
+  const [openTrade, setOpenTrade] = useState(null);
+
+  useEffect(() => {
+    const onKey = e => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  if (!open) return null;
+
+  const trades = Object.entries(SMART_TEMPLATES).filter(([, t]) => {
+    if (!q.trim()) return true;
+    const n = norm(q);
+    return norm(t.nom).includes(n) || t.missions.some(m => norm(m.nom).includes(n));
+  });
+  const persoFiltered = persoTemplates.filter(t => !q.trim() || norm(t.nom).includes(norm(q)));
+  const articlesFiltered = articles.filter(a => !q.trim() || norm(a.nom || '').includes(norm(q)));
+
+  const sectionTitle = (Icon, label) => (
+    <p className={`text-[11px] font-semibold uppercase tracking-wide mb-2 flex items-center gap-1.5 ${textMuted}`}>
+      <Icon size={12} style={{ color: couleur }} /> {label}
+    </p>
+  );
+
+  return (
+    <div className="fixed inset-0 z-[1150] flex justify-end" role="dialog" aria-modal="true" aria-label="Bibliothèque de modèles">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <aside className={`relative w-full sm:w-[440px] h-full flex flex-col shadow-2xl border-l ${isDark ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-200'}`}>
+        <div className={`flex items-center gap-2 px-4 h-14 border-b flex-shrink-0 ${isDark ? 'border-slate-800' : 'border-slate-100'}`}>
+          <Library size={18} style={{ color: couleur }} />
+          <h2 className={`flex-1 text-sm font-bold ${textPrimary}`}>Bibliothèque</h2>
+          <button onClick={onClose} aria-label="Fermer la bibliothèque" className={`p-2 rounded-lg ${textMuted} ${isDark ? 'hover:bg-slate-800' : 'hover:bg-slate-100'}`}><X size={18} /></button>
+        </div>
+
+        <div className={`px-4 py-3 border-b flex-shrink-0 ${isDark ? 'border-slate-800' : 'border-slate-100'}`}>
+          <div className="relative">
+            <Search size={15} className={`absolute left-3 top-1/2 -translate-y-1/2 ${textMuted}`} />
+            <input value={q} onChange={e => setQ(e.target.value)} placeholder="Rechercher un métier, une prestation…"
+              className={`w-full pl-9 pr-3 h-10 rounded-xl border text-sm ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`} />
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-5">
+          {persoFiltered.length > 0 && (
+            <div>
+              {sectionTitle(FileText, 'Vos modèles')}
+              <div className="space-y-2">
+                {persoFiltered.map(tpl => {
+                  const lignes = tpl.lignes || [];
+                  const total = lignes.reduce((s, l) => s + num(l.quantite ?? 1) * num(l.prixUnitaire ?? l.prix ?? 0), 0);
+                  return (
+                    <div key={tpl.id} className={`rounded-xl border ${isDark ? 'bg-slate-800/60 border-slate-700' : 'bg-white border-slate-200'}`}>
+                      <div className="flex items-center gap-2 p-3">
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-sm font-semibold truncate ${textPrimary}`}>{tpl.nom}</p>
+                          <p className={`text-[11px] ${textMuted}`}>{lignes.length} ligne{lignes.length > 1 ? 's' : ''}{total > 0 ? ` · ${eur(total)} HT` : ''}</p>
+                        </div>
+                        <button type="button" onClick={() => onAppendBloc(lignes, tpl.nom)}
+                          className="px-3 h-8 rounded-lg text-xs font-semibold text-white flex-shrink-0" style={{ background: couleur }}>
+                          Ajouter
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          <div>
+            {sectionTitle(Sparkles, `Modèles métier (${trades.length})`)}
+            <div className="space-y-2">
+              {trades.map(([key, t]) => {
+                const isOpen = openTrade === key;
+                return (
+                  <div key={key} className={`rounded-xl border overflow-hidden ${isDark ? 'bg-slate-800/60 border-slate-700' : 'bg-white border-slate-200'}`}>
+                    <button type="button" onClick={() => setOpenTrade(isOpen ? null : key)} aria-expanded={isOpen}
+                      className={`w-full flex items-center gap-2.5 p-3 text-left transition-colors ${isDark ? 'hover:bg-slate-700/50' : 'hover:bg-slate-50'}`}>
+                      <span aria-hidden="true" className="text-lg flex-shrink-0">{t.icon}</span>
+                      <span className="flex-1 min-w-0">
+                        <span className={`block text-sm font-semibold truncate ${textPrimary}`}>{t.nom}</span>
+                        <span className={`block text-[11px] ${textMuted}`}>{t.missions.length} prestations chiffrées</span>
+                      </span>
+                      <ChevronDown size={15} className={`flex-shrink-0 transition-transform ${textMuted} ${isOpen ? 'rotate-180' : ''}`} />
+                    </button>
+
+                    {isOpen && (
+                      <div className={`border-t ${isDark ? 'border-slate-700' : 'border-slate-100'}`}>
+                        {t.missions.map(m => {
+                          const prix = Math.round((m.prixMin + m.prixMax) / 2);
+                          return (
+                            <button key={m.id} type="button"
+                              onClick={() => onAddArticle({ nom: m.nom, prix, unite: m.unite || 'forfait' })}
+                              className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-left text-sm transition-colors ${isDark ? 'hover:bg-slate-700/60' : 'hover:bg-slate-50'}`}>
+                              <Plus size={13} style={{ color: couleur }} className="flex-shrink-0" />
+                              <span className={`flex-1 min-w-0 ${textPrimary}`}>{m.nom}</span>
+                              <span className="text-xs font-semibold whitespace-nowrap tabular-nums" style={{ color: couleur }}>
+                                ~{prix.toLocaleString('fr-FR')} €
+                              </span>
+                            </button>
+                          );
+                        })}
+                        <div className={`p-2.5 border-t ${isDark ? 'border-slate-700' : 'border-slate-100'}`}>
+                          <button type="button"
+                            onClick={() => onAppendBloc(
+                              t.missions.map(m => ({ nom: m.nom, prix: Math.round((m.prixMin + m.prixMax) / 2), unite: m.unite || 'forfait' })),
+                              t.nom
+                            )}
+                            className={`w-full flex items-center justify-center gap-1.5 h-9 rounded-lg text-xs font-semibold border transition-colors ${isDark ? 'border-slate-600 text-slate-200 hover:bg-slate-700' : 'border-slate-200 text-slate-700 hover:bg-slate-50'}`}>
+                            <Layers size={13} /> Ajouter les {t.missions.length} en lot « {t.nom} »
+                          </button>
+                          <p className={`mt-1.5 text-[10px] text-center ${textMuted}`}>Prix indicatifs moyens — ajustez-les ensuite.</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              {trades.length === 0 && <p className={`text-xs ${textMuted}`}>Aucun métier ne correspond.</p>}
+            </div>
+          </div>
+
+          {articlesFiltered.length > 0 && (
+            <div>
+              {sectionTitle(Star, 'Vos articles fréquents')}
+              <div className={`rounded-xl border divide-y ${isDark ? 'bg-slate-800/60 border-slate-700 divide-slate-700' : 'bg-white border-slate-200 divide-slate-100'}`}>
+                {articlesFiltered.slice(0, 12).map(a => (
+                  <button key={a.id || a.nom} type="button" onClick={() => onAddArticle(a)}
+                    className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-left text-sm transition-colors ${isDark ? 'hover:bg-slate-700/60' : 'hover:bg-slate-50'}`}>
+                    <Plus size={13} style={{ color: couleur }} className="flex-shrink-0" />
+                    <span className={`flex-1 min-w-0 truncate ${textPrimary}`}>{a.nom}</span>
+                    {(a.prix ?? a.prixUnitaire) > 0 && (
+                      <span className="text-xs font-semibold whitespace-nowrap tabular-nums" style={{ color: couleur }}>
+                        {eur(a.prix ?? a.prixUnitaire)}
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </aside>
+    </div>
+  );
+}
+
 /* ── Aperçu PDF live (ce que le client recevra), sans créer le devis ── */
 function PdfPreviewModal({ isDark, couleur, textPrimary, textMuted, html, onClose }) {
   useEffect(() => {
@@ -1112,9 +1375,7 @@ function SaveTemplateModal({ isDark, couleur, inputBg, textPrimary, textMuted, d
 }
 
 /* ── Démarrage éclair : modèles métier + articles fréquents ── */
-function QuickStart({ templates, articles, persoTemplates = [], onApplyTemplate, onApplyPerso, onAddArticle, isDark, couleur, textPrimary, textMuted }) {
-  const [tradeOpen, setTradeOpen] = useState(false);
-  const [trade, setTrade] = useState(null); // clé SMART_TEMPLATES sélectionnée
+function QuickStart({ templates, articles, persoTemplates = [], onApplyTemplate, onApplyPerso, onAddArticle, onOpenLibrary, isDark, couleur, textPrimary, textMuted }) {
   const trades = Object.entries(SMART_TEMPLATES);
   const cardCls = `group flex flex-col items-center gap-1.5 p-3 rounded-xl border transition-all hover:-translate-y-0.5 hover:shadow-md active:scale-95 ${isDark ? 'bg-slate-800 border-slate-700 hover:border-slate-600' : 'bg-white border-slate-200 hover:border-slate-300'}`;
   return (
@@ -1146,47 +1407,19 @@ function QuickStart({ templates, articles, persoTemplates = [], onApplyTemplate,
                 <tpl.Icon size={18} />
               </span>
               <span className={`text-xs font-medium text-center leading-tight ${textPrimary}`}>{tpl.label}</span>
-              <span className={`text-[10px] ${textMuted}`}>{tpl.lignes.length} lignes</span>
+              {/* « à chiffrer » : ces trames n'ont pas de prix — le dire évite
+                  la déception d'un devis à 0 € après le clic. */}
+              <span className={`text-[10px] ${textMuted}`}>{tpl.lignes.length} lignes · à chiffrer</span>
             </button>
           ))}
         </div>
 
-        {/* Tous les métiers (bibliothèque SMART_TEMPLATES : 17 métiers, missions chiffrées) */}
-        <button type="button" onClick={() => { setTradeOpen(o => !o); if (tradeOpen) setTrade(null); }}
+        {/* Accès aux 17 métiers CHIFFRÉS : c'est la vraie valeur, on l'annonce
+            explicitement plutôt que de la cacher derrière « Tous les métiers ». */}
+        <button type="button" onClick={onOpenLibrary}
           className={`mt-2 inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg border transition-all ${isDark ? 'border-slate-700 text-slate-300 hover:bg-slate-800' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
-          <ChevronDown size={13} className={`transition-transform ${tradeOpen ? 'rotate-180' : ''}`} />
-          {tradeOpen ? 'Masquer les métiers' : `Tous les métiers (${trades.length})`}
+          <Library size={13} /> Parcourir les {trades.length} métiers chiffrés
         </button>
-
-        {tradeOpen && (
-          <div className="mt-2 space-y-2">
-            <div className="flex flex-wrap gap-1.5">
-              {trades.map(([key, t]) => (
-                <button key={key} type="button" onClick={() => setTrade(trade === key ? null : key)}
-                  className={`flex items-center gap-1.5 px-2.5 h-8 rounded-full border text-xs font-medium transition-all ${trade === key ? 'text-white' : isDark ? 'bg-slate-800 border-slate-700 text-slate-300 hover:border-slate-600' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}`}
-                  style={trade === key ? { background: couleur, borderColor: couleur } : undefined}>
-                  <span aria-hidden="true">{t.icon}</span> {t.nom}
-                </button>
-              ))}
-            </div>
-            {trade && SMART_TEMPLATES[trade] && (
-              <div className={`rounded-xl border divide-y ${isDark ? 'bg-slate-800/60 border-slate-700 divide-slate-700' : 'bg-white border-slate-200 divide-slate-100'}`}>
-                {SMART_TEMPLATES[trade].missions.map(m => {
-                  const prix = Math.round((m.prixMin + m.prixMax) / 2);
-                  return (
-                    <button key={m.id} type="button" onClick={() => onAddArticle({ nom: m.nom, prix, unite: m.unite || 'forfait' })}
-                      className={`w-full flex items-center gap-3 px-3 py-2.5 text-left text-sm transition-colors ${isDark ? 'hover:bg-slate-700/60' : 'hover:bg-slate-50'}`}>
-                      <Plus size={14} style={{ color: couleur }} className="flex-shrink-0" />
-                      <span className={`flex-1 min-w-0 truncate ${textPrimary}`}>{m.nom}</span>
-                      <span className="text-xs font-semibold whitespace-nowrap" style={{ color: couleur }}>~{prix.toLocaleString('fr-FR')} €</span>
-                    </button>
-                  );
-                })}
-                <p className={`px-3 py-2 text-[10px] ${textMuted}`}>Prix indicatifs moyens — ajustez le PU après ajout.</p>
-              </div>
-            )}
-          </div>
-        )}
       </div>
 
       {articles.length > 0 && (
