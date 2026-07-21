@@ -238,7 +238,7 @@ export default function QuickClientModal({
     <AnimatePresence mode="wait">
       {isOpen && (
         <motion.div
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
+          className="fixed inset-0 z-[1200] flex items-end sm:items-center justify-center"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -584,7 +584,7 @@ export default function QuickClientModal({
   })();
 
   const dupeConfirmModal = showDupeConfirm && allStrongDupes.length > 0 ? (
-    <div className="fixed inset-0 z-[1050] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[1250] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowDupeConfirm(false)} />
       <div className={`relative w-full max-w-sm rounded-2xl shadow-2xl border ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
         <div className="p-5">

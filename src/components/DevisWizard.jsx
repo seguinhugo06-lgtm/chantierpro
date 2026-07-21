@@ -216,13 +216,15 @@ export default function DevisWizard({
     setStep(2);
   };
 
-  const handleAddClient = (clientData) => {
-    const newClient = addClient?.(clientData);
+  // addClient est async (écriture Supabase) : sans await, newClient est une
+  // Promise et le client créé n'est jamais rattaché au document.
+  const handleAddClient = async (clientData) => {
+    setShowQuickClient(false);
+    const newClient = await addClient?.(clientData);
     if (newClient?.id) {
       setForm(p => ({ ...p, clientId: newClient.id }));
       setStep(2);
     }
-    setShowQuickClient(false);
   };
 
   const addLigne = (item) => {

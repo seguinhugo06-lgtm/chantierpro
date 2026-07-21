@@ -40,6 +40,31 @@ function getLinePU(l) {
 }
 
 /**
+ * CSS de mise en page A4, partagé par TOUS les générateurs de document
+ * (buildDevisHtml, buildSituationFactureHtml, et le générateur inline de
+ * DevisPage.jsx qui alimente l'aperçu/impression vus par l'artisan).
+ *
+ * Sans ça, le `body` s'étalait sur toute la largeur de son conteneur : dans une
+ * iframe d'aperçu large, le document ne ressemblait plus du tout à une page.
+ *
+ * - `@page size: A4` fixe le format à l'impression (sans toucher aux marges,
+ *   qui restent gérées par le padding du body — ne pas changer, l'impression
+ *   existante en dépend).
+ * - À l'écran, on dessine une vraie feuille A4 centrée sur un fond gris.
+ * - Sous 840px (mobile), on repasse en fluide : une feuille de 210mm forcerait
+ *   un défilement horizontal.
+ */
+export const PAGE_CSS = `
+    @page { size: A4; }
+    @media screen {
+      html { background: #e2e8f0; }
+      body { width: 210mm; min-height: 297mm; margin: 16px auto; box-shadow: 0 1px 12px rgba(15,23,42,0.18); }
+    }
+    @media screen and (max-width: 840px) {
+      body { width: auto; min-height: 0; margin: 0; box-shadow: none; }
+    }`;
+
+/**
  * Génère le HTML complet d'un devis/facture
  *
  * @param {Object} params
@@ -230,7 +255,7 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mod
     .missing-legal { color: #94a3b8; font-style: italic; font-size: 7pt; }
     @media print { .missing-legal { display: none; } }
     .micro-mention { background: #dbeafe; padding: 8px; border-radius: 4px; font-size: 8pt; color: #1e40af; margin-top: 10px; }
-    @media print { body { padding: 15px; } }
+    @media print { body { padding: 15px; } }${PAGE_CSS}
   </style>
 </head>
 <body>
@@ -586,7 +611,7 @@ export function buildSituationFactureHtml({ situation, parentDevis, client, chan
     .conditions h4 { font-size: 8pt; margin-bottom: 8px; color: #475569; }
     .footer { margin-top: 20px; padding-top: 12px; border-top: 1px solid #e2e8f0; font-size: 7pt; color: #64748b; text-align: center; line-height: 1.6; }
     .assurances { font-size: 7pt; color: #64748b; margin-top: 8px; }
-    @media print { body { padding: 15px; } }
+    @media print { body { padding: 15px; } }${PAGE_CSS}
   </style>
 </head>
 <body>

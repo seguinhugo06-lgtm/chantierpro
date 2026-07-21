@@ -26,7 +26,7 @@ import { usePermissions } from '../hooks/usePermissions';
 import { ReadOnlyBanner } from './ui/PermissionGate';
 import PageHeader from './ui/PageHeader';
 import KPICard from './ui/KPICard';
-import { printSituationFacture as printSitFacture } from '../lib/devisHtmlBuilder';
+import { printSituationFacture as printSitFacture, PAGE_CSS } from '../lib/devisHtmlBuilder';
 import { sendDocumentEmail, buildDocumentEmailBody, buildPaymentReceiptEmailBody } from '../lib/emailSender';
 import RelanceTimelineWidget from './RelanceTimelineWidget';
 import { useRelances } from '../hooks/useRelances';
@@ -1485,7 +1485,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   <title>${doc.facture_type === 'avoir' ? 'Avoir' : isFacture ? 'Facture' : 'Devis'} ${doc.numero}</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 10pt; color: #1e293b; padding: 25px; line-height: 1.4; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 10pt; color: #1e293b; background: #ffffff; padding: 25px; line-height: 1.4; }
     .header { display: flex; justify-content: space-between; margin-bottom: 25px; padding-bottom: 15px; border-bottom: 3px solid ${docColor}; }
     .logo-section { max-width: 55%; }
     .logo { font-size: 16pt; font-weight: bold; color: ${docColor}; margin-bottom: 8px; }
@@ -1525,7 +1525,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     .footer { margin-top: 20px; padding-top: 12px; border-top: 1px solid #e2e8f0; font-size: 7pt; color: #64748b; text-align: center; line-height: 1.6; }
     .assurances { font-size: 7pt; color: #64748b; margin-top: 8px; }
     .micro-mention { background: #dbeafe; padding: 8px; border-radius: 4px; font-size: 8pt; color: #1e40af; margin-top: 10px; }
-    @media print { body { padding: 15px; } }
+    @media print { body { padding: 15px; } }${PAGE_CSS}
   </style>
 </head>
 <body>
@@ -2187,11 +2187,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         showToast('Document modifié avec succès', 'success');
       }}
       clients={clients}
-      addClient={(data) => {
-        const c = { id: generateId(), ...data };
-        setClients(prev => [...prev, c]);
-        return c;
-      }}
+      addClient={addClient}
       catalogue={catalogue}
       chantiers={chantiers}
       entreprise={entreprise}
@@ -2227,11 +2223,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         showToast('Document modifié avec succès', 'success');
       }}
       clients={clients}
-      addClient={(data) => {
-        const c = { id: generateId(), ...data };
-        setClients(prev => [...prev, c]);
-        return c;
-      }}
+      addClient={addClient}
       catalogue={catalogue}
       chantiers={chantiers}
       entreprise={entreprise}

@@ -718,7 +718,19 @@ export default function DevisComposer({
         <QuickClientModal
           isOpen={showQuickClient}
           onClose={() => setShowQuickClient(false)}
-          onSubmit={(data) => { const c = addClient?.(data); if (c?.id) selectClient(c.id); setShowQuickClient(false); }}
+          onSubmit={async (data) => {
+            // addClient est async (écriture Supabase) : sans await, `c` est une
+            // Promise, `c.id` vaut undefined et le client créé n'est jamais
+            // rattaché au devis.
+            setShowQuickClient(false);
+            try {
+              const c = await addClient?.(data);
+              if (c?.id) selectClient(c.id);
+              else showToast?.('Client créé mais non sélectionné — choisissez-le dans la liste', 'error');
+            } catch (e) {
+              showToast?.(`Client non enregistré : ${e?.message || 'erreur'}`, 'error');
+            }
+          }}
           isDark={isDark} couleur={couleur}
         />
       )}
@@ -1008,7 +1020,8 @@ function PdfPreviewModal({ isDark, couleur, textPrimary, textMuted, html, onClos
           </div>
           <button onClick={onClose} aria-label="Fermer l'aperçu" className={`p-2 rounded-lg flex-shrink-0 ${textMuted} ${isDark ? 'hover:bg-slate-800' : 'hover:bg-slate-100'}`}><X size={18} /></button>
         </div>
-        <iframe srcDoc={html} title="Aperçu du devis" className="flex-1 w-full border-0 bg-white" />
+        {/* fond neutre : le document dessine lui-même sa feuille A4 sur fond gris */}
+        <iframe srcDoc={html} title="Aperçu du devis" className="flex-1 w-full border-0 bg-slate-200" />
       </div>
     </div>
   );
