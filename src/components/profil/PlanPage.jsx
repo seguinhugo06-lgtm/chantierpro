@@ -70,7 +70,7 @@ export default function PlanPage({ isDark, couleur = '#f97316', setPage }) {
         return;
       }
       if (result.url) window.location.href = result.url;
-    } catch { toast.error('Paiement indisponible', 'Contactez-nous à contact@batigesti.fr pour souscrire.'); }
+    } catch { toast.error('Paiement indisponible', 'Contactez-nous à contact@mallettico.fr pour souscrire.'); }
     finally { setLoadingPlan(null); }
   }, [billing, planId, setSubscription]);
 
@@ -84,13 +84,13 @@ export default function PlanPage({ isDark, couleur = '#f97316', setPage }) {
     try {
       const result = await createPortalSession();
       if (result.error) {
-        toast.error('Portail indisponible', 'Contactez-nous à contact@batigesti.fr pour toute question de facturation.');
+        toast.error('Portail indisponible', 'Contactez-nous à contact@mallettico.fr pour toute question de facturation.');
         return;
       }
       if (result.url) { window.open(result.url, '_blank'); }
-      else { toast.error('Portail indisponible', 'Contactez-nous à contact@batigesti.fr pour toute question de facturation.'); }
+      else { toast.error('Portail indisponible', 'Contactez-nous à contact@mallettico.fr pour toute question de facturation.'); }
     } catch {
-      toast.error('Portail indisponible', 'Contactez-nous à contact@batigesti.fr pour toute question de facturation.');
+      toast.error('Portail indisponible', 'Contactez-nous à contact@mallettico.fr pour toute question de facturation.');
     } finally {
       setPortalLoading(false);
     }

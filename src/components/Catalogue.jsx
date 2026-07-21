@@ -450,7 +450,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
       if (!lastAlert || now - parseInt(lastAlert) > 24 * 60 * 60 * 1000) {
         localStorage.setItem('cp_stock_alert_last', now.toString());
         try {
-          new Notification('BatiGesti — Stock bas', {
+          new Notification('Mallettico — Stock bas', {
             body: `${alertesStock.length} article${alertesStock.length > 1 ? 's' : ''} en dessous du seuil d'alerte`,
             icon: '/icons/icon-192.png',
           });

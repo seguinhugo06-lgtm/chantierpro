@@ -1,5 +1,5 @@
 /**
- * Module d'import Excel/CSV pour BatiGesti
+ * Module d'import Excel/CSV pour Mallettico
  * Permet d'importer clients, devis, dépenses, équipe depuis fichiers Excel/CSV
  */
 

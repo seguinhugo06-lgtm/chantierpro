@@ -1,5 +1,5 @@
 /**
- * Demo data for BatiGesti
+ * Demo data for Mallettico
  * Comprehensive seed data for testing ALL modules
  * Use: import { DEMO_DATA } from './lib/demo-data'
  *

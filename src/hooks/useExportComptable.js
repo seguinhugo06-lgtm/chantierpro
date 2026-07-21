@@ -53,7 +53,7 @@ export function useExportComptable({ devis = [], depenses = [], reglements = [],
 
     const rows = [
       ['Déclaration CA3 simplifiée', '', ''],
-      ['Entreprise', entreprise?.nom || 'BatiGesti', ''],
+      ['Entreprise', entreprise?.nom || 'Mallettico', ''],
       ['N° TVA', entreprise?.numeroTva || '', ''],
       ['Année', y, ''],
       ['', '', ''],

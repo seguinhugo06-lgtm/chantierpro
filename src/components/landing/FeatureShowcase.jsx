@@ -1,5 +1,5 @@
 /**
- * FeatureShowcase — 8 zig-zag feature blocks showcasing all major BatiGesti features.
+ * FeatureShowcase — 8 zig-zag feature blocks showcasing all major Mallettico features.
  *
  * Replaces the old FeaturesGrid with detailed, screenshot-based feature presentation.
  * Each block alternates image/text layout for visual rhythm.
@@ -188,7 +188,7 @@ export default function FeatureShowcase() {
             Tout ce dont un artisan a besoin, au m&ecirc;me endroit
           </h2>
           <p className="text-slate-500 max-w-2xl mx-auto">
-            De la cr&eacute;ation du devis au suivi de paiement, BatiGesti g&egrave;re l'int&eacute;gralit&eacute;
+            De la cr&eacute;ation du devis au suivi de paiement, Mallettico g&egrave;re l'int&eacute;gralit&eacute;
             de votre cycle commercial et la gestion de vos chantiers.
           </p>
         </ScrollReveal>

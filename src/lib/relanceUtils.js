@@ -272,7 +272,7 @@ function buildVariableMap(doc, client, entreprise) {
       : '0,00',
     // Lien paiement en ligne
     lien_paiement: doc?.payment_token
-      ? `${typeof window !== 'undefined' ? window.location.origin : 'https://batigesti.vercel.app'}/pay/${doc.payment_token}`
+      ? `${typeof window !== 'undefined' ? window.location.origin : 'https://mallettico.fr'}/pay/${doc.payment_token}`
       : '',
   };
 }

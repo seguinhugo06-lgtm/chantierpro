@@ -1,8 +1,11 @@
 /**
- * Module de synchronisation offline pour BatiGesti
+ * Module de synchronisation offline pour Mallettico
  * Gere la file d'attente des mutations et la synchronisation automatique
  */
 
+// ⚠️ NE PAS RENOMMER après le passage à Mallettico : ce nom identifie la base
+// IndexedDB des utilisateurs existants. Le changer orphelinerait leur file
+// d'écritures hors-ligne (devis créés sans réseau = perdus).
 const DB_NAME = 'batigesti-offline';
 const DB_VERSION = 1;
 const STORE_NAME = 'pending-mutations';
@@ -367,12 +370,12 @@ export const registerNetworkListeners = (onOnline, onOffline) => {
       if (reallyOnline && !lastNotifiedState) {
         // Transition: offline → online
         lastNotifiedState = true;
-        console.log('BatiGesti: Retour en ligne, synchronisation...');
+        console.log('Mallettico: Retour en ligne, synchronisation...');
         onOnline?.();
       } else if (!reallyOnline && !browserSaysOnline && lastNotifiedState) {
         // Transition: online → offline (only when both browser + ping agree)
         lastNotifiedState = false;
-        console.log('BatiGesti: Passage hors ligne');
+        console.log('Mallettico: Passage hors ligne');
         onOffline?.();
       }
     }, 500); // 500ms debounce to absorb rapid online/offline toggling

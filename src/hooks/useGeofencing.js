@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 
 /**
- * Geofencing Hook for BatiGesti
+ * Geofencing Hook for Mallettico
  *
  * Provides location-based features for field workers:
  * - Detect entry/exit from chantier zones

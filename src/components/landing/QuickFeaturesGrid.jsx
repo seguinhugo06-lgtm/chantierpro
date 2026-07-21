@@ -71,7 +71,7 @@ export default function QuickFeaturesGrid() {
             Et bien plus encore...
           </h2>
           <p className="text-slate-500 max-w-lg mx-auto text-sm">
-            BatiGesti int&egrave;gre tout ce dont vous avez besoin pour travailler efficacement.
+            Mallettico int&egrave;gre tout ce dont vous avez besoin pour travailler efficacement.
           </p>
         </ScrollReveal>
 

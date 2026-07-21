@@ -1,14 +1,14 @@
 /**
- * useSEO — Dynamic meta tags hook for BatiGesti
+ * useSEO — Dynamic meta tags hook for Mallettico
  * Updates document title, meta description, Open Graph, and canonical URL.
  */
 import { useEffect } from 'react';
 
 const DEFAULTS = {
-  title: 'BatiGesti \u2014 Logiciel de gestion de chantier pour artisans BTP',
+  title: 'Mallettico \u2014 Logiciel de gestion de chantier pour artisans BTP',
   description: 'Cr\u00e9ez vos devis et factures BTP en 2 minutes. Gestion de chantier, tr\u00e9sorerie, conformit\u00e9. Gratuit pour d\u00e9marrer.',
-  image: 'https://batigesti.vercel.app/og-image.png',
-  url: 'https://batigesti.vercel.app',
+  image: 'https://mallettico.fr/og-image.png',
+  url: 'https://mallettico.fr',
   type: 'website',
 };
 
@@ -41,7 +41,7 @@ export default function useSEO({
     setMeta('property', 'og:image', image);
     setMeta('property', 'og:url', url);
     setMeta('property', 'og:type', type);
-    setMeta('property', 'og:site_name', 'BatiGesti');
+    setMeta('property', 'og:site_name', 'Mallettico');
 
     // Twitter
     setMeta('name', 'twitter:card', 'summary_large_image');

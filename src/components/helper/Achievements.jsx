@@ -181,7 +181,7 @@ export const ACHIEVEMENTS = {
   FIRST_QUOTE: {
     id: 'first-quote',
     title: 'Premier devis !',
-    message: 'Vous venez de créer votre premier devis sur BatiGesti 🎉',
+    message: 'Vous venez de créer votre premier devis sur Mallettico 🎉',
     icon: 'trophy',
     color: '#f97316',
     colorEnd: '#dc2626',
@@ -199,7 +199,7 @@ export const ACHIEVEMENTS = {
   FIRST_PAYMENT: {
     id: 'first-payment',
     title: 'Premier paiement !',
-    message: 'Vous avez reçu votre premier acompte via BatiGesti 💳',
+    message: 'Vous avez reçu votre premier acompte via Mallettico 💳',
     icon: 'credit',
     color: '#22c55e',
     colorEnd: '#10b981',
@@ -217,7 +217,7 @@ export const ACHIEVEMENTS = {
   PRODUCTIVE: {
     id: 'productive',
     title: 'Productif ! 🎯',
-    message: '10 devis créés. Vous maîtrisez BatiGesti !',
+    message: '10 devis créés. Vous maîtrisez Mallettico !',
     icon: 'target',
     color: '#3b82f6',
     colorEnd: '#2563eb',
@@ -244,7 +244,7 @@ export const ACHIEVEMENTS = {
   WEEK_STREAK: {
     id: 'week-streak',
     title: 'Une semaine de suite ! 🔥',
-    message: 'Vous utilisez BatiGesti depuis 7 jours consécutifs',
+    message: 'Vous utilisez Mallettico depuis 7 jours consécutifs',
     icon: 'flame',
     color: '#f97316',
     colorEnd: '#ef4444',

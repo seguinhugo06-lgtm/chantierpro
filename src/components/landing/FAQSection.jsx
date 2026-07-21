@@ -21,23 +21,23 @@ const FAQ_CATEGORIES = [
 const FAQ_ITEMS = [
   {
     category: 'general',
-    q: 'C\'est quoi BatiGesti ?',
-    a: 'BatiGesti est un logiciel en ligne (SaaS) de gestion de chantier con\u00e7u sp\u00e9cifiquement pour les artisans et entreprises du BTP. Il regroupe devis, factures, suivi de chantier, planning, CRM, tr\u00e9sorerie et gestion d\'\u00e9quipe dans une seule application accessible depuis n\'importe quel appareil.',
+    q: 'C\'est quoi Mallettico ?',
+    a: 'Mallettico est un logiciel en ligne (SaaS) de gestion de chantier con\u00e7u sp\u00e9cifiquement pour les artisans et entreprises du BTP. Il regroupe devis, factures, suivi de chantier, planning, CRM, tr\u00e9sorerie et gestion d\'\u00e9quipe dans une seule application accessible depuis n\'importe quel appareil.',
   },
   {
     category: 'general',
-    q: 'Puis-je utiliser BatiGesti sur mon t\u00e9l\u00e9phone ?',
-    a: 'Absolument. BatiGesti est une application web progressive (PWA) qui s\'installe directement sur votre t\u00e9l\u00e9phone comme une application native. Pas besoin de t\u00e9l\u00e9charger une app sur l\'App Store ou Play Store. Elle fonctionne sur iPhone, Android, tablette et ordinateur, m\u00eame hors-ligne.',
+    q: 'Puis-je utiliser Mallettico sur mon t\u00e9l\u00e9phone ?',
+    a: 'Absolument. Mallettico est une application web progressive (PWA) qui s\'installe directement sur votre t\u00e9l\u00e9phone comme une application native. Pas besoin de t\u00e9l\u00e9charger une app sur l\'App Store ou Play Store. Elle fonctionne sur iPhone, Android, tablette et ordinateur, m\u00eame hors-ligne.',
   },
   {
     category: 'features',
     q: 'Est-ce que je pars d\'une page blanche pour mes devis ?',
-    a: 'Non. BatiGesti est livr\u00e9 avec un catalogue BTP de plus de 1 000 articles et ouvrages d\u00e9j\u00e0 chiffr\u00e9s, organis\u00e9s par m\u00e9tier. \u00c0 l\'inscription, vous choisissez votre corps de m\u00e9tier et vos articles sont pr\u00e9-remplis. Vous composez alors un devis en quelques clics, et vous ajoutez vos propres articles ou importez vos tarifs fournisseurs par CSV.',
+    a: 'Non. Mallettico est livr\u00e9 avec un catalogue BTP de plus de 1 000 articles et ouvrages d\u00e9j\u00e0 chiffr\u00e9s, organis\u00e9s par m\u00e9tier. \u00c0 l\'inscription, vous choisissez votre corps de m\u00e9tier et vos articles sont pr\u00e9-remplis. Vous composez alors un devis en quelques clics, et vous ajoutez vos propres articles ou importez vos tarifs fournisseurs par CSV.',
   },
   {
     category: 'features',
     q: 'Comment fonctionnent les relances automatiques ?',
-    a: 'Vous configurez des templates de relance personnalis\u00e9s avec des variables dynamiques (nom du client, montant, num\u00e9ro de devis...). BatiGesti envoie automatiquement les relances par email selon le calendrier que vous d\u00e9finissez. Vous gardez un historique complet de chaque relance.',
+    a: 'Vous configurez des templates de relance personnalis\u00e9s avec des variables dynamiques (nom du client, montant, num\u00e9ro de devis...). Mallettico envoie automatiquement les relances par email selon le calendrier que vous d\u00e9finissez. Vous gardez un historique complet de chaque relance.',
   },
   {
     category: 'features',
@@ -46,8 +46,8 @@ const FAQ_ITEMS = [
   },
   {
     category: 'tech',
-    q: 'Est-ce que BatiGesti est conforme \u00e0 la facturation \u00e9lectronique 2026 ?',
-    a: 'Oui. BatiGesti g\u00e9n\u00e8re des factures au format Factur-X (norme EN 16931), avec archivage s\u00e9curis\u00e9 SHA-256 sur 10 ans, piste d\'audit, et toutes les mentions l\u00e9gales obligatoires. Vous \u00eates conforme sans effort suppl\u00e9mentaire.',
+    q: 'Est-ce que Mallettico est conforme \u00e0 la facturation \u00e9lectronique 2026 ?',
+    a: 'Oui. Mallettico g\u00e9n\u00e8re des factures au format Factur-X (norme EN 16931), avec archivage s\u00e9curis\u00e9 SHA-256 sur 10 ans, piste d\'audit, et toutes les mentions l\u00e9gales obligatoires. Vous \u00eates conforme sans effort suppl\u00e9mentaire.',
   },
   {
     category: 'tech',
@@ -72,12 +72,12 @@ const FAQ_ITEMS = [
   {
     category: 'general',
     q: 'Comment migrer depuis un autre logiciel ?',
-    a: 'BatiGesti propose des outils d\'import pour vos clients, catalogue et donn\u00e9es existantes. Vous pouvez importer vos donn\u00e9es en CSV ou JSON. Notre support peut vous accompagner dans la migration.',
+    a: 'Mallettico propose des outils d\'import pour vos clients, catalogue et donn\u00e9es existantes. Vous pouvez importer vos donn\u00e9es en CSV ou JSON. Notre support peut vous accompagner dans la migration.',
   },
   {
     category: 'tech',
     q: 'Quelles int\u00e9grations sont disponibles ?',
-    a: 'BatiGesti int\u00e8gre Stripe pour le paiement en ligne de vos factures, l\'envoi d\'emails avec PDF joint (devis, factures, relances), la m\u00e9t\u00e9o chantier, et des exports compatibles avec vos outils comptables (Pennylane, Indy, FEC). D\'autres int\u00e9grations sont en cours de d\u00e9veloppement.',
+    a: 'Mallettico int\u00e8gre Stripe pour le paiement en ligne de vos factures, l\'envoi d\'emails avec PDF joint (devis, factures, relances), la m\u00e9t\u00e9o chantier, et des exports compatibles avec vos outils comptables (Pennylane, Indy, FEC). D\'autres int\u00e9grations sont en cours de d\u00e9veloppement.',
   },
   {
     category: 'pricing',
@@ -87,7 +87,7 @@ const FAQ_ITEMS = [
   {
     category: 'general',
     q: 'Y a-t-il un support client ?',
-    a: 'Oui. Notre \u00e9quipe r\u00e9pond par email \u00e0 contact@batigesti.fr. Les utilisateurs des plans Artisan et \u00c9quipe b\u00e9n\u00e9ficient d\'un support prioritaire avec un temps de r\u00e9ponse garanti sous 24h ouvr\u00e9es.',
+    a: 'Oui. Notre \u00e9quipe r\u00e9pond par email \u00e0 contact@mallettico.fr. Les utilisateurs des plans Artisan et \u00c9quipe b\u00e9n\u00e9ficient d\'un support prioritaire avec un temps de r\u00e9ponse garanti sous 24h ouvr\u00e9es.',
   },
   {
     category: 'pricing',
@@ -218,7 +218,7 @@ export default function FAQSection() {
             <HelpCircle size={16} />
             <span>Vous avez d'autres questions ?</span>
             <a
-              href="mailto:contact@batigesti.fr"
+              href="mailto:contact@mallettico.fr"
               className="text-orange-500 font-medium hover:text-orange-600 transition-colors"
             >
               Contactez-nous

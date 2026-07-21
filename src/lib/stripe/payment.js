@@ -1,5 +1,5 @@
 /**
- * Module de paiement Stripe pour BatiGesti
+ * Module de paiement Stripe pour Mallettico
  * Gere les paiements d'acompte et de solde via Stripe Payment Links
  */
 

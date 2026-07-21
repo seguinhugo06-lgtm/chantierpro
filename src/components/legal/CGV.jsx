@@ -7,7 +7,7 @@ export default function CGV() {
       <h2>1. Objet</h2>
       <p>
         Les présentes Conditions Générales de Vente (CGV) régissent les abonnements payants
-        de l'application BatiGesti, éditée par BatiGesti SAS.
+        de l'application Mallettico, éditée par Mallettico SAS.
       </p>
 
       <h2>2. Plans et tarifs</h2>
@@ -23,7 +23,7 @@ export default function CGV() {
       </table>
       <p>
         Les prix s'entendent hors taxes. La TVA applicable est de 20%.
-        BatiGesti se réserve le droit de modifier ses tarifs avec un préavis de 30 jours.
+        Mallettico se réserve le droit de modifier ses tarifs avec un préavis de 30 jours.
       </p>
 
       <h2>3. Paiement</h2>
@@ -75,9 +75,9 @@ export default function CGV() {
       <h2>9. Litige</h2>
       <p>
         En cas de litige, l'Utilisateur peut contacter le service client à
-        l'adresse <a href="mailto:contact@batigesti.fr">contact@batigesti.fr</a>.
+        l'adresse <a href="mailto:contact@mallettico.fr">contact@mallettico.fr</a>.
         Conformément au Code de la consommation, l'Utilisateur peut recourir gratuitement
-        au service de médiation auquel BatiGesti est adhérent.
+        au service de médiation auquel Mallettico est adhérent.
       </p>
 
       <h2>10. Droit applicable</h2>

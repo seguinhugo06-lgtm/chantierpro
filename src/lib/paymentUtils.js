@@ -280,7 +280,7 @@ export function getProviderLabel(provider) {
 export function buildPaymentUrl(token) {
   const origin = typeof window !== 'undefined'
     ? window.location.origin
-    : 'https://batigesti.vercel.app';
+    : 'https://mallettico.fr';
   return `${origin}/pay/${token}`;
 }
 

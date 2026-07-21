@@ -263,7 +263,7 @@ export default function TaskDetail({ memo, onUpdate, onDelete, onClose, chantier
   const getShareMessage = () => {
     const ch = memo.chantier_id ? chantiers.find(c => c.id === memo.chantier_id) : null;
     const cl = memo.client_id ? clients.find(c => c.id === memo.client_id) : null;
-    const parts = ['[Tâche BatiGesti]', memo.text];
+    const parts = ['[Tâche Mallettico]', memo.text];
     if (memo.due_date) parts.push(`📅 ${formatDateFR(memo.due_date)}${memo.due_time ? ' à ' + formatTimeFR(memo.due_time) : ''}`);
     if (ch) parts.push(`🏗️ ${ch.nom}`);
     if (cl) parts.push(`👤 ${cl.nom || ''} ${cl.prenom || ''}`);
@@ -281,7 +281,7 @@ export default function TaskDetail({ memo, onUpdate, onDelete, onClose, chantier
 
   const handleNativeShare = async () => {
     try {
-      await navigator.share({ title: 'Tâche BatiGesti', text: getShareMessage() });
+      await navigator.share({ title: 'Tâche Mallettico', text: getShareMessage() });
     } catch (err) {
       if (err.name !== 'AbortError') showToast('Partage annulé', 'info');
     }

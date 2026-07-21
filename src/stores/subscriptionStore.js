@@ -15,7 +15,7 @@ export const PLANS = {
   gratuit: {
     id: 'gratuit',
     name: 'Gratuit',
-    description: 'Pour découvrir BatiGesti',
+    description: 'Pour découvrir Mallettico',
     target: 'Artisans qui démarrent',
     priceMonthly: 0,
     priceYearly: 0,

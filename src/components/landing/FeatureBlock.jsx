@@ -68,7 +68,7 @@ export default function FeatureBlock({
         >
           <BrowserFrame
             src={screenshotSrc}
-            alt={`${title} — BatiGesti`}
+            alt={`${title} — Mallettico`}
             className="transition-all duration-500 group-hover:shadow-2xl group-hover:shadow-orange-500/10 group-hover:scale-[1.02]"
           />
         </motion.div>

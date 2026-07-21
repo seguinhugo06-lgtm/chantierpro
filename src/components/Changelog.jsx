@@ -135,7 +135,7 @@ export default function Changelog({ isDark, couleur, setPage }) {
         </button>
         <div>
           <h1 className={`text-2xl font-bold ${textPrimary}`}>Changelog</h1>
-          <p className={`text-sm ${textMuted}`}>Historique des mises à jour de BatiGesti</p>
+          <p className={`text-sm ${textMuted}`}>Historique des mises à jour de Mallettico</p>
         </div>
       </div>
 
@@ -210,8 +210,8 @@ export default function Changelog({ isDark, couleur, setPage }) {
 
       {/* Footer */}
       <div className={`mt-8 text-center text-sm ${textMuted}`}>
-        <p>BatiGesti est mis à jour régulièrement.</p>
-        <p className="mt-1">Des questions ? Contactez-nous à <span style={{ color: couleur }}>support@batigesti.fr</span></p>
+        <p>Mallettico est mis à jour régulièrement.</p>
+        <p className="mt-1">Des questions ? Contactez-nous à <span style={{ color: couleur }}>support@mallettico.fr</span></p>
       </div>
     </div>
   );

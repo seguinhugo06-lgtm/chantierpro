@@ -2,7 +2,7 @@
  * PageHeader — En-tête de page "énergique & coloré"
  *
  * Squelette unique de tous les modules : chip d'icône vif + titre XL + sous-titre
- * + zone d'actions. Design system BatiGesti.
+ * + zone d'actions. Design system Mallettico.
  *
  * @param {React.ComponentType} icon - Lucide icon component
  * @param {string} title - Page title

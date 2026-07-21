@@ -1,5 +1,5 @@
 /**
- * BatiGesti Constants
+ * Mallettico Constants
  * Single source of truth for all enums and magic strings
  */
 

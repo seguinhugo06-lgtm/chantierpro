@@ -1610,7 +1610,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                   <div>
                     <p className={`font-medium ${isDark ? 'text-blue-300' : 'text-blue-800'}`}>Information</p>
                     <p className={`text-sm mt-1 ${isDark ? 'text-blue-200' : 'text-blue-700'}`}>
-                      Ce résumé TVA est indicatif et basé sur les données saisies dans BatiGesti.
+                      Ce résumé TVA est indicatif et basé sur les données saisies dans Mallettico.
                       Pour votre déclaration officielle, consultez votre expert-comptable.
                     </p>
                   </div>
@@ -1642,7 +1642,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
               Export global des données
             </h3>
             <p className={`text-sm ${textMuted} mb-4`}>
-              Exportez toutes vos données BatiGesti dans un fichier JSON. Idéal pour les sauvegardes ou le transfert vers un autre appareil.
+              Exportez toutes vos données Mallettico dans un fichier JSON. Idéal pour les sauvegardes ou le transfert vers un autre appareil.
             </p>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
@@ -1665,7 +1665,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                   const exportData = {
                     version: '3.0',
                     exportDate: new Date().toISOString(),
-                    app: 'BatiGesti',
+                    app: 'Mallettico',
                     data: {
                       entreprise,
                       devis,
@@ -1674,6 +1674,8 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                       depenses,
                     },
                     localStorage: (() => {
+                      // ⚠️ Le préfixe 'batigesti' est conservé volontairement : c'est celui des clés
+                      // réellement écrites sur les appareils. Le renommer casserait l'effacement.
                       const keys = Object.keys(localStorage).filter(k => k.startsWith('cp_') || k.startsWith('batigesti'));
                       const obj = {};
                       keys.forEach(k => { try { obj[k] = JSON.parse(localStorage.getItem(k)); } catch { obj[k] = localStorage.getItem(k); } });
@@ -1707,7 +1709,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
               Import de données
             </h3>
             <p className={`text-sm ${textMuted} mb-4`}>
-              Restaurez vos données depuis un fichier d'export BatiGesti (.json). Les données existantes seront fusionnées.
+              Restaurez vos données depuis un fichier d'export Mallettico (.json). Les données existantes seront fusionnées.
             </p>
 
             <div className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors ${isDark ? 'border-slate-600 hover:border-slate-500' : 'border-slate-300 hover:border-slate-400'}`}>
@@ -1723,8 +1725,8 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                   reader.onload = (ev) => {
                     try {
                       const data = JSON.parse(ev.target.result);
-                      if (!data.app || data.app !== 'BatiGesti') {
-                        showToast('Fichier non reconnu (pas un export BatiGesti)', 'error');
+                      if (!data.app || data.app !== 'Mallettico') {
+                        showToast('Fichier non reconnu (pas un export Mallettico)', 'error');
                         return;
                       }
                       // Restore localStorage keys
@@ -1751,7 +1753,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                   <RefreshCw size={24} className={textMuted} />
                 </div>
                 <p className={`text-sm font-medium ${textPrimary}`}>Cliquez pour sélectionner un fichier</p>
-                <p className={`text-xs ${textMuted} mt-1`}>Format .json (export BatiGesti)</p>
+                <p className={`text-xs ${textMuted} mt-1`}>Format .json (export Mallettico)</p>
               </label>
             </div>
           </div>
@@ -1762,7 +1764,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
               <GraduationCap size={18} /> Visite guidée
             </h3>
             <p className={`text-sm ${textMuted} mb-4`}>
-              Rejouez le tutoriel d'introduction pour redécouvrir toutes les fonctionnalités de BatiGesti.
+              Rejouez le tutoriel d'introduction pour redécouvrir toutes les fonctionnalités de Mallettico.
             </p>
             <button
               onClick={() => {

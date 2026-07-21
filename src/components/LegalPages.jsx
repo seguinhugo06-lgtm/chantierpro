@@ -1,19 +1,19 @@
 import React from 'react';
 import { ArrowLeft, Shield, FileText, Scale, Lock } from 'lucide-react';
 
-// ─── BatiGesti SaaS Company Info (editor) ────────────────────────────────────
+// ─── Mallettico SaaS Company Info (editor) ────────────────────────────────────
 // Update these values with the actual company details before launch
 const COMPANY = {
-  nom: 'BatiGesti SAS',
+  nom: 'Mallettico SAS',
   forme: 'SAS (Société par Actions Simplifiée)',
   capital: '1 000',
   adresse: '12 rue de la Tech, 75011 Paris, France',
   siret: '123 456 789 00012',
   rcs: 'Paris B 123 456 789',
   tva: 'FR12 123456789',
-  email: 'contact@batigesti.fr',
+  email: 'contact@mallettico.fr',
   tel: '01 23 45 67 89',
-  dpo: 'dpo@batigesti.fr',
+  dpo: 'dpo@mallettico.fr',
   directeur: 'Hugo Seguin',
   qualite: 'Président',
   hebergeur: 'Vercel Inc., 440 N Baxter St, Coppell, TX 75019, USA — https://vercel.com',
@@ -68,7 +68,7 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
     <>
       <Section title="Article 1 - Éditeur">
         <P>
-          Le site BatiGesti est édité par : <strong className={textPrimary}>{COMPANY.nom}</strong>
+          Le site Mallettico est édité par : <strong className={textPrimary}>{COMPANY.nom}</strong>
         </P>
         <UL>
           <li>Forme juridique : {COMPANY.forme}</li>
@@ -85,7 +85,7 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
       <Section title="Article 2 - Objet">
         <P>
           Les présentes Conditions Générales de Vente (CGV) ont pour objet de définir les droits et obligations
-          des parties dans le cadre de la vente des services proposés par BatiGesti, plateforme de gestion
+          des parties dans le cadre de la vente des services proposés par Mallettico, plateforme de gestion
           de chantiers et d'activité pour les professionnels du bâtiment.
         </P>
         <P>
@@ -95,7 +95,7 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
 
       <Section title="Article 3 - Description des services">
         <P>
-          BatiGesti est une application web (SaaS) permettant aux professionnels du bâtiment de :
+          Mallettico est une application web (SaaS) permettant aux professionnels du bâtiment de :
         </P>
         <UL>
           <li>Gérer leurs chantiers, clients et équipes</li>
@@ -111,9 +111,9 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
       </Section>
 
       <Section title="Article 4 - Plans tarifaires">
-        <P>BatiGesti propose les plans d'abonnement suivants :</P>
+        <P>Mallettico propose les plans d'abonnement suivants :</P>
         <div className={`border rounded-lg overflow-hidden mb-4 ${tableBorder}`}>
-          <table className="w-full text-left" aria-label="Plans tarifaires BatiGesti">
+          <table className="w-full text-left" aria-label="Plans tarifaires Mallettico">
             <thead className={tableHeaderBg}>
               <tr>
                 <th scope="col" className={`px-4 py-3 font-semibold ${textPrimary} border-b ${tableBorder}`}>Plan</th>
@@ -152,7 +152,7 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
         <UL>
           <li>Les paiements sont sécurisés par le protocole SSL/TLS</li>
           <li>Stripe est certifié PCI DSS niveau 1</li>
-          <li>BatiGesti ne stocke aucune donnée de carte bancaire</li>
+          <li>Mallettico ne stocke aucune donnée de carte bancaire</li>
           <li>Une facture est émise automatiquement à chaque paiement</li>
         </UL>
       </Section>
@@ -193,8 +193,8 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
 
       <Section title="Article 8 - Responsabilité">
         <P>
-          BatiGesti s'engage à fournir un service de qualité et à assurer la disponibilité de la plateforme.
-          Toutefois, BatiGesti ne saurait être tenu responsable :
+          Mallettico s'engage à fournir un service de qualité et à assurer la disponibilité de la plateforme.
+          Toutefois, Mallettico ne saurait être tenu responsable :
         </P>
         <UL>
           <li>Des interruptions temporaires du service pour maintenance ou mise à jour</li>
@@ -204,16 +204,16 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
           <li>Des conséquences fiscales ou juridiques liées à l'utilisation des documents générés (devis, factures)</li>
         </UL>
         <P>
-          La responsabilité de BatiGesti est limitée au montant des sommes effectivement versées par
+          La responsabilité de Mallettico est limitée au montant des sommes effectivement versées par
           l'utilisateur au cours des 12 derniers mois précédant le fait générateur de la responsabilité.
         </P>
       </Section>
 
       <Section title="Article 9 - Propriété intellectuelle">
         <P>
-          L'ensemble des éléments constituant la plateforme BatiGesti (logiciel, interface, textes, images,
+          L'ensemble des éléments constituant la plateforme Mallettico (logiciel, interface, textes, images,
           base de données, algorithmes) sont protégés par le droit de la propriété intellectuelle et restent
-          la propriété exclusive de BatiGesti.
+          la propriété exclusive de Mallettico.
         </P>
         <P>
           L'utilisateur conserve la propriété intégrale de toutes les données qu'il saisit dans la plateforme
@@ -243,7 +243,7 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
       <Section title="Article 1 - Objet">
         <P>
           Les présentes Conditions Générales d'Utilisation (CGU) ont pour objet de définir les modalités
-          et conditions d'utilisation de la plateforme BatiGesti, ainsi que les droits et obligations
+          et conditions d'utilisation de la plateforme Mallettico, ainsi que les droits et obligations
           des utilisateurs.
         </P>
         <P>
@@ -253,11 +253,11 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
 
       <Section title="Article 2 - Acceptation des conditions">
         <P>
-          L'inscription sur BatiGesti vaut acceptation sans réserve des présentes CGU. L'utilisateur
+          L'inscription sur Mallettico vaut acceptation sans réserve des présentes CGU. L'utilisateur
           reconnaît en avoir pris connaissance et s'engage à les respecter.
         </P>
         <P>
-          BatiGesti se réserve le droit de modifier les présentes CGU à tout moment. Les utilisateurs
+          Mallettico se réserve le droit de modifier les présentes CGU à tout moment. Les utilisateurs
           seront informés de toute modification par email ou notification dans l'application. La poursuite
           de l'utilisation du service après modification vaut acceptation des nouvelles conditions.
         </P>
@@ -265,7 +265,7 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
 
       <Section title="Article 3 - Création de compte">
         <P>
-          Pour accéder aux services de BatiGesti, l'utilisateur doit créer un compte en fournissant :
+          Pour accéder aux services de Mallettico, l'utilisateur doit créer un compte en fournissant :
         </P>
         <UL>
           <li>Une adresse email valide</li>
@@ -289,7 +289,7 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
           <li>Utiliser la plateforme conformément à sa destination et aux lois en vigueur</li>
           <li>Fournir des informations exactes et à jour</li>
           <li>Ne pas porter atteinte à la sécurité ou au fonctionnement de la plateforme</li>
-          <li>Respecter les droits de propriété intellectuelle de BatiGesti et des tiers</li>
+          <li>Respecter les droits de propriété intellectuelle de Mallettico et des tiers</li>
           <li>Ne pas utiliser le service à des fins illicites ou frauduleuses</li>
           <li>Sauvegarder régulièrement ses données importantes</li>
           <li>Signaler tout dysfonctionnement ou faille de sécurité constatée</li>
@@ -299,7 +299,7 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
       <Section title="Article 5 - Usages interdits">
         <P>Il est strictement interdit de :</P>
         <UL>
-          <li>Tenter d'accéder de manière non autorisée au système, aux serveurs ou aux réseaux de BatiGesti</li>
+          <li>Tenter d'accéder de manière non autorisée au système, aux serveurs ou aux réseaux de Mallettico</li>
           <li>Utiliser des robots, scrapers ou tout autre moyen automatisé pour accéder au service</li>
           <li>Reproduire, copier, vendre ou exploiter tout ou partie du service sans autorisation</li>
           <li>Transmettre des virus, malwares ou tout code malveillant</li>
@@ -312,7 +312,7 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
 
       <Section title="Article 6 - Propriété intellectuelle">
         <P>
-          La plateforme BatiGesti, incluant sans s'y limiter son code source, son interface graphique,
+          La plateforme Mallettico, incluant sans s'y limiter son code source, son interface graphique,
           ses textes, images, logos, bases de données et algorithmes, est protégée par les lois françaises
           et internationales relatives à la propriété intellectuelle.
         </P>
@@ -322,31 +322,31 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
         </P>
         <P>
           Les données saisies par l'utilisateur (informations clients, devis, factures, photos, documents)
-          restent sa propriété exclusive. L'utilisateur accorde à BatiGesti une licence limitée pour
+          restent sa propriété exclusive. L'utilisateur accorde à Mallettico une licence limitée pour
           traiter ces données dans le cadre de la fourniture du service.
         </P>
       </Section>
 
       <Section title="Article 7 - Limitation de responsabilité">
         <P>
-          BatiGesti fournit le service « en l'état » et ne garantit pas l'absence d'erreurs,
+          Mallettico fournit le service « en l'état » et ne garantit pas l'absence d'erreurs,
           d'interruptions ou de défauts.
         </P>
         <UL>
-          <li>BatiGesti ne garantit pas que le service répondra à toutes les exigences spécifiques de l'utilisateur</li>
+          <li>Mallettico ne garantit pas que le service répondra à toutes les exigences spécifiques de l'utilisateur</li>
           <li>Les documents générés (devis, factures) doivent être vérifiés par l'utilisateur avant envoi</li>
-          <li>BatiGesti ne se substitue pas à un expert-comptable ou à un conseiller juridique</li>
+          <li>Mallettico ne se substitue pas à un expert-comptable ou à un conseiller juridique</li>
           <li>L'utilisateur est seul responsable de la conformité fiscale et réglementaire de ses documents</li>
         </UL>
         <P>
-          En tout état de cause, la responsabilité totale de BatiGesti ne pourra excéder le montant
+          En tout état de cause, la responsabilité totale de Mallettico ne pourra excéder le montant
           des sommes versées par l'utilisateur au cours des 12 derniers mois.
         </P>
       </Section>
 
       <Section title="Article 8 - Suspension et résiliation">
         <P>
-          BatiGesti se réserve le droit de suspendre ou de résilier l'accès d'un utilisateur en cas de :
+          Mallettico se réserve le droit de suspendre ou de résilier l'accès d'un utilisateur en cas de :
         </P>
         <UL>
           <li>Violation des présentes CGU</li>
@@ -355,14 +355,14 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
           <li>Comportement portant atteinte aux autres utilisateurs ou à la plateforme</li>
         </UL>
         <P>
-          En cas de suspension pour motif grave, BatiGesti se réserve le droit de ne pas rembourser
+          En cas de suspension pour motif grave, Mallettico se réserve le droit de ne pas rembourser
           la période d'abonnement en cours.
         </P>
       </Section>
 
       <Section title="Article 9 - Disponibilité du service">
         <P>
-          BatiGesti s'efforce d'assurer une disponibilité optimale de la plateforme. Toutefois,
+          Mallettico s'efforce d'assurer une disponibilité optimale de la plateforme. Toutefois,
           le service peut être temporairement interrompu pour :
         </P>
         <UL>
@@ -371,13 +371,13 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
           <li>Cas de force majeure</li>
         </UL>
         <P>
-          BatiGesti s'engage à limiter au maximum la durée et la fréquence de ces interruptions.
+          Mallettico s'engage à limiter au maximum la durée et la fréquence de ces interruptions.
         </P>
       </Section>
 
       <Section title="Article 10 - Modifications des CGU">
         <P>
-          BatiGesti se réserve le droit de modifier les présentes CGU à tout moment. Les modifications
+          Mallettico se réserve le droit de modifier les présentes CGU à tout moment. Les modifications
           entreront en vigueur dès leur publication sur la plateforme. Les utilisateurs seront informés
           des modifications substantielles par email au moins 30 jours avant leur entrée en vigueur.
         </P>
@@ -395,7 +395,7 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
           </button>, qui fait partie intégrante des présentes CGU.
         </P>
         <P>
-          En utilisant BatiGesti, l'utilisateur reconnaît avoir pris connaissance de cette politique
+          En utilisant Mallettico, l'utilisateur reconnaît avoir pris connaissance de cette politique
           et consent au traitement de ses données conformément au RGPD (Règlement UE 2016/679).
         </P>
       </Section>
@@ -421,7 +421,7 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
     <>
       <Section title="Article 1 - Responsable du traitement">
         <P>
-          Le responsable du traitement des données à caractère personnel collectées sur BatiGesti est :
+          Le responsable du traitement des données à caractère personnel collectées sur Mallettico est :
         </P>
         <UL>
           <li>Raison sociale : <strong className={textPrimary}>{COMPANY.nom}</strong></li>
@@ -433,7 +433,7 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
 
       <Section title="Article 2 - Données collectées">
         <P>
-          BatiGesti collecte et traite les données suivantes, conformément au Règlement Général sur la
+          Mallettico collecte et traite les données suivantes, conformément au Règlement Général sur la
           Protection des Données (RGPD - Règlement UE 2016/679) :
         </P>
         <div className={`border rounded-lg overflow-hidden mb-4 overflow-x-auto ${tableBorder}`}>
@@ -510,7 +510,7 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
 
       <Section title="Article 4 - Sous-traitants et transferts de données">
         <P>
-          BatiGesti fait appel aux sous-traitants suivants pour le traitement des données :
+          Mallettico fait appel aux sous-traitants suivants pour le traitement des données :
         </P>
         <div className={`border rounded-lg overflow-hidden mb-4 ${tableBorder}`}>
           <table className="w-full text-left text-sm" aria-label="Sous-traitants et transferts de données">
@@ -576,20 +576,20 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
       </Section>
 
       <Section title="Article 6 - Cookies">
-        <P>BatiGesti utilise les cookies suivants :</P>
+        <P>Mallettico utilise les cookies suivants :</P>
         <UL>
           <li><strong className={textPrimary}>Cookies essentiels :</strong> nécessaires au fonctionnement de l'application (session, authentification, préférences). Base légale : intérêt légitime.</li>
           <li><strong className={textPrimary}>Cookies de performance :</strong> mesure d'audience anonymisée pour améliorer le service. Base légale : consentement.</li>
         </UL>
         <P>
-          BatiGesti n'utilise pas de cookies publicitaires ni de cookies de tracking tiers.
+          Mallettico n'utilise pas de cookies publicitaires ni de cookies de tracking tiers.
           L'utilisateur peut gérer ses préférences de cookies depuis les paramètres de l'application
           ou de son navigateur.
         </P>
       </Section>
 
       <Section title="Article 7 - Sécurité des données">
-        <P>BatiGesti met en oeuvre les mesures de sécurité suivantes :</P>
+        <P>Mallettico met en oeuvre les mesures de sécurité suivantes :</P>
         <UL>
           <li><strong className={textPrimary}>Chiffrement HTTPS/TLS :</strong> toutes les communications sont chiffrées en transit</li>
           <li><strong className={textPrimary}>Row Level Security (RLS) :</strong> isolation des données au niveau de la base de données - chaque utilisateur n'accède qu'à ses propres données</li>
@@ -602,7 +602,7 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
 
       <Section title="Article 8 - Violation de données">
         <P>
-          En cas de violation de données à caractère personnel, BatiGesti s'engage à:
+          En cas de violation de données à caractère personnel, Mallettico s'engage à:
         </P>
         <UL>
           <li>Notifier la CNIL dans un délai de 72 heures conformément à l'article 33 du RGPD</li>
@@ -632,7 +632,7 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
   const renderMentionsLegales = () => (
     <>
       <Section title="1. Éditeur du site">
-        <P>Le site BatiGesti est édité par :</P>
+        <P>Le site Mallettico est édité par :</P>
         <UL>
           <li>Raison sociale : <strong className={textPrimary}>{COMPANY.nom}</strong></li>
           <li>Forme juridique : {COMPANY.forme}</li>
@@ -674,7 +674,7 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
 
       <Section title="4. Propriété intellectuelle">
         <P>
-          L'ensemble du contenu du site BatiGesti (textes, images, graphismes, logo, icônes,
+          L'ensemble du contenu du site Mallettico (textes, images, graphismes, logo, icônes,
           logiciel, base de données) est protégé par les lois françaises et internationales relatives
           à la propriété intellectuelle.
         </P>
@@ -688,7 +688,7 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
 
       <Section title="5. Données personnelles">
         <P>
-          BatiGesti collecte et traite des données personnelles dans le respect du Règlement Général
+          Mallettico collecte et traite des données personnelles dans le respect du Règlement Général
           sur la Protection des Données (RGPD) et de la loi Informatique et Libertés du 6 janvier 1978 modifiée.
         </P>
         <P>
@@ -752,7 +752,7 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
     <>
       <Section title="1. État de conformité">
         <P>
-          BatiGesti s'engage à rendre son service accessible conformément à l'article 47 de la loi n°2005-102
+          Mallettico s'engage à rendre son service accessible conformément à l'article 47 de la loi n°2005-102
           du 11 février 2005 et au Référentiel Général d'Amélioration de l'Accessibilité (RGAA) version 4.1.
         </P>
         <P>
@@ -849,7 +849,7 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
           </P>
           <P>
             <strong className={textPrimary}>L'éditeur {COMPANY.nom}</strong>, dont le siège social est situé
-            au {COMPANY.adresse}, atteste que le logiciel <strong className={textPrimary}>BatiGesti</strong> satisfait
+            au {COMPANY.adresse}, atteste que le logiciel <strong className={textPrimary}>Mallettico</strong> satisfait
             aux conditions d'inaltérabilité, de sécurisation, de conservation et d'archivage des données prévues
             par les textes légaux et réglementaires en vigueur.
           </P>
@@ -858,7 +858,7 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
 
       <Section title="1. Inaltérabilité">
         <P>
-          Le logiciel BatiGesti garantit l'inaltérabilité des données de facturation. Une fois une facture validée et
+          Le logiciel Mallettico garantit l'inaltérabilité des données de facturation. Une fois une facture validée et
           numérotée, son contenu ne peut être modifié. Toute correction donne lieu à l'émission d'un avoir référençant
           la facture d'origine, conformément à l'article L441-3 du Code de Commerce.
         </P>
@@ -872,7 +872,7 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
 
       <Section title="2. Sécurisation">
         <P>
-          BatiGesti met en œuvre les mesures de sécurisation suivantes pour garantir l'intégrité des données :
+          Mallettico met en œuvre les mesures de sécurisation suivantes pour garantir l'intégrité des données :
         </P>
         <UL>
           <li>Authentification obligatoire par email/mot de passe (Supabase Auth)</li>
@@ -909,7 +909,7 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
 
       <Section title="5. Conformité facturation électronique 2026">
         <P>
-          BatiGesti intègre nativement le format <strong className={textPrimary}>Factur-X</strong> (norme
+          Mallettico intègre nativement le format <strong className={textPrimary}>Factur-X</strong> (norme
           franco-allemande EN 16931) pour la facturation électronique, conformément à l'ordonnance n°2021-1190
           du 15 septembre 2021 et au décret n°2022-1299 du 7 octobre 2022.
         </P>

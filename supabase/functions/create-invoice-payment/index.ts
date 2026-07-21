@@ -26,7 +26,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import Stripe from 'https://esm.sh/stripe@14.14.0?target=deno';
 import { corsHeaders } from '../_shared/cors.ts';
 
-const APP_URL = Deno.env.get('APP_URL') || 'https://batigesti.fr';
+const APP_URL = Deno.env.get('APP_URL') || 'https://mallettico.fr';
 
 const json = (body: Record<string, unknown>, status = 200) =>
   new Response(JSON.stringify(body), {
@@ -297,7 +297,7 @@ async function notifyArtisan(
     </p>
     <div style="text-align:center;margin:24px 0">
       <a href="${APP_URL}" style="display:inline-block;background:#f97316;color:#ffffff;text-decoration:none;font-weight:bold;padding:12px 24px;border-radius:10px">
-        Ouvrir BatiGesti
+        Ouvrir Mallettico
       </a>
     </div>
     <p style="font-size:13px;color:#64748b;text-align:center">
@@ -312,7 +312,7 @@ async function notifyArtisan(
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      from: `BatiGesti <${Deno.env.get('FROM_EMAIL') || 'noreply@batigesti.fr'}>`,
+      from: `Mallettico <${Deno.env.get('FROM_EMAIL') || 'noreply@mallettico.fr'}>`,
       to: [artisanEmail],
       subject: `💰 ${fullyPaid ? 'Facture' : 'Acompte sur facture'} ${facture.numero} — ${montantFmt} reçus`,
       html,

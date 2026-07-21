@@ -238,7 +238,7 @@ export async function testWebhook(id) {
       event: 'test.ping',
       payload: {
         webhook_id: id,
-        message: 'Test ping from BatiGesti',
+        message: 'Test ping from Mallettico',
         timestamp: new Date().toISOString(),
       },
       userId: webhook.userId,

@@ -15,7 +15,7 @@ export default function LegalPageLayout({ title, lastUpdated, children }) {
             <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center">
               <Building2 size={14} className="text-white" />
             </div>
-            <span className="font-bold text-slate-900">BatiGesti</span>
+            <span className="font-bold text-slate-900">Mallettico</span>
           </a>
           <a href="/" className="text-sm text-slate-500 hover:text-slate-700 flex items-center gap-1">
             <ArrowLeft size={14} />
@@ -39,7 +39,7 @@ export default function LegalPageLayout({ title, lastUpdated, children }) {
 
       {/* Footer */}
       <footer className="border-t border-slate-200 py-6 text-center text-xs text-slate-500">
-        <p>&copy; {new Date().getFullYear()} BatiGesti. Tous droits réservés.</p>
+        <p>&copy; {new Date().getFullYear()} Mallettico. Tous droits réservés.</p>
       </footer>
     </div>
   );

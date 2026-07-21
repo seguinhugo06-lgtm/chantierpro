@@ -34,8 +34,8 @@ export default function HeroMockup({ className = '' }) {
         >
           <BrowserFrame
             src="/screenshots/dashboard.png"
-            alt="Dashboard BatiGesti — vue d'ensemble de votre activité"
-            url="app.batigesti.fr/dashboard"
+            alt="Dashboard Mallettico — vue d'ensemble de votre activité"
+            url="app.mallettico.fr/dashboard"
           />
         </motion.div>
       </div>

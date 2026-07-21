@@ -1,5 +1,5 @@
 /**
- * Couleurs sémantiques centralisées — BatiGesti Design System
+ * Couleurs sémantiques centralisées — Mallettico Design System
  */
 
 // Score client

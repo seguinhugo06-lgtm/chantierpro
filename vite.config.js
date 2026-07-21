@@ -19,8 +19,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['icon.svg', 'offline.html'],
       manifest: {
-        name: 'BatiGesti',
-        short_name: 'BatiGesti',
+        name: 'Mallettico',
+        short_name: 'Mallettico',
         description: 'Gestion devis et facturation pour artisans BTP',
         theme_color: '#f97316',
         background_color: '#0f172a',

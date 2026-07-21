@@ -111,7 +111,7 @@ function reactionFromSupabase(row) {
 const DEMO_USER_ID = 'demo-user-id';
 
 const DEMO_USERS = [
-  { id: DEMO_USER_ID, email: 'demo@batigesti.fr', name: 'Vous (Démo)', avatar: null },
+  { id: DEMO_USER_ID, email: 'demo@mallettico.fr', name: 'Vous (Démo)', avatar: null },
   { id: 'demo-user-2', email: 'pierre@example.com', name: 'Pierre Martin', avatar: null },
   { id: 'demo-user-3', email: 'marie@example.com', name: 'Marie Dupont', avatar: null },
   { id: 'demo-user-4', email: 'jean@example.com', name: 'Jean Lefebvre', avatar: null },

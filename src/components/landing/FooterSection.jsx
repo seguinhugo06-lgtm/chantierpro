@@ -20,7 +20,7 @@ const COLUMNS = [
     title: 'Ressources',
     links: [
       { label: 'Ressources', href: '/ressources', isPage: true },
-      { label: 'Pourquoi BatiGesti', href: '#early-adopters' },
+      { label: 'Pourquoi Mallettico', href: '#early-adopters' },
       { label: 'FAQ', href: '#faq' },
       { label: 'Blog', href: '#', disabled: true },
     ],
@@ -66,20 +66,20 @@ export default function FooterSection({ onNavigate }) {
               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center">
                 <Building2 size={16} className="text-white" />
               </div>
-              <span className="text-white font-bold text-lg">BatiGesti</span>
+              <span className="text-white font-bold text-lg">Mallettico</span>
             </div>
             <p className="text-sm leading-relaxed mb-4 max-w-xs">
               L'outil de gestion tout-en-un pour les artisans et entreprises du b&acirc;timent.
             </p>
             <a
-              href="mailto:contact@batigesti.fr"
+              href="mailto:contact@mallettico.fr"
               className="text-sm text-orange-400 hover:text-orange-300 transition-colors"
             >
-              contact@batigesti.fr
+              contact@mallettico.fr
             </a>
             <div className="flex items-center gap-3 mt-4">
               <a
-                href="https://www.linkedin.com/company/batigesti"
+                href="https://www.linkedin.com/company/mallettico"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 flex items-center justify-center transition-colors"
@@ -123,7 +123,7 @@ export default function FooterSection({ onNavigate }) {
         {/* Bottom */}
         <div className="mt-12 pt-8 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-xs text-center sm:text-left">
-            &copy; {year} BatiGesti. Tous droits r&eacute;serv&eacute;s.
+            &copy; {year} Mallettico. Tous droits r&eacute;serv&eacute;s.
           </p>
           <p className="text-xs text-slate-600">
             Fait avec soin en France

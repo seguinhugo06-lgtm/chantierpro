@@ -881,7 +881,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                     clientEmail: client.email,
                     clientName: client.prenom || client.nom,
                     portalUrl,
-                    entrepriseName: entreprise?.nom || 'BatiGesti',
+                    entrepriseName: entreprise?.nom || 'Mallettico',
                   });
                   if (sent) {
                     showToast('Invitation envoyée par email', 'success');

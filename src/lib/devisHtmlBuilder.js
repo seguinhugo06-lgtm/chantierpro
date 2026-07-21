@@ -363,7 +363,7 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mod
     <div>
       <strong style="color:${color}; font-size:9pt;">💳 Paiement en ligne</strong><br>
       <span style="font-size:8pt; color:#475569;">Scannez le QR code ou visitez :</span><br>
-      <span style="font-size:7.5pt; color:#64748b; word-break:break-all;">${typeof window !== 'undefined' ? window.location.origin : 'https://batigesti.vercel.app'}/pay/${paymentToken}</span><br>
+      <span style="font-size:7.5pt; color:#64748b; word-break:break-all;">${typeof window !== 'undefined' ? window.location.origin : 'https://mallettico.fr'}/pay/${paymentToken}</span><br>
       <span style="font-size:7pt; color:#94a3b8;">Carte bancaire · Prélèvement SEPA · Virement</span>
     </div>
   </div>

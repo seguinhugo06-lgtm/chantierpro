@@ -1,5 +1,5 @@
 /**
- * French locale strings — BatiGesti i18n preparation.
+ * French locale strings — Mallettico i18n preparation.
  *
  * Usage: import { t } from '../lib/i18n/fr';
  *        <span>{t.nav.dashboard}</span>

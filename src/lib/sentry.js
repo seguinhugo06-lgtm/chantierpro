@@ -23,7 +23,7 @@ export function initSentry() {
   Sentry.init({
     dsn: DSN,
     environment: import.meta.env.MODE || 'production',
-    release: `batigesti@${import.meta.env.VITE_APP_VERSION || '1.0.0'}`,
+    release: `mallettico@${import.meta.env.VITE_APP_VERSION || '1.0.0'}`,
 
     // Performance monitoring — sample 10% of transactions
     tracesSampleRate: 0.1,

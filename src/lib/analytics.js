@@ -1,5 +1,5 @@
 /**
- * analytics.js — Lightweight event tracking for BatiGesti
+ * analytics.js — Lightweight event tracking for Mallettico
  *
  * Uses Plausible Analytics (privacy-first, no cookies).
  * Events are only sent if the user accepted analytics cookies.

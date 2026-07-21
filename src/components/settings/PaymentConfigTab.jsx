@@ -411,7 +411,7 @@ export default function PaymentConfigTab({ entreprise, isDark, couleur = '#F9731
             <div className={`text-xs ${textMuted}`}>
               <p className="font-medium mb-1">Sécurité & conformité</p>
               <ul className="space-y-0.5">
-                <li>• PCI DSS SAQ-A : aucune donnée carte ne transite par BatiGesti</li>
+                <li>• PCI DSS SAQ-A : aucune donnée carte ne transite par Mallettico</li>
                 <li>• Authentification forte (SCA/3D Secure) conforme PSD2</li>
                 <li>• Paiements sécurisés par Stripe — votre clé est chiffrée dans le Vault</li>
               </ul>

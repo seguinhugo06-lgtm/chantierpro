@@ -1,5 +1,5 @@
 /**
- * Module d'integration comptable pour BatiGesti
+ * Module d'integration comptable pour Mallettico
  * Support: Pennylane, Indy, Qonto, export generique
  */
 

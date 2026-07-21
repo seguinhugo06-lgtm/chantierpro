@@ -10,7 +10,7 @@ import { Building2, Menu, X, FileText, Bell, Building, TrendingUp, ChevronDown, 
 const NAV_LINKS = [
   { label: 'Fonctionnalit\u00e9s', href: '#features', hasDropdown: true },
   { label: 'Tarifs', href: '#pricing' },
-  { label: 'Pourquoi BatiGesti', href: '#early-adopters' },
+  { label: 'Pourquoi Mallettico', href: '#early-adopters' },
   { label: 'Ressources', href: '/ressources', isPage: true },
   { label: 'FAQ', href: '#faq' },
 ];
@@ -97,7 +97,7 @@ export default function LandingNav({ onLogin, onSignup }) {
             <Building2 size={18} className="text-white" />
           </div>
           <span className={`text-lg font-bold ${logoColor}`}>
-            BatiGesti
+            Mallettico
           </span>
         </a>
 

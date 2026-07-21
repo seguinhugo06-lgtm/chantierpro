@@ -34,7 +34,7 @@ serve(async (req) => {
     const { action, ...params } = await req.json();
 
     const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
-    const FROM_EMAIL = Deno.env.get('FROM_EMAIL') || 'noreply@batigesti.fr';
+    const FROM_EMAIL = Deno.env.get('FROM_EMAIL') || 'noreply@mallettico.fr';
 
     if (!RESEND_API_KEY) {
       return new Response(
@@ -76,7 +76,7 @@ serve(async (req) => {
 
         // Add tracking pixel for campaign emails
         if (action === 'send_campaign' && html) {
-          emailPayload.html = html + '<img src="https://batigesti.fr/api/track/open?id={{email_id}}" width="1" height="1" style="display:none" />';
+          emailPayload.html = html + '<img src="https://mallettico.fr/api/track/open?id={{email_id}}" width="1" height="1" style="display:none" />';
         }
 
         // Send via Resend API

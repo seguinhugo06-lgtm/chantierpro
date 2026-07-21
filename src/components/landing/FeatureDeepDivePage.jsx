@@ -49,7 +49,7 @@ export default function FeatureDeepDivePage({ slug }) {
   // SEO : titre + description + FAQ JSON-LD
   useEffect(() => {
     if (!feature) return;
-    document.title = `${feature.label} — BatiGesti`;
+    document.title = `${feature.label} — Mallettico`;
     const meta = document.querySelector('meta[name="description"]');
     if (meta) meta.setAttribute('content', feature.metaDescription);
 
@@ -125,7 +125,7 @@ export default function FeatureDeepDivePage({ slug }) {
                 </div>
               </div>
               <div>
-                <BrowserFrame src={feature.screenshot} alt={`${feature.label} — BatiGesti`} />
+                <BrowserFrame src={feature.screenshot} alt={`${feature.label} — Mallettico`} />
               </div>
             </div>
           </ScrollReveal>

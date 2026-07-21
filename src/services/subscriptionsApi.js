@@ -189,7 +189,7 @@ export async function createCheckoutSession(planId, interval = 'monthly') {
   }
 
   try {
-    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://batigesti.fr';
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://mallettico.fr';
     const { data, error } = await supabase.functions.invoke('subscription-billing', {
       body: {
         action: 'create-checkout',
@@ -218,7 +218,7 @@ export async function createPortalSession() {
   }
 
   try {
-    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://batigesti.fr';
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://mallettico.fr';
     const { data, error } = await supabase.functions.invoke('subscription-billing', {
       body: { action: 'create-portal', returnUrl: origin }
     });

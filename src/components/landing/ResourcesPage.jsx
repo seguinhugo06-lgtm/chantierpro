@@ -44,7 +44,7 @@ const HOW_IT_WORKS = [
     step: 1,
     icon: Rocket,
     title: 'Cr\u00e9ez votre compte',
-    description: 'Inscription gratuite en 30 secondes. Pas de carte bancaire requise. Commencez \u00e0 utiliser BatiGesti imm\u00e9diatement.',
+    description: 'Inscription gratuite en 30 secondes. Pas de carte bancaire requise. Commencez \u00e0 utiliser Mallettico imm\u00e9diatement.',
   },
   {
     step: 2,
@@ -62,7 +62,7 @@ const HOW_IT_WORKS = [
     step: 4,
     icon: CheckCircle,
     title: 'G\u00e9rez et d\u00e9veloppez',
-    description: 'Suivez vos chantiers, g\u00e9rez vos clients, anticipez votre tr\u00e9sorerie. BatiGesti vous accompagne au quotidien.',
+    description: 'Suivez vos chantiers, g\u00e9rez vos clients, anticipez votre tr\u00e9sorerie. Mallettico vous accompagne au quotidien.',
   },
 ];
 
@@ -83,7 +83,7 @@ function ScreenshotViewer({ selected, onSelect }) {
           <BrowserFrame
             src={active.src}
             alt={active.label}
-            url={`app.batigesti.fr/${active.id}`}
+            url={`app.mallettico.fr/${active.id}`}
           />
           <p className="text-sm text-slate-500 text-center mt-4">{active.description}</p>
         </motion.div>
@@ -127,11 +127,11 @@ export default function ResourcesPage() {
               Ressources
             </p>
             <h1 className="text-3xl sm:text-5xl font-bold text-slate-900 mb-4 leading-tight">
-              D&eacute;couvrez BatiGesti en images
+              D&eacute;couvrez Mallettico en images
             </h1>
             <p className="text-lg text-slate-500 max-w-2xl mx-auto">
               Explorez l'interface, comprenez le fonctionnement et voyez comment
-              BatiGesti peut transformer votre quotidien d'artisan.
+              Mallettico peut transformer votre quotidien d'artisan.
             </p>
           </ScrollReveal>
         </div>
@@ -202,7 +202,7 @@ export default function ResourcesPage() {
               Vid&eacute;o de d&eacute;monstration
             </h2>
             <p className="text-slate-500">
-              Visionnez une pr&eacute;sentation compl&egrave;te de BatiGesti en 3 minutes.
+              Visionnez une pr&eacute;sentation compl&egrave;te de Mallettico en 3 minutes.
             </p>
           </ScrollReveal>
 
@@ -231,7 +231,7 @@ export default function ResourcesPage() {
               Guides & tutoriels
             </h2>
             <p className="text-slate-500">
-              Apprenez &agrave; tirer le meilleur de BatiGesti.
+              Apprenez &agrave; tirer le meilleur de Mallettico.
             </p>
           </ScrollReveal>
 

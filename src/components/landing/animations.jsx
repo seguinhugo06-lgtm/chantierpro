@@ -2,7 +2,7 @@
  * animations.js — Shared Framer Motion animation presets for landing pages.
  *
  * Centralizes all animation variants, hooks, and wrapper components
- * used across the BatiGesti marketing site.
+ * used across the Mallettico marketing site.
  */
 
 import React, { useRef, useEffect, useState } from 'react';

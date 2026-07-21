@@ -1,5 +1,5 @@
 /**
- * uiTheme — Langage visuel BatiGesti "énergique & coloré"
+ * uiTheme — Langage visuel Mallettico "énergique & coloré"
  *
  * Palette vive + helpers partagés par les primitives (KPICard, PageHeader,
  * EmptyState, StatusChip…) et les modules. But : une couleur = du sens,

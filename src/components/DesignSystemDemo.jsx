@@ -42,7 +42,7 @@ export default function DesignSystemDemo() {
     <div className="p-8 space-y-12 bg-gray-50 min-h-screen">
       <div className="max-w-6xl mx-auto">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">
-          BatiGesti Design System
+          Mallettico Design System
         </h1>
         <p className="text-gray-600 mb-8">
           Composants UI de base pour l'application

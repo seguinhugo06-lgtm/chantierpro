@@ -19,7 +19,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
 
-const APP_ORIGIN = 'https://batigesti.fr';
+const APP_ORIGIN = 'https://mallettico.fr';
 const DEFAULT_PENALTY_RATE = 11.62;
 const RECOVERY_INDEMNITY = 40;
 

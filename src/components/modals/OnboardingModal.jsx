@@ -11,7 +11,7 @@ export default function OnboardingModal({ setShowOnboarding, isDark, couleur }) 
   const steps = [
     {
       icon: "\u{1F44B}",
-      title: "Bienvenue sur BatiGesti",
+      title: "Bienvenue sur Mallettico",
       subtitle: "Votre assistant de gestion pour artisan",
       content: (
         <div className="space-y-4">

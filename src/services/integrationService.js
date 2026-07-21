@@ -76,7 +76,7 @@ const DEMO_INTEGRATIONS = [
     status: 'connected',
     config: { calendarId: 'primary' },
     providerAccountId: null,
-    providerAccountName: 'demo@batigesti.fr',
+    providerAccountName: 'demo@mallettico.fr',
     lastSyncAt: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
     lastSyncStatus: 'success',
     lastSyncError: null,

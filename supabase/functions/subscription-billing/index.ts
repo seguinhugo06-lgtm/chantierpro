@@ -26,7 +26,7 @@ const PLAN_AMOUNTS: Record<string, Record<string, number>> = {
   artisan: { monthly: 499, yearly: 4900 },
   equipe: { monthly: 999, yearly: 9900 },
 };
-const PLAN_NAMES: Record<string, string> = { artisan: 'BatiGesti Artisan', equipe: 'BatiGesti Équipe' };
+const PLAN_NAMES: Record<string, string> = { artisan: 'Mallettico Artisan', equipe: 'Mallettico Équipe' };
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -78,7 +78,7 @@ serve(async (req) => {
               quantity: 1,
               price_data: {
                 currency: 'eur',
-                product_data: { name: PLAN_NAMES[planId] || `BatiGesti ${planId}` },
+                product_data: { name: PLAN_NAMES[planId] || `Mallettico ${planId}` },
                 unit_amount: amount,
                 recurring: { interval: interval === 'yearly' ? 'year' : 'month' },
               },
@@ -95,8 +95,8 @@ serve(async (req) => {
           mode: 'subscription',
           payment_method_types: ['card'],
           line_items: [lineItem],
-          success_url: successUrl || 'https://batigesti.fr/?upgraded=true',
-          cancel_url: cancelUrl || 'https://batigesti.fr/?upgrade_cancelled=true',
+          success_url: successUrl || 'https://mallettico.fr/?upgraded=true',
+          cancel_url: cancelUrl || 'https://mallettico.fr/?upgrade_cancelled=true',
           client_reference_id: user.id,
           metadata: { user_id: user.id, plan_id: planId },
           allow_promotion_codes: true,
@@ -139,7 +139,7 @@ serve(async (req) => {
 
         const session = await stripe.billingPortal.sessions.create({
           customer: sub.stripe_customer_id,
-          return_url: returnUrl || 'https://batigesti.fr',
+          return_url: returnUrl || 'https://mallettico.fr',
         });
 
         console.log(`[subscription-billing] Portal session created for ${user.id}`);

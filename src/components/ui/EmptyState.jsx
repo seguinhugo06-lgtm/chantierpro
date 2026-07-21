@@ -1,7 +1,7 @@
 /**
  * EmptyState — État vide "énergique & coloré"
  *
- * Placeholder amical et vivant pour les listes vides. Design system BatiGesti.
+ * Placeholder amical et vivant pour les listes vides. Design system Mallettico.
  *
  * @param {React.ComponentType} icon - Lucide icon component
  * @param {string} title - Main message (e.g. "Aucun devis")

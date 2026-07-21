@@ -1017,7 +1017,7 @@ export default function ExportComptable({
               {entreprise?.emailComptable ? (
                 <button
                   onClick={() => {
-                    const subject = encodeURIComponent(`Export comptable ${selectedPeriodLabel || ''} — ${entreprise?.nom || 'BatiGesti'}`);
+                    const subject = encodeURIComponent(`Export comptable ${selectedPeriodLabel || ''} — ${entreprise?.nom || 'Mallettico'}`);
                     const body = encodeURIComponent(`Bonjour,\n\nVeuillez trouver ci-joint l'export comptable pour la période sélectionnée.\n\nCordialement,\n${entreprise?.nom || ''}`);
                     window.open(`mailto:${entreprise.emailComptable}?subject=${subject}&body=${body}`, '_blank');
                     showToast?.('Ouvrez votre client email et joignez le fichier téléchargé', 'info');

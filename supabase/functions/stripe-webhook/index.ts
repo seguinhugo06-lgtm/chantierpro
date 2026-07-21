@@ -5,7 +5,7 @@
  * sont confirmés côté serveur par create-invoice-payment action 'verify' au
  * retour de Checkout — ils n'arrivent jamais ici (aucun webhook par artisan).
  *
- * Ce webhook ne traite que les événements du compte Stripe BatiGesti :
+ * Ce webhook ne traite que les événements du compte Stripe Mallettico :
  *   - checkout.session.completed (metadata.plan_id) → activation abonnement
  *   - customer.subscription.deleted → retour au plan gratuit
  *   - customer.subscription.updated → statut (past_due, active…)

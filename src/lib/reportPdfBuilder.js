@@ -140,7 +140,7 @@ function drawCoverPage(doc, title, subtitle, entreprise, brandRgb, periodLabel) 
   doc.rect(0, PAGE.height - 15, PAGE.width, 15, 'F');
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(8);
-  doc.text('BatiGesti — Rapport automatique', PAGE.width / 2, PAGE.height - 6, { align: 'center' });
+  doc.text('Mallettico — Rapport automatique', PAGE.width / 2, PAGE.height - 6, { align: 'center' });
 }
 
 function addPageHeader(doc, title, brandRgb) {
@@ -156,7 +156,7 @@ function addPageHeader(doc, title, brandRgb) {
 function addPageFooter(doc, pageNum, totalPages, entrepriseName) {
   doc.setFontSize(FONTS.footer);
   doc.setTextColor(...COLORS.light);
-  doc.text(`${entrepriseName || 'BatiGesti'} — Page ${pageNum}/${totalPages}`, PAGE.width / 2, PAGE.height - 5, { align: 'center' });
+  doc.text(`${entrepriseName || 'Mallettico'} — Page ${pageNum}/${totalPages}`, PAGE.width / 2, PAGE.height - 5, { align: 'center' });
 }
 
 function sectionHeader(doc, y, title, brandRgb) {

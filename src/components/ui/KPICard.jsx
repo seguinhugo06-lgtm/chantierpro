@@ -3,7 +3,7 @@ import { resolveTone } from '../../lib/uiTheme';
 /**
  * KPICard — Tuile KPI "énergique & coloré"
  *
- * Design system BatiGesti : chip d'icône coloré, valeur XL, bordure teintée,
+ * Design system Mallettico : chip d'icône coloré, valeur XL, bordure teintée,
  * pastille de tendance. Une couleur = un sens.
  *
  * @param {React.ComponentType} icon - Lucide icon component

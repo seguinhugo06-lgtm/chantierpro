@@ -12,7 +12,7 @@ import { Building2 } from 'lucide-react';
  * @param {React.ReactNode} props.children - Page content
  */
 export default function PortalLayout({ clientName, entreprise = {}, couleur = '#f97316', children }) {
-  const entrepriseNom = entreprise.nom || 'BatiGesti';
+  const entrepriseNom = entreprise.nom || 'Mallettico';
 
   // Set page title + noindex meta
   useEffect(() => {
@@ -29,7 +29,7 @@ export default function PortalLayout({ clientName, entreprise = {}, couleur = '#
     metaRobots.content = 'noindex, nofollow';
 
     return () => {
-      document.title = 'BatiGesti';
+      document.title = 'Mallettico';
       if (metaRobots) {
         metaRobots.content = 'index, follow';
       }
@@ -94,7 +94,7 @@ export default function PortalLayout({ clientName, entreprise = {}, couleur = '#
             </p>
             <p className="text-xs text-slate-400">
               Propulsé par{' '}
-              <span className="font-medium" style={{ color: couleur }}>BatiGesti</span>
+              <span className="font-medium" style={{ color: couleur }}>Mallettico</span>
             </p>
           </div>
         </div>

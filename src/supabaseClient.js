@@ -16,7 +16,7 @@ export const isDemo = !hasSupabaseConfig || envDemoMode || urlHasDemoParam;
 // Demo user for auto-login in demo mode
 const DEMO_USER = {
   id: 'demo-user-id',
-  email: 'demo@batigesti.fr',
+  email: 'demo@mallettico.fr',
   user_metadata: { nom: 'Utilisateur Démo' }
 };
 

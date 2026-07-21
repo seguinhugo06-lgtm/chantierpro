@@ -9,9 +9,9 @@ import React from 'react';
 
 export default function BrowserFrame({
   src,
-  alt = 'Capture d\'écran BatiGesti',
+  alt = 'Capture d\'écran Mallettico',
   className = '',
-  url = 'batigesti.fr',
+  url = 'mallettico.fr',
   children,
 }) {
   return (

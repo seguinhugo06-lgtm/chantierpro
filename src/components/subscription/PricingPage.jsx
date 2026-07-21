@@ -293,7 +293,7 @@ function CTASection({ onAction }) {
         Prêt à démarrer ?
       </h2>
       <p className="text-orange-100 mb-8 max-w-md mx-auto">
-        Rejoignez les artisans qui font confiance à BatiGesti pour gérer leurs chantiers
+        Rejoignez les artisans qui font confiance à Mallettico pour gérer leurs chantiers
       </p>
       <button
         onClick={onAction}

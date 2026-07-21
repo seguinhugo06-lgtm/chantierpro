@@ -4,7 +4,7 @@ import { resolveTone } from '../../lib/uiTheme';
  * StatusChip — Pastille de statut colorée, pilotée par couleur/ton libre.
  *
  * Complète Badge (variantes fixes) quand on veut une couleur catégorielle
- * arbitraire (statut client, étape, tag…). Design system BatiGesti.
+ * arbitraire (statut client, étape, tag…). Design system Mallettico.
  *
  * @param {string} label - Texte de la pastille
  * @param {string} [color] - Hex direct

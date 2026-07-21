@@ -291,7 +291,7 @@ export const PROVIDERS = {
     color: '#ff4a00',
     logo: null,
     icon: Zap,
-    description: 'Connectez BatiGesti à 5000+ apps',
+    description: 'Connectez Mallettico à 5000+ apps',
     shortDesc: 'Via webhooks sortants',
     website: 'https://zapier.com',
     capabilities: ['webhook_triggers'],
@@ -385,7 +385,7 @@ export const CATEGORIES = {
     label: 'Automatisation',
     icon: Zap,
     color: '#8b5cf6',
-    description: 'Connectez BatiGesti à vos outils préférés',
+    description: 'Connectez Mallettico à vos outils préférés',
   },
   communication: {
     id: 'communication',

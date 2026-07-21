@@ -137,7 +137,7 @@ export const FEATURES_CONTENT = {
     faq: [
       { q: 'Les relances partent-elles toutes seules ?', a: 'C\'est vous qui choisissez : par défaut, les relances dues s\'affichent sur votre accueil et partent en un clic. Vous pouvez activer l\'envoi 100 % automatique quand vous êtes prêt.' },
       { q: 'Puis-je exclure un client des relances ?', a: 'Oui, un client ou un document précis peut être exclu en un clic — utile pour les clients sensibles ou les litiges en cours.' },
-      { q: 'Les emails sont-ils personnalisables ?', a: 'Chaque étape a son propre template, avec des variables (nom, montant, numéro…). Vous écrivez une fois, BatiGesti personnalise à chaque envoi.' },
+      { q: 'Les emails sont-ils personnalisables ?', a: 'Chaque étape a son propre template, avec des variables (nom, montant, numéro…). Vous écrivez une fois, Mallettico personnalise à chaque envoi.' },
     ],
     related: ['devis-factures', 'tresorerie'],
   },
@@ -180,7 +180,7 @@ export const FEATURES_CONTENT = {
     ],
     faq: [
       { q: 'La rentabilité est-elle calculée automatiquement ?', a: 'Oui : les devis et factures liés au chantier, les dépenses saisies et les heures pointées alimentent la marge en temps réel.' },
-      { q: 'Ça fonctionne sur le chantier, sans réseau ?', a: 'BatiGesti est une application web installable (PWA) qui fonctionne aussi hors-ligne pour consulter vos données. Les modifications se synchronisent au retour du réseau.' },
+      { q: 'Ça fonctionne sur le chantier, sans réseau ?', a: 'Mallettico est une application web installable (PWA) qui fonctionne aussi hors-ligne pour consulter vos données. Les modifications se synchronisent au retour du réseau.' },
     ],
     related: ['devis-factures', 'equipe'],
   },

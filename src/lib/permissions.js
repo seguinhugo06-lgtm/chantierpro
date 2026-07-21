@@ -1,6 +1,6 @@
 // src/lib/permissions.js
 // Pure permission functions — no React dependency
-// Role-based access control matrix for BatiGesti
+// Role-based access control matrix for Mallettico
 
 /**
  * @typedef {'owner'|'admin'|'comptable'|'chef_chantier'|'ouvrier'|'readonly'} OrgRole

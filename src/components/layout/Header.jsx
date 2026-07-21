@@ -69,7 +69,7 @@ export default function Header({
   onToggleSidebar,
   isDark = false,
   brandColor = '#f97316',
-  companyName = 'BatiGesti',
+  companyName = 'Mallettico',
 }) {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);

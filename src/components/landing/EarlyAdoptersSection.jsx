@@ -1,7 +1,7 @@
 /**
  * EarlyAdoptersSection — Remplace les faux témoignages par de la transparence.
  *
- * BatiGesti est un produit récent : plutôt que d'inventer des avis
+ * Mallettico est un produit récent : plutôt que d'inventer des avis
  * (interdit — L.121-2 Code de la consommation), on assume le statut
  * de nouveau venu et on en fait un argument : accès direct au créateur,
  * influence sur la roadmap, prix de lancement garanti.
@@ -17,7 +17,7 @@ const ADVANTAGES = [
     icon: MessageSquare,
     title: 'Une ligne directe avec le créateur',
     description:
-      'Un bug, une idée, un besoin ? Vous parlez directement à la personne qui développe BatiGesti. Réponse rapide, pas de ticket perdu dans une file d\'attente.',
+      'Un bug, une idée, un besoin ? Vous parlez directement à la personne qui développe Mallettico. Réponse rapide, pas de ticket perdu dans une file d\'attente.',
     color: '#f97316',
     bg: 'bg-orange-50',
   },
@@ -57,10 +57,10 @@ export default function EarlyAdoptersSection({ onSignup }) {
             Transparence
           </p>
           <h2 className="text-2xl sm:text-4xl font-bold text-slate-900 mb-4">
-            BatiGesti est nouveau — et c&apos;est votre avantage
+            Mallettico est nouveau — et c&apos;est votre avantage
           </h2>
           <p className="text-slate-500 max-w-2xl mx-auto">
-            Pas de faux témoignages ni de chiffres gonflés ici. BatiGesti vient d&apos;être lancé :
+            Pas de faux témoignages ni de chiffres gonflés ici. Mallettico vient d&apos;être lancé :
             les premiers artisans inscrits profitent d&apos;avantages qu&apos;aucun logiciel établi ne peut offrir.
           </p>
         </ScrollReveal>
@@ -99,7 +99,7 @@ export default function EarlyAdoptersSection({ onSignup }) {
             onClick={onSignup}
             className="group inline-flex items-center gap-2 px-7 py-3.5 rounded-xl bg-slate-900 text-white font-semibold hover:bg-slate-800 transition-all shadow-lg"
           >
-            Devenir l&apos;un des premiers artisans BatiGesti
+            Devenir l&apos;un des premiers artisans Mallettico
             <ArrowRight size={18} className="group-hover:translate-x-0.5 transition-transform" />
           </button>
           <p className="text-xs text-slate-400 mt-4">

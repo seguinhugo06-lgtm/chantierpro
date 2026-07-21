@@ -1,5 +1,5 @@
 /**
- * LandingPage — Page d'accueil publique marketing de BatiGesti.
+ * LandingPage — Page d'accueil publique marketing de Mallettico.
  *
  * Affichée quand l'utilisateur n'est pas connecté à la place du formulaire login.
  * Design light-mode only (pas de isDark/couleur props).

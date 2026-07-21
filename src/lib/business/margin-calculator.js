@@ -1,5 +1,5 @@
 /**
- * Calculateur de marge et alertes pour BatiGesti
+ * Calculateur de marge et alertes pour Mallettico
  * Analyse la rentabilite des chantiers et detecte les risques
  *
  * IMPORTANT: This is the SINGLE SOURCE OF TRUTH for margin calculations.

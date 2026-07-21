@@ -397,7 +397,7 @@ export default function UserProfile({ isDark, couleur, showToast, user, setPage,
                   const url = URL.createObjectURL(blob);
                   const a = document.createElement('a');
                   a.href = url;
-                  a.download = `batigesti-export-${new Date().toISOString().split('T')[0]}.json`;
+                  a.download = `mallettico-export-${new Date().toISOString().split('T')[0]}.json`;
                   document.body.appendChild(a);
                   a.click();
                   document.body.removeChild(a);
@@ -453,7 +453,7 @@ export default function UserProfile({ isDark, couleur, showToast, user, setPage,
                 <div className={`p-4 rounded-xl border border-red-300 ${isDark ? 'bg-red-900/20' : 'bg-red-50'}`}>
                   <p className={`text-sm mb-3 ${textPrimary}`}>
                     Pour demander la suppression définitive de votre compte et de toutes vos données (conformément à l'article 17 du RGPD),
-                    contactez <a href="mailto:contact@batigesti.fr" className="underline" style={{ color: couleur }}>contact@batigesti.fr</a>.
+                    contactez <a href="mailto:contact@mallettico.fr" className="underline" style={{ color: couleur }}>contact@mallettico.fr</a>.
                     Nous traiterons votre demande sous 30 jours.
                   </p>
                   <button

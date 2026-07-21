@@ -61,7 +61,7 @@ const EntrepriseSwitcher = memo(function EntrepriseSwitcher({
   }, [isOpen]);
 
   const couleur = activeEntreprise?.couleur || '#f97316';
-  const nom = activeEntreprise?.nom || 'BatiGesti';
+  const nom = activeEntreprise?.nom || 'Mallettico';
   const initiales = activeEntreprise ? getInitiales(activeEntreprise) : 'BG';
 
   // ── Single entreprise: simple display (no dropdown) ──

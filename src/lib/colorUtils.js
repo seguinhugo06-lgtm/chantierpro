@@ -1,5 +1,5 @@
 /**
- * colorUtils.js — WCAG-compliant color utilities for BatiGesti
+ * colorUtils.js — WCAG-compliant color utilities for Mallettico
  *
  * Provides functions to determine accessible text colors
  * based on background color luminance.
