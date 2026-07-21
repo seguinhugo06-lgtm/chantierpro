@@ -5,8 +5,7 @@
       "name": "dev",
       "runtimeExecutable": "npx",
       "runtimeArgs": ["vite", "--host"],
-      "port": 5173,
-      "cwd": "/Users/hugoseguin/Documents/chantierpro-app"
+      "port": 5173
     }
   ]
 }
