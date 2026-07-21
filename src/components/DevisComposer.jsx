@@ -21,7 +21,7 @@ import QuickClientModal from './QuickClientModal';
 import { generateId } from '../lib/utils';
 import { formatClientName } from '../lib/formatters';
 import { buildDevisHtml } from '../lib/devisHtmlBuilder';
-import { SMART_TEMPLATES } from '../lib/templates/smart-templates';
+import { TRADE_LIBRARY } from '../lib/templates/trade-library';
 
 const DRAFT_KEY = 'batigesti_devis_composer_draft';
 const MRU_KEY = 'batigesti_recent_clients';
@@ -282,17 +282,20 @@ export default function DevisComposer({
   const addLigne = (item = {}) => {
     if (item.id) rememberArticle(item);
     const newId = generateId();
-    const prix = item.prix ?? item.prixUnitaire ?? 0;
+    const prix = item.prixUnitaire ?? item.prix ?? 0;
     setForm(p => ({
       ...p,
       lignes: [...p.lignes, {
         id: newId,
-        description: item.nom || item.description || '',
+        description: item.designation || item.nom || item.description || '',
         quantite: item.quantite || 1,
         unite: item.unite || 'u',
         prixUnitaire: prix,
         prixAchat: item.prixAchat ?? 0,
-        tva: p.tvaDefaut,
+        // La bibliothèque porte le taux adapté à la nature des travaux
+        // (5,5 % rénovation énergétique, 20 % neuf/extérieur) : le respecter
+        // plutôt que d'imposer le taux par défaut du devis.
+        tva: item.tva !== undefined ? item.tva : p.tvaDefaut,
       }],
     }));
     // Article chiffré → la prochaine saisie est la quantité ; ligne libre → le prix
@@ -385,10 +388,10 @@ export default function DevisComposer({
       if (lotTitre) bloc.push({ id: generateId(), _isSection: true, description: lotTitre });
       lignes.forEach(l => bloc.push({
         id: generateId(),
-        description: l.nom || l.description || '',
+        description: l.designation || l.nom || l.description || '',
         quantite: l.quantite ?? 1,
         unite: l.unite || 'u',
-        prixUnitaire: l.prix ?? l.prixUnitaire ?? 0,
+        prixUnitaire: l.prixUnitaire ?? l.prix ?? 0,
         prixAchat: l.prixAchat ?? 0,
         tva: l.tva !== undefined ? l.tva : p.tvaDefaut,
       }));
@@ -1244,10 +1247,12 @@ function LibraryPanel({ open, onClose, persoTemplates = [], articles = [], onApp
 
   if (!open) return null;
 
-  const trades = Object.entries(SMART_TEMPLATES).filter(([, t]) => {
+  const trades = Object.entries(TRADE_LIBRARY).filter(([, t]) => {
     if (!q.trim()) return true;
     const n = norm(q);
-    return norm(t.nom).includes(n) || t.missions.some(m => norm(m.nom).includes(n));
+    return norm(t.nom).includes(n)
+      || t.lots.some(l => norm(l.nom).includes(n) || l.lignes.some(li => norm(li.designation).includes(n)))
+      || t.prestations.some(p => norm(p.designation).includes(n));
   });
   const persoFiltered = persoTemplates.filter(t => !q.trim() || norm(t.nom).includes(norm(q)));
   const articlesFiltered = articles.filter(a => !q.trim() || norm(a.nom || '').includes(norm(q)));
@@ -1315,38 +1320,54 @@ function LibraryPanel({ open, onClose, persoTemplates = [], articles = [], onApp
                       <span aria-hidden="true" className="text-lg flex-shrink-0">{t.icon}</span>
                       <span className="flex-1 min-w-0">
                         <span className={`block text-sm font-semibold truncate ${textPrimary}`}>{t.nom}</span>
-                        <span className={`block text-[11px] ${textMuted}`}>{t.missions.length} prestations chiffrées</span>
+                        <span className={`block text-[11px] ${textMuted}`}>{t.lots.length} lots types · {t.prestations.length} prestations</span>
                       </span>
                       <ChevronDown size={15} className={`flex-shrink-0 transition-transform ${textMuted} ${isOpen ? 'rotate-180' : ''}`} />
                     </button>
 
                     {isOpen && (
                       <div className={`border-t ${isDark ? 'border-slate-700' : 'border-slate-100'}`}>
-                        {t.missions.map(m => {
-                          const prix = Math.round((m.prixMin + m.prixMax) / 2);
+                        {/* Lots types : un chantier complet, déjà proportionné */}
+                        <p className={`px-3 pt-2.5 pb-1 text-[10px] font-semibold uppercase tracking-wide ${textMuted}`}>Lots types</p>
+                        {t.lots.map(lot => {
+                          const total = lot.lignes.reduce((s, l) => s + l.quantite * l.prixUnitaire, 0);
                           return (
-                            <button key={m.id} type="button"
-                              onClick={() => onAddArticle({ nom: m.nom, prix, unite: m.unite || 'forfait' })}
-                              className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-left text-sm transition-colors ${isDark ? 'hover:bg-slate-700/60' : 'hover:bg-slate-50'}`}>
-                              <Plus size={13} style={{ color: couleur }} className="flex-shrink-0" />
-                              <span className={`flex-1 min-w-0 ${textPrimary}`}>{m.nom}</span>
-                              <span className="text-xs font-semibold whitespace-nowrap tabular-nums" style={{ color: couleur }}>
-                                ~{prix.toLocaleString('fr-FR')} €
+                            <button key={lot.id} type="button"
+                              onClick={() => onAppendBloc(lot.lignes, lot.nom)}
+                              className={`w-full flex items-start gap-2.5 px-3 py-2.5 text-left transition-colors ${isDark ? 'hover:bg-slate-700/60' : 'hover:bg-slate-50'}`}>
+                              <Layers size={13} style={{ color: couleur }} className="flex-shrink-0 mt-1" />
+                              <span className="flex-1 min-w-0">
+                                <span className={`block text-sm font-medium ${textPrimary}`}>{lot.nom}</span>
+                                <span className={`block text-[11px] ${textMuted}`}>{lot.resume}</span>
+                                <span className={`block text-[10px] mt-0.5 ${textMuted}`}>
+                                  {lot.lignes.length} lignes · base {lot.base.quantite} {lot.base.unite}
+                                </span>
+                              </span>
+                              <span className="text-xs font-bold whitespace-nowrap tabular-nums" style={{ color: couleur }}>
+                                {Math.round(total).toLocaleString('fr-FR')} €
                               </span>
                             </button>
                           );
                         })}
-                        <div className={`p-2.5 border-t ${isDark ? 'border-slate-700' : 'border-slate-100'}`}>
-                          <button type="button"
-                            onClick={() => onAppendBloc(
-                              t.missions.map(m => ({ nom: m.nom, prix: Math.round((m.prixMin + m.prixMax) / 2), unite: m.unite || 'forfait' })),
-                              t.nom
-                            )}
-                            className={`w-full flex items-center justify-center gap-1.5 h-9 rounded-lg text-xs font-semibold border transition-colors ${isDark ? 'border-slate-600 text-slate-200 hover:bg-slate-700' : 'border-slate-200 text-slate-700 hover:bg-slate-50'}`}>
-                            <Layers size={13} /> Ajouter les {t.missions.length} en lot « {t.nom} »
+
+                        {/* Prestations unitaires : une ligne à la fois */}
+                        <p className={`px-3 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-wide border-t ${textMuted} ${isDark ? 'border-slate-700' : 'border-slate-100'}`}>Prestations</p>
+                        {t.prestations.map((p, i) => (
+                          <button key={`${t.id}-p${i}`} type="button"
+                            onClick={() => onAddArticle(p)}
+                            className={`w-full flex items-center gap-2.5 px-3 py-2 text-left text-sm transition-colors ${isDark ? 'hover:bg-slate-700/60' : 'hover:bg-slate-50'}`}>
+                            <Plus size={13} style={{ color: couleur }} className="flex-shrink-0" />
+                            <span className={`flex-1 min-w-0 ${textPrimary}`}>{p.designation}</span>
+                            {/* Prix AU M² (ou à l'unité du métier) : c'est ce qui rend
+                                la ligne ajustable une fois dans le devis. */}
+                            <span className="text-xs font-semibold whitespace-nowrap tabular-nums" style={{ color: couleur }}>
+                              {p.prixUnitaire.toLocaleString('fr-FR')} €/{p.unite}
+                            </span>
                           </button>
-                          <p className={`mt-1.5 text-[10px] text-center ${textMuted}`}>Prix indicatifs moyens — ajustez-les ensuite.</p>
-                        </div>
+                        ))}
+                        <p className={`px-3 py-2 text-[10px] ${textMuted}`}>
+                          Prix indicatifs moyens du marché — ajustez-les à vos tarifs, puis « Enregistrer comme modèle ».
+                        </p>
                       </div>
                     )}
                   </div>
@@ -1492,7 +1513,7 @@ function SaveTemplateModal({ isDark, couleur, inputBg, textPrimary, textMuted, d
 
 /* ── Démarrage éclair : modèles métier + articles fréquents ── */
 function QuickStart({ templates, articles, persoTemplates = [], onApplyTemplate, onApplyPerso, onAddArticle, onOpenLibrary, isDark, couleur, textPrimary, textMuted }) {
-  const trades = Object.entries(SMART_TEMPLATES);
+  const trades = Object.entries(TRADE_LIBRARY);
   const cardCls = `group flex flex-col items-center gap-1.5 p-3 rounded-xl border transition-all hover:-translate-y-0.5 hover:shadow-md active:scale-95 ${isDark ? 'bg-slate-800 border-slate-700 hover:border-slate-600' : 'bg-white border-slate-200 hover:border-slate-300'}`;
   return (
     <div className="space-y-4">
