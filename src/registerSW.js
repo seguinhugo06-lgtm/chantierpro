@@ -88,7 +88,7 @@ export function initServiceWorker(options = {}) {
  * Background sync queue for offline operations
  * Stores operations to be synced when back online
  */
-const SYNC_QUEUE_KEY = 'batigesti_sync_queue';
+const SYNC_QUEUE_KEY = 'mallettico_sync_queue';
 
 /**
  * @typedef {Object} SyncOperation

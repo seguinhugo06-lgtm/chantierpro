@@ -7,7 +7,7 @@
 
 import { scopeToOrg, withOrgScope } from './queryHelper';
 
-const DEMO_KEY = 'batigesti_demo_snapshots';
+const DEMO_KEY = 'mallettico_demo_snapshots';
 
 /**
  * Get the next version number for an entity.

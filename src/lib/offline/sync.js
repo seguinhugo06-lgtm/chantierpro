@@ -3,10 +3,10 @@
  * Gere la file d'attente des mutations et la synchronisation automatique
  */
 
-// ⚠️ NE PAS RENOMMER après le passage à Mallettico : ce nom identifie la base
-// IndexedDB des utilisateurs existants. Le changer orphelinerait leur file
-// d'écritures hors-ligne (devis créés sans réseau = perdus).
-const DB_NAME = 'batigesti-offline';
+// Renommée depuis 'batigesti-offline' le 25/07/2026 (aucun utilisateur réel à
+// l'époque, donc pas de file d'écritures hors-ligne à préserver). L'ancienne base
+// est supprimée au démarrage par migrateLegacyStorage() dans main.jsx.
+const DB_NAME = 'mallettico-offline';
 const DB_VERSION = 1;
 const STORE_NAME = 'pending-mutations';
 

@@ -7,7 +7,7 @@
 
 import { supabase, isDemo } from '../supabaseClient';
 
-const DEMO_KEY = 'batigesti_webhooks';
+const DEMO_KEY = 'mallettico_webhooks';
 
 // ── Demo Data ────────────────────────────────────────────────────────────────
 

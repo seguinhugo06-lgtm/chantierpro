@@ -13,11 +13,36 @@ import './index.css'
 // ── Initialize Sentry error monitoring (production only) ────────────
 initSentry()
 
+// ── Reprise des clés de stockage historiques (BatiGesti → Mallettico) ──
+// Le renommage de la marque (25/07/2026) a changé le préfixe de toutes les clés
+// localStorage. Sans reprise, un navigateur qui a déjà servi repartirait de zéro :
+// onboarding rejoué, brouillons de devis perdus, et surtout le drapeau
+// `entreprise_migrated` remis à zéro (ce qui relancerait une migration déjà faite).
+// On recopie donc chaque ancienne clé sous le nouveau préfixe, une seule fois.
+function migrateLegacyStorage() {
+  try {
+    const legacy = Object.keys(localStorage).filter((k) => k.startsWith('batigesti'))
+    for (const oldKey of legacy) {
+      const newKey = oldKey.replace(/^batigesti/, 'mallettico')
+      // On n'écrase jamais une valeur déjà écrite sous le nouveau nom.
+      if (localStorage.getItem(newKey) === null) {
+        localStorage.setItem(newKey, localStorage.getItem(oldKey))
+      }
+      localStorage.removeItem(oldKey)
+    }
+    // L'ancienne base offline n'est plus lue par personne — on libère la place.
+    if (legacy.length) {
+      try { indexedDB.deleteDatabase('batigesti-offline') } catch { /* non bloquant */ }
+    }
+  } catch { /* stockage indisponible (mode privé) : sans effet */ }
+}
+migrateLegacyStorage()
+
 // ── Stale chunk reload handler ──────────────────────────────────────
 // When a new deployment happens, old JS chunks (e.g. DevisPage-abc123.js)
 // no longer exist on the server. Lazy imports fail with ChunkLoadError.
 // This handler auto-reloads the page once to get fresh bundles.
-const RELOAD_KEY = 'batigesti_chunk_reload';
+const RELOAD_KEY = 'mallettico_chunk_reload';
 window.addEventListener('error', (event) => {
   const msg = event?.message || event?.error?.message || '';
   if (
@@ -134,13 +159,13 @@ if (isDemo) {
   if (useDemoData) {
     // Les données démo persistées vieillissent (dates décalées au moment du seed).
     // Au-delà de 14 jours, on repart d'un jeu frais — la démo est jetable.
-    // NB : on ne touche qu'à batigesti_demo_data (clé exclusivement démo) —
+    // NB : on ne touche qu'à mallettico_demo_data (clé exclusivement démo) —
     // cp_entreprise & co servent aussi de cache au mode réel.
     try {
-      const seededAt = localStorage.getItem('batigesti_demo_seeded_at')
+      const seededAt = localStorage.getItem('mallettico_demo_seeded_at')
       const stale = seededAt && (Date.now() - new Date(seededAt).getTime()) > 14 * 86400000
-      if (stale) localStorage.removeItem('batigesti_demo_data')
-      if (!seededAt || stale) localStorage.setItem('batigesti_demo_seeded_at', new Date().toISOString())
+      if (stale) localStorage.removeItem('mallettico_demo_data')
+      if (!seededAt || stale) localStorage.setItem('mallettico_demo_seeded_at', new Date().toISOString())
     } catch { /* localStorage indisponible */ }
     seedSecondaryDemoData()
   }

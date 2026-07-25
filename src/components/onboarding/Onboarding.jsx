@@ -46,15 +46,15 @@ export default function Onboarding({
   const handleFinalComplete = () => {
     // Analytics: onboarding_completed
     // Save to localStorage
-    localStorage.setItem('batigesti_onboarding_complete', 'true');
-    localStorage.setItem('batigesti_user_data', JSON.stringify(userData));
+    localStorage.setItem('mallettico_onboarding_complete', 'true');
+    localStorage.setItem('mallettico_user_data', JSON.stringify(userData));
 
     onComplete?.(userData);
   };
 
   const handleSkip = () => {
     // Analytics: onboarding_skipped
-    localStorage.setItem('batigesti_onboarding_skipped', 'true');
+    localStorage.setItem('mallettico_onboarding_skipped', 'true');
     onSkip?.();
   };
 

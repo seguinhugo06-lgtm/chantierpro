@@ -9,9 +9,9 @@
 import { isDemo } from '../supabaseClient';
 import { scopeToOrg, withOrgScope } from '../lib/queryHelper';
 
-const DEMO_KEY = 'batigesti_receptions';
-const DEMO_RESERVES_KEY = 'batigesti_reserves';
-const GARANTIES_DEMO_KEY = 'batigesti_garanties';
+const DEMO_KEY = 'mallettico_receptions';
+const DEMO_RESERVES_KEY = 'mallettico_reserves';
+const GARANTIES_DEMO_KEY = 'mallettico_garanties';
 
 // ── Field mappings ──────────────────────────────────────────────────────────────
 

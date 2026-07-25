@@ -8,7 +8,7 @@
 import { isDemo } from '../supabaseClient';
 import { scopeToOrg, withOrgScope } from '../lib/queryHelper';
 
-const DEMO_KEY = 'batigesti_chat';
+const DEMO_KEY = 'mallettico_chat';
 
 // ── Table availability guard ────────────────────────────────────────────────────
 // Chat tables (chat_channels, chat_messages, chat_members, chat_reactions) may

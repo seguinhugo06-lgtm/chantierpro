@@ -382,7 +382,7 @@ export const DEMO_TRESORERIE_SETTINGS = {
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// SECONDARY DATA: Fournisseurs (localStorage: batigesti_fournisseurs)
+// SECONDARY DATA: Fournisseurs (localStorage: mallettico_fournisseurs)
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export const DEMO_FOURNISSEURS = [
@@ -410,7 +410,7 @@ export const DEMO_ARTICLE_FOURNISSEURS = [
 ];
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// SECONDARY DATA: Stock mouvements (localStorage: batigesti_mouvements)
+// SECONDARY DATA: Stock mouvements (localStorage: mallettico_mouvements)
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export const DEMO_MOUVEMENTS = [
@@ -425,7 +425,7 @@ export const DEMO_MOUVEMENTS = [
 ];
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// SECONDARY DATA: Packs (localStorage: batigesti_packs)
+// SECONDARY DATA: Packs (localStorage: mallettico_packs)
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export const DEMO_PACKS = [
@@ -547,10 +547,10 @@ export function seedSecondaryDemoData() {
   const keys = {
     'cp_tresorerie_previsions': shiftDates(DEMO_PREVISIONS),
     'cp_tresorerie_settings': DEMO_TRESORERIE_SETTINGS,
-    'batigesti_fournisseurs': DEMO_FOURNISSEURS,
-    'batigesti_article_fournisseurs': DEMO_ARTICLE_FOURNISSEURS,
-    'batigesti_mouvements': shiftDates(DEMO_MOUVEMENTS),
-    'batigesti_packs': DEMO_PACKS,
+    'mallettico_fournisseurs': DEMO_FOURNISSEURS,
+    'mallettico_article_fournisseurs': DEMO_ARTICLE_FOURNISSEURS,
+    'mallettico_mouvements': shiftDates(DEMO_MOUVEMENTS),
+    'mallettico_packs': DEMO_PACKS,
     'cp_entreprise': shiftDates(DEMO_ENTREPRISE),
   };
 
@@ -570,7 +570,7 @@ export function seedSecondaryDemoData() {
   });
 
   // ⚠️ L'entreprise affichée vient d'EntrepriseContext, qui lit la liste
-  // `batigesti_entreprises` (format DB snake_case) — PAS `cp_entreprise` (legacy).
+  // `mallettico_entreprises` (format DB snake_case) — PAS `cp_entreprise` (legacy).
   // Sans ce seed, entreprise = défauts vides → bandeau « Profil incomplet » en démo.
   try {
     const E = shiftDates(DEMO_ENTREPRISE);
@@ -601,15 +601,15 @@ export function seedSecondaryDemoData() {
       is_active: true,
       created_at: new Date().toISOString(),
     };
-    const rawList = localStorage.getItem('batigesti_entreprises');
+    const rawList = localStorage.getItem('mallettico_entreprises');
     const list = rawList ? JSON.parse(rawList) : [];
     const stale = !Array.isArray(list) || list.length === 0
       || list.every(e => !e?.forme_juridique || !e?.decennale_assureur);
     if (stale) {
-      localStorage.setItem('batigesti_entreprises', JSON.stringify([row]));
-      localStorage.setItem('batigesti_entreprise_active_id', row.id);
+      localStorage.setItem('mallettico_entreprises', JSON.stringify([row]));
+      localStorage.setItem('mallettico_entreprise_active_id', row.id);
       // Empêche la migration legacy de repasser derrière ce seed
-      localStorage.setItem('batigesti_entreprise_migrated', 'true');
+      localStorage.setItem('mallettico_entreprise_migrated', 'true');
     }
   } catch { /* silent */ }
 }

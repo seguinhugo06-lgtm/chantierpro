@@ -15,7 +15,7 @@
 import { isDemo } from '../supabaseClient';
 import { scopeToOrg, withOrgScope } from '../lib/queryHelper';
 
-const DEMO_KEY = 'batigesti_garanties';
+const DEMO_KEY = 'mallettico_garanties';
 
 // ── Warranty type definitions ───────────────────────────────────────────────────
 
@@ -412,7 +412,7 @@ export async function getById(supabase, id) {
     // Load interventions from localStorage
     let interventions = [];
     try {
-      const raw = localStorage.getItem('batigesti_interventions');
+      const raw = localStorage.getItem('mallettico_interventions');
       if (raw) {
         const allInterventions = JSON.parse(raw);
         interventions = allInterventions.filter(i => i.garantieId === id);
@@ -492,7 +492,7 @@ export async function getDashboardStats(supabase, { userId, orgId }) {
     // Load interventions
     let interventions = [];
     try {
-      const raw = localStorage.getItem('batigesti_interventions');
+      const raw = localStorage.getItem('mallettico_interventions');
       if (raw) interventions = JSON.parse(raw);
     } catch { /* ignore */ }
 

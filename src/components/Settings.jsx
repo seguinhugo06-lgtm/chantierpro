@@ -1674,9 +1674,9 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                       depenses,
                     },
                     localStorage: (() => {
-                      // ⚠️ Le préfixe 'batigesti' est conservé volontairement : c'est celui des clés
+                      // ⚠️ Le préfixe 'mallettico' est conservé volontairement : c'est celui des clés
                       // réellement écrites sur les appareils. Le renommer casserait l'effacement.
-                      const keys = Object.keys(localStorage).filter(k => k.startsWith('cp_') || k.startsWith('batigesti'));
+                      const keys = Object.keys(localStorage).filter(k => k.startsWith('cp_') || k.startsWith('mallettico'));
                       const obj = {};
                       keys.forEach(k => { try { obj[k] = JSON.parse(localStorage.getItem(k)); } catch { obj[k] = localStorage.getItem(k); } });
                       return obj;
@@ -1686,7 +1686,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                   const blob = new Blob([json], { type: 'application/json' });
                   const a = document.createElement('a');
                   a.href = URL.createObjectURL(blob);
-                  a.download = `batigesti_backup_${new Date().toISOString().split('T')[0]}.json`;
+                  a.download = `mallettico_backup_${new Date().toISOString().split('T')[0]}.json`;
                   a.click();
                   URL.revokeObjectURL(a.href);
                   showToast('Export global téléchargé', 'success');
@@ -1768,8 +1768,8 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             </p>
             <button
               onClick={() => {
-                localStorage.removeItem('batigesti_onboarding_complete');
-                localStorage.removeItem('batigesti_onboarding_skipped');
+                localStorage.removeItem('mallettico_onboarding_complete');
+                localStorage.removeItem('mallettico_onboarding_skipped');
                 showToast('Rechargez la page pour relancer la visite guidée', 'info');
               }}
               className={`flex items-center gap-2 px-5 py-3 rounded-xl font-medium transition-all hover:shadow-lg ${isDark ? 'bg-slate-700 text-slate-200 hover:bg-slate-600' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
@@ -1789,11 +1789,11 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
               Les données sont stockées localement dans votre navigateur. Pensez à exporter régulièrement.
             </p>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {Object.keys(localStorage).filter(k => k.startsWith('cp_') || k.startsWith('batigesti')).length > 0 && (
+              {Object.keys(localStorage).filter(k => k.startsWith('cp_') || k.startsWith('mallettico')).length > 0 && (
                 <div className={`p-3 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
                   <p className={`text-xs ${textMuted}`}>Clés stockées</p>
                   <p className="text-lg font-bold" style={{ color: couleur }}>
-                    {Object.keys(localStorage).filter(k => k.startsWith('cp_') || k.startsWith('batigesti')).length}
+                    {Object.keys(localStorage).filter(k => k.startsWith('cp_') || k.startsWith('mallettico')).length}
                   </p>
                 </div>
               )}
@@ -1857,7 +1857,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                   const blob = new Blob([json], { type: 'application/json' });
                   const a = document.createElement('a');
                   a.href = URL.createObjectURL(blob);
-                  a.download = `batigesti_rgpd_export_${new Date().toISOString().split('T')[0]}.json`;
+                  a.download = `mallettico_rgpd_export_${new Date().toISOString().split('T')[0]}.json`;
                   a.click();
                   URL.revokeObjectURL(a.href);
                   showToast('Export RGPD téléchargé', 'success');
@@ -1913,10 +1913,10 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                     }
                   }
                   // Clear all localStorage
-                  const keys = Object.keys(localStorage).filter(k => k.startsWith('cp_') || k.startsWith('batigesti'));
+                  const keys = Object.keys(localStorage).filter(k => k.startsWith('cp_') || k.startsWith('mallettico'));
                   keys.forEach(k => localStorage.removeItem(k));
                   // Clear IndexedDB offline store
-                  try { indexedDB.deleteDatabase('batigesti-offline'); } catch {}
+                  try { indexedDB.deleteDatabase('mallettico-offline'); } catch {}
                   // Sign out
                   await auth.signOut();
                   showToast('Compte et données supprimés définitivement', 'success');

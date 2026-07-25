@@ -8,8 +8,8 @@
 import { scopeToOrg, withOrgScope } from '../lib/queryHelper';
 import { isDemo } from '../supabaseClient';
 
-const DEMO_KEY = 'batigesti_entreprises';
-const DEMO_ACTIVE_KEY = 'batigesti_entreprise_active_id';
+const DEMO_KEY = 'mallettico_entreprises';
+const DEMO_ACTIVE_KEY = 'mallettico_entreprise_active_id';
 const MAX_ENTREPRISES = 5;
 
 // ── Field mapping: DB snake_case ↔ JS camelCase ──────────────────────────────
@@ -700,7 +700,7 @@ export async function migrateFromLocalStorage(supabase, { userId, orgId } = {}) 
 
   // Mark migration as done
   try {
-    localStorage.setItem('batigesti_entreprise_migrated', 'true');
+    localStorage.setItem('mallettico_entreprise_migrated', 'true');
   } catch {}
 
   return results;
@@ -753,7 +753,7 @@ async function _initCountersFromExisting(supabase, entrepriseId, userId) {
  */
 export function detectMigrationNeeded() {
   try {
-    const migrated = localStorage.getItem('batigesti_entreprise_migrated');
+    const migrated = localStorage.getItem('mallettico_entreprise_migrated');
     if (migrated === 'true') return false;
 
     const hasMain = !!localStorage.getItem('cp_entreprise');

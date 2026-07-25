@@ -7,7 +7,7 @@
 import { isDemo } from '../supabaseClient';
 import { scopeToOrg, withOrgScope } from '../lib/queryHelper';
 
-const DEMO_KEY = 'batigesti_subcontractors_v2';
+const DEMO_KEY = 'mallettico_subcontractors_v2';
 const OLD_DEMO_KEY = 'cp_sous_traitants';
 
 // ── Field mappings ──────────────────────────────────────────────────────────────

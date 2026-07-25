@@ -13,7 +13,7 @@ const lazyWithRetry = (importFn, name) => lazy(() =>
     const msg = err?.message || '';
     const isStale = msg.includes('Failed to fetch') || msg.includes('ChunkLoadError') || msg.includes('Importing a module script failed');
     if (isStale) {
-      const key = 'batigesti_chunk_reload';
+      const key = 'mallettico_chunk_reload';
       const last = sessionStorage.getItem(key);
       if (!last || Date.now() - parseInt(last, 10) > 30000) {
         console.warn(`[LAZY] Stale bundle for ${name}, reloading...`, msg);
@@ -471,7 +471,7 @@ export default function App() {
   const [syncErrorDetails, setSyncErrorDetails] = useState(null); // { message, failedCount, permanentCount }
   const syncRetryTimerRef = useRef(null);
   const syncRetryAttemptRef = useRef(0);
-  const [showOnboarding, setShowOnboarding] = useState(() => !isDemo && !localStorage.getItem('batigesti_onboarding_complete'));
+  const [showOnboarding, setShowOnboarding] = useState(() => !isDemo && !localStorage.getItem('mallettico_onboarding_complete'));
   const [showLanding, setShowLanding] = useState(true);
   const [showImport, setShowImport] = useState(false);
   const [importType, setImportType] = useState('clients');
@@ -2634,12 +2634,12 @@ function OnboardingModal({ setShowOnboarding, isDark, couleur }) {
   const currentStep = steps[step];
 
   const completeOnboarding = () => {
-    localStorage.setItem('batigesti_onboarding_complete', 'true');
+    localStorage.setItem('mallettico_onboarding_complete', 'true');
     setShowOnboarding(false);
   };
 
   const skipOnboarding = () => {
-    localStorage.setItem('batigesti_onboarding_complete', 'true');
+    localStorage.setItem('mallettico_onboarding_complete', 'true');
     setShowOnboarding(false);
   };
 

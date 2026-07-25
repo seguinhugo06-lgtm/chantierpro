@@ -9,7 +9,7 @@ import { MODELES_DEVIS, getMetiersWithModeles, getModelesByMetier, prepareModele
 import { formatClientName } from '../lib/formatters';
 
 // Clé de sauvegarde du brouillon Express (distincte de celle du wizard)
-const EXPRESS_DRAFT_KEY = 'batigesti_devis_express_draft';
+const EXPRESS_DRAFT_KEY = 'mallettico_devis_express_draft';
 import TemplateSelector from './TemplateSelector';
 import QuickClientModal from './QuickClientModal';
 

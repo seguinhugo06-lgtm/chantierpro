@@ -7,7 +7,7 @@
 
 import { scopeToOrg, withOrgScope } from './queryHelper';
 
-const DEMO_KEY = 'batigesti_demo_audit_logs';
+const DEMO_KEY = 'mallettico_demo_audit_logs';
 
 // ── Technical fields to skip when computing changes ──
 const IGNORED_FIELDS = new Set([

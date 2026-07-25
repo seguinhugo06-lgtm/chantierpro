@@ -10,8 +10,8 @@
 import { isDemo } from '../supabaseClient';
 import { scopeToOrg, withOrgScope } from '../lib/queryHelper';
 
-const DEMO_KEY = 'batigesti_interventions';
-const GARANTIES_DEMO_KEY = 'batigesti_garanties';
+const DEMO_KEY = 'mallettico_interventions';
+const GARANTIES_DEMO_KEY = 'mallettico_garanties';
 
 // ── Disorder types ──────────────────────────────────────────────────────────────
 

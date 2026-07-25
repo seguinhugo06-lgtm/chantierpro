@@ -51,7 +51,7 @@ import { captureException } from '../../lib/sentry';
  */
 
 // Weather cache key prefix
-const WEATHER_CACHE_PREFIX = 'batigesti_weather_';
+const WEATHER_CACHE_PREFIX = 'mallettico_weather_';
 const WEATHER_CACHE_DURATION = 6 * 60 * 60 * 1000; // 6 hours
 
 // Alert thresholds

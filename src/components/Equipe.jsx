@@ -37,7 +37,7 @@ const useSmartClockingStub = () => ({
 });
 
 // Storage key for timer persistence
-const TIMER_STORAGE_KEY = 'batigesti_equipe_timer';
+const TIMER_STORAGE_KEY = 'mallettico_equipe_timer';
 
 // #6: Filter out test/demo chantiers from quick pointage
 const FILTERED_TEST_NAMES = ['test', 'demo', 'essai', 'test1', 'test2', 'brouillon'];
@@ -125,7 +125,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
   // Signature digitale state
   const [signatureModal, setSignatureModal] = useState({ open: false, pointageIds: [], employeId: null });
   const [signatures, setSignatures] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('batigesti_signatures') || '{}'); } catch { return {}; }
+    try { return JSON.parse(localStorage.getItem('mallettico_signatures') || '{}'); } catch { return {}; }
   });
   const signatureCanvasRef = React.useRef(null);
   const [isDrawing, setIsDrawing] = useState(false);
@@ -133,7 +133,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
 
   // Congés & absences state
   const [conges, setConges] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('batigesti_conges') || '[]'); } catch { return []; }
+    try { return JSON.parse(localStorage.getItem('mallettico_conges') || '[]'); } catch { return []; }
   });
   const [showCongeForm, setShowCongeForm] = useState(false);
   const [congeForm, setCongeForm] = useState({ employeId: '', type: 'conge_paye', dateDebut: '', dateFin: '', motif: '' });
@@ -141,12 +141,12 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
 
   // Chat équipe state
   const [messages, setMessages] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('batigesti_chat') || '[]'); } catch { return []; }
+    try { return JSON.parse(localStorage.getItem('mallettico_chat') || '[]'); } catch { return []; }
   });
   const [chatChannel, setChatChannel] = useState('general');
   const [chatInput, setChatInput] = useState('');
   const [pinnedMessages, setPinnedMessages] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('batigesti_chat_pins') || '[]'); } catch { return []; }
+    try { return JSON.parse(localStorage.getItem('mallettico_chat_pins') || '[]'); } catch { return []; }
   });
   const chatEndRef = React.useRef(null);
 
@@ -261,20 +261,20 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
 
   // Persist signatures
   useEffect(() => {
-    try { localStorage.setItem('batigesti_signatures', JSON.stringify(signatures)); } catch {}
+    try { localStorage.setItem('mallettico_signatures', JSON.stringify(signatures)); } catch {}
   }, [signatures]);
 
   // Persist congés
   useEffect(() => {
-    try { localStorage.setItem('batigesti_conges', JSON.stringify(conges)); } catch {}
+    try { localStorage.setItem('mallettico_conges', JSON.stringify(conges)); } catch {}
   }, [conges]);
 
   // Persist chat
   useEffect(() => {
-    try { localStorage.setItem('batigesti_chat', JSON.stringify(messages)); } catch {}
+    try { localStorage.setItem('mallettico_chat', JSON.stringify(messages)); } catch {}
   }, [messages]);
   useEffect(() => {
-    try { localStorage.setItem('batigesti_chat_pins', JSON.stringify(pinnedMessages)); } catch {}
+    try { localStorage.setItem('mallettico_chat_pins', JSON.stringify(pinnedMessages)); } catch {}
   }, [pinnedMessages]);
 
   // Timer tick

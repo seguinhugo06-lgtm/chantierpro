@@ -1,27 +1,27 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://batigesti.fr/</loc>
+    <loc>https://mallettico.fr/</loc>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://batigesti.fr/cgu</loc>
+    <loc>https://mallettico.fr/cgu</loc>
     <changefreq>monthly</changefreq>
     <priority>0.3</priority>
   </url>
   <url>
-    <loc>https://batigesti.fr/cgv</loc>
+    <loc>https://mallettico.fr/cgv</loc>
     <changefreq>monthly</changefreq>
     <priority>0.3</priority>
   </url>
   <url>
-    <loc>https://batigesti.fr/mentions-legales</loc>
+    <loc>https://mallettico.fr/mentions-legales</loc>
     <changefreq>monthly</changefreq>
     <priority>0.3</priority>
   </url>
   <url>
-    <loc>https://batigesti.fr/confidentialite</loc>
+    <loc>https://mallettico.fr/confidentialite</loc>
     <changefreq>monthly</changefreq>
     <priority>0.3</priority>
   </url>

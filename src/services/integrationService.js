@@ -12,8 +12,8 @@ import { isDemo } from '../supabaseClient';
 
 // ── Demo mode storage ───────────────────────────────────────────────────────
 
-const DEMO_KEY = 'batigesti_integrations';
-const DEMO_SYNC_LOGS_KEY = 'batigesti_integration_sync_logs';
+const DEMO_KEY = 'mallettico_integrations';
+const DEMO_SYNC_LOGS_KEY = 'mallettico_integration_sync_logs';
 
 function demoLoad() {
   try {

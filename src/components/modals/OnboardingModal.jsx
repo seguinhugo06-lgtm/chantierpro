@@ -153,13 +153,13 @@ export default function OnboardingModal({ setShowOnboarding, isDark, couleur }) 
   const currentStep = steps[step];
 
   const completeOnboarding = () => {
-    localStorage.setItem('batigesti_onboarding_complete', 'true');
+    localStorage.setItem('mallettico_onboarding_complete', 'true');
     analytics.onboardingCompleted();
     setShowOnboarding(false);
   };
 
   const skipOnboarding = () => {
-    localStorage.setItem('batigesti_onboarding_complete', 'true');
+    localStorage.setItem('mallettico_onboarding_complete', 'true');
     analytics.onboardingSkipped(step);
     setShowOnboarding(false);
   };

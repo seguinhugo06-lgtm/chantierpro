@@ -69,7 +69,7 @@ export const SYNC_STATUS = {
 /**
  * Stockage local des credentials (simule - en prod utiliser un vault securise)
  */
-const STORAGE_KEY = 'batigesti_accounting_integrations';
+const STORAGE_KEY = 'mallettico_accounting_integrations';
 
 /**
  * Recupere les integrations configurees

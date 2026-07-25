@@ -23,9 +23,9 @@ import { formatClientName } from '../lib/formatters';
 import { buildDevisHtml } from '../lib/devisHtmlBuilder';
 import { TRADE_LIBRARY } from '../lib/templates/trade-library';
 
-const DRAFT_KEY = 'batigesti_devis_composer_draft';
-const MRU_KEY = 'batigesti_recent_clients';
-const RECENT_ARTICLES_KEY = 'batigesti_recent_articles';
+const DRAFT_KEY = 'mallettico_devis_composer_draft';
+const MRU_KEY = 'mallettico_recent_clients';
+const RECENT_ARTICLES_KEY = 'mallettico_recent_articles';
 const UNITES = ['u', 'm²', 'ml', 'm³', 'h', 'j', 'forfait', 'ens.', 'pièce', 'kg', 'L', 'lot'];
 
 /** Modèles métier : squelettes de devis prêts à chiffrer (mêmes trames que le formulaire classique). */

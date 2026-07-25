@@ -110,7 +110,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
 
   // ====== FOURNISSEURS STATE ======
   const [fournisseurs, setFournisseurs] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('batigesti_fournisseurs') || '[]'); } catch { return []; }
+    try { return JSON.parse(localStorage.getItem('mallettico_fournisseurs') || '[]'); } catch { return []; }
   });
   const [showFournisseurForm, setShowFournisseurForm] = useState(false);
   const [fournisseurForm, setFournisseurForm] = useState({ nom: '', email: '', telephone: '', adresse: '', delaiLivraison: '3', conditions: '' });
@@ -118,7 +118,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
 
   // ====== ARTICLE-FOURNISSEUR LINKS ======
   const [articleFournisseurs, setArticleFournisseurs] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('batigesti_article_fournisseurs') || '[]'); } catch { return []; }
+    try { return JSON.parse(localStorage.getItem('mallettico_article_fournisseurs') || '[]'); } catch { return []; }
   });
   const [linkModal, setLinkModal] = useState(null); // { fournisseurId, fournisseurNom }
   const [linkSearch, setLinkSearch] = useState('');
@@ -128,7 +128,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
 
   // ====== MOUVEMENTS STOCK ======
   const [mouvements, setMouvements] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('batigesti_mouvements') || '[]'); } catch { return []; }
+    try { return JSON.parse(localStorage.getItem('mallettico_mouvements') || '[]'); } catch { return []; }
   });
   const [showMouvementForm, setShowMouvementForm] = useState(false);
   const [mouvementForm, setMouvementForm] = useState({ articleId: '', type: 'in', quantite: '', chantierId: '', employe: '', raison: '' });
@@ -137,7 +137,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
 
   // ====== PACKS/KITS ======
   const [packs, setPacks] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('batigesti_packs') || '[]'); } catch { return []; }
+    try { return JSON.parse(localStorage.getItem('mallettico_packs') || '[]'); } catch { return []; }
   });
   const [showPackForm, setShowPackForm] = useState(false);
   const [packForm, setPackForm] = useState({ nom: '', description: '', articles: [], prixVente: '' });
@@ -169,21 +169,21 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
 
   // ====== HISTORIQUE PRIX ======
   const [priceHistory, setPriceHistory] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('batigesti_price_history') || '[]'); } catch { return []; }
+    try { return JSON.parse(localStorage.getItem('mallettico_price_history') || '[]'); } catch { return []; }
   });
 
   // ====== COEFFICIENTS ======
   const [coefficients, setCoefficients] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('batigesti_coefficients') || 'null') || DEFAULT_COEFFICIENTS; } catch { return DEFAULT_COEFFICIENTS; }
+    try { return JSON.parse(localStorage.getItem('mallettico_coefficients') || 'null') || DEFAULT_COEFFICIENTS; } catch { return DEFAULT_COEFFICIENTS; }
   });
 
   // ====== PERSISTENCE ======
-  useEffect(() => { try { localStorage.setItem('batigesti_fournisseurs', JSON.stringify(fournisseurs)); } catch {} }, [fournisseurs]);
-  useEffect(() => { try { localStorage.setItem('batigesti_article_fournisseurs', JSON.stringify(articleFournisseurs)); } catch {} }, [articleFournisseurs]);
-  useEffect(() => { try { localStorage.setItem('batigesti_mouvements', JSON.stringify(mouvements)); } catch {} }, [mouvements]);
-  useEffect(() => { try { localStorage.setItem('batigesti_packs', JSON.stringify(packs)); } catch {} }, [packs]);
-  useEffect(() => { try { localStorage.setItem('batigesti_price_history', JSON.stringify(priceHistory)); } catch {} }, [priceHistory]);
-  useEffect(() => { try { localStorage.setItem('batigesti_coefficients', JSON.stringify(coefficients)); } catch {} }, [coefficients]);
+  useEffect(() => { try { localStorage.setItem('mallettico_fournisseurs', JSON.stringify(fournisseurs)); } catch {} }, [fournisseurs]);
+  useEffect(() => { try { localStorage.setItem('mallettico_article_fournisseurs', JSON.stringify(articleFournisseurs)); } catch {} }, [articleFournisseurs]);
+  useEffect(() => { try { localStorage.setItem('mallettico_mouvements', JSON.stringify(mouvements)); } catch {} }, [mouvements]);
+  useEffect(() => { try { localStorage.setItem('mallettico_packs', JSON.stringify(packs)); } catch {} }, [packs]);
+  useEffect(() => { try { localStorage.setItem('mallettico_price_history', JSON.stringify(priceHistory)); } catch {} }, [priceHistory]);
+  useEffect(() => { try { localStorage.setItem('mallettico_coefficients', JSON.stringify(coefficients)); } catch {} }, [coefficients]);
 
   // #9: Reset page on search/filter change
   useEffect(() => { setCurrentPage(1); }, [debouncedSearch, catFilter, onlyInStock, onlyFavoris, onlyLowStock, sortBy]);

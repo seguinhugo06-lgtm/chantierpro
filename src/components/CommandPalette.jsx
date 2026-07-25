@@ -13,7 +13,7 @@ import {
 /**
  * Storage key for recent items
  */
-const RECENT_ITEMS_KEY = 'batigesti_recent_items';
+const RECENT_ITEMS_KEY = 'mallettico_recent_items';
 const MAX_RECENT_ITEMS = 5;
 
 /**
