@@ -6,6 +6,72 @@
  */
 
 export const FEATURES_CONTENT = {
+  'dictee-vocale': {
+    slug: 'dictee-vocale',
+    label: 'Dictée vocale',
+    color: '#f97316',
+    badge: 'L\'atout malin',
+    title: 'Dites-le. La mallette l\'écrit.',
+    tagline:
+      'Décrivez votre affaire à voix haute, comme vous la raconteriez à un collègue. Mallettico en tire le client, le chantier et le devis chiffré — d\'un seul coup. Vous relisez, vous corrigez si besoin, vous validez.',
+    metaDescription:
+      'Créez un client, un chantier et un devis BTP à la voix. Décrivez votre affaire en une phrase depuis le chantier, relisez, validez. Fonctionne sur Chrome ordinateur et Android.',
+    steps: [
+      {
+        title: 'Vous parlez',
+        text: 'Appuyez sur le micro, en haut de n\'importe quelle page. Parlez normalement : « Madame Dupont, 12 rue des Lilas, elle veut refaire sa salle de bain, 15 m² de carrelage à 45 euros, la plomberie 800 euros. »',
+      },
+      {
+        title: 'Tout se remplit',
+        text: 'La fiche client, le chantier et les lignes du devis apparaissent séparés et chiffrés. Les prix que vous ne dictez pas sont repris de votre catalogue quand la prestation correspond.',
+      },
+      {
+        title: 'Vous relisez et validez',
+        text: 'Chaque fiche est modifiable et peut être désactivée d\'un interrupteur si vous n\'en voulez pas. Rien n\'est enregistré tant que vous n\'avez pas appuyé sur « Créer ».',
+      },
+    ],
+    groups: [
+      {
+        name: 'Ce qu\'une seule dictée peut créer',
+        items: [
+          'Une fiche client complète : nom, téléphone, email, adresse',
+          'Un chantier, rattaché automatiquement au bon client',
+          'Un devis ou une facture, avec quantités, unités et prix',
+          'Les trois à la fois — c\'est ainsi qu\'on décrit une affaire',
+        ],
+      },
+      {
+        name: 'Pensé pour le terrain',
+        items: [
+          'Les nombres dictés en toutes lettres deviennent des chiffres',
+          'Les unités du métier sont reconnues : m², m³, ml, heures, jours, forfait',
+          'Un client déjà enregistré est reconnu — pas de doublon créé',
+          'Les prix manquants sont complétés depuis votre catalogue',
+          'Relecture obligatoire : aucune création automatique',
+        ],
+      },
+    ],
+    faq: [
+      {
+        q: 'Sur quels appareils ça marche ?',
+        a: 'Sur Chrome et Edge, ordinateur comme Android. Sur iPhone, le navigateur d\'Apple ne donne pas encore un accès fiable au micro : le bouton reste disponible mais vous pouvez aussi écrire votre demande, l\'analyse fonctionne exactement pareil.',
+      },
+      {
+        q: 'Est-ce que ça crée des choses sans mon accord ?',
+        a: 'Jamais. Vous voyez toujours ce qui a été compris avant que quoi que ce soit soit enregistré, chaque champ reste modifiable, et vous pouvez désactiver une fiche entière. Il s\'agit de documents à valeur contractuelle : la dernière décision vous revient toujours.',
+      },
+      {
+        q: 'Et si je me trouve sans réseau ?',
+        a: 'L\'analyse de la dictée a besoin d\'une connexion. Sans réseau, utilisez la saisie habituelle — le reste de l\'application continue de fonctionner hors ligne et se synchronise au retour du signal.',
+      },
+      {
+        q: 'Ma voix est-elle enregistrée quelque part ?',
+        a: 'Non. La transcription est faite par votre navigateur, sur votre appareil : aucun fichier audio n\'est envoyé ni conservé. Seul le texte obtenu est analysé pour en extraire les données, puis il est oublié.',
+      },
+    ],
+    related: ['devis-factures', 'catalogue', 'suivi-chantiers'],
+  },
+
   'devis-factures': {
     slug: 'devis-factures',
     label: 'Devis & Factures',

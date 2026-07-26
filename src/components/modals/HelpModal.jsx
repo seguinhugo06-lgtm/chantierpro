@@ -31,6 +31,54 @@ export default function HelpModal({ showHelp, setShowHelp, isDark, couleur, tc }
         </div>
       )
     },
+    dictee: {
+      title: "Dictée vocale",
+      titleFull: "Créer à la voix, depuis le chantier",
+      icon: "🎙️",
+      content: (
+        <div className="space-y-4">
+          <p className={textSecondary}>
+            Le bouton <strong>Dicter</strong>, en haut de l’écran, est disponible sur toutes les pages.
+            Décrivez votre affaire à voix haute : Mallettico en tire le client, le chantier et le devis
+            chiffré, tout en même temps.
+          </p>
+
+          <div className={`p-4 rounded-xl ${isDark ? 'bg-emerald-900/20' : 'bg-emerald-50'}`}>
+            <h4 className={`font-semibold mb-2 ${isDark ? 'text-emerald-300' : 'text-emerald-800'}`}>🎙️ Ce que vous pouvez dire</h4>
+            <p className={`text-sm italic ${isDark ? 'text-emerald-200' : 'text-emerald-700'}`}>
+              « Madame Dupont, 12 rue des Lilas à Bordeaux, 06 12 34 56 78. Elle veut refaire sa salle
+              de bain : 15 m² de carrelage à 45 euros, la plomberie 800 euros. »
+            </p>
+            <p className={`text-sm mt-2 ${isDark ? 'text-emerald-200' : 'text-emerald-700'}`}>
+              → une fiche client, un chantier et un devis à 1 475 € HT, en une phrase.
+            </p>
+          </div>
+
+          <div className={`p-4 rounded-xl ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
+            <h4 className={`font-semibold mb-2 ${textPrimary}`}>💡 Pour de meilleurs résultats</h4>
+            <ul className={`text-sm space-y-1.5 ${textSecondary}`}>
+              <li>• Donnez le <strong>nom du client</strong> en premier : « Madame Dupont… »</li>
+              <li>• Dites l’unité : « 15 <strong>mètres carrés</strong> de carrelage »</li>
+              <li>• Dites le prix juste après : « <strong>à</strong> 45 euros »</li>
+              <li>• Pour un montant global : « la plomberie 800 euros » devient un forfait</li>
+              <li>• Dites « facture » si c’en est une — sinon c’est un devis</li>
+            </ul>
+          </div>
+
+          <div className={`p-4 rounded-xl ${isDark ? 'bg-amber-900/20' : 'bg-amber-50'}`}>
+            <h4 className={`font-semibold mb-2 ${isDark ? 'text-amber-300' : 'text-amber-800'}`}>⚠️ Bon à savoir</h4>
+            <ul className={`text-sm space-y-1.5 ${isDark ? 'text-amber-200' : 'text-amber-700'}`}>
+              <li>• <strong>Rien n’est créé sans vous</strong> : vous relisez et corrigez avant de valider.</li>
+              <li>• Un client déjà enregistré est reconnu : aucun doublon n’est créé.</li>
+              <li>• Les prix que vous ne dictez pas sont repris de votre catalogue quand la prestation correspond. Vérifiez-les.</li>
+              <li>• Le micro fonctionne sur Chrome (ordinateur et Android). Sur iPhone, écrivez votre demande : l’analyse est la même.</li>
+              <li>• L’analyse a besoin d’une connexion — hors réseau, utilisez la saisie classique.</li>
+              <li>• Votre voix n’est ni envoyée ni conservée : la transcription se fait sur votre appareil.</li>
+            </ul>
+          </div>
+        </div>
+      )
+    },
     devis: {
       title: "Devis & Factures",
       titleFull: "Créer et gérer vos devis",

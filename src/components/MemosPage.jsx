@@ -7,6 +7,7 @@ import {
   Mic, MicOff, Send, Share2, Copy, ExternalLink, PartyPopper
 } from 'lucide-react';
 import { useDebounce } from '../hooks/useDebounce';
+import useDictation from '../hooks/useDictation';
 import { useConfirm, useToast } from '../context/AppContext';
 import EmptyState from './ui/EmptyState';
 import MemoCalendarView from './MemoCalendarView';
@@ -953,7 +954,6 @@ export default function MemosPage({
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [dragOverIndex, setDragOverIndex] = useState(null);
-  const [isListening, setIsListening] = useState(false);
   const [filterCategoryChip, setFilterCategoryChip] = useState('');
   const [nudgeDismissed, setNudgeDismissed] = useState(() => {
     try {
@@ -963,87 +963,53 @@ export default function MemosPage({
   });
   const [focusSortIndex, setFocusSortIndex] = useState(null);
   const inputRef = useRef(null);
-  const recognitionRef = useRef(null);
   const silenceTimerRef = useRef(null);
   const { confirm } = useConfirm();
   const { showToast } = useToast();
 
-  // ── Web Speech API availability ──
-  const hasSpeechAPI = typeof window !== 'undefined' && ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
+  // ── Dictée vocale (hook partagé avec la dictée globale) ──
+  const dictation = useDictation();
+  const hasSpeechAPI = dictation.supported;
+  const isListening = dictation.listening;
 
-  // ── Voice dictation ──
+  const stopListening = useCallback(() => {
+    clearTimeout(silenceTimerRef.current);
+    dictation.stop();
+  }, [dictation]);
+
   const startListening = useCallback(() => {
     if (!hasSpeechAPI) {
       showToast("La saisie vocale n'est pas disponible sur ce navigateur", 'warning');
       return;
     }
     if (isListening) return;
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    const recognition = new SpeechRecognition();
-    recognition.lang = 'fr-FR';
-    recognition.continuous = true;
-    recognition.interimResults = true;
+    dictation.reset();
+    dictation.start();
+  }, [hasSpeechAPI, isListening, dictation, showToast]);
 
-    recognition.onresult = (event) => {
-      let transcript = '';
-      for (let i = 0; i < event.results.length; i++) {
-        transcript += event.results[i][0].transcript;
-      }
-      setNewMemoText(transcript);
-
-      // Auto-submit after 2s silence
-      clearTimeout(silenceTimerRef.current);
-      if (event.results[event.results.length - 1].isFinal) {
-        silenceTimerRef.current = setTimeout(() => {
-          stopListening();
-          // Submit if there's text
-          const trimmed = transcript.trim();
-          if (trimmed) {
-            addMemo({ text: trimmed });
-            setNewMemoText('');
-            showToast('Tâche vocale ajoutée', 'success');
-          }
-        }, 2000);
-      }
-    };
-
-    recognition.onerror = (e) => {
-      console.warn('Speech recognition error:', e.error);
-      setIsListening(false);
-      if (e.error === 'not-allowed') {
-        showToast('Accès au microphone refusé. Vérifiez les paramètres de votre navigateur.', 'warning');
-      } else if (e.error === 'no-speech') {
-        showToast('Aucune voix détectée. Réessayez.', 'info');
-      } else {
-        showToast('Erreur de reconnaissance vocale', 'error');
-      }
-    };
-
-    recognition.onend = () => {
-      setIsListening(false);
-    };
-
-    recognitionRef.current = recognition;
-    recognition.start();
-    setIsListening(true);
-  }, [hasSpeechAPI, isListening, addMemo, showToast]);
-
-  const stopListening = useCallback(() => {
-    clearTimeout(silenceTimerRef.current);
-    if (recognitionRef.current) {
-      recognitionRef.current.stop();
-      recognitionRef.current = null;
-    }
-    setIsListening(false);
-  }, []);
-
-  // Cleanup on unmount
+  // Le texte dicté alimente le champ, et la tâche part seule après 2 s de silence.
   useEffect(() => {
-    return () => {
-      clearTimeout(silenceTimerRef.current);
-      if (recognitionRef.current) recognitionRef.current.stop();
-    };
-  }, []);
+    if (!isListening) return;
+    const texte = dictation.texte;
+    setNewMemoText(texte);
+
+    clearTimeout(silenceTimerRef.current);
+    if (!texte.trim()) return;
+    silenceTimerRef.current = setTimeout(() => {
+      stopListening();
+      addMemo({ text: texte.trim() });
+      setNewMemoText('');
+      dictation.reset();
+      showToast('Tâche vocale ajoutée', 'success');
+    }, 2000);
+
+    return () => clearTimeout(silenceTimerRef.current);
+  }, [dictation.texte, isListening, addMemo, showToast, stopListening, dictation]);
+
+  // Les erreurs micro remontent en toast, comme avant
+  useEffect(() => {
+    if (dictation.error) showToast(dictation.error, 'warning');
+  }, [dictation.error, showToast]);
 
   const debouncedSearch = useDebounce(searchQuery, 300);
 

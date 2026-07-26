@@ -7,6 +7,7 @@
 
 import React from 'react';
 import {
+  Mic,
   FileText,
   PenLine,
   Package,
@@ -21,6 +22,23 @@ import { ScrollReveal } from './animations';
 import FeatureBlock from './FeatureBlock';
 
 const FEATURES = [
+  {
+    icon: Mic,
+    iconColor: '#f97316',
+    iconBg: 'bg-orange-50',
+    badge: "L'atout malin",
+    title: 'Dites-le. La mallette l\u2019\u00e9crit.',
+    href: '/fonctionnalites/dictee-vocale',
+    description:
+      'D\u00e9crivez votre affaire \u00e0 voix haute, comme \u00e0 un coll\u00e8gue. Le client, le chantier et le devis chiffr\u00e9 se remplissent d\u2019un seul coup. Vous relisez, vous validez.',
+    bullets: [
+      'Un client, un chantier et un devis depuis une seule dict\u00e9e',
+      'Les nombres dict\u00e9s en lettres deviennent des chiffres',
+      'Unit\u00e9s du m\u00e9tier reconnues : m\u00b2, m\u00b3, ml, heures, forfait',
+      'Les prix manquants sont repris de votre catalogue',
+      'Relecture obligatoire \u2014 rien n\u2019est cr\u00e9\u00e9 sans votre accord',
+    ],
+  },
   {
     icon: FileText,
     iconColor: '#f97316',

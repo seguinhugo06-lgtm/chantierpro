@@ -61,6 +61,7 @@ const ShortcutsHelp = lazyWithRetry(() => import('./components/ShortcutsHelp'), 
 import PortalLoader from './components/portal/PortalLoader';
 const GarantiesDashboard = lazyWithRetry(() => import('./components/chantiers/GarantiesDashboard'), 'Garanties');
 const PlanPage = lazyWithRetry(() => import('./components/profil/PlanPage'), 'Plan');
+const DicteeModal = lazyWithRetry(() => import('./components/voice/DicteeModal'), 'Dictée');
 import CookieConsent from './components/CookieConsent';
 import CGUAcceptanceModal, { CGU_VERSION } from './components/CGUAcceptanceModal';
 import { useConfirm, useToast } from './context/AppContext';
@@ -78,7 +79,7 @@ import { usePermissions } from './hooks/usePermissions';
 import { PermissionGate } from './components/ui/PermissionGate';
 import { fetchSubscription, fetchUsage, computeLiveUsage } from './services/subscriptionsApi';
 import { isDraftChantier } from './lib/utils';
-import { Home, FileText, Building2, Calendar, Users, Package, HardHat, Settings as SettingsIcon, Eye, EyeOff, Sun, Moon, LogOut, Menu, Bell, Plus, ChevronRight, ChevronDown, BarChart3, HelpCircle, Search, X, CheckCircle, AlertCircle, Info, Clock, Receipt, Wifi, WifiOff, Palette, Wallet, Library, UserCheck, ShoppingCart, Camera, ClipboardList, PenTool, Download, Share, Smartphone, CreditCard, Tag, Sparkles, Kanban, Star, User, MessageCircle, Shield, CalendarCheck, Megaphone, FileCheck, ClipboardCheck, Globe } from 'lucide-react';
+import { Home, FileText, Building2, Calendar, Users, Package, HardHat, Settings as SettingsIcon, Eye, EyeOff, Sun, Moon, LogOut, Menu, Bell, Plus, ChevronRight, ChevronDown, BarChart3, HelpCircle, Search, X, CheckCircle, AlertCircle, Info, Clock, Receipt, Wifi, WifiOff, Palette, Wallet, Library, UserCheck, ShoppingCart, Camera, ClipboardList, PenTool, Download, Share, Smartphone, CreditCard, Tag, Sparkles, Kanban, Star, User, MessageCircle, Shield, CalendarCheck, Megaphone, FileCheck, ClipboardCheck, Globe, Mic } from 'lucide-react';
 import { usePWA } from './hooks/usePWA';
 import { registerNetworkListeners, getPendingCount, syncQueue, clearAllMutations, checkConnectivity } from './lib/offline/sync';
 import OfflineIndicator from './components/ui/OfflineIndicator';
@@ -181,6 +182,7 @@ export default function App() {
   const [selectedChantier, setSelectedChantier] = useState(null);
   const [selectedDevis, setSelectedDevis] = useState(null);
   const [createMode, setCreateMode] = useState({ devis: false, chantier: false, client: false });
+  const [showDictee, setShowDictee] = useState(false);
   const [aiPrefill, setAiPrefill] = useState(null); // IA devis pre-fill data (stays local until user confirms)
   // Multi-entreprise context
   const {
@@ -1560,6 +1562,18 @@ export default function App() {
 
           {/* RIGHT GROUP: Actions */}
           <div className="flex items-center gap-1 sm:gap-1.5">
+            {/* Dictée vocale — l'atout malin, accessible depuis n'importe quelle page */}
+            <button
+              onClick={() => setShowDictee(true)}
+              className="h-11 px-3 sm:px-3.5 rounded-xl flex items-center gap-1.5 text-white font-medium text-sm transition-transform active:scale-95"
+              style={{ background: couleur }}
+              title="Dictée vocale — créez un client, un chantier ou un devis à la voix"
+              aria-label="Dictée vocale"
+            >
+              <Mic size={18} />
+              <span className="hidden lg:inline">Dicter</span>
+            </button>
+
             {/* Search button - mobile only (icon) */}
             <button
               onClick={() => setShowSearch(true)}
@@ -1909,6 +1923,26 @@ export default function App() {
 
       {/* Onboarding Modal for first-time users */}
       {showOnboarding && <OnboardingModal setShowOnboarding={setShowOnboarding} isDark={isDark} couleur={couleur} />}
+
+      {/* Dictée vocale — client + chantier + devis en une seule prise de parole */}
+      {showDictee && (
+        <Suspense fallback={null}>
+          <DicteeModal
+            isOpen={showDictee}
+            onClose={() => setShowDictee(false)}
+            isDark={isDark}
+            couleur={couleur}
+            showToast={showToast}
+            clients={clients}
+            catalogue={catalogue}
+            addClient={addClient}
+            addChantier={addChantier}
+            addDevis={addDevis}
+            setPage={setPage}
+            setSelectedDevis={setSelectedDevis}
+          />
+        </Suspense>
+      )}
 
       {/* Command Palette (⌘K) */}
       <Suspense fallback={null}>
