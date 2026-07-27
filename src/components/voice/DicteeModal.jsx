@@ -1,30 +1,54 @@
 /**
  * DicteeModal — L'atout malin : l'artisan parle, la mallette remplit.
  *
- * Une seule dictée peut produire un client, un chantier et un devis d'un coup :
- * c'est ainsi qu'un artisan décrit son affaire, en une phrase, sans penser en
+ * Une seule dictée peut produire un client, plusieurs chantiers et un devis :
+ * c'est ainsi qu'un artisan décrit sa journée, en une phrase, sans penser en
  * « fiches ». On analyse, on montre ce qu'on a compris, il corrige, il valide.
  *
- * Rien n'est jamais créé sans relecture : une erreur de prix ou de quantité
- * partirait sinon dans un document à valeur contractuelle.
+ * Deux principes qui gouvernent tout le fichier :
+ *   1. Rien n'est jamais créé sans relecture — une erreur de prix partirait
+ *      sinon dans un document à valeur contractuelle.
+ *   2. Rien n'est jamais créé en double — on rapproche client et chantier de
+ *      l'existant avant de proposer d'en créer de nouveaux.
  */
 
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Mic, MicOff, X, Loader2, Check, User, HardHat, FileText,
-  Trash2, Plus, AlertTriangle, Sparkles, RotateCcw,
+  Trash2, Plus, AlertTriangle, Sparkles, RotateCcw, Link2, Keyboard,
 } from 'lucide-react';
 import useDictation from '../../hooks/useDictation';
-import { analyserDictee, rapprocherClient, enrichirLignes } from '../../lib/voiceIntent';
+import { toast } from '../../stores/toastStore';
+import {
+  analyserDictee, rapprocherClient, rapprocherChantier, enrichirLignes,
+} from '../../lib/voiceIntent';
 
 const UNITES = ['u', 'm²', 'm³', 'ml', 'h', 'j', 'forfait', 'pièce', 'sac', 'pot', 'kg', 'lot'];
 
+/**
+ * Délai de silence après lequel on analyse tout seul. Assez long pour laisser
+ * l'artisan chercher un chiffre en cours de phrase ; s'il est coupé trop tôt,
+ * « Redicter » lui rend son texte et il reprend le micro là où il en était.
+ */
+const SILENCE_AVANT_ANALYSE = 3500;
+
 const EXEMPLES = [
-  "Madame Dupont, 12 rue des Lilas à Bordeaux, 06 12 34 56 78. Elle veut refaire sa salle de bain : 15 m² de carrelage à 45 euros, la plomberie 800 euros.",
-  "Nouveau chantier chez Monsieur Martin : rénovation de la façade, 80 m² de ravalement à 38 euros le mètre carré.",
-  "Facture pour Madame Leroy : dépannage plomberie 150 euros, 2 heures de main d'œuvre à 45 euros.",
+  {
+    titre: 'Un client + un devis',
+    texte: "Madame Dupont, 12 rue des Lilas à Bordeaux, 06 12 34 56 78. Elle veut refaire sa salle de bain : 15 m² de carrelage à 45 euros, la plomberie 800 euros.",
+  },
+  {
+    titre: 'Une tournée, plusieurs chantiers',
+    texte: "J'ai trois nouveaux chantiers : rénovation de la façade chez Martin, pose d'un parquet rue de la Paix, et le dépannage plomberie chez Leroy.",
+  },
+  {
+    titre: 'Une facture rapide',
+    texte: "Facture pour Madame Leroy : dépannage plomberie 150 euros, 2 heures de main d'œuvre à 45 euros.",
+  },
 ];
+
+const mmss = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 
 /** Champ de saisie compact, aligné sur les conventions du reste de l'app. */
 function Champ({ label, value, onChange, isDark, type = 'text', placeholder, largeur = '' }) {
@@ -46,7 +70,7 @@ function Champ({ label, value, onChange, isDark, type = 'text', placeholder, lar
 }
 
 /** Bloc repliable avec interrupteur « je crée / je ne crée pas ». */
-function Carte({ icone: Icone, titre, sousTitre, actif, onToggle, isDark, couleur, children, badge }) {
+function Carte({ icone: Icone, titre, sousTitre, actif, onToggle, isDark, couleur, children, badge, liaison }) {
   const cardBg = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200';
   return (
     <div className={`rounded-2xl border ${cardBg} overflow-hidden transition-opacity ${actif ? '' : 'opacity-50'}`}>
@@ -89,6 +113,17 @@ function Carte({ icone: Icone, titre, sousTitre, actif, onToggle, isDark, couleu
           />
         </button>
       </div>
+      {/* Le rattachement est la source d'erreur n°1 : on l'affiche toujours, en clair. */}
+      {actif && liaison && (
+        <div className={`mx-3 sm:mx-4 mb-3 flex items-start gap-1.5 text-xs rounded-lg px-2.5 py-2 ${
+          liaison.ok
+            ? isDark ? 'bg-slate-700/50 text-slate-300' : 'bg-slate-50 text-slate-600'
+            : isDark ? 'bg-amber-500/10 text-amber-200' : 'bg-amber-50 text-amber-800'
+        }`}>
+          {liaison.ok ? <Link2 size={13} className="shrink-0 mt-0.5" /> : <AlertTriangle size={13} className="shrink-0 mt-0.5" />}
+          <span>{liaison.texte}</span>
+        </div>
+      )}
       {actif && children && <div className="px-3 pb-4 sm:px-4">{children}</div>}
     </div>
   );
@@ -99,28 +134,37 @@ export default function DicteeModal({
   onClose,
   isDark = false,
   couleur = '#f97316',
-  showToast,
   clients = [],
+  chantiers = [],
   catalogue = [],
   addClient,
   addChantier,
   addDevis,
+  deleteClient,
+  deleteChantier,
+  deleteDevis,
   setPage,
   setSelectedDevis,
+  setSelectedChantier,
 }) {
   const dictation = useDictation();
   const [etape, setEtape] = useState('parler');   // parler | analyse | relecture
   const [erreur, setErreur] = useState(null);
   const [source, setSource] = useState('ia');
   const [resume, setResume] = useState('');
+  const [incertitudes, setIncertitudes] = useState([]);
   const [creation, setCreation] = useState(false);
 
   // Données relues/éditables
   const [client, setClient] = useState(null);
   const [clientExistant, setClientExistant] = useState(null);
-  const [chantier, setChantier] = useState(null);
+  const [listeChantiers, setListeChantiers] = useState([]);  // [{ data, existant, actif }]
   const [doc, setDoc] = useState(null);
-  const [actifs, setActifs] = useState({ client: true, chantier: true, document: true });
+  const [docChantierIdx, setDocChantierIdx] = useState(0);
+  const [clientActif, setClientActif] = useState(true);
+  const [docActif, setDocActif] = useState(true);
+
+  const analyseLanceeRef = useRef(false);
 
   const cardBg = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200';
   const textPrimary = isDark ? 'text-slate-100' : 'text-slate-900';
@@ -131,16 +175,19 @@ export default function DicteeModal({
     dictation.reset();
     setEtape('parler');
     setErreur(null);
-    setResume('');
-    setClient(null); setClientExistant(null); setChantier(null); setDoc(null);
-    setActifs({ client: true, chantier: true, document: true });
-  }, [dictation]);
+    setResume(''); setIncertitudes([]);
+    setClient(null); setClientExistant(null); setListeChantiers([]); setDoc(null);
+    setDocChantierIdx(0);
+    setClientActif(true); setDocActif(true);
+    analyseLanceeRef.current = false;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dictation.stop, dictation.reset]);
 
   useEffect(() => { if (isOpen) reinitialiser(); /* eslint-disable-next-line */ }, [isOpen]);
 
   // Échap pour fermer
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) return undefined;
     const onKey = (e) => { if (e.key === 'Escape' && !creation) onClose?.(); };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -149,38 +196,61 @@ export default function DicteeModal({
   const texteDicte = dictation.texte;
 
   // ── Analyse ────────────────────────────────────────────────────────────────
-  const lancerAnalyse = async () => {
-    dictation.stop();
-    const texte = (texteDicte || '').trim();
+  const lancerAnalyse = useCallback(async (texteBrut) => {
+    const texte = (texteBrut ?? '').trim();
     if (texte.length < 3) { setErreur('Dictez d’abord votre demande.'); return; }
+    if (analyseLanceeRef.current) return;
+    analyseLanceeRef.current = true;
 
+    dictation.stop();
     setEtape('analyse');
     setErreur(null);
     try {
       const { intention, source: src } = await analyserDictee(texte, { clients, catalogue });
       setSource(src);
       setResume(intention.resume || '');
+      setIncertitudes(intention.incertitudes || []);
 
       const dejaConnu = intention.client ? rapprocherClient(intention.client, clients) : null;
       setClientExistant(dejaConnu);
       setClient(intention.client || null);
-      setChantier(intention.chantier || null);
+      setClientActif(!!intention.client && !dejaConnu);
+
+      // Chaque chantier est rapproché de l'existant du même client
+      const idClientPourRapprochement = dejaConnu?.id || null;
+      setListeChantiers(
+        (intention.chantiers || []).map((c) => {
+          const existant = rapprocherChantier(c, chantiers, idClientPourRapprochement);
+          return { data: c, existant, actif: !existant };
+        })
+      );
+      setDocChantierIdx(0);
+
       setDoc(
         intention.document
           ? { ...intention.document, lignes: enrichirLignes(intention.document.lignes || [], catalogue) }
           : null
       );
-      setActifs({
-        client: !!intention.client && !dejaConnu, // un client déjà connu n'est pas recréé
-        chantier: !!intention.chantier,
-        document: !!intention.document,
-      });
+      setDocActif(!!intention.document);
       setEtape('relecture');
     } catch (e) {
       setErreur(e.message);
       setEtape('parler');
+    } finally {
+      analyseLanceeRef.current = false;
     }
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clients, chantiers, catalogue, dictation.stop]);
+
+  // Analyse automatique après un silence : l'artisan a fini de parler, il n'a
+  // pas à chercher un bouton. Il peut aussi couper le micro pour partir tout de suite.
+  useEffect(() => {
+    if (!isOpen || etape !== 'parler' || !dictation.listening) return undefined;
+    if (!dictation.dernierMot || dictation.texte.trim().length < 3) return undefined;
+    const restant = SILENCE_AVANT_ANALYSE - (Date.now() - dictation.dernierMot);
+    const t = setTimeout(() => lancerAnalyse(dictation.texte), Math.max(restant, 300));
+    return () => clearTimeout(t);
+  }, [isOpen, etape, dictation.listening, dictation.dernierMot, dictation.texte, lancerAnalyse]);
 
   // ── Totaux ─────────────────────────────────────────────────────────────────
   const totaux = useMemo(() => {
@@ -194,17 +264,57 @@ export default function DicteeModal({
   }, [doc]);
 
   const lignesSansPrix = (doc?.lignes || []).filter((l) => !l.prixUnitaire).length;
+  const chantiersActifs = listeChantiers.filter((c) => c.actif);
+  const nomClient = clientExistant
+    ? [clientExistant.prenom, clientExistant.nom].filter(Boolean).join(' ')
+    : clientActif && client?.nom
+      ? [client.prenom, client.nom].filter(Boolean).join(' ')
+      : null;
+
+  // Récap : ce qui sera réellement créé, visible sans scroller
+  const recap = useMemo(() => {
+    const parts = [];
+    if (clientActif && client?.nom) parts.push('1 client');
+    if (chantiersActifs.length) parts.push(`${chantiersActifs.length} chantier${chantiersActifs.length > 1 ? 's' : ''}`);
+    if (docActif && doc) {
+      parts.push(
+        doc.lignes.length
+          ? `${doc.type === 'facture' ? 'Facture' : 'Devis'} ${totaux.ttc.toFixed(2)} €`
+          : `${doc.type === 'facture' ? 'Facture' : 'Devis'} à chiffrer`
+      );
+    }
+    return parts;
+  }, [clientActif, client, chantiersActifs.length, docActif, doc, totaux.ttc]);
+
+  const rienASoumettre = !recap.length;
+
+  // Cas fréquent : tout ce qui a été dicté existe déjà (client connu, chantier
+  // connu). Il n'y a rien à créer, mais laisser un bouton grisé serait une
+  // impasse — on propose la suite logique plutôt que rien.
+  const chantierConnu = listeChantiers.find((c) => c.existant)?.existant || null;
+  const suiteLogique = !rienASoumettre ? null
+    : clientExistant && !doc
+      ? {
+          label: `Faire un devis pour ${[clientExistant.prenom, clientExistant.nom].filter(Boolean).join(' ')}`,
+          action: () => { setDoc({ type: 'devis', lignes: [], notes: null }); setDocActif(true); },
+        }
+      : chantierConnu
+        ? {
+            label: `Ouvrir le chantier « ${chantierConnu.nom} »`,
+            action: () => { setSelectedChantier?.(chantierConnu); setPage?.('chantiers'); onClose?.(); },
+          }
+        : null;
 
   // ── Création ───────────────────────────────────────────────────────────────
   const creer = async () => {
     setCreation(true);
     setErreur(null);
+    // Trace de ce qui a été créé — sert à l'annulation
+    const cree = { clientId: null, chantierIds: [], devis: null, libelles: [] };
     try {
-      const cree = [];
-
       // 1. Client — soit celui reconnu, soit un nouveau
       let clientId = clientExistant?.id || null;
-      if (actifs.client && client?.nom) {
+      if (clientActif && client?.nom) {
         const nouveau = await addClient({
           nom: client.nom,
           prenom: client.prenom || '',
@@ -214,32 +324,39 @@ export default function DicteeModal({
           codePostal: client.codePostal || '',
           ville: client.ville || '',
         });
-        clientId = nouveau?.id || null;
-        if (clientId) cree.push('client');
+        // Sans id, tout ce qui suit serait rattaché dans le vide : on s'arrête net.
+        if (!nouveau?.id) throw new Error("La fiche client n'a pas pu être enregistrée. Rien d'autre n'a été créé.");
+        clientId = nouveau.id;
+        cree.clientId = clientId;
+        cree.libelles.push('client');
       }
 
-      // 2. Chantier — rattaché au client s'il y en a un
-      let chantierId = null;
-      if (actifs.chantier && chantier?.nom) {
+      // 2. Chantiers — rattachés au client s'il y en a un
+      const idsChantiers = [];
+      for (const item of listeChantiers) {
+        if (item.existant) { idsChantiers.push(item.existant.id); continue; }
+        if (!item.actif) { idsChantiers.push(null); continue; }
+        const c = item.data;
         const nouveau = await addChantier({
-          nom: chantier.nom,
+          nom: c.nom,
           client_id: clientId || undefined,
           clientId: clientId || undefined,
-          adresse: chantier.adresse || client?.adresse || '',
-          ville: chantier.ville || client?.ville || '',
-          description: chantier.description || '',
+          adresse: c.adresse || client?.adresse || '',
+          ville: c.ville || client?.ville || '',
+          description: c.description || '',
         });
-        chantierId = nouveau?.id || null;
-        if (chantierId) cree.push('chantier');
+        if (!nouveau?.id) throw new Error(`Le chantier « ${c.nom} » n'a pas pu être enregistré.`);
+        idsChantiers.push(nouveau.id);
+        cree.chantierIds.push(nouveau.id);
       }
+      const nbChantiersCrees = cree.chantierIds.length;
+      if (nbChantiersCrees) cree.libelles.push(`${nbChantiersCrees} chantier${nbChantiersCrees > 1 ? 's' : ''}`);
 
       // 3. Devis / facture — exige un client (garde-fou de addDevis)
       let devisCree = null;
-      if (actifs.document && doc?.lignes?.length) {
+      if (docActif && doc) {
         if (!clientId) {
-          setErreur("Un devis a besoin d'un client. Activez la fiche client ou choisissez-en un existant.");
-          setCreation(false);
-          return;
+          throw new Error("Un devis a besoin d'un client. Activez la fiche client ou choisissez-en un existant.");
         }
         const lignes = doc.lignes.map((l, i) => ({
           id: `${Date.now()}-${i}`,
@@ -253,7 +370,7 @@ export default function DicteeModal({
         devisCree = await addDevis({
           type: doc.type === 'facture' ? 'facture' : 'devis',
           client_id: clientId,
-          chantier_id: chantierId || undefined,
+          chantier_id: idsChantiers[docChantierIdx] || undefined,
           date: new Date().toISOString().split('T')[0],
           statut: 'brouillon',
           tvaRate: 20,
@@ -264,25 +381,48 @@ export default function DicteeModal({
           tva: Math.round(totaux.tva * 100) / 100,
           total_ttc: Math.round(totaux.ttc * 100) / 100,
         });
-        if (devisCree) cree.push(doc.type === 'facture' ? 'facture' : 'devis');
+        if (devisCree) {
+          cree.devis = devisCree;
+          cree.libelles.push(doc.type === 'facture' ? 'facture' : 'devis');
+        }
       }
 
-      if (!cree.length) {
+      if (!cree.libelles.length) {
         setErreur('Rien à créer — activez au moins une fiche.');
         setCreation(false);
         return;
       }
 
-      showToast?.(`${cree.join(' + ')} créé${cree.length > 1 ? 's' : ''} depuis la dictée`, 'success');
+      // Annulation : l'artisan vient de créer plusieurs enregistrements d'un
+      // geste, il doit pouvoir tout défaire aussi vite s'il s'est trompé.
+      // On supprime dans l'ordre inverse des dépendances.
+      const annuler = async () => {
+        try {
+          if (cree.devis?.id) await deleteDevis?.(cree.devis.id);
+          for (const id of cree.chantierIds) await deleteChantier?.(id);
+          if (cree.clientId) await deleteClient?.(cree.clientId);
+          toast.info('Création annulée', 'Tout a été supprimé.');
+        } catch {
+          toast.error("L'annulation a échoué", 'Supprimez les fiches à la main.');
+        }
+      };
+      toast.success(
+        `${cree.libelles.join(' + ')} créé${cree.libelles.length > 1 ? 's' : ''}`,
+        'Depuis votre dictée.',
+        {
+          duration: 20000, // le temps de parcourir le document avant de se raviser
+          action: { label: 'Annuler', onClick: annuler },
+        }
+      );
       onClose?.();
 
       // On ouvre le document créé : l'artisan finit toujours par vouloir le relire
       if (devisCree) {
         setSelectedDevis?.(devisCree);
         setPage?.('devis');
-      } else if (chantierId) {
+      } else if (cree.chantierIds.length) {
         setPage?.('chantiers');
-      } else if (clientId) {
+      } else if (cree.clientId) {
         setPage?.('clients');
       }
     } catch (e) {
@@ -296,6 +436,11 @@ export default function DicteeModal({
 
   const majLigne = (i, champ, val) =>
     setDoc((d) => ({ ...d, lignes: d.lignes.map((l, j) => (j === i ? { ...l, [champ]: val } : l)) }));
+
+  const majChantier = (idx, champ, val) =>
+    setListeChantiers((liste) =>
+      liste.map((it, j) => (j === idx ? { ...it, data: { ...it.data, [champ]: val } } : it))
+    );
 
   return createPortal(
     <div
@@ -329,6 +474,26 @@ export default function DicteeModal({
           </button>
         </div>
 
+        {/* Récap collant — ce qui sera créé, sans avoir à scroller */}
+        {etape === 'relecture' && !rienASoumettre && (
+          <div
+            className={`px-4 py-2.5 border-b border-slate-200/20 flex items-center gap-2 flex-wrap shrink-0 ${
+              isDark ? 'bg-slate-800/60' : 'bg-slate-50'
+            }`}
+          >
+            <span className={`text-xs font-medium ${textMuted}`}>À créer :</span>
+            {recap.map((r) => (
+              <span
+                key={r}
+                className="text-xs font-semibold px-2 py-1 rounded-lg"
+                style={{ background: `${couleur}18`, color: couleur }}
+              >
+                {r}
+              </span>
+            ))}
+          </div>
+        )}
+
         <div className="overflow-y-auto p-4 space-y-4 flex-1">
           {/* ── Micro non supporté ─────────────────────────────────────────── */}
           {!dictation.supported && etape === 'parler' && (
@@ -352,7 +517,9 @@ export default function DicteeModal({
                   onClick={dictation.toggle}
                   disabled={!dictation.supported}
                   aria-label={dictation.listening ? 'Arrêter la dictée' : 'Démarrer la dictée'}
-                  className="w-20 h-20 rounded-full flex items-center justify-center text-white transition-transform active:scale-95 disabled:opacity-40"
+                  className={`w-20 h-20 rounded-full flex items-center justify-center text-white transition-transform active:scale-95 disabled:opacity-40 ${
+                    dictation.listening ? 'animate-pulse' : ''
+                  }`}
                   style={{
                     background: couleur,
                     boxShadow: dictation.listening ? `0 0 0 12px ${couleur}22` : 'none',
@@ -360,22 +527,46 @@ export default function DicteeModal({
                 >
                   {dictation.listening ? <MicOff size={30} /> : <Mic size={30} />}
                 </button>
-                <p className={`mt-3 text-sm font-medium ${dictation.listening ? '' : textMuted}`}
-                   style={dictation.listening ? { color: couleur } : undefined}>
-                  {dictation.listening ? 'Je vous écoute…' : dictation.supported ? 'Appuyez et parlez' : 'Micro indisponible'}
+
+                {/* Retour visuel réel : chrono et nombre de mots entendus */}
+                <p
+                  className={`mt-3 text-sm font-medium ${dictation.listening ? '' : textMuted}`}
+                  style={dictation.listening ? { color: couleur } : undefined}
+                  aria-live="polite"
+                >
+                  {dictation.listening
+                    ? `Je vous écoute… ${mmss(dictation.duree)}`
+                    : dictation.supported ? 'Appuyez et parlez' : 'Micro indisponible'}
                 </p>
+                {dictation.listening && (
+                  <p className={`mt-0.5 text-xs ${textMuted}`}>
+                    {dictation.motsCount > 0
+                      ? `${dictation.motsCount} mot${dictation.motsCount > 1 ? 's' : ''} · j'analyse dès que vous vous arrêtez`
+                      : 'Décrivez votre affaire à voix haute'}
+                  </p>
+                )}
               </div>
 
-              <textarea
-                value={texteDicte}
-                onChange={(e) => { dictation.setTranscript(e.target.value); }}
-                rows={4}
-                placeholder="Ou écrivez ici : « Madame Dupont, 12 rue des Lilas, 15 m² de carrelage à 45 euros… »"
-                className={`w-full px-3 py-2 rounded-xl border text-sm ${
-                  isDark ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400'
-                         : 'bg-white border-slate-300 text-slate-900 placeholder-slate-400'
-                }`}
-              />
+              <div>
+                <label
+                  htmlFor="dictee-texte"
+                  className={`flex items-center gap-1.5 text-xs font-medium mb-1.5 ${textMuted}`}
+                >
+                  <Keyboard size={13} />
+                  {texteDicte ? 'Ce que j’ai entendu — corrigez si besoin' : 'Ou tapez directement'}
+                </label>
+                <textarea
+                  id="dictee-texte"
+                  value={texteDicte}
+                  onChange={(e) => { dictation.setTranscript(e.target.value); }}
+                  rows={4}
+                  placeholder="« Madame Dupont, 12 rue des Lilas, 15 m² de carrelage à 45 euros… »"
+                  className={`w-full px-3 py-2 rounded-xl border text-sm ${
+                    isDark ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400'
+                           : 'bg-white border-slate-300 text-slate-900 placeholder-slate-400'
+                  }`}
+                />
+              </div>
 
               {(dictation.error || erreur) && (
                 <div className={`rounded-xl p-3 text-sm ${isDark ? 'bg-red-500/10 text-red-200' : 'bg-red-50 text-red-700'}`}>
@@ -387,16 +578,21 @@ export default function DicteeModal({
                 <div>
                   <p className={`text-xs font-medium mb-2 ${textMuted}`}>Exemples de ce que vous pouvez dire</p>
                   <div className="space-y-2">
-                    {EXEMPLES.map((ex, i) => (
+                    {EXEMPLES.map((ex) => (
                       <button
-                        key={i}
-                        onClick={() => dictation.setTranscript(ex)}
-                        className={`w-full text-left text-xs p-2.5 rounded-lg border ${
-                          isDark ? 'border-slate-700 text-slate-300 hover:bg-slate-700/50'
-                                 : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                        key={ex.titre}
+                        onClick={() => dictation.setTranscript(ex.texte)}
+                        className={`w-full text-left p-2.5 rounded-lg border ${
+                          isDark ? 'border-slate-700 hover:bg-slate-700/50'
+                                 : 'border-slate-200 hover:bg-slate-50'
                         }`}
                       >
-                        « {ex} »
+                        <span className="block text-xs font-semibold mb-0.5" style={{ color: couleur }}>
+                          {ex.titre}
+                        </span>
+                        <span className={`block text-xs ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+                          « {ex.texte} »
+                        </span>
                       </button>
                     ))}
                   </div>
@@ -430,6 +626,21 @@ export default function DicteeModal({
                 </div>
               )}
 
+              {/* Les doutes de l'analyse, dits franchement plutôt que masqués */}
+              {incertitudes.length > 0 && (
+                <div className={`rounded-xl p-3 text-sm ${isDark ? 'bg-amber-500/10 text-amber-200' : 'bg-amber-50 text-amber-800'}`}>
+                  <div className="flex gap-2">
+                    <AlertTriangle size={16} className="shrink-0 mt-0.5" />
+                    <div>
+                      <strong className="block mb-1">À vérifier avant de valider</strong>
+                      <ul className="list-disc list-inside space-y-0.5">
+                        {incertitudes.map((inc, i) => <li key={i}>{inc}</li>)}
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {clientExistant && (
                 <div className={`rounded-xl p-3 text-sm ${isDark ? 'bg-emerald-500/10 text-emerald-200' : 'bg-emerald-50 text-emerald-800'}`}>
                   Client reconnu : <strong>{[clientExistant.prenom, clientExistant.nom].filter(Boolean).join(' ')}</strong>.
@@ -442,7 +653,7 @@ export default function DicteeModal({
                 <Carte
                   icone={User} titre="Nouveau client"
                   sousTitre={[client.prenom, client.nom].filter(Boolean).join(' ')}
-                  actif={actifs.client} onToggle={() => setActifs((a) => ({ ...a, client: !a.client }))}
+                  actif={clientActif} onToggle={() => setClientActif((v) => !v)}
                   isDark={isDark} couleur={couleur}
                 >
                   <div className="grid grid-cols-2 gap-2">
@@ -457,32 +668,80 @@ export default function DicteeModal({
                 </Carte>
               )}
 
-              {/* Chantier */}
-              {chantier && (
-                <Carte
-                  icone={HardHat} titre="Chantier" sousTitre={chantier.nom}
-                  actif={actifs.chantier} onToggle={() => setActifs((a) => ({ ...a, chantier: !a.chantier }))}
-                  isDark={isDark} couleur={couleur}
-                >
-                  <div className="grid grid-cols-2 gap-2">
-                    <Champ label="Nom du chantier" value={chantier.nom} onChange={(v) => setChantier({ ...chantier, nom: v })} isDark={isDark} largeur="col-span-2" />
-                    <Champ label="Adresse des travaux" value={chantier.adresse} onChange={(v) => setChantier({ ...chantier, adresse: v })} isDark={isDark} placeholder={client?.adresse || ''} />
-                    <Champ label="Ville" value={chantier.ville} onChange={(v) => setChantier({ ...chantier, ville: v })} isDark={isDark} placeholder={client?.ville || ''} />
+              {/* Chantiers — un par travaux évoqué */}
+              {listeChantiers.map((item, idx) => (
+                item.existant ? (
+                  <div
+                    key={idx}
+                    className={`rounded-xl p-3 text-sm ${isDark ? 'bg-emerald-500/10 text-emerald-200' : 'bg-emerald-50 text-emerald-800'}`}
+                  >
+                    Chantier reconnu : <strong>{item.existant.nom}</strong>. Aucun doublon ne sera créé.
                   </div>
-                </Carte>
-              )}
+                ) : (
+                  <Carte
+                    key={idx}
+                    icone={HardHat}
+                    titre={listeChantiers.length > 1 ? `Chantier ${idx + 1}` : 'Chantier'}
+                    sousTitre={item.data.nom}
+                    actif={item.actif}
+                    onToggle={() =>
+                      setListeChantiers((l) => l.map((it, j) => (j === idx ? { ...it, actif: !it.actif } : it)))
+                    }
+                    isDark={isDark} couleur={couleur}
+                    liaison={
+                      nomClient
+                        ? { ok: true, texte: `Sera rattaché à ${nomClient}.` }
+                        : { ok: false, texte: 'Aucun client rattaché — le chantier sera créé seul.' }
+                    }
+                  >
+                    <div className="grid grid-cols-2 gap-2">
+                      <Champ label="Nom du chantier" value={item.data.nom} onChange={(v) => majChantier(idx, 'nom', v)} isDark={isDark} largeur="col-span-2" />
+                      <Champ label="Adresse des travaux" value={item.data.adresse} onChange={(v) => majChantier(idx, 'adresse', v)} isDark={isDark} placeholder={client?.adresse || ''} />
+                      <Champ label="Ville" value={item.data.ville} onChange={(v) => majChantier(idx, 'ville', v)} isDark={isDark} placeholder={client?.ville || ''} />
+                    </div>
+                  </Carte>
+                )
+              ))}
 
               {/* Devis / facture */}
               {doc && (
                 <Carte
                   icone={FileText}
                   titre={doc.type === 'facture' ? 'Facture' : 'Devis'}
-                  sousTitre={`${doc.lignes.length} ligne${doc.lignes.length > 1 ? 's' : ''} · ${totaux.ttc.toFixed(2)} € TTC`}
+                  sousTitre={
+                    doc.lignes.length
+                      ? `${doc.lignes.length} ligne${doc.lignes.length > 1 ? 's' : ''} · ${totaux.ttc.toFixed(2)} € TTC`
+                      : 'Aucun prix dicté — à chiffrer ensuite'
+                  }
                   badge={lignesSansPrix ? `${lignesSansPrix} prix à compléter` : null}
-                  actif={actifs.document} onToggle={() => setActifs((a) => ({ ...a, document: !a.document }))}
+                  actif={docActif} onToggle={() => setDocActif((v) => !v)}
                   isDark={isDark} couleur={couleur}
+                  liaison={
+                    nomClient
+                      ? { ok: true, texte: `Au nom de ${nomClient}.` }
+                      : { ok: false, texte: 'Un devis a besoin d’un client — activez la fiche client ci-dessus.' }
+                  }
                 >
                   <div className="space-y-2">
+                    {/* Quand plusieurs chantiers sont créés, il faut savoir à quel
+                        chantier le devis se rattache — sinon le choix est arbitraire. */}
+                    {chantiersActifs.length > 1 && (
+                      <label className="block">
+                        <span className={`block text-xs mb-1 ${textMuted}`}>Chantier concerné</span>
+                        <select
+                          value={docChantierIdx}
+                          onChange={(e) => setDocChantierIdx(Number(e.target.value))}
+                          className={`w-full px-3 py-2 rounded-lg border text-sm ${
+                            isDark ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-slate-300'
+                          }`}
+                        >
+                          {listeChantiers.map((it, j) => (
+                            <option key={j} value={j}>{it.data.nom}</option>
+                          ))}
+                        </select>
+                      </label>
+                    )}
+
                     {doc.lignes.map((l, i) => (
                       <div key={i} className={`rounded-xl p-2.5 border ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
                         <div className="flex gap-2 items-start">
@@ -536,6 +795,13 @@ export default function DicteeModal({
                       </div>
                     ))}
 
+                    {!doc.lignes.length && (
+                      <p className={`text-xs ${textMuted}`}>
+                        Vous avez demandé un {doc.type === 'facture' ? 'e facture' : ' devis'} sans donner de prix.
+                        Il sera créé vide : vous le chiffrerez dans l'éditeur, catalogue à portée de main.
+                      </p>
+                    )}
+
                     <button
                       onClick={() => setDoc((d) => ({ ...d, lignes: [...d.lignes, { description: '', quantite: 1, unite: 'u', prixUnitaire: null }] }))}
                       className={`w-full py-2 rounded-xl border border-dashed text-sm flex items-center justify-center gap-1.5 ${
@@ -545,15 +811,17 @@ export default function DicteeModal({
                       <Plus size={15} /> Ajouter une ligne
                     </button>
 
-                    <div className={`flex justify-between pt-2 text-sm font-semibold ${textPrimary}`}>
-                      <span>Total TTC</span>
-                      <span>{totaux.ttc.toFixed(2)} €</span>
-                    </div>
+                    {doc.lignes.length > 0 && (
+                      <div className={`flex justify-between pt-2 text-sm font-semibold ${textPrimary}`}>
+                        <span>Total TTC</span>
+                        <span>{totaux.ttc.toFixed(2)} €</span>
+                      </div>
+                    )}
                   </div>
                 </Carte>
               )}
 
-              {!client && !chantier && !doc && (
+              {!client && !listeChantiers.length && !doc && (
                 <div className={`rounded-xl p-4 text-sm text-center ${isDark ? 'bg-slate-700/50 text-slate-300' : 'bg-slate-50 text-slate-600'}`}>
                   Je n'ai rien reconnu dans cette dictée. Reformulez en donnant le nom du
                   client, les travaux et les prix.
@@ -573,12 +841,12 @@ export default function DicteeModal({
         <div className="p-4 border-t border-slate-200/20 flex gap-2 shrink-0">
           {etape === 'parler' && (
             <button
-              onClick={lancerAnalyse}
+              onClick={() => lancerAnalyse(texteDicte)}
               disabled={!texteDicte || texteDicte.trim().length < 3}
               className="flex-1 py-3 rounded-xl text-white font-semibold text-sm disabled:opacity-40"
               style={{ background: couleur }}
             >
-              Analyser ma dictée
+              {dictation.listening ? 'Terminé, analyser' : 'Analyser ma dictée'}
             </button>
           )}
 
@@ -593,15 +861,25 @@ export default function DicteeModal({
               >
                 <RotateCcw size={15} /> Redicter
               </button>
-              <button
-                onClick={creer}
-                disabled={creation || (!actifs.client && !actifs.chantier && !actifs.document)}
-                className="flex-1 py-3 rounded-xl text-white font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-40"
-                style={{ background: couleur }}
-              >
-                {creation ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
-                {creation ? 'Création…' : 'Créer'}
-              </button>
+              {suiteLogique ? (
+                <button
+                  onClick={suiteLogique.action}
+                  className="flex-1 py-3 rounded-xl text-white font-semibold text-sm flex items-center justify-center gap-2"
+                  style={{ background: couleur }}
+                >
+                  {suiteLogique.label}
+                </button>
+              ) : (
+                <button
+                  onClick={creer}
+                  disabled={creation || rienASoumettre}
+                  className="flex-1 py-3 rounded-xl text-white font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-40"
+                  style={{ background: couleur }}
+                >
+                  {creation ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+                  {creation ? 'Création…' : rienASoumettre ? 'Rien de nouveau à créer' : `Créer ${recap.join(' + ')}`}
+                </button>
+              )}
             </>
           )}
         </div>

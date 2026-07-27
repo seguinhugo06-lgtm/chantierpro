@@ -27,7 +27,7 @@ export const FEATURES_CONTENT = {
       },
       {
         title: 'Vous relisez et validez',
-        text: 'Chaque fiche est modifiable et peut être désactivée d\'un interrupteur si vous n\'en voulez pas. Rien n\'est enregistré tant que vous n\'avez pas appuyé sur « Créer ».',
+        text: 'Un bandeau annonce ce qui va être créé, et chaque fiche indique à qui elle sera rattachée. Tout reste modifiable ou désactivable d\'un interrupteur. Rien n\'est enregistré tant que vous n\'avez pas appuyé sur « Créer » — et si vous vous êtes trompé, un bouton « Annuler » défait tout.',
       },
     ],
     groups: [
@@ -35,9 +35,9 @@ export const FEATURES_CONTENT = {
         name: 'Ce qu\'une seule dictée peut créer',
         items: [
           'Une fiche client complète : nom, téléphone, email, adresse',
-          'Un chantier, rattaché automatiquement au bon client',
+          'Un chantier — ou plusieurs, quand vous rentrez de tournée',
           'Un devis ou une facture, avec quantités, unités et prix',
-          'Les trois à la fois — c\'est ainsi qu\'on décrit une affaire',
+          'Le tout rattaché entre soi, sans que vous ayez à faire le lien',
         ],
       },
       {
@@ -45,9 +45,19 @@ export const FEATURES_CONTENT = {
         items: [
           'Les nombres dictés en toutes lettres deviennent des chiffres',
           'Les unités du métier sont reconnues : m², m³, ml, heures, jours, forfait',
-          'Un client déjà enregistré est reconnu — pas de doublon créé',
+          'Un client ou un chantier déjà enregistré est reconnu — pas de doublon',
           'Les prix manquants sont complétés depuis votre catalogue',
+          'Une pause au milieu d\'une phrase ne coupe pas la dictée',
+          'Un devis demandé sans prix est créé quand même, prêt à chiffrer',
+        ],
+      },
+      {
+        name: 'Ce qui vous garde aux commandes',
+        items: [
           'Relecture obligatoire : aucune création automatique',
+          'Les doutes de l\'analyse vous sont dits avant validation',
+          'Chaque fiche affiche son rattachement, pour éviter l\'orphelin',
+          'Annulation en un clic après création',
         ],
       },
     ],
@@ -58,7 +68,11 @@ export const FEATURES_CONTENT = {
       },
       {
         q: 'Est-ce que ça crée des choses sans mon accord ?',
-        a: 'Jamais. Vous voyez toujours ce qui a été compris avant que quoi que ce soit soit enregistré, chaque champ reste modifiable, et vous pouvez désactiver une fiche entière. Il s\'agit de documents à valeur contractuelle : la dernière décision vous revient toujours.',
+        a: 'Jamais. Vous voyez toujours ce qui a été compris avant que quoi que ce soit soit enregistré, chaque champ reste modifiable, et vous pouvez désactiver une fiche entière. Il s\'agit de documents à valeur contractuelle : la dernière décision vous revient toujours. Et si vous validez trop vite, « Annuler » supprime d\'un clic tout ce qui vient d\'être créé.',
+      },
+      {
+        q: 'Je peux enchaîner plusieurs chantiers dans une même dictée ?',
+        a: 'Oui, c\'est fait pour. « J\'ai trois nouveaux chantiers : la façade chez Martin, un parquet rue de la Paix, le dépannage chez Leroy » vous rend une fiche par chantier. Si vous annoncez trois chantiers mais n\'en décrivez que deux, on vous le signale plutôt que d\'inventer le troisième.',
       },
       {
         q: 'Et si je me trouve sans réseau ?',

@@ -27,6 +27,56 @@ export const norm = (s) =>
     .replace(/\s+/g, ' ')
     .trim();
 
+/**
+ * Civilités mal entendues par la reconnaissance vocale. « Madame Michelle »
+ * ressort régulièrement en « Maman Michelle » : sans correction, « Maman »
+ * finit dans le champ Prénom de la fiche client.
+ */
+const CIVILITES_MAL_ENTENDUES = [
+  [/\b(?:maman|ma\s+dame|madan|mad\s*ame)\b/gi, 'Madame'],
+  [/\b(?:mon\s+sieur|missieur|monsieu)\b/gi, 'Monsieur'],
+];
+
+/** Remet les civilités d'aplomb avant toute extraction de nom. */
+export function corrigerCivilites(texte) {
+  let out = texte || '';
+  for (const [re, remplacement] of CIVILITES_MAL_ENTENDUES) out = out.replace(re, remplacement);
+  return out;
+}
+
+/** Un mot de civilité n'est ni un prénom ni un nom — il ne doit jamais atterrir en base. */
+const EST_CIVILITE = (mot) =>
+  /^(?:m|mr|mme|mlle|madame|monsieur|mademoiselle|maman|papa)\.?$/i.test((mot || '').trim());
+
+/**
+ * Garantit la forme attendue quelle que soit la source (IA ou analyse locale),
+ * et absorbe l'ancienne forme `chantier` (singulier) au cas où une réponse
+ * ancienne circulerait encore.
+ */
+export function normaliserIntention(brut = {}) {
+  const chantiers = Array.isArray(brut.chantiers)
+    ? brut.chantiers.filter((c) => c && c.nom)
+    : brut.chantier ? [brut.chantier] : [];
+
+  let client = brut.client || null;
+  if (client) {
+    // Filet de sécurité : si le modèle a laissé passer une civilité, on la retire.
+    const prenom = EST_CIVILITE(client.prenom) ? null : client.prenom || null;
+    let nom = client.nom || '';
+    const motsNom = nom.trim().split(/\s+/);
+    if (motsNom.length > 1 && EST_CIVILITE(motsNom[0])) nom = motsNom.slice(1).join(' ');
+    client = EST_CIVILITE(nom) ? null : { ...client, nom: nom.trim(), prenom };
+  }
+
+  return {
+    resume: brut.resume || '',
+    incertitudes: Array.isArray(brut.incertitudes) ? brut.incertitudes.filter(Boolean) : [],
+    client,
+    chantiers,
+    document: brut.document && Array.isArray(brut.document.lignes) ? brut.document : null,
+  };
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. Analyse
 // ─────────────────────────────────────────────────────────────────────────────
@@ -45,7 +95,7 @@ export async function analyserDictee(transcript, { clients = [], catalogue = [] 
   // Mode démo : pas de session Supabase, donc pas d'appel IA possible.
   // On analyse localement — moins fin, mais réellement analysé.
   if (isDemo || !supabase) {
-    return { intention: analyseLocale(texte), source: 'local' };
+    return { intention: normaliserIntention(analyseLocale(texte)), source: 'local' };
   }
 
   try {
@@ -63,7 +113,7 @@ export async function analyserDictee(transcript, { clients = [], catalogue = [] 
     if (data?.error) throw new Error(data.error);
     if (!data?.intention) throw new Error('Réponse inattendue du service de dictée.');
 
-    return { intention: data.intention, source: 'ia' };
+    return { intention: normaliserIntention(data.intention), source: 'ia' };
   } catch (e) {
     captureException(e, { context: 'analyserDictee' });
     // On ne bascule pas silencieusement sur l'analyse locale : l'artisan doit
@@ -132,7 +182,9 @@ const nombreDepuis = (txt) => {
  * Volontairement conservatrice — mieux vaut ne rien remplir qu'inventer.
  */
 export function analyseLocale(texte) {
-  const brut = texte.trim();
+  // Les civilités mal entendues faussent l'extraction du nom : on les remet
+  // d'aplomb avant tout le reste.
+  const brut = corrigerCivilites(texte.trim());
   const n = norm(brut);
 
   // ── Client : « madame/monsieur X » ou « pour X »
@@ -228,63 +280,154 @@ export function analyseLocale(texte) {
     lignes.push({ description: desc, quantite: 1, unite: 'forfait', prixUnitaire: pu });
   }
 
-  // ── Chantier : évoqué si des travaux sont décrits
-  let chantier = null;
+  // ── Chantiers : chaque groupe de travaux décrit en donne un
   // On coupe au premier séparateur ET avant tout chiffre : « refaire sa salle de
   // bain : 15 m² de carrelage… » doit donner « Refaire sa salle de bain », pas la
   // phrase entière avec le chiffrage dedans.
-  const mTravaux = brut.match(
-    /\b((?:refaire|r[ée]nover|r[ée]novation|installer|installation|poser|pose|construire|am[ée]nager|am[ée]nagement|d[ée]pannage|ravalement)\s+[^,.;:\d]{3,40})/i
+  const chantiers = [];
+  const reTravaux = new RegExp(
+    "\\b((?:refaire|r[ée]nover|r[ée]novation|installer|installation|poser|pose|construire|" +
+      "am[ée]nager|am[ée]nagement|d[ée]pannage|ravalement|extension|isolation|remplacer)" +
+      "\\s+[^,.;:\\d]{3,40})",
+    'gi'
   );
-  if (mTravaux) {
-    const nom = mTravaux[1].trim().replace(/\s+(de|du|des|la|le|les|d'|à|a)$/i, '').trim();
-    if (nom.length > 3) {
-      chantier = {
-        nom: nom.charAt(0).toUpperCase() + nom.slice(1),
-        adresse: null, ville: null, description: null,
-      };
+  let mt;
+  while ((mt = reTravaux.exec(brut)) !== null) {
+    const nom = mt[1].trim().replace(/\s+(de|du|des|la|le|les|d'|à|a|et)$/i, '').trim();
+    if (nom.length <= 3) continue;
+    if (chantiers.some((c) => norm(c.nom) === norm(nom))) continue;
+    chantiers.push({
+      nom: nom.charAt(0).toUpperCase() + nom.slice(1),
+      adresse: null, ville: null, description: null,
+    });
+  }
+
+  // ── Document : chiffré, ou simplement demandé (« fais-moi un devis pour… »)
+  const veutFacture = /\bfactures?\b/i.test(n);
+  const veutDevis = /\bdevis\b/i.test(n);
+  const document = lignes.length || veutFacture || veutDevis
+    ? { type: veutFacture ? 'facture' : 'devis', lignes, notes: null }
+    : null;
+
+  const incertitudes = [];
+  if (document && !lignes.length) {
+    incertitudes.push("Aucun prix n'a été dicté : le document est à chiffrer.");
+  }
+  // « j'ai trois nouveaux chantiers » mais un seul décrit : on le dit.
+  const mCombien = n.match(/\b(deux|trois|quatre|cinq|\d+)\s+(?:nouveaux?\s+)?chantiers?\b/);
+  if (mCombien) {
+    const annonces = nombreDepuis(mCombien[1]);
+    if (annonces && annonces > chantiers.length) {
+      incertitudes.push(
+        `${annonces} chantiers annoncés, ${chantiers.length} reconnu${chantiers.length > 1 ? 's' : ''} — ajoutez les autres à la main.`
+      );
     }
   }
 
   const resume = [
     client ? `client ${[client.prenom, client.nom].filter(Boolean).join(' ')}` : null,
-    chantier ? 'un chantier' : null,
+    chantiers.length ? `${chantiers.length} chantier${chantiers.length > 1 ? 's' : ''}` : null,
     lignes.length ? `${lignes.length} ligne${lignes.length > 1 ? 's' : ''} chiffrée${lignes.length > 1 ? 's' : ''}` : null,
   ].filter(Boolean).join(', ');
 
   return {
     resume: resume ? `Reconnu : ${resume}.` : "Rien de reconnu automatiquement — complétez à la main.",
+    incertitudes,
     client,
-    chantier,
-    document: lignes.length ? { type: /\bfacture\b/i.test(n) ? 'facture' : 'devis', lignes, notes: null } : null,
+    chantiers,
+    document,
   };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Rapprochement chantier — évite le doublon quand l'artisan reparle du même
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Retrouve un chantier existant du même client portant un intitulé proche.
+ * On exige le même client : deux « Rénovation salle de bain » chez deux clients
+ * différents sont bien deux chantiers distincts.
+ */
+export function rapprocherChantier(dicte, chantiers = [], clientId = null) {
+  if (!dicte?.nom) return null;
+  const cible = norm(dicte.nom);
+  if (!cible) return null;
+
+  const candidats = clientId
+    ? chantiers.filter((c) => (c.clientId || c.client_id) === clientId)
+    : chantiers;
+
+  const exact = candidats.find((c) => norm(c.nom) === cible);
+  if (exact) return exact;
+
+  // Sinon, forte similarité de mots — « Rénovation salle de bain » ≈ « Rénovation
+  // de la salle de bain ». Seuil haut : un faux positif rattacherait un devis au
+  // mauvais chantier.
+  const motsCible = cible.split(' ').filter((w) => w.length > 2);
+  if (motsCible.length < 2) return null;
+
+  let meilleur = null;
+  let meilleurScore = 0;
+  for (const c of candidats) {
+    const mots = norm(c.nom).split(' ').filter((w) => w.length > 2);
+    if (!mots.length) continue;
+    const communs = mots.filter((w) => motsCible.includes(w)).length;
+    const score = communs / Math.max(mots.length, motsCible.length);
+    if (score > meilleurScore) { meilleurScore = score; meilleur = c; }
+  }
+  return meilleurScore >= 0.7 ? meilleur : null;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 2. Rapprochement client
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Retrouve un client existant pour éviter les doublons. null si aucun. */
+/**
+ * Retrouve un client existant pour éviter les doublons. null si aucun.
+ *
+ * Un faux positif est plus grave qu'un doublon : il rattacherait le devis à
+ * l'homonyme, au conjoint ou au frère du vrai client. Les règles sont donc
+ * volontairement strictes, du signal le plus fiable au plus faible.
+ */
 export function rapprocherClient(dicte, clients = []) {
   if (!dicte?.nom) return null;
   const cible = norm(`${dicte.prenom || ''} ${dicte.nom}`);
   const cibleNom = norm(dicte.nom);
   const telCible = (dicte.telephone || '').replace(/\D/g, '');
 
-  // Un numéro identique est le signal le plus fiable
+  // 1. Un numéro identique est le signal le plus fiable
   if (telCible.length === 10) {
     const parTel = clients.find((c) => (c.telephone || '').replace(/\D/g, '') === telCible);
     if (parTel) return parTel;
   }
+
+  // 2. Un email identique l'est presque autant
   if (dicte.email) {
     const parMail = clients.find((c) => norm(c.email) === norm(dicte.email));
     if (parMail) return parMail;
   }
-  return (
-    clients.find((c) => norm(`${c.prenom || ''} ${c.nom || ''}`) === cible) ||
-    clients.find((c) => norm(c.nom) === cibleNom) ||
-    null
+
+  /** Deux numéros connus et différents désignent deux personnes différentes. */
+  const telIncompatible = (c) => {
+    const t = (c.telephone || '').replace(/\D/g, '');
+    return telCible.length === 10 && t.length === 10 && t !== telCible;
+  };
+
+  // 3. Prénom + nom identiques
+  const parNomComplet = clients.find(
+    (c) => norm(`${c.prenom || ''} ${c.nom || ''}`) === cible && !telIncompatible(c)
   );
+  if (parNomComplet) return parNomComplet;
+
+  // 4. Nom de famille seul — uniquement si l'artisan n'a donné AUCUN prénom et
+  //    qu'un seul client porte ce nom. « Madame Michelle Bernard » ne doit
+  //    jamais tomber sur la fiche de Sophie Bernard.
+  if (!dicte.prenom) {
+    const memeNom = clients.filter((c) => norm(c.nom) === cibleNom && !telIncompatible(c));
+    if (memeNom.length === 1) return memeNom[0];
+  }
+
+  return null;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -329,4 +472,13 @@ export function enrichirLignes(lignes = [], catalogue = []) {
   });
 }
 
-export default { analyserDictee, rapprocherClient, enrichirLignes, analyseLocale, norm };
+export default {
+  analyserDictee,
+  rapprocherClient,
+  rapprocherChantier,
+  enrichirLignes,
+  analyseLocale,
+  normaliserIntention,
+  corrigerCivilites,
+  norm,
+};

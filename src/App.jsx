@@ -1932,14 +1932,21 @@ export default function App() {
             onClose={() => setShowDictee(false)}
             isDark={isDark}
             couleur={couleur}
-            showToast={showToast}
             clients={clients}
+            chantiers={chantiers}
             catalogue={catalogue}
-            addClient={addClient}
-            addChantier={addChantier}
-            addDevis={addDevis}
+            /* Fonctions brutes du DataContext : les wrappers d'App.jsx affichent
+               chacun leur toast, ce qui en empilerait trois. La dictée n'en
+               montre qu'un seul, récapitulatif et annulable. */
+            addClient={dataAddClient}
+            addChantier={dataAddChantier}
+            addDevis={dataAddDevis}
+            deleteClient={dataDeleteClient}
+            deleteChantier={dataDeleteChantier}
+            deleteDevis={dataDeleteDevis}
             setPage={setPage}
             setSelectedDevis={setSelectedDevis}
+            setSelectedChantier={setSelectedChantier}
           />
         </Suspense>
       )}

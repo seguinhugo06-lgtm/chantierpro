@@ -62,14 +62,35 @@ export default function HelpModal({ showHelp, setShowHelp, isDark, couleur, tc }
               <li>• Dites le prix juste après : « <strong>à</strong> 45 euros »</li>
               <li>• Pour un montant global : « la plomberie 800 euros » devient un forfait</li>
               <li>• Dites « facture » si c’en est une — sinon c’est un devis</li>
+              <li>• Prenez votre temps : vous pouvez marquer une pause, la dictée continue</li>
             </ul>
+          </div>
+
+          <div className={`p-4 rounded-xl ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
+            <h4 className={`font-semibold mb-2 ${textPrimary}`}>🚚 Vous rentrez de tournée ?</h4>
+            <p className={`text-sm ${textSecondary}`}>
+              Enchaînez plusieurs chantiers dans la même dictée : « J’ai trois nouveaux chantiers :
+              rénovation de la façade chez Martin, pose d’un parquet rue de la Paix, et le dépannage
+              plomberie chez Leroy. » Vous obtenez une fiche par chantier, à valider d’un seul coup.
+            </p>
+          </div>
+
+          <div className={`p-4 rounded-xl ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
+            <h4 className={`font-semibold mb-2 ${textPrimary}`}>📄 Un devis sans les prix</h4>
+            <p className={`text-sm ${textSecondary}`}>
+              Dites simplement « fais-moi un devis pour la salle de bain de Madame Dupont » : le devis
+              est créé vide, avec le bon client et le bon chantier. Vous le chiffrez ensuite dans
+              l’éditeur, votre catalogue sous la main.
+            </p>
           </div>
 
           <div className={`p-4 rounded-xl ${isDark ? 'bg-amber-900/20' : 'bg-amber-50'}`}>
             <h4 className={`font-semibold mb-2 ${isDark ? 'text-amber-300' : 'text-amber-800'}`}>⚠️ Bon à savoir</h4>
             <ul className={`text-sm space-y-1.5 ${isDark ? 'text-amber-200' : 'text-amber-700'}`}>
               <li>• <strong>Rien n’est créé sans vous</strong> : vous relisez et corrigez avant de valider.</li>
-              <li>• Un client déjà enregistré est reconnu : aucun doublon n’est créé.</li>
+              <li>• Un client ou un chantier déjà enregistré est reconnu : aucun doublon n’est créé.</li>
+              <li>• Vous vous êtes trompé ? <strong>Annulez</strong> depuis la notification : tout ce qui vient d’être créé est supprimé.</li>
+              <li>• Ce dont l’analyse doute vous est signalé avant validation — lisez ces avertissements.</li>
               <li>• Les prix que vous ne dictez pas sont repris de votre catalogue quand la prestation correspond. Vérifiez-les.</li>
               <li>• Le micro fonctionne sur Chrome (ordinateur et Android). Sur iPhone, écrivez votre demande : l’analyse est la même.</li>
               <li>• L’analyse a besoin d’une connexion — hors réseau, utilisez la saisie classique.</li>

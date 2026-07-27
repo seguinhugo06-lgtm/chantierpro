@@ -35,11 +35,17 @@ const nombreOptionnel = { anyOf: [{ type: 'number' }, { type: 'null' }] };
 const SCHEMA = {
   type: 'object',
   additionalProperties: false,
-  required: ['resume', 'client', 'chantier', 'document'],
+  required: ['resume', 'incertitudes', 'client', 'chantiers', 'document'],
   properties: {
     resume: {
       type: 'string',
       description: 'Une phrase courte résumant ce qui a été compris, en français.',
+    },
+    incertitudes: {
+      type: 'array',
+      description:
+        'Ce dont tu n’es pas sûr, en français, une phrase courte par point (ex : "Le nom du client est peut-être mal transcrit"). Tableau vide si tout est clair.',
+      items: { type: 'string' },
     },
     client: {
       description: 'Le client mentionné, ou null si aucun.',
@@ -61,22 +67,21 @@ const SCHEMA = {
         { type: 'null' },
       ],
     },
-    chantier: {
-      description: 'Le chantier mentionné, ou null si aucun.',
-      anyOf: [
-        {
-          type: 'object',
-          additionalProperties: false,
-          required: ['nom', 'adresse', 'ville', 'description'],
-          properties: {
-            nom: { type: 'string', description: 'Titre court, ex : "Rénovation salle de bain"' },
-            adresse: texteOptionnel,
-            ville: texteOptionnel,
-            description: texteOptionnel,
-          },
+    chantiers: {
+      type: 'array',
+      description:
+        'Tous les chantiers évoqués, dans l’ordre où ils sont dits. Tableau vide si aucun. L’artisan peut en citer plusieurs d’affilée.',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['nom', 'adresse', 'ville', 'description'],
+        properties: {
+          nom: { type: 'string', description: 'Titre court, ex : "Rénovation salle de bain"' },
+          adresse: texteOptionnel,
+          ville: texteOptionnel,
+          description: texteOptionnel,
         },
-        { type: 'null' },
-      ],
+      },
     },
     document: {
       description: 'Le devis ou la facture décrit, ou null si aucun chiffrage.',
@@ -115,19 +120,41 @@ const SCHEMA = {
 
 const SYSTEM = `Tu extrais des données métier depuis la dictée vocale d'un artisan du bâtiment français.
 
-La transcription vocale est imparfaite : mots collés, ponctuation absente, chiffres écrits en toutes lettres. Interprète avec bon sens.
+La transcription vocale est imparfaite : mots collés sans espaces, ponctuation absente, fautes de frappe phonétiques, chiffres écrits en toutes lettres. Interprète avec bon sens, comme un secrétaire d'expérience qui connaît le métier.
 
-RÈGLES
+RÈGLES GÉNÉRALES
 - Ne renvoie que ce qui est réellement dit. Aucune invention : pas de prix inventé, pas d'adresse complétée, pas de quantité déduite. Un champ absent vaut null.
 - Les nombres dictés en lettres deviennent des nombres : « quarante-cinq euros » → 45 ; « quinze mètres carrés » → 15 ; « deux mille cinq cents » → 2500.
 - Les prix sont HT sauf mention explicite de TTC.
 - « le mètre carré », « du m² », « au m² » → unite "m²". Idem ml (mètre linéaire), m³, h (heure), j (jour), forfait, pièce.
 - Si un montant est global et sans quantité (« la plomberie 800 euros »), alors quantite = 1 et unite = "forfait".
-- Distingue le client (la personne) du chantier (le lieu et les travaux). Si une seule adresse est donnée, mets-la sur le client ; ne la duplique sur le chantier que si l'artisan distingue clairement les deux.
-- Le type est "facture" seulement si l'artisan dit explicitement facture ; sinon "devis".
 - Un téléphone français se normalise en 10 chiffres avec espaces : « 06 12 34 56 78 ».
-- Ne crée un chantier que si des travaux ou un lieu sont évoqués. Une simple prise de contact ne donne qu'un client.
-- resume : une phrase courte et factuelle décrivant ce que tu as retenu.`;
+
+CORRIGER LA TRANSCRIPTION
+La reconnaissance vocale déforme surtout les mots de politesse et les noms propres. Corrige silencieusement :
+- « maman », « ma dame », « madan » en tête de nom → il s'agit de « Madame ». Idem « mon sieur », « missieur » → « Monsieur ».
+- Une civilité (Madame, Monsieur, Mme, M.) n'est JAMAIS un prénom ni un nom : ne la mets dans aucun champ.
+- Les mots collés se recoupent : « al'adfresse120rue » → « à l'adresse 120 rue ».
+- Si un nom propre semble mal transcrit, garde ta meilleure lecture ET signale-le dans incertitudes.
+
+NOM ET PRÉNOM
+- Un seul mot après la civilité → c'est le nom (prenom = null). « Madame Michelle » → nom "Michelle".
+- Deux mots → prénom puis nom. « Madame Marie Dupont » → prenom "Marie", nom "Dupont".
+- Une raison sociale (SARL, SCI, EURL, mairie, syndic…) va entièrement dans nom, prenom = null.
+
+CLIENT / CHANTIER
+- Distingue le client (la personne) du chantier (le lieu et les travaux). Si une seule adresse est donnée, mets-la sur le client ; ne la duplique sur le chantier que si l'artisan distingue clairement les deux.
+- chantiers est un TABLEAU. L'artisan qui rentre de tournée peut en citer plusieurs : « j'ai trois nouveaux chantiers, la salle de bain chez Durand, une terrasse rue de la Paix, et un ravalement ». Crée alors une entrée par chantier.
+- Si l'artisan annonce un nombre de chantiers ("trois nouveaux chantiers") mais n'en décrit que certains, ne crée que ceux réellement décrits et signale l'écart dans incertitudes.
+- N'ajoute un chantier que si des travaux ou un lieu sont évoqués. Une simple prise de contact ne donne qu'un client.
+
+DOCUMENT
+- Le type est "facture" seulement si l'artisan dit explicitement facture ; sinon "devis".
+- IMPORTANT : si l'artisan demande explicitement un devis ou une facture mais ne donne AUCUN prix, renvoie quand même document avec lignes = [] (ou avec les prestations citées et prixUnitaire null). Il le chiffrera lui-même. Ne renvoie null que si aucun document n'est demandé ni chiffré.
+
+SORTIE
+- resume : une phrase courte et factuelle décrivant ce que tu as retenu.
+- incertitudes : ce dont tu doutes vraiment (nom probablement mal transcrit, prix ambigu, chantier annoncé mais non décrit). Tableau vide si tout est clair. N'invente pas de doute pour meubler.`;
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -170,7 +197,10 @@ serve(async (req) => {
     // noms de clients connus, unités et libellés du catalogue de l'artisan.
     const contexteTexte = [
       contexte?.clients?.length
-        ? `Clients déjà enregistrés (réutilise le nom exact si l'artisan en cite un) : ${contexte.clients.slice(0, 60).join(' · ')}`
+        ? `Clients déjà enregistrés : ${contexte.clients.slice(0, 60).join(' · ')}\n` +
+          `Sers-t'en pour corriger une transcription approximative du MÊME client (« Madame Dupon » → « Dupont »). ` +
+          `Mais ne substitue JAMAIS un client de cette liste à un autre : si l'artisan dit « Michelle Bernard » et que la liste contient « Sophie Bernard », ` +
+          `renvoie « Michelle Bernard » — ce sont deux personnes.`
         : '',
       contexte?.articles?.length
         ? `Libellés du catalogue de l'artisan (reprends-les mot pour mot si la prestation correspond) : ${contexte.articles.slice(0, 80).join(' · ')}`
