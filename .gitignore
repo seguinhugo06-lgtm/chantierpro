@@ -29,3 +29,6 @@ dist-ssr
 
 # Worktrees Claude imbriqués (ne pas committer)
 .claude/worktrees/
+
+# État local du CLI Supabase (référence projet, URL de pooler) — ne doit pas être versionné
+supabase/.temp/

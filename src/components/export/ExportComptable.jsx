@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { toast } from '../../stores/toastStore';
 import {
   Download,
   FileText,
@@ -1017,10 +1018,15 @@ export default function ExportComptable({
               {entreprise?.emailComptable ? (
                 <button
                   onClick={() => {
-                    const subject = encodeURIComponent(`Export comptable ${selectedPeriodLabel || ''} — ${entreprise?.nom || 'Mallettico'}`);
-                    const body = encodeURIComponent(`Bonjour,\n\nVeuillez trouver ci-joint l'export comptable pour la période sélectionnée.\n\nCordialement,\n${entreprise?.nom || ''}`);
+                    // La période affichée vient des dates réellement sélectionnées :
+                    // le libellé du préréglage devient faux dès qu'on ajuste une date.
+                    const periode = [dateFrom, dateTo].filter(Boolean)
+                      .map((d) => new Date(d).toLocaleDateString('fr-FR'))
+                      .join(' au ');
+                    const subject = encodeURIComponent(`Export comptable ${periode} — ${entreprise?.nom || 'Mallettico'}`);
+                    const body = encodeURIComponent(`Bonjour,\n\nVeuillez trouver ci-joint l'export comptable pour la période du ${periode}.\n\nCordialement,\n${entreprise?.nom || ''}`);
                     window.open(`mailto:${entreprise.emailComptable}?subject=${subject}&body=${body}`, '_blank');
-                    showToast?.('Ouvrez votre client email et joignez le fichier téléchargé', 'info');
+                    toast.info('Export prêt', 'Joignez le fichier téléchargé à votre email.');
                   }}
                   disabled={filteredEntries.length === 0}
                   className={`flex items-center gap-2 px-5 py-3 rounded-xl font-medium text-sm transition-all disabled:opacity-50 ${isDark ? 'bg-slate-700 text-slate-200 hover:bg-slate-600' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}

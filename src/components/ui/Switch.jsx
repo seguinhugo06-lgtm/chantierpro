@@ -46,7 +46,10 @@ export const Switch = React.forwardRef(
     },
     ref
   ) => {
-    const switchId = id || React.useId();
+    // useId est appelé sans condition : `id || React.useId()` court-circuite,
+    // et le nombre de hooks changerait selon qu'un parent fournit `id` ou non.
+    const generatedId = React.useId();
+    const switchId = id || generatedId;
     const descriptionId = description ? `${switchId}-desc` : undefined;
     const sizes = sizeStyles[size];
 

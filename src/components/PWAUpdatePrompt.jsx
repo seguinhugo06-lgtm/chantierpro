@@ -417,7 +417,7 @@ export function PWAInstallButton({ className, couleur = '#f97316' }) {
 /**
  * OfflineIndicator - Small badge showing offline status
  */
-export function OfflineIndicator({ className }) {
+export function OfflineIndicator({ className, isDark = false }) {
   const { isOffline, pendingSyncCount } = usePWA();
 
   if (!isOffline) {

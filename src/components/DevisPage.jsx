@@ -3,15 +3,43 @@ import { Plus, ArrowLeft, Download, Trash2, Send, Mail, MessageCircle, Edit3, Ch
 import supabase, { isDemo } from '../supabaseClient';
 const PipelineKanban = lazy(() => import('./pipeline/PipelineKanban'));
 import { DEVIS_STATUS_COLORS, DEVIS_STATUS_LABELS } from '../lib/constants';
-import PaymentModal from './PaymentModal';
-import TemplateSelector from './TemplateSelector';
-import SignaturePad from './SignaturePad';
-import SmartTemplateWizard from './SmartTemplateWizard';
-import DevisWizard from './DevisWizard';
-import DevisComposer from './DevisComposer';
-import CatalogBrowser from './CatalogBrowser';
-import DevisExpressModal from './DevisExpressModal';
-import AvoirCreationModal from './modals/AvoirCreationModal';
+/**
+ * Éditeurs et modales chargés à la demande.
+ *
+ * Ces neuf composants totalisent ~6 300 lignes et n'apparaissent que sur une
+ * action de l'artisan. Les importer statiquement les empilait dans le bundle de
+ * la page la plus ouverte de l'app — celle qu'on ouvre sur un chantier, en 4G.
+ *
+ * Le Suspense est encapsulé ici pour que les treize points de rendu de la page
+ * restent inchangés : un oubli de Suspense sur l'un d'eux ferait planter la page.
+ */
+const chargerALaDemande = (importer) => {
+  const Composant = lazy(importer);
+  function ModaleDifferee(props) {
+    return (
+      <Suspense
+        fallback={
+          <div className="fixed inset-0 z-[9998] flex items-center justify-center bg-black/20">
+            <div className="w-8 h-8 border-4 border-white/40 border-t-white rounded-full animate-spin" />
+          </div>
+        }
+      >
+        <Composant {...props} />
+      </Suspense>
+    );
+  }
+  return ModaleDifferee;
+};
+
+const PaymentModal = chargerALaDemande(() => import('./PaymentModal'));
+const TemplateSelector = chargerALaDemande(() => import('./TemplateSelector'));
+const SignaturePad = chargerALaDemande(() => import('./SignaturePad'));
+const SmartTemplateWizard = chargerALaDemande(() => import('./SmartTemplateWizard'));
+const DevisWizard = chargerALaDemande(() => import('./DevisWizard'));
+const DevisComposer = chargerALaDemande(() => import('./DevisComposer'));
+const CatalogBrowser = chargerALaDemande(() => import('./CatalogBrowser'));
+const DevisExpressModal = chargerALaDemande(() => import('./DevisExpressModal'));
+const AvoirCreationModal = chargerALaDemande(() => import('./modals/AvoirCreationModal'));
 import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/Tabs';
 import { useConfirm, useToast } from '../context/AppContext';
 import { generateId } from '../lib/utils';

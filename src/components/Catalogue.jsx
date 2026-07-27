@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useRef, Suspense, lazy } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus, Minus, ArrowLeft, Star, Search, Edit3, Trash2, Package, AlertTriangle, Box,
@@ -11,13 +11,31 @@ import {
 import { useConfirm, useToast } from '../context/AppContext';
 import { generateId } from '../lib/utils';
 import { useDebounce } from '../hooks/useDebounce';
-import ArticlePicker from './ArticlePicker';
 import { ALL_ARTICLES_BTP, CATEGORIES_METIERS, getSousCategories, getArticlesBySousCategorie } from '../lib/data';
 import { usePermissions } from '../hooks/usePermissions';
 import { ReadOnlyBanner } from './ui/PermissionGate';
 import TabBar from './ui/TabBar';
 import PageHeader from './ui/PageHeader';
-import Bibliotheque from './bibliotheque/Bibliotheque';
+
+/**
+ * Chargés à la demande : la bibliothèque d'ouvrages embarque à elle seule
+ * 460 Ko de référentiel BTP, et le sélecteur d'articles tout le catalogue —
+ * pour deux écrans que l'artisan n'ouvre pas à chaque visite.
+ */
+const chargerALaDemande = (importer) => {
+  const Composant = lazy(importer);
+  function EcranDiffere(props) {
+    return (
+      <Suspense fallback={<div className="py-12 text-center text-sm opacity-60">Chargement…</div>}>
+        <Composant {...props} />
+      </Suspense>
+    );
+  }
+  return EcranDiffere;
+};
+
+const ArticlePicker = chargerALaDemande(() => import('./ArticlePicker'));
+const Bibliotheque = chargerALaDemande(() => import('./bibliotheque/Bibliotheque'));
 
 const BASE_CATEGORIES = ['Plomberie', 'Électricité', 'Maçonnerie', 'Carrelage', 'Peinture', 'Menuiserie', 'Matériaux', 'Isolation', 'Main d\'œuvre', 'Autre'];
 const UNITES = [
@@ -2985,7 +3003,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
       </AnimatePresence>
 
       {/* Article Picker Modal */}
-      <ArticlePicker isOpen={showArticlePicker} onClose={() => setShowArticlePicker(false)} onSelect={handleAddFromPicker} isDark={isDark} couleur={couleur} />
+      {showArticlePicker && <ArticlePicker isOpen={showArticlePicker} onClose={() => setShowArticlePicker(false)} onSelect={handleAddFromPicker} isDark={isDark} couleur={couleur} />}
     </div>
   );
 }

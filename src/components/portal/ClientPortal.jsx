@@ -378,17 +378,54 @@ export default function ClientPortal({
   const unpaidFactures = factures.filter(f => f.statut !== 'payee').length;
   const totalPhotos = chantiers.reduce((sum, c) => sum + (c.photos?.length || 0), 0);
 
-  // ── Handlers (demo stubs) ─────────────────────────────────────────
+  // ── Handlers ──────────────────────────────────────────────────────
+  // La décision du client engage l'artisan : elle doit être enregistrée en base,
+  // pas seulement confirmée à l'écran. Les fonctions portal_accept_devis /
+  // portal_refuse_devis (migration 007) sont exposées au rôle `anon`, ce qui
+  // permet de les appeler sans compte tout en gardant la vérification du token
+  // côté serveur.
 
-  const handleAcceptDevis = async (devisId) => {
-    // TODO: call supabase.rpc('portal_accept_devis', { p_token, p_devis_id })
-    showToast && showToast('Devis accepté', 'success');
+  /** Enregistre la décision du client puis recharge le portail. */
+  const deciderDevis = async (devisId, decision) => {
+    const rpc = decision === 'accepte' ? 'portal_accept_devis' : 'portal_refuse_devis';
+    const libelle = decision === 'accepte' ? 'accepté' : 'refusé';
+
+    // Démo : pas de token ni de base — on le dit plutôt que de simuler un succès.
+    if (!token || token === 'demo' || !supabase) {
+      showToast && showToast(`Démonstration : le devis serait ${libelle}`, 'info');
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase.rpc(rpc, { p_token: token, p_devis_id: devisId });
+      if (error) throw error;
+      if (data && data.success === false) {
+        // Messages serveur en anglais : on les traduit pour le client final.
+        const messages = {
+          'Invalid token': 'Ce lien a expiré. Demandez-en un nouveau à votre artisan.',
+          Unauthorized: "Ce devis ne vous est pas destiné.",
+        };
+        setExpired(data.error === 'Invalid token');
+        showToast && showToast(messages[data.error] || "Ce devis n'est plus modifiable.", 'error');
+        return;
+      }
+
+      showToast && showToast(`Devis ${libelle}`, decision === 'accepte' ? 'success' : 'info');
+
+      // On relit depuis la base : le statut affiché doit refléter ce qui est
+      // réellement enregistré, pas ce qu'on espère avoir enregistré.
+      const frais = await getPortalData(supabase, token);
+      if (frais) setPortalData(frais);
+    } catch {
+      showToast && showToast(
+        "Votre réponse n'a pas pu être enregistrée. Réessayez ou contactez votre artisan.",
+        'error'
+      );
+    }
   };
 
-  const handleRefuseDevis = async (devisId) => {
-    // TODO: call supabase.rpc('portal_refuse_devis', { p_token, p_devis_id })
-    showToast && showToast('Devis refusé', 'info');
-  };
+  const handleAcceptDevis = (devisId) => deciderDevis(devisId, 'accepte');
+  const handleRefuseDevis = (devisId) => deciderDevis(devisId, 'refuse');
 
   const handleDownloadPDF = (id) => {
     // Find document

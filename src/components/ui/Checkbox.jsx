@@ -46,7 +46,10 @@ export const Checkbox = React.forwardRef(
     },
     ref
   ) => {
-    const checkboxId = id || React.useId();
+    // useId est appelé sans condition : `id || React.useId()` court-circuite,
+    // et le nombre de hooks changerait selon qu'un parent fournit `id` ou non.
+    const generatedId = React.useId();
+    const checkboxId = id || generatedId;
     const descriptionId = description ? `${checkboxId}-desc` : undefined;
     const sizes = sizeStyles[size];
     const inputRef = React.useRef(null);
@@ -159,7 +162,10 @@ export const Radio = React.forwardRef(
     },
     ref
   ) => {
-    const radioId = id || React.useId();
+    // useId est appelé sans condition : `id || React.useId()` court-circuite,
+    // et le nombre de hooks changerait selon qu'un parent fournit `id` ou non.
+    const generatedId = React.useId();
+    const radioId = id || generatedId;
     const descriptionId = description ? `${radioId}-desc` : undefined;
     const sizes = sizeStyles[size];
 

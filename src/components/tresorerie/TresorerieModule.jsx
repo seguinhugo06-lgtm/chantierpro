@@ -18,6 +18,7 @@
  */
 
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { toast } from '../../stores/toastStore';
 import {
   Wallet, TrendingUp, ArrowUpRight, ArrowDownRight, Plus, X,
   AlertTriangle, Info, ArrowDown, ArrowUp, Clock, BarChart3, Save, Settings, Filter,
@@ -2768,7 +2769,7 @@ export default function TresorerieModule({
                   const url = URL.createObjectURL(blob);
                   const a = document.createElement('a'); a.href = url; a.download = `resume_tva_${new Date().getFullYear()}.csv`; a.click();
                   URL.revokeObjectURL(url);
-                  showToast('Résumé TVA exporté', 'success');
+                  toast.success('Résumé TVA exporté', 'Le fichier CSV a été téléchargé.');
                 }}
                   className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-colors ${isDark ? 'bg-emerald-900/30 hover:bg-emerald-900/50 text-emerald-300' : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700'}`}
                   title="Exporter le résumé TVA en CSV">
