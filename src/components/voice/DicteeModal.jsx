@@ -50,6 +50,13 @@ const EXEMPLES = [
 
 const mmss = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 
+/** 1770 → « 1 770,00 € » — un artisan ne lit pas « 1770.00 € ». */
+const euros = (n) =>
+  (Number(n) || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+
+/** Taux de TVA proposés dans le bâtiment. */
+const TAUX_TVA = [20, 10, 5.5, 0];
+
 /** Champ de saisie compact, aligné sur les conventions du reste de l'app. */
 function Champ({ label, value, onChange, isDark, type = 'text', placeholder, largeur = '' }) {
   const inputBg = isDark
@@ -137,6 +144,7 @@ export default function DicteeModal({
   clients = [],
   chantiers = [],
   catalogue = [],
+  entreprise,
   addClient,
   addChantier,
   addDevis,
@@ -146,6 +154,7 @@ export default function DicteeModal({
   setPage,
   setSelectedDevis,
   setSelectedChantier,
+  setEditDevisId,
 }) {
   const dictation = useDictation();
   const [etape, setEtape] = useState('parler');   // parler | analyse | relecture
@@ -165,6 +174,12 @@ export default function DicteeModal({
   const [docActif, setDocActif] = useState(true);
 
   const analyseLanceeRef = useRef(false);
+  // Ce qui a déjà été enregistré pendant une tentative de création. Si le devis
+  // échoue après la création du client, un second clic sur « Créer » ne doit
+  // pas refabriquer le client et le chantier : il reprend là où ça s'est arrêté.
+  const dejaCreeRef = useRef({ clientId: null, chantierIds: {}, devis: null });
+  const panneauRef = useRef(null);  // pour enfermer le focus clavier
+  const microRef = useRef(null);    // pour donner le focus à l'ouverture
 
   const cardBg = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200';
   const textPrimary = isDark ? 'text-slate-100' : 'text-slate-900';
@@ -180,18 +195,49 @@ export default function DicteeModal({
     setDocChantierIdx(0);
     setClientActif(true); setDocActif(true);
     analyseLanceeRef.current = false;
+    dejaCreeRef.current = { clientId: null, chantierIds: {}, devis: null };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dictation.stop, dictation.reset]);
 
   useEffect(() => { if (isOpen) reinitialiser(); /* eslint-disable-next-line */ }, [isOpen]);
 
-  // Échap pour fermer
+  // Échap pour fermer, et Tab qui reste dans la modale (sinon le focus part
+  // se promener dans la page derrière, invisible pour l'utilisateur au clavier).
   useEffect(() => {
     if (!isOpen) return undefined;
-    const onKey = (e) => { if (e.key === 'Escape' && !creation) onClose?.(); };
+    const onKey = (e) => {
+      if (e.key === 'Escape' && !creation) { onClose?.(); return; }
+      if (e.key !== 'Tab') return;
+      const cibles = panneauRef.current?.querySelectorAll(
+        'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [href]'
+      );
+      if (!cibles?.length) return;
+      const premier = cibles[0];
+      const dernier = cibles[cibles.length - 1];
+      if (e.shiftKey && document.activeElement === premier) { e.preventDefault(); dernier.focus(); }
+      else if (!e.shiftKey && document.activeElement === dernier) { e.preventDefault(); premier.focus(); }
+      else if (!panneauRef.current?.contains(document.activeElement)) { e.preventDefault(); premier.focus(); }
+    };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [isOpen, creation, onClose]);
+
+  // Empêche la page de défiler derrière la modale : sans ça, arriver au bout de
+  // la liste fait glisser l'arrière-plan, très déroutant sur mobile.
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    const avant = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = avant; };
+  }, [isOpen]);
+
+  // Le micro prend le focus à l'ouverture : la dictée démarre alors à la barre
+  // d'espace ou à Entrée, sans toucher la souris.
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    const t = setTimeout(() => microRef.current?.focus(), 50);
+    return () => clearTimeout(t);
+  }, [isOpen]);
 
   const texteDicte = dictation.texte;
 
@@ -252,16 +298,26 @@ export default function DicteeModal({
     return () => clearTimeout(t);
   }, [isOpen, etape, dictation.listening, dictation.dernierMot, dictation.texte, lancerAnalyse]);
 
+  // ── TVA ────────────────────────────────────────────────────────────────────
+  // Le taux par défaut de l'artisan, pas 20 % : en rénovation c'est souvent 10 %,
+  // et forcer 20 % gonflerait le devis envoyé au client.
+  const tvaDefaut = Number(entreprise?.tvaDefaut ?? 10);
+  const [tvaDoc, setTvaDoc] = useState(tvaDefaut);
+  useEffect(() => { setTvaDoc(tvaDefaut); }, [tvaDefaut]);
+
+  /** Taux applicable à une ligne : celui du catalogue s'il existe, sinon celui du document. */
+  const tauxLigne = useCallback((l) => Number(l.tva ?? tvaDoc), [tvaDoc]);
+
   // ── Totaux ─────────────────────────────────────────────────────────────────
   const totaux = useMemo(() => {
     const lignes = doc?.lignes || [];
     const ht = lignes.reduce((s, l) => s + (Number(l.quantite) || 0) * (Number(l.prixUnitaire) || 0), 0);
     const tva = lignes.reduce(
-      (s, l) => s + ((Number(l.quantite) || 0) * (Number(l.prixUnitaire) || 0) * ((l.tvaRate ?? 20) / 100)),
+      (s, l) => s + ((Number(l.quantite) || 0) * (Number(l.prixUnitaire) || 0) * (tauxLigne(l) / 100)),
       0
     );
     return { ht, tva, ttc: ht + tva };
-  }, [doc]);
+  }, [doc, tauxLigne]);
 
   const lignesSansPrix = (doc?.lignes || []).filter((l) => !l.prixUnitaire).length;
   const chantiersActifs = listeChantiers.filter((c) => c.actif);
@@ -279,7 +335,7 @@ export default function DicteeModal({
     if (docActif && doc) {
       parts.push(
         doc.lignes.length
-          ? `${doc.type === 'facture' ? 'Facture' : 'Devis'} ${totaux.ttc.toFixed(2)} €`
+          ? `${doc.type === 'facture' ? 'Facture' : 'Devis'} ${euros(totaux.ttc)}`
           : `${doc.type === 'facture' ? 'Facture' : 'Devis'} à chiffrer`
       );
     }
@@ -309,12 +365,13 @@ export default function DicteeModal({
   const creer = async () => {
     setCreation(true);
     setErreur(null);
-    // Trace de ce qui a été créé — sert à l'annulation
+    // Trace de ce qui a été créé — sert à l'annulation et à la reprise
     const cree = { clientId: null, chantierIds: [], devis: null, libelles: [] };
+    const acquis = dejaCreeRef.current;
     try {
       // 1. Client — soit celui reconnu, soit un nouveau
-      let clientId = clientExistant?.id || null;
-      if (clientActif && client?.nom) {
+      let clientId = clientExistant?.id || acquis.clientId || null;
+      if (clientActif && client?.nom && !acquis.clientId) {
         const nouveau = await addClient({
           nom: client.nom,
           prenom: client.prenom || '',
@@ -327,15 +384,18 @@ export default function DicteeModal({
         // Sans id, tout ce qui suit serait rattaché dans le vide : on s'arrête net.
         if (!nouveau?.id) throw new Error("La fiche client n'a pas pu être enregistrée. Rien d'autre n'a été créé.");
         clientId = nouveau.id;
+        acquis.clientId = clientId;
         cree.clientId = clientId;
         cree.libelles.push('client');
       }
 
       // 2. Chantiers — rattachés au client s'il y en a un
       const idsChantiers = [];
-      for (const item of listeChantiers) {
+      for (let i = 0; i < listeChantiers.length; i++) {
+        const item = listeChantiers[i];
         if (item.existant) { idsChantiers.push(item.existant.id); continue; }
         if (!item.actif) { idsChantiers.push(null); continue; }
+        if (acquis.chantierIds[i]) { idsChantiers.push(acquis.chantierIds[i]); continue; }
         const c = item.data;
         const nouveau = await addChantier({
           nom: c.nom,
@@ -346,6 +406,7 @@ export default function DicteeModal({
           description: c.description || '',
         });
         if (!nouveau?.id) throw new Error(`Le chantier « ${c.nom} » n'a pas pu être enregistré.`);
+        acquis.chantierIds[i] = nouveau.id;
         idsChantiers.push(nouveau.id);
         cree.chantierIds.push(nouveau.id);
       }
@@ -365,6 +426,7 @@ export default function DicteeModal({
           unite: l.unite || 'u',
           prixUnitaire: Number(l.prixUnitaire) || 0,
           prixAchat: l.prixAchat,
+          tva: tauxLigne(l), // sans ce champ, l'éditeur et le PDF retomberaient sur le défaut
           montant: (Number(l.quantite) || 0) * (Number(l.prixUnitaire) || 0),
         }));
         devisCree = await addDevis({
@@ -373,7 +435,7 @@ export default function DicteeModal({
           chantier_id: idsChantiers[docChantierIdx] || undefined,
           date: new Date().toISOString().split('T')[0],
           statut: 'brouillon',
-          tvaRate: 20,
+          tvaRate: tvaDoc,
           lignes,
           sections: [{ id: '1', titre: '', lignes }],
           notes: doc.notes || '',
@@ -420,13 +482,22 @@ export default function DicteeModal({
       if (devisCree) {
         setSelectedDevis?.(devisCree);
         setPage?.('devis');
+        // Devis sans prix : il a demandé à le chiffrer, on l'amène dans l'éditeur
+        // plutôt que sur une fiche vide en lecture seule.
+        if (!doc.lignes.length) setEditDevisId?.(devisCree.id);
       } else if (cree.chantierIds.length) {
         setPage?.('chantiers');
       } else if (cree.clientId) {
         setPage?.('clients');
       }
     } catch (e) {
-      setErreur(e.message || "La création a échoué. Vos données dictées sont conservées ci-dessus.");
+      const partiel = acquis.clientId || Object.keys(acquis.chantierIds).length;
+      setErreur(
+        (e.message || 'La création a échoué.') +
+        (partiel
+          ? " Ce qui a déjà été enregistré est conservé : réessayez, rien ne sera créé en double."
+          : ' Vos données dictées sont conservées ci-dessus.')
+      );
     } finally {
       setCreation(false);
     }
@@ -449,7 +520,7 @@ export default function DicteeModal({
       aria-modal="true"
       aria-label="Dictée vocale"
     >
-      <div className={`w-full sm:max-w-2xl sm:rounded-3xl rounded-t-3xl border ${cardBg} max-h-[92vh] flex flex-col`}>
+      <div ref={panneauRef} className={`w-full sm:max-w-2xl sm:rounded-3xl rounded-t-3xl border ${cardBg} max-h-[92vh] flex flex-col`}>
         {/* En-tête */}
         <div className="flex items-center gap-3 p-4 border-b border-slate-200/20 shrink-0">
           <div
@@ -494,7 +565,7 @@ export default function DicteeModal({
           </div>
         )}
 
-        <div className="overflow-y-auto p-4 space-y-4 flex-1">
+        <div className="overflow-y-auto overscroll-contain p-4 space-y-4 flex-1">
           {/* ── Micro non supporté ─────────────────────────────────────────── */}
           {!dictation.supported && etape === 'parler' && (
             <div className={`rounded-xl p-3 text-sm flex gap-2 ${isDark ? 'bg-amber-500/10 text-amber-200' : 'bg-amber-50 text-amber-800'}`}>
@@ -514,6 +585,7 @@ export default function DicteeModal({
             <>
               <div className="flex flex-col items-center py-2">
                 <button
+                  ref={microRef}
                   onClick={dictation.toggle}
                   disabled={!dictation.supported}
                   aria-label={dictation.listening ? 'Arrêter la dictée' : 'Démarrer la dictée'}
@@ -566,6 +638,14 @@ export default function DicteeModal({
                            : 'bg-white border-slate-300 text-slate-900 placeholder-slate-400'
                   }`}
                 />
+                {/* L'analyse refuse au-delà de 5 000 caractères : on prévient avant
+                    de laisser quelqu'un parler dix minutes pour rien. */}
+                {texteDicte.length > 3500 && (
+                  <p className={`text-xs mt-1 ${texteDicte.length > 4800 ? 'text-amber-600' : textMuted}`}>
+                    {texteDicte.length} / 5 000 caractères
+                    {texteDicte.length > 4800 && ' — coupez en deux dictées'}
+                  </p>
+                )}
               </div>
 
               {(dictation.error || erreur) && (
@@ -603,7 +683,7 @@ export default function DicteeModal({
 
           {/* ── Étape 2 : analyse ──────────────────────────────────────────── */}
           {etape === 'analyse' && (
-            <div className="flex flex-col items-center py-10 gap-3">
+            <div className="flex flex-col items-center py-10 gap-3" role="status" aria-live="polite">
               <Loader2 size={32} className="animate-spin" style={{ color: couleur }} />
               <p className={`text-sm ${textMuted}`}>Je démêle tout ça…</p>
             </div>
@@ -645,6 +725,13 @@ export default function DicteeModal({
                 <div className={`rounded-xl p-3 text-sm ${isDark ? 'bg-emerald-500/10 text-emerald-200' : 'bg-emerald-50 text-emerald-800'}`}>
                   Client reconnu : <strong>{[clientExistant.prenom, clientExistant.nom].filter(Boolean).join(' ')}</strong>.
                   Aucun doublon ne sera créé.
+                  {/* Homonymes, conjoints, frères : l'artisan doit pouvoir dire non. */}
+                  <button
+                    onClick={() => { setClientExistant(null); setClientActif(true); }}
+                    className="block mt-1 underline font-medium"
+                  >
+                    Ce n’est pas lui — créer une nouvelle fiche
+                  </button>
                 </div>
               )}
 
@@ -710,7 +797,7 @@ export default function DicteeModal({
                   titre={doc.type === 'facture' ? 'Facture' : 'Devis'}
                   sousTitre={
                     doc.lignes.length
-                      ? `${doc.lignes.length} ligne${doc.lignes.length > 1 ? 's' : ''} · ${totaux.ttc.toFixed(2)} € TTC`
+                      ? `${doc.lignes.length} ligne${doc.lignes.length > 1 ? 's' : ''} · ${euros(totaux.ttc)} TTC`
                       : 'Aucun prix dicté — à chiffrer ensuite'
                   }
                   badge={lignesSansPrix ? `${lignesSansPrix} prix à compléter` : null}
@@ -784,7 +871,7 @@ export default function DicteeModal({
                             } ${isDark ? 'bg-slate-700 text-white' : 'bg-white'}`}
                           />
                           <div className={`px-2 py-1.5 text-sm text-right font-medium ${textPrimary}`}>
-                            {(((Number(l.quantite) || 0) * (Number(l.prixUnitaire) || 0))).toFixed(2)} €
+                            {euros((Number(l.quantite) || 0) * (Number(l.prixUnitaire) || 0))}
                           </div>
                         </div>
                         {l._source && (
@@ -812,9 +899,38 @@ export default function DicteeModal({
                     </button>
 
                     {doc.lignes.length > 0 && (
-                      <div className={`flex justify-between pt-2 text-sm font-semibold ${textPrimary}`}>
-                        <span>Total TTC</span>
-                        <span>{totaux.ttc.toFixed(2)} €</span>
+                      <div className={`pt-2 space-y-1 text-sm ${textPrimary}`}>
+                        <div className={`flex justify-between ${textMuted}`}>
+                          <span>Total HT</span>
+                          <span>{euros(totaux.ht)}</span>
+                        </div>
+                        <div className="flex justify-between items-center gap-2">
+                          <label htmlFor="dictee-tva" className={textMuted}>TVA</label>
+                          <div className="flex items-center gap-2">
+                            <select
+                              id="dictee-tva"
+                              value={tvaDoc}
+                              onChange={(e) => setTvaDoc(Number(e.target.value))}
+                              className={`px-2 py-1 rounded-lg border text-sm ${
+                                isDark ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-slate-300'
+                              }`}
+                            >
+                              {[...new Set([tvaDefaut, ...TAUX_TVA])].sort((a, b) => b - a).map((t) => (
+                                <option key={t} value={t}>{String(t).replace('.', ',')} %</option>
+                              ))}
+                            </select>
+                            <span className={textMuted}>{euros(totaux.tva)}</span>
+                          </div>
+                        </div>
+                        <div className="flex justify-between font-semibold pt-1">
+                          <span>Total TTC</span>
+                          <span>{euros(totaux.ttc)}</span>
+                        </div>
+                        {doc.lignes.some((l) => l.tva !== undefined && Number(l.tva) !== tvaDoc) && (
+                          <p className={`text-[11px] ${textMuted}`}>
+                            Certaines lignes gardent le taux de votre catalogue.
+                          </p>
+                        )}
                       </div>
                     )}
                   </div>

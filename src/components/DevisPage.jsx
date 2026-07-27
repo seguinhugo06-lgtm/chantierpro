@@ -100,7 +100,7 @@ export const AVOIR_MOTIFS = {
   autre: 'Autre',
 };
 
-export default function DevisPage({ clients, setClients, addClient, devis, setDevis, chantiers, catalogue, entreprise, onSubmit, onUpdate, onDelete, modeDiscret, selectedDevis, setSelectedDevis, isDark, couleur, createMode, setCreateMode, addChantier, setPage, setSelectedChantier, addEchange, paiements = [], addPaiement, generateNextNumero, aiPrefill, setAiPrefill }) {
+export default function DevisPage({ clients, setClients, addClient, devis, setDevis, chantiers, catalogue, entreprise, onSubmit, onUpdate, onDelete, modeDiscret, selectedDevis, setSelectedDevis, isDark, couleur, createMode, setCreateMode, addChantier, setPage, setSelectedChantier, addEchange, paiements = [], addPaiement, generateNextNumero, aiPrefill, setAiPrefill, editDevisId, setEditDevisId }) {
   const { confirm } = useConfirm();
   const { showToast } = useToast();
 
@@ -378,6 +378,17 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 
   useEffect(() => { if (snackbar) { const t = setTimeout(() => setSnackbar(null), 8000); return () => clearTimeout(t); } }, [snackbar]);
   useEffect(() => { if (createMode) { setEditingDevis(null); setShowDevisComposer(true); setCreateMode?.(false); } }, [createMode, setCreateMode]);
+
+  // Ouverture directe de l'éditeur sur un devis précis. Sert à la dictée : quand
+  // l'artisan demande un devis sans donner de prix, on l'amène là où il peut le
+  // chiffrer, plutôt que sur une fiche vide en lecture seule.
+  useEffect(() => {
+    if (!editDevisId) return;
+    const doc = devis.find(d => d.id === editDevisId);
+    if (doc) openEditor(doc);
+    setEditDevisId?.(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editDevisId, devis]);
 
   // AI Prefill: populate form with IA-generated data (devis stays local until user confirms)
   useEffect(() => {

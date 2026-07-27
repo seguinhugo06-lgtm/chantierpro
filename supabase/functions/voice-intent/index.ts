@@ -142,6 +142,9 @@ NOM ET PRÉNOM
 - Deux mots → prénom puis nom. « Madame Marie Dupont » → prenom "Marie", nom "Dupont".
 - Une raison sociale (SARL, SCI, EURL, mairie, syndic…) va entièrement dans nom, prenom = null.
 
+ADRESSE
+- Sépare toujours la voie, le code postal et la ville. « 120 rue de Puvis à Bordeaux » donne adresse "120 rue de Puvis", ville "Bordeaux" — jamais la ville collée à la rue.
+
 CLIENT / CHANTIER
 - Distingue le client (la personne) du chantier (le lieu et les travaux). Si une seule adresse est donnée, mets-la sur le client ; ne la duplique sur le chantier que si l'artisan distingue clairement les deux.
 - chantiers est un TABLEAU. L'artisan qui rentre de tournée peut en citer plusieurs : « j'ai trois nouveaux chantiers, la salle de bain chez Durand, une terrasse rue de la Paix, et un ravalement ». Crée alors une entrée par chantier.

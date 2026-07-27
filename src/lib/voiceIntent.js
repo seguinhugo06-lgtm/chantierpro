@@ -217,7 +217,15 @@ export function analyseLocale(texte) {
   const mAdr = brut.match(/\b(\d{1,4}(?:\s?(?:bis|ter))?\s+(?:rue|avenue|av|boulevard|bd|chemin|impasse|allee|allée|place|route)\s+[^,.;]{2,60})/i);
   if (mAdr) {
     client = client || { nom: 'Client', prenom: null, telephone: null, email: null, codePostal: null, ville: null };
-    client.adresse = mAdr[1].trim();
+    let voie = mAdr[1].trim();
+    // « 120 rue de Puvis à Bordeaux » : la ville doit aller dans son champ, sinon
+    // elle reste collée à la rue et ressort telle quelle sur le PDF.
+    const mVille = voie.match(/\s+[àa]\s+([A-ZÀ-Ÿ][\wÀ-ÿ'’-]*(?:[\s-][A-ZÀ-Ÿ][\wÀ-ÿ'’-]*)*)\s*$/);
+    if (mVille) {
+      client.ville = mVille[1].trim();
+      voie = voie.slice(0, mVille.index).trim();
+    }
+    client.adresse = voie;
   }
 
   const mCp = brut.match(/\b(\d{5})\b/);
@@ -465,7 +473,9 @@ export function enrichirLignes(lignes = [], catalogue = []) {
       ...ligne,
       prixUnitaire: ligne.prixUnitaire ?? meilleur.prix ?? null,
       prixAchat: meilleur.prixAchat ?? undefined,
-      tvaRate: meilleur.tva_rate ?? undefined,
+      // Le champ lu partout dans l'app (éditeur, PDF) est `tva`, pas `tva_rate` :
+      // écrire ailleurs revenait à perdre le taux de l'article.
+      tva: meilleur.tva ?? meilleur.tva_rate ?? undefined,
       unite: ligne.unite || meilleur.unite,
       _source: meilleur.nom, // affiché à l'artisan : « repris du catalogue »
     };
