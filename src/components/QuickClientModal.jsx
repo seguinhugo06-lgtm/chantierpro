@@ -27,7 +27,8 @@ export default function QuickClientModal({
     email: '',
     entreprise: '',
     adresse: '',
-    categorie: 'Particulier'
+    categorie: 'Particulier',
+    siret: ''
   });
   const [showDetails, setShowDetails] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -152,7 +153,7 @@ export default function QuickClientModal({
   // Reset form on close
   useEffect(() => {
     if (!isOpen) {
-      setForm({ nom: '', prenom: '', telephone: '', email: '', entreprise: '', adresse: '', categorie: 'Particulier' });
+      setForm({ nom: '', prenom: '', telephone: '', email: '', entreprise: '', adresse: '', categorie: 'Particulier', siret: '' });
       setShowDetails(false);
       setIsSubmitting(false);
       setErrors({});
@@ -175,7 +176,8 @@ export default function QuickClientModal({
       email: form.email.trim(),
       entreprise: form.entreprise.trim(),
       adresse: form.adresse.trim(),
-      categorie: form.categorie || ''
+      categorie: form.categorie || '',
+      siret: form.siret?.trim() || ''
     });
 
     onClose();
@@ -513,6 +515,32 @@ export default function QuickClientModal({
                         className={`w-full px-4 py-2.5 border rounded-xl text-sm ${inputBg}`}
                       />
                     </div>
+
+                    {/* Facturation électronique : à partir de septembre 2026, une
+                        facture adressée à un professionnel doit porter son SIRET.
+                        On le demande au moment où l'artisan déclare un pro, pas
+                        au moment où la facture part et où il est trop tard. */}
+                    {form.categorie === 'Professionnel' && (
+                      <div>
+                        <label htmlFor="qc-siret" className={`flex items-center gap-2 text-sm font-medium mb-2 ${textPrimary}`}>
+                          <Building2 size={14} className={textMuted} />
+                          SIRET
+                        </label>
+                        <input
+                          id="qc-siret"
+                          type="text"
+                          inputMode="numeric"
+                          maxLength={17}
+                          value={form.siret}
+                          onChange={e => setForm(p => ({ ...p, siret: e.target.value }))}
+                          placeholder="123 456 789 00012"
+                          className={`w-full px-4 py-2.5 border rounded-xl text-sm ${inputBg}`}
+                        />
+                        <p className={`text-xs mt-1 ${textMuted}`}>
+                          Nécessaire pour lui adresser une facture électronique.
+                        </p>
+                      </div>
+                    )}
 
                     <div>
                       <label htmlFor="qc-adresse" className={`flex items-center gap-2 text-sm font-medium mb-2 ${textPrimary}`}>

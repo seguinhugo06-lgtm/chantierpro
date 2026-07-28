@@ -152,7 +152,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 300);
   const [activeTab, setActiveTab] = useState('documents');
-  const [form, setForm] = useState({ nom: '', prenom: '', entreprise: '', email: '', telephone: '', adresse: '', notes: '', categorie: '' });
+  const [form, setForm] = useState({ nom: '', prenom: '', entreprise: '', email: '', telephone: '', adresse: '', notes: '', categorie: '', siret: '', tva_intra: '' });
   const [sortBy, setSortBy] = useState('recent'); // recent, name, ca, activite
   const [sortDir, setSortDir] = useState('desc'); // 'asc' | 'desc'
   const [filterCategorie, setFilterCategorie] = useState('');
@@ -339,7 +339,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
 
     // Merge: fill in blanks from source
     const merged = {};
-    ['prenom', 'entreprise', 'email', 'telephone', 'adresse', 'notes', 'categorie'].forEach(field => {
+    ['prenom', 'entreprise', 'email', 'telephone', 'adresse', 'notes', 'categorie', 'siret', 'tva_intra'].forEach(field => {
       if (!target[field] && source[field]) {
         merged[field] = source[field];
       }
@@ -1626,6 +1626,11 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
             )}
           </div>
           <div className="sm:col-span-2"><label htmlFor="client-adresse" className={`block text-sm font-medium mb-1 ${textPrimary}`}>Adresse</label><textarea id="client-adresse" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} rows={2} value={form.adresse} onChange={e => setForm(p => ({...p, adresse: e.target.value}))} /></div>
+          {/* Facturation électronique : à partir de septembre 2026, une facture
+              adressée à un professionnel doit porter son SIRET. Sans lui, elle
+              sera rejetée par les plateformes agréées. */}
+          <div><label htmlFor="client-siret" className={`block text-sm font-medium mb-1 ${textPrimary}`}>SIRET <span className={textMuted}>(si professionnel)</span></label><input id="client-siret" inputMode="numeric" maxLength={17} placeholder="123 456 789 00012" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.siret} onChange={e => setForm(p => ({...p, siret: e.target.value}))} /></div>
+          <div><label htmlFor="client-tva" className={`block text-sm font-medium mb-1 ${textPrimary}`}>N&deg; TVA intracommunautaire</label><input id="client-tva" placeholder="FR12345678900" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.tva_intra} onChange={e => setForm(p => ({...p, tva_intra: e.target.value}))} /></div>
           <div className="sm:col-span-2">
             <label htmlFor="client-notes" className={`block text-sm font-medium mb-1 ${textPrimary}`}>Notes internes</label>
             <div className="relative">

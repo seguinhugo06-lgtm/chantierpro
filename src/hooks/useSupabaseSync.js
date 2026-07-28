@@ -71,6 +71,10 @@ export const FIELD_MAPPINGS = {
       entreprise: item.entreprise || '',
       categorie: item.categorie || '',
       notes: item.notes || '',
+      // Facturation électronique : sans le SIRET, une facture B2B est rejetée
+      // par les plateformes agréées.
+      siret: item.siret || null,
+      tva_intra: item.tva_intra || null,
     }),
     fromSupabase: (row) => ({
       id: row.id,
@@ -82,6 +86,8 @@ export const FIELD_MAPPINGS = {
       entreprise: row.entreprise || '',
       categorie: row.categorie || '',
       notes: row.notes || '',
+      siret: row.siret || '',
+      tva_intra: row.tva_intra || '',
       type: 'particulier', // Default value for local use
       createdAt: row.created_at,
     }),
