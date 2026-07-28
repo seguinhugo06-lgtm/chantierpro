@@ -21,12 +21,19 @@ const PRICE_IDS: Record<string, Record<string, string>> = {
   },
 };
 
-// Montants en centimes (fallback price_data dynamique) — source: PLANS front
+// Montants en centimes (fallback price_data dynamique) — DOIVENT rester alignés
+// sur `PLANS` dans src/stores/subscriptionStore.js : c'est ce montant qui est
+// réellement débité tant qu'aucun STRIPE_PRICE_* n'est configuré. Un écart ici
+// ferait payer autre chose que le prix affiché à l'écran.
+// Tarif fondateur : 9,90 € / 99 € et 19,90 € / 199 €.
 const PLAN_AMOUNTS: Record<string, Record<string, number>> = {
-  artisan: { monthly: 499, yearly: 4900 },
-  equipe: { monthly: 999, yearly: 9900 },
+  artisan: { monthly: 990, yearly: 9900 },
+  equipe: { monthly: 1990, yearly: 19900 },
 };
-const PLAN_NAMES: Record<string, string> = { artisan: 'Mallettico Artisan', equipe: 'Mallettico Équipe' };
+const PLAN_NAMES: Record<string, string> = {
+  artisan: 'Mallettico Artisan — tarif fondateur',
+  equipe: 'Mallettico Équipe — tarif fondateur',
+};
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
