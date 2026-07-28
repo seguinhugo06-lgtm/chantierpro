@@ -29,8 +29,10 @@ const PLANS = [
   {
     id: 'artisan',
     name: 'Artisan',
-    monthly: 4.99,
-    yearly: 49,
+    monthly: 9.90,
+    yearly: 99,
+    prixNormal: 14.90,
+    offreLancement: 'Tarif fondateur',
     description: 'Pour les pros qui veulent gagner du temps au quotidien',
     features: [
       'Devis & factures illimit\u00e9s',
@@ -47,8 +49,10 @@ const PLANS = [
   {
     id: 'equipe',
     name: '\u00c9quipe',
-    monthly: 9.99,
-    yearly: 99,
+    monthly: 19.90,
+    yearly: 199,
+    prixNormal: 29.90,
+    offreLancement: 'Tarif fondateur',
     description: 'G\u00e9rez votre \u00e9quipe et vos chantiers sans stress',
     features: [
       'Tout Artisan inclus',
@@ -178,7 +182,18 @@ export default function PricingSection({ onSignup }) {
                     {price > 0 && (
                       <span className="text-slate-500 text-sm ml-1">{period} HT</span>
                     )}
+                    {/* Prix normal barré : c'est le tarif visé, pas un ancrage inventé. */}
+                    {plan.prixNormal && !annual && (
+                      <span className="text-slate-400 text-lg line-through ml-2">
+                        {plan.prixNormal.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} &euro;
+                      </span>
+                    )}
                   </div>
+                  {plan.offreLancement && (
+                    <span className="inline-block mt-2 px-2.5 py-1 text-xs font-semibold rounded-full bg-orange-50 text-orange-700">
+                      {plan.offreLancement} — prix gardé tant que vous restez abonné
+                    </span>
+                  )}
                 </div>
 
                 {/* Features */}

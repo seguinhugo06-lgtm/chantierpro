@@ -125,16 +125,16 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
               <tr className={`border-b ${tableBorder}`}>
                 <td className={`px-4 py-3 font-medium ${textPrimary}`}>Gratuit</td>
                 <td className={`px-4 py-3 ${textSecondary}`}>0,00 EUR / mois</td>
-                <td className={`px-4 py-3 ${textSecondary}`}>Accès limité pour découvrir la plateforme. 5 devis/mois, 10 clients, 2 chantiers actifs.</td>
+                <td className={`px-4 py-3 ${textSecondary}`}>Accès limité pour découvrir la plateforme. 5 devis/mois, 10 clients, 2 chantiers actifs, 10 dictées vocales/mois.</td>
               </tr>
               <tr className={`border-b ${tableBorder}`}>
                 <td className={`px-4 py-3 font-medium ${textPrimary}`}>Artisan</td>
-                <td className={`px-4 py-3 ${textSecondary}`}>4,99 EUR / mois HT (ou 49 EUR / an HT)</td>
+                <td className={`px-4 py-3 ${textSecondary}`}>9,90 EUR / mois HT (ou 99 EUR / an HT) — tarif fondateur, prix normal 14,90 EUR / mois HT</td>
                 <td className={`px-4 py-3 ${textSecondary}`}>Idéal pour les artisans indépendants. Devis, factures, clients et chantiers illimités, signatures électroniques, export comptable.</td>
               </tr>
               <tr>
                 <td className={`px-4 py-3 font-medium ${textPrimary}`}>Équipe</td>
-                <td className={`px-4 py-3 ${textSecondary}`}>9,99 EUR / mois HT (ou 99 EUR / an HT)</td>
+                <td className={`px-4 py-3 ${textSecondary}`}>19,90 EUR / mois HT (ou 199 EUR / an HT) — tarif fondateur, prix normal 29,90 EUR / mois HT</td>
                 <td className={`px-4 py-3 ${textSecondary}`}>Pour les entreprises avec équipes. Jusqu'à 10 utilisateurs, pointage, trésorerie, sous-traitants, portail client, analytics avancés.</td>
               </tr>
             </tbody>

@@ -118,12 +118,24 @@ function PricingCard({ plan, billing, isCurrent, isLoading, onSelect }) {
           </div>
         ) : (
           <div>
-            <div className="flex items-baseline gap-1">
+            <div className="flex items-baseline gap-2 flex-wrap">
+              {plan.offreLancement && plan.prixNormalMensuel && (
+                <span className="text-lg text-slate-400 line-through">
+                  {(billing === 'yearly' ? plan.prixNormalAnnuel / 12 : plan.prixNormalMensuel).toFixed(2).replace('.', ',')}€
+                </span>
+              )}
               <span className="text-3xl font-bold" style={{ color: plan.color }}>
                 {billing === 'yearly' ? price : typeof plan.priceMonthly === 'number' ? plan.priceMonthly.toFixed(2).replace('.', ',') : plan.priceMonthly}€
               </span>
               <span className="text-sm text-slate-500">HT/mois</span>
             </div>
+            {plan.offreLancement && (
+              <div className="mt-1">
+                <span className="inline-block px-2 py-0.5 text-[11px] font-bold rounded-full bg-orange-50 text-orange-700">
+                  {plan.offreLancement} — prix gardé tant que vous restez abonné
+                </span>
+              </div>
+            )}
             {billing === 'yearly' && (
               <p className="text-xs text-slate-400 mt-1">
                 Facturé {plan.priceYearly}€ annuellement

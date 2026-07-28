@@ -60,8 +60,14 @@ export const PLANS = {
     name: 'Artisan',
     description: 'L\'essentiel pour un artisan autonome',
     target: 'Artisans indépendants',
-    priceMonthly: 4.99,
-    priceYearly: 49,
+    // Tarif fondateur : prix cassé au lancement, conservé tant que l'abonnement
+    // reste actif. `prixNormal*` est le tarif visé, affiché barré — c'est un
+    // vrai prix futur, pas un ancrage décoratif.
+    priceMonthly: 9.90,
+    priceYearly: 99,
+    prixNormalMensuel: 14.90,
+    prixNormalAnnuel: 149,
+    offreLancement: 'Tarif fondateur',
     limits: {
       devis: -1,
       clients: -1,
@@ -107,8 +113,11 @@ export const PLANS = {
     name: 'Équipe',
     description: 'Pour les entreprises avec collaborateurs',
     target: 'PME du bâtiment',
-    priceMonthly: 9.99,
-    priceYearly: 99,
+    priceMonthly: 19.90,
+    priceYearly: 199,
+    prixNormalMensuel: 29.90,
+    prixNormalAnnuel: 299,
+    offreLancement: 'Tarif fondateur',
     limits: {
       devis: -1,
       clients: -1,

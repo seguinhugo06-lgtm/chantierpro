@@ -246,8 +246,8 @@ export default function Facture2026Tab({ entreprise, setEntreprise, isDark, coul
             </h2>
             <p className={`mt-1 text-sm font-medium ${isReady ? 'text-emerald-600' : 'text-amber-600'}`}>
               {isReady
-                ? 'Vous êtes prêt avec Mallettico ✓'
-                : `${daysLeft} jours restants — actions requises pour être conforme`}
+                ? `Vos factures sont au bon format — ${daysLeft} jours pour choisir votre plateforme`
+                : `${daysLeft} jours restants — ${results.filter((r) => !r.passed).length} information(s) à compléter`}
             </p>
           </div>
         </div>
@@ -259,7 +259,7 @@ export default function Facture2026Tab({ entreprise, setEntreprise, isDark, coul
         <div className={`${cardBg} rounded-2xl border p-5 flex flex-col items-center justify-center`}>
           <CircularProgress score={score} isDark={isDark} couleur={couleur} />
           <p className={`mt-3 text-sm font-semibold ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
-            Score Conformité 2026
+            Vos mentions légales
           </p>
           <p className={`text-xs mt-1 ${textMuted}`}>
             {results.filter((r) => r.passed).length}/{results.length} critères validés
@@ -325,6 +325,54 @@ export default function Facture2026Tab({ entreprise, setEntreprise, isDark, coul
                 </div>
               );
             })}
+          </div>
+        </div>
+      </div>
+
+      {/*
+        Ce que Mallettico couvre — et ce qu'il ne couvre pas.
+        La checklist ci-dessus ne vérifie que les mentions légales de l'entreprise.
+        Un artisan pourrait afficher 100 % et se retrouver dans l'incapacité de
+        recevoir une facture électronique le jour venu : le raccordement à une
+        plateforme est une démarche qui lui appartient, et il doit le savoir.
+      */}
+      <div className={`${cardBg} rounded-2xl border p-5`}>
+        <h3 className={`font-semibold mb-4 flex items-center gap-2 ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
+          <Info className="w-5 h-5" style={{ color: couleur }} />
+          Ce que Mallettico fait, et ce qu'il vous reste à faire
+        </h3>
+        <div className="space-y-3">
+          <div className={`flex items-start gap-2.5 p-3 rounded-xl ${isDark ? 'bg-emerald-900/20' : 'bg-emerald-50'}`}>
+            <CheckCircle className="w-5 h-5 shrink-0 mt-0.5 text-emerald-600" />
+            <div>
+              <p className={`text-sm font-semibold ${isDark ? 'text-emerald-300' : 'text-emerald-800'}`}>
+                Mallettico émet vos factures au format Factur-X
+              </p>
+              <p className={`text-sm mt-0.5 ${isDark ? 'text-emerald-200' : 'text-emerald-700'}`}>
+                Chaque facture téléchargée est un PDF/A-3 avec le XML structuré à l'intérieur.
+                C'est le format attendu par les plateformes. Rien à activer.
+              </p>
+            </div>
+          </div>
+
+          <div className={`flex items-start gap-2.5 p-3 rounded-xl ${isDark ? 'bg-amber-900/20' : 'bg-amber-50'}`}>
+            <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5 text-amber-600" />
+            <div>
+              <p className={`text-sm font-semibold ${isDark ? 'text-amber-300' : 'text-amber-800'}`}>
+                Mallettico ne transmet pas encore vos factures à votre place
+              </p>
+              <p className={`text-sm mt-0.5 ${isDark ? 'text-amber-200' : 'text-amber-700'}`}>
+                La réforme impose de passer par une plateforme agréée (PDP) pour envoyer
+                et surtout <strong>recevoir</strong> les factures électroniques. Ce raccordement
+                est une démarche à faire de votre côté : choisissez une plateforme, déclarez-y
+                votre SIREN, et déposez-y les fichiers que Mallettico produit.
+              </p>
+              <p className={`text-xs mt-2 ${isDark ? 'text-amber-200/80' : 'text-amber-700/80'}`}>
+                Le calendrier de la réforme a déjà été reporté plusieurs fois. Vérifiez les dates
+                qui s'appliquent à votre entreprise auprès de votre expert-comptable ou sur
+                impots.gouv.fr avant de vous engager.
+              </p>
+            </div>
           </div>
         </div>
       </div>

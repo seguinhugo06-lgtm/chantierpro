@@ -159,12 +159,25 @@ export default function UpgradeModal() {
                   </span>
                 </div>
                 <div className="mb-4">
-                  <div className="flex items-baseline gap-1">
+                  <div className="flex items-baseline gap-2 flex-wrap">
+                    {/* Prix normal barré : c'est le tarif visé, pas un ancrage inventé. */}
+                    {plan.offreLancement && plan.prixNormalMensuel && (
+                      <span className="text-sm text-slate-400 line-through">
+                        {(billing === 'yearly'
+                          ? plan.prixNormalAnnuel / 12
+                          : plan.prixNormalMensuel).toFixed(2).replace('.', ',')}€
+                      </span>
+                    )}
                     <span className="text-2xl font-bold" style={{ color: plan.color }}>
                       {price}€
                     </span>
                     <span className="text-sm text-slate-500">HT/mois</span>
                   </div>
+                  {plan.offreLancement && (
+                    <span className="inline-block mt-1 px-2 py-0.5 text-[10px] font-bold rounded-full bg-orange-50 text-orange-700">
+                      {plan.offreLancement} — prix gardé tant que vous restez abonné
+                    </span>
+                  )}
                   {billing === 'yearly' && (
                     <p className="text-xs text-slate-400 mt-0.5">
                       Facturé {plan.priceYearly}€/an
