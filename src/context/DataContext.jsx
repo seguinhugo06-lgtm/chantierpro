@@ -10,6 +10,7 @@ import { createSnapshot } from '../lib/snapshotService';
 import { logger } from '../lib/logger';
 import { queueMutation } from '../lib/offline/sync';
 import { toast } from '../stores/toastStore';
+import { useSubscriptionStore, PLANS } from '../stores/subscriptionStore';
 import { celebrateMilestone } from '../lib/celebrate';
 
 /**
@@ -414,8 +415,29 @@ export function DataProvider({ children, initialData = {} }) {
     loadData();
   }, [userId, orgId, orgLoading, entrepriseId, entrepriseLoading, dataLoaded]);
 
+  /**
+   * Garde-fou d'abonnement, posé au seul endroit par lequel TOUTES les créations
+   * passent — page, modale, import, dictée vocale. Le poser sur chaque bouton
+   * reviendrait à en oublier un, et un seul oubli rend la limite inopérante.
+   *
+   * Renvoie true si la création est autorisée. Sinon ouvre la fenêtre
+   * d'abonnement, qui explique ce que débloque le passage au plan supérieur.
+   */
+  const autoriserCreation = useCallback((ressource) => {
+    const { planId, usage, openUpgradeModal } = useSubscriptionStore.getState();
+    const plan = PLANS[planId] || PLANS.gratuit;
+    const limite = plan.limits?.[ressource] ?? -1;
+    if (limite === -1) return true;                     // illimité
+    if ((usage?.[ressource] ?? 0) < limite) return true;
+    // UPGRADE_CONTEXTS indexe les limites en `<ressource>_limit` ; passer la
+    // ressource nue afficherait le message générique au lieu du message ciblé.
+    openUpgradeModal(`${ressource}_limit`);
+    return false;
+  }, []);
+
   // ============ CLIENT OPERATIONS ============
   const addClient = useCallback(async (data) => {
+    if (!autoriserCreation('clients')) return null;
     // Generate proper UUID for Supabase compatibility
     const newClient = {
       id: crypto.randomUUID(),
@@ -452,7 +474,7 @@ export function DataProvider({ children, initialData = {} }) {
     }
 
     return newClient;
-  }, [userId]);
+  }, [userId, autoriserCreation]);
 
   const updateClient = useCallback(async (id, data) => {
     const oldClient = clients.find(c => c.id === id);
@@ -510,6 +532,9 @@ export function DataProvider({ children, initialData = {} }) {
 
   // ============ DEVIS OPERATIONS ============
   const addDevis = useCallback(async (data) => {
+    // Seuls les devis comptent dans la limite : une facture prolonge un devis
+    // déjà décompté, la bloquer empêcherait d'encaisser un travail réalisé.
+    if (data.type !== 'facture' && !autoriserCreation('devis')) return null;
     // Require client_id — reject if missing (ghost devis prevention)
     if (!data.client_id) {
       console.warn('addDevis: rejected ghost devis — missing client_id. Data:', { numero: data.numero, type: data.type, statut: data.statut });
@@ -574,7 +599,7 @@ export function DataProvider({ children, initialData = {} }) {
     }
 
     return newDevis;
-  }, [userId, devis, entrepriseId]);
+  }, [userId, devis, entrepriseId, autoriserCreation]);
 
   const updateDevis = useCallback(async (id, data) => {
     // Prevent removing client_id (BUG-001: DB NOT NULL constraint)
@@ -686,6 +711,7 @@ export function DataProvider({ children, initialData = {} }) {
 
   // ============ CHANTIER OPERATIONS ============
   const addChantier = useCallback(async (data) => {
+    if (!autoriserCreation('chantiers')) return null;
     const newChantier = {
       id: crypto.randomUUID(),
       statut: CHANTIER_STATUS.PROSPECT,
@@ -722,7 +748,7 @@ export function DataProvider({ children, initialData = {} }) {
     }
 
     return newChantier;
-  }, [userId, entrepriseId]);
+  }, [userId, entrepriseId, autoriserCreation]);
 
   const updateChantier = useCallback(async (id, data) => {
     const oldChantier = chantiers.find(c => c.id === id);

@@ -44,6 +44,7 @@ import { usePermissions } from '../hooks/usePermissions';
 import { useRelances } from '../hooks/useRelances';
 import { useOrg } from '../context/OrgContext';
 import { captureException } from '../lib/sentry';
+import UsageAlerts from './subscription/UsageAlerts';
 
 // ============ CONSTANTS ============
 
@@ -495,6 +496,10 @@ export default function Dashboard({
           </button>
         </div>
       </header>
+
+      {/* Jauges d'usage — ne s'affichent qu'à l'approche d'une limite, pour que
+          l'artisan voie le mur arriver au lieu de le heurter en plein devis. */}
+      <UsageAlerts isDark={isDark} couleur={couleur} />
 
       {/* ===== ONBOARDING (nouveaux comptes) ===== */}
       {showOnboarding && (

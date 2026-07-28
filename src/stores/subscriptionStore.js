@@ -25,8 +25,8 @@ export const PLANS = {
       chantiers: 2,
       catalogue: 30,
       signatures: 0,
-      ia_analyses: 3,
       photos: 50,
+      dictees: 10,
       storage_mb: 100,
       equipe: 1
     },
@@ -40,6 +40,7 @@ export const PLANS = {
       { name: '2 chantiers actifs', included: true },
       { name: '30 articles catalogue', included: true },
       { name: 'Planning basique', included: true },
+      { name: '10 dictées vocales par mois', included: true },
       { name: '100 Mo stockage', included: true },
       { name: 'Signatures électroniques', included: false },
       { name: 'Export comptable', included: false },
@@ -67,8 +68,8 @@ export const PLANS = {
       chantiers: -1,
       catalogue: -1,
       signatures: -1,
-      ia_analyses: 20,
       photos: -1,
+      dictees: -1,
       storage_mb: 2048,
       equipe: 1
     },
@@ -79,6 +80,7 @@ export const PLANS = {
       'carte_chantiers', 'entretien'
     ],
     featureLabels: [
+      { name: 'Dictée vocale illimitée', included: true },
       { name: 'Devis & factures illimités', included: true },
       { name: 'Clients illimités', included: true },
       { name: 'Chantiers illimités', included: true },
@@ -113,8 +115,8 @@ export const PLANS = {
       chantiers: -1,
       catalogue: -1,
       signatures: -1,
-      ia_analyses: -1,
       photos: -1,
+      dictees: -1,
       storage_mb: 10240,
       equipe: 10
     },
@@ -124,7 +126,6 @@ export const PLANS = {
       'rapports_pdf', 'relances', 'marges', 'pipeline', 'photos_gps',
       'carte_chantiers', 'entretien',
       'pointages', 'rbac', 'tresorerie', 'fec_export',
-      'rapprochement_bancaire', 'commandes',
       'portal_client', 'alertes_stock', 'analytics'
     ],
     featureLabels: [
@@ -134,7 +135,6 @@ export const PLANS = {
       { name: 'Gérez les accès de votre équipe', included: true },
       { name: 'Trésorerie & Bilan', included: true },
       { name: 'Export FEC comptable', included: true },
-      { name: 'Commandes fournisseurs', included: true },
       { name: 'Portail client', included: true },
       { name: 'Alertes de stock', included: true },
       { name: 'Statistiques avancées', included: true },
@@ -211,7 +211,6 @@ const DEFAULT_USAGE = {
   chantiers: 0,
   catalogue: 0,
   signatures: 0,
-  ia_analyses: 0,
   photos: 0,
   storage_mb: 0,
   equipe: 0
@@ -221,20 +220,26 @@ const DEFAULT_USAGE = {
 
 export const UPGRADE_CONTEXTS = {
   devis_limit: {
-    title: 'Limite de devis atteinte',
-    subtitle: 'Passez au plan Artisan pour créer des devis illimités',
+    title: 'Vos 5 devis du mois sont partis',
+    subtitle: 'Un devis envoyé le jour même se signe deux fois plus souvent. Passez en illimité pour ne plus compter.',
     highlight: 'devis',
+    recommendedPlan: 'artisan'
+  },
+  dictees_limit: {
+    title: 'Vos 10 dictées du mois sont utilisées',
+    subtitle: 'La dictée transforme un appel de chantier en devis chiffré. En illimité, vous ne rentrez plus rien à la main.',
+    highlight: 'dictees',
     recommendedPlan: 'artisan'
   },
   clients_limit: {
     title: 'Limite de clients atteinte',
-    subtitle: 'Passez au plan Artisan pour gérer des clients illimités',
+    subtitle: 'Votre carnet d\'adresses est votre fonds de commerce. Le plan Artisan le déplafonne.',
     highlight: 'clients',
     recommendedPlan: 'artisan'
   },
   chantiers_limit: {
     title: 'Limite de chantiers atteinte',
-    subtitle: 'Passez au plan Artisan pour des chantiers illimités',
+    subtitle: 'Suivez tous vos chantiers en cours, sans avoir à en archiver un pour en ouvrir un autre.',
     highlight: 'chantiers',
     recommendedPlan: 'artisan'
   },
@@ -278,12 +283,6 @@ export const UPGRADE_CONTEXTS = {
     title: 'Export FEC',
     subtitle: 'Exportez vos données comptables au format FEC pour votre expert-comptable',
     highlight: 'fec_export',
-    recommendedPlan: 'equipe'
-  },
-  commandes: {
-    title: 'Commandes fournisseurs',
-    subtitle: 'Créez et suivez vos bons de commande fournisseurs',
-    highlight: 'commandes',
     recommendedPlan: 'equipe'
   },
   portal_client: {

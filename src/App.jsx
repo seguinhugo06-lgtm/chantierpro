@@ -77,7 +77,7 @@ import FeatureGuard, { UpgradeBadge } from './components/subscription/FeatureGua
 import { useSubscriptionStore, PAGE_FEATURE_MAP } from './stores/subscriptionStore';
 import { usePermissions } from './hooks/usePermissions';
 import { PermissionGate } from './components/ui/PermissionGate';
-import { fetchSubscription, fetchUsage, computeLiveUsage } from './services/subscriptionsApi';
+import { fetchSubscription, computeLiveUsage } from './services/subscriptionsApi';
 import { isDraftChantier } from './lib/utils';
 import { Home, FileText, Building2, Calendar, Users, Package, HardHat, Settings as SettingsIcon, Eye, EyeOff, Sun, Moon, LogOut, Menu, Bell, Plus, ChevronRight, ChevronDown, BarChart3, HelpCircle, Search, X, CheckCircle, AlertCircle, Info, Clock, Receipt, Wifi, WifiOff, Palette, Wallet, Library, UserCheck, ShoppingCart, Camera, ClipboardList, PenTool, Download, Share, Smartphone, CreditCard, Tag, Sparkles, Kanban, Star, User, MessageCircle, Shield, CalendarCheck, Megaphone, FileCheck, ClipboardCheck, Globe, Mic } from 'lucide-react';
 import { usePWA } from './hooks/usePWA';
@@ -711,15 +711,16 @@ export default function App() {
       try {
         const { data: subData } = await fetchSubscription(orgId);
         if (!cancelled && subData) setSubscriptionData(subData);
-        const { data: usageData } = await fetchUsage();
-        if (!cancelled && usageData) setUsageData(usageData);
+        // L'usage n'est PAS relu ici : il est recalculé en direct depuis les
+        // données (voir plus bas). L'ancien fetchUsage renvoyait des zéros en
+        // dur qui écrasaient ce calcul, et aucune limite ne s'appliquait.
       } catch (err) {
         console.warn('Subscription init error:', err?.message || err);
       }
     };
     if (user) initSubscription();
     return () => { cancelled = true; };
-  }, [user, orgId, setSubscriptionData, setUsageData]);
+  }, [user, orgId, setSubscriptionData]);
 
   // Handle ?billing=success redirect from Stripe Checkout
   useEffect(() => {

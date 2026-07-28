@@ -13,7 +13,11 @@ import { PLANS, PLAN_ORDER } from '../stores/subscriptionStore';
 const DEMO_SUBSCRIPTION = {
   id: 'demo-sub-id',
   user_id: 'demo-user-id',
-  plan: 'gratuit',
+  // La démo présente un artisan installé : 17 devis, 14 chantiers, un catalogue
+  // fourni. La mettre sur le plan Gratuit la bloquerait dès le premier clic, une
+  // fois les limites appliquées. On montre donc le produit payant — et il suffit
+  // de poser `cp_demo_plan = 'gratuit'` pour voir le parcours d'abonnement.
+  plan: 'artisan',
   status: 'active',
   billing_interval: 'monthly',
   stripe_customer_id: null,
@@ -134,16 +138,6 @@ export async function fetchSubscription(orgId) {
  * Fetch current month usage counters
  * @returns {Promise<{ data: Object, error: any }>}
  */
-export async function fetchUsage() {
-  // Usage is computed client-side via computeLiveUsage() for now.
-  // The 'usage_tracking' DB table is optional and may not exist yet.
-  // This prevents 404 console errors from Supabase when the table doesn't exist.
-  return {
-    data: { devis: 0, clients: 0, chantiers: 0, photos: 0, storage_mb: 0, equipe: 0 },
-    error: null
-  };
-}
-
 /**
  * Increment a usage counter (called after creating a resource)
  * @param {string} resource - devis, clients, chantiers, photos, equipe
@@ -303,7 +297,6 @@ export function computeLiveUsage(data = {}) {
 export default {
   fetchPlans,
   fetchSubscription,
-  fetchUsage,
   incrementUsage,
   createCheckoutSession,
   createPortalSession,

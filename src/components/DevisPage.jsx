@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo, Suspense, lazy } from 'react';
 import { Plus, ArrowLeft, Download, Trash2, Send, Mail, MessageCircle, Edit3, Check, X, FileText, Receipt, Clock, Search, ChevronRight, ChevronUp, ChevronDown, Star, Filter, Eye, Pen, CreditCard, Banknote, CheckCircle, AlertCircle, AlertTriangle, XCircle, Building2, Copy, TrendingUp, QrCode, Sparkles, PenTool, MoreVertical, Loader2, Link2, Mic, Zap, ArrowUpDown, Bell, RotateCcw, BarChart3, BellRing, ClipboardList, Circle, LayoutGrid, List, Kanban, Droplets, Paintbrush } from 'lucide-react';
 import supabase, { isDemo } from '../supabaseClient';
+import { useSubscriptionStore, PLANS } from '../stores/subscriptionStore';
 const PipelineKanban = lazy(() => import('./pipeline/PipelineKanban'));
 import { DEVIS_STATUS_COLORS, DEVIS_STATUS_LABELS } from '../lib/constants';
 /**
@@ -230,6 +231,24 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   // DevisComposer — nouveau parcours de création single-canvas (banger)
   const [showDevisComposer, setShowDevisComposer] = useState(false);
   // Édition : composer pour devis/factures, wizard pour les avoirs (montants négatifs)
+  /**
+   * Ouvre l'éditeur pour un NOUVEAU devis.
+   *
+   * La limite se vérifie ici, avant d'ouvrir : le filet de sécurité posé dans
+   * DataContext refuserait bien l'enregistrement, mais l'artisan aurait déjà
+   * composé son devis. On préfère le prévenir avant qu'il travaille pour rien.
+   */
+  const ouvrirNouveauDevis = () => {
+    const { planId, usage, openUpgradeModal } = useSubscriptionStore.getState();
+    const limite = (PLANS[planId] || PLANS.gratuit).limits?.devis ?? -1;
+    if (limite !== -1 && (usage?.devis ?? 0) >= limite) {
+      openUpgradeModal('devis_limit');
+      return;
+    }
+    setEditingDevis(null);
+    setShowDevisComposer(true);
+  };
+
   const openEditor = (doc) => {
     setEditingDevis(doc);
     if (doc?.facture_type === 'avoir') setShowDevisWizard(true);
@@ -405,7 +424,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   };
 
   useEffect(() => { if (snackbar) { const t = setTimeout(() => setSnackbar(null), 8000); return () => clearTimeout(t); } }, [snackbar]);
-  useEffect(() => { if (createMode) { setEditingDevis(null); setShowDevisComposer(true); setCreateMode?.(false); } }, [createMode, setCreateMode]);
+  useEffect(() => { if (createMode) { ouvrirNouveauDevis(); setCreateMode?.(false); } /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [createMode, setCreateMode]);
 
   // Ouverture directe de l'éditeur sur un devis précis. Sert à la dictée : quand
   // l'artisan demande un devis sans donner de prix, on l'amène là où il peut le
@@ -4869,7 +4888,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         <div className="relative">
           <div className="flex items-stretch">
             <button
-              onClick={() => { setEditingDevis(null); setShowDevisComposer(true); }}
+              onClick={ouvrirNouveauDevis}
               className="px-4 py-2.5 text-white rounded-l-xl text-sm font-semibold flex items-center gap-2 hover:opacity-90 transition-all"
               style={{ background: couleur }}
             >
@@ -5289,7 +5308,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
               </div>
 
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                <button onClick={() => { setEditingDevis(null); setShowDevisComposer(true); }} className="px-6 py-3 text-white rounded-xl flex items-center justify-center gap-2 hover:shadow-lg transition-all font-medium" style={{ background: couleur }}>
+                <button onClick={ouvrirNouveauDevis} className="px-6 py-3 text-white rounded-xl flex items-center justify-center gap-2 hover:shadow-lg transition-all font-medium" style={{ background: couleur }}>
                   <FileText size={18} />
                   Créer mon premier devis
                 </button>
@@ -5304,7 +5323,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           {/* Simple CTA for filtered empty state */}
           {(search || filter !== 'all') && (
             <div className={`p-6 border-t ${isDark ? 'border-slate-700' : 'border-slate-100'} text-center`}>
-              <button onClick={() => { setEditingDevis(null); setShowDevisComposer(true); }} className="px-6 py-3 text-white rounded-xl flex items-center justify-center gap-2 mx-auto hover:shadow-lg transition-all font-medium" style={{ background: couleur }}>
+              <button onClick={ouvrirNouveauDevis} className="px-6 py-3 text-white rounded-xl flex items-center justify-center gap-2 mx-auto hover:shadow-lg transition-all font-medium" style={{ background: couleur }}>
                 <Plus size={18} />
                 Créer un nouveau document
               </button>

@@ -218,17 +218,12 @@ export default function ProfilePage({
       });
   }, [devis, clients]);
 
-  const iaCount = useMemo(() => {
-    try { return JSON.parse(localStorage.getItem('cp_ia_analyses') || '[]').length; } catch { return 0; }
-  }, []);
-
   const usageItems = useMemo(() => [
     { icon: FileText, label: 'Devis', count: devis.filter(d => d.type === 'devis').length, limit: plan.limits.devis },
     { icon: Users, label: 'Clients', count: clients.length, limit: plan.limits.clients },
     { icon: Building2, label: 'Chantiers', count: chantiers.length, limit: plan.limits.chantiers },
-    { icon: Sparkles, label: 'IA', count: iaCount, limit: plan.limits.ia_analyses },
     { icon: Package, label: 'Catalogue', count: catalogue.length, limit: plan.limits.catalogue },
-  ], [devis, clients, chantiers, iaCount, catalogue, plan]);
+  ], [devis, clients, chantiers, catalogue, plan]);
 
   // Insurance alerts
   const insuranceAlerts = useMemo(() => {

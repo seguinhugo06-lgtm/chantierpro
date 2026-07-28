@@ -20,6 +20,8 @@ import {
 } from 'lucide-react';
 import useDictation from '../../hooks/useDictation';
 import { toast } from '../../stores/toastStore';
+import { useSubscriptionStore, PLANS } from '../../stores/subscriptionStore';
+import { quotaDictee, compterDictee } from '../../lib/dicteeQuota';
 import {
   analyserDictee, rapprocherClient, rapprocherChantier, enrichirLignes,
 } from '../../lib/voiceIntent';
@@ -246,6 +248,18 @@ export default function DicteeModal({
     const texte = (texteBrut ?? '').trim();
     if (texte.length < 3) { setErreur('Dictez d’abord votre demande.'); return; }
     if (analyseLanceeRef.current) return;
+
+    // Le quota se vérifie ici : c'est l'analyse qui appelle Claude, pas le micro.
+    // On laisse donc toujours parler, et on n'arrête que devant le coût réel.
+    const { planId, openUpgradeModal } = useSubscriptionStore.getState();
+    const limite = (PLANS[planId] || PLANS.gratuit).limits?.dictees ?? -1;
+    if (!quotaDictee(limite).autorise) {
+      dictation.stop();
+      openUpgradeModal('dictees_limit');
+      onClose?.();
+      return;
+    }
+
     analyseLanceeRef.current = true;
 
     dictation.stop();
@@ -278,6 +292,7 @@ export default function DicteeModal({
           : null
       );
       setDocActif(!!intention.document);
+      compterDictee();
       setEtape('relecture');
     } catch (e) {
       setErreur(e.message);
