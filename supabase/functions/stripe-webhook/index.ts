@@ -94,7 +94,6 @@ async function handleSubscriptionCheckout(session: Record<string, unknown>) {
       status: 'active',
       stripe_customer_id: session.customer as string,
       stripe_subscription_id: session.subscription as string,
-      current_period_start: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     }, { onConflict: 'user_id' });
 
@@ -151,14 +150,22 @@ async function handleSubscriptionUpdated(subscription: Record<string, unknown>) 
       : null;
   if (!status) return { handled: false, reason: `status_ignored:${stripeStatus}` };
 
-  const { error } = await supabase
+  // On demande les lignes touchées : un UPDATE qui n'en trouve aucune ne lève
+  // pas d'erreur. Sans ce contrôle, un abonnement inconnu de la base remontait
+  // « handled: true » et masquait le vrai problème.
+  const { data, error } = await supabase
     .from('subscriptions')
     .update({ status, updated_at: new Date().toISOString() })
-    .eq('stripe_subscription_id', subId);
+    .eq('stripe_subscription_id', subId)
+    .select('user_id');
 
   if (error) {
     console.error('[WEBHOOK] status update failed:', error.message);
     return { handled: false, reason: 'update_failed' };
+  }
+  if (!data?.length) {
+    console.warn(`[WEBHOOK] aucun abonnement en base pour ${subId}`);
+    return { handled: false, reason: 'subscription_not_found' };
   }
   return { handled: true, status };
 }
