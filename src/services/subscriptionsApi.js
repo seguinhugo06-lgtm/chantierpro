@@ -170,6 +170,23 @@ export async function incrementUsage(resource, amount = 1) {
  * @param {'monthly'|'yearly'} interval
  * @returns {Promise<{ url: string|null, error: any }>}
  */
+
+/**
+ * Récupère le message d'erreur réel d'une Edge Function.
+ *
+ * Quand une fonction répond en 4xx/5xx, supabase-js remplace le message par
+ * « Edge Function returned a non-2xx status code » et range la vraie réponse
+ * dans `error.context`. Sans ce déballage, l'artisan — et nous — ne voyons
+ * jamais la cause : refus de Stripe, clé absente, plan inconnu…
+ */
+async function messageReel(error) {
+  try {
+    const corps = await error?.context?.json?.();
+    if (corps?.error) return new Error(corps.error);
+  } catch { /* corps illisible : on garde l'erreur d'origine */ }
+  return error;
+}
+
 export async function createCheckoutSession(planId, interval = 'monthly') {
   if (isDemo || !supabase) {
     // In demo mode, simulate plan change
@@ -194,7 +211,7 @@ export async function createCheckoutSession(planId, interval = 'monthly') {
       }
     });
 
-    if (error) throw error;
+    if (error) throw await messageReel(error);
     if (data?.error) throw new Error(data.error);
     return { url: data.url, error: null };
   } catch (error) {
@@ -217,7 +234,7 @@ export async function createPortalSession() {
       body: { action: 'create-portal', returnUrl: origin }
     });
 
-    if (error) throw error;
+    if (error) throw await messageReel(error);
     if (data?.error) throw new Error(data.error);
     return { url: data.url, error: null };
   } catch (error) {
