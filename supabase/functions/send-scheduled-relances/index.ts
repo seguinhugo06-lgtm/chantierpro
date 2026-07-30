@@ -53,16 +53,20 @@ function isExclusionActive(exclusion: any): boolean {
   return new Date(exclusion.excluded_until) > new Date();
 }
 
+// ATTENTION : il n'existe AUCUNE colonne `date_envoi` sur la table `devis`
+// (colonnes réelles : date, date_echeance, date_paiement, date_validite,
+// last_reminder_sent_at, notification_sent_at, signature_date). La demander
+// dans un `.select()` fait rejeter la requête ENTIÈRE par PostgREST — c'est ce
+// qui rendait le cron muet : `devis` revenait null, donc « 0 relance due ».
+// La date de référence est donc `date` (le document), comme côté navigateur.
 function getBaseDate(doc: any): Date | null {
   if (!doc) return null;
   const docType = doc.type === 'facture' ? 'facture' : 'devis';
   if (docType === 'facture') {
     if (doc.date_echeance) return new Date(doc.date_echeance);
-    const docDate = doc.date_envoi || doc.date;
-    if (docDate) return addDays(new Date(docDate), 30);
+    if (doc.date) return addDays(new Date(doc.date), 30);
   } else {
-    const sendDate = doc.date_envoi || doc.date;
-    if (sendDate) return new Date(sendDate);
+    if (doc.date) return new Date(doc.date);
   }
   return null;
 }
@@ -139,7 +143,7 @@ function buildVariableMap(doc: any, client: any, entreprise: any) {
     montant_ht: formatMoneyValue(doc?.total_ht || 0),
     'date_échéance': doc?.date_echeance ? formatDateFR(new Date(doc.date_echeance)) : '',
     date_echeance: doc?.date_echeance ? formatDateFR(new Date(doc.date_echeance)) : '',
-    date_envoi: (doc?.date_envoi || doc?.date) ? formatDateFR(new Date(doc.date_envoi || doc.date)) : '',
+    date_envoi: doc?.date ? formatDateFR(new Date(doc.date)) : '',
     date_facture: doc?.date ? formatDateFR(new Date(doc.date)) : '',
     jours_retard: String(joursRetard),
     entreprise_nom: entreprise?.nom || '',
@@ -233,9 +237,31 @@ serve(async (req) => {
   const json = (obj: unknown, status = 200) =>
     new Response(JSON.stringify(obj), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
+  const debutMs = Date.now();
+  let adminPourJournal: any = null;
+  let dryRunPourJournal = true;
+
+  // Journal d'exécution — une ligne par passage du cron, succès comme échec.
+  // Sans elle, un cron muet (timeout pg_net, 401, erreur SQL) peut échouer des
+  // semaines sans le moindre signal : c'est exactement ce qui s'est produit
+  // entre le 22 et le 30 juil. 2026.
+  const journaliser = async (champs: Record<string, unknown>) => {
+    if (!adminPourJournal) return;
+    try {
+      await adminPourJournal.from('relance_cron_runs').insert({
+        dry_run: dryRunPourJournal,
+        duration_ms: Date.now() - debutMs,
+        ...champs,
+      });
+    } catch (e) {
+      console.error('[send-scheduled-relances] Journal impossible:', e);
+    }
+  };
+
   try {
     const body = await req.json().catch(() => ({}));
     const dryRun = body.dryRun !== false; // sûr par défaut : dry-run sauf demande explicite
+    dryRunPourJournal = dryRun;
     const cronSecret = body.cronSecret || req.headers.get('x-cron-secret') || '';
     const maxPerOrg = Math.min(Number(body.maxPerOrg) || 10, 25);
 
@@ -249,6 +275,7 @@ serve(async (req) => {
     }
 
     const admin = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
+    adminPourJournal = admin;
 
     // 1. Entreprises avec relances activées
     const { data: entreprises, error: entErr } = await admin
@@ -283,12 +310,28 @@ serve(async (req) => {
       };
 
       // 2. Charger les documents + clients + historique de cette entreprise
-      const [{ data: devis }, { data: clients }, { data: executions }, { data: exclusions }] = await Promise.all([
-        admin.from('devis').select('id, type, statut, numero, client_id, total_ttc, total_ht, date, date_echeance, date_envoi, payment_token').eq('user_id', ent.user_id).neq('statut', 'payee'),
+      const [resDevis, resClients, resExecs, resExcl] = await Promise.all([
+        admin.from('devis').select('id, type, statut, numero, client_id, total_ttc, total_ht, date, date_echeance, payment_token').eq('user_id', ent.user_id).neq('statut', 'payee'),
         admin.from('clients').select('id, nom, prenom, email, telephone').eq('user_id', ent.user_id),
         admin.from('relance_executions').select('document_id, step_id, status').eq('user_id', ent.user_id),
         admin.from('relance_exclusions').select('scope, document_id, client_id, excluded_until').eq('user_id', ent.user_id),
       ]);
+
+      // Ces erreurs étaient ignorées : une colonne inexistante dans le select
+      // fait rejeter TOUTE la requête, `data` revient null, et le rapport
+      // annonçait sereinement « 0 relance due ». Un échec de lecture doit
+      // être bruyant — sinon l'artisan croit que ses clients sont relancés.
+      const erreurLecture = [resDevis, resClients, resExecs, resExcl]
+        .map((r) => r.error?.message).filter(Boolean).join(' | ');
+      if (erreurLecture) {
+        console.error(`[send-scheduled-relances] Lecture ${ent.nom}: ${erreurLecture}`);
+        report.details.push({ entreprise: ent.nom, action: 'erreur-lecture', error: erreurLecture });
+        report.failed++;
+        continue;
+      }
+
+      const devis = resDevis.data, clients = resClients.data;
+      const executions = resExecs.data, exclusions = resExcl.data;
 
       const due = detectDue(devis || [], clients || [], config, executions || [], exclusions || []).slice(0, maxPerOrg);
       report.totalDue += due.length;
@@ -393,9 +436,20 @@ serve(async (req) => {
       }
     }
 
+    await journaliser({
+      entreprises_scanned: report.entreprisesScanned,
+      entreprises_enabled: report.entreprisesEnabled,
+      entreprises_auto_send: report.entreprisesAutoSend,
+      total_due: report.totalDue,
+      sent: report.sent,
+      failed: report.failed,
+      skipped_autosend_off: report.skippedAutoSendOff,
+    });
+
     return json(report);
   } catch (error) {
     console.error('[send-scheduled-relances] Error:', error);
+    await journaliser({ error: (error as Error).message || 'Erreur interne' });
     return json({ error: (error as Error).message || 'Erreur interne' }, 500);
   }
 });
