@@ -17,9 +17,7 @@ import {
 import { useSubscriptionStore, PLANS, PLAN_ORDER, YEARLY_DISCOUNT } from '../../stores/subscriptionStore';
 import {
   createCheckoutSession,
-  createPortalSession,
-  cancelSubscription,
-  reactivateSubscription
+  createPortalSession
 } from '../../services/subscriptionsApi';
 import { toast } from '../../stores/toastStore';
 import { isDemo } from '../../supabaseClient';
@@ -86,38 +84,34 @@ export default function BillingDashboard({ isDark, couleur }) {
     }
   }, []);
 
-  // Cancel
-  const handleCancel = useCallback(async () => {
-    setLoadingAction('cancel');
+  // Annulation / réactivation — via le portail Stripe.
+  //
+  // Ces deux boutons appelaient les fonctions Edge `cancel-subscription` et
+  // `reactivate-subscription`, qui n'ont jamais existé : l'appel mourait sur le
+  // preflight CORS et l'abonné ne pouvait pas résilier. Stripe gère la fin de
+  // période et le prorata, et le webhook répercute le changement en base via
+  // `customer.subscription.updated` / `.deleted`.
+  const ouvrirPortail = useCallback(async (action) => {
+    if (isDemo) {
+      toast.info('Mode démo', 'La gestion d\'abonnement n\'est pas disponible en démo.');
+      return;
+    }
+    setLoadingAction(action);
     try {
-      const { error } = await cancelSubscription();
-      if (error) {
-        toast.error('Erreur', error.message);
+      const { url, error } = await createPortalSession();
+      if (error || !url) {
+        toast.error('Gestion indisponible', 'Écrivez-nous à contact@mallettico.fr, nous le faisons pour vous.');
         return;
       }
-      setSubscription({ ...sub, cancel_at_period_end: true });
-      toast.success('Abonnement annulé', 'Votre plan restera actif jusqu\'à la fin de la période');
-      setShowCancelConfirm(false);
+      window.open(url, '_blank');
+      if (action === 'cancel') setShowCancelConfirm(false);
     } finally {
       setLoadingAction(null);
     }
-  }, [sub, setSubscription]);
+  }, []);
 
-  // Reactivate
-  const handleReactivate = useCallback(async () => {
-    setLoadingAction('reactivate');
-    try {
-      const { error } = await reactivateSubscription();
-      if (error) {
-        toast.error('Erreur', error.message);
-        return;
-      }
-      setSubscription({ ...sub, cancel_at_period_end: false });
-      toast.success('Abonnement réactivé');
-    } finally {
-      setLoadingAction(null);
-    }
-  }, [sub, setSubscription]);
+  const handleCancel = useCallback(() => ouvrirPortail('cancel'), [ouvrirPortail]);
+  const handleReactivate = useCallback(() => ouvrirPortail('reactivate'), [ouvrirPortail]);
 
   // Select plan
   const handleSelectPlan = useCallback(async (targetPlanId) => {

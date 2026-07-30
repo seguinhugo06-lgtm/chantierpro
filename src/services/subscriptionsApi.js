@@ -242,44 +242,16 @@ export async function createPortalSession() {
   }
 }
 
-/**
- * Cancel the current subscription (at period end)
- * @returns {Promise<{ error: any }>}
- */
-export async function cancelSubscription() {
-  if (isDemo || !supabase) {
-    localStorage.setItem('cp_demo_plan', 'gratuit');
-    return { error: null };
-  }
-
-  try {
-    const { error } = await supabase.functions.invoke('cancel-subscription', {
-      body: {}
-    });
-
-    return { error };
-  } catch (error) {
-    return { error };
-  }
-}
-
-/**
- * Reactivate a canceled subscription
- * @returns {Promise<{ error: any }>}
- */
-export async function reactivateSubscription() {
-  if (isDemo || !supabase) return { error: null };
-
-  try {
-    const { error } = await supabase.functions.invoke('reactivate-subscription', {
-      body: {}
-    });
-
-    return { error };
-  } catch (error) {
-    return { error };
-  }
-}
+// `cancelSubscription()` et `reactivateSubscription()` ont été retirées le
+// 30 juil. 2026 : elles invoquaient les fonctions Edge `cancel-subscription` et
+// `reactivate-subscription`, **qui n'ont jamais été écrites ni déployées**.
+// L'appel mourait sur le preflight CORS et l'abonné ne pouvait pas résilier.
+//
+// Résiliation et réactivation se font désormais dans le portail Stripe
+// (`createPortalSession` ci-dessus). Stripe gère la fin de période, le prorata
+// et les emails ; le webhook répercute ensuite le changement dans la table
+// `subscriptions` via `customer.subscription.updated` / `.deleted`.
+// Ne pas les recréer sans écrire ET déployer les fonctions correspondantes.
 
 // ─── Live usage counter (from actual data counts) ───────────────────────────
 
@@ -317,7 +289,5 @@ export default {
   incrementUsage,
   createCheckoutSession,
   createPortalSession,
-  cancelSubscription,
-  reactivateSubscription,
   computeLiveUsage
 };

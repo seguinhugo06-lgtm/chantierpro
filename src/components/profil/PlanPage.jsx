@@ -12,10 +12,7 @@ import {
   Zap, Hammer, ExternalLink, Clock,
 } from 'lucide-react';
 import { useSubscriptionStore, PLANS, PLAN_ORDER, YEARLY_DISCOUNT } from '../../stores/subscriptionStore';
-import {
-  createCheckoutSession, createPortalSession,
-  cancelSubscription, reactivateSubscription,
-} from '../../services/subscriptionsApi';
+import { createCheckoutSession, createPortalSession } from '../../services/subscriptionsApi';
 import { toast } from '../../stores/toastStore';
 import { auth, isDemo } from '../../supabaseClient';
 import { useConfirm } from '../../context/AppContext';
@@ -75,53 +72,77 @@ export default function PlanPage({ isDark, couleur = '#f97316', setPage }) {
   }, [billing, planId, setSubscription]);
 
   const [portalLoading, setPortalLoading] = useState(false);
-  const handlePortal = useCallback(async () => {
-    if (isDemo) {
-      toast.info('Mode démo', 'Le portail de facturation n\'est pas disponible en mode démo.');
-      return;
-    }
+
+  // Facturation, annulation et réactivation passent toutes par le portail Stripe.
+  //
+  // Annuler et réactiver appelaient auparavant des fonctions Edge
+  // `cancel-subscription` et `reactivate-subscription` qui n'ont jamais existé :
+  // l'appel échouait sur le preflight CORS (« Failed to send a request to the
+  // Edge Function ») et l'abonné ne pouvait pas résilier.
+  //
+  // Le portail est la bonne réponse, pas un contournement : Stripe y gère la fin
+  // de période, le prorata, les emails de confirmation et le moyen de paiement.
+  // Et comme le webhook écoute déjà `customer.subscription.updated` et
+  // `.deleted`, le changement redescend seul dans `subscriptions`.
+  //
+  // À déclarer AVANT ses appelants : `useCallback` est un `const`, le référencer
+  // plus haut dans le corps du composant lèverait un ReferenceError au rendu.
+  const ouvrirPortail = useCallback(async (echecTitre) => {
     setPortalLoading(true);
     try {
       const result = await createPortalSession();
-      if (result.error) {
-        toast.error('Portail indisponible', 'Contactez-nous à contact@mallettico.fr pour toute question de facturation.');
-        return;
+      if (result.error || !result.url) {
+        toast.error(echecTitre, 'Écrivez-nous à contact@mallettico.fr, nous le faisons pour vous.');
+        return false;
       }
-      if (result.url) { window.open(result.url, '_blank'); }
-      else { toast.error('Portail indisponible', 'Contactez-nous à contact@mallettico.fr pour toute question de facturation.'); }
+      window.open(result.url, '_blank');
+      return true;
     } catch {
-      toast.error('Portail indisponible', 'Contactez-nous à contact@mallettico.fr pour toute question de facturation.');
+      toast.error(echecTitre, 'Écrivez-nous à contact@mallettico.fr, nous le faisons pour vous.');
+      return false;
     } finally {
       setPortalLoading(false);
     }
   }, []);
 
+  const handlePortal = useCallback(async () => {
+    if (isDemo) {
+      toast.info('Mode démo', 'Le portail de facturation n\'est pas disponible en mode démo.');
+      return;
+    }
+    await ouvrirPortail('Portail indisponible');
+  }, [ouvrirPortail]);
+
   const handleCancel = useCallback(async () => {
+    const finPeriode = sub?.current_period_end
+      ? new Date(sub.current_period_end).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+      : 'la fin de votre période';
     const ok = await confirm({
       title: 'Annuler votre abonnement ?',
-      message: `Vous conservez l'accès à toutes les fonctionnalités jusqu'au ${sub?.current_period_end ? new Date(sub.current_period_end).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : 'la fin de votre période'}. Vos données seront conservées.`,
-      confirmText: 'Confirmer l\'annulation',
+      message: `Vous gardez l'accès à toutes les fonctionnalités jusqu'au ${finPeriode}, et vos données sont conservées. L'annulation se fait sur la page sécurisée de Stripe, qui va s'ouvrir dans un nouvel onglet.`,
+      confirmText: 'Continuer vers Stripe',
       cancelText: 'Garder mon plan',
     });
     if (!ok) return;
-    setCancelling(true);
-    try {
-      const { error } = await cancelSubscription();
-      if (error) { toast.error('Erreur', error.message); return; }
+
+    if (isDemo) {
       setSubscription({ ...sub, cancel_at_period_end: true });
-      toast.success('Abonnement annulé', 'Votre plan reste actif jusqu\'à la fin de la période.');
-    } catch { toast.error('Erreur', 'Impossible d\'annuler'); }
+      toast.info('Mode démo', 'Annulation simulée — aucun abonnement réel n\'est modifié.');
+      return;
+    }
+    setCancelling(true);
+    try { await ouvrirPortail('Annulation impossible'); }
     finally { setCancelling(false); }
-  }, [sub, setSubscription, confirm]);
+  }, [sub, setSubscription, confirm, ouvrirPortail]);
 
   const handleReactivate = useCallback(async () => {
-    try {
-      const { error } = await reactivateSubscription();
-      if (error) { toast.error('Erreur', error.message); return; }
+    if (isDemo) {
       setSubscription({ ...sub, cancel_at_period_end: false });
-      toast.success('Réactivé !', 'Votre abonnement continue normalement.');
-    } catch { toast.error('Erreur', 'Impossible de réactiver'); }
-  }, [sub, setSubscription]);
+      toast.info('Mode démo', 'Réactivation simulée.');
+      return;
+    }
+    await ouvrirPortail('Réactivation impossible');
+  }, [sub, setSubscription, ouvrirPortail]);
 
   const handleLogout = useCallback(async () => {
     const ok = await confirm({
