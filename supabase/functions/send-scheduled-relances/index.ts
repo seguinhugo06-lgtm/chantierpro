@@ -248,11 +248,15 @@ serve(async (req) => {
   const journaliser = async (champs: Record<string, unknown>) => {
     if (!adminPourJournal) return;
     try {
-      await adminPourJournal.from('relance_cron_runs').insert({
+      // supabase-js NE LÈVE PAS sur une erreur PostgREST : il la renvoie dans
+      // `error`. Un simple try/catch ne verrait donc jamais un échec d'écriture
+      // — et ce journal, fait pour supprimer les pannes muettes, serait muet.
+      const { error } = await adminPourJournal.from('relance_cron_runs').insert({
         dry_run: dryRunPourJournal,
         duration_ms: Date.now() - debutMs,
         ...champs,
       });
+      if (error) console.error('[send-scheduled-relances] Journal refusé:', error.message);
     } catch (e) {
       console.error('[send-scheduled-relances] Journal impossible:', e);
     }
@@ -400,8 +404,12 @@ serve(async (req) => {
           errMsg = String(e?.message || e);
         }
 
-        // 4. Journaliser l'exécution
-        await admin.from('relance_executions').insert({
+        // 4. Journaliser l'exécution.
+        //    CRITIQUE : l'email est déjà parti. Si cette écriture échoue, aucune
+        //    trace n'existe — `getNextStep` croira l'étape jamais faite et la
+        //    relance repartira demain, puis chaque jour. On ne peut pas annuler
+        //    l'envoi, mais l'échec doit être visible plutôt que muet.
+        const { error: errJournal } = await admin.from('relance_executions').insert({
           user_id: ent.user_id,
           organization_id: ent.organization_id,
           document_id: doc.id,
@@ -421,8 +429,16 @@ serve(async (req) => {
           error_message: errMsg,
           metadata: { email_provider_id: providerId },
         });
+        if (errJournal) {
+          console.error(`[send-scheduled-relances] JOURNAL PERDU pour ${doc.numero} (email ${ok ? 'ENVOYÉ' : 'échoué'}) : ${errJournal.message}`);
+          detail.journalPerdu = errJournal.message;
+          report.journalPerdu = (report.journalPerdu || 0) + 1;
+        }
+
         if (ok) {
-          await admin.from('devis').update({ last_reminder_sent_at: new Date().toISOString() }).eq('id', doc.id);
+          const { error: errMaj } = await admin.from('devis')
+            .update({ last_reminder_sent_at: new Date().toISOString() }).eq('id', doc.id);
+          if (errMaj) console.error(`[send-scheduled-relances] maj last_reminder_sent_at ${doc.numero}: ${errMaj.message}`);
           report.sent++;
         } else {
           report.failed++;

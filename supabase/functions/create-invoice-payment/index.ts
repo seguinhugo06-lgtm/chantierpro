@@ -228,8 +228,10 @@ async function handleVerify(paymentToken: string, sessionId: string) {
     return json({ error: 'Paiement reçu mais mise à jour de la facture échouée' }, 500);
   }
 
-  // Journal (sert aussi de dédup pour verify ET pour l'email artisan)
-  await supabaseAdmin.from('events_log').insert([{
+  // Journal — sert aussi de clé de DÉDUP pour verify et pour l'email artisan.
+  // Un échec muet ici ne perd pas le paiement, mais fait repartir la notification
+  // à chaque appel de verify : l'artisan reçoit plusieurs fois le même encaissement.
+  const { error: errJournal } = await supabaseAdmin.from('events_log').insert([{
     event_type: 'stripe_payment_received',
     entity_type: 'facture',
     entity_id: factureId,
@@ -242,6 +244,9 @@ async function handleVerify(paymentToken: string, sessionId: string) {
     },
     triggered_at: now.toISOString(),
   }]);
+  if (errJournal) {
+    console.error(`[create-invoice-payment] JOURNAL/DÉDUP PERDU facture=${factureId} : ${errJournal.message}`);
+  }
 
   // Notification artisan (best effort — le paiement est déjà enregistré)
   try {

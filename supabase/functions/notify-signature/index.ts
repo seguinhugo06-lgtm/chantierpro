@@ -137,8 +137,9 @@ serve(async (req) => {
       return json({ error: 'envoi email échoué' }, 502);
     }
 
-    // 6. Log (sert aussi de dédup)
-    await supabase.from('events_log').insert([{
+    // 6. Log — sert aussi de clé de DÉDUP. S'il échoue en silence, l'artisan
+    //    peut recevoir plusieurs fois la même notification de signature.
+    const { error: errJournal } = await supabase.from('events_log').insert([{
       event_type: 'devis_signed_notified',
       entity_type: 'devis',
       entity_id: devis.id,
@@ -146,6 +147,9 @@ serve(async (req) => {
       metadata: { numero: devis.numero, signataire },
       triggered_at: new Date().toISOString(),
     }]);
+    if (errJournal) {
+      console.error(`[notify-signature] JOURNAL/DÉDUP PERDU devis=${devis.id} : ${errJournal.message}`);
+    }
 
     return json({ success: true });
   } catch (error) {
