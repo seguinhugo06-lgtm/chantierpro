@@ -91,12 +91,32 @@ serve(async (req) => {
               },
             };
 
-        // Check if user already has a Stripe customer
         const { data: sub } = await supabase
           .from('subscriptions')
-          .select('stripe_customer_id')
+          .select('stripe_customer_id, stripe_subscription_id')
           .eq('user_id', user.id)
           .single();
+
+        // CHANGEMENT DE PLAN ≠ NOUVEL ABONNEMENT.
+        //
+        // Un Checkout en `mode: 'subscription'` sur un client qui a déjà un
+        // abonnement actif en crée un SECOND : Stripe ne remplace pas l'ancien.
+        // L'artisan se retrouverait à payer les deux plans en même temps.
+        //
+        // Un changement de plan passe donc par le portail Stripe, qui gère le
+        // remplacement et le prorata. Le Checkout reste réservé à une première
+        // souscription (ou à une reprise après résiliation).
+        if (sub?.stripe_subscription_id) {
+          const portail = await stripe.billingPortal.sessions.create({
+            customer: sub.stripe_customer_id!,
+            return_url: successUrl?.split('?')[0] || 'https://mallettico.fr',
+          });
+          console.log(`[subscription-billing] Changement de plan → portail pour ${user.id}`);
+          return new Response(
+            JSON.stringify({ url: portail.url, mode: 'portal' }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
 
         const sessionParams: Stripe.Checkout.SessionCreateParams = {
           mode: 'subscription',
@@ -113,6 +133,12 @@ serve(async (req) => {
 
         if (sub?.stripe_customer_id) {
           sessionParams.customer = sub.stripe_customer_id;
+          // Obligatoire dès qu'on réutilise un client existant AVEC
+          // `tax_id_collection` ou `billing_address_collection` : sans ça Stripe
+          // refuse la session — « Tax ID collection requires updating business
+          // name on the customer ». `auto` autorise Checkout à reporter sur la
+          // fiche client le nom et l'adresse saisis pendant le paiement.
+          sessionParams.customer_update = { name: 'auto', address: 'auto' };
         } else {
           sessionParams.customer_email = user.email;
         }
