@@ -9,6 +9,13 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, HelpCircle } from 'lucide-react';
 import { ScrollReveal } from './animations';
+import { PLANS } from '../../stores/subscriptionStore';
+
+// Les prix se lisent depuis PLANS, jamais en dur : cette réponse annonçait
+// encore 4,99 € / 9,99 € (tarifs de l'ancien pivot) alors que le produit est
+// vendu 9,90 € / 19,90 €. Un prix faux sur la page publique, c'est une promesse
+// que le checkout dément trente secondes plus tard.
+const euros = (n) => `${n.toFixed(2).replace('.', ',')} €`;
 
 const FAQ_CATEGORIES = [
   { id: 'all', label: 'Tout' },
@@ -62,7 +69,7 @@ const FAQ_ITEMS = [
   {
     category: 'pricing',
     q: 'Puis-je essayer avant de payer ?',
-    a: 'Oui, et sans limite de temps : le plan Gratuit inclut 5 devis/mois, 10 clients et 2 chantiers actifs, sans carte bancaire. Quand vous \u00eates pr\u00eat, passez \u00e0 Artisan (4,99 \u20ac/mois) ou \u00c9quipe (9,99 \u20ac/mois) \u2014 sans engagement, et vous pouvez revenir au plan Gratuit \u00e0 tout moment sans perdre vos donn\u00e9es.',
+    a: `Oui, et sans limite de temps : le plan Gratuit inclut 5 devis/mois, 10 clients et 2 chantiers actifs, sans carte bancaire. Quand vous \u00eates pr\u00eat, passez \u00e0 Artisan (${euros(PLANS.artisan.priceMonthly)}/mois) ou \u00c9quipe (${euros(PLANS.equipe.priceMonthly)}/mois) \u2014 tarif fondateur, conserv\u00e9 tant que vous restez abonn\u00e9. Sans engagement, et vous pouvez revenir au plan Gratuit \u00e0 tout moment sans perdre vos donn\u00e9es.`,
   },
   {
     category: 'pricing',

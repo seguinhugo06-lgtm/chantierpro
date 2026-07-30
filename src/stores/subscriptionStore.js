@@ -6,7 +6,8 @@ import { create } from 'zustand';
  * Manages the active user plan, subscription state, usage tracking,
  * and feature-gate checks. Works in both demo and production modes.
  *
- * Plans: gratuit (free), artisan (4,99€/mois — POPULAIRE), equipe (9,99€/mois — RECOMMANDÉ)
+ * Plans : gratuit (0 €), artisan (9,90 €/mois — POPULAIRE), equipe (19,90 €/mois — RECOMMANDÉ)
+ * Tarif fondateur ; prix normaux visés : 14,90 € et 29,90 €.
  */
 
 // ─── Plan catalog (static, matches DB seed) ────────────────────────────────

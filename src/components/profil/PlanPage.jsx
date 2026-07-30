@@ -186,9 +186,15 @@ export default function PlanPage({ isDark, couleur = '#f97316', setPage }) {
                     </span>
                   )}
                 </div>
+                {/* Prix formaté à la française : `${plan.priceMonthly}€` affichait
+                    « 9.9€ ». Et la période de facturation n'est PAS affichée ici :
+                    elle se lisait dans `sub.billing_interval`, colonne qui n'existe
+                    pas dans `subscriptions` — un abonné à l'année aurait donc lu
+                    « Mensuel ». Mieux vaut ne rien dire que dire faux ; la période
+                    exacte figure sur la page Stripe (« Mes factures et paiement »). */}
                 <p className={`text-sm font-medium ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
                   {isPaid
-                    ? `${plan.priceMonthly}€ HT/mois · ${sub?.billing_interval === 'yearly' ? 'Annuel' : 'Mensuel'}`
+                    ? `${plan.priceMonthly.toFixed(2).replace('.', ',')} € HT/mois${plan.offreLancement ? ` · ${plan.offreLancement}` : ''}`
                     : 'Gratuit — Découverte'
                   }
                 </p>

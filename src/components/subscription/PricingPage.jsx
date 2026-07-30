@@ -1,5 +1,6 @@
 /**
- * PricingPage — 3-plan pricing page (Gratuit / Artisan 4,99€ / Équipe 9,99€)
+ * PricingPage — 3 plans (Gratuit / Artisan / Équipe). Les prix viennent de PLANS,
+ * jamais en dur : ne pas les recopier ici.
  *
  * Accessible as an internal route (page='pricing') or standalone.
  * Responsive: 3-col on desktop, stacked on mobile.
