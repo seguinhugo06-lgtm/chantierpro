@@ -107,11 +107,45 @@ serve(async (req) => {
         // remplacement et le prorata. Le Checkout reste réservé à une première
         // souscription (ou à une reprise après résiliation).
         if (sub?.stripe_subscription_id) {
+          // On ouvre le portail DIRECTEMENT sur l'écran de bascule, pas sur son
+          // accueil : l'artisan vient de cliquer « Passer au plan X », lui
+          // demander de re-cliquer « Modifier l'abonnement » puis de rechoisir
+          // ce même plan est une étape de trop — et il ne comprend pas pourquoi
+          // on lui réaffiche son plan actuel.
+          const priceCible = PRICE_IDS[planId]?.[interval];
+          let flowData: Record<string, unknown> = {
+            type: 'subscription_update',
+            subscription_update: { subscription: sub.stripe_subscription_id },
+          };
+
+          if (priceCible) {
+            try {
+              const abo = await stripe.subscriptions.retrieve(sub.stripe_subscription_id);
+              const ligne = abo.items.data[0];
+              // Si le plan visé est déjà celui en cours, l'écran de confirmation
+              // n'a rien à confirmer : on laisse la sélection libre.
+              if (ligne && ligne.price?.id !== priceCible) {
+                flowData = {
+                  type: 'subscription_update_confirm',
+                  subscription_update_confirm: {
+                    subscription: sub.stripe_subscription_id,
+                    items: [{ id: ligne.id, price: priceCible, quantity: 1 }],
+                  },
+                };
+              }
+            } catch (e) {
+              // Prix cible introuvable ou abonnement illisible : on retombe sur
+              // l'écran de sélection, qui reste utilisable.
+              console.error('[subscription-billing] flow_data confirm impossible:', (e as Error).message);
+            }
+          }
+
           const portail = await stripe.billingPortal.sessions.create({
             customer: sub.stripe_customer_id!,
             return_url: successUrl?.split('?')[0] || 'https://mallettico.fr',
+            flow_data: flowData as never,
           });
-          console.log(`[subscription-billing] Changement de plan → portail pour ${user.id}`);
+          console.log(`[subscription-billing] Changement de plan → portail (${flowData.type}) pour ${user.id}`);
           return new Response(
             JSON.stringify({ url: portail.url, mode: 'portal' }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

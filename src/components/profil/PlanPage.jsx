@@ -343,11 +343,26 @@ export default function PlanPage({ isDark, couleur = '#f97316', setPage }) {
                     <span className={`text-sm font-bold ${textPrimary}`}>{p.name}</span>
                   </div>
 
+                  {/* Le tarif fondateur ne se voyait que sur la page publique.
+                      Ici, l'abonné lisait « 9,90 € » sans savoir que c'est un
+                      prix cassé qu'il garde tant qu'il reste abonné — l'argument
+                      de rétention le plus fort du produit, invisible. */}
                   <div className="mb-3">
+                    {p.offreLancement && p.prixNormalMensuel && (
+                      <span className={`text-sm line-through mr-1.5 ${textMuted}`}>
+                        {(billing === 'yearly' ? p.prixNormalAnnuel / 12 : p.prixNormalMensuel)
+                          .toFixed(2).replace('.', ',')}€
+                      </span>
+                    )}
                     <span className="text-xl font-bold" style={{ color: p.color }}>
                       {price}€
                     </span>
                     <span className={`text-xs ${textMuted}`}> HT/mois</span>
+                    {p.offreLancement && (
+                      <p className="text-[11px] mt-1 font-semibold" style={{ color: p.color }}>
+                        {p.offreLancement} — prix gardé tant que vous restez abonné
+                      </p>
+                    )}
                     {billing === 'yearly' && p.priceYearly > 0 && (
                       <>
                         <p className={`text-[11px] mt-0.5 ${textMuted}`}>Facturé {p.priceYearly}€/an</p>
