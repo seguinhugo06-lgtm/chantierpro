@@ -35,7 +35,7 @@ import FooterSection from './FooterSection';
 
 export default function LandingPage({ onLogin, onSignup, onNavigate }) {
   return (
-    <div className="min-h-screen bg-white" style={{ scrollBehavior: 'smooth' }}>
+    <div className="min-h-screen bg-white overflow-x-clip" style={{ scrollBehavior: 'smooth' }}>
       <LandingNav onLogin={onLogin} onSignup={onSignup} />
       <main>
         <HeroSection onSignup={onSignup} />

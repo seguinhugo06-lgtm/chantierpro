@@ -2,7 +2,9 @@
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <!-- Pas de maximum-scale ni user-scalable=no : bloquer le zoom à deux doigts
+         empêche de lire un montant ou une adresse en plein soleil sur un chantier. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Mallettico - Gestion Devis & Facturation BTP</title>
 
     <!-- PWA Meta Tags -->

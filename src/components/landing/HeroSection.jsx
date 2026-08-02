@@ -110,7 +110,12 @@ export default function HeroSection({ onSignup }) {
 
       {/* Content */}
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 pt-20 sm:pt-36 pb-12 sm:pb-24">
-        <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+        {/* `min-w-0` sur les deux colonnes : par défaut, un élément de grille ne
+            rétrécit JAMAIS sous la largeur minimale de son contenu. L'aperçu de
+            droite (cadre navigateur + capture) pouvait donc élargir la grille
+            au-delà de l'écran, et tout le texte de gauche partait avec —
+            boutons compris, qui font 100 % d'une colonne devenue trop large. */}
+        <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center [&>*]:min-w-0">
           {/* Left — Text content */}
           <motion.div style={{ opacity: textOpacity, scale: textScale }}>
             {/* Badge */}

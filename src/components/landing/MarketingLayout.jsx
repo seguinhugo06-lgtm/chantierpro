@@ -14,7 +14,7 @@ export default function MarketingLayout({ children }) {
   const handleSignup = () => { window.location.href = '/app'; };
 
   return (
-    <div className="min-h-screen bg-white" style={{ scrollBehavior: 'smooth' }}>
+    <div className="min-h-screen bg-white overflow-x-clip" style={{ scrollBehavior: 'smooth' }}>
       <LandingNav onLogin={handleLogin} onSignup={handleSignup} />
       <main className="pt-16">
         {children}
