@@ -88,6 +88,14 @@ export default function UsageAlerts({ isDark, couleur }) {
     ? Math.max(0, Math.ceil((new Date(trialEnd) - new Date()) / (1000 * 60 * 60 * 24)))
     : 0;
 
+  // Cette carte ne s'affiche que si elle a quelque chose à DIRE : une limite
+  // qu'on approche, un essai qui se termine, ou un plan Gratuit à faire évoluer.
+  // `warnings` était calculé mais jamais utilisé : la carte occupait le haut de
+  // l'accueil à chaque visite, y compris pour un abonné payant à 0 % d'usage —
+  // et repoussait sous la ligne de flottaison ce que l'artisan vient vraiment
+  // chercher : ce qu'il a à encaisser.
+  if (warnings.length === 0 && !isTrial && !isFree) return null;
+
   return (
     <div className={`rounded-2xl border p-4 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
       {/* Header */}

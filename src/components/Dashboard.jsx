@@ -45,6 +45,21 @@ import { useRelances } from '../hooks/useRelances';
 import { useOrg } from '../context/OrgContext';
 import { captureException } from '../lib/sentry';
 import UsageAlerts from './subscription/UsageAlerts';
+import { useSubscriptionStore, PLANS } from '../stores/subscriptionStore';
+
+/** La mallette — marque Mallettico, reprise du jeu d'icônes (grille 48, contour 3,2). */
+function Mallette({ size = 24, style, className }) {
+  return (
+    <svg viewBox="0 0 48 48" width={size} height={size} className={className} style={style} aria-hidden="true"
+      fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M19 15v-3a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v3" />
+      <rect x="5" y="15" width="38" height="24" rx="2.5" />
+      <path d="M5 27h38" strokeWidth="2.4" />
+      <rect x="11" y="24.5" width="5" height="5" rx="1" strokeWidth="2.4" />
+      <rect x="32" y="24.5" width="5" height="5" rx="1" strokeWidth="2.4" />
+    </svg>
+  );
+}
 
 // ============ CONSTANTS ============
 
@@ -156,6 +171,8 @@ export default function Dashboard({
   const { canAccess } = usePermissions();
   const canSeeFinances = canAccess('finances');
   const { orgId } = useOrg();
+  const planId = useSubscriptionStore((s) => s.planId);
+  const planCourant = PLANS[planId] || PLANS.gratuit;
 
   // Relances : détection auto + envoi groupé 1-clic (cœur du pivot devis→facture→relance)
   const relances = useRelances({ devis, clients, entreprise, userId: user?.id, orgId });
@@ -475,7 +492,21 @@ export default function Dashboard({
           >
             Bonjour{prenom ? `, ${prenom}` : ''}
           </motion.h1>
-          <p className={`text-sm mt-1 ${isDark ? 'text-slate-500' : 'text-gray-400'}`}>{formattedDate}</p>
+          {/* Le plan tient sur une ligne, à côté de la date : consultable d'un
+              coup d'œil, cliquable, mais il ne prend plus le haut de l'écran. */}
+          <p className={`text-sm mt-1 flex items-center gap-1.5 flex-wrap ${isDark ? 'text-slate-500' : 'text-gray-400'}`}>
+            <span>{formattedDate}</span>
+            <span aria-hidden="true">·</span>
+            <button
+              type="button"
+              onClick={() => setPage('plan')}
+              className="inline-flex items-center gap-1 hover:underline underline-offset-2 transition-opacity hover:opacity-80"
+              style={{ color: couleur }}
+            >
+              <Mallette size={13} />
+              <span className="font-medium">Plan {planCourant.name}</span>
+            </button>
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -497,17 +528,13 @@ export default function Dashboard({
         </div>
       </header>
 
-      {/* Jauges d'usage — ne s'affichent qu'à l'approche d'une limite, pour que
-          l'artisan voie le mur arriver au lieu de le heurter en plein devis. */}
-      <UsageAlerts isDark={isDark} couleur={couleur} />
-
       {/* ===== ONBOARDING (nouveaux comptes) ===== */}
       {showOnboarding && (
         <div className={`rounded-2xl p-4 sm:p-5 ${cardCls}`}>
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <Rocket size={18} style={{ color: couleur }} />
-              <h3 className={`text-sm font-bold ${heroText}`}>Démarrage rapide</h3>
+              <h3 className={`text-sm font-bold ${heroText}`}>On remplit la mallette</h3>
               <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>{onboardingDone}/{onboardingSteps.length}</span>
             </div>
             <button
@@ -605,6 +632,11 @@ export default function Dashboard({
         </section>
       )}
 
+      {/* Jauges d'usage — APRÈS l'argent, et seulement quand il y a un mur à
+          annoncer (limite proche, essai qui finit, plan Gratuit). L'artisan ouvre
+          son accueil pour savoir ce qu'on lui doit, pas pour lire son forfait. */}
+      <UsageAlerts isDark={isDark} couleur={couleur} />
+
       {/* ===== A FAIRE AUJOURD'HUI : le cockpit ===== */}
       <section aria-label="À faire aujourd'hui">
         <div className="flex items-center justify-between mb-2.5 px-0.5">
@@ -677,10 +709,10 @@ export default function Dashboard({
           {!hasAnyAction && (
             <div className="flex flex-col items-center justify-center py-8 text-center">
               <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-3" style={{ background: `${couleur}12` }}>
-                <CheckCircle className="w-6 h-6" style={{ color: couleur }} />
+                <Mallette size={24} style={{ color: couleur }} />
               </div>
-              <p className={`text-sm font-semibold ${heroText}`}>Tout est à jour</p>
-              <p className={`text-xs mt-0.5 ${subText}`}>Rien à faire dans l'immédiat. Beau travail !</p>
+              <p className={`text-sm font-semibold ${heroText}`}>Mallette bouclée</p>
+              <p className={`text-xs mt-0.5 ${subText}`}>Rien ne traîne. Vous pouvez la refermer.</p>
             </div>
           )}
         </div>
