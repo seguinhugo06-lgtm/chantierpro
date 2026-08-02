@@ -37,6 +37,15 @@ export default function LandingNav({ onLogin, onSignup }) {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Menu ouvert → la page ne défile plus derrière. Sans ça, un doigt qui glisse
+  // sur le voile fait filer le contenu sous le menu : on ne sait plus où on est.
+  useEffect(() => {
+    if (!menuOpen) return undefined;
+    const avant = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = avant; };
+  }, [menuOpen]);
+
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClick = (e) => {
@@ -85,10 +94,14 @@ export default function LandingNav({ onLogin, onSignup }) {
   const logoColor = scrolled ? 'text-slate-900' : 'text-slate-900';
 
   return (
+    // Menu ouvert → en-tête opaque. En translucide, le panneau blanc du menu
+    // tranchait avec la barre au-dessus : deux blocs au lieu d'un.
     <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-      scrolled
-        ? 'bg-white/90 backdrop-blur-xl shadow-sm border-b border-slate-100'
-        : 'bg-white/50 backdrop-blur-sm'
+      menuOpen
+        ? 'bg-white shadow-sm'
+        : scrolled
+          ? 'bg-white/90 backdrop-blur-xl shadow-sm border-b border-slate-100'
+          : 'bg-white/50 backdrop-blur-sm'
     }`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
         {/* Logo */}
@@ -219,7 +232,10 @@ export default function LandingNav({ onLogin, onSignup }) {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
-              className="md:hidden fixed inset-0 top-[56px] bg-black/20 z-40"
+              // `top-[56px]` était une hauteur d'en-tête devinée : elle ne
+              // correspondait pas à la vraie, d'où la bande grise sous la barre.
+              // `inset-0` couvre tout ; la nav (z-50) reste au-dessus du voile.
+              className="md:hidden fixed inset-0 bg-slate-900/30 z-40"
               onClick={() => setMenuOpen(false)}
             />
             <motion.div
@@ -239,19 +255,25 @@ export default function LandingNav({ onLogin, onSignup }) {
                     {link.label}
                   </button>
                 ))}
-                <hr className="my-2 border-slate-100" />
-                <button
-                  onClick={() => { setMenuOpen(false); onLogin(); }}
-                  className="w-full text-left px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50 rounded-lg transition-colors"
-                >
-                  Connexion
-                </button>
-                <button
-                  onClick={() => { setMenuOpen(false); onSignup(); }}
-                  className="w-full px-3 py-2.5 text-sm text-white bg-orange-500 hover:bg-orange-600 rounded-lg font-medium transition-colors"
-                >
-                  Compte gratuit
-                </button>
+                {/* Connexion était un lien de la même taille que les ancres de
+                    navigation, relégué sous un trait. Or le visiteur qui ouvre ce
+                    menu est souvent un client qui revient : se connecter est SON
+                    action principale. Les deux actions ont désormais le même
+                    poids visuel, seul le style les distingue. */}
+                <div className="pt-3 mt-2 border-t border-slate-100 space-y-2">
+                  <button
+                    onClick={() => { setMenuOpen(false); onLogin(); }}
+                    className="w-full px-3 py-3 text-sm font-semibold text-slate-800 border border-slate-300 rounded-xl hover:bg-slate-50 hover:border-slate-400 transition-colors"
+                  >
+                    Connexion
+                  </button>
+                  <button
+                    onClick={() => { setMenuOpen(false); onSignup(); }}
+                    className="w-full px-3 py-3 text-sm font-semibold text-white bg-orange-500 hover:bg-orange-600 rounded-xl transition-colors"
+                  >
+                    Créer un compte gratuit
+                  </button>
+                </div>
               </div>
             </motion.div>
           </>
