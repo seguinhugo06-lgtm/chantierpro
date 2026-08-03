@@ -973,7 +973,12 @@ export const FIELD_MAPPINGS = {
 /**
  * Load all data from Supabase for the current user
  */
-export async function loadAllData(userId, orgId, entrepriseId) {
+/**
+ * @param {Function} [onCore] Appelé dès que les tables du premier écran sont là
+ *   (clients, chantiers, devis), sans attendre les 18 autres. Sans ce rappel, le
+ *   comportement est identique à avant.
+ */
+export async function loadAllData(userId, orgId, entrepriseId, onCore) {
   if (isDemo || !supabase || !userId) {
     logger.debug('Skipping Supabase load - demo mode or no user');
     return null;
@@ -1002,6 +1007,31 @@ export async function loadAllData(userId, orgId, entrepriseId) {
       return result;
     };
 
+    // Les 21 requêtes partent TOUTES maintenant, en parallèle. On isole seulement
+    // les trois dont dépend le premier écran pour pouvoir l'afficher sans attendre
+    // les autres : avant, `Promise.all` faisait patienter l'artisan jusqu'à la plus
+    // lente des 21 — dont `fournisseur_articles` ou `tresorerie_previsions`, que
+    // l'accueil n'ouvre jamais.
+    const pClients = scoped('clients').then(r => r, (e) => { console.error('Load clients failed:', e); return { data: [] }; });
+    const pChantiers = scopedWithEntreprise('chantiers').then(r => r, (e) => { console.error('Load chantiers failed:', e); return { data: [] }; });
+    const pDevis = scopedWithEntreprise('devis').then(r => r, (e) => { console.error('Load devis failed:', e); return { data: [] }; });
+
+    // Premier écran : dès que ces trois-là sont revenues, on affiche. Le reste
+    // continue de charger derrière et complètera l'état quand il arrivera.
+    if (typeof onCore === 'function') {
+      try {
+        const [c, ch, dv] = await Promise.all([pClients, pChantiers, pDevis]);
+        onCore({
+          clients: (c.data || []).map(FIELD_MAPPINGS.clients.fromSupabase),
+          chantiers: (ch.data || []).map(FIELD_MAPPINGS.chantiers.fromSupabase),
+          devis: (dv.data || []).map(FIELD_MAPPINGS.devis.fromSupabase),
+        });
+      } catch (e) {
+        // Un affichage anticipé raté ne doit jamais empêcher le chargement complet.
+        console.warn('[useSupabaseSync] affichage anticipé impossible:', e?.message);
+      }
+    }
+
     const [
       clientsRes,
       chantiersRes,
@@ -1029,9 +1059,9 @@ export async function loadAllData(userId, orgId, entrepriseId) {
       devisTemplatesRes,
       templateUsagesRes,
     ] = await Promise.all([
-      scoped('clients').then(r => r, (e) => { console.error('Load clients failed:', e); return { data: [] }; }),
-      scopedWithEntreprise('chantiers').then(r => r, (e) => { console.error('Load chantiers failed:', e); return { data: [] }; }),
-      scopedWithEntreprise('devis').then(r => r, (e) => { console.error('Load devis failed:', e); return { data: [] }; }),
+      pClients,
+      pChantiers,
+      pDevis,
       scoped('depenses').then(r => r, (e) => { console.error('Load depenses failed:', e); return { data: [] }; }),
       scoped('equipe').then(r => r, (e) => { console.error('Load equipe failed:', e); return { data: [] }; }),
       scoped('pointages').then(r => r, (e) => { console.error('Load pointages failed:', e); return { data: [] }; }),

@@ -371,11 +371,25 @@ export function DataProvider({ children, initialData = {} }) {
       setDataLoading(true);
       try {
         logger.debug('📥 Loading data from Supabase... (org:', orgId, ', entreprise:', entrepriseId, ')');
-        const data = await loadAllData(userId, orgId, entrepriseId);
+        // Deduplicate by ID and sanitize to remove ghost records with non-UUID IDs
+        const dedup = (arr) => [...new Map(arr.map(item => [item.id, item])).values()];
+        const clean = (arr) => sanitizeRecords(dedup(arr));
+        const marquerVu = (arr) => clean(arr).map(d =>
+          (d.statut === 'envoye' && d.viewed_at) ? { ...d, statut: 'vu' } : d
+        );
+
+        // Affichage anticipé : l'accueil n'a besoin que de ces trois tables.
+        // On lève `dataLoading` ici plutôt qu'après les 21 requêtes — l'artisan
+        // voit ses chiffres pendant que le reste finit d'arriver.
+        const afficherLeCoeur = ({ clients, chantiers, devis }) => {
+          setClients(clean(clients));
+          setChantiers(clean(chantiers));
+          setDevis(marquerVu(devis));
+          setDataLoading(false);
+        };
+
+        const data = await loadAllData(userId, orgId, entrepriseId, afficherLeCoeur);
         if (data) {
-          // Deduplicate by ID and sanitize to remove ghost records with non-UUID IDs
-          const dedup = (arr) => [...new Map(arr.map(item => [item.id, item])).values()];
-          const clean = (arr) => sanitizeRecords(dedup(arr));
           setClients(clean(data.clients));
           setChantiers(clean(data.chantiers));
           // Compute 'vu' status from viewed_at (DB constraint doesn't allow 'vu' statut)
