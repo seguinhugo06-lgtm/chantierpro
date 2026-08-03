@@ -52,8 +52,31 @@ export function useDictation({ lang = 'fr-FR', continuous = true } = {}) {
   const [error, setError] = useState(null);
   const [duree, setDuree] = useState(0);              // secondes d'écoute (pour le chrono)
   const [dernierMot, setDernierMot] = useState(0);     // timestamp du dernier mot entendu
+  // 'inconnue' → on n'a pas encore demandé | 'accordee' | 'refusee'
+  const [permission, setPermission] = useState('inconnue');
+
+  // Lit l'autorisation déjà donnée SANS rien demander : permet d'expliquer avant
+  // la première fois, et de ne pas ré-expliquer à quelqu'un qui a déjà accepté.
+  // L'API Permissions ne connaît pas 'microphone' partout (Safari) : on reste
+  // alors sur 'inconnue', ce qui n'empêche rien.
+  useEffect(() => {
+    let vivant = true;
+    navigator.permissions?.query({ name: 'microphone' })
+      .then((etat) => {
+        if (!vivant) return;
+        const lu = { granted: 'accordee', denied: 'refusee', prompt: 'inconnue' }[etat.state];
+        setPermission(lu || 'inconnue');
+        etat.onchange = () => {
+          const maj = { granted: 'accordee', denied: 'refusee', prompt: 'inconnue' }[etat.state];
+          setPermission(maj || 'inconnue');
+        };
+      })
+      .catch(() => { /* API absente : on demandera au moment voulu */ });
+    return () => { vivant = false; };
+  }, []);
 
   const recognitionRef = useRef(null);
+  const demarrageRef = useRef(false); // verrou le temps de la demande d'autorisation
   const stoppingRef = useRef(false); // distingue un arrêt volontaire d'une coupure
   // Texte acquis avant la session d'écoute en cours : reprendre le micro (ou
   // corriger au clavier puis reprendre) doit compléter la dictée, pas l'effacer.
@@ -101,11 +124,52 @@ export function useDictation({ lang = 'fr-FR', continuous = true } = {}) {
     setInterim('');
   }, []);
 
-  const start = useCallback(() => {
-    const SR = getSpeechRecognition();
-    if (!SR || recognitionRef.current) return;
+  /**
+   * Demande explicitement le micro avant de lancer la reconnaissance.
+   *
+   * `SpeechRecognition.start()` est censé déclencher la demande d'autorisation,
+   * mais il ne le fait pas partout : selon le navigateur et le mode (installée
+   * en PWA, WebView, iOS), il échoue en `not-allowed` SANS avoir rien demandé —
+   * l'artisan voit « Micro refusé » alors qu'on ne lui a jamais posé la question.
+   * `getUserMedia`, lui, ouvre toujours la boîte de dialogue.
+   *
+   * Le flux est refermé aussitôt : la reconnaissance ouvre le sien.
+   */
+  const demanderMicro = useCallback(async () => {
+    if (!navigator.mediaDevices?.getUserMedia) return 'indisponible';
+    try {
+      const flux = await navigator.mediaDevices.getUserMedia({ audio: true });
+      flux.getTracks().forEach((piste) => piste.stop());
+      setPermission('accordee');
+      return 'accordee';
+    } catch (e) {
+      const refus = e?.name === 'NotAllowedError' || e?.name === 'SecurityError';
+      setPermission(refus ? 'refusee' : 'inconnue');
+      return refus ? 'refusee' : 'erreur';
+    }
+  }, []);
 
-    setError(null);
+  const start = useCallback(async () => {
+    const SR = getSpeechRecognition();
+    // `recognitionRef` n'est posée qu'après l'await : sans ce second verrou, deux
+    // appuis rapides lanceraient deux reconnaissances concurrentes.
+    if (!SR || recognitionRef.current || demarrageRef.current) return;
+    demarrageRef.current = true;
+
+    try {
+      setError(null);
+
+      // On demande d'abord, on écoute ensuite.
+      const etat = await demanderMicro();
+    if (etat === 'refusee') {
+      setPermission('refusee');
+      setError("Micro refusé. Autorisez l'accès au micro dans votre navigateur, puis réessayez.");
+      return;
+    }
+    if (etat === 'erreur') {
+      setError('Micro introuvable. Vérifiez qu\'un micro est bien branché.');
+      return;
+    }
     stoppingRef.current = false;
     consoliderBase(); // repart proprement : tout l'acquis passe dans la base
 
@@ -162,11 +226,15 @@ export function useDictation({ lang = 'fr-FR', continuous = true } = {}) {
       // réellement entendu. Sinon un appelant qui surveille le silence croirait
       // que l'utilisateur vient de parler alors qu'il n'a pas encore commencé.
       setDernierMot(0);
-    } catch {
-      recognitionRef.current = null;
-      setError('Impossible de démarrer la dictée.');
+      } catch {
+        recognitionRef.current = null;
+        setError('Impossible de démarrer la dictée.');
+      }
+    } finally {
+      // Verrou relâché quoi qu'il arrive : refus, absence de micro ou succès.
+      demarrageRef.current = false;
     }
-  }, [lang, continuous, consoliderBase]);
+  }, [lang, continuous, consoliderBase, demanderMicro]);
 
   const toggle = useCallback(() => {
     if (listening) stop(); else start();
@@ -199,6 +267,8 @@ export function useDictation({ lang = 'fr-FR', continuous = true } = {}) {
     error,
     duree,                            // secondes écoulées depuis le démarrage
     dernierMot,                       // timestamp du dernier mot (détection de silence)
+    permission,                       // 'inconnue' | 'accordee' | 'refusee'
+    demanderMicro,                    // ouvre la demande d'autorisation sans démarrer l'écoute
     motsCount: texte ? texte.split(/\s+/).filter(Boolean).length : 0,
     start,
     stop,

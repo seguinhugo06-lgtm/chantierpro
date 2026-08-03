@@ -625,6 +625,26 @@ export default function DicteeModal({
                     ? `Je vous écoute… ${mmss(dictation.duree)}`
                     : dictation.supported ? 'Appuyez et parlez' : 'Micro indisponible'}
                 </p>
+
+                {/* On prévient AVANT que le navigateur ne pose sa question : une
+                    demande d'accès au micro qui surgit sans contexte, on la refuse
+                    par réflexe — et le refus est ensuite pénible à annuler. */}
+                {dictation.supported && !dictation.listening && dictation.permission === 'inconnue' && (
+                  <p className={`mt-2 text-xs text-center max-w-xs ${textMuted}`}>
+                    Votre navigateur va demander l’accès au micro. Votre voix n’est
+                    pas enregistrée : elle est transcrite puis oubliée.
+                  </p>
+                )}
+
+                {dictation.permission === 'refusee' && (
+                  <div className="mt-3 max-w-xs text-center">
+                    <p className="text-xs font-medium text-red-500">Le micro est bloqué pour ce site.</p>
+                    <p className={`mt-1 text-xs ${textMuted}`}>
+                      Touchez le cadenas 🔒 à gauche de l’adresse, autorisez le micro,
+                      puis rechargez la page. Vous pouvez aussi taper votre texte ci-dessous.
+                    </p>
+                  </div>
+                )}
                 {dictation.listening && (
                   <p className={`mt-0.5 text-xs ${textMuted}`}>
                     {dictation.motsCount > 0
