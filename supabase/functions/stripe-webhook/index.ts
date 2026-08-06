@@ -150,12 +150,30 @@ async function handleSubscriptionUpdated(subscription: Record<string, unknown>) 
       : null;
   if (!status) return { handled: false, reason: `status_ignored:${stripeStatus}` };
 
+  // L'écran « Mon plan » affiche la résiliation programmée, la date de
+  // prochain prélèvement et la périodicité. Personne ne les écrivait :
+  // l'artisan qui résiliait ne voyait jamais sa résiliation confirmée.
+  // L'objet subscription de cet événement porte tout ce qu'il faut.
+  const periodes: Record<string, unknown> = {
+    cancel_at_period_end: subscription.cancel_at_period_end === true,
+  };
+  const debut = subscription.current_period_start as number | undefined;
+  const fin = subscription.current_period_end as number | undefined;
+  if (typeof debut === 'number') periodes.current_period_start = new Date(debut * 1000).toISOString();
+  if (typeof fin === 'number') periodes.current_period_end = new Date(fin * 1000).toISOString();
+
+  type LigneAbo = { price?: { recurring?: { interval?: string } } };
+  const items = (subscription.items as { data?: LigneAbo[] } | undefined)?.data;
+  const recurrence = items?.[0]?.price?.recurring?.interval;
+  if (recurrence === 'month') periodes.billing_interval = 'monthly';
+  else if (recurrence === 'year') periodes.billing_interval = 'yearly';
+
   // On demande les lignes touchées : un UPDATE qui n'en trouve aucune ne lève
   // pas d'erreur. Sans ce contrôle, un abonnement inconnu de la base remontait
   // « handled: true » et masquait le vrai problème.
   const { data, error } = await supabase
     .from('subscriptions')
-    .update({ status, updated_at: new Date().toISOString() })
+    .update({ status, ...periodes, updated_at: new Date().toISOString() })
     .eq('stripe_subscription_id', subId)
     .select('user_id');
 
