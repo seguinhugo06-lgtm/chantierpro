@@ -3,7 +3,6 @@ import { Plus, ArrowLeft, Calendar, Clock, User, MapPin, X, Edit3, Trash2, Check
 import { useConfirm, useToast } from '../context/AppContext';
 import EmptyState from './ui/EmptyState';
 import { usePermissions } from '../hooks/usePermissions';
-import { isProviderSyncReady, triggerAutoSync } from '../services/syncService';
 
 const DURATIONS = [
   { label: '30min', value: 30 },
@@ -84,12 +83,10 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
   const detailModalRef = useRef(null);
   const emptyForm = { title: '', date: '', time: '', endTime: '', type: 'rdv', employeId: '', clientId: '', chantierId: '', description: '', duration: 60, recurrence: 'never', recurrenceEnd: '', recurrenceDays: [], recurrenceOccurrences: '', recurrenceEndType: 'date', dateEnd: '', rappel: '' };
   const [form, setForm] = useState(emptyForm);
-  const [calendarSyncReady, setCalendarSyncReady] = useState(false);
   const [calendarSyncing, setCalendarSyncing] = useState(false);
 
   // Check if Google Calendar is connected
   useEffect(() => {
-    isProviderSyncReady('google_calendar').then(ready => setCalendarSyncReady(ready)).catch(() => {});
   }, []);
 
   // Format a Date object as YYYY-MM-DD in LOCAL timezone (NOT UTC)
@@ -102,7 +99,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
 
   // Persist collaborator filter in localStorage
   useEffect(() => {
-    try { localStorage.setItem('cp_planning_filter_employe', filterEmploye); } catch {}
+    try { localStorage.setItem('cp_planning_filter_employe', filterEmploye); } catch { /* préférence non enregistrée : quota plein ou navigation privée */ }
   }, [filterEmploye]);
 
   // Escape key handler for form and modal
@@ -356,10 +353,6 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
     setQuickAdd(null);
     setForm(emptyForm);
     showToast('Événement créé', 'success');
-    // Auto-sync to Google Calendar if connected
-    if (calendarSyncReady) {
-      triggerAutoSync('google_calendar', 'event', 'push').catch(() => {});
-    }
   };
 
   const handleDeleteEvent = async (id) => {
@@ -377,10 +370,6 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
       }
       setShowDetail(null);
       showToast('Événement supprimé', 'success');
-      // Auto-sync deletion to Google Calendar
-      if (calendarSyncReady) {
-        triggerAutoSync('google_calendar', 'event', 'push').catch(() => {});
-      }
     }
   };
 
@@ -405,10 +394,6 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
     setShowDetail(null); setEditMode(false);
     setForm(emptyForm);
     showToast('Événement mis à jour', 'success');
-    // Auto-sync update to Google Calendar
-    if (calendarSyncReady) {
-      triggerAutoSync('google_calendar', 'event', 'push').catch(() => {});
-    }
   };
 
   const startEdit = () => {
@@ -446,12 +431,6 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
             </button>
           )}
           <h1 className={`text-lg sm:text-xl font-bold ${textPrimary}`}>Planning</h1>
-          {calendarSyncReady && (
-            <span className={`inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full ${isDark ? 'bg-emerald-900/30 text-emerald-400' : 'bg-emerald-50 text-emerald-700'}`}>
-              <CalendarCheck size={10} />
-              Sync Google
-            </span>
-          )}
           <span className={`text-xs ${textMuted}`}>{(() => {
             if (viewMode === 'month') {
               const monthEvts = allEvents.filter(e => {
@@ -529,14 +508,14 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                   <div>
                     <label className={`block text-[11px] font-medium mb-1 ${textMuted}`}>Heure de début</label>
                     <select className={`w-full px-3 py-2 border rounded-lg text-sm ${inputBg}`}
-                      value={workHourStart} onChange={e => { const v = parseInt(e.target.value); setWorkHourStart(v); try { localStorage.setItem('cp_planning_hour_start', String(v)); } catch {} }}>
+                      value={workHourStart} onChange={e => { const v = parseInt(e.target.value); setWorkHourStart(v); try { localStorage.setItem('cp_planning_hour_start', String(v)); } catch { /* préférence non enregistrée : quota plein ou navigation privée */ } }}>
                       {Array.from({length: 8}, (_, i) => i + 5).map(h => <option key={h} value={h}>{h}h00</option>)}
                     </select>
                   </div>
                   <div>
                     <label className={`block text-[11px] font-medium mb-1 ${textMuted}`}>Heure de fin</label>
                     <select className={`w-full px-3 py-2 border rounded-lg text-sm ${inputBg}`}
-                      value={workHourEnd} onChange={e => { const v = parseInt(e.target.value); setWorkHourEnd(v); try { localStorage.setItem('cp_planning_hour_end', String(v)); } catch {} }}>
+                      value={workHourEnd} onChange={e => { const v = parseInt(e.target.value); setWorkHourEnd(v); try { localStorage.setItem('cp_planning_hour_end', String(v)); } catch { /* préférence non enregistrée : quota plein ou navigation privée */ } }}>
                       {Array.from({length: 10}, (_, i) => i + 14).map(h => <option key={h} value={h}>{h}h00</option>)}
                     </select>
                   </div>
@@ -1236,7 +1215,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
               <li>🏗️ Les chantiers avec dates apparaissent automatiquement</li>
             </ul>
           </div>
-          <button onClick={() => { setShowTips(false); try { localStorage.setItem('cp_planning_tips_dismissed', 'true'); } catch {} }} className={`p-1.5 rounded-lg flex-shrink-0 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-orange-100'}`} aria-label="Fermer les astuces">
+          <button onClick={() => { setShowTips(false); try { localStorage.setItem('cp_planning_tips_dismissed', 'true'); } catch { /* préférence non enregistrée : quota plein ou navigation privée */ } }} className={`p-1.5 rounded-lg flex-shrink-0 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-orange-100'}`} aria-label="Fermer les astuces">
             <X size={14} className={isDark ? 'text-slate-400' : 'text-slate-500'} />
           </button>
         </div>

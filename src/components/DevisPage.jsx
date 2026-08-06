@@ -83,7 +83,6 @@ import DiffViewer from './audit/DiffViewer';
 import LockBanner from './audit/LockBanner';
 import { getEntityHistory } from '../lib/auditService';
 import { getSnapshots } from '../lib/snapshotService';
-import { isProviderSyncReady, createSignatureRequest as createYousignSignature } from '../services/syncService';
 
 // Email tracking : l'envoi passe par Resend (send-email) ; l'historique par document
 // n'est pas persisté côté client → statut vide (l'onglet « Emails » reste masqué).
@@ -320,13 +319,6 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   const [showSignatureLinkModal, setShowSignatureLinkModal] = useState(false);
   const [signatureLinkUrl, setSignatureLinkUrl] = useState(null);
   const [showChannelDropdown, setShowChannelDropdown] = useState(false);
-  const [yousignReady, setYousignReady] = useState(false);
-  const [yousignSending, setYousignSending] = useState(false);
-
-  // Check if Yousign is connected
-  useEffect(() => {
-    isProviderSyncReady('yousign').then(ready => setYousignReady(ready)).catch(() => {});
-  }, []);
   const [showSendConfirmation, setShowSendConfirmation] = useState(null); // { clientName, montant, canal, doc }
   const [showCreationSuccess, setShowCreationSuccess] = useState(null); // { devis, numero }
 
@@ -1802,8 +1794,6 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         const client = clients.find(c => c.id === doc.client_id);
         await generateAndDownloadFacturX(doc, client || {}, entreprise || {}, content);
         showToast('Facture Factur-X téléchargée ✓', 'success');
-        // Auto-upload to Google Drive if connected
-        triggerDriveUpload(doc);
       } catch (err) {
         // Factur-X generation failed, fallback to HTML
         showToast('Erreur Factur-X, export HTML de secours', 'warning');
@@ -1816,21 +1806,6 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 
     // Devis & autres: comportement HTML existant
     fallbackHtmlPrint(content, doc);
-    // Also try Drive upload for devis
-    triggerDriveUpload(doc);
-  };
-
-  // Google Drive auto-upload (fire-and-forget)
-  const triggerDriveUpload = async (doc) => {
-    try {
-      const driveReady = await isProviderSyncReady('google_drive');
-      if (!driveReady) return;
-      const { triggerAutoSync } = await import('../services/syncService');
-      await triggerAutoSync('google_drive', 'document', 'push');
-      showToast('📁 Document sauvegardé sur Google Drive', 'success');
-    } catch {
-      // Silently fail — Drive upload is non-critical
-    }
   };
 
   // Legacy HTML print/download (used for devis and as fallback)
@@ -2796,48 +2771,6 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                       >
                         <PenTool size={16} /> Faire signer
                       </button>
-                      {yousignReady && (
-                        <button
-                          onClick={async () => {
-                            if (!selected) return;
-                            const client = clients.find(c => c.id === selected.client_id);
-                            if (!client?.email) {
-                              setSnackbar({ type: 'warning', message: 'Email du client requis pour la e-signature' });
-                              return;
-                            }
-                            setYousignSending(true);
-                            try {
-                              const result = await createYousignSignature({
-                                documentName: `${selected.type === 'facture' ? 'Facture' : 'Devis'} ${selected.numero}`,
-                                documentBase64: '', // Would be generated from PDF builder
-                                signataires: [{
-                                  name: `${client.prenom || ''} ${client.nom || ''}`.trim() || 'Client',
-                                  email: client.email,
-                                  phone: client.telephone,
-                                }],
-                                externalId: selected.id,
-                                message: `Merci de signer ce ${selected.type === 'facture' ? 'la facture' : 'le devis'} ${selected.numero}.`,
-                              });
-                              if (result.success) {
-                                setSnackbar({ type: 'success', message: `📝 Demande de e-signature envoyée via Yousign` });
-                              } else {
-                                throw new Error(result.error || 'Erreur Yousign');
-                              }
-                            } catch (err) {
-                              setSnackbar({ type: 'error', message: `Erreur e-signature: ${err.message}` });
-                            } finally {
-                              setYousignSending(false);
-                            }
-                          }}
-                          disabled={yousignSending}
-                          className={`px-4 py-2.5 min-h-[44px] rounded-xl text-sm font-semibold flex items-center gap-2 transition-all shadow-md ${
-                            isDark ? 'bg-indigo-600 hover:bg-indigo-500 text-white' : 'bg-indigo-500 hover:bg-indigo-600 text-white'
-                          }`}
-                        >
-                          {yousignSending ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
-                          E-signature
-                        </button>
-                      )}
                     </div>
                   )}
 
@@ -4963,7 +4896,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
               <button onClick={() => setPage('settings')} className={`shrink-0 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-semibold transition-colors ${isDark ? 'bg-red-600 hover:bg-red-500 text-white' : 'bg-red-600 hover:bg-red-700 text-white'}`}>Compléter</button>
             )}
             <button
-              onClick={() => { setComplianceDismissed(true); try { localStorage.setItem('cp_devis_banner_dismissed', new Date().toISOString()); } catch {} }}
+              onClick={() => { setComplianceDismissed(true); try { localStorage.setItem('cp_devis_banner_dismissed', new Date().toISOString()); } catch { /* préférence non enregistrée : quota plein ou navigation privée */ } }}
               className={`shrink-0 p-1 rounded-lg transition-colors ${isDark ? 'hover:bg-red-800/50 text-red-400' : 'hover:bg-red-200 text-red-500'}`}
               title="Masquer pendant 7 jours"
             >

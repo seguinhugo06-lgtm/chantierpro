@@ -187,6 +187,33 @@ else
   ok "Build réussi sans erreur"
 fi
 
+# ─── 7. Fonctions Edge appelées mais absentes ─────
+# Le front peut appeler une fonction qui n'existe pas : supabase-js ne lève
+# rien, l'erreur part dans un .catch() et l'artisan voit un bouton qui ne fait
+# rien. On compare donc les invoke() du front au contenu de supabase/functions/.
+# Les lignes commentées sont ignorées (exemples de documentation).
+echo ""
+echo "🛰️  7. Vérification des fonctions Edge appelées..."
+
+grep -rhE "functions\.invoke\(\s*'[a-z0-9-]+'" src/ --include="*.js" --include="*.jsx" 2>/dev/null \
+  | grep -vE "^\s*(//|\*|/\*)" \
+  | grep -oE "functions\.invoke\(\s*'[a-z0-9-]+'" \
+  | sed "s/.*'\(.*\)'/\1/" | sort -u | while read -r fn; do
+      [ -z "$fn" ] && continue
+      if [ ! -d "supabase/functions/$fn" ]; then
+        echo "MANQUANTE:$fn"
+      fi
+    done > /tmp/smoke_edge_manquantes.txt
+
+if [ -s /tmp/smoke_edge_manquantes.txt ]; then
+  while IFS=: read -r _ fn; do
+    error "Fonction Edge '$fn' appelée par le front mais absente de supabase/functions/"
+  done < /tmp/smoke_edge_manquantes.txt
+else
+  ok "Toutes les fonctions Edge appelées existent"
+fi
+rm -f /tmp/smoke_edge_manquantes.txt
+
 # ─── Summary ──────────────────────────────────────
 echo ""
 echo "═══════════════════════════════════════════════"
