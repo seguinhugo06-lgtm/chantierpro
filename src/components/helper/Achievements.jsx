@@ -42,7 +42,7 @@ export function AchievementToast({
       const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2teleH5lp/3YfEgWQ5zO0pRsSkZxuePTgUMzXJzP1Z5mPk17xN7TgkE1ZJjP05xyQ1F4x+DXgT0xb5LP0J90RFR+y+PXfTsyf4zO0p92R1h/0+TXezcuh4vN05t3SVx/1+LYdy0mkon+/f39/g==');
       audio.volume = 0.3;
       audio.play().catch(() => {});
-    } catch (e) {}
+    } catch { /* son de récompense : purement décoratif, jamais bloquant */ }
 
     return () => clearTimeout(timer);
   }, [onClose]);

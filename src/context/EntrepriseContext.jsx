@@ -11,6 +11,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { supabase, isDemo, auth } from '../supabaseClient';
+import { captureException } from '../lib/sentry';
 import { useOrg } from './OrgContext';
 import {
   loadEntreprises,
@@ -127,7 +128,13 @@ export function EntrepriseProvider({ children }) {
       if (list.length > 0 && !list.some(e => e.isActive)) {
         try {
           await svcSetActive(sb, { id: list[0].id, userId: uid, orgId: oid });
-        } catch {}
+        } catch (err) {
+          // L'entreprise est active à l'écran (setActiveEntreprise ci-dessus)
+          // mais pas en base : au rechargement suivant, plus aucune ne le sera.
+          // Silencieux, l'artisan ne voit qu'une app qui « oublie » son entreprise.
+          console.error('[EntrepriseContext] Activation non persistée:', err);
+          captureException(err, { context: 'entreprise: activation par défaut non persistée' });
+        }
       }
 
       return list;

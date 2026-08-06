@@ -284,7 +284,7 @@ export async function cleanupExpiredLocks(supabase) {
       if (active.length !== locks.length) {
         localStorage.setItem(DEMO_KEY, JSON.stringify(active));
       }
-    } catch {}
+    } catch { /* verrous démo illisibles : ils expirent d'eux-mêmes */ }
     return;
   }
 
@@ -323,7 +323,7 @@ export function startHeartbeat(supabase, { entityType, entityId, userId }) {
           lock.expires_at = newExpiry;
           localStorage.setItem(DEMO_KEY, JSON.stringify(locks));
         }
-      } catch {}
+      } catch { /* verrous démo illisibles : ils expirent d'eux-mêmes */ }
       return;
     }
 

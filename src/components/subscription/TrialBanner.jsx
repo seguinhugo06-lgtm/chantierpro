@@ -37,7 +37,7 @@ function setDismissData(state) {
       state,
       timestamp: Date.now()
     }));
-  } catch {}
+  } catch { /* bandeau non mémorisé : il réapparaîtra au prochain chargement */ }
 }
 
 function shouldShowBanner(currentState) {

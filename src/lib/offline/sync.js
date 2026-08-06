@@ -3,6 +3,8 @@
  * Gere la file d'attente des mutations et la synchronisation automatique
  */
 
+import { logger } from '../logger';
+
 // Renommée depuis 'batigesti-offline' le 25/07/2026 (aucun utilisateur réel à
 // l'époque, donc pas de file d'écritures hors-ligne à préserver). L'ancienne base
 // est supprimée au démarrage par migrateLegacyStorage() dans main.jsx.
@@ -370,12 +372,12 @@ export const registerNetworkListeners = (onOnline, onOffline) => {
       if (reallyOnline && !lastNotifiedState) {
         // Transition: offline → online
         lastNotifiedState = true;
-        console.log('Mallettico: Retour en ligne, synchronisation...');
+        logger.debug('Mallettico: Retour en ligne, synchronisation...');
         onOnline?.();
       } else if (!reallyOnline && !browserSaysOnline && lastNotifiedState) {
         // Transition: online → offline (only when both browser + ping agree)
         lastNotifiedState = false;
-        console.log('Mallettico: Passage hors ligne');
+        logger.debug('Mallettico: Passage hors ligne');
         onOffline?.();
       }
     }, 500); // 500ms debounce to absorb rapid online/offline toggling

@@ -3,6 +3,8 @@
  * Support: Pennylane, Indy, Qonto, export generique
  */
 
+import { logger } from '../logger';
+
 // Types d'integration supportees
 export const INTEGRATION_TYPES = {
   PENNYLANE: {
@@ -469,7 +471,7 @@ export const calculateTVASummary = (invoices, expenses, dateDebut, dateFin) => {
  */
 export const syncToPennylane = async (invoices, expenses, apiKey) => {
   // Simulation - en prod, faire un vrai appel API
-  console.log('Sync to Pennylane:', { invoices: invoices.length, expenses: expenses.length });
+  logger.debug('Sync to Pennylane:', { invoices: invoices.length, expenses: expenses.length });
 
   return new Promise((resolve) => {
     setTimeout(() => {
@@ -489,7 +491,7 @@ export const syncToPennylane = async (invoices, expenses, apiKey) => {
  * Simulation d'envoi vers Indy
  */
 export const syncToIndy = async (invoices, apiKey) => {
-  console.log('Sync to Indy:', { invoices: invoices.length });
+  logger.debug('Sync to Indy:', { invoices: invoices.length });
 
   return new Promise((resolve) => {
     setTimeout(() => {
@@ -506,7 +508,7 @@ export const syncToIndy = async (invoices, apiKey) => {
  * Simulation de recuperation des transactions Qonto
  */
 export const fetchQontoTransactions = async (apiKey, dateDebut, dateFin) => {
-  console.log('Fetch Qonto transactions:', { dateDebut, dateFin });
+  logger.debug('Fetch Qonto transactions:', { dateDebut, dateFin });
 
   return new Promise((resolve) => {
     setTimeout(() => {

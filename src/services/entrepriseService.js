@@ -6,6 +6,7 @@
  */
 
 import { scopeToOrg, withOrgScope } from '../lib/queryHelper';
+import { captureException } from '../lib/sentry';
 import { isDemo } from '../supabaseClient';
 
 const DEMO_KEY = 'mallettico_entreprises';
@@ -577,15 +578,25 @@ export async function migrateFromLocalStorage(supabase, { userId, orgId } = {}) 
   let localEntreprises = [];
   let mainEntreprise = null;
 
+  // Une lecture qui échoue ici (JSON corrompu) fait croire qu'il n'y a rien à
+  // migrer : les réglages de l'artisan restent bloqués en local et la migration
+  // se marque comme faite. On le signale plutôt que de perdre les données en
+  // silence.
   try {
     const raw = localStorage.getItem('cp_entreprises');
     if (raw) localEntreprises = JSON.parse(raw) || [];
-  } catch {}
+  } catch (e) {
+    console.error('[entrepriseService] cp_entreprises illisible, migration partielle:', e);
+    captureException(e, { context: 'migration entreprise: cp_entreprises illisible' });
+  }
 
   try {
     const raw = localStorage.getItem('cp_entreprise');
     if (raw) mainEntreprise = JSON.parse(raw);
-  } catch {}
+  } catch (e) {
+    console.error('[entrepriseService] cp_entreprise illisible, migration partielle:', e);
+    captureException(e, { context: 'migration entreprise: cp_entreprise illisible' });
+  }
 
   // Nothing to migrate
   if (!mainEntreprise && localEntreprises.length === 0) return [];
@@ -701,7 +712,7 @@ export async function migrateFromLocalStorage(supabase, { userId, orgId } = {}) 
   // Mark migration as done
   try {
     localStorage.setItem('mallettico_entreprise_migrated', 'true');
-  } catch {}
+  } catch { /* marqueur non écrit : la migration se rejouera, elle est idempotente */ }
 
   return results;
 }

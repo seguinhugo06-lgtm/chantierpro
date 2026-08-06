@@ -689,7 +689,7 @@ export default function TresorerieModule({
       });
       i++;
     }
-    try { localStorage.setItem('cp_treso_wizard_done', '1'); } catch {}
+    try { localStorage.setItem('cp_treso_wizard_done', '1'); } catch { /* préférence non enregistrée : quota plein ou navigation privée */ }
     setWizardStep(2);
   }, [wizardCharges, addPrevision]);
 
@@ -1670,13 +1670,13 @@ export default function TresorerieModule({
                 className={`text-xs font-medium px-3 py-1.5 rounded-lg transition-colors ${soldeActuel < 0 ? isDark ? 'bg-red-500/20 text-red-300 hover:bg-red-500/30' : 'bg-red-100 text-red-700 hover:bg-red-200' : isDark ? 'bg-amber-500/20 text-amber-300 hover:bg-amber-500/30' : 'bg-amber-100 text-amber-700 hover:bg-amber-200'}`}>
                 Modifier le seuil
               </button>
-              <button onClick={() => { setAlertDismissed(true); try { localStorage.setItem('cp_treso_alert_dismissed', '1'); } catch {} }}
+              <button onClick={() => { setAlertDismissed(true); try { localStorage.setItem('cp_treso_alert_dismissed', '1'); } catch { /* préférence non enregistrée : quota plein ou navigation privée */ } }}
                 className={`text-xs ${soldeActuel < 0 ? (isDark ? 'text-red-400' : 'text-red-500') : (isDark ? 'text-amber-400' : 'text-amber-500')} hover:underline`}>
                 Ne plus afficher
               </button>
             </div>
           </div>
-          <button onClick={() => { setAlertDismissed(true); try { localStorage.setItem('cp_treso_alert_dismissed', '1'); } catch {} }}
+          <button onClick={() => { setAlertDismissed(true); try { localStorage.setItem('cp_treso_alert_dismissed', '1'); } catch { /* préférence non enregistrée : quota plein ou navigation privée */ } }}
             aria-label="Fermer" className={`flex-shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
             <X size={16} className={soldeActuel < 0 ? (isDark ? 'text-red-400' : 'text-red-500') : (isDark ? 'text-amber-400' : 'text-amber-500')} />
           </button>
@@ -1771,7 +1771,7 @@ export default function TresorerieModule({
                   Suivant →
                 </button>
                 {/* UX-010: bouton pour passer le wizard */}
-                <button onClick={() => { try { localStorage.setItem('cp_treso_wizard_done', '1'); } catch {} setWizardStep(2); }}
+                <button onClick={() => { try { localStorage.setItem('cp_treso_wizard_done', '1'); } catch { /* préférence non enregistrée : quota plein ou navigation privée */ } setWizardStep(2); }}
                   className={`w-full py-2 text-xs font-medium transition-colors ${isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-700'}`}>
                   Passer cette étape →
                 </button>
@@ -2000,7 +2000,7 @@ export default function TresorerieModule({
       {activeTab === 'apercu' && (
         <div className={`rounded-2xl border overflow-hidden ${cardBg}`}>
           <button
-            onClick={() => { setShowChargesBTP(!showChargesBTP); try { localStorage.setItem('cp_treso_charges_btp_seen', '1'); } catch {} }}
+            onClick={() => { setShowChargesBTP(!showChargesBTP); try { localStorage.setItem('cp_treso_charges_btp_seen', '1'); } catch { /* préférence non enregistrée : quota plein ou navigation privée */ } }}
             className={`w-full flex items-center justify-between px-5 py-3 transition-colors ${isDark ? 'hover:bg-slate-700/40' : 'hover:bg-gray-50'}`}
           >
             <div className="flex items-center gap-3">

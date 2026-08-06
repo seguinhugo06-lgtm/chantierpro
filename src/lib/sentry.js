@@ -6,6 +6,7 @@
  * In demo/dev mode, errors are logged to console only.
  */
 import * as Sentry from '@sentry/react';
+import { logger } from './logger';
 
 const DSN = import.meta.env.VITE_SENTRY_DSN;
 const IS_PRODUCTION = import.meta.env.PROD && DSN;
@@ -16,7 +17,7 @@ const IS_PRODUCTION = import.meta.env.PROD && DSN;
  */
 export function initSentry() {
   if (!IS_PRODUCTION) {
-    console.log('[Sentry] Disabled — no DSN configured (dev/demo mode)');
+    logger.debug('[Sentry] Disabled — no DSN configured (dev/demo mode)');
     return;
   }
 
@@ -87,7 +88,7 @@ export function initSentry() {
     },
   });
 
-  console.log('[Sentry] Initialized for production monitoring');
+  logger.debug('[Sentry] Initialized for production monitoring');
 }
 
 /**

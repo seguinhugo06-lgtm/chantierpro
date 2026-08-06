@@ -13,6 +13,7 @@ import {
   setupOnlineSync,
   processSyncQueue,
 } from '../registerSW';
+import { logger } from '../lib/logger';
 
 /**
  * @typedef {Object} UsePWAReturn
@@ -131,12 +132,12 @@ export function usePWA(syncHandlers = {}) {
    */
   const install = React.useCallback(async () => {
     if (!installPromptRef.current?.canPrompt()) {
-      console.log('Install prompt not available');
+      logger.debug('Install prompt not available');
       return;
     }
 
     const result = await installPromptRef.current.prompt();
-    console.log('Install result:', result.outcome);
+    logger.debug('Install result:', result.outcome);
 
     if (result.outcome === 'accepted') {
       setCanInstall(false);

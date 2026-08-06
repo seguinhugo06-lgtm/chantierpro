@@ -103,7 +103,7 @@ export default function AnalyticsPage({ devis = [], clients = [], chantiers = []
   });
 
   useEffect(() => {
-    try { localStorage.setItem('cp_analytics_period', period); } catch {}
+    try { localStorage.setItem('cp_analytics_period', period); } catch { /* préférence non enregistrée : quota plein ou navigation privée */ }
   }, [period]);
 
   // ─── All analytics from hook ─────────────────────────────────────

@@ -276,7 +276,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
   useEffect(() => { if (createMode) { setShow(true); setCreateMode?.(false); } }, [createMode, setCreateMode]);
 
   // Persist gantt tasks to localStorage
-  useEffect(() => { try { localStorage.setItem('cp_gantt_tasks', JSON.stringify(ganttTasks)); } catch {} }, [ganttTasks]);
+  useEffect(() => { try { localStorage.setItem('cp_gantt_tasks', JSON.stringify(ganttTasks)); } catch { /* préférence non enregistrée : quota plein ou navigation privée */ } }, [ganttTasks]);
 
   // Fetch weather for active chantier
   useEffect(() => {
@@ -3224,7 +3224,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
               <AlertTriangle size={14} className="text-amber-500 shrink-0" />
               <span className="flex-1">{Math.ceil(duplicateMap.size / 2)} doublon{Math.ceil(duplicateMap.size / 2) > 1 ? 's' : ''} détecté{Math.ceil(duplicateMap.size / 2) > 1 ? 's' : ''} · Les badges ⚠ Doublon vous permettent de fusionner</span>
               <button
-                onClick={() => { setChantierDuplicateDismissed(true); try { localStorage.setItem('chantierDuplicateDismissed', 'true'); } catch {} }}
+                onClick={() => { setChantierDuplicateDismissed(true); try { localStorage.setItem('chantierDuplicateDismissed', 'true'); } catch { /* préférence non enregistrée : quota plein ou navigation privée */ } }}
                 aria-label="Fermer l'alerte doublons"
                 className={`shrink-0 p-2.5 min-w-[44px] min-h-[44px] rounded-lg flex items-center justify-center ${isDark ? 'hover:bg-slate-700' : 'hover:bg-amber-100'}`}
               >

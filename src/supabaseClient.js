@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { logger } from './lib/logger';
 
 // Mode demo detection
 const isDevelopment = import.meta.env.DEV || import.meta.env.MODE === 'development';
@@ -22,7 +23,7 @@ const DEMO_USER = {
 
 // Log demo mode activation
 if (urlHasDemoParam) {
-  console.log('🎭 Demo mode activated via URL parameter');
+  logger.debug('🎭 Demo mode activated via URL parameter');
 }
 
 // En mode demo, on utilise des URLs factices pour éviter les erreurs 401

@@ -260,7 +260,7 @@ export default function DevisExpressModal({
 
       // Track template usage
       if (onTrackUsage && selectedModele?.id) {
-        try { onTrackUsage(selectedModele.id, result?.id); } catch {}
+        try { onTrackUsage(selectedModele.id, result?.id); } catch { /* statistique d'usage perdue : ne doit pas bloquer la création du devis */ }
       }
 
       // If parent returned false explicitly, treat as error

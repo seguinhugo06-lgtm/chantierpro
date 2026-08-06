@@ -196,12 +196,12 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
   });
 
   // ====== PERSISTENCE ======
-  useEffect(() => { try { localStorage.setItem('mallettico_fournisseurs', JSON.stringify(fournisseurs)); } catch {} }, [fournisseurs]);
-  useEffect(() => { try { localStorage.setItem('mallettico_article_fournisseurs', JSON.stringify(articleFournisseurs)); } catch {} }, [articleFournisseurs]);
-  useEffect(() => { try { localStorage.setItem('mallettico_mouvements', JSON.stringify(mouvements)); } catch {} }, [mouvements]);
-  useEffect(() => { try { localStorage.setItem('mallettico_packs', JSON.stringify(packs)); } catch {} }, [packs]);
-  useEffect(() => { try { localStorage.setItem('mallettico_price_history', JSON.stringify(priceHistory)); } catch {} }, [priceHistory]);
-  useEffect(() => { try { localStorage.setItem('mallettico_coefficients', JSON.stringify(coefficients)); } catch {} }, [coefficients]);
+  useEffect(() => { try { localStorage.setItem('mallettico_fournisseurs', JSON.stringify(fournisseurs)); } catch { /* préférence non enregistrée : quota plein ou navigation privée */ } }, [fournisseurs]);
+  useEffect(() => { try { localStorage.setItem('mallettico_article_fournisseurs', JSON.stringify(articleFournisseurs)); } catch { /* préférence non enregistrée : quota plein ou navigation privée */ } }, [articleFournisseurs]);
+  useEffect(() => { try { localStorage.setItem('mallettico_mouvements', JSON.stringify(mouvements)); } catch { /* préférence non enregistrée : quota plein ou navigation privée */ } }, [mouvements]);
+  useEffect(() => { try { localStorage.setItem('mallettico_packs', JSON.stringify(packs)); } catch { /* préférence non enregistrée : quota plein ou navigation privée */ } }, [packs]);
+  useEffect(() => { try { localStorage.setItem('mallettico_price_history', JSON.stringify(priceHistory)); } catch { /* préférence non enregistrée : quota plein ou navigation privée */ } }, [priceHistory]);
+  useEffect(() => { try { localStorage.setItem('mallettico_coefficients', JSON.stringify(coefficients)); } catch { /* préférence non enregistrée : quota plein ou navigation privée */ } }, [coefficients]);
 
   // #9: Reset page on search/filter change
   useEffect(() => { setCurrentPage(1); }, [debouncedSearch, catFilter, onlyInStock, onlyFavoris, onlyLowStock, sortBy]);
@@ -418,7 +418,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
           return;
         }
       }
-    } catch {}
+    } catch { /* API code-barres injoignable : on retombe sur « non trouvé » ci-dessous */ }
     setScanResult({ found: false, barcode });
     setScanLoading(false);
   }, [catalogue]);
@@ -450,7 +450,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
             }
           };
           detect();
-        } catch {}
+        } catch { /* BarcodeDetector absent ou caméra refusée : la saisie manuelle reste disponible */ }
       } else {
         // Fallback: prompt user to enter barcode manually
         setScanResult({ noBarcodeAPI: true });
@@ -472,7 +472,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
             body: `${alertesStock.length} article${alertesStock.length > 1 ? 's' : ''} en dessous du seuil d'alerte`,
             icon: '/icons/icon-192.png',
           });
-        } catch {}
+        } catch { /* notification refusée par le navigateur : l'alerte reste visible dans la page */ }
       }
     }
   }, [alertesStock, stockAlertsEnabled, stockAlertsDismissed]);
@@ -1793,7 +1793,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
             {catalogue.length > 0 && catalogue.length < 10 && !search && catFilter === 'Tous' && !onboardingDismissed && (
               <div className={`mb-4 p-4 rounded-xl border relative ${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-gradient-to-r from-orange-50 to-amber-50 border-orange-200'}`}>
                 <button
-                  onClick={() => { setOnboardingDismissed(true); try { localStorage.setItem('cp_catalogue_onboarding_dismissed', 'true'); } catch {} }}
+                  onClick={() => { setOnboardingDismissed(true); try { localStorage.setItem('cp_catalogue_onboarding_dismissed', 'true'); } catch { /* préférence non enregistrée : quota plein ou navigation privée */ } }}
                   className={`absolute top-2 right-2 p-1.5 rounded-lg ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-white/80 text-slate-400'}`}
                   aria-label="Fermer le bandeau"
                 >

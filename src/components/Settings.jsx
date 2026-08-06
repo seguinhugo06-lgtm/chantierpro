@@ -2,6 +2,7 @@ import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react'
 import { useToast } from '../context/AppContext';
 import { Download, FileSpreadsheet, FileText, RefreshCw, CheckCircle, AlertCircle, Calendar, ExternalLink, Calculator, Building2, ArrowLeft, Trash2, Shield, Search, ChevronDown, ChevronRight, Zap, Palette, FileCheck, BellRing, Package, Check, X, Loader2, Home, Smartphone, Fuel, Archive, Landmark, BarChart3, CreditCard, Users, Link2, Settings2, HardDrive, FolderOpen, Construction, Receipt, Mail, Sparkles, ClipboardList, GraduationCap } from 'lucide-react';
 import supabase, { auth, isDemo } from '../supabaseClient';
+import { captureException } from '../lib/sentry';
 import AdminHelp from './admin-help/AdminHelp';
 import {
   exportInvoicesToCSV,
@@ -161,7 +162,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
   // Persist wizard step
   useEffect(() => {
     if (showSetupWizard) {
-      try { localStorage.setItem('cp_wizard_step', String(wizardStep)); } catch {}
+      try { localStorage.setItem('cp_wizard_step', String(wizardStep)); } catch { /* préférence non enregistrée : quota plein ou navigation privée */ }
     }
   }, [wizardStep, showSetupWizard]);
 
@@ -1732,7 +1733,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                       // Restore localStorage keys
                       if (data.localStorage) {
                         Object.entries(data.localStorage).forEach(([k, v]) => {
-                          try { localStorage.setItem(k, typeof v === 'string' ? v : JSON.stringify(v)); } catch {}
+                          try { localStorage.setItem(k, typeof v === 'string' ? v : JSON.stringify(v)); } catch { /* préférence non enregistrée : quota plein ou navigation privée */ }
                         });
                       }
                       // Restore entreprise
@@ -1915,11 +1916,24 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                   // Clear all localStorage
                   const keys = Object.keys(localStorage).filter(k => k.startsWith('cp_') || k.startsWith('mallettico'));
                   keys.forEach(k => localStorage.removeItem(k));
-                  // Clear IndexedDB offline store
-                  try { indexedDB.deleteDatabase('mallettico-offline'); } catch {}
+                  // Clear IndexedDB offline store — on ne peut pas promettre une
+                  // suppression « définitive » si la base locale survit sur l'appareil.
+                  let localResiduel = false;
+                  try {
+                    indexedDB.deleteDatabase('mallettico-offline');
+                  } catch (e) {
+                    localResiduel = true;
+                    console.error('[Settings] Base hors-ligne non supprimée:', e);
+                    captureException(e, { context: 'suppression compte: IndexedDB non supprimée' });
+                  }
                   // Sign out
                   await auth.signOut();
-                  showToast('Compte et données supprimés définitivement', 'success');
+                  showToast(
+                    localResiduel
+                      ? 'Compte supprimé côté serveur. Des données restent sur cet appareil : videz les données du site dans votre navigateur.'
+                      : 'Compte et données supprimés définitivement',
+                    localResiduel ? 'warning' : 'success',
+                  );
                   window.location.reload();
                 } catch (e) {
                   console.error('Account deletion error:', e);
@@ -2265,7 +2279,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                   <button
                     onClick={() => {
                       setShowSetupWizard(false);
-                      try { localStorage.setItem('cp_wizard_done', '1'); } catch {}
+                      try { localStorage.setItem('cp_wizard_done', '1'); } catch { /* préférence non enregistrée : quota plein ou navigation privée */ }
                       showToast('Configuration terminée !', 'success');
                     }}
                     className="px-5 py-2.5 text-white rounded-xl text-sm font-semibold transition-colors"

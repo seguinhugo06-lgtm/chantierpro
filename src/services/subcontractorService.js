@@ -6,6 +6,7 @@
 
 import { isDemo } from '../supabaseClient';
 import { scopeToOrg, withOrgScope } from '../lib/queryHelper';
+import { logger } from '../lib/logger';
 
 const DEMO_KEY = 'mallettico_subcontractors_v2';
 const OLD_DEMO_KEY = 'cp_sous_traitants';
@@ -118,7 +119,7 @@ function migrateOrInitDemo() {
         const migrated = oldData.map(migrateOldSubcontractor);
         const data = { subcontractors: migrated, reviews: [], assignments: [], documents: [] };
         saveDemoData(data);
-        console.log(`📥 Migrated ${migrated.length} subcontractors from old format`);
+        logger.debug(`📥 Migrated ${migrated.length} subcontractors from old format`);
         return data;
       }
     }
@@ -1153,7 +1154,7 @@ export async function migrateFromLocalStorage(supabase, { userId, orgId }) {
 
     if (!error) {
       localStorage.removeItem(OLD_DEMO_KEY);
-      console.log(`📥 Migrated ${migrated.length} subcontractors to Supabase`);
+      logger.debug(`📥 Migrated ${migrated.length} subcontractors to Supabase`);
       return migrated.length;
     }
 

@@ -147,7 +147,7 @@ export default function AnalyticsPremium({
   });
 
   useEffect(() => {
-    try { localStorage.setItem('cp_analytics_premium_period', period); } catch {}
+    try { localStorage.setItem('cp_analytics_premium_period', period); } catch { /* préférence non enregistrée : quota plein ou navigation privée */ }
   }, [period]);
 
   const {

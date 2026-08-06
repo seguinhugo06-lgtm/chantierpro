@@ -1333,7 +1333,9 @@ async function writeWithColumnRetry(table, mapping, supabaseData, runQuery) {
       }
 
       if (strippedCols.length > 0) {
-        console.info(`✅ ${table}: saved after adjusting columns: [${strippedCols.join(', ')}]`);
+        // Une écriture qui n'a réussi qu'après avoir retiré des colonnes est un
+        // signal, pas une réussite : le schéma local et la base ont divergé.
+        console.warn(`⚠️ ${table}: enregistré après retrait de colonnes: [${strippedCols.join(', ')}]`);
       }
       logger.debug(`✅ Saved to ${table}:`, data?.id);
       return mapping.fromSupabase(data);

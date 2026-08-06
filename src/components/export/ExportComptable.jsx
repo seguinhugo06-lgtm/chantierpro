@@ -1036,7 +1036,7 @@ export default function ExportComptable({
                 </button>
               ) : (
                 <button
-                  onClick={() => { try { localStorage.setItem('cp_settings_tab', 'comptabilite'); } catch {} setPage?.('settings'); }}
+                  onClick={() => { try { localStorage.setItem('cp_settings_tab', 'comptabilite'); } catch { /* préférence non enregistrée : quota plein ou navigation privée */ } setPage?.('settings'); }}
                   className={`flex items-center gap-2 px-4 py-3 rounded-xl text-xs font-medium transition-all ${isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-700'}`}
                 >
                   <Mail className="w-4 h-4" />

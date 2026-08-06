@@ -261,20 +261,20 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
 
   // Persist signatures
   useEffect(() => {
-    try { localStorage.setItem('mallettico_signatures', JSON.stringify(signatures)); } catch {}
+    try { localStorage.setItem('mallettico_signatures', JSON.stringify(signatures)); } catch { /* préférence non enregistrée : quota plein ou navigation privée */ }
   }, [signatures]);
 
   // Persist congés
   useEffect(() => {
-    try { localStorage.setItem('mallettico_conges', JSON.stringify(conges)); } catch {}
+    try { localStorage.setItem('mallettico_conges', JSON.stringify(conges)); } catch { /* préférence non enregistrée : quota plein ou navigation privée */ }
   }, [conges]);
 
   // Persist chat
   useEffect(() => {
-    try { localStorage.setItem('mallettico_chat', JSON.stringify(messages)); } catch {}
+    try { localStorage.setItem('mallettico_chat', JSON.stringify(messages)); } catch { /* préférence non enregistrée : quota plein ou navigation privée */ }
   }, [messages]);
   useEffect(() => {
-    try { localStorage.setItem('mallettico_chat_pins', JSON.stringify(pinnedMessages)); } catch {}
+    try { localStorage.setItem('mallettico_chat_pins', JSON.stringify(pinnedMessages)); } catch { /* préférence non enregistrée : quota plein ou navigation privée */ }
   }, [pinnedMessages]);
 
   // Timer tick

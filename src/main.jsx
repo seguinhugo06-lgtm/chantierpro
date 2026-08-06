@@ -9,6 +9,7 @@ import { EMPTY_DATA } from './lib/empty-data'
 import { isDemo } from './supabaseClient'
 import { initSentry } from './lib/sentry'
 import './index.css'
+import { logger } from './lib/logger';
 
 // ── Initialize Sentry error monitoring (production only) ────────────
 initSentry()
@@ -154,7 +155,7 @@ const initialData = useDemoData ? DEMO_DATA : EMPTY_DATA
 
 // Log mode for debugging
 if (isDemo) {
-  console.log('🎭 Demo mode active -', useDemoData ? 'using demo data' : 'empty data (add ?demo=true for demo data)')
+  logger.debug('🎭 Demo mode active -', useDemoData ? 'using demo data' : 'empty data (add ?demo=true for demo data)')
   // Seed secondary localStorage data (previsions, fournisseurs, etc.) when using demo data
   if (useDemoData) {
     // Les données démo persistées vieillissent (dates décalées au moment du seed).
@@ -170,7 +171,7 @@ if (isDemo) {
     seedSecondaryDemoData()
   }
 } else {
-  console.log('🔐 Production mode - data from Supabase')
+  logger.debug('🔐 Production mode - data from Supabase')
 }
 
 // Public page loading spinner

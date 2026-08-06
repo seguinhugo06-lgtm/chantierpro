@@ -64,7 +64,7 @@ export default function AdminHelp({
 
   const saveAlertSettings = (newSettings) => {
     setAlertSettings(newSettings);
-    try { localStorage.setItem('cp_admin_alert_settings', JSON.stringify(newSettings)); } catch {}
+    try { localStorage.setItem('cp_admin_alert_settings', JSON.stringify(newSettings)); } catch { /* préférence non enregistrée : quota plein ou navigation privée */ }
   };
 
   // TVA auto-calculation from factures & depenses

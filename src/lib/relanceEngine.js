@@ -12,6 +12,7 @@ import {
   buildRelanceEmailHtml,
 } from './relanceUtils';
 import { scopeToOrg, withOrgScope } from './queryHelper';
+import { logger } from './logger';
 
 // ============ DETECTION ============
 
@@ -279,7 +280,7 @@ export async function cancelDocumentRelances(documentId, userId, orgId) {
   // Note: We don't cancel already-sent relances (legal proof).
   // This function is a no-op for sent relances.
   // It's here for future use if we implement scheduled (not-yet-sent) relances.
-  console.log(`Document ${documentId} paid/signed — no future relances will be sent.`);
+  logger.debug(`Document ${documentId} paid/signed — no future relances will be sent.`);
 }
 
 // ============ EXCLUSION MANAGEMENT ============

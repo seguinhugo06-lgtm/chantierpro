@@ -46,7 +46,7 @@ export default function RapportConfigModal({ isOpen, onClose, isDark, couleur = 
         } else if (entreprise?.email) {
           setForm(prev => ({ ...prev, destinataires: [entreprise.email] }));
         }
-      } catch {}
+      } catch { /* config démo illisible : on repart des valeurs par défaut */ }
       return;
     }
     try {

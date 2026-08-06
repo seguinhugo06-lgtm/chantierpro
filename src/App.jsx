@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback, Suspense, lazy } from 'react';
 import supabase, { auth, isDemo } from './supabaseClient';
+import { captureException } from './lib/sentry';
 
 // Eager load critical components
 import Dashboard from './components/Dashboard';
 import FABMenu from './components/FABMenu';
 import PWAUpdatePrompt from './components/PWAUpdatePrompt';
 import LandingPage from './components/landing/LandingPage';
+import { logger } from './lib/logger';
 
 // Stale bundle handler — auto-reload once when a chunk fails to load
 const lazyWithRetry = (importFn, name) => lazy(() =>
@@ -157,7 +159,7 @@ export default function App() {
       if (prev === newPage) return prev;
       // If this navigation comes from back/forward button, don't push state
       if (!isPopstateNav.current) {
-        try { window.history.pushState({ page: newPage }, '', ''); } catch {}
+        try { window.history.pushState({ page: newPage }, '', ''); } catch { /* historique indisponible : la navigation reste fonctionnelle */ }
       }
       isPopstateNav.current = false;
       return newPage;
@@ -523,7 +525,7 @@ export default function App() {
     if (attempt >= 3) return; // Stop after 3 auto-retries
 
     const delay = Math.min(5000 * Math.pow(2, attempt), 60000); // 5s, 10s, 20s (max 60s)
-    console.log(`[Sync] Auto-retry #${attempt + 1} scheduled in ${delay / 1000}s`);
+    logger.debug(`[Sync] Auto-retry #${attempt + 1} scheduled in ${delay / 1000}s`);
     syncRetryTimerRef.current = setTimeout(() => {
       syncRetryTimerRef.current = null;
       syncRetryAttemptRef.current = attempt + 1;
@@ -630,20 +632,20 @@ export default function App() {
   // Keep localStorage cache of entreprise in sync (for offline/legacy compat)
   useEffect(() => {
     if (activeEntreprise) {
-      try { localStorage.setItem('cp_entreprise', JSON.stringify(entreprise)); } catch {}
+      try { localStorage.setItem('cp_entreprise', JSON.stringify(entreprise)); } catch { /* préférence non enregistrée : quota plein ou navigation privée */ }
     }
   }, [entreprise, activeEntreprise]);
   useEffect(() => { try { localStorage.setItem('cp_theme', theme); } catch (e) { console.warn('Failed to save theme:', e.message); } }, [theme]);
   useEffect(() => { try { localStorage.setItem('cp_mode_discret', JSON.stringify(modeDiscret)); } catch (e) { console.warn('Failed to save modeDiscret:', e.message); } }, [modeDiscret]);
   useEffect(() => {
-    console.log('[NAV] page changed to:', page);
+    logger.debug('[NAV] page changed to:', page);
     try { localStorage.setItem('cp_current_page', page); } catch (e) { console.warn('Failed to save page:', e.message); }
   }, [page]);
 
   // Browser history: support back/forward buttons in this SPA
   useEffect(() => {
     // Set initial history state so back button has something to go to
-    try { window.history.replaceState({ page }, '', ''); } catch {}
+    try { window.history.replaceState({ page }, '', ''); } catch { /* historique indisponible : la navigation reste fonctionnelle */ }
 
     const handlePopstate = (event) => {
       const target = event.state?.page;
@@ -663,12 +665,12 @@ export default function App() {
     const publicPages = ['dashboard', 'profil', 'plan', 'pricing', 'checkout-success', 'cgv', 'cgu', 'confidentialite', 'mentions-legales', 'accessibilite', 'conformite', 'changelog', 'design-system'];
     // Billing is restricted to owner only
     if ((page === 'billing') && !canAccessBilling) {
-      console.log('[RBAC] Billing restricted to owner, redirecting → dashboard');
+      logger.debug('[RBAC] Billing restricted to owner, redirecting → dashboard');
       setPage('dashboard');
       return;
     }
     if (!publicPages.includes(page) && !canAccess(page)) {
-      console.log('[RBAC] Redirecting from restricted page:', page, '→ dashboard');
+      logger.debug('[RBAC] Redirecting from restricted page:', page, '→ dashboard');
       setPage('dashboard');
     }
   }, [page, canAccess, canAccessBilling, orgLoading]);
@@ -740,7 +742,7 @@ export default function App() {
       try {
         const p = localStorage.getItem('cp_current_page');
         if (p && p !== page) setPage(p);
-      } catch {}
+      } catch { /* localStorage inaccessible : la navigation inter-onglets est un confort */ }
     };
     window.addEventListener('storage', handleStorage);
     return () => window.removeEventListener('storage', handleStorage);
@@ -793,7 +795,24 @@ export default function App() {
     try {
       const { error } = await auth.signUp(authForm.email, authForm.password, { nom: authForm.nom });
       if (error) setAuthError(error.message);
-      else { showToast('Compte créé ✓', 'success'); setShowSignUp(false); }
+      else {
+        showToast('Compte créé ✓', 'success');
+        setShowSignUp(false);
+        // Email de bienvenue : le modèle existait depuis le début mais aucun
+        // appelant ne l'utilisait — personne n'était accueilli. Volontairement
+        // non bloquant : un envoi raté ne doit pas gâcher une inscription.
+        if (supabase) {
+          supabase.functions
+            .invoke('send-lifecycle-email', {
+              body: { type: 'welcome', to: authForm.email, data: { nom: authForm.nom } },
+            })
+            .then(({ error: mailError }) => {
+              // supabase-js ne lève pas : sans ce test, un échec passerait inaperçu.
+              if (mailError) captureException(mailError, { context: 'email de bienvenue' });
+            })
+            .catch((err) => captureException(err, { context: 'email de bienvenue' }));
+        }
+      }
     } catch (e) {
       setAuthError('Erreur lors de la création du compte');
     } finally {
@@ -809,7 +828,7 @@ export default function App() {
   const markNotifRead = (id) => {
     setReadNotifIds(prev => {
       const next = prev.includes(id) ? prev : [...prev, id];
-      try { localStorage.setItem('cp_read_notifs', JSON.stringify(next)); } catch {}
+      try { localStorage.setItem('cp_read_notifs', JSON.stringify(next)); } catch { /* préférence non enregistrée : quota plein ou navigation privée */ }
       return next;
     });
   };
@@ -817,7 +836,7 @@ export default function App() {
     const allIds = notifications.map(n => n.id);
     setReadNotifIds(prev => {
       const next = [...new Set([...prev, ...allIds])];
-      try { localStorage.setItem('cp_read_notifs', JSON.stringify(next)); } catch {}
+      try { localStorage.setItem('cp_read_notifs', JSON.stringify(next)); } catch { /* préférence non enregistrée : quota plein ou navigation privée */ }
       return next;
     });
   };

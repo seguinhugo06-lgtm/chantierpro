@@ -62,7 +62,7 @@ export default function ConformityReport({ isDark = false, couleur = '#f97316' }
 
   // Persist checklist state to localStorage
   useEffect(() => {
-    try { localStorage.setItem('cp_conformity_checklist', JSON.stringify(checkedItems)); } catch {}
+    try { localStorage.setItem('cp_conformity_checklist', JSON.stringify(checkedItems)); } catch { /* préférence non enregistrée : quota plein ou navigation privée */ }
   }, [checkedItems]);
 
   const textPrimary = isDark ? 'text-white' : 'text-slate-900';
@@ -87,7 +87,7 @@ export default function ConformityReport({ isDark = false, couleur = '#f97316' }
 
   // Broadcast score for Dashboard consumption
   useEffect(() => {
-    try { localStorage.setItem('cp_conformity_score', String(score)); } catch {}
+    try { localStorage.setItem('cp_conformity_score', String(score)); } catch { /* préférence non enregistrée : quota plein ou navigation privée */ }
   }, [score]);
 
   const getScoreColor = () => {

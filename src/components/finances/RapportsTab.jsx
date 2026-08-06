@@ -71,7 +71,7 @@ export default function RapportsTab({ devis = [], depenses = [], clients = [], c
       try {
         const saved = localStorage.getItem('cp_rapport_config');
         if (saved) setConfig(JSON.parse(saved));
-      } catch {}
+      } catch { /* config démo illisible : on repart des valeurs par défaut */ }
       return;
     }
     try {
