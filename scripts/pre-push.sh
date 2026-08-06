@@ -56,7 +56,16 @@ else
   ok "No secrets in code"
 fi
 
-# 5. Build check
+# 5. Tests — les quatre chemins de l'argent (chiffrer, facturer, encaisser, relancer)
+echo ""
+echo "  Running tests..."
+if ! npx vitest run --reporter=dot > /dev/null 2>&1; then
+  error "Tests en échec! Lancez 'npm test' pour voir le détail."
+else
+  ok "Tests OK"
+fi
+
+# 6. Build check
 echo ""
 echo "  Building..."
 if ! npm run build > /dev/null 2>&1; then
