@@ -15,6 +15,8 @@ node scripts/audit-ui.cjs [page] [largeur]   # défauts d'affichage mesurés (ap
 ```
 
 Le hook de pre-push rejoue smoke + tests + build. C'est une copie figée : après l'avoir modifié, `npm run setup-hooks`.
+GitHub Actions (`.github/workflows/verifications.yml`) rejoue lint, tests, build et smoke à chaque push sur `main` : un statut rouge sur le commit = à corriger avant tout.
+Autorisations Claude du projet : `.claude/settings.json` (commandes sûres autorisées ; `git push` et Supabase demandent confirmation ; `db push` et push forcé interdits).
 
 ## Flux de travail
 
@@ -58,11 +60,16 @@ React 18 + Vite 5 + Tailwind 3.4 · Supabase (auth, Postgres + RLS, Edge Functio
 - Erreurs : `captureException()` (`src/lib/sentry.js`) ; un `catch` vide est interdit par le lint — traiter l'erreur ou écrire pourquoi l'ignorer.
 - Journalisation : `logger.debug` (`src/lib/logger.js`), jamais `console.log`.
 - Fonctions Edge : `corsHeaders` dans chaque réponse ; vérifier l'appelant (l'anon key est publique).
-- Nouvelle migration : numéro suivant le dernier de `supabase/migrations/` (dernier : 071), idempotente, RLS activé.
+- Nouvelle migration : numéro suivant le dernier de `supabase/migrations/` (dernier : 075 ; 071 à 075 restent à appliquer à la main, dans l'ordre), idempotente, RLS activé.
 
 ## Pièges connus
 
-- **Deux générateurs de PDF** : `src/lib/devisHtmlBuilder.js` (page de signature) ET le générateur inline de `src/components/DevisPage.jsx` (aperçu et impression). Toute évolution du rendu touche les deux.
+- **Deux générateurs de PDF** : `src/lib/devisHtmlBuilder.js` (page de signature) ET le générateur inline de `src/components/DevisPage.jsx` (aperçu et impression). Toute évolution du rendu touche les deux ; un bloc partagé va dans `src/lib/` (ex. `mentionTvaReduite.js`, texte officiel BOFiP de la certification TVA 10 % / 5,5 %).
+- **Élément `position: fixed` enfermé** : un ancêtre avec `transform`, `filter` ou `backdrop-filter` devient son bloc conteneur — une modale ou un fond « plein écran » ne couvre alors que cet ancêtre. Animations d'entrée en `backwards`, jamais `forwards` avec un transform ; le flou de l'en-tête est porté par un calque ; `ui/Modal` est rendue dans `document.body` (portail). L'audit (`scripts/audit-ui.cjs`) le détecte.
+- **Menus déroulants** : `useKeepInViewport(ref, ouvert)` (`src/hooks/`) les recale dans l'écran ; à utiliser pour tout nouveau menu en `absolute`.
+- **Abonnements** : seuls le webhook Stripe et `subscription-billing` (clé de service) écrivent un plan payant ; l'app lit via `fetchSubscription` → `choisirAbonnement` + `appliquerFinOffre` (offres testeurs). Ne jamais réintroduire de policy UPDATE utilisateur sur `subscriptions` (migration 073).
+- **Paiement par carte** : jamais de frais ajoutés au client (art. L112-12 C. mon. fin.).
+- Adresse de contact unique : `contact@mallettico.fr`.
 - 45 migrations (023-054) ont été effacées du dépôt par le commit `227534e` ; elles sont récupérables : `git show 227534e^:supabase/migrations/<fichier>`. Le dépôt ne décrit pas exactement la production : en cas de doute sur une table ou une RPC, donner une requête de contrôle à exécuter.
 - Les pages publiques (signature, paiement `/pay/:token`, portail client) ne doivent jamais importer `App.jsx` statiquement.
 - Tester une modale : scoper les sélecteurs à `[role=dialog]` (des boutons homonymes existent derrière).

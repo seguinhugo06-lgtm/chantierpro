@@ -1,0 +1,44 @@
+# Vérifications à chaque push et pull request : lint, tests, build, smoke.
+#
+# Le hook de pre-push ne protège que la machine où il est installé (et c'est une copie figée).
+# Ici, GitHub rejoue les mêmes contrôles pour tout ce qui arrive sur le dépôt : un commit rouge
+# se voit dans l'historique avant même que Vercel ne le déploie.
+name: Vérifications
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: verifications-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verifier:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Dépendances
+        run: npm ci
+        env:
+          PUPPETEER_SKIP_DOWNLOAD: 'true'
+
+      - name: Lint (0 erreur exigée)
+        run: npm run lint
+
+      - name: Tests
+        run: npm test
+
+      - name: Build (mode démo, sans secrets)
+        run: npm run build
+
+      - name: Smoke
+        run: npm run smoke
