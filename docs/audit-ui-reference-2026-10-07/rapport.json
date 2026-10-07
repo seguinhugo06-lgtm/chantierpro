@@ -1,0 +1,1084 @@
+[
+ {
+  "page": "billing",
+  "largeur": 375,
+  "atteinte": false,
+  "defauts": 0,
+  "debordementPage": 0,
+  "horsEcran": [],
+  "menus": [],
+  "chevauchements": [],
+  "erreursJS": [],
+  "capture": "captures/billing-375.png"
+ },
+ {
+  "page": "changelog",
+  "largeur": 375,
+  "atteinte": true,
+  "defauts": 1,
+  "debordementPage": 0,
+  "horsEcran": [],
+  "menus": [],
+  "chevauchements": [
+   {
+    "a": "span.font-bold.text-base.text-slate-900 « v3.2.0 »",
+    "b": "span.text-[10px].mt-0.5.truncate.max-w-full « Devis »"
+   }
+  ],
+  "erreursJS": [],
+  "capture": "captures/changelog-375.png"
+ },
+ {
+  "page": "dashboard",
+  "largeur": 375,
+  "atteinte": true,
+  "defauts": 0,
+  "debordementPage": 0,
+  "horsEcran": [],
+  "menus": [],
+  "chevauchements": [],
+  "erreursJS": [],
+  "capture": "captures/dashboard-375.png"
+ },
+ {
+  "page": "profil",
+  "largeur": 375,
+  "atteinte": false,
+  "defauts": 0,
+  "debordementPage": 0,
+  "horsEcran": [],
+  "menus": [],
+  "chevauchements": [],
+  "erreursJS": [],
+  "capture": "captures/profil-375.png"
+ },
+ {
+  "page": "plan",
+  "largeur": 375,
+  "atteinte": true,
+  "defauts": 1,
+  "debordementPage": 0,
+  "horsEcran": [],
+  "menus": [],
+  "chevauchements": [
+   {
+    "a": "span « Devis & factures illimités »",
+    "b": "span.text-[10px].mt-0.5.truncate.max-w-full « Devis »"
+   }
+  ],
+  "erreursJS": [],
+  "capture": "captures/plan-375.png"
+ },
+ {
+  "page": "devis",
+  "largeur": 375,
+  "atteinte": true,
+  "defauts": 4,
+  "debordementPage": 0,
+  "horsEcran": [],
+  "menus": [
+   {
+    "declencheur": "Options de création",
+    "sort": [
+     "gauche -66 px"
+    ]
+   }
+  ],
+  "chevauchements": [
+   {
+    "a": "span.text-xs.shrink-0.text-violet-500 « 📄 »",
+    "b": "span.text-[10px].mt-0.5.truncate.max-w-full « Accueil »"
+   },
+   {
+    "a": "p.text-xs.truncate.text-gray-500 « FAC-2026-00003 »",
+    "b": "span.text-[10px].mt-0.5.truncate.max-w-full « Devis »"
+   },
+   {
+    "a": "span.text-[10px].px-1.5.py-0.5.rounded-full « Envoyé »",
+    "b": "span.text-[10px].mt-0.5.truncate.max-w-full « Accueil »"
+   }
+  ],
+  "erreursJS": [],
+  "capture": "captures/devis-375.png"
+ },
+ {
+  "page": "chantiers",
+  "largeur": 375,
+  "atteinte": true,
+  "defauts": 0,
+  "debordementPage": 0,
+  "horsEcran": [],
+  "menus": [],
+  "chevauchements": [],
+  "erreursJS": [],
+  "capture": "captures/chantiers-375.png"
+ },
+ {
+  "page": "tasks",
+  "largeur": 375,
+  "atteinte": true,
+  "defauts": 0,
+  "debordementPage": 0,
+  "horsEcran": [],
+  "menus": [],
+  "chevauchements": [],
+  "erreursJS": [],
+  "capture": "captures/tasks-375.png"
+ },
+ {
+  "page": "planning",
+  "largeur": 375,
+  "atteinte": true,
+  "defauts": 1,
+  "debordementPage": 0,
+  "horsEcran": [],
+  "menus": [],
+  "chevauchements": [
+   {
+    "a": "div.absolute.right-1.5.text-[10px].font-medium « 07h »",
+    "b": "span.text-[10px].mt-0.5.truncate.max-w-full « Accueil »"
+   }
+  ],
+  "erreursJS": [],
+  "capture": "captures/planning-375.png"
+ },
+ {
+  "page": "memos",
+  "largeur": 375,
+  "atteinte": true,
+  "defauts": 0,
+  "debordementPage": 0,
+  "horsEcran": [],
+  "menus": [],
+  "chevauchements": [],
+  "erreursJS": [],
+  "capture": "captures/memos-375.png"
+ },
+ {
+  "page": "clients",
+  "largeur": 375,
+  "atteinte": true,
+  "defauts": 0,
+  "debordementPage": 0,
+  "horsEcran": [],
+  "menus": [],
+  "chevauchements": [],
+  "erreursJS": [],
+  "capture": "captures/clients-375.png"
+ },
+ {
+  "page": "catalogue",
+  "largeur": 375,
+  "atteinte": true,
+  "defauts": 5,
+  "debordementPage": 0,
+  "horsEcran": [],
+  "menus": [
+   {
+    "declencheur": "Plus d'actions",
+    "sort": [
+     "bas +2358 px",
+     "gauche -168 px"
+    ]
+   },
+   {
+    "declencheur": "Plus d'onglets",
+    "sort": [
+     "droite +59 px"
+    ]
+   }
+  ],
+  "chevauchements": [
+   {
+    "a": "span.font-medium.text-slate-900 « Carrelage grès cérame 60x60 »",
+    "b": "span.text-[10px].mt-0.5.truncate.max-w-full « Devis »"
+   },
+   {
+    "a": "span.font-medium.text-slate-900 « Carrelage grès cérame 60x60 »",
+    "b": "span.text-[10px].mt-0.5.truncate.max-w-full « Chantiers »"
+   },
+   {
+    "a": "span.font-medium.text-slate-900 « Carrelage grès cérame 60x60 »",
+    "b": "span.text-[10px].mt-0.5.truncate.max-w-full « Clients »"
+   }
+  ],
+  "erreursJS": [],
+  "capture": "captures/catalogue-375.png"
+ },
+ {
+  "page": "ouvrages",
+  "largeur": 375,
+  "atteinte": false,
+  "defauts": 0,
+  "debordementPage": 0,
+  "horsEcran": [],
+  "menus": [
+   {
+    "declencheur": "Plus d'actions",
+    "sort": [
+     "bas +2358 px",
+     "gauche -168 px"
+    ]
+   },
+   {
+    "declencheur": "Plus d'onglets",
+    "sort": [
+     "droite +59 px"
+    ]
+   }
+  ],
+  "chevauchements": [
+   {
+    "a": "span.font-medium.text-slate-900 « Carrelage grès cérame 60x60 »",
+    "b": "span.text-[10px].mt-0.5.truncate.max-w-full « Devis »"
+   },
+   {
+    "a": "span.font-medium.text-slate-900 « Carrelage grès cérame 60x60 »",
+    "b": "span.text-[10px].mt-0.5.truncate.max-w-full « Chantiers »"
+   },
+   {
+    "a": "span.font-medium.text-slate-900 « Carrelage grès cérame 60x60 »",
+    "b": "span.text-[10px].mt-0.5.truncate.max-w-full « Clients »"
+   }
+  ],
+  "erreursJS": [],
+  "capture": "captures/ouvrages-375.png"
+ },
+ {
+  "page": "signatures",
+  "largeur": 375,
+  "atteinte": false,
+  "defauts": 0,
+  "debordementPage": 0,
+  "horsEcran": [],
+  "menus": [
+   {
+    "declencheur": "Options de création",
+    "sort": [
+     "gauche -66 px"
+    ]
+   }
+  ],
+  "chevauchements": [
+   {
+    "a": "span.text-xs.shrink-0.text-violet-500 « 📄 »",
+    "b": "span.text-[10px].mt-0.5.truncate.max-w-full « Accueil »"
+   },
+   {
+    "a": "p.text-xs.truncate.text-gray-500 « FAC-2026-00003 »",
+    "b": "span.text-[10px].mt-0.5.truncate.max-w-full « Devis »"
+   },
+   {
+    "a": "span.text-[10px].px-1.5.py-0.5.rounded-full « Envoyé »",
+    "b": "span.text-[10px].mt-0.5.truncate.max-w-full « Accueil »"
+   }
+  ],
+  "erreursJS": [],
+  "capture": "captures/signatures-375.png"
+ },
+ {
+  "page": "export",
+  "largeur": 375,
+  "atteinte": false,
+  "defauts": 0,
+  "debordementPage": 0,
+  "horsEcran": [],
+  "menus": [
+   {
+    "declencheur": "Paramètres trésorerie",
+    "sort": [
+     "gauche -212 px"
+    ]
+   }
+  ],
+  "chevauchements": [],
+  "erreursJS": [],
+  "capture": "captures/export-375.png"
+ },
+ {
+  "page": "analytique",
+  "largeur": 375,
+  "atteinte": false,
+  "defauts": 0,
+  "debordementPage": 0,
+  "horsEcran": [],
+  "menus": [
+   {
+    "declencheur": "Paramètres trésorerie",
+    "sort": [
+     "gauche -212 px"
+    ]
+   }
+  ],
+  "chevauchements": [],
+  "erreursJS": [],
+  "capture": "captures/analytique-375.png"
+ },
+ {
+  "page": "finances",
+  "largeur": 375,
+  "atteinte": true,
+  "defauts": 1,
+  "debordementPage": 0,
+  "horsEcran": [],
+  "menus": [
+   {
+    "declencheur": "Paramètres trésorerie",
+    "sort": [
+     "gauche -212 px"
+    ]
+   }
+  ],
+  "chevauchements": [],
+  "erreursJS": [],
+  "capture": "captures/finances-375.png"
+ },
+ {
+  "page": "equipe",
+  "largeur": 375,
+  "atteinte": true,
+  "defauts": 0,
+  "debordementPage": 0,
+  "horsEcran": [],
+  "menus": [],
+  "chevauchements": [],
+  "erreursJS": [],
+  "capture": "captures/equipe-375.png"
+ },
+ {
+  "page": "garanties",
+  "largeur": 375,
+  "atteinte": true,
+  "defauts": 0,
+  "debordementPage": 0,
+  "horsEcran": [],
+  "menus": [],
+  "chevauchements": [],
+  "erreursJS": [],
+  "capture": "captures/garanties-375.png"
+ },
+ {
+  "page": "admin",
+  "largeur": 375,
+  "atteinte": false,
+  "defauts": 0,
+  "debordementPage": 0,
+  "horsEcran": [],
+  "menus": [],
+  "chevauchements": [],
+  "erreursJS": [],
+  "capture": "captures/admin-375.png"
+ },
+ {
+  "page": "pricing",
+  "largeur": 375,
+  "atteinte": false,
+  "defauts": 0,
+  "debordementPage": 0,
+  "horsEcran": [],
+  "menus": [],
+  "chevauchements": [],
+  "erreursJS": [],
+  "capture": "captures/pricing-375.png"
+ },
+ {
+  "page": "settings",
+  "largeur": 375,
+  "atteinte": true,
+  "defauts": 0,
+  "debordementPage": 0,
+  "horsEcran": [],
+  "menus": [],
+  "chevauchements": [],
+  "erreursJS": [],
+  "capture": "captures/settings-375.png"
+ },
+ {
+  "page": "billing",
+  "largeur": 768,
+  "atteinte": false,
+  "defauts": 0,
+  "debordementPage": -6,
+  "horsEcran": [],
+  "menus": [
+   {
+    "declencheur": "Nouveau",
+    "sort": [
+     "droite +50 px"
+    ]
+   }
+  ],
+  "chevauchements": [],
+  "erreursJS": [],
+  "capture": "captures/billing-768.png"
+ },
+ {
+  "page": "changelog",
+  "largeur": 768,
+  "atteinte": true,
+  "defauts": 1,
+  "debordementPage": -6,
+  "horsEcran": [],
+  "menus": [
+   {
+    "declencheur": "Nouveau",
+    "sort": [
+     "droite +50 px"
+    ]
+   }
+  ],
+  "chevauchements": [],
+  "erreursJS": [],
+  "capture": "captures/changelog-768.png"
+ },
+ {
+  "page": "dashboard",
+  "largeur": 768,
+  "atteinte": true,
+  "defauts": 1,
+  "debordementPage": -6,
+  "horsEcran": [],
+  "menus": [
+   {
+    "declencheur": "Nouveau",
+    "sort": [
+     "droite +50 px"
+    ]
+   }
+  ],
+  "chevauchements": [],
+  "erreursJS": [],
+  "capture": "captures/dashboard-768.png"
+ },
+ {
+  "page": "profil",
+  "largeur": 768,
+  "atteinte": false,
+  "defauts": 0,
+  "debordementPage": -6,
+  "horsEcran": [],
+  "menus": [
+   {
+    "declencheur": "Nouveau",
+    "sort": [
+     "droite +50 px"
+    ]
+   }
+  ],
+  "chevauchements": [],
+  "erreursJS": [],
+  "capture": "captures/profil-768.png"
+ },
+ {
+  "page": "plan",
+  "largeur": 768,
+  "atteinte": true,
+  "defauts": 1,
+  "debordementPage": -6,
+  "horsEcran": [],
+  "menus": [
+   {
+    "declencheur": "Nouveau",
+    "sort": [
+     "droite +50 px"
+    ]
+   }
+  ],
+  "chevauchements": [],
+  "erreursJS": [],
+  "capture": "captures/plan-768.png"
+ },
+ {
+  "page": "devis",
+  "largeur": 768,
+  "atteinte": true,
+  "defauts": 1,
+  "debordementPage": -6,
+  "horsEcran": [],
+  "menus": [
+   {
+    "declencheur": "Nouveau",
+    "sort": [
+     "droite +50 px"
+    ]
+   }
+  ],
+  "chevauchements": [],
+  "erreursJS": [],
+  "capture": "captures/devis-768.png"
+ },
+ {
+  "page": "chantiers",
+  "largeur": 768,
+  "atteinte": true,
+  "defauts": 1,
+  "debordementPage": -6,
+  "horsEcran": [],
+  "menus": [
+   {
+    "declencheur": "Nouveau",
+    "sort": [
+     "droite +50 px"
+    ]
+   }
+  ],
+  "chevauchements": [],
+  "erreursJS": [],
+  "capture": "captures/chantiers-768.png"
+ },
+ {
+  "page": "tasks",
+  "largeur": 768,
+  "atteinte": true,
+  "defauts": 1,
+  "debordementPage": -6,
+  "horsEcran": [],
+  "menus": [
+   {
+    "declencheur": "Nouveau",
+    "sort": [
+     "droite +50 px"
+    ]
+   }
+  ],
+  "chevauchements": [],
+  "erreursJS": [],
+  "capture": "captures/tasks-768.png"
+ },
+ {
+  "page": "planning",
+  "largeur": 768,
+  "atteinte": true,
+  "defauts": 1,
+  "debordementPage": -6,
+  "horsEcran": [],
+  "menus": [
+   {
+    "declencheur": "Nouveau",
+    "sort": [
+     "droite +50 px"
+    ]
+   }
+  ],
+  "chevauchements": [],
+  "erreursJS": [],
+  "capture": "captures/planning-768.png"
+ },
+ {
+  "page": "memos",
+  "largeur": 768,
+  "atteinte": true,
+  "defauts": 1,
+  "debordementPage": -6,
+  "horsEcran": [],
+  "menus": [
+   {
+    "declencheur": "Nouveau",
+    "sort": [
+     "droite +50 px"
+    ]
+   }
+  ],
+  "chevauchements": [],
+  "erreursJS": [],
+  "capture": "captures/memos-768.png"
+ },
+ {
+  "page": "clients",
+  "largeur": 768,
+  "atteinte": true,
+  "defauts": 1,
+  "debordementPage": -6,
+  "horsEcran": [],
+  "menus": [
+   {
+    "declencheur": "Nouveau",
+    "sort": [
+     "droite +50 px"
+    ]
+   }
+  ],
+  "chevauchements": [],
+  "erreursJS": [],
+  "capture": "captures/clients-768.png"
+ },
+ {
+  "page": "catalogue",
+  "largeur": 768,
+  "atteinte": true,
+  "defauts": 1,
+  "debordementPage": -6,
+  "horsEcran": [],
+  "menus": [
+   {
+    "declencheur": "Nouveau",
+    "sort": [
+     "droite +50 px"
+    ]
+   }
+  ],
+  "chevauchements": [],
+  "erreursJS": [],
+  "capture": "captures/catalogue-768.png"
+ },
+ {
+  "page": "ouvrages",
+  "largeur": 768,
+  "atteinte": false,
+  "defauts": 0,
+  "debordementPage": -6,
+  "horsEcran": [],
+  "menus": [
+   {
+    "declencheur": "Nouveau",
+    "sort": [
+     "droite +50 px"
+    ]
+   }
+  ],
+  "chevauchements": [],
+  "erreursJS": [],
+  "capture": "captures/ouvrages-768.png"
+ },
+ {
+  "page": "signatures",
+  "largeur": 768,
+  "atteinte": false,
+  "defauts": 0,
+  "debordementPage": -6,
+  "horsEcran": [],
+  "menus": [
+   {
+    "declencheur": "Nouveau",
+    "sort": [
+     "droite +50 px"
+    ]
+   }
+  ],
+  "chevauchements": [],
+  "erreursJS": [],
+  "capture": "captures/signatures-768.png"
+ },
+ {
+  "page": "export",
+  "largeur": 768,
+  "atteinte": false,
+  "defauts": 0,
+  "debordementPage": -6,
+  "horsEcran": [],
+  "menus": [
+   {
+    "declencheur": "Nouveau",
+    "sort": [
+     "droite +50 px"
+    ]
+   }
+  ],
+  "chevauchements": [],
+  "erreursJS": [],
+  "capture": "captures/export-768.png"
+ },
+ {
+  "page": "analytique",
+  "largeur": 768,
+  "atteinte": false,
+  "defauts": 0,
+  "debordementPage": -6,
+  "horsEcran": [],
+  "menus": [
+   {
+    "declencheur": "Nouveau",
+    "sort": [
+     "droite +50 px"
+    ]
+   }
+  ],
+  "chevauchements": [],
+  "erreursJS": [],
+  "capture": "captures/analytique-768.png"
+ },
+ {
+  "page": "finances",
+  "largeur": 768,
+  "atteinte": true,
+  "defauts": 1,
+  "debordementPage": -6,
+  "horsEcran": [],
+  "menus": [
+   {
+    "declencheur": "Nouveau",
+    "sort": [
+     "droite +50 px"
+    ]
+   }
+  ],
+  "chevauchements": [],
+  "erreursJS": [],
+  "capture": "captures/finances-768.png"
+ },
+ {
+  "page": "equipe",
+  "largeur": 768,
+  "atteinte": true,
+  "defauts": 2,
+  "debordementPage": -6,
+  "horsEcran": [],
+  "menus": [
+   {
+    "declencheur": "Nouveau",
+    "sort": [
+     "droite +50 px"
+    ]
+   },
+   {
+    "declencheur": "Plus d'onglets",
+    "sort": [
+     "droite +75 px"
+    ]
+   }
+  ],
+  "chevauchements": [],
+  "erreursJS": [],
+  "capture": "captures/equipe-768.png"
+ },
+ {
+  "page": "garanties",
+  "largeur": 768,
+  "atteinte": true,
+  "defauts": 1,
+  "debordementPage": -6,
+  "horsEcran": [],
+  "menus": [
+   {
+    "declencheur": "Nouveau",
+    "sort": [
+     "droite +50 px"
+    ]
+   }
+  ],
+  "chevauchements": [],
+  "erreursJS": [],
+  "capture": "captures/garanties-768.png"
+ },
+ {
+  "page": "admin",
+  "largeur": 768,
+  "atteinte": false,
+  "defauts": 0,
+  "debordementPage": -6,
+  "horsEcran": [],
+  "menus": [
+   {
+    "declencheur": "Nouveau",
+    "sort": [
+     "droite +50 px"
+    ]
+   }
+  ],
+  "chevauchements": [],
+  "erreursJS": [],
+  "capture": "captures/admin-768.png"
+ },
+ {
+  "page": "pricing",
+  "largeur": 768,
+  "atteinte": false,
+  "defauts": 0,
+  "debordementPage": -6,
+  "horsEcran": [],
+  "menus": [
+   {
+    "declencheur": "Nouveau",
+    "sort": [
+     "droite +50 px"
+    ]
+   }
+  ],
+  "chevauchements": [],
+  "erreursJS": [],
+  "capture": "captures/pricing-768.png"
+ },
+ {
+  "page": "settings",
+  "largeur": 768,
+  "atteinte": true,
+  "defauts": 1,
+  "debordementPage": -6,
+  "horsEcran": [],
+  "menus": [
+   {
+    "declencheur": "Nouveau",
+    "sort": [
+     "droite +50 px"
+    ]
+   }
+  ],
+  "chevauchements": [],
+  "erreursJS": [],
+  "capture": "captures/settings-768.png"
+ },
+ {
+  "page": "billing",
+  "largeur": 1440,
+  "atteinte": false,
+  "defauts": 0,
+  "debordementPage": -6,
+  "horsEcran": [],
+  "menus": [],
+  "chevauchements": [],
+  "erreursJS": [],
+  "capture": "captures/billing-1440.png"
+ },
+ {
+  "page": "changelog",
+  "largeur": 1440,
+  "atteinte": true,
+  "defauts": 0,
+  "debordementPage": -6,
+  "horsEcran": [],
+  "menus": [],
+  "chevauchements": [],
+  "erreursJS": [],
+  "capture": "captures/changelog-1440.png"
+ },
+ {
+  "page": "dashboard",
+  "largeur": 1440,
+  "atteinte": true,
+  "defauts": 0,
+  "debordementPage": -6,
+  "horsEcran": [],
+  "menus": [],
+  "chevauchements": [],
+  "erreursJS": [],
+  "capture": "captures/dashboard-1440.png"
+ },
+ {
+  "page": "profil",
+  "largeur": 1440,
+  "atteinte": false,
+  "defauts": 0,
+  "debordementPage": -6,
+  "horsEcran": [],
+  "menus": [],
+  "chevauchements": [],
+  "erreursJS": [],
+  "capture": "captures/profil-1440.png"
+ },
+ {
+  "page": "plan",
+  "largeur": 1440,
+  "atteinte": true,
+  "defauts": 0,
+  "debordementPage": -6,
+  "horsEcran": [],
+  "menus": [],
+  "chevauchements": [],
+  "erreursJS": [],
+  "capture": "captures/plan-1440.png"
+ },
+ {
+  "page": "devis",
+  "largeur": 1440,
+  "atteinte": true,
+  "defauts": 0,
+  "debordementPage": -6,
+  "horsEcran": [],
+  "menus": [],
+  "chevauchements": [],
+  "erreursJS": [],
+  "capture": "captures/devis-1440.png"
+ },
+ {
+  "page": "chantiers",
+  "largeur": 1440,
+  "atteinte": true,
+  "defauts": 0,
+  "debordementPage": -6,
+  "horsEcran": [],
+  "menus": [],
+  "chevauchements": [],
+  "erreursJS": [],
+  "capture": "captures/chantiers-1440.png"
+ },
+ {
+  "page": "tasks",
+  "largeur": 1440,
+  "atteinte": true,
+  "defauts": 0,
+  "debordementPage": -6,
+  "horsEcran": [],
+  "menus": [],
+  "chevauchements": [],
+  "erreursJS": [],
+  "capture": "captures/tasks-1440.png"
+ },
+ {
+  "page": "planning",
+  "largeur": 1440,
+  "atteinte": true,
+  "defauts": 0,
+  "debordementPage": -6,
+  "horsEcran": [],
+  "menus": [],
+  "chevauchements": [],
+  "erreursJS": [],
+  "capture": "captures/planning-1440.png"
+ },
+ {
+  "page": "memos",
+  "largeur": 1440,
+  "atteinte": true,
+  "defauts": 0,
+  "debordementPage": -6,
+  "horsEcran": [],
+  "menus": [],
+  "chevauchements": [],
+  "erreursJS": [],
+  "capture": "captures/memos-1440.png"
+ },
+ {
+  "page": "clients",
+  "largeur": 1440,
+  "atteinte": true,
+  "defauts": 0,
+  "debordementPage": -6,
+  "horsEcran": [],
+  "menus": [],
+  "chevauchements": [],
+  "erreursJS": [],
+  "capture": "captures/clients-1440.png"
+ },
+ {
+  "page": "catalogue",
+  "largeur": 1440,
+  "atteinte": true,
+  "defauts": 0,
+  "debordementPage": -6,
+  "horsEcran": [],
+  "menus": [],
+  "chevauchements": [],
+  "erreursJS": [],
+  "capture": "captures/catalogue-1440.png"
+ },
+ {
+  "page": "ouvrages",
+  "largeur": 1440,
+  "atteinte": false,
+  "defauts": 0,
+  "debordementPage": -6,
+  "horsEcran": [],
+  "menus": [],
+  "chevauchements": [],
+  "erreursJS": [],
+  "capture": "captures/ouvrages-1440.png"
+ },
+ {
+  "page": "signatures",
+  "largeur": 1440,
+  "atteinte": false,
+  "defauts": 0,
+  "debordementPage": -6,
+  "horsEcran": [],
+  "menus": [],
+  "chevauchements": [],
+  "erreursJS": [],
+  "capture": "captures/signatures-1440.png"
+ },
+ {
+  "page": "export",
+  "largeur": 1440,
+  "atteinte": false,
+  "defauts": 0,
+  "debordementPage": -6,
+  "horsEcran": [],
+  "menus": [],
+  "chevauchements": [],
+  "erreursJS": [],
+  "capture": "captures/export-1440.png"
+ },
+ {
+  "page": "analytique",
+  "largeur": 1440,
+  "atteinte": false,
+  "defauts": 0,
+  "debordementPage": -6,
+  "horsEcran": [],
+  "menus": [],
+  "chevauchements": [],
+  "erreursJS": [],
+  "capture": "captures/analytique-1440.png"
+ },
+ {
+  "page": "finances",
+  "largeur": 1440,
+  "atteinte": true,
+  "defauts": 0,
+  "debordementPage": -6,
+  "horsEcran": [],
+  "menus": [],
+  "chevauchements": [],
+  "erreursJS": [],
+  "capture": "captures/finances-1440.png"
+ },
+ {
+  "page": "equipe",
+  "largeur": 1440,
+  "atteinte": true,
+  "defauts": 0,
+  "debordementPage": -6,
+  "horsEcran": [],
+  "menus": [],
+  "chevauchements": [],
+  "erreursJS": [],
+  "capture": "captures/equipe-1440.png"
+ },
+ {
+  "page": "garanties",
+  "largeur": 1440,
+  "atteinte": true,
+  "defauts": 0,
+  "debordementPage": -6,
+  "horsEcran": [],
+  "menus": [],
+  "chevauchements": [],
+  "erreursJS": [],
+  "capture": "captures/garanties-1440.png"
+ },
+ {
+  "page": "admin",
+  "largeur": 1440,
+  "atteinte": false,
+  "defauts": 0,
+  "debordementPage": -6,
+  "horsEcran": [],
+  "menus": [],
+  "chevauchements": [],
+  "erreursJS": [],
+  "capture": "captures/admin-1440.png"
+ },
+ {
+  "page": "pricing",
+  "largeur": 1440,
+  "atteinte": false,
+  "defauts": 0,
+  "debordementPage": -6,
+  "horsEcran": [],
+  "menus": [],
+  "chevauchements": [],
+  "erreursJS": [],
+  "capture": "captures/pricing-1440.png"
+ },
+ {
+  "page": "settings",
+  "largeur": 1440,
+  "atteinte": true,
+  "defauts": 0,
+  "debordementPage": -6,
+  "horsEcran": [],
+  "menus": [],
+  "chevauchements": [],
+  "erreursJS": [],
+  "capture": "captures/settings-1440.png"
+ }
+]

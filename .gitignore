@@ -32,3 +32,6 @@ dist-ssr
 
 # État local du CLI Supabase (référence projet, URL de pooler) — ne doit pas être versionné
 supabase/.temp/
+
+# Audit d'interface (node scripts/audit-ui.cjs)
+audit-ui/

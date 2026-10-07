@@ -1,76 +1,73 @@
-# BatiGesti — SaaS gestion de chantiers BTP
+# Mallettico — logiciel de devis, factures et chantiers pour artisans du BTP
+
+Ex-BatiGesti / ChantierPro. Domaine : mallettico.fr. Fondateur solo (Hugo), qui l'utilise aussi pour son activité d'électricien.
+Feuille de route et tâches prêtes à exécuter : **`docs/feuille-de-route.md`** — à lire en début de session.
 
 ## Commandes
 
 ```bash
-npm run dev          # Dev server (port 5173)
-npm run build        # Build production (DOIT passer sans erreurs)
-npm run lint         # ESLint sur src/
-npm run check        # Lint + build (vérification complète)
-npm run smoke        # Smoke tests (imports, tables, orphelins, sécurité)
-npm run setup-hooks  # Installe le pre-push hook
+npm run dev            # serveur de dev (5173). Sans .env → mode démo ; ajouter ?demo=true pour des données riches
+npm test               # vitest — 126 tests, dont les 4 chemins de l'argent (src/lib/__tests__/parcours-argent.test.js)
+npm run lint           # ESLint — doit finir à 0 erreur (no-empty et no-console sont des erreurs)
+npm run build          # build de production — doit passer
+npm run smoke          # imports critiques, tables, secrets, fonctions Edge appelées mais absentes
+node scripts/audit-ui.cjs [page] [largeur]   # défauts d'affichage mesurés (après npm run build) → audit-ui/rapport.md
 ```
 
-> **Pre-push hook** : vérifie automatiquement les imports critiques, noms de tables, secrets et build avant chaque `git push`. S'installe auto via `npm install` ou manuellement via `npm run setup-hooks`.
+Le hook de pre-push rejoue smoke + tests + build. C'est une copie figée : après l'avoir modifié, `npm run setup-hooks`.
 
-## Stack
+## Flux de travail
 
-React 18 + Vite 5 + Tailwind 3.4 | Supabase (auth, DB, Edge Functions, Storage) | Zustand | Vercel
+- Chaque session de l'onglet Code travaille dans **son propre worktree**, créé depuis `main`. Au démarrage, vérifier que la branche contient le dernier `origin/main` (sinon la mettre à jour) : une session partie d'un vieux worktree travaille sur du code périmé (cas vécu : `elegant-pike`, créé en mars).
+- Ne jamais écrire dans la copie principale (`/Users/hugoseguin/Documents/chantierpro-app`) depuis un worktree : un garde-fou de l'application le bloque, et il ne faut pas le contourner.
+- Livrer, uniquement avec l'accord d'Hugo : `git push origin HEAD:main` (avance rapide), vérifier le statut GitHub du commit, puis `git -C /Users/hugoseguin/Documents/chantierpro-app pull --ff-only` pour remettre sa copie à jour.
 
-## Architecture
+## Avant de dire « c'est fait »
 
-- **SPA mono-page** : navigation via `setPage('nom')` dans App.jsx (pas de React Router)
-- **Multi-tenant** : `organization_id` + RLS sur toutes les tables
-- **Demo mode** : `isDemo` → localStorage au lieu de Supabase
-- **3 plans** : `gratuit` / `artisan` / `equipe` (IDs identiques DB ↔ frontend)
+Le motif récurrent de ce projet est la **panne verte** : un 200 OK, un « succeeded », un « 0 résultat » qui mentent. Ne jamais conclure sur une réponse ; vérifier l'effet.
+- supabase-js **ne lève pas** d'exception sur une erreur PostgREST : toujours tester `error`.
+- Une colonne inexistante dans un `select` fait échouer **toute** la requête (data = null).
+- Un déploiement se vérifie par le statut du commit sur GitHub (`gh api repos/seguinhugo06-lgtm/chantierpro/commits/<sha>/status`), jamais en rechargeant le site : le service worker sert l'ancienne version.
+- Un changement visible se vérifie dans un navigateur (mode démo), pas seulement au build.
 
-## Structure
+## Ce qu'il ne faut jamais faire
 
-```
-src/
-├── components/     # Pages et UI (isDark, couleur props)
-├── stores/         # Zustand stores (*Store.js)
-├── hooks/          # Custom hooks (use*.js)
-├── services/       # API services (*Service.js, *Api.js)
-├── lib/            # Utilitaires (validation.js, sentry.js, queryHelper.js)
-supabase/
-├── functions/      # Edge Functions (Deno, action-dispatch pattern)
-├── migrations/     # SQL migrations (numérotées 001-054)
-```
+- **`supabase db push`** : les migrations de ce projet s'appliquent à la main dans l'éditeur SQL. Écrire la migration, donner le SQL et la requête de contrôle, ne rien appliquer.
+- Pousser sur `main` sans accord explicite : `main` se déploie automatiquement en production (Vercel, deux projets).
+- Saisir des identifiants, clés ou mots de passe ; se connecter à un compte à la place d'Hugo.
+- Afficher sur le site une affirmation non vérifiable (faux avis, fausse statistique, « conforme » sans preuve) : l'honnêteté est une valeur du produit.
 
-## Points d'attention
+## Stack et architecture
 
-- Dark mode : prop `isDark` + variables thème (`cardBg`, `inputBg`), **jamais** `dark:` Tailwind
-- Couleur accent : prop `couleur` (hex) via `style` inline
-- Icônes : `lucide-react` uniquement
-- DB mapping : `fromSupabase()` / `toSupabase()` dans `useSupabaseSync.js`
-- Erreurs : `captureException()` depuis `src/lib/sentry.js` (prod only)
-- Edge Functions : toujours `corsHeaders` dans chaque réponse
+React 18 + Vite 5 + Tailwind 3.4 · Supabase (auth, Postgres + RLS, Edge Functions Deno, Storage) · Zustand · Vercel · PWA (vite-plugin-pwa).
+- SPA sans routeur : `setPage('nom')` dans `src/App.jsx` ; la page courante est persistée dans `localStorage.cp_current_page`.
+- Site marketing (`src/components/landing/`) affiché seulement si `!isDemo` ; routes publiques dans `src/main.jsx`.
+- Multi-tenant : `user_id` + `organization_id`, RLS sur toutes les tables (99/99).
+- Mode démo : `isDemo` (pas d'URL Supabase) → `localStorage` ; **piège** : un module peut marcher en démo et casser en réel (cas avéré : Réception/Garanties).
+- Plans : `gratuit` / `artisan` / `equipe` — prix réels 9,90 € et 19,90 € (tarif fondateur), dans `src/stores/subscriptionStore.js`.
+- Interrupteurs : `src/lib/fonctions.js` — `FONCTIONS.ia = false` masque la dictée vocale (Claude) et toute mention « IA ». Ne pas rallumer sans avoir traité la section IA de la feuille de route.
 
-## Règles détaillées
+## Conventions
 
-Voir `.claude/rules/` pour les conventions par domaine :
-- @.claude/rules/code-style.md — Formatting, naming, validation
-- @.claude/rules/supabase.md — Edge Functions, migrations, RLS, demo mode
-- @.claude/rules/components.md — Props, dark mode, responsive, navigation
-- @.claude/rules/subscriptions.md — Plans, gating, Stripe
-- @.claude/rules/testing.md — Build, qualité, Sentry
-- @.claude/rules/migrations.md — Migrations SQL (path: supabase/migrations/)
-- @.claude/rules/edge-functions.md — Edge Functions Deno (path: supabase/functions/)
+- Textes d'interface en français ; commits en anglais, préfixes conventionnels (`feat:`, `fix:`, `refactor:`, `test:`, `docs:`).
+- Noms du domaine en français (`devis`, `chantier`, `client`), technique en anglais.
+- Mode sombre : prop `isDark` + variables de thème (`cardBg`, `inputBg`…), **jamais** `dark:` de Tailwind.
+- Couleur d'accent : prop `couleur` (hex) en `style` inline.
+- Icônes : `lucide-react` uniquement.
+- Mapping base ↔ JS : `fromSupabase()` / `toSupabase()` (`src/hooks/useSupabaseSync.js`).
+- Erreurs : `captureException()` (`src/lib/sentry.js`) ; un `catch` vide est interdit par le lint — traiter l'erreur ou écrire pourquoi l'ignorer.
+- Journalisation : `logger.debug` (`src/lib/logger.js`), jamais `console.log`.
+- Fonctions Edge : `corsHeaders` dans chaque réponse ; vérifier l'appelant (l'anon key est publique).
+- Nouvelle migration : numéro suivant le dernier de `supabase/migrations/` (dernier : 071), idempotente, RLS activé.
 
-## Agents spécialisés
+## Pièges connus
 
-- @.claude/agents/code-reviewer.md — Revue de code (sécurité, patterns, qualité)
-- @.claude/agents/debugger.md — Debugging (build, runtime, Supabase)
-- @.claude/agents/feature-planner.md — Planification de features
+- **Deux générateurs de PDF** : `src/lib/devisHtmlBuilder.js` (page de signature) ET le générateur inline de `src/components/DevisPage.jsx` (aperçu et impression). Toute évolution du rendu touche les deux.
+- 45 migrations (023-054) ont été effacées du dépôt par le commit `227534e` ; elles sont récupérables : `git show 227534e^:supabase/migrations/<fichier>`. Le dépôt ne décrit pas exactement la production : en cas de doute sur une table ou une RPC, donner une requête de contrôle à exécuter.
+- Les pages publiques (signature, paiement `/pay/:token`, portail client) ne doivent jamais importer `App.jsx` statiquement.
+- Tester une modale : scoper les sélecteurs à `[role=dialog]` (des boutons homonymes existent derrière).
 
-## Skills (commandes)
+## Outils
 
-- `/nouveau-composant NomPage` — Génère un composant avec tous les patterns
-- `/migration description` — Crée une migration SQL complète
-- `/audit-qualite` — Audit complet du code
-
-## MCP Servers
-
-- **GitHub** : issues, PRs, code review (auth via `/mcp`)
-- **Sentry** : erreurs production, exceptions (auth via `/mcp`)
+- Puppeteer est installé : captures marketing et audit d'interface sans serveur (interception de requêtes servant `dist/`, voir `scripts/audit-ui.cjs`).
+- MCP GitHub et Sentry : nécessitent une autorisation via `/mcp` en session interactive.
