@@ -36,6 +36,7 @@ const Chantiers = lazyWithRetry(() => import('./components/Chantiers'), 'Chantie
 const TasksAndPlanning = lazyWithRetry(() => import('./components/tasks/TasksAndPlanning'), 'Tâches');
 const Clients = lazyWithRetry(() => import('./components/Clients'), 'Clients');
 const NouveauMotDePasse = lazyWithRetry(() => import('./components/auth/NouveauMotDePasse'), 'Mot de passe');
+const RetourModal = lazyWithRetry(() => import('./components/retours/RetourModal'), 'Retours');
 const DevisPage = lazyWithRetry(() => import('./components/DevisPage'), 'DevisPage');
 const Equipe = lazyWithRetry(() => import('./components/Equipe'), 'Équipe');
 const Catalogue = lazyWithRetry(() => import('./components/Catalogue'), 'Catalogue');
@@ -482,6 +483,7 @@ export default function App() {
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
+  const [showRetour, setShowRetour] = useState(false);
   const [showFABDevisWizard, setShowFABDevisWizard] = useState(false);
   const [showFABQuickClient, setShowFABQuickClient] = useState(false);
   const [showFABQuickChantier, setShowFABQuickChantier] = useState(false);
@@ -1614,6 +1616,14 @@ export default function App() {
 
         {/* Bottom actions - fixed at bottom */}
         <div className={`flex-shrink-0 p-2 border-t ${isDark ? 'border-slate-700' : 'border-[#ebebeb]'} space-y-1`}>
+          <button
+            onClick={() => { setShowRetour(true); setSidebarOpen(false); }}
+            className={`w-full flex items-center justify-center xl:justify-start gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-all active:scale-95 ${isDark ? 'text-slate-300 hover:bg-slate-800' : 'text-[#444] hover:bg-[#f5f5f5]'}`}
+            title="Signaler un problème ou proposer une idée"
+          >
+            <MessageCircle size={16} style={{ color: couleur }} />
+            <span className="md:hidden xl:inline">Un bug ? Une idée ?</span>
+          </button>
           <div className="flex gap-1 md:flex-col xl:flex-row">
             <button
               onClick={() => { const next = !modeDiscret; setModeDiscret(next); showToast(next ? 'Mode confidentiel activé — Montants masqués' : 'Mode confidentiel désactivé — Montants visibles', 'info'); }}
@@ -2092,6 +2102,11 @@ export default function App() {
 
       {/* Global Help Modal */}
       {showHelp && <HelpModal showHelp={showHelp} setShowHelp={setShowHelp} isDark={isDark} couleur={couleur} tc={tc} />}
+      {showRetour && (
+        <Suspense fallback={null}>
+          <RetourModal isOpen={showRetour} onClose={() => setShowRetour(false)} isDark={isDark} couleur={couleur} showToast={showToast} page={page} user={user} orgId={orgId} />
+        </Suspense>
+      )}
 
       {/* Onboarding Modal for first-time users */}
       {showOnboarding && <OnboardingModal setShowOnboarding={setShowOnboarding} isDark={isDark} couleur={couleur} />}

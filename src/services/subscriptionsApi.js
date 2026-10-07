@@ -86,6 +86,53 @@ export function choisirAbonnement(lignes = []) {
 }
 
 /**
+ * Une offre sans Stripe (code testeur) dont la date de fin est passée vaut le plan gratuit,
+ * même si la tâche nocturne de la base ne l'a pas encore repassée en gratuit.
+ * @param {object|null} abonnement
+ * @param {Date} [maintenant]
+ */
+export function appliquerFinOffre(abonnement, maintenant = new Date()) {
+  if (!abonnement || abonnement.stripe_subscription_id || !abonnement.plan || abonnement.plan === 'gratuit') return abonnement;
+  if (!abonnement.current_period_end || new Date(abonnement.current_period_end) >= maintenant) return abonnement;
+  return { ...abonnement, plan: 'gratuit', status: 'canceled', cancel_at_period_end: false };
+}
+
+const MESSAGES_CODE = {
+  CODE_INCONNU: 'Ce code n’existe pas. Vérifiez l’orthographe (tirets compris).',
+  CODE_EXPIRE: 'Ce code a expiré.',
+  CODE_EPUISE: 'Ce code a déjà été utilisé autant de fois que prévu.',
+  CODE_DEJA_UTILISE: 'Vous avez déjà utilisé ce code.',
+  ABONNEMENT_PAYANT_ACTIF: 'Vous avez déjà un abonnement payant actif : le code ne peut pas s’y ajouter.',
+  NON_CONNECTE: 'Votre session a expiré. Reconnectez-vous.',
+};
+
+/**
+ * Active un code testeur (« un an offert ») : plan payant pour N mois, sans carte bancaire.
+ * @param {string} code
+ * @returns {Promise<{ data: {plan: string, fin: string, duree_mois: number}|null, error: string|null }>}
+ */
+export async function utiliserCodeTesteur(code) {
+  const propre = String(code || '').trim().toUpperCase();
+  if (propre.length < 8) return { data: null, error: 'Saisissez le code complet (au moins 8 caractères).' };
+  if (isDemo || !supabase) {
+    // En démo : simulation locale, comme pour les changements de plan.
+    localStorage.setItem('cp_demo_plan', 'artisan');
+    const fin = new Date(); fin.setFullYear(fin.getFullYear() + 1);
+    return { data: { plan: 'artisan', fin: fin.toISOString(), duree_mois: 12 }, error: null };
+  }
+  const { data, error } = await supabase.rpc('utiliser_code_testeur', { p_code: propre });
+  if (error) {
+    const texte = `${error.message || ''} ${error.code || ''}`;
+    if (/utiliser_code_testeur/.test(texte) && /could not find|PGRST202/i.test(texte)) {
+      return { data: null, error: 'Les codes testeurs ne sont pas encore activés sur le serveur. Écrivez à contact@mallettico.fr.' };
+    }
+    const code = Object.keys(MESSAGES_CODE).find((k) => texte.includes(k));
+    return { data: null, error: code ? MESSAGES_CODE[code] : 'Le code n’a pas pu être activé. Réessayez dans un instant.' };
+  }
+  return { data, error: null };
+}
+
+/**
  * Abonnement en vigueur pour l'utilisateur : celui de son organisation s'il en a un, sinon le sien.
  * En cas d'erreur réseau, renvoie `error` (sans rien mettre en cache) : l'appelant garde l'état
  * courant et réessaie plus tard. Avant, une coupure était mémorisée comme « table absente » pour
@@ -133,7 +180,7 @@ export async function fetchSubscription(orgId) {
       return { data: null, error };
     }
 
-    const choisi = choisirAbonnement(lignes);
+    const choisi = choisirAbonnement((lignes || []).map((l) => appliquerFinOffre(l)));
     if (choisi) return { data: choisi, error: null };
 
     // Aucune ligne : on crée la ligne gratuite de l'utilisateur. L'organisation est rattachée

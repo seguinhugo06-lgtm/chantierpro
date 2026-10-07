@@ -12,7 +12,7 @@ import {
   Zap, Hammer, ExternalLink, Clock,
 } from 'lucide-react';
 import { useSubscriptionStore, PLANS, PLAN_ORDER, YEARLY_DISCOUNT } from '../../stores/subscriptionStore';
-import { createCheckoutSession, createPortalSession } from '../../services/subscriptionsApi';
+import { createCheckoutSession, createPortalSession, utiliserCodeTesteur } from '../../services/subscriptionsApi';
 import { toast } from '../../stores/toastStore';
 import { auth, isDemo } from '../../supabaseClient';
 import { useConfirm } from '../../context/AppContext';
@@ -47,8 +47,14 @@ export default function PlanPage({ isDark, couleur = '#f97316', setPage }) {
   const [loadingPlan, setLoadingPlan] = useState(null);
   const [cancelling, setCancelling] = useState(false);
 
+  // Code testeur (« un an offert ») : plan payant sans abonnement Stripe, avec date de fin.
+  const [codeTesteur, setCodeTesteur] = useState('');
+  const [codeEnCours, setCodeEnCours] = useState(false);
+  const [codeErreur, setCodeErreur] = useState('');
+
   // Derived
   const isPaid = planId !== 'gratuit';
+  const offreTesteur = isPaid && !sub?.stripe_subscription_id && !!sub?.current_period_end;
   const nextBilling = sub?.current_period_end
     ? new Date(sub.current_period_end).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
     : null;
@@ -178,7 +184,11 @@ export default function PlanPage({ isDark, couleur = '#f97316', setPage }) {
               <div>
                 <div className="flex items-center gap-2">
                   <h3 className={`text-lg font-bold ${textPrimary}`}>Plan {plan.name}</h3>
-                  {sub?.cancel_at_period_end ? (
+                  {offreTesteur ? (
+                    <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${isDark ? 'bg-emerald-500/20 text-emerald-300' : 'bg-emerald-50 text-emerald-700'}`}>
+                      OFFERT
+                    </span>
+                  ) : sub?.cancel_at_period_end ? (
                     <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-red-100 text-red-700">
                       ANNULATION PRÉVUE
                     </span>
@@ -195,18 +205,25 @@ export default function PlanPage({ isDark, couleur = '#f97316', setPage }) {
                     « Mensuel ». Mieux vaut ne rien dire que dire faux ; la période
                     exacte figure sur la page Stripe (« Mes factures et paiement »). */}
                 <p className={`text-sm font-medium ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                  {isPaid
+                  {offreTesteur
+                    ? `Offert jusqu'au ${nextBilling} — aucun prélèvement`
+                    : isPaid
                     ? `${plan.priceMonthly.toFixed(2).replace('.', ',')} € HT/mois${plan.offreLancement ? ` · ${plan.offreLancement}` : ''}`
                     : 'Gratuit — Découverte'
                   }
                 </p>
+                {offreTesteur && (
+                  <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                    Ensuite, vous repassez au plan Gratuit sans rien perdre, sauf si vous choisissez de vous abonner.
+                  </p>
+                )}
                 {nextBilling && !sub?.cancel_at_period_end && (
                   <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
                     <Clock size={11} className="inline mr-1" />
                     Prochaine facturation : {nextBilling}
                   </p>
                 )}
-                {sub?.cancel_at_period_end && nextBilling && (
+                {sub?.cancel_at_period_end && nextBilling && !offreTesteur && (
                   <p className="text-xs mt-0.5 text-red-500">
                     Accès jusqu'au {nextBilling}
                   </p>
@@ -216,7 +233,7 @@ export default function PlanPage({ isDark, couleur = '#f97316', setPage }) {
 
             {/* Actions */}
             <div className="flex items-center gap-2 flex-wrap">
-              {isPaid && !isDemo && (
+              {isPaid && !isDemo && !offreTesteur && (
                 <button
                   onClick={handlePortal}
                   disabled={portalLoading}
@@ -231,7 +248,7 @@ export default function PlanPage({ isDark, couleur = '#f97316', setPage }) {
                   )}
                 </button>
               )}
-              {isPaid && !sub?.cancel_at_period_end && (
+              {isPaid && !sub?.cancel_at_period_end && !offreTesteur && (
                 <button
                   onClick={handleCancel}
                   disabled={cancelling}
@@ -243,7 +260,7 @@ export default function PlanPage({ isDark, couleur = '#f97316', setPage }) {
                   {cancelling ? 'Annulation...' : 'Annuler'}
                 </button>
               )}
-              {sub?.cancel_at_period_end && (
+              {sub?.cancel_at_period_end && !offreTesteur && (
                 <button
                   onClick={handleReactivate}
                   className="px-4 py-2 rounded-xl text-xs font-bold text-white transition-all hover:shadow-lg"
@@ -255,6 +272,48 @@ export default function PlanPage({ isDark, couleur = '#f97316', setPage }) {
             </div>
           </div>
         </div>
+
+        {/* Code testeur */}
+        {!isPaid && (
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              setCodeErreur('');
+              setCodeEnCours(true);
+              const { data, error } = await utiliserCodeTesteur(codeTesteur);
+              setCodeEnCours(false);
+              if (error) { setCodeErreur(error); return; }
+              setSubscription({ ...(sub || {}), plan: data.plan, status: 'active', current_period_end: data.fin, cancel_at_period_end: true, stripe_subscription_id: null });
+              setCodeTesteur('');
+              toast.success('Code activé', `Plan ${PLANS[data.plan]?.name || data.plan} offert pendant ${data.duree_mois} mois.`);
+            }}
+            className={`rounded-xl border p-4 sm:p-5 mb-6 ${cardBg}`}
+          >
+            <label htmlFor="code-testeur" className={`block text-sm font-semibold mb-1 ${textPrimary}`}>Vous avez un code testeur ?</label>
+            <p className={`text-xs mb-3 ${textMuted}`}>Il débloque un plan payant pendant la durée prévue, sans carte bancaire.</p>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <input
+                id="code-testeur"
+                value={codeTesteur}
+                onChange={(e) => setCodeTesteur(e.target.value.toUpperCase())}
+                placeholder="EX. AMIS-ARTISANS-7K3PX9"
+                autoComplete="off"
+                autoCapitalize="characters"
+                spellCheck={false}
+                className={`flex-1 px-3 py-2.5 rounded-xl border text-sm tracking-wide ${isDark ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400' : 'bg-white border-slate-300'}`}
+              />
+              <button
+                type="submit"
+                disabled={codeEnCours || codeTesteur.trim().length < 8}
+                className="px-4 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
+                style={{ background: couleur }}
+              >
+                {codeEnCours ? 'Vérification…' : 'Activer'}
+              </button>
+            </div>
+            {codeErreur && <p role="alert" className="text-sm text-red-500 mt-2">{codeErreur}</p>}
+          </form>
+        )}
 
         {/* Plans comparison */}
         <div className="animate-fade-slide-up" style={{ animationDelay: '100ms' }}>
