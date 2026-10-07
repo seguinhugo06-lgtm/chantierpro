@@ -84,6 +84,7 @@ import LockBanner from './audit/LockBanner';
 import { getEntityHistory } from '../lib/auditService';
 import { getSnapshots } from '../lib/snapshotService';
 import useKeepInViewport from '../hooks/useKeepInViewport';
+import { mentionTvaReduiteHtml } from '../lib/mentionTvaReduite';
 
 // Email tracking : l'envoi passe par Resend (send-email) ; l'historique par document
 // n'est pas persisté côté client → statut vide (l'onglet « Emails » reste masqué).
@@ -1673,6 +1674,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   </div>
 
   ${isMicro ? '<div class="micro-mention">TVA non applicable, article 293 B du Code Général des Impôts</div>' : ''}
+
+  ${!isAvoirDoc ? mentionTvaReduiteHtml({ tvaDetails: calculatedTvaDetails, nomClient: formatClientName(client, ''), isMicro, isFacture }) : ''}
 
   <!-- CONDITIONS -->
   ${!isAvoirDoc ? `<div class="conditions">

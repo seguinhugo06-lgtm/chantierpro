@@ -7,7 +7,8 @@
  * - DevisSignaturePage.jsx (aperçu lecture seule)
  */
 
-import { filterValidLignes } from './formatters';
+import { filterValidLignes, formatClientName } from './formatters';
+import { mentionTvaReduiteHtml } from './mentionTvaReduite';
 
 /**
  * Formatte un RCS complet
@@ -353,6 +354,8 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mod
   </div>
 
   ${isMicro ? '<div class="micro-mention">TVA non applicable, article 293 B du Code Général des Impôts</div>' : ''}
+
+  ${mentionTvaReduiteHtml({ tvaDetails: calculatedTvaDetails, nomClient: formatClientName(client, ''), isMicro, isFacture })}
 
   ${isFacture && doc.facture_type === 'solde' ? '<div style="margin-top:10px;font-size:7pt;color:#64748b;font-style:italic;">Solde de tout compte conformément à l\'article L441-3 du Code de commerce.</div>' : ''}
 
