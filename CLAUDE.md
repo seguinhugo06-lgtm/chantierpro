@@ -12,6 +12,7 @@ npm run lint           # ESLint — doit finir à 0 erreur (no-empty et no-conso
 npm run build          # build de production — doit passer
 npm run smoke          # imports critiques, tables, secrets, fonctions Edge appelées mais absentes
 node scripts/audit-ui.cjs [page] [largeur]   # défauts d'affichage mesurés (après npm run build) → audit-ui/rapport.md
+npm run banc:migrations # applique, rejoue et vérifie les migrations sur un PostgreSQL WebAssembly (socle Supabase simulé)
 ```
 
 Le hook de pre-push rejoue smoke + tests + build. C'est une copie figée : après l'avoir modifié, `npm run setup-hooks`.
@@ -34,7 +35,7 @@ Le motif récurrent de ce projet est la **panne verte** : un 200 OK, un « succe
 
 ## Ce qu'il ne faut jamais faire
 
-- **`supabase db push`** : les migrations de ce projet s'appliquent à la main dans l'éditeur SQL. Écrire la migration, donner le SQL et la requête de contrôle, ne rien appliquer.
+- **`supabase db push`** : les migrations de ce projet s'appliquent à la main dans l'éditeur SQL. Écrire la migration, la faire passer au banc (`npm run banc:migrations`, en y ajoutant ses vérifications), donner le SQL et la requête de contrôle, ne rien appliquer.
 - Pousser sur `main` sans accord explicite : `main` se déploie automatiquement en production (Vercel, deux projets).
 - Saisir des identifiants, clés ou mots de passe ; se connecter à un compte à la place d'Hugo.
 - Afficher sur le site une affirmation non vérifiable (faux avis, fausse statistique, « conforme » sans preuve) : l'honnêteté est une valeur du produit.

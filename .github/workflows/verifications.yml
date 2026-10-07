@@ -1,4 +1,4 @@
-# Vérifications à chaque push et pull request : lint, tests, build, smoke.
+# Vérifications à chaque push et pull request : lint, tests, build, smoke, migrations.
 #
 # Le hook de pre-push ne protège que la machine où il est installé (et c'est une copie figée).
 # Ici, GitHub rejoue les mêmes contrôles pour tout ce qui arrive sur le dépôt : un commit rouge
@@ -42,3 +42,6 @@ jobs:
 
       - name: Smoke
         run: npm run smoke
+
+      - name: Migrations (PostgreSQL WebAssembly, socle Supabase simulé)
+        run: npm run banc:migrations

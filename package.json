@@ -12,6 +12,7 @@
     "lint": "eslint src/ --ext .js,.jsx",
     "check": "npm run lint && npm run test && npm run build",
     "smoke": "bash scripts/smoke-test.sh",
+    "banc:migrations": "node scripts/banc-migrations.mjs",
     "precheck": "bash scripts/smoke-test.sh",
     "setup-hooks": "cp scripts/pre-push.sh .git/hooks/pre-push && chmod +x .git/hooks/pre-push && echo '✓ Git hooks installed'",
     "postinstall": "[ -d .git ] && npm run setup-hooks || true",
@@ -50,6 +51,7 @@
     "zustand": "^5.0.10"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.2.17",
     "@types/react": "^18.2.43",
     "@types/react-dom": "^18.2.17",
     "@vitejs/plugin-react": "^4.2.1",
