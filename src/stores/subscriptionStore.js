@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { FONCTIONS } from '../lib/fonctions';
 
 /**
  * Subscription & Freemium Store (Zustand)
@@ -158,6 +159,14 @@ export const PLANS = {
     support: 'prioritaire'
   }
 };
+
+// La dictée vocale (IA) est masquée tant que FONCTIONS.ia est éteint : on retire
+// ses lignes des listes affichées (tarifs, plan, FAQ) sans toucher aux limites.
+if (!FONCTIONS.ia) {
+  for (const plan of Object.values(PLANS)) {
+    if (Array.isArray(plan.featureLabels)) plan.featureLabels = plan.featureLabels.filter((f) => !/dict[ée]e/i.test(f.name));
+  }
+}
 
 // Yearly discount percentage
 export const YEARLY_DISCOUNT = 17;

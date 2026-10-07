@@ -32,6 +32,7 @@ import InterventionForm from './chantiers/InterventionForm';
 import { getReception, createReception, updateReserve as updateReserveService, leverToutesReserves } from '../services/receptionService';
 import { getByChantier as getGarantiesByChantier, GARANTIE_TYPES } from '../services/garantieService';
 import { getByChantier as getInterventionsByChantier, create as createIntervention } from '../services/interventionService';
+import { FONCTIONS } from '../lib/fonctions';
 
 const PHOTO_CATS = ['avant', 'pendant', 'après', 'litige'];
 
@@ -616,7 +617,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                     style={{ background: couleur }}
                   >
                     <Sparkles size={14} />
-                    <span className="hidden sm:inline">IA Tâches</span>
+                    <span className="hidden sm:inline">{FONCTIONS.ia ? 'IA Tâches' : 'Tâches types'}</span>
                   </button>
                 </div>
               </div>
@@ -975,10 +976,10 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                   <button
                     onClick={() => setShowTaskGenerator(true)}
                     className={`px-2.5 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}
-                    title="Compléter avec l'IA"
+                    title={FONCTIONS.ia ? 'Compléter avec l\'IA' : 'Compléter avec des tâches types'}
                   >
                     <Sparkles size={13} style={{ color: couleur }} />
-                    IA
+                    {FONCTIONS.ia ? 'IA' : 'Tâches types'}
                   </button>
                 )}
               </div>

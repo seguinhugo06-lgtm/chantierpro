@@ -6,6 +6,7 @@
  */
 
 import React, { useState } from 'react';
+import { FONCTIONS } from '../../lib/fonctions';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Monitor,
@@ -56,7 +57,7 @@ const HOW_IT_WORKS = [
     step: 3,
     icon: FileText,
     title: 'Cr\u00e9ez votre premier devis',
-    description: 'En 2 minutes, cr\u00e9ez un devis professionnel. Utilisez la dict\u00e9e vocale IA ou votre catalogue pour aller encore plus vite.',
+    description: 'En 2 minutes, cr\u00e9ez un devis professionnel. ' + (FONCTIONS.ia ? 'Utilisez la dict\u00e9e vocale IA ou votre catalogue pour aller encore plus vite.' : 'Partez de votre catalogue pour aller encore plus vite.'),
   },
   {
     step: 4,

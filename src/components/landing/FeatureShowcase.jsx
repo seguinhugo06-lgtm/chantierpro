@@ -20,8 +20,9 @@ import {
 } from 'lucide-react';
 import { ScrollReveal } from './animations';
 import FeatureBlock from './FeatureBlock';
+import { FONCTIONS } from '../../lib/fonctions';
 
-const FEATURES = [
+const TOUTES_FEATURES = [
   {
     icon: Mic,
     iconColor: '#f97316',
@@ -192,6 +193,9 @@ const FEATURES = [
     screenshotSrc: '/screenshots/equipe.png',
   },
 ];
+
+// La dictée vocale (IA) est masquée tant que FONCTIONS.ia est éteint.
+const FEATURES = TOUTES_FEATURES.filter((f) => FONCTIONS.ia || f.href !== '/fonctionnalites/dictee-vocale');
 
 export default function FeatureShowcase() {
   return (

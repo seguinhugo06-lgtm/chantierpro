@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { FONCTIONS } from '../../lib/fonctions';
 
 export default function HelpModal({ showHelp, setShowHelp, isDark, couleur, tc }) {
   const [helpSection, setHelpSection] = useState('overview');
@@ -208,6 +209,9 @@ export default function HelpModal({ showHelp, setShowHelp, isDark, couleur, tc }
   };
 
   const currentSection = helpSections[helpSection];
+
+  // La dictée vocale (IA) est masquée tant que FONCTIONS.ia est éteint.
+  if (!FONCTIONS.ia) delete helpSections.dictee;
 
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in" onClick={() => setShowHelp(false)}>

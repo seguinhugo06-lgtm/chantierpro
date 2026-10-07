@@ -6,6 +6,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { FONCTIONS } from '../../lib/fonctions';
 import { CheckCircle, ArrowRight, Sparkles, FileText, PenTool, Camera, Settings } from 'lucide-react';
 import { useSubscriptionStore, PLANS } from '../../stores/subscriptionStore';
 
@@ -85,7 +86,9 @@ export default function CheckoutSuccess({ isDark, couleur, setPage }) {
   const sub = useSubscriptionStore((s) => s.subscription);
   const plan = PLANS[planId] || PLANS.gratuit;
 
-  const suggestions = PLAN_SUGGESTIONS[planId] || PLAN_SUGGESTIONS.artisan;
+  // Les promesses « IA » sont masquées tant que FONCTIONS.ia est éteint.
+  const suggestions = (PLAN_SUGGESTIONS[planId] || PLAN_SUGGESTIONS.artisan)
+    .filter((s) => FONCTIONS.ia || !/\bIA\b/.test(s.text));
   const userEmail = sub?.user_email || 'votre adresse email';
 
   const nextBilling = sub?.current_period_end

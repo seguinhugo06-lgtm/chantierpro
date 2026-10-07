@@ -86,6 +86,7 @@ import { usePWA } from './hooks/usePWA';
 import { registerNetworkListeners, getPendingCount, syncQueue, clearAllMutations, checkConnectivity } from './lib/offline/sync';
 import OfflineIndicator from './components/ui/OfflineIndicator';
 import EntrepriseSwitcher from './components/ui/EntrepriseSwitcher';
+import { FONCTIONS } from './lib/fonctions';
 
 // Safe string renderer — prevents "Objects are not valid as React child" (#310)
 const safeStr = (v, fallback = '') => {
@@ -1583,6 +1584,7 @@ export default function App() {
 
           {/* RIGHT GROUP: Actions */}
           <div className="flex items-center gap-1 sm:gap-1.5">
+            {FONCTIONS.ia && (<>
             {/* Dictée vocale — l'atout malin, accessible depuis n'importe quelle page */}
             <button
               onClick={() => setShowDictee(true)}
@@ -1594,6 +1596,7 @@ export default function App() {
               <Mic size={18} />
               <span className="hidden lg:inline">Dicter</span>
             </button>
+            </>)}
 
             {/* Search button - mobile only (icon) */}
             <button
@@ -1946,7 +1949,7 @@ export default function App() {
       {showOnboarding && <OnboardingModal setShowOnboarding={setShowOnboarding} isDark={isDark} couleur={couleur} />}
 
       {/* Dictée vocale — client + chantier + devis en une seule prise de parole */}
-      {showDictee && (
+      {FONCTIONS.ia && showDictee && (
         <Suspense fallback={null}>
           <DicteeModal
             isOpen={showDictee}
@@ -2385,7 +2388,7 @@ function HelpModal({ showHelp, setShowHelp, isDark, couleur, tc }) {
           { q: 'Comment changer mon plan ?', a: 'Dans Paramètres, vous pouvez voir votre plan actuel et évoluer vers Artisan ou Équipe pour débloquer plus de fonctionnalités.' },
           { q: 'Comment exporter mes données comptables ?', a: 'Dans Finances > Export Comptable, exportez vos données au format FEC, CSV ou compatible Pennylane/Indy.' },
           { q: 'Comment fonctionne la trésorerie ?', a: 'Dans Finances > Trésorerie, visualisez vos flux de trésorerie en temps réel avec un prévisionnel automatique.' },
-          { q: 'Comment utiliser l\'IA Devis ?', a: 'Prenez une photo du chantier ou décrivez les travaux. L\'IA génère automatiquement un devis détaillé. (Inclus dans tous les plans)' },
+          ...(FONCTIONS.ia ? [{ q: 'Comment utiliser l\'IA Devis ?', a: 'Prenez une photo du chantier ou décrivez les travaux. L\'IA génère automatiquement un devis détaillé. (Inclus dans tous les plans)' }] : []),
           { q: 'Comment relancer un client ?', a: 'Mallettico détecte les devis en attente et vous propose des relances automatiques par email.' },
           { q: 'Comment ajouter un acompte ?', a: 'Lors de la création de la facture d\'acompte, indiquez le pourcentage souhaité. Le solde sera calculé automatiquement.' },
           { q: 'Les données sont-elles sécurisées ?', a: 'Oui, vos données sont chiffrées et hébergées en Europe. Nous sommes conformes RGPD.' },

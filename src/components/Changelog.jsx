@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { FONCTIONS } from '../lib/fonctions';
 import { ArrowLeft, Sparkles, Bug, Zap, Shield, Package, ChevronDown, ChevronUp } from 'lucide-react';
 
 const CHANGELOG = [
@@ -70,7 +71,7 @@ const CHANGELOG = [
       { type: 'new', text: 'Module Sous-Traitants avec conformité documentaire' },
       { type: 'new', text: 'Commandes Fournisseurs avec gestion de stock' },
       { type: 'new', text: 'Trésorerie temps réel avec prévisionnel' },
-      { type: 'new', text: 'IA Devis : analyse photo de chantier' },
+      ...(FONCTIONS.ia ? [{ type: 'new', text: 'IA Devis : analyse photo de chantier' }] : []),
       { type: 'new', text: 'Carnet d\'Entretien numérique' },
       { type: 'new', text: 'Module Signatures électroniques' },
       { type: 'new', text: 'Export comptable (FEC, CSV, Pennylane, Indy)' },

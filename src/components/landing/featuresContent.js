@@ -5,6 +5,8 @@
  * Pas de claims marketing invérifiables (cf. refonte honnêteté du 19 juil. 2026).
  */
 
+import { FONCTIONS } from '../../lib/fonctions';
+
 export const FEATURES_CONTENT = {
   'dictee-vocale': {
     slug: 'dictee-vocale',
@@ -394,5 +396,9 @@ export const FEATURES_CONTENT = {
     related: ['chantiers', 'tresorerie'],
   },
 };
+
+// La dictée vocale (IA) est masquée tant que FONCTIONS.ia est éteint :
+// sans entrée, /fonctionnalites/dictee-vocale redirige vers /fonctionnalites.
+if (!FONCTIONS.ia) delete FEATURES_CONTENT['dictee-vocale'];
 
 export const FEATURE_SLUGS = Object.keys(FEATURES_CONTENT);
