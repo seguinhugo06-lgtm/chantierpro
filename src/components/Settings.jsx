@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useToast } from '../context/AppContext';
-import { Download, FileSpreadsheet, FileText, RefreshCw, CheckCircle, AlertCircle, Calendar, ExternalLink, Calculator, Building2, ArrowLeft, Trash2, Shield, Search, ChevronDown, ChevronRight, Zap, Palette, FileCheck, BellRing, Package, Check, X, Loader2, Home, Smartphone, Fuel, Archive, Landmark, BarChart3, CreditCard, Users, Link2, Settings2, HardDrive, FolderOpen, Construction, Receipt, Mail, Sparkles, ClipboardList, GraduationCap } from 'lucide-react';
-import supabase, { auth, isDemo } from '../supabaseClient';
+import { Download, FileSpreadsheet, FileText, RefreshCw, CheckCircle, AlertCircle, Calendar, ExternalLink, Calculator, Building2, ArrowLeft, Shield, Search, ChevronDown, ChevronRight, Zap, Palette, FileCheck, BellRing, Package, Check, X, Loader2, Home, Smartphone, Fuel, Archive, Landmark, BarChart3, CreditCard, Users, Link2, Settings2, HardDrive, FolderOpen, Construction, Receipt, Mail, Sparkles, ClipboardList, GraduationCap } from 'lucide-react';
+import supabase, { isDemo } from '../supabaseClient';
 import { captureException } from '../lib/sentry';
 import AdminHelp from './admin-help/AdminHelp';
 import {
@@ -22,6 +22,7 @@ import { useRelances } from '../hooks/useRelances';
 import { compressImage } from '../lib/image-utils';
 import { useOrg } from '../context/OrgContext';
 import TemplateManager from './settings/TemplateManager';
+import SuppressionCompte from './settings/SuppressionCompte';
 import PostChantierSettings from './settings/PostChantierSettings';
 
 // ── Tab groups for mobile navigation ────────────────────────────────────────
@@ -135,6 +136,40 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
     userId: user?.id,
     orgId,
   });
+
+  // Droit d'accès et à la portabilité (RGPD art. 15 et 20) : TOUTES les données, pas des compteurs.
+  // Sert aussi avant une suppression de compte (les factures se conservent 10 ans).
+  const exporterDonneesRGPD = () => {
+    try {
+      const rgpdData = {
+        export_type: 'RGPD - Droit d\'accès et portabilité (art. 15 et 20)',
+        date: new Date().toISOString(),
+        utilisateur: {
+          email: user?.email || 'Mode démo',
+          id: user?.id || 'demo',
+          date_inscription: user?.created_at || null,
+        },
+        entreprise,
+        donnees: { clients, devis_et_factures: devis, chantiers, depenses },
+        consentements: (() => {
+          try {
+            const c = localStorage.getItem('cp_cookie_consent');
+            return c ? JSON.parse(c) : { info: 'Aucun consentement enregistré' };
+          } catch { return { info: 'Consentements illisibles sur cet appareil' }; }
+        })(),
+      };
+      const blob = new Blob([JSON.stringify(rgpdData, null, 2)], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `mallettico_export_donnees_${new Date().toISOString().split('T')[0]}.json`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+      showToast('Export de vos données téléchargé', 'success');
+    } catch (e) {
+      captureException(e, { context: 'export RGPD' });
+      showToast('Erreur lors de l\'export de vos données', 'error');
+    }
+  };
 
   // Theme classes
   const cardBg = isDark ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200";
@@ -1823,129 +1858,16 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
 
             {/* Export RGPD */}
             <button
-              onClick={() => {
-                try {
-                  const rgpdData = {
-                    export_type: 'RGPD - Droit d\'accès (Art. 15)',
-                    date: new Date().toISOString(),
-                    utilisateur: {
-                      email: user?.email || 'Mode démo',
-                      id: user?.id || 'demo',
-                      date_inscription: user?.created_at || null,
-                    },
-                    entreprise: {
-                      nom: entreprise.nom,
-                      adresse: entreprise.adresse,
-                      siret: entreprise.siret,
-                      email: entreprise.email,
-                      telephone: entreprise.tel,
-                    },
-                    donnees: {
-                      clients: clients.map(c => ({ nom: c.nom, prenom: c.prenom, email: c.email, telephone: c.telephone, adresse: c.adresse })),
-                      nombre_devis: devis.filter(d => d.type === 'devis').length,
-                      nombre_factures: devis.filter(d => d.type === 'facture').length,
-                      nombre_chantiers: chantiers.length,
-                      nombre_depenses: depenses.length,
-                    },
-                    consentements: (() => {
-                      try {
-                        const c = localStorage.getItem('cp_cookie_consent');
-                        return c ? JSON.parse(c) : { info: 'Aucun consentement enregistré' };
-                      } catch { return {}; }
-                    })(),
-                  };
-                  const json = JSON.stringify(rgpdData, null, 2);
-                  const blob = new Blob([json], { type: 'application/json' });
-                  const a = document.createElement('a');
-                  a.href = URL.createObjectURL(blob);
-                  a.download = `mallettico_rgpd_export_${new Date().toISOString().split('T')[0]}.json`;
-                  a.click();
-                  URL.revokeObjectURL(a.href);
-                  showToast('Export RGPD téléchargé', 'success');
-                } catch {
-                  showToast('Erreur lors de l\'export RGPD', 'error');
-                }
-              }}
+              onClick={exporterDonneesRGPD}
               className={`flex items-center gap-2 px-5 py-3 rounded-xl font-medium transition-all hover:shadow-lg ${isDark ? 'bg-blue-600 text-white hover:bg-blue-500' : 'bg-blue-500 text-white hover:bg-blue-600'}`}
             >
               <Download size={18} />
-              Exporter mes données personnelles
+              Exporter toutes mes données
             </button>
           </div>
 
-          {/* Danger Zone — Suppression de compte */}
-          <div className={`rounded-xl sm:rounded-2xl border-2 p-4 sm:p-6 ${isDark ? 'bg-red-950/20 border-red-800/50' : 'bg-red-50 border-red-300'}`}>
-            <h3 className={`font-semibold mb-2 flex items-center gap-2 ${isDark ? 'text-red-400' : 'text-red-600'}`}>
-              <Trash2 size={18} />
-              Zone de danger
-            </h3>
-            <p className={`text-sm mb-2 ${isDark ? 'text-red-300/80' : 'text-red-700/80'}`}>
-              <strong>Supprimer mon compte et mes données.</strong> Cette action est irréversible. Toutes vos données (devis, factures, clients, chantiers) seront définitivement supprimées.
-            </p>
-            <p className={`text-xs mb-4 ${isDark ? 'text-red-400/60' : 'text-red-600/60'}`}>
-              Nous vous recommandons d'exporter vos données avant de procéder.
-            </p>
-            <button
-              onClick={async () => {
-                const confirmation = prompt('Tapez "SUPPRIMER" pour confirmer la suppression définitive de votre compte et de toutes vos données :');
-                if (confirmation !== 'SUPPRIMER') {
-                  if (confirmation !== null) showToast('Suppression annulée — texte incorrect', 'info');
-                  return;
-                }
-                try {
-                  // LEGAL-002: Delete all user data from Supabase first
-                  if (supabase && !isDemo) {
-                    const { error: rpcError } = await supabase.rpc('delete_user_data');
-                    if (rpcError) {
-                      console.error('Server-side deletion failed:', rpcError);
-                      // Fallback: try manual deletion of key tables
-                      const uid = (await auth.getCurrentUser())?.id;
-                      if (uid) {
-                        await Promise.allSettled([
-                          supabase.from('devis').delete().eq('user_id', uid),
-                          supabase.from('chantiers').delete().eq('user_id', uid),
-                          supabase.from('clients').delete().eq('user_id', uid),
-                          supabase.from('articles').delete().eq('user_id', uid),
-                          supabase.from('memos').delete().eq('user_id', uid),
-                          supabase.from('events').delete().eq('user_id', uid),
-                          supabase.from('entreprise').delete().eq('user_id', uid),
-                        ]);
-                      }
-                    }
-                  }
-                  // Clear all localStorage
-                  const keys = Object.keys(localStorage).filter(k => k.startsWith('cp_') || k.startsWith('mallettico'));
-                  keys.forEach(k => localStorage.removeItem(k));
-                  // Clear IndexedDB offline store — on ne peut pas promettre une
-                  // suppression « définitive » si la base locale survit sur l'appareil.
-                  let localResiduel = false;
-                  try {
-                    indexedDB.deleteDatabase('mallettico-offline');
-                  } catch (e) {
-                    localResiduel = true;
-                    console.error('[Settings] Base hors-ligne non supprimée:', e);
-                    captureException(e, { context: 'suppression compte: IndexedDB non supprimée' });
-                  }
-                  // Sign out
-                  await auth.signOut();
-                  showToast(
-                    localResiduel
-                      ? 'Compte supprimé côté serveur. Des données restent sur cet appareil : videz les données du site dans votre navigateur.'
-                      : 'Compte et données supprimés définitivement',
-                    localResiduel ? 'warning' : 'success',
-                  );
-                  window.location.reload();
-                } catch (e) {
-                  console.error('Account deletion error:', e);
-                  showToast('Erreur lors de la suppression', 'error');
-                }
-              }}
-              className={`flex items-center gap-2 px-5 py-3 rounded-xl font-medium transition-all ${isDark ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-red-500 text-white hover:bg-red-600'}`}
-            >
-              <Trash2 size={18} />
-              Supprimer mon compte
-            </button>
-          </div>
+          {/* Danger Zone — Suppression de compte (RPC supprimer_mon_compte, migration 072) */}
+          <SuppressionCompte isDark={isDark} showToast={showToast} onExporter={exporterDonneesRGPD} />
         </div>
       )}
 
