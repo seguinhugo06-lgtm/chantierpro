@@ -12,6 +12,7 @@
 
 import jsPDF from 'jspdf';
 import { subscription } from '../stores/subscriptionStore';
+import { remettreFichier } from './natif';
 
 // ============ CONSTANTS ============
 
@@ -814,14 +815,7 @@ export async function generateChantierPDF(data, entreprise, options = {}) {
  * Download a PDF blob as a file
  */
 export function downloadReportPDF(blob, filename) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  return remettreFichier(blob, filename, 'application/pdf');
 }
 
 /**

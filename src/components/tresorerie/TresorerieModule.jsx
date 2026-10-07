@@ -32,6 +32,7 @@ import { useExportComptable } from '../../hooks/useExportComptable';
 import useKeepInViewport from '../../hooks/useKeepInViewport';
 import { formatClientName } from '../../lib/formatters';
 import KPICard from '../ui/KPICard';
+import { remettreFichier } from '../../lib/natif';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -2769,10 +2770,8 @@ export default function TresorerieModule({
                     : tvaMonthly.map(m => `${m.mois};${m.collectee.toFixed(2)};${m.deductible.toFixed(2)};${(m.collectee - m.deductible).toFixed(2)}`);
                   const csv = 'Période;TVA Collectée;TVA Déductible;Solde TVA\n' + rows.join('\n');
                   const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement('a'); a.href = url; a.download = `resume_tva_${new Date().getFullYear()}.csv`; a.click();
-                  URL.revokeObjectURL(url);
-                  toast.success('Résumé TVA exporté', 'Le fichier CSV a été téléchargé.');
+                  remettreFichier(blob, `resume_tva_${new Date().getFullYear()}.csv`)
+                    .then((r) => { if (r !== 'annule') toast.success('Résumé TVA exporté', 'Le fichier CSV est prêt.'); });
                 }}
                   className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-colors ${isDark ? 'bg-emerald-900/30 hover:bg-emerald-900/50 text-emerald-300' : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700'}`}
                   title="Exporter le résumé TVA en CSV">

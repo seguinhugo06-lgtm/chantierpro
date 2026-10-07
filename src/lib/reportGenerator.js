@@ -5,6 +5,7 @@
 
 import jsPDF from 'jspdf';
 import supabase, { isDemo } from '../supabaseClient';
+import { remettreFichier } from './natif';
 
 /**
  * @typedef {Object} ChantierData
@@ -620,14 +621,7 @@ export async function generatePhotoReport(chantierId, options = {}) {
  * @param {string} filename - Filename
  */
 export function downloadPDF(blob, filename) {
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+  return remettreFichier(blob, filename, 'application/pdf');
 }
 
 /**

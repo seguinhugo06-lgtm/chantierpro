@@ -6,6 +6,7 @@
 
 import jsPDF from 'jspdf';
 import { subscription } from '../stores/subscriptionStore';
+import { remettreFichier } from './natif';
 
 const METEO_LABELS = {
   ensoleille: 'Ensoleillé',
@@ -447,5 +448,5 @@ export function downloadRapportPDF(rapport, chantier, options = {}) {
   const doc = generateRapportChantierPDF(rapport, chantier, options);
   const chantierName = (chantier?.nom || 'chantier').replace(/[^a-zA-Z0-9àâäéèêëïîôùûüÿçÀÂÄÉÈÊËÏÎÔÙÛÜŸÇ -]/g, '').replace(/\s+/g, '_');
   const dateStr = rapport.date || new Date().toISOString().split('T')[0];
-  doc.save(`Rapport_${chantierName}_${dateStr}.pdf`);
+  return remettreFichier(doc.output('blob'), `Rapport_${chantierName}_${dateStr}.pdf`, 'application/pdf');
 }

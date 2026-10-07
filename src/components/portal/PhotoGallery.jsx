@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { X, ChevronLeft, ChevronRight, Download, Calendar, ZoomIn } from 'lucide-react';
 import Button from '../ui/Button';
+import { remettreFichier } from '../../lib/natif';
 
 /**
  * Format date to French locale
@@ -93,14 +94,7 @@ export default function PhotoGallery({ isOpen, onClose, photos = [], chantierNam
     try {
       const response = await fetch(photo.url);
       const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `chantier-photo-${photo.id}.jpg`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
+      await remettreFichier(blob, `chantier-photo-${photo.id}.jpg`, 'image/jpeg');
     } catch (error) {
       console.error('Download failed:', error);
     }

@@ -1,0 +1,17 @@
+{
+  "appId": "fr.mallettico.app",
+  "appName": "Mallettico",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  },
+  "ios": {
+    "contentInset": "never"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchAutoHide": true,
+      "backgroundColor": "#f97316"
+    }
+  }
+}

@@ -19,6 +19,7 @@ import {
   ChevronRight,
   Mail,
 } from 'lucide-react';
+import { remettreFichier } from '../../lib/natif';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -42,13 +43,7 @@ const endOfMonth = (d) => new Date(d.getFullYear(), d.getMonth() + 1, 0);
 
 const downloadFile = (content, filename, mimeType = 'text/csv') => {
   const blob = new Blob([content], { type: `${mimeType};charset=utf-8;` });
-  const link = document.createElement('a');
-  link.href = URL.createObjectURL(blob);
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(link.href);
+  return remettreFichier(blob, filename);
 };
 
 // ─── Accounting mapping ─────────────────────────────────────────────────────

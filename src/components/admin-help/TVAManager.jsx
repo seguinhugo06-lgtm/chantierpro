@@ -3,6 +3,7 @@ import {
   Euro, TrendingUp, TrendingDown, Calculator,
   AlertTriangle, HelpCircle, ArrowLeft, Download, FileText, ClipboardList
 } from 'lucide-react';
+import { remettreFichier } from '../../lib/natif';
 
 /**
  * TVAManager - Gestion TVA multi-taux BTP (simplifié)
@@ -207,12 +208,7 @@ export default function TVAManager({
 
     const csv = rows.map(r => r.join(';')).join('\n');
     const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `TVA_CA3_${selectedPeriod}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    remettreFichier(blob, `TVA_CA3_${selectedPeriod}.csv`);
   };
 
   const fmt = (n) => n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });

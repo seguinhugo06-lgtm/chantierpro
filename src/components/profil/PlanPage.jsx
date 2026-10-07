@@ -16,6 +16,7 @@ import { createCheckoutSession, createPortalSession, utiliserCodeTesteur } from 
 import { toast } from '../../stores/toastStore';
 import { auth, isDemo } from '../../supabaseClient';
 import { useConfirm } from '../../context/AppContext';
+import { ouvrirLienExterne } from '../../lib/natif';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -72,7 +73,7 @@ export default function PlanPage({ isDark, couleur = '#f97316', setPage }) {
         toast.success('Plan activé !', `Bienvenue dans le plan ${PLANS[targetPlanId]?.name || targetPlanId}`);
         return;
       }
-      if (result.url) window.location.href = result.url;
+      if (result.url) await ouvrirLienExterne(result.url, { memeOnglet: true });
     } catch { toast.error('Paiement indisponible', 'Contactez-nous à contact@mallettico.fr pour souscrire.'); }
     finally { setLoadingPlan(null); }
   }, [billing, planId, setSubscription]);
@@ -103,7 +104,7 @@ export default function PlanPage({ isDark, couleur = '#f97316', setPage }) {
       }
       // Même onglet : Safari bloque un window.open lancé après un await (fenêtre jugée non sollicitée),
       // et le portail Stripe ramène ensuite ici par son lien de retour.
-      window.location.href = result.url;
+      await ouvrirLienExterne(result.url, { memeOnglet: true });
       return true;
     } catch {
       toast.error(echecTitre, 'Écrivez-nous à contact@mallettico.fr, nous le faisons pour vous.');

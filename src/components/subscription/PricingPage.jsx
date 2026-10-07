@@ -15,6 +15,7 @@ import { useSubscriptionStore, PLANS, PLAN_ORDER, YEARLY_DISCOUNT } from '../../
 import { createCheckoutSession } from '../../services/subscriptionsApi';
 import { toast } from '../../stores/toastStore';
 import { isDemo } from '../../supabaseClient';
+import { ouvrirLienExterne } from '../../lib/natif';
 
 const PLAN_ICONS = { gratuit: Zap, artisan: Hammer, equipe: Users };
 
@@ -347,7 +348,7 @@ export default function PricingPage({ isDark, couleur, setPage }) {
       }
 
       // Production → redirect Stripe
-      if (result.url) window.location.href = result.url;
+      if (result.url) await ouvrirLienExterne(result.url, { memeOnglet: true });
     } catch {
       toast.error('Erreur', 'Une erreur est survenue');
     } finally {

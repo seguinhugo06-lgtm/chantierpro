@@ -21,6 +21,7 @@ import {
 } from '../../services/subscriptionsApi';
 import { toast } from '../../stores/toastStore';
 import { isDemo } from '../../supabaseClient';
+import { ouvrirLienExterne } from '../../lib/natif';
 
 const PLAN_ICONS = {
   gratuit: Zap,
@@ -129,7 +130,7 @@ export default function BillingDashboard({ isDark, couleur }) {
         toast.success('Plan mis à jour', `Vous êtes maintenant sur le plan ${PLANS[targetPlanId].name}`);
         return;
       }
-      if (result.url) window.location.href = result.url;
+      if (result.url) await ouvrirLienExterne(result.url, { memeOnglet: true });
     } finally {
       setLoadingAction(null);
     }

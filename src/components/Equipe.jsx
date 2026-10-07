@@ -18,6 +18,7 @@ import { usePermissions } from '../hooks/usePermissions';
 import { ReadOnlyBanner } from './ui/PermissionGate';
 import PageHeader from './ui/PageHeader';
 import TabBar from './ui/TabBar';
+import { remettreFichier } from '../lib/natif';
 
 // Lazy-load optional heavy dependencies to prevent crashes
 let NoteModal = null;
@@ -646,12 +647,10 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
       ]);
     });
     const csv = rows.map(r => r.join(';')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `heures_${formatLocalDate(weekStart)}.csv`;
-    a.click();
-    showToast('Export CSV téléchargé', 'success');
+    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
+    remettreFichier(blob, `heures_${formatLocalDate(weekStart)}.csv`)
+      .then((r) => { if (r !== 'annule') showToast('Export CSV prêt', 'success'); })
+      .catch(() => showToast('Export impossible', 'error'));
   };
 
   // ====== EXPORT PAIE CSV (payroll-ready) ======
@@ -749,13 +748,11 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
     rows.push([]);
     rows.push(['', '', '', 'TOTAL', '', '', '', '', '', totalH.toFixed(2), '', '', '', '', '']);
 
-    const csv = '\uFEFF' + rows.map(r => r.map(c => `"${c}"`).join(';')).join('\n');
+    const csv = '\uFEFF' + rows.map(r => r.map(c => `"${String(c ?? '').replace(/"/g, '""')}"`).join(';')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `paie_${periodLabel.replace(/\s/g, '_')}.csv`;
-    a.click();
-    showToast(`Export paie téléchargé (${Object.keys(byEmployee).length} employés)`, 'success');
+    remettreFichier(blob, `paie_${periodLabel.replace(/\s/g, '_')}.csv`)
+      .then((r) => { if (r !== 'annule') showToast(`Export paie prêt (${Object.keys(byEmployee).length} employés)`, 'success'); })
+      .catch(() => showToast('Export impossible', 'error'));
   };
 
   const getHeuresMois = (empId) => {

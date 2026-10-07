@@ -85,6 +85,7 @@ import { getEntityHistory } from '../lib/auditService';
 import { getSnapshots } from '../lib/snapshotService';
 import useKeepInViewport from '../hooks/useKeepInViewport';
 import { mentionTvaReduiteHtml } from '../lib/mentionTvaReduite';
+import { remettreFichier, estNatif } from '../lib/natif';
 
 // Email tracking : l'envoi passe par Resend (send-email) ; l'historique par document
 // n'est pas persisté côté client → statut vide (l'onglet « Emails » reste masqué).
@@ -1818,25 +1819,12 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   const fallbackHtmlPrint = (content, doc) => {
     const filename = `${doc.facture_type === 'avoir' ? 'Avoir' : doc.type === 'facture' ? 'Facture' : 'Devis'}_${doc.numero}.html`;
 
-    if (isMobile()) {
+    if (isMobile() || estNatif()) {
+      // Pas de fenêtre d'impression sur téléphone : on partage le document (feuille de partage du système).
       const blob = new Blob([content], { type: 'text/html;charset=utf-8' });
-      const url = URL.createObjectURL(blob);
-
-      if (navigator.share && navigator.canShare) {
-        const file = new File([blob], filename, { type: 'text/html' });
-        if (navigator.canShare({ files: [file] })) {
-          navigator.share({
-            files: [file],
-            title: `${doc.type === 'facture' ? 'Facture' : 'Devis'} ${doc.numero}`,
-          }).catch(() => {
-            triggerDownload(url, filename);
-          });
-          return;
-        }
-      }
-
-      triggerDownload(url, filename);
-      showToast('Fichier téléchargé - Ouvrez-le et utilisez "Imprimer" > "Enregistrer en PDF"', 'info');
+      remettreFichier(blob, filename, 'text/html', { titre: `${doc.type === 'facture' ? 'Facture' : 'Devis'} ${doc.numero}` })
+        .then((r) => { if (r === 'telecharge') showToast('Fichier téléchargé — ouvrez-le puis « Imprimer » › « Enregistrer en PDF »', 'info'); })
+        .catch(() => showToast('Impossible de préparer le document', 'error'));
     } else {
       const w = window.open('', '_blank');
       if (!w) {
@@ -1847,17 +1835,6 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       w.document.close();
       setTimeout(() => w.print(), 500);
     }
-  };
-
-  // Helper for download
-  const triggerDownload = (url, filename) => {
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(url), 100);
   };
 
   // Batch export all filtered documents as PDFs
@@ -1905,12 +1882,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     });
     const csv = BOM + [headers, ...rows].map(r => r.join(';')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `export-${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    remettreFichier(blob, `export-${new Date().toISOString().split('T')[0]}.csv`);
     showToast(`${docs.length} document${docs.length > 1 ? 's' : ''} exporté${docs.length > 1 ? 's' : ''} en CSV`, 'success');
   };
 

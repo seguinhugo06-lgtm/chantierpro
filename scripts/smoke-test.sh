@@ -214,6 +214,21 @@ else
 fi
 rm -f /tmp/smoke_edge_manquantes.txt
 
+# ─── 8. Fichiers remis hors de src/lib/natif.js ───
+# Un <a download> ne fait rien dans l'app iOS / Android : tout fichier généré passe par
+# remettreFichier() (feuille de partage sur téléphone, téléchargement sur ordinateur).
+echo ""
+echo "📱 8. Vérification des téléchargements (app native)..."
+TELECHARGEMENTS=$(grep -rnE "\.download\s*=|\.save\(\`" src/ --include="*.js" --include="*.jsx" 2>/dev/null \
+  | grep -v "lib/natif.js" | grep -v "/landing/" | grep -v "__tests__" || true)
+if [ -n "$TELECHARGEMENTS" ]; then
+  while IFS= read -r ligne; do
+    error "Téléchargement direct (passer par remettreFichier de src/lib/natif.js) : ${ligne:0:140}"
+  done <<< "$TELECHARGEMENTS"
+else
+  ok "Tous les fichiers passent par remettreFichier()"
+fi
+
 # ─── Summary ──────────────────────────────────────
 echo ""
 echo "═══════════════════════════════════════════════"

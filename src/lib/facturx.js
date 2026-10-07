@@ -6,6 +6,7 @@
  *
  * @see https://fnfe-mpe.org/factur-x/
  */
+import { remettreFichier } from './natif';
 
 // ─── Helpers ──────────────────────────────────────────────────
 
@@ -691,12 +692,7 @@ export function downloadFacturXML(invoice, client, entreprise) {
     : generateFacturXML(invoice, client, entreprise);
 
   const blob = new Blob([xml], { type: 'application/xml' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = `${invoice.numero}_facturx.xml`;
-  link.click();
-  URL.revokeObjectURL(url);
+  return remettreFichier(blob, `${invoice.numero}_facturx.xml`);
 }
 
 export default {

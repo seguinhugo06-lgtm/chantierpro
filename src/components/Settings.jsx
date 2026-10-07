@@ -24,6 +24,7 @@ import { useOrg } from '../context/OrgContext';
 import TemplateManager from './settings/TemplateManager';
 import SuppressionCompte from './settings/SuppressionCompte';
 import PostChantierSettings from './settings/PostChantierSettings';
+import { remettreFichier } from '../lib/natif';
 
 // ── Tab groups for mobile navigation ────────────────────────────────────────
 const TAB_GROUPS = [
@@ -159,12 +160,9 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
         })(),
       };
       const blob = new Blob([JSON.stringify(rgpdData, null, 2)], { type: 'application/json' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = `mallettico_export_donnees_${new Date().toISOString().split('T')[0]}.json`;
-      a.click();
-      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-      showToast('Export de vos données téléchargé', 'success');
+      remettreFichier(blob, `mallettico_export_donnees_${new Date().toISOString().split('T')[0]}.json`)
+        .then((r) => { if (r !== 'annule') showToast('Export de vos données prêt', 'success'); })
+        .catch((e) => { captureException(e, { context: 'export RGPD' }); showToast('Erreur lors de l\'export de vos données', 'error'); });
     } catch (e) {
       captureException(e, { context: 'export RGPD' });
       showToast('Erreur lors de l\'export de vos données', 'error');
@@ -499,12 +497,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
 
     const csvContent = [headers, ...rows].map(row => row.join(';')).join('\n');
     const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `Export_Comptable_${exportYear}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    remettreFichier(blob, `Export_Comptable_${exportYear}.csv`);
     setShowExportModal(false);
   };
 
@@ -1720,12 +1713,9 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                   };
                   const json = JSON.stringify(exportData, null, 2);
                   const blob = new Blob([json], { type: 'application/json' });
-                  const a = document.createElement('a');
-                  a.href = URL.createObjectURL(blob);
-                  a.download = `mallettico_backup_${new Date().toISOString().split('T')[0]}.json`;
-                  a.click();
-                  URL.revokeObjectURL(a.href);
-                  showToast('Export global téléchargé', 'success');
+                  remettreFichier(blob, `mallettico_backup_${new Date().toISOString().split('T')[0]}.json`)
+                    .then((r) => { if (r !== 'annule') showToast('Export global prêt', 'success'); })
+                    .catch(() => showToast('Erreur lors de l\'export', 'error'));
                 } catch (err) {
                   showToast('Erreur lors de l\'export', 'error');
                 }

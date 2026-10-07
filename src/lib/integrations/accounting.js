@@ -4,6 +4,7 @@
  */
 
 import { logger } from '../logger';
+import { remettreFichier } from '../natif';
 
 // Types d'integration supportees
 export const INTEGRATION_TYPES = {
@@ -391,14 +392,7 @@ export const generateFEC = (invoices, expenses, clients, chantiers, entreprise, 
  */
 export const downloadFile = (content, filename, mimeType = 'text/csv') => {
   const blob = new Blob([content], { type: `${mimeType};charset=utf-8` });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+  return remettreFichier(blob, filename);
 };
 
 /**

@@ -17,6 +17,7 @@ import { ReadOnlyBanner } from './ui/PermissionGate';
 import TabBar from './ui/TabBar';
 import PageHeader from './ui/PageHeader';
 import useKeepInViewport from '../hooks/useKeepInViewport';
+import { remettreFichier } from '../lib/natif';
 
 /**
  * Chargés à la demande : la bibliothèque d'ouvrages embarque à elle seule
@@ -815,13 +816,11 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
       const marge = getMargeBrute(c.prix, c.prixAchat);
       rows.push([c.reference || '', c.nom, c.description || '', c.categorie, c.unite, c.tva_rate || c.tva || 20, c.prix, c.prixAchat || '', marge !== null ? marge.toFixed(1) : '', c.stock_actuel ?? '', c.stock_seuil_alerte ?? '', c.favori ? 'Oui' : '']);
     });
-    const csv = rows.map(r => r.map(v => `"${v}"`).join(';')).join('\n');
+    const csv = rows.map(r => r.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(';')).join('\n');
     const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `catalogue_${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-    showToast('Export CSV téléchargé', 'success');
+    remettreFichier(blob, `catalogue_${new Date().toISOString().split('T')[0]}.csv`)
+      .then((r) => { if (r !== 'annule') showToast('Export CSV prêt', 'success'); })
+      .catch(() => showToast('Export impossible', 'error'));
   };
 
   // ====== MOUVEMENTS EXPORT ======
@@ -833,13 +832,11 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
       const type = m.type === 'in' || m.type === 'entree' ? 'Entrée' : m.type === 'out' || m.type === 'sortie' ? 'Sortie' : m.type === 'return' ? 'Retour' : 'Ajustement';
       rows.push([new Date(m.date).toLocaleDateString('fr-FR'), article?.nom || m.articleNom || '?', article?.reference || '', type, m.quantite, ch?.nom || '', m.raison || m.motif || '']);
     });
-    const csv = rows.map(r => r.map(v => `"${v}"`).join(';')).join('\n');
+    const csv = rows.map(r => r.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(';')).join('\n');
     const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `mouvements_${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-    showToast('Export mouvements téléchargé', 'success');
+    remettreFichier(blob, `mouvements_${new Date().toISOString().split('T')[0]}.csv`)
+      .then((r) => { if (r !== 'annule') showToast('Export mouvements prêt', 'success'); })
+      .catch(() => showToast('Export impossible', 'error'));
   };
 
   // ====== FILTERED MOUVEMENTS ======

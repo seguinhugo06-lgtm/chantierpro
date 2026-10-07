@@ -7,6 +7,7 @@ import { createPortalSession } from '../../services/subscriptionsApi';
 import { supprimerMonCompte, messageErreurSuppression } from '../../services/suppressionCompte';
 import { captureException } from '../../lib/sentry';
 import Modal, { ModalHeader, ModalTitle, ModalBody, ModalFooter } from '../ui/Modal';
+import { ouvrirLienExterne } from '../../lib/natif';
 
 const MOT_CLE = 'SUPPRIMER';
 
@@ -39,7 +40,7 @@ export default function SuppressionCompte({ isDark, showToast, onExporter }) {
   const ouvrirPortail = async () => {
     const { url, error } = await createPortalSession();
     if (error || !url) { showToast('Impossible d’ouvrir la gestion de l’abonnement. Réessayez.', 'error'); return; }
-    window.location.href = url;
+    await ouvrirLienExterne(url, { memeOnglet: true });
   };
 
   const confirmer = async () => {

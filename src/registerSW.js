@@ -4,10 +4,12 @@
  */
 
 import { registerSW } from 'virtual:pwa-register';
+import { Capacitor } from '@capacitor/core';
 import { logger } from './lib/logger';
 
-// Check if we're in a browser environment
-const isSupported = 'serviceWorker' in navigator;
+// Pas de service worker dans l'app native : les fichiers y sont déjà embarqués, et un cache SW
+// y servirait d'anciennes versions après une mise à jour de l'app (comme il le fait sur le web).
+const isSupported = 'serviceWorker' in navigator && !Capacitor.isNativePlatform();
 
 /**
  * @typedef {Object} SWRegistrationOptions

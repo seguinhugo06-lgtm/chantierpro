@@ -11,6 +11,7 @@
 
 import { useCallback } from 'react';
 import { formatClientName } from '../lib/formatters';
+import { remettreFichier } from '../lib/natif';
 
 const MONTH_NAMES = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
 
@@ -26,12 +27,7 @@ function downloadCSV(rows, filename) {
   }).join(',')).join('\n');
 
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
+  return remettreFichier(blob, filename);
 }
 
 /**

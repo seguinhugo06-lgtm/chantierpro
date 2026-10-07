@@ -12,6 +12,7 @@
 
 import { PDFDocument, PDFName, PDFString, PDFHexString, PDFDict, PDFArray, PDFNumber, PDFRawStream } from 'pdf-lib';
 import { generateFacturXML, generateFacturXMLBasic, selectProfile, validateFacturX } from './facturx';
+import { remettreFichier } from './natif';
 
 /**
  * Embed Factur-X XML into a PDF and add PDF/A-3 metadata
@@ -249,37 +250,10 @@ export async function generateAndDownloadFacturX(invoice, client, entreprise, ht
   // Step 3: Embed XML and add PDF/A-3 metadata
   const facturxPdfBytes = await generateFacturXPDF(basePdfBytes, invoice, client || {}, entreprise || {});
 
-  // Step 4: Trigger download
+  // Step 4: remettre le fichier (feuille de partage sur téléphone et dans l'app, téléchargement sur ordinateur)
   const blob = new Blob([facturxPdfBytes], { type: 'application/pdf' });
-  const url = URL.createObjectURL(blob);
-
   const filename = `${invoice.facture_type === 'avoir' ? 'Avoir' : 'Facture'}_${invoice.numero}.pdf`;
-
-  // Try native share on mobile
-  if (isMobileDevice() && navigator.share && navigator.canShare) {
-    const file = new File([blob], filename, { type: 'application/pdf' });
-    if (navigator.canShare({ files: [file] })) {
-      try {
-        await navigator.share({
-          files: [file],
-          title: `Facture ${invoice.numero}`,
-        });
-        return;
-      } catch (e) {
-        // User cancelled or share failed — fall through to download
-        if (e.name === 'AbortError') return;
-      }
-    }
-  }
-
-  // Standard download
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  setTimeout(() => URL.revokeObjectURL(url), 100);
+  return remettreFichier(blob, filename, 'application/pdf', { titre: `Facture ${invoice.numero}` });
 }
 
 // ─── Helpers ──────────────────────────────────────────────────
