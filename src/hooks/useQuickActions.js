@@ -10,6 +10,7 @@ import { toast } from '../stores/toastStore';
 import { useModal, useMultiModal } from './useModal';
 import { useData } from '../context/DataContext';
 import { buildDocumentHTML, getEntrepriseFromStorage } from '../lib/pdfHtmlBuilder';
+import { urlPublique } from '../lib/urlPublique';
 
 /**
  * @typedef {'devis' | 'facture' | 'chantier' | 'client'} ItemType
@@ -408,7 +409,7 @@ export function useQuickActions(config) {
     async (id = itemId) => {
       return executeAction('partager', async () => {
         // Generate share URL
-        const shareUrl = `${window.location.origin}/share/${type}/${id}`;
+        const shareUrl = urlPublique(`/share/${type}/${id}`);
 
         // Copy to clipboard
         await navigator.clipboard.writeText(shareUrl);

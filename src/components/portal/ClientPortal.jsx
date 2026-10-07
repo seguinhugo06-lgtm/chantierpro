@@ -12,6 +12,7 @@ import ChantierTimeline from './ChantierTimeline';
 import PhotoGallery from './PhotoGallery';
 import supabase from '../../supabaseClient';
 import { getPortalData } from '../../services/portalService';
+import { urlPublique } from '../../lib/urlPublique';
 
 // ─── Demo data ──────────────────────────────────────────────────────
 const DEMO_DATA = {
@@ -544,7 +545,7 @@ export default function ClientPortal({
   // ont pas).
   const handlePayFacture = (facture) => {
     if (!facture?.payment_token) return;
-    window.open(`${window.location.origin}/pay/${facture.payment_token}`, '_blank', 'noopener');
+    window.open(urlPublique(`/pay/${facture.payment_token}`), '_blank', 'noopener');
   };
 
   const handleViewPhotos = (chantier) => {

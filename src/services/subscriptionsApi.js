@@ -7,6 +7,7 @@
 
 import { supabase, isDemo } from '../supabaseClient';
 import { PLANS, PLAN_ORDER } from '../stores/subscriptionStore';
+import { urlPublique } from '../lib/urlPublique';
 
 // ─── Demo defaults ─────────────────────────────────────────────────────────
 
@@ -266,7 +267,7 @@ export async function createCheckoutSession(planId, interval = 'monthly') {
   }
 
   try {
-    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://mallettico.fr';
+    const origin = urlPublique('').replace(/\/$/, '');
     const { data, error } = await supabase.functions.invoke('subscription-billing', {
       body: {
         action: 'create-checkout',
@@ -295,7 +296,7 @@ export async function createPortalSession() {
   }
 
   try {
-    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://mallettico.fr';
+    const origin = urlPublique('').replace(/\/$/, '');
     const { data, error } = await supabase.functions.invoke('subscription-billing', {
       body: { action: 'create-portal', returnUrl: origin }
     });

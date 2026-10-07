@@ -86,6 +86,7 @@ import { getSnapshots } from '../lib/snapshotService';
 import useKeepInViewport from '../hooks/useKeepInViewport';
 import { mentionTvaReduiteHtml } from '../lib/mentionTvaReduite';
 import { remettreFichier, estNatif } from '../lib/natif';
+import { urlPublique } from '../lib/urlPublique';
 
 // Email tracking : l'envoi passe par Resend (send-email) ; l'historique par document
 // n'est pas persisté côté client → statut vide (l'onglet « Emails » reste masqué).
@@ -1889,7 +1890,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   // ============================================================================
   // Signature link generation
   // ============================================================================
-  const buildSignatureUrl = (token) => token ? `${window.location.origin}/devis/signer/${token}` : null;
+  const buildSignatureUrl = (token) => token ? urlPublique(`/devis/signer/${token}`) : null;
 
   const getOrGenerateSignatureToken = async (doc) => {
     // Return existing valid token
@@ -5574,7 +5575,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                   {d.signature_token && (
                     <button onClick={(e) => {
                       e.stopPropagation();
-                      const url = `${window.location.origin}/devis/signer/${d.signature_token}`;
+                      const url = urlPublique(`/devis/signer/${d.signature_token}`);
                       navigator.clipboard?.writeText(url).then(() => showToast('Lien copié !', 'success')).catch(() => showToast('Copie échouée', 'error'));
                     }} className={`p-1.5 rounded-lg transition-all ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`} title="Copier le lien de signature">
                       <Link2 size={13} className={isDark ? 'text-slate-500' : 'text-slate-400'} />

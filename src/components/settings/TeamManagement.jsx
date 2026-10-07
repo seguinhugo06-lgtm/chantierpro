@@ -8,6 +8,7 @@ import { usePermissions } from '../../hooks/usePermissions';
 import { getRoleLabel, getRoleDescription, getInvitableRoles } from '../../lib/permissions';
 import { useConfirm, useToast } from '../../context/AppContext';
 import { useSubscriptionStore } from '../../stores/subscriptionStore';
+import { urlPublique } from '../../lib/urlPublique';
 
 const INVITABLE_ROLES = getInvitableRoles();
 
@@ -109,7 +110,7 @@ export default function TeamManagement({ isDark, couleur = '#F97316' }) {
 
       // Send invitation email via Edge Function (Resend)
       if (data.email && data.token) {
-        const inviteLink = `${window.location.origin}/invitation/${data.token}`;
+        const inviteLink = urlPublique(`/invitation/${data.token}`);
         const roleLabel = getRoleLabel(data.role);
 
         try {
@@ -203,7 +204,7 @@ export default function TeamManagement({ isDark, couleur = '#F97316' }) {
 
   // Copy invitation link
   const copyInviteLink = (token) => {
-    const url = `${window.location.origin}/invitation/${token}`;
+    const url = urlPublique(`/invitation/${token}`);
     navigator.clipboard?.writeText(url)
       .then(() => showToast('Lien copié !', 'success'))
       .catch(() => showToast('Copie échouée', 'error'));

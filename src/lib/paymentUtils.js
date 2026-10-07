@@ -6,6 +6,7 @@
  *
  * @module paymentUtils
  */
+import { urlPublique } from './urlPublique';
 
 // ─── Fee Constants ──────────────────────────────────────────────────
 
@@ -278,10 +279,7 @@ export function getProviderLabel(provider) {
  * @returns {string}
  */
 export function buildPaymentUrl(token) {
-  const origin = typeof window !== 'undefined'
-    ? window.location.origin
-    : 'https://mallettico.fr';
-  return `${origin}/pay/${token}`;
+  return urlPublique(`/pay/${token}`);
 }
 
 /**

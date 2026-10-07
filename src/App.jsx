@@ -89,6 +89,7 @@ import { registerNetworkListeners, getPendingCount, syncQueue, clearAllMutations
 import OfflineIndicator from './components/ui/OfflineIndicator';
 import EntrepriseSwitcher from './components/ui/EntrepriseSwitcher';
 import { FONCTIONS } from './lib/fonctions';
+import { estNatif } from './lib/natif';
 
 // Safe string renderer — prevents "Objects are not valid as React child" (#310)
 const safeStr = (v, fallback = '') => {
@@ -793,6 +794,19 @@ export default function App() {
     return () => window.removeEventListener('storage', handleStorage);
   }, [page]);
 
+  // Bouton retour d'Android (app native) : revenir à l'accueil avant de quitter l'app,
+  // au lieu de la fermer d'un coup depuis n'importe quelle page.
+  useEffect(() => {
+    if (!estNatif()) return undefined;
+    let actif = true;
+    let poignee = null;
+    import('@capacitor/app').then(({ App: AppNatif }) => AppNatif.addListener('backButton', () => {
+      if (page !== 'dashboard') setPage('dashboard');
+      else AppNatif.exitApp();
+    })).then((h) => { if (actif) poignee = h; else h.remove(); });
+    return () => { actif = false; poignee?.remove(); };
+  }, [page]); // eslint-disable-line react-hooks/exhaustive-deps -- setPage est stable
+
   // Redirect legacy page IDs to new consolidated pages
   // Must depend on [page] so redirects fire whenever page changes (not just on mount)
   useEffect(() => {
@@ -1445,7 +1459,7 @@ export default function App() {
       {sidebarOpen && <div className="fixed inset-0 bg-black/50 z-40 md:hidden" onClick={() => setSidebarOpen(false)} />}
 
       {/* Sidebar - Optimized mobile layout with collapsed icons-only mode on md-xl */}
-      <aside className={`fixed top-0 left-0 z-50 h-full ${isDark ? 'bg-slate-900 border-r border-slate-700' : 'bg-white border-r border-[#ebebeb]'} transform transition-all duration-200 flex flex-col
+      <aside className={`fixed top-0 left-0 z-50 h-full pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] ${isDark ? 'bg-slate-900 border-r border-slate-700' : 'bg-white border-r border-[#ebebeb]'} transform transition-all duration-200 flex flex-col
         ${sidebarOpen ? 'w-64 translate-x-0 shadow-2xl' : '-translate-x-full'}
         md:translate-x-0 md:w-[72px] xl:w-64 md:shadow-none`}>
         {/* Header with close button on mobile */}
@@ -1655,7 +1669,7 @@ export default function App() {
       {/* Main content */}
       <div className={`md:pl-[72px] xl:pl-64 min-h-screen overflow-x-hidden pb-14 lg:pb-0 ${isDark ? 'bg-slate-900' : 'bg-[#fafafa]'}`}>
         {/* Header - Optimized for mobile with proper left/right distribution */}
-        <header className={`sticky top-0 z-30 border-b px-2 sm:px-4 py-2 flex items-center justify-between ${isDark ? 'border-slate-700' : 'border-[#ebebeb]'}`}>
+        <header className={`sticky top-0 z-30 border-b px-2 sm:px-4 pb-2 pt-[calc(0.5rem_+_env(safe-area-inset-top))] flex items-center justify-between ${isDark ? 'border-slate-700' : 'border-[#ebebeb]'}`}>
           {/* Le flou est porté par un calque et non par <header> : un backdrop-filter sur un ancêtre
               enfermerait les fonds et panneaux position:fixed des menus dans la hauteur de l'en-tête. */}
           <div aria-hidden="true" className={`absolute inset-0 -z-10 backdrop-blur-xl ${isDark ? 'bg-slate-900/95' : 'bg-white/80'}`} />
@@ -1898,7 +1912,7 @@ export default function App() {
         </ErrorBoundary>
 
         {/* Page content */}
-        <main id="main-content" key={page} className={`${page === 'dashboard' || page === 'profil' || page === 'plan' ? '' : 'p-3 sm:p-4 lg:p-6'} ${tc.text} max-w-[1800px] mx-auto pb-20 md:pb-0 overflow-x-hidden animate-fade-in`}>
+        <main id="main-content" key={page} className={`${page === 'dashboard' || page === 'profil' || page === 'plan' ? '' : 'p-3 sm:p-4 lg:p-6'} ${tc.text} max-w-[1800px] mx-auto pb-[calc(5rem_+_env(safe-area-inset-bottom))] md:pb-0 overflow-x-hidden animate-fade-in`}>
           <ErrorBoundary isDark={isDark} showDetails={true}>
             <Suspense fallback={<div className="flex items-center justify-center py-12"><div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: `${couleur}33`, borderTopColor: couleur }} /></div>}>
               {page === 'dashboard' && <Dashboard clients={clients} devis={devis} chantiers={chantiers} events={planningEvents} depenses={depenses} pointages={pointages} equipe={equipe} ajustements={ajustements} catalogue={catalogue} entreprise={entreprise} getChantierBilan={getChantierBilan} addDevis={addDevis} setPage={setPage} setSelectedChantier={setSelectedChantier} setSelectedDevis={setSelectedDevis} setCreateMode={setCreateMode} modeDiscret={modeDiscret} setModeDiscret={setModeDiscret} couleur={couleur} isDark={isDark} showHelp={showHelp} setShowHelp={setShowHelp} user={user} onOpenSearch={() => setShowSearch(true)} memos={memos} addMemo={addMemo} toggleMemo={toggleMemo} />}

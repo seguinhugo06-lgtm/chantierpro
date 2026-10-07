@@ -3,22 +3,27 @@ import { ArrowLeft, Shield, FileText, Scale, Lock } from 'lucide-react';
 
 // ─── Mallettico SaaS Company Info (editor) ────────────────────────────────────
 // Update these values with the actual company details before launch
+// Identité de l'éditeur. À COMPLÉTER par Hugo dès l'immatriculation (structure, SIRET, adresse).
+// Les anciennes valeurs (« Mallettico SAS », SIRET 123 456 789 00012, 12 rue de la Tech,
+// 01 23 45 67 89, médiateur CM2C) étaient fictives : mieux vaut « en cours » que du faux.
+// Un champ à null n'est pas affiché.
 const COMPANY = {
-  nom: 'Mallettico SAS',
-  forme: 'SAS (Société par Actions Simplifiée)',
-  capital: '1 000',
-  adresse: '12 rue de la Tech, 75011 Paris, France',
-  siret: '123 456 789 00012',
-  rcs: 'Paris B 123 456 789',
-  tva: 'FR12 123456789',
+  nom: 'Hugo Seguin — Mallettico',
+  forme: 'Entreprise en cours d’immatriculation',
+  capital: null,
+  adresse: null,
+  siret: 'en cours d’attribution',
+  rcs: null,
+  tva: null,
   email: 'contact@mallettico.fr',
-  tel: '01 23 45 67 89',
-  dpo: 'dpo@mallettico.fr',
+  tel: null,
+  dpo: 'contact@mallettico.fr',
   directeur: 'Hugo Seguin',
-  qualite: 'Président',
-  hebergeur: 'Vercel Inc., 440 N Baxter St, Coppell, TX 75019, USA — https://vercel.com',
-  mediateur: 'CM2C — 14 rue Saint-Jean, 75017 Paris — https://cm2c.net — contact@cm2c.net',
+  qualite: 'Éditeur et directeur de la publication',
+  hebergeur: 'Vercel Inc., 440 N Barranca Ave #4133, Covina, CA 91723, États-Unis — https://vercel.com',
+  mediateur: null,
 };
+const ADRESSE = COMPANY.adresse || 'communiquée sur demande à contact@mallettico.fr (immatriculation en cours)';
 
 export default function LegalPages({ page, isDark, couleur, setPage }) {
   // Theme classes
@@ -71,13 +76,13 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
         </P>
         <UL>
           <li>Forme juridique : {COMPANY.forme}</li>
-          <li>Capital social : {COMPANY.capital} euros</li>
-          <li>Siège social : {COMPANY.adresse}</li>
+          {COMPANY.capital && <li>Capital social : {COMPANY.capital} euros</li>}
+          <li>Siège social : {ADRESSE}</li>
           <li>SIRET : {COMPANY.siret}</li>
-          <li>RCS : {COMPANY.rcs}</li>
-          <li>Numéro de TVA intracommunautaire : {COMPANY.tva}</li>
+          {COMPANY.rcs && <li>RCS : {COMPANY.rcs}</li>}
+          {COMPANY.tva && <li>Numéro de TVA intracommunautaire : {COMPANY.tva}</li>}
           <li>Email : {COMPANY.email}</li>
-          <li>Téléphone : {COMPANY.tel}</li>
+          {COMPANY.tel && <li>Téléphone : {COMPANY.tel}</li>}
         </UL>
       </Section>
 
@@ -128,12 +133,12 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
               </tr>
               <tr className={`border-b ${tableBorder}`}>
                 <td className={`px-4 py-3 font-medium ${textPrimary}`}>Artisan</td>
-                <td className={`px-4 py-3 ${textSecondary}`}>9,90 EUR / mois HT (ou 99 EUR / an HT) — tarif fondateur, prix normal 14,90 EUR / mois HT</td>
+                <td className={`px-4 py-3 ${textSecondary}`}>9,90 EUR / mois HT (ou 99 EUR / an HT) — tarif fondateur, conservé tant que l'abonnement reste actif</td>
                 <td className={`px-4 py-3 ${textSecondary}`}>Idéal pour les artisans indépendants. Devis, factures, clients et chantiers illimités, signatures électroniques, export comptable.</td>
               </tr>
               <tr>
                 <td className={`px-4 py-3 font-medium ${textPrimary}`}>Équipe</td>
-                <td className={`px-4 py-3 ${textSecondary}`}>19,90 EUR / mois HT (ou 199 EUR / an HT) — tarif fondateur, prix normal 29,90 EUR / mois HT</td>
+                <td className={`px-4 py-3 ${textSecondary}`}>19,90 EUR / mois HT (ou 199 EUR / an HT) — tarif fondateur, conservé tant que l'abonnement reste actif</td>
                 <td className={`px-4 py-3 ${textSecondary}`}>Pour les entreprises avec équipes. Jusqu'à 10 utilisateurs, pointage, trésorerie, sous-traitants, portail client, analytics avancés.</td>
               </tr>
             </tbody>
@@ -230,8 +235,9 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
           compétents du ressort du siège social de l'éditeur.
         </P>
         <P>
-          Conformément aux dispositions du Code de la consommation concernant le règlement amiable des
-          litiges, l'utilisateur peut recourir au service de médiation : {COMPANY.mediateur}.
+          {COMPANY.mediateur
+            ? <>Conformément aux dispositions du Code de la consommation concernant le règlement amiable des litiges, l'utilisateur peut recourir au service de médiation : {COMPANY.mediateur}.</>
+            : <>Le service s'adresse aux professionnels ; en cas de différend, écrivez d'abord à {COMPANY.email} pour rechercher une solution amiable.</>}
         </P>
       </Section>
     </>
@@ -405,8 +411,9 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
           à rechercher une solution amiable avant toute action judiciaire.
         </P>
         <P>
-          À défaut de résolution amiable, l'utilisateur peut recourir au service de médiation de la
-          consommation : {COMPANY.mediateur}.
+          {COMPANY.mediateur
+            ? <>À défaut de résolution amiable, l'utilisateur peut recourir au service de médiation de la consommation : {COMPANY.mediateur}.</>
+            : <>À défaut de résolution amiable, la partie la plus diligente peut saisir les juridictions compétentes.</>}
         </P>
         <P>
           En dernier recours, le litige sera porté devant les tribunaux compétents du ressort du siège
@@ -424,9 +431,9 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
         </P>
         <UL>
           <li>Raison sociale : <strong className={textPrimary}>{COMPANY.nom}</strong></li>
-          <li>Adresse : {COMPANY.adresse}</li>
+          <li>Adresse : {ADRESSE}</li>
           <li>Email du DPO / référent données : {COMPANY.dpo}</li>
-          <li>Téléphone : {COMPANY.tel}</li>
+          {COMPANY.tel && <li>Téléphone : {COMPANY.tel}</li>}
         </UL>
       </Section>
 
@@ -634,13 +641,13 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
         <UL>
           <li>Raison sociale : <strong className={textPrimary}>{COMPANY.nom}</strong></li>
           <li>Forme juridique : {COMPANY.forme}</li>
-          <li>Capital social : {COMPANY.capital} euros</li>
-          <li>Siège social : {COMPANY.adresse}</li>
+          {COMPANY.capital && <li>Capital social : {COMPANY.capital} euros</li>}
+          <li>Siège social : {ADRESSE}</li>
           <li>SIRET : {COMPANY.siret}</li>
-          <li>RCS : {COMPANY.rcs}</li>
-          <li>Numéro de TVA intracommunautaire : {COMPANY.tva}</li>
+          {COMPANY.rcs && <li>RCS : {COMPANY.rcs}</li>}
+          {COMPANY.tva && <li>Numéro de TVA intracommunautaire : {COMPANY.tva}</li>}
           <li>Email : <span style={linkStyle}>{COMPANY.email}</span></li>
-          <li>Téléphone : {COMPANY.tel}</li>
+          {COMPANY.tel && <li>Téléphone : {COMPANY.tel}</li>}
         </UL>
       </Section>
 
@@ -815,7 +822,7 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
         </P>
         <UL>
           <li>Email : <span style={linkStyle}>{COMPANY.email}</span></li>
-          <li>Téléphone : {COMPANY.tel}</li>
+          {COMPANY.tel && <li>Téléphone : {COMPANY.tel}</li>}
         </UL>
         <P>
           Nous nous engageons à vous répondre dans un délai de 7 jours ouvrés et à mettre en œuvre

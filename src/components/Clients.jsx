@@ -23,6 +23,7 @@ import { CLIENT_TYPE_COLORS, CLIENT_STATUS_LABELS, CLIENT_STATUS_COLORS, CLIENT_
 import { formatClientName } from '../lib/formatters';
 import { usePermissions } from '../hooks/usePermissions';
 import { ReadOnlyBanner } from './ui/PermissionGate';
+import { urlPublique } from '../lib/urlPublique';
 
 // Skeleton loader for client cards
 function ClientSkeleton({ isDark, count = 6 }) {
@@ -863,7 +864,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                 return;
               }
 
-              const portalUrl = `${window.location.origin}/?portal=${tokenData.token}`;
+              const portalUrl = urlPublique(`/?portal=${tokenData.token}`);
 
               // Copier dans le presse-papier
               try {

@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { logger } from './lib/logger';
+import { urlPublique } from './lib/urlPublique';
 
 // Mode demo detection
 const isDevelopment = import.meta.env.DEV || import.meta.env.MODE === 'development';
@@ -44,7 +45,7 @@ if (lienEmail.erreur && typeof window !== 'undefined') {
 }
 
 // Adresse de retour des liens e-mail : la racine de l'app sur le domaine courant.
-const urlRetour = () => (typeof window !== 'undefined' ? `${window.location.origin}/` : undefined);
+const urlRetour = () => urlPublique('/');
 
 // En mode demo, on utilise des URLs factices pour éviter les erreurs 401
 const supabaseUrl = isDemo ? 'https://demo.supabase.co' : (import.meta.env.VITE_SUPABASE_URL || '');
