@@ -111,6 +111,13 @@ const getThemeClasses = (isDark) => ({
   border: isDark ? "border-slate-700" : "border-[#ebebeb]",
 });
 
+// Noms des tables tels que l'artisan les connaît (bandeau d'échec de chargement).
+const LIBELLES_TABLES = {
+  clients: 'clients', chantiers: 'chantiers', devis: 'devis et factures', depenses: 'dépenses',
+  equipe: 'équipe', pointages: 'pointages', catalogue: 'catalogue', planningEvents: 'planning',
+  paiements: 'paiements', memos: 'tâches',
+};
+
 export default function App() {
   // Global context hooks
   const { confirmModal, closeConfirm } = useConfirm();
@@ -139,6 +146,7 @@ export default function App() {
     memos, addMemo, updateMemo, deleteMemo, toggleMemo,
     getChantierBilan,
     generateNextNumero,
+    loadError, retryLoad,
   } = useData();
 
   // Auth state
@@ -722,8 +730,11 @@ export default function App() {
     let cancelled = false;
     const initSubscription = async () => {
       try {
-        const { data: subData } = await fetchSubscription(orgId);
+        const { data: subData, error: subError } = await fetchSubscription(orgId);
         if (!cancelled && subData) setSubscriptionData(subData);
+        // Réseau coupé : on garde l'état courant et on relit au retour de la connexion,
+        // sinon un abonné payant resterait affiché en « Gratuit » jusqu'au rechargement.
+        if (!cancelled && !subData && subError) window.addEventListener('online', initSubscription, { once: true });
         // L'usage n'est PAS relu ici : il est recalculé en direct depuis les
         // données (voir plus bas). L'ancien fetchUsage renvoyait des zéros en
         // dur qui écrasaient ce calcul, et aucune limite ne s'appliquait.
@@ -735,17 +746,39 @@ export default function App() {
     return () => { cancelled = true; };
   }, [user, orgId, setSubscriptionData]);
 
-  // Handle ?billing=success redirect from Stripe Checkout
+  // Retour de Stripe Checkout. La fonction subscription-billing renvoie vers ?upgraded=true
+  // (et ?upgrade_cancelled=true) ; seul ?billing=success était traité, si bien qu'après avoir payé
+  // l'artisan revenait sans confirmation, et souvent encore affiché en « Gratuit ».
+  const [attenteActivation, setAttenteActivation] = useState(false);
   useEffect(() => {
-    try {
-      const params = new URLSearchParams(window.location.search);
-      if (params.get('billing') === 'success') {
-        setPage('checkout-success');
-        // Clean URL without reload
-        window.history.replaceState({}, '', window.location.pathname);
+    const params = new URLSearchParams(window.location.search);
+    const succes = params.get('upgraded') === 'true' || params.get('billing') === 'success';
+    const annule = params.get('upgrade_cancelled') === 'true';
+    if (!succes && !annule) return;
+    window.history.replaceState({}, '', window.location.pathname);
+    if (annule) { showToast('Paiement annulé : aucun montant n’a été prélevé.', 'info'); return; }
+    setPage('checkout-success');
+    setAttenteActivation(true);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- lecture unique de l'URL au chargement
+
+  // Le webhook Stripe peut arriver quelques secondes après le retour : on relit l'abonnement
+  // jusqu'à voir le plan payant (20 s au plus), au lieu d'afficher l'ancien plan.
+  useEffect(() => {
+    if (!attenteActivation || !user) return;
+    let essais = 0;
+    const minuteur = setInterval(async () => {
+      essais += 1;
+      const { data } = await fetchSubscription(orgId);
+      if (data && data.plan && data.plan !== 'gratuit') {
+        setSubscriptionData(data);
+        setAttenteActivation(false);
+      } else if (essais >= 10) {
+        setAttenteActivation(false);
+        showToast('Paiement reçu. L’activation de votre plan peut prendre une minute : rechargez la page si besoin.', 'info');
       }
-    } catch (e) { console.warn('URL param check failed:', e.message); }
-  }, []);
+    }, 2000);
+    return () => clearInterval(minuteur);
+  }, [attenteActivation, user, orgId, setSubscriptionData, showToast]);
 
   // Listen for storage-based page navigation (used by UpgradeModal "Voir tous les plans")
   useEffect(() => {
@@ -1829,6 +1862,28 @@ export default function App() {
           </div>
         </header>
 
+        {/* Échec de chargement : sans ce bandeau, une coupure réseau ressemblait à des données perdues. */}
+        {loadError && (
+          <div role="alert" className={`mx-3 sm:mx-4 lg:mx-6 mt-3 p-3 sm:p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center gap-3 ${isDark ? 'bg-red-950/40 border-red-800 text-red-200' : 'bg-red-50 border-red-200 text-red-800'}`}>
+            <div className="flex items-start gap-2 flex-1 min-w-0 text-sm">
+              <WifiOff size={18} className="flex-shrink-0 mt-0.5" />
+              <p>
+                <strong>Certaines données n’ont pas pu être chargées</strong>
+                {' '}({loadError.tables.map((t) => LIBELLES_TABLES[t] || t).join(', ')}).
+                {' '}Elles ne sont pas perdues : vérifiez votre connexion puis réessayez.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={retryLoad}
+              className="self-start sm:self-auto px-4 py-2 rounded-xl text-sm font-semibold text-white flex-shrink-0"
+              style={{ background: couleur }}
+            >
+              Réessayer
+            </button>
+          </div>
+        )}
+
         {/* Trial / Downgrade Banner */}
         <ErrorBoundary fallback={null}>
           <TrialBanner />
@@ -2490,7 +2545,7 @@ function HelpModal({ showHelp, setShowHelp, isDark, couleur, tc }) {
           { q: 'Comment ajouter un acompte ?', a: 'Lors de la création de la facture d\'acompte, indiquez le pourcentage souhaité. Le solde sera calculé automatiquement.' },
           { q: 'Les données sont-elles sécurisées ?', a: 'Oui, vos données sont chiffrées et hébergées en Europe. Nous sommes conformes RGPD.' },
           { q: 'Comment supprimer mon compte ?', a: 'Dans Paramètres > Données, section RGPD, vous pouvez exporter ou supprimer toutes vos données.' },
-          { q: 'Comment contacter le support ?', a: 'Envoyez un email à support@mallettico.fr. Nous répondons sous 48h ouvrées.' },
+          { q: 'Comment contacter le support ?', a: 'Envoyez un email à contact@mallettico.fr. Nous répondons sous 48h ouvrées.' },
         ];
         const filtered = searchQuery.trim()
           ? faqItems.filter(f => f.q.toLowerCase().includes(searchQuery.toLowerCase()) || f.a.toLowerCase().includes(searchQuery.toLowerCase()))
@@ -2505,7 +2560,7 @@ function HelpModal({ showHelp, setShowHelp, isDark, couleur, tc }) {
               className={`w-full px-4 py-2.5 rounded-xl border text-sm ${isDark ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-400' : 'bg-[#fafafa] border-[#ebebeb] text-[#1a1a1a] placeholder-[#999]'}`}
             />
             {filtered.length === 0 && (
-              <p className={`text-sm text-center py-4 ${textSecondary}`}>Aucun résultat. Contactez-nous à support@mallettico.fr</p>
+              <p className={`text-sm text-center py-4 ${textSecondary}`}>Aucun résultat. Contactez-nous à contact@mallettico.fr</p>
             )}
             {filtered.map((item, i) => (
               <details key={i} className={`rounded-xl border overflow-hidden ${isDark ? 'border-slate-700' : 'border-[#ebebeb]'}`}>
@@ -2531,7 +2586,7 @@ function HelpModal({ showHelp, setShowHelp, isDark, couleur, tc }) {
               <span className="text-2xl">📧</span>
               <div>
                 <p className={`font-medium ${textPrimary}`}>Email</p>
-                <p className={`text-sm ${textSecondary}`}>support@mallettico.fr</p>
+                <p className={`text-sm ${textSecondary}`}>contact@mallettico.fr</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
@@ -2550,7 +2605,7 @@ function HelpModal({ showHelp, setShowHelp, isDark, couleur, tc }) {
             </div>
           </div>
           <a
-            href="mailto:support@mallettico.fr?subject=Support Mallettico"
+            href="mailto:contact@mallettico.fr?subject=Support Mallettico"
             className="block w-full py-3 rounded-xl text-center text-white font-semibold text-sm transition-all hover:opacity-90"
             style={{ backgroundColor: couleur }}
           >

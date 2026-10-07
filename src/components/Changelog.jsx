@@ -212,7 +212,7 @@ export default function Changelog({ isDark, couleur, setPage }) {
       {/* Footer */}
       <div className={`mt-8 text-center text-sm ${textMuted}`}>
         <p>Mallettico est mis à jour régulièrement.</p>
-        <p className="mt-1">Des questions ? Contactez-nous à <span style={{ color: couleur }}>support@mallettico.fr</span></p>
+        <p className="mt-1">Des questions ? Contactez-nous à <span style={{ color: couleur }}>contact@mallettico.fr</span></p>
       </div>
     </div>
   );

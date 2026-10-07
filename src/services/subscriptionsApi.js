@@ -58,6 +58,41 @@ export async function fetchPlans() {
  * @param {string} [orgId] - Organization ID for org-level billing
  * @returns {Promise<{ data: Object|null, error: any }>}
  */
+// Codes renvoyés quand la table n'existe pas : seul cas où l'on peut cesser de la demander.
+const TABLE_ABSENTE = new Set(['42P01', 'PGRST205']);
+const STATUTS_ACTIFS = ['active', 'trialing', 'past_due'];
+const RANG_PLAN = { gratuit: 0, free: 0, decouverte: 0, solo: 1, artisan: 1, pro: 2, entreprise: 2, equipe: 2 };
+
+/**
+ * Choisit l'abonnement qui fait foi parmi plusieurs lignes (organisation + utilisateur) :
+ * un abonnement actif avant un abonnement terminé, le plan le plus élevé, puis le plus récent.
+ * Avant, « le plus récent » l'emportait : la ligne gratuite d'un collaborateur pouvait masquer
+ * l'abonnement payant de l'organisation.
+ * @param {Array<object>} lignes
+ * @returns {object|null}
+ */
+export function choisirAbonnement(lignes = []) {
+  const valides = (lignes || []).filter(Boolean);
+  if (!valides.length) return null;
+  return [...valides].sort((a, b) => {
+    const actifA = STATUTS_ACTIFS.includes(a.status) ? 1 : 0;
+    const actifB = STATUTS_ACTIFS.includes(b.status) ? 1 : 0;
+    if (actifA !== actifB) return actifB - actifA;
+    const rangA = RANG_PLAN[a.plan] ?? 0;
+    const rangB = RANG_PLAN[b.plan] ?? 0;
+    if (rangA !== rangB) return rangB - rangA;
+    return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+  })[0];
+}
+
+/**
+ * Abonnement en vigueur pour l'utilisateur : celui de son organisation s'il en a un, sinon le sien.
+ * En cas d'erreur réseau, renvoie `error` (sans rien mettre en cache) : l'appelant garde l'état
+ * courant et réessaie plus tard. Avant, une coupure était mémorisée comme « table absente » pour
+ * toute la session et un abonné payant restait affiché en « Gratuit ».
+ * @param {string|null} orgId
+ * @returns {Promise<{ data: object|null, error: any }>}
+ */
 export async function fetchSubscription(orgId) {
   if (isDemo || !supabase) {
     // In demo, check localStorage for plan override
@@ -68,67 +103,51 @@ export async function fetchSubscription(orgId) {
     return { data: DEMO_SUBSCRIPTION, error: null };
   }
 
-  // Skip DB query if we already know the table is unavailable (prevents 404 console noise)
   const subUnavailableKey = 'cp_sub_table_unavailable';
-  if (sessionStorage.getItem(subUnavailableKey)) {
-    return { data: { plan: 'gratuit', status: 'active' }, error: null };
-  }
+  const gratuit = { plan: 'gratuit', status: 'active' };
+  if (sessionStorage.getItem(subUnavailableKey)) return { data: gratuit, error: null };
 
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { data: null, error: { message: 'Non authentifié' } };
 
-    // Try org-level subscription first (if orgId provided)
-    if (orgId && orgId !== 'demo-org-id') {
-      const { data: orgSub, error: orgErr } = await supabase
-        .from('subscriptions')
-        .select('*')
-        .eq('organization_id', orgId)
+    // Lignes visibles : la sienne, et celle de l'organisation (policy des membres, migration 073).
+    const lire = (avecOrganisation) => {
+      const requete = supabase.from('subscriptions').select('*');
+      return (avecOrganisation ? requete.or(`user_id.eq.${user.id},organization_id.eq.${orgId}`) : requete.eq('user_id', user.id))
         .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .limit(20);
+    };
+    const avecOrganisation = !!orgId && orgId !== 'demo-org-id';
+    let { data: lignes, error } = await lire(avecOrganisation);
+    // Colonne organization_id absente (migration 040 non appliquée) : on lit la ligne de l'utilisateur seule.
+    if (error && avecOrganisation && (error.code === '42703' || error.code === 'PGRST204')) {
+      ({ data: lignes, error } = await lire(false));
+    }
 
-      // Table doesn't exist → cache and return free plan
-      if (orgErr && (orgErr.code === '42P01' || orgErr.message?.includes('404') || orgErr.code === 'PGRST204')) {
+    if (error) {
+      if (TABLE_ABSENTE.has(error.code)) {
         sessionStorage.setItem(subUnavailableKey, '1');
-        return { data: { plan: 'gratuit', status: 'active' }, error: null };
+        return { data: gratuit, error: null };
       }
-
-      if (!orgErr && orgSub) return { data: orgSub, error: null };
+      return { data: null, error };
     }
 
-    // Fallback to user-level subscription
-    const { data, error } = await supabase
+    const choisi = choisirAbonnement(lignes);
+    if (choisi) return { data: choisi, error: null };
+
+    // Aucune ligne : on crée la ligne gratuite de l'utilisateur. L'organisation est rattachée
+    // côté base (déclencheur de la migration 073), jamais par l'app : un collaborateur ne doit
+    // pas créer de ligne au nom de l'organisation.
+    const { data: nouvelle, error: erreurInsertion } = await supabase
       .from('subscriptions')
-      .select('*')
-      .eq('user_id', user.id)
+      .insert({ user_id: user.id, plan: 'gratuit', status: 'active' })
+      .select()
       .single();
-
-    // Table doesn't exist → cache and return free plan
-    if (error && (error.code === '42P01' || error.message?.includes('relation') || error.code === 'PGRST204')) {
-      sessionStorage.setItem(subUnavailableKey, '1');
-      return { data: { plan: 'gratuit', status: 'active' }, error: null };
-    }
-
-    if (error && error.code === 'PGRST116') {
-      // No subscription found — create a free one (linked to org if available)
-      const insertData = { user_id: user.id, plan: 'gratuit', status: 'active' };
-      if (orgId && orgId !== 'demo-org-id') insertData.organization_id = orgId;
-
-      const { data: newSub, error: insertError } = await supabase
-        .from('subscriptions')
-        .insert(insertData)
-        .select()
-        .single();
-
-      return { data: newSub, error: insertError };
-    }
-
-    return { data, error };
+    if (erreurInsertion) return { data: gratuit, error: erreurInsertion };
+    return { data: nouvelle, error: null };
   } catch (error) {
-    // Network or unexpected error — cache and return free plan
-    sessionStorage.setItem(subUnavailableKey, '1');
-    return { data: { plan: 'gratuit', status: 'active' }, error: null };
+    return { data: null, error };
   }
 }
 

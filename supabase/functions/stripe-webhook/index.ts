@@ -239,6 +239,18 @@ serve(async (req) => {
         result = { handled: false, reason: 'unhandled_event_type' };
     }
 
+    // Échec d'écriture en base → 500, pour que Stripe REJOUE l'événement (il réessaie pendant
+    // 3 jours). Répondre 200 ici, c'était accuser réception d'un paiement jamais enregistré :
+    // l'artisan payait et restait en « Gratuit ». Un `updated` qui arrive avant le
+    // `checkout.session.completed` (abonnement pas encore en base) est rejoué de la même façon.
+    const raison = (result as { reason?: string })?.reason;
+    const aRejouer = raison === 'upsert_failed' || raison === 'update_failed'
+      || (eventType === 'customer.subscription.updated' && raison === 'subscription_not_found');
+    if (aRejouer) {
+      console.error(`[WEBHOOK] ${eventType} non enregistré (${raison}) — Stripe va réessayer`);
+      return json({ received: false, result }, 500);
+    }
+
     return json({ received: true, result });
   } catch (error) {
     console.error('[WEBHOOK] Error:', error);

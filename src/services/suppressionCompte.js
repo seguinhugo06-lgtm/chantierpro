@@ -70,10 +70,10 @@ const MESSAGES = {
 export function messageErreurSuppression(err) {
   const texte = `${err?.message || ''} ${err?.details || ''}`;
   if (/supprimer_mon_compte/.test(texte) && /could not find|does not exist|PGRST202/i.test(`${texte} ${err?.code || ''}`)) {
-    return 'La suppression n’est pas encore activée sur le serveur. Écrivez à support@mallettico.fr : nous supprimons votre compte sous 72 h.';
+    return 'La suppression n’est pas encore activée sur le serveur. Écrivez à contact@mallettico.fr : nous supprimons votre compte sous 72 h.';
   }
   for (const [code, message] of Object.entries(MESSAGES)) if (texte.includes(code)) return message;
-  return 'La suppression n’a pas abouti et rien n’a été effacé. Réessayez, ou écrivez à support@mallettico.fr.';
+  return 'La suppression n’a pas abouti et rien n’a été effacé. Réessayez, ou écrivez à contact@mallettico.fr.';
 }
 
 /**

@@ -95,7 +95,9 @@ export default function PlanPage({ isDark, couleur = '#f97316', setPage }) {
         toast.error(echecTitre, 'Écrivez-nous à contact@mallettico.fr, nous le faisons pour vous.');
         return false;
       }
-      window.open(result.url, '_blank');
+      // Même onglet : Safari bloque un window.open lancé après un await (fenêtre jugée non sollicitée),
+      // et le portail Stripe ramène ensuite ici par son lien de retour.
+      window.location.href = result.url;
       return true;
     } catch {
       toast.error(echecTitre, 'Écrivez-nous à contact@mallettico.fr, nous le faisons pour vous.');
