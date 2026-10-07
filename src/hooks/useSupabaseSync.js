@@ -970,6 +970,21 @@ export const FIELD_MAPPINGS = {
   },
 };
 
+// Codes d'erreur de schéma : la table ou la colonne n'existe pas (encore) en production.
+const ERREURS_DE_SCHEMA = new Set(['42P01', '42703', 'PGRST204', 'PGRST205', 'PGRST200']);
+
+/**
+ * Relève les tables essentielles dont le chargement a échoué pour une raison que
+ * l'utilisateur doit connaître (réseau, droits, délai dépassé).
+ * @param {Record<string, {error?: {code?: string, message?: string}}>} resultats
+ * @returns {Array<{table: string, code: string|null, message: string}>}
+ */
+export function detecterEchecsChargement(resultats) {
+  return Object.entries(resultats)
+    .filter(([, r]) => r?.error && !ERREURS_DE_SCHEMA.has(r.error.code))
+    .map(([table, r]) => ({ table, code: r.error.code || null, message: r.error.message || String(r.error) }));
+}
+
 /**
  * Load all data from Supabase for the current user
  */
@@ -1012,15 +1027,17 @@ export async function loadAllData(userId, orgId, entrepriseId, onCore) {
     // les autres : avant, `Promise.all` faisait patienter l'artisan jusqu'à la plus
     // lente des 21 — dont `fournisseur_articles` ou `tresorerie_previsions`, que
     // l'accueil n'ouvre jamais.
-    const pClients = scoped('clients').then(r => r, (e) => { console.error('Load clients failed:', e); return { data: [] }; });
-    const pChantiers = scopedWithEntreprise('chantiers').then(r => r, (e) => { console.error('Load chantiers failed:', e); return { data: [] }; });
-    const pDevis = scopedWithEntreprise('devis').then(r => r, (e) => { console.error('Load devis failed:', e); return { data: [] }; });
+    const pClients = scoped('clients').then(r => r, (e) => { console.error('Load clients failed:', e); return { data: [], error: { message: e?.message || String(e) } }; });
+    const pChantiers = scopedWithEntreprise('chantiers').then(r => r, (e) => { console.error('Load chantiers failed:', e); return { data: [], error: { message: e?.message || String(e) } }; });
+    const pDevis = scopedWithEntreprise('devis').then(r => r, (e) => { console.error('Load devis failed:', e); return { data: [], error: { message: e?.message || String(e) } }; });
 
     // Premier écran : dès que ces trois-là sont revenues, on affiche. Le reste
     // continue de charger derrière et complètera l'état quand il arrivera.
     if (typeof onCore === 'function') {
       try {
         const [c, ch, dv] = await Promise.all([pClients, pChantiers, pDevis]);
+        // Pas d'affichage anticipé de listes vides si l'une a échoué : le chargement complet le signalera.
+        if (c.error || ch.error || dv.error) throw new Error('chargement du premier écran incomplet');
         onCore({
           clients: (c.data || []).map(FIELD_MAPPINGS.clients.fromSupabase),
           chantiers: (ch.data || []).map(FIELD_MAPPINGS.chantiers.fromSupabase),
@@ -1062,10 +1079,10 @@ export async function loadAllData(userId, orgId, entrepriseId, onCore) {
       pClients,
       pChantiers,
       pDevis,
-      scoped('depenses').then(r => r, (e) => { console.error('Load depenses failed:', e); return { data: [] }; }),
-      scoped('equipe').then(r => r, (e) => { console.error('Load equipe failed:', e); return { data: [] }; }),
-      scoped('pointages').then(r => r, (e) => { console.error('Load pointages failed:', e); return { data: [] }; }),
-      scoped('catalogue').then(r => r, (e) => { console.error('Load catalogue failed:', e); return { data: [] }; }),
+      scoped('depenses').then(r => r, (e) => { console.error('Load depenses failed:', e); return { data: [], error: { message: e?.message || String(e) } }; }),
+      scoped('equipe').then(r => r, (e) => { console.error('Load equipe failed:', e); return { data: [], error: { message: e?.message || String(e) } }; }),
+      scoped('pointages').then(r => r, (e) => { console.error('Load pointages failed:', e); return { data: [], error: { message: e?.message || String(e) } }; }),
+      scoped('catalogue').then(r => r, (e) => { console.error('Load catalogue failed:', e); return { data: [], error: { message: e?.message || String(e) } }; }),
       scoped('fournisseurs').then(r => r, () => ({ data: [] })),
       scoped('fournisseur_articles').then(r => r, () => ({ data: [] })),
       scoped('packs').then(r => r, () => ({ data: [] })),
@@ -1076,22 +1093,28 @@ export async function loadAllData(userId, orgId, entrepriseId, onCore) {
       scopeToOrg(supabase.from('tresorerie_settings').select('*'), orgId, userId).maybeSingle().then(r => r, () => ({ data: null })),
       scopeToOrg(supabase.from('reglements').select('*'), orgId, userId).order('date_reglement', { ascending: false }).then(r => r, () => ({ data: [] })),
       scopeToOrg(supabase.from('tresorerie_mouvements').select('*'), orgId, userId).order('date', { ascending: false }).then(r => r, () => ({ data: [] })),
-      scopeToOrg(supabase.from('events').select('*'), orgId, userId).order('start_date', { ascending: true }).then(r => r, () => ({ data: [] })),
-      scopeToOrg(supabase.from('paiements').select('*'), orgId, userId).order('created_at', { ascending: false }).then(r => r, () => ({ data: [] })),
+      scopeToOrg(supabase.from('events').select('*'), orgId, userId).order('start_date', { ascending: true }).then(r => r, (e) => ({ data: [], error: { message: e?.message || String(e) } })),
+      scopeToOrg(supabase.from('paiements').select('*'), orgId, userId).order('created_at', { ascending: false }).then(r => r, (e) => ({ data: [], error: { message: e?.message || String(e) } })),
       scopeToOrg(supabase.from('echanges').select('*'), orgId, userId).order('created_at', { ascending: false }).then(r => r, () => ({ data: [] })),
       scopeToOrg(supabase.from('ajustements').select('*'), orgId, userId).order('created_at', { ascending: false }).then(r => r, () => ({ data: [] })),
       scoped('ouvrages').then(r => r, () => ({ data: [] })),
-      scopeToOrg(supabase.from('memos').select('*'), orgId, userId).order('position', { ascending: true }).then(r => r, () => ({ data: [] })),
+      scopeToOrg(supabase.from('memos').select('*'), orgId, userId).order('position', { ascending: true }).then(r => r, (e) => ({ data: [], error: { message: e?.message || String(e) } })),
       scoped('devis_templates').then(r => r, () => ({ data: [] })),
       scopeToOrg(supabase.from('template_usages').select('*'), orgId, userId).order('used_at', { ascending: false }).limit(50).then(r => r, () => ({ data: [] })),
     ]);
 
-    // Log any query errors from core tables (warn, not error — non-blocking)
-    if (clientsRes.error) console.warn('[useSupabaseSync] clients query issue:', clientsRes.error.message);
-    if (chantiersRes.error) console.warn('[useSupabaseSync] chantiers query issue:', chantiersRes.error.message);
-    if (devisRes.error) console.warn('[useSupabaseSync] devis query issue:', devisRes.error.message);
+    // Échecs de chargement : supabase-js ne lève pas, il renvoie `error` et `data: null`. Sans ce
+    // relevé, une coupure réseau affichait « aucun client, aucun devis » — l'artisan croyait ses
+    // données perdues. Les erreurs de schéma (table ou colonne absente en production) restent
+    // muettes pour l'utilisateur : ce sont des bugs à corriger, pas une panne à lui signaler.
+    const erreurs = detecterEchecsChargement({
+      clients: clientsRes, chantiers: chantiersRes, devis: devisRes, depenses: depensesRes,
+      equipe: equipeRes, pointages: pointagesRes, catalogue: catalogueRes, planningEvents: planningEventsRes,
+      paiements: paiementsRes, memos: memosRes,
+    });
 
     const data = {
+      erreurs,
       clients: (clientsRes.data || []).map(FIELD_MAPPINGS.clients.fromSupabase),
       chantiers: (chantiersRes.data || []).map(FIELD_MAPPINGS.chantiers.fromSupabase),
       devis: (devisRes.data || []).map(FIELD_MAPPINGS.devis.fromSupabase),

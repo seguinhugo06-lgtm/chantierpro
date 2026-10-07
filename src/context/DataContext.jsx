@@ -12,6 +12,7 @@ import { queueMutation } from '../lib/offline/sync';
 import { toast } from '../stores/toastStore';
 import { useSubscriptionStore, PLANS } from '../stores/subscriptionStore';
 import { celebrateMilestone } from '../lib/celebrate';
+import { captureException } from '../lib/sentry';
 
 /**
  * DataContext - Global data state (clients, devis, chantiers, etc.)
@@ -239,6 +240,9 @@ export function DataProvider({ children, initialData = {} }) {
 
   // Loading state — for real users, start as loading until Supabase data arrives
   const [dataLoading, setDataLoading] = useState(!isDemo);
+  // Tables essentielles dont le chargement a échoué ({ tables, message }) ou null.
+  const [loadError, setLoadError] = useState(null);
+  const [reloadToken, setReloadToken] = useState(0);
   const [dataLoaded, setDataLoaded] = useState(() => isDemo && !!loadDemoData()); // Already loaded if demo data exists
 
   // Loading states (legacy)
@@ -389,45 +393,59 @@ export function DataProvider({ children, initialData = {} }) {
         };
 
         const data = await loadAllData(userId, orgId, entrepriseId, afficherLeCoeur);
-        if (data) {
-          setClients(clean(data.clients));
-          setChantiers(clean(data.chantiers));
-          // Compute 'vu' status from viewed_at (DB constraint doesn't allow 'vu' statut)
-          setDevis(clean(data.devis).map(d =>
-            (d.statut === 'envoye' && d.viewed_at) ? { ...d, statut: 'vu' } : d
-          ));
-          setDepenses(clean(data.depenses));
-          setEquipe(clean(data.equipe));
-          setPointages(clean(data.pointages));
-          setCatalogue(clean(data.catalogue));
-          if (data.planningEvents) setPlanningEvents(clean(data.planningEvents));
-          if (data.paiements) setPaiements(clean(data.paiements));
-          if (data.echanges) setEchanges(clean(data.echanges));
-          if (data.ajustements) setAjustements(clean(data.ajustements));
-          // Ouvrages loaded into state
-          if (data.ouvrages) setOuvrages(clean(data.ouvrages));
-          // Memos loaded into state
-          if (data.memos) setMemos(clean(data.memos));
-          // Custom templates loaded into state
-          if (data.devisTemplates) setCustomTemplates(clean(data.devisTemplates));
-          // Template usages loaded into state
-          if (data.templateUsages) setTemplateUsages(clean(data.templateUsages));
-          setDataLoaded(true);
-          logger.debug('✅ Data loaded from Supabase:', {
-            clients: data.clients.length,
-            chantiers: data.chantiers.length,
-            devis: data.devis.length,
-          });
+        if (!data) {
+          // loadAllData a levé (réseau coupé avant même les requêtes, client indisponible…).
+          setLoadError({ tables: ['clients', 'chantiers', 'devis'], message: 'chargement impossible' });
+          return;
         }
+        // Une table en échec garde ce qui est déjà affiché : la remplacer par [] ferait croire
+        // à l'artisan que ses données ont disparu.
+        const enEchec = new Set(data.erreurs.map((e) => e.table));
+        const appliquer = (table, setter, valeurs) => { if (!enEchec.has(table) && valeurs) setter(valeurs); };
+        appliquer('clients', setClients, clean(data.clients));
+        appliquer('chantiers', setChantiers, clean(data.chantiers));
+        // Compute 'vu' status from viewed_at (DB constraint doesn't allow 'vu' statut)
+        appliquer('devis', setDevis, marquerVu(data.devis));
+        appliquer('depenses', setDepenses, clean(data.depenses));
+        appliquer('equipe', setEquipe, clean(data.equipe));
+        appliquer('pointages', setPointages, clean(data.pointages));
+        appliquer('catalogue', setCatalogue, clean(data.catalogue));
+        appliquer('planningEvents', setPlanningEvents, data.planningEvents && clean(data.planningEvents));
+        appliquer('paiements', setPaiements, data.paiements && clean(data.paiements));
+        if (data.echanges) setEchanges(clean(data.echanges));
+        if (data.ajustements) setAjustements(clean(data.ajustements));
+        if (data.ouvrages) setOuvrages(clean(data.ouvrages));
+        appliquer('memos', setMemos, data.memos && clean(data.memos));
+        if (data.devisTemplates) setCustomTemplates(clean(data.devisTemplates));
+        if (data.templateUsages) setTemplateUsages(clean(data.templateUsages));
+
+        if (data.erreurs.length) {
+          setLoadError({ tables: data.erreurs.map((e) => e.table), message: data.erreurs[0].message });
+          captureException(new Error(`Chargement incomplet : ${data.erreurs.map((e) => `${e.table} (${e.code || e.message})`).join(', ')}`),
+            { context: 'chargement des données' });
+        } else {
+          setLoadError(null);
+          setDataLoaded(true);
+        }
+        logger.debug('✅ Data loaded from Supabase:', {
+          clients: data.clients.length,
+          chantiers: data.chantiers.length,
+          devis: data.devis.length,
+          erreurs: data.erreurs.length,
+        });
       } catch (error) {
-        console.error('Error loading data:', error);
+        captureException(error, { context: 'chargement des données' });
+        setLoadError({ tables: ['clients', 'chantiers', 'devis'], message: error?.message || 'erreur inconnue' });
       } finally {
         setDataLoading(false);
       }
     };
 
     loadData();
-  }, [userId, orgId, orgLoading, entrepriseId, entrepriseLoading, dataLoaded]);
+  }, [userId, orgId, orgLoading, entrepriseId, entrepriseLoading, dataLoaded, reloadToken]);
+
+  // Relance manuelle après un échec de chargement (bandeau « Réessayer »).
+  const retryLoad = useCallback(() => setReloadToken((n) => n + 1), []);
 
   /**
    * Garde-fou d'abonnement, posé au seul endroit par lequel TOUTES les créations
@@ -1498,6 +1516,8 @@ export function DataProvider({ children, initialData = {} }) {
     echanges,
     loading,
     dataLoading,
+    loadError,
+    retryLoad,
 
     // Setters (for direct access when needed)
     setClients,
@@ -1604,7 +1624,7 @@ export function DataProvider({ children, initialData = {} }) {
     getChantierBilan
   }), [
     clients, devis, chantiers, depenses, pointages, equipe, ajustements,
-    catalogue, paiements, echanges, ouvrages, planningEvents, memos, loading, dataLoading,
+    catalogue, paiements, echanges, ouvrages, planningEvents, memos, loading, dataLoading, loadError, retryLoad,
     customTemplates, templateUsages,
     addClient, updateClient, deleteClient, getClient,
     addDevis, updateDevis, deleteDevis, getDevis, getDevisByClient, getDevisByChantier, generateNextNumero,
