@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback, Suspense, lazy } from 'react';
-import supabase, { auth, isDemo } from './supabaseClient';
+import supabase, { auth, isDemo, lienEmail } from './supabaseClient';
+import { traduireErreurAuth, motDePasseValide } from './lib/authErreurs';
 import { captureException } from './lib/sentry';
 
 // Eager load critical components
@@ -34,6 +35,7 @@ const lazyWithRetry = (importFn, name) => lazy(() =>
 const Chantiers = lazyWithRetry(() => import('./components/Chantiers'), 'Chantiers');
 const TasksAndPlanning = lazyWithRetry(() => import('./components/tasks/TasksAndPlanning'), 'Tâches');
 const Clients = lazyWithRetry(() => import('./components/Clients'), 'Clients');
+const NouveauMotDePasse = lazyWithRetry(() => import('./components/auth/NouveauMotDePasse'), 'Mot de passe');
 const DevisPage = lazyWithRetry(() => import('./components/DevisPage'), 'DevisPage');
 const Equipe = lazyWithRetry(() => import('./components/Equipe'), 'Équipe');
 const Catalogue = lazyWithRetry(() => import('./components/Catalogue'), 'Catalogue');
@@ -144,8 +146,13 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [showSignUp, setShowSignUp] = useState(false);
   const [authForm, setAuthForm] = useState({ email: '', password: '', nom: '' });
-  const [authError, setAuthError] = useState('');
+  // Un lien e-mail expiré arrive avec #error=… : on l'explique sur l'écran de connexion.
+  const [authError, setAuthError] = useState(() => (lienEmail.erreur ? traduireErreurAuth(lienEmail.erreur) : ''));
+  const [authInfo, setAuthInfo] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showForgot, setShowForgot] = useState(false);
+  // Arrivée par le lien « réinitialiser le mot de passe » : on demande le nouveau avant tout.
+  const [recoveryMode, setRecoveryMode] = useState(lienEmail.recuperation);
 
   // UI state - persist page in localStorage to survive refresh
   const [page, setPageRaw] = useState(() => {
@@ -691,7 +698,10 @@ export default function App() {
 
     // Subscribe to auth state changes (login, logout, token refresh)
     const { data: { subscription } } = auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN' && session?.user) {
+      if (event === 'PASSWORD_RECOVERY') {
+        setRecoveryMode(true);
+        if (session?.user) setUser(session.user);
+      } else if (event === 'SIGNED_IN' && session?.user) {
         setUser(session.user);
       } else if (event === 'SIGNED_OUT') {
         setUser(null);
@@ -778,12 +788,34 @@ export default function App() {
   const handleSignIn = async (e) => {
     e.preventDefault();
     setAuthError('');
+    setAuthInfo('');
     setIsSubmitting(true);
     try {
       const { error } = await auth.signIn(authForm.email, authForm.password);
-      if (error) setAuthError(error.message);
+      if (error) setAuthError(traduireErreurAuth(error));
     } catch (e) {
-      setAuthError('Erreur de connexion.');
+      captureException(e, { context: 'connexion' });
+      setAuthError(traduireErreurAuth(e, 'Erreur de connexion.'));
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleForgot = async (e) => {
+    e.preventDefault();
+    setAuthError('');
+    setAuthInfo('');
+    const email = authForm.email.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setAuthError('Saisissez l’adresse e-mail de votre compte.'); return; }
+    setIsSubmitting(true);
+    try {
+      const { error } = await auth.resetPassword(email);
+      if (error) setAuthError(traduireErreurAuth(error));
+      // Même message que le compte existe ou non : on ne révèle pas quelles adresses sont inscrites.
+      else setAuthInfo(`Si un compte existe pour ${email}, un e-mail vient de partir avec un lien pour choisir un nouveau mot de passe (valable 1 heure). Pensez aux indésirables.`);
+    } catch (err) {
+      captureException(err, { context: 'mot de passe oublié' });
+      setAuthError(traduireErreurAuth(err));
     } finally {
       setIsSubmitting(false);
     }
@@ -792,12 +824,20 @@ export default function App() {
   const handleSignUp = async (e) => {
     e.preventDefault();
     setAuthError('');
+    setAuthInfo('');
+    if (!motDePasseValide(authForm.password)) {
+      setAuthError('Mot de passe : au moins 8 caractères, avec des lettres et des chiffres.');
+      return;
+    }
     setIsSubmitting(true);
     try {
-      const { error } = await auth.signUp(authForm.email, authForm.password, { nom: authForm.nom });
-      if (error) setAuthError(error.message);
+      const { data, error } = await auth.signUp(authForm.email, authForm.password, { nom: authForm.nom });
+      if (error) setAuthError(traduireErreurAuth(error));
       else {
-        showToast('Compte créé ✓', 'success');
+        // Sans session, Supabase attend la confirmation de l'adresse : le dire, sinon l'artisan
+        // essaie de se connecter et reçoit « adresse non confirmée » sans comprendre.
+        if (data?.session) showToast('Compte créé ✓', 'success');
+        else setAuthInfo(`Compte créé. Confirmez votre adresse en ouvrant le lien envoyé à ${authForm.email}, puis connectez-vous.`);
         setShowSignUp(false);
         // Email de bienvenue : le modèle existait depuis le début mais aucun
         // appelant ne l'utilisait — personne n'était accueilli. Volontairement
@@ -815,7 +855,8 @@ export default function App() {
         }
       }
     } catch (e) {
-      setAuthError('Erreur lors de la création du compte');
+      captureException(e, { context: 'inscription' });
+      setAuthError(traduireErreurAuth(e, 'Erreur lors de la création du compte.'));
     } finally {
       setIsSubmitting(false);
     }
@@ -1123,9 +1164,47 @@ export default function App() {
             <span className="text-2xl font-bold text-white">Mallettico</span>
           </div>
           
-          <h2 className="text-3xl font-bold text-white mb-2">{showSignUp ? 'Créer un compte' : 'Connexion'}</h2>
-          <p className="text-slate-500 mb-8">{showSignUp ? 'Commencez gratuitement' : 'Accédez à votre espace'}</p>
-          
+          <h2 className="text-3xl font-bold text-white mb-2">{showForgot ? 'Mot de passe oublié' : showSignUp ? 'Créer un compte' : 'Connexion'}</h2>
+          <p className="text-slate-400 mb-8">{showForgot ? 'Recevez par e-mail un lien pour en choisir un nouveau.' : showSignUp ? 'Commencez gratuitement' : 'Accédez à votre espace'}</p>
+
+          {authInfo && (
+            <div role="status" className="mb-4 p-3 bg-emerald-500/15 border border-emerald-500/40 rounded-xl text-emerald-200 text-sm">
+              {authInfo}
+            </div>
+          )}
+
+          {showForgot ? (
+            <form onSubmit={handleForgot} className="space-y-4" noValidate>
+              <input
+                type="email"
+                className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white placeholder-slate-400 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20 transition-all"
+                placeholder="Email du compte"
+                value={authForm.email}
+                onChange={e => setAuthForm(p => ({...p, email: e.target.value}))}
+                required
+                autoFocus
+                aria-label="Adresse email du compte"
+                autoComplete="email"
+              />
+              {authError && (
+                <div role="alert" className="p-3 bg-red-500/20 border border-red-500/50 rounded-xl text-red-300 text-sm">{safeStr(authError)}</div>
+              )}
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full py-3.5 bg-gradient-to-r from-orange-500 to-amber-500 text-white font-semibold rounded-xl hover:shadow-lg hover:shadow-orange-500/25 transition-all disabled:opacity-70 disabled:cursor-not-allowed"
+              >
+                {isSubmitting ? 'Envoi…' : 'Envoyer le lien'}
+              </button>
+              <button
+                type="button"
+                onClick={() => { setShowForgot(false); setAuthError(''); setAuthInfo(''); }}
+                className="w-full py-2 text-sm text-slate-400 hover:text-white transition-colors"
+              >
+                Retour à la connexion
+              </button>
+            </form>
+          ) : (<>
           <form onSubmit={showSignUp ? handleSignUp : handleSignIn} className="space-y-4">
             {showSignUp && (
               <input
@@ -1158,18 +1237,21 @@ export default function App() {
                 aria-label="Mot de passe"
                 autoComplete={showSignUp ? "new-password" : "current-password"}
               />
+              {showSignUp && (
+                <p className="text-xs text-slate-500 mt-2">Au moins 8 caractères, avec des lettres et des chiffres.</p>
+              )}
               {!showSignUp && (
                 <button
                   type="button"
-                  onClick={() => showToast('Contactez support@mallettico.fr', 'info')}
-                  className="text-sm text-slate-500 hover:text-orange-400 mt-2 transition-colors self-end"
+                  onClick={() => { setShowForgot(true); setAuthError(''); setAuthInfo(''); }}
+                  className="text-sm text-slate-400 hover:text-orange-400 mt-2 py-1 transition-colors self-end"
                 >
                   Mot de passe oublié ?
                 </button>
               )}
             </div>
             {authError && (
-              <div className="p-3 bg-red-500/20 border border-red-500/50 rounded-xl text-red-300 text-sm">
+              <div role="alert" className="p-3 bg-red-500/20 border border-red-500/50 rounded-xl text-red-300 text-sm">
                 {safeStr(authError)}
               </div>
             )}
@@ -1192,15 +1274,27 @@ export default function App() {
             </button>
           </form>
           
-          <p className="text-center text-slate-500 mt-6">
+          <p className="text-center text-slate-400 mt-6">
             {showSignUp ? 'Déjà inscrit ?' : 'Pas de compte ?'}{' '}
-            <button onClick={() => setShowSignUp(!showSignUp)} className="text-orange-500 hover:text-orange-400 font-medium">
+            <button onClick={() => { setShowSignUp(!showSignUp); setAuthError(''); setAuthInfo(''); }} className="text-orange-500 hover:text-orange-400 font-medium py-2">
               {showSignUp ? 'Se connecter' : "S'inscrire"}
             </button>
           </p>
+          </>)}
         </div>
       </div>
     </div>
+  );
+
+  // Arrivée par le lien de réinitialisation : choisir le nouveau mot de passe avant d'entrer.
+  if (recoveryMode) return (
+    <Suspense fallback={<div className="min-h-screen bg-slate-900" />}>
+      <NouveauMotDePasse
+        email={user?.email}
+        onTermine={() => { setRecoveryMode(false); showToast('Mot de passe modifié ✓', 'success'); }}
+        onAnnuler={() => { setRecoveryMode(false); handleSignOut(); }}
+      />
+    </Suspense>
   );
 
   // Calculate stats for badges
@@ -1520,10 +1614,13 @@ export default function App() {
       {/* Main content */}
       <div className={`md:pl-[72px] xl:pl-64 min-h-screen overflow-x-hidden pb-14 lg:pb-0 ${isDark ? 'bg-slate-900' : 'bg-[#fafafa]'}`}>
         {/* Header - Optimized for mobile with proper left/right distribution */}
-        <header className={`sticky top-0 z-30 backdrop-blur-xl border-b px-2 sm:px-4 py-2 flex items-center justify-between ${isDark ? 'bg-slate-900/95 border-slate-700' : 'bg-white/80 border-[#ebebeb]'}`}>
+        <header className={`sticky top-0 z-30 border-b px-2 sm:px-4 py-2 flex items-center justify-between ${isDark ? 'border-slate-700' : 'border-[#ebebeb]'}`}>
+          {/* Le flou est porté par un calque et non par <header> : un backdrop-filter sur un ancêtre
+              enfermerait les fonds et panneaux position:fixed des menus dans la hauteur de l'en-tête. */}
+          <div aria-hidden="true" className={`absolute inset-0 -z-10 backdrop-blur-xl ${isDark ? 'bg-slate-900/95' : 'bg-white/80'}`} />
 
           {/* LEFT GROUP: Menu + Logo + Badges */}
-          <div className="flex items-center gap-1.5 sm:gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
             {/* Menu button - mobile only (sidebar visible from md: up) */}
             <button
               onClick={() => setSidebarOpen(true)}
@@ -1570,8 +1667,8 @@ export default function App() {
             </div>
           </div>
 
-          {/* CENTER: Search (desktop only) */}
-          <div className="hidden md:flex flex-1 justify-center px-4">
+          {/* CENTER: Search (desktop only — à 768 px la barre déborderait) */}
+          <div className="hidden lg:flex flex-1 min-w-0 justify-center px-4">
             <button
               onClick={() => setShowSearch(true)}
               className={`flex items-center gap-2 px-4 py-2 rounded-xl border transition-all w-full max-w-[320px] ${isDark ? 'border-slate-700 hover:border-slate-600 bg-slate-800/50 text-slate-500' : 'border-[#ebebeb] hover:border-[#ddd] bg-[#fafafa] text-[#999]'}`}
@@ -1583,7 +1680,7 @@ export default function App() {
           </div>
 
           {/* RIGHT GROUP: Actions */}
-          <div className="flex items-center gap-1 sm:gap-1.5">
+          <div className="flex items-center gap-1 sm:gap-1.5 flex-shrink-0">
             {FONCTIONS.ia && (<>
             {/* Dictée vocale — l'atout malin, accessible depuis n'importe quelle page */}
             <button
@@ -1601,7 +1698,7 @@ export default function App() {
             {/* Search button - mobile only (icon) */}
             <button
               onClick={() => setShowSearch(true)}
-              className={`md:hidden w-11 h-11 rounded-xl flex items-center justify-center ${isDark ? 'hover:bg-slate-800 text-slate-400' : 'hover:bg-[#f5f5f5] text-[#666]'}`}
+              className={`lg:hidden w-11 h-11 rounded-xl flex items-center justify-center ${isDark ? 'hover:bg-slate-800 text-slate-400' : 'hover:bg-[#f5f5f5] text-[#666]'}`}
               title="Rechercher"
               aria-label="Rechercher"
             >
@@ -1621,7 +1718,7 @@ export default function App() {
             {/* Help button - tablet and desktop only */}
             <button
               onClick={() => setShowHelp(true)}
-              className={`hidden md:flex w-11 h-11 rounded-xl items-center justify-center transition-colors ${isDark ? 'hover:bg-slate-800 text-slate-400' : 'hover:bg-[#f5f5f5] text-[#666]'}`}
+              className={`hidden lg:flex w-11 h-11 rounded-xl items-center justify-center transition-colors ${isDark ? 'hover:bg-slate-800 text-slate-400' : 'hover:bg-[#f5f5f5] text-[#666]'}`}
               title="Aide"
               aria-label="Ouvrir l'aide"
             >
@@ -1650,7 +1747,7 @@ export default function App() {
                     showToast('Sur iOS: Partager → "Sur l\'écran d\'accueil"', 'info');
                   }
                 }}
-                className={`hidden sm:flex w-11 h-11 lg:w-auto lg:h-11 lg:px-3 rounded-xl items-center justify-center gap-2 text-sm font-medium transition-all flex-shrink-0 border-2 ${
+                className={`hidden lg:flex w-11 h-11 2xl:w-auto 2xl:px-3 rounded-xl items-center justify-center gap-2 text-sm font-medium transition-all flex-shrink-0 border-2 ${
                   isDark
                     ? 'border-slate-700 text-slate-400 hover:border-slate-600 hover:bg-slate-800/50'
                     : 'border-[#ebebeb] text-[#666] hover:border-[#ddd] hover:bg-[#f5f5f5]'
@@ -1659,7 +1756,7 @@ export default function App() {
                 aria-label="Installer l'application sur votre appareil"
               >
                 <Smartphone size={18} className="flex-shrink-0" />
-                <span className="hidden lg:inline whitespace-nowrap">Installer</span>
+                <span className="hidden 2xl:inline whitespace-nowrap">Installer</span>
               </button>
             )}
 
@@ -1684,14 +1781,14 @@ export default function App() {
             <div className="relative">
               <button
                 onClick={() => setShowQuickAdd(!showQuickAdd)}
-                className="w-11 h-11 sm:w-auto sm:h-11 sm:px-4 text-white rounded-xl flex items-center justify-center sm:gap-2 transition-all hover:shadow-lg"
+                className="w-11 h-11 lg:w-auto lg:px-4 text-white rounded-xl flex items-center justify-center lg:gap-2 transition-all hover:shadow-lg"
                 style={{background: couleur}}
                 aria-label="Créer nouveau"
                 aria-haspopup="true"
                 aria-expanded={showQuickAdd}
               >
                 <Plus size={18} />
-                <span className="hidden sm:inline text-sm font-medium">Nouveau</span>
+                <span className="hidden lg:inline text-sm font-medium">Nouveau</span>
               </button>
 
               {showQuickAdd && (

@@ -26,6 +26,26 @@ if (urlHasDemoParam) {
   logger.debug('🎭 Demo mode activated via URL parameter');
 }
 
+// Liens envoyés par e-mail (réinitialisation du mot de passe, confirmation d'inscription) :
+// Supabase renvoie vers l'app avec #access_token=…&type=recovery, ou #error=…&error_code=otp_expired
+// si le lien a expiré. Lu AVANT createClient, qui consomme puis efface ce fragment.
+const fragmentInitial = typeof window !== 'undefined'
+  ? new URLSearchParams(window.location.hash.replace(/^#/, ''))
+  : new URLSearchParams();
+export const lienEmail = {
+  recuperation: fragmentInitial.get('type') === 'recovery',
+  erreur: fragmentInitial.get('error')
+    ? { error_code: fragmentInitial.get('error_code'), error_description: fragmentInitial.get('error_description') }
+    : null,
+};
+if (lienEmail.erreur && typeof window !== 'undefined') {
+  // Sinon le fragment d'erreur reste dans la barre d'adresse et se réaffiche à chaque rechargement.
+  window.history.replaceState(null, '', window.location.pathname + window.location.search);
+}
+
+// Adresse de retour des liens e-mail : la racine de l'app sur le domaine courant.
+const urlRetour = () => (typeof window !== 'undefined' ? `${window.location.origin}/` : undefined);
+
 // En mode demo, on utilise des URLs factices pour éviter les erreurs 401
 const supabaseUrl = isDemo ? 'https://demo.supabase.co' : (import.meta.env.VITE_SUPABASE_URL || '');
 const supabaseAnonKey = isDemo ? 'demo-key' : (import.meta.env.VITE_SUPABASE_ANON_KEY || '');
@@ -40,9 +60,21 @@ export const auth = {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: metadata }
+      options: { data: metadata, emailRedirectTo: urlRetour() }
     });
     return { data, error };
+  },
+  // Envoie le lien de réinitialisation. Supabase ne dit pas si l'adresse existe (et c'est voulu).
+  resetPassword: async (email) => {
+    if (isDemo || !supabase) return { error: { message: 'Mode démo actif' } };
+    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: urlRetour() });
+    return { error };
+  },
+  // Enregistre le nouveau mot de passe de l'utilisateur connecté (après le lien de réinitialisation).
+  updatePassword: async (password) => {
+    if (isDemo || !supabase) return { error: { message: 'Mode démo actif' } };
+    const { error } = await supabase.auth.updateUser({ password });
+    return { error };
   },
   signIn: async (email, password) => {
     if (isDemo || !supabase) return { data: null, error: { message: 'Mode démo actif' } };
