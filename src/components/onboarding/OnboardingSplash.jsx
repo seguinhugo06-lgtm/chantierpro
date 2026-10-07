@@ -48,7 +48,7 @@ export default function OnboardingSplash({
   const badges = [
     { icon: Zap, text: 'Devis en 3 min', color: '#f97316' },
     { icon: Clock, text: '20h/mois économisées', color: '#22c55e' },
-    { icon: CheckCircle, text: '100% conforme légal FR', color: '#3b82f6' }
+    { icon: CheckCircle, text: 'Mentions légales incluses', color: '#3b82f6' }
   ];
 
   return (

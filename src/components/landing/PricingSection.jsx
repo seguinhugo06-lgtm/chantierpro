@@ -182,12 +182,6 @@ export default function PricingSection({ onSignup }) {
                     {price > 0 && (
                       <span className="text-slate-500 text-sm ml-1">{period} HT</span>
                     )}
-                    {/* Prix normal barré : c'est le tarif visé, pas un ancrage inventé. */}
-                    {plan.prixNormal && !annual && (
-                      <span className="text-slate-400 text-lg line-through ml-2">
-                        {plan.prixNormal.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} &euro;
-                      </span>
-                    )}
                   </div>
                   {plan.offreLancement && (
                     <span className="inline-block mt-2 px-2.5 py-1 text-xs font-semibold rounded-full bg-orange-50 text-orange-700">

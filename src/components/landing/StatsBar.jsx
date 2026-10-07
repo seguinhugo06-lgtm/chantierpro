@@ -32,9 +32,11 @@ const STATS = [
   },
   {
     icon: Shield,
+    // Vérifié : projet Supabase en AWS eu-west-3 (Paris). « Conforme facturation 2026 » était
+    // invérifiable — la réforme impose de passer par une Plateforme Agréée.
     value: 100,
-    suffix: '%',
-    label: 'Conforme facturation électronique 2026',
+    suffix: ' %',
+    label: 'Données hébergées en France (Paris)',
     color: '#22c55e',
     bgColor: 'bg-green-50',
   },

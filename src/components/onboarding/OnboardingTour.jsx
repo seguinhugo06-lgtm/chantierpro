@@ -68,12 +68,12 @@ export default function OnboardingTour({
     },
     {
       id: 'legal',
-      title: '100% conforme aux normes françaises',
+      title: 'Les mentions légales, sans y penser',
       subtitle: 'SIRET, TVA, garanties décennales... automatique',
       userStory: 'Tous vos devis incluent automatiquement TOUTES les mentions légales obligatoires.',
       before: { label: 'AVANT', value: 'Risque amende 5-10k€', color: '#ef4444' },
-      after: { label: 'APRÈS', value: '0 risque', color: '#22c55e' },
-      gain: '😌 Sérénité totale',
+      after: { label: 'APRÈS', value: 'Ajoutées au PDF', color: '#22c55e' },
+      gain: '😌 Moins d’oublis',
       icon: Shield,
       color: '#f59e0b'
     }
@@ -530,7 +530,7 @@ function LegalDemo({ progress, isDark, couleur }) {
 
       {progress >= 95 && (
         <div className="mt-4 p-3 bg-green-500 text-white rounded-xl text-center font-bold animate-bounce">
-          100% CONFORME
+          MENTIONS AJOUTÉES
         </div>
       )}
     </div>

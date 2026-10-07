@@ -210,7 +210,7 @@ export default function HeroSection({ onSignup }) {
             >
               {[
                 { icon: CheckCircle, text: 'Gratuit pour d\u00e9marrer — sans carte bancaire', color: 'text-green-500' },
-                { icon: Shield, text: 'Conforme facturation 2026', color: 'text-blue-500' },
+                { icon: Shield, text: 'Mentions l\u00e9gales BTP incluses', color: 'text-blue-500' },
                 { icon: CheckCircle, text: 'Donn\u00e9es h\u00e9berg\u00e9es en France', color: 'text-green-500' },
               ].map((badge) => (
                 <div key={badge.text} className="flex items-center gap-1.5">

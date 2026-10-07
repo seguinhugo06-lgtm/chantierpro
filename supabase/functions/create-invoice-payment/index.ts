@@ -15,10 +15,10 @@
  *         si payée : marque la facture payée (idempotent via events_log)
  *         et notifie l'artisan par email (Resend). PAS de webhook par artisan.
  *
- * Modèles de commission (stripe_config.commission_model) :
- *   - 'artisan'  → le client paie le TTC exact, l'artisan absorbe les frais
- *   - 'client'   → le client paie TTC + 1,7 %
- *   - 'partage'  → le client paie TTC + 0,85 %
+ * Le client paie toujours le TTC exact : l'artisan absorbe les frais Stripe. Les anciens modèles
+ * 'client' (+1,7 %) et 'partage' (+0,85 %) répercutaient les frais de carte sur le client, ce que
+ * l'article L112-12 du Code monétaire et financier interdit. La colonne commission_model est
+ * ignorée (conservée en base pour l'historique).
  */
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
@@ -100,16 +100,10 @@ async function handleCreate(req: Request, paymentToken: string, amountCents?: nu
   }
   if (baseCents < 50) return json({ error: 'Montant minimum : 0,50 €' }, 400);
 
-  const commissionModel = data.commission_model || 'artisan';
-  let finalCents = baseCents;
-  let feeSuffix = '';
-  if (commissionModel === 'client') {
-    finalCents = Math.round(baseCents * 1.017);
-    feeSuffix = ' (frais de paiement inclus)';
-  } else if (commissionModel === 'partage') {
-    finalCents = Math.round(baseCents * 1.0085);
-    feeSuffix = ' (frais de paiement partagés)';
-  }
+  // Jamais de surtaxe : interdite pour les paiements par carte (art. L112-12 C. mon. fin.).
+  const commissionModel = 'artisan';
+  const finalCents = baseCents;
+  const feeSuffix = '';
 
   const isPartial = baseCents < resteCents;
   const origin = req.headers.get('origin') || APP_URL;

@@ -17,7 +17,6 @@
  *  /app/admin     → admin
  *  /app/settings  → settings
  *  /app/finances  → finances
- *  /app/design-system → design-system
  */
 
 import { useCallback, useMemo } from 'react';
@@ -35,7 +34,6 @@ const PAGE_TO_PATH = {
   'admin': '/app/admin',
   'settings': '/app/settings',
   'finances': '/app/finances',
-  'design-system': '/app/design-system',
 };
 
 // Reverse map: path segment → page ID
@@ -52,7 +50,6 @@ const PATH_TO_PAGE = {
   'settings': 'settings',
   'parametres': 'settings', // alias for French URL
   'finances': 'finances',
-  'design-system': 'design-system',
 };
 
 /**

@@ -168,9 +168,7 @@ export default function PublicPaymentPage({ payToken }) {
     ? montantParam
     : null;
   const montantAPayer = montantAcompte ? montantAcompte / 100 : reste;
-  const commissionModel = data.commission_model || 'artisan';
-  const fraisPct = commissionModel === 'client' ? 1.7 : commissionModel === 'partage' ? 0.85 : 0;
-  const montantDebite = fraisPct ? Math.round(montantAPayer * 100 * (1 + fraisPct / 100)) / 100 : montantAPayer;
+  // Le client paie le montant exact : surtaxer un paiement par carte est interdit (art. L112-12 C. mon. fin.).
 
   const isPaid = facture.statut === 'payee';
 
@@ -281,11 +279,6 @@ export default function PublicPaymentPage({ payToken }) {
               <span className="text-sm font-medium text-slate-700">À payer</span>
               <span className="text-2xl font-bold" style={{ color: couleur }}>{formatMoney(montantAPayer)}</span>
             </div>
-            {fraisPct > 0 && (
-              <p className="text-xs text-slate-500 text-right">
-                dont frais de paiement en ligne : montant débité {formatMoney(montantDebite)} (+{fraisPct.toLocaleString('fr-FR')} %)
-              </p>
-            )}
           </div>
 
           {/* Pay CTA */}

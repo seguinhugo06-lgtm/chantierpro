@@ -138,7 +138,6 @@ export default function PaymentConfigTab({ entreprise, isDark, couleur = '#F9731
   }
 
   const isActive = config?.has_key && config?.stripe_enabled;
-  const absorbFees = config?.commission_model !== 'client';
 
   return (
     <div className="space-y-6">
@@ -329,37 +328,15 @@ export default function PaymentConfigTab({ entreprise, isDark, couleur = '#F9731
                 </button>
               </div>
 
-              {/* Absorb fees toggle */}
-              <div className={`rounded-xl p-4 flex items-center justify-between ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
-                <div className="flex-1 mr-4">
-                  <p className={`text-sm font-medium ${textPrimary}`}>Absorber les frais de transaction</p>
-                  <p className={`text-xs ${textMuted} mt-0.5`}>
-                    {absorbFees
-                      ? 'Le client paie le montant exact de la facture. Vous prenez les frais à votre charge.'
-                      : 'Des frais de 1,7 % sont ajoutés au montant payé par le client.'}
-                  </p>
-                </div>
-                <button
-                  onClick={() => updateStripeConfig({ commissionModel: absorbFees ? 'client' : 'artisan' })}
-                  className="flex-shrink-0"
-                  aria-label={absorbFees ? 'Faire payer les frais au client' : 'Absorber les frais'}
-                >
-                  {absorbFees ? (
-                    <ToggleRight size={32} style={{ color: couleur }} />
-                  ) : (
-                    <ToggleLeft size={32} className={textMuted} />
-                  )}
-                </button>
+              {/* Frais : toujours à la charge de l'artisan. L'ancien interrupteur proposait d'ajouter
+                  1,7 % au client, surtaxe interdite pour les paiements par carte (art. L112-12 C. mon. fin.). */}
+              <div className={`rounded-xl p-4 ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+                <p className={`text-sm font-medium ${textPrimary}`}>Frais de transaction</p>
+                <p className={`text-xs ${textMuted} mt-0.5`}>
+                  Votre client paie le montant exact de la facture ; les frais Stripe sont déduits de votre encaissement.
+                  La loi interdit de les lui répercuter (art. L112-12 du Code monétaire et financier).
+                </p>
               </div>
-
-              {!absorbFees && (
-                <div className={`rounded-xl p-3 flex items-start gap-2 ${isDark ? 'bg-amber-900/20 border border-amber-800' : 'bg-amber-50 border border-amber-200'}`}>
-                  <AlertTriangle size={14} className={`flex-shrink-0 mt-0.5 ${isDark ? 'text-amber-400' : 'text-amber-600'}`} />
-                  <p className={`text-xs ${isDark ? 'text-amber-300' : 'text-amber-700'}`}>
-                    Attention : l'article L.112-12 du Code monétaire interdit les surtaxes pour paiement par carte en France. Veillez à respecter la réglementation.
-                  </p>
-                </div>
-              )}
             </>
           )}
         </div>

@@ -350,12 +350,6 @@ export default function PlanPage({ isDark, couleur = '#f97316', setPage }) {
                       prix cassé qu'il garde tant qu'il reste abonné — l'argument
                       de rétention le plus fort du produit, invisible. */}
                   <div className="mb-3">
-                    {p.offreLancement && p.prixNormalMensuel && (
-                      <span className={`text-sm line-through mr-1.5 ${textMuted}`}>
-                        {(billing === 'yearly' ? p.prixNormalAnnuel / 12 : p.prixNormalMensuel)
-                          .toFixed(2).replace('.', ',')}€
-                      </span>
-                    )}
                     <span className="text-xl font-bold" style={{ color: p.color }}>
                       {price}€
                     </span>
@@ -440,8 +434,6 @@ export default function PlanPage({ isDark, couleur = '#f97316', setPage }) {
             <button onClick={() => setPage?.('mentions-legales')} className="underline hover:opacity-80">Mentions légales</button>
             {' · '}
             <button onClick={() => setPage?.('accessibilite')} className="underline hover:opacity-80">Accessibilité</button>
-            {' · '}
-            <button onClick={() => setPage?.('conformite')} className="underline hover:opacity-80">Conformité</button>
           </p>
         </div>
 
