@@ -7,7 +7,21 @@ Le suivi personnel d’Hugo (statuts, notes, journal de terrain) vit dans l’ou
 
 Une application **nickel** — sans menu qui sort de l’écran ni information qui se chevauche — publiée sur l’App Store et Google Play, que des artisans de l’entourage testent pendant un an.
 
-## Ce qui a été mesuré le 7 octobre
+## Avancement (7 octobre, fin de journée)
+
+Livré en production (commits `878d578` → `5878699`, statut GitHub vérifié) :
+- **Interface** : 0 défaut sur 88 combinaisons page × largeur (375 / 768 / 1024 / 1440). Cause racine : les animations d’entrée enfermaient modales et menus dans la page. Audit renforcé.
+- **Compte** : mot de passe oublié (lien e-mail + écran dédié), erreurs de connexion en français, vraie suppression de compte (migration 072).
+- **Fiabilité** : échecs de chargement signalés (bandeau + Réessayer) au lieu de listes vides.
+- **Abonnements** : faille d’auto-surclassement fermée (073), plan de l’organisation visible par l’équipe, retour de paiement Stripe traité, webhook qui fait rejouer Stripe en cas d’échec, portail ouvert sans blocage Safari.
+- **Légal** : certification TVA réduite (texte BOFiP) dans les deux générateurs de PDF ; retrait de la fausse « attestation de conformité », des « conforme 2026 », des prix barrés fictifs et de la surtaxe carte de 1,7 %.
+- **Testeurs** : « Un bug ? Une idée ? » (retours avec statut et réponse) et codes testeurs « un an offert » (074).
+- **Sécurité** : `payment_links` et `portal_access_logs` fermées au public (075).
+- **Garde-fous** : intégration continue GitHub (lint, tests, build, smoke, banc de migrations), banc de migrations sur PostgreSQL WebAssembly (`npm run banc:migrations`), autorisations Claude du projet, `node_modules` retiré de git.
+
+Reste à Hugo, dans cet ordre : appliquer 071 → 075 (fichier `Documents/Mallettico/Migrations à appliquer — 7 oct 2026.sql`, testé au banc) ; puis redéployer `stripe-webhook` (`--no-verify-jwt`) et `create-invoice-payment` ; vérifier l’URL du site et le modèle d’e-mail « Reset password » dans Supabase Auth ; créer les codes testeurs.
+
+## Ce qui a été mesuré le 7 octobre (matin)
 
 | Sujet | Constat | Preuve |
 |---|---|---|
