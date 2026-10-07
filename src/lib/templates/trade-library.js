@@ -753,7 +753,9 @@ electricite: {
     {
       id: 'borne-recharge',
       nom: 'Borne de recharge véhicule électrique',
-      resume: 'Wallbox 7,4 kW avec ligne dédiée et protections',
+      // Au-delà de 3,7 kW, la pose est réservée à un installateur qualifié IRVE (décret n° 2017-26) :
+      // l'artisan doit le savoir AVANT de proposer ce modèle.
+      resume: 'Wallbox 7,4 kW avec ligne dédiée et protections — pose réservée à un installateur qualifié IRVE (au-delà de 3,7 kW)',
       base: { quantite: 1, unite: 'ens.' },
       lignes: [
         { designation: 'Fourniture et pose de borne de recharge murale 7,4 kW', unite: 'u', quantite: 1, prixUnitaire: 1150, tva: 10 },
@@ -762,6 +764,19 @@ electricite: {
         { designation: 'Pose de chemin de câbles ou goulotte de protection', unite: 'ml', quantite: 12, prixUnitaire: 22, tva: 10 },
         { designation: 'Percement de mur et étanchéité de traversée', unite: 'u', quantite: 2, prixUnitaire: 65, tva: 10 },
         { designation: 'Paramétrage, mise en service et essai de charge', unite: 'forfait', quantite: 1, prixUnitaire: 210, tva: 10 },
+      ],
+    },
+    {
+      id: 'depannage',
+      nom: 'Dépannage électrique',
+      resume: 'Intervention chez un particulier : déplacement, diagnostic, réparation',
+      base: { quantite: 1, unite: 'ens.' },
+      lignes: [
+        { designation: 'Frais de déplacement', unite: 'forfait', quantite: 1, prixUnitaire: 40, tva: 10 },
+        { designation: 'Recherche de panne et diagnostic d\'installation', unite: 'h', quantite: 1, prixUnitaire: 60, tva: 10 },
+        { designation: 'Main d\'œuvre électricien', unite: 'h', quantite: 1, prixUnitaire: 55, tva: 10 },
+        { designation: 'Remplacement de disjoncteur ou d\'interrupteur différentiel défectueux', unite: 'u', quantite: 1, prixUnitaire: 110, tva: 10 },
+        { designation: 'Fourniture de petit matériel et consommables', unite: 'forfait', quantite: 1, prixUnitaire: 25, tva: 10 },
       ],
     },
     {
@@ -807,6 +822,14 @@ electricite: {
     { designation: 'Pose de détecteur de fumée normalisé NF', unite: 'u', quantite: 1, prixUnitaire: 48, tva: 10 },
     { designation: 'Recherche de panne et diagnostic d\'installation', unite: 'h', quantite: 2, prixUnitaire: 60, tva: 10 },
     { designation: 'Attestation de conformité Consuel et accompagnement au contrôle', unite: 'forfait', quantite: 1, prixUnitaire: 290, tva: 10 },
+    // Les lignes de tous les jours d'un électricien solo : sans elles, chaque devis de dépannage
+    // commençait par une saisie à la main.
+    { designation: 'Frais de déplacement', unite: 'forfait', quantite: 1, prixUnitaire: 40, tva: 10 },
+    { designation: 'Main d\'œuvre électricien', unite: 'h', quantite: 1, prixUnitaire: 55, tva: 10 },
+    { designation: 'Majoration intervention urgente (soir, week-end, jour férié)', unite: 'forfait', quantite: 1, prixUnitaire: 60, tva: 10 },
+    { designation: 'Fourniture de petit matériel et consommables', unite: 'forfait', quantite: 1, prixUnitaire: 25, tva: 10 },
+    { designation: 'Remplacement d\'interrupteur ou de prise défectueux', unite: 'u', quantite: 1, prixUnitaire: 45, tva: 10 },
+    { designation: 'Remplacement de disjoncteur ou d\'interrupteur différentiel défectueux', unite: 'u', quantite: 1, prixUnitaire: 110, tva: 10 },
   ],
 },
 
