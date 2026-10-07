@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useCallback, createContext, useContext, forwardRef } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
@@ -197,7 +198,9 @@ function Modal({
   const cardBg = isDark ? 'bg-slate-800' : 'bg-white';
   const borderColor = isDark ? 'border-slate-700' : 'border-gray-200';
 
-  return (
+  // Rendue dans <body> : un ancêtre avec transform / filter / backdrop-filter enfermerait sinon
+  // la modale (position: fixed) dans sa propre boîte au lieu de couvrir l'écran.
+  return createPortal(
     <div
       className={cn(
         'fixed inset-0 z-[1050] flex',
@@ -328,21 +331,22 @@ function Modal({
           }
         }
         .modal-backdrop-enter {
-          animation: modal-backdrop-enter 0.2s ease-out forwards;
+          animation: modal-backdrop-enter 0.2s ease-out backwards;
         }
         .modal-enter {
-          animation: modal-enter 0.2s ease-out forwards;
+          animation: modal-enter 0.2s ease-out backwards;
         }
         @media (max-width: 639px) {
           .modal-enter {
-            animation: modal-slide-up 0.3s ease-out forwards;
+            animation: modal-slide-up 0.3s ease-out backwards;
           }
         }
         .modal-exit {
           animation: modal-exit 0.15s ease-in forwards;
         }
       `}</style>
-    </div>
+    </div>,
+    document.body
   );
 }
 

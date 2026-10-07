@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { MoreHorizontal } from 'lucide-react';
+import useKeepInViewport from '../../hooks/useKeepInViewport';
 
 /**
  * TabBar — Reusable tab navigation with overflow menu.
@@ -15,6 +16,8 @@ import { MoreHorizontal } from 'lucide-react';
 export default function TabBar({ tabs = [], activeTab, onTabChange, maxVisible = 5, isDark = false, couleur = '#8b5cf6' }) {
   const [showMore, setShowMore] = useState(false);
   const moreRef = useRef(null);
+  const menuRef = useRef(null);
+  useKeepInViewport(menuRef, showMore);
 
   // Close overflow menu on outside click
   useEffect(() => {
@@ -43,6 +46,8 @@ export default function TabBar({ tabs = [], activeTab, onTabChange, maxVisible =
   return (
     <div className="relative" role="tablist" aria-label="Navigation par onglets">
       <div className={`flex items-center gap-1 sm:gap-2 border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+        {/* Les onglets défilent si l'écran est trop étroit ; le bouton « … » reste toujours visible. */}
+        <div className="flex items-center gap-1 sm:gap-2 min-w-0 flex-1 overflow-x-auto scrollbar-hide">
         {displayVisible.map(tab => {
           const isActive = activeTab === tab.key;
           const Icon = tab.icon;
@@ -73,9 +78,10 @@ export default function TabBar({ tabs = [], activeTab, onTabChange, maxVisible =
             </button>
           );
         })}
+        </div>
 
         {displayOverflow.length > 0 && (
-          <div className="relative ml-auto" ref={moreRef}>
+          <div className="relative flex-shrink-0" ref={moreRef}>
             <button
               onClick={() => setShowMore(p => !p)}
               className={`flex items-center gap-1 px-3 min-h-[48px] text-sm transition-colors ${
@@ -88,7 +94,7 @@ export default function TabBar({ tabs = [], activeTab, onTabChange, maxVisible =
               <MoreHorizontal size={18} />
             </button>
             {showMore && (
-              <div className={`absolute right-0 top-full mt-1 z-50 rounded-xl border shadow-lg py-1 min-w-[200px] ${
+              <div ref={menuRef} className={`absolute right-0 top-full mt-1 z-50 rounded-xl border shadow-lg py-1 min-w-[200px] ${
                 isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'
               }`}>
                 {displayOverflow.map(tab => {

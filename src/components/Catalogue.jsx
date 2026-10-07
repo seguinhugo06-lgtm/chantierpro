@@ -16,6 +16,7 @@ import { usePermissions } from '../hooks/usePermissions';
 import { ReadOnlyBanner } from './ui/PermissionGate';
 import TabBar from './ui/TabBar';
 import PageHeader from './ui/PageHeader';
+import useKeepInViewport from '../hooks/useKeepInViewport';
 
 /**
  * Chargés à la demande : la bibliothèque d'ouvrages embarque à elle seule
@@ -77,6 +78,8 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
   const [activeTab, setActiveTab] = useState('catalogue'); // catalogue, fournisseurs, mouvements, packs, inventaire, parametres
   const [show, setShow] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const mobileMenuRef = useRef(null);
+  useKeepInViewport(mobileMenuRef, showMobileMenu);
   const [priceFlash, setPriceFlash] = useState(false);
   const [formErrors, setFormErrors] = useState({});
   const [coefSaved, setCoefSaved] = useState(false); // 'saving' | 'saved' | false
@@ -1494,7 +1497,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
             {showMobileMenu && (
               <>
                 <div className="fixed inset-0 z-40" aria-hidden="true" onClick={() => setShowMobileMenu(false)} />
-                <div onKeyDown={(e) => { if (e.key === 'Escape') setShowMobileMenu(false); }} className={`absolute right-0 top-full mt-1 w-56 rounded-xl border shadow-lg z-50 py-1 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+                <div ref={mobileMenuRef} onKeyDown={(e) => { if (e.key === 'Escape') setShowMobileMenu(false); }} className={`absolute right-0 top-full mt-1 w-56 rounded-xl border shadow-lg z-50 py-1 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
                   <button onClick={() => { fileInputRef.current?.click(); setShowMobileMenu(false); }} className={`w-full flex items-center gap-3 px-4 py-3 text-sm ${textPrimary} ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}>
                     <Upload size={16} className={textMuted} /> Importer (CSV/Excel)
                   </button>

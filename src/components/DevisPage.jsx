@@ -83,6 +83,7 @@ import DiffViewer from './audit/DiffViewer';
 import LockBanner from './audit/LockBanner';
 import { getEntityHistory } from '../lib/auditService';
 import { getSnapshots } from '../lib/snapshotService';
+import useKeepInViewport from '../hooks/useKeepInViewport';
 
 // Email tracking : l'envoi passe par Resend (send-email) ; l'historique par document
 // n'est pas persisté côté client → statut vide (l'onglet « Emails » reste masqué).
@@ -305,6 +306,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     return () => { cancelled = true; };
   }, [selected?.id, mode]);
   const [showCreateMenu, setShowCreateMenu] = useState(false); // split-button dropdown
+  const createMenuRef = useRef(null);
+  useKeepInViewport(createMenuRef, showCreateMenu);
   const [complianceDismissed, setComplianceDismissed] = useState(() => {
     try {
       const dismissed = localStorage.getItem('cp_devis_banner_dismissed');
@@ -4844,7 +4847,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           {showCreateMenu && (
             <>
               <div className="fixed inset-0 z-40" aria-hidden="true" onClick={() => setShowCreateMenu(false)} />
-              <div onKeyDown={(e) => { if (e.key === 'Escape') setShowCreateMenu(false); }} className={`absolute right-0 mt-1 w-56 rounded-xl border shadow-xl z-50 overflow-hidden ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+              <div ref={createMenuRef} onKeyDown={(e) => { if (e.key === 'Escape') setShowCreateMenu(false); }} className={`absolute right-0 mt-1 w-56 rounded-xl border shadow-xl z-50 overflow-hidden ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
                 <button
                   onClick={() => { setShowCreateMenu(false); setShowDevisExpressModal(true); }}
                   className={`w-full px-4 py-3 flex items-center gap-3 text-left transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}
@@ -5045,8 +5048,9 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       {/* === SEARCH + FILTERS === */}
       <div className="space-y-2">
         {/* Row 1: Search + Period filters + Sort + Export */}
-        <div className="flex gap-2 items-center">
-          <div className="relative flex-1 max-w-[200px]">
+        {/* flex-wrap : sur téléphone la ligne ne tient pas, et le sélecteur de vue était coupé. */}
+        <div className="flex flex-wrap gap-2 items-center">
+          <div className="relative w-full sm:w-auto sm:flex-1 sm:max-w-[200px]">
             <Search size={14} className={`absolute left-3 top-1/2 -translate-y-1/2 ${textMuted}`} />
             <input placeholder="Rechercher..." aria-label="Rechercher un document" value={search} onChange={e => setSearch(e.target.value)} className={`w-full pl-8 pr-3 py-1.5 border rounded-xl text-sm ${inputBg}`} />
           </div>
@@ -5057,9 +5061,9 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
               </button>
             ))}
           </div>
-          <div className="flex-1" />
+          <div className="ml-auto flex items-center gap-2 flex-shrink-0">
           {/* View mode toggle */}
-          <div className={`flex rounded-lg border overflow-hidden ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
+          <div className={`flex flex-shrink-0 rounded-lg border overflow-hidden ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
             <button
               onClick={() => setViewMode('cards')}
               className={`p-1.5 transition-colors ${viewMode === 'cards' ? (isDark ? 'bg-slate-600 text-white' : 'bg-slate-200 text-slate-800') : (isDark ? 'bg-slate-700 text-slate-400 hover:text-slate-300' : 'bg-white text-slate-400 hover:text-slate-600')}`}
@@ -5123,6 +5127,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
               </div>
             </div>
           )}
+          </div>
         </div>
         {/* Row 1.5: Client & Chantier filters */}
         <div className="flex gap-2 items-center flex-wrap">

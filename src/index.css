@@ -52,11 +52,13 @@ html {
 }
 
 /* Hide scrollbar for horizontal tab bars on mobile */
-.scrollbar-none {
+.scrollbar-none,
+.scrollbar-hide {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
-.scrollbar-none::-webkit-scrollbar {
+.scrollbar-none::-webkit-scrollbar,
+.scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
 
@@ -247,9 +249,11 @@ button {
   }
 }
 
+/* « backwards » et non « forwards » : un transform laissé en place après l'animation fait de
+   l'élément le bloc conteneur de ses descendants position:fixed (modales, fonds, menus),
+   qui se retrouvent alors enfermés dans la page au lieu de couvrir l'écran. */
 .animate-stagger > * {
-  opacity: 0;
-  animation: stagger-in 0.3s ease-out forwards;
+  animation: stagger-in 0.3s ease-out backwards;
 }
 
 .animate-stagger > *:nth-child(1) { animation-delay: 0ms; }
@@ -285,7 +289,7 @@ button {
   to { opacity: 1; transform: translateY(0); }
 }
 .animate-count-up {
-  animation: count-up 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation: count-up 0.4s cubic-bezier(0.22, 1, 0.36, 1) backwards;
 }
 
 /* Smooth page entrance */
@@ -294,7 +298,7 @@ button {
   to { opacity: 1; transform: translateY(0); }
 }
 .animate-page-enter {
-  animation: page-enter 0.35s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation: page-enter 0.35s cubic-bezier(0.22, 1, 0.36, 1) backwards;
 }
 
 /* Respect reduced motion */

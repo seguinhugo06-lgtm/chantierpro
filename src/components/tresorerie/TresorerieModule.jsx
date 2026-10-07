@@ -29,6 +29,7 @@ import {
 import { useTresorerie } from '../../hooks/useTresorerie';
 import { useTVA } from '../../hooks/useTVA';
 import { useExportComptable } from '../../hooks/useExportComptable';
+import useKeepInViewport from '../../hooks/useKeepInViewport';
 import { formatClientName } from '../../lib/formatters';
 import KPICard from '../ui/KPICard';
 
@@ -644,6 +645,8 @@ export default function TresorerieModule({
   const [editingItem, setEditingItem] = useState(null);
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [showSettingsPanel, setShowSettingsPanel] = useState(false);
+  const settingsPanelRef = useRef(null);
+  useKeepInViewport(settingsPanelRef, showSettingsPanel);
   const [showMouvModal, setShowMouvModal] = useState(false);
   const [editingMouv, setEditingMouv] = useState(null);
   const [mouvFilter, setMouvFilter] = useState('all'); // all | entree | sortie
@@ -1590,7 +1593,7 @@ export default function TresorerieModule({
               <Settings size={18} />
             </button>
             {showSettingsPanel && (
-              <div className={`absolute right-0 top-full mt-2 z-30 p-4 rounded-xl border shadow-lg ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`} style={{ minWidth: 260 }}>
+              <div ref={settingsPanelRef} className={`absolute right-0 top-full mt-2 z-30 p-4 rounded-xl border shadow-lg ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`} style={{ minWidth: 260 }}>
                 <h4 className={`text-sm font-bold mb-3 ${textPrimary}`}>Paramètres trésorerie</h4>
                 <div className="space-y-3">
                   <div>
