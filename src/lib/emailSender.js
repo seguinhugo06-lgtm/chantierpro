@@ -111,6 +111,27 @@ async function generateDocumentPdfBytes(fullHtml) {
 }
 
 /**
+ * Appelle `send-email` et remonte le vrai message du serveur (destinataire qui
+ * n'est pas un client, plafond quotidien atteint…). Sur une réponse 4xx/5xx,
+ * supabase-js ne donne que « Edge Function returned a non-2xx status code » et
+ * range la réponse dans `error.context`.
+ */
+export async function invoquerEnvoiEmail(body) {
+  if (!supabase) throw new Error('Envoi indisponible en mode démo');
+  const { data, error } = await supabase.functions.invoke('send-email', { body });
+  if (error) {
+    let message = error.message || "Erreur lors de l'envoi";
+    try {
+      const corps = await error.context?.json?.();
+      if (corps?.error) message = corps.error;
+    } catch { /* corps illisible : on garde le message d'origine */ }
+    throw new Error(message);
+  }
+  if (data?.error) throw new Error(data.error);
+  return data;
+}
+
+/**
  * Envoie un email, avec en option un PDF généré depuis un HTML complet.
  *
  * @param {Object} p
@@ -132,21 +153,15 @@ export async function sendDocumentEmail({ to, subject, bodyHtml, fromName, reply
     attachments = [{ filename: pdfFilename || 'document.pdf', content: uint8ToBase64(pdfBytes) }];
   }
 
-  const { data, error } = await supabase.functions.invoke('send-email', {
-    body: {
-      action: 'send_email',
-      to,
-      subject,
-      html: bodyHtml,
-      from_name: fromName || undefined,
-      reply_to: replyTo || undefined,
-      attachments,
-    },
+  return invoquerEnvoiEmail({
+    action: 'send_email',
+    to,
+    subject,
+    html: bodyHtml,
+    from_name: fromName || undefined,
+    reply_to: replyTo || undefined,
+    attachments,
   });
-
-  if (error) throw new Error(error.message || "Erreur lors de l'envoi");
-  if (data?.error) throw new Error(data.error);
-  return data;
 }
 
 /**

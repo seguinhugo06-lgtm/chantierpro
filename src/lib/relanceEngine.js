@@ -13,6 +13,7 @@ import {
 } from './relanceUtils';
 import { scopeToOrg, withOrgScope } from './queryHelper';
 import { logger } from './logger';
+import { invoquerEnvoiEmail } from './emailSender';
 
 // ============ DETECTION ============
 
@@ -121,19 +122,14 @@ export async function executeRelance(doc, client, step, entreprise, options = {}
     // Envoi email via Resend (Edge Function send-email) — même canal que les devis.
     if (client.email) {
       try {
-        const { data, error } = await supabase.functions.invoke('send-email', {
-          body: {
-            action: 'send_email',
-            to: client.email,
-            subject: resolvedSubject,
-            html: htmlEmail,
-            from_name: entreprise?.nom || undefined,
-            reply_to: entreprise?.email || undefined,
-          },
+        emailResult = await invoquerEnvoiEmail({
+          action: 'send_email',
+          to: client.email,
+          subject: resolvedSubject,
+          html: htmlEmail,
+          from_name: entreprise?.nom || undefined,
+          reply_to: entreprise?.email || undefined,
         });
-        if (error) throw new Error(error.message || "Erreur d'envoi");
-        if (data?.error) throw new Error(data.error);
-        emailResult = data;
         success = true;
       } catch (err) {
         console.warn('Relance email failed:', err.message);
