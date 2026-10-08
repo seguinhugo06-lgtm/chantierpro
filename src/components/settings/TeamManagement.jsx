@@ -162,8 +162,11 @@ export default function TeamManagement({ isDark, couleur = '#F97316' }) {
     const ok = await confirm({ title: 'Annuler l\'invitation ?', message: 'Cette invitation ne sera plus valide.' });
     if (!ok) return;
     try {
-      const { error } = await supabase.rpc('revoke_invitation', { p_invitation_id: invId });
+      // La fonction répond { error } sans erreur HTTP quand elle refuse (invitation déjà utilisée,
+      // ou vous n'êtes plus propriétaire ni administrateur) : ne pas annoncer une annulation qui n'a pas eu lieu.
+      const { data, error } = await supabase.rpc('revoke_invitation', { p_invitation_id: invId });
       if (error) throw error;
+      if (data?.error) { showToast(`Invitation non annulée : ${data.error}`, 'error'); loadInvitations(); return; }
       setInvitations(prev => prev.map(i => i.id === invId ? { ...i, status: 'revoked' } : i));
       showToast('Invitation annulée', 'success');
     } catch (err) {
@@ -175,11 +178,14 @@ export default function TeamManagement({ isDark, couleur = '#F97316' }) {
   const handleChangeRole = async (memberId, newRole) => {
     setChangingRole(memberId);
     try {
-      const { error } = await supabase
+      // .select() : un refus de la base (RLS) ne lève pas d'erreur, il modifie 0 ligne.
+      const { data, error } = await supabase
         .from('organization_members')
         .update({ role: newRole })
-        .eq('id', memberId);
+        .eq('id', memberId)
+        .select('id');
       if (error) throw error;
+      if (!data?.length) throw new Error('modification refusée');
       refreshOrg();
       showToast('Rôle modifié', 'success');
     } catch (err) {
@@ -197,11 +203,13 @@ export default function TeamManagement({ isDark, couleur = '#F97316' }) {
     });
     if (!ok) return;
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('organization_members')
         .delete()
-        .eq('id', memberId);
+        .eq('id', memberId)
+        .select('id');
       if (error) throw error;
+      if (!data?.length) throw new Error('retrait refusé');
       refreshOrg();
       showToast('Membre retiré', 'success');
     } catch (err) {
