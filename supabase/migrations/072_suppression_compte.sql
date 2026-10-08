@@ -10,8 +10,9 @@
 -- supprimer_mon_compte(p_simulation, p_fichiers_restants), appelée par l'utilisateur connecté :
 --   1. refuse si un abonnement payant est encore actif (sinon Stripe continuerait de prélever) ;
 --   2. refuse si l'utilisateur possède une organisation qui compte d'autres membres ;
---   3. dans l'organisation d'un AUTRE, réattribue au propriétaire les données métier que
---      l'utilisateur y a créées (un salarié qui part n'emporte pas les devis de l'entreprise) ;
+--   3. dans l'organisation d'un AUTRE dont il est membre, réattribue au propriétaire les données
+--      métier que l'utilisateur y a créées (un salarié qui part n'emporte pas les devis de
+--      l'entreprise) ; jamais ses réglages de paiement ni de banque, toujours supprimés ;
 --   4. supprime ses lignes dans toutes les tables de `public` qui ont user_id / organization_id,
 --      en plusieurs passes pour respecter l'ordre des clés étrangères (tables découvertes à
 --      l'exécution : le dépôt ne décrit pas exactement la production) ;
@@ -78,6 +79,10 @@ DECLARE
   v_reattribuees JSONB := '{}'::jsonb;
   v_neutralisees JSONB := '{}'::jsonb;
   v_ref RECORD;
+  -- Paiement et banque : jamais réattribués au patron (sa clé Stripe ou son compte bancaire
+  -- deviendraient ceux du partant) ; toujours supprimés avec le compte.
+  v_sensibles TEXT[] := ARRAY['stripe_config', 'gocardless_config', 'bank_connections', 'bank_transactions'];
+  v_membre TEXT;
   v_tour INT;
   v_passe INT;
   v_bilan JSONB;
@@ -118,9 +123,16 @@ BEGIN
 
   BEGIN  -- bloc annulable : en simulation, une exception finale défait tout ce qui suit
     -- 3. Données créées dans l'organisation d'un autre → au propriétaire de cette organisation
+    --    Seulement dans une organisation dont il est MEMBRE : n'importe quel compte peut écrire
+    --    l'organization_id d'un autre sur ses propres lignes (revue de sécurité du 8 oct., tâche
+    --    [org-invitations]) ; sans cette condition, supprimer son compte offrait ces lignes — une
+    --    clé Stripe par exemple — au patron d'une entreprise inconnue.
+    v_membre := CASE WHEN to_regclass('public.organization_members') IS NOT NULL
+      THEN 'EXISTS (SELECT 1 FROM public.organization_members m WHERE m.organization_id::text = o.id::text AND m.user_id::text = $1)'
+      ELSE 'false' END;
     IF to_regclass('public.organizations') IS NOT NULL THEN
       FOREACH v_table IN ARRAY v_tables LOOP
-        CONTINUE WHEN v_table IN ('organization_members', 'invitations', 'subscriptions')
+        CONTINUE WHEN v_table IN ('organization_members', 'invitations', 'subscriptions') OR v_table = ANY (v_sensibles)
           OR v_table ~ '(log|chat|message|notif|audit|historique|lecture|read)';
         SELECT bool_or(column_name = 'user_id'), bool_or(column_name = 'organization_id')
           INTO v_a_user, v_a_org
@@ -129,8 +141,8 @@ BEGIN
         CONTINUE WHEN NOT (v_a_user AND v_a_org);
         EXECUTE format(
           'UPDATE public.%I x SET user_id = o.owner_id FROM public.organizations o
-            WHERE x.organization_id::text = o.id::text AND x.user_id::text = $1 AND o.owner_id <> $2',
-          v_table) USING v_uid::text, v_uid;
+            WHERE x.organization_id::text = o.id::text AND x.user_id::text = $1 AND o.owner_id <> $2 AND %s',
+          v_table, v_membre) USING v_uid::text, v_uid;
         GET DIAGNOSTICS v_n = ROW_COUNT;
         IF v_n > 0 THEN v_reattribuees := v_reattribuees || jsonb_build_object(v_table, v_n); END IF;
       END LOOP;
@@ -149,7 +161,7 @@ BEGIN
             FROM information_schema.columns
             WHERE table_schema = 'public' AND table_name = v_table AND column_name IN ('user_id', 'organization_id');
           v_cond := CASE
-            WHEN v_a_user AND v_a_org AND v_table IN ('organization_members', 'invitations', 'subscriptions')
+            WHEN v_a_user AND v_a_org AND (v_table IN ('organization_members', 'invitations', 'subscriptions') OR v_table = ANY (v_sensibles))
               THEN 'user_id::text = $1 OR organization_id::text = ANY ($2)'
             WHEN v_a_user AND v_a_org
               THEN 'organization_id::text = ANY ($2) OR (user_id::text = $1 AND (organization_id IS NULL OR organization_id::text = ANY ($2)))'

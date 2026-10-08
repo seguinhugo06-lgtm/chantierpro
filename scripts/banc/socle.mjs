@@ -176,7 +176,8 @@ export const SCHEMA = `
   CREATE SCHEMA vault;
   CREATE TABLE vault.decrypted_secrets (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), decrypted_secret TEXT);
   GRANT USAGE ON SCHEMA vault TO service_role;
-  CREATE TABLE stripe_config (user_id UUID PRIMARY KEY REFERENCES auth.users(id), stripe_enabled BOOLEAN DEFAULT false,
+  -- organization_id : ajoutée par 036 (effacée du dépôt par 227534e) à stripe_config comme aux autres tables de données.
+  CREATE TABLE stripe_config (user_id UUID PRIMARY KEY REFERENCES auth.users(id), organization_id UUID REFERENCES organizations(id), stripe_enabled BOOLEAN DEFAULT false,
     secret_key_vault_id UUID, webhook_secret_vault_id UUID, commission_model TEXT);
   ALTER TABLE stripe_config ENABLE ROW LEVEL SECURITY;
   CREATE FUNCTION get_stripe_config_for_user(p_user_id UUID) RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
