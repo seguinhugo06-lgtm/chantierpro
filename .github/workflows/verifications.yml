@@ -1,8 +1,11 @@
-# Vérifications à chaque push et pull request : lint, tests, build, smoke, migrations.
+# Vérifications à chaque push sur main et à chaque pull request.
 #
 # Le hook de pre-push ne protège que la machine où il est installé (et c'est une copie figée).
-# Ici, GitHub rejoue les mêmes contrôles pour tout ce qui arrive sur le dépôt : un commit rouge
-# se voit dans l'historique avant même que Vercel ne le déploie.
+# Ici, GitHub rejoue les contrôles pour tout ce qui arrive sur le dépôt : un commit rouge se voit
+# dans l'historique (et `npm run statut` le signale) avant qu'on ne le croie livré.
+#   - verifier   : lint, tests, build, smoke, banc de migrations (PostgreSQL WebAssembly)
+#   - navigateur : parcours critiques dans Chrome (mode démo et mode « réel simulé »)
+# L'audit d'interface complet (88 combinaisons) tourne chaque semaine : sante-hebdomadaire.yml.
 name: Vérifications
 
 on:
@@ -20,28 +23,44 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-
       - name: Dépendances
         run: npm ci
         env:
           PUPPETEER_SKIP_DOWNLOAD: 'true'
-
       - name: Lint (0 erreur exigée)
         run: npm run lint
-
       - name: Tests
         run: npm test
-
       - name: Build (mode démo, sans secrets)
         run: npm run build
-
       - name: Smoke
         run: npm run smoke
-
       - name: Migrations (PostgreSQL WebAssembly, socle Supabase simulé)
         run: npm run banc:migrations
+
+  navigateur:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Dépendances (avec Chrome pour Puppeteer)
+        run: npm ci
+      - name: Build (mode démo)
+        run: npm run build
+      - name: Parcours critiques
+        run: npm run parcours
+      - name: Captures des parcours en échec
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: parcours-echecs
+          path: audit-ui/parcours-echec-*.png
+          if-no-files-found: ignore

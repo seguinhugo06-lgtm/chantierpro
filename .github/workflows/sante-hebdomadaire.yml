@@ -1,0 +1,73 @@
+# Santé hebdomadaire : la vérification COMPLÈTE (audit d'interface sur 88 combinaisons page × largeur,
+# parcours, banc) + les dépendances vulnérables, chaque lundi matin et à la demande.
+# En cas d'échec, une issue « Santé hebdomadaire » est ouverte (ou complétée) avec le résumé :
+# rien ne se dégrade en silence entre deux sessions de travail.
+name: Santé hebdomadaire
+
+on:
+  schedule:
+    - cron: '0 5 * * 1'   # lundi 5 h UTC (7 h à Paris l'été)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  sante:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Dépendances (avec Chrome pour Puppeteer)
+        run: npm ci
+      - name: Vérification complète
+        id: verif
+        continue-on-error: true
+        shell: bash   # pipefail : sans lui, « | tee » masquerait l'échec
+        run: npm run verifier -- --complet 2>&1 | tee audit-ui-verification.txt
+      - name: Dépendances vulnérables (élevées ou critiques)
+        id: audit
+        continue-on-error: true
+        shell: bash   # pipefail : sans lui, « | tee » masquerait l'échec
+        run: npm audit --omit=dev --audit-level=high 2>&1 | tee npm-audit.txt
+      - name: Rapports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sante-hebdomadaire
+          path: |
+            audit-ui/rapport.md
+            audit-ui/captures/
+            audit-ui/parcours-echec-*.png
+            audit-ui-verification.txt
+            npm-audit.txt
+          if-no-files-found: ignore
+      - name: Issue en cas de problème
+        if: steps.verif.outcome == 'failure' || steps.audit.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          {
+            echo "Run : ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }} (rapports en artefact)."
+            echo
+            echo '### Vérification complète'
+            echo '```'
+            grep -E '^  [✓✗]|Tout est vert|Échec' audit-ui-verification.txt || tail -40 audit-ui-verification.txt
+            echo '```'
+            echo '### npm audit (dépendances de production)'
+            echo '```'
+            tail -25 npm-audit.txt
+            echo '```'
+          } > corps.md
+          NUMERO=$(gh issue list --state open --search "Santé hebdomadaire in:title" --json number --jq '.[0].number')
+          if [ -n "$NUMERO" ]; then
+            gh issue comment "$NUMERO" --body-file corps.md
+          else
+            gh issue create --title "Santé hebdomadaire : quelque chose s'est dégradé" --body-file corps.md
+          fi
+          exit 1

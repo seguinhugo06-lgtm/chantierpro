@@ -1,0 +1,22 @@
+# Mises à jour des dépendances, regroupées pour ne pas noyer le dépôt :
+# une PR par semaine pour les correctifs et versions mineures npm, une par mois pour les actions GitHub.
+# Les versions majeures sont ignorées (elles demandent une vraie tâche, avec vérification complète).
+# Chaque PR passe la CI « Vérifications » ; rien n'est fusionné automatiquement.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 2
+    groups:
+      correctifs-et-mineures:
+        update-types: [minor, patch]
+    ignore:
+      - dependency-name: '*'
+        update-types: ['version-update:semver-major']
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
