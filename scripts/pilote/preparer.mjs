@@ -105,7 +105,7 @@ function ecrituresAttentes(existantsTous) {
       commandeTxt = deploiements.length ? deploiements.join('\n') : blocCode;
       controle = 'npx supabase functions list --project-ref kofsbgxkrmryfetevetn\n-- collez les lignes des fonctions redéployées (colonne UPDATED_AT = aujourd’hui)';
       const constat = blocsControle.find((b) => fonctions.some((f) => b.includes(f)));
-      if (constat) controle += `\n\n${constat}`;
+      if (constat) controle += `\n\n// Puis, connecté sur mallettico.fr : console du navigateur (F12 › Console), coller ce qui suit, Entrée.\n${constat}`;
     } else if (/code testeur/i.test(titre)) {
       commandeTxt = sql074();
       controle = 'SELECT plan, duree_mois, utilisations_max, utilisations, expire_le FROM public.codes_testeurs;  -- une ligne par code (ne collez pas le code lui-même)';

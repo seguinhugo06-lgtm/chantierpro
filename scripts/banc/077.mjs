@@ -59,6 +59,16 @@ export async function verifier({ db, q, en, commeAnonyme, compte, verifier }) {
   const luParVisiteur = await commeAnonyme(() => q('SELECT count(*) AS n FROM envois_email'));
   verifier(Number(luParVisiteur.rows[0].n) === 0, '077 : un visiteur ne lit rien du compteur');
 
+  // ── La recherche des fiches clients faite par send-email (ILIKE avec le motif de
+  //    motifRechercheClient, envoi.ts) : « _ » échappé ne sert plus de joker. La RLS de
+  //    `clients` en production n'est pas simulée ici (contrôle réel : docs/etat-production.md).
+  await q(`CREATE TEMP TABLE fiches (email TEXT)`);
+  await q(`INSERT INTO fiches VALUES ('jean_dupont@x.fr'), ('jeanXdupont@x.fr'), ('  JEAN_DUPONT@X.FR ')`);
+  const trouvees = (await q(`SELECT email FROM fiches WHERE email ILIKE $1`, ['%jean\\_dupont@x.fr%'])).rows.map((r) => r.email);
+  verifier(trouvees.length === 2 && !trouvees.includes('jeanXdupont@x.fr'),
+    `077 (send-email) : le motif échappé retrouve la fiche, casse et espaces compris, sans joker (${JSON.stringify(trouvees)})`);
+  await q(`DROP TABLE fiches`);
+
   // ── Requête de contrôle de l'en-tête (droits sur la fonction, RLS) ──
   const controle = (await q(`SELECT has_function_privilege('authenticated', 'public.reserver_envoi_email(uuid,integer,integer)', 'execute') AS auth_exec,
       has_function_privilege('anon', 'public.reserver_envoi_email(uuid,integer,integer)', 'execute') AS anon_exec,

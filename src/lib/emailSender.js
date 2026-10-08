@@ -119,16 +119,18 @@ async function generateDocumentPdfBytes(fullHtml) {
 export async function invoquerEnvoiEmail(body) {
   if (!supabase) throw new Error('Envoi indisponible en mode démo');
   const { data, error } = await supabase.functions.invoke('send-email', { body });
-  if (error) {
-    let message = error.message || "Erreur lors de l'envoi";
-    try {
-      const corps = await error.context?.json?.();
-      if (corps?.error) message = corps.error;
-    } catch { /* corps illisible : on garde le message d'origine */ }
-    throw new Error(message);
-  }
+  if (error) throw new Error(await messageErreurFonction(error));
   if (data?.error) throw new Error(data.error);
   return data;
+}
+
+/** Le message d'erreur réel d'une fonction Edge (champ `error` de sa réponse), sinon celui de supabase-js. */
+export async function messageErreurFonction(error) {
+  try {
+    const corps = await error?.context?.json?.();
+    if (corps?.error) return corps.error;
+  } catch { /* corps illisible : on garde le message d'origine */ }
+  return error?.message || "Erreur lors de l'envoi";
 }
 
 /**

@@ -9,6 +9,8 @@ import { getRoleLabel, getRoleDescription, getInvitableRoles } from '../../lib/p
 import { useConfirm, useToast } from '../../context/AppContext';
 import { useSubscriptionStore } from '../../stores/subscriptionStore';
 import { urlPublique } from '../../lib/urlPublique';
+import { captureException } from '../../lib/sentry';
+import { messageErreurFonction } from '../../lib/emailSender';
 
 const INVITABLE_ROLES = getInvitableRoles();
 
@@ -108,7 +110,9 @@ export default function TeamManagement({ isDark, couleur = '#F97316' }) {
 
       if (error) throw error;
 
-      // Send invitation email via Edge Function (Resend)
+      // Send invitation email via Edge Function (Resend). Un seul toast à la fois : celui
+      // de succès ne doit pas recouvrir l'échec de l'e-mail (l'artisan croirait l'invité prévenu).
+      let echecEmail = null;
       if (data.email && data.token) {
         const inviteLink = urlPublique(`/invitation/${data.token}`);
         const roleLabel = getRoleLabel(data.role);
@@ -130,19 +134,18 @@ export default function TeamManagement({ isDark, couleur = '#F97316' }) {
               },
             },
           });
-          if (fnError) {
-            console.warn('[TeamManagement] Edge Function error:', fnError);
-            showToast('Invitation créée mais l\'email n\'a pas pu être envoyé', 'warning');
-          } else {
-            // Email sent successfully
-          }
+          if (fnError) echecEmail = await messageErreurFonction(fnError);
         } catch (fnErr) {
-          console.warn('[TeamManagement] Edge Function unavailable:', fnErr.message);
-          showToast('Invitation créée mais l\'email n\'a pas pu être envoyé', 'warning');
+          echecEmail = fnErr?.message || 'service indisponible';
         }
       }
 
-      showToast('Invitation envoyée !', 'success');
+      if (echecEmail) {
+        captureException(new Error(echecEmail), { context: 'e-mail d’invitation d’équipe' });
+        showToast(`Invitation créée, mais l'e-mail n'est pas parti : ${echecEmail}. Copiez le lien d'invitation pour l'envoyer vous-même.`, 'warning');
+      } else {
+        showToast('Invitation envoyée !', 'success');
+      }
       setInviteForm({ email: '', phone: '', role: 'ouvrier' });
       setShowInviteForm(false);
       setInvitations(prev => [data, ...prev]);

@@ -232,7 +232,14 @@ export async function traiterDemande(req: Request, dep: Dependances): Promise<Re
       }
     }
 
-    const resultat = await dep.envoyer(construireMessageResend(demande, dep.expediteur));
+    let resultat: Awaited<ReturnType<Dependances['envoyer']>>;
+    try {
+      resultat = await dep.envoyer(construireMessageResend(demande, dep.expediteur));
+    } catch (e) {
+      if (reservation != null) await dep.liberer(reservation).catch(() => {});
+      journal('erreur', `Resend injoignable : ${(e as Error)?.message || e}`);
+      return reponse({ error: "Service d'envoi injoignable. Réessayez dans un instant." }, 502);
+    }
     if (!resultat.ok) {
       if (reservation != null) await dep.liberer(reservation).catch(() => {});
       journal('erreur', `Resend ${resultat.status} : ${String(resultat.corps?.message || '')}`);

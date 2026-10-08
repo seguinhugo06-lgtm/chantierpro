@@ -165,7 +165,14 @@ export async function traiterCycle(req: Request, dep: DependancesCycle): Promise
       return reponse({ error: `Unknown template: ${type || '(aucun)'}` }, 400);
     }
 
-    const resultat = await dep.envoyer({ from: `Mallettico <${dep.expediteur}>`, to: [destinataire], subject: sujet, html });
+    let resultat: Awaited<ReturnType<DependancesCycle['envoyer']>>;
+    try {
+      resultat = await dep.envoyer({ from: `Mallettico <${dep.expediteur}>`, to: [destinataire], subject: sujet, html });
+    } catch (e) {
+      if (reservation != null) await dep.liberer(reservation).catch(() => {});
+      journal('erreur', `Resend injoignable (${type}) : ${(e as Error)?.message || e}`);
+      return reponse({ error: "Service d'envoi injoignable. Réessayez dans un instant." }, 502);
+    }
     if (!resultat.ok) {
       if (reservation != null) await dep.liberer(reservation).catch(() => {});
       journal('erreur', `Resend ${resultat.status} (${type})`);

@@ -195,6 +195,25 @@ describe('send-email : plafond quotidien', () => {
     expect(dep.liberer).toHaveBeenCalledWith(7);
   });
 
+  it('Resend injoignable (le réseau lève) : 502 et la réservation est rendue', async () => {
+    const dep = banc();
+    dep.envoyer.mockRejectedValueOnce(new Error('connection reset'));
+    const { status, corps } = await appeler(dep, devis());
+    expect(status).toBe(502);
+    expect(corps.error).toMatch(/injoignable/);
+    expect(dep.liberer).toHaveBeenCalledWith(7);
+  });
+
+  it('un vrai PDF produit par jsPDF (comme emailSender) passe la règle des pièces jointes', async () => {
+    const { default: jsPDF } = await import('jspdf');
+    const pdf = new jsPDF({ unit: 'mm', format: 'a4' });
+    pdf.text('Devis DEV-2026-00001', 10, 10);
+    const octets = new Uint8Array(pdf.output('arraybuffer'));
+    const contenu = btoa(String.fromCharCode(...octets)); // même encodage qu'emailSender (uint8ToBase64)
+    const v = validerDemande({ ...devis(), attachments: [{ filename: 'Devis-DEV-2026-00001.pdf', content: contenu }] });
+    expect(v).toHaveProperty('demande');
+  });
+
   it('compteur pas encore installé (migration 077) : l’envoi au client part quand même', async () => {
     const dep = banc({ quota: () => ({ id: null, indisponible: true }) });
     expect((await appeler(dep, devis())).status).toBe(200);
