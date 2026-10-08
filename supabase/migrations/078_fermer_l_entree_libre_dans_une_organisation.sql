@@ -27,6 +27,9 @@
 --   • on n'entre dans l'organisation d'un autre qu'en acceptant une invitation valable,
 --     connecté, pour soi-même (auth.uid()) ; une invitation n'est valable que si son auteur
 --     peut encore inviter et si elle ne donne pas le rôle de propriétaire ;
+--   • le rôle « owner » est réservé à organizations.owner_id : un faux propriétaire inscrit par la
+--     faille repasse en « readonly » (le patron peut alors le retirer), un patron rétrogradé ou
+--     retiré retrouve son rôle ;
 --   • la page /invitation/<jeton> marche toujours, sans compte (get_invitation_by_token reste
 --     publique : le jeton est le secret) ; elle ne renvoie plus que ce qu'elle affiche ;
 --   • les invitations en attente reçoivent un NOUVEAU jeton (les anciens étaient lisibles par
@@ -49,9 +52,17 @@
 --      get_invitation_by_token visiteur t connecte t ; mon_role_organisation et revoke_invitation
 --      visiteur f connecte t ; invitation_utilisable visiteur f connecte f ; toutes avec search_path :
 --   SELECT p.proname, pg_get_function_identity_arguments(p.oid) AS args, has_function_privilege('anon', p.oid, 'EXECUTE') AS visiteur, has_function_privilege('authenticated', p.oid, 'EXECUTE') AS connecte, array_to_string(p.proconfig, ',') AS reglages FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace WHERE n.nspname = 'public' AND p.proname IN ('accept_invitation', 'get_invitation_by_token', 'revoke_invitation', 'mon_role_organisation', 'invitation_utilisable') ORDER BY 1;
---   3) Qui est entré par la faille ? Chaque ligne doit être une personne que vous avez invitée
---      (aucune ligne : personne d'autre que les propriétaires) :
---   SELECT o.name AS organisation, u.email, m.role, m.joined_at, m.invited_by IS NULL AS sans_invitation FROM public.organization_members m JOIN public.organizations o ON o.id = m.organization_id JOIN auth.users u ON u.id = m.user_id WHERE m.user_id <> o.owner_id ORDER BY m.joined_at;
+--   3) Membres qui ne sont pas propriétaires : chaque ligne doit être une personne invitée par le
+--      patron ; une ligne inconnue (ou « readonly » que personne n'a choisi) : la retirer dans
+--      Paramètres › Équipe, ou nous la signaler :
+--   SELECT o.name AS organisation, u.email, m.role, m.joined_at FROM public.organization_members m JOIN public.organizations o ON o.id = m.organization_id JOIN auth.users u ON u.id = m.user_id WHERE m.user_id <> o.owner_id ORDER BY o.name, m.joined_at;
+--   4) Droits par colonne — attendu : f, t, f, t :
+--   SELECT has_column_privilege('authenticated', 'public.organization_members', 'joined_at', 'UPDATE') AS date_modifiable, has_column_privilege('authenticated', 'public.organization_members', 'role', 'UPDATE') AS role_modifiable, has_column_privilege('authenticated', 'public.invitations', 'token', 'INSERT') AS jeton_choisi, has_column_privilege('authenticated', 'public.invitations', 'email', 'INSERT') AS email_saisi;
+--
+-- ─── Avant d'appliquer (facultatif) : la faille a-t-elle déjà servi ? ─────────
+--   Aucune ligne attendue. « FAUX PATRON » / « PATRON RÉTROGRADÉ » / « PATRON ABSENT » : la
+--   migration le corrige, mais notez qui et où (et dites-le à Claude) avant d'appliquer.
+--   SELECT o.name AS organisation, u.email, m.role, m.joined_at, CASE WHEN m.user_id = o.owner_id THEN 'PATRON RÉTROGRADÉ' ELSE 'FAUX PATRON' END AS constat FROM public.organization_members m JOIN public.organizations o ON o.id = m.organization_id JOIN auth.users u ON u.id = m.user_id WHERE (m.role = 'owner') <> (m.user_id = o.owner_id) UNION ALL SELECT o.name, u.email, NULL, NULL, 'PATRON ABSENT' FROM public.organizations o JOIN auth.users u ON u.id = o.owner_id WHERE NOT EXISTS (SELECT 1 FROM public.organization_members m WHERE m.organization_id = o.id AND m.user_id = o.owner_id);
 -- ============================================================
 
 -- Idempotente : rejouable sans danger (les policies de ces deux tables sont recréées à
@@ -153,6 +164,54 @@ DROP TRIGGER IF EXISTS trg_membre_identite_immuable ON public.organization_membe
 CREATE TRIGGER trg_membre_identite_immuable
   BEFORE UPDATE OF organization_id, user_id ON public.organization_members
   FOR EACH ROW EXECUTE FUNCTION public.membre_identite_immuable();
+
+-- 4 bis. Le rôle « owner » appartient au propriétaire de l'organisation (organizations.owner_id), à
+--    personne d'autre. L'app ne crée jamais d'autre « owner » : une telle ligne vient de la faille
+--    (intrus inscrit propriétaire, ouvrier qui s'est promu). Sans ce réalignement, elle survivrait à
+--    078 et deviendrait même impossible à retirer (les policies protègent la ligne « owner »), et un
+--    patron rétrogradé ou retiré ne gérerait plus son équipe. Les faux propriétaires passent en
+--    « readonly » (pas supprimés : le patron les retire dans Équipe, ou les reconnaît).
+UPDATE public.organization_members m SET role = 'readonly'
+FROM public.organizations o
+WHERE o.id = m.organization_id AND m.role = 'owner' AND m.user_id <> o.owner_id;
+UPDATE public.organization_members m SET role = 'owner'
+FROM public.organizations o
+WHERE o.id = m.organization_id AND m.user_id = o.owner_id AND m.role <> 'owner';
+INSERT INTO public.organization_members (organization_id, user_id, role, joined_at)
+SELECT o.id, o.owner_id, 'owner', coalesce(o.created_at, now())
+FROM public.organizations o
+WHERE NOT EXISTS (SELECT 1 FROM public.organization_members m
+                  WHERE m.organization_id = o.id AND m.user_id = o.owner_id);
+
+CREATE OR REPLACE FUNCTION public.membre_proprietaire_coherent()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  IF (NEW.role = 'owner') IS DISTINCT FROM EXISTS (
+       SELECT 1 FROM public.organizations o WHERE o.id = NEW.organization_id AND o.owner_id = NEW.user_id) THEN
+    RAISE EXCEPTION 'Le rôle propriétaire est réservé au propriétaire de l''organisation' USING ERRCODE = '42501';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+DROP TRIGGER IF EXISTS trg_membre_proprietaire_coherent ON public.organization_members;
+CREATE TRIGGER trg_membre_proprietaire_coherent
+  BEFORE INSERT OR UPDATE OF role, user_id, organization_id ON public.organization_members
+  FOR EACH ROW EXECUTE FUNCTION public.membre_proprietaire_coherent();
+
+-- 4 ter. Colonnes : un gérant ne change que le RÔLE d'un membre (pas joined_at, qui décide de
+--    l'organisation ouverte par l'app, ni invited_by) ; une invitation ne fixe ni son jeton, ni son
+--    statut, ni ses dates de création ou d'acceptation (l'app n'envoie que les colonnes accordées).
+--    Un visiteur n'écrit rien. La lecture reste accordée : des policies d'autres tables lisent
+--    organization_members.
+REVOKE UPDATE ON public.organization_members FROM authenticated;
+GRANT UPDATE (role) ON public.organization_members TO authenticated;
+REVOKE INSERT ON public.invitations FROM authenticated;
+GRANT INSERT (organization_id, email, phone, role, invited_by, expires_at) ON public.invitations TO authenticated;
+REVOKE INSERT, UPDATE, DELETE ON public.organization_members, public.invitations FROM anon;
 
 -- 5. invitations : réservées au propriétaire et aux administrateurs de l'organisation.
 --    Pas de policy UPDATE : l'annulation passe par revoke_invitation, l'acceptation par

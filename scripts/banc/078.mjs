@@ -176,16 +176,47 @@ export async function verifier({ db, q, en, commeAnonyme, compte, verifier }) {
   verifier(demarrage.cree.org_id === demarrage.id && demarrage.nom && demarrage.membre === 'owner',
     '078 : au premier démarrage (OrgContext), l\'organisation par défaut se crée et se relit comme avant');
 
-  // ── Rejeu de la migration sur des données réelles : jetons renouvelés, invitations de la faille annulées ──
-  const valable = await inviter(CHEF);
+  // ── Le rôle « owner » suit organizations.owner_id, même pour le serveur ──
+  verifier(await refuse(() => q(`INSERT INTO organization_members (organization_id, user_id, role) VALUES ($1, $2, 'owner')`, [ORG, INTRUS]))
+    && await refuse(() => q(`UPDATE organization_members SET role = 'admin' WHERE organization_id = $1 AND user_id = $2`, [ORG, CHEF]))
+    && await role(INTRUS) === null && await role(CHEF) === 'owner',
+  '078 : personne d\'autre que organizations.owner_id n\'est « owner », et le propriétaire le reste (même hors API)');
+
+  // ── Rejeu de la migration sur l'état laissé par la faille : intrusions d'avant 078, invitations à renouveler ──
+  const ORG_SANS_PATRON = '78dddddd-dddd-4ddd-8ddd-dddddddddddd';
+  await db.exec(`
+    ALTER TABLE organization_members DISABLE TRIGGER trg_membre_proprietaire_coherent;
+    INSERT INTO organization_members (organization_id, user_id, role) VALUES ('${ORG}', '${INTRUS}', 'owner');  -- intrus inscrit propriétaire
+    UPDATE organization_members SET role = 'readonly' WHERE organization_id = '${ORG}' AND user_id = '${CHEF}';  -- patron rétrogradé par un ouvrier
+    INSERT INTO organizations (id, name, slug, owner_id) VALUES ('${ORG_SANS_PATRON}', 'Sans patron', 'sans-patron-078', '${INVITE}');  -- patron retiré
+    ALTER TABLE organization_members ENABLE TRIGGER trg_membre_proprietaire_coherent;
+  `);
+  const valable = await inviter(ADJOINT);
   const fautive = await inviter(OUVRIER);
   await db.exec(fs.readFileSync(MIGRATION, 'utf8'));
+  verifier(await role(INTRUS) === 'readonly' && await role(CHEF) === 'owner' && await role(INVITE, ORG_SANS_PATRON) === 'owner',
+    '078 : à l\'application, le faux propriétaire passe en lecture seule, le patron rétrogradé ou retiré retrouve son rôle');
+  verifier(await refuse(() => en(INTRUS, () => q(`INSERT INTO invitations (organization_id, email, role, invited_by) VALUES ($1, 'complice@x.fr', 'admin', $2)`, [ORG, INTRUS]))),
+    '078 : … le faux propriétaire ne peut plus inviter de complice');
+  const idIntrus = (await q('SELECT id FROM organization_members WHERE organization_id = $1 AND user_id = $2', [ORG, INTRUS])).rows[0].id;
+  verifier((await en(CHEF, () => q('DELETE FROM organization_members WHERE id = $1 RETURNING id', [idIntrus]))).rows.length === 1 && await role(INTRUS) === null,
+    '078 : … et le patron peut le retirer depuis Équipe');
   const apres = (await q('SELECT token, status FROM invitations WHERE id = $1', [valable.id])).rows[0];
   verifier(apres.status === 'pending' && apres.token !== valable.token && await statut(fautive.id) === 'revoked',
     '078 : à l\'application, les invitations en attente reçoivent un nouveau jeton et celles d\'un non-gérant sont annulées');
   verifier((await commeAnonyme(() => q('SELECT get_invitation_by_token($1) AS r', [valable.token]))).rows[0].r.error
     && (await commeAnonyme(() => q('SELECT get_invitation_by_token($1) AS r', [apres.token]))).rows[0].r.organization_name === 'Élec Durand',
   '078 : l\'ancien lien ne marche plus, le nouveau (recopié depuis Équipe) oui');
+
+  // ── Droits par colonne (effectifs après ce rejeu : le banc réaccorde tout après les migrations) ──
+  verifier(await refuse(() => en(ADJOINT, () => q(`UPDATE organization_members SET joined_at = '2000-01-01' WHERE organization_id = $1 AND user_id = $2`, [ORG, OUVRIER])))
+    && await refuse(() => en(ADJOINT, () => q(`UPDATE organization_members SET invited_by = $1 WHERE organization_id = $2 AND user_id = $3`, [INTRUS, ORG, OUVRIER]))),
+  '078 : un gérant ne modifie que le rôle d\'un membre (pas sa date d\'arrivée, qui choisit l\'organisation ouverte par l\'app)');
+  verifier((await en(ADJOINT, () => q(`UPDATE organization_members SET role = 'ouvrier' WHERE organization_id = $1 AND user_id = $2 RETURNING id`, [ORG, OUVRIER]))).rows.length === 1,
+    '078 : … et le changement de rôle de l\'écran Équipe marche toujours');
+  verifier(await refuse(() => en(ADJOINT, () => q(`INSERT INTO invitations (organization_id, email, role, invited_by, token) VALUES ($1, 'b@x.fr', 'ouvrier', $2, '00000000-0000-4000-8000-000000000000')`, [ORG, ADJOINT])))
+    && (await en(ADJOINT, () => q(`INSERT INTO invitations (organization_id, email, phone, role, invited_by) VALUES ($1, 'b@x.fr', NULL, 'ouvrier', $2) RETURNING token`, [ORG, ADJOINT]))).rows[0].token,
+  '078 : une invitation ne choisit pas son jeton ; celle de l\'app (colonnes accordées) passe');
 
   // ── Requêtes de contrôle de l'en-tête ──
   const policies = (await q(`SELECT tablename || ' | ' || policyname || ' | ' || cmd || ' | ' || roles::text AS l FROM pg_policies
@@ -211,11 +242,16 @@ export async function verifier({ db, q, en, commeAnonyme, compte, verifier }) {
     && fonctions.accept_invitation.args === 'p_token uuid, p_user_id uuid'
     && Object.values(fonctions).every((f) => (f.reglages || '').includes('search_path')),
   `078 : contrôle 2 → droits visiteur/connecté attendus, search_path fixé (${Object.keys(fonctions).map((n) => `${n} ${droits(n)}`).join(', ')})`);
+  const colonnes = (await q(`SELECT has_column_privilege('authenticated', 'public.organization_members', 'joined_at', 'UPDATE') AS a,
+      has_column_privilege('authenticated', 'public.organization_members', 'role', 'UPDATE') AS b,
+      has_column_privilege('authenticated', 'public.invitations', 'token', 'INSERT') AS c,
+      has_column_privilege('authenticated', 'public.invitations', 'email', 'INSERT') AS d`)).rows[0];
+  verifier(!colonnes.a && colonnes.b && !colonnes.c && colonnes.d, `078 : contrôle 4 → f, t, f, t (${Object.values(colonnes).join(', ')})`);
 
   // Nettoyage : les vérifications de 072 (jouées en dernier) comptent toutes les invitations.
   await db.exec(`
     DROP TABLE banc078_clients;
-    DELETE FROM organizations WHERE owner_id IN ('${CHEF}','${INTRUS}','${NOUVEAU}');
+    DELETE FROM organizations WHERE owner_id IN ('${CHEF}','${INTRUS}','${NOUVEAU}','${INVITE}');
     DELETE FROM auth.users WHERE id IN ('${CHEF}','${ADJOINT}','${OUVRIER}','${INTRUS}','${INVITE}','${INVITE2}','${NOUVEAU}');
   `);
 }
