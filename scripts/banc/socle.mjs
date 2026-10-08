@@ -13,10 +13,106 @@ export const PAYEUR = '44444444-4444-4444-8444-444444444444';
 export const ORG_PATRON = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 export const ORG_SOLO = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 
+/**
+ * Organisations, membres et invitations tels qu'en PRODUCTION (constaté par Hugo le 8 oct. 2026 :
+ * pg_policies et pg_proc identiques à 035 + 039 + 041, effacées du dépôt par 227534e). Toutes les
+ * fonctions sont SECURITY DEFINER et exécutables par anon (droits par défaut de Supabase).
+ * Créées après les droits par défaut sur les fonctions, comme en production.
+ */
+const ORGANISATIONS = `
+  CREATE FUNCTION user_org_ids(p_user_id UUID) RETURNS UUID[] LANGUAGE sql SECURITY DEFINER STABLE AS $$
+    SELECT COALESCE(ARRAY_AGG(organization_id), ARRAY[]::UUID[]) FROM organization_members WHERE user_id = p_user_id $$;
+  CREATE FUNCTION get_user_org_id(p_user_id UUID) RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER STABLE AS $$
+    BEGIN RETURN (SELECT organization_id FROM organization_members WHERE user_id = p_user_id ORDER BY joined_at ASC LIMIT 1); END $$;
+  CREATE FUNCTION get_user_role(p_user_id UUID, p_org_id UUID) RETURNS org_role LANGUAGE plpgsql SECURITY DEFINER STABLE AS $$
+    BEGIN RETURN (SELECT role FROM organization_members WHERE user_id = p_user_id AND organization_id = p_org_id); END $$;
+  CREATE FUNCTION is_org_member(p_user_id UUID, p_org_id UUID) RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER STABLE AS $$
+    BEGIN RETURN EXISTS (SELECT 1 FROM organization_members WHERE user_id = p_user_id AND organization_id = p_org_id); END $$;
+  CREATE FUNCTION create_default_org(p_user_id UUID) RETURNS JSON LANGUAGE plpgsql SECURITY DEFINER AS $$
+    DECLARE v_org_id UUID; v_user_email TEXT; v_user_name TEXT; v_slug TEXT;
+    BEGIN
+      SELECT organization_id INTO v_org_id FROM organization_members WHERE user_id = p_user_id LIMIT 1;
+      IF v_org_id IS NOT NULL THEN
+        RETURN json_build_object('org_id', v_org_id, 'role', (SELECT role FROM organization_members WHERE user_id = p_user_id AND organization_id = v_org_id), 'already_exists', true);
+      END IF;
+      SELECT email, COALESCE(raw_user_meta_data->>'nom', raw_user_meta_data->>'name') INTO v_user_email, v_user_name FROM auth.users WHERE id = p_user_id;
+      v_slug := LOWER(REGEXP_REPLACE(COALESCE(v_user_name, split_part(v_user_email, '@', 1)), '[^a-z0-9]', '-', 'g')) || '-' || SUBSTRING(gen_random_uuid()::text, 1, 8);
+      INSERT INTO organizations (name, slug, owner_id) VALUES (COALESCE(v_user_name, split_part(v_user_email, '@', 1)), v_slug, p_user_id) RETURNING id INTO v_org_id;
+      INSERT INTO organization_members (organization_id, user_id, role) VALUES (v_org_id, p_user_id, 'owner');
+      RETURN json_build_object('org_id', v_org_id, 'role', 'owner', 'already_exists', false);
+    END $$;
+  GRANT EXECUTE ON FUNCTION user_org_ids, get_user_org_id, get_user_role, is_org_member, create_default_org TO authenticated;
+
+  -- 039 : invitations
+  CREATE FUNCTION get_invitation_by_token(p_token UUID) RETURNS JSON LANGUAGE plpgsql SECURITY DEFINER STABLE AS $$
+    DECLARE v_invitation RECORD; v_org_name TEXT; v_inviter_email TEXT;
+    BEGIN
+      SELECT * INTO v_invitation FROM invitations WHERE token = p_token AND status = 'pending' AND expires_at > NOW();
+      IF NOT FOUND THEN RETURN json_build_object('error', 'Invitation introuvable ou expirée'); END IF;
+      SELECT name INTO v_org_name FROM organizations WHERE id = v_invitation.organization_id;
+      SELECT email INTO v_inviter_email FROM auth.users WHERE id = v_invitation.invited_by;
+      RETURN json_build_object('id', v_invitation.id, 'organization_id', v_invitation.organization_id, 'organization_name', v_org_name,
+        'role', v_invitation.role, 'email', v_invitation.email, 'phone', v_invitation.phone, 'invited_by_email', v_inviter_email,
+        'created_at', v_invitation.created_at, 'expires_at', v_invitation.expires_at);
+    END $$;
+  CREATE FUNCTION accept_invitation(p_token UUID, p_user_id UUID) RETURNS JSON LANGUAGE plpgsql SECURITY DEFINER AS $$
+    DECLARE v_invitation RECORD; v_member_count INT; v_already_member BOOLEAN;
+    BEGIN
+      SELECT * INTO v_invitation FROM invitations WHERE token = p_token AND status = 'pending' AND expires_at > NOW();
+      IF NOT FOUND THEN RETURN json_build_object('error', 'Invitation introuvable ou expirée'); END IF;
+      SELECT EXISTS(SELECT 1 FROM organization_members WHERE organization_id = v_invitation.organization_id AND user_id = p_user_id) INTO v_already_member;
+      IF v_already_member THEN
+        UPDATE invitations SET status = 'accepted', accepted_at = NOW() WHERE id = v_invitation.id;
+        RETURN json_build_object('success', true, 'already_member', true);
+      END IF;
+      SELECT COUNT(*) INTO v_member_count FROM organization_members WHERE organization_id = v_invitation.organization_id;
+      IF v_member_count >= 50 THEN RETURN json_build_object('error', 'Limite de membres atteinte'); END IF;
+      INSERT INTO organization_members (organization_id, user_id, role, invited_by) VALUES (v_invitation.organization_id, p_user_id, v_invitation.role, v_invitation.invited_by);
+      UPDATE invitations SET status = 'accepted', accepted_at = NOW() WHERE id = v_invitation.id;
+      INSERT INTO activity_log (organization_id, user_id, action, entity_type, metadata)
+        VALUES (v_invitation.organization_id, p_user_id, 'member_joined', 'organization_member', json_build_object('role', v_invitation.role, 'invitation_id', v_invitation.id));
+      RETURN json_build_object('success', true, 'organization_id', v_invitation.organization_id, 'role', v_invitation.role);
+    END $$;
+  CREATE FUNCTION revoke_invitation(p_invitation_id UUID) RETURNS JSON LANGUAGE plpgsql SECURITY DEFINER AS $$
+    BEGIN
+      UPDATE invitations SET status = 'revoked' WHERE id = p_invitation_id AND status = 'pending';
+      IF NOT FOUND THEN RETURN json_build_object('error', 'Invitation introuvable'); END IF;
+      RETURN json_build_object('success', true);
+    END $$;
+  GRANT EXECUTE ON FUNCTION get_invitation_by_token TO anon, authenticated;
+  GRANT EXECUTE ON FUNCTION accept_invitation, revoke_invitation TO authenticated;
+
+  -- 035 (organizations, invitations « by token ») et 041 (le reste) : policies constatées en production
+  ALTER TABLE organizations ENABLE ROW LEVEL SECURITY;
+  ALTER TABLE organization_members ENABLE ROW LEVEL SECURITY;
+  ALTER TABLE invitations ENABLE ROW LEVEL SECURITY;
+  ALTER TABLE activity_log ENABLE ROW LEVEL SECURITY;
+  CREATE POLICY "Org members can view org" ON organizations FOR SELECT TO authenticated
+    USING (id = ANY (user_org_ids(auth.uid())) OR owner_id = auth.uid());
+  CREATE POLICY "Owner can update org" ON organizations FOR UPDATE TO authenticated USING (owner_id = auth.uid()) WITH CHECK (owner_id = auth.uid());
+  CREATE POLICY "Authenticated can insert org" ON organizations FOR INSERT TO authenticated WITH CHECK (owner_id = auth.uid());
+  CREATE POLICY "Members can view co-members" ON organization_members FOR SELECT TO authenticated
+    USING (organization_id = ANY (user_org_ids(auth.uid())));
+  CREATE POLICY "Admins can insert members" ON organization_members FOR INSERT TO authenticated
+    WITH CHECK (user_id = auth.uid() OR organization_id = ANY (user_org_ids(auth.uid())));
+  CREATE POLICY "Admins can update members" ON organization_members FOR UPDATE TO authenticated
+    USING (organization_id = ANY (user_org_ids(auth.uid())));
+  CREATE POLICY "Admins can delete members" ON organization_members FOR DELETE TO authenticated
+    USING (organization_id = ANY (user_org_ids(auth.uid())));
+  CREATE POLICY "Org admins can manage invitations" ON invitations FOR ALL TO authenticated
+    USING (organization_id = ANY (user_org_ids(auth.uid())));
+  CREATE POLICY "Anyone can read pending invitations by token" ON invitations FOR SELECT TO anon, authenticated
+    USING (status = 'pending' AND expires_at > NOW());
+  CREATE POLICY "Members can view org activity" ON activity_log FOR SELECT TO authenticated
+    USING (organization_id = ANY (user_org_ids(auth.uid())));
+  CREATE POLICY "Members can insert activity" ON activity_log FOR INSERT TO authenticated
+    WITH CHECK (organization_id = ANY (user_org_ids(auth.uid())));
+`;
+
 export const SCHEMA = `
   CREATE ROLE anon NOLOGIN; CREATE ROLE authenticated NOLOGIN; CREATE ROLE service_role NOLOGIN BYPASSRLS;
   CREATE SCHEMA auth;
-  CREATE TABLE auth.users (id UUID PRIMARY KEY, email TEXT);
+  CREATE TABLE auth.users (id UUID PRIMARY KEY, email TEXT, raw_user_meta_data JSONB DEFAULT '{}');
   CREATE TABLE auth.identities (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE);
   CREATE FUNCTION auth.uid() RETURNS UUID LANGUAGE sql STABLE AS
     $$ SELECT (nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'sub')::uuid $$;
@@ -25,17 +121,24 @@ export const SCHEMA = `
   GRANT USAGE ON SCHEMA public TO anon, authenticated;
   ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO anon, authenticated;
 
+  -- Organisations : tables de 035 (effacée du dépôt par 227534e) ; leurs fonctions et policies plus bas.
   CREATE TYPE org_role AS ENUM ('owner','admin','comptable','chef_chantier','ouvrier','readonly');
+  CREATE TYPE invitation_status AS ENUM ('pending','accepted','expired','revoked');
   CREATE TABLE organizations (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), name TEXT NOT NULL, slug TEXT UNIQUE NOT NULL,
-    owner_id UUID REFERENCES auth.users(id) NOT NULL, created_at TIMESTAMPTZ DEFAULT now());
+    owner_id UUID REFERENCES auth.users(id) NOT NULL, created_at TIMESTAMPTZ DEFAULT now(), updated_at TIMESTAMPTZ DEFAULT now());
   CREATE TABLE organization_members (id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     organization_id UUID REFERENCES organizations(id) ON DELETE CASCADE NOT NULL,
     user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL, role org_role NOT NULL DEFAULT 'readonly',
-    invited_by UUID REFERENCES auth.users(id));
+    invited_by UUID REFERENCES auth.users(id), joined_at TIMESTAMPTZ DEFAULT now(), equipe_member_id UUID,
+    UNIQUE (organization_id, user_id));
   CREATE TABLE invitations (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), organization_id UUID REFERENCES organizations(id) ON DELETE CASCADE NOT NULL,
-    email TEXT, invited_by UUID REFERENCES auth.users(id) NOT NULL);
+    email TEXT, phone TEXT, role org_role NOT NULL DEFAULT 'ouvrier', token UUID DEFAULT gen_random_uuid() UNIQUE NOT NULL,
+    status invitation_status DEFAULT 'pending', invited_by UUID REFERENCES auth.users(id) NOT NULL, created_at TIMESTAMPTZ DEFAULT now(),
+    expires_at TIMESTAMPTZ DEFAULT (now() + interval '7 days'), accepted_at TIMESTAMPTZ,
+    CONSTRAINT has_contact CHECK (email IS NOT NULL OR phone IS NOT NULL));
   CREATE TABLE activity_log (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), organization_id UUID REFERENCES organizations(id) ON DELETE CASCADE NOT NULL,
-    user_id UUID REFERENCES auth.users(id), action TEXT);
+    user_id UUID REFERENCES auth.users(id), action TEXT NOT NULL, entity_type TEXT, entity_id UUID, metadata JSONB DEFAULT '{}',
+    created_at TIMESTAMPTZ DEFAULT now());
 
   CREATE TABLE subscriptions (id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES auth.users UNIQUE NOT NULL, stripe_customer_id TEXT, stripe_subscription_id TEXT,
@@ -88,7 +191,7 @@ export const SCHEMA = `
       WHERE c.user_id = p_user_id AND c.stripe_enabled; RETURN s; END $$;
   REVOKE EXECUTE ON FUNCTION get_stripe_secret_for_user(UUID) FROM anon;           -- tel quel dans 029 :
   REVOKE EXECUTE ON FUNCTION get_stripe_secret_for_user(UUID) FROM authenticated;  -- PUBLIC garde le droit
-`;
+${ORGANISATIONS}`;
 
 /** Données de base : un patron avec un salarié, un artisan solo, un abonné payant. */
 export async function donneesDeBase({ db, q }) {
