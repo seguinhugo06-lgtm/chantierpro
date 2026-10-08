@@ -46,7 +46,7 @@ const essai = async (fn, corps) => { const r = await fetch('https://kofsbgxkrmry
 
 | Élément | État | Vérifié |
 |---|---|---|
-| `main` | `2c8ec50` (8 oct. : affirmations de conformité retirées, migration 076 prête, Pilote poste de travail) | `npm run statut` : Vercel ×2 + CI verts (8 oct.) |
+| `main` | `143f08f` (8 oct. : relais d'e-mails fermés côté app et dans le dépôt — les fonctions `send-email` et `send-lifecycle-email` et la migration 077 attendent Hugo ; bienvenue demandée à la première connexion) | `npm run statut` : Vercel ×2 + CI verts (8 oct.) |
 | Vercel | 2 projets (`chantierpro`, `seguinhugo06-lgtm-chantierpro`), déploiement auto sur `main` | statut GitHub |
 | Domaine | `mallettico.fr` (DNS OVH) | 25 juil. |
 | Service worker | sert l'ancienne version jusqu'à rechargement : ne jamais vérifier un déploiement en rechargeant le site | — |
