@@ -7,9 +7,22 @@
       "Bash(npm run build)",
       "Bash(npm run smoke)",
       "Bash(npm run check)",
+      "Bash(npm run verifier:*)",
+      "Bash(npm run verifier)",
+      "Bash(npm run parcours:*)",
+      "Bash(npm run parcours)",
+      "Bash(npm run banc:migrations)",
+      "Bash(npm run migration:nouvelle:*)",
+      "Bash(npm run statut:*)",
+      "Bash(npm run statut)",
+      "Bash(npm run hooks:tester)",
       "Bash(npx vitest run:*)",
       "Bash(npx eslint:*)",
       "Bash(node scripts/audit-ui.cjs:*)",
+      "Bash(node scripts/sonde.cjs:*)",
+      "Bash(node scripts/parcours/lancer.cjs:*)",
+      "Bash(node scripts/verifier.mjs:*)",
+      "Bash(node scripts/statut-production.mjs:*)",
       "Bash(git status:*)",
       "Bash(git diff:*)",
       "Bash(git log:*)",
@@ -17,7 +30,11 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(git fetch:*)",
-      "Bash(gh api repos/seguinhugo06-lgtm/chantierpro/commits/:*)"
+      "Bash(git push origin HEAD:main)",
+      "Bash(gh api repos/seguinhugo06-lgtm/chantierpro/:*)",
+      "Bash(gh run list:*)",
+      "Bash(gh run view:*)",
+      "Bash(gh run watch:*)"
     ],
     "ask": [
       "Bash(git push:*)",
@@ -27,9 +44,40 @@
     "deny": [
       "Bash(npx supabase db push:*)",
       "Bash(supabase db push:*)",
+      "Bash(npx supabase db reset:*)",
       "Bash(git push --force:*)",
       "Bash(git push -f:*)",
       "Bash(git reset --hard:*)"
     ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          { "type": "command", "command": "node \"${CLAUDE_PROJECT_DIR}/scripts/claude/debut-session.mjs\"", "timeout": 20 }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          { "type": "command", "command": "node \"${CLAUDE_PROJECT_DIR}/scripts/claude/garde.mjs\"", "timeout": 15 }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          { "type": "command", "command": "node \"${CLAUDE_PROJECT_DIR}/scripts/claude/lint-fichier.mjs\"", "timeout": 30 }
+        ]
+      }
+    ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "sh \"${CLAUDE_PROJECT_DIR}/scripts/claude/statusline.sh\""
   }
 }
