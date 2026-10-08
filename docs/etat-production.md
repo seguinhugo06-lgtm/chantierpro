@@ -9,28 +9,10 @@ Dernière mise à jour : **8 oct. 2026**.
 
 Dans l'ordre. Chaque action est aussi dans le Pilote (« À faire de votre côté »), avec sa commande et son contrôle. Migrations 071 → 078 : appliquées et vérifiées le 8 oct. (voir le tableau plus bas).
 
-1. **Redéployer `send-email` et `send-lifecycle-email`** — URGENT, sécurité : tant que l'ancienne version tourne, un compte gratuit peut envoyer n'importe quel e-mail à n'importe qui depuis noreply@mallettico.fr, et même sans compte un e-mail « Mallettico » avec un lien au choix. La migration 077 (plafond) est en place. Commandes ci-dessous, depuis un dossier À JOUR du dépôt ; contrôle : connecté sur mallettico.fr, le bloc « contrôle » dans la console du navigateur doit afficher deux refus (403), puis créez un client dont l'e-mail est votre adresse avec « +client » avant le @ (ex. prenom.nom+client@gmail.com) et envoyez-lui un devis : il doit arriver ; enfin la seconde requête de contrôle de 077 doit compter au moins 1 envoi.
-2. **Faire tourner la clé Stripe exposée** — avant la migration 076, une clé Stripe d'artisan active (celle de Paramètres › Finance › Paiements, probablement la vôtre) était lisible par un visiteur : dans Stripe, Développeurs › Clés API › Faire tourner la clé ; puis la remplacer dans Mallettico, et dans le secret `STRIPE_SECRET_KEY` des fonctions Supabase si c'est la même ; contrôle : collez la date « Créée le » de la nouvelle clé secrète et les 4 derniers caractères que Stripe affiche (jamais la clé entière).
-3. **Fournir l'identité de l'éditeur** — nom suivi de « EI », SIREN (après l'immatriculation), adresse personnelle (décision du 8 oct.), téléphone ; Claude les reporte dans les mentions légales (`COMPANY`, `src/components/LegalPages.jsx`).
-4. **Coller le nouvel e-mail « mot de passe oublié »** — dans Supabase, Authentication › Emails › Reset Password : sujet « Réinitialiser votre mot de passe Mallettico », corps = tout le contenu de `supabase/templates/recuperation.html` (logo et bouton orange ; le logo est servi par mallettico.fr depuis la livraison du 8 oct.) ; contrôle : faites « Mot de passe oublié » sur mallettico.fr avec votre adresse, l'e-mail doit montrer le logo et le bouton « Choisir un nouveau mot de passe » ; collez son sujet.
-5. **Coller le nouvel e-mail de confirmation d'inscription** — dans Supabase, Authentication › Emails › Confirm signup : sujet « Confirmez votre adresse e-mail Mallettico », corps = tout le contenu de `supabase/templates/confirmation.html` ; contrôle : inscrivez-vous sur mallettico.fr avec votre adresse suivie de « +essai » avant le @, l'e-mail doit montrer le logo et le bouton « Confirmer mon adresse » ; collez son sujet.
-
-```bash
-npx supabase functions deploy send-email --project-ref kofsbgxkrmryfetevetn
-npx supabase functions deploy send-lifecycle-email --project-ref kofsbgxkrmryfetevetn
-```
-
-Contrôle de `send-email` et `send-lifecycle-email` (connecté sur mallettico.fr, console du navigateur : F12 › Console, coller puis Entrée) :
-
-```js controle
-// Deux essais d'envoi à une adresse qui n'est pas un client (example.com : aucune boîte ne peut le recevoir).
-const t = JSON.parse(localStorage.getItem('sb-kofsbgxkrmryfetevetn-auth-token')).access_token;
-const essai = async (fn, corps) => { const r = await fetch('https://kofsbgxkrmryfetevetn.supabase.co/functions/v1/' + fn, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + t }, body: JSON.stringify(corps) }); return fn + ' : ' + r.status + ' ' + (await r.json()).error; };
-[await essai('send-email', { action: 'send_email', to: 'pas-un-client@example.com', subject: 'Contrôle', text: 'Contrôle' }), await essai('send-lifecycle-email', { type: 'payment_failed', to: 'pas-un-client@example.com' })].join('\n')
-// attendu : « send-email : 403 Envoi refusé : pas-un-client@example.com n'est l'adresse d'aucun de vos clients… »
-//           « send-lifecycle-email : 403 Réservé au serveur »
-// (200 = ancienne version encore en ligne ; 401 = pas connecté sur ce navigateur)
-```
+1. **Faire tourner la clé Stripe exposée** — avant la migration 076, une clé Stripe d'artisan active (celle de Paramètres › Finance › Paiements, probablement la vôtre) était lisible par un visiteur : dans Stripe, Développeurs › Clés API › Faire tourner la clé ; puis la remplacer dans Mallettico, et dans le secret `STRIPE_SECRET_KEY` des fonctions Supabase si c'est la même ; contrôle : collez la date « Créée le » de la nouvelle clé secrète et les 4 derniers caractères que Stripe affiche (jamais la clé entière).
+2. **Fournir l'identité de l'éditeur** — nom suivi de « EI », SIREN (après l'immatriculation), adresse personnelle (décision du 8 oct.), téléphone ; Claude les reporte dans les mentions légales (`COMPANY`, `src/components/LegalPages.jsx`).
+3. **Coller le nouvel e-mail « mot de passe oublié »** — dans Supabase, Authentication › Emails › Reset Password : sujet « Réinitialiser votre mot de passe Mallettico », corps = tout le contenu de `supabase/templates/recuperation.html` (logo et bouton orange ; le logo est servi par mallettico.fr depuis la livraison du 8 oct.) ; contrôle : faites « Mot de passe oublié » sur mallettico.fr avec votre adresse, l'e-mail doit montrer le logo et le bouton « Choisir un nouveau mot de passe » ; collez son sujet.
+4. **Coller le nouvel e-mail de confirmation d'inscription** — dans Supabase, Authentication › Emails › Confirm signup : sujet « Confirmez votre adresse e-mail Mallettico », corps = tout le contenu de `supabase/templates/confirmation.html` ; contrôle : inscrivez-vous sur mallettico.fr avec votre adresse suivie de « +essai » avant le @, l'e-mail doit montrer le logo et le bouton « Confirmer mon adresse » ; collez son sujet.
 
 ## Code (front)
 
@@ -61,8 +43,8 @@ Quand une migration est appliquée : passer sa ligne à « appliquée le JJ/MM �
 
 | Fonction | Déployée | Écart avec le dépôt |
 |---|---|---|
-| `send-email` | oui, ancienne version | **à redéployer après 077** : n'envoie plus qu'aux clients de l'utilisateur (lus sous RLS), à son adresse de compte et à contact@mallettico.fr ; 50 destinataires / 24 h par compte (secret facultatif `EMAIL_LIMITE_JOUR`) ; PDF seuls en pièce jointe ; `send_campaign` et `send_review_request` retirées. L'ancienne version en ligne reste un relais ouvert jusque-là |
-| `send-lifecycle-email` | oui, ancienne version | **à redéployer** : relais ouvert même sans compte (clé publique). Nouvelle version : bienvenue au seul compte connecté, une fois (première connexion) ; invitation relue en base, par son auteur ; essai et paiement réservés au serveur ; tout est échappé |
+| `send-email` | v17, redéployée le 08/10 par Hugo depuis `main` ; contrôlée par Claude avec le compte de contrôle : 403 pour une adresse qui n'est pas un client, 200 pour un client, compteur de 077 passé de 0 à 1 | — n'envoie qu'aux clients de l'utilisateur (lus sous RLS), à son adresse de compte et à contact@mallettico.fr ; 50 destinataires / 24 h par compte (secret facultatif `EMAIL_LIMITE_JOUR`) ; PDF seuls en pièce jointe |
+| `send-lifecycle-email` | v24, redéployée le 08/10 par Hugo depuis `main` ; contrôlée : 401 « Authentification requise » sans compte, 403 « Réservé au serveur » pour un compte connecté | — bienvenue au seul compte connecté, une fois ; invitation relue en base, par son auteur ; essai et paiement réservés au serveur ; tout est échappé |
 | `send-scheduled-relances` | oui (cron) | — |
 | `notify-signature` | oui | — |
 | `subscription-billing` | oui | — |
