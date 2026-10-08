@@ -8,6 +8,7 @@ import * as React from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Download, RefreshCw, X, WifiOff, Share, PlusSquare, Smartphone, Sparkles } from 'lucide-react';
 import { cn } from '../lib/utils';
+import LogoMallettico from './ui/LogoMallettico';
 import { usePWA } from '../hooks/usePWA';
 import { Button } from './ui/Button';
 
@@ -258,15 +259,10 @@ export default function PWAUpdatePrompt({ syncHandlers = {}, className, isDark =
 
               {/* Header with app icon */}
               <div className="flex items-center gap-4 mb-4 pr-8">
-                <div
-                  className="flex-shrink-0 w-16 h-16 rounded-2xl flex items-center justify-center shadow-lg"
-                  style={{ backgroundColor: couleur }}
-                >
-                  <span className="text-3xl">🏗️</span>
-                </div>
+                <LogoMallettico taille={64} fond="blanc" className="flex-shrink-0 rounded-2xl shadow-lg" />
                 <div>
                   <p className={cn('text-xl font-bold', textPrimary)}>Mallettico</p>
-                  <p className={cn('text-sm', textSecondary)}>Gestion de chantiers BTP</p>
+                  <p className={cn('text-sm', textSecondary)}>Devis, factures et relances</p>
                 </div>
               </div>
 

@@ -73,6 +73,7 @@ import { useConfirm, useToast } from './context/AppContext';
 import { useData } from './context/DataContext';
 import { useEntreprise } from './context/EntrepriseContext';
 import ErrorBoundary from './components/ui/ErrorBoundary';
+import LogoMallettico from './components/ui/LogoMallettico';
 import { ConfirmModal } from './components/ui/Modal';
 import ToastContainer from './components/ui/ToastContainer';
 import ModalContainer from './components/ui/ModalContainer';
@@ -1093,7 +1094,7 @@ export default function App() {
   // Loading screen
   if (loading) return (
     <div className="min-h-screen bg-[#f5f5f5] flex items-center justify-center">
-      <Building2 size={48} className="text-orange-500 animate-bounce" />
+      <LogoMallettico taille={56} className="animate-bounce" />
     </div>
   );
 
@@ -1131,7 +1132,7 @@ export default function App() {
   // Legal / public pages (accessible without auth)
   const publicPages = ['cgv', 'cgu', 'confidentialite', 'mentions-legales', 'accessibilite', 'changelog'];
   if (!user && !isDemo && publicPages.includes(page)) return (
-    <Suspense fallback={<div className="min-h-screen bg-[#f5f5f5] flex items-center justify-center"><Building2 size={48} className="text-orange-500 animate-bounce" /></div>}>
+    <Suspense fallback={<div className="min-h-screen bg-[#f5f5f5] flex items-center justify-center"><LogoMallettico taille={56} className="animate-bounce" /></div>}>
       <div className="min-h-screen bg-[#f5f5f5] p-4 sm:p-6">
         {page === 'changelog'
           ? <Changelog isDark={false} couleur={entreprise.couleur || '#f97316'} setPage={(p) => { setPage(p); if (!publicPages.includes(p)) setShowLanding(true); }} />
@@ -1167,9 +1168,7 @@ export default function App() {
         </div>
         <div className="relative z-10 flex flex-col justify-center p-16">
           <div className="max-w-lg">
-            <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mb-8">
-              <Building2 size={32} className="text-white" />
-            </div>
+            <LogoMallettico taille={72} fond="blanc" className="mb-8 rounded-2xl shadow-lg" />
             <h1 className="text-5xl font-bold text-white mb-4">Mallettico</h1>
             <p className="text-2xl text-white/90 mb-8">Pilotez votre rentabilité</p>
             <div className="space-y-6">
@@ -1195,9 +1194,7 @@ export default function App() {
       <div className="flex-1 flex items-center justify-center p-6">
         <div className="w-full max-w-md">
           <div className="lg:hidden flex items-center gap-3 mb-8">
-            <div className="w-12 h-12 bg-orange-500 rounded-xl flex items-center justify-center">
-              <Building2 size={24} className="text-white" />
-            </div>
+            <LogoMallettico taille={48} fond="blanc" className="rounded-xl" />
             <span className="text-2xl font-bold text-white">Mallettico</span>
           </div>
           

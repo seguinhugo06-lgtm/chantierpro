@@ -5,7 +5,8 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Building2, Menu, X, FileText, Bell, Building, TrendingUp, ChevronDown, PenLine, Package } from 'lucide-react';
+import LogoMallettico from '../ui/LogoMallettico';
+import { Menu, X, FileText, Bell, Building, TrendingUp, ChevronDown, PenLine, Package } from 'lucide-react';
 
 const NAV_LINKS = [
   { label: 'Fonctionnalit\u00e9s', href: '#features', hasDropdown: true },
@@ -106,9 +107,7 @@ export default function LandingNav({ onLogin, onSignup }) {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
         {/* Logo */}
         <a href="/" className="flex items-center gap-2 group">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center group-hover:scale-105 transition-transform">
-            <Building2 size={18} className="text-white" />
-          </div>
+          <LogoMallettico taille={36} className="group-hover:scale-105 transition-transform" />
           <span className={`text-lg font-bold ${logoColor}`}>
             Mallettico
           </span>
@@ -216,6 +215,8 @@ export default function LandingNav({ onLogin, onSignup }) {
         {/* Mobile menu button */}
         <button
           onClick={() => setMenuOpen(!menuOpen)}
+          aria-label={menuOpen ? 'Fermer le menu' : 'Ouvrir le menu'}
+          aria-expanded={menuOpen}
           className="md:hidden p-2 rounded-lg text-slate-900"
         >
           {menuOpen ? <X size={24} /> : <Menu size={24} />}

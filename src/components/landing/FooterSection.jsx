@@ -3,7 +3,8 @@
  */
 
 import React from 'react';
-import { Building2, Linkedin } from 'lucide-react';
+import { Linkedin } from 'lucide-react';
+import LogoMallettico from '../ui/LogoMallettico';
 
 const COLUMNS = [
   {
@@ -63,9 +64,7 @@ export default function FooterSection({ onNavigate }) {
           {/* Brand */}
           <div className="col-span-2 sm:col-span-1">
             <div className="flex items-center gap-2 mb-4">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center">
-                <Building2 size={16} className="text-white" />
-              </div>
+              <LogoMallettico taille={32} fond="blanc" />
               <span className="text-white font-bold text-lg">Mallettico</span>
             </div>
             <p className="text-sm leading-relaxed mb-4 max-w-xs">

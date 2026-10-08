@@ -29,23 +29,10 @@ export default defineConfig({
         scope: '/',
         start_url: '/',
         icons: [
-          {
-            src: '/icon.svg',
-            sizes: 'any',
-            type: 'image/svg+xml',
-            purpose: 'any'
-          },
-          {
-            src: '/icon.svg',
-            sizes: '192x192',
-            type: 'image/svg+xml'
-          },
-          {
-            src: '/icon.svg',
-            sizes: '512x512',
-            type: 'image/svg+xml',
-            purpose: 'maskable'
-          }
+          { src: '/icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
+          { src: '/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+          { src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+          { src: '/icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
         ],
         categories: ['business', 'productivity', 'utilities'],
         shortcuts: [
@@ -54,14 +41,14 @@ export default defineConfig({
             short_name: 'Devis',
             description: 'Creer un nouveau devis',
             url: '/?action=new-devis',
-            icons: [{ src: '/icon.svg', sizes: '192x192' }]
+            icons: [{ src: '/icon-192.png', sizes: '192x192', type: 'image/png' }]
           },
           {
             name: 'Tableau de bord',
             short_name: 'Dashboard',
             description: 'Voir le tableau de bord',
             url: '/?page=dashboard',
-            icons: [{ src: '/icon.svg', sizes: '192x192' }]
+            icons: [{ src: '/icon-192.png', sizes: '192x192', type: 'image/png' }]
           }
         ]
       },

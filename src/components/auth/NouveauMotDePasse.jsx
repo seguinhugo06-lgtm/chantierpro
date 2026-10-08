@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Building2, Eye, EyeOff, KeyRound } from 'lucide-react';
+import { Eye, EyeOff, KeyRound } from 'lucide-react';
+import LogoMallettico from '../ui/LogoMallettico';
 import { auth } from '../../supabaseClient';
 import { captureException } from '../../lib/sentry';
 import { traduireErreurAuth, motDePasseValide } from '../../lib/authErreurs';
@@ -40,9 +41,7 @@ export default function NouveauMotDePasse({ email, onTermine, onAnnuler }) {
     <div className="min-h-screen bg-slate-900 flex items-center justify-center p-6">
       <div className="w-full max-w-md">
         <div className="flex items-center gap-3 mb-8">
-          <div className="w-12 h-12 bg-orange-500 rounded-xl flex items-center justify-center">
-            <Building2 size={24} className="text-white" />
-          </div>
+          <LogoMallettico taille={48} fond="blanc" />
           <span className="text-2xl font-bold text-white">Mallettico</span>
         </div>
 
