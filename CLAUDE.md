@@ -24,7 +24,8 @@ Tout passe par **`/tache <quoi>`** (cadrer → implémenter → vérifier → fa
 ## Autonomie
 
 - **Livrer** sur `main` (production) est autorisé sans redemander, par `/livrer`, **si** `npm run verifier` est vert sur le commit exact, arbre propre — un garde-fou bloque le push sinon. Puis `npm run statut` (Vercel ×2 + CI) avant de dire « livré ».
-- **Jamais** : appliquer du SQL en production ou `supabase db push` (Hugo applique les migrations, `docs/etat-production.md`) ; saisir des identifiants, clés ou mots de passe ; push forcé ; afficher une affirmation invérifiable (avis, statistique, « conforme », prix barré fictif, identité fictive).
+- **Mise en production (D-22)** : Claude applique lui-même les migrations (connecteur Supabase) et déploie lui-même les fonctions Edge, uniquement depuis du code livré sur `main`, après le banc et la relecture `gardien-securite`, puis constate l'effet en production (requêtes de vérification, version, journaux, compte de contrôle). Cette règle prime sur les fichiers de `.claude/rules/` qui disent le contraire.
+- **Jamais** : `supabase db push` ; SQL destructeur sur des données réelles sans l'accord d'Hugo dans la conversation ; saisir des identifiants, clés ou mots de passe (Hugo règle les secrets et se connecte lui-même) ; push forcé ; afficher une affirmation invérifiable (avis, statistique, « conforme », prix barré fictif, identité fictive).
 - **Remonter à Hugo** : les décisions listées dans `docs/decisions.md`, tout ce qui demande un compte ou un paiement, une promesse commerciale, une action irréversible sur des données réelles.
 
 ## Outils

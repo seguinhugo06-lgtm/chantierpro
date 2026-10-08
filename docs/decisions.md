@@ -26,6 +26,7 @@ Avant de rouvrir un sujet, lire ici s'il a déjà été tranché. Statut : **dé
 | D-19 | 08/10/2026 | Abonnements en franchise de TVA : « 9,90 € par mois — TVA non applicable, art. 293 B du CGI » (et 19,90 €) ; précise D-08 (« HT » remplacé par la mention) | Suit le régime de l'entreprise ; réglage Stripe irréversible après le premier abonné ; si sortie de franchise, le prix TTC augmentera de 20 % : à écrire dans les CGV (Q-tva-abonnements) | décidé |
 | D-20 | 08/10/2026 | Chercher un premier abonné payant sur le site, en parallèle et avant les stores ; les stores attendent les premiers utilisateurs du site | Seul signal de valeur ; Hugo : « On attendra quelques utilisateurs sur la webapp avant les stores » (Q-premier-payant, et réponses « pas encore » à Q-comptes-dev et Q-appid) | décidé |
 | D-21 | 08/10/2026 | Paiement en ligne des factures masqué en v1 ; virement avec IBAN et « marquer payée » suffisent | Jamais essayé de bout en bout, règle des 7 jours hors établissement, question du « système de caisse » (art. 286) à trancher avec le comptable (Q-paiement-factures) | décidé |
+| D-22 | 08/10/2026 | Claude applique les migrations et déploie les fonctions Edge lui-même, depuis du code livré sur `main`, puis constate l'effet en production ; Hugo garde les comptes, les secrets et les connexions | Choix d'Hugo (Q-deploiement-edge) : après banc et relecture `gardien-securite` ; jamais `db push` ni SQL destructeur sans accord ; un déploiement s'annule en redéployant la version précédente | décidé |
 
 ## Décisions attendues de Hugo
 
@@ -49,11 +50,3 @@ Recommandation : `iphone-fr` — on ajoute l'iPad par une mise à jour quand l'a
 Irréversible : oui
 Bloque : ajout des plateformes natives (Capacitor)
 Décision : D-12
-
-### Q-deploiement-edge · Claude peut-il déployer lui-même les fonctions serveur ?
-Contexte : Aujourd'hui, chaque correction d'une fonction serveur (e-mails, paiements, relances) attend que vous la déployiez depuis un terminal. Le SQL de la base resterait chez vous dans tous les cas.
-Option `oui` : Oui, après relecture par l'agent de sécurité et vérification — vous connectez une fois la CLI Supabase (Claude ne saisit jamais d'identifiant) ; un déploiement s'annule en redéployant la version précédente.
-Option `non` : Non, vous continuez à déployer — rien ne change.
-Recommandation : `oui` — retire un goulot qui revient à chaque livraison.
-Irréversible : non
-Bloque : délai entre une correction de fonction serveur et sa mise en production
