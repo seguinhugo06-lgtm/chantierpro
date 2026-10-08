@@ -16,14 +16,30 @@ Dans l'ordre. Chaque migration est aussi dans le Pilote (« À faire de votre c�
 5. **Migration 075** — URGENT, sécurité : deux tables lisibles par n'importe qui.
 6. **Migration 076** — URGENT, sécurité : la clé Stripe secrète d'un artisan pouvait être lue par n'importe quel visiteur ; lancer d'abord la requête de contrôle (en tête du fichier) pour savoir si la faille est ouverte et combien de clés sont concernées.
    (Ordre numérique : c'est celui que le banc a testé.)
-7. **Redéployer deux fonctions Supabase** — `stripe-webhook` (`--no-verify-jwt`) puis `create-invoice-payment` (commandes ci-dessous), APRÈS 071 et 073, depuis un terminal ouvert dans le dépôt.
-8. **Régler l'adresse du site dans Supabase** — Authentication › URL Configuration : Site URL `https://mallettico.fr` (et dans Redirect URLs) ; Authentication › Emails : modèle « Reset password » en français.
-9. **Créer un code testeur** — dans l'éditeur SQL, après la migration 074 ; choisir un code long et imprévisible, le donner aux artisans de l'entourage.
-10. **Fournir l'identité de l'éditeur** — après vos réponses aux questions sur la structure et l'adresse : nom suivi de « EI », SIREN, adresse, téléphone ; Claude les reporte dans les mentions légales (`COMPANY`, `src/components/LegalPages.jsx`).
+7. **Migration 077** — URGENT, sécurité : plafond d'envoi d'e-mails par compte (50 destinataires par 24 heures), à appliquer AVANT le redéploiement de `send-email`.
+8. **Redéployer `send-email` et `send-lifecycle-email`** — URGENT, sécurité : aujourd'hui, un compte gratuit peut envoyer n'importe quel e-mail à n'importe qui depuis noreply@mallettico.fr, et même sans compte un e-mail « Mallettico » avec un lien au choix. Les nouvelles versions n'envoient qu'aux clients de l'utilisateur, à lui-même et à l'équipe (invitations : d'après la base), plafonnent le volume et n'acceptent que des PDF. APRÈS 077 (sans 077, le plafond reste inactif mais les devis partent). Commandes ci-dessous ; contrôle : connecté sur mallettico.fr, le bloc « contrôle » dans la console du navigateur doit afficher deux refus (403), puis un devis envoyé à un de vos clients (fiche à votre adresse) doit arriver.
+9. **Redéployer deux fonctions Supabase** — `stripe-webhook` (`--no-verify-jwt`) puis `create-invoice-payment` (commandes ci-dessous), APRÈS 071 et 073, depuis un terminal ouvert dans le dépôt.
+10. **Régler l'adresse du site dans Supabase** — Authentication › URL Configuration : Site URL `https://mallettico.fr` (et dans Redirect URLs) ; Authentication › Emails : modèle « Reset password » en français.
+11. **Créer un code testeur** — dans l'éditeur SQL, après la migration 074 ; choisir un code long et imprévisible, le donner aux artisans de l'entourage.
+12. **Fournir l'identité de l'éditeur** — après vos réponses aux questions sur la structure et l'adresse : nom suivi de « EI », SIREN, adresse, téléphone ; Claude les reporte dans les mentions légales (`COMPANY`, `src/components/LegalPages.jsx`).
 
 ```bash
+npx supabase functions deploy send-email --project-ref kofsbgxkrmryfetevetn
+npx supabase functions deploy send-lifecycle-email --project-ref kofsbgxkrmryfetevetn
 npx supabase functions deploy stripe-webhook --no-verify-jwt --project-ref kofsbgxkrmryfetevetn
 npx supabase functions deploy create-invoice-payment --project-ref kofsbgxkrmryfetevetn
+```
+
+Contrôle de `send-email` et `send-lifecycle-email` (connecté sur mallettico.fr, console du navigateur : F12 › Console, coller puis Entrée) :
+
+```js controle
+// Deux essais d'envoi à une adresse qui n'est pas un client (example.com : aucune boîte ne peut le recevoir).
+const t = JSON.parse(localStorage.getItem('sb-kofsbgxkrmryfetevetn-auth-token')).access_token;
+const essai = async (fn, corps) => { const r = await fetch('https://kofsbgxkrmryfetevetn.supabase.co/functions/v1/' + fn, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + t }, body: JSON.stringify(corps) }); return fn + ' : ' + r.status + ' ' + (await r.json()).error; };
+[await essai('send-email', { action: 'send_email', to: 'pas-un-client@example.com', subject: 'Contrôle', text: 'Contrôle' }), await essai('send-lifecycle-email', { type: 'payment_failed', to: 'pas-un-client@example.com' })].join('\n')
+// attendu : « send-email : 403 Envoi refusé : pas-un-client@example.com n'est l'adresse d'aucun de vos clients… »
+//           « send-lifecycle-email : 403 Réservé au serveur »
+// (200 = ancienne version encore en ligne ; 401 = pas connecté sur ce navigateur)
 ```
 
 ## Code (front)
@@ -46,6 +62,7 @@ npx supabase functions deploy create-invoice-payment --project-ref kofsbgxkrmryf
 | 074 | **à appliquer** | tables `retours`, `codes_testeurs`, tâche planifiée `expirer-offres-testeurs` |
 | 075 | **à appliquer** | `payment_links`, `portal_access_logs` fermées au public |
 | 076 | **à appliquer** | `get_stripe_secret_for_user` (029, effacée du dépôt) et `get_stripe_config_for_user` (012) réservées au rôle serveur ; faille reproduite au banc avant 076 |
+| 077 | **à appliquer** | `envois_email` (compteur sans adresse, fermé à l'API) et `reserver_envoi_email` (rôle serveur seul) : plafond d'envoi de `send-email` |
 
 Quand une migration est appliquée : passer sa ligne à « appliquée le JJ/MM » ici. Le banc continue de la rejouer (le socle simule la production d'avant 071).
 
@@ -53,8 +70,8 @@ Quand une migration est appliquée : passer sa ligne à « appliquée le JJ/MM �
 
 | Fonction | Déployée | Écart avec le dépôt |
 |---|---|---|
-| `send-email` | oui | **à corriger** (tâche `email-relais`) : tout compte connecté peut envoyer n'importe quel e-mail depuis noreply@mallettico.fr |
-| `send-lifecycle-email` | oui | — |
+| `send-email` | oui, ancienne version | **à redéployer après 077** : n'envoie plus qu'aux clients de l'utilisateur (lus sous RLS), à son adresse de compte et à contact@mallettico.fr ; 50 destinataires / 24 h par compte (secret facultatif `EMAIL_LIMITE_JOUR`) ; PDF seuls en pièce jointe ; `send_campaign` et `send_review_request` retirées. L'ancienne version en ligne reste un relais ouvert jusque-là |
+| `send-lifecycle-email` | oui, ancienne version | **à redéployer** : relais ouvert même sans compte (clé publique). Nouvelle version : bienvenue au seul compte connecté, une fois (première connexion) ; invitation relue en base, par son auteur ; essai et paiement réservés au serveur ; tout est échappé |
 | `send-scheduled-relances` | oui (cron) | — |
 | `notify-signature` | oui | — |
 | `subscription-billing` | oui | — |

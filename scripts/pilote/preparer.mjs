@@ -64,6 +64,8 @@ function ecrituresAttentes(existantsTous) {
   const section = md.split(/^## /m).find((s) => s.startsWith('En attente'));
   if (!section) throw new Error('Section « En attente côté Hugo » introuvable dans docs/etat-production.md');
   const blocCode = (section.match(/```(?:bash|sql)?\n([\s\S]*?)```/) || [])[1]?.trim() || '';
+  const blocsCode = [...section.matchAll(/```(?:bash|sql)?\n([\s\S]*?)```/g)].map((x) => x[1].trim());
+  const blocsControle = [...section.matchAll(/```js controle\n([\s\S]*?)```/g)].map((x) => x[1].trim());
   const items = [];
   for (const ligne of section.split('\n')) {
     const m = ligne.match(/^(\d+)\.\s+(.*)$/);
@@ -94,8 +96,16 @@ function ecrituresAttentes(existantsTous) {
         controle = verificationMigration(commandeTxt);
       }
     } else if (categorie === 'deploiement') {
-      commandeTxt = blocCode;
+      // Les commandes des fonctions nommées dans l'attente (`nom`), pas tout le bloc : sinon chaque
+      // redéploiement affiche ceux des autres. Un bloc « ```js controle » qui nomme la fonction
+      // s'ajoute au contrôle (constat du comportement, en plus de la date de déploiement).
+      const fonctions = [...brut.matchAll(/`([a-z][a-z0-9-]+)`/g)].map((x) => x[1]);
+      const deploiements = blocsCode.flatMap((b) => b.split('\n'))
+        .filter((l) => fonctions.some((f) => new RegExp(`functions deploy ${f}(\\s|$)`).test(l)));
+      commandeTxt = deploiements.length ? deploiements.join('\n') : blocCode;
       controle = 'npx supabase functions list --project-ref kofsbgxkrmryfetevetn\n-- collez les lignes des fonctions redéployées (colonne UPDATED_AT = aujourd’hui)';
+      const constat = blocsControle.find((b) => fonctions.some((f) => b.includes(f)));
+      if (constat) controle += `\n\n${constat}`;
     } else if (/code testeur/i.test(titre)) {
       commandeTxt = sql074();
       controle = 'SELECT plan, duree_mois, utilisations_max, utilisations, expire_le FROM public.codes_testeurs;  -- une ligne par code (ne collez pas le code lui-même)';
