@@ -1,7 +1,6 @@
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useToast } from '../context/AppContext';
 import { Download, FileSpreadsheet, FileText, RefreshCw, CheckCircle, AlertCircle, Calendar, ExternalLink, Calculator, Building2, ArrowLeft, Shield, Search, ChevronDown, ChevronRight, Zap, Palette, FileCheck, BellRing, Package, Check, X, Loader2, Home, Smartphone, Fuel, Archive, Landmark, BarChart3, CreditCard, Users, Link2, Settings2, HardDrive, FolderOpen, Construction, Receipt, Mail, Sparkles, ClipboardList, GraduationCap } from 'lucide-react';
-import supabase, { isDemo } from '../supabaseClient';
 import { captureException } from '../lib/sentry';
 import AdminHelp from './admin-help/AdminHelp';
 import {
@@ -201,36 +200,29 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
 
   // Debounced save notification with visible indicator (MUST be before lookupSIRENE)
   const saveTimeoutRef = useRef(null);
-  const supabaseSaveRef = useRef(null);
   const [saveStatus, setSaveStatus] = useState(null); // null | 'saving' | 'saved' | 'error'
+  // « Enregistré » seulement une fois la base d'accord ; un refus se dit (le message s'affichait
+  // même quand rien n'était écrit). L'ancienne copie dans entreprise.settings_json est retirée :
+  // l'upsert échouait toujours (pas de contrainte unique sur user_id) et, s'il avait marché, il
+  // aurait écrasé la configuration des relances rangée au même endroit (relanceEngine.js).
   const updateEntreprise = useCallback((updater) => {
-    // setEntreprise is now a context wrapper that persists to entreprises table
-    setEntreprise(updater);
-    // Also sync to legacy entreprise table for backward compat
-    if (!isDemo && supabase && user?.id) {
-      if (supabaseSaveRef.current) clearTimeout(supabaseSaveRef.current);
-      supabaseSaveRef.current = setTimeout(async () => {
-        try {
-          const current = typeof updater === 'function' ? updater(entreprise) : updater;
-          const { error } = await supabase
-            .from('entreprise')
-            .upsert({ user_id: user.id, settings_json: current }, { onConflict: 'user_id' });
-          if (error) console.warn('Supabase legacy entreprise sync failed:', error.message);
-        } catch (e) {
-          console.warn('Supabase legacy entreprise sync error:', e.message);
-        }
-      }, 1500);
-    }
     setSaveStatus('saving');
-    // Debounce the toast to avoid spam
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-    saveTimeoutRef.current = setTimeout(() => {
-      setSaveStatus('saved');
-      showToast('Modifications enregistrées', 'success');
-      // Reset indicator after 3s
-      setTimeout(() => setSaveStatus(null), 3000);
-    }, 800);
-  }, [setEntreprise, showToast, user?.id, entreprise]);
+    Promise.resolve(setEntreprise(updater)).then(() => {
+      // Debounce the toast to avoid spam
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = setTimeout(() => {
+        setSaveStatus('saved');
+        showToast('Modifications enregistrées', 'success');
+        // Reset indicator after 3s
+        setTimeout(() => setSaveStatus(null), 3000);
+      }, 800);
+    }).catch((e) => {
+      captureException(e, { context: 'paramètres entreprise' });
+      setSaveStatus('error');
+      showToast('Modification non enregistrée. Vérifiez votre connexion et réessayez.', 'error');
+    });
+  }, [setEntreprise, showToast]);
 
   // SIRENE API lookup
   const lookupSIRENE = useCallback(async () => {

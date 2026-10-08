@@ -241,24 +241,30 @@ export default function App() {
   // On a brand-new account there is no entreprise row yet (nothing provisions
   // one at signup) — so the FIRST save creates it. Without this, every settings
   // save silently no-op'd (statut juridique, etc.) and data was lost on reload.
-  const creatingEntRef = useRef(false);
-  const setEntreprise = useCallback(async (updater) => {
-    const newVal = typeof updater === 'function' ? updater(entreprise) : updater;
-    if (entrepriseId) {
-      ctxUpdateEntreprise(entrepriseId, newVal);
-      return;
+  // Recette du 8 oct. 2026 : une saisie faite PENDANT cette création était ignorée (adresse perdue
+  // au premier remplissage du profil). Elle est maintenant gardée et appliquée dès que la fiche
+  // existe ; les saisies successives s'additionnent (brouillon) au lieu de repartir des valeurs
+  // par défaut. Les erreurs remontent à l'appelant (Paramètres les affiche).
+  const creationEntRef = useRef(null);
+  const brouillonEntRef = useRef(null);
+  const enAttenteEntRef = useRef(null);
+  useEffect(() => { if (entrepriseId) brouillonEntRef.current = null; }, [entrepriseId]);
+  const setEntreprise = useCallback((updater) => {
+    const base = !entrepriseId && brouillonEntRef.current ? brouillonEntRef.current : entreprise;
+    const newVal = typeof updater === 'function' ? updater(base) : updater;
+    if (entrepriseId) return ctxUpdateEntreprise(entrepriseId, newVal);
+    brouillonEntRef.current = newVal;
+    if (creationEntRef.current) {
+      enAttenteEntRef.current = newVal;
+      return creationEntRef.current;
     }
-    // No entreprise yet → provision it with the entered data (guarded against
-    // concurrent debounced saves creating duplicates).
-    if (creatingEntRef.current) return;
-    creatingEntRef.current = true;
-    try {
-      await ctxAddEntreprise?.({ ...newVal, nom: newVal?.nom || '' });
-    } catch (e) {
-      console.warn('[App] setEntreprise: entreprise provisioning failed:', e?.message);
-    } finally {
-      creatingEntRef.current = false;
-    }
+    creationEntRef.current = (async () => {
+      const creee = await ctxAddEntreprise?.({ ...newVal, nom: newVal?.nom || '' });
+      const enAttente = enAttenteEntRef.current;
+      enAttenteEntRef.current = null;
+      if (enAttente && creee?.id) await ctxUpdateEntreprise(creee.id, enAttente);
+    })().finally(() => { creationEntRef.current = null; });
+    return creationEntRef.current;
   }, [entreprise, entrepriseId, ctxUpdateEntreprise, ctxAddEntreprise]);
   // Track which notification IDs have been read (persisted in localStorage)
   const [readNotifIds, setReadNotifIds] = useState(() => {

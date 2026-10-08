@@ -337,9 +337,10 @@ export function DataProvider({ children, initialData = {} }) {
     return () => subscription?.unsubscribe();
   }, []);
 
-  // Flush pending saves once userId becomes available (race condition fix)
+  // Flush pending saves once userId AND the organization are known (race condition fix) :
+  // vidée plus tôt, la file partait sans organisation et ses lignes disparaissaient au rechargement.
   useEffect(() => {
-    if (!userId || isDemo || pendingSavesRef.current.length === 0) return;
+    if (!userId || orgLoading || isDemo || pendingSavesRef.current.length === 0) return;
 
     const pending = [...pendingSavesRef.current];
     pendingSavesRef.current = [];
@@ -354,7 +355,7 @@ export function DataProvider({ children, initialData = {} }) {
         await queueOffline('create', table, item);
       }
     });
-  }, [userId]);
+  }, [userId, orgId, orgLoading]);
 
   // Reload data when entrepriseId changes (company switch)
   useEffect(() => {
@@ -506,7 +507,7 @@ export function DataProvider({ children, initialData = {} }) {
     }
 
     return newClient;
-  }, [userId, autoriserCreation]);
+  }, [userId, autoriserCreation, orgId, userName]);
 
   const updateClient = useCallback(async (id, data) => {
     const oldClient = clients.find(c => c.id === id);
@@ -540,7 +541,7 @@ export function DataProvider({ children, initialData = {} }) {
         }
       }
     }
-  }, [userId, clients]);
+  }, [userId, clients, orgId, userName]);
 
   const deleteClient = useCallback(async (id) => {
     setClients(prev => prev.filter(c => c.id !== id));
@@ -556,7 +557,7 @@ export function DataProvider({ children, initialData = {} }) {
         await queueOffline('delete', 'clients', { id });
       }
     }
-  }, [userId]);
+  }, [userId, orgId, userName]);
 
   const getClient = useCallback((id) => {
     return clients.find(c => c.id === id);
@@ -631,7 +632,7 @@ export function DataProvider({ children, initialData = {} }) {
     }
 
     return newDevis;
-  }, [userId, devis, entrepriseId, autoriserCreation]);
+  }, [userId, devis, entrepriseId, autoriserCreation, orgId, userName]);
 
   const updateDevis = useCallback(async (id, data) => {
     // Prevent removing client_id (BUG-001: DB NOT NULL constraint)
@@ -711,7 +712,7 @@ export function DataProvider({ children, initialData = {} }) {
         }
       }
     }
-  }, [userId, devis]);
+  }, [userId, devis, orgId, userName]);
 
   const deleteDevis = useCallback(async (id) => {
     setDevis(prev => prev.filter(d => d.id !== id));
@@ -727,7 +728,7 @@ export function DataProvider({ children, initialData = {} }) {
         await queueOffline('delete', 'devis', { id });
       }
     }
-  }, [userId]);
+  }, [userId, orgId, userName]);
 
   const getDevis = useCallback((id) => {
     return devis.find(d => d.id === id);
@@ -780,7 +781,7 @@ export function DataProvider({ children, initialData = {} }) {
     }
 
     return newChantier;
-  }, [userId, entrepriseId, autoriserCreation]);
+  }, [userId, entrepriseId, autoriserCreation, orgId, userName]);
 
   const updateChantier = useCallback(async (id, data) => {
     const oldChantier = chantiers.find(c => c.id === id);
@@ -817,7 +818,7 @@ export function DataProvider({ children, initialData = {} }) {
         }
       }
     }
-  }, [userId, chantiers]);
+  }, [userId, chantiers, orgId, userName]);
 
   const deleteChantier = useCallback(async (id) => {
     setChantiers(prev => prev.filter(c => c.id !== id));
@@ -833,7 +834,7 @@ export function DataProvider({ children, initialData = {} }) {
         await queueOffline('delete', 'chantiers', { id });
       }
     }
-  }, [userId]);
+  }, [userId, orgId, userName]);
 
   const getChantier = useCallback((id) => {
     return chantiers.find(c => c.id === id);
@@ -863,7 +864,7 @@ export function DataProvider({ children, initialData = {} }) {
     }
 
     return newDepense;
-  }, [userId]);
+  }, [userId, orgId]);
 
   const updateDepense = useCallback(async (id, data) => {
     setDepenses(prev => prev.map(d =>
@@ -881,7 +882,7 @@ export function DataProvider({ children, initialData = {} }) {
         await queueOffline('update', 'depenses', { id, ...data });
       }
     }
-  }, [userId, depenses]);
+  }, [userId, depenses, orgId]);
 
   const deleteDepense = useCallback(async (id) => {
     setDepenses(prev => prev.filter(d => d.id !== id));
@@ -894,7 +895,7 @@ export function DataProvider({ children, initialData = {} }) {
         await queueOffline('delete', 'depenses', { id });
       }
     }
-  }, [userId]);
+  }, [userId, orgId]);
 
   const getDepensesByChantier = useCallback((chantierId) => {
     return depenses.filter(d => d.chantierId === chantierId);
@@ -925,7 +926,7 @@ export function DataProvider({ children, initialData = {} }) {
     }
 
     return newPointage;
-  }, [userId]);
+  }, [userId, orgId]);
 
   const updatePointage = useCallback(async (id, data) => {
     setPointages(prev => prev.map(p =>
@@ -943,7 +944,7 @@ export function DataProvider({ children, initialData = {} }) {
         await queueOffline('update', 'pointages', { id, ...data });
       }
     }
-  }, [userId, pointages]);
+  }, [userId, pointages, orgId]);
 
   const deletePointage = useCallback(async (id) => {
     setPointages(prev => prev.filter(p => p.id !== id));
@@ -956,7 +957,7 @@ export function DataProvider({ children, initialData = {} }) {
         await queueOffline('delete', 'pointages', { id });
       }
     }
-  }, [userId]);
+  }, [userId, orgId]);
 
   const getPointagesByChantier = useCallback((chantierId) => {
     return pointages.filter(p => p.chantierId === chantierId);
@@ -984,7 +985,7 @@ export function DataProvider({ children, initialData = {} }) {
       }
     }
     return newAjustement;
-  }, [userId]);
+  }, [userId, orgId]);
 
   const deleteAjustement = useCallback(async (id) => {
     setAjustements(prev => prev.filter(a => a.id !== id));
@@ -997,7 +998,7 @@ export function DataProvider({ children, initialData = {} }) {
         await queueOffline('delete', 'ajustements', { id });
       }
     }
-  }, [userId]);
+  }, [userId, orgId]);
 
   const getAjustementsByChantier = useCallback((chantierId) => {
     return ajustements.filter(a => a.chantierId === chantierId);
@@ -1027,7 +1028,7 @@ export function DataProvider({ children, initialData = {} }) {
     }
 
     return newEmployee;
-  }, [userId]);
+  }, [userId, orgId]);
 
   const updateEmployee = useCallback(async (id, data) => {
     setEquipe(prev => prev.map(e =>
@@ -1045,7 +1046,7 @@ export function DataProvider({ children, initialData = {} }) {
         await queueOffline('update', 'equipe', { id, ...data });
       }
     }
-  }, [userId, equipe]);
+  }, [userId, equipe, orgId]);
 
   const deleteEmployee = useCallback(async (id) => {
     setEquipe(prev => prev.filter(e => e.id !== id));
@@ -1058,7 +1059,7 @@ export function DataProvider({ children, initialData = {} }) {
         await queueOffline('delete', 'equipe', { id });
       }
     }
-  }, [userId]);
+  }, [userId, orgId]);
 
   // ============ CATALOGUE OPERATIONS ============
   const addCatalogueItem = useCallback(async (data) => {
@@ -1086,7 +1087,7 @@ export function DataProvider({ children, initialData = {} }) {
     }
 
     return newItem;
-  }, [userId]);
+  }, [userId, orgId]);
 
   const updateCatalogueItem = useCallback(async (id, data) => {
     setCatalogue(prev => prev.map(c =>
@@ -1104,7 +1105,7 @@ export function DataProvider({ children, initialData = {} }) {
         await queueOffline('update', 'catalogue', { id, ...data });
       }
     }
-  }, [userId, catalogue]);
+  }, [userId, catalogue, orgId]);
 
   const deleteCatalogueItem = useCallback(async (id) => {
     setCatalogue(prev => prev.filter(c => c.id !== id));
@@ -1117,7 +1118,7 @@ export function DataProvider({ children, initialData = {} }) {
         await queueOffline('delete', 'catalogue', { id });
       }
     }
-  }, [userId]);
+  }, [userId, orgId]);
 
   const deductStock = useCallback((id, quantity) => {
     setCatalogue(prev => prev.map(c =>
@@ -1147,7 +1148,7 @@ export function DataProvider({ children, initialData = {} }) {
       }
     }
     return newPaiement;
-  }, [userId]);
+  }, [userId, orgId]);
 
   const getPaiementsByDevis = useCallback((devisId) => {
     return paiements.filter(p => p.devisId === devisId || p.invoiceId === devisId);
@@ -1175,7 +1176,7 @@ export function DataProvider({ children, initialData = {} }) {
       }
     }
     return newEchange;
-  }, [userId]);
+  }, [userId, orgId]);
 
   // ============ PLANNING EVENT OPERATIONS ============
   const addPlanningEvent = useCallback(async (data) => {
@@ -1195,7 +1196,7 @@ export function DataProvider({ children, initialData = {} }) {
       }
     }
     return newEvent;
-  }, [userId]);
+  }, [userId, orgId]);
 
   const updatePlanningEvent = useCallback(async (id, data) => {
     const updated = { id, ...data };
@@ -1209,7 +1210,7 @@ export function DataProvider({ children, initialData = {} }) {
         await queueOffline('update', 'events', updated);
       }
     }
-  }, [userId]);
+  }, [userId, orgId]);
 
   const deletePlanningEvent = useCallback(async (id) => {
     setPlanningEvents(prev => prev.filter(e => e.id !== id));
@@ -1222,7 +1223,7 @@ export function DataProvider({ children, initialData = {} }) {
         await queueOffline('delete', 'events', { id });
       }
     }
-  }, [userId]);
+  }, [userId, orgId]);
 
   // ============ OUVRAGE OPERATIONS ============
   const addOuvrage = useCallback(async (data) => {
@@ -1246,7 +1247,7 @@ export function DataProvider({ children, initialData = {} }) {
       }
     }
     return newOuvrage;
-  }, [userId]);
+  }, [userId, orgId]);
 
   const updateOuvrage = useCallback(async (id, data) => {
     setOuvrages(prev => prev.map(o =>
@@ -1264,7 +1265,7 @@ export function DataProvider({ children, initialData = {} }) {
         await queueOffline('update', 'ouvrages', { id, ...data });
       }
     }
-  }, [userId, ouvrages]);
+  }, [userId, ouvrages, orgId]);
 
   const deleteOuvrage = useCallback(async (id) => {
     setOuvrages(prev => prev.filter(o => o.id !== id));
@@ -1277,7 +1278,7 @@ export function DataProvider({ children, initialData = {} }) {
         await queueOffline('delete', 'ouvrages', { id });
       }
     }
-  }, [userId]);
+  }, [userId, orgId]);
 
   // ============ MEMO OPERATIONS ============
   const addMemo = useCallback(async (data) => {
@@ -1320,7 +1321,7 @@ export function DataProvider({ children, initialData = {} }) {
       }
     }
     return newMemo;
-  }, [userId]);
+  }, [userId, orgId]);
 
   const updateMemo = useCallback(async (id, updates) => {
     setMemos(prev => prev.map(m =>
@@ -1338,7 +1339,7 @@ export function DataProvider({ children, initialData = {} }) {
         await queueOffline('update', 'memos', { id, ...updates });
       }
     }
-  }, [userId, memos]);
+  }, [userId, memos, orgId]);
 
   const deleteMemo = useCallback(async (id) => {
     setMemos(prev => prev.filter(m => m.id !== id));
@@ -1351,7 +1352,7 @@ export function DataProvider({ children, initialData = {} }) {
         await queueOffline('delete', 'memos', { id });
       }
     }
-  }, [userId]);
+  }, [userId, orgId]);
 
   const toggleMemo = useCallback(async (id) => {
     const memo = memos.find(m => m.id === id);
@@ -1375,7 +1376,7 @@ export function DataProvider({ children, initialData = {} }) {
         await queueOffline('update', 'memos', { id, ...updates });
       }
     }
-  }, [userId, memos]);
+  }, [userId, memos, orgId]);
 
   // ============ TEMPLATE OPERATIONS ============
   const addTemplate = useCallback(async (data) => {

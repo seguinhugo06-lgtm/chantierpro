@@ -39,6 +39,7 @@ function construireDistReel() {
  * @param {Function} [o.supabase] - (req, url) => réponse pour les appels Supabase (mode réel)
  * @param {object} [o.session] - session Supabase à placer dans le stockage (mode réel)
  * @param {Function} [o.avantChargement] - code exécuté dans la page avant le chargement
+ * @param {string} [o.chemin] - adresse ouverte (défaut : « / », ou « /?demo=true » en démo), ex. « /fonctionnalites »
  */
 async function ouvrir(o = {}) {
   const largeur = o.largeur || 1440;
@@ -56,9 +57,11 @@ async function ouvrir(o = {}) {
       if (req.method() === 'OPTIONS') {
         return req.respond({ status: 204, headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': '*' } });
       }
-      const r = o.supabase ? o.supabase(req, u) : { status: 200, body: '[]' };
-      if (r === 'panne') return req.abort('internetdisconnected');
-      return req.respond({ contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, ...r });
+      // La réponse peut être une promesse : un parcours simule ainsi une base lente (course entre deux saisies).
+      return Promise.resolve(o.supabase ? o.supabase(req, u) : { status: 200, body: '[]' }).then((r) => {
+        if (r === 'panne') return req.abort('internetdisconnected');
+        return req.respond({ contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, ...r });
+      });
     }
     if (u.origin !== ORIGIN) return req.abort();
     if (u.pathname === '/sw.js' || u.pathname === '/registerSW.js') return req.respond({ status: 404, body: '' });
@@ -81,7 +84,7 @@ async function ouvrir(o = {}) {
     } catch { /* stockage indisponible : la page démarre sans préréglages */ }
   }, { page: o.page || 'dashboard', plan: o.plan || 'equipe', session: o.session || null });
   if (o.avantChargement) await page.evaluateOnNewDocument(o.avantChargement);
-  await page.goto(ORIGIN + (o.reel ? '/' : '/?demo=true'), { waitUntil: 'networkidle0', timeout: 60000 }).catch(() => {});
+  await page.goto(ORIGIN + (o.chemin || (o.reel ? '/' : '/?demo=true')), { waitUntil: 'networkidle0', timeout: 60000 }).catch(() => {});
   await attendre(1500);
   return { browser, page, erreurs, attendre };
 }

@@ -3,6 +3,25 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { supabase, isDemo, auth } from '../supabaseClient';
 
+const creationsEnCours = new Map();
+
+/**
+ * Crée l'organisation par défaut du compte, une seule fois même si plusieurs résolutions
+ * démarrent ensemble (inscription : trois appels simultanés avaient créé trois organisations,
+ * 8 oct. 2026). Le verrou de create_default_org (migration 079) reste la vraie garantie.
+ * @param {{ rpc: Function }} client
+ * @param {string} uid
+ */
+export function creerOrganisationParDefaut(client, uid) {
+  if (!creationsEnCours.has(uid)) {
+    const promesse = Promise.resolve()
+      .then(() => client.rpc('create_default_org', { p_user_id: uid }))
+      .finally(() => creationsEnCours.delete(uid));
+    creationsEnCours.set(uid, promesse);
+  }
+  return creationsEnCours.get(uid);
+}
+
 /**
  * @typedef {'owner'|'admin'|'comptable'|'chef_chantier'|'ouvrier'|'readonly'} OrgRole
  *
@@ -127,9 +146,7 @@ export function OrgProvider({ children }) {
 
       // 2. If no org found, auto-create one
       if (!resolvedOrgId) {
-        const { data: createResult, error: createError } = await supabase.rpc('create_default_org', {
-          p_user_id: uid
-        });
+        const { data: createResult, error: createError } = await creerOrganisationParDefaut(supabase, uid);
 
         if (createError) {
           // Fallback: user is their own "org" (backward compat)

@@ -160,7 +160,13 @@ export const SCHEMA = `
   -- devis → clients et chantiers SANS cascade : l'ordre de suppression compte
   CREATE TABLE devis (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
     organization_id UUID REFERENCES organizations(id), client_id UUID REFERENCES clients(id), chantier_id UUID REFERENCES chantiers(id), numero TEXT);
-  CREATE TABLE entreprise (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), user_id UUID REFERENCES auth.users(id), nom TEXT);
+  -- Tables de production où des lignes étaient enregistrées sans organisation (relevé du 8 oct. 2026, 079).
+  CREATE TABLE catalogue (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    organization_id UUID REFERENCES organizations(id), nom TEXT);
+  CREATE TABLE echanges (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    organization_id UUID REFERENCES organizations(id), objet TEXT);
+  CREATE TABLE entreprise (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), user_id UUID REFERENCES auth.users(id),
+    organization_id UUID REFERENCES organizations(id), nom TEXT);
   CREATE TABLE payment_links (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), user_id UUID REFERENCES auth.users(id), token TEXT);
   ALTER TABLE payment_links ENABLE ROW LEVEL SECURITY;
   CREATE POLICY "Users manage own payment_links" ON payment_links FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
@@ -236,7 +242,10 @@ export function outils(db) {
     } catch (e) { await db.exec('ROLLBACK'); throw e; }
   };
   const commeAnonyme = async (fn) => {
-    await db.exec('BEGIN; SET LOCAL ROLE anon;');
+    // Comme Supabase : un visiteur porte le rôle anon dans son jeton, sans identifiant (auth.uid() nul).
+    await db.exec('BEGIN');
+    await q(`SELECT set_config('request.jwt.claims', '{"role":"anon"}', true)`);
+    await db.exec('SET LOCAL ROLE anon');
     try { return await fn(); } finally { await db.exec('ROLLBACK').catch(() => {}); }
   };
   return { db, q, en, commeAnonyme, compte, ok, ko, verifier, etat };
