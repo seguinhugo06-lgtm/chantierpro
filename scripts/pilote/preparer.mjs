@@ -112,10 +112,13 @@ function ecrituresAttentes(existantsTous) {
   const luDansPilote = (id) => { try { return JSON.parse(fs.readFileSync(path.join(SORTIE, 'lecture/data/users/me/pilote/attentes', `${id}.json`), 'utf8')); } catch { return null; } };
   const inchangee = (d) => { const lu = luDansPilote(d.id); return lu && ['ordre', 'titre', 'detail', 'categorie', 'urgent', 'commande', 'controle'].every((k) => JSON.stringify(lu[k] ?? '') === JSON.stringify(d.donnees[k] ?? '')); };
   for (const d of docs) {
-    if (existants[d.id] && inchangee(d)) continue;
+    const lu = luDansPilote(d.id);
+    const sansDate = lu && !lu.creeLe; // attentes créées avant que la page n'affiche leur âge
+    if (existants[d.id] && inchangee(d) && !sansDate) continue;
     if (existants[d.id]) {
       // Ni faitParHugo ni preuve ici : ne jamais écraser ce qu'Hugo a écrit. creeLe reste celui de la création.
-      writes.push({ op: 'update', collection: `${COLL}/attentes`, doc_id: d.id, if_version: existants[d.id], file_path: ecrire(path.join(SORTIE, 'attentes', `${d.id}.json`), d.donnees) });
+      const donnees = sansDate ? { ...d.donnees, creeLe: lu.majLe || maintenant } : d.donnees;
+      writes.push({ op: 'update', collection: `${COLL}/attentes`, doc_id: d.id, if_version: existants[d.id], file_path: ecrire(path.join(SORTIE, 'attentes', `${d.id}.json`), donnees) });
     } else {
       writes.push({ op: 'set', collection: `${COLL}/attentes`, doc_id: d.id, file_path: ecrire(path.join(SORTIE, 'attentes', `${d.id}.json`), { ...d.donnees, faitParHugo: false, preuve: '', statutClaude: 'a-faire', creeLe: maintenant }) });
     }
