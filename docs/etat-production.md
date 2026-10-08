@@ -7,21 +7,22 @@ Dernière mise à jour : **8 oct. 2026**.
 
 ## En attente côté Hugo
 
-Dans l'ordre. Chaque migration est aussi dans le Pilote (« À faire de votre côté »), avec son SQL complet et sa requête de contrôle : après l'avoir appliquée, collez le résultat du contrôle dans le Pilote, Claude le vérifie. 071 → 075 sont aussi dans `Documents/Mallettico/Migrations à appliquer — 7 oct 2026.sql` ; toutes passent au banc (`npm run banc:migrations`).
+Dans l'ordre. Chaque migration est aussi dans le Pilote (« À faire de votre côté »), avec son SQL complet et sa requête de contrôle : après l'avoir appliquée, collez le résultat du contrôle dans le Pilote, Claude le vérifie. 071 → 075 sont aussi dans `Documents/Mallettico/Migrations à appliquer — 7 oct 2026.sql`, **mais la 072 de ce fichier est périmée** (corrigée le 8 oct.) : prendre celle du Pilote ; toutes passent au banc (`npm run banc:migrations`).
 
 1. **Migration 071** — colonnes de facturation (requises par le webhook Stripe et par 074).
-2. **Migration 072** — suppression de compte réelle (exigée par Apple).
+2. **Migration 072** — suppression de compte réelle (exigée par Apple). Corrigée le 8 oct. (revue de sécurité) : l'ancienne version offrait au patron d'une entreprise inconnue les lignes d'un compte supprimé, réglages Stripe compris. Si vous aviez déjà appliqué l'ancienne (Pilote ou fichier du 7 oct.), réappliquez celle du Pilote : elle est rejouable.
 3. **Migration 073** — URGENT, sécurité : tout utilisateur pouvait se passer lui-même en plan Équipe.
 4. **Migration 074** — retours utilisateurs + codes testeurs.
 5. **Migration 075** — URGENT, sécurité : deux tables lisibles par n'importe qui.
 6. **Migration 076** — URGENT, sécurité : la clé Stripe secrète d'un artisan pouvait être lue par n'importe quel visiteur ; lancer d'abord la requête de contrôle (en tête du fichier) pour savoir si la faille est ouverte et combien de clés sont concernées.
    (Ordre numérique : c'est celui que le banc a testé.)
 7. **Migration 077** — URGENT, sécurité : plafond d'envoi d'e-mails par compte (50 destinataires par 24 heures), à appliquer AVANT le redéploiement de `send-email`.
-8. **Redéployer `send-email` et `send-lifecycle-email`** — URGENT, sécurité : aujourd'hui, un compte gratuit peut envoyer n'importe quel e-mail à n'importe qui depuis noreply@mallettico.fr, et même sans compte un e-mail « Mallettico » avec un lien au choix. Les nouvelles versions n'envoient qu'aux clients de l'utilisateur, à lui-même et à l'équipe (invitations : d'après la base), plafonnent le volume et n'acceptent que des PDF. APRÈS 077 (sans 077, le plafond reste inactif mais les devis partent). Commandes ci-dessous ; contrôle : connecté sur mallettico.fr, le bloc « contrôle » dans la console du navigateur doit afficher deux refus (403), puis créez un client dont l'e-mail est votre adresse avec « +client » avant le @ (ex. prenom.nom+client@gmail.com : Gmail le livre dans votre boîte ; PAS votre adresse exacte, qui passerait sans lire la fiche) et envoyez-lui un devis : il doit arriver ; enfin la seconde requête de contrôle de 077 doit compter au moins 1 envoi.
-9. **Redéployer deux fonctions Supabase** — `stripe-webhook` (`--no-verify-jwt`) puis `create-invoice-payment` (commandes ci-dessous), APRÈS 071 et 073, depuis un terminal ouvert dans le dépôt.
-10. **Régler l'adresse du site dans Supabase** — Authentication › URL Configuration : Site URL `https://mallettico.fr` (et dans Redirect URLs) ; Authentication › Emails : modèle « Reset password » en français.
-11. **Créer un code testeur** — dans l'éditeur SQL, après la migration 074 ; choisir un code long et imprévisible, le donner aux artisans de l'entourage.
-12. **Fournir l'identité de l'éditeur** — après vos réponses aux questions sur la structure et l'adresse : nom suivi de « EI », SIREN, adresse, téléphone ; Claude les reporte dans les mentions légales (`COMPANY`, `src/components/LegalPages.jsx`).
+8. **Migration 078** — URGENT, sécurité : aujourd'hui, n'importe quel visiteur peut lire les invitations d'équipe en attente (et leur lien) puis les accepter, et tout compte connecté peut s'inscrire lui-même propriétaire dans l'entreprise d'un autre, puis lire ses clients, devis et réglages ; un ouvrier peut se nommer patron. Après 078 : seuls le patron et les administrateurs invitent, changent un rôle ou retirent un membre ; on n'entre qu'avec une invitation, connecté, pour soi ; un faux propriétaire inscrit par la faille repasse en lecture seule. Les invitations en attente reçoivent un nouveau lien (à recopier dans Paramètres › Équipe). S'applique avant ou après le déploiement de l'app. Avant d'appliquer (facultatif) : la requête « Avant d'appliquer » de l'en-tête dit si la faille a déjà servi (aucune ligne attendue). Après : collez le résultat des quatre requêtes de contrôle ; la troisième liste les membres qui ne sont pas propriétaires, chacun doit être quelqu'un d'invité.
+9. **Redéployer `send-email` et `send-lifecycle-email`** — URGENT, sécurité : aujourd'hui, un compte gratuit peut envoyer n'importe quel e-mail à n'importe qui depuis noreply@mallettico.fr, et même sans compte un e-mail « Mallettico » avec un lien au choix. Les nouvelles versions n'envoient qu'aux clients de l'utilisateur, à lui-même et à l'équipe (invitations : d'après la base), plafonnent le volume et n'acceptent que des PDF. APRÈS 077 (sans 077, le plafond reste inactif mais les devis partent). Commandes ci-dessous ; contrôle : connecté sur mallettico.fr, le bloc « contrôle » dans la console du navigateur doit afficher deux refus (403), puis créez un client dont l'e-mail est votre adresse avec « +client » avant le @ (ex. prenom.nom+client@gmail.com : Gmail le livre dans votre boîte ; PAS votre adresse exacte, qui passerait sans lire la fiche) et envoyez-lui un devis : il doit arriver ; enfin la seconde requête de contrôle de 077 doit compter au moins 1 envoi.
+10. **Redéployer deux fonctions Supabase** — `stripe-webhook` (`--no-verify-jwt`) puis `create-invoice-payment` (commandes ci-dessous), APRÈS 071 et 073, depuis un terminal ouvert dans le dépôt.
+11. **Régler l'adresse du site dans Supabase** — Authentication › URL Configuration : Site URL `https://mallettico.fr` (et dans Redirect URLs) ; Authentication › Emails : modèle « Reset password » en français.
+12. **Créer un code testeur** — dans l'éditeur SQL, après la migration 074 ; choisir un code long et imprévisible, le donner aux artisans de l'entourage.
+13. **Fournir l'identité de l'éditeur** — après vos réponses aux questions sur la structure et l'adresse : nom suivi de « EI », SIREN, adresse, téléphone ; Claude les reporte dans les mentions légales (`COMPANY`, `src/components/LegalPages.jsx`).
 
 ```bash
 npx supabase functions deploy send-email --project-ref kofsbgxkrmryfetevetn
@@ -57,12 +58,13 @@ const essai = async (fn, corps) => { const r = await fetch('https://kofsbgxkrmry
 |---|---|---|
 | 001 – 070 | supposées appliquées | 023-054 effacées du dépôt par `227534e`, récupérables par `git show 227534e^:supabase/migrations/<fichier>` |
 | 071 | **à appliquer** | colonnes `cancel_at_period_end`, `current_period_*`, `billing_interval` |
-| 072 | **à appliquer** | `supprimer_mon_compte()`, journal `comptes_supprimes` |
+| 072 | **à appliquer** | `supprimer_mon_compte()`, journal `comptes_supprimes` ; corrigée le 8 oct. (réattribution limitée aux organisations dont le partant est membre, jamais les réglages de paiement) |
 | 073 | **à appliquer** | policies `subscriptions`, déclencheur d'organisation, `get_org_subscription` fermée |
 | 074 | **à appliquer** | tables `retours`, `codes_testeurs`, tâche planifiée `expirer-offres-testeurs` |
 | 075 | **à appliquer** | `payment_links`, `portal_access_logs` fermées au public |
 | 076 | **à appliquer** | `get_stripe_secret_for_user` (029, effacée du dépôt) et `get_stripe_config_for_user` (012) réservées au rôle serveur ; faille reproduite au banc avant 076 |
 | 077 | **à appliquer** | `envois_email` (compteur sans adresse, fermé à l'API) et `reserver_envoi_email` (rôle serveur seul) : plafond d'envoi de `send-email` |
+| 078 | **à appliquer** | `invitations` et `organization_members` : toutes les policies remplacées (gérants seuls ; plus de lecture par un visiteur ni d'inscription libre), `accept_invitation` pour le compte connecté (`auth.uid()`), `revoke_invitation` vérifiée, `get_invitation_by_token` réduite ; production constatée le 8 oct. identique à 035/039/041 ; faille reproduite au banc avant 078 |
 
 Quand une migration est appliquée : passer sa ligne à « appliquée le JJ/MM » ici. Le banc continue de la rejouer (le socle simule la production d'avant 071).
 
