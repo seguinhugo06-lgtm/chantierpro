@@ -48,6 +48,11 @@ for (let i = 0; i < reste.length; i++) {
 const opt = (k) => (options[k] || [])[0];
 const ecrire = (fichier, donnees) => { fs.mkdirSync(path.dirname(fichier), { recursive: true }); fs.writeFileSync(fichier, JSON.stringify(donnees, null, 1)); return fichier; };
 const sansMarkdown = (t) => t.replace(/\*\*(.+?)\*\*/g, '$1').replace(/`([^`]+)`/g, '$1').replace(/\s+/g, ' ').trim();
+// Le Pilote rend les clés des objets dans l'ordre alphabétique : comparer sans tenir compte de cet ordre.
+const memes = (a, b) => {
+  const trie = (v) => JSON.stringify(v ?? '', (k, x) => (x && typeof x === 'object' && !Array.isArray(x) ? Object.fromEntries(Object.entries(x).sort(([c], [d]) => c.localeCompare(d))) : x));
+  return trie(a) === trie(b);
+};
 const slug = (t) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 48);
 
 // --existants « attentes/x:1,claude/etat:3 » → { 'attentes/x': 1, 'claude/etat': 3 } ; « x:1 » seul vaut attentes/x.
@@ -125,7 +130,7 @@ function ecrituresAttentes(existantsTous) {
   const existants = Object.fromEntries(Object.entries(existantsTous).filter(([k]) => k.startsWith('attentes/')).map(([k, v]) => [k.slice(9), v]));
   const writes = [];
   const luDansPilote = (id) => { try { return JSON.parse(fs.readFileSync(path.join(SORTIE, 'lecture/data/users/me/pilote/attentes', `${id}.json`), 'utf8')); } catch { return null; } };
-  const inchangee = (d) => { const lu = luDansPilote(d.id); return lu && ['ordre', 'titre', 'detail', 'categorie', 'urgent', 'commande', 'controle'].every((k) => JSON.stringify(lu[k] ?? '') === JSON.stringify(d.donnees[k] ?? '')); };
+  const inchangee = (d) => { const lu = luDansPilote(d.id); return lu && ['ordre', 'titre', 'detail', 'categorie', 'urgent', 'commande', 'controle'].every((k) => memes(lu[k], d.donnees[k])); };
   for (const d of docs) {
     const lu = luDansPilote(d.id);
     const sansDate = lu && !lu.creeLe; // attentes créées avant que la page n'affiche leur âge
@@ -193,7 +198,7 @@ function ecrituresQuestions(existantsTous) {
   const writes = [];
   for (const d of docs) {
     const l = lu(d.id);
-    if (existants[d.id] && l && cles.every((k) => JSON.stringify(l[k] ?? '') === JSON.stringify(d.donnees[k] ?? ''))) continue;
+    if (existants[d.id] && l && cles.every((k) => memes(l[k], d.donnees[k]))) continue;
     const f = ecrire(path.join(SORTIE, 'questions', `${d.id}.json`), existants[d.id] ? d.donnees : { ...d.donnees, statut: 'ouverte', ouverteLe: maintenant });
     // Jamais choix / commentaire / reponduLe : c'est la réponse d'Hugo.
     writes.push(existants[d.id] ? { op: 'update', collection: `${COLL}/questions`, doc_id: d.id, if_version: existants[d.id], file_path: f } : { op: 'set', collection: `${COLL}/questions`, doc_id: d.id, file_path: f });
