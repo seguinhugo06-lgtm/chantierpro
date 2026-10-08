@@ -39,7 +39,8 @@ function lancer({ cmd, args }) {
     const p = spawn(cmd, args, { cwd: RACINE, env: { ...process.env, FORCE_COLOR: '0' } });
     p.stdout.on('data', (d) => { sortie += d; });
     p.stderr.on('data', (d) => { sortie += d; });
-    p.on('close', (code) => resolve({ code, sortie, duree: ((Date.now() - debut) / 1000).toFixed(1) }));
+    // Sans les codes couleur (vitest les garde parfois malgré FORCE_COLOR=0) : la sortie est analysée.
+    p.on('close', (code) => resolve({ code, sortie: sortie.replace(/\x1b\[[0-9;]*m/g, ''), duree: ((Date.now() - debut) / 1000).toFixed(1) }));
   });
 }
 
@@ -52,7 +53,8 @@ if (retard && retard !== '0') console.log(`⚠  La branche a ${retard} commit(s)
 
 const resultats = [];
 for (const e of etapes) {
-  process.stdout.write(`  … ${e.nom}`);
+  const terminal = process.stdout.isTTY;
+  if (terminal) process.stdout.write(`  … ${e.nom}`);
   const r = await lancer(e);
   let ok = r.code === 0;
   let detail = '';
@@ -62,7 +64,7 @@ for (const e of etapes) {
   }
   if (e.nom.startsWith('Tests')) detail = (r.sortie.match(/Tests\s+(\d+ passed[^\n]*)/) || [])[1] || detail;
   if (e.nom.startsWith('Lint')) detail = (r.sortie.match(/✖ (\d+ problems \(\d+ errors?, \d+ warnings?\))/) || [])[1] || detail;
-  process.stdout.write(`\r  ${ok ? '✓' : '✗'} ${e.nom} (${r.duree} s)${detail ? ` — ${detail}` : ''}\n`);
+  process.stdout.write(`${terminal ? '\r' : ''}  ${ok ? '✓' : '✗'} ${e.nom} (${r.duree} s)${detail ? ` — ${detail}` : ''}\n`);
   resultats.push({ etape: e.nom, ok, duree: Number(r.duree), detail });
   if (!ok) {
     console.log('\n' + r.sortie.split('\n').filter(Boolean).slice(-25).map((l) => `      ${l}`).join('\n') + '\n');
