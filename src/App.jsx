@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useRef, useCallback, Suspense, laz
 import supabase, { auth, isDemo, lienEmail } from './supabaseClient';
 import { traduireErreurAuth, motDePasseValide } from './lib/authErreurs';
 import { captureException } from './lib/sentry';
+import { demanderBienvenue } from './lib/bienvenue';
 
 // Eager load critical components
 import Dashboard from './components/Dashboard';
@@ -713,6 +714,7 @@ export default function App() {
         if (session?.user) setUser(session.user);
       } else if (event === 'SIGNED_IN' && session?.user) {
         setUser(session.user);
+        demanderBienvenue(supabase, session.user);
       } else if (event === 'SIGNED_OUT') {
         setUser(null);
       } else if (event === 'TOKEN_REFRESHED' && session?.user) {
@@ -887,20 +889,8 @@ export default function App() {
         if (data?.session) showToast('Compte créé ✓', 'success');
         else setAuthInfo(`Compte créé. Confirmez votre adresse en ouvrant le lien envoyé à ${authForm.email}, puis connectez-vous.`);
         setShowSignUp(false);
-        // Email de bienvenue : le modèle existait depuis le début mais aucun
-        // appelant ne l'utilisait — personne n'était accueilli. Volontairement
-        // non bloquant : un envoi raté ne doit pas gâcher une inscription.
-        if (supabase) {
-          supabase.functions
-            .invoke('send-lifecycle-email', {
-              body: { type: 'welcome', to: authForm.email, data: { nom: authForm.nom } },
-            })
-            .then(({ error: mailError }) => {
-              // supabase-js ne lève pas : sans ce test, un échec passerait inaperçu.
-              if (mailError) captureException(mailError, { context: 'email de bienvenue' });
-            })
-            .catch((err) => captureException(err, { context: 'email de bienvenue' }));
-        }
+        // L'e-mail de bienvenue part à la première connexion (demanderBienvenue, SIGNED_IN) :
+        // ici il n'y a souvent pas encore de session.
       }
     } catch (e) {
       captureException(e, { context: 'inscription' });

@@ -47,6 +47,40 @@ module.exports = [
     },
   },
   {
+    nom: 'connexion réussie : bienvenue demandée pour le compte connecté, sans adresse fournie',
+    reel: true,
+    async executer({ ouvrir, cliquer, saisir, attendre, verifier }) {
+      const bienvenues = [];
+      const maintenant = Math.floor(Date.now() / 1000);
+      const utilisateur = {
+        id: '11111111-1111-4111-8111-111111111111', aud: 'authenticated', role: 'authenticated', email: 'artisan@exemple.fr',
+        app_metadata: { provider: 'email' }, user_metadata: {}, created_at: new Date().toISOString(),
+      };
+      const { page } = await ouvrir({
+        reel: true, largeur: 1440,
+        supabase: (req, u) => {
+          if (u.pathname === '/auth/v1/token') {
+            return json({ access_token: 'jeton.factice.test', token_type: 'bearer', expires_in: 3600, expires_at: maintenant + 3600, refresh_token: 'r', user: utilisateur });
+          }
+          if (u.pathname === '/functions/v1/send-lifecycle-email') {
+            bienvenues.push({ corps: JSON.parse(req.postData() || '{}'), jeton: req.headers().authorization || '' });
+            return json({ success: true, id: 're_test' });
+          }
+          if (u.pathname === '/auth/v1/user') return json(utilisateur);
+          return json([]);
+        },
+      });
+      await cliquer(page, 'Connexion');
+      await saisir(page, 'input[type="email"]', 'artisan@exemple.fr');
+      await saisir(page, 'input[type="password"]', 'motdepasse123');
+      await page.evaluate(() => document.querySelector('input[type="password"]').form.requestSubmit());
+      await attendre(2500);
+      verifier(bienvenues.length === 1, `une seule demande de bienvenue (${bienvenues.length})`);
+      verifier(JSON.stringify(bienvenues[0]?.corps) === JSON.stringify({ type: 'welcome' }), `corps sans adresse : ${JSON.stringify(bienvenues[0]?.corps)}`);
+      verifier(bienvenues[0]?.jeton === 'Bearer jeton.factice.test', 'appel fait avec le jeton du compte connecté');
+    },
+  },
+  {
     nom: 'Supabase injoignable : bandeau d’échec au lieu de listes vides',
     reel: true,
     async executer({ ouvrir, sessionFactice, verifier }) {

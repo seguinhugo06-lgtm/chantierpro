@@ -114,9 +114,13 @@ export default function TeamManagement({ isDark, couleur = '#F97316' }) {
         const roleLabel = getRoleLabel(data.role);
 
         try {
-          const { data: fnData, error: fnError } = await supabase.functions.invoke('send-lifecycle-email', {
+          // La fonction relit l'invitation en base (destinataire, organisation, lien) et vérifie
+          // que vous en êtes l'auteur. `to` et `data` ne servent qu'à l'ancienne version encore
+          // déployée ; la nouvelle les ignore (à retirer une fois send-lifecycle-email redéployée).
+          const { error: fnError } = await supabase.functions.invoke('send-lifecycle-email', {
             body: {
               type: 'invitation',
+              invitationId: data.id,
               to: data.email,
               data: {
                 orgName: orgName || 'Mallettico',
