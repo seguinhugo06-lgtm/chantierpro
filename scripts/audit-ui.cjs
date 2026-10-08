@@ -228,7 +228,8 @@ async function auditerMenus(page) {
   const largeurs = Object.keys(LARGEURS).map(Number).filter((w) => !filtreLargeur || w === Number(filtreLargeur));
   fs.mkdirSync(path.join(SORTIE, 'captures'), { recursive: true });
 
-  const browser = await puppeteer.launch({ headless: true });
+  // --no-sandbox : les runners Ubuntu 24.04 de GitHub interdisent le bac à sable de Chrome.
+  const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox'] });
   const rapport = [];
   for (const W of largeurs) {
     const page = await browser.newPage();
