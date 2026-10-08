@@ -8,19 +8,26 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from 'vitest';
+// Modules chargés à la collecte : un import à froid dans un test dépassait le délai de 5 s sur une machine chargée.
+import * as ActionMenuModule from '../ActionMenu';
+import * as QuickActionsModule from '../QuickActions';
+import * as ActionConfirmModalModule from '../ActionConfirmModal';
+import * as useQuickActionsModule from '../../../hooks/useQuickActions';
+import * as uiIndex from '../index';
+import * as hooksIndex from '../../../hooks/index';
 
 // ============ IMPORT VALIDATION TESTS ============
 
 describe('Module Exports', () => {
-  it('exports ActionMenu component', async () => {
-    const module = await import('../ActionMenu');
+  it('exports ActionMenu component', () => {
+    const module = ActionMenuModule;
     expect(module.ActionMenu).toBeDefined();
     expect(module.ActionMenuButton).toBeDefined();
     expect(module.default).toBeDefined();
   });
 
-  it('exports QuickActions component', async () => {
-    const module = await import('../QuickActions');
+  it('exports QuickActions component', () => {
+    const module = QuickActionsModule;
     expect(module.QuickActions).toBeDefined();
     expect(module.QuickActionsRow).toBeDefined();
     expect(module.ActionDivider).toBeDefined();
@@ -28,8 +35,8 @@ describe('Module Exports', () => {
     expect(module.default).toBeDefined();
   });
 
-  it('exports ActionConfirmModal component', async () => {
-    const module = await import('../ActionConfirmModal');
+  it('exports ActionConfirmModal component', () => {
+    const module = ActionConfirmModalModule;
     expect(module.ActionConfirmModal).toBeDefined();
     expect(module.DeleteConfirmModal).toBeDefined();
     expect(module.ConvertConfirmModal).toBeDefined();
@@ -40,8 +47,8 @@ describe('Module Exports', () => {
 // ============ HOOK TESTS ============
 
 describe('useQuickActions', () => {
-  it('exports all required functions', async () => {
-    const module = await import('../../../hooks/useQuickActions');
+  it('exports all required functions', () => {
+    const module = useQuickActionsModule;
 
     expect(module.useQuickActions).toBeDefined();
     expect(module.useDevisActions).toBeDefined();
@@ -55,8 +62,8 @@ describe('useQuickActions', () => {
 // ============ UI INDEX EXPORTS ============
 
 describe('UI Index Exports', () => {
-  it('exports action components from index', async () => {
-    const module = await import('../index');
+  it('exports action components from index', () => {
+    const module = uiIndex;
 
     expect(module.ActionMenu).toBeDefined();
     expect(module.ActionMenuButton).toBeDefined();
@@ -73,8 +80,8 @@ describe('UI Index Exports', () => {
 // ============ HOOKS INDEX EXPORTS ============
 
 describe('Hooks Index Exports', () => {
-  it('exports quick action hooks from index', async () => {
-    const module = await import('../../../hooks/index');
+  it('exports quick action hooks from index', () => {
+    const module = hooksIndex;
 
     expect(module.useQuickActions).toBeDefined();
     expect(module.useDevisActions).toBeDefined();
@@ -87,21 +94,21 @@ describe('Hooks Index Exports', () => {
 // ============ FUNCTIONAL TESTS ============
 
 describe('Action System Integration', () => {
-  it('ActionMenu is a valid React component', async () => {
-    const { ActionMenu } = await import('../ActionMenu');
+  it('ActionMenu is a valid React component', () => {
+    const { ActionMenu } = ActionMenuModule;
 
     // Verify function signature (React component)
     expect(typeof ActionMenu).toBe('function');
   });
 
-  it('QuickActions is a valid React component', async () => {
-    const { QuickActions } = await import('../QuickActions');
+  it('QuickActions is a valid React component', () => {
+    const { QuickActions } = QuickActionsModule;
 
     expect(typeof QuickActions).toBe('function');
   });
 
-  it('ActionConfirmModal is a valid React component', async () => {
-    const { ActionConfirmModal } = await import('../ActionConfirmModal');
+  it('ActionConfirmModal is a valid React component', () => {
+    const { ActionConfirmModal } = ActionConfirmModalModule;
 
     expect(typeof ActionConfirmModal).toBe('function');
   });
