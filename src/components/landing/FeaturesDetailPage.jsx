@@ -43,8 +43,8 @@ const FEATURES = [
     bg: 'bg-orange-50',
     title: 'Cr\u00e9ation de devis & factures',
     slug: 'devis-factures',
-    description: 'Cr\u00e9ez des devis et factures professionnels en quelques clics. Ajoutez des lignes depuis votre catalogue, appliquez des remises, calculez automatiquement la TVA et g\u00e9n\u00e9rez un PDF conforme.',
-    benefits: ['G\u00e9n\u00e9ration PDF conforme', 'Calcul automatique TVA', 'Templates personnalisables', 'Num\u00e9rotation automatique'],
+    description: 'Cr\u00e9ez des devis et factures professionnels en quelques clics. Ajoutez des lignes depuis votre catalogue, appliquez des remises, calculez automatiquement la TVA et g\u00e9n\u00e9rez un PDF avec toutes les mentions obligatoires.',
+    benefits: ['PDF avec mentions obligatoires', 'Calcul automatique TVA', 'Templates personnalisables', 'Num\u00e9rotation automatique'],
     screenshot: '/screenshots/devis-editor.png',
   },
   {
@@ -148,9 +148,9 @@ const FEATURES = [
     icon: Shield,
     color: '#ef4444',
     bg: 'bg-red-50',
-    title: 'Conformit\u00e9 Facture 2026',
-    description: 'Soyez conforme \u00e0 la facturation \u00e9lectronique 2026 sans effort : Factur-X, archivage 10 ans, piste d\'audit, SHA-256.',
-    benefits: ['Factur-X EN 16931', 'Archivage 10 ans', 'SHA-256', 'Piste d\'audit compl\u00e8te'],
+    title: 'Facture \u00e9lectronique',
+    description: 'Vos factures portent les mentions obligatoires et un fichier Factur-X. \u00c0 partir du 1er septembre 2027, les TPE devront \u00e9mettre leurs factures par une Plateforme Agr\u00e9\u00e9e : le raccordement de Mallettico est en pr\u00e9paration.',
+    benefits: ['Fichier Factur-X', 'Mentions obligatoires', 'Export comptable'],
     screenshot: '/screenshots/dashboard.png',
   },
   {

@@ -98,7 +98,7 @@ export const FEATURES_CONTENT = {
       'Un éditeur plein écran pensé pour le BTP : catalogue intégré, lots avec sous-totaux, métré, TVA multi-taux et mentions légales automatiques. Vous créez, vous envoyez, votre client signe en ligne.',
     screenshot: '/screenshots/devis-editor.png',
     metaDescription:
-      'Créez des devis et factures BTP professionnels : éditeur plein écran, catalogue intégré, lots et sous-totaux, TVA multi-taux, PDF conforme avec mentions légales automatiques.',
+      'Créez des devis et factures BTP professionnels : éditeur plein écran, catalogue intégré, lots et sous-totaux, TVA multi-taux, PDF avec mentions légales automatiques.',
     steps: [
       { title: 'Choisissez un modèle ou partez de zéro', text: 'Modèles par métier (17 métiers couverts), vos propres modèles, ou une page blanche. Le catalogue s\'ouvre avec vos articles favoris et récents.' },
       { title: 'Composez vos lignes', text: 'Recherche dans le catalogue avec autocomplétion, lots repliables avec sous-totaux, métré express (L×l×h, chutes), 12 unités, TVA par ligne ou globale (20/10/5,5/0 %).' },
@@ -122,7 +122,7 @@ export const FEATURES_CONTENT = {
         items: [
           'Factures, acomptes, situations de travaux et avoirs',
           'Numérotation automatique et duplication en un clic',
-          'PDF conforme avec mentions obligatoires (décennale, rétractation, pénalités)',
+          'PDF avec mentions obligatoires (décennale, rétractation, pénalités)',
           'Format Factur-X pour la facturation électronique 2026',
           'Historique complet et suivi des statuts (envoyé, signé, payé)',
         ],
@@ -342,7 +342,7 @@ export const FEATURES_CONTENT = {
           'Exports compatibles Pennylane et Indy',
           'Export FEC pour votre expert-comptable (plan Équipe)',
           'Journal d\'audit des documents (plan Équipe)',
-          'Conformité facturation électronique 2026 (Factur-X)',
+          'Fichier Factur-X joint aux factures (raccordement à une Plateforme Agréée en préparation pour 2027)',
         ],
       },
     ],

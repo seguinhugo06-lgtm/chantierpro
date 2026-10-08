@@ -20,7 +20,7 @@ const FEATURE_LABELS = {
   devis_ia: 'Devis IA',
   signatures: 'Signatures électroniques',
   relances: 'Relances automatiques',
-  conformite_2026: 'Conformité Facture 2026',
+  conformite_2026: 'Facture électronique (Factur-X)',
   export_pdf: 'Export PDF avancé',
   catalogue_complet: 'Catalogue complet',
   audit_trail: 'Journal d\'audit',

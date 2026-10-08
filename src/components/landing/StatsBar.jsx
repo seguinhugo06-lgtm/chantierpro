@@ -36,7 +36,7 @@ const STATS = [
     // invérifiable — la réforme impose de passer par une Plateforme Agréée.
     value: 100,
     suffix: ' %',
-    label: 'Données hébergées en France (Paris)',
+    label: 'Base de données hébergée à Paris',
     color: '#22c55e',
     bgColor: 'bg-green-50',
   },

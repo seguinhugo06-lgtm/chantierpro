@@ -53,8 +53,8 @@ const FAQ_ITEMS = [
   },
   {
     category: 'tech',
-    q: 'Est-ce que Mallettico est conforme \u00e0 la facturation \u00e9lectronique 2026 ?',
-    a: 'Oui. Mallettico g\u00e9n\u00e8re des factures au format Factur-X (norme EN 16931), avec archivage s\u00e9curis\u00e9 SHA-256 sur 10 ans, piste d\'audit, et toutes les mentions l\u00e9gales obligatoires. Vous \u00eates conforme sans effort suppl\u00e9mentaire.',
+    q: 'Mallettico est-il pr\u00eat pour la facturation \u00e9lectronique ?',
+    a: 'Pas encore enti\u00e8rement, et nous pr\u00e9f\u00e9rons le dire. Vos factures portent d\u00e9j\u00e0 toutes les mentions l\u00e9gales et un fichier Factur-X. Depuis le 1er septembre 2026, vous devez pouvoir recevoir des factures \u00e9lectroniques : cela passe par la Plateforme Agr\u00e9\u00e9e de votre choix (liste officielle sur impots.gouv.fr). \u00c0 partir du 1er septembre 2027, les TPE devront aussi les \u00e9mettre par une Plateforme Agr\u00e9\u00e9e : le raccordement de Mallettico est en pr\u00e9paration, et nous vous pr\u00e9viendrons bien avant l\u2019\u00e9ch\u00e9ance.',
   },
   {
     category: 'tech',

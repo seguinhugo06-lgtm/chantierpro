@@ -11,7 +11,7 @@ const CHANGELOG = [
     changes: [
       { type: 'improve', text: 'Sidebar simplifiée : 7 modules essentiels (au lieu de 17)' },
       { type: 'new', text: 'Page Finances unifiée (Trésorerie + Export + Analytique)' },
-      { type: 'improve', text: 'Tarification simplifiée : Gratuit + Pro à 14,90€/mois' },
+      { type: 'improve', text: 'Tarification simplifiée : un plan gratuit et un plan payant' },
       { type: 'new', text: 'Planning accessible gratuitement pour tous' },
       { type: 'new', text: 'FAQ enrichie avec recherche intégrée (18+ questions)' },
       { type: 'new', text: 'Onglet Administratif dans les Paramètres' },

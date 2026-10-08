@@ -48,9 +48,9 @@ const TOUTES_FEATURES = [
     title: 'Devis & Factures professionnels',
     href: '/fonctionnalites/devis-factures',
     description:
-      'Cr\u00e9ez des devis percutants en quelques clics, transformez-les en factures conformes, envoyez-les par email et faites-les signer \u00e9lectroniquement \u2014 tout depuis une seule interface.',
+      'Cr\u00e9ez des devis percutants en quelques clics, transformez-les en factures, envoyez-les par email et faites-les signer \u00e9lectroniquement \u2014 tout depuis une seule interface.',
     bullets: [
-      'G\u00e9n\u00e9ration PDF conforme Factur-X avec mentions obligatoires',
+      'PDF avec mentions obligatoires et fichier Factur-X',
       'Signature \u00e9lectronique en ligne, sur mobile ou tablette',
       'Envoi par email avec PDF joint et historique complet',
       'Duplication, versioning et historique complet',

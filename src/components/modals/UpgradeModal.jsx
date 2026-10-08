@@ -14,7 +14,7 @@ const FEATURE_LABELS = {
   catalogue_complet: 'Catalogue illimité',
   export_pdf: 'Export PDF avancé',
   devis_ia: 'Devis IA',
-  conformite_2026: 'Conformité Facture 2026',
+  conformite_2026: 'Facture électronique (Factur-X)',
   equipe: 'Gestion d\'équipe',
   tresorerie: 'Trésorerie & Projections',
   planning_avance: 'Planning avancé',

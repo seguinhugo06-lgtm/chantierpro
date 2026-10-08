@@ -2568,7 +2568,7 @@ function HelpModal({ showHelp, setShowHelp, isDark, couleur, tc }) {
           ...(FONCTIONS.ia ? [{ q: 'Comment utiliser l\'IA Devis ?', a: 'Prenez une photo du chantier ou décrivez les travaux. L\'IA génère automatiquement un devis détaillé. (Inclus dans tous les plans)' }] : []),
           { q: 'Comment relancer un client ?', a: 'Mallettico détecte les devis en attente et vous propose des relances automatiques par email.' },
           { q: 'Comment ajouter un acompte ?', a: 'Lors de la création de la facture d\'acompte, indiquez le pourcentage souhaité. Le solde sera calculé automatiquement.' },
-          { q: 'Les données sont-elles sécurisées ?', a: 'Oui, vos données sont chiffrées et hébergées en Europe. Nous sommes conformes RGPD.' },
+          { q: 'Les données sont-elles sécurisées ?', a: 'Elles sont chiffrées, et la base de données est hébergée à Paris. Vous pouvez les exporter et supprimer votre compte à tout moment, depuis les Réglages.' },
           { q: 'Comment supprimer mon compte ?', a: 'Dans Paramètres > Données, section RGPD, vous pouvez exporter ou supprimer toutes vos données.' },
           { q: 'Comment contacter le support ?', a: 'Envoyez un email à contact@mallettico.fr. Nous répondons sous 48h ouvrées.' },
         ];

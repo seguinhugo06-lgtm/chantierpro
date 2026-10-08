@@ -39,7 +39,7 @@ const PLANS = [
       'Clients illimit\u00e9s',
       'Chantiers illimit\u00e9s',
       'Relances automatiques',
-      'Conformit\u00e9 Facture 2026',
+      'Fichier Factur-X joint aux factures',
       'Catalogue complet',
     ],
     cta: 'Commencer avec Artisan',

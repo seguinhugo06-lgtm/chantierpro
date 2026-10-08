@@ -224,7 +224,7 @@ const FAQ_ITEMS = [
   },
   {
     q: 'Mes données sont-elles sécurisées ?',
-    a: 'Absolument. Vos données sont hébergées en France (région AWS Paris), chiffrées en transit et au repos. Nous sommes conformes RGPD avec export et suppression de données sur demande.'
+    a: 'Votre base de données est hébergée à Paris (AWS, région eu-west-3), chiffrée en transit et au repos. Vous pouvez exporter vos données et supprimer votre compte à tout moment, depuis les Réglages.'
   }
 ];
 

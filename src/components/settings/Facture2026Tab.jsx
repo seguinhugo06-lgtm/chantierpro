@@ -279,7 +279,7 @@ export default function Facture2026Tab({ entreprise, setEntreprise, isDark, coul
         <div className={`${cardBg} rounded-2xl border p-5 lg:col-span-2`}>
           <h3 className={`font-semibold mb-4 flex items-center gap-2 ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
             <Shield className="w-5 h-5" style={{ color: couleur }} />
-            Checklist de conformité
+            Informations requises sur vos factures
           </h3>
           <div className="space-y-2.5">
             {results.map((item) => {
@@ -298,7 +298,7 @@ export default function Facture2026Tab({ entreprise, setEntreprise, isDark, coul
                   {item.passed ? (
                     <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">
                       <CheckCircle className="w-3.5 h-3.5" />
-                      Conforme
+                      Renseigné
                     </span>
                   ) : (
                     <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
@@ -417,7 +417,7 @@ export default function Facture2026Tab({ entreprise, setEntreprise, isDark, coul
               ) : (
                 <Shield className="w-4 h-4" />
               )}
-              {testing ? 'Test en cours...' : 'Tester la conformité'}
+              {testing ? 'Vérification…' : 'Vérifier mes informations'}
             </button>
           </div>
         </div>
@@ -487,52 +487,21 @@ export default function Facture2026Tab({ entreprise, setEntreprise, isDark, coul
         )}
       </div>
 
-      {/* ── Archive legale card ── */}
+      {/* ── Conservation des factures : ce que fait Mallettico, et ce qu'il ne fait pas (D-02) ── */}
       <div className={`${cardBg} rounded-2xl border p-5`}>
         <h3 className={`font-semibold mb-4 flex items-center gap-2 ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
           <Lock className="w-5 h-5" style={{ color: couleur }} />
-          Archivage légal (10 ans)
+          Conservation de vos factures (10 ans)
         </h3>
         <div className="space-y-3">
           <p className={`text-sm leading-relaxed ${textSecondary}`}>
-            La législation française impose un archivage des factures pendant 10 ans (article L123-22
-            du Code de commerce). Mallettico assure la conservation et l'intégrité de vos documents.
+            La loi impose de conserver vos factures pendant 10 ans (article L123-22 du Code de commerce).
+            Vos documents restent dans votre compte Mallettico tant qu'il est actif, avec leur date de création.
           </p>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3">
-            <div className={`flex items-start gap-3 p-3 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
-              <CheckCircle className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
-              <div>
-                <p className={`text-sm font-medium ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
-                  Archivage automatique
-                </p>
-                <p className={`text-xs mt-0.5 ${textMuted}`}>
-                  Vos factures sont archivées et horodatées automatiquement
-                </p>
-              </div>
-            </div>
-            <div className={`flex items-start gap-3 p-3 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
-              <Lock className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
-              <div>
-                <p className={`text-sm font-medium ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
-                  Vérification SHA-256
-                </p>
-                <p className={`text-xs mt-0.5 ${textMuted}`}>
-                  Chaque document est scellé par un hash SHA-256 garantissant son intégrité
-                </p>
-              </div>
-            </div>
-            <div className={`flex items-start gap-3 p-3 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
-              <Shield className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
-              <div>
-                <p className={`text-sm font-medium ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
-                  Piste d'audit fiable
-                </p>
-                <p className={`text-xs mt-0.5 ${textMuted}`}>
-                  Traçabilité complète des modifications et accès aux documents
-                </p>
-              </div>
-            </div>
-          </div>
+          <p className={`text-sm leading-relaxed ${textSecondary}`}>
+            Mallettico ne fournit pas d'archivage à valeur probante (scellement des documents) : exportez
+            vos factures chaque mois depuis l'export comptable et gardez-en une copie, ou confiez-les à votre comptable.
+          </p>
         </div>
       </div>
     </div>

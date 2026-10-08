@@ -64,11 +64,10 @@ const CATEGORIES = [
     ],
   },
   {
-    name: 'Conformit\u00e9 & Support',
+    name: 'Documents & Support',
     features: [
-      { name: 'Conformit\u00e9 Facture 2026', values: [true, true, true] },
+      { name: 'Mentions l\u00e9gales obligatoires', values: [true, true, true] },
       { name: 'Factur-X', values: [false, true, true] },
-      { name: 'Archivage 10 ans', values: [false, true, true] },
       { name: 'Piste d\'audit', values: [false, false, true] },
       { name: 'Support email', values: [true, true, true] },
       { name: 'Support prioritaire', values: [false, false, true] },

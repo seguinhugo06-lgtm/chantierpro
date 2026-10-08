@@ -48,8 +48,8 @@ const FEATURES = [
   },
   {
     icon: ShieldCheck,
-    title: 'Conformit\u00e9 2026',
-    description: 'Factur-X, archivage 10 ans, piste d\'audit, SHA-256.',
+    title: 'Facture \u00e9lectronique',
+    description: 'Fichier Factur-X joint \u00e0 vos factures ; raccordement \u00e0 une Plateforme Agr\u00e9\u00e9e en pr\u00e9paration pour 2027.',
     color: '#ef4444',
     bg: 'bg-red-50',
   },

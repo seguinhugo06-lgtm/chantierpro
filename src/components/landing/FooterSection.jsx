@@ -13,7 +13,7 @@ const COLUMNS = [
       { label: 'Tarifs', href: '#pricing' },
       { label: 'Signature \u00e9lectronique', href: '/fonctionnalites/signature-electronique', isPage: true },
       { label: 'Relances automatiques', href: '/fonctionnalites/relances', isPage: true },
-      { label: 'Conformit\u00e9 2026', href: '#features' },
+      { label: 'Facture \u00e9lectronique', href: '#faq' },
     ],
   },
   {
