@@ -32,7 +32,7 @@ Comment Hugo et Claude (avec ses agents spécialisés) font avancer Mallettico s
 | Ce qui tourne réellement en production | `docs/etat-production.md` | Claude à chaque livraison ; Hugo quand il applique / déploie |
 | Décisions et leurs raisons | `docs/decisions.md` | Claude, décisions d'Hugo |
 | Droit et métier BTP (sourcé) | `docs/metier-btp.md` | `juriste-btp` |
-| Suivi personnel d'Hugo, journal de terrain | Pilote (artefact, base privée `data/users/me/pilote`) | Hugo ; Claude y écrit les avancées |
+| Canal Hugo ↔ Claude : demandes, questions, actions à faire par Hugo, livraisons, état, journal de terrain, étapes du lancement | Pilote (artefact, base privée `data/users/me/pilote`) — `docs/pilote.md` | Hugo écrit ses demandes, réponses, cases cochées ; Claude écrit ce qui dérive du dépôt (`npm run pilote`) |
 | Apprentissages de Claude | mémoire automatique (hors dépôt) + `.claude/agent-memory/` (par agent, dans le dépôt) | Claude et les agents |
 | Mesures | `audit-ui/` (ignoré par git) : rapports d'audit, captures, dernière vérification | outils |
 
@@ -44,7 +44,7 @@ Comment Hugo et Claude (avec ses agents spécialisés) font avancer Mallettico s
 4. **Vérifier** selon la matrice ci-dessous. Une vérification se constate (sortie de commande, parcours, capture), elle ne se suppose pas.
 5. **Faire relire** par l'agent du domaine (sécurité, juridique, données, mobile).
 6. **Livrer** (`/livrer`) : `npm run verifier` vert sur le commit → `git push origin HEAD:main` (le garde-fou refuse sinon) → `npm run statut` (Vercel ×2 + CI).
-7. **Consigner** : `docs/etat-production.md`, feuille de route, Pilote, et la mémoire si une leçon est apprise.
+7. **Consigner** : `docs/etat-production.md`, feuille de route, Pilote (`/pilote sync` : fiche de livraison, demande d'origine « faite », étapes), et la mémoire si une leçon est apprise. Le hook `apres-push.mjs` le rappelle après chaque push sur `main`.
 
 ### Matrice de vérification
 
@@ -62,14 +62,16 @@ Comment Hugo et Claude (avec ses agents spécialisés) font avancer Mallettico s
 
 | Quand | Quoi |
 |---|---|
-| Début de session | Le hook affiche l'état ; `/debut` pour l'orientation complète (retard sur main, attentes Hugo, journal de terrain, prochaine tâche) |
-| Fin de session | `/fin` : documentation, Pilote, mémoire, rien de non commité |
+| Début de session | Le hook affiche l'état ; `/debut` pour l'orientation complète : retard sur main, **lecture du Pilote** (demandes, réponses, actions cochées, journal de terrain), prochaine tâche |
+| Après chaque livraison | `/pilote sync` : la livraison apparaît dans le Pilote d'Hugo avec ses preuves |
+| Fin de session | `/fin` : documentation, Pilote synchronisé, questions ouvertes posées dans le Pilote, mémoire, rien de non commité |
 | Chaque semaine (lundi, automatique) | CI « Santé hebdomadaire » : audit complet, parcours, banc, dépendances vulnérables → issue GitHub si quelque chose casse |
 | Chaque semaine (avec Hugo) | `analyste-terrain` sur les retours et le journal ; arbitrage des priorités |
 | Avant une soumission aux stores | `redacteur-stores` + `ingenieur-mobile` + `juriste-btp` ; checklist de la phase 3 de la feuille de route |
 
 ## 5. Comment demander quelque chose à Claude
 
+- **Depuis le Pilote**, à tout moment (téléphone compris) : « Demander à Claude ». La demande est lue au prochain `/debut`, reçoit une réponse dans le Pilote, puis Claude attend votre feu vert dans la session avant d'agir.
 - « `/tache` les photos de chantier ne se compressent pas sur Android » — boucle complète, jusqu'à la livraison.
 - « `/debut` » au début d'une séance de travail ; « `/fin` » avant de partir.
 - « Note dans le journal : le PDF est illisible en plein soleil » — Claude l'ajoute au journal de terrain du Pilote.

@@ -27,14 +27,14 @@ Règles par domaine (`.claude/rules/`), 8 agents spécialisés, commandes `/debu
 
 ## Prochaines tâches (prêtes pour `/tache`)
 
-Par ordre de valeur. Chacune : critère d'acceptation observable → vérification.
+Par ordre de valeur. Format fixe (lu par `scripts/pilote/preparer.mjs etat` pour le Pilote) : **titre** — contexte. Critère : … Vérification : … Taille ….
 
-1. **Mentions de la réforme sur les factures** (SIREN du client, nature des opérations biens / services / mixte, option TVA sur les débits si cochée, adresse de livraison si différente) dans les DEUX générateurs. → Test unitaire du bloc + parcours `documents` étendu + `juriste-btp`. Taille M.
-2. **Parcours de création d'un devis complet** (composer : client, lignes du catalogue, TVA 10 %, enregistrer, aperçu avec mentions) — le chemin le plus utilisé n'a pas encore de parcours. → `npm run parcours -- devis`. Taille M.
-3. **Menus sans attributs ARIA** : ajouter `aria-haspopup` / `aria-expanded` aux menus faits main pour que l'audit les ouvre (et pour l'accessibilité). → Audit complet : plus de menus testés, toujours 0 défaut. Taille M.
-4. **Mode hors ligne sur chantier** : constater ce qui se passe sans réseau (création de devis, file de synchronisation) avec un parcours `reel: true` en panne ; corriger ce qui ment. Taille M-L.
-5. **Phase 2 native** dès que Xcode et Android Studio sont installés (voir plus bas). Taille L.
-6. **Avertissements ESLint** (≈ 840, surtout des imports et variables inutilisés) : les réduire module par module quand on y touche, jamais en masse sans vérification complète. Continu.
+1. **Mentions de la réforme sur les factures** — SIREN du client, nature des opérations (biens / services / mixte), option TVA sur les débits si cochée, adresse de livraison si différente, dans les DEUX générateurs. Critère : une facture de démo affiche les quatre mentions dans l'aperçu et dans le PDF. Vérification : test unitaire du bloc, parcours `documents` étendu, `juriste-btp`. Taille M.
+2. **Parcours de création d'un devis complet** — le chemin le plus utilisé (composer : client, lignes du catalogue, TVA 10 %, enregistrer, aperçu) n'a pas encore de parcours. Critère : le parcours crée un devis et retrouve ses lignes et la mention TVA dans l'aperçu. Vérification : `npm run parcours -- devis`. Taille M.
+3. **Menus sans attributs ARIA** — ajouter `aria-haspopup` / `aria-expanded` aux menus faits main (accessibilité, et pour que l'audit les ouvre). Critère : l'audit ouvre plus de menus et reste à 0 défaut. Vérification : `npm run verifier -- --complet`. Taille M.
+4. **Mode hors ligne sur chantier** — constater ce qui se passe sans réseau (création de devis, file de synchronisation) et corriger ce qui ment. Critère : un devis créé hors ligne apparaît après le retour du réseau, et l'artisan voit à chaque instant s'il est enregistré. Vérification : parcours `reel: true` avec panne puis retour. Taille M-L.
+5. **Phase 2 native** — dès que Xcode et Android Studio sont installés (voir plus bas). Critère : l'app démarre sur un iPhone et un Android de test, et un PDF se partage depuis l'app. Vérification : agent `ingenieur-mobile`. Taille L.
+6. **Avertissements ESLint** — environ 840 (surtout imports et variables inutilisés), à réduire module par module quand on y touche. Critère : le nombre baisse à chaque livraison, jamais en masse sans vérification complète. Taille continue.
 
 ## Ce qui a été mesuré le 7 octobre (matin)
 

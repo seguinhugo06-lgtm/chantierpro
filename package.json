@@ -18,6 +18,7 @@
     "statut": "node scripts/statut-production.mjs",
     "migration:nouvelle": "node scripts/nouvelle-migration.mjs",
     "hooks:tester": "node scripts/claude/tester-hooks.mjs",
+    "pilote": "node scripts/pilote/preparer.mjs",
     "precheck": "bash scripts/smoke-test.sh",
     "setup-hooks": "cp scripts/pre-push.sh .git/hooks/pre-push && chmod +x .git/hooks/pre-push && echo '✓ Git hooks installed'",
     "postinstall": "[ -d .git ] && npm run setup-hooks || true",

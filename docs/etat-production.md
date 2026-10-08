@@ -15,10 +15,10 @@ Dans l'ordre. Fichier prêt : `Documents/Mallettico/Migrations à appliquer — 
 4. **Migration 074** — retours utilisateurs + codes testeurs.
 5. **Migration 075** — URGENT, sécurité : deux tables lisibles par n'importe qui.
    (Ordre numérique : c'est celui que le banc a testé.)
-6. Redéployer `stripe-webhook` (`--no-verify-jwt`) puis `create-invoice-payment` (commandes ci-dessous), APRÈS 071 et 073.
-7. Supabase › Authentication › URL Configuration : Site URL `https://mallettico.fr` (+ dans Redirect URLs) ; modèle d'e-mail « Reset password » en français.
-8. Créer un code testeur (requête en tête du bloc 074).
-9. Identité de l'éditeur (structure, SIRET, adresse) → `COMPANY` dans `src/components/LegalPages.jsx`.
+6. **Redéployer deux fonctions Supabase** — `stripe-webhook` (`--no-verify-jwt`) puis `create-invoice-payment` (commandes ci-dessous), APRÈS 071 et 073, depuis un terminal ouvert dans le dépôt.
+7. **Régler l'adresse du site dans Supabase** — Authentication › URL Configuration : Site URL `https://mallettico.fr` (et dans Redirect URLs) ; Authentication › Emails : modèle « Reset password » en français.
+8. **Créer un code testeur** — dans l'éditeur SQL, après la migration 074 ; choisir un code long et imprévisible, le donner aux artisans de l'entourage.
+9. **Fournir l'identité de l'éditeur** — structure, SIRET, adresse : les donner à Claude, qui les reporte dans les mentions légales (`COMPANY`, `src/components/LegalPages.jsx`).
 
 ```bash
 npx supabase functions deploy stripe-webhook --no-verify-jwt --project-ref kofsbgxkrmryfetevetn

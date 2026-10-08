@@ -23,6 +23,8 @@
       "Bash(node scripts/parcours/lancer.cjs:*)",
       "Bash(node scripts/verifier.mjs:*)",
       "Bash(node scripts/statut-production.mjs:*)",
+      "Bash(node scripts/pilote/preparer.mjs:*)",
+      "Bash(npm run pilote:*)",
       "Bash(git status:*)",
       "Bash(git diff:*)",
       "Bash(git log:*)",
@@ -72,6 +74,12 @@
         "matcher": "Write|Edit|MultiEdit",
         "hooks": [
           { "type": "command", "command": "node \"${CLAUDE_PROJECT_DIR}/scripts/claude/lint-fichier.mjs\"", "timeout": 30 }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          { "type": "command", "command": "node \"${CLAUDE_PROJECT_DIR}/scripts/claude/apres-push.mjs\"", "timeout": 10 }
         ]
       }
     ]

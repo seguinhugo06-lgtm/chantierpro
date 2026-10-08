@@ -34,4 +34,11 @@ Corriger ce qui est remonté, revérifier.
 Utiliser `/livrer`.
 
 ## 6. Consigner
-`docs/etat-production.md` (migrations ou fonctions en attente), `docs/feuille-de-route.md` (avancement), `docs/decisions.md` (si une décision a été prise), Pilote (étape concernée, via ArtifactData), mémoire si une leçon non évidente a été apprise. Dire à Hugo en clair : ce qui a changé pour l'artisan, comment c'est prouvé, ce qu'il lui reste à faire.
+Mettre à jour :
+- `docs/etat-production.md` : migrations ou fonctions en attente ;
+- `docs/feuille-de-route.md` : avancement ;
+- `docs/decisions.md` : si une décision a été prise ;
+- le Pilote, avec `/pilote sync` : fiche de livraison, étape concernée, et demande d'origine passée à `faite` si la tâche venait d'une demande ;
+- la mémoire, si une leçon non évidente a été apprise.
+
+Dire à Hugo en clair : ce qui a changé pour l'artisan, comment c'est prouvé, ce qu'il lui reste à faire.

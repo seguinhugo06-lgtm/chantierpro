@@ -18,6 +18,12 @@ git log --oneline origin/main..HEAD
    - `docs/feuille-de-route.md` : avancement, prochaines tâches prêtes (critère d'acceptation, vérification prévue) ;
    - `docs/decisions.md` : décisions prises ou attendues ;
    - `CLAUDE.md` / `.claude/rules/` : un piège découvert qui reviendra → une ligne dans la règle du domaine.
-4. **Pilote** (ArtifactData, `data/users/me` / `pilote`) : statut et note des étapes touchées, focus mis à jour.
+4. **Pilote** : `/pilote sync`. Cela couvre :
+   - l'état de la production et les attentes ;
+   - les fiches de livraison pas encore envoyées ;
+   - le statut et la note des étapes touchées, et le focus ;
+   - la réponse à chaque demande traitée.
+
+   Toute décision qui attend Hugo devient une question (`/pilote question`). Rien ne doit exister seulement dans le chat.
 5. **Mémoire** : les leçons non évidentes (pas ce que le dépôt contient déjà) dans la mémoire automatique.
 6. **Récapitulatif pour Hugo** (court) : ce qui a changé pour l'artisan, ce qui est prouvé et comment, ce qu'il doit faire lui-même (actions exactes, dans l'ordre), ce qui est prévu ensuite.

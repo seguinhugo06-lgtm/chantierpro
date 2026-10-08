@@ -59,6 +59,17 @@ try {
   fs.rmSync(temporaire, { force: true });
 }
 
+// apres-push.mjs
+const apresPush = (command, stderr) => {
+  const r = lancer('apres-push.mjs', { tool_name: 'Bash', tool_input: { command }, tool_response: { stdout: '', stderr } });
+  try { return JSON.parse(r.stdout).hookSpecificOutput.additionalContext; } catch { return ''; }
+};
+const pousse = 'To github.com:seguinhugo06-lgtm/chantierpro.git\n   7effc0a..1a2b3c4  HEAD -> main\n';
+cas('après push sur main : rappel de consigner dans le Pilote', /--de 7effc0a/.test(apresPush('git push origin HEAD:main', pousse)) && /docs\/pilote\.md/.test(apresPush('git push origin HEAD:main', pousse)));
+cas('après push refusé : silence', apresPush('git push origin HEAD:main', ' ! [rejected]        HEAD -> main (fetch first)\nerror: failed to push some refs') === '');
+cas('après push d’une autre branche : silence', apresPush('git push origin HEAD:essai', '   7effc0a..1a2b3c4  HEAD -> essai\n') === '');
+cas('après une autre commande : silence', apresPush('npm test', '') === '');
+
 // debut-session.mjs
 const debut = spawnSync('node', [path.join(RACINE, 'scripts/claude/debut-session.mjs')], { env, encoding: 'utf8', cwd: RACINE, timeout: 15000 });
 cas('début de session : contexte produit', debut.status === 0 && debut.stdout.includes('Mallettico — état au démarrage'));

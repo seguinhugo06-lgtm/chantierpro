@@ -23,7 +23,11 @@ git rev-list --count HEAD..origin/main
 4. `npm run verifier [-- --complet]` → doit être vert. Le garde-fou (`scripts/claude/garde.mjs`) refuse le push sinon.
 5. `git push origin HEAD:main` (jamais de push forcé).
 6. `npm run statut` → attendre le verdict Vercel ×2 + CI « Vérifications ». Rouge → diagnostiquer (`gh run view --log-failed`) et corriger immédiatement.
-7. **Consigner** : `docs/etat-production.md` (commit en production, migrations / fonctions à appliquer par Hugo), Pilote (étapes concernées).
+7. **Consigner** :
+   - `docs/etat-production.md` : commit en production, migrations et fonctions à appliquer par Hugo ; un commit `docs:` si besoin, livré au même niveau de vérification.
+   - Pilote : `/pilote sync`, avec la fiche `npm run pilote -- livraison --de <ancien origin/main> …`. Le hook `apres-push.mjs` donne la commande exacte.
+   - Les demandes réglées passent à `faite`, les étapes touchées sont mises à jour.
+   - Une livraison non consignée dans le Pilote n'est pas terminée.
 8. Rappeler à Hugo s'il doit mettre à jour sa copie locale : `git -C /Users/hugoseguin/Documents/chantierpro-app pull --ff-only` (le garde-fou du worktree empêche Claude de le faire).
 
-Rendre : commits livrés, verdict de `npm run statut`, ce qui reste à faire par Hugo.
+Rendre : commits livrés, verdict de `npm run statut`, ce qui a été consigné dans le Pilote, ce qui reste à faire par Hugo.
