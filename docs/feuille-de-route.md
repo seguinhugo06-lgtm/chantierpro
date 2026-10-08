@@ -21,6 +21,21 @@ Livré en production (commits `878d578` → `5878699`, statut GitHub vérifié) 
 
 Reste à Hugo, dans cet ordre : appliquer 071 → 075 (fichier `Documents/Mallettico/Migrations à appliquer — 7 oct 2026.sql`, testé au banc) ; puis redéployer `stripe-webhook` (`--no-verify-jwt`) et `create-invoice-payment` ; vérifier l’URL du site et le modèle d’e-mail « Reset password » dans Supabase Auth ; créer les codes testeurs.
 
+### Environnement de travail (8 octobre)
+
+Règles par domaine (`.claude/rules/`), 8 agents spécialisés, commandes `/debut` `/tache` `/verifier` `/sonde` `/revue` `/migration` `/livrer` `/retours` `/fin`, hooks (contexte au démarrage, lint à chaque écriture, garde-fou de livraison), `npm run verifier` / `parcours` / `statut` / `migration:nouvelle`, CI à deux jobs + santé hebdomadaire + Dependabot, documents `etat-production`, `decisions`, `metier-btp`, `organisation`. Dépendances de production : 0 vulnérabilité connue (jsPDF, DOMPurify, lodash, ws mis à jour ; PDF Factur-X vérifié par un parcours).
+
+## Prochaines tâches (prêtes pour `/tache`)
+
+Par ordre de valeur. Chacune : critère d'acceptation observable → vérification.
+
+1. **Mentions de la réforme sur les factures** (SIREN du client, nature des opérations biens / services / mixte, option TVA sur les débits si cochée, adresse de livraison si différente) dans les DEUX générateurs. → Test unitaire du bloc + parcours `documents` étendu + `juriste-btp`. Taille M.
+2. **Parcours de création d'un devis complet** (composer : client, lignes du catalogue, TVA 10 %, enregistrer, aperçu avec mentions) — le chemin le plus utilisé n'a pas encore de parcours. → `npm run parcours -- devis`. Taille M.
+3. **Menus sans attributs ARIA** : ajouter `aria-haspopup` / `aria-expanded` aux menus faits main pour que l'audit les ouvre (et pour l'accessibilité). → Audit complet : plus de menus testés, toujours 0 défaut. Taille M.
+4. **Mode hors ligne sur chantier** : constater ce qui se passe sans réseau (création de devis, file de synchronisation) avec un parcours `reel: true` en panne ; corriger ce qui ment. Taille M-L.
+5. **Phase 2 native** dès que Xcode et Android Studio sont installés (voir plus bas). Taille L.
+6. **Avertissements ESLint** (≈ 840, surtout des imports et variables inutilisés) : les réduire module par module quand on y touche, jamais en masse sans vérification complète. Continu.
+
 ## Ce qui a été mesuré le 7 octobre (matin)
 
 | Sujet | Constat | Preuve |
