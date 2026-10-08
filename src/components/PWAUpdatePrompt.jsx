@@ -216,7 +216,7 @@ export default function PWAUpdatePrompt({ syncHandlers = {}, className, isDark =
                   style={{ backgroundColor: couleur }}
                 >
                   <RefreshCw className="w-4 h-4 mr-2" />
-                  Mettre a jour
+                  Mettre à jour
                 </Button>
               </div>
             </div>
@@ -313,7 +313,7 @@ export default function PWAUpdatePrompt({ syncHandlers = {}, className, isDark =
                         <Share className="w-4 h-4" style={{ color: couleur }} />
                         <p className={cn('font-semibold text-sm', textPrimary)}>Appuyez sur Partager</p>
                       </div>
-                      <p className={cn('text-xs', textMuted)}>Icone en bas de Safari</p>
+                      <p className={cn('text-xs', textMuted)}>Icône en bas de Safari</p>
                     </div>
                   </div>
                   <div className={cn('flex items-center gap-4 p-3 rounded-xl', stepBg)}>
@@ -326,9 +326,9 @@ export default function PWAUpdatePrompt({ syncHandlers = {}, className, isDark =
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
                         <PlusSquare className="w-4 h-4" style={{ color: couleur }} />
-                        <p className={cn('font-semibold text-sm', textPrimary)}>Sur l'ecran d'accueil</p>
+                        <p className={cn('font-semibold text-sm', textPrimary)}>Sur l'écran d'accueil</p>
                       </div>
-                      <p className={cn('text-xs', textMuted)}>Puis "Ajouter"</p>
+                      <p className={cn('text-xs', textMuted)}>Puis « Ajouter »</p>
                     </div>
                   </div>
                 </div>
@@ -336,7 +336,7 @@ export default function PWAUpdatePrompt({ syncHandlers = {}, className, isDark =
                 /* Android/Other browsers */
                 <div className="space-y-3">
                   <p className={cn('text-sm font-medium mb-3', textSecondary)}>
-                    Pour installer sur votre telephone :
+                    Pour installer sur votre téléphone :
                   </p>
                   <div className={cn('flex items-center gap-4 p-3 rounded-xl', stepBg)}>
                     <div
@@ -350,7 +350,7 @@ export default function PWAUpdatePrompt({ syncHandlers = {}, className, isDark =
                         <span className={cn('text-lg font-bold', textPrimary)}>⋮</span>
                         <p className={cn('font-semibold text-sm', textPrimary)}>Menu du navigateur</p>
                       </div>
-                      <p className={cn('text-xs', textMuted)}>3 points en haut a droite</p>
+                      <p className={cn('text-xs', textMuted)}>3 points en haut à droite</p>
                     </div>
                   </div>
                   <div className={cn('flex items-center gap-4 p-3 rounded-xl', stepBg)}>
@@ -363,9 +363,9 @@ export default function PWAUpdatePrompt({ syncHandlers = {}, className, isDark =
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
                         <PlusSquare className="w-4 h-4" style={{ color: couleur }} />
-                        <p className={cn('font-semibold text-sm', textPrimary)}>Ajouter a l'ecran d'accueil</p>
+                        <p className={cn('font-semibold text-sm', textPrimary)}>Ajouter à l'écran d'accueil</p>
                       </div>
-                      <p className={cn('text-xs', textMuted)}>L'app sera installee</p>
+                      <p className={cn('text-xs', textMuted)}>L'appli sera installée</p>
                     </div>
                   </div>
                 </div>
@@ -375,7 +375,7 @@ export default function PWAUpdatePrompt({ syncHandlers = {}, className, isDark =
               {!canInstall && (
                 <div className={cn('flex items-center justify-center gap-2 mt-4 pt-4 border-t text-xs', cardBorder, textMuted)}>
                   <Smartphone className="w-3.5 h-3.5" />
-                  <span>Acces instantane • Fonctionne hors-ligne</span>
+                  <span>Accès instantané • Fonctionne hors ligne</span>
                 </div>
               )}
             </div>

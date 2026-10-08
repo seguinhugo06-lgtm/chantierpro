@@ -2,9 +2,9 @@
  * FooterSection — Expanded 4-column footer with product, resources, legal, and contact links.
  */
 
-import React from 'react';
 import { Linkedin } from 'lucide-react';
 import LogoMallettico from '../ui/LogoMallettico';
+import { allerALaSection } from '../../lib/sectionsAccueil';
 
 const COLUMNS = [
   {
@@ -52,8 +52,7 @@ export default function FooterSection({ onNavigate }) {
         window.location.assign(link.href);
       }
     } else if (link.href.startsWith('#')) {
-      const el = document.querySelector(link.href);
-      if (el) el.scrollIntoView({ behavior: 'smooth' });
+      allerALaSection(link.href);
     }
   };
 

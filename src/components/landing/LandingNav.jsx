@@ -3,9 +3,10 @@
  * new page links, and glass-morphism on scroll.
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import LogoMallettico from '../ui/LogoMallettico';
+import { allerALaSection } from '../../lib/sectionsAccueil';
 import { Menu, X, FileText, Bell, Building, TrendingUp, ChevronDown, PenLine, Package } from 'lucide-react';
 
 const NAV_LINKS = [
@@ -70,14 +71,10 @@ export default function LandingNav({ onLogin, onSignup }) {
     if (fromMobile && menuOpen) {
       // Close mobile menu first, then scroll after exit animation completes
       setMenuOpen(false);
-      setTimeout(() => {
-        const el = document.querySelector(href);
-        if (el) el.scrollIntoView({ behavior: 'smooth' });
-      }, 150);
+      setTimeout(() => allerALaSection(href), 150);
     } else {
       setMenuOpen(false);
-      const el = document.querySelector(href);
-      if (el) el.scrollIntoView({ behavior: 'smooth' });
+      allerALaSection(href);
     }
   };
 

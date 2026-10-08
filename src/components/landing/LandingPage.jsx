@@ -19,7 +19,7 @@
  * 12. FooterSection (4-column)
  */
 
-import React from 'react';
+import { useEffect } from 'react';
 import LandingNav from './LandingNav';
 import HeroSection from './HeroSection';
 import StatsBar from './StatsBar';
@@ -32,8 +32,29 @@ import EarlyAdoptersSection from './EarlyAdoptersSection';
 import FAQSection from './FAQSection';
 import FinalCta from './FinalCta';
 import FooterSection from './FooterSection';
+import { sectionDemandee } from '../../lib/sectionsAccueil';
 
 export default function LandingPage({ onLogin, onSignup, onNavigate }) {
+  // Arrivée sur /tarifs, /faq ou /#section : descendre à la section dès qu'elle existe, puis
+  // une seconde fois quand les images au-dessus ont pris leur place.
+  useEffect(() => {
+    const cible = sectionDemandee(window.location.pathname, window.location.hash);
+    if (!cible) return undefined;
+    const minuteries = [];
+    let essais = 0;
+    const viser = () => {
+      const element = document.querySelector(cible);
+      if (element) {
+        element.scrollIntoView();
+        minuteries.push(setTimeout(() => element.scrollIntoView(), 600));
+      } else if (++essais < 30) {
+        minuteries.push(setTimeout(viser, 100));
+      }
+    };
+    viser();
+    return () => minuteries.forEach(clearTimeout);
+  }, []);
+
   return (
     <div className="min-h-screen bg-white overflow-x-clip" style={{ scrollBehavior: 'smooth' }}>
       <LandingNav onLogin={onLogin} onSignup={onSignup} />
