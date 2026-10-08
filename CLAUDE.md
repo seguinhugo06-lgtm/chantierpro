@@ -57,7 +57,7 @@ Commandes : `/debut`, `/tache`, `/verifier`, `/sonde`, `/revue`, `/migration`, `
 | Droit et métier BTP, sourcés | `docs/metier-btp.md` |
 | Organisation, rituels, matrice de vérification | `docs/organisation.md` |
 | Règles par domaine (chargées selon les fichiers touchés) | `.claude/rules/` |
-| Le poste de travail d'Hugo avec Claude : ses demandes, ses décisions, ce qu'il a fait, son journal de terrain ; nos livraisons et l'état de la production | Pilote : `https://claude.ai/artifact/Esz8pN474Q1FDsbHDyaB1Q` — mode d'emploi `docs/pilote.md`, commande `/pilote` (lu au `/debut`, synchronisé à chaque livraison et au `/fin`) |
+| Le poste de travail d'Hugo avec Claude : ses notes (demandes, frictions, idées), ses décisions, ce qu'il a fait (avec preuve), ses démarches ; nos livraisons et l'état de la production | Pilote : `https://claude.ai/artifact/Esz8pN474Q1FDsbHDyaB1Q` — mode d'emploi `docs/pilote.md`, commande `/pilote` (lu au `/debut`, synchronisé à chaque livraison et au `/fin`) |
 
 ## Architecture en bref
 

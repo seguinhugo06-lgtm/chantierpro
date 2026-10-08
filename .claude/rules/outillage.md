@@ -17,3 +17,4 @@ paths:
 - Agents (`.claude/agents/`) et skills (`.claude/skills/`) : en français, une mission claire, les fichiers de référence à lire, le format de rendu attendu. Un agent qui relit ne modifie pas le code.
 - Ce dossier est ignoré par git : `audit-ui/` (rapports, captures, sondes jetables, build réel simulé).
 - `scripts/pilote/preparer.mjs` (`npm run pilote -- …`) : tout ce que Claude écrit dans le Pilote en dérive (attentes ← `docs/etat-production.md`, prochaines tâches ← `docs/feuille-de-route.md` au format « **titre** — contexte. Critère : … Vérification : … Taille … », livraisons ← git). Garder ces formats ; procédure dans `docs/pilote.md`.
+- Avertissements ESLint (environ 840) : leur nombre baisse à chaque livraison qui touche un module, jamais en masse sans vérification complète.

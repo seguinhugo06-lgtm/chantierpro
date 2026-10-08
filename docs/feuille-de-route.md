@@ -1,146 +1,73 @@
-# Feuille de route — Mallettico sur l’App Store et Google Play
+# Feuille de route — Mallettico
 
-Établie le 7 octobre 2026 à partir de mesures sur le code, le build et le poste de travail ; à tenir à jour à chaque session.
-Le suivi personnel d’Hugo (statuts, notes, journal de terrain) vit dans l’outil **Pilote** : https://claude.ai/artifact/Esz8pN474Q1FDsbHDyaB1Q — l’état y est privé (`data/users/me/pilote`, journal dans `.../frictions`) et lisible par Claude via ArtifactData.
+Le travail de **Claude** : cap, prochaines tâches (ids stables), ce qui attend une condition. Tenue à jour à chaque session ; le Pilote l'affiche en lecture seule (« Ce que Claude fera ensuite »).
+Ce qui revient à **Hugo** vit ailleurs, sans doublon : ses actions techniques dans `docs/etat-production.md` (« En attente côté Hugo »), ses décisions dans `docs/decisions.md` (« Décisions attendues »), ses démarches personnelles dans le Pilote (`docs/pilote.md`).
 
-## Objectif
+## Cap
 
-Une application **nickel** — sans menu qui sort de l’écran ni information qui se chevauche — publiée sur l’App Store et Google Play, que des artisans de l’entourage testent pendant un an.
+L'outil le plus simple et le plus fiable du cycle devis → facture → relance → encaissement, publié sur l'App Store et Google Play, testé un an par des artisans de l'entourage (D-05), avec un premier abonné payant dès que possible (question Q-premier-payant).
 
-## Avancement (7 octobre, fin de journée)
+## Où on en est (8 octobre 2026)
 
-Livré en production (commits `878d578` → `5878699`, statut GitHub vérifié) :
-- **Interface** : 0 défaut sur 88 combinaisons page × largeur (375 / 768 / 1024 / 1440). Cause racine : les animations d’entrée enfermaient modales et menus dans la page. Audit renforcé.
-- **Compte** : mot de passe oublié (lien e-mail + écran dédié), erreurs de connexion en français, vraie suppression de compte (migration 072).
-- **Fiabilité** : échecs de chargement signalés (bandeau + Réessayer) au lieu de listes vides.
-- **Abonnements** : faille d’auto-surclassement fermée (073), plan de l’organisation visible par l’équipe, retour de paiement Stripe traité, webhook qui fait rejouer Stripe en cas d’échec, portail ouvert sans blocage Safari.
-- **Légal** : certification TVA réduite (texte BOFiP) dans les deux générateurs de PDF ; retrait de la fausse « attestation de conformité », des « conforme 2026 », des prix barrés fictifs et de la surtaxe carte de 1,7 %.
-- **Testeurs** : « Un bug ? Une idée ? » (retours avec statut et réponse) et codes testeurs « un an offert » (074).
-- **Sécurité** : `payment_links` et `portal_access_logs` fermées au public (075).
-- **Garde-fous** : intégration continue GitHub (lint, tests, build, smoke, banc de migrations), banc de migrations sur PostgreSQL WebAssembly (`npm run banc:migrations`), autorisations Claude du projet, `node_modules` retiré de git.
-
-Reste à Hugo, dans cet ordre : appliquer 071 → 075 (fichier `Documents/Mallettico/Migrations à appliquer — 7 oct 2026.sql`, testé au banc) ; puis redéployer `stripe-webhook` (`--no-verify-jwt`) et `create-invoice-payment` ; vérifier l’URL du site et le modèle d’e-mail « Reset password » dans Supabase Auth ; créer les codes testeurs.
-
-### Environnement de travail (8 octobre)
-
-Règles par domaine (`.claude/rules/`), 8 agents spécialisés, commandes `/debut` `/tache` `/verifier` `/sonde` `/revue` `/migration` `/livrer` `/retours` `/fin`, hooks (contexte au démarrage, lint à chaque écriture, garde-fou de livraison), `npm run verifier` / `parcours` / `statut` / `migration:nouvelle`, CI à deux jobs + santé hebdomadaire + Dependabot, documents `etat-production`, `decisions`, `metier-btp`, `organisation`. Dépendances de production : 0 vulnérabilité connue (jsPDF, DOMPurify, lodash, ws mis à jour ; PDF Factur-X vérifié par un parcours).
+- En production : interface sans défaut mesuré (88 combinaisons), compte (mot de passe oublié, suppression réelle), échecs de chargement visibles, chaîne d'abonnement réparée, certification TVA réduite, retours et codes testeurs, environnement de travail complet (D-15), Pilote comme poste de travail commun (D-16).
+- Revue du 8 octobre (agents `verificateur`, `juriste-btp`, `ingenieur-mobile` + `redacteur-stores`, `critique-produit`, rapports dans `audit-ui/pilote/revue/` le jour même) : affirmations de conformité restantes retirées, faille des clés Stripe fermée par la migration 076 (à appliquer), et les tâches ci-dessous.
+- Bloqué chez Hugo : migrations 071 → 076, redéploiements, décisions (voir le Pilote). Tant que 073 et 076 ne sont pas appliquées, deux failles restent ouvertes en production.
 
 ## Prochaines tâches (prêtes pour `/tache`)
 
-Par ordre de valeur. Format fixe (lu par `scripts/pilote/preparer.mjs etat` pour le Pilote) : **titre** — contexte. Critère : … Vérification : … Taille ….
+Par ordre de valeur. Format fixe, lu par `scripts/pilote/preparer.mjs` : **[id] titre** — contexte. Critère : … Vérification : … Taille ….
 
-1. **Mentions de la réforme sur les factures** — SIREN du client, nature des opérations (biens / services / mixte), option TVA sur les débits si cochée, adresse de livraison si différente, dans les DEUX générateurs. Critère : une facture de démo affiche les quatre mentions dans l'aperçu et dans le PDF. Vérification : test unitaire du bloc, parcours `documents` étendu, `juriste-btp`. Taille M.
-2. **Parcours de création d'un devis complet** — le chemin le plus utilisé (composer : client, lignes du catalogue, TVA 10 %, enregistrer, aperçu) n'a pas encore de parcours. Critère : le parcours crée un devis et retrouve ses lignes et la mention TVA dans l'aperçu. Vérification : `npm run parcours -- devis`. Taille M.
-3. **Menus sans attributs ARIA** — ajouter `aria-haspopup` / `aria-expanded` aux menus faits main (accessibilité, et pour que l'audit les ouvre). Critère : l'audit ouvre plus de menus et reste à 0 défaut. Vérification : `npm run verifier -- --complet`. Taille M.
-4. **Mode hors ligne sur chantier** — constater ce qui se passe sans réseau (création de devis, file de synchronisation) et corriger ce qui ment. Critère : un devis créé hors ligne apparaît après le retour du réseau, et l'artisan voit à chaque instant s'il est enregistré. Vérification : parcours `reel: true` avec panne puis retour. Taille M-L.
-5. **Phase 2 native** — dès que Xcode et Android Studio sont installés (voir plus bas). Critère : l'app démarre sur un iPhone et un Android de test, et un PDF se partage depuis l'app. Vérification : agent `ingenieur-mobile`. Taille L.
-6. **Avertissements ESLint** — environ 840 (surtout imports et variables inutilisés), à réduire module par module quand on y touche. Critère : le nombre baisse à chaque livraison, jamais en masse sans vérification complète. Taille continue.
+1. **[email-relais] Fermer l'envoi d'e-mails libre** — `send-email` accepte de tout compte connecté, même gratuit, un expéditeur, un sujet, un contenu, des pièces jointes et des destinataires quelconques, depuis noreply@mallettico.fr : hameçonnage possible et vrais devis en indésirables. Restreindre aux clients de l'utilisateur et à lui-même, plafonner par jour, retirer `send_campaign` s'il ne sert pas ; redéploiement par Hugo. Critère : un essai d'envoi à une adresse qui n'est pas un client est refusé, un devis à un client part. Vérification : `gardien-securite`, essai réel après redéploiement. Taille M.
+2. **[devis-mentions] Mentions manquantes des devis** — rubrique déchets (C. env. L541-21-2-3), pour le dépannage chez un particulier « devis gratuit ou payant » et « vous pouvez conserver les pièces remplacées » (arrêté du 24 janv. 2017), médiateur aussi sur la page de signature (`devisHtmlBuilder.js`), assurance et mention « EI », dans les DEUX générateurs. Critère : un devis de rénovation et un devis de dépannage affichent ces mentions dans l'aperçu et sur la page de signature. Vérification : tests, parcours `documents`, `juriste-btp`. Taille M.
+3. **[fiche-comptable] Fiche du rendez-vous comptable** — une page dans `Documents/Mallettico/` : structure (Q-structure), régime de TVA de l'électricité, TVA des abonnements (Q-tva-abonnements), « système de caisse » (art. 286 du CGI) pour « marquer payée » et le paiement en ligne, versement libératoire, ACRE (60 jours), RCS éventuel pour l'édition de logiciel. Critère : chaque question a ses options et leurs conséquences, sourcées. Vérification : `juriste-btp`. Taille S.
+4. **[masquer-casse] Masquer ce qui est cassé en mode réel** — l'onglet Garanties des chantiers terminés et le bouton « Vue garanties » (les services sont mal appelés, `Chantiers.jsx:313`), et le paiement en ligne des factures si Hugo répond « masquer » à Q-paiement-factures. Critère : en mode réel simulé, aucun de ces accès n'apparaît. Vérification : parcours `reel: true`. Taille S.
+5. **[alerte-relances] Alerte si les relances s'arrêtent** — `relance_cron_runs` est écrite mais lue nulle part ; un second job chaque matin envoie un e-mail à Hugo si aucune exécution depuis 26 h ou si la dernière a échoué. Critère : au banc, une exécution manquante déclenche l'alerte. Vérification : `/migration`, banc, requête de contrôle. Taille S-M.
+6. **[suppression-web] Page publique « Supprimer mon compte »** — Google l'exige en plus de la suppression dans l'app : `/supprimer-mon-compte`, sans connexion, chemin dans l'app, ce qui est supprimé ou conservé, demande par e-mail. Critère : la page s'ouvre sans connexion et la politique de confidentialité y renvoie. Vérification : sonde à 375 px. Taille S.
+7. **[portail-stripe] Portail Stripe ouvert sans blocage** — `BillingDashboard.jsx:81` et `:107` l'ouvrent par `window.open` après un `await` (bloqué par Safari, hors du navigateur système dans l'app) : passer par `ouvrirLienExterne`. Critère : aucun `window.open` vers Stripe dans `src/`. Vérification : smoke + revue. Taille S.
+8. **[referentiel-depannage] Dépannage et IRVE dans le Référentiel** — les lignes déplacement, main-d'œuvre à l'heure et dépannage ne sont que dans l'éditeur de devis, pas dans le Référentiel importé par le Catalogue ; la borne (1 150 €) n'y porte aucun avertissement IRVE. Critère : le Catalogue importé contient ces lignes et la borne signale « installateur qualifié IRVE au-delà de 3,7 kW ». Vérification : test sur `articles-btp.js`. Taille S.
+9. **[tva-situation] Mention TVA réduite sur les factures de situation** — `buildSituationFactureHtml` (`devisHtmlBuilder.js:513`) met 10 % par défaut sans la certification du client. Critère : une facture de situation à 10 % affiche la certification. Vérification : test + parcours. Taille S.
+10. **[cgv-b2b] CGV et CGU cohérentes** — service réservé aux professionnels, rétractation (retirer ou garder comme geste), mention TVA réelle, conservation et export des données à la résiliation, engagement du tarif fondateur (D-08), pénalités de retard et indemnité de 40 €. Après Q-tva-abonnements et l'identité. Critère : aucune contradiction entre CGV, site et code. Vérification : `juriste-btp`. Taille M.
+11. **[rgpd-soustraitance] Sous-traitance des données des artisans** — accord de sous-traitance (RGPD art. 28) annexé aux CGU, registre des traitements, liste des sous-traitants alignée sur le code, puis Hugo active Sentry (`VITE_SENTRY_DSN` dans les deux projets Vercel). Critère : la liste publiée correspond aux services réellement appelés. Vérification : `juriste-btp` + `gardien-securite`. Taille M.
+12. **[parcours-devis] Parcours de création d'un devis complet** — le chemin le plus utilisé n'a pas de parcours. Critère : le parcours crée un devis (client, lignes du catalogue, TVA 10 %), et retrouve lignes et mention TVA dans l'aperçu. Vérification : `npm run parcours -- devis`. Taille M.
+13. **[mentions-2027] Quatre mentions de la réforme sur les factures** — SIREN du client, catégorie de l'opération, option pour les débits, adresse de livraison si différente : obligatoires pour les TPE sur les factures émises à partir du 1er sept. 2027 (CGI ann. II art. 242 nonies A), dans les DEUX générateurs et le Factur-X. Critère : une facture à un professionnel les affiche dans l'aperçu, le PDF et le XML. Vérification : test + parcours `documents` + `juriste-btp`. Taille M.
+14. **[photos-stockage] Photos de chantier hors de la fiche** — une photo prise depuis la fiche chantier est enregistrée en taille réelle, en texte, dans la fiche (`Chantiers.jsx:354`). Critère : une photo de 4 Mo est stockée compressée et la fiche ne garde que son adresse ; les photos existantes sont reprises. Vérification : parcours `reel: true`. Taille M.
+15. **[menus-aria] Menus sans attributs ARIA** — `aria-haspopup` / `aria-expanded` sur les menus faits main (accessibilité, et pour que l'audit les ouvre). Critère : l'audit ouvre plus de menus et reste à 0 défaut. Vérification : `npm run verifier -- --complet`. Taille M.
+16. **[hors-ligne] Mode hors ligne sur chantier** — constater ce qui se passe sans réseau et corriger ce qui ment. Critère : un devis créé hors ligne apparaît après le retour du réseau, et l'artisan voit à chaque instant s'il est enregistré. Vérification : parcours `reel: true` avec panne puis retour. Taille M-L.
 
-## Ce qui a été mesuré le 7 octobre (matin)
+## Application native (attend une condition)
 
-| Sujet | Constat | Preuve |
-|---|---|---|
-| Production | À jour (`078f984`) ; IA masquée par `FONCTIONS.ia = false` | statut GitHub « success » des deux projets Vercel |
-| Interface | 28 défauts réels sur les 14 pages atteignables : 0 sur ordinateur (1440 px), 15 sur tablette (768 px), 13 sur téléphone (375 px). Environ six causes. 8 pages n’ont pas pu être auditées (redirigées). | `node scripts/audit-ui.cjs` → `audit-ui/rapport.md` |
-| Application native | Aucun runtime natif (ni Capacitor, ni Cordova) ; une seule icône, en SVG | `package.json`, `public/` |
-| Téléchargements | 21 fichiers téléchargent par des liens de navigateur — **ne marche pas dans une app iOS** | grep `download` / `createObjectURL` / `.save(` |
-| Sorties vers Stripe | 10 endroits (checkout, portail) à ouvrir dans le navigateur système | grep `window.location` / `window.open` |
-| Liens d’e-mail | Aucun `redirectTo` : confirmation et réinitialisation ne peuvent pas rouvrir une app | grep `redirectTo` |
-| Notifications push | Aucune | grep `PushManager` |
-| Suppression de compte | **Cassée** (RPC `delete_user_data` absente, table `articles` inexistante) — exigée par Apple (5.1.1(v)) | `Settings.jsx`, historique `227534e` |
-| Mot de passe oublié | **Inexistant** (toast « écrivez au support ») | aucun `resetPasswordForEmail` |
-| Identité de l’éditeur | **Fictive** (SIRET `123 456 789 00012`) — bloque la politique de confidentialité exigée par les stores | `src/components/LegalPages.jsx` |
-| Poste de travail | Ni Xcode complet, ni simulateur, ni Android Studio, ni Java ; CLI Supabase non connectée | `xcode-select -p`, `java -version` |
-| Instructions Claude | `CLAUDE.md` périmé (BatiGesti, migrations 001-054, règles absentes) — remplacé par la version préparée | — |
+Conditions : macOS à jour (≥ 15.6 pour Xcode 26 ; le Xcode proposé aujourd'hui demande macOS Tahoe 26.6), Xcode, Android Studio, et les réponses à Q-appid, Q-achats-apps, Q-comptes-dev.
+- **[natif-plateformes]** `npx cap add ios android`, icônes et écran de démarrage depuis le logo vectoriel (`@capacitor/assets`), module splash-screen installé, démarrage vérifié sur simulateur et émulateur (`ingenieur-mobile`).
+- **[natif-autorisations]** phrases d'autorisation en français dans Info.plist (appareil photo, photos, micro, reconnaissance vocale, position) et AndroidManifest, manifeste de confidentialité `PrivacyInfo.xcprivacy` — sans elles l'app plante à la première photo.
+- **[natif-sansachat]** si Q-achats-apps = `c` : dans l'app, ni prix, ni bouton d'achat, ni code testeur, ni bandeau d'essai ; ouverture directe sur connexion ; test qui échoue si un composant d'achat est rendu en natif ; le site inchangé.
+- **[natif-notifications]** devis signé, paiement reçu, relance envoyée — après les clés APNs et Firebase créées par Hugo ; rien de sensible dans le texte.
+- **[natif-liens]** liens universels pour les retours d'e-mail seulement (`/reset-password`, confirmation), jamais `/devis/signer`, `/pay`, `/portal` ; `.well-known` servi en JSON malgré la réécriture de `vercel.json`.
+- **[natif-photos]** module Camera (compression, galerie) — amélioration une fois les autorisations faites.
+- **[natif-fiches]** textes et captures des stores (`redacteur-stores`), sans prix ni abonnement si voie C.
+- **[natif-confidentialite]** brouillons « Sécurité des données » (Google, exigé dès le test fermé) et étiquettes Apple, alignés sur le code ; lien vers la politique dans Réglages.
+- **[natif-examinateur]** compte de démonstration réaliste (entreprise clairement fictive, plan Artisan), notes d'examen en français et en anglais.
 
-## Règles des stores qui décident de l’architecture
+## Plus tard (avec déclencheur)
 
-- **Apple 4.2 (fonctionnalité minimale)** : un site emballé est refusé. Il faut des fonctions natives au cœur de l’usage → notifications (devis signé, paiement reçu), appareil photo de chantier, partage natif des PDF, hors-ligne.
-- **Apple 5.1.1(v)** : suppression du compte depuis l’app, obligatoire.
-- **Paiements (Apple 3.1.1 / 3.1.3, Google Paiements)** : décision à prendre (voir plus bas) avant d’ajouter le moindre bouton d’achat dans les apps.
-- **Google, comptes personnels créés après nov. 2023** : test fermé de **12 testeurs pendant 14 jours consécutifs**, usage réel vérifié depuis 2026. Les comptes organisation (entité + D-U-N-S) en sont exemptés.
+- **IA (dictée)** — après les stores (D-07) : saisie clavier, quota serveur, Anthropic déclaré sous-traitant avec écran de consentement (Apple 5.1.2(i), Google juillet 2026), puis `FONCTIONS.ia = true`.
+- **Mesure d'activation (PostHog)** — après les stores ; consentement ou mesure strictement anonyme, sous-traitant déclaré.
+- **E-reporting et transmission par une Plateforme Agréée** — après les échanges avec trois plateformes (fin janvier 2027 au plus tard) ; inclut les données d'encaissement et les factures d'abonnement de Mallettico lui-même.
+- **Prévenance avant la fin d'une offre testeur** — un e-mail un mois avant (D-14) : avant octobre 2027.
+- **Parcours de lancement dans Mallettico** — pas avant 10 artisans actifs, puis `critique-produit`.
 
-## Décisions qui n’appartiennent qu’à Hugo (bloquantes)
+## Idées non engagées (à passer par `critique-produit` avant tout code)
 
-1. **Structure juridique** (une seule entreprise individuelle par personne ; société pour Mallettico ?) — décide le type de comptes développeur, l’identité publiée, la TVA des abonnements.
-2. **TVA des abonnements** — irréversible après le premier abonné (`tax_behavior` Stripe).
-3. **Domiciliation** — l’adresse publiée.
-4. **Paiement dans les apps** — A : achats intégrés Apple/Google (15 %, via RevenueCat) ; B : lien vers le web dans l’UE (Apple : 12 à 20 % + écran imposé) ; C : apps sans aucun achat, abonnement uniquement sur le site (zone d’interprétation : vérifier le texte en vigueur avant soumission). Recommandation de départ : C si possible, sinon A.
-5. **Type de comptes développeur** — personnel (nom d’Hugo, test fermé de 14 jours) ou organisation (« Mallettico », D-U-N-S, pas de test fermé).
+SIRET vérifié et profil rempli par l'API Sirene ; attestation décennale déposée qui remplit les mentions ; champ « signé chez le client » qui empêche un acompte ou un lien de paiement avant 7 jours (C. conso. L221-10) ; alerte de qualification selon le métier ; vitrine générée.
 
-## Répartition du travail
+## Règles des stores qui décident de l'architecture (vérifiées le 8 oct. 2026)
 
-### Ce que seul Hugo peut faire
+- **Apple 4.2** : un site emballé est refusé ; aucune liste officielle de fonctions suffisantes. Notifications, appareil photo, partage natif et hors ligne aident, sans garantie.
+- **Apple 5.1.1(v)** : suppression du compte depuis l'app ; **Google** exige en plus une page web publique de demande de suppression.
+- **Paiements** : voir Q-achats-apps (3.1.1, 3.1.3(f) ; dans l'UE depuis le 1er oct. 2026, lien externe à 10 % sur 7 jours).
+- **Apple, entreprise individuelle** : compte individuel, nom légal affiché ; **DSA** : adresse, téléphone et e-mail publiés sur la fiche dans l'UE, immatriculation demandée.
+- **Google, compte personnel** : 12 testeurs inscrits 14 jours consécutifs, vérification sur un téléphone Android physique, « Sécurité des données » remplie dès le test fermé ; accès à la production examiné en 7 jours environ.
+- **Outils** : Capacitor 8 exige Xcode 26 ; Apple refuse les builds plus anciens depuis le 28 avril 2026 ; Android Studio 2025.2.1 ou plus, cible Android 16 (API 36).
 
-| Quoi | Pourquoi Claude ne peut pas | Quand |
-|---|---|---|
-| Démarrer une **nouvelle** session de code sur `Documents/chantierpro-app` (son worktree part du dernier `main`) ; ne plus utiliser la session « elegant-pike » | Claude ne peut ni ouvrir de session, ni déplacer la sienne, ni écrire dans la copie principale depuis un vieux worktree (vérifié le 7 oct.) | Avant tout |
-| Installer Xcode (App Store) et Android Studio, accepter les licences | Comptes et téléchargements personnels | Dès maintenant (téléchargements longs) |
-| `npx supabase login` puis `npx supabase link --project-ref kofsbgxkrmryfetevetn` | Connexion à votre compte | Avant les fonctions serveur |
-| `/mcp` → autoriser GitHub et Sentry | Autorisation OAuth | Avant les sessions longues |
-| Les cinq décisions ci-dessus | Ce sont des choix d’entreprise | Au plus tôt |
-| Créer et payer les comptes Apple Developer (99 $/an) et Google Play (25 $) ; D-U-N-S si société | Paiement et identité | Après la structure |
-| Exécuter les migrations SQL dans l’éditeur Supabase (071 puis toutes les suivantes) | Interdit d’appliquer en production à la place d’Hugo | À chaque migration fournie |
-| Clé APNs (Apple) et projet Firebase (Google) | Comptes personnels | Avant les notifications |
-| Signer et envoyer les builds (Xcode, Play Console), remplir les formulaires de confidentialité, soumettre, répondre aux examinateurs | Identifiants et comptes | Publication |
-| Tester sur ses vrais téléphones ; recruter les testeurs (≥ 14 sur Android si compte personnel) | Appareils et relations | Bêta |
-| Fournir l’identité réelle de l’éditeur | Information personnelle | Avant la publication |
+## Règles de travail
 
-### Ce que Claude fait (sessions autonomes)
-
-Chaque tâche a une **commande à copier** dans le Pilote (bouton « Copier la demande pour Claude »). Ordre recommandé :
-
-**Phase 0 — Fondations (½ jour)**
-1. Installer `CLAUDE.md`, cette feuille de route et `scripts/audit-ui.cjs` dans le dépôt ; `audit-ui/` dans `.gitignore`.
-2. Liste d’autorisations des commandes sûres (`.claude/settings.json`) — tests, lint, build, smoke, audit, git status/diff/log/add/commit ; jamais push ni `db push`.
-
-**Phase 1 — App nickel sur le web (≈ 4 à 6 jours)**
-3. Corriger l’interface par cause commune jusqu’à 0 défaut à l’audit sur les 6 pages du quotidien, puis les autres.
-4. Suppression de compte réelle (RPC + Storage + échec bruyant).
-5. Réinitialisation du mot de passe.
-6. Échecs de chargement visibles (fin des « 0 résultat » qui mentent).
-7. Outil de retours utilisateurs (table `feedback`, e-mail, statut visible).
-8. Chaîne d’abonnement : webhook 500 en échec, portail débloqué, retour de paiement, bug d’équipe.
-9. Mention TVA réduite sur devis et factures ; articles électricien (déplacement, horaire, dépannage) ; identité réelle dès qu’Hugo la fournit ; retrait des affirmations fausses (« conforme 2026 », prix barré, frais de 1,7 %).
-10. Offre « un an offert » pour les testeurs.
-
-**Phase 2 — Application native (≈ 5 à 8 jours, après installation de Xcode et Android Studio)**
-11. Capacitor (iOS + Android), service worker désactivé en natif, zones sûres, bouton retour Android, icônes et écran de démarrage depuis le logo vectoriel.
-12. PDF et exports → fichier + feuille de partage natifs (21 fichiers).
-13. Sorties Stripe dans le navigateur système ; liens universels / App Links pour les e-mails.
-14. Notifications push (devis signé, paiement reçu, relance envoyée).
-15. Appareil photo natif (6 points de prise de photo).
-
-**Phase 3 — Publication (Claude prépare, Hugo soumet)**
-16. Fiches des stores (textes, captures réelles, icônes) dans `Documents/Mallettico/Stores/`.
-17. Brouillons des déclarations de confidentialité Apple et Google, alignés sur le code.
-18. Notes pour l’examinateur et compte de démonstration.
-
-**Phase 4 — Remettre l’IA (après les stores)**
-19. Saisie clavier de la dictée (espaces avalés) ; quota de dictées côté serveur ; Anthropic déclaré comme sous-traitant ; dictée validée sur un vrai compte ; puis `FONCTIONS.ia = true`.
-
-## Règles pour les sessions autonomes
-
-- Une tâche à la fois, de la commande à la vérification : tests, lint, build, smoke, et l’audit d’interface quand l’affichage change. Une tâche n’est finie que lorsque son critère est **observé**.
-- Commiter par tâche (message en anglais, préfixe conventionnel) ; **ne pas pousser** sans l’accord d’Hugo.
-- Travailler dans le worktree de la session, après avoir vérifié qu’il contient le dernier `origin/main` ; livrer par `git push origin HEAD:main` puis remettre la copie principale à jour (`git -C /Users/hugoseguin/Documents/chantierpro-app pull --ff-only`).
-- Toute migration : écrite, jamais appliquée ; fournir le SQL et la requête de contrôle, et le noter dans le Pilote.
-- Après une tâche, mettre à jour l’étape correspondante du Pilote (statut, note) via ArtifactData sur `data/users/me/pilote`.
-- Lire le journal de terrain (`data/users/me/pilote/frictions`) avant de proposer des correctifs : ce sont les vrais problèmes vécus sur chantier.
-
-## Référence de l’audit d’interface (7 octobre 2026)
-
-Mesuré avec `scripts/audit-ui.cjs` sur le build de démo. **28 défauts** sur les 14 pages atteignables, regroupés par cause :
-
-| Cause | Où | Défauts |
-|---|---|---|
-| Le menu **« Nouveau »** de l’en-tête déborde de 50 px à droite | toutes les pages, 768 px | 14 |
-| Textes qui se chevauchent avec les **libellés de 10 px de la barre d’onglets mobile** (`span.text-[10px].mt-0.5.truncate`) — le contenu passe sous la barre ou ses libellés débordent | devis, catalogue (3 chacune), changelog, plan, planning, 375 px | 9 |
-| Menu **« Plus d’actions »** du catalogue : sort de 2 358 px vers le bas et 168 px à gauche | catalogue, 375 px | 1 |
-| Menus **« Plus d’onglets »** qui débordent à droite (59 et 75 px) | catalogue 375 px, équipe 768 px | 2 |
-| Menu **« Paramètres trésorerie »** : 212 px à gauche | finances, 375 px | 1 |
-| Menu **« Options de création »** : 66 px à gauche | devis, 375 px | 1 |
-
-Aucune page ne défile horizontalement, et rien n’est cassé sur ordinateur.
-
-Limites de la mesure : seuls les déclencheurs marqués `aria-haspopup` / `aria-expanded` et visibles à l’écran sont ouverts (12 au plus par page) — les menus sans ces attributs ne sont pas testés, et il faudra les ajouter (accessibilité) pour qu’ils le soient. Pages non atteintes (redirigées par les droits ou routes anciennes) : admin, analytique, billing, export, ouvrages, pricing, profil, signatures — à auditer en les ouvrant par la navigation.
+Dans `CLAUDE.md`, `docs/organisation.md` et `.claude/rules/`. Livraison sur `main` sans redemander si `npm run verifier` est vert sur le commit exact (D-10) ; SQL appliqué par Hugo seul (D-04).

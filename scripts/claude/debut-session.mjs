@@ -41,6 +41,6 @@ try {
   }
 } catch { /* pas de fichier d'état : rien à signaler */ }
 
-l.push('Pilote d’Hugo (docs/pilote.md) : il y écrit ses demandes, ses réponses aux questions, ce qu’il a fait et ses irritants de terrain — /debut le lit ; chaque livraison y est consignée (procédure « sync »).');
+l.push('Pilote d’Hugo (docs/pilote.md) : LIRE SA BOÎTE AVANT LA PREMIÈRE TÂCHE (/pilote lire), même si la session commence par /tache — ses notes, ses réponses aux questions et ses actions cochées y attendent. Chaque livraison y est consignée (/pilote sync).');
 l.push('Rituels : /debut (orientation complète), /tache <quoi> (boucle complète), /verifier, /livrer, /pilote, /fin. Organisation : docs/organisation.md.');
 console.log(l.join('\n'));
