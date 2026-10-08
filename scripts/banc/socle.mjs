@@ -66,6 +66,28 @@ export const SCHEMA = `
   ALTER TABLE portal_access_logs ENABLE ROW LEVEL SECURITY;
   CREATE POLICY "Service role can manage portal logs" ON portal_access_logs FOR ALL USING (true) WITH CHECK (true);
   GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO anon, authenticated;
+
+  -- Droits par défaut de Supabase : toute fonction créée dans public est exécutable par les rôles de l'API.
+  ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT EXECUTE ON FUNCTIONS TO anon, authenticated, service_role;
+  -- Paiement en ligne : clés Stripe de l'artisan dans Vault (012, et 029 effacée du dépôt par 227534e).
+  CREATE SCHEMA vault;
+  CREATE TABLE vault.decrypted_secrets (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), decrypted_secret TEXT);
+  GRANT USAGE ON SCHEMA vault TO service_role;
+  CREATE TABLE stripe_config (user_id UUID PRIMARY KEY REFERENCES auth.users(id), stripe_enabled BOOLEAN DEFAULT false,
+    secret_key_vault_id UUID, webhook_secret_vault_id UUID, commission_model TEXT);
+  ALTER TABLE stripe_config ENABLE ROW LEVEL SECURITY;
+  CREATE FUNCTION get_stripe_config_for_user(p_user_id UUID) RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+    DECLARE v stripe_config; s TEXT;
+    BEGIN SELECT * INTO v FROM stripe_config WHERE user_id = p_user_id;
+      SELECT decrypted_secret INTO s FROM vault.decrypted_secrets WHERE id = v.secret_key_vault_id;
+      RETURN jsonb_build_object('enabled', v.stripe_enabled, 'secret_key', s); END $$;
+  REVOKE ALL ON FUNCTION get_stripe_config_for_user FROM PUBLIC;  -- tel quel dans 012 : anon garde le droit par défaut
+  CREATE FUNCTION get_stripe_secret_for_user(p_user_id UUID) RETURNS TEXT LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+    DECLARE s TEXT;
+    BEGIN SELECT d.decrypted_secret INTO s FROM stripe_config c JOIN vault.decrypted_secrets d ON d.id = c.secret_key_vault_id
+      WHERE c.user_id = p_user_id AND c.stripe_enabled; RETURN s; END $$;
+  REVOKE EXECUTE ON FUNCTION get_stripe_secret_for_user(UUID) FROM anon;           -- tel quel dans 029 :
+  REVOKE EXECUTE ON FUNCTION get_stripe_secret_for_user(UUID) FROM authenticated;  -- PUBLIC garde le droit
 `;
 
 /** Données de base : un patron avec un salarié, un artisan solo, un abonné payant. */

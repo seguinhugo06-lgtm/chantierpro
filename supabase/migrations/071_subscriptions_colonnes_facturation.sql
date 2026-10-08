@@ -12,6 +12,10 @@
 -- abonné qui résilie ne voit jamais sa résiliation confirmée dans l'app.
 --
 -- Cette migration est idempotente : si une colonne est déjà là, rien ne bouge.
+--
+-- ─── Vérification après application (éditeur SQL) ───────────────────────────
+--   SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'subscriptions' AND column_name IN ('cancel_at_period_end','current_period_end','current_period_start','billing_interval');  -- 4 lignes
+--   SELECT conname FROM pg_constraint WHERE conname = 'subscriptions_billing_interval_valide';  -- 1 ligne
 
 ALTER TABLE subscriptions
   ADD COLUMN IF NOT EXISTS cancel_at_period_end BOOLEAN DEFAULT FALSE,
