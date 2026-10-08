@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light only">
+<title>Confirmez votre adresse e-mail Mallettico</title>
+</head>
+<!--
+  Modèle Supabase Auth « Confirm signup » (Authentication › Emails › Confirm signup).
+  Sujet : Confirmez votre adresse e-mail Mallettico
+  Variable : {{ .ConfirmationURL }} (lien à usage unique). Logo servi par mallettico.fr (public/logo-email.png).
+  Mise en page en tableaux et styles en ligne : c'est ce que toutes les messageries affichent correctement.
+-->
+<body style="margin:0;padding:0;background:#F2F4F7;">
+  <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">Un clic pour activer votre compte Mallettico.</div>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#F2F4F7;">
+    <tr>
+      <td align="center" style="padding:32px 16px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;">
+          <tr>
+            <td style="padding:0 4px 20px 4px;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td style="vertical-align:middle;"><img src="https://mallettico.fr/logo-email.png" width="44" height="44" alt="Mallettico" style="display:block;border:0;border-radius:10px;"></td>
+                  <td style="vertical-align:middle;padding-left:12px;font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:22px;font-weight:800;color:#0D2E6C;letter-spacing:-0.3px;">Mallettico</td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td style="background:#FFFFFF;border-radius:16px;border:1px solid #E3E8EF;padding:32px 24px;font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#0E1621;">
+              <h1 style="margin:0 0 16px 0;font-size:22px;line-height:1.3;font-weight:800;color:#0E1621;">Bienvenue sur Mallettico</h1>
+              <p style="margin:0 0 14px 0;font-size:16px;line-height:1.55;color:#3B4656;">Bonjour,</p>
+              <p style="margin:0 0 26px 0;font-size:16px;line-height:1.55;color:#3B4656;">Merci pour votre inscription. Confirmez votre adresse e-mail pour activer votre compte&nbsp;: vous pourrez ensuite faire votre premier devis.</p>
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 26px 0;">
+                <tr>
+                  <td align="center" bgcolor="#B9520C" style="border-radius:10px;">
+                    <a href="{{ .ConfirmationURL }}" target="_blank" style="display:inline-block;padding:14px 26px;font-size:16px;font-weight:700;color:#FFFFFF;text-decoration:none;border-radius:10px;">Confirmer mon adresse</a>
+                  </td>
+                </tr>
+              </table>
+              <p style="margin:0 0 8px 0;font-size:14px;line-height:1.5;color:#566170;">Le bouton ne fonctionne pas&nbsp;? Copiez ce lien dans votre navigateur&nbsp;:</p>
+              <p style="margin:0 0 24px 0;font-size:13px;line-height:1.5;word-break:break-all;"><a href="{{ .ConfirmationURL }}" style="color:#0D2E6C;">{{ .ConfirmationURL }}</a></p>
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr><td style="border-top:1px solid #E3E8EF;padding-top:18px;font-size:14px;line-height:1.5;color:#566170;">Vous n’êtes pas à l’origine de cette inscription&nbsp;? Ignorez ce message&nbsp;: sans ce clic, le compte reste inactif.</td></tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding:20px 8px 0 8px;font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:12px;line-height:1.5;color:#667080;">
+              Mallettico — devis, factures et relances pour les artisans du bâtiment<br>
+              <a href="https://mallettico.fr" style="color:#667080;">mallettico.fr</a>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

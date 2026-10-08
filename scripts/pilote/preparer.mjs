@@ -109,8 +109,13 @@ function ecrituresAttentes(existantsTous) {
     } else if (/code testeur/i.test(titre)) {
       commandeTxt = sql074();
       controle = 'SELECT plan, duree_mois, utilisations_max, utilisations, expire_le FROM public.codes_testeurs;  -- une ligne par code (ne collez pas le code lui-même)';
-    } else if (categorie === 'reglage') controle = 'Collez la valeur affichée de « Site URL » et la liste « Redirect URLs ».';
+    } else if (categorie === 'reglage' && /Site URL/.test(brut)) controle = 'Collez la valeur affichée de « Site URL » et la liste « Redirect URLs ».';
     else if (categorie === 'information') controle = 'Écrivez ici l’information demandée (elle sera publiée : rien de secret).';
+    // Sinon, le contrôle écrit dans l'attente elle-même (« … ; contrôle : <quoi> »), jusqu'à la fin de l'item.
+    if (!controle) controle = sansMarkdown((brut.match(/[Cc]ontrôle : (.+)$/) || [])[1] || '').replace(/^./, (c) => c.toUpperCase());
+    // Un modèle d'e-mail à coller (`supabase/templates/…html`) : son contenu entier, à copier depuis le Pilote.
+    const modele = brut.match(/`(supabase\/templates\/[a-z-]+\.html)`/);
+    if (modele && !commandeTxt) commandeTxt = fs.readFileSync(path.join(RACINE, modele[1]), 'utf8').trim();
     return {
       id: migration ? `migration-${migration[1]}` : slug(titre),
       donnees: { ordre, titre, detail, categorie, urgent: /URGENT/i.test(brut), commande: commandeTxt, controle, source: 'docs/etat-production.md', majLe: maintenant },
