@@ -29,7 +29,7 @@ npx supabase functions deploy create-invoice-payment --project-ref kofsbgxkrmryf
 
 | Élément | État | Vérifié |
 |---|---|---|
-| `main` | `63d79d1` + commits de l'environnement du 8 oct. | `npm run statut` (Vercel ×2 + CI) |
+| `main` | `0a18a3f` (8 oct. : environnement de travail, dépendances corrigées) | `npm run statut` : Vercel ×2 + CI verts (8 oct.) |
 | Vercel | 2 projets (`chantierpro`, `seguinhugo06-lgtm-chantierpro`), déploiement auto sur `main` | statut GitHub |
 | Domaine | `mallettico.fr` (DNS OVH) | 25 juil. |
 | Service worker | sert l'ancienne version jusqu'à rechargement : ne jamais vérifier un déploiement en rechargeant le site | — |
