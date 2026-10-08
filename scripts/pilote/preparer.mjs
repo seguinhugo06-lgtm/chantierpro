@@ -201,7 +201,8 @@ function ecrituresQuestions(existantsTous) {
   // Une question qui a quitté « Décisions attendues » est consignée : on retrouve son numéro dans le tableau (« (Q-id) »).
   for (const [id, version] of Object.entries(existants)) {
     if (docs.some((d) => d.id === id)) continue;
-    const ligne = md.split('\n').find((x) => x.includes(`(${id})`) && /^\| D-\d+/.test(x));
+    // « (Q-id) » ou « (Q-id, et … » : la ligne de décision peut citer plusieurs questions.
+    const ligne = md.split('\n').find((x) => new RegExp(`\\(${id}[),]`).test(x) && /^\| D-\d+/.test(x));
     writes.push({ op: 'update', collection: `${COLL}/questions`, doc_id: id, if_version: version, data: { statut: 'traitee', consigneeLe: maintenant, decision: ligne ? ligne.match(/^\| (D-\d+)/)[1] : '' } });
   }
   return { docs, writes };
