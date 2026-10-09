@@ -274,7 +274,7 @@ const TRUST_ITEMS = [
   { icon: Shield, label: 'Paiement sécurisé', desc: 'Stripe' },
   { icon: Clock, label: 'Gratuit pour démarrer', desc: 'Sans CB' },
   { icon: CreditCard, label: 'Mensuel sans engagement', desc: 'Résiliable à tout moment' },
-  { icon: MapPin, label: 'Hébergé en France', desc: 'Données à Paris' }
+  { icon: MapPin, label: 'Base de données à Paris', desc: 'Supabase, AWS Paris' }
 ];
 
 function TrustSection({ isDark }) {

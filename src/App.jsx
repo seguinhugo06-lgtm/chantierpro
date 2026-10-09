@@ -1478,8 +1478,8 @@ export default function App() {
             />
           </div>
           {/* Collapsed logo icon for md-xl */}
-          <div className="hidden md:flex xl:hidden items-center justify-center w-10 h-10 rounded-xl text-white font-bold text-lg" style={{ background: couleur }}>
-            B
+          <div className="hidden md:flex xl:hidden items-center justify-center w-10 h-10">
+            <LogoMallettico taille={38} />
           </div>
           {/* Mobile open: show full switcher */}
           <div className="md:hidden flex-1 min-w-0">

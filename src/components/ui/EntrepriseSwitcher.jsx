@@ -7,7 +7,8 @@
  */
 
 import React, { useState, useRef, useEffect, memo } from 'react';
-import { Building2, ChevronDown, Check, Settings, Plus } from 'lucide-react';
+import { ChevronDown, Check, Settings, Plus } from 'lucide-react';
+import LogoMallettico from './LogoMallettico';
 import { useEntreprise } from '../../context/EntrepriseContext';
 
 /**
@@ -62,7 +63,7 @@ const EntrepriseSwitcher = memo(function EntrepriseSwitcher({
 
   const couleur = activeEntreprise?.couleur || '#f97316';
   const nom = activeEntreprise?.nom || 'Mallettico';
-  const initiales = activeEntreprise ? getInitiales(activeEntreprise) : 'BG';
+  const initiales = activeEntreprise ? getInitiales(activeEntreprise) : 'MA';
 
   // ── Single entreprise: simple display (no dropdown) ──
   if (!hasMultiple) {
@@ -70,14 +71,12 @@ const EntrepriseSwitcher = memo(function EntrepriseSwitcher({
       // Header: logo + name
       return (
         <div className="flex items-center gap-2 min-w-0">
-          <div
-            className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shadow-sm flex-shrink-0"
-            style={{ background: couleur }}
-          >
-            <Building2 size={18} className="text-white" />
-          </div>
+          {/* Le logo de l'app (avant : un carré d'accent avec une icône de bâtiment, sans rapport avec la marque) */}
+          <span className="w-10 h-10 flex items-center justify-center flex-shrink-0">
+            <LogoMallettico taille={38} />
+          </span>
           <span
-            className={`font-semibold text-sm truncate hidden sm:block lg:text-base ${isDark ? 'text-slate-100' : 'text-slate-900'}`}
+            className="font-semibold text-sm truncate hidden sm:block lg:text-base text-encre"
             title={nom}
           >
             {nom}
@@ -90,21 +89,18 @@ const EntrepriseSwitcher = memo(function EntrepriseSwitcher({
     return (
       <button
         onClick={() => onNavigateSettings?.()}
-        className="group flex items-center gap-3 flex-1 min-w-0 rounded-xl -m-1 p-2 transition-all hover:bg-slate-800/80"
-        title="Mon profil"
+        className="group flex items-center gap-3 flex-1 min-w-0 rounded-xl -m-1 p-2 transition-colors hover:bg-surface-2"
+        title="Paramètres de l'entreprise"
       >
-        <div
-          className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg transition-transform group-hover:scale-105"
-          style={{ background: `linear-gradient(135deg, ${couleur}, ${couleur}cc)` }}
-        >
-          <Building2 size={18} className="text-white" />
-        </div>
+        <span className="w-10 h-10 flex items-center justify-center flex-shrink-0">
+          <LogoMallettico taille={38} />
+        </span>
         <div className="flex-1 min-w-0 text-left">
-          <p className={`font-semibold text-sm truncate ${isDark ? 'text-white' : 'text-slate-900'}`} title={nom}>
+          <p className="font-semibold text-sm truncate text-encre" title={nom}>
             {nom}
           </p>
           {user?.email && (
-            <p className={`text-[11px] truncate ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{user.email}</p>
+            <p className="text-xs truncate text-encre-3">{user.email}</p>
           )}
         </div>
       </button>
