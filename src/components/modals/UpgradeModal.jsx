@@ -123,7 +123,7 @@ export default function UpgradeModal({ currentPlan, highlightFeature, onClose })
               {/* Popular badge */}
               {isPopular && (
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 bg-orange-500 text-white text-xs font-semibold rounded-full">
-                  Populaire
+                  Pour un artisan seul
                 </div>
               )}
 

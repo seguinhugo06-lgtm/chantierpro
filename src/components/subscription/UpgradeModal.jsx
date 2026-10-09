@@ -124,7 +124,8 @@ export default function UpgradeModal() {
           {/* Upgrade plan columns */}
           {upgradePlans.map((plan) => {
             const Icon = PLAN_ICONS[plan.id] || Zap;
-            const isRecommended = plan.id === recommendedPlanId;
+            // « Recommandé » seulement quand une fonction précise est bloquée (l'offre qui la débloque) ; pas en contexte générique.
+            const isRecommended = context !== UPGRADE_CONTEXTS.generic && plan.id === recommendedPlanId;
             const price = billing === 'yearly' && plan.priceYearly
               ? (plan.priceYearly / 12).toFixed(2).replace('.', ',')
               : plan.priceMonthly.toFixed(2).replace('.', ',');

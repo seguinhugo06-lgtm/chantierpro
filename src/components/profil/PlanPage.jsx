@@ -34,9 +34,9 @@ export default function PlanPage({ isDark, couleur = '#f97316', setPage }) {
   const { confirm } = useConfirm();
 
   // Theme
-  const cardBg = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200';
-  const textPrimary = isDark ? 'text-slate-100' : 'text-slate-900';
-  const textMuted = isDark ? 'text-slate-400' : 'text-slate-500';
+  const cardBg = 'bg-surface border-bord';
+  const textPrimary = 'text-encre';
+  const textMuted = 'text-encre-3';
 
   // Subscription store
   const planId = useSubscriptionStore(s => s.planId);
@@ -169,7 +169,7 @@ export default function PlanPage({ isDark, couleur = '#f97316', setPage }) {
   // ─── RENDER ───────────────────────────────────────────────────────────────
 
   return (
-    <div className={`min-h-screen pb-24 ${isDark ? 'bg-slate-900' : 'bg-slate-50'}`}>
+    <div className={`min-h-screen pb-24 bg-surface-2`}>
       <section className="px-4 sm:px-6 py-6 sm:py-10 max-w-4xl mx-auto">
         <h2 className={`text-xl font-bold mb-6 ${textPrimary}`}>Mon plan</h2>
 
@@ -187,15 +187,15 @@ export default function PlanPage({ isDark, couleur = '#f97316', setPage }) {
                 <div className="flex items-center gap-2">
                   <h3 className={`text-lg font-bold ${textPrimary}`}>Plan {plan.name}</h3>
                   {offreTesteur ? (
-                    <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${isDark ? 'bg-emerald-500/20 text-emerald-300' : 'bg-emerald-50 text-emerald-700'}`}>
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-bold bg-succes-fond text-succes-texte`}>
                       OFFERT
                     </span>
                   ) : sub?.cancel_at_period_end ? (
-                    <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-red-100 text-red-700">
+                    <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-700">
                       ANNULATION PRÉVUE
                     </span>
                   ) : (
-                    <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${isDark ? 'bg-emerald-500/20 text-emerald-300' : 'bg-emerald-50 text-emerald-700'}`}>
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-bold bg-succes-fond text-succes-texte`}>
                       ACTIF
                     </span>
                   )}
@@ -206,7 +206,7 @@ export default function PlanPage({ isDark, couleur = '#f97316', setPage }) {
                     pas dans `subscriptions` — un abonné à l'année aurait donc lu
                     « Mensuel ». Mieux vaut ne rien dire que dire faux ; la période
                     exacte figure sur la page Stripe (« Mes factures et paiement »). */}
-                <p className={`text-sm font-medium ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                <p className={`text-sm font-medium text-encre-2`}>
                   {offreTesteur
                     ? `Offert jusqu'au ${nextBilling} — aucun prélèvement`
                     : isPaid
@@ -215,12 +215,12 @@ export default function PlanPage({ isDark, couleur = '#f97316', setPage }) {
                   }
                 </p>
                 {offreTesteur && (
-                  <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                  <p className={`text-xs mt-0.5 text-encre-2`}>
                     Ensuite, vous repassez au plan Gratuit sans rien perdre, sauf si vous choisissez de vous abonner.
                   </p>
                 )}
                 {nextBilling && !sub?.cancel_at_period_end && (
-                  <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                  <p className={`text-xs mt-0.5 text-encre-2`}>
                     <Clock size={11} className="inline mr-1" />
                     Prochaine facturation : {nextBilling}
                   </p>
@@ -240,7 +240,7 @@ export default function PlanPage({ isDark, couleur = '#f97316', setPage }) {
                   onClick={handlePortal}
                   disabled={portalLoading}
                   className={`px-4 py-2.5 min-h-[44px] rounded-xl text-xs font-medium flex items-center gap-1.5 border transition-colors disabled:opacity-50 ${
-                    isDark ? 'border-slate-600 text-slate-300 hover:bg-slate-700' : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                    'border-bord text-encre-2 hover:bg-surface-2'
                   }`}
                 >
                   {portalLoading ? (
@@ -302,7 +302,7 @@ export default function PlanPage({ isDark, couleur = '#f97316', setPage }) {
                 autoComplete="off"
                 autoCapitalize="characters"
                 spellCheck={false}
-                className={`flex-1 px-3 py-2.5 rounded-xl border text-sm tracking-wide ${isDark ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400' : 'bg-white border-slate-300'}`}
+                className={`flex-1 px-3 py-2.5 rounded-xl border text-sm tracking-wide bg-surface border-bord-fort`}
               />
               <button
                 type="submit"
@@ -352,16 +352,16 @@ export default function PlanPage({ isDark, couleur = '#f97316', setPage }) {
                     isCurrent
                       ? 'shadow-md'
                       : 'hover:shadow-sm'
-                  } ${isDark ? 'bg-slate-800' : 'bg-white'}`}
+                  } bg-surface`}
                   style={{
                     borderColor: isCurrent ? plan.color
-                      : p.badge === 'RECOMMANDÉ' ? `${p.color}44`
+                      : p.id === 'equipe' ? `${p.color}44`
                       : isDark ? '#334155' : '#e2e8f0',
                   }}
                 >
                   {p.badge && !isCurrent && (
                     <span
-                      className="absolute -top-2.5 right-3 px-2.5 py-0.5 text-[11px] font-bold rounded-full text-white"
+                      className="absolute -top-2.5 right-3 px-2.5 py-0.5 text-xs font-bold rounded-full text-white"
                       style={{ backgroundColor: p.color }}
                     >
                       {p.badge}
@@ -369,7 +369,7 @@ export default function PlanPage({ isDark, couleur = '#f97316', setPage }) {
                   )}
                   {isCurrent && (
                     <span
-                      className="absolute -top-2.5 right-3 px-2.5 py-0.5 text-[11px] font-bold rounded-full text-white"
+                      className="absolute -top-2.5 right-3 px-2.5 py-0.5 text-xs font-bold rounded-full text-white"
                       style={{ backgroundColor: p.color }}
                     >
                       ACTUEL
@@ -396,14 +396,14 @@ export default function PlanPage({ isDark, couleur = '#f97316', setPage }) {
                     </span>
                     <span className={`text-xs ${textMuted}`}> HT/mois</span>
                     {p.offreLancement && (
-                      <p className="text-[11px] mt-1 font-semibold" style={{ color: p.color }}>
+                      <p className="text-xs mt-1 font-semibold" style={{ color: p.color }}>
                         {p.offreLancement} — prix gardé tant que vous restez abonné
                       </p>
                     )}
                     {billing === 'yearly' && p.priceYearly > 0 && (
                       <>
-                        <p className={`text-[11px] mt-0.5 ${textMuted}`}>Facturé {p.priceYearly}€/an</p>
-                        <p className="text-[11px] mt-0.5 text-green-500 font-medium">
+                        <p className={`text-xs mt-0.5 ${textMuted}`}>Facturé {p.priceYearly}€/an</p>
+                        <p className="text-xs mt-0.5 text-green-500 font-medium">
                           Économisez {Math.round(p.priceMonthly * 12 - p.priceYearly)}€/an
                         </p>
                       </>
@@ -413,7 +413,7 @@ export default function PlanPage({ isDark, couleur = '#f97316', setPage }) {
                   {/* Features */}
                   <ul className="space-y-1.5 mb-4">
                     {(p.featureLabels || []).filter(f => f.included).slice(0, 5).map((f, i) => (
-                      <li key={i} className={`flex items-start gap-1.5 text-xs ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+                      <li key={i} className={`flex items-start gap-1.5 text-xs text-encre-2`}>
                         <Check size={13} className="text-green-500 flex-shrink-0 mt-0.5" />
                         <span>{f.name}</span>
                       </li>
@@ -425,7 +425,7 @@ export default function PlanPage({ isDark, couleur = '#f97316', setPage }) {
                     <button
                       disabled
                       className={`w-full py-2.5 min-h-[44px] rounded-xl text-xs font-medium border ${
-                        isDark ? 'border-slate-600 text-slate-500' : 'border-slate-200 text-slate-400'
+                        'border-bord text-encre-3'
                       }`}
                     >
                       Plan actuel
@@ -464,7 +464,7 @@ export default function PlanPage({ isDark, couleur = '#f97316', setPage }) {
 
         {/* Trust elements */}
         <div className={`mt-8 text-center text-xs ${textMuted} space-y-1`}>
-          <p>Sans engagement · Annulable à tout moment · Paiement sécurisé</p>
+          <p>Au mois, sans engagement · À l'année, payé pour 12 mois · Paiement sécurisé par Stripe</p>
           <p>
             <button onClick={() => setPage?.('cgu')} className="underline hover:opacity-80">CGU</button>
             {' · '}
@@ -491,7 +491,7 @@ export default function PlanPage({ isDark, couleur = '#f97316', setPage }) {
           </button>
 
           {isDemo && (
-            <p className={`text-[11px] mt-3 ${textMuted}`}>Mode démo — données de simulation</p>
+            <p className={`text-xs mt-3 ${textMuted}`}>Mode démo — données de simulation</p>
           )}
         </div>
       </section>

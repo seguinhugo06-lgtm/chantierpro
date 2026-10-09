@@ -44,7 +44,7 @@ const PLANS = [
     ],
     cta: 'Commencer avec Artisan',
     highlighted: true,
-    badge: 'Le plus populaire',
+    badge: 'Pour un artisan seul',
   },
   {
     id: 'equipe',
@@ -84,7 +84,7 @@ export default function PricingSection({ onSignup }) {
             Des prix simples, sans surprise
           </h2>
           <p className="text-slate-500 mb-6">
-            Tous les prix sont HT. Commencez gratuitement, passez au plan supérieur quand vous en avez besoin — sans engagement, annulez à tout moment.
+            Tous les prix sont HT. Commencez gratuitement, passez au plan supérieur quand vous en avez besoin. Au mois, sans engagement ; à l'année, payé pour 12 mois.
           </p>
 
           {/* Animated toggle */}

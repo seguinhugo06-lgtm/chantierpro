@@ -7,7 +7,8 @@ import { FONCTIONS } from '../lib/fonctions';
  * Manages the active user plan, subscription state, usage tracking,
  * and feature-gate checks. Works in both demo and production modes.
  *
- * Plans : gratuit (0 €), artisan (9,90 €/mois — POPULAIRE), equipe (19,90 €/mois — RECOMMANDÉ)
+ * Plans : gratuit (0 €), artisan (9,90 €/mois — pour un artisan seul), equipe (19,90 €/mois — pour une équipe).
+ * Étiquettes : une description, jamais « populaire » ni « recommandé par » (affirmation invérifiable, règle du projet).
  * Tarif fondateur ; prix normaux visés : 14,90 € et 29,90 €.
  */
 
@@ -104,7 +105,7 @@ export const PLANS = {
       { name: 'Trésorerie & Bilan', included: false },
       { name: 'Support prioritaire', included: false }
     ],
-    badge: 'POPULAIRE',
+    badge: 'Pour un artisan seul',
     color: '#F97316',
     borderColor: '#FB923C',
     bgColor: '#FED7AA',
@@ -152,7 +153,7 @@ export const PLANS = {
       { name: '10 Go stockage', included: true },
       { name: 'Support prioritaire', included: true }
     ],
-    badge: 'RECOMMANDÉ',
+    badge: 'Pour une équipe',
     color: '#8B5CF6',
     borderColor: '#A78BFA',
     bgColor: '#EDE9FE',
@@ -240,7 +241,7 @@ const DEFAULT_USAGE = {
 export const UPGRADE_CONTEXTS = {
   devis_limit: {
     title: 'Vos 5 devis du mois sont partis',
-    subtitle: 'Un devis envoyé le jour même se signe deux fois plus souvent. Passez en illimité pour ne plus compter.',
+    subtitle: 'Passez en illimité pour ne plus compter vos devis.',
     highlight: 'devis',
     recommendedPlan: 'artisan'
   },

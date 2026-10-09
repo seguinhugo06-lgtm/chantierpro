@@ -9,7 +9,7 @@
 import React, { useState, useCallback, useRef } from 'react';
 import {
   Check, X, ChevronDown, ArrowRight, Zap, Hammer, Users,
-  Shield, Clock, CreditCard, MessageCircle
+  Shield, Clock, CreditCard, MapPin
 } from 'lucide-react';
 import { useSubscriptionStore, PLANS, PLAN_ORDER, YEARLY_DISCOUNT } from '../../stores/subscriptionStore';
 import { createCheckoutSession } from '../../services/subscriptionsApi';
@@ -50,8 +50,8 @@ function PricingToggle({ billing, setBilling }) {
 
 function PricingCard({ plan, billing, isCurrent, isLoading, onSelect }) {
   const Icon = PLAN_ICONS[plan.id] || Zap;
-  const isRecommended = plan.badge === 'RECOMMANDÉ';
-  const isPopular = plan.badge === 'POPULAIRE';
+  const isRecommended = plan.id === 'equipe';
+  const isPopular = plan.id === 'artisan';
   const hasBadge = isRecommended || isPopular;
   const price = billing === 'yearly' && plan.priceYearly
     ? (plan.priceYearly / 12).toFixed(2).replace('.', ',')
@@ -67,8 +67,8 @@ function PricingCard({ plan, billing, isCurrent, isLoading, onSelect }) {
   const ctaLabel = plan.priceMonthly === 0
     ? 'Commencer gratuitement'
     : isPopular
-      ? 'Essayer Artisan 14 jours gratuits'
-      : 'Essayer Équipe 14 jours gratuits';
+      ? 'Passer à Artisan'
+      : 'Passer à Équipe';
 
   return (
     <div
@@ -273,8 +273,8 @@ function FAQSection({ isDark }) {
 const TRUST_ITEMS = [
   { icon: Shield, label: 'Paiement sécurisé', desc: 'Stripe' },
   { icon: Clock, label: 'Gratuit pour démarrer', desc: 'Sans CB' },
-  { icon: CreditCard, label: 'Sans engagement', desc: 'Annulez quand vous voulez' },
-  { icon: MessageCircle, label: 'Support réactif', desc: 'Réponse < 24h' }
+  { icon: CreditCard, label: 'Mensuel sans engagement', desc: 'Résiliable à tout moment' },
+  { icon: MapPin, label: 'Hébergé en France', desc: 'Données à Paris' }
 ];
 
 function TrustSection({ isDark }) {
@@ -302,13 +302,13 @@ function CTASection({ onAction }) {
         Prêt à démarrer ?
       </h2>
       <p className="text-orange-100 mb-8 max-w-md mx-auto">
-        Rejoignez les artisans qui font confiance à Mallettico pour gérer leurs chantiers
+        Commencez gratuitement, sans carte bancaire. Passez au plan supérieur quand vous en avez besoin.
       </p>
       <button
         onClick={onAction}
         className="inline-flex items-center gap-2 px-8 py-3.5 bg-white text-orange-600 font-bold rounded-xl hover:shadow-lg hover:shadow-white/25 transition-all"
       >
-        Essayer gratuitement 14 jours
+        Commencer gratuitement
         <ArrowRight size={18} />
       </button>
     </section>
