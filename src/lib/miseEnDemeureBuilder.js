@@ -43,7 +43,7 @@ function fmtDate(d) {
  * @param {Object} params.client - The client
  * @param {Object} params.entreprise - Company data
  * @param {Array} [params.executions] - Previous relance executions for this doc
- * @param {number} [params.penaltyRate] - Custom penalty rate (default: 11.62%)
+ * @param {number} [params.penaltyRate] - taux annuel des pénalités (défaut : DEFAULT_PENALTY_RATE, BCE + 10 points)
  * @param {string} [params.couleur] - Accent color
  * @returns {string} Complete HTML document
  */
@@ -66,7 +66,15 @@ export function buildMiseEnDemeureHtml({
   // Pénalités et somme réclamée sur le RESTE dû : après un acompte, on réclamait le TTC entier.
   const dejaRegle = Math.min(montantTTC, Math.max(0, Number(doc.montant_paye) || 0));
   const resteDu = Math.round((montantTTC - dejaRegle) * 100) / 100;
-  const penalties = calculatePenalties(resteDu, joursRetard, penaltyRate);
+  // Pénalités de l'art. L441-10 et indemnité de 40 € : entre professionnels seulement. À un
+  // particulier, on réclame la somme due, qui produit intérêts au taux légal à compter de la mise en
+  // demeure (art. 1231-6 C. civ.). Sans catégorie connue ni entreprise, le client est traité en
+  // particulier : mieux vaut ne pas réclamer une pénalité due que réclamer une pénalité indue.
+  const CATEGORIES_PRO = ['professionnel', 'architecte', 'promoteur', 'syndic'];
+  const estPro = CATEGORIES_PRO.includes(String(client?.categorie || '').toLowerCase()) || !!client?.entreprise;
+  const penalties = estPro
+    ? calculatePenalties(resteDu, joursRetard, penaltyRate)
+    : { penalites: 0, indemnite: 0, totalDu: resteDu };
 
   // Previous relances summary
   const sentRelances = executions.filter(e => e.status !== 'cancelled' && e.status !== 'failed');
@@ -299,8 +307,7 @@ export function buildMiseEnDemeureHtml({
 </p>
 
 <p class="body-text">
-  À ce jour, soit <strong>${joursRetard} jours</strong> après l'échéance, cette facture demeure impayée
-  malgré nos précédentes relances.
+  À ce jour, soit <strong>${joursRetard} jours</strong> après l'échéance, cette facture demeure impayée${sentRelances.length > 0 ? '\n  malgré nos précédentes relances' : ''}.
 </p>
 
 ${relanceSummary ? `
@@ -311,8 +318,11 @@ ${relanceSummary ? `
 ` : ''}
 
 <p class="body-text">
-  Conformément aux dispositions des articles L.441-10 et D.441-5 du Code de commerce,
-  des pénalités de retard et une indemnité forfaitaire de recouvrement sont désormais exigibles.
+  ${estPro
+    ? `Conformément aux dispositions des articles L.441-10 et D.441-5 du Code de commerce,
+  des pénalités de retard et une indemnité forfaitaire de recouvrement sont désormais exigibles.`
+    : `Conformément à l'article 1231-6 du Code civil, la somme due produira intérêts au taux légal
+  à compter de la présente mise en demeure.`}
 </p>
 
 <!-- Penalty Table -->
@@ -332,9 +342,10 @@ ${relanceSummary ? `
       <td>Déjà réglé</td>
       <td style="text-align:right">-${fmtEuro(dejaRegle)}</td>
     </tr>` : ''}
+${estPro ? `
     <tr>
       <td>
-        Pénalités de retard (${penaltyRate}% annuel × ${joursRetard} jours)
+        Pénalités de retard (${String(penaltyRate).replace('.', ',')} % annuel × ${joursRetard} jours)
         <br><small style="color:#666">Art. L441-10 Code de commerce</small>
       </td>
       <td style="text-align:right">${fmtEuro(penalties.penalites)}</td>
@@ -346,6 +357,7 @@ ${relanceSummary ? `
       </td>
       <td style="text-align:right">${fmtEuro(penalties.indemnite)}</td>
     </tr>
+` : ''}
     <tr class="total-row">
       <td>TOTAL DÛ</td>
       <td style="text-align:right">${fmtEuro(penalties.totalDu)}</td>
@@ -355,10 +367,13 @@ ${relanceSummary ? `
 
 <div class="legal-notice">
   <strong>Fondement juridique</strong>
-  En application de l'article L.441-10 du Code de commerce, tout retard de paiement entraîne de plein droit,
+  ${estPro
+    ? `En application de l'article L.441-10 du Code de commerce, tout retard de paiement entraîne de plein droit,
   le jour suivant la date de règlement figurant sur la facture, l'exigibilité de pénalités de retard
   calculées sur la base d'un taux annuel de ${String(penaltyRate).replace('.', ',')} %.
-  L'article D.441-5 prévoit en outre une indemnité forfaitaire de 40 € pour frais de recouvrement.
+  L'article D.441-5 prévoit en outre une indemnité forfaitaire de 40 € pour frais de recouvrement.`
+    : `Article 1231-6 du Code civil : « Les dommages et intérêts dus à raison du retard dans le paiement
+  d'une obligation de somme d'argent consistent dans l'intérêt au taux légal, à compter de la mise en demeure. »`}
 </div>
 
 <p class="body-text">

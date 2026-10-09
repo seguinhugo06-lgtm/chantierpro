@@ -1,3 +1,5 @@
+import { lignesFactureAcompte, lignesFactureSolde } from './facturation';
+import { pourcent } from './formatDocument';
 /**
  * acompteUtils.js — Pure functions & constants for Acompte Échéanciers
  *
@@ -270,45 +272,16 @@ export function validateEcheancier(etapes) {
  * @returns {Array} Facture lignes
  */
 export function buildFactureLignesForEtape(devis, etape, etapes, defaultTvaRate = 20) {
-  const isLast = isLastEtape(etape, etapes);
-
-  if (!isLast) {
-    // Acompte line
-    return [{
-      id: crypto.randomUUID(),
-      description: `Acompte ${etape.pourcentage}% sur devis ${devis.numero || 'N/A'}${etape.label ? ` — ${etape.label}` : ''}`,
-      quantite: 1,
-      unite: 'forfait',
-      prixUnitaire: etape.montant_ht,
-      montant: etape.montant_ht,
-      tva: devis.tvaRate || defaultTvaRate,
-    }];
+  // Une ligne par taux, remise visible sur le solde, déductions par taux (src/lib/facturation.js,
+  // relecture juridique du 9 oct. 2026).
+  if (!isLastEtape(etape, etapes)) {
+    return lignesFactureAcompte(devis, etape.pourcentage, { tauxDefaut: defaultTvaRate, libelle: etape.label });
   }
-
-  // Solde: copy devis lines + deduct all previously invoiced acomptes
-  const lignes = (devis.lignes || []).map(l => ({
-    ...l,
-    tva: l.tva !== undefined ? l.tva : (devis.tvaRate || defaultTvaRate),
-  }));
-
-  // Add negative lines for each previously invoiced étape
-  const facturedEtapes = etapes
+  const deductions = etapes
     .filter(e => e.numero !== etape.numero && (e.statut === ETAPE_STATUT.FACTURE || e.statut === ETAPE_STATUT.PAYE))
-    .sort((a, b) => a.numero - b.numero);
-
-  facturedEtapes.forEach(e => {
-    lignes.push({
-      id: `acompte_${e.numero}`,
-      description: `Acompte ${e.pourcentage}% déjà facturé${e.facture_id ? '' : ''} — ${e.label || `Étape ${e.numero}`}`,
-      quantite: 1,
-      unite: 'forfait',
-      prixUnitaire: -e.montant_ht,
-      montant: -e.montant_ht,
-      tva: devis.tvaRate || defaultTvaRate,
-    });
-  });
-
-  return lignes;
+    .sort((a, b) => a.numero - b.numero)
+    .map(e => ({ libelle: `Acompte ${pourcent(e.pourcentage)} déjà facturé — ${e.label || `Étape ${e.numero}`}`, pourcentage: e.pourcentage }));
+  return lignesFactureSolde(devis, deductions, { tauxDefaut: defaultTvaRate });
 }
 
 /**

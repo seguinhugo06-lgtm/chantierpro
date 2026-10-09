@@ -39,7 +39,8 @@ describe('paiementsFacture', () => {
   });
 
   it('échéance : date_echeance, sinon émission + 30 jours ; le jour même n\'est pas un retard', () => {
-    expect(echeance(facture()).toISOString().slice(0, 10)).toBe('2026-10-20');
+    const e = echeance(facture());
+    expect([e.getFullYear(), e.getMonth() + 1, e.getDate()]).toEqual([2026, 10, 20]);
     expect(statutFacture(facture({ date_echeance: '2026-10-01' }), [], LE_1_OCT)).toBe('envoye');
     expect(statutFacture(facture({ date_echeance: '2026-09-30' }), [], LE_1_OCT)).toBe('en_retard');
     expect(joursDeRetard(facture({ date_echeance: '2026-09-28' }), [], LE_1_OCT)).toBe(3);

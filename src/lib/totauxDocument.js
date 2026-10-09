@@ -53,8 +53,10 @@ export function totauxDocument(doc, { tauxDefaut = 10 } = {}) {
     basesAvantRemise[taux] = (basesAvantRemise[taux] || 0) + t;
   }
   totalLignesHT = arrondi(totalLignesHT);
-  const remiseMontant = arrondi(totalLignesHT * remisePct / 100);
-  const totalHT = doc?.total_ht != null && doc.total_ht !== '' ? arrondi(doc.total_ht) : arrondi(totalLignesHT - remiseMontant);
+  const htEnregistre = doc?.total_ht != null && doc.total_ht !== '' ? arrondi(doc.total_ht) : null;
+  // La remise imprimée est la différence exacte : « avant remise − remise = après remise » au centime.
+  const remiseMontant = remisePct ? arrondi(htEnregistre != null ? totalLignesHT - htEnregistre : totalLignesHT * remisePct / 100) : 0;
+  const totalHT = htEnregistre != null ? htEnregistre : arrondi(totalLignesHT - remiseMontant);
   const tvaEnregistree = Number(doc?.tva ?? doc?.total_tva);
 
   // TVA par taux : celle enregistrée avec le document (facture d'acompte au prorata des taux du
@@ -116,10 +118,50 @@ export function lignesTotauxHtml(doc, { isMicro = false, tauxDefaut = 10 } = {})
   return html.join('\n    ');
 }
 
-/** Lignes « Acompte X % / Solde à régler » (le solde tombe juste au centime). */
-export function lignesAcompteHtml(totalTTC, pourcentage) {
-  if (!Number(pourcentage)) return '';
+/**
+ * Lignes « Acompte X % / Solde à régler » d'un DEVIS (le solde tombe juste au centime). Jamais sur
+ * une facture : une facture d'acompte porte acompte_pct et imprimait « Acompte 30 % · Solde » sous
+ * son propre total (relecture juridique du 9 oct.).
+ */
+export function lignesAcompteHtml(doc, totalTTC, pourcentage) {
+  if (!Number(pourcentage) || doc?.type === 'facture') return '';
   const { acompte, solde } = acompteEtSolde(totalTTC, pourcentage);
   return `<div class="row sub" style="margin-top:8px;border-top:1px dashed #ccc;padding-top:8px"><span>Acompte ${pourcent(pourcentage)}</span><span>${euros(acompte)}</span></div>
     <div class="row sub"><span>Solde à régler</span><span>${euros(solde)}</span></div>`;
+}
+
+/**
+ * Totaux à ENREGISTRER pour des lignes (création d'un devis ou d'une facture) : lignes arrondies,
+ * bases par taux après remise arrondies, TVA par taux arrondie, TTC = HT + TVA. Ce que le document
+ * imprimera tombe ainsi juste au centime (règle EN 16931 BR-CO-15 de la facture électronique).
+ * @returns {{ totalLignesHT: number, remiseMontant: number, totalHT: number, totalTVA: number, totalTTC: number,
+ *   tvaParTaux: Record<string, { base: number, montant: number }> }}
+ */
+export function calculerTotaux(lignes, { remisePct = 0, tauxDefaut = 20, toutesLesLignes = false } = {}) {
+  const facteur = 1 - (Number(remisePct) || 0) / 100;
+  const bases = {};
+  let totalLignesHT = 0;
+  // toutesLesLignes : l'éditeur compte une ligne chiffrée avant même qu'elle ait une désignation.
+  const liste = Array.isArray(lignes) ? lignes : [];
+  for (const l of (toutesLesLignes ? liste.filter((x) => x && !x._isSection) : filterValidLignes(liste))) {
+    const t = totalLigne(l);
+    totalLignesHT += t;
+    const taux = Number(l.tva !== undefined && l.tva !== null && l.tva !== '' ? l.tva : tauxDefaut);
+    bases[taux] = (bases[taux] || 0) + t;
+  }
+  totalLignesHT = arrondi(totalLignesHT);
+  const tvaParTaux = {};
+  let totalHT = 0;
+  let totalTVA = 0;
+  for (const [taux, base] of Object.entries(bases)) {
+    const b = arrondi(base * facteur);
+    const m = arrondi(b * Number(taux) / 100);
+    if (b === 0) continue;
+    tvaParTaux[taux] = { base: b, montant: m };
+    totalHT += b;
+    totalTVA += m;
+  }
+  totalHT = arrondi(totalHT);
+  totalTVA = arrondi(totalTVA);
+  return { totalLignesHT, remiseMontant: arrondi(totalLignesHT - totalHT), totalHT, totalTVA, totalTTC: arrondi(totalHT + totalTVA), tvaParTaux };
 }

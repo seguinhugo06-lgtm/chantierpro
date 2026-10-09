@@ -21,20 +21,39 @@ const JOURS_CONDITIONS = { reception: 0, acompte_solde: 0, '30_jours': 30, '60_j
 const FIN_DE_MOIS = { '30_jours_fdm': 30, '45_jours_fdm': 45 };
 
 /**
+ * Délai d'une condition de règlement : clé de l'ancien formulaire (« 30_jours_fdm ») ou texte de
+ * l'éditeur (« Paiement à 30 jours », « … à réception de facture », « solde à la livraison »).
+ * @returns {{ jours: number, finDeMois: boolean } | null} null : pas de délai lisible
+ */
+export function delaiDeConditions(conditions) {
+  if (!conditions) return null;
+  if (FIN_DE_MOIS[conditions] !== undefined) return { jours: FIN_DE_MOIS[conditions], finDeMois: true };
+  if (JOURS_CONDITIONS[conditions] !== undefined) return { jours: JOURS_CONDITIONS[conditions], finDeMois: false };
+  const t = String(conditions).toLowerCase();
+  const n = t.match(/(\d+)\s*jours/);
+  if (n) return { jours: Number(n[1]), finDeMois: /fin de mois/.test(t) };
+  if (/réception|reception|livraison/.test(t)) return { jours: 0, finDeMois: false };
+  return null;
+}
+
+/** « AAAA-MM-JJ » lu comme une date LOCALE (new Date('2026-10-09') est minuit UTC : la veille aux Antilles). */
+export function dateLocale(valeur) {
+  if (valeur instanceof Date) return new Date(valeur.getTime());
+  const m = typeof valeur === 'string' && valeur.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date(valeur);
+}
+
+/**
  * Date d'échéance d'une facture émise le `dateEmission` : selon ses conditions de règlement
  * (« 30 jours fin de mois » : +30 jours, puis fin de ce mois), sinon le délai de l'entreprise.
  * @returns {string} « AAAA-MM-JJ »
  */
 export function dateEcheance(dateEmission, { conditionsPaiement, delaiJours } = {}) {
-  const d = new Date(dateEmission || Date.now());
+  const d = dateLocale(dateEmission || new Date());
   if (Number.isNaN(d.getTime())) return null;
-  if (FIN_DE_MOIS[conditionsPaiement] !== undefined) {
-    d.setDate(d.getDate() + FIN_DE_MOIS[conditionsPaiement]);
-    d.setMonth(d.getMonth() + 1, 0);
-  } else {
-    const jours = JOURS_CONDITIONS[conditionsPaiement] ?? (Number(delaiJours) || DELAI_PAIEMENT_JOURS);
-    d.setDate(d.getDate() + jours);
-  }
+  const c = delaiDeConditions(conditionsPaiement);
+  d.setDate(d.getDate() + (c ? c.jours : (Number(delaiJours) || DELAI_PAIEMENT_JOURS)));
+  if (c?.finDeMois) d.setMonth(d.getMonth() + 1, 0);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
@@ -65,11 +84,14 @@ export function resteAPayer(facture, paiements = []) {
   return Math.max(0, (Number(facture?.total_ttc) || 0) - dejaPaye(facture, paiements));
 }
 
-/** Date d'échéance : celle de la facture, sinon déduite de ses conditions de règlement (ou 30 jours). */
-export function echeance(facture) {
-  if (facture?.date_echeance) return new Date(facture.date_echeance);
+/**
+ * Date d'échéance : celle de la facture, sinon déduite de ses conditions de règlement, sinon du
+ * délai de l'entreprise (celui imprimé sur le document), sinon 30 jours.
+ */
+export function echeance(facture, { delaiJours } = {}) {
+  if (facture?.date_echeance) return dateLocale(facture.date_echeance);
   if (!facture?.date) return null;
-  return new Date(dateEcheance(facture.date, { conditionsPaiement: facture.conditionsPaiement }));
+  return dateLocale(dateEcheance(facture.date, { conditionsPaiement: facture.conditionsPaiement || facture.conditions, delaiJours }));
 }
 
 /**

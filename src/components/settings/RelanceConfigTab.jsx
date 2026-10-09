@@ -36,7 +36,7 @@ import {
   X,
   Zap,
 } from 'lucide-react';
-import { EXCLUSION_REASONS } from '../../lib/relanceUtils';
+import { EXCLUSION_REASONS, DEFAULT_PENALTY_RATE } from '../../lib/relanceUtils';
 import { formatMoney } from '../../lib/formatters';
 import { cn } from '../../lib/utils';
 
@@ -1104,8 +1104,8 @@ export default function RelanceConfigTab({
         <div className={cn('grid grid-cols-1 sm:grid-cols-2 gap-3')}>
           <div className={cn('rounded-xl p-3', isDark ? 'bg-slate-700/50' : 'bg-red-50')}>
             <p className={cn('text-xs font-medium mb-1', isDark ? 'text-slate-300' : 'text-red-800')}>Taux de pénalités</p>
-            <p className={cn('text-lg font-bold', isDark ? 'text-white' : 'text-red-900')}>11,62%</p>
-            <p className={cn('text-[11px]', isDark ? 'text-slate-400' : 'text-red-600')}>Art. L441-10 — 3× taux BCE</p>
+            <p className={cn('text-lg font-bold', isDark ? 'text-white' : 'text-red-900')}>{String(DEFAULT_PENALTY_RATE).replace('.', ',')} %</p>
+            <p className={cn('text-xs', isDark ? 'text-slate-400' : 'text-red-700')}>Art. L441-10 — taux BCE + 10 points</p>
           </div>
           <div className={cn('rounded-xl p-3', isDark ? 'bg-slate-700/50' : 'bg-amber-50')}>
             <p className={cn('text-xs font-medium mb-1', isDark ? 'text-slate-300' : 'text-amber-800')}>Indemnité forfaitaire</p>

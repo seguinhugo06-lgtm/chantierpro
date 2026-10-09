@@ -522,7 +522,7 @@ export default function App() {
   // de l'entreprise (art. L441-9 I C. com. : la date de règlement figure sur la facture).
   const addDevis = async (data) => {
     const avecEcheance = data?.type === 'facture' && !data.date_echeance && data.facture_type !== 'avoir'
-      ? { ...data, date_echeance: dateEcheance(data.date || new Date(), { conditionsPaiement: data.conditionsPaiement, delaiJours: entreprise?.delaiPaiement }) }
+      ? { ...data, date_echeance: dateEcheance(data.date || new Date(), { conditionsPaiement: data.conditionsPaiement || data.conditions, delaiJours: entreprise?.delaiPaiement }) }
       : data;
     const d = await dataAddDevis(avecEcheance);
     showToast(`${data.type === 'facture' ? 'Facture' : 'Devis'} créé`, 'success');

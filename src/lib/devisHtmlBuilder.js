@@ -342,7 +342,7 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mod
       }).join('')}
     </div>
     ` : acomptePct ? `
-    ${lignesAcompteHtml(totalTTC, acomptePct)}
+    ${lignesAcompteHtml(doc, totalTTC, acomptePct)}
     ` : ''}
   </div>
 
@@ -378,7 +378,7 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mod
         ${e.bic ? ` · <strong>BIC:</strong> ${e.bic}` : ''}
       </div>
       <div>
-        ${blocConditionsPaiement({ doc, entreprise: { ...entreprise, delaiPaiement: e.delaiPaiement }, isFacture, dateEcheance: isFacture ? echeance(doc) : null })}
+        ${blocConditionsPaiement({ doc, entreprise: { ...entreprise, delaiPaiement: e.delaiPaiement }, isFacture, dateEcheance: isFacture ? echeance(doc, { delaiJours: e.delaiPaiement }) : null })}
       </div>
     </div>
   </div>

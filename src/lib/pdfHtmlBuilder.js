@@ -220,7 +220,7 @@ export function buildDocumentHTML(doc, client, chantier, entreprise, options = {
   <div class="totals">
     ${lignesTotauxHtml(doc, { isMicro, tauxDefaut: entreprise?.tvaDefaut || 10 })}
     ${doc.acompte_pct ? `
-    ${lignesAcompteHtml(doc.total_ttc || 0, doc.acompte_pct)}
+    ${lignesAcompteHtml(doc, doc.total_ttc || 0, doc.acompte_pct)}
     ` : ''}
   </div>
 
@@ -239,7 +239,7 @@ export function buildDocumentHTML(doc, client, chantier, entreprise, options = {
         ${entreprise?.bic ? ` · <strong>BIC:</strong> ${entreprise.bic}` : ''}
       </div>
       <div>
-        ${blocConditionsPaiement({ doc, entreprise, isFacture, dateEcheance: isFacture ? echeance(doc) : null })}
+        ${blocConditionsPaiement({ doc, entreprise, isFacture, dateEcheance: isFacture ? echeance(doc, { delaiJours: entreprise?.delaiPaiement }) : null })}
       </div>
     </div>
   </div>` : ''}

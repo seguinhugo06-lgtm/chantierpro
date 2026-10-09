@@ -36,7 +36,10 @@ export const CONDITIONS_PAIEMENT = {
   acompte_solde: '30 % d\'acompte, solde à réception',
 };
 
-const dateFr = (d) => new Date(d).toLocaleDateString('fr-FR');
+const dateFr = (d) => {
+  const m = typeof d === 'string' && d.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return (m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date(d)).toLocaleDateString('fr-FR');
+};
 
 /**
  * Bloc « Délai de paiement » + « Pénalités de retard » (art. L441-9 et L441-10 C. com.), identique
@@ -49,7 +52,10 @@ const dateFr = (d) => new Date(d).toLocaleDateString('fr-FR');
  * @param {{ doc: object, entreprise?: object, isFacture: boolean, dateEcheance?: Date|string|null }} o
  */
 export function blocConditionsPaiement({ doc, entreprise, isFacture, dateEcheance }) {
-  const libelle = doc?.conditionsPaiement && CONDITIONS_PAIEMENT[doc.conditionsPaiement];
+  // Conditions : clé de l'ancien formulaire, ou texte choisi dans l'éditeur (`conditions`), qui
+  // n'était imprimé nulle part (relecture juridique du 9 oct.).
+  const texteConditions = doc?.conditions && !CONDITIONS_PAIEMENT[doc.conditions] ? String(doc.conditions).trim().replace(/\.$/, '') : '';
+  const libelle = (doc?.conditionsPaiement && CONDITIONS_PAIEMENT[doc.conditionsPaiement]) || CONDITIONS_PAIEMENT[doc?.conditions] || texteConditions;
   const delai = Number(entreprise?.delaiPaiement) || 30;
   const delaiTexte = libelle
     ? `${libelle}.`
@@ -60,8 +66,9 @@ export function blocConditionsPaiement({ doc, entreprise, isFacture, dateEcheanc
     : 'Taux de la BCE majoré de 10 points';
   return `<strong>Délai de paiement</strong><br>
         ${delaiTexte}<br>
-        ${isFacture && dateEcheance ? `Date d'échéance : ${dateFr(dateEcheance)}<br>` : ''}<br>
+        ${isFacture && dateEcheance ? `Date d'échéance : ${dateFr(dateEcheance)}<br>` : ''}
+        ${isFacture ? 'Escompte pour paiement anticipé : néant.<br>' : ''}<br>
         <strong>Pénalités de retard</strong><br>
         ${tauxTexte} (art. L441-10 C. com.).<br>
-        Indemnité forfaitaire pour frais de recouvrement : 40 € (art. D441-5 C. com.), due entre professionnels.`;
+        Indemnité forfaitaire pour frais de recouvrement : 40 € (art. L441-10 II et D441-5 C. com.), due entre professionnels.`;
 }

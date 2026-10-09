@@ -52,8 +52,12 @@ export const CHANNEL_LABELS = {
   whatsapp: 'WhatsApp',
 };
 
-// Default penalty rate: 3x BCE rate (Art. L441-10 Code de commerce)
-export const DEFAULT_PENALTY_RATE = 11.62;
+// Taux par défaut des pénalités de retard : taux de la BCE majoré de 10 points (art. L441-10 II
+// C. com.), 12,40 % au 2e semestre 2026 (entreprendre.service-public.gouv.fr, fiche F23211, relevé
+// le 9 oct. 2026). À mettre à jour chaque semestre ; les documents impriment « BCE + 10 points ».
+// (Avant : 11,62 %, présenté à tort comme « 3 fois le taux BCE ».)
+// NB : la fonction Edge send-scheduled-relances porte encore 11,62 % (à aligner à son prochain déploiement).
+export const DEFAULT_PENALTY_RATE = 12.4;
 // Fixed recovery indemnity (Art. D441-5 Code de commerce)
 export const RECOVERY_INDEMNITY = 40;
 
@@ -287,7 +291,7 @@ function buildVariableMap(doc, client, entreprise) {
  *
  * @param {number} montantTTC - Invoice amount in euros TTC
  * @param {number} joursRetard - Days overdue
- * @param {number} [tauxAnnuel] - Annual penalty rate (default: 11.62% = 3x BCE rate)
+ * @param {number} [tauxAnnuel] - taux annuel (défaut : DEFAULT_PENALTY_RATE, BCE + 10 points)
  * @returns {Object} { penalites, indemnite, totalDu, tauxApplique, joursRetard }
  */
 export function calculatePenalties(montantTTC, joursRetard, tauxAnnuel = DEFAULT_PENALTY_RATE) {

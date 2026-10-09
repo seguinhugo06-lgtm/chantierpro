@@ -52,7 +52,8 @@ import { calcConversion, formatConversion } from '../lib/statsUtils';
 import { apresPaiement, statutFacture, resteAPayer, dejaPaye, echeance } from '../lib/paiementsFacture';
 import { statut as libelleStatut } from '../lib/statuts';
 import { pourcent, blocConditionsPaiement, CONDITIONS_PAIEMENT } from '../lib/formatDocument';
-import { totauxDocument, lignesTotauxHtml, lignesAcompteHtml } from '../lib/totauxDocument';
+import { totauxDocument, lignesTotauxHtml, lignesAcompteHtml, calculerTotaux } from '../lib/totauxDocument';
+import { lignesFactureAcompte, lignesFactureSolde } from '../lib/facturation';
 import { DEFAULT_PENALTY_RATE } from '../lib/relanceUtils';
 import { useDebounce } from '../hooks/useDebounce';
 import { useDevisModals } from '../hooks/useDevisModals';
@@ -72,9 +73,6 @@ import { MODELES_DEVIS } from '../lib/data/modeles-devis';
 import AcompteEcheancierModal from './devis/AcompteEcheancierModal';
 import AcompteSuiviCard from './devis/AcompteSuiviCard';
 import {
-  getNextEtapeAFacturer,
-  computeEtapeMontants,
-  computeSoldeMontants,
   buildFactureLignesForEtape,
   isLastEtape,
   isEcheancierTermine,
@@ -419,7 +417,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     if (!doc || doc.type !== 'facture' || doc.statut === 'payee' || doc.facture_type === 'avoir') return null;
     // Sur le reste dû (après acomptes) et au taux réglé dans les paramètres — avant : sur le TTC entier,
     // avec une clé de réglage qui n'existait pas (relecture juridique du 9 oct. 2026).
-    const ech = echeance(doc);
+    const ech = echeance(doc, { delaiJours: entreprise?.delaiPaiement });
     if (!ech) return null;
     const joursRetard = Math.max(0, Math.floor((Date.now() - ech) / 86400000));
     if (joursRetard <= 0) return null;
@@ -1210,22 +1208,15 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     } catch { return null; }
   };
 
-  // Facturer une étape d'échéancier
+  // Facturer une étape d'échéancier — lignes par taux, remise visible ; les totaux enregistrés sont
+  // ceux des lignes (src/lib/facturation.js), donc ceux que la facture imprime.
   const facturerEtape = async (echeancier, etape) => {
     if (!selected || !echeancier) return;
     const last = isLastEtape(etape, echeancier.etapes);
-
-    let montants, lignes, factureType;
-    if (last) {
-      // Solde: deduct all previous acomptes
-      montants = computeSoldeMontants(selected, echeancier.etapes);
-      lignes = buildFactureLignesForEtape(selected, etape, echeancier.etapes, entreprise?.tvaDefaut || 20);
-      factureType = 'solde';
-    } else {
-      montants = computeEtapeMontants(selected, etape.pourcentage, entreprise?.tvaDefaut || 20);
-      lignes = buildFactureLignesForEtape(selected, etape, echeancier.etapes, entreprise?.tvaDefaut || 20);
-      factureType = 'acompte';
-    }
+    const lignes = buildFactureLignesForEtape(selected, etape, echeancier.etapes, entreprise?.tvaDefaut || 20);
+    const t = calculerTotaux(lignes, { tauxDefaut: entreprise?.tvaDefaut || 20 });
+    const montants = { montant_ht: t.totalHT, tva: t.totalTVA, montant_ttc: t.totalTTC, tvaParTaux: t.tvaParTaux };
+    const factureType = last ? 'solde' : 'acompte';
 
     const facture = {
       id: crypto.randomUUID(),
@@ -1325,19 +1316,13 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   const createAcompte = async () => {
     if (!selected || (selected.statut !== 'accepte' && selected.statut !== 'signe')) return showToast('Le devis doit être accepté ou signé', 'error');
     if (getAcompteFacture(selected.id)) return showToast('Un acompte existe déjà', 'error');
-    const ratio = acomptePct / 100;
-    const montantHT = selected.total_ht * ratio;
-    // Use stored multi-rate TVA proportionally, fallback to single rate
-    const tva = selected.tva ? selected.tva * ratio : montantHT * ((selected.tvaRate || entreprise?.tvaDefaut || 20) / 100);
-    const ttc = montantHT + tva;
-    // Build proportional tvaParTaux for the acompte
-    const tvaParTaux = {};
-    const srcTva = selected.tvaParTaux || selected.tvaDetails;
-    if (srcTva && typeof srcTva === 'object') {
-      Object.entries(srcTva).forEach(([rate, info]) => {
-        tvaParTaux[rate] = { base: (info.base || 0) * ratio, montant: (info.montant || 0) * ratio };
-      });
-    }
+    // Une ligne par taux de TVA du devis, sur les bases après remise (src/lib/facturation.js)
+    const lignesAcompte = lignesFactureAcompte(selected, acomptePct, { tauxDefaut: entreprise?.tvaDefaut || 20 });
+    const tAcompte = calculerTotaux(lignesAcompte, { tauxDefaut: entreprise?.tvaDefaut || 20 });
+    const montantHT = tAcompte.totalHT;
+    const tva = tAcompte.totalTVA;
+    const ttc = tAcompte.totalTTC;
+    const tvaParTaux = tAcompte.tvaParTaux;
     const facture = {
       id: crypto.randomUUID(), numero: await generateNumero('facture'), type: 'facture', facture_type: 'acompte',
       devis_source_id: selected.id, client_id: selected.client_id, chantier_id: selected.chantier_id,
@@ -1345,7 +1330,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       date_echeance: new Date(Date.now() + (entreprise?.delaiPaiement || 30) * 86400000).toISOString().split('T')[0],
       tvaRate: selected.tvaRate || entreprise?.tvaDefaut || 20,
       tvaParTaux, tvaDetails: tvaParTaux,
-      lignes: [{ id: '1', description: `Acompte ${pourcent(acomptePct)} sur devis ${selected.numero}`, quantite: 1, unite: 'forfait', prixUnitaire: montantHT, montant: montantHT, tva: selected.tvaRate || entreprise?.tvaDefaut || 20 }],
+      lignes: lignesAcompte,
       total_ht: montantHT, tva, total_ttc: ttc, acompte_pct: acomptePct
     };
     await onSubmit(facture);
@@ -1380,29 +1365,20 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 
   const createSolde = async () => {
     if (!selected) return;
-    // Support multiple acomptes
+    // Lignes du devis + remise en lignes visibles + déduction de chaque acompte par taux ; totaux
+    // enregistrés = totaux des lignes (src/lib/facturation.js — relecture juridique du 9 oct. 2026 :
+    // la facture d'un devis remisé n'affichait aucune remise).
     const allAcomptes = getAllAcompteFactures(selected.id);
-    const totalAcompteHT = allAcomptes.reduce((s, a) => s + (a.total_ht || 0), 0);
-    const totalAcompteTVA = allAcomptes.reduce((s, a) => s + (a.tva || 0), 0);
-    const montantSoldeHT = selected.total_ht - totalAcompteHT;
-    const tva = (selected.tva || 0) - totalAcompteTVA;
-    const ttc = montantSoldeHT + tva;
-    // Copy lignes with their per-line TVA rates preserved
-    const lignes = (selected.lignes || []).map(l => ({ ...l, tva: l.tva !== undefined ? l.tva : (selected.tvaRate || entreprise?.tvaDefaut || 20) }));
-    // Add negative line for each acompte already invoiced
-    allAcomptes.forEach(acompte => {
-      lignes.push({ id: `acompte_${acompte.id}`, description: `Acompte déjà facturé (${acompte.numero})`, quantite: 1, unite: 'forfait', prixUnitaire: -(acompte.total_ht || 0), montant: -(acompte.total_ht || 0) });
-    });
-    // Build tvaParTaux for the solde
-    const tvaParTaux = {};
-    const srcTva = selected.tvaParTaux || selected.tvaDetails;
-    if (srcTva && typeof srcTva === 'object') {
-      Object.entries(srcTva).forEach(([rate, info]) => {
-        const acompteBase = allAcomptes.reduce((s, a) => s + ((a.tvaParTaux || a.tvaDetails)?.[rate]?.base || 0), 0);
-        const acompteMontant = allAcomptes.reduce((s, a) => s + ((a.tvaParTaux || a.tvaDetails)?.[rate]?.montant || 0), 0);
-        tvaParTaux[rate] = { base: (info.base || 0) - acompteBase, montant: (info.montant || 0) - acompteMontant };
-      });
-    }
+    const lignes = lignesFactureSolde(
+      selected,
+      allAcomptes.map(a => ({ libelle: `Acompte déjà facturé (${a.numero})`, lignes: a.lignes, tvaParTaux: a.tvaParTaux || a.tvaDetails, montant_ht: a.total_ht })),
+      { tauxDefaut: entreprise?.tvaDefaut || 20 },
+    );
+    const tSolde = calculerTotaux(lignes, { tauxDefaut: entreprise?.tvaDefaut || 20 });
+    const montantSoldeHT = tSolde.totalHT;
+    const tva = tSolde.totalTVA;
+    const ttc = tSolde.totalTTC;
+    const tvaParTaux = tSolde.tvaParTaux;
     const hasAcomptes = allAcomptes.length > 0;
     const facture = {
       id: crypto.randomUUID(), numero: await generateNumero('facture'), type: 'facture', facture_type: hasAcomptes ? 'solde' : 'totale',
@@ -1676,7 +1652,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   <div class="totals">
     ${lignesTotauxHtml(doc, { isMicro, tauxDefaut: entreprise?.tvaDefaut || 10 })}
     ${doc.acompte_pct ? `
-    ${lignesAcompteHtml(doc.total_ttc || 0, doc.acompte_pct)}
+    ${lignesAcompteHtml(doc, doc.total_ttc || 0, doc.acompte_pct)}
     ` : ''}
   </div>
 
@@ -1697,7 +1673,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         ${entreprise?.bic ? ` · <strong>BIC:</strong> ${entreprise.bic}` : ''}
       </div>
       <div>
-        ${blocConditionsPaiement({ doc, entreprise, isFacture, dateEcheance: isFacture ? echeance(doc) : null })}
+        ${blocConditionsPaiement({ doc, entreprise, isFacture, dateEcheance: isFacture ? echeance(doc, { delaiJours: entreprise?.delaiPaiement }) : null })}
       </div>
     </div>
   </div>` : ''}

@@ -223,7 +223,7 @@ describe('Chemin 2 — transformer un devis en factures', () => {
     const etapes = buildEcheancierEtapes(devis, '30-70');
     const lignes = buildFactureLignesForEtape(devis, etapes[0], etapes);
     expect(lignes).toHaveLength(1);
-    expect(lignes[0].description).toContain('30%');
+    expect(lignes[0].description).toMatch(/30[\s\u00a0\u202f]%/); // format français (« 30 % »)
     expect(lignes[0].description).toContain('DEV-2026-00001');
     expect(lignes[0].montant).toBe(3000);
   });
@@ -439,12 +439,12 @@ describe('Chemin 4 — relancer', () => {
   });
 
   it('calcule les pénalités de retard au taux légal', () => {
-    // 1 200 € TTC, 30 jours de retard, taux 11,62 % :
-    // 1200 × 0,1162 × 30/365 = 11,46 € + 40 € d'indemnité forfaitaire.
+    // 1 200 € TTC, 30 jours de retard, taux BCE + 10 points = 12,40 % (2e semestre 2026, F23211) :
+    // 1200 × 0,124 × 30/365 = 12,23 € + 40 € d'indemnité forfaitaire.
     const p = calculatePenalties(1200, 30);
-    expect(p.penalites).toBe(11.46);
+    expect(p.penalites).toBe(12.23);
     expect(p.indemnite).toBe(40);
-    expect(p.totalDu).toBe(1251.46);
+    expect(p.totalDu).toBe(1252.23);
   });
 
   it('n\'applique aucune indemnité sans retard', () => {

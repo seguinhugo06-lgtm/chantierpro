@@ -21,6 +21,7 @@ import QuickClientModal from './QuickClientModal';
 import { generateId } from '../lib/utils';
 import { formatClientName } from '../lib/formatters';
 import { buildDevisHtml } from '../lib/devisHtmlBuilder';
+import { calculerTotaux } from '../lib/totauxDocument';
 import { TRADE_LIBRARY } from '../lib/templates/trade-library';
 
 const DRAFT_KEY = 'mallettico_devis_composer_draft';
@@ -211,20 +212,21 @@ export default function DevisComposer({
   const clearDraft = useCallback(() => { try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ } }, []);
 
   // ── Totals ──
+  // Totaux arrondis par taux après remise (src/lib/totauxDocument.js) : ce qui est enregistré est ce
+  // que le document imprime, et HT + TVA = TTC au centime (relecture juridique du 9 oct. 2026).
   const totals = useMemo(() => {
-    let totalHT = 0, tvaTotal = 0, totalCost = 0;
-    form.lignes.forEach(l => {
-      if (l._isSection) return; // les titres de lot ne comptent pas
-      const montant = num(l.quantite) * num(l.prixUnitaire);
-      const taux = l.tva !== undefined ? l.tva : form.tvaDefaut;
-      totalHT += montant;
-      totalCost += num(l.quantite) * num(l.prixAchat);
-      tvaTotal += montant * (taux / 100);
-    });
-    const remiseAmount = totalHT * (form.remise / 100);
-    const htApresRemise = totalHT - remiseAmount;
-    const tvaApresRemise = tvaTotal * (1 - form.remise / 100);
-    const totalTTC = htApresRemise + tvaApresRemise;
+    let totalCost = 0;
+    form.lignes.forEach(l => { if (!l._isSection) totalCost += num(l.quantite) * num(l.prixAchat); });
+    const t = calculerTotaux(
+      form.lignes.map(l => (l._isSection ? l : { ...l, montant: undefined, quantite: num(l.quantite), prixUnitaire: num(l.prixUnitaire), tva: l.tva !== undefined ? l.tva : form.tvaDefaut })),
+      { remisePct: form.remise, tauxDefaut: form.tvaDefaut, toutesLesLignes: true },
+    );
+    const totalHT = t.totalLignesHT;
+    const tvaTotal = form.remise ? t.totalTVA / (1 - form.remise / 100 || 1) : t.totalTVA;
+    const remiseAmount = t.remiseMontant;
+    const htApresRemise = t.totalHT;
+    const tvaApresRemise = t.totalTVA;
+    const totalTTC = t.totalTTC;
     const costAfterRemise = totalCost * (1 - form.remise / 100);
     const margePercent = htApresRemise > 0 ? ((htApresRemise - costAfterRemise) / htApresRemise) * 100 : 0;
     return { totalHT, tvaTotal, remiseAmount, htApresRemise, tvaApresRemise, totalTTC, margePercent };
