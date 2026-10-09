@@ -1353,14 +1353,26 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     setSnackbar({ type: 'success', message: `Facture d'acompte ${facture.numero} créée`, action: { label: 'Voir', onClick: () => { setSelected(facture); setSnackbar(null); } } });
   };
 
+  // La facture de solde (ou complète) telle qu'elle sera créée : lignes du devis, remise en lignes, chaque
+  // acompte déduit par taux (src/lib/facturation.js), totaux arrondis par taux. Le montant annoncé à
+  // l'artisan (confirmation, tuile) vient de ce même calcul : avant, il était recalculé en TTC
+  // (total − acomptes) et pouvait différer d'un centime de la facture (relecture juridique du 9 oct. 2026).
+  const factureDeSolde = (doc) => {
+    const allAcomptes = getAllAcompteFactures(doc.id);
+    const lignes = lignesFactureSolde(
+      doc,
+      allAcomptes.map(a => ({ libelle: `Acompte déjà facturé (${a.numero})`, lignes: a.lignes, tvaParTaux: a.tvaParTaux || a.tvaDetails, montant_ht: a.total_ht })),
+      { tauxDefaut: entreprise?.tvaDefaut || 20 },
+    );
+    return { allAcomptes, lignes, totaux: calculerTotaux(lignes, { tauxDefaut: entreprise?.tvaDefaut || 20 }) };
+  };
+
   const confirmAndCreateSolde = async () => {
     if (!selected) return;
-    const allAcomptes = getAllAcompteFactures(selected.id);
-    const totalAcomptesTTC = allAcomptes.reduce((s, a) => s + (a.total_ttc || 0), 0);
-    const reste = allAcomptes.length > 0 ? selected.total_ttc - totalAcomptesTTC : selected.total_ttc;
+    const { allAcomptes, totaux } = factureDeSolde(selected);
     const client = clients.find(c => c.id === selected.client_id);
     const clientName = client ? `${client.prenom || ''} ${client.nom || ''}`.trim() : 'le client';
-    const label = allAcomptes.length > 0 ? `Facturer le solde de ${formatMoney(reste)}` : `Créer la facture complète de ${formatMoney(selected.total_ttc)}`;
+    const label = allAcomptes.length > 0 ? `Facturer le solde de ${formatMoney(totaux.totalTTC)} TTC` : `Créer la facture complète de ${formatMoney(totaux.totalTTC)} TTC`;
     const ok = await confirm({
       title: allAcomptes.length > 0 ? 'Facturer le solde ?' : 'Créer la facture complète ?',
       message: `${label} pour ${clientName}. Cette action est irréversible.`
@@ -1374,13 +1386,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     // Lignes du devis + remise en lignes visibles + déduction de chaque acompte par taux ; totaux
     // enregistrés = totaux des lignes (src/lib/facturation.js — relecture juridique du 9 oct. 2026 :
     // la facture d'un devis remisé n'affichait aucune remise).
-    const allAcomptes = getAllAcompteFactures(selected.id);
-    const lignes = lignesFactureSolde(
-      selected,
-      allAcomptes.map(a => ({ libelle: `Acompte déjà facturé (${a.numero})`, lignes: a.lignes, tvaParTaux: a.tvaParTaux || a.tvaDetails, montant_ht: a.total_ht })),
-      { tauxDefaut: entreprise?.tvaDefaut || 20 },
-    );
-    const tSolde = calculerTotaux(lignes, { tauxDefaut: entreprise?.tvaDefaut || 20 });
+    const { allAcomptes, lignes, totaux: tSolde } = factureDeSolde(selected);
     const montantSoldeHT = tSolde.totalHT;
     const tva = tSolde.totalTVA;
     const ttc = tSolde.totalTTC;
@@ -2650,6 +2656,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         {isDevis && selected.statut !== 'facture' && (
           <AcompteSuiviCard
             devis={selected}
+            soldeAFacturer={getAllAcompteFactures(selected.id).length > 0 ? factureDeSolde(selected).totaux.totalTTC : null}
             echeancier={currentEcheancier}
             facturesLiees={facturesLiees}
             allDevis={devis}

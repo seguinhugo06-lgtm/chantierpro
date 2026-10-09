@@ -43,6 +43,7 @@ export default function AcompteSuiviCard({
   hasChantier = false,
   acompteFacture = null,
   resteAFacturer = 0,
+  soldeAFacturer = null, // montant TTC de la facture de solde quand des acomptes existent (sinon null)
 }) {
   const borderColor = isDark ? 'border-slate-700' : 'border-slate-200';
 
@@ -273,10 +274,10 @@ export default function AcompteSuiviCard({
             >
               <div className="flex items-center gap-2 mb-1">
                 <Receipt size={16} className="text-emerald-500" />
-                <span className={cn('font-medium text-sm', textPrimary)}>{resteAFacturer > 0 && resteAFacturer < (devis.total_ttc || 0) ? 'Solde' : '100 %'}</span>
+                <span className={cn('font-medium text-sm', textPrimary)}>{soldeAFacturer != null ? 'Solde' : '100 %'}</span>
               </div>
-              {/* Le montant réellement facturé : le reste s'il y a déjà des acomptes */}
-              <p className={cn('text-sm', textMuted)}>{modeDiscret ? '·····' : fm(resteAFacturer > 0 && resteAFacturer < (devis.total_ttc || 0) ? resteAFacturer : devis.total_ttc)}</p>
+              {/* Le montant que l'action facturera : le solde (calculé comme la facture) s'il y a des acomptes */}
+              <p className={cn('text-sm', textMuted)}>{modeDiscret ? '·····' : `${fm(soldeAFacturer != null ? soldeAFacturer : devis.total_ttc)} TTC`}</p>
             </button>
           )}
 
