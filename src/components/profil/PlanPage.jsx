@@ -18,13 +18,11 @@ import { auth, isDemo } from '../../supabaseClient';
 import { useConfirm } from '../../context/AppContext';
 import { ouvrirLienExterne } from '../../lib/natif';
 import { Segmente } from '../ui/Onglets';
+import Pastille from '../ui/Pastille';
+import { Bouton } from '../ui/Bouton';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
-function hexToRgba(hex, alpha) {
-  const n = parseInt((hex || '#f97316').replace('#', ''), 16);
-  return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`;
-}
 
 const PLAN_ICONS = { gratuit: Zap, artisan: Hammer, equipe: Users };
 
@@ -177,27 +175,18 @@ export default function PlanPage({ isDark, couleur = '#f97316', setPage }) {
         <div className={`rounded-xl border p-5 sm:p-6 mb-6 animate-fade-slide-up ${cardBg}`}>
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-center gap-4">
-              <div
-                className="w-12 h-12 rounded-xl flex items-center justify-center text-white"
-                style={{ background: `linear-gradient(135deg, ${plan.color}, ${plan.color}bb)` }}
-              >
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-surface-2 text-encre-2">
                 {React.createElement(PLAN_ICONS[planId] || Zap, { size: 22 })}
               </div>
               <div>
                 <div className="flex items-center gap-2">
                   <h3 className={`text-lg font-bold ${textPrimary}`}>Plan {plan.name}</h3>
                   {offreTesteur ? (
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-bold bg-succes-fond text-succes-texte`}>
-                      OFFERT
-                    </span>
+                    <Pastille ton="succes">Offert</Pastille>
                   ) : sub?.cancel_at_period_end ? (
-                    <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-700">
-                      ANNULATION PRÉVUE
-                    </span>
+                    <Pastille ton="alerte">Annulation prévue</Pastille>
                   ) : (
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-bold bg-succes-fond text-succes-texte`}>
-                      ACTIF
-                    </span>
+                    <Pastille ton="succes">Actif</Pastille>
                   )}
                 </div>
                 {/* Prix formaté à la française : `${plan.priceMonthly}€` affichait
@@ -226,7 +215,7 @@ export default function PlanPage({ isDark, couleur = '#f97316', setPage }) {
                   </p>
                 )}
                 {sub?.cancel_at_period_end && nextBilling && !offreTesteur && (
-                  <p className="text-xs mt-0.5 text-red-500">
+                  <p className="text-sm mt-0.5 text-alerte-texte">
                     Accès jusqu'au {nextBilling}
                   </p>
                 )}
@@ -239,9 +228,7 @@ export default function PlanPage({ isDark, couleur = '#f97316', setPage }) {
                 <button
                   onClick={handlePortal}
                   disabled={portalLoading}
-                  className={`px-4 py-2.5 min-h-[44px] rounded-xl text-xs font-medium flex items-center gap-1.5 border transition-colors disabled:opacity-50 ${
-                    'border-bord text-encre-2 hover:bg-surface-2'
-                  }`}
+                  className="px-4 min-h-[44px] rounded-xl text-sm font-semibold flex items-center gap-1.5 border transition-colors disabled:opacity-50 border-bord-fort text-encre hover:bg-surface-2"
                 >
                   {portalLoading ? (
                     <><span className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" /> Chargement...</>
@@ -255,21 +242,13 @@ export default function PlanPage({ isDark, couleur = '#f97316', setPage }) {
                   onClick={handleCancel}
                   disabled={cancelling}
                   aria-label={`Annuler mon abonnement ${plan.name}`}
-                  className={`px-4 py-2.5 min-h-[44px] rounded-xl text-xs font-medium transition-colors ${
-                    isDark ? 'text-red-400 hover:bg-red-500/10' : 'text-red-500 hover:bg-red-50'
-                  }`}
+                  className="px-4 min-h-[44px] rounded-xl text-sm font-semibold transition-colors text-danger-texte hover:bg-danger-fond"
                 >
-                  {cancelling ? 'Annulation...' : 'Annuler'}
+                  {cancelling ? 'Annulation…' : 'Annuler l\'abonnement'}
                 </button>
               )}
               {sub?.cancel_at_period_end && !offreTesteur && (
-                <button
-                  onClick={handleReactivate}
-                  className="px-4 py-2 rounded-xl text-xs font-bold text-white transition-all hover:shadow-lg"
-                  style={{ backgroundColor: couleur }}
-                >
-                  Réactiver
-                </button>
+                <Bouton variante="principal" onClick={handleReactivate}>Réactiver</Bouton>
               )}
             </div>
           </div>
@@ -307,13 +286,12 @@ export default function PlanPage({ isDark, couleur = '#f97316', setPage }) {
               <button
                 type="submit"
                 disabled={codeEnCours || codeTesteur.trim().length < 8}
-                className="px-4 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
-                style={{ background: couleur }}
+                className="h-11 px-4 rounded-xl text-sm font-semibold disabled:opacity-50 bg-surface text-encre border border-bord-fort hover:bg-surface-2"
               >
                 {codeEnCours ? 'Vérification…' : 'Activer'}
               </button>
             </div>
-            {codeErreur && <p role="alert" className="text-sm text-red-500 mt-2">{codeErreur}</p>}
+            {codeErreur && <p role="alert" className="text-sm text-danger-texte mt-2">{codeErreur}</p>}
           </form>
         )}
 
@@ -341,6 +319,8 @@ export default function PlanPage({ isDark, couleur = '#f97316', setPage }) {
               const Icon = PLAN_ICONS[pid] || Zap;
               const isCurrent = pid === planId;
               const isHigher = PLAN_ORDER.indexOf(pid) > PLAN_ORDER.indexOf(planId);
+              // Un seul bouton plein : l'offre juste au-dessus de la vôtre ; les autres en secondaire.
+              const estOffreSuivante = PLAN_ORDER.indexOf(pid) === PLAN_ORDER.indexOf(planId) + 1;
               const price = billing === 'yearly' && p.priceYearly
                 ? (p.priceYearly / 12).toFixed(2).replace('.', ',')
                 : p.priceMonthly?.toFixed(2).replace('.', ',') || '0';
@@ -348,42 +328,16 @@ export default function PlanPage({ isDark, couleur = '#f97316', setPage }) {
               return (
                 <div
                   key={pid}
-                  className={`rounded-xl border-2 p-3 sm:p-5 relative transition-all ${
-                    isCurrent
-                      ? 'shadow-md'
-                      : 'hover:shadow-sm'
-                  } bg-surface`}
-                  style={{
-                    borderColor: isCurrent ? plan.color
-                      : p.id === 'equipe' ? `${p.color}44`
-                      : isDark ? '#334155' : '#e2e8f0',
-                  }}
+                  className={`rounded-2xl border p-4 sm:p-5 relative bg-surface shadow-e1 ${isCurrent ? 'border-accent ring-1 ring-accent' : 'border-bord'}`}
                 >
-                  {p.badge && !isCurrent && (
-                    <span
-                      className="absolute -top-2.5 right-3 px-2.5 py-0.5 text-xs font-bold rounded-full text-white"
-                      style={{ backgroundColor: p.color }}
-                    >
-                      {p.badge}
-                    </span>
-                  )}
-                  {isCurrent && (
-                    <span
-                      className="absolute -top-2.5 right-3 px-2.5 py-0.5 text-xs font-bold rounded-full text-white"
-                      style={{ backgroundColor: p.color }}
-                    >
-                      ACTUEL
-                    </span>
-                  )}
-
-                  <div className="flex items-center gap-2 mb-3">
-                    <div
-                      className="w-8 h-8 rounded-lg flex items-center justify-center"
-                      style={{ background: hexToRgba(p.color, 0.15) }}
-                    >
-                      <Icon size={16} style={{ color: p.color }} />
+                  <div className="flex items-center justify-between gap-2 mb-3">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-surface-2 text-encre-2 flex-shrink-0">
+                        <Icon size={18} aria-hidden="true" />
+                      </div>
+                      <span className="text-base font-bold text-encre">{p.name}</span>
                     </div>
-                    <span className={`text-sm font-bold ${textPrimary}`}>{p.name}</span>
+                    {isCurrent ? <Pastille ton="succes">Votre plan</Pastille> : p.badge ? <span className="text-sm text-encre-3 text-right">{p.badge}</span> : null}
                   </div>
 
                   {/* Le tarif fondateur ne se voyait que sur la page publique.
@@ -391,20 +345,20 @@ export default function PlanPage({ isDark, couleur = '#f97316', setPage }) {
                       prix cassé qu'il garde tant qu'il reste abonné — l'argument
                       de rétention le plus fort du produit, invisible. */}
                   <div className="mb-3">
-                    <span className="text-xl font-bold" style={{ color: p.color }}>
-                      {price}€
+                    <span className="text-2xl font-bold text-encre tabular-nums">
+                      {price} €
                     </span>
-                    <span className={`text-xs ${textMuted}`}> HT/mois</span>
+                    <span className="text-sm text-encre-3"> HT/mois</span>
                     {p.offreLancement && (
-                      <p className="text-xs mt-1 font-semibold" style={{ color: p.color }}>
-                        {p.offreLancement} — prix gardé tant que vous restez abonné
+                      <p className="text-sm mt-1 font-medium text-encre-2">
+                        {p.offreLancement} : prix gardé tant que vous restez abonné
                       </p>
                     )}
                     {billing === 'yearly' && p.priceYearly > 0 && (
                       <>
-                        <p className={`text-xs mt-0.5 ${textMuted}`}>Facturé {p.priceYearly}€/an</p>
-                        <p className="text-xs mt-0.5 text-green-500 font-medium">
-                          Économisez {Math.round(p.priceMonthly * 12 - p.priceYearly)}€/an
+                        <p className="text-sm mt-0.5 text-encre-3 tabular-nums">Facturé {String(p.priceYearly).replace('.', ',')} €/an</p>
+                        <p className="text-sm mt-0.5 text-succes-texte font-medium tabular-nums">
+                          Économisez {Math.round(p.priceMonthly * 12 - p.priceYearly)} €/an
                         </p>
                       </>
                     )}
@@ -413,8 +367,8 @@ export default function PlanPage({ isDark, couleur = '#f97316', setPage }) {
                   {/* Features */}
                   <ul className="space-y-1.5 mb-4">
                     {(p.featureLabels || []).filter(f => f.included).slice(0, 5).map((f, i) => (
-                      <li key={i} className={`flex items-start gap-1.5 text-xs text-encre-2`}>
-                        <Check size={13} className="text-green-500 flex-shrink-0 mt-0.5" />
+                      <li key={i} className="flex items-start gap-2 text-sm text-encre-2">
+                        <Check size={16} aria-hidden="true" className="text-succes-point flex-shrink-0 mt-0.5" />
                         <span>{f.name}</span>
                       </li>
                     ))}
@@ -422,20 +376,14 @@ export default function PlanPage({ isDark, couleur = '#f97316', setPage }) {
 
                   {/* CTA */}
                   {isCurrent ? (
-                    <button
-                      disabled
-                      className={`w-full py-2.5 min-h-[44px] rounded-xl text-xs font-medium border ${
-                        'border-bord text-encre-3'
-                      }`}
-                    >
-                      Plan actuel
-                    </button>
+                    <p className="w-full min-h-[44px] flex items-center justify-center text-sm font-medium text-encre-3">C'est votre plan</p>
                   ) : isHigher ? (
                     <button
                       onClick={() => handleSelectPlan(pid)}
                       disabled={loadingPlan === pid}
-                      className="w-full py-2.5 min-h-[44px] rounded-xl text-xs font-bold text-white flex items-center justify-center gap-1.5 transition-all hover:shadow-lg hover:scale-[1.02]"
-                      style={{ backgroundColor: p.color }}
+                      className={`w-full min-h-[44px] rounded-xl text-sm font-semibold flex items-center justify-center gap-1.5 transition-colors disabled:opacity-60 ${
+                        estOffreSuivante ? 'bg-accent text-sur-accent shadow-e1 hover:brightness-95' : 'bg-surface text-encre border border-bord-fort hover:bg-surface-2'
+                      }`}
                     >
                       {loadingPlan === pid ? (
                         <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
@@ -443,18 +391,11 @@ export default function PlanPage({ isDark, couleur = '#f97316', setPage }) {
                           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                         </svg>
                       ) : (
-                        <>Passer au {p.name} <ArrowRight size={13} /></>
+                        <>Passer au {p.name} <ArrowRight size={16} aria-hidden="true" /></>
                       )}
                     </button>
                   ) : (
-                    <button
-                      disabled
-                      className={`w-full py-2.5 min-h-[44px] rounded-xl text-xs font-medium ${
-                        isDark ? 'text-slate-600' : 'text-slate-300'
-                      }`}
-                    >
-                      Plan inférieur
-                    </button>
+                    <p className="w-full min-h-[44px] flex items-center justify-center text-sm text-encre-3">Inclus dans votre plan</p>
                   )}
                 </div>
               );

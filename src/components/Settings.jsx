@@ -24,6 +24,7 @@ import TemplateManager from './settings/TemplateManager';
 import SuppressionCompte from './settings/SuppressionCompte';
 import PostChantierSettings from './settings/PostChantierSettings';
 import { remettreFichier } from '../lib/natif';
+import { Bouton } from './ui/Bouton';
 
 // ── Tab groups for mobile navigation ────────────────────────────────────────
 const TAB_GROUPS = [
@@ -519,20 +520,20 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
           {setPage && (
             <button
               onClick={() => setPage('dashboard')}
-              className={`p-2 rounded-xl min-w-[40px] min-h-[40px] flex items-center justify-center transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}
+              className={`p-2 rounded-xl min-w-[40px] min-h-[40px] flex items-center justify-center transition-colors hover:bg-surface-2 text-encre-3`}
               aria-label="Retour au tableau de bord"
               title="Retour au tableau de bord"
             >
               <ArrowLeft size={20} />
             </button>
           )}
-          <h1 className={`text-xl sm:text-2xl font-bold ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>Paramètres</h1>
+          <h1 className={`text-xl sm:text-2xl font-bold text-encre`}>Paramètres</h1>
           {/* Auto-save status indicator */}
           {saveStatus && (
             <span className={`text-xs px-2.5 py-1 rounded-full flex items-center gap-1.5 animate-fade-in ${
               saveStatus === 'saving'
-                ? isDark ? 'bg-amber-900/30 text-amber-400' : 'bg-amber-50 text-amber-600'
-                : isDark ? 'bg-emerald-900/30 text-emerald-400' : 'bg-emerald-50 text-emerald-600'
+                ? 'bg-alerte-fond text-alerte-texte'
+                : 'bg-succes-fond text-succes-texte'
             }`}>
               {saveStatus === 'saving' ? (
                 <><span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" /> Enregistrement...</>
@@ -546,38 +547,38 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
           <div className="relative">
             <button
               onClick={() => completude < 100 ? setShowProfileDetail(prev => !prev) : null}
-              className={`flex items-center gap-2 sm:gap-4 px-3 sm:px-4 py-2 sm:py-3 rounded-xl border transition-all ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'} shadow-sm ${completude < 100 ? 'cursor-pointer hover:shadow-md' : ''}`}
+              className={`flex items-center gap-3 sm:gap-4 px-3 sm:px-4 py-2 sm:py-3 rounded-2xl border bg-surface border-bord shadow-e1 transition-colors ${completude < 100 ? 'cursor-pointer hover:border-bord-fort' : ''}`}
               title={completude < 100 ? 'Cliquez pour voir les champs manquants' : 'Profil complet !'}
             >
               <div className="text-right shrink-0">
-                <p className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Profil complété</p>
-                <p className="text-xl font-bold" style={{ color: completude >= 80 ? '#22c55e' : completude >= 50 ? '#f59e0b' : '#ef4444' }}>{completude}%</p>
+                <p className="text-sm font-medium text-encre-2">Profil complété</p>
+                <p className={`text-xl font-bold tabular-nums ${completude >= 80 ? 'text-succes-texte' : completude >= 50 ? 'text-alerte-texte' : 'text-danger-texte'}`}>{completude} %</p>
               </div>
-              <div className={`w-16 sm:w-32 h-3 rounded-full overflow-hidden shrink-0 ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`}>
-                <div className="h-full rounded-full transition-all duration-500" style={{ width: `${completude}%`, background: completude >= 80 ? '#22c55e' : completude >= 50 ? '#f59e0b' : '#ef4444' }} />
+              <div className="w-16 sm:w-32 h-2 rounded-full overflow-hidden shrink-0 bg-surface-2">
+                <div className={`h-full rounded-full transition-all duration-500 ${completude >= 80 ? 'bg-succes-point' : completude >= 50 ? 'bg-alerte-point' : 'bg-danger-point'}`} style={{ width: `${completude}%` }} />
               </div>
-              {completude < 100 && <span className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>▼</span>}
+              {completude < 100 && <ChevronDown size={16} aria-hidden="true" className="text-encre-3" />}
             </button>
 
             {/* Dropdown showing missing fields */}
             {showProfileDetail && completude < 100 && (
-              <div className={`absolute right-0 top-full mt-2 w-80 rounded-xl border shadow-xl z-50 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+              <div className={`absolute right-0 top-full mt-2 w-80 rounded-xl border shadow-xl z-50 bg-surface border-bord`}>
                 <div className="p-4 space-y-3">
                   <div className="flex items-center justify-between">
                     <p className={`text-sm font-semibold ${textPrimary}`}>Champs manquants ({missingFields.length})</p>
-                    <button onClick={() => setShowProfileDetail(false)} className={`p-1 rounded-lg text-xs ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}>✕</button>
+                    <button onClick={() => setShowProfileDetail(false)} className={`p-1 rounded-lg text-xs hover:bg-surface-2 text-encre-3`}>✕</button>
                   </div>
 
                   {missingRequired.length > 0 && (
                     <div>
-                      <p className={`text-xs font-semibold mb-1.5 flex items-center gap-1 ${isDark ? 'text-red-400' : 'text-red-600'}`}>
+                      <p className={`text-xs font-semibold mb-1.5 flex items-center gap-1 text-danger-texte`}>
                         <span className="w-1.5 h-1.5 rounded-full bg-red-500 inline-block" /> Obligatoires
                       </p>
                       <div className="space-y-1">
                         {missingRequired.map(f => (
-                          <button key={f.key} onClick={() => { setTab(f.tab); setShowProfileDetail(false); }} className={`w-full text-left px-3 py-1.5 rounded-lg text-sm transition-colors flex items-center justify-between ${isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-50 text-slate-700'}`}>
+                          <button key={f.key} onClick={() => { setTab(f.tab); setShowProfileDetail(false); }} className={`w-full text-left px-3 py-1.5 rounded-lg text-sm transition-colors flex items-center justify-between hover:bg-surface-2 text-encre-2`}>
                             <span>{f.label}</span>
-                            <span className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>→ {f.tab === 'identite' ? 'Identité' : f.tab === 'legal' ? 'Légal' : 'Assurances'}</span>
+                            <span className={`text-xs text-encre-3`}>→ {f.tab === 'identite' ? 'Identité' : f.tab === 'legal' ? 'Légal' : 'Assurances'}</span>
                           </button>
                         ))}
                       </div>
@@ -586,27 +587,24 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
 
                   {missingRecommended.length > 0 && (
                     <div>
-                      <p className={`text-xs font-semibold mb-1.5 flex items-center gap-1 ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>
+                      <p className={`text-xs font-semibold mb-1.5 flex items-center gap-1 text-alerte-texte`}>
                         <span className="w-1.5 h-1.5 rounded-full bg-amber-500 inline-block" /> Recommandés
                       </p>
                       <div className="space-y-1">
                         {missingRecommended.map(f => (
-                          <button key={f.key} onClick={() => { setTab(f.tab); setShowProfileDetail(false); }} className={`w-full text-left px-3 py-1.5 rounded-lg text-sm transition-colors flex items-center justify-between ${isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-50 text-slate-700'}`}>
+                          <button key={f.key} onClick={() => { setTab(f.tab); setShowProfileDetail(false); }} className={`w-full text-left px-3 py-1.5 rounded-lg text-sm transition-colors flex items-center justify-between hover:bg-surface-2 text-encre-2`}>
                             <span>{f.label}</span>
-                            <span className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>→ {f.tab === 'identite' ? 'Identité' : f.tab === 'legal' ? 'Légal' : 'Assurances'}</span>
+                            <span className={`text-xs text-encre-3`}>→ {f.tab === 'identite' ? 'Identité' : f.tab === 'legal' ? 'Légal' : 'Assurances'}</span>
                           </button>
                         ))}
                       </div>
                     </div>
                   )}
 
-                  <button
-                    onClick={() => { setShowSetupWizard(true); setWizardStep(0); setShowProfileDetail(false); }}
-                    className="w-full mt-1 px-4 py-2.5 text-white rounded-xl text-sm font-semibold transition-opacity hover:opacity-90"
-                    style={{ background: couleur }}
-                  >
-                    <Sparkles size={14} className="inline mr-1" /> Compléter avec l'assistant
-                  </button>
+                  <Bouton variante="principal" pleineLargeur icone={Sparkles} className="mt-1"
+                    onClick={() => { setShowSetupWizard(true); setWizardStep(0); setShowProfileDetail(false); }}>
+                    Compléter avec l'assistant
+                  </Bouton>
                 </div>
               </div>
             )}
@@ -616,26 +614,26 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
 
       {/* Alertes assurances critiques */}
       {alertesAssurances.filter(a => a.severity === 'critical').map((alert, i) => (
-        <div key={i} className="bg-red-50 border-2 border-red-300 rounded-xl p-4 flex items-center gap-3 animate-pulse">
-          <span className="text-2xl"></span>
-          <div className="flex-1">
-            <p className="font-bold text-red-800">{alert.message}</p>
-            <p className="text-sm text-red-600">Date d'expiration: {alert.date.toLocaleDateString('fr-FR')}</p>
+        <div key={i} className="rounded-2xl px-4 py-3 flex items-center gap-3 bg-danger-fond text-danger-texte">
+          <AlertCircle size={20} aria-hidden="true" className="flex-shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold">{alert.message}</p>
+            <p className="text-sm">Expiration le {alert.date.toLocaleDateString('fr-FR')}</p>
           </div>
-          <button onClick={() => setTab('assurances')} className="px-4 py-2 bg-red-500 text-white rounded-xl text-sm">Renouveler</button>
+          <Bouton taille="compacte" onClick={() => setTab('assurances')}>Renouveler</Bouton>
         </div>
       ))}
 
       {completude < 50 && (
-        <div className={`rounded-xl p-4 flex flex-col sm:flex-row sm:items-center gap-3 border-2 ${isDark ? 'bg-amber-900/20 border-amber-700/50' : 'bg-amber-50 border-amber-200'}`}>
+        <div className="rounded-2xl px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-3 bg-alerte-fond text-alerte-texte">
           <div className="flex items-start gap-3 min-w-0 flex-1">
-            <AlertCircle size={24} className={`shrink-0 ${isDark ? 'text-amber-400' : 'text-amber-500'}`} />
+            <AlertCircle size={20} aria-hidden="true" className="shrink-0 mt-0.5" />
             <div className="min-w-0">
-              <p className={`font-semibold ${isDark ? 'text-amber-300' : 'text-amber-800'}`}>{'Profil incomplet (' + completude + '%)'}</p>
-              <p className={`text-sm ${isDark ? 'text-amber-400/80' : 'text-amber-600'}`}>
+              <p className="text-sm font-semibold">{'Profil incomplet (' + completude + ' %)'}</p>
+              <p className="text-sm">
                 {missingRequired.length > 0
                   ? missingRequired.length + ' champ' + (missingRequired.length > 1 ? 's' : '') + ' obligatoire' + (missingRequired.length > 1 ? 's' : '') + ' manquant' + (missingRequired.length > 1 ? 's' : '') + '.'
-                  : 'Completez vos informations pour un profil professionnel.'}
+                  : 'Complétez vos informations pour un profil professionnel.'}
               </p>
             </div>
           </div>
@@ -650,17 +648,16 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                 }, 150);
               }
             }}
-            className="self-end sm:self-auto px-4 py-2 text-white rounded-xl text-sm font-semibold transition-colors whitespace-nowrap shrink-0 min-h-[44px]"
-            style={{ background: couleur }}
+            className="self-end sm:self-auto h-11 px-4 rounded-xl text-sm font-semibold whitespace-nowrap shrink-0 bg-surface text-encre border border-bord-fort hover:bg-surface-2"
           >
-            {'Compl\u00e9ter'}
+            Compléter
           </button>
         </div>
       )}
 
       {/* Tabs — Desktop: 2-level grouped navigation (4 groups → sub-tabs) */}
       {/* Level 1: Group pills (hidden on mobile) */}
-      <div className={`hidden sm:block border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+      <div className={`hidden sm:block border-b border-bord`}>
         <div className="flex gap-0.5">
           {visibleTabGroups.map(group => {
             const activeInGroup = group.tabs.some(t => t.key === tab);
@@ -668,7 +665,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
               <button
                 key={group.id}
                 onClick={() => { if (!activeInGroup) setTab(group.tabs[0].key); }}
-                className={`relative px-4 py-2.5 font-medium whitespace-nowrap min-h-[44px] text-sm transition-all rounded-t-lg ${activeInGroup ? 'font-semibold' : `${isDark ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'}`}`}
+                className={`relative px-4 py-2.5 font-medium whitespace-nowrap min-h-[44px] text-sm transition-all rounded-t-lg ${activeInGroup ? 'font-semibold' : `text-encre-3 hover:text-encre hover:bg-surface-2`}`}
                 style={activeInGroup ? { color: entreprise.couleur } : {}}
               >
                 <span className="inline-flex items-center gap-1.5">{group.icon && <group.icon size={14} />}{group.label}</span>
@@ -684,14 +681,14 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
           const activeGroup = visibleTabGroups.find(g => g.tabs.some(t => t.key === tab));
           if (!activeGroup || activeGroup.tabs.length <= 1) return null;
           return (
-            <div className={`flex gap-1 px-2 py-2 ${isDark ? 'bg-slate-800/30' : 'bg-slate-50/80'}`}>
+            <div className="flex gap-1 p-1 my-2 rounded-xl bg-surface-2 w-fit">
               {activeGroup.tabs.map(t => (
                 <button
                   key={t.key}
                   data-tab={t.key}
                   onClick={() => setTab(t.key)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${tab === t.key ? 'text-white shadow-sm' : isDark ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-700' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200'} ${t.key === 'assurances' && hasAssuranceAlerts ? 'text-red-500' : ''}`}
-                  style={tab === t.key ? { backgroundColor: entreprise.couleur } : {}}
+                  aria-pressed={tab === t.key}
+                  className={`h-9 px-3 rounded-lg text-sm transition-colors ${tab === t.key ? 'bg-surface text-encre font-semibold shadow-e1' : 'text-encre-2 font-medium hover:text-encre'} ${t.key === 'assurances' && hasAssuranceAlerts ? 'text-danger-texte' : ''}`}
                 >
                   <span className="inline-flex items-center gap-1">{t.icon && <t.icon size={13} />}{t.label}</span>
                 </button>
@@ -702,7 +699,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
       </div>
 
       {/* Mobile tabs — grouped accordion (visible < 640px) */}
-      <div className={`sm:hidden space-y-1 border rounded-xl overflow-hidden ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+      <div className={`sm:hidden space-y-1 border rounded-xl overflow-hidden border-bord`}>
         {visibleTabGroups.map(group => {
           const isOpen = mobileGroupOpen === group.id;
           const activeInGroup = group.tabs.some(t => t.key === tab);
@@ -712,14 +709,14 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                 onClick={() => setMobileGroupOpen(isOpen ? '' : group.id)}
                 className={`w-full flex items-center justify-between px-4 py-3 text-sm font-semibold transition-colors ${
                   activeInGroup
-                    ? isDark ? 'bg-slate-700/60 text-white' : 'bg-slate-50 text-slate-900'
-                    : isDark ? 'text-slate-300 hover:bg-slate-800' : 'text-slate-600 hover:bg-slate-50'
+                    ? 'bg-surface-2 text-encre'
+                    : 'text-encre-2 hover:bg-surface-2'
                 }`}
               >
                 <span className="inline-flex items-center gap-1.5">{group.icon && <group.icon size={15} />}{group.label}</span>
                 <div className="flex items-center gap-2">
                   {activeInGroup && !isOpen && (
-                    <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: `${couleur}20`, color: couleur }}>
+                    <span className="text-sm px-2 py-0.5 rounded-full bg-surface-2 text-encre-2">
                       {group.tabs.find(t => t.key === tab)?.label}
                     </span>
                   )}
@@ -727,17 +724,15 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                 </div>
               </button>
               {isOpen && (
-                <div className={`px-2 pb-2 flex gap-1.5 overflow-x-auto ${isDark ? 'bg-slate-800/50' : 'bg-white'}`} style={{ scrollbarWidth: 'none' }}>
+                <div className={`px-2 pb-2 flex gap-1.5 overflow-x-auto bg-surface`} style={{ scrollbarWidth: 'none' }}>
                   {group.tabs.map(t => (
                     <button
                       key={t.key}
                       onClick={() => setTab(t.key)}
-                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-all min-h-[44px] whitespace-nowrap shrink-0 ${
-                        tab === t.key
-                          ? 'text-white shadow-sm'
-                          : isDark ? 'text-slate-400 hover:text-slate-200 bg-slate-700/40' : 'text-slate-500 hover:text-slate-700 bg-slate-100'
-                      } ${t.key === 'assurances' && hasAssuranceAlerts ? 'text-red-500' : ''}`}
-                      style={tab === t.key ? { backgroundColor: couleur } : {}}
+                      aria-pressed={tab === t.key}
+                      className={`px-3.5 rounded-full text-sm font-semibold transition-colors min-h-[44px] whitespace-nowrap shrink-0 ${
+                        tab === t.key ? 'bg-encre text-surface' : 'bg-surface-2 text-encre-2 hover:text-encre'
+                      } ${t.key === 'assurances' && hasAssuranceAlerts && tab !== t.key ? 'text-danger-texte' : ''}`}
                     >
                       <span className="inline-flex items-center gap-1">{t.icon && <t.icon size={13} />}{t.label}</span>
                     </button>
@@ -762,7 +757,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                   onDragOver={e => { e.preventDefault(); e.currentTarget.classList.add('ring-2'); e.currentTarget.style.borderColor = entreprise.couleur; e.currentTarget.style.ringColor = entreprise.couleur; }}
                   onDragLeave={e => { e.currentTarget.classList.remove('ring-2'); e.currentTarget.style.borderColor = ''; }}
                   onDrop={e => { e.preventDefault(); e.currentTarget.classList.remove('ring-2'); e.currentTarget.style.borderColor = ''; const file = e.dataTransfer.files?.[0]; if (file) { const fakeEvent = { target: { files: [file] } }; handleLogoUpload(fakeEvent); } }}
-                  className={`w-24 h-24 rounded-xl border-2 border-dashed flex items-center justify-center overflow-hidden transition-all ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
+                  className={`w-24 h-24 rounded-xl border-2 border-dashed flex items-center justify-center overflow-hidden transition-all bg-surface-2`}>
                     {entreprise.logo ? (
                       <img src={entreprise.logo} className="w-full h-full object-contain" alt="Logo" onError={(e) => { e.target.style.display = 'none'; }} />
                     ) : entreprise.nom ? (
@@ -774,18 +769,18 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                     )}
                   </div>
                   <div className="space-y-2">
-                    <label className="block px-4 py-2 rounded-xl cursor-pointer text-white text-sm" style={{background: entreprise.couleur}}>
-                       Choisir une image
+                    <label className="inline-flex items-center h-11 px-4 rounded-xl cursor-pointer text-sm font-semibold bg-surface text-encre border border-bord-fort hover:bg-surface-2">
+                      Choisir une image
                       <input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
                     </label>
                     {entreprise.logo && (
-                      <button onClick={() => updateEntreprise(p => ({...p, logo: ''}))} className="block text-sm text-red-500 hover:underline">
-                        Supprimer
+                      <button onClick={() => updateEntreprise(p => ({...p, logo: ''}))} className="block h-11 text-sm font-semibold text-danger-texte hover:underline">
+                        Supprimer le logo
                       </button>
                     )}
                   </div>
                 </div>
-                <p className="text-xs text-slate-500 mt-2">Format: PNG, JPG. Taille max: 500KB</p>
+                <p className="text-sm text-encre-3 mt-2">PNG ou JPG, 500 Ko au plus.</p>
               </div>
               <div>
                 <p className="text-sm font-medium mb-2">Couleur principale</p>
@@ -794,9 +789,12 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                     <button
                       key={c}
                       onClick={() => updateEntreprise(p => ({...p, couleur: c}))}
-                      className={`w-10 h-10 rounded-xl transition-all duration-200 hover:scale-110 flex items-center justify-center ${entreprise.couleur === c ? 'ring-2 ring-offset-2 scale-110 shadow-lg' : 'hover:shadow-md'}`}
-                      style={{ background: c, ringColor: c }}
-                      title={entreprise.couleur === c ? 'Couleur sélectionnée' : 'Sélectionner cette couleur'}
+                      aria-pressed={entreprise.couleur === c}
+                      aria-label={`Couleur ${c}${entreprise.couleur === c ? ' (choisie)' : ''}`}
+                      className="w-11 h-11 rounded-xl transition-transform duration-150 hover:scale-105 flex items-center justify-center"
+                      // ringColor n'existe pas en CSS : la sélection passe par un contour de la couleur elle-même
+                      style={{ background: c, outline: entreprise.couleur === c ? `3px solid ${c}` : 'none', outlineOffset: 3 }}
+                      title={entreprise.couleur === c ? 'Couleur choisie' : 'Choisir cette couleur'}
                     >
                       {entreprise.couleur === c && (
                         <svg className="w-5 h-5 text-white drop-shadow" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
@@ -838,7 +836,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                 </label>
                 <div className="flex">
                   <DebouncedInput type="number" className={`flex-1 px-4 py-2.5 border rounded-l-xl ${inputBg}`} placeholder="10000" value={entreprise.capital || ''} onChange={val => updateEntreprise(p => ({...p, capital: val}))} />
-                  <span className={`px-4 py-2.5 border-y border-r rounded-r-xl ${isDark ? 'bg-slate-600 text-slate-300 border-slate-600' : 'bg-slate-100 text-slate-500 border-slate-300'}`}>€</span>
+                  <span className={`px-4 py-2.5 border-y border-r rounded-r-xl bg-surface-2 text-encre-3 border-bord-fort`}>€</span>
                 </div>
               </div>
               <div className="md:col-span-2">
@@ -937,7 +935,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
           ) : (
           <div className={`rounded-xl p-4 border ${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-blue-50 border-blue-200'}`}>
             <p className={`text-sm font-medium ${isDark ? 'text-blue-300' : 'text-blue-800'}`}>ℹ️ Auto-entrepreneur / Micro-entreprise</p>
-            <p className={`text-xs mt-1 ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>Le RCS n'est pas requis pour votre statut juridique.</p>
+            <p className={`text-xs mt-1 text-info-texte`}>Le RCS n'est pas requis pour votre statut juridique.</p>
           </div>
           )}
 
@@ -1043,7 +1041,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                 <label className="block text-sm font-medium mb-1">Montant de garantie</label>
                 <div className="flex">
                   <DebouncedInput type="number" className={`flex-1 px-4 py-2.5 border rounded-l-xl ${inputBg}`} placeholder="300000" value={entreprise.rcProMontantGarantie || ''} onChange={val => updateEntreprise(p => ({...p, rcProMontantGarantie: val}))} />
-                  <span className={`px-4 py-2.5 border-y border-r rounded-r-xl ${isDark ? 'bg-slate-600 text-slate-300 border-slate-600' : 'bg-slate-100 text-slate-500 border-slate-300'}`}>€</span>
+                  <span className={`px-4 py-2.5 border-y border-r rounded-r-xl bg-surface-2 text-encre-3 border-bord-fort`}>€</span>
                 </div>
               </div>
               <div>
@@ -1114,14 +1112,14 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             </div>
           </div>
           <div className={`mt-4 rounded-xl p-3 flex items-start gap-2 ${isDark ? 'bg-blue-900/20 border border-blue-800' : 'bg-blue-50 border border-blue-200'}`}>
-            <Shield size={16} className={`flex-shrink-0 mt-0.5 ${isDark ? 'text-blue-400' : 'text-blue-500'}`} />
-            <p className={`text-xs ${isDark ? 'text-blue-300' : 'text-blue-700'}`}>
+            <Shield size={16} className={`flex-shrink-0 mt-0.5 text-info-texte`} />
+            <p className={`text-xs text-info-texte`}>
               Vos coordonnées bancaires apparaîtront sur vos factures pour faciliter les virements. Elles sont stockées localement et ne sont jamais partagées avec des tiers.
             </p>
           </div>
 
           {/* Mode de paiement par défaut */}
-          <div className={`mt-6 pt-6 border-t ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+          <div className={`mt-6 pt-6 border-t border-bord`}>
             <h4 className="font-semibold mb-3">Mode de paiement par défaut</h4>
             <p className={`text-sm ${textMuted} mb-3`}>Mode pré-sélectionné lors de l'encaissement d'une facture.</p>
             <select
@@ -1192,7 +1190,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
           <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
             <h3 className="font-semibold mb-4">Mentions légales sur les documents</h3>
             <div className="space-y-4">
-              <div className={`flex items-center justify-between p-3 rounded-xl ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
+              <div className={`flex items-center justify-between p-3 rounded-xl bg-surface-2`}>
                 <div>
                   <p className="font-medium">Droit de rétractation (14 jours)</p>
                   <p className="text-sm text-slate-500">Article L221-18 du Code de la consommation</p>
@@ -1202,7 +1200,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                   <div className="w-11 h-6 bg-slate-200 peer-focus:ring-2 rounded-full peer peer-checked:after:translate-x-full peer-checked:bg-emerald-500 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
                 </label>
               </div>
-              <div className={`flex items-center justify-between p-3 rounded-xl ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
+              <div className={`flex items-center justify-between p-3 rounded-xl bg-surface-2`}>
                 <div>
                   <p className="font-medium">Garanties légales BTP</p>
                   <p className="text-sm text-slate-500">Parfait achèvement, biennale, décennale</p>
@@ -1232,7 +1230,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                 <label className={`text-sm ${textSecondary}`}>Taux annuel :</label>
                 <div className="flex items-center">
                   <input type="number" step="0.01" min="0" max="50" className={`w-24 px-3 py-2 border rounded-l-xl text-sm ${inputBg}`} value={entreprise.tauxPenalites || ''} placeholder="BCE + 10" aria-label="Taux annuel des pénalités de retard" onChange={e => updateEntreprise(p => ({...p, tauxPenalites: parseFloat(e.target.value) || null}))} />
-                  <span className={`px-3 py-2 border-y border-r rounded-r-xl text-sm ${isDark ? 'bg-slate-600 text-slate-300 border-slate-600' : 'bg-slate-100 text-slate-500 border-slate-300'}`}>%</span>
+                  <span className={`px-3 py-2 border-y border-r rounded-r-xl text-sm bg-surface-2 text-encre-3 border-bord-fort`}>%</span>
                 </div>
                 <p className={`text-xs ${textMuted}`}>Laissé vide : taux de la BCE majoré de 10 points. Un taux choisi ne peut être inférieur à 3 fois le taux d'intérêt légal (art. L441-10 II C. com.).</p>
               </div>
@@ -1378,29 +1376,29 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
               <div className="flex flex-wrap items-center gap-2 text-sm">
                 <span className="px-3 py-1.5 rounded-lg font-semibold text-white" style={{ backgroundColor: couleur }}>Marge Réelle</span>
                 <span className={`text-lg font-bold ${textMuted}`}>=</span>
-                <span className={`px-3 py-1.5 rounded-lg font-medium ${isDark ? 'bg-emerald-900/30 text-emerald-400' : 'bg-emerald-100 text-emerald-700'}`}>CA HT</span>
+                <span className={`px-3 py-1.5 rounded-lg font-medium bg-succes-fond text-succes-texte`}>CA HT</span>
                 <span className={`text-lg font-bold ${textMuted}`}>+</span>
-                <span className={`px-3 py-1.5 rounded-lg font-medium ${isDark ? 'bg-blue-900/30 text-blue-400' : 'bg-blue-100 text-blue-700'}`}>Ajustements Revenus</span>
+                <span className={`px-3 py-1.5 rounded-lg font-medium bg-info-fond text-info-texte`}>Ajustements Revenus</span>
               </div>
               <div className="flex flex-wrap items-center gap-2 text-sm mt-2 ml-0 sm:ml-8">
                 <span className={`text-lg font-bold ${textMuted}`}>−</span>
-                <span className={`px-3 py-1.5 rounded-lg font-medium ${isDark ? 'bg-red-900/30 text-red-400' : 'bg-red-100 text-red-700'}`}>Matériaux</span>
+                <span className={`px-3 py-1.5 rounded-lg font-medium bg-danger-fond text-danger-texte`}>Matériaux</span>
                 <span className={`text-lg font-bold ${textMuted}`}>−</span>
-                <span className={`px-3 py-1.5 rounded-lg font-medium ${isDark ? 'bg-red-900/30 text-red-400' : 'bg-red-100 text-red-700'}`}>Main d'œuvre</span>
+                <span className={`px-3 py-1.5 rounded-lg font-medium bg-danger-fond text-danger-texte`}>Main d'œuvre</span>
                 <span className={`text-lg font-bold ${textMuted}`}>−</span>
-                <span className={`px-3 py-1.5 rounded-lg font-medium ${isDark ? 'bg-amber-900/30 text-amber-400' : 'bg-amber-100 text-amber-700'}`}>Frais structure ({entreprise.tauxFraisStructure || 15}%)</span>
+                <span className={`px-3 py-1.5 rounded-lg font-medium bg-alerte-fond text-alerte-texte`}>Frais structure ({entreprise.tauxFraisStructure || 15}%)</span>
                 <span className={`text-lg font-bold ${textMuted}`}>−</span>
-                <span className={`px-3 py-1.5 rounded-lg font-medium ${isDark ? 'bg-red-900/30 text-red-400' : 'bg-red-100 text-red-700'}`}>Ajustements Dépenses</span>
+                <span className={`px-3 py-1.5 rounded-lg font-medium bg-danger-fond text-danger-texte`}>Ajustements Dépenses</span>
               </div>
             </div>
 
             {/* Color legend */}
             <div className={`rounded-xl p-4 text-sm ${isDark ? 'bg-blue-900/20 border border-blue-800/30' : 'bg-blue-50 border border-blue-100'}`}>
-              <p className={`font-semibold mb-2 ${isDark ? 'text-blue-300' : 'text-blue-700'}`}>Code couleur marge :</p>
+              <p className={`font-semibold mb-2 text-info-texte`}>Code couleur marge :</p>
               <div className="flex flex-wrap gap-4">
-                <span className={`flex items-center gap-2 ${isDark ? 'text-blue-300' : 'text-blue-700'}`}><span className="w-3 h-3 rounded bg-red-500 shrink-0"></span> {'<'}0% — Négative</span>
-                <span className={`flex items-center gap-2 ${isDark ? 'text-blue-300' : 'text-blue-700'}`}><span className="w-3 h-3 rounded bg-amber-500 shrink-0"></span> 0-15% — Faible</span>
-                <span className={`flex items-center gap-2 ${isDark ? 'text-blue-300' : 'text-blue-700'}`}><span className="w-3 h-3 rounded bg-emerald-500 shrink-0"></span> {'>'}15% — Saine</span>
+                <span className={`flex items-center gap-2 text-info-texte`}><span className="w-3 h-3 rounded bg-red-500 shrink-0"></span> {'<'}0% — Négative</span>
+                <span className={`flex items-center gap-2 text-info-texte`}><span className="w-3 h-3 rounded bg-amber-500 shrink-0"></span> 0-15% — Faible</span>
+                <span className={`flex items-center gap-2 text-info-texte`}><span className="w-3 h-3 rounded bg-emerald-500 shrink-0"></span> {'>'}15% — Saine</span>
               </div>
             </div>
           </div>
@@ -1422,7 +1420,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                 className={`px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition-colors ${
                   comptaSubTab === subtab.id
                     ? 'text-white'
-                    : isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    : 'bg-surface-2 text-encre-2 hover:bg-bord'
                 }`}
                 style={comptaSubTab === subtab.id ? { background: couleur } : {}}
               >
@@ -1468,8 +1466,8 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                 {/* CSV Factures */}
                 <div className={`${cardBg} rounded-xl border p-4`}>
                   <div className="flex items-center gap-3 mb-3">
-                    <div className={`p-2 rounded-lg ${isDark ? 'bg-blue-900/30' : 'bg-blue-100'}`}>
-                      <FileSpreadsheet size={20} className={isDark ? 'text-blue-400' : 'text-blue-600'} />
+                    <div className={`p-2 rounded-lg bg-info-fond`}>
+                      <FileSpreadsheet size={20} className={'text-info-texte'} />
                     </div>
                     <div>
                       <h3 className={`font-semibold ${textPrimary}`}>Factures (CSV)</h3>
@@ -1492,8 +1490,8 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                 {/* CSV Depenses */}
                 <div className={`${cardBg} rounded-xl border p-4`}>
                   <div className="flex items-center gap-3 mb-3">
-                    <div className={`p-2 rounded-lg ${isDark ? 'bg-amber-900/30' : 'bg-amber-100'}`}>
-                      <FileSpreadsheet size={20} className={isDark ? 'text-amber-400' : 'text-amber-600'} />
+                    <div className={`p-2 rounded-lg bg-alerte-fond`}>
+                      <FileSpreadsheet size={20} className={'text-alerte-texte'} />
                     </div>
                     <div>
                       <h3 className={`font-semibold ${textPrimary}`}>Dépenses (CSV)</h3>
@@ -1516,8 +1514,8 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                 {/* FEC */}
                 <div className={`${cardBg} rounded-xl border p-4 sm:col-span-2`}>
                   <div className="flex items-center gap-3 mb-3">
-                    <div className={`p-2 rounded-lg ${isDark ? 'bg-emerald-900/30' : 'bg-emerald-100'}`}>
-                      <FileText size={20} className={isDark ? 'text-emerald-400' : 'text-emerald-600'} />
+                    <div className={`p-2 rounded-lg bg-succes-fond`}>
+                      <FileText size={20} className={'text-succes-texte'} />
                     </div>
                     <div>
                       <h3 className={`font-semibold ${textPrimary}`}>Fichier FEC</h3>
@@ -1582,12 +1580,12 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
 
               {/* Detail par taux */}
               <div className={`${cardBg} rounded-xl border overflow-hidden`}>
-                <div className={`px-4 py-3 border-b ${isDark ? 'border-slate-700 bg-slate-700/50' : 'border-slate-200 bg-slate-50'}`}>
+                <div className={`px-4 py-3 border-b border-bord bg-surface-2`}>
                   <h3 className={`font-semibold ${textPrimary}`}>Détail par taux de TVA</h3>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full" aria-label="Détail par taux de TVA">
-                    <thead className={isDark ? 'bg-slate-700/30' : 'bg-slate-50'}>
+                    <thead className={'bg-surface-2'}>
                       <tr>
                         <th scope="col" className={`text-left px-4 py-3 text-sm font-medium ${textMuted}`}>Taux</th>
                         <th scope="col" className={`text-right px-4 py-3 text-sm font-medium ${textMuted}`}>Base HT</th>
@@ -1602,7 +1600,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                         .map(([taux, data]) => {
                           const solde = data.collectee - data.deductible;
                           return (
-                            <tr key={taux} className={`border-t ${isDark ? 'border-slate-700' : 'border-slate-100'}`}>
+                            <tr key={taux} className={`border-t border-bord`}>
                               <td className={`px-4 py-3 font-medium ${textPrimary}`}>{taux}%</td>
                               <td className={`text-right px-4 py-3 ${textSecondary}`}>
                                 {data.base.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
@@ -1630,7 +1628,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                   <AlertCircle size={20} className="text-blue-500 mt-0.5 flex-shrink-0" />
                   <div>
                     <p className={`font-medium ${isDark ? 'text-blue-300' : 'text-blue-800'}`}>Information</p>
-                    <p className={`text-sm mt-1 ${isDark ? 'text-blue-200' : 'text-blue-700'}`}>
+                    <p className={`text-sm mt-1 text-info-texte`}>
                       Ce résumé TVA est indicatif et basé sur les données saisies dans Mallettico.
                       Pour votre déclaration officielle, consultez votre expert-comptable.
                     </p>
@@ -1673,7 +1671,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                 { label: 'Chantiers', count: chantiers.length, color: '#10b981' },
                 { label: 'Dépenses', count: depenses.length, color: '#8b5cf6' },
               ].map((s, i) => (
-                <div key={i} className={`p-3 rounded-xl text-center ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+                <div key={i} className={`p-3 rounded-xl text-center bg-surface-2`}>
                   <p className="text-xl font-bold" style={{ color: s.color }}>{s.count}</p>
                   <p className={`text-xs ${textMuted}`}>{s.label}</p>
                 </div>
@@ -1767,7 +1765,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                 }}
               />
               <label htmlFor="import-file" className="cursor-pointer">
-                <div className={`w-14 h-14 mx-auto mb-3 rounded-xl flex items-center justify-center ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
+                <div className={`w-14 h-14 mx-auto mb-3 rounded-xl flex items-center justify-center bg-surface-2`}>
                   <RefreshCw size={24} className={textMuted} />
                 </div>
                 <p className={`text-sm font-medium ${textPrimary}`}>Cliquez pour sélectionner un fichier</p>
@@ -1790,7 +1788,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                 localStorage.removeItem('mallettico_onboarding_skipped');
                 showToast('Rechargez la page pour relancer la visite guidée', 'info');
               }}
-              className={`flex items-center gap-2 px-5 py-3 rounded-xl font-medium transition-all hover:shadow-lg ${isDark ? 'bg-slate-700 text-slate-200 hover:bg-slate-600' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+              className={`flex items-center gap-2 px-5 py-3 rounded-xl font-medium transition-all hover:shadow-lg bg-surface-2 text-encre-2 hover:bg-bord`}
             >
               <RefreshCw size={18} />
               Relancer la visite guidée
@@ -1808,14 +1806,14 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             </p>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {Object.keys(localStorage).filter(k => k.startsWith('cp_') || k.startsWith('mallettico')).length > 0 && (
-                <div className={`p-3 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+                <div className={`p-3 rounded-xl bg-surface-2`}>
                   <p className={`text-xs ${textMuted}`}>Clés stockées</p>
                   <p className="text-lg font-bold" style={{ color: couleur }}>
                     {Object.keys(localStorage).filter(k => k.startsWith('cp_') || k.startsWith('mallettico')).length}
                   </p>
                 </div>
               )}
-              <div className={`p-3 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+              <div className={`p-3 rounded-xl bg-surface-2`}>
                 <p className={`text-xs ${textMuted}`}>Taille estimée</p>
                 <p className="text-lg font-bold" style={{ color: couleur }}>
                   {(() => {
@@ -1884,7 +1882,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
       {/* APERÇU DOCUMENT — only visible on identite tab */}
       {tab === 'identite' && <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
         <h3 className="font-semibold mb-4"> Aperçu en-tête document</h3>
-        <div className={`border rounded-xl p-6 ${isDark ? 'bg-slate-700 border-slate-600' : 'bg-slate-50'}`}>
+        <div className={`border rounded-xl p-6 bg-surface-2`}>
           <div className="flex justify-between items-start mb-4">
             <div className="flex items-center gap-4">
               {entreprise.logo ? (
@@ -1917,7 +1915,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             {entreprise.tvaIntra && <p>TVA Intracommunautaire: {entreprise.tvaIntra}</p>}
             {entreprise.tel && <p>Tél: {entreprise.tel} {entreprise.email && `· ${entreprise.email}`}</p>}
             {(entreprise.rcProAssureur || entreprise.decennaleAssureur) && (
-              <p className="pt-1 text-[10px]">
+              <p className="pt-1 text-xs">
                 {entreprise.rcProAssureur && `RC Pro: ${entreprise.rcProAssureur} N°${entreprise.rcProNumero}`}
                 {entreprise.rcProAssureur && entreprise.decennaleAssureur && ' · '}
                 {entreprise.decennaleAssureur && `Décennale: ${entreprise.decennaleAssureur} N°${entreprise.decennaleNumero}${entreprise.decennaleValidite ? ` (Valide: ${new Date(entreprise.decennaleValidite).toLocaleDateString('fr-FR')})` : ''}`}
@@ -1937,7 +1935,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
 
         return (
           <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={() => setShowSetupWizard(false)}>
-            <div className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-t-2xl sm:rounded-2xl w-full max-w-lg max-h-[90vh] flex flex-col`} onClick={e => e.stopPropagation()}>
+            <div className={`bg-surface rounded-t-2xl sm:rounded-2xl w-full max-w-lg max-h-[90vh] flex flex-col`} onClick={e => e.stopPropagation()}>
               {/* Progress bar */}
               <div className="h-1.5 rounded-t-2xl overflow-hidden" style={{ background: isDark ? '#334155' : '#e2e8f0' }}>
                 <div className="h-full transition-all duration-500" style={{ width: `${progress}%`, background: couleur }} />
@@ -1954,7 +1952,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                       <button
                         onClick={() => i <= safeStep && setWizardStep(i)}
                         className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
-                          isDone ? 'text-white' : isCurrent ? 'text-white shadow-lg scale-110' : isDark ? 'bg-slate-700 text-slate-500' : 'bg-slate-200 text-slate-400'
+                          isDone ? 'text-white' : isCurrent ? 'text-white shadow-lg scale-110' : 'bg-bord text-encre-3'
                         }`}
                         style={(isDone || isCurrent) ? { backgroundColor: couleur } : undefined}
                         title={s.title}
@@ -1962,7 +1960,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                         {isDone ? <Check size={14} /> : <SIcon size={14} />}
                       </button>
                       {i < totalSteps - 1 && (
-                        <div className={`flex-1 h-0.5 rounded max-w-[40px] ${isDone ? '' : isDark ? 'bg-slate-700' : 'bg-slate-200'}`} style={isDone ? { backgroundColor: couleur } : undefined} />
+                        <div className={`flex-1 h-0.5 rounded max-w-[40px] ${isDone ? '' : 'bg-bord'}`} style={isDone ? { backgroundColor: couleur } : undefined} />
                       )}
                     </React.Fragment>
                   );
@@ -1972,8 +1970,8 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
               {/* Header */}
               <div className="px-5 pb-2 pt-2">
                 <div className="flex items-center justify-between mb-1">
-                  <p className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Étape {safeStep + 1}/{totalSteps}</p>
-                  <button onClick={() => setShowSetupWizard(false)} className={`p-1.5 rounded-lg ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}>
+                  <p className={`text-xs font-medium text-encre-3`}>Étape {safeStep + 1}/{totalSteps}</p>
+                  <button onClick={() => setShowSetupWizard(false)} className={`p-1.5 rounded-lg hover:bg-surface-2 text-encre-3`}>
                     <X size={16} />
                   </button>
                 </div>
@@ -2002,7 +2000,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                             {(entreprise.nom || 'E').charAt(0).toUpperCase()}
                           </div>
                         )}
-                        <label className={`px-4 py-2 rounded-xl text-sm font-medium cursor-pointer transition-colors ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>
+                        <label className={`px-4 py-2 rounded-xl text-sm font-medium cursor-pointer transition-colors bg-surface-2 text-encre-2 hover:bg-bord`}>
                           {entreprise.logo ? 'Changer' : 'Uploader'} un logo
                           <input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
                         </label>
@@ -2084,7 +2082,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                         { key: 'mentionRGE', label: 'Mention RGE sur les documents' },
                         { key: 'mentionDecennale', label: 'Mentions assurance décennale' },
                       ].map(toggle => (
-                        <label key={toggle.key} className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-colors ${isDark ? 'border-slate-600 hover:bg-slate-700/50' : 'border-slate-200 hover:bg-slate-50'}`}>
+                        <label key={toggle.key} className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-colors border-bord hover:bg-surface-2`}>
                           <span className={`text-sm font-medium ${textPrimary}`}>{toggle.label}</span>
                           <div className={`relative w-11 h-6 rounded-full transition-colors ${entreprise[toggle.key] ? '' : isDark ? 'bg-slate-600' : 'bg-slate-300'}`}
                             style={entreprise[toggle.key] ? { backgroundColor: couleur } : undefined}
@@ -2101,10 +2099,10 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                 {safeStep === 3 && (
                   <>
                     <div className={`p-4 rounded-xl border ${isDark ? 'bg-emerald-900/20 border-emerald-800/40' : 'bg-emerald-50 border-emerald-200'}`}>
-                      <p className={`text-2xl font-bold mb-1 ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>85%</p>
-                      <p className={`text-sm ${isDark ? 'text-emerald-300' : 'text-emerald-600'}`}>des relances automatiques sont payées dans les 7 jours</p>
+                      <p className={`text-2xl font-bold mb-1 text-succes-texte`}>85%</p>
+                      <p className={`text-sm text-succes-texte`}>des relances automatiques sont payées dans les 7 jours</p>
                     </div>
-                    <div className={`p-4 rounded-xl border ${isDark ? 'bg-slate-700 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
+                    <div className={`p-4 rounded-xl border bg-surface-2 border-bord`}>
                       <p className={`text-sm font-semibold mb-2 ${textPrimary}`}>Scénario de relance type :</p>
                       <div className="space-y-2">
                         {[
@@ -2114,7 +2112,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                         ].map(r => (
                           <div key={r.jour} className={`flex items-center gap-3 text-sm ${textSecondary}`}>
                             <span className="font-mono font-bold w-10" style={{ color: couleur }}>{r.jour}</span>
-                            <span className={`px-2 py-0.5 rounded text-xs font-medium ${isDark ? 'bg-slate-600 text-slate-300' : 'bg-slate-200 text-slate-600'}`}>{r.type}</span>
+                            <span className={`px-2 py-0.5 rounded text-xs font-medium bg-bord text-encre-2`}>{r.type}</span>
                             <span className={textPrimary}>{r.desc}</span>
                           </div>
                         ))}
@@ -2123,7 +2121,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                     <label className={`flex items-center justify-between p-4 rounded-xl border cursor-pointer transition-all ${
                       entreprise.relancesActives
                         ? isDark ? 'border-emerald-700 bg-emerald-900/20' : 'border-emerald-300 bg-emerald-50'
-                        : isDark ? 'border-slate-600' : 'border-slate-200'
+                        : 'border-bord'
                     }`}>
                       <div>
                         <p className={`text-sm font-semibold ${textPrimary}`}>Activer les relances automatiques</p>
@@ -2141,7 +2139,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                 {/* Step 5: Catalogue */}
                 {safeStep === 4 && (
                   <>
-                    <div className={`p-4 rounded-xl border text-center ${isDark ? 'bg-slate-700 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
+                    <div className={`p-4 rounded-xl border text-center bg-surface-2 border-bord`}>
                       <Package size={40} className={`mx-auto mb-3 ${textSecondary}`} />
                       <p className={`text-sm font-semibold ${textPrimary}`}>Importez le Référentiel BTP</p>
                       <p className={`text-xs mt-1 ${textMuted}`}>Sélectionnez votre métier pour importer automatiquement les articles courants dans votre catalogue.</p>
@@ -2159,11 +2157,11 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
               </div>
 
               {/* Footer Navigation */}
-              <div className={`p-5 pt-3 border-t flex items-center gap-3 ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+              <div className={`p-5 pt-3 border-t flex items-center gap-3 border-bord`}>
                 {safeStep > 0 && (
                   <button
                     onClick={() => setWizardStep(s => Math.max(0, s - 1))}
-                    className={`px-4 py-2.5 rounded-xl text-sm font-medium ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-700'}`}
+                    className={`px-4 py-2.5 rounded-xl text-sm font-medium bg-surface-2 text-encre-2`}
                   >
                     ← Précédent
                   </button>
@@ -2201,7 +2199,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
       {/* Modal Export Comptable */}
       {showExportModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-2xl p-6 w-full max-w-md`}>
+          <div className={`bg-surface rounded-2xl p-6 w-full max-w-md`}>
             <h3 className={`font-bold text-lg mb-4 ${textPrimary}`}> Export pour comptable</h3>
             <p className={`${textMuted} mb-4`}>Exportez vos devis et factures au format Excel/CSV pour votre comptable.</p>
             <div className="mb-6">
@@ -2210,12 +2208,12 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                 {[2024, 2025, 2026].map(y => <option key={y} value={y}>{y}</option>)}
               </select>
             </div>
-            <div className={`${isDark ? 'bg-slate-700' : 'bg-slate-50'} rounded-xl p-4 mb-6 text-sm`}>
+            <div className={`bg-surface-2 rounded-xl p-4 mb-6 text-sm`}>
               <p className="font-medium mb-2">Colonnes exportées:</p>
               <p className="text-slate-600">N° Document, Type, Date, Client, Total HT, TVA 5.5%, TVA 10%, TVA 20%, Total TTC, Statut</p>
             </div>
             <div className="flex gap-3">
-              <button onClick={() => setShowExportModal(false)} className={`flex-1 px-4 py-2 rounded-xl ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`}>Annuler</button>
+              <button onClick={() => setShowExportModal(false)} className={`flex-1 px-4 py-2 rounded-xl bg-surface-2`}>Annuler</button>
               <button onClick={handleExportComptable} className="flex-1 px-4 py-2 bg-emerald-500 text-white rounded-xl"> Télécharger CSV</button>
             </div>
           </div>

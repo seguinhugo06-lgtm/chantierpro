@@ -1961,7 +1961,9 @@ export default function App() {
             // Hide FAB on pages that have their own creation button
             // Accueil : « Nouveau devis » et le « + » de l'en-tête suffisent ; le bouton flottant y recouvrait
             // les boutons « Relancer » / « Finaliser » d'À faire aujourd'hui (recette du 9 oct.).
-            ['dashboard', 'devis', 'chantiers', 'clients', 'equipe', 'catalogue', 'settings', 'memos', 'finances'].includes(page)
+            ['dashboard', 'devis', 'chantiers', 'clients', 'equipe', 'catalogue', 'settings', 'memos', 'finances'].includes(page) ||
+            // Pages qui ne servent pas à travailler (offre, compte, textes légaux) : rien à y créer.
+            ['plan', 'profil', 'billing', 'pricing', 'checkout-success', 'changelog', 'admin', 'cgu', 'cgv', 'confidentialite', 'mentions-legales', 'accessibilite'].includes(page)
           }
         />
 
