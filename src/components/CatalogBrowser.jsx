@@ -252,7 +252,7 @@ export default function CatalogBrowser({
             <div className={`text-center py-12 ${textMuted}`}>
               <Package size={48} className="mx-auto mb-3 opacity-50" />
               <p className="font-medium">Catalogue vide</p>
-              <p className="text-sm">Ajoutez des articles dans les parametres</p>
+              <p className="text-sm">Ajoutez des articles dans les paramètres</p>
             </div>
           )}
         </div>

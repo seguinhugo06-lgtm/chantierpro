@@ -779,7 +779,7 @@ export default function Calendar({
         </div>
         <div className="flex items-center gap-1.5 ml-auto">
           <AlertTriangle className="w-3 h-3 text-red-500" />
-          <span className="text-gray-600">Conflit equipe</span>
+          <span className="text-gray-600">Conflit équipe</span>
         </div>
         <div className="flex items-center gap-1.5">
           <CloudRain className="w-3 h-3 text-amber-500" />

@@ -16,9 +16,9 @@ const TaskTeamView = lazy(() => import('./TaskTeamView'));
 
 const VIEW_MODES = [
   { id: 'list', icon: List, label: 'Liste' },
-  { id: 'kanban', icon: Kanban, label: 'Kanban' },
-  { id: 'gantt', icon: GanttChart, label: 'Gantt' },
-  { id: 'team', icon: Users, label: 'Equipe' },
+  { id: 'kanban', icon: Kanban, label: 'Colonnes' },
+  { id: 'gantt', icon: GanttChart, label: 'Frise' },
+  { id: 'team', icon: Users, label: 'Équipe' },
   { id: 'calendar', icon: Calendar, label: 'Calendrier' },
 ];
 
@@ -74,7 +74,7 @@ export default function TasksAndPlanning({
         color={couleur}
         action={
         /* View toggle */
-        <div className={`flex rounded-xl border p-1 ${cardBg}`}>
+        <div className={`flex max-w-full overflow-x-auto scrollbar-hide rounded-xl border p-1 ${cardBg}`}>
           {VIEW_MODES.map(v => (
             <button
               key={v.id}
@@ -88,8 +88,9 @@ export default function TasksAndPlanning({
               }`}
               style={viewMode === v.id ? { background: couleur } : {}}
             >
-              <v.icon size={14} />
-              <span className="hidden sm:inline">{v.label}</span>
+              <v.icon size={14} className="flex-shrink-0" />
+              {/* Nom toujours affiché : sur téléphone, cinq icônes seules étaient à deviner (recette du 9 oct.). */}
+              <span className="whitespace-nowrap">{v.label}</span>
             </button>
           ))}
         </div>

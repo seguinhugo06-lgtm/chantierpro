@@ -196,7 +196,7 @@ export default function PhotoGallery({ isOpen, onClose, photos = [], chantierNam
 
           {filteredPhotos.length === 0 && (
             <div className="text-center py-20">
-              <p className="text-white/60 text-lg">Aucune photo pour cette periode</p>
+              <p className="text-white/60 text-lg">Aucune photo pour cette période</p>
             </div>
           )}
         </div>

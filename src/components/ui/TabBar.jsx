@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { MoreHorizontal } from 'lucide-react';
 import useKeepInViewport from '../../hooks/useKeepInViewport';
 
@@ -31,6 +31,19 @@ export default function TabBar({ tabs = [], activeTab, onTabChange, maxVisible =
     return () => document.removeEventListener('mousedown', handleClick);
   }, [showMore]);
 
+  // L'onglet actif est ramené dans la rangée qui défile (au bout, il paraissait coupé — recette du 9 oct.).
+  // On ne fait défiler QUE la rangée : scrollIntoView ferait aussi sauter la page.
+  const rangeeRef = useRef(null);
+  useEffect(() => {
+    const rangee = rangeeRef.current;
+    const actif = rangee?.querySelector('[aria-selected="true"]');
+    if (!rangee || !actif) return;
+    const gauche = actif.offsetLeft - rangee.offsetLeft;
+    if (gauche < rangee.scrollLeft || gauche + actif.offsetWidth > rangee.scrollLeft + rangee.clientWidth) {
+      rangee.scrollLeft = Math.max(0, gauche - 12);
+    }
+  }, [activeTab]);
+
   const visibleTabs = tabs.slice(0, maxVisible);
   const overflowTabs = tabs.slice(maxVisible);
   // If active tab is in overflow, swap it into visible
@@ -47,7 +60,7 @@ export default function TabBar({ tabs = [], activeTab, onTabChange, maxVisible =
     <div className="relative" role="tablist" aria-label="Navigation par onglets">
       <div className={`flex items-center gap-1 sm:gap-2 border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
         {/* Les onglets défilent si l'écran est trop étroit ; le bouton « … » reste toujours visible. */}
-        <div className="flex items-center gap-1 sm:gap-2 min-w-0 flex-1 overflow-x-auto scrollbar-hide">
+        <div ref={rangeeRef} className="flex items-center gap-1 sm:gap-2 min-w-0 flex-1 overflow-x-auto scrollbar-hide">
         {displayVisible.map(tab => {
           const isActive = activeTab === tab.key;
           const Icon = tab.icon;
@@ -57,7 +70,7 @@ export default function TabBar({ tabs = [], activeTab, onTabChange, maxVisible =
               role="tab"
               aria-selected={isActive}
               onClick={() => onTabChange(tab.key)}
-              className={`flex items-center gap-2.5 px-3.5 sm:px-5 min-h-[48px] text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+              className={`flex items-center gap-1.5 sm:gap-2.5 px-3 sm:px-5 min-h-[48px] text-[13px] sm:text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
                 isActive
                   ? 'border-current'
                   : `border-transparent ${isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-700'}`
@@ -65,7 +78,9 @@ export default function TabBar({ tabs = [], activeTab, onTabChange, maxVisible =
               style={isActive ? { color: couleur, borderColor: couleur } : undefined}
             >
               {Icon && <Icon size={16} aria-hidden="true" />}
-              <span className="hidden sm:inline">{tab.label}</span>
+              {/* Nom toujours affiché : masqué sur téléphone, l'onglet n'était qu'une icône à deviner, sans
+                  nom pour un lecteur d'écran (recette du 9 oct.). La rangée défile si elle est trop longue. */}
+              <span>{tab.label}</span>
               {typeof tab.badge === 'number' && tab.badge > 0 && (
                 <span className={`ml-1 px-1.5 py-0.5 rounded-full text-[11px] font-bold leading-none ${
                   tab.alert

@@ -2596,7 +2596,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
           onClick={() => setFabOpen(false)}
         />
       )}
-      <div className="fixed bottom-6 right-6 z-50 flex flex-col-reverse items-end gap-3">
+      <div className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom,0px))] right-4 md:bottom-6 md:right-6 z-50 flex flex-col-reverse items-end gap-3">
         {/* Sub-buttons */}
         {fabOpen && (
           <>
@@ -2891,7 +2891,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
 
       {/* === BANDE KPI (design system énergique) === */}
       {nonDraftNonArchive.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+        <div className="bandeau-chiffres grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
           <KPICard
             icon={Building2} color={couleur} label="En cours"
             value={String(statusCounts.en_cours)}

@@ -3017,13 +3017,13 @@ export default function TresorerieModule({
       {/* ── Quick Add FAB ──────────────────────────────────────────── */}
       {activeTab === 'mouvements' ? (
         <button onClick={() => { setEditingMouv(null); setShowMouvModal(true); }}
-          className="fixed bottom-6 right-6 z-40 w-14 h-14 rounded-full flex items-center justify-center shadow-xl text-white transition-transform hover:scale-110 active:scale-95"
+          className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom,0px))] right-4 md:bottom-6 md:right-6 z-40 w-14 h-14 rounded-full flex items-center justify-center shadow-xl text-white transition-transform hover:scale-110 active:scale-95"
           style={{ backgroundColor: couleur }} title="Ajouter un mouvement">
           <Plus size={24} />
         </button>
       ) : (
         <button onClick={() => { setEditingItem(null); setShowAddModal(true); }}
-          className="fixed bottom-6 right-6 z-40 w-14 h-14 rounded-full flex items-center justify-center shadow-xl text-white transition-transform hover:scale-110 active:scale-95"
+          className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom,0px))] right-4 md:bottom-6 md:right-6 z-40 w-14 h-14 rounded-full flex items-center justify-center shadow-xl text-white transition-transform hover:scale-110 active:scale-95"
           style={{ backgroundColor: couleur }} title="Ajouter une prévision">
           <Plus size={24} />
         </button>

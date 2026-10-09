@@ -446,7 +446,7 @@ export default function GanttView({
 
             <div className="space-y-4">
               <div>
-                <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Nom de la tache *</label>
+                <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Nom de la tâche *</label>
                 <input
                   type="text"
                   value={form.nom}

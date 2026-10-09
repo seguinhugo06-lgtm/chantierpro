@@ -90,7 +90,7 @@ export default function PhotoReportButton({
   const handleDownload = () => {
     if (reportResult) {
       downloadPDF(reportResult.blob, reportResult.filename);
-      showToast('Rapport telecharge!', 'success');
+      showToast('Rapport téléchargé !', 'success');
     }
   };
 

@@ -942,7 +942,7 @@ export function EquipeSelector({ userId, value, onChange, className, showLoad = 
         className
       )}
     >
-      <option value="">Aucune equipe</option>
+      <option value="">Aucune équipe</option>
       {equipes.map((equipe) => (
         <option key={equipe.id} value={equipe.id}>
           {equipe.nom}

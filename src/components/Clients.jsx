@@ -1782,7 +1782,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
         });
 
         return (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+          <div className="bandeau-chiffres grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
             <KPICard
               icon={Users}
               tone="info"
@@ -2124,11 +2124,12 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
 
             return (
               <article key={c.id} role="article" aria-label={`Client ${c.nom} ${c.prenom || ''}`.trim()} className={`${cardBg} rounded-xl sm:rounded-2xl border overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group flex flex-col h-full ${hasDuplicates ? isDark ? 'border-amber-800/50' : 'border-amber-200' : ''}`} onClick={() => setViewId(c.id)} tabIndex={0} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setViewId(c.id); } }}>
-                {/* Header */}
-                <div className="p-4 relative">
-                  <div className="flex gap-3">
+                {/* Header — téléphone : carte compacte (≈ 80 px au lieu de ≈ 220 px, recette du 9 oct.) :
+                    appel et WhatsApp ici, e-mail et statistiques gardés pour la fiche et l'ordinateur. */}
+                <div className="p-3 sm:p-4 relative">
+                  <div className="flex items-center sm:items-start gap-3">
                     {/* Avatar circle */}
-                    <div className="w-12 h-12 rounded-full flex items-center justify-center text-white text-sm font-bold shadow-md flex-shrink-0" style={{ background: `linear-gradient(135deg, ${avatarBg}, ${avatarBg}cc)` }}>
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center text-white text-sm font-bold shadow-md flex-shrink-0" style={{ background: `linear-gradient(135deg, ${avatarBg}, ${avatarBg}cc)` }}>
                       {initials}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -2148,10 +2149,10 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                         </span>
                         {/* Type chip */}
                         {c.categorie && typeColor && (
-                          <StatusChip label={c.categorie} color={typeColor.color} isDark={isDark} />
+                          <span className="hidden sm:inline-flex"><StatusChip label={c.categorie} color={typeColor.color} isDark={isDark} /></span>
                         )}
                         {/* Score badge */}
-                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${isDark ? cScore.darkBg : cScore.bg}`} title={`Score : ${cScore.score}/100`}>
+                        <span className={`hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${isDark ? cScore.darkBg : cScore.bg}`} title={`Score : ${cScore.score}/100`}>
                           <span className="text-[9px]">{cScore.icon}</span> {cScore.label}
                         </span>
                         {/* Duplicate warning badge (last) */}
@@ -2168,6 +2169,17 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                         )}
                       </div>
                     </div>
+                    {/* Téléphone : appeler / WhatsApp directement depuis la carte */}
+                    {c.telephone && (
+                      <div className="sm:hidden flex gap-1 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                        <button onClick={() => callPhone(c.telephone)} aria-label={`Appeler ${formatClientName(c)}`} className={`w-11 h-11 rounded-xl flex items-center justify-center ${isDark ? 'bg-blue-900/30' : 'bg-blue-50'}`}>
+                          <Phone size={18} className="text-blue-500" />
+                        </button>
+                        <button onClick={() => sendWhatsApp(c.telephone, c.prenom)} aria-label={`WhatsApp ${formatClientName(c)}`} className={`w-11 h-11 rounded-xl flex items-center justify-center ${isDark ? 'bg-green-900/30' : 'bg-green-50'}`}>
+                          <MessageCircle size={18} className="text-green-500" />
+                        </button>
+                      </div>
+                    )}
                     {/* Edit button */}
                     <button onClick={(e) => { e.stopPropagation(); startEdit(c); }} title="Modifier" aria-label="Modifier ce client" className={`p-2 rounded-lg transition-all absolute top-2 right-2 opacity-0 group-hover:opacity-100 ${isDark ? 'bg-slate-700/90 hover:bg-slate-600 text-slate-200' : 'bg-white/90 hover:bg-slate-100 text-slate-500 shadow-sm'}`}>
                       <Edit3 size={14} />
@@ -2176,7 +2188,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                 </div>
 
                 {/* Contact + Actions */}
-                <div className={`px-4 py-2.5 border-t flex-grow ${isDark ? 'border-slate-700/50' : 'border-slate-100'}`}>
+                <div className={`hidden sm:block px-4 py-2.5 border-t flex-grow ${isDark ? 'border-slate-700/50' : 'border-slate-100'}`}>
                   {c.telephone ? (
                     <div className="flex items-center gap-2">
                       <Smartphone size={13} className={textMuted} />
@@ -2202,7 +2214,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                 </div>
 
                 {/* Stats footer */}
-                <div className={`px-4 py-2.5 border-t flex items-center justify-between mt-auto ${isDark ? 'border-slate-700/50 bg-slate-900/30' : 'border-slate-100 bg-slate-50/50'}`}>
+                <div className={`hidden sm:flex px-4 py-2.5 border-t items-center justify-between mt-auto ${isDark ? 'border-slate-700/50 bg-slate-900/30' : 'border-slate-100 bg-slate-50/50'}`}>
                   <div className="flex gap-3">
                     <span className={`flex items-center gap-1 text-xs ${s.chantiers > 0 ? textSecondary : textMuted}`} title="Chantiers">
                       <Home size={12} className={s.chantiers > 0 ? 'text-emerald-500' : ''} /> {s.chantiers}

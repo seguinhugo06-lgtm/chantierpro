@@ -106,15 +106,16 @@ function daysSince(date) {
   return Math.floor((new Date() - d) / (1000 * 60 * 60 * 24));
 }
 
-function getPrenom(user, entreprise) {
+function getPrenom(user) {
   if (!user) return '';
   const meta = user.user_metadata || {};
   if (meta.prenom) return meta.prenom;
   if (meta.first_name) return meta.first_name;
   if (meta.full_name) return meta.full_name.split(' ')[0];
   if (meta.name) return meta.name.split(' ')[0];
-  if (entreprise?.nom) return entreprise.nom.split(' ')[0];
-  return (user.email || '').split('@')[0] || 'Artisan';
+  // Jamais le premier mot de l'entreprise (« Bonjour, BTP ») ni l'adresse e-mail
+  // (« Bonjour, seguin.hugo06+controle ») : sans prénom, « Bonjour » tout court (recette du 9 oct.).
+  return '';
 }
 
 /**
@@ -399,7 +400,7 @@ export default function Dashboard({
   }, [devis, chantiers, clients, entreprise, modeDiscret, setSelectedDevis, setPage]);
 
   // ---- Greeting ----
-  const prenom = getPrenom(user, entreprise);
+  const prenom = getPrenom(user);
   const capitalize = s => s.charAt(0).toUpperCase() + s.slice(1);
   const formattedDate = capitalize(new Date().toLocaleDateString('fr-FR', {
     weekday: 'long',
@@ -573,12 +574,14 @@ export default function Dashboard({
       {/* ===== L'ARGENT : 3 cartes heros ===== */}
       {canSeeFinances && (
         <section aria-label="Argent">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+          {/* Téléphone : « À encaisser » en pleine largeur, les deux autres côte à côte (trois cartes
+              empilées repoussaient « À faire aujourd'hui » sous l'écran — recette du 9 oct.). */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
             {/* A encaisser — carte principale */}
             <button
               type="button"
               onClick={() => setPage('finances')}
-              className={`text-left rounded-2xl p-4 sm:p-5 transition-transform hover:-translate-y-0.5 ${
+              className={`col-span-2 sm:col-span-1 text-left rounded-2xl p-4 sm:p-5 transition-transform hover:-translate-y-0.5 ${
                 computed.retard > 0
                   ? isDark ? 'bg-slate-800 border-2 border-red-500/40' : 'bg-white border-2 border-red-200 shadow-[0_1px_3px_rgba(0,0,0,0.05)]'
                   : cardCls
@@ -609,7 +612,7 @@ export default function Dashboard({
                 <TrendingUp className="w-4 h-4" style={{ color: couleur }} />
                 <span className={`text-xs font-medium ${subText}`}>Encaissé ce mois</span>
               </div>
-              <div className={`text-2xl sm:text-[28px] font-bold leading-none ${heroText}`}>{fmt(computed.caCeMois, modeDiscret)}</div>
+              <div className={`text-xl sm:text-[28px] font-bold leading-none ${heroText}`}>{fmt(computed.caCeMois, modeDiscret)}</div>
               <div className={`mt-2 text-xs ${subText}`}>
                 {computed.lastMonthCA > 0 ? `vs ${fmt(computed.lastMonthCA, modeDiscret)} mois dernier` : 'Premier mois suivi'}
               </div>
@@ -625,7 +628,7 @@ export default function Dashboard({
                 <FileText className="w-4 h-4" style={{ color: couleur }} />
                 <span className={`text-xs font-medium ${subText}`}>Devis en attente</span>
               </div>
-              <div className={`text-2xl sm:text-[28px] font-bold leading-none ${heroText}`}>{fmt(computed.devisEnAttente.reduce((s, d) => s + (d.total_ttc || 0), 0), modeDiscret)}</div>
+              <div className={`text-xl sm:text-[28px] font-bold leading-none ${heroText}`}>{fmt(computed.devisEnAttente.reduce((s, d) => s + (d.total_ttc || 0), 0), modeDiscret)}</div>
               <div className={`mt-2 text-xs ${subText}`}>{computed.devisEnAttente.length} devis envoyé{computed.devisEnAttente.length > 1 ? 's' : ''}</div>
             </button>
           </div>

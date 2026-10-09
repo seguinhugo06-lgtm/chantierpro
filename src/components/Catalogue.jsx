@@ -1508,9 +1508,9 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
               </>
             )}
           </div>
-          <button onClick={() => setShowArticlePicker(true)} className={`w-11 h-11 sm:w-auto sm:h-11 sm:px-4 rounded-xl flex items-center justify-center sm:gap-2 border-2 font-medium ${isDark ? 'bg-slate-800 text-white hover:bg-slate-700' : 'bg-white hover:bg-slate-50'}`} style={{borderColor: couleur, color: couleur}}>
+          <button onClick={() => setShowArticlePicker(true)} aria-label="Référentiel BTP : plus de 500 articles pré-chiffrés" className={`w-11 h-11 sm:w-auto sm:h-11 sm:px-4 rounded-xl flex items-center justify-center sm:gap-2 border-2 font-medium ${isDark ? 'bg-slate-800 text-white hover:bg-slate-700' : 'bg-white hover:bg-slate-50'}`} style={{borderColor: couleur, color: couleur}}>
             <Sparkles size={16} className="animate-pulse" /><span className="hidden sm:inline">Référentiel BTP</span>
-            <span className="hidden sm:inline text-[10px] px-1.5 py-0.5 rounded-full font-bold" style={{ background: `${couleur}20`, color: couleur }}>2 000+</span>
+            <span className="hidden sm:inline text-[10px] px-1.5 py-0.5 rounded-full font-bold" style={{ background: `${couleur}20`, color: couleur }}>500+</span>
           </button>
           {canPerform('catalogue', 'create') && (
           <button onClick={() => setShow(true)} className="w-11 h-11 sm:w-auto sm:h-11 sm:px-4 text-white rounded-xl flex items-center justify-center sm:gap-2 shadow-lg" style={{background: couleur}}>
@@ -1558,7 +1558,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
         <>
           {/* Catalogue Stats */}
           {catalogue.length > 0 && (
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="bandeau-chiffres grid grid-cols-2 sm:grid-cols-4 gap-3">
               {(() => {
                 const totalArticles = catalogue.length;
                 // E1 fix: only count items with both defined stock AND prixAchat
@@ -1575,7 +1575,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                 })();
                 return [
                   { label: 'Articles catalogue', value: totalArticles, color: couleur, show: true },
-                  { label: 'Valeur stock', value: modeDiscret ? '·····' : (stockWithPrice.length === 0 && stockItems.length > 0 ? 'N/A' : totalStockValue > 0 ? `${(totalStockValue / 1000).toFixed(1)}k€` : null), color: couleur, title: stockWithPrice.length < stockItems.length ? `${stockItems.length - stockWithPrice.length} article(s) sans prix d'achat` : 'Valeur totale au prix d\'achat', show: totalStockValue > 0 || stockItems.length > 0 },
+                  { label: 'Valeur stock', value: modeDiscret ? '·····' : (stockWithPrice.length === 0 && stockItems.length > 0 ? 'N/A' : totalStockValue > 0 ? `${(totalStockValue / 1000).toFixed(1).replace('.', ',')} k€` : null), color: couleur, title: stockWithPrice.length < stockItems.length ? `${stockItems.length - stockWithPrice.length} article(s) sans prix d'achat` : 'Valeur totale au prix d\'achat', show: totalStockValue > 0 || stockItems.length > 0 },
                   { label: 'Marge moy.', value: modeDiscret ? '·····' : (avgMargin ? `${avgMargin.toFixed(0)}%` : null), color: avgMargin && avgMargin >= 25 ? '#22c55e' : '#f59e0b', show: !!avgMargin },
                   { label: 'Stock bas', value: alertesStock.length, color: alertesStock.length > 0 ? '#ef4444' : '#22c55e', title: 'Articles en dessous du seuil minimum de stock', show: true },
                   { label: 'Favoris', value: favoris.length, color: '#f59e0b', onClick: () => setActiveTab('favoris'), show: favoris.length > 0 },
@@ -1807,7 +1807,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                     <div>
                       <p className={`text-sm font-semibold ${textPrimary}`}>Complétez votre catalogue</p>
                       <p className={`text-xs ${textMuted} max-w-sm`}>
-                        Importez vos tarifs fournisseurs (Rexel, Sonepar, Cedeo) via CSV, ou utilisez notre référentiel BTP avec 2 000+ articles pré-chiffrés.
+                        Importez vos tarifs fournisseurs (Rexel, Sonepar, Cedeo) via CSV, ou utilisez notre référentiel BTP de plus de 500 articles pré-chiffrés.
                       </p>
                       <div className="flex gap-1.5 mt-1.5 flex-wrap">
                         {['Tarifs Rexel/Sonepar', 'Référentiel BTP', 'Import CSV'].map(tag => (

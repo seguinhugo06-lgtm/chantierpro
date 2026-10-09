@@ -626,7 +626,8 @@ export default function DevisComposer({
   const accent = isFacture ? FACTURE_ACCENT : couleur;
 
   return createPortal(
-    <div className="fixed inset-0 z-[1000] flex flex-col" style={{ background: isDark ? '#0b1220' : '#f8fafc' }}>
+    <div role="dialog" aria-modal="true" aria-label={`${isEditMode ? 'Modifier' : (isFacture ? 'Nouvelle' : 'Nouveau')} ${isFacture ? 'facture' : 'devis'}`}
+      className="fixed inset-0 z-[1000] flex flex-col" style={{ background: isDark ? '#0b1220' : '#f8fafc' }}>
       {/* ── Top bar ── */}
       <header className={`flex items-center gap-3 px-3 sm:px-5 h-14 border-b ${isDark ? 'border-slate-800 bg-slate-900' : 'border-slate-200 bg-white'} flex-shrink-0`}>
         <button onClick={onClose} aria-label="Fermer" className={`p-2 rounded-lg ${rowHover} ${textMuted} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`}>
@@ -850,8 +851,9 @@ export default function DevisComposer({
       </div>
 
       {/* ── Sticky total bar ── */}
-      <footer className={`flex-shrink-0 border-t ${isDark ? 'border-slate-800 bg-slate-900' : 'border-slate-200 bg-white'} shadow-[0_-4px_20px_rgba(0,0,0,0.06)]`}>
-        <div className="max-w-3xl mx-auto px-3 sm:px-5 py-3 flex items-center gap-3 sm:gap-5">
+      <footer className={`flex-shrink-0 border-t ${isDark ? 'border-slate-800 bg-slate-900' : 'border-slate-200 bg-white'} shadow-[0_-4px_20px_rgba(0,0,0,0.06)]`}
+        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+        <div className="max-w-3xl mx-auto px-3 sm:px-5 py-3 flex items-center gap-2 sm:gap-5">
           <div className="flex-1 min-w-0 flex items-baseline gap-3 sm:gap-5 flex-wrap">
             <div className="hidden sm:flex items-baseline gap-1.5">
               <span className={`text-xs ${textMuted}`}>HT</span>
@@ -866,9 +868,9 @@ export default function DevisComposer({
               <span className={`text-xs ${textMuted}`}>TVA</span>
               <span className={`text-sm font-semibold ${textPrimary}`}>{eur(totals.tvaApresRemise)}</span>
             </div>
-            <div className="flex items-baseline gap-1.5">
-              <span className={`text-xs font-semibold uppercase ${textMuted}`}>TTC</span>
-              <span className="text-2xl sm:text-3xl font-extrabold tabular-nums" style={{ color: accent }}>{eur(animatedTTC)}</span>
+            <div className="flex flex-col sm:flex-row sm:items-baseline sm:gap-1.5">
+              <span className={`text-[10px] sm:text-xs font-semibold uppercase leading-none ${textMuted}`}>TTC</span>
+              <span className="text-lg sm:text-3xl font-extrabold tabular-nums whitespace-nowrap leading-tight" style={{ color: accent }}>{eur(animatedTTC)}</span>
             </div>
             {totals.margePercent > 0 && form.lignes.some(l => l.prixAchat > 0) && (
               <div className={`hidden md:flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold ${totals.margePercent >= 25 ? 'bg-emerald-500/15 text-emerald-500' : totals.margePercent >= 10 ? 'bg-amber-500/15 text-amber-500' : 'bg-red-500/15 text-red-500'}`}>
@@ -879,12 +881,12 @@ export default function DevisComposer({
           {form.lignes.some(l => !l._isSection && (l.description || '').trim()) && (
             <button onClick={() => setShowPdfPreview(true)} disabled={isSubmitting}
               aria-label="Aperçu du document"
-              className={`flex items-center gap-2 px-3 sm:px-4 h-11 rounded-xl text-sm font-semibold border transition-all ${isDark ? 'border-slate-700 text-slate-200 hover:bg-slate-800' : 'border-slate-200 text-slate-700 hover:bg-slate-50'}`}>
+              className={`flex-shrink-0 flex items-center justify-center gap-2 w-11 sm:w-auto px-0 sm:px-4 h-11 rounded-xl text-sm font-semibold border transition-all ${isDark ? 'border-slate-700 text-slate-200 hover:bg-slate-800' : 'border-slate-200 text-slate-700 hover:bg-slate-50'}`}>
               <Eye size={16} /> <span className="hidden sm:inline">Aperçu</span>
             </button>
           )}
           <button onClick={() => handleSubmit(false)} disabled={isSubmitting}
-            className="flex items-center gap-2 px-5 h-11 rounded-xl text-white text-sm font-bold shadow-lg disabled:opacity-60 transition-all hover:opacity-90"
+            className="flex items-center gap-2 px-4 sm:px-5 h-11 rounded-xl text-white text-sm font-bold shadow-lg disabled:opacity-60 transition-all hover:opacity-90 whitespace-nowrap flex-shrink-0"
             style={{ background: accent }}>
             {isSubmitting ? <Loader2 size={18} className="animate-spin" /> : <Check size={18} />}
             {isEditMode ? 'Enregistrer' : (isFacture ? 'Créer la facture' : 'Créer le devis')}

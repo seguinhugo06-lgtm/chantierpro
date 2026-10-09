@@ -45,7 +45,7 @@ function StatsBar({ memos, isDark, couleur }) {
   const overdueNeutral = stats.overdueCount === 0;
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
+    <div className="bandeau-chiffres grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
       <div className={`rounded-xl border px-3 py-2.5 text-center transition-all ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`} style={{ borderLeftWidth: '3px', borderLeftColor: couleur }}>
         <div className="text-lg font-bold" style={{ color: couleur }}>{stats.completedThisWeek}</div>
         <div className={`text-[10px] font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Cette semaine</div>
@@ -188,9 +188,10 @@ export default function TaskListView({
     };
   }, []);
 
-  // Focus input on mount
+  // Focus input on mount — à la souris seulement : sur téléphone, le clavier surgissait à
+  // l'ouverture de la page et masquait la moitié de l'écran (recette du 9 oct. 2026).
   useEffect(() => {
-    inputRef.current?.focus();
+    if (window.matchMedia?.('(pointer: fine)').matches) inputRef.current?.focus();
   }, []);
 
   // ── Handle recurring memo completion ──

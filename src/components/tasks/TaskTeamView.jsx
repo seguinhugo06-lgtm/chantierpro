@@ -643,8 +643,8 @@ export default function TaskTeamView({
         {memberData.length === 0 && !hasUnassigned && (
           <div className={`text-center py-12 ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>
             <Users size={36} className="mx-auto mb-3 opacity-30" />
-            <p className="text-sm font-medium">Aucun membre dans l'equipe</p>
-            <p className="text-xs mt-1">Ajoutez des membres depuis la page Equipe</p>
+            <p className="text-sm font-medium">Aucun membre dans l'équipe</p>
+            <p className="text-xs mt-1">Ajoutez des membres depuis la page Équipe</p>
           </div>
         )}
       </div>
@@ -684,8 +684,8 @@ export default function TaskTeamView({
         {memberData.length === 0 && !hasUnassigned && (
           <div className={`text-center py-12 ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>
             <Users size={36} className="mx-auto mb-3 opacity-30" />
-            <p className="text-sm font-medium">Aucun membre dans l'equipe</p>
-            <p className="text-xs mt-1">Ajoutez des membres depuis la page Equipe</p>
+            <p className="text-sm font-medium">Aucun membre dans l'équipe</p>
+            <p className="text-xs mt-1">Ajoutez des membres depuis la page Équipe</p>
           </div>
         )}
       </div>

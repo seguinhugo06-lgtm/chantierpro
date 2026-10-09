@@ -451,7 +451,9 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
             return todayEvents.length > 0 ? `· ${todayEvents.length} évén.` : '';
           })()}</span>
         </div>
-        <div className="flex items-center gap-1.5">
+        {/* Téléphone : le choix de la vue sur sa propre rangée, en pleine largeur — au bout d'une rangée
+            qui défilait, « Mois » paraissait coupé et la vue Agenda était introuvable (recette du 9 oct.). */}
+        <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 sm:gap-1.5">
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-hide min-w-0 flex-1">
             <button onClick={goToToday} className={`px-2.5 py-1.5 rounded-lg text-xs font-medium shrink-0 min-h-[36px] active:scale-95 transition-all ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'} ${textSecondary}`} aria-label="Aujourd'hui">
               Aujourd'hui
@@ -488,13 +490,13 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                 <X size={12} />
               </button>
             )}
-            <div className={`flex rounded-lg overflow-hidden border shrink-0 ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
-              <button onClick={() => { setViewMode('month'); }} className={`px-2.5 py-1.5 text-xs whitespace-nowrap min-h-[36px] transition-colors ${viewMode === 'month' ? 'text-white' : isDark ? 'bg-slate-800 text-slate-400' : 'bg-white text-slate-500'}`} style={viewMode === 'month' ? { background: couleur } : {}}>Mois</button>
-              <button onClick={() => { const today = new Date(); if (date.getMonth() === today.getMonth() && date.getFullYear() === today.getFullYear()) setDate(today); setViewMode('week'); }} className={`px-2.5 py-1.5 text-xs whitespace-nowrap min-h-[36px] transition-colors ${viewMode === 'week' ? 'text-white' : isDark ? 'bg-slate-800 text-slate-400' : 'bg-white text-slate-500'}`} style={viewMode === 'week' ? { background: couleur } : {}}>Sem.</button>
-              <button onClick={() => { const today = new Date(); if (date.getMonth() === today.getMonth() && date.getFullYear() === today.getFullYear()) setDate(today); setViewMode('day'); }} className={`px-2.5 py-1.5 text-xs whitespace-nowrap min-h-[36px] transition-colors ${viewMode === 'day' ? 'text-white' : isDark ? 'bg-slate-800 text-slate-400' : 'bg-white text-slate-500'}`} style={viewMode === 'day' ? { background: couleur } : {}}>Jour</button>
-              <button onClick={() => setViewMode('agenda')} className={`px-2.5 py-1.5 text-xs whitespace-nowrap min-h-[36px] transition-colors ${viewMode === 'agenda' ? 'text-white' : isDark ? 'bg-slate-800 text-slate-400' : 'bg-white text-slate-500'}`} style={viewMode === 'agenda' ? { background: couleur } : {}}>Agenda</button>
-            </div>
           </div>
+          <div className={`order-first sm:order-none w-full sm:w-auto grid grid-cols-4 sm:flex rounded-lg overflow-hidden border shrink-0 ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+              <button onClick={() => { setViewMode('month'); }} className={`px-2.5 py-1.5 text-xs whitespace-nowrap min-h-[40px] sm:min-h-[36px] transition-colors ${viewMode === 'month' ? 'text-white' : isDark ? 'bg-slate-800 text-slate-400' : 'bg-white text-slate-500'}`} style={viewMode === 'month' ? { background: couleur } : {}}>Mois</button>
+              <button onClick={() => { const today = new Date(); if (date.getMonth() === today.getMonth() && date.getFullYear() === today.getFullYear()) setDate(today); setViewMode('week'); }} className={`px-2.5 py-1.5 text-xs whitespace-nowrap min-h-[40px] sm:min-h-[36px] transition-colors ${viewMode === 'week' ? 'text-white' : isDark ? 'bg-slate-800 text-slate-400' : 'bg-white text-slate-500'}`} style={viewMode === 'week' ? { background: couleur } : {}}><span className="sm:hidden">Semaine</span><span className="hidden sm:inline">Sem.</span></button>
+              <button onClick={() => { const today = new Date(); if (date.getMonth() === today.getMonth() && date.getFullYear() === today.getFullYear()) setDate(today); setViewMode('day'); }} className={`px-2.5 py-1.5 text-xs whitespace-nowrap min-h-[40px] sm:min-h-[36px] transition-colors ${viewMode === 'day' ? 'text-white' : isDark ? 'bg-slate-800 text-slate-400' : 'bg-white text-slate-500'}`} style={viewMode === 'day' ? { background: couleur } : {}}>Jour</button>
+              <button onClick={() => setViewMode('agenda')} className={`px-2.5 py-1.5 text-xs whitespace-nowrap min-h-[40px] sm:min-h-[36px] transition-colors ${viewMode === 'agenda' ? 'text-white' : isDark ? 'bg-slate-800 text-slate-400' : 'bg-white text-slate-500'}`} style={viewMode === 'agenda' ? { background: couleur } : {}}>Agenda</button>
+            </div>
           <div className="relative shrink-0">
             <button onClick={() => setShowPlanningSettings(!showPlanningSettings)}
               className={`p-2 rounded-lg transition-colors min-w-[44px] min-h-[44px] sm:min-w-[36px] sm:min-h-[36px] flex items-center justify-center ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}
@@ -540,7 +542,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
 
       {/* KPI Strip */}
       {allEvents.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="bandeau-chiffres grid grid-cols-2 sm:grid-cols-4 gap-3">
           {(() => {
             const todayCount = todayEvents.length;
             const weekCount = weekDays.flatMap(d => getEventsForDate(d)).length;

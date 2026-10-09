@@ -1842,7 +1842,7 @@ export default function App() {
               {showQuickAdd && (
                 <>
                   <div className="fixed inset-0 z-40" aria-hidden="true" onClick={() => setShowQuickAdd(false)} />
-                  <div onKeyDown={(e) => { if (e.key === 'Escape') setShowQuickAdd(false); }} className={`absolute right-0 top-full mt-2 w-48 sm:w-56 max-w-[calc(100vw-1rem)] rounded-2xl shadow-2xl z-50 py-2 overflow-hidden ${isDark ? 'bg-slate-800 border border-slate-700' : 'bg-white border border-[#ebebeb]'}`}>
+                  <div role="menu" aria-label="Créer" onKeyDown={(e) => { if (e.key === 'Escape') setShowQuickAdd(false); }} className={`absolute right-0 top-full mt-2 w-60 max-w-[calc(100vw-1rem)] rounded-2xl shadow-2xl z-50 py-1.5 overflow-hidden ${isDark ? 'bg-slate-800 border border-slate-700' : 'bg-white border border-[#ebebeb]'}`}>
                     {[
                       { label: 'Nouveau devis', icon: FileText, p: 'devis', create: 'devis' },
                       { label: 'Nouveau client', icon: Users, p: 'clients', create: 'client' },
@@ -1851,11 +1851,12 @@ export default function App() {
                     ].map(item => (
                       <button
                         key={item.label}
+                        role="menuitem"
                         onClick={() => { if (item.create) setCreateMode(p => ({...p, [item.create]: true})); setPage(item.p); setShowQuickAdd(false); }}
-                        className={`w-full flex items-center gap-3 px-4 py-3 transition-colors ${isDark ? 'hover:bg-slate-700 text-white' : 'hover:bg-[#fafafa] text-[#1a1a1a]'}`}
+                        className={`w-full min-h-[48px] flex items-center gap-3 px-4 text-left text-[15px] font-medium transition-colors ${isDark ? 'hover:bg-slate-700 text-white' : 'hover:bg-[#fafafa] text-[#1a1a1a]'}`}
                       >
-                        <item.icon size={18} style={{color: couleur}} />
-                        <span>{item.label}</span>
+                        <item.icon size={18} className="flex-shrink-0" style={{color: couleur}} />
+                        <span className="whitespace-nowrap">{item.label}</span>
                         <ChevronRight size={16} className={`ml-auto ${tc.textMuted}`} />
                       </button>
                     ))}
@@ -1961,7 +1962,9 @@ export default function App() {
             showFABDevisWizard || showFABQuickClient || showFABQuickChantier ||
             showSearch ||
             // Hide FAB on pages that have their own creation button
-            ['devis', 'chantiers', 'clients', 'equipe', 'catalogue', 'settings', 'memos'].includes(page)
+            // Accueil : « Nouveau devis » et le « + » de l'en-tête suffisent ; le bouton flottant y recouvrait
+            // les boutons « Relancer » / « Finaliser » d'À faire aujourd'hui (recette du 9 oct.).
+            ['dashboard', 'devis', 'chantiers', 'clients', 'equipe', 'catalogue', 'settings', 'memos', 'finances'].includes(page)
           }
         />
 
@@ -2296,10 +2299,12 @@ export default function App() {
       )}
 
       {/* Toast Notifications */}
+      {/* Téléphone : en haut, sous la barre d'état — en bas, la notification recouvrait le bouton
+          des fenêtres qui montent du bas, et restait cachée sous l'éditeur de devis (z-1000). */}
       {toast && (
-        <div className="fixed bottom-16 lg:bottom-4 right-4 z-50">
+        <div role="status" aria-live="polite" className="fixed z-[1100] left-3 right-3 top-[calc(env(safe-area-inset-top,0px)+0.75rem)] flex justify-center lg:left-auto lg:right-4 lg:top-auto lg:bottom-4 lg:block">
           <div
-            className={`flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg animate-slide-up ${
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg animate-slide-up max-w-full lg:max-w-md ${
               toast.type === 'success' ? (isDark ? 'bg-emerald-900/90 text-emerald-100' : 'bg-emerald-600 text-white') :
               toast.type === 'error' ? (isDark ? 'bg-red-900/90 text-red-100' : 'bg-red-600 text-white') :
               toast.type === 'warning' ? (isDark ? 'bg-amber-900/90 text-amber-100' : 'bg-amber-600 text-white') :

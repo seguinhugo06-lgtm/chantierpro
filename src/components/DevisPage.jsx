@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo, Suspense, lazy } from 'react';
-import { Plus, ArrowLeft, Download, Trash2, Send, Mail, MessageCircle, Edit3, Check, X, FileText, Receipt, Clock, Search, ChevronRight, ChevronUp, ChevronDown, Star, Filter, Eye, Pen, CreditCard, Banknote, CheckCircle, AlertCircle, AlertTriangle, XCircle, Building2, Copy, TrendingUp, QrCode, Sparkles, PenTool, MoreVertical, Loader2, Link2, Mic, Zap, ArrowUpDown, Bell, RotateCcw, BarChart3, BellRing, ClipboardList, Circle, LayoutGrid, List, Kanban, Droplets, Paintbrush } from 'lucide-react';
+import { Plus, ArrowLeft, Download, Trash2, Send, Mail, MessageCircle, Edit3, Check, X, FileText, Receipt, Clock, Search, ChevronRight, ChevronUp, ChevronDown, Star, Filter, Eye, Pen, CreditCard, Banknote, CheckCircle, AlertCircle, AlertTriangle, XCircle, Building2, Copy, TrendingUp, QrCode, Sparkles, PenTool, MoreVertical, Loader2, Link2, Mic, Zap, ArrowUpDown, Bell, RotateCcw, BarChart3, BellRing, ClipboardList, Circle, LayoutGrid, List, Kanban, Droplets, Paintbrush, SlidersHorizontal } from 'lucide-react';
 import supabase, { isDemo } from '../supabaseClient';
 import { useSubscriptionStore, PLANS } from '../stores/subscriptionStore';
 const PipelineKanban = lazy(() => import('./pipeline/PipelineKanban'));
@@ -207,6 +207,9 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   const [selected, setSelected] = useState(selectedDevis || null);
   const [filter, setFilter] = useState('all');
   const [periodFilter, setPeriodFilter] = useState('all'); // B7: all, month, quarter, year
+  // Téléphone : période, tri, vue, export, client et chantier repliés derrière « Filtres » —
+  // dépliés, ils repoussaient le premier devis sous huit rangées d'outils (recette du 9 oct.).
+  const [filtresOuverts, setFiltresOuverts] = useState(false);
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 300);
   const [sortBy, setSortBy] = useState('recent'); // recent, status, amount
@@ -2030,7 +2033,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   const sendWhatsApp = (doc) => {
     const client = clients.find(c => c.id === doc.client_id);
     if (!client) { showToast('Client introuvable. Veuillez associer un client au devis.', 'error'); return; }
-    if (!client?.telephone) { showToast('Aucun telephone client renseigne', 'error'); return; }
+    if (!client?.telephone) { showToast('Aucun téléphone client renseigné', 'error'); return; }
     const wasBrouillon = doc.statut === 'brouillon';
     if (wasBrouillon) {
       onUpdate(doc.id, { statut: 'envoye' });
@@ -2109,7 +2112,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     const client = clients.find(c => c.id === doc.client_id);
     if (!client) { showToast('Client introuvable. Veuillez associer un client au devis.', 'error'); return; }
     const phone = (client?.telephone || '').replace(/\s/g, '');
-    if (!phone) { showToast('Aucun telephone client renseigne', 'error'); return; }
+    if (!phone) { showToast('Aucun téléphone client renseigné', 'error'); return; }
     if (!/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)) {
       showToast('SMS disponible uniquement sur mobile', 'info');
       return;
@@ -2435,8 +2438,9 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 
         {/* ============ ZONE 1: UNIFIED HEADER ============ */}
         <div className={`rounded-xl border p-3 sm:p-4 ${cardBg}`}>
-          {/* Top row: back, title, client, actions */}
-          <div className="flex items-start gap-3 mb-4">
+          {/* Top row: back, title, client, actions. Téléphone : les actions passent sur leur propre
+              ligne, nommées — à côté du titre, elles réduisaient le numéro à « DE… » (recette du 9 oct.). */}
+          <div className="flex flex-wrap items-start gap-3 mb-4">
             <button onClick={() => { setMode('list'); setSelected(null); }} className={`p-2.5 rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center flex-shrink-0 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`} title="Retour à la liste" aria-label="Retour à la liste">
               <ArrowLeft size={18} className={textMuted} />
             </button>
@@ -2489,37 +2493,37 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
             </div>
 
             {/* Header actions - with labels for better accessibility */}
-            <div className="flex items-center gap-1.5 flex-shrink-0">
+            <div className="w-full sm:w-auto flex items-center gap-2 sm:gap-1.5 sm:flex-shrink-0">
               <button
                 onClick={() => tryDownload(selected, async (doc) => { setActionLoading('pdf'); try { await printPDF(doc); } catch(e) { /* PDF error handled silently */ } finally { setActionLoading(null); } })}
                 disabled={actionLoading === 'pdf'}
-                className="min-w-[44px] min-h-[44px] sm:px-3 bg-blue-500 hover:bg-blue-600 text-white rounded-xl flex items-center justify-center gap-2 transition-colors disabled:opacity-60"
+                className="flex-1 sm:flex-none min-w-[44px] min-h-[44px] px-3 bg-blue-500 hover:bg-blue-600 text-white rounded-xl flex items-center justify-center gap-2 transition-colors disabled:opacity-60"
                 title="Télécharger le PDF"
                 aria-label="Télécharger le PDF"
               >
                 {actionLoading === 'pdf' ? <Loader2 size={18} className="animate-spin flex-shrink-0" /> : <Download size={18} className="flex-shrink-0" />}
-                <span className="hidden sm:inline text-sm font-medium">PDF</span>
+                <span className="text-sm font-medium">PDF</span>
               </button>
               <button
                 onClick={() => previewPDF(selected)}
-                className={`min-w-[44px] min-h-[44px] sm:px-3 rounded-xl transition-colors flex items-center justify-center gap-2 ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}
+                className={`flex-1 sm:flex-none min-w-[44px] min-h-[44px] px-3 rounded-xl transition-colors flex items-center justify-center gap-2 ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}
                 title="Aperçu du document"
                 aria-label="Voir l'aperçu du document"
               >
                 <Eye size={18} className="flex-shrink-0" />
-                <span className="hidden sm:inline text-sm font-medium">Aperçu</span>
+                <span className="text-sm font-medium">Aperçu</span>
               </button>
               {/* Modifier button - only for editable statuses + edit permission */}
               {canPerform('devis', 'edit') && ['brouillon', 'envoye', 'vu'].includes(selected.statut) && (
                 <button
                   onClick={() => openEditor(selected)}
-                  className="min-w-[44px] min-h-[44px] sm:px-3 rounded-xl transition-colors flex items-center justify-center gap-2 text-white hover:shadow-lg"
+                  className="flex-1 sm:flex-none min-w-[44px] min-h-[44px] px-3 rounded-xl transition-colors flex items-center justify-center gap-2 text-white hover:shadow-lg"
                   style={{ backgroundColor: couleur }}
                   title="Modifier ce document"
                   aria-label="Modifier ce document"
                 >
                   <Pen size={18} className="flex-shrink-0" />
-                  <span className="hidden sm:inline text-sm font-medium">Modifier</span>
+                  <span className="text-sm font-medium">Modifier</span>
                 </button>
               )}
               <div className="relative">
@@ -4009,7 +4013,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                 </div>
               </div>
               <h3 className={`text-lg font-bold text-center mb-1 ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                {showSendConfirmation.doc?.type === 'facture' ? 'Facture' : 'Devis'} envoy{showSendConfirmation.doc?.type === 'facture' ? 'e' : 'e'} !
+                {showSendConfirmation.doc?.type === 'facture' ? 'Facture envoyée' : 'Devis envoyé'} !
               </h3>
               <p className={`text-sm text-center mb-5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                 via {showSendConfirmation.canal}
@@ -4037,7 +4041,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                   onClick={() => {
                     const url = buildSignatureUrl(showSendConfirmation.doc.signature_token);
                     navigator.clipboard.writeText(url);
-                    showToast('Lien de signature copie !', 'success');
+                    showToast('Lien de signature copié !', 'success');
                   }}
                   className={`w-full px-4 py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2 mb-3 transition-colors ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-200' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'}`}
                 >
@@ -4928,7 +4932,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         const hidePrice = (v) => !canViewPrices ? '—' : modeDiscret ? '···' : v;
 
         return (
-          <div className={`grid grid-cols-2 ${avoirsEmis.length > 0 ? 'sm:grid-cols-5' : 'sm:grid-cols-4'} gap-3 sm:gap-4`}>
+          <div className={`bandeau-chiffres grid grid-cols-2 ${avoirsEmis.length > 0 ? 'sm:grid-cols-5' : 'sm:grid-cols-4'} gap-3 sm:gap-4`}>
             <KPICard
               icon={CheckCircle} tone="money" label="CA encaissé"
               value={hidePrice(formatMoney(montantPayees))}
@@ -5026,13 +5030,24 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         {/* Row 1: Search + Period filters + Sort + Export */}
         {/* flex-wrap : sur téléphone la ligne ne tient pas, et le sélecteur de vue était coupé. */}
         <div className="flex flex-wrap gap-2 items-center">
-          <div className="relative w-full sm:w-auto sm:flex-1 sm:max-w-[200px]">
+          <div className="relative flex-1 min-w-0 sm:max-w-[200px]">
             <Search size={14} className={`absolute left-3 top-1/2 -translate-y-1/2 ${textMuted}`} />
-            <input placeholder="Rechercher..." aria-label="Rechercher un document" value={search} onChange={e => setSearch(e.target.value)} className={`w-full pl-8 pr-3 py-1.5 border rounded-xl text-sm ${inputBg}`} />
+            <input placeholder="Rechercher..." aria-label="Rechercher un document" value={search} onChange={e => setSearch(e.target.value)} className={`w-full pl-8 pr-3 py-2.5 sm:py-1.5 border rounded-xl text-sm ${inputBg}`} />
           </div>
+          {(() => {
+            const actifs = (periodFilter !== 'all') + !!clientFilter + !!chantierFilter + (sortBy !== 'recent');
+            return (
+              <button type="button" onClick={() => setFiltresOuverts(o => !o)} aria-expanded={filtresOuverts} aria-controls="devis-filtres"
+                className={`sm:hidden flex-shrink-0 inline-flex items-center gap-1.5 px-3 h-11 rounded-xl border text-sm font-medium ${isDark ? 'border-slate-600 text-slate-200' : 'border-slate-200 text-slate-700'}`}>
+                <SlidersHorizontal size={16} /> Filtres
+                {actifs > 0 && <span className="min-w-[18px] h-[18px] px-1 rounded-full text-[11px] font-bold text-white flex items-center justify-center" style={{ background: couleur }}>{actifs}</span>}
+              </button>
+            );
+          })()}
+          <div id="devis-filtres" className={`${filtresOuverts ? 'flex' : 'hidden'} w-full flex-wrap items-center gap-2 sm:contents`}>
           <div role="group" aria-label="Filtrer par période" className="flex gap-1">
             {[['all', 'Tout'], ['month', 'Ce mois'], ['quarter', 'Trim.'], ['year', 'Année']].map(([k, v]) => (
-              <button key={k} onClick={() => setPeriodFilter(k)} aria-pressed={periodFilter === k} className={`px-2 py-1 rounded-lg text-xs whitespace-nowrap ${periodFilter === k ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`} style={periodFilter === k ? {background: couleur} : {}}>
+              <button key={k} onClick={() => setPeriodFilter(k)} aria-pressed={periodFilter === k} className={`px-3 sm:px-2 py-2 sm:py-1 rounded-lg text-xs whitespace-nowrap ${periodFilter === k ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`} style={periodFilter === k ? {background: couleur} : {}}>
                 {v}
               </button>
             ))}
@@ -5104,9 +5119,10 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
             </div>
           )}
           </div>
+          </div>
         </div>
-        {/* Row 1.5: Client & Chantier filters */}
-        <div className="flex gap-2 items-center flex-wrap">
+        {/* Row 1.5: Client & Chantier filters (repliés sur téléphone avec les autres filtres) */}
+        <div className={`${filtresOuverts ? 'flex' : 'hidden'} sm:flex gap-2 items-center flex-wrap`}>
           <select value={clientFilter} onChange={e => { setClientFilter(e.target.value); setSelectedIds(new Set()); }} className={`px-2 py-1 rounded-lg text-xs border max-w-[160px] ${isDark ? 'bg-slate-700 border-slate-600 text-slate-300' : 'bg-white border-slate-200 text-slate-600'}`}>
             <option value="">Tous les clients</option>
             {clients.filter(c => c.nom).sort((a, b) => (a.nom || '').localeCompare(b.nom || '', 'fr')).map(c => (
@@ -5150,7 +5166,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
             const count = k === 'en_relance' ? relances.counts.total : (filterCounts[k] || 0);
             if (k === 'acomptes' && count === 0) return null;
             return (
-              <button key={k} onClick={() => setFilter(k)} aria-pressed={filter === k} className={`px-2.5 py-1 rounded-lg text-xs whitespace-nowrap flex items-center gap-1 ${filter === k ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`} style={filter === k ? {background: couleur} : {}}>
+              <button key={k} onClick={() => setFilter(k)} aria-pressed={filter === k} className={`px-3 sm:px-2.5 py-2 sm:py-1 rounded-lg text-xs whitespace-nowrap flex items-center gap-1 ${filter === k ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`} style={filter === k ? {background: couleur} : {}}>
                 {k === 'acomptes' && <CreditCard size={11} />}
                 {k === 'situations' && <BarChart3 size={11} />}
                 {k === 'avoirs' && <RotateCcw size={11} />}
@@ -5475,7 +5491,9 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           const isNameless = client && !clientName;
 
           return (
-            <div key={d.id} onClick={() => { setSelected(d); setMode('preview'); if (d.statut === 'envoye' && d.type === 'devis') markAsViewed(d); }} className={`${cardBg} rounded-xl border cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all duration-150 overflow-hidden`}>
+            <div key={d.id} role="button" tabIndex={0} aria-label={`Ouvrir ${d.numero || (d.type === 'facture' ? 'la facture' : 'le devis')}`}
+              onKeyDown={(e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target === e.currentTarget) { e.preventDefault(); e.currentTarget.click(); } }}
+              onClick={() => { setSelected(d); setMode('preview'); if (d.statut === 'envoye' && d.type === 'devis') markAsViewed(d); }} className={`${cardBg} rounded-xl border cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 hover:shadow-md hover:-translate-y-0.5 transition-all duration-150 overflow-hidden`}>
               {/* Status color bar at top */}
               <div className="h-[3px] w-full" style={{ backgroundColor: STATUS_BAR_COLORS[isExpired(d) ? 'expire' : d.statut] || '#94a3b8' }} />
               <div className="px-3 py-2.5">

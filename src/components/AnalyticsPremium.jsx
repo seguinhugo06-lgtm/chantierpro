@@ -203,7 +203,7 @@ export default function AnalyticsPremium({
       </div>
 
       {/* ── Section 1: KPIs + Funnel ───────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className="bandeau-chiffres grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <KPICard
           icon={Target}
           label="Taux de conversion"
