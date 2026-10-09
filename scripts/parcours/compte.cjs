@@ -30,7 +30,8 @@ module.exports = [
       await page.evaluate(() => document.getElementById('code-testeur').form.requestSubmit());
       await attendre(800);
       const texte = await page.evaluate(() => document.body.innerText);
-      verifier(texte.includes('OFFERT'), 'badge OFFERT');
+      const pastille = await page.evaluate(() => [...document.querySelectorAll('[data-ui="Pastille"]')].some((p) => p.innerText.trim() === 'Offert'));
+      verifier(pastille, 'pastille « Offert »');
       verifier(/Offert jusqu'au .+ — aucun prélèvement/.test(texte), 'date de fin affichée');
       verifier(!texte.includes('Mes factures et paiement'), 'pas d’accès au portail Stripe');
     },
