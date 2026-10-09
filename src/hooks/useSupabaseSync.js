@@ -1292,6 +1292,22 @@ function extractBadColumn(msg) {
 }
 
 /**
+ * Erreur d'écriture en base, avec ce qu'il faut pour décider quoi en faire : le statut HTTP
+ * (0 = pas de réseau) et le code PostgREST / PostgreSQL. Sans eux, l'app ne savait pas
+ * distinguer une coupure réseau d'un refus de la base, et mettait les deux en file
+ * « hors ligne » en annonçant un succès (recette du 9 oct. 2026).
+ */
+export function erreurEcriture(table, error, status) {
+  const e = new Error(`Échec d'enregistrement (${table}) : ${error?.message || 'erreur inconnue'}`);
+  e.table = table;
+  e.code = error?.code || '';
+  e.status = typeof status === 'number' ? status : undefined;
+  e.details = error?.details;
+  e.messageBase = error?.message || '';
+  return e;
+}
+
+/**
  * Builds the Supabase (snake_case) payload from a local item: maps fields,
  * applies org scope, adds updated_at, and guarantees JSON-serializability.
  */
@@ -1328,7 +1344,8 @@ async function writeWithColumnRetry(table, mapping, supabaseData, runQuery) {
     try {
       logger.debug(`💾 Saving to ${table} (attempt ${attempt + 1}/${MAX_ATTEMPTS}):`, Object.keys(supabaseData).join(', '));
 
-      const { data, error } = await runQuery(supabaseData);
+      const reponse = await runQuery(supabaseData);
+      const { data, error } = reponse;
 
       if (error) {
         const badCol = extractBadColumn(error.message);
@@ -1350,11 +1367,7 @@ async function writeWithColumnRetry(table, mapping, supabaseData, runQuery) {
         }
         console.error(`❌ Error saving to ${table}:`, error.message);
         // Surface constraint violations with a clearer message
-        if (error.message?.includes('check constraint') || error.message?.includes('statut_check') || error.code === '23514') {
-          const detail = table === 'devis' ? ` (statut: "${supabaseData.statut}")` : '';
-          throw new Error(`Valeur invalide${detail}: ${error.message}`);
-        }
-        throw new Error(`Failed to save to ${table}: ${error.message}`);
+        throw erreurEcriture(table, error, reponse.status);
       }
 
       if (strippedCols.length > 0) {
@@ -1365,6 +1378,7 @@ async function writeWithColumnRetry(table, mapping, supabaseData, runQuery) {
       logger.debug(`✅ Saved to ${table}:`, data?.id);
       return mapping.fromSupabase(data);
     } catch (error) {
+      if (error?.table) throw error; // déjà une erreur de la base, analysée plus haut
       const msg = error.message || '';
       const badCol = extractBadColumn(msg);
       if (badCol && attempt < MAX_ATTEMPTS - 1) {
@@ -1390,7 +1404,10 @@ async function writeWithColumnRetry(table, mapping, supabaseData, runQuery) {
   // Gave up (e.g. a DB trigger references a missing column). Throw so the caller
   // surfaces the error + queues the item offline — never silently "succeed".
   const broken = strippedCols.find(c => c.startsWith('!'));
-  throw new Error(`Échec de sauvegarde (${table})${broken ? ` : la base référence une colonne manquante « ${broken.slice(1)} »` : ''}.`);
+  throw erreurEcriture(table, {
+    code: 'SCHEMA',
+    message: broken ? `la base référence une colonne manquante « ${broken.slice(1)} »` : 'trop de colonnes refusées',
+  }, 400);
 }
 
 /**
@@ -1433,28 +1450,30 @@ export async function updateItem(table, id, item, userId, orgId) {
 }
 
 /**
- * Delete an item from Supabase
+ * Supprime une ligne. Lève une `erreurEcriture` si la base refuse.
+ * Un refus RLS sur DELETE ne renvoie AUCUNE erreur, seulement 0 ligne supprimée : on relit
+ * alors la ligne. Encore là → refus ; disparue → déjà supprimée (rejeu, double appui), c'est bon.
+ * Avant : l'erreur était avalée (`return false`, jamais testé) et l'écran disait « supprimé ».
  */
 export async function deleteItem(table, itemId, userId, orgId) {
   if (isDemo || !supabase || !userId) return true;
 
-  try {
-    const { error } = await scopeToOrg(
-      supabase.from(table).delete().eq('id', itemId),
-      orgId, userId
-    );
+  const reponse = await scopeToOrg(
+    supabase.from(table).delete().eq('id', itemId),
+    orgId, userId
+  ).select('id');
+  if (reponse.error) throw erreurEcriture(table, reponse.error, reponse.status);
 
-    if (error) {
-      console.error(`Error deleting from ${table}:`, error);
-      return false;
+  if (!reponse.data?.length) {
+    const relue = await supabase.from(table).select('id').eq('id', itemId).maybeSingle();
+    if (relue.error) throw erreurEcriture(table, relue.error, relue.status);
+    if (relue.data) {
+      throw erreurEcriture(table, { code: '42501', message: 'suppression refusée par la base (droits)' }, 403);
     }
-
-    logger.debug(`Deleted from ${table}:`, itemId);
-    return true;
-  } catch (error) {
-    console.error(`Error deleting from ${table}:`, error);
-    return false;
   }
+
+  logger.debug(`Deleted from ${table}:`, itemId);
+  return true;
 }
 
 export default {

@@ -13,6 +13,7 @@ import { toast } from '../stores/toastStore';
 import { useSubscriptionStore, PLANS } from '../stores/subscriptionStore';
 import { celebrateMilestone } from '../lib/celebrate';
 import { captureException } from '../lib/sentry';
+import { estEcritureDifferable, messageEcritureRefusee } from '../lib/erreursEcriture';
 
 /**
  * DataContext - Global data state (clients, devis, chantiers, etc.)
@@ -468,6 +469,77 @@ export function DataProvider({ children, initialData = {} }) {
     return false;
   }, []);
 
+  // ============ ÉCRITURES EN BASE ============
+  // Chaque écriture rend un résultat, pour que l'écran n'annonce un succès qu'une fois la base d'accord :
+  // une création rend l'élément (enregistré, ou en attente de réseau) ou null si la base l'a refusé ;
+  // une modification ou une suppression rend true (faite, ou en attente de réseau) ou false (refusée).
+  // Avant (recette du 9 oct. 2026) : tout échec partait en file « hors ligne », y compris les refus
+  // de la base qui ne passeraient jamais, et l'écran disait « enregistré ».
+  const echecEcriture = useCallback(async (error, { action, table, data, annuler }) => {
+    if (estEcritureDifferable(error)) {
+      await queueOffline(action, table, data);
+      toast.info('Pas de connexion', 'Enregistré sur cet appareil : envoi automatique au retour du réseau.');
+      return true;
+    }
+    annuler?.();
+    const titre = action === 'delete' ? 'Suppression refusée'
+      : action === 'update' ? 'Modification non enregistrée' : 'Non enregistré';
+    toast.error(titre, messageEcritureRefusee(error));
+    captureException(error, { context: `écriture ${table} (${action})`, code: error?.code, status: error?.status });
+    return false;
+  }, []);
+
+  const creerEnBase = useCallback(async (table, item, setter) => {
+    if (isDemo) return item;
+    if (!userId) {
+      pendingSavesRef.current.push({ table, item });
+      return item;
+    }
+    try {
+      const saved = await saveItem(table, item, userId, orgId);
+      setter(prev => prev.map(x => x.id === item.id ? saved : x));
+      return saved;
+    } catch (error) {
+      const differe = await echecEcriture(error, {
+        action: 'create', table, data: item,
+        annuler: () => setter(prev => prev.filter(x => x.id !== item.id)),
+      });
+      return differe ? item : null;
+    }
+  }, [userId, orgId, echecEcriture]);
+
+  // `versBase` adapte la ligne envoyée sans toucher à ce que l'écran garde (ex. statut « vu »).
+  const modifierEnBase = useCallback(async (table, id, avant, data, setter, versBase = (x) => x) => {
+    if (isDemo || !avant) return true;
+    const fusion = versBase({ ...avant, ...data });
+    if (!userId) {
+      pendingSavesRef.current.push({ table, item: fusion });
+      return true;
+    }
+    try {
+      await updateItem(table, id, fusion, userId, orgId);
+      return true;
+    } catch (error) {
+      return echecEcriture(error, {
+        action: 'update', table, data: { id, ...data },
+        annuler: () => setter(prev => prev.map(x => x.id === id ? avant : x)),
+      });
+    }
+  }, [userId, orgId, echecEcriture]);
+
+  const supprimerEnBase = useCallback(async (table, id, avant, setter) => {
+    if (isDemo || !userId) return true;
+    try {
+      await deleteItem(table, id, userId, orgId);
+      return true;
+    } catch (error) {
+      return echecEcriture(error, {
+        action: 'delete', table, data: { id },
+        annuler: () => avant && setter(prev => prev.some(x => x.id === id) ? prev : [...prev, avant]),
+      });
+    }
+  }, [userId, orgId, echecEcriture]);
+
   // ============ CLIENT OPERATIONS ============
   const addClient = useCallback(async (data) => {
     if (!autoriserCreation('clients')) return null;
@@ -484,30 +556,8 @@ export function DataProvider({ children, initialData = {} }) {
     // Audit: log creation
     _audit(isDemo ? null : supabase, { entityType: 'client', entityId: newClient.id, action: 'created', userId, orgId, userName });
 
-    // Save to Supabase
-    if (!isDemo) {
-      if (userId) {
-        try {
-          logger.debug('💾 addClient: saving to Supabase, userId=', userId, 'clientId=', newClient.id);
-          const saved = await saveItem('clients', newClient, userId, orgId);
-          if (saved) {
-            setClients(prev => prev.map(c => c.id === newClient.id ? saved : c));
-            logger.debug('✅ addClient: saved successfully');
-            return saved;
-          }
-        } catch (error) {
-          console.error('❌ addClient: Supabase save failed:', error.message);
-          toast.error('Erreur de sauvegarde', error.message);
-          await queueOffline('create', 'clients', newClient);
-        }
-      } else {
-        pendingSavesRef.current.push({ table: 'clients', item: newClient });
-        logger.debug('⏳ addClient: queued (userId not yet available)');
-      }
-    }
-
-    return newClient;
-  }, [userId, autoriserCreation, orgId, userName]);
+    return creerEnBase('clients', newClient, setClients);
+  }, [autoriserCreation, orgId, userId, userName, creerEnBase]);
 
   const updateClient = useCallback(async (id, data) => {
     const oldClient = clients.find(c => c.id === id);
@@ -523,41 +573,18 @@ export function DataProvider({ children, initialData = {} }) {
       }
     }
 
-    if (!isDemo) {
-      if (userId) {
-        try {
-          const current = clients.find(c => c.id === id);
-          if (current) {
-            await updateItem('clients', id, { ...current, ...data }, userId, orgId);
-          }
-        } catch (error) {
-          console.error('Error updating client in Supabase:', error);
-          await queueOffline('update', 'clients', { id, ...data });
-        }
-      } else {
-        const current = clients.find(c => c.id === id);
-        if (current) {
-          pendingSavesRef.current.push({ table: 'clients', item: { ...current, ...data } });
-        }
-      }
-    }
-  }, [userId, clients, orgId, userName]);
+    return modifierEnBase('clients', id, oldClient, data, setClients);
+  }, [userId, clients, orgId, userName, modifierEnBase]);
 
   const deleteClient = useCallback(async (id) => {
+    const avant = clients.find(c => c.id === id);
     setClients(prev => prev.filter(c => c.id !== id));
 
     // Audit: log deletion
     _audit(isDemo ? null : supabase, { entityType: 'client', entityId: id, action: 'deleted', userId, orgId, userName });
 
-    if (!isDemo && userId) {
-      try {
-        await deleteItem('clients', id, userId, orgId);
-      } catch (error) {
-        console.error('Error deleting client from Supabase:', error);
-        await queueOffline('delete', 'clients', { id });
-      }
-    }
-  }, [userId, orgId, userName]);
+    return supprimerEnBase('clients', id, avant, setClients);
+  }, [userId, clients, orgId, userName, supprimerEnBase]);
 
   const getClient = useCallback((id) => {
     return clients.find(c => c.id === id);
@@ -571,6 +598,7 @@ export function DataProvider({ children, initialData = {} }) {
     // Require client_id — reject if missing (ghost devis prevention)
     if (!data.client_id) {
       console.warn('addDevis: rejected ghost devis — missing client_id. Data:', { numero: data.numero, type: data.type, statut: data.statut });
+      toast.error('Non enregistré', `Choisissez d'abord un client pour ce${data.type === 'facture' ? 'tte facture' : ' devis'}.`);
       return null;
     }
     // Validate client_id is a proper UUID to prevent ghost data (demo IDs like 'c1')
@@ -603,36 +631,8 @@ export function DataProvider({ children, initialData = {} }) {
     // Audit: log creation (fire-and-forget)
     _audit(isDemo ? null : supabase, { entityType: 'devis', entityId: newDevis.id, action: 'created', userId, orgId, userName });
 
-    if (!isDemo) {
-      if (userId) {
-        try {
-          logger.debug('💾 addDevis: saving to Supabase, userId=', userId, 'numero=', newDevis.numero);
-          const saved = await saveItem('devis', newDevis, userId, orgId);
-          if (saved) {
-            setDevis(prev => prev.map(d => d.id === newDevis.id ? saved : d));
-            logger.debug('✅ addDevis: saved successfully');
-            return saved;
-          }
-        } catch (error) {
-          console.error('❌ addDevis: Supabase save failed:', error.message);
-          const msg = error.message || '';
-          if (msg.includes('check constraint') || msg.includes('statut_check') || msg.includes('Valeur invalide')) {
-            toast.error('Erreur de statut', `Le statut "${newDevis.statut}" n'est pas valide.`);
-            // Remove the optimistic addition
-            setDevis(prev => prev.filter(d => d.id !== newDevis.id));
-          } else {
-            toast.error('Erreur sauvegarde devis', msg);
-            await queueOffline('create', 'devis', newDevis);
-          }
-        }
-      } else {
-        pendingSavesRef.current.push({ table: 'devis', item: newDevis });
-        logger.debug('⏳ addDevis: queued (userId not yet available)');
-      }
-    }
-
-    return newDevis;
-  }, [userId, devis, entrepriseId, autoriserCreation, orgId, userName]);
+    return creerEnBase('devis', newDevis, setDevis);
+  }, [userId, devis, entrepriseId, autoriserCreation, orgId, userName, creerEnBase]);
 
   const updateDevis = useCallback(async (id, data) => {
     // Prevent removing client_id (BUG-001: DB NOT NULL constraint)
@@ -657,78 +657,36 @@ export function DataProvider({ children, initialData = {} }) {
       if (isStatusChange && ['envoye', 'accepte', 'signe', 'acompte_facture', 'facture'].includes(data.statut)) {
         _snapshot(sb, { entityType: 'devis', entityId: id, data: { ...oldDevis, ...data }, trigger: 'auto_status_change', userId, orgId });
       }
-      // Délice : célébrer les moments qui rapportent (devis signé / facture payée)
-      if (isStatusChange) {
-        const isDevisSigned = oldDevis.type !== 'facture'
-          && (data.statut === 'accepte' || data.statut === 'signe')
-          && !['accepte', 'signe'].includes(oldDevis.statut);
-        const isFacturePaid = oldDevis.type === 'facture'
-          && data.statut === 'payee'
-          && oldDevis.statut !== 'payee';
-        if (isDevisSigned) celebrateMilestone('devis_signe', toast);
-        else if (isFacturePaid) celebrateMilestone('facture_payee', toast);
-      }
     }
 
-    if (!isDemo) {
-      if (userId) {
-        const current = devis.find(d => d.id === id);
-        try {
-          if (current) {
-            // DB constraint doesn't allow 'vu' statut — save as 'envoye' + viewed_at
-            const dbData = { ...data };
-            if (dbData.statut === 'vu') {
-              dbData.statut = 'envoye'; // Keep 'envoye' in DB, 'vu' computed from viewed_at at load
-            }
-            const merged = { ...current, ...dbData };
-            if (merged.statut === 'vu') {
-              merged.statut = 'envoye';
-            }
-            logger.debug('💾 updateDevis: saving to Supabase, statut=', merged.statut);
-            await updateItem('devis', id, merged, userId, orgId);
-            logger.debug('✅ updateDevis: saved successfully');
-          }
-        } catch (error) {
-          console.error('❌ updateDevis: Supabase save failed:', error.message);
-          const msg = error.message || '';
-          // Constraint violation = data issue, not network — don't queue offline
-          if (msg.includes('check constraint') || msg.includes('statut_check') || msg.includes('Valeur invalide')) {
-            toast.error('Erreur de statut', `Le statut "${data.statut || 'inconnu'}" n'est pas valide. Modification non enregistrée.`);
-            // Revert the optimistic update
-            if (current) {
-              setDevis(prev => prev.map(d => d.id === id ? current : d));
-            }
-          } else {
-            toast.error('Erreur mise à jour', msg);
-            await queueOffline('update', 'devis', { id, ...data });
-          }
-        }
-      } else {
-        // Queue the full merged item for pending save
-        const current = devis.find(d => d.id === id);
-        if (current) {
-          pendingSavesRef.current.push({ table: 'devis', item: { ...current, ...data } });
-          logger.debug('⏳ Devis update queued for pending save');
-        }
-      }
+    // La contrainte de la base n'admet pas « vu » : on enregistre « envoyé », et « vu » se recalcule
+    // au chargement depuis viewed_at.
+    const ok = await modifierEnBase('devis', id, oldDevis, data, setDevis,
+      (ligne) => (ligne.statut === 'vu' ? { ...ligne, statut: 'envoye' } : ligne));
+
+    // Délice : célébrer les moments qui rapportent (devis signé / facture payée), une fois la base d'accord.
+    if (ok && oldDevis && data.statut && data.statut !== oldDevis.statut) {
+      const isDevisSigned = oldDevis.type !== 'facture'
+        && (data.statut === 'accepte' || data.statut === 'signe')
+        && !['accepte', 'signe'].includes(oldDevis.statut);
+      const isFacturePaid = oldDevis.type === 'facture'
+        && data.statut === 'payee'
+        && oldDevis.statut !== 'payee';
+      if (isDevisSigned) celebrateMilestone('devis_signe', toast);
+      else if (isFacturePaid) celebrateMilestone('facture_payee', toast);
     }
-  }, [userId, devis, orgId, userName]);
+    return ok;
+  }, [userId, devis, orgId, userName, modifierEnBase]);
 
   const deleteDevis = useCallback(async (id) => {
+    const avant = devis.find(d => d.id === id);
     setDevis(prev => prev.filter(d => d.id !== id));
 
     // Audit: log deletion
     _audit(isDemo ? null : supabase, { entityType: 'devis', entityId: id, action: 'deleted', userId, orgId, userName });
 
-    if (!isDemo && userId) {
-      try {
-        await deleteItem('devis', id, userId, orgId);
-      } catch (error) {
-        console.error('Error deleting devis from Supabase:', error);
-        await queueOffline('delete', 'devis', { id });
-      }
-    }
-  }, [userId, orgId, userName]);
+    return supprimerEnBase('devis', id, avant, setDevis);
+  }, [userId, devis, orgId, userName, supprimerEnBase]);
 
   const getDevis = useCallback((id) => {
     return devis.find(d => d.id === id);
@@ -762,26 +720,8 @@ export function DataProvider({ children, initialData = {} }) {
     // Audit: log creation
     _audit(isDemo ? null : supabase, { entityType: 'chantier', entityId: newChantier.id, action: 'created', userId, orgId, userName });
 
-    if (!isDemo) {
-      if (userId) {
-        try {
-          const saved = await saveItem('chantiers', newChantier, userId, orgId);
-          if (saved) {
-            setChantiers(prev => prev.map(c => c.id === newChantier.id ? saved : c));
-            return saved;
-          }
-        } catch (error) {
-          console.error('Error saving chantier to Supabase:', error);
-          await queueOffline('create', 'chantiers', newChantier);
-        }
-      } else {
-        pendingSavesRef.current.push({ table: 'chantiers', item: newChantier });
-        logger.debug('⏳ Chantier queued for pending save');
-      }
-    }
-
-    return newChantier;
-  }, [userId, entrepriseId, autoriserCreation, orgId, userName]);
+    return creerEnBase('chantiers', newChantier, setChantiers);
+  }, [userId, entrepriseId, autoriserCreation, orgId, userName, creerEnBase]);
 
   const updateChantier = useCallback(async (id, data) => {
     const oldChantier = chantiers.find(c => c.id === id);
@@ -797,44 +737,18 @@ export function DataProvider({ children, initialData = {} }) {
       }
     }
 
-    if (!isDemo) {
-      if (userId) {
-        try {
-          const current = chantiers.find(c => c.id === id);
-          if (current) {
-            logger.debug('💾 updateChantier: saving, taches count=', (data.taches || current.taches || []).length);
-            await updateItem('chantiers', id, { ...current, ...data }, userId, orgId);
-            logger.debug('✅ updateChantier: saved successfully');
-          }
-        } catch (error) {
-          console.error('❌ updateChantier: Supabase save failed:', error.message);
-          toast.error('Erreur sauvegarde chantier', error.message);
-          await queueOffline('update', 'chantiers', { id, ...data });
-        }
-      } else {
-        const current = chantiers.find(c => c.id === id);
-        if (current) {
-          pendingSavesRef.current.push({ table: 'chantiers', item: { ...current, ...data } });
-        }
-      }
-    }
-  }, [userId, chantiers, orgId, userName]);
+    return modifierEnBase('chantiers', id, oldChantier, data, setChantiers);
+  }, [userId, chantiers, orgId, userName, modifierEnBase]);
 
   const deleteChantier = useCallback(async (id) => {
+    const avant = chantiers.find(c => c.id === id);
     setChantiers(prev => prev.filter(c => c.id !== id));
 
     // Audit: log deletion
     _audit(isDemo ? null : supabase, { entityType: 'chantier', entityId: id, action: 'deleted', userId, orgId, userName });
 
-    if (!isDemo && userId) {
-      try {
-        await deleteItem('chantiers', id, userId, orgId);
-      } catch (error) {
-        console.error('Error deleting chantier from Supabase:', error);
-        await queueOffline('delete', 'chantiers', { id });
-      }
-    }
-  }, [userId, orgId, userName]);
+    return supprimerEnBase('chantiers', id, avant, setChantiers);
+  }, [userId, chantiers, orgId, userName, supprimerEnBase]);
 
   const getChantier = useCallback((id) => {
     return chantiers.find(c => c.id === id);
@@ -850,52 +764,23 @@ export function DataProvider({ children, initialData = {} }) {
 
     setDepenses(prev => [...prev, newDepense]);
 
-    if (!isDemo && userId) {
-      try {
-        const saved = await saveItem('depenses', newDepense, userId, orgId);
-        if (saved) {
-          setDepenses(prev => prev.map(d => d.id === newDepense.id ? saved : d));
-          return saved;
-        }
-      } catch (error) {
-        console.error('Error saving depense to Supabase:', error);
-        await queueOffline('create', 'depenses', newDepense);
-      }
-    }
-
-    return newDepense;
-  }, [userId, orgId]);
+    return creerEnBase('depenses', newDepense, setDepenses);
+  }, [creerEnBase]);
 
   const updateDepense = useCallback(async (id, data) => {
+    const avant = depenses.find(x => x.id === id);
     setDepenses(prev => prev.map(d =>
       d.id === id ? { ...d, ...data } : d
     ));
 
-    if (!isDemo && userId) {
-      try {
-        const current = depenses.find(d => d.id === id);
-        if (current) {
-          await updateItem('depenses', id, { ...current, ...data }, userId, orgId);
-        }
-      } catch (error) {
-        console.error('Error updating depense in Supabase:', error);
-        await queueOffline('update', 'depenses', { id, ...data });
-      }
-    }
-  }, [userId, depenses, orgId]);
+    return modifierEnBase('depenses', id, avant, data, setDepenses);
+  }, [depenses, modifierEnBase]);
 
   const deleteDepense = useCallback(async (id) => {
+    const avant = depenses.find(x => x.id === id);
     setDepenses(prev => prev.filter(d => d.id !== id));
-
-    if (!isDemo && userId) {
-      try {
-        await deleteItem('depenses', id, userId, orgId);
-      } catch (error) {
-        console.error('Error deleting depense from Supabase:', error);
-        await queueOffline('delete', 'depenses', { id });
-      }
-    }
-  }, [userId, orgId]);
+    return supprimerEnBase('depenses', id, avant, setDepenses);
+  }, [depenses, supprimerEnBase]);
 
   const getDepensesByChantier = useCallback((chantierId) => {
     return depenses.filter(d => d.chantierId === chantierId);
@@ -912,52 +797,23 @@ export function DataProvider({ children, initialData = {} }) {
 
     setPointages(prev => [...prev, newPointage]);
 
-    if (!isDemo && userId) {
-      try {
-        const saved = await saveItem('pointages', newPointage, userId, orgId);
-        if (saved) {
-          setPointages(prev => prev.map(p => p.id === newPointage.id ? saved : p));
-          return saved;
-        }
-      } catch (error) {
-        console.error('Error saving pointage to Supabase:', error);
-        await queueOffline('create', 'pointages', newPointage);
-      }
-    }
-
-    return newPointage;
-  }, [userId, orgId]);
+    return creerEnBase('pointages', newPointage, setPointages);
+  }, [creerEnBase]);
 
   const updatePointage = useCallback(async (id, data) => {
+    const avant = pointages.find(x => x.id === id);
     setPointages(prev => prev.map(p =>
       p.id === id ? { ...p, ...data } : p
     ));
 
-    if (!isDemo && userId) {
-      try {
-        const current = pointages.find(p => p.id === id);
-        if (current) {
-          await updateItem('pointages', id, { ...current, ...data }, userId, orgId);
-        }
-      } catch (error) {
-        console.error('Error updating pointage in Supabase:', error);
-        await queueOffline('update', 'pointages', { id, ...data });
-      }
-    }
-  }, [userId, pointages, orgId]);
+    return modifierEnBase('pointages', id, avant, data, setPointages);
+  }, [pointages, modifierEnBase]);
 
   const deletePointage = useCallback(async (id) => {
+    const avant = pointages.find(x => x.id === id);
     setPointages(prev => prev.filter(p => p.id !== id));
-
-    if (!isDemo && userId) {
-      try {
-        await deleteItem('pointages', id, userId, orgId);
-      } catch (error) {
-        console.error('Error deleting pointage from Supabase:', error);
-        await queueOffline('delete', 'pointages', { id });
-      }
-    }
-  }, [userId, orgId]);
+    return supprimerEnBase('pointages', id, avant, setPointages);
+  }, [pointages, supprimerEnBase]);
 
   const getPointagesByChantier = useCallback((chantierId) => {
     return pointages.filter(p => p.chantierId === chantierId);
@@ -972,33 +828,14 @@ export function DataProvider({ children, initialData = {} }) {
     };
     setAjustements(prev => [...prev, newAjustement]);
 
-    if (!isDemo && userId) {
-      try {
-        const saved = await saveItem('ajustements', newAjustement, userId, orgId);
-        if (saved) {
-          setAjustements(prev => prev.map(a => a.id === newAjustement.id ? saved : a));
-          return saved;
-        }
-      } catch (error) {
-        console.error('Error saving ajustement to Supabase:', error);
-        await queueOffline('create', 'ajustements', newAjustement);
-      }
-    }
-    return newAjustement;
-  }, [userId, orgId]);
+    return creerEnBase('ajustements', newAjustement, setAjustements);
+  }, [creerEnBase]);
 
   const deleteAjustement = useCallback(async (id) => {
+    const avant = ajustements.find(x => x.id === id);
     setAjustements(prev => prev.filter(a => a.id !== id));
-
-    if (!isDemo && userId) {
-      try {
-        await deleteItem('ajustements', id, userId, orgId);
-      } catch (error) {
-        console.error('Error deleting ajustement from Supabase:', error);
-        await queueOffline('delete', 'ajustements', { id });
-      }
-    }
-  }, [userId, orgId]);
+    return supprimerEnBase('ajustements', id, avant, setAjustements);
+  }, [ajustements, supprimerEnBase]);
 
   const getAjustementsByChantier = useCallback((chantierId) => {
     return ajustements.filter(a => a.chantierId === chantierId);
@@ -1014,52 +851,23 @@ export function DataProvider({ children, initialData = {} }) {
 
     setEquipe(prev => [...prev, newEmployee]);
 
-    if (!isDemo && userId) {
-      try {
-        const saved = await saveItem('equipe', newEmployee, userId, orgId);
-        if (saved) {
-          setEquipe(prev => prev.map(e => e.id === newEmployee.id ? saved : e));
-          return saved;
-        }
-      } catch (error) {
-        console.error('Error saving employee to Supabase:', error);
-        await queueOffline('create', 'equipe', newEmployee);
-      }
-    }
-
-    return newEmployee;
-  }, [userId, orgId]);
+    return creerEnBase('equipe', newEmployee, setEquipe);
+  }, [creerEnBase]);
 
   const updateEmployee = useCallback(async (id, data) => {
+    const avant = equipe.find(x => x.id === id);
     setEquipe(prev => prev.map(e =>
       e.id === id ? { ...e, ...data } : e
     ));
 
-    if (!isDemo && userId) {
-      try {
-        const current = equipe.find(e => e.id === id);
-        if (current) {
-          await updateItem('equipe', id, { ...current, ...data }, userId, orgId);
-        }
-      } catch (error) {
-        console.error('Error updating employee in Supabase:', error);
-        await queueOffline('update', 'equipe', { id, ...data });
-      }
-    }
-  }, [userId, equipe, orgId]);
+    return modifierEnBase('equipe', id, avant, data, setEquipe);
+  }, [equipe, modifierEnBase]);
 
   const deleteEmployee = useCallback(async (id) => {
+    const avant = equipe.find(x => x.id === id);
     setEquipe(prev => prev.filter(e => e.id !== id));
-
-    if (!isDemo && userId) {
-      try {
-        await deleteItem('equipe', id, userId, orgId);
-      } catch (error) {
-        console.error('Error deleting employee from Supabase:', error);
-        await queueOffline('delete', 'equipe', { id });
-      }
-    }
-  }, [userId, orgId]);
+    return supprimerEnBase('equipe', id, avant, setEquipe);
+  }, [equipe, supprimerEnBase]);
 
   // ============ CATALOGUE OPERATIONS ============
   const addCatalogueItem = useCallback(async (data) => {
@@ -1073,52 +881,23 @@ export function DataProvider({ children, initialData = {} }) {
 
     setCatalogue(prev => [...prev, newItem]);
 
-    if (!isDemo && userId) {
-      try {
-        const saved = await saveItem('catalogue', newItem, userId, orgId);
-        if (saved) {
-          setCatalogue(prev => prev.map(c => c.id === newItem.id ? saved : c));
-          return saved;
-        }
-      } catch (error) {
-        console.error('Error saving catalogue item to Supabase:', error);
-        await queueOffline('create', 'catalogue', newItem);
-      }
-    }
-
-    return newItem;
-  }, [userId, orgId]);
+    return creerEnBase('catalogue', newItem, setCatalogue);
+  }, [creerEnBase]);
 
   const updateCatalogueItem = useCallback(async (id, data) => {
+    const avant = catalogue.find(x => x.id === id);
     setCatalogue(prev => prev.map(c =>
       c.id === id ? { ...c, ...data } : c
     ));
 
-    if (!isDemo && userId) {
-      try {
-        const current = catalogue.find(c => c.id === id);
-        if (current) {
-          await updateItem('catalogue', id, { ...current, ...data }, userId, orgId);
-        }
-      } catch (error) {
-        console.error('Error updating catalogue item in Supabase:', error);
-        await queueOffline('update', 'catalogue', { id, ...data });
-      }
-    }
-  }, [userId, catalogue, orgId]);
+    return modifierEnBase('catalogue', id, avant, data, setCatalogue);
+  }, [catalogue, modifierEnBase]);
 
   const deleteCatalogueItem = useCallback(async (id) => {
+    const avant = catalogue.find(x => x.id === id);
     setCatalogue(prev => prev.filter(c => c.id !== id));
-
-    if (!isDemo && userId) {
-      try {
-        await deleteItem('catalogue', id, userId, orgId);
-      } catch (error) {
-        console.error('Error deleting catalogue item from Supabase:', error);
-        await queueOffline('delete', 'catalogue', { id });
-      }
-    }
-  }, [userId, orgId]);
+    return supprimerEnBase('catalogue', id, avant, setCatalogue);
+  }, [catalogue, supprimerEnBase]);
 
   const deductStock = useCallback((id, quantity) => {
     setCatalogue(prev => prev.map(c =>
@@ -1135,20 +914,8 @@ export function DataProvider({ children, initialData = {} }) {
     };
     setPaiements(prev => [...prev, newPaiement]);
 
-    if (!isDemo && userId) {
-      try {
-        const saved = await saveItem('paiements', newPaiement, userId, orgId);
-        if (saved) {
-          setPaiements(prev => prev.map(p => p.id === newPaiement.id ? saved : p));
-          return saved;
-        }
-      } catch (error) {
-        console.error('Error saving paiement to Supabase:', error);
-        await queueOffline('create', 'paiements', newPaiement);
-      }
-    }
-    return newPaiement;
-  }, [userId, orgId]);
+    return creerEnBase('paiements', newPaiement, setPaiements);
+  }, [creerEnBase]);
 
   const getPaiementsByDevis = useCallback((devisId) => {
     return paiements.filter(p => p.devisId === devisId || p.invoiceId === devisId);
@@ -1163,20 +930,8 @@ export function DataProvider({ children, initialData = {} }) {
     };
     setEchanges(prev => [...prev, newEchange]);
 
-    if (!isDemo && userId) {
-      try {
-        const saved = await saveItem('echanges', newEchange, userId, orgId);
-        if (saved) {
-          setEchanges(prev => prev.map(e => e.id === newEchange.id ? saved : e));
-          return saved;
-        }
-      } catch (error) {
-        console.error('Error saving echange to Supabase:', error);
-        await queueOffline('create', 'echanges', newEchange);
-      }
-    }
-    return newEchange;
-  }, [userId, orgId]);
+    return creerEnBase('echanges', newEchange, setEchanges);
+  }, [creerEnBase]);
 
   // ============ PLANNING EVENT OPERATIONS ============
   const addPlanningEvent = useCallback(async (data) => {
@@ -1187,43 +942,20 @@ export function DataProvider({ children, initialData = {} }) {
     };
     setPlanningEvents(prev => prev.some(e => e.id === newEvent.id) ? prev : [...prev, newEvent]);
 
-    if (!isDemo && userId) {
-      try {
-        await saveItem('events', newEvent, userId, orgId);
-      } catch (error) {
-        console.error('Error saving planning event to Supabase:', error);
-        await queueOffline('create', 'events', newEvent);
-      }
-    }
-    return newEvent;
-  }, [userId, orgId]);
+    return creerEnBase('events', newEvent, setPlanningEvents);
+  }, [creerEnBase]);
 
   const updatePlanningEvent = useCallback(async (id, data) => {
-    const updated = { id, ...data };
+    const avant = planningEvents.find(e => e.id === id);
     setPlanningEvents(prev => prev.map(e => e.id === id ? { ...e, ...data } : e));
-
-    if (!isDemo && userId) {
-      try {
-        await updateItem('events', id, updated, userId, orgId);
-      } catch (error) {
-        console.error('Error updating planning event:', error);
-        await queueOffline('update', 'events', updated);
-      }
-    }
-  }, [userId, orgId]);
+    return modifierEnBase('events', id, avant, data, setPlanningEvents);
+  }, [planningEvents, modifierEnBase]);
 
   const deletePlanningEvent = useCallback(async (id) => {
+    const avant = planningEvents.find(x => x.id === id);
     setPlanningEvents(prev => prev.filter(e => e.id !== id));
-
-    if (!isDemo && userId) {
-      try {
-        await deleteItem('events', id, userId, orgId);
-      } catch (error) {
-        console.error('Error deleting planning event:', error);
-        await queueOffline('delete', 'events', { id });
-      }
-    }
-  }, [userId, orgId]);
+    return supprimerEnBase('events', id, avant, setPlanningEvents);
+  }, [planningEvents, supprimerEnBase]);
 
   // ============ OUVRAGE OPERATIONS ============
   const addOuvrage = useCallback(async (data) => {
@@ -1234,51 +966,23 @@ export function DataProvider({ children, initialData = {} }) {
     };
     setOuvrages(prev => [...prev, newOuvrage]);
 
-    if (!isDemo && userId) {
-      try {
-        const saved = await saveItem('ouvrages', newOuvrage, userId, orgId);
-        if (saved) {
-          setOuvrages(prev => prev.map(o => o.id === newOuvrage.id ? saved : o));
-          return saved;
-        }
-      } catch (error) {
-        console.error('Error saving ouvrage to Supabase:', error);
-        await queueOffline('create', 'ouvrages', newOuvrage);
-      }
-    }
-    return newOuvrage;
-  }, [userId, orgId]);
+    return creerEnBase('ouvrages', newOuvrage, setOuvrages);
+  }, [creerEnBase]);
 
   const updateOuvrage = useCallback(async (id, data) => {
+    const avant = ouvrages.find(x => x.id === id);
     setOuvrages(prev => prev.map(o =>
       o.id === id ? { ...o, ...data, updatedAt: new Date().toISOString() } : o
     ));
 
-    if (!isDemo && userId) {
-      try {
-        const current = ouvrages.find(o => o.id === id);
-        if (current) {
-          await updateItem('ouvrages', id, { ...current, ...data }, userId, orgId);
-        }
-      } catch (error) {
-        console.error('Error updating ouvrage in Supabase:', error);
-        await queueOffline('update', 'ouvrages', { id, ...data });
-      }
-    }
-  }, [userId, ouvrages, orgId]);
+    return modifierEnBase('ouvrages', id, avant, data, setOuvrages);
+  }, [ouvrages, modifierEnBase]);
 
   const deleteOuvrage = useCallback(async (id) => {
+    const avant = ouvrages.find(x => x.id === id);
     setOuvrages(prev => prev.filter(o => o.id !== id));
-
-    if (!isDemo && userId) {
-      try {
-        await deleteItem('ouvrages', id, userId, orgId);
-      } catch (error) {
-        console.error('Error deleting ouvrage from Supabase:', error);
-        await queueOffline('delete', 'ouvrages', { id });
-      }
-    }
-  }, [userId, orgId]);
+    return supprimerEnBase('ouvrages', id, avant, setOuvrages);
+  }, [ouvrages, supprimerEnBase]);
 
   // ============ MEMO OPERATIONS ============
   const addMemo = useCallback(async (data) => {
@@ -1308,51 +1012,23 @@ export function DataProvider({ children, initialData = {} }) {
     // Bump all existing positions +1
     setMemos(prev => [newMemo, ...prev.map(m => ({ ...m, position: (m.position || 0) + 1 }))]);
 
-    if (!isDemo && userId) {
-      try {
-        const saved = await saveItem('memos', newMemo, userId, orgId);
-        if (saved) {
-          setMemos(prev => prev.map(m => m.id === newMemo.id ? saved : m));
-          return saved;
-        }
-      } catch (error) {
-        console.error('Error saving memo to Supabase:', error);
-        await queueOffline('create', 'memos', newMemo);
-      }
-    }
-    return newMemo;
-  }, [userId, orgId]);
+    return creerEnBase('memos', newMemo, setMemos);
+  }, [creerEnBase]);
 
   const updateMemo = useCallback(async (id, updates) => {
+    const avant = memos.find(x => x.id === id);
     setMemos(prev => prev.map(m =>
       m.id === id ? { ...m, ...updates, updated_at: new Date().toISOString() } : m
     ));
 
-    if (!isDemo && userId) {
-      try {
-        const current = memos.find(m => m.id === id);
-        if (current) {
-          await updateItem('memos', id, { ...current, ...updates }, userId, orgId);
-        }
-      } catch (error) {
-        console.error('Error updating memo in Supabase:', error);
-        await queueOffline('update', 'memos', { id, ...updates });
-      }
-    }
-  }, [userId, memos, orgId]);
+    return modifierEnBase('memos', id, avant, updates, setMemos);
+  }, [memos, modifierEnBase]);
 
   const deleteMemo = useCallback(async (id) => {
+    const avant = memos.find(x => x.id === id);
     setMemos(prev => prev.filter(m => m.id !== id));
-
-    if (!isDemo && userId) {
-      try {
-        await deleteItem('memos', id, userId, orgId);
-      } catch (error) {
-        console.error('Error deleting memo from Supabase:', error);
-        await queueOffline('delete', 'memos', { id });
-      }
-    }
-  }, [userId, orgId]);
+    return supprimerEnBase('memos', id, avant, setMemos);
+  }, [memos, supprimerEnBase]);
 
   const toggleMemo = useCallback(async (id) => {
     const memo = memos.find(m => m.id === id);
@@ -1367,16 +1043,8 @@ export function DataProvider({ children, initialData = {} }) {
     setMemos(prev => prev.map(m =>
       m.id === id ? { ...m, ...updates } : m
     ));
-
-    if (!isDemo && userId) {
-      try {
-        await updateItem('memos', memo.id, { ...memo, ...updates }, userId, orgId);
-      } catch (error) {
-        console.error('Error toggling memo in Supabase:', error);
-        await queueOffline('update', 'memos', { id, ...updates });
-      }
-    }
-  }, [userId, memos, orgId]);
+    return modifierEnBase('memos', id, memo, updates, setMemos);
+  }, [memos, modifierEnBase]);
 
   // ============ TEMPLATE OPERATIONS ============
   const addTemplate = useCallback(async (data) => {
@@ -1391,57 +1059,29 @@ export function DataProvider({ children, initialData = {} }) {
 
     setCustomTemplates(prev => prev.some(t => t.id === newTemplate.id) ? prev : [...prev, newTemplate]);
 
-    if (!isDemo && userId) {
-      try {
-        const saved = await saveItem('devis_templates', newTemplate, userId, orgId);
-        if (saved) {
-          setCustomTemplates(prev => prev.map(t => t.id === newTemplate.id ? saved : t));
-          return saved;
-        }
-      } catch (error) {
-        console.error('Error saving template:', error);
-        await queueOffline('create', 'devis_templates', newTemplate);
-      }
-    }
+    const resultat = await creerEnBase('devis_templates', newTemplate, setCustomTemplates);
 
     // Cleanup legacy localStorage key if demo
     if (isDemo) {
       try { localStorage.removeItem('chantierPro_customTemplates'); } catch (e) { /* ignore */ }
     }
 
-    return newTemplate;
-  }, [userId, orgId]);
+    return resultat;
+  }, [creerEnBase]);
 
   const updateTemplate = useCallback(async (id, data) => {
+    const avant = customTemplates.find(t => t.id === id);
     setCustomTemplates(prev => prev.map(t =>
       t.id === id ? { ...t, ...data, updated_at: new Date().toISOString() } : t
     ));
-
-    if (!isDemo && userId) {
-      try {
-        const current = customTemplates.find(t => t.id === id);
-        if (current) {
-          await updateItem('devis_templates', id, { ...current, ...data }, userId, orgId);
-        }
-      } catch (error) {
-        console.error('Error updating template:', error);
-        await queueOffline('update', 'devis_templates', { id, ...data });
-      }
-    }
-  }, [userId, orgId, customTemplates]);
+    return modifierEnBase('devis_templates', id, avant, data, setCustomTemplates);
+  }, [customTemplates, modifierEnBase]);
 
   const deleteTemplate = useCallback(async (id) => {
+    const avant = customTemplates.find(x => x.id === id);
     setCustomTemplates(prev => prev.filter(t => t.id !== id));
-
-    if (!isDemo && userId) {
-      try {
-        await deleteItem('devis_templates', id, userId, orgId);
-      } catch (error) {
-        console.error('Error deleting template:', error);
-        await queueOffline('delete', 'devis_templates', { id });
-      }
-    }
-  }, [userId, orgId]);
+    return supprimerEnBase('devis_templates', id, avant, setCustomTemplates);
+  }, [customTemplates, supprimerEnBase]);
 
   const toggleTemplateFavori = useCallback(async (id) => {
     const template = customTemplates.find(t => t.id === id);
