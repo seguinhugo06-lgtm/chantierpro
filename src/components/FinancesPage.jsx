@@ -61,7 +61,7 @@ export default function FinancesPage({ devis, depenses, clients, chantiers, entr
       <PageHeader
         icon={Wallet}
         title="Finances"
-        subtitle="Pilotez votre trésorerie, anticipez vos flux et exportez pour votre expert-comptable"
+        subtitle="Trésorerie, export comptable et analyses"
         isDark={isDark}
         color={couleur}
         action={
@@ -69,10 +69,8 @@ export default function FinancesPage({ devis, depenses, clients, chantiers, entr
             onClick={() => setLocalDiscret(d => !d)}
             aria-label={modeDiscret ? 'Afficher les montants' : 'Masquer les montants'}
             title={modeDiscret ? 'Afficher les montants' : 'Masquer les montants'}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-all ${
-              isDark
-                ? modeDiscret ? 'bg-slate-700 text-slate-200' : 'bg-slate-800 text-slate-400 hover:text-slate-200'
-                : modeDiscret ? 'bg-slate-200 text-slate-800' : 'bg-slate-100 text-slate-500 hover:text-slate-700'
+            className={`hidden sm:flex items-center gap-1.5 h-11 px-3.5 rounded-xl border text-sm font-semibold transition-colors ${
+              modeDiscret ? 'bg-alerte-fond text-alerte-texte border-transparent' : 'bg-surface border-bord-fort text-encre hover:bg-surface-2'
             }`}
           >
             {modeDiscret ? <EyeOff size={16} /> : <Eye size={16} />}

@@ -12,6 +12,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import supabase, { isDemo, auth } from '../supabaseClient';
 import { saveItem, deleteItem, FIELD_MAPPINGS } from './useSupabaseSync';
 import { logger } from '../lib/logger';
+import { normaliserPrevision, statutPrevision } from '../lib/previsions';
 
 // localStorage keys (same as TresorerieModule used before)
 const STORAGE_KEY = 'cp_tresorerie_previsions';
@@ -67,7 +68,7 @@ export function useTresorerie() {
 
     if (isDemo) {
       // Load and deduplicate previsions (fix for duplicated recurring instances)
-      const rawPrevisions = loadFromStorage(STORAGE_KEY, []);
+      const rawPrevisions = loadFromStorage(STORAGE_KEY, []).map(normaliserPrevision);
       const dedupSet = new Set();
       const cleanPrevisions = rawPrevisions.filter(p => {
         const d = new Date(p.date);
@@ -118,7 +119,7 @@ export function useTresorerie() {
             .then(r => r, () => ({ data: [] })),
         ]);
 
-        const mappedPrev = (prevRes.data || []).map(FIELD_MAPPINGS.tresorerie_previsions.fromSupabase);
+        const mappedPrev = (prevRes.data || []).map(FIELD_MAPPINGS.tresorerie_previsions.fromSupabase).map(normaliserPrevision);
         const mappedSettings = settingsRes.data
           ? FIELD_MAPPINGS.tresorerie_settings.fromSupabase(settingsRes.data)
           : DEFAULT_SETTINGS;
@@ -193,7 +194,7 @@ export function useTresorerie() {
       ...data,
       id: data.id || crypto.randomUUID(),
       createdAt: data.createdAt || new Date().toISOString(),
-      statut: data.statut || 'prevu',
+      statut: statutPrevision(data.statut),
     };
 
     // Optimistic update
@@ -216,7 +217,7 @@ export function useTresorerie() {
 
     setPrevisions(list => list.map(p => {
       if (p.id === id) {
-        updated = { ...p, ...data };
+        updated = normaliserPrevision({ ...p, ...data });
         return updated;
       }
       return p;

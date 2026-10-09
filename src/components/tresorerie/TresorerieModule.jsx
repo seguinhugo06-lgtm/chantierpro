@@ -20,18 +20,26 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { toast } from '../../stores/toastStore';
 import {
-  Wallet, TrendingUp, ArrowUpRight, ArrowDownRight, Plus, X,
+  Wallet, TrendingUp, Plus, X,
   AlertTriangle, Info, ArrowDown, ArrowUp, Clock, BarChart3, Save, Settings, Filter,
-  Check, Edit3, Trash2, RotateCcw, Zap, RefreshCw, CalendarDays,
+  Check, Edit3, Trash2, Zap,
   FileText, Receipt, Percent, Link2, Sliders, Target, TrendingDown, Activity,
-  MessageCircle, ChevronDown, ChevronUp, HardHat, Banknote, Download,
+  MessageCircle, ChevronDown, ChevronUp, ChevronRight, HardHat, Download,
 } from 'lucide-react';
 import { useTresorerie } from '../../hooks/useTresorerie';
 import { useTVA } from '../../hooks/useTVA';
 import { useExportComptable } from '../../hooks/useExportComptable';
 import useKeepInViewport from '../../hooks/useKeepInViewport';
 import { formatClientName } from '../../lib/formatters';
+import { statutPrevision, estPrevisionMiroir } from '../../lib/previsions';
 import KPICard from '../ui/KPICard';
+import TuileChiffre from '../ui/TuileChiffre';
+import { TitreSection } from '../ui/EnTete';
+import LigneListe, { GroupeListe } from '../ui/LigneListe';
+import Pastille from '../ui/Pastille';
+import { Segmente, Onglets } from '../ui/Onglets';
+import Carte from '../ui/Carte';
+import { Bouton, BoutonIcone } from '../ui/Bouton';
 import { remettreFichier } from '../../lib/natif';
 import { statutFacture, resteAPayer, joursDeRetard, echeance } from '../../lib/paiementsFacture';
 
@@ -50,6 +58,9 @@ const PERIOD_OPTIONS = [
 ];
 
 /** Tabs for the main content area */
+/** Statut affiché d'une échéance → ton de pastille (un mot, un ton : voir src/lib/statuts.js). */
+const TON_STATUT_PAIEMENT = { 'Payé': 'succes', 'En retard': 'danger', 'En attente': 'info', 'Prévu': 'neutre', 'Signé': 'succes' };
+
 const TABS = [
   { key: 'apercu', label: 'Aperçu' },
   { key: 'previsions', label: 'Prévisions' },
@@ -182,9 +193,12 @@ function KpiCard({ label, value, icon, trend, trendLabel, color, isDark }) {
 /**
  * SVG-based bar chart showing monthly entrées / sorties with a cumulative balance line.
  */
-function CashFlowChart({ data, isDark, couleur }) {
-  const width = 800, height = 320;
-  const padTop = 30, padBottom = 40, padLeft = 60, padRight = 20;
+function CashFlowChart({ data, compact = false }) {
+  // compact : téléphone, tout le graphique dans la largeur de l'écran, textes ≥ 12 px une fois réduits.
+  const width = compact ? 420 : 800, height = compact ? 300 : 320;
+  const padTop = compact ? 34 : 30, padBottom = compact ? 44 : 40, padLeft = compact ? 46 : 60, padRight = compact ? 8 : 20;
+  const taille = compact ? 17 : 12;
+  const k = taille / 11;
   const chartW = width - padLeft - padRight;
   const chartH = height - padTop - padBottom;
 
@@ -211,10 +225,13 @@ function CashFlowChart({ data, isDark, couleur }) {
     return `${x},${y}`;
   }).join(' ');
 
-  const gridColor = isDark ? '#334155' : '#e5e7eb';
-  const textColor = isDark ? '#94a3b8' : '#6b7280';
-  const positiveColor = couleur || '#3b82f6';
-  const negativeColor = '#ef4444';
+  // Jetons du thème (lus en style : ils suivent le clair et le sombre). L'accent n'est pas un sens :
+  // entrées en vert, sorties en rouge, solde à l'encre.
+  const gridColor = 'rgb(var(--bord))';
+  const textColor = 'rgb(var(--encre-3))';
+  const positiveColor = 'rgb(var(--succes-point))';
+  const negativeColor = 'rgb(var(--danger-point))';
+  const soldeColor = 'rgb(var(--encre))';
 
   return (
     <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto" preserveAspectRatio="xMidYMid meet">
@@ -222,8 +239,8 @@ function CashFlowChart({ data, isDark, couleur }) {
         const y = padTop + chartH - t * barScale;
         return (
           <g key={`grid-${t}`}>
-            <line x1={padLeft} y1={y} x2={width - padRight} y2={y} stroke={gridColor} strokeDasharray="4 4" />
-            <text x={padLeft - 8} y={y + 4} textAnchor="end" fill={textColor} fontSize={11}>{formatCompact(t)}</text>
+            <line x1={padLeft} y1={y} x2={width - padRight} y2={y} style={{ stroke: gridColor }} strokeDasharray="4 4" />
+            <text x={padLeft - 8} y={y + 4} textAnchor="end" style={{ fill: textColor }} fontSize={taille}>{formatCompact(t)}</text>
           </g>
         );
       })}
@@ -234,26 +251,26 @@ function CashFlowChart({ data, isDark, couleur }) {
         const baseY = padTop + chartH;
         return (
           <g key={d.label}>
-            <rect x={cx - barWidth - gap / 2} y={baseY - entreeH} width={barWidth} height={entreeH} rx={4} fill={positiveColor} opacity={0.85} />
-            <rect x={cx + gap / 2} y={baseY - sortieH} width={barWidth} height={sortieH} rx={4} fill={negativeColor} opacity={0.85} />
-            <text x={cx} y={baseY + 20} textAnchor="middle" fill={textColor} fontSize={11} fontWeight={d.isCurrent ? 700 : 400}>{d.label}</text>
-            {d.isCurrent && <circle cx={cx} cy={baseY + 32} r={3} fill={positiveColor} />}
+            <rect x={cx - barWidth - gap / 2} y={baseY - entreeH} width={barWidth} height={entreeH} rx={4} style={{ fill: positiveColor }} opacity={0.85} />
+            <rect x={cx + gap / 2} y={baseY - sortieH} width={barWidth} height={sortieH} rx={4} style={{ fill: negativeColor }} opacity={0.85} />
+            <text x={cx} y={baseY + taille + 8} textAnchor="middle" style={{ fill: textColor }} fontSize={taille} fontWeight={d.isCurrent ? 700 : 400}>{d.label}</text>
+            {d.isCurrent && <circle cx={cx} cy={baseY + taille * 2 + 6} r={3} style={{ fill: positiveColor }} />}
           </g>
         );
       })}
-      <polyline points={balPoints} fill="none" stroke={isDark ? '#facc15' : '#ca8a04'} strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />
+      <polyline points={balPoints} fill="none" style={{ stroke: soldeColor }} strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />
       {data.map((d, i) => {
         const x = padLeft + barGroupWidth * i + barGroupWidth / 2;
         const y = padTop + chartH - ((d.cumulBalance - balMin) / balRange) * chartH;
-        return <circle key={`dot-${i}`} cx={x} cy={y} r={4} fill={isDark ? '#facc15' : '#ca8a04'} stroke={isDark ? '#1e293b' : '#ffffff'} strokeWidth={2} />;
+        return <circle key={`dot-${i}`} cx={x} cy={y} r={4} style={{ fill: soldeColor, stroke: 'rgb(var(--surface))' }} strokeWidth={2} />;
       })}
-      <g transform={`translate(${padLeft}, 10)`}>
-        <rect width={12} height={12} rx={3} fill={positiveColor} opacity={0.85} />
-        <text x={16} y={10} fill={textColor} fontSize={11}>Entrées</text>
-        <rect x={80} width={12} height={12} rx={3} fill={negativeColor} opacity={0.85} />
-        <text x={96} y={10} fill={textColor} fontSize={11}>Sorties</text>
-        <line x1={160} y1={6} x2={180} y2={6} stroke={isDark ? '#facc15' : '#ca8a04'} strokeWidth={2.5} />
-        <text x={184} y={10} fill={textColor} fontSize={11}>Solde cumulé</text>
+      <g transform={`translate(${compact ? 4 : padLeft}, 6)`}>
+        <rect width={12 * k} height={12 * k} rx={3} style={{ fill: positiveColor }} opacity={0.85} />
+        <text x={16 * k} y={10 * k} style={{ fill: textColor }} fontSize={taille}>Entrées</text>
+        <rect x={80 * k} width={12 * k} height={12 * k} rx={3} style={{ fill: negativeColor }} opacity={0.85} />
+        <text x={96 * k} y={10 * k} style={{ fill: textColor }} fontSize={taille}>Sorties</text>
+        <line x1={160 * k} y1={6 * k} x2={180 * k} y2={6 * k} style={{ stroke: soldeColor }} strokeWidth={2.5} />
+        <text x={184 * k} y={10 * k} style={{ fill: textColor }} fontSize={taille}>Solde cumulé</text>
       </g>
     </svg>
   );
@@ -372,7 +389,7 @@ function PrevisionModal({ isOpen, onClose, onSave, editItem, isDark, couleur }) 
       montant: parseFloat(form.montant) || 0,
       id: editItem?.id || genId(),
       createdAt: editItem?.createdAt || new Date().toISOString(),
-      statut: editItem?.statut || 'prevu',
+      statut: statutPrevision(editItem?.statut),
     });
     onClose();
   };
@@ -380,27 +397,27 @@ function PrevisionModal({ isOpen, onClose, onSave, editItem, isDark, couleur }) 
   if (!isOpen) return null;
 
   const inputCls = `w-full rounded-xl px-3 py-2.5 text-sm border transition-colors focus:outline-none focus:ring-2 ${isDark ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400 focus:ring-blue-500/40' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400 focus:ring-blue-500/30'}`;
-  const labelCls = `block text-xs font-semibold mb-1 ${isDark ? 'text-gray-300' : 'text-gray-600'}`;
+  const labelCls = `block text-xs font-semibold mb-1 text-encre-2`;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label={editItem ? 'Modifier la prévision' : 'Nouvelle prévision'}>
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" role="presentation" onClick={onClose} />
-      <form onSubmit={handleSubmit} className={`relative w-full max-w-md rounded-2xl border shadow-2xl ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
-        <div className={`flex items-center justify-between px-5 py-4 border-b ${isDark ? 'border-slate-700' : 'border-gray-100'}`}>
-          <h3 className={`text-base font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+      <form onSubmit={handleSubmit} className={`relative w-full max-w-md rounded-2xl border shadow-2xl bg-surface border-bord`}>
+        <div className={`flex items-center justify-between px-5 py-4 border-b border-bord`}>
+          <h3 className={`text-base font-bold text-encre`}>
             {editItem ? 'Modifier la prévision' : 'Nouvelle prévision'}
           </h3>
-          <button type="button" onClick={onClose} aria-label="Fermer" className={`min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg transition-colors ${isDark ? 'hover:bg-slate-700 text-gray-400' : 'hover:bg-gray-100 text-gray-500'}`}>
+          <button type="button" onClick={onClose} aria-label="Fermer" className={`min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg transition-colors hover:bg-surface-2 text-encre-3`}>
             <X size={18} />
           </button>
         </div>
         <div className="px-5 py-4 space-y-4">
           <div>
             <label className={labelCls}>Type</label>
-            <div className={`inline-flex rounded-xl p-1 ${isDark ? 'bg-slate-700' : 'bg-gray-100'}`}>
+            <div className={`inline-flex rounded-xl p-1 bg-surface-2`}>
               {['entree', 'sortie'].map((t) => (
                 <button key={t} type="button" onClick={() => handleChange('type', t)}
-                  className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${form.type === t ? t === 'entree' ? 'bg-emerald-500 text-white shadow-md' : 'bg-red-500 text-white shadow-md' : isDark ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-700'}`}>
+                  className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${form.type === t ? t === 'entree' ? 'bg-emerald-500 text-white shadow-md' : 'bg-red-500 text-white shadow-md' : 'text-encre-3 hover:text-encre'}`}>
                   {t === 'entree' ? 'Entrée' : 'Sortie'}
                 </button>
               ))}
@@ -438,8 +455,8 @@ function PrevisionModal({ isOpen, onClose, onSave, editItem, isDark, couleur }) 
             </div>
           </div>
         </div>
-        <div className={`flex items-center justify-end gap-3 px-5 py-4 border-t ${isDark ? 'border-slate-700' : 'border-gray-100'}`}>
-          <button type="button" onClick={onClose} className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${isDark ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-700'}`}>Annuler</button>
+        <div className={`flex items-center justify-end gap-3 px-5 py-4 border-t border-bord`}>
+          <button type="button" onClick={onClose} className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors text-encre-3 hover:text-encre`}>Annuler</button>
           <button type="submit" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90 active:scale-[0.98] shadow-md" style={{ backgroundColor: couleur || '#3b82f6' }}>
             <Save size={16} /> {editItem ? 'Enregistrer' : 'Ajouter'}
           </button>
@@ -505,28 +522,28 @@ function MouvementModal({ isOpen, onClose, onSave, editItem, isDark, couleur }) 
   if (!isOpen) return null;
 
   const inputCls = `w-full rounded-xl px-3 py-2.5 text-sm border transition-colors focus:outline-none focus:ring-2 ${isDark ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400 focus:ring-blue-500/40' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400 focus:ring-blue-500/30'}`;
-  const labelCls = `block text-xs font-semibold mb-1 ${isDark ? 'text-gray-300' : 'text-gray-600'}`;
-  const textSecondaryLocal = isDark ? 'text-gray-400' : 'text-gray-500';
+  const labelCls = `block text-xs font-semibold mb-1 text-encre-2`;
+  const textSecondaryLocal = 'text-encre-3';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label={editItem ? 'Modifier le mouvement' : 'Nouveau mouvement'}>
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" role="presentation" onClick={onClose} />
-      <form onSubmit={handleSubmit} className={`relative w-full max-w-lg rounded-2xl border shadow-2xl ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
-        <div className={`flex items-center justify-between px-5 py-4 border-b ${isDark ? 'border-slate-700' : 'border-gray-100'}`}>
-          <h3 className={`text-base font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+      <form onSubmit={handleSubmit} className={`relative w-full max-w-lg rounded-2xl border shadow-2xl bg-surface border-bord`}>
+        <div className={`flex items-center justify-between px-5 py-4 border-b border-bord`}>
+          <h3 className={`text-base font-bold text-encre`}>
             {editItem ? 'Modifier le mouvement' : 'Nouveau mouvement'}
           </h3>
-          <button type="button" onClick={onClose} aria-label="Fermer" className={`min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg transition-colors ${isDark ? 'hover:bg-slate-700 text-gray-400' : 'hover:bg-gray-100 text-gray-500'}`}>
+          <button type="button" onClick={onClose} aria-label="Fermer" className={`min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg transition-colors hover:bg-surface-2 text-encre-3`}>
             <X size={18} />
           </button>
         </div>
         <div className="px-5 py-4 space-y-4">
           <div>
             <label className={labelCls}>Type</label>
-            <div className={`inline-flex rounded-xl p-1 ${isDark ? 'bg-slate-700' : 'bg-gray-100'}`}>
+            <div className={`inline-flex rounded-xl p-1 bg-surface-2`}>
               {['entree', 'sortie'].map((t) => (
                 <button key={t} type="button" onClick={() => handleChange('type', t)}
-                  className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${form.type === t ? t === 'entree' ? 'bg-emerald-500 text-white shadow-md' : 'bg-red-500 text-white shadow-md' : isDark ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-700'}`}>
+                  className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${form.type === t ? t === 'entree' ? 'bg-emerald-500 text-white shadow-md' : 'bg-red-500 text-white shadow-md' : 'text-encre-3 hover:text-encre'}`}>
                   {t === 'entree' ? 'Entrée' : 'Sortie'}
                 </button>
               ))}
@@ -558,7 +575,7 @@ function MouvementModal({ isOpen, onClose, onSave, editItem, isDark, couleur }) 
           </div>
           {/* TVA decomposition display */}
           {montantNum > 0 && (
-            <div className={`flex items-center gap-4 p-3 rounded-xl text-xs ${isDark ? 'bg-slate-700/50 border border-slate-600' : 'bg-gray-50 border border-gray-200'}`}>
+            <div className={`flex items-center gap-4 p-3 rounded-xl text-xs bg-surface-2 border border-bord`}>
               <span className={textSecondaryLocal}>HT : <strong>{formatCurrency(montantHt)}</strong></span>
               <span className={textSecondaryLocal}>TVA : <strong>{formatCurrency(montantTva)}</strong></span>
               <span className={textSecondaryLocal}>TTC : <strong>{formatCurrency(montantNum)}</strong></span>
@@ -575,12 +592,12 @@ function MouvementModal({ isOpen, onClose, onSave, editItem, isDark, couleur }) 
               <label className={`flex items-center gap-2 mt-5 cursor-pointer select-none`}>
                 <input type="checkbox" checked={form.autoliquidation} onChange={(e) => handleChange('autoliquidation', e.target.checked)}
                   className="w-4 h-4 rounded" />
-                <span className={`text-xs ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>Autoliquidation TVA</span>
+                <span className={`text-xs text-encre-2`}>Autoliquidation TVA</span>
               </label>
               <label className="flex items-center gap-2 cursor-pointer select-none">
                 <input type="checkbox" checked={form.isRecurring} onChange={(e) => handleChange('isRecurring', e.target.checked)}
                   className="w-4 h-4 rounded" />
-                <span className={`text-xs ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>Récurrent</span>
+                <span className={`text-xs text-encre-2`}>Récurrent</span>
               </label>
             </div>
           </div>
@@ -599,8 +616,8 @@ function MouvementModal({ isOpen, onClose, onSave, editItem, isDark, couleur }) 
             <input type="text" className={inputCls} placeholder="Référence, détails..." value={form.notes} onChange={(e) => handleChange('notes', e.target.value)} />
           </div>
         </div>
-        <div className={`flex items-center justify-end gap-3 px-5 py-4 border-t ${isDark ? 'border-slate-700' : 'border-gray-100'}`}>
-          <button type="button" onClick={onClose} className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${isDark ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-700'}`}>Annuler</button>
+        <div className={`flex items-center justify-end gap-3 px-5 py-4 border-t border-bord`}>
+          <button type="button" onClick={onClose} className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors text-encre-3 hover:text-encre`}>Annuler</button>
           <button type="submit" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90 active:scale-[0.98] shadow-md" style={{ backgroundColor: couleur || '#3b82f6' }}>
             <Save size={16} /> {editItem ? 'Enregistrer' : 'Ajouter'}
           </button>
@@ -643,6 +660,7 @@ export default function TresorerieModule({
   // -- State ----------------------------------------------------------------
   const [period, setPeriod] = useState('6m');
   const [activeTab, setActiveTab] = useState('apercu');
+  const [toutesEcheances, setToutesEcheances] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [categoryFilter, setCategoryFilter] = useState('all');
@@ -1094,9 +1112,11 @@ export default function TresorerieModule({
   }, [addPrevision]);
 
   const handleEditPrevision = useCallback((item) => {
-    setEditingItem(item);
+    // La ligne affichée porte un statut traduit (« Payé », « En retard ») : l'enregistrer tel quel
+    // sortait la prévision des projections, ou la rendait de nouveau « à payer ». On édite l'originale.
+    setEditingItem(previsions.find((x) => x.id === item.id) || item);
     setShowAddModal(true);
-  }, []);
+  }, [previsions]);
 
   // ── Mouvement handlers ─────────────────────────────────────────────
   const handleSaveMouvement = useCallback(async (mouv) => {
@@ -1177,11 +1197,16 @@ export default function TresorerieModule({
   // -- Derived data ---------------------------------------------------------
   const now = useMemo(() => new Date(), []);
 
+  // Une facture, un devis signé ou une dépense est compté depuis le document lui-même ; sa copie
+  // automatique en prévision (« miroir ») le comptait une seconde fois : solde, entrées prévues,
+  // graphique et projections étaient gonflés. Les calculs ne lisent que les prévisions saisies.
+  const previsionsComptees = useMemo(() => previsions.filter((p) => !estPrevisionMiroir(p)), [previsions]);
+
   const {
     soldeActuel, totalEncaisse, totalDepense,
     entreesPrevues, sortiesPrevues, projectionFinMois,
     monthlyData, upcomingPayments,
-    alertNegativeBalance, alertLargePayment, trendSolde,
+    alertNegativeBalance, alertLargePayment,
     autoSyncCount,
     projections, negativeMonth, thresholdMonth, avgMonthlyEntrees, avgMonthlySorties,
     recurringSummary,
@@ -1201,7 +1226,7 @@ export default function TresorerieModule({
 
     // Deduplicate previsions for KPI calculations (same desc + month + montant + type = 1 entry)
     const kpiDedup = new Set();
-    const dedupPrevisions = previsions.filter(p => {
+    const dedupPrevisions = previsionsComptees.filter(p => {
       const d = new Date(p.date);
       const key = `${p.description}|${d.getFullYear()}-${String(d.getMonth()).padStart(2, '0')}|${p.montant}|${p.type}`;
       if (kpiDedup.has(key)) return false;
@@ -1287,7 +1312,7 @@ export default function TresorerieModule({
     // Add ALL previsions (paid = past, pending = future) to their month buckets
     // Deduplicate: same description + same month + same montant = counted only once
     const chartPrevDedup = new Set();
-    previsions.forEach((p) => {
+    previsionsComptees.forEach((p) => {
       const d = new Date(p.date);
       const dedupKey = `${p.description}|${d.getFullYear()}-${String(d.getMonth()).padStart(2, '0')}|${p.montant}|${p.type}`;
       if (chartPrevDedup.has(dedupKey)) return; // skip duplicate
@@ -1352,7 +1377,7 @@ export default function TresorerieModule({
 
     // User previsions (with deduplication: same description + same month + same montant = duplicate)
     const prevDedup = new Set();
-    previsions.forEach((p) => {
+    previsionsComptees.forEach((p) => {
       const d = new Date(p.date);
       const dedupKey = `${p.description}|${d.getFullYear()}-${String(d.getMonth()).padStart(2, '0')}|${p.montant}|${p.type}`;
       if (prevDedup.has(dedupKey)) return; // skip duplicate
@@ -1396,7 +1421,7 @@ export default function TresorerieModule({
     };
 
     // 6. Cash flow projections (next 6 months)
-    const monthlyRecurring = previsions
+    const monthlyRecurring = previsionsComptees
       .filter(p => p.recurrence === 'mensuel' && p.type === 'sortie' && p.statut !== 'paye')
       .reduce((s, p) => s + (p.montant || 0), 0) || 0;
 
@@ -1424,9 +1449,9 @@ export default function TresorerieModule({
       const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
       // Use scheduled previsions for this month, or fallback to averages
       const mk = { month: d.getMonth(), year: d.getFullYear() };
-      const monthPrevEntrees = previsions.filter(p => p.type === 'entree' && p.statut === 'prevu' && sameMonth(monthKey(new Date(p.date)), mk));
+      const monthPrevEntrees = previsionsComptees.filter(p => p.type === 'entree' && p.statut === 'prevu' && sameMonth(monthKey(new Date(p.date)), mk));
       const scheduledEntrees = monthPrevEntrees.reduce((s, p) => s + (p.montant || 0), 0);
-      const monthPrevSorties = previsions.filter(p => p.type === 'sortie' && p.statut === 'prevu' && sameMonth(monthKey(new Date(p.date)), mk));
+      const monthPrevSorties = previsionsComptees.filter(p => p.type === 'sortie' && p.statut === 'prevu' && sameMonth(monthKey(new Date(p.date)), mk));
       const scheduledSorties = monthPrevSorties.reduce((s, p) => s + (p.montant || 0), 0);
 
       // Include unpaid invoices/accepted devis as projected income for this month
@@ -1463,7 +1488,7 @@ export default function TresorerieModule({
     const thresholdMonth = projections.find(p => p.balance < (settings.seuilAlerte || 5000));
 
     // 7. Recurring summary
-    const recurringParents = previsions.filter(p => p.recurrence && p.recurrence !== 'unique' && !p.recurrenceParentId);
+    const recurringParents = previsionsComptees.filter(p => p.recurrence && p.recurrence !== 'unique' && !p.recurrenceParentId);
     const recurringEntrees = recurringParents.filter(p => p.type === 'entree');
     const recurringSorties = recurringParents.filter(p => p.type === 'sortie');
     const monthlyRecurrEntrees = recurringEntrees.reduce((s, p) => {
@@ -1491,7 +1516,7 @@ export default function TresorerieModule({
       projections, negativeMonth, thresholdMonth, avgMonthlyEntrees, avgMonthlySorties,
       recurringSummary,
     };
-  }, [devis, depenses, clients, previsions, now, period, settings.soldeInitial]);
+  }, [devis, depenses, clients, previsionsComptees, now, period, settings.soldeInitial]);
 
   // TVA data from hook (replaces inline computation)
   const { tvaMonthly, tvaTotal, tvaByRate, tvaQuarterly, tvaNextDeadline } = tvaHook;
@@ -1502,8 +1527,17 @@ export default function TresorerieModule({
     if (activeTab === 'previsions') result = result.filter((p) => p.statut !== 'Payé');
     else if (activeTab === 'historique') result = result.filter((p) => p.statut === 'Payé');
     if (categoryFilter !== 'all') result = result.filter((p) => p.categorie === categoryFilter);
+    if (activeTab !== 'historique') {
+      // À venir : la plus proche d'abord (les retards en tête), puis le réglé, du plus récent au plus ancien.
+      // Triée à l'envers, la liste montrait janvier prochain avant les échéances de la semaine.
+      const ouvert = result.filter((p) => p.statut !== 'Payé').sort((a, b) => new Date(a.date) - new Date(b.date));
+      result = [...ouvert, ...result.filter((p) => p.statut === 'Payé')];
+    }
     return result;
   }, [upcomingPayments, activeTab, categoryFilter]);
+  // 12 échéances d'abord : la liste complète dépassait 80 lignes au téléphone.
+  const paiementsVisibles = toutesEcheances ? filteredPayments : filteredPayments.slice(0, 12);
+  useEffect(() => { setToutesEcheances(false); }, [activeTab, categoryFilter]);
 
   // -- Scenario projections (12 months) -----------------------------------
   const { scenarioProjections, baselineProjections, scenarioSummary } = useMemo(() => {
@@ -1522,8 +1556,8 @@ export default function TresorerieModule({
       const mois = MONTH_NAMES[d.getMonth()];
 
       // Scheduled previsions for this month
-      const scheduledE = previsions.filter(p => p.type === 'entree' && p.statut === 'prevu' && sameMonth(monthKey(new Date(p.date)), mk)).reduce((s, p) => s + (p.montant || 0), 0);
-      const scheduledS = previsions.filter(p => p.type === 'sortie' && p.statut === 'prevu' && sameMonth(monthKey(new Date(p.date)), mk)).reduce((s, p) => s + (p.montant || 0), 0);
+      const scheduledE = previsionsComptees.filter(p => p.type === 'entree' && p.statut === 'prevu' && sameMonth(monthKey(new Date(p.date)), mk)).reduce((s, p) => s + (p.montant || 0), 0);
+      const scheduledS = previsionsComptees.filter(p => p.type === 'sortie' && p.statut === 'prevu' && sameMonth(monthKey(new Date(p.date)), mk)).reduce((s, p) => s + (p.montant || 0), 0);
 
       const baseE = scheduledE || baseAvgEntrees;
       const baseS = scheduledS || baseAvgSorties;
@@ -1560,44 +1594,25 @@ export default function TresorerieModule({
         baseThreshMonth, scenThreshMonth,
       },
     };
-  }, [soldeActuel, avgMonthlyEntrees, avgMonthlySorties, previsions, now, scenarioParams, settings.seuilAlerte]);
+  }, [soldeActuel, avgMonthlyEntrees, avgMonthlySorties, previsionsComptees, now, scenarioParams, settings.seuilAlerte]);
 
   // -- Render ---------------------------------------------------------------
-  const cardBg = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200';
-  const textPrimary = isDark ? 'text-white' : 'text-gray-900';
-  const textSecondary = isDark ? 'text-gray-400' : 'text-gray-500';
-  const borderColor = isDark ? 'border-slate-700' : 'border-gray-200';
-  const inputCls = `w-full px-3 py-2 rounded-lg border text-sm ${isDark ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300'}`;
+  const cardBg = 'bg-surface border-bord';
+  const textPrimary = 'text-encre';
+  const textSecondary = 'text-encre-3';
+  const borderColor = 'border-bord';
+  const inputCls = `w-full px-3 py-2 rounded-lg border text-sm bg-surface border-bord-fort`;
 
   return (
     <div className="space-y-6">
-      {/* ── Header ──────────────────────────────────────────────────── */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg" style={{ backgroundColor: couleur }}>
-            <Wallet size={24} className="text-white" />
-          </div>
-          <div>
-            <h1 className={`text-2xl font-bold ${textPrimary}`}>Trésorerie</h1>
-            <p className={`text-sm ${textSecondary}`}>
-              Solde actuel :{' '}
-              <span className={`font-bold ${soldeActuel >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-                {formatMoney(soldeActuel)}
-              </span>
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          {/* Settings */}
-          <div className="relative">
-            <button onClick={() => setShowSettingsPanel(!showSettingsPanel)}
-              aria-expanded={showSettingsPanel}
-              className={`p-2 rounded-xl border transition-colors ${isDark ? 'border-slate-700 hover:bg-slate-700 text-slate-400' : 'border-gray-200 hover:bg-gray-50 text-gray-500'}`}
-              title="Paramètres trésorerie">
-              <Settings size={18} />
-            </button>
+      {/* ── En-tête (refonte du 9 oct. 2026) : « Finances › Trésorerie » faisait doublon. La période,
+          les réglages, puis le solde en tuile héros. ─────────────────────────────── */}
+      <div className="flex items-center justify-between gap-2">
+        <Segmente ariaLabel="Période" valeur={period} onChange={setPeriod} options={PERIOD_OPTIONS.map((o) => ({ valeur: o.key, libelle: o.label }))} />
+        <div className="relative">
+          <BoutonIcone icone={Settings} libelle="Paramètres de trésorerie" variante="secondaire" onClick={() => setShowSettingsPanel(!showSettingsPanel)} aria-expanded={showSettingsPanel} />
             {showSettingsPanel && (
-              <div ref={settingsPanelRef} className={`absolute right-0 top-full mt-2 z-30 p-4 rounded-xl border shadow-lg ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`} style={{ minWidth: 260 }}>
+              <div ref={settingsPanelRef} className={`absolute right-0 top-full mt-2 z-30 p-4 rounded-xl border shadow-lg bg-surface border-bord`} style={{ minWidth: 260 }}>
                 <h4 className={`text-sm font-bold mb-3 ${textPrimary}`}>Paramètres trésorerie</h4>
                 <div className="space-y-3">
                   <div>
@@ -1605,7 +1620,7 @@ export default function TresorerieModule({
                     <input type="number" value={settings.soldeInitial || ''} placeholder="0"
                       onChange={(e) => updateSettings({ soldeInitial: parseFloat(e.target.value) || 0 })}
                       className={inputCls} />
-                    <p className={`text-[10px] mt-0.5 ${textSecondary}`}>Votre solde bancaire au démarrage</p>
+                    <p className={`text-xs mt-0.5 ${textSecondary}`}>Votre solde bancaire au démarrage</p>
                   </div>
                   <div>
                     <label className={`block text-xs font-medium mb-1 ${textSecondary}`}>Date du solde initial</label>
@@ -1618,9 +1633,9 @@ export default function TresorerieModule({
                     <input type="number" value={settings.seuilAlerte || ''} placeholder="5000"
                       onChange={(e) => updateSettings({ seuilAlerte: parseInt(e.target.value) || 0 })}
                       className={inputCls} />
-                    <p className={`text-[10px] mt-0.5 ${textSecondary}`}>Alerte si le solde passe sous ce montant</p>
+                    <p className={`text-xs mt-0.5 ${textSecondary}`}>Alerte si le solde passe sous ce montant</p>
                   </div>
-                  <div className={`pt-3 mt-1 border-t ${isDark ? 'border-slate-600' : 'border-gray-200'}`}>
+                  <div className={`pt-3 mt-1 border-t border-bord`}>
                     <label className={`block text-xs font-medium mb-1 ${textSecondary}`}>Régime TVA</label>
                     <select value={settings.regimeTva || 'trimestriel'}
                       onChange={(e) => updateSettings({ regimeTva: e.target.value })}
@@ -1629,7 +1644,7 @@ export default function TresorerieModule({
                       <option value="trimestriel">Réel simplifié (trimestriel)</option>
                       <option value="franchise">Franchise en base</option>
                     </select>
-                    <p className={`text-[10px] mt-0.5 ${textSecondary}`}>
+                    <p className={`text-xs mt-0.5 ${textSecondary}`}>
                       {(settings.regimeTva || 'trimestriel') === 'mensuel' ? 'Déclaration le 24 de chaque mois' :
                        (settings.regimeTva || 'trimestriel') === 'trimestriel' ? 'Déclaration trimestrielle' :
                        'Non assujetti à la TVA'}
@@ -1648,28 +1663,24 @@ export default function TresorerieModule({
                 </button>
               </div>
             )}
-          </div>
-          {/* Period toggle */}
-          <div className={`inline-flex rounded-xl p-1 ${isDark ? 'bg-slate-800 border border-slate-700' : 'bg-gray-100'}`}>
-            {PERIOD_OPTIONS.map((opt) => (
-              <button key={opt.key} onClick={() => setPeriod(opt.key)}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${period === opt.key ? isDark ? 'bg-slate-700 text-white shadow-sm' : 'bg-white text-gray-900 shadow-sm' : isDark ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-700'}`}>
-                {opt.label}
-              </button>
-            ))}
-          </div>
         </div>
       </div>
+      <TuileChiffre
+        heros
+        libelle="Solde aujourd'hui"
+        valeur={formatMoney(soldeActuel)}
+        contexte={settings.seuilAlerte ? `Seuil d'alerte : ${formatMoney(settings.seuilAlerte)}` : 'Réglez votre solde de départ dans les paramètres'}
+      />
 
       {/* ── Threshold Alert (hidden during wizard) ─────────────────── */}
       {(!showWizard || wizardStep >= 2) && soldeActuel < (settings.seuilAlerte || 5000) && !alertDismissed && (
         <div className={`flex items-start gap-3 p-4 rounded-2xl border ${soldeActuel < 0 ? isDark ? 'bg-red-500/10 border-red-500/30' : 'bg-red-50 border-red-200' : isDark ? 'bg-amber-500/10 border-amber-500/30' : 'bg-amber-50 border-amber-200'}`}>
-          <AlertTriangle size={20} className={`flex-shrink-0 mt-0.5 ${soldeActuel < 0 ? (isDark ? 'text-red-400' : 'text-red-600') : (isDark ? 'text-amber-400' : 'text-amber-600')}`} />
+          <AlertTriangle size={20} className={`flex-shrink-0 mt-0.5 ${soldeActuel < 0 ? ('text-danger-texte') : ('text-alerte-texte')}`} />
           <div className="flex-1">
             <p className={`text-sm font-semibold ${soldeActuel < 0 ? (isDark ? 'text-red-300' : 'text-red-800') : (isDark ? 'text-amber-300' : 'text-amber-800')}`}>
               Solde en dessous du seuil d'alerte ({formatMoney(settings.seuilAlerte || 5000)})
             </p>
-            <p className={`text-xs mt-0.5 ${soldeActuel < 0 ? (isDark ? 'text-red-400' : 'text-red-600') : (isDark ? 'text-amber-400' : 'text-amber-600')}`}>
+            <p className={`text-xs mt-0.5 ${soldeActuel < 0 ? ('text-danger-texte') : ('text-alerte-texte')}`}>
               Votre solde actuel de {formatMoney(soldeActuel)} est inférieur au seuil configuré.
             </p>
             <div className="flex items-center gap-3 mt-2">
@@ -1678,34 +1689,34 @@ export default function TresorerieModule({
                 Modifier le seuil
               </button>
               <button onClick={() => { setAlertDismissed(true); try { localStorage.setItem('cp_treso_alert_dismissed', '1'); } catch { /* préférence non enregistrée : quota plein ou navigation privée */ } }}
-                className={`text-xs ${soldeActuel < 0 ? (isDark ? 'text-red-400' : 'text-red-500') : (isDark ? 'text-amber-400' : 'text-amber-500')} hover:underline`}>
+                className={`text-xs ${soldeActuel < 0 ? ('text-danger-texte') : ('text-alerte-texte')} hover:underline`}>
                 Ne plus afficher
               </button>
             </div>
           </div>
           <button onClick={() => { setAlertDismissed(true); try { localStorage.setItem('cp_treso_alert_dismissed', '1'); } catch { /* préférence non enregistrée : quota plein ou navigation privée */ } }}
-            aria-label="Fermer" className={`flex-shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
-            <X size={16} className={soldeActuel < 0 ? (isDark ? 'text-red-400' : 'text-red-500') : (isDark ? 'text-amber-400' : 'text-amber-500')} />
+            aria-label="Fermer" className={`flex-shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg transition-colors hover:bg-surface-2`}>
+            <X size={16} className={soldeActuel < 0 ? ('text-danger-texte') : ('text-alerte-texte')} />
           </button>
         </div>
       )}
 
       {(!showWizard || wizardStep >= 2) && alertNegativeBalance && (
         <div className={`flex items-start gap-3 p-4 rounded-2xl border ${isDark ? 'bg-amber-500/10 border-amber-500/30' : 'bg-amber-50 border-amber-200'}`}>
-          <AlertTriangle size={20} className={isDark ? 'text-amber-400' : 'text-amber-600'} />
+          <AlertTriangle size={20} className={'text-alerte-texte'} />
           <div>
             <p className={`text-sm font-semibold ${isDark ? 'text-amber-300' : 'text-amber-800'}`}>Attention : solde négatif prévu</p>
-            <p className={`text-xs mt-0.5 ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>La projection indique un solde négatif dans les 30 prochains jours. Pensez à relancer vos factures impayées.</p>
+            <p className={`text-xs mt-0.5 text-alerte-texte`}>La projection indique un solde négatif dans les 30 prochains jours. Pensez à relancer vos factures impayées.</p>
           </div>
         </div>
       )}
 
       {(!showWizard || wizardStep >= 2) && alertLargePayment && (
         <div className={`flex items-start gap-3 p-4 rounded-2xl border ${isDark ? 'bg-blue-500/10 border-blue-500/30' : 'bg-blue-50 border-blue-200'}`}>
-          <Info size={20} className={isDark ? 'text-blue-400' : 'text-blue-600'} />
+          <Info size={20} className={'text-info-texte'} />
           <div>
             <p className={`text-sm font-semibold ${isDark ? 'text-blue-300' : 'text-blue-800'}`}>Paiement important attendu</p>
-            <p className={`text-xs mt-0.5 ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>Facture {alertLargePayment.numero || ''} de {formatMoney(alertLargePayment.total_ttc)} attendue dans les 7 prochains jours.</p>
+            <p className={`text-xs mt-0.5 text-info-texte`}>Facture {alertLargePayment.numero || ''} de {formatMoney(alertLargePayment.total_ttc)} attendue dans les 7 prochains jours.</p>
           </div>
         </div>
       )}
@@ -1738,15 +1749,15 @@ export default function TresorerieModule({
             {[0, 1].map(s => (
               <React.Fragment key={s}>
                 <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
-                  wizardStep >= s ? 'text-white' : isDark ? 'bg-slate-700 text-slate-500' : 'bg-gray-200 text-gray-400'
+                  wizardStep >= s ? 'text-white' : 'bg-bord text-encre-3'
                 }`} style={wizardStep >= s ? { backgroundColor: couleur } : undefined}>
                   {wizardStep > s ? <Check size={14} /> : s + 1}
                 </div>
-                {s < 1 && <div className={`flex-1 h-0.5 mx-2 rounded ${wizardStep > s ? '' : isDark ? 'bg-slate-700' : 'bg-gray-200'}`} style={wizardStep > s ? { backgroundColor: couleur } : undefined} />}
+                {s < 1 && <div className={`flex-1 h-0.5 mx-2 rounded ${wizardStep > s ? '' : 'bg-bord'}`} style={wizardStep > s ? { backgroundColor: couleur } : undefined} />}
               </React.Fragment>
             ))}
             </div>
-            <button onClick={() => setWizardMinimized(true)} className={`min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg ml-2 ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-gray-100 text-gray-400'}`} title="Réduire" aria-label="Réduire">
+            <button onClick={() => setWizardMinimized(true)} className={`min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg ml-2 hover:bg-surface-2 text-encre-3`} title="Réduire" aria-label="Réduire">
               <ChevronUp size={16} />
             </button>
           </div>
@@ -1768,9 +1779,9 @@ export default function TresorerieModule({
                   <input type="number" placeholder="ex: 15000"
                     value={settings.soldeInitial || ''}
                     onChange={(e) => updateSettings({ soldeInitial: parseFloat(e.target.value) || 0 })}
-                    className={`w-full px-4 py-3 rounded-xl border text-lg font-bold ${isDark ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300'}`}
+                    className={`w-full px-4 py-3 rounded-xl border text-lg font-bold bg-surface border-bord-fort`}
                   />
-                  <p className={`text-[10px] mt-1 ${textSecondary}`}>Ce sera votre point de départ pour les projections</p>
+                  <p className={`text-xs mt-1 ${textSecondary}`}>Ce sera votre point de départ pour les projections</p>
                 </div>
                 <button onClick={() => setWizardStep(1)}
                   className="w-full py-3 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90"
@@ -1779,7 +1790,7 @@ export default function TresorerieModule({
                 </button>
                 {/* UX-010: bouton pour passer le wizard */}
                 <button onClick={() => { try { localStorage.setItem('cp_treso_wizard_done', '1'); } catch { /* préférence non enregistrée : quota plein ou navigation privée */ } setWizardStep(2); }}
-                  className={`w-full py-2 text-xs font-medium transition-colors ${isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-700'}`}>
+                  className={`w-full py-2 text-xs font-medium transition-colors text-encre-3 hover:text-encre`}>
                   Passer cette étape →
                 </button>
               </div>
@@ -1806,7 +1817,7 @@ export default function TresorerieModule({
                       className={`flex items-center gap-3 px-3 py-2 rounded-xl border transition-colors cursor-pointer ${
                         isSelected
                           ? isDark ? 'border-blue-500/50 bg-blue-500/10' : 'border-blue-300 bg-blue-50'
-                          : isDark ? 'border-slate-600 bg-slate-700/40 hover:bg-slate-700/60' : 'border-gray-200 bg-white hover:bg-gray-50'
+                          : 'border-bord bg-surface hover:bg-surface-2'
                       }`}
                       onClick={() => {
                         if (isSelected) {
@@ -1827,7 +1838,7 @@ export default function TresorerieModule({
                       }}>
                       <span className="min-w-[44px] min-h-[44px] flex items-center justify-center flex-shrink-0" role="checkbox" aria-checked={isSelected} aria-label={tmpl.description}>
                         <span className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${
-                          isSelected ? 'border-blue-500 bg-blue-500' : isDark ? 'border-slate-500' : 'border-gray-300'
+                          isSelected ? 'border-blue-500 bg-blue-500' : 'border-bord-fort'
                         }`}>
                           {isSelected && <Check size={12} className="text-white" />}
                         </span>
@@ -1837,7 +1848,7 @@ export default function TresorerieModule({
                         <input type="number" value={wizardCharges[tmpl.description]}
                           onClick={(e) => e.stopPropagation()}
                           onChange={(e) => setWizardCharges(prev => ({ ...prev, [tmpl.description]: Number(e.target.value) || 0 }))}
-                          className={`w-24 px-2 py-1 rounded-lg border text-sm text-right font-semibold ${isDark ? 'bg-slate-600 border-slate-500 text-white' : 'bg-white border-gray-200'}`}
+                          className={`w-24 px-2 py-1 rounded-lg border text-sm text-right font-semibold bg-surface border-bord`}
                         />
                       ) : (
                         <span className={`text-xs ${textSecondary}`}>{formatCurrency(tmpl.montant)}/mois</span>
@@ -1848,7 +1859,7 @@ export default function TresorerieModule({
               </div>
               <div className="flex items-center gap-3 mt-4">
                 <button onClick={() => setWizardStep(0)}
-                  className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${isDark ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-700'}`}>
+                  className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-colors text-encre-3 hover:text-encre`}>
                   {'\u2190'} Retour
                 </button>
                 <button onClick={handleWizardFinish}
@@ -1868,106 +1879,54 @@ export default function TresorerieModule({
 
       {/* ── Widget "À encaisser maintenant" (hidden during wizard) ── */}
       {(!showWizard || wizardStep >= 2) && encaisserData.items.length > 0 && showEncaisserWidget && (
-        <div className={`rounded-2xl border overflow-hidden ${encaisserData.overdueItems.length > 0 ? isDark ? 'border-orange-500/40' : 'border-orange-300' : isDark ? 'border-slate-700' : 'border-gray-200'}`}>
-          {/* Header */}
-          <div className={`flex items-center justify-between px-5 py-3 ${encaisserData.overdueItems.length > 0 ? isDark ? 'bg-orange-500/10' : 'bg-orange-50' : isDark ? 'bg-slate-800' : 'bg-white'}`}>
-            <div className="flex items-center gap-3">
-              <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${encaisserData.overdueItems.length > 0 ? 'bg-orange-500/20' : isDark ? 'bg-emerald-500/20' : 'bg-emerald-100'}`}>
-                <Banknote size={18} className={encaisserData.overdueItems.length > 0 ? 'text-orange-500' : 'text-emerald-500'} />
-              </div>
-              <div>
-                <h3 className={`text-sm font-bold ${textPrimary}`}>
-                  À encaisser maintenant
-                </h3>
-                <p className={`text-xs ${textSecondary}`}>
-                  {encaisserData.items.length} facture{encaisserData.items.length > 1 ? 's' : ''} {'\u2022'} {formatMoney(encaisserData.totalAEncaisser)} TTC
-                  {encaisserData.overdueItems.length > 0 && (
-                    <span className={`ml-2 font-semibold ${isDark ? 'text-orange-400' : 'text-orange-600'}`}>
-                      dont <strong className="text-red-500">{formatMoney(encaisserData.overdueTotal)}</strong> en retard
-                    </span>
-                  )}
-                </p>
-              </div>
-            </div>
-            <button onClick={() => setShowEncaisserWidget(false)}
-              className={`min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-gray-100 text-gray-400'}`}
-              aria-label="Fermer" title="Fermer le widget d'encaissement">
-              <X size={16} />
-            </button>
-          </div>
-
-          {/* Items list */}
-          <div className={`divide-y ${isDark ? 'divide-slate-700/50 bg-slate-800/60' : 'divide-gray-100 bg-white'}`}>
+        <section aria-label="À encaisser maintenant">
+          {/* Refonte du 9 oct. 2026 : une ligne par facture (client, n°, retard ou échéance, reste dû),
+              relancer et encaisser en un geste, cibles de 44 px. Avant : 26 px, pastilles « F-… » de 10 px. */}
+          <TitreSection
+            titre="À encaisser"
+            compte={encaisserData.items.length}
+            action="Masquer" onAction={() => setShowEncaisserWidget(false)}
+          />
+          <p className="-mt-1 mb-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+            <span className="font-semibold text-encre tabular-nums">{formatMoney(encaisserData.totalAEncaisser)} au total</span>
+            {encaisserData.overdueItems.length > 0 && (
+              <span className="flex items-center gap-1.5 font-semibold text-danger-texte">
+                <AlertTriangle size={16} aria-hidden="true" /> dont {formatMoney(encaisserData.overdueTotal)} en retard
+              </span>
+            )}
+          </p>
+          <GroupeListe>
             {encaisserData.items.slice(0, 5).map((item) => (
-              <div key={item.id} className={`flex items-center gap-3 px-5 py-3 transition-colors ${isDark ? 'hover:bg-slate-700/40' : 'hover:bg-gray-50'}`}>
-                {/* Overdue indicator */}
-                <div className="flex items-center gap-1 flex-shrink-0">
-                  <div aria-hidden="true" className={`w-2.5 h-2.5 rounded-full ${item.isOverdue ? item.joursRetard > 14 ? 'bg-red-600' : item.joursRetard > 7 ? 'bg-red-500' : 'bg-orange-400' : 'bg-emerald-400'}`} />
-                  <span className="sr-only">{item.isOverdue ? `En retard de ${item.joursRetard} jours` : 'À jour'}</span>
-                  {item.isOverdue && item.joursRetard > 14 && <AlertTriangle size={12} className="text-red-500" aria-hidden="true" />}
-                </div>
-
-                {/* Info */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className={`text-sm font-medium truncate ${textPrimary}`}>{item.clientNom}</span>
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${item.type === 'facture' ? isDark ? 'bg-blue-900/30 text-blue-400' : 'bg-blue-100 text-blue-700' : isDark ? 'bg-green-900/30 text-green-400' : 'bg-green-100 text-green-700'}`}>
-                      {item.type === 'facture' ? `F-${item.numero}` : `D-${item.numero}`}
+              <LigneListe
+                key={item.id}
+                chevron={false}
+                titre={item.clientNom}
+                montant={formatMoney(item.montant)}
+                meta={`${item.numero}${item.isOverdue ? '' : item.echeance ? ` · échéance ${new Date(item.echeance).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}` : ''}`}
+                pastille={item.isOverdue ? <Pastille ton="danger">{item.joursRetard} j de retard</Pastille> : <Pastille ton="info">À payer</Pastille>}
+                pied={(
+                  <>
+                    <span />
+                    <span className="flex items-center gap-2">
+                      {item.clientTel && <Bouton taille="compacte" icone={MessageCircle} onClick={() => handleWhatsAppRelance(item)}>Relancer</Bouton>}
+                      <Bouton taille="compacte" icone={Check} onClick={() => handleEncaisserMarkPaid(item)}>Encaissée</Bouton>
                     </span>
-                  </div>
-                  <p className={`text-xs ${textSecondary}`}>
-                    {item.isOverdue ? (
-                      <span className={isDark ? 'text-orange-400' : 'text-orange-600'}>
-                        {item.joursRetard}j de retard
-                      </span>
-                    ) : item.echeance ? (
-                      `Éch. ${new Date(item.echeance).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}`
-                    ) : 'En attente'}
-                  </p>
-                </div>
-
-                {/* Amount */}
-                <span className={`text-sm font-bold whitespace-nowrap ${item.isOverdue ? item.joursRetard > 7 ? 'text-red-500' : isDark ? 'text-orange-400' : 'text-orange-600' : isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>
-                  {formatMoney(item.montant)}
-                </span>
-
-                {/* Actions */}
-                <div className="flex items-center gap-1.5 flex-shrink-0">
-                  {item.clientTel && (
-                    <button
-                      onClick={() => handleWhatsAppRelance(item)}
-                      className="p-1.5 rounded-lg bg-green-500/10 hover:bg-green-500/20 text-green-500 transition-colors"
-                      title="Envoyer un rappel WhatsApp"
-                    >
-                      <MessageCircle size={14} />
-                    </button>
-                  )}
-                  <button
-                    onClick={() => handleEncaisserMarkPaid(item)}
-                    className={`p-1.5 rounded-lg transition-colors ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-emerald-400' : 'bg-gray-100 hover:bg-gray-200 text-emerald-600'}`}
-                    title="Marquer comme encaissé"
-                  >
-                    <Check size={14} />
-                  </button>
-                </div>
-              </div>
+                  </>
+                )}
+              />
             ))}
             {encaisserData.items.length > 5 && (
-              <div className={`px-5 py-2 text-center`}>
-                <button onClick={() => setActiveTab('previsions')}
-                  className={`text-xs font-medium ${isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-700'}`}>
-                  Voir les {encaisserData.items.length - 5} autres factures →
-                </button>
-              </div>
+              <button type="button" onClick={() => setActiveTab('previsions')} className="w-full h-12 text-sm font-semibold text-encre-2 hover:bg-surface-2">
+                Voir les {encaisserData.items.length - 5} autres factures
+              </button>
             )}
-          </div>
-        </div>
+          </GroupeListe>
+        </section>
       )}
 
       {/* ── KPI Cards ──────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <KpiCard label="Solde actuel" value={formatMoney(soldeActuel)} icon={Wallet}
-          trend={modeDiscret ? undefined : trendSolde} trendLabel="vs mois dernier" color={soldeActuel < 0 ? '#ef4444' : soldeActuel < (settings.seuilAlerte || 5000) ? '#f97316' : '#3b82f6'} isDark={isDark} />
+      {/* Le solde est dans la tuile héros ; ici ce qui va entrer, sortir, et où l'on finit le mois. */}
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 [&>*:last-child]:col-span-2 lg:[&>*:last-child]:col-span-1">
         <KpiCard label="Entrées prévues" value={formatMoney(entreesPrevues)} icon={ArrowDown}
           color="#10b981" trendLabel="Factures impayées + prévisions" isDark={isDark} />
         <KpiCard label="Sorties prévues" value={formatMoney(sortiesPrevues)} icon={ArrowUp}
@@ -1978,81 +1937,74 @@ export default function TresorerieModule({
 
       {/* ── TVA déductible auto-calculée (Feature 5 — Aperçu only) ──── */}
       {activeTab === 'apercu' && (settings.regimeTva || 'trimestriel') !== 'franchise' && (tvaTotal.collectee > 0 || tvaTotal.deductible > 0) && (
-        <div className={`flex items-center gap-4 p-4 rounded-2xl border cursor-pointer transition-colors ${isDark ? 'bg-slate-800/60 border-slate-700 hover:bg-slate-700/40' : 'bg-white border-gray-200 hover:bg-gray-50'}`}
-          onClick={() => setActiveTab('tva')}>
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-purple-500/10">
-            <Percent size={20} className="text-purple-500" />
-          </div>
-          <div className="flex-1">
-            <p className={`text-xs font-semibold uppercase tracking-wide ${textSecondary}`}>TVA — Auto-calculée depuis vos dépenses</p>
-            <div className="flex flex-wrap items-center gap-4 mt-1">
-              <span className={`text-sm ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>
-                Collectée : <strong>{formatMoney(tvaTotal.collectee)}</strong>
-              </span>
-              <span className={`text-sm ${isDark ? 'text-orange-400' : 'text-orange-600'}`}>
-                Déductible : <strong>{formatMoney(tvaTotal.deductible)}</strong>
-              </span>
-              <span className={`text-sm font-bold ${tvaTotal.net >= 0 ? 'text-red-500' : 'text-green-500'}`}>
-                {tvaTotal.net >= 0 ? 'À reverser' : 'Crédit'} : {formatMoney(Math.abs(tvaTotal.net))}
-              </span>
-            </div>
-          </div>
-          <span className={`text-xs font-medium px-3 py-1.5 rounded-lg ${isDark ? 'bg-purple-900/30 text-purple-400' : 'bg-purple-50 text-purple-700'}`}>
-            Détail TVA →
+        <Carte as="button" onClick={() => setActiveTab('tva')} aria-label="TVA : voir le détail">
+          <span className="flex items-center justify-between gap-3">
+            <span className="text-base font-semibold text-encre">TVA</span>
+            <span className="flex items-center gap-0.5 text-sm font-semibold text-accent-texte">Détail <ChevronRight size={16} aria-hidden="true" /></span>
           </span>
-        </div>
+          <span className="mt-3 grid grid-cols-3 gap-3">
+            <span className="min-w-0">
+              <span className="block text-sm text-encre-2">Collectée</span>
+              <span className="block text-base font-bold text-encre tabular-nums truncate">{formatMoney(tvaTotal.collectee)}</span>
+            </span>
+            <span className="min-w-0">
+              <span className="block text-sm text-encre-2">Déductible</span>
+              <span className="block text-base font-bold text-encre tabular-nums truncate">{formatMoney(tvaTotal.deductible)}</span>
+            </span>
+            <span className="min-w-0">
+              <span className="block text-sm text-encre-2">{tvaTotal.net >= 0 ? 'À reverser' : 'Crédit'}</span>
+              <span className="block text-base font-bold text-encre tabular-nums truncate">{formatMoney(Math.abs(tvaTotal.net))}</span>
+            </span>
+          </span>
+        </Carte>
       )}
 
       {/* ── Widget Charges courantes BTP (Feature 6) ────────────────── */}
       {activeTab === 'apercu' && (
-        <div className={`rounded-2xl border overflow-hidden ${cardBg}`}>
+        <Carte marge="aucun" className="overflow-hidden">
           <button
+            type="button"
+            aria-expanded={showChargesBTP}
             onClick={() => { setShowChargesBTP(!showChargesBTP); try { localStorage.setItem('cp_treso_charges_btp_seen', '1'); } catch { /* préférence non enregistrée : quota plein ou navigation privée */ } }}
-            className={`w-full flex items-center justify-between px-5 py-3 transition-colors ${isDark ? 'hover:bg-slate-700/40' : 'hover:bg-gray-50'}`}
+            className="w-full min-h-[64px] flex items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-surface-2/60"
           >
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${couleur}20` }}>
-                <HardHat size={18} style={{ color: couleur }} />
-              </div>
-              <div className="text-left">
-                <p className={`text-sm font-bold ${textPrimary}`}>Charges courantes BTP</p>
-                <p className={`text-xs ${textSecondary}`}>Ajoutez rapidement vos charges récurrentes</p>
-              </div>
-            </div>
-            {showChargesBTP ? <ChevronUp size={18} className={textSecondary} /> : <ChevronDown size={18} className={textSecondary} />}
+            <span className="flex items-center gap-3 min-w-0">
+              <span className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 bg-surface-2 text-encre-2">
+                <HardHat size={20} aria-hidden="true" />
+              </span>
+              <span className="min-w-0">
+                <span className="block text-base font-semibold text-encre">Charges courantes BTP</span>
+                <span className="block text-sm text-encre-2">Ajoutez vos charges récurrentes en un geste</span>
+              </span>
+            </span>
+            {showChargesBTP ? <ChevronUp size={20} aria-hidden="true" className="flex-shrink-0 text-encre-3" /> : <ChevronDown size={20} aria-hidden="true" className="flex-shrink-0 text-encre-3" />}
           </button>
 
           {showChargesBTP && (
-            <div className={`px-5 pb-4 space-y-4 border-t ${isDark ? 'border-slate-700' : 'border-gray-100'}`}>
+            <div className="px-4 pb-4 space-y-4 border-t border-bord">
               {BTP_CHARGES.map((group) => (
                 <div key={group.categorie} className="pt-3">
-                  <p className={`text-xs font-bold uppercase tracking-wide mb-2 ${textSecondary}`}>{group.categorie}</p>
-                  <div className="space-y-1.5">
+                  <p className="text-sm font-semibold mb-2 text-encre-2">{group.categorie}</p>
+                  <div className="divide-y divide-bord">
                     {group.items.map((charge) => {
                       const exists = previsions.some(p =>
                         p.description?.toLowerCase().trim() === charge.label.toLowerCase().trim() && p.statut === 'prevu'
                       );
                       return (
-                        <div key={charge.label}
-                          className={`flex items-center justify-between px-3 py-2 rounded-xl transition-colors ${isDark ? 'bg-slate-700/40 hover:bg-slate-700/60' : 'bg-gray-50 hover:bg-gray-100'}`}>
+                        <div key={charge.label} className="flex items-center justify-between gap-3 py-2">
                           <div className="flex-1 min-w-0">
-                            <span className={`text-sm ${textPrimary}`}>{charge.label}</span>
-                            <span className={`text-xs ml-2 ${textSecondary}`}>
-                              ~{formatCurrency(charge.montantMoyen)}/{charge.recurrence === 'mensuel' ? 'mois' : charge.recurrence === 'trimestriel' ? 'trim.' : 'an'}
-                            </span>
+                            <p className="text-sm font-medium text-encre">{charge.label}</p>
+                            <p className="text-sm text-encre-3 tabular-nums">
+                              environ {formatCurrency(charge.montantMoyen)} par {charge.recurrence === 'mensuel' ? 'mois' : charge.recurrence === 'trimestriel' ? 'trimestre' : 'an'}
+                            </p>
                           </div>
                           {exists ? (
-                            <span className={`text-[10px] px-2 py-1 rounded-lg font-medium ${isDark ? 'bg-emerald-900/30 text-emerald-400' : 'bg-emerald-100 text-emerald-700'}`}>
-                              <Check size={10} className="inline mr-0.5" />Déjà ajouté
-                            </span>
+                            <Pastille ton="succes" icone={Check}>Ajoutée</Pastille>
                           ) : (
-                            <button
-                              onClick={() => handleAddBTPCharge({ ...charge, categorie: group.categorie })}
-                              className="text-xs font-medium px-2.5 py-1 rounded-lg text-white transition-colors"
-                              style={{ backgroundColor: couleur }}
-                            >
-                              <Plus size={12} className="inline mr-0.5" />Ajouter
-                            </button>
+                            <Bouton taille="compacte" icone={Plus} onClick={() => handleAddBTPCharge({ ...charge, categorie: group.categorie })}
+                              aria-label={`Ajouter ${charge.label}`}>
+                              Ajouter
+                            </Bouton>
                           )}
                         </div>
                       );
@@ -2062,156 +2014,123 @@ export default function TresorerieModule({
               ))}
             </div>
           )}
-        </div>
+        </Carte>
       )}
 
       {/* ── Mouvements ce mois (Aperçu) ─────────────────────────────── */}
       {activeTab === 'apercu' && mouvements.length > 0 && (
-        <div className={`flex items-center gap-4 p-4 rounded-2xl border ${isDark ? 'bg-slate-800/60 border-slate-700' : 'bg-white border-gray-200'}`}>
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${couleur}20`, color: couleur }}>
-            <Receipt size={20} />
-          </div>
-          <div className="flex-1">
-            <p className={`text-xs font-semibold uppercase tracking-wide ${textSecondary}`}>Mouvements ce mois</p>
-            <div className="flex items-center gap-4 mt-1">
-              <span className={`text-sm font-bold ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>
-                +{formatMoney(mouvementsKPIs.entreesThisMonth)}
+        <Carte as="button" marge="aucun" onClick={() => setActiveTab('mouvements')} className="overflow-hidden">
+          <span className="min-h-[64px] flex items-center gap-3 px-4 py-3">
+            <span className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 bg-surface-2 text-encre-2">
+              <Receipt size={20} aria-hidden="true" />
+            </span>
+            <span className="flex-1 min-w-0">
+              <span className="block text-base font-semibold text-encre">Mouvements ce mois</span>
+              <span className="block text-sm text-encre-2 tabular-nums truncate">
+                {mouvementsKPIs.entreesThisMonth || mouvementsKPIs.sortiesThisMonth
+                  ? <><span className="font-semibold text-succes-texte">+{formatMoney(mouvementsKPIs.entreesThisMonth)}</span> · <span className="font-semibold text-encre">−{formatMoney(mouvementsKPIs.sortiesThisMonth)}</span></>
+                  : 'Aucun ce mois-ci'}
+                {' · '}{mouvements.length} au total
               </span>
-              <span className={`text-sm font-bold ${isDark ? 'text-red-400' : 'text-red-600'}`}>
-                -{formatMoney(mouvementsKPIs.sortiesThisMonth)}
-              </span>
-              <span className={`text-xs ${textSecondary}`}>{mouvements.length} mouvement{mouvements.length > 1 ? 's' : ''} total</span>
-            </div>
-          </div>
-          <button onClick={() => setActiveTab('mouvements')}
-            className={`text-xs font-medium px-3 py-1.5 rounded-lg transition-colors ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-gray-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}>
-            Voir tout →
-          </button>
-        </div>
+            </span>
+            <ChevronRight size={18} aria-hidden="true" className="flex-shrink-0 text-encre-3" />
+          </span>
+        </Carte>
       )}
 
       {/* ── Cash Flow Chart ────────────────────────────────────────── */}
-      <div className={`rounded-2xl border p-5 ${cardBg}`}>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className={`text-base font-bold ${textPrimary}`}>Flux de trésorerie</h2>
-          <div className={`flex items-center gap-2 text-xs ${textSecondary}`}>
-            <BarChart3 size={14} /> {monthlyData.length} mois affichés
-          </div>
+      <Carte>
+        <div className="flex items-baseline justify-between gap-3 mb-3">
+          <h2 className="text-lg font-semibold text-encre">Flux de trésorerie</h2>
+          <span className="text-sm text-encre-3 tabular-nums">{monthlyData.length} mois</span>
         </div>
         {monthlyData.length > 0 && monthlyData.some(d => d.entrees > 0 || d.sorties > 0) ? (
-          <div className="overflow-x-auto" style={{ minHeight: 200, WebkitOverflowScrolling: 'touch' }}>
-            <div style={{ minWidth: 500 }}>
-              <CashFlowChart data={monthlyData} isDark={isDark} couleur={couleur} />
-            </div>
-          </div>
+          <>
+            <div className="sm:hidden"><CashFlowChart data={monthlyData} compact /></div>
+            <div className="hidden sm:block"><CashFlowChart data={monthlyData} /></div>
+          </>
         ) : (
           <div className="flex flex-col items-center justify-center py-10 px-4 text-center">
-            <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4" style={{ backgroundColor: `${couleur}15`, color: couleur }}>
-              <BarChart3 size={28} />
+            <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4 bg-surface-2 text-encre-3">
+              <BarChart3 size={28} aria-hidden="true" />
             </div>
-            <p className={`text-sm font-semibold mb-1 ${textPrimary}`}>Pas encore de données</p>
-            <p className={`text-xs max-w-sm ${textSecondary}`}>Ajoutez votre première entrée ou sortie pour voir votre flux de trésorerie</p>
-            <button onClick={() => setShowAddModal(true)}
-              className="mt-4 px-4 py-2.5 rounded-xl text-sm font-medium text-white transition-colors hover:brightness-110"
-              style={{ backgroundColor: couleur }}>
-              + Ajouter un mouvement
-            </button>
+            <p className="text-base font-semibold mb-1 text-encre">Pas encore de données</p>
+            <p className="text-sm max-w-sm text-encre-2">Ajoutez votre première entrée ou sortie pour voir votre flux de trésorerie.</p>
+            <Bouton className="mt-4" icone={Plus} onClick={() => setShowAddModal(true)}>Ajouter un mouvement</Bouton>
           </div>
         )}
-      </div>
+      </Carte>
 
       {/* ── Cash Flow Projections ──────────────────────────────────── */}
       {activeTab !== 'tva' && activeTab !== 'projections' && activeTab !== 'mouvements' && projections.length > 0 && (
-        <div className={`rounded-2xl border p-5 ${cardBg}`}>
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <TrendingUp size={18} style={{ color: couleur }} />
-              <h2 className={`text-base font-bold ${textPrimary}`}>Projection à 6 mois</h2>
-            </div>
-            {negativeMonth && (
-              <span className={`text-xs font-medium px-2 py-1 rounded-lg ${isDark ? 'bg-red-500/15 text-red-400' : 'bg-red-50 text-red-600'}`}>
-                <AlertTriangle size={12} className="inline mr-1" />Solde négatif prévu en {negativeMonth.mois}
-              </span>
-            )}
-            {!negativeMonth && thresholdMonth && (
-              <span className={`text-xs font-medium px-2 py-1 rounded-lg ${isDark ? 'bg-amber-500/15 text-amber-400' : 'bg-amber-50 text-amber-600'}`}>
-                <AlertTriangle size={12} className="inline mr-1" />Sous le seuil en {thresholdMonth.mois}
-              </span>
-            )}
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        <Carte>
+          <h2 className="text-lg font-semibold text-encre">Projection à 6 mois</h2>
+          {negativeMonth ? (
+            <Pastille ton="danger" icone={AlertTriangle} className="mt-2">Solde négatif prévu en {negativeMonth.mois}</Pastille>
+          ) : thresholdMonth ? (
+            <Pastille ton="alerte" icone={AlertTriangle} className="mt-2">Sous le seuil en {thresholdMonth.mois}</Pastille>
+          ) : null}
+          <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
             {projections.map((p, i) => {
               const isNeg = p.balance < 0;
               const isBelowThreshold = p.balance < (settings.seuilAlerte || 5000);
               return (
                 <div key={i} title={p.items?.length > 0 ? p.items.map(it => `${it.type === 'entree' ? '+' : '-'} ${it.label}: ${formatCompact(it.montant)}`).join('\n') : 'Basé sur la moyenne'}
-                  className={`p-3 rounded-xl border text-center cursor-default ${
-                  isNeg ? isDark ? 'bg-red-900/10 border-red-500/30' : 'bg-red-50 border-red-200'
-                  : isBelowThreshold ? isDark ? 'bg-amber-900/10 border-amber-500/30' : 'bg-amber-50 border-amber-200'
-                  : isDark ? 'bg-slate-700/40 border-slate-600' : 'bg-gray-50 border-gray-200'
-                }`}>
-                  <p className={`text-xs font-bold uppercase mb-1 ${textSecondary}`}>{p.mois}</p>
-                  <p className={`text-sm font-bold ${isNeg ? 'text-red-500' : isBelowThreshold ? isDark ? 'text-amber-400' : 'text-amber-600' : isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>
+                  className="p-3 rounded-xl bg-surface-2 cursor-default">
+                  <p className="text-sm font-semibold text-encre-2 capitalize">{p.mois}</p>
+                  <p className={`mt-0.5 text-lg font-bold tabular-nums ${isNeg ? 'text-danger-texte' : isBelowThreshold ? 'text-alerte-texte' : 'text-encre'}`}>
                     {formatMoney(p.balance)}
                   </p>
-                  <div className={`text-[10px] mt-1 ${textSecondary}`}>
-                    <span className="text-emerald-500">+{modeDiscret ? '···' : formatCompact(p.entrees)}</span>
-                    {' / '}
-                    <span className="text-red-500">-{modeDiscret ? '···' : formatCompact(p.sorties)}</span>
-                  </div>
-                  {p.isScheduled && (
-                    <span className={`inline-block mt-1 text-[9px] px-1 py-0.5 rounded ${isDark ? 'bg-blue-900/30 text-blue-400' : 'bg-blue-50 text-blue-600'}`}>planifié</span>
-                  )}
+                  <p className="text-sm text-encre-3 tabular-nums">
+                    +{modeDiscret ? '···' : formatCompact(p.entrees)} / −{modeDiscret ? '···' : formatCompact(p.sorties)}
+                  </p>
+                  {p.isScheduled && <p className="text-xs text-encre-3">avec vos prévisions</p>}
                 </div>
               );
             })}
           </div>
-          <p className={`text-[10px] mt-3 ${textSecondary}`}>
+          <p className="text-sm mt-3 text-encre-3">
             Basé sur la moyenne des {period === '6m' ? '6' : '3'} derniers mois ({formatMoney(avgMonthlyEntrees)} entrées / {formatMoney(avgMonthlySorties)} sorties par mois) et les prévisions planifiées.
           </p>
-        </div>
+        </Carte>
       )}
 
       {/* ── Tabs ───────────────────────────────────────────────────── */}
       <div className={`rounded-2xl border ${cardBg}`}>
-        <div className={`flex items-center gap-0.5 sm:gap-1 px-2 sm:px-5 pt-3 sm:pt-4 border-b overflow-x-auto scrollbar-hide ${borderColor}`} style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-          <style>{`.scrollbar-hide::-webkit-scrollbar { display: none; }`}</style>
-          {TABS.map((tab) => (
-            <button key={tab.key} onClick={() => setActiveTab(tab.key)}
-              className={`px-2 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-medium rounded-t-lg transition-colors relative whitespace-nowrap shrink-0 ${activeTab === tab.key ? `${textPrimary} font-semibold` : `${textSecondary} hover:${isDark ? 'text-gray-200' : 'text-gray-700'}`}`}>
-              {tab.label}
-              {activeTab === tab.key && <span className="absolute bottom-0 left-2 right-2 h-0.5 rounded-full" style={{ backgroundColor: couleur }} />}
-            </button>
-          ))}
+        <Onglets
+          onglets={TABS.map((t) => ({ id: t.key, libelle: t.label }))}
+          actif={activeTab}
+          onChange={setActiveTab}
+          ariaLabel="Vues de la trésorerie"
+          className="px-4 sm:px-5"
+        />
+        <div className="flex flex-wrap items-center gap-2 px-4 sm:px-5 pt-3">
           {activeTab !== 'tva' && activeTab !== 'projections' && activeTab !== 'mouvements' && (
-            <div className="ml-auto flex items-center gap-2">
-              <Filter size={14} className={textSecondary} />
-              <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}
-                className={`text-sm px-2 py-1.5 rounded-lg border ${isDark ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-200 text-gray-700'}`}>
+            <div className="flex items-center gap-2">
+              <Filter size={16} aria-hidden="true" className="text-encre-3" />
+              <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} aria-label="Catégorie"
+                className="h-11 sm:h-9 text-sm px-3 rounded-xl border bg-surface border-bord-fort text-encre">
                 <option value="all">Toutes catégories</option>
                 {CATEGORIES_PREVISION.map(cat => <option key={cat} value={cat}>{cat}</option>)}
               </select>
             </div>
           )}
           {activeTab === 'mouvements' && (
-            <div className="ml-auto flex items-center gap-2">
-              <Filter size={14} className={textSecondary} />
-              <select value={mouvFilter} onChange={(e) => setMouvFilter(e.target.value)}
-                className={`text-sm px-2 py-1.5 rounded-lg border ${isDark ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-200 text-gray-700'}`}>
+            <div className="flex flex-wrap items-center gap-2">
+              <Filter size={16} aria-hidden="true" className="text-encre-3" />
+              <select value={mouvFilter} onChange={(e) => setMouvFilter(e.target.value)} aria-label="Type de mouvement"
+                className="h-11 sm:h-9 text-sm px-3 rounded-xl border bg-surface border-bord-fort text-encre">
                 <option value="all">Tous types</option>
                 <option value="entree">Entrées</option>
                 <option value="sortie">Sorties</option>
               </select>
-              <select value={mouvStatutFilter} onChange={(e) => setMouvStatutFilter(e.target.value)}
-                className={`text-sm px-2 py-1.5 rounded-lg border ${isDark ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-200 text-gray-700'}`}>
+              <select value={mouvStatutFilter} onChange={(e) => setMouvStatutFilter(e.target.value)} aria-label="Statut du mouvement"
+                className="h-11 sm:h-9 text-sm px-3 rounded-xl border bg-surface border-bord-fort text-encre">
                 <option value="all">Tous statuts</option>
                 <option value="prevu">Prévu</option>
                 <option value="paye">Payé</option>
               </select>
-              <button onClick={() => exportMouvementsCSV()}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-gray-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}>
-                <FileText size={12} /> Export CSV
-              </button>
+              <Bouton taille="compacte" icone={FileText} onClick={() => exportMouvementsCSV()}>Export CSV</Bouton>
             </div>
           )}
         </div>
@@ -2230,7 +2149,43 @@ export default function TresorerieModule({
               )}
             </div>
           ) : (
-            <div className="overflow-x-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
+            <>
+            {/* Téléphone : une ligne par échéance ; toucher pour modifier une prévision. */}
+            <div className="sm:hidden -mx-4 divide-y divide-bord border-y border-bord">
+              {paiementsVisibles.map((p) => {
+                const isEntree = p.type === 'entree';
+                const isPrevision = p.source === 'prevision';
+                const dateStr = p.date ? new Date(p.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
+                const aRegler = isPrevision && p.statut !== 'Payé' && p.date && new Date(p.date) <= new Date(Date.now() + 7 * 86400000);
+                return (
+                  <LigneListe
+                    key={p.id}
+                    titre={p.description}
+                    montant={<span className={isEntree ? 'text-succes-texte' : ''}>{isEntree ? '+' : '−'}{formatMoney(p.montant)}</span>}
+                    meta={[dateStr, p.categorie || 'Divers', p.recurrence && p.recurrence !== 'unique' ? p.recurrence : null].filter(Boolean).join(' · ')}
+                    pastille={p.statut !== 'Prévu' ? <Pastille ton={TON_STATUT_PAIEMENT[p.statut] || 'neutre'}>{p.statut === 'Signé' ? 'Devis signé' : p.statut}</Pastille> : null}
+                    onClick={isPrevision ? () => handleEditPrevision(p) : undefined}
+                    pied={aRegler ? (
+                      confirmingPaidId === p.id ? (
+                        <>
+                          <span className="text-sm font-medium text-encre">{isEntree ? 'Bien encaissée ?' : 'Bien payée ?'}</span>
+                          <span className="flex gap-2">
+                            <Bouton taille="compacte" onClick={() => setConfirmingPaidId(null)}>Non</Bouton>
+                            <Bouton taille="compacte" icone={Check} onClick={() => { handleMarkAsPaid(p.id); setConfirmingPaidId(null); }}>Oui</Bouton>
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <span />
+                          <Bouton taille="compacte" icone={Check} onClick={() => setConfirmingPaidId(p.id)}>{isEntree ? 'Encaissée' : 'Payée'}</Bouton>
+                        </>
+                      )
+                    ) : null}
+                  />
+                );
+              })}
+            </div>
+            <div className="hidden sm:block overflow-x-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
               <table className="w-full text-sm min-w-[640px]" aria-label="Prévisions de trésorerie">
                 <thead>
                   <tr className={`text-xs uppercase tracking-wide ${textSecondary} border-b ${borderColor}`}>
@@ -2244,24 +2199,22 @@ export default function TresorerieModule({
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredPayments.map((p) => {
+                  {paiementsVisibles.map((p) => {
                     const isEntree = p.type === 'entree';
                     const dateStr = p.date ? new Date(p.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
                     const isPrevision = p.source === 'prevision';
 
                     return (
-                      <tr key={p.id} className={`border-b last:border-b-0 transition-colors ${isDark ? 'border-slate-700/50 hover:bg-slate-700/30' : 'border-gray-100 hover:bg-gray-50'}`}>
+                      <tr key={p.id} className={`border-b last:border-b-0 transition-colors border-bord hover:bg-surface-2`}>
                         <td className={`py-3 pr-4 ${textSecondary} whitespace-nowrap`}>{dateStr}</td>
                         <td className={`py-3 pr-4 ${textPrimary} font-medium max-w-[150px] sm:max-w-xs truncate`} title={p.description}>
                           {p.description}
                           {p.recurrence && p.recurrence !== 'unique' && (
-                            <span className={`ml-1.5 text-[10px] px-1.5 py-0.5 rounded font-medium ${isDark ? 'bg-purple-900/30 text-purple-400' : 'bg-purple-50 text-purple-600'}`}>
-                              🔄 {p.recurrence}
-                            </span>
+                            <span className="ml-1.5 text-xs font-normal text-encre-3">· {p.recurrence}</span>
                           )}
                         </td>
                         <td className="py-3 pr-4">
-                          <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-full ${isEntree ? isDark ? 'bg-emerald-500/20 text-emerald-400' : 'bg-emerald-100 text-emerald-700' : isDark ? 'bg-red-500/20 text-red-400' : 'bg-red-100 text-red-700'}`}>
+                          <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-full ${isEntree ? 'bg-succes-fond text-succes-texte' : 'bg-danger-fond text-danger-texte'}`}>
                             {isEntree ? <ArrowDown size={12} /> : <ArrowUp size={12} />}
                             {isEntree ? 'Entrée' : 'Sortie'}
                           </span>
@@ -2273,35 +2226,23 @@ export default function TresorerieModule({
                             return <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${isDark ? colors.dark : colors.bg}`}>{cat}</span>;
                           })()}
                         </td>
-                        <td className={`py-3 pr-4 text-right font-bold whitespace-nowrap ${isEntree ? 'text-emerald-500' : 'text-red-500'}`}>
-                          {isEntree ? '+' : '-'}{formatMoney(p.montant)}
+                        <td className={`py-3 pr-4 text-right font-bold whitespace-nowrap tabular-nums ${isEntree ? 'text-succes-texte' : 'text-encre'}`}>
+                          {isEntree ? '+' : '−'}{formatMoney(p.montant)}
                         </td>
                         <td className="py-3">
-                          {p.statut === 'Payé' ? (
-                            <span className={`text-xs font-medium px-2 py-1 rounded-lg ${isDark ? 'bg-slate-700 text-gray-400' : 'bg-gray-100 text-gray-500'}`}>Payé</span>
-                          ) : p.statut === 'En retard' ? (
-                            <span className={`text-xs font-medium px-2 py-1 rounded-lg ${isDark ? 'bg-red-500/15 text-red-400' : 'bg-red-50 text-red-600'}`}>En retard</span>
-                          ) : p.statut === 'En attente' ? (
-                            <span className={`text-xs font-medium px-2 py-1 rounded-lg ${isDark ? 'bg-amber-500/15 text-amber-400' : 'bg-amber-50 text-amber-600'}`}>En attente</span>
-                          ) : (
-                            <button onClick={() => isPrevision && handleMarkAsPaid(p.id)}
-                              className={`text-xs font-medium px-2 py-1 rounded-lg transition-colors ${isPrevision ? 'cursor-pointer hover:opacity-80' : ''} ${isDark ? 'bg-blue-500/15 text-blue-400' : 'bg-blue-50 text-blue-600'}`}
-                              title={isPrevision ? 'Cliquez pour marquer comme payé' : ''}>
-                              Prévu
-                            </button>
-                          )}
+                          <Pastille ton={TON_STATUT_PAIEMENT[p.statut] || 'neutre'}>{p.statut === 'Signé' ? 'Devis signé' : p.statut}</Pastille>
                         </td>
                         <td className="py-3 text-right">
                           <div className="flex items-center justify-end gap-1 relative">
                             {isPrevision && p.statut !== 'Payé' && (
                               <>
                                 <button onClick={() => setConfirmingPaidId(confirmingPaidId === p.id ? null : p.id)}
-                                  className={`p-1.5 rounded-lg transition-colors ${isDark ? 'hover:bg-emerald-500/20 text-gray-500 hover:text-emerald-400' : 'hover:bg-emerald-50 text-gray-400 hover:text-emerald-500'}`}
-                                  title="Marquer comme payé">
+                                  className="p-2 rounded-lg transition-colors text-encre-3 hover:bg-succes-fond hover:text-succes-texte"
+                                  title="Marquer comme payé" aria-label="Marquer comme payé">
                                   <Check size={14} />
                                 </button>
                                 {confirmingPaidId === p.id && (
-                                  <div className={`absolute right-0 top-full z-30 mt-1 rounded-xl border shadow-xl p-3 w-52 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+                                  <div className={`absolute right-0 top-full z-30 mt-1 rounded-xl border shadow-xl p-3 w-52 bg-surface border-bord`}>
                                     <p className={`text-xs font-medium mb-2 ${textPrimary}`}>Marquer comme payé ?</p>
                                     <div className="flex gap-1.5">
                                       <button onClick={() => { handleMarkAsPaid(p.id); setConfirmingPaidId(null); }}
@@ -2309,7 +2250,7 @@ export default function TresorerieModule({
                                         <Check size={12} /> Oui
                                       </button>
                                       <button onClick={() => setConfirmingPaidId(null)}
-                                        className={`flex-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+                                        className={`flex-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors bg-surface-2 text-encre-2 hover:bg-bord`}>
                                         Non
                                       </button>
                                     </div>
@@ -2320,13 +2261,13 @@ export default function TresorerieModule({
                             {isPrevision && (
                               <>
                                 <button onClick={() => handleEditPrevision(p)}
-                                  className={`p-1.5 rounded-lg transition-colors ${isDark ? 'hover:bg-blue-500/20 text-gray-500 hover:text-blue-400' : 'hover:bg-blue-50 text-gray-400 hover:text-blue-500'}`}
-                                  title="Modifier">
+                                  className="p-2 rounded-lg transition-colors text-encre-3 hover:bg-surface-2 hover:text-encre"
+                                  title="Modifier" aria-label="Modifier">
                                   <Edit3 size={14} />
                                 </button>
                                 <button onClick={() => handleDeletePrevision(p.id)}
-                                  className={`p-1.5 rounded-lg transition-colors ${isDark ? 'hover:bg-red-500/20 text-gray-500 hover:text-red-400' : 'hover:bg-red-50 text-gray-400 hover:text-red-500'}`}
-                                  title="Supprimer">
+                                  className="p-2 rounded-lg transition-colors text-encre-3 hover:bg-danger-fond hover:text-danger-texte"
+                                  title="Supprimer" aria-label="Supprimer">
                                   <Trash2 size={14} />
                                 </button>
                               </>
@@ -2339,13 +2280,21 @@ export default function TresorerieModule({
                 </tbody>
               </table>
             </div>
+            {filteredPayments.length > paiementsVisibles.length && (
+              <div className="pt-3 text-center">
+                <Bouton variante="discret" icone={ChevronDown} onClick={() => setToutesEcheances(true)}>
+                  Afficher les {filteredPayments.length - paiementsVisibles.length} autres
+                </Bouton>
+              </div>
+            )}
+            </>
           )}
 
           {/* Footer: prefill hint */}
           {activeTab !== 'tva' && activeTab !== 'projections' && activeTab !== 'mouvements' && previsions.length === 0 && filteredPayments.length > 0 && (
             <div className={`mt-4 pt-4 border-t ${borderColor} text-center`}>
               <button onClick={() => setShowPrefillConfirm(true)}
-                className={`inline-flex items-center gap-2 text-sm font-medium ${isDark ? 'text-slate-400 hover:text-white' : 'text-gray-500 hover:text-gray-700'}`}>
+                className={`inline-flex items-center gap-2 text-sm font-medium text-encre-3 hover:text-encre`}>
                 <Zap size={14} /> Ajouter les charges courantes BTP
               </button>
             </div>
@@ -2359,19 +2308,19 @@ export default function TresorerieModule({
           {/* Mouvements KPI summary */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
             <div className={`p-3 rounded-xl border ${isDark ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-emerald-50 border-emerald-100'}`}>
-              <p className={`text-[10px] font-semibold uppercase tracking-wide ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>Entrées payées</p>
-              <p className={`text-lg font-bold ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>{formatMoney(mouvementsKPIs.totalEntrees)}</p>
+              <p className={`text-xs font-semibold uppercase tracking-wide text-succes-texte`}>Entrées payées</p>
+              <p className={`text-lg font-bold text-succes-texte`}>{formatMoney(mouvementsKPIs.totalEntrees)}</p>
             </div>
             <div className={`p-3 rounded-xl border ${isDark ? 'bg-red-500/5 border-red-500/20' : 'bg-red-50 border-red-100'}`}>
-              <p className={`text-[10px] font-semibold uppercase tracking-wide ${isDark ? 'text-red-400' : 'text-red-600'}`}>Sorties payées</p>
-              <p className={`text-lg font-bold ${isDark ? 'text-red-400' : 'text-red-600'}`}>{formatMoney(mouvementsKPIs.totalSorties)}</p>
+              <p className={`text-xs font-semibold uppercase tracking-wide text-danger-texte`}>Sorties payées</p>
+              <p className={`text-lg font-bold text-danger-texte`}>{formatMoney(mouvementsKPIs.totalSorties)}</p>
             </div>
             <div className={`p-3 rounded-xl border ${isDark ? 'bg-blue-500/5 border-blue-500/20' : 'bg-blue-50 border-blue-100'}`}>
-              <p className={`text-[10px] font-semibold uppercase tracking-wide ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>Entrées prévues</p>
-              <p className={`text-lg font-bold ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>{formatMoney(mouvementsKPIs.entreesPrevu)}</p>
+              <p className={`text-xs font-semibold uppercase tracking-wide text-info-texte`}>Entrées prévues</p>
+              <p className={`text-lg font-bold text-info-texte`}>{formatMoney(mouvementsKPIs.entreesPrevu)}</p>
             </div>
-            <div className={`p-3 rounded-xl border ${isDark ? 'bg-slate-700/50 border-slate-600' : 'bg-gray-50 border-gray-200'}`}>
-              <p className={`text-[10px] font-semibold uppercase tracking-wide ${textSecondary}`}>Solde net mouvements</p>
+            <div className={`p-3 rounded-xl border bg-surface-2 border-bord`}>
+              <p className={`text-xs font-semibold uppercase tracking-wide ${textSecondary}`}>Solde net mouvements</p>
               <p className={`text-lg font-bold ${mouvementsKPIs.soldeNet >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>{formatMoney(mouvementsKPIs.soldeNet)}</p>
             </div>
           </div>
@@ -2381,7 +2330,7 @@ export default function TresorerieModule({
             <div className="flex items-center gap-2">
               <Wallet size={18} style={{ color: couleur }} />
               <h2 className={`text-base font-bold ${textPrimary}`}>Mouvements de trésorerie</h2>
-              <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${isDark ? 'bg-slate-700 text-gray-400' : 'bg-gray-100 text-gray-500'}`}>
+              <span className={`text-xs font-medium px-2 py-0.5 rounded-full bg-surface-2 text-encre-3`}>
                 {filteredMouvements.length}
               </span>
             </div>
@@ -2422,26 +2371,26 @@ export default function TresorerieModule({
                     const isEntree = m.type === 'entree';
                     const dateStr = m.date ? new Date(m.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
                     return (
-                      <tr key={m.id} className={`border-b last:border-b-0 transition-colors ${isDark ? 'border-slate-700/50 hover:bg-slate-700/30' : 'border-gray-100 hover:bg-gray-50'}`}>
+                      <tr key={m.id} className={`border-b last:border-b-0 transition-colors border-bord hover:bg-surface-2`}>
                         <td className={`py-3 pr-4 ${textSecondary} whitespace-nowrap`}>{dateStr}</td>
                         <td className={`py-3 pr-4 ${textPrimary} font-medium max-w-[150px] sm:max-w-xs truncate`} title={m.description}>
                           {m.description}
                           {m.isRecurring && (
-                            <span className={`ml-1.5 text-[10px] px-1.5 py-0.5 rounded font-medium ${isDark ? 'bg-purple-900/30 text-purple-400' : 'bg-purple-50 text-purple-600'}`}>
+                            <span className={`ml-1.5 text-xs px-1.5 py-0.5 rounded font-medium ${isDark ? 'bg-purple-900/30 text-purple-400' : 'bg-purple-50 text-purple-600'}`}>
                               🔄 {m.recurringFrequency || 'récurrent'}
                             </span>
                           )}
                           {m.autoliquidation && (
-                            <span className={`ml-1.5 text-[10px] px-1.5 py-0.5 rounded font-medium ${isDark ? 'bg-amber-900/30 text-amber-400' : 'bg-amber-50 text-amber-600'}`}>
+                            <span className={`ml-1.5 text-xs px-1.5 py-0.5 rounded font-medium bg-alerte-fond text-alerte-texte`}>
                               Autoliq.
                             </span>
                           )}
                           {m.notes && (
-                            <span className={`block text-[10px] mt-0.5 ${textSecondary}`}>{m.notes}</span>
+                            <span className={`block text-xs mt-0.5 ${textSecondary}`}>{m.notes}</span>
                           )}
                         </td>
                         <td className="py-3 pr-4">
-                          <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-full ${isEntree ? isDark ? 'bg-emerald-500/20 text-emerald-400' : 'bg-emerald-100 text-emerald-700' : isDark ? 'bg-red-500/20 text-red-400' : 'bg-red-100 text-red-700'}`}>
+                          <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-full ${isEntree ? 'bg-succes-fond text-succes-texte' : 'bg-danger-fond text-danger-texte'}`}>
                             {isEntree ? <ArrowDown size={12} /> : <ArrowUp size={12} />}
                             {isEntree ? 'Entrée' : 'Sortie'}
                           </span>
@@ -2449,19 +2398,19 @@ export default function TresorerieModule({
                         <td className={`py-3 pr-4 text-right whitespace-nowrap ${textSecondary}`}>{formatMoney(m.montantHt || 0)}</td>
                         <td className={`py-3 pr-4 text-right whitespace-nowrap ${textSecondary}`}>
                           {m.autoliquidation ? '—' : formatMoney(m.montantTva || 0)}
-                          <span className={`block text-[10px] ${textSecondary}`}>{m.tauxTva || 20}%</span>
+                          <span className={`block text-xs ${textSecondary}`}>{m.tauxTva || 20}%</span>
                         </td>
                         <td className={`py-3 pr-4 text-right font-bold whitespace-nowrap ${isEntree ? 'text-emerald-500' : 'text-red-500'}`}>
                           {isEntree ? '+' : '-'}{formatMoney(m.montant)}
                         </td>
                         <td className="py-3">
                           {m.statut === 'paye' ? (
-                            <span className={`text-xs font-medium px-2 py-1 rounded-lg ${isDark ? 'bg-emerald-500/15 text-emerald-400' : 'bg-emerald-50 text-emerald-600'}`}>Payé</span>
+                            <span className={`text-xs font-medium px-2 py-1 rounded-lg bg-succes-fond text-succes-texte`}>Payé</span>
                           ) : m.statut === 'annule' ? (
-                            <span className={`text-xs font-medium px-2 py-1 rounded-lg ${isDark ? 'bg-red-500/15 text-red-400' : 'bg-red-50 text-red-600'}`}>Annulé</span>
+                            <span className={`text-xs font-medium px-2 py-1 rounded-lg bg-danger-fond text-danger-texte`}>Annulé</span>
                           ) : (
                             <button onClick={() => handleValiderMouvement(m.id)}
-                              className={`text-xs font-medium px-2 py-1 rounded-lg transition-colors cursor-pointer hover:opacity-80 ${isDark ? 'bg-blue-500/15 text-blue-400' : 'bg-blue-50 text-blue-600'}`}
+                              className={`text-xs font-medium px-2 py-1 rounded-lg transition-colors cursor-pointer hover:opacity-80 bg-info-fond text-info-texte`}
                               title="Cliquez pour valider (marquer comme payé)">
                               Prévu
                             </button>
@@ -2523,7 +2472,7 @@ export default function TresorerieModule({
                     className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-all ${
                       isActive
                         ? 'text-white shadow-md'
-                        : isDark ? 'bg-slate-700 border border-slate-600 text-gray-300 hover:bg-slate-600' : 'bg-gray-50 border border-gray-200 text-gray-700 hover:bg-gray-100'
+                        : 'bg-surface-2 border border-bord text-encre-2 hover:bg-surface-2'
                     }`}
                     style={isActive ? { backgroundColor: couleur } : {}}>
                     <Icon size={14} />
@@ -2541,7 +2490,7 @@ export default function TresorerieModule({
             {/* Sliders */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* Entrées adjustment */}
-              <div className={`p-4 rounded-xl border ${isDark ? 'bg-slate-700/40 border-slate-600' : 'bg-gray-50 border-gray-200'}`}>
+              <div className={`p-4 rounded-xl border bg-surface-2 border-bord`}>
                 <div className="flex items-center justify-between mb-2">
                   <label className={`text-xs font-semibold ${textSecondary}`}>Variation des entrées</label>
                   <span className={`text-sm font-bold ${scenarioParams.entreesAdj >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
@@ -2552,13 +2501,13 @@ export default function TresorerieModule({
                   onChange={(e) => handleScenarioSlider('entreesAdj', parseInt(e.target.value))}
                   className="w-full h-2 rounded-lg appearance-none cursor-pointer accent-emerald-500"
                   style={{ accentColor: '#10b981' }} />
-                <div className={`flex justify-between text-[10px] mt-1 ${textSecondary}`}>
+                <div className={`flex justify-between text-xs mt-1 ${textSecondary}`}>
                   <span>-50%</span><span>0%</span><span>+100%</span>
                 </div>
               </div>
 
               {/* Sorties adjustment */}
-              <div className={`p-4 rounded-xl border ${isDark ? 'bg-slate-700/40 border-slate-600' : 'bg-gray-50 border-gray-200'}`}>
+              <div className={`p-4 rounded-xl border bg-surface-2 border-bord`}>
                 <div className="flex items-center justify-between mb-2">
                   <label className={`text-xs font-semibold ${textSecondary}`}>Variation des sorties</label>
                   <span className={`text-sm font-bold ${scenarioParams.sortiesAdj <= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
@@ -2569,13 +2518,13 @@ export default function TresorerieModule({
                   onChange={(e) => handleScenarioSlider('sortiesAdj', parseInt(e.target.value))}
                   className="w-full h-2 rounded-lg appearance-none cursor-pointer"
                   style={{ accentColor: '#ef4444' }} />
-                <div className={`flex justify-between text-[10px] mt-1 ${textSecondary}`}>
+                <div className={`flex justify-between text-xs mt-1 ${textSecondary}`}>
                   <span>-50%</span><span>0%</span><span>+100%</span>
                 </div>
               </div>
 
               {/* Extra monthly entrée */}
-              <div className={`p-4 rounded-xl border ${isDark ? 'bg-slate-700/40 border-slate-600' : 'bg-gray-50 border-gray-200'}`}>
+              <div className={`p-4 rounded-xl border bg-surface-2 border-bord`}>
                 <div className="flex items-center justify-between mb-2">
                   <label className={`text-xs font-semibold ${textSecondary}`}>Entrée supplémentaire / mois</label>
                   <span className={`text-sm font-bold text-emerald-500`}>+{formatMoney(scenarioParams.extraEntree)}</span>
@@ -2584,13 +2533,13 @@ export default function TresorerieModule({
                   onChange={(e) => handleScenarioSlider('extraEntree', parseInt(e.target.value))}
                   className="w-full h-2 rounded-lg appearance-none cursor-pointer"
                   style={{ accentColor: '#10b981' }} />
-                <div className={`flex justify-between text-[10px] mt-1 ${textSecondary}`}>
+                <div className={`flex justify-between text-xs mt-1 ${textSecondary}`}>
                   <span>0 €</span><span>25k €</span><span>50k €</span>
                 </div>
               </div>
 
               {/* Extra monthly sortie */}
-              <div className={`p-4 rounded-xl border ${isDark ? 'bg-slate-700/40 border-slate-600' : 'bg-gray-50 border-gray-200'}`}>
+              <div className={`p-4 rounded-xl border bg-surface-2 border-bord`}>
                 <div className="flex items-center justify-between mb-2">
                   <label className={`text-xs font-semibold ${textSecondary}`}>Charge supplémentaire / mois</label>
                   <span className={`text-sm font-bold text-red-500`}>-{formatMoney(scenarioParams.extraSortie)}</span>
@@ -2599,7 +2548,7 @@ export default function TresorerieModule({
                   onChange={(e) => handleScenarioSlider('extraSortie', parseInt(e.target.value))}
                   className="w-full h-2 rounded-lg appearance-none cursor-pointer"
                   style={{ accentColor: '#ef4444' }} />
-                <div className={`flex justify-between text-[10px] mt-1 ${textSecondary}`}>
+                <div className={`flex justify-between text-xs mt-1 ${textSecondary}`}>
                   <span>0 €</span><span>15k €</span><span>30k €</span>
                 </div>
               </div>
@@ -2613,7 +2562,7 @@ export default function TresorerieModule({
                 <h3 className={`text-sm font-bold ${textPrimary}`}>Évolution du solde projeté</h3>
                 <div className="flex items-center gap-4">
                   {scenarioSummary.scenNegMonth && (
-                    <span className={`text-xs font-medium px-2 py-1 rounded-lg ${isDark ? 'bg-red-500/15 text-red-400' : 'bg-red-50 text-red-600'}`}>
+                    <span className={`text-xs font-medium px-2 py-1 rounded-lg bg-danger-fond text-danger-texte`}>
                       <AlertTriangle size={12} className="inline mr-1" />Négatif en {scenarioSummary.scenNegMonth.mois}
                     </span>
                   )}
@@ -2634,39 +2583,39 @@ export default function TresorerieModule({
 
           {/* Scenario Summary Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className={`p-4 rounded-xl border ${isDark ? 'bg-slate-700/50 border-slate-600' : 'bg-gray-50 border-gray-200'}`}>
+            <div className={`p-4 rounded-xl border bg-surface-2 border-bord`}>
               <p className={`text-xs font-semibold uppercase tracking-wide mb-1 ${textSecondary}`}>Solde final (12 mois)</p>
               <p className={`text-xl font-bold ${scenarioSummary.scenarioEndBalance >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
                 {formatMoney(scenarioSummary.scenarioEndBalance)}
               </p>
-              <p className={`text-[10px] mt-0.5 ${textSecondary}`}>
+              <p className={`text-xs mt-0.5 ${textSecondary}`}>
                 Tendance actuelle : {formatMoney(scenarioSummary.baselineEndBalance)}
               </p>
             </div>
-            <div className={`p-4 rounded-xl border ${isDark ? 'bg-slate-700/50 border-slate-600' : 'bg-gray-50 border-gray-200'}`}>
+            <div className={`p-4 rounded-xl border bg-surface-2 border-bord`}>
               <p className={`text-xs font-semibold uppercase tracking-wide mb-1 ${textSecondary}`}>Impact du scénario</p>
               <p className={`text-xl font-bold ${scenarioSummary.delta >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
                 {scenarioSummary.delta >= 0 ? '+' : ''}{formatMoney(scenarioSummary.delta)}
               </p>
-              <p className={`text-[10px] mt-0.5 ${textSecondary}`}>Différence vs tendance actuelle</p>
+              <p className={`text-xs mt-0.5 ${textSecondary}`}>Différence vs tendance actuelle</p>
             </div>
-            <div className={`p-4 rounded-xl border ${isDark ? 'bg-slate-700/50 border-slate-600' : 'bg-gray-50 border-gray-200'}`}>
+            <div className={`p-4 rounded-xl border bg-surface-2 border-bord`}>
               <p className={`text-xs font-semibold uppercase tracking-wide mb-1 ${textSecondary}`}>Entrées totales (12 mois)</p>
-              <p className={`text-xl font-bold ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>
+              <p className={`text-xl font-bold text-succes-texte`}>
                 {formatMoney(scenarioSummary.totalScenEntrees)}
               </p>
-              <p className={`text-[10px] mt-0.5 ${textSecondary}`}>
+              <p className={`text-xs mt-0.5 ${textSecondary}`}>
                 {scenarioSummary.totalScenEntrees !== scenarioSummary.totalBaseEntrees
                   ? `Tendance : ${formatMoney(scenarioSummary.totalBaseEntrees)} (${scenarioSummary.totalScenEntrees > scenarioSummary.totalBaseEntrees ? '+' : ''}${formatMoney(scenarioSummary.totalScenEntrees - scenarioSummary.totalBaseEntrees)})`
                   : 'Identique à la tendance'}
               </p>
             </div>
-            <div className={`p-4 rounded-xl border ${isDark ? 'bg-slate-700/50 border-slate-600' : 'bg-gray-50 border-gray-200'}`}>
+            <div className={`p-4 rounded-xl border bg-surface-2 border-bord`}>
               <p className={`text-xs font-semibold uppercase tracking-wide mb-1 ${textSecondary}`}>Sorties totales (12 mois)</p>
-              <p className={`text-xl font-bold ${isDark ? 'text-red-400' : 'text-red-600'}`}>
+              <p className={`text-xl font-bold text-danger-texte`}>
                 {formatMoney(scenarioSummary.totalScenSorties)}
               </p>
-              <p className={`text-[10px] mt-0.5 ${textSecondary}`}>
+              <p className={`text-xs mt-0.5 ${textSecondary}`}>
                 {scenarioSummary.totalScenSorties !== scenarioSummary.totalBaseSorties
                   ? `Tendance : ${formatMoney(scenarioSummary.totalBaseSorties)} (${scenarioSummary.totalScenSorties > scenarioSummary.totalBaseSorties ? '+' : ''}${formatMoney(scenarioSummary.totalScenSorties - scenarioSummary.totalBaseSorties)})`
                   : 'Identique à la tendance'}
@@ -2698,14 +2647,14 @@ export default function TresorerieModule({
                         isNeg ? isDark ? 'bg-red-900/10' : 'bg-red-50/50'
                         : isBelowThreshold ? isDark ? 'bg-amber-900/10' : 'bg-amber-50/50'
                         : ''
-                      } ${isDark ? 'border-slate-700/50 hover:bg-slate-700/30' : 'border-gray-100 hover:bg-gray-50'}`}>
+                      } border-bord hover:bg-surface-2`}>
                         <td className={`py-2.5 pr-4 font-medium ${textPrimary}`}>{p.mois}</td>
-                        <td className={`py-2.5 pr-4 text-right ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>{formatMoney(p.entrees)}</td>
+                        <td className={`py-2.5 pr-4 text-right text-succes-texte`}>{formatMoney(p.entrees)}</td>
                         <td className="py-2.5 pr-4 text-right text-red-500">{formatMoney(p.sorties)}</td>
                         <td className={`py-2.5 pr-4 text-right font-semibold ${flux >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
                           {flux >= 0 ? '+' : ''}{formatMoney(flux)}
                         </td>
-                        <td className={`py-2.5 text-right font-bold ${isNeg ? 'text-red-500' : isBelowThreshold ? isDark ? 'text-amber-400' : 'text-amber-600' : isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>
+                        <td className={`py-2.5 text-right font-bold ${isNeg ? 'text-red-500' : isBelowThreshold ? 'text-alerte-texte' : 'text-succes-texte'}`}>
                           {formatMoney(p.balance)}
                           {isNeg && <AlertTriangle size={12} className="inline ml-1 text-red-500" />}
                         </td>
@@ -2747,17 +2696,17 @@ export default function TresorerieModule({
             {(settings.regimeTva || 'trimestriel') !== 'franchise' && (
               <div className="flex items-center gap-2">
                 <button onClick={() => exportCA3()}
-                  className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-colors ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-gray-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}
+                  className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-colors bg-surface-2 hover:bg-bord text-encre-2`}
                   title="Télécharger la liasse CA3 pour votre déclaration de TVA">
                   <FileText size={14} /> CA3
                 </button>
                 <button onClick={() => exportJournalVentes()}
-                  className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-colors ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-gray-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}
+                  className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-colors bg-surface-2 hover:bg-bord text-encre-2`}
                   title="Export des ventes avec TVA ventilée">
                   <Receipt size={14} /> Ventes
                 </button>
                 <button onClick={() => exportJournalAchats()}
-                  className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-colors ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-gray-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}
+                  className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-colors bg-surface-2 hover:bg-bord text-encre-2`}
                   title="Export des achats avec TVA déductible">
                   <Receipt size={14} /> Achats
                 </button>
@@ -2786,7 +2735,7 @@ export default function TresorerieModule({
 
           {/* Franchise banner */}
           {(settings.regimeTva || 'trimestriel') === 'franchise' ? (
-            <div className={`flex items-center gap-3 p-5 rounded-xl border ${isDark ? 'bg-slate-700/30 border-slate-600' : 'bg-gray-50 border-gray-200'}`}>
+            <div className={`flex items-center gap-3 p-5 rounded-xl border bg-surface-2 border-bord`}>
               <Info size={20} className={textSecondary} />
               <div>
                 <p className={`text-sm font-semibold ${textPrimary}`}>Non assujetti à la TVA</p>
@@ -2801,27 +2750,27 @@ export default function TresorerieModule({
               {/* TVA Summary KPIs */}
               <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6`}>
                 <div className={`p-4 rounded-xl border ${isDark ? 'bg-slate-700/50 border-slate-600' : 'bg-blue-50 border-blue-100'}`}>
-                  <p className={`text-xs font-semibold uppercase tracking-wide mb-1 ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>TVA Collectée</p>
-                  <p className={`text-xl font-bold ${isDark ? 'text-blue-300' : 'text-blue-700'}`}>{formatMoney(tvaTotal.collectee)}</p>
-                  <p className={`text-[10px] mt-0.5 ${textSecondary}`}>Sur vos factures émises</p>
+                  <p className={`text-xs font-semibold uppercase tracking-wide mb-1 text-info-texte`}>TVA Collectée</p>
+                  <p className={`text-xl font-bold text-info-texte`}>{formatMoney(tvaTotal.collectee)}</p>
+                  <p className={`text-xs mt-0.5 ${textSecondary}`}>Sur vos factures émises</p>
                 </div>
-                <div className={`p-4 rounded-xl border ${isDark ? 'bg-slate-700/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
-                  <p className={`text-xs font-semibold uppercase tracking-wide mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>TVA Déductible</p>
-                  <p className={`text-xl font-bold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>{formatMoney(tvaTotal.deductible)}</p>
-                  <p className={`text-[10px] mt-0.5 ${textSecondary}`}>Sur vos achats / dépenses</p>
+                <div className={`p-4 rounded-xl border bg-surface-2 border-bord`}>
+                  <p className={`text-xs font-semibold uppercase tracking-wide mb-1 text-encre-3`}>TVA Déductible</p>
+                  <p className={`text-xl font-bold text-encre-2`}>{formatMoney(tvaTotal.deductible)}</p>
+                  <p className={`text-xs mt-0.5 ${textSecondary}`}>Sur vos achats / dépenses</p>
                 </div>
                 <div className={`p-4 rounded-xl border ${isDark ? 'bg-slate-700/50 border-slate-600' : tvaTotal.net >= 0 ? 'bg-red-50 border-red-100' : 'bg-green-50 border-green-100'}`}>
-                  <p className={`text-xs font-semibold uppercase tracking-wide mb-1 ${tvaTotal.net >= 0 ? isDark ? 'text-red-400' : 'text-red-600' : isDark ? 'text-green-400' : 'text-green-600'}`}>
+                  <p className={`text-xs font-semibold uppercase tracking-wide mb-1 ${tvaTotal.net >= 0 ? 'text-danger-texte' : 'text-succes-texte'}`}>
                     {tvaTotal.net >= 0 ? 'TVA à reverser' : 'Crédit de TVA'}
                   </p>
                   <p className={`text-xl font-bold ${tvaTotal.net >= 0 ? 'text-red-500' : 'text-green-500'}`}>{formatMoney(Math.abs(tvaTotal.net))}</p>
-                  <p className={`text-[10px] mt-0.5 ${textSecondary}`}>{tvaTotal.net >= 0 ? 'À payer au Trésor public' : 'Remboursable ou reportable'}</p>
+                  <p className={`text-xs mt-0.5 ${textSecondary}`}>{tvaTotal.net >= 0 ? 'À payer au Trésor public' : 'Remboursable ou reportable'}</p>
                 </div>
                 {tvaNextDeadline && (
                   <div className={`p-4 rounded-xl border ${isDark ? 'bg-slate-700/50 border-slate-600' : 'bg-purple-50 border-purple-100'}`}>
                     <p className={`text-xs font-semibold uppercase tracking-wide mb-1 ${isDark ? 'text-purple-400' : 'text-purple-600'}`}>Prochaine échéance</p>
                     <p className={`text-xl font-bold ${isDark ? 'text-purple-300' : 'text-purple-700'}`}>{tvaNextDeadline.label}</p>
-                    <p className={`text-[10px] mt-0.5 ${textSecondary}`}>Déclaration {tvaNextDeadline.period}</p>
+                    <p className={`text-xs mt-0.5 ${textSecondary}`}>Déclaration {tvaNextDeadline.period}</p>
                   </div>
                 )}
               </div>
@@ -2845,11 +2794,11 @@ export default function TresorerieModule({
                         const currentQuarter = Math.floor(new Date().getMonth() / 3);
                         const isCurrent = qi === currentQuarter;
                         return (
-                          <tr key={q.label} className={`border-b last:border-b-0 transition-colors ${isCurrent ? isDark ? 'bg-slate-700/30' : 'bg-blue-50/50' : ''} ${isDark ? 'border-slate-700/50 hover:bg-slate-700/30' : 'border-gray-100 hover:bg-gray-50'}`}>
+                          <tr key={q.label} className={`border-b last:border-b-0 transition-colors ${isCurrent ? isDark ? 'bg-slate-700/30' : 'bg-blue-50/50' : ''} border-bord hover:bg-surface-2`}>
                             <td className={`py-3 pr-4 font-medium ${isCurrent ? 'font-bold' : ''} ${hasData ? textPrimary : textSecondary}`}>
-                              {q.label} {isCurrent && <span className="text-[10px] ml-1 px-1.5 py-0.5 rounded font-medium" style={{ backgroundColor: `${couleur}20`, color: couleur }}>actuel</span>}
+                              {q.label} {isCurrent && <span className="text-xs ml-1 px-1.5 py-0.5 rounded font-medium" style={{ backgroundColor: `${couleur}20`, color: couleur }}>actuel</span>}
                             </td>
-                            <td className={`py-3 pr-4 text-right ${hasData ? isDark ? 'text-blue-400' : 'text-blue-600' : textSecondary}`}>{hasData ? formatMoney(q.collectee) : '—'}</td>
+                            <td className={`py-3 pr-4 text-right ${hasData ? 'text-info-texte' : textSecondary}`}>{hasData ? formatMoney(q.collectee) : '—'}</td>
                             <td className={`py-3 pr-4 text-right ${hasData ? isDark ? 'text-orange-400' : 'text-orange-600' : textSecondary}`}>{hasData ? formatMoney(q.deductible) : '—'}</td>
                             <td className={`py-3 text-right font-semibold ${!hasData ? textSecondary : q.net >= 0 ? 'text-red-500' : 'text-green-500'}`}>
                               {hasData ? (q.net >= 0 ? '+' : '') + formatMoney(q.net) : '—'}
@@ -2863,11 +2812,11 @@ export default function TresorerieModule({
                         const hasData = m.collectee > 0 || m.deductible > 0;
                         const isCurrent = i === new Date().getMonth();
                         return (
-                          <tr key={m.mois} className={`border-b last:border-b-0 transition-colors ${isCurrent ? isDark ? 'bg-slate-700/30' : 'bg-blue-50/50' : ''} ${isDark ? 'border-slate-700/50 hover:bg-slate-700/30' : 'border-gray-100 hover:bg-gray-50'}`}>
+                          <tr key={m.mois} className={`border-b last:border-b-0 transition-colors ${isCurrent ? isDark ? 'bg-slate-700/30' : 'bg-blue-50/50' : ''} border-bord hover:bg-surface-2`}>
                             <td className={`py-2.5 pr-4 font-medium ${isCurrent ? 'font-bold' : ''} ${hasData ? textPrimary : textSecondary}`}>
-                              {m.mois} {isCurrent && <span className="text-[10px] ml-1 px-1.5 py-0.5 rounded font-medium" style={{ backgroundColor: `${couleur}20`, color: couleur }}>actuel</span>}
+                              {m.mois} {isCurrent && <span className="text-xs ml-1 px-1.5 py-0.5 rounded font-medium" style={{ backgroundColor: `${couleur}20`, color: couleur }}>actuel</span>}
                             </td>
-                            <td className={`py-2.5 pr-4 text-right ${hasData ? isDark ? 'text-blue-400' : 'text-blue-600' : textSecondary}`}>{hasData ? formatMoney(m.collectee) : '—'}</td>
+                            <td className={`py-2.5 pr-4 text-right ${hasData ? 'text-info-texte' : textSecondary}`}>{hasData ? formatMoney(m.collectee) : '—'}</td>
                             <td className={`py-2.5 pr-4 text-right ${hasData ? isDark ? 'text-orange-400' : 'text-orange-600' : textSecondary}`}>{hasData ? formatMoney(m.deductible) : '—'}</td>
                             <td className={`py-2.5 text-right font-semibold ${!hasData ? textSecondary : m.net >= 0 ? 'text-red-500' : 'text-green-500'}`}>
                               {hasData ? (m.net >= 0 ? '+' : '') + formatMoney(m.net) : '—'}
@@ -2878,9 +2827,9 @@ export default function TresorerieModule({
                     )}
                   </tbody>
                   <tfoot>
-                    <tr className={`border-t-2 ${isDark ? 'border-slate-600' : 'border-gray-300'}`}>
+                    <tr className={`border-t-2 border-bord-fort`}>
                       <td className={`py-3 pr-4 font-bold ${textPrimary}`}>Total annuel</td>
-                      <td className={`py-3 pr-4 text-right font-bold ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>{formatMoney(tvaTotal.collectee)}</td>
+                      <td className={`py-3 pr-4 text-right font-bold text-info-texte`}>{formatMoney(tvaTotal.collectee)}</td>
                       <td className={`py-3 pr-4 text-right font-bold ${isDark ? 'text-orange-400' : 'text-orange-600'}`}>{formatMoney(tvaTotal.deductible)}</td>
                       <td className={`py-3 text-right font-bold ${tvaTotal.net >= 0 ? 'text-red-500' : 'text-green-500'}`}>{(tvaTotal.net >= 0 ? '+' : '') + formatMoney(tvaTotal.net)}</td>
                     </tr>
@@ -2896,15 +2845,15 @@ export default function TresorerieModule({
                     {Object.entries(tvaByRate).sort(([a], [b]) => Number(b) - Number(a)).map(([rate, data]) => {
                       const info = TVA_RATES[rate] || { label: `${rate}%`, desc: '' };
                       return (
-                        <div key={rate} className={`p-3 rounded-xl border ${isDark ? 'bg-slate-700/40 border-slate-600' : 'bg-gray-50 border-gray-200'}`}>
+                        <div key={rate} className={`p-3 rounded-xl border bg-surface-2 border-bord`}>
                           <div className="flex items-center justify-between mb-1">
                             <span className={`text-sm font-bold ${textPrimary}`}>{info.label}</span>
-                            <span className={`text-[10px] px-1.5 py-0.5 rounded ${isDark ? 'bg-slate-600 text-gray-300' : 'bg-gray-200 text-gray-600'}`}>{info.desc}</span>
+                            <span className={`text-xs px-1.5 py-0.5 rounded bg-bord text-encre-2`}>{info.desc}</span>
                           </div>
                           <div className="flex items-center justify-between">
                             <div>
                               <p className={`text-xs ${textSecondary}`}>Base HT ventes : {formatMoney(data.base)}</p>
-                              <p className={`text-sm font-semibold ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>Collectée : {formatMoney(data.collectee)}</p>
+                              <p className={`text-sm font-semibold text-info-texte`}>Collectée : {formatMoney(data.collectee)}</p>
                             </div>
                             {(data.deductible || 0) > 0 && (
                               <div className="text-right">
@@ -2932,81 +2881,41 @@ export default function TresorerieModule({
 
       {/* ── Recurring Charges Summary ──────────────────────────────── */}
       {activeTab === 'apercu' && recurringSummary.count > 0 && (
-        <div className={`rounded-2xl border ${cardBg} p-5`}>
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <RefreshCw size={18} style={{ color: couleur }} />
-              <h2 className={`text-base font-bold ${textPrimary}`}>Charges récurrentes</h2>
-              <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${isDark ? 'bg-purple-900/30 text-purple-400' : 'bg-purple-50 text-purple-600'}`}>
-                {recurringSummary.count} récurrent{recurringSummary.count > 1 ? 's' : ''}
-              </span>
-            </div>
-            <div className={`text-xs ${textSecondary}`}>
-              Impact mensuel : <span className={`font-bold ${recurringSummary.net >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-                {recurringSummary.net >= 0 ? '+' : ''}{formatMoney(recurringSummary.net)}
-              </span>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
-            <div className={`p-3 rounded-xl border ${isDark ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-emerald-50 border-emerald-100'}`}>
-              <p className={`text-[10px] font-semibold uppercase tracking-wide ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>Entrées récurrentes / mois</p>
-              <p className={`text-lg font-bold ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>+{formatMoney(recurringSummary.totalEntrees)}</p>
-            </div>
-            <div className={`p-3 rounded-xl border ${isDark ? 'bg-red-500/5 border-red-500/20' : 'bg-red-50 border-red-100'}`}>
-              <p className={`text-[10px] font-semibold uppercase tracking-wide ${isDark ? 'text-red-400' : 'text-red-600'}`}>Sorties récurrentes / mois</p>
-              <p className={`text-lg font-bold ${isDark ? 'text-red-400' : 'text-red-600'}`}>-{formatMoney(recurringSummary.totalSorties)}</p>
-            </div>
-            <div className={`p-3 rounded-xl border ${isDark ? 'bg-slate-700/50 border-slate-600' : 'bg-gray-50 border-gray-200'}`}>
-              <p className={`text-[10px] font-semibold uppercase tracking-wide ${textSecondary}`}>Impact annuel estimé</p>
-              <p className={`text-lg font-bold ${recurringSummary.net >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-                {recurringSummary.net >= 0 ? '+' : ''}{formatMoney(recurringSummary.net * 12)}
-              </p>
-            </div>
-          </div>
+        <section>
+          <TitreSection titre="Charges récurrentes" compte={recurringSummary.count} />
+          <p className="-mt-1 mb-3 text-sm text-encre-2 tabular-nums">
+            {recurringSummary.totalEntrees > 0 && <>Entrées <span className="font-semibold text-succes-texte">+{formatMoney(recurringSummary.totalEntrees)}</span> · </>}
+            Sorties <span className="font-semibold text-encre">−{formatMoney(recurringSummary.totalSorties)}</span> par mois
+            {' · '}soit <span className="font-semibold text-encre">{recurringSummary.net >= 0 ? '+' : '−'}{formatMoney(Math.abs(recurringSummary.net * 12))}</span> sur un an
+          </p>
 
           {/* Recurring items list */}
-          <div className="space-y-2">
+          <GroupeListe>
             {recurringSummary.parents.map(p => {
               const isEntree = p.type === 'entree';
-              const catColors = CATEGORY_COLORS[p.categorie] || CATEGORY_COLORS.Divers;
-              const freqLabel = p.recurrence === 'mensuel' ? '/mois' : p.recurrence === 'trimestriel' ? '/trim.' : '/an';
+              const freqLabel = p.recurrence === 'mensuel' ? 'par mois' : p.recurrence === 'trimestriel' ? 'par trimestre' : 'par an';
               // Count future pending instances
               const pendingCount = previsions.filter(ch =>
                 (ch.recurrenceParentId === p.id || ch.id === p.id) && ch.statut === 'prevu'
               ).length;
               return (
-                <div key={p.id} className={`flex items-center justify-between p-3 rounded-xl border ${isDark ? 'bg-slate-700/30 border-slate-600 hover:bg-slate-700/50' : 'bg-white border-gray-200 hover:bg-gray-50'} transition-colors`}>
-                  <div className="flex items-center gap-3">
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isEntree ? isDark ? 'bg-emerald-500/15' : 'bg-emerald-50' : isDark ? 'bg-red-500/15' : 'bg-red-50'}`}>
-                      {isEntree ? <ArrowDown size={14} className="text-emerald-500" /> : <ArrowUp size={14} className="text-red-500" />}
-                    </div>
-                    <div>
-                      <p className={`text-sm font-medium ${textPrimary}`}>{p.description}</p>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded ${isDark ? catColors.dark : catColors.bg}`}>{p.categorie}</span>
-                        <span className={`text-[10px] ${textSecondary}`}>{pendingCount} échéance{pendingCount > 1 ? 's' : ''} à venir</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className={`text-sm font-bold ${isEntree ? 'text-emerald-500' : 'text-red-500'}`}>
-                      {isEntree ? '+' : '-'}{formatMoney(p.montant)} {freqLabel}
-                    </p>
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded ${isDark ? 'bg-purple-900/30 text-purple-400' : 'bg-purple-50 text-purple-600'}`}>
-                      🔄 {p.recurrence}
-                    </span>
-                  </div>
-                </div>
+                <LigneListe
+                  key={p.id}
+                  titre={p.description}
+                  montant={<span className={isEntree ? 'text-succes-texte' : ''}>{isEntree ? '+' : '−'}{formatMoney(p.montant)}</span>}
+                  meta={`${p.categorie || 'Divers'} · ${pendingCount} échéance${pendingCount > 1 ? 's' : ''} à venir`}
+                  pastille={<span className="text-sm text-encre-3">{freqLabel}</span>}
+                  onClick={() => handleEditPrevision(p)}
+                />
               );
             })}
-          </div>
-        </div>
+          </GroupeListe>
+        </section>
       )}
 
       {/* ── Auto-sync indicator ──────────────────────────────────────── */}
       {(autoSyncCount.factures > 0 || autoSyncCount.depenses > 0) && (activeTab === 'apercu') && (
-        <div className={`flex items-center gap-3 p-3 pr-20 rounded-xl border text-xs ${isDark ? 'bg-slate-800/50 border-slate-700 text-slate-400' : 'bg-gray-50 border-gray-200 text-gray-500'}`}>
+        <div className={`flex items-center gap-3 p-3 pr-20 rounded-xl border text-xs bg-surface-2 border-bord text-encre-3`}>
           <Link2 size={14} className="flex-shrink-0" />
           <span>
             Synchronisation auto : <strong>{autoSyncCount.factures}</strong> facture{autoSyncCount.factures > 1 ? 's' : ''} et <strong>{autoSyncCount.depenses}</strong> dépense{autoSyncCount.depenses > 1 ? 's' : ''} liées aux prévisions
@@ -3020,14 +2929,12 @@ export default function TresorerieModule({
       {/* ── Quick Add FAB ──────────────────────────────────────────── */}
       {activeTab === 'mouvements' ? (
         <button onClick={() => { setEditingMouv(null); setShowMouvModal(true); }}
-          className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom,0px))] right-4 md:bottom-6 md:right-6 z-40 w-14 h-14 rounded-full flex items-center justify-center shadow-xl text-white transition-transform hover:scale-110 active:scale-95"
-          style={{ backgroundColor: couleur }} title="Ajouter un mouvement">
+          className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom,0px))] right-4 md:bottom-6 md:right-6 z-40 w-14 h-14 rounded-full flex items-center justify-center shadow-e3 bg-accent text-sur-accent transition-transform hover:scale-110 active:scale-95" title="Ajouter un mouvement">
           <Plus size={24} />
         </button>
       ) : (
         <button onClick={() => { setEditingItem(null); setShowAddModal(true); }}
-          className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom,0px))] right-4 md:bottom-6 md:right-6 z-40 w-14 h-14 rounded-full flex items-center justify-center shadow-xl text-white transition-transform hover:scale-110 active:scale-95"
-          style={{ backgroundColor: couleur }} title="Ajouter une prévision">
+          className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom,0px))] right-4 md:bottom-6 md:right-6 z-40 w-14 h-14 rounded-full flex items-center justify-center shadow-e3 bg-accent text-sur-accent transition-transform hover:scale-110 active:scale-95" title="Ajouter une prévision">
           <Plus size={24} />
         </button>
       )}
@@ -3036,7 +2943,7 @@ export default function TresorerieModule({
       {showPrefillConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label="Pré-remplir les charges BTP">
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" role="presentation" onClick={() => setShowPrefillConfirm(false)} />
-          <div className={`relative w-full max-w-md rounded-2xl border shadow-2xl p-6 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
+          <div className={`relative w-full max-w-md rounded-2xl border shadow-2xl p-6 bg-surface border-bord`}>
             <div className="flex items-start gap-3 mb-4">
               <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${couleur}20`, color: couleur }}>
                 <Zap size={20} />
@@ -3048,7 +2955,7 @@ export default function TresorerieModule({
                 </p>
               </div>
             </div>
-            <div className={`p-3 rounded-xl border mb-4 ${isDark ? 'bg-slate-700/50 border-slate-600' : 'bg-gray-50 border-gray-200'}`}>
+            <div className={`p-3 rounded-xl border mb-4 bg-surface-2 border-bord`}>
               <p className={`text-xs font-semibold mb-2 ${textSecondary}`}>Charges ajoutées :</p>
               {STARTER_TEMPLATES.map((t, i) => (
                 <div key={i} className={`flex items-center justify-between py-1 text-xs ${textSecondary}`}>
@@ -3059,7 +2966,7 @@ export default function TresorerieModule({
             </div>
             <div className="flex items-center justify-end gap-3">
               <button autoFocus onClick={() => setShowPrefillConfirm(false)}
-                className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${isDark ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-700'}`}>
+                className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors text-encre-3 hover:text-encre`}>
                 Annuler
               </button>
               <button onClick={handlePrefill}
