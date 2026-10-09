@@ -50,6 +50,8 @@ const getNextHalfHour = () => {
 export default function Planning({ events, setEvents, addEvent, updateEvent: updateEventProp, deleteEvent: deleteEventProp, chantiers, clients = [], equipe, memos = [], toggleMemo, updateMemo, couleur, setPage, setSelectedChantier, updateChantier, isDark, prefill, clearPrefill, devis = [] }) {
   const { confirm } = useConfirm();
   const { showToast } = useToast();
+  // Événements « journée » (chantiers en cours surtout) : deux par jour, le reste replié.
+  const [journeeDepliee, setJourneeDepliee] = useState(false);
 
   // RBAC permissions
   const { canPerform, getPermission } = usePermissions();
@@ -424,7 +426,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
           {setPage && (
             <button
               onClick={() => setPage('dashboard')}
-              className={`p-2 rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}
+              className={`p-2 rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors hover:bg-surface-2 text-encre-3`}
               aria-label="Retour au tableau de bord"
             >
               <ArrowLeft size={18} />
@@ -455,7 +457,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
             qui défilait, « Mois » paraissait coupé et la vue Agenda était introuvable (recette du 9 oct.). */}
         <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 sm:gap-1.5">
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-hide min-w-0 flex-1">
-            <button onClick={goToToday} className={`px-2.5 py-1.5 rounded-lg text-xs font-medium shrink-0 min-h-[36px] active:scale-95 transition-all ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'} ${textSecondary}`} aria-label="Aujourd'hui">
+            <button onClick={goToToday} className={`px-2.5 py-1.5 rounded-lg text-xs font-medium shrink-0 min-h-[36px] active:scale-95 transition-all bg-surface-2 hover:bg-bord ${textSecondary}`} aria-label="Aujourd'hui">
               Aujourd'hui
             </button>
             <select
@@ -486,36 +488,36 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
               ))}
             </select>
             {filterTypes.size > 0 && (
-              <button onClick={() => setFilterTypes(new Set())} className={`p-1 rounded-lg shrink-0 ${isDark ? 'text-slate-400 hover:text-white' : 'text-slate-400 hover:text-slate-700'}`} title="Réinitialiser filtre type">
+              <button onClick={() => setFilterTypes(new Set())} className={`p-1 rounded-lg shrink-0 text-encre-3 hover:text-encre`} title="Réinitialiser filtre type">
                 <X size={12} />
               </button>
             )}
           </div>
-          <div className={`order-first sm:order-none w-full sm:w-auto grid grid-cols-4 sm:flex rounded-lg overflow-hidden border shrink-0 ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
-              <button onClick={() => { setViewMode('month'); }} className={`px-2.5 py-1.5 text-xs whitespace-nowrap min-h-[40px] sm:min-h-[36px] transition-colors ${viewMode === 'month' ? 'text-white' : isDark ? 'bg-slate-800 text-slate-400' : 'bg-white text-slate-500'}`} style={viewMode === 'month' ? { background: couleur } : {}}>Mois</button>
-              <button onClick={() => { const today = new Date(); if (date.getMonth() === today.getMonth() && date.getFullYear() === today.getFullYear()) setDate(today); setViewMode('week'); }} className={`px-2.5 py-1.5 text-xs whitespace-nowrap min-h-[40px] sm:min-h-[36px] transition-colors ${viewMode === 'week' ? 'text-white' : isDark ? 'bg-slate-800 text-slate-400' : 'bg-white text-slate-500'}`} style={viewMode === 'week' ? { background: couleur } : {}}><span className="sm:hidden">Semaine</span><span className="hidden sm:inline">Sem.</span></button>
-              <button onClick={() => { const today = new Date(); if (date.getMonth() === today.getMonth() && date.getFullYear() === today.getFullYear()) setDate(today); setViewMode('day'); }} className={`px-2.5 py-1.5 text-xs whitespace-nowrap min-h-[40px] sm:min-h-[36px] transition-colors ${viewMode === 'day' ? 'text-white' : isDark ? 'bg-slate-800 text-slate-400' : 'bg-white text-slate-500'}`} style={viewMode === 'day' ? { background: couleur } : {}}>Jour</button>
-              <button onClick={() => setViewMode('agenda')} className={`px-2.5 py-1.5 text-xs whitespace-nowrap min-h-[40px] sm:min-h-[36px] transition-colors ${viewMode === 'agenda' ? 'text-white' : isDark ? 'bg-slate-800 text-slate-400' : 'bg-white text-slate-500'}`} style={viewMode === 'agenda' ? { background: couleur } : {}}>Agenda</button>
+          <div className="order-first sm:order-none w-full sm:w-auto grid grid-cols-4 sm:flex gap-1 rounded-xl p-1 shrink-0 bg-surface-2">
+              <button onClick={() => { setViewMode('month'); }} className={`px-3 text-sm whitespace-nowrap min-h-[40px] sm:min-h-[36px] rounded-lg transition-colors ${viewMode === 'month' ? 'bg-surface text-encre font-semibold shadow-e1' : 'text-encre-2 font-medium hover:text-encre'}`}>Mois</button>
+              <button onClick={() => { const today = new Date(); if (date.getMonth() === today.getMonth() && date.getFullYear() === today.getFullYear()) setDate(today); setViewMode('week'); }} className={`px-3 text-sm whitespace-nowrap min-h-[40px] sm:min-h-[36px] rounded-lg transition-colors ${viewMode === 'week' ? 'bg-surface text-encre font-semibold shadow-e1' : 'text-encre-2 font-medium hover:text-encre'}`}><span className="sm:hidden">Semaine</span><span className="hidden sm:inline">Sem.</span></button>
+              <button onClick={() => { const today = new Date(); if (date.getMonth() === today.getMonth() && date.getFullYear() === today.getFullYear()) setDate(today); setViewMode('day'); }} className={`px-3 text-sm whitespace-nowrap min-h-[40px] sm:min-h-[36px] rounded-lg transition-colors ${viewMode === 'day' ? 'bg-surface text-encre font-semibold shadow-e1' : 'text-encre-2 font-medium hover:text-encre'}`}>Jour</button>
+              <button onClick={() => setViewMode('agenda')} className={`px-3 text-sm whitespace-nowrap min-h-[40px] sm:min-h-[36px] rounded-lg transition-colors ${viewMode === 'agenda' ? 'bg-surface text-encre font-semibold shadow-e1' : 'text-encre-2 font-medium hover:text-encre'}`}>Agenda</button>
             </div>
           <div className="relative shrink-0">
             <button onClick={() => setShowPlanningSettings(!showPlanningSettings)}
-              className={`p-2 rounded-lg transition-colors min-w-[44px] min-h-[44px] sm:min-w-[36px] sm:min-h-[36px] flex items-center justify-center ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}
+              className={`p-2 rounded-lg transition-colors min-w-[44px] min-h-[44px] sm:min-w-[36px] sm:min-h-[36px] flex items-center justify-center hover:bg-surface-2 text-encre-3`}
               title="Paramètres horaires" aria-label="Paramètres horaires">
               <Settings size={16} />
             </button>
             {showPlanningSettings && (
-              <div className={`absolute right-0 top-full mt-2 z-40 rounded-xl border shadow-xl p-4 w-56 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+              <div className={`absolute right-0 top-full mt-2 z-40 rounded-xl border shadow-xl p-4 w-56 bg-surface border-bord`}>
                 <p className={`text-xs font-semibold mb-3 ${textPrimary}`}>Horaires de travail</p>
                 <div className="space-y-3">
                   <div>
-                    <label className={`block text-[11px] font-medium mb-1 ${textMuted}`}>Heure de début</label>
+                    <label className={`block text-xs font-medium mb-1 ${textMuted}`}>Heure de début</label>
                     <select className={`w-full px-3 py-2 border rounded-lg text-sm ${inputBg}`}
                       value={workHourStart} onChange={e => { const v = parseInt(e.target.value); setWorkHourStart(v); try { localStorage.setItem('cp_planning_hour_start', String(v)); } catch { /* préférence non enregistrée : quota plein ou navigation privée */ } }}>
                       {Array.from({length: 8}, (_, i) => i + 5).map(h => <option key={h} value={h}>{h}h00</option>)}
                     </select>
                   </div>
                   <div>
-                    <label className={`block text-[11px] font-medium mb-1 ${textMuted}`}>Heure de fin</label>
+                    <label className={`block text-xs font-medium mb-1 ${textMuted}`}>Heure de fin</label>
                     <select className={`w-full px-3 py-2 border rounded-lg text-sm ${inputBg}`}
                       value={workHourEnd} onChange={e => { const v = parseInt(e.target.value); setWorkHourEnd(v); try { localStorage.setItem('cp_planning_hour_end', String(v)); } catch { /* préférence non enregistrée : quota plein ou navigation privée */ } }}>
                       {Array.from({length: 10}, (_, i) => i + 14).map(h => <option key={h} value={h}>{h}h00</option>)}
@@ -523,7 +525,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                   </div>
                 </div>
                 <button onClick={() => setShowPlanningSettings(false)}
-                  className={`mt-3 w-full py-1.5 rounded-lg text-xs font-medium transition-colors ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+                  className={`mt-3 w-full py-1.5 rounded-lg text-xs font-medium transition-colors bg-surface-2 text-encre-2 hover:bg-bord`}>
                   Fermer
                 </button>
               </div>
@@ -533,8 +535,8 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
           <button onClick={() => {
             setForm(f => ({ ...emptyForm, date: formatLocalDate(new Date()), time: getNextHalfHour() }));
             setShowAdd(true);
-          }} className="w-10 h-10 sm:w-auto sm:h-10 sm:px-3 text-white rounded-xl flex items-center justify-center sm:gap-1.5 hover:shadow-lg transition-all active:scale-95 text-xs shrink-0" style={{background: couleur}}>
-            <Plus size={16} /><span className="hidden sm:inline">Événement</span>
+          }} aria-label="Nouvel événement" className="w-11 h-11 sm:w-auto sm:h-10 sm:px-3 rounded-xl border border-bord-fort bg-surface text-encre flex items-center justify-center sm:gap-1.5 hover:bg-surface-2 transition-colors text-sm font-semibold shrink-0">
+            <Plus size={18} aria-hidden="true" /><span className="hidden sm:inline">Événement</span>
           </button>
           )}
         </div>
@@ -557,14 +559,14 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
             return kpis.map(kpi => (
               <div
                 key={kpi.label}
-                className={`flex items-center gap-3 p-3 rounded-xl border ${isDark ? 'bg-slate-800/60 border-slate-700' : 'bg-white border-slate-200'}`}
+                className="flex items-center gap-3 p-3 rounded-2xl border bg-surface border-bord shadow-e1"
               >
-                <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: `${kpi.color}15` }}>
-                  <kpi.icon size={18} style={{ color: kpi.color }} />
+                <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 bg-surface-2 text-encre-3">
+                  <kpi.icon size={18} aria-hidden="true" />
                 </div>
                 <div className="min-w-0">
-                  <p className={`text-lg font-bold leading-tight ${textPrimary}`}>{kpi.value}</p>
-                  <p className={`text-xs ${textMuted} truncate`}>{kpi.label}</p>
+                  <p className={`text-lg font-bold leading-tight tabular-nums ${kpi.label === 'Urgences' && kpi.value > 0 ? 'text-danger-texte' : 'text-encre'}`}>{kpi.value}</p>
+                  <p className="text-sm text-encre-2 truncate">{kpi.label}</p>
                 </div>
               </div>
             ));
@@ -574,7 +576,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
 
       {/* Calendar */}
       <div className={`${cardBg} rounded-xl sm:rounded-2xl border overflow-hidden`}>
-        <div className={`flex items-center justify-between px-3 sm:px-5 py-2 border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+        <div className={`flex items-center justify-between px-3 sm:px-5 py-2 border-b border-bord`}>
           {viewMode !== 'agenda' ? (
             <button
               onClick={() => setDate(viewMode === 'month' ? new Date(year, month - 1) : viewMode === 'day' ? new Date(date.getTime() - 86400000) : new Date(date.getTime() - 7 * 86400000))}
@@ -600,8 +602,8 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
 
         {viewMode === 'month' ? (
           <>
-            <div className={`grid grid-cols-7 border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
-              {JOURS.map(j => <div key={j} className={`py-1.5 text-center text-[10px] sm:text-xs font-medium ${textMuted}`}>{j}</div>)}
+            <div className={`grid grid-cols-7 border-b border-bord`}>
+              {JOURS.map(j => <div key={j} className={`py-1.5 text-center text-xs sm:text-xs font-medium ${textMuted}`}>{j}</div>)}
             </div>
             <div className="grid grid-cols-7">
               {days.map((day, i) => {
@@ -616,10 +618,10 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                 const isToday = day && new Date().toDateString() === new Date(year, month, day).toDateString();
                 const dateStr = day ? `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}` : '';
                 return (
-                  <div key={i} className={`min-h-[68px] sm:min-h-[88px] p-0.5 sm:p-1.5 border-r border-b ${isDark ? 'border-slate-700' : 'border-slate-100'} ${!day ? (isDark ? 'bg-slate-900/50' : 'bg-slate-50') : ''}`} role={day ? 'button' : undefined} tabIndex={day ? 0 : undefined} aria-label={day ? `Ajouter un événement le ${day} ${MOIS[month]} ${year}` : undefined} onKeyDown={day ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleQuickAdd(dateStr); } } : undefined} onDragOver={e => e.preventDefault()} onDrop={e => { e.preventDefault(); const id = e.dataTransfer.getData('eventId'); if (id && dateStr) moveEvent(id, dateStr); }} onClick={() => day && handleQuickAdd(dateStr)}>
+                  <div key={i} className={`min-h-[68px] sm:min-h-[88px] p-0.5 sm:p-1.5 border-r border-b border-bord ${!day ? ('bg-surface-2') : ''}`} role={day ? 'button' : undefined} tabIndex={day ? 0 : undefined} aria-label={day ? `Ajouter un événement le ${day} ${MOIS[month]} ${year}` : undefined} onKeyDown={day ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleQuickAdd(dateStr); } } : undefined} onDragOver={e => e.preventDefault()} onDrop={e => { e.preventDefault(); const id = e.dataTransfer.getData('eventId'); if (id && dateStr) moveEvent(id, dateStr); }} onClick={() => day && handleQuickAdd(dateStr)}>
                     {day && (<>
                       <div className="flex items-center gap-0.5 mb-0.5">
-                        <p className={`text-[10px] sm:text-xs font-medium w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center rounded-full ${isToday ? 'text-white' : textPrimary}`} style={isToday ? {background: couleur} : {}}>{day}</p>
+                        <p className={`text-xs sm:text-xs font-medium w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center rounded-full ${isToday ? 'text-white' : textPrimary}`} style={isToday ? {background: couleur} : {}}>{day}</p>
                         {(() => {
                           if (dayEvents.length === 0) return null;
                           // Show mini color dots per event type
@@ -645,7 +647,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                               onTouchEnd={(e) => { if (window.innerWidth < 640) { e.preventDefault(); e.stopPropagation(); setTooltip({ event: ev, isMobile: true }); }}}
                               title={ev.title}
                               aria-label={`${ev.title} — ${TYPE_LABELS[ev.type] || 'Événement'}${ev.time ? ` à ${ev.time}` : ''}`}
-                              className="text-[11px] px-1 sm:px-1.5 py-0.5 rounded cursor-pointer hover:brightness-110 transition-all flex items-center gap-0.5 text-white leading-tight"
+                              className="text-xs px-1 sm:px-1.5 py-0.5 rounded cursor-pointer hover:brightness-110 transition-all flex items-center gap-0.5 text-white leading-tight"
                               style={{ background: getEventColor(ev), opacity: allDay ? 1 : 0.9 }}>
                               {!allDay && ev.time && <span className="opacity-80 hidden sm:inline flex-shrink-0">{ev.time.slice(0, 5)}</span>}
                               <span className="truncate font-medium">{ev.title}</span>
@@ -655,7 +657,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                         {dayEvents.length > (window.innerWidth < 640 ? 2 : 3) && (
                           <button
                             onClick={(e) => { e.stopPropagation(); setDate(new Date(year, month, day)); setViewMode('day'); }}
-                            className={`text-[10px] font-semibold px-1.5 py-0 rounded transition-colors ${isDark ? 'text-slate-400 hover:text-slate-200' : 'hover:underline'}`}
+                            className={`text-xs font-semibold px-1.5 py-0 rounded transition-colors hover:underline`}
                             style={{ color: couleur }}
                           >
                             +{dayEvents.length - (window.innerWidth < 640 ? 2 : 3)}
@@ -723,10 +725,10 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
               const timedEvts = dayEvts.filter(ev => !isAllDayEvent(ev));
 
               return (
-                <div key={dayIdx} className={`relative border-l ${isDark ? 'border-slate-700' : 'border-slate-200'}`} style={{ height: TOTAL_HEIGHT, ...style }}>
+                <div key={dayIdx} className={`relative border-l border-bord`} style={{ height: TOTAL_HEIGHT, ...style }}>
                   {/* Hour grid lines */}
                   {HOURS.map(h => (
-                    <div key={h} className={`absolute left-0 right-0 border-b ${isDark ? 'border-slate-700/50' : 'border-slate-100'}`} style={{ top: (h - HOUR_START) * HOUR_HEIGHT, height: HOUR_HEIGHT }}
+                    <div key={h} className={`absolute left-0 right-0 border-b border-bord`} style={{ top: (h - HOUR_START) * HOUR_HEIGHT, height: HOUR_HEIGHT }}
                       onClick={() => { setForm(f => ({ ...f, date: dateStr, time: `${String(h).padStart(2, '0')}:00` })); setShowAdd(true); }} />
                   ))}
                   {/* Current time indicator */}
@@ -747,7 +749,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                         className="absolute left-1 right-1 rounded-lg px-2 py-0.5 text-white text-xs cursor-pointer overflow-hidden hover:shadow-lg hover:brightness-110 transition-all z-10"
                         style={{ top: pos.top, height: pos.height, background: getEventColor(ev), minHeight: 22 }}>
                         <p className="font-semibold truncate leading-tight">{ev.title}</p>
-                        {pos.height > 32 && <p className="opacity-80 text-[10px] leading-tight">{ev.time}{ev.duration ? ` · ${formatDuration(ev.duration)}` : ''}</p>}
+                        {pos.height > 32 && <p className="opacity-80 text-xs leading-tight">{ev.time}{ev.duration ? ` · ${formatDuration(ev.duration)}` : ''}</p>}
                       </div>
                     );
                   })}
@@ -764,12 +766,12 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                 {/* Desktop: 7-column grid */}
                 <div className="hidden sm:block">
                   {/* Day headers */}
-                  <div className={`flex border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+                  <div className={`flex border-b border-bord`}>
                     <div className="w-14 flex-shrink-0" />
                     {weekDays.map((d, i) => {
                       const isToday = formatLocalDate(d) === todayStr;
                       return (
-                        <div key={i} className={`flex-1 text-center py-2 border-l ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+                        <div key={i} className={`flex-1 text-center py-2 border-l border-bord`}>
                           <p className={`text-xs ${textMuted}`}>{JOURS[i]}</p>
                           <p className={`text-sm font-bold ${isToday ? 'text-white w-7 h-7 rounded-full flex items-center justify-center mx-auto' : textPrimary}`} style={isToday ? { background: couleur } : {}}>{d.getDate()}</p>
                         </div>
@@ -778,21 +780,22 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                   </div>
                   {/* All-day events row — BELOW headers, ABOVE hourly grid */}
                   {hasAnyAllDay && (
-                    <div className={`flex border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
-                      <div className={`w-14 flex-shrink-0 text-[10px] text-center py-2 font-medium ${textMuted}`}>Journée</div>
+                    <div className={`flex border-b border-bord`}>
+                      <div className={`w-14 flex-shrink-0 text-xs text-center py-2 font-medium ${textMuted}`}>Journée</div>
                       {weekDays.map((d, i) => (
-                        <div key={i} className={`flex-1 p-1.5 border-l ${isDark ? 'border-slate-700' : 'border-slate-200'} min-h-[36px]`}>
-                          {allDayMap[i].map(ev => {
-                            const TypeIcon = TYPE_ICONS[ev.type] || Calendar;
-                            return (
-                              <div key={ev.id} onClick={(e) => handleEventClick(e, ev)}
-                                className="text-[11px] px-2 py-1 rounded-md text-white cursor-pointer truncate mb-0.5 flex items-center gap-1 hover:brightness-110 transition-all shadow-sm"
-                                style={{ background: getEventColor(ev) }}>
-                                <TypeIcon size={10} className="opacity-75 flex-shrink-0" />
-                                <span className="truncate font-medium">{ev.title}</span>
-                              </div>
-                            );
-                          })}
+                        <div key={i} className={`flex-1 p-1.5 border-l border-bord min-h-[36px]`}>
+                          {(journeeDepliee ? allDayMap[i] : allDayMap[i].slice(0, 2)).map(ev => (
+                            <button key={ev.id} type="button" onClick={(e) => handleEventClick(e, ev)} title={ev.title}
+                              className="w-full text-left text-xs px-2 py-1 rounded-md bg-surface-2 text-encre cursor-pointer truncate mb-0.5 border-l-[3px] hover:bg-bord transition-colors"
+                              style={{ borderLeftColor: getEventColor(ev) }}>
+                              <span className="truncate font-medium">{ev.title}</span>
+                            </button>
+                          ))}
+                          {!journeeDepliee && allDayMap[i].length > 2 && (
+                            <button type="button" onClick={() => setJourneeDepliee(true)} className="w-full text-left text-xs font-semibold text-accent-texte px-2 py-0.5">
+                              + {allDayMap[i].length - 2}
+                            </button>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -803,7 +806,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                       {/* Hour gutter */}
                       <div className="w-14 flex-shrink-0 relative">
                         {HOURS.map(h => (
-                          <div key={h} className={`absolute right-2 text-[11px] font-medium ${textMuted}`} style={{ top: (h - HOUR_START) * HOUR_HEIGHT - 6 }}>
+                          <div key={h} className={`absolute right-2 text-xs font-medium ${textMuted}`} style={{ top: (h - HOUR_START) * HOUR_HEIGHT - 6 }}>
                             {String(h).padStart(2, '0')}h
                           </div>
                         ))}
@@ -817,42 +820,51 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                 {/* Mobile: day tabs + single column */}
                 <div className="sm:hidden">
                   {/* Day tab selector */}
-                  <div className={`flex overflow-x-auto gap-1 p-2 border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+                  <div className={`flex overflow-x-auto gap-1 p-2 border-b border-bord`}>
                     {weekDays.map((d, i) => {
                       const isToday = formatLocalDate(d) === todayStr;
                       const isActive = mobileWeekDay === i;
                       return (
                         <button key={i} onClick={() => setMobileWeekDay(i)}
-                          className={`flex-shrink-0 w-11 py-2 rounded-xl text-center transition-all ${isActive ? 'text-white shadow-md' : isToday ? '' : isDark ? 'text-slate-400' : 'text-slate-500'}`}
+                          className={`flex-shrink-0 w-11 py-2 rounded-xl text-center transition-all ${isActive ? 'text-white shadow-md' : isToday ? '' : 'text-encre-3'}`}
                           style={isActive ? { background: couleur } : isToday ? { color: couleur } : {}}>
-                          <p className="text-[10px] font-medium">{JOURS[i]}</p>
+                          <p className="text-xs font-medium">{JOURS[i]}</p>
                           <p className="text-base font-bold">{d.getDate()}</p>
                         </button>
                       );
                     })}
                   </div>
                   {/* Mobile all-day events for selected day */}
-                  {allDayMap[mobileWeekDay]?.length > 0 && (
-                    <div className={`p-2 border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
-                      {allDayMap[mobileWeekDay].map(ev => {
-                        const TypeIcon = TYPE_ICONS[ev.type] || Calendar;
-                        return (
-                          <div key={ev.id} onClick={(e) => handleEventClick(e, ev)}
-                            className="text-xs px-2.5 py-1.5 rounded-lg text-white cursor-pointer truncate mb-1 flex items-center gap-1.5 shadow-sm"
-                            style={{ background: getEventColor(ev) }}>
-                            <TypeIcon size={12} className="opacity-75 flex-shrink-0" />
-                            <span className="truncate font-medium">{ev.title}</span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
+                  {allDayMap[mobileWeekDay]?.length > 0 && (() => {
+                    const evs = allDayMap[mobileWeekDay];
+                    const visibles = journeeDepliee ? evs : evs.slice(0, 2);
+                    return (
+                      <div className="p-2 border-b border-bord space-y-1">
+                        {visibles.map(ev => {
+                          const TypeIcon = TYPE_ICONS[ev.type] || Calendar;
+                          return (
+                            <button key={ev.id} type="button" onClick={(e) => handleEventClick(e, ev)}
+                              className="w-full min-h-[44px] px-3 rounded-lg bg-surface-2 text-left text-sm text-encre flex items-center gap-2 border-l-4 hover:bg-bord transition-colors"
+                              style={{ borderLeftColor: getEventColor(ev) }}>
+                              <TypeIcon size={16} aria-hidden="true" className="flex-shrink-0 text-encre-3" />
+                              <span className="truncate font-medium">{ev.title}</span>
+                            </button>
+                          );
+                        })}
+                        {evs.length > 2 && (
+                          <button type="button" onClick={() => setJourneeDepliee(v => !v)} className="w-full h-11 text-sm font-semibold text-accent-texte">
+                            {journeeDepliee ? 'Réduire' : `Et ${evs.length - 2} autre${evs.length - 2 > 1 ? 's' : ''}`}
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })()}
                   {/* Single day hourly grid */}
                   <div className="overflow-y-auto" style={{ maxHeight: 'min(500px, 55vh)' }}>
                     <div className="flex" style={{ height: TOTAL_HEIGHT }}>
                       <div className="w-12 flex-shrink-0 relative">
                         {HOURS.map(h => (
-                          <div key={h} className={`absolute right-1.5 text-[10px] font-medium ${textMuted}`} style={{ top: (h - HOUR_START) * HOUR_HEIGHT - 5 }}>
+                          <div key={h} className={`absolute right-1.5 text-xs font-medium ${textMuted}`} style={{ top: (h - HOUR_START) * HOUR_HEIGHT - 5 }}>
                             {String(h).padStart(2, '0')}h
                           </div>
                         ))}
@@ -909,7 +921,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                       {nearest && (
                         <button
                           onClick={() => setDate(nearest.date)}
-                          className={`mt-2 mb-4 text-sm font-medium px-4 py-2 rounded-xl transition-colors ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}
+                          className={`mt-2 mb-4 text-sm font-medium px-4 py-2 rounded-xl transition-colors bg-surface-2 hover:bg-bord text-encre-2`}
                         >
                           {nearest.dir < 0 ? '← ' : ''}Voir semaine du {nearest.label}{nearest.dir > 0 ? ' →' : ''}
                         </button>
@@ -933,15 +945,15 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
 
             return (
               <div>
-                <div className={`text-center py-2 border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+                <div className={`text-center py-2 border-b border-bord`}>
                   <p className={`text-sm font-bold ${textPrimary}`}>
                     {date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
                   </p>
                 </div>
                 {/* All-day / multi-day event banners */}
                 {allDayEvts.length > 0 && (
-                  <div className={`px-3 py-2 border-b ${isDark ? 'border-slate-700 bg-slate-800/50' : 'border-slate-200 bg-slate-50'}`}>
-                    <p className={`text-[10px] font-semibold uppercase tracking-wider mb-1 ${textMuted}`}>Journée</p>
+                  <div className={`px-3 py-2 border-b border-bord bg-surface-2`}>
+                    <p className={`text-xs font-semibold uppercase tracking-wider mb-1 ${textMuted}`}>Journée</p>
                     <div className="flex flex-wrap gap-1.5">
                       {allDayEvts.map(ev => {
                         const TypeIcon = TYPE_ICONS[ev.type] || Calendar;
@@ -957,7 +969,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                     </div>
                   </div>
                 )}
-                <div className={`divide-y ${isDark ? 'divide-slate-700/50' : 'divide-slate-100'}`}>
+                <div className={`divide-y divide-bord`}>
                   {HOURS.map(hour => {
                     const hourStr = `${String(hour).padStart(2, '0')}:00`;
                     const hourEvents = timedOnlyEvts.filter(ev => {
@@ -968,7 +980,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                     return (
                       <div
                         key={hour}
-                        className={`flex min-h-[48px] ${isDark ? 'hover:bg-slate-700/20' : 'hover:bg-slate-50'}`}
+                        className={`flex min-h-[48px] hover:bg-surface-2`}
                         onDragOver={e => e.preventDefault()}
                         onDrop={e => {
                           e.preventDefault();
@@ -989,7 +1001,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                           setShowAdd(true);
                         }}
                       >
-                        <div className={`w-16 sm:w-20 p-2 text-right flex-shrink-0 border-r ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+                        <div className={`w-16 sm:w-20 p-2 text-right flex-shrink-0 border-r border-bord`}>
                           <span className={`text-xs font-medium ${textMuted}`}>{hourStr}</span>
                         </div>
                         <div className="flex-1 p-1.5">
@@ -1002,7 +1014,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                                 draggable={!ev.isChantier}
                                 onDragStart={e => e.dataTransfer.setData('eventId', ev.id)}
                                 onClick={e => { e.stopPropagation(); handleEventClick(e, ev); }}
-                                className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer border-l-3 mb-1 ${isDark ? 'bg-slate-800/80 hover:bg-slate-700' : 'bg-white hover:bg-slate-50 shadow-sm'}`}
+                                className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer border-l-3 mb-1 bg-surface hover:bg-surface-2 shadow-sm`}
                                 style={{ borderLeft: `3px solid ${eventColor}` }}
                               >
                                 <TypeIcon size={14} style={{ color: eventColor }} />
@@ -1056,11 +1068,11 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
             return (
               <div>
                 {/* P2.6: Toggle hide empty days */}
-                <div className={`flex items-center justify-between px-4 py-2 border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+                <div className={`flex items-center justify-between px-4 py-2 border-b border-bord`}>
                   <span className={`text-xs ${textMuted}`}>{visibleDays.length} jour{visibleDays.length > 1 ? 's' : ''} affiché{visibleDays.length > 1 ? 's' : ''}</span>
                   <button
                     onClick={() => setAgendaHideEmpty(h => !h)}
-                    className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-all ${agendaHideEmpty ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}
+                    className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-all ${agendaHideEmpty ? 'text-white' : 'bg-surface-2 text-encre-2'}`}
                     style={agendaHideEmpty ? { background: couleur } : {}}
                   >
                     <Filter size={12} className="inline mr-1" />{agendaHideEmpty ? 'Jours avec événements' : 'Tous les jours'}
@@ -1070,11 +1082,11 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                   const isToday = dateStr === formatLocalDate(new Date());
                   return (
                     <div key={dateStr}>
-                      <div className={`sticky top-0 z-10 px-4 py-2 text-xs font-semibold uppercase tracking-wider ${isToday ? (isDark ? 'bg-slate-700' : 'bg-orange-50') : isDark ? 'bg-slate-900' : 'bg-slate-50'}`} style={isToday ? { color: couleur } : {}}>
+                      <div className={`sticky top-0 z-10 px-4 py-2 text-xs font-semibold uppercase tracking-wider ${isToday ? (isDark ? 'bg-slate-700' : 'bg-orange-50') : 'bg-surface-2'}`} style={isToday ? { color: couleur } : {}}>
                         {isToday ? "Aujourd'hui — " : ''}{dayDate.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
                       </div>
                       {dayEvts.length === 0 ? (
-                        <div className={`px-4 py-2 text-xs ${textMuted} border-b ${isDark ? 'border-slate-700/50' : 'border-slate-100'}`}>—</div>
+                        <div className={`px-4 py-2 text-xs ${textMuted} border-b border-bord`}>—</div>
                       ) : (
                         dayEvts.map(ev => {
                           const TypeIcon = TYPE_ICONS[ev.type] || Calendar;
@@ -1082,19 +1094,19 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                           const client = ev.clientId ? clients.find(c => c.id === ev.clientId) : null;
                           return (
                             <div key={ev.id} onClick={(e) => handleEventClick(e, ev)}
-                              className={`flex items-center gap-2.5 px-3 py-2 cursor-pointer transition-all border-b ${isDark ? 'border-slate-700/50 hover:bg-slate-800' : 'border-slate-100 hover:bg-slate-50'}`}>
+                              className={`flex items-center gap-2.5 px-3 py-2 cursor-pointer transition-all border-b border-bord hover:bg-surface-2`}>
                               <div className="flex flex-col items-center w-12 flex-shrink-0">
                                 {ev.time ? (
                                   <span className={`text-xs font-bold ${textPrimary}`}>{ev.time}</span>
                                 ) : (
-                                  <span className={`text-[10px] italic ${textMuted}`}>Journée</span>
+                                  <span className={`text-xs italic ${textMuted}`}>Journée</span>
                                 )}
-                                {ev.time && ev.duration && <span className={`text-[11px] ${textMuted}`}>{formatDuration(ev.duration)}</span>}
+                                {ev.time && ev.duration && <span className={`text-xs ${textMuted}`}>{formatDuration(ev.duration)}</span>}
                               </div>
                               <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: eventColor }} />
                               <div className="flex-1 min-w-0">
                                 <p className={`font-medium text-sm truncate ${textPrimary}`} title={ev.title}>{ev.title}</p>
-                                {client && <p className={`text-[10px] ${textMuted} truncate`}>{client.nom} {client.prenom || ''}</p>}
+                                {client && <p className={`text-xs ${textMuted} truncate`}>{client.nom} {client.prenom || ''}</p>}
                               </div>
                             </div>
                           );
@@ -1126,7 +1138,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                 })()}
                 <button
                   onClick={() => setAgendaRange(r => r + 30)}
-                  className={`w-full py-4 text-sm font-medium transition-colors ${isDark ? 'text-slate-400 hover:bg-slate-800' : 'text-slate-500 hover:bg-slate-50'}`}>
+                  className={`w-full py-4 text-sm font-medium transition-colors text-encre-3 hover:bg-surface-2`}>
                   Voir les 30 prochains jours
                 </button>
               </div>
@@ -1148,7 +1160,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
         if (tooltip.isMobile) {
           return (
             <div className="fixed inset-0 z-50 flex items-end" style={{ backgroundColor: 'rgba(0,0,0,0.3)' }} onClick={() => setTooltip(null)}>
-              <div className={`w-full rounded-t-xl p-4 pb-6 ${isDark ? 'bg-slate-800' : 'bg-white'} shadow-2xl`} onClick={e => e.stopPropagation()}>
+              <div className={`w-full rounded-t-xl p-4 pb-6 bg-surface shadow-2xl`} onClick={e => e.stopPropagation()}>
                 <div className="w-8 h-1 rounded-full mx-auto mb-3" style={{ backgroundColor: isDark ? '#475569' : '#cbd5e1' }} />
                 <div className="flex items-start gap-2.5 mb-2.5">
                   <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white flex-shrink-0" style={{ background: getEventColor(ev) }}>
@@ -1156,7 +1168,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className={`font-bold text-base ${textPrimary}`}>{ev.title}</p>
-                    <span className="text-[10px] px-2 py-0.5 rounded-full text-white inline-block mt-1" style={{ background: getEventColor(ev) }}>
+                    <span className="text-xs px-2 py-0.5 rounded-full text-white inline-block mt-1" style={{ background: getEventColor(ev) }}>
                       {TYPE_LABELS[ev.type] || 'Événement'}
                     </span>
                   </div>
@@ -1197,7 +1209,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                 {ev.description && <p className={`text-xs ${textMuted} line-clamp-2`}>{ev.description}</p>}
                 {recurrenceLabel && <p className={`text-xs ${textMuted}`}>🔁 {recurrenceLabel}</p>}
               </div>
-              <span className="text-[10px] px-2 py-0.5 rounded-full text-white inline-block mt-2 ml-5" style={{ background: getEventColor(ev) }}>
+              <span className="text-xs px-2 py-0.5 rounded-full text-white inline-block mt-2 ml-5" style={{ background: getEventColor(ev) }}>
                 {TYPE_LABELS[ev.type] || 'Événement'}
               </span>
             </div>
@@ -1207,18 +1219,18 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
 
       {/* Tips — dismissable, stored in localStorage */}
       {showTips && (
-        <div className={`rounded-xl p-4 flex items-start gap-3 border ${isDark ? 'bg-slate-800/80 border-slate-700' : 'bg-gradient-to-r from-orange-50 to-amber-50 border-orange-200'}`}>
-          <CalendarDays size={20} className="flex-shrink-0 mt-0.5" style={{ color: couleur }} />
-          <div className={`text-sm flex-1 ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
-            <p className="font-semibold mb-1">Bienvenue dans votre planning</p>
-            <ul className="space-y-0.5 text-xs opacity-80">
-              <li>📅 Cliquez sur un jour pour créer un événement</li>
-              <li>↕️ Glissez-déposez pour déplacer un événement</li>
-              <li>🏗️ Les chantiers avec dates apparaissent automatiquement</li>
+        <div className="rounded-2xl p-4 flex items-start gap-3 bg-surface-2 text-encre">
+          <CalendarDays size={20} aria-hidden="true" className="flex-shrink-0 mt-0.5 text-encre-3" />
+          <div className="text-sm flex-1">
+            <p className="font-semibold mb-1">Votre planning</p>
+            <ul className="space-y-1 text-encre-2 list-disc pl-4">
+              <li>Touchez un jour pour créer un événement.</li>
+              <li>Faites glisser un événement pour le déplacer.</li>
+              <li>Les chantiers datés apparaissent tout seuls.</li>
             </ul>
           </div>
           <button onClick={() => { setShowTips(false); try { localStorage.setItem('cp_planning_tips_dismissed', 'true'); } catch { /* préférence non enregistrée : quota plein ou navigation privée */ } }} className={`p-1.5 rounded-lg flex-shrink-0 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-orange-100'}`} aria-label="Fermer les astuces">
-            <X size={14} className={isDark ? 'text-slate-400' : 'text-slate-500'} />
+            <X size={14} className={'text-encre-3'} />
           </button>
         </div>
       )}
@@ -1228,19 +1240,19 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
         const TypeIcon = TYPE_ICONS[showDetail.type] || Calendar;
         return (
           <div className="fixed inset-0 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)' }} onClick={() => setShowDetail(null)} role="dialog" aria-modal="true" aria-label="Détail de l'événement">
-            <div ref={detailModalRef} className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-t-2xl sm:rounded-xl w-full max-w-sm shadow-2xl max-h-[90vh] sm:max-h-[85vh] overflow-y-auto`} onClick={e => e.stopPropagation()}>
-              <div className={`px-4 py-3 border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+            <div ref={detailModalRef} className={`bg-surface rounded-t-2xl sm:rounded-xl w-full max-w-sm shadow-2xl max-h-[90vh] sm:max-h-[85vh] overflow-y-auto`} onClick={e => e.stopPropagation()}>
+              <div className={`px-4 py-3 border-b border-bord`}>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
                     <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white" style={{ background: showDetail.color || typeColors[showDetail.type] || couleur }}>
                       <TypeIcon size={16} />
                     </div>
                     <div>
-                      <p className={`text-[10px] ${textMuted}`}>{TYPE_LABELS[showDetail.type] || 'Événement'}{(showDetail.recurrence && showDetail.recurrence !== 'never') || showDetail.isRecurrence ? ` · 🔁` : ''}</p>
+                      <p className={`text-xs ${textMuted}`}>{TYPE_LABELS[showDetail.type] || 'Événement'}{(showDetail.recurrence && showDetail.recurrence !== 'never') || showDetail.isRecurrence ? ` · 🔁` : ''}</p>
                       <h2 className={`font-bold text-sm ${textPrimary}`}>{editMode ? 'Modifier' : showDetail.title}</h2>
                     </div>
                   </div>
-                  <button onClick={() => setShowDetail(null)} className={`p-2 rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
+                  <button onClick={() => setShowDetail(null)} className={`p-2 rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-surface-2`}>
                     <X size={18} className={textMuted} />
                   </button>
                 </div>
@@ -1263,7 +1275,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                             else if (d.value === -1) setForm(p => ({...p, duration: -1}));
                             else setForm(p => ({...p, duration: d.value, endTime: ''}));
                           }}
-                            className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all ${form.duration === d.value ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}
+                            className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all ${form.duration === d.value ? 'text-white' : 'bg-surface-2 text-encre-2'}`}
                             style={form.duration === d.value ? { background: couleur } : {}}>
                             {d.label}
                           </button>
@@ -1272,7 +1284,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                       {form.duration === -1 && (
                         <div className="mt-2 flex items-center gap-2">
                           <div className="flex-1">
-                            <label className={`block text-[10px] font-medium mb-1 ${textMuted}`}>Heure de fin</label>
+                            <label className={`block text-xs font-medium mb-1 ${textMuted}`}>Heure de fin</label>
                             <input type="time" className={`w-full px-3 py-2 border rounded-lg text-sm ${inputBg}`} value={form.endTime} onChange={e => setForm(p => ({...p, endTime: e.target.value}))} />
                           </div>
                           {form.time && form.endTime && (() => {
@@ -1316,7 +1328,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                         {showDetail.priority && (() => {
                           const p = MEMO_PRIORITIES.find(pr => pr.value === showDetail.priority);
                           return p ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium" style={{ backgroundColor: p.color + '18', color: p.color }}>
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium" style={{ backgroundColor: p.color + '18', color: p.color }}>
                               {p.dot} {p.label}
                             </span>
                           ) : null;
@@ -1324,7 +1336,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                         {showDetail.category && (() => {
                           const cat = MEMO_CATEGORIES.find(c => c.value === showDetail.category);
                           return cat ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium" style={{ backgroundColor: cat.color + '18', color: cat.color }}>
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium" style={{ backgroundColor: cat.color + '18', color: cat.color }}>
                               <Tag size={10} /> {cat.label}
                             </span>
                           ) : null;
@@ -1361,12 +1373,12 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                       const stTotal = showDetail.subtasks.length;
                       const pct = Math.round((stDone / stTotal) * 100);
                       return (
-                        <div className={`p-3 rounded-lg ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
+                        <div className={`p-3 rounded-lg bg-surface-2`}>
                           <div className="flex items-center justify-between mb-2">
                             <span className={`text-xs font-medium ${textSecondary}`}><ListChecks size={12} className="inline mr-1" />Sous-tâches</span>
-                            <span className={`text-[11px] font-semibold ${stDone === stTotal ? 'text-emerald-500' : textMuted}`}>{stDone}/{stTotal}</span>
+                            <span className={`text-xs font-semibold ${stDone === stTotal ? 'text-emerald-500' : textMuted}`}>{stDone}/{stTotal}</span>
                           </div>
-                          <div className={`w-full h-1.5 rounded-full ${isDark ? 'bg-slate-600' : 'bg-slate-200'} mb-2`}>
+                          <div className={`w-full h-1.5 rounded-full bg-bord mb-2`}>
                             <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: stDone === stTotal ? '#22c55e' : couleur }} />
                           </div>
                           <div className="space-y-1">
@@ -1380,7 +1392,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                                       setShowDetail(prev => prev ? { ...prev, subtasks: newSubs } : null);
                                     }
                                   }}
-                                  className={`w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center ${st.done ? 'text-white' : isDark ? 'border-slate-500' : 'border-slate-300'}`}
+                                  className={`w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center ${st.done ? 'text-white' : 'border-bord-fort'}`}
                                   style={st.done ? { background: couleur, borderColor: couleur } : {}}
                                 >
                                   {st.done && <Check size={10} />}
@@ -1395,7 +1407,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
 
                     {/* Notes */}
                     {showDetail.description && (
-                      <div className={`p-3 rounded-lg text-sm ${isDark ? 'bg-slate-700' : 'bg-slate-50'} ${textSecondary} whitespace-pre-wrap`}>{showDetail.description}</div>
+                      <div className={`p-3 rounded-lg text-sm bg-surface-2 ${textSecondary} whitespace-pre-wrap`}>{showDetail.description}</div>
                     )}
                   </div>
                 ) : (
@@ -1443,13 +1455,13 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                       </div>
                     )}
                     {showDetail.description && (
-                      <div className={`p-3 rounded-lg text-sm ${isDark ? 'bg-slate-700' : 'bg-slate-50'} ${textSecondary} whitespace-pre-wrap`}>{showDetail.description}</div>
+                      <div className={`p-3 rounded-lg text-sm bg-surface-2 ${textSecondary} whitespace-pre-wrap`}>{showDetail.description}</div>
                     )}
                   </div>
                 )}
               </div>
 
-              <div className={`px-4 py-3 border-t ${isDark ? 'border-slate-700 bg-slate-900/50' : 'border-slate-100 bg-slate-50'} rounded-b-xl flex gap-2`}>
+              <div className={`px-4 py-3 border-t border-bord bg-surface-2 rounded-b-xl flex gap-2`}>
                 {showDetail.isChantier ? (
                   <button onClick={() => goToChantier(showDetail.chantierId)} className="flex-1 py-2 text-white rounded-lg text-sm font-medium flex items-center justify-center gap-1.5" style={{ background: couleur }}>
                     <Home size={14} /> Voir le chantier
@@ -1469,7 +1481,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                     </button>
                     <button
                       onClick={() => { if (setPage) setPage('memos'); setShowDetail(null); }}
-                      className={`px-3 py-2 rounded-lg text-xs font-medium border ${isDark ? 'border-slate-600 text-slate-300' : 'border-slate-200 text-slate-600'}`}
+                      className={`px-3 py-2 rounded-lg text-xs font-medium border border-bord text-encre-2`}
                       title="Voir dans Tâches"
                     >
                       <ClipboardList size={12} />
@@ -1477,12 +1489,12 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                   </>
                 ) : editMode ? (
                   <>
-                    <button onClick={() => setEditMode(false)} className={`flex-1 py-2 rounded-lg text-sm font-medium ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-200'}`}>Annuler</button>
+                    <button onClick={() => setEditMode(false)} className={`flex-1 py-2 rounded-lg text-sm font-medium bg-bord`}>Annuler</button>
                     <button onClick={handleUpdateEvent} className="flex-1 py-2 text-white rounded-lg text-sm font-medium" style={{ background: couleur }}>Enregistrer</button>
                   </>
                 ) : (
                   <>
-                    <button onClick={() => handleDeleteEvent(showDetail.id)} className={`px-3 py-2 rounded-lg ${isDark ? 'bg-red-900/30 text-red-400' : 'bg-red-100 text-red-600'}`} aria-label="Supprimer">
+                    <button onClick={() => handleDeleteEvent(showDetail.id)} className={`px-3 py-2 rounded-lg bg-danger-fond text-danger-texte`} aria-label="Supprimer">
                       <Trash2 size={14} />
                     </button>
                     <button onClick={startEdit} className="flex-1 py-2 text-white rounded-lg text-sm font-medium flex items-center justify-center gap-1.5" style={{ background: couleur }}>
@@ -1490,11 +1502,11 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                     </button>
                     {showDetail.chantierId && !showDetail.isChantier && (() => {
                       const ch = (chantiers || []).find(c => c.id === showDetail.chantierId);
-                      return ch ? <button onClick={() => goToChantier(ch.id)} className={`px-3 py-2 rounded-lg text-xs font-medium border ${isDark ? 'border-slate-600 text-slate-300' : 'border-slate-200 text-slate-600'}`}><Home size={12} /></button> : null;
+                      return ch ? <button onClick={() => goToChantier(ch.id)} className={`px-3 py-2 rounded-lg text-xs font-medium border border-bord text-encre-2`}><Home size={12} /></button> : null;
                     })()}
                     {showDetail.clientId && (() => {
                       const client = clients.find(c => c.id === showDetail.clientId);
-                      return client ? <button onClick={() => { if (setPage) { setPage('clients'); } setShowDetail(null); }} className={`px-3 py-2 rounded-lg text-xs font-medium border ${isDark ? 'border-slate-600 text-slate-300' : 'border-slate-200 text-slate-600'}`}><User size={12} /></button> : null;
+                      return client ? <button onClick={() => { if (setPage) { setPage('clients'); } setShowDetail(null); }} className={`px-3 py-2 rounded-lg text-xs font-medium border border-bord text-encre-2`}><User size={12} /></button> : null;
                     })()}
                   </>
                 )}
@@ -1508,10 +1520,10 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
       {(showAdd || quickAdd) && (
         <div className="fixed inset-0 z-50 flex justify-end" onClick={() => { setShowAdd(false); setQuickAdd(null); setForm(emptyForm); }}>
           <div className="absolute inset-0 bg-black/30" />
-          <div className={`relative w-full max-w-md h-full overflow-y-auto shadow-2xl ${isDark ? 'bg-slate-900' : 'bg-white'}`} onClick={e => e.stopPropagation()}>
-            <div className={`sticky top-0 z-10 flex items-center justify-between px-4 py-3 border-b ${isDark ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-200'}`}>
+          <div className={`relative w-full max-w-md h-full overflow-y-auto shadow-2xl bg-surface`} onClick={e => e.stopPropagation()}>
+            <div className={`sticky top-0 z-10 flex items-center justify-between px-4 py-3 border-b bg-surface border-bord`}>
               <h2 className={`text-base font-bold ${textPrimary}`}>Nouvel événement</h2>
-              <button onClick={() => { setShowAdd(false); setQuickAdd(null); setForm(emptyForm); }} className={`p-2.5 rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}>
+              <button onClick={() => { setShowAdd(false); setQuickAdd(null); setForm(emptyForm); }} className={`p-2.5 rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-surface-2 text-encre-3`}>
                 <X size={20} />
               </button>
             </div>
@@ -1522,7 +1534,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                   const Icon = TYPE_ICONS[key];
                   const isSelected = form.type === key;
                   return (
-                    <button key={key} onClick={() => setForm(p => ({...p, type: key}))} className={`px-2.5 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all ${isSelected ? 'text-white' : isDark ? 'bg-slate-800 text-slate-300 hover:bg-slate-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`} style={isSelected ? { background: typeColors[key] } : {}}>
+                    <button key={key} onClick={() => setForm(p => ({...p, type: key}))} className={`px-2.5 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all ${isSelected ? 'text-white' : 'bg-surface-2 text-encre-2 hover:bg-bord'}`} style={isSelected ? { background: typeColors[key] } : {}}>
                       <Icon size={14} />
                       {label}
                     </button>
@@ -1549,7 +1561,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                       else if (d.value === -1) setForm(p => ({...p, duration: -1}));
                       else setForm(p => ({...p, duration: d.value, endTime: ''}));
                     }}
-                      className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all ${form.duration === d.value ? 'text-white' : isDark ? 'bg-slate-800 text-slate-300 hover:bg-slate-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                      className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all ${form.duration === d.value ? 'text-white' : 'bg-surface-2 text-encre-2 hover:bg-bord'}`}
                       style={form.duration === d.value ? { background: couleur } : {}}>
                       {d.label}
                     </button>
@@ -1558,7 +1570,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                 {form.duration === -1 && (
                   <div className="mt-2 flex items-center gap-2">
                     <div className="flex-1">
-                      <label className={`block text-[10px] font-medium mb-1 ${textMuted}`}>Heure de fin</label>
+                      <label className={`block text-xs font-medium mb-1 ${textMuted}`}>Heure de fin</label>
                       <input type="time" className={`w-full px-3 py-2 border rounded-lg text-sm ${inputBg}`} value={form.endTime} onChange={e => setForm(p => ({...p, endTime: e.target.value}))} />
                     </div>
                     {form.time && form.endTime && (() => {
@@ -1590,10 +1602,10 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                       <label className={`block text-xs font-medium mb-1 ${textPrimary}`}>Fin récurrence</label>
                       <div className="flex gap-1 mb-1">
                         <button type="button" onClick={() => setForm(p => ({...p, recurrenceEndType: 'date'}))}
-                          className={`px-2 py-0.5 rounded text-[10px] font-medium ${form.recurrenceEndType !== 'count' ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}
+                          className={`px-2 py-0.5 rounded text-xs font-medium ${form.recurrenceEndType !== 'count' ? 'text-white' : 'bg-surface-2 text-encre-2'}`}
                           style={form.recurrenceEndType !== 'count' ? { background: couleur } : {}}>Date</button>
                         <button type="button" onClick={() => setForm(p => ({...p, recurrenceEndType: 'count'}))}
-                          className={`px-2 py-0.5 rounded text-[10px] font-medium ${form.recurrenceEndType === 'count' ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}
+                          className={`px-2 py-0.5 rounded text-xs font-medium ${form.recurrenceEndType === 'count' ? 'text-white' : 'bg-surface-2 text-encre-2'}`}
                           style={form.recurrenceEndType === 'count' ? { background: couleur } : {}}>N fois</button>
                       </div>
                       {form.recurrenceEndType === 'count' ? (
@@ -1606,13 +1618,13 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                 </div>
                 {form.recurrence === 'custom' && (
                   <div className="mt-2">
-                    <label className={`block text-[10px] font-medium mb-1 ${textMuted}`}>Jours</label>
+                    <label className={`block text-xs font-medium mb-1 ${textMuted}`}>Jours</label>
                     <div className="flex gap-1">
                       {JOURS.map((j, i) => (
                         <button key={i} type="button" onClick={() => {
                           setForm(p => ({...p, recurrenceDays: (p.recurrenceDays || []).includes(i) ? p.recurrenceDays.filter(d => d !== i) : [...(p.recurrenceDays || []), i]}));
                         }}
-                          className={`min-w-[44px] min-h-[44px] rounded-full text-[10px] font-bold transition-all ${(form.recurrenceDays || []).includes(i) ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}
+                          className={`min-w-[44px] min-h-[44px] rounded-full text-xs font-bold transition-all ${(form.recurrenceDays || []).includes(i) ? 'text-white' : 'bg-surface-2 text-encre-2'}`}
                           style={(form.recurrenceDays || []).includes(i) ? { background: couleur } : {}}>
                           {j}
                         </button>
@@ -1680,8 +1692,8 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
               </div>
             </div>
             {/* Footer sticky */}
-            <div className={`sticky bottom-0 flex gap-3 px-4 py-3 border-t ${isDark ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-200'}`}>
-              <button onClick={() => { setShowAdd(false); setQuickAdd(null); setForm(emptyForm); }} className={`flex-1 py-3 rounded-xl text-sm font-medium min-h-[44px] active:scale-95 transition-all ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>Annuler</button>
+            <div className={`sticky bottom-0 flex gap-3 px-4 py-3 border-t bg-surface border-bord`}>
+              <button onClick={() => { setShowAdd(false); setQuickAdd(null); setForm(emptyForm); }} className={`flex-1 py-3 rounded-xl text-sm font-medium min-h-[44px] active:scale-95 transition-all bg-surface-2 text-encre-2`}>Annuler</button>
               <button onClick={submit} className="flex-1 py-3 text-white rounded-xl text-sm font-medium min-h-[44px] flex items-center justify-center gap-1.5 active:scale-95 transition-all" style={{background: couleur}}>
                 <Check size={16} /> Créer
               </button>

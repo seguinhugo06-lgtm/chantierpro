@@ -74,19 +74,18 @@ export default function TasksAndPlanning({
         color={couleur}
         action={
         /* View toggle */
-        <div className={`flex max-w-full overflow-x-auto scrollbar-hide rounded-xl border p-1 ${cardBg}`}>
+        <div className="flex max-w-full overflow-x-auto scrollbar-hide rounded-xl p-1 gap-1 bg-surface-2">
           {VIEW_MODES.map(v => (
             <button
               key={v.id}
               onClick={() => handleViewChange(v.id)}
               aria-label={`Vue ${v.label}`}
               aria-pressed={viewMode === v.id}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all min-w-[44px] min-h-[44px] ${
-                viewMode === v.id
-                  ? 'text-white shadow-sm'
-                  : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-700'
+              // La vue active reste visible dans la rangée défilante (sinon « Calendrier » était hors écran au téléphone).
+              ref={viewMode === v.id ? (el) => el?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' }) : undefined}
+              className={`flex items-center gap-1.5 px-3 rounded-lg text-sm transition-colors min-w-[44px] min-h-[40px] ${
+                viewMode === v.id ? 'bg-surface text-encre font-semibold shadow-e1' : 'text-encre-2 font-medium hover:text-encre'
               }`}
-              style={viewMode === v.id ? { background: couleur } : {}}
             >
               <v.icon size={14} className="flex-shrink-0" />
               {/* Nom toujours affiché : sur téléphone, cinq icônes seules étaient à deviner (recette du 9 oct.). */}
