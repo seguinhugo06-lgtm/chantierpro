@@ -16,6 +16,8 @@ import { usePermissions } from '../hooks/usePermissions';
 import { ReadOnlyBanner } from './ui/PermissionGate';
 import TabBar from './ui/TabBar';
 import PageHeader from './ui/PageHeader';
+import { Bouton, BoutonIcone } from './ui/Bouton';
+import Pastille from './ui/Pastille';
 import useKeepInViewport from '../hooks/useKeepInViewport';
 import { remettreFichier } from '../lib/natif';
 
@@ -66,7 +68,8 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
 
   // Format money with modeDiscret support
   const fmtPrice = (n) => modeDiscret ? '·····' : `${parseFloat(n || 0).toFixed(2)} €`;
-  const fmtPriceShort = (n) => modeDiscret ? '·····' : `${n}€`;
+  // Prix au format français (« 2,5 € », pas « 2.5€ »)
+  const fmtPriceShort = (n) => modeDiscret ? '·····' : `${Number(n || 0).toLocaleString('fr-FR', { maximumFractionDigits: 2 })} €`;
 
   // Theme classes
   const cardBg = isDark ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200";
@@ -968,7 +971,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
           <div className="flex items-center gap-3 flex-1 min-w-0">
-            <button onClick={() => setArticleDetail(null)} className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl flex-shrink-0 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
+            <button onClick={() => setArticleDetail(null)} className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl flex-shrink-0 hover:bg-surface-2`}>
               <ArrowLeft size={20} className={textPrimary} />
             </button>
             <div className="min-w-0">
@@ -983,7 +986,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
           <div className="flex items-center gap-2 flex-wrap flex-shrink-0">
             {/* Devis usage badge */}
             {devisUsageMap[item.id] > 0 && (
-              <span className={`px-2.5 py-1.5 rounded-lg text-xs font-bold ${isDark ? 'bg-blue-900/30 text-blue-400' : 'bg-blue-50 text-blue-600'}`}>
+              <span className={`px-2.5 py-1.5 rounded-lg text-xs font-bold bg-info-fond text-info-texte`}>
                 <FileText size={12} className="inline mr-1" />
                 {devisUsageMap[item.id]} devis
               </span>
@@ -1001,7 +1004,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                 showToast(`Article dupliqué`, 'success');
                 setArticleDetail(newClone.id);
               }
-            }} className={`px-3 py-2 rounded-xl text-sm font-medium ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'}`}>
+            }} className={`px-3 py-2 rounded-xl text-sm font-medium bg-surface-2 hover:bg-bord`}>
               <PackagePlus size={14} className="inline mr-1" /> Dupliquer
             </button>
             <button onClick={() => { setArticleDetail(null); startEdit(item); }} className="px-4 py-2 rounded-xl text-sm font-medium" style={{ background: `${couleur}15`, color: couleur }}>
@@ -1044,7 +1047,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
               } else {
                 showToast('Fournisseur non trouvé — créez-le dans l\'onglet Fournisseurs', 'error');
               }
-            }} className={`text-xs px-3 py-1.5 rounded-lg ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>
+            }} className={`text-xs px-3 py-1.5 rounded-lg bg-surface-2 text-encre-2`}>
               + Lier fournisseur
             </button>
           </div>
@@ -1053,11 +1056,11 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
           ) : (
             <div className="space-y-2">
               {itemFournisseurs.sort((a, b) => a.prixAchat - b.prixAchat).map((af, idx) => (
-                <div key={af.id} className={`flex items-center gap-3 p-3 rounded-xl ${idx === 0 ? (isDark ? 'bg-emerald-900/20 border border-emerald-800' : 'bg-emerald-50 border border-emerald-200') : (isDark ? 'bg-slate-700/50' : 'bg-slate-50')}`}>
+                <div key={af.id} className={`flex items-center gap-3 p-3 rounded-xl ${idx === 0 ? (isDark ? 'bg-emerald-900/20 border border-emerald-800' : 'bg-emerald-50 border border-emerald-200') : ('bg-surface-2')}`}>
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
                       <p className={`font-medium text-sm ${textPrimary}`}>{af.fournisseur.nom}</p>
-                      {idx === 0 && <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500 text-white">Meilleur prix</span>}
+                      {idx === 0 && <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-emerald-500 text-white">Meilleur prix</span>}
                     </div>
                     <p className={`text-xs ${textMuted}`}>{af.fournisseur.telephone || af.fournisseur.email || '—'} · Délai {af.fournisseur.delaiLivraison || '?'}j</p>
                   </div>
@@ -1074,7 +1077,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
             <h3 className={`font-semibold flex items-center gap-2 mb-3 ${textPrimary}`}><History size={16} style={{ color: couleur }} /> Historique prix</h3>
             <div className="space-y-2">
               {itemHistory.map(h => (
-                <div key={h.id} className={`flex items-center justify-between py-2 border-b last:border-0 ${isDark ? 'border-slate-700' : 'border-slate-100'}`}>
+                <div key={h.id} className={`flex items-center justify-between py-2 border-b last:border-0 border-bord`}>
                   <span className={`text-sm ${textMuted}`}>{new Date(h.date).toLocaleDateString('fr-FR')}</span>
                   <div className="flex items-center gap-4">
                     <span className={`text-sm ${textPrimary}`}>Vente: {h.prixVente}€</span>
@@ -1094,7 +1097,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
           ) : (
             <div className="space-y-2">
               {itemMouvements.map(m => (
-                <div key={m.id} className={`flex items-center gap-3 py-2 border-b last:border-0 ${isDark ? 'border-slate-700' : 'border-slate-100'}`}>
+                <div key={m.id} className={`flex items-center gap-3 py-2 border-b last:border-0 border-bord`}>
                   <span className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold ${m.type === 'in' ? 'bg-emerald-100 text-emerald-700' : m.type === 'out' ? 'bg-red-100 text-red-700' : m.type === 'return' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600'}`}>
                     {m.type === 'in' ? '📥' : m.type === 'out' ? '📤' : m.type === 'return' ? '↩️' : '⚖️'}
                   </span>
@@ -1115,7 +1118,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
   if (show) return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
-        <button onClick={() => { setShow(false); setEditId(null); }} className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
+        <button onClick={() => { setShow(false); setEditId(null); }} className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl hover:bg-surface-2`}>
           <ArrowLeft size={20} className={textPrimary} />
         </button>
         <h2 className={`text-2xl font-bold ${textPrimary}`}>{editId ? 'Modifier' : 'Nouvel'} article</h2>
@@ -1228,7 +1231,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
             const coefReel = pa > 0 ? (pv / pa).toFixed(2) : '—';
             const badge = getMargeBadge(margePercent);
             return (
-              <div className={`p-4 rounded-xl border ${isDark ? 'bg-slate-700/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
+              <div className={`p-4 rounded-xl border bg-surface-2 border-bord`}>
                 <div className="flex items-center justify-between mb-2">
                   <span className={`text-sm font-semibold ${textPrimary}`}>Marge live</span>
                   <span className="text-xs px-2 py-0.5 rounded-full font-bold text-white" style={{ background: badge.color }}>{badge.label}</span>
@@ -1244,11 +1247,11 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                   </div>
                 </div>
                 {/* Progress bar — #11: aria-progressbar */}
-                <div className={`w-full h-2 rounded-full ${isDark ? 'bg-slate-600' : 'bg-slate-200'}`} role="progressbar" aria-valuenow={Math.round(margePercent)} aria-valuemin={0} aria-valuemax={100} aria-valuetext={`Marge ${badge.label} : ${margePercent?.toFixed(1)}%`}>
+                <div className={`w-full h-2 rounded-full bg-bord`} role="progressbar" aria-valuenow={Math.round(margePercent)} aria-valuemin={0} aria-valuemax={100} aria-valuetext={`Marge ${badge.label} : ${margePercent?.toFixed(1)}%`}>
                   <div className="h-full rounded-full transition-all duration-300" style={{ width: `${Math.min(margePercent, 100)}%`, background: badge.color }} />
                 </div>
                 {/* Benchmarks */}
-                <div className={`flex justify-between mt-1 text-[10px] ${textMuted}`}>
+                <div className={`flex justify-between mt-1 text-xs ${textMuted}`}>
                   <span>0%</span><span>25% min</span><span>40% bon</span><span>60%+</span>
                 </div>
               </div>
@@ -1261,15 +1264,15 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
           <label className={`flex items-center gap-3 cursor-pointer py-2 ${textPrimary}`}>
             <div className="relative">
               <input type="checkbox" checked={form.favori} onChange={e => setForm(p => ({...p, favori: e.target.checked}))} className="sr-only peer" />
-              <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors peer-checked:border-amber-500 peer-checked:bg-amber-500 ${isDark ? 'border-slate-600 bg-slate-700' : 'border-slate-300 bg-white'}`}>
+              <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors peer-checked:border-amber-500 peer-checked:bg-amber-500 border-bord-fort bg-surface`}>
                 {form.favori && <Star size={12} className="text-white" fill="currentColor" />}
               </div>
             </div>
             <Star size={16} className="text-amber-500" fill={form.favori ? "currentColor" : "none"} /> Favori
           </label>
         </div>
-        <div className={`flex justify-end gap-3 mt-6 pt-6 border-t ${isDark ? 'border-slate-700' : ''}`}>
-          <button onClick={() => setShow(false)} className={`px-4 py-2.5 rounded-xl min-h-[44px] ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`}>Annuler</button>
+        <div className={`flex justify-end gap-3 mt-6 pt-6 border-t `}>
+          <button onClick={() => setShow(false)} className={`px-4 py-2.5 rounded-xl min-h-[44px] bg-surface-2`}>Annuler</button>
           <button onClick={submit} className="px-6 py-2.5 text-white rounded-xl min-h-[44px] flex items-center gap-2" style={{background: couleur}}>
             {editId ? <Edit3 size={16} /> : <Plus size={16} />} {editId ? 'Enregistrer' : 'Ajouter'}
           </button>
@@ -1286,7 +1289,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <button onClick={() => setInventaireMode(false)} className={`p-2.5 rounded-xl ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}><ArrowLeft size={20} className={textPrimary} /></button>
+            <button onClick={() => setInventaireMode(false)} className={`p-2.5 rounded-xl hover:bg-surface-2`}><ArrowLeft size={20} className={textPrimary} /></button>
             <div>
               <h2 className={`text-xl font-bold ${textPrimary}`}>Mode Inventaire</h2>
               <p className={`text-sm ${textMuted}`}>{Object.keys(inventaireCounts).length} articles à compter · {counted} écart{counted > 1 ? 's' : ''}</p>
@@ -1298,7 +1301,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
         </div>
 
         {/* Progress */}
-        <div className={`w-full h-2 rounded-full ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`}>
+        <div className={`w-full h-2 rounded-full bg-bord`}>
           <div className="h-full rounded-full transition-all" style={{ width: `${(Object.keys(inventaireCounts).length / Math.max(stockItems.length, 1)) * 100}%`, background: couleur }} />
         </div>
 
@@ -1314,9 +1317,9 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                   <p className={`text-xs ${textMuted}`}>Stock système: {sysStock} {item.unite}</p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button onClick={() => setInventaireCounts(p => ({...p, [item.id]: Math.max(0, (p[item.id] ?? sysStock) - 1)}))} className={`w-10 h-10 rounded-lg flex items-center justify-center ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'}`}><Minus size={16} className={textMuted} /></button>
+                  <button onClick={() => setInventaireCounts(p => ({...p, [item.id]: Math.max(0, (p[item.id] ?? sysStock) - 1)}))} className={`w-10 h-10 rounded-lg flex items-center justify-center bg-surface-2 hover:bg-bord`}><Minus size={16} className={textMuted} /></button>
                   <input type="number" value={counted} onChange={e => setInventaireCounts(p => ({...p, [item.id]: Math.max(0, parseInt(e.target.value) || 0)}))} className={`w-16 text-center py-2 border rounded-lg text-lg font-bold ${inputBg}`} />
-                  <button onClick={() => setInventaireCounts(p => ({...p, [item.id]: (p[item.id] ?? sysStock) + 1}))} className={`w-10 h-10 rounded-lg flex items-center justify-center ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'}`}><Plus size={16} className={textMuted} /></button>
+                  <button onClick={() => setInventaireCounts(p => ({...p, [item.id]: (p[item.id] ?? sysStock) + 1}))} className={`w-10 h-10 rounded-lg flex items-center justify-center bg-surface-2 hover:bg-bord`}><Plus size={16} className={textMuted} /></button>
                 </div>
                 {diff !== 0 && (
                   <span className={`text-sm font-bold ${diff > 0 ? 'text-emerald-500' : 'text-red-500'}`}>
@@ -1337,7 +1340,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
       <div className="space-y-6">
         <div className="flex items-center gap-3">
           {setPage && (
-            <button onClick={() => setPage('dashboard')} className={`p-2.5 rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}>
+            <button onClick={() => setPage('dashboard')} className={`p-2.5 rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-surface-2 text-encre-3`}>
               <ArrowLeft size={20} />
             </button>
           )}
@@ -1357,7 +1360,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
               <button onClick={() => setOnboardingStep('metiers')} className="px-8 py-4 text-white rounded-2xl font-semibold flex items-center justify-center gap-3 shadow-xl hover:shadow-2xl transition-all text-lg" style={{ background: couleur }}>
                 <Sparkles size={22} /> Importer le Référentiel BTP
               </button>
-              <button onClick={() => setShow(true)} className={`px-6 py-4 rounded-2xl font-medium flex items-center justify-center gap-2 border-2 transition-all ${isDark ? 'text-slate-300 border-slate-600 hover:bg-slate-700' : 'text-slate-700 border-slate-200 hover:bg-slate-50'}`}>
+              <button onClick={() => setShow(true)} className={`px-6 py-4 rounded-2xl font-medium flex items-center justify-center gap-2 border-2 transition-all text-encre-2 border-bord hover:bg-surface-2`}>
                 <Plus size={18} /> Ajouter manuellement
               </button>
             </div>
@@ -1370,7 +1373,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
         {onboardingStep === 'metiers' && (
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className={`${cardBg} rounded-2xl border p-6`}>
             <div className="flex items-center gap-3 mb-2">
-              <button onClick={() => setOnboardingStep(null)} className={`p-2 rounded-xl ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
+              <button onClick={() => setOnboardingStep(null)} className={`p-2 rounded-xl hover:bg-surface-2`}>
                 <ArrowLeft size={18} className={textMuted} />
               </button>
               <h2 className={`text-xl font-bold ${textPrimary}`}>Choisissez vos métiers</h2>
@@ -1382,12 +1385,12 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                 const sousCount = getSousCategories(cat.id).reduce((s, sc) => s + sc.articlesCount, 0);
                 return (
                   <button key={cat.id} onClick={() => setSelectedMetiers(prev => isSelected ? prev.filter(id => id !== cat.id) : [...prev, cat.id])}
-                    className={`relative p-4 rounded-xl border-2 text-center transition-all hover:scale-[1.02] ${isSelected ? 'shadow-lg' : isDark ? 'border-slate-600 hover:border-slate-500' : 'border-slate-200 hover:border-slate-300'}`}
+                    className={`relative p-4 rounded-xl border-2 text-center transition-all hover:scale-[1.02] ${isSelected ? 'shadow-lg' : 'border-bord hover:border-bord-fort'}`}
                     style={isSelected ? { borderColor: couleur, background: `${couleur}10` } : {}}>
                     {isSelected && <div className="absolute top-2 right-2 w-5 h-5 rounded-full flex items-center justify-center text-white" style={{ background: couleur }}><Check size={12} /></div>}
                     <div className="text-3xl mb-2">{cat.icon}</div>
                     <p className={`font-medium text-sm ${textPrimary}`}>{cat.nom}</p>
-                    <p className={`text-[10px] ${textMuted}`}>{sousCount} articles</p>
+                    <p className={`text-xs ${textMuted}`}>{sousCount} articles</p>
                   </button>
                 );
               })}
@@ -1412,7 +1415,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
             </div>
             <h3 className={`text-xl font-bold mb-2 ${textPrimary}`}>Import en cours...</h3>
             <p className={`text-sm ${textMuted} mb-6`}>Ajout des articles depuis le Référentiel BTP</p>
-            <div className={`w-full max-w-md mx-auto h-3 rounded-full ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`}>
+            <div className={`w-full max-w-md mx-auto h-3 rounded-full bg-bord`}>
               <motion.div className="h-full rounded-full" style={{ background: couleur }} initial={{ width: 0 }} animate={{ width: `${importProgress}%` }} transition={{ ease: 'easeOut' }} />
             </div>
             <p className="text-sm font-bold mt-3" style={{ color: couleur }}>{importProgress}%</p>
@@ -1430,7 +1433,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
         )}
 
         {/* Quick CSV import option */}
-        <div className={`p-4 rounded-xl border flex items-center justify-between ${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
+        <div className={`p-4 rounded-xl border flex items-center justify-between bg-surface-2 border-bord`}>
           <div className="flex items-center gap-3">
             <FileSpreadsheet size={20} className={textMuted} />
             <div>
@@ -1438,7 +1441,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
               <p className={`text-xs ${textMuted}`}>CSV depuis Rexel, Sonepar, Cedeo, ou votre propre fichier</p>
             </div>
           </div>
-          <button onClick={() => fileInputRef.current?.click()} className={`px-4 py-2 rounded-lg text-sm font-medium ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-white border border-slate-200 hover:bg-slate-100'}`}>
+          <button onClick={() => fileInputRef.current?.click()} className={`px-4 py-2 rounded-lg text-sm font-medium bg-surface border border-bord hover:bg-surface-2`}>
             <Upload size={14} className="inline mr-1.5" /> Import CSV
           </button>
           <input type="file" ref={fileInputRef} accept=".csv,.txt" onChange={handleFileUpload} className="hidden" />
@@ -1461,10 +1464,10 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
           <input type="file" ref={fileInputRef} accept=".csv,.txt" onChange={handleFileUpload} className="hidden" />
           {/* Desktop: 3 icon buttons */}
           {/* #2: Header icons with enhanced tooltips */}
-          <button onClick={() => fileInputRef.current?.click()} className={`hidden sm:flex w-11 h-11 rounded-xl items-center justify-center ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'}`} title="Importer tarifs fournisseurs (CSV Rexel, Sonepar, Cedeo...)" aria-label="Importer tarifs fournisseurs CSV (Rexel, Sonepar, Cedeo)">
+          <button onClick={() => fileInputRef.current?.click()} className={`hidden sm:flex w-11 h-11 rounded-xl items-center justify-center bg-surface-2 hover:bg-bord`} title="Importer tarifs fournisseurs (CSV Rexel, Sonepar, Cedeo...)" aria-label="Importer tarifs fournisseurs CSV (Rexel, Sonepar, Cedeo)">
             <Upload size={16} />
           </button>
-          <button onClick={exportCSV} className={`hidden sm:flex w-11 h-11 rounded-xl items-center justify-center ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'}`} title="Exporter le catalogue (CSV/Excel)" aria-label="Exporter le catalogue en CSV">
+          <button onClick={exportCSV} className={`hidden sm:flex w-11 h-11 rounded-xl items-center justify-center bg-surface-2 hover:bg-bord`} title="Exporter le catalogue (CSV/Excel)" aria-label="Exporter le catalogue en CSV">
             <Download size={16} />
           </button>
           <button
@@ -1478,8 +1481,8 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
             }}
             className={`hidden sm:flex w-11 h-11 rounded-xl items-center justify-center transition-all ${
               /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)
-                ? isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'
-                : isDark ? 'bg-slate-700 text-slate-500 opacity-50' : 'bg-slate-100 text-slate-400 opacity-50'
+                ? 'bg-surface-2 hover:bg-bord'
+                : 'bg-surface-2 text-encre-3 opacity-50'
             }`}
             title={/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) ? 'Scanner un code-barres article' : 'Disponible sur l\'application mobile'}
             aria-label="Scanner un code-barres article"
@@ -1488,33 +1491,32 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
           </button>
           {/* Mobile: overflow menu */}
           <div className="relative sm:hidden">
-            <button onClick={() => setShowMobileMenu(!showMobileMenu)} aria-label="Plus d'actions" aria-haspopup="true" aria-expanded={showMobileMenu} className={`w-11 h-11 rounded-xl flex items-center justify-center ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'}`}>
+            <button onClick={() => setShowMobileMenu(!showMobileMenu)} aria-label="Plus d'actions" aria-haspopup="true" aria-expanded={showMobileMenu} className={`w-11 h-11 rounded-xl flex items-center justify-center bg-surface-2 hover:bg-bord`}>
               <MoreHorizontal size={16} />
             </button>
             {showMobileMenu && (
               <>
                 <div className="fixed inset-0 z-40" aria-hidden="true" onClick={() => setShowMobileMenu(false)} />
-                <div ref={mobileMenuRef} onKeyDown={(e) => { if (e.key === 'Escape') setShowMobileMenu(false); }} className={`absolute right-0 top-full mt-1 w-56 rounded-xl border shadow-lg z-50 py-1 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
-                  <button onClick={() => { fileInputRef.current?.click(); setShowMobileMenu(false); }} className={`w-full flex items-center gap-3 px-4 py-3 text-sm ${textPrimary} ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}>
+                <div ref={mobileMenuRef} onKeyDown={(e) => { if (e.key === 'Escape') setShowMobileMenu(false); }} className={`absolute right-0 top-full mt-1 w-56 rounded-xl border shadow-lg z-50 py-1 bg-surface border-bord`}>
+                  <button onClick={() => { fileInputRef.current?.click(); setShowMobileMenu(false); }} className={`w-full flex items-center gap-3 px-4 py-3 text-sm ${textPrimary} hover:bg-surface-2`}>
                     <Upload size={16} className={textMuted} /> Importer (CSV/Excel)
                   </button>
-                  <button onClick={() => { exportCSV(); setShowMobileMenu(false); }} className={`w-full flex items-center gap-3 px-4 py-3 text-sm ${textPrimary} ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}>
+                  <button onClick={() => { exportCSV(); setShowMobileMenu(false); }} className={`w-full flex items-center gap-3 px-4 py-3 text-sm ${textPrimary} hover:bg-surface-2`}>
                     <Download size={16} className={textMuted} /> Exporter le catalogue
                   </button>
-                  <button onClick={() => { startScanner(); setShowMobileMenu(false); }} className={`w-full flex items-center gap-3 px-4 py-3 text-sm ${textPrimary} ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}>
+                  <button onClick={() => { startScanner(); setShowMobileMenu(false); }} className={`w-full flex items-center gap-3 px-4 py-3 text-sm ${textPrimary} hover:bg-surface-2`}>
                     <Camera size={16} className={textMuted} /> Scanner code-barres
                   </button>
                 </div>
               </>
             )}
           </div>
-          <button onClick={() => setShowArticlePicker(true)} aria-label="Référentiel BTP : plus de 500 articles pré-chiffrés" className={`w-11 h-11 sm:w-auto sm:h-11 sm:px-4 rounded-xl flex items-center justify-center sm:gap-2 border-2 font-medium ${isDark ? 'bg-slate-800 text-white hover:bg-slate-700' : 'bg-white hover:bg-slate-50'}`} style={{borderColor: couleur, color: couleur}}>
-            <Sparkles size={16} className="animate-pulse" /><span className="hidden sm:inline">Référentiel BTP</span>
-            <span className="hidden sm:inline text-[10px] px-1.5 py-0.5 rounded-full font-bold" style={{ background: `${couleur}20`, color: couleur }}>500+</span>
+          <button onClick={() => setShowArticlePicker(true)} aria-label="Référentiel BTP : articles pré-chiffrés par métier" className="w-11 h-11 sm:w-auto sm:px-4 rounded-xl flex items-center justify-center sm:gap-2 border border-bord-fort bg-surface text-encre font-semibold hover:bg-surface-2 transition-colors">
+            <Library size={18} aria-hidden="true" /><span className="hidden sm:inline">Référentiel BTP</span>
           </button>
           {canPerform('catalogue', 'create') && (
-          <button onClick={() => setShow(true)} className="w-11 h-11 sm:w-auto sm:h-11 sm:px-4 text-white rounded-xl flex items-center justify-center sm:gap-2 shadow-lg" style={{background: couleur}}>
-            <Plus size={16} /><span className="hidden sm:inline">Ajouter</span>
+          <button onClick={() => setShow(true)} aria-label="Ajouter un article" className="w-11 h-11 sm:w-auto sm:px-4 rounded-xl flex items-center justify-center sm:gap-2 bg-accent text-sur-accent font-semibold shadow-e1 hover:brightness-95">
+            <Plus size={18} aria-hidden="true" /><span className="hidden sm:inline">Ajouter</span>
           </button>
           )}
         </div>
@@ -1574,15 +1576,15 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                   }, 0) / withMargin.length;
                 })();
                 return [
-                  { label: 'Articles catalogue', value: totalArticles, color: couleur, show: true },
-                  { label: 'Valeur stock', value: modeDiscret ? '·····' : (stockWithPrice.length === 0 && stockItems.length > 0 ? 'N/A' : totalStockValue > 0 ? `${(totalStockValue / 1000).toFixed(1).replace('.', ',')} k€` : null), color: couleur, title: stockWithPrice.length < stockItems.length ? `${stockItems.length - stockWithPrice.length} article(s) sans prix d'achat` : 'Valeur totale au prix d\'achat', show: totalStockValue > 0 || stockItems.length > 0 },
-                  { label: 'Marge moy.', value: modeDiscret ? '·····' : (avgMargin ? `${avgMargin.toFixed(0)}%` : null), color: avgMargin && avgMargin >= 25 ? '#22c55e' : '#f59e0b', show: !!avgMargin },
-                  { label: 'Stock bas', value: alertesStock.length, color: alertesStock.length > 0 ? '#ef4444' : '#22c55e', title: 'Articles en dessous du seuil minimum de stock', show: true },
-                  { label: 'Favoris', value: favoris.length, color: '#f59e0b', onClick: () => setActiveTab('favoris'), show: favoris.length > 0 },
+                  { label: 'Articles', value: totalArticles, show: true },
+                  { label: 'Valeur stock', value: modeDiscret ? '·····' : (stockWithPrice.length === 0 && stockItems.length > 0 ? 'N/A' : totalStockValue > 0 ? `${(totalStockValue / 1000).toFixed(1).replace('.', ',')} k€` : null), title: stockWithPrice.length < stockItems.length ? `${stockItems.length - stockWithPrice.length} article(s) sans prix d'achat` : 'Valeur totale au prix d\'achat', show: totalStockValue > 0 || stockItems.length > 0 },
+                  { label: 'Marge moyenne', value: modeDiscret ? '·····' : (avgMargin ? `${avgMargin.toFixed(0)} %` : null), show: !!avgMargin },
+                  { label: 'Stock bas', value: alertesStock.length, danger: alertesStock.length > 0, title: 'Articles en dessous du seuil minimum de stock', show: true },
+                  { label: 'Favoris', value: favoris.length, onClick: () => setActiveTab('favoris'), show: favoris.length > 0 },
                 ].filter(s => s.show && s.value !== null).map((s, i) => (
-                  <div key={i} className={`p-3 rounded-xl border ${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-slate-200'} ${s.onClick ? 'cursor-pointer hover:shadow-md transition-shadow' : ''}`} onClick={s.onClick} title={s.title}>
-                    <p className={`text-[11px] font-medium ${textMuted}`}>{s.label}</p>
-                    <p className="text-xl font-bold" style={{ color: s.color }}>{s.value}</p>
+                  <div key={i} className={`p-3 rounded-2xl border bg-surface border-bord shadow-e1 ${s.onClick ? 'cursor-pointer hover:border-bord-fort transition-colors' : ''}`} onClick={s.onClick} title={s.title}>
+                    <p className="text-sm text-encre-2">{s.label}</p>
+                    <p className={`text-xl font-bold tabular-nums ${s.danger ? 'text-danger-texte' : 'text-encre'}`}>{s.value}</p>
                   </div>
                 ));
               })()}
@@ -1591,9 +1593,9 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
 
           {/* Enhanced Stock alerts with notification toggle */}
           {alertesStock.length > 0 && !stockAlertsDismissed && (
-            <div className={`rounded-2xl p-4 ${isDark ? 'bg-red-900/30 border border-red-700' : 'bg-red-50 border border-red-200'}`}>
+            <div className="rounded-2xl p-4 bg-danger-fond text-danger-texte">
               <div className="flex items-center justify-between mb-3">
-                <span className={`font-semibold flex items-center gap-2 ${isDark ? 'text-red-400' : 'text-red-600'}`}><AlertTriangle size={18} /> {alertesStock.length} article{alertesStock.length > 1 ? 's' : ''} en stock bas</span>
+                <span className="font-semibold flex items-center gap-2"><AlertTriangle size={18} aria-hidden="true" /> {alertesStock.length} article{alertesStock.length > 1 ? 's' : ''} en stock bas</span>
                 <div className="flex items-center gap-2">
                   <button onClick={() => {
                     if ('Notification' in window && Notification.permission === 'default') {
@@ -1613,10 +1615,9 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
               </div>
               <div className="flex gap-2 flex-wrap">
                 {alertesStock.map(item => (
-                  <button key={item.id} onClick={() => setArticleDetail(item.id)} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg shadow-sm transition-all hover:shadow-md ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-white hover:bg-slate-50'}`}>
-                    <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                    <span className={`text-sm font-medium ${textPrimary}`}>{item.nom}</span>
-                    <span className="text-xs text-red-500 font-bold">{item.stock_actuel}/{item.stock_seuil_alerte}</span>
+                  <button key={item.id} onClick={() => setArticleDetail(item.id)} className="flex items-center gap-2 min-h-[44px] px-3 rounded-xl bg-surface text-left transition-colors hover:bg-surface-2">
+                    <span className="text-sm font-medium text-encre">{item.nom}</span>
+                    <span className="text-sm font-bold text-danger-texte tabular-nums">{item.stock_actuel} / {item.stock_seuil_alerte}</span>
                   </button>
                 ))}
               </div>
@@ -1625,17 +1626,15 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
 
           {/* Trending articles (auto-favorites based on devis usage) */}
           {trendingArticles.length > 0 && (
-            <div className={`rounded-2xl p-4 ${isDark ? 'bg-purple-900/20 border border-purple-800' : 'bg-purple-50 border border-purple-100'}`}>
-              <h3 className={`font-semibold mb-3 flex items-center gap-2 ${textPrimary}`}>
-                <Zap size={16} className="text-purple-500" /> Tendances ({trendingArticles.length})
-                <span className={`text-xs font-normal ${textMuted}`}>— les plus utilisés dans vos devis</span>
-              </h3>
+            <div className="rounded-2xl p-4 bg-surface border border-bord shadow-e1">
+              <h3 className="text-base font-semibold mb-1 text-encre">Les plus utilisés <span className="text-sm font-medium text-encre-3 tabular-nums">{trendingArticles.length}</span></h3>
+              <p className="text-sm text-encre-2 mb-3">D'après vos devis.</p>
               <div className="flex gap-2 flex-wrap">
                 {trendingArticles.map(({ id, count, article }) => (
-                  <button key={id} onClick={() => setArticleDetail(id)} className={`group flex items-center gap-2 px-3 py-2 rounded-xl shadow-sm border transition-all hover:shadow-md ${isDark ? 'bg-slate-700 border-slate-600 hover:border-purple-500' : 'bg-white border-slate-200 hover:border-purple-300'}`}>
-                    <span className={`font-medium text-sm ${textPrimary}`}>{article.nom}</span>
-                    <span className="text-purple-600 font-bold text-xs">{count}×</span>
-                    <span className="font-semibold text-sm" style={{ color: couleur }}>{article.prix}€</span>
+                  <button key={id} onClick={() => setArticleDetail(id)} className="flex items-center gap-2 min-h-[44px] px-3 rounded-xl border border-bord bg-surface text-left transition-colors hover:bg-surface-2">
+                    <span className="font-medium text-sm text-encre">{article.nom}</span>
+                    <span className="text-sm text-encre-3 tabular-nums">{count} ×</span>
+                    <span className="font-semibold text-sm text-encre tabular-nums">{Number(article.prix || 0).toLocaleString('fr-FR')} €</span>
                   </button>
                 ))}
               </div>
@@ -1644,14 +1643,17 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
 
           {/* Favorites */}
           {favoris.length > 0 && (
-            <div className={`rounded-2xl p-5 ${isDark ? 'bg-amber-900/30 border border-amber-700' : 'bg-amber-50'}`}>
-              <h3 className={`font-semibold mb-3 flex items-center gap-2 ${textPrimary}`}><Star size={18} className="text-amber-500" fill="currentColor" /> Favoris ({favoris.length})</h3>
-              <div className="flex gap-2 flex-wrap">
+            <div className="rounded-2xl bg-surface border border-bord shadow-e1 overflow-hidden">
+              <h3 className="px-4 pt-4 pb-2 text-base font-semibold text-encre flex items-center gap-2">
+                <Star size={18} aria-hidden="true" className="text-alerte-point" fill="currentColor" /> Favoris <span className="text-sm font-medium text-encre-3 tabular-nums">{favoris.length}</span>
+              </h3>
+              <div className="divide-y divide-bord">
                 {favoris.map(item => (
-                  <button key={item.id} onClick={() => setArticleDetail(item.id)} className={`group flex items-center gap-2 px-3 py-2 rounded-xl shadow-sm border transition-all hover:shadow-md ${isDark ? 'bg-slate-700 border-slate-600 hover:border-amber-500' : 'bg-white border-slate-200 hover:border-amber-300'}`}>
-                    <span className={`font-medium ${textPrimary}`}>{item.nom}</span>
-                    <span className="text-amber-600 font-semibold">{item.prix}€</span>
-                    <span className={`text-xs ${textMuted}`}>/{item.unite}</span>
+                  <button key={item.id} onClick={() => setArticleDetail(item.id)} className="w-full min-h-[48px] flex items-center justify-between gap-3 px-4 py-2 text-left transition-colors hover:bg-surface-2">
+                    <span className="text-base text-encre min-w-0">{item.nom}</span>
+                    <span className="flex-shrink-0 text-base font-semibold text-encre tabular-nums">
+                      {Number(item.prix || 0).toLocaleString('fr-FR')} €<span className="text-sm font-normal text-encre-3"> / {item.unite}</span>
+                    </span>
                   </button>
                 ))}
               </div>
@@ -1665,16 +1667,16 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                 <Search size={16} className={`absolute left-3 top-1/2 -translate-y-1/2 ${textMuted}`} />
                 <input type="text" placeholder="Rechercher un article, référence, catégorie..." aria-label="Rechercher" value={search} onChange={e => setSearch(e.target.value)} className={`w-full pl-10 pr-12 py-2.5 border rounded-xl ${inputBg}`} />
                 {search && (
-                  <button onClick={() => setSearch('')} aria-label="Effacer la recherche" className={`absolute right-2 top-1/2 -translate-y-1/2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full ${isDark ? 'hover:bg-slate-600' : 'hover:bg-slate-200'}`}>
+                  <button onClick={() => setSearch('')} aria-label="Effacer la recherche" className={`absolute right-2 top-1/2 -translate-y-1/2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full hover:bg-bord`}>
                     <X size={14} className={textMuted} />
                   </button>
                 )}
               </div>
               {/* #8: Enhanced tooltips on filter icons */}
-              <button onClick={() => setShowFilters(!showFilters)} title="Filtres avancés (prix, marge, stock)" aria-label="Filtres avancés" aria-expanded={showFilters} className={`px-4 py-2.5 rounded-xl flex items-center gap-2 font-medium transition-all ${showFilters ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`} style={showFilters ? { background: couleur } : {}}>
+              <button onClick={() => setShowFilters(!showFilters)} title="Filtres avancés (prix, marge, stock)" aria-label="Filtres avancés" aria-expanded={showFilters} className={`min-w-[44px] min-h-[44px] px-3 rounded-xl flex items-center justify-center gap-2 font-semibold transition-colors ${showFilters || activeFilters > 0 ? 'bg-encre text-surface' : 'bg-surface-2 text-encre-2'}`}>
                 <Filter size={16} /> {activeFilters > 0 && `(${activeFilters})`}
               </button>
-              <button onClick={() => setShowStock(!showStock)} title={showStock ? 'Masquer la colonne stock' : 'Afficher la colonne stock'} aria-label={showStock ? 'Masquer la colonne stock' : 'Afficher la colonne stock'} aria-pressed={showStock} className={`px-4 py-2.5 rounded-xl flex items-center gap-2 ${showStock ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`} style={showStock ? {background: couleur} : {}}>
+              <button onClick={() => setShowStock(!showStock)} title={showStock ? 'Masquer la colonne stock' : 'Afficher la colonne stock'} aria-label={showStock ? 'Masquer la colonne stock' : 'Afficher la colonne stock'} aria-pressed={showStock} className={`min-w-[44px] min-h-[44px] px-3 rounded-xl flex items-center justify-center gap-2 transition-colors ${showStock ? 'bg-encre text-surface' : 'bg-surface-2 text-encre-2'}`}>
                 <Box size={16} />
               </button>
             </div>
@@ -1706,7 +1708,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                     </div>
                   </div>
                   {activeFilters > 0 && (
-                    <button onClick={() => { setOnlyInStock(false); setOnlyFavoris(false); setOnlyLowStock(false); setPriceRange([0, 10000]); setCatFilter('Tous'); }} className="mt-2 text-xs text-red-500 hover:text-red-600">Réinitialiser les filtres</button>
+                    <button onClick={() => { setOnlyInStock(false); setOnlyFavoris(false); setOnlyLowStock(false); setPriceRange([0, 10000]); setCatFilter('Tous'); }} className="mt-2 h-11 text-sm font-semibold text-accent-texte hover:underline">Réinitialiser les filtres</button>
                   )}
                 </motion.div>
               )}
@@ -1730,7 +1732,6 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                   >
                     <style>{`#catFilterBar::-webkit-scrollbar { display: none; }`}</style>
                     {CATEGORIES.map(cat => {
-                      const SHORT_LABELS = { 'Plomberie': 'Plomb.', 'Électricité': 'Élec.', 'Maçonnerie': 'Maçon.', 'Carrelage': 'Carrel.', 'Menuiserie': 'Menuis.', 'Matériaux': 'Matér.', 'Isolation': 'Isol.', "Main d'œuvre": 'M.O.' };
                       return (
                         <button
                           key={cat}
@@ -1738,11 +1739,9 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                           role="tab"
                           aria-selected={catFilter === cat}
                           title={cat}
-                          className={`whitespace-nowrap px-3 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium min-h-[44px] transition-colors ${catFilter === cat ? 'text-white shadow-sm' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}
-                          style={catFilter === cat ? {background: couleur} : {}}
+                          className={`whitespace-nowrap px-3.5 rounded-full text-sm font-semibold min-h-[44px] transition-colors ${catFilter === cat ? 'bg-encre text-surface' : 'bg-surface-2 text-encre-2 hover:text-encre'}`}
                         >
-                          <span className="sm:hidden">{SHORT_LABELS[cat] || cat}</span>
-                          <span className="hidden sm:inline">{cat}</span>
+                          {cat}
                         </button>
                       );
                     })}
@@ -1758,7 +1757,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
               <select
                 value={sortBy}
                 onChange={e => setSortBy(e.target.value)}
-                className={`px-3 py-2 rounded-xl text-sm border min-h-[44px] cursor-pointer ${isDark ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-slate-200 text-slate-700'}`}
+                className={`px-3 py-2 rounded-xl text-sm border min-h-[44px] cursor-pointer bg-surface border-bord text-encre-2`}
                 aria-label="Trier par"
               >
                 <option value="name">Nom A-Z</option>
@@ -1782,7 +1781,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                 <button onClick={() => setShowArticlePicker(true)} className="px-6 py-3 text-white rounded-xl flex items-center justify-center gap-2 font-medium hover:shadow-lg transition-all" style={{ background: couleur }}>
                   <Sparkles size={18} /> Importer depuis le Référentiel BTP
                 </button>
-                <button onClick={() => setShow(true)} className={`px-6 py-3 rounded-xl flex items-center justify-center gap-2 border-2 font-medium transition-all ${isDark ? 'text-slate-300 border-slate-600 hover:bg-slate-700' : 'text-slate-700 border-slate-200 hover:bg-slate-50'}`}>
+                <button onClick={() => setShow(true)} className={`px-6 py-3 rounded-xl flex items-center justify-center gap-2 border-2 font-medium transition-all text-encre-2 border-bord hover:bg-surface-2`}>
                   <Plus size={18} /> Ajouter manuellement
                 </button>
               </div>
@@ -1811,7 +1810,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                       </p>
                       <div className="flex gap-1.5 mt-1.5 flex-wrap">
                         {['Tarifs Rexel/Sonepar', 'Référentiel BTP', 'Import CSV'].map(tag => (
-                          <span key={tag} className={`text-[10px] px-2 py-0.5 rounded-full ${isDark ? 'bg-slate-600 text-slate-300' : 'bg-white/80 text-slate-600 border border-slate-200'}`}>{tag}</span>
+                          <span key={tag} className={`text-xs px-2 py-0.5 rounded-full bg-surface/90 text-encre-2 border border-bord`}>{tag}</span>
                         ))}
                       </div>
                     </div>
@@ -1820,7 +1819,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                     <button onClick={() => setShowArticlePicker(true)} className="px-4 py-2 text-white rounded-lg text-sm font-medium flex items-center gap-2 whitespace-nowrap hover:shadow-lg transition-all" style={{ background: couleur }}>
                       <Sparkles size={14} /> Référentiel BTP
                     </button>
-                    <button onClick={() => fileInputRef.current?.click()} className={`px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-2 whitespace-nowrap border ${isDark ? 'bg-slate-700 text-slate-300 border-slate-600' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}>
+                    <button onClick={() => fileInputRef.current?.click()} className={`px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-2 whitespace-nowrap border bg-surface text-encre-2 border-bord hover:bg-surface-2`}>
                       <Upload size={14} /> Tarifs fournisseurs
                     </button>
                   </div>
@@ -1828,9 +1827,36 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
               </div>
             )}
             <div className={`${cardBg} rounded-2xl border overflow-hidden`}>
-              <div className="overflow-x-auto">
+              {/* Téléphone : une ligne par article (le tableau débordait : sa colonne d'actions n'apparaît qu'au survol). */}
+              <div className="sm:hidden divide-y divide-bord">
+                {filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map(item => {
+                  const stockVal = item.stock_actuel ?? item.stock;
+                  const seuilVal = item.stock_seuil_alerte ?? item.stockMin;
+                  const stockLow = stockVal != null && seuilVal != null && seuilVal > 0 && stockVal < seuilVal;
+                  return (
+                    <div key={item.id} className="flex items-center gap-1 pr-3">
+                      <button onClick={() => toggleFavori(item.id)} aria-label={item.favori ? `Retirer ${item.nom} des favoris` : `Ajouter ${item.nom} aux favoris`} aria-pressed={!!item.favori}
+                        className="w-11 h-11 flex-shrink-0 flex items-center justify-center rounded-lg">
+                        <Star size={18} aria-hidden="true" className={item.favori ? 'text-alerte-point' : 'text-encre-3'} fill={item.favori ? 'currentColor' : 'none'} />
+                      </button>
+                      <button onClick={() => setArticleDetail(item.id)} className="flex-1 min-w-0 py-3 text-left">
+                        <span className="flex items-baseline justify-between gap-3">
+                          <span className="text-base font-medium text-encre">{item.nom}</span>
+                          <span className="flex-shrink-0 text-base font-semibold text-encre tabular-nums">{fmtPriceShort(item.prix)}</span>
+                        </span>
+                        <span className="mt-0.5 flex items-center justify-between gap-2 text-sm text-encre-2">
+                          <span className="truncate">{[item.reference, item.categorie, item.unite].filter(Boolean).join(' · ')}</span>
+                          {stockLow ? <Pastille ton="danger">Stock bas</Pastille>
+                            : showStock && stockVal != null ? <span className="flex-shrink-0 tabular-nums">Stock {stockVal}</span> : null}
+                        </span>
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="hidden sm:block overflow-x-auto">
                 <table className="w-full text-sm">
-                  <thead className={`border-b ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
+                  <thead className={`border-b bg-surface-2`}>
                     <tr>
                       <th className={`text-left px-4 py-3 ${textPrimary}`}>Article</th>
                       <th className={`text-right px-4 py-3 w-24 ${textPrimary}`}>Vente</th>
@@ -1848,10 +1874,10 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                       const seuilVal = item.stock_seuil_alerte ?? item.stockMin;
                       const stockLow = stockVal != null && seuilVal != null && seuilVal > 0 && stockVal < seuilVal;
                       return (
-                        <tr key={item.id} className={`group border-b last:border-0 transition-colors cursor-pointer ${isDark ? 'hover:bg-slate-700/70' : 'hover:bg-slate-100'}`} onClick={() => setArticleDetail(item.id)}>
+                        <tr key={item.id} className={`group border-b last:border-0 transition-colors cursor-pointer hover:bg-surface-2`} onClick={() => setArticleDetail(item.id)}>
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-3">
-                              <button onClick={(e) => { e.stopPropagation(); toggleFavori(item.id); }} aria-label={item.favori ? 'Retirer des favoris' : 'Ajouter aux favoris'} aria-pressed={!!item.favori} className={`w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg ${isDark ? 'hover:bg-slate-600' : 'hover:bg-slate-100'}`}>
+                              <button onClick={(e) => { e.stopPropagation(); toggleFavori(item.id); }} aria-label={item.favori ? 'Retirer des favoris' : 'Ajouter aux favoris'} aria-pressed={!!item.favori} className={`w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-surface-2`}>
                                 <Star size={18} className={`${item.favori ? 'text-amber-500' : `${textMuted} hover:text-amber-400`} transition-colors`} fill={item.favori ? 'currentColor' : 'none'} />
                               </button>
                               <div>
@@ -1859,11 +1885,11 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                                   <p className={`font-medium ${textPrimary}`}>{item.nom}</p>
                                   {stockLow && <span className="w-2 h-2 rounded-full bg-red-500" />}
                                   {devisUsageMap[item.id] > 0 && (
-                                    <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${isDark ? 'bg-blue-900/30 text-blue-400' : 'bg-blue-50 text-blue-600'}`}>
+                                    <span className={`text-xs px-1.5 py-0.5 rounded font-bold bg-info-fond text-info-texte`}>
                                       {devisUsageMap[item.id]} devis
                                     </span>
                                   )}
-                                  {item.tva_rate && item.tva_rate !== 20 && <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${isDark ? 'bg-blue-900/40 text-blue-300' : 'bg-blue-50 text-blue-600'}`}>TVA {item.tva_rate}%</span>}
+                                  {item.tva_rate && item.tva_rate !== 20 && <span className={`text-xs px-1.5 py-0.5 rounded font-medium bg-info-fond text-info-texte`}>TVA {item.tva_rate}%</span>}
                                 </div>
                                 <p className={`text-xs ${textMuted}`}>
                                   {item.reference && <span className="font-mono mr-1.5">{item.reference} ·</span>}
@@ -1873,18 +1899,18 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                             </div>
                           </td>
                           <td className={`px-4 py-3 text-right font-medium ${textPrimary}`}>{fmtPriceShort(item.prix)}</td>
-                          <td className={`px-4 py-3 text-right hidden sm:table-cell ${textMuted}`}>{modeDiscret ? '·····' : (item.prixAchat != null ? `${item.prixAchat}€` : '—')}</td>
+                          <td className={`px-4 py-3 text-right hidden sm:table-cell ${textMuted}`}>{item.prixAchat != null ? fmtPriceShort(item.prixAchat) : '—'}</td>
                           <td className="px-4 py-3 text-right hidden sm:table-cell"><span className={getMargeColor(marge)}>{modeDiscret ? '·····' : (marge !== null ? `${marge.toFixed(0)}%` : '—')}</span></td>
                           {showStock && (
                             <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                               {(item.stock_actuel ?? item.stock) != null ? (
                                 <div className="flex items-center justify-center gap-1">
-                                  <button onClick={() => decrementStock(item.id)} className={`p-2.5 min-w-[44px] min-h-[44px] rounded-lg flex items-center justify-center ${isDark ? 'hover:bg-slate-600' : 'hover:bg-slate-100'}`}><Minus size={16} className={textMuted} /></button>
+                                  <button onClick={() => decrementStock(item.id)} className={`p-2.5 min-w-[44px] min-h-[44px] rounded-lg flex items-center justify-center hover:bg-surface-2`}><Minus size={16} className={textMuted} /></button>
                                   <input type="number" value={item.stock_actuel ?? item.stock} onChange={e => updateStock(item.id, e.target.value)} className={`w-14 px-1 py-1 border rounded text-center text-sm ${inputBg}`} />
-                                  <button onClick={() => incrementStock(item.id)} className={`p-2.5 min-w-[44px] min-h-[44px] rounded-lg flex items-center justify-center ${isDark ? 'hover:bg-slate-600' : 'hover:bg-slate-100'}`}><Plus size={16} className={textMuted} /></button>
+                                  <button onClick={() => incrementStock(item.id)} className={`p-2.5 min-w-[44px] min-h-[44px] rounded-lg flex items-center justify-center hover:bg-surface-2`}><Plus size={16} className={textMuted} /></button>
                                 </div>
                               ) : (
-                                <span className={`text-xs px-2 py-1 rounded ${isDark ? 'bg-slate-700 text-slate-400' : 'bg-slate-100 text-slate-400'}`}>Non géré</span>
+                                <span className={`text-xs px-2 py-1 rounded bg-surface-2 text-encre-3`}>Non géré</span>
                               )}
                             </td>
                           )}
@@ -1905,7 +1931,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
 
             {/* #9: Pagination controls */}
             {filtered.length > itemsPerPage && (
-              <div className={`flex flex-col sm:flex-row items-center justify-between gap-3 p-3 rounded-xl ${isDark ? 'bg-slate-800/50' : 'bg-slate-50'}`}>
+              <div className={`flex flex-col sm:flex-row items-center justify-between gap-3 p-3 rounded-xl bg-surface-2`}>
                 <div className="flex items-center gap-2">
                   <span className={`text-sm ${textMuted}`}>Afficher</span>
                   <select
@@ -1922,7 +1948,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                   <button
                     onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                     disabled={currentPage <= 1}
-                    className={`px-3 py-1.5 rounded-lg text-sm font-medium min-h-[36px] disabled:opacity-40 ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-white border border-slate-200 hover:bg-slate-50'}`}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium min-h-[36px] disabled:opacity-40 bg-surface border border-bord hover:bg-surface-2`}
                   >
                     Précédent
                   </button>
@@ -1932,7 +1958,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                   <button
                     onClick={() => setCurrentPage(p => Math.min(Math.ceil(filtered.length / itemsPerPage), p + 1))}
                     disabled={currentPage >= Math.ceil(filtered.length / itemsPerPage)}
-                    className={`px-3 py-1.5 rounded-lg text-sm font-medium min-h-[36px] disabled:opacity-40 ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-white border border-slate-200 hover:bg-slate-50'}`}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium min-h-[36px] disabled:opacity-40 bg-surface border border-bord hover:bg-surface-2`}
                   >
                     Suivant
                   </button>
@@ -1964,7 +1990,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                 <button onClick={() => setShowFournisseurForm(true)} className="px-5 py-2.5 text-white rounded-xl text-sm font-medium flex items-center justify-center gap-2 shadow-lg hover:opacity-90 transition-all" style={{ background: couleur }}>
                   <Plus size={16} /> Ajouter un fournisseur
                 </button>
-                <button onClick={() => fileInputRef.current?.click()} className={`px-5 py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2 border-2 transition-all ${isDark ? 'text-slate-300 border-slate-600 hover:bg-slate-700' : 'text-slate-700 border-slate-200 hover:bg-slate-50'}`}>
+                <button onClick={() => fileInputRef.current?.click()} className={`px-5 py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2 border-2 transition-all text-encre-2 border-bord hover:bg-surface-2`}>
                   <Upload size={16} /> Importer depuis CSV
                 </button>
               </div>
@@ -1988,16 +2014,16 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                           {f.email || f.contact || ''}
                         </p>
                         <div className="flex items-center gap-2 mt-1 flex-wrap">
-                          {f.delaiLivraison && <span className={`text-[10px] px-1.5 py-0.5 rounded ${isDark ? 'bg-slate-600 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>Délai {f.delaiLivraison}j</span>}
-                          {f.conditions && <span className={`text-[10px] px-1.5 py-0.5 rounded ${isDark ? 'bg-slate-600 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>{f.conditions}</span>}
-                          {f.categorie && <span className={`text-[10px] px-1.5 py-0.5 rounded ${isDark ? 'bg-blue-900/30 text-blue-400' : 'bg-blue-50 text-blue-600'}`}>{f.categorie}</span>}
-                          <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${linkedArticles > 0 ? isDark ? 'bg-emerald-900/30 text-emerald-400' : 'bg-emerald-50 text-emerald-600' : isDark ? 'bg-slate-600 text-slate-400' : 'bg-slate-100 text-slate-500'}`}>
+                          {f.delaiLivraison && <span className={`text-xs px-1.5 py-0.5 rounded bg-surface-2 text-encre-2`}>Délai {f.delaiLivraison}j</span>}
+                          {f.conditions && <span className={`text-xs px-1.5 py-0.5 rounded bg-surface-2 text-encre-2`}>{f.conditions}</span>}
+                          {f.categorie && <span className={`text-xs px-1.5 py-0.5 rounded bg-info-fond text-info-texte`}>{f.categorie}</span>}
+                          <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${linkedArticles > 0 ? 'bg-succes-fond text-succes-texte' : 'bg-surface-2 text-encre-3'}`}>
                             {linkedArticles} article{linkedArticles > 1 ? 's' : ''}
                           </span>
                         </div>
                       </div>
                       <div className="flex items-center gap-1">
-                        <button onClick={() => { setFournisseurForm({ nom: f.nom, email: f.email || f.contact || '', telephone: f.telephone || '', adresse: f.adresse || '', delaiLivraison: f.delaiLivraison || '3', conditions: f.conditions || '' }); setEditFournisseurId(f.id); setShowFournisseurForm(true); }} className={`p-2 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`} title="Modifier"><Edit3 size={16} className={textMuted} /></button>
+                        <button onClick={() => { setFournisseurForm({ nom: f.nom, email: f.email || f.contact || '', telephone: f.telephone || '', adresse: f.adresse || '', delaiLivraison: f.delaiLivraison || '3', conditions: f.conditions || '' }); setEditFournisseurId(f.id); setShowFournisseurForm(true); }} className={`p-2 rounded-lg hover:bg-surface-2`} title="Modifier"><Edit3 size={16} className={textMuted} /></button>
                         <button onClick={async () => {
                           const confirmed = await confirm({ title: 'Supprimer fournisseur', message: `Supprimer "${f.nom}" et ses liaisons articles ?` });
                           if (confirmed) {
@@ -2009,7 +2035,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                       </div>
                     </div>
                     {/* Linked articles list + link button */}
-                    <div className={`mt-3 pt-3 border-t ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
+                    <div className={`mt-3 pt-3 border-t border-bord`}>
                       {links.length > 0 && (
                         <div className="space-y-1 mb-2">
                           {links.map(af => {
@@ -2032,7 +2058,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                         setLinkSelected(null);
                         setLinkPrix('');
                         setTimeout(() => linkSearchRef.current?.focus(), 100);
-                      }} className={`text-xs flex items-center gap-1 ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>
+                      }} className={`text-xs flex items-center gap-1 text-info-texte`}>
                         <Plus size={12} /> Lier un article
                       </button>
                     </div>
@@ -2047,7 +2073,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
             {showFournisseurForm && (
               <motion.div className="fixed inset-0 z-50 flex items-center justify-center p-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                 <div className="absolute inset-0 bg-black/50" onClick={() => { setShowFournisseurForm(false); setEditFournisseurId(null); }} />
-                <motion.div className={`relative w-full max-w-md rounded-2xl p-6 ${isDark ? 'bg-slate-800' : 'bg-white'} shadow-2xl`} initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }}>
+                <motion.div className={`relative w-full max-w-md rounded-2xl p-6 bg-surface shadow-2xl`} initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }}>
                   <h3 className={`font-bold text-lg mb-4 ${textPrimary}`}>{editFournisseurId ? 'Modifier' : 'Nouveau'} fournisseur</h3>
                   <div className="space-y-3">
                     <input placeholder="Nom *" className={`w-full px-4 py-3 border rounded-xl ${inputBg}`} value={fournisseurForm.nom} onChange={e => setFournisseurForm(p => ({...p, nom: e.target.value}))} />
@@ -2062,7 +2088,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                     </div>
                   </div>
                   <div className="flex gap-3 mt-5">
-                    <button onClick={() => { setShowFournisseurForm(false); setEditFournisseurId(null); }} className={`flex-1 py-3 rounded-xl ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`}>Annuler</button>
+                    <button onClick={() => { setShowFournisseurForm(false); setEditFournisseurId(null); }} className={`flex-1 py-3 rounded-xl bg-surface-2`}>Annuler</button>
                     <button onClick={addFournisseur} className="flex-1 py-3 text-white rounded-xl font-medium" style={{ background: couleur }}>{editFournisseurId ? 'Modifier' : 'Ajouter'}</button>
                   </div>
                 </motion.div>
@@ -2075,10 +2101,10 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
             {linkModal && (
               <motion.div className="fixed inset-0 z-50 flex items-center justify-center p-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                 <div className="absolute inset-0 bg-black/50" onClick={() => setLinkModal(null)} />
-                <motion.div className={`relative w-full max-w-md rounded-2xl p-6 ${isDark ? 'bg-slate-800' : 'bg-white'} shadow-2xl`} initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}>
+                <motion.div className={`relative w-full max-w-md rounded-2xl p-6 bg-surface shadow-2xl`} initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}>
                   <div className="flex items-center justify-between mb-4">
                     <h3 className={`font-bold text-lg ${textPrimary}`}>Lier un article</h3>
-                    <button onClick={() => setLinkModal(null)} className={`p-1.5 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}><X size={18} /></button>
+                    <button onClick={() => setLinkModal(null)} className={`p-1.5 rounded-lg hover:bg-surface-2`}><X size={18} /></button>
                   </div>
                   <p className={`text-sm mb-4 ${textMuted}`}>Fournisseur : <span className={`font-medium ${textPrimary}`}>{linkModal.fournisseurNom}</span></p>
 
@@ -2090,14 +2116,14 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                           ref={linkSearchRef}
                           type="text"
                           placeholder="Rechercher un article..."
-                          className={`flex-1 bg-transparent outline-none text-sm ${isDark ? 'text-white placeholder-slate-400' : ''}`}
+                          className={`flex-1 bg-transparent outline-none text-sm `}
                           value={linkSearch}
                           onChange={e => setLinkSearch(e.target.value)}
                           autoFocus
                         />
                         {linkSearch && <button onClick={() => setLinkSearch('')} className={textMuted}><X size={14} /></button>}
                       </div>
-                      <div className={`max-h-64 overflow-y-auto rounded-xl border ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+                      <div className={`max-h-64 overflow-y-auto rounded-xl border border-bord`}>
                         {(() => {
                           const alreadyLinked = articleFournisseurs.filter(af => af.fournisseurId === linkModal.fournisseurId).map(af => af.articleId);
                           const results = catalogue.filter(c =>
@@ -2113,7 +2139,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                             <button
                               key={article.id}
                               onClick={() => { setLinkSelected(article); setLinkPrix(article.prixAchat?.toString() || '0'); }}
-                              className={`w-full flex items-center justify-between px-4 py-3 text-left text-sm transition-colors border-b last:border-b-0 ${isDark ? 'border-slate-700 hover:bg-slate-700/50' : 'border-slate-100 hover:bg-slate-50'}`}
+                              className={`w-full flex items-center justify-between px-4 py-3 text-left text-sm transition-colors border-b last:border-b-0 border-bord hover:bg-surface-2`}
                             >
                               <div>
                                 <p className={`font-medium ${textPrimary}`}>{article.nom}</p>
@@ -2127,13 +2153,13 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                     </>
                   ) : (
                     <>
-                      <div className={`p-3 rounded-xl border mb-4 ${isDark ? 'bg-slate-700/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
+                      <div className={`p-3 rounded-xl border mb-4 bg-surface-2 border-bord`}>
                         <div className="flex items-center justify-between">
                           <div>
                             <p className={`font-medium text-sm ${textPrimary}`}>{linkSelected.nom}</p>
                             <p className={`text-xs ${textMuted}`}>{linkSelected.reference || ''} {linkSelected.categorie ? `· ${linkSelected.categorie}` : ''}</p>
                           </div>
-                          <button onClick={() => { setLinkSelected(null); setLinkPrix(''); }} className={`text-xs px-2 py-1 rounded-lg ${isDark ? 'bg-slate-600 text-slate-300' : 'bg-slate-200 text-slate-600'}`}>Changer</button>
+                          <button onClick={() => { setLinkSelected(null); setLinkPrix(''); }} className={`text-xs px-2 py-1 rounded-lg bg-bord text-encre-2`}>Changer</button>
                         </div>
                       </div>
                       <label className={`block text-sm font-medium mb-1.5 ${textPrimary}`}>Prix d'achat chez {linkModal.fournisseurNom}</label>
@@ -2144,7 +2170,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                           step="0.01"
                           min="0"
                           placeholder="0.00"
-                          className={`flex-1 bg-transparent outline-none text-sm ${isDark ? 'text-white' : ''}`}
+                          className={`flex-1 bg-transparent outline-none text-sm `}
                           value={linkPrix}
                           onChange={e => setLinkPrix(e.target.value)}
                           autoFocus
@@ -2152,7 +2178,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                         <span className={`text-sm ${textMuted}`}>€ HT</span>
                       </div>
                       <div className="flex gap-3 mt-5">
-                        <button onClick={() => setLinkModal(null)} className={`flex-1 py-3 rounded-xl text-sm font-medium ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`}>Annuler</button>
+                        <button onClick={() => setLinkModal(null)} className={`flex-1 py-3 rounded-xl text-sm font-medium bg-surface-2`}>Annuler</button>
                         <button
                           onClick={() => {
                             linkArticleFournisseur(linkSelected.id, linkModal.fournisseurId, linkPrix);
@@ -2181,7 +2207,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
             <p className={`text-sm ${textMuted}`}>{filteredMouvements.length} mouvement{filteredMouvements.length > 1 ? 's' : ''}{mouvTypeFilter !== 'all' || mouvArticleFilter ? ` (sur ${mouvements.length})` : ''}</p>
             <div className="flex gap-2">
               {mouvements.length > 0 && (
-                <button onClick={exportMouvements} className={`px-3 py-2 rounded-xl text-sm flex items-center gap-1.5 ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'}`}>
+                <button onClick={exportMouvements} className={`px-3 py-2 rounded-xl text-sm flex items-center gap-1.5 bg-surface-2 hover:bg-bord`}>
                   <Download size={14} /> CSV
                 </button>
               )}
@@ -2196,16 +2222,16 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
             const uniqueArticles = new Set(mouvements.map(m => m.articleId)).size;
             return (
               <div className="grid grid-cols-3 gap-3">
-                <div className={`p-3 rounded-xl border ${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-slate-200'}`}>
-                  <p className={`text-[11px] ${textMuted}`}>Entrées</p>
+                <div className={`p-3 rounded-xl border bg-surface border-bord`}>
+                  <p className={`text-xs ${textMuted}`}>Entrées</p>
                   <p className="text-lg font-bold text-emerald-500">+{totalIn}</p>
                 </div>
-                <div className={`p-3 rounded-xl border ${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-slate-200'}`}>
-                  <p className={`text-[11px] ${textMuted}`}>Sorties</p>
+                <div className={`p-3 rounded-xl border bg-surface border-bord`}>
+                  <p className={`text-xs ${textMuted}`}>Sorties</p>
                   <p className="text-lg font-bold text-red-500">-{totalOut}</p>
                 </div>
-                <div className={`p-3 rounded-xl border ${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-slate-200'}`}>
-                  <p className={`text-[11px] ${textMuted}`}>Articles</p>
+                <div className={`p-3 rounded-xl border bg-surface border-bord`}>
+                  <p className={`text-xs ${textMuted}`}>Articles</p>
                   <p className="text-lg font-bold" style={{ color: couleur }}>{uniqueArticles}</p>
                 </div>
               </div>
@@ -2222,7 +2248,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                 { key: 'return', label: 'Retours' },
                 { key: 'adjustment', label: 'Ajustements' },
               ].map(f => (
-                <button key={f.key} onClick={() => setMouvTypeFilter(f.key)} className={`px-3 py-1.5 rounded-lg text-sm font-medium min-h-[36px] transition-colors ${mouvTypeFilter === f.key ? 'text-white shadow-sm' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`} style={mouvTypeFilter === f.key ? { background: couleur } : {}}>
+                <button key={f.key} onClick={() => setMouvTypeFilter(f.key)} className={`px-3 py-1.5 rounded-lg text-sm font-medium min-h-[36px] transition-colors ${mouvTypeFilter === f.key ? 'text-white shadow-sm' : 'bg-surface-2 text-encre-2'}`} style={mouvTypeFilter === f.key ? { background: couleur } : {}}>
                   {f.label}
                 </button>
               ))}
@@ -2247,11 +2273,11 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
               <p className={`text-sm ${textMuted} mt-1 max-w-md mx-auto`}>Enregistrez les entrées et sorties pour un suivi précis de vos stocks en temps réel.</p>
               <div className="flex items-center justify-center gap-6 mt-4">
                 <div className="flex items-center gap-2">
-                  <span className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold ${isDark ? 'bg-emerald-900/40 text-emerald-400' : 'bg-emerald-100 text-emerald-700'}`}>↗</span>
+                  <span className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold bg-succes-fond text-succes-texte`}>↗</span>
                   <span className={`text-xs ${textMuted}`}>Entrées</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold ${isDark ? 'bg-red-900/40 text-red-400' : 'bg-red-100 text-red-700'}`}>↘</span>
+                  <span className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold bg-danger-fond text-danger-texte`}>↘</span>
                   <span className={`text-xs ${textMuted}`}>Sorties</span>
                 </div>
               </div>
@@ -2278,7 +2304,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                 const isOut = typeNormalized === 'out';
                 return (
                   <div key={m.id} className={`${cardBg} rounded-xl border p-4 flex items-center gap-4`}>
-                    <span className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold ${isIn ? isDark ? 'bg-emerald-900/40 text-emerald-400' : 'bg-emerald-100 text-emerald-700' : isOut ? isDark ? 'bg-red-900/40 text-red-400' : 'bg-red-100 text-red-700' : isDark ? 'bg-orange-900/40 text-orange-400' : 'bg-orange-100 text-orange-700'}`}>
+                    <span className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold ${isIn ? 'bg-succes-fond text-succes-texte' : isOut ? 'bg-danger-fond text-danger-texte' : isDark ? 'bg-orange-900/40 text-orange-400' : 'bg-orange-100 text-orange-700'}`}>
                       {isIn ? '↗' : isOut ? '↘' : '⇄'}
                     </span>
                     <div className="flex-1 min-w-0">
@@ -2310,7 +2336,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
             {showMouvementForm && (
               <motion.div className="fixed inset-0 z-50 flex items-center justify-center p-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                 <div className="absolute inset-0 bg-black/50" onClick={() => setShowMouvementForm(false)} />
-                <motion.div className={`relative w-full max-w-md rounded-2xl p-6 ${isDark ? 'bg-slate-800' : 'bg-white'} shadow-2xl`} initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }}>
+                <motion.div className={`relative w-full max-w-md rounded-2xl p-6 bg-surface shadow-2xl`} initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }}>
                   <h3 className={`font-bold text-lg mb-4 ${textPrimary}`}>Nouveau mouvement</h3>
                   <div className="space-y-3">
                     <select className={`w-full px-4 py-3 border rounded-xl ${inputBg}`} value={mouvementForm.type} onChange={e => setMouvementForm(p => ({...p, type: e.target.value}))}>
@@ -2333,7 +2359,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                     <input placeholder="Raison / Commentaire" className={`w-full px-4 py-3 border rounded-xl ${inputBg}`} value={mouvementForm.raison} onChange={e => setMouvementForm(p => ({...p, raison: e.target.value}))} />
                   </div>
                   <div className="flex gap-3 mt-5">
-                    <button onClick={() => setShowMouvementForm(false)} className={`flex-1 py-3 rounded-xl ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`}>Annuler</button>
+                    <button onClick={() => setShowMouvementForm(false)} className={`flex-1 py-3 rounded-xl bg-surface-2`}>Annuler</button>
                     <button onClick={addMouvement} className="flex-1 py-3 text-white rounded-xl font-medium" style={{ background: couleur }}>Valider</button>
                   </div>
                 </motion.div>
@@ -2360,7 +2386,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
               <p className={`text-sm ${textMuted} mt-1 max-w-md mx-auto`}>Regroupez plusieurs articles fréquemment utilisés ensemble pour les ajouter d'un clic à vos devis.</p>
               <div className={`flex flex-wrap justify-center gap-2 mt-4`}>
                 {['Kit salle de bain', 'Pack électricité cuisine', 'Pack peinture complète'].map(ex => (
-                  <span key={ex} className={`text-[11px] px-2.5 py-1 rounded-full ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>{ex}</span>
+                  <span key={ex} className={`text-xs px-2.5 py-1 rounded-full bg-surface-2 text-encre-2`}>{ex}</span>
                 ))}
               </div>
               <button onClick={() => { setEditPackId(null); setPackForm({ nom: '', description: '', articles: [], prixVente: '' }); setShowPackForm(true); }} className="mt-6 px-5 py-2.5 text-white rounded-xl text-sm font-medium inline-flex items-center gap-2 shadow-lg hover:opacity-90 transition-all" style={{ background: couleur }}>
@@ -2387,14 +2413,14 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                     <div className="flex items-center justify-between mb-2">
                       <div>
                         <h4 className={`font-bold ${textPrimary}`}>{pack.nom}</h4>
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded ${isDark ? 'bg-slate-600 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>
+                        <span className={`text-xs px-1.5 py-0.5 rounded bg-surface-2 text-encre-2`}>
                           {pack.articles.length} article{pack.articles.length > 1 ? 's' : ''} · {nbArticles} unités
                         </span>
                       </div>
                       <div className="flex items-center gap-1">
-                        <button onClick={() => { setEditPackId(pack.id); setPackForm({ nom: pack.nom, description: pack.description || '', articles: pack.articles.map(a => ({ ...a })), prixVente: pack.prixVente?.toString() || '' }); setShowPackForm(true); }} className={`p-1.5 rounded ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`} title="Modifier"><Edit3 size={14} className={textMuted} /></button>
-                        <button onClick={() => duplicatePack(pack)} className={`p-1.5 rounded ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`} title="Dupliquer"><PackagePlus size={14} className={textMuted} /></button>
-                        <button onClick={() => setPacks(prev => prev.filter(p => p.id !== pack.id))} className={`p-1.5 rounded ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`} title="Supprimer"><Trash2 size={14} className="text-red-500" /></button>
+                        <button onClick={() => { setEditPackId(pack.id); setPackForm({ nom: pack.nom, description: pack.description || '', articles: pack.articles.map(a => ({ ...a })), prixVente: pack.prixVente?.toString() || '' }); setShowPackForm(true); }} className={`p-1.5 rounded hover:bg-surface-2`} title="Modifier"><Edit3 size={14} className={textMuted} /></button>
+                        <button onClick={() => duplicatePack(pack)} className={`p-1.5 rounded hover:bg-surface-2`} title="Dupliquer"><PackagePlus size={14} className={textMuted} /></button>
+                        <button onClick={() => setPacks(prev => prev.filter(p => p.id !== pack.id))} className={`p-1.5 rounded hover:bg-surface-2`} title="Supprimer"><Trash2 size={14} className="text-red-500" /></button>
                       </div>
                     </div>
                     {pack.description && <p className={`text-xs ${textMuted} mb-2`}>{pack.description}</p>}
@@ -2410,7 +2436,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                         );
                       })}
                     </div>
-                    <div className={`pt-3 border-t flex items-center justify-between ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
+                    <div className={`pt-3 border-t flex items-center justify-between border-bord`}>
                       <div>
                         <span className={`text-lg font-bold`} style={{ color: couleur }}>{prixVente.toFixed(0)} €</span>
                         {totalCout > 0 && <span className={`text-xs ml-2 ${textMuted}`}>Coût: {totalCout.toFixed(0)} €</span>}
@@ -2428,7 +2454,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
             {showPackForm && (
               <motion.div className="fixed inset-0 z-50 flex items-center justify-center p-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                 <div className="absolute inset-0 bg-black/50" onClick={() => setShowPackForm(false)} />
-                <motion.div className={`relative w-full max-w-lg rounded-2xl p-6 ${isDark ? 'bg-slate-800' : 'bg-white'} shadow-2xl`} initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }}>
+                <motion.div className={`relative w-full max-w-lg rounded-2xl p-6 bg-surface shadow-2xl`} initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }}>
                   <h3 className={`font-bold text-lg mb-4 ${textPrimary}`}>{editPackId ? 'Modifier le pack' : 'Nouveau pack / kit'}</h3>
                   <div className="space-y-3">
                     <input placeholder="Nom du pack *" className={`w-full px-4 py-3 border rounded-xl ${inputBg}`} value={packForm.nom} onChange={e => setPackForm(p => ({...p, nom: e.target.value}))} />
@@ -2451,11 +2477,11 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                           <button onClick={() => setPackForm(p => ({...p, articles: p.articles.filter((_, j) => j !== i)}))} className="p-2 text-red-500"><X size={16} /></button>
                         </div>
                       ))}
-                      <button onClick={() => setPackForm(p => ({...p, articles: [...p.articles, { articleId: '', quantite: 1 }]}))} className={`text-sm ${isDark ? 'text-blue-400' : 'text-blue-600'} flex items-center gap-1`}><Plus size={14} /> Ajouter article</button>
+                      <button onClick={() => setPackForm(p => ({...p, articles: [...p.articles, { articleId: '', quantite: 1 }]}))} className={`text-sm text-info-texte flex items-center gap-1`}><Plus size={14} /> Ajouter article</button>
                     </div>
                     {/* Auto-calculated totals */}
                     {packForm.articles.length > 0 && (
-                      <div className={`p-3 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+                      <div className={`p-3 rounded-xl bg-surface-2`}>
                         <p className={`text-xs ${textMuted}`}>Coût total: <strong>{packForm.articles.reduce((s, a) => s + (catalogue.find(c => c.id === a.articleId)?.prixAchat || 0) * (a.quantite || 1), 0).toFixed(2)}€</strong></p>
                         <p className={`text-xs ${textMuted}`}>Prix vente suggéré: <strong>{packForm.articles.reduce((s, a) => s + (catalogue.find(c => c.id === a.articleId)?.prix || 0) * (a.quantite || 1), 0).toFixed(2)}€</strong></p>
                       </div>
@@ -2463,7 +2489,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                     <input type="number" placeholder="Prix de vente du pack" className={`w-full px-4 py-3 border rounded-xl ${inputBg}`} value={packForm.prixVente} onChange={e => setPackForm(p => ({...p, prixVente: e.target.value}))} />
                   </div>
                   <div className="flex gap-3 mt-5">
-                    <button onClick={() => { setShowPackForm(false); setEditPackId(null); setPackForm({ nom: '', description: '', articles: [], prixVente: '' }); }} className={`flex-1 py-3 rounded-xl ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`}>Annuler</button>
+                    <button onClick={() => { setShowPackForm(false); setEditPackId(null); setPackForm({ nom: '', description: '', articles: [], prixVente: '' }); }} className={`flex-1 py-3 rounded-xl bg-surface-2`}>Annuler</button>
                     <button onClick={addPack} className="flex-1 py-3 text-white rounded-xl font-medium" style={{ background: couleur }}>{editPackId ? 'Enregistrer' : 'Créer le pack'}</button>
                   </div>
                 </motion.div>
@@ -2506,12 +2532,12 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                 const itemSeuil = item.stock_seuil_alerte ?? item.stockMin;
                 const isLowStock = itemStock != null && itemSeuil != null && itemSeuil > 0 && itemStock < itemSeuil;
                 return (
-                  <div key={item.id} className={`rounded-xl border p-4 transition-all hover:shadow-md ${isDark ? 'bg-slate-700/50 border-slate-600 hover:bg-slate-700' : 'bg-white border-slate-200 hover:bg-slate-50'}`}>
+                  <div key={item.id} className={`rounded-xl border p-4 transition-all hover:shadow-md bg-surface border-bord hover:bg-surface-2`}>
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex-1 min-w-0">
                         <p className={`text-sm font-bold truncate ${textPrimary}`}>{item.nom}</p>
                         {item.reference && <p className={`text-xs font-mono ${textMuted}`}>{item.reference}</p>}
-                        <span className={`inline-block mt-1 text-[10px] px-1.5 py-0.5 rounded font-medium ${isDark ? 'bg-slate-600 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>{item.categorie}</span>
+                        <span className={`inline-block mt-1 text-xs px-1.5 py-0.5 rounded font-medium bg-surface-2 text-encre-2`}>{item.categorie}</span>
                       </div>
                       <div className="flex items-center gap-1 ml-2">
                         <button onClick={() => toggleFavori(item.id)} title="Retirer des favoris" aria-label="Retirer des favoris" aria-pressed="true"
@@ -2519,7 +2545,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                           <Star size={16} fill="currentColor" />
                         </button>
                         <button onClick={() => startEdit(item)} title="Modifier"
-                          className={`p-1.5 rounded-lg transition-colors ${isDark ? 'hover:bg-slate-600 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}>
+                          className={`p-1.5 rounded-lg transition-colors hover:bg-surface-2 text-encre-3`}>
                           <Edit3 size={14} />
                         </button>
                       </div>
@@ -2535,7 +2561,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                         )}
                       </div>
                       {isLowStock && (
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${isDark ? 'bg-red-900/30 text-red-400' : 'bg-red-50 text-red-600'}`}>
+                        <span className={`text-xs px-1.5 py-0.5 rounded font-medium bg-danger-fond text-danger-texte`}>
                           <AlertTriangle size={10} className="inline mr-0.5" />Stock bas
                         </span>
                       )}
@@ -2551,7 +2577,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
 
           {/* Stock alerts section inside favoris */}
           {alertesStock.length > 0 && (
-            <div className={`mt-6 pt-5 border-t ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+            <div className={`mt-6 pt-5 border-t border-bord`}>
               <div className="flex items-center gap-2 mb-3">
                 <AlertTriangle size={16} className="text-red-500" />
                 <h3 className={`text-sm font-bold ${textPrimary}`}>Alertes de stock ({alertesStock.length})</h3>
@@ -2565,7 +2591,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                     </div>
                     <div className="flex items-center gap-3 ml-2">
                       <span className="text-xs text-red-500 font-bold whitespace-nowrap">{item.stock_actuel} / {item.stock_seuil_alerte}</span>
-                      <button onClick={() => startEdit(item)} className={`text-xs px-2 py-1 rounded font-medium ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-white text-slate-600 hover:bg-slate-100'}`}>Modifier</button>
+                      <button onClick={() => startEdit(item)} className={`text-xs px-2 py-1 rounded font-medium bg-surface text-encre-2 hover:bg-surface-2`}>Modifier</button>
                     </div>
                   </div>
                 ))}
@@ -2584,12 +2610,12 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
             {/* Stats */}
             {stockItems.length > 0 && (
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div className={`p-3 rounded-xl border ${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-slate-200'}`} title="Nombre d'articles avec gestion de stock activée">
-                  <p className={`text-[11px] ${textMuted}`}>Articles suivis</p>
+                <div className={`p-3 rounded-xl border bg-surface border-bord`} title="Nombre d'articles avec gestion de stock activée">
+                  <p className={`text-xs ${textMuted}`}>Articles suivis</p>
                   <p className="text-xl font-bold" style={{ color: couleur }}>{stockItems.length}</p>
                 </div>
-                <div className={`p-3 rounded-xl border ${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-slate-200'}`} title="Articles dont le stock actuel est inférieur au minimum défini">
-                  <p className={`text-[11px] ${textMuted}`}>Stock bas</p>
+                <div className={`p-3 rounded-xl border bg-surface border-bord`} title="Articles dont le stock actuel est inférieur au minimum défini">
+                  <p className={`text-xs ${textMuted}`}>Stock bas</p>
                   <p className={`text-xl font-bold ${alertesStock.length > 0 ? 'text-red-500' : 'text-emerald-500'}`}>{alertesStock.length}</p>
                 </div>
                 {/* #6: Valeur stock — E1 fix: only count items with prixAchat */}
@@ -2600,8 +2626,8 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                   const noPrice = stockItems.length > 0 && withPrice.length === 0;
                   const stockColor = noPrice ? '#94a3b8' : stockValue > 0 ? (hasLowStock ? '#f59e0b' : '#22c55e') : '#94a3b8';
                   return (
-                    <div className={`p-3 rounded-xl border ${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-slate-200'}`} title={noPrice ? "Prix d'achat manquant — valeur non calculable" : "Valeur totale du stock au prix d'achat"}>
-                      <p className={`text-[11px] ${textMuted}`}>Valeur stock</p>
+                    <div className={`p-3 rounded-xl border bg-surface border-bord`} title={noPrice ? "Prix d'achat manquant — valeur non calculable" : "Valeur totale du stock au prix d'achat"}>
+                      <p className={`text-xs ${textMuted}`}>Valeur stock</p>
                       <p className="text-xl font-bold" style={{ color: stockColor }}>{modeDiscret ? '·····' : (noPrice ? 'N/A' : `${(stockValue / 1000).toFixed(1)}k€`)}</p>
                     </div>
                   );
@@ -2614,8 +2640,8 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                     ? textPrimary
                     : accountAge <= 30 ? textMuted : 'text-amber-500';
                   return (
-                    <div className={`p-3 rounded-xl border ${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-slate-200'}`} title="Date du dernier comptage physique">
-                      <p className={`text-[11px] ${textMuted}`}>Dernier inventaire</p>
+                    <div className={`p-3 rounded-xl border bg-surface border-bord`} title="Date du dernier comptage physique">
+                      <p className={`text-xs ${textMuted}`}>Dernier inventaire</p>
                       <p className={`text-sm font-bold ${inventaireColor} flex items-center gap-1`}>
                         {lastInventaire
                           ? new Date(lastInventaire.date).toLocaleDateString('fr-FR')
@@ -2638,7 +2664,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                 Comptez rapidement votre stock physique. Les écarts seront automatiquement enregistrés comme mouvements d'ajustement.
               </p>
               {stockItems.length === 0 ? (
-                <div className={`p-4 rounded-xl mb-4 ${isDark ? 'bg-amber-900/20' : 'bg-amber-50'}`}>
+                <div className={`p-4 rounded-xl mb-4 bg-alerte-fond`}>
                   <p className={`text-sm text-amber-600 font-medium mb-1`}>Aucun article avec gestion de stock</p>
                   <p className={`text-xs ${textMuted}`}>Pour activer le suivi de stock, modifiez un article et remplissez les champs "Stock actuel" et "Stock minimum".</p>
                   <button onClick={() => setActiveTab('catalogue')} className="mt-2 text-sm font-medium" style={{ color: couleur }}>Aller au catalogue</button>
@@ -2661,7 +2687,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                 </h3>
                 <div className="space-y-2">
                   {alertesStock.map(item => (
-                    <div key={item.id} className={`flex items-center justify-between p-2.5 rounded-lg ${isDark ? 'bg-slate-800/80' : 'bg-white'}`}>
+                    <div key={item.id} className={`flex items-center justify-between p-2.5 rounded-lg bg-surface`}>
                       <div className="flex items-center gap-2">
                         <span className="w-2 h-2 rounded-full bg-red-500" />
                         <span className={`text-sm font-medium ${textPrimary}`}>{item.nom}</span>
@@ -2701,7 +2727,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
             <p className={`text-sm ${textMuted} mb-4`}>Le prix de vente sera automatiquement calculé: Prix achat × Coefficient</p>
             <div className="space-y-3">
               {CATEGORIES.filter(c => c !== 'Tous').map(cat => (
-                <div key={cat} className={`flex items-center gap-3 sm:gap-4 p-3 pl-4 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+                <div key={cat} className={`flex items-center gap-3 sm:gap-4 p-3 pl-4 rounded-xl bg-surface-2`}>
                   <span className={`font-medium flex-1 min-w-0 truncate ${textPrimary}`}>{cat}</span>
                   <div className="flex items-center gap-2 flex-shrink-0">
                     <span className={`text-sm ${textMuted}`}>×</span>
@@ -2767,7 +2793,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
             >
               <Check size={14} /> Appliquer à tous les articles
             </button>
-            <button onClick={() => { setCoefficients(DEFAULT_COEFFICIENTS); setCoefSaved('saved'); setTimeout(() => setCoefSaved(false), 2000); showToast('Coefficients réinitialisés', 'info'); }} className={`text-sm flex items-center gap-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+            <button onClick={() => { setCoefficients(DEFAULT_COEFFICIENTS); setCoefSaved('saved'); setTimeout(() => setCoefSaved(false), 2000); showToast('Coefficients réinitialisés', 'info'); }} className={`text-sm flex items-center gap-1 text-encre-3`}>
               <RefreshCw size={14} /> Réinitialiser par défaut
             </button>
           </div>
@@ -2779,7 +2805,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
         {showImport && importData && (
           <motion.div className="fixed inset-0 z-50 flex items-center justify-center p-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
             <div className="absolute inset-0 bg-black/50" onClick={() => setShowImport(false)} />
-            <motion.div className={`relative w-full max-w-2xl rounded-2xl p-6 max-h-[80vh] overflow-y-auto ${isDark ? 'bg-slate-800' : 'bg-white'} shadow-2xl`} initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }}>
+            <motion.div className={`relative w-full max-w-2xl rounded-2xl p-6 max-h-[80vh] overflow-y-auto bg-surface shadow-2xl`} initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }}>
               <h3 className={`font-bold text-lg mb-2 ${textPrimary}`}>Import CSV — {importData.rows.length} lignes détectées</h3>
               <p className={`text-sm ${textMuted} mb-4`}>Associez les colonnes de votre fichier aux champs du catalogue</p>
               <div className="space-y-3 mb-4">
@@ -2804,17 +2830,17 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                 ))}
               </div>
               {/* Preview */}
-              <div className={`rounded-xl p-3 mb-4 ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+              <div className={`rounded-xl p-3 mb-4 bg-surface-2`}>
                 <p className={`text-xs font-medium ${textMuted} mb-2`}>Aperçu (5 premières lignes)</p>
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs">
                     <thead><tr>{importData.headers.slice(0, 6).map(h => <th key={h} className={`text-left p-1 ${textMuted}`}>{h}</th>)}</tr></thead>
-                    <tbody>{importData.rows.slice(0, 5).map((row, i) => <tr key={i} className={`border-t ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>{importData.headers.slice(0, 6).map(h => <td key={h} className={`p-1 ${textPrimary}`}>{row[h]}</td>)}</tr>)}</tbody>
+                    <tbody>{importData.rows.slice(0, 5).map((row, i) => <tr key={i} className={`border-t border-bord`}>{importData.headers.slice(0, 6).map(h => <td key={h} className={`p-1 ${textPrimary}`}>{row[h]}</td>)}</tr>)}</tbody>
                   </table>
                 </div>
               </div>
               <div className="flex gap-3">
-                <button onClick={() => setShowImport(false)} className={`flex-1 py-3 rounded-xl ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`}>Annuler</button>
+                <button onClick={() => setShowImport(false)} className={`flex-1 py-3 rounded-xl bg-surface-2`}>Annuler</button>
                 <button onClick={executeImport} disabled={!importMapping.designation} className="flex-1 py-3 text-white rounded-xl font-medium disabled:opacity-50" style={{ background: couleur }}>
                   <Upload size={16} className="inline mr-2" />Importer {importData.rows.length} articles
                 </button>
@@ -2829,10 +2855,10 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
         {showScanner && (
           <motion.div className="fixed inset-0 z-50 flex items-center justify-center p-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
             <div className="absolute inset-0 bg-black/70" onClick={stopScanner} />
-            <motion.div className={`relative w-full max-w-lg rounded-2xl overflow-hidden ${isDark ? 'bg-slate-800' : 'bg-white'} shadow-2xl`} initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }}>
-              <div className={`p-4 border-b flex items-center justify-between ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+            <motion.div className={`relative w-full max-w-lg rounded-2xl overflow-hidden bg-surface shadow-2xl`} initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }}>
+              <div className={`p-4 border-b flex items-center justify-between border-bord`}>
                 <h3 className={`font-bold text-lg flex items-center gap-2 ${textPrimary}`}><Camera size={20} style={{ color: couleur }} /> Scanner un code-barres</h3>
-                <button onClick={stopScanner} className={`p-2 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}><X size={20} className={textMuted} /></button>
+                <button onClick={stopScanner} className={`p-2 rounded-lg hover:bg-surface-2`}><X size={20} className={textMuted} /></button>
               </div>
               {!scanResult ? (
                 <div className="relative">
@@ -2876,7 +2902,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                       <p className={`text-sm ${textMuted} mb-4`}>Trouvé dans votre catalogue</p>
                       <div className="flex gap-2">
                         <button onClick={() => { stopScanner(); setArticleDetail(scanResult.article.id); }} className="flex-1 py-3 text-white rounded-xl font-medium" style={{ background: couleur }}>Voir la fiche</button>
-                        <button onClick={() => setScanResult(null)} className={`flex-1 py-3 rounded-xl ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`}>Scanner encore</button>
+                        <button onClick={() => setScanResult(null)} className={`flex-1 py-3 rounded-xl bg-surface-2`}>Scanner encore</button>
                       </div>
                     </div>
                   )}
@@ -2911,7 +2937,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                           setForm(prev => ({ ...prev, reference: scanResult.barcode }));
                           setShow(true);
                         }} className="flex-1 py-3 text-white rounded-xl font-medium" style={{ background: couleur }}>Créer l'article</button>
-                        <button onClick={() => setScanResult(null)} className={`flex-1 py-3 rounded-xl ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`}>Réessayer</button>
+                        <button onClick={() => setScanResult(null)} className={`flex-1 py-3 rounded-xl bg-surface-2`}>Réessayer</button>
                       </div>
                     </div>
                   )}
@@ -2927,14 +2953,14 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
         {addToDevisModal && (
           <motion.div className="fixed inset-0 z-50 flex items-center justify-center p-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
             <div className="absolute inset-0 bg-black/50" onClick={() => { setAddToDevisModal(null); setAddToDevisQty(1); setAddToDevisSelected(null); }} />
-            <motion.div className={`relative w-full max-w-md rounded-2xl p-6 ${isDark ? 'bg-slate-800' : 'bg-white'} shadow-2xl`} initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }}>
+            <motion.div className={`relative w-full max-w-md rounded-2xl p-6 bg-surface shadow-2xl`} initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }}>
               <h3 className={`font-bold text-lg mb-1 ${textPrimary}`}>Ajouter au devis</h3>
               <p className={`text-sm ${textMuted} mb-4`}>
                 <span className="font-medium" style={{ color: couleur }}>{addToDevisModal.nom}</span> — {addToDevisModal.prix}€/{addToDevisModal.unite || 'u'}
               </p>
 
               {devisBrouillons.length === 0 ? (
-                <div className={`text-center py-6 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+                <div className={`text-center py-6 rounded-xl bg-surface-2`}>
                   <FileText size={32} className={`mx-auto mb-2 ${textMuted}`} />
                   <p className={`text-sm font-medium ${textPrimary}`}>Aucun devis brouillon</p>
                   <p className={`text-xs ${textMuted} mt-1`}>Créez d'abord un devis pour y ajouter des articles.</p>
@@ -2973,7 +2999,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                         onChange={e => setAddToDevisQty(Math.max(1, parseInt(e.target.value) || 1))}
                       />
                     </div>
-                    <div className={`p-3 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+                    <div className={`p-3 rounded-xl bg-surface-2`}>
                       <div className="flex items-center justify-between">
                         <span className={`text-sm ${textMuted}`}>Sous-total HT</span>
                         <span className={`text-lg font-bold`} style={{ color: couleur }}>
@@ -2983,7 +3009,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                     </div>
                   </div>
                   <div className="flex gap-3 mt-5">
-                    <button onClick={() => { setAddToDevisModal(null); setAddToDevisQty(1); setAddToDevisSelected(null); }} className={`flex-1 py-3 rounded-xl font-medium ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-700'}`}>
+                    <button onClick={() => { setAddToDevisModal(null); setAddToDevisQty(1); setAddToDevisSelected(null); }} className={`flex-1 py-3 rounded-xl font-medium bg-surface-2 text-encre-2`}>
                       Annuler
                     </button>
                     <button
