@@ -43,7 +43,8 @@ function construireDistReel() {
  */
 async function ouvrir(o = {}) {
   const largeur = o.largeur || 1440;
-  const dist = o.reel ? (o.distReel || construireDistReel()) : path.join(RACINE, 'dist');
+  // o.dist : un autre build démo (ex. un aperçu construit pendant qu'un audit lit dist/).
+  const dist = o.reel ? (o.distReel || construireDistReel()) : (o.dist || path.join(RACINE, 'dist'));
   if (!fs.existsSync(path.join(dist, 'index.html'))) throw new Error(`${dist} absent : lancez npm run build.`);
   const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox'] });
   const page = await browser.newPage();
