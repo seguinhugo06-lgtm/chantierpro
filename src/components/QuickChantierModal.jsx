@@ -15,7 +15,8 @@ export default function QuickChantierModal({
   devis = [],
   isDark = false,
   couleur = '#f97316',
-  editChantier = null // Pass a chantier object to edit instead of create
+  editChantier = null, // Pass a chantier object to edit instead of create
+  clientInitial = null, // id du client choisi d'avance (création depuis sa fiche)
 }) {
   const isEditMode = !!editChantier;
 
@@ -89,8 +90,12 @@ export default function QuickChantierModal({
         description: editChantier.description || ''
       });
       setShowDetails(true); // Show all details in edit mode
+    } else if (clientInitial) {
+      const c = clients.find((x) => x.id === clientInitial);
+      if (c) setForm((prev) => ({ ...prev, client_id: c.id, adresse: c.adresse || prev.adresse }));
     }
-  }, [isOpen, editChantier]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, editChantier, clientInitial]);
 
   // MRU (Most Recently Used) clients from localStorage
   const MRU_KEY = 'mallettico_recent_clients';

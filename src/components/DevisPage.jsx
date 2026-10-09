@@ -239,6 +239,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   const [showDevisWizard, setShowDevisWizard] = useState(false);
   // DevisComposer — nouveau parcours de création single-canvas (banger)
   const [showDevisComposer, setShowDevisComposer] = useState(false);
+  const [clientInitial, setClientInitial] = useState(null);
   // Édition : composer pour devis/factures, wizard pour les avoirs (montants négatifs)
   /**
    * Ouvre l'éditeur pour un NOUVEAU devis.
@@ -247,13 +248,15 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
    * DataContext refuserait bien l'enregistrement, mais l'artisan aurait déjà
    * composé son devis. On préfère le prévenir avant qu'il travaille pour rien.
    */
-  const ouvrirNouveauDevis = () => {
+  // clientId : ouvert depuis une fiche client, l'éditeur part avec ce client (sinon : un clic reçu).
+  const ouvrirNouveauDevis = (clientId) => {
     const { planId, usage, openUpgradeModal } = useSubscriptionStore.getState();
     const limite = (PLANS[planId] || PLANS.gratuit).limits?.devis ?? -1;
     if (limite !== -1 && (usage?.devis ?? 0) >= limite) {
       openUpgradeModal('devis_limit');
       return;
     }
+    setClientInitial(typeof clientId === 'string' ? clientId : null);
     setEditingDevis(null);
     setShowDevisComposer(true);
   };
@@ -430,7 +433,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   };
 
   useEffect(() => { if (snackbar) { const t = setTimeout(() => setSnackbar(null), 8000); return () => clearTimeout(t); } }, [snackbar]);
-  useEffect(() => { if (createMode) { ouvrirNouveauDevis(); setCreateMode?.(false); } /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [createMode, setCreateMode]);
+  useEffect(() => { if (createMode) { ouvrirNouveauDevis(createMode?.clientId); setCreateMode?.(false); } /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [createMode, setCreateMode]);
 
   // Ouverture directe de l'éditeur sur un devis précis. Sert à la dictée : quand
   // l'artisan demande un devis sans donner de prix, on l'amène là où il peut le
@@ -2187,8 +2190,9 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   const devisComposerElement = (
     <DevisComposer
       isOpen={showDevisComposer}
-      onClose={() => { setShowDevisComposer(false); setEditingDevis(null); }}
+      onClose={() => { setShowDevisComposer(false); setEditingDevis(null); setClientInitial(null); }}
       initialData={editingDevis}
+      clientInitial={clientInitial}
       onSubmit={async (devisData) => {
         const numero = await generateNumero(devisData.type);
         const newDevis = await onSubmit({ ...devisData, numero });

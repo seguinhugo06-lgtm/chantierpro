@@ -283,7 +283,9 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
   useEffect(() => { if (selectedChantier) setView(selectedChantier); }, [selectedChantier]);
   // Sync view → selectedChantier so App.jsx can hide global FABMenu
   useEffect(() => { setSelectedChantier?.(view || null); }, [view, setSelectedChantier]);
-  useEffect(() => { if (createMode) { setShow(true); setCreateMode?.(false); } }, [createMode, setCreateMode]);
+  // createMode peut porter un client (ouvert depuis sa fiche) : le formulaire part avec lui.
+  const [clientPourChantier, setClientPourChantier] = useState(null);
+  useEffect(() => { if (createMode) { setClientPourChantier(createMode?.clientId || null); setShow(true); setCreateMode?.(false); } }, [createMode, setCreateMode]);
 
   // Persist gantt tasks to localStorage
   useEffect(() => { try { localStorage.setItem('cp_gantt_tasks', JSON.stringify(ganttTasks)); } catch { /* préférence non enregistrée : quota plein ou navigation privée */ } }, [ganttTasks]);
@@ -3515,8 +3517,9 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
       {/* Quick Chantier Modal - Create */}
       <QuickChantierModal
         isOpen={show}
-        onClose={() => setShow(false)}
+        onClose={() => { setShow(false); setClientPourChantier(null); }}
         onSubmit={handleCreateChantier}
+        clientInitial={clientPourChantier}
         clients={clients}
         devis={devis}
         isDark={isDark}
