@@ -15,26 +15,20 @@
  */
 
 import { useState, useMemo } from 'react';
-import { motion } from 'framer-motion';
 import {
-  FileText,
   HardHat,
-  AlertTriangle,
   AlertCircle,
   Clock,
   ChevronRight,
   Eye,
   EyeOff,
-  ArrowRight,
   Receipt,
   Send,
   ClipboardList,
   CheckCircle,
   TrendingUp,
-  Rocket,
   Plus,
   BellRing,
-  Wallet,
 } from 'lucide-react';
 
 import { useData } from '../context/DataContext';
@@ -47,6 +41,11 @@ import { captureException } from '../lib/sentry';
 import { statutFacture, resteAPayer, joursDeRetard, echeance, encaisseEntre } from '../lib/paiementsFacture';
 import { calcConversion, formatConversion } from '../lib/statsUtils';
 import UsageAlerts from './subscription/UsageAlerts';
+import TuileChiffre from './ui/TuileChiffre';
+import { TitreSection } from './ui/EnTete';
+import LigneListe, { GroupeListe } from './ui/LigneListe';
+import { Bouton, BoutonIcone } from './ui/Bouton';
+import EtatVide from './ui/EtatVide';
 import { useSubscriptionStore, PLANS } from '../stores/subscriptionStore';
 
 /** La mallette — marque Mallettico, reprise du jeu d'icônes (grille 48, contour 3,2). */
@@ -137,9 +136,6 @@ function computeTrend(current, previous) {
 
 // ============ MAIN DASHBOARD ============
 
-// Statuts qui comptent dans le CA : un doc payé ('paye'/'payee') ou accepté ne
-// doit pas sortir du chiffre d'affaires quand il progresse dans le cycle.
-const CA_STATUTS = ['signe', 'accepte', 'facture', 'paye', 'payee'];
 
 export default function Dashboard({
   chantiers = [],
@@ -205,22 +201,7 @@ export default function Dashboard({
   };
 
   const [showAllActions, setShowAllActions] = useState(false);
-  const [dismissedNotif, setDismissedNotif] = useState(() => {
-    const ts = localStorage.getItem('cp_notif_dismissed');
-    // Auto-reset after 24h
-    return ts && (Date.now() - Number(ts)) < 86400000;
-  });
 
-  // Onboarding state removed — replaced by compact bandeau
-
-  // GAP 7: Overview collapsible state (default closed)
-  const [showOverview, setShowOverview] = useState(false);
-
-  // ---- Theme ----
-  const cardBg = isDark ? 'bg-slate-800 border border-slate-700/50' : 'bg-white shadow-[0_1px_3px_rgba(0,0,0,0.06)]';
-  const textPrimary = isDark ? 'text-slate-100' : 'text-gray-900';
-  const textSecondary = isDark ? 'text-slate-400' : 'text-gray-500';
-  const sectionBg = isDark ? 'bg-slate-800 border border-slate-700/50' : 'bg-white shadow-[0_1px_3px_rgba(0,0,0,0.06)]';
 
   // ---- Computed data ----
   const computed = useMemo(() => {
@@ -315,7 +296,7 @@ export default function Dashboard({
           priority: 2,
           icon: Send,  // GAP 5: Send for follow-ups
           color: '#f97316',
-          label: `Devis sans réponse (${jours}j)`,
+          label: `Devis sans réponse depuis ${jours} j`,
           detail: client ? `${client.nom || client.name} — ${fmt(d.total_ttc, modeDiscret)}` : fmt(d.total_ttc, modeDiscret),
           actionLabel: 'Relancer',
           onClick: () => { setSelectedDevis(d); setPage('devis'); },
@@ -367,16 +348,13 @@ export default function Dashboard({
 
 
 
-    // Sparkline data: CA par mois (6 derniers mois)
+    // Encaissé par mois, 6 derniers mois : l'argent reçu (avant : la somme des devis signés, « CA »).
     const sparkData = [];
     for (let i = 5; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      const fin = new Date(now.getFullYear(), now.getMonth() - i + 1, 0);
       const label = d.toLocaleDateString('fr-FR', { month: 'short' });
-      const ca = devis
-        .filter(dv => CA_STATUTS.includes(dv.statut) && dv.date?.startsWith(key))
-        .reduce((sum, dv) => sum + (dv.total_ttc || 0), 0);
-      sparkData.push({ label, ca });
+      sparkData.push({ label, ca: encaisseEntre(devis, paiements, jour(d), jour(fin)) });
     }
 
     return {
@@ -386,6 +364,7 @@ export default function Dashboard({
       devisEnAttente,
       chantiersActifs,
       tauxConversion,
+      conversion,
       pipeline,
       caPrevisionnel,
       actions: actions.sort((a, b) => a.priority - b.priority),
@@ -433,26 +412,9 @@ export default function Dashboard({
 
   const visibleActions = showAllActions ? allActions : allActions.slice(0, 5);
 
-  // ---- KPI color classes ----
-  const kpiCardClass = isDark
-    ? 'bg-slate-800 border border-slate-700/50'
-    : 'bg-white shadow-[0_1px_3px_rgba(0,0,0,0.06)]';
-  const kpiColors = {
-    encaisser: kpiCardClass,
-    devisAttente: kpiCardClass,
-    chantiers: kpiCardClass,
-    conversion: kpiCardClass,
-  };
 
   // ============ RENDER ============
 
-  const pageBg = isDark ? 'bg-slate-900' : 'bg-[#F5F7FA]';
-  const heroText = isDark ? 'text-white' : 'text-gray-900';
-  const subText = isDark ? 'text-slate-400' : 'text-gray-500';
-  const cardCls = isDark
-    ? 'bg-slate-800 border border-slate-700/50'
-    : 'bg-white border border-slate-200/70 shadow-[0_1px_3px_rgba(0,0,0,0.05)]';
-  const trackBg = isDark ? '#1e293b' : '#f1f5f9';
 
   const relancesDue = relances?.counts?.due || 0;
   const relancesRisk = relances?.totalAtRisk || 0;
@@ -471,317 +433,160 @@ export default function Dashboard({
   // En démo, un visiteur explore l'app — pas de checklist d'installation
   const showOnboarding = !isDemo && !onboardingHidden && onboardingDone < onboardingSteps.length;
 
-  // Pipeline compact
-  const pl = computed.pipeline;
-  const pipeRows = [
-    { label: 'Envoyés', count: pl.envoye.count, color: isDark ? '#60a5fa' : '#3b82f6' },
-    { label: 'Signés', count: pl.signe.count + pl.facture.count + pl.paye.count, color: couleur },
-    { label: 'Facturés', count: pl.facture.count + pl.paye.count, color: isDark ? '#34d399' : '#10b981' },
-  ];
-  const pipeMax = Math.max(1, ...pipeRows.map(r => r.count));
   const activeChantiers = computed.chantiersActifs;
 
-  return (
-    <div className={`p-4 sm:p-6 max-w-6xl mx-auto space-y-6 min-h-screen ${pageBg}`}>
+  // Montant compact sous les barres du graphique (« 4,7 k€ »)
+  const compact = (n) => modeDiscret ? '•••' : n >= 1000
+    ? `${new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 1 }).format(n / 1000)} k€`
+    : `${Math.round(n)} €`;
+  const moisCourant = new Date().toLocaleDateString('fr-FR', { month: 'long' });
+  const moisPrecedent = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1).toLocaleDateString('fr-FR', { month: 'long' });
+  // Ton d'une action « à faire » d'après sa couleur historique (rouge = retard, etc.)
+  const tonAction = (c) => ({ '#ef4444': 'bg-danger-fond text-danger-texte', '#f59e0b': 'bg-alerte-fond text-alerte-texte', '#10b981': 'bg-succes-fond text-succes-texte' }[c] || 'bg-info-fond text-info-texte');
 
-      {/* ===== HEADER : salutation + action rapide ===== */}
-      <header className="flex flex-wrap justify-between items-start gap-3">
-        <div>
-          <motion.h1
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.35 }}
-            className={`text-2xl sm:text-3xl font-semibold tracking-tight ${heroText}`}
-          >
-            Bonjour{prenom ? `, ${prenom}` : ''}
-          </motion.h1>
-          {/* Le plan tient sur une ligne, à côté de la date : consultable d'un
-              coup d'œil, cliquable, mais il ne prend plus le haut de l'écran. */}
-          <p className={`text-sm mt-1 flex items-center gap-1.5 flex-wrap ${isDark ? 'text-slate-500' : 'text-gray-400'}`}>
+  // Refonte du 9 oct. 2026 (revue visuelle, problème 14) : une hiérarchie — l'argent dû d'abord
+  // (tuile héros), puis ce qu'il y a à faire, puis le pouls ; une seule couleur d'accent, des
+  // tuiles calmes, le graphique avec ses valeurs.
+  return (
+    <div className="p-4 sm:p-6 max-w-5xl mx-auto space-y-8 min-h-screen bg-fond">
+
+      {/* ===== EN-TÊTE : salutation, date, une seule action ===== */}
+      <header className="flex flex-wrap justify-between items-end gap-3">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-bold tracking-tight text-encre">Bonjour{prenom ? `, ${prenom}` : ''}</h1>
+          <p className="mt-1 text-sm text-encre-3 flex items-center gap-1.5 flex-wrap">
             <span>{formattedDate}</span>
             <span aria-hidden="true">·</span>
-            <button
-              type="button"
-              onClick={() => setPage('plan')}
-              className="inline-flex items-center gap-1 hover:underline underline-offset-2 transition-opacity hover:opacity-80"
-              style={{ color: couleur }}
-            >
-              <Mallette size={13} />
-              <span className="font-medium">Plan {planCourant.name}</span>
+            <button type="button" onClick={() => setPage('plan')} className="h-11 -my-3 inline-flex items-center gap-1 font-medium text-encre-2 hover:underline underline-offset-2">
+              Plan {planCourant.name}
             </button>
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setModeDiscret?.(!modeDiscret)}
-            title={modeDiscret ? 'Afficher les montants' : 'Masquer les montants'}
-            className={`p-2 rounded-lg transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}
-          >
-            {modeDiscret ? <EyeOff className={`w-4 h-4 ${subText}`} /> : <Eye className={`w-4 h-4 ${subText}`} />}
-          </button>
-          <button
-            type="button"
-            onClick={() => { setCreateMode?.(p => ({ ...p, devis: true })); setPage('devis'); }}
-            style={{ background: couleur }}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-semibold text-white shadow-sm hover:opacity-90 transition-opacity"
-          >
-            <Plus className="w-4 h-4" /> Nouveau devis
-          </button>
+        <div className="flex items-center gap-1">
+          <BoutonIcone icone={modeDiscret ? EyeOff : Eye} libelle={modeDiscret ? 'Afficher les montants' : 'Masquer les montants'} onClick={() => setModeDiscret?.(!modeDiscret)} />
+          <Bouton variante="principal" icone={Plus} onClick={() => { setCreateMode?.(p => ({ ...p, devis: true })); setPage('devis'); }}>
+            Nouveau devis
+          </Bouton>
         </div>
       </header>
 
       {/* ===== ONBOARDING (nouveaux comptes) ===== */}
       {showOnboarding && (
-        <div className={`rounded-2xl p-4 sm:p-5 ${cardCls}`}>
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <Rocket size={18} style={{ color: couleur }} />
-              <h3 className={`text-sm font-bold ${heroText}`}>On remplit la mallette</h3>
-              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>{onboardingDone}/{onboardingSteps.length}</span>
-            </div>
-            <button
-              onClick={() => { try { localStorage.setItem('cp_onboarding_dismissed', '1'); } catch { /* noop */ } setOnboardingHidden(true); }}
-              className={`text-xs ${subText} hover:underline`}
-            >
-              Masquer
-            </button>
-          </div>
-          <div className="space-y-2">
-            {onboardingSteps.map(s => (
-              <button
-                key={s.key}
-                onClick={s.done ? undefined : s.action}
-                disabled={s.done}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left text-sm transition-all ${
-                  s.done
-                    ? isDark ? 'bg-slate-700/30 text-slate-500' : 'bg-slate-50 text-slate-400'
-                    : isDark ? 'bg-slate-700/50 hover:bg-slate-700 text-slate-200' : 'bg-slate-50 hover:bg-slate-100 text-slate-800'
-                }`}
-              >
-                {s.done
-                  ? <CheckCircle className="w-4 h-4 text-emerald-500 flex-shrink-0" />
-                  : <span className="w-4 h-4 rounded-full border-2 flex-shrink-0" style={{ borderColor: couleur }} />}
-                <span className={`flex-1 ${s.done ? 'line-through' : 'font-medium'}`}>{s.label}</span>
-                {!s.done && <ChevronRight size={14} style={{ color: couleur }} />}
-              </button>
+        <section aria-label="Premiers pas">
+          <TitreSection titre="On remplit la mallette" compte={`${onboardingDone}/${onboardingSteps.length}`} action="Masquer" onAction={() => { try { localStorage.setItem('cp_onboarding_dismissed', '1'); } catch { /* préférence non enregistrée */ } setOnboardingHidden(true); }} />
+          <GroupeListe>
+            {onboardingSteps.map(st => (
+              <LigneListe
+                key={st.key}
+                onClick={st.done ? undefined : st.action}
+                debut={st.done
+                  ? <span className="w-10 h-10 rounded-xl bg-succes-fond text-succes-texte flex items-center justify-center"><CheckCircle size={20} aria-hidden="true" /></span>
+                  : <span className="w-10 h-10 rounded-xl bg-surface-2 text-encre-3 flex items-center justify-center"><ChevronRight size={20} aria-hidden="true" /></span>}
+                titre={<span className={st.done ? 'line-through text-encre-3 font-medium' : ''}>{st.label}</span>}
+              />
             ))}
-          </div>
-          <div className="mt-3 h-1.5 rounded-full overflow-hidden" style={{ background: trackBg }}>
-            <div className="h-full rounded-full transition-all duration-500" style={{ width: `${(onboardingDone / onboardingSteps.length) * 100}%`, background: couleur }} />
-          </div>
-        </div>
-      )}
-
-      {/* ===== L'ARGENT : 3 cartes heros ===== */}
-      {canSeeFinances && (
-        <section aria-label="Argent">
-          {/* Téléphone : « À encaisser » en pleine largeur, les deux autres côte à côte (trois cartes
-              empilées repoussaient « À faire aujourd'hui » sous l'écran — recette du 9 oct.). */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
-            {/* A encaisser — carte principale */}
-            <button
-              type="button"
-              onClick={() => setPage('finances')}
-              className={`col-span-2 sm:col-span-1 text-left rounded-2xl p-4 sm:p-5 transition-transform hover:-translate-y-0.5 ${
-                computed.retard > 0
-                  ? isDark ? 'bg-slate-800 border-2 border-red-500/40' : 'bg-white border-2 border-red-200 shadow-[0_1px_3px_rgba(0,0,0,0.05)]'
-                  : cardCls
-              }`}
-            >
-              <div className="flex items-center gap-2 mb-1.5">
-                <Wallet className="w-4 h-4" style={{ color: couleur }} />
-                <span className={`text-xs font-medium ${subText}`}>À encaisser</span>
-              </div>
-              <div className={`text-2xl sm:text-[28px] font-bold leading-none ${heroText}`}>{fmt(computed.aEncaisser, modeDiscret)}</div>
-              {computed.retard > 0 ? (
-                <div className="flex items-center gap-1.5 mt-2 text-xs font-medium text-red-500">
-                  <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
-                  <span className="truncate">{fmt(computed.retard, modeDiscret)} en retard · {computed.facturesEnRetardCount} facture{computed.facturesEnRetardCount > 1 ? 's' : ''}</span>
-                </div>
-              ) : (
-                <div className={`mt-2 text-xs ${subText}`}>Aucun retard</div>
-              )}
-            </button>
-
-            {/* Encaisse ce mois */}
-            <button
-              type="button"
-              onClick={() => setPage('finances')}
-              className={`text-left rounded-2xl p-4 sm:p-5 transition-transform hover:-translate-y-0.5 ${cardCls}`}
-            >
-              <div className="flex items-center gap-2 mb-1.5">
-                <TrendingUp className="w-4 h-4" style={{ color: couleur }} />
-                <span className={`text-xs font-medium ${subText}`}>Encaissé ce mois</span>
-              </div>
-              <div className={`text-xl sm:text-[28px] font-bold leading-none ${heroText}`}>{fmt(computed.caCeMois, modeDiscret)}</div>
-              <div className={`mt-2 text-xs ${subText}`}>
-                {computed.lastMonthCA > 0 ? `vs ${fmt(computed.lastMonthCA, modeDiscret)} mois dernier` : 'Premier mois suivi'}
-              </div>
-            </button>
-
-            {/* Devis en attente */}
-            <button
-              type="button"
-              onClick={() => setPage('devis')}
-              className={`text-left rounded-2xl p-4 sm:p-5 transition-transform hover:-translate-y-0.5 ${cardCls}`}
-            >
-              <div className="flex items-center gap-2 mb-1.5">
-                <FileText className="w-4 h-4" style={{ color: couleur }} />
-                <span className={`text-xs font-medium ${subText}`}>Devis en attente</span>
-              </div>
-              <div className={`text-xl sm:text-[28px] font-bold leading-none ${heroText}`}>{fmt(computed.devisEnAttente.reduce((s, d) => s + (d.total_ttc || 0), 0), modeDiscret)}</div>
-              <div className={`mt-2 text-xs ${subText}`}>{computed.devisEnAttente.length} devis envoyé{computed.devisEnAttente.length > 1 ? 's' : ''}</div>
-            </button>
-          </div>
+          </GroupeListe>
         </section>
       )}
 
-      {/* Jauges d'usage — APRÈS l'argent, et seulement quand il y a un mur à
-          annoncer (limite proche, essai qui finit, plan Gratuit). L'artisan ouvre
-          son accueil pour savoir ce qu'on lui doit, pas pour lire son forfait. */}
+      {/* ===== L'ARGENT : ce qu'on me doit, en grand ===== */}
+      {canSeeFinances && (
+        <section aria-label="Argent" className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <TuileChiffre
+            heros className="col-span-2"
+            libelle="À encaisser"
+            valeur={fmt(computed.aEncaisser, modeDiscret)}
+            alerte={computed.retard > 0 ? `dont ${fmt(computed.retard, modeDiscret)} en retard · ${computed.facturesEnRetardCount} facture${computed.facturesEnRetardCount > 1 ? 's' : ''}` : undefined}
+            contexte={computed.retard > 0 ? undefined : 'Aucun retard'}
+            onClick={() => setPage('finances')}
+          />
+          <TuileChiffre
+            libelle={`Encaissé · ${moisCourant}`}
+            valeur={fmt(computed.caCeMois, modeDiscret)}
+            contexte={computed.lastMonthCA > 0 ? `${moisPrecedent} : ${fmt(computed.lastMonthCA, modeDiscret)}` : 'Premier mois suivi'}
+            onClick={() => setPage('finances')}
+          />
+          <TuileChiffre
+            libelle="Devis en attente"
+            valeur={fmt(computed.devisEnAttente.reduce((s, d) => s + (d.total_ttc || 0), 0), modeDiscret)}
+            contexte={`${computed.devisEnAttente.length} envoyé${computed.devisEnAttente.length > 1 ? 's' : ''} · ${formatConversion(computed.tauxConversion)} signés`}
+            onClick={() => setPage('devis')}
+          />
+        </section>
+      )}
+
+      {/* Jauges d'usage — après l'argent, seulement quand une limite approche. */}
       <UsageAlerts isDark={isDark} couleur={couleur} />
 
-      {/* ===== A FAIRE AUJOURD'HUI : le cockpit ===== */}
+      {/* ===== À FAIRE AUJOURD'HUI ===== */}
       <section aria-label="À faire aujourd'hui">
-        <div className="flex items-center justify-between mb-2.5 px-0.5">
-          <h2 className={`text-sm font-bold ${heroText}`}>À faire aujourd'hui</h2>
-          {hasAnyAction && (
-            <span className={`text-xs ${subText}`}>{relancesDue + allActions.length} action{(relancesDue + allActions.length) > 1 ? 's' : ''}</span>
-          )}
-        </div>
-
-        <div className={`rounded-2xl p-1.5 ${cardCls}`}>
-          {/* Relance groupee — action hero (coeur du pivot) */}
+        <TitreSection titre="À faire aujourd'hui" compte={hasAnyAction ? relancesDue + allActions.length : undefined} />
+        <GroupeListe>
           {relancesDue > 0 && (
-            <div className={`flex items-center gap-3 p-3 rounded-xl ${isDark ? 'bg-red-500/10' : 'bg-red-50'}`}>
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: isDark ? 'rgba(239,68,68,0.2)' : '#fee2e2' }}>
-                <BellRing className="w-5 h-5 text-red-500" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className={`text-sm font-semibold ${heroText}`}>{relancesDue} relance{relancesDue > 1 ? 's' : ''} à envoyer</p>
-                <p className="text-xs text-red-500/90 truncate">{relancesRisk > 0 ? `${fmt(relancesRisk, modeDiscret)} concernés` : 'impayés + devis sans réponse'}</p>
-              </div>
-              <button
-                type="button"
-                onClick={handleSendAllRelances}
-                disabled={sendingRelances}
-                className="flex-shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold text-white bg-red-500 hover:bg-red-600 transition-colors disabled:opacity-60"
-              >
-                {sendingRelances ? <Clock className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
-                {sendingRelances ? 'Envoi...' : 'Tout envoyer'}
-              </button>
-            </div>
+            <LigneListe
+              chevron={false}
+              debut={<span className="w-10 h-10 rounded-xl bg-danger-fond text-danger-texte flex items-center justify-center"><BellRing size={20} aria-hidden="true" /></span>}
+              titre={`${relancesDue} relance${relancesDue > 1 ? 's' : ''} à envoyer`}
+              meta={relancesRisk > 0 ? `${fmt(relancesRisk, modeDiscret)} concernés` : 'Impayés et devis sans réponse'}
+              pied={(
+                <>
+                  <span />
+                  <Bouton taille="compacte" icone={sendingRelances ? Clock : Send} chargement={sendingRelances} onClick={handleSendAllRelances}>
+                    {sendingRelances ? 'Envoi…' : 'Tout envoyer'}
+                  </Bouton>
+                </>
+              )}
+            />
           )}
-
-          {/* Actions calculees (factures en retard, devis sans reponse, brouillons, memos) */}
           {visibleActions.map((action, i) => {
-            const Icon = action.icon || AlertCircle;
+            const Icone = action.icon || AlertCircle;
             return (
-              <button
+              <LigneListe
                 key={i}
-                type="button"
                 onClick={action.onClick}
-                className={`w-full flex items-center gap-3 p-3 rounded-xl text-left transition-colors ${isDark ? 'hover:bg-slate-700/50' : 'hover:bg-slate-50'}`}
-              >
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${action.color}15` }}>
-                  <Icon className="w-5 h-5" style={{ color: action.color }} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className={`text-sm font-medium truncate ${heroText}`}>{action.label}</p>
-                  {action.detail && <p className={`text-xs truncate ${subText}`}>{action.detail}</p>}
-                </div>
-                {action.actionLabel && (
-                  <span className="flex-shrink-0 text-xs font-semibold px-3 py-1.5 rounded-lg" style={{ color: action.color, background: `${action.color}12` }}>{action.actionLabel}</span>
-                )}
-              </button>
+                debut={<span className={`w-10 h-10 rounded-xl flex items-center justify-center ${tonAction(action.color)}`}><Icone size={20} aria-hidden="true" /></span>}
+                titre={action.label}
+                meta={action.detail}
+                montant={action.actionLabel ? <span className="text-sm font-semibold text-accent-texte">{action.actionLabel}</span> : undefined}
+              />
             );
           })}
-
-          {/* Voir tout / moins */}
           {allActions.length > 5 && (
-            <button
-              type="button"
-              onClick={() => setShowAllActions(v => !v)}
-              aria-expanded={showAllActions}
-              className={`w-full text-center text-xs font-medium py-2.5 ${subText} hover:underline`}
-            >
+            <button type="button" onClick={() => setShowAllActions(v => !v)} aria-expanded={showAllActions} className="w-full h-12 text-sm font-semibold text-encre-2 hover:bg-surface-2">
               {showAllActions ? 'Voir moins' : `Voir tout (${allActions.length})`}
             </button>
           )}
-
-          {/* Empty state : rien a faire */}
           {!hasAnyAction && (
-            <div className="flex flex-col items-center justify-center py-8 text-center">
-              <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-3" style={{ background: `${couleur}12` }}>
-                <Mallette size={24} style={{ color: couleur }} />
-              </div>
-              <p className={`text-sm font-semibold ${heroText}`}>Mallette bouclée</p>
-              <p className={`text-xs mt-0.5 ${subText}`}>Rien ne traîne. Vous pouvez la refermer.</p>
-            </div>
+            <EtatVide icone={Mallette} titre="Mallette bouclée" texte="Rien ne traîne. Vous pouvez la refermer." />
           )}
-        </div>
+        </GroupeListe>
       </section>
 
-      {/* ===== LE POULS : CA 6 mois + pipeline ===== */}
+      {/* ===== LE POULS : l'argent reçu, mois par mois ===== */}
       {canSeeFinances && (
-        <section aria-label="Pouls du business">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
-            {/* CA 6 mois */}
-            <div className={`rounded-2xl p-4 sm:p-5 ${cardCls}`}>
-              <p className={`text-xs font-medium mb-3 ${subText}`}>CA 6 derniers mois</p>
-              {computed.sparkData.some(m => m.ca > 0) ? (() => {
-                // Sparkline SVG inline (léger — évite de charger recharts sur l'accueil)
-                const data = computed.sparkData;
-                const max = Math.max(...data.map(d => d.ca), 1);
-                const W = 300, H = 96, pad = 3, n = data.length;
-                const px = i => pad + (i * (W - 2 * pad)) / (n - 1);
-                const py = v => H - pad - (v / max) * (H - 2 * pad - 4);
-                const line = data.map((d, i) => `${px(i)},${py(d.ca)}`).join(' ');
-                const area = `${pad},${H - pad} ${line} ${W - pad},${H - pad}`;
-                return (
-                  <div>
-                    <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={110} preserveAspectRatio="none" role="img" aria-label="Chiffre d'affaires, 6 derniers mois">
-                      <defs>
-                        <linearGradient id="caSpark" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor={couleur} stopOpacity="0.28" />
-                          <stop offset="100%" stopColor={couleur} stopOpacity="0" />
-                        </linearGradient>
-                      </defs>
-                      <polygon points={area} fill="url(#caSpark)" />
-                      <polyline points={line} fill="none" stroke={couleur} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
-                    </svg>
-                    <div className="flex justify-between mt-1.5">
-                      {data.map((d, i) => <span key={i} className={`text-[10px] ${subText}`}>{d.label}</span>)}
-                    </div>
-                  </div>
-                );
-              })() : (
-                <div className={`flex items-center justify-center text-xs ${subText}`} style={{ height: 120 }}>Pas encore de chiffre d'affaires</div>
-              )}
-            </div>
-
-            {/* Pipeline commercial */}
-            <div className={`rounded-2xl p-4 sm:p-5 ${cardCls}`}>
-              <div className="flex items-center justify-between mb-3">
-                <p className={`text-xs font-medium ${subText}`}>Pipeline commercial</p>
-                <span className="text-xs font-semibold" style={{ color: couleur }}>Conversion {formatConversion(computed.tauxConversion)}</span>
-              </div>
-              <div className="space-y-2.5">
-                {pipeRows.map(r => (
-                  <div key={r.label} className="flex items-center gap-3">
-                    <span className={`w-16 text-xs ${subText}`}>{r.label}</span>
-                    <div className="flex-1 h-3.5 rounded-full overflow-hidden" style={{ background: trackBg }}>
-                      <div className="h-full rounded-full transition-all duration-500" style={{ width: `${Math.max(6, (r.count / pipeMax) * 100)}%`, background: r.color }} />
-                    </div>
-                    <span className={`w-6 text-right text-xs font-medium ${heroText}`}>{r.count}</span>
-                  </div>
-                ))}
-              </div>
-              <button type="button" onClick={() => setPage('devis')} className="mt-3 inline-flex items-center gap-1 text-xs font-medium" style={{ color: couleur }}>
-                Voir les devis <ArrowRight className="w-3 h-3" />
-              </button>
-            </div>
+        <section aria-label="Encaissé sur 6 mois">
+          <TitreSection titre="Encaissé sur 6 mois" action="Finances" onAction={() => setPage('finances')} />
+          <div className="bg-surface border border-bord rounded-2xl shadow-e1 p-4 sm:p-5">
+            {computed.sparkData.some(m => m.ca > 0) ? (() => {
+              const data = computed.sparkData;
+              const max = Math.max(...data.map(d => d.ca), 1);
+              return (
+                <div className="grid grid-cols-6 gap-2 items-end h-44" role="img" aria-label={`Encaissé par mois : ${data.map(d => `${d.label} ${fmt(d.ca)}`).join(', ')}`}>
+                  {data.map((d, i) => {
+                    const dernier = i === data.length - 1;
+                    return (
+                      <div key={i} className="flex flex-col items-center justify-end h-full gap-1.5 min-w-0">
+                        <span className={`text-xs tabular-nums whitespace-nowrap ${dernier ? 'font-bold text-encre' : 'font-medium text-encre-2'}`}>{d.ca > 0 ? compact(d.ca) : '—'}</span>
+                        <div className={`w-full max-w-[44px] rounded-lg ${dernier ? 'bg-accent' : 'bg-accent/30'}`} style={{ height: `${Math.max(4, (d.ca / max) * 100)}%` }} />
+                        <span className={`text-xs capitalize ${dernier ? 'font-semibold text-encre' : 'text-encre-3'}`}>{d.label.replace('.', '')}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })() : (
+              <EtatVide icone={TrendingUp} titre="Rien d'encaissé pour l'instant" texte="Les paiements reçus apparaîtront ici, mois par mois." className="!py-6" />
+            )}
           </div>
         </section>
       )}
@@ -789,38 +594,30 @@ export default function Dashboard({
       {/* ===== CHANTIERS EN COURS ===== */}
       {activeChantiers.length > 0 && (
         <section aria-label="Chantiers en cours">
-          <div className="flex items-center justify-between mb-2.5 px-0.5">
-            <h2 className={`text-sm font-bold ${heroText}`}>Chantiers en cours</h2>
-            <button type="button" onClick={() => setPage('chantiers')} className="text-xs font-medium" style={{ color: couleur }}>Tout voir</button>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <TitreSection titre="Chantiers en cours" compte={activeChantiers.length} action="Tout voir" onAction={() => setPage('chantiers')} />
+          <GroupeListe>
             {activeChantiers.slice(0, 4).map(c => {
               const client = clients.find(cl => cl.id === c.client_id);
-              const av = Math.round(c.avancement || 0);
+              const av = Math.max(0, Math.min(100, Math.round(c.avancement || 0)));
               return (
-                <button
+                <LigneListe
                   key={c.id}
-                  type="button"
                   onClick={() => { setSelectedChantier?.(c); setPage('chantiers'); }}
-                  className={`text-left rounded-2xl p-4 transition-transform hover:-translate-y-0.5 ${cardCls}`}
-                >
-                  <div className="flex items-center gap-2.5 mb-2.5">
-                    <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${couleur}12` }}>
-                      <HardHat className="w-4 h-4" style={{ color: couleur }} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className={`text-sm font-semibold truncate ${heroText}`}>{c.nom || c.titre || c.name || 'Chantier'}</p>
-                      {client && <p className={`text-xs truncate ${subText}`}>{client.nom || client.name}</p>}
-                    </div>
-                    <span className={`text-xs font-bold flex-shrink-0 ${heroText}`}>{av}%</span>
-                  </div>
-                  <div className="h-1.5 rounded-full overflow-hidden" style={{ background: trackBg }}>
-                    <div className="h-full rounded-full transition-all duration-500" style={{ width: `${av}%`, background: couleur }} />
-                  </div>
-                </button>
+                  debut={<span className="w-10 h-10 rounded-xl bg-surface-2 text-encre-2 flex items-center justify-center"><HardHat size={20} aria-hidden="true" /></span>}
+                  titre={c.nom || c.titre || c.name || 'Chantier'}
+                  meta={client ? [client.prenom, client.nom || client.name].filter(Boolean).join(' ') : undefined}
+                  pied={(
+                    <>
+                      <span className="flex-1 h-1.5 rounded-full bg-surface-2 overflow-hidden" aria-hidden="true">
+                        <span className="block h-full rounded-full bg-info-point" style={{ width: `${av}%` }} />
+                      </span>
+                      <span className="text-sm font-semibold text-encre tabular-nums">{av} %</span>
+                    </>
+                  )}
+                />
               );
             })}
-          </div>
+          </GroupeListe>
         </section>
       )}
 

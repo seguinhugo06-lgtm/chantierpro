@@ -32,10 +32,10 @@ export default function TuileChiffre({ libelle, valeur, contexte, alerte, heros 
       {alerte ? (
         <span className={`flex items-center gap-1.5 text-sm font-semibold ${heros ? '' : 'text-danger-texte'}`}>
           <AlertTriangle size={16} aria-hidden="true" className="flex-shrink-0" />
-          <span className="truncate">{alerte}</span>
+          <span className="line-clamp-2">{alerte}</span>
         </span>
       ) : contexte ? (
-        <span className={`text-sm truncate ${heros ? 'opacity-80' : 'text-encre-3'}`}>{contexte}</span>
+        <span className={`text-sm line-clamp-2 ${heros ? 'opacity-80' : 'text-encre-3'}`}>{contexte}</span>
       ) : null}
     </Element>
   );
