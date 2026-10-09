@@ -44,6 +44,8 @@ import { usePermissions } from '../hooks/usePermissions';
 import { useRelances } from '../hooks/useRelances';
 import { useOrg } from '../context/OrgContext';
 import { captureException } from '../lib/sentry';
+import { statutFacture, resteAPayer, joursDeRetard, echeance, encaisseEntre } from '../lib/paiementsFacture';
+import { calcConversion, formatConversion } from '../lib/statsUtils';
 import UsageAlerts from './subscription/UsageAlerts';
 import { useSubscriptionStore, PLANS } from '../stores/subscriptionStore';
 
@@ -167,7 +169,7 @@ export default function Dashboard({
   addMemo,
   toggleMemo,
 }) {
-  const { dataLoading } = useData();
+  const { dataLoading, paiements = [] } = useData();
   const { showToast } = useToast();
   const { canAccess } = usePermissions();
   const canSeeFinances = canAccess('finances');
@@ -224,34 +226,31 @@ export default function Dashboard({
   const computed = useMemo(() => {
     const now = new Date();
 
-    // KPIs
-    const aEncaisser = devis
-      .filter(d => d.type === 'facture' && ['envoye', 'facture'].includes(d.statut))
-      .reduce((s, d) => s + (d.total_ttc || 0), 0);
+    // KPIs — mêmes définitions que la page Devis et la Trésorerie (src/lib/paiementsFacture.js) :
+    // le reste dû des factures ouvertes, le retard après l'échéance, les paiements réellement reçus.
+    // Avant (revue du 9 oct.) : « en retard » comptait des factures déjà payées, la conversion
+    // ignorait « accepté » (0 % ici, 75 % sur Devis) et « Encaissé ce mois » additionnait des devis signés.
+    const facturesOuvertes = devis.filter(d => d.type === 'facture' && d.facture_type !== 'avoir'
+      && ['envoye', 'vu', 'facture', 'partielle', 'en_retard'].includes(statutFacture(d, paiements, now)));
+    const facturesEnRetard = facturesOuvertes.filter(d => statutFacture(d, paiements, now) === 'en_retard');
+    const aEncaisser = facturesOuvertes.reduce((s, d) => s + resteAPayer(d, paiements), 0);
+    const retard = facturesEnRetard.reduce((s, d) => s + resteAPayer(d, paiements), 0);
 
-    const retard = devis
-      .filter(d => d.type === 'facture' && d.date_echeance && new Date(d.date_echeance) < now)
-      .reduce((s, d) => s + (d.total_ttc || 0), 0);
-
-    const devisEnAttente = devis.filter(d => d.type !== 'facture' && d.statut === 'envoye');
+    const devisEnAttente = devis.filter(d => d.type !== 'facture' && ['envoye', 'vu'].includes(d.statut));
     const chantiersActifs = chantiers.filter(c => c.statut === 'en_cours');
 
-    const envoyes = devis.filter(d => d.type !== 'facture' && ['envoye', 'signe', 'facture', 'refuse'].includes(d.statut));
-    const signesDevis = devis.filter(d => d.type !== 'facture' && ['signe', 'facture'].includes(d.statut));
-    const tauxConversion = envoyes.length > 0 ? Math.round(signesDevis.length / envoyes.length * 100) : 0;
+    const conversion = calcConversion(devis);
+    const tauxConversion = conversion.envoyes > 0 ? Math.round(conversion.taux) : 0;
 
-    // ---- GAP 2: CA ce mois + mois précédent pour tendance ----
-    const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    const caCeMois = devis
-      .filter(d => CA_STATUTS.includes(d.statut) && d.date?.startsWith(currentMonthKey))
-      .reduce((s, d) => s + (d.total_ttc || 0), 0);
+    const jour = (x) => `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`;
+    const debutMois = new Date(now.getFullYear(), now.getMonth(), 1);
+    const finMois = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    const caCeMois = encaisseEntre(devis, paiements, jour(debutMois), jour(finMois));
 
-    // Last month CA for trend calculation
+    // Mois précédent, pour la comparaison
     const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     const lastMonthKey = `${prevMonth.getFullYear()}-${String(prevMonth.getMonth() + 1).padStart(2, '0')}`;
-    const lastMonthCA = devis
-      .filter(d => CA_STATUTS.includes(d.statut) && d.date?.startsWith(lastMonthKey))
-      .reduce((s, d) => s + (d.total_ttc || 0), 0);
+    const lastMonthCA = encaisseEntre(devis, paiements, jour(prevMonth), jour(new Date(now.getFullYear(), now.getMonth(), 0)));
 
     // Trend for "Ce mois" KPI
     const caCeMoisTrend = computeTrend(caCeMois, lastMonthCA);
@@ -266,13 +265,18 @@ export default function Dashboard({
       .reduce((s, d) => s + (d.total_ttc || 0), 0);
     const aEncaisserTrend = computeTrend(aEncaisser, lastMonthEncaisser);
 
-    // Pipeline (GAP 4: + Payé stage)
+    // Pipeline des DEVIS (les statuts de calcConversion : « accepté » est un devis signé).
+    const devisSeuls = devis.filter(d => d.type !== 'facture');
+    const etape = (statuts) => {
+      const l = devisSeuls.filter(d => statuts.includes(d.statut));
+      return { count: l.length, total: l.reduce((s, d) => s + (d.total_ttc || 0), 0) };
+    };
     const pipeline = {
-      brouillon: { count: devis.filter(d => d.statut === 'brouillon').length, total: devis.filter(d => d.statut === 'brouillon').reduce((s, d) => s + (d.total_ttc || 0), 0) },
-      envoye: { count: devis.filter(d => d.statut === 'envoye').length, total: devis.filter(d => d.statut === 'envoye').reduce((s, d) => s + (d.total_ttc || 0), 0) },
-      signe: { count: devis.filter(d => d.statut === 'signe').length, total: devis.filter(d => d.statut === 'signe').reduce((s, d) => s + (d.total_ttc || 0), 0) },
-      facture: { count: devis.filter(d => d.statut === 'facture').length, total: devis.filter(d => d.statut === 'facture').reduce((s, d) => s + (d.total_ttc || 0), 0) },
-      paye: { count: devis.filter(d => d.statut === 'paye').length, total: devis.filter(d => d.statut === 'paye').reduce((s, d) => s + (d.total_ttc || 0), 0) },
+      brouillon: etape(['brouillon']),
+      envoye: etape(['envoye', 'vu']),
+      signe: etape(['accepte', 'signe', 'acompte_facture']),
+      facture: etape(['facture', 'payee', 'paye']),
+      paye: { count: 0, total: 0 },
     };
 
     // CA prévisionnel (signés non encore facturés + envoyés * 0.5)
@@ -281,19 +285,20 @@ export default function Dashboard({
     // Actions prioritaires (GAP 5: differentiated icons + actionLabel)
     const actions = [];
 
-    // 1. Factures en retard — AlertTriangle icon, red color
-    devis
-      .filter(d => d.type === 'facture' && d.date_echeance && new Date(d.date_echeance) < now && ['envoye', 'facture'].includes(d.statut))
-      .sort((a, b) => new Date(a.date_echeance) - new Date(b.date_echeance))
+    // 1. Factures en retard (reste dû, après l'échéance) — AlertTriangle icon, red color
+    facturesEnRetard
+      .slice()
+      .sort((a, b) => echeance(a) - echeance(b))
       .forEach(d => {
-        const jours = daysSince(d.date_echeance);
+        const jours = joursDeRetard(d, paiements, now);
         const client = clients.find(c => c.id === d.client_id);
+        const reste = resteAPayer(d, paiements);
         actions.push({
           priority: 1,
           icon: Receipt,  // GAP 5: Receipt for invoices
           color: '#ef4444',
-          label: `Facture en retard de ${jours}j`,
-          detail: client ? `${client.nom || client.name} — ${fmt(d.total_ttc, modeDiscret)}` : fmt(d.total_ttc, modeDiscret),
+          label: `Facture en retard de ${jours} j`,
+          detail: client ? `${client.nom || client.name} — ${fmt(reste, modeDiscret)}` : fmt(reste, modeDiscret),
           actionLabel: 'Relancer',
           onClick: () => { setSelectedDevis(d); setPage('devis'); },
         });
@@ -361,9 +366,6 @@ export default function Dashboard({
     const f26Pct = Math.round((f26Complete / F26_CRITERIA.length) * 100);
 
 
-    // Count factures en retard for urgent banner
-    const facturesEnRetard = devis
-      .filter(d => d.type === 'facture' && d.date_echeance && new Date(d.date_echeance) < now && ['envoye', 'facture'].includes(d.statut));
 
     // Sparkline data: CA par mois (6 derniers mois)
     const sparkData = [];
@@ -397,7 +399,7 @@ export default function Dashboard({
       facturesEnRetardCount: facturesEnRetard.length,
       sparkData,
     };
-  }, [devis, chantiers, clients, entreprise, modeDiscret, setSelectedDevis, setPage]);
+  }, [devis, paiements, chantiers, clients, entreprise, modeDiscret, setSelectedDevis, setPage]);
 
   // ---- Greeting ----
   const prenom = getPrenom(user);
@@ -763,7 +765,7 @@ export default function Dashboard({
             <div className={`rounded-2xl p-4 sm:p-5 ${cardCls}`}>
               <div className="flex items-center justify-between mb-3">
                 <p className={`text-xs font-medium ${subText}`}>Pipeline commercial</p>
-                <span className="text-xs font-semibold" style={{ color: couleur }}>Conversion {computed.tauxConversion}%</span>
+                <span className="text-xs font-semibold" style={{ color: couleur }}>Conversion {formatConversion(computed.tauxConversion)}</span>
               </div>
               <div className="space-y-2.5">
                 {pipeRows.map(r => (

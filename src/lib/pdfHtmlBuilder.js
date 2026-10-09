@@ -5,6 +5,7 @@
 
 import { subscription } from '../stores/subscriptionStore';
 import { filterValidLignes } from './formatters';
+import { euros, pourcent } from './formatDocument';
 
 /**
  * Get entreprise data from localStorage
@@ -98,9 +99,9 @@ export function buildDocumentHTML(doc, client, chantier, entreprise, options = {
       <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;vertical-align:top">${l.description || ''}</td>
       <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${l.quantite || 0}</td>
       <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${l.unite || 'unité'}</td>
-      <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:right">${pu.toFixed(2)} €</td>
+      <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:right">${euros(pu)}</td>
       <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${isMicro ? '-' : (l.tva !== undefined ? l.tva : (doc.tvaRate || 10)) + '%'}</td>
-      <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:right;font-weight:600;${total < 0 ? 'color:#dc2626;' : ''}">${total.toFixed(2)} €</td>
+      <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:right;font-weight:600;${total < 0 ? 'color:#dc2626;' : ''}">${euros(total)}</td>
     </tr>`;
   }).join('');
 
@@ -230,18 +231,18 @@ export function buildDocumentHTML(doc, client, chantier, entreprise, options = {
 
   <!-- TOTAUX -->
   <div class="totals">
-    <div class="row sub"><span>Total HT</span><span>${(doc.total_ht || 0).toFixed(2)} €</span></div>
-    ${doc.remise ? `<div class="row sub" style="color:#dc2626"><span>Remise ${doc.remise}%</span><span>-${((doc.total_ht || 0) * doc.remise / 100).toFixed(2)} €</span></div>` : ''}
+    <div class="row sub"><span>Total HT</span><span>${euros((doc.total_ht || 0))}</span></div>
+    ${doc.remise ? `<div class="row sub" style="color:#dc2626"><span>Remise ${pourcent(doc.remise)}</span><span>-${euros(((doc.total_ht || 0) * doc.remise / 100))}</span></div>` : ''}
     ${!isMicro ? (Object.keys(calculatedTvaDetails).length > 0
       ? Object.entries(calculatedTvaDetails).filter(([_, data]) => data.base > 0).sort((a, b) => parseFloat(a[0]) - parseFloat(b[0])).map(([taux, data]) =>
-        `<div class="row sub"><span>TVA ${taux}%${Object.keys(calculatedTvaDetails).length > 1 ? ` (base: ${data.base.toFixed(2)} €)` : ''}</span><span>${data.montant.toFixed(2)} €</span></div>`
+        `<div class="row sub"><span>TVA ${pourcent(taux)}${Object.keys(calculatedTvaDetails).length > 1 ? ` (base: ${euros(data.base)})` : ''}</span><span>${euros(data.montant)}</span></div>`
       ).join('')
-      : `<div class="row sub"><span>TVA ${doc.tvaRate || 10}%</span><span>${(doc.tva || 0).toFixed(2)} €</span></div>`
+      : `<div class="row sub"><span>TVA ${pourcent(doc.tvaRate || 10)}</span><span>${euros((doc.tva || 0))}</span></div>`
     ) : ''}
-    <div class="row total"><span>Total TTC</span><span>${(doc.total_ttc || 0).toFixed(2)} €</span></div>
+    <div class="row total"><span>Total TTC</span><span>${euros((doc.total_ttc || 0))}</span></div>
     ${doc.acompte_pct ? `
-    <div class="row sub" style="margin-top:8px;border-top:1px dashed #ccc;padding-top:8px"><span>Acompte ${doc.acompte_pct}%</span><span>${((doc.total_ttc || 0) * doc.acompte_pct / 100).toFixed(2)} €</span></div>
-    <div class="row sub"><span>Solde à régler</span><span>${((doc.total_ttc || 0) * (100 - doc.acompte_pct) / 100).toFixed(2)} €</span></div>
+    <div class="row sub" style="margin-top:8px;border-top:1px dashed #ccc;padding-top:8px"><span>Acompte ${pourcent(doc.acompte_pct)}</span><span>${euros(((doc.total_ttc || 0) * doc.acompte_pct / 100))}</span></div>
+    <div class="row sub"><span>Solde à régler</span><span>${euros(((doc.total_ttc || 0) * (100 - doc.acompte_pct) / 100))}</span></div>
     ` : ''}
   </div>
 

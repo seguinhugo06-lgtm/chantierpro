@@ -755,9 +755,11 @@ export const FIELD_MAPPINGS = {
       devis_id: item.devisId || item.facture_id || item.devis_id || null,
       document_numero: item.documentNumero || item.document || null,
       montant: item.montant || item.amount || 0,
-      date: item.date || (item.createdAt ? item.createdAt.slice(0, 10) : null),
-      mode: item.mode || item.modePaiement || 'virement',
-      reference: item.reference || null,
+      // « Encaisser » saisit date_paiement / mode_paiement / reference_paiement : ils étaient perdus
+      // (un chèque du 26 sept. enregistré comme virement du jour — revue du 9 oct. 2026).
+      date: item.date || item.date_paiement || (item.createdAt ? item.createdAt.slice(0, 10) : null),
+      mode: item.mode || item.modePaiement || item.mode_paiement || 'virement',
+      reference: item.reference || item.reference_paiement || null,
       notes: item.notes || null,
     }),
     fromSupabase: (row) => ({

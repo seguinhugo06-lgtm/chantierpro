@@ -33,6 +33,7 @@ import useKeepInViewport from '../../hooks/useKeepInViewport';
 import { formatClientName } from '../../lib/formatters';
 import KPICard from '../ui/KPICard';
 import { remettreFichier } from '../../lib/natif';
+import { statutFacture, resteAPayer, joursDeRetard, echeance } from '../../lib/paiementsFacture';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -700,16 +701,18 @@ export default function TresorerieModule({
   // ── "À encaisser maintenant" computation ───────────────────────────
   const encaisserData = useMemo(() => {
     const now = new Date();
+    // Factures seulement (panne verte du 9 oct. : la liste comptait des DEVIS signés, avec un
+    // « retard » calculé sur leur date de validité). Reste dû et échéance : src/lib/paiementsFacture.js.
     const facturesImpayees = devis.filter(d =>
-      (d.type === 'facture' || (d.statut === 'accepte' || d.statut === 'signe')) &&
-      !['payee', 'paye', 'refuse', 'brouillon'].includes(d.statut)
+      d.type === 'facture' && d.facture_type !== 'avoir' &&
+      ['envoye', 'vu', 'facture', 'partielle', 'en_retard'].includes(statutFacture(d, paiements, now))
     );
 
     const items = facturesImpayees.map(f => {
-      const echeance = f.date_echeance || f.date_validite || f.date;
-      const echeanceDate = echeance ? new Date(echeance) : null;
-      const reste = (f.total_ttc || 0) - (f.montant_paye || 0);
-      const joursRetard = echeanceDate ? Math.floor((now - echeanceDate) / (1000 * 60 * 60 * 24)) : 0;
+      const ech = echeance(f);
+      const echeance_ = ech ? ech.toISOString().slice(0, 10) : '';
+      const reste = resteAPayer(f, paiements);
+      const joursRetard = joursDeRetard(f, paiements, now);
       const client = clients.find(c => c.id === f.client_id);
       const clientNom = client ? `${client.prenom || ''} ${client.nom || ''}`.trim() : `Client #${f.client_id || '?'}`;
       const clientTel = client?.telephone || client?.tel || '';
@@ -720,7 +723,7 @@ export default function TresorerieModule({
         clientNom,
         clientTel,
         montant: reste,
-        echeance: echeance || '',
+        echeance: echeance_,
         joursRetard,
         isOverdue: joursRetard > 0,
         statut: f.statut,
@@ -733,7 +736,7 @@ export default function TresorerieModule({
     const overdueTotal = overdueItems.reduce((s, i) => s + i.montant, 0);
 
     return { items, totalAEncaisser, overdueItems, overdueTotal };
-  }, [devis, clients]);
+  }, [devis, clients, paiements]);
 
   // ── Escape key handler: close all modals/panels ──────────────────
   useEffect(() => {

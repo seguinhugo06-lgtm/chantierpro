@@ -10,6 +10,7 @@
 import { filterValidLignes, formatClientName } from './formatters';
 import { mentionTvaReduiteHtml } from './mentionTvaReduite';
 import { urlPublique } from './urlPublique';
+import { euros, pourcent } from './formatDocument';
 
 /**
  * Formatte un RCS complet
@@ -122,9 +123,9 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mod
       <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;vertical-align:top;white-space:pre-line">${l.description || ''}</td>
       <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${l.quantite || ''}</td>
       <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${l.unite || 'unité'}</td>
-      <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:right">${pu.toFixed(2)} €</td>
+      <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:right">${euros(pu)}</td>
       <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${isMicro ? '-' : (l.tva !== undefined ? l.tva : (doc.tvaRate || doc.tva_rate || 10)) + '%'}</td>
-      <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:right;font-weight:600;${total < 0 ? 'color:#dc2626;' : ''}">${total.toFixed(2)} €</td>
+      <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:right;font-weight:600;${total < 0 ? 'color:#dc2626;' : ''}">${euros(total)}</td>
     </tr>`;
   };
 
@@ -143,7 +144,7 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mod
           : '';
         const rows = s.lignes.map(renderRow).join('');
         const subtotal = s.titre
-          ? `<tr><td colspan="5" style="padding:6px 8px;text-align:right;font-size:8.5pt;color:#64748b;font-style:italic">Sous-total ${s.titre}</td><td style="padding:6px 8px;text-align:right;font-weight:700;font-size:9pt">${sub.toFixed(2)} €</td></tr>`
+          ? `<tr><td colspan="5" style="padding:6px 8px;text-align:right;font-size:8.5pt;color:#64748b;font-style:italic">Sous-total ${s.titre}</td><td style="padding:6px 8px;text-align:right;font-weight:700;font-size:9pt">${euros(sub)}</td></tr>`
           : '';
         return header + rows + subtotal;
       }).join('')
@@ -285,7 +286,7 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mod
         Date: ${new Date(doc.date).toLocaleDateString('fr-FR')}<br>
         ${isFacture && doc.date_echeance ? `Échéance: ${new Date(doc.date_echeance).toLocaleDateString('fr-FR')}<br>` : ''}
         ${isFacture && doc.devis_source_id && doc.devis_source_numero ? `Réf. devis: ${doc.devis_source_numero}<br>` : ''}
-        ${isFacture && doc.acompte_pct && doc.facture_type === 'acompte' ? `Acompte: ${doc.acompte_pct}%<br>` : ''}
+        ${isFacture && doc.acompte_pct && doc.facture_type === 'acompte' ? `Acompte: ${pourcent(doc.acompte_pct)}<br>` : ''}
         ${!isFacture ? `<strong>Valable jusqu'au: ${dateValidite.toLocaleDateString('fr-FR')}</strong>` : ''}
       </div>
     </div>
@@ -330,27 +331,27 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mod
 
   <!-- TOTAUX -->
   <div class="totals">
-    <div class="row sub"><span>Total HT</span><span>${totalHT.toFixed(2)} €</span></div>
-    ${remise ? `<div class="row sub" style="color:#dc2626"><span>Remise ${remise}%</span><span>-${(totalHT * remise / 100).toFixed(2)} €</span></div>` : ''}
+    <div class="row sub"><span>Total HT</span><span>${euros(totalHT)}</span></div>
+    ${remise ? `<div class="row sub" style="color:#dc2626"><span>Remise ${pourcent(remise)}</span><span>-${euros((totalHT * remise / 100))}</span></div>` : ''}
     ${!isMicro ? (Object.keys(calculatedTvaDetails).length > 0
       ? Object.entries(calculatedTvaDetails).filter(([_, data]) => data.base > 0).sort((a, b) => parseFloat(a[0]) - parseFloat(b[0])).map(([taux, data]) =>
-        `<div class="row sub"><span>TVA ${taux}%${Object.keys(calculatedTvaDetails).length > 1 ? ` (base: ${data.base.toFixed(2)} €)` : ''}</span><span>${data.montant.toFixed(2)} €</span></div>`
+        `<div class="row sub"><span>TVA ${pourcent(taux)}${Object.keys(calculatedTvaDetails).length > 1 ? ` (base: ${euros(data.base)})` : ''}</span><span>${euros(data.montant)}</span></div>`
       ).join('')
-      : `<div class="row sub"><span>TVA ${doc.tvaRate || doc.tva_rate || 10}%</span><span>${tva.toFixed(2)} €</span></div>`
+      : `<div class="row sub"><span>TVA ${pourcent(doc.tvaRate || doc.tva_rate || 10)}</span><span>${euros(tva)}</span></div>`
     ) : ''}
-    <div class="row total"><span>Total TTC</span><span>${totalTTC.toFixed(2)} €</span></div>
+    <div class="row total"><span>Total TTC</span><span>${euros(totalTTC)}</span></div>
     ${echeancier && echeancier.etapes && echeancier.etapes.length > 0 ? `
     <div style="margin-top:12px;border-top:1px dashed #ccc;padding-top:10px;">
       <div style="font-size:8pt;font-weight:600;color:#334155;margin-bottom:6px;">ÉCHÉANCIER DE PAIEMENT</div>
       ${echeancier.etapes.map((et, idx) => {
         const statusIcon = et.statut === 'facture' || et.statut === 'paye' ? '✓' : et.statut === 'a_facturer' ? '○' : '○';
         const statusColor = et.statut === 'facture' || et.statut === 'paye' ? '#22c55e' : '#94a3b8';
-        return `<div class="row sub" style="padding:2px 0;"><span style="color:${statusColor};font-weight:500;">${statusIcon} ${et.label} (${et.pourcentage}%)</span><span>${(et.montant_ttc || 0).toFixed(2)} €</span></div>`;
+        return `<div class="row sub" style="padding:2px 0;"><span style="color:${statusColor};font-weight:500;">${statusIcon} ${et.label} (${pourcent(et.pourcentage)})</span><span>${euros((et.montant_ttc || 0))}</span></div>`;
       }).join('')}
     </div>
     ` : acomptePct ? `
-    <div class="row sub" style="margin-top:8px;border-top:1px dashed #ccc;padding-top:8px"><span>Acompte ${acomptePct}%</span><span>${(totalTTC * acomptePct / 100).toFixed(2)} €</span></div>
-    <div class="row sub"><span>Solde à régler</span><span>${(totalTTC * (100 - acomptePct) / 100).toFixed(2)} €</span></div>
+    <div class="row sub" style="margin-top:8px;border-top:1px dashed #ccc;padding-top:8px"><span>Acompte ${pourcent(acomptePct)}</span><span>${euros((totalTTC * acomptePct / 100))}</span></div>
+    <div class="row sub"><span>Solde à régler</span><span>${euros((totalTTC * (100 - acomptePct) / 100))}</span></div>
     ` : ''}
   </div>
 
@@ -553,12 +554,12 @@ export function buildSituationFactureHtml({ situation, parentDevis, client, chan
     return `<tr>
       <td style="padding:8px 6px;border-bottom:1px solid #e2e8f0;vertical-align:top;font-size:8pt">${l.description || ''}</td>
       <td style="padding:8px 6px;border-bottom:1px solid #e2e8f0;text-align:center">${l.quantite || ''} ${l.unite || ''}</td>
-      <td style="padding:8px 6px;border-bottom:1px solid #e2e8f0;text-align:right">${pu.toFixed(2)} €</td>
-      <td style="padding:8px 6px;border-bottom:1px solid #e2e8f0;text-align:right">${marcheHT.toFixed(2)} €</td>
-      <td style="padding:8px 6px;border-bottom:1px solid #e2e8f0;text-align:center;font-weight:600;color:${color}">${(l.cumulActuel || 0).toFixed(0)}%</td>
-      <td style="padding:8px 6px;border-bottom:1px solid #e2e8f0;text-align:right">${cumuleHT.toFixed(2)} €</td>
-      <td style="padding:8px 6px;border-bottom:1px solid #e2e8f0;text-align:right;color:#64748b">${precedentHT.toFixed(2)} €</td>
-      <td style="padding:8px 6px;border-bottom:1px solid #e2e8f0;text-align:right;font-weight:600">${situationHT.toFixed(2)} €</td>
+      <td style="padding:8px 6px;border-bottom:1px solid #e2e8f0;text-align:right">${euros(pu)}</td>
+      <td style="padding:8px 6px;border-bottom:1px solid #e2e8f0;text-align:right">${euros(marcheHT)}</td>
+      <td style="padding:8px 6px;border-bottom:1px solid #e2e8f0;text-align:center;font-weight:600;color:${color}">${pourcent((l.cumulActuel || 0).toFixed(0))}</td>
+      <td style="padding:8px 6px;border-bottom:1px solid #e2e8f0;text-align:right">${euros(cumuleHT)}</td>
+      <td style="padding:8px 6px;border-bottom:1px solid #e2e8f0;text-align:right;color:#64748b">${euros(precedentHT)}</td>
+      <td style="padding:8px 6px;border-bottom:1px solid #e2e8f0;text-align:right;font-weight:600">${euros(situationHT)}</td>
     </tr>`;
   }).join('');
 
@@ -573,8 +574,8 @@ export function buildSituationFactureHtml({ situation, parentDevis, client, chan
   // Build TVA rows (one per rate)
   const tvaRates = Object.entries(tvaParTaux).filter(([, d]) => d.base > 0).sort((a, b) => parseFloat(a[0]) - parseFloat(b[0]));
   const tvaRowsHTML = tvaRates.length > 1
-    ? tvaRates.map(([taux, data]) => `<div class="totals-row sub"><span>TVA ${taux}% (base ${data.base.toFixed(2)} €)</span><span>${data.montant.toFixed(2)} €</span></div>`).join('')
-    : `<div class="totals-row sub"><span>TVA ${tvaRates.length > 0 ? tvaRates[0][0] : defaultTvaRate}%</span><span>${totalTVA.toFixed(2)} €</span></div>`;
+    ? tvaRates.map(([taux, data]) => `<div class="totals-row sub"><span>TVA ${pourcent(taux)} (base ${euros(data.base)})</span><span>${euros(data.montant)}</span></div>`).join('')
+    : `<div class="totals-row sub"><span>TVA ${pourcent(tvaRates.length > 0 ? tvaRates[0][0] : defaultTvaRate)}</span><span>${euros(totalTVA)}</span></div>`;
 
   return `<!DOCTYPE html>
 <html lang="fr">
@@ -683,26 +684,26 @@ export function buildSituationFactureHtml({ situation, parentDevis, client, chan
     <tfoot>
       <tr>
         <td colspan="3" style="text-align:right">TOTAUX</td>
-        <td style="text-align:right">${totalMarcheHT.toFixed(2)} €</td>
+        <td style="text-align:right">${euros(totalMarcheHT)}</td>
         <td></td>
-        <td style="text-align:right">${totalCumuleHT.toFixed(2)} €</td>
-        <td style="text-align:right">${totalPrecedentHT.toFixed(2)} €</td>
-        <td style="text-align:right;font-weight:700">${totalSituationHT.toFixed(2)} €</td>
+        <td style="text-align:right">${euros(totalCumuleHT)}</td>
+        <td style="text-align:right">${euros(totalPrecedentHT)}</td>
+        <td style="text-align:right;font-weight:700">${euros(totalSituationHT)}</td>
       </tr>
     </tfoot>
   </table>
 
   <!-- TOTAUX -->
   <div class="totals-section">
-    <div class="totals-row sub"><span>Total marché HT</span><span>${totalMarcheHT.toFixed(2)} €</span></div>
-    <div class="totals-row sub"><span>Travaux cumulés HT</span><span>${totalCumuleHT.toFixed(2)} €</span></div>
-    <div class="totals-row sub"><span>Travaux précédents HT</span><span style="color:#64748b">${totalPrecedentHT.toFixed(2)} €</span></div>
-    <div class="totals-row sep"><span><strong>Travaux de la situation HT</strong></span><span><strong>${totalSituationHT.toFixed(2)} €</strong></span></div>
+    <div class="totals-row sub"><span>Total marché HT</span><span>${euros(totalMarcheHT)}</span></div>
+    <div class="totals-row sub"><span>Travaux cumulés HT</span><span>${euros(totalCumuleHT)}</span></div>
+    <div class="totals-row sub"><span>Travaux précédents HT</span><span style="color:#64748b">${euros(totalPrecedentHT)}</span></div>
+    <div class="totals-row sep"><span><strong>Travaux de la situation HT</strong></span><span><strong>${euros(totalSituationHT)}</strong></span></div>
     ${tvaRowsHTML}
-    <div class="totals-row sub"><span><strong>Montant situation TTC</strong></span><span><strong>${totalSituationTTC.toFixed(2)} €</strong></span></div>
-    ${retenueGarantiePct > 0 ? `<div class="totals-row deduction"><span>Retenue de garantie (${retenueGarantiePct}%)</span><span>- ${retenueGarantie.toFixed(2)} €</span></div>` : ''}
-    ${acompteVerse > 0 ? `<div class="totals-row deduction"><span>Acomptes déjà versés</span><span>- ${acompteVerse.toFixed(2)} €</span></div>` : ''}
-    <div class="totals-row grand-total"><span>NET À PAYER</span><span>${netAPayer.toFixed(2)} €</span></div>
+    <div class="totals-row sub"><span><strong>Montant situation TTC</strong></span><span><strong>${euros(totalSituationTTC)}</strong></span></div>
+    ${retenueGarantiePct > 0 ? `<div class="totals-row deduction"><span>Retenue de garantie (${pourcent(retenueGarantiePct)})</span><span>- ${euros(retenueGarantie)}</span></div>` : ''}
+    ${acompteVerse > 0 ? `<div class="totals-row deduction"><span>Acomptes déjà versés</span><span>- ${euros(acompteVerse)}</span></div>` : ''}
+    <div class="totals-row grand-total"><span>NET À PAYER</span><span>${euros(netAPayer)}</span></div>
   </div>
 
   <!-- CONDITIONS -->
@@ -711,7 +712,7 @@ export function buildSituationFactureHtml({ situation, parentDevis, client, chan
     Paiement à ${e.delaiPaiement} jours à compter de la date de facture.<br>
     ${e.iban ? `<strong>IBAN:</strong> ${e.iban}` : ''} ${e.bic ? ` · <strong>BIC:</strong> ${e.bic}` : ''}<br>
     Pénalités de retard: taux BCE + 10 points. Indemnité forfaitaire de recouvrement: 40 €.
-    ${retenueGarantiePct > 0 ? `<br><br><strong>Retenue de garantie:</strong> ${retenueGarantiePct}% retenus conformément à la loi n°71-584 du 16 juillet 1971. Libérable 1 an après la réception des travaux sauf réserves.` : ''}
+    ${retenueGarantiePct > 0 ? `<br><br><strong>Retenue de garantie:</strong> ${pourcent(retenueGarantiePct)} retenus conformément à la loi n°71-584 du 16 juillet 1971. Libérable 1 an après la réception des travaux sauf réserves.` : ''}
   </div>
 
   <!-- FOOTER -->

@@ -49,6 +49,9 @@ import { mapError } from '../lib/errorMapper';
 import { formatMoney as fmtMoney, filterValidLignes, formatClientName } from '../lib/formatters';
 import { normalizeNumero } from '../lib/devis-utils';
 import { calcConversion, formatConversion } from '../lib/statsUtils';
+import { apresPaiement, statutFacture, resteAPayer, dejaPaye } from '../lib/paiementsFacture';
+import { statut as libelleStatut } from '../lib/statuts';
+import { pourcent } from '../lib/formatDocument';
 import { useDebounce } from '../hooks/useDebounce';
 import { useDevisModals } from '../hooks/useDevisModals';
 import { isFacturXCompliant } from '../lib/facturx';
@@ -293,6 +296,9 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   // Client & chantier filters
   const [clientFilter, setClientFilter] = useState('');
   const [chantierFilter, setChantierFilter] = useState('');
+
+  // Statuts déduits des paiements (src/lib/paiementsFacture.js) → couleurs de la table existante.
+  const COULEUR_STATUT_VU = { partielle: 'acompte_facture', en_retard: 'refuse' };
 
   // Status color bar map for cards
   const STATUS_BAR_COLORS = { brouillon: '#94a3b8', envoye: '#3b82f6', vu: '#3b82f6', signe: '#10b981', accepte: '#10b981', facture: '#8b5cf6', refuse: '#ef4444', expire: '#f59e0b', payee: '#10b981', acompte_facture: '#8b5cf6' };
@@ -1128,13 +1134,18 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         document: selected?.numero,
       });
     }
-    // Auto-update facture status to 'payee' if fully paid
+    // Montant reçu cumulé, et « payée » une fois soldée (src/lib/paiementsFacture.js). Avant (9 oct.) :
+    // montant_paye n'était pas mis à jour (reste dû entier en Trésorerie et sur la page de paiement en
+    // ligne) et le cumul lisait p.montant au lieu de amount — un 2e acompte ne soldait jamais.
     if (selected?.type === 'facture' && selected.statut !== 'payee') {
-      const existingPaiements = paiements.filter(p => p.facture_id === selected.id || p.document === selected.numero);
-      const totalPaye = existingPaiements.reduce((s, p) => s + (p.montant || 0), 0) + (paymentData.amount || 0);
-      if (totalPaye >= (selected.total_ttc || 0)) {
+      const suite = apresPaiement(selected, paiements, paymentData.amount || 0);
+      if (!suite.soldee) {
+        onUpdate(selected.id, { montant_paye: suite.montant_paye });
+        setSelected(s => s ? { ...s, montant_paye: suite.montant_paye } : s);
+      }
+      if (suite.soldee) {
         // Build update payload — include offline payment metadata if available
-        const updatePayload = { statut: 'payee' };
+        const updatePayload = { statut: 'payee', montant_paye: suite.montant_paye };
         if (paymentData.date_paiement) updatePayload.date_paiement = paymentData.date_paiement;
         if (paymentData.mode_paiement) updatePayload.mode_paiement = paymentData.mode_paiement;
         if (paymentData.reference_paiement) updatePayload.reference_paiement = paymentData.reference_paiement;
@@ -1240,7 +1251,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       acompte_pct: etape.pourcentage,
       objet: last
         ? `Facture de solde — ${selected.objet || selected.numero || ''}`
-        : `Acompte ${etape.pourcentage}% — ${etape.label || ''} — ${selected.objet || selected.numero || ''}`,
+        : `Acompte ${pourcent(etape.pourcentage)} — ${etape.label || ''} — ${selected.objet || selected.numero || ''}`,
     };
 
     await onSubmit(facture);
@@ -1337,7 +1348,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       date_echeance: new Date(Date.now() + (entreprise?.delaiPaiement || 30) * 86400000).toISOString().split('T')[0],
       tvaRate: selected.tvaRate || entreprise?.tvaDefaut || 20,
       tvaParTaux, tvaDetails: tvaParTaux,
-      lignes: [{ id: '1', description: `Acompte ${acomptePct}% sur devis ${selected.numero}`, quantite: 1, unite: 'forfait', prixUnitaire: montantHT, montant: montantHT, tva: selected.tvaRate || entreprise?.tvaDefaut || 20 }],
+      lignes: [{ id: '1', description: `Acompte ${pourcent(acomptePct)} sur devis ${selected.numero}`, quantite: 1, unite: 'forfait', prixUnitaire: montantHT, montant: montantHT, tva: selected.tvaRate || entreprise?.tvaDefaut || 20 }],
       total_ht: montantHT, tva, total_ttc: ttc, acompte_pct: acomptePct
     };
     await onSubmit(facture);
@@ -1667,16 +1678,16 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   <!-- TOTAUX -->
   <div class="totals">
     <div class="row sub"><span>Total HT</span><span>${formatMoney(doc.total_ht||0)}</span></div>
-    ${doc.remise ? `<div class="row sub" style="color:#dc2626"><span>Remise ${doc.remise}%</span><span>-${formatMoney((doc.total_ht||0) * doc.remise / 100)}</span></div>` : ''}
+    ${doc.remise ? `<div class="row sub" style="color:#dc2626"><span>Remise ${pourcent(doc.remise)}</span><span>-${formatMoney((doc.total_ht||0) * doc.remise / 100)}</span></div>` : ''}
     ${!isMicro ? (Object.keys(calculatedTvaDetails).length > 0
       ? Object.entries(calculatedTvaDetails).filter(([_, data]) => data.base > 0).sort((a, b) => parseFloat(a[0]) - parseFloat(b[0])).map(([taux, data]) =>
-        `<div class="row sub"><span>TVA ${taux}%${Object.keys(calculatedTvaDetails).length > 1 ? ` (base: ${formatMoney(data.base)})` : ''}</span><span>${formatMoney(data.montant)}</span></div>`
+        `<div class="row sub"><span>TVA ${pourcent(taux)}${Object.keys(calculatedTvaDetails).length > 1 ? ` (base: ${formatMoney(data.base)})` : ''}</span><span>${formatMoney(data.montant)}</span></div>`
       ).join('')
-      : `<div class="row sub"><span>TVA ${doc.tvaRate||10}%</span><span>${formatMoney(doc.tva||0)}</span></div>`
+      : `<div class="row sub"><span>TVA ${pourcent(doc.tvaRate||10)}</span><span>${formatMoney(doc.tva||0)}</span></div>`
     ) : ''}
     <div class="row total"><span>Total TTC</span><span>${formatMoney(doc.total_ttc||0)}</span></div>
     ${doc.acompte_pct ? `
-    <div class="row sub" style="margin-top:8px;border-top:1px dashed #ccc;padding-top:8px"><span>Acompte ${doc.acompte_pct}%</span><span>${formatMoney((doc.total_ttc||0) * doc.acompte_pct / 100)}</span></div>
+    <div class="row sub" style="margin-top:8px;border-top:1px dashed #ccc;padding-top:8px"><span>Acompte ${pourcent(doc.acompte_pct)}</span><span>${formatMoney((doc.total_ttc||0) * doc.acompte_pct / 100)}</span></div>
     <div class="row sub"><span>Solde à régler</span><span>${formatMoney((doc.total_ttc||0) * (100-doc.acompte_pct) / 100)}</span></div>
     ` : ''}
   </div>
@@ -1701,7 +1712,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         <strong>Délai de paiement</strong><br>
         ${doc.conditionsPaiement && CONDITIONS_PAIEMENT[doc.conditionsPaiement] ? CONDITIONS_PAIEMENT[doc.conditionsPaiement] : `${entreprise?.delaiPaiement || 30} jours`} à compter de la date ${isFacture ? 'de facture' : 'de réception des travaux'}.<br><br>
         <strong>Pénalités de retard</strong><br>
-        Taux annuel: ${entreprise?.tauxPenalites || entreprise?.tauxPenaliteRetard || 10}% (3 fois le taux directeur BCE).<br>
+        Taux annuel: ${pourcent(entreprise?.tauxPenalites || entreprise?.tauxPenaliteRetard || 10)} (3 fois le taux directeur BCE).<br>
         Indemnité forfaitaire de recouvrement: 40 € (art. D441-5 C. com.)
       </div>
     </div>
@@ -2388,10 +2399,15 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 
     const nextAction = getNextAction();
 
+    // Statut d'une facture déduit de ses paiements (src/lib/paiementsFacture.js) : une facture soldée
+    // n'affiche plus « à encaisser », ni relance, ni « Encaisser » (revue du 9 oct. 2026).
+    const factureVue = selected.type === 'facture' && !isAvoir ? statutFacture(selected, paiements) : null;
+    const factureSoldee = factureVue === 'payee';
+    const resteFacture = selected.type === 'facture' ? resteAPayer(selected, paiements) : 0;
     // Calculate days since for relance alert
     const daysSinceCreation = Math.floor((new Date() - new Date(selected.date)) / 86400000);
-    const isOverdue = daysSinceCreation > 30;
-    const showRelanceAlert = selected.type === 'facture' && selected.statut !== 'payee' && daysSinceCreation >= 7;
+    const isOverdue = factureVue === 'en_retard';
+    const showRelanceAlert = selected.type === 'facture' && !factureSoldee && daysSinceCreation >= 7;
 
     // Get primary CTA based on status
     const getPrimaryCTA = () => {
@@ -2417,7 +2433,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           if (ok) { onUpdate(selected.id, { statut: 'payee' }); setSelected(s => ({ ...s, statut: 'payee' })); setSnackbar({ type: 'success', message: `Avoir ${selected.numero} appliqué` }); }
         }, color: 'bg-emerald-500 hover:bg-emerald-600' };
       } else {
-        if (selected.statut !== 'payee') return { label: 'Encaisser', icon: CreditCard, action: () => setShowPaymentModal(true), color: '', style: { background: couleur } };
+        if (!factureSoldee) return { label: 'Encaisser', icon: CreditCard, action: () => setShowPaymentModal(true), color: '', style: { background: couleur } };
       }
       return null;
     };
@@ -2809,7 +2825,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                 </>
               ) : (
                 <>
-                  {selected.statut !== 'payee' ? (
+                  {!factureSoldee ? (
                     <button
                       onClick={() => setShowPaymentModal(true)}
                       className="px-5 py-2.5 min-h-[44px] text-white rounded-xl text-sm font-semibold flex items-center gap-2 transition-all hover:opacity-90 shadow-md"
@@ -3100,7 +3116,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                     {isOverdue ? 'Facture en retard' : 'Facture en attente'} · {daysSinceCreation} jours
                   </p>
                   <p className={`text-xs ${isOverdue ? (isDark ? 'text-red-400' : 'text-red-600') : (isDark ? 'text-amber-400' : 'text-amber-600')}`}>
-                    {formatMoney(selected.total_ttc)} à encaisser
+                    {formatMoney(resteFacture)} à encaisser
                   </p>
                 </div>
               </div>
@@ -3136,7 +3152,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         )}
 
         {/* Relance Timeline Widget */}
-        {relances.isEnabled && (() => {
+        {relances.isEnabled && !factureSoldee && (() => {
           const docType = selected.type === 'facture' ? 'facture' : 'devis';
           const steps = docType === 'facture' ? relances.relanceConfig.factureSteps : relances.relanceConfig.devisSteps;
           const docExecs = relances.getDocumentTimeline(selected.id);
@@ -3175,7 +3191,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         })()}
 
         {/* Pénalités de retard */}
-        {selected.type === 'facture' && selected.statut !== 'payee' && (() => {
+        {selected.type === 'facture' && !factureSoldee && (() => {
           const pen = calculatePenalites(selected);
           if (!pen) return null;
           return (
@@ -3349,7 +3365,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                     if (tvaMap && typeof tvaMap === 'object' && Object.keys(tvaMap).length > 0) {
                       return Object.entries(tvaMap).map(([rate, info]) => (
                         <div key={rate} className={`flex justify-between py-1 text-sm ${textSecondary}`}>
-                          <span>TVA {rate}%</span>
+                          <span>TVA {pourcent(rate)}</span>
                           <span>{formatMoney(typeof info === 'object' ? info.montant : info)}</span>
                         </div>
                       ));
@@ -3365,7 +3381,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                     if (Object.keys(rates).length > 0) {
                       return Object.entries(rates).map(([rate, montant]) => (
                         <div key={rate} className={`flex justify-between py-1 text-sm ${textSecondary}`}>
-                          <span>TVA {rate}%</span>
+                          <span>TVA {pourcent(rate)}</span>
                           <span>{formatMoney(montant)}</span>
                         </div>
                       ));
@@ -3373,14 +3389,14 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                     // Last resort: show total TVA with stored rate
                     return (
                       <div className={`flex justify-between py-1 text-sm ${textSecondary}`}>
-                        <span>TVA {selected.tvaRate || entreprise?.tvaDefaut || 20}%</span>
+                        <span>TVA {pourcent(selected.tvaRate || entreprise?.tvaDefaut || 20)}</span>
                         <span>{formatMoney(selected.tva || selected.total_tva || 0)}</span>
                       </div>
                     );
                   })()}
                   {selected.remise > 0 && (
                     <div className={`flex justify-between py-1 text-sm ${textSecondary}`}>
-                      <span>Remise {selected.remise}%</span>
+                      <span>Remise {pourcent(selected.remise)}</span>
                       <span>-{formatMoney(selected.total_ht * selected.remise / (100 - selected.remise))}</span>
                     </div>
                   )}
@@ -4165,8 +4181,10 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           client={selected ? clients.find(c => c.id === selected.client_id) : null}
           onPaymentSaved={async (payment) => {
             if (selected) {
-              const updatedMontantPaye = (selected.montant_paye || 0) + (payment.montant || 0);
-              const isPaid = updatedMontantPaye >= (selected.total_ttc || 0);
+              // Même calcul que « Encaisser » : cumul avec les paiements déjà enregistrés.
+              const suite = apresPaiement(selected, paiements, payment.montant ?? payment.amount ?? 0);
+              const updatedMontantPaye = suite.montant_paye;
+              const isPaid = suite.soldee;
               onUpdate(selected.id, {
                 montant_paye: updatedMontantPaye,
                 ...(isPaid ? { statut: 'payee' } : {}),
@@ -4692,7 +4710,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
               {form.remise > 0 && <div className="flex justify-between py-1 text-red-500"><span>Remise {form.remise}%</span><span>-{formatMoney(totals.remiseAmount)}</span></div>}
               {!isMicro && Object.entries(totals.tvaParTaux).filter(([_, data]) => data.base > 0).sort((a, b) => parseFloat(a[0]) - parseFloat(b[0])).map(([taux, data]) => (
                 <div key={taux} className={`flex justify-between py-1 text-sm ${textSecondary}`}>
-                  <span>TVA {taux}%</span>
+                  <span>TVA {pourcent(taux)}</span>
                   <span>{formatMoney(data.montant)}</span>
                 </div>
               ))}
@@ -4899,12 +4917,16 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           return true;
         });
         const devisEnvoye = cleanDevis.filter(d => d.type === 'devis' && ['envoye', 'vu'].includes(d.statut));
-        const facturesEnAttente = cleanDevis.filter(d => d.type === 'facture' && d.statut !== 'payee');
-        const facturesPayees = cleanDevis.filter(d => d.type === 'facture' && d.statut === 'payee');
-        const facturesEnRetard = facturesEnAttente.filter(f => Math.floor((Date.now() - new Date(f.date)) / 86400000) > 30);
-        const montantPayees = facturesPayees.reduce((s, f) => s + (f.total_ttc || 0), 0);
+        // Mêmes définitions que l'Accueil et la Trésorerie : reste dû, retard après l'échéance.
+        const facturesEnAttente = cleanDevis.filter(d => d.type === 'facture' && d.facture_type !== 'avoir' && !['payee', 'brouillon', 'annulee'].includes(statutFacture(d, paiements)));
+        const facturesPayees = cleanDevis.filter(d => d.type === 'facture' && d.facture_type !== 'avoir' && statutFacture(d, paiements) === 'payee');
+        const facturesEnRetard = facturesEnAttente.filter(f => statutFacture(f, paiements) === 'en_retard');
+        // Encaissé = l'argent reçu (acomptes partiels compris), pas seulement les factures soldées.
+        // Une facture marquée « payée » à la main, sans paiement saisi, compte pour son total.
+        const montantPayees = cleanDevis.filter(d => d.type === 'facture' && d.facture_type !== 'avoir')
+          .reduce((s, f) => s + (statutFacture(f, paiements) === 'payee' ? Math.max(dejaPaye(f, paiements), f.total_ttc || 0) : dejaPaye(f, paiements)), 0);
         const montantEnCours = devisEnvoye.reduce((s, d) => s + (d.total_ttc || 0), 0);
-        const montantAEncaisser = facturesEnAttente.reduce((s, f) => s + (f.total_ttc || 0), 0);
+        const montantAEncaisser = facturesEnAttente.reduce((s, f) => s + resteAPayer(f, paiements), 0);
         const avoirsEmis = cleanDevis.filter(d => d.facture_type === 'avoir');
         const montantAvoirs = avoirsEmis.reduce((s, a) => s + Math.abs(a.total_ttc || 0), 0);
         const conversionResult = calcConversion(cleanDevis);
@@ -5280,8 +5302,9 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                 {getTableSorted(filtered).map((d, idx) => {
                   const client = clients.find(c => c.id === d.client_id);
                   const clientName = cleanClientName(client) || d.client_nom || '—';
-                  const statusColor = DEVIS_STATUS_COLORS[d.statut] || DEVIS_STATUS_COLORS.brouillon;
-                  const statusLabel = d.statut === 'accepte' ? 'Signé' : (DEVIS_STATUS_LABELS[d.statut] || d.statut);
+                  const statutVu = d.type === 'facture' && d.facture_type !== 'avoir' ? statutFacture(d, paiements) : d.statut;
+                  const statusColor = DEVIS_STATUS_COLORS[COULEUR_STATUT_VU[statutVu] || statutVu] || DEVIS_STATUS_COLORS.brouillon;
+                  const statusLabel = d.type === 'facture' && d.facture_type !== 'avoir' ? libelleStatut('facture', statutVu).libelle : (d.statut === 'accepte' ? 'Signé' : (DEVIS_STATUS_LABELS[d.statut] || d.statut));
                   const isAvoirItem = d.facture_type === 'avoir';
                   const isAcompteRow = d.facture_type === 'acompte' || d.facture_type === 'solde';
                   const rowBorderColor = isAvoirItem ? '#f87171' : isAcompteRow ? '#8b5cf6' : d.type === 'facture' ? '#10b981' : couleur;
@@ -5353,8 +5376,9 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           const hasAcompte = d.type === 'devis' && getAcompteFacture(d.id);
           const chantier = chantiers.find(ch => ch.id === d.chantier_id);
           const daysSince = Math.floor((Date.now() - new Date(d.date)) / 86400000);
-          const statusColor = DEVIS_STATUS_COLORS[d.statut] || DEVIS_STATUS_COLORS.brouillon;
-          const statusLabel = d.statut === 'accepte' ? 'Signé' : (DEVIS_STATUS_LABELS[d.statut] || d.statut);
+          const statutVu = d.type === 'facture' && d.facture_type !== 'avoir' ? statutFacture(d, paiements) : d.statut;
+                  const statusColor = DEVIS_STATUS_COLORS[COULEUR_STATUT_VU[statutVu] || statutVu] || DEVIS_STATUS_COLORS.brouillon;
+          const statusLabel = d.type === 'facture' && d.facture_type !== 'avoir' ? libelleStatut('facture', statutVu).libelle : (d.statut === 'accepte' ? 'Signé' : (DEVIS_STATUS_LABELS[d.statut] || d.statut));
 
           // Follow-up time indicator for sent devis
           const getFollowUpInfo = () => {
@@ -5385,7 +5409,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
             if (d.statut === 'brouillon' && getDevisTTC(d) <= 0 && canPerform('devis', 'edit')) return { label: 'Compléter', Icon: Edit3, cls: 'text-white', style: { background: couleur }, fn: (e) => { e.stopPropagation(); setSelected(d); setMode('preview'); } };
             if (['envoye', 'vu'].includes(d.statut) && canPerform('devis', 'send')) return { label: 'Relancer', Icon: Mail, cls: isDark ? 'bg-amber-600 hover:bg-amber-500 text-white' : 'bg-amber-500 hover:bg-amber-600 text-white', fn: (e) => { e.stopPropagation(); sendEmail(d); } };
             if ((d.statut === 'accepte' || d.statut === 'signe') && d.type === 'devis') return { label: 'Facturer', Icon: Receipt, cls: 'bg-emerald-500 hover:bg-emerald-600 text-white', fn: (e) => { e.stopPropagation(); setSelected(d); setMode('preview'); } };
-            if (d.type === 'facture' && d.statut !== 'payee') return { label: 'Encaisser', Icon: CreditCard, cls: 'text-white', style: { background: couleur }, fn: (e) => { e.stopPropagation(); setSelected(d); setMode('preview'); } };
+            if (d.type === 'facture' && statutVu !== 'payee') return { label: 'Encaisser', Icon: CreditCard, cls: 'text-white', style: { background: couleur }, fn: (e) => { e.stopPropagation(); setSelected(d); setMode('preview'); } };
             if (d.statut === 'refuse' && canPerform('devis', 'create')) return { label: 'Dupliquer', Icon: Copy, cls: isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600', fn: (e) => { e.stopPropagation(); duplicateDocument(d); } };
             if (d.statut === 'payee') return null;
             return null;
@@ -5465,7 +5489,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                           </span>
                         );
                       })()}
-                      {d.statut === 'envoye' && (() => {
+                      {statutVu === 'envoye' && (() => {
                         const sentDate = d.updated_at || d.date;
                         const daysSent = Math.floor((Date.now() - new Date(sentDate)) / 86400000);
                         if (daysSent <= 7) return null;
