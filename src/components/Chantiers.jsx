@@ -1,7 +1,12 @@
 import React, { useState, useEffect, useRef, useCallback, Suspense, lazy } from 'react';
-import { Plus, ArrowLeft, ArrowRight, Edit3, Trash2, Check, X, Camera, MapPin, Phone, Clock, Calendar, DollarSign, TrendingUp, TrendingDown, AlertTriangle, Package, Users, FileText, ChevronRight, ChevronDown, ChevronUp, Save, Image, StickyNote, CheckSquare, Square, MoreVertical, MoreHorizontal, Percent, Coins, Receipt, Banknote, PiggyBank, Target, BarChart3, CircleDollarSign, Wallet, MessageSquare, AlertCircle, ArrowUpRight, ArrowDownRight, UserCog, Download, Share2, ArrowUpDown, SortAsc, SortDesc, Building2, Zap, Sparkles, ShoppingCart, FolderOpen, Wifi, WifiOff, Sun, Cloud, CloudRain, Wind, Thermometer, GripVertical, CheckCircle, Copy, Archive, Search, Paperclip, Upload, Map, List, ClipboardList, CheckCircle2, Navigation, Mic, CalendarPlus, Moon, Shield } from 'lucide-react';
+import { ArrowUpDown, Plus, ArrowLeft, ArrowRight, Edit3, Trash2, Check, X, Camera, MapPin, Phone, Clock, Calendar, DollarSign, TrendingDown, AlertTriangle, Package, FileText, ChevronRight, ChevronDown, ChevronUp, StickyNote, CheckSquare, MoreVertical, Coins, Receipt, Target, BarChart3, Wallet, MessageSquare, AlertCircle, ArrowUpRight, ArrowDownRight, UserCog, Download, Building2, Sparkles, FolderOpen, Sun, Cloud, CloudRain, CheckCircle, Copy, Archive, Search, Paperclip, ClipboardList, CheckCircle2, Navigation, CalendarPlus, Shield } from 'lucide-react';
+import { PastilleStatut } from './ui/Pastille';
+import Pastille from './ui/Pastille';
+import { Bouton, BoutonIcone } from './ui/Bouton';
+import LigneListe from './ui/LigneListe';
+import { Segmente } from './ui/Onglets';
+import { ChampRecherche, BoutonVolet, Volet, ListeChoix, PucesActives, SegmentDefilant } from './ui/Filtres';
 import PageHeader from './ui/PageHeader';
-import StatusChip from './ui/StatusChip';
 import KPICard from './ui/KPICard';
 import { useSubscriptionStore } from '../stores/subscriptionStore';
 
@@ -244,6 +249,10 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
   const [filterStatus, setFilterStatus] = useState('all'); // all, en_cours, prospect, termine
   const [filterClient, setFilterClient] = useState(''); // Filter by client_id
   const [searchQuery, setSearchQuery] = useState(''); // Text search
+  // Recherche / Filtres / Trier : boîte à outils commune (ui/Filtres.jsx), comme Devis, Clients et Tâches.
+  const [voletListe, setVoletListe] = useState(null); // null | 'filtres' | 'tri'
+  const boutonFiltresRef = useRef(null);
+  const boutonTriRef = useRef(null);
   const [viewMode, setViewMode] = useState('list'); // list, map, or gantt
   const [ganttTasks, setGanttTasks] = useState(() => {
     try { return JSON.parse(localStorage.getItem('cp_gantt_tasks') || '[]'); } catch { return []; }
@@ -330,7 +339,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
     const value = n || 0;
     const rounded = Math.round(value);
     // Afficher sans décimale si proche d'un entier
-    return Math.abs(value - rounded) < 0.1 ? `${rounded}%` : `${value.toFixed(1)}%`;
+    return Math.abs(value - rounded) < 0.1 ? `${rounded} %` : `${value.toFixed(1).replace('.', ',')} %`;
   };
   const getMargeColor = (t) => t < 0 ? 'text-red-500' : t < 15 ? 'text-amber-500' : 'text-emerald-500';
   const getMargeLabel = (t) => t < 0 ? 'Négatif' : t < 15 ? 'Faible' : t < 30 ? 'Bon' : 'Excellent';
@@ -2839,54 +2848,16 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
         subtitle="Suivi de vos projets"
         isDark={isDark}
         color={couleur}
-        action={
-        <div className="flex items-center gap-2">
-          {/* List/Map toggle */}
-          <div className={`flex rounded-xl border overflow-hidden ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
-            <button
-              onClick={() => setViewMode('list')}
-              className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors ${viewMode === 'list' ? 'text-white' : isDark ? 'text-slate-300 hover:text-slate-200 bg-slate-800' : 'text-slate-500 hover:text-slate-700 bg-white'}`}
-              style={viewMode === 'list' ? { background: couleur } : {}}
-              aria-label="Vue liste"
-              title="Vue liste"
-            >
-              <List size={18} />
-            </button>
-            <button
-              onClick={() => setViewMode('gantt')}
-              className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors ${viewMode === 'gantt' ? 'text-white' : isDark ? 'text-slate-300 hover:text-slate-200 bg-slate-800' : 'text-slate-500 hover:text-slate-700 bg-white'}`}
-              style={viewMode === 'gantt' ? { background: couleur } : {}}
-              aria-label="Vue Gantt"
-              title="Vue Gantt"
-            >
-              <BarChart3 size={18} />
-            </button>
-            <button
-              onClick={() => setViewMode('map')}
-              className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors ${viewMode === 'map' ? 'text-white' : isDark ? 'text-slate-300 hover:text-slate-200 bg-slate-800' : 'text-slate-500 hover:text-slate-700 bg-white'}`}
-              style={viewMode === 'map' ? { background: couleur } : {}}
-              aria-label="Vue carte"
-              title="Vue carte"
-            >
-              <Map size={18} />
-            </button>
-            <button
-              onClick={() => setViewMode('garanties')}
-              className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors ${viewMode === 'garanties' ? 'text-white' : isDark ? 'text-slate-300 hover:text-slate-200 bg-slate-800' : 'text-slate-500 hover:text-slate-700 bg-white'}`}
-              style={viewMode === 'garanties' ? { background: couleur } : {}}
-              aria-label="Vue garanties"
-              title="Vue garanties"
-            >
-              <Shield size={18} />
-            </button>
-          </div>
-          {canPerform('chantier', 'create') && (
-          <button onClick={() => setShow(true)} className="w-11 h-11 sm:w-auto sm:h-11 sm:px-4 text-white rounded-xl text-sm flex items-center justify-center sm:gap-2 hover:shadow-lg transition-all" style={{background: couleur}}>
-            <Plus size={16} /><span className="hidden sm:inline">Nouveau</span>
-          </button>
-          )}
-        </div>
-        }
+        action={canPerform('chantier', 'create') ? (
+          <Bouton variante="principal" icone={Plus} onClick={() => setShow(true)}>Nouveau chantier</Bouton>
+        ) : null}
+      />
+
+      {/* Vues : un segment lisible (avant : quatre icônes sans nom, l'active remplie d'accent) */}
+      <Segmente
+        ariaLabel="Vue des chantiers" pleineLargeur className="sm:w-auto sm:inline-flex"
+        valeur={viewMode} onChange={setViewMode}
+        options={[{ valeur: 'list', libelle: 'Liste' }, { valeur: 'gantt', libelle: 'Frise' }, { valeur: 'map', libelle: 'Carte' }, { valeur: 'garanties', libelle: 'Garanties' }]}
       />
 
       {/* === BANDE KPI (design system énergique) === */}
@@ -2933,58 +2904,44 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
         if (chantiers.length === 0) return null;
 
         return (
-          <div className={`rounded-xl border overflow-hidden ${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-slate-200'}`}>
-            {/* Compact header — always visible */}
-            <button
-              onClick={() => chantiersToday.length > 0 && setTodayCollapsed(!todayCollapsed)}
-              className={`w-full px-4 py-2.5 flex items-center justify-between gap-2 transition-colors ${chantiersToday.length > 0 ? 'cursor-pointer' : 'cursor-default'} ${isDark ? 'hover:bg-slate-700/30' : 'hover:bg-slate-50'}`}
-            >
-              <div className="flex items-center gap-2 min-w-0">
-                {chantiersToday.length > 0 ? (
-                  <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-                ) : (
-                  <Calendar size={14} className={`shrink-0 ${textMuted}`} />
-                )}
-                <span className={`text-sm font-medium ${textPrimary}`}>
-                  {chantiersToday.length > 0
-                    ? `Aujourd'hui · ${chantiersToday.length} chantier${chantiersToday.length > 1 ? 's' : ''}`
-                    : 'Aucun chantier aujourd\'hui'
-                  }
+          <div className="bg-surface border border-bord rounded-2xl shadow-e1 overflow-hidden">
+            {/* En-tête : repli de la liste ; « Créer » à côté (plus de bouton dans un bouton) */}
+            <div className="flex items-center gap-2 pr-3">
+              <button
+                type="button"
+                onClick={() => chantiersToday.length > 0 && setTodayCollapsed(!todayCollapsed)}
+                aria-expanded={chantiersToday.length > 0 ? !todayCollapsed : undefined}
+                className="flex-1 min-w-0 min-h-[52px] px-4 flex items-center gap-2 text-left"
+              >
+                {chantiersToday.length > 0
+                  ? <span className="w-2 h-2 rounded-full bg-succes-point flex-shrink-0" aria-hidden="true" />
+                  : <Calendar size={16} className="flex-shrink-0 text-encre-3" aria-hidden="true" />}
+                <span className="text-base font-semibold text-encre truncate">
+                  {chantiersToday.length > 0 ? `Aujourd'hui · ${chantiersToday.length} chantier${chantiersToday.length > 1 ? 's' : ''}` : "Aucun chantier aujourd'hui"}
                 </span>
-                {tachesEnAttente > 0 && (
-                  <span className={`text-xs px-1.5 py-0.5 rounded-full ${isDark ? 'bg-amber-900/50 text-amber-400' : 'bg-amber-100 text-amber-700'}`}>
-                    {tachesEnAttente} tâche{tachesEnAttente > 1 ? 's' : ''}
-                  </span>
-                )}
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                {chantiersToday.length === 0 && (
-                  <button type="button" onClick={(e) => { e.stopPropagation(); setShow(true); }} className="px-2.5 py-1.5 rounded-lg text-xs font-medium text-white min-h-[44px] flex items-center" style={{ backgroundColor: couleur }}>
-                    <Plus size={14} className="inline mr-0.5" />Créer
-                  </button>
-                )}
-                {chantiersToday.length > 0 && (
-                  todayCollapsed ? <ChevronDown size={14} className={textMuted} /> : <ChevronUp size={14} className={textMuted} />
-                )}
-              </div>
-            </button>
-            {/* Expandable chantier list */}
+                {tachesEnAttente > 0 && <Pastille ton="alerte">{tachesEnAttente} tâche{tachesEnAttente > 1 ? 's' : ''}</Pastille>}
+                {chantiersToday.length > 0 && (todayCollapsed ? <ChevronDown size={18} className="ml-auto flex-shrink-0 text-encre-3" /> : <ChevronUp size={18} className="ml-auto flex-shrink-0 text-encre-3" />)}
+              </button>
+              {chantiersToday.length === 0 && <Bouton taille="compacte" icone={Plus} onClick={() => setShow(true)}>Créer</Bouton>}
+            </div>
             {chantiersToday.length > 0 && !todayCollapsed && (
-              <div className={`border-t ${isDark ? 'border-slate-700' : 'border-slate-100'}`}>
+              <div className="border-t border-bord divide-y divide-bord">
                 {chantiersToday.slice(0, 4).map(c => {
-                  const cl = clients.find(cl => cl.id === c.client_id);
+                  const cl = clients.find(x => x.id === c.client_id);
+                  const lieu = c.adresse || c.ville;
                   return (
-                    <button type="button" key={c.id} className={`px-4 py-2 flex items-center gap-3 w-full text-left ${isDark ? 'hover:bg-slate-700/50' : 'hover:bg-slate-50'} transition-colors cursor-pointer focus-visible:ring-2 outline-none ${isDark ? 'focus-visible:ring-slate-400' : 'focus-visible:ring-orange-400'}`} onClick={() => setView(c.id)}>
-                      <div className="flex-1 min-w-0">
-                        <p className={`text-sm font-medium line-clamp-2 ${textPrimary}`}>{c.nom}</p>
-                        <p className={`text-xs ${textMuted} truncate`}>
-                          {[cl ? formatClientName(cl, '') : '', c.ville || c.adresse].filter(Boolean).join(' · ')}
-                        </p>
-                      </div>
-                      {(c.adresse || c.ville) && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
+                    <div key={c.id} className="flex items-center">
+                      <LigneListe
+                        className="flex-1 min-w-0"
+                        onClick={() => setView(c.id)}
+                        chevron={!lieu}
+                        titre={c.nom}
+                        meta={[cl ? formatClientName(cl, '') : '', c.ville || c.adresse].filter(Boolean).join(' · ')}
+                      />
+                      {lieu && (
+                        <BoutonIcone
+                          icone={Navigation} variante="secondaire" className="mr-3" libelle={`Itinéraire vers ${c.nom}`}
+                          onClick={() => {
                             const address = encodeURIComponent(`${c.adresse || ''} ${c.codePostal || ''} ${c.ville || ''}`);
                             const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
                             const isAndroid = /Android/.test(navigator.userAgent);
@@ -2992,45 +2949,18 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                             else if (isAndroid) window.open(`geo:0,0?q=${address}`, '_blank');
                             else window.open(`https://www.google.com/maps/search/?api=1&query=${address}`, '_blank');
                           }}
-                          className="w-11 h-11 rounded-lg flex items-center justify-center text-white shrink-0"
-                          style={{ backgroundColor: couleur }}
-                          aria-label="Ouvrir dans GPS"
-                          title="GPS"
-                        >
-                          <Navigation size={14} />
-                        </button>
+                        />
                       )}
-                    </button>
+                    </div>
                   );
                 })}
-                {chantiersToday.length > 4 && (
-                  <p className={`text-xs text-center py-1.5 ${textMuted}`}>+{chantiersToday.length - 4} autres</p>
-                )}
+                {chantiersToday.length > 4 && <p className="text-sm text-center py-2.5 text-encre-3">et {chantiersToday.length - 4} autre{chantiersToday.length - 4 > 1 ? 's' : ''}</p>}
               </div>
             )}
           </div>
         );
       })()}
 
-      {/* Search bar */}
-      {chantiers.length > 3 && (
-        <div className="relative">
-          <Search size={16} className={`absolute left-3 top-1/2 -translate-y-1/2 ${textMuted}`} />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            placeholder="Rechercher un chantier, client, adresse..."
-            className={`w-full pl-10 pr-4 py-2.5 rounded-xl border text-sm ${inputBg} focus:ring-2 focus:ring-offset-0`}
-            style={{ '--tw-ring-color': `${couleur}40` }}
-          />
-          {searchQuery && (
-            <button onClick={() => setSearchQuery('')} aria-label="Effacer la recherche" className={`absolute right-3 top-1/2 -translate-y-1/2 p-2.5 min-w-[44px] min-h-[44px] rounded-full flex items-center justify-center ${isDark ? 'hover:bg-slate-600' : 'hover:bg-slate-200'}`}>
-              <X size={14} className={textMuted} />
-            </button>
-          )}
-        </div>
-      )}
 
       {chantiers.length === 0 ? (
         <div className={`${cardBg} rounded-2xl border overflow-hidden`}>
@@ -3093,77 +3023,64 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
       ) : (
         <>
           {/* === SECTION: LISTE DES CHANTIERS === */}
-          {/* Status Filter Tabs + Sorting */}
-          <div className="flex flex-col gap-3 mb-4">
-            {/* Filtres de statut */}
-            <div className="flex gap-1.5 sm:gap-2 overflow-x-auto pb-1 -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-              <style>{`.scrollbar-hide::-webkit-scrollbar { display: none; }`}</style>
-              {[
-                { key: 'all', label: 'Tous', color: couleur },
-                { key: 'cette_semaine', label: 'Cette sem.', color: '#8b5cf6' },
-                { key: 'en_cours', label: 'En cours', color: '#f97316' },
-                { key: 'prospect', label: 'Prospects', color: '#3b82f6' },
-                { key: 'termine', label: 'Terminés', color: '#22c55e' },
-                ...(brouillonsCount > 0 ? [{ key: 'brouillons', label: 'Brouillons', color: '#a855f7' }] : []),
-                ...(archivedCount > 0 ? [{ key: 'archive', label: 'Archivés', color: '#6b7280' }] : []),
-              ].map(tab => (
-                <button
-                  key={tab.key}
-                  onClick={() => setFilterStatus(tab.key)}
-                  className={`px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-medium whitespace-nowrap transition-all min-h-[44px] flex items-center gap-1.5 ${
-                    filterStatus === tab.key
-                      ? 'text-white shadow-md'
-                      : isDark
-                        ? 'bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700'
-                        : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200 hover:border-slate-300'
-                  }`}
-                  style={filterStatus === tab.key ? { backgroundColor: tab.color } : {}}
+          {/* Recherche, statut, filtres et tri — boîte à outils commune (ui/Filtres.jsx). Avant : puces
+              remplies de 7 couleurs, deux listes déroulantes natives, recherche séparée plus haut. */}
+          {(() => {
+            const TRIS = [['recent', 'Plus récents'], ['name', 'Nom de A à Z'], ['status', 'Par statut'], ['margin', 'Par marge']];
+            const clientChoisi = clients.find(c => c.id === filterClient);
+            const statuts = [
+              { key: 'all', label: 'Tous' },
+              { key: 'cette_semaine', label: 'Cette semaine' },
+              { key: 'en_cours', label: 'En cours' },
+              { key: 'prospect', label: 'Prospects' },
+              { key: 'termine', label: 'Terminés' },
+              ...(brouillonsCount > 0 ? [{ key: 'brouillons', label: 'Brouillons' }] : []),
+              ...(archivedCount > 0 ? [{ key: 'archive', label: 'Archivés' }] : []),
+            ];
+            return (
+              <div className="space-y-3 mb-4">
+                <div className="flex items-center gap-2">
+                  <ChampRecherche valeur={searchQuery} onChange={setSearchQuery} placeholder="Rechercher…" ariaLabel="Rechercher un chantier, un client ou une adresse" isDark={isDark} className="flex-1" />
+                  {clients.length > 1 && (
+                    <BoutonVolet ref={boutonFiltresRef} libelle="Filtres" compte={filterClient ? 1 : 0} ouvert={voletListe === 'filtres'} onClick={() => setVoletListe(v => (v === 'filtres' ? null : 'filtres'))} isDark={isDark} libelleCacheTelephone />
+                  )}
+                  {chantiers.length > 1 && (
+                    <BoutonVolet ref={boutonTriRef} icone={ArrowUpDown} libelle="Trier" valeur={TRIS.find(t => t[0] === sortBy)?.[1]} ouvert={voletListe === 'tri'} onClick={() => setVoletListe(v => (v === 'tri' ? null : 'tri'))} isDark={isDark} libelleCacheTelephone />
+                  )}
+                </div>
+                <SegmentDefilant
+                  ariaLabel="Statut des chantiers" isDark={isDark}
+                  options={statuts.map(t => ({ valeur: t.key, libelle: t.label, compte: statusCounts[t.key] }))}
+                  valeur={filterStatus} onChange={setFilterStatus}
+                />
+                <PucesActives
+                  puces={filterClient ? [{ cle: 'client', libelle: clientChoisi ? formatClientName(clientChoisi) : 'Client', onRetirer: () => setFilterClient('') }] : []}
+                  onToutEffacer={() => setFilterClient('')} isDark={isDark}
+                />
+                <Volet
+                  ouvert={voletListe === 'filtres'} onFermer={() => setVoletListe(null)} titre="Filtres" ancreRef={boutonFiltresRef} largeur={340} isDark={isDark}
+                  pied={(
+                    <Bouton variante="principal" pleineLargeur onClick={() => setVoletListe(null)}>
+                      Voir {getFilteredAndSortedChantiers().length} chantier{getFilteredAndSortedChantiers().length > 1 ? 's' : ''}
+                    </Bouton>
+                  )}
                 >
-                  {tab.label}
-                  <span className={`text-xs px-1.5 py-0.5 rounded-full ${filterStatus === tab.key ? 'bg-white/25' : isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
-                    {statusCounts[tab.key]}
-                  </span>
-                </button>
-              ))}
-            </div>
-
-            {/* Client filter + Titre section + Tri */}
-            <div className="flex items-center justify-between gap-2 flex-wrap overflow-x-auto">
-              <div className="flex items-center gap-2">
-                <div className="w-1.5 h-1.5 rounded-full" style={{ background: couleur }} />
-                <span className={`text-xs font-semibold uppercase tracking-wider ${textMuted}`}>{filterStatus === 'all' ? 'Tous les chantiers' : filterStatus === 'cette_semaine' ? 'Cette semaine' : filterStatus === 'en_cours' ? 'Chantiers en cours' : filterStatus === 'prospect' ? 'Prospects' : filterStatus === 'archive' ? 'Archivés' : filterStatus === 'brouillons' ? 'Brouillons / Tests' : 'Chantiers terminés'}</span>
-                <span className={`text-xs ${textMuted}`}>— {getFilteredAndSortedChantiers().length} projet{getFilteredAndSortedChantiers().length > 1 ? 's' : ''}</span>
+                  <ListeChoix
+                    titre="Client" placeholder="Rechercher un client" isDark={isDark}
+                    options={[{ valeur: '', libelle: 'Tous les clients', toujours: true }, ...clients.map(c => ({ valeur: c.id, libelle: formatClientName(c) }))]}
+                    valeur={filterClient} onChange={setFilterClient}
+                  />
+                </Volet>
+                <Volet ouvert={voletListe === 'tri'} onFermer={() => setVoletListe(null)} titre="Trier les chantiers" ancreRef={boutonTriRef} largeur={300} isDark={isDark}>
+                  <ListeChoix
+                    titre="Trier par" rechercheAuDela={99} isDark={isDark}
+                    options={TRIS.map(([valeur, libelle]) => ({ valeur, libelle }))}
+                    valeur={sortBy} onChange={(v) => { setSortBy(v); setVoletListe(null); }}
+                  />
+                </Volet>
               </div>
-              <div className="flex items-center gap-2">
-                {/* Client filter */}
-                {clients.length > 1 && (
-                  <select
-                    value={filterClient}
-                    onChange={(e) => setFilterClient(e.target.value)}
-                    className={`px-2.5 py-1.5 rounded-lg text-xs border min-h-[44px] sm:min-h-[36px] ${isDark ? 'bg-slate-700 border-slate-600 text-slate-300' : 'bg-white border-slate-200 text-slate-600'}`}
-                  >
-                    <option value="">Tous les clients</option>
-                    {clients.map(c => (
-                      <option key={c.id} value={c.id}>{formatClientName(c)}</option>
-                    ))}
-                  </select>
-                )}
-                {/* Sorting dropdown */}
-                {chantiers.length > 1 && (
-                  <select
-                    value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value)}
-                    className={`px-2.5 py-1.5 rounded-lg text-xs border min-h-[44px] sm:min-h-[36px] ${isDark ? 'bg-slate-700 border-slate-600 text-slate-300' : 'bg-white border-slate-200 text-slate-600'}`}
-                  >
-                    <option value="recent">Plus récent</option>
-                    <option value="name">Nom A-Z</option>
-                    <option value="status">Par statut</option>
-                    <option value="margin">Par marge</option>
-                  </select>
-                )}
-              </div>
-            </div>
-          </div>
+            );
+          })()}
           {/* Gantt View */}
           {viewMode === 'gantt' && (
             <Suspense fallback={<div className={`h-[400px] rounded-xl flex items-center justify-center ${isDark ? 'bg-slate-800' : 'bg-slate-100'}`}><div className="w-6 h-6 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: `${couleur} transparent ${couleur} ${couleur}` }} /></div>}>
@@ -3248,7 +3165,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
               )}
             </div>
           )}
-          <div className="grid gap-3 sm:gap-4">
+          <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-3">
           {getFilteredAndSortedChantiers().map(ch => {
             const client = clients.find(c => c.id === ch.client_id);
             const bilanRaw3 = getChantierBilan(ch.id);
@@ -3297,153 +3214,71 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
             };
             const dateRange = formatDateRange();
 
+            // Carte de chantier (refonte du 9 oct. 2026 — revue exploitation, problème 11) : le statut dit
+            // UNE fois (pastille), « client · ville », l'avancement, la fin et le montant ; l'alerte de marge
+            // seulement si besoin. Avant : liseré + point + pastille, « #004 », « J-126 », boutons dans le
+            // bouton de la carte (HTML invalide).
+            const finTexte = (() => {
+              if (!ch.date_fin || ['termine', 'archive'].includes(ch.statut)) return null;
+              const df = new Date(ch.date_fin); df.setHours(0, 0, 0, 0);
+              const auj = new Date(); auj.setHours(0, 0, 0, 0);
+              const j = Math.round((df - auj) / 86400000);
+              if (j < 0) return { texte: `Fin dépassée de ${-j} j`, ton: 'text-danger-texte font-semibold' };
+              if (j === 0) return { texte: "Fin prévue aujourd'hui", ton: 'text-alerte-texte font-semibold' };
+              if (j <= 7) return { texte: `Fin dans ${j} j`, ton: 'text-alerte-texte font-semibold' };
+              return { texte: `Fin le ${df.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}`, ton: 'text-encre-3' };
+            })();
+            const villeCh = ch.ville || (String(ch.adresse || '').match(/\b\d{5}\s+([^,\n]+)\s*$/) || [])[1] || '';
+            const metaCh = [client ? formatClientName(client, 'Sans client') : 'Sans client', villeCh].filter(Boolean).join(' · ');
+            const margeNegative = bilan.hasDepenses && bilan.tauxMarge < 0;
             return (
-              <button type="button" key={ch.id} onClick={() => setView(ch.id)} className={`${cardBg} rounded-xl border px-4 py-3 text-left w-full focus-visible:ring-2 outline-none cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5 ${isDark ? 'hover:border-slate-500 focus-visible:ring-slate-400' : 'hover:border-orange-200 focus-visible:ring-orange-400'}`} style={{ borderLeftWidth: '3px', borderLeftColor: borderLeftColor }}>
-                {/* Row 1: Nom + Health dot */}
-                <div className="flex items-start gap-2 mb-1">
-                  <div className="flex items-center gap-2 min-w-0 flex-1">
-                    {/* P0.1: Health indicator dot */}
-                    <div className="w-2 h-2 rounded-full shrink-0 mt-1.5" style={{ background: listHealthColor }} title={listAlerts.length ? listAlerts.map(a => a.label).join(', ') : 'OK'} />
-                    <h3 className={`font-semibold text-sm leading-tight line-clamp-2 ${textPrimary}`}>{ch.nom}</h3>
-                  </div>
-                  <span className={`text-xs font-mono shrink-0 mt-0.5 ${textMuted}`}>#{String(chantiers.indexOf(ch) + 1).padStart(3, '0')}</span>
-                </div>
-                {/* Row 1b: Badges */}
-                <div className="flex items-center gap-1.5 flex-wrap mb-1.5">
-                  <StatusChip label={statusLabel} color={statusHex} dot isDark={isDark} />
-                  {/* P3.9: Days countdown badge */}
-                  {daysInfo && <span className={`text-xs font-bold ${daysInfo.color}`}>{daysInfo.text}</span>}
-                  {ch.situations_data?.mode === 'situation' && (
-                    <span className={`px-1.5 py-0.5 rounded-full text-xs font-medium whitespace-nowrap flex items-center gap-0.5 ${isDark ? 'bg-orange-900/50 text-orange-400' : 'bg-orange-100 text-orange-700'}`}>
-                      <BarChart3 size={14} /> Situation
+              <article key={ch.id} data-ui="Carte" className="bg-surface border border-bord rounded-2xl shadow-e1 overflow-hidden flex flex-col">
+                <button type="button" onClick={() => setView(ch.id)} aria-label={`Ouvrir le chantier ${ch.nom}`} className="flex-1 w-full text-left p-4 transition-colors hover:bg-surface-2/60 active:bg-surface-2">
+                  <span className="flex items-start justify-between gap-3">
+                    <span className="text-base font-semibold leading-snug text-encre line-clamp-2">{ch.nom}</span>
+                    <span className="flex-shrink-0"><PastilleStatut genre="chantier" statut={ch.statut} /></span>
+                  </span>
+                  <span className="mt-1 block text-sm text-encre-2 truncate">{metaCh}</span>
+                  {ch.statut === 'en_cours' && (
+                    <span className="mt-3 flex items-center gap-3">
+                      <span className="flex-1 h-1.5 rounded-full bg-surface-2 overflow-hidden" aria-hidden="true">
+                        <span className="block h-full rounded-full bg-info-point" style={{ width: `${Math.min(100, Math.max(0, avancement))}%` }} />
+                      </span>
+                      <span className="text-sm font-semibold tabular-nums text-encre">{avancement} %</span>
                     </span>
                   )}
-                  {isDraftChantier(ch) && (
-                    <span className={`px-1.5 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${isDark ? 'bg-purple-900/50 text-purple-400' : 'bg-purple-100 text-purple-700'}`}>
-                      Brouillon
+                  <span className="mt-3 flex items-baseline justify-between gap-3">
+                    <span className={`text-sm truncate ${finTexte?.ton || 'text-encre-3'}`}>{finTexte?.texte || (allTasks.length ? `${tasksDone}/${allTasks.length} tâches` : '')}</span>
+                    {budgetPrevu > 0 && <span className="text-base font-semibold tabular-nums text-encre whitespace-nowrap">{modeDiscret ? '···' : formatMoney(budgetPrevu)}</span>}
+                  </span>
+                  {(margeNegative || budgetDepleted) && (
+                    <span className={`mt-2 flex items-center gap-1.5 text-sm font-medium ${margeNegative ? 'text-danger-texte' : 'text-alerte-texte'}`}>
+                      <AlertTriangle size={16} aria-hidden="true" className="flex-shrink-0" />
+                      {margeNegative ? `Marge ${formatPct(bilan.tauxMarge)}` : 'Budget presque consommé'}
                     </span>
                   )}
-                  {duplicateMap.has(ch.id) && (
-                    <button
-                      onClick={(e) => { e.stopPropagation(); setMergeDialog({ primaryId: ch.id, secondaryId: duplicateMap.get(ch.id)[0] }); }}
-                      className={`px-1.5 py-0.5 rounded-full text-xs font-medium whitespace-nowrap cursor-pointer hover:ring-2 hover:ring-amber-400/50 transition-all ${isDark ? 'bg-amber-900/40 text-amber-400' : 'bg-amber-100 text-amber-700'}`}
-                      title="Cliquez pour fusionner les doublons"
-                    >
-                      ⚠ Doublon
-                    </button>
-                  )}
-                </div>
-
-                {/* Row 2: Client · Dates · Address */}
-                <div className="flex items-center gap-2 mb-2 flex-wrap">
-                  <span className={`text-xs ${textMuted}`}>{client ? formatClientName(client, 'Sans client') : 'Sans client'}</span>
-                  {dateRange && (
-                    <>
-                      <span className={`text-xs ${textMuted}`}>·</span>
-                      <span className={`text-xs ${textMuted} flex items-center gap-1`}>
-                        <Calendar size={14} />
-                        {dateRange}
-                      </span>
-                    </>
-                  )}
-                  {(ch.adresse || ch.ville) ? (
-                    <>
-                      <span className={`text-xs ${textMuted}`}>·</span>
-                      <span className={`text-xs ${textMuted} flex items-center gap-1 truncate max-w-[50%]`} title={[ch.adresse, ch.ville].filter(Boolean).join(', ')}>
-                        <MapPin size={14} className="shrink-0" />
-                        {ch.ville || ch.adresse}
-                      </span>
-                    </>
-                  ) : (
-                    <>
-                      <span className={`text-xs ${textMuted}`}>·</span>
-                      <span className={`text-xs italic ${isDark ? 'text-slate-300' : 'text-slate-500'} flex items-center gap-1`}>
-                        <MapPin size={14} className="shrink-0" />
-                        Sans adresse
-                      </span>
-                    </>
-                  )}
-                </div>
-
-                {/* Row 3: Progress bar + Budget/Marge compacts */}
-                <div className="flex items-center gap-3">
-                  {/* Progress bar - inline */}
-                  {/* P3.9: Compact empty state for chantiers without tasks */}
-                  {ch.statut === 'en_cours' && avancement === 0 && allTasks.length === 0 && (
-                    <div className="flex-1">
-                      <span className={`text-[11px] ${textMuted}`}>0 tâche • <span className="underline">Configurer →</span></span>
-                    </div>
-                  )}
-                  {ch.statut === 'en_cours' && (avancement > 0 || allTasks.length > 0) && (
-                    <div className="flex items-center gap-2 flex-1 min-w-0">
-                      <div className={`flex-1 h-2 sm:h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
-                        <div className={`h-full rounded-full transition-all ${avancement > 0 ? 'min-w-[4px]' : ''}`} style={{ width: `${Math.min(100, Math.max(3, avancement))}%`, background: couleur }} />
-                      </div>
-                      <span className="text-xs font-semibold tabular-nums whitespace-nowrap" style={{ color: couleur }}>{avancement}%</span>
-                    </div>
-                  )}
-                  {ch.statut !== 'en_cours' && <div className="flex-1" />}
-
-                  {/* Budget + Marge + Tasks compact */}
-                  <div className="flex items-center gap-3 shrink-0">
-                    {allTasks.length > 0 && (
-                      <div className="flex items-center gap-1">
-                        <CheckSquare size={14} className={pendingTasks.length > 0 ? 'text-amber-500' : 'text-emerald-500'} />
-                        <span className={`text-[11px] font-medium tabular-nums ${pendingTasks.length > 0 ? 'text-amber-500' : 'text-emerald-500'}`}>
-                          {tasksDone}/{allTasks.length}
-                        </span>
-                      </div>
+                </button>
+                {(duplicateMap.has(ch.id) || isDraftChantier(ch)) && (
+                  <div className="px-4 pb-3 -mt-1 flex flex-wrap gap-2">
+                    {isDraftChantier(ch) && <Pastille ton="neutre">Brouillon</Pastille>}
+                    {duplicateMap.has(ch.id) && (
+                      <button type="button" onClick={() => setMergeDialog({ primaryId: ch.id, secondaryId: duplicateMap.get(ch.id)[0] })} className="h-9 px-3 rounded-full bg-alerte-fond text-alerte-texte text-xs font-semibold">
+                        Doublon : fusionner
+                      </button>
                     )}
-                    {budgetPrevu > 0 && (
-                      <div className="flex items-center gap-1.5">
-                        <span className={`text-xs font-bold tabular-nums ${textPrimary}`}>{formatMoney(budgetPrevu)}</span>
-                        {bilan.hasDepenses && (
-                          <span className={`text-[11px] font-bold tabular-nums ${getMargeColor(bilan.tauxMarge)}`} title="Taux de marge">{formatPct(bilan.tauxMarge)} marge</span>
-                        )}
-                        {hasAlert && <AlertTriangle size={14} className={`${bilan.tauxMarge < 0 ? 'text-red-500' : 'text-amber-500'}`} />}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* CTA for Prospect: create devis, start chantier, view detail */}
-                {ch.statut === 'prospect' && (
-                  <div className="flex flex-col sm:flex-row gap-2 mt-2">
-                    {setPage && (
-                    <button
-                      onClick={(e) => { e.stopPropagation(); setPage('devis', { chantier_id: ch.id, client_id: ch.client_id, objet: ch.nom }); }}
-                      className="flex-1 py-2.5 sm:py-1.5 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 border transition-all hover:shadow-sm active:scale-[0.98] min-h-[44px] sm:min-h-0"
-                      style={{ borderColor: couleur, color: couleur }}
-                    >
-                      <FileText size={14} /> Créer un devis
-                    </button>
-                    )}
-                    <button
-                      onClick={(e) => { e.stopPropagation(); updateChantier(ch.id, { statut: 'en_cours', dateDebut: new Date().toISOString().split('T')[0] }); showToast('Chantier démarré !', 'success'); }}
-                      className="flex-1 py-2.5 sm:py-1.5 rounded-lg text-xs font-semibold text-white flex items-center justify-center gap-1.5 transition-all hover:opacity-90 active:scale-[0.98] min-h-[44px] sm:min-h-0"
-                      style={{ background: couleur }}
-                    >
-                      <Zap size={14} /> Démarrer
-                    </button>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); setView(ch.id); }}
-                      className={`py-2.5 sm:py-1.5 px-3 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 transition-all min-h-[44px] sm:min-h-0 ${isDark ? 'text-slate-300 hover:bg-slate-700' : 'text-slate-500 hover:bg-slate-100'}`}
-                    >
-                      <ChevronRight size={14} />
-                    </button>
                   </div>
                 )}
-
-                {/* Unarchive button for archived chantiers */}
+                {ch.statut === 'prospect' && setPage && (
+                  <div className="px-4 pb-4">
+                    <Bouton pleineLargeur icone={FileText} onClick={() => setPage('devis', { chantier_id: ch.id, client_id: ch.client_id, objet: ch.nom })}>Créer le devis</Bouton>
+                  </div>
+                )}
                 {ch.statut === 'archive' && (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); updateChantier(ch.id, { statut: 'termine' }); showToast('Chantier restauré', 'success'); }}
-                    className={`w-full mt-2 py-1.5 rounded-lg text-xs font-medium flex items-center justify-center gap-2 transition-colors ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
-                  >
-                    <Archive size={14} /> Restaurer
-                  </button>
+                  <div className="px-4 pb-4">
+                    <Bouton pleineLargeur icone={Archive} onClick={() => { updateChantier(ch.id, { statut: 'termine' }); showToast('Chantier restauré', 'success'); }}>Restaurer</Bouton>
+                  </div>
                 )}
-              </button>
+              </article>
             );
           })}
           </div>
