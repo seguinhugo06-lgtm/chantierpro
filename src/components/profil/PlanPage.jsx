@@ -330,14 +330,14 @@ export default function PlanPage({ isDark, couleur = '#f97316', setPage }) {
                   key={pid}
                   className={`rounded-2xl border p-4 sm:p-5 relative bg-surface shadow-e1 ${isCurrent ? 'border-accent ring-1 ring-accent' : 'border-bord'}`}
                 >
-                  <div className="flex items-center justify-between gap-2 mb-3">
-                    <div className="flex items-center gap-2 min-w-0">
+                  <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5 mb-3">
+                    <div className="flex items-center gap-2 min-w-0 flex-shrink-0">
                       <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-surface-2 text-encre-2 flex-shrink-0">
                         <Icon size={18} aria-hidden="true" />
                       </div>
                       <span className="text-base font-bold text-encre">{p.name}</span>
                     </div>
-                    {isCurrent ? <Pastille ton="succes">Votre plan</Pastille> : p.badge ? <span className="text-sm text-encre-3 text-right">{p.badge}</span> : null}
+                    {isCurrent ? <Pastille ton="succes">Votre plan</Pastille> : p.badge ? <span className="text-sm text-encre-3">{p.badge}</span> : null}
                   </div>
 
                   {/* Le tarif fondateur ne se voyait que sur la page publique.
