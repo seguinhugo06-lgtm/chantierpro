@@ -19,7 +19,7 @@ export default function TuileChiffre({ libelle, valeur, contexte, alerte, heros 
     <Element
       data-ui="TuileChiffre"
       {...(onClick ? { type: 'button', onClick, 'aria-pressed': actif === undefined ? undefined : !!actif } : {})}
-      className={`min-w-0 flex flex-col justify-between gap-2 rounded-2xl text-left ${
+      className={`min-w-0 flex flex-col gap-2 rounded-2xl text-left ${
         heros
           ? 'bg-accent text-sur-accent p-5 min-h-[112px]'
           : `bg-surface border p-4 min-h-[96px] shadow-e1 ${actif ? 'border-accent ring-2 ring-accent' : 'border-bord'}`
@@ -30,12 +30,12 @@ export default function TuileChiffre({ libelle, valeur, contexte, alerte, heros 
         {valeur}
       </span>
       {alerte ? (
-        <span className={`flex items-center gap-1.5 text-sm font-semibold ${heros ? '' : 'text-danger-texte'}`}>
+        <span className={`mt-auto flex items-center gap-1.5 text-sm font-semibold ${heros ? '' : 'text-danger-texte'}`}>
           <AlertTriangle size={16} aria-hidden="true" className="flex-shrink-0" />
           <span className="line-clamp-2">{alerte}</span>
         </span>
       ) : contexte ? (
-        <span className={`text-sm line-clamp-2 ${heros ? 'opacity-80' : 'text-encre-3'}`}>{contexte}</span>
+        <span className={`mt-auto text-sm line-clamp-2 ${heros ? 'opacity-80' : 'text-encre-3'}`}>{contexte}</span>
       ) : null}
     </Element>
   );

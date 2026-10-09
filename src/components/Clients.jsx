@@ -2,12 +2,13 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Plus, ArrowLeft, Phone, MessageCircle, MapPin, Mail, Building2, Edit3, Trash2, ChevronRight, ChevronDown, Search, X, Check, FileText, Camera, Home, Users, Euro, ExternalLink, Smartphone, ArrowUpDown, MessageSquare, Zap, History, Receipt, ClipboardList, CheckCircle2, Upload, LayoutGrid, List, AlertTriangle, Info, Clock, ArrowUpRight, ArrowDownLeft, Wallet, TrendingUp } from 'lucide-react';
 import PageHeader from './ui/PageHeader';
 import KPICard from './ui/KPICard';
-import StatusChip from './ui/StatusChip';
 import { ChampRecherche, BoutonVolet, Volet, GroupeChoix, ListeChoix, PucesActives, SegmentDefilant } from './ui/Filtres';
+import LigneListe, { Avatar, GroupeListe } from './ui/LigneListe';
+import Pastille, { PastilleStatut } from './ui/Pastille';
+import { BoutonIcone } from './ui/Bouton';
+import { statutFacture, resteAPayer } from '../lib/paiementsFacture';
 import { colorForString } from '../lib/uiTheme';
 
-// Couleur (hex) par statut client — pour StatusChip
-const CLIENT_STATUS_HEX = { actif: '#10b981', en_devis: '#3b82f6', prospect: '#f59e0b', inactif: '#64748b' };
 import QuickClientModal from './QuickClientModal';
 import { useConfirm, useToast } from '../context/AppContext';
 import { useData } from '../context/DataContext';
@@ -84,7 +85,28 @@ function HighlightText({ text, query, className = '' }) {
 export default function Clients({ clients, setClients, updateClient, deleteClient: deleteClientProp, devis, chantiers, echanges = [], onSubmit, couleur, setPage, setSelectedChantier, setSelectedDevis, isDark, createMode, setCreateMode, modeDiscret, memos = [], addMemo, updateMemo, deleteMemo, toggleMemo, onImportClients, entreprise }) {
   const { confirm } = useConfirm();
   const { showToast } = useToast();
-  const { addClient: ctxAddClient } = useData();
+  const { addClient: ctxAddClient, paiements = [] } = useData();
+
+  // Ce que chaque client doit (reste des factures ouvertes) et son dernier devis — pour la ligne de liste.
+  const dueParClient = useMemo(() => {
+    const m = new Map();
+    (devis || []).forEach(d => {
+      if (d.type !== 'facture' || d.facture_type === 'avoir' || !d.client_id) return;
+      if (['payee', 'brouillon', 'annulee'].includes(statutFacture(d, paiements))) return;
+      m.set(d.client_id, (m.get(d.client_id) || 0) + resteAPayer(d, paiements));
+    });
+    return m;
+  }, [devis, paiements]);
+  const dernierDevisParClient = useMemo(() => {
+    const m = new Map();
+    (devis || []).forEach(d => {
+      if (d.type !== 'devis' || !d.client_id || !d.date) return;
+      if (!m.has(d.client_id) || d.date > m.get(d.client_id)) m.set(d.client_id, d.date);
+    });
+    return m;
+  }, [devis]);
+  // « 12 rue des Lilas, 75011 Paris » → « Paris »
+  const villeDe = (adresse) => (String(adresse || '').match(/\b\d{5}\s+([^,\n]+)\s*$/) || [])[1]?.trim() || '';
   const { errors, validate, validateAll, clearErrors, clearFieldError } = useFormValidation(clientSchema);
   const [showDupeConfirm, setShowDupeConfirm] = useState(false);
   const [pendingSubmit, setPendingSubmit] = useState(null);
@@ -2066,128 +2088,43 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
           })()}
         </div>
       ) : viewMode === 'grid' ? (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+        // Une ligne par client (refonte du 9 oct. 2026 — revue visuelle, problème 13) : qui, où, ce
+        // qu'il doit ou son dernier devis, et appeler d'un geste. Avant : avatars en dégradés aléatoires,
+        // 3 pastilles, micro-compteurs, ni ville ni montant dû au téléphone.
+        <GroupeListe className="max-w-4xl">
           {getSortedClients().map(c => {
-            const s = getClientStats(c.id);
             const status = getClientStatus(c.id);
-            const statusColor = CLIENT_STATUS_COLORS[status];
-            const statusLabel = CLIENT_STATUS_LABELS[status];
-            const typeColor = CLIENT_TYPE_COLORS[c.categorie];
-            const avatarBg = colorForString(formatClientName(c) || c.nom || String(c.id));
-            const initials = getInitials(c);
+            const du = dueParClient.get(c.id) || 0;
+            const dernierDevis = dernierDevisParClient.get(c.id);
+            const meta = [c.entreprise, villeDe(c.adresse)].filter(Boolean).join(' · ') || c.telephone || c.email || 'Coordonnées à compléter';
             const hasDuplicates = duplicateMap.has(c.id);
-            const cScore = getClientScore(c.id);
-
             return (
-              <article key={c.id} role="article" aria-label={`Client ${c.nom} ${c.prenom || ''}`.trim()} className={`${cardBg} rounded-xl sm:rounded-2xl border overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group flex flex-col h-full ${hasDuplicates ? isDark ? 'border-amber-800/50' : 'border-amber-200' : ''}`} onClick={() => setViewId(c.id)} tabIndex={0} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setViewId(c.id); } }}>
-                {/* Header — téléphone : carte compacte (≈ 80 px au lieu de ≈ 220 px, recette du 9 oct.) :
-                    appel et WhatsApp ici, e-mail et statistiques gardés pour la fiche et l'ordinateur. */}
-                <div className="p-3 sm:p-4 relative">
-                  <div className="flex items-center sm:items-start gap-3">
-                    {/* Avatar circle */}
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center text-white text-sm font-bold shadow-md flex-shrink-0" style={{ background: `linear-gradient(135deg, ${avatarBg}, ${avatarBg}cc)` }}>
-                      {initials}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <h3 className={`font-bold text-sm sm:text-base ${textPrimary} leading-tight truncate`} title={`${c.nom || ''} ${c.prenom || ''}`.trim()}><HighlightText text={formatClientName(c)} query={debouncedSearch} /></h3>
-                      </div>
-                      {c.entreprise && (
-                        <p className={`text-xs ${textMuted} truncate flex items-center gap-1 mt-0.5`}>
-                          <Building2 size={11} /> {c.entreprise}
-                        </p>
-                      )}
-                      {/* Badges row — Order: Status → Type → Doublon */}
-                      <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                        {/* Status chip (always first) */}
-                        <span title={STATUS_TOOLTIPS[status] || ''}>
-                          <StatusChip label={statusLabel} color={CLIENT_STATUS_HEX[status] || '#64748b'} dot isDark={isDark} />
-                        </span>
-                        {/* Type chip */}
-                        {c.categorie && typeColor && (
-                          <span className="hidden sm:inline-flex"><StatusChip label={c.categorie} color={typeColor.color} isDark={isDark} /></span>
-                        )}
-                        {/* Score badge */}
-                        <span className={`hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${isDark ? cScore.darkBg : cScore.bg}`} title={`Score : ${cScore.score}/100`}>
-                          <span className="text-[9px]">{cScore.icon}</span> {cScore.label}
-                        </span>
-                        {/* Duplicate warning badge (last) */}
-                        {hasDuplicates && (
-                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${isDark ? 'bg-amber-900/30 text-amber-300' : 'bg-amber-50 text-amber-600'}`}>
-                            <AlertTriangle size={10} /> Doublon
-                          </span>
-                        )}
-                        {/* Test data badge (dev only) */}
-                        {!isProduction && isTestClient(c) && (
-                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${isDark ? 'bg-yellow-900/30 text-yellow-300' : 'bg-yellow-50 text-yellow-700'}`}>
-                            🧪 Test
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    {/* Téléphone : appeler / WhatsApp directement depuis la carte */}
-                    {c.telephone && (
-                      <div className="sm:hidden flex gap-1 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
-                        <button onClick={() => callPhone(c.telephone)} aria-label={`Appeler ${formatClientName(c)}`} className={`w-11 h-11 rounded-xl flex items-center justify-center ${isDark ? 'bg-blue-900/30' : 'bg-blue-50'}`}>
-                          <Phone size={18} className="text-blue-500" />
-                        </button>
-                        <button onClick={() => sendWhatsApp(c.telephone, c.prenom)} aria-label={`WhatsApp ${formatClientName(c)}`} className={`w-11 h-11 rounded-xl flex items-center justify-center ${isDark ? 'bg-green-900/30' : 'bg-green-50'}`}>
-                          <MessageCircle size={18} className="text-green-500" />
-                        </button>
-                      </div>
-                    )}
-                    {/* Edit button */}
-                    <button onClick={(e) => { e.stopPropagation(); startEdit(c); }} title="Modifier" aria-label="Modifier ce client" className={`p-2 rounded-lg transition-all absolute top-2 right-2 opacity-0 group-hover:opacity-100 ${isDark ? 'bg-slate-700/90 hover:bg-slate-600 text-slate-200' : 'bg-white/90 hover:bg-slate-100 text-slate-500 shadow-sm'}`}>
-                      <Edit3 size={14} />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Contact + Actions */}
-                <div className={`hidden sm:block px-4 py-2.5 border-t flex-grow ${isDark ? 'border-slate-700/50' : 'border-slate-100'}`}>
-                  {c.telephone ? (
-                    <div className="flex items-center gap-2">
-                      <Smartphone size={13} className={textMuted} />
-                      <HighlightText text={c.telephone} query={debouncedSearch} className={`text-sm ${textSecondary} flex-1`} />
-                      <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-                        <button onClick={() => callPhone(c.telephone)} aria-label="Appeler" className={`w-11 h-11 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center transition-all ${isDark ? 'hover:bg-blue-900/40' : 'hover:bg-blue-50'}`} title="Appeler">
-                          <Phone size={16} className="text-blue-500" />
-                        </button>
-                        <button onClick={() => sendWhatsApp(c.telephone, c.prenom)} aria-label="WhatsApp" className={`w-11 h-11 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center transition-all ${isDark ? 'hover:bg-green-900/40' : 'hover:bg-green-50'}`} title="WhatsApp">
-                          <MessageCircle size={16} className="text-green-500" />
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <p className={`text-xs ${textMuted} italic`}>Pas de téléphone</p>
-                  )}
-                  {c.email && (
-                    <div className="flex items-center gap-2 mt-1">
-                      <Mail size={13} className={textMuted} />
-                      <HighlightText text={c.email} query={debouncedSearch} className={`text-xs ${textMuted} truncate`} />
-                    </div>
-                  )}
-                </div>
-
-                {/* Stats footer */}
-                <div className={`hidden sm:flex px-4 py-2.5 border-t items-center justify-between mt-auto ${isDark ? 'border-slate-700/50 bg-slate-900/30' : 'border-slate-100 bg-slate-50/50'}`}>
-                  <div className="flex gap-3">
-                    <span className={`flex items-center gap-1 text-xs ${s.chantiers > 0 ? textSecondary : textMuted}`} title="Chantiers">
-                      <Home size={12} className={s.chantiers > 0 ? 'text-emerald-500' : ''} /> {s.chantiers}
+              <div key={c.id} className="flex items-center">
+                <LigneListe
+                  className="flex-1 min-w-0"
+                  onClick={() => setViewId(c.id)}
+                  chevron={!c.telephone}
+                  aria-label={`Ouvrir la fiche de ${formatClientName(c)}`}
+                  debut={<Avatar nom={formatClientName(c) || c.nom} />}
+                  titre={<HighlightText text={formatClientName(c)} query={debouncedSearch} />}
+                  meta={meta}
+                  montant={du > 0 ? (
+                    <span className="flex flex-col items-end leading-tight">
+                      <span>{formatMoney(du, 0)}</span>
+                      <span className="text-xs font-medium text-encre-3">à encaisser</span>
                     </span>
-                    <span className={`flex items-center gap-1 text-xs ${s.devis > 0 ? textSecondary : textMuted}`} title="Devis">
-                      <FileText size={12} className={s.devis > 0 ? 'text-blue-500' : ''} /> {s.devis}
-                    </span>
-                    <span className={`flex items-center gap-1 text-xs ${s.factures > 0 ? textSecondary : textMuted}`} title="Factures">
-                      <Receipt size={12} className={s.factures > 0 ? 'text-purple-500' : ''} /> {s.factures}
-                    </span>
-                  </div>
-                  <span className={`font-bold text-xs ${s.ca === 0 ? textMuted : ''}`} style={s.ca > 0 ? { color: couleur } : {}}>{formatMoney(s.ca)}</span>
-                </div>
-              </article>
+                  ) : dernierDevis ? (
+                    <span className="text-xs font-medium text-encre-3">Devis du {new Date(dernierDevis).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</span>
+                  ) : undefined}
+                  pastille={hasDuplicates ? <Pastille ton="alerte">Doublon</Pastille> : <PastilleStatut genre="client" statut={status} />}
+                />
+                {c.telephone ? (
+                  <BoutonIcone icone={Phone} libelle={`Appeler ${formatClientName(c)}`} variante="secondaire" onClick={() => callPhone(c.telephone)} className="mr-3" />
+                ) : null}
+              </div>
             );
           })}
-        </div>
+        </GroupeListe>
       ) : (
         /* Vue Liste compacte */
         <div className={`${cardBg} rounded-xl border overflow-hidden`}>

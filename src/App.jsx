@@ -1465,11 +1465,11 @@ export default function App() {
       {sidebarOpen && <div className="fixed inset-0 bg-black/50 z-40 md:hidden" onClick={() => setSidebarOpen(false)} />}
 
       {/* Sidebar - Optimized mobile layout with collapsed icons-only mode on md-xl */}
-      <aside className={`fixed top-0 left-0 z-50 h-full pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] ${isDark ? 'bg-slate-900 border-r border-slate-700' : 'bg-white border-r border-[#ebebeb]'} transform transition-all duration-200 flex flex-col
+      <aside className={`fixed top-0 left-0 z-50 h-full pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] bg-surface border-r border-bord transform transition-all duration-200 flex flex-col
         ${sidebarOpen ? 'w-64 translate-x-0 shadow-2xl' : '-translate-x-full'}
         md:translate-x-0 md:w-[72px] xl:w-64 md:shadow-none`}>
         {/* Header with close button on mobile */}
-        <div className={`flex items-center gap-3 px-3 py-3 border-b ${isDark ? 'border-slate-700' : 'border-[#ebebeb]'} flex-shrink-0 md:justify-center xl:justify-start`}>
+        <div className={`flex items-center gap-3 px-3 py-3 border-b border-bord flex-shrink-0 md:justify-center xl:justify-start`}>
           <div className="hidden xl:block flex-1 min-w-0">
             <EntrepriseSwitcher
               isDark={isDark}
@@ -1492,7 +1492,7 @@ export default function App() {
           {/* Close button - mobile only */}
           <button
             onClick={() => setSidebarOpen(false)}
-            className={`md:hidden p-2 rounded-xl transition-colors ${isDark ? 'text-slate-500 hover:bg-slate-800 hover:text-slate-100' : 'text-[#999] hover:bg-[#f5f5f5] hover:text-[#1a1a1a]'}`}
+            className={`md:hidden p-2 rounded-xl transition-colors text-encre-3 hover:bg-surface-2 hover:text-encre`}
             aria-label="Fermer le menu"
           >
             <X size={18} />
@@ -1507,8 +1507,7 @@ export default function App() {
               <button
                 key={n.id}
                 onClick={() => { setPage(n.id); setSidebarOpen(false); setSelectedChantier(null); }}
-                className={`w-full flex items-center gap-3 justify-start md:justify-center xl:justify-start px-3 py-2.5 rounded-xl text-sm font-medium transition-all active:scale-95 ${page === n.id ? 'text-white shadow-md' : isDark ? 'text-slate-400 hover:bg-slate-800 hover:text-slate-100' : 'text-[#666] hover:bg-[#f5f5f5] hover:text-[#1a1a1a]'}`}
-                style={page === n.id ? {background: `linear-gradient(135deg, ${couleur}, ${couleur}dd)`} : {}}
+                className={`w-full flex items-center gap-3 justify-start md:justify-center xl:justify-start px-3 py-2.5 rounded-xl text-sm font-medium transition-all active:scale-95 ${page === n.id ? 'bg-accent/15 text-accent-texte font-semibold' : 'text-encre-2 hover:bg-surface-2 hover:text-encre'}`}
                 aria-current={page === n.id ? 'page' : undefined}
                 title={n.label}
               >
@@ -1516,8 +1515,8 @@ export default function App() {
                 <span className="flex-1 text-left truncate md:hidden xl:inline">{n.label}</span>
                 {n.badge > 0 && (
                   <span
-                    className="px-1.5 py-0.5 text-white text-[10px] rounded-full min-w-[20px] text-center font-semibold md:hidden xl:inline-block"
-                    style={{ background: page === n.id ? 'rgba(255,255,255,0.25)' : (n.badgeColor || '#ef4444') }}
+                    className="px-1.5 py-0.5 text-white text-xs rounded-full min-w-[22px] text-center font-semibold md:hidden xl:inline-block"
+                    style={{ background: n.badgeColor || '#dc2626' }}
                     title={n.badgeTitle}
                   >
                     {n.badge > 99 ? '99+' : n.badge}
@@ -1529,8 +1528,7 @@ export default function App() {
               <button
                 key={n.id}
                 onClick={() => { setPage(n.id); setSidebarOpen(false); setSelectedChantier(null); }}
-                className={`w-full flex items-center gap-3 justify-start md:justify-center xl:justify-start px-3 py-2.5 rounded-xl text-sm font-medium transition-all active:scale-95 ${page === n.id ? 'text-white shadow-md' : isDark ? 'text-slate-400 hover:bg-slate-800 hover:text-slate-100' : 'text-[#666] hover:bg-[#f5f5f5] hover:text-[#1a1a1a]'}`}
-                style={page === n.id ? {background: `linear-gradient(135deg, ${couleur}, ${couleur}dd)`} : {}}
+                className={`w-full flex items-center gap-3 justify-start md:justify-center xl:justify-start px-3 py-2.5 rounded-xl text-sm font-medium transition-all active:scale-95 ${page === n.id ? 'bg-accent/15 text-accent-texte font-semibold' : 'text-encre-2 hover:bg-surface-2 hover:text-encre'}`}
                 aria-current={page === n.id ? 'page' : undefined}
                 title={n.label}
               >
@@ -1538,8 +1536,8 @@ export default function App() {
                 <span className="flex-1 text-left truncate md:hidden xl:inline">{n.label}</span>
                 {n.badge > 0 && (
                   <span
-                    className="px-1.5 py-0.5 text-white text-[10px] rounded-full min-w-[20px] text-center font-semibold md:hidden xl:inline-block"
-                    style={{ background: page === n.id ? 'rgba(255,255,255,0.25)' : (n.badgeColor || '#ef4444') }}
+                    className="px-1.5 py-0.5 text-white text-xs rounded-full min-w-[22px] text-center font-semibold md:hidden xl:inline-block"
+                    style={{ background: n.badgeColor || '#dc2626' }}
                     title={n.badgeTitle}
                   >
                     {n.badge > 99 ? '99+' : n.badge}
@@ -1550,17 +1548,16 @@ export default function App() {
           </nav>
 
           {/* Separator */}
-          <div className={`my-2 mx-3 border-t ${isDark ? 'border-slate-700' : 'border-[#ebebeb]'}`} />
+          <div className={`my-2 mx-3 border-t border-bord`} />
 
           {/* Planning & Tâches group */}
           <nav className="space-y-0.5 mb-1" aria-label="Organisation">
-            <p className={`px-3 pt-1.5 pb-1 text-[11px] font-medium uppercase tracking-wider md:hidden xl:block ${isDark ? 'text-slate-500' : 'text-[#999]'}`}>Organisation</p>
+            <p className={`px-3 pt-1.5 pb-1 text-xs font-semibold uppercase tracking-wider md:hidden xl:block text-encre-3`}>Organisation</p>
             {nav.filter(n => n.id === 'tasks').map(n => (
               <button
                 key={n.id}
                 onClick={() => { setPage(n.id); setSidebarOpen(false); setSelectedChantier(null); }}
-                className={`w-full flex items-center gap-3 justify-start md:justify-center xl:justify-start px-3 py-2.5 rounded-xl text-sm font-medium transition-all active:scale-95 ${page === n.id ? 'text-white shadow-md' : isDark ? 'text-slate-400 hover:bg-slate-800 hover:text-slate-100' : 'text-[#666] hover:bg-[#f5f5f5] hover:text-[#1a1a1a]'}`}
-                style={page === n.id ? {background: `linear-gradient(135deg, ${couleur}, ${couleur}dd)`} : {}}
+                className={`w-full flex items-center gap-3 justify-start md:justify-center xl:justify-start px-3 py-2.5 rounded-xl text-sm font-medium transition-all active:scale-95 ${page === n.id ? 'bg-accent/15 text-accent-texte font-semibold' : 'text-encre-2 hover:bg-surface-2 hover:text-encre'}`}
                 aria-current={page === n.id ? 'page' : undefined}
                 title={n.label}
               >
@@ -1568,8 +1565,8 @@ export default function App() {
                 <span className="flex-1 text-left truncate md:hidden xl:inline">{n.label}</span>
                 {n.badge > 0 && (
                   <span
-                    className="px-1.5 py-0.5 text-white text-[10px] rounded-full min-w-[20px] text-center font-semibold md:hidden xl:inline-block"
-                    style={{ background: page === n.id ? 'rgba(255,255,255,0.25)' : (n.badgeColor || '#ef4444') }}
+                    className="px-1.5 py-0.5 text-white text-xs rounded-full min-w-[22px] text-center font-semibold md:hidden xl:inline-block"
+                    style={{ background: n.badgeColor || '#dc2626' }}
                     title={n.badgeTitle}
                   >
                     {n.badge > 99 ? '99+' : n.badge}
@@ -1581,13 +1578,12 @@ export default function App() {
 
           {/* Secondary navigation */}
           <nav className="space-y-0.5" aria-label="Gestion">
-            <p className={`px-3 pt-1.5 pb-1 text-[11px] font-medium uppercase tracking-wider md:hidden xl:block ${isDark ? 'text-slate-500' : 'text-[#999]'}`}>Gestion</p>
+            <p className={`px-3 pt-1.5 pb-1 text-xs font-semibold uppercase tracking-wider md:hidden xl:block text-encre-3`}>Gestion</p>
             {nav.filter(n => !['dashboard','devis','chantiers','clients','tasks','planning','memos','profil','plan'].includes(n.id)).map(n => (
               <button
                 key={n.id}
                 onClick={() => { setPage(n.id); setSidebarOpen(false); setSelectedChantier(null); }}
-                className={`w-full flex items-center gap-3 justify-start md:justify-center xl:justify-start px-3 py-2.5 rounded-xl text-sm font-medium transition-all active:scale-95 ${page === n.id ? 'text-white shadow-md' : isDark ? 'text-slate-400 hover:bg-slate-800 hover:text-slate-100' : 'text-[#666] hover:bg-[#f5f5f5] hover:text-[#1a1a1a]'}`}
-                style={page === n.id ? {background: `linear-gradient(135deg, ${couleur}, ${couleur}dd)`} : {}}
+                className={`w-full flex items-center gap-3 justify-start md:justify-center xl:justify-start px-3 py-2.5 rounded-xl text-sm font-medium transition-all active:scale-95 ${page === n.id ? 'bg-accent/15 text-accent-texte font-semibold' : 'text-encre-2 hover:bg-surface-2 hover:text-encre'}`}
                 aria-current={page === n.id ? 'page' : undefined}
                 title={n.label}
               >
@@ -1601,8 +1597,8 @@ export default function App() {
                   />
                 ) : n.badge > 0 ? (
                   <span
-                    className="px-1.5 py-0.5 text-white text-[10px] rounded-full min-w-[20px] text-center font-semibold md:hidden xl:inline-block"
-                    style={{ background: page === n.id ? 'rgba(255,255,255,0.25)' : (n.badgeColor || '#ef4444') }}
+                    className="px-1.5 py-0.5 text-white text-xs rounded-full min-w-[22px] text-center font-semibold md:hidden xl:inline-block"
+                    style={{ background: n.badgeColor || '#dc2626' }}
                     title={n.badgeTitle}
                   >
                     {n.badge > 99 ? '99+' : n.badge}
@@ -1613,17 +1609,16 @@ export default function App() {
           </nav>
 
           {/* Separator */}
-          <div className={`my-2 mx-3 border-t ${isDark ? 'border-slate-700' : 'border-[#ebebeb]'}`} />
+          <div className={`my-2 mx-3 border-t border-bord`} />
 
           {/* Profil section */}
           <nav className="space-y-0.5" aria-label="Profil">
-            <p className={`px-3 pt-1.5 pb-1 text-[11px] font-medium uppercase tracking-wider md:hidden xl:block ${isDark ? 'text-slate-500' : 'text-[#999]'}`}>Profil</p>
+            <p className={`px-3 pt-1.5 pb-1 text-xs font-semibold uppercase tracking-wider md:hidden xl:block text-encre-3`}>Profil</p>
             {nav.filter(n => n.id === 'profil' || n.id === 'plan').map(n => (
               <button
                 key={n.id}
                 onClick={() => { setPage(n.id); setSidebarOpen(false); }}
-                className={`w-full flex items-center gap-3 justify-start md:justify-center xl:justify-start px-3 py-2.5 rounded-xl text-sm font-medium transition-all active:scale-95 ${page === n.id ? 'text-white shadow-md' : isDark ? 'text-slate-400 hover:bg-slate-800 hover:text-slate-100' : 'text-[#666] hover:bg-[#f5f5f5] hover:text-[#1a1a1a]'}`}
-                style={page === n.id ? {background: `linear-gradient(135deg, ${couleur}, ${couleur}dd)`} : {}}
+                className={`w-full flex items-center gap-3 justify-start md:justify-center xl:justify-start px-3 py-2.5 rounded-xl text-sm font-medium transition-all active:scale-95 ${page === n.id ? 'bg-accent/15 text-accent-texte font-semibold' : 'text-encre-2 hover:bg-surface-2 hover:text-encre'}`}
                 aria-current={page === n.id ? 'page' : undefined}
                 title={n.label}
               >
@@ -1635,10 +1630,10 @@ export default function App() {
         </div>
 
         {/* Bottom actions - fixed at bottom */}
-        <div className={`flex-shrink-0 p-2 border-t ${isDark ? 'border-slate-700' : 'border-[#ebebeb]'} space-y-1`}>
+        <div className={`flex-shrink-0 p-2 border-t border-bord space-y-1`}>
           <button
             onClick={() => { setShowRetour(true); setSidebarOpen(false); }}
-            className={`w-full flex items-center justify-center xl:justify-start gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-all active:scale-95 ${isDark ? 'text-slate-300 hover:bg-slate-800' : 'text-[#444] hover:bg-[#f5f5f5]'}`}
+            className={`w-full flex items-center justify-center xl:justify-start gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-all active:scale-95 text-encre-2 hover:bg-surface-2`}
             title="Signaler un problème ou proposer une idée"
           >
             <MessageCircle size={16} style={{ color: couleur }} />
@@ -1647,7 +1642,7 @@ export default function App() {
           <div className="flex gap-1 md:flex-col xl:flex-row">
             <button
               onClick={() => { const next = !modeDiscret; setModeDiscret(next); showToast(next ? 'Mode confidentiel activé — Montants masqués' : 'Mode confidentiel désactivé — Montants visibles', 'info'); }}
-              className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-sm transition-all ${modeDiscret ? 'bg-amber-600 text-white shadow-md' : isDark ? 'text-slate-500 hover:bg-slate-800 hover:text-slate-400' : 'text-[#666] hover:bg-[#f5f5f5] hover:text-[#1a1a1a]'}`}
+              className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-sm transition-all ${modeDiscret ? 'bg-amber-600 text-white shadow-md' : 'text-encre-2 hover:bg-surface-2 hover:text-encre'}`}
               title={modeDiscret ? 'Désactiver mode confidentiel — Afficher les montants' : 'Activer mode confidentiel — Masquer tous les montants (€) à l\'écran'}
             >
               {modeDiscret ? <EyeOff size={15} /> : <Eye size={15} />}
@@ -1655,7 +1650,7 @@ export default function App() {
             </button>
             <button
               onClick={() => setTheme(isDark ? 'light' : 'dark')}
-              className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-sm transition-all active:scale-95 ${isDark ? 'text-slate-500 hover:bg-slate-800 hover:text-slate-400' : 'text-[#666] hover:bg-[#f5f5f5] hover:text-[#1a1a1a]'}`}
+              className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-sm transition-all active:scale-95 text-encre-2 hover:bg-surface-2 hover:text-encre`}
               title={isDark ? 'Mode clair' : 'Mode sombre'}
             >
               {isDark ? <Sun size={15} /> : <Moon size={15} />}
@@ -1673,23 +1668,16 @@ export default function App() {
       </aside>
 
       {/* Main content */}
-      <div className={`md:pl-[72px] xl:pl-64 min-h-screen overflow-x-hidden pb-14 lg:pb-0 ${isDark ? 'bg-slate-900' : 'bg-[#fafafa]'}`}>
+      <div className={`md:pl-[72px] xl:pl-64 min-h-screen overflow-x-hidden pb-14 lg:pb-0 bg-fond`}>
         {/* Header - Optimized for mobile with proper left/right distribution */}
-        <header className={`sticky top-0 z-30 border-b px-2 sm:px-4 pb-2 pt-[calc(0.5rem_+_env(safe-area-inset-top))] flex items-center justify-between ${isDark ? 'border-slate-700' : 'border-[#ebebeb]'}`}>
+        <header className={`sticky top-0 z-30 border-b px-2 sm:px-4 pb-2 pt-[calc(0.5rem_+_env(safe-area-inset-top))] flex items-center justify-between border-bord`}>
           {/* Le flou est porté par un calque et non par <header> : un backdrop-filter sur un ancêtre
               enfermerait les fonds et panneaux position:fixed des menus dans la hauteur de l'en-tête. */}
-          <div aria-hidden="true" className={`absolute inset-0 -z-10 backdrop-blur-xl ${isDark ? 'bg-slate-900/95' : 'bg-white/80'}`} />
+          <div aria-hidden="true" className={`absolute inset-0 -z-10 backdrop-blur-xl bg-surface/90`} />
 
           {/* LEFT GROUP: Menu + Logo + Badges */}
           <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
-            {/* Menu button - mobile only (sidebar visible from md: up) */}
-            <button
-              onClick={() => setSidebarOpen(true)}
-              className={`md:hidden w-11 h-11 rounded-xl flex items-center justify-center ${isDark ? 'text-slate-100 hover:bg-slate-800' : 'hover:bg-[#f5f5f5]'}`}
-              aria-label="Ouvrir le menu"
-            >
-              <Menu size={20} />
-            </button>
+            {/* « ☰ » retiré : « Plus » dans la barre du bas ouvre le même menu (revue du 9 oct.). */}
 
             {/* Logo / Company switcher - compact on mobile */}
             <EntrepriseSwitcher
@@ -1732,11 +1720,11 @@ export default function App() {
           <div className="hidden lg:flex flex-1 min-w-0 justify-center px-4">
             <button
               onClick={() => setShowSearch(true)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl border transition-all w-full max-w-[320px] ${isDark ? 'border-slate-700 hover:border-slate-600 bg-slate-800/50 text-slate-500' : 'border-[#ebebeb] hover:border-[#ddd] bg-[#fafafa] text-[#999]'}`}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl border transition-all w-full max-w-[320px] border-bord hover:border-bord-fort bg-fond text-encre-3`}
             >
               <Search size={16} />
               <span className="text-sm truncate">Rechercher...</span>
-              <kbd className={`ml-auto text-xs px-1.5 py-0.5 rounded hidden lg:block ${isDark ? 'bg-slate-700 text-slate-500' : 'bg-[#f0f0f0] text-[#999]'}`}>⌘K</kbd>
+              <kbd className={`ml-auto text-xs px-1.5 py-0.5 rounded hidden lg:block bg-surface-2 text-encre-3`}>⌘K</kbd>
             </button>
           </div>
 
@@ -1759,7 +1747,7 @@ export default function App() {
             {/* Search button - mobile only (icon) */}
             <button
               onClick={() => setShowSearch(true)}
-              className={`lg:hidden w-11 h-11 rounded-xl flex items-center justify-center ${isDark ? 'hover:bg-slate-800 text-slate-400' : 'hover:bg-[#f5f5f5] text-[#666]'}`}
+              className={`lg:hidden w-11 h-11 rounded-xl flex items-center justify-center hover:bg-surface-2 text-encre-2`}
               title="Rechercher"
               aria-label="Rechercher"
             >
@@ -1769,7 +1757,7 @@ export default function App() {
             {/* Theme toggle - hidden on mobile, shown in sidebar instead */}
             <button
               onClick={() => setTheme(isDark ? 'light' : 'dark')}
-              className={`hidden sm:flex w-11 h-11 rounded-xl items-center justify-center transition-all ${isDark ? 'hover:bg-slate-800 text-amber-400' : 'hover:bg-[#f5f5f5] text-[#666]'}`}
+              className={`hidden sm:flex w-11 h-11 rounded-xl items-center justify-center transition-all hover:bg-surface-2 text-encre-2`}
               title={isDark ? 'Mode clair' : 'Mode sombre'}
               aria-label={isDark ? 'Activer le mode clair' : 'Activer le mode sombre'}
             >
@@ -1779,7 +1767,7 @@ export default function App() {
             {/* Help button - tablet and desktop only */}
             <button
               onClick={() => setShowHelp(true)}
-              className={`hidden lg:flex w-11 h-11 rounded-xl items-center justify-center transition-colors ${isDark ? 'hover:bg-slate-800 text-slate-400' : 'hover:bg-[#f5f5f5] text-[#666]'}`}
+              className={`hidden lg:flex w-11 h-11 rounded-xl items-center justify-center transition-colors hover:bg-surface-2 text-encre-2`}
               title="Aide"
               aria-label="Ouvrir l'aide"
             >
@@ -1789,8 +1777,7 @@ export default function App() {
             {/* Mode confidentiel toggle — hidden on small mobile, visible sm+ */}
             <button
               onClick={() => { const next = !modeDiscret; setModeDiscret(next); showToast(next ? 'Mode confidentiel activé — Montants masqués' : 'Mode confidentiel désactivé — Montants visibles', 'info'); }}
-              className={`hidden sm:flex w-11 h-11 rounded-xl items-center justify-center transition-colors ${modeDiscret ? 'text-white' : isDark ? 'hover:bg-slate-800 text-slate-400' : 'hover:bg-[#f5f5f5] text-[#666]'}`}
-              style={modeDiscret ? {background: couleur} : {}}
+              className={`hidden sm:flex w-11 h-11 rounded-xl items-center justify-center transition-colors ${modeDiscret ? 'bg-alerte-fond text-alerte-texte' : 'hover:bg-surface-2 text-encre-2'}`}
               title={modeDiscret ? 'Afficher les montants' : 'Masquer les montants'}
               aria-label={modeDiscret ? 'Afficher les montants' : 'Masquer les montants'}
               aria-pressed={modeDiscret}
@@ -1824,15 +1811,14 @@ export default function App() {
             {/* Notifications */}
             <button
               onClick={() => setShowNotifs(!showNotifs)}
-              className={`relative w-11 h-11 rounded-xl flex items-center justify-center transition-all ${showNotifs ? 'text-white shadow-lg' : isDark ? 'hover:bg-slate-700 text-slate-400 hover:text-white' : 'hover:bg-[#f5f5f5] text-[#666] hover:text-[#1a1a1a]'}`}
-              style={showNotifs ? {background: couleur} : {}}
+              className={`relative w-11 h-11 rounded-xl flex items-center justify-center transition-colors ${showNotifs ? 'bg-surface-2 text-encre' : 'text-encre-2 hover:bg-surface-2 hover:text-encre'}`}
               title={unreadNotifs.length > 0 ? `${unreadNotifs.length} notification${unreadNotifs.length > 1 ? 's' : ''} non lue${unreadNotifs.length > 1 ? 's' : ''}` : 'Notifications'}
               aria-label={`Notifications${unreadNotifs.length > 0 ? ` (${unreadNotifs.length} non lues)` : ''}`}
               aria-expanded={showNotifs}
             >
-              <Bell size={20} className={showNotifs ? 'animate-pulse' : ''} />
+              <Bell size={20} />
               {unreadNotifs.length > 0 && (
-                <span className="absolute top-1 right-1 min-w-[16px] h-[16px] px-1 text-white text-[9px] font-bold rounded-full flex items-center justify-center shadow-md" style={{background: couleur}}>
+                <span className="absolute top-0.5 right-0.5 min-w-[20px] h-5 px-1 bg-red-600 text-white text-xs font-bold rounded-full flex items-center justify-center ring-2 ring-surface">
                   {unreadNotifs.length > 9 ? '9+' : unreadNotifs.length}
                 </span>
               )}
@@ -1842,20 +1828,19 @@ export default function App() {
             <div className="relative">
               <button
                 onClick={() => setShowQuickAdd(!showQuickAdd)}
-                className="w-11 h-11 lg:w-auto lg:px-4 text-white rounded-xl flex items-center justify-center lg:gap-2 transition-all hover:shadow-lg"
-                style={{background: couleur}}
+                className="w-11 h-11 lg:w-auto lg:px-4 rounded-xl border border-bord-fort bg-surface text-encre flex items-center justify-center lg:gap-2 transition-colors hover:bg-surface-2"
                 aria-label="Créer nouveau"
                 aria-haspopup="true"
                 aria-expanded={showQuickAdd}
               >
                 <Plus size={18} />
-                <span className="hidden lg:inline text-sm font-medium">Nouveau</span>
+                <span className="hidden lg:inline text-sm font-semibold">Nouveau</span>
               </button>
 
               {showQuickAdd && (
                 <>
                   <div className="fixed inset-0 z-40" aria-hidden="true" onClick={() => setShowQuickAdd(false)} />
-                  <div role="menu" aria-label="Créer" onKeyDown={(e) => { if (e.key === 'Escape') setShowQuickAdd(false); }} className={`absolute right-0 top-full mt-2 w-60 max-w-[calc(100vw-1rem)] rounded-2xl shadow-2xl z-50 py-1.5 overflow-hidden ${isDark ? 'bg-slate-800 border border-slate-700' : 'bg-white border border-[#ebebeb]'}`}>
+                  <div role="menu" aria-label="Créer" onKeyDown={(e) => { if (e.key === 'Escape') setShowQuickAdd(false); }} className={`absolute right-0 top-full mt-2 w-60 max-w-[calc(100vw-1rem)] rounded-2xl shadow-2xl z-50 py-1.5 overflow-hidden bg-surface border border-bord`}>
                     {[
                       { label: 'Nouveau devis', icon: FileText, p: 'devis', create: 'devis' },
                       { label: 'Nouveau client', icon: Users, p: 'clients', create: 'client' },
@@ -1866,9 +1851,9 @@ export default function App() {
                         key={item.label}
                         role="menuitem"
                         onClick={() => { if (item.create) setCreateMode(p => ({...p, [item.create]: true})); setPage(item.p); setShowQuickAdd(false); }}
-                        className={`w-full min-h-[48px] flex items-center gap-3 px-4 text-left text-[15px] font-medium transition-colors ${isDark ? 'hover:bg-slate-700 text-white' : 'hover:bg-[#fafafa] text-[#1a1a1a]'}`}
+                        className="w-full min-h-[48px] flex items-center gap-3 px-4 text-left text-base sm:text-sm font-medium text-encre transition-colors hover:bg-surface-2"
                       >
-                        <item.icon size={18} className="flex-shrink-0" style={{color: couleur}} />
+                        <item.icon size={18} className="flex-shrink-0 text-encre-3" />
                         <span className="whitespace-nowrap">{item.label}</span>
                         <ChevronRight size={16} className={`ml-auto ${tc.textMuted}`} />
                       </button>
@@ -1881,8 +1866,7 @@ export default function App() {
             {/* User avatar */}
             <button
               onClick={() => setPage('profil')}
-              className="w-11 h-11 rounded-full flex items-center justify-center font-semibold text-sm transition-all hover:scale-105"
-              style={{ background: `${couleur}22`, color: couleur }}
+              className="w-11 h-11 rounded-full flex items-center justify-center font-semibold text-sm bg-surface-2 text-encre-2 transition-colors hover:bg-bord"
               title={user?.email || 'Mon compte'}
               aria-label="Mon compte"
             >
@@ -1982,7 +1966,7 @@ export default function App() {
         />
 
         {/* Mobile Bottom Navigation Bar — replaces sidebar on small screens */}
-        <nav className={`fixed bottom-0 left-0 right-0 z-40 md:hidden border-t backdrop-blur-lg ${isDark ? 'bg-slate-900/95 border-slate-700' : 'bg-white/95 border-[#ebebeb]'} pb-[env(safe-area-inset-bottom)]`}>
+        <nav className={`fixed bottom-0 left-0 right-0 z-40 md:hidden border-t backdrop-blur-lg bg-surface/95 border-bord pb-[env(safe-area-inset-bottom)]`}>
           <div className="flex items-stretch justify-around h-14">
             {[
               { id: 'dashboard', icon: Home, label: 'Accueil' },
@@ -2000,23 +1984,20 @@ export default function App() {
                     setSelectedChantier(null);
                     setSelectedDevis(null);
                   }}
-                  className={`flex flex-col items-center justify-center flex-1 min-w-0 h-full transition-all relative ${
-                    isActive
-                      ? ''
-                      : isDark ? 'text-slate-500 active:text-slate-400' : 'text-[#999] active:text-[#666]'
+                  className={`flex flex-col items-center justify-center flex-1 min-w-0 h-full transition-colors relative ${
+                    isActive ? 'text-accent-texte' : 'text-encre-3 active:text-encre-2'
                   }`}
-                  style={isActive ? { color: couleur } : {}}
+                  aria-current={isActive ? 'page' : undefined}
                 >
                   {isActive && (
-                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full" style={{ backgroundColor: couleur }} />
+                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full bg-accent" />
                   )}
                   <div
-                    className={`flex items-center justify-center w-10 h-7 rounded-full transition-all ${isActive ? '' : ''}`}
-                    style={isActive ? { backgroundColor: `${couleur}15` } : {}}
+                    className={`flex items-center justify-center w-12 h-7 rounded-full transition-colors ${isActive ? 'bg-accent/15' : ''}`}
                   >
                     <item.icon size={20} strokeWidth={isActive ? 2.5 : 1.5} />
                   </div>
-                  <span className={`text-[10px] mt-0.5 truncate max-w-full px-0.5 ${isActive ? 'font-bold' : 'font-medium'}`}>{item.label}</span>
+                  <span className={`text-xs mt-0.5 truncate max-w-full px-0.5 ${isActive ? 'font-semibold' : 'font-medium'}`}>{item.label}</span>
                 </button>
               );
             })}
@@ -2027,23 +2008,20 @@ export default function App() {
               return (
                 <button
                   onClick={() => setSidebarOpen(true)}
-                  className={`flex flex-col items-center justify-center flex-1 min-w-0 h-full transition-all relative ${
-                    isPlusActive
-                      ? ''
-                      : isDark ? 'text-slate-500 active:text-slate-400' : 'text-[#999] active:text-[#666]'
+                  className={`flex flex-col items-center justify-center flex-1 min-w-0 h-full transition-colors relative ${
+                    isPlusActive ? 'text-accent-texte' : 'text-encre-3 active:text-encre-2'
                   }`}
-                  style={isPlusActive ? { color: couleur } : {}}
+                  aria-label="Plus : toutes les rubriques"
                 >
                   {isPlusActive && (
-                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full" style={{ backgroundColor: couleur }} />
+                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full bg-accent" />
                   )}
                   <div
-                    className="flex items-center justify-center w-10 h-7 rounded-full"
-                    style={isPlusActive ? { backgroundColor: `${couleur}15` } : {}}
+                    className={`flex items-center justify-center w-12 h-7 rounded-full transition-colors ${isPlusActive ? 'bg-accent/15' : ''}`}
                   >
                     <Menu size={20} strokeWidth={isPlusActive ? 2.5 : 1.5} />
                   </div>
-                  <span className={`text-[10px] mt-0.5 truncate max-w-full px-0.5 ${isPlusActive ? 'font-bold' : 'font-medium'}`}>Plus</span>
+                  <span className={`text-xs mt-0.5 truncate max-w-full px-0.5 ${isPlusActive ? 'font-semibold' : 'font-medium'}`}>Plus</span>
                 </button>
               );
             })()}

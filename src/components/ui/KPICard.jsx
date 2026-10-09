@@ -20,7 +20,7 @@ export default function KPICard({ icon, label, value, sublabel, color, tone, tre
     <Comp
       data-ui="TuileChiffre"
       {...(onClick ? { type: 'button', onClick } : {})}
-      className={`w-full min-w-0 min-h-[96px] flex flex-col justify-between gap-2 text-left rounded-2xl border border-bord bg-surface shadow-e1 p-4 ${
+      className={`w-full min-w-0 min-h-[96px] flex flex-col gap-2 text-left rounded-2xl border border-bord bg-surface shadow-e1 p-4 ${
         onClick ? 'transition-colors hover:border-bord-fort active:bg-surface-2' : ''
       }`}
     >
@@ -31,7 +31,7 @@ export default function KPICard({ icon, label, value, sublabel, color, tone, tre
         ) : null}
       </span>
       <span className={`text-2xl sm:text-3xl font-bold leading-none tabular-nums tracking-tight truncate ${tone === 'danger' ? 'text-danger-texte' : 'text-encre'}`}>{value}</span>
-      {sublabel ? <span className="text-sm text-encre-3 truncate">{sublabel}</span> : null}
+      {sublabel ? <span className="mt-auto text-sm text-encre-3 line-clamp-2">{sublabel}</span> : null}
     </Comp>
   );
 }

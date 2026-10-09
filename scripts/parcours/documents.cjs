@@ -1,4 +1,28 @@
 // Devis et factures : ce que le client reçoit (mention TVA réduite) et les fichiers remis à l'artisan.
+
+// Action de la fiche (refonte du 9 oct. 2026) : le bouton visible qui porte ce libellé, sinon
+// l'entrée du menu « ⋯ ».
+async function actionFiche(page, attendre, libelles) {
+  const direct = await page.evaluate((l) => {
+    const b = [...document.querySelectorAll('button')].find((x) => l.includes((x.innerText || '').trim()) || l.includes(x.title) || l.includes(x.getAttribute('aria-label')));
+    if (b) b.click();
+    return !!b;
+  }, libelles);
+  if (direct) return true;
+  const menu = await page.evaluate(() => {
+    const b = document.querySelector('button[aria-label="Plus d\'actions"]');
+    if (b) b.click();
+    return !!b;
+  });
+  if (!menu) return false;
+  await attendre(400);
+  return page.evaluate((l) => {
+    const b = [...document.querySelectorAll('[role="dialog"] button')].find((x) => l.includes((x.innerText || '').trim()));
+    if (b) b.click();
+    return !!b;
+  }, libelles);
+}
+
 module.exports = [
   {
     nom: 'aperçu PDF : la certification TVA réduite figure sur les documents à 10 % / 5,5 %',
@@ -6,20 +30,17 @@ module.exports = [
       const { page } = await ouvrir({ page: 'devis', largeur: 1440 });
       const vus = [];
       for (let i = 0; i < 4; i++) {
+        // Liste : une ligne par document (ui/LigneListe), ouverte par son bouton principal.
         const ouvert = await page.evaluate((index) => {
-          const cartes = [...document.querySelectorAll('div.grid > div')]
-            .filter((el) => /(DEV|FAC)-\d{4}-\d{5}/.test(el.innerText || '') && el.getBoundingClientRect().height > 40 && el.getBoundingClientRect().height < 260);
-          if (!cartes[index]) return false;
-          cartes[index].click();
+          const lignes = [...document.querySelectorAll('[data-ui="LigneListe"] > button')]
+            .filter((b) => /(DEV|FAC)-\d{4}-\d{5}/.test(b.innerText || '') && b.getBoundingClientRect().height > 40);
+          if (!lignes[index]) return false;
+          lignes[index].click();
           return true;
         }, i);
         if (!ouvert) break;
         await attendre(900);
-        const apercu = await page.evaluate(() => {
-          const b = [...document.querySelectorAll('button')].find((x) => x.title === 'Aperçu du document');
-          if (b) b.click();
-          return !!b;
-        });
+        const apercu = await actionFiche(page, attendre, ['Aperçu', 'Aperçu du document']);
         if (!apercu) continue;
         await attendre(1200);
         const doc = await page.evaluate(() => {
@@ -56,14 +77,14 @@ module.exports = [
         HTMLAnchorElement.prototype.click = function () { window.__remis.push({ nom: this.download, href: this.href }); };
       });
       const ouverte = await page.evaluate(() => {
-        const carte = [...document.querySelectorAll('div.grid > div')]
-          .find((el) => /FAC-\d{4}-\d{5}/.test(el.innerText || '') && el.getBoundingClientRect().height > 40 && el.getBoundingClientRect().height < 260);
-        if (carte) carte.click();
-        return !!carte;
+        const ligne = [...document.querySelectorAll('[data-ui="LigneListe"] > button')]
+          .find((b) => /FAC-\d{4}-\d{5}/.test(b.innerText || '') && b.getBoundingClientRect().height > 40);
+        if (ligne) ligne.click();
+        return !!ligne;
       });
       verifier(ouverte, 'une facture de démo est ouverte');
       await attendre(900);
-      await page.evaluate(() => document.querySelector('button[aria-label="Télécharger le PDF"]').click());
+      verifier(await actionFiche(page, attendre, ['PDF', 'Télécharger le PDF']), 'le PDF se télécharge depuis la fiche');
       // Génération : rendu HTML → PDF (jsPDF), puis XML Factur-X embarqué (pdf-lib).
       for (let i = 0; i < 30 && !(await page.evaluate(() => window.__remis.length)); i++) await attendre(500);
       const fichier = await page.evaluate(async () => {
