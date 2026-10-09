@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts';
 import { cn } from '../../lib/utils';
+import { coutPourBilan } from '../../lib/tauxEquipe';
 
 // ============ UTILS ============
 
@@ -287,8 +288,8 @@ export function MarginAnalysisModal({
     const chantierPointages = pointages.filter(p => p.chantierId === chantierId);
     const coutMO = chantierPointages.reduce((sum, p) => {
       const employe = equipe.find(e => e.id === p.employeId);
-      const tauxHoraire = employe?.coutHoraireCharge || 28;
-      return sum + (p.heures || 0) * tauxHoraire;
+      // Coût chargé saisi, comme le bilan du chantier (plus de 28 € par défaut)
+      return sum + (p.heures || 0) * coutPourBilan(employe);
     }, 0);
 
     const totalHeures = chantierPointages.reduce((sum, p) => sum + (p.heures || 0), 0);

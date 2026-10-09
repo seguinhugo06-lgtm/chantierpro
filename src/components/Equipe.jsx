@@ -18,7 +18,14 @@ import { usePermissions } from '../hooks/usePermissions';
 import { ReadOnlyBanner } from './ui/PermissionGate';
 import PageHeader from './ui/PageHeader';
 import TabBar from './ui/TabBar';
+import { Bouton, BoutonIcone } from './ui/Bouton';
+import Carte from './ui/Carte';
+import TuileChiffre from './ui/TuileChiffre';
+import Pastille from './ui/Pastille';
+import { Segmente } from './ui/Onglets';
+import { Avatar } from './ui/LigneListe';
 import { remettreFichier } from '../lib/natif';
+import { tauxFacture, coutHoraire, coutDesPointages } from '../lib/tauxEquipe';
 
 // Lazy-load optional heavy dependencies to prevent crashes
 let NoteModal = null;
@@ -343,10 +350,8 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
   const activeEmployeesToday = [...new Set(todayPointages.map(p => p.employeId))];
 
   // Weekly cost calculation
-  const weekCost = weekPointages.reduce((s, p) => {
-    const emp = equipe.find(e => e.id === p.employeId);
-    return s + (p.heures || 0) * (emp?.coutHoraireCharge || 28);
-  }, 0);
+  // Coût de la semaine au coût chargé saisi ; les heures sans coût connu sont signalées, pas valorisées à 28 €.
+  const { montant: weekCost, heuresSansCout: weekHeuresSansCout } = coutDesPointages(weekPointages, equipe);
 
   // Get employee's current chantier (last pointage today)
   const getEmployeeCurrentChantier = (empId) => {
@@ -556,8 +561,9 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
     const data = {
       ...form,
       type: isSousTraitants ? 'sous_traitant' : 'employe',
-      tauxHoraire: parseFloat(form.tauxHoraire) || (isSousTraitants ? 0 : 45),
-      coutHoraireCharge: parseFloat(form.coutHoraireCharge) || parseFloat(form.tauxHoraire) * 0.6 || 28,
+      // Ce qui est saisi, rien d'autre (avant : 45 € et 28 € enregistrés quand le champ était vide).
+      tauxHoraire: tauxFacture(form) || 0,
+      coutHoraireCharge: coutHoraire(form) || 0,
       competences: form.competences || '',
       certifications: form.certifications || '',
       dateEmbauche: form.dateEmbauche || '',
@@ -696,8 +702,9 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
       if (!emp) return;
 
       const totalHeures = empPointages.reduce((s, p) => s + (p.heures || 0), 0);
-      const tauxHoraire = parseFloat(emp.tauxHoraire) || 45;
-      const coutCharge = parseFloat(emp.coutHoraireCharge) || 28;
+      // Pas de taux inventé dans un export remis au comptable : 0 si rien n'est saisi (voir [export-paie]).
+      const tauxHoraire = tauxFacture(emp) || 0;
+      const coutCharge = coutHoraire(emp) || 0;
 
       // Overtime calculation (weekly basis)
       let heuresNormales, heuresSup25, heuresSup50;
@@ -995,7 +1002,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
         case 'hours':
           return getHeuresMois(b.id) - getHeuresMois(a.id);
         case 'rate':
-          return (b.tauxHoraire || 45) - (a.tauxHoraire || 45);
+          return (tauxFacture(b) || 0) - (tauxFacture(a) || 0);
         case 'active':
           const aActive = activeEmployeesToday.includes(a.id) ? 1 : 0;
           const bActive = activeEmployeesToday.includes(b.id) ? 1 : 0;
@@ -1015,7 +1022,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
   if (showAdd) return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
-        <button onClick={() => { setShowAdd(false); setEditId(null); setForm({ nom: '', prenom: '', telephone: '', email: '', role: '', contrat: '', tauxHoraire: '', coutHoraireCharge: '', dateEmbauche: '', competences: '', certifications: '', notes: '', siret: '', decennale_assureur: '', decennale_numero: '', decennale_expiration: '', urssaf_date: '', tarif_type: 'horaire', tarif_forfait: '' }); }} className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
+        <button onClick={() => { setShowAdd(false); setEditId(null); setForm({ nom: '', prenom: '', telephone: '', email: '', role: '', contrat: '', tauxHoraire: '', coutHoraireCharge: '', dateEmbauche: '', competences: '', certifications: '', notes: '', siret: '', decennale_assureur: '', decennale_numero: '', decennale_expiration: '', urssaf_date: '', tarif_type: 'horaire', tarif_forfait: '' }); }} className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl transition-colors hover:bg-surface-2`}>
           <ArrowLeft size={20} className={textPrimary} />
         </button>
         <h2 className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>{editId ? 'Modifier' : isSousTraitants ? 'Nouveau sous-traitant' : 'Nouvel employé'}</h2>
@@ -1081,7 +1088,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
         </div>
 
         {/* Compétences & Certifications */}
-        <div className={`mt-6 pt-6 border-t ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+        <div className={`mt-6 pt-6 border-t border-bord`}>
           <h4 className={`font-medium mb-4 flex items-center gap-2 ${textPrimary}`}><HardHat size={16} style={{ color: couleur }} /> Compétences & Certifications</h4>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
@@ -1121,7 +1128,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
 
         {/* Sous-traitant specific fields */}
         {isSousTraitants && (
-          <div className={`mt-6 pt-6 border-t ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+          <div className={`mt-6 pt-6 border-t border-bord`}>
             <h4 className={`font-medium mb-4 flex items-center gap-2 ${textPrimary}`}><Shield size={16} style={{ color: '#7c3aed' }} /> Informations légales</h4>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
@@ -1149,7 +1156,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
           </div>
         )}
 
-        <div className={`mt-6 pt-6 border-t ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+        <div className={`mt-6 pt-6 border-t border-bord`}>
           <h4 className={`font-medium mb-4 flex items-center gap-2 ${textPrimary}`}><Euro size={16} style={{ color: couleur }} /> Tarification</h4>
           {isSousTraitants && (
             <div className="flex gap-2 mb-4">
@@ -1158,7 +1165,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                   key={t}
                   onClick={() => setForm(p => ({...p, tarif_type: t}))}
                   className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-                    form.tarif_type === t ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'
+                    form.tarif_type === t ? 'text-white' : 'bg-surface-2 text-encre-2'
                   }`}
                   style={form.tarif_type === t ? { background: '#7c3aed' } : {}}
                 >
@@ -1189,8 +1196,8 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
           </div>
         </div>
 
-        <div className={`flex flex-col sm:flex-row justify-end gap-3 mt-6 pt-6 border-t ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
-          <button onClick={() => { setShowAdd(false); setEditId(null); }} className={`px-4 py-2.5 rounded-xl min-h-[44px] ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-700'}`}>Annuler</button>
+        <div className={`flex flex-col sm:flex-row justify-end gap-3 mt-6 pt-6 border-t border-bord`}>
+          <button onClick={() => { setShowAdd(false); setEditId(null); }} className={`px-4 py-2.5 rounded-xl min-h-[44px] bg-surface-2 text-encre-2`}>Annuler</button>
           <button onClick={addEmploye} disabled={false} className="px-6 py-2.5 text-white rounded-xl min-h-[44px] flex items-center justify-center gap-2" style={{background: couleur}}>
             <Check size={16} /> {editId ? 'Enregistrer' : 'Ajouter'}
           </button>
@@ -1203,7 +1210,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
   if (showBulkEntry) return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
-        <button onClick={() => setShowBulkEntry(false)} className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
+        <button onClick={() => setShowBulkEntry(false)} className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl transition-colors hover:bg-surface-2`}>
           <ArrowLeft size={20} className={textPrimary} />
         </button>
         <h2 className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>Saisie groupée</h2>
@@ -1236,7 +1243,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                     className={`px-2.5 py-1 rounded-lg text-xs font-medium min-h-[44px] transition-all ${
                       bulkForm.heures === h.toString()
                         ? 'text-white'
-                        : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'
+                        : 'bg-surface-2 text-encre-2'
                     }`}
                     style={bulkForm.heures === h.toString() ? { background: couleur } : {}}
                   >
@@ -1251,7 +1258,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
         <div className="mb-4">
           <div className="flex justify-between items-center mb-2">
             <label className={`text-sm font-medium ${textPrimary}`}>Employés ({bulkForm.selectedEmployees.length} sélectionné{bulkForm.selectedEmployees.length > 1 ? 's' : ''})</label>
-            <button onClick={selectAllEmployees} className={`text-sm px-3 py-1 rounded-lg ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>
+            <button onClick={selectAllEmployees} className={`text-sm px-3 py-1 rounded-lg bg-surface-2 text-encre-2`}>
               {bulkForm.selectedEmployees.length === equipe.length ? 'Désélectionner tout' : 'Tout sélectionner'}
             </button>
           </div>
@@ -1265,7 +1272,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                   className={`p-3 rounded-xl border-2 text-left transition-all ${
                     bulkForm.selectedEmployees.includes(e.id)
                       ? 'shadow-lg scale-[1.02]'
-                      : isDark ? 'border-slate-600 hover:border-slate-500' : 'border-slate-200 hover:border-slate-300'
+                      : 'border-bord hover:border-bord-fort'
                   }`}
                   style={bulkForm.selectedEmployees.includes(e.id) ? { borderColor: couleur, background: `${couleur}10` } : {}}
                 >
@@ -1287,8 +1294,8 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
           </div>
         </div>
 
-        <div className={`flex flex-col sm:flex-row justify-end gap-3 pt-6 border-t ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
-          <button onClick={() => setShowBulkEntry(false)} className={`px-4 py-2.5 rounded-xl min-h-[44px] ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-700'}`}>Annuler</button>
+        <div className={`flex flex-col sm:flex-row justify-end gap-3 pt-6 border-t border-bord`}>
+          <button onClick={() => setShowBulkEntry(false)} className={`px-4 py-2.5 rounded-xl min-h-[44px] bg-surface-2 text-encre-2`}>Annuler</button>
           <div className="relative group">
             <button
               onClick={addBulkPointages}
@@ -1300,7 +1307,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
               <Plus size={16} /> Ajouter {bulkForm.selectedEmployees.length} pointage{bulkForm.selectedEmployees.length > 1 ? 's' : ''}
             </button>
             {(!bulkForm.chantierId || bulkForm.selectedEmployees.length === 0 || !bulkForm.heures) && (
-              <p className={`text-xs mt-1 ${isDark ? 'text-amber-400' : 'text-amber-600'} text-right`}>
+              <p className={`text-xs mt-1 text-alerte-texte text-right`}>
                 {!bulkForm.chantierId ? 'Chantier requis' : bulkForm.selectedEmployees.length === 0 ? 'Sélectionnez des employés' : 'Heures requises'}
               </p>
             )}
@@ -1320,22 +1327,22 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
         isDark={isDark}
         color={couleur}
         action={
-        <div className={`flex p-1 rounded-xl ${isDark ? 'bg-slate-800' : 'bg-slate-100'}`}>
+        <div className={`flex p-1 rounded-xl bg-surface-2`}>
           <button
             onClick={() => { setViewMode('employes'); setTab('overview'); }}
-            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm transition-all ${!isSousTraitants ? 'text-white shadow-md' : isDark ? 'text-slate-400 hover:text-slate-300' : 'text-slate-500 hover:text-slate-700'}`}
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm transition-all ${!isSousTraitants ? 'text-white shadow-md' : 'text-encre-3 hover:text-encre'}`}
             style={!isSousTraitants ? { background: couleur } : {}}
           >
             <Users size={16} /> Équipe
-            <span className={`min-w-[20px] h-5 px-1.5 rounded-full text-xs font-bold flex items-center justify-center ${!isSousTraitants ? 'bg-white/20 text-white' : isDark ? 'bg-slate-700 text-slate-400' : 'bg-slate-200 text-slate-600'}`}>{employesList.length}</span>
+            <span className={`min-w-[20px] h-5 px-1.5 rounded-full text-xs font-bold flex items-center justify-center ${!isSousTraitants ? 'bg-white/20 text-white' : 'bg-bord text-encre-2'}`}>{employesList.length}</span>
           </button>
           <button
             onClick={() => { setViewMode('sous_traitants'); setTab('overview'); }}
-            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm transition-all ${isSousTraitants ? 'text-white shadow-md' : isDark ? 'text-slate-400 hover:text-slate-300' : 'text-slate-500 hover:text-slate-700'}`}
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm transition-all ${isSousTraitants ? 'text-white shadow-md' : 'text-encre-3 hover:text-encre'}`}
             style={isSousTraitants ? { background: '#7c3aed' } : {}}
           >
             <UserCheck size={16} /> Sous-traitants
-            <span className={`min-w-[20px] h-5 px-1.5 rounded-full text-xs font-bold flex items-center justify-center ${isSousTraitants ? 'bg-white/20 text-white' : isDark ? 'bg-slate-700 text-slate-400' : 'bg-slate-200 text-slate-600'}`}>{sousTraitantsList.length}</span>
+            <span className={`min-w-[20px] h-5 px-1.5 rounded-full text-xs font-bold flex items-center justify-center ${isSousTraitants ? 'bg-white/20 text-white' : 'bg-bord text-encre-2'}`}>{sousTraitantsList.length}</span>
           </button>
         </div>
         }
@@ -1355,7 +1362,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
         <div className={`p-6 sm:p-8 border-t ${isDark ? 'border-slate-700 bg-slate-800/50' : 'border-slate-100 bg-slate-50/50'}`}>
           <p className={`text-xs font-medium uppercase tracking-wider mb-4 ${textMuted}`}>Fonctionnalités</p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-            <div className={`flex items-start gap-3 p-3 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-white'}`}>
+            <div className={`flex items-start gap-3 p-3 rounded-xl bg-surface`}>
               <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${couleur}20` }}>
                 <Timer size={18} style={{ color: couleur }} />
               </div>
@@ -1364,7 +1371,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                 <p className={`text-xs ${textMuted}`}>Pointage en temps réel</p>
               </div>
             </div>
-            <div className={`flex items-start gap-3 p-3 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-white'}`}>
+            <div className={`flex items-start gap-3 p-3 rounded-xl bg-surface`}>
               <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${couleur}20` }}>
                 <TrendingUp size={18} style={{ color: couleur }} />
               </div>
@@ -1373,7 +1380,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                 <p className={`text-xs ${textMuted}`}>Rentabilité par chantier</p>
               </div>
             </div>
-            <div className={`flex items-start gap-3 p-3 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-white'}`}>
+            <div className={`flex items-start gap-3 p-3 rounded-xl bg-surface`}>
               <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${couleur}20` }}>
                 <Download size={18} style={{ color: couleur }} />
               </div>
@@ -1398,17 +1405,17 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
       {/* Note Modal - inline fallback */}
       {noteModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => { setNoteModalOpen(false); setPendingStopChrono(false); }}>
-          <div className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-2xl p-6 w-full max-w-md`} onClick={e => e.stopPropagation()}>
-            <h3 className={`text-lg font-bold mb-3 ${isDark ? 'text-white' : 'text-slate-900'}`}>Fin du pointage</h3>
+          <div className={`bg-surface rounded-2xl p-6 w-full max-w-md`} onClick={e => e.stopPropagation()}>
+            <h3 className={`text-lg font-bold mb-3 text-encre`}>Fin du pointage</h3>
             <textarea
               autoFocus
-              className={`w-full px-4 py-3 border rounded-xl text-sm mb-4 ${isDark ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-slate-200 text-slate-900'}`}
+              className={`w-full px-4 py-3 border rounded-xl text-sm mb-4 bg-surface border-bord text-encre`}
               placeholder="Note pour ce pointage..."
               rows={3}
               id="chrono-note"
             />
             <div className="flex gap-3">
-              <button onClick={() => { stopChronoWithNote(''); setNoteModalOpen(false); }} className={`flex-1 px-4 py-2.5 rounded-xl ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-700'}`}>Sans note</button>
+              <button onClick={() => { stopChronoWithNote(''); setNoteModalOpen(false); }} className={`flex-1 px-4 py-2.5 rounded-xl bg-surface-2 text-encre-2`}>Sans note</button>
               <button onClick={() => { const note = document.getElementById('chrono-note')?.value || ''; stopChronoWithNote(note); setNoteModalOpen(false); }} className="flex-1 px-4 py-2.5 rounded-xl text-white" style={{background: couleur}}>Confirmer</button>
             </div>
           </div>
@@ -1423,12 +1430,12 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
         isDark={isDark}
         color={couleur}
         action={
-        <div className="flex gap-2 flex-wrap items-center">
+        <div className="flex gap-2 items-center">
           {/* Offline indicator — only shown when disconnected */}
           {!isOnline && (
             <span
               className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium animate-pulse ${
-                isDark ? 'bg-red-900/50 text-red-400' : 'bg-red-100 text-red-700'
+                'bg-danger-fond text-danger-texte'
               }`}
               title="Mode hors ligne — les pointages seront synchronisés à la reconnexion"
               role="status"
@@ -1438,192 +1445,67 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
               Hors ligne
             </span>
           )}
-          {/* Équipe / Sous-traitants toggle */}
-          <div className={`flex rounded-xl overflow-hidden border ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
-            <button
-              onClick={() => { setViewMode('employes'); setTab('overview'); }}
-              className={`px-3 py-2 text-sm font-medium flex items-center gap-1.5 transition-all ${
-                !isSousTraitants ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-700'
-              }`}
-              style={!isSousTraitants ? { background: couleur } : {}}
-            >
-              <Users size={14} />
-              <span className="hidden sm:inline">Équipe</span>
-              {employesList.length > 0 && <span className={`text-xs px-1.5 rounded-full ${!isSousTraitants ? 'bg-white/20' : isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>{employesList.length}</span>}
-            </button>
-            <button
-              onClick={() => { setViewMode('sous_traitants'); setTab('overview'); }}
-              className={`px-3 py-2 text-sm font-medium flex items-center gap-1.5 transition-all ${
-                isSousTraitants ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-700'
-              }`}
-              style={isSousTraitants ? { background: '#7c3aed' } : {}}
-            >
-              <UserCheck size={14} />
-              <span className="hidden sm:inline">Sous-traitants</span>
-              {sousTraitantsList.length > 0 && <span className={`text-xs px-1.5 rounded-full ${isSousTraitants ? 'bg-white/20' : isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>{sousTraitantsList.length}</span>}
-            </button>
-          </div>
           {!isSousTraitants && (
-            <>
-              <button onClick={() => { setPointerForm({ employeId: equipe.length === 1 ? equipe[0].id : '', chantierId: '', date: formatLocalDate(new Date()), heures: '8' }); setShowPointerModal(true); }} className="w-11 h-11 sm:w-auto sm:h-11 sm:px-4 rounded-xl text-sm flex items-center justify-center sm:gap-2 text-white bg-emerald-600 hover:bg-emerald-700 shadow-lg" aria-label="Pointer des heures">
-                <HardHat size={16} /> <span className="hidden sm:inline">Pointer</span>
-              </button>
-              <button onClick={() => setShowBulkEntry(true)} className={`w-11 h-11 sm:w-auto sm:h-11 sm:px-4 rounded-xl text-sm flex items-center justify-center sm:gap-2 ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>
-                <Zap size={16} /> <span className="hidden sm:inline">Saisie groupée</span>
-              </button>
-            </>
+            <BoutonIcone icone={Zap} libelle="Saisie groupée" variante="secondaire" onClick={() => setShowBulkEntry(true)} />
           )}
           {canPerform('equipe', 'create') && (
-          <button onClick={() => setShowAdd(true)} className="w-11 h-11 sm:w-auto sm:h-11 sm:px-4 text-white rounded-xl text-sm flex items-center justify-center sm:gap-2" style={{background: isSousTraitants ? '#7c3aed' : couleur}}>
-            <Plus size={16} /> <span className="hidden sm:inline">{isSousTraitants ? 'Sous-traitant' : 'Employé'}</span>
-          </button>
+            <BoutonIcone icone={Plus} libelle={isSousTraitants ? 'Ajouter un sous-traitant' : 'Ajouter un employé'} variante="secondaire" onClick={() => setShowAdd(true)} />
+          )}
+          {!isSousTraitants && (
+            <Bouton variante="principal" icone={HardHat}
+              onClick={() => { setPointerForm({ employeId: equipe.length === 1 ? equipe[0].id : '', chantierId: '', date: formatLocalDate(new Date()), heures: '8' }); setShowPointerModal(true); }}>
+              Pointer
+            </Bouton>
           )}
         </div>
         }
       />
 
+      <Segmente
+        ariaLabel="Équipe ou sous-traitants"
+        pleineLargeur
+        className="sm:w-auto sm:inline-flex"
+        valeur={isSousTraitants ? 'sous_traitants' : 'employes'}
+        onChange={(v) => { setViewMode(v); setTab('overview'); }}
+        options={[
+          { valeur: 'employes', libelle: `Équipe${employesList.length ? ` · ${employesList.length}` : ''}` },
+          { valeur: 'sous_traitants', libelle: `Sous-traitants${sousTraitantsList.length ? ` · ${sousTraitantsList.length}` : ''}` },
+        ]}
+      />
+
       {/* Visual Stats Dashboard — only for employes mode */}
-      {!isSousTraitants && (<div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 animate-stagger">
-        {/* Week Hero Card with Navigation — compact when no data */}
-        <motion.div
-          className={`col-span-2 rounded-2xl text-white relative overflow-hidden shadow-lg ${totalWeekHours === 0 && approvedWeekHours === 0 ? 'p-4' : 'p-4 sm:p-6'}`}
-          style={{ background: getBannerGradient() }}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
-        >
-          {totalWeekHours === 0 && approvedWeekHours === 0 ? (
-            /* ── Compact mode: single line when no hours ── */
-            <div className="relative flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <button onClick={() => setWeekOffset(o => o - 1)} className="w-8 h-8 rounded-lg bg-white/20 hover:bg-white/30 transition-colors flex items-center justify-center" aria-label="Semaine précédente">
-                  <ChevronLeft size={16} className="text-white" />
-                </button>
-                <div className="flex items-center gap-2">
-                  <Calendar size={14} className="text-white/80" />
-                  <p className="text-sm text-white font-semibold">
-                    {weekOffset === 0 ? 'Cette semaine' : `${weekStart.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })} — ${weekEnd.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}`}
-                  </p>
-                </div>
-                <button onClick={() => setWeekOffset(o => Math.min(o + 1, 0))} disabled={weekOffset >= 0} className="w-8 h-8 rounded-lg bg-white/20 hover:bg-white/30 transition-colors flex items-center justify-center disabled:opacity-40" aria-label="Semaine suivante">
-                  <ChevronRight size={16} className="text-white" />
-                </button>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="text-white/70 text-sm">0h pointé</span>
-                {heuresCible > 0 && <span className="text-white/50 text-xs">/ {heuresCible}h</span>}
-              </div>
+      {!isSousTraitants && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <Carte className="col-span-2">
+            <div className="flex items-center justify-between gap-2 -mx-2 -mt-2">
+              <BoutonIcone icone={ChevronLeft} libelle="Semaine précédente" onClick={() => setWeekOffset(o => o - 1)} />
+              <p className="text-sm font-semibold text-encre-2">{weekOffset === 0 ? 'Cette semaine' : `Du ${weekStart.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })} au ${weekEnd.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}`}</p>
+              <BoutonIcone icone={ChevronRight} libelle="Semaine suivante" disabled={weekOffset >= 0} onClick={() => setWeekOffset(o => Math.min(o + 1, 0))} />
             </div>
-          ) : (
-            /* ── Full mode: detailed stats when hours exist ── */
-            <>
-              <div className="absolute top-0 right-0 w-20 sm:w-32 h-20 sm:h-32 rounded-full bg-white/10 -mr-10 -mt-10" />
-              <div className="absolute bottom-0 left-0 w-16 sm:w-24 h-16 sm:h-24 rounded-full bg-black/10 -ml-8 -mb-8" />
-              <div className="relative">
-                <div className="flex items-center justify-between mb-3 sm:mb-4">
-                  <button onClick={() => setWeekOffset(o => o - 1)} className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-white/90 hover:bg-white transition-colors flex items-center justify-center shadow-lg" aria-label="Semaine précédente">
-                    <ChevronLeft size={20} className="text-orange-600" />
-                  </button>
-                  <div className="flex items-center gap-2 px-3 sm:px-5 py-2 sm:py-2.5 bg-black/20 rounded-xl backdrop-blur-sm">
-                    <Calendar size={14} className="text-white" />
-                    <p className="text-xs sm:text-sm text-white font-bold">
-                      {weekOffset === 0 ? 'Cette semaine' : `Du ${weekStart.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })} au ${weekEnd.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}`}
-                    </p>
-                  </div>
-                  <button onClick={() => setWeekOffset(o => Math.min(o + 1, 0))} disabled={weekOffset >= 0} className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-white/90 hover:bg-white transition-colors flex items-center justify-center shadow-lg disabled:opacity-50 disabled:cursor-not-allowed" aria-label="Semaine suivante">
-                    <ChevronRight size={20} className="text-orange-600" />
-                  </button>
+            <div className="mt-1 flex items-end justify-between gap-3">
+              <p className="text-4xl font-bold text-encre tabular-nums leading-none">
+                {totalWeekHours.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} h <span className="text-base font-medium text-encre-3">pointées</span>
+              </p>
+              <p className="text-sm text-encre-2 text-right" title="Heures validées par un responsable cette semaine">
+                Validées<br /><strong className="text-lg text-encre tabular-nums">{approvedWeekHours.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} h</strong>
+              </p>
+            </div>
+            {heuresCible > 0 && (
+              <div className="mt-3">
+                <div className="h-2 rounded-full overflow-hidden bg-surface-2">
+                  <div className="h-full rounded-full bg-accent transition-all" style={{ width: `${Math.min(100, progressPercent)}%` }} />
                 </div>
-                <div className="flex items-end justify-between mb-3 sm:mb-4">
-                  <div>
-                    <p className="text-3xl sm:text-5xl font-black text-white" style={{textShadow: '0 2px 4px rgba(0,0,0,0.3)'}}>{totalWeekHours.toFixed(0)}<span className="text-xl sm:text-3xl">h</span></p>
-                    <p className="text-xs sm:text-sm text-white/95 mt-1 sm:mt-2 font-semibold" style={{textShadow: '0 1px 2px rgba(0,0,0,0.2)'}}>
-                      {`${equipe.length} membre${equipe.length > 1 ? 's' : ''} dans l'équipe`}
-                    </p>
-                  </div>
-                  <div className="text-right bg-black/15 rounded-xl px-4 py-3 backdrop-blur-sm" title="Heures validées par un responsable cette semaine">
-                    <div className="flex items-center gap-2 justify-end">
-                      <Check size={16} className="text-white" />
-                      <span className="text-sm text-white font-semibold">Validées</span>
-                    </div>
-                    <p className="text-2xl font-black text-white">{approvedWeekHours.toFixed(1)}h</p>
-                  </div>
-                </div>
-                <div className="relative">
-                  <div className="h-4 bg-black/20 rounded-full overflow-hidden">
-                    <motion.div className="h-full rounded-full" style={{ background: progressColor }} initial={{ width: 0 }} animate={{ width: `${progressPercent}%` }} transition={{ duration: 0.8, ease: 'easeOut' }} />
-                  </div>
-                  <div className="flex items-center justify-between mt-2">
-                    <p className="text-xs text-white/70" style={{textShadow: '0 1px 2px rgba(0,0,0,0.2)'}}>
-                      {heuresCible > 0 ? `Objectif : ${heuresCible}h` : 'Aucun employé actif'}
-                    </p>
-                    <p className="text-sm text-white font-bold" style={{textShadow: '0 1px 2px rgba(0,0,0,0.2)'}}>
-                      {`${Math.round(progressPercent)}% pointé`}
-                    </p>
-                  </div>
-                </div>
+                <p className="mt-1 text-sm text-encre-2 tabular-nums">Objectif {heuresCible} h · {Math.round(progressPercent)} %</p>
               </div>
-            </>
-          )}
-        </motion.div>
-
-        {/* Today's Activity Card */}
-        <motion.div
-          className={`${cardBg} rounded-2xl border p-4 relative overflow-hidden shadow-sm`}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: 0.1 }}
-        >
-          <div className="absolute top-0 right-0 w-16 h-16 rounded-full -mr-6 -mt-6" style={{ background: `${couleur}15` }} />
-          <div className="relative">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-3" style={{ background: `${couleur}15` }}>
-              <Clock size={18} style={{ color: couleur }} />
-            </div>
-            <p className={`text-xs font-medium uppercase tracking-wide ${textMuted} mb-1`}>Aujourd'hui</p>
-            <p className="text-2xl sm:text-3xl font-bold" style={{ color: couleur }}>{todayHours.toFixed(1)}h</p>
-            <div className="flex items-center gap-1.5 mt-2">
-              <div className="flex -space-x-2">
-                {equipe.filter(e => activeEmployeesToday.includes(e.id)).slice(0, 3).map((e, i) => {
-                  const config = getRoleConfig(e.role);
-                  return (
-                    <div
-                      key={e.id}
-                      className="w-6 h-6 rounded-full border-2 flex items-center justify-center text-[10px] font-bold text-white"
-                      style={{ background: config.color, borderColor: isDark ? '#1e293b' : '#fff', zIndex: 3 - i }}
-                    >
-                      {e.nom?.[0]}
-                    </div>
-                  );
-                })}
-              </div>
-              <span className={`text-xs ${textMuted}`}>
-                {activeEmployeesToday.length} actif{activeEmployeesToday.length > 1 ? 's' : ''}
-              </span>
-            </div>
-          </div>
-        </motion.div>
-
-        {/* Week Cost Card — neutral color for 0€, brand color for >0€ */}
-        <motion.div
-          className={`${cardBg} rounded-2xl border p-4 relative overflow-hidden shadow-sm`}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: 0.2 }}
-        >
-          <div className="absolute top-0 right-0 w-16 h-16 rounded-full -mr-6 -mt-6" style={{ background: weekCost > 0 ? `${couleur}15` : 'rgba(100,116,139,0.1)' }} />
-          <div className="relative">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-3" style={{ background: weekCost > 0 ? `${couleur}15` : 'rgba(100,116,139,0.1)' }}>
-              <Euro size={18} style={{ color: weekCost > 0 ? couleur : '#6B7280' }} />
-            </div>
-            <p className={`text-xs font-medium uppercase tracking-wide ${textMuted} mb-1`}>Coût semaine</p>
-            <p className={`text-2xl sm:text-3xl font-bold ${weekCost === 0 ? textMuted : ''}`} style={weekCost > 0 ? { color: couleur } : {}}>
-              {modeDiscret ? '***' : weekCost.toLocaleString('fr-FR', { maximumFractionDigits: 0 })}
-              <span className="text-base font-normal ml-1">€</span>
-            </p>
-            <p className={`text-xs ${textMuted} mt-2`} title="Inclut les charges sociales et patronales">{weekCost === 0 ? 'Aucun coût cette semaine' : 'Charges comprises'}</p>
-          </div>
-        </motion.div>
-      </div>
+            )}
+          </Carte>
+          <TuileChiffre libelle="Aujourd'hui" valeur={`${todayHours.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} h`}
+            contexte={`${activeEmployeesToday.length} personne${activeEmployeesToday.length > 1 ? 's' : ''} sur chantier`} />
+          <TuileChiffre libelle="Coût de la semaine"
+            valeur={modeDiscret ? '***' : `${weekCost.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} €`}
+            contexte={weekCost === 0 ? 'Aucun coût cette semaine' : 'Charges comprises'}
+            alerte={weekHeuresSansCout > 0 ? `${weekHeuresSansCout.toLocaleString('fr-FR')} h sans coût horaire saisi` : null} />
+        </div>
       )}
 
       {/* Active Timer Banner */}
@@ -1695,12 +1577,12 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
           >
             <div className="flex items-center justify-between mb-4">
               <h3 className={`text-sm font-semibold flex items-center gap-2 ${textPrimary}`}>
-                <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${isDark ? 'bg-emerald-900/40' : 'bg-emerald-100'}`}>
+                <div className={`w-7 h-7 rounded-lg flex items-center justify-center bg-succes-fond`}>
                   <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                 </div>
                 Équipe active maintenant
               </h3>
-              <span className={`text-xs px-2 py-1 rounded-full ${isDark ? 'bg-emerald-900/50 text-emerald-400' : 'bg-emerald-100 text-emerald-700'}`}>
+              <span className={`text-xs px-2 py-1 rounded-full bg-succes-fond text-succes-texte`}>
                 {activeEmployeesToday.length} sur le terrain
               </span>
             </div>
@@ -1757,17 +1639,15 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
 
       {/* Pending validations alert */}
       {!isSousTraitants && pointagesEnAttente.length > 0 && (
-        <div className={`rounded-xl p-4 flex items-center justify-between gap-4 ${isDark ? 'bg-amber-900/30 border border-amber-700' : 'bg-amber-50 border border-amber-200'}`}>
-          <div className="flex items-center gap-3">
-            <AlertCircle size={20} className="text-amber-500" />
-            <div>
-              <p className={`font-medium ${isDark ? 'text-amber-300' : 'text-amber-800'}`}>{pointagesEnAttente.length} pointage{pointagesEnAttente.length > 1 ? 's' : ''} en attente</p>
-              <p className={`text-sm ${isDark ? 'text-amber-400' : 'text-amber-700'}`}>A valider avant export</p>
+        <div className="rounded-2xl px-4 py-3 flex items-center justify-between gap-3 bg-alerte-fond text-alerte-texte">
+          <div className="flex items-center gap-3 min-w-0">
+            <AlertCircle size={20} aria-hidden="true" className="flex-shrink-0" />
+            <div className="min-w-0">
+              <p className="text-sm font-semibold">{pointagesEnAttente.length} pointage{pointagesEnAttente.length > 1 ? 's' : ''} en attente</p>
+              <p className="text-sm">À valider avant l'export</p>
             </div>
           </div>
-          <button onClick={() => setTab('validation')} className="px-4 py-2.5 bg-amber-500 text-white rounded-xl text-sm min-h-[44px] flex items-center gap-2">
-            <Check size={16} /> Valider
-          </button>
+          <Bouton taille="compacte" icone={Check} onClick={() => setTab('validation')}>Valider</Bouton>
         </div>
       )}
 
@@ -1805,7 +1685,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
             transition={{ duration: 0.2 }}
           >
             {/* Search and Filter Bar */}
-            <div className={`flex flex-col sm:flex-row items-stretch sm:items-center gap-3 p-3 rounded-xl ${isDark ? 'bg-slate-800/50' : 'bg-slate-50'}`}>
+            <div className={`flex flex-col sm:flex-row items-stretch sm:items-center gap-3 p-3 rounded-xl bg-surface-2`}>
               {/* Search */}
               <div className="relative flex-1">
                 <Search size={16} className={`absolute left-3 top-1/2 -translate-y-1/2 ${textMuted}`} />
@@ -1826,7 +1706,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                 className={`px-3 py-2.5 rounded-xl text-sm flex items-center gap-2 min-h-[44px] transition-all ${
                   showFilters || filterRole
                     ? 'text-white'
-                    : isDark ? 'bg-slate-700 text-slate-300' : 'bg-white text-slate-600 border border-slate-200'
+                    : 'bg-surface text-encre-2 border border-bord'
                 }`}
                 style={showFilters || filterRole ? { background: couleur } : {}}
               >
@@ -1839,7 +1719,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
               <select
                 value={sortBy}
                 onChange={e => setSortBy(e.target.value)}
-                className={`px-3 py-2 rounded-xl text-sm border min-h-[40px] cursor-pointer ${isDark ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-slate-200 text-slate-700'}`}
+                className={`px-3 py-2 rounded-xl text-sm border min-h-[40px] cursor-pointer bg-surface border-bord text-encre-2`}
                 aria-label="Trier par"
               >
                 <option value="name">Nom A-Z</option>
@@ -1863,7 +1743,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                       className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
                         !filterRole
                           ? 'text-white'
-                          : isDark ? 'bg-slate-700 text-slate-300' : 'bg-white text-slate-600'
+                          : 'bg-surface text-encre-2'
                       }`}
                       style={!filterRole ? { background: couleur } : {}}
                     >
@@ -1878,7 +1758,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                           className={`px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-1.5 transition-all ${
                             filterRole === role
                               ? 'text-white'
-                              : isDark ? 'bg-slate-700 text-slate-300' : 'bg-white text-slate-600'
+                              : 'bg-surface text-encre-2'
                           }`}
                           style={filterRole === role ? { background: config.color } : {}}
                         >
@@ -1902,7 +1782,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
               {(searchQuery || filterRole) && (
                 <button
                   onClick={() => { setSearchQuery(''); setFilterRole(''); }}
-                  className={`text-sm flex items-center gap-1 ${isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-700'}`}
+                  className={`text-sm flex items-center gap-1 text-encre-3 hover:text-encre`}
                 >
                   <X size={14} /> Effacer filtres
                 </button>
@@ -1954,297 +1834,79 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                   const isActiveToday = activeEmployeesToday.includes(e.id);
                   const currentCh = isActiveToday ? getEmployeeCurrentChantier(e.id) : null;
                   const monthHours = getHeuresMois(e.id);
-                  const margin = (e.tauxHoraire || 45) - (e.coutHoraireCharge || 28);
+                  // Taux et coût : jamais de valeur par défaut affichée (avant : 45 € et 28 € inventés quand rien n'était saisi).
+                  const aTaux = Number(e.tauxHoraire) > 0;
+                  const aCout = Number(e.coutHoraireCharge) > 0;
+                  const margin = aTaux && aCout ? Number(e.tauxHoraire) - Number(e.coutHoraireCharge) : null;
+                  const nomComplet = e.prenom ? `${e.prenom} ${e.nom}` : e.nom;
                   const isCurrentlyTiming = chrono.running && chrono.employeId === e.id;
 
+                  const pastilleDecennale = !e.decennale_expiration ? { ton: 'neutre', texte: 'Décennale non renseignée' }
+                    : new Date(e.decennale_expiration) < new Date() ? { ton: 'danger', texte: 'Décennale expirée' }
+                    : new Date(e.decennale_expiration) < new Date(Date.now() + 30 * 24 * 3600 * 1000) ? { ton: 'alerte', texte: 'Décennale à renouveler' }
+                    : { ton: 'succes', texte: 'Décennale à jour' };
+                  const pastilleUrssaf = !e.urssaf_date ? { ton: 'neutre', texte: 'URSSAF non renseignée' }
+                    : (Date.now() - new Date(e.urssaf_date).getTime()) > 180 * 24 * 3600 * 1000 ? { ton: 'alerte', texte: 'Attestation URSSAF de plus de 6 mois' }
+                    : { ton: 'succes', texte: 'URSSAF à jour' };
                   return (
-                    <motion.div
-                      key={e.id}
-                      className={`${cardBg} rounded-2xl border shadow-sm overflow-hidden group hover:shadow-xl ${isDark ? 'hover:border-slate-500' : 'hover:border-slate-300'} transition-all ${isCurrentlyTiming ? 'ring-2' : ''}`}
-                      style={isCurrentlyTiming ? { ringColor: couleur } : {}}
-                      initial={{ opacity: 0.7, y: 8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.15, delay: index * 0.02 }}
-                      whileHover={{ y: -2 }}
-                      tabIndex={0}
-                      aria-label={`Fiche de ${e.prenom || ''} ${e.nom} — ${e.role || 'Employé'}`}
-                    >
-                      {/* Card Header with gradient */}
-                      <div
-                        className="relative p-4 pb-12"
-                        style={{ background: `linear-gradient(135deg, ${config.color}20, ${config.color}05)` }}
-                      >
-                        {/* Status badge */}
-                        {isActiveToday && (
-                          <div className={`absolute top-3 left-3 px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${isDark ? 'bg-emerald-900/70 text-emerald-300' : 'bg-emerald-100 text-emerald-700'}`}>
-                            <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-                            Actif
-                          </div>
-                        )}
-
-                        {/* Action buttons - ALWAYS VISIBLE on mobile */}
-                        <div className="absolute top-3 right-3 flex gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                          {/* Quick timer button */}
-                          {!isSousTraitants && !chrono.running && (
-                            <button
-                              onClick={() => quickStartTimer(e.id)}
-                              className={`p-2 rounded-lg transition-colors shadow-sm ${isDark ? 'bg-emerald-900/70 hover:bg-emerald-800 text-emerald-300' : 'bg-emerald-100 hover:bg-emerald-200 text-emerald-700'}`}
-                              title="Demarrer le chrono"
-                            >
-                              <Play size={14} fill="currentColor" />
-                            </button>
-                          )}
-                          {e.telephone && (
-                            <button
-                              onClick={() => callPhone(e.telephone)}
-                              className={`p-2 rounded-lg transition-colors shadow-sm ${isDark ? 'bg-slate-700 hover:bg-emerald-900/50 text-emerald-400' : 'bg-white hover:bg-emerald-50 text-emerald-600'}`}
-                              title="Appeler"
-                            >
-                              <Phone size={14} />
-                            </button>
-                          )}
-                          <button
-                            onClick={() => startEdit(e)}
-                            className={`p-2 rounded-lg transition-colors shadow-sm ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-white hover:bg-slate-50 text-slate-500'}`}
-                            title="Modifier"
-                          >
-                            <Edit3 size={14} />
-                          </button>
-                          <button
-                            onClick={() => deleteEmploye(e.id)}
-                            className={`p-2 rounded-lg transition-colors shadow-sm ${isDark ? 'bg-slate-700 hover:bg-red-900/50 text-red-400' : 'bg-white hover:bg-red-50 text-red-500'}`}
-                            title="Supprimer"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
-
-                        {/* Avatar and Name — Click to view profile */}
-                        <button className="flex items-center gap-3 mt-6 sm:mt-0 text-left" onClick={() => setSelectedEmployee(e.id)}>
-                          <div className="relative">
-                            <div
-                              className="w-14 h-14 rounded-2xl flex items-center justify-center text-white text-lg font-bold shadow-lg"
-                              style={{ background: `linear-gradient(135deg, ${config.color}, ${config.color}cc)` }}
-                            >
-                              {e.nom?.[0]}{e.prenom?.[0] || ''}
-                            </div>
-                            <div
-                              className="absolute -bottom-1 -right-1 w-6 h-6 rounded-lg flex items-center justify-center text-white shadow-md"
-                              style={{ background: config.color }}
-                            >
-                              <RoleIcon size={12} />
-                            </div>
-                          </div>
-                          <div className="min-w-0">
-                            <h3 className={`font-bold text-lg ${textPrimary}`}>{e.prenom ? `${e.prenom} ${e.nom}` : e.nom}</h3>
-                            <p className={`text-sm ${textMuted}`}>{e.role || (isSousTraitants ? 'Sous-traitant' : 'Employé')}</p>
-                          </div>
-                          <Eye size={14} className={`${textMuted} opacity-0 group-hover:opacity-100 transition-opacity ml-auto`} />
+                    <div key={e.id} data-ui="Carte"
+                      className={`bg-surface border rounded-2xl shadow-e1 overflow-hidden ${isCurrentlyTiming ? 'border-accent' : 'border-bord'}`}>
+                      <div className="flex items-center gap-3 px-4 pt-4 pb-3">
+                        <button type="button" onClick={() => setSelectedEmployee(e.id)} aria-label={`Fiche de ${nomComplet}`}
+                          className="flex flex-1 min-w-0 items-center gap-3 text-left">
+                          <Avatar nom={nomComplet} />
+                          <span className="min-w-0">
+                            <span className="block text-base font-semibold text-encre truncate">{nomComplet}</span>
+                            <span className="block text-sm text-encre-2 truncate">{[e.role || (isSousTraitants ? 'Sous-traitant' : 'Employé'), e.contrat].filter(Boolean).join(' · ')}</span>
+                          </span>
                         </button>
+                        {!isSousTraitants && (
+                          <span className="text-right flex-shrink-0">
+                            <span className="block text-base font-bold text-encre tabular-nums">{monthHours.toFixed(0)} h</span>
+                            <span className="block text-sm text-encre-3">ce mois</span>
+                          </span>
+                        )}
                       </div>
 
-                      {/* Card Body */}
-                      <div className="p-4 -mt-8">
-                        {/* Role & Contract badges */}
-                        <div className="flex flex-wrap gap-2 mb-4">
-                          {e.role && (
-                            <span
-                              className="text-xs px-2.5 py-1 rounded-lg font-medium text-white"
-                              style={{ background: config.color }}
-                            >
-                              {config.emoji} {e.role}
-                            </span>
-                          )}
-                          {e.contrat && (
-                            <span className={`text-xs px-2.5 py-1 rounded-lg font-semibold border ${isDark ? 'bg-slate-700 border-slate-600 text-slate-200' : 'bg-slate-100 border-slate-300 text-slate-700'}`}>
-                              {e.contrat}
-                            </span>
-                          )}
+                      {(isCurrentlyTiming || (isActiveToday && currentCh)) && (
+                        <p className="mx-4 mb-3 flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold bg-succes-fond text-succes-texte">
+                          {isCurrentlyTiming ? <Timer size={16} aria-hidden="true" /> : <MapPin size={16} aria-hidden="true" />}
+                          {isCurrentlyTiming
+                            ? `Chrono en cours : ${formatTime(elapsed)}${chrono.paused ? ' (pause)' : ''}`
+                            : `${currentCh.nom} · ${getEmployeeTodayHours(e.id).toFixed(1)} h aujourd'hui`}
+                        </p>
+                      )}
+
+                      {isSousTraitants ? (
+                        <div className="px-4 pb-3 space-y-2">
+                          <p className="text-sm text-encre-2">
+                            Tarif <strong className="text-encre tabular-nums">{modeDiscret ? '**' : e.tarif_type === 'forfait' && e.tarif_forfait ? `${parseFloat(e.tarif_forfait).toLocaleString('fr-FR')} € au forfait` : e.tauxHoraire ? `${e.tauxHoraire} €/h` : 'non renseigné'}</strong>
+                            {' · '}SIRET {e.siret ? <span className="tabular-nums">…{String(e.siret).slice(-5)}</span> : 'non renseigné'}
+                          </p>
+                          <div className="flex flex-wrap gap-1.5">
+                            <Pastille ton={pastilleDecennale.ton}>{pastilleDecennale.texte}</Pastille>
+                            <Pastille ton={pastilleUrssaf.ton}>{pastilleUrssaf.texte}</Pastille>
+                          </div>
                         </div>
+                      ) : (aTaux || aCout) && !modeDiscret ? (
+                        <p className="px-4 pb-3 text-sm text-encre-2 tabular-nums">
+                          {aTaux && <>Facturé <strong className="text-encre">{e.tauxHoraire} €/h</strong></>}
+                          {aTaux && aCout && ' · '}
+                          {aCout && <>coût <strong className="text-encre">{e.coutHoraireCharge} €/h</strong></>}
+                          {margin !== null && <> · marge <strong className={margin < 0 ? 'text-danger-texte' : 'text-encre'}>{margin > 0 ? '+' : ''}{margin} €/h</strong></>}
+                        </p>
+                      ) : null}
 
-                        {/* Current timer banner */}
-                        {isCurrentlyTiming && (
-                          <div
-                            className="flex items-center gap-2 p-2.5 rounded-xl mb-4 text-white"
-                            style={{ background: chrono.paused ? '#64748b' : couleur }}
-                          >
-                            <Timer size={14} />
-                            <span className="text-sm font-medium">
-                              {formatTime(elapsed)} {chrono.paused && '(pause)'}
-                            </span>
-                          </div>
+                      <div className="flex items-center gap-1 border-t border-bord px-2 py-1">
+                        {!isSousTraitants && !chrono.running && (
+                          <Bouton variante="discret" taille="compacte" icone={Play} onClick={() => quickStartTimer(e.id)}>Chrono</Bouton>
                         )}
-
-                        {/* Current location if active */}
-                        {isActiveToday && currentCh && !isCurrentlyTiming && (
-                          <div className={`flex items-center gap-2 p-2.5 rounded-xl mb-4 ${isDark ? 'bg-emerald-900/30' : 'bg-emerald-50'}`}>
-                            <MapPin size={14} className="text-emerald-600" />
-                            <span className={`text-sm font-medium ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>{currentCh.nom}</span>
-                            <span className="ml-auto text-sm font-bold" style={{ color: couleur }}>{getEmployeeTodayHours(e.id).toFixed(1)}h</span>
-                          </div>
-                        )}
-
-                        {/* Employee Details: Date embauche + Compétences */}
-                        {(e.dateEmbauche || e.competences || e.certifications) && (
-                          <div className={`mb-3 p-3 rounded-xl space-y-2 ${isDark ? 'bg-slate-700/30' : 'bg-slate-50/80'}`}>
-                            {e.dateEmbauche && (
-                              <div className="flex items-center gap-2">
-                                <Calendar size={12} className={textMuted} />
-                                <span className={`text-xs ${textMuted}`}>Embauché le {new Date(e.dateEmbauche).toLocaleDateString('fr-FR')}</span>
-                                <span className={`text-xs font-medium ${textPrimary}`}>
-                                  ({(() => {
-                                    const diff = Math.floor((Date.now() - new Date(e.dateEmbauche).getTime()) / (1000 * 60 * 60 * 24 * 365.25));
-                                    return diff < 1 ? '< 1 an' : `${diff} an${diff > 1 ? 's' : ''}`;
-                                  })()})
-                                </span>
-                              </div>
-                            )}
-                            {e.competences && (
-                              <div className="flex flex-wrap gap-1">
-                                {e.competences.split(',').map((c, i) => c.trim()).filter(Boolean).map((c, i) => (
-                                  <span key={i} className={`text-[10px] px-1.5 py-0.5 rounded-md font-medium ${isDark ? 'bg-blue-900/40 text-blue-300' : 'bg-blue-50 text-blue-600'}`}>
-                                    {c}
-                                  </span>
-                                ))}
-                              </div>
-                            )}
-                            {e.certifications && (
-                              <div className="flex flex-wrap gap-1">
-                                {e.certifications.split(',').map((c, i) => c.trim()).filter(Boolean).map((c, i) => (
-                                  <span key={i} className={`text-[10px] px-1.5 py-0.5 rounded-md font-medium ${isDark ? 'bg-amber-900/40 text-amber-300' : 'bg-amber-50 text-amber-700'}`}>
-                                    {c}
-                                  </span>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        )}
-
-                        {/* Stats Grid */}
-                        {isSousTraitants ? (
-                          <>
-                            <div className="grid grid-cols-2 gap-2">
-                              <div className={`p-3 rounded-xl text-center border ${isDark ? 'bg-purple-900/20 border-slate-600' : 'bg-white border-slate-200'}`} style={{ borderLeftWidth: '3px', borderLeftColor: '#8b5cf6' }}>
-                                <p className={`text-xs font-medium ${textMuted} mb-1`}>Tarif</p>
-                                <p className="text-xl font-bold text-purple-500">
-                                  {modeDiscret ? '**' : e.tarif_type === 'forfait' && e.tarif_forfait ? `${parseFloat(e.tarif_forfait).toLocaleString('fr-FR')}€` : `${e.tauxHoraire || '?'}€/h`}
-                                </p>
-                              </div>
-                              <div className={`p-3 rounded-xl text-center border ${isDark ? 'bg-slate-700/50 border-slate-600' : 'bg-white border-slate-200'}`} style={{ borderLeftWidth: '3px', borderLeftColor: '#64748b' }}>
-                                <p className={`text-xs font-medium ${textMuted} mb-1`}>SIRET</p>
-                                <p className={`text-sm font-medium ${e.siret ? textPrimary : textMuted}`}>
-                                  {e.siret ? (e.siret.length > 10 ? '...' + e.siret.slice(-5) : e.siret) : 'Non renseigné'}
-                                </p>
-                              </div>
-                            </div>
-                            {/* Compliance badges */}
-                            <div className="flex flex-wrap gap-1.5 mt-3">
-                              {e.decennale_expiration ? (
-                                new Date(e.decennale_expiration) < new Date()
-                                  ? <span className={`text-[10px] px-2 py-1 rounded-md font-medium ${isDark ? 'bg-red-900/30 text-red-300' : 'bg-red-100 text-red-700'}`}>Décennale expirée</span>
-                                  : new Date(e.decennale_expiration) < new Date(Date.now() + 30 * 24 * 3600 * 1000)
-                                    ? <span className={`text-[10px] px-2 py-1 rounded-md font-medium ${isDark ? 'bg-amber-900/30 text-amber-300' : 'bg-amber-100 text-amber-700'}`}>Décennale expire bientôt</span>
-                                    : <span className={`text-[10px] px-2 py-1 rounded-md font-medium ${isDark ? 'bg-emerald-900/30 text-emerald-300' : 'bg-emerald-100 text-emerald-700'}`}>Décennale OK</span>
-                              ) : <span className={`text-[10px] px-2 py-1 rounded-md font-medium ${isDark ? 'bg-slate-700 text-slate-400' : 'bg-slate-100 text-slate-500'}`}>Décennale ?</span>}
-                              {e.urssaf_date ? (
-                                (Date.now() - new Date(e.urssaf_date).getTime()) > 180 * 24 * 3600 * 1000
-                                  ? <span className={`text-[10px] px-2 py-1 rounded-md font-medium ${isDark ? 'bg-amber-900/30 text-amber-300' : 'bg-amber-100 text-amber-700'}`}>URSSAF &gt;6 mois</span>
-                                  : <span className={`text-[10px] px-2 py-1 rounded-md font-medium ${isDark ? 'bg-blue-900/30 text-blue-300' : 'bg-blue-100 text-blue-700'}`}>URSSAF OK</span>
-                              ) : <span className={`text-[10px] px-2 py-1 rounded-md font-medium ${isDark ? 'bg-slate-700 text-slate-400' : 'bg-slate-100 text-slate-500'}`}>URSSAF ?</span>}
-                            </div>
-                          </>
-                        ) : (
-                          <>
-                            <div className="grid grid-cols-3 gap-2">
-                              <div className={`p-3 rounded-xl text-center border ${isDark ? 'bg-slate-700/50 border-slate-600' : 'bg-white border-slate-200'}`} style={{ borderLeftWidth: '3px', borderLeftColor: '#10b981' }}>
-                                <p className={`text-xs font-medium ${isDark ? 'text-slate-300' : 'text-slate-600'} mb-1`}>Facturé</p>
-                                <p className={`text-xl font-bold ${textPrimary}`}>
-                                  {modeDiscret ? '**' : e.tauxHoraire || 45}<span className="text-sm font-normal">€</span>
-                                </p>
-                              </div>
-                              <div className={`p-3 rounded-xl text-center border ${isDark ? 'bg-slate-700/50 border-slate-600' : 'bg-white border-slate-200'}`} style={{ borderLeftWidth: '3px', borderLeftColor: '#ef4444' }}>
-                                <p className={`text-xs font-medium ${isDark ? 'text-slate-300' : 'text-slate-600'} mb-1`}>Coût</p>
-                                <p className={`text-xl font-bold ${textPrimary}`}>
-                                  {modeDiscret ? '**' : e.coutHoraireCharge || 28}<span className="text-sm font-normal">€</span>
-                                </p>
-                              </div>
-                              {/* #8: KPI Ce mois — conditional color */}
-                              {(() => {
-                                const dayOfMonth = new Date().getDate();
-                                const kpiColor = monthHours > 0 ? couleur : dayOfMonth <= 5 ? '#94a3b8' : '#f59e0b';
-                                const kpiBg = monthHours > 0 ? `${couleur}15` : dayOfMonth <= 5 ? 'rgba(148,163,184,0.1)' : 'rgba(245,158,11,0.1)';
-                                return (
-                                  <div className={`p-3 rounded-xl text-center border ${isDark ? 'border-slate-600' : 'border-slate-200'}`} style={{ background: kpiBg, borderLeftWidth: '3px', borderLeftColor: kpiColor }}>
-                                    <p className={`text-xs font-medium ${textMuted} mb-1`}>Ce mois</p>
-                                    <p className="text-xl font-bold" style={{ color: kpiColor }}>
-                                      {monthHours.toFixed(0)}<span className="text-sm font-normal">h</span>
-                                    </p>
-                                  </div>
-                                );
-                              })()}
-                            </div>
-
-                            {/* Margin indicator */}
-                            {!modeDiscret && (
-                              <div className={`mt-3 flex items-center justify-between p-2.5 rounded-xl border ${isDark ? 'bg-slate-700/30 border-slate-600' : 'bg-slate-50/80 border-slate-100'}`}>
-                                <span className={`text-xs flex items-center gap-1.5 ${textMuted}`}>
-                                  <TrendingUp size={12} />
-                                  Marge/heure
-                                </span>
-                                <span className={`text-sm font-bold ${margin === 0 ? textMuted : margin > 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-                                  {margin > 0 ? '+' : ''}{margin}€
-                                </span>
-                              </div>
-                            )}
-                          </>
-                        )}
-
-                        {/* Mobile quick pointage: one-tap start on active chantiers — #6: filter test names */}
-                        {!isSousTraitants && chantiers.filter(c => c.statut === 'en_cours' && !isTestChantier(c)).length > 0 && (
-                          <div className={`mt-3 pt-3 border-t ${isDark ? 'border-slate-700' : 'border-slate-100'}`}>
-                            <p className={`text-[10px] uppercase tracking-wider font-semibold mb-2 flex items-center gap-1.5 ${textMuted}`}>
-                              <Timer size={10} className="opacity-60" />
-                              Pointage rapide
-                            </p>
-                            <div className="flex flex-wrap gap-1.5">
-                              {chantiers.filter(c => c.statut === 'en_cours' && !isTestChantier(c)).slice(0, 4).map(ch => {
-                                const isRunningHere = chrono.running && chrono.chantierId === ch.id && chrono.employeId === e.id;
-                                // Discriminant: if duplicate names, add start date
-                                const dupes = chantiers.filter(c2 => c2.statut === 'en_cours' && c2.nom === ch.nom);
-                                const label = ch.nom?.length > 40 ? ch.nom.slice(0, 37) + '...' : ch.nom;
-                                const discriminant = dupes.length > 1 && ch.date_debut ? ` (${new Date(ch.date_debut + 'T00:00:00').toLocaleDateString('fr-FR', { month: 'short', year: '2-digit' })})` : '';
-                                return (
-                                  <button
-                                    key={ch.id}
-                                    onClick={(ev) => {
-                                      ev.stopPropagation();
-                                      if (isRunningHere) {
-                                        setPendingStopChrono(true);
-                                        setNoteModalOpen(true);
-                                      } else {
-                                        quickStartTimer(e.id, ch.id);
-                                      }
-                                    }}
-                                    className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all min-h-[44px] max-w-[180px] ${
-                                      isRunningHere
-                                        ? 'bg-emerald-500 text-white shadow-md'
-                                        : isDark ? 'bg-emerald-900/30 text-emerald-400 hover:bg-emerald-900/50' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
-                                    }`}
-                                  >
-                                    {isRunningHere ? (
-                                      <span className="w-2.5 h-2.5 rounded-full bg-white animate-pulse flex-shrink-0" />
-                                    ) : (
-                                      <Play size={12} fill="currentColor" className="flex-shrink-0" />
-                                    )}
-                                    <span className="text-left leading-tight line-clamp-2">{label}{discriminant}</span>
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        )}
+                        <span className="flex-1" />
+                        {e.telephone && <BoutonIcone icone={Phone} libelle={`Appeler ${nomComplet}`} onClick={() => callPhone(e.telephone)} />}
+                        <BoutonIcone icone={Edit3} libelle={`Modifier ${nomComplet}`} onClick={() => startEdit(e)} />
+                        <BoutonIcone icone={Trash2} libelle={`Supprimer ${nomComplet}`} onClick={() => deleteEmploye(e.id)} />
                       </div>
-                    </motion.div>
+                    </div>
                   );
                 })}
               </div>
@@ -2308,7 +1970,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                               setSmartClockingMode(true);
                             }}
                             className={`p-4 rounded-xl border-2 text-left transition-all hover:shadow-md ${
-                              isDark ? 'border-slate-700 hover:border-slate-600' : 'border-slate-200 hover:border-slate-300'
+                              'border-bord hover:border-bord-fort'
                             }`}
                           >
                             <div className="flex flex-col items-center text-center">
@@ -2329,7 +1991,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                               <p className={`text-sm font-medium ${textPrimary}`}>{emp.nom}</p>
                               <p className={`text-xs ${textMuted}`}>{emp.prenom}</p>
                               {isActive && (
-                                <span className={`mt-1 text-[10px] px-2 py-0.5 rounded-full ${isDark ? 'bg-emerald-900/50 text-emerald-400' : 'bg-emerald-100 text-emerald-700'}`}>
+                                <span className={`mt-1 text-xs px-2 py-0.5 rounded-full bg-succes-fond text-succes-texte`}>
                                   Sur chantier
                                 </span>
                               )}
@@ -2362,20 +2024,20 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                           setCurrentEmployeForSmartClock(null);
                           setSmartClockingMode(false);
                         }}
-                        className={`px-3 py-2 rounded-lg text-sm ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}
+                        className={`px-3 py-2 rounded-lg text-sm bg-surface-2 text-encre-2`}
                       >
                         Changer
                       </button>
                     </div>
 
                     {/* Smart Clocking - Placeholder */}
-                    <div className={`p-4 rounded-xl text-center ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+                    <div className={`p-4 rounded-xl text-center bg-surface-2`}>
                       <p className={`text-sm font-medium ${textPrimary}`}>Pointage intelligent</p>
                       <p className={`text-xs ${textMuted} mt-1`}>Sélectionnez un chantier pour pointer</p>
                     </div>
 
                     {/* Location Status */}
-                    <div className={`p-4 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+                    <div className={`p-4 rounded-xl bg-surface-2`}>
                       <div className="flex items-center justify-between mb-3">
                         <p className={`text-sm font-medium ${textPrimary}`}>Statut GPS</p>
                         {smartClocking.locationPermission === 'granted' ? (
@@ -2401,7 +2063,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                             {smartClocking.nearbyChantiers.map(ch => (
                               <div
                                 key={ch.id}
-                                className={`flex items-center justify-between p-2 rounded-lg ${isDark ? 'bg-slate-600' : 'bg-white'}`}
+                                className={`flex items-center justify-between p-2 rounded-lg bg-surface`}
                               >
                                 <div className="flex items-center gap-2">
                                   <MapPin size={14} style={{ color: couleur }} />
@@ -2430,7 +2092,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                             <p className={`font-medium ${isDark ? 'text-amber-300' : 'text-amber-800'}`}>
                               Donnees en attente de sync
                             </p>
-                            <p className={`text-sm ${isDark ? 'text-amber-400' : 'text-amber-700'}`}>
+                            <p className={`text-sm text-alerte-texte`}>
                               {smartClocking.pendingSync.pointages} pointage(s) seront synchronises une fois en ligne
                             </p>
                           </div>
@@ -2566,7 +2228,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                         </p>
                       )}
                       {chrono.paused && (
-                        <span className={`text-xs mt-1 px-2 py-0.5 rounded-full ${isDark ? 'bg-slate-700' : 'bg-slate-200'} ${textMuted}`}>
+                        <span className={`text-xs mt-1 px-2 py-0.5 rounded-full bg-bord ${textMuted}`}>
                           PAUSE
                         </span>
                       )}
@@ -2588,7 +2250,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                               className={`p-3 rounded-xl border-2 text-left transition-all ${
                                 isSelected
                                   ? 'shadow-lg scale-[1.02]'
-                                  : isDark ? 'border-slate-700 hover:border-slate-600' : 'border-slate-200 hover:border-slate-300'
+                                  : 'border-bord hover:border-bord-fort'
                               }`}
                               style={isSelected ? { borderColor: couleur, background: `${couleur}10` } : {}}
                             >
@@ -2657,7 +2319,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                           className={`px-6 py-4 rounded-2xl text-lg font-semibold flex items-center gap-3 shadow-lg ${
                             chrono.paused
                               ? 'bg-emerald-500 text-white'
-                              : isDark ? 'bg-slate-700 text-white' : 'bg-slate-200 text-slate-700'
+                              : 'bg-bord text-encre-2'
                           }`}
                           whileHover={{ scale: 1.02 }}
                           whileTap={{ scale: 0.98 }}
@@ -2783,14 +2445,14 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                       <History size={18} style={{ color: couleur }} />
                       Pointages de la semaine
                     </h3>
-                    <span className={`text-xs px-2 py-1 rounded-full ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>
+                    <span className={`text-xs px-2 py-1 rounded-full bg-surface-2 text-encre-2`}>
                       {recentPointages.length} entrée{recentPointages.length > 1 ? 's' : ''}
                     </span>
                   </div>
                   <div className="overflow-x-auto">
                     <table className="w-full min-w-[600px]">
                       <thead>
-                        <tr className={isDark ? 'bg-slate-700/50' : 'bg-slate-50'}>
+                        <tr className={'bg-surface-2'}>
                           <th className={`text-left px-4 py-2.5 text-xs font-semibold uppercase tracking-wide ${textMuted}`}>Employé</th>
                           <th className={`text-left px-4 py-2.5 text-xs font-semibold uppercase tracking-wide ${textMuted}`}>Chantier</th>
                           <th className={`text-left px-4 py-2.5 text-xs font-semibold uppercase tracking-wide ${textMuted}`}>Date</th>
@@ -2803,7 +2465,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                           const emp = equipe.find(e => e.id === p.employeId);
                           const ch = chantiers.find(c => c.id === p.chantierId);
                           return (
-                            <tr key={p.id} className={`border-t ${isDark ? 'border-slate-700 hover:bg-slate-700/30' : 'border-slate-100 hover:bg-slate-50'} transition-colors`}>
+                            <tr key={p.id} className={`border-t border-bord hover:bg-surface-2 transition-colors`}>
                               <td className={`px-4 py-3 text-sm font-medium ${textPrimary}`}>
                                 {emp ? `${emp.prenom || ''} ${emp.nom}`.trim() : 'Inconnu'}
                               </td>
@@ -2814,11 +2476,11 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                               <td className={`px-4 py-3 text-sm text-right font-bold ${textPrimary}`}>{p.heures}h</td>
                               <td className="px-4 py-3 text-center">
                                 {p.verrouille ? (
-                                  <span className={`text-[10px] px-2 py-1 rounded-full font-medium ${isDark ? 'bg-blue-900/30 text-blue-300' : 'bg-blue-100 text-blue-700'}`}>Verrouillé</span>
+                                  <span className={`text-xs px-2 py-1 rounded-full font-medium bg-info-fond text-info-texte`}>Verrouillé</span>
                                 ) : p.approuve ? (
-                                  <span className={`text-[10px] px-2 py-1 rounded-full font-medium ${isDark ? 'bg-emerald-900/30 text-emerald-300' : 'bg-emerald-100 text-emerald-700'}`}>Validé</span>
+                                  <span className={`text-xs px-2 py-1 rounded-full font-medium bg-succes-fond text-succes-texte`}>Validé</span>
                                 ) : (
-                                  <span className={`text-[10px] px-2 py-1 rounded-full font-medium ${isDark ? 'bg-amber-900/30 text-amber-300' : 'bg-amber-100 text-amber-700'}`}>En attente</span>
+                                  <span className={`text-xs px-2 py-1 rounded-full font-medium bg-alerte-fond text-alerte-texte`}>En attente</span>
                                 )}
                               </td>
                             </tr>
@@ -2845,7 +2507,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
             transition={{ duration: 0.2 }}
           >
             {/* Actions Bar */}
-            <div className={`flex items-center justify-between flex-wrap gap-3 p-4 rounded-xl ${isDark ? 'bg-slate-800/50' : 'bg-slate-50'}`}>
+            <div className={`flex items-center justify-between flex-wrap gap-3 p-4 rounded-xl bg-surface-2`}>
               <div className="flex items-center gap-3">
                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${pointagesEnAttente.length > 0 ? 'bg-amber-500/20' : 'bg-emerald-500/20'}`}>
                   {pointagesEnAttente.length > 0 ? (
@@ -2939,12 +2601,12 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                           <span className={`text-sm ${textMuted}`}>
                             {ch?.nom || 'Sans chantier'}
                           </span>
-                          <span className={`text-xs px-2 py-0.5 rounded-full ${isDark ? 'bg-slate-700' : 'bg-slate-100'} ${textMuted}`}>
+                          <span className={`text-xs px-2 py-0.5 rounded-full bg-surface-2 ${textMuted}`}>
                             {new Date(p.date).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })}
                           </span>
                         </div>
                         {p.note && (
-                          <p className={`text-xs mt-1 ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>
+                          <p className={`text-xs mt-1 text-info-texte`}>
                             "{p.note}"
                           </p>
                         )}
@@ -2977,7 +2639,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                         </motion.button>
                         <motion.button
                           onClick={() => rejeterPointage(p.id)}
-                          className={`p-3 rounded-xl ${isDark ? 'bg-red-900/50 text-red-400' : 'bg-red-100 text-red-600'}`}
+                          className={`p-3 rounded-xl bg-danger-fond text-danger-texte`}
                           whileHover={{ scale: 1.05 }}
                           whileTap={{ scale: 0.95 }}
                         >
@@ -3012,7 +2674,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                   const allApproved = empWeekPts.every(p => p.approuve || p.verrouille);
 
                   return (
-                    <div key={emp.id} className={`flex items-center gap-4 p-3 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+                    <div key={emp.id} className={`flex items-center gap-4 p-3 rounded-xl bg-surface-2`}>
                       <div className="w-10 h-10 rounded-lg flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style={{ background: config.color }}>
                         {emp.prenom?.[0]}{emp.nom?.[0]}
                       </div>
@@ -3054,7 +2716,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                 >
                   <div className="absolute inset-0 bg-black/50" onClick={() => { setSignatureModal({ open: false, pointageIds: [], employeId: null }); setSignatureData(null); }} />
                   <motion.div
-                    className={`relative w-full max-w-lg rounded-2xl p-6 ${isDark ? 'bg-slate-800' : 'bg-white'} shadow-2xl`}
+                    className={`relative w-full max-w-lg rounded-2xl p-6 bg-surface shadow-2xl`}
                     initial={{ scale: 0.9, y: 20 }}
                     animate={{ scale: 1, y: 0 }}
                     exit={{ scale: 0.9, y: 20 }}
@@ -3066,13 +2728,13 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                           {equipe.find(e => e.id === signatureModal.employeId)?.prenom} {equipe.find(e => e.id === signatureModal.employeId)?.nom} — {signatureModal.pointageIds.length} pointage(s)
                         </p>
                       </div>
-                      <button onClick={() => { setSignatureModal({ open: false, pointageIds: [], employeId: null }); setSignatureData(null); }} className={`p-2 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
+                      <button onClick={() => { setSignatureModal({ open: false, pointageIds: [], employeId: null }); setSignatureData(null); }} className={`p-2 rounded-lg hover:bg-surface-2`}>
                         <X size={20} className={textMuted} />
                       </button>
                     </div>
 
                     {/* Recap of pointages */}
-                    <div className={`mb-4 p-3 rounded-xl text-sm ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+                    <div className={`mb-4 p-3 rounded-xl text-sm bg-surface-2`}>
                       <p className={`font-medium mb-2 ${textPrimary}`}>Récapitulatif :</p>
                       {weekPointages.filter(p => signatureModal.pointageIds.includes(p.id)).map(p => {
                         const ch = chantiers.find(c => c.id === p.chantierId);
@@ -3083,14 +2745,14 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                           </div>
                         );
                       })}
-                      <div className={`flex justify-between pt-2 mt-2 border-t font-bold ${isDark ? 'border-slate-600' : 'border-slate-200'} ${textPrimary}`}>
+                      <div className={`flex justify-between pt-2 mt-2 border-t font-bold border-bord ${textPrimary}`}>
                         <span>Total</span>
                         <span>{weekPointages.filter(p => signatureModal.pointageIds.includes(p.id)).reduce((s, p) => s + (p.heures || 0), 0)}h</span>
                       </div>
                     </div>
 
                     {/* Canvas */}
-                    <div className={`relative rounded-xl border-2 border-dashed mb-4 ${isDark ? 'border-slate-600 bg-slate-700' : 'border-slate-300 bg-slate-50'}`}>
+                    <div className={`relative rounded-xl border-2 border-dashed mb-4 border-bord-fort bg-surface-2`}>
                       <canvas
                         ref={initSignatureCanvas}
                         width={440}
@@ -3114,7 +2776,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                     <div className="flex gap-3">
                       <button
                         onClick={clearSignature}
-                        className={`flex-1 px-4 py-3 rounded-xl text-sm font-medium flex items-center justify-center gap-2 ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                        className={`flex-1 px-4 py-3 rounded-xl text-sm font-medium flex items-center justify-center gap-2 bg-surface-2 text-encre-2 hover:bg-bord`}
                       >
                         <Undo2 size={16} />
                         Effacer
@@ -3148,7 +2810,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
             transition={{ duration: 0.2 }}
           >
             {/* Header with export and week nav */}
-            <div className={`flex items-center justify-between flex-wrap gap-3 p-4 rounded-xl ${isDark ? 'bg-slate-800/50' : 'bg-slate-50'}`}>
+            <div className={`flex items-center justify-between flex-wrap gap-3 p-4 rounded-xl bg-surface-2`}>
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${couleur}15` }}>
                   <History size={20} style={{ color: couleur }} />
@@ -3157,7 +2819,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => setWeekOffset(o => o - 1)}
-                      className={`p-1 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-200'}`}
+                      className={`p-1 rounded-lg hover:bg-bord`}
                     >
                       <ChevronLeft size={16} className={textMuted} />
                     </button>
@@ -3167,7 +2829,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                     <button
                       onClick={() => setWeekOffset(o => Math.min(o + 1, 0))}
                       disabled={weekOffset >= 0}
-                      className={`p-1 rounded-lg disabled:opacity-30 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-200'}`}
+                      className={`p-1 rounded-lg disabled:opacity-30 hover:bg-bord`}
                     >
                       <ChevronRight size={16} className={textMuted} />
                     </button>
@@ -3218,22 +2880,22 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
               const heuresApprouvees = approuves.reduce((s, p) => s + (p.heures || 0), 0);
               const coutEstime = approuves.reduce((s, p) => {
                 const emp = equipe.find(e => e.id === p.employeId);
-                return s + (p.heures || 0) * (parseFloat(emp?.coutHoraireCharge) || 28);
+                return s + (p.heures || 0) * (coutHoraire(emp) || 0);
               }, 0);
 
               return (
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  <div className={`p-3 rounded-xl border ${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-slate-200'}`}>
+                  <div className={`p-3 rounded-xl border bg-surface border-bord`}>
                     <p className={`text-xs font-medium ${textMuted}`}>Employés</p>
                     <p className="text-xl font-bold" style={{ color: couleur }}>{employesConcernes}</p>
                     <p className={`text-xs ${textMuted}`}>{chantiersConcernes} chantier{chantiersConcernes > 1 ? 's' : ''}</p>
                   </div>
-                  <div className={`p-3 rounded-xl border ${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-slate-200'}`}>
+                  <div className={`p-3 rounded-xl border bg-surface border-bord`}>
                     <p className={`text-xs font-medium ${textMuted}`}>Heures validées</p>
                     <p className="text-xl font-bold text-emerald-500">{heuresApprouvees.toFixed(1)}h</p>
                     <p className={`text-xs ${textMuted}`}>sur {totalWeekHours.toFixed(1)}h total</p>
                   </div>
-                  <div className={`p-3 rounded-xl border ${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-slate-200'}`}>
+                  <div className={`p-3 rounded-xl border bg-surface border-bord`}>
                     <p className={`text-xs font-medium ${textMuted}`}>Statuts</p>
                     <div className="flex items-center gap-2 mt-1">
                       <span className="text-xs font-medium text-emerald-500">✓ {approuves.length}</span>
@@ -3241,7 +2903,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                       <span className="text-xs font-medium text-blue-500">🔒 {verrouilles.length}</span>
                     </div>
                   </div>
-                  <div className={`p-3 rounded-xl border ${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-slate-200'}`}>
+                  <div className={`p-3 rounded-xl border bg-surface border-bord`}>
                     <p className={`text-xs font-medium ${textMuted}`}>Coût estimé</p>
                     <p className="text-xl font-bold" style={{ color: couleur }}>{coutEstime.toFixed(0)}€</p>
                     <p className={`text-xs ${textMuted}`}>charges incluses</p>
@@ -3277,7 +2939,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                     return (
                       <motion.div
                         key={p.id}
-                        className={`flex items-center px-4 py-3 gap-3 ${isDark ? 'border-slate-700' : 'border-slate-100'} ${index !== weekPointages.length - 1 ? 'border-b' : ''}`}
+                        className={`flex items-center px-4 py-3 gap-3 border-bord ${index !== weekPointages.length - 1 ? 'border-b' : ''}`}
                         initial={{ opacity: 0, x: -10 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: index * 0.02 }}
@@ -3288,7 +2950,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                             ? 'bg-blue-500/20'
                             : p.approuve
                               ? 'bg-emerald-500/20'
-                              : isDark ? 'bg-slate-700' : 'bg-slate-100'
+                              : 'bg-surface-2'
                         }`}>
                           {p.verrouille ? (
                             <CheckSquare size={14} className="text-blue-500" />
@@ -3343,7 +3005,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
             )}
 
             {/* Legend */}
-            <div className={`flex flex-wrap items-center gap-4 p-3 rounded-xl text-sm ${isDark ? 'bg-slate-800/30' : 'bg-slate-50'}`}>
+            <div className={`flex flex-wrap items-center gap-4 p-3 rounded-xl text-sm bg-surface-2`}>
               <span className={`font-medium ${textMuted}`}>Legende:</span>
               <span className="inline-flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-orange-500" />
@@ -3397,7 +3059,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
               return (
                 <>
                   {/* Header */}
-                  <div className={`flex items-center justify-between flex-wrap gap-3 p-4 rounded-xl ${isDark ? 'bg-slate-800/50' : 'bg-slate-50'}`}>
+                  <div className={`flex items-center justify-between flex-wrap gap-3 p-4 rounded-xl bg-surface-2`}>
                     <div className="flex items-center gap-3">
                       <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${pendingCount > 0 ? 'bg-amber-500/20' : 'bg-emerald-500/20'}`}>
                         {pendingCount > 0 ? <AlertCircle size={20} className="text-amber-500" /> : <Check size={20} className="text-emerald-500" />}
@@ -3427,7 +3089,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                       return (
                         <div key={emp.id} className={`${cardBg} rounded-xl border p-3`}>
                           <div className="flex items-center gap-2 mb-2">
-                            <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-[10px] font-bold" style={{ background: config.color }}>
+                            <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-bold" style={{ background: config.color }}>
                               {emp.prenom?.[0]}{emp.nom?.[0]}
                             </div>
                             <p className={`text-xs font-medium truncate ${textPrimary}`}>{emp.prenom}</p>
@@ -3437,14 +3099,14 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                               <span className={textMuted}>CP</span>
                               <span className={`font-semibold ${bal.cpUsed >= bal.cpTotal ? 'text-red-500' : textPrimary}`}>{bal.cpTotal - bal.cpUsed}j restants</span>
                             </div>
-                            <div className={`w-full h-1.5 rounded-full ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`}>
+                            <div className={`w-full h-1.5 rounded-full bg-bord`}>
                               <div className="h-full rounded-full bg-blue-500" style={{ width: `${Math.min((bal.cpUsed / bal.cpTotal) * 100, 100)}%` }} />
                             </div>
                             <div className="flex justify-between text-xs">
                               <span className={textMuted}>RTT</span>
                               <span className={`font-semibold ${bal.rttUsed >= bal.rttTotal ? 'text-red-500' : textPrimary}`}>{bal.rttTotal - bal.rttUsed}j restants</span>
                             </div>
-                            <div className={`w-full h-1.5 rounded-full ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`}>
+                            <div className={`w-full h-1.5 rounded-full bg-bord`}>
                               <div className="h-full rounded-full bg-purple-500" style={{ width: `${Math.min((bal.rttUsed / bal.rttTotal) * 100, 100)}%` }} />
                             </div>
                           </div>
@@ -3472,7 +3134,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                             key={i}
                             className={`relative text-center py-1.5 rounded-lg text-xs ${
                               isToday ? 'ring-2 font-bold' : ''
-                            } ${isWeekend ? (isDark ? 'bg-slate-700/30 text-slate-500' : 'bg-slate-50 text-slate-400') : textPrimary}`}
+                            } ${isWeekend ? ('bg-surface-2 text-encre-3') : textPrimary}`}
                             style={isToday ? { ringColor: couleur } : {}}
                           >
                             {day.getDate()}
@@ -3512,7 +3174,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                         className={`px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${
                           congeFilter === f.key
                             ? 'text-white shadow-md'
-                            : isDark ? 'bg-slate-800 text-slate-400 hover:text-slate-200' : 'bg-slate-100 text-slate-500 hover:text-slate-700'
+                            : 'bg-surface-2 text-encre-3 hover:text-encre'
                         }`}
                         style={congeFilter === f.key ? { background: couleur } : {}}
                       >
@@ -3580,10 +3242,10 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                                   <motion.button onClick={() => approveConge(c.id)} className="p-2.5 bg-emerald-500 text-white rounded-xl" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                                     <ThumbsUp size={16} />
                                   </motion.button>
-                                  <motion.button onClick={() => rejectConge(c.id)} className={`p-2.5 rounded-xl ${isDark ? 'bg-red-900/50 text-red-400' : 'bg-red-100 text-red-600'}`} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                                  <motion.button onClick={() => rejectConge(c.id)} className={`p-2.5 rounded-xl bg-danger-fond text-danger-texte`} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                                     <ThumbsDown size={16} />
                                   </motion.button>
-                                  <motion.button onClick={() => cancelConge(c.id)} className={`p-2.5 rounded-xl ${isDark ? 'bg-slate-700 text-slate-400' : 'bg-slate-100 text-slate-500'}`} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                                  <motion.button onClick={() => cancelConge(c.id)} className={`p-2.5 rounded-xl bg-surface-2 text-encre-3`} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                                     <Trash2 size={16} />
                                   </motion.button>
                                 </div>
@@ -3601,7 +3263,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                       <motion.div className="fixed inset-0 z-50 flex items-center justify-center p-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                         <div className="absolute inset-0 bg-black/50" onClick={() => setShowCongeForm(false)} />
                         <motion.div
-                          className={`relative w-full max-w-md rounded-2xl p-6 ${isDark ? 'bg-slate-800' : 'bg-white'} shadow-2xl`}
+                          className={`relative w-full max-w-md rounded-2xl p-6 bg-surface shadow-2xl`}
                           initial={{ scale: 0.9, y: 20 }}
                           animate={{ scale: 1, y: 0 }}
                           exit={{ scale: 0.9, y: 20 }}
@@ -3613,7 +3275,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                               </div>
                               <h3 className={`font-bold text-lg ${textPrimary}`}>Nouvelle demande</h3>
                             </div>
-                            <button onClick={() => setShowCongeForm(false)} className={`p-2 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
+                            <button onClick={() => setShowCongeForm(false)} className={`p-2 rounded-lg hover:bg-surface-2`}>
                               <X size={20} className={textMuted} />
                             </button>
                           </div>
@@ -3645,7 +3307,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                               </div>
                             </div>
                             {congeForm.dateDebut && congeForm.dateFin && new Date(congeForm.dateFin) >= new Date(congeForm.dateDebut) && (
-                              <div className={`p-3 rounded-xl text-sm ${isDark ? 'bg-blue-900/30 text-blue-300' : 'bg-blue-50 text-blue-700'}`}>
+                              <div className={`p-3 rounded-xl text-sm bg-info-fond text-info-texte`}>
                                 <strong>{getWorkingDays(congeForm.dateDebut, congeForm.dateFin)}</strong> jour(s) ouvré(s)
                                 {congeForm.employeId && (() => {
                                   const bal = getCongeBalance(congeForm.employeId);
@@ -3724,7 +3386,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                     const config = getRoleConfig(emp.role);
                     const phone = emp.telephone?.replace(/[\s.-]/g, '').replace(/^0/, '+33');
                     return (
-                      <div key={emp.id} className={`flex items-center gap-3 p-3 rounded-xl ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}>
+                      <div key={emp.id} className={`flex items-center gap-3 p-3 rounded-xl hover:bg-surface-2`}>
                         <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold" style={{ background: config.color }}>
                           {emp.prenom?.[0]}{emp.nom?.[0]}
                         </div>
@@ -3743,7 +3405,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                         </a>
                         <a
                           href={`tel:${emp.telephone}`}
-                          className={`w-11 h-11 rounded-xl flex items-center justify-center ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}
+                          className={`w-11 h-11 rounded-xl flex items-center justify-center bg-surface-2 text-encre-2`}
                           title={`Appeler ${emp.prenom}`}
                         >
                           <Phone size={16} />
@@ -3770,7 +3432,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
           <motion.div className="fixed inset-0 z-50 flex items-center justify-center p-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
             <div className="absolute inset-0 bg-black/50" onClick={() => setShowPointerModal(false)} />
             <motion.div
-              className={`relative w-full max-w-md rounded-2xl ${isDark ? 'bg-slate-800' : 'bg-white'} shadow-2xl overflow-hidden`}
+              className={`relative w-full max-w-md rounded-2xl bg-surface shadow-2xl overflow-hidden`}
               initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
             >
               <div className="p-5 text-white" style={{ background: 'linear-gradient(135deg, #059669, #047857)' }}>
@@ -3833,7 +3495,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                         className={`px-4 py-2.5 rounded-xl text-sm font-medium min-h-[44px] transition-all ${
                           pointerForm.heures === h.toString()
                             ? 'text-white shadow-md'
-                            : isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                            : 'bg-surface-2 text-encre-2 hover:bg-bord'
                         }`}
                         style={pointerForm.heures === h.toString() ? { background: '#059669' } : {}}
                       >
@@ -3855,8 +3517,8 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                     </div>
                   </div>
                 </div>
-                <div className={`flex gap-3 pt-2 border-t ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
-                  <button onClick={() => setShowPointerModal(false)} className={`flex-1 px-4 py-3 rounded-xl min-h-[44px] font-medium ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-700'}`}>
+                <div className={`flex gap-3 pt-2 border-t border-bord`}>
+                  <button onClick={() => setShowPointerModal(false)} className={`flex-1 px-4 py-3 rounded-xl min-h-[44px] font-medium bg-surface-2 text-encre-2`}>
                     Annuler
                   </button>
                   <button
@@ -3905,7 +3567,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
           <motion.div className="fixed inset-0 z-50 flex flex-col" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
             <div className="absolute inset-0 bg-black/60" onClick={() => setShowTerrainView(false)} />
             <motion.div
-              className={`relative flex-1 flex flex-col w-full max-w-lg mx-auto ${isDark ? 'bg-slate-900' : 'bg-white'} overflow-hidden`}
+              className={`relative flex-1 flex flex-col w-full max-w-lg mx-auto bg-surface overflow-hidden`}
               initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
               style={{ maxHeight: '100vh' }}
@@ -3963,7 +3625,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                     return (
                       <div key={ch.id} className={`rounded-2xl border p-4 ${isThisRunning ? (isDark ? 'bg-emerald-900/30 border-emerald-700' : 'bg-emerald-50 border-emerald-300') : cardBg}`}>
                         <div className="flex items-start gap-3">
-                          <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${isThisRunning ? 'bg-emerald-500 text-white' : isDark ? 'bg-slate-700 text-slate-400' : 'bg-slate-100 text-slate-500'}`}>
+                          <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${isThisRunning ? 'bg-emerald-500 text-white' : 'bg-surface-2 text-encre-3'}`}>
                             <Building2 size={20} />
                           </div>
                           <div className="flex-1 min-w-0">
@@ -4022,7 +3684,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
               {!isOnline && (
                 <div className="px-4 py-3 bg-amber-500/20 border-t border-amber-500/30 flex items-center gap-2">
                   <WifiOff size={16} className="text-amber-500" />
-                  <p className={`text-xs ${isDark ? 'text-amber-300' : 'text-amber-700'}`}>
+                  <p className={`text-xs text-alerte-texte`}>
                     Mode hors ligne — les pointages seront synchronisés à la reconnexion
                   </p>
                 </div>
@@ -4047,7 +3709,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
             <motion.div className="fixed inset-0 z-50 flex items-start justify-center p-4 overflow-y-auto" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
               <div className="absolute inset-0 bg-black/50" onClick={() => setSelectedEmployee(null)} />
               <motion.div
-                className={`relative w-full max-w-lg rounded-2xl my-8 ${isDark ? 'bg-slate-800' : 'bg-white'} shadow-2xl overflow-hidden`}
+                className={`relative w-full max-w-lg rounded-2xl my-8 bg-surface shadow-2xl overflow-hidden`}
                 initial={{ scale: 0.9, y: 40 }}
                 animate={{ scale: 1, y: 0 }}
                 exit={{ scale: 0.9, y: 40 }}
@@ -4082,13 +3744,13 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                   {/* Contact */}
                   <div className="flex gap-3">
                     {emp.telephone && (
-                      <a href={`tel:${emp.telephone}`} className={`flex-1 flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm ${isDark ? 'bg-slate-700 text-slate-200' : 'bg-slate-100 text-slate-700'}`}>
+                      <a href={`tel:${emp.telephone}`} className={`flex-1 flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm bg-surface-2 text-encre-2`}>
                         <Phone size={14} style={{ color: couleur }} />
                         {emp.telephone}
                       </a>
                     )}
                     {emp.email && (
-                      <a href={`mailto:${emp.email}`} className={`flex-1 flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm truncate ${isDark ? 'bg-slate-700 text-slate-200' : 'bg-slate-100 text-slate-700'}`}>
+                      <a href={`mailto:${emp.email}`} className={`flex-1 flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm truncate bg-surface-2 text-encre-2`}>
                         <Mail size={14} style={{ color: couleur }} />
                         <span className="truncate">{emp.email}</span>
                       </a>
@@ -4098,7 +3760,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                   {/* POINTAGE RAPIDE — Mobile-first, visible sans scroll — #6: filter test names */}
                   {chantiers.filter(c => c.statut === 'en_cours' && !isTestChantier(c)).length > 0 && (
                     <div className={`p-3 rounded-xl ${isDark ? 'bg-emerald-900/20 border border-emerald-800/50' : 'bg-emerald-50 border border-emerald-200'}`}>
-                      <p className={`text-xs font-semibold uppercase tracking-wide mb-2 ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>⚡ Pointage rapide</p>
+                      <p className={`text-xs font-semibold uppercase tracking-wide mb-2 text-succes-texte`}>⚡ Pointage rapide</p>
                       <div className="flex flex-wrap gap-2">
                         {chantiers.filter(c => c.statut === 'en_cours' && !isTestChantier(c)).slice(0, 3).map(ch => {
                           const isRunning = chrono.running && chrono.chantierId === ch.id && chrono.employeId === emp.id;
@@ -4112,7 +3774,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                               className={`flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-medium min-h-[44px] transition-all ${
                                 isRunning
                                   ? 'bg-emerald-500 text-white shadow-md'
-                                  : isDark ? 'bg-slate-700 text-slate-200 hover:bg-slate-600' : 'bg-white text-slate-700 hover:bg-slate-100 shadow-sm'
+                                  : 'bg-surface text-encre-2 hover:bg-surface-2 shadow-sm'
                               }`}
                             >
                               {isRunning ? <Square size={14} fill="white" /> : <Play size={14} fill="currentColor" />}
@@ -4132,15 +3794,15 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                       { label: 'Chantiers', value: stats.chantiersWorked, color: '#8b5cf6' },
                       { label: 'Pointages', value: stats.totalPointages, color: '#f59e0b' }
                     ].map((s, i) => (
-                      <div key={i} className={`text-center p-2.5 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+                      <div key={i} className={`text-center p-2.5 rounded-xl bg-surface-2`}>
                         <p className="text-lg font-bold" style={{ color: s.color }}>{s.value}</p>
-                        <p className={`text-[10px] ${textMuted}`}>{s.label}</p>
+                        <p className={`text-xs ${textMuted}`}>{s.label}</p>
                       </div>
                     ))}
                   </div>
 
                   {/* Contract info */}
-                  <div className={`grid grid-cols-2 gap-3 p-3 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+                  <div className={`grid grid-cols-2 gap-3 p-3 rounded-xl bg-surface-2`}>
                     <div>
                       <p className={`text-xs ${textMuted}`}>Contrat</p>
                       <p className={`text-sm font-semibold ${textPrimary}`}>{emp.contrat || '—'}</p>
@@ -4165,7 +3827,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                       <p className={`text-xs font-semibold uppercase mb-2 ${textMuted}`}>Compétences</p>
                       <div className="flex flex-wrap gap-1.5">
                         {emp.competences.split(',').map(s => s.trim()).filter(Boolean).map((skill, i) => (
-                          <span key={i} className={`px-2.5 py-1 rounded-full text-xs font-medium ${isDark ? 'bg-blue-900/30 text-blue-300' : 'bg-blue-50 text-blue-700'}`}>{skill}</span>
+                          <span key={i} className={`px-2.5 py-1 rounded-full text-xs font-medium bg-info-fond text-info-texte`}>{skill}</span>
                         ))}
                       </div>
                     </div>
@@ -4177,7 +3839,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                       <p className={`text-xs font-semibold uppercase mb-2 ${textMuted}`}>Certifications</p>
                       <div className="flex flex-wrap gap-1.5">
                         {emp.certifications.split(',').map(s => s.trim()).filter(Boolean).map((cert, i) => (
-                          <span key={i} className={`px-2.5 py-1 rounded-full text-xs font-medium ${isDark ? 'bg-amber-900/30 text-amber-300' : 'bg-amber-50 text-amber-700'}`}>
+                          <span key={i} className={`px-2.5 py-1 rounded-full text-xs font-medium bg-alerte-fond text-alerte-texte`}>
                             <Shield size={10} className="inline mr-1" />{cert}
                           </span>
                         ))}
@@ -4187,11 +3849,11 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
 
                   {/* Signature status */}
                   {sig && (
-                    <div className={`flex items-center gap-3 p-3 rounded-xl ${isDark ? 'bg-emerald-900/20' : 'bg-emerald-50'}`}>
+                    <div className={`flex items-center gap-3 p-3 rounded-xl bg-succes-fond`}>
                       <img src={sig.data} alt="Signature" className="h-8 w-20 object-contain rounded" />
                       <div>
                         <p className={`text-xs font-semibold text-emerald-600`}>Feuille de la semaine signée</p>
-                        <p className={`text-[10px] ${textMuted}`}>{new Date(sig.date).toLocaleString('fr-FR')}</p>
+                        <p className={`text-xs ${textMuted}`}>{new Date(sig.date).toLocaleString('fr-FR')}</p>
                       </div>
                     </div>
                   )}
@@ -4199,14 +3861,14 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                   {/* Recent pointages */}
                   <div>
                     <p className={`text-xs font-semibold uppercase mb-2 ${textMuted}`}>Derniers pointages</p>
-                    <div className={`rounded-xl border overflow-hidden ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+                    <div className={`rounded-xl border overflow-hidden border-bord`}>
                       {recentPointages.length === 0 ? (
                         <p className={`p-4 text-center text-sm ${textMuted}`}>Aucun pointage</p>
                       ) : (
                         recentPointages.map((p, i) => {
                           const ch = chantiers.find(c => c.id === p.chantierId);
                           return (
-                            <div key={p.id} className={`flex items-center justify-between px-3 py-2 text-xs ${i > 0 ? (isDark ? 'border-t border-slate-700' : 'border-t border-slate-100') : ''}`}>
+                            <div key={p.id} className={`flex items-center justify-between px-3 py-2 text-xs ${i > 0 ? ('border-t border-bord') : ''}`}>
                               <span className={textMuted}>{new Date(p.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}</span>
                               <span className={`truncate mx-2 ${textPrimary}`}>{ch?.nom || '—'}</span>
                               <span className="font-bold" style={{ color: couleur }}>{p.heures}h</span>
@@ -4222,7 +3884,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                   <div className="flex gap-2">
                     <button
                       onClick={() => { setSelectedEmployee(null); startEdit(emp); }}
-                      className={`flex-1 py-3 rounded-xl text-sm font-medium flex items-center justify-center gap-2 ${isDark ? 'bg-slate-700 text-slate-200' : 'bg-slate-100 text-slate-700'}`}
+                      className={`flex-1 py-3 rounded-xl text-sm font-medium flex items-center justify-center gap-2 bg-surface-2 text-encre-2`}
                     >
                       <Edit3 size={16} />
                       Modifier
@@ -4295,10 +3957,10 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
 
             {/* Detailed table */}
             <div className={`${cardBg} rounded-2xl border overflow-hidden`}>
-              <div className={`p-4 border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+              <div className={`p-4 border-b border-bord`}>
                 <h3 className={`font-semibold ${textPrimary}`}>Détail des coûts par sous-traitant</h3>
               </div>
-              <div className={`divide-y ${isDark ? 'divide-slate-700' : 'divide-slate-200'}`}>
+              <div className={`divide-y divide-bord`}>
                 {sousTraitantsList.length === 0 ? (
                   <div className="p-8 text-center">
                     <UserCheck size={40} className={`mx-auto mb-3 ${textMuted} opacity-40`} />
@@ -4310,7 +3972,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                   const expired = st.decennale_expiration && new Date(st.decennale_expiration) < new Date();
                   const urssafOld = st.urssaf_date && (Date.now() - new Date(st.urssaf_date).getTime()) > 180 * 24 * 3600 * 1000;
                   return (
-                    <div key={st.id} className={`p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3 ${isDark ? 'hover:bg-slate-700/50' : 'hover:bg-slate-50'} transition-colors`}>
+                    <div key={st.id} className={`p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3 hover:bg-surface-2 transition-colors`}>
                       <div className="flex items-center gap-3 flex-1 min-w-0">
                         <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-500 font-bold text-sm">
                           {st.nom?.[0]}{st.prenom?.[0] || ''}
@@ -4325,21 +3987,21 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                           {st.tarif_type === 'forfait' && st.tarif_forfait ? `${parseFloat(st.tarif_forfait).toLocaleString('fr-FR')} € forfait` : `${st.tauxHoraire || '?'} €/h`}
                         </span>
                         {expired ? (
-                          <span className={`px-2 py-1 rounded-lg text-xs font-medium ${isDark ? 'bg-red-900/30 text-red-300' : 'bg-red-100 text-red-700'}`}>Décennale expirée</span>
+                          <span className={`px-2 py-1 rounded-lg text-xs font-medium bg-danger-fond text-danger-texte`}>Décennale expirée</span>
                         ) : expiring ? (
-                          <span className={`px-2 py-1 rounded-lg text-xs font-medium ${isDark ? 'bg-amber-900/30 text-amber-300' : 'bg-amber-100 text-amber-700'}`}>Décennale expire bientôt</span>
+                          <span className={`px-2 py-1 rounded-lg text-xs font-medium bg-alerte-fond text-alerte-texte`}>Décennale expire bientôt</span>
                         ) : st.decennale_expiration ? (
-                          <span className={`px-2 py-1 rounded-lg text-xs font-medium ${isDark ? 'bg-emerald-900/30 text-emerald-300' : 'bg-emerald-100 text-emerald-700'}`}>Décennale OK</span>
+                          <span className={`px-2 py-1 rounded-lg text-xs font-medium bg-succes-fond text-succes-texte`}>Décennale OK</span>
                         ) : null}
                         {urssafOld ? (
-                          <span className={`px-2 py-1 rounded-lg text-xs font-medium ${isDark ? 'bg-amber-900/30 text-amber-300' : 'bg-amber-100 text-amber-700'}`}>URSSAF &gt;6 mois</span>
+                          <span className={`px-2 py-1 rounded-lg text-xs font-medium bg-alerte-fond text-alerte-texte`}>URSSAF &gt;6 mois</span>
                         ) : st.urssaf_date ? (
-                          <span className={`px-2 py-1 rounded-lg text-xs font-medium ${isDark ? 'bg-blue-900/30 text-blue-300' : 'bg-blue-100 text-blue-700'}`}>URSSAF OK</span>
+                          <span className={`px-2 py-1 rounded-lg text-xs font-medium bg-info-fond text-info-texte`}>URSSAF OK</span>
                         ) : null}
                       </div>
                       <button
                         onClick={() => startEdit(st)}
-                        className={`p-2 rounded-lg ${isDark ? 'hover:bg-slate-600 text-slate-400' : 'hover:bg-slate-200 text-slate-500'}`}
+                        className={`p-2 rounded-lg hover:bg-bord text-encre-3`}
                       >
                         <Edit3 size={14} />
                       </button>
@@ -4414,7 +4076,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                 <>
                   {/* Week navigation */}
                   <div className="flex items-center justify-between">
-                    <button onClick={() => setWeekOffset(o => o - 1)} className={`p-2 rounded-xl ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
+                    <button onClick={() => setWeekOffset(o => o - 1)} className={`p-2 rounded-xl hover:bg-surface-2`}>
                       <ChevronLeft size={20} />
                     </button>
                     <div className="text-center">
@@ -4423,7 +4085,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                       </h3>
                       <p className={`text-sm ${textMuted}`}>{equipe.length} employés · {activeChantiers.length} chantiers actifs</p>
                     </div>
-                    <button onClick={() => setWeekOffset(o => Math.min(o + 1, 0))} className={`p-2 rounded-xl ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'} ${weekOffset >= 0 ? 'opacity-30' : ''}`}>
+                    <button onClick={() => setWeekOffset(o => Math.min(o + 1, 0))} className={`p-2 rounded-xl hover:bg-surface-2 ${weekOffset >= 0 ? 'opacity-30' : ''}`}>
                       <ChevronRight size={20} />
                     </button>
                   </div>
@@ -4449,7 +4111,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                         {weekPlanningEvents.map(ev => {
                           const ch = chantiers.find(c => c.id === ev.chantierId);
                           return (
-                            <div key={ev.id} className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+                            <div key={ev.id} className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs bg-surface-2`}>
                               <div className="w-2 h-2 rounded-full" style={{ background: ev.chantierId ? (chantierColors[ev.chantierId] || couleur) : couleur }} />
                               <span className={`font-medium ${textPrimary}`}>{ev.title || ch?.nom || 'Événement'}</span>
                               <span className={textMuted}>
@@ -4462,7 +4124,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                     </div>
                   )}
                   {weekPlanningEvents.length === 0 && equipe.length > 0 && activeChantiers.length > 0 && (
-                    <div className={`p-4 rounded-xl text-center ${isDark ? 'bg-slate-800/30' : 'bg-slate-50'}`}>
+                    <div className={`p-4 rounded-xl text-center bg-surface-2`}>
                       <p className={`text-sm ${textMuted}`}>
                         Aucun événement planning cette semaine.{' '}
                         <button onClick={() => setPage('tasks')} className="underline font-medium" style={{ color: couleur }}>
@@ -4477,8 +4139,8 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                     <div className="overflow-x-auto">
                       <table className="w-full min-w-[700px]">
                         <thead>
-                          <tr className={isDark ? 'bg-slate-700/50' : 'bg-slate-50'}>
-                            <th className={`text-left px-4 py-3 text-sm font-semibold ${textPrimary} w-48 sticky left-0 ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'} z-10`}>Employé</th>
+                          <tr className={'bg-surface-2'}>
+                            <th className={`text-left px-4 py-3 text-sm font-semibold ${textPrimary} w-48 sticky left-0 bg-surface-2 z-10`}>Employé</th>
                             {weekDays.map((day, i) => {
                               const isToday = formatLocalDate(day) === today;
                               return (
@@ -4496,8 +4158,8 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                             const empWeekHours = weekPointages.filter(p => p.employeId === emp.id).reduce((s, p) => s + (p.heures || 0), 0);
                             const RoleIcon = getRoleIcon(emp.role);
                             return (
-                              <tr key={emp.id} className={`border-t ${isDark ? 'border-slate-700 hover:bg-slate-700/30' : 'border-slate-100 hover:bg-slate-50'} transition-colors`}>
-                                <td className={`px-4 py-3 sticky left-0 z-10 ${isDark ? 'bg-slate-800' : 'bg-white'}`}>
+                              <tr key={emp.id} className={`border-t border-bord hover:bg-surface-2 transition-colors`}>
+                                <td className={`px-4 py-3 sticky left-0 z-10 bg-surface`}>
                                   <div className="flex items-center gap-2">
                                     <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold" style={{ background: getRoleConfig(emp.role).color }}>
                                       {emp.prenom?.[0]}{emp.nom?.[0]}
@@ -4531,7 +4193,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                                                 {!p.verrouille && (
                                                   <button
                                                     onClick={() => removeAssignment(p.id)}
-                                                    className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full text-[10px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                                    className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                                                   >×</button>
                                                 )}
                                               </div>
@@ -4540,7 +4202,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                                         </div>
                                       ) : (
                                         <div className="relative group">
-                                          <div className={`px-2 py-4 rounded-lg border-2 border-dashed ${isDark ? 'border-slate-700' : 'border-slate-200'} text-xs ${textMuted} opacity-0 group-hover:opacity-100 transition-opacity`}>
+                                          <div className={`px-2 py-4 rounded-lg border-2 border-dashed border-bord text-xs ${textMuted} opacity-0 group-hover:opacity-100 transition-opacity`}>
                                             {activeChantiers.length > 0 && (
                                               <select
                                                 className={`w-full bg-transparent text-xs text-center cursor-pointer ${textMuted}`}
@@ -4560,10 +4222,10 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                                   );
                                 })}
                                 <td className={`px-3 py-3 text-center`}>
-                                  <span className={`text-sm font-bold ${empWeekHours > 35 ? 'text-red-500' : empWeekHours > 0 ? (isDark ? 'text-emerald-400' : 'text-emerald-600') : textMuted}`}>
+                                  <span className={`text-sm font-bold ${empWeekHours > 35 ? 'text-red-500' : empWeekHours > 0 ? ('text-succes-texte') : textMuted}`}>
                                     {empWeekHours > 0 ? `${empWeekHours}h` : '—'}
                                   </span>
-                                  {empWeekHours > 35 && <div className="text-[10px] text-red-500 font-medium">+{Math.round((empWeekHours - 35) * 10) / 10}h sup</div>}
+                                  {empWeekHours > 35 && <div className="text-xs text-red-500 font-medium">+{Math.round((empWeekHours - 35) * 10) / 10}h sup</div>}
                                 </td>
                               </tr>
                             );
@@ -4572,7 +4234,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                       </table>
                     </div>
                     {/* Weekly totals row */}
-                    <div className={`px-4 py-3 border-t flex items-center justify-between ${isDark ? 'bg-slate-700/30 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
+                    <div className={`px-4 py-3 border-t flex items-center justify-between bg-surface-2 border-bord`}>
                       <span className={`text-sm font-semibold ${textPrimary}`}>Total semaine</span>
                       <div className="flex items-center gap-4">
                         <span className={`text-sm font-bold ${textPrimary}`}>{totalWeekHours}h</span>
@@ -4681,7 +4343,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                           <div className="w-8 h-8 rounded-full bg-red-500 flex items-center justify-center"><Shield size={16} className="text-white" /></div>
                           <div className="flex-1">
                             <p className={`font-medium ${isDark ? 'text-red-300' : 'text-red-800'}`}>{c.certName} — {c.employee.prenom} {c.employee.nom}</p>
-                            <p className={`text-xs ${isDark ? 'text-red-400' : 'text-red-600'}`}>Expirée depuis {Math.abs(c.daysUntil)} jours</p>
+                            <p className={`text-xs text-danger-texte`}>Expirée depuis {Math.abs(c.daysUntil)} jours</p>
                           </div>
                           <span className="px-2 py-1 bg-red-500 text-white text-xs font-bold rounded-lg">EXPIRÉE</span>
                         </div>
@@ -4691,7 +4353,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                           <div className="w-8 h-8 rounded-full bg-amber-500 flex items-center justify-center"><Clock size={16} className="text-white" /></div>
                           <div className="flex-1">
                             <p className={`font-medium ${isDark ? 'text-amber-300' : 'text-amber-800'}`}>{c.certName} — {c.employee.prenom} {c.employee.nom}</p>
-                            <p className={`text-xs ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>Expire dans {c.daysUntil} jours</p>
+                            <p className={`text-xs text-alerte-texte`}>Expire dans {c.daysUntil} jours</p>
                           </div>
                           <span className="px-2 py-1 bg-amber-500 text-white text-xs font-bold rounded-lg">URGENT</span>
                         </div>
@@ -4705,7 +4367,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                     {sortedSkills.length > 0 ? (
                       <div className="space-y-2">
                         {sortedSkills.map(([skill, emps]) => (
-                          <div key={skill} className={`flex items-center gap-3 p-2 rounded-xl ${isDark ? 'hover:bg-slate-700/50' : 'hover:bg-slate-50'}`}>
+                          <div key={skill} className={`flex items-center gap-3 p-2 rounded-xl hover:bg-surface-2`}>
                             <span className={`text-sm font-medium w-36 truncate ${textPrimary}`}>{skill}</span>
                             <div className="flex-1 flex flex-wrap gap-1">
                               {emps.map(emp => (
@@ -4714,14 +4376,14 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                                 </span>
                               ))}
                             </div>
-                            <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>
+                            <span className={`text-xs font-medium px-2 py-0.5 rounded-full bg-surface-2 text-encre-2`}>
                               {emps.length}
                             </span>
                           </div>
                         ))}
                       </div>
                     ) : (
-                      <div className={`p-8 text-center rounded-xl ${isDark ? 'bg-slate-800/30' : 'bg-slate-50'}`}>
+                      <div className={`p-8 text-center rounded-xl bg-surface-2`}>
                         <div className="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center" style={{ background: `${couleur}15` }}>
                           <Award size={32} style={{ color: couleur }} />
                         </div>
@@ -4729,7 +4391,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                         <p className={`text-sm ${textMuted} mb-4 max-w-md mx-auto`}>
                           Ajoutez des compétences à vos employés pour visualiser la matrice des compétences et obtenir des suggestions d'affectation intelligentes.
                         </p>
-                        <div className={`inline-flex flex-col gap-2 text-left text-sm ${textMuted} p-4 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-white border border-slate-200'}`}>
+                        <div className={`inline-flex flex-col gap-2 text-left text-sm ${textMuted} p-4 rounded-xl bg-surface border border-bord`}>
                           <p className="font-medium" style={{ color: couleur }}>💡 Comment faire :</p>
                           <p>1. Allez sur l'onglet <strong className={textPrimary}>Équipe</strong></p>
                           <p>2. Cliquez sur <Edit3 size={12} className="inline" /> pour modifier un employé</p>
@@ -4765,21 +4427,21 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                             const bestMatches = matches.filter(m => m.score > 0);
                             const noQualified = bestMatches.length === 0 || bestMatches[0].score === 0;
                             return (
-                              <div key={chantier.id} className={`p-3 rounded-xl ${isDark ? 'bg-slate-700/30' : 'bg-slate-50'}`}>
+                              <div key={chantier.id} className={`p-3 rounded-xl bg-surface-2`}>
                                 <p className={`text-sm font-semibold mb-2 ${textPrimary}`}>
                                   <Building2 size={14} className="inline mr-1" />{chantier.nom}
                                 </p>
                                 {noQualified && (
                                   <div className={`flex items-center gap-2 p-2.5 rounded-lg mb-2 ${isDark ? 'bg-amber-900/30 border border-amber-800/50' : 'bg-amber-50 border border-amber-200'}`}>
                                     <AlertCircle size={14} className="text-amber-500 flex-shrink-0" />
-                                    <p className={`text-xs ${isDark ? 'text-amber-300' : 'text-amber-700'}`}>
+                                    <p className={`text-xs text-alerte-texte`}>
                                       Aucun membre qualifié — <button onClick={() => { setViewMode('sous_traitants'); setTab('overview'); }} className="underline font-medium">Sous-traitant ?</button>
                                     </p>
                                   </div>
                                 )}
                                 <div className="space-y-2">
                                   {matches.slice(0, 4).map(({ emp, score, matching, missing }) => (
-                                    <div key={emp.id} className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl border ${isDark ? 'border-slate-600' : 'border-slate-200'} ${isDark ? 'bg-slate-800/50' : 'bg-white'}`}>
+                                    <div key={emp.id} className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl border border-bord bg-surface`}>
                                       <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style={{ background: getRoleConfig(emp.role).color }}>
                                         {emp.prenom?.[0]}{emp.nom?.[0]}
                                       </div>
@@ -4788,13 +4450,13 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                                           <p className={`text-sm font-medium ${textPrimary}`}>{emp.prenom} {emp.nom?.[0]}.</p>
                                           {/* #7: Mini progress bar for compatibility score */}
                                           <div className="flex items-center gap-1.5 flex-1 max-w-[120px]">
-                                            <div className={`flex-1 h-1.5 rounded-full ${isDark ? 'bg-slate-600' : 'bg-slate-200'}`}>
+                                            <div className={`flex-1 h-1.5 rounded-full bg-bord`}>
                                               <div
                                                 className="h-full rounded-full transition-all"
                                                 style={{ width: `${score}%`, background: score >= 75 ? '#22c55e' : score >= 50 ? '#f59e0b' : '#ef4444' }}
                                               />
                                             </div>
-                                            <span className="text-[10px] font-bold" style={{ color: score >= 75 ? '#22c55e' : score >= 50 ? '#f59e0b' : '#ef4444' }}>
+                                            <span className="text-xs font-bold" style={{ color: score >= 75 ? '#22c55e' : score >= 50 ? '#f59e0b' : '#ef4444' }}>
                                               {score}%
                                             </span>
                                           </div>
@@ -4802,17 +4464,17 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                                         {/* #7: Full capitalized skill names */}
                                         <div className="flex flex-wrap gap-1 mt-0.5">
                                           {matching.map(s => (
-                                            <span key={s} className={`text-[10px] px-1.5 py-0.5 rounded-full ${isDark ? 'bg-emerald-900/40 text-emerald-400' : 'bg-emerald-50 text-emerald-600'}`}>
+                                            <span key={s} className={`text-xs px-1.5 py-0.5 rounded-full bg-succes-fond text-succes-texte`}>
                                               <Check size={8} className="inline mr-0.5" />{capitalizeSkill(s)}
                                             </span>
                                           ))}
                                           {missing.map(s => (
-                                            <span key={s} className={`text-[10px] px-1.5 py-0.5 rounded-full ${isDark ? 'bg-red-900/30 text-red-400' : 'bg-red-50 text-red-500'}`}>
+                                            <span key={s} className={`text-xs px-1.5 py-0.5 rounded-full bg-danger-fond text-danger-texte`}>
                                               <X size={8} className="inline mr-0.5" />{capitalizeSkill(s)}
                                             </span>
                                           ))}
                                           {matching.length === 0 && missing.length === 0 && (
-                                            <span className={`text-[10px] ${textMuted}`}>Pas de compétences requises détectées</span>
+                                            <span className={`text-xs ${textMuted}`}>Pas de compétences requises détectées</span>
                                           )}
                                         </div>
                                       </div>
@@ -4852,7 +4514,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                     {certAlerts.length > 0 ? (
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         {certAlerts.map((c, i) => (
-                          <div key={i} className={`flex items-center gap-2 p-2 rounded-lg ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+                          <div key={i} className={`flex items-center gap-2 p-2 rounded-lg bg-surface-2`}>
                             <span className={`w-2 h-2 rounded-full flex-shrink-0 ${c.status === 'expired' ? 'bg-red-500' : c.status === 'expiring_soon' ? 'bg-amber-500' : c.status === 'valid' ? 'bg-emerald-500' : 'bg-slate-400'}`} />
                             <div className="flex-1 min-w-0">
                               <p className={`text-sm font-medium truncate ${textPrimary}`}>{c.certName}</p>
@@ -4867,13 +4529,13 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                         ))}
                       </div>
                     ) : (
-                      <div className={`p-6 text-center rounded-xl ${isDark ? 'bg-slate-800/30' : 'bg-slate-50'}`}>
+                      <div className={`p-6 text-center rounded-xl bg-surface-2`}>
                         <Shield size={28} className={`mx-auto mb-2 ${textMuted}`} />
                         <p className={`font-medium ${textPrimary} mb-1`}>Aucune certification</p>
                         <p className={`text-sm ${textMuted} mb-3`}>
                           Ajoutez des certifications avec dates d'expiration pour un suivi automatique.
                         </p>
-                        <div className={`inline-block text-left text-xs ${textMuted} p-3 rounded-lg ${isDark ? 'bg-slate-700/50' : 'bg-white border border-slate-200'}`}>
+                        <div className={`inline-block text-left text-xs ${textMuted} p-3 rounded-lg bg-surface border border-bord`}>
                           <p className="font-medium mb-1" style={{ color: couleur }}>📋 Formats acceptés :</p>
                           <p>• CACES R489 (exp: 2026-06)</p>
                           <p>• Habilitation électrique (expire: 2025-12-31)</p>
@@ -4901,11 +4563,11 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
               const monthHours = monthPointages.reduce((s, p) => s + (p.heures || 0), 0);
               const monthCost = monthPointages.reduce((s, p) => {
                 const emp = equipe.find(e => e.id === p.employeId);
-                return s + (p.heures || 0) * (emp?.coutHoraireCharge || 28);
+                return s + (p.heures || 0) * (coutHoraire(emp) || 0);
               }, 0);
               const monthRevenue = monthPointages.reduce((s, p) => {
                 const emp = equipe.find(e => e.id === p.employeId);
-                return s + (p.heures || 0) * (emp?.tauxHoraire || 45);
+                return s + (p.heures || 0) * (tauxFacture(emp) || 0);
               }, 0);
               const workingDaysInMonth = 22;
               const expectedHours = equipe.length * 7 * workingDaysInMonth;
@@ -4915,8 +4577,8 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
               const empMetrics = equipe.map(emp => {
                 const empPointages = monthPointages.filter(p => p.employeId === emp.id);
                 const hours = empPointages.reduce((s, p) => s + (p.heures || 0), 0);
-                const cost = hours * (emp.coutHoraireCharge || 28);
-                const revenue = hours * (emp.tauxHoraire || 45);
+                const cost = hours * (coutHoraire(emp) || 0);
+                const revenue = hours * (tauxFacture(emp) || 0);
                 const margin = revenue - cost;
                 // Overtime detection
                 const weeklyHours = {};
@@ -4949,7 +4611,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                         <span className={`text-xs font-medium uppercase ${textMuted}`}>Utilisation</span>
                       </div>
                       <p className={`text-2xl font-bold ${utilizationRate === 0 ? textMuted : utilizationRate >= 80 ? 'text-emerald-500' : utilizationRate >= 50 ? 'text-amber-500' : 'text-red-500'}`}>{utilizationRate}%</p>
-                      <div className={`w-full h-2 rounded-full mt-2 ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`}>
+                      <div className={`w-full h-2 rounded-full mt-2 bg-bord`}>
                         <div className="h-full rounded-full transition-all" style={{ width: `${Math.min(100, utilizationRate)}%`, background: utilizationRate === 0 ? '#94a3b8' : utilizationRate >= 80 ? '#22c55e' : utilizationRate >= 50 ? '#f59e0b' : '#ef4444' }} />
                       </div>
                     </div>
@@ -4987,7 +4649,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                     <div className="overflow-x-auto">
                       <table className="w-full">
                         <thead>
-                          <tr className={isDark ? 'bg-slate-700/30' : 'bg-slate-50'}>
+                          <tr className={'bg-surface-2'}>
                             <th className={`text-left px-4 py-2 text-xs font-semibold uppercase ${textMuted}`}>#</th>
                             <th className={`text-left px-4 py-2 text-xs font-semibold uppercase ${textMuted}`}>Employé</th>
                             <th className={`text-center px-4 py-2 text-xs font-semibold uppercase ${textMuted}`}>Heures</th>
@@ -4998,9 +4660,9 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                         </thead>
                         <tbody>
                           {empMetrics.map(({ emp, hours, utilization, overtimeHours, margin }, idx) => (
-                            <tr key={emp.id} className={`border-t ${isDark ? 'border-slate-700' : 'border-slate-100'}`}>
+                            <tr key={emp.id} className={`border-t border-bord`}>
                               <td className={`px-4 py-3`}>
-                                <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${idx === 0 ? 'bg-amber-400 text-amber-900' : idx === 1 ? 'bg-slate-300 text-slate-700' : idx === 2 ? 'bg-amber-700 text-amber-100' : (isDark ? 'bg-slate-700 text-slate-400' : 'bg-slate-100 text-slate-500')}`}>
+                                <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${idx === 0 ? 'bg-amber-400 text-amber-900' : idx === 1 ? 'bg-slate-300 text-slate-700' : idx === 2 ? 'bg-amber-700 text-amber-100' : ('bg-surface-2 text-encre-3')}`}>
                                   {idx + 1}
                                 </span>
                               </td>
@@ -5018,7 +4680,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                               <td className={`text-center px-4 py-3 text-sm font-semibold ${textPrimary}`}>{Math.round(hours)}h</td>
                               <td className="text-center px-4 py-3">
                                 <div className="inline-flex items-center gap-1.5">
-                                  <div className={`w-12 h-2 rounded-full ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`}>
+                                  <div className={`w-12 h-2 rounded-full bg-bord`}>
                                     <div className="h-full rounded-full" style={{ width: `${utilization}%`, background: utilization >= 80 ? '#22c55e' : utilization >= 50 ? '#f59e0b' : '#ef4444' }} />
                                   </div>
                                   <span className={`text-xs ${textMuted}`}>{utilization}%</span>

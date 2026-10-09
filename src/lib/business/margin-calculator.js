@@ -7,6 +7,7 @@
  */
 
 import { MARGIN_THRESHOLDS as THRESHOLDS, AJUSTEMENT_TYPE, DEVIS_STATUS } from '../constants';
+import { coutPourBilan } from '../tauxEquipe';
 
 /**
  * Seuils d'alerte pour les marges
@@ -90,12 +91,8 @@ export const calculateChantierMargin = (chantier, { devis = [], depenses = [], p
   // Labor costs - use Map for O(1) employee lookup
   const employeeMap = new Map(equipe.map(e => [e.id, e]));
   const heuresTotal = chantierPointages.reduce((sum, p) => sum + (p.heures || 0), 0);
-  const coutMO = chantierPointages.reduce((sum, p) => {
-    const emp = employeeMap.get(p.employeId);
-    // Use tauxHoraire OR coutHoraireCharge for backwards compatibility
-    const tauxHoraire = emp?.tauxHoraire || emp?.coutHoraireCharge || 0;
-    return sum + ((p.heures || 0) * tauxHoraire);
-  }, 0);
+  // Main-d'œuvre au COÛT chargé (avant : au taux facturé au client, ce qui sous-estimait les marges).
+  const coutMO = chantierPointages.reduce((sum, p) => sum + ((p.heures || 0) * coutPourBilan(employeeMap.get(p.employeId))), 0);
 
   // Cost adjustments (additional expenses)
   const adjDepenses = chantierAjustements
