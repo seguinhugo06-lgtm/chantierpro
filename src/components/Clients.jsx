@@ -21,7 +21,7 @@ import { getEntityHistory, getEntitiesHistory } from '../lib/auditService';
 import supabase, { isDemo } from '../supabaseClient';
 import { generatePortalToken, sendPortalInvite } from '../services/portalService';
 import { CLIENT_TYPE_COLORS, CLIENT_STATUS_LABELS, CLIENT_STATUS_COLORS, CLIENT_TYPES, DEVIS_EN_ATTENTE } from '../lib/constants';
-import { formatClientName } from '../lib/formatters';
+import { formatClientName, formatMoney as fmtMoney } from '../lib/formatters';
 import { usePermissions } from '../hooks/usePermissions';
 import { ReadOnlyBanner } from './ui/PermissionGate';
 import { urlPublique } from '../lib/urlPublique';
@@ -126,7 +126,9 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
   const isViewOnly = !canEditData;
 
   // Format money with modeDiscret support
-  const formatMoney = (n) => modeDiscret ? '·····' : (n || 0).toLocaleString('fr-FR', { minimumFractionDigits: 0 }) + ' €';
+  // Montants au format français : centimes seulement s'il y en a (« 2 337,50 € », plus « 2 337,5 € ») ;
+  // arrondis à l'euro dans les tuiles de chiffres (d = 0).
+  const formatMoney = (n, d) => modeDiscret ? '·····' : fmtMoney(n || 0, d);
 
   // Theme classes
   const cardBg = isDark ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200";
@@ -1798,9 +1800,8 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
             <KPICard
               icon={Wallet}
               tone="money"
-              label="CA encaissé"
-              value={formatMoney(caFacture)}
-              sublabel={caEnAttente > 0 && !modeDiscret ? `+${formatMoney(caEnAttente)} en cours` : null}
+              label="Encaissé"
+              value={formatMoney(caFacture, 0)}
               isDark={isDark}
               onClick={() => setKpiFilter(kpiFilter === 'ca' ? null : 'ca')}
             />
@@ -1808,7 +1809,8 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
               icon={TrendingUp}
               tone="neutral"
               label="En cours"
-              value={formatMoney(caEnAttente)}
+              value={formatMoney(caEnAttente, 0)}
+              sublabel="factures à payer et devis signés"
               isDark={isDark}
             />
             <KPICard

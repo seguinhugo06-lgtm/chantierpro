@@ -1,0 +1,173 @@
+{
+  "$description": "Mallettico — jetons d'interface, mode clair. Généré par scripts/jetons.mjs depuis src/styles/theme.css : ne pas modifier à la main.",
+  "couleur": {
+    "neutre": {
+      "fond": {
+        "$type": "color",
+        "$value": "#f8fafc",
+        "$description": "Fond de page"
+      },
+      "surface": {
+        "$type": "color",
+        "$value": "#ffffff",
+        "$description": "Carte, volet, barre"
+      },
+      "surface-2": {
+        "$type": "color",
+        "$value": "#f1f5f9",
+        "$description": "Creux, survol, puce neutre"
+      },
+      "bord": {
+        "$type": "color",
+        "$value": "#e2e8f0",
+        "$description": "Traits"
+      },
+      "bord-fort": {
+        "$type": "color",
+        "$value": "#cbd5e1",
+        "$description": "Bord des champs"
+      },
+      "encre": {
+        "$type": "color",
+        "$value": "#0f172a",
+        "$description": "Titres, montants"
+      },
+      "encre-2": {
+        "$type": "color",
+        "$value": "#475569",
+        "$description": "Texte secondaire"
+      },
+      "encre-3": {
+        "$type": "color",
+        "$value": "#64748b",
+        "$description": "Méta, libellés"
+      }
+    },
+    "accent": {
+      "accent": {
+        "$type": "color",
+        "$value": "#f97316",
+        "$description": "Action et sélection (couleur de l'entreprise, orange par défaut)"
+      },
+      "sur-accent": {
+        "$type": "color",
+        "$value": "#020617",
+        "$description": "Texte posé sur l'accent (calculé : le plus contrasté du noir et du blanc)"
+      },
+      "accent-texte": {
+        "$type": "color",
+        "$value": "#c35305",
+        "$description": "L'accent écrit en texte sur une surface (≥ 4,5:1)"
+      }
+    },
+    "ton": {
+      "neutre": {
+        "$description": "Statuts « brouillon ou clos »",
+        "fond": {
+          "$type": "color",
+          "$value": "#f1f5f9"
+        },
+        "texte": {
+          "$type": "color",
+          "$value": "#334155"
+        },
+        "point": {
+          "$type": "color",
+          "$value": "#94a3b8"
+        }
+      },
+      "info": {
+        "$description": "Statuts « chez le client »",
+        "fond": {
+          "$type": "color",
+          "$value": "#dbeafe"
+        },
+        "texte": {
+          "$type": "color",
+          "$value": "#1e40af"
+        },
+        "point": {
+          "$type": "color",
+          "$value": "#3b82f6"
+        }
+      },
+      "succes": {
+        "$description": "Statuts « acquis »",
+        "fond": {
+          "$type": "color",
+          "$value": "#d1fae5"
+        },
+        "texte": {
+          "$type": "color",
+          "$value": "#065f46"
+        },
+        "point": {
+          "$type": "color",
+          "$value": "#10b981"
+        }
+      },
+      "alerte": {
+        "$description": "Statuts « à surveiller »",
+        "fond": {
+          "$type": "color",
+          "$value": "#fef3c7"
+        },
+        "texte": {
+          "$type": "color",
+          "$value": "#92400e"
+        },
+        "point": {
+          "$type": "color",
+          "$value": "#f59e0b"
+        }
+      },
+      "danger": {
+        "$description": "Statuts « problème »",
+        "fond": {
+          "$type": "color",
+          "$value": "#fee2e2"
+        },
+        "texte": {
+          "$type": "color",
+          "$value": "#991b1b"
+        },
+        "point": {
+          "$type": "color",
+          "$value": "#ef4444"
+        }
+      }
+    }
+  },
+  "elevation": {
+    "pose": {
+      "$type": "shadow",
+      "$value": {
+        "color": "#0f172a0f",
+        "offsetX": "0px",
+        "offsetY": "1px",
+        "blur": "2px",
+        "spread": "0px"
+      }
+    },
+    "flottant": {
+      "$type": "shadow",
+      "$value": {
+        "color": "#0f172a2e",
+        "offsetX": "0px",
+        "offsetY": "8px",
+        "blur": "24px",
+        "spread": "-6px"
+      }
+    },
+    "modal": {
+      "$type": "shadow",
+      "$value": {
+        "color": "#0f172a4d",
+        "offsetX": "0px",
+        "offsetY": "24px",
+        "blur": "48px",
+        "spread": "-12px"
+      }
+    }
+  }
+}

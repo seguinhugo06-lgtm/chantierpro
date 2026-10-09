@@ -10,10 +10,10 @@ import useKeepInViewport from '../../hooks/useKeepInViewport';
  * @param {string} activeTab - Currently active tab key
  * @param {Function} onTabChange - Called with tab key when tab is clicked
  * @param {number} maxVisible - Max tabs to show before overflow (default: 5)
- * @param {boolean} isDark
- * @param {string} couleur - hex accent color
+ * @param {boolean} isDark  accepté, plus nécessaire : jetons de src/styles/theme.css (refonte du 9 oct.)
+ * @param {string} couleur accepté, plus nécessaire : le trait actif est l'accent du thème
  */
-export default function TabBar({ tabs = [], activeTab, onTabChange, maxVisible = 5, isDark = false, couleur = '#8b5cf6' }) {
+export default function TabBar({ tabs = [], activeTab, onTabChange, maxVisible = 5 }) {
   const [showMore, setShowMore] = useState(false);
   const moreRef = useRef(null);
   const menuRef = useRef(null);
@@ -58,9 +58,9 @@ export default function TabBar({ tabs = [], activeTab, onTabChange, maxVisible =
 
   return (
     <div className="relative" role="tablist" aria-label="Navigation par onglets">
-      <div className={`flex items-center gap-1 sm:gap-2 border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+      <div className="flex items-center gap-1 border-b border-bord">
         {/* Les onglets défilent si l'écran est trop étroit ; le bouton « … » reste toujours visible. */}
-        <div ref={rangeeRef} className="flex items-center gap-1 sm:gap-2 min-w-0 flex-1 overflow-x-auto scrollbar-hide">
+        <div ref={rangeeRef} className="flex items-center gap-5 sm:gap-6 min-w-0 flex-1 overflow-x-auto scrollbar-hide">
         {displayVisible.map(tab => {
           const isActive = activeTab === tab.key;
           const Icon = tab.icon;
@@ -70,26 +70,22 @@ export default function TabBar({ tabs = [], activeTab, onTabChange, maxVisible =
               role="tab"
               aria-selected={isActive}
               onClick={() => onTabChange(tab.key)}
-              className={`flex items-center gap-1.5 sm:gap-2.5 px-3 sm:px-5 min-h-[48px] text-[13px] sm:text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-                isActive
-                  ? 'border-current'
-                  : `border-transparent ${isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-700'}`
+              className={`relative flex items-center gap-1.5 h-12 text-sm font-semibold transition-colors whitespace-nowrap flex-shrink-0 ${
+                isActive ? 'text-encre' : 'text-encre-3 hover:text-encre-2'
               }`}
-              style={isActive ? { color: couleur, borderColor: couleur } : undefined}
             >
-              {Icon && <Icon size={16} aria-hidden="true" />}
+              {Icon && <Icon size={16} aria-hidden="true" className="hidden md:block" />}
               {/* Nom toujours affiché : masqué sur téléphone, l'onglet n'était qu'une icône à deviner, sans
                   nom pour un lecteur d'écran (recette du 9 oct.). La rangée défile si elle est trop longue. */}
               <span>{tab.label}</span>
               {typeof tab.badge === 'number' && tab.badge > 0 && (
-                <span className={`ml-1 px-1.5 py-0.5 rounded-full text-[11px] font-bold leading-none ${
-                  tab.alert
-                    ? 'bg-red-500 text-white'
-                    : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'
+                <span className={`min-w-[20px] h-5 px-1.5 rounded-full text-xs font-bold leading-none inline-flex items-center justify-center tabular-nums ${
+                  tab.alert ? 'bg-danger-fond text-danger-texte' : 'bg-surface-2 text-encre-2'
                 }`}>
                   {tab.badge}
                 </span>
               )}
+              <span aria-hidden="true" className={`absolute inset-x-0 -bottom-px h-0.5 rounded-full ${isActive ? 'bg-accent' : 'bg-transparent'}`} />
             </button>
           );
         })}
@@ -99,9 +95,7 @@ export default function TabBar({ tabs = [], activeTab, onTabChange, maxVisible =
           <div className="relative flex-shrink-0" ref={moreRef}>
             <button
               onClick={() => setShowMore(p => !p)}
-              className={`flex items-center gap-1 px-3 min-h-[48px] text-sm transition-colors ${
-                isDark ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-900'
-              }`}
+              className="flex items-center justify-center w-11 h-12 text-encre-3 hover:text-encre transition-colors"
               aria-expanded={showMore}
               aria-haspopup="true"
               aria-label="Plus d'onglets"
@@ -109,9 +103,7 @@ export default function TabBar({ tabs = [], activeTab, onTabChange, maxVisible =
               <MoreHorizontal size={18} />
             </button>
             {showMore && (
-              <div ref={menuRef} className={`absolute right-0 top-full mt-1 z-50 rounded-xl border shadow-lg py-1 min-w-[200px] ${
-                isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'
-              }`}>
+              <div ref={menuRef} className="absolute right-0 top-full mt-1 z-50 rounded-2xl border border-bord bg-surface shadow-e2 py-1 min-w-[220px]">
                 {displayOverflow.map(tab => {
                   const isActive = activeTab === tab.key;
                   const Icon = tab.icon;
@@ -119,16 +111,15 @@ export default function TabBar({ tabs = [], activeTab, onTabChange, maxVisible =
                     <button
                       key={tab.key}
                       onClick={() => { onTabChange(tab.key); setShowMore(false); }}
-                      className={`w-full flex items-center gap-3 px-4 py-3 text-sm text-left transition-colors ${
+                      className={`w-full flex items-center gap-3 px-4 min-h-[48px] text-sm text-left text-encre transition-colors hover:bg-surface-2 ${
                         isActive ? 'font-semibold' : ''
-                      } ${isDark ? 'hover:bg-slate-700 text-slate-200' : 'hover:bg-slate-50 text-slate-700'}`}
-                      style={isActive ? { color: couleur } : undefined}
+                      }`}
                     >
                       {Icon && <Icon size={16} aria-hidden="true" />}
                       <span className="flex-1">{tab.label}</span>
                       {typeof tab.badge === 'number' && tab.badge > 0 && (
-                        <span className={`px-1.5 py-0.5 rounded-full text-[11px] font-bold leading-none ${
-                          tab.alert ? 'bg-red-500 text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'
+                        <span className={`min-w-[20px] h-5 px-1.5 rounded-full text-xs font-bold leading-none inline-flex items-center justify-center tabular-nums ${
+                          tab.alert ? 'bg-danger-fond text-danger-texte' : 'bg-surface-2 text-encre-2'
                         }`}>{tab.badge}</span>
                       )}
                     </button>

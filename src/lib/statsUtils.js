@@ -35,13 +35,13 @@ export function calcConversion(devisList) {
 }
 
 /**
- * Formate un taux de conversion pour affichage cohérent.
- * Convention : toujours 1 décimale (ex: "54.5%"), "—" si non calculable.
+ * Formate un taux de conversion pour affichage cohérent : pourcentage français arrondi
+ * (« 75 % », espace insécable) — « 75.0% » à l'anglaise relevé par la revue du 9 oct. 2026.
  *
  * @param {number|null} taux - Le taux brut (0-100), null si non calculable
- * @returns {string} Taux formaté (ex: "54.5%") ou "—"
+ * @returns {string} Taux formaté (ex: "75 %") ou "—"
  */
 export function formatConversion(taux) {
-  if (taux == null || taux < 0) return '—';
-  return `${taux.toFixed(1)}%`;
+  if (taux == null || taux < 0 || Number.isNaN(taux)) return '—';
+  return new Intl.NumberFormat('fr-FR', { style: 'percent', maximumFractionDigits: 0 }).format(taux / 100);
 }

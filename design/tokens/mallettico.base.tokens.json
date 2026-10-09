@@ -1,0 +1,124 @@
+{
+  "$description": "Mallettico — jetons d'interface. Généré par scripts/jetons.mjs depuis src/styles/theme.css : ne pas modifier à la main.",
+  "police": {
+    "famille": {
+      "$type": "fontFamily",
+      "$value": [
+        "Inter Variable",
+        "Inter",
+        "system-ui",
+        "sans-serif"
+      ]
+    },
+    "graisse": {
+      "normale": {
+        "$type": "fontWeight",
+        "$value": 400
+      },
+      "moyenne": {
+        "$type": "fontWeight",
+        "$value": 500
+      },
+      "semigras": {
+        "$type": "fontWeight",
+        "$value": 600
+      },
+      "gras": {
+        "$type": "fontWeight",
+        "$value": 700
+      }
+    },
+    "taille": {
+      "legende": {
+        "$type": "dimension",
+        "$value": "12px",
+        "$description": "Pastilles, légendes — plancher absolu (text-xs)"
+      },
+      "petit": {
+        "$type": "dimension",
+        "$value": "14px",
+        "$description": "Méta, libellés, boutons (text-sm)"
+      },
+      "corps": {
+        "$type": "dimension",
+        "$value": "16px",
+        "$description": "Corps, titres de carte, tous les champs (text-base)"
+      },
+      "section": {
+        "$type": "dimension",
+        "$value": "18px",
+        "$description": "Titre de section (text-lg)"
+      },
+      "page": {
+        "$type": "dimension",
+        "$value": "24px",
+        "$description": "Titre de page, chiffres des tuiles (text-2xl)"
+      },
+      "heros": {
+        "$type": "dimension",
+        "$value": "36px",
+        "$description": "Montant héros (text-4xl)"
+      }
+    }
+  },
+  "arrondi": {
+    "controle": {
+      "$type": "dimension",
+      "$value": "12px",
+      "$description": "Boutons, champs, segments (rounded-xl)"
+    },
+    "carte": {
+      "$type": "dimension",
+      "$value": "16px",
+      "$description": "Cartes, panneaux, modales (rounded-2xl)"
+    },
+    "pilule": {
+      "$type": "dimension",
+      "$value": "9999px",
+      "$description": "Pastilles, puces, avatars (rounded-full)"
+    }
+  },
+  "espace": {
+    "1": {
+      "$type": "dimension",
+      "$value": "4px"
+    },
+    "2": {
+      "$type": "dimension",
+      "$value": "8px"
+    },
+    "3": {
+      "$type": "dimension",
+      "$value": "12px"
+    },
+    "4": {
+      "$type": "dimension",
+      "$value": "16px"
+    },
+    "5": {
+      "$type": "dimension",
+      "$value": "20px"
+    },
+    "6": {
+      "$type": "dimension",
+      "$value": "24px"
+    },
+    "carte": {
+      "$type": "dimension",
+      "$value": "16px",
+      "$description": "Marge intérieure des cartes au téléphone (p-4), 20 au bureau"
+    }
+  },
+  "cible": {
+    "minimum": {
+      "$type": "dimension",
+      "$value": "44px",
+      "$description": "Hauteur et largeur minimales de toute cible tactile"
+    },
+    "champ": {
+      "$type": "dimension",
+      "$value": "48px",
+      "$description": "Hauteur des champs de saisie"
+    }
+  }
+}

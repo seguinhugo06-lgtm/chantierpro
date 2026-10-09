@@ -1,10 +1,31 @@
 /** @type {import('tailwindcss').Config} */
+// Couleur lue dans une variable CSS « r g b » : l'opacité Tailwind fonctionne (bg-accent/10).
+const v = (nom) => `rgb(var(${nom}) / <alpha-value>)`;
+
 export default {
   content: ["./index.html", "./src/**/*.{js,jsx,ts,tsx}"],
   darkMode: 'class',
   theme: {
     extend: {
       colors: {
+        // Thème par rôle (src/styles/theme.css, posé sur <html> par App.jsx) — refonte du 9 oct. 2026.
+        // Une seule palette neutre ; l'accent vient de la couleur de l'entreprise.
+        fond: v('--fond'),
+        surface: v('--surface'),
+        'surface-2': v('--surface-2'),
+        bord: v('--bord'),
+        'bord-fort': v('--bord-fort'),
+        encre: v('--encre'),
+        'encre-2': v('--encre-2'),
+        'encre-3': v('--encre-3'),
+        accent: v('--accent'),
+        'accent-texte': v('--accent-texte'),
+        'sur-accent': v('--sur-accent'),
+        // Tons : bg-succes-fond text-succes-texte, bg-danger-point… (un statut = un ton, src/lib/statuts.js)
+        neutre: { fond: v('--neutre-fond'), texte: v('--neutre-texte'), point: v('--neutre-point') },
+        info: { fond: v('--info-fond'), texte: v('--info-texte'), point: v('--info-point') },
+        succes: { fond: v('--succes-fond'), texte: v('--succes-texte'), point: v('--succes-point') },
+        alerte: { fond: v('--alerte-fond'), texte: v('--alerte-texte'), point: v('--alerte-point') },
         // Primary - Orange BTP (brand color)
         primary: {
           50: '#fff7ed',
@@ -47,6 +68,9 @@ export default {
         },
         // Danger - Red for errors/overdue
         danger: {
+          fond: v('--danger-fond'),
+          texte: v('--danger-texte'),
+          point: v('--danger-point'),
           50: '#fef2f2',
           100: '#fee2e2',
           200: '#fecaca',
@@ -63,7 +87,7 @@ export default {
         'xs': '400px',
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+        sans: ['Inter Variable', 'Inter', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'sans-serif'],
         mono: ['JetBrains Mono', 'Menlo', 'monospace'],
       },
       spacing: {
@@ -110,6 +134,10 @@ export default {
         'glow-danger': '0 0 20px rgba(239, 68, 68, 0.3)',
         'card': 'var(--shadow-card)',
         'card-hover': 'var(--shadow-card-hover)',
+        // Trois élévations seulement : posé (cartes), flottant (menus, barres), modal.
+        'e1': 'var(--e1)',
+        'e2': 'var(--e2)',
+        'e3': 'var(--e3)',
       },
       zIndex: {
         'dropdown': '1000',

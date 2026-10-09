@@ -4911,63 +4911,44 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         const totalEnvoyes = conversionResult.envoyes;
         const tauxConversion = totalEnvoyes > 0 ? conversionResult.taux : null;
 
-        // Trend computation: compare current month vs previous month
-        const now = new Date();
-        const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-        const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-        const thisMonthDevis = cleanDevis.filter(d => new Date(d.date) >= thisMonthStart);
-        const prevMonthDevis = cleanDevis.filter(d => { const dt = new Date(d.date); return dt >= prevMonthStart && dt < thisMonthStart; });
-        const calcTrend = (curr, prev) => prev === 0 ? (curr > 0 ? 100 : 0) : Math.round(((curr - prev) / prev) * 100);
-        const trendCA = calcTrend(
-          thisMonthDevis.filter(d => d.type === 'facture' && d.statut === 'payee').reduce((s, f) => s + (f.total_ttc || 0), 0),
-          prevMonthDevis.filter(d => d.type === 'facture' && d.statut === 'payee').reduce((s, f) => s + (f.total_ttc || 0), 0)
-        );
-        const trendEnCours = calcTrend(
-          thisMonthDevis.filter(d => d.type === 'devis' && ['envoye', 'vu'].includes(d.statut)).length,
-          prevMonthDevis.filter(d => d.type === 'devis' && ['envoye', 'vu'].includes(d.statut)).length
-        );
-        const trendAEncaisser = calcTrend(
-          thisMonthDevis.filter(d => d.type === 'facture' && d.statut !== 'payee').reduce((s, f) => s + (f.total_ttc || 0), 0),
-          prevMonthDevis.filter(d => d.type === 'facture' && d.statut !== 'payee').reduce((s, f) => s + (f.total_ttc || 0), 0)
-        );
-        const trendProps = (v) => v === 0 ? {} : { trend: v > 0 ? 'up' : 'down', trendValue: `${v > 0 ? '+' : ''}${v}%` };
+        // Plus de tendance mois sur mois : comparée à un mois vide, elle affichait « -100 % » sans base (revue du 9 oct.).
         const convColor = tauxConversion != null ? (tauxConversion >= 50 ? '#10b981' : tauxConversion >= 25 ? '#f59e0b' : '#ef4444') : '#64748b';
         const hidePrice = (v) => !canViewPrices ? '—' : modeDiscret ? '···' : v;
 
         return (
           <div className={`bandeau-chiffres grid grid-cols-2 ${avoirsEmis.length > 0 ? 'sm:grid-cols-5' : 'sm:grid-cols-4'} gap-3 sm:gap-4`}>
             <KPICard
-              icon={CheckCircle} tone="money" label="CA encaissé"
-              value={hidePrice(formatMoney(montantPayees))}
-              sublabel={`${facturesPayees.length} fact.`}
-              {...trendProps(trendCA)} isDark={isDark}
+              icon={CheckCircle} tone="money" label="Encaissé"
+              value={hidePrice(fmtMoney(montantPayees, 0))}
+              sublabel={`${facturesPayees.length} facture${facturesPayees.length > 1 ? 's' : ''} payée${facturesPayees.length > 1 ? 's' : ''}`}
+              isDark={isDark}
               onClick={() => setFilter('factures')}
             />
             <KPICard
-              icon={Send} tone="info" label="En cours"
+              icon={Send} tone="info" label="Devis en attente"
               value={String(devisEnvoye.length)}
-              sublabel={hidePrice(formatMoney(montantEnCours))}
-              {...trendProps(trendEnCours)} isDark={isDark}
+              sublabel={hidePrice(fmtMoney(montantEnCours, 0))}
+              isDark={isDark}
               onClick={() => setFilter('attente')}
             />
             <KPICard
               icon={TrendingUp} color={convColor} label="Conversion"
               value={formatConversion(tauxConversion)}
-              sublabel={`${conversionResult.signes}/${totalEnvoyes}`}
+              sublabel={`${conversionResult.signes} signé${conversionResult.signes > 1 ? 's' : ''} sur ${totalEnvoyes}`}
               isDark={isDark}
               onClick={() => setFilter('conversion')}
             />
             <KPICard
-              icon={CreditCard} color={facturesEnRetard.length > 0 ? '#ef4444' : '#8b5cf6'} label="À encaisser"
-              value={hidePrice(formatMoney(montantAEncaisser))}
-              sublabel={facturesEnRetard.length > 0 ? `${facturesEnRetard.length} en retard` : `${facturesEnAttente.length} att.`}
-              {...trendProps(trendAEncaisser)} isDark={isDark}
+              icon={CreditCard} label="À encaisser"
+              value={hidePrice(fmtMoney(montantAEncaisser, 0))}
+              sublabel={facturesEnRetard.length > 0 ? `dont ${facturesEnRetard.length} en retard` : `${facturesEnAttente.length} facture${facturesEnAttente.length > 1 ? 's' : ''}`}
+              tone={facturesEnRetard.length > 0 ? 'danger' : undefined} isDark={isDark}
               onClick={() => setFilter('factures_impayees')}
             />
             {avoirsEmis.length > 0 && (
               <KPICard
                 icon={RotateCcw} tone="danger" label="Avoirs"
-                value={hidePrice(`-${formatMoney(montantAvoirs)}`)}
+                value={hidePrice(`-${fmtMoney(montantAvoirs, 0)}`)}
                 sublabel={`${avoirsEmis.length} avoir${avoirsEmis.length > 1 ? 's' : ''}`}
                 isDark={isDark}
                 onClick={() => setFilter('avoirs')}

@@ -92,6 +92,7 @@ import OfflineIndicator from './components/ui/OfflineIndicator';
 import EntrepriseSwitcher from './components/ui/EntrepriseSwitcher';
 import { FONCTIONS } from './lib/fonctions';
 import { estNatif } from './lib/natif';
+import { appliquerTheme } from './lib/theme';
 
 // Safe string renderer — prevents "Objects are not valid as React child" (#310)
 const safeStr = (v, fallback = '') => {
@@ -662,6 +663,8 @@ export default function App() {
     }
   }, [entreprise, activeEntreprise]);
   useEffect(() => { try { localStorage.setItem('cp_theme', theme); } catch (e) { console.warn('Failed to save theme:', e.message); } }, [theme]);
+  // Racine du thème : data-theme + accent lisible sur <html>, lus par les primitives de ui/ (src/lib/theme.js).
+  useEffect(() => { appliquerTheme(document.documentElement, { sombre: theme === 'dark', couleur: entreprise?.couleur }); }, [theme, entreprise?.couleur]);
   useEffect(() => { try { localStorage.setItem('cp_mode_discret', JSON.stringify(modeDiscret)); } catch (e) { console.warn('Failed to save modeDiscret:', e.message); } }, [modeDiscret]);
   useEffect(() => {
     logger.debug('[NAV] page changed to:', page);

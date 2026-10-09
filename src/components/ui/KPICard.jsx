@@ -1,84 +1,37 @@
-import { resolveTone } from '../../lib/uiTheme';
-
 /**
- * KPICard — Tuile KPI "énergique & coloré"
+ * KPICard — tuile de chiffre des modules. Refonte du 9 oct. 2026 : même rendu que
+ * ui/TuileChiffre.jsx — libellé, gros chiffre tabulaire, contexte ; ni pastille d'icône, ni bordure
+ * colorée, ni cercle décoratif (les 8 modèles de tuiles de l'app se lisaient chacun autrement).
+ * La seule couleur : le ton « danger » (valeur en rouge) et la tendance.
+ * L'API est gardée (icon, color, isDark acceptés et ignorés).
  *
- * Design system Mallettico : chip d'icône coloré, valeur XL, bordure teintée,
- * pastille de tendance. Une couleur = un sens.
- *
- * @param {React.ComponentType} icon - Lucide icon component
- * @param {string} label - KPI label (e.g. "Chiffre d'affaires")
- * @param {string|number} value - KPI value (e.g. "12 450 €")
- * @param {string} [sublabel] - Optional secondary text
- * @param {string} [color] - Accent hex (défaut orange). Ignoré si `tone` fourni.
- * @param {string} [tone] - Ton sémantique : money|info|warning|danger|neutral|accent
- * @param {'up'|'down'|null} [trend] - Optional trend direction
- * @param {string} [trendValue] - Trend text (e.g. "+12%")
- * @param {Function} [onClick] - Rend la tuile cliquable
- * @param {boolean} [isDark] - Dark mode
+ * @param {string} label
+ * @param {string|number} value
+ * @param {string} [sublabel]
+ * @param {string} [tone] seul « danger » colore la valeur
+ * @param {'up'|'down'|null} [trend]
+ * @param {string} [trendValue]
+ * @param {Function} [onClick]
  */
-export default function KPICard({
-  icon: Icon,
-  label,
-  value,
-  sublabel,
-  color = '#f97316',
-  tone,
-  trend,
-  trendValue,
-  onClick,
-  isDark = false,
-}) {
-  const c = resolveTone(tone, color);
-  const cardBg = isDark ? 'bg-slate-800' : 'bg-white';
-  const textPrimary = isDark ? 'text-white' : 'text-slate-900';
-  const textSecondary = isDark ? 'text-slate-400' : 'text-slate-500';
-
+// eslint-disable-next-line no-unused-vars -- icon, color, isDark : API historique, ignorés
+export default function KPICard({ icon, label, value, sublabel, color, tone, trend, trendValue, onClick, isDark }) {
   const Comp = onClick ? 'button' : 'div';
-
   return (
     <Comp
-      onClick={onClick}
-      className={`group relative w-full text-left rounded-xl sm:rounded-2xl border p-3 sm:p-4 overflow-hidden transition-all duration-200 ${cardBg} ${
-        onClick ? 'hover:-translate-y-0.5 hover:shadow-lg cursor-pointer' : ''
+      data-ui="TuileChiffre"
+      {...(onClick ? { type: 'button', onClick } : {})}
+      className={`w-full min-w-0 min-h-[96px] flex flex-col justify-between gap-2 text-left rounded-2xl border border-bord bg-surface shadow-e1 p-4 ${
+        onClick ? 'transition-colors hover:border-bord-fort active:bg-surface-2' : ''
       }`}
-      style={{ borderColor: isDark ? `${c}40` : `${c}33` }}
     >
-      {/* Wash coloré discret (énergie) */}
-      <div
-        className="pointer-events-none absolute -right-6 -top-6 w-16 h-16 sm:w-24 sm:h-24 rounded-full opacity-60"
-        style={{ background: `${c}14` }}
-        aria-hidden="true"
-      />
-
-      <div className="relative flex items-center justify-between mb-2 sm:mb-3">
-        {Icon && (
-          <div
-            className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl flex items-center justify-center"
-            style={{ background: `${c}1f`, color: c }}
-            aria-hidden="true"
-          >
-            <Icon size={16} className="sm:hidden" />
-            <Icon size={18} className="hidden sm:block" />
-          </div>
-        )}
-        {trend && trendValue && (
-          <span
-            className="text-[10px] sm:text-xs font-semibold px-1.5 sm:px-2 py-0.5 rounded-full"
-            style={
-              trend === 'up'
-                ? { background: '#10b98120', color: isDark ? '#34d399' : '#059669' }
-                : { background: '#ef444420', color: isDark ? '#f87171' : '#dc2626' }
-            }
-          >
-            {trendValue}
-          </span>
-        )}
-      </div>
-
-      <p className={`relative text-xl sm:text-3xl font-bold leading-none truncate ${textPrimary}`}>{value}</p>
-      <p className={`relative text-[11px] sm:text-xs font-medium mt-1.5 sm:mt-2 ${textSecondary}`}>{label}</p>
-      {sublabel && <p className={`relative text-[10px] sm:text-xs mt-0.5 truncate ${textSecondary}`}>{sublabel}</p>}
+      <span className="flex items-start justify-between gap-2">
+        <span className="text-sm font-medium leading-tight text-encre-2">{label}</span>
+        {trend && trendValue ? (
+          <span className={`text-xs font-semibold whitespace-nowrap ${trend === 'up' ? 'text-succes-texte' : 'text-danger-texte'}`}>{trendValue}</span>
+        ) : null}
+      </span>
+      <span className={`text-2xl sm:text-3xl font-bold leading-none tabular-nums tracking-tight truncate ${tone === 'danger' ? 'text-danger-texte' : 'text-encre'}`}>{value}</span>
+      {sublabel ? <span className="text-sm text-encre-3 truncate">{sublabel}</span> : null}
     </Comp>
   );
 }

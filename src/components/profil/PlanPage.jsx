@@ -17,6 +17,7 @@ import { toast } from '../../stores/toastStore';
 import { auth, isDemo } from '../../supabaseClient';
 import { useConfirm } from '../../context/AppContext';
 import { ouvrirLienExterne } from '../../lib/natif';
+import { Segmente } from '../ui/Onglets';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -318,38 +319,18 @@ export default function PlanPage({ isDark, couleur = '#f97316', setPage }) {
 
         {/* Plans comparison */}
         <div className="animate-fade-slide-up" style={{ animationDelay: '100ms' }}>
-          {/* Billing toggle */}
-          <div className="flex items-center justify-center gap-3 mb-5">
-            <span className={`text-sm font-medium ${billing === 'monthly' ? textPrimary : textMuted}`}>Mensuel</span>
-            <button
-              onClick={() => setBilling(b => b === 'monthly' ? 'yearly' : 'monthly')}
-              role="switch"
-              aria-checked={billing === 'yearly'}
-              aria-label="Basculer facturation mensuelle/annuelle"
-              className="relative flex-shrink-0 transition-colors rounded-full"
-              style={{
-                width: 44,
-                height: 24,
-                backgroundColor: billing === 'yearly' ? (couleur || '#22c55e') : (isDark ? '#475569' : '#cbd5e1'),
-              }}
-            >
-              <span
-                className="absolute rounded-full bg-white shadow-sm transition-transform"
-                style={{
-                  width: 18,
-                  height: 18,
-                  top: 3,
-                  left: 3,
-                  transform: billing === 'yearly' ? 'translateX(20px)' : 'translateX(0)',
-                }}
-              />
-            </button>
-            <span className={`text-sm font-medium ${billing === 'yearly' ? textPrimary : textMuted}`}>
-              Annuel
-              <span className={`ml-1.5 px-1.5 py-0.5 rounded-full text-[11px] font-bold ${isDark ? 'bg-green-500/20 text-green-300' : 'bg-green-50 text-green-700'}`}>
-                -{YEARLY_DISCOUNT}%
-              </span>
-            </span>
+          {/* Mensuel / Annuel : un segment (l'interrupteur de 44×24 était déformé en disque par la règle
+              globale des 44 px — revue du 9 oct. 2026). */}
+          <div className="flex justify-center mb-5">
+            <Segmente
+              ariaLabel="Facturation"
+              valeur={billing}
+              onChange={setBilling}
+              options={[
+                { valeur: 'monthly', libelle: 'Mensuel' },
+                { valeur: 'yearly', libelle: `Annuel −${YEARLY_DISCOUNT} %` },
+              ]}
+            />
           </div>
 
           {/* Plan cards */}

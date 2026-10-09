@@ -1,0 +1,67 @@
+/* ===== MALLETTICO — THÈME (fondations de la refonte, 9 oct. 2026) =====
+   Une seule palette neutre (slate), nommée par rôle. La racine <html> porte
+   data-theme="clair|sombre" et les variables d'accent, posées par App.jsx via
+   src/lib/theme.js. Valeurs en triplets « r g b » : Tailwind gère l'opacité
+   (bg-surface/80, border-bord/60…). Classes : voir tailwind.config.js. */
+
+/* Inter (variable, latin : français, €, œ, espaces fines) servie par l'app : la police
+   prévue n'était jamais chargée, chaque téléphone affichait la sienne (Roboto, SF…). */
+@font-face {
+  font-family: 'Inter Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url('../../node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2') format('woff2-variations');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* Clair par défaut ; un bloc [data-theme] redéfinit le thème pour son sous-arbre (styleguide clair + sombre côte à côte). */
+:root, [data-theme='clair'] {
+  /* Fonds */
+  --fond: 248 250 252;       /* page — slate-50 */
+  --surface: 255 255 255;    /* carte, volet, barre */
+  --surface-2: 241 245 249;  /* creux, survol, puce neutre — slate-100 */
+  /* Traits */
+  --bord: 226 232 240;       /* slate-200 */
+  --bord-fort: 203 213 225;  /* champs — slate-300 */
+  /* Encres (≥ 4,5:1 sur fond et surface) */
+  --encre: 15 23 42;         /* titres, montants — slate-900 */
+  --encre-2: 71 85 105;      /* texte secondaire — slate-600 */
+  --encre-3: 100 116 139;    /* méta, libellés — slate-500 (4,8:1 sur blanc) */
+  /* Accent par défaut (remplacé à l'exécution, voir src/lib/theme.js) */
+  --accent: 249 115 22;
+  --sur-accent: 2 6 23;
+  --accent-texte: 195 83 5;
+  /* Tons de sens (pastilles, alertes) : un fond teinté, un texte ≥ 6:1 dessus, un point vif.
+     Un statut = un ton, partout (src/lib/statuts.js). Bleu = chez le client, vert = acquis,
+     ambre = à surveiller, rouge = problème, gris = brouillon ou clos. L'orange reste la marque. */
+  --neutre-fond: 241 245 249;  --neutre-texte: 51 65 85;    --neutre-point: 148 163 184;  /* slate 100/700/400 */
+  --info-fond: 219 234 254;    --info-texte: 30 64 175;     --info-point: 59 130 246;    /* blue 100/800/500 */
+  --succes-fond: 209 250 229;  --succes-texte: 6 95 70;     --succes-point: 16 185 129;  /* emerald 100/800/500 */
+  --alerte-fond: 254 243 199;  --alerte-texte: 146 64 14;   --alerte-point: 245 158 11;  /* amber 100/800/500 */
+  --danger-fond: 254 226 226;  --danger-texte: 153 27 27;   --danger-point: 239 68 68;   /* red 100/800/500 */
+  /* Élévations */
+  --e1: 0 1px 2px rgb(15 23 42 / 0.06);
+  --e2: 0 8px 24px -6px rgb(15 23 42 / 0.18);
+  --e3: 0 24px 48px -12px rgb(15 23 42 / 0.3);
+}
+
+[data-theme='sombre'] {
+  --fond: 15 23 42;          /* slate-900 */
+  --surface: 30 41 59;       /* slate-800 */
+  --surface-2: 51 65 85;     /* slate-700 */
+  --bord: 51 65 85;          /* slate-700 */
+  --bord-fort: 71 85 105;    /* slate-600 */
+  --encre: 248 250 252;      /* slate-50 */
+  --encre-2: 203 213 225;    /* slate-300 */
+  --encre-3: 148 163 184;    /* slate-400 (5,7:1 sur slate-800) */
+  /* Tons en sombre : fonds -950, textes -300 (≥ 8:1). */
+  --neutre-fond: 51 65 85;     --neutre-texte: 226 232 240; --neutre-point: 148 163 184;
+  --info-fond: 23 37 84;       --info-texte: 147 197 253;   --info-point: 96 165 250;
+  --succes-fond: 2 44 34;      --succes-texte: 110 231 183; --succes-point: 52 211 153;
+  --alerte-fond: 69 26 3;      --alerte-texte: 252 211 77;  --alerte-point: 251 191 36;
+  --danger-fond: 69 10 10;     --danger-texte: 252 165 165; --danger-point: 248 113 113;
+  --e1: 0 0 #0000;
+  --e2: 0 8px 24px rgb(0 0 0 / 0.5);
+  --e3: 0 24px 48px -12px rgb(0 0 0 / 0.6);
+}

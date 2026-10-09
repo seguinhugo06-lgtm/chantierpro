@@ -95,6 +95,8 @@ const PublicPaymentPage = lazy(() => import('./components/payment/PublicPaymentP
 const FeaturesDetailPage = lazy(() => import('./components/landing/FeaturesDetailPage'))
 const FeatureDeepDivePage = lazy(() => import('./components/landing/FeatureDeepDivePage'))
 const ResourcesPage = lazy(() => import('./components/landing/ResourcesPage'))
+// Bibliothèque d'interface vivante (cachée, non indexée) : tokens et composants, clair et sombre.
+const Styleguide = lazy(() => import('./components/styleguide/Styleguide'))
 
 // Check if this is a marketing sub-page
 function getMarketingPage() {
@@ -103,6 +105,7 @@ function getMarketingPage() {
   const featureMatch = path.match(/^\/fonctionnalites\/([a-z0-9-]+)\/?$/)
   if (featureMatch) return { page: 'feature-detail', slug: featureMatch[1] }
   if (path === '/ressources') return 'resources'
+  if (path === '/styleguide' || path === '/styleguide/') return 'styleguide'
   return null
 }
 
@@ -196,6 +199,10 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     ) : marketingPage === 'resources' ? (
       <Suspense fallback={<PublicFallback />}>
         <ResourcesPage />
+      </Suspense>
+    ) : marketingPage === 'styleguide' ? (
+      <Suspense fallback={<PublicFallback />}>
+        <Styleguide />
       </Suspense>
     ) : signatureToken ? (
       <Suspense fallback={<PublicFallback />}>

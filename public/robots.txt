@@ -5,5 +5,6 @@ Disallow: /portal/*
 Disallow: /devis/signer/*
 Disallow: /facture/payer/*
 Disallow: /pay/*
+Disallow: /styleguide
 
 Sitemap: https://mallettico.fr/sitemap.xml

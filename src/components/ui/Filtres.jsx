@@ -11,7 +11,8 @@
  *   - ListeChoix     : liste à cocher, avec recherche au-delà de quelques entrées (clients, chantiers) ;
  *   - PucesActives   : les filtres actifs, retirables d'une touche ;
  *   - SegmentDefilant: la rangée du filtre principal (Tous, Devis, Factures…).
- * Thème : prop isDark ; accent : prop couleur (hex), en style inline comme le reste de l'app.
+ * Thème : jetons de src/styles/theme.css (refonte du 9 oct.) ; isDark et couleur sont acceptés mais
+ * plus nécessaires. Un filtre choisi s'affiche inversé (encre), l'accent reste réservé à l'action.
  */
 import { forwardRef, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -33,20 +34,21 @@ export function useEstTelephone() {
   return telephone;
 }
 
+// eslint-disable-next-line no-unused-vars -- signature gardée : les appelants passent encore isDark
 const theme = (isDark) => ({
-  bord: isDark ? 'border-slate-600' : 'border-slate-200',
-  fond: isDark ? 'bg-slate-800' : 'bg-white',
-  fondDoux: isDark ? 'bg-slate-700/70' : 'bg-slate-100',
-  texte: isDark ? 'text-slate-100' : 'text-slate-800',
-  texteDoux: isDark ? 'text-slate-400' : 'text-slate-500',
-  survol: isDark ? 'hover:bg-slate-700/60' : 'hover:bg-slate-50',
-  placeholder: isDark ? 'placeholder:text-slate-500' : 'placeholder:text-slate-400',
+  bord: 'border-bord',
+  fond: 'bg-surface',
+  fondDoux: 'bg-surface-2',
+  texte: 'text-encre',
+  texteDoux: 'text-encre-3',
+  survol: 'hover:bg-surface-2',
+  placeholder: 'placeholder:text-encre-3',
 });
 
 const normaliser = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
 /** Champ de recherche : 44 px, icône, bouton d'effacement. */
-export function ChampRecherche({ valeur, onChange, placeholder = 'Rechercher…', ariaLabel, isDark, couleur = '#f97316', compact = false, className = '' }) {
+export function ChampRecherche({ valeur, onChange, placeholder = 'Rechercher…', ariaLabel, isDark, compact = false, className = '' }) {
   const t = theme(isDark);
   return (
     <div className={`relative min-w-0 ${className}`}>
@@ -59,8 +61,7 @@ export function ChampRecherche({ valeur, onChange, placeholder = 'Rechercher…'
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         aria-label={ariaLabel || placeholder}
-        className={`w-full ${compact ? 'h-10' : 'h-11'} pl-10 pr-10 rounded-xl border text-base sm:text-sm outline-none transition-shadow focus:ring-2 ${t.fond} ${t.bord} ${t.texte} ${t.placeholder}`}
-        style={{ '--tw-ring-color': `${couleur}55` }}
+        className={`w-full ${compact ? 'h-10' : 'h-11'} pl-10 pr-10 rounded-xl border text-base sm:text-sm outline-none transition-shadow focus:border-accent focus:ring-4 focus:ring-accent/20 ${t.fond} ${t.bord} ${t.texte} ${t.placeholder}`}
       />
       {valeur ? (
         <button
@@ -78,7 +79,7 @@ export function ChampRecherche({ valeur, onChange, placeholder = 'Rechercher…'
 
 /** Bouton qui ouvre un volet : libellé, valeur en cours, nombre de filtres actifs. */
 export const BoutonVolet = forwardRef(function BoutonVolet(
-  { icone: Icone = SlidersHorizontal, libelle, valeur, compte = 0, ouvert = false, onClick, isDark, couleur = '#f97316', libelleCacheTelephone = false },
+  { icone: Icone = SlidersHorizontal, libelle, valeur, compte = 0, ouvert = false, onClick, isDark, libelleCacheTelephone = false },
   ref,
 ) {
   const t = theme(isDark);
@@ -92,15 +93,14 @@ export const BoutonVolet = forwardRef(function BoutonVolet(
       aria-expanded={ouvert}
       aria-label={`${libelle}${valeur ? ` : ${valeur}` : ''}${compte ? ` (${compte} actif${compte > 1 ? 's' : ''})` : ''}`}
       className={`h-11 inline-flex items-center justify-center gap-2 ${libelleCacheTelephone ? 'min-w-[44px] px-3 sm:px-3.5' : 'px-3.5'} rounded-xl border text-sm font-medium whitespace-nowrap flex-shrink-0 transition-colors ${
-        actif ? '' : `${t.fond} ${t.bord} ${t.texte} ${t.survol}`
+        actif ? 'bg-encre text-surface border-encre' : `${t.fond} ${t.bord} ${t.texte} ${t.survol}`
       }`}
-      style={actif ? { background: `${couleur}14`, borderColor: `${couleur}80`, color: couleur } : undefined}
     >
       <Icone size={16} aria-hidden="true" className="flex-shrink-0" />
       <span className={libelleCacheTelephone ? 'hidden sm:inline' : ''}>{libelle}</span>
       {valeur ? <span className={`hidden sm:inline font-semibold ${actif ? '' : t.texte}`}>{valeur}</span> : null}
       {compte > 0 ? (
-        <span className="min-w-[20px] h-5 px-1.5 rounded-full text-[11px] font-bold text-white flex items-center justify-center tabular-nums" style={{ background: couleur }}>
+        <span className="min-w-[20px] h-5 px-1.5 rounded-full text-xs font-bold bg-accent text-sur-accent flex items-center justify-center tabular-nums">
           {compte}
         </span>
       ) : null}
@@ -181,7 +181,7 @@ export function Volet({ ouvert, onFermer, titre, ancreRef, children, pied, isDar
           style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
         >
           <div className="flex justify-center pt-2.5 pb-1" aria-hidden="true">
-            <div className={`w-10 h-1 rounded-full ${isDark ? 'bg-slate-600' : 'bg-slate-300'}`} />
+            <div className="w-10 h-1 rounded-full bg-bord-fort" />
           </div>
           {contenu}
         </div>
@@ -207,14 +207,14 @@ export function Volet({ ouvert, onFermer, titre, ancreRef, children, pied, isDar
 
 /** Titre de section dans un volet. */
 function TitreSection({ children, isDark }) {
-  return <legend className={`text-[11px] font-semibold uppercase tracking-wider mb-2.5 ${theme(isDark).texteDoux}`}>{children}</legend>;
+  return <legend className={`text-xs font-semibold uppercase tracking-wider mb-2.5 ${theme(isDark).texteDoux}`}>{children}</legend>;
 }
 
 /**
  * Puces de choix (choix court). `multiple` : valeur = Set, sinon une valeur simple.
  * options : [{ valeur, libelle, icone?, compte? }]
  */
-export function GroupeChoix({ titre, options, valeur, onChange, multiple = false, isDark, couleur = '#f97316' }) {
+export function GroupeChoix({ titre, options, valeur, onChange, multiple = false, isDark }) {
   const t = theme(isDark);
   const choisi = (v) => (multiple ? !!valeur?.has?.(v) : valeur === v);
   const basculer = (v) => {
@@ -236,8 +236,7 @@ export function GroupeChoix({ titre, options, valeur, onChange, multiple = false
               type="button"
               onClick={() => basculer(o.valeur)}
               aria-pressed={oui}
-              className={`min-h-[40px] inline-flex items-center gap-1.5 px-3.5 rounded-full border text-sm font-medium transition-colors ${oui ? '' : `${t.fond} ${t.bord} ${t.texte} ${t.survol}`}`}
-              style={oui ? { background: `${couleur}14`, borderColor: couleur, color: couleur } : undefined}
+              className={`h-11 inline-flex items-center gap-1.5 px-4 rounded-full border text-sm font-medium transition-colors ${oui ? 'bg-encre text-surface border-encre' : `${t.fond} ${t.bord} ${t.texte} ${t.survol}`}`}
             >
               {oui ? <Check size={15} strokeWidth={2.75} aria-hidden="true" /> : Icone ? <Icone size={15} aria-hidden="true" /> : null}
               {o.libelle}
@@ -254,7 +253,7 @@ export function GroupeChoix({ titre, options, valeur, onChange, multiple = false
  * Liste à choix unique ; recherche affichée au-delà de `rechercheAuDela` entrées.
  * options : [{ valeur, libelle, detail?, icone?, toujours? }] — `toujours` : visible même filtrée (« Tous »).
  */
-export function ListeChoix({ titre, options, valeur, onChange, rechercheAuDela = 7, placeholder = 'Rechercher…', vide = 'Aucun résultat', isDark, couleur = '#f97316' }) {
+export function ListeChoix({ titre, options, valeur, onChange, rechercheAuDela = 7, placeholder = 'Rechercher…', vide = 'Aucun résultat', isDark }) {
   const t = theme(isDark);
   const [requete, setRequete] = useState('');
   const q = normaliser(requete);
@@ -263,7 +262,7 @@ export function ListeChoix({ titre, options, valeur, onChange, rechercheAuDela =
     <fieldset>
       {titre ? <TitreSection isDark={isDark}>{titre}</TitreSection> : null}
       {options.length > rechercheAuDela ? (
-        <ChampRecherche valeur={requete} onChange={setRequete} placeholder={placeholder} isDark={isDark} couleur={couleur} compact className="mb-2" />
+        <ChampRecherche valeur={requete} onChange={setRequete} placeholder={placeholder} isDark={isDark} compact className="mb-2" />
       ) : null}
       <div role="radiogroup" aria-label={titre} className={`rounded-xl border overflow-hidden ${t.bord} ${options.length > rechercheAuDela ? 'max-h-64 overflow-y-auto overscroll-contain' : ''}`}>
         {visibles.map((o, i) => {
@@ -278,17 +277,16 @@ export function ListeChoix({ titre, options, valeur, onChange, rechercheAuDela =
               onClick={() => onChange(o.valeur)}
               className={`w-full min-h-[48px] flex items-center gap-3 px-3.5 py-2 text-left transition-colors ${i ? `border-t ${t.bord}` : ''} ${t.survol}`}
             >
-              {Icone ? <Icone size={17} aria-hidden="true" className={oui ? '' : t.texteDoux} style={oui ? { color: couleur } : undefined} /> : null}
+              {Icone ? <Icone size={17} aria-hidden="true" className={oui ? 'text-encre' : t.texteDoux} /> : null}
               <span className="flex-1 min-w-0">
-                <span className={`block truncate text-[15px] sm:text-sm ${oui ? 'font-semibold' : t.texte}`} style={oui ? { color: couleur } : undefined}>{o.libelle}</span>
+                <span className={`block truncate text-base sm:text-sm text-encre ${oui ? 'font-semibold' : ''}`}>{o.libelle}</span>
                 {o.detail ? <span className={`block truncate text-xs ${t.texteDoux}`}>{o.detail}</span> : null}
               </span>
               <span
-                className="w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0"
-                style={{ borderColor: oui ? couleur : (isDark ? '#64748b' : '#cbd5e1'), background: oui ? couleur : 'transparent' }}
+                className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${oui ? 'bg-accent border-accent' : 'border-bord-fort'}`}
                 aria-hidden="true"
               >
-                {oui ? <Check size={12} strokeWidth={3.5} className="text-white" /> : null}
+                {oui ? <Check size={12} strokeWidth={3.5} className="text-sur-accent" /> : null}
               </span>
             </button>
           );
@@ -300,7 +298,7 @@ export function ListeChoix({ titre, options, valeur, onChange, rechercheAuDela =
 }
 
 /** Les filtres actifs, chacun retirable d'une touche ; « Tout effacer » au-delà d'un. */
-export function PucesActives({ puces, onToutEffacer, isDark, couleur = '#f97316' }) {
+export function PucesActives({ puces, onToutEffacer, isDark }) {
   const t = theme(isDark);
   if (!puces?.length) return null;
   return (
@@ -311,15 +309,14 @@ export function PucesActives({ puces, onToutEffacer, isDark, couleur = '#f97316'
           type="button"
           onClick={p.onRetirer}
           aria-label={`Retirer le filtre ${p.libelle}`}
-          className="min-h-[40px] inline-flex items-center gap-1.5 pl-3.5 pr-2.5 rounded-full text-[13px] font-semibold whitespace-nowrap flex-shrink-0 transition-opacity hover:opacity-80"
-          style={{ background: `${couleur}14`, color: couleur }}
+          className="h-10 inline-flex items-center gap-1.5 pl-3.5 pr-2.5 rounded-full text-sm font-semibold whitespace-nowrap flex-shrink-0 transition-colors bg-surface-2 text-encre hover:bg-bord"
         >
           {p.libelle}
           <X size={15} aria-hidden="true" />
         </button>
       ))}
       {puces.length > 1 ? (
-        <button type="button" onClick={onToutEffacer} className={`min-h-[40px] px-2 text-[13px] font-medium whitespace-nowrap flex-shrink-0 hover:underline underline-offset-2 ${t.texteDoux}`}>
+        <button type="button" onClick={onToutEffacer} className={`h-10 px-2 text-sm font-medium whitespace-nowrap flex-shrink-0 hover:underline underline-offset-2 ${t.texteDoux}`}>
           Tout effacer
         </button>
       ) : null}
@@ -328,7 +325,7 @@ export function PucesActives({ puces, onToutEffacer, isDark, couleur = '#f97316'
 }
 
 /** Rangée du filtre principal (défile sur téléphone, garde le choix en vue). */
-export function SegmentDefilant({ options, valeur, onChange, ariaLabel, isDark, couleur = '#f97316' }) {
+export function SegmentDefilant({ options, valeur, onChange, ariaLabel, isDark }) {
   const t = theme(isDark);
   const rangeeRef = useRef(null);
   useEffect(() => {
@@ -351,13 +348,12 @@ export function SegmentDefilant({ options, valeur, onChange, ariaLabel, isDark, 
             type="button"
             onClick={() => onChange(o.valeur)}
             aria-pressed={oui}
-            className={`h-10 inline-flex items-center gap-1.5 px-4 rounded-full text-sm font-medium whitespace-nowrap flex-shrink-0 transition-colors ${oui ? 'text-white shadow-sm' : `${t.fondDoux} ${t.texte}`}`}
-            style={oui ? { background: couleur } : undefined}
+            className={`h-11 inline-flex items-center gap-1.5 px-4 rounded-full text-sm font-medium whitespace-nowrap flex-shrink-0 transition-colors ${oui ? 'bg-encre text-surface' : `${t.fondDoux} ${t.texte} hover:bg-bord`}`}
           >
             {Icone ? <Icone size={15} aria-hidden="true" /> : null}
             {o.libelle}
             {o.compte > 0 ? (
-              <span className={`min-w-[20px] h-5 px-1.5 rounded-full text-[11px] font-bold flex items-center justify-center tabular-nums ${oui ? 'bg-white/25 text-white' : isDark ? 'bg-slate-600 text-slate-200' : 'bg-white text-slate-600'}`}>
+              <span className={`min-w-[20px] h-5 px-1.5 rounded-full text-xs font-bold flex items-center justify-center tabular-nums ${oui ? 'bg-surface/20 text-surface' : 'bg-surface text-encre-2'}`}>
                 {o.compte}
               </span>
             ) : null}

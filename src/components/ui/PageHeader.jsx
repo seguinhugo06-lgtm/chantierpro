@@ -1,48 +1,22 @@
 /**
- * PageHeader — En-tête de page "énergique & coloré"
+ * PageHeader — en-tête de page des modules. Refonte du 9 oct. 2026 : même rendu que
+ * ui/EnTete.jsx (EnTetePage) — titre 24 px, sous-titre, actions. La tuile d'icône en dégradé est
+ * retirée : sur téléphone elle repoussait le contenu, et l'accent est réservé à l'action.
+ * L'API est gardée (icon, isDark, color acceptés et ignorés) pour les 7 modules qui l'utilisent.
  *
- * Squelette unique de tous les modules : chip d'icône vif + titre XL + sous-titre
- * + zone d'actions. Design system Mallettico.
- *
- * @param {React.ComponentType} icon - Lucide icon component
- * @param {string} title - Page title
- * @param {string} [subtitle] - Optional subtitle/description
- * @param {React.ReactNode} [action] - Optional action area (button, etc.)
- * @param {boolean} [isDark] - Dark mode
- * @param {string} [color] - Accent color (default: orange-500)
+ * @param {string} title
+ * @param {string} [subtitle]
+ * @param {React.ReactNode} [action]
  */
-export default function PageHeader({
-  icon: Icon,
-  title,
-  subtitle,
-  action,
-  isDark = false,
-  color = '#f97316',
-}) {
-  const textPrimary = isDark ? 'text-white' : 'text-slate-900';
-  const textSecondary = isDark ? 'text-slate-400' : 'text-slate-500';
-
+// eslint-disable-next-line no-unused-vars -- icon, isDark, color : API historique, ignorés
+export default function PageHeader({ icon, title, subtitle, action, isDark, color }) {
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
-      <div className="flex items-center gap-3.5">
-        {Icon && (
-          <div
-            className="w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-sm"
-            style={{
-              background: `linear-gradient(135deg, ${color}, ${color}cc)`,
-              color: '#fff',
-            }}
-            aria-hidden="true"
-          >
-            <Icon size={22} strokeWidth={2.2} />
-          </div>
-        )}
-        <div>
-          <h1 className={`text-xl sm:text-2xl font-bold tracking-tight ${textPrimary}`}>{title}</h1>
-          {subtitle && <p className={`text-sm mt-0.5 ${textSecondary}`}>{subtitle}</p>}
-        </div>
+    <header data-ui="EnTetePage" className="flex flex-wrap items-end justify-between gap-x-4 gap-y-3 mb-5 sm:mb-6">
+      <div className="min-w-0">
+        <h1 className="text-2xl font-bold tracking-tight text-encre text-balance">{title}</h1>
+        {subtitle && <p className="mt-1 text-sm text-encre-3">{subtitle}</p>}
       </div>
       {action && <div className="flex items-center gap-2 flex-wrap">{action}</div>}
-    </div>
+    </header>
   );
 }

@@ -1,57 +1,24 @@
 /**
- * EmptyState — État vide "énergique & coloré"
- *
- * Placeholder amical et vivant pour les listes vides. Design system Mallettico.
- *
- * @param {React.ComponentType} icon - Lucide icon component
- * @param {string} title - Main message (e.g. "Aucun devis")
- * @param {string} [description] - Optional helper text
- * @param {string} [actionLabel] - Optional CTA button label
- * @param {Function} [onAction] - Optional CTA button handler
- * @param {boolean} [isDark] - Dark mode
- * @param {string} [couleur] - Accent hex
+ * EmptyState — état vide des modules. Refonte du 9 oct. 2026 : même rendu que ui/EtatVide.jsx —
+ * icône neutre, titre, phrase, une seule action (bouton principal d'accent). Sans halo ni motif.
+ * L'API est gardée (isDark, couleur acceptés et ignorés).
  */
-export default function EmptyState({
-  icon: Icon,
-  title,
-  description,
-  actionLabel,
-  onAction,
-  isDark = false,
-  couleur = '#f97316',
-}) {
-  const textPrimary = isDark ? 'text-white' : 'text-slate-900';
-  const textSecondary = isDark ? 'text-slate-400' : 'text-slate-500';
-
+// eslint-disable-next-line no-unused-vars -- isDark, couleur : API historique, ignorés
+export default function EmptyState({ icon: Icon, title, description, actionLabel, onAction, isDark, couleur }) {
   return (
-    <div
-      className={`flex flex-col items-center justify-center py-16 px-4 text-center rounded-2xl ${
-        isDark ? 'bg-slate-800/50' : 'bg-white'
-      }`}
-      role="status"
-    >
+    <div data-ui="EtatVide" role="status" className="flex flex-col items-center text-center px-6 py-12">
       {Icon && (
-        <div className="mb-5 relative" aria-hidden="true">
-          {/* Halo coloré */}
-          <div
-            className="absolute inset-0 rounded-[28px] blur-xl opacity-40"
-            style={{ background: couleur }}
-          />
-          <div
-            className="relative w-20 h-20 rounded-[28px] flex items-center justify-center mx-auto"
-            style={{ background: `linear-gradient(135deg, ${couleur}22, ${couleur}0d)` }}
-          >
-            <Icon size={34} strokeWidth={1.75} style={{ color: couleur }} />
-          </div>
-        </div>
+        <span className="w-12 h-12 rounded-2xl bg-surface-2 text-encre-3 flex items-center justify-center" aria-hidden="true">
+          <Icon size={24} />
+        </span>
       )}
-      <h3 className={`text-lg font-bold mb-1.5 ${textPrimary}`}>{title}</h3>
-      {description && <p className={`text-sm max-w-sm ${textSecondary}`}>{description}</p>}
+      <h3 className="mt-4 text-lg font-semibold text-encre">{title}</h3>
+      {description && <p className="mt-1 text-sm text-encre-2 max-w-xs">{description}</p>}
       {actionLabel && onAction && (
         <button
+          type="button"
           onClick={onAction}
-          className="mt-6 px-5 py-3 min-h-[44px] rounded-xl text-white text-sm font-semibold hover:opacity-90 hover:-translate-y-0.5 active:scale-95 transition-all duration-200 shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2"
-          style={{ background: `linear-gradient(135deg, ${couleur}, ${couleur}d9)`, outlineColor: couleur }}
+          className="mt-5 h-11 px-4 rounded-xl bg-accent text-sur-accent text-sm font-semibold shadow-e1 hover:brightness-95"
         >
           {actionLabel}
         </button>

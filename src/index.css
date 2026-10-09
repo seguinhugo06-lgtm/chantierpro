@@ -1,4 +1,5 @@
 @import './styles/design-tokens.css';
+@import './styles/theme.css';
 
 @tailwind base;
 @tailwind components;
@@ -25,16 +26,33 @@ a:focus-visible,
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
-  outline: 2px solid #f97316;
+  outline: 2px solid rgb(var(--accent-texte));
   outline-offset: 2px;
 }
 
-/* Touch-friendly tap targets on mobile — 44px per WCAG 2.5.5 */
+/* Touch-friendly tap targets on mobile — 44px per WCAG 2.5.5.
+   Exemptions par classe ENTIÈRE ([class~=…]) : l'ancien filtre par sous-chaîne ([class*="p-1"])
+   sautait aussi gap-1, p-1.5… (« Nouveau devis » à 36 px — audit du 9 oct. 2026). Un bouton
+   volontairement compact porte .cible-compacte. */
 @media (max-width: 639px) and (pointer: coarse) {
-  button:not([class*="p-1"]):not([class*="w-5"]):not([class*="w-6"]):not([class*="h-5"]):not([class*="h-6"]),
-  [role="button"],
+  button:not(.cible-compacte):not([class~="p-0.5"]):not([class~="p-1"]):not([class~="w-5"]):not([class~="w-6"]):not([class~="h-5"]):not([class~="h-6"]),
+  [role="button"]:not(.cible-compacte),
   select {
     min-height: 44px;
+  }
+  /* Bouton qui ne contient qu'une icône : 44 px de large aussi (l'icône garde sa taille). */
+  button:not(.cible-compacte):not([class~="p-0.5"]):not([class~="p-1"]):not([class~="w-5"]):not([class~="w-6"]):has(> svg:only-child) {
+    min-width: 44px;
+  }
+  /* Champs à 16 px au moins : en dessous, Safari zoome sur la page à chaque saisie. */
+  input.text-xs, input.text-sm, input[class~="text-[10px]"], input[class~="text-[11px]"], input[class~="text-[13px]"], input[class~="text-[15px]"],
+  select.text-xs, select.text-sm, textarea.text-xs, textarea.text-sm, textarea[class~="text-[13px]"] {
+    font-size: 16px;
+  }
+}
+@layer base {
+  @media (max-width: 639px) and (pointer: coarse) {
+    input, select, textarea { font-size: 16px; }
   }
 }
 
@@ -62,26 +80,17 @@ html {
   display: none;
 }
 
-/* Chiffres en tête de page : sur téléphone, UNE rangée qui défile (la grille de 2 colonnes
-   repoussait le contenu sous 250 à 400 px de cartes — recette du 9 oct. 2026). À partir de
-   640 px, l'élément garde la grille de ses classes (sm:grid-cols-N). Marge = gouttière de page. */
+/* Chiffres en tête de page : sur téléphone, deux colonnes. Le carrousel du matin du 9 oct. coupait
+   la 3e tuile (« 75 », « Con ») et se lisait comme un bug (revue visuelle de l'après-midi) ; les
+   tuiles de la refonte sont assez basses (96 px) pour tenir en grille. À partir de 640 px, l'élément
+   garde la grille de ses classes (sm:grid-cols-N). */
 @media (max-width: 639.98px) {
   .bandeau-chiffres {
-    display: flex !important;
-    overflow-x: auto;
-    scroll-snap-type: x mandatory;
-    scroll-padding-inline: 0.75rem;
-    margin-inline: -0.75rem;
-    padding-inline: 0.75rem;
-    scrollbar-width: none;
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.5rem;
   }
-  .bandeau-chiffres::-webkit-scrollbar { display: none; }
-  .bandeau-chiffres > * {
-    flex: 0 0 auto;
-    width: 44%;
-    min-width: 9.5rem;
-    scroll-snap-align: start;
-  }
+  .bandeau-chiffres > * { min-width: 0; }
 }
 
 html {
