@@ -9,8 +9,34 @@
 
 const CENTIME = 0.005;
 const JOUR = 86400000;
-/** Délai de paiement par défaut quand la facture n'a pas d'échéance (art. L441-10 C. com. : 30 jours). */
+/**
+ * Délai de repère quand une facture n'a ni échéance ni conditions de règlement : 30 jours après
+ * l'émission. C'est un repère d'écran, pas une règle : entre professionnels, le délai légal court de
+ * l'exécution de la prestation (art. L441-10 I C. com.) ; avec un particulier, il n'y a pas de délai
+ * légal. D'où `date_echeance`, posée à la création de chaque facture (App.addDevis) et imprimée.
+ */
 export const DELAI_PAIEMENT_JOURS = 30;
+
+const JOURS_CONDITIONS = { reception: 0, acompte_solde: 0, '30_jours': 30, '60_jours': 60 };
+const FIN_DE_MOIS = { '30_jours_fdm': 30, '45_jours_fdm': 45 };
+
+/**
+ * Date d'échéance d'une facture émise le `dateEmission` : selon ses conditions de règlement
+ * (« 30 jours fin de mois » : +30 jours, puis fin de ce mois), sinon le délai de l'entreprise.
+ * @returns {string} « AAAA-MM-JJ »
+ */
+export function dateEcheance(dateEmission, { conditionsPaiement, delaiJours } = {}) {
+  const d = new Date(dateEmission || Date.now());
+  if (Number.isNaN(d.getTime())) return null;
+  if (FIN_DE_MOIS[conditionsPaiement] !== undefined) {
+    d.setDate(d.getDate() + FIN_DE_MOIS[conditionsPaiement]);
+    d.setMonth(d.getMonth() + 1, 0);
+  } else {
+    const jours = JOURS_CONDITIONS[conditionsPaiement] ?? (Number(delaiJours) || DELAI_PAIEMENT_JOURS);
+    d.setDate(d.getDate() + jours);
+  }
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
 
 /** Montant d'un paiement, quel que soit le nom du champ (saisie : amount ; base : montant). */
 export function montantPaiement(p) {
@@ -39,11 +65,11 @@ export function resteAPayer(facture, paiements = []) {
   return Math.max(0, (Number(facture?.total_ttc) || 0) - dejaPaye(facture, paiements));
 }
 
-/** Date d'échéance : celle de la facture, sinon date d'émission + 30 jours. */
+/** Date d'échéance : celle de la facture, sinon déduite de ses conditions de règlement (ou 30 jours). */
 export function echeance(facture) {
   if (facture?.date_echeance) return new Date(facture.date_echeance);
   if (!facture?.date) return null;
-  return new Date(new Date(facture.date).getTime() + DELAI_PAIEMENT_JOURS * JOUR);
+  return new Date(dateEcheance(facture.date, { conditionsPaiement: facture.conditionsPaiement }));
 }
 
 /**

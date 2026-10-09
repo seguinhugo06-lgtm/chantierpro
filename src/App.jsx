@@ -93,6 +93,7 @@ import EntrepriseSwitcher from './components/ui/EntrepriseSwitcher';
 import { FONCTIONS } from './lib/fonctions';
 import { estNatif } from './lib/natif';
 import { appliquerTheme } from './lib/theme';
+import { dateEcheance } from './lib/paiementsFacture';
 
 // Safe string renderer — prevents "Objects are not valid as React child" (#310)
 const safeStr = (v, fallback = '') => {
@@ -517,7 +518,16 @@ export default function App() {
   const addClient = async (data) => { const c = await dataAddClient(data); showToast(`Client "${data.nom}" ajouté`, 'success'); return c; };
   const updateClient = async (id, data) => { await dataUpdateClient(id, data); showToast(`Client "${data.nom || 'mis à jour'}" modifié`, 'success'); };
   const deleteClient = async (id) => { await dataDeleteClient(id); showToast('Client supprimé', 'success'); };
-  const addDevis = async (data) => { const d = await dataAddDevis(data); showToast(`${data.type === 'facture' ? 'Facture' : 'Devis'} créé`, 'success'); return d; };
+  // Une facture sans échéance en reçoit une à sa création, selon ses conditions de règlement ou le délai
+  // de l'entreprise (art. L441-9 I C. com. : la date de règlement figure sur la facture).
+  const addDevis = async (data) => {
+    const avecEcheance = data?.type === 'facture' && !data.date_echeance && data.facture_type !== 'avoir'
+      ? { ...data, date_echeance: dateEcheance(data.date || new Date(), { conditionsPaiement: data.conditionsPaiement, delaiJours: entreprise?.delaiPaiement }) }
+      : data;
+    const d = await dataAddDevis(avecEcheance);
+    showToast(`${data.type === 'facture' ? 'Facture' : 'Devis'} créé`, 'success');
+    return d;
+  };
   const updateDevis = async (id, data) => { await dataUpdateDevis(id, data); showToast('Document mis à jour', 'success'); };
   const deleteDevis = (id) => { dataDeleteDevis(id); showToast('Document supprimé', 'info'); };
   const addChantier = async (data) => { const c = await dataAddChantier(data); showToast(`Chantier "${data.nom}" créé`, 'success'); return c; };

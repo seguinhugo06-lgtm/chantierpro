@@ -63,7 +63,10 @@ export function buildMiseEnDemeureHtml({
 
   const joursRetard = Math.max(0, Math.floor((now - dateEcheance) / (1000 * 60 * 60 * 24)));
   const montantTTC = doc.total_ttc || doc.montant_ttc || 0;
-  const penalties = calculatePenalties(montantTTC, joursRetard, penaltyRate);
+  // Pénalités et somme réclamée sur le RESTE dû : après un acompte, on réclamait le TTC entier.
+  const dejaRegle = Math.min(montantTTC, Math.max(0, Number(doc.montant_paye) || 0));
+  const resteDu = Math.round((montantTTC - dejaRegle) * 100) / 100;
+  const penalties = calculatePenalties(resteDu, joursRetard, penaltyRate);
 
   // Previous relances summary
   const sentRelances = executions.filter(e => e.status !== 'cancelled' && e.status !== 'failed');
@@ -291,7 +294,7 @@ export function buildMiseEnDemeureHtml({
 <p class="body-text">
   Par la présente, nous vous mettons en demeure de régler, dans un délai de <strong>huit (8) jours</strong>
   à compter de la réception de ce courrier, la facture n° <strong>${doc.numero || 'N/A'}</strong>
-  d'un montant de <strong>${fmtEuro(montantTTC)} TTC</strong>, émise le ${fmtDate(dateFacture)}
+  d'un montant de <strong>${fmtEuro(montantTTC)} TTC</strong>${dejaRegle > 0 ? `, dont il reste dû <strong>${fmtEuro(resteDu)}</strong>` : ''}, émise le ${fmtDate(dateFacture)}
   et arrivée à échéance le <strong>${fmtDate(dateEcheance)}</strong>.
 </p>
 
@@ -325,6 +328,10 @@ ${relanceSummary ? `
       <td>Montant initial de la facture TTC</td>
       <td style="text-align:right">${fmtEuro(montantTTC)}</td>
     </tr>
+    ${dejaRegle > 0 ? `<tr>
+      <td>Déjà réglé</td>
+      <td style="text-align:right">-${fmtEuro(dejaRegle)}</td>
+    </tr>` : ''}
     <tr>
       <td>
         Pénalités de retard (${penaltyRate}% annuel × ${joursRetard} jours)
@@ -350,7 +357,7 @@ ${relanceSummary ? `
   <strong>Fondement juridique</strong>
   En application de l'article L.441-10 du Code de commerce, tout retard de paiement entraîne de plein droit,
   le jour suivant la date de règlement figurant sur la facture, l'exigibilité de pénalités de retard
-  calculées sur la base d'un taux annuel de ${penaltyRate}% (soit trois fois le taux d'intérêt légal).
+  calculées sur la base d'un taux annuel de ${String(penaltyRate).replace('.', ',')} %.
   L'article D.441-5 prévoit en outre une indemnité forfaitaire de 40 € pour frais de recouvrement.
 </div>
 

@@ -10,7 +10,9 @@
 import { filterValidLignes, formatClientName } from './formatters';
 import { mentionTvaReduiteHtml } from './mentionTvaReduite';
 import { urlPublique } from './urlPublique';
-import { euros, pourcent } from './formatDocument';
+import { euros, pourcent, blocConditionsPaiement } from './formatDocument';
+import { lignesTotauxHtml, lignesAcompteHtml } from './totauxDocument';
+import { echeance } from './paiementsFacture';
 
 /**
  * Formatte un RCS complet
@@ -124,7 +126,7 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mod
       <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${l.quantite || ''}</td>
       <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${l.unite || 'unité'}</td>
       <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:right">${euros(pu)}</td>
-      <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${isMicro ? '-' : (l.tva !== undefined ? l.tva : (doc.tvaRate || doc.tva_rate || 10)) + '%'}</td>
+      <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${isMicro ? '-' : pourcent(l.tva !== undefined ? l.tva : (doc.tvaRate || doc.tva_rate || 10))}</td>
       <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:right;font-weight:600;${total < 0 ? 'color:#dc2626;' : ''}">${euros(total)}</td>
     </tr>`;
   };
@@ -150,10 +152,8 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mod
       }).join('')
     : lignes.map(renderRow).join('');
 
-  const totalHT = doc.total_ht || 0;
+  // Total HT, remise et TVA : bloc commun lignesTotauxHtml (src/lib/totauxDocument.js).
   const totalTTC = doc.total_ttc || 0;
-  const tva = doc.tva || doc.total_tva || 0;
-  const remise = doc.remise || doc.remise_globale || 0;
   const acomptePct = doc.acompte_pct || doc.acompte_percent || 0;
 
   // Entreprise fields (handle both camelCase and snake_case)
@@ -331,15 +331,7 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mod
 
   <!-- TOTAUX -->
   <div class="totals">
-    <div class="row sub"><span>Total HT</span><span>${euros(totalHT)}</span></div>
-    ${remise ? `<div class="row sub" style="color:#dc2626"><span>Remise ${pourcent(remise)}</span><span>-${euros((totalHT * remise / 100))}</span></div>` : ''}
-    ${!isMicro ? (Object.keys(calculatedTvaDetails).length > 0
-      ? Object.entries(calculatedTvaDetails).filter(([_, data]) => data.base > 0).sort((a, b) => parseFloat(a[0]) - parseFloat(b[0])).map(([taux, data]) =>
-        `<div class="row sub"><span>TVA ${pourcent(taux)}${Object.keys(calculatedTvaDetails).length > 1 ? ` (base: ${euros(data.base)})` : ''}</span><span>${euros(data.montant)}</span></div>`
-      ).join('')
-      : `<div class="row sub"><span>TVA ${pourcent(doc.tvaRate || doc.tva_rate || 10)}</span><span>${euros(tva)}</span></div>`
-    ) : ''}
-    <div class="row total"><span>Total TTC</span><span>${euros(totalTTC)}</span></div>
+    ${lignesTotauxHtml(doc, { isMicro, tauxDefaut: entreprise?.tvaDefaut || 10 })}
     ${echeancier && echeancier.etapes && echeancier.etapes.length > 0 ? `
     <div style="margin-top:12px;border-top:1px dashed #ccc;padding-top:10px;">
       <div style="font-size:8pt;font-weight:600;color:#334155;margin-bottom:6px;">ÉCHÉANCIER DE PAIEMENT</div>
@@ -350,8 +342,7 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mod
       }).join('')}
     </div>
     ` : acomptePct ? `
-    <div class="row sub" style="margin-top:8px;border-top:1px dashed #ccc;padding-top:8px"><span>Acompte ${pourcent(acomptePct)}</span><span>${euros((totalTTC * acomptePct / 100))}</span></div>
-    <div class="row sub"><span>Solde à régler</span><span>${euros((totalTTC * (100 - acomptePct) / 100))}</span></div>
+    ${lignesAcompteHtml(totalTTC, acomptePct)}
     ` : ''}
   </div>
 
@@ -387,11 +378,7 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mod
         ${e.bic ? ` · <strong>BIC:</strong> ${e.bic}` : ''}
       </div>
       <div>
-        <strong>Délai de paiement</strong><br>
-        ${e.delaiPaiement} jours à compter de la date ${isFacture ? 'de facture' : 'de réception des travaux'}.<br><br>
-        <strong>Pénalités de retard</strong><br>
-        Taux BCE + 10 points (soit ~13% annuel).<br>
-        Indemnité forfaitaire de recouvrement: 40 €
+        ${blocConditionsPaiement({ doc, entreprise: { ...entreprise, delaiPaiement: e.delaiPaiement }, isFacture, dateEcheance: isFacture ? echeance(doc) : null })}
       </div>
     </div>
   </div>

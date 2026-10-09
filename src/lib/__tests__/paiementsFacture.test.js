@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { montantPaiement, paiementsDe, dejaPaye, resteAPayer, statutFacture, joursDeRetard, apresPaiement, echeance, encaisseEntre } from '../paiementsFacture';
+import { montantPaiement, paiementsDe, dejaPaye, resteAPayer, statutFacture, joursDeRetard, apresPaiement, echeance, encaisseEntre, dateEcheance } from '../paiementsFacture';
 
 const facture = (x = {}) => ({ id: 'f1', numero: 'FAC-2026-00002', type: 'facture', statut: 'envoye', total_ttc: 6105, date: '2026-09-20', ...x });
 const LE_1_OCT = new Date('2026-10-01T10:00:00');
@@ -75,5 +75,25 @@ describe('encaisseEntre', () => {
     // Marquée « payée » à la main, sans paiement ni montant_paye : le total, à sa date de mise à jour.
     const main = [{ id: 'f9', numero: 'FAC-9', type: 'facture', statut: 'payee', total_ttc: 250, updated_at: '2026-10-08T09:00:00Z' }];
     expect(encaisseEntre(main, [], '2026-10-01', '2026-10-31')).toBe(250);
+  });
+});
+
+describe('dateEcheance', () => {
+  it('suit les conditions de règlement imprimées sur la facture', () => {
+    expect(dateEcheance('2026-10-09', { conditionsPaiement: 'reception' })).toBe('2026-10-09');
+    expect(dateEcheance('2026-10-09', { conditionsPaiement: '60_jours' })).toBe('2026-12-08');
+    expect(dateEcheance('2026-10-09', { conditionsPaiement: '30_jours_fdm' })).toBe('2026-11-30');
+    expect(dateEcheance('2026-10-09', { conditionsPaiement: '45_jours_fdm' })).toBe('2026-11-30');
+    expect(dateEcheance('2026-10-20', { conditionsPaiement: '45_jours_fdm' })).toBe('2026-12-31');
+  });
+
+  it('sinon le délai de l\'entreprise, ou 30 jours', () => {
+    expect(dateEcheance('2026-10-09', { delaiJours: 45 })).toBe('2026-11-23');
+    expect(dateEcheance('2026-10-09')).toBe('2026-11-08');
+  });
+
+  it('une facture « 60 jours » n\'est pas en retard au 31e jour', () => {
+    const f = { id: 'f', type: 'facture', statut: 'envoye', total_ttc: 100, date: '2026-09-01', conditionsPaiement: '60_jours' };
+    expect(statutFacture(f, [], new Date('2026-10-05'))).toBe('envoye');
   });
 });

@@ -49,9 +49,11 @@ import { mapError } from '../lib/errorMapper';
 import { formatMoney as fmtMoney, filterValidLignes, formatClientName } from '../lib/formatters';
 import { normalizeNumero } from '../lib/devis-utils';
 import { calcConversion, formatConversion } from '../lib/statsUtils';
-import { apresPaiement, statutFacture, resteAPayer, dejaPaye } from '../lib/paiementsFacture';
+import { apresPaiement, statutFacture, resteAPayer, dejaPaye, echeance } from '../lib/paiementsFacture';
 import { statut as libelleStatut } from '../lib/statuts';
-import { pourcent } from '../lib/formatDocument';
+import { pourcent, blocConditionsPaiement, CONDITIONS_PAIEMENT } from '../lib/formatDocument';
+import { totauxDocument, lignesTotauxHtml, lignesAcompteHtml } from '../lib/totauxDocument';
+import { DEFAULT_PENALTY_RATE } from '../lib/relanceUtils';
 import { useDebounce } from '../hooks/useDebounce';
 import { useDevisModals } from '../hooks/useDevisModals';
 import { isFacturXCompliant } from '../lib/facturx';
@@ -115,14 +117,7 @@ const FACTURE_TRANSITIONS = {
   payee: [],
 };
 
-const CONDITIONS_PAIEMENT = {
-  'reception': 'À réception de facture',
-  '30_jours': '30 jours',
-  '30_jours_fdm': '30 jours fin de mois',
-  '45_jours_fdm': '45 jours fin de mois',
-  '60_jours': '60 jours',
-  'acompte_solde': '30% acompte, solde à réception',
-};
+// Conditions de règlement : table commune (src/lib/formatDocument.js), aussi lue par les générateurs.
 
 // Avoir motifs — conformité française
 export const AVOIR_MOTIFS = {
@@ -422,15 +417,17 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   // Calcul pénalités de retard (Article L441-10 Code de commerce)
   const calculatePenalites = (doc) => {
     if (!doc || doc.type !== 'facture' || doc.statut === 'payee' || doc.facture_type === 'avoir') return null;
-    const delai = entreprise?.delaiPaiement || 30;
-    const echeance = doc.date_echeance
-      ? new Date(doc.date_echeance)
-      : new Date(new Date(doc.date).getTime() + delai * 86400000);
-    const joursRetard = Math.max(0, Math.floor((Date.now() - echeance) / 86400000));
+    // Sur le reste dû (après acomptes) et au taux réglé dans les paramètres — avant : sur le TTC entier,
+    // avec une clé de réglage qui n'existait pas (relecture juridique du 9 oct. 2026).
+    const ech = echeance(doc);
+    if (!ech) return null;
+    const joursRetard = Math.max(0, Math.floor((Date.now() - ech) / 86400000));
     if (joursRetard <= 0) return null;
-    const taux = entreprise?.tauxPenaliteRetard || 10; // 3x taux BCE (~3.5%)
-    const penalite = (doc.total_ttc || 0) * (taux / 100) * (joursRetard / 365);
-    return { joursRetard, echeance, taux, penalite: Math.round(penalite * 100) / 100, indemnite: 40, total: Math.round((penalite + 40) * 100) / 100 };
+    const reste = resteAPayer(doc, paiements);
+    if (reste <= 0) return null;
+    const taux = Number(entreprise?.tauxPenalites) || DEFAULT_PENALTY_RATE;
+    const penalite = reste * (taux / 100) * (joursRetard / 365);
+    return { joursRetard, echeance: ech, taux, penalite: Math.round(penalite * 100) / 100, indemnite: 40, total: Math.round((penalite + 40) * 100) / 100 };
   };
 
   useEffect(() => { if (snackbar) { const t = setTimeout(() => setSnackbar(null), 8000); return () => clearTimeout(t); } }, [snackbar]);
@@ -1532,7 +1529,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${l.quantite || 0}</td>
         <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${l.unite||'unité'}</td>
         <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:right">${formatMoney(parseFloat(l.prixUnitaire||l.prix_unitaire||0))}</td>
-        <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${isMicro ? '-' : (l.tva !== undefined ? l.tva : (doc.tvaRate||10))+'%'}</td>
+        <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${isMicro ? '-' : pourcent(l.tva !== undefined ? l.tva : (doc.tvaRate||10))}</td>
         <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:right;font-weight:600;${getLineTotal(l)<0?'color:#dc2626;':''}">${formatMoney(getLineTotal(l))}</td>
       </tr>
     `;
@@ -1677,18 +1674,9 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 
   <!-- TOTAUX -->
   <div class="totals">
-    <div class="row sub"><span>Total HT</span><span>${formatMoney(doc.total_ht||0)}</span></div>
-    ${doc.remise ? `<div class="row sub" style="color:#dc2626"><span>Remise ${pourcent(doc.remise)}</span><span>-${formatMoney((doc.total_ht||0) * doc.remise / 100)}</span></div>` : ''}
-    ${!isMicro ? (Object.keys(calculatedTvaDetails).length > 0
-      ? Object.entries(calculatedTvaDetails).filter(([_, data]) => data.base > 0).sort((a, b) => parseFloat(a[0]) - parseFloat(b[0])).map(([taux, data]) =>
-        `<div class="row sub"><span>TVA ${pourcent(taux)}${Object.keys(calculatedTvaDetails).length > 1 ? ` (base: ${formatMoney(data.base)})` : ''}</span><span>${formatMoney(data.montant)}</span></div>`
-      ).join('')
-      : `<div class="row sub"><span>TVA ${pourcent(doc.tvaRate||10)}</span><span>${formatMoney(doc.tva||0)}</span></div>`
-    ) : ''}
-    <div class="row total"><span>Total TTC</span><span>${formatMoney(doc.total_ttc||0)}</span></div>
+    ${lignesTotauxHtml(doc, { isMicro, tauxDefaut: entreprise?.tvaDefaut || 10 })}
     ${doc.acompte_pct ? `
-    <div class="row sub" style="margin-top:8px;border-top:1px dashed #ccc;padding-top:8px"><span>Acompte ${pourcent(doc.acompte_pct)}</span><span>${formatMoney((doc.total_ttc||0) * doc.acompte_pct / 100)}</span></div>
-    <div class="row sub"><span>Solde à régler</span><span>${formatMoney((doc.total_ttc||0) * (100-doc.acompte_pct) / 100)}</span></div>
+    ${lignesAcompteHtml(doc.total_ttc || 0, doc.acompte_pct)}
     ` : ''}
   </div>
 
@@ -1709,11 +1697,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         ${entreprise?.bic ? ` · <strong>BIC:</strong> ${entreprise.bic}` : ''}
       </div>
       <div>
-        <strong>Délai de paiement</strong><br>
-        ${doc.conditionsPaiement && CONDITIONS_PAIEMENT[doc.conditionsPaiement] ? CONDITIONS_PAIEMENT[doc.conditionsPaiement] : `${entreprise?.delaiPaiement || 30} jours`} à compter de la date ${isFacture ? 'de facture' : 'de réception des travaux'}.<br><br>
-        <strong>Pénalités de retard</strong><br>
-        Taux annuel: ${pourcent(entreprise?.tauxPenalites || entreprise?.tauxPenaliteRetard || 10)} (3 fois le taux directeur BCE).<br>
-        Indemnité forfaitaire de recouvrement: 40 € (art. D441-5 C. com.)
+        ${blocConditionsPaiement({ doc, entreprise, isFacture, dateEcheance: isFacture ? echeance(doc) : null })}
       </div>
     </div>
   </div>` : ''}
@@ -3225,7 +3209,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                     onClick={() => {
                       const client = clients.find(c => c.id === selected.client_id);
                       printMiseEnDemeure({
-                        doc: selected,
+                        doc: { ...selected, montant_paye: dejaPaye(selected, paiements), date_echeance: selected.date_echeance || echeance(selected)?.toISOString().slice(0, 10) },
+                        penaltyRate: Number(entreprise?.tauxPenalites) || undefined,
                         client,
                         entreprise,
                         executions: relances.getDocumentTimeline(selected.id),
@@ -3355,55 +3340,31 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
               {/* Totals */}
               <div className="flex justify-end">
                 <div className="w-56">
-                  <div className={`flex justify-between py-1 text-sm ${textPrimary}`}>
-                    <span>HT</span>
-                    <span>{formatMoney(selected.total_ht)}</span>
-                  </div>
-                  {/* TVA breakdown by rate — no more hardcoded 10% */}
+                  {/* Mêmes totaux que les documents imprimés (src/lib/totauxDocument.js) */}
                   {(() => {
-                    const tvaMap = selected.tvaParTaux || selected.tvaDetails;
-                    if (tvaMap && typeof tvaMap === 'object' && Object.keys(tvaMap).length > 0) {
-                      return Object.entries(tvaMap).map(([rate, info]) => (
-                        <div key={rate} className={`flex justify-between py-1 text-sm ${textSecondary}`}>
-                          <span>TVA {pourcent(rate)}</span>
-                          <span>{formatMoney(typeof info === 'object' ? info.montant : info)}</span>
-                        </div>
-                      ));
-                    }
-                    // Fallback: recalculate from lignes if tvaParTaux not stored
-                    const rates = {};
-                    (selected.lignes || []).forEach(l => {
-                      const rate = l.tva !== undefined ? l.tva : (selected.tvaRate || entreprise?.tvaDefaut || 10);
-                      const montant = (parseFloat(l.quantite) || 1) * (parseFloat(l.prixUnitaire || l.prix_unitaire) || 0);
-                      if (!rates[rate]) rates[rate] = 0;
-                      rates[rate] += montant * (rate / 100);
-                    });
-                    if (Object.keys(rates).length > 0) {
-                      return Object.entries(rates).map(([rate, montant]) => (
-                        <div key={rate} className={`flex justify-between py-1 text-sm ${textSecondary}`}>
-                          <span>TVA {pourcent(rate)}</span>
-                          <span>{formatMoney(montant)}</span>
-                        </div>
-                      ));
-                    }
-                    // Last resort: show total TVA with stored rate
+                    const t = totauxDocument(selected, { tauxDefaut: entreprise?.tvaDefaut || 10 });
+                    const ligneTotal = (libelle, valeur, cls = textSecondary) => (
+                      <div key={libelle} className={`flex justify-between gap-3 py-1 text-sm ${cls}`}><span>{libelle}</span><span className="tabular-nums">{valeur}</span></div>
+                    );
                     return (
-                      <div className={`flex justify-between py-1 text-sm ${textSecondary}`}>
-                        <span>TVA {pourcent(selected.tvaRate || entreprise?.tvaDefaut || 20)}</span>
-                        <span>{formatMoney(selected.tva || selected.total_tva || 0)}</span>
-                      </div>
+                      <>
+                        {t.remisePct ? (
+                          <>
+                            {ligneTotal('Total HT avant remise', formatMoney(t.totalLignesHT), textPrimary)}
+                            {ligneTotal(`Remise ${pourcent(t.remisePct)}`, `-${formatMoney(t.remiseMontant)}`)}
+                            {ligneTotal('Total HT après remise', formatMoney(t.totalHT), textPrimary)}
+                          </>
+                        ) : ligneTotal('Total HT', formatMoney(t.totalHT), textPrimary)}
+                        {!isMicro && (t.tva.length
+                          ? t.tva.map((x) => ligneTotal(`TVA ${pourcent(x.taux)}`, formatMoney(x.montant)))
+                          : ligneTotal(`TVA ${pourcent(selected.tvaRate || entreprise?.tvaDefaut || 20)}`, formatMoney(selected.tva || selected.total_tva || 0)))}
+                        <div className={`flex justify-between py-2 border-t font-bold text-encre ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
+                          <span>Total TTC</span>
+                          <span className="tabular-nums">{formatMoney(t.totalTTC)}</span>
+                        </div>
+                      </>
                     );
                   })()}
-                  {selected.remise > 0 && (
-                    <div className={`flex justify-between py-1 text-sm ${textSecondary}`}>
-                      <span>Remise {pourcent(selected.remise)}</span>
-                      <span>-{formatMoney(selected.total_ht * selected.remise / (100 - selected.remise))}</span>
-                    </div>
-                  )}
-                  <div className={`flex justify-between py-2 border-t font-bold ${isDark ? 'border-slate-600' : 'border-slate-200'}`} style={{color: couleur}}>
-                    <span>TTC</span>
-                    <span>{formatMoney(selected.total_ttc)}</span>
-                  </div>
                   {selected.retenueGarantie && (
                     <>
                       <div className={`flex justify-between py-1 text-sm ${textSecondary}`}>

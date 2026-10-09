@@ -5,7 +5,9 @@
 
 import { subscription } from '../stores/subscriptionStore';
 import { filterValidLignes } from './formatters';
-import { euros, pourcent } from './formatDocument';
+import { euros, pourcent, blocConditionsPaiement } from './formatDocument';
+import { lignesTotauxHtml, lignesAcompteHtml } from './totauxDocument';
+import { echeance } from './paiementsFacture';
 
 /**
  * Get entreprise data from localStorage
@@ -75,22 +77,7 @@ export function buildDocumentHTML(doc, client, chantier, entreprise, options = {
   const dateValidite = new Date(doc.date);
   dateValidite.setDate(dateValidite.getDate() + (doc.validite || entreprise?.validiteDevis || 30));
 
-  // Calculate TVA details from lignes if not present in doc
-  const calculatedTvaDetails = doc.tvaDetails || (() => {
-    const details = {};
-    const defaultRate = doc.tvaRate || entreprise?.tvaDefaut || 10;
-    filterValidLignes(doc.lignes).forEach(l => {
-      const rate = l.tva !== undefined ? l.tva : defaultRate;
-      if (!details[rate]) {
-        details[rate] = { base: 0, montant: 0 };
-      }
-      const lineMontant = getLineTotal(l);
-      details[rate].base += lineMontant;
-      details[rate].montant += lineMontant * (rate / 100);
-    });
-    return details;
-  })();
-
+  // TVA par taux : bloc commun lignesTotauxHtml (src/lib/totauxDocument.js), bases après remise.
   const lignesHTML = filterValidLignes(doc.lignes).map(l => {
     const pu = getLinePU(l);
     const total = getLineTotal(l);
@@ -100,7 +87,7 @@ export function buildDocumentHTML(doc, client, chantier, entreprise, options = {
       <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${l.quantite || 0}</td>
       <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${l.unite || 'unité'}</td>
       <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:right">${euros(pu)}</td>
-      <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${isMicro ? '-' : (l.tva !== undefined ? l.tva : (doc.tvaRate || 10)) + '%'}</td>
+      <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${isMicro ? '-' : pourcent(l.tva !== undefined ? l.tva : (doc.tvaRate || 10))}</td>
       <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:right;font-weight:600;${total < 0 ? 'color:#dc2626;' : ''}">${euros(total)}</td>
     </tr>`;
   }).join('');
@@ -231,18 +218,9 @@ export function buildDocumentHTML(doc, client, chantier, entreprise, options = {
 
   <!-- TOTAUX -->
   <div class="totals">
-    <div class="row sub"><span>Total HT</span><span>${euros((doc.total_ht || 0))}</span></div>
-    ${doc.remise ? `<div class="row sub" style="color:#dc2626"><span>Remise ${pourcent(doc.remise)}</span><span>-${euros(((doc.total_ht || 0) * doc.remise / 100))}</span></div>` : ''}
-    ${!isMicro ? (Object.keys(calculatedTvaDetails).length > 0
-      ? Object.entries(calculatedTvaDetails).filter(([_, data]) => data.base > 0).sort((a, b) => parseFloat(a[0]) - parseFloat(b[0])).map(([taux, data]) =>
-        `<div class="row sub"><span>TVA ${pourcent(taux)}${Object.keys(calculatedTvaDetails).length > 1 ? ` (base: ${euros(data.base)})` : ''}</span><span>${euros(data.montant)}</span></div>`
-      ).join('')
-      : `<div class="row sub"><span>TVA ${pourcent(doc.tvaRate || 10)}</span><span>${euros((doc.tva || 0))}</span></div>`
-    ) : ''}
-    <div class="row total"><span>Total TTC</span><span>${euros((doc.total_ttc || 0))}</span></div>
+    ${lignesTotauxHtml(doc, { isMicro, tauxDefaut: entreprise?.tvaDefaut || 10 })}
     ${doc.acompte_pct ? `
-    <div class="row sub" style="margin-top:8px;border-top:1px dashed #ccc;padding-top:8px"><span>Acompte ${pourcent(doc.acompte_pct)}</span><span>${euros(((doc.total_ttc || 0) * doc.acompte_pct / 100))}</span></div>
-    <div class="row sub"><span>Solde à régler</span><span>${euros(((doc.total_ttc || 0) * (100 - doc.acompte_pct) / 100))}</span></div>
+    ${lignesAcompteHtml(doc.total_ttc || 0, doc.acompte_pct)}
     ` : ''}
   </div>
 
@@ -261,11 +239,7 @@ export function buildDocumentHTML(doc, client, chantier, entreprise, options = {
         ${entreprise?.bic ? ` · <strong>BIC:</strong> ${entreprise.bic}` : ''}
       </div>
       <div>
-        <strong>Délai de paiement</strong><br>
-        ${entreprise?.delaiPaiement || 30} jours à compter de la date ${isFacture ? 'de facture' : 'de réception des travaux'}.<br><br>
-        <strong>Pénalités de retard</strong><br>
-        Taux BCE + 10 points (soit ~13% annuel).<br>
-        Indemnité forfaitaire de recouvrement: 40 €
+        ${blocConditionsPaiement({ doc, entreprise, isFacture, dateEcheance: isFacture ? echeance(doc) : null })}
       </div>
     </div>
   </div>` : ''}

@@ -1231,10 +1231,10 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
               <div className="flex items-center gap-3">
                 <label className={`text-sm ${textSecondary}`}>Taux annuel :</label>
                 <div className="flex items-center">
-                  <input type="number" step="0.01" min="0" max="50" className={`w-24 px-3 py-2 border rounded-l-xl text-sm ${inputBg}`} value={entreprise.tauxPenalites ?? 11.62} onChange={e => updateEntreprise(p => ({...p, tauxPenalites: parseFloat(e.target.value) || 0}))} />
+                  <input type="number" step="0.01" min="0" max="50" className={`w-24 px-3 py-2 border rounded-l-xl text-sm ${inputBg}`} value={entreprise.tauxPenalites || ''} placeholder="BCE + 10" aria-label="Taux annuel des pénalités de retard" onChange={e => updateEntreprise(p => ({...p, tauxPenalites: parseFloat(e.target.value) || null}))} />
                   <span className={`px-3 py-2 border-y border-r rounded-r-xl text-sm ${isDark ? 'bg-slate-600 text-slate-300 border-slate-600' : 'bg-slate-100 text-slate-500 border-slate-300'}`}>%</span>
                 </div>
-                <p className={`text-xs ${textMuted}`}>Défaut : 3× taux directeur BCE</p>
+                <p className={`text-xs ${textMuted}`}>Laissé vide : taux de la BCE majoré de 10 points (art. L441-10 C. com.)</p>
               </div>
             )}
           </div>
