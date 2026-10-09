@@ -2435,11 +2435,11 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           const telechargerPdf = () => tryDownload(selected, async (doc) => { setActionLoading('pdf'); try { await printPDF(doc); } catch { /* erreur déjà signalée par printPDF */ } finally { setActionLoading(null); } });
           const actPdf = { libelle: 'PDF', icone: Download, onClick: telechargerPdf, chargement: actionLoading === 'pdf' };
           const actApercu = { libelle: 'Aperçu', icone: Eye, onClick: () => previewPDF(selected) };
+          // Avec un acompte déjà facturé, on facture le solde : la confirmation doit annoncer ce montant-là
+          // (elle annonçait le total du devis). confirmAndCreateSolde calcule et annonce le bon.
           const facturer = async () => {
             if (canAcompte) { setShowAcompteModal(true); return; }
-            const nom = client ? `${client.prenom || ''} ${client.nom || ''}`.trim() : 'le client';
-            const ok = await confirm({ title: 'Créer la facture complète ?', message: `Une facture de ${formatMoney(ttc)} sera créée pour ${nom}. Cette action est irréversible.` });
-            if (ok) createSolde();
+            await confirmAndCreateSolde();
           };
           let principal = null;
           let secondaire = actApercu;

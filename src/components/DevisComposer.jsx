@@ -641,7 +641,7 @@ export default function DevisComposer({
           <ArrowLeft size={20} />
         </button>
         <div className="flex-1 min-w-0 flex items-center gap-2">
-          <h1 className={`text-base font-bold truncate ${textPrimary}`}>{isEditMode ? 'Modifier' : (isFacture ? 'Nouvelle' : 'Nouveau')} {isFacture ? 'facture' : 'devis'}</h1>
+          <h1 className={`${isEditMode ? '' : 'sr-only sm:not-sr-only'} text-base font-bold truncate ${textPrimary}`}>{isEditMode ? 'Modifier' : (isFacture ? 'Nouvelle' : 'Nouveau')} {isFacture ? 'facture' : 'devis'}</h1>
           <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide text-white flex-shrink-0"
             style={{ background: accent }}>
             {isFacture ? <><Receipt size={10} /> Facture</> : <><FileText size={10} /> Devis</>}
@@ -652,9 +652,8 @@ export default function DevisComposer({
           <div className={`flex items-center rounded-xl p-0.5 ${isDark ? 'bg-slate-800' : 'bg-slate-100'}`}>
             {[{ v: 'devis', label: 'Devis', Icon: FileText }, { v: 'facture', label: 'Facture', Icon: Receipt }].map(({ v, label, Icon }) => (
               <button key={v} onClick={() => setForm(p => ({ ...p, type: v }))} aria-label={label} aria-pressed={form.type === v}
-                className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${form.type === v ? 'text-white shadow' : textMuted}`}
-                style={form.type === v ? { background: v === 'facture' ? FACTURE_ACCENT : couleur } : undefined}>
-                <Icon size={14} /> <span className="hidden sm:inline">{label}</span>
+                className={`flex items-center gap-1.5 px-3 h-9 rounded-lg text-sm font-semibold transition-colors ${form.type === v ? 'bg-surface text-encre shadow-e1' : 'text-encre-2 hover:text-encre'}`}>
+                <Icon size={15} aria-hidden="true" /> {label}
               </button>
             ))}
           </div>
@@ -664,17 +663,17 @@ export default function DevisComposer({
           <Library size={15} /> <span className="hidden md:inline">Bibliothèque</span>
         </button>
         <button onClick={() => handleSubmit(false)} disabled={isSubmitting}
-          className="flex items-center gap-2 px-4 h-9 rounded-xl text-white text-sm font-semibold shadow-lg disabled:opacity-60 transition-all hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+          className="hidden sm:flex items-center gap-2 px-4 h-9 rounded-xl text-white text-sm font-semibold shadow-lg disabled:opacity-60 transition-all hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
           style={{ background: accent }}>
           {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
-          <span className="hidden sm:inline">{isEditMode ? 'Enregistrer' : 'Créer'}</span>
+          <span>{isEditMode ? 'Enregistrer' : 'Créer'}</span>
         </button>
       </header>
 
       {draftRestored && (
-        <div className="px-3 sm:px-5 py-2 text-xs flex items-center justify-between bg-amber-500/10 border-b border-amber-500/20">
-          <span className={isDark ? 'text-amber-300' : 'text-amber-700'}>Brouillon restauré — reprenez où vous en étiez.</span>
-          <button onClick={() => { clearDraft(); setForm(blankForm()); setDraftRestored(false); }} className={`font-medium ${isDark ? 'text-amber-300' : 'text-amber-700'} hover:underline`}>Recommencer</button>
+        <div className="px-3 sm:px-5 py-2 text-sm flex items-center justify-between gap-3 bg-alerte-fond text-alerte-texte">
+          <span>Brouillon restauré : reprenez où vous en étiez.</span>
+          <button onClick={() => { clearDraft(); setForm(blankForm()); setDraftRestored(false); }} className="h-11 -my-2 font-semibold hover:underline">Recommencer</button>
         </div>
       )}
 
@@ -1129,46 +1128,62 @@ function LigneRow({ ligne, index, total, isDark, couleur, inputBg, textPrimary, 
         <span className={`text-sm font-semibold text-right tabular-nums ${textPrimary}`}>{eur(lineTotal)}</span>
         <LineMenu isDark={isDark} textMuted={textMuted} index={index} total={total} onMoveUp={onMoveUp} onMoveDown={onMoveDown} onDuplicate={onDuplicate} onRemove={onRemove} onMetre={onMetre} onInsertLot={onInsertLot} onMarge={onMarge} onToLot={onToLot} />
       </div>
-      {/* Mobile card */}
-      <div className="sm:hidden p-3 space-y-2">
-        <div className="flex items-start gap-2">
+      {/* Téléphone : désignation pleine largeur, puis Qté · unité · prix · TVA sur une rangée (44 px, 16 px),
+          le total dessous. Métré, marge, déplacer et supprimer sont dans « ⋯ » (toujours visible au doigt). */}
+      <div className="sm:hidden px-3 py-3 space-y-2">
+        <div className="flex items-start gap-1">
           {/* Réordonner au doigt : possible parce qu'on utilise les événements
               pointeur et non l'API drag-and-drop HTML5, inopérante sur tactile. */}
           <button type="button" aria-label="Déplacer la ligne"
             onPointerDown={onGrab} style={{ touchAction: 'none' }}
-            className={`p-2 -ml-1 rounded-lg cursor-grab active:cursor-grabbing ${textMuted}`}>
+            className="w-7 h-11 -ml-1 flex items-center justify-center flex-shrink-0 cursor-grab active:cursor-grabbing text-encre-3">
             <GripVertical size={16} />
           </button>
-          <textarea value={ligne.description} onChange={e => onUpdate('description', e.target.value)} placeholder="Désignation…" rows={1}
+          <textarea value={ligne.description} onChange={e => onUpdate('description', e.target.value)} placeholder="Désignation…" rows={1} aria-label="Désignation"
             onInput={e => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
-            className={`flex-1 min-h-[40px] px-3 py-2 rounded-lg border text-sm resize-none overflow-hidden leading-snug ${inputBg}`} />
-          <button onClick={onMetre} aria-label="Métré" className={`p-2 rounded-lg ${isDark ? 'text-slate-400 hover:bg-slate-700' : 'text-slate-500 hover:bg-slate-100'}`}><Ruler size={16} /></button>
-          <button onClick={onRemove} aria-label="Supprimer" className="p-2 rounded-lg text-red-500 hover:bg-red-500/10"><Trash2 size={16} /></button>
+            className={`flex-1 min-w-0 min-h-[44px] px-3 py-2.5 rounded-xl border text-base resize-none overflow-hidden leading-snug ${inputBg}`} />
+          <LineMenu toujoursVisible isDark={isDark} textMuted={textMuted} index={index} total={total} onMoveUp={onMoveUp} onMoveDown={onMoveDown} onDuplicate={onDuplicate} onRemove={onRemove} onMetre={onMetre} onInsertLot={onInsertLot} onMarge={onMarge} onToLot={onToLot} />
         </div>
-        <div className="grid grid-cols-2 gap-2">
-          <div><span className={`block text-[10px] mb-0.5 ${textMuted}`}>Qté</span><input ref={qtyMobileRef} type="text" inputMode="decimal" value={ligne.quantite} onChange={e => onUpdate('quantite', e.target.value)} onKeyDown={numKeyDown} className={`w-full h-9 px-2 rounded-lg border text-sm ${inputBg}`} /></div>
-          <div><span className={`block text-[10px] mb-0.5 ${textMuted}`}>Unité</span><select value={UNITES.includes(ligne.unite) ? ligne.unite : (ligne.unite ? '__autre' : 'u')} onChange={e => onUpdate('unite', e.target.value === '__autre' ? (ligne.unite || '') : e.target.value)} className={`w-full h-9 px-1 rounded-lg border text-sm ${inputBg}`}>{UNITES.map(u => <option key={u} value={u}>{u}</option>)}{ligne.unite && !UNITES.includes(ligne.unite) && <option value="__autre">{ligne.unite}</option>}</select></div>
-          <div><span className={`block text-[10px] mb-0.5 ${textMuted}`}>PU HT</span><input ref={puMobileRef} type="text" inputMode="decimal" value={ligne.prixUnitaire} onChange={e => onUpdate('prixUnitaire', e.target.value)} onKeyDown={numKeyDown} className={`w-full h-9 px-2 rounded-lg border text-sm ${inputBg}`} /></div>
-          <div><span className={`block text-[10px] mb-0.5 ${textMuted}`}>TVA</span><select value={ligne.tva} onChange={e => onUpdate('tva', parseFloat(e.target.value))} className={`w-full h-9 rounded-lg border text-sm ${inputBg}`}>{[0, 5.5, 10, 20].map(t => <option key={t} value={t}>{t}%</option>)}</select></div>
+        <div className="grid grid-cols-[3.25rem_4rem_1fr_4.5rem] gap-1.5">
+          <input ref={qtyMobileRef} type="text" inputMode="decimal" value={ligne.quantite} onChange={e => onUpdate('quantite', e.target.value)} onKeyDown={numKeyDown} aria-label="Quantité"
+            className={`w-full h-11 px-1 rounded-xl border text-base text-center tabular-nums ${inputBg}`} />
+          <select value={UNITES.includes(ligne.unite) ? ligne.unite : (ligne.unite ? '__autre' : 'u')} onChange={e => onUpdate('unite', e.target.value === '__autre' ? (ligne.unite || '') : e.target.value)} aria-label="Unité"
+            className={`w-full h-11 px-1 rounded-xl border text-base text-center ${inputBg}`}>
+            {UNITES.map(u => <option key={u} value={u}>{u}</option>)}
+            {ligne.unite && !UNITES.includes(ligne.unite) && <option value="__autre">{ligne.unite}</option>}
+          </select>
+          <label className="relative block">
+            <span className="sr-only">Prix unitaire HT</span>
+            <input ref={puMobileRef} type="text" inputMode="decimal" value={ligne.prixUnitaire} onChange={e => onUpdate('prixUnitaire', e.target.value)} onKeyDown={numKeyDown}
+              className={`w-full h-11 pl-2 pr-7 rounded-xl border text-base text-right tabular-nums ${inputBg}`} />
+            <span aria-hidden="true" className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-base text-encre-3">€</span>
+          </label>
+          <select value={ligne.tva} onChange={e => onUpdate('tva', parseFloat(e.target.value))} aria-label="Taux de TVA"
+            className={`w-full h-11 px-1 rounded-xl border text-base text-center ${inputBg}`}>
+            {[0, 5.5, 10, 20].map(t => <option key={t} value={t}>{String(t).replace('.', ',')} %</option>)}
+          </select>
         </div>
-        <div className="flex justify-end"><span className={`text-sm font-bold ${textPrimary}`}>{eur(lineTotal)}</span></div>
+        <p className="flex items-baseline justify-end gap-2 text-sm">
+          <span className="text-encre-2">Total HT</span>
+          <span className="font-bold text-encre tabular-nums">{eur(lineTotal)}</span>
+        </p>
       </div>
     </div>
   );
 }
 
-function LineMenu({ isDark, textMuted, index, total, onMoveUp, onMoveDown, onDuplicate, onRemove, onMetre, onInsertLot, onMarge, onToLot }) {
+function LineMenu({ isDark, textMuted, index, total, onMoveUp, onMoveDown, onDuplicate, onRemove, onMetre, onInsertLot, onMarge, onToLot, toujoursVisible = false }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
   useEffect(() => { if (!open) return; const h = e => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); }; document.addEventListener('mousedown', h); return () => document.removeEventListener('mousedown', h); }, [open]);
   return (
     <div className="relative flex justify-center" ref={ref}>
       <button onClick={() => setOpen(o => !o)} aria-label="Actions de ligne" aria-haspopup="true" aria-expanded={open}
-        className={`p-1.5 rounded-lg opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity ${textMuted} ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
+        className={`rounded-lg transition-opacity ${toujoursVisible ? 'w-11 h-11 flex items-center justify-center' : 'p-1.5 opacity-0 group-hover:opacity-100 focus:opacity-100'} ${textMuted} ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
         <span className="text-lg leading-none">⋯</span>
       </button>
       {open && (
-        <div onKeyDown={e => e.key === 'Escape' && setOpen(false)} role="menu" className={`absolute right-0 top-full mt-1 z-30 w-40 rounded-lg border shadow-lg py-1 text-sm ${isDark ? 'bg-slate-800 border-slate-700 text-slate-200' : 'bg-white border-slate-200 text-slate-700'}`}>
+        <div onKeyDown={e => e.key === 'Escape' && setOpen(false)} role="menu" className={`absolute right-0 top-full mt-1 z-30 w-56 rounded-xl border shadow-e3 py-1 text-sm [&>button]:min-h-[44px] ${isDark ? 'bg-slate-800 border-slate-700 text-slate-200' : 'bg-white border-slate-200 text-slate-700'}`}>
           {onMetre && <button role="menuitem" onClick={() => { onMetre(); setOpen(false); }} className={`w-full flex items-center gap-2 px-3 py-2 text-left ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}><Ruler size={14} /> Métré L × l</button>}
           {onMarge && <button role="menuitem" onClick={() => { onMarge(); setOpen(false); }} className={`w-full flex items-center gap-2 px-3 py-2 text-left ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}><Zap size={14} /> Prix d'achat / marge</button>}
           {onInsertLot && <button role="menuitem" onClick={() => { onInsertLot(); setOpen(false); }} className={`w-full flex items-center gap-2 px-3 py-2 text-left ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}><Plus size={14} /> Lot au-dessus</button>}
