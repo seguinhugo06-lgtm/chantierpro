@@ -494,10 +494,10 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
             )}
           </div>
           <div className="order-first sm:order-none w-full sm:w-auto grid grid-cols-4 sm:flex gap-1 rounded-xl p-1 shrink-0 bg-surface-2">
-              <button onClick={() => { setViewMode('month'); }} className={`px-3 text-sm whitespace-nowrap min-h-[40px] sm:min-h-[36px] rounded-lg transition-colors ${viewMode === 'month' ? 'bg-surface text-encre font-semibold shadow-e1' : 'text-encre-2 font-medium hover:text-encre'}`}>Mois</button>
-              <button onClick={() => { const today = new Date(); if (date.getMonth() === today.getMonth() && date.getFullYear() === today.getFullYear()) setDate(today); setViewMode('week'); }} className={`px-3 text-sm whitespace-nowrap min-h-[40px] sm:min-h-[36px] rounded-lg transition-colors ${viewMode === 'week' ? 'bg-surface text-encre font-semibold shadow-e1' : 'text-encre-2 font-medium hover:text-encre'}`}><span className="sm:hidden">Semaine</span><span className="hidden sm:inline">Sem.</span></button>
-              <button onClick={() => { const today = new Date(); if (date.getMonth() === today.getMonth() && date.getFullYear() === today.getFullYear()) setDate(today); setViewMode('day'); }} className={`px-3 text-sm whitespace-nowrap min-h-[40px] sm:min-h-[36px] rounded-lg transition-colors ${viewMode === 'day' ? 'bg-surface text-encre font-semibold shadow-e1' : 'text-encre-2 font-medium hover:text-encre'}`}>Jour</button>
-              <button onClick={() => setViewMode('agenda')} className={`px-3 text-sm whitespace-nowrap min-h-[40px] sm:min-h-[36px] rounded-lg transition-colors ${viewMode === 'agenda' ? 'bg-surface text-encre font-semibold shadow-e1' : 'text-encre-2 font-medium hover:text-encre'}`}>Agenda</button>
+              <button onClick={() => { setViewMode('month'); }} className={`px-1.5 sm:px-2.5 text-sm whitespace-nowrap min-h-[40px] sm:min-h-[36px] rounded-lg transition-colors ${viewMode === 'month' ? 'bg-surface text-encre font-semibold shadow-e1' : 'text-encre-2 font-medium hover:text-encre'}`}>Mois</button>
+              <button onClick={() => { const today = new Date(); if (date.getMonth() === today.getMonth() && date.getFullYear() === today.getFullYear()) setDate(today); setViewMode('week'); }} className={`px-1.5 sm:px-2.5 text-sm whitespace-nowrap min-h-[40px] sm:min-h-[36px] rounded-lg transition-colors ${viewMode === 'week' ? 'bg-surface text-encre font-semibold shadow-e1' : 'text-encre-2 font-medium hover:text-encre'}`}><span className="sm:hidden">Semaine</span><span className="hidden sm:inline">Sem.</span></button>
+              <button onClick={() => { const today = new Date(); if (date.getMonth() === today.getMonth() && date.getFullYear() === today.getFullYear()) setDate(today); setViewMode('day'); }} className={`px-1.5 sm:px-2.5 text-sm whitespace-nowrap min-h-[40px] sm:min-h-[36px] rounded-lg transition-colors ${viewMode === 'day' ? 'bg-surface text-encre font-semibold shadow-e1' : 'text-encre-2 font-medium hover:text-encre'}`}>Jour</button>
+              <button onClick={() => setViewMode('agenda')} className={`px-1.5 sm:px-2.5 text-sm whitespace-nowrap min-h-[40px] sm:min-h-[36px] rounded-lg transition-colors ${viewMode === 'agenda' ? 'bg-surface text-encre font-semibold shadow-e1' : 'text-encre-2 font-medium hover:text-encre'}`}>Agenda</button>
             </div>
           <div className="relative shrink-0">
             <button onClick={() => setShowPlanningSettings(!showPlanningSettings)}
@@ -535,8 +535,8 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
           <button onClick={() => {
             setForm(f => ({ ...emptyForm, date: formatLocalDate(new Date()), time: getNextHalfHour() }));
             setShowAdd(true);
-          }} aria-label="Nouvel événement" className="w-11 h-11 sm:w-auto sm:h-10 sm:px-3 rounded-xl border border-bord-fort bg-surface text-encre flex items-center justify-center sm:gap-1.5 hover:bg-surface-2 transition-colors text-sm font-semibold shrink-0">
-            <Plus size={18} aria-hidden="true" /><span className="hidden sm:inline">Événement</span>
+          }} aria-label="Nouvel événement" className="w-11 h-11 lg:w-auto lg:px-3 rounded-xl border border-bord-fort bg-surface text-encre flex items-center justify-center lg:gap-1.5 hover:bg-surface-2 transition-colors text-sm font-semibold shrink-0">
+            <Plus size={18} aria-hidden="true" /><span className="hidden lg:inline">Événement</span>
           </button>
           )}
         </div>
