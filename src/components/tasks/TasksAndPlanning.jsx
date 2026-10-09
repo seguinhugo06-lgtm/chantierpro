@@ -82,8 +82,12 @@ export default function TasksAndPlanning({
               aria-label={`Vue ${v.label}`}
               aria-pressed={viewMode === v.id}
               // La vue active reste visible dans la rangée défilante (sinon « Calendrier » était hors écran au téléphone).
-              ref={viewMode === v.id ? (el) => el?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' }) : undefined}
-              className={`flex items-center gap-1.5 px-3 rounded-lg text-sm transition-colors min-w-[44px] min-h-[40px] ${
+              // On fait défiler la rangée seule : scrollIntoView décalait aussi toute la page (conteneurs parents).
+              ref={viewMode === v.id ? (el) => {
+                const rangee = el?.parentElement;
+                if (rangee && rangee.scrollWidth > rangee.clientWidth) rangee.scrollLeft = Math.max(0, el.offsetLeft + el.offsetWidth - rangee.clientWidth + 8);
+              } : undefined}
+              className={`flex flex-shrink-0 items-center gap-1.5 px-3 rounded-lg text-sm transition-colors min-w-[44px] min-h-[40px] ${
                 viewMode === v.id ? 'bg-surface text-encre font-semibold shadow-e1' : 'text-encre-2 font-medium hover:text-encre'
               }`}
             >

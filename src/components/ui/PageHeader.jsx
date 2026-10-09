@@ -16,7 +16,7 @@ export default function PageHeader({ icon, title, subtitle, action, isDark, colo
         <h1 className="text-2xl font-bold tracking-tight text-encre text-balance">{title}</h1>
         {subtitle && <p className="mt-1 text-sm text-encre-3">{subtitle}</p>}
       </div>
-      {action && <div className="flex items-center gap-2 flex-wrap">{action}</div>}
+      {action && <div className="flex items-center gap-2 flex-wrap max-w-full min-w-0">{action}</div>}
     </header>
   );
 }
