@@ -26,6 +26,7 @@ import { Segmente } from './ui/Onglets';
 import { Avatar } from './ui/LigneListe';
 import { remettreFichier } from '../lib/natif';
 import { tauxFacture, coutHoraire, coutDesPointages } from '../lib/tauxEquipe';
+import { decompteHeures, lundiDe, dimancheDe } from '../lib/paie';
 
 // Lazy-load optional heavy dependencies to prevent crashes
 let NoteModal = null;
@@ -312,12 +313,12 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
 
   const { start: weekStart, end: weekEnd } = getWeekDates(weekOffset);
 
+  // Comparaison en texte (AAAA-MM-JJ) : `new Date('2026-10-11')` est minuit UTC, après le dimanche 00 h local
+  // de weekEnd, et les pointages du dimanche disparaissaient de la semaine (relecture du 9 oct. 2026).
+  const lundiSemaine = formatLocalDate(weekStart);
   const weekPointages = useMemo(() =>
-    pointages.filter(p => {
-      const d = new Date(p.date);
-      return d >= weekStart && d <= weekEnd;
-    }),
-    [pointages, weekStart, weekEnd]
+    pointages.filter(p => p.date && lundiDe(p.date) === lundiSemaine),
+    [pointages, lundiSemaine]
   );
 
   const totalWeekHours = weekPointages.reduce((s, p) => s + (p.heures || 0), 0);
@@ -665,12 +666,10 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
     let periodPointages, periodLabel;
 
     if (period === 'month') {
-      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-      const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-      periodPointages = pointages.filter(p => {
-        const d = new Date(p.date);
-        return d >= monthStart && d <= monthEnd && p.approuve;
-      });
+      // Semaines civiles entières, rattachées au mois où elles finissent (dimanche) : une semaine à cheval sur
+      // deux mois perdait ses heures supplémentaires, et le dernier jour du mois était exclu (date lue en UTC).
+      const moisCle = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      periodPointages = pointages.filter(p => p.approuve && p.date && dimancheDe(p.date).startsWith(moisCle));
       periodLabel = now.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
     } else {
       periodPointages = weekPointages.filter(p => p.approuve);
@@ -689,62 +688,34 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
       byEmployee[p.employeId].push(p);
     });
 
-    const HEURES_LEGALES_SEMAINE = 35;
+    // Des heures, pas de montants : le taux saisi dans Mallettico est le taux FACTURÉ au client, pas un salaire
+    // (l'ancien « montant brut » en était tiré). Majorations par semaine civile (src/lib/paie.js).
     const rows = [
-      ['Matricule', 'Nom', 'Prénom', 'Rôle', 'Taux horaire (€)', 'Coût chargé (€)',
-       'Heures normales', 'Heures sup. (25%)', 'Heures sup. (50%)',
-       'Total heures', 'Montant brut (€)', 'Coût total chargé (€)',
-       'Nb jours travaillés', 'Chantiers', 'Période']
+      ['Identifiant', 'Nom', 'Prénom', 'Rôle',
+       'Heures normales', 'Heures sup. (25 %)', 'Heures sup. (50 %)', 'Total heures',
+       'Jours travaillés', 'Chantiers', 'Période']
     ];
 
     Object.entries(byEmployee).forEach(([empId, empPointages]) => {
       const emp = equipe.find(e => e.id === empId);
       if (!emp) return;
-
-      const totalHeures = empPointages.reduce((s, p) => s + (p.heures || 0), 0);
-      // Pas de taux inventé dans un export remis au comptable : 0 si rien n'est saisi (voir [export-paie]).
-      const tauxHoraire = tauxFacture(emp) || 0;
-      const coutCharge = coutHoraire(emp) || 0;
-
-      // Overtime calculation (weekly basis)
-      let heuresNormales, heuresSup25, heuresSup50;
-      if (period === 'week') {
-        heuresNormales = Math.min(totalHeures, HEURES_LEGALES_SEMAINE);
-        const heuresSup = Math.max(0, totalHeures - HEURES_LEGALES_SEMAINE);
-        heuresSup25 = Math.min(heuresSup, 8); // 35-43h → +25%
-        heuresSup50 = Math.max(0, heuresSup - 8); // >43h → +50%
-      } else {
-        // Monthly: approximate 4.33 weeks
-        const weeklyAvg = totalHeures / 4.33;
-        const weeklyNormal = Math.min(weeklyAvg, HEURES_LEGALES_SEMAINE);
-        const weeklySup = Math.max(0, weeklyAvg - HEURES_LEGALES_SEMAINE);
-        heuresNormales = +(weeklyNormal * 4.33).toFixed(2);
-        heuresSup25 = +(Math.min(weeklySup, 8) * 4.33).toFixed(2);
-        heuresSup50 = +(Math.max(0, weeklySup - 8) * 4.33).toFixed(2);
-      }
-
-      const montantBrut = (heuresNormales * tauxHoraire) + (heuresSup25 * tauxHoraire * 1.25) + (heuresSup50 * tauxHoraire * 1.5);
-      const coutTotal = (heuresNormales * coutCharge) + (heuresSup25 * coutCharge * 1.25) + (heuresSup50 * coutCharge * 1.5);
-      const joursTravailles = new Set(empPointages.map(p => p.date)).size;
+      const h = decompteHeures(empPointages);
       const chantiersList = [...new Set(empPointages.map(p => {
         const ch = chantiers.find(c => c.id === p.chantierId);
-        return ch?.nom || 'N/A';
+        return ch?.nom || 'Sans chantier';
       }))].join(' | ');
+      const virgule = (n) => n.toFixed(2).replace('.', ',');
 
       rows.push([
         emp.id.slice(0, 8).toUpperCase(),
         emp.nom || '',
         emp.prenom || '',
         emp.role || '',
-        tauxHoraire.toFixed(2),
-        coutCharge.toFixed(2),
-        heuresNormales.toFixed(2),
-        heuresSup25.toFixed(2),
-        heuresSup50.toFixed(2),
-        totalHeures.toFixed(2),
-        montantBrut.toFixed(2),
-        coutTotal.toFixed(2),
-        joursTravailles,
+        virgule(h.normales),
+        virgule(h.sup25),
+        virgule(h.sup50),
+        virgule(h.total),
+        h.jours,
         chantiersList,
         periodLabel
       ]);
@@ -753,7 +724,11 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
     // Add summary row
     const totalH = periodPointages.reduce((s, p) => s + (p.heures || 0), 0);
     rows.push([]);
-    rows.push(['', '', '', 'TOTAL', '', '', '', '', '', totalH.toFixed(2), '', '', '', '', '']);
+    rows.push(['', '', '', 'TOTAL', '', '', '', totalH.toFixed(2).replace('.', ','), '', '', '']);
+    rows.push([]);
+    rows.push(['Heures validées dans Mallettico, par semaine civile (lundi-dimanche) ; en export mensuel, les semaines entières qui finissent dans le mois.']);
+    rows.push(["Majorations : 25 % de la 36e à la 43e heure, 50 % au-delà (taux par défaut, C. trav. L3121-33 et L3121-36) ; un accord ou la convention collective peut prévoir d'autres taux."]);
+    rows.push(['Valable pour un temps plein sans modulation ni annualisation (temps partiel : heures complémentaires). Absences, congés, intempéries et trajets ne sont pas inclus. À vérifier par votre comptable.']);
 
     const csv = '\uFEFF' + rows.map(r => r.map(c => `"${String(c ?? '').replace(/"/g, '""')}"`).join(';')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
