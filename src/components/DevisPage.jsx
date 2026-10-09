@@ -2108,15 +2108,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     setShowSendConfirmation({ clientName, montant: doc.total_ttc, canal: 'SMS', doc });
   };
 
-  // Mark document as viewed (for tracking)
-  const markAsViewed = (doc) => {
-    if (doc.statut === 'envoye' && !doc.viewed_at) {
-      onUpdate(doc.id, {
-        statut: 'vu',
-        viewed_at: new Date().toISOString()
-      });
-    }
-  };
+  // (« Vu » n'est plus posé à l'ouverture : c'était l'ARTISAN qui ouvrait son propre devis, pas le
+  // client — relecture du 9 oct. 2026. La page de signature ne note pas l'ouverture par le client.)
 
   // Calculate days since sent (for follow-up indicators)
   const getDaysSinceSent = (doc) => {
@@ -2411,7 +2404,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
             else if (st === 'envoye' || st === 'vu') {
               const finValidite = new Date(new Date(selected.date).getTime() + (Number(selected.validite) || 30) * 86400000);
               if (isExpired(selected)) { contexte = `Expiré le ${dateCourte(finValidite)}`; contexteAlerte = true; }
-              else contexte = `${st === 'vu' ? 'Vu par le client' : `Envoyé le ${dateCourte(selected.date)}`} · valable jusqu'au ${dateCourte(finValidite)}`;
+              else contexte = `Envoyé · valable jusqu'au ${dateCourte(finValidite)}`;
             } else if (st === 'accepte' || st === 'signe') contexte = resteAFacturer > 0 ? `${formatMoney(resteAFacturer)} à facturer` : '';
             else if (st === 'acompte_facture') contexte = `Acompte facturé · ${formatMoney(resteAFacturer)} restent à facturer`;
             else if (st === 'facture') contexte = 'Entièrement facturé';
@@ -2483,13 +2476,6 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           const transitions = (isDevis ? VALID_TRANSITIONS : FACTURE_TRANSITIONS)[selected.statut] || [];
           const brouillon = selected.statut === 'brouillon';
           const envoyerPar = (fn) => () => (brouillon ? trySend(selected, fn) : fn(selected));
-          const planifier = (jours) => () => {
-            const d = new Date(); d.setDate(d.getDate() + jours);
-            const date = d.toISOString().split('T')[0];
-            onUpdate(selected.id, { relance_planifiee: date });
-            setSelected((x) => ({ ...x, relance_planifiee: date }));
-            showToast(`Relance planifiée le ${d.toLocaleDateString('fr-FR')}`, 'success');
-          };
           const actions = [
             peutModifier && ['brouillon', 'envoye', 'vu'].includes(selected.statut) && { libelle: 'Modifier', icone: Pen, onClick: () => openEditor(selected) },
             secondaire !== actApercu && { libelle: 'Aperçu du document', icone: Eye, onClick: () => previewPDF(selected) },
@@ -2504,8 +2490,6 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
             peutEnvoyer && !isAvoir && { groupe: 'envoi', libelle: brouillon ? 'Envoyer par e-mail' : 'Renvoyer par e-mail', icone: Mail, onClick: envoyerPar(sendEmail) },
             peutEnvoyer && !isAvoir && { groupe: 'envoi', libelle: 'Envoyer par WhatsApp', icone: MessageCircle, onClick: envoyerPar(sendWhatsApp) },
             peutEnvoyer && !isAvoir && { groupe: 'envoi', libelle: 'Envoyer par SMS', icone: MessageCircle, onClick: envoyerPar(sendSMS) },
-            isDevis && ['envoye', 'vu'].includes(selected.statut) && { groupe: 'envoi', libelle: 'Relance automatique dans 3 jours', icone: Clock, onClick: planifier(3) },
-            isDevis && ['envoye', 'vu'].includes(selected.statut) && { groupe: 'envoi', libelle: 'Relance automatique dans 7 jours', icone: Clock, onClick: planifier(7) },
             isDevis && hasChantier && linkedChantier && { groupe: 'document', libelle: `Chantier : ${linkedChantier.nom}`, icone: Building2, onClick: () => { setSelectedChantier?.(linkedChantier.id); setPage?.('chantiers'); } },
             isDevis && !hasChantier && canCreateChantier && { groupe: 'document', libelle: 'Créer le chantier', icone: Building2, onClick: openChantierModal },
             peutCreer && selected.type === 'devis' && ['accepte', 'signe'].includes(selected.statut) && canAcompte && { groupe: 'document', libelle: 'Demander un acompte', icone: CreditCard, onClick: () => setShowEcheancierModal(true) },
@@ -4887,7 +4871,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                   return (
                     <tr
                       key={d.id}
-                      onClick={() => { setSelected(d); setMode('preview'); if (d.statut === 'envoye' && d.type === 'devis') markAsViewed(d); }}
+                      onClick={() => { setSelected(d); setMode('preview'); }}
                       className={`cursor-pointer transition-colors ${isDark ? (idx % 2 === 0 ? 'bg-slate-800' : 'bg-slate-800/50') : (idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50')} ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}
                       style={{ borderLeft: `4px solid ${rowBorderColor}` }}
                     >
@@ -5010,7 +4994,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           const montantCarte = !canViewPrices ? null : modeDiscret ? '···'
             : getDevisTTC(d) <= 0 ? '0 €'
             : isAvoirItem ? `-${formatMoney(Math.abs(getDevisTTC(d)))}` : formatMoney(getDevisTTC(d));
-          const ouvrir = () => { setSelected(d); setMode('preview'); if (d.statut === 'envoye' && d.type === 'devis') markAsViewed(d); };
+          const ouvrir = () => { setSelected(d); setMode('preview'); };
           return (
             <div key={d.id} className="rounded-2xl border border-bord bg-surface shadow-e1 overflow-hidden">
               <LigneListe

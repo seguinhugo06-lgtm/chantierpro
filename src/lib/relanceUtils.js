@@ -68,7 +68,10 @@ export const RECOVERY_INDEMNITY = 40;
  */
 export function estClientPro(client) {
   const categorie = String(client?.categorie || '').toLowerCase();
-  return ['professionnel', 'architecte', 'promoteur', 'syndic'].includes(categorie) || !!client?.entreprise;
+  // La catégorie choisie l'emporte sur le champ « entreprise » ; un syndicat de copropriétaires n'est
+  // pas traité en professionnel (doute : on ne réclame pas ce qui pourrait ne pas être dû).
+  if (categorie) return ['professionnel', 'architecte', 'promoteur'].includes(categorie);
+  return !!client?.entreprise;
 }
 
 // Default config structure

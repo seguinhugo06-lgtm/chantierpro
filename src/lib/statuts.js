@@ -13,7 +13,8 @@ export const TONS = ['neutre', 'info', 'succes', 'alerte', 'danger'];
 const DEVIS = {
   brouillon: { libelle: 'Brouillon', ton: 'neutre' },
   envoye: { libelle: 'Envoyé', ton: 'info' },
-  vu: { libelle: 'Vu', ton: 'info' },
+  // « vu » était posé quand l'artisan ouvrait son propre devis : il ne prouve rien, on affiche « Envoyé ».
+  vu: { libelle: 'Envoyé', ton: 'info' },
   accepte: { libelle: 'Signé', ton: 'succes' },
   signe: { libelle: 'Signé', ton: 'succes' },
   acompte_facture: { libelle: 'Acompte facturé', ton: 'succes' },
@@ -25,7 +26,7 @@ const DEVIS = {
 const FACTURE = {
   brouillon: { libelle: 'Brouillon', ton: 'neutre' },
   envoye: { libelle: 'Envoyée', ton: 'info' },
-  vu: { libelle: 'Vue', ton: 'info' },
+  vu: { libelle: 'Envoyée', ton: 'info' },
   partielle: { libelle: 'Payée en partie', ton: 'alerte' },
   en_retard: { libelle: 'En retard', ton: 'danger' },
   payee: { libelle: 'Payée', ton: 'succes' },
@@ -43,7 +44,8 @@ const CHANTIER = {
 
 const CLIENT = {
   actif: { libelle: 'Actif', ton: 'succes' },
-  prospect: { libelle: 'Prospect', ton: 'info' },
+  en_devis: { libelle: 'En devis', ton: 'info' },
+  prospect: { libelle: 'Prospect', ton: 'neutre' },
   inactif: { libelle: 'Inactif', ton: 'neutre' },
 };
 

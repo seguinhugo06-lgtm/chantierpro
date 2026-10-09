@@ -9,6 +9,7 @@
  */
 
 import { calculatePenalties, DEFAULT_PENALTY_RATE, estClientPro } from './relanceUtils';
+import { dateLocale } from './paiementsFacture';
 
 /**
  * Format a number as euros (French locale)
@@ -58,7 +59,7 @@ export function buildMiseEnDemeureHtml({
   const now = new Date();
   const dateFacture = doc.date ? new Date(doc.date) : now;
   const dateEcheance = doc.date_echeance || doc.dateEcheance
-    ? new Date(doc.date_echeance || doc.dateEcheance)
+    ? dateLocale(doc.date_echeance || doc.dateEcheance)
     : new Date(dateFacture.getTime() + 30 * 24 * 60 * 60 * 1000);
 
   const joursRetard = Math.max(0, Math.floor((now - dateEcheance) / (1000 * 60 * 60 * 24)));
