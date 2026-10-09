@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo, Suspense, lazy } from 'react';
-import { Plus, ArrowLeft, Download, Trash2, Send, Mail, MessageCircle, Edit3, Check, X, FileText, Receipt, Clock, Search, ChevronRight, ChevronUp, ChevronDown, Star, Eye, Pen, CreditCard, CheckCircle, AlertTriangle, XCircle, Building2, Copy, TrendingUp, Sparkles, PenTool, MoreVertical, Loader2, Link2, Zap, ArrowUpDown, Bell, RotateCcw, BarChart3, BellRing, ClipboardList, LayoutGrid, List, Kanban, Droplets, Paintbrush } from 'lucide-react';
+import { Plus, ArrowLeft, Download, Trash2, Send, Mail, MessageCircle, Edit3, Check, X, FileText, Receipt, Clock, Search, ChevronRight, ChevronUp, ChevronDown, Star, Eye, Pen, CreditCard, CheckCircle, AlertTriangle, XCircle, Building2, Copy, TrendingUp, Sparkles, PenTool, Loader2, Link2, Zap, ArrowUpDown, Bell, RotateCcw, BarChart3, BellRing, ClipboardList, LayoutGrid, List, Kanban, Droplets, Paintbrush, Flag, Smartphone }  from 'lucide-react';
 import supabase, { isDemo } from '../supabaseClient';
 import { useSubscriptionStore, PLANS } from '../stores/subscriptionStore';
 const PipelineKanban = lazy(() => import('./pipeline/PipelineKanban'));
@@ -49,7 +49,11 @@ import { mapError } from '../lib/errorMapper';
 import { formatMoney as fmtMoney, filterValidLignes, formatClientName } from '../lib/formatters';
 import { normalizeNumero } from '../lib/devis-utils';
 import { calcConversion, formatConversion } from '../lib/statsUtils';
-import { apresPaiement, statutFacture, resteAPayer, dejaPaye, echeance, dateEcheance } from '../lib/paiementsFacture';
+import { apresPaiement, statutFacture, resteAPayer, dejaPaye, echeance, dateEcheance, joursDeRetard } from '../lib/paiementsFacture';
+import EnTeteDocument from './devis/EnTeteDocument';
+import LigneListe from './ui/LigneListe';
+import { Bouton } from './ui/Bouton';
+import { PastilleStatut } from './ui/Pastille';
 import { statut as libelleStatut } from '../lib/statuts';
 import { pourcent, blocConditionsPaiement, CONDITIONS_PAIEMENT } from '../lib/formatDocument';
 import { totauxDocument, lignesTotauxHtml, lignesAcompteHtml, calculerTotaux } from '../lib/totauxDocument';
@@ -89,7 +93,7 @@ import { getEntityHistory } from '../lib/auditService';
 import { getSnapshots } from '../lib/snapshotService';
 import useKeepInViewport from '../hooks/useKeepInViewport';
 import { mentionTvaReduiteHtml } from '../lib/mentionTvaReduite';
-import { remettreFichier, estNatif } from '../lib/natif';
+import { remettreFichier, estNatif, ouvrirLienExterne } from '../lib/natif';
 import { urlPublique } from '../lib/urlPublique';
 
 // Email tracking : l'envoi passe par Resend (send-email) ; l'historique par document
@@ -274,7 +278,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   const [chantierForm, setChantierForm] = useState({ nom: '', adresse: '' });
   const [pdfContent, setPdfContent] = useState('');
   const [tooltip, setTooltip] = useState(null); // { text, x, y }
-  const [showActionsMenu, setShowActionsMenu] = useState(false);
+  const [voletStatut, setVoletStatut] = useState(false); // fiche : « Changer le statut » (menu ⋯)
   const [showAvoirModal, setShowAvoirModal] = useState(false);
   const [assigningClientDevisId, setAssigningClientDevisId] = useState(null); // B1: assign client to orphan devis
   const [showDevisExpressModal, setShowDevisExpressModal] = useState(false);
@@ -293,8 +297,6 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   // Statuts déduits des paiements (src/lib/paiementsFacture.js) → couleurs de la table existante.
   const COULEUR_STATUT_VU = { partielle: 'acompte_facture', en_retard: 'refuse' };
 
-  // Status color bar map for cards
-  const STATUS_BAR_COLORS = { brouillon: '#94a3b8', envoye: '#3b82f6', vu: '#3b82f6', signe: '#10b981', accepte: '#10b981', facture: '#8b5cf6', refuse: '#ef4444', expire: '#f59e0b', payee: '#10b981', acompte_facture: '#8b5cf6' };
 
   // Versioning state
   const [devisSnapshots, setDevisSnapshots] = useState([]);
@@ -329,7 +331,6 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   const [templateCategory, setTemplateCategory] = useState('Mes modèles');
   const [showSignatureLinkModal, setShowSignatureLinkModal] = useState(false);
   const [signatureLinkUrl, setSignatureLinkUrl] = useState(null);
-  const [showChannelDropdown, setShowChannelDropdown] = useState(false);
   const [showSendConfirmation, setShowSendConfirmation] = useState(null); // { clientName, montant, canal, doc }
   const [showCreationSuccess, setShowCreationSuccess] = useState(null); // { devis, numero }
 
@@ -2330,47 +2331,14 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       { id: 'payee', label: 'Payée', statuses: ['payee'] },
     ];
 
-    const getStepState = (step) => {
-      const order = { brouillon: 0, envoye: 1, vu: 1, accepte: 2, signe: 2, acompte_facture: 3, facture: 4, payee: 5, refuse: -1 };
-      const currentOrder = order[selected.statut] ?? 0;
-      const stepMaxOrder = Math.max(...step.statuses.map(s => order[s] ?? 0));
-      const isActive = step.statuses.includes(selected.statut);
-      const isPast = currentOrder > stepMaxOrder;
-      return { isActive, isPast };
-    };
 
     // Next action hint based on status
-    const getNextAction = () => {
-      if (selected.statut === 'refuse') return { text: 'Dupliquer pour relancer', color: 'text-slate-500' };
-      if (isDevis) {
-        if (selected.statut === 'brouillon') return { text: '→ Envoyer au client', color: 'text-amber-600' };
-        if (selected.statut === 'envoye' || selected.statut === 'vu') return { text: '→ Faire signer', color: 'text-blue-600' };
-        if (selected.statut === 'accepte' || selected.statut === 'signe') return { text: '→ Créer facture', color: 'text-emerald-600' };
-        if (selected.statut === 'acompte_facture') return { text: `→ Facturer solde (${formatMoney(resteAFacturer)})`, color: 'text-purple-600' };
-        if (selected.statut === 'facture') return { text: '✓ Terminé', color: 'text-indigo-600' };
-      } else if (isAvoir) {
-        if (selected.statut === 'brouillon') return { text: '→ Émettre l\'avoir', color: 'text-amber-600' };
-        if (selected.statut === 'envoye') return { text: '→ Appliquer', color: 'text-emerald-600' };
-        if (selected.statut === 'payee') return { text: '✓ Appliqué', color: 'text-emerald-600' };
-      } else {
-        if (selected.statut === 'brouillon') return { text: '→ Envoyer', color: 'text-amber-600' };
-        if (selected.statut === 'envoye') return { text: '→ Encaisser', color: 'text-purple-600' };
-        if (selected.statut === 'payee') return { text: '✓ Payée', color: 'text-emerald-600' };
-      }
-      return null;
-    };
-
-    const nextAction = getNextAction();
 
     // Statut d'une facture déduit de ses paiements (src/lib/paiementsFacture.js) : une facture soldée
     // n'affiche plus « à encaisser », ni relance, ni « Encaisser » (revue du 9 oct. 2026).
     const factureVue = selected.type === 'facture' && !isAvoir ? statutFacture(selected, paiements) : null;
     const factureSoldee = factureVue === 'payee';
     const resteFacture = selected.type === 'facture' ? resteAPayer(selected, paiements) : 0;
-    // Calculate days since for relance alert
-    const daysSinceCreation = Math.floor((new Date() - new Date(selected.date)) / 86400000);
-    const isOverdue = factureVue === 'en_retard';
-    const showRelanceAlert = selected.type === 'facture' && !factureSoldee && daysSinceCreation >= 7;
 
     // Get primary CTA based on status
     const getPrimaryCTA = () => {
@@ -2400,7 +2368,6 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       }
       return null;
     };
-    const primaryCTA = getPrimaryCTA();
 
     return (
     <>
@@ -2418,452 +2385,193 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           />
         )}
 
-        {/* ============ ZONE 1: UNIFIED HEADER ============ */}
-        <div className={`rounded-xl border p-3 sm:p-4 ${cardBg}`}>
-          {/* Top row: back, title, client, actions. Téléphone : les actions passent sur leur propre
-              ligne, nommées — à côté du titre, elles réduisaient le numéro à « DE… » (recette du 9 oct.). */}
-          <div className="flex flex-wrap items-start gap-3 mb-4">
-            <button onClick={() => { setMode('list'); setSelected(null); }} className={`p-2.5 rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center flex-shrink-0 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`} title="Retour à la liste" aria-label="Retour à la liste">
-              <ArrowLeft size={18} className={textMuted} />
-            </button>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-0.5">
-                <span className={`text-xs font-medium px-2 py-0.5 rounded ${selected.facture_type === 'avoir' ? (isDark ? 'bg-red-900/50 text-red-400' : 'bg-red-100 text-red-700') : selected.type === 'facture' ? (isDark ? 'bg-purple-900/50 text-purple-400' : 'bg-purple-100 text-purple-700') : (isDark ? 'bg-blue-900/50 text-blue-400' : 'bg-blue-100 text-blue-700')}`}>
-                  {selected.facture_type === 'avoir' ? 'Avoir' : selected.type === 'facture' ? 'Facture' : 'Devis'}
-                </span>
-                {isDevis && devisSnapshots.length > 0 && (
-                  <VersionSelector
-                    snapshots={devisSnapshots}
-                    onSelectVersion={(snap) => setViewingSnapshot(snap)}
-                    onCompareVersions={(a, b) => setComparingSnapshots({ a, b })}
-                    isDark={isDark}
-                    couleur={couleur}
-                  />
-                )}
-                {needsFollowUp(selected) && (
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${isDark ? 'bg-amber-900/50 text-amber-400' : 'bg-amber-100 text-amber-700'}`}>⏰ Relancer</span>
-                )}
-                {(() => {
-                  const legal = getLegalIssues();
-                  if (legal.length === 0) return null;
-                  return (
-                    <span
-                      className={`text-xs px-2 py-0.5 rounded-full font-medium cursor-help ${isDark ? 'bg-red-900/40 text-red-400' : 'bg-red-100 text-red-600'}`}
-                      title={`Champs manquants : ${legal.map(i => i.label).join(', ')}`}
-                    >
-                      ⚠ {legal.length} champ{legal.length > 1 ? 's' : ''} léga{legal.length > 1 ? 'ux' : 'l'} manquant{legal.length > 1 ? 's' : ''}
-                    </span>
-                  );
-                })()}
-              </div>
-              <h2 className={`text-lg sm:text-xl font-bold truncate ${textPrimary}`}>{cleanNumero(selected.numero)}</h2>
-              <p className={`text-sm ${textMuted}`}>
-                {cleanClientName(client) || selected.client_nom || ''}
-                {!cleanClientName(client) && !selected.client_nom && (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); setAssigningClientDevisId(selected.id); }}
-                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${isDark ? 'bg-amber-900/40 text-amber-400 hover:bg-amber-900/60' : 'bg-amber-100 text-amber-700 hover:bg-amber-200'} transition-colors`}
-                  >
-                    <AlertTriangle size={11} /> Aucun client — Assigner →
-                  </button>
-                )}
-                {(cleanClientName(client) || selected.client_nom) && ` · `}{new Date(selected.date).toLocaleDateString('fr-FR')}
-                {selected.type === 'facture' && selected.date_echeance && (
-                  <span className={`ml-1 ${textMuted}`}> · Échéance: {new Date(selected.date_echeance).toLocaleDateString('fr-FR')}</span>
-                )}
-              </p>
-            </div>
+        {/* ============ ZONE 1 : EN-TÊTE (refonte du 9 oct. 2026 — src/components/devis/EnTeteDocument.jsx) ============
+            Qui (le client), combien (TTC), où on en est (pastille, phrase, étapes), UNE action principale ;
+            le reste dans « ⋯ ». Remplace le numéro en titre, le statut dit trois fois et « Facturer » triplé. */}
+        {(() => {
+          const nomClient = cleanClientName(client) || selected.client_nom || '';
+          const genre = isAvoir ? 'Avoir'
+            : selected.type === 'facture'
+              ? ({ acompte: "Facture d'acompte", solde: 'Facture de solde', situation: 'Situation' }[selected.facture_type] || 'Facture')
+              : 'Devis';
+          const dateCourte = (d) => (d ? new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) : '');
+          const ttc = selected.total_ttc || 0;
+          const peutEnvoyer = canPerform('devis', 'send');
+          const peutModifier = canPerform('devis', 'edit');
+          const peutCreer = canPerform('devis', 'create');
 
-            {/* Header actions - with labels for better accessibility */}
-            <div className="w-full sm:w-auto flex items-center gap-2 sm:gap-1.5 sm:flex-shrink-0">
-              <button
-                onClick={() => tryDownload(selected, async (doc) => { setActionLoading('pdf'); try { await printPDF(doc); } catch(e) { /* PDF error handled silently */ } finally { setActionLoading(null); } })}
-                disabled={actionLoading === 'pdf'}
-                className="flex-1 sm:flex-none min-w-[44px] min-h-[44px] px-3 bg-blue-500 hover:bg-blue-600 text-white rounded-xl flex items-center justify-center gap-2 transition-colors disabled:opacity-60"
-                title="Télécharger le PDF"
-                aria-label="Télécharger le PDF"
-              >
-                {actionLoading === 'pdf' ? <Loader2 size={18} className="animate-spin flex-shrink-0" /> : <Download size={18} className="flex-shrink-0" />}
-                <span className="text-sm font-medium">PDF</span>
-              </button>
-              <button
-                onClick={() => previewPDF(selected)}
-                className={`flex-1 sm:flex-none min-w-[44px] min-h-[44px] px-3 rounded-xl transition-colors flex items-center justify-center gap-2 ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}
-                title="Aperçu du document"
-                aria-label="Voir l'aperçu du document"
-              >
-                <Eye size={18} className="flex-shrink-0" />
-                <span className="text-sm font-medium">Aperçu</span>
-              </button>
-              {/* Modifier button - only for editable statuses + edit permission */}
-              {canPerform('devis', 'edit') && ['brouillon', 'envoye', 'vu'].includes(selected.statut) && (
-                <button
-                  onClick={() => openEditor(selected)}
-                  className="flex-1 sm:flex-none min-w-[44px] min-h-[44px] px-3 rounded-xl transition-colors flex items-center justify-center gap-2 text-white hover:shadow-lg"
-                  style={{ backgroundColor: couleur }}
-                  title="Modifier ce document"
-                  aria-label="Modifier ce document"
-                >
-                  <Pen size={18} className="flex-shrink-0" />
-                  <span className="text-sm font-medium">Modifier</span>
+          // Une phrase qui dit où on en est
+          let contexte = '';
+          let contexteAlerte = false;
+          if (isAvoir) {
+            contexte = sourceFacture ? `Avoir sur la facture ${cleanNumero(sourceFacture.numero)}` : '';
+          } else if (isDevis) {
+            const st = selected.statut;
+            if (st === 'brouillon') contexte = `Brouillon du ${dateCourte(selected.date)}`;
+            else if (st === 'envoye' || st === 'vu') {
+              const finValidite = new Date(new Date(selected.date).getTime() + (Number(selected.validite) || 30) * 86400000);
+              if (isExpired(selected)) { contexte = `Expiré le ${dateCourte(finValidite)}`; contexteAlerte = true; }
+              else contexte = `${st === 'vu' ? 'Vu par le client' : `Envoyé le ${dateCourte(selected.date)}`} · valable jusqu'au ${dateCourte(finValidite)}`;
+            } else if (st === 'accepte' || st === 'signe') contexte = resteAFacturer > 0 ? `${formatMoney(resteAFacturer)} à facturer` : '';
+            else if (st === 'acompte_facture') contexte = `Acompte facturé · ${formatMoney(resteAFacturer)} restent à facturer`;
+            else if (st === 'facture') contexte = 'Entièrement facturé';
+            else if (st === 'refuse') contexte = 'Refusé par le client';
+          } else {
+            const ech = echeance(selected);
+            if (factureVue === 'payee') contexte = selected.date_paiement ? `Payée le ${dateCourte(selected.date_paiement)}` : 'Soldée';
+            else if (factureVue === 'en_retard') { contexte = `En retard de ${joursDeRetard(selected, paiements)} j · reste ${formatMoney(resteFacture)}`; contexteAlerte = true; }
+            else if (factureVue === 'partielle') contexte = `Reçu ${formatMoney(dejaPaye(selected, paiements))} · reste ${formatMoney(resteFacture)}${ech ? ` · échéance ${dateCourte(ech)}` : ''}`;
+            else if (factureVue === 'brouillon') contexte = `Brouillon du ${dateCourte(selected.date)}`;
+            else contexte = `${ech ? `Échéance ${dateCourte(ech)} · ` : ''}reste ${formatMoney(resteFacture)}`;
+          }
+
+          // Étapes : faites, en cours, à venir (une facture soldée par ses paiements est « payée »)
+          const ordre = { brouillon: 0, envoye: 1, vu: 1, accepte: 2, signe: 2, acompte_facture: 3, facture: 4, payee: 5 };
+          const statutEtapes = factureSoldee ? 'payee' : selected.statut;
+          const etapes = selected.statut === 'refuse' ? [] : statusSteps.map((e) => {
+            const max = Math.max(...e.statuses.map((x) => ordre[x] ?? 0));
+            const etat = e.statuses.includes(statutEtapes) ? 'courant' : (ordre[statutEtapes] ?? 0) > max ? 'fait' : 'avenir';
+            return { id: e.id, libelle: e.label, etat };
+          });
+
+          // L'action principale (une seule) et la secondaire, selon l'étape
+          const telechargerPdf = () => tryDownload(selected, async (doc) => { setActionLoading('pdf'); try { await printPDF(doc); } catch { /* erreur déjà signalée par printPDF */ } finally { setActionLoading(null); } });
+          const actPdf = { libelle: 'PDF', icone: Download, onClick: telechargerPdf, chargement: actionLoading === 'pdf' };
+          const actApercu = { libelle: 'Aperçu', icone: Eye, onClick: () => previewPDF(selected) };
+          const facturer = async () => {
+            if (canAcompte) { setShowAcompteModal(true); return; }
+            const nom = client ? `${client.prenom || ''} ${client.nom || ''}`.trim() : 'le client';
+            const ok = await confirm({ title: 'Créer la facture complète ?', message: `Une facture de ${formatMoney(ttc)} sera créée pour ${nom}. Cette action est irréversible.` });
+            if (ok) createSolde();
+          };
+          let principal = null;
+          let secondaire = actApercu;
+          if (isAvoir) {
+            const p = getPrimaryCTA();
+            if (p) principal = { libelle: p.label, icone: p.icon, onClick: p.action };
+            secondaire = actPdf;
+          } else if (isDevis) {
+            const st = selected.statut;
+            if (st === 'brouillon' && peutEnvoyer) {
+              principal = ttc > 0
+                ? { libelle: 'Envoyer', icone: Send, onClick: () => trySend(selected, sendEmail) }
+                : { libelle: 'Compléter le devis', icone: Pen, onClick: () => openEditor(selected) };
+            } else if (st === 'envoye' || st === 'vu') {
+              principal = { libelle: 'Faire signer', icone: PenTool, onClick: () => setShowSignaturePad(true) };
+              if (peutEnvoyer) secondaire = { libelle: 'Relancer', icone: Mail, onClick: () => sendEmail(selected) };
+            } else if (st === 'accepte' || st === 'signe') {
+              principal = { libelle: 'Facturer', icone: Receipt, onClick: facturer };
+              secondaire = actPdf;
+            } else if (st === 'acompte_facture') {
+              principal = { libelle: `Facturer le solde`, icone: Receipt, onClick: confirmAndCreateSolde };
+              secondaire = actPdf;
+            } else if (st === 'refuse' && peutCreer) {
+              secondaire = { libelle: 'Dupliquer', icone: Copy, onClick: () => duplicateDocument(selected) };
+            } else {
+              secondaire = actPdf;
+            }
+          } else if (!factureSoldee) {
+            principal = { libelle: 'Encaisser', icone: CreditCard, onClick: () => setShowPaymentModal(true) };
+            if (peutEnvoyer) secondaire = selected.statut === 'brouillon'
+              ? { libelle: 'Envoyer', icone: Send, onClick: () => trySend(selected, sendEmail) }
+              : { libelle: 'Relancer', icone: Mail, onClick: () => sendEmail(selected) };
+          } else {
+            secondaire = actPdf;
+          }
+
+          // Tout le reste : le menu « ⋯ »
+          const transitions = (isDevis ? VALID_TRANSITIONS : FACTURE_TRANSITIONS)[selected.statut] || [];
+          const brouillon = selected.statut === 'brouillon';
+          const envoyerPar = (fn) => () => (brouillon ? trySend(selected, fn) : fn(selected));
+          const planifier = (jours) => () => {
+            const d = new Date(); d.setDate(d.getDate() + jours);
+            const date = d.toISOString().split('T')[0];
+            onUpdate(selected.id, { relance_planifiee: date });
+            setSelected((x) => ({ ...x, relance_planifiee: date }));
+            showToast(`Relance planifiée le ${d.toLocaleDateString('fr-FR')}`, 'success');
+          };
+          const actions = [
+            peutModifier && ['brouillon', 'envoye', 'vu'].includes(selected.statut) && { libelle: 'Modifier', icone: Pen, onClick: () => openEditor(selected) },
+            secondaire !== actApercu && { libelle: 'Aperçu du document', icone: Eye, onClick: () => previewPDF(selected) },
+            secondaire !== actPdf && { libelle: 'Télécharger le PDF', icone: Download, onClick: telechargerPdf },
+            isDevis && !['facture', 'refuse'].includes(selected.statut) && { libelle: 'Voir comme le client', icone: Smartphone, onClick: async () => {
+              try {
+                const token = await getOrGenerateSignatureToken(selected);
+                if (token) ouvrirLienExterne(buildSignatureUrl(token)); else showToast('Impossible de générer le lien', 'error');
+              } catch (e) { showToast(mapError(e), 'error'); }
+            } },
+            peutModifier && transitions.length > 0 && { libelle: 'Changer le statut', icone: Flag, onClick: () => setVoletStatut(true) },
+            peutEnvoyer && !isAvoir && { groupe: 'envoi', libelle: brouillon ? 'Envoyer par e-mail' : 'Renvoyer par e-mail', icone: Mail, onClick: envoyerPar(sendEmail) },
+            peutEnvoyer && !isAvoir && { groupe: 'envoi', libelle: 'Envoyer par WhatsApp', icone: MessageCircle, onClick: envoyerPar(sendWhatsApp) },
+            peutEnvoyer && !isAvoir && { groupe: 'envoi', libelle: 'Envoyer par SMS', icone: MessageCircle, onClick: envoyerPar(sendSMS) },
+            isDevis && ['envoye', 'vu'].includes(selected.statut) && { groupe: 'envoi', libelle: 'Relance automatique dans 3 jours', icone: Clock, onClick: planifier(3) },
+            isDevis && ['envoye', 'vu'].includes(selected.statut) && { groupe: 'envoi', libelle: 'Relance automatique dans 7 jours', icone: Clock, onClick: planifier(7) },
+            isDevis && hasChantier && linkedChantier && { groupe: 'document', libelle: `Chantier : ${linkedChantier.nom}`, icone: Building2, onClick: () => { setSelectedChantier?.(linkedChantier.id); setPage?.('chantiers'); } },
+            isDevis && !hasChantier && canCreateChantier && { groupe: 'document', libelle: 'Créer le chantier', icone: Building2, onClick: openChantierModal },
+            peutCreer && selected.type === 'devis' && ['accepte', 'signe'].includes(selected.statut) && canAcompte && { groupe: 'document', libelle: 'Demander un acompte', icone: CreditCard, onClick: () => setShowEcheancierModal(true) },
+            peutModifier && selected.type === 'devis' && ['accepte', 'envoye', 'facture'].includes(selected.statut) && { groupe: 'document', libelle: 'Créer un avenant', icone: Edit3, onClick: () => createAvenant(selected) },
+            peutCreer && selected.type === 'facture' && !isAvoir && { groupe: 'document', libelle: 'Créer un avoir', icone: RotateCcw, onClick: () => setShowAvoirModal(true) },
+            peutCreer && { groupe: 'document', libelle: 'Dupliquer', icone: Copy, onClick: async () => { setActionLoading('duplicate'); try { await duplicateDocument(selected); } finally { setActionLoading(null); } } },
+            peutModifier && { groupe: 'document', libelle: 'Enregistrer comme modèle', icone: Star, onClick: () => setShowSaveTemplateModal(true) },
+            canPerform('devis', 'delete') && !(isAvoir && selected.statut !== 'brouillon') && { danger: true, libelle: 'Supprimer', icone: Trash2, onClick: async () => {
+              const ok = await confirm({ title: 'Supprimer', message: isAvoir ? 'Supprimer cet avoir brouillon ?' : 'Supprimer ce document ?' });
+              if (ok) { onDelete(selected.id); setSelected(null); setMode('list'); }
+            } },
+          ].filter(Boolean);
+
+          const legal = selected.statut === 'refuse' ? [] : getLegalIssues();
+          const alertes = [
+            legal.length > 0 && {
+              libelle: `${legal.length} mention${legal.length > 1 ? 's' : ''} légale${legal.length > 1 ? 's' : ''} manquante${legal.length > 1 ? 's' : ''} : ${legal.map((i) => i.label.toLowerCase()).join(', ')}`,
+              onClick: setPage ? () => setPage('settings', { tab: 'legal' }) : undefined,
+            },
+            isDevis && needsFollowUp(selected) && peutEnvoyer && { libelle: 'Sans réponse depuis plus de 7 jours : pensez à relancer', onClick: () => sendEmail(selected) },
+          ].filter(Boolean);
+
+          return (
+            <EnTeteDocument
+              onRetour={() => { setMode('list'); setSelected(null); }}
+              surtitre={`${genre} · ${cleanNumero(selected.numero)}`}
+              extra={isDevis && devisSnapshots.length > 0 ? (
+                <VersionSelector snapshots={devisSnapshots} onSelectVersion={(snap) => setViewingSnapshot(snap)} onCompareVersions={(a, b) => setComparingSnapshots({ a, b })} isDark={isDark} couleur={couleur} />
+              ) : null}
+              titre={nomClient || (
+                <button type="button" onClick={() => setAssigningClientDevisId(selected.id)} className="inline-flex items-center gap-2 h-11 px-4 rounded-xl bg-alerte-fond text-alerte-texte text-base font-semibold">
+                  <AlertTriangle size={18} aria-hidden="true" /> Assigner un client
                 </button>
               )}
-              <div className="relative">
-                <button
-                  onClick={() => setShowActionsMenu(!showActionsMenu)}
-                  className={`p-2.5 rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}
-                  aria-label="Plus d'actions"
-                  aria-haspopup="true"
-                  aria-expanded={showActionsMenu}
-                >
-                  <MoreVertical size={18} />
-                </button>
-                {showActionsMenu && (
-                  <>
-                    <div className="fixed inset-0 z-40" aria-hidden="true" onClick={() => setShowActionsMenu(false)} />
-                    <div onKeyDown={(e) => { if (e.key === 'Escape') setShowActionsMenu(false); }} className={`absolute right-0 top-11 z-50 rounded-xl shadow-xl border overflow-hidden min-w-[160px] ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
-                      {canPerform('devis', 'create') && (
-                      <button onClick={async () => { setActionLoading('duplicate'); setShowActionsMenu(false); try { await duplicateDocument(selected); } finally { setActionLoading(null); } }} disabled={actionLoading === 'duplicate'} className={`w-full px-4 py-3 text-left text-sm flex items-center gap-2 ${isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-50 text-slate-700'}`}>
-                        {actionLoading === 'duplicate' ? <Loader2 size={16} className="animate-spin" /> : <Copy size={16} />} Dupliquer
-                      </button>
-                      )}
-                      {canPerform('devis', 'edit') && selected.type === 'devis' && ['accepte', 'envoye', 'facture'].includes(selected.statut) && (
-                        <button onClick={() => { createAvenant(selected); setShowActionsMenu(false); }} className={`w-full px-4 py-3 text-left text-sm flex items-center gap-2 ${isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-50 text-slate-700'}`}>
-                          <Edit3 size={16} /> Créer un avenant
-                        </button>
-                      )}
-                      {canPerform('devis', 'create') && selected.type === 'devis' && ['accepte', 'signe'].includes(selected.statut) && canAcompte && (
-                        <button onClick={() => { setShowEcheancierModal(true); setShowActionsMenu(false); }} className={`w-full px-4 py-3 text-left text-sm flex items-center gap-2 ${isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-50 text-slate-700'}`}>
-                          <CreditCard size={16} /> Demander un acompte
-                        </button>
-                      )}
-                      {canPerform('devis', 'create') && selected.type === 'facture' && selected.facture_type !== 'avoir' && (
-                        <button onClick={() => { setShowAvoirModal(true); setShowActionsMenu(false); }} className={`w-full px-4 py-3 text-left text-sm flex items-center gap-2 ${isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-50 text-slate-700'}`}>
-                          <RotateCcw size={16} /> Créer un avoir
-                        </button>
-                      )}
-                      {canPerform('devis', 'edit') && (
-                      <button onClick={() => { setShowSaveTemplateModal(true); setShowActionsMenu(false); }} className={`w-full px-4 py-3 text-left text-sm flex items-center gap-2 ${isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-50 text-slate-700'}`}>
-                        <Star size={16} /> Sauvegarder comme modèle
-                      </button>
-                      )}
-                      {canPerform('devis', 'delete') && !(isAvoir && selected.statut !== 'brouillon') && (
-                      <button onClick={async () => { setShowActionsMenu(false); const confirmed = await confirm({ title: 'Supprimer', message: isAvoir ? 'Supprimer cet avoir brouillon ?' : 'Supprimer ce document ?' }); if (confirmed) { onDelete(selected.id); setSelected(null); setMode('list'); } }} className={`w-full px-4 py-3 text-left text-sm flex items-center gap-2 ${isDark ? 'hover:bg-red-900/50 text-red-400' : 'hover:bg-red-50 text-red-600'}`}>
-                        <Trash2 size={16} /> Supprimer
-                      </button>
-                      )}
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
+              objet={selected.objet || linkedChantier?.nom || ''}
+              montant={canViewPrices ? (modeDiscret ? '···' : formatMoney(isAvoir ? -Math.abs(ttc) : ttc)) : '—'}
+              pastille={<PastilleStatut genre={selected.type === 'facture' && !isAvoir ? 'facture' : 'devis'} statut={selected.type === 'facture' && !isAvoir ? factureVue : selected.statut} taille="grande" />}
+              contexte={contexte}
+              contexteAlerte={contexteAlerte}
+              alertes={alertes}
+              etapes={etapes}
+              principal={principal}
+              secondaire={secondaire}
+              actions={actions}
+            />
+          );
+        })()}
 
-          {/* Workflow progress - enhanced stepper */}
-          <div className="mb-4">
-            <div className="flex items-start gap-0">
-              {statusSteps.map((step, idx) => {
-                const { isActive, isPast } = getStepState(step);
-                const isRefused = selected.statut === 'refuse';
-                const isLast = idx === statusSteps.length - 1;
-
-                // Calculate time elapsed for active step
-                const getTimeElapsed = () => {
-                  if (!isActive || !selected.date) return null;
-                  const days = Math.floor((Date.now() - new Date(selected.updated_at || selected.date).getTime()) / 86400000);
-                  if (days === 0) return "aujourd'hui";
-                  if (days === 1) return 'hier';
-                  return `il y a ${days}j`;
-                };
-                const timeElapsed = getTimeElapsed();
-
-                return (
-                  <React.Fragment key={step.id}>
-                    <div className="flex flex-col items-center gap-1 min-w-0">
-                      <div
-                        className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all shrink-0 ${
-                          isRefused ? (isDark ? 'bg-red-900/70 text-red-400' : 'bg-red-100 text-red-600') :
-                          isActive ? 'text-white shadow-md' :
-                          isPast ? (isDark ? 'bg-emerald-700 text-emerald-100' : 'bg-emerald-500 text-white') :
-                          (isDark ? 'bg-slate-700 text-slate-500' : 'bg-slate-200 text-slate-400')
-                        }`}
-                        style={isActive ? { backgroundColor: couleur, boxShadow: `0 2px 8px ${couleur}40` } : {}}
-                      >
-                        {isPast ? '✓' : idx + 1}
-                      </div>
-                      <span className={`text-[11px] font-medium text-center leading-tight ${isActive ? textPrimary : isPast ? (isDark ? 'text-emerald-400' : 'text-emerald-600') : textMuted}`}>
-                        {step.label}
-                      </span>
-                      {timeElapsed && (
-                        <span className="text-[10px] font-medium" style={{ color: couleur }}>
-                          {timeElapsed}
-                        </span>
-                      )}
-                    </div>
-                    {!isLast && (
-                      <div className={`flex-1 h-0.5 mt-4 min-w-3 ${isPast ? (isDark ? 'bg-emerald-600' : 'bg-emerald-400') : (isDark ? 'bg-slate-700' : 'bg-slate-200')}`} />
-                    )}
-                  </React.Fragment>
-                );
-              })}
-            </div>
-            {/* Next action guide banner */}
-            {nextAction && !nextAction.text.startsWith('✓') && (
-              <div className={`mt-3 px-3 py-2 rounded-lg flex items-center gap-2 text-xs font-medium ${isDark ? 'bg-slate-800/80' : 'bg-slate-50'}`}>
-                <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: couleur }} />
-                <span className={textMuted}>Prochaine étape :</span>
-                <span className={nextAction.color}>{nextAction.text.replace('→ ', '')}</span>
-              </div>
-            )}
-          </div>
-
-          {/* Action bar: Primary CTA + secondary actions */}
-          <div className="flex flex-col gap-3">
-            {/* Row 1: Primary CTA + Status badge */}
-            <div className="flex items-center gap-2 flex-wrap">
-              {/* Status dropdown - compact */}
-              {(() => {
-                const statusColors = DEVIS_STATUS_COLORS[selected.statut] || {};
-                const transitions = isDevis ? VALID_TRANSITIONS : FACTURE_TRANSITIONS;
-                const allowedNext = transitions[selected.statut] || [];
-                return (
-                  <select
-                    value={selected.statut}
-                    onChange={e => {
-                      const newStatus = e.target.value;
-                      // Validate before allowing transition to 'envoye'
-                      if (newStatus === 'envoye' && selected.statut === 'brouillon') {
-                        const issues = validateDevisForSend(selected);
-                        if (issues.length > 0) {
-                          setSendValidationIssues({ issues, doc: selected });
-                          e.target.value = selected.statut; // Reset dropdown
-                          return;
-                        }
-                      }
-                      onUpdate(selected.id, { statut: newStatus }); setSelected(s => ({...s, statut: newStatus}));
-                    }}
-                    aria-label="Changer le statut du document"
-                    className={`px-3 py-2 min-h-[40px] rounded-lg text-sm font-semibold cursor-pointer border outline-none ${isDark ? `${statusColors.darkBg || 'bg-slate-700'} ${statusColors.darkText || 'text-slate-300'} border-slate-600` : `${statusColors.bg || 'bg-slate-100'} ${statusColors.text || 'text-slate-600'} border-slate-200`}`}
-                  >
-                    <option value={selected.statut}>{DEVIS_STATUS_LABELS[selected.statut] || selected.statut}</option>
-                    {allowedNext.map(s => (
-                      <option key={s} value={s}>{DEVIS_STATUS_LABELS[s] || s}</option>
-                    ))}
-                  </select>
-                );
-              })()}
-
-              {/* Primary CTA - single orange/green action — gated by send permission */}
-              {isDevis ? (
-                <>
-                  {canPerform('devis', 'send') && selected.statut === 'brouillon' && (
-                    <div className="relative flex items-center">
-                      <button
-                        onClick={() => trySend(selected, sendEmail)}
-                        className="px-5 py-2.5 min-h-[44px] rounded-xl text-sm font-semibold text-white flex items-center gap-2 transition-all shadow-md hover:opacity-90"
-                        style={{ backgroundColor: couleur }}
-                      >
-                        <Send size={16} /> Envoyer
-                      </button>
-                      {/* Channel dropdown */}
-                      <div className="relative">
-                        <button
-                          onClick={() => setShowChannelDropdown(!showChannelDropdown)}
-                          className="ml-1 px-2 py-2.5 min-h-[44px] rounded-xl text-white transition-all hover:opacity-90"
-                          style={{ backgroundColor: couleur }}
-                          aria-label="Autres canaux d'envoi"
-                          aria-haspopup="true"
-                          aria-expanded={showChannelDropdown}
-                        >
-                          <ChevronDown size={16} />
-                        </button>
-                        {showChannelDropdown && (
-                          <>
-                          <div className="fixed inset-0 z-40" aria-hidden="true" onClick={() => setShowChannelDropdown(false)} />
-                          <div onKeyDown={(e) => { if (e.key === 'Escape') setShowChannelDropdown(false); }} className={`absolute right-0 top-full mt-1 w-48 rounded-xl shadow-xl border z-50 overflow-hidden ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
-                            <button onClick={() => { trySend(selected, sendWhatsApp); setShowChannelDropdown(false); }} className={`w-full px-4 py-3 text-left text-sm flex items-center gap-3 transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-200' : 'hover:bg-slate-50 text-slate-700'}`}>
-                              <span className="w-8 h-8 rounded-lg bg-green-500 text-white flex items-center justify-center"><MessageCircle size={14} /></span>
-                              WhatsApp
-                            </button>
-                            <button onClick={() => { trySend(selected, sendSMS); setShowChannelDropdown(false); }} className={`w-full px-4 py-3 text-left text-sm flex items-center gap-3 transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-200' : 'hover:bg-slate-50 text-slate-700'}`}>
-                              <span className="w-8 h-8 rounded-lg bg-purple-500 text-white flex items-center justify-center"><MessageCircle size={14} /></span>
-                              SMS
-                            </button>
-                            <button onClick={() => { trySend(selected, sendEmail); setShowChannelDropdown(false); }} className={`w-full px-4 py-3 text-left text-sm flex items-center gap-3 transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-200' : 'hover:bg-slate-50 text-slate-700'}`}>
-                              <span className="w-8 h-8 rounded-lg bg-blue-500 text-white flex items-center justify-center"><Mail size={14} /></span>
-                              Email
-                            </button>
-                            {['envoye', 'vu'].includes(selected.statut) && (
-                              <>
-                                <div className={`my-1 border-t ${isDark ? 'border-slate-700' : 'border-slate-200'}`} />
-                                <button onClick={() => {
-                                  const d = new Date(); d.setDate(d.getDate() + 3);
-                                  const relanceDate = d.toISOString().split('T')[0];
-                                  onUpdate(selected.id, { relance_planifiee: relanceDate });
-                                  setSelected(s => ({...s, relance_planifiee: relanceDate }));
-                                  showToast(`Relance planifiée le ${d.toLocaleDateString('fr-FR')} (J+3)`, 'success');
-                                  setShowChannelDropdown(false);
-                                }} className={`w-full px-4 py-3 text-left text-sm flex items-center gap-3 transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-200' : 'hover:bg-slate-50 text-slate-700'}`}>
-                                  <span className="w-8 h-8 rounded-lg bg-amber-500 text-white flex items-center justify-center"><Clock size={14} /></span>
-                                  Relance J+3
-                                </button>
-                                <button onClick={() => {
-                                  const d = new Date(); d.setDate(d.getDate() + 7);
-                                  const relanceDate = d.toISOString().split('T')[0];
-                                  onUpdate(selected.id, { relance_planifiee: relanceDate });
-                                  setSelected(s => ({...s, relance_planifiee: relanceDate }));
-                                  showToast(`Relance planifiée le ${d.toLocaleDateString('fr-FR')} (J+7)`, 'success');
-                                  setShowChannelDropdown(false);
-                                }} className={`w-full px-4 py-3 text-left text-sm flex items-center gap-3 transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-200' : 'hover:bg-slate-50 text-slate-700'}`}>
-                                  <span className="w-8 h-8 rounded-lg bg-orange-500 text-white flex items-center justify-center"><Clock size={14} /></span>
-                                  Relance J+7
-                                </button>
-                              </>
-                            )}
-                          </div>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {['envoye', 'vu'].includes(selected.statut) && (
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => setShowSignaturePad(true)}
-                        className="px-5 py-2.5 min-h-[44px] rounded-xl text-sm font-semibold text-white flex items-center gap-2 transition-all hover:opacity-90 shadow-md"
-                        style={{ backgroundColor: couleur }}
-                      >
-                        <PenTool size={16} /> Faire signer
-                      </button>
-                    </div>
-                  )}
-
-                  {(selected.statut === 'accepte' || selected.statut === 'signe') && (
-                    <button
-                      onClick={async () => {
-                        if (canAcompte) {
-                          // Go straight to acompte modal — it has its own confirm/cancel
-                          setShowAcompteModal(true);
-                        } else {
-                          // Full invoice — confirm with correct amount
-                          const clientName = client ? `${client.prenom || ''} ${client.nom || ''}`.trim() : 'le client';
-                          const confirmed = await confirm({
-                            title: 'Créer la facture complète ?',
-                            message: `Une facture de ${formatMoney(selected.total_ttc)} sera créée pour ${clientName}. Cette action est irréversible.`
-                          });
-                          if (!confirmed) return;
-                          createSolde();
-                        }
-                      }}
-                      className="px-5 py-2.5 min-h-[44px] rounded-xl text-sm font-semibold text-white flex items-center gap-2 transition-all bg-emerald-500 hover:bg-emerald-600 shadow-md"
-                    >
-                      <Receipt size={16} /> Facturer
-                    </button>
-                  )}
-
-                  {selected.statut === 'acompte_facture' && (
-                    <button
-                      onClick={confirmAndCreateSolde}
-                      className="px-5 py-2.5 min-h-[44px] rounded-xl text-sm font-semibold text-white flex items-center gap-2 transition-all bg-emerald-500 hover:bg-emerald-600 shadow-md"
-                    >
-                      <Receipt size={16} /> Facturer solde ({formatMoney(resteAFacturer)})
-                    </button>
-                  )}
-
-                  {selected.statut === 'facture' && (
-                    <span className={`px-3 py-2 rounded-lg text-sm font-medium ${isDark ? 'bg-violet-900/50 text-violet-400' : 'bg-violet-100 text-violet-700'}`}>
-                      <CheckCircle size={14} className="inline mr-1" /> Facturé
-                    </span>
-                  )}
-
-                  {selected.statut === 'refuse' && (
-                    <button
-                      onClick={() => duplicateDocument(selected)}
-                      className={`px-4 py-2.5 min-h-[44px] rounded-xl text-sm font-medium flex items-center gap-2 transition-colors ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'}`}
-                    >
-                      <Copy size={16} /> Dupliquer
-                    </button>
-                  )}
-                </>
-              ) : (
-                <>
-                  {!factureSoldee ? (
-                    <button
-                      onClick={() => setShowPaymentModal(true)}
-                      className="px-5 py-2.5 min-h-[44px] text-white rounded-xl text-sm font-semibold flex items-center gap-2 transition-all hover:opacity-90 shadow-md"
-                      style={{ background: couleur }}
-                    >
-                      <CreditCard size={16} /> Encaisser
-                    </button>
-                  ) : (
-                    <span className={`px-3 py-2 rounded-lg text-sm font-medium ${isDark ? 'bg-emerald-900/50 text-emerald-400' : 'bg-emerald-100 text-emerald-700'}`}>
-                      <CheckCircle size={14} className="inline mr-1" /> Payée
-                    </span>
-                  )}
-                </>
-              )}
-
-              <div className="flex-1" />
-
-              {/* Secondary actions */}
-              <div className="flex items-center gap-1.5">
-                {/* Vue client - preview signature page */}
-                {isDevis && !['facture', 'refuse'].includes(selected.statut) && (
-                  <button
-                    onClick={async () => {
-                      try {
-                        const token = await getOrGenerateSignatureToken(selected);
-                        if (token) {
-                          window.open(buildSignatureUrl(token), '_blank');
-                        } else {
-                          showToast('Impossible de générer le lien', 'error');
-                        }
-                      } catch (e) {
-                        showToast(mapError(e), 'error');
-                      }
-                    }}
-                    className={`min-w-[40px] min-h-[40px] px-3 rounded-xl text-sm flex items-center gap-2 transition-colors ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}
-                    title="Voir comme le client"
-                  >
-                    <Eye size={16} /> <span className="hidden sm:inline">Vue client</span>
-                  </button>
-                )}
-
-                {/* Chantier link */}
-                {isDevis && (hasChantier && linkedChantier ? (
-                  <button onClick={() => { setSelectedChantier?.(linkedChantier.id); setPage?.('chantiers'); }} className={`min-w-[40px] min-h-[40px] px-3 rounded-xl text-sm flex items-center gap-2 transition-colors ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}>
-                    <Building2 size={14} /> <span className="hidden sm:inline truncate max-w-[80px]">{linkedChantier.nom}</span>
-                  </button>
-                ) : canCreateChantier && (
-                  <button onClick={openChantierModal} className={`min-w-[40px] min-h-[40px] px-3 rounded-xl text-sm flex items-center gap-2 transition-colors ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}>
-                    <Building2 size={14} /> <span className="hidden sm:inline">+ Chantier</span>
-                  </button>
-                ))}
-
-                {/* Communication - compact icons for non-brouillon (brouillon uses dropdown) */}
-                {selected.statut !== 'brouillon' && (
-                  <>
-                    <button
-                      onClick={() => sendWhatsApp(selected)}
-                      className={`min-w-[40px] min-h-[40px] rounded-xl flex items-center justify-center transition-colors ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-green-400' : 'bg-slate-100 hover:bg-slate-200 text-green-600'}`}
-                      title="WhatsApp"
-                    >
-                      <MessageCircle size={16} />
-                    </button>
-                    <button
-                      onClick={() => sendEmail(selected)}
-                      className={`min-w-[40px] min-h-[40px] rounded-xl flex items-center justify-center transition-colors ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-blue-400' : 'bg-slate-100 hover:bg-slate-200 text-blue-600'}`}
-                      title="Email"
-                    >
-                      <Mail size={16} />
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
+        {/* Changer le statut : volet (bas d'écran sur téléphone) au lieu d'une liste déroulante colorée */}
+        <Volet ouvert={voletStatut} onFermer={() => setVoletStatut(false)} titre="Changer le statut" largeur={320}>
+          <ListeChoix
+            titre="Statut" rechercheAuDela={99}
+            options={[selected.statut, ...((isDevis ? VALID_TRANSITIONS : FACTURE_TRANSITIONS)[selected.statut] || [])].map((st) => ({ valeur: st, libelle: st === 'accepte' ? 'Signé' : (DEVIS_STATUS_LABELS[st] || st) }))}
+            valeur={selected.statut}
+            onChange={(nouveau) => {
+              setVoletStatut(false);
+              if (nouveau === selected.statut) return;
+              if (nouveau === 'envoye' && selected.statut === 'brouillon') {
+                const issues = validateDevisForSend(selected);
+                if (issues.length > 0) { setSendValidationIssues({ issues, doc: selected }); return; }
+              }
+              onUpdate(selected.id, { statut: nouveau });
+              setSelected((x) => ({ ...x, statut: nouveau }));
+            }}
+          />
+        </Volet>
 
         {/* ============ AVOIR: Facture d'origine ============ */}
         {isAvoir && sourceFacture && (
@@ -2946,33 +2654,6 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
             </div>
           </div>
         )}
-
-        {/* ============ LEGAL COMPLIANCE BANNER ============ */}
-        {(() => {
-          const legal = getLegalIssues();
-          if (legal.length === 0 || selected.statut === 'refuse') return null;
-          return (
-            <div className={`rounded-xl border p-3 flex items-start gap-3 ${isDark ? 'bg-amber-900/10 border-amber-800/30' : 'bg-amber-50 border-amber-200'}`}>
-              <AlertTriangle size={18} className="text-amber-500 mt-0.5 flex-shrink-0" />
-              <div className="flex-1 min-w-0">
-                <p className={`text-sm font-semibold ${isDark ? 'text-amber-300' : 'text-amber-800'}`}>
-                  Profil entreprise incomplet — {legal.length} mention{legal.length > 1 ? 's' : ''} légale{legal.length > 1 ? 's' : ''} manquante{legal.length > 1 ? 's' : ''}
-                </p>
-                <p className={`text-xs mt-0.5 ${isDark ? 'text-amber-400/80' : 'text-amber-700'}`}>
-                  {legal.map(i => i.label).join(' · ')}
-                </p>
-              </div>
-              {setPage && (
-                <button
-                  onClick={() => setPage('settings', { tab: 'legal' })}
-                  className={`text-xs font-semibold px-3 py-1.5 rounded-lg flex-shrink-0 transition-colors ${isDark ? 'bg-amber-800/40 text-amber-300 hover:bg-amber-800/60' : 'bg-amber-200 text-amber-800 hover:bg-amber-300'}`}
-                >
-                  Compléter →
-                </button>
-              )}
-            </div>
-          );
-        })()}
 
         {/* ============ ZONE 2: SMART CONTEXT CARD ============ */}
         {/* Billing options - always visible for devis not yet invoiced */}
@@ -3068,52 +2749,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           </div>
         )}
 
-        {/* Unpaid invoice alert */}
-        {showRelanceAlert && (
-          <div className={`rounded-xl p-4 border ${isOverdue ? (isDark ? 'bg-red-900/30 border-red-700' : 'bg-red-50 border-red-200') : (isDark ? 'bg-amber-900/30 border-amber-700' : 'bg-amber-50 border-amber-200')}`}>
-            <div className="flex items-center justify-between flex-wrap gap-3">
-              <div className="flex items-center gap-3">
-                <span className="text-xl">{isOverdue ? '🚨' : '⏰'}</span>
-                <div>
-                  <p className={`font-medium text-sm ${isOverdue ? (isDark ? 'text-red-300' : 'text-red-800') : (isDark ? 'text-amber-300' : 'text-amber-800')}`}>
-                    {isOverdue ? 'Facture en retard' : 'Facture en attente'} · {daysSinceCreation} jours
-                  </p>
-                  <p className={`text-xs ${isOverdue ? (isDark ? 'text-red-400' : 'text-red-600') : (isDark ? 'text-amber-400' : 'text-amber-600')}`}>
-                    {formatMoney(resteFacture)} à encaisser
-                  </p>
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => {
-                    const message = `Bonjour,\n\nRelance pour la facture ${selected.numero} d'un montant de ${formatMoney(selected.total_ttc)} émise le ${new Date(selected.date).toLocaleDateString('fr-FR')}.\n\nMerci de procéder au règlement.\n\nCordialement`;
-                    setTimeout(() => {
-                      window.open(`https://wa.me/${client?.telephone?.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`);
-                    }, 100);
-                    if (addEchange) addEchange({ type: 'whatsapp', client_id: selected.client_id, document: selected.numero, montant: selected.total_ttc, objet: `Relance facture ${selected.numero}` });
-                  }}
-                  className="px-3 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors"
-                >
-                  <MessageCircle size={14} /> WhatsApp
-                </button>
-                <button
-                  onClick={() => {
-                    const subject = `Relance facture ${selected.numero}`;
-                    const body = `Bonjour,\n\nRelance pour la facture ${selected.numero} d'un montant de ${formatMoney(selected.total_ttc)} émise le ${new Date(selected.date).toLocaleDateString('fr-FR')}.\n\nMerci de procéder au règlement.\n\nCordialement`;
-                    setTimeout(() => {
-                      window.open(`mailto:${client?.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
-                    }, 100);
-                    if (addEchange) addEchange({ type: 'email', client_id: selected.client_id, document: selected.numero, montant: selected.total_ttc, objet: `Relance facture ${selected.numero}` });
-                  }}
-                  className="px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors"
-                >
-                  <Mail size={14} /> Email
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
+        {/* « Facture en attente · à encaisser » : remplacé par la phrase de l'en-tête et ses actions (refonte du 9 oct.). */}
         {/* Relance Timeline Widget */}
         {relances.isEnabled && !factureSoldee && (() => {
           const docType = selected.type === 'facture' ? 'facture' : 'devis';
@@ -5311,14 +4947,10 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         </div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">{filtered.map(d => {
+        <div className="flex flex-col gap-2 max-w-4xl">{filtered.map(d => {
           const client = clients.find(c => c.id === d.client_id);
-          const hasAcompte = d.type === 'devis' && getAcompteFacture(d.id);
           const chantier = chantiers.find(ch => ch.id === d.chantier_id);
-          const daysSince = Math.floor((Date.now() - new Date(d.date)) / 86400000);
           const statutVu = d.type === 'facture' && d.facture_type !== 'avoir' ? statutFacture(d, paiements) : d.statut;
-                  const statusColor = DEVIS_STATUS_COLORS[COULEUR_STATUT_VU[statutVu] || statutVu] || DEVIS_STATUS_COLORS.brouillon;
-          const statusLabel = d.type === 'facture' && d.facture_type !== 'avoir' ? libelleStatut('facture', statutVu).libelle : (d.statut === 'accepte' ? 'Signé' : (DEVIS_STATUS_LABELS[d.statut] || d.statut));
 
           // Follow-up time indicator for sent devis
           const getFollowUpInfo = () => {
@@ -5333,21 +4965,15 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           };
           const followUp = getFollowUpInfo();
 
-          // Left border color by document type
           const isAvoirItem = d.facture_type === 'avoir';
           const isSituationItem = d.facture_type === 'situation';
-          const isAcompteItem = d.facture_type === 'acompte' || d.facture_type === 'solde';
-          const borderLeftColor = isAvoirItem ? '#f87171'
-            : isAcompteItem ? '#8b5cf6'
-            : d.type === 'facture' ? '#10b981'
-            : couleur;
 
           // Contextual CTAs by status — gated by RBAC permissions
           const getQuickAction = () => {
             if (isViewOnly) return null; // No actions for view-only roles
             if (d.statut === 'brouillon' && getDevisTTC(d) > 0 && canPerform('devis', 'send')) return { label: 'Envoyer', Icon: Send, cls: 'text-white', style: { background: couleur }, fn: (e) => { e.stopPropagation(); sendEmail(d); } };
             if (d.statut === 'brouillon' && getDevisTTC(d) <= 0 && canPerform('devis', 'edit')) return { label: 'Compléter', Icon: Edit3, cls: 'text-white', style: { background: couleur }, fn: (e) => { e.stopPropagation(); setSelected(d); setMode('preview'); } };
-            if (['envoye', 'vu'].includes(d.statut) && canPerform('devis', 'send')) return { label: 'Relancer', Icon: Mail, cls: isDark ? 'bg-amber-600 hover:bg-amber-500 text-white' : 'bg-amber-500 hover:bg-amber-600 text-white', fn: (e) => { e.stopPropagation(); sendEmail(d); } };
+            if (d.type === 'devis' && ['envoye', 'vu'].includes(d.statut) && canPerform('devis', 'send')) return { label: 'Relancer', Icon: Mail, cls: isDark ? 'bg-amber-600 hover:bg-amber-500 text-white' : 'bg-amber-500 hover:bg-amber-600 text-white', fn: (e) => { e.stopPropagation(); sendEmail(d); } };
             if ((d.statut === 'accepte' || d.statut === 'signe') && d.type === 'devis') return { label: 'Facturer', Icon: Receipt, cls: 'bg-emerald-500 hover:bg-emerald-600 text-white', fn: (e) => { e.stopPropagation(); setSelected(d); setMode('preview'); } };
             if (d.type === 'facture' && statutVu !== 'payee') return { label: 'Encaisser', Icon: CreditCard, cls: 'text-white', style: { background: couleur }, fn: (e) => { e.stopPropagation(); setSelected(d); setMode('preview'); } };
             if (d.statut === 'refuse' && canPerform('devis', 'create')) return { label: 'Dupliquer', Icon: Copy, cls: isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600', fn: (e) => { e.stopPropagation(); duplicateDocument(d); } };
@@ -5361,130 +4987,50 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           const isOrphan = !d.client_id || (d.client_id && !client);
           const isNameless = client && !clientName;
 
+          // Carte de liste (refonte du 9 oct. 2026) : client et montant, puis « type · n° · date » et UNE
+          // pastille ; dessous, seulement si une action est due, l'urgence et un bouton libellé.
+          // Avant : liseré, 3 pastilles de 10 px, montant orange, emoji, action réduite à une icône.
+          const typeDoc = isAvoirItem ? 'Avoir'
+            : d.facture_type === 'acompte' ? `Acompte${d.acompte_pct ? ` ${d.acompte_pct} %` : ''}`
+            : d.facture_type === 'solde' ? 'Solde'
+            : isSituationItem ? `Situation${d.situation_numero ? ` n° ${d.situation_numero}` : ''}`
+            : d.is_avenant ? `Avenant ${d.avenant_numero || ''}`.trim()
+            : d.type === 'facture' ? 'Facture' : 'Devis';
+          const meta = [d.objet || chantier?.nom, typeDoc, cleanNumero(d.numero), new Date(d.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })].filter(Boolean).join(' · ');
+          const genrePastille = d.type === 'facture' && !isAvoirItem ? 'facture' : 'devis';
+          const statutPastille = d.type === 'devis' && isExpired(d) && ['envoye', 'vu'].includes(d.statut) ? 'expire' : statutVu;
+          const relanceAuto = relances.getDocumentPending(d.id);
+          const urgence = statutVu === 'en_retard'
+            ? { texte: 'Échéance dépassée', ton: 'text-danger-texte' }
+            : followUp && ['envoye', 'vu'].includes(d.statut) && d.type === 'devis' && /sans réponse|en attente/.test(followUp.text)
+              ? { texte: followUp.text.replace(/(\d+)j/, '$1 j'), ton: /sans réponse/.test(followUp.text) ? 'text-danger-texte' : 'text-alerte-texte' }
+              : relanceAuto
+                ? { texte: relanceAuto.nextStep?.isDue ? 'Relance à envoyer' : `Relance auto ${relanceAuto.nextStep?.step?.name || ''}`.trim(), ton: relanceAuto.nextStep?.isDue ? 'text-alerte-texte' : 'text-encre-3' }
+                : (isOrphan || isNameless) && d.statut === 'brouillon' ? { texte: 'Client à renseigner', ton: 'text-alerte-texte' } : null;
+          const montantCarte = !canViewPrices ? null : modeDiscret ? '···'
+            : getDevisTTC(d) <= 0 ? '0 €'
+            : isAvoirItem ? `-${formatMoney(Math.abs(getDevisTTC(d)))}` : formatMoney(getDevisTTC(d));
+          const ouvrir = () => { setSelected(d); setMode('preview'); if (d.statut === 'envoye' && d.type === 'devis') markAsViewed(d); };
           return (
-            <div key={d.id} role="button" tabIndex={0} aria-label={`Ouvrir ${d.numero || (d.type === 'facture' ? 'la facture' : 'le devis')}`}
-              onKeyDown={(e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target === e.currentTarget) { e.preventDefault(); e.currentTarget.click(); } }}
-              onClick={() => { setSelected(d); setMode('preview'); if (d.statut === 'envoye' && d.type === 'devis') markAsViewed(d); }} className={`${cardBg} rounded-xl border cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 hover:shadow-md hover:-translate-y-0.5 transition-all duration-150 overflow-hidden`}>
-              {/* Status color bar at top */}
-              <div className="h-[3px] w-full" style={{ backgroundColor: STATUS_BAR_COLORS[isExpired(d) ? 'expire' : d.statut] || '#94a3b8' }} />
-              <div className="px-3 py-2.5">
-              <div className="flex items-start gap-2.5">
-                {/* Content */}
-                <div className="flex-1 min-w-0">
-                  {/* Row 0: Client name (prominent) + Amount TTC */}
-                  <div className="flex items-start justify-between gap-2 mb-0.5">
-                    <div className="flex-1 min-w-0">
-                      {(isOrphan || isNameless) ? (
-                        <span className="inline-flex items-center gap-1">
-                          <span className={`text-xs ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>
-                            {isOrphan ? 'Aucun client' : 'Client sans nom'}
-                          </span>
-                          <button onClick={(e) => { e.stopPropagation(); setAssigningClientDevisId(d.id); }} className={`text-xs font-medium underline ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>
-                            Assigner
-                          </button>
-                        </span>
-                      ) : (
-                        <p className={`text-base font-semibold truncate ${textPrimary}`}>{clientName}</p>
-                      )}
-                    </div>
-                    {/* Amount TTC aligned right — large */}
-                    {!canViewPrices ? null : getDevisTTC(d) <= 0 ? (
-                      <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-lg shrink-0 ${isDark ? 'bg-amber-900/40 text-amber-400' : 'bg-amber-50 text-amber-600'}`}>0 €</span>
-                    ) : (
-                      <p className="text-lg font-bold text-right tabular-nums whitespace-nowrap shrink-0" style={{color: isAvoirItem ? '#dc2626' : couleur}}>
-                        {isAvoirItem ? `-${formatMoney(Math.abs(getDevisTTC(d)))}` : formatMoney(getDevisTTC(d))}
-                      </p>
-                    )}
-                  </div>
-                  {/* Row 1: Numero (small, muted) + badges */}
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-0.5 sm:gap-1.5">
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      {isAvoirItem ? <RotateCcw size={13} className="text-red-500 shrink-0" /> : isSituationItem ? <BarChart3 size={13} className="text-orange-500 shrink-0" /> : <span className={`text-xs shrink-0 ${d.type === 'facture' ? 'text-violet-500' : textMuted}`}>{d.type === 'facture' ? '📄' : '📋'}</span>}
-                      <p className={`text-xs truncate ${isDark ? 'text-slate-500' : 'text-gray-500'}`}>{cleanNumero(d.numero)}</p>
-                    </div>
-                    <div className="flex items-center gap-1 flex-wrap">
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isDark ? `${statusColor.darkBg} ${statusColor.darkText}` : `${statusColor.bg} ${statusColor.text}`}`}>{statusLabel}</span>
-                      {isAvoirItem && <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isDark ? 'bg-red-900/50 text-red-300' : 'bg-red-100 text-red-700'}`}>Avoir</span>}
-                      {d.facture_type === 'situation' && <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isDark ? 'bg-orange-900/50 text-orange-300' : 'bg-orange-100 text-orange-700'}`}>Situation{d.situation_numero ? ` n°${d.situation_numero}` : ''}</span>}
-                      {hasAcompte && <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isDark ? 'bg-blue-900/50 text-blue-300' : 'bg-blue-100 text-blue-700'}`}>Acompte{d.acompte_pct ? ` ${d.acompte_pct}%` : ''}</span>}
-                      {d.facture_type === 'acompte' && <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isDark ? 'bg-purple-900/50 text-purple-300' : 'bg-purple-100 text-purple-700'}`}>Acompte{d.acompte_pct ? ` ${d.acompte_pct}%` : ''}</span>}
-                      {d.facture_type === 'solde' && <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isDark ? 'bg-emerald-900/50 text-emerald-300' : 'bg-emerald-100 text-emerald-700'}`}>Solde</span>}
-                      {d.is_avenant && <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isDark ? 'bg-orange-900/50 text-orange-300' : 'bg-orange-100 text-orange-700'}`}>AV{d.avenant_numero}</span>}
-                      {isExpired(d) && <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isDark ? 'bg-red-900/50 text-red-300' : 'bg-red-200 text-red-700'}`}>Expiré</span>}
-                      {d.statut === 'brouillon' && (isOrphan || isNameless) && (
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isDark ? 'bg-amber-900/50 text-amber-300' : 'bg-amber-100 text-amber-700'}`}>Incomplet</span>
-                      )}
-                      {(() => {
-                        const docPending = relances.getDocumentPending(d.id);
-                        if (!docPending) return null;
-                        const stepLabel = docPending.nextStep?.step?.name || `J+${docPending.nextStep?.step?.delay || '?'}`;
-                        return (
-                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium inline-flex items-center gap-0.5 ${
-                            docPending.nextStep?.isDue
-                              ? (isDark ? 'bg-orange-900/50 text-orange-300' : 'bg-orange-100 text-orange-700')
-                              : (isDark ? 'bg-sky-900/50 text-sky-300' : 'bg-sky-100 text-sky-700')
-                          }`}>
-                            <BellRing size={9} />
-                            {docPending.nextStep?.isDue ? stepLabel : `Auto ${stepLabel}`}
-                          </span>
-                        );
-                      })()}
-                      {statutVu === 'envoye' && (() => {
-                        const sentDate = d.updated_at || d.date;
-                        const daysSent = Math.floor((Date.now() - new Date(sentDate)) / 86400000);
-                        if (daysSent <= 7) return null;
-                        return (
-                          <span className="text-[10px] text-amber-500 flex items-center gap-0.5">
-                            <Clock size={10} /> Relance J+{daysSent}
-                          </span>
-                        );
-                      })()}
-                    </div>
-                  </div>
-                  {/* Row 2: Chantier · Date · Follow-up */}
-                  <div className={`text-xs ${textMuted} truncate mt-0.5 flex items-center gap-1 flex-wrap`}>
-                    {chantier && (
-                      <>
-                        <span className={`italic truncate max-w-[120px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{chantier.nom}</span>
-                        <span>·</span>
-                      </>
-                    )}
-                    <span>{new Date(d.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</span>
-                    {followUp && (
-                      <>
-                        <span>·</span>
-                        <span className={`text-[10px] ${followUp.cls}`}>{followUp.text}</span>
-                      </>
-                    )}
-                  </div>
-                </div>
-
-                {/* Right: Action buttons */}
-                <div className="flex items-center gap-1.5 flex-shrink-0 mt-1">
-                  {d.signature_token && (
-                    <button onClick={(e) => {
-                      e.stopPropagation();
-                      const url = urlPublique(`/devis/signer/${d.signature_token}`);
-                      navigator.clipboard?.writeText(url).then(() => showToast('Lien copié !', 'success')).catch(() => showToast('Copie échouée', 'error'));
-                    }} className={`p-1.5 rounded-lg transition-all ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`} title="Copier le lien de signature">
-                      <Link2 size={13} className={isDark ? 'text-slate-500' : 'text-slate-400'} />
-                    </button>
-                  )}
-                  {qa ? (
-                    <button onClick={qa.fn} className={`px-2.5 py-1.5 rounded-lg text-[11px] font-semibold flex items-center gap-1 min-h-[32px] transition-all ${qa.cls}`} style={qa.style}>
-                      <qa.Icon size={13} />
-                      <span className="hidden sm:inline">{qa.label}</span>
-                    </button>
-                  ) : d.statut === 'payee' ? (
-                    <CheckCircle size={16} className="text-emerald-500" />
-                  ) : (
-                    <button onClick={(e) => { e.stopPropagation(); previewPDF(d); }} className={`p-1.5 rounded-lg transition-all ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`} title="Aperçu PDF">
-                      <Eye size={14} className={isDark ? 'text-slate-500' : 'text-slate-400'} />
-                    </button>
-                  )}
-                </div>
-              </div>
-              </div>
+            <div key={d.id} className="rounded-2xl border border-bord bg-surface shadow-e1 overflow-hidden">
+              <LigneListe
+                onClick={ouvrir}
+                aria-label={`Ouvrir ${d.numero || (d.type === 'facture' ? 'la facture' : 'le devis')}`}
+                titre={(isOrphan || isNameless) ? <span className="text-alerte-texte">{isOrphan ? 'Aucun client' : 'Client sans nom'}</span> : clientName}
+                montant={montantCarte}
+                meta={meta}
+                pastille={<PastilleStatut genre={genrePastille} statut={statutPastille} />}
+                pied={qa || urgence ? (
+                  <>
+                    <span className={`text-sm font-medium truncate ${urgence?.ton || ''}`}>{urgence?.texte || ''}</span>
+                    {qa ? (
+                      <Bouton taille="compacte" variante="secondaire" icone={qa.Icon} onClick={qa.fn} className="flex-shrink-0">{qa.label}</Bouton>
+                    ) : (isOrphan || isNameless) ? (
+                      <Bouton taille="compacte" variante="secondaire" onClick={() => setAssigningClientDevisId(d.id)} className="flex-shrink-0">Assigner</Bouton>
+                    ) : null}
+                  </>
+                ) : null}
+              />
             </div>
           );
         })}</div>

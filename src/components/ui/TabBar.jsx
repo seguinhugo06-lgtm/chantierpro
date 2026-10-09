@@ -57,7 +57,7 @@ export default function TabBar({ tabs = [], activeTab, onTabChange, maxVisible =
   }
 
   return (
-    <div className="relative" role="tablist" aria-label="Navigation par onglets">
+    <div className="relative" role="tablist" aria-label="Navigation par onglets" data-ui="Onglets">
       <div className="flex items-center gap-1 border-b border-bord">
         {/* Les onglets défilent si l'écran est trop étroit ; le bouton « … » reste toujours visible. */}
         <div ref={rangeeRef} className="flex items-center gap-5 sm:gap-6 min-w-0 flex-1 overflow-x-auto scrollbar-hide">

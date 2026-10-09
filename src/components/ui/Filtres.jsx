@@ -51,7 +51,7 @@ const normaliser = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '
 export function ChampRecherche({ valeur, onChange, placeholder = 'Rechercher…', ariaLabel, isDark, compact = false, className = '' }) {
   const t = theme(isDark);
   return (
-    <div className={`relative min-w-0 ${className}`}>
+    <div data-ui="ChampRecherche" className={`relative min-w-0 ${className}`}>
       <Search size={17} aria-hidden="true" className={`absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none ${t.texteDoux}`} />
       <input
         type="text"
@@ -89,6 +89,7 @@ export const BoutonVolet = forwardRef(function BoutonVolet(
       ref={ref}
       type="button"
       onClick={onClick}
+      data-ui="BoutonVolet"
       aria-haspopup="dialog"
       aria-expanded={ouvert}
       aria-label={`${libelle}${valeur ? ` : ${valeur}` : ''}${compte ? ` (${compte} actif${compte > 1 ? 's' : ''})` : ''}`}
@@ -302,7 +303,7 @@ export function PucesActives({ puces, onToutEffacer, isDark }) {
   const t = theme(isDark);
   if (!puces?.length) return null;
   return (
-    <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide -mx-3 px-3 sm:mx-0 sm:px-0 sm:flex-wrap" aria-label="Filtres actifs">
+    <div data-ui="PucesActives" className="flex items-center gap-2 overflow-x-auto scrollbar-hide -mx-3 px-3 sm:mx-0 sm:px-0 sm:flex-wrap" aria-label="Filtres actifs">
       {puces.map((p) => (
         <button
           key={p.cle}
@@ -338,7 +339,7 @@ export function SegmentDefilant({ options, valeur, onChange, ariaLabel, isDark }
     }
   }, [valeur]);
   return (
-    <div ref={rangeeRef} role="group" aria-label={ariaLabel} className="flex gap-2 overflow-x-auto scrollbar-hide -mx-3 px-3 sm:mx-0 sm:px-0 sm:flex-wrap">
+    <div ref={rangeeRef} data-ui="SegmentDefilant" role="group" aria-label={ariaLabel} className="flex gap-2 overflow-x-auto scrollbar-hide -mx-3 px-3 sm:mx-0 sm:px-0 sm:flex-wrap">
       {options.map((o) => {
         const oui = o.valeur === valeur;
         const Icone = o.icone;
