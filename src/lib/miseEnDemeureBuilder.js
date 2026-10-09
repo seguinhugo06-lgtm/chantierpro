@@ -8,7 +8,7 @@
  * @module miseEnDemeureBuilder
  */
 
-import { calculatePenalties, DEFAULT_PENALTY_RATE } from './relanceUtils';
+import { calculatePenalties, DEFAULT_PENALTY_RATE, estClientPro } from './relanceUtils';
 
 /**
  * Format a number as euros (French locale)
@@ -66,12 +66,10 @@ export function buildMiseEnDemeureHtml({
   // Pénalités et somme réclamée sur le RESTE dû : après un acompte, on réclamait le TTC entier.
   const dejaRegle = Math.min(montantTTC, Math.max(0, Number(doc.montant_paye) || 0));
   const resteDu = Math.round((montantTTC - dejaRegle) * 100) / 100;
-  // Pénalités de l'art. L441-10 et indemnité de 40 € : entre professionnels seulement. À un
-  // particulier, on réclame la somme due, qui produit intérêts au taux légal à compter de la mise en
-  // demeure (art. 1231-6 C. civ.). Sans catégorie connue ni entreprise, le client est traité en
-  // particulier : mieux vaut ne pas réclamer une pénalité due que réclamer une pénalité indue.
-  const CATEGORIES_PRO = ['professionnel', 'architecte', 'promoteur', 'syndic'];
-  const estPro = CATEGORIES_PRO.includes(String(client?.categorie || '').toLowerCase()) || !!client?.entreprise;
+  // Pénalités de l'art. L441-10 et indemnité de 40 € : entre professionnels seulement (estClientPro).
+  // À un particulier, on réclame la somme due, qui produit intérêts au taux légal à compter de la mise
+  // en demeure (art. 1231-6 C. civ.).
+  const estPro = estClientPro(client);
   const penalties = estPro
     ? calculatePenalties(resteDu, joursRetard, penaltyRate)
     : { penalites: 0, indemnite: 0, totalDu: resteDu };
@@ -378,9 +376,7 @@ ${estPro ? `
 
 <p class="body-text">
   <strong>À défaut de règlement dans le délai imparti de huit (8) jours</strong>,
-  nous serons contraints de transmettre ce dossier à notre service contentieux
-  et/ou à un cabinet de recouvrement, ce qui entraînera des frais supplémentaires
-  à votre charge.
+  nous serons contraints d'engager une procédure de recouvrement.
 </p>
 
 <p class="body-text">

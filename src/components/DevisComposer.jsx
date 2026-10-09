@@ -829,7 +829,7 @@ export default function DevisComposer({
                     <label className={`block text-[11px] font-semibold uppercase tracking-wide mb-1.5 ${textMuted}`}>Conditions de règlement</label>
                     <select value={form.conditions} onChange={e => setForm(p => ({ ...p, conditions: e.target.value }))}
                       className={`w-full px-3 h-10 rounded-xl border text-sm ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`}>
-                      <option value="">Standard — à réception</option>
+                      <option value="">Standard — délai de vos paramètres</option>
                       <option value="Paiement à réception de facture">À réception de facture</option>
                       <option value="Paiement à 30 jours">Paiement à 30 jours</option>
                       <option value="Acompte à la commande, solde à la livraison">Acompte + solde à la livraison</option>

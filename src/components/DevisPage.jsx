@@ -49,12 +49,12 @@ import { mapError } from '../lib/errorMapper';
 import { formatMoney as fmtMoney, filterValidLignes, formatClientName } from '../lib/formatters';
 import { normalizeNumero } from '../lib/devis-utils';
 import { calcConversion, formatConversion } from '../lib/statsUtils';
-import { apresPaiement, statutFacture, resteAPayer, dejaPaye, echeance } from '../lib/paiementsFacture';
+import { apresPaiement, statutFacture, resteAPayer, dejaPaye, echeance, dateEcheance } from '../lib/paiementsFacture';
 import { statut as libelleStatut } from '../lib/statuts';
 import { pourcent, blocConditionsPaiement, CONDITIONS_PAIEMENT } from '../lib/formatDocument';
 import { totauxDocument, lignesTotauxHtml, lignesAcompteHtml, calculerTotaux } from '../lib/totauxDocument';
 import { lignesFactureAcompte, lignesFactureSolde } from '../lib/facturation';
-import { DEFAULT_PENALTY_RATE } from '../lib/relanceUtils';
+import { DEFAULT_PENALTY_RATE, estClientPro } from '../lib/relanceUtils';
 import { useDebounce } from '../hooks/useDebounce';
 import { useDevisModals } from '../hooks/useDevisModals';
 import { isFacturXCompliant } from '../lib/facturx';
@@ -1228,7 +1228,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       chantier_id: selected.chantier_id,
       date: new Date().toISOString().split('T')[0],
       statut: 'envoye',
-      date_echeance: new Date(Date.now() + (entreprise?.delaiPaiement || 30) * 86400000).toISOString().split('T')[0],
+      date_echeance: dateEcheance(new Date(), { conditionsPaiement: selected.conditionsPaiement || selected.conditions, delaiJours: entreprise?.delaiPaiement }),
+      conditions: selected.conditions, conditionsPaiement: selected.conditionsPaiement,
       tvaRate: selected.tvaRate || entreprise?.tvaDefaut || 20,
       tvaParTaux: montants.tvaParTaux,
       tvaDetails: montants.tvaParTaux,
@@ -1327,7 +1328,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       id: crypto.randomUUID(), numero: await generateNumero('facture'), type: 'facture', facture_type: 'acompte',
       devis_source_id: selected.id, client_id: selected.client_id, chantier_id: selected.chantier_id,
       date: new Date().toISOString().split('T')[0], statut: 'envoye',
-      date_echeance: new Date(Date.now() + (entreprise?.delaiPaiement || 30) * 86400000).toISOString().split('T')[0],
+      date_echeance: dateEcheance(new Date(), { conditionsPaiement: selected.conditionsPaiement || selected.conditions, delaiJours: entreprise?.delaiPaiement }),
+      conditions: selected.conditions, conditionsPaiement: selected.conditionsPaiement,
       tvaRate: selected.tvaRate || entreprise?.tvaDefaut || 20,
       tvaParTaux, tvaDetails: tvaParTaux,
       lignes: lignesAcompte,
@@ -1384,7 +1386,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       id: crypto.randomUUID(), numero: await generateNumero('facture'), type: 'facture', facture_type: hasAcomptes ? 'solde' : 'totale',
       devis_source_id: selected.id, acompte_facture_id: allAcomptes[0]?.id || null, client_id: selected.client_id, chantier_id: selected.chantier_id,
       date: new Date().toISOString().split('T')[0], statut: 'envoye',
-      date_echeance: new Date(Date.now() + (entreprise?.delaiPaiement || 30) * 86400000).toISOString().split('T')[0],
+      date_echeance: dateEcheance(new Date(), { conditionsPaiement: selected.conditionsPaiement || selected.conditions, delaiJours: entreprise?.delaiPaiement }),
+      conditions: selected.conditions, conditionsPaiement: selected.conditionsPaiement,
       tvaRate: selected.tvaRate || entreprise?.tvaDefaut || 20,
       tvaParTaux, tvaDetails: tvaParTaux,
       lignes, total_ht: montantSoldeHT, tva, total_ttc: ttc
@@ -3151,7 +3154,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         })()}
 
         {/* Pénalités de retard */}
-        {selected.type === 'facture' && !factureSoldee && (() => {
+        {selected.type === 'facture' && !factureSoldee && estClientPro(clients.find(c => c.id === selected.client_id)) && (() => {
           const pen = calculatePenalites(selected);
           if (!pen) return null;
           return (
@@ -3185,7 +3188,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                     onClick={() => {
                       const client = clients.find(c => c.id === selected.client_id);
                       printMiseEnDemeure({
-                        doc: { ...selected, montant_paye: dejaPaye(selected, paiements), date_echeance: selected.date_echeance || echeance(selected)?.toISOString().slice(0, 10) },
+                        doc: { ...selected, montant_paye: dejaPaye(selected, paiements), date_echeance: selected.date_echeance || dateEcheance(selected.date, { conditionsPaiement: selected.conditionsPaiement || selected.conditions, delaiJours: entreprise?.delaiPaiement }) },
                         penaltyRate: Number(entreprise?.tauxPenalites) || undefined,
                         client,
                         entreprise,
@@ -3608,7 +3611,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                 </div>
               ) : (
                 <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 mb-4 text-xs text-slate-600">
-                  Acompte de {acomptePct}% · {formatMoney(selected.total_ttc * acomptePct / 100)}
+                  Acompte de {pourcent(acomptePct)} · {formatMoney(calculerTotaux(lignesFactureAcompte(selected, acomptePct, { tauxDefaut: entreprise?.tvaDefaut || 20 })).totalTTC)}
                 </div>
               )}
               <div className="flex gap-3">

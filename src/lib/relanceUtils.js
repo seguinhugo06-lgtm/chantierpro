@@ -61,6 +61,16 @@ export const DEFAULT_PENALTY_RATE = 12.4;
 // Fixed recovery indemnity (Art. D441-5 Code de commerce)
 export const RECOVERY_INDEMNITY = 40;
 
+/**
+ * Client professionnel ? Les pénalités de l'art. L441-10 et l'indemnité de 40 € ne s'appliquent
+ * qu'entre professionnels. Sans catégorie connue ni entreprise, le client est traité en particulier :
+ * mieux vaut ne pas réclamer une pénalité due que réclamer une pénalité indue.
+ */
+export function estClientPro(client) {
+  const categorie = String(client?.categorie || '').toLowerCase();
+  return ['professionnel', 'architecte', 'promoteur', 'syndic'].includes(categorie) || !!client?.entreprise;
+}
+
 // Default config structure
 export const DEFAULT_RELANCE_CONFIG = {
   enabled: false,
