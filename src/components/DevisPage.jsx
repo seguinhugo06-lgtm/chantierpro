@@ -1,9 +1,10 @@
 import React, { useState, useRef, useEffect, useMemo, Suspense, lazy } from 'react';
-import { Plus, ArrowLeft, Download, Trash2, Send, Mail, MessageCircle, Edit3, Check, X, FileText, Receipt, Clock, Search, ChevronRight, ChevronUp, ChevronDown, Star, Filter, Eye, Pen, CreditCard, Banknote, CheckCircle, AlertCircle, AlertTriangle, XCircle, Building2, Copy, TrendingUp, QrCode, Sparkles, PenTool, MoreVertical, Loader2, Link2, Mic, Zap, ArrowUpDown, Bell, RotateCcw, BarChart3, BellRing, ClipboardList, Circle, LayoutGrid, List, Kanban, Droplets, Paintbrush, SlidersHorizontal } from 'lucide-react';
+import { Plus, ArrowLeft, Download, Trash2, Send, Mail, MessageCircle, Edit3, Check, X, FileText, Receipt, Clock, Search, ChevronRight, ChevronUp, ChevronDown, Star, Eye, Pen, CreditCard, CheckCircle, AlertTriangle, XCircle, Building2, Copy, TrendingUp, Sparkles, PenTool, MoreVertical, Loader2, Link2, Zap, ArrowUpDown, Bell, RotateCcw, BarChart3, BellRing, ClipboardList, LayoutGrid, List, Kanban, Droplets, Paintbrush } from 'lucide-react';
 import supabase, { isDemo } from '../supabaseClient';
 import { useSubscriptionStore, PLANS } from '../stores/subscriptionStore';
 const PipelineKanban = lazy(() => import('./pipeline/PipelineKanban'));
 import { DEVIS_STATUS_COLORS, DEVIS_STATUS_LABELS } from '../lib/constants';
+import { ChampRecherche, BoutonVolet, Volet, GroupeChoix, ListeChoix, PucesActives, SegmentDefilant } from './ui/Filtres';
 /**
  * Éditeurs et modales chargés à la demande.
  *
@@ -207,9 +208,11 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   const [selected, setSelected] = useState(selectedDevis || null);
   const [filter, setFilter] = useState('all');
   const [periodFilter, setPeriodFilter] = useState('all'); // B7: all, month, quarter, year
-  // Téléphone : période, tri, vue, export, client et chantier repliés derrière « Filtres » —
-  // dépliés, ils repoussaient le premier devis sous huit rangées d'outils (recette du 9 oct.).
-  const [filtresOuverts, setFiltresOuverts] = useState(false);
+  // Recherche / Filtres / Trier : boîte à outils commune (ui/Filtres.jsx). Période, client et chantier
+  // dans le volet « Filtres » ; tri, vue et export dans « Trier et afficher » (recette du 9 oct.).
+  const [volet, setVolet] = useState(null); // null | 'filtres' | 'tri'
+  const boutonFiltresRef = useRef(null);
+  const boutonTriRef = useRef(null);
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 300);
   const [sortBy, setSortBy] = useState('recent'); // recent, status, amount
@@ -5025,161 +5028,84 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         </div>
       )}
 
-      {/* === SEARCH + FILTERS === */}
-      <div className="space-y-2">
-        {/* Row 1: Search + Period filters + Sort + Export */}
-        {/* flex-wrap : sur téléphone la ligne ne tient pas, et le sélecteur de vue était coupé. */}
-        <div className="flex flex-wrap gap-2 items-center">
-          <div className="relative flex-1 min-w-0 sm:max-w-[200px]">
-            <Search size={14} className={`absolute left-3 top-1/2 -translate-y-1/2 ${textMuted}`} />
-            <input placeholder="Rechercher..." aria-label="Rechercher un document" value={search} onChange={e => setSearch(e.target.value)} className={`w-full pl-8 pr-3 py-2.5 sm:py-1.5 border rounded-xl text-sm ${inputBg}`} />
-          </div>
-          {(() => {
-            const actifs = (periodFilter !== 'all') + !!clientFilter + !!chantierFilter + (sortBy !== 'recent');
-            return (
-              <button type="button" onClick={() => setFiltresOuverts(o => !o)} aria-expanded={filtresOuverts} aria-controls="devis-filtres"
-                className={`sm:hidden flex-shrink-0 inline-flex items-center gap-1.5 px-3 h-11 rounded-xl border text-sm font-medium ${isDark ? 'border-slate-600 text-slate-200' : 'border-slate-200 text-slate-700'}`}>
-                <SlidersHorizontal size={16} /> Filtres
-                {actifs > 0 && <span className="min-w-[18px] h-[18px] px-1 rounded-full text-[11px] font-bold text-white flex items-center justify-center" style={{ background: couleur }}>{actifs}</span>}
-              </button>
-            );
-          })()}
-          <div id="devis-filtres" className={`${filtresOuverts ? 'flex' : 'hidden'} w-full flex-wrap items-center gap-2 sm:contents`}>
-          <div role="group" aria-label="Filtrer par période" className="flex gap-1">
-            {[['all', 'Tout'], ['month', 'Ce mois'], ['quarter', 'Trim.'], ['year', 'Année']].map(([k, v]) => (
-              <button key={k} onClick={() => setPeriodFilter(k)} aria-pressed={periodFilter === k} className={`px-3 sm:px-2 py-2 sm:py-1 rounded-lg text-xs whitespace-nowrap ${periodFilter === k ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`} style={periodFilter === k ? {background: couleur} : {}}>
-                {v}
-              </button>
-            ))}
-          </div>
-          <div className="ml-auto flex items-center gap-2 flex-shrink-0">
-          {/* View mode toggle */}
-          <div className={`flex flex-shrink-0 rounded-lg border overflow-hidden ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
-            <button
-              onClick={() => setViewMode('cards')}
-              className={`p-1.5 transition-colors ${viewMode === 'cards' ? (isDark ? 'bg-slate-600 text-white' : 'bg-slate-200 text-slate-800') : (isDark ? 'bg-slate-700 text-slate-400 hover:text-slate-300' : 'bg-white text-slate-400 hover:text-slate-600')}`}
-              title="Vue cartes"
-              aria-label="Vue cartes"
-              aria-pressed={viewMode === 'cards'}
-            >
-              <LayoutGrid size={14} />
-            </button>
-            <button
-              onClick={() => setViewMode('table')}
-              className={`p-1.5 transition-colors border-l ${viewMode === 'table' ? (isDark ? 'bg-slate-600 text-white border-slate-500' : 'bg-slate-200 text-slate-800 border-slate-300') : (isDark ? 'bg-slate-700 text-slate-400 hover:text-slate-300 border-slate-600' : 'bg-white text-slate-400 hover:text-slate-600 border-slate-200')}`}
-              title="Vue tableau"
-              aria-label="Vue tableau"
-              aria-pressed={viewMode === 'table'}
-            >
-              <List size={14} />
-            </button>
-            <button
-              onClick={() => setViewMode('pipeline')}
-              className={`p-1.5 transition-colors border-l ${viewMode === 'pipeline' ? (isDark ? 'bg-slate-600 text-white border-slate-500' : 'bg-slate-200 text-slate-800 border-slate-300') : (isDark ? 'bg-slate-700 text-slate-400 hover:text-slate-300 border-slate-600' : 'bg-white text-slate-400 hover:text-slate-600 border-slate-200')}`}
-              title="Vue pipeline"
-              aria-label="Vue pipeline"
-              aria-pressed={viewMode === 'pipeline'}
-            >
-              <Kanban size={14} />
-            </button>
-          </div>
-          {/* Sort */}
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value)}
-            className={`px-2 py-1 rounded-lg text-xs border min-w-[75px] ${isDark ? 'bg-slate-700 border-slate-600 text-slate-300' : 'bg-white border-slate-200 text-slate-600'}`}
-          >
-            <option value="recent">Récent</option>
-            <option value="status">Statut</option>
-            <option value="amount">Montant</option>
-          </select>
-          {/* Export dropdown */}
-          {filtered.length > 0 && (
-            <div className="relative">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  const menu = e.currentTarget.nextElementSibling;
-                  menu.classList.toggle('hidden');
-                }}
-                className={`p-1.5 rounded-lg transition-colors ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}
-                aria-label="Exporter"
-                title="Exporter"
-              >
-                <Download size={14} />
-              </button>
-              <div className={`hidden absolute right-0 mt-1 w-36 rounded-xl border shadow-lg z-50 overflow-hidden ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
-                <button onClick={() => exportCSV(filtered)} className={`w-full px-3 py-2 text-xs text-left flex items-center gap-2 ${isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-50 text-slate-600'}`}>
-                  <Download size={12} /> CSV
-                </button>
-                <button onClick={() => batchExportPDF(filtered)} disabled={actionLoading === 'batch'} className={`w-full px-3 py-2 text-xs text-left flex items-center gap-2 border-t ${isDark ? 'hover:bg-slate-700 text-slate-300 border-slate-700' : 'hover:bg-slate-50 text-slate-600 border-slate-100'}`}>
-                  {actionLoading === 'batch' ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />} PDF ({filtered.length})
-                </button>
-              </div>
+      {/* === RECHERCHE, FILTRES, TRI — boîte à outils commune (ui/Filtres.jsx) === */}
+      {(() => {
+        const PERIODES = [['all', 'Tout'], ['month', 'Ce mois'], ['quarter', 'Ce trimestre'], ['year', 'Cette année']];
+        const TRIS = [['recent', 'Plus récents'], ['status', 'Par statut'], ['amount', 'Par montant']];
+        const VUES = [['cards', 'Cartes', LayoutGrid], ['table', 'Tableau', List], ['pipeline', 'Colonnes', Kanban]];
+        const nomClient = (c) => (c ? (c.prenom ? `${c.prenom} ${c.nom}` : c.nom) : '');
+        const clientChoisi = clients.find(c => c.id === clientFilter);
+        const chantierChoisi = chantiers.find(c => c.id === chantierFilter);
+        const nbFiltres = (periodFilter !== 'all') + !!clientFilter + !!chantierFilter;
+        const toutEffacer = () => { setPeriodFilter('all'); setClientFilter(''); setChantierFilter(''); setSelectedIds(new Set()); };
+        const puces = [
+          periodFilter !== 'all' && { cle: 'periode', libelle: PERIODES.find(x => x[0] === periodFilter)?.[1], onRetirer: () => setPeriodFilter('all') },
+          clientFilter && { cle: 'client', libelle: nomClient(clientChoisi) || 'Client', onRetirer: () => { setClientFilter(''); setSelectedIds(new Set()); } },
+          chantierFilter && { cle: 'chantier', libelle: chantierChoisi?.nom || 'Chantier', onRetirer: () => { setChantierFilter(''); setSelectedIds(new Set()); } },
+        ].filter(Boolean);
+        const TYPES = [
+          ['all', 'Tous'], ['devis', 'Devis'], ['factures', 'Factures'], ['acomptes', 'Acomptes', CreditCard], ['situations', 'Situations', BarChart3],
+          ['avoirs', 'Avoirs', RotateCcw], ['attente', 'En attente'], ['a_traiter', 'À traiter', Bell],
+          ...(relances.isEnabled && relances.counts.total > 0 ? [['en_relance', 'En relance', BellRing]] : []),
+        ];
+        const typesOptions = TYPES
+          .map(([valeur, libelle, icone]) => ({ valeur, libelle, icone, compte: valeur === 'en_relance' ? relances.counts.total : (filterCounts[valeur] || 0) }))
+          .filter(o => !(o.valeur === 'acomptes' && o.compte === 0));
+        const boutonSecondaire = `h-11 px-4 rounded-xl text-sm font-medium transition-colors disabled:opacity-40 ${isDark ? 'text-slate-300 hover:bg-slate-700' : 'text-slate-600 hover:bg-slate-100'}`;
+        return (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <ChampRecherche valeur={search} onChange={setSearch} placeholder="Rechercher…" ariaLabel="Rechercher un document" isDark={isDark} couleur={couleur} className="flex-1" />
+              <BoutonVolet ref={boutonFiltresRef} libelle="Filtres" compte={nbFiltres} ouvert={volet === 'filtres'} onClick={() => setVolet(v => (v === 'filtres' ? null : 'filtres'))} isDark={isDark} couleur={couleur} libelleCacheTelephone />
+              <BoutonVolet ref={boutonTriRef} icone={ArrowUpDown} libelle="Trier" valeur={TRIS.find(x => x[0] === sortBy)?.[1]} ouvert={volet === 'tri'} onClick={() => setVolet(v => (v === 'tri' ? null : 'tri'))} isDark={isDark} couleur={couleur} libelleCacheTelephone />
             </div>
-          )}
+            <SegmentDefilant ariaLabel="Type de document" options={typesOptions} valeur={filter} onChange={setFilter} isDark={isDark} couleur={couleur} />
+            <PucesActives puces={puces} onToutEffacer={toutEffacer} isDark={isDark} couleur={couleur} />
+
+            <Volet
+              ouvert={volet === 'filtres'} onFermer={() => setVolet(null)} titre="Filtres" ancreRef={boutonFiltresRef} isDark={isDark}
+              pied={(
+                <>
+                  <button type="button" onClick={toutEffacer} disabled={!nbFiltres} className={boutonSecondaire}>Tout effacer</button>
+                  <button type="button" onClick={() => setVolet(null)} className="flex-1 h-11 rounded-xl text-white text-sm font-bold shadow-sm" style={{ background: couleur }}>
+                    Voir {filtered.length} document{filtered.length > 1 ? 's' : ''}
+                  </button>
+                </>
+              )}
+            >
+              <GroupeChoix titre="Période" options={PERIODES.map(([valeur, libelle]) => ({ valeur, libelle }))} valeur={periodFilter} onChange={setPeriodFilter} isDark={isDark} couleur={couleur} />
+              <ListeChoix
+                titre="Client" placeholder="Rechercher un client" isDark={isDark} couleur={couleur}
+                options={[{ valeur: '', libelle: 'Tous les clients', toujours: true }, ...clients.filter(c => c.nom).sort((a, b) => nomClient(a).localeCompare(nomClient(b), 'fr')).map(c => ({ valeur: c.id, libelle: nomClient(c), detail: c.entreprise || undefined }))]}
+                valeur={clientFilter} onChange={(v) => { setClientFilter(v); setSelectedIds(new Set()); }}
+              />
+              <ListeChoix
+                titre="Chantier" placeholder="Rechercher un chantier" isDark={isDark} couleur={couleur}
+                options={[{ valeur: '', libelle: 'Tous les chantiers', toujours: true }, ...[...chantiers].sort((a, b) => (a.nom || '').localeCompare(b.nom || '', 'fr')).map(c => ({ valeur: c.id, libelle: c.nom || 'Sans nom', detail: c.adresse || undefined }))]}
+                valeur={chantierFilter} onChange={(v) => { setChantierFilter(v); setSelectedIds(new Set()); }}
+              />
+            </Volet>
+
+            <Volet ouvert={volet === 'tri'} onFermer={() => setVolet(null)} titre="Trier et afficher" ancreRef={boutonTriRef} largeur={340} isDark={isDark}>
+              <ListeChoix titre="Trier par" rechercheAuDela={99} options={TRIS.map(([valeur, libelle]) => ({ valeur, libelle }))} valeur={sortBy} onChange={(v) => { setSortBy(v); setVolet(null); }} isDark={isDark} couleur={couleur} />
+              <GroupeChoix titre="Affichage" options={VUES.map(([valeur, libelle, icone]) => ({ valeur, libelle, icone }))} valeur={viewMode} onChange={(v) => { setViewMode(v); setVolet(null); }} isDark={isDark} couleur={couleur} />
+              {filtered.length > 0 && (
+                <fieldset>
+                  <legend className={`text-[11px] font-semibold uppercase tracking-wider mb-2.5 ${textMuted}`}>Exporter les {filtered.length} documents affichés</legend>
+                  <div className="flex flex-wrap gap-2">
+                    <button type="button" onClick={() => { exportCSV(filtered); setVolet(null); }} className={`min-h-[40px] inline-flex items-center gap-2 px-4 rounded-full border text-sm font-medium ${isDark ? 'border-slate-600 text-slate-200 hover:bg-slate-700' : 'border-slate-200 text-slate-700 hover:bg-slate-50'}`}>
+                      <Download size={15} /> Tableur (CSV)
+                    </button>
+                    <button type="button" onClick={() => { batchExportPDF(filtered); setVolet(null); }} disabled={actionLoading === 'batch'} className={`min-h-[40px] inline-flex items-center gap-2 px-4 rounded-full border text-sm font-medium disabled:opacity-50 ${isDark ? 'border-slate-600 text-slate-200 hover:bg-slate-700' : 'border-slate-200 text-slate-700 hover:bg-slate-50'}`}>
+                      {actionLoading === 'batch' ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} />} PDF
+                    </button>
+                  </div>
+                </fieldset>
+              )}
+            </Volet>
           </div>
-          </div>
-        </div>
-        {/* Row 1.5: Client & Chantier filters (repliés sur téléphone avec les autres filtres) */}
-        <div className={`${filtresOuverts ? 'flex' : 'hidden'} sm:flex gap-2 items-center flex-wrap`}>
-          <select value={clientFilter} onChange={e => { setClientFilter(e.target.value); setSelectedIds(new Set()); }} className={`px-2 py-1 rounded-lg text-xs border max-w-[160px] ${isDark ? 'bg-slate-700 border-slate-600 text-slate-300' : 'bg-white border-slate-200 text-slate-600'}`}>
-            <option value="">Tous les clients</option>
-            {clients.filter(c => c.nom).sort((a, b) => (a.nom || '').localeCompare(b.nom || '', 'fr')).map(c => (
-              <option key={c.id} value={c.id}>{c.prenom ? `${c.prenom} ${c.nom}` : c.nom}</option>
-            ))}
-          </select>
-          <select value={chantierFilter} onChange={e => { setChantierFilter(e.target.value); setSelectedIds(new Set()); }} className={`px-2 py-1 rounded-lg text-xs border max-w-[160px] ${isDark ? 'bg-slate-700 border-slate-600 text-slate-300' : 'bg-white border-slate-200 text-slate-600'}`}>
-            <option value="">Tous les chantiers</option>
-            {chantiers.sort((a, b) => (a.nom || '').localeCompare(b.nom || '', 'fr')).map(c => (
-              <option key={c.id} value={c.id}>{c.nom}</option>
-            ))}
-          </select>
-          {(clientFilter || chantierFilter) && (
-            <div className="flex gap-1 items-center flex-wrap">
-              {clientFilter && (() => {
-                const cl = clients.find(c => c.id === clientFilter);
-                return (
-                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-700'}`}>
-                    <Building2 size={10} />
-                    {cl ? (cl.prenom ? `${cl.prenom} ${cl.nom}` : cl.nom) : 'Client'}
-                    <button onClick={() => setClientFilter('')} className={`ml-0.5 rounded-full p-0.5 ${isDark ? 'hover:bg-slate-600' : 'hover:bg-slate-200'}`}><X size={10} /></button>
-                  </span>
-                );
-              })()}
-              {chantierFilter && (() => {
-                const ch = chantiers.find(c => c.id === chantierFilter);
-                return (
-                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-700'}`}>
-                    <ClipboardList size={10} />
-                    {ch?.nom || 'Chantier'}
-                    <button onClick={() => setChantierFilter('')} className={`ml-0.5 rounded-full p-0.5 ${isDark ? 'hover:bg-slate-600' : 'hover:bg-slate-200'}`}><X size={10} /></button>
-                  </span>
-                );
-              })()}
-            </div>
-          )}
-        </div>
-        {/* Row 2: Type filter pills */}
-        <div className="flex gap-1 overflow-x-auto pb-0.5 -mx-1 px-1 scrollbar-hide" style={{ WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none' }}>
-          {[['all', 'Tous'], ['devis', 'Devis'], ['factures', 'Factures'], ['acomptes', 'Acomptes'], ['situations', 'Situations'], ['avoirs', 'Avoirs'], ['attente', 'En attente'], ['a_traiter', 'À traiter'], ...(relances.isEnabled && relances.counts.total > 0 ? [['en_relance', 'En relance']] : [])].map(([k, v]) => {
-            const count = k === 'en_relance' ? relances.counts.total : (filterCounts[k] || 0);
-            if (k === 'acomptes' && count === 0) return null;
-            return (
-              <button key={k} onClick={() => setFilter(k)} aria-pressed={filter === k} className={`px-3 sm:px-2.5 py-2 sm:py-1 rounded-lg text-xs whitespace-nowrap flex items-center gap-1 ${filter === k ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`} style={filter === k ? {background: couleur} : {}}>
-                {k === 'acomptes' && <CreditCard size={11} />}
-                {k === 'situations' && <BarChart3 size={11} />}
-                {k === 'avoirs' && <RotateCcw size={11} />}
-                {k === 'a_traiter' && <Bell size={11} />}
-                {k === 'en_relance' && <BellRing size={11} />}
-                {v}
-                {count > 0 && <span className={`text-[10px] font-bold px-1 py-0.5 rounded-full leading-none ${filter === k ? 'bg-white/20' : isDark ? 'bg-slate-600' : 'bg-slate-200'}`}>{count}</span>}
-              </button>
-            );
-          })}
-          <span className={`text-[10px] ${textMuted} self-center ml-1 whitespace-nowrap shrink-0`}>{filtered.length} doc.</span>
-        </div>
-      </div>
+        );
+      })()}
       {filtered.length === 0 ? (
         <div className={`${cardBg} rounded-2xl border overflow-hidden`}>
           {/* Header with gradient */}

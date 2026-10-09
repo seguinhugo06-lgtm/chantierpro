@@ -2,13 +2,14 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
   Plus, ChevronDown, ChevronRight, Calendar, Clock,
   ClipboardList, AlertCircle, CheckCircle2, StickyNote,
-  GripVertical, Mic, MicOff, Archive, X,
+  GripVertical, Mic, MicOff, Archive, X, ArrowUpDown,
 } from 'lucide-react';
 import { useDebounce } from '../../hooks/useDebounce';
 import { useConfirm, useToast } from '../../context/AppContext';
 import TaskItem from './TaskItem';
 import TaskDetail from './TaskDetail';
 import BulkActionBar from './BulkActionBar';
+import { BoutonVolet, Volet, ListeChoix, SegmentDefilant } from '../ui/Filtres';
 import { CATEGORIES, PRIORITIES, PRIORITY_ORDER, SORT_OPTIONS } from './constants';
 import { today, isOverdue, isToday, isFuture, isUndated, getNextOccurrence } from './helpers';
 
@@ -97,6 +98,8 @@ export default function TaskListView({
   const [collapsedSections, setCollapsedSections] = useState({ done: true });
   const [sortBy, setSortBy] = useState('recent');
   const [quickFilter, setQuickFilter] = useState('all');
+  const [triOuvert, setTriOuvert] = useState(false);
+  const boutonTriRef = useRef(null);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [dragOverIndex, setDragOverIndex] = useState(null);
@@ -436,6 +439,9 @@ export default function TaskListView({
     return sorted;
   }, [sortBy]);
 
+  // Pastille « En retard » : compte global, indépendant du raccourci choisi.
+  const nbEnRetard = useMemo(() => memos.filter(m => !m.is_done && m.due_date && m.due_date < today()).length, [memos]);
+
   // ── Sections grouped by status ──
   const sections = useMemo(() => {
     const active = filteredMemos.filter(m => !m.is_done);
@@ -594,45 +600,32 @@ export default function TaskListView({
         )}
       </div>
 
-      {/* Quick time filters */}
-      <div className="flex items-center gap-2 mb-3 flex-wrap">
-        {[
-          { id: 'all', label: 'Tout' },
-          { id: 'today', label: "Aujourd'hui" },
-          { id: 'week', label: 'Cette semaine' },
-          { id: 'overdue', label: 'En retard' },
-        ].map(f => (
-          <button
-            key={f.id}
-            onClick={() => setQuickFilter(f.id)}
-            aria-pressed={quickFilter === f.id}
-            className={`text-xs font-medium px-3 py-1.5 rounded-full border transition-all min-h-[44px] ${
-              quickFilter === f.id
-                ? 'text-white border-transparent'
-                : isDark
-                  ? 'text-slate-300 border-slate-600 hover:border-slate-500'
-                  : 'text-slate-600 border-slate-200 hover:border-slate-300'
-            }`}
-            style={quickFilter === f.id ? { background: couleur, borderColor: couleur } : {}}
-          >
-            {f.label}
-          </button>
-        ))}
+      {/* Échéance (raccourcis) + tri sur une seule rangée — boîte à outils commune (ui/Filtres.jsx) */}
+      <div className="flex items-center gap-2 mb-3">
+        <div className="flex-1 min-w-0">
+          <SegmentDefilant
+            ariaLabel="Échéance des tâches" isDark={isDark} couleur={couleur}
+            options={[
+              { valeur: 'all', libelle: 'Tout' },
+              { valeur: 'today', libelle: "Aujourd'hui" },
+              { valeur: 'week', libelle: 'Cette semaine' },
+              { valeur: 'overdue', libelle: 'En retard', compte: nbEnRetard },
+            ]}
+            valeur={quickFilter} onChange={setQuickFilter}
+          />
+        </div>
+        <BoutonVolet
+          ref={boutonTriRef} icone={ArrowUpDown} libelle="Trier" valeur={SORT_OPTIONS.find(o => o.value === sortBy)?.label}
+          ouvert={triOuvert} onClick={() => setTriOuvert(o => !o)} isDark={isDark} couleur={couleur} libelleCacheTelephone
+        />
       </div>
-
-      {/* Sort control */}
-      <div className="flex items-center justify-end gap-2 mb-3">
-        <select
-          value={sortBy}
-          onChange={(e) => setSortBy(e.target.value)}
-          className={`text-xs px-2 py-1.5 rounded-lg border min-h-[44px] ${tc.input} cursor-pointer`}
-          aria-label="Trier par"
-        >
-          {SORT_OPTIONS.map(s => (
-            <option key={s.value} value={s.value}>{s.label}</option>
-          ))}
-        </select>
-      </div>
+      <Volet ouvert={triOuvert} onFermer={() => setTriOuvert(false)} titre="Trier les tâches" ancreRef={boutonTriRef} largeur={300} isDark={isDark}>
+        <ListeChoix
+          titre="Trier par" rechercheAuDela={99} isDark={isDark} couleur={couleur}
+          options={SORT_OPTIONS.map(o => ({ valeur: o.value, libelle: o.label }))}
+          valeur={sortBy} onChange={(v) => { setSortBy(v); setTriOuvert(false); }}
+        />
+      </Volet>
 
       {/* Sections grouped by status */}
       <div className={`${tc.card} rounded-xl border ${tc.border} p-3 min-h-[300px]`}>

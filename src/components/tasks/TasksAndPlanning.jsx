@@ -43,7 +43,7 @@ export default function TasksAndPlanning({
     // 'agenda' view removed — fallback to calendar
     return raw === 'agenda' ? 'calendar' : raw;
   });
-  const [filters, setFilters] = useState({ search: '', category: '', priority: '', status: '' });
+  const [filters, setFilters] = useState({ search: '', category: '', priority: '', status: '', assignedTo: '' });
   const [selectedMemoId, setSelectedMemoId] = useState(null);
 
   const handleViewChange = (v) => {
@@ -100,7 +100,7 @@ export default function TasksAndPlanning({
       {/* Filters (for list/kanban/gantt/team views) */}
       {(viewMode === 'list' || viewMode === 'kanban' || viewMode === 'gantt' || viewMode === 'team') && (
         <div className="mb-4">
-          <TaskFilters filters={filters} onFiltersChange={setFilters} isDark={isDark} couleur={couleur} />
+          <TaskFilters filters={filters} onFiltersChange={setFilters} equipe={equipe || []} isDark={isDark} couleur={couleur} />
         </div>
       )}
 

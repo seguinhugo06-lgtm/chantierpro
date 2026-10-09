@@ -17,9 +17,11 @@ import { useEffect, useRef } from 'react';
  * @param {Object} [options]
  * @param {boolean} [options.lockScroll=true] — lock body scroll
  * @param {boolean} [options.restoreFocus=true] — restore focus on close
+ * @param {boolean} [options.focusConteneur=false] — focus the container itself instead of its first
+ *   element (a panel opened by touch would otherwise show a focus ring on its close button)
  * @returns {React.RefObject} — ref to attach to the modal container
  */
-export default function useFocusTrap(isOpen, { lockScroll = true, restoreFocus = true } = {}) {
+export default function useFocusTrap(isOpen, { lockScroll = true, restoreFocus = true, focusConteneur = false } = {}) {
   const ref = useRef(null);
   const previousFocus = useRef(null);
 
@@ -45,7 +47,7 @@ export default function useFocusTrap(isOpen, { lockScroll = true, restoreFocus =
 
     // Auto-focus first element
     requestAnimationFrame(() => {
-      const first = container.querySelector(FOCUSABLE);
+      const first = focusConteneur ? null : container.querySelector(FOCUSABLE);
       if (first) first.focus();
       else container.focus();
     });
@@ -88,7 +90,7 @@ export default function useFocusTrap(isOpen, { lockScroll = true, restoreFocus =
         previousFocus.current.focus();
       }
     };
-  }, [isOpen, lockScroll, restoreFocus]);
+  }, [isOpen, lockScroll, restoreFocus, focusConteneur]);
 
   return ref;
 }

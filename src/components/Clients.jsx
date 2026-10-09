@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { Plus, ArrowLeft, Phone, MessageCircle, MapPin, Mail, Building2, User, Edit3, Trash2, ChevronRight, ChevronDown, Search, X, Check, Briefcase, FileText, Camera, Home, Users, Euro, Calendar, ExternalLink, Smartphone, ArrowUpDown, Send, MessageSquare, Zap, Tag, History, Receipt, ClipboardList, CheckCircle2, Upload, LayoutGrid, List, AlertTriangle, Info, Clock, Mic, ArrowUpRight, ArrowDownLeft, Wallet, TrendingUp } from 'lucide-react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { Plus, ArrowLeft, Phone, MessageCircle, MapPin, Mail, Building2, Edit3, Trash2, ChevronRight, ChevronDown, Search, X, Check, FileText, Camera, Home, Users, Euro, ExternalLink, Smartphone, ArrowUpDown, MessageSquare, Zap, History, Receipt, ClipboardList, CheckCircle2, Upload, LayoutGrid, List, AlertTriangle, Info, Clock, ArrowUpRight, ArrowDownLeft, Wallet, TrendingUp } from 'lucide-react';
 import PageHeader from './ui/PageHeader';
 import KPICard from './ui/KPICard';
 import StatusChip from './ui/StatusChip';
+import { ChampRecherche, BoutonVolet, Volet, GroupeChoix, ListeChoix, PucesActives, SegmentDefilant } from './ui/Filtres';
 import { colorForString } from '../lib/uiTheme';
 
 // Couleur (hex) par statut client — pour StatusChip
@@ -161,7 +162,10 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
   const [kpiFilter, setKpiFilter] = useState(null); // null | 'actifs' | 'ca' | 'devis_attente'
   const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'list'
   const [selectedEchange, setSelectedEchange] = useState(null); // P1.1: échange detail drawer
-  const [showTypePicker, setShowTypePicker] = useState(false); // P1.2: custom type picker (filter)
+  // Recherche / Filtres / Trier : boîte à outils commune (ui/Filtres.jsx, recette du 9 oct.).
+  const [volet, setVolet] = useState(null); // null | 'filtres' | 'tri'
+  const boutonFiltresRef = useRef(null);
+  const boutonTriRef = useRef(null);
   const [showFormTypePicker, setShowFormTypePicker] = useState(false); // P1.2: custom type picker (form)
   const [duplicateDismissed, setDuplicateDismissed] = useState(() => localStorage.getItem('clientDuplicateDismissed') === 'true');
 
@@ -175,7 +179,6 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
     const handleEscape = (e) => {
       if (e.key === 'Escape') {
         if (selectedEchange) { setSelectedEchange(null); }
-        else if (showTypePicker) { setShowTypePicker(false); }
         else if (showFormTypePicker) { setShowFormTypePicker(false); }
         else if (show) { setShow(false); setEditId(null); setForm({ nom: '', prenom: '', entreprise: '', email: '', telephone: '', adresse: '', notes: '', categorie: '' }); clearErrors(); clearDupes(); }
         else if (viewId) { setViewId(null); }
@@ -184,7 +187,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
     };
     document.addEventListener('keydown', handleEscape);
     return () => document.removeEventListener('keydown', handleEscape);
-  }, [show, viewId, showQuickModal, selectedEchange, showTypePicker, showFormTypePicker]);
+  }, [show, viewId, showQuickModal, selectedEchange, showFormTypePicker]);
 
   // Client stats map — MUST be defined before filtered/getClientStatus/getClientStats
   const clientStatsMap = useMemo(() => {
@@ -1892,119 +1895,70 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
         );
       })()}
 
-      {/* === SEARCH + FILTERS COMPACT === */}
-      <div className="space-y-2">
-        {/* Row 1: Search + View toggle + Sort */}
-        <div className="flex gap-2 items-center">
-          <div className="relative flex-1">
-            <Search size={14} className={`absolute left-3 top-1/2 -translate-y-1/2 ${textMuted}`} />
-            <input
-              type="text"
-              placeholder="Rechercher..."
-              aria-label="Rechercher un client"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className={`w-full pl-8 pr-8 py-2 border rounded-xl text-sm ${inputBg}`}
-            />
-            {search && (
-              <button onClick={() => setSearch('')} className={`absolute right-2 top-1/2 -translate-y-1/2 ${textMuted} hover:text-red-400`}>
-                <X size={14} />
-              </button>
+      {/* === RECHERCHE, FILTRES, TRI — boîte à outils commune (ui/Filtres.jsx) === */}
+      {(() => {
+        const TRIS = [['recent-desc', 'Plus récents'], ['name-asc', 'Nom de A à Z'], ['name-desc', 'Nom de Z à A'], ['ca-desc', "Chiffre d'affaires"], ['activite-desc', 'Activité récente']];
+        const triCourant = `${sortBy}-${sortDir}`;
+        const KPI_LIBELLES = { actifs: 'Clients actifs', ca: "Avec chiffre d'affaires", devis_attente: 'Devis en attente' };
+        const nbFiltres = !!filterCategorie + !!kpiFilter;
+        const toutEffacer = () => { setKpiFilter(null); setFilterCategorie(''); setFilterStatus(''); };
+        const puces = [
+          filterCategorie && { cle: 'type', libelle: `${TYPE_ICONS[filterCategorie] || ''} ${filterCategorie}`.trim(), onRetirer: () => setFilterCategorie('') },
+          kpiFilter && { cle: 'kpi', libelle: KPI_LIBELLES[kpiFilter] || 'Filtre', onRetirer: () => setKpiFilter(null) },
+        ].filter(Boolean);
+        return (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <ChampRecherche valeur={search} onChange={setSearch} placeholder="Rechercher…" ariaLabel="Rechercher un client" isDark={isDark} couleur={couleur} className="flex-1" />
+              <BoutonVolet ref={boutonFiltresRef} libelle="Filtres" compte={nbFiltres} ouvert={volet === 'filtres'} onClick={() => setVolet(v => (v === 'filtres' ? null : 'filtres'))} isDark={isDark} couleur={couleur} libelleCacheTelephone />
+              <BoutonVolet ref={boutonTriRef} icone={ArrowUpDown} libelle="Trier" valeur={TRIS.find(x => x[0] === triCourant)?.[1]} ouvert={volet === 'tri'} onClick={() => setVolet(v => (v === 'tri' ? null : 'tri'))} isDark={isDark} couleur={couleur} libelleCacheTelephone />
+            </div>
+            {displayClients.length > 1 && (
+              <SegmentDefilant
+                ariaLabel="Statut des clients" isDark={isDark} couleur={couleur}
+                options={[{ valeur: '', libelle: 'Tous' }, { valeur: 'actif', libelle: 'Actifs' }, { valeur: 'prospect', libelle: 'Prospects' }, { valeur: 'inactif', libelle: 'Inactifs' }]}
+                valeur={filterStatus} onChange={setFilterStatus}
+              />
             )}
-          </div>
-          {/* Grid/List toggle */}
-          <div className={`flex rounded-lg border overflow-hidden ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
-            <button
-              onClick={() => setViewMode('grid')}
-              className={`p-1.5 flex items-center justify-center transition-colors ${viewMode === 'grid' ? 'text-white' : isDark ? 'text-slate-400' : 'text-slate-500'}`}
-              style={viewMode === 'grid' ? { background: couleur } : {}}
-              title="Vue grille"
-            >
-              <LayoutGrid size={14} />
-            </button>
-            <button
-              onClick={() => setViewMode('list')}
-              className={`p-1.5 flex items-center justify-center transition-colors ${viewMode === 'list' ? 'text-white' : isDark ? 'text-slate-400' : 'text-slate-500'}`}
-              style={viewMode === 'list' ? { background: couleur } : {}}
-              title="Vue liste"
-            >
-              <List size={14} />
-            </button>
-          </div>
-          {/* Sort */}
-          <select
-            value={`${sortBy}-${sortDir}`}
-            onChange={(e) => { const [s, d] = e.target.value.split('-'); setSortBy(s); setSortDir(d); }}
-            className={`px-2 py-2 sm:py-1.5 rounded-lg text-xs border min-h-[36px] ${isDark ? 'bg-slate-700 border-slate-600 text-slate-300' : 'bg-white border-slate-200 text-slate-600'}`}
-          >
-            <option value="recent-desc">Récent</option>
-            <option value="name-asc">Nom A-Z</option>
-            <option value="name-desc">Nom Z-A</option>
-            <option value="ca-desc">CA ↓</option>
-            <option value="activite-desc">Activité</option>
-          </select>
-        </div>
-        {/* Row 2: Type + Status filters */}
-        {displayClients.length > 1 && (
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-            {/* Type filter dropdown */}
-            <div className="relative flex-shrink-0">
-              <button
-                onClick={() => setShowTypePicker(!showTypePicker)}
-                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs border whitespace-nowrap transition-colors min-h-[36px] ${filterCategorie ? 'text-white' : isDark ? 'border-slate-600 text-slate-300' : 'border-slate-200 text-slate-600'}`}
-                style={filterCategorie ? { background: couleur, borderColor: couleur } : {}}
-              >
-                {filterCategorie ? `${TYPE_ICONS[filterCategorie] || ''} ${filterCategorie}` : 'Type'}
-                <ChevronDown size={12} className={`transition-transform ${showTypePicker ? 'rotate-180' : ''}`} />
-              </button>
-              {showTypePicker && (
+            <PucesActives puces={puces} onToutEffacer={toutEffacer} isDark={isDark} couleur={couleur} />
+
+            <Volet
+              ouvert={volet === 'filtres'} onFermer={() => setVolet(null)} titre="Filtres" ancreRef={boutonFiltresRef} largeur={340} isDark={isDark}
+              pied={(
                 <>
-                  <div className="fixed inset-0 z-30" onClick={() => setShowTypePicker(false)} />
-                  <div className={`absolute top-full left-0 mt-1 z-40 w-48 rounded-xl border shadow-xl overflow-hidden ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
-                    <button
-                      onClick={() => { setFilterCategorie(''); setShowTypePicker(false); }}
-                      className={`w-full text-left px-3 py-2 text-xs flex items-center gap-2 ${!filterCategorie ? (isDark ? 'bg-slate-700' : 'bg-slate-100') : isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'} ${textPrimary}`}
-                    >
-                      Tous {!filterCategorie && <Check size={12} className="ml-auto" style={{color: couleur}} />}
-                    </button>
-                    {CLIENT_TYPES.map(t => (
-                      <button
-                        key={t}
-                        onClick={() => { setFilterCategorie(t); setShowTypePicker(false); }}
-                        className={`w-full text-left px-3 py-2 text-xs flex items-center gap-2 ${filterCategorie === t ? (isDark ? 'bg-slate-700' : 'bg-slate-100') : isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'} ${textPrimary}`}
-                      >
-                        {TYPE_ICONS[t] || '📋'} {t} {filterCategorie === t && <Check size={12} className="ml-auto" style={{color: couleur}} />}
-                      </button>
-                    ))}
-                  </div>
+                  <button type="button" onClick={toutEffacer} disabled={!nbFiltres} className={`h-11 px-4 rounded-xl text-sm font-medium transition-colors disabled:opacity-40 ${isDark ? 'text-slate-300 hover:bg-slate-700' : 'text-slate-600 hover:bg-slate-100'}`}>Tout effacer</button>
+                  <button type="button" onClick={() => setVolet(null)} className="flex-1 h-11 rounded-xl text-white text-sm font-bold shadow-sm" style={{ background: couleur }}>
+                    Voir {filtered.length} client{filtered.length > 1 ? 's' : ''}
+                  </button>
                 </>
               )}
-            </div>
-            {/* Status pills */}
-            {[
-              { key: '', label: 'Tous' },
-              { key: 'actif', label: 'Actifs' },
-              { key: 'prospect', label: 'Prospects' },
-              { key: 'inactif', label: 'Inactifs' },
-            ].map(opt => (
-              <button
-                key={opt.key}
-                onClick={() => setFilterStatus(opt.key)}
-                className={`px-2.5 py-1.5 rounded-lg text-xs whitespace-nowrap flex-shrink-0 transition-colors min-h-[36px] active:scale-95 ${filterStatus === opt.key ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}
-                style={filterStatus === opt.key ? { background: couleur } : {}}
-              >
-                {opt.label}
-              </button>
-            ))}
-            {/* Active filters indicator */}
-            {(kpiFilter || filterCategorie || filterStatus) && (
-              <button onClick={() => { setKpiFilter(null); setFilterCategorie(''); setFilterStatus(''); }} className={`text-[10px] underline ${textMuted} ml-1`}>
-                Effacer
-              </button>
-            )}
+            >
+              <ListeChoix
+                titre="Type de client" rechercheAuDela={99} isDark={isDark} couleur={couleur}
+                options={[{ valeur: '', libelle: 'Tous les types' }, ...CLIENT_TYPES.map(t => ({ valeur: t, libelle: `${TYPE_ICONS[t] || '📋'}  ${t}` }))]}
+                valeur={filterCategorie} onChange={setFilterCategorie}
+              />
+              {kpiFilter && (
+                <GroupeChoix titre="Sélection des chiffres" options={[{ valeur: kpiFilter, libelle: KPI_LIBELLES[kpiFilter] || 'Filtre' }]} valeur={kpiFilter} onChange={() => setKpiFilter(null)} isDark={isDark} couleur={couleur} />
+              )}
+            </Volet>
+
+            <Volet ouvert={volet === 'tri'} onFermer={() => setVolet(null)} titre="Trier et afficher" ancreRef={boutonTriRef} largeur={320} isDark={isDark}>
+              <ListeChoix
+                titre="Trier par" rechercheAuDela={99} isDark={isDark} couleur={couleur}
+                options={TRIS.map(([valeur, libelle]) => ({ valeur, libelle }))}
+                valeur={triCourant} onChange={(v) => { const [tri, sens] = v.split('-'); setSortBy(tri); setSortDir(sens); setVolet(null); }}
+              />
+              <GroupeChoix
+                titre="Affichage" isDark={isDark} couleur={couleur}
+                options={[{ valeur: 'grid', libelle: 'Cartes', icone: LayoutGrid }, { valeur: 'list', libelle: 'Liste', icone: List }]}
+                valeur={viewMode} onChange={(v) => { setViewMode(v); setVolet(null); }}
+              />
+            </Volet>
           </div>
-        )}
-      </div>
+        );
+      })()}
+
 
       {/* Skeleton loader while data is loading */}
       {!clients && <ClientSkeleton isDark={isDark} />}
