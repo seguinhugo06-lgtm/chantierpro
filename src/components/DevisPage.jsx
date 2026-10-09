@@ -1369,6 +1369,12 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 
   const confirmAndCreateSolde = async () => {
     if (!selected) return;
+    const chantierSit = selected.chantier_id ? (chantiers || []).find(c => c.id === selected.chantier_id) : null;
+    const situationsSurChantier = chantierSit?.situations_data?.devis_source_id === selected.id && (chantierSit.situations_data.situations || []).length > 0;
+    if (situationsSurChantier || getFacturesLiees(selected.id).some(f => f.facture_type === 'situation')) {
+      showToast('Ce devis est facturé par situations de travaux : facturez la suivante depuis le chantier (onglet Situations).', 'error');
+      return;
+    }
     const { allAcomptes, totaux } = factureDeSolde(selected);
     const client = clients.find(c => c.id === selected.client_id);
     const clientName = client ? `${client.prenom || ''} ${client.nom || ''}`.trim() : 'le client';
@@ -2261,6 +2267,13 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   if (mode === 'preview' && selected) {
     const client = clients.find(c => c.id === selected.client_id);
     const facturesLiees = getFacturesLiees(selected.id);
+    // Facturé par situations de travaux : la suite passe par les situations (le décompte général définitif
+    // solde le marché). Une facture « complète » ou un solde refacturerait le devis entier, situations comprises.
+    const situationsFacturees = facturesLiees.filter(f => f.facture_type === 'situation');
+    const chantierDesSituations = selected.chantier_id ? (chantiers || []).find(c => c.id === selected.chantier_id) : null;
+    const situationsEnCours = chantierDesSituations?.situations_data?.devis_source_id === selected.id
+      && (chantierDesSituations.situations_data.situations || []).length > 0;
+    const facturationParSituations = situationsFacturees.length > 0 || situationsEnCours;
     const acompteFacture = getAcompteFacture(selected.id);
     const soldeFacture = getSoldeFacture(selected.id);
     const resteAFacturer = selected.total_ttc - facturesLiees.reduce((s, f) => s + (f.total_ttc || 0), 0);
@@ -2268,8 +2281,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     const isAvoir = selected.facture_type === 'avoir';
     const currentEcheancier = echeancierCache[selected.id] || null;
     const hasEcheancier = !!selected.echeancier_id || !!currentEcheancier;
-    const canAcompte = isDevis && (selected.statut === 'accepte' || selected.statut === 'signe') && !acompteFacture && !hasEcheancier;
-    const canFacturer = isDevis && ['accepte', 'signe', 'acompte_facture'].includes(selected.statut) && !soldeFacture && resteAFacturer > 0;
+    const canAcompte = isDevis && (selected.statut === 'accepte' || selected.statut === 'signe') && !acompteFacture && !hasEcheancier && !facturationParSituations;
+    const canFacturer = isDevis && ['accepte', 'signe', 'acompte_facture'].includes(selected.statut) && !soldeFacture && resteAFacturer > 0 && !facturationParSituations;
     const hasChantier = !!selected.chantier_id;
     const linkedChantier = chantiers.find(c => c.id === selected.chantier_id);
     const canCreateChantier = isDevis && !hasChantier && addChantier;
@@ -2462,6 +2475,11 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
             } else if (st === 'envoye' || st === 'vu') {
               principal = { libelle: 'Faire signer', icone: PenTool, onClick: () => setShowSignaturePad(true) };
               if (peutEnvoyer) secondaire = { libelle: 'Relancer', icone: Mail, onClick: () => sendEmail(selected) };
+            } else if (facturationParSituations && ['accepte', 'signe', 'acompte_facture'].includes(st)) {
+              principal = selected.chantier_id
+                ? { libelle: 'Situation suivante', icone: BarChart3, onClick: () => { setSelectedChantier?.(selected.chantier_id); setPage?.('chantiers'); } }
+                : null;
+              secondaire = actPdf;
             } else if (st === 'accepte' || st === 'signe') {
               principal = { libelle: 'Facturer', icone: Receipt, onClick: facturer };
               secondaire = actPdf;
@@ -2656,6 +2674,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         {isDevis && selected.statut !== 'facture' && (
           <AcompteSuiviCard
             devis={selected}
+            situationsFacturees={situationsFacturees}
+            situationsEnCours={situationsEnCours}
             soldeAFacturer={getAllAcompteFactures(selected.id).length > 0 ? factureDeSolde(selected).totaux.totalTTC : null}
             echeancier={currentEcheancier}
             facturesLiees={facturesLiees}

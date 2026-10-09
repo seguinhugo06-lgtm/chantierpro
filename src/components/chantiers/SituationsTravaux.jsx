@@ -123,14 +123,25 @@ export default function SituationsTravaux({
   }, [devis, devisSourceId]);
 
   /** Eligible devis for situation mode (signed or accepted, linked to this chantier) */
+  // Un devis déjà facturé autrement (acompte, solde, facture complète) est exclu : les situations ne déduisent
+  // pas ces factures, il serait facturé deux fois (relecture juridique du 9 oct. 2026).
+  const dejaFactureAutrement = (d) => devis.some(
+    (f) => f.type === 'facture' && f.devis_source_id === d.id && f.facture_type !== 'situation' && f.facture_type !== 'avoir'
+  );
   const eligibleDevis = useMemo(() => {
     return devis.filter(
       (d) =>
         d.chantier_id === chantier?.id &&
         d.type === 'devis' &&
-        ['accepte', 'signe', 'acompte_facture', 'facture'].includes(d.statut)
+        ['accepte', 'signe', 'acompte_facture', 'facture'].includes(d.statut) &&
+        !dejaFactureAutrement(d)
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [devis, chantier?.id]);
+  const exclusFactures = useMemo(() => devis.filter(
+    (d) => d.chantier_id === chantier?.id && d.type === 'devis' && dejaFactureAutrement(d)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  ), [devis, chantier?.id]);
 
   /** Flatten lignes from the source devis */
   const sourceLignes = useMemo(() => {
@@ -482,7 +493,9 @@ export default function SituationsTravaux({
           ) : (
             <div className={`text-sm ${textMuted} p-4 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-amber-50'}`}>
               <AlertTriangle size={16} className="inline -mt-0.5 mr-1 text-amber-500" />
-              Aucun devis signé lié à ce chantier. Créez et faites signer un devis d'abord.
+              {exclusFactures.length > 0
+                ? `Le devis ${exclusFactures.map((d) => d.numero).filter(Boolean).join(', ')} a déjà un acompte ou une facture : facturez la suite depuis le devis (solde), pas en situations.`
+                : "Aucun devis signé lié à ce chantier. Créez et faites signer un devis d'abord."}
             </div>
           )}
           {onClose && (

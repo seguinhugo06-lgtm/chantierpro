@@ -44,8 +44,33 @@ export default function AcompteSuiviCard({
   acompteFacture = null,
   resteAFacturer = 0,
   soldeAFacturer = null, // montant TTC de la facture de solde quand des acomptes existent (sinon null)
+  situationsFacturees = [], // factures de situation de travaux déjà émises sur ce devis
+  situationsEnCours = false, // le chantier a des situations sur ce devis (même pas encore facturées)
 }) {
   const borderColor = isDark ? 'border-slate-700' : 'border-slate-200';
+
+  // --- Mode 0 : facturé par situations de travaux ---
+  // Plus de facture complète, d'acompte ni de solde : la dernière situation (décompte général définitif) solde le marché.
+  if (situationsFacturees.length > 0 || situationsEnCours) {
+    const cumul = situationsFacturees.reduce((s, f) => s + (f.total_ttc || 0), 0);
+    return (
+      <div className="rounded-2xl border border-bord bg-surface p-4 shadow-e1">
+        <p className="flex items-center gap-2 text-base font-semibold text-encre">
+          <BarChart3 size={18} aria-hidden="true" className="text-encre-3" /> Facturé par situations de travaux
+        </p>
+        <p className="mt-1 text-sm text-encre-2">
+          {situationsFacturees.length === 0 ? 'Situations en cours sur le chantier, aucune facturée' : `${situationsFacturees.length} situation${situationsFacturees.length > 1 ? 's' : ''} facturée${situationsFacturees.length > 1 ? 's' : ''}`}
+          {modeDiscret ? '' : ` · ${fm(cumul)} net à payer`}. Continuez depuis le chantier, onglet Situations, jusqu'à la dernière situation (DGD, tout à 100 %). La retenue de garantie éventuelle se règle à part, à sa libération.
+        </p>
+        {onOpenSituation && (
+          <button type="button" onClick={onOpenSituation}
+            className="mt-3 h-11 px-4 rounded-xl text-sm font-semibold bg-surface text-encre border border-bord-fort hover:bg-surface-2">
+            Ouvrir les situations du chantier
+          </button>
+        )}
+      </div>
+    );
+  }
 
   // --- Mode 1: Échéancier exists ---
   if (echeancier && echeancier.etapes?.length > 0) {
