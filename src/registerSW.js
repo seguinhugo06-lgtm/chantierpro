@@ -6,6 +6,7 @@
 import { registerSW } from 'virtual:pwa-register';
 import { Capacitor } from '@capacitor/core';
 import { logger } from './lib/logger';
+import { programmerMiseAJour } from './lib/miseAJourSure';
 
 // Pas de service worker dans l'app native : les fichiers y sont déjà embarqués, et un cache SW
 // y servirait d'anciennes versions après une mise à jour de l'app (comme il le fait sur le web).
@@ -39,12 +40,25 @@ export function initServiceWorker(options = {}) {
     return { updateSW: () => Promise.resolve(), offlineReady: false, needRefresh: false };
   }
 
+  // Ouverture et premier geste : avant tout geste, une nouvelle version s'applique tout de suite.
+  const demarrage = Date.now();
+  let interagi = false;
+  const marquer = () => { interagi = true; };
+  window.addEventListener('pointerdown', marquer, { once: true, capture: true });
+  window.addEventListener('keydown', marquer, { once: true, capture: true });
+
   try {
     updateSW = registerSW({
       immediate: true,
       onNeedRefresh() {
         needRefresh = true;
         onNeedRefresh(true);
+        // Jamais sous les doigts : au démarrage, ou quand l'appli passe en arrière-plan sans saisie.
+        programmerMiseAJour({
+          appliquer: () => updateSW?.(true),
+          ouvertureRecente: () => Date.now() - demarrage < 15000,
+          interagi: () => interagi,
+        });
         if (import.meta.env.DEV) logger.debug('[SW] New content available, refresh needed');
       },
       onOfflineReady() {

@@ -16,7 +16,9 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
+      // « prompt » : la nouvelle version attend le bon moment (src/lib/miseAJourSure.js) au lieu de
+      // recharger la page d'un coup, même en pleine saisie, comme le faisait « autoUpdate ».
+      registerType: 'prompt',
       includeAssets: ['icon.svg', 'offline.html'],
       manifest: {
         name: 'Mallettico',
@@ -54,7 +56,7 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
-        skipWaiting: true,
+        skipWaiting: false,
         clientsClaim: true,
         navigateFallback: '/index.html',
         navigateFallbackDenylist: [/^\/api/, /^\/auth/],
