@@ -61,6 +61,34 @@ const DEFAULT_COEFFICIENTS = {
   'Peinture': 1.8, 'Menuiserie': 1.5, 'Matériaux': 1.3, 'Autre': 1.5
 };
 
+/**
+ * Nombre décimal saisi en texte (« 2,25 », « 1.8 ») et validé à la sortie du champ (ou Entrée), borné.
+ * Avant (recette du 9 oct. 2026), le champ nombre contrôlé retombait à 1,5 dès le point ou la virgule :
+ * « 2.25 » donnait 1,525.
+ */
+function ChampDecimal({ valeur, min, max, onValider, ...props }) {
+  const enTexte = (v) => String(v).replace('.', ',');
+  const [texte, setTexte] = useState(enTexte(valeur));
+  useEffect(() => { setTexte(enTexte(valeur)); }, [valeur]);
+  const valider = () => {
+    const n = parseFloat(String(texte).replace(',', '.'));
+    const v = Number.isFinite(n) ? Math.max(min, Math.min(max, Math.round(n * 100) / 100)) : valeur;
+    setTexte(enTexte(v));
+    if (v !== valeur) onValider(v);
+  };
+  return (
+    <input
+      type="text"
+      inputMode="decimal"
+      value={texte}
+      onChange={(e) => setTexte(e.target.value.replace(/[^\d.,]/g, ''))}
+      onBlur={valider}
+      onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
+      {...props}
+    />
+  );
+}
+
 export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, addCatalogueItem: addCatalogueItemProp, updateCatalogueItem: updateCatalogueItemProp, deleteCatalogueItem: deleteCatalogueItemProp, couleur, isDark, setPage, chantiers = [], equipe = [], modeDiscret, devis = [], updateDevis, clients = [] }) {
   const { confirm } = useConfirm();
   const { showToast } = useToast();
@@ -2706,16 +2734,13 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
                   <span className={`font-medium flex-1 min-w-0 truncate ${textPrimary}`}>{cat}</span>
                   <div className="flex items-center gap-2 flex-shrink-0">
                     <span className={`text-sm ${textMuted}`}>×</span>
-                    <input
-                      type="number"
-                      step="0.1"
-                      min="1"
-                      max="10"
+                    <ChampDecimal
+                      min={1}
+                      max={10}
                       aria-label={`Coefficient pour ${cat}`}
                       className={`w-20 px-3 py-2 border rounded-lg text-center font-bold ${inputBg}`}
-                      value={coefficients[cat] || 1.5}
-                      onChange={e => {
-                        const val = Math.max(1, Math.min(10, parseFloat(e.target.value) || 1.5));
+                      valeur={coefficients[cat] || 1.5}
+                      onValider={val => {
                         setCoefficients(prev => ({...prev, [cat]: val}));
                         setCoefDirty(true);
                         setCoefSaved('saving');

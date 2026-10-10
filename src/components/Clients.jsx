@@ -1107,7 +1107,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                           )}
                           <div className="flex items-center gap-3 mt-1">
                             {e.duree && <span className={`text-xs ${textMuted} flex items-center gap-1`}><Clock size={10} /> {e.duree} min</span>}
-                            {e.montant && <span className="text-xs font-medium" style={{color: couleur}}>{formatMoney(e.montant)}</span>}
+                            {e.montant && !modeDiscret && <span className="text-xs font-medium" style={{color: couleur}}>{formatMoney(e.montant)}</span>}
                           </div>
                         </div>
                         <ChevronRight size={14} className={`${textMuted} flex-shrink-0 mt-3`} />
@@ -1187,7 +1187,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                     </div>
                   )}
                   {/* Amount */}
-                  {e.montant && (
+                  {e.montant && !modeDiscret && (
                     <div>
                       <p className={`text-xs font-medium uppercase tracking-wider mb-1 ${textMuted}`}>Montant</p>
                       <p className="text-sm font-semibold" style={{color: couleur}}>{formatMoney(e.montant)}</p>

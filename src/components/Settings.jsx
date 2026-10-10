@@ -28,6 +28,7 @@ import { Bouton } from './ui/Bouton';
 import { jourLocal, dateLue } from '../lib/dates';
 import { estEntrepreneurIndividuel, estEirl, nomImprime } from '../lib/identiteEntreprise';
 import { URL_SIRENE, profilDepuisSirene } from '../lib/sirene';
+import { chiffreAffairesHT } from '../lib/ventes';
 
 // ── Tab groups for mobile navigation ────────────────────────────────────────
 const TAB_GROUPS = [
@@ -245,14 +246,14 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
   // SIRENE API lookup
   const lookupSIRENE = useCallback(async () => {
     const siret = (entreprise.siret || '').replace(/\s/g, '');
-    if (siret.length !== 14) {
+    if (!/^\d{14}$/.test(siret)) {
       showToast('SIRET invalide (14 chiffres requis)', 'error');
       return;
     }
     setSireneLoading(true);
     try {
       // API publique de l'État, sans clé (src/lib/sirene.js)
-      const resp = await fetch(`${URL_SIRENE}?q=${siret}&per_page=1`, { headers: { Accept: 'application/json' } });
+      const resp = await fetch(`${URL_SIRENE}?q=${encodeURIComponent(siret)}&per_page=1`, { headers: { Accept: 'application/json' } });
       if (!resp.ok) throw new Error(`API ${resp.status}`);
       const profil = profilDepuisSirene(await resp.json(), siret);
       if (!profil) throw new Error('SIRET introuvable');
@@ -277,16 +278,15 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
 
   // Frais de structure calculator
   const fraisTotal = useMemo(() => Object.values(fraisCharges).reduce((s, v) => s + (parseFloat(v) || 0), 0), [fraisCharges]);
+  // CA moyen mensuel des 6 derniers mois : factures émises, avoirs déduits (src/lib/ventes.js). Avant (recette du
+  // 9 oct. 2026) : devis signés ET factures payées additionnés, et 1 € sur un compte neuf, d'où « 230000 % ».
   const caEstime = useMemo(() => {
-    // rough estimate: sum of accepte/signe devis monthly avg
     const now = new Date();
-    const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 6, 1);
-    const recentCA = devis
-      .filter(d => ['accepte', 'signe', 'payee', 'paye'].includes(d.statut) && new Date(d.date) >= sixMonthsAgo)
-      .reduce((s, d) => s + (d.total_ht || 0), 0);
-    return recentCA / 6 || 1;
+    const du = jourLocal(new Date(now.getFullYear(), now.getMonth() - 6, now.getDate()));
+    return chiffreAffairesHT(devis, { du }) / 6;
   }, [devis]);
-  const tauxSuggere = useMemo(() => caEstime > 0 ? Math.round((fraisTotal / caEstime) * 100) : 15, [fraisTotal, caEstime]);
+  // Pas de chiffre d'affaires : pas de suggestion ; sinon borné comme le champ (50 %)
+  const tauxSuggere = useMemo(() => (caEstime > 0 ? Math.min(50, Math.round((fraisTotal / caEstime) * 100)) : null), [fraisTotal, caEstime]);
 
   // Listen for cross-tab navigation events (e.g. from Facture2026Tab)
   useEffect(() => {
@@ -1324,7 +1324,15 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             <div className="flex items-end gap-3 flex-wrap">
               <div>
                 <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Taux de frais de structure (%)</label>
-                <input type="number" min="0" max="50" className={`w-32 px-4 py-2.5 border rounded-xl ${inputBg}`} value={entreprise.tauxFraisStructure || 15} onChange={e => updateEntreprise(p => ({...p, tauxFraisStructure: parseFloat(e.target.value) || 15}))} />
+                <input type="text" inputMode="decimal" aria-label="Taux de frais de structure, en %" key={`taux-frais-${entreprise.tauxFraisStructure ?? 15}`} className={`w-32 px-4 py-2.5 border rounded-xl ${inputBg}`} defaultValue={String(entreprise.tauxFraisStructure ?? 15).replace('.', ',')}
+                  onBlur={e => {
+                    // Validé à la sortie du champ, borné de 0 à 50 (avant : « 15 » réimposé dès que le champ était vide)
+                    const n = parseFloat(e.target.value.replace(',', '.'));
+                    const v = Number.isFinite(n) ? Math.max(0, Math.min(50, n)) : (entreprise.tauxFraisStructure ?? 15);
+                    e.target.value = String(v).replace('.', ',');
+                    if (v !== entreprise.tauxFraisStructure) updateEntreprise(p => ({ ...p, tauxFraisStructure: v }));
+                  }}
+                  onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); }} />
               </div>
               <button
                 onClick={() => setShowFraisCalc(!showFraisCalc)}
@@ -1364,20 +1372,24 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                   </div>
                   <div className="text-right">
                     <p className={`text-xs ${textSecondary}`}>Taux suggéré</p>
-                    <p className="text-xl font-bold" style={{ color: couleur }}>{tauxSuggere}%</p>
+                    <p className="text-xl font-bold" style={{ color: couleur }}>{tauxSuggere === null ? '—' : `${tauxSuggere} %`}</p>
                   </div>
                 </div>
-                <button
-                  onClick={() => {
-                    updateEntreprise(p => ({ ...p, tauxFraisStructure: tauxSuggere }));
-                    setShowFraisCalc(false);
-                    showToast(`Taux mis à jour : ${tauxSuggere}%`, 'success');
-                  }}
-                  className="w-full py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90"
-                  style={{ backgroundColor: couleur }}
-                >
-                  Appliquer {tauxSuggere}% comme taux de frais de structure
-                </button>
+                {tauxSuggere === null ? (
+                  <p className={`text-sm ${textSecondary}`}>Le taux se calcule à partir de vos factures des 6 derniers mois. Sans facture émise, saisissez-le à la main ci-dessus.</p>
+                ) : (
+                  <button
+                    onClick={() => {
+                      updateEntreprise(p => ({ ...p, tauxFraisStructure: tauxSuggere }));
+                      setShowFraisCalc(false);
+                      showToast(`Taux mis à jour : ${tauxSuggere} %`, 'success');
+                    }}
+                    className="w-full py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90"
+                    style={{ backgroundColor: couleur }}
+                  >
+                    Appliquer {tauxSuggere} % comme taux de frais de structure
+                  </button>
+                )}
               </div>
             )}
 

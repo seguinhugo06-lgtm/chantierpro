@@ -160,13 +160,18 @@ export default function App() {
   // Auth state
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [showSignUp, setShowSignUp] = useState(false);
+  // /inscription et /connexion (liens de la vitrine) ouvrent directement le formulaire
+  const [showSignUp, setShowSignUp] = useState(() => typeof window !== 'undefined' && window.location.pathname === '/inscription');
   const [authForm, setAuthForm] = useState({ email: '', password: '', nom: '' });
   // Un lien e-mail expiré arrive avec #error=… : on l'explique sur l'écran de connexion.
   const [authError, setAuthError] = useState(() => (lienEmail.erreur ? traduireErreurAuth(lienEmail.erreur) : ''));
   const [authInfo, setAuthInfo] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showForgot, setShowForgot] = useState(false);
+  // Une fois connecté depuis /connexion ou /inscription, l'adresse redevient « / »
+  useEffect(() => {
+    if (user && ['/connexion', '/inscription'].includes(window.location.pathname)) window.history.replaceState({}, '', '/');
+  }, [user]);
   // Arrivée par le lien « réinitialiser le mot de passe » : on demande le nouveau avant tout.
   const [recoveryMode, setRecoveryMode] = useState(lienEmail.recuperation);
 
@@ -518,7 +523,7 @@ export default function App() {
   const synchroRef = useRef(null);
   const syncRetryAttemptRef = useRef(0);
   const [showOnboarding, setShowOnboarding] = useState(() => !isDemo && !localStorage.getItem('mallettico_onboarding_complete'));
-  const [showLanding, setShowLanding] = useState(true);
+  const [showLanding, setShowLanding] = useState(() => typeof window === 'undefined' || !['/connexion', '/inscription'].includes(window.location.pathname));
   const [showImport, setShowImport] = useState(false);
   const [importType, setImportType] = useState('clients');
   const [showShortcuts, setShowShortcuts] = useState(false);

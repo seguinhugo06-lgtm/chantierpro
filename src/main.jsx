@@ -12,6 +12,7 @@ import './index.css'
 import { logger } from './lib/logger';
 import { FONCTIONS } from './lib/fonctions';
 import PortailIndisponible from './components/portal/PortailIndisponible';
+import { pageLegaleDe } from './components/legal/pageLegale'
 
 // ── Initialize Sentry error monitoring (production only) ────────────
 initSentry()
@@ -33,6 +34,10 @@ function migrateLegacyStorage() {
       }
       localStorage.removeItem(oldKey)
     }
+    // Module de signature retiré le 10 oct. 2026 : ses données locales (noms, e-mails de clients, tracés)
+    // ne servent plus à rien et ne doivent pas rester sur l'appareil (relecture gardien-securite)
+    localStorage.removeItem('cp_signatures')
+    localStorage.removeItem('cp_signature_relances')
     // L'ancienne base offline n'est plus lue par personne — on libère la place.
     if (legacy.length) {
       try { indexedDB.deleteDatabase('batigesti-offline') } catch { /* non bloquant */ }
@@ -97,6 +102,8 @@ const PublicPaymentPage = lazy(() => import('./components/payment/PublicPaymentP
 const FeaturesDetailPage = lazy(() => import('./components/landing/FeaturesDetailPage'))
 const FeatureDeepDivePage = lazy(() => import('./components/landing/FeatureDeepDivePage'))
 const ResourcesPage = lazy(() => import('./components/landing/ResourcesPage'))
+// Pages légales à leur adresse (/cgu, /cgv…), sans l'app
+const PageLegalePublique = lazy(() => import('./components/legal/PageLegalePublique'))
 // Bibliothèque d'interface vivante (cachée, non indexée) : tokens et composants, clair et sombre.
 const Styleguide = lazy(() => import('./components/styleguide/Styleguide'))
 
@@ -150,6 +157,7 @@ const signatureToken = getSignatureToken()
 const invitationToken = getInvitationToken()
 const payToken = getPayToken()
 const marketingPage = getMarketingPage()
+const pageLegale = pageLegaleDe(window.location.pathname)
 
 // Determine initial data:
 // - If NOT in demo mode (real Supabase): use EMPTY_DATA (data comes from DB)
@@ -201,6 +209,10 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     ) : marketingPage === 'resources' ? (
       <Suspense fallback={<PublicFallback />}>
         <ResourcesPage />
+      </Suspense>
+    ) : pageLegale ? (
+      <Suspense fallback={<PublicFallback />}>
+        <PageLegalePublique pageInitiale={pageLegale} />
       </Suspense>
     ) : marketingPage === 'styleguide' ? (
       <Suspense fallback={<PublicFallback />}>

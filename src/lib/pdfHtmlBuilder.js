@@ -9,6 +9,7 @@ import { euros, pourcent, blocConditionsPaiement } from './formatDocument';
 import { lignesTotauxHtml, lignesAcompteHtml } from './totauxDocument';
 import { echeance } from './paiementsFacture';
 import { dateLue } from './dates';
+import { estFranchiseTva } from './franchiseTva';
 
 /**
  * Get entreprise data from localStorage
@@ -74,7 +75,7 @@ export function buildDocumentHTML(doc, client, chantier, entreprise, options = {
   const docColor = isAvoir ? avoirColor : couleur;
   const sourceFacture = options.sourceFacture || null;
   const avoirMotifs = options.avoirMotifs || {};
-  const isMicro = entreprise?.formeJuridique === 'Micro-entreprise';
+  const isMicro = estFranchiseTva(entreprise);
   const dateValidite = new Date(doc.date);
   dateValidite.setDate(dateValidite.getDate() + (doc.validite || entreprise?.validiteDevis || 30));
 

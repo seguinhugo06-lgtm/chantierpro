@@ -108,8 +108,7 @@ export default function FeatureDeepDivePage({ slug }) {
                 </p>
                 <div className="flex flex-col sm:flex-row items-start gap-3">
                   <a
-                    href="/"
-                    onClick={(e) => { e.preventDefault(); window.location.href = '/'; }}
+                    href="/inscription"
                     className="w-full sm:w-auto px-6 py-3 rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 text-white font-semibold hover:from-orange-600 hover:to-orange-700 transition-all shadow-lg shadow-orange-500/25 flex items-center justify-center gap-2"
                   >
                     Créer mon compte gratuit
@@ -246,7 +245,7 @@ export default function FeatureDeepDivePage({ slug }) {
               Plan gratuit sans limite de temps, sans carte bancaire.
             </p>
             <a
-              href="/"
+              href="/inscription"
               className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 text-white font-semibold hover:from-orange-600 hover:to-orange-700 transition-all shadow-lg shadow-orange-500/25"
             >
               Créer mon compte gratuit

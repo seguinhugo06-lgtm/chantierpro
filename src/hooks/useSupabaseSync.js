@@ -844,9 +844,10 @@ export const FIELD_MAPPINGS = {
       chantier_id: item.chantierId || item.chantier_id || null,
       devis_id: item.devisId || item.devis_id || null,
       type: item.type || 'note',
-      // La table n'a ni objet, ni numéro, ni montant : un échange d'envoi (« Envoi devis DEV-… », montant)
-      // les range dans le contenu. Avant (recette du 9 oct. 2026) il s'enregistrait vide : « (Sans objet) ».
-      contenu: item.contenu || item.message || [item.objet, Number.isFinite(Number(item.montant)) && item.montant !== null && item.montant !== '' ? `${Number(item.montant).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €` : null].filter(Boolean).join(' · '),
+      // La table n'a ni objet ni numéro : un échange d'envoi range son objet (« Envoi devis DEV-… ») dans le
+      // contenu, relié au devis par devis_id. Avant (recette du 9 oct. 2026) il s'enregistrait vide. Pas de
+      // montant : il serait lisible en mode discret et par un rôle sans accès aux prix (gardien, 10 oct.).
+      contenu: item.contenu || item.message || item.objet || '',
       date: item.date || item.createdAt || null,
     }),
     fromSupabase: (row) => ({

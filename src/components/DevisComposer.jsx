@@ -25,6 +25,7 @@ import { calculerTotaux } from '../lib/totauxDocument';
 import { estFranchiseTva } from '../lib/franchiseTva';
 import { TRADE_LIBRARY } from '../lib/templates/trade-library';
 import { jourLocal } from '../lib/dates';
+import { estEntrepreneurIndividuel, estEirl } from '../lib/identiteEntreprise';
 
 const DRAFT_KEY = 'mallettico_devis_composer_draft';
 const MRU_KEY = 'mallettico_recent_clients';
@@ -644,6 +645,8 @@ export default function DevisComposer({
     if (!entreprise?.adresse) missing.push('adresse');
     if (!(entreprise?.formeJuridique || entreprise?.forme_juridique)) missing.push('forme juridique');
     if (!(entreprise?.decennaleAssureur || entreprise?.decennale_assureur) || !(entreprise?.decennaleNumero || entreprise?.decennale_numero)) missing.push('assurance décennale');
+    // Entrepreneur individuel : son nom, suivi de « EI » (C. com. R526-27) — même contrôle qu'à l'envoi
+    if ((estEntrepreneurIndividuel(entreprise) || estEirl(entreprise)) && !String(entreprise?.nomEntrepreneur || '').trim()) missing.push('votre prénom et nom (suivis de « EI »)');
     return missing;
   }, [entreprise]);
 
