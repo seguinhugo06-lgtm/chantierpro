@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
-import { useToast } from '../context/AppContext';
+import { useToast, useConfirm } from '../context/AppContext';
 import { Download, FileSpreadsheet, FileText, RefreshCw, CheckCircle, AlertCircle, Calendar, ExternalLink, Calculator, Building2, ArrowLeft, Shield, Search, ChevronDown, ChevronRight, Zap, Palette, FileCheck, BellRing, Package, Check, X, Loader2, Home, Smartphone, Fuel, Archive, Landmark, BarChart3, CreditCard, Users, Link2, Settings2, HardDrive, FolderOpen, Construction, Receipt, Mail, Sparkles, ClipboardList, GraduationCap } from 'lucide-react';
 import { captureException } from '../lib/sentry';
 import AdminHelp from './admin-help/AdminHelp';
@@ -96,60 +96,69 @@ const FORMES_JURIDIQUES = [
   { valeur: 'SNC', libelle: 'SNC (Société en Nom Collectif)' },
 ];
 
+// Champs repris par « Reprendre les informations de l'entreprise » (texte et nombres seulement)
+const CHAMPS_IMPORTABLES = [
+  'nom', 'nomEntrepreneur', 'formeJuridique', 'capital', 'adresse', 'ville', 'codePostal', 'pays', 'tel', 'email', 'siteWeb',
+  'slogan', 'siret', 'codeApe', 'tvaIntra', 'rcs', 'rcsVille', 'rcsNumero', 'rcsType', 'iban', 'bic', 'banque', 'titulaireBanque',
+  'decennaleAssureur', 'decennaleNumero', 'decennaleValidite', 'decennaleActivites', 'decennaleAssureurAdresse', 'decennaleZone',
+  'rcProAssureur', 'rcProNumero', 'rcProValidite', 'rcProMontantGarantie', 'rcProZone', 'rge', 'rgeOrganisme',
+  'mediateur', 'mediateurContact', 'cgv', 'mentionDevis', 'mentionFacture', 'tvaDefaut', 'acompteDefaut', 'validiteDevis',
+  'delaiPaiement', 'tauxPenalites', 'modePaiementDefaut', 'conditionsPaiementDefaut', 'tauxFraisStructure', 'couleur',
+];
+
 const VILLES_RCS = ['Paris', 'Lyon', 'Marseille', 'Toulouse', 'Nice', 'Nantes', 'Strasbourg', 'Montpellier', 'Bordeaux', 'Lille', 'Rennes', 'Reims', 'Toulon', 'Saint-Étienne', 'Le Havre', 'Grenoble', 'Dijon', 'Angers', 'Nîmes', 'Villeurbanne', 'Clermont-Ferrand', 'Aix-en-Provence', 'Brest', 'Tours', 'Amiens', 'Limoges', 'Annecy', 'Perpignan', 'Boulogne-Billancourt', 'Metz', 'Besançon', 'Orléans', 'Rouen', 'Mulhouse', 'Caen', 'Nancy', 'Saint-Denis', 'Argenteuil', 'Roubaix', 'Tourcoing', 'Montreuil', 'Avignon', 'Créteil', 'Poitiers', 'Fort-de-France', 'Versailles', 'Courbevoie', 'Vitry-sur-Seine', 'Colombes', 'Pau'];
 
-// Debounced input to prevent re-render on every keystroke (mobile perf)
-function DebouncedInput({ value, onChange, delay = 800, ...props }) {
+// Saisie différée (moins de rendus à chaque frappe, au téléphone), mais jamais perdue : la valeur en attente est
+// écrite à la sortie du champ et quand le champ disparaît (changement d'onglet ou de page). Avant (recette du
+// 9 oct. 2026), le minuteur était annulé au démontage : un code APE tapé puis « Accueil » touché dans la
+// seconde n'était jamais enregistré, sans message.
+function useSaisieDifferee(value, onChange, delay) {
   const [localValue, setLocalValue] = useState(value ?? '');
   const timerRef = useRef(null);
+  const attenteRef = useRef(null); // valeur tapée pas encore transmise
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
 
   useEffect(() => {
-    setLocalValue(value ?? '');
+    if (attenteRef.current === null) setLocalValue(value ?? '');
   }, [value]);
+
+  const vider = useCallback(() => {
+    if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
+    if (attenteRef.current !== null) {
+      const v = attenteRef.current;
+      attenteRef.current = null;
+      onChangeRef.current(v);
+    }
+  }, []);
 
   const handleChange = (e) => {
     const newVal = e.target.value;
     setLocalValue(newVal);
+    attenteRef.current = newVal;
     if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => {
-      onChange(newVal);
-    }, delay);
+    timerRef.current = setTimeout(vider, delay);
   };
 
-  useEffect(() => {
-    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
-  }, []);
+  useEffect(() => vider, [vider]);
 
-  return <input {...props} value={localValue} onChange={handleChange} />;
+  return { localValue, handleChange, vider };
+}
+
+function DebouncedInput({ value, onChange, delay = 800, onBlur, ...props }) {
+  const { localValue, handleChange, vider } = useSaisieDifferee(value, onChange, delay);
+  return <input {...props} value={localValue} onChange={handleChange} onBlur={(e) => { vider(); onBlur?.(e); }} />;
 }
 
 // Same for textarea
-function DebouncedTextarea({ value, onChange, delay = 800, ...props }) {
-  const [localValue, setLocalValue] = useState(value ?? '');
-  const timerRef = useRef(null);
-
-  useEffect(() => {
-    setLocalValue(value ?? '');
-  }, [value]);
-
-  const handleChange = (e) => {
-    const newVal = e.target.value;
-    setLocalValue(newVal);
-    if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => {
-      onChange(newVal);
-    }, delay);
-  };
-
-  useEffect(() => {
-    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
-  }, []);
-
-  return <textarea {...props} value={localValue} onChange={handleChange} />;
+function DebouncedTextarea({ value, onChange, delay = 800, onBlur, ...props }) {
+  const { localValue, handleChange, vider } = useSaisieDifferee(value, onChange, delay);
+  return <textarea {...props} value={localValue} onChange={handleChange} onBlur={(e) => { vider(); onBlur?.(e); }} />;
 }
 
 export default function Settings({ entreprise, setEntreprise, user, devis = [], depenses = [], clients = [], chantiers = [], onExportComptable, isDark, couleur, setPage, modeDiscret }) {
   const { showToast } = useToast();
+  const { confirm } = useConfirm();
   const { canManageTeam } = usePermissions();
   const { orgId } = useOrg();
   const relances = useRelances({
@@ -229,7 +238,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
   const updateEntreprise = useCallback((updater) => {
     setSaveStatus('saving');
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-    Promise.resolve(setEntreprise(updater)).then(() => {
+    return Promise.resolve(setEntreprise(updater)).then(() => {
       // Debounce the toast to avoid spam
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
       saveTimeoutRef.current = setTimeout(() => {
@@ -238,10 +247,13 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
         // Reset indicator after 3s
         setTimeout(() => setSaveStatus(null), 3000);
       }, 800);
+      return true;
     }).catch((e) => {
       captureException(e, { context: 'paramètres entreprise' });
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
       setSaveStatus('error');
       showToast('Modification non enregistrée. Vérifiez votre connexion et réessayez.', 'error');
+      return false;
     });
   }, [setEntreprise, showToast]);
 
@@ -364,9 +376,12 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
         reader.onerror = reject;
         reader.readAsDataURL(blob);
       });
-      setEntreprise(p => ({ ...p, logo: dataUrl }));
+      // Par l'enregistrement commun : un refus de la base se dit (avant : aucun message, logo absent)
+      await updateEntreprise(p => ({ ...p, logo: dataUrl }));
     } catch (err) {
-      showToast('Erreur lors du traitement du logo', 'error');
+      // Échec du traitement de l'image (le refus de la base est dit par updateEntreprise)
+      captureException(err, { context: 'logo entreprise' });
+      showToast('Le logo n\'a pas été enregistré. Réessayez avec une image plus légère ou plus tard.', 'error');
     } finally {
       e.target.value = '';
     }
@@ -533,13 +548,16 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
           <h1 className={`text-xl sm:text-2xl font-bold text-encre`}>Paramètres</h1>
           {/* Auto-save status indicator */}
           {saveStatus && (
-            <span className={`text-xs px-2.5 py-1 rounded-full flex items-center gap-1.5 animate-fade-in ${
+            <span role="status" className={`text-xs px-2.5 py-1 rounded-full flex items-center gap-1.5 animate-fade-in ${
               saveStatus === 'saving'
                 ? 'bg-alerte-fond text-alerte-texte'
-                : 'bg-succes-fond text-succes-texte'
+                : saveStatus === 'error' ? 'bg-danger-fond text-danger-texte' : 'bg-succes-fond text-succes-texte'
             }`}>
+              {/* Avant (recette du 9 oct. 2026), un refus s'affichait aussi « Enregistré » en vert */}
               {saveStatus === 'saving' ? (
                 <><span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" /> Enregistrement...</>
+              ) : saveStatus === 'error' ? (
+                <><AlertCircle size={12} /> Non enregistré</>
               ) : (
                 <><CheckCircle size={12} /> Enregistré</>
               )}
@@ -1182,7 +1200,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">TVA par défaut</label>
-                <select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={entreprise.tvaDefaut || 10} onChange={e => updateEntreprise(p => ({...p, tvaDefaut: parseFloat(e.target.value)}))}>
+                <select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={(entreprise.tvaDefaut ?? 10)} onChange={e => updateEntreprise(p => ({...p, tvaDefaut: parseFloat(e.target.value)}))}>
                   <option value={20}>20% (taux normal)</option>
                   <option value={10}>10% (rénovation &gt;2 ans)</option>
                   <option value={5.5}>5,5% (réno. énergétique)</option>
@@ -1202,7 +1220,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Acompte par défaut</label>
-                <select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={entreprise.acompteDefaut || 30} onChange={e => updateEntreprise(p => ({...p, acompteDefaut: parseInt(e.target.value)}))}>
+                <select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={(entreprise.acompteDefaut ?? 30)} onChange={e => updateEntreprise(p => ({...p, acompteDefaut: parseInt(e.target.value)}))}>
                   <option value={0}>Pas d'acompte</option>
                   <option value={20}>20%</option>
                   <option value={30}>30% (recommandé BTP)</option>
@@ -1760,10 +1778,10 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
           <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
             <h3 className={`font-semibold mb-2 flex items-center gap-2 ${textPrimary}`}>
               <RefreshCw size={18} style={{ color: '#3b82f6' }} />
-              Import de données
+              Reprendre les informations de l'entreprise
             </h3>
             <p className={`text-sm ${textMuted} mb-4`}>
-              Restaurez vos données depuis un fichier d'export Mallettico (.json). Les données existantes seront fusionnées.
+              Reprend l'identité, les mentions et les réglages de l'entreprise d'un export Mallettico (.json). Les devis, factures, clients et chantiers de l'export ne sont pas importés : gardez ce fichier, il fait office d'archive.
             </p>
 
             <div className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors ${isDark ? 'border-slate-600 hover:border-slate-500' : 'border-slate-300 hover:border-slate-400'}`}>
@@ -1783,17 +1801,30 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                         showToast('Fichier non reconnu (pas un export Mallettico)', 'error');
                         return;
                       }
-                      // Restore localStorage keys
-                      if (data.localStorage) {
-                        Object.entries(data.localStorage).forEach(([k, v]) => {
-                          try { localStorage.setItem(k, typeof v === 'string' ? v : JSON.stringify(v)); } catch { /* préférence non enregistrée : quota plein ou navigation privée */ }
-                        });
+                      // Seules les informations de l'entreprise sont reprises, par l'enregistrement commun (un refus de la
+                      // base se dit). Avant (recette du 9 oct. 2026) : « Import réussi » alors que ni devis, ni clients,
+                      // ni chantiers n'étaient restaurés, et n'importe quelle clé du stockage local était réécrite.
+                      if (!data.data?.entreprise || typeof data.data.entreprise !== 'object') {
+                        showToast('Cet export ne contient pas d\'informations d\'entreprise.', 'error');
+                        return;
                       }
-                      // Restore entreprise
-                      if (data.data?.entreprise) {
-                        setEntreprise(prev => ({ ...prev, ...data.data.entreprise }));
-                      }
-                      showToast(`Import réussi — ${data.exportDate ? dateLue(data.exportDate).toLocaleDateString('fr-FR') : 'date inconnue'}. Rechargez la page pour voir tous les changements.`, 'success');
+                      // Liste fermée (ni statut de la fiche, ni identifiants) ; un fichier préparé par un tiers ne doit
+                      // pas glisser son IBAN sans que l'artisan le voie
+                      const source = data.data.entreprise;
+                      const infos = Object.fromEntries(CHAMPS_IMPORTABLES.filter(k => source[k] !== undefined && source[k] !== null && typeof source[k] !== 'object').map(k => [k, source[k]]));
+                      const sensibles = [['iban', 'IBAN'], ['bic', 'BIC'], ['siret', 'SIRET'], ['nom', 'nom de l\'entreprise']]
+                        .filter(([k]) => infos[k] !== undefined && String(infos[k]).trim() !== String(entreprise[k] || '').trim());
+                      (async () => {
+                        if (sensibles.length) {
+                          const ok = await confirm({
+                            title: 'Remplacer ces informations ?',
+                            message: sensibles.map(([k, l]) => `${l} : « ${String(entreprise[k] || '—')} » → « ${String(infos[k])} »`).join('\n') + '\n\nN\'importez que vos propres exports : ces informations s\'imprimeront sur vos devis et factures.',
+                          });
+                          if (!ok) return;
+                        }
+                        const ok = await updateEntreprise(prev => ({ ...prev, ...infos }));
+                        if (ok) showToast(`Informations de l'entreprise reprises de l'export${data.exportDate ? ` du ${dateLue(data.exportDate).toLocaleDateString('fr-FR')}` : ''}.`, 'success');
+                      })();
                     } catch {
                       showToast('Erreur de lecture du fichier', 'error');
                     }
@@ -2112,39 +2143,31 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                 {/* Step 3: Documents */}
                 {safeStep === 2 && (
                   <>
+                    {/* Les mêmes réglages que l'onglet Documents (tvaDefaut, acompteDefaut). Avant (recette du 9 oct. 2026),
+                        l'assistant écrivait tauxTva / acompte / mentionRGE / mentionDecennale, que rien ne lit. */}
                     <div>
-                      <label className={`block text-sm font-medium mb-2 ${textPrimary}`}>Taux de TVA par défaut : <strong>{entreprise.tauxTva || 10}%</strong></label>
-                      <input type="range" min="0" max="20" step="0.5"
-                        value={entreprise.tauxTva || 10}
-                        onChange={e => updateEntreprise(p => ({ ...p, tauxTva: parseFloat(e.target.value) }))}
-                        className="w-full accent-current" style={{ accentColor: couleur }}
-                      />
-                      <div className={`flex justify-between text-xs ${textMuted}`}><span>0%</span><span>5.5%</span><span>10%</span><span>20%</span></div>
+                      <p className={`block text-sm font-medium mb-2 ${textPrimary}`}>Taux de TVA par défaut</p>
+                      <div className="flex flex-wrap gap-2" role="group" aria-label="Taux de TVA par défaut">
+                        {[20, 10, 5.5, 0].map(t => (
+                          <button key={t} type="button" aria-pressed={(entreprise.tvaDefaut ?? 10) === t}
+                            onClick={() => updateEntreprise(p => ({ ...p, tvaDefaut: t }))}
+                            className={`min-h-[44px] px-4 rounded-xl border text-sm font-medium ${(entreprise.tvaDefaut ?? 10) === t ? 'bg-accent text-sur-accent border-transparent' : 'border-bord text-encre-2 hover:bg-surface-2'}`}>
+                            {String(t).replace('.', ',')} %
+                          </button>
+                        ))}
+                      </div>
+                      <p className={`text-xs mt-1 ${textMuted}`}>Modifiable ligne par ligne sur chaque devis. En franchise de TVA (art. 293 B du CGI, sous les seuils) : aucune TVA n'est facturée.</p>
                     </div>
                     <div>
-                      <label className={`block text-sm font-medium mb-2 ${textPrimary}`}>Acompte par défaut : <strong>{entreprise.acompte || 30}%</strong></label>
+                      <label className={`block text-sm font-medium mb-2 ${textPrimary}`}>Acompte par défaut : <strong>{entreprise.acompteDefaut ?? 30} %</strong></label>
                       <input type="range" min="0" max="50" step="5"
-                        value={entreprise.acompte || 30}
-                        onChange={e => updateEntreprise(p => ({ ...p, acompte: parseInt(e.target.value) }))}
+                        value={entreprise.acompteDefaut ?? 30}
+                        onChange={e => updateEntreprise(p => ({ ...p, acompteDefaut: parseInt(e.target.value, 10) }))}
                         className="w-full" style={{ accentColor: couleur }}
                       />
-                      <div className={`flex justify-between text-xs ${textMuted}`}><span>0%</span><span>30%</span><span>50%</span></div>
+                      <div className={`flex justify-between text-xs ${textMuted}`}><span>0 %</span><span>30 %</span><span>50 %</span></div>
                     </div>
-                    <div className="space-y-2">
-                      {[
-                        { key: 'mentionRGE', label: 'Mention RGE sur les documents' },
-                        { key: 'mentionDecennale', label: 'Mentions assurance décennale' },
-                      ].map(toggle => (
-                        <label key={toggle.key} className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-colors border-bord hover:bg-surface-2`}>
-                          <span className={`text-sm font-medium ${textPrimary}`}>{toggle.label}</span>
-                          <div className={`relative w-11 h-6 rounded-full transition-colors ${entreprise[toggle.key] ? '' : isDark ? 'bg-slate-600' : 'bg-slate-300'}`}
-                            style={entreprise[toggle.key] ? { backgroundColor: couleur } : undefined}
-                            onClick={(e) => { e.preventDefault(); updateEntreprise(p => ({ ...p, [toggle.key]: !p[toggle.key] })); }}>
-                            <div className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform shadow-sm ${entreprise[toggle.key] ? 'translate-x-5' : ''}`} />
-                          </div>
-                        </label>
-                      ))}
-                    </div>
+                    <p className={`text-xs ${textMuted}`}>Assurances, garanties légales, pénalités de retard et droit de rétractation s'impriment à partir de votre profil. À joindre vous-même pour l'instant : votre attestation d'assurance décennale.</p>
                   </>
                 )}
 
@@ -2156,7 +2179,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                       <div className="space-y-2">
                         {[
                           { jour: 'J+7', type: 'Email', desc: 'Rappel de consultation' },
-                          { jour: 'J+15', type: 'Email + SMS', desc: 'Relance douce' },
+                          { jour: 'J+15', type: 'Email', desc: 'Relance douce' },
                           { jour: 'J+30', type: 'Email', desc: 'Dernière relance' },
                         ].map(r => (
                           <div key={r.jour} className={`flex items-center gap-3 text-sm ${textSecondary}`}>
@@ -2167,21 +2190,19 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                         ))}
                       </div>
                     </div>
-                    <label className={`flex items-center justify-between p-4 rounded-xl border cursor-pointer transition-all ${
-                      entreprise.relancesActives
-                        ? isDark ? 'border-emerald-700 bg-emerald-900/20' : 'border-emerald-300 bg-emerald-50'
-                        : 'border-bord'
-                    }`}>
+                    {/* L'interrupteur réel des relances (relanceConfig.enabled) est dans l'onglet Relances, avec ses
+                        étapes et ses textes. Avant (recette du 9 oct. 2026), celui de l'assistant écrivait
+                        « relancesActives », que rien ne lit : les relances restaient désactivées. */}
+                    <div className={`flex items-center justify-between gap-3 p-4 rounded-xl border border-bord`}>
                       <div>
-                        <p className={`text-sm font-semibold ${textPrimary}`}>Activer les relances automatiques</p>
-                        <p className={`text-xs ${textMuted}`}>(recommandé)</p>
+                        <p className={`text-sm font-semibold ${textPrimary}`}>Relances automatiques : {relances.isEnabled ? 'activées' : 'désactivées'}</p>
+                        <p className={`text-xs ${textMuted}`}>Réglez-les (étapes, textes, envoi) dans l'onglet Relances.</p>
                       </div>
-                      <div className={`relative w-11 h-6 rounded-full transition-colors ${entreprise.relancesActives ? '' : isDark ? 'bg-slate-600' : 'bg-slate-300'}`}
-                        style={entreprise.relancesActives ? { backgroundColor: '#22c55e' } : undefined}
-                        onClick={(e) => { e.preventDefault(); updateEntreprise(p => ({ ...p, relancesActives: !p.relancesActives })); }}>
-                        <div className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform shadow-sm ${entreprise.relancesActives ? 'translate-x-5' : ''}`} />
-                      </div>
-                    </label>
+                      <button type="button" onClick={() => { setShowSetupWizard(false); setTab('relances'); }}
+                        className="min-h-[44px] px-3 rounded-xl border border-bord-fort text-sm font-medium text-encre hover:bg-surface-2 whitespace-nowrap">
+                        Ouvrir les relances
+                      </button>
+                    </div>
                   </>
                 )}
 

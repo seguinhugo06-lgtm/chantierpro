@@ -107,6 +107,7 @@ import { urlPublique } from '../lib/urlPublique';
 import { jourLocal, dateLue } from '../lib/dates';
 import { signatureDuClient } from '../lib/signatureDocument';
 import { finValidite, joursRestants, estExpire } from '../lib/validiteDevis';
+import { createPortal } from 'react-dom';
 
 // Email tracking : l'envoi passe par Resend (send-email) ; l'historique par document
 // n'est pas persisté côté client → statut vide (l'onglet « Emails » reste masqué).
@@ -255,6 +256,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   // DevisComposer — nouveau parcours de création single-canvas (banger)
   const [showDevisComposer, setShowDevisComposer] = useState(false);
   const [clientInitial, setClientInitial] = useState(null);
+  const [chantierInitial, setChantierInitial] = useState(null);
   // Édition : composer pour devis/factures, wizard pour les avoirs (montants négatifs)
   /**
    * Ouvre l'éditeur pour un NOUVEAU devis.
@@ -264,7 +266,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
    * composé son devis. On préfère le prévenir avant qu'il travaille pour rien.
    */
   // clientId : ouvert depuis une fiche client, l'éditeur part avec ce client (sinon : un clic reçu).
-  const ouvrirNouveauDevis = (clientId) => {
+  const ouvrirNouveauDevis = (clientId, chantierId = null) => {
     const { planId, usage, openUpgradeModal } = useSubscriptionStore.getState();
     const limite = (PLANS[planId] || PLANS.gratuit).limits?.devis ?? -1;
     if (limite !== -1 && (usage?.devis ?? 0) >= limite) {
@@ -272,6 +274,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       return;
     }
     setClientInitial(typeof clientId === 'string' ? clientId : null);
+    // Depuis la fiche d'un chantier : le devis est rattaché à ce chantier (avant : la liste des devis, recette du 9 oct.)
+    setChantierInitial(typeof chantierId === 'string' ? chantierId : null);
     setEditingDevis(null);
     setShowDevisComposer(true);
   };
@@ -293,10 +297,10 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   const [showEcheancierModal, setShowEcheancierModal] = useState(false);
   const [echeancierCache, setEcheancierCache] = useState({}); // { devisId: echeancierData }
 
-  const [acomptePct, setAcomptePct] = useState(entreprise?.acompteDefaut || 30);
+  const [acomptePct, setAcomptePct] = useState((entreprise?.acompteDefaut ?? 30));
   // Le pourcentage proposé est celui que le devis signé annonce (avant : 30 % quel que soit le devis)
   const ouvrirAcompte = () => {
-    setAcomptePct(Number(selected?.acompte_pct) || entreprise?.acompteDefaut || 30);
+    setAcomptePct(Number(selected?.acompte_pct) || (entreprise?.acompteDefaut ?? 30));
     setShowAcompteModal(true);
   };
   // Montant TTC de la facture d'acompte telle qu'elle sera créée (lignes par taux, arrondies)
@@ -435,7 +439,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     date: jourLocal(),
     validite: entreprise?.validiteDevis || 30,
     sections: [{ id: '1', titre: '', lignes: [] }],
-    tvaDefaut: entreprise?.tvaDefaut || 10,
+    tvaDefaut: (entreprise?.tvaDefaut ?? 10),
     remise: 0,
     retenueGarantie: false, // Retenue de garantie 5% (BTP)
     conditionsPaiement: entreprise?.conditionsPaiementDefaut || '30_jours',
@@ -463,7 +467,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   };
 
   useEffect(() => { if (snackbar) { const t = setTimeout(() => setSnackbar(null), 8000); return () => clearTimeout(t); } }, [snackbar]);
-  useEffect(() => { if (createMode) { ouvrirNouveauDevis(createMode?.clientId); setCreateMode?.(false); } /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [createMode, setCreateMode]);
+  useEffect(() => { if (createMode) { ouvrirNouveauDevis(createMode?.clientId, createMode?.chantierId); setCreateMode?.(false); } /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [createMode, setCreateMode]);
 
   // Ouverture directe de l'éditeur sur un devis précis. Sert à la dictée : quand
   // l'artisan demande un devis sans donner de prix, on l'amène là où il peut le
@@ -870,7 +874,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         date: jourLocal(),
         validite: entreprise?.validiteDevis || 30,
         sections: [{ id: '1', titre: '', lignes: [] }],
-        tvaDefaut: entreprise?.tvaDefaut || 10,
+        tvaDefaut: (entreprise?.tvaDefaut ?? 10),
         remise: 0,
         retenueGarantie: false,
         notes: ''
@@ -926,7 +930,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       lignes: newLignes,
       tvaParTaux: doc.tvaParTaux,
       tvaDetails: doc.tvaDetails,
-      tvaRate: doc.tvaRate || entreprise?.tvaDefaut || 10,
+      tvaRate: doc.tvaRate || (entreprise?.tvaDefaut ?? 10),
       remise: doc.remise || 0,
       retenueGarantie: doc.retenueGarantie || false,
       total_ht: doc.total_ht,
@@ -984,7 +988,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       lignes: newLignes,
       tvaParTaux: doc.tvaParTaux,
       tvaDetails: doc.tvaDetails,
-      tvaRate: doc.tvaRate || entreprise?.tvaDefaut || 10,
+      tvaRate: doc.tvaRate || (entreprise?.tvaDefaut ?? 10),
       remise: doc.remise || 0,
       total_ht: doc.total_ht,
       tva: doc.tva,
@@ -1605,7 +1609,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     // Calculate TVA details from lignes if not present in doc
     const calculatedTvaDetails = doc.tvaDetails || (() => {
       const details = {};
-      const defaultRate = doc.tvaRate || entreprise?.tvaDefaut || 10;
+      const defaultRate = doc.tvaRate || (entreprise?.tvaDefaut ?? 10);
       filterValidLignes(doc.lignes).forEach(l => {
         const rate = l.tva !== undefined ? l.tva : defaultRate;
         if (!details[rate]) {
@@ -1772,7 +1776,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 
   <!-- TOTAUX -->
   <div class="totals">
-    ${lignesTotauxHtml(doc, { isMicro, tauxDefaut: E?.tvaDefaut || 10 })}
+    ${lignesTotauxHtml(doc, { isMicro, tauxDefaut: (E?.tvaDefaut ?? 10) })}
     ${doc.acompte_pct ? `
     ${lignesAcompteHtml(doc, totauxDocument(doc, { isMicro }).totalTTC, doc.acompte_pct)}
     ` : ''}
@@ -2387,9 +2391,10 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   const devisComposerElement = (
     <DevisComposer
       isOpen={showDevisComposer}
-      onClose={() => { setShowDevisComposer(false); setEditingDevis(null); setClientInitial(null); }}
+      onClose={() => { setShowDevisComposer(false); setEditingDevis(null); setClientInitial(null); setChantierInitial(null); }}
       initialData={editingDevis}
       clientInitial={clientInitial}
+      chantierInitial={chantierInitial}
       onSubmit={async (devisData) => {
         const numero = await generateNumero(devisData.type);
         const newDevis = await onSubmit({ ...devisData, numero });
@@ -2451,6 +2456,81 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       <Snackbar />
     </div>
   );
+
+  // Fenêtre « Sauvegarder comme modèle », montée par la liste ET par la fiche. Avant (recette du 9 oct. 2026), elle
+  // n'existait que dans la liste : « Enregistrer comme modèle » du menu de la fiche ne faisait rien.
+  const fenetreModele = showSaveTemplateModal && selected ? createPortal(
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4 animate-fade-in">
+          <div className={`${cardBg} rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md shadow-2xl overflow-hidden`}>
+            <div className={`p-5 border-b flex items-center justify-between ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${couleur}20` }}>
+                  <Star size={20} style={{ color: couleur }} />
+                </div>
+                <div>
+                  <h2 className={`font-bold text-lg ${textPrimary}`}>Sauvegarder comme modèle</h2>
+                  <p className={`text-sm ${textMuted}`}>{(selected.lignes || []).length} lignes · {selected.numero}</p>
+                </div>
+              </div>
+              <button onClick={() => setShowSaveTemplateModal(false)} className={`p-2 rounded-xl ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
+                <X size={20} className={textSecondary} />
+              </button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div>
+                <label className={`block text-sm font-medium mb-1.5 ${textPrimary}`}>Nom du modèle</label>
+                <input
+                  value={templateName}
+                  onChange={e => setTemplateName(e.target.value)}
+                  placeholder={selected.objet || selected.lignes?.[0]?.description || 'Mon modèle'}
+                  className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`}
+                  autoFocus
+                />
+              </div>
+              <div>
+                <label className={`block text-sm font-medium mb-1.5 ${textPrimary}`}>Catégorie</label>
+                <input
+                  value={templateCategory}
+                  onChange={e => setTemplateCategory(e.target.value)}
+                  placeholder="ex: Plomberie, Électricité, Rénovation..."
+                  className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`}
+                />
+              </div>
+              <button
+                onClick={async () => {
+                  if (!templateName.trim()) return showToast('Donnez un nom au modèle', 'error');
+                  const enregistre = await addTemplate({
+                    nom: templateName.trim(),
+                    categorie: templateCategory.trim() || 'Mes modèles',
+                    description: `Créé depuis ${selected.numero}`,
+                    lignes: (selected.lignes || []).map(l => ({
+                      description: l.description,
+                      quantite: l.quantite,
+                      unite: l.unite,
+                      prixUnitaire: Number(l.prixUnitaire) || 0, // une remise (ligne négative) reste négative
+                      prixAchat: l.prixAchat || 0,
+                      tva: l.tva,
+                    })),
+                    tva_defaut: selected.tvaRate ?? 10,
+                    notes: selected.notes || '',
+                  });
+                  if (!enregistre) return; // refus de la base : DataContext l'a dit, la fenêtre reste ouverte
+                  setShowSaveTemplateModal(false);
+                  setTemplateName('');
+                  setTemplateCategory('Mes modèles');
+                  showToast(`Modèle "${templateName}" sauvegardé`, 'success');
+                }}
+                disabled={!templateName.trim()}
+                className="w-full py-3.5 text-white rounded-xl font-medium flex items-center justify-center gap-2 transition-all disabled:opacity-50 hover:shadow-lg"
+                style={{ background: couleur }}
+              >
+                <Star size={16} /> Sauvegarder le modèle
+              </button>
+            </div>
+          </div>
+        </div>,
+    document.body
+  ) : null;
 
   // === PREVIEW VIEW ===
   if (mode === 'preview' && selected) {
@@ -3202,7 +3282,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                   {/* Mêmes totaux que les documents imprimés (src/lib/totauxDocument.js) */}
                   {(() => {
                     const microDoc = franchiseAppliquee(selected, entreprise);
-                    const t = totauxDocument(selected, { tauxDefaut: entreprise?.tvaDefaut || 10, isMicro: microDoc });
+                    const t = totauxDocument(selected, { tauxDefaut: (entreprise?.tvaDefaut ?? 10), isMicro: microDoc });
                     const ligneTotal = (libelle, valeur, cls = textSecondary) => (
                       <div key={libelle} className={`flex justify-between gap-3 py-1 text-sm ${cls}`}><span>{libelle}</span><span className="tabular-nums">{valeur}</span></div>
                     );
@@ -3624,7 +3704,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           </div>
         )}
 
-        <Snackbar />
+        {fenetreModele}
+      <Snackbar />
 
         {/* Signature Pad Modal — must be inside preview return for it to render */}
         <SignaturePad
@@ -4072,7 +4153,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
             if (hasData) {
               if (window.confirm('Abandonner ce devis ? Les données non sauvegardées seront perdues.')) {
                 setMode('list');
-                setForm({ type: 'devis', clientId: '', chantierId: '', date: jourLocal(), validite: entreprise?.validiteDevis || 30, sections: [{ id: '1', titre: '', lignes: [] }], tvaDefaut: entreprise?.tvaDefaut || 10, remise: 0, retenueGarantie: false, conditionsPaiement: entreprise?.conditionsPaiementDefaut || '30_jours', notes: '' });
+                setForm({ type: 'devis', clientId: '', chantierId: '', date: jourLocal(), validite: entreprise?.validiteDevis || 30, sections: [{ id: '1', titre: '', lignes: [] }], tvaDefaut: (entreprise?.tvaDefaut ?? 10), remise: 0, retenueGarantie: false, conditionsPaiement: entreprise?.conditionsPaiementDefaut || '30_jours', notes: '' });
               }
             } else {
               setMode('list');
@@ -4085,7 +4166,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
               if (hasData) {
                 if (window.confirm('Abandonner ce devis ? Les données non sauvegardées seront perdues.')) {
                   setMode('list');
-                  setForm({ type: 'devis', clientId: '', chantierId: '', date: jourLocal(), validite: entreprise?.validiteDevis || 30, sections: [{ id: '1', titre: '', lignes: [] }], tvaDefaut: entreprise?.tvaDefaut || 10, remise: 0, retenueGarantie: false, conditionsPaiement: entreprise?.conditionsPaiementDefaut || '30_jours', notes: '' });
+                  setForm({ type: 'devis', clientId: '', chantierId: '', date: jourLocal(), validite: entreprise?.validiteDevis || 30, sections: [{ id: '1', titre: '', lignes: [] }], tvaDefaut: (entreprise?.tvaDefaut ?? 10), remise: 0, retenueGarantie: false, conditionsPaiement: entreprise?.conditionsPaiementDefaut || '30_jours', notes: '' });
                 }
               } else {
                 setMode('list');
@@ -4134,7 +4215,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                       quantite: 1,
                       unite: 'u',
                       prixUnitaire: 0,
-                      tva: form.tvaDefaut || 10,
+                      tva: form.tvaDefaut ?? 10,
                       subItems: [],
                     })),
                   }));
@@ -5347,77 +5428,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         couleur={couleur}
       />
 
-      {/* Save as Template Modal */}
-      {showSaveTemplateModal && selected && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4 animate-fade-in">
-          <div className={`${cardBg} rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md shadow-2xl overflow-hidden`}>
-            <div className={`p-5 border-b flex items-center justify-between ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${couleur}20` }}>
-                  <Star size={20} style={{ color: couleur }} />
-                </div>
-                <div>
-                  <h2 className={`font-bold text-lg ${textPrimary}`}>Sauvegarder comme modèle</h2>
-                  <p className={`text-sm ${textMuted}`}>{(selected.lignes || []).length} lignes · {selected.numero}</p>
-                </div>
-              </div>
-              <button onClick={() => setShowSaveTemplateModal(false)} className={`p-2 rounded-xl ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
-                <X size={20} className={textSecondary} />
-              </button>
-            </div>
-            <div className="p-5 space-y-4">
-              <div>
-                <label className={`block text-sm font-medium mb-1.5 ${textPrimary}`}>Nom du modèle</label>
-                <input
-                  value={templateName}
-                  onChange={e => setTemplateName(e.target.value)}
-                  placeholder={selected.objet || selected.lignes?.[0]?.description || 'Mon modèle'}
-                  className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`}
-                  autoFocus
-                />
-              </div>
-              <div>
-                <label className={`block text-sm font-medium mb-1.5 ${textPrimary}`}>Catégorie</label>
-                <input
-                  value={templateCategory}
-                  onChange={e => setTemplateCategory(e.target.value)}
-                  placeholder="ex: Plomberie, Électricité, Rénovation..."
-                  className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`}
-                />
-              </div>
-              <button
-                onClick={async () => {
-                  if (!templateName.trim()) return showToast('Donnez un nom au modèle', 'error');
-                  await addTemplate({
-                    nom: templateName.trim(),
-                    categorie: templateCategory.trim() || 'Mes modèles',
-                    description: `Créé depuis ${selected.numero}`,
-                    lignes: (selected.lignes || []).map(l => ({
-                      description: l.description,
-                      quantite: l.quantite,
-                      unite: l.unite,
-                      prixUnitaire: Math.abs(l.prixUnitaire || 0),
-                      prixAchat: l.prixAchat || 0,
-                      tva: l.tva,
-                    })),
-                    tva_defaut: selected.tvaRate || 10,
-                    notes: selected.notes || '',
-                  });
-                  setShowSaveTemplateModal(false);
-                  setTemplateName('');
-                  setTemplateCategory('Mes modèles');
-                  showToast(`Modèle "${templateName}" sauvegardé`, 'success');
-                }}
-                disabled={!templateName.trim()}
-                className="w-full py-3.5 text-white rounded-xl font-medium flex items-center justify-center gap-2 transition-all disabled:opacity-50 hover:shadow-lg"
-                style={{ background: couleur }}
-              >
-                <Star size={16} /> Sauvegarder le modèle
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {fenetreModele}
 
       {/* Template Selector Modal */}
       <TemplateSelector
@@ -5498,7 +5509,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         addClient={addClient}
         isDark={isDark}
         couleur={couleur}
-        tvaDefaut={entreprise?.tvaDefaut || 10}
+        tvaDefaut={(entreprise?.tvaDefaut ?? 10)}
         customTemplates={ctxTemplates}
         recentTemplates={enrichedRecentTemplates}
         onTrackUsage={trackTemplateUsage}

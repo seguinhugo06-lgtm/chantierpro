@@ -15,11 +15,18 @@
  * en production, aucun lien n'a jamais été enregistré (la base refuse en silence, l'app disait « Lien portail
  * copié ! »), un visiteur ne peut rien lire, et sans données le portail montrait une entreprise fictive
  * (« Martin Rénovation », faux téléphone, faux lien d'avis). À rallumer avec la tâche [portail-client].
+ *
+ * receptionChantier — « Réceptionner » un chantier, l'onglet et la vue « Garanties ». Éteint le 10 oct. 2026
+ * (recette) : les tables `receptions`, `reception_reserves` et `interventions_sav` n'existent pas en production
+ * (constaté), et l'écran appelait les services avec de mauvais arguments : en réel, « Erreur lors de la
+ * réception » ; en démo, « Réception validée » puis « Chantier non réceptionné ». À rallumer avec la tâche
+ * [reception-chantier] (migration des tables, appels corrigés, parcours).
  */
 export const FONCTIONS = Object.freeze({
   ia: false,
   facturesSituation: false,
   portailClient: false,
+  receptionChantier: false,
 });
 
 export default FONCTIONS;

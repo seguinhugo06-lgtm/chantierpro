@@ -96,6 +96,12 @@ function Modal({
     ));
   }, []);
 
+  // onClose dans une ref : un parent qui recrée onClose à chaque frappe relançait l'effet de focus ci-dessous, qui
+  // remettait le focus sur le premier bouton après chaque lettre (recette du 9 oct. 2026 : impossible de taper
+  // « SUPPRIMER » pour supprimer son compte ; au téléphone le clavier se refermait à chaque lettre)
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
   /**
    * Handle keyboard events (ESC and Tab for focus trap)
    */
@@ -103,7 +109,7 @@ function Modal({
     if (e.key === 'Escape' && closeOnEscape) {
       e.preventDefault();
       e.stopPropagation();
-      onClose();
+      onCloseRef.current?.();
       return;
     }
 
@@ -127,7 +133,7 @@ function Modal({
         }
       }
     }
-  }, [closeOnEscape, onClose, getFocusableElements]);
+  }, [closeOnEscape, getFocusableElements]);
 
   /**
    * Handle backdrop click
