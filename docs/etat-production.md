@@ -19,7 +19,7 @@ Dans l'ordre. Chaque action est aussi dans le Pilote (« À faire de votre côt�
 
 | Élément | État | Vérifié |
 |---|---|---|
-| `main` | `2632066` (8 oct. : organisations et invitations fermées dans le dépôt — la migration 078 et la 072 corrigée attendent Hugo ; l'écran Équipe ne dit plus « fait » quand la base refuse) | `npm run statut` : Vercel ×2 + CI verts (8 oct.) |
+| `main` | `12715ad` (10 oct. : onglet Paramètres › Facture 2026 — liste des informations de facture honnête : RCS, capital et n° de TVA intracommunautaire seulement pour qui est concerné, IBAN hors note, « complètes » à 100 % seulement, chaque « Compléter » ouvre le bon champ ; test Factur-X cohérent ; aucune migration) | `npm run statut` : Vercel ×2 + CI verts (10 oct.) |
 | Vercel | 2 projets (`chantierpro`, `seguinhugo06-lgtm-chantierpro`), déploiement auto sur `main` | statut GitHub |
 | Domaine | `mallettico.fr` (DNS OVH) | 25 juil. |
 | Service worker | sert l'ancienne version jusqu'à rechargement : ne jamais vérifier un déploiement en rechargeant le site | — |
