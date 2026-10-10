@@ -17,6 +17,7 @@ import PaymentConfigTab from './settings/PaymentConfigTab';
 import EntrepriseSettingsPage from './settings/EntrepriseSettingsPage';
 import TeamManagement from './settings/TeamManagement';
 import { usePermissions } from '../hooks/usePermissions';
+import useKeepInViewport from '../hooks/useKeepInViewport';
 import { useRelances } from '../hooks/useRelances';
 import { compressImage } from '../lib/image-utils';
 import { useOrg } from '../context/OrgContext';
@@ -404,6 +405,9 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
   const missingFields = [...missingRequired, ...missingRecommended];
   const totalRequired = PROFIL_EXIGE.length + CONTACT_FIELDS.length;
   const completude = Math.round(((totalRequired - missingRequired.length) / totalRequired) * 100);
+  // Le menu des champs manquants est ancré à droite de la jauge : à 375 px il sortait de 77 px à gauche
+  const profileDetailRef = useRef(null);
+  useKeepInViewport(profileDetailRef, showProfileDetail && completude < 100);
 
   // Alertes assurances
   const alertesAssurances = useMemo(() => {
@@ -566,7 +570,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
 
             {/* Dropdown showing missing fields */}
             {showProfileDetail && completude < 100 && (
-              <div className={`absolute right-0 top-full mt-2 w-80 rounded-xl border shadow-xl z-50 bg-surface border-bord`}>
+              <div ref={profileDetailRef} className={`absolute right-0 top-full mt-2 w-80 rounded-xl border shadow-xl z-50 bg-surface border-bord`}>
                 <div className="p-4 space-y-3">
                   <div className="flex items-center justify-between">
                     <p className={`text-sm font-semibold ${textPrimary}`}>Champs manquants ({missingFields.length})</p>

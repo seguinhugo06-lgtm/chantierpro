@@ -52,7 +52,7 @@ export const PROFIL_EXIGE = [
   {
     id: 'no_forme_juridique',
     champ: 'formeJuridique',
-    onglet: 'legal',
+    onglet: 'identite', // le choix de la forme est dans Identité (« legal » menait à un onglet sans le champ)
     libelle: 'Forme juridique',
     manque: 'Forme juridique non renseignée',
     pourquoi: 'mention obligatoire',

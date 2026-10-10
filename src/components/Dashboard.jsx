@@ -48,6 +48,7 @@ import { Bouton, BoutonIcone } from './ui/Bouton';
 import EtatVide from './ui/EtatVide';
 import { useSubscriptionStore, PLANS } from '../stores/subscriptionStore';
 import { jourLocal, dateLue } from '../lib/dates';
+import { profilManquant } from '../lib/profilLegal';
 
 /** La mallette — marque Mallettico, reprise du jeu d'icônes (grille 48, contour 3,2). */
 function Mallette({ size = 24, style, className }) {
@@ -387,9 +388,9 @@ export default function Dashboard({
 
   // Onboarding (nouveaux comptes uniquement)
   const onboardingSteps = [
-    // « Fait » = les champs qui débloquent l'ENVOI d'un devis (mêmes règles que le garde légal),
+    // « Fait » = les champs qui débloquent l'ENVOI d'un devis (lib/profilLegal, la liste du contrôle d'envoi),
     // pas un simple % de profil — sinon l'étape se coche alors que l'envoi restera bloqué.
-    { key: 'profil', label: 'Configurer mon entreprise', done: !!(entreprise?.nom && entreprise?.siret && entreprise?.adresse && (entreprise?.formeJuridique || entreprise?.forme_juridique) && (entreprise?.decennaleAssureur || entreprise?.decennale_assureur) && (entreprise?.decennaleNumero || entreprise?.decennale_numero)), action: () => setPage('settings') },
+    { key: 'profil', label: 'Configurer mon entreprise', done: profilManquant(entreprise).length === 0, action: () => setPage('settings') },
     { key: 'client', label: 'Ajouter mon premier client', done: (clients?.length || 0) > 0, action: () => setPage('clients') },
     { key: 'devis', label: 'Créer mon premier devis', done: (devis?.length || 0) > 0, action: () => { setCreateMode?.(p => ({ ...p, devis: true })); setPage('devis'); } },
     { key: 'relances', label: 'Activer les relances automatiques', done: !!(entreprise?.relanceConfig?.enabled), action: () => { try { localStorage.setItem('cp_settings_tab', 'relances'); } catch { /* noop */ } setPage('settings'); } },

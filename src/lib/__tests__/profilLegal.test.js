@@ -62,16 +62,32 @@ describe('profil exigé avant envoi : une seule liste', () => {
   });
 });
 
-// Cliquet : avant, cinq écrans tenaient chacun leur liste et se contredisaient.
+const racine = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
+const lire = (fichier) => fs.readFileSync(path.join(racine, fichier), 'utf8');
+
+// Cliquet : avant, six écrans tenaient chacun leur liste et se contredisaient.
 // Les écrans qui annoncent ou appliquent le blocage d'envoi lisent lib/profilLegal, rien d'autre.
 describe('aucun écran ne retient sa propre liste', () => {
-  const racine = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
-  const ECRANS = ['src/components/DevisPage.jsx', 'src/components/DevisComposer.jsx', 'src/components/Settings.jsx'];
+  const ECRANS = ['src/components/DevisPage.jsx', 'src/components/DevisComposer.jsx', 'src/components/Settings.jsx', 'src/components/Dashboard.jsx'];
   const CONTROLE_EN_DUR = /!\s*\(?\s*(?:String\()?\s*entreprise\??\.(siret|adresse|nom|nomEntrepreneur|formeJuridique|forme_juridique|decennaleAssureur|decennale_assureur|decennaleNumero|decennale_numero)\b/g;
 
   it.each(ECRANS)('%s', (fichier) => {
-    const source = fs.readFileSync(path.join(racine, fichier), 'utf8');
+    const source = lire(fichier);
     expect(source).toContain('lib/profilLegal');
     expect(source.match(CONTROLE_EN_DUR) || []).toEqual([]);
+  });
+});
+
+// « Compléter » ouvre `onglet` puis cible `settings-field-<champ>` : le champ doit vivre dans cet onglet
+// (la forme juridique pointait vers « legal » alors que son menu est dans « identite »).
+describe('chaque mention mène au bon onglet des Paramètres', () => {
+  const source = lire('src/components/Settings.jsx');
+  const blocs = [...source.matchAll(/\{tab === '([a-z0-9_]+)' &&/g)].map((m) => ({ debut: m.index, onglet: m[1] }));
+
+  it.each(PROFIL_EXIGE.map((m) => [m.champ, m.onglet]))('%s → %s', (champ, onglet) => {
+    const position = source.indexOf(`id="settings-field-${champ}"`);
+    expect(position).toBeGreaterThan(-1);
+    const bloc = blocs.filter((b) => b.debut < position).pop();
+    expect(bloc?.onglet).toBe(onglet);
   });
 });

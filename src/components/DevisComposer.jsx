@@ -697,7 +697,7 @@ export default function DevisComposer({
       {legalMissing.length > 0 && (
         <div className="px-3 sm:px-5 py-2 text-xs flex items-center gap-2 bg-amber-500/10 border-b border-amber-500/20">
           <AlertTriangle size={13} className="text-amber-500 flex-shrink-0" />
-          <span className={`flex-1 min-w-0 truncate ${isDark ? 'text-amber-300' : 'text-amber-700'}`}>
+          <span className={`flex-1 min-w-0 sm:truncate ${isDark ? 'text-amber-300' : 'text-amber-700'}`}>
             L'envoi sera bloqué — profil incomplet : {enPhrase(legalMissing)}.
           </span>
           {onCompleteProfile && (
