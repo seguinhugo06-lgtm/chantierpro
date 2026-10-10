@@ -20,7 +20,8 @@
 -- Effet :
 --   - entreprise, client et chantier ne sont lus que parmi les lignes du compte de l'auteur du devis (ou de son
 --     organisation s'il en est membre) : un devis ne peut plus « pointer » vers la fiche ou les clients d'un autre ;
---   - fin de validité = date enregistrée, sinon date du devis + durée choisie, sinon + 30 jours (les 32 devis de la
+--   - fin de validité = date enregistrée, sinon date du devis + durée choisie, sinon + validité par défaut de
+--     l'entreprise de l'auteur, sinon + 30 jours (les 32 devis de la
 --     production n'avaient que la durée le 10 oct. 2026) ; l'IP du signataire est relevée par le serveur ;
 --   - la page de signature reçoit l'entreprise du devis avec sa forme juridique, le nom de l'entrepreneur,
 --     ses assurances, son médiateur ; le client avec sa catégorie (le médiateur ne s'imprime que pour un
@@ -59,7 +60,8 @@ DECLARE
 BEGIN
   -- Fin de validité : la date enregistrée, sinon date + durée choisie, sinon 30 jours (le 10 oct. 2026, les 32 devis de
   -- la production n'avaient que la durée : relecture juriste-btp)
-  SELECT d.id, d.user_id, d.organization_id, d.type, COALESCE(d.date_validite, d.date + NULLIF(d.validite_jours, 0), d.date + 30) AS date_validite
+  SELECT d.id, d.user_id, d.organization_id, d.type, COALESCE(d.date_validite, d.date + NULLIF(d.validite_jours, 0),
+                  d.date + COALESCE((SELECT en.validite_devis FROM public.entreprise en WHERE en.user_id = d.user_id ORDER BY COALESCE(en.is_default, false) DESC, en.created_at LIMIT 1), 30)) AS date_validite
   INTO v_devis FROM public.devis d WHERE d.id = p_devis_id;
   -- COALESCE : pour un non-membre le rôle est NULL, et « NOT (faux OR NULL) » vaut NULL, que IF lit comme faux
   IF v_devis.id IS NULL OR auth.uid() IS NULL OR NOT COALESCE(
@@ -120,7 +122,7 @@ BEGIN
     RETURN json_build_object('devis', json_build_object('indisponible', true));
   END IF;
   -- Offre caduque après son dernier jour de validité (C. civ. 1117) ; même repli que generate_signature_token
-  v_fin := COALESCE(d.date_validite, d.date + NULLIF(d.validite_jours, 0), d.date + 30);
+  v_fin := COALESCE(d.date_validite, d.date + NULLIF(d.validite_jours, 0), d.date + COALESCE((SELECT en.validite_devis FROM public.entreprise en WHERE en.user_id = d.user_id ORDER BY COALESCE(en.is_default, false) DESC, en.created_at LIMIT 1), 30));
   IF v_fin IS NOT NULL AND v_fin < (now() AT TIME ZONE 'Europe/Paris')::date THEN
     RETURN json_build_object('devis', json_build_object('expire', true, 'date_validite', v_fin));
   END IF;
@@ -213,10 +215,14 @@ DECLARE
   v_client_id UUID;
   v_nom TEXT := btrim(COALESCE(p_signataire_nom, ''));
   v_ip TEXT;
+  v_entetes JSON;
 BEGIN
-  -- IP du signataire relevée par le serveur (la page ne peut pas la connaître), à défaut celle transmise
+  -- IP du signataire relevée par le serveur (la page ne peut pas la connaître) : d'abord l'en-tête posé par la
+  -- passerelle (le client peut écrire lui-même le début de x-forwarded-for), à défaut celle transmise
   BEGIN
-    v_ip := NULLIF(btrim(split_part(NULLIF(current_setting('request.headers', true), '')::json ->> 'x-forwarded-for', ',', 1)), '');
+    v_entetes := NULLIF(current_setting('request.headers', true), '')::json;
+    v_ip := NULLIF(btrim(COALESCE(v_entetes ->> 'cf-connecting-ip', v_entetes ->> 'x-real-ip',
+                                  split_part(v_entetes ->> 'x-forwarded-for', ',', 1))), '');
   EXCEPTION WHEN others THEN v_ip := NULL;
   END;
   v_ip := left(COALESCE(v_ip, p_ip), 100);
@@ -237,7 +243,8 @@ BEGIN
     AND dv.statut IN ('envoye', 'en_attente')
     AND dv.signature_data IS NULL AND dv.signature IS NULL
     AND (dv.date IS NULL AND dv.date_validite IS NULL
-         OR COALESCE(dv.date_validite, dv.date + NULLIF(dv.validite_jours, 0), dv.date + 30) >= (now() AT TIME ZONE 'Europe/Paris')::date)
+         OR COALESCE(dv.date_validite, dv.date + NULLIF(dv.validite_jours, 0),
+                     dv.date + COALESCE((SELECT en.validite_devis FROM public.entreprise en WHERE en.user_id = dv.user_id ORDER BY COALESCE(en.is_default, false) DESC, en.created_at LIMIT 1), 30)) >= (now() AT TIME ZONE 'Europe/Paris')::date)
   FOR UPDATE;
 
   IF v_devis_id IS NULL THEN

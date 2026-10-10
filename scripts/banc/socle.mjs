@@ -316,7 +316,17 @@ export const SCHEMA = `
       WHERE c.user_id = p_user_id AND c.stripe_enabled; RETURN s; END $$;
   REVOKE EXECUTE ON FUNCTION get_stripe_secret_for_user(UUID) FROM anon;           -- tel quel dans 029 :
   REVOKE EXECUTE ON FUNCTION get_stripe_secret_for_user(UUID) FROM authenticated;  -- PUBLIC garde le droit
-${ORGANISATIONS}`;
+${ORGANISATIONS}
+  -- entreprise : RLS et policies de production relevées le 10 oct. 2026 (pg_policies) ; 084 corrige update et delete.
+  ALTER TABLE entreprise ENABLE ROW LEVEL SECURITY;
+  CREATE POLICY "Org admins can delete entreprise" ON entreprise FOR DELETE TO authenticated USING (organization_id = ANY (user_org_ids(auth.uid())));
+  CREATE POLICY "Org members can insert entreprise" ON entreprise FOR INSERT TO authenticated WITH CHECK (organization_id = ANY (user_org_ids(auth.uid())));
+  CREATE POLICY "Org members can update entreprise" ON entreprise FOR UPDATE TO authenticated USING (organization_id = ANY (user_org_ids(auth.uid())));
+  CREATE POLICY "Org members can view entreprise" ON entreprise FOR SELECT TO authenticated USING (organization_id = ANY (user_org_ids(auth.uid())));
+  CREATE POLICY "Users can create own entreprise" ON entreprise FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+  CREATE POLICY "Users can update own entreprise" ON entreprise FOR UPDATE TO authenticated USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
+  CREATE POLICY "Users can view own entreprise" ON entreprise FOR SELECT TO authenticated USING (user_id = auth.uid());
+`;
 
 /** Données de base : un patron avec un salarié, un artisan solo, un abonné payant. */
 export async function donneesDeBase({ db, q }) {
