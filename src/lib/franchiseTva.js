@@ -39,8 +39,16 @@ export function franchiseAppliquee(doc, entreprise) {
   return !(estDocumentEmis(doc) && tvaEnregistree(doc) > 0.005);
 }
 
-/** Document émis avec de la TVA alors que l'entreprise est en franchise : à régulariser (avoir, nouveau devis). */
+/**
+ * Document émis avec de la TVA alors que l'entreprise est en franchise : à régulariser (avoir, nouveau devis).
+ * Jamais un avoir (c'est lui qui régularise : « faites un avoir » tournerait en boucle), ni une facture déjà
+ * annulée par un avoir total (contre-vérification juridique du 10 oct. 2026).
+ */
 export function tvaARegulariser(doc, entreprise) {
+  if (doc?.facture_type === 'avoir') return false;
+  if (['annule', 'annulee'].includes(doc?.statut)) return false;
+  const total = Number(doc?.total_ttc) || 0;
+  if (doc?.type === 'facture' && total > 0 && (Number(doc?.montant_credite) || 0) >= total - 0.01) return false;
   return estFranchiseTva(entreprise) && !franchiseAppliquee(doc, entreprise);
 }
 

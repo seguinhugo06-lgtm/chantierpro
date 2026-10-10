@@ -3050,7 +3050,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
               {tvaARegulariser(selected, entreprise) && (
                 <div role="note" className="mb-4 p-3 rounded-lg border bg-alerte-fond border-bord text-sm text-alerte-texte">
                   {selected.type === 'facture'
-                    ? 'Ce document a été émis avec de la TVA alors que vous êtes en franchise (art. 293 B du CGI) : il reste tel quel. Pour le corriger, faites un avoir total, puis une nouvelle facture sans TVA, et prévenez le client.'
+                    ? 'Ce document a été émis avec de la TVA alors que vous êtes en franchise (art. 293 B du CGI) : il reste tel quel. Pour le corriger, faites un avoir total, puis une nouvelle facture sans TVA, et prévenez le client. S’il a déjà payé cette TVA, remboursez-la.'
                     : 'Ce devis signé comporte de la TVA alors que vous êtes en franchise (art. 293 B du CGI) : ses factures seront établies sans TVA. Prévenez le client par écrit ; pour garder le total signé, il faut un nouveau devis signé.'}
                 </div>
               )}

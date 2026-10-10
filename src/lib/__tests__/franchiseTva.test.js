@@ -53,6 +53,9 @@ describe('franchise en base (art. 293 B CGI) : aucune TVA facturée', () => {
     expect(franchiseAppliquee({ ...emise, type: 'devis', statut: 'signe' }, MICRO)).toBe(false);
     expect(franchiseAppliquee({ ...emise, type: 'devis', statut: 'envoye' }, MICRO)).toBe(true);
     expect(franchiseAppliquee({ ...emise, statut: 'brouillon' }, MICRO)).toBe(true);
+    // Un avoir régularise, il ne se régularise pas ; une facture annulée par avoir total non plus
+    expect(tvaARegulariser({ ...emise, facture_type: 'avoir', total_ht: -100, tva: -20, total_ttc: -120 }, MICRO)).toBe(false);
+    expect(tvaARegulariser({ ...emise, montant_credite: 120 }, MICRO)).toBe(false);
     // Hors franchise : jamais
     expect(franchiseAppliquee(emise, { formeJuridique: 'SARL' })).toBe(false);
     expect(tvaARegulariser(emise, { formeJuridique: 'SARL' })).toBe(false);
