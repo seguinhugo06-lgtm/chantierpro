@@ -5,6 +5,7 @@
 import { Linkedin } from 'lucide-react';
 import LogoMallettico from '../ui/LogoMallettico';
 import { allerALaSection } from '../../lib/sectionsAccueil';
+import { pageLegaleDe } from '../legal/pageLegale';
 
 const COLUMNS = [
   {
@@ -44,7 +45,8 @@ export default function FooterSection({ onNavigate }) {
   const handleNavClick = (e, link) => {
     e.preventDefault();
     if (link.isPage) {
-      if (MARKETING_ROUTES.some(r => link.href.startsWith(r))) {
+      // Pages légales : leur vraie adresse, partageable (avant : affichées à l'adresse « / »)
+      if (MARKETING_ROUTES.some(r => link.href.startsWith(r)) || pageLegaleDe(link.href)) {
         window.location.assign(link.href);
       } else if (onNavigate) {
         onNavigate(link.href.replace('/', ''));

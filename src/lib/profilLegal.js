@@ -1,5 +1,6 @@
 /**
  * Profil de l'entreprise exigé avant d'envoyer un devis ou une facture — SOURCE UNIQUE.
+ * SIRET, adresse, nom, forme juridique, nom de l'entrepreneur individuel, décennale.
  *
  * Lu par :
  * - le contrôle d'envoi et de téléchargement (DevisPage : validateDevisForSend, getLegalIssues) ;
@@ -11,6 +12,8 @@
  * décennale alors que l'envoi la bloquait. Ajouter une mention ici la rend bloquante
  * partout : décision produit, à faire relire par l'agent juriste-btp.
  */
+
+import { estEntrepreneurIndividuel, estEirl } from './identiteEntreprise';
 
 const rempli = (valeur) => (typeof valeur === 'string' ? valeur.trim() !== '' : Boolean(valeur));
 
@@ -53,6 +56,16 @@ export const PROFIL_EXIGE = [
     manque: 'Forme juridique non renseignée',
     pourquoi: 'mention obligatoire',
     estRempli: (e) => rempli(e.formeJuridique || e.forme_juridique),
+  },
+  {
+    // Entrepreneur individuel (ou EIRL) : son nom, suivi de « EI », sur chaque document (C. com. R526-27)
+    id: 'no_nom_entrepreneur',
+    champ: 'nomEntrepreneur',
+    onglet: 'identite',
+    libelle: 'Votre prénom et nom (suivis de « EI »)',
+    manque: 'Votre prénom et nom (suivis de « EI ») manquent',
+    pourquoi: 'mention obligatoire',
+    estRempli: (e) => !(estEntrepreneurIndividuel(e) || estEirl(e)) || rempli(e.nomEntrepreneur),
   },
   {
     id: 'no_decennale',

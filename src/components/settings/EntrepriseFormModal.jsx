@@ -324,7 +324,9 @@ const EntrepriseFormModal = memo(function EntrepriseFormModal({
                     className={inputCls}
                   >
                     <option value="">Sélectionner...</option>
-                    <option value="Auto-entrepreneur">Auto-entrepreneur</option>
+                    {/* « Micro-entreprise » : la valeur que reconnaît la franchise de TVA (avant : « Auto-entrepreneur »,
+                        TVA facturée sous « TVA non applicable, art. 293 B » — relecture juridique du 10 oct. 2026) */}
+                    <option value="Micro-entreprise">Micro-entreprise / Auto-entrepreneur</option>
                     <option value="EI">EI</option>
                     <option value="EIRL">EIRL</option>
                     <option value="EURL">EURL</option>

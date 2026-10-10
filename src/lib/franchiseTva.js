@@ -10,7 +10,8 @@
 
 /** L'entreprise est en franchise en base (seule la micro-entreprise l'est dans l'app). */
 export function estFranchiseTva(entreprise) {
-  return (entreprise?.formeJuridique || entreprise?.forme_juridique) === 'Micro-entreprise';
+  // « Auto-entrepreneur » : ancienne valeur du formulaire multi-entreprise, même régime
+  return ['Micro-entreprise', 'Auto-entrepreneur'].includes(entreprise?.formeJuridique || entreprise?.forme_juridique);
 }
 
 const STATUTS_DEVIS_ENGAGES = ['accepte', 'signe', 'acompte_facture', 'facture'];

@@ -35,20 +35,26 @@ export function relanceDe(doc, paiements = [], maintenant = new Date()) {
 }
 
 /** Message court (WhatsApp, SMS) : rappel d'une facture échue, ou envoi d'un document. */
-export function texteCourt(doc, { solde = null, lienPaiement = '', lienSignature = '', entrepriseNom = '' } = {}) {
+export function texteCourt(doc, { solde = null, lienPaiement = '', lienSignature = '', entrepriseNom = '', relanceDevis = false } = {}) {
   const signature = entrepriseNom ? ` — ${entrepriseNom}` : '';
   const lien = lienPaiement && solde && solde.reste > 0.005 ? ` Paiement en ligne : ${lienPaiement}` : '';
   if (solde?.enRetard) {
     const ech = solde.echeance ? `, arrivée à échéance le ${dateCourte(solde.echeance)},` : '';
     return `Bonjour, sauf erreur de ma part, la facture ${doc.numero}${ech} n'est pas encore réglée : il reste ${euros(solde.reste)} à payer. Merci d'avance.${lien}${signature}`;
   }
+  // Facture : le message ne la contient pas (elle part par e-mail ou en main propre) — pas de « voici votre
+  // facture » (relecture juridique du 10 oct. 2026, C. com. L441-9)
   if (doc.type === 'facture' && solde) {
-    if (solde.reste <= 0.005) return `Bonjour, voici votre facture ${doc.numero} : ${euros(solde.total)}, réglée.${signature}`;
+    if (solde.reste <= 0.005) return `Bonjour, votre facture ${doc.numero} (${euros(solde.total)}) est réglée. Merci.${signature}`;
     const limite = solde.echeance ? ` à régler au plus tard le ${dateCourte(solde.echeance)}` : ' à régler';
-    return `Bonjour, voici votre facture ${doc.numero} : ${euros(solde.reste)}${limite}.${lien}${signature}`;
+    return `Bonjour, votre facture ${doc.numero} : ${euros(solde.reste)}${limite}.${lien}${signature}`;
+  }
+  const consulter = lienSignature && doc.type !== 'facture' ? ` Pour le consulter et le signer en ligne : ${lienSignature}` : '';
+  if (relanceDevis && doc.type !== 'facture') {
+    const envoye = doc.date_envoi ? `, envoyé le ${dateCourte(doc.date_envoi)}` : '';
+    return `Bonjour, avez-vous pu consulter le devis ${doc.numero} (${euros(doc.total_ttc)})${envoye} ?${consulter} Je reste à votre disposition pour toute question.${signature}`;
   }
   const genre = doc.type === 'facture' ? 'votre facture' : 'votre devis';
-  const consulter = lienSignature && doc.type !== 'facture' ? ` Pour le consulter et le signer en ligne : ${lienSignature}` : '';
   return `Bonjour, voici ${genre} ${doc.numero} : ${euros(doc.total_ttc)}.${consulter}${signature}`;
 }
 

@@ -71,15 +71,17 @@ export function initSentry() {
     ],
 
     beforeSend(event) {
+      // Jetons porteurs des pages publiques (signature, paiement, portail, invitation) : un lien de signature
+      // vaut signature du devis, il ne part pas chez Sentry (relecture gardien-securite du 10 oct. 2026)
+      if (event.request?.url) event.request.url = masquerJetons(event.request.url);
+      if (event.request?.headers?.Referer) event.request.headers.Referer = masquerJetons(event.request.headers.Referer);
       // Strip PII from breadcrumbs
       if (event.breadcrumbs) {
         event.breadcrumbs = event.breadcrumbs.map(bc => {
-          if (bc.category === 'xhr' || bc.category === 'fetch') {
-            // Remove auth tokens from URLs
-            if (bc.data?.url) {
-              bc.data.url = bc.data.url.replace(/apikey=[^&]+/, 'apikey=***');
-              bc.data.url = bc.data.url.replace(/token=[^&]+/, 'token=***');
-            }
+          if (bc.data?.url) bc.data.url = masquerJetons(bc.data.url);
+          if (bc.category === 'navigation' && bc.data) {
+            if (bc.data.from) bc.data.from = masquerJetons(bc.data.from);
+            if (bc.data.to) bc.data.to = masquerJetons(bc.data.to);
           }
           return bc;
         });
@@ -89,6 +91,14 @@ export function initSentry() {
   });
 
   logger.debug('[Sentry] Initialized for production monitoring');
+}
+
+/** Masque les jetons d'une adresse : paramètres apikey/token et chemins des pages publiques. */
+export function masquerJetons(url) {
+  return String(url)
+    .replace(/apikey=[^&]+/g, 'apikey=***')
+    .replace(/token=[^&]+/g, 'token=***')
+    .replace(/\/(devis\/signer|pay|portal|invitation|facture\/payer)\/[^/?#]+/gi, '/$1/***');
 }
 
 /**

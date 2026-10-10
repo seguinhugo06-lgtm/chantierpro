@@ -10,7 +10,7 @@ import Carte from './ui/Carte';
 import { Onglets } from './ui/Onglets';
 import EtatVide from './ui/EtatVide';
 import { statutFacture, resteAPayer, dejaPaye, dateLocale } from '../lib/paiementsFacture';
-import { encaisse, estOuverte, resteAFacturer } from '../lib/ventes';
+import { encaisse, estOuverte, resteAFacturer, estSigne } from '../lib/ventes';
 import { ouvrirLienExterne } from '../lib/natif';
 import { colorForString } from '../lib/uiTheme';
 
@@ -33,6 +33,7 @@ import { ReadOnlyBanner } from './ui/PermissionGate';
 import { urlPublique } from '../lib/urlPublique';
 import { jourLocal, dateLue } from '../lib/dates';
 import { FONCTIONS } from '../lib/fonctions';
+import { telInternational } from '../lib/messageRelance';
 
 // Skeleton loader for client cards
 function ClientSkeleton({ isDark, count = 6 }) {
@@ -238,7 +239,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
       // 9 oct.) : seules les factures « payée » comptaient, et un devis signé s'ajoutait à ses factures.
       s.ca += encaisse(d, paiements);
       s.caEnCours += estOuverte(d, paiements) ? resteAPayer(d, paiements) : resteAFacturer(d, devis);
-      if (d.type === 'devis' && ['envoye', 'accepte', 'acompte_facture'].includes(d.statut)) s.devisActifs++;
+      if (d.type === 'devis' && ['envoye', 'vu', 'accepte', 'signe', 'acompte_facture'].includes(d.statut)) s.devisActifs++;
     });
     (chantiers || []).forEach(ch => {
       const cid = ch.client_id || ch.clientId;
@@ -596,7 +597,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
   };
   const openGPS = (adresse) => { if (!adresse) return; ouvrirLienExterne(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(adresse)}`); };
   const callPhone = (tel) => { if (!tel) return; window.location.href = `tel:${tel.replace(/\s/g, '')}`; };
-  const sendWhatsApp = (tel, nom) => { if (!tel) return; const phone = tel.replace(/\s/g, '').replace(/^0/, '33'); ouvrirLienExterne(`https://wa.me/${phone}?text=${encodeURIComponent(`Bonjour ${nom || ''},`)}`); };
+  const sendWhatsApp = (tel, nom) => { if (!tel) return; const phone = telInternational(tel); ouvrirLienExterne(`https://wa.me/${phone}?text=${encodeURIComponent(`Bonjour ${nom || ''},`)}`); };
   const handleDeleteClient = async (id) => {
     const client = clients.find(c => c.id === id);
     const stats = getClientStats(id);
@@ -768,9 +769,10 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
         {(() => {
           const pendingDevis = clientDevis.filter(d => d.type === 'devis' && (d.statut === 'envoye' || d.statut === 'vu'));
           const oldestPending = [...pendingDevis].sort((a, b) => new Date(a.date || a.created_at) - new Date(b.date || b.created_at))[0];
-          const daysSinceSent = oldestPending ? Math.floor((Date.now() - new Date(oldestPending.date || oldestPending.created_at).getTime()) / 86400000) : 0;
+          // Attente comptée depuis l'envoi, pas depuis la création du devis
+          const daysSinceSent = oldestPending ? Math.floor((Date.now() - dateLue(oldestPending.date_envoi || oldestPending.date || oldestPending.created_at).getTime()) / 86400000) : 0;
           // Signé et pas encore facturé : aucune facture rattachée au devis, hormis un acompte (le solde reste à faire).
-          const acceptedNotInvoiced = clientDevis.filter(d => d.type === 'devis' && d.statut === 'accepte'
+          const acceptedNotInvoiced = clientDevis.filter(d => d.type === 'devis' && estSigne(d)
             && !clientDevis.some(f => f.type === 'facture' && f.devis_source_id === d.id && f.facture_type !== 'acompte'));
           const terminatedNoInvoice = clientChantiers.filter(ch => ch.statut === 'termine' && !clientDevis.some(d => d.type === 'facture' && d.chantier_id === ch.id));
           const activityDates = [
@@ -1029,7 +1031,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                       <a href={`sms:${client.telephone.replace(/\s/g, '')}`} className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-colors ${CHANNEL_CONFIG.sms.btnBg}`}>
                         <MessageCircle size={14} /> SMS
                       </a>
-                      <a href={`https://wa.me/${client.telephone.replace(/\s/g, '').replace(/^0/, '33')}`} target="_blank" rel="noopener noreferrer" className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-colors ${CHANNEL_CONFIG.whatsapp.btnBg}`}>
+                      <a href={`https://wa.me/${telInternational(client.telephone)}`} target="_blank" rel="noopener noreferrer" className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-colors ${CHANNEL_CONFIG.whatsapp.btnBg}`}>
                         <MessageCircle size={14} /> WhatsApp
                       </a>
                     </>
@@ -1066,8 +1068,11 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                     const ChannelIcon = channel.icon;
                     const dirIn = e.direction === 'in' || e.direction === 'entrant';
                     const dirOut = e.direction === 'out' || e.direction === 'sortant';
-                    const hasContent = e.contenu || e.body || e.message;
+                    // Relu en base, l'objet d'un envoi est son contenu : ne pas l'afficher deux fois
+                    const contenuBrut = e.contenu || e.body || e.message;
+                    const hasContent = contenuBrut && contenuBrut !== e.objet ? contenuBrut : null;
                     const preview = hasContent ? (hasContent.length > 60 ? hasContent.slice(0, 60) + '…' : hasContent) : null;
+                    const docLie = e.document || (e.devis_id ? (devis || []).find(d => d.id === e.devis_id)?.numero : null);
                     return (
                       <button
                         key={e.id}
@@ -1086,7 +1091,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                                   {dirOut ? <><ArrowUpRight size={9} /> Envoyé</> : <><ArrowDownLeft size={9} /> Reçu</>}
                                 </span>
                               )}
-                              {e.document && <span className={`text-xs ${textMuted} truncate`}>· {e.document}</span>}
+                              {docLie && <span className={`text-xs ${textMuted} truncate`}>· {docLie}</span>}
                             </div>
                             <span className={`text-xs ${textMuted} whitespace-nowrap flex-shrink-0`}>
                               {dateLue(e.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
@@ -1102,7 +1107,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                           )}
                           <div className="flex items-center gap-3 mt-1">
                             {e.duree && <span className={`text-xs ${textMuted} flex items-center gap-1`}><Clock size={10} /> {e.duree} min</span>}
-                            {e.montant && <span className="text-xs font-medium" style={{color: couleur}}>{formatMoney(e.montant)}</span>}
+                            {e.montant && !modeDiscret && <span className="text-xs font-medium" style={{color: couleur}}>{formatMoney(e.montant)}</span>}
                           </div>
                         </div>
                         <ChevronRight size={14} className={`${textMuted} flex-shrink-0 mt-3`} />
@@ -1122,7 +1127,9 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
           const ChannelIcon = channel.icon;
           const dirIn = e.direction === 'in' || e.direction === 'entrant';
           const dirOut = e.direction === 'out' || e.direction === 'sortant';
-          const fullContent = e.contenu || e.body || e.message;
+          const contenuComplet = e.contenu || e.body || e.message;
+          const fullContent = contenuComplet && contenuComplet !== e.objet ? contenuComplet : null;
+          const docLie = e.document || (e.devis_id ? (devis || []).find(d => d.id === e.devis_id)?.numero : null);
           return (
             <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" onClick={() => setSelectedEchange(null)}>
               <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
@@ -1166,10 +1173,10 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                     </p>
                   </div>
                   {/* Document linked */}
-                  {e.document && (
+                  {docLie && (
                     <div>
                       <p className={`text-xs font-medium uppercase tracking-wider mb-1 ${textMuted}`}>Document lié</p>
-                      <p className={`text-sm ${textPrimary}`}>{e.document}</p>
+                      <p className={`text-sm ${textPrimary}`}>{docLie}</p>
                     </div>
                   )}
                   {/* Duration */}
@@ -1180,7 +1187,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                     </div>
                   )}
                   {/* Amount */}
-                  {e.montant && (
+                  {e.montant && !modeDiscret && (
                     <div>
                       <p className={`text-xs font-medium uppercase tracking-wider mb-1 ${textMuted}`}>Montant</p>
                       <p className="text-sm font-semibold" style={{color: couleur}}>{formatMoney(e.montant)}</p>

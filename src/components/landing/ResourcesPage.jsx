@@ -295,7 +295,7 @@ export default function ResourcesPage() {
               Cr&eacute;ez votre compte gratuitement et testez par vous-m&ecirc;me.
             </p>
             <a
-              href="/app"
+              href="/inscription"
               className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl bg-orange-500 text-white font-semibold hover:bg-orange-600 transition-colors shadow-lg shadow-orange-500/25"
             >
               Essayer gratuitement

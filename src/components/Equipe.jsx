@@ -29,6 +29,7 @@ import { remettreFichier } from '../lib/natif';
 import { tauxFacture, coutHoraire, coutDesPointages } from '../lib/tauxEquipe';
 import { decompteHeures, lundiDe, dimancheDe } from '../lib/paie';
 import { jourLocal, dateLue } from '../lib/dates';
+import { telInternational } from '../lib/messageRelance';
 
 // Lazy-load optional heavy dependencies to prevent crashes
 let NoteModal = null;
@@ -3363,7 +3364,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                 <div className="space-y-2">
                   {equipe.filter(e => e.actif !== false && e.telephone).map(emp => {
                     const config = getRoleConfig(emp.role);
-                    const phone = emp.telephone?.replace(/[\s.-]/g, '').replace(/^0/, '+33');
+                    const phone = telInternational(emp.telephone);
                     return (
                       <div key={emp.id} className={`flex items-center gap-3 p-3 rounded-xl hover:bg-surface-2`}>
                         <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold" style={{ background: config.color }}>
@@ -3470,27 +3471,28 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                     {[7, 8, 9, 10].map(h => (
                       <button
                         key={h}
-                        onClick={() => setPointerForm(p => ({ ...p, heures: h.toString() }))}
+                        onClick={() => setPointerForm(p => ({ ...p, heures: h.toString(), autre: false }))}
                         className={`px-4 py-2.5 rounded-xl text-sm font-medium min-h-[44px] transition-all ${
-                          pointerForm.heures === h.toString()
+                          pointerForm.heures === h.toString() && !pointerForm.autre
                             ? 'text-white shadow-md'
                             : 'bg-surface-2 text-encre-2 hover:bg-bord'
                         }`}
-                        style={pointerForm.heures === h.toString() ? { background: '#059669' } : {}}
+                        style={pointerForm.heures === h.toString() && !pointerForm.autre ? { background: '#059669' } : {}}
                       >
                         {h}h
                       </button>
                     ))}
                     <div className="flex items-center gap-1.5">
+                      {/* Saisie libre gardée telle quelle (avant, recette du 9 oct. 2026 : en tapant « 7.5 », le « 7 »
+                          vidait le champ, repris par le bouton « 7h », et 0,5 h était enregistrée) ; virgule acceptée */}
                       <input
-                        type="number"
-                        step="0.5"
-                        min="0.5"
-                        max="24"
+                        type="text"
+                        inputMode="decimal"
+                        aria-label="Autre durée, en heures"
                         placeholder="Autre"
                         className={`w-20 px-3 py-2.5 border rounded-xl text-sm ${inputBg}`}
-                        value={![7, 8, 9, 10].map(String).includes(pointerForm.heures) ? pointerForm.heures : ''}
-                        onChange={e => setPointerForm(p => ({ ...p, heures: e.target.value }))}
+                        value={pointerForm.autre || ![7, 8, 9, 10].map(String).includes(pointerForm.heures) ? pointerForm.heures : ''}
+                        onChange={e => setPointerForm(p => ({ ...p, heures: e.target.value.replace(/[^\d.,]/g, ''), autre: true }))}
                       />
                       <span className={`text-sm ${textMuted}`}>h</span>
                     </div>
@@ -3512,6 +3514,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                         return;
                       }
                       const heures = parseFloat(String(pointerForm.heures).replace(',', '.'));
+                      if (!(heures > 0 && heures <= 24)) { showToast('Indiquez une durée entre 0,5 et 24 heures', 'error'); return; }
                       const cree = await ajouterPointage({
                         employeId: pointerForm.employeId,
                         chantierId: pointerForm.chantierId,
@@ -3524,7 +3527,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                       });
                       if (!cree) return;
                       const emp = equipe.find(e => e.id === pointerForm.employeId);
-                      showToast(`${heures} h ajoutées pour ${emp?.prenom || emp?.nom || 'employé'}`, 'success');
+                      showToast(`${heures.toLocaleString('fr-FR')} h ajoutées pour ${emp?.prenom || emp?.nom || 'employé'}`, 'success');
                       setShowPointerModal(false);
                     }}
                     disabled={!pointerForm.employeId || !pointerForm.chantierId || !pointerForm.heures}

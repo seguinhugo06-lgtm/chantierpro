@@ -66,7 +66,7 @@ const FEATURES = [
     title: 'Signature \u00e9lectronique',
     slug: 'signature-electronique',
     description: 'Envoyez vos devis pour signature \u00e9lectronique. Vos clients signent en ligne depuis un lien s\u00e9curis\u00e9, sans cr\u00e9er de compte.',
-    benefits: ['Signature au doigt sur mobile', 'Lien s\u00e9curis\u00e9 unique (30 jours)', 'Horodatage et signataire enregistr\u00e9s', 'Statut \u00ab Sign\u00e9 \u00bb automatique'],
+    benefits: ['Signature au doigt sur mobile', 'Lien unique, valable jusqu\u2019\u00e0 la fin de validit\u00e9 du devis', 'Horodatage et signataire enregistr\u00e9s', 'Statut \u00ab Sign\u00e9 \u00bb automatique'],
     screenshot: '/screenshots/signature.png',
   },
   {
@@ -289,7 +289,7 @@ export default function FeaturesDetailPage() {
               Cr&eacute;ez votre compte gratuitement et d&eacute;couvrez toutes ces fonctionnalit&eacute;s par vous-m&ecirc;me.
             </p>
             <a
-              href="/app"
+              href="/inscription"
               className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl bg-orange-500 text-white font-semibold hover:bg-orange-600 transition-colors shadow-lg shadow-orange-500/25"
             >
               Essayer gratuitement

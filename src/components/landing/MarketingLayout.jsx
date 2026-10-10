@@ -9,9 +9,9 @@ import LandingNav from './LandingNav';
 import FooterSection from './FooterSection';
 
 export default function MarketingLayout({ children }) {
-  // Marketing pages use simple navigation (no login/signup callbacks needed at page level)
-  const handleLogin = () => { window.location.href = '/app'; };
-  const handleSignup = () => { window.location.href = '/app'; };
+  // L'app ouvre directement le formulaire à ces adresses (avant : « /app », qui menait à l'accueil)
+  const handleLogin = () => { window.location.href = '/connexion'; };
+  const handleSignup = () => { window.location.href = '/inscription'; };
 
   return (
     <div className="min-h-screen bg-white overflow-x-clip" style={{ scrollBehavior: 'smooth' }}>

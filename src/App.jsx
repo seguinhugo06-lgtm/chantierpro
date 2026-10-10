@@ -48,7 +48,6 @@ const QuickClientModal = lazyWithRetry(() => import('./components/QuickClientMod
 const QuickChantierModal = lazyWithRetry(() => import('./components/QuickChantierModal'), 'QuickChantier');
 const CommandPalette = lazyWithRetry(() => import('./components/CommandPalette'), 'CommandPalette');
 const BibliothequeOuvrages = lazyWithRetry(() => import('./components/catalogue/BibliothequeOuvrages'), 'Bibliothèque');
-const SignatureModule = lazyWithRetry(() => import('./components/signatures/SignatureModule'), 'Signatures');
 const ExportComptable = lazyWithRetry(() => import('./components/export/ExportComptable'), 'ExportComptable');
 const BillingDashboard = lazyWithRetry(() => import('./components/subscription/BillingDashboard'), 'Billing');
 const PricingPage = lazyWithRetry(() => import('./components/subscription/PricingPage'), 'Pricing');
@@ -161,13 +160,18 @@ export default function App() {
   // Auth state
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [showSignUp, setShowSignUp] = useState(false);
+  // /inscription et /connexion (liens de la vitrine) ouvrent directement le formulaire
+  const [showSignUp, setShowSignUp] = useState(() => typeof window !== 'undefined' && window.location.pathname === '/inscription');
   const [authForm, setAuthForm] = useState({ email: '', password: '', nom: '' });
   // Un lien e-mail expiré arrive avec #error=… : on l'explique sur l'écran de connexion.
   const [authError, setAuthError] = useState(() => (lienEmail.erreur ? traduireErreurAuth(lienEmail.erreur) : ''));
   const [authInfo, setAuthInfo] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showForgot, setShowForgot] = useState(false);
+  // Une fois connecté depuis /connexion ou /inscription, l'adresse redevient « / »
+  useEffect(() => {
+    if (user && ['/connexion', '/inscription'].includes(window.location.pathname)) window.history.replaceState({}, '', '/');
+  }, [user]);
   // Arrivée par le lien « réinitialiser le mot de passe » : on demande le nouveau avant tout.
   const [recoveryMode, setRecoveryMode] = useState(lienEmail.recuperation);
 
@@ -519,7 +523,7 @@ export default function App() {
   const synchroRef = useRef(null);
   const syncRetryAttemptRef = useRef(0);
   const [showOnboarding, setShowOnboarding] = useState(() => !isDemo && !localStorage.getItem('mallettico_onboarding_complete'));
-  const [showLanding, setShowLanding] = useState(true);
+  const [showLanding, setShowLanding] = useState(() => typeof window === 'undefined' || !['/connexion', '/inscription'].includes(window.location.pathname));
   const [showImport, setShowImport] = useState(false);
   const [importType, setImportType] = useState('clients');
   const [showShortcuts, setShowShortcuts] = useState(false);
@@ -1938,7 +1942,6 @@ export default function App() {
               {page === 'clients' && <Clients clients={clients} setClients={setClients} updateClient={updateClient} deleteClient={deleteClient} devis={devis} chantiers={chantiers} echanges={echanges} onSubmit={addClient} couleur={couleur} setPage={setPage} setSelectedChantier={setSelectedChantier} setSelectedDevis={setSelectedDevis} isDark={isDark} modeDiscret={modeDiscret} createMode={createMode.client} setCreateMode={(v) => setCreateMode(p => ({...p, client: v}))} nouveauDevisPour={(clientId) => { setCreateMode(p => ({ ...p, devis: { clientId } })); setPage('devis'); }} nouveauChantierPour={(clientId) => { setCreateMode(p => ({ ...p, chantier: { clientId } })); setPage('chantiers'); }} memos={memos} addMemo={addMemo} updateMemo={updateMemo} deleteMemo={deleteMemo} toggleMemo={toggleMemo} onImportClients={() => { setImportType('clients'); setShowImport(true); }} entreprise={entreprise} />}
               {page === 'catalogue' && <Catalogue entreprise={entreprise} catalogue={catalogue} setCatalogue={setCatalogue} addCatalogueItem={addCatalogueItem} updateCatalogueItem={updateCatalogueItem} deleteCatalogueItem={deleteCatalogueItem} chantiers={chantiers} equipe={equipe} devis={devis} updateDevis={updateDevis} clients={clients} couleur={couleur} isDark={isDark} modeDiscret={modeDiscret} setPage={setPage} />}
               {page === 'ouvrages' && <BibliothequeOuvrages catalogue={catalogue} ouvragesProp={ouvrages} setOuvragesProp={setOuvrages} addOuvrage={dataAddOuvrage} updateOuvrage={dataUpdateOuvrage} deleteOuvrage={dataDeleteOuvrage} isDark={isDark} couleur={couleur} />}
-              {page === 'signatures' && <FeatureGuard feature="signatures"><SignatureModule devis={devis} chantiers={chantiers} clients={clients} isDark={isDark} couleur={couleur} /></FeatureGuard>}
               {page === 'export' && <FeatureGuard feature="export_comptable"><ExportComptable devis={devis} depenses={depenses} chantiers={chantiers} clients={clients} entreprise={entreprise} isDark={isDark} couleur={couleur} /></FeatureGuard>}
               {page === 'plan' && <PlanPage isDark={isDark} couleur={couleur} setPage={setPage} />}
               {page === 'analytique' && <AnalyticsPremium modeDiscret={modeDiscret} devis={devis} clients={clients} chantiers={chantiers} depenses={depenses} equipe={equipe} paiements={paiements} pointages={pointages} isDark={isDark} couleur={couleur} showToast={showToast} setPage={setPage} />}

@@ -52,6 +52,13 @@ export function encaisse(f, paiements = [], maintenant = new Date()) {
   return arrondi(Math.min(total, Math.max(recu, statut === 'payee' ? du : 0)));
 }
 
+/**
+ * Devis signé : « accepte » (signature sur place, statut posé à la main) ou « signe » (signature à distance,
+ * fonction sign_devis). Recette du 9 oct. 2026 : plusieurs écrans ne comptaient que « accepte », et un devis
+ * signé par le lien disparaissait de la fiche client, des prévisions de trésorerie, du budget suggéré.
+ */
+export const estSigne = (d) => !estFacture(d) && (d?.statut === 'accepte' || d?.statut === 'signe');
+
 /** Devis signé (ou accepté) dont une partie reste à facturer. */
 const STATUTS_DEVIS_SIGNE = ['accepte', 'signe', 'acompte_facture'];
 

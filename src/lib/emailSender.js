@@ -11,6 +11,8 @@ import supabase from '../supabaseClient';
 import { echapperHtml } from './echapperHtml';
 import { pdfDepuisHtml } from './pdfDepuisHtml';
 import { dateLue } from './dates';
+import { finValidite } from './validiteDevis';
+import { nomImprime } from './identiteEntreprise';
 
 // Encode un Uint8Array en base64 sans dépasser la limite d'arguments de String.fromCharCode.
 function uint8ToBase64(bytes) {
@@ -81,12 +83,13 @@ export async function sendDocumentEmail({ to, subject, bodyHtml, fromName, reply
 /**
  * Construit un corps d'email HTML simple et lisible (compatible clients mail).
  */
-export function buildDocumentEmailBody({ doc, client, entreprise, couleur = '#f97316', montantFormatte, signatureUrl = null, solde = null, lienPaiement = '' }) {
+export function buildDocumentEmailBody({ doc, client, entreprise, couleur = '#f97316', montantFormatte, signatureUrl = null, solde = null, lienPaiement = '', relanceDevis = false }) {
   const isFacture = doc.type === 'facture';
   const label = isFacture ? 'facture' : 'devis';
   // Tout texte saisi est échappé (un nom contenant du HTML cassait l'e-mail, ou pire)
   const clientNom = echapperHtml(`${client.prenom || ''} ${client.nom || ''}`.trim()) || 'Madame, Monsieur';
-  const nomEntreprise = echapperHtml(entreprise?.nom || 'Votre artisan');
+  // Nom imprimé : « EI » pour un entrepreneur individuel, comme sur ses documents (C. com. R526-27)
+  const nomEntreprise = echapperHtml(nomImprime(entreprise) || 'Votre artisan');
   const numero = echapperHtml(doc.numero);
   const echeanceTexte = solde?.echeance ? dateLue(solde.echeance).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
   const euro = (n) => Number(n || 0).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' });
@@ -95,7 +98,10 @@ export function buildDocumentEmailBody({ doc, client, entreprise, couleur = '#f9
     <div style="margin:24px 0;text-align:center">
       <a href="${echapperHtml(lienPaiement)}" style="display:inline-block;background:${couleur};color:#ffffff;text-decoration:none;font-weight:bold;font-size:16px;padding:14px 28px;border-radius:10px">Régler en ligne</a>
     </div>` : '';
-  const validite = doc.validite || entreprise?.validiteDevis || 30;
+  // Validité réelle : le dernier jour (avant, recette du 9 oct. 2026 : « reste valable 30 jours » quoi qu'il
+  // arrive, même expiré ou à J+20)
+  const fin = finValidite(doc, entreprise);
+  const finTexte = fin ? dateLue(fin).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
 
   const signatureBlock = !isFacture && signatureUrl ? `
     <div style="margin:28px 0;text-align:center">
@@ -104,7 +110,7 @@ export function buildDocumentEmailBody({ doc, client, entreprise, couleur = '#f9
         Consulter et signer le devis en ligne
       </a>
       <p style="font-size:12px;color:#64748b;margin-top:10px">
-        Signature électronique sécurisée, sans créer de compte.<br>
+        Signature électronique simple, sans créer de compte.<br>
         Si le bouton ne fonctionne pas : <a href="${echapperHtml(signatureUrl)}" style="color:${couleur}">${echapperHtml(signatureUrl)}</a>
       </p>
     </div>` : '';
@@ -117,12 +123,14 @@ export function buildDocumentEmailBody({ doc, client, entreprise, couleur = '#f9
     <p>Si votre règlement est déjà parti, merci de ne pas tenir compte de ce message.</p>`
       : isFacture && solde
         ? `<p>Veuillez trouver ci-joint votre facture <strong>${numero}</strong>, d'un montant de <strong>${euro(solde.total)}</strong>${solde.reste > 0.005 && echeanceTexte ? `, à régler au plus tard le ${echeanceTexte}` : ''}${solde.acompteRecu && solde.reste > 0.005 ? ` (reste à régler : <strong>${euro(solde.reste)}</strong>)` : ''}${solde.reste <= 0.005 ? ', entièrement réglée' : ''}.</p>`
-        : `<p>Veuillez trouver ci-joint votre ${label} <strong>${numero}</strong>${montantFormatte ? `, d'un montant de <strong>${montantFormatte}</strong>` : ''}.</p>`}
+        : relanceDevis && !isFacture
+          ? `<p>Je me permets de revenir vers vous au sujet du devis <strong>${numero}</strong>${montantFormatte ? `, d'un montant de <strong>${montantFormatte}</strong>` : ''}${doc.date_envoi ? `, envoyé le ${dateLue(doc.date_envoi).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}` : ''}. Vous le trouverez à nouveau en pièce jointe.</p>`
+          : `<p>Veuillez trouver ci-joint votre ${label} <strong>${numero}</strong>${montantFormatte ? `, d'un montant de <strong>${montantFormatte}</strong>` : ''}.</p>`}
     ${signatureBlock}
     ${lienBlock}
     ${isFacture
       ? `<p>Je vous remercie de votre confiance.</p>`
-      : `<p>Ce devis reste valable <strong>${validite} jours</strong>. N'hésitez pas à me contacter pour toute question.</p>`}
+      : `<p>${finTexte ? `Ce devis est valable jusqu'au <strong>${finTexte}</strong>. ` : ''}N'hésitez pas à me contacter pour toute question.</p>`}
     <p style="margin-top:24px;padding-top:16px;border-top:1px solid #e2e8f0">
       Cordialement,<br>
       <strong style="color:${couleur}">${nomEntreprise}</strong>
@@ -137,7 +145,8 @@ export function buildDocumentEmailBody({ doc, client, entreprise, couleur = '#f9
  */
 export function buildPaymentReceiptEmailBody({ doc, client, entreprise, couleur = '#f97316', montantFormatte, modePaiement, datePaiement }) {
   const clientNom = echapperHtml(`${client.prenom || ''} ${client.nom || ''}`.trim()) || 'Madame, Monsieur';
-  const nomEntreprise = echapperHtml(entreprise?.nom || 'Votre artisan');
+  // Nom imprimé : « EI » pour un entrepreneur individuel, comme sur ses documents (C. com. R526-27)
+  const nomEntreprise = echapperHtml(nomImprime(entreprise) || 'Votre artisan');
   const modeLabels = { virement: 'virement bancaire', cheque: 'chèque', especes: 'espèces', cb: 'carte bancaire', carte: 'carte bancaire' };
   const modeLabel = echapperHtml(modeLabels[modePaiement] || modePaiement || '');
   const dateLabel = datePaiement

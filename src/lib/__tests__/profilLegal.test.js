@@ -9,6 +9,7 @@ const COMPLET = {
   siret: '12345678900012',
   adresse: '1 rue du Chantier, 24200 Sarlat',
   formeJuridique: 'Micro-entreprise',
+  nomEntrepreneur: 'Hugo Séguin',
   decennaleAssureur: 'SMABTP',
   decennaleNumero: 'DEC-123',
 };
@@ -28,6 +29,14 @@ describe('profil exigé avant envoi : une seule liste', () => {
   it('décennale sans numéro de police : manquante', () => {
     expect(ids(profilManquant({ ...COMPLET, decennaleNumero: '' }))).toEqual(['no_decennale']);
     expect(ids(profilManquant({ ...COMPLET, decennaleAssureur: '' }))).toEqual(['no_decennale']);
+  });
+
+  // C. com. R526-27 : le nom de la personne, suivi de « EI », sur chaque document
+  it('entrepreneur individuel ou EIRL sans son prénom et nom : manquant ; société : non exigé', () => {
+    const sansNom = { ...COMPLET, nomEntrepreneur: '' };
+    expect(ids(profilManquant(sansNom))).toEqual(['no_nom_entrepreneur']);
+    expect(ids(profilManquant({ ...sansNom, formeJuridique: 'EIRL' }))).toEqual(['no_nom_entrepreneur']);
+    expect(ids(profilManquant({ ...sansNom, formeJuridique: 'SARL' }))).toEqual([]);
   });
 
   it('un champ fait d\'espaces compte comme vide', () => {
@@ -58,7 +67,7 @@ describe('profil exigé avant envoi : une seule liste', () => {
 describe('aucun écran ne retient sa propre liste', () => {
   const racine = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
   const ECRANS = ['src/components/DevisPage.jsx', 'src/components/DevisComposer.jsx', 'src/components/Settings.jsx'];
-  const CONTROLE_EN_DUR = /!\s*\(?\s*entreprise\??\.(siret|adresse|nom|formeJuridique|forme_juridique|decennaleAssureur|decennale_assureur|decennaleNumero|decennale_numero)\b/g;
+  const CONTROLE_EN_DUR = /!\s*\(?\s*(?:String\()?\s*entreprise\??\.(siret|adresse|nom|nomEntrepreneur|formeJuridique|forme_juridique|decennaleAssureur|decennale_assureur|decennaleNumero|decennale_numero)\b/g;
 
   it.each(ECRANS)('%s', (fichier) => {
     const source = fs.readFileSync(path.join(racine, fichier), 'utf8');
