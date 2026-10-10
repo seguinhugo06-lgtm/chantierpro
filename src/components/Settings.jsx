@@ -393,14 +393,14 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
   
   const COULEURS = ['#f97316', '#ef4444', '#22c55e', '#3b82f6', '#8b5cf6', '#ec4899', '#14b8a6', '#64748b'];
 
-  // Jauge « Profil complété » (lib/jaugeProfil) : le pourcentage ne compte que ce qui bloque l'envoi
-  // (lib/profilLegal) ; 100 % = le profil ne bloque plus l'envoi. Le menu sépare les autres mentions
-  // obligatoires selon la situation (capital, RCS, TVA intracom, médiateur, assureur décennal), qui
-  // n'empêchent pas l'envoi, des simples recommandations (code APE, RC Pro).
+  // Jauge « Profil complété » (lib/jaugeProfil) : le pourcentage est la note de l'onglet Facture 2026 — ce qui
+  // bloque l'envoi (lib/profilLegal), plus capital, RCS et TVA intracom quand ils concernent l'entreprise. Le
+  // menu sépare ce qui bloque l'envoi, les autres mentions obligatoires selon la situation (qui ne le bloquent
+  // pas) et les simples recommandations (code APE, RC Pro).
   const { obligatoires: missingRequired, selonSituation: missingSelonSituation, recommandes: missingRecommended, completude } = jaugeProfil(entreprise);
   const nbManquants = missingRequired.length + missingSelonSituation.length + missingRecommended.length;
-  // À 100 %, le menu reste ouvrable tant qu'une mention obligatoire selon la situation manque : avant, il se
-  // fermait et une société sans capital social lisait « Profil complet ! »
+  // À 100 %, le menu reste ouvrable tant qu'une mention due aux particuliers manque (médiateur, assureur
+  // décennal, hors pourcentage) : avant, il se fermait dès 100 %
   const menuProfil = completude < 100 || missingSelonSituation.length > 0;
   const NOM_ONGLET = { identite: 'Identité', legal: 'Légal', assurances: 'Assurances', documents: 'Documents' };
   // Ouvre l'onglet et amène le champ sous les yeux (chaque champ porte id="settings-field-<champ>")
@@ -571,10 +571,12 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
               <div className="text-right shrink-0">
                 <p className="text-sm font-medium text-encre-2">Profil complété</p>
                 <p className={`text-xl font-bold tabular-nums ${completude >= 80 ? 'text-succes-texte' : completude >= 50 ? 'text-alerte-texte' : 'text-danger-texte'}`}>{completude} %</p>
-                {/* 100 % = l'envoi n'est plus bloqué ; ce qui reste dû selon la situation se dit sous le chiffre */}
+                {/* Ce qui reste dû hors pourcentage se dit sous le chiffre, plutôt qu'un « 100 % » seul */}
                 {completude === 100 && missingSelonSituation.length > 0 && (
-                  <p className="text-xs font-medium text-alerte-texte">
-                    {missingSelonSituation.length} mention{missingSelonSituation.length > 1 ? 's' : ''} à compléter
+                  <p className="text-xs font-medium text-alerte-texte max-w-[10rem] ml-auto">
+                    {missingSelonSituation.length > 1
+                      ? `${missingSelonSituation.length} mentions obligatoires selon votre situation`
+                      : '1 mention obligatoire selon votre situation'}
                   </p>
                 )}
               </div>
@@ -1286,7 +1288,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                 <DebouncedInput id="settings-field-mediateur" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="Médiation de la consommation" value={entreprise.mediateur || ''} onChange={val => updateEntreprise(p => ({...p, mediateur: val}))} />
               </div>
               <div>
-                <label htmlFor="settings-field-mediateurContact" className="block text-sm font-medium mb-1">Site web / Adresse</label>
+                <label htmlFor="settings-field-mediateurContact" className="block text-sm font-medium mb-1">Site internet du médiateur</label>
                 <DebouncedInput id="settings-field-mediateurContact" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="www.mediateur-consommation.fr" value={entreprise.mediateurContact || ''} onChange={val => updateEntreprise(p => ({...p, mediateurContact: val}))} />
               </div>
             </div>

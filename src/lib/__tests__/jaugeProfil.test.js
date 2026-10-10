@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { jaugeProfil } from '../jaugeProfil';
 import { profilManquant } from '../profilLegal';
+import { mentionsFacture } from '../mentionsFacture';
 
 // SARL dont le profil ne bloque plus l'envoi, sans capital social ni médiateur
 const SARL = {
@@ -43,11 +44,26 @@ const ids = (liste) => liste.map((m) => m.id);
 describe('jauge « Profil complété » des Paramètres', () => {
   it('SARL sans capital ni médiateur : listés sous les mentions obligatoires selon la situation, pas sous « Recommandés »', () => {
     const j = jaugeProfil(SARL);
-    expect(ids(j.selonSituation)).toEqual(['capital', 'rcs', 'tvaIntra', 'mediateur', 'decennaleAssureurAdresse', 'decennaleZone']);
-    expect(ids(j.recommandes)).toEqual(['codeApe', 'rcProAssureur', 'rcProNumero']);
-    // Le pourcentage ne compte que ce qui bloque l'envoi : 100 % = l'envoi n'est plus bloqué
+    expect(ids(j.selonSituation)).toEqual(['capital', 'rcs', 'tvaIntra', 'mediateur', 'decennaleAssureur']);
+    expect(ids(j.recommandes)).toEqual(['codeApe', 'rcPro']);
     expect(j.obligatoires).toEqual([]);
+    // Rien ne bloque l'envoi, mais capital, RCS et TVA intracom manquent : pas 100 % (7 sur 10)
+    expect(j.completude).toBe(70);
+  });
+
+  it('le pourcentage est la note de l\'onglet Facture 2026 : les deux écrans disent la même chose', () => {
+    for (const e of [{}, SARL, MICRO, { ...SARL, ...TOUT }, { ...SARL, capital: '10000' }, { formeJuridique: 'EI' }]) {
+      expect(jaugeProfil(e).completude).toBe(mentionsFacture(e).note);
+    }
+    // Société sans capital : jamais 100 % (service-public F31808)
+    expect(jaugeProfil({ ...SARL, ...TOUT, capital: '' }).completude).toBeLessThan(100);
+  });
+
+  it('médiateur et assureur décennal ne comptent pas dans le pourcentage (l\'app ne sait pas si l\'artisan travaille pour des particuliers)', () => {
+    const j = jaugeProfil({ ...SARL, ...TOUT, mediateur: '', decennaleZone: '' });
     expect(j.completude).toBe(100);
+    expect(ids(j.selonSituation)).toEqual(['mediateur', 'decennaleAssureur']);
+    expect(j.selonSituation.find((m) => m.id === 'decennaleAssureur').champ).toBe('decennaleZone');
   });
 
   it('micro-entreprise en franchise : ni RCS, ni TVA intracom, ni capital', () => {
@@ -55,28 +71,34 @@ describe('jauge « Profil complété » des Paramètres', () => {
     expect(ids(j.selonSituation)).not.toContain('rcs');
     expect(ids(j.selonSituation)).not.toContain('tvaIntra');
     expect(ids(j.selonSituation)).not.toContain('capital');
-    expect(ids(j.selonSituation)).toEqual(['mediateur', 'decennaleAssureurAdresse', 'decennaleZone']);
+    expect(ids(j.selonSituation)).toEqual(['mediateur', 'decennaleAssureur']);
+    expect(j.completude).toBe(100);
   });
 
   it('le code APE et la RC Pro ne sont jamais présentés comme obligatoires', () => {
     for (const e of [{}, SARL, MICRO]) {
       const j = jaugeProfil(e);
-      expect([...ids(j.obligatoires), ...ids(j.selonSituation)]).not.toEqual(expect.arrayContaining(['codeApe']));
-      expect([...ids(j.obligatoires), ...ids(j.selonSituation)].some((id) => id.startsWith('rcPro'))).toBe(false);
+      const dues = [...ids(j.obligatoires), ...ids(j.selonSituation)];
+      expect(dues).not.toContain('codeApe');
+      expect(dues).not.toContain('rcPro');
     }
   });
 
   it('les obligatoires sont exactement ce qui bloque l\'envoi (lib/profilLegal)', () => {
     const vide = { formeJuridique: 'SARL' };
     expect(ids(jaugeProfil(vide).obligatoires)).toEqual(ids(profilManquant(vide)));
-    expect(jaugeProfil(vide).completude).toBe(Math.round((2 / 8) * 100)); // forme juridique + nom de l'EI réputé rempli
-    // Capital, RCS et TVA intracom n'entrent pas dans le pourcentage (Q-capital-envoi attend Hugo)
-    expect(jaugeProfil({ ...SARL, capital: '' }).completude).toBe(100);
+    // Capital, RCS et TVA intracom n'y sont jamais : ils n'empêchent pas l'envoi (Q-capital-envoi attend Hugo)
+    for (const e of [vide, SARL]) expect(ids(jaugeProfil(e).obligatoires)).not.toEqual(expect.arrayContaining(['capital']));
+    // Libellé et champ de l'onglet Facture 2026 : la décennale « si vos travaux y sont soumis » (D-24)
+    const dec = jaugeProfil({ ...MICRO, decennaleNumero: '' }).obligatoires.find((m) => m.id === 'no_decennale');
+    expect(dec.libelle).toBe('Assurance décennale (si vos travaux y sont soumis)');
+    expect(dec.champ).toBe('decennaleNumero');
   });
 
   it('décennale déclarée non soumise (D-24) : ni coordonnées de l\'assureur ni zone', () => {
     const j = jaugeProfil({ ...MICRO, decennaleAssureur: '', decennaleNumero: '', decennaleNonSoumis: true });
     expect(ids(j.selonSituation)).toEqual(['mediateur']);
+    expect(j.obligatoires).toEqual([]);
   });
 
   it('tout rempli : aucune mention listée', () => {
@@ -95,6 +117,7 @@ describe('jauge « Profil complété » des Paramètres', () => {
     const m = jaugeProfil({ ...SARL, mediateur: 'Médiateur du BTP' }).selonSituation.find((x) => x.id === 'mediateur');
     expect(m.champ).toBe('mediateurContact');
     expect(m.precision).toBe('si vous travaillez pour des particuliers');
+    expect(jaugeProfil({ ...SARL, mediateurContact: 'www.mediateur-btp.fr' }).selonSituation.find((x) => x.id === 'mediateur').champ).toBe('mediateur');
   });
 
   it('entreprise relue depuis la base (clés snake_case)', () => {

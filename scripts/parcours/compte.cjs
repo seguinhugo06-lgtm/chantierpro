@@ -20,7 +20,71 @@ const etatAssistant = (page) => page.evaluate(() => {
   };
 });
 
+// La jauge « Profil complété » : son chiffre, la ligne sous le chiffre et, menu ouvert, ses groupes (lib/jaugeProfil)
+const lireJauge = (page) => page.evaluate(() => {
+  const jauge = document.querySelector('[title="Cliquez pour voir les champs manquants"], [title="Profil complet !"]');
+  const groupes = {};
+  document.querySelectorAll('[data-groupe]').forEach((g) => { groupes[g.dataset.groupe] = [...g.querySelectorAll('li')].map((l) => l.innerText); });
+  const menu = document.querySelector('[data-groupe]')?.closest('.absolute')?.getBoundingClientRect();
+  return {
+    ouvrable: jauge?.title === 'Cliquez pour voir les champs manquants',
+    texte: jauge?.innerText || '',
+    groupes,
+    assistant: [...document.querySelectorAll('button')].some((b) => b.innerText.trim() === 'Compléter avec l\'assistant'),
+    dansEcran: !menu || (menu.left >= 0 && menu.right <= innerWidth),
+    debordement: document.documentElement.scrollWidth - innerWidth,
+  };
+});
+
 module.exports = [
+  {
+    nom: 'jauge du profil : capital, médiateur, RCS et TVA intracom rangés selon la situation de l’entreprise, à 375 px',
+    async executer({ ouvrir, cliquer, saisir, attendre, verifier }) {
+      const { page } = await ouvrir({ page: 'settings', largeur: 375 });
+      // Démo : SARL complète (capital, RCS, TVA intracom), sans médiateur ni coordonnées de l'assureur décennal,
+      // hors pourcentage : 100 %, et le menu s'ouvre quand même (avant : fermé dès 100 %)
+      const complet = await lireJauge(page);
+      verifier(complet.texte.includes('100 %') && complet.texte.includes('2 mentions obligatoires selon votre situation') && complet.ouvrable,
+        `100 % et ce qui reste dû dit sous le chiffre (${JSON.stringify(complet.texte)})`);
+      await cliquer(page, 'Cliquez pour voir les champs manquants');
+      const menu100 = await lireJauge(page);
+      const situation = (j) => (j.groupes['selon-situation'] || []).join(' / ');
+      verifier(/Médiateur/.test(situation(menu100)) && /assureur décennal/.test(situation(menu100)) && !menu100.groupes.obligatoires,
+        `médiateur et assureur décennal sous les mentions selon la situation (${JSON.stringify(menu100.groupes)})`);
+      verifier(!menu100.assistant, 'pas d’assistant quand rien ne bloque l’envoi');
+      await cliquer(page, 'Cliquez pour voir les champs manquants'); // referme
+
+      // SARL sans capital : la note baisse (comme l'onglet Facture 2026) et le capital n'est pas « recommandé »
+      await saisir(page, '#settings-field-capital', '');
+      await attendre(1200); // saisie différée (800 ms)
+      await cliquer(page, 'Cliquez pour voir les champs manquants');
+      const sansCapital = await lireJauge(page);
+      verifier(!sansCapital.texte.includes('100 %'), `moins de 100 % sans capital social (${JSON.stringify(sansCapital.texte)})`);
+      verifier(/^Capital social/.test((sansCapital.groupes['selon-situation'] || [])[0] || '') && !/Capital/.test((sansCapital.groupes.recommandes || []).join()),
+        `capital social sous les mentions obligatoires selon la situation (${JSON.stringify(sansCapital.groupes)})`);
+      verifier(sansCapital.dansEcran && sansCapital.debordement <= 0, `menu dans l’écran, rien ne déborde (${sansCapital.debordement} px)`);
+      await cliquer(page, 'Cliquez pour voir les champs manquants');
+
+      // TVA intracom vidée : listée pour la SARL ; en micro-entreprise (franchise), ni TVA intracom, ni RCS, ni capital
+      await cliquer(page, 'Légal');
+      await saisir(page, '#settings-field-tvaIntra', '');
+      await attendre(1200);
+      await cliquer(page, 'Cliquez pour voir les champs manquants');
+      verifier(/TVA intracommunautaire/.test(situation(await lireJauge(page))), 'TVA intracom listée pour une société');
+      await cliquer(page, 'Cliquez pour voir les champs manquants');
+      await cliquer(page, 'Identité');
+      await page.evaluate(() => {
+        const s = document.querySelector('#settings-field-formeJuridique');
+        Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(s, 'Micro-entreprise');
+        s.dispatchEvent(new Event('change', { bubbles: true }));
+      });
+      await attendre(800);
+      await cliquer(page, 'Cliquez pour voir les champs manquants');
+      const micro = await lireJauge(page);
+      verifier(!/TVA intracommunautaire|RCS|Capital/.test(situation(micro)) && /Médiateur/.test(situation(micro)),
+        `micro-entreprise : ni TVA intracom, ni RCS, ni capital (${JSON.stringify(micro.groupes)})`);
+    },
+  },
   {
     nom: 'assistant de configuration : sans décennale, il liste ce qui bloque l’envoi au lieu de dire « terminée »',
     async executer({ ouvrir, cliquer, saisir, attendre, verifier }) {
@@ -42,7 +106,7 @@ module.exports = [
       verifier(apres.ferme, 'l’assistant se ferme');
       verifier(apres.focus === 'settings-field-decennaleAssureur', `le champ de la décennale reçoit le curseur (${apres.focus})`);
 
-      // L'assistant ne s'ouvre que sur un profil incomplet (jauge < 100 %) : téléphone vidé, puis saisi dans l'assistant
+      // L'assistant ne se propose que s'il manque une mention qui bloque l'envoi : téléphone vidé, puis saisi dans l'assistant
       // (étape « Informations légales ») ; le profil ne bloque plus l'envoi à la dernière étape : réussite
       await saisir(page, '#settings-field-decennaleAssureur', 'SMABTP');
       await attendre(1200);

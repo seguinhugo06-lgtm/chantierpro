@@ -6,9 +6,12 @@
  * Lu par :
  * - le contrôle d'envoi et de téléchargement (DevisPage : validateDevisForSend, getLegalIssues) ;
  * - les bandeaux « profil incomplet » (liste des devis, DevisComposer) ;
- * - la jauge « Profil complété » des Réglages et l'étape « Configurer mon entreprise » de l'accueil ;
- * - la liste « Informations à vérifier pour vos factures » de l'onglet Facture 2026 (lib/mentionsFacture).
- * Une jauge à 100 % veut donc dire que le profil ne bloque plus l'envoi.
+ * - l'étape « Configurer mon entreprise » de l'accueil : faite quand le profil ne bloque plus l'envoi ;
+ * - la liste « Informations à vérifier pour vos factures » de l'onglet Facture 2026 (lib/mentionsFacture) ;
+ * - la jauge « Profil complété » des Réglages (lib/jaugeProfil), groupe « Obligatoires (bloquent l'envoi) ».
+ *   Son pourcentage est la note de Facture 2026 : depuis le 10 oct. 2026, il compte aussi capital, RCS et
+ *   TVA intracom quand ils concernent l'entreprise, et 100 % ne veut plus seulement dire « l'envoi n'est
+ *   plus bloqué ».
  *
  * Avant ce module, chaque écran tenait sa liste : la jauge pouvait afficher 100 % sans
  * décennale alors que l'envoi la bloquait. Ajouter une mention ici la rend bloquante
