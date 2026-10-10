@@ -11,10 +11,7 @@
 import { useState, useCallback, useMemo, useRef } from 'react';
 import {
   Mail,
-  MessageSquare,
-  Phone,
   Clock,
-  Send,
   FileText,
   Receipt,
   AlertTriangle,
@@ -172,11 +169,10 @@ Sans règlement sous 8 jours, je me réserve le droit d'engager une procédure d
   },
 ];
 
+// Les relances ne partent que par e-mail (moteur et tâche nocturne). Avant (recette du 9 oct. 2026), SMS,
+// « Email + SMS » et WhatsApp étaient proposés et enregistrés, mais le client recevait toujours un e-mail.
 const CHANNEL_OPTIONS = [
   { value: 'email', label: 'Email', icon: Mail },
-  { value: 'sms', label: 'SMS', icon: MessageSquare },
-  { value: 'email_sms', label: 'Email + SMS', icon: Send },
-  { value: 'whatsapp', label: 'WhatsApp', icon: Phone },
 ];
 
 const AVAILABLE_VARIABLES = [
@@ -236,8 +232,8 @@ function Toggle({ enabled, onToggle, size = 'md', couleur }) {
  * Channel badge display
  */
 function ChannelBadge({ channel, isDark }) {
-  const option = CHANNEL_OPTIONS.find(o => o.value === channel);
-  if (!option) return null;
+  // Une étape réglée autrefois sur un autre canal part quand même par e-mail : on l'affiche ainsi
+  const option = CHANNEL_OPTIONS.find(o => o.value === channel) || CHANNEL_OPTIONS[0];
   const Icon = option.icon;
 
   return (
@@ -402,21 +398,7 @@ function ScenarioStep({
                 <label className={cn('block text-xs font-medium mb-1', textMuted)}>
                   Canal
                 </label>
-                <select
-                  value={step.channel}
-                  onChange={e => handleFieldChange('channel', e.target.value)}
-                  className={cn(
-                    'w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 appearance-none',
-                    inputBg
-                  )}
-                  style={{ '--tw-ring-color': couleur }}
-                >
-                  {CHANNEL_OPTIONS.map(opt => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
+                <p className={cn('w-full px-3 py-2 rounded-lg border text-sm', inputBg)}>E-mail</p>
               </div>
             </div>
 

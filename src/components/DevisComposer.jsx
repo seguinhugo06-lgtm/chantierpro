@@ -100,6 +100,7 @@ export default function DevisComposer({
   onUpdate,
   initialData = null,
   clientInitial = null,
+  chantierInitial = null,
   clients = [],
   addClient,
   catalogue = [],
@@ -205,7 +206,7 @@ export default function DevisComposer({
       // Ouvert depuis une fiche client : on part de ce client, sauf si un brouillon chiffré attend
       // (le perdre coûterait plus que de rechoisir le client).
       if (clientInitial && !(draft?.lignes?.length > 0)) {
-        setForm({ ...blankForm(), clientId: clientInitial });
+        setForm({ ...blankForm(), clientId: clientInitial, chantierId: chantierInitial || '' });
       } else if (draft && (draft.clientId || draft.lignes?.length > 0)) {
         setForm({ ...blankForm(), ...draft, date: jourLocal() });
         setDraftRestored(true);
@@ -218,7 +219,7 @@ export default function DevisComposer({
       setForm(blankForm());
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, initialData, clientInitial]);
+  }, [isOpen, initialData, clientInitial, chantierInitial]);
 
   // ── Autosave draft (create mode only) ──
   useEffect(() => {

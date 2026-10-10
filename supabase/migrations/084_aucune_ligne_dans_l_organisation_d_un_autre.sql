@@ -15,11 +15,12 @@
 --     toujours la sienne (079) ; le serveur (rôle de service, fonctions SECURITY DEFINER sans jeton) n'est pas
 --     concerné ; un visiteur n'écrit pas dans ces tables ;
 --   - la fiche entreprise d'une organisation ne s'ajoute, ne se modifie et ne se supprime que par son propriétaire
---     ou un administrateur (chacun garde la main sur sa propre fiche par « Users can update own entreprise »).
+--     ou un administrateur, y compris quand une fiche change d'organisation (chacun garde la main sur sa propre
+--     fiche par « Users can update own entreprise »).
 --
 -- ─── Vérification après application (éditeur SQL) ───────────────────────────
---   SELECT count(*) AS tables_gardees FROM pg_trigger WHERE tgname = 'trg_garder_organisation';
---   → le nombre de tables de la liste présentes en production (45 le 10 oct. 2026).
+--   SELECT count(*) AS tables_gardees FROM pg_trigger WHERE tgname = 'trg_verifier_organisation';
+--   → 50 (toutes les tables de la liste sont présentes en production le 10 oct. 2026).
 --   SELECT policyname, cmd, qual, with_check FROM pg_policies
 --   WHERE schemaname = 'public' AND tablename = 'entreprise' AND policyname LIKE 'Org %' ORDER BY 1;
 --   → delete et update : mon_role_organisation(organization_id) IN ('owner','admin'), update avec WITH CHECK.
@@ -44,7 +45,8 @@ BEGIN
   -- Fiche entreprise (IBAN, mentions) : ajoutée à une organisation par son propriétaire ou un administrateur
   -- seulement (relecture gardien-securite du 10 oct. 2026 : un ouvrier pouvait en ajouter une, servie ensuite
   -- sur les devis sans fiche désignée)
-  IF TG_TABLE_NAME = 'entreprise' AND TG_OP = 'INSERT' AND auth.uid() IS NOT NULL AND NEW.organization_id IS NOT NULL
+  IF TG_TABLE_NAME = 'entreprise' AND auth.uid() IS NOT NULL AND NEW.organization_id IS NOT NULL
+     AND (TG_OP = 'INSERT' OR NEW.organization_id IS DISTINCT FROM OLD.organization_id)
      AND NOT COALESCE(public.mon_role_organisation(NEW.organization_id) IN ('owner', 'admin'), false) THEN
     RAISE EXCEPTION 'Seul un gérant ajoute une fiche entreprise' USING ERRCODE = '42501';
   END IF;
@@ -76,9 +78,11 @@ BEGIN
       CONTINUE;
     END IF;
     EXECUTE format('DROP TRIGGER IF EXISTS trg_garder_organisation ON public.%I', t);
-    -- « garder » s'exécute avant « renseigner » (ordre alphabétique) : une ligne sans organisation passe, puis la
-    -- reçoit ; une organisation fournie est contrôlée
-    EXECUTE format('CREATE TRIGGER trg_garder_organisation BEFORE INSERT OR UPDATE OF organization_id ON public.%I '
+    EXECUTE format('DROP TRIGGER IF EXISTS trg_verifier_organisation ON public.%I', t);
+    -- « verifier » s'exécute APRÈS « renseigner » (ordre alphabétique des déclencheurs BEFORE) : il contrôle aussi
+    -- l'organisation remplie par 079 (relecture gardien-securite : sinon un ouvrier glissait une fiche entreprise
+    -- dans l'organisation de son employeur en omettant organization_id)
+    EXECUTE format('CREATE TRIGGER trg_verifier_organisation BEFORE INSERT OR UPDATE OF organization_id ON public.%I '
                    'FOR EACH ROW EXECUTE FUNCTION public.garder_organisation()', t);
   END LOOP;
 END $$;

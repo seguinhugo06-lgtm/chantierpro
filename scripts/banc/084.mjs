@@ -50,7 +50,22 @@ export async function verifier({ q, en, verifier }) {
   const ficheOuvrier = await essayer(() => en(SALARIE, () => q(`INSERT INTO entreprise (user_id, organization_id, nom, iban) VALUES ($1, $2, 'Fiche ouvrier', 'FR76-OUVRIER')`, [SALARIE, ORGA_PATRON])));
   verifier(!ficheOuvrier.ok, `084 : un ouvrier n'ajoute pas de fiche entreprise à l'organisation (${ficheOuvrier.e || 'autorisé'})`);
 
-  const garde = Number((await q(`SELECT count(*) AS n FROM pg_trigger WHERE tgname = 'trg_garder_organisation'`)).rows[0].n);
+  // Contournements relevés par gardien-securite : (a) omettre l'organisation (079 remplit celle de l'employeur,
+  // première rejointe) ; (b) créer sa fiche dans son organisation personnelle puis la déplacer chez l'employeur
+  const sansOrgOuvrier = await essayer(() => en(SALARIE, () => q(`INSERT INTO entreprise (user_id, nom, iban) VALUES ($1, 'Fiche ouvrier sans org', 'FR76-OUVRIER')`, [SALARIE])));
+  verifier(!sansOrgOuvrier.ok, `084 : un ouvrier n'ajoute pas de fiche en omettant l'organisation (${sansOrgOuvrier.e || 'autorisé'})`);
+  const ORGA_OUVRIER = '84aaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+  await q(`INSERT INTO organizations (id, name, slug, owner_id) VALUES ($1, 'Perso ouvrier', 'perso-ouvrier-084', $2)`, [ORGA_OUVRIER, SALARIE]);
+  await q(`INSERT INTO organization_members (organization_id, user_id, role, joined_at) VALUES ($1, $2, 'owner', now() + interval '1 day')`, [ORGA_OUVRIER, SALARIE]);
+  const perso = (await en(SALARIE, () => q(`INSERT INTO entreprise (user_id, organization_id, nom, iban) VALUES ($1, $2, 'Fiche perso ouvrier', 'FR76-OUVRIER') RETURNING id`, [SALARIE, ORGA_OUVRIER]))).rows[0].id;
+  const deplaceFiche = await essayer(() => en(SALARIE, () => q(`UPDATE entreprise SET organization_id = $2 WHERE id = $1 RETURNING id`, [perso, ORGA_PATRON])));
+  const ficheOu = (await q(`SELECT organization_id FROM entreprise WHERE id = $1`, [perso])).rows[0].organization_id;
+  verifier(ficheOu === ORGA_OUVRIER, `084 : ni en déplaçant sa propre fiche chez l'employeur (${deplaceFiche.e || 'autorisé'})`);
+  await q(`DELETE FROM entreprise WHERE user_id = $1`, [SALARIE]);
+  await q(`DELETE FROM organization_members WHERE organization_id = $1`, [ORGA_OUVRIER]);
+  await q(`DELETE FROM organizations WHERE id = $1`, [ORGA_OUVRIER]);
+
+  const garde = Number((await q(`SELECT count(*) AS n FROM pg_trigger WHERE tgname = 'trg_verifier_organisation'`)).rows[0].n);
   verifier(garde > 0, `084 : contrôle posé sur les tables présentes (${garde})`);
 
   await q(`DELETE FROM clients WHERE nom IN ('Client du patron (modifié)', 'Client du patron', 'Sans organisation', 'Écrit par le serveur')`);

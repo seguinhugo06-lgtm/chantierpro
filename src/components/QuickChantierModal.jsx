@@ -152,6 +152,8 @@ export default function QuickChantierModal({
       setErrors(newErrors);
       if (newErrors.nom) {
         inputRef.current?.focus();
+      } else if (newErrors.client_id) {
+        setShowClientDropdown(true);
       }
       return;
     }
@@ -271,7 +273,7 @@ export default function QuickChantierModal({
           {/* Client Selection */}
           <div ref={dropdownRef} className="relative">
             <label htmlFor="chantier-client" className={`block text-sm font-medium mb-1.5 ${textPrimary}`}>
-              Client
+              Client <span className="text-danger-texte">*</span>
             </label>
             <button
               id="chantier-client"
@@ -288,10 +290,12 @@ export default function QuickChantierModal({
                   )}
                 </span>
               ) : (
-                <span className={textMuted}>Sélectionner un client (optionnel)</span>
+                <span className={textMuted}>Sélectionner un client</span>
               )}
               <ChevronDown size={16} className={textMuted} />
             </button>
+
+            <FormError id="chantier-client-error" message={errors.client_id} />
 
             {/* Client Dropdown */}
             {showClientDropdown && (
@@ -463,7 +467,7 @@ export default function QuickChantierModal({
                       const update = { ...p, adresse: addr };
                       // Auto-parse code postal + ville from address
                       const cpMatch = addr.match(/(\d{5})\s+(.+)$/);
-                      if (cpMatch && !p.codePostal && !p.ville) {
+                      if (cpMatch) {
                         update.codePostal = cpMatch[1];
                         update.ville = cpMatch[2].replace(/,\s*$/, '').trim();
                       }
