@@ -67,7 +67,8 @@ export const queueMutation = async (action, entity, data, proprietaire = null) =
     // Fallback localStorage si IndexedDB non disponible
     const pending = JSON.parse(localStorage.getItem('cp_pending_mutations') || '[]');
     const mutation = {
-      id: Date.now(),
+      // Unique même pour deux écritures de la même milliseconde (avant : même id, supprimées ensemble)
+      id: Date.now() * 1000 + Math.floor(Math.random() * 1000),
       action,
       entity,
       data,
@@ -147,9 +148,6 @@ const updateMutation = async (mutation) => {
   }
 };
 
-/** Maximum sync retry attempts before force-removing a mutation */
-const MAX_RETRY_ATTEMPTS = 3;
-
 /**
  * Exécute une fonction asynchrone avec retry et backoff exponentiel.
  * @param {Function} fn - Async function to execute
@@ -212,57 +210,42 @@ const _ancienneDetection = (error) => {
 export const syncQueue = async (rejouer, { proprietaire } = {}) => {
   const toutes = await getPendingMutations();
   const results = { success: 0, failed: 0, cleared: 0, errors: [] };
+  const TRENTE_JOURS = 30 * 24 * 60 * 60 * 1000;
 
+  // Une écriture en attente n'est supprimée que si la base l'a REFUSÉE, ou si l'artisan purge lui-même
+  // (relecture sécurité du 10 oct. 2026 : avant, 3 échecs réseau ou 7 jours suffisaient à l'effacer
+  // sans un mot, alors que l'écran avait promis « envoi automatique au retour du réseau »).
   for (const mutation of toutes) {
+    // Écriture d'un autre compte : elle attend que son propriétaire se reconnecte. Sur un appareil
+    // partagé, elle n'est pas gardée indéfiniment (elle contient les données de ses clients).
+    if (mutation.proprietaire && mutation.proprietaire !== proprietaire) {
+      if (Date.now() - (mutation.timestamp || 0) > TRENTE_JOURS) {
+        await removeMutation(mutation.id);
+        results.cleared++;
+      }
+      continue;
+    }
+    // Écriture d'avant le marquage par compte : impossible de savoir à qui elle est, on ne la rejoue pas.
+    if (!mutation.proprietaire) {
+      console.warn(`Mutation ${mutation.id} sans compte propriétaire, suppression`);
+      await removeMutation(mutation.id);
+      results.cleared++;
+      continue;
+    }
+    if (!['create', 'update', 'delete'].includes(mutation.action)) {
+      console.warn(`Action sync inconnue: ${mutation.action}`);
+      await removeMutation(mutation.id);
+      results.cleared++;
+      continue;
+    }
+
     try {
-      // Écriture d'un autre compte : elle attend que son propriétaire se reconnecte.
-      if (mutation.proprietaire && mutation.proprietaire !== proprietaire) continue;
-      // Écriture d'avant le marquage par compte : impossible de savoir à qui elle est, on ne la rejoue pas.
-      if (!mutation.proprietaire) {
-        console.warn(`Mutation ${mutation.id} sans compte propriétaire, suppression`);
-        await removeMutation(mutation.id);
-        results.cleared++;
-        continue;
-      }
-
-      // Auto-clear stale mutations older than 7 days
-      if (Date.now() - (mutation.timestamp || 0) > 7 * 24 * 60 * 60 * 1000) {
-        console.warn(`Mutation ${mutation.id} trop ancienne (>7j), suppression`);
-        await removeMutation(mutation.id);
-        results.cleared++;
-        continue;
-      }
-
-      // Auto-clear mutations that have failed too many times
-      const retryCount = mutation.retryCount || 0;
-      if (retryCount >= MAX_RETRY_ATTEMPTS) {
-        console.warn(`Mutation ${mutation.id} a échoué ${retryCount} fois, suppression définitive`);
-        await removeMutation(mutation.id);
-        results.cleared++;
-        results.errors.push({
-          mutation,
-          error: `Échec après ${retryCount} tentatives`,
-          permanent: true
-        });
-        continue;
-      }
-
-      let result;
-      const execAction = async () => rejouer(mutation);
-
-      if (!['create', 'update', 'delete'].includes(mutation.action)) {
-        console.warn(`Action sync inconnue: ${mutation.action}`);
-        await removeMutation(mutation.id);
-        results.cleared++;
-        continue;
-      }
-
-      // Execute with exponential backoff (1s, 2s, 4s between retries)
-      result = await retryWithBackoff(execAction, 2);
+      // Exécution avec reprise (1 s puis 2 s) ; une erreur définitive n'est pas reprise
+      const result = await retryWithBackoff(() => rejouer(mutation), 2);
 
       // Rejeu sans objet (élément disparu depuis) : rien à envoyer
       if (result === null || result === undefined || result === false) {
-        console.warn(`Mutation ${mutation.id} rejetée par le handler (${mutation.entity}/${mutation.action}), suppression`);
+        console.warn(`Mutation ${mutation.id} sans objet (${mutation.entity}/${mutation.action}), suppression`);
         await removeMutation(mutation.id);
         results.cleared++;
         continue;
@@ -275,36 +258,39 @@ export const syncQueue = async (rejouer, { proprietaire } = {}) => {
       const errMsg = error?.message || '';
 
       if (isPermanentError(error)) {
-        console.warn(`Mutation ${mutation.id} erreur permanente, suppression:`, errMsg);
+        console.warn(`Mutation ${mutation.id} refusée par la base, suppression:`, errMsg);
         await removeMutation(mutation.id);
         results.cleared++;
         results.errors.push({ mutation, error: errMsg, permanent: true });
-      } else {
-        // Transient error — increment retry counter in-place
-        const retryCount = (mutation.retryCount || 0) + 1;
-        if (retryCount >= MAX_RETRY_ATTEMPTS) {
-          // Max retries reached, remove it
-          console.warn(`Mutation ${mutation.id} a atteint ${MAX_RETRY_ATTEMPTS} échecs, suppression:`, errMsg);
-          await removeMutation(mutation.id);
-          results.cleared++;
-          results.errors.push({ mutation, error: `${errMsg} (après ${retryCount} tentatives)`, permanent: true });
-        } else {
-          // Update the mutation with incremented retry count
-          try {
-            await updateMutation({ ...mutation, retryCount, lastError: errMsg });
-          } catch {
-            // If we can't even update, just remove it
-            await removeMutation(mutation.id);
-            results.cleared++;
-          }
-          results.failed++;
-          results.errors.push({ mutation, error: errMsg, retriesLeft: MAX_RETRY_ATTEMPTS - retryCount });
-        }
+        continue;
       }
+
+      // Échec passager : l'écriture reste en file (compteur pour l'affichage), et on S'ARRÊTE là pour
+      // garder l'ordre (une modification ne doit pas passer avant la création qu'elle suit).
+      const retryCount = (mutation.retryCount || 0) + 1;
+      try {
+        await updateMutation({ ...mutation, retryCount, lastError: errMsg });
+      } catch {
+        // compteur non mis à jour : l'écriture reste en file telle quelle
+      }
+      results.failed++;
+      results.errors.push({ mutation, error: errMsg, retriesLeft: null });
+      break;
     }
   }
 
   return results;
+};
+
+/**
+ * Supprime les écritures en attente d'UN compte (purge demandée par l'artisan). Celles des autres
+ * comptes de l'appareil ne sont pas touchées. Rend le nombre d'écritures supprimées.
+ */
+export const clearMutationsDe = async (proprietaire) => {
+  const toutes = await getPendingMutations();
+  const siennes = toutes.filter((m) => !m.proprietaire || m.proprietaire === proprietaire);
+  for (const m of siennes) await removeMutation(m.id);
+  return siennes.length;
 };
 
 /**
@@ -415,6 +401,7 @@ export default {
   removeMutation,
   clearAllMutations,
   syncQueue,
+  clearMutationsDe,
   getPendingCount,
   useNetworkStatus,
   registerNetworkListeners,

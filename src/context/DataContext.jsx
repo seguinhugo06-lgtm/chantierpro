@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { DEVIS_STATUS, CHANTIER_STATUS } from '../lib/constants';
 import { calculateChantierMargin } from '../lib/business/margin-calculator';
-import { loadAllData, saveItem, updateItem, deleteItem, getNextNumero } from '../hooks/useSupabaseSync';
+import { loadAllData, saveItem, updateItem, deleteItem, getNextNumero, FIELD_MAPPINGS, erreurEcriture } from '../hooks/useSupabaseSync';
 import { isDemo, auth, supabase } from '../supabaseClient';
 import { useOrg } from './OrgContext';
 import { useEntreprise } from './EntrepriseContext';
@@ -13,7 +13,7 @@ import { toast } from '../stores/toastStore';
 import { useSubscriptionStore, PLANS } from '../stores/subscriptionStore';
 import { celebrateMilestone } from '../lib/celebrate';
 import { captureException } from '../lib/sentry';
-import { estEcritureDifferable, messageEcritureRefusee } from '../lib/erreursEcriture';
+import { estEcritureDifferable, estSessionExpiree, messageEcritureRefusee } from '../lib/erreursEcriture';
 
 /**
  * DataContext - Global data state (clients, devis, chantiers, etc.)
@@ -352,7 +352,13 @@ export function DataProvider({ children, initialData = {} }) {
         logger.debug(`✅ Pending save flushed: ${table}/${item.id}`);
       } catch (error) {
         console.error(`❌ Failed to flush pending save for ${table}:`, error);
-        await queueOffline('create', table, item, userId);
+        // Réseau : en file sous ce compte. Refus : dit à l'artisan (avant : mis en file sans un mot).
+        if (estEcritureDifferable(error)) {
+          await queueOffline('create', table, item, userId);
+        } else {
+          toast.error('Non enregistré', messageEcritureRefusee(error));
+          captureException(error, { context: `écriture différée ${table}`, code: error?.code, status: error?.status });
+        }
       }
     });
   }, [userId, orgId, orgLoading]);
@@ -477,7 +483,11 @@ export function DataProvider({ children, initialData = {} }) {
   const echecEcriture = useCallback(async (error, { action, table, data, annuler }) => {
     if (estEcritureDifferable(error)) {
       await queueOffline(action, table, data, userId);
-      toast.info('Pas de connexion', 'Enregistré sur cet appareil : envoi automatique au retour du réseau.');
+      if (estSessionExpiree(error)) {
+        toast.info('Session expirée', 'Reconnectez-vous : la modification, gardée sur cet appareil, partira ensuite.');
+      } else {
+        toast.info('Pas de connexion', 'Enregistré sur cet appareil : envoi automatique au retour du réseau.');
+      }
       return true;
     }
     annuler?.();
@@ -1155,8 +1165,15 @@ export function DataProvider({ children, initialData = {} }) {
     if (action === 'create') return saveItem(entity, data, userId, orgId);
     if (action === 'delete') return deleteItem(entity, data.id, userId, orgId);
     if (action === 'update') {
-      const local = (etatsParTable[entity] || []).find(x => x.id === data.id);
-      if (!local) return false; // supprimé depuis : plus rien à modifier
+      let local = (etatsParTable[entity] || []).find(x => x.id === data.id);
+      if (!local) {
+        // Pas en mémoire (app rouverte hors ligne, chargement en échec) : relire la ligne en base.
+        // Seule une ligne vraiment disparue rend la modification sans objet.
+        const relue = await supabase.from(entity).select('*').eq('id', data.id).maybeSingle();
+        if (relue.error) throw erreurEcriture(entity, relue.error, relue.status);
+        if (!relue.data) return false;
+        local = FIELD_MAPPINGS[entity] ? FIELD_MAPPINGS[entity].fromSupabase(relue.data) : relue.data;
+      }
       const ligne = { ...local, ...data };
       if (entity === 'devis' && ligne.statut === 'vu') ligne.statut = 'envoye';
       return updateItem(entity, data.id, ligne, userId, orgId);

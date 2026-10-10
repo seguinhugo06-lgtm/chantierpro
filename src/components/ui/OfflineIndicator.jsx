@@ -105,7 +105,7 @@ export default function OfflineIndicator({
     if (!onForceClear || isClearing) return;
     setIsClearing(true);
     try {
-      await onForceClear();
+      if ((await onForceClear()) === false) return; // l'artisan a renoncé
       setSyncError(false);
       syncAttempts.current = 0;
       setShowSuccess(true);

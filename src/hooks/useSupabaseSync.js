@@ -1435,7 +1435,15 @@ async function writeWithColumnRetry(table, mapping, supabaseData, runQuery) {
         console.warn(`⚠️ ${table}: enregistré après retrait de colonnes: [${strippedCols.join(', ')}]`);
       }
       logger.debug(`✅ Saved to ${table}:`, data?.id);
-      return mapping.fromSupabase(data);
+      // L'écriture est FAITE : un échec de conversion de la ligne relue ne doit pas la faire passer
+      // pour refusée (l'artisan recommencerait et créerait un doublon). On rend null : l'appelant garde
+      // ce qu'il a envoyé.
+      try {
+        return mapping.fromSupabase(data);
+      } catch (conversion) {
+        console.error(`⚠️ ${table}: ligne enregistrée mais illisible`, conversion);
+        return null;
+      }
     } catch (error) {
       if (error?.table) throw error; // déjà une erreur de la base, analysée plus haut
       const msg = error.message || '';

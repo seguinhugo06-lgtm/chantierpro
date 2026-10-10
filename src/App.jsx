@@ -87,7 +87,7 @@ import { fetchSubscription, computeLiveUsage } from './services/subscriptionsApi
 import { isDraftChantier } from './lib/utils';
 import { Home, FileText, Building2, Calendar, Users, Package, HardHat, Settings as SettingsIcon, Eye, EyeOff, Sun, Moon, LogOut, Menu, Bell, Plus, ChevronRight, ChevronDown, BarChart3, HelpCircle, Search, X, CheckCircle, AlertCircle, Info, Clock, Receipt, Wifi, WifiOff, Palette, Wallet, Library, UserCheck, ShoppingCart, Camera, ClipboardList, PenTool, Download, Share, Smartphone, CreditCard, Tag, Sparkles, Kanban, Star, User, MessageCircle, Shield, CalendarCheck, Megaphone, FileCheck, ClipboardCheck, Globe, Mic } from 'lucide-react';
 import { usePWA } from './hooks/usePWA';
-import { registerNetworkListeners, getPendingCount, syncQueue, clearAllMutations, checkConnectivity } from './lib/offline/sync';
+import { registerNetworkListeners, getPendingCount, syncQueue, clearAllMutations, clearMutationsDe, checkConnectivity } from './lib/offline/sync';
 import OfflineIndicator from './components/ui/OfflineIndicator';
 import EntrepriseSwitcher from './components/ui/EntrepriseSwitcher';
 import { FONCTIONS } from './lib/fonctions';
@@ -125,7 +125,7 @@ const LIBELLES_TABLES = {
 
 export default function App() {
   // Global context hooks
-  const { confirmModal, closeConfirm } = useConfirm();
+  const { confirm, confirmModal, closeConfirm } = useConfirm();
   const { showToast, toast, hideToast } = useToast();
 
   // RBAC: organization role + permissions
@@ -1698,17 +1698,14 @@ export default function App() {
               {isOnline && pendingSync > 0 && (
                 <span
                   className={`px-2 py-1 rounded-full text-[10px] sm:text-xs font-medium flex items-center gap-1 cursor-pointer ${isDark ? 'bg-blue-900 text-blue-300 hover:bg-blue-800' : 'bg-blue-100 text-blue-700 hover:bg-blue-200'}`}
-                  onClick={async () => {
-                    // Try sync first, then force-clear if still stuck
-                    await handleManualSync();
-                    const remaining = await getPendingCount(compteId);
-                    if (remaining > 0) {
-                      await clearAllMutations();
-                      setPendingSync(0);
-                      showToast('File de synchronisation purgée', 'info');
-                    }
+                  onClick={() => {
+                    // Synchroniser seulement. Avant : purge automatique après une tentative, sans
+                    // confirmation, des écritures de TOUS les comptes de l'appareil.
+                    syncRetryAttemptRef.current = 0;
+                    cancelSyncRetry();
+                    handleManualSync();
                   }}
-                  title="Cliquez pour synchroniser ou purger"
+                  title="Envoyer maintenant les modifications en attente"
                 >
                   <Wifi size={12} className="animate-pulse" />
                   <span className="hidden md:inline">{pendingSync} sync</span>
@@ -2383,7 +2380,13 @@ export default function App() {
         pendingCount={pendingSync}
         onSync={() => { syncRetryAttemptRef.current = 0; cancelSyncRetry(); return handleManualSync(); }}
         onForceClear={async () => {
-          await clearAllMutations();
+          const ok = await confirm({
+            title: 'Rejeter les modifications en attente ?',
+            message: `${pendingSync} modification${pendingSync > 1 ? 's' : ''} faite${pendingSync > 1 ? 's' : ''} sur cet appareil ${pendingSync > 1 ? 'ne sont' : "n'est"} pas encore enregistrée${pendingSync > 1 ? 's' : ''}. Les rejeter les perd définitivement.`,
+            variant: 'danger',
+          });
+          if (!ok) return false;
+          await clearMutationsDe(compteId); // seulement ce compte : les autres comptes de l'appareil gardent les leurs
           setPendingSync(0);
           setSyncErrorDetails(null);
           syncRetryAttemptRef.current = 0;
