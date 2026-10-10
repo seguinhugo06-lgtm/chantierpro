@@ -27,6 +27,8 @@ Avant de rouvrir un sujet, lire ici s'il a déjà été tranché. Statut : **dé
 | D-20 | 08/10/2026 | Chercher un premier abonné payant sur le site, en parallèle et avant les stores ; les stores attendent les premiers utilisateurs du site | Seul signal de valeur ; Hugo : « On attendra quelques utilisateurs sur la webapp avant les stores » (Q-premier-payant, et réponses « pas encore » à Q-comptes-dev et Q-appid) | décidé |
 | D-21 | 08/10/2026 | Paiement en ligne des factures masqué en v1 ; virement avec IBAN et « marquer payée » suffisent | Jamais essayé de bout en bout, règle des 7 jours hors établissement, question du « système de caisse » (art. 286) à trancher avec le comptable (Q-paiement-factures) | décidé |
 | D-22 | 08/10/2026 | Claude applique les migrations et déploie les fonctions Edge lui-même, depuis du code livré sur `main`, puis constate l'effet en production ; Hugo garde les comptes, les secrets et les connexions | Choix d'Hugo (Q-deploiement-edge) : après banc et relecture `gardien-securite` ; jamais `db push` ni SQL destructeur sans accord ; un déploiement s'annule en redéployant la version précédente | décidé |
+| D-23 | 10/10/2026 | Téléphone et e-mail de l'entreprise bloquent l'envoi de tout devis ou facture | Information due avant contrat au client particulier (C. conso. L111-1 4°, R111-1), à peine de nullité hors établissement (L221-9, L242-1), y compris pour un professionnel d'au plus 5 salariés qui commande hors de son métier (L221-3) ; tout artisan en a, et aucun compte en production n'en est bloqué (relevé du 10 oct.). Délégué par Hugo à Claude : l'option `particulier` proposée ratait ces petits professionnels et les particuliers enregistrés avec un nom d'entreprise, d'où `toujours` après relecture juridique (Q-contact-envoi) | décidé |
+| D-24 | 10/10/2026 | Case « mes travaux ne sont pas soumis à l'assurance décennale » dans Paramètres › Assurances, sous la responsabilité de l'artisan : cochée, la décennale n'est plus exigée pour envoyer | L'obligation (C. assur. L241-1) vise les travaux de construction, pas le dépannage ni l'entretien ; bloquer tout le monde poussait à une saisie fictive. Délégué par Hugo à Claude, option `declaration` (Q-decennale-non-soumis) | décidé |
 
 ## Décisions attendues de Hugo
 
@@ -50,23 +52,6 @@ Recommandation : `iphone-fr` — on ajoute l'iPad par une mise à jour quand l'a
 Irréversible : oui
 Bloque : ajout des plateformes natives (Capacitor)
 Décision : D-12
-
-### Q-contact-envoi · Bloquer l'envoi d'un devis sans votre téléphone ni votre e-mail ?
-Contexte : Envers un particulier, votre téléphone et votre e-mail font partie de l'information obligatoire avant contrat (C. conso. L111-1 4°, R111-1) ; hors établissement, un contrat qui ne les reprend pas peut être annulé (L221-9, L242-1). Entre professionnels, aucune obligation. Aujourd'hui la jauge des Paramètres les compte « obligatoires », mais l'envoi part sans eux (relecture juridique du 10 oct. 2026).
-Option `particulier` : bloquer seulement l'envoi à un client particulier — colle au texte ; l'app sait déjà distinguer un client professionnel.
-Option `toujours` : bloquer tout envoi sans eux — le plus simple ; gêne l'artisan qui ne travaille qu'avec des professionnels.
-Option `jamais` : garder le seul avertissement de la jauge — rien ne change ; le risque reste sur l'artisan.
-Recommandation : `particulier` — c'est exactement ce que la loi demande.
-Irréversible : non
-Bloque : rien (contrôle d'envoi des devis)
-
-### Q-decennale-non-soumis · Que faire de la décennale pour les travaux qui n'y sont pas soumis ?
-Contexte : L'envoi est bloqué tant que l'assureur et le n° de police de la décennale manquent. Or l'obligation (C. assur. L241-1) vise les travaux de construction : le dépannage et l'entretien n'y sont pas soumis. Un électricien qui ne fait que du dépannage ne peut donc pas envoyer de devis sans saisir une décennale (relecture juridique du 10 oct. 2026).
-Option `bloquer` : garder le blocage pour tous — simple ; pousse l'artisan non soumis à une saisie fictive.
-Option `declaration` : case « mes travaux ne sont pas soumis à l'assurance décennale » dans Paramètres, sous la responsabilité de l'artisan — débloque l'envoi ; aucune ligne d'assurance décennale sur ses documents.
-Recommandation : `declaration` — une saisie fictive serait pire qu'une déclaration assumée ; libellé à faire relire par juriste-btp.
-Irréversible : non
-Bloque : rien (contrôle d'envoi des devis ; la liste de l'onglet Facture 2026, `src/lib/mentionsFacture.js`, lit la même règle et resterait sous 100 % sans décennale)
 
 ### Q-capital-envoi · Bloquer l'envoi d'une société qui n'a pas saisi son capital social ?
 Contexte : Une société doit porter sa forme juridique et le montant de son capital social sur ses factures (service-public F31808). Depuis le 10 oct. 2026, l'onglet Facture 2026 le compte « obligatoire » pour une société, et les deux PDF l'impriment s'il est saisi ; mais l'envoi part sans lui (il n'est pas dans `src/lib/profilLegal.js`), comme pour le RCS et le n° de TVA intracommunautaire (relecture juridique du 10 oct. 2026).

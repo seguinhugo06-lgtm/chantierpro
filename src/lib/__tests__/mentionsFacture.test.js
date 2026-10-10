@@ -14,6 +14,9 @@ const MICRO = {
   nomEntrepreneur: 'Hugo Séguin',
   decennaleAssureur: 'SMABTP',
   decennaleNumero: 'DEC-123',
+  // Téléphone et e-mail exigés depuis D-23 (lib/profilLegal)
+  tel: '06 12 34 56 78',
+  email: 'contact@exemple.fr',
 };
 const SARL = {
   nom: 'Dupont Rénovation',
@@ -26,6 +29,8 @@ const SARL = {
   rcsVille: 'Paris',
   rcsNumero: '987 654 321',
   tvaIntra: 'FR12987654321',
+  tel: '01 23 45 67 89',
+  email: 'contact@dupont.fr',
 };
 const ids = (liste) => liste.map((m) => m.id);
 
@@ -59,13 +64,13 @@ describe('Facture 2026 : informations à vérifier pour les factures', () => {
   });
 
   it('jamais « complet » ni 100 % tant qu\'une information obligatoire manque', () => {
-    for (const champ of ['siret', 'adresse', 'nom', 'formeJuridique', 'nomEntrepreneur', 'decennaleAssureur']) {
+    for (const champ of ['siret', 'adresse', 'nom', 'formeJuridique', 'nomEntrepreneur', 'decennaleAssureur', 'tel', 'email']) {
       const r = mentionsFacture({ ...MICRO, [champ]: '' });
       expect(r.complet, champ).toBe(false);
       expect(r.note, champ).toBeLessThan(100);
     }
-    // 5 sur 6 = 83 % : l'ancien seuil (80 %) affichait déjà « complètes »
-    expect(mentionsFacture({ ...MICRO, siret: '' }).note).toBe(83);
+    // 7 sur 8 = 87 % (arrondi par défaut) : l'ancien seuil (80 %) affichait déjà « complètes »
+    expect(mentionsFacture({ ...MICRO, siret: '' }).note).toBe(87);
   });
 
   it('société : capital, RCS et TVA intracom demandés ; complète quand ils sont saisis', () => {
@@ -102,10 +107,19 @@ describe('Facture 2026 : informations à vérifier pour les factures', () => {
     expect(ids(mentionsFacture({ ...MICRO, rcsVille: 'Lyon' }).obligatoires)).not.toContain('rcs');
   });
 
+  // D-24 : déclarée non soumise, la décennale n'est ni exigée ni affichée « renseignée » (l'artisan n'en a pas)
+  it('travaux non soumis à la décennale : elle disparaît de la liste, qui reste complète', () => {
+    const r = mentionsFacture({ ...MICRO, decennaleAssureur: '', decennaleNumero: '', decennaleNonSoumis: true });
+    expect(ids(r.obligatoires)).not.toContain('no_decennale');
+    expect(r.complet).toBe(true);
+    expect(ids(mentionsFacture(MICRO).obligatoires)).toContain('no_decennale');
+  });
+
   it('entreprise relue depuis la base (clés snake_case)', () => {
     const base = {
       nom: SARL.nom, siret: SARL.siret, adresse: SARL.adresse, forme_juridique: 'SARL', capital: '10000',
       decennale_assureur: 'AXA', decennale_numero: 'D-1', rcs_ville: 'Paris', rcs_numero: '987 654 321', tva_intra: 'FR12987654321',
+      telephone: '01 23 45 67 89', email: 'contact@dupont.fr',
     };
     expect(mentionsFacture(base).complet).toBe(true);
   });

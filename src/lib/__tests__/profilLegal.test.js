@@ -3,6 +3,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PROFIL_EXIGE, profilManquant, enPhrase } from '../profilLegal';
+import { buildDevisHtml } from '../devisHtmlBuilder';
+import { buildDocumentHTML } from '../pdfHtmlBuilder';
 
 const COMPLET = {
   nom: 'Hugo Séguin — Électricien',
@@ -12,12 +14,14 @@ const COMPLET = {
   nomEntrepreneur: 'Hugo Séguin',
   decennaleAssureur: 'SMABTP',
   decennaleNumero: 'DEC-123',
+  tel: '06 12 34 56 78',
+  email: 'contact@exemple.fr',
 };
 const ids = (manquantes) => manquantes.map((m) => m.id);
 
 describe('profil exigé avant envoi : une seule liste', () => {
-  it('profil vide : les cinq manques, dans l\'ordre du contrôle d\'envoi', () => {
-    expect(ids(profilManquant({}))).toEqual(['no_siret', 'no_adresse', 'no_nom', 'no_forme_juridique', 'no_decennale']);
+  it('profil vide : tous les manques, dans l\'ordre du contrôle d\'envoi', () => {
+    expect(ids(profilManquant({}))).toEqual(['no_siret', 'no_adresse', 'no_nom', 'no_forme_juridique', 'no_decennale', 'no_tel', 'no_email']);
     expect(ids(profilManquant(null))).toEqual(ids(profilManquant({})));
   });
 
@@ -39,6 +43,35 @@ describe('profil exigé avant envoi : une seule liste', () => {
     expect(ids(profilManquant({ ...sansNom, formeJuridique: 'SARL' }))).toEqual([]);
   });
 
+  // D-23 : C. conso. L111-1 4°, R111-1, et L221-3 (petit professionnel hors établissement) — exigés pour tout client
+  it('téléphone et e-mail : exigés, quel que soit le client', () => {
+    expect(ids(profilManquant({ ...COMPLET, tel: '', email: ' ' }))).toEqual(['no_tel', 'no_email']);
+    expect(profilManquant({ ...COMPLET, tel: '', telephone: '05 53 00 00 00' })).toEqual([]);
+  });
+
+  // D-24 : C. assur. L241-1 — la décennale vise les travaux de construction, pas le dépannage ni l'entretien
+  it('travaux déclarés non soumis à la décennale : elle n\'est plus exigée', () => {
+    const sansDecennale = { ...COMPLET, decennaleAssureur: '', decennaleNumero: '' };
+    expect(ids(profilManquant(sansDecennale))).toEqual(['no_decennale']);
+    expect(profilManquant({ ...sansDecennale, decennaleNonSoumis: true })).toEqual([]);
+    expect(ids(profilManquant({ ...sansDecennale, decennaleNonSoumis: 'true' }))).toEqual(['no_decennale']);
+  });
+
+  // Avec la case D-24, un profil à moitié rempli peut partir : jamais de « Assurance décennale : X N° » vide
+  it('documents : la ligne décennale n\'est imprimée qu\'avec l\'assureur ET le numéro de police', () => {
+    const doc = { type: 'devis', numero: 'DEV-1', date: '2026-10-10', lignes: [{ description: 'Dépannage', quantite: 1, prixUnitaire: 100, tva: 20 }], total_ht: 100, tva: 20, total_ttc: 120 };
+    const client = { nom: 'Dupont' };
+    const generer = (entreprise) => [buildDevisHtml({ doc, client, entreprise }), buildDocumentHTML(doc, client, null, entreprise)];
+    const moitie = { ...COMPLET, decennaleNumero: '', decennaleNonSoumis: true };
+    generer(moitie).forEach((html) => expect(html).not.toContain('Assurance décennale'));
+    generer(COMPLET).forEach((html) => expect(html).toContain('Assurance décennale: SMABTP'));
+    // RC Pro facultative : un assureur sans numéro ne laisse pas de « N° » vide
+    generer({ ...COMPLET, rcProAssureur: 'MAAF', rcProNumero: '' }).forEach((html) => {
+      expect(html).toContain('RC Pro: MAAF');
+      expect(html).not.toMatch(/RC Pro: MAAF\s*N°/);
+    });
+  });
+
   it('un champ fait d\'espaces compte comme vide', () => {
     expect(ids(profilManquant({ ...COMPLET, siret: '   ' }))).toEqual(['no_siret']);
   });
@@ -57,7 +90,7 @@ describe('profil exigé avant envoi : une seule liste', () => {
   });
 
   it('en phrase : sigles conservés, le reste en minuscule', () => {
-    expect(enPhrase(profilManquant({}))).toBe('SIRET, adresse, nom de l\'entreprise, forme juridique, assurance décennale');
+    expect(enPhrase(profilManquant({}))).toBe('SIRET, adresse, nom de l\'entreprise, forme juridique, assurance décennale, téléphone, e-mail');
     expect(enPhrase([])).toBe('');
   });
 });
@@ -69,7 +102,7 @@ const lire = (fichier) => fs.readFileSync(path.join(racine, fichier), 'utf8');
 // Les écrans qui annoncent ou appliquent le blocage d'envoi lisent lib/profilLegal, rien d'autre.
 describe('aucun écran ne retient sa propre liste', () => {
   const ECRANS = ['src/components/DevisPage.jsx', 'src/components/DevisComposer.jsx', 'src/components/Settings.jsx', 'src/components/Dashboard.jsx'];
-  const CONTROLE_EN_DUR = /!\s*\(?\s*(?:String\()?\s*entreprise\??\.(siret|adresse|nom|nomEntrepreneur|formeJuridique|forme_juridique|decennaleAssureur|decennale_assureur|decennaleNumero|decennale_numero)\b/g;
+  const CONTROLE_EN_DUR = /!\s*\(?\s*(?:String\()?\s*entreprise\??\.(siret|adresse|nom|nomEntrepreneur|formeJuridique|forme_juridique|decennaleAssureur|decennale_assureur|decennaleNumero|decennale_numero|decennaleNonSoumis|tel|telephone|email)\b/g;
 
   it.each(ECRANS)('%s', (fichier) => {
     const source = lire(fichier);

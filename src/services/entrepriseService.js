@@ -34,6 +34,8 @@ export const REGLAGES_SANS_COLONNE = {
   mediateurContact: '',
   decennaleAssureurAdresse: '',
   decennaleZone: '',
+  // Travaux non soumis à l'assurance décennale (dépannage, entretien), déclaré par l'artisan : l'envoi ne l'exige plus (D-24)
+  decennaleNonSoumis: false,
   tauxPenalites: '',
   modePaiementDefaut: '',
   conditionsPaiementDefaut: '',
@@ -368,6 +370,19 @@ export async function getActiveEntreprise(supabase, { userId, orgId } = {}) {
 }
 
 /**
+ * Ligne à insérer : les réglages sans colonne vont dans `settings_json.reglages`. `toSupabase` les regroupe sous
+ * `__reglages`, que seul updateEntreprise retirait : à la création (fiche d'un compte neuf, « Ajouter une
+ * entreprise »), `acompteDefaut` suffisait à envoyer cette colonne inexistante et la base refusait l'insertion.
+ */
+export function ligneACreer(data) {
+  const ligne = toSupabase(data);
+  const reglages = ligne.__reglages;
+  delete ligne.__reglages;
+  if (reglages) ligne.settings_json = { reglages };
+  return ligne;
+}
+
+/**
  * Create a new entreprise.
  * @throws if limit is reached
  */
@@ -386,7 +401,7 @@ export async function createEntreprise(supabase, { data, userId, orgId } = {}) {
       id: crypto.randomUUID ? crypto.randomUUID() : `ent-${Date.now()}`,
       user_id: userId,
       organization_id: orgId,
-      ...toSupabase({ ...data, initiales, slug }),
+      ...ligneACreer({ ...data, initiales, slug }),
       nom: data.nom,
       initiales,
       slug,
@@ -412,7 +427,7 @@ export async function createEntreprise(supabase, { data, userId, orgId } = {}) {
   const isFirst = existing.length === 0;
   const row = {
     ...withOrgScope({
-      ...toSupabase(data),
+      ...ligneACreer(data),
       nom: data.nom,
       initiales,
       slug: slug + '-' + Date.now().toString(36).slice(-4),

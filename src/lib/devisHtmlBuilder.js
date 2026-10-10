@@ -444,9 +444,9 @@ function buildFooterHtml(e, rcsComplet, isDevis = false, isClientMode = false) {
     ${rcsComplet ? ` | ${rcsComplet}` : ''}<br>
     ${e.tvaIntra ? `TVA Intracommunautaire: ${e.tvaIntra}` : ''}<br>
     <div class="assurances">
-      ${e.decennaleAssureur ? `Assurance décennale: ${e.decennaleAssureur}${e.decennaleAssureurAdresse ? ` (${e.decennaleAssureurAdresse})` : ''} N°${e.decennaleNumero}${e.decennaleValidite ? ` (Valide jusqu'au ${dateLue(e.decennaleValidite).toLocaleDateString('fr-FR')})` : ''}${e.decennaleZone ? ` — Zone : ${e.decennaleZone}` : ''}${e.decennaleActivites ? ` — Activités : ${e.decennaleActivites}` : ''}` : ''}
-      ${e.decennaleAssureur && e.rcProAssureur ? '<br>' : ''}
-      ${e.rcProAssureur ? `RC Pro: ${e.rcProAssureur} N°${e.rcProNumero}${e.rcProValidite ? ` (Valide jusqu'au ${dateLue(e.rcProValidite).toLocaleDateString('fr-FR')})` : ''}` : ''}
+      ${e.decennaleAssureur && e.decennaleNumero ? `Assurance décennale: ${e.decennaleAssureur}${e.decennaleAssureurAdresse ? ` (${e.decennaleAssureurAdresse})` : ''} N°${e.decennaleNumero}${e.decennaleValidite ? ` (Valide jusqu'au ${dateLue(e.decennaleValidite).toLocaleDateString('fr-FR')})` : ''}${e.decennaleZone ? ` — Zone : ${e.decennaleZone}` : ''}${e.decennaleActivites ? ` — Activités : ${e.decennaleActivites}` : ''}` : ''}
+      ${e.decennaleAssureur && e.decennaleNumero && e.rcProAssureur ? '<br>' : ''}
+      ${e.rcProAssureur ? `RC Pro: ${e.rcProAssureur}${e.rcProNumero ? ` N°${e.rcProNumero}` : ''}${e.rcProValidite ? ` (Valide jusqu'au ${dateLue(e.rcProValidite).toLocaleDateString('fr-FR')})` : ''}` : ''}
       ${e.mentionRGE !== false && Array.isArray(e.labels) && e.labels.filter(l => l.actif).length > 0 ? '<br>' + e.labels.filter(l => l.actif).map(l => `${l.nom}${l.numero ? ` N°${l.numero}` : ''}${l.organisme ? ` (${l.organisme})` : ''}${l.dateExpiration ? ` — Valide jusqu'au ${dateLue(l.dateExpiration).toLocaleDateString('fr-FR')}` : ''}`).join('<br>') : ''}
     </div>
     ${isDevis ? `<div style="margin-top:6px;font-size:6.5pt;color:#666">Devis reçu avant l'exécution des travaux. Conditions de paiement et pénalités de retard conformes à l'article L441-10 du Code de commerce.</div>` : ''}

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { fromSupabase, toSupabase, REGLAGES_SANS_COLONNE } from '../entrepriseService';
+import { fromSupabase, toSupabase, REGLAGES_SANS_COLONNE, createEntreprise } from '../entrepriseService';
 
 // Ligne de production telle que relue : assurances anciennes, réglages déjà rangés dans settings_json
 const LIGNE = {
@@ -33,5 +33,29 @@ describe('entreprise : ce qui est saisi dans les Paramètres revient au recharge
     expect(envoye.__reglages).toMatchObject({ rcsNumero: '123 456 789', tauxPenalites: 15, banque: 'Crédit Agricole', mentionGaranties: false });
     for (const cle of Object.keys(REGLAGES_SANS_COLONNE)) expect(envoye).not.toHaveProperty(cle);
     expect(envoye).not.toHaveProperty('acompte_defaut'); // colonne inexistante en production
+  });
+
+  it('travaux non soumis à la décennale (D-24) : non par défaut, la case cochée est écrite puis relue', () => {
+    expect(fromSupabase(LIGNE).decennaleNonSoumis).toBe(false);
+    expect(toSupabase({ ...fromSupabase(LIGNE), decennaleNonSoumis: true }).__reglages).toMatchObject({ decennaleNonSoumis: true });
+    expect(fromSupabase({ ...LIGNE, settings_json: { reglages: { decennaleNonSoumis: true } } }).decennaleNonSoumis).toBe(true);
+  });
+
+  // Fiche d'un compte neuf, « Ajouter une entreprise » : `acompteDefaut` suffisait à envoyer la colonne inexistante
+  // `__reglages`, et la base refusait l'insertion (défaut de a41a1c1, trouvé le 10 oct. 2026)
+  it('création : aucune colonne __reglages, les réglages vont dans settings_json.reglages', async () => {
+    let insere;
+    const faux = {
+      from: () => ({
+        select: () => ({ is: () => ({ order: () => ({ order: () => ({ eq: () => Promise.resolve({ data: [], error: null }) }) }) }) }),
+        insert: (ligne) => { insere = ligne; return { select: () => ({ single: () => Promise.resolve({ data: { id: 'n1', ...ligne }, error: null }) }) }; },
+      }),
+    };
+    const cree = await createEntreprise(faux, { data: { nom: 'Élec Durand', acompteDefaut: 30, decennaleNonSoumis: true }, userId: 'u1', orgId: 'o1' });
+    expect(insere).not.toHaveProperty('__reglages');
+    expect(insere.settings_json).toEqual({ reglages: { acompteDefaut: 30, decennaleNonSoumis: true } });
+    expect(insere.nom).toBe('Élec Durand');
+    expect(cree.acompteDefaut).toBe(30);
+    expect(cree.decennaleNonSoumis).toBe(true);
   });
 });
