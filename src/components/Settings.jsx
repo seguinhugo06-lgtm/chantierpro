@@ -25,13 +25,13 @@ import TemplateManager from './settings/TemplateManager';
 import SuppressionCompte from './settings/SuppressionCompte';
 import PostChantierSettings from './settings/PostChantierSettings';
 import { remettreFichier } from '../lib/natif';
-import { Bouton } from './ui/Bouton';
+import { Bouton, BoutonIcone } from './ui/Bouton';
 import { jourLocal, dateLue } from '../lib/dates';
 import { estEntrepreneurIndividuel, estEirl, nomImprime } from '../lib/identiteEntreprise';
 import { URL_SIRENE, profilDepuisSirene } from '../lib/sirene';
 import { chiffreAffairesHT } from '../lib/ventes';
-import { profilManquant, PROFIL_EXIGE } from '../lib/profilLegal';
-import { estSociete, rcsConcerne, tvaIntraConcernee } from '../lib/mentionsFacture';
+import { profilManquant } from '../lib/profilLegal';
+import { jaugeProfil } from '../lib/jaugeProfil';
 
 // ── Tab groups for mobile navigation ────────────────────────────────────────
 const TAB_GROUPS = [
@@ -157,7 +157,7 @@ function DebouncedTextarea({ value, onChange, delay = 800, onBlur, ...props }) {
   return <textarea {...props} value={localValue} onChange={handleChange} onBlur={(e) => { vider(); onBlur?.(e); }} />;
 }
 
-export default function Settings({ entreprise, setEntreprise, user, devis = [], depenses = [], clients = [], chantiers = [], onExportComptable, isDark, couleur, setPage, modeDiscret }) {
+export default function Settings({ entreprise, setEntreprise, user, devis = [], depenses = [], clients = [], chantiers = [], isDark, couleur, setPage, modeDiscret }) {
   const { showToast } = useToast();
   const { confirm } = useConfirm();
   const { canManageTeam } = usePermissions();
@@ -393,26 +393,15 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
   
   const COULEURS = ['#f97316', '#ef4444', '#22c55e', '#3b82f6', '#8b5cf6', '#ec4899', '#14b8a6', '#64748b'];
 
-  // Calcul score complétude. « Obligatoires » = ce qui bloque l'envoi (lib/profilLegal, la liste du contrôle
-  // d'envoi, téléphone et e-mail compris, D-23). 100 % = le profil ne bloque plus l'envoi.
-  // Avant, la décennale n'était que « recommandée » ici : 100 % affiché, envoi bloqué.
-  // `si` : recommandé seulement à qui est concerné (lib/mentionsFacture) ; avant, RCS et TVA intracom étaient
-  // recommandés à une micro-entreprise en franchise, inscrite au seul RNE
-  const RECOMMENDED_FIELDS = [
-    { key: 'codeApe', label: 'Code APE', tab: 'legal' },
-    { key: 'capital', label: 'Capital social', tab: 'identite', si: estSociete },
-    { key: 'rcsVille', label: 'Ville RCS', tab: 'legal', si: rcsConcerne },
-    { key: 'rcsNumero', label: 'N° RCS', tab: 'legal', si: rcsConcerne },
-    { key: 'tvaIntra', label: 'N° TVA Intracommunautaire', tab: 'legal', si: tvaIntraConcernee },
-    { key: 'rcProAssureur', label: 'Assureur RC Pro', tab: 'assurances' },
-    { key: 'rcProNumero', label: 'N° Police RC Pro', tab: 'assurances' },
-    // Sans objet quand l'artisan déclare ses travaux non soumis à la décennale (D-24)
-    ...(entreprise.decennaleNonSoumis ? [] : [
-      { key: 'decennaleAssureurAdresse', label: 'Coordonnées de l\'assureur (décennale)', tab: 'assurances' },
-      { key: 'decennaleZone', label: 'Zone couverte (décennale)', tab: 'assurances' },
-    ]),
-    { key: 'mediateur', label: 'Médiateur de la consommation', tab: 'documents' },
-  ];
+  // Jauge « Profil complété » (lib/jaugeProfil) : le pourcentage ne compte que ce qui bloque l'envoi
+  // (lib/profilLegal) ; 100 % = le profil ne bloque plus l'envoi. Le menu sépare les autres mentions
+  // obligatoires selon la situation (capital, RCS, TVA intracom, médiateur, assureur décennal), qui
+  // n'empêchent pas l'envoi, des simples recommandations (code APE, RC Pro).
+  const { obligatoires: missingRequired, selonSituation: missingSelonSituation, recommandes: missingRecommended, completude } = jaugeProfil(entreprise);
+  const nbManquants = missingRequired.length + missingSelonSituation.length + missingRecommended.length;
+  // À 100 %, le menu reste ouvrable tant qu'une mention obligatoire selon la situation manque : avant, il se
+  // fermait et une société sans capital social lisait « Profil complet ! »
+  const menuProfil = completude < 100 || missingSelonSituation.length > 0;
   const NOM_ONGLET = { identite: 'Identité', legal: 'Légal', assurances: 'Assurances', documents: 'Documents' };
   // Ouvre l'onglet et amène le champ sous les yeux (chaque champ porte id="settings-field-<champ>")
   const allerAuChamp = (onglet, champ) => {
@@ -422,14 +411,9 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
       if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.focus(); }
     }, 150);
   };
-  const estVide = (f) => !entreprise[f.key] || String(entreprise[f.key]).trim() === '';
-  const missingRequired = profilManquant(entreprise).map(m => ({ key: m.champ, label: m.libelle, tab: m.onglet }));
-  const missingRecommended = RECOMMENDED_FIELDS.filter((f) => (!f.si || f.si(entreprise)) && estVide(f));
-  const missingFields = [...missingRequired, ...missingRecommended];
-  const completude = Math.round(((PROFIL_EXIGE.length - missingRequired.length) / PROFIL_EXIGE.length) * 100);
   // Le menu des champs manquants est ancré à droite de la jauge : à 375 px il sortait de 77 px à gauche
   const profileDetailRef = useRef(null);
-  useKeepInViewport(profileDetailRef, showProfileDetail && completude < 100);
+  useKeepInViewport(profileDetailRef, showProfileDetail && menuProfil);
 
   // Alertes assurances
   const alertesAssurances = useMemo(() => {
@@ -579,65 +563,69 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
         <div className="flex items-center gap-4">
           <div className="relative">
             <button
-              onClick={() => completude < 100 ? setShowProfileDetail(prev => !prev) : null}
-              className={`flex items-center gap-3 sm:gap-4 px-3 sm:px-4 py-2 sm:py-3 rounded-2xl border bg-surface border-bord shadow-e1 transition-colors ${completude < 100 ? 'cursor-pointer hover:border-bord-fort' : ''}`}
-              title={completude < 100 ? 'Cliquez pour voir les champs manquants' : 'Profil complet !'}
+              onClick={() => menuProfil ? setShowProfileDetail(prev => !prev) : null}
+              className={`flex items-center gap-3 sm:gap-4 px-3 sm:px-4 py-2 sm:py-3 rounded-2xl border bg-surface border-bord shadow-e1 transition-colors ${menuProfil ? 'cursor-pointer hover:border-bord-fort' : ''}`}
+              title={menuProfil ? 'Cliquez pour voir les champs manquants' : 'Profil complet !'}
+              {...(menuProfil ? { 'aria-expanded': showProfileDetail } : {})}
             >
               <div className="text-right shrink-0">
                 <p className="text-sm font-medium text-encre-2">Profil complété</p>
                 <p className={`text-xl font-bold tabular-nums ${completude >= 80 ? 'text-succes-texte' : completude >= 50 ? 'text-alerte-texte' : 'text-danger-texte'}`}>{completude} %</p>
+                {/* 100 % = l'envoi n'est plus bloqué ; ce qui reste dû selon la situation se dit sous le chiffre */}
+                {completude === 100 && missingSelonSituation.length > 0 && (
+                  <p className="text-xs font-medium text-alerte-texte">
+                    {missingSelonSituation.length} mention{missingSelonSituation.length > 1 ? 's' : ''} à compléter
+                  </p>
+                )}
               </div>
               <div className="w-16 sm:w-32 h-2 rounded-full overflow-hidden shrink-0 bg-surface-2">
                 <div className={`h-full rounded-full transition-all duration-500 ${completude >= 80 ? 'bg-succes-point' : completude >= 50 ? 'bg-alerte-point' : 'bg-danger-point'}`} style={{ width: `${completude}%` }} />
               </div>
-              {completude < 100 && <ChevronDown size={16} aria-hidden="true" className="text-encre-3" />}
+              {menuProfil && <ChevronDown size={16} aria-hidden="true" className="text-encre-3" />}
             </button>
 
-            {/* Dropdown showing missing fields */}
-            {showProfileDetail && completude < 100 && (
-              <div ref={profileDetailRef} className={`absolute right-0 top-full mt-2 w-80 rounded-xl border shadow-xl z-50 bg-surface border-bord`}>
+            {/* Champs manquants, en trois groupes (lib/jaugeProfil) */}
+            {showProfileDetail && menuProfil && (
+              <div ref={profileDetailRef} className="absolute right-0 top-full mt-2 w-80 max-w-[calc(100vw-2rem)] max-h-[70vh] overflow-y-auto rounded-xl border shadow-xl z-50 bg-surface border-bord">
                 <div className="p-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <p className={`text-sm font-semibold ${textPrimary}`}>Champs manquants ({missingFields.length})</p>
-                    <button onClick={() => setShowProfileDetail(false)} className={`p-1 rounded-lg text-xs hover:bg-surface-2 text-encre-3`}>✕</button>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm font-semibold text-encre">Champs manquants ({nbManquants})</p>
+                    <BoutonIcone icone={X} libelle="Fermer" taille={16} className="-my-2 -mr-2" onClick={() => setShowProfileDetail(false)} />
                   </div>
 
+                  {[
+                    { id: 'obligatoires', titre: 'Obligatoires (bloquent l\'envoi)', point: 'bg-danger-point', ton: 'text-danger-texte', champs: missingRequired },
+                    { id: 'selon-situation', titre: 'Autres mentions obligatoires selon votre situation', sousTitre: '(n\'empêchent pas l\'envoi)', point: 'bg-alerte-point', ton: 'text-alerte-texte', champs: missingSelonSituation },
+                    { id: 'recommandes', titre: 'Recommandés', point: 'bg-neutre-point', ton: 'text-encre-2', champs: missingRecommended },
+                  ].filter((g) => g.champs.length > 0).map((g) => (
+                    <div key={g.id} data-groupe={g.id}>
+                      <p className={`text-xs font-semibold mb-1.5 flex items-start gap-1.5 ${g.ton}`}>
+                        <span aria-hidden="true" className={`w-1.5 h-1.5 mt-1.5 rounded-full shrink-0 ${g.point}`} />
+                        <span>{g.titre}{g.sousTitre && <span className="font-normal"> {g.sousTitre}</span>}</span>
+                      </p>
+                      <ul className="space-y-1">
+                        {g.champs.map((f) => (
+                          <li key={f.id}>
+                            <button onClick={() => { allerAuChamp(f.onglet, f.champ); setShowProfileDetail(false); }} className="w-full min-h-[44px] text-left px-3 py-1.5 rounded-lg text-sm transition-colors flex items-center justify-between gap-3 hover:bg-surface-2 text-encre-2">
+                              <span className="min-w-0">
+                                <span className="block">{f.libelle}</span>
+                                {f.precision && <span className="block text-xs text-encre-3">{f.precision}</span>}
+                              </span>
+                              <span className="text-xs text-encre-3 shrink-0 whitespace-nowrap">→ {NOM_ONGLET[f.onglet]}</span>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+
+                  {/* L'assistant traite ce qui bloque l'envoi : sans objet quand plus rien ne le bloque */}
                   {missingRequired.length > 0 && (
-                    <div>
-                      <p className={`text-xs font-semibold mb-1.5 flex items-center gap-1 text-danger-texte`}>
-                        <span className="w-1.5 h-1.5 rounded-full bg-red-500 inline-block" /> Obligatoires
-                      </p>
-                      <div className="space-y-1">
-                        {missingRequired.map(f => (
-                          <button key={f.key} onClick={() => { allerAuChamp(f.tab, f.key); setShowProfileDetail(false); }} className={`w-full text-left px-3 py-1.5 rounded-lg text-sm transition-colors flex items-center justify-between hover:bg-surface-2 text-encre-2`}>
-                            <span>{f.label}</span>
-                            <span className={`text-xs text-encre-3`}>→ {NOM_ONGLET[f.tab]}</span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
+                    <Bouton variante="principal" pleineLargeur icone={Sparkles} className="mt-1"
+                      onClick={() => { setShowSetupWizard(true); setWizardStep(0); setShowProfileDetail(false); }}>
+                      Compléter avec l'assistant
+                    </Bouton>
                   )}
-
-                  {missingRecommended.length > 0 && (
-                    <div>
-                      <p className={`text-xs font-semibold mb-1.5 flex items-center gap-1 text-alerte-texte`}>
-                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 inline-block" /> Recommandés
-                      </p>
-                      <div className="space-y-1">
-                        {missingRecommended.map(f => (
-                          <button key={f.key} onClick={() => { allerAuChamp(f.tab, f.key); setShowProfileDetail(false); }} className={`w-full text-left px-3 py-1.5 rounded-lg text-sm transition-colors flex items-center justify-between hover:bg-surface-2 text-encre-2`}>
-                            <span>{f.label}</span>
-                            <span className={`text-xs text-encre-3`}>→ {NOM_ONGLET[f.tab]}</span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  <Bouton variante="principal" pleineLargeur icone={Sparkles} className="mt-1"
-                    onClick={() => { setShowSetupWizard(true); setWizardStep(0); setShowProfileDetail(false); }}>
-                    Compléter avec l'assistant
-                  </Bouton>
                 </div>
               </div>
             )}
@@ -672,8 +660,8 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
           </div>
           <button
             onClick={() => {
-              const firstMissing = missingRequired[0] || missingFields[0];
-              if (firstMissing) allerAuChamp(firstMissing.tab, firstMissing.key);
+              const firstMissing = missingRequired[0] || missingSelonSituation[0] || missingRecommended[0];
+              if (firstMissing) allerAuChamp(firstMissing.onglet, firstMissing.champ);
             }}
             className="self-end sm:self-auto h-11 px-4 rounded-xl text-sm font-semibold whitespace-nowrap shrink-0 bg-surface text-encre border border-bord-fort hover:bg-surface-2"
           >
@@ -923,8 +911,8 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                 )}
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Code APE/NAF</label>
-                <DebouncedInput className={`w-full px-4 py-2.5 border rounded-xl font-mono ${inputBg}`} placeholder="4339Z" maxLength={5} value={entreprise.codeApe || ''} onChange={val => updateEntreprise(p => ({...p, codeApe: val.toUpperCase()}))} />
+                <label htmlFor="settings-field-codeApe" className="block text-sm font-medium mb-1">Code APE/NAF</label>
+                <DebouncedInput id="settings-field-codeApe" className={`w-full px-4 py-2.5 border rounded-xl font-mono ${inputBg}`} placeholder="4339Z" maxLength={5} value={entreprise.codeApe || ''} onChange={val => updateEntreprise(p => ({...p, codeApe: val.toUpperCase()}))} />
               </div>
             </div>
           </div>
@@ -1061,8 +1049,8 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                 <DebouncedInput id="settings-field-rcPro" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="AXA, MAAF, MMA..." value={entreprise.rcProAssureur || ''} onChange={val => updateEntreprise(p => ({...p, rcProAssureur: val}))} />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Numéro de contrat</label>
-                <DebouncedInput className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="RC-123456789" value={entreprise.rcProNumero || ''} onChange={val => updateEntreprise(p => ({...p, rcProNumero: val}))} />
+                <label htmlFor="settings-field-rcProNumero" className="block text-sm font-medium mb-1">Numéro de contrat</label>
+                <DebouncedInput id="settings-field-rcProNumero" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="RC-123456789" value={entreprise.rcProNumero || ''} onChange={val => updateEntreprise(p => ({...p, rcProNumero: val}))} />
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Date de validité</label>
@@ -1124,12 +1112,12 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
               </div>
               {/* Mentions obligatoires sur devis et factures : coordonnées de l'assureur et couverture géographique */}
               <div>
-                <label className="block text-sm font-medium mb-1">Coordonnées de l'assureur {entreprise.decennaleNonSoumis ? null : <span className="text-red-500">*</span>}</label>
-                <DebouncedInput className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="Adresse de la compagnie" value={entreprise.decennaleAssureurAdresse || ''} onChange={val => updateEntreprise(p => ({...p, decennaleAssureurAdresse: val}))} />
+                <label htmlFor="settings-field-decennaleAssureurAdresse" className="block text-sm font-medium mb-1">Coordonnées de l'assureur {entreprise.decennaleNonSoumis ? null : <span className="text-red-500">*</span>}</label>
+                <DebouncedInput id="settings-field-decennaleAssureurAdresse" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="Adresse de la compagnie" value={entreprise.decennaleAssureurAdresse || ''} onChange={val => updateEntreprise(p => ({...p, decennaleAssureurAdresse: val}))} />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Zone géographique couverte {entreprise.decennaleNonSoumis ? null : <span className="text-red-500">*</span>}</label>
-                <DebouncedInput className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="France métropolitaine" value={entreprise.decennaleZone || ''} onChange={val => updateEntreprise(p => ({...p, decennaleZone: val}))} />
+                <label htmlFor="settings-field-decennaleZone" className="block text-sm font-medium mb-1">Zone géographique couverte {entreprise.decennaleNonSoumis ? null : <span className="text-red-500">*</span>}</label>
+                <DebouncedInput id="settings-field-decennaleZone" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="France métropolitaine" value={entreprise.decennaleZone || ''} onChange={val => updateEntreprise(p => ({...p, decennaleZone: val}))} />
               </div>
             </div>
           </div>
@@ -1294,12 +1282,12 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             <p className={`text-sm mb-4 ${textMuted}`}>Obligatoire depuis 2016 (Art. L612-1 du Code de la consommation)</p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium mb-1">Nom du médiateur</label>
-                <DebouncedInput className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="Médiation de la consommation" value={entreprise.mediateur || ''} onChange={val => updateEntreprise(p => ({...p, mediateur: val}))} />
+                <label htmlFor="settings-field-mediateur" className="block text-sm font-medium mb-1">Nom du médiateur</label>
+                <DebouncedInput id="settings-field-mediateur" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="Médiation de la consommation" value={entreprise.mediateur || ''} onChange={val => updateEntreprise(p => ({...p, mediateur: val}))} />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Site web / Adresse</label>
-                <DebouncedInput className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="www.mediateur-consommation.fr" value={entreprise.mediateurContact || ''} onChange={val => updateEntreprise(p => ({...p, mediateurContact: val}))} />
+                <label htmlFor="settings-field-mediateurContact" className="block text-sm font-medium mb-1">Site web / Adresse</label>
+                <DebouncedInput id="settings-field-mediateurContact" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="www.mediateur-consommation.fr" value={entreprise.mediateurContact || ''} onChange={val => updateEntreprise(p => ({...p, mediateurContact: val}))} />
               </div>
             </div>
           </div>
