@@ -21,6 +21,9 @@ import Pastille from './ui/Pastille';
 import useKeepInViewport from '../hooks/useKeepInViewport';
 import { remettreFichier } from '../lib/natif';
 import { jourLocal, dateLue } from '../lib/dates';
+import { devisAvecLigneAjoutee } from '../lib/ajoutLigneDevis';
+import { estFranchiseTva } from '../lib/franchiseTva';
+import { lireCsv, nombreFr, associerColonnes } from '../lib/csvImport';
 
 /**
  * Chargés à la demande : la bibliothèque d'ouvrages embarque à elle seule
@@ -58,7 +61,7 @@ const DEFAULT_COEFFICIENTS = {
   'Peinture': 1.8, 'Menuiserie': 1.5, 'Matériaux': 1.3, 'Autre': 1.5
 };
 
-export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: addCatalogueItemProp, updateCatalogueItem: updateCatalogueItemProp, deleteCatalogueItem: deleteCatalogueItemProp, couleur, isDark, setPage, chantiers = [], equipe = [], modeDiscret, devis = [], updateDevis, clients = [] }) {
+export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, addCatalogueItem: addCatalogueItemProp, updateCatalogueItem: updateCatalogueItemProp, deleteCatalogueItem: deleteCatalogueItemProp, couleur, isDark, setPage, chantiers = [], equipe = [], modeDiscret, devis = [], updateDevis, clients = [] }) {
   const { confirm } = useConfirm();
   const { showToast } = useToast();
 
@@ -96,7 +99,12 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
   const [catFilter, setCatFilter] = useState('Tous');
   const [showStock, setShowStock] = useState(true);
   const [sortBy, setSortBy] = useState('name');
-  const [form, setForm] = useState({ nom: '', reference: '', description: '', prix: '', prixAchat: '', unite: 'u', categorie: 'Autre', tva_rate: '20', favori: false, stock_actuel: '', stock_seuil_alerte: '', fournisseur: '', coefAuto: true });
+  const FORMULAIRE_VIDE = { nom: '', reference: '', description: '', prix: '', prixAchat: '', unite: 'u', categorie: 'Autre', tva_rate: '20', favori: false, stock_actuel: '', stock_seuil_alerte: '', fournisseur: '', coefAuto: true };
+  const [form, setForm] = useState(FORMULAIRE_VIDE);
+  // Fermer le formulaire le vide aussi : avant (recette du 9 oct. 2026), « Modifier » puis « Annuler » puis « Ajouter »
+  // rouvrait l'article précédent, et « Enregistrer » le remplaçait.
+  const fermerFormulaire = () => { setShow(false); setEditId(null); setForm(FORMULAIRE_VIDE); setFormErrors({}); };
+  const ouvrirNouvelArticle = () => { setEditId(null); setForm(FORMULAIRE_VIDE); setFormErrors({}); setShow(true); };
   const [showArticlePicker, setShowArticlePicker] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [priceRange, setPriceRange] = useState([0, 10000]);
@@ -225,7 +233,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
         if (showFournisseurForm) { setShowFournisseurForm(false); setEditFournisseurId(null); return; }
         if (showPackForm) { setShowPackForm(false); return; }
         if (articleDetail) { setArticleDetail(null); return; }
-        if (show) { setShow(false); setEditId(null); return; }
+        if (show) { fermerFormulaire(); return; }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -736,31 +744,16 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
     const targetDevis = devis.find(d => d.id === addToDevisSelected);
     if (!targetDevis) { showToast('Devis introuvable', 'error'); return; }
 
-    const article = addToDevisModal;
-    const newLigne = {
-      id: generateId(),
-      catalogueId: article.id,
-      designation: article.nom,
-      description: article.description || '',
+    // Seulement un brouillon : un devis envoyé ou signé ne se modifie pas en douce
+    if ((targetDevis.statut || '') !== 'brouillon') { showToast('Seul un devis en brouillon peut recevoir un article', 'error'); return; }
+
+    // Ligne visible (désignation), dans les lots, totaux HT / TVA / TTC recalculés comme dans l'éditeur
+    const champs = devisAvecLigneAjoutee(targetDevis, addToDevisModal, {
       quantite: addToDevisQty,
-      unite: article.unite || 'u',
-      prixUnitaire: parseFloat(article.prix) || 0,
-      prix_unitaire: parseFloat(article.prix) || 0,
-      tva: parseFloat(article.tva_rate || article.tva || 20),
-    };
-
-    const existingLignes = targetDevis.lignes || targetDevis.items || targetDevis.articles || [];
-    const updatedLignes = [...existingLignes, newLigne];
-    const updatedDevis = { ...targetDevis, lignes: updatedLignes };
-
-    // Recalculate totals
-    const totalHt = updatedLignes.reduce((s, l) => s + ((l.prixUnitaire || l.prix_unitaire || 0) * (l.quantite || 1)), 0);
-    updatedDevis.totalHt = totalHt;
-    updatedDevis.total_ht = totalHt;
-
-    if (updateDevis) {
-      await updateDevis(targetDevis.id, updatedDevis);
-    }
+      franchise: estFranchiseTva(entreprise),
+      tauxDefaut: Number(targetDevis.tvaRate ?? entreprise?.tvaDefaut ?? 20),
+    });
+    if (!updateDevis || !(await updateDevis(targetDevis.id, champs))) return; // refus : DataContext l'a dit
 
     const numero = targetDevis.numero || targetDevis.reference || targetDevis.id?.slice(0, 8);
     showToast(`Article ajouté au devis ${numero}`, 'success');
@@ -863,39 +856,10 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (evt) => {
-      const text = evt.target.result;
-      const lines = text.split('\n').map(l => l.replace(/\r/g, ''));
-      if (lines.length < 2) return showToast('Fichier vide ou invalide', 'error');
-      const sep = lines[0].includes(';') ? ';' : ',';
-      const headers = lines[0].split(sep).map(h => h.replace(/^"|"$/g, '').trim());
-      const rows = lines.slice(1).filter(l => l.trim()).map(l => {
-        const vals = l.split(sep).map(v => v.replace(/^"|"$/g, '').trim());
-        const row = {};
-        headers.forEach((h, i) => { row[h] = vals[i] || ''; });
-        return row;
-      });
-      // Auto-map common column names
-      const autoMap = {};
-      const MAP_HINTS = {
-        designation: ['nom', 'designation', 'désignation', 'article', 'name', 'libelle', 'libellé'],
-        reference: ['reference', 'référence', 'ref', 'sku', 'code'],
-        description: ['description', 'desc'],
-        prix: ['prix_vente', 'prix vente', 'prix_unitaire_ht', 'prix ht', 'prix vente ht', 'price', 'tarif'],
-        prixAchat: ['prix_achat', 'prix achat', 'cout', 'coût', 'cost', 'pa'],
-        unite: ['unite', 'unité', 'unit', 'u'],
-        categorie: ['categorie', 'catégorie', 'category', 'cat'],
-        tva_rate: ['tva', 'tva_rate', 'taux_tva'],
-        stock: ['stock', 'stock_actuel', 'quantite', 'quantité', 'qty'],
-      };
-      headers.forEach(h => {
-        const hl = h.toLowerCase();
-        for (const [field, hints] of Object.entries(MAP_HINTS)) {
-          if (hints.some(hint => hl.includes(hint) || hl === hint)) {
-            autoMap[field] = h;
-            break;
-          }
-        }
-      });
+      // Lecteur CSV commun (src/lib/csvImport.js) : guillemets, séparateur, colonnes associées par mot entier
+      const { entetes: headers, lignes: rows } = lireCsv(evt.target.result);
+      if (!headers.length || !rows.length) return showToast('Fichier vide ou invalide', 'error');
+      const autoMap = associerColonnes(headers);
       setImportMapping(autoMap);
       setImportData({ headers, rows });
       setShowImport(true);
@@ -906,54 +870,60 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
 
   const executeImport = async () => {
     if (!importData) return;
-    let imported = 0, skipped = 0, updated = 0;
+    // Prix et TVA lus à la française (« 1 250,00 », « 5,5 ») ; un prix illisible ou nul : ligne écartée et comptée
+    // (avant : 1 €, TVA 5, articles à 0 €) ; TVA 0 % respectée ; chaque refus de la base compté.
+    let imported = 0, skipped = 0, updated = 0, refuses = 0, prixIllisibles = 0;
+    const tvaDe = (v, defaut) => { const n = nombreFr(v); return Number.isFinite(n) ? n : defaut; };
     for (const row of importData.rows) {
       const nom = row[importMapping.designation] || '';
       if (!nom) { skipped++; continue; }
       const ref = row[importMapping.reference] || '';
-      const prixStr = row[importMapping.prix] || '';
-      const prix = parseFloat(prixStr.replace(',', '.')) || 0;
-      if (prix === 0 && !prixStr) { skipped++; continue; }
+      const prix = nombreFr(row[importMapping.prix]);
+      const prixAchatLu = nombreFr(row[importMapping.prixAchat]);
+      const stockLu = nombreFr(row[importMapping.stock]);
       // Check duplicate by reference
       const existing = ref ? catalogue.find(c => c.reference === ref) : null;
+      if (!(prix > 0) && !existing) { prixIllisibles++; continue; }
       if (existing) {
         const updatedData = {
           ...existing,
           nom: nom || existing.nom,
-          prix: prix || existing.prix,
-          prixAchat: parseFloat((row[importMapping.prixAchat] || '').replace(',', '.')) || existing.prixAchat,
+          prix: prix > 0 ? prix : existing.prix,
+          prixAchat: Number.isFinite(prixAchatLu) ? prixAchatLu : existing.prixAchat,
           unite: row[importMapping.unite] || existing.unite,
           categorie: row[importMapping.categorie] || existing.categorie,
           description: row[importMapping.description] || existing.description,
-          tva_rate: parseFloat(row[importMapping.tva_rate]) || existing.tva_rate,
-          stock_actuel: row[importMapping.stock] ? parseInt(row[importMapping.stock]) : existing.stock_actuel,
+          tva_rate: tvaDe(row[importMapping.tva_rate], existing.tva_rate),
+          tva: tvaDe(row[importMapping.tva_rate], existing.tva ?? existing.tva_rate),
+          stock_actuel: Number.isFinite(stockLu) ? Math.round(stockLu) : existing.stock_actuel,
         };
-        if (updateCatalogueItemProp) { await updateCatalogueItemProp(existing.id, updatedData); }
-        else { setCatalogue(prev => prev.map(c => c.id === existing.id ? updatedData : c)); }
-        updated++;
+        if (updateCatalogueItemProp) { if (await updateCatalogueItemProp(existing.id, updatedData)) updated++; else refuses++; }
+        else { setCatalogue(prev => prev.map(c => c.id === existing.id ? updatedData : c)); updated++; }
       } else {
+        const tva = tvaDe(row[importMapping.tva_rate], 20);
         const newItem = {
           nom,
           reference: ref,
           description: row[importMapping.description] || '',
-          prix: prix,
-          prixAchat: parseFloat((row[importMapping.prixAchat] || '').replace(',', '.')) || 0,
+          prix,
+          prixAchat: Number.isFinite(prixAchatLu) ? prixAchatLu : 0,
           unite: row[importMapping.unite] || 'u',
           categorie: row[importMapping.categorie] || 'Autre',
-          tva_rate: parseFloat(row[importMapping.tva_rate]) || 20,
-          tva: parseFloat(row[importMapping.tva_rate]) || 20,
+          tva_rate: tva,
+          tva,
           favori: false,
-          stock_actuel: row[importMapping.stock] ? parseInt(row[importMapping.stock]) : undefined,
+          stock_actuel: Number.isFinite(stockLu) ? Math.round(stockLu) : undefined,
           stock_seuil_alerte: undefined,
         };
-        if (addCatalogueItemProp) { await addCatalogueItemProp(newItem); }
-        else { setCatalogue(prev => [...prev, { id: generateId(), ...newItem }]); }
-        imported++;
+        if (addCatalogueItemProp) { if (await addCatalogueItemProp(newItem)) imported++; else refuses++; }
+        else { setCatalogue(prev => [...prev, { id: generateId(), ...newItem }]); imported++; }
       }
     }
     setShowImport(false);
     setImportData(null);
-    showToast(`Import terminé: ${imported} ajoutés, ${updated} mis à jour, ${skipped} ignorés`, 'success');
+    const ecartes = skipped + prixIllisibles;
+    const resume = `${imported} ajouté${imported > 1 ? 's' : ''}, ${updated} mis à jour${ecartes ? `, ${ecartes} ligne${ecartes > 1 ? 's' : ''} écartée${ecartes > 1 ? 's' : ''}${prixIllisibles ? ` (${prixIllisibles} sans prix lisible)` : ''}` : ''}${refuses ? `, ${refuses} non enregistré${refuses > 1 ? 's' : ''}` : ''}`;
+    showToast(`Import : ${resume}`, refuses || prixIllisibles ? 'error' : 'success');
   };
 
   // ====== ARTICLE DETAIL VIEW ======
@@ -1123,7 +1093,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
   if (show) return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
-        <button onClick={() => { setShow(false); setEditId(null); }} className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl hover:bg-surface-2`}>
+        <button onClick={fermerFormulaire} className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl hover:bg-surface-2`}>
           <ArrowLeft size={20} className={textPrimary} />
         </button>
         <h2 className={`text-2xl font-bold ${textPrimary}`}>{editId ? 'Modifier' : 'Nouvel'} article</h2>
@@ -1277,7 +1247,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
           </label>
         </div>
         <div className={`flex justify-end gap-3 mt-6 pt-6 border-t `}>
-          <button onClick={() => setShow(false)} className={`px-4 py-2.5 rounded-xl min-h-[44px] bg-surface-2`}>Annuler</button>
+          <button onClick={fermerFormulaire} className={`px-4 py-2.5 rounded-xl min-h-[44px] bg-surface-2`}>Annuler</button>
           <button onClick={submit} className="px-6 py-2.5 text-white rounded-xl min-h-[44px] flex items-center gap-2" style={{background: couleur}}>
             {editId ? <Edit3 size={16} /> : <Plus size={16} />} {editId ? 'Enregistrer' : 'Ajouter'}
           </button>
@@ -1365,7 +1335,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
               <button onClick={() => setOnboardingStep('metiers')} className="px-8 py-4 text-white rounded-2xl font-semibold flex items-center justify-center gap-3 shadow-xl hover:shadow-2xl transition-all text-lg" style={{ background: couleur }}>
                 <Sparkles size={22} /> Importer le Référentiel BTP
               </button>
-              <button onClick={() => setShow(true)} className={`px-6 py-4 rounded-2xl font-medium flex items-center justify-center gap-2 border-2 transition-all text-encre-2 border-bord hover:bg-surface-2`}>
+              <button onClick={ouvrirNouvelArticle} className={`px-6 py-4 rounded-2xl font-medium flex items-center justify-center gap-2 border-2 transition-all text-encre-2 border-bord hover:bg-surface-2`}>
                 <Plus size={18} /> Ajouter manuellement
               </button>
             </div>
@@ -1520,7 +1490,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
             <Library size={18} aria-hidden="true" /><span className="hidden sm:inline">Référentiel BTP</span>
           </button>
           {canPerform('catalogue', 'create') && (
-          <button onClick={() => setShow(true)} aria-label="Ajouter un article" className="w-11 h-11 sm:w-auto sm:px-4 rounded-xl flex items-center justify-center sm:gap-2 bg-accent text-sur-accent font-semibold shadow-e1 hover:brightness-95">
+          <button onClick={ouvrirNouvelArticle} aria-label="Ajouter un article" className="w-11 h-11 sm:w-auto sm:px-4 rounded-xl flex items-center justify-center sm:gap-2 bg-accent text-sur-accent font-semibold shadow-e1 hover:brightness-95">
             <Plus size={18} aria-hidden="true" /><span className="hidden sm:inline">Ajouter</span>
           </button>
           )}
@@ -1786,7 +1756,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                 <button onClick={() => setShowArticlePicker(true)} className="px-6 py-3 text-white rounded-xl flex items-center justify-center gap-2 font-medium hover:shadow-lg transition-all" style={{ background: couleur }}>
                   <Sparkles size={18} /> Importer depuis le Référentiel BTP
                 </button>
-                <button onClick={() => setShow(true)} className={`px-6 py-3 rounded-xl flex items-center justify-center gap-2 border-2 font-medium transition-all text-encre-2 border-bord hover:bg-surface-2`}>
+                <button onClick={ouvrirNouvelArticle} className={`px-6 py-3 rounded-xl flex items-center justify-center gap-2 border-2 font-medium transition-all text-encre-2 border-bord hover:bg-surface-2`}>
                   <Plus size={18} /> Ajouter manuellement
                 </button>
               </div>
@@ -2785,13 +2755,19 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                   variant: 'warning',
                 });
                 if (!ok) return;
-                const updated = catalogue.map(c => {
-                  if (!c.prixAchat || c.prixAchat <= 0) return c;
+                // Prix de vente = prix d'achat × coefficient, ENREGISTRÉ article par article (avant, recette du 9 oct.
+                // 2026 : un champ `prixVente` inexistant, en mémoire seulement, et « 13 prix recalculés » sans rien changer)
+                let modifies = 0;
+                let refuses = 0;
+                for (const c of articlesWithPrixAchat) {
                   const coef = coefficients[c.categorie] || coefficients['Divers'] || 1.5;
-                  return { ...c, prixVente: Math.round(c.prixAchat * coef * 100) / 100 };
-                });
-                setCatalogue(updated);
-                showToast(`${articlesWithPrixAchat.length} prix recalculés`, 'success');
+                  const prix = Math.round(c.prixAchat * coef * 100) / 100;
+                  if (Math.abs((Number(c.prix) || 0) - prix) < 0.005) continue;
+                  if (updateCatalogueItemProp && (await updateCatalogueItemProp(c.id, { prix }))) modifies++;
+                  else refuses++;
+                }
+                if (refuses) showToast(`${modifies} prix modifié${modifies > 1 ? 's' : ''}, ${refuses} non enregistré${refuses > 1 ? 's' : ''}`, 'error');
+                else showToast(modifies ? `${modifies} prix modifié${modifies > 1 ? 's' : ''}` : 'Tous les prix étaient déjà à jour', 'success');
               }}
               className={`text-sm flex items-center gap-1.5 px-3 py-2 rounded-lg transition-colors text-white`}
               style={{ background: couleur }}

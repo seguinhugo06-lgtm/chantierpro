@@ -27,6 +27,7 @@ import {
   STATS,
   DEPARTEMENTS,
 } from '../../lib/data/bibliotheque';
+import { devisAvecLigneAjoutee } from '../../lib/ajoutLigneDevis';
 
 // =============================================================================
 // Sort options
@@ -125,30 +126,13 @@ export default function Bibliotheque({ isDark, couleur = '#f97316', setPage, dev
       return;
     }
 
-    const ouvr = addToDevisModal;
-    const prix = parseFloat(ouvr.prixUnitaireHT) || 0;
-    const newLigne = {
-      id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-      designation: ouvr.nom,
-      description: ouvr.description || '',
-      quantite: addToDevisQty,
-      unite: ouvr.unite || 'u',
-      prixUnitaire: prix,
-      prix_unitaire: prix,
-      tva: parseFloat(ouvr.tva || 10),
-    };
-
-    const existingLignes = targetDevis.lignes || targetDevis.items || targetDevis.articles || [];
-    const updatedLignes = [...existingLignes, newLigne];
-    const updatedDevisObj = { ...targetDevis, lignes: updatedLignes };
-
-    const totalHt = updatedLignes.reduce((s, l) => s + ((l.prixUnitaire || l.prix_unitaire || 0) * (l.quantite || 1)), 0);
-    updatedDevisObj.totalHt = totalHt;
-    updatedDevisObj.total_ht = totalHt;
-
-    if (updateDevis) {
-      await updateDevis(targetDevis.id, updatedDevisObj);
+    if ((targetDevis.statut || '') !== 'brouillon') {
+      if (showToast) showToast('Seul un devis en brouillon peut recevoir un ouvrage', 'error');
+      return;
     }
+    // Même calcul que le Catalogue et l'éditeur (src/lib/ajoutLigneDevis.js)
+    const champs = devisAvecLigneAjoutee(targetDevis, addToDevisModal, { quantite: addToDevisQty, tauxDefaut: Number(targetDevis.tvaRate ?? 10) });
+    if (!updateDevis || !(await updateDevis(targetDevis.id, champs))) return;
 
     const numero = targetDevis.numero || targetDevis.reference || targetDevis.id?.slice(0, 8);
     if (showToast) showToast(`Ouvrage ajouté au devis ${numero}`, 'success');

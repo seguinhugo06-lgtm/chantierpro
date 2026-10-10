@@ -374,7 +374,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
     reader.readAsDataURL(file);
   };
   const deletePhoto = async (id) => { const ok = await confirm({ title: 'Supprimer la photo', message: 'La photo sera retirée du chantier, avec sa date et son heure.' }); if (!ok) return; const ch = chantiers.find(c => c.id === view); if (ch) updateChantier(view, { photos: ch.photos.filter(p => p.id !== id) }); };
-  const addTache = (phase = 'second-oeuvre') => { if (!newTache.trim()) return; const ch = chantiers.find(c => c.id === view); if (ch) { updateChantier(view, { taches: [...(ch.taches || []), { id: generateId(), text: newTache, done: false, critical: newTaskCritical, phase }] }); setNewTache(''); setNewTaskCritical(false); } };
+  const addTache = (phaseDemandee) => { const phase = typeof phaseDemandee === 'string' ? phaseDemandee : 'second-oeuvre'; if (!newTache.trim()) return; const ch = chantiers.find(c => c.id === view); if (ch) { updateChantier(view, { taches: [...(ch.taches || []), { id: generateId(), text: newTache, done: false, critical: newTaskCritical, phase }] }); setNewTache(''); setNewTaskCritical(false); } };
   const toggleTache = (id) => {
     const ch = chantiers.find(c => c.id === view);
     if (!ch) return;
@@ -494,7 +494,8 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
 
     // P0.2: Financial KPI data
     const depPct = revenuTotal > 0 ? Math.min(100, (bilan.totalDepenses / revenuTotal) * 100) : 0;
-    const totalFacture = devis?.filter(d => d.chantier_id === ch.id && (d.type === 'facture' || d.statut === 'facture' || d.statut === 'payee')).reduce((s, d) => s + (d.total_ht || 0), 0) || 0;
+    // Facturé : les factures émises du chantier (avoirs déduits), pas le devis qu'elles facturent (compté deux fois)
+    const totalFacture = devis?.filter(d => d.chantier_id === ch.id && d.type === 'facture' && d.statut !== 'brouillon').reduce((s, d) => s + (d.total_ht || 0), 0) || 0;
     const resteAFacturer = revenuTotal - totalFacture;
 
     return (
@@ -997,7 +998,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                   onKeyPress={e => e.key === 'Enter' && addTache()}
                   className={`flex-1 px-3 py-2 border rounded-lg text-sm min-h-[44px] ${inputBg}`}
                 />
-                <BoutonIcone icone={Plus} libelle="Ajouter la tâche" variante="secondaire" onClick={addTache} disabled={!newTache.trim()} />
+                <BoutonIcone icone={Plus} libelle="Ajouter la tâche" variante="secondaire" onClick={() => addTache()} disabled={!newTache.trim()} />
               </div>
 
               {/* Task edit modal */}
@@ -2115,27 +2116,8 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                 </button>
               </div>
 
-              {/* Urgent request button */}
-              <button
-                onClick={() => {
-                  if (!newDepense.description) {
-                    showToast?.('Entrez une description', 'error');
-                    return;
-                  }
-                  // Simulate urgent notification (in real app would send push/SMS)
-                  showToast?.(`🚨 Demande urgente envoyée: ${newDepense.description}`, 'success');
-                  setShowQuickMateriau(false);
-                  setNewDepense({ description: '', montant: '', categorie: 'Matériaux', catalogueId: '', quantite: 1, prixUnitaire: '' });
-                }}
-                disabled={!newDepense.description}
-                className={`w-full mt-3 px-4 py-3 rounded-xl min-h-[52px] font-semibold border-2 transition-all disabled:opacity-50 ${
-                  isDark
-                    ? 'bg-red-900/30 border-red-700 text-red-400 hover:bg-red-900/50'
-                    : 'bg-red-50 border-red-300 text-red-600 hover:bg-red-100'
-                }`}
-              >
-                🚨 Besoin urgent (notifier le patron)
-              </button>
+              {/* (« Besoin urgent (notifier le patron) » retiré : il annonçait « Demande urgente envoyée » sans rien
+                  envoyer — recette du 9 oct. 2026) */}
             </div>
           </div>
         )}

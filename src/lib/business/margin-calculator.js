@@ -61,22 +61,25 @@ export const calculateChantierMargin = (chantier, { devis = [], depenses = [], p
   const chantierAjustements = ajustements.filter(a => a.chantierId === chantier.id);
 
   // ===== REVENUS =====
-  // Revenue from accepted devis (not factures - those are delivery confirmations)
+  // Revenu prévu : les DEVIS signés (jamais leurs factures, qui facturent le même travail). Avant (recette du
+  // 9 oct. 2026), une facture « payée » portait un statut de la liste et s'ajoutait à son devis : revenu
+  // doublé, un chantier en perte affiché rentable (+45 % au lieu de -9,8 %).
   const revenuDevis = chantierDevis
-    .filter(d => ACCEPTED_STATUSES.includes(d.statut))
+    .filter(d => d.type !== 'facture' && ACCEPTED_STATUSES.includes(d.statut))
     .reduce((sum, d) => sum + (d.total_ht || 0), 0);
 
   // Fallback to budget if no accepted devis
   const revenuPrevu = revenuDevis > 0 ? revenuDevis : (chantier.budget_estime || 0);
 
-  // Revenue actually received (payee invoices)
-  const revenuEncaisse = chantierDevis
+  // Encaissé : les FACTURES payées (hors avoirs), HT
+  const factures = chantierDevis.filter(d => d.type === 'facture' && d.facture_type !== 'avoir' && d.statut !== 'brouillon');
+  const revenuEncaisse = factures
     .filter(d => d.statut === DEVIS_STATUS.PAYEE)
     .reduce((sum, d) => sum + (d.total_ht || 0), 0);
 
-  // Revenue pending (sent but not paid)
-  const revenuEnAttente = chantierDevis
-    .filter(d => [DEVIS_STATUS.ENVOYE, DEVIS_STATUS.VU, DEVIS_STATUS.ACCEPTE, DEVIS_STATUS.ACOMPTE_FACTURE, DEVIS_STATUS.FACTURE].includes(d.statut) && d.statut !== DEVIS_STATUS.PAYEE)
+  // En attente : factures émises non payées, HT
+  const revenuEnAttente = factures
+    .filter(d => d.statut !== DEVIS_STATUS.PAYEE && !['annule', 'annulee'].includes(d.statut))
     .reduce((sum, d) => sum + (d.total_ht || 0), 0);
 
   // Revenue adjustments (positive additions)
