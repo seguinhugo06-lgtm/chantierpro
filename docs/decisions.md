@@ -67,3 +67,11 @@ Option `declaration` : case « mes travaux ne sont pas soumis à l'assurance dé
 Recommandation : `declaration` — une saisie fictive serait pire qu'une déclaration assumée ; libellé à faire relire par juriste-btp.
 Irréversible : non
 Bloque : rien (contrôle d'envoi des devis ; la liste de l'onglet Facture 2026, `src/lib/mentionsFacture.js`, lit la même règle et resterait sous 100 % sans décennale)
+
+### Q-capital-envoi · Bloquer l'envoi d'une société qui n'a pas saisi son capital social ?
+Contexte : Une société doit porter sa forme juridique et le montant de son capital social sur ses factures (service-public F31808). Depuis le 10 oct. 2026, l'onglet Facture 2026 le compte « obligatoire » pour une société, et les deux PDF l'impriment s'il est saisi ; mais l'envoi part sans lui (il n'est pas dans `src/lib/profilLegal.js`), comme pour le RCS et le n° de TVA intracommunautaire (relecture juridique du 10 oct. 2026).
+Option `bloquer` : ajouter capital, RCS et n° de TVA intracommunautaire au contrôle d'envoi, pour qui est concerné — colle au texte ; une société incomplète ne peut plus envoyer avant de les saisir.
+Option `signaler` : garder le signalement (onglet Facture 2026, jauge des Paramètres) — rien ne change ; le risque reste sur l'artisan.
+Recommandation : `bloquer` — mentions obligatoires, saisies une fois en une minute, et la règle « qui est concerné » existe déjà (`src/lib/mentionsFacture.js`).
+Irréversible : non
+Bloque : rien (contrôle d'envoi des devis et factures)
