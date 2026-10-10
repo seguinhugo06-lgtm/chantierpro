@@ -65,6 +65,11 @@ describe('profil exigé avant envoi : une seule liste', () => {
     const moitie = { ...COMPLET, decennaleNumero: '', decennaleNonSoumis: true };
     generer(moitie).forEach((html) => expect(html).not.toContain('Assurance décennale'));
     generer(COMPLET).forEach((html) => expect(html).toContain('Assurance décennale: SMABTP'));
+    // RC Pro facultative : un assureur sans numéro ne laisse pas de « N° » vide
+    generer({ ...COMPLET, rcProAssureur: 'MAAF', rcProNumero: '' }).forEach((html) => {
+      expect(html).toContain('RC Pro: MAAF');
+      expect(html).not.toMatch(/RC Pro: MAAF\s*N°/);
+    });
   });
 
   it('un champ fait d\'espaces compte comme vide', () => {

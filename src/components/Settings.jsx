@@ -1986,7 +1986,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             {/* Même règle que les documents : la décennale n'apparaît qu'avec l'assureur ET le n° de police */}
             {(entreprise.rcProAssureur || (entreprise.decennaleAssureur && entreprise.decennaleNumero)) && (
               <p className="pt-1 text-xs">
-                {entreprise.rcProAssureur && `RC Pro: ${entreprise.rcProAssureur} N°${entreprise.rcProNumero}`}
+                {entreprise.rcProAssureur && `RC Pro: ${entreprise.rcProAssureur}${entreprise.rcProNumero ? ` N°${entreprise.rcProNumero}` : ''}`}
                 {entreprise.rcProAssureur && entreprise.decennaleAssureur && entreprise.decennaleNumero && ' · '}
                 {entreprise.decennaleAssureur && entreprise.decennaleNumero && `Décennale: ${entreprise.decennaleAssureur} N°${entreprise.decennaleNumero}${entreprise.decennaleValidite ? ` (Valide: ${dateLue(entreprise.decennaleValidite).toLocaleDateString('fr-FR')})` : ''}`}
               </p>
