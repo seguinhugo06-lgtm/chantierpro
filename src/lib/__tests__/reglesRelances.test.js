@@ -21,6 +21,19 @@ describe('relances automatiques (cron) : règles', () => {
     expect(relancable(facture(), vide, vide)).toBe(true);
   });
 
+  it('un avoir « appliqué » (payee) crédite ; un avoir annulé (annule ou annulee) ne crédite rien', () => {
+    const paye = { facture_type: 'avoir', statut: 'payee', avoir_source_id: 'f1', total_ttc: -300 };
+    expect(resteDu(facture(), creditsParFacture([paye]), new Map())).toBe(700);
+    for (const statut of ['annule', 'annulee']) {
+      const annule = { facture_type: 'avoir', statut, avoir_source_id: 'f1', total_ttc: -300 };
+      expect(resteDu(facture(), creditsParFacture([annule]), new Map())).toBe(1000);
+    }
+  });
+
+  it('un paiement négatif ne fait pas remonter le reste dû', () => {
+    expect(resteDu(facture(), new Map(), paiementsParDocument([{ devis_id: 'f1', montant: -500 }]))).toBe(1000);
+  });
+
   it('un avoir en brouillon ne crédite rien', () => {
     const brouillon = { facture_type: 'avoir', statut: 'brouillon', avoir_source_id: 'f1', total_ttc: -1000 };
     expect(resteDu(facture(), creditsParFacture([brouillon]), new Map())).toBe(1000);

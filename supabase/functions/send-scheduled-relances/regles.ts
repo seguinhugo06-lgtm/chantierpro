@@ -24,7 +24,8 @@ export function estClientPro(client: Doc | null | undefined): boolean {
 export function creditsParFacture(documents: Doc[]): Map<string, number> {
   const credits = new Map<string, number>();
   for (const d of documents) {
-    if (d?.facture_type === 'avoir' && d.avoir_source_id && !['brouillon', 'annulee'].includes(d.statut)) {
+    // `annule` est le statut admis par la base ; `annulee` a été écrit par d'anciennes versions
+    if (d?.facture_type === 'avoir' && d.avoir_source_id && !['brouillon', 'annule', 'annulee'].includes(d.statut)) {
       credits.set(d.avoir_source_id, (credits.get(d.avoir_source_id) || 0) + Math.abs(Number(d.total_ttc) || 0));
     }
   }
@@ -36,7 +37,7 @@ export function paiementsParDocument(paiements: Doc[]): Map<string, number> {
   const m = new Map<string, number>();
   for (const p of paiements) {
     if (!p?.devis_id) continue;
-    m.set(p.devis_id, (m.get(p.devis_id) || 0) + (Number(p.montant) || 0));
+    m.set(p.devis_id, (m.get(p.devis_id) || 0) + Math.max(0, Number(p.montant) || 0));
   }
   return m;
 }

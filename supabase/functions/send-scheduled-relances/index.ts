@@ -203,10 +203,10 @@ function buildRelanceEmailHtml(body: string, entreprise: any, options: any = {})
 // Détection des relances dues pour une entreprise
 // ─────────────────────────────────────────────────────────────
 
-function detectDue(devis: any[], clients: any[], config: any, executions: any[], exclusions: any[], paiements: any[] = []) {
+function detectDue(devis: any[], clients: any[], config: any, executions: any[], exclusions: any[], paiements: any[] = [], avoirs: any[] = []) {
   if (!config?.enabled) return [];
   const clientMap = new Map(clients.map((c) => [c.id, c]));
-  const credits = creditsParFacture(devis);
+  const credits = creditsParFacture(avoirs.length ? avoirs : devis);
   const recus = paiementsParDocument(paiements);
   const due: any[] = [];
   for (const doc of devis) {
@@ -315,19 +315,25 @@ serve(async (req) => {
       };
 
       // 2. Charger les documents + clients + historique de cette entreprise
-      const [resDevis, resClients, resExecs, resExcl, resPaiements] = await Promise.all([
-        admin.from('devis').select('id, type, facture_type, statut, numero, client_id, total_ttc, total_ht, montant_paye, avoir_source_id, date, date_echeance, payment_token').eq('user_id', ent.user_id).neq('statut', 'payee'),
-        admin.from('clients').select('id, nom, prenom, email, telephone, categorie, entreprise').eq('user_id', ent.user_id),
+      // Limité à l'organisation de l'entreprise : les policies « Org members can insert » laissent un compte
+      // écrire une ligne au user_id d'un artisan dans SA propre organisation (relecture sécurité du 10 oct.
+      // 2026) — une facture, un client, un avoir ou un paiement fabriqués ne doivent ni être relancés ni compter.
+      const dansOrg = (requete: any) => (ent.organization_id ? requete.eq('organization_id', ent.organization_id) : requete);
+      const [resDevis, resClients, resExecs, resExcl, resPaiements, resAvoirs] = await Promise.all([
+        dansOrg(admin.from('devis').select('id, type, facture_type, statut, numero, client_id, total_ttc, total_ht, montant_paye, avoir_source_id, date, date_echeance, payment_token').eq('user_id', ent.user_id).neq('statut', 'payee')),
+        dansOrg(admin.from('clients').select('id, nom, prenom, email, telephone, categorie, entreprise').eq('user_id', ent.user_id)),
         admin.from('relance_executions').select('document_id, step_id, status').eq('user_id', ent.user_id),
         admin.from('relance_exclusions').select('scope, document_id, client_id, excluded_until').eq('user_id', ent.user_id),
-        admin.from('paiements').select('devis_id, montant').eq('user_id', ent.user_id),
+        dansOrg(admin.from('paiements').select('devis_id, montant').eq('user_id', ent.user_id)),
+        // Les avoirs quel que soit leur statut : un avoir « appliqué » est `payee`, exclu de la requête ci-dessus
+        dansOrg(admin.from('devis').select('id, facture_type, statut, total_ttc, avoir_source_id').eq('user_id', ent.user_id).eq('facture_type', 'avoir')),
       ]);
 
       // Ces erreurs étaient ignorées : une colonne inexistante dans le select
       // fait rejeter TOUTE la requête, `data` revient null, et le rapport
       // annonçait sereinement « 0 relance due ». Un échec de lecture doit
       // être bruyant — sinon l'artisan croit que ses clients sont relancés.
-      const erreurLecture = [resDevis, resClients, resExecs, resExcl, resPaiements]
+      const erreurLecture = [resDevis, resClients, resExecs, resExcl, resPaiements, resAvoirs]
         .map((r) => r.error?.message).filter(Boolean).join(' | ');
       if (erreurLecture) {
         console.error(`[send-scheduled-relances] Lecture ${ent.nom}: ${erreurLecture}`);
@@ -339,13 +345,13 @@ serve(async (req) => {
       const devis = resDevis.data, clients = resClients.data;
       const executions = resExecs.data, exclusions = resExcl.data;
 
-      const due = detectDue(devis || [], clients || [], config, executions || [], exclusions || [], resPaiements.data || []).slice(0, maxPerOrg);
+      const due = detectDue(devis || [], clients || [], config, executions || [], exclusions || [], resPaiements.data || [], resAvoirs.data || []).slice(0, maxPerOrg);
       report.totalDue += due.length;
 
       // Diagnostic (dry-run) : montre l'entonnoir pour prouver la logique.
       if (dryRun) {
         report.diagnostics = report.diagnostics || [];
-        const creditsDiag = creditsParFacture(devis || []);
+        const creditsDiag = creditsParFacture(resAvoirs.data || []);
         const recusDiag = paiementsParDocument(resPaiements.data || []);
         const eligible = (devis || []).filter((d) => isDocumentEligible(d, exclusions || [], config) && relancable(d, creditsDiag, recusDiag));
         // Pour chaque éligible, calcule le prochain step (dû ou pas) — visibilité.

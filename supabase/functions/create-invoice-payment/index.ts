@@ -199,7 +199,10 @@ async function handleVerify(paymentToken: string, sessionId: string) {
   const creditCents = parseInt(session.metadata?.amount_original_cents || '', 10)
     || session.amount_total || 0;
   const totalTTC = (facture.total_ttc as number) || 0;
-  const nouveauPaye = ((facture.montant_paye as number) || 0) + creditCents / 100;
+  // Reçu avant ce paiement : le plus grand de montant_paye et des paiements enregistrés (`recu`, 081) — sans
+  // cela, une facture réglée en partie par chèque n'était jamais soldée et restait payable une seconde fois
+  const recuAvant = Math.max((facture.montant_paye as number) || 0, (facture.recu as number) || 0);
+  const nouveauPaye = recuAvant + creditCents / 100;
   // Soldée quand le reçu couvre le total moins les avoirs émis (avant : un avoir partiel empêchait à jamais
   // le passage à « payée », et les relances continuaient)
   const credite = (facture.montant_credite as number) || 0;

@@ -186,13 +186,13 @@ export function buildDocumentEmailBody({ doc, client, entreprise, couleur = '#f9
 
   const signatureBlock = !isFacture && signatureUrl ? `
     <div style="margin:28px 0;text-align:center">
-      <a href="${signatureUrl}"
+      <a href="${echapperHtml(signatureUrl)}"
          style="display:inline-block;background:${couleur};color:#ffffff;text-decoration:none;font-weight:bold;font-size:16px;padding:14px 28px;border-radius:10px">
         Consulter et signer le devis en ligne
       </a>
       <p style="font-size:12px;color:#64748b;margin-top:10px">
         Signature électronique sécurisée, sans créer de compte.<br>
-        Si le bouton ne fonctionne pas : <a href="${signatureUrl}" style="color:${couleur}">${signatureUrl}</a>
+        Si le bouton ne fonctionne pas : <a href="${echapperHtml(signatureUrl)}" style="color:${couleur}">${echapperHtml(signatureUrl)}</a>
       </p>
     </div>` : '';
 

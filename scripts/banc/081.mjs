@@ -4,7 +4,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { SOLO, PATRON } from './socle.mjs';
+import { SOLO, PATRON, ORG_PATRON } from './socle.mjs';
 
 const MIGRATION = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../supabase/migrations/081_page_de_paiement_avoirs_et_reste_du.sql');
 
@@ -46,6 +46,26 @@ export async function verifier({ db, q, commeAnonyme, verifier }) {
   r = await lire('jeton-brouillon-avoir');
   verifier(r.facture.payable === true && Number(r.facture.reste_du) === 1000,
     '081 : avoir brouillon, annulé ou d\'un autre compte : aucun crédit');
+
+  // Attaque (relecture sécurité du 10 oct.) : un débiteur, dans SA propre organisation, écrit un avoir et un
+  // paiement au user_id de l'artisan (les policies « Org members can insert » de production le permettent).
+  // Ils ne doivent rien changer au reste dû ni rendre la facture « payée » pour 0,50 €.
+  const f5 = await facture('jeton-attaque');
+  await q(`INSERT INTO devis (user_id, organization_id, numero, type, facture_type, statut, total_ttc, avoir_source_id)
+           VALUES ($1, $2, 'AV-081-faux', 'facture', 'avoir', 'envoye', -999.5, $3)`, [SOLO, ORG_PATRON, f5]);
+  await q(`INSERT INTO paiements (user_id, organization_id, devis_id, montant) VALUES ($1, $2, $3, 999.5)`, [SOLO, ORG_PATRON, f5]);
+  r = await lire('jeton-attaque');
+  verifier(r.facture.payable === true && Number(r.facture.reste_du) === 1000 && Number(r.facture.montant_credite) === 0,
+    `081 : un avoir et un paiement fabriqués dans une autre organisation ne comptent pas (reste ${r.facture.reste_du})`);
+  await q(`DELETE FROM paiements WHERE devis_id = $1`, [f5]);
+
+  // Le visiteur (porteur du jeton) ne reçoit ni l'identifiant de la facture ni le compte de l'artisan ;
+  // le serveur (fonction de paiement, clé de service) les reçoit
+  verifier(!r.facture.id && !r.facture.user_id && !r.facture.stripe_session_id, '081 : ni id, ni user_id, ni session Stripe pour un visiteur');
+  await q(`SELECT set_config('request.jwt.claims', '{"role":"service_role"}', false)`);
+  const serveur = (await q('SELECT get_facture_for_payment($1) AS r', ['jeton-attaque'])).rows[0].r;
+  await q(`SELECT set_config('request.jwt.claims', '', false)`);
+  verifier(serveur.facture.id === f5 && serveur.facture.user_id === SOLO, '081 : le serveur reçoit id et user_id (fonction de paiement)');
 
   // Brouillon, avoir, payée : pas payables
   await facture('jeton-brouillon', { statut: 'brouillon' });
