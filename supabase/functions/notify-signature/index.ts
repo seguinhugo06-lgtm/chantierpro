@@ -14,6 +14,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
+import { echapperHtml } from '../_shared/adresses.ts';
 
 const APP_URL = Deno.env.get('APP_URL') || 'https://mallettico.fr';
 
@@ -94,6 +95,8 @@ serve(async (req) => {
 
     const client = devis.client as { nom?: string; prenom?: string } | null;
     const clientNom = [client?.prenom, client?.nom].filter(Boolean).join(' ') || 'Votre client';
+    // Le nom du signataire est saisi librement par quiconque détient le lien : échappé dans le HTML (un lien
+    // d'hameçonnage passait dans un e-mail authentifié par Mallettico — relecture gardien-securite du 10 oct. 2026)
     const signataire = (devis.signataire_nom as string) || clientNom;
     const montant = fmtEUR(devis.total_ttc as number);
 
@@ -104,8 +107,8 @@ serve(async (req) => {
       <h2 style="margin:8px 0 0">Devis signé !</h2>
     </div>
     <p style="text-align:center;font-size:16px">
-      <strong>${signataire}</strong> vient de signer le devis
-      <strong>${devis.numero}</strong> d'un montant de <strong>${montant}</strong>.
+      <strong>${echapperHtml(signataire)}</strong> vient de signer le devis
+      <strong>${echapperHtml(devis.numero)}</strong> d'un montant de <strong>${montant}</strong>.
     </p>
     <div style="text-align:center;margin:24px 0">
       <a href="${APP_URL}" style="display:inline-block;background:#f97316;color:#ffffff;text-decoration:none;font-weight:bold;padding:12px 24px;border-radius:10px">

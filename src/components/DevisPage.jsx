@@ -98,7 +98,8 @@ import useKeepInViewport from '../hooks/useKeepInViewport';
 import { mentionTvaReduiteHtml } from '../lib/mentionTvaReduite';
 import { remettreFichier, estNatif, ouvrirLienExterne } from '../lib/natif';
 import { captureException } from '../lib/sentry';
-import { estFranchiseTva, sansTva } from '../lib/franchiseTva';
+import { imprimerHtml } from '../lib/imprimerHtml';
+import { estFranchiseTva, sansTva, franchiseAppliquee, tvaARegulariser } from '../lib/franchiseTva';
 import { urlPublique } from '../lib/urlPublique';
 
 // Email tracking : l'envoi passe par Resend (send-email) ; l'historique par document
@@ -1577,6 +1578,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     const isFacture = doc.type === 'facture';
     const isAvoirDoc = doc.facture_type === 'avoir';
     const sourceFactureDoc = isAvoirDoc && doc.avoir_source_id ? devis.find(d => d.id === doc.avoir_source_id) : null;
+    // Franchise en base, sauf un document émis enregistré avec TVA : réimprimé tel qu'émis (src/lib/franchiseTva.js)
+    const isMicro = franchiseAppliquee(doc, entreprise);
     const avoirColor = '#dc2626';
     const docColor = isAvoirDoc ? avoirColor : couleurCss(couleur);
     // Textes saisis échappés avant d'entrer dans le HTML (recette du 9 oct. 2026 : « Tableau <NF C 15-100> »
@@ -1924,14 +1927,12 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         .then((r) => { if (r === 'telecharge') showToast('Fichier téléchargé — ouvrez-le puis « Imprimer » › « Enregistrer en PDF »', 'info'); })
         .catch(() => showToast('Impossible de préparer le document', 'error'));
     } else {
-      const w = window.open('', '_blank');
-      if (!w) {
-        showToast('Veuillez autoriser les popups pour générer le PDF', 'error');
-        return;
-      }
-      w.document.write(content);
-      w.document.close();
-      setTimeout(() => w.print(), 500);
+      // Cadre caché sans script (src/lib/imprimerHtml.js) : avant, une fenêtre à l'origine de l'app recevait
+      // le document par document.write (relecture gardien-securite du 10 oct. 2026)
+      imprimerHtml(content).catch((err) => {
+        captureException(err, { context: 'impression du document' });
+        showToast('L\'impression n\'a pas pu s\'ouvrir', 'error');
+      });
     }
   };
 
@@ -3044,6 +3045,16 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                 {client?.adresse && <p className={`text-sm ${textMuted} whitespace-pre-line`}>{client.adresse}</p>}
               </div>
 
+              {/* Document émis avec TVA alors que l'entreprise est en franchise (293 B) : il reste tel qu'émis,
+                  la TVA portée est due (CGI art. 283, 3) et se corrige par un avoir — relecture juridique du 10 oct. */}
+              {tvaARegulariser(selected, entreprise) && (
+                <div role="note" className="mb-4 p-3 rounded-lg border bg-alerte-fond border-bord text-sm text-alerte-texte">
+                  {selected.type === 'facture'
+                    ? 'Ce document a été émis avec de la TVA alors que vous êtes en franchise (art. 293 B du CGI) : il reste tel quel. Pour le corriger, faites un avoir total, puis une nouvelle facture sans TVA, et prévenez le client.'
+                    : 'Ce devis signé comporte de la TVA alors que vous êtes en franchise (art. 293 B du CGI) : ses factures seront établies sans TVA. Prévenez le client par écrit ; pour garder le total signé, il faut un nouveau devis signé.'}
+                </div>
+              )}
+
               {/* Avenant banner */}
               {selected.is_avenant && (
                 <div className={`mb-4 p-3 rounded-lg border flex items-center gap-3 ${isDark ? 'bg-orange-900/20 border-orange-700/50' : 'bg-orange-50 border-orange-200'}`}>
@@ -3106,7 +3117,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                 <div className="w-56">
                   {/* Mêmes totaux que les documents imprimés (src/lib/totauxDocument.js) */}
                   {(() => {
-                    const t = totauxDocument(selected, { tauxDefaut: entreprise?.tvaDefaut || 10, isMicro });
+                    const microDoc = franchiseAppliquee(selected, entreprise);
+                    const t = totauxDocument(selected, { tauxDefaut: entreprise?.tvaDefaut || 10, isMicro: microDoc });
                     const ligneTotal = (libelle, valeur, cls = textSecondary) => (
                       <div key={libelle} className={`flex justify-between gap-3 py-1 text-sm ${cls}`}><span>{libelle}</span><span className="tabular-nums">{valeur}</span></div>
                     );
@@ -3119,11 +3131,11 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                             {ligneTotal('Total HT après remise', formatMoney(t.totalHT), textPrimary)}
                           </>
                         ) : ligneTotal('Total HT', formatMoney(t.totalHT), textPrimary)}
-                        {!isMicro && (t.tva.length
+                        {!microDoc && (t.tva.length
                           ? t.tva.map((x) => ligneTotal(`TVA ${pourcent(x.taux)}`, formatMoney(x.montant)))
                           : ligneTotal(`TVA ${pourcent(selected.tvaRate || entreprise?.tvaDefaut || 20)}`, formatMoney(selected.tva || selected.total_tva || 0)))}
                         <div className={`flex justify-between py-2 border-t font-bold text-encre ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
-                          <span>{isMicro ? (selected.type === 'facture' ? 'Net à payer' : 'Total') : 'Total TTC'}</span>
+                          <span>{!microDoc ? 'Total TTC' : selected.facture_type === 'avoir' ? 'Total de l’avoir' : selected.type === 'facture' ? 'Net à payer' : 'Total'}</span>
                           <span className="tabular-nums">{formatMoney(t.totalTTC)}</span>
                         </div>
                       </>

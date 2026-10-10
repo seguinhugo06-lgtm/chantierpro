@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { estFranchiseTva, sansTva } from '../franchiseTva';
+import { estFranchiseTva, sansTva, franchiseAppliquee, tvaARegulariser } from '../franchiseTva';
 import { calculerTotaux, totauxDocument, lignesTotauxHtml } from '../totauxDocument';
 import { lignesFactureAcompte } from '../facturation';
 import { generateFacturXMLBasic } from '../facturx';
@@ -31,14 +31,31 @@ describe('franchise en base (art. 293 B CGI) : aucune TVA facturée', () => {
     expect(t.totalTTC).toBe(450);
   });
 
-  it('document micro imprimé : ni ligne de TVA ni TTC distinct, même enregistré avec de la TVA', () => {
-    const ancien = { type: 'facture', lignes: [ligne('Prise', 1, 100, 20)], total_ht: 100, tva: 20, total_ttc: 120 };
-    expect(totauxDocument(ancien, { isMicro: true })).toMatchObject({ totalHT: 100, totalTVA: 0, totalTTC: 100, tva: [] });
-    const html = lignesTotauxHtml(ancien, { isMicro: true });
+  it('document micro imprimé en franchise : ni ligne de TVA ni TTC ; « Net à payer », « Total », « Total de l’avoir »', () => {
+    const facture = { type: 'facture', statut: 'envoye', lignes: [ligne('Prise', 1, 100, 0)], total_ht: 100, tva: 0, total_ttc: 100 };
+    expect(totauxDocument(facture, { isMicro: true })).toMatchObject({ totalHT: 100, totalTVA: 0, totalTTC: 100, tva: [] });
+    const html = lignesTotauxHtml(facture, { isMicro: true });
     expect(html).not.toMatch(/TVA/);
     expect(html).not.toMatch(/TTC/);
     expect(html).toMatch(/Net à payer/);
-    expect(lignesTotauxHtml({ ...ancien, type: 'devis' }, { isMicro: true })).toMatch(/<span>Total<\/span>/);
+    expect(lignesTotauxHtml({ ...facture, type: 'devis' }, { isMicro: true })).toMatch(/<span>Total<\/span>/);
+    expect(lignesTotauxHtml({ ...facture, facture_type: 'avoir', total_ht: -100, total_ttc: -100 }, { isMicro: true })).toMatch(/Total de l’avoir/);
+  });
+
+  it('document ÉMIS enregistré avec TVA : réimprimé tel qu’émis, à régulariser par avoir (CGI art. 283, 3 ; 289)', () => {
+    const emise = { type: 'facture', statut: 'envoye', lignes: [ligne('Prise', 1, 100, 20)], total_ht: 100, tva: 20, total_ttc: 120 };
+    expect(franchiseAppliquee(emise, MICRO)).toBe(false);
+    expect(tvaARegulariser(emise, MICRO)).toBe(true);
+    const html = lignesTotauxHtml(emise, { isMicro: franchiseAppliquee(emise, MICRO) });
+    expect(html).toMatch(/TVA 20/);
+    expect(html).toMatch(/Total TTC/);
+    // Devis signé avec TVA : tel qu'émis aussi ; devis envoyé non signé et brouillon : en franchise
+    expect(franchiseAppliquee({ ...emise, type: 'devis', statut: 'signe' }, MICRO)).toBe(false);
+    expect(franchiseAppliquee({ ...emise, type: 'devis', statut: 'envoye' }, MICRO)).toBe(true);
+    expect(franchiseAppliquee({ ...emise, statut: 'brouillon' }, MICRO)).toBe(true);
+    // Hors franchise : jamais
+    expect(franchiseAppliquee(emise, { formeJuridique: 'SARL' })).toBe(false);
+    expect(tvaARegulariser(emise, { formeJuridique: 'SARL' })).toBe(false);
   });
 
   it('hors franchise : rien ne change', () => {

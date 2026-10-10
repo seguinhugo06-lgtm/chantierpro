@@ -13,6 +13,37 @@ export function estFranchiseTva(entreprise) {
   return (entreprise?.formeJuridique || entreprise?.forme_juridique) === 'Micro-entreprise';
 }
 
+const STATUTS_DEVIS_ENGAGES = ['accepte', 'signe', 'acompte_facture', 'facture'];
+
+/** Document émis : facture ou avoir hors brouillon, ou devis signé (il engage les deux parties). */
+export function estDocumentEmis(doc) {
+  if (!doc) return false;
+  if (doc.type === 'facture') return doc.statut !== 'brouillon';
+  return STATUTS_DEVIS_ENGAGES.includes(doc.statut);
+}
+
+/** TVA enregistrée sur le document (0 si aucune). */
+function tvaEnregistree(doc) {
+  return Math.abs(Number(doc?.tva ?? doc?.total_tva ?? 0)) || 0;
+}
+
+/**
+ * Le document s'imprime-t-il en franchise (sans TVA) ? Oui pour une micro-entreprise, SAUF un document émis
+ * (facture, avoir, devis signé) enregistré avec de la TVA : il se réimprime tel qu'il a été émis. Une facture
+ * émise ne se modifie pas, elle se corrige par un avoir (CGI art. 289 I-1) ; la TVA portée par erreur est due
+ * du seul fait de la facture (CGI art. 283, 3) et s'annule par une facture rectificative ou un avoir
+ * (BOI-TVA-DED-40-10-10) — relecture juridique du 10 oct. 2026.
+ */
+export function franchiseAppliquee(doc, entreprise) {
+  if (!estFranchiseTva(entreprise)) return false;
+  return !(estDocumentEmis(doc) && tvaEnregistree(doc) > 0.005);
+}
+
+/** Document émis avec de la TVA alors que l'entreprise est en franchise : à régulariser (avoir, nouveau devis). */
+export function tvaARegulariser(doc, entreprise) {
+  return estFranchiseTva(entreprise) && !franchiseAppliquee(doc, entreprise);
+}
+
 /** Les lignes à 0 % de TVA (les titres de lot restent tels quels). */
 export function sansTva(lignes) {
   return (Array.isArray(lignes) ? lignes : []).map((l) => (l && !l._isSection ? { ...l, tva: 0 } : l));

@@ -119,7 +119,9 @@ export function lignesTotauxHtml(doc, { isMicro = false, tauxDefaut = 10 } = {})
     }
   }
   // Franchise en base : pas de « TTC » (aucune TVA facturée), le total est net à payer
-  const libelleTotal = isMicro ? (doc?.type === 'facture' ? 'Net à payer' : 'Total') : 'Total TTC';
+  const libelleTotal = !isMicro ? 'Total TTC'
+    : doc?.facture_type === 'avoir' ? 'Total de l’avoir'
+      : doc?.type === 'facture' ? 'Net à payer' : 'Total';
   html.push(`<div class="row total"><span>${libelleTotal}</span><span>${euros(t.totalTTC)}</span></div>`);
   return html.join('\n    ');
 }

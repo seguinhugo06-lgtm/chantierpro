@@ -16,7 +16,7 @@ const doc = {
   type: 'devis', numero: 'DEV-1', date: '2026-10-10', validite: 30, notes: `À noter ${PIEGE}\nDeuxième ligne`,
   lignes: [
     { description: 'Tableau <NF C 15-100> conforme', quantite: 12.5, unite: 'm²', prixUnitaire: 10, tva: 20 },
-    { description: PIEGE, quantite: 1, unite: PIEGE, prixUnitaire: 5, tva: 20 },
+    { description: PIEGE, quantite: 1, unite: PIEGE, prixUnitaire: 5, tva: PIEGE }, // TVA écrite par l'API, hors de l'app
     { description: 'Reprise', quantite: -3, unite: 'u', prixUnitaire: 10, tva: 20 },
   ],
   total_ht: 100, tva: 20, total_ttc: 120,
@@ -30,7 +30,8 @@ const sansBaliseInjectee = (html) => {
 
 describe('documents : tout texte saisi s\'imprime tel quel, rien ne s\'exécute', () => {
   it('devis (page de signature, envoi) : désignations, client, entreprise, CGV, notes échappés', () => {
-    const html = buildDevisHtml({ doc, client, chantier: { nom: PIEGE, adresse: '2 rue B' }, entreprise, mode: 'client' });
+    const echeancier = { etapes: [{ label: PIEGE, pourcentage: PIEGE, montant_ttc: PIEGE, statut: 'a_facturer' }] };
+    const html = buildDevisHtml({ doc, client, chantier: { nom: PIEGE, adresse: '2 rue B' }, entreprise, mode: 'client', echeancier });
     sansBaliseInjectee(html);
     expect(html).toContain('Tableau &lt;NF C 15-100&gt; conforme');
     expect(html).toContain('Dupont &amp; Fils &lt;SARL&gt;');

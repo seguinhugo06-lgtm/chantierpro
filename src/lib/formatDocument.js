@@ -19,14 +19,15 @@ const vide = (v) => v === undefined || v === null || v === '';
 export function euros(montant) {
   if (vide(montant)) return EUROS.format(0);
   const n = Number(montant);
-  return Number.isFinite(n) ? EUROS.format(n) : `${montant} €`;
+  // Une valeur illisible est imprimée telle quelle, échappée : une ligne peut être écrite par l'API, hors de l'app
+  return Number.isFinite(n) ? EUROS.format(n) : `${echapperHtml(montant)} €`;
 }
 
 /** 5.5 → « 5,5 % » ; 20 → « 20 % » ; une valeur illisible est imprimée telle quelle. */
 export function pourcent(valeur) {
   if (vide(valeur)) return '0 %';
   const n = Number(valeur);
-  return `${Number.isFinite(n) ? NOMBRE.format(n) : valeur} %`;
+  return `${Number.isFinite(n) ? NOMBRE.format(n) : echapperHtml(valeur)} %`;
 }
 
 /**

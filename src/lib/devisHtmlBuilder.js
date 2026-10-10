@@ -18,6 +18,8 @@ import { euros, pourcent, quantite, blocConditionsPaiement } from './formatDocum
 import { echapperHtml as h, couleurCss } from './echapperHtml';
 import { lignesTotauxHtml, lignesAcompteHtml, totauxDocument } from './totauxDocument';
 import { echeance } from './paiementsFacture';
+import { franchiseAppliquee } from './franchiseTva';
+import { imprimerHtml } from './imprimerHtml';
 
 /**
  * Formatte un RCS complet
@@ -92,7 +94,8 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mod
   const isClientMode = mode === 'client';
   const color = couleurCss(couleur || entreprise?.couleur);
   const isFacture = doc.type === 'facture';
-  const isMicro = (entreprise?.formeJuridique || entreprise?.forme_juridique) === 'Micro-entreprise';
+  // Franchise en base, sauf un document émis enregistré avec TVA : réimprimé tel qu'émis (src/lib/franchiseTva.js)
+  const isMicro = franchiseAppliquee(doc, entreprise);
 
   const dateValidite = new Date(doc.date);
   dateValidite.setDate(dateValidite.getDate() + (doc.validite || entreprise?.validiteDevis || entreprise?.validite_devis || 30));
@@ -701,11 +704,6 @@ export function buildSituationFactureHtml({ situation, parentDevis, client, chan
  * Ouvre une fenêtre d'impression pour une facture de situation
  */
 export function printSituationFacture(params) {
-  const html = buildSituationFactureHtml(params);
-  const w = window.open('', '_blank');
-  if (w) {
-    w.document.write(html);
-    w.document.close();
-    setTimeout(() => w.print(), 500);
-  }
+  // Cadre caché sans script (src/lib/imprimerHtml.js), plus de fenêtre à l'origine de l'app
+  return imprimerHtml(buildSituationFactureHtml(params));
 }

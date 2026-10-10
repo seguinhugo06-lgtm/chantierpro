@@ -3,6 +3,7 @@ import SignatureCanvas from 'react-signature-canvas';
 import { FileText, Check, X, RotateCcw, Pen, Calendar, Info, CheckCircle, AlertCircle, Loader2, ArrowRight, ArrowLeft, Shield, Download } from 'lucide-react';
 import { supabase } from '../../supabaseClient';
 import { buildDevisHtml } from '../../lib/devisHtmlBuilder';
+import { captureException } from '../../lib/sentry';
 
 /**
  * Page publique de signature électronique de devis
@@ -20,6 +21,7 @@ export default function DevisSignaturePage({ signatureToken }) {
   const [acceptCGV, setAcceptCGV] = useState(false);
   const [isEmpty, setIsEmpty] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [telechargementEchoue, setTelechargementEchoue] = useState(false);
   const sigPad = useRef(null);
 
   const couleur = devisData?.entreprise?.couleur || '#f97316';
@@ -215,7 +217,8 @@ export default function DevisSignaturePage({ signatureToken }) {
 
           {/* Download signed PDF button */}
           <button
-            onClick={() => {
+            onClick={async () => {
+              setTelechargementEchoue(false);
               const signedHtml = buildDevisHtml({
                 doc: {
                   ...devis,
@@ -229,11 +232,15 @@ export default function DevisSignaturePage({ signatureToken }) {
                 couleur,
                 mode: 'client'
               });
-              const w = window.open('', '_blank');
-              if (w) {
-                w.document.write(signedHtml);
-                w.document.close();
-                setTimeout(() => w.print(), 500);
+              // Un vrai PDF, rendu sans script (src/lib/pdfDepuisHtml.js). Avant : une fenêtre à l'origine du site
+              // où le document était écrit par document.write (relecture gardien-securite du 10 oct. 2026).
+              try {
+                const [{ pdfDepuisHtml }, { remettreFichier }] = await Promise.all([import('../../lib/pdfDepuisHtml'), import('../../lib/natif')]);
+                const octets = await pdfDepuisHtml(signedHtml);
+                await remettreFichier(new Blob([octets], { type: 'application/pdf' }), `Devis_${devis.numero || 'signe'}.pdf`, 'application/pdf', { titre: `Devis ${devis.numero || ''} signé` });
+              } catch (err) {
+                captureException(err, { context: 'PDF du devis signé (page de signature)' });
+                setTelechargementEchoue(true);
               }
             }}
             className="w-full py-3 rounded-xl font-medium flex items-center justify-center gap-2 mb-4 transition-all hover:shadow-lg text-white"
@@ -242,6 +249,9 @@ export default function DevisSignaturePage({ signatureToken }) {
             <Download className="w-5 h-5" />
             Télécharger mon devis signé
           </button>
+          {telechargementEchoue && (
+            <p role="alert" className="text-sm text-red-600 text-center mb-4">Le PDF n'a pas pu être créé. Réessayez, ou demandez-le à l'entreprise.</p>
+          )}
 
           <div className="flex items-center gap-2 justify-center text-xs text-slate-400">
             <Shield className="w-3.5 h-3.5" />

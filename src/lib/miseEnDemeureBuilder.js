@@ -11,6 +11,7 @@
 import { calculatePenalties, DEFAULT_PENALTY_RATE, estClientPro } from './relanceUtils';
 import { dateLocale } from './paiementsFacture';
 import { echapperHtml as h, couleurCss } from './echapperHtml';
+import { imprimerHtml } from './imprimerHtml';
 
 /**
  * Format a number as euros (French locale)
@@ -437,16 +438,8 @@ function getRCSComplet(entreprise) {
  * @param {Object} params - Same params as buildMiseEnDemeureHtml
  */
 export function printMiseEnDemeure(params) {
-  const html = buildMiseEnDemeureHtml(params);
-  const printWindow = window.open('', '_blank');
-  if (printWindow) {
-    printWindow.document.write(html);
-    printWindow.document.close();
-    printWindow.focus();
-    setTimeout(() => {
-      printWindow.print();
-    }, 500);
-  }
+  // Cadre caché sans script (src/lib/imprimerHtml.js), plus de fenêtre à l'origine de l'app
+  return imprimerHtml(buildMiseEnDemeureHtml(params));
 }
 
 export default { buildMiseEnDemeureHtml, printMiseEnDemeure };
