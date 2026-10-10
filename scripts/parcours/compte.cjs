@@ -1,10 +1,11 @@
 // Compte : suppression (démo), code testeur, retours utilisateurs, assistant de configuration.
 
 // Ouvre l'assistant depuis la jauge « Profil complété » et va à sa dernière étape
-async function assistantDerniereEtape(page, { cliquer }) {
+// (`pendant(etape)` : geste fait dans l'assistant à l'étape donnée, avant « Suivant »)
+async function assistantDerniereEtape(page, { cliquer }, pendant = async () => {}) {
   await cliquer(page, 'Cliquez pour voir les champs manquants');
   await cliquer(page, 'Compléter avec l\'assistant');
-  for (let i = 0; i < 4; i++) await cliquer(page, 'Suivant →');
+  for (let i = 0; i < 4; i++) { await pendant(i); await cliquer(page, 'Suivant →'); }
 }
 const etatAssistant = (page) => page.evaluate(() => {
   const visible = (el) => { const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0; };
@@ -41,17 +42,26 @@ module.exports = [
       verifier(apres.ferme, 'l’assistant se ferme');
       verifier(apres.focus === 'settings-field-decennaleAssureur', `le champ de la décennale reçoit le curseur (${apres.focus})`);
 
-      // Profil d'envoi complet (téléphone vide, non bloquant, pour que la jauge ouvre encore l'assistant) : réussite
+      // L'assistant ne s'ouvre que sur un profil incomplet (jauge < 100 %) : téléphone vidé, puis saisi dans l'assistant
+      // (étape « Informations légales ») ; le profil ne bloque plus l'envoi à la dernière étape : réussite
       await saisir(page, '#settings-field-decennaleAssureur', 'SMABTP');
       await attendre(1200);
       await cliquer(page, 'Identité');
       await saisir(page, '#settings-field-tel', '');
       await attendre(1200);
-      await assistantDerniereEtape(page, { cliquer });
+      await assistantDerniereEtape(page, { cliquer }, async (etape) => {
+        // saisie différée (800 ms) puis « Modifications enregistrées » (800 ms) : une notification en remplace une autre
+        if (etape === 1) { await saisir(page, '#assistant-tel', '06 12 34 56 78'); await attendre(2500); }
+      });
       const avec = await etatAssistant(page);
-      verifier(avec.manquantes.length === 0 && avec.terminer, 'profil d’envoi complet : « Terminer », aucune liste');
+      verifier(avec.manquantes.length === 0 && avec.terminer, `profil d’envoi complet : « Terminer », aucune liste (${JSON.stringify(avec.manquantes)})`);
+      await page.evaluate(() => {
+        window.__reussite = false;
+        new MutationObserver(() => { if (document.body.innerText.includes('Configuration terminée !')) window.__reussite = true; })
+          .observe(document.body, { childList: true, subtree: true, characterData: true });
+      });
       await cliquer(page, 'Terminer');
-      verifier(await page.evaluate(() => document.body.innerText.includes('Configuration terminée !')), 'message de réussite');
+      verifier(await page.evaluate(() => window.__reussite), 'message de réussite');
     },
   },
   {

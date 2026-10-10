@@ -2142,8 +2142,8 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                       { key: 'email', label: 'Email *', placeholder: 'contact@entreprise.fr' },
                     ].map(f => (
                       <div key={f.key}>
-                        <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>{f.label}</label>
-                        <DebouncedInput type="text" value={entreprise[f.key] || ''} onChange={val => updateEntreprise(p => ({ ...p, [f.key]: val }))}
+                        <label htmlFor={`assistant-${f.key}`} className={`block text-sm font-medium mb-1 ${textPrimary}`}>{f.label}</label>
+                        <DebouncedInput id={`assistant-${f.key}`} type="text" value={entreprise[f.key] || ''} onChange={val => updateEntreprise(p => ({ ...p, [f.key]: val }))}
                           placeholder={f.placeholder} className={`w-full px-4 py-2.5 border rounded-xl text-sm ${inputBg}`} />
                       </div>
                     ))}
