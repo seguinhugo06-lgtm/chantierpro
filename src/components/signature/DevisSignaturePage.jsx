@@ -3,6 +3,7 @@ import SignatureCanvas from 'react-signature-canvas';
 import { FileText, Check, X, RotateCcw, Pen, Calendar, Info, CheckCircle, AlertCircle, Loader2, ArrowRight, ArrowLeft, Shield, Download } from 'lucide-react';
 import { supabase } from '../../supabaseClient';
 import { buildDevisHtml } from '../../lib/devisHtmlBuilder';
+import { dateLue } from '../../lib/dates';
 import { captureException } from '../../lib/sentry';
 
 /**
@@ -14,6 +15,7 @@ import { captureException } from '../../lib/sentry';
 export default function DevisSignaturePage({ signatureToken }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [titreErreur, setTitreErreur] = useState('Lien invalide');
   const [alreadySigned, setAlreadySigned] = useState(false);
   const [devisData, setDevisData] = useState(null);
   const [step, setStep] = useState('preview'); // preview, info, sign, success
@@ -46,6 +48,20 @@ export default function DevisSignaturePage({ signatureToken }) {
 
         if (data.devis?.already_signed) {
           setAlreadySigned(true);
+          setLoading(false);
+          return;
+        }
+        // Migration 083 : un devis expiré (C. civ. 1117) ou qui n'est plus proposé (refusé, brouillon) ne se signe pas
+        if (data.devis?.expire) {
+          const fin = data.devis.date_validite ? dateLue(data.devis.date_validite).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }).replace(/^1 /, '1er ') : '';
+          setTitreErreur('Devis expiré');
+          setError(`Ce devis n'était valable que jusqu'au ${fin}. Contactez votre artisan : il peut prolonger sa validité et vous envoyer un nouveau lien.`);
+          setLoading(false);
+          return;
+        }
+        if (data.devis?.indisponible) {
+          setTitreErreur('Devis indisponible');
+          setError('Ce devis n\'est plus proposé à la signature. Contactez votre artisan.');
           setLoading(false);
           return;
         }
@@ -111,6 +127,7 @@ export default function DevisSignaturePage({ signatureToken }) {
       if (signError) throw signError;
 
       if (!data?.success) {
+        setTitreErreur('Signature non enregistrée');
         setError(data?.error || 'Erreur lors de la signature. Veuillez réessayer.');
       } else {
         // Update local devis data with signature info for PDF download
@@ -156,9 +173,9 @@ export default function DevisSignaturePage({ signatureToken }) {
           <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-green-100 flex items-center justify-center">
             <CheckCircle className="w-8 h-8 text-green-500" />
           </div>
-          <h1 className="text-xl font-bold text-slate-900 mb-3">Devis déjà signé</h1>
+          <h1 className="text-xl font-bold text-slate-900 mb-3">Devis déjà accepté</h1>
           <p className="text-slate-600 leading-relaxed">
-            Ce devis a déjà été signé. Aucune action supplémentaire n'est nécessaire.
+            Ce devis a déjà été accepté : aucune action n'est nécessaire.
           </p>
         </div>
       </div>
@@ -173,7 +190,7 @@ export default function DevisSignaturePage({ signatureToken }) {
           <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-red-100 flex items-center justify-center">
             <AlertCircle className="w-8 h-8 text-red-500" />
           </div>
-          <h1 className="text-xl font-bold text-slate-900 mb-3">Lien invalide</h1>
+          <h1 className="text-xl font-bold text-slate-900 mb-3">{titreErreur}</h1>
           <p className="text-slate-600 leading-relaxed">{error}</p>
         </div>
       </div>
@@ -227,7 +244,7 @@ export default function DevisSignaturePage({ signatureToken }) {
                   signataire_nom: devis.signataire_nom
                 },
                 client,
-                chantier: null,
+                chantier: devisData.chantier || null,
                 entreprise,
                 couleur,
                 mode: 'client'
@@ -259,7 +276,7 @@ export default function DevisSignaturePage({ signatureToken }) {
           </div>
 
           <p className="text-sm text-slate-500 mt-4">
-            {entreprise?.nom || 'Votre artisan'} a été notifié de votre signature et vous recontactera sous 48h.
+            Votre signature est enregistrée. Votre artisan reviendra vers vous pour la suite.
           </p>
         </div>
       </div>
@@ -271,7 +288,8 @@ export default function DevisSignaturePage({ signatureToken }) {
     const devisHtml = buildDevisHtml({
       doc: devis,
       client,
-      chantier: null,
+      // Lieu des travaux (migration 083 ; avant : jamais transmis à la page du client)
+      chantier: devisData.chantier || null,
       entreprise,
       couleur,
       mode: 'client'
@@ -431,7 +449,9 @@ export default function DevisSignaturePage({ signatureToken }) {
                 <div>
                   <p className="font-medium text-slate-900">J'accepte ce devis</p>
                   <p className="text-sm text-slate-500 mt-0.5">
-                    En signant, j'accepte le devis et les conditions générales de vente de {entreprise?.nom || "l'entreprise"}.
+                    {entreprise?.cgv
+                      ? <>En signant, j'accepte ce devis et les conditions particulières qui y figurent.</>
+                      : <>En signant, j'accepte ce devis.</>}
                     <button
                       type="button"
                       onClick={(ev) => { ev.preventDefault(); setStep('preview'); }}
@@ -506,7 +526,7 @@ export default function DevisSignaturePage({ signatureToken }) {
               {/* Bon pour accord */}
               <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4">
                 <p className="text-sm text-amber-800 font-medium text-center">
-                  Mention obligatoire : « Bon pour accord »
+                  Bon pour accord
                 </p>
               </div>
 
