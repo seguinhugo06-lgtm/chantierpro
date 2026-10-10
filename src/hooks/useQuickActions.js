@@ -12,6 +12,7 @@ import { useData } from '../context/DataContext';
 import { buildDocumentHTML, getEntrepriseFromStorage } from '../lib/pdfHtmlBuilder';
 import { urlPublique } from '../lib/urlPublique';
 import { jourLocal } from '../lib/dates';
+import { telInternational } from '../lib/messageRelance';
 
 /**
  * @typedef {'devis' | 'facture' | 'chantier' | 'client'} ItemType
@@ -510,7 +511,7 @@ export function useQuickActions(config) {
         return;
       }
 
-      const cleanPhone = phone.replace(/\s/g, '').replace(/^\+/, '');
+      const cleanPhone = telInternational(phone);
       const waUrl = message
         ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`
         : `https://wa.me/${cleanPhone}`;

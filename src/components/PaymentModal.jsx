@@ -5,6 +5,7 @@ import { formatAmount, ACOMPTE_OPTIONS } from '../lib/stripe/payment';
 import supabase, { isDemo } from '../supabaseClient';
 import { buildPaymentUrl } from '../lib/paymentUtils';
 import { jourLocal } from '../lib/dates';
+import { telInternational } from '../lib/messageRelance';
 
 // Check if Stripe is configured (either Connect or direct keys)
 const STRIPE_CONFIGURED = import.meta.env.VITE_STRIPE_PUBLIC_KEY && !import.meta.env.VITE_STRIPE_PUBLIC_KEY.includes('demo');
@@ -215,7 +216,8 @@ export default function PaymentModal({
   const sendByWhatsApp = () => {
     if (!paymentLink?.paymentUrl) return;
 
-    const phone = (client?.telephone || client?.tel || '').replace(/\s/g, '').replace(/^0/, '+33');
+    // Indicatif international, chiffres seuls (wa.me refuse « +33… » et « 06… »)
+    const phone = telInternational(client?.telephone || client?.tel || '');
     const message = encodeURIComponent(
       `Bonjour,\n\nVoici le lien de paiement pour votre ${document.type === 'facture' ? 'facture' : 'devis'} ${document.numero} (${formatAmount(amount)}).\n\n${paymentLink.paymentUrl}\n\nCordialement,\n${entreprise?.nom || ''}`
     );

@@ -117,8 +117,8 @@ function CircularProgress({ score, size = 120, strokeWidth = 10, isDark }) {
 }
 
 /**
- * Facture2026Tab - Compliance readiness tab for the September 2026
- * French electronic invoicing mandate (facturation électronique).
+ * Facture2026Tab - réforme de la facture électronique : réception obligatoire depuis le 1er sept. 2026,
+ * émission au 1er sept. 2027 pour les TPE/PME, par une Plateforme Agréée (Mallettico n'en est pas une).
  *
  * Features:
  * - Dynamic compliance score (entreprise fields + real XML generation test)
@@ -163,10 +163,11 @@ export default function Facture2026Tab({ entreprise, setEntreprise, isDark, coul
 
   const isReady = score >= 80;
 
-  const daysLeft = useMemo(() => {
-    const target = new Date('2026-09-01');
-    const now = new Date();
-    return Math.max(0, Math.ceil((target - now) / (1000 * 60 * 60 * 24)));
+  // Émission obligatoire pour les TPE, PME et indépendants : 1er septembre 2027 (docs/metier-btp.md §8).
+  // Avant (relecture juridique du 10 oct. 2026) : un compte à rebours vers le 1er septembre 2026, déjà passé.
+  const joursAvantEmission = useMemo(() => {
+    const cible = new Date(2027, 8, 1);
+    return Math.max(0, Math.ceil((cible - new Date()) / 86400000));
   }, []);
 
   // Run real Factur-X compliance test
@@ -243,12 +244,12 @@ export default function Facture2026Tab({ entreprise, setEntreprise, isDark, coul
           </div>
           <div className="flex-1 min-w-0">
             <h2 className={`text-lg font-bold ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
-              Facturation électronique obligatoire le 1er septembre 2026
+              Facture électronique : réception depuis le 1er septembre 2026, émission au 1er septembre 2027
             </h2>
             <p className={`mt-1 text-sm font-medium ${isReady ? 'text-emerald-600' : 'text-amber-600'}`}>
               {isReady
-                ? `Vos factures sont au bon format — ${daysLeft} jours pour choisir votre plateforme`
-                : `${daysLeft} jours restants — ${results.filter((r) => !r.passed).length} information(s) à compléter`}
+                ? `Vos informations d'entreprise sont complètes. Émission par une Plateforme Agréée obligatoire dans ${joursAvantEmission} jours.`
+                : `${results.filter((r) => !r.passed).length} information(s) à compléter — émission par une Plateforme Agréée obligatoire dans ${joursAvantEmission} jours.`}
             </p>
           </div>
         </div>
@@ -363,8 +364,8 @@ export default function Facture2026Tab({ entreprise, setEntreprise, isDark, coul
                 Mallettico ne transmet pas encore vos factures à votre place
               </p>
               <p className={`text-sm mt-0.5 ${isDark ? 'text-amber-200' : 'text-amber-700'}`}>
-                La réforme impose de passer par une plateforme agréée (PDP) pour envoyer
-                et surtout <strong>recevoir</strong> les factures électroniques. Ce raccordement
+                La réforme impose de passer par une Plateforme Agréée pour <strong>recevoir</strong> les
+                factures électroniques (depuis le 1er septembre 2026) puis pour les envoyer. Ce raccordement
                 est une démarche à faire de votre côté : choisissez une plateforme, déclarez-y
                 votre SIREN, et déposez-y les fichiers que Mallettico produit.
               </p>
@@ -388,7 +389,7 @@ export default function Facture2026Tab({ entreprise, setEntreprise, isDark, coul
           <p className={`text-sm leading-relaxed ${textSecondary}`}>
             Factur-X est le standard franco-allemand de facturation électronique basé sur la norme
             européenne EN 16931. Il combine un PDF lisible avec un fichier XML structuré, permettant
-            le traitement automatisé par les plateformes de dématérialisation partenaires (PDP).
+            le traitement automatisé par les Plateformes Agréées.
           </p>
           <div className={`flex flex-wrap gap-3 mt-3 text-sm ${textSecondary}`}>
             <div className={`flex items-center gap-2 px-3 py-2 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
@@ -442,7 +443,7 @@ export default function Facture2026Tab({ entreprise, setEntreprise, isDark, coul
                     Score : {testResult.score}/100 — Profil {testResult.profileLabel}
                   </p>
                   <p className={`text-sm mt-0.5 ${textMuted}`}>
-                    {testResult.isReady ? 'Votre configuration est prête pour Factur-X' : 'Des améliorations sont nécessaires'}
+                    {testResult.isReady ? 'Les informations requises sur vos factures sont renseignées' : 'Des informations manquent sur vos factures'}
                   </p>
                 </div>
               </div>

@@ -272,10 +272,18 @@ export const FIELD_MAPPINGS = {
       total_ht: row.total_ht || 0,
       tva: row.total_tva || 0,
       total_ttc: row.total_ttc || 0,
-      // Signature fields
+      // Signature : sur place (signature, signataire) ou à distance par le lien (signature_data,
+      // signataire_nom, écrites par sign_devis). Avant (recette du 9 oct. 2026), la seconde n'était jamais
+      // relue : l'artisan ne voyait ni qui avait signé, ni quand, ni le tracé. Lire par signatureDuClient().
       signature: row.signature || null,
       signatureDate: row.signature_date || null,
       signataire: row.signataire || null,
+      signature_data: row.signature_data || null,
+      signataire_nom: row.signataire_nom || null,
+      // Lien de signature déjà donné au client : relu pour être réutilisé (avant : chaque envoi après un
+      // rechargement en créait un nouveau, et le lien du premier e-mail répondait « Lien invalide »)
+      signature_token: row.signature_token || null,
+      signature_expires_at: row.signature_expires_at || null,
       // Facture-specific fields
       facture_type: row.facture_type || null,
       devis_source_id: row.devis_source_id || null,
@@ -836,7 +844,9 @@ export const FIELD_MAPPINGS = {
       chantier_id: item.chantierId || item.chantier_id || null,
       devis_id: item.devisId || item.devis_id || null,
       type: item.type || 'note',
-      contenu: item.contenu || item.message || '',
+      // La table n'a ni objet, ni numéro, ni montant : un échange d'envoi (« Envoi devis DEV-… », montant)
+      // les range dans le contenu. Avant (recette du 9 oct. 2026) il s'enregistrait vide : « (Sans objet) ».
+      contenu: item.contenu || item.message || [item.objet, Number.isFinite(Number(item.montant)) && item.montant !== null && item.montant !== '' ? `${Number(item.montant).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €` : null].filter(Boolean).join(' · '),
       date: item.date || item.createdAt || null,
     }),
     fromSupabase: (row) => ({
@@ -850,6 +860,7 @@ export const FIELD_MAPPINGS = {
       type: row.type || 'note',
       contenu: row.contenu,
       message: row.contenu,
+      objet: row.contenu || '',
       date: row.date,
       createdAt: row.created_at,
     }),

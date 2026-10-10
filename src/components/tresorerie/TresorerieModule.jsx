@@ -45,6 +45,7 @@ import { statutFacture, resteAPayer, joursDeRetard, echeance, encaisseEntre, dat
 import { estOuverte, resteAFacturer } from '../../lib/ventes';
 import { jourLocal, ajouterMois, dateLue } from '../../lib/dates';
 import { captureException } from '../../lib/sentry';
+import { telInternational } from '../../lib/messageRelance';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -883,7 +884,8 @@ export default function TresorerieModule({
     if (tresorerieLoading) return;
     if (!syncedIdsRef.current) syncedIdsRef.current = getSyncedIds();
 
-    const acceptedDevis = devis.filter(d => d.type === 'devis' && d.statut === 'accepte');
+    // Devis signés, sur place (« accepte ») ou par le lien (« signe »)
+    const acceptedDevis = devis.filter(d => d.type === 'devis' && ['accepte', 'signe'].includes(d.statut));
     const synced = syncedIdsRef.current;
     if (!synced.acceptedDevis) synced.acceptedDevis = [];
     const newPrevisions = [];
@@ -1044,7 +1046,8 @@ export default function TresorerieModule({
     const msg = encodeURIComponent(
       `Bonjour ${item.clientNom},\n\nJe me permets de vous relancer concernant la facture n°${item.numero} d'un montant de ${formatCurrency(item.montant)} €.\n\n${item.joursRetard > 0 ? `Cette facture est en retard de ${item.joursRetard} jour${item.joursRetard > 1 ? 's' : ''}. ` : ''}Pourriez-vous procéder au règlement ?\n\nMerci d'avance,\nCordialement`
     );
-    const tel = (item.clientTel || '').replace(/\s/g, '').replace(/^0/, '+33');
+    // Indicatif international, chiffres seuls (wa.me refuse « +33… » et « 06.12… »)
+    const tel = telInternational(item.clientTel || '');
     window.open(`https://wa.me/${tel}?text=${msg}`, '_blank');
   }, []);
 

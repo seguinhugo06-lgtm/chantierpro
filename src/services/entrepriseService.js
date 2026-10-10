@@ -22,6 +22,8 @@ const MAX_ENTREPRISES = 5;
  * disparaissaient des documents, le taux de pénalités retombait sur « BCE + 10 points ».
  */
 export const REGLAGES_SANS_COLONNE = {
+  // Prénom et nom de l'entrepreneur individuel : la mention « EI » le suit sur les documents (C. com. R526-27)
+  nomEntrepreneur: '',
   banque: '',
   titulaireBanque: '',
   rcsNumero: '',

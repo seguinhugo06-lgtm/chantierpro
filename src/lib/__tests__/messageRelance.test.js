@@ -23,7 +23,7 @@ describe('rappel d\'une facture : seulement après l\'échéance', () => {
     expect(solde.enRetard).toBe(false);
     expect(relanceDe(facture(), [], LE_5_SEPT)).toBeNull();
     const t = espaces(texteCourt(facture(), { solde }));
-    expect(t).toBe('Bonjour, voici votre facture FAC-2026-00010 : 1 000,00 € à régler au plus tard le 11 septembre 2026.');
+    expect(t).toBe('Bonjour, votre facture FAC-2026-00010 : 1 000,00 € à régler au plus tard le 11 septembre 2026.');
     const html = espaces(buildDocumentEmailBody({ doc: facture(), client: { nom: 'Dupont' }, entreprise: { nom: 'Élec' }, solde }));
     expect(html).toMatch(/Veuillez trouver ci-joint votre facture/);
     expect(html).not.toMatch(/Sauf erreur|à nouveau/);
@@ -56,6 +56,16 @@ describe('rappel d\'une facture : seulement après l\'échéance', () => {
   it('WhatsApp / SMS d\'un devis : le lien pour le consulter et le signer (avant : le montant seul)', () => {
     const t = espaces(texteCourt({ type: 'devis', numero: 'DEV-1', total_ttc: 500 }, { lienSignature: 'https://mallettico.fr/devis/signer/abc', entrepriseNom: 'Élec' }));
     expect(t).toBe('Bonjour, voici votre devis DEV-1 : 500,00 €. Pour le consulter et le signer en ligne : https://mallettico.fr/devis/signer/abc — Élec');
+  });
+
+  it('relance d\'un devis par message : la question, la date d\'envoi et le lien de signature', () => {
+    const t = espaces(texteCourt({ type: 'devis', numero: 'DEV-1', total_ttc: 500, date_envoi: '2026-10-01' }, { lienSignature: 'https://mallettico.fr/devis/signer/abc', relanceDevis: true }));
+    expect(t).toBe('Bonjour, avez-vous pu consulter le devis DEV-1 (500,00 €), envoyé le 1 octobre 2026 ? Pour le consulter et le signer en ligne : https://mallettico.fr/devis/signer/abc Je reste à votre disposition pour toute question.');
+  });
+
+  it('une facture par message ne prétend pas être jointe', () => {
+    const t = texteCourt({ type: 'facture', numero: 'F-1', total_ttc: 300 }, { solde: { total: 300, reste: 0 } });
+    expect(espaces(t)).toBe('Bonjour, votre facture F-1 (300,00 €) est réglée. Merci.');
   });
 });
 

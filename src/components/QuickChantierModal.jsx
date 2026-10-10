@@ -132,7 +132,8 @@ export default function QuickChantierModal({
   const selectedClient = clients.find(c => c.id === form.client_id);
 
   // Get devis for selected client (for budget suggestion)
-  const clientDevis = devis.filter(d => d.client_id === form.client_id && d.statut === 'accepte');
+  // Devis signés, sur place (« accepte ») ou par le lien (« signe »)
+  const clientDevis = devis.filter(d => d.client_id === form.client_id && d.type !== 'facture' && ['accepte', 'signe'].includes(d.statut));
 
   const handleSubmit = (e) => {
     e?.preventDefault();

@@ -29,6 +29,7 @@ import { remettreFichier } from '../lib/natif';
 import { tauxFacture, coutHoraire, coutDesPointages } from '../lib/tauxEquipe';
 import { decompteHeures, lundiDe, dimancheDe } from '../lib/paie';
 import { jourLocal, dateLue } from '../lib/dates';
+import { telInternational } from '../lib/messageRelance';
 
 // Lazy-load optional heavy dependencies to prevent crashes
 let NoteModal = null;
@@ -3363,7 +3364,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                 <div className="space-y-2">
                   {equipe.filter(e => e.actif !== false && e.telephone).map(emp => {
                     const config = getRoleConfig(emp.role);
-                    const phone = emp.telephone?.replace(/[\s.-]/g, '').replace(/^0/, '+33');
+                    const phone = telInternational(emp.telephone);
                     return (
                       <div key={emp.id} className={`flex items-center gap-3 p-3 rounded-xl hover:bg-surface-2`}>
                         <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold" style={{ background: config.color }}>

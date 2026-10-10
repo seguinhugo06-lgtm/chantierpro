@@ -22,6 +22,9 @@ import { franchiseAppliquee } from './franchiseTva';
 import { imprimerHtml } from './imprimerHtml';
 import { nomImprime, formeImprimee } from './identiteEntreprise';
 import { dateLue } from './dates';
+import { signatureDuClient } from './signatureDocument';
+import { finValidite } from './validiteDevis';
+import { estClientPro } from './relanceUtils';
 
 /**
  * Formatte un RCS complet
@@ -99,8 +102,9 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mod
   // Franchise en base, sauf un document émis enregistré avec TVA : réimprimé tel qu'émis (src/lib/franchiseTva.js)
   const isMicro = franchiseAppliquee(doc, entreprise);
 
-  const dateValidite = new Date(doc.date);
-  dateValidite.setDate(dateValidite.getDate() + (doc.validite || entreprise?.validiteDevis || entreprise?.validite_devis || 30));
+  // Fin de validité réelle : la page de signature reçoit date_validite, pas la durée (avant, recette du 9 oct. :
+  // le client lisait 30 jours quelle que soit la validité choisie par l'artisan)
+  const dateValidite = dateLue(finValidite(doc, entreprise) || doc.date);
 
   // Calculate TVA details from lignes
   const calculatedTvaDetails = doc.tvaDetails || (() => {
@@ -174,18 +178,15 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mod
 
   const rcsComplet = getRCSComplet(entreprise);
 
-  // Signature block
+  // Signature du client (sur place ou à distance) : tracé, nom, date (src/lib/signatureDocument.js)
   let signatureBlock = '';
-  if (doc.signature_data || doc.signature) {
-    const sigData = doc.signature_data || doc.signature;
-    const sigDate = doc.signature_date || doc.signatureDate;
-    const sigNom = doc.signataire_nom || doc.signataire || '';
+  const sig = signatureDuClient(doc);
+  if (sig) {
     signatureBlock = `
       <div style="margin-top:10px">
-        <img src="${h(sigData)}" style="max-height:80px;max-width:200px;border:1px solid #e2e8f0;border-radius:4px;padding:4px;background:white" alt="Signature" />
+        ${sig.image ? `<img src="${h(sig.image)}" style="max-height:80px;max-width:200px;border:1px solid #e2e8f0;border-radius:4px;padding:4px;background:white" alt="Signature" />` : ''}
         <div style="font-size:8pt;color:#16a34a;font-weight:bold;margin-top:4px">
-          ✓ Signé électroniquement le ${sigDate ? dateLue(sigDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}
-          ${sigNom ? ` par ${h(sigNom)}` : ''}
+          ✓ Signé électroniquement${sig.date ? ` le ${dateLue(sig.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}` : ''}${sig.nom ? ` par ${h(sig.nom)}` : ''}
         </div>
       </div>`;
   }
@@ -398,8 +399,9 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mod
   ` : ''}
 
   ${!isFacture ? `
-  <!-- MÉDIATEUR DE LA CONSOMMATION (C. conso. L612-1 ; même bloc que l'aperçu de l'artisan) -->
-  ${doc.facture_type !== 'avoir' && (e.mediateur || e.mediateurContact) ? `
+  <!-- MÉDIATEUR DE LA CONSOMMATION (C. conso. L612-1 ; même bloc que l'aperçu de l'artisan). Client particulier
+       seulement : la médiation de la consommation ne couvre pas les litiges entre professionnels (L611-3, 1°). -->
+  ${doc.facture_type !== 'avoir' && !estClientPro(client) && (e.mediateur || e.mediateurContact) ? `
   <div class="retractation" style="margin-top:10px">
     <strong>MÉDIATEUR DE LA CONSOMMATION</strong> (Art. L612-1 du Code de la consommation)<br>
     En cas de litige, vous pouvez recourir gratuitement au service de médiation :

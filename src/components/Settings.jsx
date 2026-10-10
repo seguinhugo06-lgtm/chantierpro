@@ -26,6 +26,8 @@ import PostChantierSettings from './settings/PostChantierSettings';
 import { remettreFichier } from '../lib/natif';
 import { Bouton } from './ui/Bouton';
 import { jourLocal, dateLue } from '../lib/dates';
+import { estEntrepreneurIndividuel, estEirl, nomImprime } from '../lib/identiteEntreprise';
+import { URL_SIRENE, profilDepuisSirene } from '../lib/sirene';
 
 // ── Tab groups for mobile navigation ────────────────────────────────────────
 const TAB_GROUPS = [
@@ -77,6 +79,20 @@ const FRAIS_ITEMS = [
 ];
 
 // Villes RCS principales France
+// Formes juridiques : une liste fermée (l'assistant proposait un texte libre ; « micro-entreprise » tapé à la
+// main n'était pas reconnu et la TVA s'ajoutait sous la franchise 293 B)
+const FORMES_JURIDIQUES = [
+  { valeur: 'EI', libelle: 'Entreprise Individuelle (EI)' },
+  { valeur: 'EIRL', libelle: 'EIRL' },
+  { valeur: 'Micro-entreprise', libelle: 'Micro-entreprise / Auto-entrepreneur' },
+  { valeur: 'EURL', libelle: 'EURL' },
+  { valeur: 'SARL', libelle: 'SARL' },
+  { valeur: 'SAS', libelle: 'SAS' },
+  { valeur: 'SASU', libelle: 'SASU' },
+  { valeur: 'SA', libelle: 'SA (Société Anonyme)' },
+  { valeur: 'SNC', libelle: 'SNC (Société en Nom Collectif)' },
+];
+
 const VILLES_RCS = ['Paris', 'Lyon', 'Marseille', 'Toulouse', 'Nice', 'Nantes', 'Strasbourg', 'Montpellier', 'Bordeaux', 'Lille', 'Rennes', 'Reims', 'Toulon', 'Saint-Étienne', 'Le Havre', 'Grenoble', 'Dijon', 'Angers', 'Nîmes', 'Villeurbanne', 'Clermont-Ferrand', 'Aix-en-Provence', 'Brest', 'Tours', 'Amiens', 'Limoges', 'Annecy', 'Perpignan', 'Boulogne-Billancourt', 'Metz', 'Besançon', 'Orléans', 'Rouen', 'Mulhouse', 'Caen', 'Nancy', 'Saint-Denis', 'Argenteuil', 'Roubaix', 'Tourcoing', 'Montreuil', 'Avignon', 'Créteil', 'Poitiers', 'Fort-de-France', 'Versailles', 'Courbevoie', 'Vitry-sur-Seine', 'Colombes', 'Pau'];
 
 // Debounced input to prevent re-render on every keystroke (mobile perf)
@@ -235,42 +251,26 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
     }
     setSireneLoading(true);
     try {
-      // Use open data API (no key required)
-      const resp = await fetch(`https://api.insee.fr/entreprises/sirene/V3.11/siret/${siret}`, {
-        headers: { Accept: 'application/json' },
-      }).catch(() => null);
-
-      // Fallback to open data API
-      const resp2 = resp?.ok ? resp : await fetch(`https://entreprise.data.gouv.fr/api/sirene/v3/etablissements/${siret}`);
-      if (!resp2?.ok) throw new Error('API indisponible');
-      const data = await resp2.json();
-      const etab = data.etablissement || data;
-      const unite = etab.uniteLegale || etab.unite_legale || {};
-      const adresse = etab.adresseEtablissement || etab.adresse || {};
-
-      const nom = unite.denominationUniteLegale || unite.denomination || unite.nomUniteLegale || '';
-      const prenom = unite.prenomUsuelUniteLegale || '';
-      const fullNom = nom || (prenom ? `${prenom} ${unite.nomUniteLegale || ''}`.trim() : '');
-      const codeNaf = etab.periodesEtablissement?.[0]?.activitePrincipaleEtablissement || unite.activitePrincipaleUniteLegale || '';
-      const formeJur = unite.categorieJuridiqueUniteLegale || '';
-      const adresseStr = [
-        adresse.numeroVoieEtablissement,
-        adresse.typeVoieEtablissement,
-        adresse.libelleVoieEtablissement,
-        adresse.codePostalEtablissement,
-        adresse.libelleCommuneEtablissement,
-      ].filter(Boolean).join(' ');
-
+      // API publique de l'État, sans clé (src/lib/sirene.js)
+      const resp = await fetch(`${URL_SIRENE}?q=${siret}&per_page=1`, { headers: { Accept: 'application/json' } });
+      if (!resp.ok) throw new Error(`API ${resp.status}`);
+      const profil = profilDepuisSirene(await resp.json(), siret);
+      if (!profil) throw new Error('SIRET introuvable');
+      const fullNom = profil.nom;
+      // Seuls les champs vides sont remplis (le code APE, public, est mis à jour)
       updateEntreprise(prev => ({
         ...prev,
-        ...(fullNom && !prev.nom ? { nom: fullNom } : {}),
-        ...(adresseStr && !prev.adresse ? { adresse: adresseStr } : {}),
-        ...(codeNaf ? { codeApe: codeNaf } : {}),
+        ...(profil.nom && !prev.nom ? { nom: profil.nom } : {}),
+        ...(profil.adresse && !prev.adresse ? { adresse: profil.adresse } : {}),
+        ...(profil.codeApe ? { codeApe: profil.codeApe } : {}),
+        ...(profil.formeJuridique && !prev.formeJuridique ? { formeJuridique: profil.formeJuridique } : {}),
+        ...(profil.nomEntrepreneur && !prev.nomEntrepreneur ? { nomEntrepreneur: profil.nomEntrepreneur } : {}),
       }));
 
       showToast(`SIRENE : ${fullNom || 'Entreprise trouvée'}`, 'success');
     } catch (err) {
-      showToast('Impossible de récupérer les données SIRENE. Vérifiez le SIRET.', 'error');
+      if (err?.message === 'SIRET introuvable') showToast('Ce SIRET est introuvable dans le répertoire SIRENE : vérifiez-le.', 'error');
+      else { captureException(err, { context: 'auto-remplissage SIRENE' }); showToast('Le répertoire SIRENE ne répond pas : réessayez plus tard ou remplissez les champs à la main.', 'error'); }
     }
     setSireneLoading(false);
   }, [entreprise.siret, updateEntreprise, showToast]);
@@ -820,15 +820,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                 <label className="block text-sm font-medium mb-1">Statut juridique <span className="text-red-500">*</span></label>
                 <select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={entreprise.formeJuridique || ''} onChange={e => updateEntreprise(p => ({...p, formeJuridique: e.target.value}))}>
                   <option value="">Sélectionner...</option>
-                  <option value="EI">Entreprise Individuelle (EI)</option>
-                  <option value="EIRL">EIRL</option>
-                  <option value="Micro-entreprise">Micro-entreprise / Auto-entrepreneur</option>
-                  <option value="EURL">EURL</option>
-                  <option value="SARL">SARL</option>
-                  <option value="SAS">SAS</option>
-                  <option value="SASU">SASU</option>
-                  <option value="SA">SA (Société Anonyme)</option>
-                  <option value="SNC">SNC (Société en Nom Collectif)</option>
+                  {FORMES_JURIDIQUES.map(f => <option key={f.valeur} value={f.valeur}>{f.libelle}</option>)}
                 </select>
               </div>
               <div>
@@ -840,6 +832,15 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                   <span className={`px-4 py-2.5 border-y border-r rounded-r-xl bg-surface-2 text-encre-3 border-bord-fort`}>€</span>
                 </div>
               </div>
+              {(estEntrepreneurIndividuel(entreprise) || estEirl(entreprise)) && (
+                <div className="md:col-span-2">
+                  <label htmlFor="settings-field-nomEntrepreneur" className="block text-sm font-medium mb-1">Votre prénom et nom</label>
+                  <DebouncedInput id="settings-field-nomEntrepreneur" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="Ex : Hugo Séguin" value={entreprise.nomEntrepreneur || ''} onChange={val => updateEntreprise(p => ({...p, nomEntrepreneur: val}))} />
+                  <p className="text-xs text-encre-3 mt-1">
+                    Sur vos devis et factures, votre nom doit être suivi de « {estEirl(entreprise) ? 'EIRL' : 'EI'} ». Il s'imprimera ainsi : <strong className="text-encre-2">{nomImprime(entreprise) || '—'}</strong>
+                  </p>
+                </div>
+              )}
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium mb-1">Adresse siège social <span className="text-red-500">*</span></label>
                 <DebouncedTextarea id="settings-field-adresse" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} rows={2} placeholder="12 rue des Artisans&#10;75001 Paris&#10;FRANCE" value={entreprise.adresse || ''} onChange={val => updateEntreprise(p => ({...p, adresse: val}))} />
@@ -2049,8 +2050,22 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                       </div>
                       <p className={`text-xs mt-1 ${textMuted}`}>Recherche automatique via l’API SIRENE</p>
                     </div>
+                    <div>
+                      <label htmlFor="assistant-forme" className={`block text-sm font-medium mb-1 ${textPrimary}`}>Forme juridique</label>
+                      <select id="assistant-forme" className={`w-full px-4 py-2.5 border rounded-xl text-sm ${inputBg}`} value={entreprise.formeJuridique || ''} onChange={e => updateEntreprise(p => ({ ...p, formeJuridique: e.target.value }))}>
+                        <option value="">Sélectionner...</option>
+                        {FORMES_JURIDIQUES.map(f => <option key={f.valeur} value={f.valeur}>{f.libelle}</option>)}
+                      </select>
+                    </div>
+                    {(estEntrepreneurIndividuel(entreprise) || estEirl(entreprise)) && (
+                      <div>
+                        <label htmlFor="assistant-nom-entrepreneur" className={`block text-sm font-medium mb-1 ${textPrimary}`}>Votre prénom et nom</label>
+                        <DebouncedInput id="assistant-nom-entrepreneur" type="text" value={entreprise.nomEntrepreneur || ''} onChange={val => updateEntreprise(p => ({ ...p, nomEntrepreneur: val }))}
+                          placeholder="Ex : Hugo Séguin" className={`w-full px-4 py-2.5 border rounded-xl text-sm ${inputBg}`} />
+                        <p className={`text-xs mt-1 ${textMuted}`}>Imprimé suivi de « {estEirl(entreprise) ? 'EIRL' : 'EI'} » sur vos documents.</p>
+                      </div>
+                    )}
                     {[
-                      { key: 'formeJuridique', label: 'Forme juridique', placeholder: 'SARL, SAS, EI, Auto-entrepreneur...' },
                       { key: 'codeApe', label: 'Code APE', placeholder: '4399C' },
                       { key: 'tvaIntra', label: 'N° TVA Intracommunautaire', placeholder: 'FR12345678901' },
                       { key: 'adresse', label: 'Adresse complète *', placeholder: '12 rue des Artisans, 75011 Paris' },
