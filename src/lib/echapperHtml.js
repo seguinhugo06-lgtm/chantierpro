@@ -13,3 +13,11 @@ export function echapperHtml(valeur) {
 }
 
 export default echapperHtml;
+
+/**
+ * Couleur insérée dans un `style` : seulement « #rgb », « #rrggbb » ou « #rrggbbaa », sinon la couleur par
+ * défaut. Une couleur d'entreprise arbitraire pouvait fermer la balise <style> du document envoyé au client.
+ */
+export function couleurCss(valeur, defaut = '#f97316') {
+  return typeof valeur === 'string' && /^#(?:[0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(valeur.trim()) ? valeur.trim() : defaut;
+}

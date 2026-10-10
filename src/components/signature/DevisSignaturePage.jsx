@@ -300,6 +300,7 @@ export default function DevisSignaturePage({ signatureToken }) {
           <div className="bg-white shadow-xl rounded-lg overflow-hidden">
             <iframe
               srcDoc={devisHtml}
+              sandbox=""
               className="w-full border-0"
               style={{ minHeight: '297mm' }}
               title="Aperçu du devis"

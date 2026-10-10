@@ -33,13 +33,13 @@ function lignesDe(doc) {
 
 /**
  * @param {object} doc devis ou facture (lignes, remise, total_ht, tva, total_ttc, tvaDetails, tvaRate)
- * @param {{ tauxDefaut?: number }} [o]
+ * @param {{ tauxDefaut?: number, isMicro?: boolean }} [o] isMicro : franchise en base, ni TVA ni TTC distinct
  * @returns {{
  *   totalLignesHT: number, remisePct: number, remiseMontant: number, totalHT: number,
  *   tva: Array<{ taux: number, base: number, montant: number }>, totalTVA: number, totalTTC: number
  * }}
  */
-export function totauxDocument(doc, { tauxDefaut = 10 } = {}) {
+export function totauxDocument(doc, { tauxDefaut = 10, isMicro = false } = {}) {
   const remisePct = Number(doc?.remise ?? doc?.remise_globale ?? 0) || 0;
   const facteur = 1 - remisePct / 100;
   const defaut = Number(doc?.tvaRate ?? doc?.tva_rate ?? tauxDefaut);
@@ -80,6 +80,10 @@ export function totauxDocument(doc, { tauxDefaut = 10 } = {}) {
   }
   tva.sort((a, b) => a.taux - b.taux);
 
+  // Franchise en base (art. 293 B CGI) : le document ne porte aucune TVA, le total est le HT — même pour
+  // un document enregistré avant la correction avec de la TVA (recette du 9 oct. 2026).
+  if (isMicro) return { totalLignesHT, remisePct, remiseMontant, totalHT, tva: [], totalTVA: 0, totalTTC: totalHT };
+
   const totalTVA = arrondi(tva.reduce((s, x) => s + x.montant, 0));
   const totalTTC = doc?.total_ttc != null && doc.total_ttc !== '' ? arrondi(doc.total_ttc) : arrondi(totalHT + totalTVA);
   return { totalLignesHT, remisePct, remiseMontant, totalHT, tva, totalTVA, totalTTC };
@@ -97,7 +101,7 @@ export function acompteEtSolde(totalTTC, pourcentage) {
  * HT après remise ; la TVA porte sur les bases après remise.
  */
 export function lignesTotauxHtml(doc, { isMicro = false, tauxDefaut = 10 } = {}) {
-  const t = totauxDocument(doc, { tauxDefaut });
+  const t = totauxDocument(doc, { tauxDefaut, isMicro });
   const ligne = (libelle, valeur, style = '') => `<div class="row sub"${style ? ` style="${style}"` : ''}><span>${libelle}</span><span>${valeur}</span></div>`;
   const html = [];
   if (t.remisePct) {
@@ -114,7 +118,9 @@ export function lignesTotauxHtml(doc, { isMicro = false, tauxDefaut = 10 } = {})
       html.push(ligne(`TVA ${pourcent(doc?.tvaRate ?? doc?.tva_rate ?? tauxDefaut)}`, euros(doc?.tva ?? 0)));
     }
   }
-  html.push(`<div class="row total"><span>Total TTC</span><span>${euros(t.totalTTC)}</span></div>`);
+  // Franchise en base : pas de « TTC » (aucune TVA facturée), le total est net à payer
+  const libelleTotal = isMicro ? (doc?.type === 'facture' ? 'Net à payer' : 'Total') : 'Total TTC';
+  html.push(`<div class="row total"><span>${libelleTotal}</span><span>${euros(t.totalTTC)}</span></div>`);
   return html.join('\n    ');
 }
 
@@ -134,10 +140,11 @@ export function lignesAcompteHtml(doc, totalTTC, pourcentage) {
  * Totaux à ENREGISTRER pour des lignes (création d'un devis ou d'une facture) : lignes arrondies,
  * bases par taux après remise arrondies, TVA par taux arrondie, TTC = HT + TVA. Ce que le document
  * imprimera tombe ainsi juste au centime (règle EN 16931 BR-CO-15 de la facture électronique).
+ * `franchise` : entreprise en franchise en base (src/lib/franchiseTva.js) — TVA 0, TTC = HT.
  * @returns {{ totalLignesHT: number, remiseMontant: number, totalHT: number, totalTVA: number, totalTTC: number,
  *   tvaParTaux: Record<string, { base: number, montant: number }> }}
  */
-export function calculerTotaux(lignes, { remisePct = 0, tauxDefaut = 20, toutesLesLignes = false } = {}) {
+export function calculerTotaux(lignes, { remisePct = 0, tauxDefaut = 20, toutesLesLignes = false, franchise = false } = {}) {
   const facteur = 1 - (Number(remisePct) || 0) / 100;
   const bases = {};
   let totalLignesHT = 0;
@@ -146,7 +153,8 @@ export function calculerTotaux(lignes, { remisePct = 0, tauxDefaut = 20, toutesL
   for (const l of (toutesLesLignes ? liste.filter((x) => x && !x._isSection) : filterValidLignes(liste))) {
     const t = totalLigne(l);
     totalLignesHT += t;
-    const taux = Number(l.tva !== undefined && l.tva !== null && l.tva !== '' ? l.tva : tauxDefaut);
+    // Franchise en base (art. 293 B CGI) : aucune TVA, quel que soit le taux porté par la ligne
+    const taux = franchise ? 0 : Number(l.tva !== undefined && l.tva !== null && l.tva !== '' ? l.tva : tauxDefaut);
     bases[taux] = (bases[taux] || 0) + t;
   }
   totalLignesHT = arrondi(totalLignesHT);

@@ -10,6 +10,7 @@
 
 import { calculatePenalties, DEFAULT_PENALTY_RATE, estClientPro } from './relanceUtils';
 import { dateLocale } from './paiementsFacture';
+import { echapperHtml as h, couleurCss } from './echapperHtml';
 
 /**
  * Format a number as euros (French locale)
@@ -54,8 +55,9 @@ export function buildMiseEnDemeureHtml({
   entreprise,
   executions = [],
   penaltyRate = DEFAULT_PENALTY_RATE,
-  couleur = '#f97316',
+  couleur: couleurBrute = '#f97316',
 }) {
+  const couleur = couleurCss(couleurBrute);
   const now = new Date();
   const dateFacture = doc.date ? new Date(doc.date) : now;
   const dateEcheance = doc.date_echeance || doc.dateEcheance
@@ -85,29 +87,29 @@ export function buildMiseEnDemeureHtml({
       }).join(', ')
     : null;
 
-  // Company info
-  const entNom = entreprise?.nom || 'Notre entreprise';
-  const entAdresse = entreprise?.adresse || '';
-  const entSiret = entreprise?.siret || '';
-  const entTel = entreprise?.tel || entreprise?.telephone || '';
-  const entEmail = entreprise?.email || '';
-  const entRCS = getRCSComplet(entreprise);
-  const entCapital = entreprise?.capitalSocial || '';
-  const entForme = entreprise?.formeJuridique || '';
+  // Entreprise et client : textes saisis, échappés avant d'entrer dans le HTML (src/lib/echapperHtml.js)
+  const entNom = h(entreprise?.nom || 'Notre entreprise');
+  const entAdresse = h(entreprise?.adresse || '');
+  const entSiret = h(entreprise?.siret || '');
+  const entTel = h(entreprise?.tel || entreprise?.telephone || '');
+  const entEmail = h(entreprise?.email || '');
+  const entRCS = h(getRCSComplet(entreprise));
+  const entCapital = h(entreprise?.capitalSocial || '');
+  const entForme = h(entreprise?.formeJuridique || '');
+  const numero = h(doc.numero || '');
 
-  // Client info
-  const clientNom = client?.nom
+  const clientNom = h(client?.nom
     ? `${client.prenom || ''} ${client.nom}`.trim()
-    : client?.entreprise || 'Le client';
-  const clientAdresse = client?.adresse || '';
-  const clientEntreprise = client?.entreprise || '';
+    : client?.entreprise || 'Le client');
+  const clientAdresse = h(client?.adresse || '');
+  const clientEntreprise = h(client?.entreprise || '');
 
   return `<!DOCTYPE html>
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Mise en Demeure - ${doc.numero || ''}</title>
+<title>Mise en Demeure - ${numero}</title>
 <style>
   @page { margin: 20mm 15mm; size: A4; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -285,13 +287,13 @@ export function buildMiseEnDemeureHtml({
 
 <!-- Date & Lieu -->
 <div class="date-lieu">
-  ${entreprise?.ville ? `${entreprise.ville}, le ` : 'Le '}${fmtDate(now)}
+  ${entreprise?.ville ? `${h(entreprise.ville)}, le ` : 'Le '}${fmtDate(now)}
 </div>
 
 <!-- Title -->
 <div class="title">MISE EN DEMEURE DE PAYER</div>
 <div class="ref-line">
-  Facture n° <strong>${doc.numero || 'N/A'}</strong> du ${fmtDate(dateFacture)}
+  Facture n° <strong>${numero || 'N/A'}</strong> du ${fmtDate(dateFacture)}
   — Montant : <strong>${fmtEuro(montantTTC)}</strong> TTC
 </div>
 
@@ -300,7 +302,7 @@ export function buildMiseEnDemeureHtml({
 
 <p class="body-text">
   Par la présente, nous vous mettons en demeure de régler, dans un délai de <strong>huit (8) jours</strong>
-  à compter de la réception de ce courrier, la facture n° <strong>${doc.numero || 'N/A'}</strong>
+  à compter de la réception de ce courrier, la facture n° <strong>${numero || 'N/A'}</strong>
   d'un montant de <strong>${fmtEuro(montantTTC)} TTC</strong>${dejaRegle > 0 ? `, dont il reste dû <strong>${fmtEuro(resteDu)}</strong>` : ''}, émise le ${fmtDate(dateFacture)}
   et arrivée à échéance le <strong>${fmtDate(dateEcheance)}</strong>.
 </p>
@@ -399,7 +401,7 @@ ${estPro ? `
 <div class="signature-block">
   <div class="signature-name">${entNom}</div>
   <div style="font-size:10pt;color:#555;margin-top:4px">
-    ${entreprise?.gerant || ''}
+    ${h(entreprise?.gerant || '')}
   </div>
 </div>
 

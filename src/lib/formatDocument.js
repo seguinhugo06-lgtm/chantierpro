@@ -5,8 +5,11 @@
  * « TVA 5.5% », et chaque générateur imprimait ses propres pénalités de retard.
  */
 
+import { echapperHtml } from './echapperHtml';
+
 const EUROS = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const NOMBRE = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 2 });
+const QUANTITE = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 3 });
 const vide = (v) => v === undefined || v === null || v === '';
 
 /**
@@ -24,6 +27,16 @@ export function pourcent(valeur) {
   if (vide(valeur)) return '0 %';
   const n = Number(valeur);
   return `${Number.isFinite(n) ? NOMBRE.format(n) : valeur} %`;
+}
+
+/**
+ * Quantité d'une ligne : 12.5 → « 12,5 » (recette du 9 oct. 2026 : « 12.5 » dans un document français).
+ * Une valeur illisible est imprimée telle quelle (échappée), une valeur absente reste vide.
+ */
+export function quantite(valeur) {
+  if (vide(valeur)) return '';
+  const n = Number(valeur);
+  return Number.isFinite(n) ? QUANTITE.format(n) : echapperHtml(valeur);
 }
 
 /** Conditions de règlement proposées dans l'éditeur (clé enregistrée sur le document). */
@@ -54,7 +67,7 @@ const dateFr = (d) => {
 export function blocConditionsPaiement({ doc, entreprise, isFacture, dateEcheance }) {
   // Conditions : clé de l'ancien formulaire, ou texte choisi dans l'éditeur (`conditions`), qui
   // n'était imprimé nulle part (relecture juridique du 9 oct.).
-  const texteConditions = doc?.conditions && !CONDITIONS_PAIEMENT[doc.conditions] ? String(doc.conditions).trim().replace(/\.$/, '') : '';
+  const texteConditions = doc?.conditions && !CONDITIONS_PAIEMENT[doc.conditions] ? echapperHtml(String(doc.conditions).trim().replace(/\.$/, '')) : '';
   const libelle = (doc?.conditionsPaiement && CONDITIONS_PAIEMENT[doc.conditionsPaiement]) || CONDITIONS_PAIEMENT[doc?.conditions] || texteConditions;
   const delai = Number(entreprise?.delaiPaiement) || 30;
   const delaiTexte = libelle

@@ -9,6 +9,7 @@
  */
 import supabase from '../supabaseClient';
 import { echapperHtml } from './echapperHtml';
+import { pdfDepuisHtml } from './pdfDepuisHtml';
 
 // Encode un Uint8Array en base64 sans dépasser la limite d'arguments de String.fromCharCode.
 function uint8ToBase64(bytes) {
@@ -18,97 +19,6 @@ function uint8ToBase64(bytes) {
     binary += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK));
   }
   return btoa(binary);
-}
-
-// Détermine les points de coupure (en px canvas) qui tombent ENTRE les blocs du
-// document, jamais au milieu — pour une pagination A4 propre (bloc signature, lignes
-// de tableau, encadrés… ne sont plus coupés). Mesure via le DOM (getBoundingClientRect),
-// pas de scan pixel (qui faisait planer la génération).
-function computeSafeBreaks(container, canvas, pageHeightPx) {
-  const factor = canvas.width / container.offsetWidth; // css px → px canvas
-  const pageHeightCss = pageHeightPx / factor;
-  const containerTop = container.getBoundingClientRect().top;
-
-  // Blocs « atomiques » : plus courts qu'une page → on ne coupe pas à l'intérieur.
-  const blocks = [];
-  container.querySelectorAll('tr, td, div, p, table, section, h1, h2, h3, h4, li, img').forEach((el) => {
-    const r = el.getBoundingClientRect();
-    if (r.height <= 0 || r.height > pageHeightCss) return;
-    blocks.push({ top: (r.top - containerTop) * factor, bottom: (r.bottom - containerTop) * factor });
-  });
-  const straddles = (y) => blocks.some((b) => y > b.top + 1 && y < b.bottom - 1);
-
-  const total = canvas.height;
-  const breaks = [0];
-  let cur = 0;
-  while (cur + pageHeightPx < total) {
-    const limit = cur + pageHeightPx;
-    let best = -1;
-    for (const b of blocks) {
-      if (b.bottom > cur && b.bottom <= limit && b.bottom > best && !straddles(b.bottom)) best = b.bottom;
-    }
-    if (best <= cur) best = limit; // aucun point sûr (bloc plus grand qu'une page) : coupe nette
-    breaks.push(best);
-    cur = best;
-  }
-  breaks.push(total);
-  return breaks;
-}
-
-// Génère un PDF (octets) à partir d'un HTML complet via html2canvas + jsPDF.
-// Approche image multi-pages : fidèle au rendu HTML et fiable
-// (l'ancienne voie jsPDF.html() produisait des pages blanches).
-async function generateDocumentPdfBytes(fullHtml) {
-  const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
-    import('html2canvas'),
-    import('jspdf'),
-  ]);
-
-  const bodyMatch = fullHtml.match(/<body[^>]*>([\s\S]*)<\/body>/i);
-  const styleMatch = fullHtml.match(/<style[^>]*>[\s\S]*?<\/style>/gi);
-  const container = document.createElement('div');
-  container.innerHTML = (styleMatch ? styleMatch.join('') : '') + (bodyMatch ? bodyMatch[1] : fullHtml);
-  // Réplique le style du <body> d'origine (la règle body{} ne s'applique pas à un <div>) :
-  // box-sizing + padding pour avoir des marges (sinon le contenu touche les bords / est rogné).
-  container.style.cssText = "position:absolute;left:-9999px;top:0;width:794px;box-sizing:border-box;padding:25px;background:#ffffff;color:#1e293b;font-family:'Segoe UI',Arial,sans-serif;font-size:10pt;line-height:1.4;";
-  document.body.appendChild(container);
-
-  try {
-    await new Promise((r) => setTimeout(r, 80)); // laisser le layout / les polices se poser
-    const canvas = await html2canvas(container, {
-      scale: 2,
-      useCORS: true,
-      backgroundColor: '#ffffff',
-      windowWidth: 794,
-      logging: false,
-    });
-    const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
-    const pageW = 210;
-    const pageH = 297;
-    const pxPerMm = canvas.width / pageW;
-    const pageHeightPx = pageH * pxPerMm;
-
-    // Coupures alignées sur les blocs → aucun contenu coupé en travers.
-    const breaks = computeSafeBreaks(container, canvas, pageHeightPx);
-    const slice = document.createElement('canvas');
-    const ctx = slice.getContext('2d');
-    for (let i = 0; i < breaks.length - 1; i++) {
-      const y0 = breaks[i];
-      const sliceH = breaks[i + 1] - y0;
-      if (sliceH <= 0) continue;
-      slice.width = canvas.width;
-      slice.height = sliceH;
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, slice.width, slice.height);
-      ctx.drawImage(canvas, 0, y0, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
-      const imgData = slice.toDataURL('image/jpeg', 0.92);
-      if (i > 0) pdf.addPage();
-      pdf.addImage(imgData, 'JPEG', 0, 0, pageW, sliceH / pxPerMm, undefined, 'FAST');
-    }
-    return new Uint8Array(pdf.output('arraybuffer'));
-  } finally {
-    document.body.removeChild(container);
-  }
 }
 
 /**
@@ -152,7 +62,7 @@ export async function sendDocumentEmail({ to, subject, bodyHtml, fromName, reply
 
   let attachments;
   if (pdfHtml) {
-    const pdfBytes = await generateDocumentPdfBytes(pdfHtml);
+    const pdfBytes = await pdfDepuisHtml(pdfHtml);
     attachments = [{ filename: pdfFilename || 'document.pdf', content: uint8ToBase64(pdfBytes) }];
   }
 

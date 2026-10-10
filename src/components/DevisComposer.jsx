@@ -22,6 +22,7 @@ import { generateId } from '../lib/utils';
 import { formatClientName } from '../lib/formatters';
 import { buildDevisHtml } from '../lib/devisHtmlBuilder';
 import { calculerTotaux } from '../lib/totauxDocument';
+import { estFranchiseTva } from '../lib/franchiseTva';
 import { TRADE_LIBRARY } from '../lib/templates/trade-library';
 
 const DRAFT_KEY = 'mallettico_devis_composer_draft';
@@ -48,6 +49,16 @@ const num = (v) => {
   if (typeof v === 'number') return isNaN(v) ? 0 : v;
   const n = parseFloat(String(v ?? '').replace(/\s/g, '').replace(',', '.'));
   return isNaN(n) ? 0 : n;
+};
+
+/** Premier taux de TVA renseigné : 0 % est un vrai taux (`||` le remplaçait par 10 %, recette du 9 oct. 2026). */
+const premierTaux = (...valeurs) => {
+  for (const v of valeurs) {
+    if (v === '' || v === null || v === undefined) continue;
+    const n = Number(String(v).replace(',', '.'));
+    if (Number.isFinite(n)) return n;
+  }
+  return 10;
 };
 
 /** Normalise pour recherche : minuscules + sans accents (« faience » trouve « faïence »). */
@@ -101,6 +112,9 @@ export default function DevisComposer({
   onPreview,
 }) {
   const isEditMode = !!initialData;
+  // Franchise en base (art. 293 B CGI) : aucune TVA, ni à l'écran ni dans ce qui est enregistré
+  const franchise = estFranchiseTva(entreprise);
+  const tvaEntreprise = franchise ? 0 : premierTaux(entreprise?.tvaDefaut, entreprise?.tva_defaut, 10);
 
   const blankForm = () => ({
     type: 'devis',
@@ -108,7 +122,7 @@ export default function DevisComposer({
     chantierId: '',
     date: new Date().toISOString().split('T')[0],
     validite: entreprise?.validiteDevis || entreprise?.validite_devis || 30,
-    tvaDefaut: entreprise?.tvaDefaut || entreprise?.tva_defaut || 10,
+    tvaDefaut: tvaEntreprise,
     lignes: [],
     remise: 0,
     acompte: 0,
@@ -148,7 +162,7 @@ export default function DevisComposer({
   useEffect(() => {
     if (!isOpen) return;
     if (initialData) {
-      const tvaDef = initialData.tvaRate || initialData.tva_rate || entreprise?.tvaDefaut || 10;
+      const tvaDef = franchise ? 0 : premierTaux(initialData.tvaRate, initialData.tva_rate, tvaEntreprise);
       const mapLigne = (l, i) => ({
         id: l.id || `line-${i}-${Date.now()}`,
         description: l.description || '',
@@ -156,7 +170,7 @@ export default function DevisComposer({
         unite: l.unite || 'u',
         prixUnitaire: l.prixUnitaire ?? 0,
         prixAchat: l.prixAchat ?? 0,
-        tva: l.tva !== undefined ? l.tva : tvaDef,
+        tva: premierTaux(l.tva, tvaDef),
       });
       // Restaurer les lots : si le devis a des sections titrées, reconstruire la
       // liste plate avec les marqueurs _isSection (sinon l'édition perdrait les lots).
@@ -224,7 +238,7 @@ export default function DevisComposer({
     form.lignes.forEach(l => { if (!l._isSection) totalCost += num(l.quantite) * num(l.prixAchat); });
     const t = calculerTotaux(
       form.lignes.map(l => (l._isSection ? l : { ...l, montant: undefined, quantite: num(l.quantite), prixUnitaire: num(l.prixUnitaire), tva: l.tva !== undefined ? l.tva : form.tvaDefaut })),
-      { remisePct: form.remise, tauxDefaut: form.tvaDefaut, toutesLesLignes: true },
+      { remisePct: form.remise, tauxDefaut: form.tvaDefaut, toutesLesLignes: true, franchise },
     );
     const totalHT = t.totalLignesHT;
     const tvaTotal = form.remise ? t.totalTVA / (1 - form.remise / 100 || 1) : t.totalTVA;
@@ -235,7 +249,7 @@ export default function DevisComposer({
     const costAfterRemise = totalCost * (1 - form.remise / 100);
     const margePercent = htApresRemise > 0 ? ((htApresRemise - costAfterRemise) / htApresRemise) * 100 : 0;
     return { totalHT, tvaTotal, remiseAmount, htApresRemise, tvaApresRemise, totalTTC, margePercent };
-  }, [form.lignes, form.tvaDefaut, form.remise]);
+  }, [form.lignes, form.tvaDefaut, form.remise, franchise]);
 
   const animatedTTC = useAnimatedNumber(totals.totalTTC);
 
@@ -269,7 +283,7 @@ export default function DevisComposer({
     if (!item || !item.id) return;
     try {
       const prev = JSON.parse(localStorage.getItem(RECENT_ARTICLES_KEY) || '[]').filter(x => x && x.id !== item.id);
-      prev.unshift({ id: item.id, nom: item.nom || item.designation || '', prix: item.prix ?? item.prixUnitaire ?? 0, unite: item.unite || 'u', prixAchat: item.prixAchat ?? 0, categorie: item.categorie || '' });
+      prev.unshift({ id: item.id, nom: item.nom || item.designation || '', prix: item.prix ?? item.prixUnitaire ?? 0, unite: item.unite || 'u', prixAchat: item.prixAchat ?? 0, categorie: item.categorie || '', tva: item.tva ?? item.tva_rate });
       localStorage.setItem(RECENT_ARTICLES_KEY, JSON.stringify(prev.slice(0, 8)));
     } catch { /* ignore */ }
   }, []);
@@ -278,9 +292,12 @@ export default function DevisComposer({
     let recents = [];
     try { recents = JSON.parse(localStorage.getItem(RECENT_ARTICLES_KEY) || '[]'); } catch { /* ignore */ }
     const favs = (catalogue || []).filter(c => c.favori);
+    // Un récent est repris tel qu'il est AUJOURD'HUI dans le catalogue (prix, TVA) ; la copie mémorisée
+    // ne sert que pour un article absent du catalogue. Avant : la copie, sans TVA → 10 % (recette du 9 oct.).
+    const parId = new Map((catalogue || []).map(c => [c.id, c]));
     const seen = new Set();
     const merged = [];
-    [...recents, ...favs].forEach(a => { if (a && a.id && !seen.has(a.id)) { seen.add(a.id); merged.push(a); } });
+    [...recents.map(r => (r && parId.get(r.id)) || r), ...favs].forEach(a => { if (a && a.id && !seen.has(a.id)) { seen.add(a.id); merged.push(a); } });
     return merged.slice(0, 10);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [catalogue, isOpen]);
@@ -301,8 +318,8 @@ export default function DevisComposer({
         prixAchat: item.prixAchat ?? 0,
         // La bibliothèque porte le taux adapté à la nature des travaux
         // (5,5 % rénovation énergétique, 20 % neuf/extérieur) : le respecter
-        // plutôt que d'imposer le taux par défaut du devis.
-        tva: item.tva !== undefined ? item.tva : p.tvaDefaut,
+        // plutôt que d'imposer le taux par défaut du devis (`tva_rate` : articles de démo).
+        tva: premierTaux(item.tva, item.tva_rate, p.tvaDefaut),
       }],
     }));
     // Article chiffré → la prochaine saisie est la quantité ; ligne libre → le prix
@@ -329,9 +346,9 @@ export default function DevisComposer({
       unite: l.unite || 'u',
       prixUnitaire: l.prixUnitaire ?? l.prix ?? 0,
       prixAchat: l.prixAchat ?? 0,
-      tva: l.tva !== undefined ? l.tva : (tpl.tva_defaut || form.tvaDefaut),
+      tva: premierTaux(l.tva, tpl.tva_defaut, form.tvaDefaut),
     }));
-    setForm(p => ({ ...p, lignes, tvaDefaut: tpl.tva_defaut || tpl.tvaDefaut || p.tvaDefaut, notes: tpl.notes || p.notes }));
+    setForm(p => ({ ...p, lignes, tvaDefaut: franchise ? 0 : premierTaux(tpl.tva_defaut, tpl.tvaDefaut, p.tvaDefaut), notes: tpl.notes || p.notes }));
   };
 
   const saveAsTemplate = async (nom, categorie) => {
@@ -552,12 +569,15 @@ export default function DevisComposer({
   // ── Construction du devisData (partagée entre Créer et Aperçu) ──
   const buildDevisData = () => {
     const roundEuro = (v) => Math.round((v + Number.EPSILON) * 100) / 100;
+    // Une ligne négative (geste commercial, reprise) s'enregistre telle quelle : quantité × prix = total.
+    // Avant, quantité et prix étaient bornés à 0 mais pas le total : « 1 u · 0,00 € · −50,00 € » imprimé.
     const fmt = (l) => ({
       ...l,
-      quantite: Math.max(0, num(l.quantite)),
-      prixUnitaire: Math.max(0, num(l.prixUnitaire)),
+      quantite: num(l.quantite),
+      prixUnitaire: num(l.prixUnitaire),
       prixAchat: num(l.prixAchat),
-      montant: num(l.quantite) * num(l.prixUnitaire),
+      montant: roundEuro(num(l.quantite) * num(l.prixUnitaire)),
+      ...(franchise ? { tva: 0 } : {}),
     });
     // Découpe la liste plate en lots (sections) au niveau des marqueurs _isSection
     const sections = [];
@@ -580,7 +600,7 @@ export default function DevisComposer({
       // Le champ garde ce qui est tapé (vide compris : effacer puis taper 45 donnait 3045) ; 30 j si vide
       validite: parseInt(form.validite, 10) > 0 ? parseInt(form.validite, 10) : 30,
       statut: isEditMode ? initialData.statut : 'brouillon',
-      tvaRate: form.tvaDefaut,
+      tvaRate: franchise ? 0 : form.tvaDefaut,
       lignes: lignesFormatted,
       sections: sections.length ? sections : [{ id: '1', titre: '', lignes: lignesFormatted }],
       remise: form.remise,
@@ -741,7 +761,7 @@ export default function DevisComposer({
                     onUpdate={(v) => updateLigne(ligne.id, 'description', v)} onRemove={() => removeLigne(ligne.id)}
                     onMoveUp={() => moveLigne(index, -1)} onMoveDown={() => moveLigne(index, 1)} {...dragProps(index)} />
                 ) : collapsedLots.has(lotOfLine[ligne.id]) ? null : (
-                  <LigneRow key={ligne.id} ligne={ligne} index={index} total={form.lignes.length}
+                  <LigneRow key={ligne.id} ligne={ligne} index={index} total={form.lignes.length} franchise={franchise}
                     isDark={isDark} couleur={couleur} inputBg={inputBg} textPrimary={textPrimary} textMuted={textMuted} rowHover={rowHover}
                     onUpdate={(f, v) => updateLigne(ligne.id, f, v)} onRemove={() => removeLigne(ligne.id)}
                     onMoveUp={() => moveLigne(index, -1)} onMoveDown={() => moveLigne(index, 1)} onDuplicate={() => duplicateLigne(ligne.id)}
@@ -795,6 +815,9 @@ export default function DevisComposer({
             </button>
             {showOptions && (
               <div className={`px-4 pb-4 space-y-3 border-t ${isDark ? 'border-slate-700' : 'border-slate-100'} pt-3`}>
+                {franchise ? (
+                  <p className="text-xs text-encre-2">TVA non applicable, art. 293 B du CGI (micro-entreprise) : aucune TVA n'est ajoutée.</p>
+                ) : (
                 <div>
                   <label className={`block text-[11px] font-semibold uppercase tracking-wide mb-1.5 ${textMuted}`}>TVA — appliquer à tout le devis</label>
                   <div className="flex gap-1.5 flex-wrap">
@@ -808,6 +831,7 @@ export default function DevisComposer({
                     ))}
                   </div>
                 </div>
+                )}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className={`block text-[11px] font-semibold uppercase tracking-wide mb-1.5 ${textMuted}`}>Remise %</label>
@@ -871,12 +895,18 @@ export default function DevisComposer({
                 <span className="text-xs text-red-500">−{form.remise}%</span>
               </div>
             )}
-            <div className="hidden sm:flex items-baseline gap-1.5">
-              <span className={`text-xs ${textMuted}`}>TVA</span>
-              <span className={`text-sm font-semibold ${textPrimary}`}>{eur(totals.tvaApresRemise)}</span>
-            </div>
+            {franchise ? (
+              <div className="hidden sm:flex items-baseline gap-1.5">
+                <span className={`text-xs ${textMuted}`}>TVA non applicable</span>
+              </div>
+            ) : (
+              <div className="hidden sm:flex items-baseline gap-1.5">
+                <span className={`text-xs ${textMuted}`}>TVA</span>
+                <span className={`text-sm font-semibold ${textPrimary}`}>{eur(totals.tvaApresRemise)}</span>
+              </div>
+            )}
             <div className="flex flex-col sm:flex-row sm:items-baseline sm:gap-1.5">
-              <span className={`text-[10px] sm:text-xs font-semibold uppercase leading-none ${textMuted}`}>TTC</span>
+              <span className={`text-[10px] sm:text-xs font-semibold uppercase leading-none ${textMuted}`}>{franchise ? 'Total' : 'TTC'}</span>
               <span className="text-lg sm:text-3xl font-extrabold tabular-nums whitespace-nowrap leading-tight" style={{ color: accent }}>{eur(animatedTTC)}</span>
             </div>
             {totals.margePercent > 0 && form.lignes.some(l => l.prixAchat > 0) && (
@@ -1087,7 +1117,7 @@ function SectionRow({ ligne, index, total, subtotal, count = 0, collapsed = fals
 }
 
 /* ── Editable line row ── */
-function LigneRow({ ligne, index, total, isDark, couleur, inputBg, textPrimary, textMuted, rowHover, onUpdate, onRemove, onMoveUp, onMoveDown, onDuplicate, onMetre, onInsertLot, onMarge, onToLot, focusField, onFocusHandled, onLineEnter,
+function LigneRow({ ligne, index, total, franchise = false, isDark, couleur, inputBg, textPrimary, textMuted, rowHover, onUpdate, onRemove, onMoveUp, onMoveDown, onDuplicate, onMetre, onInsertLot, onMarge, onToLot, focusField, onFocusHandled, onLineEnter,
   rowIndex, onGrab, isDragged, isDropTarget }) {
   const lineTotal = num(ligne.quantite) * num(ligne.prixUnitaire);
   const numCls = `w-full h-9 rounded-lg border text-sm text-center ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`;
@@ -1123,9 +1153,13 @@ function LigneRow({ ligne, index, total, isDark, couleur, inputBg, textPrimary, 
           {ligne.unite && !UNITES.includes(ligne.unite) && <option value="__autre">{ligne.unite}</option>}
         </select>
         <input ref={puDesktopRef} type="text" inputMode="decimal" value={ligne.prixUnitaire} onChange={e => onUpdate('prixUnitaire', e.target.value)} onKeyDown={numKeyDown} aria-label="Prix unitaire HT" className={numCls} />
-        <select value={ligne.tva} onChange={e => onUpdate('tva', parseFloat(e.target.value))} className={`w-full h-9 rounded-lg border text-xs text-center ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`}>
-          {[0, 5.5, 10, 20].map(t => <option key={t} value={t}>{t}%</option>)}
-        </select>
+        {franchise ? (
+          <span className="text-xs text-center text-encre-3" title="TVA non applicable, art. 293 B du CGI">—</span>
+        ) : (
+          <select value={ligne.tva} onChange={e => onUpdate('tva', parseFloat(e.target.value))} aria-label="Taux de TVA" className={`w-full h-9 rounded-lg border text-xs text-center ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`}>
+            {[0, 5.5, 10, 20].map(t => <option key={t} value={t}>{String(t).replace('.', ',')} %</option>)}
+          </select>
+        )}
         <span className={`text-sm font-semibold text-right tabular-nums ${textPrimary}`}>{eur(lineTotal)}</span>
         <LineMenu isDark={isDark} textMuted={textMuted} index={index} total={total} onMoveUp={onMoveUp} onMoveDown={onMoveDown} onDuplicate={onDuplicate} onRemove={onRemove} onMetre={onMetre} onInsertLot={onInsertLot} onMarge={onMarge} onToLot={onToLot} />
       </div>
@@ -1159,10 +1193,14 @@ function LigneRow({ ligne, index, total, isDark, couleur, inputBg, textPrimary, 
               className={`w-full h-11 pl-2 pr-7 rounded-xl border text-base text-right tabular-nums ${inputBg}`} />
             <span aria-hidden="true" className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-base text-encre-3">€</span>
           </label>
-          <select value={ligne.tva} onChange={e => onUpdate('tva', parseFloat(e.target.value))} aria-label="Taux de TVA"
-            className={`w-full h-11 px-1 rounded-xl border text-base text-center ${inputBg}`}>
-            {[0, 5.5, 10, 20].map(t => <option key={t} value={t}>{String(t).replace('.', ',')} %</option>)}
-          </select>
+          {franchise ? (
+            <span className="h-11 flex items-center justify-center text-xs text-encre-3">Sans TVA</span>
+          ) : (
+            <select value={ligne.tva} onChange={e => onUpdate('tva', parseFloat(e.target.value))} aria-label="Taux de TVA"
+              className={`w-full h-11 px-1 rounded-xl border text-base text-center ${inputBg}`}>
+              {[0, 5.5, 10, 20].map(t => <option key={t} value={t}>{String(t).replace('.', ',')} %</option>)}
+            </select>
+          )}
         </div>
         <p className="flex items-baseline justify-end gap-2 text-sm">
           <span className="text-encre-2">Total HT</span>
@@ -1446,7 +1484,7 @@ function PdfPreviewModal({ isDark, couleur, textPrimary, textMuted, html, onClos
           <button onClick={onClose} aria-label="Fermer l'aperçu" className={`p-2 rounded-lg flex-shrink-0 ${textMuted} ${isDark ? 'hover:bg-slate-800' : 'hover:bg-slate-100'}`}><X size={18} /></button>
         </div>
         {/* fond neutre : le document dessine lui-même sa feuille A4 sur fond gris */}
-        <iframe srcDoc={html} title="Aperçu du devis" className="flex-1 w-full border-0 bg-slate-200" />
+        <iframe srcDoc={html} sandbox="" title="Aperçu du devis" className="flex-1 w-full border-0 bg-slate-200" />
       </div>
     </div>
   );

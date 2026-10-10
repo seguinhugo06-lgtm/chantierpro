@@ -5,13 +5,18 @@
  * Utilisé par:
  * - DevisPage.jsx (downloadPDF, previewPDF)
  * - DevisSignaturePage.jsx (aperçu lecture seule)
+ *
+ * Tout texte saisi (désignation, client, entreprise, chantier, conditions) passe par `h` (echapperHtml) :
+ * recette du 9 oct. 2026, « Tableau <NF C 15-100> » s'imprimait « Tableau » et un `<img onerror>` saisi
+ * s'exécutait dans l'aperçu de l'artisan et sur la page de signature du client.
  */
 
 import { filterValidLignes, formatClientName } from './formatters';
 import { mentionTvaReduiteHtml } from './mentionTvaReduite';
 import { urlPublique } from './urlPublique';
-import { euros, pourcent, blocConditionsPaiement } from './formatDocument';
-import { lignesTotauxHtml, lignesAcompteHtml } from './totauxDocument';
+import { euros, pourcent, quantite, blocConditionsPaiement } from './formatDocument';
+import { echapperHtml as h, couleurCss } from './echapperHtml';
+import { lignesTotauxHtml, lignesAcompteHtml, totauxDocument } from './totauxDocument';
 import { echeance } from './paiementsFacture';
 
 /**
@@ -23,7 +28,7 @@ function getRCSComplet(entreprise) {
   const numero = entreprise.rcsNumero || entreprise.rcs_numero || '';
   const type = entreprise.rcsType || entreprise.rcs_type || 'B';
   if (!ville || !numero) return '';
-  return `RCS ${ville} ${type} ${numero}`;
+  return h(`RCS ${ville} ${type} ${numero}`);
 }
 
 /**
@@ -85,7 +90,7 @@ export const PAGE_CSS = `
  */
 export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mode = 'artisan', paymentToken, paymentQrDataUrl, echeancier }) {
   const isClientMode = mode === 'client';
-  const color = couleur || entreprise?.couleur || '#f97316';
+  const color = couleurCss(couleur || entreprise?.couleur);
   const isFacture = doc.type === 'facture';
   const isMicro = (entreprise?.formeJuridique || entreprise?.forme_juridique) === 'Micro-entreprise';
 
@@ -122,9 +127,9 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mod
     const total = getLineTotal(l);
     return `
     <tr>
-      <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;vertical-align:top;white-space:pre-line">${l.description || ''}</td>
-      <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${l.quantite || ''}</td>
-      <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${l.unite || 'unité'}</td>
+      <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;vertical-align:top;white-space:pre-line;overflow-wrap:anywhere">${h(l.description)}</td>
+      <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${quantite(l.quantite)}</td>
+      <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${h(l.unite || 'unité')}</td>
       <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:right">${euros(pu)}</td>
       <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${isMicro ? '-' : pourcent(l.tva !== undefined ? l.tva : (doc.tvaRate || doc.tva_rate || 10))}</td>
       <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:right;font-weight:600;${total < 0 ? 'color:#dc2626;' : ''}">${euros(total)}</td>
@@ -142,57 +147,25 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mod
     ? lotSections.map(s => {
         const sub = s.lignes.reduce((sum, l) => sum + getLineTotal(l), 0);
         const header = s.titre
-          ? `<tr><td colspan="6" style="padding:14px 8px 6px;font-weight:700;font-size:10.5pt;color:${couleur};border-bottom:2px solid ${couleur}">${s.titre}</td></tr>`
+          ? `<tr><td colspan="6" style="padding:14px 8px 6px;font-weight:700;font-size:10.5pt;color:${color};border-bottom:2px solid ${color}">${h(s.titre)}</td></tr>`
           : '';
         const rows = s.lignes.map(renderRow).join('');
         const subtotal = s.titre
-          ? `<tr><td colspan="5" style="padding:6px 8px;text-align:right;font-size:8.5pt;color:#64748b;font-style:italic">Sous-total ${s.titre}</td><td style="padding:6px 8px;text-align:right;font-weight:700;font-size:9pt">${euros(sub)}</td></tr>`
+          ? `<tr><td colspan="5" style="padding:6px 8px;text-align:right;font-size:8.5pt;color:#64748b;font-style:italic">Sous-total ${h(s.titre)}</td><td style="padding:6px 8px;text-align:right;font-weight:700;font-size:9pt">${euros(sub)}</td></tr>`
           : '';
         return header + rows + subtotal;
       }).join('')
     : lignes.map(renderRow).join('');
 
   // Total HT, remise et TVA : bloc commun lignesTotauxHtml (src/lib/totauxDocument.js).
-  const totalTTC = doc.total_ttc || 0;
+  // Franchise en base : le total est le HT (un ancien document peut porter une TVA enregistrée)
+  const totalTTC = totauxDocument(doc, { isMicro }).totalTTC;
   const acomptePct = doc.acompte_pct || doc.acompte_percent || 0;
 
-  // Entreprise fields (handle both camelCase and snake_case)
-  const e = {
-    nom: entreprise?.nom || '',
-    formeJuridique: entreprise?.formeJuridique || entreprise?.forme_juridique || '',
-    capital: entreprise?.capital || '',
-    adresse: entreprise?.adresse || '',
-    ville: entreprise?.ville || '',
-    codePostal: entreprise?.code_postal || entreprise?.codePostal || '',
-    tel: entreprise?.tel || entreprise?.telephone || '',
-    email: entreprise?.email || '',
-    siret: entreprise?.siret || '',
-    codeApe: entreprise?.codeApe || entreprise?.code_ape || '',
-    rcs: entreprise?.rcs || '',
-    tvaIntra: entreprise?.tvaIntra || entreprise?.tva_intra || '',
-    iban: entreprise?.iban || '',
-    bic: entreprise?.bic || '',
-    delaiPaiement: entreprise?.delaiPaiement || entreprise?.delai_paiement || 30,
-    cgv: entreprise?.cgv || '',
-    rcProAssureur: entreprise?.rcProAssureur || entreprise?.rc_pro_assureur || '',
-    rcProNumero: entreprise?.rcProNumero || entreprise?.rc_pro_numero || '',
-    rcProValidite: entreprise?.rcProValidite || entreprise?.rc_pro_validite || '',
-    decennaleAssureur: entreprise?.decennaleAssureur || entreprise?.decennale_assureur || '',
-    decennaleNumero: entreprise?.decennaleNumero || entreprise?.decennale_numero || '',
-    decennaleValidite: entreprise?.decennaleValidite || entreprise?.decennale_validite || '',
-  };
+  // Entreprise et client : textes échappés (buildEntrepriseFields, champsClient)
+  const e = { ...buildEntrepriseFields(entreprise), cgv: h(entreprise?.cgv) };
 
-  // Client fields (handle both formats)
-  const cl = {
-    prenom: client?.prenom || '',
-    nom: client?.nom || '',
-    entreprise: client?.entreprise || '',
-    adresse: client?.adresse || '',
-    codePostal: client?.code_postal || client?.codePostal || '',
-    ville: client?.ville || '',
-    telephone: client?.telephone || '',
-    email: client?.email || '',
-  };
+  const cl = champsClient(client);
 
   const rcsComplet = getRCSComplet(entreprise);
 
@@ -204,10 +177,10 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mod
     const sigNom = doc.signataire_nom || doc.signataire || '';
     signatureBlock = `
       <div style="margin-top:10px">
-        <img src="${sigData}" style="max-height:80px;max-width:200px;border:1px solid #e2e8f0;border-radius:4px;padding:4px;background:white" alt="Signature" />
+        <img src="${h(sigData)}" style="max-height:80px;max-width:200px;border:1px solid #e2e8f0;border-radius:4px;padding:4px;background:white" alt="Signature" />
         <div style="font-size:8pt;color:#16a34a;font-weight:bold;margin-top:4px">
           ✓ Signé électroniquement le ${sigDate ? new Date(sigDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}
-          ${sigNom ? ` par ${sigNom}` : ''}
+          ${sigNom ? ` par ${h(sigNom)}` : ''}
         </div>
       </div>`;
   }
@@ -217,7 +190,7 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mod
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${isFacture ? 'Facture' : 'Devis'} ${doc.numero}</title>
+  <title>${isFacture ? 'Facture' : 'Devis'} ${h(doc.numero)}</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 10pt; color: #1e293b; background: #ffffff; padding: 25px; line-height: 1.4; }
@@ -282,10 +255,10 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mod
     <div class="doc-type">
       <h1>${isFacture ? (doc.facture_type === 'acompte' ? "FACTURE D'ACOMPTE" : doc.facture_type === 'solde' ? 'FACTURE DE SOLDE' : 'FACTURE') : 'DEVIS'}</h1>
       <div class="doc-info">
-        <strong>N° ${doc.numero}</strong><br>
+        <strong>N° ${h(doc.numero)}</strong><br>
         Date: ${new Date(doc.date).toLocaleDateString('fr-FR')}<br>
         ${isFacture && doc.date_echeance ? `Échéance: ${new Date(doc.date_echeance).toLocaleDateString('fr-FR')}<br>` : ''}
-        ${isFacture && doc.devis_source_id && doc.devis_source_numero ? `Réf. devis: ${doc.devis_source_numero}<br>` : ''}
+        ${isFacture && doc.devis_source_id && doc.devis_source_numero ? `Réf. devis: ${h(doc.devis_source_numero)}<br>` : ''}
         ${isFacture && doc.acompte_pct && doc.facture_type === 'acompte' ? `Acompte: ${pourcent(doc.acompte_pct)}<br>` : ''}
         ${!isFacture ? `<strong>Valable jusqu'au: ${dateValidite.toLocaleDateString('fr-FR')}</strong>` : ''}
       </div>
@@ -306,8 +279,8 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mod
     ${chantier ? `
     <div class="info-block">
       <h3>Lieu d'exécution</h3>
-      <div class="name">${chantier.nom || ''}</div>
-      <div style="font-size:9pt">${chantier.adresse || cl.adresse || ''}</div>
+      <div class="name">${h(chantier.nom)}</div>
+      <div style="font-size:9pt">${chantier.adresse ? h(chantier.adresse) : cl.adresse}</div>
     </div>
     ` : ''}
   </div>
@@ -338,7 +311,7 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mod
       ${echeancier.etapes.map((et, idx) => {
         const statusIcon = et.statut === 'facture' || et.statut === 'paye' ? '✓' : et.statut === 'a_facturer' ? '○' : '○';
         const statusColor = et.statut === 'facture' || et.statut === 'paye' ? '#22c55e' : '#94a3b8';
-        return `<div class="row sub" style="padding:2px 0;"><span style="color:${statusColor};font-weight:500;">${statusIcon} ${et.label} (${pourcent(et.pourcentage)})</span><span>${euros((et.montant_ttc || 0))}</span></div>`;
+        return `<div class="row sub" style="padding:2px 0;"><span style="color:${statusColor};font-weight:500;">${statusIcon} ${h(et.label)} (${pourcent(et.pourcentage)})</span><span>${euros((et.montant_ttc || 0))}</span></div>`;
       }).join('')}
     </div>
     ` : acomptePct ? `
@@ -349,6 +322,14 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mod
   ${isMicro ? '<div class="micro-mention">TVA non applicable, article 293 B du Code Général des Impôts</div>' : ''}
 
   ${mentionTvaReduiteHtml({ tvaDetails: calculatedTvaDetails, nomClient: formatClientName(client, ''), isMicro, isFacture })}
+
+  ${doc.notes && doc.facture_type !== 'avoir' ? `
+  <!-- NOTES (« Notes (visibles sur le PDF) » de l'éditeur : n'étaient imprimées nulle part, recette du 9 oct. 2026) -->
+  <div class="conditions" style="margin-top:10px">
+    <h4>NOTES</h4>
+    <div style="white-space:pre-line">${h(doc.notes)}</div>
+  </div>
+  ` : ''}
 
   ${''/* « Solde de tout compte » (droit du travail) et « L441-3 » (périmé) retirés — relecture juridique du 10 oct. 2026 */}
 
@@ -407,7 +388,7 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mod
   <!-- CGV PERSONNALISÉES -->
   <div class="conditions" style="margin-top:10px">
     <h4>CONDITIONS PARTICULIÈRES</h4>
-    ${e.cgv}
+    <div style="white-space:pre-line">${e.cgv}</div>
   </div>
   ` : ''}
 
@@ -460,28 +441,43 @@ function buildFooterHtml(e, rcsComplet, isDevis = false, isClientMode = false) {
  * Bloc entreprise réutilisable
  */
 function buildEntrepriseFields(entreprise) {
+  // Textes échappés (saisis par l'artisan) ; le délai reste un nombre
   return {
-    nom: entreprise?.nom || '',
-    formeJuridique: entreprise?.formeJuridique || entreprise?.forme_juridique || '',
-    capital: entreprise?.capital || '',
-    adresse: entreprise?.adresse || '',
-    ville: entreprise?.ville || '',
-    codePostal: entreprise?.code_postal || entreprise?.codePostal || '',
-    tel: entreprise?.tel || entreprise?.telephone || '',
-    email: entreprise?.email || '',
-    siret: entreprise?.siret || '',
-    codeApe: entreprise?.codeApe || entreprise?.code_ape || '',
-    rcs: entreprise?.rcs || '',
-    tvaIntra: entreprise?.tvaIntra || entreprise?.tva_intra || '',
-    iban: entreprise?.iban || '',
-    bic: entreprise?.bic || '',
-    delaiPaiement: entreprise?.delaiPaiement || entreprise?.delai_paiement || 30,
-    rcProAssureur: entreprise?.rcProAssureur || entreprise?.rc_pro_assureur || '',
-    rcProNumero: entreprise?.rcProNumero || entreprise?.rc_pro_numero || '',
+    nom: h(entreprise?.nom),
+    formeJuridique: h(entreprise?.formeJuridique || entreprise?.forme_juridique),
+    capital: h(entreprise?.capital || ''),
+    adresse: h(entreprise?.adresse),
+    ville: h(entreprise?.ville),
+    codePostal: h(entreprise?.code_postal || entreprise?.codePostal),
+    tel: h(entreprise?.tel || entreprise?.telephone),
+    email: h(entreprise?.email),
+    siret: h(entreprise?.siret),
+    codeApe: h(entreprise?.codeApe || entreprise?.code_ape),
+    rcs: h(entreprise?.rcs),
+    tvaIntra: h(entreprise?.tvaIntra || entreprise?.tva_intra),
+    iban: h(entreprise?.iban),
+    bic: h(entreprise?.bic),
+    delaiPaiement: Number(entreprise?.delaiPaiement || entreprise?.delai_paiement) || 30,
+    rcProAssureur: h(entreprise?.rcProAssureur || entreprise?.rc_pro_assureur),
+    rcProNumero: h(entreprise?.rcProNumero || entreprise?.rc_pro_numero),
     rcProValidite: entreprise?.rcProValidite || entreprise?.rc_pro_validite || '',
-    decennaleAssureur: entreprise?.decennaleAssureur || entreprise?.decennale_assureur || '',
-    decennaleNumero: entreprise?.decennaleNumero || entreprise?.decennale_numero || '',
+    decennaleAssureur: h(entreprise?.decennaleAssureur || entreprise?.decennale_assureur),
+    decennaleNumero: h(entreprise?.decennaleNumero || entreprise?.decennale_numero),
     decennaleValidite: entreprise?.decennaleValidite || entreprise?.decennale_validite || '',
+  };
+}
+
+/** Client : textes échappés. */
+function champsClient(client) {
+  return {
+    prenom: h(client?.prenom),
+    nom: h(client?.nom),
+    entreprise: h(client?.entreprise),
+    adresse: h(client?.adresse),
+    codePostal: h(client?.code_postal || client?.codePostal),
+    ville: h(client?.ville),
+    telephone: h(client?.telephone),
+    email: h(client?.email),
   };
 }
 
@@ -499,18 +495,11 @@ function buildEntrepriseFields(entreprise) {
  * @returns {string} HTML complet
  */
 export function buildSituationFactureHtml({ situation, parentDevis, client, chantier, entreprise, couleur }) {
-  const color = couleur || entreprise?.couleur || '#f97316';
+  const color = couleurCss(couleur || entreprise?.couleur);
   const e = buildEntrepriseFields(entreprise);
   const rcsComplet = getRCSComplet(entreprise);
 
-  const cl = {
-    prenom: client?.prenom || '',
-    nom: client?.nom || '',
-    entreprise: client?.entreprise || '',
-    adresse: client?.adresse || '',
-    codePostal: client?.code_postal || client?.codePostal || '',
-    ville: client?.ville || '',
-  };
+  const cl = champsClient(client);
 
   const lignes = filterValidLignes(situation.lignes);
   const defaultTvaRate = situation.tvaRate || parentDevis?.tvaRate || parentDevis?.tva_rate || 10;
@@ -539,8 +528,8 @@ export function buildSituationFactureHtml({ situation, parentDevis, client, chan
     tvaParTaux[taux].montant += situationHT * (taux / 100);
 
     return `<tr>
-      <td style="padding:8px 6px;border-bottom:1px solid #e2e8f0;vertical-align:top;font-size:8pt">${l.description || ''}</td>
-      <td style="padding:8px 6px;border-bottom:1px solid #e2e8f0;text-align:center">${l.quantite || ''} ${l.unite || ''}</td>
+      <td style="padding:8px 6px;border-bottom:1px solid #e2e8f0;vertical-align:top;font-size:8pt;white-space:pre-line;overflow-wrap:anywhere">${h(l.description)}</td>
+      <td style="padding:8px 6px;border-bottom:1px solid #e2e8f0;text-align:center">${quantite(l.quantite)} ${h(l.unite)}</td>
       <td style="padding:8px 6px;border-bottom:1px solid #e2e8f0;text-align:right">${euros(pu)}</td>
       <td style="padding:8px 6px;border-bottom:1px solid #e2e8f0;text-align:right">${euros(marcheHT)}</td>
       <td style="padding:8px 6px;border-bottom:1px solid #e2e8f0;text-align:center;font-weight:600;color:${color}">${pourcent((l.cumulActuel || 0).toFixed(0))}</td>
@@ -569,7 +558,7 @@ export function buildSituationFactureHtml({ situation, parentDevis, client, chan
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Facture de Situation n°${situation.numero}</title>
+  <title>Facture de Situation n°${h(situation.numero)}</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 9pt; color: #1e293b; background: #ffffff; padding: 20px; line-height: 1.4; }
@@ -625,9 +614,9 @@ export function buildSituationFactureHtml({ situation, parentDevis, client, chan
     </div>
     <div class="doc-type">
       <h1>FACTURE DE SITUATION</h1>
-      <h2>Situation n°${situation.numero}</h2>
+      <h2>Situation n°${h(situation.numero)}</h2>
       <div class="doc-info">
-        ${parentDevis?.numero ? `<strong>Marché n° ${parentDevis.numero}</strong> du ${parentDevis.date ? new Date(parentDevis.date).toLocaleDateString('fr-FR') : ''}<br>` : ''}
+        ${parentDevis?.numero ? `<strong>Marché n° ${h(parentDevis.numero)}</strong> du ${parentDevis.date ? new Date(parentDevis.date).toLocaleDateString('fr-FR') : ''}<br>` : ''}
         Date: ${new Date(situation.date || new Date()).toLocaleDateString('fr-FR')}
       </div>
     </div>
@@ -645,8 +634,8 @@ export function buildSituationFactureHtml({ situation, parentDevis, client, chan
     ${chantier ? `
     <div class="info-block">
       <h3>Chantier</h3>
-      <div class="name">${chantier.nom || ''}</div>
-      <div style="font-size:9pt">${chantier.adresse || ''}</div>
+      <div class="name">${h(chantier.nom)}</div>
+      <div style="font-size:9pt">${h(chantier.adresse)}</div>
     </div>
     ` : ''}
   </div>

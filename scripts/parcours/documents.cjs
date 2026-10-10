@@ -23,6 +23,51 @@ async function actionFiche(page, attendre, libelles) {
   }, libelles);
 }
 
+// Image JPEG de la première page d'un PDF remis : combien de pixels ne sont pas blancs ? Le PDF de facture est
+// une image par page (src/lib/pdfDepuisHtml.js). Recette du 9 oct. 2026 : un PDF de 300 Ko passait ce
+// parcours alors que toutes ses pages étaient blanches (seule la taille était contrôlée).
+async function pixelsEncresPremierePage(page, href) {
+  return page.evaluate(async (url) => {
+    const octets = new Uint8Array(await (await fetch(url)).arrayBuffer());
+    const texte = new TextDecoder('latin1').decode(octets);
+    const dct = texte.indexOf('/DCTDecode');
+    if (dct < 0) return { images: 0, encre: 0 };
+    let debut = texte.indexOf('stream', dct) + 'stream'.length;
+    if (texte[debut] === '\r') debut++;
+    if (texte[debut] === '\n') debut++;
+    const fin = texte.indexOf('endstream', debut);
+    const image = await createImageBitmap(new Blob([octets.slice(debut, fin)], { type: 'image/jpeg' }));
+    const c = document.createElement('canvas');
+    c.width = image.width; c.height = image.height;
+    const ctx = c.getContext('2d');
+    ctx.drawImage(image, 0, 0);
+    const px = ctx.getImageData(0, 0, c.width, c.height).data;
+    let encre = 0;
+    for (let i = 0; i < px.length; i += 16) if (px[i] < 200 || px[i + 1] < 200 || px[i + 2] < 200) encre++;
+    return { images: (texte.match(/\/DCTDecode/g) || []).length, encre };
+  }, href);
+}
+
+// Micro-entreprise (franchise en base, art. 293 B CGI), posée avant le chargement : fiche active de démo
+// (ligne au format de la table) et copie de l'app.
+const ENTREPRISE_MICRO = {
+  id: 'ent-micro', nom: 'Hugo Séguin — Électricien', forme_juridique: 'Micro-entreprise', siret: '987 654 321 00018',
+  adresse: '15 rue des Artisans', code_postal: '75012', ville: 'Paris', tva_defaut: 20,
+  decennale_assureur: 'AXA', decennale_numero: 'DEC-1',
+};
+const ENTREPRISE_MICRO_APP = {
+  id: 'ent-micro', nom: ENTREPRISE_MICRO.nom, formeJuridique: 'Micro-entreprise', siret: ENTREPRISE_MICRO.siret,
+  adresse: ENTREPRISE_MICRO.adresse, codePostal: '75012', ville: 'Paris', tvaDefaut: 20, decennaleAssureur: 'AXA', decennaleNumero: 'DEC-1',
+};
+const poserEntrepriseMicro = `
+  if (!sessionStorage.getItem('parcours-micro')) {
+    sessionStorage.setItem('parcours-micro', '1');
+    localStorage.setItem('mallettico_entreprises', ${JSON.stringify(JSON.stringify([ENTREPRISE_MICRO]))});
+    localStorage.setItem('mallettico_entreprise_active_id', 'ent-micro');
+    localStorage.setItem('mallettico_entreprise_migrated', 'true');
+    localStorage.setItem('cp_entreprise', ${JSON.stringify(JSON.stringify(ENTREPRISE_MICRO_APP))});
+  }`;
+
 module.exports = [
   {
     nom: 'aperçu PDF : la certification TVA réduite figure sur les documents à 10 % / 5,5 %',
@@ -92,12 +137,61 @@ module.exports = [
         if (!r) return null;
         const octets = new Uint8Array(await (await fetch(r.href)).arrayBuffer());
         const texte = new TextDecoder('latin1').decode(octets);
-        return { nom: r.nom, taille: octets.length, entete: texte.slice(0, 5), facturx: /factur-x\.xml/i.test(texte) };
+        return { nom: r.nom, href: r.href, taille: octets.length, entete: texte.slice(0, 5), facturx: /factur-x\.xml/i.test(texte) };
       });
       verifier(!!fichier, 'un fichier est remis');
       verifier(/^Facture_FAC-\d{4}-\d{5}\.pdf$/.test(fichier.nom), `nom du fichier (${fichier.nom})`);
       verifier(fichier.entete === '%PDF-' && fichier.taille > 5000, `contenu PDF (${fichier.taille} octets)`);
       verifier(fichier.facturx, 'XML Factur-X embarqué');
+      const rendu = await pixelsEncresPremierePage(page, fichier.href);
+      verifier(rendu.images > 0, `pages dessinées dans le PDF (${rendu.images} image(s))`);
+      verifier(rendu.encre > 2000, `la première page n'est pas blanche (${rendu.encre} points d'encre)`);
+      const largeur = await page.evaluate(() => Math.round(document.body.getBoundingClientRect().width));
+      verifier(largeur > 1000, `l'app garde sa largeur pendant la génération (${largeur} px)`);
+    },
+  },
+  {
+    nom: 'micro-entreprise : le devis de l’éditeur n’ajoute aucune TVA (1440 px)',
+    async executer({ ouvrir, attendre, verifier }) {
+      const { page } = await ouvrir({
+        page: 'devis', largeur: 1440,
+        avantChargement: poserEntrepriseMicro,
+      });
+      await attendre(800);
+      const dansDialogue = (re) => page.evaluate((src) => {
+        const r = new RegExp(src);
+        const b = [...document.querySelectorAll('[role=dialog] button, [role=dialog] [role=option], [role=dialog] li')]
+          .find((x) => x.getBoundingClientRect().width > 0 && r.test((x.innerText || '').trim()));
+        if (b) b.click();
+        return !!b;
+      }, re.source);
+      await page.evaluate(() => { const b = [...document.querySelectorAll('button')].find((x) => /^Nouveau$/.test((x.innerText || '').trim()) && x.getBoundingClientRect().width > 0); b?.click(); });
+      await attendre(600);
+      await page.evaluate(() => { const b = [...document.querySelectorAll('button, [role=menuitem], a')].find((x) => (x.innerText || '').trim() === 'Nouveau devis'); b?.click(); });
+      await attendre(1500);
+      verifier(await dansDialogue(/Choisir un client/), 'sélecteur de client ouvert');
+      await attendre(500);
+      const choisi = await page.evaluate(() => {
+        const b = [...document.querySelectorAll('[role=dialog] button')].find((x) => x.getBoundingClientRect().width > 0 && /Dupont|Martin|Bernard|Durand|Petit/.test(x.innerText || ''));
+        b?.click();
+        return !!b;
+      });
+      verifier(choisi, 'un client de démo est choisi');
+      await attendre(500);
+      const champ = await page.$('input[placeholder^="Ajouter une prestation"]');
+      await champ.click(); await champ.type('Pose prise 2P+T', { delay: 15 }); await attendre(400);
+      await page.keyboard.press('Enter'); await attendre(600);
+      const pu = await page.$('input[aria-label="Prix unitaire HT"]');
+      await pu.click({ clickCount: 3 }); await pu.type('100', { delay: 15 }); await attendre(400);
+      const barre = await page.evaluate(() => document.body.innerText);
+      verifier(/TVA non applicable/.test(barre), 'l’éditeur annonce « TVA non applicable »');
+      verifier(!(await page.$('select[aria-label="Taux de TVA"]')), 'aucun sélecteur de TVA sur les lignes');
+      await page.evaluate(() => { const b = [...document.querySelectorAll('[role=dialog] button')].find((x) => /Créer le devis/.test(x.innerText || '')); b?.click(); });
+      await attendre(2000);
+      const devis = await page.evaluate(() => (JSON.parse(localStorage.getItem('mallettico_demo_data') || '{}').devis || []).find((d) => (d.lignes || []).some((l) => l.description === 'Pose prise 2P+T')));
+      verifier(!!devis, 'le devis est enregistré');
+      verifier(devis.total_ht === 100 && devis.tva === 0 && devis.total_ttc === 100, `totaux enregistrés HT ${devis.total_ht} / TVA ${devis.tva} / total ${devis.total_ttc}`);
+      verifier(devis.lignes.every((l) => l.tva === 0), 'lignes à 0 % de TVA');
     },
   },
   {

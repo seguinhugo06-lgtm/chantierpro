@@ -55,7 +55,8 @@ import LigneListe from './ui/LigneListe';
 import { Bouton } from './ui/Bouton';
 import { PastilleStatut } from './ui/Pastille';
 import { statut as libelleStatut } from '../lib/statuts';
-import { pourcent, blocConditionsPaiement, CONDITIONS_PAIEMENT, euros } from '../lib/formatDocument';
+import { pourcent, blocConditionsPaiement, CONDITIONS_PAIEMENT, euros, quantite } from '../lib/formatDocument';
+import { echapperHtml as echap, couleurCss } from '../lib/echapperHtml';
 import { totauxDocument, lignesTotauxHtml, lignesAcompteHtml, calculerTotaux } from '../lib/totauxDocument';
 import { lignesFactureAcompte, lignesFactureSolde } from '../lib/facturation';
 import { verifierNouvelleFacture, pourcentageAcompteValide, peutModifierDocument, peutSupprimerDocument, estEntierementFacture } from '../lib/gardeFacturation';
@@ -96,6 +97,8 @@ import { getSnapshots } from '../lib/snapshotService';
 import useKeepInViewport from '../hooks/useKeepInViewport';
 import { mentionTvaReduiteHtml } from '../lib/mentionTvaReduite';
 import { remettreFichier, estNatif, ouvrirLienExterne } from '../lib/natif';
+import { captureException } from '../lib/sentry';
+import { estFranchiseTva, sansTva } from '../lib/franchiseTva';
 import { urlPublique } from '../lib/urlPublique';
 
 // Email tracking : l'envoi passe par Resend (send-email) ; l'historique par document
@@ -290,7 +293,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     setShowAcompteModal(true);
   };
   // Montant TTC de la facture d'acompte telle qu'elle sera créée (lignes par taux, arrondies)
-  const ttcAcompte = (pct) => calculerTotaux(lignesFactureAcompte(selected, pct, { tauxDefaut: entreprise?.tvaDefaut || 20 }), { tauxDefaut: entreprise?.tvaDefaut || 20 }).totalTTC;
+  const ttcAcompte = (pct) => calculerTotaux(lignesFactureAcompte(selected, pct, { tauxDefaut: entreprise?.tvaDefaut || 20 }), { tauxDefaut: entreprise?.tvaDefaut || 20, franchise: isMicro }).totalTTC;
   const [newClient, setNewClient] = useState({ nom: '', telephone: '' });
   const [snackbar, setSnackbar] = useState(null);
   const canvasRef = useRef(null);
@@ -432,7 +435,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     notes: ''
   });
 
-  const isMicro = entreprise?.formeJuridique === 'Micro-entreprise';
+  // Franchise en base (art. 293 B CGI) : aucune TVA sur les documents créés (src/lib/franchiseTva.js)
+  const isMicro = estFranchiseTva(entreprise);
   const formatMoney = (n) => fmtMoney(n, 2);
 
   // Calcul pénalités de retard (Article L441-10 Code de commerce)
@@ -1279,8 +1283,9 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   const facturerEtape = (echeancier, etape) => facturerUneFois(async () => {
     if (!selected || !echeancier) return;
     const last = isLastEtape(etape, echeancier.etapes);
-    const lignes = buildFactureLignesForEtape(selected, etape, echeancier.etapes, entreprise?.tvaDefaut || 20);
-    const t = calculerTotaux(lignes, { tauxDefaut: entreprise?.tvaDefaut || 20 });
+    const lignesEtape = buildFactureLignesForEtape(selected, etape, echeancier.etapes, entreprise?.tvaDefaut || 20);
+    const lignes = isMicro ? sansTva(lignesEtape) : lignesEtape;
+    const t = calculerTotaux(lignes, { tauxDefaut: entreprise?.tvaDefaut || 20, franchise: isMicro });
     const montants = { montant_ht: t.totalHT, tva: t.totalTVA, montant_ttc: t.totalTTC, tvaParTaux: t.tvaParTaux };
     const factureType = last ? 'solde' : 'acompte';
     if (!facturationAutorisee('etape', t.totalTTC)) return;
@@ -1387,8 +1392,9 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     if (!pourcentageAcompteValide(acomptePct)) return showToast('Le pourcentage d\'acompte doit être compris entre 1 et 99 %.', 'error');
     if (getAcompteFacture(selected.id)) return showToast('Un acompte existe déjà', 'error');
     // Une ligne par taux de TVA du devis, sur les bases après remise (src/lib/facturation.js)
-    const lignesAcompte = lignesFactureAcompte(selected, acomptePct, { tauxDefaut: entreprise?.tvaDefaut || 20 });
-    const tAcompte = calculerTotaux(lignesAcompte, { tauxDefaut: entreprise?.tvaDefaut || 20 });
+    const lignesParTaux = lignesFactureAcompte(selected, acomptePct, { tauxDefaut: entreprise?.tvaDefaut || 20 });
+    const lignesAcompte = isMicro ? sansTva(lignesParTaux) : lignesParTaux;
+    const tAcompte = calculerTotaux(lignesAcompte, { tauxDefaut: entreprise?.tvaDefaut || 20, franchise: isMicro });
     const montantHT = tAcompte.totalHT;
     const tva = tAcompte.totalTVA;
     const ttc = tAcompte.totalTTC;
@@ -1427,12 +1433,13 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   // (total − acomptes) et pouvait différer d'un centime de la facture (relecture juridique du 9 oct. 2026).
   const factureDeSolde = (doc) => {
     const allAcomptes = getAllAcompteFactures(doc.id);
-    const lignes = lignesFactureSolde(
+    const lignesSolde = lignesFactureSolde(
       doc,
       allAcomptes.map(a => ({ libelle: `Acompte déjà facturé (${a.numero})`, lignes: a.lignes, tvaParTaux: a.tvaParTaux || a.tvaDetails, montant_ht: a.total_ht })),
       { tauxDefaut: entreprise?.tvaDefaut || 20 },
     );
-    return { allAcomptes, lignes, totaux: calculerTotaux(lignes, { tauxDefaut: entreprise?.tvaDefaut || 20 }) };
+    const lignes = isMicro ? sansTva(lignesSolde) : lignesSolde;
+    return { allAcomptes, lignes, totaux: calculerTotaux(lignes, { tauxDefaut: entreprise?.tvaDefaut || 20, franchise: isMicro }) };
   };
 
   const confirmAndCreateSolde = async () => {
@@ -1447,7 +1454,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     if (!facturationAutorisee(allAcomptes.length > 0 ? 'solde' : 'totale', totaux.totalTTC)) return;
     const client = clients.find(c => c.id === selected.client_id);
     const clientName = client ? `${client.prenom || ''} ${client.nom || ''}`.trim() : 'le client';
-    const label = allAcomptes.length > 0 ? `Facturer le solde de ${formatMoney(totaux.totalTTC)} TTC` : `Créer la facture complète de ${formatMoney(totaux.totalTTC)} TTC`;
+    const montant = `${formatMoney(totaux.totalTTC)}${isMicro ? '' : ' TTC'}`;
+    const label = allAcomptes.length > 0 ? `Facturer le solde de ${montant}` : `Créer la facture complète de ${montant}`;
     const ok = await confirm({
       title: allAcomptes.length > 0 ? 'Facturer le solde ?' : 'Créer la facture complète ?',
       message: `${label} pour ${clientName}. Cette action est irréversible.`
@@ -1569,9 +1577,15 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     const isFacture = doc.type === 'facture';
     const isAvoirDoc = doc.facture_type === 'avoir';
     const sourceFactureDoc = isAvoirDoc && doc.avoir_source_id ? devis.find(d => d.id === doc.avoir_source_id) : null;
-    const isMicro = entreprise?.formeJuridique === 'Micro-entreprise';
     const avoirColor = '#dc2626';
-    const docColor = isAvoirDoc ? avoirColor : couleur;
+    const docColor = isAvoirDoc ? avoirColor : couleurCss(couleur);
+    // Textes saisis échappés avant d'entrer dans le HTML (recette du 9 oct. 2026 : « Tableau <NF C 15-100> »
+    // s'imprimait « Tableau », et un <img onerror> saisi s'exécutait dans l'aperçu).
+    const echapperChamps = (o) => (o ? Object.fromEntries(Object.entries(o).map(([k, v]) => [k, typeof v === 'string' ? echap(v) : v])) : o);
+    const E = echapperChamps(entreprise) || {};
+    const C = echapperChamps(client);
+    const CH = echapperChamps(chantier);
+    const devisSource = isFacture && doc.devis_source_id ? devis.find(d => d.id === doc.devis_source_id) : null;
     const dateValidite = new Date(doc.date);
     dateValidite.setDate(dateValidite.getDate() + (doc.validite || entreprise?.validiteDevis || 30));
     
@@ -1593,9 +1607,9 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 
     const renderRow = (l) => `
       <tr>
-        <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;vertical-align:top;white-space:pre-line">${l.description || ''}</td>
-        <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${l.quantite || 0}</td>
-        <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${l.unite||'unité'}</td>
+        <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;vertical-align:top;white-space:pre-line;overflow-wrap:anywhere">${echap(l.description)}</td>
+        <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${quantite(l.quantite)}</td>
+        <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${echap(l.unite || 'unité')}</td>
         <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:right">${formatMoney(parseFloat(l.prixUnitaire||l.prix_unitaire||0))}</td>
         <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${isMicro ? '-' : pourcent(l.tva !== undefined ? l.tva : (doc.tvaRate||10))}</td>
         <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:right;font-weight:600;${getLineTotal(l)<0?'color:#dc2626;':''}">${formatMoney(getLineTotal(l))}</td>
@@ -1610,8 +1624,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     const lignesHTML = _hasLots
       ? _lotSections.map(s => {
           const sub = s.lignes.reduce((sum, l) => sum + getLineTotal(l), 0);
-          const header = s.titre ? `<tr><td colspan="6" style="padding:14px 8px 6px;font-weight:700;font-size:10.5pt;color:${docColor};border-bottom:2px solid ${docColor}">${s.titre}</td></tr>` : '';
-          const subtotal = s.titre ? `<tr><td colspan="5" style="padding:6px 8px;text-align:right;font-size:8.5pt;color:#64748b;font-style:italic">Sous-total ${s.titre}</td><td style="padding:6px 8px;text-align:right;font-weight:700;font-size:9pt">${formatMoney(sub)}</td></tr>` : '';
+          const header = s.titre ? `<tr><td colspan="6" style="padding:14px 8px 6px;font-weight:700;font-size:10.5pt;color:${docColor};border-bottom:2px solid ${docColor}">${echap(s.titre)}</td></tr>` : '';
+          const subtotal = s.titre ? `<tr><td colspan="5" style="padding:6px 8px;text-align:right;font-size:8.5pt;color:#64748b;font-style:italic">Sous-total ${echap(s.titre)}</td><td style="padding:6px 8px;text-align:right;font-weight:700;font-size:9pt">${formatMoney(sub)}</td></tr>` : '';
           return header + s.lignes.map(renderRow).join('') + subtotal;
         }).join('')
       : filterValidLignes(doc.lignes).map(renderRow).join('');
@@ -1620,7 +1634,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <title>${doc.facture_type === 'avoir' ? 'Avoir' : isFacture ? 'Facture' : 'Devis'} ${doc.numero}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${doc.facture_type === 'avoir' ? 'Avoir' : isFacture ? 'Facture' : 'Devis'} ${echap(doc.numero)}</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 10pt; color: #1e293b; background: #ffffff; padding: 25px; line-height: 1.4; }
@@ -1670,26 +1685,28 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   <!-- HEADER -->
   <div class="header">
     <div class="logo-section">
-      <div class="logo">${entreprise?.nom || 'Mon Entreprise'}</div>
+      <div class="logo">${E?.nom || 'Mon Entreprise'}</div>
       <div class="entreprise-info">
-        ${entreprise?.formeJuridique ? `<strong>${entreprise.formeJuridique}</strong>${entreprise?.capital ? ` - Capital: ${entreprise.capital} €` : ''}<br>` : ''}
-        ${entreprise?.adresse?.replace(/\n/g, '<br>') || ''}<br>
-        ${entreprise?.tel ? `Tél: ${entreprise.tel}` : ''} ${entreprise?.email ? `· ${entreprise.email}` : ''}
+        ${E?.formeJuridique ? `<strong>${E.formeJuridique}</strong>${E?.capital ? ` - Capital: ${E.capital} €` : ''}<br>` : ''}
+        ${E?.adresse?.replace(/\n/g, '<br>') || ''}<br>
+        ${E?.tel ? `Tél: ${E.tel}` : ''} ${E?.email ? `· ${E.email}` : ''}
       </div>
       <div class="entreprise-legal">
-        ${entreprise?.siret ? `SIRET: ${entreprise.siret}` : ''}
-        ${entreprise?.codeApe ? ` · APE: ${entreprise.codeApe}` : ''}
-        ${getRCSComplet() ? `<br>${getRCSComplet()}` : ''}
-        ${entreprise?.tvaIntra ? `<br>TVA Intra: ${entreprise.tvaIntra}` : ''}
+        ${E?.siret ? `SIRET: ${E.siret}` : ''}
+        ${E?.codeApe ? ` · APE: ${E.codeApe}` : ''}
+        ${getRCSComplet() ? `<br>${echap(getRCSComplet())}` : ''}
+        ${E?.tvaIntra ? `<br>TVA Intra: ${E.tvaIntra}` : ''}
         ${isMicro ? '<br><em>TVA non applicable, art. 293 B du CGI</em>' : ''}
       </div>
     </div>
     <div class="doc-type">
-      <h1>${doc.facture_type === 'avoir' ? 'AVOIR' : isFacture ? 'FACTURE' : 'DEVIS'}</h1>
+      <h1>${doc.facture_type === 'avoir' ? 'AVOIR' : isFacture ? (doc.facture_type === 'acompte' ? "FACTURE D'ACOMPTE" : doc.facture_type === 'solde' ? 'FACTURE DE SOLDE' : 'FACTURE') : 'DEVIS'}</h1>
       <div class="doc-info">
-        <strong>N° ${doc.numero}</strong><br>
+        <strong>N° ${echap(doc.numero)}</strong><br>
         Date: ${new Date(doc.date).toLocaleDateString('fr-FR')}<br>
         ${isFacture && doc.date_echeance ? `Échéance: ${new Date(doc.date_echeance).toLocaleDateString('fr-FR')}<br>` : ''}
+        ${devisSource?.numero && !isAvoirDoc ? `Réf. devis: ${echap(devisSource.numero)}<br>` : ''}
+        ${isFacture && doc.acompte_pct && doc.facture_type === 'acompte' ? `Acompte: ${pourcent(doc.acompte_pct)}<br>` : ''}
         ${!isFacture ? `<strong>Valable jusqu'au: ${dateValidite.toLocaleDateString('fr-FR')}</strong>` : ''}
       </div>
     </div>
@@ -1699,18 +1716,18 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   <div class="client-section">
     <div class="info-block">
       <h3>Client</h3>
-      <div class="name">${client ? `${client.prenom || ''} ${client.nom || ''}` : (doc.client_nom || 'Client supprimé')}</div>
-      ${client?.entreprise ? `<div style="font-size:9pt;color:#64748b">${client.entreprise}</div>` : ''}
-      <div style="font-size:9pt">${client?.adresse || ''}</div>
-      <div style="font-size:9pt">${client?.code_postal || ''} ${client?.ville || ''}</div>
-      ${client?.telephone ? `<div style="font-size:8pt;color:#64748b;margin-top:4px">Tél: ${client.telephone}</div>` : ''}
-      ${client?.email ? `<div style="font-size:8pt;color:#64748b">${client.email}</div>` : ''}
+      <div class="name">${C ? `${C.prenom || ''} ${C.nom || ''}` : echap(doc.client_nom || 'Client supprimé')}</div>
+      ${C?.entreprise ? `<div style="font-size:9pt;color:#64748b">${C.entreprise}</div>` : ''}
+      <div style="font-size:9pt">${C?.adresse || ''}</div>
+      <div style="font-size:9pt">${C?.code_postal || ''} ${C?.ville || ''}</div>
+      ${C?.telephone ? `<div style="font-size:8pt;color:#64748b;margin-top:4px">Tél: ${C.telephone}</div>` : ''}
+      ${C?.email ? `<div style="font-size:8pt;color:#64748b">${C.email}</div>` : ''}
     </div>
-    ${chantier ? `
+    ${CH ? `
     <div class="info-block">
       <h3>Lieu d'exécution</h3>
-      <div class="name">${chantier.nom}</div>
-      <div style="font-size:9pt">${chantier.adresse || client?.adresse || ''}</div>
+      <div class="name">${CH.nom}</div>
+      <div style="font-size:9pt">${CH.adresse || C?.adresse || ''}</div>
     </div>
     ` : ''}
   </div>
@@ -1718,8 +1735,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   ${isAvoirDoc ? `
   <!-- RÉFÉRENCE AVOIR -->
   <div class="avoir-ref">
-    <strong>AVOIR${doc.avoir_type === 'partiel' ? ' PARTIEL' : ''} relatif à la facture n° ${sourceFactureDoc?.numero || 'N/A'} du ${sourceFactureDoc ? new Date(sourceFactureDoc.date).toLocaleDateString('fr-FR') : 'N/A'}</strong>
-    ${doc.avoir_motif ? `<br>Motif : ${AVOIR_MOTIFS[doc.avoir_motif] || doc.avoir_motif}${doc.avoir_motif_detail ? ` — ${doc.avoir_motif_detail}` : ''}` : ''}
+    <strong>AVOIR${doc.avoir_type === 'partiel' ? ' PARTIEL' : ''} relatif à la facture n° ${echap(sourceFactureDoc?.numero || 'N/A')} du ${sourceFactureDoc ? new Date(sourceFactureDoc.date).toLocaleDateString('fr-FR') : 'N/A'}</strong>
+    ${doc.avoir_motif ? `<br>Motif : ${echap(AVOIR_MOTIFS[doc.avoir_motif] || doc.avoir_motif)}${doc.avoir_motif_detail ? ` — ${echap(doc.avoir_motif_detail)}` : ''}` : ''}
   </div>
   ` : ''}
 
@@ -1742,15 +1759,23 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 
   <!-- TOTAUX -->
   <div class="totals">
-    ${lignesTotauxHtml(doc, { isMicro, tauxDefaut: entreprise?.tvaDefaut || 10 })}
+    ${lignesTotauxHtml(doc, { isMicro, tauxDefaut: E?.tvaDefaut || 10 })}
     ${doc.acompte_pct ? `
-    ${lignesAcompteHtml(doc, doc.total_ttc || 0, doc.acompte_pct)}
+    ${lignesAcompteHtml(doc, totauxDocument(doc, { isMicro }).totalTTC, doc.acompte_pct)}
     ` : ''}
   </div>
 
   ${isMicro ? '<div class="micro-mention">TVA non applicable, article 293 B du Code Général des Impôts</div>' : ''}
 
   ${!isAvoirDoc ? mentionTvaReduiteHtml({ tvaDetails: calculatedTvaDetails, nomClient: formatClientName(client, ''), isMicro, isFacture }) : ''}
+
+  ${doc.notes && !isAvoirDoc ? `
+  <!-- NOTES (« Notes (visibles sur le PDF) » de l'éditeur ; même bloc que src/lib/devisHtmlBuilder.js) -->
+  <div class="conditions" style="margin-top:10px">
+    <h4>NOTES</h4>
+    <div style="white-space:pre-line">${echap(doc.notes)}</div>
+  </div>
+  ` : ''}
 
   <!-- CONDITIONS -->
   ${!isAvoirDoc ? `<div class="conditions">
@@ -1759,18 +1784,18 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       <div>
         <strong>Modalités de paiement</strong><br>
         · Virement bancaire<br>
-        · Chèque à l'ordre de ${entreprise?.nom || ''}<br>
+        · Chèque à l'ordre de ${E?.nom || ''}<br>
         · Espèces (max 1 000 € pour particulier)<br>
-        ${entreprise?.iban ? `<br><strong>IBAN:</strong> ${entreprise.iban}` : ''}
-        ${entreprise?.bic ? ` · <strong>BIC:</strong> ${entreprise.bic}` : ''}
+        ${E?.iban ? `<br><strong>IBAN:</strong> ${E.iban}` : ''}
+        ${E?.bic ? ` · <strong>BIC:</strong> ${E.bic}` : ''}
       </div>
       <div>
-        ${blocConditionsPaiement({ doc, entreprise, isFacture, dateEcheance: isFacture ? echeance(doc, { delaiJours: entreprise?.delaiPaiement }) : null })}
+        ${blocConditionsPaiement({ doc, entreprise, isFacture, dateEcheance: isFacture ? echeance(doc, { delaiJours: E?.delaiPaiement }) : null })}
       </div>
     </div>
   </div>` : ''}
 
-  ${!isFacture && !isAvoirDoc && (entreprise?.mentionGaranties !== false) ? `
+  ${!isFacture && !isAvoirDoc && (E?.mentionGaranties !== false) ? `
   <!-- GARANTIES LÉGALES -->
   <div class="garanties">
     <h4> GARANTIES LÉGALES (Code civil & Code de la construction)</h4>
@@ -1780,31 +1805,31 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   </div>
   ` : ''}
 
-  ${!isFacture && !isAvoirDoc && (entreprise?.mentionRetractation !== false) ? `
+  ${!isFacture && !isAvoirDoc && (E?.mentionRetractation !== false) ? `
   <!-- DROIT DE RÉTRACTATION -->
   <div class="retractation">
     <strong>⚠️ DROIT DE RÉTRACTATION</strong> (Art. L221-18 du Code de la consommation)<br>
     Vous disposez d'un délai de <strong>14 jours</strong> pour exercer votre droit de rétractation sans justification ni pénalité.
     Le délai court à compter de la signature du présent devis.
-    Pour l'exercer, envoyez une lettre recommandée AR à : ${entreprise?.adresse ? entreprise.adresse.replace(/\n/g, ', ') : entreprise?.nom || ''}
+    Pour l'exercer, envoyez une lettre recommandée AR à : ${E?.adresse ? E.adresse.replace(/\n/g, ', ') : E?.nom || ''}
   </div>
   ` : ''}
 
-  ${!isAvoirDoc && (entreprise?.mediateur || entreprise?.mediateurContact) ? `
+  ${!isAvoirDoc && (E?.mediateur || E?.mediateurContact) ? `
   <!-- MÉDIATEUR DE LA CONSOMMATION -->
   <div class="retractation" style="margin-top:10px">
     <strong>MÉDIATEUR DE LA CONSOMMATION</strong> (Art. L612-1 du Code de la consommation)<br>
     En cas de litige, vous pouvez recourir gratuitement au service de médiation :
-    ${entreprise.mediateur ? `<strong>${entreprise.mediateur}</strong>` : ''}
-    ${entreprise.mediateurContact ? ` — ${entreprise.mediateurContact}` : ''}
+    ${E.mediateur ? `<strong>${E.mediateur}</strong>` : ''}
+    ${E.mediateurContact ? ` — ${E.mediateurContact}` : ''}
   </div>
   ` : ''}
 
-  ${!isAvoirDoc && entreprise?.cgv ? `
+  ${!isAvoirDoc && E?.cgv ? `
   <!-- CGV PERSONNALISÉES -->
   <div class="conditions" style="margin-top:10px">
     <h4>CONDITIONS PARTICULIÈRES</h4>
-    ${entreprise.cgv}
+    <div style="white-space:pre-line">${E.cgv}</div>
   </div>
   ` : ''}
 
@@ -1818,26 +1843,26 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     <div class="signature-box">
       <h4>Le Client</h4>
       <p>Signature précédée de la mention manuscrite:<br><strong>"Bon pour accord"</strong> + Date</p>
-      ${doc.signature ? '<div style="margin-top:15px;color:#16a34a;font-weight:bold">✓ Signé électroniquement'+(doc.signataire ? ' par '+doc.signataire : '')+' le '+new Date(doc.signatureDate).toLocaleDateString('fr-FR')+'</div>' : ''}
+      ${doc.signature ? '<div style="margin-top:15px;color:#16a34a;font-weight:bold">✓ Signé électroniquement'+(doc.signataire ? ' par '+echap(doc.signataire) : '')+' le '+new Date(doc.signatureDate).toLocaleDateString('fr-FR')+'</div>' : ''}
     </div>
   </div>
   ` : ''}
 
   <!-- FOOTER -->
   <div class="footer">
-    <strong>${entreprise?.nom || ''}</strong>
-    ${entreprise?.formeJuridique ? ` · ${entreprise.formeJuridique}` : ''}
-    ${entreprise?.capital ? ` · Capital: ${entreprise.capital} €` : ''}
-    ${entreprise?.adresse ? ` — ${entreprise.adresse.replace(/\n/g, ', ')}` : ''}<br>
-    ${entreprise?.siret ? `SIRET: ${entreprise.siret}` : ''}
-    ${entreprise?.codeApe ? ` | APE: ${entreprise.codeApe}` : ''}
-    ${getRCSComplet() ? ` | ${getRCSComplet()}` : ''}<br>
-    ${entreprise?.tvaIntra ? `TVA Intracommunautaire: ${entreprise.tvaIntra}` : ''}<br>
+    <strong>${E?.nom || ''}</strong>
+    ${E?.formeJuridique ? ` · ${E.formeJuridique}` : ''}
+    ${E?.capital ? ` · Capital: ${E.capital} €` : ''}
+    ${E?.adresse ? ` — ${E.adresse.replace(/\n/g, ', ')}` : ''}<br>
+    ${E?.siret ? `SIRET: ${E.siret}` : ''}
+    ${E?.codeApe ? ` | APE: ${E.codeApe}` : ''}
+    ${getRCSComplet() ? ` | ${echap(getRCSComplet())}` : ''}<br>
+    ${E?.tvaIntra ? `TVA Intracommunautaire: ${E.tvaIntra}` : ''}<br>
     <div class="assurances">
-      ${entreprise?.decennaleAssureur ? `Assurance décennale: ${entreprise.decennaleAssureur} N°${entreprise.decennaleNumero}${entreprise.decennaleValidite ? ` (Valide jusqu'au ${new Date(entreprise.decennaleValidite).toLocaleDateString('fr-FR')})` : ''}${entreprise.decennaleActivites ? ` — Activités: ${entreprise.decennaleActivites}` : ''}` : ''}
-      ${entreprise?.decennaleAssureur && entreprise?.rcProAssureur ? '<br>' : ''}
-      ${entreprise?.rcProAssureur ? `RC Pro: ${entreprise.rcProAssureur} N°${entreprise.rcProNumero}${entreprise.rcProValidite ? ` (Valide jusqu'au ${new Date(entreprise.rcProValidite).toLocaleDateString('fr-FR')})` : ''}${entreprise.rcProMontantGarantie ? ` — Garantie: ${entreprise.rcProMontantGarantie} €` : ''}${entreprise.rcProZone ? ` — Zone: ${entreprise.rcProZone}` : ''}` : ''}
-      ${entreprise?.mentionRGE !== false && Array.isArray(entreprise?.labels) && entreprise.labels.filter(l => l.actif).length > 0 ? '<br>' + entreprise.labels.filter(l => l.actif).map(l => `${l.nom}${l.numero ? ` N°${l.numero}` : ''}${l.organisme ? ` (${l.organisme})` : ''}${l.dateExpiration ? ` — Valide jusqu'au ${new Date(l.dateExpiration).toLocaleDateString('fr-FR')}` : ''}`).join('<br>') : ''}
+      ${E?.decennaleAssureur ? `Assurance décennale: ${E.decennaleAssureur} N°${E.decennaleNumero}${E.decennaleValidite ? ` (Valide jusqu'au ${new Date(E.decennaleValidite).toLocaleDateString('fr-FR')})` : ''}${E.decennaleActivites ? ` — Activités: ${E.decennaleActivites}` : ''}` : ''}
+      ${E?.decennaleAssureur && E?.rcProAssureur ? '<br>' : ''}
+      ${E?.rcProAssureur ? `RC Pro: ${E.rcProAssureur} N°${E.rcProNumero}${E.rcProValidite ? ` (Valide jusqu'au ${new Date(E.rcProValidite).toLocaleDateString('fr-FR')})` : ''}${E.rcProMontantGarantie ? ` — Garantie: ${E.rcProMontantGarantie} €` : ''}${E.rcProZone ? ` — Zone: ${E.rcProZone}` : ''}` : ''}
+      ${E?.mentionRGE !== false && Array.isArray(E?.labels) && E.labels.filter(l => l.actif).length > 0 ? '<br>' + E.labels.filter(l => l.actif).map(l => `${echap(l.nom)}${l.numero ? ` N°${echap(l.numero)}` : ''}${l.organisme ? ` (${echap(l.organisme)})` : ''}${l.dateExpiration ? ` — Valide jusqu'au ${new Date(l.dateExpiration).toLocaleDateString('fr-FR')}` : ''}`).join('<br>') : ''}
     </div>
     ${isAvoirDoc ? `<div style="margin-top:6px;font-size:6.5pt;color:#666">Cet avoir rectifie la facture de référence citée ci-dessus ; il en réduit d'autant le montant dû.</div>` : !isFacture ? `<div style="margin-top:6px;font-size:6.5pt;color:#666">Devis reçu avant l'exécution des travaux. Conditions de paiement et pénalités de retard conformes à l'article L441-10 du Code de commerce.</div>` : ''}
   </div>
@@ -1859,30 +1884,33 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768;
   };
 
-  // Print/Download PDF — routes factures through Factur-X PDF/A-3 pipeline
+  // Bouton « PDF » / « Imprimer / PDF ». Une facture : un PDF, avec les données Factur-X jointes. Un devis :
+  // un PDF au téléphone (avant : un fichier HTML affiché à 38 %), la fenêtre d'impression au bureau.
+  // Recette du 9 oct. 2026 : le PDF de la facture sortait blanc (src/lib/pdfDepuisHtml.js).
   const printPDF = async (doc) => {
     const content = downloadPDF(doc);
-
-    // Factures: generate real Factur-X PDF/A-3 with embedded XML
-    if (doc.type === 'facture') {
-      try {
-        setActionLoading('pdf');
+    const genre = doc.facture_type === 'avoir' ? 'Avoir' : doc.type === 'facture' ? 'Facture' : 'Devis';
+    if (doc.type !== 'facture' && !(isMobile() || estNatif())) { fallbackHtmlPrint(content, doc); return; }
+    try {
+      setActionLoading('pdf');
+      let remise;
+      if (doc.type === 'facture') {
         const { generateAndDownloadFacturX } = await import('../lib/facturx-pdf.js');
         const client = clients.find(c => c.id === doc.client_id);
-        await generateAndDownloadFacturX(doc, client || {}, entreprise || {}, content);
-        showToast('Facture Factur-X téléchargée ✓', 'success');
-      } catch (err) {
-        // Factur-X generation failed, fallback to HTML
-        showToast('Erreur Factur-X, export HTML de secours', 'warning');
-        fallbackHtmlPrint(content, doc);
-      } finally {
-        setActionLoading(null);
+        remise = await generateAndDownloadFacturX(doc, client || {}, entreprise || {}, content);
+      } else {
+        const { pdfDepuisHtml } = await import('../lib/pdfDepuisHtml.js');
+        const octets = await pdfDepuisHtml(content);
+        remise = await remettreFichier(new Blob([octets], { type: 'application/pdf' }), `${genre}_${doc.numero}.pdf`, 'application/pdf', { titre: `${genre} ${doc.numero}` });
       }
-      return;
+      if (remise === 'telecharge') showToast(`${genre} ${doc.numero} téléchargé en PDF`, 'success');
+    } catch (err) {
+      captureException(err, { context: 'PDF du document', type: doc.type });
+      showToast('Le PDF n\'a pas pu être créé : le document s\'ouvre pour être imprimé.', 'warning');
+      fallbackHtmlPrint(content, doc);
+    } finally {
+      setActionLoading(null);
     }
-
-    // Devis & autres: comportement HTML existant
-    fallbackHtmlPrint(content, doc);
   };
 
   // Legacy HTML print/download (used for devis and as fallback)
@@ -2396,9 +2424,11 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       setShowChantierModal(true);
     };
 
-    const createChantierFromDevis = () => {
+    // addChantier renvoie une promesse : sans l'attendre, « Erreur lors de la création » s'affichait alors que
+    // le chantier était créé (et le devis n'y était jamais rattaché).
+    const createChantierFromDevis = async () => {
       if (!addChantier || !chantierForm.nom) return;
-      const newChantier = addChantier({
+      const newChantier = await addChantier({
         nom: chantierForm.nom,
         client_id: selected.client_id,
         adresse: chantierForm.adresse || client?.adresse || '',
@@ -2415,7 +2445,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         return;
       }
       // Link devis to new chantier
-      onUpdate(selected.id, { chantier_id: newChantier.id });
+      await onUpdate(selected.id, { chantier_id: newChantier.id });
       setSelected({ ...selected, chantier_id: newChantier.id });
       setShowChantierModal(false);
       setSnackbar({
@@ -3076,7 +3106,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                 <div className="w-56">
                   {/* Mêmes totaux que les documents imprimés (src/lib/totauxDocument.js) */}
                   {(() => {
-                    const t = totauxDocument(selected, { tauxDefaut: entreprise?.tvaDefaut || 10 });
+                    const t = totauxDocument(selected, { tauxDefaut: entreprise?.tvaDefaut || 10, isMicro });
                     const ligneTotal = (libelle, valeur, cls = textSecondary) => (
                       <div key={libelle} className={`flex justify-between gap-3 py-1 text-sm ${cls}`}><span>{libelle}</span><span className="tabular-nums">{valeur}</span></div>
                     );
@@ -3093,7 +3123,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                           ? t.tva.map((x) => ligneTotal(`TVA ${pourcent(x.taux)}`, formatMoney(x.montant)))
                           : ligneTotal(`TVA ${pourcent(selected.tvaRate || entreprise?.tvaDefaut || 20)}`, formatMoney(selected.tva || selected.total_tva || 0)))}
                         <div className={`flex justify-between py-2 border-t font-bold text-encre ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
-                          <span>Total TTC</span>
+                          <span>{isMicro ? (selected.type === 'facture' ? 'Net à payer' : 'Total') : 'Total TTC'}</span>
                           <span className="tabular-nums">{formatMoney(t.totalTTC)}</span>
                         </div>
                       </>
@@ -3347,7 +3377,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                 </div>
               ) : (
                 <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 mb-4 text-xs text-slate-600">
-                  Acompte de {pourcent(acomptePct)} · {formatMoney(calculerTotaux(lignesFactureAcompte(selected, acomptePct, { tauxDefaut: entreprise?.tvaDefaut || 20 })).totalTTC)}
+                  Acompte de {pourcent(acomptePct)} · {formatMoney(ttcAcompte(acomptePct))}
                 </div>
               )}
               <div className="flex gap-3">
@@ -3486,7 +3516,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
               </div>
               <div className="flex-1 overflow-auto p-4 sm:p-8 flex justify-center">
                 <div className="bg-white shadow-2xl rounded-sm w-full max-w-[210mm] min-h-[297mm]" style={{ boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.05)' }}>
-                  <iframe srcDoc={pdfContent} className="w-full h-full min-h-[297mm] border-0" title="PDF Preview" />
+                  <iframe srcDoc={pdfContent} sandbox="" className="w-full h-full min-h-[297mm] border-0" title="Aperçu du document" />
                 </div>
               </div>
             </div>
@@ -5194,6 +5224,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
               >
                 <iframe
                   srcDoc={pdfContent}
+                  sandbox=""
                   className="w-full h-full min-h-[297mm] border-0"
                   title="Aperçu PDF"
                 />

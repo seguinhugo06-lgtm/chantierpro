@@ -485,8 +485,11 @@ export function DataProvider({ children, initialData = {} }) {
       await queueOffline(action, table, data, userId);
       if (estSessionExpiree(error)) {
         toast.info('Session expirée', 'Reconnectez-vous : la modification, gardée sur cet appareil, partira ensuite.');
-      } else {
+      } else if (!(error?.status ?? error?.statusCode) || (typeof navigator !== 'undefined' && navigator.onLine === false)) {
         toast.info('Pas de connexion', 'Enregistré sur cet appareil : envoi automatique au retour du réseau.');
+      } else {
+        // Réseau présent, serveur en erreur (5xx, 429…) : « Pas de connexion » était faux
+        toast.info('Serveur indisponible', 'Enregistré sur cet appareil : touchez « Synchroniser » pour le renvoyer, sinon il partira au prochain démarrage.');
       }
       return true;
     }

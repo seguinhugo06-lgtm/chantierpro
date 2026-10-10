@@ -153,65 +153,10 @@ export async function generateFacturXPDF(basePdfBytes, invoice, client, entrepri
  * @returns {Promise<Uint8Array>} PDF bytes
  */
 export async function htmlToPdfBytes(htmlContent) {
-  // Dynamic import jspdf to keep it lazy-loaded
-  const { default: jsPDF } = await import('jspdf');
-
-  const doc = new jsPDF({
-    unit: 'mm',
-    format: 'a4',
-    orientation: 'portrait',
-  });
-
-  // Create a temporary hidden container for rendering
-  const container = document.createElement('div');
-
-  // Extract the <body> content from the full HTML document
-  const bodyMatch = htmlContent.match(/<body[^>]*>([\s\S]*)<\/body>/i);
-  const styleMatch = htmlContent.match(/<style[^>]*>([\s\S]*?)<\/style>/gi);
-
-  if (bodyMatch) {
-    // Inject styles + body content
-    const styles = styleMatch ? styleMatch.join('') : '';
-    container.innerHTML = styles + bodyMatch[1];
-  } else {
-    container.innerHTML = htmlContent;
-  }
-
-  // Style the container to match A4 dimensions for rendering
-  container.style.cssText = [
-    'position: fixed',
-    'left: -9999px',
-    'top: 0',
-    'width: 794px',   // A4 at 96dpi
-    'padding: 25px',
-    'background: white',
-    'font-family: "Segoe UI", Arial, sans-serif',
-    'font-size: 10pt',
-    'color: #1e293b',
-    'line-height: 1.4',
-    'box-sizing: border-box',
-  ].join(';');
-
-  document.body.appendChild(container);
-
-  try {
-    await doc.html(container, {
-      margin: [5, 5, 5, 5],
-      autoPaging: 'text',
-      width: 200,       // 210mm - 2*5mm margins
-      windowWidth: 794,  // A4 at 96dpi
-      html2canvas: {
-        scale: 0.25,
-        useCORS: true,
-        logging: false,
-      },
-    });
-
-    const arrayBuffer = doc.output('arraybuffer');
-    return new Uint8Array(arrayBuffer);
-  } finally {
-    document.body.removeChild(container);
-  }
+  // Même rendu que l'e-mail (src/lib/pdfDepuisHtml.js). L'ancienne voie jsPDF.html() posait le texte
+  // hors de la page : PDF blanc (recette du 9 oct. 2026).
+  const { pdfDepuisHtml } = await import('./pdfDepuisHtml.js');
+  return pdfDepuisHtml(htmlContent);
 }
 
 /**

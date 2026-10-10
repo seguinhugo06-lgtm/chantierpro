@@ -16,11 +16,25 @@ import { remettreFichier } from './natif';
  * @returns {string} Formatted date
  */
 const formatDate = (date) => {
+  // « 2026-11-30 » : la date telle qu'écrite ; new Date() la lit en UTC, soit la veille hors métropole
+  if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}/.test(date)) return date.slice(0, 10).replace(/-/g, '');
   const d = new Date(date);
   const year = d.getFullYear();
   const month = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
   return `${year}${month}${day}`;
+};
+
+/**
+ * Échéance de paiement : celle imprimée sur la facture (« 30 jours fin de mois »…). Avant : date + délai
+ * (ou + `validite`, un champ des devis), qui pouvait différer de l'imprimé (recette du 9 oct. 2026).
+ */
+const echeanceDe = (invoice, entreprise) => {
+  if (invoice?.date_echeance) return invoice.date_echeance;
+  const [a, m, j] = String(invoice?.date || '').slice(0, 10).split('-').map(Number);
+  const d = a ? new Date(a, m - 1, j) : new Date();
+  d.setDate(d.getDate() + (Number(entreprise?.delaiPaiement) || 30));
+  return d;
 };
 
 /**
@@ -152,9 +166,7 @@ export function generateFacturXML(invoice, client, entreprise) {
   const vatCategoryCode = getVatCategoryCode(invoice.tvaRate || 0);
   const currencyCode = 'EUR';
 
-  // Payment due date (30 days default)
-  const dueDate = new Date(invoice.date);
-  dueDate.setDate(dueDate.getDate() + (invoice.validite || 30));
+  const dueDate = echeanceDe(invoice, entreprise);
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <rsm:CrossIndustryInvoice xmlns:rsm="urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100"
@@ -267,9 +279,7 @@ export function generateFacturXMLBasic(invoice, client, entreprise) {
   const currencyCode = 'EUR';
   const defaultTvaRate = invoice.tvaRate || entreprise?.tvaDefaut || 20;
 
-  // Payment due date
-  const dueDate = new Date(invoice.date);
-  dueDate.setDate(dueDate.getDate() + (invoice.validite || entreprise?.delaiPaiement || 30));
+  const dueDate = echeanceDe(invoice, entreprise);
 
   // Filter valid lines
   const lignes = (invoice.lignes || []).filter(l =>
