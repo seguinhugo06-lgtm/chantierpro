@@ -35,7 +35,7 @@ export function relanceDe(doc, paiements = [], maintenant = new Date()) {
 }
 
 /** Message court (WhatsApp, SMS) : rappel d'une facture échue, ou envoi d'un document. */
-export function texteCourt(doc, { solde = null, lienPaiement = '', entrepriseNom = '' } = {}) {
+export function texteCourt(doc, { solde = null, lienPaiement = '', lienSignature = '', entrepriseNom = '' } = {}) {
   const signature = entrepriseNom ? ` — ${entrepriseNom}` : '';
   const lien = lienPaiement && solde && solde.reste > 0.005 ? ` Paiement en ligne : ${lienPaiement}` : '';
   if (solde?.enRetard) {
@@ -48,7 +48,8 @@ export function texteCourt(doc, { solde = null, lienPaiement = '', entrepriseNom
     return `Bonjour, voici votre facture ${doc.numero} : ${euros(solde.reste)}${limite}.${lien}${signature}`;
   }
   const genre = doc.type === 'facture' ? 'votre facture' : 'votre devis';
-  return `Bonjour, voici ${genre} ${doc.numero} : ${euros(doc.total_ttc)}.${signature}`;
+  const consulter = lienSignature && doc.type !== 'facture' ? ` Pour le consulter et le signer en ligne : ${lienSignature}` : '';
+  return `Bonjour, voici ${genre} ${doc.numero} : ${euros(doc.total_ttc)}.${consulter}${signature}`;
 }
 
 // Départements et collectivités d'outre-mer : un 06 / 05 / 02 d'outre-mer n'est pas un numéro de France

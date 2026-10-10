@@ -69,7 +69,7 @@ const CHECKLIST_ITEMS = [
   },
   {
     id: 'facturx',
-    label: 'Factur-X PDF/A-3 activé',
+    label: 'Données Factur-X jointes aux factures PDF',
     check: () => true, // Built into Mallettico
     tab: null,
     icon: Shield,
@@ -347,11 +347,11 @@ export default function Facture2026Tab({ entreprise, setEntreprise, isDark, coul
             <CheckCircle className="w-5 h-5 shrink-0 mt-0.5 text-emerald-600" />
             <div>
               <p className={`text-sm font-semibold ${isDark ? 'text-emerald-300' : 'text-emerald-800'}`}>
-                Mallettico émet vos factures au format Factur-X
+                Vos factures PDF contiennent les données Factur-X
               </p>
               <p className={`text-sm mt-0.5 ${isDark ? 'text-emerald-200' : 'text-emerald-700'}`}>
-                Chaque facture téléchargée est un PDF/A-3 avec le XML structuré à l'intérieur.
-                C'est le format attendu par les plateformes. Rien à activer.
+                Chaque facture téléchargée en PDF contient un fichier XML structuré (Factur-X). Pour l'émission
+                obligatoire par une Plateforme Agréée (TPE : à partir du 1er septembre 2027), le raccordement est en préparation.
               </p>
             </div>
           </div>
@@ -393,7 +393,7 @@ export default function Facture2026Tab({ entreprise, setEntreprise, isDark, coul
           <div className={`flex flex-wrap gap-3 mt-3 text-sm ${textSecondary}`}>
             <div className={`flex items-center gap-2 px-3 py-2 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
               <CheckCircle className="w-4 h-4 text-emerald-500" />
-              <span>PDF/A-3 avec XML embarqué</span>
+              <span>XML Factur-X joint au PDF</span>
             </div>
             <div className={`flex items-center gap-2 px-3 py-2 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
               <Info className="w-4 h-4" style={{ color: couleur }} />

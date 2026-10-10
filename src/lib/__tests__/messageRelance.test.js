@@ -52,6 +52,11 @@ describe('rappel d\'une facture : seulement après l\'échéance', () => {
   it('un devis annonce le document et son montant', () => {
     expect(espaces(texteCourt({ type: 'devis', numero: 'DEV-1', total_ttc: 500 }))).toBe('Bonjour, voici votre devis DEV-1 : 500,00 €.');
   });
+
+  it('WhatsApp / SMS d\'un devis : le lien pour le consulter et le signer (avant : le montant seul)', () => {
+    const t = espaces(texteCourt({ type: 'devis', numero: 'DEV-1', total_ttc: 500 }, { lienSignature: 'https://mallettico.fr/devis/signer/abc', entrepriseNom: 'Élec' }));
+    expect(t).toBe('Bonjour, voici votre devis DEV-1 : 500,00 €. Pour le consulter et le signer en ligne : https://mallettico.fr/devis/signer/abc — Élec');
+  });
 });
 
 describe('numéro WhatsApp', () => {

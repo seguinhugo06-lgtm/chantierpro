@@ -1020,8 +1020,8 @@ export default function SignatureModule({ devis = [], chantiers = [], clients = 
             >
               <Shield size={18} className={isDark ? 'text-blue-400 mt-0.5' : 'text-blue-600 mt-0.5'} />
               <p className={`text-xs leading-relaxed ${isDark ? 'text-blue-300' : 'text-blue-800'}`}>
-                En validant, vous confirmez que cette signature a la même valeur juridique
-                qu'une signature manuscrite conformément au règlement eIDAS.
+                En validant, vous signez électroniquement ce document : votre nom, la date et l’heure sont
+                enregistrés avec lui (signature électronique simple).
               </p>
             </div>
 
@@ -1328,9 +1328,8 @@ export default function SignatureModule({ devis = [], chantiers = [], clients = 
             Signatures sécurisées
           </p>
           <p className={`text-xs mt-0.5 ${mutedClass}`}>
-            Vos signatures électroniques sont conformes au règlement eIDAS et ont la
-            même valeur juridique qu'une signature manuscrite. Chaque signature est
-            horodatée et associée à un hash unique pour garantir l'intégrité du document.
+            Signatures électroniques simples : chacune est datée et associée à une empreinte du document
+            signé.
           </p>
         </div>
       </div>

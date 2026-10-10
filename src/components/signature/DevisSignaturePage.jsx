@@ -255,7 +255,7 @@ export default function DevisSignaturePage({ signatureToken }) {
 
           <div className="flex items-center gap-2 justify-center text-xs text-slate-400">
             <Shield className="w-3.5 h-3.5" />
-            <span>Signature électronique conforme au règlement eIDAS (UE 910/2014)</span>
+            <span>Signature électronique simple, datée</span>
           </div>
 
           <p className="text-sm text-slate-500 mt-4">
@@ -535,7 +535,7 @@ export default function DevisSignaturePage({ signatureToken }) {
 
               {/* Legal mention */}
               <p className="text-xs text-center mt-4 text-slate-400">
-                Cette signature électronique a valeur légale conformément au règlement eIDAS (UE 910/2014).
+                Signature électronique simple : votre nom, la date et l’heure de signature sont enregistrés avec le devis.
               </p>
             </>
           )}

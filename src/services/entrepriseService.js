@@ -30,6 +30,8 @@ export const REGLAGES_SANS_COLONNE = {
   rgeOrganisme: '',
   mediateur: '',
   mediateurContact: '',
+  decennaleAssureurAdresse: '',
+  decennaleZone: '',
   tauxPenalites: '',
   modePaiementDefaut: '',
   conditionsPaiementDefaut: '',

@@ -70,6 +70,8 @@ export default function SignaturePad({
   const handleSave = () => {
     if (!sigPad.current) return;
     if (!acceptCGV) return;
+    // Rien de tracé : pas de signature (avant, recette du 9 oct. 2026 : un cadre vide passait le devis « Signé »)
+    if (isEmpty) return;
 
     // Get signature data even if isEmpty() reports true (alpha version bug workaround)
     const signatureData = sigPad.current.toDataURL('image/png');
@@ -249,7 +251,7 @@ export default function SignaturePad({
                 </button>
                 <button
                   onClick={handleSave}
-                  disabled={!canSign}
+                  disabled={!canSign || isEmpty}
                   className="flex-1 py-3 text-white rounded-xl font-medium flex items-center justify-center gap-2 disabled:opacity-50 transition-all hover:shadow-lg"
                   style={{ background: couleur }}
                 >
@@ -260,7 +262,7 @@ export default function SignaturePad({
 
               {/* Mention légale */}
               <p className={`text-xs text-center mt-4 ${textMuted}`}>
-                Cette signature électronique a valeur légale conformément au règlement eIDAS (UE 910/2014).
+                Signature électronique simple : votre nom, la date et l’heure de signature sont enregistrés avec le devis.
               </p>
             </>
           )}

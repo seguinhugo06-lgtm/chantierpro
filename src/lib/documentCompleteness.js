@@ -30,8 +30,9 @@ const RECOMMENDED_MENTIONS = [
   { key: 'rcsNumero', label: 'N° RCS', category: 'Légal', tab: 'legal' },
   { key: 'tvaIntra', label: 'TVA intracommunautaire', category: 'Légal', tab: 'legal' },
   { key: 'decennaleZone', label: 'Zone couverte (décennale)', category: 'Assurances', tab: 'assurances' },
+  { key: 'decennaleAssureurAdresse', label: 'Coordonnées de l\'assureur (décennale)', category: 'Assurances', tab: 'assurances' },
   { key: 'bic', label: 'BIC/SWIFT', category: 'Banque', tab: 'banque' },
-  { key: 'mediateurNom', label: 'Médiateur de la consommation', category: 'Documents', tab: 'documents' },
+  { key: 'mediateur', label: 'Médiateur de la consommation', category: 'Documents', tab: 'documents' }, // le champ s'appelle « mediateur » (« mediateurNom » n'était jamais rempli)
 ];
 
 /**

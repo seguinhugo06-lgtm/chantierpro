@@ -1,6 +1,6 @@
 /**
  * Utilitaire de génération HTML pour devis/factures
- * Conforme législation française (mentions obligatoires, CGV, garanties, eIDAS)
+ * Mentions obligatoires, conditions, garanties, bloc de signature
  *
  * Utilisé par:
  * - DevisPage.jsx (downloadPDF, previewPDF)
@@ -20,6 +20,7 @@ import { lignesTotauxHtml, lignesAcompteHtml, totauxDocument } from './totauxDoc
 import { echeance } from './paiementsFacture';
 import { franchiseAppliquee } from './franchiseTva';
 import { imprimerHtml } from './imprimerHtml';
+import { nomImprime, formeImprimee } from './identiteEntreprise';
 import { dateLue } from './dates';
 
 /**
@@ -397,6 +398,16 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mod
   ` : ''}
 
   ${!isFacture ? `
+  <!-- MÉDIATEUR DE LA CONSOMMATION (C. conso. L612-1 ; même bloc que l'aperçu de l'artisan) -->
+  ${doc.facture_type !== 'avoir' && (e.mediateur || e.mediateurContact) ? `
+  <div class="retractation" style="margin-top:10px">
+    <strong>MÉDIATEUR DE LA CONSOMMATION</strong> (Art. L612-1 du Code de la consommation)<br>
+    En cas de litige, vous pouvez recourir gratuitement au service de médiation :
+    ${e.mediateur ? `<strong>${e.mediateur}</strong>` : ''}
+    ${e.mediateurContact ? ` — ${e.mediateurContact}` : ''}
+  </div>
+  ` : ''}
+
   <!-- SIGNATURES -->
   <div class="signature-section">
     <div class="signature-box">
@@ -421,7 +432,6 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mod
  * Bloc footer réutilisable
  */
 function buildFooterHtml(e, rcsComplet, isDevis = false, isClientMode = false) {
-  const isMicro = e.formeJuridique === 'Micro-entreprise';
   return `<div class="footer">
     <strong>${e.nom}</strong>
     ${e.formeJuridique ? ` · ${e.formeJuridique}` : ''}
@@ -432,7 +442,7 @@ function buildFooterHtml(e, rcsComplet, isDevis = false, isClientMode = false) {
     ${rcsComplet ? ` | ${rcsComplet}` : ''}<br>
     ${e.tvaIntra ? `TVA Intracommunautaire: ${e.tvaIntra}` : ''}<br>
     <div class="assurances">
-      ${e.decennaleAssureur ? `Assurance décennale: ${e.decennaleAssureur} N°${e.decennaleNumero}${e.decennaleValidite ? ` (Valide jusqu'au ${dateLue(e.decennaleValidite).toLocaleDateString('fr-FR')})` : ''}` : ''}
+      ${e.decennaleAssureur ? `Assurance décennale: ${e.decennaleAssureur}${e.decennaleAssureurAdresse ? ` (${e.decennaleAssureurAdresse})` : ''} N°${e.decennaleNumero}${e.decennaleValidite ? ` (Valide jusqu'au ${dateLue(e.decennaleValidite).toLocaleDateString('fr-FR')})` : ''}${e.decennaleZone ? ` — Zone : ${e.decennaleZone}` : ''}${e.decennaleActivites ? ` — Activités : ${e.decennaleActivites}` : ''}` : ''}
       ${e.decennaleAssureur && e.rcProAssureur ? '<br>' : ''}
       ${e.rcProAssureur ? `RC Pro: ${e.rcProAssureur} N°${e.rcProNumero}${e.rcProValidite ? ` (Valide jusqu'au ${dateLue(e.rcProValidite).toLocaleDateString('fr-FR')})` : ''}` : ''}
       ${e.mentionRGE !== false && Array.isArray(e.labels) && e.labels.filter(l => l.actif).length > 0 ? '<br>' + e.labels.filter(l => l.actif).map(l => `${l.nom}${l.numero ? ` N°${l.numero}` : ''}${l.organisme ? ` (${l.organisme})` : ''}${l.dateExpiration ? ` — Valide jusqu'au ${dateLue(l.dateExpiration).toLocaleDateString('fr-FR')}` : ''}`).join('<br>') : ''}
@@ -447,8 +457,9 @@ function buildFooterHtml(e, rcsComplet, isDevis = false, isClientMode = false) {
 function buildEntrepriseFields(entreprise) {
   // Textes échappés (saisis par l'artisan) ; le délai reste un nombre
   return {
-    nom: h(entreprise?.nom),
-    formeJuridique: h(entreprise?.formeJuridique || entreprise?.forme_juridique),
+    // Entrepreneur individuel : « EI » après le nom (C. com. L526-22), forme « Entrepreneur individuel (…) »
+    nom: h(nomImprime(entreprise)),
+    formeJuridique: h(formeImprimee(entreprise)),
     capital: h(entreprise?.capital || ''),
     adresse: h(entreprise?.adresse),
     ville: h(entreprise?.ville),
@@ -468,6 +479,11 @@ function buildEntrepriseFields(entreprise) {
     decennaleAssureur: h(entreprise?.decennaleAssureur || entreprise?.decennale_assureur),
     decennaleNumero: h(entreprise?.decennaleNumero || entreprise?.decennale_numero),
     decennaleValidite: entreprise?.decennaleValidite || entreprise?.decennale_validite || '',
+    decennaleActivites: h(entreprise?.decennaleActivites || entreprise?.decennale_activites),
+    decennaleAssureurAdresse: h(entreprise?.decennaleAssureurAdresse),
+    decennaleZone: h(entreprise?.decennaleZone),
+    mediateur: h(entreprise?.mediateur),
+    mediateurContact: h(entreprise?.mediateurContact),
   };
 }
 

@@ -99,6 +99,7 @@ import { mentionTvaReduiteHtml } from '../lib/mentionTvaReduite';
 import { remettreFichier, estNatif, ouvrirLienExterne } from '../lib/natif';
 import { captureException } from '../lib/sentry';
 import { imprimerHtml } from '../lib/imprimerHtml';
+import { nomImprime, formeImprimee } from '../lib/identiteEntreprise';
 import { estFranchiseTva, sansTva, franchiseAppliquee, tvaARegulariser } from '../lib/franchiseTva';
 import { estOuverte, estEnRetard } from '../lib/ventes';
 import { urlPublique } from '../lib/urlPublique';
@@ -1591,6 +1592,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     // s'imprimait « Tableau », et un <img onerror> saisi s'exécutait dans l'aperçu).
     const echapperChamps = (o) => (o ? Object.fromEntries(Object.entries(o).map(([k, v]) => [k, typeof v === 'string' ? echap(v) : v])) : o);
     const E = echapperChamps(entreprise) || {};
+    // Entrepreneur individuel : « EI » après le nom (C. com. L526-22), même règle que le document du client
+    if (entreprise) { E.nom = echap(nomImprime(entreprise)); E.formeJuridique = echap(formeImprimee(entreprise)); }
     const C = echapperChamps(client);
     const CH = echapperChamps(chantier);
     const devisSource = isFacture && doc.devis_source_id ? devis.find(d => d.id === doc.devis_source_id) : null;
@@ -1867,7 +1870,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     ${getRCSComplet() ? ` | ${echap(getRCSComplet())}` : ''}<br>
     ${E?.tvaIntra ? `TVA Intracommunautaire: ${E.tvaIntra}` : ''}<br>
     <div class="assurances">
-      ${E?.decennaleAssureur ? `Assurance décennale: ${E.decennaleAssureur} N°${E.decennaleNumero}${E.decennaleValidite ? ` (Valide jusqu'au ${dateLue(E.decennaleValidite).toLocaleDateString('fr-FR')})` : ''}${E.decennaleActivites ? ` — Activités: ${E.decennaleActivites}` : ''}` : ''}
+      ${E?.decennaleAssureur ? `Assurance décennale: ${E.decennaleAssureur}${E.decennaleAssureurAdresse ? ` (${E.decennaleAssureurAdresse})` : ''} N°${E.decennaleNumero}${E.decennaleValidite ? ` (Valide jusqu'au ${dateLue(E.decennaleValidite).toLocaleDateString('fr-FR')})` : ''}${E.decennaleZone ? ` — Zone : ${E.decennaleZone}` : ''}${E.decennaleActivites ? ` — Activités : ${E.decennaleActivites}` : ''}` : ''}
       ${E?.decennaleAssureur && E?.rcProAssureur ? '<br>' : ''}
       ${E?.rcProAssureur ? `RC Pro: ${E.rcProAssureur} N°${E.rcProNumero}${E.rcProValidite ? ` (Valide jusqu'au ${dateLue(E.rcProValidite).toLocaleDateString('fr-FR')})` : ''}${E.rcProMontantGarantie ? ` — Garantie: ${E.rcProMontantGarantie} €` : ''}${E.rcProZone ? ` — Zone: ${E.rcProZone}` : ''}` : ''}
       ${E?.mentionRGE !== false && Array.isArray(E?.labels) && E.labels.filter(l => l.actif).length > 0 ? '<br>' + E.labels.filter(l => l.actif).map(l => `${echap(l.nom)}${l.numero ? ` N°${echap(l.numero)}` : ''}${l.organisme ? ` (${echap(l.organisme)})` : ''}${l.dateExpiration ? ` — Valide jusqu'au ${dateLue(l.dateExpiration).toLocaleDateString('fr-FR')}` : ''}`).join('<br>') : ''}
@@ -2130,14 +2133,26 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 
   // Send helpers — update status FIRST, then open communication link in setTimeout
   // to prevent "Detached while handling command" crashes from simultaneous state updates + navigation
-  const sendWhatsApp = (doc) => {
+  const sendWhatsApp = async (doc) => {
     const client = clients.find(c => c.id === doc.client_id);
     if (!client) { showToast('Client introuvable. Veuillez associer un client au devis.', 'error'); return; }
     if (!client?.telephone) { showToast('Aucun téléphone client renseigné', 'error'); return; }
+    // Fenêtre ouverte tout de suite (au clic) : après l'attente du lien, un navigateur la bloquerait
+    const fenetre = !estNatif() ? window.open('about:blank', '_blank') : null;
+    // Devis : lien pour le consulter et le signer en ligne (avant : le montant seul, recette du 9 oct. 2026)
+    let lienSignature = '';
+    if (doc.type !== 'facture') {
+      try { lienSignature = buildSignatureUrl(await getOrGenerateSignatureToken(doc)); } catch (err) {
+        captureException(err, { context: 'lien de signature (WhatsApp)' });
+        if (fenetre) fenetre.close();
+        showToast('Le lien de signature n\'a pas pu être créé : réessayez, ou envoyez le devis par e-mail.', 'error');
+        return;
+      }
+    }
     const wasBrouillon = doc.statut === 'brouillon';
     if (wasBrouillon) {
-      onUpdate(doc.id, { statut: 'envoye' });
-      setSelected(s => s?.id === doc.id ? { ...s, statut: 'envoye' } : s);
+      onUpdate(doc.id, { statut: 'envoye', ...(doc.date_envoi ? {} : { date_envoi: jourLocal() }) });
+      setSelected(s => s?.id === doc.id ? { ...s, statut: 'envoye', date_envoi: s.date_envoi || jourLocal() } : s);
     }
     // Facture émise et due : une relance (reste dû, échéance, retard, lien de paiement), pas le total
     // Rappel seulement si la facture est échue ; sinon un envoi normal (date limite, reste à régler)
@@ -2147,12 +2162,12 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     if (addEchange) addEchange({ type: 'whatsapp', client_id: doc.client_id, document: doc.numero, montant: solde ? solde.reste : doc.total_ttc, objet: `${relance ? 'Relance' : 'Envoi'} ${doc.type === 'facture' ? 'facture' : 'devis'} ${doc.numero}` });
     // Indicatif international, chiffres seuls (avant : « 06.12… » ou « +33 6… » donnaient un lien cassé)
     const phone = telInternational(client.telephone);
-    setTimeout(() => {
-      window.open(`https://wa.me/${phone}?text=${encodeURIComponent(texteCourt(doc, { solde, lienPaiement, entrepriseNom: entreprise?.nom }))}`, '_blank');
-    }, 100);
-    // Show post-send confirmation modal
+    const url = `https://wa.me/${phone}?text=${encodeURIComponent(texteCourt(doc, { solde, lienPaiement, lienSignature, entrepriseNom: entreprise?.nom }))}`;
+    if (fenetre) fenetre.location.href = url;
+    else ouvrirLienExterne(url);
+    // Le message est PRÉPARÉ dans WhatsApp : c'est l'artisan qui l'envoie (avant : « Devis envoyé ! »)
     const clientName = `${client.prenom || ''} ${client.nom || ''}`.trim();
-    setShowSendConfirmation({ clientName, montant: doc.total_ttc, canal: 'WhatsApp', doc });
+    setShowSendConfirmation({ clientName, montant: doc.total_ttc, canal: 'WhatsApp', doc, prepare: true });
   };
 
   const sendEmail = async (doc, emailOverride = null) => {
@@ -2166,8 +2181,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     // Mode démo : pas de serveur d'envoi — on simule pour que la boucle complète soit vivable.
     if (isDemo || !supabase) {
       if (doc.statut === 'brouillon') {
-        onUpdate(doc.id, { statut: 'envoye' });
-        setSelected(s => s?.id === doc.id ? { ...s, statut: 'envoye' } : s);
+        onUpdate(doc.id, { statut: 'envoye', ...(doc.date_envoi ? {} : { date_envoi: jourLocal() }) });
+        setSelected(s => s?.id === doc.id ? { ...s, statut: 'envoye', date_envoi: s.date_envoi || jourLocal() } : s);
       }
       if (addEchange) addEchange({ type: 'email', client_id: doc.client_id, document: doc.numero, montant: doc.total_ttc, objet: `Envoi ${isFacture ? 'facture' : 'devis'} ${doc.numero}` });
       const clientName = `${client.prenom || ''} ${client.nom || ''}`.trim();
@@ -2207,9 +2222,10 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         pdfHtml,
         pdfFilename: `${label}-${doc.numero}.pdf`,
       });
-      if (doc.statut === 'brouillon') {
-        onUpdate(doc.id, { statut: 'envoye' });
-        setSelected(s => s?.id === doc.id ? { ...s, statut: 'envoye' } : s);
+      // Date d'envoi : la première ; l'attente et les relances se comptent depuis elle (avant : depuis la création)
+      if (doc.statut === 'brouillon' || !doc.date_envoi) {
+        onUpdate(doc.id, { ...(doc.statut === 'brouillon' ? { statut: 'envoye' } : {}), ...(doc.date_envoi ? {} : { date_envoi: jourLocal() }) });
+        setSelected(s => s?.id === doc.id ? { ...s, statut: s.statut === 'brouillon' ? 'envoye' : s.statut, date_envoi: s.date_envoi || jourLocal() } : s);
       }
       if (addEchange) addEchange({ type: 'email', client_id: doc.client_id, document: doc.numero, montant: relance ? relance.reste : doc.total_ttc, objet: `${relance ? 'Relance' : 'Envoi'} ${isFacture ? 'facture' : 'devis'} ${doc.numero}` });
       const clientName = `${client.prenom || ''} ${client.nom || ''}`.trim();
@@ -2224,7 +2240,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   };
 
   // SMS via native protocol (mobile only)
-  const sendSMS = (doc) => {
+  const sendSMS = async (doc) => {
     const client = clients.find(c => c.id === doc.client_id);
     if (!client) { showToast('Client introuvable. Veuillez associer un client au devis.', 'error'); return; }
     const phone = (client?.telephone || '').replace(/\s/g, '');
@@ -2233,29 +2249,39 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       showToast('SMS disponible uniquement sur mobile', 'info');
       return;
     }
+    let lienSignature = '';
+    if (doc.type !== 'facture') {
+      try { lienSignature = buildSignatureUrl(await getOrGenerateSignatureToken(doc)); } catch (err) {
+        captureException(err, { context: 'lien de signature (SMS)' });
+        showToast('Le lien de signature n\'a pas pu être créé : réessayez, ou envoyez le devis par e-mail.', 'error');
+        return;
+      }
+    }
     if (doc.statut === 'brouillon') {
-      onUpdate(doc.id, { statut: 'envoye' });
-      setSelected(s => s?.id === doc.id ? { ...s, statut: 'envoye' } : s);
+      onUpdate(doc.id, { statut: 'envoye', ...(doc.date_envoi ? {} : { date_envoi: jourLocal() }) });
+      setSelected(s => s?.id === doc.id ? { ...s, statut: 'envoye', date_envoi: s.date_envoi || jourLocal() } : s);
     }
     const solde = soldeDe({ ...doc, statut: doc.statut === 'brouillon' ? 'envoye' : doc.statut }, paiements);
     const relance = solde?.enRetard ? solde : null;
     const lienPaiement = doc.type === 'facture' && doc.payment_token ? urlPublique(`/pay/${doc.payment_token}`) : '';
     if (addEchange) addEchange({ type: 'sms', client_id: doc.client_id, document: doc.numero, montant: solde ? solde.reste : doc.total_ttc, objet: `${relance ? 'Relance' : 'SMS'} ${doc.type === 'facture' ? 'facture' : 'devis'} ${doc.numero}` });
-    const message = texteCourt(doc, { solde, lienPaiement, entrepriseNom: entreprise?.nom });
+    const message = texteCourt(doc, { solde, lienPaiement, lienSignature, entrepriseNom: entreprise?.nom });
     setTimeout(() => {
       window.open(`sms:${phone}?body=${encodeURIComponent(message)}`, '_self');
     }, 100);
     const clientName = `${client.prenom || ''} ${client.nom || ''}`.trim();
-    setShowSendConfirmation({ clientName, montant: doc.total_ttc, canal: 'SMS', doc });
+    setShowSendConfirmation({ clientName, montant: doc.total_ttc, canal: 'SMS', doc, prepare: true });
   };
 
   // (« Vu » n'est plus posé à l'ouverture : c'était l'ARTISAN qui ouvrait son propre devis, pas le
   // client — relecture du 9 oct. 2026. La page de signature ne note pas l'ouverture par le client.)
 
   // Calculate days since sent (for follow-up indicators)
+  // Jours depuis l'envoi (date_envoi, enregistrée au premier envoi ; un ancien devis : sa date)
   const getDaysSinceSent = (doc) => {
-    if (!doc.date) return 0;
-    return Math.floor((Date.now() - new Date(doc.date)) / 86400000);
+    const depuis = doc.date_envoi || doc.date;
+    if (!depuis) return 0;
+    return Math.max(0, Math.floor((Date.now() - dateLue(String(depuis).slice(0, 10))) / 86400000));
   };
 
   // Check if devis needs follow-up (sent > 7 days, not accepted/refused)
@@ -3755,10 +3781,14 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                 </div>
               </div>
               <h3 className={`text-lg font-bold text-center mb-1 ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                {showSendConfirmation.doc?.type === 'facture' ? 'Facture envoyée' : 'Devis envoyé'} !
+                {showSendConfirmation.prepare
+                  ? `Message prêt dans ${showSendConfirmation.canal}`
+                  : `${showSendConfirmation.doc?.type === 'facture' ? 'Facture envoyée' : 'Devis envoyé'} !`}
               </h3>
               <p className={`text-sm text-center mb-5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                via {showSendConfirmation.canal}
+                {showSendConfirmation.prepare
+                  ? `Appuyez sur « Envoyer » dans ${showSendConfirmation.canal} pour que votre client le reçoive.`
+                  : `via ${showSendConfirmation.canal}`}
               </p>
 
               {/* Summary */}

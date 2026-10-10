@@ -62,7 +62,7 @@ const WIZARD_STEPS_DEF = [
   { id: 'identite', title: 'Identité', desc: 'Votre entreprise en un coup d’œil', icon: Palette },
   { id: 'siret', title: 'Informations légales', desc: 'SIRET + auto-remplissage SIRENE', icon: Search },
   { id: 'documents', title: 'Documents', desc: 'TVA, acompte et mentions', icon: FileCheck },
-  { id: 'relances', title: 'Relances', desc: '85% des relances auto sont payées dans 7 jours', icon: BellRing },
+  { id: 'relances', title: 'Relances', desc: 'Relancer les impayés et les devis sans réponse', icon: BellRing },
   { id: 'catalogue', title: 'Catalogue', desc: 'Importez le référentiel BTP', icon: Package },
 ];
 
@@ -1080,6 +1080,15 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
               <div>
                 <label className="block text-sm font-medium mb-1">Activités couvertes</label>
                 <DebouncedInput className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="Tous corps d'état" value={entreprise.decennaleActivites || ''} onChange={val => updateEntreprise(p => ({...p, decennaleActivites: val}))} />
+              </div>
+              {/* Mentions obligatoires sur devis et factures : coordonnées de l'assureur et couverture géographique */}
+              <div>
+                <label className="block text-sm font-medium mb-1">Coordonnées de l'assureur <span className="text-red-500">*</span></label>
+                <DebouncedInput className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="Adresse de la compagnie" value={entreprise.decennaleAssureurAdresse || ''} onChange={val => updateEntreprise(p => ({...p, decennaleAssureurAdresse: val}))} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Zone géographique couverte <span className="text-red-500">*</span></label>
+                <DebouncedInput className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="France métropolitaine" value={entreprise.decennaleZone || ''} onChange={val => updateEntreprise(p => ({...p, decennaleZone: val}))} />
               </div>
             </div>
           </div>
@@ -2099,10 +2108,6 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                 {/* Step 4: Relances */}
                 {safeStep === 3 && (
                   <>
-                    <div className={`p-4 rounded-xl border ${isDark ? 'bg-emerald-900/20 border-emerald-800/40' : 'bg-emerald-50 border-emerald-200'}`}>
-                      <p className={`text-2xl font-bold mb-1 text-succes-texte`}>85%</p>
-                      <p className={`text-sm text-succes-texte`}>des relances automatiques sont payées dans les 7 jours</p>
-                    </div>
                     <div className={`p-4 rounded-xl border bg-surface-2 border-bord`}>
                       <p className={`text-sm font-semibold mb-2 ${textPrimary}`}>Scénario de relance type :</p>
                       <div className="space-y-2">

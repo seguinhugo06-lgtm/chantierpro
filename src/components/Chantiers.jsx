@@ -1927,7 +1927,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
 
                 {/* Proof notice */}
                 <p className="text-center text-white/60 text-xs mt-3 flex items-center justify-center gap-1">
-                  <Clock size={14} /> Photo horodatée - Valeur de preuve en cas de litige
+                  <Clock size={14} /> Photo datée
                 </p>
               </div>
             </div>

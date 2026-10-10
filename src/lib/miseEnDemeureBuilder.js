@@ -12,6 +12,7 @@ import { calculatePenalties, DEFAULT_PENALTY_RATE, estClientPro } from './relanc
 import { dateLocale } from './paiementsFacture';
 import { echapperHtml as h, couleurCss } from './echapperHtml';
 import { imprimerHtml } from './imprimerHtml';
+import { nomImprime, formeImprimee } from './identiteEntreprise';
 import { dateLue } from './dates';
 
 /**
@@ -90,14 +91,14 @@ export function buildMiseEnDemeureHtml({
     : null;
 
   // Entreprise et client : textes saisis, échappés avant d'entrer dans le HTML (src/lib/echapperHtml.js)
-  const entNom = h(entreprise?.nom || 'Notre entreprise');
+  const entNom = h(nomImprime(entreprise) || 'Notre entreprise');
   const entAdresse = h(entreprise?.adresse || '');
   const entSiret = h(entreprise?.siret || '');
   const entTel = h(entreprise?.tel || entreprise?.telephone || '');
   const entEmail = h(entreprise?.email || '');
   const entRCS = h(getRCSComplet(entreprise));
   const entCapital = h(entreprise?.capitalSocial || '');
-  const entForme = h(entreprise?.formeJuridique || '');
+  const entForme = h(formeImprimee(entreprise));
   const numero = h(doc.numero || '');
 
   const clientNom = h(client?.nom
