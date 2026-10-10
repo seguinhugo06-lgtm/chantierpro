@@ -5,7 +5,8 @@
  * Lu par :
  * - le contrôle d'envoi et de téléchargement (DevisPage : validateDevisForSend, getLegalIssues) ;
  * - les bandeaux « profil incomplet » (liste des devis, DevisComposer) ;
- * - la jauge « Profil complété » des Réglages.
+ * - la jauge « Profil complété » des Réglages ;
+ * - la liste « Informations à vérifier pour vos factures » de l'onglet Facture 2026 (lib/mentionsFacture).
  * Une jauge à 100 % veut donc dire que le profil ne bloque plus l'envoi.
  *
  * Avant ce module, chaque écran tenait sa liste : la jauge pouvait afficher 100 % sans
@@ -16,10 +17,13 @@
 import { estEntrepreneurIndividuel, estEirl } from './identiteEntreprise';
 
 const rempli = (valeur) => (typeof valeur === 'string' ? valeur.trim() !== '' : Boolean(valeur));
+const estEiOuEirl = (e) => estEntrepreneurIndividuel(e) || estEirl(e);
 
 // `id` : identifiant du manque dans la fenêtre de contrôle d'envoi (DevisPage).
 // `champ` / `onglet` : où compléter dans les Réglages (champ ciblé par `settings-field-<champ>`). Les clés snake_case couvrent une entreprise
 // relue telle quelle depuis la base.
+// `concerne` (facultatif) : la mention ne vise que certaines entreprises ; ailleurs elle est réputée remplie
+// et une liste affichée la masque plutôt que de la cocher.
 export const PROFIL_EXIGE = [
   {
     // SIREN (inclus dans le SIRET) : C. com. R123-237 1°, D123-235 ; facture : service-public F31808 ;
@@ -66,7 +70,8 @@ export const PROFIL_EXIGE = [
     libelle: 'Votre prénom et nom (suivis de « EI »)',
     manque: 'Votre prénom et nom (suivis de « EI ») manquent',
     pourquoi: 'mention obligatoire',
-    estRempli: (e) => !(estEntrepreneurIndividuel(e) || estEirl(e)) || rempli(e.nomEntrepreneur),
+    concerne: estEiOuEirl,
+    estRempli: (e) => !estEiOuEirl(e) || rempli(e.nomEntrepreneur),
   },
   {
     id: 'no_decennale',

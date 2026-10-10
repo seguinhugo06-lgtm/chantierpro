@@ -7,6 +7,7 @@
  * @see https://fnfe-mpe.org/factur-x/
  */
 import { remettreFichier } from './natif';
+import { rcsConcerne, rcsRenseigne, tvaIntraConcernee } from './mentionsFacture';
 
 // ─── Helpers ──────────────────────────────────────────────────
 
@@ -552,8 +553,11 @@ export function testFacturXCompliance(invoice, client, entreprise) {
     errors.push('SIRET manquant — obligatoire pour Factur-X');
   }
 
-  // TVA Intracommunautaire — 10 pts
-  if (entreprise?.tvaIntra?.trim()) {
+  // TVA Intracommunautaire — 10 pts. Micro-entreprise en franchise (293 B) : pas concernée, points acquis.
+  // Avant (relecture juridique du 10 oct. 2026) : « manquant » en erreur, même sous la franchise.
+  if (!tvaIntraConcernee(entreprise)) {
+    score += 10;
+  } else if (entreprise?.tvaIntra?.trim()) {
     score += 10;
     if (!/^FR\d{11}$/.test(entreprise.tvaIntra.replace(/\s/g, ''))) {
       warnings.push('Format TVA intra. suspect (attendu: FR + 11 chiffres)');
@@ -592,11 +596,12 @@ export function testFacturXCompliance(invoice, client, entreprise) {
     warnings.push('IBAN manquant — requis pour profil BASIC');
   }
 
-  // RCS — 5 pts
-  if (entreprise?.rcs?.trim()) {
+  // RCS — 5 pts. Ville du greffe + numéro (Réglages › Légal) ou l'ancien champ `rcs` ; seulement pour une
+  // société ou un commerçant (C. com. R123-237) : avant, seul `rcs` était lu, et réclamé à tous.
+  if (!rcsConcerne(entreprise) || rcsRenseigne(entreprise)) {
     score += 5;
   } else {
-    warnings.push('RCS manquant — recommandé');
+    warnings.push('RCS et ville du greffe manquants (sociétés et commerçants)');
   }
 
   // Email — 5 pts

@@ -932,7 +932,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Numéro (9 chiffres)</label>
-                <DebouncedInput className={`w-full px-4 py-2.5 border rounded-xl font-mono ${inputBg}`} placeholder="123 456 789" maxLength={11} value={entreprise.rcsNumero || ''} onChange={val => updateEntreprise(p => ({...p, rcsNumero: val}))} />
+                <DebouncedInput id="settings-field-rcsNumero" className={`w-full px-4 py-2.5 border rounded-xl font-mono ${inputBg}`} placeholder="123 456 789" maxLength={11} value={entreprise.rcsNumero || ''} onChange={val => updateEntreprise(p => ({...p, rcsNumero: val}))} />
               </div>
             </div>
             {getRCSComplet() && (
@@ -1079,7 +1079,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Numéro de contrat <span className="text-red-500">*</span></label>
-                <DebouncedInput className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="DEC-987654321" value={entreprise.decennaleNumero || ''} onChange={val => updateEntreprise(p => ({...p, decennaleNumero: val}))} />
+                <DebouncedInput id="settings-field-decennaleNumero" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="DEC-987654321" value={entreprise.decennaleNumero || ''} onChange={val => updateEntreprise(p => ({...p, decennaleNumero: val}))} />
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Date de validité <span className="text-red-500">*</span></label>
