@@ -43,6 +43,7 @@ import { getReception, createReception, updateReserve as updateReserveService, l
 import { getByChantier as getGarantiesByChantier, GARANTIE_TYPES } from '../services/garantieService';
 import { getByChantier as getInterventionsByChantier, create as createIntervention } from '../services/interventionService';
 import { FONCTIONS } from '../lib/fonctions';
+import { jourLocal, dateLue } from '../lib/dates';
 
 const PHOTO_CATS = ['avant', 'pendant', 'après', 'litige'];
 
@@ -247,7 +248,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
   const [showQuickMateriau, setShowQuickMateriau] = useState(false); // Modal ajout rapide matériau
   const [photoPreview, setPhotoPreview] = useState(null); // Photo preview modal
   const [adjForm, setAdjForm] = useState({ libelle: '', montant_ht: '' });
-  const [moForm, setMoForm] = useState({ employeId: '', date: new Date().toISOString().split('T')[0], heures: '', note: '' });
+  const [moForm, setMoForm] = useState({ employeId: '', date: jourLocal(), heures: '', note: '' });
   const [newMessage, setNewMessage] = useState({ type: 'email', content: '' });
   const [showEditBudget, setShowEditBudget] = useState(false);
   const [budgetForm, setBudgetForm] = useState({ budget_estime: '' });
@@ -401,7 +402,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
       description: newDepense.description + (qty > 1 ? ` (x${qty})` : ''),
       montant: parseFloat(String(newDepense.montant).replace(',', '.')),
       categorie: newDepense.categorie,
-      date: new Date().toISOString().split('T')[0]
+      date: jourLocal()
     });
     if (!creee) return; // refus : la saisie reste, DataContext a dit pourquoi
     if (newDepense.catalogueId && deductStock) deductStock(newDepense.catalogueId, qty);
@@ -413,7 +414,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
     if (!moForm.employeId || !moForm.heures) { showToast('Choisissez la personne et le nombre d’heures', 'error'); return; }
     const cree = await ctxAddPointage({ employeId: moForm.employeId, chantierId: view, date: moForm.date, heures: parseFloat(String(moForm.heures).replace(',', '.')), description: moForm.note, manuel: true, approuve: true });
     if (!cree) return;
-    setMoForm({ employeId: '', date: new Date().toISOString().split('T')[0], heures: '', note: '' });
+    setMoForm({ employeId: '', date: jourLocal(), heures: '', note: '' });
     setShowAddMO(false);
   };
   const handleEditPointage = (id, field, value) => ctxUpdatePointage(id, { [field]: field === 'heures' ? parseFloat(String(value).replace(',', '.')) || 0 : value });
@@ -505,7 +506,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
           const prevChantier = currentIdx > 0 ? navList[currentIdx - 1] : null;
           const nextChantier = currentIdx < navList.length - 1 ? navList[currentIdx + 1] : null;
           const dupliquer = async () => {
-            const clone = { nom: `${ch.nom} (copie)`, client_id: ch.client_id, clientId: ch.client_id, adresse: ch.adresse, ville: ch.ville, codePostal: ch.codePostal, dateDebut: new Date().toISOString().split('T')[0], date_debut: new Date().toISOString().split('T')[0], dateFin: '', date_fin: '', budgetPrevu: ch.budget_estime || ch.budgetPrevu || 0, budget_estime: ch.budget_estime || ch.budgetPrevu || 0, budget_materiaux: ch.budget_materiaux || 0, heures_estimees: ch.heures_estimees || 0, description: ch.description || '', notes: ch.notes || '', taches: (ch.taches || []).map(t => ({ ...t, id: generateId(), done: false })), photos: [], documents: [], messages: [], statut: 'prospect' };
+            const clone = { nom: `${ch.nom} (copie)`, client_id: ch.client_id, clientId: ch.client_id, adresse: ch.adresse, ville: ch.ville, codePostal: ch.codePostal, dateDebut: jourLocal(), date_debut: jourLocal(), dateFin: '', date_fin: '', budgetPrevu: ch.budget_estime || ch.budgetPrevu || 0, budget_estime: ch.budget_estime || ch.budgetPrevu || 0, budget_materiaux: ch.budget_materiaux || 0, heures_estimees: ch.heures_estimees || 0, description: ch.description || '', notes: ch.notes || '', taches: (ch.taches || []).map(t => ({ ...t, id: generateId(), done: false })), photos: [], documents: [], messages: [], statut: 'prospect' };
             // Attendre le résultat : à la limite du plan, ou si la base refuse, rien n'est créé
             const newCh = await addChantier(clone);
             if (!newCh) return;
@@ -514,7 +515,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
           const terminer = async () => {
             const confirmed = await confirm({ title: 'Terminer le chantier', message: `Marquer « ${ch.nom} » comme terminé ? La date de fin sera celle d'aujourd'hui.` });
             if (!confirmed) return;
-            updateChantier(ch.id, { statut: 'termine', date_fin: new Date().toISOString().split('T')[0] });
+            updateChantier(ch.id, { statut: 'termine', date_fin: jourLocal() });
             triggerPostChantierSequence(ch);
             showToast('Chantier marqué comme terminé', 'success');
           };
@@ -1277,7 +1278,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
             )}
             <div className={`${cardBg} rounded-2xl border p-5`}>
               <h3 className={`font-semibold mb-4 ${textPrimary}`}>Dépenses Matériaux</h3>
-              <div className="space-y-2 mb-4">{chDepenses.map(d => (<div key={d.id} className={`flex items-center gap-3 p-3 rounded-xl bg-surface-2`}><span className={`text-sm w-24 ${textMuted}`}>{new Date(d.date).toLocaleDateString('fr-FR')}</span><span className={`flex-1 ${textPrimary}`}>{d.description}</span><span className={`text-xs px-2 py-1 rounded bg-bord text-encre-2`}>{d.categorie}</span><span className="font-bold text-red-500">{formatMoney(d.montant)}</span></div>))}{chDepenses.length === 0 && <p className={`text-center py-4 ${textMuted}`}>Aucune dépense</p>}</div>
+              <div className="space-y-2 mb-4">{chDepenses.map(d => (<div key={d.id} className={`flex items-center gap-3 p-3 rounded-xl bg-surface-2`}><span className={`text-sm w-24 ${textMuted}`}>{dateLue(d.date).toLocaleDateString('fr-FR')}</span><span className={`flex-1 ${textPrimary}`}>{d.description}</span><span className={`text-xs px-2 py-1 rounded bg-bord text-encre-2`}>{d.categorie}</span><span className="font-bold text-red-500">{formatMoney(d.montant)}</span></div>))}{chDepenses.length === 0 && <p className={`text-center py-4 ${textMuted}`}>Aucune dépense</p>}</div>
               <div className="flex gap-2 flex-wrap">
                 <select value={newDepense.catalogueId} onChange={e => { const item = catalogue?.find(c => c.id === e.target.value); if (item) setNewDepense(p => ({...p, catalogueId: e.target.value, description: item.nom, montant: item.prixAchat?.toString() || '' })); }} className={`px-3 py-2.5 border rounded-xl text-sm ${inputBg}`} aria-label="Sélectionner un article du catalogue"><option value="">Catalogue...</option>{catalogue?.map(c => <option key={c.id} value={c.id}>{c.nom} ({c.prixAchat}€)</option>)}</select>
                 <input placeholder="Ex: Carrelage, Peinture murale..." value={newDepense.description} onChange={e => setNewDepense(p => ({...p, description: e.target.value}))} className={`flex-1 min-w-[150px] px-4 py-2.5 border rounded-xl ${inputBg}`} aria-label="Description de la dépense" />
@@ -1389,12 +1390,12 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                           <div key={p.id} className="relative group flex-shrink-0">
                           <button type="button" className="relative block cursor-pointer focus-visible:ring-2 outline-none rounded-xl" onClick={() => setPhotoPreview(p)} aria-label={`Voir la photo (${cat})`}>
                             <img src={p.src} className={`w-28 h-28 object-cover rounded-xl hover:opacity-90 transition-opacity border-2 ${cat === 'litige' ? 'border-danger-point' : 'border-bord'}`}
-                                 alt={`Photo ${cat} du chantier - ${p.date ? new Date(p.date).toLocaleDateString('fr-FR') : ''}`} />
+                                 alt={`Photo ${cat} du chantier - ${p.date ? dateLue(p.date).toLocaleDateString('fr-FR') : ''}`} />
                             {/* Timestamp badge - Proof for litigation */}
                             <div className={`absolute bottom-0 left-0 right-0 px-2 py-1 rounded-b-lg text-xs text-white font-medium ${
                               cat === 'litige' ? 'bg-red-600/90' : 'bg-black/70'
                             }`}>
-                              {p.date ? new Date(p.date).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit' }) : ''}
+                              {p.date ? dateLue(p.date).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit' }) : ''}
                               {p.date && <span className="ml-1 opacity-75">{new Date(p.date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</span>}
                             </div>
                           </button>
@@ -1446,7 +1447,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                             <p className={`text-sm font-medium truncate ${textPrimary}`}>{doc.nom}</p>
                             <div className="flex items-center gap-2">
                               <span className={`text-xs px-2 py-0.5 rounded bg-bord text-encre-2`}>{doc.categorie}</span>
-                              <span className={`text-xs ${textMuted}`}>{new Date(doc.date).toLocaleDateString('fr-FR')}</span>
+                              <span className={`text-xs ${textMuted}`}>{dateLue(doc.date).toLocaleDateString('fr-FR')}</span>
                             </div>
                           </div>
                           <div className="flex items-center gap-1">
@@ -1761,8 +1762,8 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                           <div className="flex-1 min-w-0">
                             <p className={`text-sm ${textPrimary}`}>{m.text}</p>
                             {m.due_date && (
-                              <span className={`text-xs ${m.due_date < new Date().toISOString().split('T')[0] ? 'text-red-500' : textMuted}`}>
-                                {new Date(m.due_date + 'T00:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+                              <span className={`text-xs ${m.due_date < jourLocal() ? 'text-red-500' : textMuted}`}>
+                                {dateLue(m.due_date + 'T00:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
                               </span>
                             )}
                           </div>
@@ -1826,7 +1827,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                   <div key={msg.id} className={`p-4 rounded-xl bg-surface-2`}>
                     <div className="flex items-center gap-2 mb-2">
                       <span className={`text-xs px-2 py-0.5 rounded ${msg.type === 'email' ? 'bg-blue-100 text-blue-700' : msg.type === 'sms' ? 'bg-green-100 text-green-700' : msg.type === 'appel' ? 'bg-purple-100 text-purple-700' : 'bg-slate-200 text-slate-600'}`}>{msg.type === 'email' ? 'Email' : msg.type === 'sms' ? 'SMS' : msg.type === 'appel' ? 'Appel' : 'Note'}</span>
-                      <span className={`text-xs ${textMuted}`}>{new Date(msg.date).toLocaleDateString('fr-FR')} - {new Date(msg.date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</span>
+                      <span className={`text-xs ${textMuted}`}>{dateLue(msg.date).toLocaleDateString('fr-FR')} - {new Date(msg.date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</span>
                       <button onClick={() => updateChantier(ch.id, { messages: ch.messages.filter(m => m.id !== msg.id) })} aria-label="Supprimer le message" className={`ml-auto p-2.5 min-w-[44px] min-h-[44px] rounded flex items-center justify-center text-red-400 ${isDark ? 'hover:bg-red-900/20' : 'hover:bg-red-50'} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 `}><X size={16} /></button>
                     </div>
                     <p className={`text-sm ${textPrimary}`}>{msg.content}</p>
@@ -1870,7 +1871,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                 <div className="flex items-center gap-2">
                   <a
                     href={photoPreview.src}
-                    download={`${ch.nom?.replace(/\s+/g, '_')}_${photoPreview.categorie}_${photoPreview.date ? new Date(photoPreview.date).toISOString().split('T')[0] : 'photo'}.jpg`}
+                    download={`${ch.nom?.replace(/\s+/g, '_')}_${photoPreview.categorie}_${photoPreview.date ? jourLocal(new Date(photoPreview.date)) : 'photo'}.jpg`}
                     onClick={(e) => e.stopPropagation()}
                     className="text-white p-3 hover:bg-white/20 rounded-xl transition-colors flex items-center gap-2 min-h-[48px]"
                     title="Télécharger"
@@ -1908,7 +1909,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                 {/* Timestamp - Large and clear for proof */}
                 <div className="text-center text-white">
                   <p className="text-2xl font-bold tracking-wide">
-                    {photoPreview.date ? new Date(photoPreview.date).toLocaleDateString('fr-FR', {
+                    {photoPreview.date ? dateLue(photoPreview.date).toLocaleDateString('fr-FR', {
                       weekday: 'long',
                       day: 'numeric',
                       month: 'long',
@@ -2423,7 +2424,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
             </button>
             {onPlanEvent && (
               <button
-                onClick={() => { setFabOpen(false); onPlanEvent({ type: 'rdv', title: `Intervention ${ch.nom}`, clientId: ch.client_id || ch.clientId || '', description: ch.adresse || '', date: new Date().toISOString().split('T')[0] }); }}
+                onClick={() => { setFabOpen(false); onPlanEvent({ type: 'rdv', title: `Intervention ${ch.nom}`, clientId: ch.client_id || ch.clientId || '', description: ch.adresse || '', date: jourLocal() }); }}
                 className="flex items-center gap-2 min-h-[44px] pl-4 pr-5 rounded-full bg-surface text-encre border border-bord shadow-e3 transition-colors hover:bg-surface-2"
               >
                 <CalendarPlus size={18} />
@@ -2499,8 +2500,8 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
       ...formData,
       client_id: clientIdValue,
       clientId: clientIdValue,
-      dateDebut: formData.dateDebut || formData.date_debut || new Date().toISOString().split('T')[0],
-      date_debut: formData.date_debut || formData.dateDebut || new Date().toISOString().split('T')[0],
+      dateDebut: formData.dateDebut || formData.date_debut || jourLocal(),
+      date_debut: formData.date_debut || formData.dateDebut || jourLocal(),
       dateFin: formData.dateFin || formData.date_fin || null,
       date_fin: formData.date_fin || formData.dateFin || null,
       budgetPrevu: budgetValue,
@@ -2525,7 +2526,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
     const sunday = new Date(monday);
     sunday.setDate(monday.getDate() + 6);
     sunday.setHours(23, 59, 59, 999);
-    return { monday, sunday, mondayStr: monday.toISOString().split('T')[0], sundayStr: sunday.toISOString().split('T')[0] };
+    return { monday, sunday, mondayStr: jourLocal(monday), sundayStr: jourLocal(sunday) };
   };
 
   // Helper: does a chantier overlap the current week?
@@ -2671,7 +2672,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
 
       {/* === BANDEAU AUJOURD'HUI — compact sticky 60px === */}
       {(() => {
-        const today = new Date().toISOString().split('T')[0];
+        const today = jourLocal();
         const chantiersToday = chantiers.filter(c => {
           if (c.statut !== 'en_cours' || isDraftChantier(c)) return false;
           const debut = c.date_debut ? c.date_debut.split('T')[0] : null;
@@ -2985,8 +2986,8 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
             const formatDateRange = () => {
               if (!ch.date_debut && !ch.date_fin) return null;
               const opts = { day: 'numeric', month: 'short' };
-              const d = ch.date_debut ? new Date(ch.date_debut).toLocaleDateString('fr-FR', opts) : null;
-              const f = ch.date_fin ? new Date(ch.date_fin).toLocaleDateString('fr-FR', opts) : null;
+              const d = ch.date_debut ? dateLue(ch.date_debut).toLocaleDateString('fr-FR', opts) : null;
+              const f = ch.date_fin ? dateLue(ch.date_fin).toLocaleDateString('fr-FR', opts) : null;
               if (d && f) return `${d} → ${f}`;
               if (d) return `Début : ${d}`;
               if (f) return `Fin : ${f}`;

@@ -25,6 +25,7 @@ import SuppressionCompte from './settings/SuppressionCompte';
 import PostChantierSettings from './settings/PostChantierSettings';
 import { remettreFichier } from '../lib/natif';
 import { Bouton } from './ui/Bouton';
+import { jourLocal, dateLue } from '../lib/dates';
 
 // ── Tab groups for mobile navigation ────────────────────────────────────────
 const TAB_GROUPS = [
@@ -160,7 +161,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
         })(),
       };
       const blob = new Blob([JSON.stringify(rgpdData, null, 2)], { type: 'application/json' });
-      remettreFichier(blob, `mallettico_export_donnees_${new Date().toISOString().split('T')[0]}.json`)
+      remettreFichier(blob, `mallettico_export_donnees_${jourLocal()}.json`)
         .then((r) => { if (r !== 'annule') showToast('Export de vos données prêt', 'success'); })
         .catch((e) => { captureException(e, { context: 'export RGPD' }); showToast('Erreur lors de l\'export de vos données', 'error'); });
     } catch (e) {
@@ -331,8 +332,8 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
     const now = new Date();
     const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
     return {
-      debut: firstDay.toISOString().split('T')[0],
-      fin: now.toISOString().split('T')[0]
+      debut: jourLocal(firstDay),
+      fin: jourLocal(now)
     };
   });
 
@@ -477,7 +478,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
       return [
         d.numero,
         d.type === 'facture' ? 'Facture' : 'Devis',
-        new Date(d.date).toLocaleDateString('fr-FR'),
+        dateLue(d.date).toLocaleDateString('fr-FR'),
         d.client_nom || '',
         (d.total_ht || 0).toFixed(2),
         tva55.toFixed(2),
@@ -1703,7 +1704,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                   };
                   const json = JSON.stringify(exportData, null, 2);
                   const blob = new Blob([json], { type: 'application/json' });
-                  remettreFichier(blob, `mallettico_backup_${new Date().toISOString().split('T')[0]}.json`)
+                  remettreFichier(blob, `mallettico_backup_${jourLocal()}.json`)
                     .then((r) => { if (r !== 'annule') showToast('Export global prêt', 'success'); })
                     .catch(() => showToast('Erreur lors de l\'export', 'error'));
                 } catch (err) {
@@ -1755,7 +1756,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                       if (data.data?.entreprise) {
                         setEntreprise(prev => ({ ...prev, ...data.data.entreprise }));
                       }
-                      showToast(`Import réussi — ${data.exportDate ? new Date(data.exportDate).toLocaleDateString('fr-FR') : 'date inconnue'}. Rechargez la page pour voir tous les changements.`, 'success');
+                      showToast(`Import réussi — ${data.exportDate ? dateLue(data.exportDate).toLocaleDateString('fr-FR') : 'date inconnue'}. Rechargez la page pour voir tous les changements.`, 'success');
                     } catch {
                       showToast('Erreur de lecture du fichier', 'error');
                     }
@@ -1918,7 +1919,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
               <p className="pt-1 text-xs">
                 {entreprise.rcProAssureur && `RC Pro: ${entreprise.rcProAssureur} N°${entreprise.rcProNumero}`}
                 {entreprise.rcProAssureur && entreprise.decennaleAssureur && ' · '}
-                {entreprise.decennaleAssureur && `Décennale: ${entreprise.decennaleAssureur} N°${entreprise.decennaleNumero}${entreprise.decennaleValidite ? ` (Valide: ${new Date(entreprise.decennaleValidite).toLocaleDateString('fr-FR')})` : ''}`}
+                {entreprise.decennaleAssureur && `Décennale: ${entreprise.decennaleAssureur} N°${entreprise.decennaleNumero}${entreprise.decennaleValidite ? ` (Valide: ${dateLue(entreprise.decennaleValidite).toLocaleDateString('fr-FR')})` : ''}`}
               </p>
             )}
           </div>

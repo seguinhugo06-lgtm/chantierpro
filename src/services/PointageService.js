@@ -12,6 +12,7 @@
 
 import { generateId } from '../lib/utils';
 import { getCurrentPosition, checkGeofence, DEFAULT_RADIUS } from './GeofencingService';
+import { jourLocal } from '../lib/dates';
 
 // IndexedDB configuration
 const DB_NAME = 'mallettico_pointage';
@@ -160,7 +161,7 @@ export function createSession({
     employeId,
     chantierId,
     chantierNom,
-    date: new Date().toISOString().split('T')[0],
+    date: jourLocal(),
     state: SESSION_STATE.WORKING,
     startTime: now,
     endTime: null,
@@ -477,7 +478,7 @@ export async function getActiveSession() {
   const sessions = await getAllFromStore(STORES.SESSIONS);
   const active = sessions.find(s =>
     s.state !== SESSION_STATE.IDLE &&
-    s.date === new Date().toISOString().split('T')[0]
+    s.date === jourLocal()
   );
 
   if (active) {
@@ -587,7 +588,7 @@ export async function clearSyncQueueItem(id) {
  * @returns {Promise<Array>}
  */
 export async function getTodaySessions(employeId) {
-  const today = new Date().toISOString().split('T')[0];
+  const today = jourLocal();
   const sessions = await getAllFromStore(STORES.SESSIONS);
   return sessions.filter(s => s.employeId === employeId && s.date === today);
 }
@@ -598,7 +599,7 @@ export async function getTodaySessions(employeId) {
  * @returns {Promise<Array>}
  */
 export async function getTodayPointages(employeId) {
-  const today = new Date().toISOString().split('T')[0];
+  const today = jourLocal();
   const pointages = await getAllFromStore(STORES.POINTAGES);
   return pointages.filter(p => p.employeId === employeId && p.date === today);
 }

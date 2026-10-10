@@ -16,6 +16,7 @@ import { normaliserPrevision, statutPrevision } from '../lib/previsions';
 import { toast } from '../stores/toastStore';
 import { captureException } from '../lib/sentry';
 import { messageEcritureRefusee, estEcritureDifferable } from '../lib/erreursEcriture';
+import { jourLocal } from '../lib/dates';
 
 /**
  * Échec d'une écriture de trésorerie : l'écran revient à l'état d'avant et le dit. Avant (recette du 9 oct. 2026) :
@@ -385,7 +386,7 @@ export function useTresorerie() {
       montantTva: Math.round(montantTva * 100) / 100,
       statut: data.statut || 'prevu',
       type: data.type || 'sortie',
-      date: data.date || new Date().toISOString().slice(0, 10),
+      date: data.date || jourLocal(),
       createdAt: data.createdAt || new Date().toISOString(),
     };
 

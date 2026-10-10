@@ -23,6 +23,7 @@ import {
 import supabase, { isDemo, auth } from '../../supabaseClient';
 import { GARANTIE_TYPES, getGarantieProgress, getDashboardStats, getAll } from '../../services/garantieService';
 import GarantieProgressBar from './GarantieProgressBar';
+import { dateLue } from '../../lib/dates';
 
 // ── Status badge config ────────────────────────────────────────────────────────
 
@@ -166,7 +167,7 @@ function ChantierGroup({ chantierNom, receptionDate, garanties, isDark, couleur,
           <div className="flex items-center gap-1.5 mt-1 ml-6">
             <Calendar className={`w-3 h-3 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
             <span className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-              Réception : {new Date(receptionDate).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+              Réception : {dateLue(receptionDate).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
             </span>
           </div>
         )}

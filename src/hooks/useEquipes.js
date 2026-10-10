@@ -7,6 +7,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../supabaseClient';
+import { jourLocal } from '../lib/dates';
 
 /**
  * @typedef {Object} Membre
@@ -70,7 +71,7 @@ export function useEquipes(userId, options = {}) {
         // Use RPC function with load
         const { data, error: rpcError } = await supabase.rpc('get_equipes_with_load', {
           p_user_id: userId,
-          p_week_start: new Date().toISOString().split('T')[0],
+          p_week_start: jourLocal(),
         });
 
         if (rpcError) throw rpcError;
@@ -288,7 +289,7 @@ export function useEquipeLoad(equipeId, weekStart = new Date()) {
     try {
       const { data, error } = await supabase.rpc('get_equipe_load', {
         p_equipe_id: equipeId,
-        p_week_start: weekStart.toISOString().split('T')[0],
+        p_week_start: jourLocal(weekStart),
       });
 
       if (error) throw error;
@@ -342,8 +343,8 @@ export function useEquipeChantiers(equipeId, options = {}) {
     try {
       const { data, error } = await supabase.rpc('get_equipe_chantiers', {
         p_equipe_id: equipeId,
-        p_start_date: startDate.toISOString().split('T')[0],
-        p_end_date: endDate ? endDate.toISOString().split('T')[0] : null,
+        p_start_date: jourLocal(startDate),
+        p_end_date: endDate ? jourLocal(endDate) : null,
       });
 
       if (error) throw error;

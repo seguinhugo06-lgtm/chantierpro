@@ -1,3 +1,4 @@
+import { jourLocal } from '../dates';
 /**
  * Module d'import Excel/CSV pour Mallettico
  * Permet d'importer clients, devis, dépenses, équipe depuis fichiers Excel/CSV
@@ -290,7 +291,7 @@ const parseNumber = (str) => {
  * Parse une date depuis différents formats
  */
 const parseDate = (str) => {
-  if (!str) return new Date().toISOString().split('T')[0];
+  if (!str) return jourLocal();
 
   // Formats courants
   const patterns = [
@@ -327,10 +328,10 @@ const parseDate = (str) => {
   // Essayer Date.parse en dernier recours
   const parsed = new Date(str);
   if (!isNaN(parsed.getTime())) {
-    return parsed.toISOString().split('T')[0];
+    return jourLocal(parsed); // date lue en heure locale (les formats ISO sont traités plus haut)
   }
 
-  return new Date().toISOString().split('T')[0];
+  return jourLocal();
 };
 
 /**
@@ -518,7 +519,7 @@ export const convertToFinalFormat = (data, importType, existingData = {}) => {
           id: baseId,
           description: item.description,
           montant: item.montant,
-          date: item.date || new Date().toISOString().split('T')[0],
+          date: item.date || jourLocal(),
           fournisseur: item.fournisseur || '',
           categorie: item.categorie || 'autre',
           chantierId: findChantierByName(item.chantier, existingData.chantiers),
@@ -549,7 +550,7 @@ export const convertToFinalFormat = (data, importType, existingData = {}) => {
           id: baseId,
           numero: item.numero || `DEV-IMP-${baseId}`,
           clientId: clientId,
-          date: item.date || new Date().toISOString().split('T')[0],
+          date: item.date || jourLocal(),
           description: item.description || '',
           montant: item.montant,
           statut: item.statut || 'brouillon',

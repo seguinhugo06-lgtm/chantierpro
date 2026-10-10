@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Bug, Lightbulb, MessageCircle, Loader2, CheckCircle } from 'lucide-react';
 import Modal, { ModalHeader, ModalTitle, ModalDescription, ModalBody, ModalFooter } from '../ui/Modal';
 import { envoyerRetour, listerMesRetours, TYPES_RETOUR, STATUTS_RETOUR } from '../../services/retoursService';
+import { dateLue } from '../../lib/dates';
 
 const ICONES = { bug: Bug, idee: Lightbulb, autre: MessageCircle };
 const AIDE = {
@@ -101,7 +102,7 @@ export default function RetourModal({ isOpen, onClose, isDark, couleur = '#f9731
                 <li key={r.id} className={`p-3 rounded-xl text-sm ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
                   <div className="flex items-center justify-between gap-2 mb-1">
                     <span className={`text-xs ${textMuted}`}>
-                      {TYPES_RETOUR[r.type] || r.type} · {new Date(r.created_at).toLocaleDateString('fr-FR')}
+                      {TYPES_RETOUR[r.type] || r.type} · {dateLue(r.created_at).toLocaleDateString('fr-FR')}
                     </span>
                     <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${COULEURS_STATUT[r.statut] || COULEURS_STATUT.nouveau}`}>
                       {STATUTS_RETOUR[r.statut] || r.statut}

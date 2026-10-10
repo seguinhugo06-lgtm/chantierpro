@@ -7,6 +7,7 @@ import { useDebounce } from '../../hooks/useDebounce';
 import { useConfirm, useToast } from '../../context/AppContext';
 import { CATEGORIES, PRIORITIES, RECURRENCE_OPTIONS, TASK_STATUSES } from './constants';
 import { formatDateFR, formatTimeFR } from './helpers';
+import { dateLue } from '../../lib/dates';
 
 // ── SubtaskList ──
 function SubtaskList({ subtasks = [], onUpdate, couleur, isDark }) {
@@ -193,6 +194,19 @@ export default function TaskDetail({ memo, onUpdate, onDelete, onClose, chantier
       }
     }
   }, [debouncedNotes]);
+
+  // Saisie en attente enregistrée à la fermeture du panneau : avant (recette du 9 oct. 2026), une note tapée
+  // puis fermée moins de 0,8 s après la dernière frappe n'était jamais enregistrée (le minuteur était annulé).
+  const enCoursRef = useRef(null);
+  enCoursRef.current = { text, notes, memo, onUpdate };
+  useEffect(() => () => {
+    const { text: t, notes: n, memo: m, onUpdate: maj } = enCoursRef.current || {};
+    if (!m) return;
+    const updates = {};
+    if (t !== (m.text || '')) updates.text = t;
+    if (n !== (m.notes || '')) updates.notes = n;
+    if (Object.keys(updates).length) maj(m.id, updates);
+  }, []);
 
   // Retry save on error
   const retrySave = () => {
@@ -625,8 +639,8 @@ export default function TaskDetail({ memo, onUpdate, onDelete, onClose, chantier
 
           {/* Meta info */}
           <div className={`text-xs ${tc.muted} pt-2 border-t ${tc.border}`}>
-            <p>Créé le {memo.created_at ? new Date(memo.created_at).toLocaleDateString('fr-FR') : '—'}</p>
-            {memo.done_at && <p>Terminé le {new Date(memo.done_at).toLocaleDateString('fr-FR')}</p>}
+            <p>Créé le {memo.created_at ? dateLue(memo.created_at).toLocaleDateString('fr-FR') : '—'}</p>
+            {memo.done_at && <p>Terminé le {dateLue(memo.done_at).toLocaleDateString('fr-FR')}</p>}
           </div>
         </div>
       </div>

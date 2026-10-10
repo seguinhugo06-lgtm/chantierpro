@@ -12,6 +12,7 @@ import { calculatePenalties, DEFAULT_PENALTY_RATE, estClientPro } from './relanc
 import { dateLocale } from './paiementsFacture';
 import { echapperHtml as h, couleurCss } from './echapperHtml';
 import { imprimerHtml } from './imprimerHtml';
+import { dateLue } from './dates';
 
 /**
  * Format a number as euros (French locale)
@@ -82,7 +83,7 @@ export function buildMiseEnDemeureHtml({
   const sentRelances = executions.filter(e => e.status !== 'cancelled' && e.status !== 'failed');
   const relanceSummary = sentRelances.length > 0
     ? sentRelances.map(e => {
-        const date = new Date(e.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+        const date = dateLue(e.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
         const channel = e.channel === 'email' ? 'email' : e.channel === 'sms' ? 'SMS' : e.channel === 'email_sms' ? 'email et SMS' : e.channel;
         return `${date} (par ${channel})`;
       }).join(', ')

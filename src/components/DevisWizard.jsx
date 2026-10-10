@@ -6,6 +6,7 @@ import CatalogBrowser from './CatalogBrowser';
 import { generateId } from '../lib/utils';
 import { formatClientName } from '../lib/formatters';
 import useConfirm from '../hooks/useConfirm';
+import { jourLocal } from '../lib/dates';
 
 // Draft localStorage key
 const DRAFT_KEY = 'mallettico_devis_draft';
@@ -39,7 +40,7 @@ export default function DevisWizard({
     type: 'devis',
     clientId: '',
     chantierId: '',
-    date: new Date().toISOString().split('T')[0],
+    date: jourLocal(),
     validite: entreprise?.validiteDevis || 30,
     tvaDefaut: entreprise?.tvaDefaut || 10,
     lignes: [],
@@ -62,7 +63,7 @@ export default function DevisWizard({
           type: initialData.type || 'devis',
           clientId: initialData.client_id || '',
           chantierId: initialData.chantier_id || '',
-          date: initialData.date || new Date().toISOString().split('T')[0],
+          date: initialData.date || jourLocal(),
           validite: initialData.validite || entreprise?.validiteDevis || 30,
           tvaDefaut: initialData.tvaRate || entreprise?.tvaDefaut || 10,
           lignes: (initialData.lignes || []).map((l, i) => ({
@@ -89,7 +90,7 @@ export default function DevisWizard({
             setForm(prev => ({
               ...prev,
               ...draft,
-              date: new Date().toISOString().split('T')[0]
+              date: jourLocal()
             }));
             setStep(draft.clientId ? 2 : 1);
             setDraftRestored(true);
@@ -129,7 +130,7 @@ export default function DevisWizard({
         type: 'devis',
         clientId: '',
         chantierId: '',
-        date: new Date().toISOString().split('T')[0],
+        date: jourLocal(),
         validite: entreprise?.validiteDevis || 30,
         tvaDefaut: entreprise?.tvaDefaut || 10,
         lignes: [],
@@ -427,7 +428,7 @@ export default function DevisWizard({
                   type: 'devis',
                   clientId: '',
                   chantierId: '',
-                  date: new Date().toISOString().split('T')[0],
+                  date: jourLocal(),
                   validite: entreprise?.validiteDevis || 30,
                   tvaDefaut: entreprise?.tvaDefaut || 10,
                   lignes: [],

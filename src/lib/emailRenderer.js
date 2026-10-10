@@ -4,6 +4,7 @@
  *
  * @module emailRenderer
  */
+import { dateLue } from './dates';
 
 // Import email templates as raw strings (for client-side)
 // For server-side (Edge Functions), use file system
@@ -225,7 +226,7 @@ export function formatDate(date) {
     day: 'numeric',
     month: 'long',
     year: 'numeric',
-  }).format(new Date(date));
+  }).format(dateLue(date)); // « AAAA-MM-JJ » lu en heure locale : sinon la veille outre-mer
 }
 
 /**

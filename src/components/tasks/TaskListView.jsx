@@ -12,6 +12,7 @@ import BulkActionBar from './BulkActionBar';
 import { BoutonVolet, Volet, ListeChoix, SegmentDefilant } from '../ui/Filtres';
 import { CATEGORIES, PRIORITIES, PRIORITY_ORDER, SORT_OPTIONS } from './constants';
 import { today, isOverdue, isToday, isFuture, isUndated, getNextOccurrence } from './helpers';
+import { jourLocal } from '../../lib/dates';
 
 // ── StatsBar ──
 function StatsBar({ memos, isDark, couleur }) {
@@ -406,7 +407,7 @@ export default function TaskListView({
         const now = new Date();
         const endOfWeek = new Date(now);
         endOfWeek.setDate(now.getDate() + (7 - now.getDay()));
-        const endOfWeekStr = endOfWeek.toISOString().split('T')[0];
+        const endOfWeekStr = jourLocal(endOfWeek);
         list = list.filter(m => m.due_date && m.due_date <= endOfWeekStr);
       } else if (quickFilter === 'overdue') {
         list = list.filter(m => !m.is_done && m.due_date && m.due_date < todayStr);

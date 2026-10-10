@@ -22,4 +22,14 @@ export function ajouterMois(jour, n) {
   return jourLocal(new Date(cible.getFullYear(), cible.getMonth(), Math.min(j, dernier)));
 }
 
+/**
+ * Date à afficher : « AAAA-MM-JJ » est lue comme ce jour-là à minuit en heure locale ; `new Date('2026-10-31')`
+ * la lit à minuit UTC, soit le 30 octobre à 20 h outre-mer (UTC−4) — une échéance s'affichait la veille
+ * (recette du 9 oct. 2026). Toute autre valeur (horodatage, Date) est lue comme par `new Date`.
+ */
+export function dateLue(valeur) {
+  const m = typeof valeur === 'string' && valeur.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date(valeur);
+}
+
 export default jourLocal;

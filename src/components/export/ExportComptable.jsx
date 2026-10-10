@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { remettreFichier } from '../../lib/natif';
 import { estEmise } from '../../lib/ventes';
+import { dateLue } from '../../lib/dates';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -535,8 +536,11 @@ export default function ExportComptable({
     const monthStr = `${from.getFullYear()}-${pad(from.getMonth() + 1)}`;
     if (format === 'csv') return `export_comptable_${monthStr}.csv`;
     if (format === 'fec') {
-      const siren = entreprise?.siren || '000000000';
-      return `${siren}FEC${fmtDateISO(new Date())}.txt`;
+      // Le même nom que le fichier produit (generateFEC) : SIREN, sinon les 9 premiers chiffres du SIRET ; date de fin
+      const siren = String(entreprise?.siren || '').replace(/\D/g, '').slice(0, 9)
+        || String(entreprise?.siret || '').replace(/\D/g, '').slice(0, 9)
+        || '000000000';
+      return `${siren}FEC${fmtDateISO(to)}.txt`;
     }
     return `export_comptable_${monthStr}.csv`;
   };
@@ -757,8 +761,8 @@ export default function ExportComptable({
             >
               <Info className="w-4 h-4 mt-0.5 flex-shrink-0" />
               <span>
-                Fichier au format FEC (article A.47 A-1 du Livre des procédures fiscales), à faire contrôler
-                par votre comptable avant de le remettre à l'administration.
+                Écritures au format FEC (art. A.47 A-1 du Livre des procédures fiscales), à importer dans la
+                comptabilité tenue par votre comptable. Ce fichier ne remplace pas le FEC de votre exercice.
               </span>
             </div>
           )}
@@ -1034,7 +1038,7 @@ export default function ExportComptable({
                     // La période affichée vient des dates réellement sélectionnées :
                     // le libellé du préréglage devient faux dès qu'on ajuste une date.
                     const periode = [dateFrom, dateTo].filter(Boolean)
-                      .map((d) => new Date(d).toLocaleDateString('fr-FR'))
+                      .map((d) => dateLue(d).toLocaleDateString('fr-FR'))
                       .join(' au ');
                     const subject = encodeURIComponent(`Export comptable ${periode} — ${entreprise?.nom || 'Mallettico'}`);
                     const body = encodeURIComponent(`Bonjour,\n\nVeuillez trouver ci-joint l'export comptable pour la période du ${periode}.\n\nCordialement,\n${entreprise?.nom || ''}`);

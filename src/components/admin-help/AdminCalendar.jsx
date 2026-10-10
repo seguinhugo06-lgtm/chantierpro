@@ -3,6 +3,7 @@ import {
   Calendar, Bell, Clock, AlertTriangle, Check, Plus,
   ChevronLeft, ChevronRight, X
 } from 'lucide-react';
+import { jourLocal, dateLue } from '../../lib/dates';
 
 /**
  * AdminCalendar - Rappels intelligents et calendrier personnalisé
@@ -45,7 +46,7 @@ const REMINDER_PRESETS = [
 function AddReminderModal({ isOpen, onClose, onAdd, isDark, couleur }) {
   const [form, setForm] = useState({
     title: '',
-    date: new Date().toISOString().split('T')[0],
+    date: jourLocal(),
     type: 'custom',
     priority: 'medium',
     notes: ''
@@ -238,7 +239,7 @@ export default function AdminCalendar({ isDark = false, couleur = '#f97316' }) {
 
   // Get events for a date
   const getEventsForDate = (date) => {
-    const dateStr = date.toISOString().split('T')[0];
+    const dateStr = jourLocal(date);
     return ECHEANCES_2026.filter(e => e.date === dateStr);
   };
 
@@ -430,7 +431,7 @@ export default function AdminCalendar({ isDark = false, couleur = '#f97316' }) {
                       <div>
                         <p className={`font-medium ${textPrimary}`}>{event.title}</p>
                         <p className={`text-sm ${textMuted} mt-1`}>
-                          {new Date(event.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
+                          {dateLue(event.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
                         </p>
                       </div>
                     </div>

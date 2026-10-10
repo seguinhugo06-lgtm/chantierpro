@@ -8,6 +8,7 @@ import {
   getNextEtapeAFacturer,
 } from '../../lib/acompteUtils';
 import { cn } from '../../lib/utils';
+import { dateLue } from '../../lib/dates';
 
 /**
  * AcompteSuiviCard — Displays invoicing options or échéancier progress on a devis.
@@ -142,7 +143,7 @@ export default function AcompteSuiviCard({
                   <p className={cn('text-xs', textMuted)}>
                     {etape.pourcentage}%
                     {linkedFacture ? ` · ${linkedFacture.numero}` : ''}
-                    {etape.date_facture ? ` · ${new Date(etape.date_facture).toLocaleDateString('fr-FR')}` : ''}
+                    {etape.date_facture ? ` · ${dateLue(etape.date_facture).toLocaleDateString('fr-FR')}` : ''}
                   </p>
                 </div>
 

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ChevronDown, Clock, GitBranch, ArrowLeftRight } from 'lucide-react';
+import { dateLue } from '../../lib/dates';
 
 /**
  * VersionSelector — Dropdown to select and view document versions
@@ -96,7 +97,7 @@ export default function VersionSelector({
                     </p>
                     <p className={`text-[10px] ${textMuted}`}>
                       <Clock size={10} className="inline mr-0.5" />
-                      {new Date(snap.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                      {dateLue(snap.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                     </p>
                   </div>
 

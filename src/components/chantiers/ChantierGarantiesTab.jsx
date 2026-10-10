@@ -21,6 +21,7 @@ import {
 import { GARANTIE_TYPES } from '../../services/garantieService';
 import GarantieProgressBar from './GarantieProgressBar';
 import ReservesList from './ReservesList';
+import { dateLue } from '../../lib/dates';
 
 // ── Intervention status badges ────────────────────────────────────────────────
 
@@ -42,7 +43,7 @@ const PRISE_EN_CHARGE = {
 
 function formatDate(d) {
   if (!d) return '';
-  return new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  return dateLue(d).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
 function getGarantieStatut(garantie) {

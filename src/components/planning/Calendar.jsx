@@ -26,6 +26,7 @@ import { cn } from '../../lib/utils';
 import { Button } from '../ui/Button';
 import Modal, { ModalHeader, ModalTitle, ModalBody, ModalFooter } from '../ui/Modal';
 import { supabase } from '../../supabaseClient';
+import { jourLocal } from '../../lib/dates';
 
 /**
  * @typedef {'month' | 'week' | 'day'} CalendarView
@@ -360,7 +361,7 @@ export default function Calendar({
       const weatherMap = {};
       data.list.forEach((item) => {
         const date = new Date(item.dt * 1000);
-        const dateKey = date.toISOString().split('T')[0];
+        const dateKey = jourLocal(date);
 
         // Keep midday forecast for each day
         if (!weatherMap[dateKey] || date.getHours() === 12) {
@@ -670,7 +671,7 @@ export default function Calendar({
   // Day cell content with weather
   const dayCellContent = useCallback(
     (arg) => {
-      const dateKey = arg.date.toISOString().split('T')[0];
+      const dateKey = jourLocal(arg.date);
       const dayWeather = weather[dateKey];
       const isRainy = dayWeather?.rain > 0;
 
@@ -694,7 +695,7 @@ export default function Calendar({
   // Custom event content
   const eventContent = useCallback(
     (arg) => {
-      const dateKey = arg.event.start?.toISOString().split('T')[0];
+      const dateKey = ((arg.event.start) ? jourLocal(arg.event.start) : undefined);
       const eventWeather = weather[dateKey];
       const hasConflict = arg.event.extendedProps?.hasConflict;
 

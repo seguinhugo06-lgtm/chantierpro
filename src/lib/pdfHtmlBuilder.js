@@ -8,6 +8,7 @@ import { filterValidLignes } from './formatters';
 import { euros, pourcent, blocConditionsPaiement } from './formatDocument';
 import { lignesTotauxHtml, lignesAcompteHtml } from './totauxDocument';
 import { echeance } from './paiementsFacture';
+import { dateLue } from './dates';
 
 /**
  * Get entreprise data from localStorage
@@ -164,8 +165,8 @@ export function buildDocumentHTML(doc, client, chantier, entreprise, options = {
       <h1>${isAvoir ? 'AVOIR' : isFacture ? 'FACTURE' : 'DEVIS'}</h1>
       <div class="doc-info">
         <strong>N° ${doc.numero}</strong><br>
-        Date: ${new Date(doc.date).toLocaleDateString('fr-FR')}<br>
-        ${isFacture && doc.date_echeance ? `Échéance: ${new Date(doc.date_echeance).toLocaleDateString('fr-FR')}<br>` : ''}
+        Date: ${dateLue(doc.date).toLocaleDateString('fr-FR')}<br>
+        ${isFacture && doc.date_echeance ? `Échéance: ${dateLue(doc.date_echeance).toLocaleDateString('fr-FR')}<br>` : ''}
         ${!isFacture ? `<strong>Valable jusqu'au: ${dateValidite.toLocaleDateString('fr-FR')}</strong>` : ''}
       </div>
     </div>
@@ -194,7 +195,7 @@ export function buildDocumentHTML(doc, client, chantier, entreprise, options = {
   ${isAvoir ? `
   <!-- RÉFÉRENCE AVOIR -->
   <div class="avoir-ref">
-    <strong>AVOIR${doc.avoir_type === 'partiel' ? ' PARTIEL' : ''} relatif à la facture n° ${sourceFacture?.numero || 'N/A'} du ${sourceFacture ? new Date(sourceFacture.date).toLocaleDateString('fr-FR') : 'N/A'}</strong>
+    <strong>AVOIR${doc.avoir_type === 'partiel' ? ' PARTIEL' : ''} relatif à la facture n° ${sourceFacture?.numero || 'N/A'} du ${sourceFacture ? dateLue(sourceFacture.date).toLocaleDateString('fr-FR') : 'N/A'}</strong>
     ${doc.avoir_motif ? `<br>Motif : ${avoirMotifs[doc.avoir_motif] || doc.avoir_motif}${doc.avoir_motif_detail ? ` — ${doc.avoir_motif_detail}` : ''}` : ''}
   </div>
   ` : ''}
@@ -282,7 +283,7 @@ export function buildDocumentHTML(doc, client, chantier, entreprise, options = {
     <div class="signature-box">
       <h4>Le Client</h4>
       <p>Signature précédée de la mention manuscrite:<br><strong>"Bon pour accord"</strong> + Date</p>
-      ${doc.signature ? '<div style="margin-top:15px;color:#16a34a;font-weight:bold">[OK] Signé électroniquement le ' + new Date(doc.signatureDate).toLocaleDateString('fr-FR') + '</div>' : ''}
+      ${doc.signature ? '<div style="margin-top:15px;color:#16a34a;font-weight:bold">[OK] Signé électroniquement le ' + dateLue(doc.signatureDate).toLocaleDateString('fr-FR') + '</div>' : ''}
     </div>
   </div>
   ` : ''}
@@ -298,9 +299,9 @@ export function buildDocumentHTML(doc, client, chantier, entreprise, options = {
     ${getRCSComplet(entreprise) ? ` | ${getRCSComplet(entreprise)}` : ''}<br>
     ${entreprise?.tvaIntra ? `TVA Intracommunautaire: ${entreprise.tvaIntra}` : ''}<br>
     <div class="assurances">
-      ${entreprise?.decennaleAssureur ? `Assurance décennale: ${entreprise.decennaleAssureur} N°${entreprise.decennaleNumero}${entreprise.decennaleValidite ? ` (Valide jusqu'au ${new Date(entreprise.decennaleValidite).toLocaleDateString('fr-FR')})` : ''}` : ''}
+      ${entreprise?.decennaleAssureur ? `Assurance décennale: ${entreprise.decennaleAssureur} N°${entreprise.decennaleNumero}${entreprise.decennaleValidite ? ` (Valide jusqu'au ${dateLue(entreprise.decennaleValidite).toLocaleDateString('fr-FR')})` : ''}` : ''}
       ${entreprise?.decennaleAssureur && entreprise?.rcProAssureur ? '<br>' : ''}
-      ${entreprise?.rcProAssureur ? `RC Pro: ${entreprise.rcProAssureur} N°${entreprise.rcProNumero}${entreprise.rcProValidite ? ` (Valide jusqu'au ${new Date(entreprise.rcProValidite).toLocaleDateString('fr-FR')})` : ''}` : ''}
+      ${entreprise?.rcProAssureur ? `RC Pro: ${entreprise.rcProAssureur} N°${entreprise.rcProNumero}${entreprise.rcProValidite ? ` (Valide jusqu'au ${dateLue(entreprise.rcProValidite).toLocaleDateString('fr-FR')})` : ''}` : ''}
     </div>
     ${isAvoir ? `<div style="margin-top:6px;font-size:6.5pt;color:#666">Cet avoir rectifie la facture de référence citée ci-dessus ; il en réduit d'autant le montant dû.</div>` : !isFacture ? `<div style="margin-top:6px;font-size:6.5pt;color:#666">Devis reçu avant l'exécution des travaux. Conditions de paiement et pénalités de retard conformes à l'article L441-10 du Code de commerce.</div>` : ''}
   </div>

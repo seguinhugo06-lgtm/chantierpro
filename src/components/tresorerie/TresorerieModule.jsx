@@ -43,7 +43,7 @@ import { Bouton, BoutonIcone } from '../ui/Bouton';
 import { remettreFichier } from '../../lib/natif';
 import { statutFacture, resteAPayer, joursDeRetard, echeance, encaisseEntre, dateLocale } from '../../lib/paiementsFacture';
 import { estOuverte, resteAFacturer } from '../../lib/ventes';
-import { jourLocal, ajouterMois } from '../../lib/dates';
+import { jourLocal, ajouterMois, dateLue } from '../../lib/dates';
 import { captureException } from '../../lib/sentry';
 
 // ---------------------------------------------------------------------------
@@ -656,7 +656,7 @@ export default function TresorerieModule({
   const tvaHook = useTVA({ devis, depenses, mouvements, settings });
 
   // -- Hook: Export comptable ──────────────────────────────────────
-  const { exportCA3, exportJournalVentes, exportJournalAchats, exportReglements: exportReglementsCSV, exportMouvements: exportMouvementsCSV } = useExportComptable({
+  const { exportJournalVentes, exportJournalAchats, exportReglements: exportReglementsCSV, exportMouvements: exportMouvementsCSV } = useExportComptable({
     devis, depenses, reglements, mouvements, clients, entreprise, tvaData: tvaHook,
   });
 
@@ -1020,7 +1020,7 @@ export default function TresorerieModule({
       const maxDate = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000);
       if (nextDate <= maxDate) {
         // Check if next instance already exists
-        const nextDateStr = nextDate.toISOString().slice(0, 10);
+        const nextDateStr = jourLocal(nextDate);
         const alreadyExists = previsions.some(p =>
           p.recurrenceParentId === (paid.recurrenceParentId || paid.id) &&
           p.date === nextDateStr && p.statut === 'prevu'
@@ -1837,7 +1837,7 @@ export default function TresorerieModule({
                 chevron={false}
                 titre={item.clientNom}
                 montant={formatMoney(item.montant)}
-                meta={`${item.numero}${item.isOverdue ? '' : item.echeance ? ` · échéance ${new Date(item.echeance).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}` : ''}`}
+                meta={`${item.numero}${item.isOverdue ? '' : item.echeance ? ` · échéance ${dateLue(item.echeance).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}` : ''}`}
                 pastille={item.isOverdue ? <Pastille ton="danger">{item.joursRetard} j de retard</Pastille> : <Pastille ton="info">À payer</Pastille>}
                 pied={(
                   <>
@@ -1881,7 +1881,7 @@ export default function TresorerieModule({
           </span>
           <span className="mt-3 grid grid-cols-3 gap-3">
             <span className="min-w-0">
-              <span className="block text-sm text-encre-2">Collectée</span>
+              <span className="block text-sm text-encre-2">Facturée</span>
               <span className="block text-base font-bold text-encre tabular-nums truncate">{formatMoney(tvaTotal.collectee)}</span>
             </span>
             <span className="min-w-0">
@@ -1889,7 +1889,7 @@ export default function TresorerieModule({
               <span className="block text-base font-bold text-encre tabular-nums truncate">{formatMoney(tvaTotal.deductible)}</span>
             </span>
             <span className="min-w-0">
-              <span className="block text-sm text-encre-2">{tvaTotal.net >= 0 ? 'À reverser' : 'Crédit'}</span>
+              <span className="block text-sm text-encre-2">{tvaTotal.net >= 0 ? 'Solde estimé' : 'Crédit estimé'}</span>
               <span className="block text-base font-bold text-encre tabular-nums truncate">{formatMoney(Math.abs(tvaTotal.net))}</span>
             </span>
           </span>
@@ -2092,7 +2092,7 @@ export default function TresorerieModule({
               {paiementsVisibles.map((p) => {
                 const isEntree = p.type === 'entree';
                 const isPrevision = p.source === 'prevision';
-                const dateStr = p.date ? new Date(p.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
+                const dateStr = p.date ? dateLue(p.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
                 const aRegler = isPrevision && p.statut !== 'Payé' && p.date && new Date(p.date) <= new Date(Date.now() + 7 * 86400000);
                 return (
                   <LigneListe
@@ -2138,7 +2138,7 @@ export default function TresorerieModule({
                 <tbody>
                   {paiementsVisibles.map((p) => {
                     const isEntree = p.type === 'entree';
-                    const dateStr = p.date ? new Date(p.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
+                    const dateStr = p.date ? dateLue(p.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
                     const isPrevision = p.source === 'prevision';
 
                     return (
@@ -2306,7 +2306,7 @@ export default function TresorerieModule({
                 <tbody>
                   {filteredMouvements.map((m) => {
                     const isEntree = m.type === 'entree';
-                    const dateStr = m.date ? new Date(m.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
+                    const dateStr = m.date ? dateLue(m.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
                     return (
                       <tr key={m.id} className={`border-b last:border-b-0 transition-colors border-bord hover:bg-surface-2`}>
                         <td className={`py-3 pr-4 ${textSecondary} whitespace-nowrap`}>{dateStr}</td>
@@ -2632,11 +2632,9 @@ export default function TresorerieModule({
             {/* Export buttons */}
             {(settings.regimeTva || 'trimestriel') !== 'franchise' && (
               <div className="flex items-center gap-2">
-                <button onClick={() => exportCA3()}
-                  className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-colors bg-surface-2 hover:bg-bord text-encre-2`}
-                  title="Télécharger la liasse CA3 pour votre déclaration de TVA">
-                  <FileText size={14} /> CA3
-                </button>
+                {/* Export « CA3 » retiré (relecture juridique du 10 oct. 2026) : une seule colonne au lieu de « base hors
+                    taxe » et « taxe due », une année au lieu d'un mois ou d'un trimestre, lignes du millésime 2026
+                    non suivies — l'artisan aurait recopié la taxe dans la colonne de la base. */}
                 <button onClick={() => exportJournalVentes()}
                   className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-colors bg-surface-2 hover:bg-bord text-encre-2`}
                   title="Export des ventes avec TVA ventilée">
@@ -2684,9 +2682,9 @@ export default function TresorerieModule({
               {/* TVA Summary KPIs */}
               <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6`}>
                 <div className={`p-4 rounded-xl border ${isDark ? 'bg-slate-700/50 border-slate-600' : 'bg-blue-50 border-blue-100'}`}>
-                  <p className={`text-xs font-semibold uppercase tracking-wide mb-1 text-info-texte`}>TVA Collectée</p>
+                  <p className={`text-xs font-semibold uppercase tracking-wide mb-1 text-info-texte`}>TVA facturée</p>
                   <p className={`text-xl font-bold text-info-texte`}>{formatMoney(tvaTotal.collectee)}</p>
-                  <p className={`text-xs mt-0.5 ${textSecondary}`}>Sur vos factures émises</p>
+                  <p className={`text-xs mt-0.5 ${textSecondary}`}>Sur vos factures émises (régime des débits)</p>
                 </div>
                 <div className={`p-4 rounded-xl border bg-surface-2 border-bord`}>
                   <p className={`text-xs font-semibold uppercase tracking-wide mb-1 text-encre-3`}>TVA Déductible</p>
@@ -2695,10 +2693,10 @@ export default function TresorerieModule({
                 </div>
                 <div className={`p-4 rounded-xl border ${isDark ? 'bg-slate-700/50 border-slate-600' : tvaTotal.net >= 0 ? 'bg-red-50 border-red-100' : 'bg-green-50 border-green-100'}`}>
                   <p className={`text-xs font-semibold uppercase tracking-wide mb-1 ${tvaTotal.net >= 0 ? 'text-danger-texte' : 'text-succes-texte'}`}>
-                    {tvaTotal.net >= 0 ? 'TVA à reverser' : 'Crédit de TVA'}
+                    {tvaTotal.net >= 0 ? 'Solde estimé (débits)' : 'Crédit estimé (débits)'}
                   </p>
                   <p className={`text-xl font-bold ${tvaTotal.net >= 0 ? 'text-red-500' : 'text-green-500'}`}>{formatMoney(Math.abs(tvaTotal.net))}</p>
-                  <p className={`text-xs mt-0.5 ${textSecondary}`}>{tvaTotal.net >= 0 ? 'À payer au Trésor public' : 'Remboursable ou reportable'}</p>
+                  <p className={`text-xs mt-0.5 ${textSecondary}`}>Sans option pour les débits, la TVA de vos travaux est due à l’encaissement (art. 269 du CGI) : le montant à déclarer peut différer.</p>
                 </div>
                 {tvaNextDeadline && (
                   <div className={`p-4 rounded-xl border ${isDark ? 'bg-slate-700/50 border-slate-600' : 'bg-purple-50 border-purple-100'}`}>

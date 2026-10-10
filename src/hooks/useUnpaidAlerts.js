@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { dateLue } from '../lib/dates';
 
 /**
  * Hook to detect and alert on unpaid invoices
@@ -61,7 +62,7 @@ export function useUnpaidAlerts(factures = []) {
           description: urgenceLabel,
           amount: montantRestant,
           dueDate: facture.date_echeance
-            ? new Date(facture.date_echeance).toLocaleDateString('fr-FR')
+            ? dateLue(facture.date_echeance).toLocaleDateString('fr-FR')
             : null,
           joursRetard,
           facture,
@@ -78,7 +79,7 @@ export function useUnpaidAlerts(factures = []) {
           description: joursRetard === 0 ? "Echue aujourd'hui" : `Echue dans ${Math.abs(joursRetard)}j`,
           amount: montantRestant,
           dueDate: facture.date_echeance
-            ? new Date(facture.date_echeance).toLocaleDateString('fr-FR')
+            ? dateLue(facture.date_echeance).toLocaleDateString('fr-FR')
             : null,
           joursRetard,
           facture,

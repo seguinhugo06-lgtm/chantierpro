@@ -11,6 +11,7 @@ import { useModal, useMultiModal } from './useModal';
 import { useData } from '../context/DataContext';
 import { buildDocumentHTML, getEntrepriseFromStorage } from '../lib/pdfHtmlBuilder';
 import { urlPublique } from '../lib/urlPublique';
+import { jourLocal } from '../lib/dates';
 
 /**
  * @typedef {'devis' | 'facture' | 'chantier' | 'client'} ItemType
@@ -258,7 +259,7 @@ export function useQuickActions(config) {
           numero,
           type: 'facture',
           devis_source_id: devisId,
-          date: new Date().toISOString().split('T')[0],
+          date: jourLocal(),
           statut: 'envoye',
         };
 

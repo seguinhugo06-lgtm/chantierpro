@@ -8,6 +8,7 @@ import supabase, { isDemo } from '../supabaseClient';
 import { logger } from '../lib/logger';
 import { normalizeNumero } from '../lib/devis-utils';
 import { scopeToOrg, withOrgScope } from '../lib/queryHelper';
+import { jourLocal } from '../lib/dates';
 
 /**
  * Deep-sanitize a value so it is safely JSON-serializable.
@@ -632,7 +633,7 @@ export const FIELD_MAPPINGS = {
       id: item.id,
       seuil_alerte: item.seuilAlerte ?? 5000,
       solde_initial: item.soldeInitial ?? 0,
-      solde_date: item.soldeDate || new Date().toISOString().slice(0, 10),
+      solde_date: item.soldeDate || jourLocal(),
       regime_tva: item.regimeTva || 'trimestriel',
       numero_tva: item.numeroTva || null,
     }),
@@ -651,7 +652,7 @@ export const FIELD_MAPPINGS = {
       id: item.id,
       devis_id: item.devisId,
       montant: item.montant,
-      date_reglement: item.dateReglement || item.date || new Date().toISOString().slice(0, 10),
+      date_reglement: item.dateReglement || item.date || jourLocal(),
       mode_paiement: item.modePaiement || 'virement',
       reference: item.reference,
       notes: item.notes,
@@ -762,7 +763,6 @@ export const FIELD_MAPPINGS = {
     },
     fromSupabase: (row) => {
       // Jour et heure locaux : colonnes date / time d'abord, sinon l'instant relu à l'heure de l'appareil
-      const jourLocal = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
       const startDate = row.start_date ? new Date(row.start_date) : null;
       const date = row.date || (startDate ? jourLocal(startDate) : '');
       const time = row.time ? String(row.time).slice(0, 5) : ((!row.all_day && startDate) ? startDate.toTimeString().slice(0, 5) : '');

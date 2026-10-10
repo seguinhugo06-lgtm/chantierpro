@@ -12,6 +12,7 @@ import { formatClientName } from '../lib/formatters';
 const EXPRESS_DRAFT_KEY = 'mallettico_devis_express_draft';
 import TemplateSelector from './TemplateSelector';
 import QuickClientModal from './QuickClientModal';
+import { jourLocal } from '../lib/dates';
 
 export default function DevisExpressModal({
   isOpen,
@@ -239,7 +240,7 @@ export default function DevisExpressModal({
         client_id: selectedClient.id,
         type: 'devis',
         statut: 'brouillon',
-        date: new Date().toISOString().split('T')[0],
+        date: jourLocal(),
         lignes: lignes.map(l => ({
           description: l.description,
           quantite: l.quantite,

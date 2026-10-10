@@ -7,6 +7,7 @@
 
 import { supabase } from '../supabaseClient';
 import { remettreFichier } from './natif';
+import { dateLue } from './dates';
 
 // ============================================================================
 // TYPES (JSDoc)
@@ -597,7 +598,7 @@ export async function exportMovementsToCSV(userId, filters = {}) {
 
   const headers = ['Date', 'Produit', 'Type', 'Quantite', 'Motif', 'Chantier', 'Devis'];
   const rows = data.map((m) => [
-    new Date(m.created_at).toLocaleDateString('fr-FR'),
+    dateLue(m.created_at).toLocaleDateString('fr-FR'),
     m.catalogue?.nom || '',
     m.type,
     m.quantite,

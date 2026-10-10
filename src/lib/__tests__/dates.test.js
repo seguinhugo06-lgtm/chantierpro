@@ -1,5 +1,18 @@
 import { describe, it, expect } from 'vitest';
-import { jourLocal, ajouterMois } from '../dates';
+import { jourLocal, ajouterMois, dateLue } from '../dates';
+
+describe('dateLue : une date « AAAA-MM-JJ » est ce jour-là, partout', () => {
+  it('lue en heure locale (new Date la lit à minuit UTC : la veille outre-mer)', () => {
+    const d = dateLue('2026-10-31');
+    expect([d.getFullYear(), d.getMonth(), d.getDate(), d.getHours()]).toEqual([2026, 9, 31, 0]);
+  });
+  it('un horodatage ou une Date : comme new Date', () => {
+    expect(dateLue('2026-10-31T10:00:00Z').getTime()).toBe(new Date('2026-10-31T10:00:00Z').getTime());
+    const x = new Date(2026, 0, 2);
+    expect(dateLue(x).getTime()).toBe(x.getTime());
+    expect(Number.isNaN(dateLue('').getTime())).toBe(true);
+  });
+});
 
 describe('dates en heure locale', () => {
   it('jourLocal : le jour de l’appareil', () => {

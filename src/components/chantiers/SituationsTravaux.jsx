@@ -50,6 +50,7 @@ import {
   DEFAULT_TVA_RATE,
 } from '../../lib/situationUtils';
 import { printSituationFacture } from '../../lib/devisHtmlBuilder';
+import { jourLocal, dateLue } from '../../lib/dates';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -57,7 +58,7 @@ import { printSituationFacture } from '../../lib/devisHtmlBuilder';
 
 const formatDate = (iso) => {
   if (!iso) return '—';
-  return new Date(iso).toLocaleDateString('fr-FR', {
+  return dateLue(iso).toLocaleDateString('fr-FR', {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
@@ -251,7 +252,7 @@ export default function SituationsTravaux({
     return {
       id: generateId('sit'),
       numero: nextNumero,
-      date: new Date().toISOString().split('T')[0],
+      date: jourLocal(),
       statut: SITUATION_STATUS.BROUILLON,
       isDGD: false,
       retenuePct: retenuePctLocal,
@@ -388,7 +389,7 @@ export default function SituationsTravaux({
         situation_numero: sit.numero,
         devis_source_id: devisSourceId || sourceDevis?.id || null,
         statut: 'envoye',
-        date: new Date().toISOString().split('T')[0],
+        date: jourLocal(),
         objet: `Facture de situation n°${sit.numero}${sit.isDGD ? ' - Décompte Général Définitif' : ''} - ${chantier?.nom || ''}`,
         lignes: factureLignes,
         tvaRate: sourceDevis?.tvaRate || DEFAULT_TVA_RATE,

@@ -10,6 +10,7 @@
 import supabase from '../supabaseClient';
 import { echapperHtml } from './echapperHtml';
 import { pdfDepuisHtml } from './pdfDepuisHtml';
+import { dateLue } from './dates';
 
 // Encode un Uint8Array en base64 sans dépasser la limite d'arguments de String.fromCharCode.
 function uint8ToBase64(bytes) {
@@ -87,7 +88,7 @@ export function buildDocumentEmailBody({ doc, client, entreprise, couleur = '#f9
   const clientNom = echapperHtml(`${client.prenom || ''} ${client.nom || ''}`.trim()) || 'Madame, Monsieur';
   const nomEntreprise = echapperHtml(entreprise?.nom || 'Votre artisan');
   const numero = echapperHtml(doc.numero);
-  const echeanceTexte = solde?.echeance ? new Date(solde.echeance).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
+  const echeanceTexte = solde?.echeance ? dateLue(solde.echeance).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
   const euro = (n) => Number(n || 0).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' });
   // Bouton de paiement seulement s'il reste quelque chose à payer
   const lienBlock = isFacture && lienPaiement && (!solde || solde.reste > 0.005) ? `
@@ -140,7 +141,7 @@ export function buildPaymentReceiptEmailBody({ doc, client, entreprise, couleur 
   const modeLabels = { virement: 'virement bancaire', cheque: 'chèque', especes: 'espèces', cb: 'carte bancaire', carte: 'carte bancaire' };
   const modeLabel = echapperHtml(modeLabels[modePaiement] || modePaiement || '');
   const dateLabel = datePaiement
-    ? new Date(datePaiement).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+    ? dateLue(datePaiement).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
     : new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
 
   return `

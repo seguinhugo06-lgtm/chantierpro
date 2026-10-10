@@ -47,7 +47,7 @@ import LigneListe, { GroupeListe } from './ui/LigneListe';
 import { Bouton, BoutonIcone } from './ui/Bouton';
 import EtatVide from './ui/EtatVide';
 import { useSubscriptionStore, PLANS } from '../stores/subscriptionStore';
-import { jourLocal } from '../lib/dates';
+import { jourLocal, dateLue } from '../lib/dates';
 
 /** La mallette — marque Mallettico, reprise du jeu d'icônes (grille 48, contour 3,2). */
 function Mallette({ size = 24, style, className }) {
@@ -443,7 +443,7 @@ export default function Dashboard({
     ? `${new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 1 }).format(n / 1000)} k€`
     : `${Math.round(n)} €`;
   const moisCourant = new Date().toLocaleDateString('fr-FR', { month: 'long' });
-  const moisPrecedent = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1).toLocaleDateString('fr-FR', { month: 'long' });
+  const moisPrecedent = dateLue(new Date().getFullYear(), new Date().getMonth() - 1, 1).toLocaleDateString('fr-FR', { month: 'long' });
   // Ton d'une action « à faire » d'après sa couleur historique (rouge = retard, etc.)
   const tonAction = (c) => ({ '#ef4444': 'bg-danger-fond text-danger-texte', '#f59e0b': 'bg-alerte-fond text-alerte-texte', '#10b981': 'bg-succes-fond text-succes-texte' }[c] || 'bg-info-fond text-info-texte');
 

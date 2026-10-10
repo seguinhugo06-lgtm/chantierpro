@@ -25,6 +25,7 @@ import { quotaDictee, compterDictee } from '../../lib/dicteeQuota';
 import {
   analyserDictee, rapprocherClient, rapprocherChantier, enrichirLignes,
 } from '../../lib/voiceIntent';
+import { jourLocal } from '../../lib/dates';
 
 const UNITES = ['u', 'm²', 'm³', 'ml', 'h', 'j', 'forfait', 'pièce', 'sac', 'pot', 'kg', 'lot'];
 
@@ -448,7 +449,7 @@ export default function DicteeModal({
           type: doc.type === 'facture' ? 'facture' : 'devis',
           client_id: clientId,
           chantier_id: idsChantiers[docChantierIdx] || undefined,
-          date: new Date().toISOString().split('T')[0],
+          date: jourLocal(),
           statut: 'brouillon',
           tvaRate: tvaDoc,
           lignes,

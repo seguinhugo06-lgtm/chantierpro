@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { FONCTIONS } from '../lib/fonctions';
 import { ArrowLeft, Sparkles, Bug, Zap, Shield, Package, ChevronDown, ChevronUp } from 'lucide-react';
+import { dateLue } from '../lib/dates';
 
 const CHANGELOG = [
   {
@@ -166,7 +167,7 @@ export default function Changelog({ isDark, couleur, setPage }) {
                       </span>
                     )}
                   </div>
-                  <p className={`text-sm ${textMuted}`}>{release.title} — {new Date(release.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                  <p className={`text-sm ${textMuted}`}>{release.title} — {dateLue(release.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
                 </div>
                 <span className={`${textMuted} flex-shrink-0 px-2 py-1 rounded-lg text-xs ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
                   {release.changes.length} changements

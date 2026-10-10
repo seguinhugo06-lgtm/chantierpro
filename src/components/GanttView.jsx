@@ -2,6 +2,7 @@ import React, { useState, useMemo, useRef } from 'react';
 import { ChevronLeft, ChevronRight, Calendar, Plus, Edit2, Trash2, X, Check, Users, Building2, Clock, AlertTriangle, GripVertical } from 'lucide-react';
 import { useConfirm } from '../context/AppContext';
 import { generateId } from '../lib/utils';
+import { jourLocal } from '../lib/dates';
 
 /**
  * Vue Gantt pour la planification des chantiers
@@ -27,7 +28,7 @@ export default function GanttView({
   const [form, setForm] = useState({
     nom: '',
     chantierId: '',
-    debut: new Date().toISOString().split('T')[0],
+    debut: jourLocal(),
     fin: '',
     duree: 1,
     assignes: [],
@@ -171,7 +172,7 @@ export default function GanttView({
 
     const taskData = {
       ...form,
-      fin: endDate.toISOString().split('T')[0]
+      fin: jourLocal(endDate)
     };
 
     if (editingTask) {
@@ -194,7 +195,7 @@ export default function GanttView({
     setForm({
       nom: '',
       chantierId: '',
-      debut: new Date().toISOString().split('T')[0],
+      debut: jourLocal(),
       fin: '',
       duree: 1,
       assignes: [],

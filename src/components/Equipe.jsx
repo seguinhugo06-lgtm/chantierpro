@@ -28,7 +28,7 @@ import { Avatar } from './ui/LigneListe';
 import { remettreFichier } from '../lib/natif';
 import { tauxFacture, coutHoraire, coutDesPointages } from '../lib/tauxEquipe';
 import { decompteHeures, lundiDe, dimancheDe } from '../lib/paie';
-import { jourLocal } from '../lib/dates';
+import { jourLocal, dateLue } from '../lib/dates';
 
 // Lazy-load optional heavy dependencies to prevent crashes
 let NoteModal = null;
@@ -2450,7 +2450,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                               </td>
                               <td className={`px-4 py-3 text-sm ${textMuted}`}>{ch?.nom || '—'}</td>
                               <td className={`px-4 py-3 text-sm ${textMuted}`}>
-                                {new Date(p.date + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })}
+                                {dateLue(p.date + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })}
                               </td>
                               <td className={`px-4 py-3 text-sm text-right font-bold ${textPrimary}`}>{p.heures}h</td>
                               <td className="px-4 py-3 text-center">
@@ -2581,7 +2581,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                             {ch?.nom || 'Sans chantier'}
                           </span>
                           <span className={`text-xs px-2 py-0.5 rounded-full bg-surface-2 ${textMuted}`}>
-                            {new Date(p.date).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })}
+                            {dateLue(p.date).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })}
                           </span>
                         </div>
                         {p.note && (
@@ -2719,7 +2719,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                         const ch = chantiers.find(c => c.id === p.chantierId);
                         return (
                           <div key={p.id} className={`flex justify-between py-1 ${textMuted}`}>
-                            <span>{new Date(p.date).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric' })} — {ch?.nom || '—'}</span>
+                            <span>{dateLue(p.date).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric' })} — {ch?.nom || '—'}</span>
                             <span className="font-semibold">{p.heures}h</span>
                           </div>
                         );
@@ -2943,10 +2943,10 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                         {/* Date */}
                         <div className={`w-16 sm:w-20 flex-shrink-0`}>
                           <p className={`text-sm font-medium ${textPrimary}`}>
-                            {new Date(p.date).toLocaleDateString('fr-FR', { weekday: 'short' })}
+                            {dateLue(p.date).toLocaleDateString('fr-FR', { weekday: 'short' })}
                           </p>
                           <p className={`text-xs ${textMuted}`}>
-                            {new Date(p.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+                            {dateLue(p.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
                           </p>
                         </div>
 
@@ -3208,9 +3208,9 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                                 </div>
                                 <div className="flex items-center gap-3 mt-1">
                                   <span className={`text-sm ${textMuted}`}>
-                                    {new Date(c.dateDebut).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+                                    {dateLue(c.dateDebut).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
                                     {' → '}
-                                    {new Date(c.dateFin).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                    {dateLue(c.dateFin).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
                                   </span>
                                   <span className={`text-sm font-semibold ${textPrimary}`}>{days} jour{days > 1 ? 's' : ''}</span>
                                 </div>
@@ -3712,7 +3712,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                       {emp.dateEmbauche && (
                         <p className="text-white/60 text-sm flex items-center gap-1 mt-0.5">
                           <Cake size={12} />
-                          Embauché le {new Date(emp.dateEmbauche).toLocaleDateString('fr-FR')}
+                          Embauché le {dateLue(emp.dateEmbauche).toLocaleDateString('fr-FR')}
                           {stats.daysSinceHire !== null && <span> ({stats.daysSinceHire}j)</span>}
                         </p>
                       )}
@@ -3849,7 +3849,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                           const ch = chantiers.find(c => c.id === p.chantierId);
                           return (
                             <div key={p.id} className={`flex items-center justify-between px-3 py-2 text-xs ${i > 0 ? ('border-t border-bord') : ''}`}>
-                              <span className={textMuted}>{new Date(p.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}</span>
+                              <span className={textMuted}>{dateLue(p.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}</span>
                               <span className={`truncate mx-2 ${textPrimary}`}>{ch?.nom || '—'}</span>
                               <span className="font-bold" style={{ color: couleur }}>{p.heures}h</span>
                               <span className={`ml-2 w-2 h-2 rounded-full ${p.verrouille ? 'bg-blue-500' : p.approuve ? 'bg-emerald-500' : 'bg-amber-400'}`} />
@@ -4093,7 +4093,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                               <div className="w-2 h-2 rounded-full" style={{ background: ev.chantierId ? (chantierColors[ev.chantierId] || couleur) : couleur }} />
                               <span className={`font-medium ${textPrimary}`}>{ev.title || ch?.nom || 'Événement'}</span>
                               <span className={textMuted}>
-                                {new Date(ev.date + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric' })}
+                                {dateLue(ev.date + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric' })}
                               </span>
                             </div>
                           );

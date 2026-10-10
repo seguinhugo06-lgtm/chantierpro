@@ -8,8 +8,9 @@
  */
 import { resteAPayer, joursDeRetard, echeance, dejaPaye } from './paiementsFacture';
 import { euros } from './formatDocument';
+import { dateLue } from './dates';
 
-const dateCourte = (d) => (d ? new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : '');
+const dateCourte = (d) => (d ? dateLue(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : '');
 
 /**
  * Où en est une facture émise (ni brouillon, ni avoir) : total, reste dû, échéance, retard.

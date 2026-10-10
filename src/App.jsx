@@ -2042,7 +2042,7 @@ export default function App() {
             onSubmit={async (data) => {
               const newDevis = await addDevis({
                 ...data,
-                date: new Date().toISOString().split('T')[0],
+                date: jourLocal(),
                 statut: 'brouillon'
               });
               setShowFABDevisWizard(false);

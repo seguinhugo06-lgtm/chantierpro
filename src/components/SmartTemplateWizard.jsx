@@ -10,6 +10,7 @@ import {
   getDefaultPrice,
   formatPriceRange
 } from '../lib/templates/smart-templates';
+import { jourLocal } from '../lib/dates';
 
 /**
  * Smart Template Wizard - Devis express
@@ -127,7 +128,7 @@ export default function SmartTemplateWizard({
       type: 'devis',
       clientId: selectedClient.id,
       client: selectedClient,
-      date: new Date().toISOString().split('T')[0],
+      date: jourLocal(),
       validite: entreprise?.validiteDevis || 30,
       sections: [{
         id: `section_${Date.now()}`,

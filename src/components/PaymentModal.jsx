@@ -4,6 +4,7 @@ import { X, CreditCard, QrCode, Copy, Check, Loader, ExternalLink, Smartphone, M
 import { formatAmount, ACOMPTE_OPTIONS } from '../lib/stripe/payment';
 import supabase, { isDemo } from '../supabaseClient';
 import { buildPaymentUrl } from '../lib/paymentUtils';
+import { jourLocal } from '../lib/dates';
 
 // Check if Stripe is configured (either Connect or direct keys)
 const STRIPE_CONFIGURED = import.meta.env.VITE_STRIPE_PUBLIC_KEY && !import.meta.env.VITE_STRIPE_PUBLIC_KEY.includes('demo');
@@ -80,7 +81,7 @@ export default function PaymentModal({
 
   // Offline payment state
   const [offlineMode, setOfflineMode] = useState(entreprise?.modePaiementDefaut || 'virement');
-  const [offlineDate, setOfflineDate] = useState(new Date().toISOString().split('T')[0]);
+  const [offlineDate, setOfflineDate] = useState(jourLocal());
   const [offlineReference, setOfflineReference] = useState('');
   const [offlineAmount, setOfflineAmount] = useState('');
   const [sendReceipt, setSendReceipt] = useState(true);
@@ -101,7 +102,7 @@ export default function PaymentModal({
       setCustomAmount('');
       setError(null);
       setOfflineMode(entreprise?.modePaiementDefaut || 'virement');
-      setOfflineDate(new Date().toISOString().split('T')[0]);
+      setOfflineDate(jourLocal());
       setOfflineReference('');
       setOfflineAmount('');
       setSendReceipt(true);

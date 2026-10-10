@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { X } from 'lucide-react';
 import { CATEGORIES, PRIORITIES } from './constants';
 import { today } from './helpers';
+import { jourLocal } from '../../lib/dates';
 
 // ════════════════════════════════════════════════════════
 // BulkActionBar — Floating bar for multi-selection
@@ -22,7 +23,7 @@ export default function BulkActionBar({ count, onDate, onCategory, onPriority, o
         {showDatePicker && (
           <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-gray-800 rounded-lg p-2 shadow-lg min-w-[120px]">
             <button onClick={() => { onDate(today()); setShowDatePicker(false); }} className="w-full text-left text-xs px-2 py-1.5 rounded hover:bg-gray-700">Aujourd'hui</button>
-            <button onClick={() => { const d = new Date(); d.setDate(d.getDate()+1); onDate(d.toISOString().split('T')[0]); setShowDatePicker(false); }} className="w-full text-left text-xs px-2 py-1.5 rounded hover:bg-gray-700">Demain</button>
+            <button onClick={() => { const d = new Date(); d.setDate(d.getDate()+1); onDate(jourLocal(d)); setShowDatePicker(false); }} className="w-full text-left text-xs px-2 py-1.5 rounded hover:bg-gray-700">Demain</button>
             <button onClick={() => { onDate(''); setShowDatePicker(false); }} className="w-full text-left text-xs px-2 py-1.5 rounded hover:bg-gray-700 text-red-400">Retirer date</button>
           </div>
         )}

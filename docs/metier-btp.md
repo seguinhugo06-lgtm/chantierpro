@@ -56,6 +56,10 @@ Mentions de base (CGI ann. II art. 242 nonies A ; C. com. L441-9) : numéro uniq
 - Sans certification ou si elle est fausse : le taux normal (20 %) s'applique ; le client reste solidaire.
 - Autoliquidation en sous-traitance : pas de TVA facturée, mention obligatoire (voir §1).
 
+- **Exigibilité** : les travaux immobiliers sont des prestations de services (CGI art. 256 IV) ; leur TVA est due à l'**encaissement**, sauf option pour les débits (CGI art. 269, 2-c ; BOI-TVA-BASE-20-20). Finances affiche la TVA facturée (débits) avec cet avertissement (relecture du 10 oct. 2026, tâche `tva-encaissements`).
+- **Régime simplifié (CA12) supprimé au 1er janv. 2027**, remplacé par la CA3 trimestrielle (loi de finances 2025, art. 38). CA3 millésime 2026 (cerfa 3310-CA3-SD n° 10963*31) : lignes 08 = 20 %, 09 = 5,5 %, 9B = 10 %, chacune en base HT ET taxe due ; ligne « 01 » devenue « A1 » ; 19 = immobilisations, 20 = autres biens et services ; crédit en ligne 25.
+- **FEC** (LPF art. A.47 A-1) : toutes les écritures de tous les journaux de l'exercice, reprise des soldes en tête, nom à la date de clôture de l'exercice, `ValidDate` = date de validation, virgule décimale sans séparateur de milliers, dates AAAAMMJJ. L'export de l'app (une période, parfois un journal) n'est donc pas le FEC de l'exercice : il le dit.
+
 ## 5. Paiement
 
 - **Acompte** : **aucun plafond légal** pour des travaux ; L214-1 à L214-3 du Code de la consommation (arrhes / acomptes) ne visent pas les commandes spéciales sur devis (L214-3). Le devis signé fait foi (C. civ. art. 1103) : facturer plus que l'acompte prévu demande l'accord du client. Chez un particulier, contrat hors établissement : aucun paiement avant 7 jours (L221-10, voir §2). Relecture du 10 oct. 2026 : l'app affichait à tort « limité à 30 % par la loi (art. L. 214-1) ».

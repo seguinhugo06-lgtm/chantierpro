@@ -6,6 +6,7 @@
 import jsPDF from 'jspdf';
 import supabase, { isDemo } from '../supabaseClient';
 import { remettreFichier } from './natif';
+import { jourLocal } from './dates';
 
 /**
  * @typedef {Object} ChantierData
@@ -604,7 +605,7 @@ export async function generatePhotoReport(chantierId, options = {}) {
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/-+/g, '-')
     .replace(/^-|-$/g, '');
-  const dateStr = new Date().toISOString().split('T')[0];
+  const dateStr = jourLocal();
   const filename = `rapport-photos-${sanitizedName}-${dateStr}.pdf`;
 
   return {

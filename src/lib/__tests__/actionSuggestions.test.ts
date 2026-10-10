@@ -212,7 +212,7 @@ describe('Utility Functions', () => {
 
   describe('getDayNameFr', () => {
     it('should return French day name', () => {
-      const monday = new Date('2024-01-15'); // A Monday
+      const monday = new Date(2024, 0, 15); // un lundi, en heure locale (« 2024-01-15 » est lu en UTC : dimanche outre-mer)
       const result = getDayNameFr(monday);
       expect(result).toBe('lundi');
     });

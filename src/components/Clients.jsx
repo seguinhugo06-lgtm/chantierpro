@@ -31,6 +31,7 @@ import { formatClientName, formatMoney as fmtMoney } from '../lib/formatters';
 import { usePermissions } from '../hooks/usePermissions';
 import { ReadOnlyBanner } from './ui/PermissionGate';
 import { urlPublique } from '../lib/urlPublique';
+import { jourLocal, dateLue } from '../lib/dates';
 
 // Skeleton loader for client cards
 function ClientSkeleton({ isDark, count = 6 }) {
@@ -944,7 +945,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                       <div className="flex-1 min-w-0">
                         <p className={`text-sm font-medium truncate ${textPrimary}`}>{item.label}</p>
                         <p className={`text-xs ${textMuted}`}>
-                          {item.date ? new Date(item.date).toLocaleDateString('fr-FR') : '—'}
+                          {item.date ? dateLue(item.date).toLocaleDateString('fr-FR') : '—'}
                           {item.montant ? ` • ${formatMoney(item.montant)}` : ''}
                         </p>
                       </div>
@@ -1087,7 +1088,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                               {e.document && <span className={`text-xs ${textMuted} truncate`}>· {e.document}</span>}
                             </div>
                             <span className={`text-xs ${textMuted} whitespace-nowrap flex-shrink-0`}>
-                              {new Date(e.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                              {dateLue(e.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
                             </span>
                           </div>
                           {/* Subject or (Sans objet) */}
@@ -1147,7 +1148,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                       )}
                     </div>
                     <p className={`text-xs ${textMuted}`}>
-                      {new Date(e.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                      {dateLue(e.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                     </p>
                   </div>
                   <button onClick={() => setSelectedEchange(null)} className={`p-2 rounded-xl hover:bg-surface-2`}>
@@ -1289,8 +1290,8 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                           <div className="flex-1 min-w-0">
                             <p className={`text-sm ${textPrimary}`}>{m.text}</p>
                             {m.due_date && (
-                              <span className={`text-xs ${m.due_date < new Date().toISOString().split('T')[0] ? 'text-red-500' : textMuted}`}>
-                                {new Date(m.due_date + 'T00:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+                              <span className={`text-xs ${m.due_date < jourLocal() ? 'text-red-500' : textMuted}`}>
+                                {dateLue(m.due_date + 'T00:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
                               </span>
                             )}
                           </div>
@@ -1946,7 +1947,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                       <span className="text-xs font-medium text-encre-3">à encaisser</span>
                     </span>
                   ) : dernierDevis ? (
-                    <span className="text-xs font-medium text-encre-3">Devis du {new Date(dernierDevis).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</span>
+                    <span className="text-xs font-medium text-encre-3">Devis du {dateLue(dernierDevis).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</span>
                   ) : undefined}
                   pastille={hasDuplicates ? <Pastille ton="alerte">Doublon</Pastille> : <PastilleStatut genre="client" statut={status} />}
                 />
@@ -2034,7 +2035,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                         const days = Math.max(0, Math.floor((Date.now() - lastAct) / (1000 * 60 * 60 * 24)));
                         const label = days === 0 ? "Aujourd'hui" : days === 1 ? 'Hier' : days < 30 ? `il y a ${days}j` : days < 365 ? `il y a ${Math.floor(days / 30)}m` : `il y a ${Math.floor(days / 365)}a`;
                         const colorCls = days < 30 ? 'text-emerald-500' : days < 90 ? textSecondary : days < 180 ? 'text-amber-500' : 'text-red-400';
-                        return <span className={`text-xs font-medium ${colorCls}`} title={new Date(lastAct).toLocaleDateString('fr-FR')}>{label}</span>;
+                        return <span className={`text-xs font-medium ${colorCls}`} title={dateLue(lastAct).toLocaleDateString('fr-FR')}>{label}</span>;
                       })()
                     )}
                   </div>

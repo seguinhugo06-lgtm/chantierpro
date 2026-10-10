@@ -3,6 +3,7 @@ import { Plus, ArrowLeft, Calendar, Clock, User, MapPin, X, Edit3, Trash2, Check
 import { useConfirm, useToast } from '../context/AppContext';
 import EmptyState from './ui/EmptyState';
 import { usePermissions } from '../hooks/usePermissions';
+import { dateLue, jourLocal } from '../lib/dates';
 
 const DURATIONS = [
   { label: '30min', value: 30 },
@@ -242,7 +243,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
       if (d.type === 'facture' && d.date_echeance && d.statut === 'envoye') {
         const client = clients.find(c => c.id === d.client_id);
         const clientNom = client ? `${client.prenom || ''} ${client.nom || ''}`.trim() : '';
-        const isOverdue = new Date(d.date_echeance) < new Date();
+        const isOverdue = String(d.date_echeance).slice(0, 10) < jourLocal(); // échéance du jour : pas en retard
         evts.push({
           id: `facture_${d.id}`, title: `${isOverdue ? '🔴' : '💰'} Facture ${d.numero || ''} ${clientNom}`.trim(),
           date: d.date_echeance, type: 'deadline', isDeadline: true,
@@ -326,7 +327,9 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
 
   const moveEvent = (eventId, newDate) => {
     const ev = allEvents.find(e => e.id === eventId);
-    if (!ev) return;
+    // Seuls les rendez-vous saisis se déplacent ici : un chantier, une tâche, une échéance de document ou une
+    // occurrence de série se change depuis sa fiche (recette du 9 oct. 2026)
+    if (!ev || ev.isChantier || ev.isMemo || ev.isDeadline || ev.isRecurrence) return;
     if (ev.isChantier && updateChantier) {
       const duration = ev.dateEnd ? Math.ceil((new Date(ev.dateEnd) - new Date(ev.date)) / 86400000) : 0;
       const newDateEnd = duration > 0 ? formatLocalDate(new Date(new Date(newDate).getTime() + duration * 86400000)) : '';
@@ -411,7 +414,8 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
   };
 
   const startEdit = () => {
-    setForm({ title: showDetail.title || '', date: showDetail.date || '', time: showDetail.time || '',
+    const origine = showDetail.isRecurrence ? (events.find(e => e.id === showDetail.originalId) || showDetail) : showDetail;
+    setForm({ title: showDetail.title || '', date: origine.date || showDetail.date || '', time: showDetail.time || '',
       endTime: showDetail.endTime || '', type: showDetail.type || 'rdv', employeId: showDetail.employeId || '', clientId: showDetail.clientId || '', chantierId: showDetail.chantierId || '',
       description: showDetail.description || '', duration: showDetail.duration || 60, recurrence: showDetail.recurrence || 'never', recurrenceEnd: showDetail.recurrenceEnd || '',
       dateEnd: showDetail.dateEnd || '', rappel: showDetail.rappel || '' });
@@ -653,7 +657,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                         {dayEvents.slice(0, window.innerWidth < 640 ? 2 : 3).map(ev => {
                           const allDay = isAllDayEvent(ev);
                           return (
-                            <div key={ev.id} onClick={(e) => handleEventClick(e, ev)} draggable onDragStart={e => e.dataTransfer.setData('eventId', ev.id)}
+                            <div key={ev.id} onClick={(e) => handleEventClick(e, ev)} draggable={!ev.isChantier && !ev.isMemo && !ev.isDeadline && !ev.isRecurrence} onDragStart={e => e.dataTransfer.setData('eventId', ev.id)}
                               onMouseEnter={(e) => { if (window.innerWidth >= 640) { const r = e.currentTarget.getBoundingClientRect(); setTooltip({ event: ev, x: r.right + 8, y: r.top }); }}}
                               onMouseLeave={() => setTooltip(null)}
                               onTouchEnd={(e) => { if (window.innerWidth < 640) { e.preventDefault(); e.stopPropagation(); setTooltip({ event: ev, isMobile: true }); }}}
@@ -756,7 +760,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                     if (!pos) return null;
                     return (
                       <div key={ev.id} onClick={(e) => { e.stopPropagation(); handleEventClick(e, ev); }}
-                        draggable={!ev.isChantier} onDragStart={e => e.dataTransfer.setData('eventId', ev.id)}
+                        draggable={!ev.isChantier && !ev.isMemo && !ev.isDeadline && !ev.isRecurrence} onDragStart={e => e.dataTransfer.setData('eventId', ev.id)}
                         title={`${ev.title}${ev.time ? `\n${ev.time}${ev.duration ? ` — ${formatDuration(ev.duration)}` : ''}` : ''}\n${TYPE_LABELS[ev.type] || 'Événement'}`}
                         className="absolute left-1 right-1 rounded-lg px-2 py-0.5 text-white text-xs cursor-pointer overflow-hidden hover:shadow-lg hover:brightness-110 transition-all z-10"
                         style={{ top: pos.top, height: pos.height, background: getEventColor(ev), minHeight: 22 }}>
@@ -1186,7 +1190,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                   </div>
                 </div>
                 <div className={`space-y-2 text-sm ${textMuted}`}>
-                  <p className="flex items-center gap-2"><Calendar size={14} /> {new Date(ev.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+                  <p className="flex items-center gap-2"><Calendar size={14} /> {dateLue(ev.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
                   <p className="flex items-center gap-2"><Clock size={14} /> {ev.time ? `${ev.time}${ev.duration ? ` — ${formatDuration(ev.duration)}` : ''}` : 'Toute la journée'}</p>
                   {client && <p className="flex items-center gap-2"><User size={14} /> {client.nom} {client.prenom || ''}</p>}
                   {employe && <p className="flex items-center gap-2"><Briefcase size={14} /> {employe.nom}</p>}
@@ -1273,6 +1277,9 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
               <div className="p-4">
                 {editMode ? (
                   <div className="space-y-3">
+                    {showDetail.isRecurrence && (
+                      <p className="text-xs text-encre-2 bg-surface-2 rounded-lg px-3 py-2">Cette modification s’applique à toute la série (date de départ : celle de la première occurrence).</p>
+                    )}
                     <div><label className={`block text-xs font-medium mb-1 ${textSecondary}`}>Titre *</label><input className={`w-full px-3 py-2 border rounded-lg text-sm ${inputBg}`} value={form.title} onChange={e => setForm(p => ({...p, title: e.target.value}))} /></div>
                     <div className="grid grid-cols-2 gap-3">
                       <div><label className={`block text-xs font-medium mb-1 ${textSecondary}`}>Date *</label><input type="date" className={`w-full px-3 py-2 border rounded-lg text-sm ${inputBg}`} value={form.date} onChange={e => setForm(p => ({...p, date: e.target.value}))} /></div>
@@ -1359,7 +1366,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                     {/* Date + time */}
                     <div className="flex items-center gap-2.5">
                       <Calendar size={14} className={textMuted} />
-                      <span className={`text-sm ${textPrimary}`}>{new Date(showDetail.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
+                      <span className={`text-sm ${textPrimary}`}>{dateLue(showDetail.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
                     </div>
                     {showDetail.time && (
                       <div className="flex items-center gap-2.5">
@@ -1426,7 +1433,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                   <div className="space-y-2.5">
                     <div className="flex items-center gap-2.5">
                       <Calendar size={14} className={textMuted} />
-                      <span className={`text-sm ${textPrimary}`}>{new Date(showDetail.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}{showDetail.dateEnd && showDetail.dateEnd !== showDetail.date && ` → ${new Date(showDetail.dateEnd).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}`}</span>
+                      <span className={`text-sm ${textPrimary}`}>{dateLue(showDetail.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}{showDetail.dateEnd && showDetail.dateEnd !== showDetail.date && ` → ${dateLue(showDetail.dateEnd).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}`}</span>
                     </div>
                     <div className="flex items-center gap-2.5">
                       <Clock size={14} className={textMuted} />
@@ -1499,6 +1506,16 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                       <ClipboardList size={12} />
                     </button>
                   </>
+                ) : showDetail.isDeadline ? (
+                  // Échéance calculée depuis un devis ou une facture : elle se change dans le document. Avant
+                  // (recette du 9 oct.), « Supprimer » et « Modifier » annonçaient un succès sans rien faire.
+                  <button
+                    onClick={() => { if (setPage) setPage('devis'); setShowDetail(null); }}
+                    className="flex-1 py-2 text-white rounded-lg text-sm font-medium flex items-center justify-center gap-1.5"
+                    style={{ background: couleur }}
+                  >
+                    Voir dans Devis &amp; Factures
+                  </button>
                 ) : editMode ? (
                   <>
                     <button onClick={() => setEditMode(false)} className={`flex-1 py-2 rounded-lg text-sm font-medium bg-bord`}>Annuler</button>

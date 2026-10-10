@@ -13,6 +13,7 @@
 import jsPDF from 'jspdf';
 import { subscription } from '../stores/subscriptionStore';
 import { remettreFichier } from './natif';
+import { dateLue } from './dates';
 
 // ============ CONSTANTS ============
 
@@ -60,12 +61,12 @@ function fmtPct(v) {
 
 function fmtDate(d) {
   if (!d) return '—';
-  return new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  return dateLue(d).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
 function fmtDateLong(d) {
   if (!d) return '—';
-  return new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+  return dateLue(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
 function lightenColor(rgb, factor = 0.3) {

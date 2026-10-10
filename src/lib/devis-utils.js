@@ -1,3 +1,4 @@
+import { jourLocal } from './dates';
 /**
  * Utility functions for devis/facture calculations
  */
@@ -235,7 +236,7 @@ export function createDefaultDevisForm(entreprise = {}) {
     type: 'devis',
     clientId: '',
     chantierId: '',
-    date: new Date().toISOString().split('T')[0],
+    date: jourLocal(),
     validite: entreprise?.validiteDevis || 30,
     sections: [{ id: '1', titre: '', lignes: [] }],
     tvaDefaut: entreprise?.tvaDefaut || 10,

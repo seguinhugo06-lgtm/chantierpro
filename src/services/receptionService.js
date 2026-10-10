@@ -8,6 +8,7 @@
 
 import { isDemo } from '../supabaseClient';
 import { scopeToOrg, withOrgScope } from '../lib/queryHelper';
+import { jourLocal } from '../lib/dates';
 
 const DEMO_KEY = 'mallettico_receptions';
 const DEMO_RESERVES_KEY = 'mallettico_reserves';
@@ -264,7 +265,7 @@ function autoCreateDemoGaranties(reception) {
       receptionId: reception.id,
       typeGarantie: def.type,
       dateDebut,
-      dateFin: dateFin.toISOString().split('T')[0],
+      dateFin: jourLocal(dateFin),
       assureur: null,
       numeroPolice: null,
       notes: null,

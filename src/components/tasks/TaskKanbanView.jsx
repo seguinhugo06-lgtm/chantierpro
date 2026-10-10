@@ -16,6 +16,7 @@ import {
   Calendar, Tag, AlertCircle, ListTodo,
 } from 'lucide-react';
 import TaskDetail from './TaskDetail';
+import { jourLocal } from '../../lib/dates';
 
 // ─── Column definitions ─────────────────────────────────────────────────────
 
@@ -50,7 +51,7 @@ const CATEGORY_COLORS = {
 function KanbanCard({ memo, chantier, isDark, couleur, onSelect, onDragStart, isTermine }) {
   const isOverdue = useMemo(() => {
     if (!memo.due_date) return false;
-    return new Date(memo.due_date) < new Date() && memo.status !== 'termine';
+    return String(memo.due_date).slice(0, 10) < jourLocal() && memo.status !== 'termine'; // due aujourd'hui : pas en retard
   }, [memo.due_date, memo.status]);
 
   const subtaskProgress = useMemo(() => {
@@ -363,8 +364,8 @@ export default function TaskKanbanView({
       groups[colId].sort((a, b) => {
         // Overdue items first (only in non-termine columns)
         if (colId !== 'termine') {
-          const aOverdue = a.due_date && new Date(a.due_date) < new Date();
-          const bOverdue = b.due_date && new Date(b.due_date) < new Date();
+          const aOverdue = a.due_date && String(a.due_date).slice(0, 10) < jourLocal();
+          const bOverdue = b.due_date && String(b.due_date).slice(0, 10) < jourLocal();
           if (aOverdue && !bOverdue) return -1;
           if (!aOverdue && bOverdue) return 1;
         }

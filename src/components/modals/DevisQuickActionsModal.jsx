@@ -28,6 +28,7 @@ import Modal, {
   ModalFooter,
 } from '../ui/Modal';
 import supabase, { isDemo } from '../../supabaseClient';
+import { jourLocal } from '../../lib/dates';
 
 /**
  * @typedef {Object} DevisQuickActionsModalProps
@@ -329,7 +330,7 @@ export default function DevisQuickActionsModal({
         numero: newNumero,
         statut: DEVIS_STATUS.ENVOYE,
         devis_source_id: devisData.id,
-        date: new Date().toISOString().split('T')[0],
+        date: jourLocal(),
         createdAt: new Date().toISOString(),
       };
 
@@ -383,7 +384,7 @@ export default function DevisQuickActionsModal({
         id: undefined,
         numero: newNumero,
         statut: DEVIS_STATUS.BROUILLON,
-        date: new Date().toISOString().split('T')[0],
+        date: jourLocal(),
         createdAt: new Date().toISOString(),
       };
 

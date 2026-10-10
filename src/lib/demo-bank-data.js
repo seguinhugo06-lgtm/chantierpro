@@ -5,6 +5,7 @@
  * Transactions are designed to match some DEMO_DEVIS factures
  * for testing the reconciliation engine
  */
+import { jourLocal } from './dates';
 
 // ============================================================================
 // French bank institutions (subset for demo)
@@ -55,7 +56,7 @@ export const DEMO_BANK_CONNECTION = {
 function daysAgo(n) {
   const d = new Date();
   d.setDate(d.getDate() - n);
-  return d.toISOString().split('T')[0];
+  return jourLocal(d);
 }
 
 export const DEMO_BANK_TRANSACTIONS = [

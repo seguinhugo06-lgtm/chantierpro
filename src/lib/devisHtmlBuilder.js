@@ -20,6 +20,7 @@ import { lignesTotauxHtml, lignesAcompteHtml, totauxDocument } from './totauxDoc
 import { echeance } from './paiementsFacture';
 import { franchiseAppliquee } from './franchiseTva';
 import { imprimerHtml } from './imprimerHtml';
+import { dateLue } from './dates';
 
 /**
  * Formatte un RCS complet
@@ -182,7 +183,7 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mod
       <div style="margin-top:10px">
         <img src="${h(sigData)}" style="max-height:80px;max-width:200px;border:1px solid #e2e8f0;border-radius:4px;padding:4px;background:white" alt="Signature" />
         <div style="font-size:8pt;color:#16a34a;font-weight:bold;margin-top:4px">
-          ✓ Signé électroniquement le ${sigDate ? new Date(sigDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}
+          ✓ Signé électroniquement le ${sigDate ? dateLue(sigDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}
           ${sigNom ? ` par ${h(sigNom)}` : ''}
         </div>
       </div>`;
@@ -259,8 +260,8 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mod
       <h1>${isFacture ? (doc.facture_type === 'acompte' ? "FACTURE D'ACOMPTE" : doc.facture_type === 'solde' ? 'FACTURE DE SOLDE' : 'FACTURE') : 'DEVIS'}</h1>
       <div class="doc-info">
         <strong>N° ${h(doc.numero)}</strong><br>
-        Date: ${new Date(doc.date).toLocaleDateString('fr-FR')}<br>
-        ${isFacture && doc.date_echeance ? `Échéance: ${new Date(doc.date_echeance).toLocaleDateString('fr-FR')}<br>` : ''}
+        Date: ${dateLue(doc.date).toLocaleDateString('fr-FR')}<br>
+        ${isFacture && doc.date_echeance ? `Échéance: ${dateLue(doc.date_echeance).toLocaleDateString('fr-FR')}<br>` : ''}
         ${isFacture && doc.devis_source_id && doc.devis_source_numero ? `Réf. devis: ${h(doc.devis_source_numero)}<br>` : ''}
         ${isFacture && doc.acompte_pct && doc.facture_type === 'acompte' ? `Acompte: ${pourcent(doc.acompte_pct)}<br>` : ''}
         ${!isFacture ? `<strong>Valable jusqu'au: ${dateValidite.toLocaleDateString('fr-FR')}</strong>` : ''}
@@ -431,10 +432,10 @@ function buildFooterHtml(e, rcsComplet, isDevis = false, isClientMode = false) {
     ${rcsComplet ? ` | ${rcsComplet}` : ''}<br>
     ${e.tvaIntra ? `TVA Intracommunautaire: ${e.tvaIntra}` : ''}<br>
     <div class="assurances">
-      ${e.decennaleAssureur ? `Assurance décennale: ${e.decennaleAssureur} N°${e.decennaleNumero}${e.decennaleValidite ? ` (Valide jusqu'au ${new Date(e.decennaleValidite).toLocaleDateString('fr-FR')})` : ''}` : ''}
+      ${e.decennaleAssureur ? `Assurance décennale: ${e.decennaleAssureur} N°${e.decennaleNumero}${e.decennaleValidite ? ` (Valide jusqu'au ${dateLue(e.decennaleValidite).toLocaleDateString('fr-FR')})` : ''}` : ''}
       ${e.decennaleAssureur && e.rcProAssureur ? '<br>' : ''}
-      ${e.rcProAssureur ? `RC Pro: ${e.rcProAssureur} N°${e.rcProNumero}${e.rcProValidite ? ` (Valide jusqu'au ${new Date(e.rcProValidite).toLocaleDateString('fr-FR')})` : ''}` : ''}
-      ${e.mentionRGE !== false && Array.isArray(e.labels) && e.labels.filter(l => l.actif).length > 0 ? '<br>' + e.labels.filter(l => l.actif).map(l => `${l.nom}${l.numero ? ` N°${l.numero}` : ''}${l.organisme ? ` (${l.organisme})` : ''}${l.dateExpiration ? ` — Valide jusqu'au ${new Date(l.dateExpiration).toLocaleDateString('fr-FR')}` : ''}`).join('<br>') : ''}
+      ${e.rcProAssureur ? `RC Pro: ${e.rcProAssureur} N°${e.rcProNumero}${e.rcProValidite ? ` (Valide jusqu'au ${dateLue(e.rcProValidite).toLocaleDateString('fr-FR')})` : ''}` : ''}
+      ${e.mentionRGE !== false && Array.isArray(e.labels) && e.labels.filter(l => l.actif).length > 0 ? '<br>' + e.labels.filter(l => l.actif).map(l => `${l.nom}${l.numero ? ` N°${l.numero}` : ''}${l.organisme ? ` (${l.organisme})` : ''}${l.dateExpiration ? ` — Valide jusqu'au ${dateLue(l.dateExpiration).toLocaleDateString('fr-FR')}` : ''}`).join('<br>') : ''}
     </div>
     ${isDevis ? `<div style="margin-top:6px;font-size:6.5pt;color:#666">Devis reçu avant l'exécution des travaux. Conditions de paiement et pénalités de retard conformes à l'article L441-10 du Code de commerce.</div>` : ''}
   </div>`;
@@ -619,8 +620,8 @@ export function buildSituationFactureHtml({ situation, parentDevis, client, chan
       <h1>FACTURE DE SITUATION</h1>
       <h2>Situation n°${h(situation.numero)}</h2>
       <div class="doc-info">
-        ${parentDevis?.numero ? `<strong>Marché n° ${h(parentDevis.numero)}</strong> du ${parentDevis.date ? new Date(parentDevis.date).toLocaleDateString('fr-FR') : ''}<br>` : ''}
-        Date: ${new Date(situation.date || new Date()).toLocaleDateString('fr-FR')}
+        ${parentDevis?.numero ? `<strong>Marché n° ${h(parentDevis.numero)}</strong> du ${parentDevis.date ? dateLue(parentDevis.date).toLocaleDateString('fr-FR') : ''}<br>` : ''}
+        Date: ${dateLue(situation.date || new Date()).toLocaleDateString('fr-FR')}
       </div>
     </div>
   </div>

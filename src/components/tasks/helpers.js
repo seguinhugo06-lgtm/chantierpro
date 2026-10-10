@@ -1,6 +1,7 @@
+import { jourLocal } from '../../lib/dates';
 // ── Tâches : fonctions utilitaires ──
 
-export const today = () => new Date().toISOString().split('T')[0];
+export const today = () => jourLocal();
 
 export const isOverdue = (m) => !m.is_done && m.due_date && m.due_date < today();
 
@@ -46,5 +47,5 @@ export const getNextOccurrence = (currentDate, recurrence) => {
     }
     default: return null;
   }
-  return date.toISOString().split('T')[0];
+  return jourLocal(date);
 };

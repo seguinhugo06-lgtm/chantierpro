@@ -7,6 +7,7 @@
 import jsPDF from 'jspdf';
 import { subscription } from '../stores/subscriptionStore';
 import { remettreFichier } from './natif';
+import { jourLocal, dateLue } from './dates';
 
 const METEO_LABELS = {
   ensoleille: 'Ensoleillé',
@@ -102,7 +103,7 @@ export function generateRapportChantierPDF(rapport, chantier, options = {}) {
 
   doc.setFontSize(9);
   const typeLabel = TYPE_LABELS[rapport.type] || rapport.type || 'Journalier';
-  const dateStr = rapport.date ? new Date(rapport.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '-';
+  const dateStr = rapport.date ? dateLue(rapport.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '-';
   doc.text(`${typeLabel} · ${dateStr}`, margin, 35);
 
   // Right side: rapport numero
@@ -362,7 +363,7 @@ export function generateRapportChantierPDF(rapport, chantier, options = {}) {
   if (rapport.signePar) {
     kvRow('Signé par', rapport.signePar);
     if (rapport.dateSignature) {
-      kvRow('Date', new Date(rapport.dateSignature).toLocaleDateString('fr-FR'));
+      kvRow('Date', dateLue(rapport.dateSignature).toLocaleDateString('fr-FR'));
     }
   }
 
@@ -447,6 +448,6 @@ export function generateRapportChantierPDF(rapport, chantier, options = {}) {
 export function downloadRapportPDF(rapport, chantier, options = {}) {
   const doc = generateRapportChantierPDF(rapport, chantier, options);
   const chantierName = (chantier?.nom || 'chantier').replace(/[^a-zA-Z0-9àâäéèêëïîôùûüÿçÀÂÄÉÈÊËÏÎÔÙÛÜŸÇ -]/g, '').replace(/\s+/g, '_');
-  const dateStr = rapport.date || new Date().toISOString().split('T')[0];
+  const dateStr = rapport.date || jourLocal();
   return remettreFichier(doc.output('blob'), `Rapport_${chantierName}_${dateStr}.pdf`, 'application/pdf');
 }

@@ -2,6 +2,7 @@ import React, { useState, useMemo, lazy, Suspense } from 'react';
 import { List, Kanban, Calendar, CalendarCheck, GanttChart, Users } from 'lucide-react';
 import TaskFilters from './TaskFilters';
 import PageHeader from '../ui/PageHeader';
+import { jourLocal } from '../../lib/dates';
 
 const TaskListView = lazy(() => import('./TaskListView'));
 const TaskKanbanView = lazy(() => import('./TaskKanbanView'));
@@ -55,7 +56,7 @@ export default function TasksAndPlanning({
 
   // Fix 12: Global task counters
   const taskStats = useMemo(() => {
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = jourLocal();
     const totalActive = memos.filter(m => !m.is_done).length;
     const overdueCount = memos.filter(m => !m.is_done && m.due_date && m.due_date < todayStr).length;
     return { totalActive, overdueCount };

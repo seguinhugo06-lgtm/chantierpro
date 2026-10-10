@@ -26,6 +26,7 @@ import {
   RefreshCw,
   Bell
 } from 'lucide-react';
+import { dateLue } from '../../lib/dates';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -78,7 +79,7 @@ const formatMoney = (n) =>
 
 const formatDate = (d) => {
   if (!d) return '-';
-  return new Date(d).toLocaleDateString('fr-FR', {
+  return dateLue(d).toLocaleDateString('fr-FR', {
     day: 'numeric',
     month: 'long',
     year: 'numeric',
@@ -87,7 +88,7 @@ const formatDate = (d) => {
 
 const formatDateTime = (d) => {
   if (!d) return '-';
-  return new Date(d).toLocaleDateString('fr-FR', {
+  return dateLue(d).toLocaleDateString('fr-FR', {
     day: 'numeric',
     month: 'long',
     year: 'numeric',

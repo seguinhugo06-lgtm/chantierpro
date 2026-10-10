@@ -9,6 +9,7 @@
 
 import { isDemo } from '../supabaseClient';
 import { scopeToOrg, withOrgScope } from '../lib/queryHelper';
+import { jourLocal } from '../lib/dates';
 
 const DEMO_KEY = 'mallettico_interventions';
 const GARANTIES_DEMO_KEY = 'mallettico_garanties';
@@ -261,7 +262,7 @@ export async function create(supabase, {
     titre,
     description,
     typeDesordre,
-    dateSignalement: dateSignalement || new Date().toISOString().split('T')[0],
+    dateSignalement: dateSignalement || jourLocal(),
     statut: 'signale',
     priorite: priorite || 'moyenne',
     intervenantNom: intervenantNom || null,
@@ -422,7 +423,7 @@ export async function getOpenInterventions(supabase, { userId, orgId }) {
  * @returns {Promise<Object>} Closed intervention
  */
 export async function close(supabase, id, rapport, cout) {
-  const today = new Date().toISOString().split('T')[0];
+  const today = jourLocal();
 
   if (isDemo) {
     const interventions = getDemoData();

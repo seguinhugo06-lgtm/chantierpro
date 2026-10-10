@@ -7,6 +7,7 @@
 
 import React, { memo, useState } from 'react';
 import { AlertTriangle, CheckCircle, Clock, MapPin, Camera, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { jourLocal, dateLue } from '../../lib/dates';
 
 const PRIORITE_CONFIG = {
   mineure: { label: 'Mineure', color: 'bg-blue-100 text-blue-700', darkColor: 'bg-blue-900/50 text-blue-300' },
@@ -42,7 +43,7 @@ const ReservesList = memo(function ReservesList({
     if (onUpdateReserve) {
       onUpdateReserve(reserve.id, {
         statut: 'levee',
-        dateLevee: new Date().toISOString().split('T')[0],
+        dateLevee: jourLocal(),
       });
     }
   };
@@ -128,7 +129,7 @@ const ReservesList = memo(function ReservesList({
                   )}
                   {reserve.dateLevee && (
                     <p className={`text-xs text-green-500 mt-1`}>
-                      Levée le {new Date(reserve.dateLevee).toLocaleDateString('fr-FR')}
+                      Levée le {dateLue(reserve.dateLevee).toLocaleDateString('fr-FR')}
                     </p>
                   )}
                 </div>

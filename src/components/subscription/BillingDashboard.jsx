@@ -22,6 +22,7 @@ import {
 import { toast } from '../../stores/toastStore';
 import { isDemo } from '../../supabaseClient';
 import { ouvrirLienExterne } from '../../lib/natif';
+import { dateLue } from '../../lib/dates';
 
 const PLAN_ICONS = {
   gratuit: Zap,
@@ -166,7 +167,7 @@ export default function BillingDashboard({ isDark, couleur }) {
               </p>
               {sub?.current_period_end && (
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Prochain renouvellement : {new Date(sub.current_period_end).toLocaleDateString('fr-FR')}
+                  Prochain renouvellement : {dateLue(sub.current_period_end).toLocaleDateString('fr-FR')}
                 </p>
               )}
             </div>

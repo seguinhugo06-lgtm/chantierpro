@@ -20,6 +20,7 @@ import { ouvrirLienExterne } from '../../lib/natif';
 import { Segmente } from '../ui/Onglets';
 import Pastille from '../ui/Pastille';
 import { Bouton } from '../ui/Bouton';
+import { dateLue } from '../../lib/dates';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -56,7 +57,7 @@ export default function PlanPage({ isDark, couleur = '#f97316', setPage }) {
   const isPaid = planId !== 'gratuit';
   const offreTesteur = isPaid && !sub?.stripe_subscription_id && !!sub?.current_period_end;
   const nextBilling = sub?.current_period_end
-    ? new Date(sub.current_period_end).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+    ? dateLue(sub.current_period_end).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
     : null;
 
   // ─── Handlers ─────────────────────────────────────────────────────────────
@@ -123,7 +124,7 @@ export default function PlanPage({ isDark, couleur = '#f97316', setPage }) {
 
   const handleCancel = useCallback(async () => {
     const finPeriode = sub?.current_period_end
-      ? new Date(sub.current_period_end).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+      ? dateLue(sub.current_period_end).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
       : 'la fin de votre période';
     const ok = await confirm({
       title: 'Annuler votre abonnement ?',

@@ -8,6 +8,7 @@
 import supabase, { isDemo } from '../supabaseClient';
 import { DEVIS_STATUS, CHANTIER_STATUS } from './constants';
 import { normalizeDevisRef } from './formatters';
+import { dateLue } from './dates';
 
 // ============ TYPES ============
 
@@ -424,7 +425,7 @@ function ruleWeatherAlert({ chantiers = [], weather = [] }) {
 
     if (rainProb >= THRESHOLDS.WEATHER_RAIN_THRESHOLD) {
       for (const chantier of outdoorChantiers) {
-        const dateStr = new Date(day.date).toLocaleDateString('fr-FR', {
+        const dateStr = dateLue(day.date).toLocaleDateString('fr-FR', {
           weekday: 'long',
           day: 'numeric',
           month: 'long',

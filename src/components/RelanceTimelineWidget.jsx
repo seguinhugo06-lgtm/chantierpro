@@ -32,6 +32,7 @@ import {
   EXCLUSION_REASONS,
   getNextStep,
 } from '../lib/relanceUtils';
+import { dateLue } from '../lib/dates';
 
 const CHANNEL_ICONS = {
   email: Mail,
@@ -294,19 +295,19 @@ export default function RelanceTimelineWidget({
                 {entry.type === 'executed' && (
                   <div className={cn('text-xs mt-0.5', textMuted)}>
                     {RELANCE_STATUS_LABELS[entry.status] || entry.status} le {' '}
-                    {new Date(entry.execution.created_at).toLocaleDateString('fr-FR', {
+                    {dateLue(entry.execution.created_at).toLocaleDateString('fr-FR', {
                       day: 'numeric', month: 'short', year: 'numeric',
                     })}
                     {entry.execution.opened_at && (
                       <span className="ml-2 text-green-600">
-                        Ouvert le {new Date(entry.execution.opened_at).toLocaleDateString('fr-FR', {
+                        Ouvert le {dateLue(entry.execution.opened_at).toLocaleDateString('fr-FR', {
                           day: 'numeric', month: 'short',
                         })}
                       </span>
                     )}
                     {entry.execution.clicked_at && (
                       <span className="ml-2 text-emerald-600">
-                        Cliqué le {new Date(entry.execution.clicked_at).toLocaleDateString('fr-FR', {
+                        Cliqué le {dateLue(entry.execution.clicked_at).toLocaleDateString('fr-FR', {
                           day: 'numeric', month: 'short',
                         })}
                       </span>

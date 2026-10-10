@@ -7,6 +7,7 @@
 
 import React, { useState, useCallback, memo } from 'react';
 import { Wrench, Calendar, MapPin, Camera, X, AlertCircle } from 'lucide-react';
+import { jourLocal, dateLue } from '../../lib/dates';
 
 const TYPES_DESORDRE = [
   'Fissure',
@@ -27,7 +28,7 @@ const InterventionForm = memo(function InterventionForm({
   isDark = false,
   couleur = '#f97316',
 }) {
-  const today = new Date().toISOString().split('T')[0];
+  const today = jourLocal();
 
   const [dateSignalement, setDateSignalement] = useState(today);
   const [typeDesordre, setTypeDesordre] = useState(TYPES_DESORDRE[0]);
@@ -59,10 +60,10 @@ const InterventionForm = memo(function InterventionForm({
     if (!garantie) return null;
     const type = garantie.type || garantie.typeGarantie || '';
     const debut = garantie.dateDebut
-      ? new Date(garantie.dateDebut).toLocaleDateString('fr-FR')
+      ? dateLue(garantie.dateDebut).toLocaleDateString('fr-FR')
       : '';
     const fin = garantie.dateFin
-      ? new Date(garantie.dateFin).toLocaleDateString('fr-FR')
+      ? dateLue(garantie.dateFin).toLocaleDateString('fr-FR')
       : '';
     return { type, debut, fin };
   };

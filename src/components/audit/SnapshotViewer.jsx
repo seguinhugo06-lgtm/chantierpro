@@ -2,6 +2,7 @@ import React from 'react';
 import { RotateCcw, X, FileText, Calendar, Tag, Hash } from 'lucide-react';
 import { formatMoney } from '../../lib/formatters';
 import { TRIGGER_LABELS } from '../../lib/snapshotService';
+import { dateLue } from '../../lib/dates';
 
 /**
  * SnapshotViewer — Display a full document snapshot with restore option
@@ -52,7 +53,7 @@ export default function SnapshotViewer({
                 {snapshot.label || `Version ${snapshot.version}`}
               </h2>
               <p className={`text-sm ${textMuted}`}>
-                {triggerLabel} · {new Date(snapshot.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                {triggerLabel} · {dateLue(snapshot.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
               </p>
             </div>
           </div>
@@ -91,7 +92,7 @@ export default function SnapshotViewer({
             )}
             <span className={`flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>
               <Calendar size={12} />
-              {data.date ? new Date(data.date).toLocaleDateString('fr-FR') : '—'}
+              {data.date ? dateLue(data.date).toLocaleDateString('fr-FR') : '—'}
             </span>
           </div>
 

@@ -102,6 +102,7 @@ import { imprimerHtml } from '../lib/imprimerHtml';
 import { estFranchiseTva, sansTva, franchiseAppliquee, tvaARegulariser } from '../lib/franchiseTva';
 import { estOuverte, estEnRetard } from '../lib/ventes';
 import { urlPublique } from '../lib/urlPublique';
+import { jourLocal, dateLue } from '../lib/dates';
 
 // Email tracking : l'envoi passe par Resend (send-email) ; l'historique par document
 // n'est pas persisté côté client → statut vide (l'onglet « Emails » reste masqué).
@@ -427,7 +428,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     type: 'devis',
     clientId: '',
     chantierId: '',
-    date: new Date().toISOString().split('T')[0],
+    date: jourLocal(),
     validite: entreprise?.validiteDevis || 30,
     sections: [{ id: '1', titre: '', lignes: [] }],
     tvaDefaut: entreprise?.tvaDefaut || 10,
@@ -862,7 +863,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         type: 'devis',
         clientId: '',
         chantierId: '',
-        date: new Date().toISOString().split('T')[0],
+        date: jourLocal(),
         validite: entreprise?.validiteDevis || 30,
         sections: [{ id: '1', titre: '', lignes: [] }],
         tvaDefaut: entreprise?.tvaDefaut || 10,
@@ -914,7 +915,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       client_id: doc.client_id,
       client_nom: doc.client_nom,
       chantier_id: '',
-      date: new Date().toISOString().split('T')[0],
+      date: jourLocal(),
       validite: doc.validite || entreprise?.validiteDevis || 30,
       statut: 'brouillon',
       sections: newSections,
@@ -972,7 +973,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       client_id: doc.client_id,
       client_nom: doc.client_nom,
       chantier_id: doc.chantier_id || '',
-      date: new Date().toISOString().split('T')[0],
+      date: jourLocal(),
       validite: doc.validite || entreprise?.validiteDevis || 30,
       statut: 'brouillon',
       sections: newSections,
@@ -1303,7 +1304,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       devis_source_id: selected.id,
       client_id: selected.client_id,
       chantier_id: selected.chantier_id,
-      date: new Date().toISOString().split('T')[0],
+      date: jourLocal(),
       statut: 'envoye',
       date_echeance: dateEcheance(new Date(), { conditionsPaiement: selected.conditionsPaiement || selected.conditions, delaiJours: entreprise?.delaiPaiement }),
       conditions: selected.conditions, conditionsPaiement: selected.conditionsPaiement,
@@ -1327,7 +1328,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     const updatedEtapes = updateEtape(echeancier.etapes, etape.numero, {
       statut: ETAPE_STATUT.FACTURE,
       facture_id: facture.id,
-      date_facture: new Date().toISOString().split('T')[0],
+      date_facture: jourLocal(),
     });
 
     const echeancierTermine = isEcheancierTermine(updatedEtapes);
@@ -1408,7 +1409,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     const facture = {
       id: crypto.randomUUID(), numero: await generateNumero('facture'), type: 'facture', facture_type: 'acompte',
       devis_source_id: selected.id, client_id: selected.client_id, chantier_id: selected.chantier_id,
-      date: new Date().toISOString().split('T')[0], statut: 'envoye',
+      date: jourLocal(), statut: 'envoye',
       date_echeance: dateEcheance(new Date(), { conditionsPaiement: selected.conditionsPaiement || selected.conditions, delaiJours: entreprise?.delaiPaiement }),
       conditions: selected.conditions, conditionsPaiement: selected.conditionsPaiement,
       tvaRate: selected.tvaRate || entreprise?.tvaDefaut || 20,
@@ -1484,7 +1485,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     const facture = {
       id: crypto.randomUUID(), numero: await generateNumero('facture'), type: 'facture', facture_type: hasAcomptes ? 'solde' : 'totale',
       devis_source_id: selected.id, acompte_facture_id: allAcomptes[0]?.id || null, client_id: selected.client_id, chantier_id: selected.chantier_id,
-      date: new Date().toISOString().split('T')[0], statut: 'envoye',
+      date: jourLocal(), statut: 'envoye',
       date_echeance: dateEcheance(new Date(), { conditionsPaiement: selected.conditionsPaiement || selected.conditions, delaiJours: entreprise?.delaiPaiement }),
       conditions: selected.conditions, conditionsPaiement: selected.conditionsPaiement,
       tvaRate: selected.tvaRate || entreprise?.tvaDefaut || 20,
@@ -1521,7 +1522,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       client_id: sourceFacture.client_id,
       client_nom: sourceFacture.client_nom,
       chantier_id: sourceFacture.chantier_id,
-      date: new Date().toISOString().split('T')[0],
+      date: jourLocal(),
       statut: 'brouillon',
       tvaRate: sourceFacture.tvaRate,
       lignes: lignes.map(l => ({ ...l, id: generateId() })),
@@ -1710,8 +1711,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       <h1>${doc.facture_type === 'avoir' ? 'AVOIR' : isFacture ? (doc.facture_type === 'acompte' ? "FACTURE D'ACOMPTE" : doc.facture_type === 'solde' ? 'FACTURE DE SOLDE' : 'FACTURE') : 'DEVIS'}</h1>
       <div class="doc-info">
         <strong>N° ${echap(doc.numero)}</strong><br>
-        Date: ${new Date(doc.date).toLocaleDateString('fr-FR')}<br>
-        ${isFacture && doc.date_echeance ? `Échéance: ${new Date(doc.date_echeance).toLocaleDateString('fr-FR')}<br>` : ''}
+        Date: ${dateLue(doc.date).toLocaleDateString('fr-FR')}<br>
+        ${isFacture && doc.date_echeance ? `Échéance: ${dateLue(doc.date_echeance).toLocaleDateString('fr-FR')}<br>` : ''}
         ${devisSource?.numero && !isAvoirDoc ? `Réf. devis: ${echap(devisSource.numero)}<br>` : ''}
         ${isFacture && doc.acompte_pct && doc.facture_type === 'acompte' ? `Acompte: ${pourcent(doc.acompte_pct)}<br>` : ''}
         ${!isFacture ? `<strong>Valable jusqu'au: ${dateValidite.toLocaleDateString('fr-FR')}</strong>` : ''}
@@ -1742,7 +1743,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   ${isAvoirDoc ? `
   <!-- RÉFÉRENCE AVOIR -->
   <div class="avoir-ref">
-    <strong>AVOIR${doc.avoir_type === 'partiel' ? ' PARTIEL' : ''} relatif à la facture n° ${echap(sourceFactureDoc?.numero || 'N/A')} du ${sourceFactureDoc ? new Date(sourceFactureDoc.date).toLocaleDateString('fr-FR') : 'N/A'}</strong>
+    <strong>AVOIR${doc.avoir_type === 'partiel' ? ' PARTIEL' : ''} relatif à la facture n° ${echap(sourceFactureDoc?.numero || 'N/A')} du ${sourceFactureDoc ? dateLue(sourceFactureDoc.date).toLocaleDateString('fr-FR') : 'N/A'}</strong>
     ${doc.avoir_motif ? `<br>Motif : ${echap(AVOIR_MOTIFS[doc.avoir_motif] || doc.avoir_motif)}${doc.avoir_motif_detail ? ` — ${echap(doc.avoir_motif_detail)}` : ''}` : ''}
   </div>
   ` : ''}
@@ -1850,7 +1851,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     <div class="signature-box">
       <h4>Le Client</h4>
       <p>Signature précédée de la mention manuscrite:<br><strong>"Bon pour accord"</strong> + Date</p>
-      ${doc.signature ? '<div style="margin-top:15px;color:#16a34a;font-weight:bold">✓ Signé électroniquement'+(doc.signataire ? ' par '+echap(doc.signataire) : '')+' le '+new Date(doc.signatureDate).toLocaleDateString('fr-FR')+'</div>' : ''}
+      ${doc.signature ? '<div style="margin-top:15px;color:#16a34a;font-weight:bold">✓ Signé électroniquement'+(doc.signataire ? ' par '+echap(doc.signataire) : '')+' le '+dateLue(doc.signatureDate).toLocaleDateString('fr-FR')+'</div>' : ''}
     </div>
   </div>
   ` : ''}
@@ -1866,10 +1867,10 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     ${getRCSComplet() ? ` | ${echap(getRCSComplet())}` : ''}<br>
     ${E?.tvaIntra ? `TVA Intracommunautaire: ${E.tvaIntra}` : ''}<br>
     <div class="assurances">
-      ${E?.decennaleAssureur ? `Assurance décennale: ${E.decennaleAssureur} N°${E.decennaleNumero}${E.decennaleValidite ? ` (Valide jusqu'au ${new Date(E.decennaleValidite).toLocaleDateString('fr-FR')})` : ''}${E.decennaleActivites ? ` — Activités: ${E.decennaleActivites}` : ''}` : ''}
+      ${E?.decennaleAssureur ? `Assurance décennale: ${E.decennaleAssureur} N°${E.decennaleNumero}${E.decennaleValidite ? ` (Valide jusqu'au ${dateLue(E.decennaleValidite).toLocaleDateString('fr-FR')})` : ''}${E.decennaleActivites ? ` — Activités: ${E.decennaleActivites}` : ''}` : ''}
       ${E?.decennaleAssureur && E?.rcProAssureur ? '<br>' : ''}
-      ${E?.rcProAssureur ? `RC Pro: ${E.rcProAssureur} N°${E.rcProNumero}${E.rcProValidite ? ` (Valide jusqu'au ${new Date(E.rcProValidite).toLocaleDateString('fr-FR')})` : ''}${E.rcProMontantGarantie ? ` — Garantie: ${E.rcProMontantGarantie} €` : ''}${E.rcProZone ? ` — Zone: ${E.rcProZone}` : ''}` : ''}
-      ${E?.mentionRGE !== false && Array.isArray(E?.labels) && E.labels.filter(l => l.actif).length > 0 ? '<br>' + E.labels.filter(l => l.actif).map(l => `${echap(l.nom)}${l.numero ? ` N°${echap(l.numero)}` : ''}${l.organisme ? ` (${echap(l.organisme)})` : ''}${l.dateExpiration ? ` — Valide jusqu'au ${new Date(l.dateExpiration).toLocaleDateString('fr-FR')}` : ''}`).join('<br>') : ''}
+      ${E?.rcProAssureur ? `RC Pro: ${E.rcProAssureur} N°${E.rcProNumero}${E.rcProValidite ? ` (Valide jusqu'au ${dateLue(E.rcProValidite).toLocaleDateString('fr-FR')})` : ''}${E.rcProMontantGarantie ? ` — Garantie: ${E.rcProMontantGarantie} €` : ''}${E.rcProZone ? ` — Zone: ${E.rcProZone}` : ''}` : ''}
+      ${E?.mentionRGE !== false && Array.isArray(E?.labels) && E.labels.filter(l => l.actif).length > 0 ? '<br>' + E.labels.filter(l => l.actif).map(l => `${echap(l.nom)}${l.numero ? ` N°${echap(l.numero)}` : ''}${l.organisme ? ` (${echap(l.organisme)})` : ''}${l.dateExpiration ? ` — Valide jusqu'au ${dateLue(l.dateExpiration).toLocaleDateString('fr-FR')}` : ''}`).join('<br>') : ''}
     </div>
     ${isAvoirDoc ? `<div style="margin-top:6px;font-size:6.5pt;color:#666">Cet avoir rectifie la facture de référence citée ci-dessus ; il en réduit d'autant le montant dû.</div>` : !isFacture ? `<div style="margin-top:6px;font-size:6.5pt;color:#666">Devis reçu avant l'exécution des travaux. Conditions de paiement et pénalités de retard conformes à l'article L441-10 du Code de commerce.</div>` : ''}
   </div>
@@ -1967,7 +1968,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     const rows = docs.map(d => {
       const client = clients.find(c => c.id === d.client_id);
       const clientName = client ? `${client.prenom || ''} ${client.nom || ''}`.trim() : (d.client_nom || '');
-      const fmtDate = (v) => v ? new Date(v).toLocaleDateString('fr-FR') : '';
+      const fmtDate = (v) => v ? dateLue(v).toLocaleDateString('fr-FR') : '';
       return [
         d.numero || '',
         d.type === 'facture' ? 'Facture' : 'Devis',
@@ -1985,7 +1986,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     });
     const csv = BOM + [headers, ...rows].map(r => r.join(';')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    remettreFichier(blob, `export-${new Date().toISOString().split('T')[0]}.csv`);
+    remettreFichier(blob, `export-${jourLocal()}.csv`);
     showToast(`${docs.length} document${docs.length > 1 ? 's' : ''} exporté${docs.length > 1 ? 's' : ''} en CSV`, 'success');
   };
 
@@ -2437,7 +2438,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         nom: chantierForm.nom,
         client_id: selected.client_id,
         adresse: chantierForm.adresse || client?.adresse || '',
-        date_debut: new Date().toISOString().split('T')[0],
+        date_debut: jourLocal(),
         date_fin: '',
         statut: 'en_cours',
         avancement: 0,
@@ -2539,7 +2540,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
             : selected.type === 'facture'
               ? ({ acompte: "Facture d'acompte", solde: 'Facture de solde', situation: 'Situation' }[selected.facture_type] || 'Facture')
               : 'Devis';
-          const dateCourte = (d) => (d ? new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) : '');
+          const dateCourte = (d) => (d ? dateLue(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) : '');
           const ttc = selected.total_ttc || 0;
           const peutEnvoyer = canPerform('devis', 'send');
           const peutModifier = canPerform('devis', 'edit');
@@ -2851,7 +2852,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                     Devis en attente · {getDaysSinceSent(selected)} jours
                   </p>
                   <p className={`text-xs ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>
-                    Envoyé le {new Date(selected.date).toLocaleDateString('fr-FR')} · {formatMoney(selected.total_ttc)}
+                    Envoyé le {dateLue(selected.date).toLocaleDateString('fr-FR')} · {formatMoney(selected.total_ttc)}
                   </p>
                 </div>
               </div>
@@ -2871,7 +2872,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                 <button
                   onClick={() => {
                     const subject = `Relance devis ${selected.numero}`;
-                    const body = `Bonjour,\n\nAvez-vous pu consulter le devis ${selected.numero} d'un montant de ${formatMoney(selected.total_ttc)} envoyé le ${new Date(selected.date).toLocaleDateString('fr-FR')} ?\n\nN'hésitez pas si vous avez des questions.\n\nCordialement`;
+                    const body = `Bonjour,\n\nAvez-vous pu consulter le devis ${selected.numero} d'un montant de ${formatMoney(selected.total_ttc)} envoyé le ${dateLue(selected.date).toLocaleDateString('fr-FR')} ?\n\nN'hésitez pas si vous avez des questions.\n\nCordialement`;
                     setTimeout(() => {
                       window.open(`mailto:${client?.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
                     }, 100);
@@ -2896,7 +2897,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                   {isExpired(selected) ? 'Devis expiré' : `Expire dans ${getExpiryDaysLeft(selected)} jour${getExpiryDaysLeft(selected) > 1 ? 's' : ''}`}
                 </p>
                 <p className={`text-xs ${isExpired(selected) ? (isDark ? 'text-red-400' : 'text-red-600') : (isDark ? 'text-orange-400' : 'text-orange-600')}`}>
-                  Validité: {selected.validite || 30} jours · Émis le {new Date(selected.date).toLocaleDateString('fr-FR')}
+                  Validité: {selected.validite || 30} jours · Émis le {dateLue(selected.date).toLocaleDateString('fr-FR')}
                 </p>
               </div>
             </div>
@@ -3170,7 +3171,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                         <p className={`text-xs font-medium mb-2 ${textMuted}`}>Paiements reçus</p>
                         {linkedPaiements.map(p => (
                           <div key={p.id} className={`flex justify-between text-sm py-1 ${textSecondary}`}>
-                            <span>{new Date(p.date).toLocaleDateString('fr-FR')} · {p.mode || 'Virement'}</span>
+                            <span>{dateLue(p.date).toLocaleDateString('fr-FR')} · {p.mode || 'Virement'}</span>
                             <span className="font-medium text-emerald-600">{formatMoney(p.montant)}</span>
                           </div>
                         ))}
@@ -3196,7 +3197,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                     <span className="text-emerald-600 font-medium text-sm">
                       Accepté{selected.signataire ? ` par ${selected.signataire}` : ' par le client'}
                     </span>
-                    <span className={`text-xs ${textMuted}`}>· {new Date(selected.signatureDate).toLocaleDateString('fr-FR')}</span>
+                    <span className={`text-xs ${textMuted}`}>· {dateLue(selected.signatureDate).toLocaleDateString('fr-FR')}</span>
                   </div>
                 </div>
               )}
@@ -3342,7 +3343,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                         <p className={`text-xs ${textMuted}`}>{rec.subject}</p>
                       </div>
                       <div className="text-right flex-shrink-0">
-                        <p className={`text-xs ${textMuted}`}>{new Date(rec.sentAt).toLocaleDateString('fr-FR')}</p>
+                        <p className={`text-xs ${textMuted}`}>{dateLue(rec.sentAt).toLocaleDateString('fr-FR')}</p>
                         <p className={`text-xs ${textMuted}`}>{new Date(rec.sentAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</p>
                       </div>
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${isDark ? 'bg-emerald-900/50 text-emerald-300' : 'bg-emerald-100 text-emerald-700'}`}>
@@ -3983,7 +3984,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
             if (hasData) {
               if (window.confirm('Abandonner ce devis ? Les données non sauvegardées seront perdues.')) {
                 setMode('list');
-                setForm({ type: 'devis', clientId: '', chantierId: '', date: new Date().toISOString().split('T')[0], validite: entreprise?.validiteDevis || 30, sections: [{ id: '1', titre: '', lignes: [] }], tvaDefaut: entreprise?.tvaDefaut || 10, remise: 0, retenueGarantie: false, conditionsPaiement: entreprise?.conditionsPaiementDefaut || '30_jours', notes: '' });
+                setForm({ type: 'devis', clientId: '', chantierId: '', date: jourLocal(), validite: entreprise?.validiteDevis || 30, sections: [{ id: '1', titre: '', lignes: [] }], tvaDefaut: entreprise?.tvaDefaut || 10, remise: 0, retenueGarantie: false, conditionsPaiement: entreprise?.conditionsPaiementDefaut || '30_jours', notes: '' });
               }
             } else {
               setMode('list');
@@ -3996,7 +3997,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
               if (hasData) {
                 if (window.confirm('Abandonner ce devis ? Les données non sauvegardées seront perdues.')) {
                   setMode('list');
-                  setForm({ type: 'devis', clientId: '', chantierId: '', date: new Date().toISOString().split('T')[0], validite: entreprise?.validiteDevis || 30, sections: [{ id: '1', titre: '', lignes: [] }], tvaDefaut: entreprise?.tvaDefaut || 10, remise: 0, retenueGarantie: false, conditionsPaiement: entreprise?.conditionsPaiementDefaut || '30_jours', notes: '' });
+                  setForm({ type: 'devis', clientId: '', chantierId: '', date: jourLocal(), validite: entreprise?.validiteDevis || 30, sections: [{ id: '1', titre: '', lignes: [] }], tvaDefaut: entreprise?.tvaDefaut || 10, remise: 0, retenueGarantie: false, conditionsPaiement: entreprise?.conditionsPaiementDefaut || '30_jours', notes: '' });
                 }
               } else {
                 setMode('list');
@@ -5024,7 +5025,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                         {clientName}
                       </td>
                       <td className={`px-3 py-2.5 text-xs whitespace-nowrap ${textMuted}`}>
-                        {new Date(d.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        {dateLue(d.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
                       </td>
                       <td className={`px-3 py-2.5 text-xs font-bold text-right whitespace-nowrap tabular-nums`} style={{ color: isAvoirItem ? '#dc2626' : couleur }}>
                         {!canViewPrices ? '—' : modeDiscret ? '···' : isAvoirItem ? `-${formatMoney(Math.abs(getDevisTTC(d)))}` : formatMoney(getDevisTTC(d))}
@@ -5116,7 +5117,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
             : isSituationItem ? `Situation${d.situation_numero ? ` n° ${d.situation_numero}` : ''}`
             : d.is_avenant ? `Avenant ${d.avenant_numero || ''}`.trim()
             : d.type === 'facture' ? 'Facture' : 'Devis';
-          const meta = [d.objet || chantier?.nom, typeDoc, cleanNumero(d.numero), new Date(d.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })].filter(Boolean).join(' · ');
+          const meta = [d.objet || chantier?.nom, typeDoc, cleanNumero(d.numero), dateLue(d.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })].filter(Boolean).join(' · ');
           const genrePastille = d.type === 'facture' && !isAvoirItem ? 'facture' : 'devis';
           const statutPastille = d.type === 'devis' && isExpired(d) && ['envoye', 'vu'].includes(d.statut) ? 'expire' : statutVu;
           const relanceAuto = relances.getDocumentPending(d.id);

@@ -14,6 +14,7 @@
 
 import { isDemo } from '../supabaseClient';
 import { scopeToOrg, withOrgScope } from '../lib/queryHelper';
+import { jourLocal } from '../lib/dates';
 
 const DEMO_KEY = 'mallettico_garanties';
 
@@ -354,7 +355,7 @@ export async function getAll(supabase, { userId, orgId, filters = {} }) {
     }
     if (filters.expiringBefore) {
       const limit = filters.expiringBefore;
-      const today = new Date().toISOString().split('T')[0];
+      const today = jourLocal();
       data = data.filter(g => g.dateFin >= today && g.dateFin <= limit);
     }
     if (filters.search) {
@@ -379,7 +380,7 @@ export async function getAll(supabase, { userId, orgId, filters = {} }) {
   if (filters.statut) query = query.eq('statut', filters.statut);
   if (filters.typeGarantie) query = query.eq('type_garantie', filters.typeGarantie);
   if (filters.expiringBefore) {
-    const today = new Date().toISOString().split('T')[0];
+    const today = jourLocal();
     query = query.gte('date_fin', today).lte('date_fin', filters.expiringBefore);
   }
   if (filters.search) {
@@ -481,9 +482,9 @@ export async function updateGarantie(supabase, id, data) {
  */
 export async function getDashboardStats(supabase, { userId, orgId }) {
   const today = new Date();
-  const todayStr = today.toISOString().split('T')[0];
-  const in30Days = new Date(today.getTime() + 30 * 86400000).toISOString().split('T')[0];
-  const in90Days = new Date(today.getTime() + 90 * 86400000).toISOString().split('T')[0];
+  const todayStr = jourLocal(today);
+  const in30Days = jourLocal(new Date(today.getTime() + 30 * 86400000));
+  const in90Days = jourLocal(new Date(today.getTime() + 90 * 86400000));
 
   if (isDemo) {
     const garanties = getDemoData();
@@ -549,7 +550,7 @@ export async function getDashboardStats(supabase, { userId, orgId }) {
  * @returns {Promise<number>} Number of warranties marked as expired
  */
 export async function markExpired(supabase) {
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = jourLocal();
 
   if (isDemo) {
     const garanties = getDemoData();

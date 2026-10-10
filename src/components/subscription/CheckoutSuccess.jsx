@@ -9,6 +9,7 @@ import React, { useState, useEffect } from 'react';
 import { FONCTIONS } from '../../lib/fonctions';
 import { CheckCircle, ArrowRight, Sparkles, FileText, PenTool, Camera, Settings } from 'lucide-react';
 import { useSubscriptionStore, PLANS } from '../../stores/subscriptionStore';
+import { dateLue } from '../../lib/dates';
 
 // Simple confetti effect using CSS
 function Confetti() {
@@ -92,7 +93,7 @@ export default function CheckoutSuccess({ isDark, couleur, setPage }) {
   const userEmail = sub?.user_email || 'votre adresse email';
 
   const nextBilling = sub?.current_period_end
-    ? new Date(sub.current_period_end).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+    ? dateLue(sub.current_period_end).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
     : null;
 
   const billingInterval = sub?.billing_interval === 'yearly' ? 'Annuel' : 'Mensuel';

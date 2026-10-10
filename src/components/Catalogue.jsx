@@ -20,6 +20,7 @@ import { Bouton, BoutonIcone } from './ui/Bouton';
 import Pastille from './ui/Pastille';
 import useKeepInViewport from '../hooks/useKeepInViewport';
 import { remettreFichier } from '../lib/natif';
+import { jourLocal, dateLue } from '../lib/dates';
 
 /**
  * Chargés à la demande : la bibliothèque d'ouvrages embarque à elle seule
@@ -825,7 +826,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
     });
     const csv = rows.map(r => r.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(';')).join('\n');
     const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
-    remettreFichier(blob, `catalogue_${new Date().toISOString().split('T')[0]}.csv`)
+    remettreFichier(blob, `catalogue_${jourLocal()}.csv`)
       .then((r) => { if (r !== 'annule') showToast('Export CSV prêt', 'success'); })
       .catch(() => showToast('Export impossible', 'error'));
   };
@@ -837,11 +838,11 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
       const article = catalogue.find(c => c.id === m.articleId);
       const ch = chantiers?.find(c => c.id === m.chantierId);
       const type = m.type === 'in' || m.type === 'entree' ? 'Entrée' : m.type === 'out' || m.type === 'sortie' ? 'Sortie' : m.type === 'return' ? 'Retour' : 'Ajustement';
-      rows.push([new Date(m.date).toLocaleDateString('fr-FR'), article?.nom || m.articleNom || '?', article?.reference || '', type, m.quantite, ch?.nom || '', m.raison || m.motif || '']);
+      rows.push([dateLue(m.date).toLocaleDateString('fr-FR'), article?.nom || m.articleNom || '?', article?.reference || '', type, m.quantite, ch?.nom || '', m.raison || m.motif || '']);
     });
     const csv = rows.map(r => r.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(';')).join('\n');
     const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
-    remettreFichier(blob, `mouvements_${new Date().toISOString().split('T')[0]}.csv`)
+    remettreFichier(blob, `mouvements_${jourLocal()}.csv`)
       .then((r) => { if (r !== 'annule') showToast('Export mouvements prêt', 'success'); })
       .catch(() => showToast('Export impossible', 'error'));
   };
@@ -1082,7 +1083,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
             <div className="space-y-2">
               {itemHistory.map(h => (
                 <div key={h.id} className={`flex items-center justify-between py-2 border-b last:border-0 border-bord`}>
-                  <span className={`text-sm ${textMuted}`}>{new Date(h.date).toLocaleDateString('fr-FR')}</span>
+                  <span className={`text-sm ${textMuted}`}>{dateLue(h.date).toLocaleDateString('fr-FR')}</span>
                   <div className="flex items-center gap-4">
                     <span className={`text-sm ${textPrimary}`}>Vente: {h.prixVente}€</span>
                     <span className={`text-sm ${textMuted}`}>Achat: {h.prixAchat}€</span>
@@ -1107,7 +1108,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                   </span>
                   <div className="flex-1">
                     <p className={`text-sm font-medium ${textPrimary}`}>{m.type === 'in' ? 'Entrée' : m.type === 'out' ? 'Sortie' : m.type === 'return' ? 'Retour' : 'Ajustement'} — {m.quantite} unités</p>
-                    <p className={`text-xs ${textMuted}`}>{m.raison || '—'} · {new Date(m.date).toLocaleDateString('fr-FR')}</p>
+                    <p className={`text-xs ${textMuted}`}>{m.raison || '—'} · {dateLue(m.date).toLocaleDateString('fr-FR')}</p>
                   </div>
                 </div>
               ))}
@@ -2327,7 +2328,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                       <p className={`font-bold ${isIn ? 'text-emerald-500' : isOut ? 'text-red-500' : isDark ? 'text-orange-400' : 'text-orange-600'}`}>
                         {isIn ? '+' : isOut ? '-' : ''}{Math.abs(m.quantite)}
                       </p>
-                      <p className={`text-xs ${textMuted}`}>{new Date(m.date).toLocaleDateString('fr-FR')}</p>
+                      <p className={`text-xs ${textMuted}`}>{dateLue(m.date).toLocaleDateString('fr-FR')}</p>
                     </div>
                   </div>
                 );
@@ -2648,7 +2649,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                       <p className={`text-xs ${textMuted}`}>Dernier inventaire</p>
                       <p className={`text-sm font-bold ${inventaireColor} flex items-center gap-1`}>
                         {lastInventaire
-                          ? new Date(lastInventaire.date).toLocaleDateString('fr-FR')
+                          ? dateLue(lastInventaire.date).toLocaleDateString('fr-FR')
                           : <>
                               {accountAge > 30 && <AlertCircle size={12} className="text-amber-500" />}
                               Jamais effectué

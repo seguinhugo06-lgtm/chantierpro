@@ -2,6 +2,7 @@ import React from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { FileText, Receipt, Euro, Calendar, User } from 'lucide-react';
+import { dateLue } from '../../lib/dates';
 
 /**
  * KanbanCard — Carte draggable pour un devis/facture dans le pipeline Kanban.
@@ -28,7 +29,7 @@ export default function KanbanCard({ item, client, isDark, couleur, onClick }) {
   const isFacture = item.type === 'facture';
   const montant = (item.total_ttc || 0).toLocaleString('fr-FR');
   const dateStr = item.date
-    ? new Date(item.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
+    ? dateLue(item.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
     : '';
 
   return (

@@ -7,6 +7,7 @@
 import { isDemo } from '../supabaseClient';
 import { scopeToOrg, withOrgScope } from '../lib/queryHelper';
 import { logger } from '../lib/logger';
+import { jourLocal, dateLue } from '../lib/dates';
 
 const DEMO_KEY = 'mallettico_subcontractors_v2';
 const OLD_DEMO_KEY = 'cp_sous_traitants';
@@ -382,8 +383,8 @@ function initDemoData() {
 // ── Compliance helpers ──────────────────────────────────────────────────────────
 
 export function getComplianceScore(st) {
-  const today = new Date().toISOString().split('T')[0];
-  const sixMonthsAgo = new Date(Date.now() - 180 * 86400000).toISOString().split('T')[0];
+  const today = jourLocal();
+  const sixMonthsAgo = jourLocal(new Date(Date.now() - 180 * 86400000));
 
   let total = 0;
   let valid = 0;
@@ -416,9 +417,9 @@ export function getComplianceScore(st) {
 }
 
 export function getComplianceStatus(st) {
-  const today = new Date().toISOString().split('T')[0];
-  const thirtyDaysFromNow = new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0];
-  const sixMonthsAgo = new Date(Date.now() - 180 * 86400000).toISOString().split('T')[0];
+  const today = jourLocal();
+  const thirtyDaysFromNow = jourLocal(new Date(Date.now() + 30 * 86400000));
+  const sixMonthsAgo = jourLocal(new Date(Date.now() - 180 * 86400000));
 
   const items = [];
 
@@ -458,7 +459,7 @@ export function getComplianceStatus(st) {
 
 function formatDate(dateStr) {
   if (!dateStr) return '';
-  return new Date(dateStr).toLocaleDateString('fr-FR');
+  return dateLue(dateStr).toLocaleDateString('fr-FR');
 }
 
 // ── CRUD ────────────────────────────────────────────────────────────────────────
@@ -478,8 +479,8 @@ export async function loadSubcontractors(supabase, { userId, orgId, filters = {}
       );
     }
     if (filters.expiringDays) {
-      const limit = new Date(Date.now() + filters.expiringDays * 86400000).toISOString().split('T')[0];
-      const today = new Date().toISOString().split('T')[0];
+      const limit = jourLocal(new Date(Date.now() + filters.expiringDays * 86400000));
+      const today = jourLocal();
       data = data.filter(st =>
         (st.expirationDecennale && st.expirationDecennale >= today && st.expirationDecennale <= limit) ||
         (st.expirationRcPro && st.expirationRcPro >= today && st.expirationRcPro <= limit)
@@ -666,9 +667,9 @@ export async function getStatistics(supabase, { orgId }) {
   if (isDemo) {
     const data = getDemoData();
     const active = data.subcontractors.filter(st => !st.isArchived && (st.statut === 'actif' || st.statut === 'favori'));
-    const today = new Date().toISOString().split('T')[0];
-    const sixMonthsAgo = new Date(Date.now() - 180 * 86400000).toISOString().split('T')[0];
-    const thirtyDays = new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0];
+    const today = jourLocal();
+    const sixMonthsAgo = jourLocal(new Date(Date.now() - 180 * 86400000));
+    const thirtyDays = jourLocal(new Date(Date.now() + 30 * 86400000));
 
     return {
       totalActifs: active.length,
@@ -781,7 +782,7 @@ export async function createReview(supabase, { data: reviewData, userId, orgId }
       reviewerId: userId,
       ...reviewData,
       noteGlobale: parseFloat(noteGlobale.toFixed(2)),
-      dateEvaluation: new Date().toISOString().split('T')[0],
+      dateEvaluation: jourLocal(),
     };
     data.reviews.push(review);
 

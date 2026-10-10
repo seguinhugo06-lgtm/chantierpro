@@ -9,6 +9,7 @@
  * Returns normalized transactions: { date, libelle, montant, solde }
  * with SHA-256 hash for deduplication.
  */
+import { jourLocal } from '../dates';
 
 // ---------------------------------------------------------------------------
 // Bank format definitions
@@ -323,7 +324,7 @@ function parseDate(val) {
   // Try native Date parsing as last resort
   const d = new Date(s);
   if (!isNaN(d.getTime())) {
-    return d.toISOString().split('T')[0];
+    return jourLocal(d); // date lue en heure locale (les formats ISO sont traités plus haut)
   }
 
   return null;

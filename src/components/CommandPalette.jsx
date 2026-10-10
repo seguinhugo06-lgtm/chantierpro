@@ -9,6 +9,7 @@ import {
   UserCheck, ShoppingCart, Camera, ClipboardList, PenTool, Download, Sparkles,
   RotateCcw, CreditCard, Bell, CalendarCheck
 } from 'lucide-react';
+import { dateLue } from '../lib/dates';
 
 /**
  * Storage key for recent items
@@ -318,7 +319,7 @@ export default function CommandPalette({
           entityType: 'memo',
           entityId: m.id,
           label: m.text?.substring(0, 60) || 'Mémo sans texte',
-          sublabel: m.category || (m.due_date ? `📅 ${new Date(m.due_date).toLocaleDateString('fr-FR')}` : ''),
+          sublabel: m.category || (m.due_date ? `📅 ${dateLue(m.due_date).toLocaleDateString('fr-FR')}` : ''),
           icon: ClipboardList,
           color: '#f59e0b',
           action: () => { setPage('tasks'); onClose(); }

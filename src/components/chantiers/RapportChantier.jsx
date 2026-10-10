@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { generateId } from '../../lib/utils';
 import { downloadRapportPDF } from '../../lib/rapportChantierPdf';
+import { jourLocal, dateLue } from '../../lib/dates';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -76,7 +77,7 @@ const saveRapports = (chantierId, rapports) => {
 const createEmptyRapport = (numero) => ({
   id: generateId('rap'),
   numero,
-  date: new Date().toISOString().split('T')[0],
+  date: jourLocal(),
   type: 'journalier',
   meteo: 'ensoleille',
   temperature: '',
@@ -451,7 +452,7 @@ export default function RapportChantier({ chantier, equipe = [], isDark = false,
               </div>
               <div className="min-w-0">
                 <p className={`font-medium truncate ${textPrimary}`}>
-                  Rapport #{rapport.numero} — {new Date(rapport.date).toLocaleDateString('fr-FR')}
+                  Rapport #{rapport.numero} — {dateLue(rapport.date).toLocaleDateString('fr-FR')}
                 </p>
                 <div className="flex items-center gap-2 mt-1">
                   <TypeBadge type={rapport.type} isDark={isDark} />
@@ -845,7 +846,7 @@ export default function RapportChantier({ chantier, equipe = [], isDark = false,
                   <input
                     type="text"
                     readOnly
-                    value={draft.dateSignature ? new Date(draft.dateSignature).toLocaleDateString('fr-FR') : 'Remplie automatiquement lors de la validation'}
+                    value={draft.dateSignature ? dateLue(draft.dateSignature).toLocaleDateString('fr-FR') : 'Remplie automatiquement lors de la validation'}
                     className={`mt-1 block w-full rounded-md border px-3 py-2 text-sm ${inputCls} opacity-60 cursor-not-allowed`}
                   />
                 </label>
@@ -905,7 +906,7 @@ export default function RapportChantier({ chantier, equipe = [], isDark = false,
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
               <div>
                 <span className={`block text-xs ${textSecondary}`}>Date</span>
-                <span className={`font-medium ${textPrimary}`}>{new Date(draft.date).toLocaleDateString('fr-FR')}</span>
+                <span className={`font-medium ${textPrimary}`}>{dateLue(draft.date).toLocaleDateString('fr-FR')}</span>
               </div>
               <div>
                 <span className={`block text-xs ${textSecondary}`}>Type</span>
@@ -1035,7 +1036,7 @@ export default function RapportChantier({ chantier, equipe = [], isDark = false,
               <div>
                 <span className={`block text-xs ${textSecondary}`}>Date de signature</span>
                 <span className={`font-medium ${textPrimary}`}>
-                  {draft.dateSignature ? new Date(draft.dateSignature).toLocaleDateString('fr-FR') : '—'}
+                  {draft.dateSignature ? dateLue(draft.dateSignature).toLocaleDateString('fr-FR') : '—'}
                 </span>
               </div>
             </div>

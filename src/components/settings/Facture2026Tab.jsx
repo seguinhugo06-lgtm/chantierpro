@@ -19,6 +19,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { testFacturXCompliance, selectProfile } from '../../lib/facturx';
+import { jourLocal } from '../../lib/dates';
 
 /**
  * Checklist item definition with field validation
@@ -177,7 +178,7 @@ export default function Facture2026Tab({ entreprise, setEntreprise, isDark, coul
         // Create a realistic test invoice
         const testInvoice = {
           numero: 'TEST-COMPLIANCE-001',
-          date: new Date().toISOString().split('T')[0],
+          date: jourLocal(),
           type: 'facture',
           total_ht: 1500,
           tva: 300,

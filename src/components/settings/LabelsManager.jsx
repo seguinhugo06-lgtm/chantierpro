@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Trash2, Edit3, X, Check, Award, AlertTriangle, Upload, Calendar } from 'lucide-react';
 import { LABEL_TYPES, getDefaultLogo } from '../../data/labelLogos';
+import { dateLue } from '../../lib/dates';
 
 /**
  * LabelsManager — manage BTP certifications and labels
@@ -274,7 +275,7 @@ export default function LabelsManager({ entreprise, updateEntreprise, isDark, co
                 <p key={l.id} className={`text-sm ${daysLeft < 0 ? 'text-red-600 font-medium' : isDark ? 'text-amber-300' : 'text-amber-700'}`}>
                   {daysLeft < 0
                     ? `⛔ ${l.nom} — expiré depuis ${Math.abs(daysLeft)} jours`
-                    : `⚠️ ${l.nom} — expire dans ${daysLeft} jours (${new Date(l.dateExpiration).toLocaleDateString('fr-FR')})`
+                    : `⚠️ ${l.nom} — expire dans ${daysLeft} jours (${dateLue(l.dateExpiration).toLocaleDateString('fr-FR')})`
                   }
                 </p>
               );

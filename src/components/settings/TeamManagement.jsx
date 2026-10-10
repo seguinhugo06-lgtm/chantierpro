@@ -11,6 +11,7 @@ import { useSubscriptionStore } from '../../stores/subscriptionStore';
 import { urlPublique } from '../../lib/urlPublique';
 import { captureException } from '../../lib/sentry';
 import { messageErreurFonction } from '../../lib/emailSender';
+import { dateLue } from '../../lib/dates';
 
 const INVITABLE_ROLES = getInvitableRoles();
 
@@ -130,7 +131,7 @@ export default function TeamManagement({ isDark, couleur = '#F97316' }) {
                 orgName: orgName || 'Mallettico',
                 roleLabel,
                 inviteLink,
-                expiresAt: new Date(data.expires_at).toLocaleDateString('fr-FR'),
+                expiresAt: dateLue(data.expires_at).toLocaleDateString('fr-FR'),
               },
             },
           });
@@ -425,7 +426,7 @@ export default function TeamManagement({ isDark, couleur = '#F97316' }) {
                 <div className="flex-1 min-w-0">
                   <p className={`text-sm truncate ${textPrimary}`}>{inv.email || inv.phone}</p>
                   <p className={`text-xs ${textMuted}`}>
-                    {getRoleLabel(inv.role)} · Expire le {new Date(inv.expires_at).toLocaleDateString('fr-FR')}
+                    {getRoleLabel(inv.role)} · Expire le {dateLue(inv.expires_at).toLocaleDateString('fr-FR')}
                   </p>
                 </div>
                 <div className="flex items-center gap-1.5">

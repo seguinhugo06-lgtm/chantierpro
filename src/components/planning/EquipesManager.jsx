@@ -28,6 +28,7 @@ import { cn } from '../../lib/utils';
 import { Button } from '../ui/Button';
 import Modal, { ModalHeader, ModalTitle, ModalBody, ModalFooter } from '../ui/Modal';
 import { supabase } from '../../supabaseClient';
+import { jourLocal } from '../../lib/dates';
 
 /**
  * @typedef {Object} Membre
@@ -653,7 +654,7 @@ export default function EquipesManager({ userId, onViewPlanning, className }) {
       // Use the RPC function that includes load calculation
       const { data, error } = await supabase.rpc('get_equipes_with_load', {
         p_user_id: userId,
-        p_week_start: new Date().toISOString().split('T')[0],
+        p_week_start: jourLocal(),
       });
 
       if (error) throw error;

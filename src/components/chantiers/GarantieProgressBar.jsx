@@ -6,6 +6,7 @@
  */
 
 import React, { memo, useMemo } from 'react';
+import { dateLue } from '../../lib/dates';
 
 const GarantieProgressBar = memo(function GarantieProgressBar({
   dateDebut,
@@ -43,7 +44,7 @@ const GarantieProgressBar = memo(function GarantieProgressBar({
 
   const formatDate = (d) => {
     if (!d) return '';
-    return new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    return dateLue(d).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
   };
 
   const formatDaysRemaining = (days) => {

@@ -24,6 +24,7 @@ import { buildDevisHtml } from '../lib/devisHtmlBuilder';
 import { calculerTotaux } from '../lib/totauxDocument';
 import { estFranchiseTva } from '../lib/franchiseTva';
 import { TRADE_LIBRARY } from '../lib/templates/trade-library';
+import { jourLocal } from '../lib/dates';
 
 const DRAFT_KEY = 'mallettico_devis_composer_draft';
 const MRU_KEY = 'mallettico_recent_clients';
@@ -120,7 +121,7 @@ export default function DevisComposer({
     type: 'devis',
     clientId: '',
     chantierId: '',
-    date: new Date().toISOString().split('T')[0],
+    date: jourLocal(),
     validite: entreprise?.validiteDevis || entreprise?.validite_devis || 30,
     tvaDefaut: tvaEntreprise,
     lignes: [],
@@ -186,7 +187,7 @@ export default function DevisComposer({
         type: initialData.type || 'devis',
         clientId: initialData.client_id || '',
         chantierId: initialData.chantier_id || '',
-        date: initialData.date || new Date().toISOString().split('T')[0],
+        date: initialData.date || jourLocal(),
         validite: initialData.validite || entreprise?.validiteDevis || 30,
         tvaDefaut: tvaDef,
         lignes,
@@ -205,7 +206,7 @@ export default function DevisComposer({
       if (clientInitial && !(draft?.lignes?.length > 0)) {
         setForm({ ...blankForm(), clientId: clientInitial });
       } else if (draft && (draft.clientId || draft.lignes?.length > 0)) {
-        setForm({ ...blankForm(), ...draft, date: new Date().toISOString().split('T')[0] });
+        setForm({ ...blankForm(), ...draft, date: jourLocal() });
         setDraftRestored(true);
         setTimeout(() => setDraftRestored(false), 5000);
       } else {

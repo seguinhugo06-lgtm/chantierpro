@@ -7,6 +7,7 @@
 
 import React, { useState, useCallback, memo } from 'react';
 import { Calendar, Plus, X, AlertTriangle, FileText, Upload, Check } from 'lucide-react';
+import { jourLocal } from '../../lib/dates';
 
 const ReceptionForm = memo(function ReceptionForm({
   chantier,
@@ -16,7 +17,7 @@ const ReceptionForm = memo(function ReceptionForm({
   couleur = '#f97316',
   user,
 }) {
-  const today = new Date().toISOString().split('T')[0];
+  const today = jourLocal();
 
   const [dateReception, setDateReception] = useState(today);
   const [typeReception, setTypeReception] = useState('sans_reserve');

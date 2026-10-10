@@ -13,6 +13,7 @@ import PhotoGallery from './PhotoGallery';
 import supabase from '../../supabaseClient';
 import { getPortalData } from '../../services/portalService';
 import { urlPublique } from '../../lib/urlPublique';
+import { dateLue } from '../../lib/dates';
 
 // ─── Demo data ──────────────────────────────────────────────────────
 const DEMO_DATA = {
@@ -490,7 +491,7 @@ export default function ClientPortal({
       <h1>${isFacture ? 'FACTURE' : 'DEVIS'}</h1>
       <div class="doc-info">
         <strong>N&deg; ${doc.numero}</strong><br>
-        Date: ${new Date(doc.created_at).toLocaleDateString('fr-FR')}
+        Date: ${dateLue(doc.created_at).toLocaleDateString('fr-FR')}
       </div>
     </div>
   </div>

@@ -9,6 +9,7 @@ import { generateActivityPDF, generateFinancialPDF, generateChantierPDF, downloa
 import supabase, { isDemo } from '../../supabaseClient';
 import RapportConfigModal from './RapportConfigModal';
 import RapportPreview from './RapportPreview';
+import { jourLocal, dateLue } from '../../lib/dates';
 
 const TYPE_CONFIG = {
   activite: { label: "Rapport d'activité", icon: TrendingUp, color: '#3b82f6', desc: 'CA, devis, conversion, pipeline, top clients' },
@@ -112,8 +113,8 @@ export default function RapportsTab({ devis = [], depenses = [], clients = [], c
         const record = {
           type,
           titre: `${TYPE_CONFIG[type].label} — ${getPeriodLabel(currentPreset.debut, currentPreset.fin)}`,
-          periode_debut: currentPreset.debut.toISOString().split('T')[0],
-          periode_fin: currentPreset.fin.toISOString().split('T')[0],
+          periode_debut: jourLocal(currentPreset.debut),
+          periode_fin: jourLocal(currentPreset.fin),
           statut: 'genere',
           page_count: result.pageCount,
           donnees_snapshot: { kpis: data?.kpis || {} },
@@ -287,7 +288,7 @@ export default function RapportsTab({ devis = [], depenses = [], clients = [], c
                   <div className="flex-1 min-w-0">
                     <p className={`text-sm font-medium ${textPrimary} truncate`}>{r.titre}</p>
                     <p className={`text-xs ${textMuted}`}>
-                      {r.created_at ? new Date(r.created_at).toLocaleDateString('fr-FR') : '—'}
+                      {r.created_at ? dateLue(r.created_at).toLocaleDateString('fr-FR') : '—'}
                       {r.page_count ? ` · ${r.page_count} pages` : ''}
                       {r.auto_genere ? ' · Auto' : ''}
                     </p>

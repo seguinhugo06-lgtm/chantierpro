@@ -6,6 +6,7 @@
  */
 
 import type { ReactNode } from 'react';
+import { jourLocal } from './dates';
 
 // ============ TYPES & INTERFACES ============
 
@@ -333,7 +334,7 @@ export function generateWeatherAlertSuggestions(
 
   return [
     {
-      id: generateSuggestionId('weather_alert', alertDate.toISOString().split('T')[0]),
+      id: generateSuggestionId('weather_alert', jourLocal(alertDate)),
       type: 'weather_alert',
       priority: 'medium',
       title: `Météo défavorable ${dayName}`,

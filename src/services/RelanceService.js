@@ -9,6 +9,7 @@
  * - J+45: Final notice before legal action
  * - J+60: Pre-contentieux warning
  */
+import { dateLue } from '../lib/dates';
 
 // Reminder templates in French
 export const RELANCE_TEMPLATES = {
@@ -163,10 +164,10 @@ export function generateRelanceContent(template, facture, client, entreprise) {
     '{numero}': facture.numero || 'N/A',
     '{montant}': (facture.total_ttc || 0).toLocaleString('fr-FR'),
     '{date_facture}': facture.date
-      ? new Date(facture.date).toLocaleDateString('fr-FR')
+      ? dateLue(facture.date).toLocaleDateString('fr-FR')
       : 'N/A',
     '{date_echeance}': facture.date_echeance
-      ? new Date(facture.date_echeance).toLocaleDateString('fr-FR')
+      ? dateLue(facture.date_echeance).toLocaleDateString('fr-FR')
       : 'N/A',
     '{jours_retard}': Math.floor(
       (new Date() - new Date(facture.date_echeance || facture.date)) /

@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { CATEGORIES, PRIORITIES } from './constants';
 import TaskDetail from './TaskDetail';
+import { jourLocal } from '../../lib/dates';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -39,7 +40,7 @@ function addDays(d, n) {
 }
 
 function toDateStr(d) {
-  return d.toISOString().split('T')[0];
+  return jourLocal(d);
 }
 
 function formatShortDate(d) {
@@ -92,7 +93,7 @@ function MiniTaskCard({ memo, isDark, couleur, onSelect, onDragStart }) {
       draggable
       onDragStart={(e) => {
         e.dataTransfer.setData('memoId', memo.id);
-        e.dataTransfer.setData('sourceAssignee', memo.assignedTo || memo.employe_id || '');
+        e.dataTransfer.setData('sourceAssignee', memo.assigned_to || '');
         e.dataTransfer.setData('sourceDate', memo.due_date || '');
         e.dataTransfer.effectAllowed = 'move';
         onDragStart?.(memo.id);
@@ -434,7 +435,7 @@ export default function TaskTeamView({
     });
 
     filteredMemos.forEach(memo => {
-      const assignee = memo.assignedTo || memo.employe_id || null;
+      const assignee = memo.assigned_to || null;
       const dateStr = memo.due_date || '';
       if (!dateSet.has(dateStr)) return; // not in current range
 
@@ -487,10 +488,10 @@ export default function TaskTeamView({
     const memo = memos.find(m => m.id === memoId);
     if (!memo) return;
 
-    const currentAssignee = memo.assignedTo || memo.employe_id || null;
+    const currentAssignee = memo.assigned_to || null;
     if (newAssigneeId !== currentAssignee) {
-      updates.assignedTo = newAssigneeId;
-      updates.employe_id = newAssigneeId;
+      // `assigned_to` : avant, assignedTo / employe_id, inconnus de l'enregistrement (recette du 9 oct. 2026)
+      updates.assigned_to = newAssigneeId;
     }
     if (newDate && newDate !== memo.due_date) {
       updates.due_date = newDate;

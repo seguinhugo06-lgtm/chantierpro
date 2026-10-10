@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Users, CheckCircle, AlertCircle, Loader2, LogIn, UserPlus } from 'lucide-react';
 import { supabase } from '../../supabaseClient';
+import { dateLue } from '../../lib/dates';
 
 export default function AcceptInvitation({ token }) {
   const [invitation, setInvitation] = useState(null);
@@ -209,7 +210,7 @@ export default function AcceptInvitation({ token }) {
         )}
 
         <p className="text-[11px] text-slate-400 text-center mt-6">
-          Cette invitation expire le {invitation?.expires_at ? new Date(invitation.expires_at).toLocaleDateString('fr-FR') : '—'}
+          Cette invitation expire le {invitation?.expires_at ? dateLue(invitation.expires_at).toLocaleDateString('fr-FR') : '—'}
         </p>
       </div>
     </div>
