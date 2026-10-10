@@ -903,6 +903,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     };
 
     const created = await onSubmit(newDoc);
+    if (!created) return; // refus (limite du plan, droits) : pas de fiche fantôme
     setSelected(created || newDoc);
     setMode('preview');
     setSnackbar({
@@ -964,6 +965,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     };
 
     const created = await onSubmit(newDoc);
+    if (!created) return; // refus (limite du plan, droits) : pas de fiche fantôme
     setSelected(created || newDoc);
     setMode('edit');
     setSnackbar({
@@ -1074,6 +1076,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 
     // Submit the devis
     const created = await onSubmit(newDevis);
+    if (!created) return; // refus : l'assistant reste ouvert
 
     // Close wizard and navigate directly to the new devis
     setShowSmartWizard(false);
@@ -1247,7 +1250,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         : `Acompte ${pourcent(etape.pourcentage)} — ${etape.label || ''} — ${selected.objet || selected.numero || ''}`,
     };
 
-    await onSubmit(facture);
+    // Refus de la base : le devis reste tel quel (avant : « facturé » sans facture)
+    if (!(await onSubmit(facture))) return;
 
     // Update échéancier étape
     const updatedEtapes = updateEtape(echeancier.etapes, etape.numero, {
@@ -1339,7 +1343,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       lignes: lignesAcompte,
       total_ht: montantHT, tva, total_ttc: ttc, acompte_pct: acomptePct
     };
-    await onSubmit(facture);
+    // Refus de la base : le devis reste tel quel (avant : « facturé » sans facture)
+    if (!(await onSubmit(facture))) return;
     const acompteUpdate = {
       statut: 'acompte_facture',
       acompte_pct: acomptePct,
@@ -1408,7 +1413,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       tvaParTaux, tvaDetails: tvaParTaux,
       lignes, total_ht: montantSoldeHT, tva, total_ttc: ttc
     };
-    await onSubmit(facture);
+    // Refus de la base : le devis reste tel quel (avant : « facturé » sans facture)
+    if (!(await onSubmit(facture))) return;
     const soldeUpdate = {
       statut: 'facture',
       facture_solde_id: facture.id,
@@ -1448,7 +1454,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       conditionsPaiement: sourceFacture.conditionsPaiement,
     };
 
-    await onSubmit(avoir);
+    if (!(await onSubmit(avoir))) return;
     setShowAvoirModal(false);
     setSnackbar({
       type: 'success',
@@ -2172,7 +2178,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         const numero = await generateNumero(devisData.type);
         const newDevis = await onSubmit({ ...devisData, numero });
         if (!newDevis?.id) {
-          throw new Error('Le devis n\'a pas pu etre cree. Verifiez les donnees et reessayez.');
+          return false; // refus : l'éditeur reste ouvert, DataContext a dit pourquoi
         }
         setSelected(newDevis);
         setMode('preview');
@@ -2180,12 +2186,12 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         return newDevis;
       }}
       onUpdate={async (id, devisData) => {
-        await onUpdate(id, devisData);
+        // Refus de la base : l'éditeur reste ouvert avec la saisie (DataContext a dit pourquoi et rétabli l'écran)
+        if (!(await onUpdate(id, devisData))) return false;
         setSelected(prev => prev ? { ...prev, ...devisData } : prev);
-        setDevis(prev => prev.map(d => d.id === id ? { ...d, ...devisData, updatedAt: new Date().toISOString() } : d));
         setEditingDevis(null);
         setShowDevisWizard(false);
-        showToast('Document modifié avec succès', 'success');
+        return true;
       }}
       clients={clients}
       addClient={addClient}
@@ -2209,7 +2215,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         const numero = await generateNumero(devisData.type);
         const newDevis = await onSubmit({ ...devisData, numero });
         if (!newDevis?.id) {
-          throw new Error('Le devis n\'a pas pu etre cree. Verifiez les donnees et reessayez.');
+          return false; // refus : l'éditeur reste ouvert, DataContext a dit pourquoi
         }
         setSelected(newDevis);
         setMode('preview');
@@ -2217,12 +2223,11 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         return newDevis;
       }}
       onUpdate={async (id, devisData) => {
-        await onUpdate(id, devisData);
+        if (!(await onUpdate(id, devisData))) return false;
         setSelected(prev => prev ? { ...prev, ...devisData } : prev);
-        setDevis(prev => prev.map(d => d.id === id ? { ...d, ...devisData, updatedAt: new Date().toISOString() } : d));
         setEditingDevis(null);
         setShowDevisComposer(false);
-        showToast('Document modifié avec succès', 'success');
+        return true;
       }}
       clients={clients}
       addClient={addClient}

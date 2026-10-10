@@ -4,6 +4,7 @@
  */
 
 import { logger } from '../logger';
+import { estEcritureDifferable } from '../erreursEcriture';
 
 // Renommée depuis 'batigesti-offline' le 25/07/2026 (aucun utilisateur réel à
 // l'époque, donc pas de file d'écritures hors-ligne à préserver). L'ancienne base
@@ -37,9 +38,11 @@ const openDB = () => {
  * @param {string} action - Type d'action (create, update, delete)
  * @param {string} entity - Type d'entite (client, devis, chantier, etc.)
  * @param {Object} data - Donnees de la mutation
+ * @param {string} proprietaire - Compte qui a fait l'écriture : elle ne repartira que sous ce compte
+ *   (recette du 9 oct. 2026 : une écriture de l'artisan A, déconnecté, partait sous le compte de B).
  * @returns {Promise<number>} ID de la mutation
  */
-export const queueMutation = async (action, entity, data) => {
+export const queueMutation = async (action, entity, data, proprietaire = null) => {
   try {
     const db = await openDB();
     const tx = db.transaction(STORE_NAME, 'readwrite');
@@ -49,6 +52,7 @@ export const queueMutation = async (action, entity, data) => {
       action,
       entity,
       data,
+      proprietaire,
       timestamp: Date.now(),
       status: 'pending'
     };
@@ -67,6 +71,7 @@ export const queueMutation = async (action, entity, data) => {
       action,
       entity,
       data,
+      proprietaire,
       timestamp: Date.now(),
       status: 'pending'
     };
@@ -173,7 +178,11 @@ export const retryWithBackoff = async (fn, maxAttempts = 3) => {
  * @param {Error|Object} error
  * @returns {boolean}
  */
-const isPermanentError = (error) => {
+const isPermanentError = (error) => !estEcritureDifferable(error);
+
+// Ancienne détection, gardée pour les erreurs sans statut levées hors de la couche d'écriture.
+// eslint-disable-next-line no-unused-vars
+const _ancienneDetection = (error) => {
   const errMsg = error?.message || String(error || '');
   const errStatus = error?.status || error?.statusCode || 0;
   const errCode = error?.code || '';
@@ -192,19 +201,25 @@ const isPermanentError = (error) => {
 };
 
 /**
- * Synchronise toutes les mutations en attente
- * @param {Object} handlers - Handlers pour chaque type d'entite
+ * Synchronise les mutations en attente du compte connecté.
+ * @param {Function} rejouer - (mutation) => Promise : écrit directement en base et LÈVE en cas d'échec.
+ *   Avant, le rejeu passait par les fonctions de l'écran, qui avalaient l'erreur et remettaient
+ *   l'écriture en file : le rejeu comptait « synchronisée » une écriture qui n'était pas partie,
+ *   et jetait sans un mot les tables sans « handler » (événements, mémos, paiements, échanges…).
+ * @param {Object} options - { proprietaire } : seul ce compte voit ses écritures rejouées.
  * @returns {Promise<Object>} Resultat de la synchronisation
  */
-export const syncQueue = async (handlers) => {
-  const mutations = await getPendingMutations();
+export const syncQueue = async (rejouer, { proprietaire } = {}) => {
+  const toutes = await getPendingMutations();
   const results = { success: 0, failed: 0, cleared: 0, errors: [] };
 
-  for (const mutation of mutations) {
+  for (const mutation of toutes) {
     try {
-      const handler = handlers[mutation.entity];
-      if (!handler) {
-        console.warn(`Handler non trouvé pour ${mutation.entity}, suppression`);
+      // Écriture d'un autre compte : elle attend que son propriétaire se reconnecte.
+      if (mutation.proprietaire && mutation.proprietaire !== proprietaire) continue;
+      // Écriture d'avant le marquage par compte : impossible de savoir à qui elle est, on ne la rejoue pas.
+      if (!mutation.proprietaire) {
+        console.warn(`Mutation ${mutation.id} sans compte propriétaire, suppression`);
         await removeMutation(mutation.id);
         results.cleared++;
         continue;
@@ -233,14 +248,7 @@ export const syncQueue = async (handlers) => {
       }
 
       let result;
-      const execAction = async () => {
-        switch (mutation.action) {
-          case 'create': return await handler.create?.(mutation.data);
-          case 'update': return await handler.update?.(mutation.data.id, mutation.data);
-          case 'delete': return await handler.delete?.(mutation.data.id);
-          default: return null;
-        }
-      };
+      const execAction = async () => rejouer(mutation);
 
       if (!['create', 'update', 'delete'].includes(mutation.action)) {
         console.warn(`Action sync inconnue: ${mutation.action}`);
@@ -252,8 +260,8 @@ export const syncQueue = async (handlers) => {
       // Execute with exponential backoff (1s, 2s, 4s between retries)
       result = await retryWithBackoff(execAction, 2);
 
-      // If handler silently refused (returned null/undefined), treat as cleared
-      if (result === null || result === undefined) {
+      // Rejeu sans objet (élément disparu depuis) : rien à envoyer
+      if (result === null || result === undefined || result === false) {
         console.warn(`Mutation ${mutation.id} rejetée par le handler (${mutation.entity}/${mutation.action}), suppression`);
         await removeMutation(mutation.id);
         results.cleared++;
@@ -319,12 +327,12 @@ export const clearAllMutations = async () => {
 };
 
 /**
- * Compte le nombre de mutations en attente
+ * Compte les mutations en attente du compte connecté (celles des autres comptes ne le concernent pas).
  * @returns {Promise<number>}
  */
-export const getPendingCount = async () => {
+export const getPendingCount = async (proprietaire) => {
   const mutations = await getPendingMutations();
-  return mutations.length;
+  return mutations.filter(m => !proprietaire || !m.proprietaire || m.proprietaire === proprietaire).length;
 };
 
 /**

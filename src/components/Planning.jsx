@@ -338,8 +338,11 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
     }
   };
 
-  const submit = () => {
-    if (!form.title || !form.date) return;
+  const submit = async () => {
+    if (!form.title || !form.date) {
+      showToast(!form.title ? 'Donnez un titre à l\'événement' : 'Choisissez une date', 'error');
+      return;
+    }
     // Compute real duration from endTime when custom
     const data = { ...form };
     if (data.duration === -1 && data.time && data.endTime) {
@@ -350,15 +353,21 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
     } else if (data.duration === -1) {
       data.duration = 60; // fallback
     }
-    addEvent(data);
+    const cree = await addEvent(data);
+    if (!cree) return; // refus : le formulaire reste ouvert, DataContext a dit pourquoi
     setShowAdd(false);
     setQuickAdd(null);
     setForm(emptyForm);
-    showToast('Événement créé', 'success');
   };
 
+  // Chantiers, tâches et échéances de devis / factures sont affichés ici mais vivent ailleurs : les
+  // « supprimer » d'ici ne faisait rien en annonçant « Événement supprimé ».
+  const estCalcule = (id) => /^(ch|memo|devis|facture)_/.test(String(id));
   const handleDeleteEvent = async (id) => {
-    if (id.startsWith('ch_')) return;
+    if (estCalcule(id)) {
+      showToast('Cet élément se modifie depuis sa fiche (chantier, tâche, devis ou facture)', 'info');
+      return;
+    }
     // For recurring instances, delete the original event (whole series)
     const ev = allEvents.find(e => e.id === id);
     const realId = ev?.isRecurrence ? ev.originalId : id;
@@ -366,17 +375,20 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
     const confirmed = await confirm({ title: 'Supprimer', message: msg });
     if (confirmed) {
       if (deleteEventProp) {
-        await deleteEventProp(realId);
+        if (!(await deleteEventProp(realId))) return;
       } else {
         setEvents(events.filter(e => e.id !== realId));
       }
       setShowDetail(null);
-      showToast('Événement supprimé', 'success');
     }
   };
 
-  const handleUpdateEvent = () => {
+  const handleUpdateEvent = async () => {
     if (!showDetail || showDetail.isChantier) return;
+    if (estCalcule(showDetail.id)) {
+      showToast('Cet élément se modifie depuis sa fiche (chantier, tâche, devis ou facture)', 'info');
+      return;
+    }
     const realId = showDetail.isRecurrence ? showDetail.originalId : showDetail.id;
     // Compute real duration from endTime when custom
     const data = { ...form };
@@ -389,7 +401,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
       data.duration = 60;
     }
     if (updateEventProp) {
-      updateEventProp(realId, data);
+      if (!(await updateEventProp(realId, data))) return;
     } else {
       setEvents(events.map(e => e.id === realId ? { ...e, ...data } : e));
     }

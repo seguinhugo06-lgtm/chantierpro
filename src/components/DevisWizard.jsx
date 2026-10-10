@@ -332,10 +332,13 @@ export default function DevisWizard({
     // Attempt save — do NOT close modal if save fails
     setIsSubmitting(true);
     try {
-      if (isEditMode) {
-        await onUpdate?.(initialData.id, devisData);
-      } else {
-        const result = await onSubmit?.(devisData);
+      const result = isEditMode
+        ? await onUpdate?.(initialData.id, devisData)
+        : await onSubmit?.(devisData);
+      // Refus de la base : la fenêtre reste ouverte avec la saisie (DataContext a dit pourquoi)
+      if (result === false || result === null) {
+        setErrors({ submit: 'Le document n\'a pas été enregistré.' });
+        return;
       }
       // Only clear draft and close if save succeeded
       if (!isEditMode) clearDraft();

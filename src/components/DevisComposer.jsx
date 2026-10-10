@@ -577,7 +577,8 @@ export default function DevisComposer({
       client_id: form.clientId,
       chantier_id: form.chantierId || undefined,
       date: form.date,
-      validite: form.validite,
+      // Le champ garde ce qui est tapé (vide compris : effacer puis taper 45 donnait 3045) ; 30 j si vide
+      validite: parseInt(form.validite, 10) > 0 ? parseInt(form.validite, 10) : 30,
       statut: isEditMode ? initialData.statut : 'brouillon',
       tvaRate: form.tvaDefaut,
       lignes: lignesFormatted,
@@ -816,7 +817,7 @@ export default function DevisComposer({
                   {!isFacture && (
                     <div>
                       <label className={`block text-[11px] font-semibold uppercase tracking-wide mb-1.5 ${textMuted}`}>Validité (jours)</label>
-                      <input type="number" min="1" value={form.validite} onChange={e => setForm(p => ({ ...p, validite: parseInt(e.target.value) || 30 }))}
+                      <input type="number" min="1" value={form.validite} onChange={e => setForm(p => ({ ...p, validite: e.target.value.replace(/\D/g, '') }))}
                         className={`w-full px-3 h-10 rounded-xl border text-sm ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`} />
                     </div>
                   )}

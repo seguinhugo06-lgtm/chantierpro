@@ -19,6 +19,7 @@ const GanttView = lazy(() => import('./GanttView'));
 const GarantiesDashboard = lazy(() => import('./chantiers/GarantiesDashboard'));
 import { useOnlineStatus } from '../hooks/useNetworkStatus';
 import { useConfirm, useToast } from '../context/AppContext';
+import { useData } from '../context/DataContext';
 import supabase, { isDemo } from '../supabaseClient';
 import { generateId, findDuplicateChantiers } from '../lib/utils';
 import QuickChantierModal from './QuickChantierModal';
@@ -87,6 +88,7 @@ const calculateSmartProgression = (chantier, bilan, tasksDone, tasksTotal) => {
 
 export default function Chantiers({ chantiers, addChantier, updateChantier, clients, depenses, setDepenses, pointages, setPointages, equipe, devis, ajustements, addAjustement, deleteAjustement, getChantierBilan, couleur, modeDiscret, entreprise, selectedChantier, setSelectedChantier, catalogue, deductStock, isDark, createMode, setCreateMode, setPage, memos = [], addMemo, updateMemo, deleteMemo, toggleMemo, onPlanEvent, addDevis, generateNextNumero }) {
   const { confirm } = useConfirm();
+  const { addDepense: ctxAddDepense, addPointage: ctxAddPointage, updatePointage: ctxUpdatePointage, deletePointage: ctxDeletePointage } = useData();
   const { showToast } = useToast();
   const isOnline = useOnlineStatus();
 
@@ -389,27 +391,35 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
       setTimeout(() => showToast('Toutes les tâches terminées !', 'success'), 300);
     }
   };
-  const addDepenseToChantier = () => {
+  // Écritures par DataContext (base + écran). Avant (recette du 9 oct. 2026) : setDepenses / setPointages
+  // seuls, la dépense et les heures disparaissaient au rechargement.
+  const addDepenseToChantier = async () => {
     if (!newDepense.description || !newDepense.montant) return;
     const qty = parseInt(newDepense.quantite) || 1;
-    setDepenses([...depenses, {
-      id: generateId(),
+    const creee = await ctxAddDepense({
       chantierId: view,
       description: newDepense.description + (qty > 1 ? ` (x${qty})` : ''),
-      montant: parseFloat(newDepense.montant),
+      montant: parseFloat(String(newDepense.montant).replace(',', '.')),
       categorie: newDepense.categorie,
       date: new Date().toISOString().split('T')[0]
-    }]);
+    });
+    if (!creee) return; // refus : la saisie reste, DataContext a dit pourquoi
     if (newDepense.catalogueId && deductStock) deductStock(newDepense.catalogueId, qty);
     setNewDepense({ description: '', montant: '', categorie: 'Matériaux', catalogueId: '', quantite: 1, prixUnitaire: '' });
     setShowQuickMateriau(false);
   };
   const handleAddAjustement = () => { if (!adjForm.libelle || !adjForm.montant_ht) return; addAjustement({ chantierId: view, type: showAjustement, libelle: adjForm.libelle, montant_ht: parseFloat(adjForm.montant_ht) }); setAdjForm({ libelle: '', montant_ht: '' }); setShowAjustement(null); };
-  const handleAddMO = () => { if (!moForm.employeId || !moForm.heures) { showToast('Choisissez la personne et le nombre d’heures', 'error'); return; } setPointages([...pointages, { id: generateId(), employeId: moForm.employeId, chantierId: view, date: moForm.date, heures: parseFloat(moForm.heures), note: moForm.note, manuel: true, approuve: true }]); setMoForm({ employeId: '', date: new Date().toISOString().split('T')[0], heures: '', note: '' }); setShowAddMO(false); };
-  const handleEditPointage = (id, field, value) => setPointages(pointages.map(p => p.id === id ? { ...p, [field]: field === 'heures' ? parseFloat(value) || 0 : value } : p));
+  const handleAddMO = async () => {
+    if (!moForm.employeId || !moForm.heures) { showToast('Choisissez la personne et le nombre d’heures', 'error'); return; }
+    const cree = await ctxAddPointage({ employeId: moForm.employeId, chantierId: view, date: moForm.date, heures: parseFloat(String(moForm.heures).replace(',', '.')), description: moForm.note, manuel: true, approuve: true });
+    if (!cree) return;
+    setMoForm({ employeId: '', date: new Date().toISOString().split('T')[0], heures: '', note: '' });
+    setShowAddMO(false);
+  };
+  const handleEditPointage = (id, field, value) => ctxUpdatePointage(id, { [field]: field === 'heures' ? parseFloat(String(value).replace(',', '.')) || 0 : value });
   const deletePointage = async (id) => {
     const confirmed = await confirm({ title: 'Supprimer', message: 'Supprimer ce pointage ?' });
-    if (confirmed) setPointages(pointages.filter(p => p.id !== id));
+    if (confirmed) await ctxDeletePointage(id);
   };
   const handleDeleteAjustement = async (id) => {
     const confirmed = await confirm({ title: 'Supprimer', message: 'Supprimer cet ajustement ?' });

@@ -348,13 +348,15 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
       });
     });
     // Import in batches with progress animation
+    let importes = 0;
     for (let i = 0; i < totalArticles.length; i++) {
       const item = totalArticles[i];
       if (addCatalogueItemProp) {
-        await addCatalogueItemProp(item);
+        if (!(await addCatalogueItemProp(item))) break; // refus : DataContext l'a dit, on s'arrête
       } else {
         setCatalogue(prev => [...prev, { id: generateId(), ...item }]);
       }
+      importes++;
       if (i % 3 === 0 || i === totalArticles.length - 1) {
         setImportProgress(Math.round(((i + 1) / totalArticles.length) * 100));
       }
@@ -362,7 +364,8 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
     setOnboardingStep('done');
     localStorage.setItem('cp_catalogue_onboarding_dismissed', 'true');
     setOnboardingDismissed(true);
-    showToast(`${totalArticles.length} articles importés depuis le Référentiel BTP`, 'success');
+    if (importes === totalArticles.length) showToast(`${importes} articles importés depuis le Référentiel BTP`, 'success');
+    else showToast(`${importes} articles importés sur ${totalArticles.length} : l'import s'est arrêté`, 'error');
     setTimeout(() => setOnboardingStep(null), 2000);
   }, [addCatalogueItemProp, setCatalogue, coefficients, showToast]);
 
@@ -522,7 +525,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
       stock_actuel: undefined, stock_seuil_alerte: undefined,
     };
     if (addCatalogueItemProp) {
-      await addCatalogueItemProp(newItem);
+      if (!(await addCatalogueItemProp(newItem))) return;
     } else {
       setCatalogue([...catalogue, { id: generateId(), ...newItem }]);
     }
@@ -553,8 +556,9 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
       prix: prixVente, prixAchat,
       reference: form.reference || undefined,
       description: form.description || undefined,
-      tva_rate: parseFloat(form.tva_rate) || 20,
-      tva: parseFloat(form.tva_rate) || 20,
+      // 0 % est un vrai taux (autoliquidation, franchise) : `|| 20` le remplaçait par 20 %
+      tva_rate: Number.isFinite(parseFloat(String(form.tva_rate).replace(',', '.'))) ? parseFloat(String(form.tva_rate).replace(',', '.')) : 20,
+      tva: Number.isFinite(parseFloat(String(form.tva_rate).replace(',', '.'))) ? parseFloat(String(form.tva_rate).replace(',', '.')) : 20,
       favori: form.favori || false,
       coefAuto: form.coefAuto || false,
       stock_actuel: form.stock_actuel !== '' ? parseInt(form.stock_actuel) : undefined,
@@ -566,26 +570,26 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
       if (old && (old.prix !== prixVente || old.prixAchat !== prixAchat)) {
         setPriceHistory(prev => [...prev, { id: generateId(), articleId: editId, prixVente: old.prix, prixAchat: old.prixAchat, date: new Date().toISOString() }]);
       }
+      // Refus de la base : le formulaire reste ouvert avec la saisie (DataContext a dit pourquoi)
       if (updateCatalogueItemProp) {
-        await updateCatalogueItemProp(editId, data);
+        if (!(await updateCatalogueItemProp(editId, data))) return;
       } else {
         setCatalogue(catalogue.map(c => c.id === editId ? { id: editId, ...data } : c));
       }
       showToast('Article modifié', 'success');
     } else {
       if (addCatalogueItemProp) {
-        await addCatalogueItemProp(data);
+        if (!(await addCatalogueItemProp(data))) return;
       } else {
         setCatalogue([...catalogue, { id: generateId(), ...data }]);
       }
-      showToast('Article ajouté', 'success');
     }
     setShow(false); setEditId(null);
     setForm({ nom: '', reference: '', description: '', prix: '', prixAchat: '', unite: 'u', categorie: 'Autre', tva_rate: '20', favori: false, stock_actuel: '', stock_seuil_alerte: '', fournisseur: '', coefAuto: true });
   };
 
   const startEdit = (item) => {
-    setForm({ nom: item.nom || '', reference: item.reference || '', description: item.description || '', prix: item.prix?.toString() || '', prixAchat: item.prixAchat?.toString() || '', unite: item.unite || 'u', categorie: item.categorie || 'Autre', tva_rate: (item.tva_rate || item.tva || 20).toString(), favori: item.favori || false, stock_actuel: item.stock_actuel?.toString() ?? '', stock_seuil_alerte: item.stock_seuil_alerte?.toString() ?? '', fournisseur: '', coefAuto: item.coefAuto || false });
+    setForm({ nom: item.nom || '', reference: item.reference || '', description: item.description || '', prix: item.prix?.toString() || '', prixAchat: item.prixAchat?.toString() || '', unite: item.unite || 'u', categorie: item.categorie || 'Autre', tva_rate: String(item.tva_rate ?? item.tva ?? 20), favori: item.favori || false, stock_actuel: item.stock_actuel?.toString() ?? '', stock_seuil_alerte: item.stock_seuil_alerte?.toString() ?? '', fournisseur: '', coefAuto: item.coefAuto || false });
     setEditId(item.id); setShow(true); setFormErrors({});
   };
 
@@ -594,7 +598,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
     if (!item) return;
     const newFavori = !item.favori;
     if (updateCatalogueItemProp) {
-      await updateCatalogueItemProp(id, { ...item, favori: newFavori });
+      if (!(await updateCatalogueItemProp(id, { favori: newFavori }))) return;
     } else {
       setCatalogue(catalogue.map(c => c.id === id ? { ...c, favori: newFavori } : c));
     }
@@ -605,11 +609,11 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
     const confirmed = await confirm({ title: 'Supprimer', message: 'Supprimer cet article du catalogue ?' });
     if (confirmed) {
       if (deleteCatalogueItemProp) {
-        await deleteCatalogueItemProp(id);
+        await deleteCatalogueItemProp(id); // l'enveloppe d'App.jsx dit « supprimé » si la base a confirmé
       } else {
         setCatalogue(catalogue.filter(c => c.id !== id));
+        showToast('Article supprimé', 'info');
       }
-      showToast('Article supprimé', 'info');
     }
   };
 

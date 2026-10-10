@@ -198,14 +198,19 @@ export const FIELD_MAPPINGS = {
         type: item.type,
         statut,
         date: item.date,
-        date_validite: item.date_validite,
+        // Validité choisie (avant : jamais envoyée, retour à 30 j au rechargement)
+        validite_jours: Number.isFinite(Number(item.validite)) && Number(item.validite) > 0 ? Number(item.validite) : null,
+        // Recalculée à chaque enregistrement : changer la date ou la validité la met à jour
+        date_validite: (item.date && Number(item.validite) > 0) ? ajouterJours(item.date, Number(item.validite)) : (item.date_validite || null),
         date_echeance: item.date_echeance || null,
+        date_envoi: item.date_envoi || null,
+        notes: item.notes ?? null,
         objet: item.objet || item.titre,
         lignes: JSON.stringify(allLignes),
         sections: JSON.stringify(item.sections || []),
         conditions: item.conditions,
         remise_globale: item.remise || 0,
-        tva_rate: item.tvaRate || 10,
+        tva_rate: item.tvaRate ?? 10,
         tva_details: item.tvaParTaux ? JSON.stringify(item.tvaParTaux) : (item.tvaDetails ? JSON.stringify(item.tvaDetails) : null),
         total_ht: item.total_ht || 0,
         total_tva: item.tva || 0,
@@ -225,13 +230,14 @@ export const FIELD_MAPPINGS = {
         facture_solde_id: item.facture_solde_id || null,
         montant_facture: item.montant_facture || 0,
         montant_paye: item.montant_paye || 0,
-        // Avoir-specific fields (columns may not exist yet — excluded to prevent schema errors)
-        // avoir_source_id: item.avoir_source_id || null,
-        // avoir_type: item.avoir_type || null,
-        // avoir_motif: item.avoir_motif || null,
-        // avoir_motif_detail: item.avoir_motif_detail || null,
-        // Situation-specific fields (column may not exist yet)
-        // situation_numero: item.situation_numero || null,
+        // Avoir : facture d'origine et motif (colonnes de la migration 080). Avant : jamais envoyés,
+        // l'avoir relu imprimait « relatif à la facture n° N/A du N/A ».
+        avoir_source_id: item.avoir_source_id || null,
+        avoir_type: item.avoir_type || null,
+        avoir_motif: item.avoir_motif || null,
+        avoir_motif_detail: item.avoir_motif_detail || null,
+        situation_id: item.situation_id || null,
+        situation_numero: item.situation_numero || null,
         // Payment tracking (date_paiement + mode_paiement exist in DB, reference_paiement is local-only)
         date_paiement: item.date_paiement || null,
         mode_paiement: item.mode_paiement || null,
@@ -248,15 +254,18 @@ export const FIELD_MAPPINGS = {
       type: row.type || 'devis',
       statut: row.statut || 'brouillon',
       date: row.date,
+      validite: row.validite_jours || null,
       date_validite: row.date_validite,
       date_echeance: row.date_echeance || null,
+      date_envoi: row.date_envoi || null,
+      notes: row.notes || '',
       objet: row.objet,
       titre: row.objet,
       lignes: typeof row.lignes === 'string' ? JSON.parse(row.lignes || '[]') : (row.lignes || []),
       sections: typeof row.sections === 'string' ? JSON.parse(row.sections || '[]') : (row.sections || []),
       conditions: row.conditions,
       remise: row.remise_globale || 0,
-      tvaRate: row.tva_rate || 10,
+      tvaRate: row.tva_rate ?? 10,
       tvaParTaux: row.tva_details ? (typeof row.tva_details === 'string' ? JSON.parse(row.tva_details) : row.tva_details) : null,
       tvaDetails: row.tva_details ? (typeof row.tva_details === 'string' ? JSON.parse(row.tva_details) : row.tva_details) : null,
       total_ht: row.total_ht || 0,
@@ -283,6 +292,7 @@ export const FIELD_MAPPINGS = {
       avoir_motif: row.avoir_motif || null,
       avoir_motif_detail: row.avoir_motif_detail || null,
       // Situation-specific fields
+      situation_id: row.situation_id || null,
       situation_numero: row.situation_numero || null,
       // Payment tracking
       date_paiement: row.date_paiement || null,
@@ -344,6 +354,17 @@ export const FIELD_MAPPINGS = {
       certifications: item.certifications || '',
       notes: item.notes || '',
       actif: item.actif !== false,
+      // Sous-traitant (avant : non envoyés, il réapparaissait « Employé » sans SIRET ni décennale)
+      type: item.type || 'employe',
+      entreprise: item.entreprise || null,
+      specialite: item.specialite || null,
+      siret: item.siret || null,
+      decennale_assureur: item.decennale_assureur || null,
+      decennale_numero: item.decennale_numero || null,
+      decennale_expiration: item.decennale_expiration || null,
+      urssaf_date: item.urssaf_date || null,
+      tarif_type: item.tarif_type || null,
+      tarif_forfait: item.tarif_forfait ?? null,
     }),
     fromSupabase: (row) => ({
       id: row.id,
@@ -361,6 +382,16 @@ export const FIELD_MAPPINGS = {
       certifications: row.certifications || '',
       notes: row.notes || '',
       actif: row.actif,
+      type: row.type || 'employe',
+      entreprise: row.entreprise || '',
+      specialite: row.specialite || '',
+      siret: row.siret || '',
+      decennale_assureur: row.decennale_assureur || '',
+      decennale_numero: row.decennale_numero || '',
+      decennale_expiration: row.decennale_expiration || '',
+      urssaf_date: row.urssaf_date || '',
+      tarif_type: row.tarif_type || 'horaire',
+      tarif_forfait: row.tarif_forfait ?? null,
       createdAt: row.created_at,
     }),
   },
@@ -368,10 +399,15 @@ export const FIELD_MAPPINGS = {
     toSupabase: (item) => ({
       id: item.id,
       employe_id: item.employeId,
-      chantier_id: item.chantierId,
+      // « Sans chantier » vaut '' dans les formulaires : refusé par la base (UUID invalide), pointage perdu
+      chantier_id: item.chantierId || null,
       date: item.date,
       heures: item.heures,
-      description: item.description,
+      description: item.description || item.note || null,
+      approuve: !!item.approuve,
+      verrouille: !!item.verrouille,
+      manuel: !!item.manuel,
+      signe_le: item.signedAt || item.signe_le || null,
     }),
     fromSupabase: (row) => ({
       id: row.id,
@@ -380,6 +416,11 @@ export const FIELD_MAPPINGS = {
       date: row.date,
       heures: row.heures,
       description: row.description,
+      note: row.description || '',
+      approuve: !!row.approuve,
+      verrouille: !!row.verrouille,
+      manuel: !!row.manuel,
+      signedAt: row.signe_le || null,
       createdAt: row.created_at,
     }),
   },
@@ -390,9 +431,11 @@ export const FIELD_MAPPINGS = {
       designation: item.nom || item.designation,
       description: item.description,
       unite: item.unite,
-      prix_unitaire_ht: item.prixUnitaire || item.prix_unitaire_ht || item.prix,
+      // `prix` est le champ que le formulaire modifie : il passe en premier (avant, l'ancien
+      // `prixUnitaire` gagnait et la modification n'arrivait jamais en base).
+      prix_unitaire_ht: item.prix ?? item.prixUnitaire ?? item.prix_unitaire_ht,
       prix_achat: item.prixAchat,
-      tva_rate: item.tva || item.tva_rate || 20,
+      tva_rate: item.tva ?? item.tva_rate ?? 20,
       categorie: item.categorie,
       favori: item.favori || false,
       actif: item.actif !== false,
@@ -410,8 +453,8 @@ export const FIELD_MAPPINGS = {
       prixUnitaire: row.prix_unitaire_ht,
       prix_unitaire_ht: row.prix_unitaire_ht,
       prixAchat: row.prix_achat,
-      tva: row.tva_rate || 20,
-      tva_rate: row.tva_rate || 20,
+      tva: row.tva_rate ?? 20,
+      tva_rate: row.tva_rate ?? 20,
       categorie: row.categorie,
       favori: row.favori || false,
       actif: row.actif,
@@ -680,25 +723,25 @@ export const FIELD_MAPPINGS = {
     }),
   },
 
-  // Consolidated: planning events now use the `events` table
+  // Table `planning_events` (et non `events`, qui n'a ni récurrence ni durée et refuse les types de l'app).
   planning_events: {
     toSupabase: (item) => {
-      // Build start_date from date + time
-      const startDate = item.time
-        ? `${item.date}T${item.time}:00`
-        : `${item.date}T00:00:00`;
-      // Build end_date from duration or dateEnd
+      // Les instants sont calculés à l'heure de l'appareil puis envoyés avec leur fuseau : sans fuseau,
+      // la base lisait « 09:00 » en UTC et le rendez-vous revenait à 11:00 (ou la veille outre-mer).
+      const instant = (jour, heure) => (jour ? new Date(`${jour}T${heure || '00:00'}:00`).toISOString() : null);
+      const startDate = instant(item.date, item.time);
       let endDate = null;
       if (item.dateEnd) {
-        endDate = item.time ? `${item.dateEnd}T${item.time}:00` : `${item.dateEnd}T23:59:59`;
-      } else if (item.time && item.duration && item.duration > 0) {
-        const start = new Date(startDate);
-        start.setMinutes(start.getMinutes() + (item.duration || 60));
-        endDate = start.toISOString();
+        endDate = instant(item.dateEnd, item.time || '23:59');
+      } else if (startDate && item.time && item.duration > 0) {
+        endDate = new Date(new Date(startDate).getTime() + item.duration * 60000).toISOString();
       }
       return {
         id: item.id,
         title: item.title,
+        // Le jour et l'heure tels que l'artisan les a choisis : c'est ce qu'on relit
+        date: item.date || null,
+        time: item.time || null,
         start_date: startDate,
         end_date: endDate,
         all_day: !item.time,
@@ -710,19 +753,24 @@ export const FIELD_MAPPINGS = {
         duration_minutes: item.duration || null,
         recurrence: item.recurrence === 'never' ? null : (item.recurrence || null),
         recurrence_end_date: item.recurrenceEnd || item.recurrence_end || null,
-        recurrence_days: item.recurrenceDays || null,
-        rappel: item.rappel || null,
+        recurrence_days: Array.isArray(item.recurrenceDays) ? JSON.stringify(item.recurrenceDays) : (item.recurrenceDays || null),
+        rappel: parseInt(item.rappel, 10) || null,
         status: item.status || 'planned',
         location: item.location || null,
         color: item.color || null,
       };
     },
     fromSupabase: (row) => {
-      // Extract date and time from start_date timestamp
+      // Jour et heure locaux : colonnes date / time d'abord, sinon l'instant relu à l'heure de l'appareil
+      const jourLocal = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
       const startDate = row.start_date ? new Date(row.start_date) : null;
-      const date = startDate ? startDate.toISOString().split('T')[0] : row.date || '';
-      const time = (!row.all_day && startDate) ? startDate.toTimeString().slice(0, 5) : '';
-      const endDate = row.end_date ? new Date(row.end_date).toISOString().split('T')[0] : '';
+      const date = row.date || (startDate ? jourLocal(startDate) : '');
+      const time = row.time ? String(row.time).slice(0, 5) : ((!row.all_day && startDate) ? startDate.toTimeString().slice(0, 5) : '');
+      const endDate = row.end_date ? jourLocal(new Date(row.end_date)) : '';
+      let recurrenceDays = row.recurrence_days || null;
+      if (typeof recurrenceDays === 'string') {
+        try { recurrenceDays = JSON.parse(recurrenceDays); } catch { /* ancien format texte : gardé tel quel */ }
+      }
       return {
         id: row.id,
         title: row.title,
@@ -737,8 +785,8 @@ export const FIELD_MAPPINGS = {
         description: row.description || '',
         duration: row.duration_minutes || 60,
         recurrence: row.recurrence || 'never',
-        recurrenceEnd: row.recurrence_end_date || '',
-        recurrenceDays: row.recurrence_days || null,
+        recurrenceEnd: row.recurrence_end_date ? String(row.recurrence_end_date).slice(0, 10) : '',
+        recurrenceDays,
         rappel: row.rappel || '',
         status: row.status || 'planned',
         location: row.location || '',
@@ -812,8 +860,9 @@ export const FIELD_MAPPINGS = {
     toSupabase: (item) => ({
       id: item.id,
       chantier_id: item.chantierId || item.chantier_id || null,
-      description: item.description || item.label || '',
-      montant: item.montant || 0,
+      // La fiche chantier saisit `libelle` et `montant_ht` : ils étaient ignorés (0 €, sans libellé)
+      description: item.description || item.libelle || item.label || '',
+      montant: item.montant ?? item.montant_ht ?? 0,
       type: item.type || 'ajustement',
       date: item.date || (item.createdAt ? item.createdAt.slice(0, 10) : null),
     }),
@@ -823,7 +872,9 @@ export const FIELD_MAPPINGS = {
       chantier_id: row.chantier_id,
       description: row.description,
       label: row.description,
+      libelle: row.description,
       montant: row.montant ? parseFloat(row.montant) : 0,
+      montant_ht: row.montant ? parseFloat(row.montant) : 0,
       type: row.type || 'ajustement',
       date: row.date,
       createdAt: row.created_at,
@@ -1095,7 +1146,7 @@ export async function loadAllData(userId, orgId, entrepriseId, onCore) {
       scopeToOrg(supabase.from('tresorerie_settings').select('*'), orgId, userId).maybeSingle().then(r => r, () => ({ data: null })),
       scopeToOrg(supabase.from('reglements').select('*'), orgId, userId).order('date_reglement', { ascending: false }).then(r => r, () => ({ data: [] })),
       scopeToOrg(supabase.from('tresorerie_mouvements').select('*'), orgId, userId).order('date', { ascending: false }).then(r => r, () => ({ data: [] })),
-      scopeToOrg(supabase.from('events').select('*'), orgId, userId).order('start_date', { ascending: true }).then(r => r, (e) => ({ data: [], error: { message: e?.message || String(e) } })),
+      scopeToOrg(supabase.from('planning_events').select('*'), orgId, userId).order('start_date', { ascending: true }).then(r => r, (e) => ({ data: [], error: { message: e?.message || String(e) } })),
       scopeToOrg(supabase.from('paiements').select('*'), orgId, userId).order('created_at', { ascending: false }).then(r => r, (e) => ({ data: [], error: { message: e?.message || String(e) } })),
       scopeToOrg(supabase.from('echanges').select('*'), orgId, userId).order('created_at', { ascending: false }).then(r => r, () => ({ data: [] })),
       scopeToOrg(supabase.from('ajustements').select('*'), orgId, userId).order('created_at', { ascending: false }).then(r => r, () => ({ data: [] })),
@@ -1291,6 +1342,14 @@ function extractBadColumn(msg) {
   return null;
 }
 
+/** « 2026-10-10 » + 30 → « 2026-11-09 », sans passer par le fuseau de l'appareil. */
+function ajouterJours(dateTexte, jours) {
+  const [a, m, j] = String(dateTexte).slice(0, 10).split('-').map(Number);
+  if (!a || !m || !j) return null;
+  const d = new Date(Date.UTC(a, m - 1, j + jours));
+  return d.toISOString().slice(0, 10);
+}
+
 /**
  * Erreur d'écriture en base, avec ce qu'il faut pour décider quoi en faire : le statut HTTP
  * (0 = pas de réseau) et le code PostgREST / PostgreSQL. Sans eux, l'app ne savait pas
@@ -1418,10 +1477,8 @@ async function writeWithColumnRetry(table, mapping, supabaseData, runQuery) {
 export async function saveItem(table, item, userId, orgId) {
   if (isDemo || !supabase || !userId) return item;
   const mapping = FIELD_MAPPINGS[table];
-  if (!mapping) {
-    console.warn(`No mapping for table: ${table}`);
-    return item;
-  }
+  // Sans correspondance, rien n'est écrit : le dire (avant, l'élément était rendu comme enregistré).
+  if (!mapping) throw erreurEcriture(table, { code: 'SCHEMA', message: `aucune correspondance pour ${table}` }, 400);
   const payload = buildSupabasePayload(mapping, item, userId, orgId);
   const saved = await writeWithColumnRetry(table, mapping, payload, (d) =>
     supabase.from(table).upsert(d, { onConflict: 'id' }).select().single()
@@ -1437,10 +1494,7 @@ export async function saveItem(table, item, userId, orgId) {
 export async function updateItem(table, id, item, userId, orgId) {
   if (isDemo || !supabase || !userId) return item;
   const mapping = FIELD_MAPPINGS[table];
-  if (!mapping) {
-    console.warn(`No mapping for table: ${table}`);
-    return item;
-  }
+  if (!mapping) throw erreurEcriture(table, { code: 'SCHEMA', message: `aucune correspondance pour ${table}` }, 400);
   const payload = buildSupabasePayload(mapping, item, userId, orgId);
   delete payload.id; // id is used by the .eq() filter, not written
   const saved = await writeWithColumnRetry(table, mapping, payload, (d) =>

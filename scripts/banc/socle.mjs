@@ -167,6 +167,11 @@ export const SCHEMA = `
     organization_id UUID REFERENCES organizations(id), objet TEXT);
   CREATE TABLE entreprise (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), user_id UUID REFERENCES auth.users(id),
     organization_id UUID REFERENCES organizations(id), nom TEXT);
+  -- Pointages et équipe, colonnes de production relevées le 10 oct. 2026 (080 y ajoute validation, verrou, assureur).
+  CREATE TABLE equipe (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    organization_id UUID REFERENCES organizations(id), nom TEXT NOT NULL, type TEXT, siret TEXT, decennale_numero TEXT);
+  CREATE TABLE pointages (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    organization_id UUID REFERENCES organizations(id), employe_id UUID, chantier_id UUID, date DATE, heures NUMERIC NOT NULL, description TEXT);
   CREATE TABLE payment_links (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), user_id UUID REFERENCES auth.users(id), token TEXT);
   ALTER TABLE payment_links ENABLE ROW LEVEL SECURITY;
   CREATE POLICY "Users manage own payment_links" ON payment_links FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);

@@ -12,6 +12,7 @@ import {
   MessageSquare, Send, Paperclip, Image, Hash, AtSign, Pin, ChevronUp, Activity, FileText, Cake
 } from 'lucide-react';
 import { useConfirm, useToast } from '../context/AppContext';
+import { useData } from '../context/DataContext';
 import { generateId } from '../lib/utils';
 import { useFormValidation, employeeSchema, email as emailValidator, phone as phoneValidator } from '../lib/validation';
 import { usePermissions } from '../hooks/usePermissions';
@@ -65,6 +66,19 @@ const formatLocalDate = (dateObj) => {
 };
 
 export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp, updateEmployee: updateEmployeeProp, deleteEmployee: deleteEmployeeProp, pointages, setPointages, addPointage: addPointageProp, chantiers, planningEvents = [], couleur, isDark, modeDiscret, setPage }) {
+  // Toute écriture de pointage passe par DataContext (base + écran). Avant (recette du 9 oct. 2026) :
+  // « Pointer », l'affectation, la validation et le verrouillage ne touchaient que l'écran.
+  const { addPointage: ctxAddPointage, updatePointage: ctxUpdatePointage, deletePointage: ctxDeletePointage } = useData();
+  const ajouterPointage = addPointageProp || ctxAddPointage;
+  // Plusieurs modifications : on s'arrête au premier refus et on dit combien sont passées.
+  const modifierPointages = async (ids, changement) => {
+    let faits = 0;
+    for (const id of ids) {
+      if (!(await ctxUpdatePointage(id, changement))) break;
+      faits++;
+    }
+    return faits;
+  };
   const { confirm } = useConfirm();
   const { showToast } = useToast();
 
@@ -444,12 +458,9 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
         verrouille: false,
         description: note || ''
       };
-      if (addPointageProp) {
-        await addPointageProp(pointageData);
-      } else {
-        setPointages([...pointages, { id: generateId(), ...pointageData, note: note || '' }]);
+      if (await ajouterPointage(pointageData)) {
+        showToast(`${Math.round(heures * 10) / 10}h enregistrées`, 'success');
       }
-      showToast(`${Math.round(heures * 10) / 10}h enregistrées`, 'success');
     }
 
     setChrono({ running: false, start: null, employeId: '', chantierId: '', paused: false, pausedAt: null, totalPauseTime: 0 });
@@ -463,11 +474,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
       return;
     }
     const pointageData = { ...pForm, heures: parseFloat(pForm.heures), approuve: false, manuel: true, verrouille: false, description: pForm.note || '' };
-    if (addPointageProp) {
-      await addPointageProp(pointageData);
-    } else {
-      setPointages([...pointages, { id: generateId(), ...pointageData }]);
-    }
+    if (!(await ajouterPointage(pointageData))) return; // refus : la saisie reste, DataContext a dit pourquoi
     setPForm({ employeId: '', chantierId: '', date: formatLocalDate(new Date()), heures: '', note: '' });
     showToast('Pointage ajouté', 'success');
   };
@@ -475,22 +482,9 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
   // Bulk time entry
   const addBulkPointages = async () => {
     if (!bulkForm.chantierId || bulkForm.selectedEmployees.length === 0 || !bulkForm.heures) return;
-    if (addPointageProp) {
-      for (const empId of bulkForm.selectedEmployees) {
-        await addPointageProp({
-          employeId: empId,
-          chantierId: bulkForm.chantierId,
-          date: bulkForm.date,
-          heures: parseFloat(bulkForm.heures),
-          approuve: false,
-          manuel: true,
-          verrouille: false,
-          description: 'Saisie groupée'
-        });
-      }
-    } else {
-      const newPointages = bulkForm.selectedEmployees.map(empId => ({
-        id: generateId(),
+    let ajoutes = 0;
+    for (const empId of bulkForm.selectedEmployees) {
+      const cree = await ajouterPointage({
         employeId: empId,
         chantierId: bulkForm.chantierId,
         date: bulkForm.date,
@@ -498,13 +492,15 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
         approuve: false,
         manuel: true,
         verrouille: false,
-        note: 'Saisie groupée'
-      }));
-      setPointages([...pointages, ...newPointages]);
+        description: 'Saisie groupée'
+      });
+      if (!cree) break;
+      ajoutes++;
     }
+    if (ajoutes === 0) return;
     setShowBulkEntry(false);
     setBulkForm({ chantierId: '', date: formatLocalDate(new Date()), heures: '8', selectedEmployees: [] });
-    showToast(`${bulkForm.selectedEmployees.length} pointages ajoutés`, 'success');
+    showToast(`${ajoutes} pointage${ajoutes > 1 ? 's' : ''} ajouté${ajoutes > 1 ? 's' : ''}`, ajoutes === bulkForm.selectedEmployees.length ? 'success' : 'error');
   };
 
   const toggleBulkEmployee = (empId) => {
@@ -523,16 +519,16 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
     }));
   };
 
-  const approuverPointage = (id) => setPointages(pointages.map(p => p.id === id ? { ...p, approuve: true } : p));
-  const approuverTout = () => {
+  const approuverPointage = (id) => ctxUpdatePointage(id, { approuve: true });
+  const approuverTout = async () => {
     const ids = weekPointages.filter(p => !p.verrouille && !p.approuve).map(p => p.id);
-    setPointages(pointages.map(p => ids.includes(p.id) ? { ...p, approuve: true } : p));
-    showToast(`${ids.length} pointages validés`, 'success');
+    const faits = await modifierPointages(ids, { approuve: true });
+    if (faits > 0) showToast(`${faits} pointage${faits > 1 ? 's' : ''} validé${faits > 1 ? 's' : ''}`, faits === ids.length ? 'success' : 'error');
   };
 
   const rejeterPointage = async (id) => {
     const confirmed = await confirm({ title: 'Supprimer', message: 'Supprimer ce pointage ?' });
-    if (confirmed) setPointages(pointages.filter(p => p.id !== id));
+    if (confirmed) await ctxDeletePointage(id);
   };
 
   const validerSemaine = async () => {
@@ -543,15 +539,19 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
     });
     if (!confirmed) return;
     const ids = weekPointages.map(p => p.id);
-    setPointages(pointages.map(p => ids.includes(p.id) ? { ...p, approuve: true, verrouille: true } : p));
-    showToast('Semaine validée et verrouillée', 'success');
+    if (ids.length === 0) {
+      showToast('Aucun pointage cette semaine : rien à verrouiller', 'info');
+      return;
+    }
+    const faits = await modifierPointages(ids, { approuve: true, verrouille: true });
+    if (faits === ids.length) showToast('Semaine validée et verrouillée', 'success');
+    else if (faits > 0) showToast(`${faits} pointage${faits > 1 ? 's' : ''} sur ${ids.length} verrouillé${faits > 1 ? 's' : ''}`, 'error');
   };
 
   const updatePointage = (id, field, value) => {
-    setPointages(pointages.map(p => {
-      if (p.id !== id || p.verrouille) return p;
-      return { ...p, [field]: field === 'heures' ? parseFloat(value) || 0 : value };
-    }));
+    const p = pointages.find(x => x.id === id);
+    if (!p || p.verrouille) return;
+    ctxUpdatePointage(id, { [field]: field === 'heures' ? parseFloat(String(value).replace(',', '.')) || 0 : value });
   };
 
   const addEmploye = async () => {
@@ -577,20 +577,20 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
       tarif_type: form.tarif_type || 'horaire',
       tarif_forfait: form.tarif_forfait ? parseFloat(form.tarif_forfait) : null,
     };
+    // Refus de la base : le formulaire reste ouvert avec la saisie (DataContext a dit pourquoi).
     if (editId) {
       if (updateEmployeeProp) {
-        await updateEmployeeProp(editId, data);
+        if (!(await updateEmployeeProp(editId, data))) return;
       } else {
         setEquipe(equipe.map(e => e.id === editId ? { id: editId, ...data } : e));
       }
       showToast(isSousTraitants ? 'Sous-traitant modifié' : 'Employé modifié', 'success');
     } else {
       if (addEmployeeProp) {
-        await addEmployeeProp(data);
+        if (!(await addEmployeeProp(data))) return;
       } else {
         setEquipe([...equipe, { id: generateId(), ...data }]);
       }
-      showToast(isSousTraitants ? 'Sous-traitant ajouté' : 'Employé ajouté', 'success');
     }
     setShowAdd(false);
     setEditId(null);
@@ -631,11 +631,11 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
     const confirmed = await confirm({ title: 'Supprimer', message: `Supprimer ${isST ? 'ce sous-traitant' : 'cet employé'} ?` });
     if (confirmed) {
       if (deleteEmployeeProp) {
-        await deleteEmployeeProp(id);
+        if (!(await deleteEmployeeProp(id))) return;
       } else {
         setEquipe(equipe.filter(e => e.id !== id));
+        showToast(isST ? 'Sous-traitant supprimé' : 'Employé supprimé', 'success');
       }
-      showToast(isST ? 'Sous-traitant supprimé' : 'Employé supprimé', 'success');
     }
   };
 
@@ -800,7 +800,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
     }
   }, []);
 
-  const saveSignature = useCallback(() => {
+  const saveSignature = useCallback(async () => {
     if (!signatureData || !signatureModal.employeId) return;
     const weekKey = formatLocalDate(weekStart);
     const sigKey = `${signatureModal.employeId}_${weekKey}`;
@@ -813,14 +813,17 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
         employeId: signatureModal.employeId
       }
     }));
-    // Auto-approve pointages signed
-    setPointages(prev => prev.map(p =>
-      signatureModal.pointageIds.includes(p.id) ? { ...p, approuve: true, signedAt: new Date().toISOString() } : p
-    ));
+    // Les pointages signés sont validés, en base
+    const ids = signatureModal.pointageIds;
     setSignatureModal({ open: false, pointageIds: [], employeId: null });
     setSignatureData(null);
-    showToast('Signature enregistrée — pointages validés', 'success');
-  }, [signatureData, signatureModal, weekStart, setPointages, showToast]);
+    let faits = 0;
+    for (const id of ids) {
+      if (!(await ctxUpdatePointage(id, { approuve: true, signedAt: new Date().toISOString() }))) break;
+      faits++;
+    }
+    if (faits === ids.length) showToast('Signature enregistrée — pointages validés', 'success');
+  }, [signatureData, signatureModal, weekStart, ctxUpdatePointage, showToast]);
 
   const getEmployeeWeekSignature = useCallback((empId) => {
     const weekKey = formatLocalDate(weekStart);
@@ -3497,7 +3500,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                     Annuler
                   </button>
                   <button
-                    onClick={() => {
+                    onClick={async () => {
                       if (!pointerForm.employeId || !pointerForm.chantierId || !pointerForm.heures) {
                         showToast('Remplissez tous les champs obligatoires', 'error');
                         return;
@@ -3507,19 +3510,20 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                         showToast('Pointage déjà existant pour cet employé/chantier/date', 'error');
                         return;
                       }
-                      setPointages([...pointages, {
-                        id: generateId(),
+                      const heures = parseFloat(String(pointerForm.heures).replace(',', '.'));
+                      const cree = await ajouterPointage({
                         employeId: pointerForm.employeId,
                         chantierId: pointerForm.chantierId,
                         date: pointerForm.date,
-                        heures: parseFloat(pointerForm.heures),
+                        heures,
                         approuve: false,
                         manuel: true,
                         verrouille: false,
-                        note: 'Pointage rapide'
-                      }]);
+                        description: 'Pointage rapide'
+                      });
+                      if (!cree) return;
                       const emp = equipe.find(e => e.id === pointerForm.employeId);
-                      showToast(`${parseFloat(pointerForm.heures)}h ajoutées pour ${emp?.prenom || emp?.nom || 'employé'}`, 'success');
+                      showToast(`${heures} h ajoutées pour ${emp?.prenom || emp?.nom || 'employé'}`, 'success');
                       setShowPointerModal(false);
                     }}
                     disabled={!pointerForm.employeId || !pointerForm.chantierId || !pointerForm.heures}
@@ -4020,7 +4024,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
               };
 
               // Quick assign function
-              const quickAssign = (empId, day, chantierId) => {
+              const quickAssign = async (empId, day, chantierId) => {
                 const dayStr = formatLocalDate(day);
                 // Check if already assigned
                 const existing = pointages.find(p => p.employeId === empId && p.date === dayStr && p.chantierId === chantierId);
@@ -4028,8 +4032,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                   showToast('Déjà affecté à ce chantier ce jour', 'error');
                   return;
                 }
-                setPointages([...pointages, {
-                  id: generateId(),
+                const cree = await ajouterPointage({
                   employeId: empId,
                   chantierId: chantierId,
                   date: dayStr,
@@ -4037,14 +4040,13 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                   approuve: false,
                   manuel: true,
                   verrouille: false,
-                  note: 'Affectation planning'
-                }]);
-                showToast('Affectation ajoutée (8h)', 'success');
+                  description: 'Affectation planning'
+                });
+                if (cree) showToast('Affectation ajoutée (8 h)', 'success');
               };
 
-              const removeAssignment = (pointageId) => {
-                setPointages(pointages.filter(p => p.id !== pointageId));
-                showToast('Affectation retirée', 'success');
+              const removeAssignment = async (pointageId) => {
+                if (await ctxDeletePointage(pointageId)) showToast('Affectation retirée', 'success');
               };
 
               return (

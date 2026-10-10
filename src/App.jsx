@@ -152,6 +152,7 @@ export default function App() {
     getChantierBilan,
     generateNextNumero,
     loadError, retryLoad,
+    rejouerEcriture, userId: compteId,
   } = useData();
 
   // Auth state
@@ -503,6 +504,7 @@ export default function App() {
   const [pendingSync, setPendingSync] = useState(0);
   const [syncErrorDetails, setSyncErrorDetails] = useState(null); // { message, failedCount, permanentCount }
   const syncRetryTimerRef = useRef(null);
+  const synchroRef = useRef(null);
   const syncRetryAttemptRef = useRef(0);
   const [showOnboarding, setShowOnboarding] = useState(() => !isDemo && !localStorage.getItem('mallettico_onboarding_complete'));
   const [showLanding, setShowLanding] = useState(true);
@@ -515,9 +517,11 @@ export default function App() {
   const [modeDiscret, setModeDiscret] = useState(false);
 
   // CRUD wrappers with toasts (delegate to DataContext)
-  const addClient = async (data) => { const c = await dataAddClient(data); showToast(`Client "${data.nom}" ajouté`, 'success'); return c; };
-  const updateClient = async (id, data) => { await dataUpdateClient(id, data); showToast(`Client "${data.nom || 'mis à jour'}" modifié`, 'success'); };
-  const deleteClient = async (id) => { await dataDeleteClient(id); showToast('Client supprimé', 'success'); };
+  // Chaque enveloppe n'annonce un succès que si la base a confirmé (ou mis en attente de réseau, ce que
+  // DataContext dit lui-même) ; en cas de refus, DataContext a déjà affiché pourquoi. Elles rendent le résultat.
+  const addClient = async (data) => { const c = await dataAddClient(data); if (c) showToast(`Client "${data.nom}" ajouté`, 'success'); return c; };
+  const updateClient = async (id, data) => { const ok = await dataUpdateClient(id, data); if (ok) showToast(`Client "${data.nom || 'mis à jour'}" modifié`, 'success'); return ok; };
+  const deleteClient = async (id) => { const ok = await dataDeleteClient(id); if (ok) showToast('Client supprimé', 'success'); return ok; };
   // Une facture sans échéance en reçoit une à sa création, selon ses conditions de règlement ou le délai
   // de l'entreprise (art. L441-9 I C. com. : la date de règlement figure sur la facture).
   const addDevis = async (data) => {
@@ -525,27 +529,27 @@ export default function App() {
       ? { ...data, date_echeance: dateEcheance(data.date || new Date(), { conditionsPaiement: data.conditionsPaiement || data.conditions, delaiJours: entreprise?.delaiPaiement }) }
       : data;
     const d = await dataAddDevis(avecEcheance);
-    showToast(`${data.type === 'facture' ? 'Facture' : 'Devis'} créé`, 'success');
+    if (d) showToast(`${data.facture_type === 'avoir' ? 'Avoir créé' : data.type === 'facture' ? 'Facture créée' : 'Devis créé'}`, 'success');
     return d;
   };
-  const updateDevis = async (id, data) => { await dataUpdateDevis(id, data); showToast('Document mis à jour', 'success'); };
-  const deleteDevis = (id) => { dataDeleteDevis(id); showToast('Document supprimé', 'info'); };
-  const addChantier = async (data) => { const c = await dataAddChantier(data); showToast(`Chantier "${data.nom}" créé`, 'success'); return c; };
-  const updateChantier = (id, data) => { dataUpdateChantier(id, data); showToast('Chantier mis à jour', 'success'); };
-  const addAjustement = (data) => { const a = dataAddAjustement(data); showToast('Ajustement enregistré', 'success'); return a; };
-  const deleteAjustement = (id) => { dataDeleteAjustement(id); showToast('Ajustement supprimé', 'info'); };
-  const addEchange = (data) => { const e = dataAddEchange(data); showToast('Échange ajouté', 'success'); return e; };
-  const addPaiement = (data) => { const p = dataAddPaiement(data); showToast(`Paiement de ${(data.amount || 0).toLocaleString('fr-FR')} EUR enregistré`, 'success'); return p; };
-  const addEmployee = async (data) => { const e = await dataAddEmployee(data); showToast(`Employé "${data.prenom || ''} ${data.nom || ''}" ajouté`, 'success'); return e; };
-  const updateEmployee = async (id, data) => { await dataUpdateEmployee(id, data); };
-  const deleteEmployee = async (id) => { await dataDeleteEmployee(id); showToast('Employé supprimé', 'success'); };
-  const addPointage = async (data) => { const p = await dataAddPointage(data); return p; };
-  const addCatalogueItem = async (data) => { const c = await dataAddCatalogueItem(data); showToast('Article ajouté au catalogue', 'success'); return c; };
-  const updateCatalogueItem = async (id, data) => { await dataUpdateCatalogueItem(id, data); };
-  const deleteCatalogueItem = async (id) => { await dataDeleteCatalogueItem(id); showToast('Article supprimé du catalogue', 'success'); };
-  const addEvent = async (data) => { const e = await dataAddPlanningEvent(data); showToast('Événement ajouté', 'success'); return e; };
-  const updateEvent = async (id, data) => { await dataUpdatePlanningEvent(id, data); };
-  const deleteEvent = async (id) => { await dataDeletePlanningEvent(id); showToast('Événement supprimé', 'info'); };
+  const updateDevis = async (id, data) => { const ok = await dataUpdateDevis(id, data); if (ok) showToast('Document mis à jour', 'success'); return ok; };
+  const deleteDevis = async (id) => { const ok = await dataDeleteDevis(id); if (ok) showToast('Document supprimé', 'info'); return ok; };
+  const addChantier = async (data) => { const c = await dataAddChantier(data); if (c) showToast(`Chantier "${data.nom}" créé`, 'success'); return c; };
+  const updateChantier = async (id, data) => { const ok = await dataUpdateChantier(id, data); if (ok) showToast('Chantier mis à jour', 'success'); return ok; };
+  const addAjustement = async (data) => { const a = await dataAddAjustement(data); if (a) showToast('Ajustement enregistré', 'success'); return a; };
+  const deleteAjustement = async (id) => { const ok = await dataDeleteAjustement(id); if (ok) showToast('Ajustement supprimé', 'info'); return ok; };
+  const addEchange = async (data) => { const e = await dataAddEchange(data); if (e) showToast('Échange ajouté', 'success'); return e; };
+  const addPaiement = async (data) => { const p = await dataAddPaiement(data); if (p) showToast(`Paiement de ${(data.amount || 0).toLocaleString('fr-FR')} € enregistré`, 'success'); return p; };
+  const addEmployee = async (data) => { const e = await dataAddEmployee(data); if (e) showToast(`Employé "${data.prenom || ''} ${data.nom || ''}" ajouté`, 'success'); return e; };
+  const updateEmployee = async (id, data) => dataUpdateEmployee(id, data);
+  const deleteEmployee = async (id) => { const ok = await dataDeleteEmployee(id); if (ok) showToast('Employé supprimé', 'success'); return ok; };
+  const addPointage = async (data) => dataAddPointage(data);
+  const addCatalogueItem = async (data) => { const c = await dataAddCatalogueItem(data); if (c) showToast('Article ajouté au catalogue', 'success'); return c; };
+  const updateCatalogueItem = async (id, data) => dataUpdateCatalogueItem(id, data);
+  const deleteCatalogueItem = async (id) => { const ok = await dataDeleteCatalogueItem(id); if (ok) showToast('Article supprimé du catalogue', 'success'); return ok; };
+  const addEvent = async (data) => { const e = await dataAddPlanningEvent(data); if (e) showToast('Événement ajouté', 'success'); return e; };
+  const updateEvent = async (id, data) => dataUpdatePlanningEvent(id, data);
+  const deleteEvent = async (id) => { const ok = await dataDeletePlanningEvent(id); if (ok) showToast('Événement supprimé', 'info'); return ok; };
 
   // Cancel any pending retry timer
   const cancelSyncRetry = useCallback(() => {
@@ -566,11 +570,13 @@ export default function App() {
     syncRetryTimerRef.current = setTimeout(() => {
       syncRetryTimerRef.current = null;
       syncRetryAttemptRef.current = attempt + 1;
-      handleManualSync().catch(err => console.warn('Auto-retry sync failed:', err));
+      synchroRef.current?.().catch(err => console.warn('Auto-retry sync failed:', err));
     }, delay);
   }, []);
 
   // Manual sync handler for offline queue
+  // Appelée aussi par une minuterie et par l'écoute du réseau, posées une seule fois : elles passent par
+  // `synchroRef` pour toujours appeler la version courante (compte connecté, données chargées).
   const handleManualSync = async () => {
     try {
       // In demo mode, just clear the queue — no Supabase to sync to
@@ -581,18 +587,11 @@ export default function App() {
         return;
       }
 
-      const results = await syncQueue({
-        clients: { create: dataAddClient, update: dataUpdateClient, delete: dataDeleteClient },
-        devis: { create: dataAddDevis, update: dataUpdateDevis, delete: dataDeleteDevis },
-        chantiers: { create: dataAddChantier, update: dataUpdateChantier, delete: dataDeleteChantier },
-        depenses: { create: dataAddDepense, update: dataUpdateDepense, delete: dataDeleteDepense },
-        pointages: { create: dataAddPointage, update: dataUpdatePointage, delete: dataDeletePointage },
-        equipe: { create: dataAddEmployee, update: dataUpdateEmployee, delete: dataDeleteEmployee },
-        catalogue: { create: dataAddCatalogueItem, update: dataUpdateCatalogueItem, delete: dataDeleteCatalogueItem },
-      });
+      if (!compteId) return; // pas de compte connecté : rien à rejouer
+      const results = await syncQueue(rejouerEcriture, { proprietaire: compteId });
 
       // Always refresh counter after sync
-      const count = await getPendingCount();
+      const count = await getPendingCount(compteId);
       setPendingSync(count);
 
       if (results.success > 0) {
@@ -652,7 +651,7 @@ export default function App() {
       scheduleSyncRetry();
       // Still try to refresh the counter even on error
       try {
-        const count = await getPendingCount();
+        const count = await getPendingCount(compteId);
         setPendingSync(count);
       } catch { /* ignore */ }
     }
@@ -1065,6 +1064,8 @@ export default function App() {
     document.title = `${title} — Mallettico`;
   }, [page]);
 
+  synchroRef.current = handleManualSync;
+
   // Network status listener for offline mode
   useEffect(() => {
     const updatePendingCount = async () => {
@@ -1074,7 +1075,7 @@ export default function App() {
         setPendingSync(0);
         return;
       }
-      const count = await getPendingCount();
+      const count = await getPendingCount(compteId);
       setPendingSync(count);
     };
 
@@ -1084,7 +1085,7 @@ export default function App() {
         updatePendingCount();
         showToast('Connexion rétablie', 'success');
         // Auto-sync pending mutations when back online
-        handleManualSync().catch(err => console.warn('Auto-sync failed:', err));
+        synchroRef.current?.().catch(err => console.warn('Auto-sync failed:', err));
       },
       () => {
         setIsOnline(false);
@@ -1094,7 +1095,7 @@ export default function App() {
 
     updatePendingCount();
     return unsubscribe;
-  }, []);
+  }, [compteId]);
 
   // Notifications are now computed via useMemo (see above) — no useEffect needed
 
@@ -1700,7 +1701,7 @@ export default function App() {
                   onClick={async () => {
                     // Try sync first, then force-clear if still stuck
                     await handleManualSync();
-                    const remaining = await getPendingCount();
+                    const remaining = await getPendingCount(compteId);
                     if (remaining > 0) {
                       await clearAllMutations();
                       setPendingSync(0);
@@ -2064,11 +2065,11 @@ export default function App() {
           <QuickClientModal
             isOpen={showFABQuickClient}
             onClose={() => setShowFABQuickClient(false)}
-            onSubmit={(data) => {
-              const newClient = { id: `c${Date.now()}`, ...data };
-              setClients(prev => [...prev, newClient]);
-              setShowFABQuickClient(false);
-              showToast('Client ajouté !', 'success');
+            onSubmit={async (data) => {
+              // Avant : setClients seul, rien en base (recette du 9 oct. 2026).
+              const cree = await addClient(data);
+              if (cree) setShowFABQuickClient(false);
+              return cree;
             }}
             isDark={isDark}
             couleur={couleur}
@@ -2082,18 +2083,10 @@ export default function App() {
           <QuickChantierModal
             isOpen={showFABQuickChantier}
             onClose={() => setShowFABQuickChantier(false)}
-            onSubmit={(data) => {
-              const newChantier = {
-                id: `ch${Date.now()}`,
-                ...data,
-                statut: 'prospect',
-                avancement: 0,
-                photos: [],
-                taches: []
-              };
-              setChantiers(prev => [...prev, newChantier]);
-              setShowFABQuickChantier(false);
-              showToast('Chantier créé !', 'success');
+            onSubmit={async (data) => {
+              // Avant : setChantiers seul, rien en base (recette du 9 oct. 2026).
+              const cree = await addChantier({ statut: 'prospect', ...data });
+              if (cree) setShowFABQuickChantier(false);
             }}
             clients={clients}
             devis={devis}
@@ -2347,13 +2340,19 @@ export default function App() {
             type={importType}
             isDark={isDark}
             couleur={couleur}
-            onImport={(data) => {
+            onImport={async (data) => {
               if (importType === 'clients') {
-                data.forEach(item => {
-                  const c = { id: `imp_${Date.now()}_${Math.random().toString(36).slice(2,6)}`, ...item };
-                  setClients(prev => [...prev, c]);
-                });
-                showToast(`${data.length} client(s) importé(s)`, 'success');
+                // Un par un, par DataContext : chaque client est enregistré en base et compte dans la limite
+                // du plan. Au premier refus (limite, droits), on s'arrête et on dit combien sont passés.
+                // Avant : setClients seul, « 3 client(s) importé(s) » et rien en base.
+                let importes = 0;
+                for (const item of data) {
+                  const c = await dataAddClient(item);
+                  if (!c) break;
+                  importes++;
+                }
+                if (importes === data.length) showToast(`${importes} client${importes > 1 ? 's' : ''} importé${importes > 1 ? 's' : ''}`, 'success');
+                else showToast(`${importes} client${importes > 1 ? 's' : ''} importé${importes > 1 ? 's' : ''} sur ${data.length} : l'import s'est arrêté`, 'error');
               }
               setShowImport(false);
             }}

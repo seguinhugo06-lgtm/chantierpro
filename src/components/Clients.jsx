@@ -89,7 +89,7 @@ function HighlightText({ text, query, className = '' }) {
 export default function Clients({ clients, setClients, updateClient, deleteClient: deleteClientProp, devis, chantiers, echanges = [], onSubmit, couleur, setPage, setSelectedChantier, setSelectedDevis, isDark, createMode, setCreateMode, modeDiscret, memos = [], addMemo, updateMemo, deleteMemo, toggleMemo, onImportClients, entreprise, nouveauDevisPour, nouveauChantierPour }) {
   const { confirm } = useConfirm();
   const { showToast } = useToast();
-  const { addClient: ctxAddClient, paiements = [] } = useData();
+  const { addClient: ctxAddClient, updateDevis: ctxUpdateDevis, updateChantier: ctxUpdateChantier, paiements = [] } = useData();
 
   // Ce que chaque client doit (reste des factures ouvertes) et son dernier devis — pour la ligne de liste.
   const dueParClient = useMemo(() => {
@@ -109,6 +109,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
     });
     return m;
   }, [devis]);
+  const dateCreation = (c) => new Date(c.createdAt || c.created_at || 0).getTime() || 0;
   // « 12 rue des Lilas, 75011 Paris » → « Paris »
   const villeDe = (adresse) => (String(adresse || '').match(/\b\d{5}\s+([^,\n]+)\s*$/) || [])[1]?.trim() || '';
   const { errors, validate, validateAll, clearErrors, clearFieldError } = useFormValidation(clientSchema);
@@ -130,7 +131,8 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
       for (const c of picked) {
         const ph = digits(c.telephone), em = (c.email || '').toLowerCase();
         if ((ph && phones.has(ph)) || (em && emails.has(em))) { skipped++; continue; }
-        await ctxAddClient({ ...c, categorie: 'Particulier' });
+        const cree = await ctxAddClient({ ...c, categorie: 'Particulier' });
+        if (!cree) break; // refus (limite du plan, droits) : DataContext l'a dit, on s'arrête
         if (ph) phones.add(ph);
         if (em) emails.add(em);
         added++;
@@ -381,31 +383,30 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
       merged.notes = `${target.notes}\n---\n${source.notes}`;
     }
 
-    // Update target with merged data
-    if (Object.keys(merged).length > 0) {
-      if (updateClient) await updateClient(targetId, merged);
+    // Chaque étape passe par DataContext (base + écran) et s'arrête au premier refus, AVANT de supprimer
+    // le doublon. Avant : les transferts en base n'étaient pas vérifiés, l'écran gardait les anciens liens
+    // jusqu'au rechargement, et « Client fusionné avec succès » s'affichait même si tout avait été refusé.
+    const interrompre = () => {
+      showToast('Fusion interrompue : rien n\'a été supprimé. Les documents déjà transférés restent sur le client conservé.', 'error');
+    };
+    if (Object.keys(merged).length > 0 && updateClient) {
+      if (!(await updateClient(targetId, merged))) return interrompre();
     }
-
-    // Transfer devis/chantiers from source to target
-    if (!isDemo && supabase) {
-      await supabase.from('devis').update({ client_id: targetId }).eq('client_id', sourceId);
-      await supabase.from('chantiers').update({ client_id: targetId }).eq('client_id', sourceId);
-    } else {
-      // Demo mode: update local state references
-      const sourceDevis = devis?.filter(d => d.client_id === sourceId) || [];
-      const sourceChantiers = chantiers?.filter(ch => ch.client_id === sourceId) || [];
-      sourceDevis.forEach(d => { d.client_id = targetId; });
-      sourceChantiers.forEach(ch => { ch.client_id = targetId; });
+    for (const d of (devis || []).filter(x => x.client_id === sourceId)) {
+      if (!(await ctxUpdateDevis(d.id, { client_id: targetId }))) return interrompre();
+    }
+    for (const ch of (chantiers || []).filter(x => (x.client_id || x.clientId) === sourceId)) {
+      if (!(await ctxUpdateChantier(ch.id, { client_id: targetId, clientId: targetId }))) return interrompre();
     }
 
     // Delete the source client
     if (deleteClientProp) {
-      await deleteClientProp(sourceId);
+      if (!(await deleteClientProp(sourceId))) return interrompre();
     } else {
       setClients(clients.filter(c => c.id !== sourceId));
     }
 
-    showToast(`Client fusionné avec succès`, 'success');
+    showToast('Clients fusionnés', 'success');
     setViewId(targetId);
   };
 
@@ -527,34 +528,36 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
         return sorted.sort((a, b) => mult * (getLastActivity(a.id) - getLastActivity(b.id)));
       case 'recent':
       default:
-        return sorted.sort((a, b) => mult * (parseInt(a.id) - parseInt(b.id)));
+        return sorted.sort((a, b) => mult * (dateCreation(a) - dateCreation(b)));
     }
   };
 
   const doSubmit = async (trimmedForm) => {
     const wasEditing = editId;
+    // Le résultat dit si la base a confirmé. En cas de refus, DataContext l'a déjà expliqué : le formulaire
+    // reste ouvert avec la saisie. Le message de succès vient de l'enveloppe d'App.jsx (un seul message).
+    let reussi;
     try {
       if (editId) {
         if (updateClient) {
-          await updateClient(editId, trimmedForm);
+          reussi = await updateClient(editId, trimmedForm);
         } else {
           setClients(clients.map(c => c.id === editId ? { ...c, ...trimmedForm } : c));
+          reussi = true;
         }
       } else {
-        // Await so a failed Supabase save surfaces here (error toast) instead of
-        // showing a false "créé avec succès" while the client silently vanishes.
-        await onSubmit(trimmedForm);
+        reussi = await onSubmit(trimmedForm);
       }
     } catch (error) {
       console.error('Error saving client:', error);
-      showToast(error?.message || 'Erreur lors de la sauvegarde du client', 'error');
+      showToast('Le client n\'a pas été enregistré. Réessayez.', 'error');
       return;
     }
+    if (!reussi) return;
     setShow(false);
     setForm({ nom: '', prenom: '', entreprise: '', email: '', telephone: '', adresse: '', notes: '', categorie: '' });
     clearErrors();
     clearDupes();
-    showToast(wasEditing ? 'Client modifié avec succès' : 'Client créé avec succès', 'success');
     if (wasEditing) {
       setViewId(wasEditing);
     }
@@ -600,28 +603,33 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
     const message = hasData
       ? `Supprimer ${client?.nom || 'ce client'} ? Ce client a ${stats.chantiers} chantier(s) et ${stats.devis + stats.factures} document(s) associés. Cette action est irréversible.`
       : `Supprimer ${client?.nom || 'ce client'} ? Cette action est irréversible.`;
+    // Un client qui a des factures ne se supprime pas : elles resteraient « sans client », alors qu'elles
+    // doivent être conservées 10 ans avec le nom et l'adresse de l'acheteur.
+    if (stats.factures > 0) {
+      showToast(`Impossible de supprimer ${client?.nom || 'ce client'} : il a ${stats.factures} facture${stats.factures > 1 ? 's' : ''}, à conserver 10 ans.`, 'error');
+      return;
+    }
     const confirmed = await confirm({ title: 'Supprimer le client', message });
     if (confirmed) {
       if (deleteClientProp) {
-        await deleteClientProp(id);
+        if (!(await deleteClientProp(id))) return; // refus : DataContext l'a dit, la fiche reste
       } else {
         setClients(clients.filter(c => c.id !== id));
       }
       setViewId(null);
-      showToast('Client supprimé', 'success');
     }
   };
 
   // D6: Quick client creation handler
   const handleQuickSubmit = async (data) => {
     const newClient = await onSubmit(data);
+    if (!newClient) return null; // refusé : la fenêtre reste ouverte (le message vient de DataContext)
     setShowQuickModal(false);
-    const clientName = `${data.prenom || ''} ${data.nom}`.trim();
-    showToast(`✅ ${clientName} ajouté`, 'success');
     // Auto-open client fiche after creation
     if (newClient?.id) {
       setViewId(newClient.id);
     }
+    return newClient;
   };
 
   // Ouvrir un document (devis/facture)

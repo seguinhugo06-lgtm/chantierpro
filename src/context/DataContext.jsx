@@ -44,12 +44,9 @@ const sanitizeRecords = (arr) => arr.filter(item => isValidUUID(item.id));
 
 /** Queue a mutation for offline sync and notify user if actually offline.
  *  Skip queueing in demo mode (no Supabase to sync to). */
-const queueOffline = async (action, entity, data) => {
+const queueOffline = async (action, entity, data, proprietaire) => {
   if (isDemo) return; // Demo mode: data is in localStorage, no sync needed
-  await queueMutation(action, entity, data);
-  if (!navigator.onLine) {
-    toast.info('Sauvegardé hors-ligne', 'Synchronisation automatique au retour du réseau');
-  }
+  await queueMutation(action, entity, data, proprietaire);
 };
 
 // localStorage keys for demo mode persistence
@@ -290,12 +287,14 @@ export function DataProvider({ children, initialData = {} }) {
         memos,
         customTemplates,
         templateUsages,
+        // Oubliés jusqu'au 10 oct. 2026 : un rendez-vous de démo disparaissait au rechargement
+        planningEvents,
       });
       logger.debug('💾 Demo data saved to localStorage');
     }, 500);
 
     return () => clearTimeout(timeoutId);
-  }, [clients, devis, chantiers, depenses, pointages, equipe, ajustements, catalogue, paiements, echanges, ouvrages, memos, customTemplates, templateUsages]);
+  }, [clients, devis, chantiers, depenses, pointages, equipe, ajustements, catalogue, paiements, echanges, ouvrages, memos, customTemplates, templateUsages, planningEvents]);
 
   // Listen for auth state changes to get userId
   useEffect(() => {
@@ -353,7 +352,7 @@ export function DataProvider({ children, initialData = {} }) {
         logger.debug(`✅ Pending save flushed: ${table}/${item.id}`);
       } catch (error) {
         console.error(`❌ Failed to flush pending save for ${table}:`, error);
-        await queueOffline('create', table, item);
+        await queueOffline('create', table, item, userId);
       }
     });
   }, [userId, orgId, orgLoading]);
@@ -477,7 +476,7 @@ export function DataProvider({ children, initialData = {} }) {
   // de la base qui ne passeraient jamais, et l'écran disait « enregistré ».
   const echecEcriture = useCallback(async (error, { action, table, data, annuler }) => {
     if (estEcritureDifferable(error)) {
-      await queueOffline(action, table, data);
+      await queueOffline(action, table, data, userId);
       toast.info('Pas de connexion', 'Enregistré sur cet appareil : envoi automatique au retour du réseau.');
       return true;
     }
@@ -487,7 +486,7 @@ export function DataProvider({ children, initialData = {} }) {
     toast.error(titre, messageEcritureRefusee(error));
     captureException(error, { context: `écriture ${table} (${action})`, code: error?.code, status: error?.status });
     return false;
-  }, []);
+  }, [userId]);
 
   const creerEnBase = useCallback(async (table, item, setter) => {
     if (isDemo) return item;
@@ -884,8 +883,12 @@ export function DataProvider({ children, initialData = {} }) {
     return creerEnBase('catalogue', newItem, setCatalogue);
   }, [creerEnBase]);
 
-  const updateCatalogueItem = useCallback(async (id, data) => {
+  const updateCatalogueItem = useCallback(async (id, donnees) => {
     const avant = catalogue.find(x => x.id === id);
+    // Le prix d'un article vit sous trois noms (prix, prixUnitaire, prix_unitaire_ht) : les aligner,
+    // sinon l'ancien prix resté dans l'un des trois repart en base et dans les devis.
+    const prix = donnees.prix ?? donnees.prixUnitaire ?? donnees.prix_unitaire_ht;
+    const data = prix === undefined ? donnees : { ...donnees, prix, prixUnitaire: prix, prix_unitaire_ht: prix };
     setCatalogue(prev => prev.map(c =>
       c.id === id ? { ...c, ...data } : c
     ));
@@ -942,19 +945,19 @@ export function DataProvider({ children, initialData = {} }) {
     };
     setPlanningEvents(prev => prev.some(e => e.id === newEvent.id) ? prev : [...prev, newEvent]);
 
-    return creerEnBase('events', newEvent, setPlanningEvents);
+    return creerEnBase('planning_events', newEvent, setPlanningEvents);
   }, [creerEnBase]);
 
   const updatePlanningEvent = useCallback(async (id, data) => {
     const avant = planningEvents.find(e => e.id === id);
     setPlanningEvents(prev => prev.map(e => e.id === id ? { ...e, ...data } : e));
-    return modifierEnBase('events', id, avant, data, setPlanningEvents);
+    return modifierEnBase('planning_events', id, avant, data, setPlanningEvents);
   }, [planningEvents, modifierEnBase]);
 
   const deletePlanningEvent = useCallback(async (id) => {
     const avant = planningEvents.find(x => x.id === id);
     setPlanningEvents(prev => prev.filter(e => e.id !== id));
-    return supprimerEnBase('events', id, avant, setPlanningEvents);
+    return supprimerEnBase('planning_events', id, avant, setPlanningEvents);
   }, [planningEvents, supprimerEnBase]);
 
   // ============ OUVRAGE OPERATIONS ============
@@ -1137,6 +1140,30 @@ export function DataProvider({ children, initialData = {} }) {
     });
   }, [chantiers, devis, depenses, pointages, ajustements, equipe]);
 
+  // ============ REJEU DE LA FILE HORS LIGNE ============
+  // Écrit directement en base et LÈVE en cas d'échec : c'est la file qui décide de réessayer ou d'abandonner.
+  // Une modification est rejouée avec la ligne complète affichée à l'écran (qui contient déjà le
+  // changement) : envoyer seulement les champs modifiés effacerait les autres colonnes.
+  const etatsParTable = useMemo(() => ({
+    clients, devis, chantiers, depenses, pointages, equipe, catalogue, ajustements, paiements, echanges,
+    ouvrages, memos, planning_events: planningEvents, devis_templates: customTemplates,
+  }), [clients, devis, chantiers, depenses, pointages, equipe, catalogue, ajustements, paiements, echanges,
+    ouvrages, memos, planningEvents, customTemplates]);
+
+  const rejouerEcriture = useCallback(async ({ action, entity, data }) => {
+    if (isDemo || !userId) return false;
+    if (action === 'create') return saveItem(entity, data, userId, orgId);
+    if (action === 'delete') return deleteItem(entity, data.id, userId, orgId);
+    if (action === 'update') {
+      const local = (etatsParTable[entity] || []).find(x => x.id === data.id);
+      if (!local) return false; // supprimé depuis : plus rien à modifier
+      const ligne = { ...local, ...data };
+      if (entity === 'devis' && ligne.statut === 'vu') ligne.statut = 'envoye';
+      return updateItem(entity, data.id, ligne, userId, orgId);
+    }
+    return false;
+  }, [userId, orgId, etatsParTable]);
+
   // Helper to get next unique numero for devis/facture
   const generateNextNumero = useCallback(async (type) => {
     return getNextNumero(type, userId, devis, entrepriseId);
@@ -1262,7 +1289,11 @@ export function DataProvider({ children, initialData = {} }) {
     trackTemplateUsage,
 
     // Calculated values
-    getChantierBilan
+    getChantierBilan,
+
+    // File hors ligne
+    rejouerEcriture,
+    userId,
   }), [
     clients, devis, chantiers, depenses, pointages, equipe, ajustements,
     catalogue, paiements, echanges, ouvrages, planningEvents, memos, loading, dataLoading, loadError, retryLoad,
@@ -1281,7 +1312,7 @@ export function DataProvider({ children, initialData = {} }) {
     addPlanningEvent, updatePlanningEvent, deletePlanningEvent,
     addMemo, updateMemo, deleteMemo, toggleMemo,
     addTemplate, updateTemplate, deleteTemplate, toggleTemplateFavori, trackTemplateUsage,
-    getChantierBilan
+    getChantierBilan, rejouerEcriture, userId,
   ]);
 
   return (

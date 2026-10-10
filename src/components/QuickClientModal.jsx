@@ -32,6 +32,7 @@ export default function QuickClientModal({
   });
   const [showDetails, setShowDetails] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const envoiEnCoursRef = useRef(false);
   const [pickingContact, setPickingContact] = useState(false);
   const contactPickerOk = isContactPickerSupported();
 
@@ -164,12 +165,13 @@ export default function QuickClientModal({
   }, [isOpen]);
 
   const doFinalSubmit = async () => {
+    // Un seul envoi à la fois : plusieurs appuis sur Entrée créaient plusieurs clients.
+    if (envoiEnCoursRef.current) return;
+    envoiEnCoursRef.current = true;
     setErrors({});
     setIsSubmitting(true);
 
-    await new Promise(r => setTimeout(r, 300));
-
-    onSubmit({
+    const resultat = await onSubmit({
       nom: form.nom.trim(),
       prenom: form.prenom.trim(),
       telephone: form.telephone.trim(),
@@ -180,6 +182,12 @@ export default function QuickClientModal({
       siret: form.siret?.trim() || ''
     });
 
+    envoiEnCoursRef.current = false;
+    // Refusé par la base ou par la limite du plan : la fenêtre reste ouverte, la saisie n'est pas perdue.
+    if (resultat === null || resultat === false) {
+      setIsSubmitting(false);
+      return;
+    }
     onClose();
   };
 
@@ -263,6 +271,9 @@ export default function QuickClientModal({
             exit={{ y: '100%', opacity: 0 }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
             onKeyDown={handleKeyDown}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="titre-nouveau-client"
           >
         {/* Header with gradient */}
         <div
@@ -275,7 +286,7 @@ export default function QuickClientModal({
                 <Sparkles size={20} className="text-white" />
               </div>
               <div>
-                <h2 className="text-lg font-bold text-white">Nouveau client</h2>
+                <h2 id="titre-nouveau-client" className="text-lg font-bold text-white">Nouveau client</h2>
                 <p className="text-white/80 text-sm">Ajout rapide</p>
               </div>
             </div>
