@@ -16,6 +16,39 @@ const MAX_ENTREPRISES = 5;
 // ── Field mapping: DB snake_case ↔ JS camelCase ──────────────────────────────
 
 /**
+ * Réglages sans colonne dédiée, rangés dans `settings_json.reglages` (la colonne `settings_json` existe ;
+ * `settings_json.relanceConfig` appartient aux relances et n'est jamais touché ici). Avant (recette du
+ * 9 oct. 2026) : affichés « Enregistré », jamais écrits, perdus au rechargement — médiateur et RCS
+ * disparaissaient des documents, le taux de pénalités retombait sur « BCE + 10 points ».
+ */
+export const REGLAGES_SANS_COLONNE = {
+  banque: '',
+  titulaireBanque: '',
+  rcsNumero: '',
+  rcsType: '',
+  rge: '',
+  rgeOrganisme: '',
+  mediateur: '',
+  mediateurContact: '',
+  tauxPenalites: '',
+  modePaiementDefaut: '',
+  conditionsPaiementDefaut: '',
+  acompteDefaut: 30,
+  mentionRetractation: true,
+  mentionGaranties: true,
+  mentionPenalites: true,
+};
+
+function reglagesDe(row) {
+  const enregistres = (row?.settings_json && typeof row.settings_json === 'object' && row.settings_json.reglages) || {};
+  const r = {};
+  for (const [cle, defaut] of Object.entries(REGLAGES_SANS_COLONNE)) {
+    r[cle] = enregistres[cle] !== undefined && enregistres[cle] !== null ? enregistres[cle] : defaut;
+  }
+  return r;
+}
+
+/**
  * Convert a Supabase row to a camelCase JS object.
  * CRITICAL: Must produce the SAME shape as the old `entreprise` state in App.jsx
  * so all downstream components (PDF, Settings, etc.) keep working.
@@ -47,7 +80,8 @@ export function fromSupabase(row) {
     validiteDevis: row.validite_devis ?? 30,
     tvaDefaut: row.tva_defaut != null ? parseFloat(row.tva_defaut) : 10,
     delaiPaiement: row.delai_paiement ?? 30,
-    acompteDefaut: row.acompte_defaut ?? 30,
+    // Réglages sans colonne (settings_json.reglages) : banque, RCS, RGE, médiateur, pénalités, acompte…
+    ...reglagesDe(row),
     tauxFraisStructure: row.taux_frais_structure != null ? parseFloat(row.taux_frais_structure) : 15,
 
     // NEW multi-entreprise fields
@@ -165,13 +199,15 @@ export function toSupabase(data) {
   if (data.decennaleNumero !== undefined) result.decennale_numero = data.decennaleNumero;
   if (data.decennaleValidite !== undefined) result.decennale_validite = data.decennaleValidite || null;
   if (data.decennaleActivites !== undefined) result.decennale_activites = data.decennaleActivites;
-  // Alias rétro-compat (EntrepriseFormModal) — mêmes colonnes
-  if (data.assuranceRcProCompagnie !== undefined) result.rc_pro_assureur = data.assuranceRcProCompagnie;
-  if (data.assuranceRcProNumero !== undefined) result.rc_pro_numero = data.assuranceRcProNumero;
-  if (data.assuranceRcProValidite !== undefined) result.rc_pro_validite = data.assuranceRcProValidite || null;
-  if (data.assuranceDecennaleCompagnie !== undefined) result.decennale_assureur = data.assuranceDecennaleCompagnie;
-  if (data.assuranceDecennaleNumero !== undefined) result.decennale_numero = data.assuranceDecennaleNumero;
-  if (data.assuranceDecennaleValidite !== undefined) result.decennale_validite = data.assuranceDecennaleValidite || null;
+  // Alias rétro-compat (EntrepriseFormModal) — mêmes colonnes, SEULEMENT si la clé canonique est absente :
+  // Paramètres envoie l'objet complet, dont les alias relus avec l'ANCIENNE valeur ; écrits en second, ils
+  // écrasaient la saisie (recette du 9 oct. 2026 : décennale jamais enregistrée, envoi des devis bloqué).
+  if (data.rcProAssureur === undefined && data.assuranceRcProCompagnie !== undefined) result.rc_pro_assureur = data.assuranceRcProCompagnie;
+  if (data.rcProNumero === undefined && data.assuranceRcProNumero !== undefined) result.rc_pro_numero = data.assuranceRcProNumero;
+  if (data.rcProValidite === undefined && data.assuranceRcProValidite !== undefined) result.rc_pro_validite = data.assuranceRcProValidite || null;
+  if (data.decennaleAssureur === undefined && data.assuranceDecennaleCompagnie !== undefined) result.decennale_assureur = data.assuranceDecennaleCompagnie;
+  if (data.decennaleNumero === undefined && data.assuranceDecennaleNumero !== undefined) result.decennale_numero = data.assuranceDecennaleNumero;
+  if (data.decennaleValidite === undefined && data.assuranceDecennaleValidite !== undefined) result.decennale_validite = data.assuranceDecennaleValidite || null;
 
   // Relances
   if (data.relanceConfig !== undefined) result.relance_config = data.relanceConfig;
@@ -200,6 +236,13 @@ export function toSupabase(data) {
   // CGU acceptance (LEGAL-001)
   if (data.cguAcceptedAt !== undefined) result.cgu_accepted_at = data.cguAcceptedAt;
   if (data.cguVersion !== undefined) result.cgu_version = data.cguVersion;
+
+  // Réglages sans colonne : regroupés ici, fusionnés dans settings_json.reglages par updateEntreprise
+  const reglages = {};
+  for (const cle of Object.keys(REGLAGES_SANS_COLONNE)) {
+    if (data[cle] !== undefined) reglages[cle] = data[cle];
+  }
+  if (Object.keys(reglages).length) result.__reglages = reglages;
 
   // Statut
   if (data.isActive !== undefined) result.is_active = data.isActive;
@@ -401,27 +444,48 @@ export async function updateEntreprise(supabase, { id, data, userId } = {}) {
 
   const dbUpdates = toSupabase(updates);
   if (updates.initiales) dbUpdates.initiales = updates.initiales;
+  const reglages = dbUpdates.__reglages;
+  delete dbUpdates.__reglages;
 
   // Demo mode
   if (!supabase) {
     const all = demoLoad();
     const idx = all.findIndex(e => e.id === id);
     if (idx >= 0) {
-      all[idx] = { ...all[idx], ...dbUpdates, updated_at: new Date().toISOString() };
+      const settings = all[idx].settings_json || {};
+      all[idx] = {
+        ...all[idx], ...dbUpdates,
+        ...(reglages ? { settings_json: { ...settings, reglages: { ...(settings.reglages || {}), ...reglages } } } : {}),
+        updated_at: new Date().toISOString(),
+      };
       demoSave(all);
     }
     return;
   }
 
-  const { error } = await supabase
+  // Réglages sans colonne : fusionnés dans settings_json relu en base (la configuration des relances, rangée
+  // au même endroit, n'est jamais écrasée par un état d'écran plus ancien)
+  if (reglages) {
+    const lu = await supabase.from('entreprise').select('settings_json').eq('id', id).maybeSingle();
+    if (lu.error) throw new Error('Réglages non enregistrés : ' + lu.error.message);
+    const settings = (lu.data?.settings_json && typeof lu.data.settings_json === 'object') ? lu.data.settings_json : {};
+    dbUpdates.settings_json = { ...settings, reglages: { ...(settings.reglages || {}), ...reglages } };
+  }
+
+  const { data: ecrites, error } = await supabase
     .from('entreprise')
     .update(dbUpdates)
     .eq('id', id)
-    .eq('user_id', userId);
+    .eq('user_id', userId)
+    .select('id');
 
   if (error) {
     console.error('[entrepriseService] updateEntreprise error:', error);
     throw new Error('Erreur lors de la mise à jour : ' + error.message);
+  }
+  // Un refus RLS ne renvoie aucune erreur, seulement 0 ligne : ne pas dire « enregistré »
+  if (!ecrites?.length) {
+    throw new Error("Modification refusée : votre compte n'a pas le droit de modifier cette entreprise.");
   }
 }
 

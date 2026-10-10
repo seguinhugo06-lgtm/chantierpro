@@ -504,11 +504,12 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
           const currentIdx = navList.findIndex(c => c.id === ch.id);
           const prevChantier = currentIdx > 0 ? navList[currentIdx - 1] : null;
           const nextChantier = currentIdx < navList.length - 1 ? navList[currentIdx + 1] : null;
-          const dupliquer = () => {
+          const dupliquer = async () => {
             const clone = { nom: `${ch.nom} (copie)`, client_id: ch.client_id, clientId: ch.client_id, adresse: ch.adresse, ville: ch.ville, codePostal: ch.codePostal, dateDebut: new Date().toISOString().split('T')[0], date_debut: new Date().toISOString().split('T')[0], dateFin: '', date_fin: '', budgetPrevu: ch.budget_estime || ch.budgetPrevu || 0, budget_estime: ch.budget_estime || ch.budgetPrevu || 0, budget_materiaux: ch.budget_materiaux || 0, heures_estimees: ch.heures_estimees || 0, description: ch.description || '', notes: ch.notes || '', taches: (ch.taches || []).map(t => ({ ...t, id: generateId(), done: false })), photos: [], documents: [], messages: [], statut: 'prospect' };
-            const newCh = addChantier(clone);
-            showToast(`Chantier dupliqué : « ${clone.nom} »`, 'success');
-            if (newCh?.id) setView(newCh.id);
+            // Attendre le résultat : à la limite du plan, ou si la base refuse, rien n'est créé
+            const newCh = await addChantier(clone);
+            if (!newCh) return;
+            if (newCh.id) setView(newCh.id);
           };
           const terminer = async () => {
             const confirmed = await confirm({ title: 'Terminer le chantier', message: `Marquer « ${ch.nom} » comme terminé ? La date de fin sera celle d'aujourd'hui.` });
@@ -2492,7 +2493,9 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
 
     const clientIdValue = formData.clientId || formData.client_id || '';
     const budgetValue = formData.budget_estime || formData.budgetPrevu || 0;
-    const newChantier = addChantier({
+    // Attendre le résultat (avant : « Chantier créé » et formulaire fermé même à la limite du plan gratuit,
+    // saisie perdue — recette du 9 oct. 2026). Le message de succès vient de l'enveloppe d'App.jsx.
+    const newChantier = await addChantier({
       ...formData,
       client_id: clientIdValue,
       clientId: clientIdValue,
@@ -2506,9 +2509,9 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
       heures_estimees: formData.heures_estimees || 0,
       statut: 'prospect'
     });
+    if (!newChantier) return; // refus : le formulaire reste ouvert avec la saisie
     setShow(false);
-    showToast(`Chantier "${formData.nom}" créé`, 'success');
-    if (newChantier?.id) setView(newChantier.id);
+    if (newChantier.id) setView(newChantier.id);
   };
 
   // Helper: get Monday-Sunday of current week
