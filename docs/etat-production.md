@@ -19,7 +19,7 @@ Dans l'ordre. Chaque action est aussi dans le Pilote (« À faire de votre côt�
 
 | Élément | État | Vérifié |
 |---|---|---|
-| `main` | `0174d46` (10 oct. : l'assistant de configuration des Paramètres ne dit plus « Configuration terminée ! » quand le profil bloque l'envoi — il liste ce qui manque (`lib/profilLegal`), chaque ligne ouvre le bon champ ; `components/profil/ProfilePage.jsx`, mort, supprimé ; aucune migration. Inclut aussi D-23 téléphone et e-mail exigés, D-24 case « non soumis à la décennale ») | `npm run statut` : Vercel ×2 + CI verts (10 oct.) |
+| `main` | `fe24606` (10 oct. : la mise en demeure imprime enfin le capital social d'une société, à côté de sa forme, en tête et en pied — elle lisait `capitalSocial`, jamais rempli, au lieu de `capital` ; jamais de capital pour une EI ou une EIRL ; RCS du champ libre `rcs` en repli (C. com. R123-237, R123-238) ; `lib/miseEnDemeureBuilder.js` ; aucune migration. Inclut `0174d46` : l'assistant de configuration liste ce qui bloque l'envoi, D-23, D-24) | `npm run statut` : Vercel ×2 + CI verts (10 oct.) |
 | Vercel | 2 projets (`chantierpro`, `seguinhugo06-lgtm-chantierpro`), déploiement auto sur `main` | statut GitHub |
 | Domaine | `mallettico.fr` (DNS OVH) | 25 juil. |
 | Service worker | sert l'ancienne version jusqu'à rechargement : ne jamais vérifier un déploiement en rechargeant le site | — |
