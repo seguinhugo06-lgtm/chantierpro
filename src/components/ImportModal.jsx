@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
 import { X, Upload, FileSpreadsheet, Check, AlertCircle, ArrowRight, ChevronDown, Loader2 } from 'lucide-react';
+import { lireCsv } from '../lib/csvImport';
 
 /**
  * ImportModal - CSV/Excel import with column mapping
@@ -43,82 +44,48 @@ const TYPE_LABELS = {
   ouvrages: 'Ouvrages',
 };
 
-// ── Inline CSV parser ───────────────────────────────────────────
+// ── Lecture du fichier ───────────────────────────────────────────
+// Lecteur CSV commun (src/lib/csvImport.js) : un seul séparateur, détecté sur la ligne d'en-tête. Avant (recette du
+// 9 oct. 2026), « , » et « ; » séparaient tous deux : l'adresse « 3 rue Neuve, 31000 Toulouse » d'un export Excel
+// français était coupée et la fin glissait dans la colonne suivante.
 function parseCSV(text) {
-  const rows = [];
-  let current = '';
-  let inQuotes = false;
-  let row = [];
-
-  for (let i = 0; i < text.length; i++) {
-    const ch = text[i];
-    const next = text[i + 1];
-
-    if (inQuotes) {
-      if (ch === '"' && next === '"') {
-        current += '"';
-        i++; // skip escaped quote
-      } else if (ch === '"') {
-        inQuotes = false;
-      } else {
-        current += ch;
-      }
-    } else {
-      if (ch === '"') {
-        inQuotes = true;
-      } else if (ch === ',' || ch === ';') {
-        row.push(current.trim());
-        current = '';
-      } else if (ch === '\n' || (ch === '\r' && next === '\n')) {
-        row.push(current.trim());
-        current = '';
-        if (row.some(cell => cell !== '')) {
-          rows.push(row);
-        }
-        row = [];
-        if (ch === '\r') i++; // skip \n after \r
-      } else {
-        current += ch;
-      }
-    }
-  }
-
-  // Last field / row
-  if (current || row.length > 0) {
-    row.push(current.trim());
-    if (row.some(cell => cell !== '')) {
-      rows.push(row);
-    }
-  }
-
-  return rows;
+  const { entetes, lignes } = lireCsv(text);
+  return entetes.length ? [entetes, ...lignes.map((o) => entetes.map((h) => o[h] ?? ''))] : [];
 }
 
-// ── Auto-mapping heuristic ──────────────────────────────────────
+// ── Association automatique des colonnes ─────────────────────────
+// Égalité d'abord (« Prénom » → prénom), puis inclusion et synonymes ; un champ ne sert qu'une fois. Avant :
+// « prenom » contient « nom », et le champ nom passait avant prénom (les clients s'appelaient « Anne », « Paul »).
+const normaliser = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
+
 function autoMapColumns(csvHeaders, fields) {
   const mapping = {};
-  csvHeaders.forEach((header, index) => {
-    const normalized = header.toLowerCase().replace(/[^a-z0-9]/g, '');
-    const match = fields.find(f => {
-      const fNorm = f.key.toLowerCase();
-      const fLabel = f.label.toLowerCase().replace(/[^a-z0-9]/g, '');
-      return (
-        normalized === fNorm ||
-        normalized === fLabel ||
-        normalized.includes(fNorm) ||
-        fNorm.includes(normalized) ||
-        // Common aliases
-        (fNorm === 'prixunitaire' && (normalized.includes('prix') || normalized.includes('price') || normalized.includes('tarif'))) ||
-        (fNorm === 'telephone' && (normalized.includes('tel') || normalized.includes('phone'))) ||
-        (fNorm === 'designation' && (normalized.includes('nom') || normalized.includes('libelle') || normalized.includes('name'))) ||
-        (fNorm === 'entreprise' && (normalized.includes('societe') || normalized.includes('company')))
-      );
+  const pris = new Set();
+  const egal = (n, f) => n === normaliser(f.key) || n === normaliser(f.label);
+  const proche = (n, f) => {
+    const k = normaliser(f.key);
+    return (n.length > 2 && (n.includes(k) || k.includes(n)))
+      || (k === 'prixunitaire' && /prix|price|tarif/.test(n))
+      || (k === 'telephone' && /tel|phone|portable|mobile/.test(n))
+      || (k === 'designation' && /libelle|name|^nom$/.test(n))
+      || (k === 'entreprise' && /societe|company|raisonsociale/.test(n))
+      || (k === 'email' && /mail|courriel/.test(n));
+  };
+  const normes = csvHeaders.map(normaliser);
+  for (const test of [egal, proche]) {
+    normes.forEach((n, index) => {
+      if (mapping[index]) return;
+      // « Prénom » ne doit jamais devenir « Nom » par inclusion
+      const f = fields.find((x) => !pris.has(x.key) && test(n, x) && !(x.key === 'nom' && n.includes('prenom')));
+      if (f) { mapping[index] = f.key; pris.add(f.key); }
     });
-    mapping[index] = match ? match.key : '';
-  });
+  }
+  csvHeaders.forEach((_, index) => { if (!mapping[index]) mapping[index] = ''; });
   return mapping;
 }
 
+
+export { parseCSV, autoMapColumns };
 
 export default function ImportModal({
   isOpen,

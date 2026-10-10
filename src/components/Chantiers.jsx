@@ -87,7 +87,7 @@ const calculateSmartProgression = (chantier, bilan, tasksDone, tasksTotal) => {
   return Math.round(normalizedProgress);
 };
 
-export default function Chantiers({ chantiers, addChantier, updateChantier, clients, depenses, setDepenses, pointages, setPointages, equipe, devis, ajustements, addAjustement, deleteAjustement, getChantierBilan, couleur, modeDiscret, entreprise, selectedChantier, setSelectedChantier, catalogue, deductStock, isDark, createMode, setCreateMode, setPage, memos = [], addMemo, updateMemo, deleteMemo, toggleMemo, onPlanEvent, addDevis, generateNextNumero }) {
+export default function Chantiers({ chantiers, addChantier, updateChantier, clients, depenses, setDepenses, pointages, setPointages, equipe, devis, ajustements, addAjustement, deleteAjustement, getChantierBilan, couleur, modeDiscret, entreprise, selectedChantier, setSelectedChantier, catalogue, deductStock, isDark, createMode, setCreateMode, setPage, memos = [], addMemo, updateMemo, deleteMemo, toggleMemo, onPlanEvent, addDevis, generateNextNumero, nouveauDevisPour }) {
   const { confirm } = useConfirm();
   const { addDepense: ctxAddDepense, addPointage: ctxAddPointage, updatePointage: ctxUpdatePointage, deletePointage: ctxDeletePointage } = useData();
   const { showToast } = useToast();
@@ -325,6 +325,8 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
       setChantierInterventions([]);
       return;
     }
+    // Réception et garanties éteintes (src/lib/fonctions.js) : rien à charger
+    if (!FONCTIONS.receptionChantier) return;
     const loadGarantieData = async () => {
       try {
         const [reception, garanties, interventions] = await Promise.all([
@@ -534,7 +536,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
           const actionsMenu = [
             { cle: 'modifier', icone: Edit3, libelle: 'Modifier', faire: () => setEditingChantier(ch) },
             { cle: 'dupliquer', icone: Copy, libelle: 'Dupliquer', faire: dupliquer },
-            ...((ch.statut === 'en_cours' || ch.statut === 'termine') && !chantierReception ? [{ cle: 'reception', icone: Shield, libelle: 'Réceptionner', faire: () => setShowReceptionForm(true) }] : []),
+            ...(FONCTIONS.receptionChantier && (ch.statut === 'en_cours' || ch.statut === 'termine') && !chantierReception ? [{ cle: 'reception', icone: Shield, libelle: 'Réceptionner', faire: () => setShowReceptionForm(true) }] : []),
             ...(ch.statut === 'en_cours' ? [{ cle: 'terminer', icone: CheckCircle, libelle: 'Terminer', faire: terminer }] : []),
             ...(ch.statut !== 'archive' ? [{ cle: 'archiver', icone: Archive, libelle: 'Archiver', faire: archiver }] : []),
           ];
@@ -1153,6 +1155,11 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                       <span className={`text-xs ${textMuted} flex items-center gap-1.5`}><UserCog size={14} /> Main d'oeuvre ({bilan.heuresTotal}h)</span>
                       <span className={`text-xs font-medium ${textPrimary}`}>{formatMoney(bilan.coutMO)}</span>
                     </button>
+                    {(bilan.heuresSansCout || 0) > 0 && (
+                      <p className="text-xs px-1.5 text-alerte-texte">
+                        {bilan.heuresSansCout.toLocaleString('fr-FR')} h sans coût horaire : la marge est incomplète. Renseignez le coût dans Équipe.
+                      </p>
+                    )}
                     {(bilan.coutAutres || 0) > 0 && (
                       <button type="button" className="flex justify-between items-center w-full text-left cursor-pointer p-1.5 rounded hover:opacity-80 focus-visible:ring-2 outline-none" onClick={() => setShowAjustement('DEPENSE')}>
                         <span className={`text-xs ${textMuted}`}>Autres frais</span>
@@ -1243,7 +1250,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
             { key: 'messages', label: 'Messages', icon: MessageSquare, badge: (ch.messages || []).filter(m => !m.read).length > 0 ? (ch.messages || []).filter(m => !m.read).length : undefined },
             { key: 'documents', label: 'Documents', icon: Paperclip },
             { key: 'soustraitants', label: 'Sous-trait.', icon: UserCog },
-            ...(chantierReception || ch.statut === 'termine' ? [{ key: 'garanties', label: 'Garanties', icon: Shield, badge: chantierGaranties.filter(g => g.statut === 'active').length > 0 ? chantierGaranties.filter(g => g.statut === 'active').length : undefined }] : []),
+            ...(FONCTIONS.receptionChantier && (chantierReception || ch.statut === 'termine') ? [{ key: 'garanties', label: 'Garanties', icon: Shield, badge: chantierGaranties.filter(g => g.statut === 'active').length > 0 ? chantierGaranties.filter(g => g.statut === 'active').length : undefined }] : []),
             { key: 'notes', label: 'Notes', icon: StickyNote },
             { key: 'rapports', label: 'Rapports', icon: FileText },
             { key: 'memos', label: 'Mémos', icon: ClipboardList },
@@ -1955,12 +1962,15 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
           <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={() => setShowQuickMateriau(false)}>
             <div className={`bg-surface rounded-t-2xl sm:rounded-2xl p-5 sm:p-6 w-full max-w-md animate-slide-up sm:animate-fade-in max-h-[90vh] overflow-y-auto`} onClick={e => e.stopPropagation()}>
               <h3 className={`text-xl font-bold mb-2 ${textPrimary}`}>📦 Besoin de matériel</h3>
-              <p className={`text-sm ${textMuted} mb-4`}>Enregistrez un achat ou signalez un besoin urgent</p>
+              <p className={`text-sm ${textMuted} mb-4`}>Enregistrez un achat de matériel pour ce chantier</p>
 
               {/* Quick picks - Missing materials from devis */}
               {(() => {
+                // Fournitures du devis seulement : les lignes venues du catalogue avec un prix d'achat. Avant (recette
+                // du 9 oct. 2026), toutes les lignes, prestations comprises, et au PRIX DE VENTE : « Pose douche
+                // italienne » enregistrée comme dépense de 2 500 €, la marge s'effondrait.
                 const devisLie = devis?.find(d => d.chantier_id === ch.id && d.type === 'devis');
-                const plannedItems = devisLie?.lignes || [];
+                const plannedItems = (devisLie?.lignes || []).filter(item => Number(item.prixAchat ?? item.prix_achat) > 0 && item.description);
                 const chDepenses = depenses.filter(d => d.chantierId === ch.id);
                 const missingItems = plannedItems.filter(item =>
                   !chDepenses.some(d => d.description.toLowerCase().includes(item.description.toLowerCase().split(' ')[0]))
@@ -1971,13 +1981,13 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                 return (
                   <div className={`mb-4 p-3 rounded-xl ${isDark ? 'bg-amber-900/20 border border-amber-800' : 'bg-amber-50 border border-amber-200'}`}>
                     <p className={`text-xs font-bold uppercase tracking-wider mb-2 text-alerte-texte`}>
-                      ⚠️ Matériaux prévus non achetés
+                      Fournitures prévues au devis, pas encore achetées
                     </p>
                     <div className="flex flex-wrap gap-2">
                       {missingItems.map((item, idx) => (
                         <button
                           key={idx}
-                          onClick={() => setNewDepense(p => ({ ...p, description: item.description, montant: item.prixUnitaire ? (item.prixUnitaire * (item.quantite || 1)).toString() : '' }))}
+                          onClick={() => setNewDepense(p => ({ ...p, description: item.description, montant: (Number(item.prixAchat ?? item.prix_achat) * (Number(item.quantite) || 1)).toFixed(2) }))}
                           className={`px-3 py-2 rounded-lg text-sm font-medium transition-all active:scale-95 min-h-[44px] ${
                             'bg-surface hover:bg-surface-2 text-encre-2 shadow-sm'
                           }`}
@@ -2620,7 +2630,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
       <Segmente
         ariaLabel="Vue des chantiers" pleineLargeur className="sm:w-auto sm:inline-flex"
         valeur={viewMode} onChange={setViewMode}
-        options={[{ valeur: 'list', libelle: 'Liste' }, { valeur: 'gantt', libelle: 'Frise' }, { valeur: 'map', libelle: 'Carte' }, { valeur: 'garanties', libelle: 'Garanties' }]}
+        options={[{ valeur: 'list', libelle: 'Liste' }, { valeur: 'gantt', libelle: 'Frise' }, { valeur: 'map', libelle: 'Carte' }, ...(FONCTIONS.receptionChantier ? [{ valeur: 'garanties', libelle: 'Garanties' }] : [])]}
       />
 
       {/* === BANDE KPI (design system énergique) === */}
@@ -3033,7 +3043,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                 )}
                 {ch.statut === 'prospect' && setPage && (
                   <div className="px-4 pb-4">
-                    <Bouton pleineLargeur icone={FileText} onClick={() => setPage('devis', { chantier_id: ch.id, client_id: ch.client_id, objet: ch.nom })}>Créer le devis</Bouton>
+                    <Bouton pleineLargeur icone={FileText} onClick={() => (nouveauDevisPour ? nouveauDevisPour(ch.client_id, ch.id) : setPage('devis'))}>Créer le devis</Bouton>
                   </div>
                 )}
                 {ch.statut === 'archive' && (

@@ -217,6 +217,81 @@ export const SCHEMA = `
   CREATE TABLE portal_access_logs (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), client_id UUID REFERENCES clients(id) ON DELETE CASCADE, ip_address TEXT);
   ALTER TABLE portal_access_logs ENABLE ROW LEVEL SECURITY;
   CREATE POLICY "Service role can manage portal logs" ON portal_access_logs FOR ALL USING (true) WITH CHECK (true);
+  -- Signature en ligne (011, modifiée hors dépôt), telle qu'en production le 10 oct. 2026 (pg_get_functiondef) :
+  -- trois fonctions SECURITY DEFINER sans search_path, exécutables par PUBLIC et anon ; colonnes relevées le même
+  -- jour (information_schema). 083 les réécrit.
+  ALTER TABLE devis ADD COLUMN validite_jours INTEGER, ADD COLUMN date_validite DATE, ADD COLUMN sections JSONB,
+    ADD COLUMN conditions TEXT, ADD COLUMN remise_globale NUMERIC, ADD COLUMN tva_rate NUMERIC, ADD COLUMN acompte_percent NUMERIC,
+    ADD COLUMN acompte_montant NUMERIC, ADD COLUMN acompte_pct NUMERIC, ADD COLUMN entreprise_id UUID, ADD COLUMN signature TEXT,
+    ADD COLUMN signataire TEXT, ADD COLUMN signature_date TIMESTAMPTZ, ADD COLUMN signature_token UUID UNIQUE,
+    ADD COLUMN signature_expires_at TIMESTAMPTZ, ADD COLUMN signature_data TEXT, ADD COLUMN signature_ip TEXT,
+    ADD COLUMN signature_user_agent TEXT, ADD COLUMN signataire_nom TEXT, ADD COLUMN signature_cgv_accepted BOOLEAN;
+  ALTER TABLE clients ADD COLUMN telephone TEXT, ADD COLUMN adresse TEXT, ADD COLUMN entreprise TEXT, ADD COLUMN categorie TEXT;
+  ALTER TABLE chantiers ADD COLUMN adresse TEXT, ADD COLUMN ville TEXT, ADD COLUMN code_postal TEXT;
+  ALTER TABLE entreprise ADD COLUMN tva_intra TEXT, ADD COLUMN site_web TEXT, ADD COLUMN conditions_paiement TEXT,
+    ADD COLUMN mentions_legales TEXT, ADD COLUMN settings_json JSONB, ADD COLUMN forme_juridique TEXT, ADD COLUMN capital TEXT,
+    ADD COLUMN code_ape TEXT, ADD COLUMN rcs TEXT, ADD COLUMN rcs_ville TEXT, ADD COLUMN couleur TEXT, ADD COLUMN cgv TEXT,
+    ADD COLUMN delai_paiement INTEGER, ADD COLUMN validite_devis INTEGER, ADD COLUMN is_default BOOLEAN, ADD COLUMN archived_at TIMESTAMPTZ,
+    ADD COLUMN created_at TIMESTAMPTZ DEFAULT now(), ADD COLUMN rc_pro_assureur TEXT, ADD COLUMN rc_pro_numero TEXT,
+    ADD COLUMN rc_pro_validite DATE, ADD COLUMN rc_pro_montant_garantie NUMERIC, ADD COLUMN rc_pro_zone TEXT,
+    ADD COLUMN decennale_assureur TEXT, ADD COLUMN decennale_numero TEXT, ADD COLUMN decennale_validite DATE,
+    ADD COLUMN decennale_activites TEXT, ADD COLUMN assurance_decennale_compagnie TEXT, ADD COLUMN assurance_rc_pro_compagnie TEXT;
+  ALTER TABLE portal_access_logs ADD COLUMN action TEXT, ADD COLUMN user_agent TEXT;
+  CREATE FUNCTION generate_signature_token(p_devis_id uuid, p_expiry_days integer DEFAULT 30) RETURNS uuid
+  LANGUAGE plpgsql SECURITY DEFINER AS $$
+  DECLARE v_token UUID;
+  BEGIN
+    IF NOT EXISTS (SELECT 1 FROM devis WHERE id = p_devis_id AND user_id = auth.uid()) THEN
+      RAISE EXCEPTION 'Devis non trouve ou non autorise';
+    END IF;
+    v_token := gen_random_uuid();
+    UPDATE devis SET signature_token = v_token, signature_expires_at = NOW() + (p_expiry_days || ' days')::INTERVAL, updated_at = NOW()
+    WHERE id = p_devis_id;
+    RETURN v_token;
+  END; $$;
+  CREATE FUNCTION get_devis_for_signature(p_token uuid) RETURNS json LANGUAGE plpgsql SECURITY DEFINER AS $$
+  DECLARE result JSON; v_devis RECORD;
+  BEGIN
+    SELECT d.id, d.statut, d.signature_expires_at, d.signature_data, (d.signature_data IS NOT NULL) as already_signed
+    INTO v_devis FROM devis d WHERE d.signature_token = p_token;
+    IF v_devis IS NULL THEN RETURN NULL; END IF;
+    IF v_devis.already_signed THEN RETURN json_build_object('devis', json_build_object('already_signed', true)); END IF;
+    IF v_devis.signature_expires_at <= NOW() THEN RETURN NULL; END IF;
+    IF v_devis.statut NOT IN ('envoye', 'en_attente', 'accepte') THEN
+      RETURN json_build_object('devis', json_build_object('already_signed', true));
+    END IF;
+    SELECT json_build_object(
+      'devis', json_build_object('id', d.id, 'numero', d.numero, 'type', d.type, 'statut', d.statut, 'date', d.date,
+        'date_validite', d.date_validite, 'objet', d.objet, 'lignes', d.lignes, 'sections', d.sections, 'conditions', d.conditions,
+        'remise_globale', d.remise_globale, 'tva_rate', d.tva_rate, 'total_ht', d.total_ht, 'total_tva', d.total_tva,
+        'total_ttc', d.total_ttc, 'acompte_percent', d.acompte_percent, 'acompte_montant', d.acompte_montant, 'already_signed', false),
+      'client', json_build_object('nom', c.nom, 'prenom', c.prenom, 'email', c.email, 'telephone', c.telephone, 'adresse', c.adresse,
+        'entreprise', c.entreprise),
+      'entreprise', json_build_object('nom', e.nom, 'siret', e.siret, 'tva_intra', e.tva_intra, 'adresse', e.adresse, 'ville', e.ville,
+        'code_postal', e.code_postal, 'telephone', e.telephone, 'email', e.email, 'site_web', e.site_web, 'logo', e.logo_url,
+        'couleur', e.couleur_principale, 'iban', e.iban, 'bic', e.bic, 'conditions_paiement', e.conditions_paiement,
+        'mentions_legales', e.mentions_legales)
+    ) INTO result
+    FROM devis d LEFT JOIN clients c ON d.client_id = c.id LEFT JOIN entreprise e ON e.user_id = d.user_id
+    WHERE d.id = v_devis.id;
+    RETURN result;
+  END; $$;
+  CREATE FUNCTION sign_devis(p_token uuid, p_signature_data text, p_signataire_nom text, p_ip text DEFAULT NULL::text,
+    p_user_agent text DEFAULT NULL::text) RETURNS json LANGUAGE plpgsql SECURITY DEFINER AS $$
+  DECLARE v_devis_id UUID; v_client_id UUID;
+  BEGIN
+    SELECT d.id, d.client_id INTO v_devis_id, v_client_id FROM devis d
+    WHERE d.signature_token = p_token AND d.signature_expires_at > NOW() AND d.statut IN ('envoye', 'en_attente', 'accepte')
+      AND d.signature_data IS NULL;
+    IF v_devis_id IS NULL THEN
+      RETURN json_build_object('success', false, 'error', 'Lien de signature invalide, expire ou devis deja signe');
+    END IF;
+    UPDATE devis SET signature_data = p_signature_data, signature_date = NOW(), signature_ip = p_ip, signature_user_agent = p_user_agent,
+      signataire_nom = p_signataire_nom, signature_cgv_accepted = true, statut = 'signe', updated_at = NOW() WHERE id = v_devis_id;
+    INSERT INTO portal_access_logs (client_id, action, ip_address, user_agent) VALUES (v_client_id, 'signature', p_ip, p_user_agent);
+    RETURN json_build_object('success', true, 'devis_id', v_devis_id);
+  END; $$;
+  GRANT EXECUTE ON FUNCTION generate_signature_token, get_devis_for_signature, sign_devis TO anon, authenticated;
   GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO anon, authenticated;
 
   -- Droits par défaut de Supabase : toute fonction créée dans public est exécutable par les rôles de l'API.
@@ -241,7 +316,17 @@ export const SCHEMA = `
       WHERE c.user_id = p_user_id AND c.stripe_enabled; RETURN s; END $$;
   REVOKE EXECUTE ON FUNCTION get_stripe_secret_for_user(UUID) FROM anon;           -- tel quel dans 029 :
   REVOKE EXECUTE ON FUNCTION get_stripe_secret_for_user(UUID) FROM authenticated;  -- PUBLIC garde le droit
-${ORGANISATIONS}`;
+${ORGANISATIONS}
+  -- entreprise : RLS et policies de production relevées le 10 oct. 2026 (pg_policies) ; 084 corrige update et delete.
+  ALTER TABLE entreprise ENABLE ROW LEVEL SECURITY;
+  CREATE POLICY "Org admins can delete entreprise" ON entreprise FOR DELETE TO authenticated USING (organization_id = ANY (user_org_ids(auth.uid())));
+  CREATE POLICY "Org members can insert entreprise" ON entreprise FOR INSERT TO authenticated WITH CHECK (organization_id = ANY (user_org_ids(auth.uid())));
+  CREATE POLICY "Org members can update entreprise" ON entreprise FOR UPDATE TO authenticated USING (organization_id = ANY (user_org_ids(auth.uid())));
+  CREATE POLICY "Org members can view entreprise" ON entreprise FOR SELECT TO authenticated USING (organization_id = ANY (user_org_ids(auth.uid())));
+  CREATE POLICY "Users can create own entreprise" ON entreprise FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+  CREATE POLICY "Users can update own entreprise" ON entreprise FOR UPDATE TO authenticated USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
+  CREATE POLICY "Users can view own entreprise" ON entreprise FOR SELECT TO authenticated USING (user_id = auth.uid());
+`;
 
 /** Données de base : un patron avec un salarié, un artisan solo, un abonné payant. */
 export async function donneesDeBase({ db, q }) {

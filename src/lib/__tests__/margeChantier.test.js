@@ -32,3 +32,16 @@ describe('marge d\'un chantier : un travail facturé compte une seule fois', () 
     expect(b.revenuEncaisse).toBe(0);
   });
 });
+
+describe('main-d\'œuvre sans coût horaire (recette du 9 oct. 2026)', () => {
+  it('les heures d\'une personne sans coût ni taux sont comptées à part, pour le dire', () => {
+    const b = calculateChantierMargin({ id: 'ch1', nom: 'Salle de bain' }, {
+      devis: [{ id: 'd1', type: 'devis', statut: 'accepte', chantier_id: 'ch1', total_ht: 2000 }],
+      pointages: [{ chantierId: 'ch1', employeId: 'e1', heures: 14 }, { chantierId: 'ch1', employeId: 'e2', heures: 8 }],
+      equipe: [{ id: 'e1', coutHoraireCharge: 30 }, { id: 'e2' }],
+    });
+    expect(b.coutMO).toBe(420);
+    expect(b.heuresSansCout).toBe(8);
+  });
+});
+

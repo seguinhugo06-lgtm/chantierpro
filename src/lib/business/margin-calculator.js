@@ -96,6 +96,9 @@ export const calculateChantierMargin = (chantier, { devis = [], depenses = [], p
   const heuresTotal = chantierPointages.reduce((sum, p) => sum + (p.heures || 0), 0);
   // Main-d'œuvre au COÛT chargé (avant : au taux facturé au client, ce qui sous-estimait les marges).
   const coutMO = chantierPointages.reduce((sum, p) => sum + ((p.heures || 0) * coutPourBilan(employeeMap.get(p.employeId))), 0);
+  // Heures d'une personne sans coût horaire (ni coût chargé ni taux) : comptées 0 €, à dire à l'écran (recette du
+  // 9 oct. 2026 : la marge passait de 56,7 % à 61,7 % sans un mot)
+  const heuresSansCout = chantierPointages.reduce((sum, p) => sum + (coutPourBilan(employeeMap.get(p.employeId)) > 0 ? 0 : (p.heures || 0)), 0);
 
   // Cost adjustments (additional expenses)
   const adjDepenses = chantierAjustements
@@ -136,6 +139,7 @@ export const calculateChantierMargin = (chantier, { devis = [], depenses = [], p
     // Couts
     coutMateriaux,
     coutMO,
+    heuresSansCout,
     coutAutres: adjDepenses,
     totalDepenses,
     hasDepenses,

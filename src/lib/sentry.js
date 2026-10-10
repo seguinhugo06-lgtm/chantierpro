@@ -21,25 +21,36 @@ export function initSentry() {
     return;
   }
 
+  // Page publique à jeton porteur (signature, paiement, portail, invitation) : ni trace de performance ni
+  // enregistrement de session, qui transportent l'adresse hors de beforeSend (relecture gardien-securite du
+  // 10 oct. 2026) ; les erreurs restent signalées, jetons masqués.
+  const pagePublique = typeof window !== 'undefined' && (masquerJetons(window.location.pathname) !== window.location.pathname
+    || /access_token|refresh_token|type=recovery/.test(window.location.hash || ''));
+
   Sentry.init({
     dsn: DSN,
     environment: import.meta.env.MODE || 'production',
     release: `mallettico@${import.meta.env.VITE_APP_VERSION || '1.0.0'}`,
 
     // Performance monitoring — sample 10% of transactions
-    tracesSampleRate: 0.1,
+    tracesSampleRate: pagePublique ? 0 : 0.1,
 
     // Session replay — capture 1% of sessions, 100% of errors
-    replaysSessionSampleRate: 0.01,
-    replaysOnErrorSampleRate: 1.0,
+    replaysSessionSampleRate: pagePublique ? 0 : 0.01,
+    replaysOnErrorSampleRate: pagePublique ? 0 : 1.0,
 
-    integrations: [
-      Sentry.browserTracingIntegration(),
+    integrations: pagePublique ? [] : [
+      Sentry.browserTracingIntegration({ beforeStartSpan: (o) => ({ ...o, name: masquerJetons(o.name) }) }),
       Sentry.replayIntegration({
         maskAllText: true,
         blockAllMedia: true,
       }),
     ],
+
+    // Traces : même masquage que les erreurs (nom de transaction, adresse, descriptions)
+    beforeSendTransaction(event) {
+      return masquerEvenement(event);
+    },
 
     // Filter noisy errors
     ignoreErrors: [
@@ -73,8 +84,7 @@ export function initSentry() {
     beforeSend(event) {
       // Jetons porteurs des pages publiques (signature, paiement, portail, invitation) : un lien de signature
       // vaut signature du devis, il ne part pas chez Sentry (relecture gardien-securite du 10 oct. 2026)
-      if (event.request?.url) event.request.url = masquerJetons(event.request.url);
-      if (event.request?.headers?.Referer) event.request.headers.Referer = masquerJetons(event.request.headers.Referer);
+      masquerEvenement(event);
       // Strip PII from breadcrumbs
       if (event.breadcrumbs) {
         event.breadcrumbs = event.breadcrumbs.map(bc => {
@@ -91,6 +101,18 @@ export function initSentry() {
   });
 
   logger.debug('[Sentry] Initialized for production monitoring');
+}
+
+/** Masque les jetons d'un événement Sentry (erreur ou trace) : transaction, adresse, Referer, spans. */
+export function masquerEvenement(event) {
+  if (!event) return event;
+  if (event.transaction) event.transaction = masquerJetons(event.transaction);
+  if (event.request?.url) event.request.url = masquerJetons(event.request.url);
+  if (event.request?.headers?.Referer) event.request.headers.Referer = masquerJetons(event.request.headers.Referer);
+  if (Array.isArray(event.spans)) {
+    event.spans.forEach((sp) => { if (sp?.description) sp.description = masquerJetons(sp.description); });
+  }
+  return event;
 }
 
 /** Masque les jetons d'une adresse : paramètres apikey/token et chemins des pages publiques. */
