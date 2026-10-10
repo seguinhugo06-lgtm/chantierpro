@@ -174,6 +174,8 @@ export default function App() {
   const [page, setPageRaw] = useState(() => {
     try {
       const savedPage = localStorage.getItem('cp_current_page');
+      // Page éteinte depuis (portail client, src/lib/fonctions.js) : retour à l'accueil, pas un écran vide
+      if (savedPage === 'client-portal' && !FONCTIONS.portailClient) return 'dashboard';
       return savedPage || 'dashboard';
     } catch { return 'dashboard'; }
   });
@@ -276,6 +278,8 @@ export default function App() {
     try { return JSON.parse(localStorage.getItem('cp_read_notifs') || '[]'); } catch { return []; }
   });
   const [planningPrefill, setPlanningPrefill] = useState(null);
+  // Déclaré avant les notifications, qui masquent leurs montants en mode discret
+  const [modeDiscret, setModeDiscret] = useState(false);
 
   // Dynamic notifications computed from real data
   const notifications = useMemo(() => {
@@ -296,10 +300,15 @@ export default function App() {
       return c ? `${c.prenom || ''} ${c.nom || ''}`.trim() : '';
     };
 
+    // Montants : masqués en mode discret ; devis, factures et marges : seulement pour un rôle qui voit les finances
+    // (avant, recette du 9 oct. 2026 : la cloche d'un ouvrier listait les factures impayées et leurs montants)
+    const voitFinances = canAccess('finances');
+    const montant = (n) => (modeDiscret ? '•••' : new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(n || 0));
+
     // 1. Devis envoyés depuis >7 jours sans réponse (les factures ont leur propre alerte, ci-dessous :
     //    avant, une facture payée apparaissait ici « à relancer », en double de l'alerte d'impayé)
     (devis || []).forEach(d => {
-      if (d.type !== 'facture' && (d.statut === 'envoye' || d.statut === 'vu') && d.date) {
+      if (voitFinances && d.type !== 'facture' && (d.statut === 'envoye' || d.statut === 'vu') && d.date) {
         const age = Math.floor((now - new Date(d.date)) / 86400000);
         if (age >= 7) {
           const cn = clientName(d.client_id);
@@ -321,12 +330,12 @@ export default function App() {
     // 2. Factures en retard : échéance passée et reste dû, comme l'Accueil (src/lib/ventes.js). Avant (recette
     //    du 9 oct.) : statut brut et date d'émission — des factures payées « impayées depuis 34 jours », au total TTC.
     (devis || []).forEach(d => {
-      if (estEnRetard(d, paiements, now)) {
+      if (voitFinances && estEnRetard(d, paiements, now)) {
         const jours = joursDeRetard(d, paiements, now);
         const cn = clientName(d.client_id);
         items.push({
           id: `facture-impayee-${d.id}`,
-          message: `Facture ${d.numero || ''} en retard de ${jours} jour${jours > 1 ? 's' : ''}${cn ? ` (${cn})` : ''} — reste ${new Intl.NumberFormat('fr-FR', {style:'currency',currency:'EUR'}).format(resteAPayer(d, paiements))}`,
+          message: `Facture ${d.numero || ''} en retard de ${jours} jour${jours > 1 ? 's' : ''}${cn ? ` (${cn})` : ''} — reste ${montant(resteAPayer(d, paiements))}`,
           date: relDate(d.date),
           type: 'alert',
           link: 'devis',
@@ -340,7 +349,7 @@ export default function App() {
 
     // 3. Devis récemment acceptés (last 7 days)
     (devis || []).forEach(d => {
-      if (d.type !== 'facture' && (d.statut === 'accepte' || d.statut === 'signe') && d.date) {
+      if (voitFinances && d.type !== 'facture' && (d.statut === 'accepte' || d.statut === 'signe') && d.date) {
         const age = Math.floor((now - new Date(d.date)) / 86400000);
         if (age <= 7) {
           const cn = clientName(d.client_id);
@@ -382,12 +391,12 @@ export default function App() {
 
     // 5. Chantiers avec marge négative
     (chantiers || []).forEach(ch => {
-      if (ch.statut === 'en_cours' && getChantierBilan) {
+      if (voitFinances && ch.statut === 'en_cours' && getChantierBilan) {
         const bilan = getChantierBilan(ch.id);
         if (bilan && bilan.margeBrute < 0) {
           items.push({
             id: `chantier-perte-${ch.id}`,
-            message: `Chantier "${ch.nom || 'Sans nom'}" en perte (marge: ${new Intl.NumberFormat('fr-FR', {style:'currency',currency:'EUR'}).format(bilan.margeBrute)})`,
+            message: `Chantier "${ch.nom || 'Sans nom'}" en perte (marge : ${montant(bilan.margeBrute)})`,
             date: 'Marge négative',
             type: 'alert',
             link: 'chantiers',
@@ -492,7 +501,7 @@ export default function App() {
       ...n,
       read: readNotifIds.includes(n.id),
     }));
-  }, [devis, paiements, chantiers, clients, entreprise, getChantierBilan, readNotifIds]);
+  }, [devis, paiements, chantiers, clients, entreprise, getChantierBilan, readNotifIds, canAccess, modeDiscret]);
   const [showNotifs, setShowNotifs] = useState(false);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
@@ -516,7 +525,6 @@ export default function App() {
 
   // Settings state (entreprise declared earlier, before notifications useMemo)
   const [theme, setTheme] = useState('light');
-  const [modeDiscret, setModeDiscret] = useState(false);
 
   // CRUD wrappers with toasts (delegate to DataContext)
   // Chaque enveloppe n'annonce un succès que si la base a confirmé (ou mis en attente de réseau, ce que
@@ -1125,7 +1133,19 @@ export default function App() {
 
   // Client Portal — public page accessible via token (no auth required)
 
-  if (page === 'client-portal' || portalToken) {
+  // Portail éteint (src/lib/fonctions.js) : un client qui ouvre un lien reçoit un message neutre, jamais de données
+  // de démonstration présentées comme celles de l'entreprise
+  if (portalToken && !FONCTIONS.portailClient) return (
+    <div className="min-h-screen bg-[#f5f5f5] flex items-center justify-center p-6">
+      <div className="max-w-sm text-center bg-white rounded-2xl shadow p-6">
+        <LogoMallettico taille={40} className="mx-auto mb-3" />
+        <h1 className="text-lg font-bold text-slate-900 mb-2">Espace client indisponible</h1>
+        <p className="text-sm text-slate-600">Cet espace n’est pas disponible pour le moment. Pour vos devis et factures, contactez directement l’entreprise qui vous a envoyé ce lien.</p>
+      </div>
+    </div>
+  );
+
+  if ((page === 'client-portal' && FONCTIONS.portailClient) || portalToken) {
     const portalClientId = (() => {
       try { return localStorage.getItem('cp_portal_client_id') || null; } catch { return null; }
     })();
@@ -1928,7 +1948,7 @@ export default function App() {
               {page === 'signatures' && <FeatureGuard feature="signatures"><SignatureModule devis={devis} chantiers={chantiers} clients={clients} isDark={isDark} couleur={couleur} /></FeatureGuard>}
               {page === 'export' && <FeatureGuard feature="export_comptable"><ExportComptable devis={devis} depenses={depenses} chantiers={chantiers} clients={clients} entreprise={entreprise} isDark={isDark} couleur={couleur} /></FeatureGuard>}
               {page === 'plan' && <PlanPage isDark={isDark} couleur={couleur} setPage={setPage} />}
-              {page === 'analytique' && <AnalyticsPremium devis={devis} clients={clients} chantiers={chantiers} depenses={depenses} equipe={equipe} paiements={paiements} pointages={pointages} isDark={isDark} couleur={couleur} showToast={showToast} setPage={setPage} />}
+              {page === 'analytique' && <AnalyticsPremium modeDiscret={modeDiscret} devis={devis} clients={clients} chantiers={chantiers} depenses={depenses} equipe={equipe} paiements={paiements} pointages={pointages} isDark={isDark} couleur={couleur} showToast={showToast} setPage={setPage} />}
               {page === 'finances' && <FinancesPage devis={devis} depenses={depenses} clients={clients} chantiers={chantiers} entreprise={entreprise} equipe={equipe} paiements={paiements} pointages={pointages} isDark={isDark} couleur={couleur} setPage={setPage} modeDiscret={modeDiscret} ouvrirDocument={(id) => { const d = devis.find(x => x.id === id); if (d) { setSelectedDevis(d); setPage('devis'); } }} />}
               {page === 'equipe' && <Equipe equipe={equipe} setEquipe={setEquipe} addEmployee={addEmployee} updateEmployee={updateEmployee} deleteEmployee={deleteEmployee} pointages={pointages} setPointages={setPointages} addPointage={addPointage} chantiers={chantiers} planningEvents={planningEvents} couleur={couleur} isDark={isDark} modeDiscret={modeDiscret} setPage={setPage} />}
               {page === 'garanties' &&<GarantiesDashboard isDark={isDark} couleur={couleur} showToast={showToast} user={user} chantiers={chantiers} />}
@@ -2157,6 +2177,7 @@ export default function App() {
           onNewChantier={() => setShowFABQuickChantier(true)}
           isDark={isDark}
           couleur={couleur}
+          modeDiscret={modeDiscret}
         />
       </Suspense>
 

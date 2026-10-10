@@ -84,8 +84,19 @@ export const auth = {
   },
   signOut: async () => {
     if (isDemo || !supabase) return { error: null };
-    const { error } = await supabase.auth.signOut();
-    return { error };
+    // Cet appareil seulement (« global » déconnectait aussi l'ordinateur quand on se déconnectait du téléphone).
+    const { error } = await supabase.auth.signOut({ scope: 'local' });
+    if (error) {
+      // Serveur injoignable (hors ligne) : supabase-js garde alors la session, et le compte était de nouveau
+      // connecté au rechargement — téléphone partagé (recette du 9 oct. 2026). On l'efface de l'appareil quand même
+      // (le jeton expire de lui-même côté serveur) ; `_removeSession` prévient aussi l'app (SIGNED_OUT).
+      try {
+        if (typeof supabase.auth._removeSession === 'function') await supabase.auth._removeSession();
+        else localStorage.removeItem(supabase.auth.storageKey);
+      } catch { /* stockage indisponible : rien à effacer */ }
+      return { error: null, horsLigne: true };
+    }
+    return { error: null };
   },
   getCurrentUser: async () => {
     if (isDemo) return DEMO_USER;

@@ -2624,7 +2624,7 @@ export default function TresorerieModule({
                 <p className={`text-xs ${textSecondary}`}>
                   {(settings.regimeTva || 'trimestriel') === 'franchise'
                     ? 'Franchise en base de TVA'
-                    : `TVA collectée vs déductible — Régime ${(settings.regimeTva || 'trimestriel') === 'mensuel' ? 'réel normal' : 'réel simplifié'}`}
+                    : `TVA facturée (débits) vs déductible — Régime ${(settings.regimeTva || 'trimestriel') === 'mensuel' ? 'réel normal' : 'réel simplifié'}`}
                   {settings.numeroTva && <span className="ml-2 opacity-60">| {settings.numeroTva}</span>}
                 </p>
               </div>
@@ -2652,7 +2652,7 @@ export default function TresorerieModule({
                   const rows = isQuarterly
                     ? tvaQuarterly.map(q => `${q.label};${q.collectee.toFixed(2)};${q.deductible.toFixed(2)};${q.net.toFixed(2)}`)
                     : tvaMonthly.map(m => `${m.mois};${m.collectee.toFixed(2)};${m.deductible.toFixed(2)};${(m.collectee - m.deductible).toFixed(2)}`);
-                  const csv = 'Période;TVA Collectée;TVA Déductible;Solde TVA\n' + rows.join('\n');
+                  const csv = 'Période;TVA facturée (débits);TVA déductible;Solde estimé (débits)\n' + rows.join('\n');
                   const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
                   remettreFichier(blob, `resume_tva_${new Date().getFullYear()}.csv`)
                     .then((r) => { if (r !== 'annule') toast.success('Résumé TVA exporté', 'Le fichier CSV est prêt.'); });
@@ -2713,7 +2713,7 @@ export default function TresorerieModule({
                   <thead>
                     <tr className={`text-xs uppercase tracking-wide ${textSecondary} border-b ${borderColor}`}>
                       <th className="text-left py-3 pr-4 font-semibold">Période</th>
-                      <th className="text-right py-3 pr-4 font-semibold">TVA Collectée</th>
+                      <th className="text-right py-3 pr-4 font-semibold">TVA facturée (débits)</th>
                       <th className="text-right py-3 pr-4 font-semibold">TVA Déductible</th>
                       <th className="text-right py-3 font-semibold">Solde TVA</th>
                     </tr>

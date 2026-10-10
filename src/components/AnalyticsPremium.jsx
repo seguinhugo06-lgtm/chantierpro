@@ -10,11 +10,15 @@ import {
 import { useAnalyticsPremium } from '../hooks/useAnalyticsPremium';
 
 // ── Formatters ──────────────────────────────────────────────────
-const formatEUR = (v) =>
-  new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(v || 0);
+// Mode discret : tous les montants de l'écran (tableaux, tuiles, axes des graphiques) passent par ces deux
+// fonctions ; l'écran pose le réglage à chaque rendu. Avant (recette du 9 oct. 2026), une cinquantaine de
+// montants restaient lisibles ici en mode discret.
+let montantsMasques = false;
+const formatEUR = (v) => (montantsMasques ? '•••'
+  : new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(v || 0));
 
-const formatCompact = (v) =>
-  new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', notation: 'compact', maximumFractionDigits: 1 }).format(v || 0);
+const formatCompact = (v) => (montantsMasques ? '•••'
+  : new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', notation: 'compact', maximumFractionDigits: 1 }).format(v || 0));
 
 const PERIOD_OPTIONS = [
   { key: 'month', label: 'Ce mois' },
@@ -141,7 +145,9 @@ export default function AnalyticsPremium({
   couleur = '#f97316',
   showToast,
   setPage,
+  modeDiscret = false,
 }) {
+  montantsMasques = !!modeDiscret;
   const [period, setPeriod] = useState(() => {
     try { return localStorage.getItem('cp_analytics_premium_period') || 'all'; } catch { return 'all'; }
   });

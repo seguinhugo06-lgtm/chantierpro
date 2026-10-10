@@ -1,4 +1,4 @@
-import { jourLocal } from '../../lib/dates';
+import { jourLocal, ajouterMois } from '../../lib/dates';
 // ── Tâches : fonctions utilitaires ──
 
 export const today = () => jourLocal();
@@ -36,13 +36,13 @@ export const getNextOccurrence = (currentDate, recurrence) => {
       date.setDate(date.getDate() + (7 * interval));
       break;
     case 'monthly':
-      date.setMonth(date.getMonth() + interval);
-      break;
+      // Le 31 → le dernier jour du mois suivant (setMonth débordait : 31 janv. → 3 mars)
+      return ajouterMois(currentDate, interval);
     case 'custom': {
       const unit = recurrence.unit || 'day';
       if (unit === 'day') date.setDate(date.getDate() + interval);
       else if (unit === 'week') date.setDate(date.getDate() + (7 * interval));
-      else if (unit === 'month') date.setMonth(date.getMonth() + interval);
+      else if (unit === 'month') return ajouterMois(currentDate, interval);
       break;
     }
     default: return null;

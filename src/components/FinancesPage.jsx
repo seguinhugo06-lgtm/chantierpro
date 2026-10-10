@@ -132,6 +132,7 @@ export default function FinancesPage({ devis, depenses, clients, chantiers, entr
         <ErrorBoundary isDark={isDark} fallback={<ModuleErrorFallback moduleName="Analytique" isDark={isDark} couleur={couleur} />}>
           <Suspense fallback={<LoadingSpinner couleur={couleur} />}>
             <AnalyticsPremium
+              modeDiscret={modeDiscret}
               devis={devis}
               clients={clients}
               chantiers={chantiers}

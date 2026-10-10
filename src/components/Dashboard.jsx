@@ -267,6 +267,10 @@ export default function Dashboard({
     // Actions prioritaires (GAP 5: differentiated icons + actionLabel)
     const actions = [];
 
+    // Factures, devis et montants : seulement pour un rôle qui voit les finances. Avant (recette du 9 oct. 2026),
+    // un ouvrier ou un chef de chantier voyait « Facture en retard — Martin — 2 000 € » et des boutons vers des
+    // pages qui lui sont fermées.
+    if (canSeeFinances) {
     // 1. Factures en retard (reste dû, après l'échéance) — AlertTriangle icon, red color
     facturesEnRetard
       .slice()
@@ -317,6 +321,7 @@ export default function Dashboard({
         actionLabel: 'Finaliser',
         onClick: () => setPage('devis'),
       });
+    }
     }
 
     // Score santé /10
@@ -379,7 +384,7 @@ export default function Dashboard({
       facturesEnRetardCount: facturesEnRetard.length,
       sparkData,
     };
-  }, [devis, paiements, chantiers, clients, entreprise, modeDiscret, setSelectedDevis, setPage]);
+  }, [devis, paiements, chantiers, clients, entreprise, modeDiscret, setSelectedDevis, setPage, canSeeFinances]);
 
   // ---- Greeting ----
   const prenom = getPrenom(user);
@@ -434,7 +439,7 @@ export default function Dashboard({
   ];
   const onboardingDone = onboardingSteps.filter(s => s.done).length;
   // En démo, un visiteur explore l'app — pas de checklist d'installation
-  const showOnboarding = !isDemo && !onboardingHidden && onboardingDone < onboardingSteps.length;
+  const showOnboarding = canSeeFinances && !isDemo && !onboardingHidden && onboardingDone < onboardingSteps.length;
 
   const activeChantiers = computed.chantiersActifs;
 

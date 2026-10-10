@@ -2565,8 +2565,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           } else {
             const ech = echeance(selected);
             if (factureVue === 'payee') contexte = selected.date_paiement ? `Payée le ${dateCourte(selected.date_paiement)}` : 'Soldée';
-            else if (factureVue === 'en_retard') { contexte = `En retard de ${joursDeRetard(selected, paiements)} j · reste ${formatMoney(resteFacture)}`; contexteAlerte = true; }
-            else if (factureVue === 'partielle') contexte = `Reçu ${formatMoney(dejaPaye(selected, paiements))} · reste ${formatMoney(resteFacture)}${ech ? ` · échéance ${dateCourte(ech)}` : ''}`;
+            else if (factureVue === 'en_retard') { contexte = `En retard de ${joursDeRetard(selected, paiements)} j · reste ${modeDiscret ? '•••' : formatMoney(resteFacture)}`; contexteAlerte = true; }
+            else if (factureVue === 'partielle') contexte = `Reçu ${modeDiscret ? '•••' : formatMoney(dejaPaye(selected, paiements))} · reste ${modeDiscret ? '•••' : formatMoney(resteFacture)}${ech ? ` · échéance ${dateCourte(ech)}` : ''}`;
             else if (factureVue === 'brouillon') contexte = `Brouillon du ${dateCourte(selected.date)}`;
             else contexte = `${ech ? `Échéance ${dateCourte(ech)} · ` : ''}reste ${formatMoney(resteFacture)}`;
           }

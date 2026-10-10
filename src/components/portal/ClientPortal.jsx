@@ -349,7 +349,8 @@ export default function ClientPortal({
       if (token && token !== 'demo' && supabase) {
         const data = await getPortalData(supabase, token);
         if (cancelled) return;
-        if (data) {
+        // Données incomplètes (entreprise ou client illisible) : lien indisponible, jamais la démo à la place
+        if (data?.entreprise && data?.client) {
           setPortalData(data);
         } else {
           setExpired(true);

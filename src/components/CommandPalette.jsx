@@ -51,6 +51,8 @@ function saveRecentItem(item) {
     const items = getRecentItems();
     // Remove if already exists
     const filtered = items.filter(i => i.id !== item.id);
+    // Pas de montant enregistré en clair sur l'appareil (il restait lisible en mode discret)
+    if (item && typeof item.sublabel === 'string') item = { ...item, sublabel: item.sublabel.replace(/\s*•\s*[\d\s\u202f\u00a0.,]+\s*€\s*$/, '') };
     // Add to front
     const updated = [item, ...filtered].slice(0, MAX_RECENT_ITEMS);
     localStorage.setItem(RECENT_ITEMS_KEY, JSON.stringify(updated));
@@ -86,7 +88,9 @@ export default function CommandPalette({
   onNewChantier,
   // Theme
   isDark = false,
-  couleur = '#f97316'
+  couleur = '#f97316',
+  // Mode discret : pas de montant dans les résultats (recette du 9 oct. 2026 : « Dupont • 4 136 € »)
+  modeDiscret = false,
 }) {
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -303,7 +307,7 @@ export default function CommandPalette({
             entityType: 'devis',
             entityId: d.id,
             label: d.numero || `#${d.id?.slice(-6)}`,
-            sublabel: `${client?.nom || ''} • ${(d.total_ttc || 0).toLocaleString('fr-FR')} €`,
+            sublabel: modeDiscret ? (client?.nom || '') : `${client?.nom || ''} • ${(d.total_ttc || 0).toLocaleString('fr-FR')} €`,
             icon: d.facture_type === 'avoir' ? RotateCcw : d.facture_type === 'situation' ? BarChart3 : d.type === 'facture' ? Receipt : FileText,
             color: d.facture_type === 'avoir' ? '#dc2626' : d.facture_type === 'situation' ? '#f97316' : d.type === 'facture' ? '#8b5cf6' : '#f97316',
             action: () => { setPage('devis'); setSelectedDevis?.(d); onClose(); }

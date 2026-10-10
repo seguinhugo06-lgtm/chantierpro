@@ -32,6 +32,7 @@ import { usePermissions } from '../hooks/usePermissions';
 import { ReadOnlyBanner } from './ui/PermissionGate';
 import { urlPublique } from '../lib/urlPublique';
 import { jourLocal, dateLue } from '../lib/dates';
+import { FONCTIONS } from '../lib/fonctions';
 
 // Skeleton loader for client cards
 function ClientSkeleton({ isDark, count = 6 }) {
@@ -760,7 +761,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
           ))}
         </Carte>
         <div className="-mt-3 flex justify-end">
-          <Bouton variante="discret" taille="compacte" icone={ExternalLink} onClick={ouvrirPortail}>Lien du portail client</Bouton>
+          {FONCTIONS.portailClient && <Bouton variante="discret" taille="compacte" icone={ExternalLink} onClick={ouvrirPortail}>Lien du portail client</Bouton>}
         </div>
 
         {/* Ce qui attend, en une phrase */}
