@@ -26,6 +26,7 @@ import PostChantierSettings from './settings/PostChantierSettings';
 import { remettreFichier } from '../lib/natif';
 import { Bouton } from './ui/Bouton';
 import { jourLocal, dateLue } from '../lib/dates';
+import { profilManquant, PROFIL_EXIGE } from '../lib/profilLegal';
 
 // ── Tab groups for mobile navigation ────────────────────────────────────────
 const TAB_GROUPS = [
@@ -375,32 +376,30 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
   
   const COULEURS = ['#f97316', '#ef4444', '#22c55e', '#3b82f6', '#8b5cf6', '#ec4899', '#14b8a6', '#64748b'];
 
-  // Calcul score complétude
-  const PROFILE_FIELDS = [
-    { key: 'nom', label: 'Nom de l\'entreprise', required: true, tab: 'identite' },
-    { key: 'adresse', label: 'Adresse', required: true, tab: 'identite' },
-    { key: 'siret', label: 'N° SIRET', required: true, tab: 'legal' },
-    { key: 'tel', label: 'Téléphone', required: true, tab: 'identite' },
-    { key: 'email', label: 'Email', required: true, tab: 'identite' },
-    { key: 'formeJuridique', label: 'Forme juridique', required: true, tab: 'legal' },
-    { key: 'codeApe', label: 'Code APE', required: false, tab: 'legal' },
-    { key: 'rcsVille', label: 'Ville RCS', required: false, tab: 'legal' },
-    { key: 'rcsNumero', label: 'N° RCS', required: false, tab: 'legal' },
-    { key: 'tvaIntra', label: 'N° TVA Intracommunautaire', required: false, tab: 'legal' },
-    { key: 'rcProAssureur', label: 'Assureur RC Pro', required: false, tab: 'assurances' },
-    { key: 'rcProNumero', label: 'N° Police RC Pro', required: false, tab: 'assurances' },
-    { key: 'decennaleAssureur', label: 'Assureur Décennale', required: false, tab: 'assurances' },
-    { key: 'decennaleNumero', label: 'N° Police Décennale', required: false, tab: 'assurances' },
+  // Calcul score complétude. « Obligatoires » = ce qui bloque l'envoi (lib/profilLegal, la liste du
+  // contrôle d'envoi) + téléphone et e-mail, à donner au client sans que leur absence bloque l'envoi.
+  // Avant, la décennale n'était que « recommandée » ici : 100 % affiché, envoi bloqué.
+  const CONTACT_FIELDS = [
+    { key: 'tel', label: 'Téléphone', tab: 'identite' },
+    { key: 'email', label: 'Email', tab: 'identite' },
   ];
-  const missingFields = PROFILE_FIELDS.filter(f => !entreprise[f.key] || String(entreprise[f.key]).trim() === '');
-  const missingRequired = missingFields.filter(f => f.required);
-  const missingRecommended = missingFields.filter(f => !f.required);
-  const getCompletude = () => {
-    const required = PROFILE_FIELDS.filter(f => f.required);
-    const filled = required.filter(f => entreprise[f.key] && String(entreprise[f.key]).trim() !== '');
-    return Math.round((filled.length / required.length) * 100);
-  };
-  const completude = getCompletude();
+  const RECOMMENDED_FIELDS = [
+    { key: 'codeApe', label: 'Code APE', tab: 'legal' },
+    { key: 'rcsVille', label: 'Ville RCS', tab: 'legal' },
+    { key: 'rcsNumero', label: 'N° RCS', tab: 'legal' },
+    { key: 'tvaIntra', label: 'N° TVA Intracommunautaire', tab: 'legal' },
+    { key: 'rcProAssureur', label: 'Assureur RC Pro', tab: 'assurances' },
+    { key: 'rcProNumero', label: 'N° Police RC Pro', tab: 'assurances' },
+  ];
+  const estVide = (f) => !entreprise[f.key] || String(entreprise[f.key]).trim() === '';
+  const missingRequired = [
+    ...profilManquant(entreprise).map(m => ({ key: m.champ, label: m.libelle, tab: m.onglet })),
+    ...CONTACT_FIELDS.filter(estVide),
+  ];
+  const missingRecommended = RECOMMENDED_FIELDS.filter(estVide);
+  const missingFields = [...missingRequired, ...missingRecommended];
+  const totalRequired = PROFIL_EXIGE.length + CONTACT_FIELDS.length;
+  const completude = Math.round(((totalRequired - missingRequired.length) / totalRequired) * 100);
 
   // Alertes assurances
   const alertesAssurances = useMemo(() => {
@@ -818,7 +817,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Statut juridique <span className="text-red-500">*</span></label>
-                <select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={entreprise.formeJuridique || ''} onChange={e => updateEntreprise(p => ({...p, formeJuridique: e.target.value}))}>
+                <select id="settings-field-formeJuridique" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={entreprise.formeJuridique || ''} onChange={e => updateEntreprise(p => ({...p, formeJuridique: e.target.value}))}>
                   <option value="">Sélectionner...</option>
                   <option value="EI">Entreprise Individuelle (EI)</option>
                   <option value="EIRL">EIRL</option>
@@ -1067,7 +1066,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1">Compagnie d'assurance <span className="text-red-500">*</span></label>
-                <DebouncedInput className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="SMABTP, AXA..." value={entreprise.decennaleAssureur || ''} onChange={val => updateEntreprise(p => ({...p, decennaleAssureur: val}))} />
+                <DebouncedInput id="settings-field-decennaleAssureur" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="SMABTP, AXA..." value={entreprise.decennaleAssureur || ''} onChange={val => updateEntreprise(p => ({...p, decennaleAssureur: val}))} />
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Numéro de contrat <span className="text-red-500">*</span></label>

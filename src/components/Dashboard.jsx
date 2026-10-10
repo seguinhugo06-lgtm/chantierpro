@@ -63,30 +63,6 @@ function Mallette({ size = 24, style, className }) {
   );
 }
 
-// ============ CONSTANTS ============
-
-const PROFILE_ALL_FIELDS = [
-  { key: 'nom', label: 'Nom', tab: 'identite' },
-  { key: 'adresse', label: 'Adresse', tab: 'identite' },
-  { key: 'siret', label: 'SIRET', tab: 'legal' },
-  { key: 'tel', label: 'Téléphone', tab: 'identite' },
-  { key: 'email', label: 'Email', tab: 'identite' },
-  { key: 'formeJuridique', label: 'Forme juridique', tab: 'legal' },
-  { key: 'codeApe', label: 'Code APE', tab: 'legal' },
-  { key: 'tvaIntra', label: 'TVA Intra', tab: 'legal' },
-  { key: 'rcProAssureur', label: 'RC Pro', tab: 'assurances' },
-  { key: 'decennaleAssureur', label: 'Décennale', tab: 'assurances' },
-];
-
-const F26_CRITERIA = [
-  { label: 'SIRET', key: 'siret' },
-  { label: 'N° TVA', key: 'tvaIntra' },
-  { label: 'RCS', key: 'rcs' },
-  { label: 'Banque', key: 'banque' },
-  { label: 'Adresse', key: 'adresse' },
-  { label: 'RC Pro', key: 'rcPro' },
-];
-
 // ============ HELPERS ============
 
 function fmt(amount, discret = false) {
@@ -336,24 +312,6 @@ export default function Dashboard({
     const chantierPrincipal = chantiersActifs
       .sort((a, b) => (b.avancement || 0) - (a.avancement || 0))[0] || null;
 
-    // Onboarding: profil + conformité
-    const profilComplete = entreprise
-      ? PROFILE_ALL_FIELDS.filter(f => entreprise[f.key]).length
-      : 0;
-    const profilPct = Math.round((profilComplete / PROFILE_ALL_FIELDS.length) * 100);
-
-    const f26Complete = entreprise
-      ? F26_CRITERIA.filter(c => {
-          if (c.key === 'banque') return entreprise.iban;
-          if (c.key === 'rcs') return entreprise.rcsVille || entreprise.rcsNumero;
-          if (c.key === 'rcPro') return entreprise.rcProAssureur;
-          return entreprise[c.key];
-        }).length
-      : 0;
-    const f26Pct = Math.round((f26Complete / F26_CRITERIA.length) * 100);
-
-
-
     // Encaissé par mois, 6 derniers mois : l'argent reçu (avant : la somme des devis signés, « CA »).
     const sparkData = [];
     for (let i = 5; i >= 0; i--) {
@@ -376,8 +334,6 @@ export default function Dashboard({
       actions: actions.sort((a, b) => a.priority - b.priority),
       score,
       chantierPrincipal,
-      profilPct,
-      f26Pct,
       caCeMois,
       caCeMoisTrend,
       lastMonthCA,
