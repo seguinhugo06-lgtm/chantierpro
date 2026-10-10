@@ -1838,7 +1838,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       ${entreprise?.rcProAssureur ? `RC Pro: ${entreprise.rcProAssureur} N°${entreprise.rcProNumero}${entreprise.rcProValidite ? ` (Valide jusqu'au ${new Date(entreprise.rcProValidite).toLocaleDateString('fr-FR')})` : ''}${entreprise.rcProMontantGarantie ? ` — Garantie: ${entreprise.rcProMontantGarantie} €` : ''}${entreprise.rcProZone ? ` — Zone: ${entreprise.rcProZone}` : ''}` : ''}
       ${entreprise?.mentionRGE !== false && Array.isArray(entreprise?.labels) && entreprise.labels.filter(l => l.actif).length > 0 ? '<br>' + entreprise.labels.filter(l => l.actif).map(l => `${l.nom}${l.numero ? ` N°${l.numero}` : ''}${l.organisme ? ` (${l.organisme})` : ''}${l.dateExpiration ? ` — Valide jusqu'au ${new Date(l.dateExpiration).toLocaleDateString('fr-FR')}` : ''}`).join('<br>') : ''}
     </div>
-    ${isAvoirDoc ? `<div style="margin-top:6px;font-size:6.5pt;color:#666">Avoir émis conformément à l'article 441-3 du Code de Commerce. Ce document annule et remplace partiellement ou totalement la facture de référence.</div>` : !isFacture ? `<div style="margin-top:6px;font-size:6.5pt;color:#666">Devis reçu avant l'exécution des travaux. Conditions de paiement et pénalités de retard conformes aux articles L441-10 et L441-6 du Code de commerce.</div>` : ''}
+    ${isAvoirDoc ? `<div style="margin-top:6px;font-size:6.5pt;color:#666">Cet avoir rectifie la facture de référence citée ci-dessus ; il en réduit d'autant le montant dû.</div>` : !isFacture ? `<div style="margin-top:6px;font-size:6.5pt;color:#666">Devis reçu avant l'exécution des travaux. Conditions de paiement et pénalités de retard conformes à l'article L441-10 du Code de commerce.</div>` : ''}
   </div>
 </body>
 </html>`;
@@ -2597,6 +2597,11 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
             peutCreer && selected.type === 'devis' && ['accepte', 'signe'].includes(selected.statut) && canAcompte && { groupe: 'document', libelle: 'Demander un acompte', icone: CreditCard, onClick: () => setShowEcheancierModal(true) },
             peutModifier && selected.type === 'devis' && ['accepte', 'envoye', 'facture'].includes(selected.statut) && { groupe: 'document', libelle: 'Créer un avenant', icone: Edit3, onClick: () => createAvenant(selected) },
             peutCreer && selected.type === 'facture' && !isAvoir && { groupe: 'document', libelle: 'Créer un avoir', icone: RotateCcw, onClick: () => setShowAvoirModal(true) },
+            // Un avoir brouillon est déjà numéroté : il ne se supprime pas (trou dans la séquence), il s'annule
+            peutModifier && isAvoir && selected.statut === 'brouillon' && { groupe: 'document', libelle: 'Annuler cet avoir', icone: X, onClick: async () => {
+              const ok = await confirm({ title: 'Annuler cet avoir ?', message: `${selected.numero} restera dans la numérotation, marqué « annulé », et ne réduira pas la facture.` });
+              if (ok && await onUpdate(selected.id, { statut: 'annule' })) setSelected(s => (s ? { ...s, statut: 'annule' } : s));
+            } },
             peutCreer && { groupe: 'document', libelle: 'Dupliquer', icone: Copy, onClick: async () => { setActionLoading('duplicate'); try { await duplicateDocument(selected); } finally { setActionLoading(null); } } },
             peutModifier && { groupe: 'document', libelle: 'Enregistrer comme modèle', icone: Star, onClick: () => setShowSaveTemplateModal(true) },
             // Une facture émise ne se supprime pas (avoir) ; un devis facturé non plus
@@ -3326,15 +3331,18 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                   <span className="ml-auto font-bold">{pourcentageAcompteValide(acomptePct) ? formatMoney(ttcAcompte(acomptePct)) : '—'}</span>
                 </div>
               </div>
-              {acomptePct > 50 ? (
-                <div className="bg-red-50 border border-red-200 rounded-xl p-3 mb-4 text-xs text-red-800 flex items-center gap-2">
-                  <AlertTriangle size={14} className="flex-shrink-0" />
-                  <span>Attention : un acompte de plus de 50% est très inhabituel et peut poser des problèmes juridiques.</span>
-                </div>
-              ) : acomptePct > 30 ? (
+              {/* Relecture juridique du 10 oct. 2026 : il n'y a PAS de plafond légal d'acompte pour des travaux
+                  (l'ancien message « limité à 30 % par la loi, art. L. 214-1 » était faux). Le devis signé fait foi
+                  (C. civ. art. 1103) ; chez un particulier, contrat signé hors établissement : aucun paiement avant
+                  7 jours (C. conso. art. L221-10), sauf dépannage urgent demandé par le client. */}
+              {Number(selected.acompte_pct) > 0 && Number(acomptePct) > Number(selected.acompte_pct) ? (
                 <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4 text-xs text-amber-800 flex items-center gap-2">
                   <AlertTriangle size={14} className="flex-shrink-0" />
-                  <span>Pour travaux &gt; 1 500 € chez un particulier, l'acompte est limité à 30% par la loi (art. L. 214-1 code conso).</span>
+                  <span>Le devis signé prévoit un acompte de {pourcent(Number(selected.acompte_pct))} : en facturer davantage demande l'accord du client.</span>
+                </div>
+              ) : !estClientPro(clients.find(c => c.id === selected.client_id)) ? (
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 mb-4 text-xs text-slate-600">
+                  Pas de plafond légal d'acompte pour des travaux. Devis signé chez le client : aucun paiement avant 7 jours après la signature (art. L221-10 du Code de la consommation), sauf dépannage urgent qu'il a demandé.
                 </div>
               ) : (
                 <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 mb-4 text-xs text-slate-600">

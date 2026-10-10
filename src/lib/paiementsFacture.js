@@ -105,7 +105,8 @@ export function echeance(facture, { delaiJours } = {}) {
  */
 export function statutFacture(facture, paiements = [], maintenant = new Date()) {
   const s = facture?.statut;
-  if (s === 'brouillon' || s === 'annulee') return s;
+  if (s === 'brouillon') return s;
+  if (s === 'annulee' || s === 'annule') return 'annulee';
   const total = Number(facture?.total_ttc) || 0;
   // Entièrement créditée par avoir : annulée (ni à encaisser, ni à relancer)
   if (total > 0 && credite(facture) >= total - CENTIME) return 'annulee';

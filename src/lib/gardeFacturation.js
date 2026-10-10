@@ -10,11 +10,13 @@ const TOLERANCE = 0.05;
 
 const ttc = (d) => Math.abs(Number(d?.total_ttc) || 0);
 const estAvoir = (d) => d?.facture_type === 'avoir';
+// La base n'admet que `annule` ; l'app a longtemps écrit `annulee` : accepter les deux.
+export const estAnnule = (d) => d?.statut === 'annule' || d?.statut === 'annulee';
 
 /** Avoirs émis (hors brouillon et annulés) sur une facture. */
 export function avoirsDe(facture, documents = []) {
   if (!facture?.id) return [];
-  return documents.filter((d) => estAvoir(d) && d.avoir_source_id === facture.id && !['brouillon', 'annulee'].includes(d.statut));
+  return documents.filter((d) => estAvoir(d) && d.avoir_source_id === facture.id && d.statut !== 'brouillon' && !estAnnule(d));
 }
 
 /** Montant TTC crédité par les avoirs émis sur une facture. */
@@ -24,7 +26,7 @@ export function montantCredite(facture, documents = []) {
 
 /** Factures (hors avoirs et annulées) émises sur un devis. */
 export function facturesDuDevis(devisId, documents = []) {
-  return documents.filter((d) => d.type === 'facture' && d.devis_source_id === devisId && !estAvoir(d) && d.statut !== 'annulee');
+  return documents.filter((d) => d.type === 'facture' && d.devis_source_id === devisId && !estAvoir(d) && !estAnnule(d));
 }
 
 /** TTC déjà facturé sur un devis, avoirs émis déduits. */
@@ -70,7 +72,9 @@ export function peutModifierDocument(doc, documents = []) {
  */
 export function peutSupprimerDocument(doc, documents = []) {
   if (!doc) return false;
-  if (doc.type === 'facture') return doc.statut === 'brouillon';
+  // Un document de facturation déjà numéroté reste dans la séquence, même en brouillon : on l'annule
+  // (relecture juridique du 10 oct. 2026 — numérotation continue, CGI ann. II art. 242 nonies A I 1°).
+  if (doc.type === 'facture') return doc.statut === 'brouillon' && !doc.numero;
   if (['acompte_facture', 'facture'].includes(doc.statut)) return false;
   return facturesDuDevis(doc.id, documents).length === 0;
 }

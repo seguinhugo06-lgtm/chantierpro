@@ -350,7 +350,7 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mod
 
   ${mentionTvaReduiteHtml({ tvaDetails: calculatedTvaDetails, nomClient: formatClientName(client, ''), isMicro, isFacture })}
 
-  ${isFacture && doc.facture_type === 'solde' ? '<div style="margin-top:10px;font-size:7pt;color:#64748b;font-style:italic;">Solde de tout compte conformément à l\'article L441-3 du Code de commerce.</div>' : ''}
+  ${''/* « Solde de tout compte » (droit du travail) et « L441-3 » (périmé) retirés — relecture juridique du 10 oct. 2026 */}
 
   ${isFacture && paymentToken ? `
   <!-- PAIEMENT EN LIGNE -->
@@ -452,7 +452,7 @@ function buildFooterHtml(e, rcsComplet, isDevis = false, isClientMode = false) {
       ${e.rcProAssureur ? `RC Pro: ${e.rcProAssureur} N°${e.rcProNumero}${e.rcProValidite ? ` (Valide jusqu'au ${new Date(e.rcProValidite).toLocaleDateString('fr-FR')})` : ''}` : ''}
       ${e.mentionRGE !== false && Array.isArray(e.labels) && e.labels.filter(l => l.actif).length > 0 ? '<br>' + e.labels.filter(l => l.actif).map(l => `${l.nom}${l.numero ? ` N°${l.numero}` : ''}${l.organisme ? ` (${l.organisme})` : ''}${l.dateExpiration ? ` — Valide jusqu'au ${new Date(l.dateExpiration).toLocaleDateString('fr-FR')}` : ''}`).join('<br>') : ''}
     </div>
-    ${isDevis ? `<div style="margin-top:6px;font-size:6.5pt;color:#666">Devis reçu avant l'exécution des travaux. Conditions de paiement et pénalités de retard conformes aux articles L441-10 et L441-6 du Code de commerce.</div>` : ''}
+    ${isDevis ? `<div style="margin-top:6px;font-size:6.5pt;color:#666">Devis reçu avant l'exécution des travaux. Conditions de paiement et pénalités de retard conformes à l'article L441-10 du Code de commerce.</div>` : ''}
   </div>`;
 }
 

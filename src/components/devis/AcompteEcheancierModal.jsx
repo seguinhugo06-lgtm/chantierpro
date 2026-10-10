@@ -79,8 +79,8 @@ export default function AcompteEcheancierModal({
   const totalPct = sourceEtapes.reduce((s, e) => s + (e.pourcentage || 0), 0);
 
   // Legal warning for first step > 30%
-  const firstStepOver30 = previewEtapes.length > 0 && previewEtapes[0]?.pourcentage > 30;
-  const firstStepOver50 = previewEtapes.length > 0 && previewEtapes[0]?.pourcentage > 50;
+  const premierAuDelaDuDevis = previewEtapes.length > 0 && Number(devis?.acompte_pct) > 0
+    && previewEtapes[0]?.pourcentage > Number(devis.acompte_pct);
 
   // Custom étape management
   const addCustomEtape = () => {
@@ -309,19 +309,13 @@ export default function AcompteEcheancierModal({
               </div>
 
               {/* Legal warnings */}
-              {firstStepOver50 && (
-                <div className={cn('rounded-xl p-3 border flex items-start gap-2', isDark ? 'bg-red-900/20 border-red-800 text-red-300' : 'bg-red-50 border-red-200 text-red-800')}>
-                  <AlertTriangle size={16} className="flex-shrink-0 mt-0.5" />
-                  <p className="text-xs">
-                    <strong>Attention :</strong> un acompte de plus de 50% est très inhabituel et peut poser des problèmes juridiques.
-                  </p>
-                </div>
-              )}
-              {firstStepOver30 && !firstStepOver50 && (
+              {/* Il n'y a pas de plafond légal d'acompte pour des travaux (relecture juridique du 10 oct. 2026 :
+                  l'ancien « limité à 30 %, art. L. 214-1 » était faux). Le devis signé fait foi (C. civ. art. 1103). */}
+              {premierAuDelaDuDevis && (
                 <div className={cn('rounded-xl p-3 border flex items-start gap-2', isDark ? 'bg-amber-900/20 border-amber-800 text-amber-300' : 'bg-amber-50 border-amber-200 text-amber-800')}>
                   <AlertTriangle size={16} className="flex-shrink-0 mt-0.5" />
                   <p className="text-xs">
-                    Pour travaux &gt; 1 500 € chez un particulier, l'acompte initial est limité à 30% (art. L. 214-1 code conso).
+                    Le devis signé prévoit un acompte de {devis.acompte_pct} % : en facturer davantage demande l'accord du client.
                   </p>
                 </div>
               )}

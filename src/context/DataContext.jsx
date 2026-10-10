@@ -1192,7 +1192,7 @@ export function DataProvider({ children, initialData = {} }) {
   const devisAvecAvoirs = useMemo(() => {
     const credits = new Map();
     for (const d of devis) {
-      if (d.facture_type === 'avoir' && d.avoir_source_id && !['brouillon', 'annulee'].includes(d.statut)) {
+      if (d.facture_type === 'avoir' && d.avoir_source_id && !['brouillon', 'annulee', 'annule'].includes(d.statut)) {
         credits.set(d.avoir_source_id, (credits.get(d.avoir_source_id) || 0) + Math.abs(Number(d.total_ttc) || 0));
       }
     }

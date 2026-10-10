@@ -302,7 +302,7 @@ export function buildDocumentHTML(doc, client, chantier, entreprise, options = {
       ${entreprise?.decennaleAssureur && entreprise?.rcProAssureur ? '<br>' : ''}
       ${entreprise?.rcProAssureur ? `RC Pro: ${entreprise.rcProAssureur} N°${entreprise.rcProNumero}${entreprise.rcProValidite ? ` (Valide jusqu'au ${new Date(entreprise.rcProValidite).toLocaleDateString('fr-FR')})` : ''}` : ''}
     </div>
-    ${isAvoir ? `<div style="margin-top:6px;font-size:6.5pt;color:#666">Avoir émis conformément à l'article 441-3 du Code de Commerce. Ce document annule et remplace partiellement ou totalement la facture de référence.</div>` : !isFacture ? `<div style="margin-top:6px;font-size:6.5pt;color:#666">Devis reçu avant l'exécution des travaux. Conditions de paiement et pénalités de retard conformes aux articles L441-10 et L441-6 du Code de commerce.</div>` : ''}
+    ${isAvoir ? `<div style="margin-top:6px;font-size:6.5pt;color:#666">Cet avoir rectifie la facture de référence citée ci-dessus ; il en réduit d'autant le montant dû.</div>` : !isFacture ? `<div style="margin-top:6px;font-size:6.5pt;color:#666">Devis reçu avant l'exécution des travaux. Conditions de paiement et pénalités de retard conformes à l'article L441-10 du Code de commerce.</div>` : ''}
   </div>
   ${subscription.isFree() ? `
   <div style="position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:999;display:flex;align-items:center;justify-content:center;">

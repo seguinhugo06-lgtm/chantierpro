@@ -35,6 +35,9 @@ Mentions de base (CGI ann. II art. 242 nonies A ; C. com. L441-9) : numéro uniq
 - Micro-entrepreneur en franchise : « TVA non applicable, art. 293 B du CGI ».
 - Nouvelles mentions de la réforme : SIREN du client, adresse de livraison si différente, **catégorie de l'opération** (biens / services / mixte), **option pour le paiement de la TVA d'après les débits**. Obligatoires pour les micro-entreprises et PME sur les factures émises **à compter du 1er sept. 2027** (CGI ann. II art. 242 nonies A et sa note d'application ; 1er sept. 2026 pour les grandes entreprises) — tranché le 8 oct. 2026 ; les ajouter dès maintenant est sans risque (tâche `mentions-2027`).
 - Conservation : 10 ans (C. com. L123-22) — d'où l'invitation à exporter avant toute suppression de compte.
+- **Remises** : prix unitaire HT « déterminé hors rabais, remises ou ristournes », la remise faisant l'objet d'une mention particulière, une remise globale aussi (BOFiP BOI-TVA-DECLA-30-20-20-10 § 220, 240, 480) ; « toute réduction de prix acquise » figure sur la facture (C. com. L441-9 I). D'où les lignes « Remise X % » de `src/lib/facturation.js` — jamais un prix net par ligne.
+- **Avoir** : le document qui modifie la facture initiale et y fait référence de façon spécifique et non équivoque (CGI art. 289 I, 5e al., repris dans le CIBS au 1er sept. 2026) ; texte retenu : « Cet avoir rectifie la facture … ; il en réduit d'autant le montant dû ». Ne pas écrire « annule et remplace » (facture de remplacement) ni citer L441-3 : depuis l'ordonnance n° 2019-359, L441-3 et L441-6 traitent des conventions écrites ; la facturation relève de L441-9, les pénalités de L441-10 (relecture du 10 oct. 2026). « Solde de tout compte » est un terme du droit du travail (C. trav. L1234-20) : jamais sur une facture.
+- **TVA recodifiée** dans le CIBS au 1er sept. 2026 ; les renvois au CGI (dont « art. 293 B du CGI ») restent admis sur les factures jusqu'au 31 déc. 2027 (BOI-RES-TVA-000253-20260218 § 3.1).
 
 ## 4. TVA dans le bâtiment
 
@@ -54,6 +57,7 @@ Mentions de base (CGI ann. II art. 242 nonies A ; C. com. L441-9) : numéro uniq
 
 ## 5. Paiement
 
+- **Acompte** : **aucun plafond légal** pour des travaux ; L214-1 à L214-3 du Code de la consommation (arrhes / acomptes) ne visent pas les commandes spéciales sur devis (L214-3). Le devis signé fait foi (C. civ. art. 1103) : facturer plus que l'acompte prévu demande l'accord du client. Chez un particulier, contrat hors établissement : aucun paiement avant 7 jours (L221-10, voir §2). Relecture du 10 oct. 2026 : l'app affichait à tort « limité à 30 % par la loi (art. L. 214-1) ».
 - **Surtaxe d'un paiement par carte interdite** (C. mon. fin. L112-12) → jamais de frais répercutés au client.
 - Espèces entre un professionnel et un particulier : 1 000 € maximum (C. mon. fin. L112-6, D112-3).
 - Délais entre professionnels : 30 jours après réception par défaut, 60 jours max (C. com. L441-10).

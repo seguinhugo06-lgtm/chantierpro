@@ -33,6 +33,7 @@ import {
 } from 'lucide-react';
 import { generateId } from '../../lib/utils';
 import { verifierNouvelleFacture } from '../../lib/gardeFacturation';
+import { FONCTIONS } from '../../lib/fonctions';
 import { useToast } from '../../context/AppContext';
 import { formatMoney } from '../../lib/formatters';
 import {
@@ -345,6 +346,7 @@ export default function SituationsTravaux({
 
   const handleGenererFacture = useCallback(
     async (sitId) => {
+      if (!FONCTIONS.facturesSituation) return; // masquée : générateur pas encore conforme
       if (!addDevis || !generateNextNumero) return;
 
       const sit = situations.find((s) => s.id === sitId);
@@ -792,7 +794,7 @@ export default function SituationsTravaux({
                             </button>
                           </>
                         )}
-                        {sit.statut === SITUATION_STATUS.VALIDEE && (
+                        {sit.statut === SITUATION_STATUS.VALIDEE && FONCTIONS.facturesSituation && (
                           <button
                             onClick={(e) => { e.stopPropagation(); handleGenererFacture(sit.id); }}
                             className="text-xs px-2 py-1 rounded-lg text-white hover:opacity-80 transition-opacity"
@@ -801,7 +803,10 @@ export default function SituationsTravaux({
                             Générer facture
                           </button>
                         )}
-                        {(sit.statut === SITUATION_STATUS.FACTUREE || sit.statut === SITUATION_STATUS.PAYEE) && (
+                        {sit.statut === SITUATION_STATUS.VALIDEE && !FONCTIONS.facturesSituation && (
+                          <span className="text-xs text-encre-3">Facture de situation : bientôt disponible</span>
+                        )}
+                        {FONCTIONS.facturesSituation && (sit.statut === SITUATION_STATUS.FACTUREE || sit.statut === SITUATION_STATUS.PAYEE) && (
                           <button
                             onClick={(e) => { e.stopPropagation(); handlePrintSituation(sit); }}
                             className={`text-xs px-2 py-1 rounded-lg flex items-center gap-1 ${
@@ -850,7 +855,7 @@ export default function SituationsTravaux({
               hoverBg={hoverBg}
               showMoney={showMoney}
               StatusBadge={StatusBadge}
-              onPrint={() => handlePrintSituation(selectedSituation)}
+              onPrint={FONCTIONS.facturesSituation ? () => handlePrintSituation(selectedSituation) : undefined}
             />
           )}
 
