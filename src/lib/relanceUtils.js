@@ -317,8 +317,8 @@ function buildVariableMap(doc, client, entreprise) {
     total_du: formatMoneyValue(pen.totalDu),
     // Mention selon le client (textes de la mise en demeure, src/lib/miseEnDemeureBuilder.js)
     mention_retard: pro
-      ? 'Conformément aux articles L.441-10 et D.441-5 du Code de commerce, des pénalités de retard et une indemnité forfaitaire de recouvrement sont désormais exigibles.'
-      : "Conformément à l'article 1231-6 du Code civil, la somme due produira intérêts au taux légal à compter de la présente mise en demeure.",
+      ? 'Conformément aux articles L.441-10 et D.441-5 du Code de commerce, des pénalités de retard et une indemnité forfaitaire de 40 € pour frais de recouvrement sont dues depuis le lendemain de l’échéance.'
+      : "Conformément à l'article 1231-6 du Code civil, la somme due produit intérêts au taux légal à compter de la mise en demeure.",
     // Lien paiement en ligne
     lien_paiement: doc?.payment_token
       ? urlPublique(`/pay/${doc.payment_token}`)

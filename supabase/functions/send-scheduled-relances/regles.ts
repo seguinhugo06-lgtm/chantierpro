@@ -20,8 +20,8 @@ export const DEFAULT_PENALTY_RATE = tauxPenalitesLegal();
 /** Mention de retard selon le client (mêmes textes que la mise en demeure de l'app). */
 export function mentionRetard(pro: boolean): string {
   return pro
-    ? 'Conformément aux articles L.441-10 et D.441-5 du Code de commerce, des pénalités de retard et une indemnité forfaitaire de recouvrement sont désormais exigibles.'
-    : "Conformément à l'article 1231-6 du Code civil, la somme due produira intérêts au taux légal à compter de la présente mise en demeure.";
+    ? 'Conformément aux articles L.441-10 et D.441-5 du Code de commerce, des pénalités de retard et une indemnité forfaitaire de 40 € pour frais de recouvrement sont dues depuis le lendemain de l’échéance.'
+    : "Conformément à l'article 1231-6 du Code civil, la somme due produit intérêts au taux légal à compter de la mise en demeure.";
 }
 export const RECOVERY_INDEMNITY = 40;
 const CENTIME = 0.005;
