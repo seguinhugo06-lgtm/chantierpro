@@ -19,7 +19,7 @@ Dans l'ordre. Chaque action est aussi dans le Pilote (« À faire de votre côt�
 
 | Élément | État | Vérifié |
 |---|---|---|
-| `main` | `12715ad` (10 oct. : onglet Paramètres › Facture 2026 — liste des informations de facture honnête : RCS, capital et n° de TVA intracommunautaire seulement pour qui est concerné, IBAN hors note, « complètes » à 100 % seulement, chaque « Compléter » ouvre le bon champ ; test Factur-X cohérent ; aucune migration) | `npm run statut` : Vercel ×2 + CI verts (10 oct.) |
+| `main` | `0174d46` (10 oct. : l'assistant de configuration des Paramètres ne dit plus « Configuration terminée ! » quand le profil bloque l'envoi — il liste ce qui manque (`lib/profilLegal`), chaque ligne ouvre le bon champ ; `components/profil/ProfilePage.jsx`, mort, supprimé ; aucune migration. Inclut aussi D-23 téléphone et e-mail exigés, D-24 case « non soumis à la décennale ») | `npm run statut` : Vercel ×2 + CI verts (10 oct.) |
 | Vercel | 2 projets (`chantierpro`, `seguinhugo06-lgtm-chantierpro`), déploiement auto sur `main` | statut GitHub |
 | Domaine | `mallettico.fr` (DNS OVH) | 25 juil. |
 | Service worker | sert l'ancienne version jusqu'à rechargement : ne jamais vérifier un déploiement en rechargeant le site | — |
