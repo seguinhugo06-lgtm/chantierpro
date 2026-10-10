@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
-import { useToast } from '../context/AppContext';
+import { useToast, useConfirm } from '../context/AppContext';
 import { Download, FileSpreadsheet, FileText, RefreshCw, CheckCircle, AlertCircle, Calendar, ExternalLink, Calculator, Building2, ArrowLeft, Shield, Search, ChevronDown, ChevronRight, Zap, Palette, FileCheck, BellRing, Package, Check, X, Loader2, Home, Smartphone, Fuel, Archive, Landmark, BarChart3, CreditCard, Users, Link2, Settings2, HardDrive, FolderOpen, Construction, Receipt, Mail, Sparkles, ClipboardList, GraduationCap } from 'lucide-react';
 import { captureException } from '../lib/sentry';
 import AdminHelp from './admin-help/AdminHelp';
@@ -94,6 +94,16 @@ const FORMES_JURIDIQUES = [
   { valeur: 'SNC', libelle: 'SNC (Société en Nom Collectif)' },
 ];
 
+// Champs repris par « Reprendre les informations de l'entreprise » (texte et nombres seulement)
+const CHAMPS_IMPORTABLES = [
+  'nom', 'nomEntrepreneur', 'formeJuridique', 'capital', 'adresse', 'ville', 'codePostal', 'pays', 'tel', 'email', 'siteWeb',
+  'slogan', 'siret', 'codeApe', 'tvaIntra', 'rcs', 'rcsVille', 'rcsNumero', 'rcsType', 'iban', 'bic', 'banque', 'titulaireBanque',
+  'decennaleAssureur', 'decennaleNumero', 'decennaleValidite', 'decennaleActivites', 'decennaleAssureurAdresse', 'decennaleZone',
+  'rcProAssureur', 'rcProNumero', 'rcProValidite', 'rcProMontantGarantie', 'rcProZone', 'rge', 'rgeOrganisme',
+  'mediateur', 'mediateurContact', 'cgv', 'mentionDevis', 'mentionFacture', 'tvaDefaut', 'acompteDefaut', 'validiteDevis',
+  'delaiPaiement', 'tauxPenalites', 'modePaiementDefaut', 'conditionsPaiementDefaut', 'tauxFraisStructure', 'couleur',
+];
+
 const VILLES_RCS = ['Paris', 'Lyon', 'Marseille', 'Toulouse', 'Nice', 'Nantes', 'Strasbourg', 'Montpellier', 'Bordeaux', 'Lille', 'Rennes', 'Reims', 'Toulon', 'Saint-Étienne', 'Le Havre', 'Grenoble', 'Dijon', 'Angers', 'Nîmes', 'Villeurbanne', 'Clermont-Ferrand', 'Aix-en-Provence', 'Brest', 'Tours', 'Amiens', 'Limoges', 'Annecy', 'Perpignan', 'Boulogne-Billancourt', 'Metz', 'Besançon', 'Orléans', 'Rouen', 'Mulhouse', 'Caen', 'Nancy', 'Saint-Denis', 'Argenteuil', 'Roubaix', 'Tourcoing', 'Montreuil', 'Avignon', 'Créteil', 'Poitiers', 'Fort-de-France', 'Versailles', 'Courbevoie', 'Vitry-sur-Seine', 'Colombes', 'Pau'];
 
 // Saisie différée (moins de rendus à chaque frappe, au téléphone), mais jamais perdue : la valeur en attente est
@@ -146,6 +156,7 @@ function DebouncedTextarea({ value, onChange, delay = 800, onBlur, ...props }) {
 
 export default function Settings({ entreprise, setEntreprise, user, devis = [], depenses = [], clients = [], chantiers = [], onExportComptable, isDark, couleur, setPage, modeDiscret }) {
   const { showToast } = useToast();
+  const { confirm } = useConfirm();
   const { canManageTeam } = usePermissions();
   const { orgId } = useOrg();
   const relances = useRelances({
@@ -1755,7 +1766,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
               Reprendre les informations de l'entreprise
             </h3>
             <p className={`text-sm ${textMuted} mb-4`}>
-              Reprend l'identité, les mentions et les réglages de l'entreprise d'un export Mallettico (.json). Vos devis, factures, clients et chantiers ne sont pas importés : ils sont déjà dans votre compte.
+              Reprend l'identité, les mentions et les réglages de l'entreprise d'un export Mallettico (.json). Les devis, factures, clients et chantiers de l'export ne sont pas importés : gardez ce fichier, il fait office d'archive.
             </p>
 
             <div className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors ${isDark ? 'border-slate-600 hover:border-slate-500' : 'border-slate-300 hover:border-slate-400'}`}>
@@ -1782,10 +1793,23 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                         showToast('Cet export ne contient pas d\'informations d\'entreprise.', 'error');
                         return;
                       }
-                      const { id: _id, user_id: _u, organization_id: _o, ...infos } = data.data.entreprise;
-                      updateEntreprise(prev => ({ ...prev, ...infos })).then((ok) => {
+                      // Liste fermée (ni statut de la fiche, ni identifiants) ; un fichier préparé par un tiers ne doit
+                      // pas glisser son IBAN sans que l'artisan le voie
+                      const source = data.data.entreprise;
+                      const infos = Object.fromEntries(CHAMPS_IMPORTABLES.filter(k => source[k] !== undefined && source[k] !== null && typeof source[k] !== 'object').map(k => [k, source[k]]));
+                      const sensibles = [['iban', 'IBAN'], ['bic', 'BIC'], ['siret', 'SIRET'], ['nom', 'nom de l\'entreprise']]
+                        .filter(([k]) => infos[k] !== undefined && String(infos[k]).trim() !== String(entreprise[k] || '').trim());
+                      (async () => {
+                        if (sensibles.length) {
+                          const ok = await confirm({
+                            title: 'Remplacer ces informations ?',
+                            message: sensibles.map(([k, l]) => `${l} : « ${String(entreprise[k] || '—')} » → « ${String(infos[k])} »`).join('\n') + '\n\nN\'importez que vos propres exports : ces informations s\'imprimeront sur vos devis et factures.',
+                          });
+                          if (!ok) return;
+                        }
+                        const ok = await updateEntreprise(prev => ({ ...prev, ...infos }));
                         if (ok) showToast(`Informations de l'entreprise reprises de l'export${data.exportDate ? ` du ${dateLue(data.exportDate).toLocaleDateString('fr-FR')}` : ''}.`, 'success');
-                      });
+                      })();
                     } catch {
                       showToast('Erreur de lecture du fichier', 'error');
                     }
@@ -2116,7 +2140,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                           </button>
                         ))}
                       </div>
-                      <p className={`text-xs mt-1 ${textMuted}`}>Modifiable ligne par ligne sur chaque devis. Micro-entreprise : la TVA ne s'applique pas.</p>
+                      <p className={`text-xs mt-1 ${textMuted}`}>Modifiable ligne par ligne sur chaque devis. En franchise de TVA (art. 293 B du CGI, sous les seuils) : aucune TVA n'est facturée.</p>
                     </div>
                     <div>
                       <label className={`block text-sm font-medium mb-2 ${textPrimary}`}>Acompte par défaut : <strong>{entreprise.acompteDefaut ?? 30} %</strong></label>
@@ -2127,7 +2151,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                       />
                       <div className={`flex justify-between text-xs ${textMuted}`}><span>0 %</span><span>30 %</span><span>50 %</span></div>
                     </div>
-                    <p className={`text-xs ${textMuted}`}>Les mentions obligatoires (assurances, garanties, rétractation, pénalités) s'impriment d'elles-mêmes à partir de votre profil.</p>
+                    <p className={`text-xs ${textMuted}`}>Assurances, garanties légales, pénalités de retard et droit de rétractation s'impriment à partir de votre profil. À joindre vous-même pour l'instant : votre attestation d'assurance décennale.</p>
                   </>
                 )}
 
