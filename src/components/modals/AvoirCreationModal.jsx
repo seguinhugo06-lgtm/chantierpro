@@ -1,6 +1,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { X, Receipt, AlertTriangle, Check, ChevronRight, ChevronLeft, FileText, Minus, Info, RotateCcw } from 'lucide-react';
 import { AVOIR_MOTIFS } from '../DevisPage';
+import { avoirTotal, avoirPartiel } from '../../lib/avoir';
+import { totalLigne } from '../../lib/totauxDocument';
 
 /**
  * AvoirCreationModal — Modale 2 étapes pour créer un avoir (note de crédit)
@@ -87,28 +89,18 @@ export default function AvoirCreationModal({
   }, [facture]);
 
   // Calculate partial avoir totals
-  const partialTotals = useMemo(() => {
-    if (avoirType !== 'partiel') return { ht: 0, tva: 0, ttc: 0 };
-
-    let ht = 0;
-    let tva = 0;
-
-    allLines.forEach((line, i) => {
-      const sel = selectedLines[line._lineIndex];
-      if (!sel?.selected) return;
-
-      const qty = sel.quantite || 0;
-      const pu = Math.abs(parseFloat(line.prixUnitaire || line.prix_unitaire || 0));
-      const lineHT = qty * pu;
-      const tvaRate = parseFloat(line.tva || line.tvaRate || facture?.tvaRate || 10) / 100;
-      const lineTVA = lineHT * tvaRate;
-
-      ht += lineHT;
-      tva += lineTVA;
-    });
-
-    return { ht, tva, ttc: ht + tva };
-  }, [avoirType, selectedLines, allLines, facture?.tvaRate]);
+  const selection = useMemo(() => allLines
+    .filter(l => selectedLines[l._lineIndex]?.selected)
+    .map(l => ({ ligne: l, quantite: selectedLines[l._lineIndex].quantite || 0 })), [allLines, selectedLines]);
+  const partiel = useMemo(() => (avoirType === 'partiel' ? avoirPartiel(facture, selection) : null), [avoirType, facture, selection]);
+  const partialTotals = partiel
+    ? { ht: -partiel.totalHT, tva: -partiel.totalTVA, ttc: -partiel.totalTTC }
+    : { ht: 0, tva: 0, ttc: 0 };
+  // Un avoir total sur une facture déjà partiellement créditée recréditerait ce qui l'a déjà été
+  const totalPossible = existingAvoirs.length === 0;
+  useEffect(() => {
+    if (!totalPossible && avoirType === 'total') setAvoirType('partiel');
+  }, [totalPossible, avoirType]);
 
   // Total avoir amount (for validation)
   const avoirTTC = avoirType === 'total' ? remaining : partialTotals.ttc;
@@ -116,7 +108,7 @@ export default function AvoirCreationModal({
 
   // Validation
   const canProceedStep1 = motif && (motif !== 'autre' || motifDetail.trim());
-  const canProceedStep2 = avoirType === 'total' || (partialTotals.ttc > 0 && partialTotals.ttc <= remaining + 0.01);
+  const canProceedStep2 = (avoirType === 'total' && totalPossible) || (avoirType === 'partiel' && partialTotals.ttc > 0 && partialTotals.ttc <= remaining + 0.01);
   const exceedsRemaining = avoirType === 'partiel' && partialTotals.ttc > remaining + 0.01;
 
   // Toggle line selection
@@ -145,37 +137,12 @@ export default function AvoirCreationModal({
   const handleSubmit = () => {
     if (!canProceedStep1 || (step === 2 && !canProceedStep2)) return;
 
-    let lignes;
-    let totalHT, totalTVA, totalTTC;
-
-    if (avoirType === 'total') {
-      // Copy all lines with negated amounts
-      lignes = allLines.map(l => ({
-        ...l,
-        prixUnitaire: -(Math.abs(parseFloat(l.prixUnitaire || l.prix_unitaire || 0))),
-        montant: -(Math.abs(parseFloat(l.montant || (parseFloat(l.quantite || 0) * parseFloat(l.prixUnitaire || l.prix_unitaire || 0))))),
-      }));
-      totalHT = -(Math.abs(factureHT - existingAvoirs.reduce((s, a) => s + Math.abs(a.total_ht || 0), 0)));
-      totalTVA = -(Math.abs((factureTTC - factureHT) - existingAvoirs.reduce((s, a) => s + Math.abs((a.total_ttc || 0) - (a.total_ht || 0)), 0)));
-      totalTTC = -(Math.abs(remaining));
-    } else {
-      // Build partial lines
-      lignes = [];
-      allLines.forEach(l => {
-        const sel = selectedLines[l._lineIndex];
-        if (!sel?.selected) return;
-        const pu = Math.abs(parseFloat(l.prixUnitaire || l.prix_unitaire || 0));
-        lignes.push({
-          ...l,
-          quantite: sel.quantite,
-          prixUnitaire: -pu,
-          montant: -(sel.quantite * pu),
-        });
-      });
-      totalHT = -partialTotals.ht;
-      totalTVA = -partialTotals.tva;
-      totalTTC = -partialTotals.ttc;
-    }
+    // Lignes et totaux de src/lib/avoir.js : avoir total = inverse exact de la facture ; avoir partiel = lignes
+    // choisies au prix facturé, remise de la facture en ligne visible, totaux arrondis par taux.
+    if (avoirType === 'total' && !totalPossible) return;
+    const calcul = avoirType === 'total' ? avoirTotal(facture) : avoirPartiel(facture, selection);
+    const lignes = calcul.lignes.map(({ _lineIndex, _sectionIndex, _sectionName, ...l }) => l);
+    const { totalHT, totalTVA, totalTTC, tvaParTaux } = calcul;
 
     onCreateAvoir({
       sourceFacture: facture,
@@ -183,6 +150,7 @@ export default function AvoirCreationModal({
       motif,
       motifDetail,
       lignes,
+      tvaParTaux,
       totalHT: Math.abs(totalHT),
       totalTVA: Math.abs(totalTVA),
       totalTTC: Math.abs(totalTTC),
@@ -280,7 +248,9 @@ export default function AvoirCreationModal({
                       <button
                         key={opt.value}
                         onClick={() => setAvoirType(opt.value)}
-                        className={`p-4 rounded-xl border-2 text-left transition-all ${
+                        disabled={opt.value === 'total' && !totalPossible}
+                        title={opt.value === 'total' && !totalPossible ? 'Un avoir existe déjà sur cette facture : choisissez les lignes à créditer' : undefined}
+                        className={`p-4 rounded-xl border-2 text-left transition-all disabled:opacity-40 ${
                           isSelected
                             ? 'border-red-500 shadow-md'
                             : isDark ? 'border-slate-600 hover:border-slate-500' : 'border-slate-200 hover:border-slate-300'
@@ -402,6 +372,8 @@ export default function AvoirCreationModal({
                       const maxQty = parseFloat(line.quantite || 1);
                       const pu = Math.abs(parseFloat(line.prixUnitaire || line.prix_unitaire || 0));
                       const lineTotal = isSelected ? (sel.quantite || 0) * pu : 0;
+                      // Remise ou acompte déduit : pris en compte automatiquement, pas une ligne à créditer
+                      const creditable = totalLigne(line) > 0;
 
                       return (
                         <div
@@ -420,8 +392,10 @@ export default function AvoirCreationModal({
                           <div className="flex items-start gap-3">
                             {/* Checkbox */}
                             <button
-                              onClick={() => toggleLine(lineKey, maxQty)}
-                              className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition-colors ${
+                              onClick={() => creditable && toggleLine(lineKey, maxQty)}
+                              disabled={!creditable}
+                              aria-label={creditable ? `Créditer « ${line.description || 'la ligne'} »` : 'Remise ou déduction : prise en compte automatiquement'}
+                              className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition-colors disabled:opacity-30 ${
                                 isSelected
                                   ? 'bg-red-500 border-red-500 text-white'
                                   : isDark ? 'border-slate-500' : 'border-slate-300'

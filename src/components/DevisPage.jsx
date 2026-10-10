@@ -58,6 +58,7 @@ import { statut as libelleStatut } from '../lib/statuts';
 import { pourcent, blocConditionsPaiement, CONDITIONS_PAIEMENT } from '../lib/formatDocument';
 import { totauxDocument, lignesTotauxHtml, lignesAcompteHtml, calculerTotaux } from '../lib/totauxDocument';
 import { lignesFactureAcompte, lignesFactureSolde } from '../lib/facturation';
+import { verifierNouvelleFacture, pourcentageAcompteValide, peutModifierDocument, peutSupprimerDocument, estEntierementFacture } from '../lib/gardeFacturation';
 import { DEFAULT_PENALTY_RATE, estClientPro } from '../lib/relanceUtils';
 import { useDebounce } from '../hooks/useDebounce';
 import { useDevisModals } from '../hooks/useDevisModals';
@@ -106,16 +107,19 @@ const VALID_TRANSITIONS = {
   brouillon: ['envoye', 'refuse'],
   envoye: ['vu', 'accepte', 'refuse'],
   vu: ['accepte', 'refuse'],
-  accepte: ['acompte_facture', 'facture'],
-  signe: ['acompte_facture', 'facture'], // signe = alias for accepte (signed)
-  acompte_facture: ['facture'],
+  // « Acompte facturé » et « Facturé » viennent des factures créées, jamais d'un changement de statut
+  // à la main (recette du 9 oct. 2026 : un devis « Facturé » sans facture, sans retour possible).
+  accepte: [],
+  signe: [],
+  acompte_facture: [],
   facture: [],
   refuse: ['brouillon'],
 };
 // Facture-specific transitions (keyed by 'facture:status')
+// « Payée » vient d'un encaissement enregistré (« Encaisser »), qui compte dans l'encaissé du mois.
 const FACTURE_TRANSITIONS = {
   brouillon: ['envoye'],
-  envoye: ['payee'],
+  envoye: [],
   payee: [],
 };
 
@@ -262,6 +266,13 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   };
 
   const openEditor = (doc) => {
+    // Une facture émise ne se modifie pas (avoir) ; un devis facturé non plus (avenant)
+    if (doc?.id && !peutModifierDocument(doc, devis)) {
+      showToast(doc.type === 'facture'
+        ? 'Une facture émise ne se modifie pas : faites un avoir.'
+        : 'Ce devis est déjà facturé : faites un avenant.', 'error');
+      return;
+    }
     setEditingDevis(doc);
     if (doc?.facture_type === 'avoir') setShowDevisWizard(true);
     else setShowDevisComposer(true);
@@ -272,6 +283,13 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   const [echeancierCache, setEcheancierCache] = useState({}); // { devisId: echeancierData }
 
   const [acomptePct, setAcomptePct] = useState(entreprise?.acompteDefaut || 30);
+  // Le pourcentage proposé est celui que le devis signé annonce (avant : 30 % quel que soit le devis)
+  const ouvrirAcompte = () => {
+    setAcomptePct(Number(selected?.acompte_pct) || entreprise?.acompteDefaut || 30);
+    setShowAcompteModal(true);
+  };
+  // Montant TTC de la facture d'acompte telle qu'elle sera créée (lignes par taux, arrondies)
+  const ttcAcompte = (pct) => calculerTotaux(lignesFactureAcompte(selected, pct, { tauxDefaut: entreprise?.tvaDefaut || 20 }), { tauxDefaut: entreprise?.tvaDefaut || 20 }).totalTTC;
   const [newClient, setNewClient] = useState({ nom: '', telephone: '' });
   const [snackbar, setSnackbar] = useState(null);
   const canvasRef = useRef(null);
@@ -1098,7 +1116,37 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   };
 
   // Payment creation handler
-  const handlePaymentCreated = (paymentData) => {
+  const handlePaymentCreated = async (paymentData) => {
+    // Seul un paiement REÇU s'enregistre : générer un lien ou un QR n'est pas un paiement (avant, le
+    // lien enregistrait un paiement et pouvait marquer la facture payée).
+    if (paymentData?.type !== 'offline' || !selected) return;
+    const montantRecu = Math.round((Number(paymentData.amount) || 0) * 100) / 100;
+    if (!(montantRecu > 0)) { showToast('Montant du paiement invalide.', 'error'); return; }
+    if (selected.type === 'facture') {
+      const reste = resteAPayer(selected, paiements);
+      if (montantRecu > reste + 0.005) {
+        const ok = await confirm({
+          title: 'Paiement supérieur au reste dû',
+          message: `Le paiement de ${formatMoney(montantRecu)} dépasse ce qui reste dû (${formatMoney(reste)}). L'enregistrer quand même ?`,
+        });
+        if (!ok) return;
+      }
+    }
+    // Le paiement d'abord : s'il est refusé, rien d'autre ne change (DataContext a dit pourquoi)
+    if (addPaiement) {
+      const enregistre = await addPaiement({
+        amount: montantRecu,
+        montant: montantRecu,
+        date: paymentData.date_paiement,
+        mode: paymentData.mode_paiement,
+        reference: paymentData.reference_paiement,
+        facture_id: selected.id,
+        devisId: selected.id,
+        documentNumero: selected.numero,
+        document: selected.numero,
+      });
+      if (!enregistre) return;
+    }
     // Reçu de paiement au client (case cochée dans le modal d'encaissement)
     if (paymentData.sendReceipt && selected) {
       const receiptClient = clients.find(c => c.id === selected.client_id);
@@ -1127,20 +1175,11 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         }
       }
     }
-    if (addPaiement) {
-      addPaiement({
-        ...paymentData,
-        facture_id: selected?.id,
-        documentId: selected?.id,
-        documentNumero: selected?.numero,
-        document: selected?.numero,
-      });
-    }
     // Montant reçu cumulé, et « payée » une fois soldée (src/lib/paiementsFacture.js). Avant (9 oct.) :
     // montant_paye n'était pas mis à jour (reste dû entier en Trésorerie et sur la page de paiement en
     // ligne) et le cumul lisait p.montant au lieu de amount — un 2e acompte ne soldait jamais.
     if (selected?.type === 'facture' && selected.statut !== 'payee') {
-      const suite = apresPaiement(selected, paiements, paymentData.amount || 0);
+      const suite = apresPaiement(selected, paiements, montantRecu);
       if (!suite.soldee) {
         onUpdate(selected.id, { montant_paye: suite.montant_paye });
         setSelected(s => s ? { ...s, montant_paye: suite.montant_paye } : s);
@@ -1215,15 +1254,35 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     } catch { return null; }
   };
 
+  // Une facturation à la fois : un double appui, ou un second bouton touché pendant que la base répond,
+  // créait une seconde facture (recette du 9 oct. 2026 : deux acomptes, deux soldes, complète + acompte).
+  const facturationEnCoursRef = useRef(false);
+  const [facturationEnCours, setFacturationEnCours] = useState(false);
+  const facturerUneFois = async (fn) => {
+    if (facturationEnCoursRef.current) { showToast('Facturation déjà en cours…', 'info'); return; }
+    facturationEnCoursRef.current = true;
+    setFacturationEnCours(true);
+    try { return await fn(); } finally { facturationEnCoursRef.current = false; setFacturationEnCours(false); }
+  };
+  // Vérifiée sur TOUS les documents (et non sur l'écran au moment du clic) : déjà facturé, dépassement du
+  // devis, montant nul ou négatif, devis sans client, mélange avec les situations (src/lib/gardeFacturation.js).
+  const facturationAutorisee = (nature, montantTTC) => {
+    const source = devis.find(d => d.id === selected?.id) || selected;
+    const v = verifierNouvelleFacture(source, devis, { nature, montantTTC });
+    if (!v.ok) showToast(v.raison, 'error');
+    return v.ok;
+  };
+
   // Facturer une étape d'échéancier — lignes par taux, remise visible ; les totaux enregistrés sont
   // ceux des lignes (src/lib/facturation.js), donc ceux que la facture imprime.
-  const facturerEtape = async (echeancier, etape) => {
+  const facturerEtape = (echeancier, etape) => facturerUneFois(async () => {
     if (!selected || !echeancier) return;
     const last = isLastEtape(etape, echeancier.etapes);
     const lignes = buildFactureLignesForEtape(selected, etape, echeancier.etapes, entreprise?.tvaDefaut || 20);
     const t = calculerTotaux(lignes, { tauxDefaut: entreprise?.tvaDefaut || 20 });
     const montants = { montant_ht: t.totalHT, tva: t.totalTVA, montant_ttc: t.totalTTC, tvaParTaux: t.tvaParTaux };
     const factureType = last ? 'solde' : 'acompte';
+    if (!facturationAutorisee('etape', t.totalTTC)) return;
 
     const facture = {
       id: crypto.randomUUID(),
@@ -1310,7 +1369,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       message: `Facture ${last ? 'de solde' : 'd\'acompte'} ${facture.numero} créée`,
       action: { label: 'Voir', onClick: () => { setSelected(facture); setSnackbar(null); } },
     });
-  };
+  });
 
   // Handle échéancier creation callback
   const handleEcheancierCreated = (echeancier) => {
@@ -1322,8 +1381,9 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     setSnackbar({ type: 'success', message: 'Échéancier créé avec succès' });
   };
 
-  const createAcompte = async () => {
+  const createAcompte = () => facturerUneFois(async () => {
     if (!selected || (selected.statut !== 'accepte' && selected.statut !== 'signe')) return showToast('Le devis doit être accepté ou signé', 'error');
+    if (!pourcentageAcompteValide(acomptePct)) return showToast('Le pourcentage d\'acompte doit être compris entre 1 et 99 %.', 'error');
     if (getAcompteFacture(selected.id)) return showToast('Un acompte existe déjà', 'error');
     // Une ligne par taux de TVA du devis, sur les bases après remise (src/lib/facturation.js)
     const lignesAcompte = lignesFactureAcompte(selected, acomptePct, { tauxDefaut: entreprise?.tvaDefaut || 20 });
@@ -1332,6 +1392,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     const tva = tAcompte.totalTVA;
     const ttc = tAcompte.totalTTC;
     const tvaParTaux = tAcompte.tvaParTaux;
+    if (!facturationAutorisee('acompte', ttc)) return;
     const facture = {
       id: crypto.randomUUID(), numero: await generateNumero('facture'), type: 'facture', facture_type: 'acompte',
       devis_source_id: selected.id, client_id: selected.client_id, chantier_id: selected.chantier_id,
@@ -1347,7 +1408,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     if (!(await onSubmit(facture))) return;
     const acompteUpdate = {
       statut: 'acompte_facture',
-      acompte_pct: acomptePct,
+      // Le devis signé garde le pourcentage qu'il annonce ; celui facturé est sur la facture d'acompte
+      ...(selected.acompte_pct ? {} : { acompte_pct: acomptePct }),
       mode_facturation: 'acompte',
       acomptes_ids: [...(selected.acomptes_ids || []), facture.id],
       montant_facture: Math.round(ttc * 100) / 100,
@@ -1356,7 +1418,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     setShowAcompteModal(false);
     setSelected({ ...selected, ...acompteUpdate });
     setSnackbar({ type: 'success', message: `Facture d'acompte ${facture.numero} créée`, action: { label: 'Voir', onClick: () => { setSelected(facture); setSnackbar(null); } } });
-  };
+  });
 
   // La facture de solde (ou complète) telle qu'elle sera créée : lignes du devis, remise en lignes, chaque
   // acompte déduit par taux (src/lib/facturation.js), totaux arrondis par taux. Le montant annoncé à
@@ -1381,6 +1443,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       return;
     }
     const { allAcomptes, totaux } = factureDeSolde(selected);
+    if (!facturationAutorisee(allAcomptes.length > 0 ? 'solde' : 'totale', totaux.totalTTC)) return;
     const client = clients.find(c => c.id === selected.client_id);
     const clientName = client ? `${client.prenom || ''} ${client.nom || ''}`.trim() : 'le client';
     const label = allAcomptes.length > 0 ? `Facturer le solde de ${formatMoney(totaux.totalTTC)} TTC` : `Créer la facture complète de ${formatMoney(totaux.totalTTC)} TTC`;
@@ -1392,7 +1455,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     await createSolde();
   };
 
-  const createSolde = async () => {
+  const createSolde = () => facturerUneFois(async () => {
     if (!selected) return;
     // Lignes du devis + remise en lignes visibles + déduction de chaque acompte par taux ; totaux
     // enregistrés = totaux des lignes (src/lib/facturation.js — relecture juridique du 9 oct. 2026 :
@@ -1403,6 +1466,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     const ttc = tSolde.totalTTC;
     const tvaParTaux = tSolde.tvaParTaux;
     const hasAcomptes = allAcomptes.length > 0;
+    if (!facturationAutorisee(hasAcomptes ? 'solde' : 'totale', ttc)) return;
     const facture = {
       id: crypto.randomUUID(), numero: await generateNumero('facture'), type: 'facture', facture_type: hasAcomptes ? 'solde' : 'totale',
       devis_source_id: selected.id, acompte_facture_id: allAcomptes[0]?.id || null, client_id: selected.client_id, chantier_id: selected.chantier_id,
@@ -1424,11 +1488,11 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     await onUpdate(selected.id, soldeUpdate);
     setSelected({ ...selected, ...soldeUpdate });
     setSnackbar({ type: 'success', message: `Facture ${hasAcomptes ? 'de solde' : ''} ${facture.numero} créée`, action: { label: 'Voir', onClick: () => { setSelected(facture); setSnackbar(null); } } });
-  };
+  });
 
   // Créer un avoir (note de crédit) — via AvoirCreationModal
   const handleCreateAvoir = async (avoirData) => {
-    const { sourceFacture, type: avoirType, motif, motifDetail, lignes, totalHT, totalTVA, totalTTC } = avoirData;
+    const { sourceFacture, type: avoirType, motif, motifDetail, lignes, totalHT, totalTVA, totalTTC, tvaParTaux } = avoirData;
 
     const avoir = {
       id: crypto.randomUUID(),
@@ -1450,6 +1514,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       total_ht: -(Math.abs(totalHT)),
       tva: -(Math.abs(totalTVA)),
       total_ttc: -(Math.abs(totalTTC)),
+      // TVA ventilée par taux (src/lib/avoir.js) : celle qu'imprime l'avoir
+      ...(tvaParTaux ? { tvaParTaux, tvaDetails: tvaParTaux } : {}),
       notes: `Avoir ${avoirType === 'total' ? 'total' : 'partiel'} sur facture ${sourceFacture.numero}. Motif : ${AVOIR_MOTIFS[motif] || motif}${motifDetail ? '. ' + motifDetail : ''}`,
       conditionsPaiement: sourceFacture.conditionsPaiement,
     };
@@ -2286,8 +2352,10 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     const isAvoir = selected.facture_type === 'avoir';
     const currentEcheancier = echeancierCache[selected.id] || null;
     const hasEcheancier = !!selected.echeancier_id || !!currentEcheancier;
-    const canAcompte = isDevis && (selected.statut === 'accepte' || selected.statut === 'signe') && !acompteFacture && !hasEcheancier && !facturationParSituations;
-    const canFacturer = isDevis && ['accepte', 'signe', 'acompte_facture'].includes(selected.statut) && !soldeFacture && resteAFacturer > 0 && !facturationParSituations;
+    // Déjà facturé en entier (solde ou facture complète, même si le devis est resté « signé ») : plus de « Facturer »
+    const entierementFacture = isDevis && estEntierementFacture(selected, devis);
+    const canAcompte = isDevis && (selected.statut === 'accepte' || selected.statut === 'signe') && !acompteFacture && !hasEcheancier && !facturationParSituations && !entierementFacture;
+    const canFacturer = isDevis && ['accepte', 'signe', 'acompte_facture'].includes(selected.statut) && !soldeFacture && resteAFacturer > 0 && !facturationParSituations && !entierementFacture;
     const hasChantier = !!selected.chantier_id;
     const linkedChantier = chantiers.find(c => c.id === selected.chantier_id);
     const canCreateChantier = isDevis && !hasChantier && addChantier;
@@ -2358,7 +2426,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     // Statut d'une facture déduit de ses paiements (src/lib/paiementsFacture.js) : une facture soldée
     // n'affiche plus « à encaisser », ni relance, ni « Encaisser » (revue du 9 oct. 2026).
     const factureVue = selected.type === 'facture' && !isAvoir ? statutFacture(selected, paiements) : null;
-    const factureSoldee = factureVue === 'payee';
+    // Soldée : payée, ou annulée par un avoir — ni « Encaisser » ni « Relancer »
+    const factureSoldee = factureVue === 'payee' || factureVue === 'annulee';
     const resteFacture = selected.type === 'facture' ? resteAPayer(selected, paiements) : 0;
 
     // Get primary CTA based on status
@@ -2371,7 +2440,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         }
         if (selected.statut === 'envoye' || selected.statut === 'vu') return { label: 'Faire signer', icon: PenTool, action: () => setShowSignaturePad(true), color: `bg-[${couleur}]`, style: { background: couleur } };
         if (selected.statut === 'accepte' || selected.statut === 'signe') return { label: 'Facturer', icon: Receipt, action: () => {
-          if (canAcompte) { setShowAcompteModal(true); return; }
+          if (canAcompte) { ouvrirAcompte(); return; }
           confirmAndCreateSolde();
         }, color: 'bg-emerald-500 hover:bg-emerald-600' };
         if (selected.statut === 'acompte_facture') return { label: `Facturer solde`, icon: Receipt, action: confirmAndCreateSolde, color: 'bg-emerald-500 hover:bg-emerald-600' };
@@ -2462,7 +2531,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           // Avec un acompte déjà facturé, on facture le solde : la confirmation doit annoncer ce montant-là
           // (elle annonçait le total du devis). confirmAndCreateSolde calcule et annonce le bon.
           const facturer = async () => {
-            if (canAcompte) { setShowAcompteModal(true); return; }
+            if (canAcompte) { ouvrirAcompte(); return; }
             await confirmAndCreateSolde();
           };
           let principal = null;
@@ -2485,10 +2554,10 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                 ? { libelle: 'Situation suivante', icone: BarChart3, onClick: () => { setSelectedChantier?.(selected.chantier_id); setPage?.('chantiers'); } }
                 : null;
               secondaire = actPdf;
-            } else if (st === 'accepte' || st === 'signe') {
+            } else if ((st === 'accepte' || st === 'signe') && (canAcompte || canFacturer)) {
               principal = { libelle: 'Facturer', icone: Receipt, onClick: facturer };
               secondaire = actPdf;
-            } else if (st === 'acompte_facture') {
+            } else if (st === 'acompte_facture' && canFacturer) {
               principal = { libelle: `Facturer le solde`, icone: Receipt, onClick: confirmAndCreateSolde };
               secondaire = actPdf;
             } else if (st === 'refuse' && peutCreer) {
@@ -2496,7 +2565,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
             } else {
               secondaire = actPdf;
             }
-          } else if (!factureSoldee) {
+          } else if (!factureSoldee && !isAvoir) {
             principal = { libelle: 'Encaisser', icone: CreditCard, onClick: () => setShowPaymentModal(true) };
             if (peutEnvoyer) secondaire = selected.statut === 'brouillon'
               ? { libelle: 'Envoyer', icone: Send, onClick: () => trySend(selected, sendEmail) }
@@ -2510,7 +2579,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           const brouillon = selected.statut === 'brouillon';
           const envoyerPar = (fn) => () => (brouillon ? trySend(selected, fn) : fn(selected));
           const actions = [
-            peutModifier && ['brouillon', 'envoye', 'vu'].includes(selected.statut) && { libelle: 'Modifier', icone: Pen, onClick: () => openEditor(selected) },
+            peutModifier && peutModifierDocument(selected, devis) && { libelle: 'Modifier', icone: Pen, onClick: () => openEditor(selected) },
             secondaire !== actApercu && { libelle: 'Aperçu du document', icone: Eye, onClick: () => previewPDF(selected) },
             secondaire !== actPdf && { libelle: 'Télécharger le PDF', icone: Download, onClick: telechargerPdf },
             isDevis && !['facture', 'refuse'].includes(selected.statut) && { libelle: 'Voir comme le client', icone: Smartphone, onClick: async () => {
@@ -2530,9 +2599,10 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
             peutCreer && selected.type === 'facture' && !isAvoir && { groupe: 'document', libelle: 'Créer un avoir', icone: RotateCcw, onClick: () => setShowAvoirModal(true) },
             peutCreer && { groupe: 'document', libelle: 'Dupliquer', icone: Copy, onClick: async () => { setActionLoading('duplicate'); try { await duplicateDocument(selected); } finally { setActionLoading(null); } } },
             peutModifier && { groupe: 'document', libelle: 'Enregistrer comme modèle', icone: Star, onClick: () => setShowSaveTemplateModal(true) },
-            canPerform('devis', 'delete') && !(isAvoir && selected.statut !== 'brouillon') && { danger: true, libelle: 'Supprimer', icone: Trash2, onClick: async () => {
-              const ok = await confirm({ title: 'Supprimer', message: isAvoir ? 'Supprimer cet avoir brouillon ?' : 'Supprimer ce document ?' });
-              if (ok) { onDelete(selected.id); setSelected(null); setMode('list'); }
+            // Une facture émise ne se supprime pas (avoir) ; un devis facturé non plus
+            canPerform('devis', 'delete') && peutSupprimerDocument(selected, devis) && { danger: true, libelle: 'Supprimer', icone: Trash2, onClick: async () => {
+              const ok = await confirm({ title: 'Supprimer', message: isAvoir ? 'Supprimer cet avoir brouillon ?' : `Supprimer ${selected.numero || 'ce document'} ?` });
+              if (ok && await onDelete(selected.id)) { setSelected(null); setMode('list'); }
             } },
           ].filter(Boolean);
 
@@ -2698,7 +2768,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
             resteAFacturer={resteAFacturer}
             onFacturerEtape={facturerEtape}
             onFacturerSolde={confirmAndCreateSolde}
-            onOpenAcompteSimple={() => setShowAcompteModal(true)}
+            onOpenAcompteSimple={() => ouvrirAcompte()}
             onOpenEcheancierModal={() => setShowEcheancierModal(true)}
             onSelectFacture={(f) => setSelected(f)}
             onFacturer100={confirmAndCreateSolde}
@@ -3246,13 +3316,14 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                 {[20, 30, 40, 50].map(pct => (
                   <button key={pct} onClick={() => setAcomptePct(pct)} className={`w-full flex items-center justify-between p-4 rounded-xl border-2 transition-all ${acomptePct === pct ? (isDark ? 'border-purple-500 bg-purple-900/30' : 'border-purple-500 bg-purple-50') : (isDark ? 'border-slate-600' : 'border-slate-200')}`}>
                     <span className="font-medium">Acompte {pct}%</span>
-                    <span className="text-lg font-bold" style={{ color: acomptePct === pct ? couleur : '#64748b' }}>{formatMoney(selected.total_ttc * pct / 100)}</span>
+                    <span className="text-lg font-bold" style={{ color: acomptePct === pct ? couleur : '#64748b' }}>{formatMoney(ttcAcompte(pct))}</span>
                   </button>
                 ))}
                 <div className={`flex items-center gap-3 p-3 ${isDark ? 'bg-slate-700' : 'bg-slate-50'} rounded-xl`}>
-                  <input type="number" min="1" max="99" value={acomptePct} onChange={e => setAcomptePct(parseInt(e.target.value) || 30)} className="w-20 px-3 py-2 border rounded-xl text-center" />
+                  {/* Saisie libre : effacer puis taper ne remet plus 30 ; bornes vérifiées à la création (1 à 99 %) */}
+                  <input type="text" inputMode="decimal" aria-label="Pourcentage d'acompte" value={acomptePct} onChange={e => { const v = e.target.value.replace(',', '.').replace(/[^\d.]/g, ''); setAcomptePct(v === '' ? '' : (v.endsWith('.') ? v : Number(v))); }} className="w-20 px-3 py-2 border rounded-xl text-center" />
                   <span className="text-slate-500">%</span>
-                  <span className="ml-auto font-bold">{formatMoney(selected.total_ttc * acomptePct / 100)}</span>
+                  <span className="ml-auto font-bold">{pourcentageAcompteValide(acomptePct) ? formatMoney(ttcAcompte(acomptePct)) : '—'}</span>
                 </div>
               </div>
               {acomptePct > 50 ? (
@@ -3272,9 +3343,9 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
               )}
               <div className="flex gap-3">
                 <button onClick={() => setShowAcompteModal(false)} className="flex-1 px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-xl flex items-center justify-center gap-1.5 min-h-[44px] transition-colors"><X size={16} />Annuler</button>
-                <button onClick={createAcompte} className="flex-1 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl flex items-center justify-center gap-1.5 min-h-[44px] transition-colors font-semibold">
+                <button onClick={createAcompte} disabled={facturationEnCours || !pourcentageAcompteValide(acomptePct)} className="flex-1 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white rounded-xl flex items-center justify-center gap-1.5 min-h-[44px] transition-colors font-semibold">
                   {acomptePct > 30 ? <AlertTriangle size={16} /> : <Check size={16} />}
-                  Facturer {formatMoney(selected.total_ttc * acomptePct / 100)}
+                  {facturationEnCours ? 'Facturation…' : `Facturer ${pourcentageAcompteValide(acomptePct) ? formatMoney(ttcAcompte(acomptePct)) : ''}`}
                 </button>
               </div>
             </div>
@@ -3775,44 +3846,10 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           onClose={() => setShowPaymentModal(false)}
           document={selected}
           client={selected ? clients.find(c => c.id === selected.client_id) : null}
-          onPaymentSaved={async (payment) => {
-            if (selected) {
-              // Même calcul que « Encaisser » : cumul avec les paiements déjà enregistrés.
-              const suite = apresPaiement(selected, paiements, payment.montant ?? payment.amount ?? 0);
-              const updatedMontantPaye = suite.montant_paye;
-              const isPaid = suite.soldee;
-              onUpdate(selected.id, {
-                montant_paye: updatedMontantPaye,
-                ...(isPaid ? { statut: 'payee' } : {}),
-              });
-              setSelected(s => ({ ...s, montant_paye: updatedMontantPaye, ...(isPaid ? { statut: 'payee' } : {}) }));
-
-              // If this is an acompte facture and it's paid, update échéancier étape to 'paye'
-              if (isPaid && selected.facture_type === 'acompte' && selected.devis_source_id) {
-                const sourceDevis = devis.find(d => d.id === selected.devis_source_id);
-                const echeancier = sourceDevis?.echeancier_id ? echeancierCache[sourceDevis.id] : null;
-                if (echeancier) {
-                  const etape = echeancier.etapes?.find(e => e.facture_id === selected.id);
-                  if (etape) {
-                    const updatedEtapes = updateEtape(echeancier.etapes, etape.numero, { statut: ETAPE_STATUT.PAYE });
-                    const updatedEcheancier = { ...echeancier, etapes: updatedEtapes, updated_at: new Date().toISOString() };
-                    try {
-                      if (isDemo || !supabase) {
-                        const stored = JSON.parse(localStorage.getItem('cp_echeanciers') || '{}');
-                        stored[sourceDevis.id] = updatedEcheancier;
-                        localStorage.setItem('cp_echeanciers', JSON.stringify(stored));
-                      } else {
-                        await supabase.from('acompte_echeanciers').update({ etapes: updatedEtapes, updated_at: updatedEcheancier.updated_at }).eq('id', echeancier.id);
-                      }
-                      setEcheancierCache(prev => ({ ...prev, [sourceDevis.id]: updatedEcheancier }));
-                    } catch (err) {
-                      // echeancier update error handled silently
-                    }
-                  }
-                }
-              }
-            }
-          }}
+          entreprise={entreprise}
+          resteDu={selected?.type === 'facture' ? resteAPayer(selected, paiements) : undefined}
+          // Avant : un rappel que le module n'appelait jamais — le paiement saisi n'était pas enregistré
+          onPaymentCreated={handlePaymentCreated}
           isDark={isDark}
           couleur={couleur}
         />
@@ -4846,11 +4883,19 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
               </button>
               {!isViewOnly && canPerform('devis', 'delete') && (
                 <button onClick={async () => {
-                  const ok = await confirm(`Supprimer ${selectedIds.size} document${selectedIds.size > 1 ? 's' : ''} ?`);
+                  const choisis = devis.filter(d => selectedIds.has(d.id));
+                  const supprimables = choisis.filter(d => peutSupprimerDocument(d, devis));
+                  const exclus = choisis.length - supprimables.length;
+                  if (supprimables.length === 0) {
+                    showToast('Factures émises et devis facturés ne se suppriment pas : faites un avoir.', 'error');
+                    return;
+                  }
+                  const ok = await confirm(`Supprimer ${supprimables.length} document${supprimables.length > 1 ? 's' : ''} ?${exclus ? ` (${exclus} facture${exclus > 1 ? 's' : ''} émise${exclus > 1 ? 's' : ''} ou devis facturé${exclus > 1 ? 's' : ''} ne ${exclus > 1 ? 'seront' : 'sera'} pas supprimé${exclus > 1 ? 's' : ''})` : ''}`);
                   if (ok) {
-                    for (const id of selectedIds) { onDelete(id); }
+                    let faits = 0;
+                    for (const d of supprimables) { if (await onDelete(d.id)) faits++; }
                     setSelectedIds(new Set());
-                    showToast(`${selectedIds.size} document(s) supprimé(s)`, 'success');
+                    if (faits) showToast(`${faits} document${faits > 1 ? 's' : ''} supprimé${faits > 1 ? 's' : ''}`, 'success');
                   }
                 }} className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 ${isDark ? 'bg-red-900/50 text-red-300 hover:bg-red-800/60' : 'bg-red-50 text-red-600 hover:bg-red-100'}`}>
                   <Trash2 size={13} /> Supprimer
@@ -4951,7 +4996,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                           <button onClick={(e) => { e.stopPropagation(); setSelected(d); setMode('preview'); }} className={`p-1.5 rounded-lg transition-all ${isDark ? 'hover:bg-slate-600' : 'hover:bg-slate-200'}`} title="Voir">
                             <Eye size={14} className={isDark ? 'text-slate-400' : 'text-slate-500'} />
                           </button>
-                          {!isViewOnly && canPerform('devis', 'edit') && (
+                          {!isViewOnly && canPerform('devis', 'edit') && peutModifierDocument(d, devis) && (
                             <button onClick={(e) => { e.stopPropagation(); openEditor(d); }} className={`p-1.5 rounded-lg transition-all ${isDark ? 'hover:bg-slate-600' : 'hover:bg-slate-200'}`} title="Modifier">
                               <Edit3 size={14} className={isDark ? 'text-slate-400' : 'text-slate-500'} />
                             </button>
@@ -5156,6 +5201,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         document={selected}
         client={selected ? clients.find(c => c.id === selected.client_id) : null}
         entreprise={entreprise}
+        resteDu={selected?.type === 'facture' ? resteAPayer(selected, paiements) : undefined}
         onPaymentCreated={handlePaymentCreated}
         isDark={isDark}
         couleur={couleur}

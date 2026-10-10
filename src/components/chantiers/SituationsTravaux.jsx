@@ -32,6 +32,8 @@ import {
   EyeOff
 } from 'lucide-react';
 import { generateId } from '../../lib/utils';
+import { verifierNouvelleFacture } from '../../lib/gardeFacturation';
+import { useToast } from '../../context/AppContext';
 import { formatMoney } from '../../lib/formatters';
 import {
   calculateSituationTotals,
@@ -88,6 +90,7 @@ export default function SituationsTravaux({
 
   // ---- State --------------------------------------------------------------
 
+  const { showToast } = useToast();
   const [selectedId, setSelectedId] = useState(null);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(null);
@@ -146,20 +149,24 @@ export default function SituationsTravaux({
   /** Flatten lignes from the source devis */
   const sourceLignes = useMemo(() => {
     if (!sourceDevis) return [];
+    // Le marché est le devis REMISÉ : la remise s'applique au prix de chaque ligne (avant : les situations
+    // partaient des prix avant remise et facturaient la remise en trop — recette du 9 oct. 2026).
+    const facteur = 1 - (Number(sourceDevis.remise ?? sourceDevis.remise_globale ?? 0) || 0) / 100;
     return (sourceDevis.lignes || [])
       .filter((l) => !l._isSection)
-      .map((l, index) => ({
-        id: l.id || `ligne-${index}`,
-        posteIndex: index,
-        description: l.description || 'Sans description',
-        quantite: parseFloat(l.quantite) || 0,
-        prixUnitaire: parseFloat(l.prixUnitaire) || parseFloat(l.prix_unitaire) || 0,
-        unite: l.unite || '',
-        tva: l.tva !== undefined ? parseFloat(l.tva) : (sourceDevis.tvaRate || DEFAULT_TVA_RATE),
-        total_ht:
-          (parseFloat(l.quantite) || 0) *
-          (parseFloat(l.prixUnitaire) || parseFloat(l.prix_unitaire) || 0),
-      }));
+      .map((l, index) => {
+        const prixUnitaire = (parseFloat(l.prixUnitaire) || parseFloat(l.prix_unitaire) || 0) * facteur;
+        return {
+          id: l.id || `ligne-${index}`,
+          posteIndex: index,
+          description: l.description || 'Sans description',
+          quantite: parseFloat(l.quantite) || 0,
+          prixUnitaire,
+          unite: l.unite || '',
+          tva: l.tva !== undefined ? parseFloat(l.tva) : (sourceDevis.tvaRate || DEFAULT_TVA_RATE),
+          total_ht: (parseFloat(l.quantite) || 0) * prixUnitaire,
+        };
+      });
   }, [sourceDevis]);
 
   /** Montant total du marche HT */
@@ -259,12 +266,18 @@ export default function SituationsTravaux({
       setShowDevisSelector(true);
       return;
     }
+    if (situations.some((s) => s.isDGD && s.statut !== SITUATION_STATUS.BROUILLON)) {
+      showToast('Le décompte général définitif est fait : plus de nouvelle situation sur ce marché.', 'error');
+      return;
+    }
+    const v = verifierNouvelleFacture(sourceDevis, devis, { nature: 'situation' });
+    if (!v.ok) { showToast(v.raison, 'error'); return; }
     const newDraft = createNewDraft();
     setDraft(newDraft);
     setIsDGD(false);
     setEditing(true);
     setSelectedId(null);
-  }, [createNewDraft, sourceDevis]);
+  }, [createNewDraft, sourceDevis, situations, devis, showToast]);
 
   const handleCumulChange = useCallback((ligneId, value) => {
     setDraft((prev) => {
@@ -308,6 +321,10 @@ export default function SituationsTravaux({
   const handleValider = useCallback(() => {
     if (!draft) return;
     const totals = calculateSituationTotals(draft.lignes, isDGD ? 0 : retenuePctLocal, isDGD);
+    if (!(totals.montantSituationHT > 0.005)) {
+      showToast('Cette situation ne facture rien : faites avancer au moins un poste.', 'error');
+      return;
+    }
     const validated = {
       ...draft,
       statut: SITUATION_STATUS.VALIDEE,
@@ -324,7 +341,7 @@ export default function SituationsTravaux({
     setEditing(false);
     setDraft(null);
     setSelectedId(validated.id);
-  }, [draft, isDGD, retenuePctLocal, situations, saveSituationsData]);
+  }, [draft, isDGD, retenuePctLocal, situations, saveSituationsData, showToast]);
 
   const handleGenererFacture = useCallback(
     async (sitId) => {
@@ -333,8 +350,12 @@ export default function SituationsTravaux({
       const sit = situations.find((s) => s.id === sitId);
       if (!sit || sit.statut !== SITUATION_STATUS.VALIDEE) return;
 
+      const v = verifierNouvelleFacture(sourceDevis, devis, { nature: 'situation' });
+      if (!v.ok) { showToast(v.raison, 'error'); return; }
       const totals = sit.totaux || calculateSituationTotals(sit.lignes, sit.isDGD ? 0 : (sit.retenuePct || retenuePct), sit.isDGD);
-      const numero = generateNextNumero('facture');
+      // Avant : sans `await`, le numéro était une promesse (écran d'erreur en démo, rien d'écrit en réel)
+      const numero = await generateNextNumero('facture');
+      if (typeof numero !== 'string' || !numero) { showToast('Numéro de facture indisponible : réessayez.', 'error'); return; }
       const client = clients?.find((c) => c.id === (sourceDevis?.client_id || chantier?.client_id || chantier?.clientId));
 
       // Build facture lignes from situation lignes
@@ -355,7 +376,7 @@ export default function SituationsTravaux({
       }).filter((l) => l.montant > 0);
 
       const facture = {
-        id: generateId('fac'),
+        id: crypto.randomUUID(), // la base attend un UUID (avant : « fac_… », refusé)
         client_id: client?.id || sourceDevis?.client_id || null,
         client_nom: client ? `${client.prenom || ''} ${client.nom}`.trim() : '',
         chantier_id: chantier?.id,
@@ -364,7 +385,7 @@ export default function SituationsTravaux({
         facture_type: 'situation',
         situation_numero: sit.numero,
         devis_source_id: devisSourceId || sourceDevis?.id || null,
-        statut: 'facture',
+        statut: 'envoye',
         date: new Date().toISOString().split('T')[0],
         objet: `Facture de situation n°${sit.numero}${sit.isDGD ? ' - Décompte Général Définitif' : ''} - ${chantier?.nom || ''}`,
         lignes: factureLignes,
@@ -376,7 +397,8 @@ export default function SituationsTravaux({
       };
 
       try {
-        await addDevis(facture);
+        // Refus de la base : la situation reste « validée », DataContext a dit pourquoi
+        if (!(await addDevis(facture))) return;
         // Update situation status
         const updated = situations.map((s) =>
           s.id === sitId
@@ -395,7 +417,7 @@ export default function SituationsTravaux({
         console.error('Erreur génération facture situation:', err);
       }
     },
-    [addDevis, generateNextNumero, situations, sourceDevis, chantier, clients, devisSourceId, retenuePct, saveSituationsData]
+    [addDevis, generateNextNumero, situations, sourceDevis, chantier, clients, devisSourceId, retenuePct, saveSituationsData, devis, showToast]
   );
 
   const handlePrintSituation = useCallback(

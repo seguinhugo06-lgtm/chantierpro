@@ -10,6 +10,11 @@
 const CENTIME = 0.005;
 const JOUR = 86400000;
 /**
+ * Ce que les avoirs émis ont crédité sur la facture. Posé par DataContext (`montant_credite`), qui voit
+ * tous les documents : un avoir réduit le reste dû comme un paiement, sans en être un.
+ */
+const credite = (facture) => Number(facture?.montant_credite) || 0;
+/**
  * Délai de repère quand une facture n'a ni échéance ni conditions de règlement : 30 jours après
  * l'émission. C'est un repère d'écran, pas une règle : entre professionnels, le délai légal court de
  * l'exécution de la prestation (art. L441-10 I C. com.) ; avec un particulier, il n'y a pas de délai
@@ -81,7 +86,7 @@ export function dejaPaye(facture, paiements = []) {
 }
 
 export function resteAPayer(facture, paiements = []) {
-  return Math.max(0, (Number(facture?.total_ttc) || 0) - dejaPaye(facture, paiements));
+  return Math.max(0, (Number(facture?.total_ttc) || 0) - credite(facture) - dejaPaye(facture, paiements));
 }
 
 /**
@@ -101,10 +106,13 @@ export function echeance(facture, { delaiJours } = {}) {
 export function statutFacture(facture, paiements = [], maintenant = new Date()) {
   const s = facture?.statut;
   if (s === 'brouillon' || s === 'annulee') return s;
-  if (s === 'payee' || s === 'paye') return 'payee';
   const total = Number(facture?.total_ttc) || 0;
+  // Entièrement créditée par avoir : annulée (ni à encaisser, ni à relancer)
+  if (total > 0 && credite(facture) >= total - CENTIME) return 'annulee';
+  if (s === 'payee' || s === 'paye') return 'payee';
+  const du = total - credite(facture);
   const recu = dejaPaye(facture, paiements);
-  if (total > 0 && recu >= total - CENTIME) return 'payee';
+  if (du > 0 && recu >= du - CENTIME) return 'payee';
   const ech = echeance(facture);
   if (ech && maintenant > new Date(ech.getTime() + JOUR - 1)) return 'en_retard';
   if (recu > CENTIME) return 'partielle';
@@ -123,7 +131,7 @@ export function joursDeRetard(facture, paiements = [], maintenant = new Date()) 
  */
 export function apresPaiement(facture, paiements = [], montant = 0) {
   const montant_paye = Math.round((dejaPaye(facture, paiements) + (Number(montant) || 0)) * 100) / 100;
-  const soldee = montant_paye >= (Number(facture?.total_ttc) || 0) - CENTIME;
+  const soldee = montant_paye >= (Number(facture?.total_ttc) || 0) - credite(facture) - CENTIME;
   return { montant_paye, soldee, ...(soldee ? { statut: 'payee' } : {}) };
 }
 

@@ -1186,11 +1186,25 @@ export function DataProvider({ children, initialData = {} }) {
     return getNextNumero(type, userId, devis, entrepriseId);
   }, [userId, devis, entrepriseId]);
 
+  // Avoirs émis sur chaque facture (`montant_credite`) : reste dû, « Encaisser », tuiles et relances en
+  // tiennent compte (recette du 9 oct. 2026 : un avoir total laissait la facture « à encaisser »).
+  // Champ calculé, jamais enregistré (absent de FIELD_MAPPINGS).
+  const devisAvecAvoirs = useMemo(() => {
+    const credits = new Map();
+    for (const d of devis) {
+      if (d.facture_type === 'avoir' && d.avoir_source_id && !['brouillon', 'annulee'].includes(d.statut)) {
+        credits.set(d.avoir_source_id, (credits.get(d.avoir_source_id) || 0) + Math.abs(Number(d.total_ttc) || 0));
+      }
+    }
+    if (!credits.size) return devis;
+    return devis.map(d => (credits.has(d.id) ? { ...d, montant_credite: Math.round(credits.get(d.id) * 100) / 100 } : d));
+  }, [devis]);
+
   // ============ CONTEXT VALUE ============
   const value = useMemo(() => ({
     // Data
     clients,
-    devis,
+    devis: devisAvecAvoirs,
     chantiers,
     depenses,
     pointages,
@@ -1312,7 +1326,7 @@ export function DataProvider({ children, initialData = {} }) {
     rejouerEcriture,
     userId,
   }), [
-    clients, devis, chantiers, depenses, pointages, equipe, ajustements,
+    clients, devisAvecAvoirs, chantiers, depenses, pointages, equipe, ajustements,
     catalogue, paiements, echanges, ouvrages, planningEvents, memos, loading, dataLoading, loadError, retryLoad,
     customTemplates, templateUsages,
     addClient, updateClient, deleteClient, getClient,

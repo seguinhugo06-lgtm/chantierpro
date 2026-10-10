@@ -633,7 +633,7 @@ function MouvementModal({ isOpen, onClose, onSave, editItem, isDark, couleur }) 
 
 export default function TresorerieModule({
   devis = [], depenses = [], chantiers = [], clients = [],
-  entreprise, isDark = false, couleur = '#3b82f6', setPage,
+  entreprise, isDark = false, couleur = '#3b82f6', setPage, ouvrirDocument,
   modeDiscret = false, paiements = [],
 }) {
   // Helper: mask financial amounts when modeDiscret is active
@@ -1083,15 +1083,6 @@ export default function TresorerieModule({
     const tel = (item.clientTel || '').replace(/\s/g, '').replace(/^0/, '+33');
     window.open(`https://wa.me/${tel}?text=${msg}`, '_blank');
   }, []);
-
-  // Mark an invoice as paid from the encaisser widget
-  const handleEncaisserMarkPaid = useCallback(async (item) => {
-    // Find the matching prevision and mark it paid
-    const match = previsions.find(p => p.linkedId === item.id && p.type === 'entree' && p.statut === 'prevu');
-    if (match) {
-      await hookMarkAsPaid(match.id);
-    }
-  }, [previsions, hookMarkAsPaid]);
 
   // Add BTP charge as prevision
   const handleAddBTPCharge = useCallback(async (charge) => {
@@ -1909,7 +1900,9 @@ export default function TresorerieModule({
                     <span />
                     <span className="flex items-center gap-2">
                       {item.clientTel && <Bouton taille="compacte" icone={MessageCircle} onClick={() => handleWhatsAppRelance(item)}>Relancer</Bouton>}
-                      <Bouton taille="compacte" icone={Check} onClick={() => handleEncaisserMarkPaid(item)}>Encaissée</Bouton>
+                      {/* Ouvre la facture : « Encaisser » y enregistre le paiement (montant, date, moyen) et met à
+                          jour le reste dû. Avant : « Encaissée » ne marquait qu'une prévision, la facture restait due. */}
+                      {ouvrirDocument && <Bouton taille="compacte" icone={Check} onClick={() => ouvrirDocument(item.id)}>Encaisser</Bouton>}
                     </span>
                   </>
                 )}

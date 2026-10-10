@@ -98,3 +98,18 @@ describe('dateEcheance', () => {
     expect(statutFacture(f, [], new Date('2026-10-05'))).toBe('envoye');
   });
 });
+
+describe('avoirs (montant_credite posé par DataContext)', () => {
+  it('un avoir réduit le reste dû comme un paiement', () => {
+    expect(resteAPayer(facture({ total_ttc: 1000, montant_credite: 300 }), [])).toBe(700);
+    expect(resteAPayer(facture({ total_ttc: 1000, montant_credite: 300, montant_paye: 700 }), [])).toBe(0);
+  });
+  it('une facture entièrement créditée est annulée : ni à encaisser, ni en retard', () => {
+    expect(statutFacture(facture({ total_ttc: 1000, montant_credite: 1000 }), [], LE_1_OCT)).toBe('annulee');
+    expect(resteAPayer(facture({ total_ttc: 1000, montant_credite: 1000 }), [])).toBe(0);
+  });
+  it('avoir partiel + paiement du reste : payée', () => {
+    expect(statutFacture(facture({ total_ttc: 1000, montant_credite: 300, montant_paye: 700 }), [], LE_1_OCT)).toBe('payee');
+    expect(apresPaiement(facture({ total_ttc: 1000, montant_credite: 300 }), [], 700).soldee).toBe(true);
+  });
+});

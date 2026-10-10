@@ -66,6 +66,7 @@ export default function PaymentModal({
   client,
   entreprise,
   onPaymentCreated,
+  resteDu,
   isDark,
   couleur
 }) {
@@ -110,11 +111,15 @@ export default function PaymentModal({
   if (!isOpen || !document) return null;
 
   const totalTTC = document.total_ttc || 0;
+  // Ce qui reste dû (acomptes reçus et avoirs déduits) : c'est ce que l'on encaisse, pas le total de la
+  // facture (recette du 9 oct. 2026 : le module proposait le total même après un premier paiement).
+  const du = Number.isFinite(resteDu) ? Math.round(resteDu * 100) / 100 : totalTTC;
+  const lireMontant = (v) => parseFloat(String(v ?? '').replace(/\s/g, '').replace(',', '.'));
   const amount = paymentType === 'custom'
-    ? (parseFloat(customAmount) || 0)
+    ? (lireMontant(customAmount) || 0)
     : paymentType === 'offline'
-      ? (parseFloat(offlineAmount) || totalTTC)
-      : totalTTC;
+      ? (lireMontant(offlineAmount) || du)
+      : du;
 
   const handleGenerateLink = async () => {
     if (amount <= 0) return;
@@ -151,7 +156,7 @@ export default function PaymentModal({
 
   /** Confirm offline payment — marks facture as paid */
   const handleConfirmOffline = () => {
-    const montant = parseFloat(offlineAmount) || totalTTC;
+    const montant = lireMontant(offlineAmount) || du;
     if (montant <= 0) return;
 
     onPaymentCreated?.({
@@ -248,8 +253,9 @@ export default function PaymentModal({
             <>
               {/* Montant total */}
               <div className={`rounded-xl p-4 mb-5 ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
-                <p className={`text-sm ${textMuted} mb-1`}>Montant de la facture</p>
-                <p className="text-2xl font-bold" style={{ color: couleur }}>{formatAmount(totalTTC)}</p>
+                <p className={`text-sm ${textMuted} mb-1`}>{du < totalTTC - 0.005 ? 'Reste dû' : 'Montant de la facture'}</p>
+                <p className="text-2xl font-bold" style={{ color: couleur }}>{formatAmount(du)}</p>
+                {du < totalTTC - 0.005 && <p className={`text-xs ${textMuted} mt-1`}>sur {formatAmount(totalTTC)} TTC</p>}
               </div>
 
               {/* Options de paiement */}
@@ -289,7 +295,7 @@ export default function PaymentModal({
                     <p className={`text-sm ${textMuted}`}>QR Code pour la totalité</p>
                   </div>
                   <span className="text-lg font-bold" style={{ color: paymentType === 'full' ? couleur : '#94a3b8' }}>
-                    {formatAmount(totalTTC)}
+                    {formatAmount(du)}
                   </span>
                 </button>
 
@@ -313,7 +319,7 @@ export default function PaymentModal({
 
                 {/* Option 4: Paiement reçu hors ligne */}
                 <button
-                  onClick={() => { setPaymentType('offline'); setOfflineAmount(totalTTC.toFixed(2)); }}
+                  onClick={() => { setPaymentType('offline'); setOfflineAmount(du.toFixed(2)); }}
                   className={`w-full p-4 rounded-xl border-2 flex items-center justify-between transition-all ${
                     paymentType === 'offline'
                       ? (isDark ? 'border-blue-500 bg-blue-900/20' : 'border-blue-500 bg-blue-50')
@@ -468,7 +474,7 @@ export default function PaymentModal({
                   className="w-full py-4 text-white rounded-xl font-semibold flex items-center justify-center gap-2 disabled:opacity-50 transition-all hover:shadow-lg bg-emerald-500 hover:bg-emerald-600"
                 >
                   <Check size={20} />
-                  Confirmer le paiement — {formatAmount(parseFloat(offlineAmount) || totalTTC)}
+                  Confirmer le paiement — {formatAmount(lireMontant(offlineAmount) || du)}
                 </button>
               ) : (
                 <button

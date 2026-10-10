@@ -44,7 +44,7 @@ const TAB_CONFIG = [
   { key: 'rapports', label: 'Rapports', icon: FileText },
 ];
 
-export default function FinancesPage({ devis, depenses, clients, chantiers, entreprise, equipe, paiements, pointages = [], isDark, couleur = '#F97316', setPage, modeDiscret: modeDiscretGlobal }) {
+export default function FinancesPage({ devis, depenses, clients, chantiers, entreprise, equipe, paiements, pointages = [], isDark, couleur = '#F97316', setPage, modeDiscret: modeDiscretGlobal, ouvrirDocument}) {
   const textPrimary = isDark ? 'text-slate-100' : 'text-slate-900';
   const textMuted = isDark ? 'text-slate-400' : 'text-slate-600';
   const [activeTab, setActiveTab] = useState('tresorerie');
@@ -104,6 +104,7 @@ export default function FinancesPage({ devis, depenses, clients, chantiers, entr
               couleur={couleur}
               setPage={setPage}
               modeDiscret={modeDiscret}
+              ouvrirDocument={ouvrirDocument}
             />
           </Suspense>
         </ErrorBoundary>
