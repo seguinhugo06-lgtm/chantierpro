@@ -168,7 +168,7 @@ export default function Dashboard({
 }) {
   const { dataLoading, paiements = [] } = useData();
   const { showToast } = useToast();
-  const { canAccess } = usePermissions();
+  const { canAccess, canPerform } = usePermissions();
   const canSeeFinances = canAccess('finances');
   const { orgId } = useOrg();
   const planId = useSubscriptionStore((s) => s.planId);
@@ -424,7 +424,8 @@ export default function Dashboard({
   // ============ RENDER ============
 
 
-  const relancesDue = relances?.counts?.due || 0;
+  // Relances (impayés, devis sans réponse, envoi aux clients) : seulement pour un rôle qui voit les finances
+  const relancesDue = canSeeFinances ? (relances?.counts?.due || 0) : 0;
   const relancesRisk = relances?.totalAtRisk || 0;
   const hasAnyAction = relancesDue > 0 || allActions.length > 0;
 
@@ -472,9 +473,12 @@ export default function Dashboard({
         </div>
         <div className="flex items-center gap-1">
           <BoutonIcone icone={modeDiscret ? EyeOff : Eye} libelle={modeDiscret ? 'Afficher les montants' : 'Masquer les montants'} onClick={() => setModeDiscret?.(!modeDiscret)} />
-          <Bouton variante="principal" icone={Plus} onClick={() => { setCreateMode?.(p => ({ ...p, devis: true })); setPage('devis'); }}>
-            Nouveau devis
-          </Bouton>
+          {/* Seulement pour un rôle qui crée des devis : pour un ouvrier, le bouton ne menait nulle part */}
+          {canPerform('devis', 'create') && (
+            <Bouton variante="principal" icone={Plus} onClick={() => { setCreateMode?.(p => ({ ...p, devis: true })); setPage('devis'); }}>
+              Nouveau devis
+            </Bouton>
+          )}
         </div>
       </header>
 

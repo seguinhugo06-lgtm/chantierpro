@@ -2568,7 +2568,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
             else if (factureVue === 'en_retard') { contexte = `En retard de ${joursDeRetard(selected, paiements)} j · reste ${modeDiscret ? '•••' : formatMoney(resteFacture)}`; contexteAlerte = true; }
             else if (factureVue === 'partielle') contexte = `Reçu ${modeDiscret ? '•••' : formatMoney(dejaPaye(selected, paiements))} · reste ${modeDiscret ? '•••' : formatMoney(resteFacture)}${ech ? ` · échéance ${dateCourte(ech)}` : ''}`;
             else if (factureVue === 'brouillon') contexte = `Brouillon du ${dateCourte(selected.date)}`;
-            else contexte = `${ech ? `Échéance ${dateCourte(ech)} · ` : ''}reste ${formatMoney(resteFacture)}`;
+            else contexte = `${ech ? `Échéance ${dateCourte(ech)} · ` : ''}reste ${modeDiscret ? '•••' : formatMoney(resteFacture)}`;
           }
 
           // Étapes : faites, en cours, à venir (une facture soldée par ses paiements est « payée »)

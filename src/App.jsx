@@ -96,6 +96,7 @@ import { appliquerTheme } from './lib/theme';
 import { dateEcheance, joursDeRetard, resteAPayer } from './lib/paiementsFacture';
 import { estOuverte, estEnRetard } from './lib/ventes';
 import { jourLocal } from './lib/dates';
+import PortailIndisponible from './components/portal/PortailIndisponible';
 
 // Safe string renderer — prevents "Objects are not valid as React child" (#310)
 const safeStr = (v, fallback = '') => {
@@ -1135,15 +1136,7 @@ export default function App() {
 
   // Portail éteint (src/lib/fonctions.js) : un client qui ouvre un lien reçoit un message neutre, jamais de données
   // de démonstration présentées comme celles de l'entreprise
-  if (portalToken && !FONCTIONS.portailClient) return (
-    <div className="min-h-screen bg-[#f5f5f5] flex items-center justify-center p-6">
-      <div className="max-w-sm text-center bg-white rounded-2xl shadow p-6">
-        <LogoMallettico taille={40} className="mx-auto mb-3" />
-        <h1 className="text-lg font-bold text-slate-900 mb-2">Espace client indisponible</h1>
-        <p className="text-sm text-slate-600">Cet espace n’est pas disponible pour le moment. Pour vos devis et factures, contactez directement l’entreprise qui vous a envoyé ce lien.</p>
-      </div>
-    </div>
-  );
+  if (portalToken && !FONCTIONS.portailClient) return <PortailIndisponible />;
 
   if ((page === 'client-portal' && FONCTIONS.portailClient) || portalToken) {
     const portalClientId = (() => {

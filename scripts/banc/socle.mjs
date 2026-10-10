@@ -183,6 +183,33 @@ export const SCHEMA = `
     ADD COLUMN email TEXT, ADD COLUMN siret TEXT, ADD COLUMN logo_url TEXT, ADD COLUMN couleur_principale TEXT, ADD COLUMN iban TEXT, ADD COLUMN bic TEXT;
   CREATE TABLE paiements (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
     organization_id UUID REFERENCES organizations(id), devis_id UUID, montant NUMERIC, date DATE, mode TEXT);
+  -- Portail client (007), tel qu'en production le 10 oct. 2026 : jeton UUID permanent sur la fiche client, deux
+  -- fonctions SECURITY DEFINER exécutables par un visiteur (082 les ferme), sans search_path.
+  ALTER TABLE clients ADD COLUMN portal_access_token UUID;
+  ALTER TABLE devis ADD COLUMN updated_at TIMESTAMPTZ;
+  CREATE FUNCTION portal_accept_devis(p_token UUID, p_devis_id UUID) RETURNS JSON LANGUAGE plpgsql SECURITY DEFINER AS $$
+  DECLARE v_client_id UUID; v_devis_client_id UUID;
+  BEGIN
+    SELECT id INTO v_client_id FROM clients WHERE portal_access_token = p_token;
+    IF v_client_id IS NULL THEN RETURN json_build_object('success', false, 'error', 'Invalid token'); END IF;
+    SELECT client_id INTO v_devis_client_id FROM devis WHERE id = p_devis_id;
+    IF v_devis_client_id != v_client_id THEN RETURN json_build_object('success', false, 'error', 'Unauthorized'); END IF;
+    UPDATE devis SET statut = 'accepte', updated_at = now() WHERE id = p_devis_id AND statut = 'envoye';
+    RETURN json_build_object('success', true);
+  END; $$;
+  CREATE FUNCTION portal_refuse_devis(p_token UUID, p_devis_id UUID) RETURNS JSON LANGUAGE plpgsql SECURITY DEFINER AS $$
+  DECLARE v_client_id UUID; v_devis_client_id UUID;
+  BEGIN
+    SELECT id INTO v_client_id FROM clients WHERE portal_access_token = p_token;
+    IF v_client_id IS NULL THEN RETURN json_build_object('success', false, 'error', 'Invalid token'); END IF;
+    SELECT client_id INTO v_devis_client_id FROM devis WHERE id = p_devis_id;
+    IF v_devis_client_id != v_client_id THEN RETURN json_build_object('success', false, 'error', 'Unauthorized'); END IF;
+    UPDATE devis SET statut = 'refuse', updated_at = now() WHERE id = p_devis_id AND statut = 'envoye';
+    RETURN json_build_object('success', true);
+  END; $$;
+  CREATE FUNCTION get_client_by_portal_token(p_token UUID) RETURNS JSON LANGUAGE plpgsql SECURITY DEFINER AS $$
+  BEGIN RETURN (SELECT json_build_object('id', c.id, 'nom', c.nom) FROM clients c WHERE c.portal_access_token = p_token); END; $$;
+  GRANT EXECUTE ON FUNCTION get_client_by_portal_token, portal_accept_devis, portal_refuse_devis TO anon;
   CREATE TABLE payment_links (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), user_id UUID REFERENCES auth.users(id), token TEXT);
   ALTER TABLE payment_links ENABLE ROW LEVEL SECURITY;
   CREATE POLICY "Users manage own payment_links" ON payment_links FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);

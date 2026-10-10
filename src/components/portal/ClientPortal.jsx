@@ -364,16 +364,18 @@ export default function ClientPortal({
 
   // Use real props if available, otherwise fallback to demo data
   const hasRealData = !!(portalData || (clientProp && entrepriseProp));
-  const entreprise = portalData?.entreprise || (clientProp && entrepriseProp ? entrepriseProp : DEMO_DATA.entreprise);
+  // Données de démonstration : seulement l'aperçu « demo » de l'app, jamais pour un vrai lien (ou sans jeton)
+  const DEMO = token === 'demo' ? DEMO_DATA : { entreprise: {}, client: { prenom: '', nom: '' }, devis: [], chantiers: [] };
+  const entreprise = portalData?.entreprise || (clientProp && entrepriseProp ? entrepriseProp : DEMO.entreprise);
   const client = portalData?.client
     ? { prenom: portalData.client.prenom || portalData.client.nom?.split(' ')[0] || '', nom: portalData.client.nom?.split(' ').slice(1).join(' ') || portalData.client.nom || '' }
     : clientProp
       ? { prenom: clientProp.prenom || clientProp.nom?.split(' ')[0] || '', nom: clientProp.nom?.split(' ').slice(1).join(' ') || clientProp.nom || '' }
-      : DEMO_DATA.client;
-  const allDevis = portalData ? [...(portalData.devis || []), ...(portalData.factures || [])] : (clientProp && entrepriseProp) ? (devisProp || []) : DEMO_DATA.devis;
+      : DEMO.client;
+  const allDevis = portalData ? [...(portalData.devis || []), ...(portalData.factures || [])] : (clientProp && entrepriseProp) ? (devisProp || []) : DEMO.devis;
   const devis = portalData ? (portalData.devis || []) : allDevis.filter(d => d.type !== 'facture');
   const factures = portalData ? (portalData.factures || []) : allDevis.filter(d => d.type === 'facture');
-  const chantiers = portalData?.chantiers || ((clientProp && entrepriseProp) ? (chantiersProp || []) : DEMO_DATA.chantiers);
+  const chantiers = portalData?.chantiers || ((clientProp && entrepriseProp) ? (chantiersProp || []) : DEMO.chantiers);
   const couleur = couleurProp || entreprise?.couleur || '#f97316';
 
   // Stats

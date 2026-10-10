@@ -85,14 +85,28 @@ export const auth = {
   signOut: async () => {
     if (isDemo || !supabase) return { error: null };
     // Cet appareil seulement (« global » déconnectait aussi l'ordinateur quand on se déconnectait du téléphone).
-    const { error } = await supabase.auth.signOut({ scope: 'local' });
+    // L'appel peut renvoyer une erreur OU lever (verrou d'auth-js abandonné sur un réseau instable) : même repli.
+    let error = null;
+    try {
+      ({ error } = await supabase.auth.signOut({ scope: 'local' }));
+    } catch (e) {
+      error = e;
+    }
+    // Recherches récentes : propres au compte (sur un téléphone partagé, le suivant les voyait)
+    try { localStorage.removeItem('mallettico_recent_items'); } catch { /* stockage indisponible */ }
     if (error) {
       // Serveur injoignable (hors ligne) : supabase-js garde alors la session, et le compte était de nouveau
       // connecté au rechargement — téléphone partagé (recette du 9 oct. 2026). On l'efface de l'appareil quand même
-      // (le jeton expire de lui-même côté serveur) ; `_removeSession` prévient aussi l'app (SIGNED_OUT).
+      // (le jeton d'accès expire en 1 h ; le jeton de rafraîchissement n'est pas révoqué côté serveur, mais il
+      // n'est plus sur l'appareil) ; `_removeSession` prévient aussi l'app (SIGNED_OUT). Méthode privée d'auth-js :
+      // src/lib/__tests__/deconnexion.test.js vérifie qu'elle existe toujours.
       try {
         if (typeof supabase.auth._removeSession === 'function') await supabase.auth._removeSession();
-        else localStorage.removeItem(supabase.auth.storageKey);
+        else {
+          localStorage.removeItem(supabase.auth.storageKey);
+          localStorage.removeItem(`${supabase.auth.storageKey}-user`);
+          localStorage.removeItem(`${supabase.auth.storageKey}-code-verifier`);
+        }
       } catch { /* stockage indisponible : rien à effacer */ }
       return { error: null, horsLigne: true };
     }

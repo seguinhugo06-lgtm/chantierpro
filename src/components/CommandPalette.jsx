@@ -10,6 +10,7 @@ import {
   RotateCcw, CreditCard, Bell, CalendarCheck
 } from 'lucide-react';
 import { dateLue } from '../lib/dates';
+import { usePermissions } from '../hooks/usePermissions';
 
 /**
  * Storage key for recent items
@@ -52,7 +53,7 @@ function saveRecentItem(item) {
     // Remove if already exists
     const filtered = items.filter(i => i.id !== item.id);
     // Pas de montant enregistré en clair sur l'appareil (il restait lisible en mode discret)
-    if (item && typeof item.sublabel === 'string') item = { ...item, sublabel: item.sublabel.replace(/\s*•\s*[\d\s\u202f\u00a0.,]+\s*€\s*$/, '') };
+    if (item && typeof item.sublabel === 'string') item = { ...item, sublabel: item.sublabel.replace(/\s*•\s*-?[\d\s\u202f\u00a0.,]+\s*€\s*$/, '') };
     // Add to front
     const updated = [item, ...filtered].slice(0, MAX_RECENT_ITEMS);
     localStorage.setItem(RECENT_ITEMS_KEY, JSON.stringify(updated));
@@ -92,6 +93,10 @@ export default function CommandPalette({
   // Mode discret : pas de montant dans les résultats (recette du 9 oct. 2026 : « Dupont • 4 136 € »)
   modeDiscret = false,
 }) {
+  const { canAccess } = usePermissions();
+  const voitClients = canAccess('clients');
+  const voitDocuments = canAccess('devis');
+  const voitPrix = canAccess('finances');
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [recentItems, setRecentItems] = useState([]);
@@ -267,7 +272,9 @@ export default function CommandPalette({
       }
 
       // Show search results
-      if (searchResults.clients.length > 0) {
+      // Selon le rôle : un ouvrier n'a ni les clients ni les documents (relecture gardien-securite du 10 oct. 2026 :
+      // « Mar » montrait « FAC-… Martin • 2 000 € » et les téléphones des clients)
+      if (voitClients && searchResults.clients.length > 0) {
         items.push({ type: 'header', label: 'Clients' });
         searchResults.clients.forEach(c => items.push({
           type: 'result',
@@ -297,7 +304,7 @@ export default function CommandPalette({
         }));
       }
 
-      if (searchResults.devis.length > 0) {
+      if (voitDocuments && searchResults.devis.length > 0) {
         items.push({ type: 'header', label: 'Documents' });
         searchResults.devis.forEach(d => {
           const client = clients.find(c => c.id === d.client_id);
@@ -307,7 +314,7 @@ export default function CommandPalette({
             entityType: 'devis',
             entityId: d.id,
             label: d.numero || `#${d.id?.slice(-6)}`,
-            sublabel: modeDiscret ? (client?.nom || '') : `${client?.nom || ''} • ${(d.total_ttc || 0).toLocaleString('fr-FR')} €`,
+            sublabel: (modeDiscret || !voitPrix) ? (client?.nom || '') : `${client?.nom || ''} • ${(d.total_ttc || 0).toLocaleString('fr-FR')} €`,
             icon: d.facture_type === 'avoir' ? RotateCcw : d.facture_type === 'situation' ? BarChart3 : d.type === 'facture' ? Receipt : FileText,
             color: d.facture_type === 'avoir' ? '#dc2626' : d.facture_type === 'situation' ? '#f97316' : d.type === 'facture' ? '#8b5cf6' : '#f97316',
             action: () => { setPage('devis'); setSelectedDevis?.(d); onClose(); }

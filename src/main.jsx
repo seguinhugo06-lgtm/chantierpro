@@ -10,6 +10,8 @@ import { isDemo } from './supabaseClient'
 import { initSentry } from './lib/sentry'
 import './index.css'
 import { logger } from './lib/logger';
+import { FONCTIONS } from './lib/fonctions';
+import PortailIndisponible from './components/portal/PortailIndisponible';
 
 // ── Initialize Sentry error monitoring (production only) ────────────
 initSentry()
@@ -213,9 +215,13 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         <PublicPaymentPage payToken={payToken} />
       </Suspense>
     ) : portalToken ? (
-      <Suspense fallback={<PublicFallback />}>
-        <ClientPortal accessToken={portalToken} />
-      </Suspense>
+      // Portail éteint (src/lib/fonctions.js) : page neutre. Avant (relecture gardien-securite du 10 oct. 2026),
+      // cette entrée rendait le portail sans jeton (`accessToken` au lieu de `token`), donc la démo « Martin Rénovation ».
+      FONCTIONS.portailClient ? (
+        <Suspense fallback={<PublicFallback />}>
+          <ClientPortal token={portalToken} />
+        </Suspense>
+      ) : <PortailIndisponible />
     ) : invitationToken ? (
       <Suspense fallback={<PublicFallback />}>
         <AcceptInvitation token={invitationToken} />
