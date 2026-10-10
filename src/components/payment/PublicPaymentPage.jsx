@@ -160,9 +160,11 @@ export default function PublicPaymentPage({ payToken }) {
   const { facture, entreprise } = data;
   const couleur = entreprise?.couleur || '#f97316';
   const totalTTC = facture.total_ttc || 0;
-  const dejaPaye = facture.montant_paye || 0;
+  // Reçu réel (paiements enregistrés compris, 081) et avoirs émis : le récapitulatif doit tomber juste
+  const dejaPaye = typeof facture.recu === 'number' ? facture.recu : (facture.montant_paye || 0);
+  const credite = Number(facture.montant_credite) || 0;
   // Reste dû de la base (migration 081 : avoirs émis et paiements enregistrés déduits), sinon total − reçu
-  const reste = typeof facture.reste_du === 'number' ? facture.reste_du : Math.max(totalTTC - dejaPaye, 0);
+  const reste = typeof facture.reste_du === 'number' ? facture.reste_du : Math.max(totalTTC - credite - dejaPaye, 0);
   const resteCents = Math.round(reste * 100);
   // Acompte demandé via ?m= (borné au reste dû)
   const montantAcompte = Number.isInteger(montantParam) && montantParam > 0 && montantParam < resteCents
@@ -174,7 +176,8 @@ export default function PublicPaymentPage({ payToken }) {
   const isPaid = facture.statut === 'payee';
   // Annulée par un avoir, brouillon : rien à payer (avant : la page proposait de payer une facture annulée)
   const nonPayable = !isPaid && facture.payable === false;
-  const annuleeParAvoir = nonPayable && Number(facture.montant_credite) >= totalTTC - 0.005;
+  const annuleeParAvoir = nonPayable && credite >= totalTTC - 0.005;
+  const regleeEntierement = nonPayable && !annuleeParAvoir && reste <= 0.005 && dejaPaye > 0.005;
 
   // ── Vérification en cours / succès ────────────────────────────────
   if (verifyState === 'verifying') {
@@ -190,12 +193,14 @@ export default function PublicPaymentPage({ payToken }) {
     return (
       <CenteredCard>
         <h1 className="text-2xl font-bold text-slate-900 mb-2">
-          {annuleeParAvoir ? 'Facture annulée' : 'Aucun paiement à effectuer'}
+          {annuleeParAvoir ? 'Facture annulée' : regleeEntierement ? 'Facture réglée' : 'Paiement en ligne indisponible'}
         </h1>
         <p className="text-slate-600 mb-6">
           {annuleeParAvoir
             ? `Cette facture a été annulée par un avoir de ${entreprise?.nom || 'votre artisan'}. Vous n'avez rien à payer.`
-            : `Cette facture n'est pas à régler en ligne. Pour toute question, contactez ${entreprise?.nom || 'votre artisan'}.`}
+            : regleeEntierement
+              ? "Cette facture est entièrement réglée. Vous n'avez rien à payer."
+              : `Cette facture ne peut pas être réglée en ligne. Pour toute question, contactez ${entreprise?.nom || 'votre artisan'}.`}
         </p>
         <div className="bg-slate-50 rounded-xl p-4 text-left space-y-2 mb-6">
           <SummaryRow label="Facture" value={facture.numero} />
@@ -292,6 +297,9 @@ export default function PublicPaymentPage({ payToken }) {
 
           <div className="p-5 space-y-2">
             <SummaryRow label="Total TTC" value={formatMoney(totalTTC)} />
+            {credite > 0.005 && (
+              <SummaryRow label="Avoir" value={`− ${formatMoney(credite)}`} />
+            )}
             {dejaPaye > 0 && (
               <SummaryRow label="Déjà réglé" value={`− ${formatMoney(dejaPaye)}`} />
             )}

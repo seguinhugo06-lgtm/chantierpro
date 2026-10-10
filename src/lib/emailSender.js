@@ -170,15 +170,17 @@ export async function sendDocumentEmail({ to, subject, bodyHtml, fromName, reply
 /**
  * Construit un corps d'email HTML simple et lisible (compatible clients mail).
  */
-export function buildDocumentEmailBody({ doc, client, entreprise, couleur = '#f97316', montantFormatte, signatureUrl = null, relance = null, lienPaiement = '' }) {
+export function buildDocumentEmailBody({ doc, client, entreprise, couleur = '#f97316', montantFormatte, signatureUrl = null, solde = null, lienPaiement = '' }) {
   const isFacture = doc.type === 'facture';
   const label = isFacture ? 'facture' : 'devis';
   // Tout texte saisi est échappé (un nom contenant du HTML cassait l'e-mail, ou pire)
   const clientNom = echapperHtml(`${client.prenom || ''} ${client.nom || ''}`.trim()) || 'Madame, Monsieur';
   const nomEntreprise = echapperHtml(entreprise?.nom || 'Votre artisan');
   const numero = echapperHtml(doc.numero);
-  const echeanceTexte = relance?.echeance ? new Date(relance.echeance).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
-  const lienBlock = isFacture && lienPaiement ? `
+  const echeanceTexte = solde?.echeance ? new Date(solde.echeance).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
+  const euro = (n) => Number(n || 0).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' });
+  // Bouton de paiement seulement s'il reste quelque chose à payer
+  const lienBlock = isFacture && lienPaiement && (!solde || solde.reste > 0.005) ? `
     <div style="margin:24px 0;text-align:center">
       <a href="${echapperHtml(lienPaiement)}" style="display:inline-block;background:${couleur};color:#ffffff;text-decoration:none;font-weight:bold;font-size:16px;padding:14px 28px;border-radius:10px">Régler en ligne</a>
     </div>` : '';
@@ -199,10 +201,12 @@ export function buildDocumentEmailBody({ doc, client, entreprise, couleur = '#f9
   return `
   <div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#1e293b;line-height:1.6;max-width:560px;margin:0 auto">
     <p>Bonjour ${clientNom},</p>
-    ${relance
-      ? `<p>Sauf erreur de ma part, la facture <strong>${numero}</strong>${echeanceTexte ? `, à régler au plus tard le ${echeanceTexte}` : ''}${relance.jours > 0 ? ` (échue depuis ${relance.jours} jour${relance.jours > 1 ? 's' : ''})` : ''}, reste à régler : <strong>${montantFormatte}</strong>.</p>
-    <p>Je vous la joins à nouveau. Si le règlement est déjà parti, merci de ne pas tenir compte de ce message.</p>`
-      : `<p>Veuillez trouver ci-joint votre ${label} <strong>${numero}</strong>${montantFormatte ? `, d'un montant de <strong>${montantFormatte}</strong>` : ''}.</p>`}
+    ${solde?.enRetard
+      ? `<p>Sauf erreur de ma part, la facture <strong>${numero}</strong>${echeanceTexte ? `, arrivée à échéance le ${echeanceTexte},` : ''} n'est pas encore réglée : il reste <strong>${euro(solde.reste)}</strong> à payer. Vous la trouverez en pièce jointe.</p>
+    <p>Si votre règlement est déjà parti, merci de ne pas tenir compte de ce message.</p>`
+      : isFacture && solde
+        ? `<p>Veuillez trouver ci-joint votre facture <strong>${numero}</strong>, d'un montant de <strong>${euro(solde.total)}</strong>${solde.reste > 0.005 && echeanceTexte ? `, à régler au plus tard le ${echeanceTexte}` : ''}${solde.acompteRecu && solde.reste > 0.005 ? ` (reste à régler : <strong>${euro(solde.reste)}</strong>)` : ''}${solde.reste <= 0.005 ? ', entièrement réglée' : ''}.</p>`
+        : `<p>Veuillez trouver ci-joint votre ${label} <strong>${numero}</strong>${montantFormatte ? `, d'un montant de <strong>${montantFormatte}</strong>` : ''}.</p>`}
     ${signatureBlock}
     ${lienBlock}
     ${isFacture

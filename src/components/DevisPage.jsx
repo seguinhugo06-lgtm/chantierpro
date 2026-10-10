@@ -60,7 +60,7 @@ import { totauxDocument, lignesTotauxHtml, lignesAcompteHtml, calculerTotaux } f
 import { lignesFactureAcompte, lignesFactureSolde } from '../lib/facturation';
 import { verifierNouvelleFacture, pourcentageAcompteValide, peutModifierDocument, peutSupprimerDocument, estEntierementFacture } from '../lib/gardeFacturation';
 import { DEFAULT_PENALTY_RATE, estClientPro } from '../lib/relanceUtils';
-import { relanceDe, texteCourt, telInternational } from '../lib/messageRelance';
+import { soldeDe, texteCourt, telInternational } from '../lib/messageRelance';
 import { useDebounce } from '../hooks/useDebounce';
 import { useDevisModals } from '../hooks/useDevisModals';
 import { isFacturXCompliant } from '../lib/facturx';
@@ -2106,13 +2106,15 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       setSelected(s => s?.id === doc.id ? { ...s, statut: 'envoye' } : s);
     }
     // Facture émise et due : une relance (reste dû, échéance, retard, lien de paiement), pas le total
-    const relance = wasBrouillon ? null : relanceDe(doc, paiements);
+    // Rappel seulement si la facture est échue ; sinon un envoi normal (date limite, reste à régler)
+    const solde = soldeDe({ ...doc, statut: wasBrouillon ? 'envoye' : doc.statut }, paiements);
+    const relance = solde?.enRetard ? solde : null;
     const lienPaiement = doc.type === 'facture' && doc.payment_token ? urlPublique(`/pay/${doc.payment_token}`) : '';
-    if (addEchange) addEchange({ type: 'whatsapp', client_id: doc.client_id, document: doc.numero, montant: relance ? relance.reste : doc.total_ttc, objet: `${relance ? 'Relance' : 'Envoi'} ${doc.type === 'facture' ? 'facture' : 'devis'} ${doc.numero}` });
+    if (addEchange) addEchange({ type: 'whatsapp', client_id: doc.client_id, document: doc.numero, montant: solde ? solde.reste : doc.total_ttc, objet: `${relance ? 'Relance' : 'Envoi'} ${doc.type === 'facture' ? 'facture' : 'devis'} ${doc.numero}` });
     // Indicatif international, chiffres seuls (avant : « 06.12… » ou « +33 6… » donnaient un lien cassé)
     const phone = telInternational(client.telephone);
     setTimeout(() => {
-      window.open(`https://wa.me/${phone}?text=${encodeURIComponent(texteCourt(doc, { relance, lienPaiement }))}`, '_blank');
+      window.open(`https://wa.me/${phone}?text=${encodeURIComponent(texteCourt(doc, { solde, lienPaiement, entrepriseNom: entreprise?.nom }))}`, '_blank');
     }, 100);
     // Show post-send confirmation modal
     const clientName = `${client.prenom || ''} ${client.nom || ''}`.trim();
@@ -2152,12 +2154,15 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       // Réutilise le HTML du document (downloadPDF le construit et le retourne, sans effet de bord)
       const pdfHtml = downloadPDF(doc);
       // Facture émise et due : l'e-mail est une relance (reste dû, échéance, retard, lien de paiement)
-      const relance = doc.statut === 'brouillon' ? null : relanceDe(doc, paiements);
+      // Rappel seulement si la facture est échue (relecture juridique du 10 oct. 2026 : une facture née
+      // « envoyée » partait en « Rappel… je vous la joins à nouveau » à son premier envoi)
+      const solde = soldeDe({ ...doc, statut: doc.statut === 'brouillon' ? 'envoye' : doc.statut }, paiements);
+      const relance = solde?.enRetard ? solde : null;
       const lienPaiement = isFacture && doc.payment_token ? urlPublique(`/pay/${doc.payment_token}`) : '';
       const bodyHtml = buildDocumentEmailBody({
         doc, client, entreprise, couleur, signatureUrl, lienPaiement,
-        montantFormatte: euros(relance ? relance.reste : doc.total_ttc),
-        relance,
+        montantFormatte: euros(doc.total_ttc),
+        solde,
       });
       await sendDocumentEmail({
         to: toEmail,
@@ -2198,10 +2203,11 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       onUpdate(doc.id, { statut: 'envoye' });
       setSelected(s => s?.id === doc.id ? { ...s, statut: 'envoye' } : s);
     }
-    const relance = doc.statut === 'brouillon' ? null : relanceDe(doc, paiements);
+    const solde = soldeDe({ ...doc, statut: doc.statut === 'brouillon' ? 'envoye' : doc.statut }, paiements);
+    const relance = solde?.enRetard ? solde : null;
     const lienPaiement = doc.type === 'facture' && doc.payment_token ? urlPublique(`/pay/${doc.payment_token}`) : '';
-    if (addEchange) addEchange({ type: 'sms', client_id: doc.client_id, document: doc.numero, montant: relance ? relance.reste : doc.total_ttc, objet: `${relance ? 'Relance' : 'SMS'} ${doc.type === 'facture' ? 'facture' : 'devis'} ${doc.numero}` });
-    const message = texteCourt(doc, { relance, lienPaiement });
+    if (addEchange) addEchange({ type: 'sms', client_id: doc.client_id, document: doc.numero, montant: solde ? solde.reste : doc.total_ttc, objet: `${relance ? 'Relance' : 'SMS'} ${doc.type === 'facture' ? 'facture' : 'devis'} ${doc.numero}` });
+    const message = texteCourt(doc, { solde, lienPaiement, entrepriseNom: entreprise?.nom });
     setTimeout(() => {
       window.open(`sms:${phone}?body=${encodeURIComponent(message)}`, '_self');
     }, 100);

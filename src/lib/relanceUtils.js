@@ -53,12 +53,23 @@ export const CHANNEL_LABELS = {
   whatsapp: 'WhatsApp',
 };
 
-// Taux par défaut des pénalités de retard : taux de la BCE majoré de 10 points (art. L441-10 II
-// C. com.), 12,40 % au 2e semestre 2026 (entreprendre.service-public.gouv.fr, fiche F23211, relevé
-// le 9 oct. 2026). À mettre à jour chaque semestre ; les documents impriment « BCE + 10 points ».
-// (Avant : 11,62 %, présenté à tort comme « 3 fois le taux BCE ».)
-// NB : la fonction Edge send-scheduled-relances porte encore 11,62 % (à aligner à son prochain déploiement).
-export const DEFAULT_PENALTY_RATE = 12.4;
+// Taux des pénalités de retard : taux de refinancement de la BCE au 1er janvier / 1er juillet + 10 points
+// (art. L441-10 II C. com.). Relevés : 12,15 % au 1er semestre 2026, 12,40 % au 2e (fiche F23211,
+// entreprendre.service-public.gouv.fr ; BCE 2,40 % au 17 juin 2026 — relecture juridique du 10 oct. 2026).
+// Le taux de refinancement est à 2,65 % depuis le 16 sept. 2026 : 1er semestre 2027 ≥ 12,65 %, à relever en
+// janvier. Un test échoue si le semestre en cours manque (src/lib/__tests__/relanceUtils.test.js).
+export const TAUX_PENALITES_PAR_SEMESTRE = { '2026-1': 12.15, '2026-2': 12.4 };
+export function semestreDe(date = new Date()) {
+  return `${date.getFullYear()}-${date.getMonth() < 6 ? 1 : 2}`;
+}
+/** Taux légal du semestre de `date` ; à défaut (semestre non relevé), le dernier connu. */
+export function tauxPenalitesLegal(date = new Date()) {
+  const connu = TAUX_PENALITES_PAR_SEMESTRE[semestreDe(date)];
+  if (connu) return connu;
+  const cles = Object.keys(TAUX_PENALITES_PAR_SEMESTRE).sort();
+  return TAUX_PENALITES_PAR_SEMESTRE[cles[cles.length - 1]];
+}
+export const DEFAULT_PENALTY_RATE = tauxPenalitesLegal();
 // Fixed recovery indemnity (Art. D441-5 Code de commerce)
 export const RECOVERY_INDEMNITY = 40;
 
@@ -257,6 +268,7 @@ function buildVariableMap(doc, client, entreprise) {
   // total (un devis). Pénalités et indemnité de 40 € : client professionnel seulement (art. L441-10 et
   // D441-5 C. com.), sur ce reste dû. Avant : le total TTC, et 40 € réclamés aux particuliers.
   const du = doc?.type === 'facture' ? resteAPayer(doc, []) : (Number(doc?.total_ttc) || 0);
+  const estFacture = doc?.type === 'facture';
   const pro = estClientPro(client);
   const taux = Number(entreprise?.tauxPenalites) || DEFAULT_PENALTY_RATE;
   const pen = pro && joursRetard > 0 ? calculatePenalties(du, joursRetard, taux) : { penalites: 0, totalDu: du };
@@ -271,7 +283,10 @@ function buildVariableMap(doc, client, entreprise) {
     devis_numero: doc?.numero || '',
     facture_numero: doc?.numero || '',
     numero: doc?.numero || '',
-    montant_ttc: formatMoneyValue(doc?.total_ttc || doc?.montant_ttc || 0),
+    // Facture : le reste dû (les modèles enregistrés écrivent « {{montant_ttc}} » : avant, une mise en demeure
+    // réclamait le total quand 600 € sur 1 000 étaient déjà payés — relecture juridique du 10 oct. 2026)
+    montant_ttc: formatMoneyValue(estFacture ? du : (doc?.total_ttc || doc?.montant_ttc || 0)),
+    total_facture: formatMoneyValue(doc?.total_ttc || doc?.montant_ttc || 0),
     // « montant » et « reste_du » : ce qui reste à payer (une facture partiellement réglée n'est pas relancée
     // pour son total)
     montant: formatMoneyValue(du),
@@ -300,6 +315,10 @@ function buildVariableMap(doc, client, entreprise) {
     // Pénalités (computed)
     penalites: formatMoneyValue(pen.penalites),
     total_du: formatMoneyValue(pen.totalDu),
+    // Mention selon le client (textes de la mise en demeure, src/lib/miseEnDemeureBuilder.js)
+    mention_retard: pro
+      ? 'Conformément aux articles L.441-10 et D.441-5 du Code de commerce, des pénalités de retard et une indemnité forfaitaire de recouvrement sont désormais exigibles.'
+      : "Conformément à l'article 1231-6 du Code civil, la somme due produira intérêts au taux légal à compter de la présente mise en demeure.",
     // Lien paiement en ligne
     lien_paiement: doc?.payment_token
       ? urlPublique(`/pay/${doc.payment_token}`)

@@ -7,7 +7,22 @@
 //   (art. L441-10 et D441-5 C. com. : entre professionnels seulement) ;
 // - un avoir émis était relancé comme une facture impayée.
 
-export const DEFAULT_PENALTY_RATE = 12.4; // BCE + 10 points (même valeur que l'app, src/lib/relanceUtils.js)
+// BCE + 10 points, par semestre (même table que l'app : src/lib/relanceUtils.js)
+export const TAUX_PENALITES_PAR_SEMESTRE: Record<string, number> = { '2026-1': 12.15, '2026-2': 12.4 };
+export function tauxPenalitesLegal(date = new Date()): number {
+  const connu = TAUX_PENALITES_PAR_SEMESTRE[`${date.getFullYear()}-${date.getMonth() < 6 ? 1 : 2}`];
+  if (connu) return connu;
+  const cles = Object.keys(TAUX_PENALITES_PAR_SEMESTRE).sort();
+  return TAUX_PENALITES_PAR_SEMESTRE[cles[cles.length - 1]];
+}
+export const DEFAULT_PENALTY_RATE = tauxPenalitesLegal();
+
+/** Mention de retard selon le client (mêmes textes que la mise en demeure de l'app). */
+export function mentionRetard(pro: boolean): string {
+  return pro
+    ? 'Conformément aux articles L.441-10 et D.441-5 du Code de commerce, des pénalités de retard et une indemnité forfaitaire de recouvrement sont désormais exigibles.'
+    : "Conformément à l'article 1231-6 du Code civil, la somme due produira intérêts au taux légal à compter de la présente mise en demeure.";
+}
 export const RECOVERY_INDEMNITY = 40;
 const CENTIME = 0.005;
 

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { estClientPro, creditsParFacture, paiementsParDocument, resteDu, relancable, penalites } from '../../../supabase/functions/send-scheduled-relances/regles.ts';
+import { estClientPro, creditsParFacture, paiementsParDocument, resteDu, relancable, penalites, mentionRetard, tauxPenalitesLegal, TAUX_PENALITES_PAR_SEMESTRE as TAUX_CRON } from '../../../supabase/functions/send-scheduled-relances/regles.ts';
+import { TAUX_PENALITES_PAR_SEMESTRE as TAUX_APP } from '../relanceUtils';
 
 const facture = (o) => ({ id: 'f1', type: 'facture', facture_type: 'totale', statut: 'envoye', total_ttc: 1000, ...o });
 
@@ -46,6 +47,13 @@ describe('relances automatiques (cron) : règles', () => {
     expect(pro.penalites).toBe(6.12); // 600 × 12,4 % × 30/365
     expect(pro.totalDu).toBe(646.12);
     expect(penalites(600, 0, true).indemnite).toBe(0);
+  });
+
+  it('mention de retard et taux légal du semestre, comme l\'app', () => {
+    expect(mentionRetard(true)).toMatch(/L\.441-10 et D\.441-5/);
+    expect(mentionRetard(false)).toMatch(/1231-6 du Code civil/);
+    expect(tauxPenalitesLegal(new Date('2026-10-10T12:00:00'))).toBe(12.4);
+    expect(TAUX_CRON).toEqual(TAUX_APP); // une seule table, recopiée : elles ne doivent jamais diverger
   });
 
   it('client professionnel : la catégorie l\'emporte ; sans rien, particulier', () => {

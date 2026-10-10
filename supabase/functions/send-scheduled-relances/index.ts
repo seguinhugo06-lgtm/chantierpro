@@ -20,7 +20,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
 // Reste dû, pénalités (professionnels seulement), documents à ne jamais relancer : règles sans import
 // distant, testées sous vitest (src/lib/__tests__/reglesRelances.test.js).
-import { estClientPro, creditsParFacture, paiementsParDocument, resteDu, relancable, penalites } from './regles.ts';
+import { estClientPro, creditsParFacture, paiementsParDocument, resteDu, relancable, penalites, mentionRetard } from './regles.ts';
 
 const APP_ORIGIN = 'https://mallettico.fr';
 
@@ -126,14 +126,19 @@ function buildVariableMap(doc: any, client: any, entreprise: any) {
   // Ce qui est réellement dû (posé par detectDue : total − paiements − avoirs) ; pénalités et 40 € pour
   // un client professionnel seulement (art. L441-10 et D441-5 C. com.), sur ce reste dû.
   const du = typeof doc?._resteDu === 'number' ? doc._resteDu : (Number(doc?.total_ttc) || 0);
-  const pen = penalites(du, joursRetard, estClientPro(client));
+  const pro = estClientPro(client);
+  // Taux réglé par l'artisan (Paramètres, settings_json.reglages) sinon le taux légal du semestre
+  const pen = penalites(du, joursRetard, pro, Number(entreprise?.tauxPenalites) || undefined);
+  const estFacture = doc?.type === 'facture';
   return {
     client_nom: (client?.nom || client?.prenom) ? `${client.prenom || ''} ${client.nom || ''}`.trim() : 'Client',
     client_prenom: client?.prenom || '',
     devis_numero: doc?.numero || '',
     facture_numero: doc?.numero || '',
     numero: doc?.numero || '',
-    montant_ttc: formatMoneyValue(doc?.total_ttc || 0),
+    // Facture : le reste dû (les modèles enregistrés écrivent « {{montant_ttc}} »)
+    montant_ttc: formatMoneyValue(estFacture ? du : (doc?.total_ttc || 0)),
+    total_facture: formatMoneyValue(doc?.total_ttc || 0),
     montant: formatMoneyValue(du),
     reste_du: formatMoneyValue(du),
     montant_ht: formatMoneyValue(doc?.total_ht || 0),
@@ -150,6 +155,7 @@ function buildVariableMap(doc: any, client: any, entreprise: any) {
     entreprise_adresse: entreprise?.adresse || '',
     penalites: formatMoneyValue(pen.penalites),
     total_du: formatMoneyValue(pen.totalDu),
+    mention_retard: mentionRetard(pro),
     lien_paiement: doc?.payment_token ? `${APP_ORIGIN}/pay/${doc.payment_token}` : '',
   } as Record<string, string>;
 }
@@ -285,7 +291,7 @@ serve(async (req) => {
     // 1. Entreprises avec relances activées
     const { data: entreprises, error: entErr } = await admin
       .from('entreprise')
-      .select('id, user_id, organization_id, nom, telephone, email, siret, adresse, couleur, relance_config')
+      .select('id, user_id, organization_id, nom, telephone, email, siret, adresse, couleur, relance_config, settings_json')
       .not('relance_config', 'is', null);
     if (entErr) return json({ error: `Lecture entreprises: ${entErr.message}` }, 500);
 
@@ -312,6 +318,7 @@ serve(async (req) => {
       const entreprise = {
         nom: ent.nom, tel: ent.telephone, telephone: ent.telephone, email: ent.email,
         siret: ent.siret, adresse: ent.adresse, couleur: ent.couleur,
+        tauxPenalites: ent.settings_json?.reglages?.tauxPenalites,
       };
 
       // 2. Charger les documents + clients + historique de cette entreprise

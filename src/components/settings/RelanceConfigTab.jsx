@@ -105,9 +105,11 @@ const DEFAULT_FACTURE_STEPS = [
     channel: 'email',
     template: `Bonjour {{client_nom}},
 
-Je me permets de vous rappeler que la facture n{{facture_numero}} d'un montant de {{montant_ttc}} EUR TTC est arrivée à échéance le {{date_échéance}}.
+Sauf erreur de ma part, la facture n° {{facture_numero}}, arrivée à échéance le {{date_échéance}}, n'est pas encore réglée : il reste {{reste_du}} € à payer.
 
-Merci de procéder au règlement dans les meilleurs délais.
+Si votre règlement est déjà parti, merci de ne pas tenir compte de ce message.
+
+{{lien_paiement}}
 
 Cordialement,
 {{entreprise_nom}}`,
@@ -121,11 +123,13 @@ Cordialement,
     channel: 'email',
     template: `Bonjour {{client_nom}},
 
-Sauf erreur de notre part, la facture n{{facture_numero}} de {{montant_ttc}} EUR TTC, échue depuis {{jours_retard}} jours, reste impayée.
+Sauf erreur de ma part, la facture n° {{facture_numero}}, échue depuis {{jours_retard}} jours, n'est toujours pas réglée : il reste {{reste_du}} € à payer.
 
-Nous vous remercions de bien vouloir procéder au règlement sous 8 jours.
+Je vous remercie de procéder au règlement sous 8 jours.
 
-En cas de difficulté, n'hésitez pas à nous contacter.
+En cas de difficulté, n'hésitez pas à me contacter.
+
+{{lien_paiement}}
 
 Cordialement,
 {{entreprise_nom}}`,
@@ -139,9 +143,11 @@ Cordialement,
     channel: 'email',
     template: `{{client_nom}},
 
-Par la présente, nous vous mettons en demeure de régler sous 8 jours la facture n{{facture_numero}} d'un montant de {{montant_ttc}} EUR TTC, impayée depuis {{jours_retard}} jours.
+Par la présente, je vous mets en demeure de régler sous 8 jours la somme de {{reste_du}} €, restant due sur la facture n° {{facture_numero}}, échue depuis {{jours_retard}} jours.
 
-Passé ce délai, nous transmettrons le dossier à notre service contentieux, ce qui entrainera des frais supplémentaires à votre charge.
+À défaut, je me réserve le droit d'engager une procédure de recouvrement.
+
+{{mention_retard}}
 
 {{entreprise_nom}}`,
   },
@@ -154,11 +160,13 @@ Passé ce délai, nous transmettrons le dossier à notre service contentieux, ce
     channel: 'email',
     template: `{{client_nom}},
 
-Dernier avis avant transmission au contentieux.
+Dernier rappel avant procédure de recouvrement.
 
-La facture n{{facture_numero}} de {{montant_ttc}} EUR TTC reste impayée malgré nos multiples relances ({{jours_retard}} jours de retard).
+La facture n° {{facture_numero}} reste impayée malgré mes relances ({{jours_retard}} jours de retard) : il reste {{reste_du}} € à payer.
 
-Sans règlement sous 48h, le dossier sera transmis a notre cabinet de recouvrement.
+Sans règlement sous 8 jours, je me réserve le droit d'engager une procédure de recouvrement.
+
+{{mention_retard}}
 
 {{entreprise_nom}}`,
   },
@@ -176,8 +184,12 @@ const AVAILABLE_VARIABLES = [
   { key: '{{client_prenom}}', description: 'Prénom du client' },
   { key: '{{devis_numero}}', description: 'Numéro du devis' },
   { key: '{{facture_numero}}', description: 'Numéro de la facture' },
-  { key: '{{montant_ttc}}', description: 'Montant TTC' },
-  { key: '{{montant}}', description: 'Montant' },
+  { key: '{{reste_du}}', description: 'Reste à payer (paiements et avoirs déduits)' },
+  { key: '{{montant_ttc}}', description: 'Devis : montant TTC ; facture : reste à payer' },
+  { key: '{{montant}}', description: 'Devis : montant ; facture : reste à payer' },
+  { key: '{{total_facture}}', description: 'Total TTC de la facture' },
+  { key: '{{mention_retard}}', description: 'Mention légale de retard (professionnel ou particulier)' },
+  { key: '{{penalites}}', description: 'Pénalités de retard (clients professionnels seulement)' },
   { key: '{{date_échéance}}', description: 'Date d\'échéance' },
   { key: '{{entreprise_nom}}', description: 'Nom de l\'entreprise' },
   { key: '{{jours_retard}}', description: 'Jours de retard' },
@@ -1114,8 +1126,8 @@ export default function RelanceConfigTab({
           </div>
         </div>
         <p className={cn('text-[11px] mt-3', isDark ? 'text-slate-500' : 'text-slate-400')}>
-          Ces montants sont mentionnés automatiquement dans les modèles de mise en demeure (J+30) et pré-contentieux (J+45).
-          Variable disponible : {'{{penalites}}'} et {'{{total_du}}'}.
+          Pénalités et indemnité de 40 € : clients professionnels seulement (art. L441-10 et D441-5 C. com.) ; zéro pour un
+          particulier. Variables : {'{{penalites}}'}, {'{{total_du}}'} et {'{{mention_retard}}'} (texte adapté au client).
         </p>
       </div>
 
