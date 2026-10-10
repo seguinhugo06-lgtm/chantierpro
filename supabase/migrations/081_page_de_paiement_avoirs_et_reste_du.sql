@@ -39,7 +39,12 @@ DECLARE
   v_payable BOOLEAN := false;
   v_serveur BOOLEAN := false;
 BEGIN
-  v_serveur := COALESCE(NULLIF(current_setting('request.jwt.claims', true), '')::jsonb ->> 'role', '') = 'service_role';
+  -- Rôle de l'appelant, sous ses deux formes (claims complets, ou ancien réglage `request.jwt.claim.role`)
+  v_serveur := COALESCE(
+    NULLIF(current_setting('request.jwt.claims', true), '')::jsonb ->> 'role',
+    NULLIF(current_setting('request.jwt.claim.role', true), ''),
+    ''
+  ) = 'service_role';
 
   SELECT * INTO v_facture
   FROM devis
