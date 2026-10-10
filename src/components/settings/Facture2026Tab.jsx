@@ -1,110 +1,77 @@
-import React, { useMemo, useState, useCallback } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import {
   Shield,
   CheckCircle,
   XCircle,
   AlertTriangle,
+  AlertCircle,
   FileText,
   Lock,
-  ExternalLink,
-  Building2,
-  CreditCard,
-  MapPin,
-  Receipt,
-  ShieldCheck,
   Info,
   Zap,
   Code,
   X,
-  Loader2,
 } from 'lucide-react';
 import { testFacturXCompliance, selectProfile } from '../../lib/facturx';
 import { jourLocal } from '../../lib/dates';
+import { mentionsFacture } from '../../lib/mentionsFacture';
+import { estFranchiseTva, sansTva } from '../../lib/franchiseTva';
+import { Bouton, BoutonIcone } from '../ui/Bouton';
+import Pastille from '../ui/Pastille';
+
+const NOM_ONGLET = { identite: 'Identité', legal: 'Légal', assurances: 'Assurances', banque: 'Banque' };
+
+/** Ouvre l'onglet des Réglages qui porte le champ, et y place le curseur (Settings.jsx, « navigate-settings-tab »). */
+function ouvrirChamp({ onglet, champ }) {
+  window.dispatchEvent(new CustomEvent('navigate-settings-tab', { detail: { tab: onglet, fieldId: champ } }));
+}
+
+/** Une information : coche ou alerte, libellé, puis « Renseigné » ou « Compléter ». */
+function LigneInformation({ info }) {
+  return (
+    <li className="flex items-center gap-3 py-2">
+      {info.rempli
+        ? <CheckCircle size={18} aria-hidden="true" className="shrink-0 text-succes-texte" />
+        : <AlertCircle size={18} aria-hidden="true" className="shrink-0 text-alerte-texte" />}
+      <span className="flex-1 min-w-0 text-sm text-encre">{info.libelle}</span>
+      {info.rempli ? (
+        <Pastille ton="succes" className="shrink-0">Renseigné</Pastille>
+      ) : (
+        <Bouton
+          taille="compacte"
+          className="shrink-0"
+          onClick={() => ouvrirChamp(info)}
+          aria-label={`Compléter : ${info.libelle} (onglet ${NOM_ONGLET[info.onglet] || info.onglet})`}
+        >
+          Compléter
+        </Bouton>
+      )}
+    </li>
+  );
+}
+
+// Classes écrites en entier : Tailwind ne génère pas une classe composée à l'exécution
+const TEXTE_TON = { succes: 'text-succes-texte', alerte: 'text-alerte-texte', danger: 'text-danger-texte' };
 
 /**
- * Checklist item definition with field validation
+ * Note circulaire. Verte seulement à 100 % : sous 100, il manque une information obligatoire.
  */
-const CHECKLIST_ITEMS = [
-  {
-    id: 'siret',
-    label: 'SIRET renseigné',
-    check: (e) => !!e.siret?.trim(),
-    tab: 'identite',
-    icon: Building2,
-  },
-  {
-    id: 'tvaIntra',
-    label: 'Numéro TVA intracommunautaire',
-    check: (e) => !!e.tvaIntra?.trim(),
-    tab: 'legal',
-    icon: Receipt,
-  },
-  {
-    id: 'rcs',
-    label: 'RCS complet',
-    // Réglages › Légal enregistre rcsVille + rcsNumero (lus par les PDF) ; `rcs` = ancien champ libre
-    check: (e) => !!(e.rcsVille?.trim() && e.rcsNumero?.trim()) || !!e.rcs?.trim(),
-    tab: 'legal',
-    icon: FileText,
-  },
-  {
-    id: 'iban',
-    label: 'Coordonnées bancaires (IBAN)',
-    check: (e) => !!e.iban?.trim(),
-    tab: 'banque',
-    icon: CreditCard,
-  },
-  {
-    id: 'adresse',
-    label: 'Adresse complète',
-    check: (e) => !!e.adresse?.trim(),
-    tab: 'identite',
-    icon: MapPin,
-  },
-  {
-    id: 'rcPro',
-    // Présence vérifiée, pas l'échéance : ne pas promettre « valide »
-    label: 'Assurance RC Pro',
-    // `rcPro.numero` n'a jamais existé : le critère restait « À compléter » même assurance saisie
-    check: (e) => !!(e.rcProAssureur?.trim() && e.rcProNumero?.trim()),
-    tab: 'assurances',
-    icon: ShieldCheck,
-  },
-  {
-    id: 'facturx',
-    label: 'Données Factur-X jointes aux factures PDF',
-    check: () => true, // Built into Mallettico
-    tab: null,
-    icon: Shield,
-  },
-];
-
-/**
- * Circular progress component for compliance score display
- */
-function CircularProgress({ score, size = 120, strokeWidth = 10, isDark }) {
+function CircularProgress({ score, size = 120, strokeWidth = 10 }) {
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (score / 100) * circumference;
-  const color = score >= 80 ? '#22c55e' : score >= 50 ? '#f59e0b' : '#ef4444';
+  const ton = score >= 100 ? 'succes' : score >= 50 ? 'alerte' : 'danger';
 
   return (
     <div className="relative inline-flex items-center justify-center">
-      <svg width={size} height={size} className="-rotate-90">
+      <svg width={size} height={size} className="-rotate-90" aria-hidden="true">
+        <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="rgb(var(--bord))" strokeWidth={strokeWidth} />
         <circle
           cx={size / 2}
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke={isDark ? '#334155' : '#e2e8f0'}
-          strokeWidth={strokeWidth}
-        />
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          fill="none"
-          stroke={color}
+          stroke={`rgb(var(--${ton}-point))`}
           strokeWidth={strokeWidth}
           strokeDasharray={circumference}
           strokeDashoffset={offset}
@@ -113,7 +80,7 @@ function CircularProgress({ score, size = 120, strokeWidth = 10, isDark }) {
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-2xl font-bold" style={{ color }}>{score}%</span>
+        <span className={`text-2xl font-bold tabular-nums ${TEXTE_TON[ton]}`}>{score} %</span>
       </div>
     </div>
   );
@@ -123,48 +90,31 @@ function CircularProgress({ score, size = 120, strokeWidth = 10, isDark }) {
  * Facture2026Tab - réforme de la facture électronique : réception obligatoire depuis le 1er sept. 2026,
  * émission au 1er sept. 2027 pour les TPE/PME, par une Plateforme Agréée (Mallettico n'en est pas une).
  *
- * Features:
- * - Dynamic compliance score (entreprise fields + real XML generation test)
- * - Working "Tester la conformité" button with detailed results
- * - Achievable profile indicator (MINIMUM/BASIC)
- * - Checklist with navigation to relevant settings tabs
+ * - les informations d'entreprise à vérifier pour les factures (lib/mentionsFacture), obligatoires et utiles,
+ *   chacune avec « Compléter » vers l'onglet et le champ des Réglages ;
+ * - le test du fichier Factur-X (profil MINIMUM ou BASIC) sur une facture d'exemple ;
+ * - ce que Mallettico fait, et ce qu'il ne fait pas (transmission, conservation).
  */
-export default function Facture2026Tab({ entreprise, setEntreprise, isDark, couleur }) {
+export default function Facture2026Tab({ entreprise, isDark, couleur }) {
   const cardBg = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200';
   const textSecondary = isDark ? 'text-slate-300' : 'text-slate-600';
-  const textMuted = isDark ? 'text-slate-400' : 'text-slate-500';
 
   const [testResult, setTestResult] = useState(null);
   const [testing, setTesting] = useState(false);
 
-  // Compute checklist results and compliance score
-  const { results, score, achievableProfile } = useMemo(() => {
-    const results = CHECKLIST_ITEMS.map((item) => ({
-      ...item,
-      passed: item.check(entreprise || {}),
-    }));
-    const passed = results.filter((r) => r.passed).length;
-    const total = results.length;
-    const score = Math.round((passed / total) * 100);
+  const liste = useMemo(() => mentionsFacture(entreprise), [entreprise]);
+  const manquantes = liste.total - liste.remplies;
 
-    // Determine achievable profile based on entreprise fields
+  // Profil Factur-X atteignable (BASIC : IBAN + lignes détaillées)
+  const achievableProfile = useMemo(() => {
     const mockInvoice = {
       numero: 'TEST-001',
       date: new Date().toISOString(),
       type: 'facture',
-      total_ht: 1000,
-      tva: 200,
-      total_ttc: 1200,
-      tvaRate: 20,
       lignes: [{ description: 'Test', quantite: 1, prixUnitaire: 1000, montant: 1000, unite: 'forfait' }],
     };
-    const mockClient = { nom: 'Client Test', adresse: '1 rue Test 75001 Paris' };
-    const achievableProfile = selectProfile(mockInvoice, mockClient, entreprise || {});
-
-    return { results, score, achievableProfile };
+    return selectProfile(mockInvoice, { nom: 'Client Test' }, entreprise || {});
   }, [entreprise]);
-
-  const isReady = score >= 80;
 
   // Émission obligatoire pour les TPE, PME et indépendants : 1er septembre 2027 (docs/metier-btp.md §8).
   // Avant (relecture juridique du 10 oct. 2026) : un compte à rebours vers le 1er septembre 2026, déjà passé.
@@ -179,21 +129,25 @@ export default function Facture2026Tab({ entreprise, setEntreprise, isDark, coul
     // Use setTimeout to let UI update with loading state
     setTimeout(() => {
       try {
-        // Create a realistic test invoice
+        // Facture d'exemple. Micro-entreprise en franchise (293 B) : sans TVA, comme ses vraies factures ;
+        // avant, 20 % de TVA, et le test réclamait un n° de TVA intracommunautaire.
+        const franchise = estFranchiseTva(entreprise || {});
+        const tauxTva = franchise ? 0 : 20;
+        const lignes = [
+          { description: 'Travaux de rénovation salle de bain', quantite: 1, prixUnitaire: 800, montant: 800, unite: 'forfait', tva: tauxTva },
+          { description: 'Fourniture et pose carrelage', quantite: 12, prixUnitaire: 45, montant: 540, unite: 'm²', tva: tauxTva },
+          { description: 'Plomberie raccordements', quantite: 4, prixUnitaire: 40, montant: 160, unite: 'h', tva: tauxTva },
+        ];
         const testInvoice = {
           numero: 'TEST-COMPLIANCE-001',
           date: jourLocal(),
           type: 'facture',
           total_ht: 1500,
-          tva: 300,
-          total_ttc: 1800,
-          tvaRate: 20,
+          tva: franchise ? 0 : 300,
+          total_ttc: franchise ? 1500 : 1800,
+          tvaRate: tauxTva,
           validite: 30,
-          lignes: [
-            { description: 'Travaux de rénovation salle de bain', quantite: 1, prixUnitaire: 800, montant: 800, unite: 'forfait', tva: 20 },
-            { description: 'Fourniture et pose carrelage', quantite: 12, prixUnitaire: 45, montant: 540, unite: 'm²', tva: 20 },
-            { description: 'Plomberie raccordements', quantite: 4, prixUnitaire: 40, montant: 160, unite: 'h', tva: 20 },
-          ],
+          lignes: franchise ? sansTva(lignes) : lignes,
         };
         const testClient = {
           nom: 'Dupont',
@@ -225,112 +179,55 @@ export default function Facture2026Tab({ entreprise, setEntreprise, isDark, coul
 
   return (
     <div className="space-y-5">
-      {/* ── Alert Banner ── */}
-      <div
-        className={`rounded-2xl border p-5 ${
-          isReady
-            ? 'bg-gradient-to-r from-emerald-500/10 to-green-500/10 border-emerald-300/40'
-            : 'bg-gradient-to-r from-amber-500/10 to-orange-500/10 border-amber-300/40'
-        }`}
-      >
-        <div className="flex items-start gap-4 flex-wrap">
-          <div
-            className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${
-              isReady ? 'bg-emerald-500/20' : 'bg-amber-500/20'
-            }`}
-          >
-            {isReady ? (
-              <CheckCircle className="w-6 h-6 text-emerald-600" />
-            ) : (
-              <AlertTriangle className="w-6 h-6 text-amber-600" />
-            )}
-          </div>
-          <div className="flex-1 min-w-0">
-            <h2 className={`text-lg font-bold ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
-              Facture électronique : réception depuis le 1er septembre 2026, émission au 1er septembre 2027
-            </h2>
-            <p className={`mt-1 text-sm font-medium ${isReady ? 'text-emerald-600' : 'text-amber-600'}`}>
-              {isReady
-                ? `Vos informations d'entreprise sont complètes. Émission par une Plateforme Agréée obligatoire dans ${joursAvantEmission} jours.`
-                : `${results.filter((r) => !r.passed).length} information(s) à compléter — émission par une Plateforme Agréée obligatoire dans ${joursAvantEmission} jours.`}
-            </p>
-          </div>
+      {/* ── Bandeau : « complètes » seulement à 100 % (avant : dès 80 %) ── */}
+      <div className={`rounded-2xl p-4 sm:p-5 flex items-start gap-3 ${liste.complet ? 'bg-succes-fond' : 'bg-alerte-fond'}`}>
+        {liste.complet
+          ? <CheckCircle size={24} aria-hidden="true" className="shrink-0 mt-0.5 text-succes-texte" />
+          : <AlertTriangle size={24} aria-hidden="true" className="shrink-0 mt-0.5 text-alerte-texte" />}
+        <div className="flex-1 min-w-0">
+          <h2 className="text-lg font-bold text-encre">
+            Facture électronique : réception depuis le 1er septembre 2026, émission au 1er septembre 2027
+          </h2>
+          <p className={`mt-1 text-sm font-medium ${liste.complet ? 'text-succes-texte' : 'text-alerte-texte'}`}>
+            {liste.complet
+              ? 'Toutes les informations obligatoires de la liste sont renseignées.'
+              : `${manquantes} information${manquantes > 1 ? 's' : ''} obligatoire${manquantes > 1 ? 's' : ''} à compléter.`}
+            {/* L'émission électronique ne vise que les factures entre assujettis (CGI art. 289 bis) ; pour un
+                particulier, seules les données de la vente sont transmises (art. 290) — relecture du 10 oct. 2026 */}
+            {` Factures à vos clients professionnels : émission par une Plateforme Agréée obligatoire dans ${joursAvantEmission} jours.`}
+          </p>
         </div>
       </div>
 
-      {/* ── Score + Checklist row ── */}
+      {/* ── Note + liste ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        {/* Score card */}
-        <div className={`${cardBg} rounded-2xl border p-5 flex flex-col items-center justify-center`}>
-          <CircularProgress score={score} isDark={isDark} couleur={couleur} />
-          <p className={`mt-3 text-sm font-semibold ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
-            Vos mentions légales
+        <div className="bg-surface border border-bord rounded-2xl shadow-e1 p-5 flex flex-col items-center justify-center text-center">
+          <CircularProgress score={liste.note} />
+          <p className="mt-3 text-sm font-semibold text-encre">Informations obligatoires</p>
+          <p className="text-sm mt-1 text-encre-3 tabular-nums">
+            {liste.remplies} sur {liste.total} renseignée{liste.remplies > 1 ? 's' : ''}
           </p>
-          <p className={`text-xs mt-1 ${textMuted}`}>
-            {results.filter((r) => r.passed).length}/{results.length} critères validés
-          </p>
-          {/* Profile badge */}
-          <div className={`mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold ${
-            achievableProfile === 'basic'
-              ? 'bg-blue-100 text-blue-700'
-              : 'bg-slate-100 text-slate-600'
-          }`}>
-            <Zap className="w-3 h-3" />
-            Profil {achievableProfile === 'basic' ? 'BASIC' : 'MINIMUM'}
-          </div>
+          <Pastille ton={achievableProfile === 'basic' ? 'info' : 'neutre'} icone={Zap} className="mt-3">
+            Profil Factur-X {achievableProfile === 'basic' ? 'BASIC' : 'MINIMUM'}
+          </Pastille>
         </div>
 
-        {/* Checklist card */}
-        <div className={`${cardBg} rounded-2xl border p-5 lg:col-span-2`}>
-          <h3 className={`font-semibold mb-4 flex items-center gap-2 ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
-            <Shield className="w-5 h-5" style={{ color: couleur }} />
-            Informations requises sur vos factures
+        <div className="bg-surface border border-bord rounded-2xl shadow-e1 p-4 sm:p-5 lg:col-span-2">
+          <h3 className="font-semibold text-encre flex items-center gap-2">
+            <Shield size={20} aria-hidden="true" className="shrink-0 text-accent-texte" />
+            Informations à vérifier pour vos factures
           </h3>
-          <div className="space-y-2.5">
-            {results.map((item) => {
-              const Icon = item.icon;
-              return (
-                <div
-                  key={item.id}
-                  className={`flex items-center gap-3 p-2.5 rounded-xl transition-colors ${
-                    isDark ? 'hover:bg-slate-700/50' : 'hover:bg-slate-50'
-                  }`}
-                >
-                  <Icon className={`w-4 h-4 shrink-0 ${textMuted}`} />
-                  <span className={`flex-1 text-sm ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
-                    {item.label}
-                  </span>
-                  {item.passed ? (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">
-                      <CheckCircle className="w-3.5 h-3.5" />
-                      Renseigné
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
-                      <XCircle className="w-3.5 h-3.5" />
-                      À compléter
-                    </span>
-                  )}
-                  {item.tab && !item.passed && (
-                    <button
-                      className="text-xs flex items-center gap-1 hover:underline"
-                      style={{ color: couleur }}
-                      onClick={() => {
-                        const event = new CustomEvent('navigate-settings-tab', {
-                          detail: { tab: item.tab, fieldId: item.id }
-                        });
-                        window.dispatchEvent(event);
-                      }}
-                      title={`Aller à l'onglet ${item.tab}`}
-                    >
-                      Compléter
-                      <ExternalLink className="w-3 h-3" />
-                    </button>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+
+          <h4 className="mt-4 text-xs font-semibold uppercase tracking-wide text-encre-3">Obligatoires</h4>
+          <ul className="divide-y divide-bord">
+            {liste.obligatoires.map((info) => <LigneInformation key={info.id} info={info} />)}
+          </ul>
+
+          <h4 className="mt-4 text-xs font-semibold uppercase tracking-wide text-encre-3">Utiles</h4>
+          <ul className="divide-y divide-bord">
+            {liste.utiles.map((info) => <LigneInformation key={info.id} info={info} />)}
+          </ul>
+          <p className="mt-1 text-xs text-encre-3">Les informations utiles ne comptent pas dans la note.</p>
         </div>
       </div>
 
@@ -411,60 +308,41 @@ export default function Facture2026Tab({ entreprise, setEntreprise, isDark, coul
 
           {/* Test button */}
           <div className="mt-4 flex flex-wrap gap-3">
-            <button
-              className="px-4 py-2.5 rounded-xl text-white text-sm font-medium flex items-center gap-2 transition-colors hover:opacity-90 disabled:opacity-50"
-              style={{ background: couleur }}
-              onClick={runComplianceTest}
-              disabled={testing}
-            >
-              {testing ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Shield className="w-4 h-4" />
-              )}
+            <Bouton variante="principal" icone={Shield} chargement={testing} onClick={runComplianceTest}>
               {testing ? 'Vérification…' : 'Vérifier mes informations'}
-            </button>
+            </Bouton>
           </div>
         </div>
 
-        {/* ── Test Results ── */}
+        {/* ── Résultat du test : « sans erreur » seulement s'il n'y en a aucune (avant : dès 70/100, erreurs comprises) ── */}
         {testResult && (
-          <div className={`mt-5 rounded-xl border p-4 ${
-            testResult.isReady
-              ? isDark ? 'bg-emerald-900/20 border-emerald-700/40' : 'bg-emerald-50 border-emerald-200'
-              : isDark ? 'bg-amber-900/20 border-amber-700/40' : 'bg-amber-50 border-amber-200'
-          }`}>
+          <div className={`mt-5 rounded-xl p-4 ${testResult.isValid ? 'bg-succes-fond' : 'bg-alerte-fond'}`}>
             <div className="flex items-start justify-between gap-3">
-              <div className="flex items-center gap-3">
-                {testResult.isReady ? (
-                  <CheckCircle className="w-6 h-6 text-emerald-500 shrink-0" />
-                ) : (
-                  <AlertTriangle className="w-6 h-6 text-amber-500 shrink-0" />
-                )}
-                <div>
-                  <p className={`font-semibold ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
-                    Score : {testResult.score}/100 — Profil {testResult.profileLabel}
+              <div className="flex items-start gap-3 min-w-0">
+                {testResult.isValid
+                  ? <CheckCircle size={24} aria-hidden="true" className="shrink-0 text-succes-texte" />
+                  : <AlertTriangle size={24} aria-hidden="true" className="shrink-0 text-alerte-texte" />}
+                <div className="min-w-0">
+                  <p className="font-semibold text-encre">
+                    Fichier Factur-X d'essai : profil {testResult.profileLabel}
                   </p>
-                  <p className={`text-sm mt-0.5 ${textMuted}`}>
-                    {testResult.isReady ? 'Les informations requises sur vos factures sont renseignées' : 'Des informations manquent sur vos factures'}
+                  <p className="text-sm mt-0.5 text-encre-2">
+                    {testResult.isValid
+                      ? 'Produit sans erreur à partir de vos informations.'
+                      : 'Des informations manquent : voir ci-dessous.'}
                   </p>
                 </div>
               </div>
-              <button
-                onClick={() => setTestResult(null)}
-                className={`p-1 rounded-lg hover:bg-black/10 ${textMuted}`}
-              >
-                <X className="w-4 h-4" />
-              </button>
+              <BoutonIcone icone={X} libelle="Fermer le résultat" onClick={() => setTestResult(null)} className="-mt-2 -mr-2" />
             </div>
 
             {/* Errors */}
             {testResult.errors.length > 0 && (
               <div className="mt-3 space-y-1.5">
-                <p className="text-xs font-semibold text-red-600 uppercase tracking-wide">Erreurs</p>
+                <p className="text-xs font-semibold text-danger-texte uppercase tracking-wide">Erreurs</p>
                 {testResult.errors.map((err, i) => (
-                  <div key={i} className="flex items-start gap-2 text-sm text-red-700">
-                    <XCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                  <div key={i} className="flex items-start gap-2 text-sm text-danger-texte">
+                    <XCircle size={16} aria-hidden="true" className="shrink-0 mt-0.5" />
                     <span>{err}</span>
                   </div>
                 ))}
@@ -474,10 +352,10 @@ export default function Facture2026Tab({ entreprise, setEntreprise, isDark, coul
             {/* Warnings */}
             {testResult.warnings.length > 0 && (
               <div className="mt-3 space-y-1.5">
-                <p className="text-xs font-semibold text-amber-600 uppercase tracking-wide">Avertissements</p>
+                <p className="text-xs font-semibold text-alerte-texte uppercase tracking-wide">Avertissements</p>
                 {testResult.warnings.map((warn, i) => (
-                  <div key={i} className="flex items-start gap-2 text-sm text-amber-700">
-                    <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                  <div key={i} className="flex items-start gap-2 text-sm text-alerte-texte">
+                    <AlertTriangle size={16} aria-hidden="true" className="shrink-0 mt-0.5" />
                     <span>{warn}</span>
                   </div>
                 ))}
@@ -486,7 +364,7 @@ export default function Facture2026Tab({ entreprise, setEntreprise, isDark, coul
 
             {/* XML Preview toggle */}
             {testResult.xml && (
-              <XmlPreview xml={testResult.xml} isDark={isDark} couleur={couleur} textMuted={textMuted} />
+              <XmlPreview xml={testResult.xml} isDark={isDark} />
             )}
           </div>
         )}
@@ -516,7 +394,7 @@ export default function Facture2026Tab({ entreprise, setEntreprise, isDark, coul
 /**
  * Collapsible XML preview component
  */
-function XmlPreview({ xml, isDark, couleur, textMuted }) {
+function XmlPreview({ xml, isDark }) {
   const [expanded, setExpanded] = useState(false);
 
   // Show first ~500 chars when collapsed
@@ -524,14 +402,9 @@ function XmlPreview({ xml, isDark, couleur, textMuted }) {
 
   return (
     <div className="mt-3">
-      <button
-        onClick={() => setExpanded(!expanded)}
-        className="flex items-center gap-1.5 text-xs font-medium hover:underline"
-        style={{ color: couleur }}
-      >
-        <Code className="w-3.5 h-3.5" />
+      <Bouton variante="discret" taille="compacte" icone={Code} onClick={() => setExpanded(!expanded)} aria-expanded={expanded} className="-ml-3.5">
         {expanded ? 'Masquer le XML' : 'Voir le XML généré'}
-      </button>
+      </Bouton>
       {expanded && (
         <pre className={`mt-2 p-3 rounded-lg text-xs overflow-x-auto max-h-64 overflow-y-auto font-mono leading-relaxed ${
           isDark ? 'bg-slate-900 text-slate-300' : 'bg-slate-100 text-slate-700'

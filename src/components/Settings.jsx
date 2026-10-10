@@ -31,6 +31,7 @@ import { estEntrepreneurIndividuel, estEirl, nomImprime } from '../lib/identiteE
 import { URL_SIRENE, profilDepuisSirene } from '../lib/sirene';
 import { chiffreAffairesHT } from '../lib/ventes';
 import { profilManquant, PROFIL_EXIGE } from '../lib/profilLegal';
+import { estSociete, rcsConcerne, tvaIntraConcernee } from '../lib/mentionsFacture';
 
 // ── Tab groups for mobile navigation ────────────────────────────────────────
 const TAB_GROUPS = [
@@ -393,13 +394,16 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
   const COULEURS = ['#f97316', '#ef4444', '#22c55e', '#3b82f6', '#8b5cf6', '#ec4899', '#14b8a6', '#64748b'];
 
   // Calcul score complétude. « Obligatoires » = ce qui bloque l'envoi (lib/profilLegal, la liste du contrôle
-  // d'envoi, téléphone et e-mail compris : règle d'un client particulier, D-23). 100 % = l'envoi n'est bloqué
-  // pour aucun client. Avant, la décennale n'était que « recommandée » ici : 100 % affiché, envoi bloqué.
+  // d'envoi, téléphone et e-mail compris, D-23). 100 % = le profil ne bloque plus l'envoi.
+  // Avant, la décennale n'était que « recommandée » ici : 100 % affiché, envoi bloqué.
+  // `si` : recommandé seulement à qui est concerné (lib/mentionsFacture) ; avant, RCS et TVA intracom étaient
+  // recommandés à une micro-entreprise en franchise, inscrite au seul RNE
   const RECOMMENDED_FIELDS = [
     { key: 'codeApe', label: 'Code APE', tab: 'legal' },
-    { key: 'rcsVille', label: 'Ville RCS', tab: 'legal' },
-    { key: 'rcsNumero', label: 'N° RCS', tab: 'legal' },
-    { key: 'tvaIntra', label: 'N° TVA Intracommunautaire', tab: 'legal' },
+    { key: 'capital', label: 'Capital social', tab: 'identite', si: estSociete },
+    { key: 'rcsVille', label: 'Ville RCS', tab: 'legal', si: rcsConcerne },
+    { key: 'rcsNumero', label: 'N° RCS', tab: 'legal', si: rcsConcerne },
+    { key: 'tvaIntra', label: 'N° TVA Intracommunautaire', tab: 'legal', si: tvaIntraConcernee },
     { key: 'rcProAssureur', label: 'Assureur RC Pro', tab: 'assurances' },
     { key: 'rcProNumero', label: 'N° Police RC Pro', tab: 'assurances' },
     // Sans objet quand l'artisan déclare ses travaux non soumis à la décennale (D-24)
@@ -412,7 +416,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
   const NOM_ONGLET = { identite: 'Identité', legal: 'Légal', assurances: 'Assurances', documents: 'Documents' };
   const estVide = (f) => !entreprise[f.key] || String(entreprise[f.key]).trim() === '';
   const missingRequired = profilManquant(entreprise).map(m => ({ key: m.champ, label: m.libelle, tab: m.onglet }));
-  const missingRecommended = RECOMMENDED_FIELDS.filter(estVide);
+  const missingRecommended = RECOMMENDED_FIELDS.filter((f) => (!f.si || f.si(entreprise)) && estVide(f));
   const missingFields = [...missingRequired, ...missingRecommended];
   const completude = Math.round(((PROFIL_EXIGE.length - missingRequired.length) / PROFIL_EXIGE.length) * 100);
   // Le menu des champs manquants est ancré à droite de la jauge : à 375 px il sortait de 77 px à gauche
@@ -844,11 +848,12 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">
-                  Capital (optionnel)
+                {/* Société : forme juridique ET capital social sur les factures (service-public F31808) */}
+                <label htmlFor="settings-field-capital" className="block text-sm font-medium mb-1">
+                  Capital social (obligatoire pour une société)
                 </label>
                 <div className="flex">
-                  <DebouncedInput type="number" className={`flex-1 px-4 py-2.5 border rounded-l-xl ${inputBg}`} placeholder="10000" value={entreprise.capital || ''} onChange={val => updateEntreprise(p => ({...p, capital: val}))} />
+                  <DebouncedInput id="settings-field-capital" type="number" className={`flex-1 px-4 py-2.5 border rounded-l-xl ${inputBg}`} placeholder="10000" value={entreprise.capital || ''} onChange={val => updateEntreprise(p => ({...p, capital: val}))} />
                   <span className={`px-4 py-2.5 border-y border-r rounded-r-xl bg-surface-2 text-encre-3 border-bord-fort`}>€</span>
                 </div>
               </div>
@@ -945,7 +950,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Numéro (9 chiffres)</label>
-                <DebouncedInput className={`w-full px-4 py-2.5 border rounded-xl font-mono ${inputBg}`} placeholder="123 456 789" maxLength={11} value={entreprise.rcsNumero || ''} onChange={val => updateEntreprise(p => ({...p, rcsNumero: val}))} />
+                <DebouncedInput id="settings-field-rcsNumero" className={`w-full px-4 py-2.5 border rounded-xl font-mono ${inputBg}`} placeholder="123 456 789" maxLength={11} value={entreprise.rcsNumero || ''} onChange={val => updateEntreprise(p => ({...p, rcsNumero: val}))} />
               </div>
             </div>
             {getRCSComplet() && (
@@ -1105,7 +1110,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Numéro de contrat {entreprise.decennaleNonSoumis ? null : <span className="text-red-500">*</span>}</label>
-                <DebouncedInput className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="DEC-987654321" value={entreprise.decennaleNumero || ''} onChange={val => updateEntreprise(p => ({...p, decennaleNumero: val}))} />
+                <DebouncedInput id="settings-field-decennaleNumero" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="DEC-987654321" value={entreprise.decennaleNumero || ''} onChange={val => updateEntreprise(p => ({...p, decennaleNumero: val}))} />
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Date de validité {entreprise.decennaleNonSoumis ? null : <span className="text-red-500">*</span>}</label>

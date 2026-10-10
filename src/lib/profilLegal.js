@@ -6,7 +6,8 @@
  * Lu par :
  * - le contrôle d'envoi et de téléchargement (DevisPage : validateDevisForSend, getLegalIssues) ;
  * - les bandeaux « profil incomplet » (liste des devis, DevisComposer) ;
- * - la jauge « Profil complété » des Réglages et l'étape « Configurer mon entreprise » de l'accueil.
+ * - la jauge « Profil complété » des Réglages et l'étape « Configurer mon entreprise » de l'accueil ;
+ * - la liste « Informations à vérifier pour vos factures » de l'onglet Facture 2026 (lib/mentionsFacture).
  * Une jauge à 100 % veut donc dire que le profil ne bloque plus l'envoi.
  *
  * Avant ce module, chaque écran tenait sa liste : la jauge pouvait afficher 100 % sans
@@ -17,10 +18,13 @@
 import { estEntrepreneurIndividuel, estEirl } from './identiteEntreprise';
 
 const rempli = (valeur) => (typeof valeur === 'string' ? valeur.trim() !== '' : Boolean(valeur));
+const estEiOuEirl = (e) => estEntrepreneurIndividuel(e) || estEirl(e);
 
 // `id` : identifiant du manque dans la fenêtre de contrôle d'envoi (DevisPage).
 // `champ` / `onglet` : où compléter dans les Réglages (champ ciblé par `settings-field-<champ>`). Les clés snake_case couvrent une entreprise
 // relue telle quelle depuis la base.
+// `concerne` (facultatif) : la mention ne vise que certaines entreprises ; ailleurs elle est réputée remplie
+// et une liste affichée la masque plutôt que de la cocher.
 export const PROFIL_EXIGE = [
   {
     // SIREN (inclus dans le SIRET) : C. com. R123-237 1°, D123-235 ; facture : service-public F31808 ;
@@ -67,7 +71,8 @@ export const PROFIL_EXIGE = [
     libelle: 'Votre prénom et nom (suivis de « EI »)',
     manque: 'Votre prénom et nom (suivis de « EI ») manquent',
     pourquoi: 'mention obligatoire',
-    estRempli: (e) => !(estEntrepreneurIndividuel(e) || estEirl(e)) || rempli(e.nomEntrepreneur),
+    concerne: estEiOuEirl,
+    estRempli: (e) => !estEiOuEirl(e) || rempli(e.nomEntrepreneur),
   },
   {
     id: 'no_decennale',
@@ -80,6 +85,8 @@ export const PROFIL_EXIGE = [
     pourquoi: 'obligatoire pour les travaux de construction',
     // L'assureur ET le numéro de police, comme le contrôle d'envoi l'a toujours exigé ; ou la case
     // « mes travaux ne sont pas soumis à l'assurance décennale », cochée sous la responsabilité de l'artisan (D-24)
+    // Déclaré non soumis : masquée de la liste Facture 2026 plutôt que cochée « renseignée »
+    concerne: (e) => e.decennaleNonSoumis !== true,
     estRempli: (e) => e.decennaleNonSoumis === true
       || (rempli(e.decennaleAssureur || e.decennale_assureur) && rempli(e.decennaleNumero || e.decennale_numero)),
   },
