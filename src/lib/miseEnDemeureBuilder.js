@@ -100,12 +100,14 @@ export function buildMiseEnDemeureHtml({
   // Les Réglages enregistrent le capital dans `capital` (Settings.jsx, entrepriseService.js) ; `capitalSocial`,
   // seul lu jusqu'au 10 oct. 2026, n'était jamais rempli : le capital d'une société ne s'imprimait pas.
   // Un entrepreneur individuel (EI, EIRL) n'a pas de capital social : un ancien capital resté dans ses
-  // Réglages après un changement de statut ne s'imprime pas.
+  // Réglages après un changement de statut ne s'imprime pas. Un « € » saisi avec le montant (champ texte de la
+  // fiche entreprise, exemple « 10 000 € ») n'est pas doublé.
   const sansCapital = estEntrepreneurIndividuel(entreprise) || estEirl(entreprise);
-  const entCapital = sansCapital ? '' : h(entreprise?.capital || entreprise?.capitalSocial || '');
+  const capitalSaisi = String(entreprise?.capital || entreprise?.capitalSocial || '').replace(/\s*€\s*$/, '').trim();
+  const entCapital = sansCapital ? '' : h(capitalSaisi);
   const entForme = h(formeImprimee(entreprise));
-  // Société : forme juridique ET montant du capital social côte à côte (service-public F31808),
-  // comme sur les devis et factures (devisHtmlBuilder.js : « SARL - Capital: 10000 € »)
+  // Société : dénomination « suivie immédiatement » de sa forme et du montant de son capital social sur ses
+  // lettres (C. com. R123-238, 3° SARL, 4° SA et SAS), comme sur les devis et factures (devisHtmlBuilder.js)
   const entFormeCapital = [entForme, entCapital ? `Capital : ${entCapital} €` : ''].filter(Boolean).join(' - ');
   const numero = h(doc.numero || '');
 
@@ -429,15 +431,18 @@ ${estPro ? `
 }
 
 /**
- * Helper for RCS formatting
+ * « RCS + ville du greffe » sur les correspondances d'un inscrit au RCS (C. com. R123-237, 2°) : ville et numéro
+ * des Réglages, sinon le champ libre `rcs` (fiche entreprise, multi-entreprise), que les devis et factures
+ * impriment déjà et que l'onglet Facture 2026 compte comme renseigné (relecture juridique du 10 oct. 2026).
  */
 function getRCSComplet(entreprise) {
-  if (!entreprise?.rcsVille && !entreprise?.rcs_ville) return '';
-  const ville = entreprise.rcsVille || entreprise.rcs_ville || '';
-  const numero = entreprise.rcsNumero || entreprise.rcs_numero || '';
-  const type = entreprise.rcsType || entreprise.rcs_type || 'B';
-  if (!ville || !numero) return '';
-  return `RCS ${ville} ${type} ${numero}`;
+  const ville = entreprise?.rcsVille || entreprise?.rcs_ville || '';
+  const numero = entreprise?.rcsNumero || entreprise?.rcs_numero || '';
+  const type = entreprise?.rcsType || entreprise?.rcs_type || 'B';
+  if (ville && numero) return `RCS ${ville} ${type} ${numero}`;
+  const libre = String(entreprise?.rcs || '').trim();
+  if (!libre) return '';
+  return /^rcs\b/i.test(libre) ? libre : `RCS ${libre}`;
 }
 
 /**
