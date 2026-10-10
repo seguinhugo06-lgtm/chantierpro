@@ -41,6 +41,14 @@ describe('mise en demeure', () => {
     expect(sans).not.toContain('Capital');
   });
 
+  it('entrepreneur individuel : pas de capital social, même resté saisi après un changement de statut', () => {
+    for (const formeJuridique of ['Micro-entreprise', 'EI', 'EIRL']) {
+      const t = texte(buildMiseEnDemeureHtml({ doc, client: { nom: 'Dupont' }, entreprise: { nom: 'Hugo Séguin', formeJuridique, capital: '10000' } }));
+      expect(t).toContain('Entrepreneur individuel');
+      expect(t).not.toContain('Capital');
+    }
+  });
+
   it('ne parle de relances précédentes que s\'il y en a eu', () => {
     const sans = texte(buildMiseEnDemeureHtml({ doc, client: { nom: 'Dupont' }, entreprise }));
     expect(sans).not.toContain('précédentes relances');

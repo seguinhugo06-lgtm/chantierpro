@@ -12,7 +12,7 @@ import { calculatePenalties, DEFAULT_PENALTY_RATE, estClientPro } from './relanc
 import { dateLocale } from './paiementsFacture';
 import { echapperHtml as h, couleurCss } from './echapperHtml';
 import { imprimerHtml } from './imprimerHtml';
-import { nomImprime, formeImprimee } from './identiteEntreprise';
+import { nomImprime, formeImprimee, estEntrepreneurIndividuel, estEirl } from './identiteEntreprise';
 import { dateLue } from './dates';
 
 /**
@@ -99,7 +99,10 @@ export function buildMiseEnDemeureHtml({
   const entRCS = h(getRCSComplet(entreprise));
   // Les Réglages enregistrent le capital dans `capital` (Settings.jsx, entrepriseService.js) ; `capitalSocial`,
   // seul lu jusqu'au 10 oct. 2026, n'était jamais rempli : le capital d'une société ne s'imprimait pas.
-  const entCapital = h(entreprise?.capital || entreprise?.capitalSocial || '');
+  // Un entrepreneur individuel (EI, EIRL) n'a pas de capital social : un ancien capital resté dans ses
+  // Réglages après un changement de statut ne s'imprime pas.
+  const sansCapital = estEntrepreneurIndividuel(entreprise) || estEirl(entreprise);
+  const entCapital = sansCapital ? '' : h(entreprise?.capital || entreprise?.capitalSocial || '');
   const entForme = h(formeImprimee(entreprise));
   // Société : forme juridique ET montant du capital social côte à côte (service-public F31808),
   // comme sur les devis et factures (devisHtmlBuilder.js : « SARL - Capital: 10000 € »)
