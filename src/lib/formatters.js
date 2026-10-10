@@ -26,23 +26,6 @@ export function formatMoney(amount, decimals) {
   }).format(amount);
 }
 
-/**
- * Formate un montant monétaire de manière compacte (K, M)
- * @param {number} amount - Montant en euros
- * @returns {string} Montant formaté (ex: "57K €", "1,2M €")
- */
-export function formatMoneyCompact(amount) {
-  if (amount == null || isNaN(amount)) return '0 €';
-
-  if (Math.abs(amount) >= 1000000) {
-    return `${(amount / 1000000).toFixed(1).replace('.', ',')}M €`;
-  }
-  if (Math.abs(amount) >= 1000) {
-    return `${Math.round(amount / 1000)}K €`;
-  }
-  return formatMoney(amount);
-}
-
 // ============ TREND FORMATTING ============
 
 /**

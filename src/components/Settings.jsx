@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useToast, useConfirm } from '../context/AppContext';
-import { Download, FileSpreadsheet, FileText, RefreshCw, CheckCircle, AlertCircle, Calendar, ExternalLink, Calculator, Building2, ArrowLeft, Shield, Search, ChevronDown, ChevronRight, Zap, Palette, FileCheck, BellRing, Package, Check, X, Loader2, Home, Smartphone, Fuel, Archive, Landmark, BarChart3, CreditCard, Users, Link2, Settings2, HardDrive, FolderOpen, Construction, Receipt, Mail, Sparkles, ClipboardList, GraduationCap } from 'lucide-react';
+import { Download, FileSpreadsheet, FileText, RefreshCw, CheckCircle, AlertCircle, Calendar, Calculator, Building2, ArrowLeft, Shield, Search, ChevronDown, ChevronRight, Zap, Palette, FileCheck, BellRing, Package, Check, X, Loader2, Home, Smartphone, Fuel, Landmark, BarChart3, CreditCard, Users, Settings2, HardDrive, FolderOpen, Construction, Receipt, Mail, Sparkles, ClipboardList, GraduationCap } from 'lucide-react';
 import { captureException } from '../lib/sentry';
 import AdminHelp from './admin-help/AdminHelp';
 import {
@@ -415,6 +415,14 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
     { key: 'mediateur', label: 'Médiateur de la consommation', tab: 'documents' },
   ];
   const NOM_ONGLET = { identite: 'Identité', legal: 'Légal', assurances: 'Assurances', documents: 'Documents' };
+  // Ouvre l'onglet et amène le champ sous les yeux (chaque champ porte id="settings-field-<champ>")
+  const allerAuChamp = (onglet, champ) => {
+    setTab(onglet);
+    setTimeout(() => {
+      const el = document.getElementById(`settings-field-${champ}`);
+      if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.focus(); }
+    }, 150);
+  };
   const estVide = (f) => !entreprise[f.key] || String(entreprise[f.key]).trim() === '';
   const missingRequired = [
     ...profilManquant(entreprise).map(m => ({ key: m.champ, label: m.libelle, tab: m.onglet })),
@@ -606,7 +614,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                       </p>
                       <div className="space-y-1">
                         {missingRequired.map(f => (
-                          <button key={f.key} onClick={() => { setTab(f.tab); setShowProfileDetail(false); }} className={`w-full text-left px-3 py-1.5 rounded-lg text-sm transition-colors flex items-center justify-between hover:bg-surface-2 text-encre-2`}>
+                          <button key={f.key} onClick={() => { allerAuChamp(f.tab, f.key); setShowProfileDetail(false); }} className={`w-full text-left px-3 py-1.5 rounded-lg text-sm transition-colors flex items-center justify-between hover:bg-surface-2 text-encre-2`}>
                             <span>{f.label}</span>
                             <span className={`text-xs text-encre-3`}>→ {NOM_ONGLET[f.tab]}</span>
                           </button>
@@ -622,7 +630,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                       </p>
                       <div className="space-y-1">
                         {missingRecommended.map(f => (
-                          <button key={f.key} onClick={() => { setTab(f.tab); setShowProfileDetail(false); }} className={`w-full text-left px-3 py-1.5 rounded-lg text-sm transition-colors flex items-center justify-between hover:bg-surface-2 text-encre-2`}>
+                          <button key={f.key} onClick={() => { allerAuChamp(f.tab, f.key); setShowProfileDetail(false); }} className={`w-full text-left px-3 py-1.5 rounded-lg text-sm transition-colors flex items-center justify-between hover:bg-surface-2 text-encre-2`}>
                             <span>{f.label}</span>
                             <span className={`text-xs text-encre-3`}>→ {NOM_ONGLET[f.tab]}</span>
                           </button>
@@ -670,13 +678,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
           <button
             onClick={() => {
               const firstMissing = missingRequired[0] || missingFields[0];
-              if (firstMissing) {
-                setTab(firstMissing.tab);
-                setTimeout(() => {
-                  const el = document.getElementById('settings-field-' + firstMissing.key);
-                  if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.focus(); }
-                }, 150);
-              }
+              if (firstMissing) allerAuChamp(firstMissing.tab, firstMissing.key);
             }}
             className="self-end sm:self-auto h-11 px-4 rounded-xl text-sm font-semibold whitespace-nowrap shrink-0 bg-surface text-encre border border-bord-fort hover:bg-surface-2"
           >
@@ -1997,7 +1999,10 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
         const safeStep = Math.min(wizardStep, totalSteps - 1);
         const stepDef = WIZARD_STEPS_DEF[safeStep];
         const progress = ((safeStep + 1) / totalSteps) * 100;
-        const StepIcon = stepDef.icon;
+        // Ce qui bloquerait l'envoi (lib/profilLegal). Avant, la dernière étape disait « Configuration terminée ! »
+        // même sans décennale (que l'assistant ne demande pas) : l'artisan croyait pouvoir envoyer, l'envoi était bloqué.
+        const manquantes = profilManquant(entreprise);
+        const completer = (mention) => { setShowSetupWizard(false); allerAuChamp(mention.onglet, mention.champ); };
 
         return (
           <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={() => setShowSetupWizard(false)}>
@@ -2205,18 +2210,33 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                 {/* Step 5: Catalogue */}
                 {safeStep === 4 && (
                   <>
+                    {manquantes.length > 0 && (
+                      <div className="p-4 rounded-xl bg-alerte-fond text-alerte-texte" data-assistant="manquantes">
+                        <p className="text-sm font-semibold flex items-start gap-2">
+                          <AlertCircle size={18} aria-hidden="true" className="shrink-0 mt-px" />
+                          {manquantes.length === 1 ? 'Il manque une information' : `Il manque ${manquantes.length} informations`} pour envoyer vos devis et factures :
+                        </p>
+                        <ul className="mt-2 space-y-1.5">
+                          {manquantes.map(m => (
+                            <li key={m.id}>
+                              <button type="button" onClick={() => completer(m)}
+                                className="w-full min-h-[44px] px-3 py-2 rounded-lg flex items-center justify-between gap-3 text-left text-sm bg-surface text-encre hover:bg-surface-2">
+                                <span>{m.libelle}</span>
+                                <span className="text-sm text-encre-3 whitespace-nowrap">{NOM_ONGLET[m.onglet]} →</span>
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                     <div className={`p-4 rounded-xl border text-center bg-surface-2 border-bord`}>
                       <Package size={40} className={`mx-auto mb-3 ${textSecondary}`} />
                       <p className={`text-sm font-semibold ${textPrimary}`}>Importez le Référentiel BTP</p>
                       <p className={`text-xs mt-1 ${textMuted}`}>Sélectionnez votre métier pour importer automatiquement les articles courants dans votre catalogue.</p>
                     </div>
-                    <button
-                      onClick={() => { setShowSetupWizard(false); setPage('catalogue'); }}
-                      className="w-full py-3 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90"
-                      style={{ backgroundColor: couleur }}
-                    >
-                      <Package size={16} className="inline mr-2" />Ouvrir le Catalogue pour importer
-                    </button>
+                    <Bouton pleineLargeur icone={Package} onClick={() => { setShowSetupWizard(false); setPage('catalogue'); }}>
+                      Ouvrir le Catalogue pour importer
+                    </Bouton>
                     <p className={`text-xs text-center ${textMuted}`}>Vous pourrez toujours le faire plus tard depuis le module Catalogue.</p>
                   </>
                 )}
@@ -2243,18 +2263,19 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                   >
                     Suivant →
                   </button>
+                ) : manquantes.length > 0 ? (
+                  <Bouton variante="principal" onClick={() => completer(manquantes[0])}>
+                    Compléter le profil
+                  </Bouton>
                 ) : (
-                  <button
+                  <Bouton variante="principal" icone={Check}
                     onClick={() => {
                       setShowSetupWizard(false);
                       try { localStorage.setItem('cp_wizard_done', '1'); } catch { /* préférence non enregistrée : quota plein ou navigation privée */ }
                       showToast('Configuration terminée !', 'success');
-                    }}
-                    className="px-5 py-2.5 text-white rounded-xl text-sm font-semibold transition-colors"
-                    style={{ background: '#22c55e' }}
-                  >
-                    <Check size={16} className="inline mr-1" /> Terminer
-                  </button>
+                    }}>
+                    Terminer
+                  </Bouton>
                 )}
               </div>
             </div>

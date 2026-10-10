@@ -1,5 +1,59 @@
-// Compte : suppression (démo), code testeur, retours utilisateurs.
+// Compte : suppression (démo), code testeur, retours utilisateurs, assistant de configuration.
+
+// Ouvre l'assistant depuis la jauge « Profil complété » et va à sa dernière étape
+async function assistantDerniereEtape(page, { cliquer }) {
+  await cliquer(page, 'Cliquez pour voir les champs manquants');
+  await cliquer(page, 'Compléter avec l\'assistant');
+  for (let i = 0; i < 4; i++) await cliquer(page, 'Suivant →');
+}
+const etatAssistant = (page) => page.evaluate(() => {
+  const visible = (el) => { const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0; };
+  const boutons = [...document.querySelectorAll('button')].filter(visible).map((b) => b.innerText.trim());
+  const liste = document.querySelector('[data-assistant="manquantes"]');
+  return {
+    etape: document.body.innerText.includes('Étape 5/5'),
+    manquantes: liste ? [...liste.querySelectorAll('li')].map((l) => l.innerText) : [],
+    terminer: boutons.includes('Terminer'),
+    completer: boutons.includes('Compléter le profil'),
+    debordement: document.documentElement.scrollWidth - innerWidth,
+  };
+});
+
 module.exports = [
+  {
+    nom: 'assistant de configuration : sans décennale, il liste ce qui bloque l’envoi au lieu de dire « terminée »',
+    async executer({ ouvrir, cliquer, saisir, attendre, verifier }) {
+      const { page } = await ouvrir({ page: 'settings', largeur: 375 });
+      await cliquer(page, 'Assurances');
+      await saisir(page, '#settings-field-decennaleAssureur', '');
+      await attendre(1200); // saisie différée (800 ms)
+      await assistantDerniereEtape(page, { cliquer });
+      const sans = await etatAssistant(page);
+      verifier(sans.etape, 'dernière étape de l’assistant atteinte');
+      verifier(sans.manquantes.length === 1 && sans.manquantes[0].includes('Assurance décennale') && sans.manquantes[0].includes('Assurances'),
+        `la décennale est listée, avec son onglet (${JSON.stringify(sans.manquantes)})`);
+      verifier(!sans.terminer && sans.completer, 'pas de « Terminer », mais « Compléter le profil »');
+      verifier(sans.debordement <= 0, `rien ne déborde à 375 px (${sans.debordement} px)`);
+
+      await page.evaluate(() => document.querySelector('[data-assistant="manquantes"] li button').click());
+      await attendre(600);
+      const apres = await page.evaluate(() => ({ ferme: !document.body.innerText.includes('Étape 5/5'), focus: document.activeElement?.id }));
+      verifier(apres.ferme, 'l’assistant se ferme');
+      verifier(apres.focus === 'settings-field-decennaleAssureur', `le champ de la décennale reçoit le curseur (${apres.focus})`);
+
+      // Profil d'envoi complet (téléphone vide, non bloquant, pour que la jauge ouvre encore l'assistant) : réussite
+      await saisir(page, '#settings-field-decennaleAssureur', 'SMABTP');
+      await attendre(1200);
+      await cliquer(page, 'Identité');
+      await saisir(page, '#settings-field-tel', '');
+      await attendre(1200);
+      await assistantDerniereEtape(page, { cliquer });
+      const avec = await etatAssistant(page);
+      verifier(avec.manquantes.length === 0 && avec.terminer, 'profil d’envoi complet : « Terminer », aucune liste');
+      await cliquer(page, 'Terminer');
+      verifier(await page.evaluate(() => document.body.innerText.includes('Configuration terminée !')), 'message de réussite');
+    },
+  },
   {
     nom: 'suppression de compte : modale plein écran, confirmation exigée, données effacées',
     async executer({ ouvrir, cliquer, saisir, attendre, verifier }) {
