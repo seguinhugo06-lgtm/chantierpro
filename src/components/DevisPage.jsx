@@ -55,11 +55,12 @@ import LigneListe from './ui/LigneListe';
 import { Bouton } from './ui/Bouton';
 import { PastilleStatut } from './ui/Pastille';
 import { statut as libelleStatut } from '../lib/statuts';
-import { pourcent, blocConditionsPaiement, CONDITIONS_PAIEMENT } from '../lib/formatDocument';
+import { pourcent, blocConditionsPaiement, CONDITIONS_PAIEMENT, euros } from '../lib/formatDocument';
 import { totauxDocument, lignesTotauxHtml, lignesAcompteHtml, calculerTotaux } from '../lib/totauxDocument';
 import { lignesFactureAcompte, lignesFactureSolde } from '../lib/facturation';
 import { verifierNouvelleFacture, pourcentageAcompteValide, peutModifierDocument, peutSupprimerDocument, estEntierementFacture } from '../lib/gardeFacturation';
 import { DEFAULT_PENALTY_RATE, estClientPro } from '../lib/relanceUtils';
+import { relanceDe, texteCourt, telInternational } from '../lib/messageRelance';
 import { useDebounce } from '../hooks/useDebounce';
 import { useDevisModals } from '../hooks/useDevisModals';
 import { isFacturXCompliant } from '../lib/facturx';
@@ -1159,7 +1160,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
             client: receiptClient,
             entreprise,
             couleur,
-            montantFormatte: formatMoney(paymentData.amount || selected.total_ttc),
+            montantFormatte: euros(montantRecu),
             modePaiement: paymentData.mode_paiement,
             datePaiement: paymentData.date_paiement,
           });
@@ -2104,10 +2105,14 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       onUpdate(doc.id, { statut: 'envoye' });
       setSelected(s => s?.id === doc.id ? { ...s, statut: 'envoye' } : s);
     }
-    if (addEchange) addEchange({ type: 'whatsapp', client_id: doc.client_id, document: doc.numero, montant: doc.total_ttc, objet: `Envoi ${doc.type === 'facture' ? 'facture' : 'devis'} ${doc.numero}` });
-    const phone = (client.telephone || '').replace(/\s/g, '').replace(/^0/, '33');
+    // Facture émise et due : une relance (reste dû, échéance, retard, lien de paiement), pas le total
+    const relance = wasBrouillon ? null : relanceDe(doc, paiements);
+    const lienPaiement = doc.type === 'facture' && doc.payment_token ? urlPublique(`/pay/${doc.payment_token}`) : '';
+    if (addEchange) addEchange({ type: 'whatsapp', client_id: doc.client_id, document: doc.numero, montant: relance ? relance.reste : doc.total_ttc, objet: `${relance ? 'Relance' : 'Envoi'} ${doc.type === 'facture' ? 'facture' : 'devis'} ${doc.numero}` });
+    // Indicatif international, chiffres seuls (avant : « 06.12… » ou « +33 6… » donnaient un lien cassé)
+    const phone = telInternational(client.telephone);
     setTimeout(() => {
-      window.open(`https://wa.me/${phone}?text=${encodeURIComponent(`Bonjour, voici votre ${doc.type} ${doc.numero}: ${formatMoney(doc.total_ttc)}`)}`, '_blank');
+      window.open(`https://wa.me/${phone}?text=${encodeURIComponent(texteCourt(doc, { relance, lienPaiement }))}`, '_blank');
     }, 100);
     // Show post-send confirmation modal
     const clientName = `${client.prenom || ''} ${client.nom || ''}`.trim();
@@ -2146,10 +2151,17 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       }
       // Réutilise le HTML du document (downloadPDF le construit et le retourne, sans effet de bord)
       const pdfHtml = downloadPDF(doc);
-      const bodyHtml = buildDocumentEmailBody({ doc, client, entreprise, couleur, montantFormatte: formatMoney(doc.total_ttc), signatureUrl });
+      // Facture émise et due : l'e-mail est une relance (reste dû, échéance, retard, lien de paiement)
+      const relance = doc.statut === 'brouillon' ? null : relanceDe(doc, paiements);
+      const lienPaiement = isFacture && doc.payment_token ? urlPublique(`/pay/${doc.payment_token}`) : '';
+      const bodyHtml = buildDocumentEmailBody({
+        doc, client, entreprise, couleur, signatureUrl, lienPaiement,
+        montantFormatte: euros(relance ? relance.reste : doc.total_ttc),
+        relance,
+      });
       await sendDocumentEmail({
         to: toEmail,
-        subject: `${label} ${doc.numero}${entreprise?.nom ? ` — ${entreprise.nom}` : ''}`,
+        subject: `${relance ? 'Rappel : ' : ''}${label} ${doc.numero}${relance ? ' — reste à régler' : ''}${entreprise?.nom ? ` — ${entreprise.nom}` : ''}`,
         bodyHtml,
         fromName: entreprise?.nom,
         replyTo: entreprise?.email,
@@ -2160,10 +2172,10 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         onUpdate(doc.id, { statut: 'envoye' });
         setSelected(s => s?.id === doc.id ? { ...s, statut: 'envoye' } : s);
       }
-      if (addEchange) addEchange({ type: 'email', client_id: doc.client_id, document: doc.numero, montant: doc.total_ttc, objet: `Envoi ${isFacture ? 'facture' : 'devis'} ${doc.numero}` });
+      if (addEchange) addEchange({ type: 'email', client_id: doc.client_id, document: doc.numero, montant: relance ? relance.reste : doc.total_ttc, objet: `${relance ? 'Relance' : 'Envoi'} ${isFacture ? 'facture' : 'devis'} ${doc.numero}` });
       const clientName = `${client.prenom || ''} ${client.nom || ''}`.trim();
-      setShowSendConfirmation({ clientName, montant: doc.total_ttc, canal: 'Email', doc });
-      showToast(`${label} ${doc.numero} envoyé à ${toEmail} ✓`, 'success');
+      setShowSendConfirmation({ clientName, montant: relance ? relance.reste : doc.total_ttc, canal: 'Email', doc });
+      showToast(`${relance ? 'Relance' : label} ${doc.numero} ${relance ? 'envoyée' : (isFacture ? 'envoyée' : 'envoyé')} à ${toEmail} ✓`, 'success');
     } catch (e) {
       console.error('[sendEmail] Error:', e);
       showToast(`Échec de l'envoi : ${e?.message || 'erreur inconnue'}`, 'error');
@@ -2186,8 +2198,10 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       onUpdate(doc.id, { statut: 'envoye' });
       setSelected(s => s?.id === doc.id ? { ...s, statut: 'envoye' } : s);
     }
-    if (addEchange) addEchange({ type: 'sms', client_id: doc.client_id, document: doc.numero, montant: doc.total_ttc, objet: `SMS ${doc.type === 'facture' ? 'facture' : 'devis'} ${doc.numero}` });
-    const message = `Bonjour, voici votre ${doc.type === 'facture' ? 'facture' : 'devis'} ${doc.numero}: ${formatMoney(doc.total_ttc)}`;
+    const relance = doc.statut === 'brouillon' ? null : relanceDe(doc, paiements);
+    const lienPaiement = doc.type === 'facture' && doc.payment_token ? urlPublique(`/pay/${doc.payment_token}`) : '';
+    if (addEchange) addEchange({ type: 'sms', client_id: doc.client_id, document: doc.numero, montant: relance ? relance.reste : doc.total_ttc, objet: `${relance ? 'Relance' : 'SMS'} ${doc.type === 'facture' ? 'facture' : 'devis'} ${doc.numero}` });
+    const message = texteCourt(doc, { relance, lienPaiement });
     setTimeout(() => {
       window.open(`sms:${phone}?body=${encodeURIComponent(message)}`, '_self');
     }, 100);
@@ -2565,6 +2579,10 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
             } else {
               secondaire = actPdf;
             }
+          } else if (selected.statut === 'brouillon' && !isAvoir) {
+            // Un brouillon s'envoie d'abord : on n'encaisse pas une facture que le client n'a pas reçue
+            if (peutEnvoyer) principal = { libelle: 'Envoyer', icone: Send, onClick: () => trySend(selected, sendEmail) };
+            secondaire = actPdf;
           } else if (!factureSoldee && !isAvoir) {
             principal = { libelle: 'Encaisser', icone: CreditCard, onClick: () => setShowPaymentModal(true) };
             if (peutEnvoyer) secondaire = selected.statut === 'brouillon'
@@ -3285,32 +3303,9 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           </Tabs>
         </div>
 
-        {/* Section Relances — visible pour les devis envoyés */}
-        {['envoye', 'vu'].includes(selected.statut) && (
-          <div className={`rounded-xl border p-4 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
-            <div className="flex items-center justify-between mb-3">
-              <h3 className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                Relances
-              </h3>
-              <button
-                onClick={() => showToast?.('Relance programmée', 'success')}
-                className="text-xs font-medium px-3 py-1.5 rounded-lg"
-                style={{ background: `${couleur}15`, color: couleur }}
-              >
-                + Programmer
-              </button>
-            </div>
-            <div className={`text-xs space-y-2 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-              <p className="flex items-center gap-1.5"><Mail size={12} /> J+7 : Rappel amical (automatique)</p>
-              <p className="flex items-center gap-1.5"><Mail size={12} /> J+15 : Deuxième relance</p>
-              <p className="flex items-center gap-1.5"><Mail size={12} /> J+30 : Relance ferme</p>
-            </div>
-            <p className={`text-xs mt-3 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-              Les relances automatiques sont configurables dans Paramètres &rarr; Documents &rarr; Relances
-            </p>
-          </div>
-        )}
-
+        {/* (Bloc « Relances · + Programmer » retiré le 10 oct. 2026 : il annonçait « Relance programmée » sans rien
+            programmer, et ses étapes J+7/J+15/J+30 s'affichaient même relances désactivées. Le vrai suivi est le
+            RelanceTimelineWidget.) */}
         {/* Modal Acompte */}
         {showAcompteModal && (
           <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">

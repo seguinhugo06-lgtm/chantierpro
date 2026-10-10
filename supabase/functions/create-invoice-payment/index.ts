@@ -83,14 +83,22 @@ async function handleCreate(req: Request, paymentToken: string, amountCents?: nu
   if (facture.statut === 'payee') {
     return json({ error: 'Cette facture a déjà été payée' }, 400);
   }
+  // Annulée par avoir, brouillon, avoir, déjà soldée : rien à payer (relecture sécurité du 10 oct. 2026 :
+  // une facture créditée restait payable par carte). `payable` vient de la base (migration 081).
+  if (facture.payable === false) {
+    return json({ error: "Cette facture n'est pas à payer (annulée, en brouillon ou déjà soldée)" }, 400);
+  }
 
   const stripe = await getArtisanStripe(facture.user_id as string);
   if (!stripe) return json({ error: 'Configuration Stripe incomplète' }, 400);
 
-  // Montant : reste à payer par défaut, ou acompte fourni (borné au reste dû)
+  // Montant : reste à payer par défaut, ou acompte fourni (borné au reste dû). Le reste dû de la base déduit
+  // aussi les avoirs émis et les paiements enregistrés (081) ; sans lui, total − montant_paye.
   const totalCents = Math.round(((facture.total_ttc as number) || 0) * 100);
   const dejaPayeCents = Math.round(((facture.montant_paye as number) || 0) * 100);
-  const resteCents = Math.max(totalCents - dejaPayeCents, 0);
+  const resteCents = typeof facture.reste_du === 'number'
+    ? Math.round((facture.reste_du as number) * 100)
+    : Math.max(totalCents - dejaPayeCents, 0);
   let baseCents = resteCents;
   if (amountCents !== undefined) {
     if (!Number.isInteger(amountCents) || amountCents <= 0) {
@@ -192,7 +200,10 @@ async function handleVerify(paymentToken: string, sessionId: string) {
     || session.amount_total || 0;
   const totalTTC = (facture.total_ttc as number) || 0;
   const nouveauPaye = ((facture.montant_paye as number) || 0) + creditCents / 100;
-  const fullyPaid = nouveauPaye >= totalTTC - 0.01;
+  // Soldée quand le reçu couvre le total moins les avoirs émis (avant : un avoir partiel empêchait à jamais
+  // le passage à « payée », et les relances continuaient)
+  const credite = (facture.montant_credite as number) || 0;
+  const fullyPaid = nouveauPaye >= totalTTC - credite - 0.01;
   const now = new Date();
 
   const { error: updateError } = await supabaseAdmin

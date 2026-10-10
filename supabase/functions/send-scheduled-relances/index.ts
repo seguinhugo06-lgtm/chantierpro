@@ -18,10 +18,11 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
+// Reste dû, pénalités (professionnels seulement), documents à ne jamais relancer : règles sans import
+// distant, testées sous vitest (src/lib/__tests__/reglesRelances.test.js).
+import { estClientPro, creditsParFacture, paiementsParDocument, resteDu, relancable, penalites } from './regles.ts';
 
 const APP_ORIGIN = 'https://mallettico.fr';
-const DEFAULT_PENALTY_RATE = 11.62;
-const RECOVERY_INDEMNITY = 40;
 
 // ─────────────────────────────────────────────────────────────
 // Logique pure (portée de relanceUtils.js)
@@ -118,20 +119,14 @@ function getNextStep(doc: any, executions: any[], steps: any[]) {
   return null;
 }
 
-function calculatePenalties(montantTTC: number, joursRetard: number, tauxAnnuel = DEFAULT_PENALTY_RATE) {
-  const amount = Number(montantTTC) || 0;
-  const days = Math.max(0, Number(joursRetard) || 0);
-  const rate = Number(tauxAnnuel) || DEFAULT_PENALTY_RATE;
-  const penalites = amount * (rate / 100) * (days / 365);
-  const indemnite = days > 0 ? RECOVERY_INDEMNITY : 0;
-  return { penalites: Math.round(penalites * 100) / 100, totalDu: Math.round((amount + penalites + indemnite) * 100) / 100 };
-}
-
 function buildVariableMap(doc: any, client: any, entreprise: any) {
   const now = new Date();
   const baseDate = doc ? getBaseDate(doc) : null;
   const joursRetard = baseDate ? Math.max(0, Math.floor((now.getTime() - baseDate.getTime()) / (1000 * 60 * 60 * 24))) : 0;
-  const pen = doc?.total_ttc ? calculatePenalties(doc.total_ttc, joursRetard) : { penalites: 0, totalDu: 0 };
+  // Ce qui est réellement dû (posé par detectDue : total − paiements − avoirs) ; pénalités et 40 € pour
+  // un client professionnel seulement (art. L441-10 et D441-5 C. com.), sur ce reste dû.
+  const du = typeof doc?._resteDu === 'number' ? doc._resteDu : (Number(doc?.total_ttc) || 0);
+  const pen = penalites(du, joursRetard, estClientPro(client));
   return {
     client_nom: (client?.nom || client?.prenom) ? `${client.prenom || ''} ${client.nom || ''}`.trim() : 'Client',
     client_prenom: client?.prenom || '',
@@ -139,7 +134,8 @@ function buildVariableMap(doc: any, client: any, entreprise: any) {
     facture_numero: doc?.numero || '',
     numero: doc?.numero || '',
     montant_ttc: formatMoneyValue(doc?.total_ttc || 0),
-    montant: formatMoneyValue(doc?.total_ttc || doc?.total_ht || 0),
+    montant: formatMoneyValue(du),
+    reste_du: formatMoneyValue(du),
     montant_ht: formatMoneyValue(doc?.total_ht || 0),
     'date_échéance': doc?.date_echeance ? formatDateFR(new Date(doc.date_echeance)) : '',
     date_echeance: doc?.date_echeance ? formatDateFR(new Date(doc.date_echeance)) : '',
@@ -207,12 +203,17 @@ function buildRelanceEmailHtml(body: string, entreprise: any, options: any = {})
 // Détection des relances dues pour une entreprise
 // ─────────────────────────────────────────────────────────────
 
-function detectDue(devis: any[], clients: any[], config: any, executions: any[], exclusions: any[]) {
+function detectDue(devis: any[], clients: any[], config: any, executions: any[], exclusions: any[], paiements: any[] = []) {
   if (!config?.enabled) return [];
   const clientMap = new Map(clients.map((c) => [c.id, c]));
+  const credits = creditsParFacture(devis);
+  const recus = paiementsParDocument(paiements);
   const due: any[] = [];
   for (const doc of devis) {
     if (!isDocumentEligible(doc, exclusions, config)) continue;
+    // Jamais un avoir, jamais une facture soldée (payée ou créditée) ; on relance le reste dû
+    if (!relancable(doc, credits, recus)) continue;
+    doc._resteDu = resteDu(doc, credits, recus);
     const docType = doc.type === 'facture' ? 'facture' : 'devis';
     const steps = docType === 'facture' ? config.factureSteps : config.devisSteps;
     const docExecs = executions.filter((e) => e.document_id === doc.id);
@@ -314,18 +315,19 @@ serve(async (req) => {
       };
 
       // 2. Charger les documents + clients + historique de cette entreprise
-      const [resDevis, resClients, resExecs, resExcl] = await Promise.all([
-        admin.from('devis').select('id, type, statut, numero, client_id, total_ttc, total_ht, date, date_echeance, payment_token').eq('user_id', ent.user_id).neq('statut', 'payee'),
-        admin.from('clients').select('id, nom, prenom, email, telephone').eq('user_id', ent.user_id),
+      const [resDevis, resClients, resExecs, resExcl, resPaiements] = await Promise.all([
+        admin.from('devis').select('id, type, facture_type, statut, numero, client_id, total_ttc, total_ht, montant_paye, avoir_source_id, date, date_echeance, payment_token').eq('user_id', ent.user_id).neq('statut', 'payee'),
+        admin.from('clients').select('id, nom, prenom, email, telephone, categorie, entreprise').eq('user_id', ent.user_id),
         admin.from('relance_executions').select('document_id, step_id, status').eq('user_id', ent.user_id),
         admin.from('relance_exclusions').select('scope, document_id, client_id, excluded_until').eq('user_id', ent.user_id),
+        admin.from('paiements').select('devis_id, montant').eq('user_id', ent.user_id),
       ]);
 
       // Ces erreurs étaient ignorées : une colonne inexistante dans le select
       // fait rejeter TOUTE la requête, `data` revient null, et le rapport
       // annonçait sereinement « 0 relance due ». Un échec de lecture doit
       // être bruyant — sinon l'artisan croit que ses clients sont relancés.
-      const erreurLecture = [resDevis, resClients, resExecs, resExcl]
+      const erreurLecture = [resDevis, resClients, resExecs, resExcl, resPaiements]
         .map((r) => r.error?.message).filter(Boolean).join(' | ');
       if (erreurLecture) {
         console.error(`[send-scheduled-relances] Lecture ${ent.nom}: ${erreurLecture}`);
@@ -337,13 +339,15 @@ serve(async (req) => {
       const devis = resDevis.data, clients = resClients.data;
       const executions = resExecs.data, exclusions = resExcl.data;
 
-      const due = detectDue(devis || [], clients || [], config, executions || [], exclusions || []).slice(0, maxPerOrg);
+      const due = detectDue(devis || [], clients || [], config, executions || [], exclusions || [], resPaiements.data || []).slice(0, maxPerOrg);
       report.totalDue += due.length;
 
       // Diagnostic (dry-run) : montre l'entonnoir pour prouver la logique.
       if (dryRun) {
         report.diagnostics = report.diagnostics || [];
-        const eligible = (devis || []).filter((d) => isDocumentEligible(d, exclusions || [], config));
+        const creditsDiag = creditsParFacture(devis || []);
+        const recusDiag = paiementsParDocument(resPaiements.data || []);
+        const eligible = (devis || []).filter((d) => isDocumentEligible(d, exclusions || [], config) && relancable(d, creditsDiag, recusDiag));
         // Pour chaque éligible, calcule le prochain step (dû ou pas) — visibilité.
         const nextSteps = eligible.map((d) => {
           const st = (d.type === 'facture' ? config.factureSteps : config.devisSteps) || [];
@@ -373,6 +377,7 @@ serve(async (req) => {
           step: step.name || step.id,
           daysOverdue: item.daysOverdue,
           montantTTC: doc.total_ttc || 0,
+          resteDu: doc._resteDu,
         };
 
         // DRY-RUN ou auto-envoi désactivé : on énumère sans envoyer.

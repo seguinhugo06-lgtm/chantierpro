@@ -172,6 +172,17 @@ export const SCHEMA = `
     organization_id UUID REFERENCES organizations(id), nom TEXT NOT NULL, type TEXT, siret TEXT, decennale_numero TEXT);
   CREATE TABLE pointages (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
     organization_id UUID REFERENCES organizations(id), employe_id UUID, chantier_id UUID, date DATE, heures NUMERIC NOT NULL, description TEXT);
+  -- Colonnes de production lues par la page de paiement (get_facture_for_payment, 067 puis 081), relevées le 10 oct. 2026.
+  ALTER TABLE devis ADD COLUMN type TEXT, ADD COLUMN facture_type TEXT, ADD COLUMN statut TEXT, ADD COLUMN date DATE,
+    ADD COLUMN date_echeance DATE, ADD COLUMN objet TEXT, ADD COLUMN total_ht NUMERIC, ADD COLUMN total_tva NUMERIC,
+    ADD COLUMN total_ttc NUMERIC, ADD COLUMN montant_paye NUMERIC, ADD COLUMN payment_token TEXT,
+    ADD COLUMN payment_token_expires_at TIMESTAMPTZ, ADD COLUMN payment_status TEXT, ADD COLUMN payment_completed_at TIMESTAMPTZ,
+    ADD COLUMN stripe_session_id TEXT, ADD COLUMN lignes JSONB;
+  ALTER TABLE clients ADD COLUMN prenom TEXT, ADD COLUMN email TEXT;
+  ALTER TABLE entreprise ADD COLUMN adresse TEXT, ADD COLUMN ville TEXT, ADD COLUMN code_postal TEXT, ADD COLUMN telephone TEXT,
+    ADD COLUMN email TEXT, ADD COLUMN siret TEXT, ADD COLUMN logo_url TEXT, ADD COLUMN couleur_principale TEXT, ADD COLUMN iban TEXT, ADD COLUMN bic TEXT;
+  CREATE TABLE paiements (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    organization_id UUID REFERENCES organizations(id), devis_id UUID, montant NUMERIC, date DATE, mode TEXT);
   CREATE TABLE payment_links (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), user_id UUID REFERENCES auth.users(id), token TEXT);
   ALTER TABLE payment_links ENABLE ROW LEVEL SECURITY;
   CREATE POLICY "Users manage own payment_links" ON payment_links FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);

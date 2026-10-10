@@ -152,7 +152,8 @@ export function encaisseEntre(documents = [], paiements = [], debut, fin) {
     // Sans ligne de paiement : payée en ligne (montant_paye) ou marquée « payée » à la main (total).
     const payeeMain = f.statut === 'payee' || f.statut === 'paye';
     const montant = Number(f.montant_paye) > 0 ? Number(f.montant_paye) : (payeeMain ? Number(f.total_ttc) || 0 : 0);
-    const quand = String(f.date_paiement || (payeeMain ? f.updated_at || '' : '')).slice(0, 10);
+    // L'app relit `updatedAt` (camelCase) : `updated_at` seul laissait ces factures hors de l'encaissé
+    const quand = String(f.date_paiement || (payeeMain ? f.updated_at || f.updatedAt || '' : '')).slice(0, 10);
     if (montant > 0 && dans(quand)) total += montant;
   }
   return Math.round(total * 100) / 100;

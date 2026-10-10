@@ -8,6 +8,7 @@
  * configuré dans Supabase, et domaine d'envoi vérifié côté Resend.
  */
 import supabase from '../supabaseClient';
+import { echapperHtml } from './echapperHtml';
 
 // Encode un Uint8Array en base64 sans dépasser la limite d'arguments de String.fromCharCode.
 function uint8ToBase64(bytes) {
@@ -169,11 +170,18 @@ export async function sendDocumentEmail({ to, subject, bodyHtml, fromName, reply
 /**
  * Construit un corps d'email HTML simple et lisible (compatible clients mail).
  */
-export function buildDocumentEmailBody({ doc, client, entreprise, couleur = '#f97316', montantFormatte, signatureUrl = null }) {
+export function buildDocumentEmailBody({ doc, client, entreprise, couleur = '#f97316', montantFormatte, signatureUrl = null, relance = null, lienPaiement = '' }) {
   const isFacture = doc.type === 'facture';
   const label = isFacture ? 'facture' : 'devis';
-  const clientNom = `${client.prenom || ''} ${client.nom || ''}`.trim() || 'Madame, Monsieur';
-  const nomEntreprise = entreprise?.nom || 'Votre artisan';
+  // Tout texte saisi est échappé (un nom contenant du HTML cassait l'e-mail, ou pire)
+  const clientNom = echapperHtml(`${client.prenom || ''} ${client.nom || ''}`.trim()) || 'Madame, Monsieur';
+  const nomEntreprise = echapperHtml(entreprise?.nom || 'Votre artisan');
+  const numero = echapperHtml(doc.numero);
+  const echeanceTexte = relance?.echeance ? new Date(relance.echeance).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
+  const lienBlock = isFacture && lienPaiement ? `
+    <div style="margin:24px 0;text-align:center">
+      <a href="${echapperHtml(lienPaiement)}" style="display:inline-block;background:${couleur};color:#ffffff;text-decoration:none;font-weight:bold;font-size:16px;padding:14px 28px;border-radius:10px">Régler en ligne</a>
+    </div>` : '';
   const validite = doc.validite || entreprise?.validiteDevis || 30;
 
   const signatureBlock = !isFacture && signatureUrl ? `
@@ -191,16 +199,20 @@ export function buildDocumentEmailBody({ doc, client, entreprise, couleur = '#f9
   return `
   <div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#1e293b;line-height:1.6;max-width:560px;margin:0 auto">
     <p>Bonjour ${clientNom},</p>
-    <p>Veuillez trouver ci-joint votre ${label} <strong>${doc.numero}</strong>${montantFormatte ? `, d'un montant de <strong>${montantFormatte}</strong>` : ''}.</p>
+    ${relance
+      ? `<p>Sauf erreur de ma part, la facture <strong>${numero}</strong>${echeanceTexte ? `, à régler au plus tard le ${echeanceTexte}` : ''}${relance.jours > 0 ? ` (échue depuis ${relance.jours} jour${relance.jours > 1 ? 's' : ''})` : ''}, reste à régler : <strong>${montantFormatte}</strong>.</p>
+    <p>Je vous la joins à nouveau. Si le règlement est déjà parti, merci de ne pas tenir compte de ce message.</p>`
+      : `<p>Veuillez trouver ci-joint votre ${label} <strong>${numero}</strong>${montantFormatte ? `, d'un montant de <strong>${montantFormatte}</strong>` : ''}.</p>`}
     ${signatureBlock}
+    ${lienBlock}
     ${isFacture
       ? `<p>Je vous remercie de votre confiance.</p>`
       : `<p>Ce devis reste valable <strong>${validite} jours</strong>. N'hésitez pas à me contacter pour toute question.</p>`}
     <p style="margin-top:24px;padding-top:16px;border-top:1px solid #e2e8f0">
       Cordialement,<br>
       <strong style="color:${couleur}">${nomEntreprise}</strong>
-      ${entreprise?.tel ? `<br>${entreprise.tel}` : ''}
-      ${entreprise?.email ? `<br>${entreprise.email}` : ''}
+      ${entreprise?.tel ? `<br>${echapperHtml(entreprise.tel)}` : ''}
+      ${entreprise?.email ? `<br>${echapperHtml(entreprise.email)}` : ''}
     </p>
   </div>`;
 }
@@ -209,10 +221,10 @@ export function buildDocumentEmailBody({ doc, client, entreprise, couleur = '#f9
  * Reçu de paiement envoyé au client quand l'artisan encaisse une facture.
  */
 export function buildPaymentReceiptEmailBody({ doc, client, entreprise, couleur = '#f97316', montantFormatte, modePaiement, datePaiement }) {
-  const clientNom = `${client.prenom || ''} ${client.nom || ''}`.trim() || 'Madame, Monsieur';
-  const nomEntreprise = entreprise?.nom || 'Votre artisan';
+  const clientNom = echapperHtml(`${client.prenom || ''} ${client.nom || ''}`.trim()) || 'Madame, Monsieur';
+  const nomEntreprise = echapperHtml(entreprise?.nom || 'Votre artisan');
   const modeLabels = { virement: 'virement bancaire', cheque: 'chèque', especes: 'espèces', cb: 'carte bancaire', carte: 'carte bancaire' };
-  const modeLabel = modeLabels[modePaiement] || modePaiement || '';
+  const modeLabel = echapperHtml(modeLabels[modePaiement] || modePaiement || '');
   const dateLabel = datePaiement
     ? new Date(datePaiement).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
     : new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -222,7 +234,7 @@ export function buildPaymentReceiptEmailBody({ doc, client, entreprise, couleur 
     <p>Bonjour ${clientNom},</p>
     <p>Nous confirmons la bonne réception de votre paiement :</p>
     <div style="background:#ecfdf5;border:1px solid #10b981;border-radius:12px;padding:16px 20px;margin:16px 0">
-      <p style="margin:0"><strong>Facture ${doc.numero}</strong></p>
+      <p style="margin:0"><strong>Facture ${echapperHtml(doc.numero)}</strong></p>
       <p style="margin:6px 0 0;font-size:22px;font-weight:bold;color:#059669">${montantFormatte}</p>
       <p style="margin:6px 0 0;font-size:13px;color:#475569">Reçu le ${dateLabel}${modeLabel ? ` — ${modeLabel}` : ''}</p>
     </div>
@@ -230,8 +242,8 @@ export function buildPaymentReceiptEmailBody({ doc, client, entreprise, couleur 
     <p style="margin-top:24px;padding-top:16px;border-top:1px solid #e2e8f0">
       Cordialement,<br>
       <strong style="color:${couleur}">${nomEntreprise}</strong>
-      ${entreprise?.tel ? `<br>${entreprise.tel}` : ''}
-      ${entreprise?.email ? `<br>${entreprise.email}` : ''}
+      ${entreprise?.tel ? `<br>${echapperHtml(entreprise.tel)}` : ''}
+      ${entreprise?.email ? `<br>${echapperHtml(entreprise.email)}` : ''}
     </p>
   </div>`;
 }

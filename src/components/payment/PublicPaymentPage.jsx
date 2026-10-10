@@ -161,7 +161,8 @@ export default function PublicPaymentPage({ payToken }) {
   const couleur = entreprise?.couleur || '#f97316';
   const totalTTC = facture.total_ttc || 0;
   const dejaPaye = facture.montant_paye || 0;
-  const reste = Math.max(totalTTC - dejaPaye, 0);
+  // Reste dû de la base (migration 081 : avoirs émis et paiements enregistrés déduits), sinon total − reçu
+  const reste = typeof facture.reste_du === 'number' ? facture.reste_du : Math.max(totalTTC - dejaPaye, 0);
   const resteCents = Math.round(reste * 100);
   // Acompte demandé via ?m= (borné au reste dû)
   const montantAcompte = Number.isInteger(montantParam) && montantParam > 0 && montantParam < resteCents
@@ -171,6 +172,9 @@ export default function PublicPaymentPage({ payToken }) {
   // Le client paie le montant exact : surtaxer un paiement par carte est interdit (art. L112-12 C. mon. fin.).
 
   const isPaid = facture.statut === 'payee';
+  // Annulée par un avoir, brouillon : rien à payer (avant : la page proposait de payer une facture annulée)
+  const nonPayable = !isPaid && facture.payable === false;
+  const annuleeParAvoir = nonPayable && Number(facture.montant_credite) >= totalTTC - 0.005;
 
   // ── Vérification en cours / succès ────────────────────────────────
   if (verifyState === 'verifying') {
@@ -179,6 +183,25 @@ export default function PublicPaymentPage({ payToken }) {
         <Loader2 className="w-10 h-10 animate-spin" style={{ color: couleur }} />
         <p className="text-slate-600 text-sm">Confirmation de votre paiement...</p>
       </div>
+    );
+  }
+
+  if (nonPayable && verifyState !== 'verified') {
+    return (
+      <CenteredCard>
+        <h1 className="text-2xl font-bold text-slate-900 mb-2">
+          {annuleeParAvoir ? 'Facture annulée' : 'Aucun paiement à effectuer'}
+        </h1>
+        <p className="text-slate-600 mb-6">
+          {annuleeParAvoir
+            ? `Cette facture a été annulée par un avoir de ${entreprise?.nom || 'votre artisan'}. Vous n'avez rien à payer.`
+            : `Cette facture n'est pas à régler en ligne. Pour toute question, contactez ${entreprise?.nom || 'votre artisan'}.`}
+        </p>
+        <div className="bg-slate-50 rounded-xl p-4 text-left space-y-2 mb-6">
+          <SummaryRow label="Facture" value={facture.numero} />
+        </div>
+        <SecureFooter />
+      </CenteredCard>
     );
   }
 

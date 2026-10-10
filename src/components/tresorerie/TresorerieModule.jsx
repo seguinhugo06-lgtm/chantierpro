@@ -42,6 +42,7 @@ import Carte from '../ui/Carte';
 import { Bouton, BoutonIcone } from '../ui/Bouton';
 import { remettreFichier } from '../../lib/natif';
 import { statutFacture, resteAPayer, joursDeRetard, echeance } from '../../lib/paiementsFacture';
+import { jourLocal } from '../../lib/dates';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -359,7 +360,7 @@ function ProjectionChart({ baseline, scenario, isDark, couleur }) {
 function PrevisionModal({ isOpen, onClose, onSave, editItem, isDark, couleur }) {
   const [form, setForm] = useState({
     type: 'entree', description: '', montant: '',
-    date: new Date().toISOString().slice(0, 10),
+    date: jourLocal(),
     categorie: 'Client', recurrence: 'unique',
   });
 
@@ -369,12 +370,12 @@ function PrevisionModal({ isOpen, onClose, onSave, editItem, isDark, couleur }) 
         type: editItem.type || 'entree',
         description: editItem.description || '',
         montant: editItem.montant?.toString() || '',
-        date: editItem.date || new Date().toISOString().slice(0, 10),
+        date: editItem.date || jourLocal(),
         categorie: editItem.categorie || 'Client',
         recurrence: editItem.recurrence || 'unique',
       });
     } else {
-      setForm({ type: 'entree', description: '', montant: '', date: new Date().toISOString().slice(0, 10), categorie: 'Client', recurrence: 'unique' });
+      setForm({ type: 'entree', description: '', montant: '', date: jourLocal(), categorie: 'Client', recurrence: 'unique' });
     }
   }, [editItem, isOpen]);
 
@@ -472,7 +473,7 @@ function PrevisionModal({ isOpen, onClose, onSave, editItem, isDark, couleur }) 
 function MouvementModal({ isOpen, onClose, onSave, editItem, isDark, couleur }) {
   const [form, setForm] = useState({
     type: 'sortie', description: '', montant: '',
-    date: new Date().toISOString().slice(0, 10),
+    date: jourLocal(),
     categorie: 'Divers', tauxTva: 20, autoliquidation: false,
     isRecurring: false, recurringFrequency: 'mensuel',
     notes: '',
@@ -484,7 +485,7 @@ function MouvementModal({ isOpen, onClose, onSave, editItem, isDark, couleur }) 
         type: editItem.type || 'sortie',
         description: editItem.description || '',
         montant: editItem.montant?.toString() || '',
-        date: editItem.date || new Date().toISOString().slice(0, 10),
+        date: editItem.date || jourLocal(),
         categorie: editItem.categorie || 'Divers',
         tauxTva: editItem.tauxTva ?? 20,
         autoliquidation: editItem.autoliquidation || false,
@@ -493,7 +494,7 @@ function MouvementModal({ isOpen, onClose, onSave, editItem, isDark, couleur }) 
         notes: editItem.notes || '',
       });
     } else {
-      setForm({ type: 'sortie', description: '', montant: '', date: new Date().toISOString().slice(0, 10), categorie: 'Divers', tauxTva: 20, autoliquidation: false, isRecurring: false, recurringFrequency: 'mensuel', notes: '' });
+      setForm({ type: 'sortie', description: '', montant: '', date: jourLocal(), categorie: 'Divers', tauxTva: 20, autoliquidation: false, isRecurring: false, recurringFrequency: 'mensuel', notes: '' });
     }
   }, [editItem, isOpen]);
 
@@ -703,7 +704,7 @@ export default function TresorerieModule({
         type: 'sortie',
         description: label,
         montant: Number(montant),
-        date: date.toISOString().slice(0, 10),
+        date: jourLocal(date),
         categorie: 'Divers',
         recurrence: 'mensuel',
         statut: 'prevu',
@@ -728,7 +729,8 @@ export default function TresorerieModule({
 
     const items = facturesImpayees.map(f => {
       const ech = echeance(f);
-      const echeance_ = ech ? ech.toISOString().slice(0, 10) : '';
+      // Jour local (avant : toISOString d'un minuit local = la veille en UTC, échéance affichée un jour trop tôt)
+      const echeance_ = ech ? jourLocal(ech) : '';
       const reste = resteAPayer(f, paiements);
       const joursRetard = joursDeRetard(f, paiements, now);
       const client = clients.find(c => c.id === f.client_id);
@@ -820,7 +822,7 @@ export default function TresorerieModule({
         type: 'entree',
         description: `Facture ${f.numero || f.id?.slice(-6) || '—'} – ${formatClientName(client)}`,
         montant: reste,
-        date: f.date_echeance || f.date_validite || f.date || new Date().toISOString().slice(0, 10),
+        date: f.date_echeance || f.date_validite || f.date || jourLocal(),
         categorie: 'Client',
         recurrence: 'unique',
         statut: (f.statut === 'payee' || f.statut === 'paye') ? 'paye' : 'prevu',
@@ -856,7 +858,7 @@ export default function TresorerieModule({
         type: 'sortie',
         description: dep.description || dep.libelle || `Dépense ${dep.fournisseur || dep.categorie || ''}`.trim(),
         montant: dep.montant,
-        date: dep.date || dep.createdAt || new Date().toISOString().slice(0, 10),
+        date: dep.date || dep.createdAt || jourLocal(),
         categorie: dep.categorie || 'Fournisseur',
         recurrence: 'unique',
         statut: 'paye',
@@ -894,7 +896,7 @@ export default function TresorerieModule({
         type: 'entree',
         description: `Devis signé ${d.numero || d.id?.slice(-6) || '—'} – ${formatClientName(client)}`,
         montant: d.total_ttc || 0,
-        date: d.date_validite || d.date || new Date().toISOString().slice(0, 10),
+        date: d.date_validite || d.date || jourLocal(),
         categorie: 'Client',
         recurrence: 'unique',
         statut: 'prevu',
@@ -933,7 +935,7 @@ export default function TresorerieModule({
         type: 'entree',
         description: `Paiement reçu ${p.documentNumero || p.document || ''} – ${montant.toLocaleString('fr-FR')} €`,
         montant,
-        date: p.date || p.createdAt?.slice?.(0, 10) || new Date().toISOString().slice(0, 10),
+        date: p.date || p.createdAt?.slice?.(0, 10) || jourLocal(),
         categorie: 'Client',
         statut: 'paye',
         linkedPaiementId: p.id,
@@ -1093,7 +1095,7 @@ export default function TresorerieModule({
       type: 'sortie',
       description: charge.label,
       montant: charge.montantMoyen,
-      date: date.toISOString().slice(0, 10),
+      date: jourLocal(date),
       categorie: charge.categorie || 'Divers',
       recurrence: charge.recurrence || 'mensuel',
       statut: 'prevu',
@@ -1155,7 +1157,7 @@ export default function TresorerieModule({
       await addPrevision({
         ...tmpl,
         id: genId(),
-        date: date.toISOString().slice(0, 10),
+        date: jourLocal(date),
         statut: 'prevu',
         createdAt: new Date().toISOString(),
       });

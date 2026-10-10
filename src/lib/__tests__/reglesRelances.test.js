@@ -1,0 +1,44 @@
+import { describe, it, expect } from 'vitest';
+import { estClientPro, creditsParFacture, paiementsParDocument, resteDu, relancable, penalites } from '../../../supabase/functions/send-scheduled-relances/regles.ts';
+
+const facture = (o) => ({ id: 'f1', type: 'facture', facture_type: 'totale', statut: 'envoye', total_ttc: 1000, ...o });
+
+describe('relances automatiques (cron) : règles', () => {
+  it('relance le reste dû : acomptes reçus et avoirs émis déduits', () => {
+    const avoir = { id: 'a1', type: 'facture', facture_type: 'avoir', statut: 'envoye', avoir_source_id: 'f1', total_ttc: -300 };
+    const credits = creditsParFacture([facture(), avoir]);
+    const paiements = paiementsParDocument([{ devis_id: 'f1', montant: 400 }]);
+    expect(resteDu(facture(), credits, paiements)).toBe(300);
+    expect(resteDu(facture({ montant_paye: 500 }), credits, paiements)).toBe(200); // le plus grand des deux reçus
+  });
+
+  it('ne relance jamais un avoir, ni une facture soldée ou entièrement créditée', () => {
+    const vide = new Map();
+    expect(relancable({ id: 'a1', type: 'facture', facture_type: 'avoir', total_ttc: -300 }, vide, vide)).toBe(false);
+    expect(relancable(facture({ montant_paye: 1000 }), vide, vide)).toBe(false);
+    const avoirTotal = { facture_type: 'avoir', statut: 'envoye', avoir_source_id: 'f1', total_ttc: -1000 };
+    expect(relancable(facture(), creditsParFacture([avoirTotal]), vide)).toBe(false);
+    expect(relancable(facture(), vide, vide)).toBe(true);
+  });
+
+  it('un avoir en brouillon ne crédite rien', () => {
+    const brouillon = { facture_type: 'avoir', statut: 'brouillon', avoir_source_id: 'f1', total_ttc: -1000 };
+    expect(resteDu(facture(), creditsParFacture([brouillon]), new Map())).toBe(1000);
+  });
+
+  it('pénalités et 40 € : professionnel seulement, sur le reste dû', () => {
+    expect(penalites(600, 30, false)).toEqual({ penalites: 0, indemnite: 0, totalDu: 600 });
+    const pro = penalites(600, 30, true);
+    expect(pro.indemnite).toBe(40);
+    expect(pro.penalites).toBe(6.12); // 600 × 12,4 % × 30/365
+    expect(pro.totalDu).toBe(646.12);
+    expect(penalites(600, 0, true).indemnite).toBe(0);
+  });
+
+  it('client professionnel : la catégorie l\'emporte ; sans rien, particulier', () => {
+    expect(estClientPro({ categorie: 'Professionnel' })).toBe(true);
+    expect(estClientPro({ categorie: 'Particulier', entreprise: 'SCI X' })).toBe(false);
+    expect(estClientPro({ entreprise: 'SARL Dupuy' })).toBe(true);
+    expect(estClientPro({})).toBe(false);
+  });
+});

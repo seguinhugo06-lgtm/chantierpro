@@ -3,6 +3,7 @@
  * No side effects, no React dependencies, no Supabase calls.
  * @module relanceUtils
  */
+import { resteAPayer } from './paiementsFacture';
 import { urlPublique } from './urlPublique';
 
 // ============ CONSTANTS ============
@@ -98,6 +99,11 @@ export function isDocumentEligible(doc, exclusions = [], config = {}) {
   const validStatuts = ['envoye', 'en_attente', 'vu'];
   const statut = (doc.statut || '').toLowerCase();
   if (!validStatuts.includes(statut)) return false;
+
+  // Un avoir ne se relance jamais ; une facture soldée (payée ou créditée par avoir) non plus
+  if (doc.facture_type === 'avoir') return false;
+  if (doc.total_ttc != null && doc.total_ttc !== '' && Number(doc.total_ttc) <= 0) return false;
+  if (doc.type === 'facture' && resteAPayer(doc, []) <= 0.005) return false;
 
   // Must have a client
   if (!doc.client_id) return false;
@@ -247,6 +253,13 @@ function buildVariableMap(doc, client, entreprise) {
   const now = new Date();
   const baseDate = doc ? getBaseDate(doc) : null;
   const joursRetard = baseDate ? Math.max(0, Math.floor((now - baseDate) / (1000 * 60 * 60 * 24))) : 0;
+  // Ce qui est réellement dû : le total moins les paiements reçus et les avoirs émis (une facture), le
+  // total (un devis). Pénalités et indemnité de 40 € : client professionnel seulement (art. L441-10 et
+  // D441-5 C. com.), sur ce reste dû. Avant : le total TTC, et 40 € réclamés aux particuliers.
+  const du = doc?.type === 'facture' ? resteAPayer(doc, []) : (Number(doc?.total_ttc) || 0);
+  const pro = estClientPro(client);
+  const taux = Number(entreprise?.tauxPenalites) || DEFAULT_PENALTY_RATE;
+  const pen = pro && joursRetard > 0 ? calculatePenalties(du, joursRetard, taux) : { penalites: 0, totalDu: du };
 
   return {
     // Client
@@ -259,7 +272,10 @@ function buildVariableMap(doc, client, entreprise) {
     facture_numero: doc?.numero || '',
     numero: doc?.numero || '',
     montant_ttc: formatMoneyValue(doc?.total_ttc || doc?.montant_ttc || 0),
-    montant: formatMoneyValue(doc?.total_ttc || doc?.montant_ttc || doc?.total_ht || 0),
+    // « montant » et « reste_du » : ce qui reste à payer (une facture partiellement réglée n'est pas relancée
+    // pour son total)
+    montant: formatMoneyValue(du),
+    reste_du: formatMoneyValue(du),
     montant_ht: formatMoneyValue(doc?.total_ht || 0),
     // Dates
     'date_échéance': doc?.date_echeance || doc?.dateEcheance
@@ -282,12 +298,8 @@ function buildVariableMap(doc, client, entreprise) {
     entreprise_siret: entreprise?.siret || '',
     entreprise_adresse: entreprise?.adresse || '',
     // Pénalités (computed)
-    penalites: doc?.total_ttc
-      ? formatMoneyValue(calculatePenalties(doc.total_ttc, joursRetard).penalites)
-      : '0,00',
-    total_du: doc?.total_ttc
-      ? formatMoneyValue(calculatePenalties(doc.total_ttc, joursRetard).totalDu)
-      : '0,00',
+    penalites: formatMoneyValue(pen.penalites),
+    total_du: formatMoneyValue(pen.totalDu),
     // Lien paiement en ligne
     lien_paiement: doc?.payment_token
       ? urlPublique(`/pay/${doc.payment_token}`)
