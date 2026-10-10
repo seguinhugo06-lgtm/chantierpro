@@ -34,6 +34,8 @@ export const REGLAGES_SANS_COLONNE = {
   mediateurContact: '',
   decennaleAssureurAdresse: '',
   decennaleZone: '',
+  // Travaux non soumis à l'assurance décennale (dépannage, entretien), déclaré par l'artisan : l'envoi ne l'exige plus (D-24)
+  decennaleNonSoumis: false,
   tauxPenalites: '',
   modePaiementDefaut: '',
   conditionsPaiementDefaut: '',

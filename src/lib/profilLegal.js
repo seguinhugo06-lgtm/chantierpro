@@ -1,11 +1,12 @@
 /**
  * Profil de l'entreprise exigé avant d'envoyer un devis ou une facture — SOURCE UNIQUE.
- * SIRET, adresse, nom, forme juridique, nom de l'entrepreneur individuel, décennale.
+ * SIRET, adresse, nom, forme juridique, nom de l'entrepreneur individuel, décennale (sauf travaux non
+ * soumis, D-24), téléphone et e-mail (D-23).
  *
  * Lu par :
  * - le contrôle d'envoi et de téléchargement (DevisPage : validateDevisForSend, getLegalIssues) ;
  * - les bandeaux « profil incomplet » (liste des devis, DevisComposer) ;
- * - la jauge « Profil complété » des Réglages.
+ * - la jauge « Profil complété » des Réglages et l'étape « Configurer mon entreprise » de l'accueil.
  * Une jauge à 100 % veut donc dire que le profil ne bloque plus l'envoi.
  *
  * Avant ce module, chaque écran tenait sa liste : la jauge pouvait afficher 100 % sans
@@ -77,8 +78,31 @@ export const PROFIL_EXIGE = [
     // C. assur. L241-1 : l'obligation vise les travaux de construction (C. civ. 1792), pas tout artisan du
     // bâtiment (dépannage, entretien : non). « Obligatoire pour les artisans BTP » était inexact.
     pourquoi: 'obligatoire pour les travaux de construction',
-    // L'assureur ET le numéro de police, comme le contrôle d'envoi l'a toujours exigé
-    estRempli: (e) => rempli(e.decennaleAssureur || e.decennale_assureur) && rempli(e.decennaleNumero || e.decennale_numero),
+    // L'assureur ET le numéro de police, comme le contrôle d'envoi l'a toujours exigé ; ou la case
+    // « mes travaux ne sont pas soumis à l'assurance décennale », cochée sous la responsabilité de l'artisan (D-24)
+    estRempli: (e) => e.decennaleNonSoumis === true
+      || (rempli(e.decennaleAssureur || e.decennale_assureur) && rempli(e.decennaleNumero || e.decennale_numero)),
+  },
+  {
+    // Téléphone et e-mail du professionnel dus au client particulier avant contrat (C. conso. L111-1 4°, R111-1 1°) ;
+    // hors établissement, à peine de nullité (L221-9, L242-1), y compris pour un professionnel d'au plus 5 salariés
+    // qui commande hors de son activité (L221-3). Exigés pour tout client : tout artisan en a (D-23).
+    id: 'no_tel',
+    champ: 'tel',
+    onglet: 'identite',
+    libelle: 'Téléphone',
+    manque: 'Téléphone de l\'entreprise manquant',
+    pourquoi: 'information due à vos clients',
+    estRempli: (e) => rempli(e.tel || e.telephone),
+  },
+  {
+    id: 'no_email',
+    champ: 'email',
+    onglet: 'identite',
+    libelle: 'E-mail',
+    manque: 'E-mail de l\'entreprise manquant',
+    pourquoi: 'information due à vos clients',
+    estRempli: (e) => rempli(e.email),
   },
 ];
 

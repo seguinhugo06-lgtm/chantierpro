@@ -377,13 +377,9 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
   
   const COULEURS = ['#f97316', '#ef4444', '#22c55e', '#3b82f6', '#8b5cf6', '#ec4899', '#14b8a6', '#64748b'];
 
-  // Calcul score complétude. « Obligatoires » = ce qui bloque l'envoi (lib/profilLegal, la liste du
-  // contrôle d'envoi) + téléphone et e-mail, à donner au client sans que leur absence bloque l'envoi.
-  // Avant, la décennale n'était que « recommandée » ici : 100 % affiché, envoi bloqué.
-  const CONTACT_FIELDS = [
-    { key: 'tel', label: 'Téléphone', tab: 'identite' },
-    { key: 'email', label: 'Email', tab: 'identite' },
-  ];
+  // Calcul score complétude. « Obligatoires » = ce qui bloque l'envoi (lib/profilLegal, la liste du contrôle
+  // d'envoi, téléphone et e-mail compris : règle d'un client particulier, D-23). 100 % = l'envoi n'est bloqué
+  // pour aucun client. Avant, la décennale n'était que « recommandée » ici : 100 % affiché, envoi bloqué.
   const RECOMMENDED_FIELDS = [
     { key: 'codeApe', label: 'Code APE', tab: 'legal' },
     { key: 'rcsVille', label: 'Ville RCS', tab: 'legal' },
@@ -391,20 +387,19 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
     { key: 'tvaIntra', label: 'N° TVA Intracommunautaire', tab: 'legal' },
     { key: 'rcProAssureur', label: 'Assureur RC Pro', tab: 'assurances' },
     { key: 'rcProNumero', label: 'N° Police RC Pro', tab: 'assurances' },
-    { key: 'decennaleAssureurAdresse', label: 'Coordonnées de l\'assureur (décennale)', tab: 'assurances' },
-    { key: 'decennaleZone', label: 'Zone couverte (décennale)', tab: 'assurances' },
+    // Sans objet quand l'artisan déclare ses travaux non soumis à la décennale (D-24)
+    ...(entreprise.decennaleNonSoumis ? [] : [
+      { key: 'decennaleAssureurAdresse', label: 'Coordonnées de l\'assureur (décennale)', tab: 'assurances' },
+      { key: 'decennaleZone', label: 'Zone couverte (décennale)', tab: 'assurances' },
+    ]),
     { key: 'mediateur', label: 'Médiateur de la consommation', tab: 'documents' },
   ];
   const NOM_ONGLET = { identite: 'Identité', legal: 'Légal', assurances: 'Assurances', documents: 'Documents' };
   const estVide = (f) => !entreprise[f.key] || String(entreprise[f.key]).trim() === '';
-  const missingRequired = [
-    ...profilManquant(entreprise).map(m => ({ key: m.champ, label: m.libelle, tab: m.onglet })),
-    ...CONTACT_FIELDS.filter(estVide),
-  ];
+  const missingRequired = profilManquant(entreprise).map(m => ({ key: m.champ, label: m.libelle, tab: m.onglet }));
   const missingRecommended = RECOMMENDED_FIELDS.filter(estVide);
   const missingFields = [...missingRequired, ...missingRecommended];
-  const totalRequired = PROFIL_EXIGE.length + CONTACT_FIELDS.length;
-  const completude = Math.round(((totalRequired - missingRequired.length) / totalRequired) * 100);
+  const completude = Math.round(((PROFIL_EXIGE.length - missingRequired.length) / PROFIL_EXIGE.length) * 100);
   // Le menu des champs manquants est ancré à droite de la jauge : à 375 px il sortait de 77 px à gauche
   const profileDetailRef = useRef(null);
   useKeepInViewport(profileDetailRef, showProfileDetail && completude < 100);
@@ -1016,9 +1011,11 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             </div>
           )}
 
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
-            <p className="font-medium text-amber-800">⚠️  Obligatoire pour les artisans du BTP</p>
-            <p className="text-sm text-amber-700 mt-1">L'assurance RC Pro et la garantie décennale doivent figurer sur tous vos devis et factures (Article L243-1 du Code des assurances).</p>
+          {/* C. assur. L241-1 (obligation : travaux de construction) et L243-2 (attestation jointe aux devis et factures) ;
+              la RC Pro n'est pas obligatoire dans le bâtiment. Avant : « obligatoire pour les artisans du BTP », « L243-1 ». */}
+          <div className="rounded-xl p-4 bg-alerte-fond text-alerte-texte">
+            <p className="font-medium">Décennale : obligatoire pour les travaux de construction</p>
+            <p className="text-sm mt-1">Si vous en faites, même parfois, joignez votre attestation à vos devis et factures. La RC Pro est conseillée, pas obligatoire.</p>
           </div>
 
           <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
@@ -1035,15 +1032,15 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium mb-1">Compagnie d'assurance <span className="text-red-500">*</span></label>
+                <label className="block text-sm font-medium mb-1">Compagnie d'assurance</label>
                 <DebouncedInput id="settings-field-rcPro" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="AXA, MAAF, MMA..." value={entreprise.rcProAssureur || ''} onChange={val => updateEntreprise(p => ({...p, rcProAssureur: val}))} />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Numéro de contrat <span className="text-red-500">*</span></label>
+                <label className="block text-sm font-medium mb-1">Numéro de contrat</label>
                 <DebouncedInput className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="RC-123456789" value={entreprise.rcProNumero || ''} onChange={val => updateEntreprise(p => ({...p, rcProNumero: val}))} />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Date de validité <span className="text-red-500">*</span></label>
+                <label className="block text-sm font-medium mb-1">Date de validité</label>
                 <input type="date" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={entreprise.rcProValidite || ''} onChange={e => updateEntreprise(p => ({...p, rcProValidite: e.target.value}))} />
               </div>
               <div>
@@ -1072,17 +1069,28 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                 return <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">✓ Valide</span>;
               })()}
             </div>
+            {/* D-24 : l'obligation de décennale (C. assur. L241-1) vise les travaux de construction, pas le dépannage
+                ni l'entretien. Déclaré par l'artisan, sous sa responsabilité : l'envoi n'exige plus la décennale. */}
+            <label className="flex items-start gap-3 min-h-11 mb-4 cursor-pointer">
+              <input id="settings-field-decennaleNonSoumis" type="checkbox" className="mt-0.5 w-5 h-5 shrink-0" style={{ accentColor: couleur }}
+                checked={entreprise.decennaleNonSoumis === true}
+                onChange={e => updateEntreprise(p => ({ ...p, decennaleNonSoumis: e.target.checked }))} />
+              <span className="text-sm">
+                <span className="font-medium text-encre">Je ne fais que du dépannage, de l'entretien ou de petites réparations : je ne suis pas soumis à la décennale</span>
+                <span className="block text-encre-3">À cocher seulement si vous ne faites jamais de construction, d'extension ni de rénovation importante (par exemple refaire une toiture ou toute l'électricité d'un logement). En cas de doute, demandez à votre assureur. Vous le déclarez sous votre responsabilité.</span>
+              </span>
+            </label>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium mb-1">Compagnie d'assurance <span className="text-red-500">*</span></label>
+                <label className="block text-sm font-medium mb-1">Compagnie d'assurance {entreprise.decennaleNonSoumis ? null : <span className="text-red-500">*</span>}</label>
                 <DebouncedInput id="settings-field-decennaleAssureur" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="SMABTP, AXA..." value={entreprise.decennaleAssureur || ''} onChange={val => updateEntreprise(p => ({...p, decennaleAssureur: val}))} />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Numéro de contrat <span className="text-red-500">*</span></label>
+                <label className="block text-sm font-medium mb-1">Numéro de contrat {entreprise.decennaleNonSoumis ? null : <span className="text-red-500">*</span>}</label>
                 <DebouncedInput className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="DEC-987654321" value={entreprise.decennaleNumero || ''} onChange={val => updateEntreprise(p => ({...p, decennaleNumero: val}))} />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Date de validité <span className="text-red-500">*</span></label>
+                <label className="block text-sm font-medium mb-1">Date de validité {entreprise.decennaleNonSoumis ? null : <span className="text-red-500">*</span>}</label>
                 <input type="date" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={entreprise.decennaleValidite || ''} onChange={e => updateEntreprise(p => ({...p, decennaleValidite: e.target.value}))} />
               </div>
               <div>
@@ -1091,11 +1099,11 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
               </div>
               {/* Mentions obligatoires sur devis et factures : coordonnées de l'assureur et couverture géographique */}
               <div>
-                <label className="block text-sm font-medium mb-1">Coordonnées de l'assureur <span className="text-red-500">*</span></label>
+                <label className="block text-sm font-medium mb-1">Coordonnées de l'assureur {entreprise.decennaleNonSoumis ? null : <span className="text-red-500">*</span>}</label>
                 <DebouncedInput className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="Adresse de la compagnie" value={entreprise.decennaleAssureurAdresse || ''} onChange={val => updateEntreprise(p => ({...p, decennaleAssureurAdresse: val}))} />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Zone géographique couverte <span className="text-red-500">*</span></label>
+                <label className="block text-sm font-medium mb-1">Zone géographique couverte {entreprise.decennaleNonSoumis ? null : <span className="text-red-500">*</span>}</label>
                 <DebouncedInput className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="France métropolitaine" value={entreprise.decennaleZone || ''} onChange={val => updateEntreprise(p => ({...p, decennaleZone: val}))} />
               </div>
             </div>
@@ -1944,11 +1952,12 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             {getRCSComplet() && <p>{getRCSComplet()}</p>}
             {entreprise.tvaIntra && <p>TVA Intracommunautaire: {entreprise.tvaIntra}</p>}
             {entreprise.tel && <p>Tél: {entreprise.tel} {entreprise.email && `· ${entreprise.email}`}</p>}
-            {(entreprise.rcProAssureur || entreprise.decennaleAssureur) && (
+            {/* Même règle que les documents : la décennale n'apparaît qu'avec l'assureur ET le n° de police */}
+            {(entreprise.rcProAssureur || (entreprise.decennaleAssureur && entreprise.decennaleNumero)) && (
               <p className="pt-1 text-xs">
                 {entreprise.rcProAssureur && `RC Pro: ${entreprise.rcProAssureur} N°${entreprise.rcProNumero}`}
-                {entreprise.rcProAssureur && entreprise.decennaleAssureur && ' · '}
-                {entreprise.decennaleAssureur && `Décennale: ${entreprise.decennaleAssureur} N°${entreprise.decennaleNumero}${entreprise.decennaleValidite ? ` (Valide: ${dateLue(entreprise.decennaleValidite).toLocaleDateString('fr-FR')})` : ''}`}
+                {entreprise.rcProAssureur && entreprise.decennaleAssureur && entreprise.decennaleNumero && ' · '}
+                {entreprise.decennaleAssureur && entreprise.decennaleNumero && `Décennale: ${entreprise.decennaleAssureur} N°${entreprise.decennaleNumero}${entreprise.decennaleValidite ? ` (Valide: ${dateLue(entreprise.decennaleValidite).toLocaleDateString('fr-FR')})` : ''}`}
               </p>
             )}
           </div>

@@ -34,4 +34,10 @@ describe('entreprise : ce qui est saisi dans les Paramètres revient au recharge
     for (const cle of Object.keys(REGLAGES_SANS_COLONNE)) expect(envoye).not.toHaveProperty(cle);
     expect(envoye).not.toHaveProperty('acompte_defaut'); // colonne inexistante en production
   });
+
+  it('travaux non soumis à la décennale (D-24) : non par défaut, la case cochée est écrite puis relue', () => {
+    expect(fromSupabase(LIGNE).decennaleNonSoumis).toBe(false);
+    expect(toSupabase({ ...fromSupabase(LIGNE), decennaleNonSoumis: true }).__reglages).toMatchObject({ decennaleNonSoumis: true });
+    expect(fromSupabase({ ...LIGNE, settings_json: { reglages: { decennaleNonSoumis: true } } }).decennaleNonSoumis).toBe(true);
+  });
 });

@@ -1879,8 +1879,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     ${getRCSComplet() ? ` | ${echap(getRCSComplet())}` : ''}<br>
     ${E?.tvaIntra ? `TVA Intracommunautaire: ${E.tvaIntra}` : ''}<br>
     <div class="assurances">
-      ${E?.decennaleAssureur ? `Assurance décennale: ${E.decennaleAssureur}${E.decennaleAssureurAdresse ? ` (${E.decennaleAssureurAdresse})` : ''} N°${E.decennaleNumero}${E.decennaleValidite ? ` (Valide jusqu'au ${dateLue(E.decennaleValidite).toLocaleDateString('fr-FR')})` : ''}${E.decennaleZone ? ` — Zone : ${E.decennaleZone}` : ''}${E.decennaleActivites ? ` — Activités : ${E.decennaleActivites}` : ''}` : ''}
-      ${E?.decennaleAssureur && E?.rcProAssureur ? '<br>' : ''}
+      ${E?.decennaleAssureur && E?.decennaleNumero ? `Assurance décennale: ${E.decennaleAssureur}${E.decennaleAssureurAdresse ? ` (${E.decennaleAssureurAdresse})` : ''} N°${E.decennaleNumero}${E.decennaleValidite ? ` (Valide jusqu'au ${dateLue(E.decennaleValidite).toLocaleDateString('fr-FR')})` : ''}${E.decennaleZone ? ` — Zone : ${E.decennaleZone}` : ''}${E.decennaleActivites ? ` — Activités : ${E.decennaleActivites}` : ''}` : ''}
+      ${E?.decennaleAssureur && E?.decennaleNumero && E?.rcProAssureur ? '<br>' : ''}
       ${E?.rcProAssureur ? `RC Pro: ${E.rcProAssureur} N°${E.rcProNumero}${E.rcProValidite ? ` (Valide jusqu'au ${dateLue(E.rcProValidite).toLocaleDateString('fr-FR')})` : ''}${E.rcProMontantGarantie ? ` — Garantie: ${E.rcProMontantGarantie} €` : ''}${E.rcProZone ? ` — Zone: ${E.rcProZone}` : ''}` : ''}
       ${E?.mentionRGE !== false && Array.isArray(E?.labels) && E.labels.filter(l => l.actif).length > 0 ? '<br>' + E.labels.filter(l => l.actif).map(l => `${echap(l.nom)}${l.numero ? ` N°${echap(l.numero)}` : ''}${l.organisme ? ` (${echap(l.organisme)})` : ''}${l.dateExpiration ? ` — Valide jusqu'au ${dateLue(l.dateExpiration).toLocaleDateString('fr-FR')}` : ''}`).join('<br>') : ''}
     </div>
