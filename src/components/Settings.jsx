@@ -570,7 +570,8 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             >
               <div className="text-right shrink-0">
                 <p className="text-sm font-medium text-encre-2">Profil complété</p>
-                <p className={`text-xl font-bold tabular-nums ${completude >= 80 ? 'text-succes-texte' : completude >= 50 ? 'text-alerte-texte' : 'text-danger-texte'}`}>{completude} %</p>
+                {/* Vert seulement à 100 %, comme la note de l'onglet Facture 2026 : avant, 88 % s'affichait en vert, envoi bloqué */}
+                <p className={`text-xl font-bold tabular-nums ${completude >= 100 ? 'text-succes-texte' : completude >= 50 ? 'text-alerte-texte' : 'text-danger-texte'}`}>{completude} %</p>
                 {/* Ce qui reste dû hors pourcentage se dit sous le chiffre, plutôt qu'un « 100 % » seul */}
                 {completude === 100 && missingSelonSituation.length > 0 && (
                   <p className="text-xs font-medium text-alerte-texte max-w-[10rem] ml-auto">
@@ -581,14 +582,14 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                 )}
               </div>
               <div className="w-16 sm:w-32 h-2 rounded-full overflow-hidden shrink-0 bg-surface-2">
-                <div className={`h-full rounded-full transition-all duration-500 ${completude >= 80 ? 'bg-succes-point' : completude >= 50 ? 'bg-alerte-point' : 'bg-danger-point'}`} style={{ width: `${completude}%` }} />
+                <div className={`h-full rounded-full transition-all duration-500 ${completude >= 100 ? 'bg-succes-point' : completude >= 50 ? 'bg-alerte-point' : 'bg-danger-point'}`} style={{ width: `${completude}%` }} />
               </div>
               {menuProfil && <ChevronDown size={16} aria-hidden="true" className="text-encre-3" />}
             </button>
 
             {/* Champs manquants, en trois groupes (lib/jaugeProfil) */}
             {showProfileDetail && menuProfil && (
-              <div ref={profileDetailRef} className="absolute right-0 top-full mt-2 w-80 max-w-[calc(100vw-2rem)] max-h-[70vh] overflow-y-auto rounded-xl border shadow-xl z-50 bg-surface border-bord">
+              <div ref={profileDetailRef} className="absolute right-0 top-full mt-2 w-80 max-w-[calc(100vw-2rem)] max-h-[60vh] overflow-y-auto rounded-xl border shadow-xl z-50 bg-surface border-bord">
                 <div className="p-4 space-y-3">
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-sm font-semibold text-encre">Champs manquants ({nbManquants})</p>
@@ -1281,15 +1282,17 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
           {/* Médiateur de la consommation */}
           <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
             <h3 className="font-semibold mb-1">Médiateur de la consommation</h3>
-            <p className={`text-sm mb-4 ${textMuted}`}>Obligatoire depuis 2016 (Art. L612-1 du Code de la consommation)</p>
+            {/* Pas de médiation de la consommation entre professionnels (C. conso. L611-3 1°) */}
+            <p className={`text-sm mb-4 ${textMuted}`}>Obligatoire si vous travaillez pour des particuliers (C. conso. L612-1 et L616-1)</p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label htmlFor="settings-field-mediateur" className="block text-sm font-medium mb-1">Nom du médiateur</label>
                 <DebouncedInput id="settings-field-mediateur" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="Médiation de la consommation" value={entreprise.mediateur || ''} onChange={val => updateEntreprise(p => ({...p, mediateur: val}))} />
               </div>
               <div>
-                <label htmlFor="settings-field-mediateurContact" className="block text-sm font-medium mb-1">Site internet du médiateur</label>
-                <DebouncedInput id="settings-field-mediateurContact" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="www.mediateur-consommation.fr" value={entreprise.mediateurContact || ''} onChange={val => updateEntreprise(p => ({...p, mediateurContact: val}))} />
+                {/* R616-1 : les coordonnées du médiateur et l'adresse de son site internet */}
+                <label htmlFor="settings-field-mediateurContact" className="block text-sm font-medium mb-1">Site internet et adresse du médiateur</label>
+                <DebouncedInput id="settings-field-mediateurContact" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="www.… — adresse postale" value={entreprise.mediateurContact || ''} onChange={val => updateEntreprise(p => ({...p, mediateurContact: val}))} />
               </div>
             </div>
           </div>

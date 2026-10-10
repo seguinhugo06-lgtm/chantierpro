@@ -43,9 +43,9 @@ const BLOQUANTES = new Set(PROFIL_EXIGE.map((m) => m.id));
 // `manque` : le champ à cibler s'il reste quelque chose à saisir, sinon null
 const POUR_PARTICULIERS = [
   {
-    // Ses coordonnées et l'adresse de son site, pas seulement son nom (R616-1)
+    // Ses coordonnées et l'adresse de son site, pas seulement son nom (R616-1) : un champ « site internet et adresse »
     id: 'mediateur',
-    libelle: 'Médiateur de la consommation (nom et site)',
+    libelle: 'Médiateur de la consommation (nom, site et adresse)',
     onglet: 'documents',
     precision: 'si vous travaillez pour des particuliers',
     manque: (e) => premierVide(e, [['mediateur', 'mediateur', 'mediateur'], ['mediateurContact', 'mediateur_contact', 'mediateurContact']]),

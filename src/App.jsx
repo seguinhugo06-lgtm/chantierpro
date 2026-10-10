@@ -84,7 +84,7 @@ import { usePermissions } from './hooks/usePermissions';
 import { PermissionGate } from './components/ui/PermissionGate';
 import { fetchSubscription, computeLiveUsage } from './services/subscriptionsApi';
 import { isDraftChantier } from './lib/utils';
-import { Home, FileText, Building2, Calendar, Users, Package, HardHat, Settings as SettingsIcon, Eye, EyeOff, Sun, Moon, LogOut, Menu, Bell, Plus, ChevronRight, ChevronDown, BarChart3, HelpCircle, Search, X, CheckCircle, AlertCircle, Info, Clock, Receipt, Wifi, WifiOff, Palette, Wallet, Library, UserCheck, ShoppingCart, Camera, ClipboardList, PenTool, Download, Share, Smartphone, CreditCard, Tag, Sparkles, Kanban, Star, User, MessageCircle, Shield, CalendarCheck, Megaphone, FileCheck, ClipboardCheck, Globe, Mic } from 'lucide-react';
+import { Home, FileText, Building2, Calendar, Users, Package, HardHat, Settings as SettingsIcon, Eye, EyeOff, Sun, Moon, LogOut, Menu, Bell, Plus, ChevronRight, BarChart3, HelpCircle, Search, X, CheckCircle, AlertCircle, Info, Wifi, WifiOff, Wallet, ClipboardList, Smartphone, CreditCard, MessageCircle, CalendarCheck, Mic } from 'lucide-react';
 import { usePWA } from './hooks/usePWA';
 import { registerNetworkListeners, getPendingCount, syncQueue, clearAllMutations, clearMutationsDe, checkConnectivity } from './lib/offline/sync';
 import OfflineIndicator from './components/ui/OfflineIndicator';
@@ -95,6 +95,7 @@ import { appliquerTheme } from './lib/theme';
 import { dateEcheance, joursDeRetard, resteAPayer } from './lib/paiementsFacture';
 import { estOuverte, estEnRetard } from './lib/ventes';
 import { jourLocal } from './lib/dates';
+import { mentionsFacture } from './lib/mentionsFacture';
 import PortailIndisponible from './components/portal/PortailIndisponible';
 
 // Safe string renderer — prevents "Objects are not valid as React child" (#310)
@@ -1419,27 +1420,18 @@ export default function App() {
     { id: 'finances', icon: Wallet, label: 'Finances' },
     { id: 'plan', icon: CreditCard, label: 'Mon plan' },
     (() => {
-      // Compute Facture 2026 compliance score for badge
-      const f26checks = [
-        entreprise.siret, entreprise.tvaIntra,
-        entreprise.rcsVille && entreprise.rcsNumero,
-        entreprise.banque || entreprise.iban,
-        entreprise.adresse, entreprise.rcProAssureur, true, // Factur-X always true
-      ];
-      const f26score = Math.round((f26checks.filter(Boolean).length / f26checks.length) * 100);
-      // Also check profile completeness
-      const profileFields = ['nom', 'adresse', 'siret', 'tel', 'email'];
-      const profileFilled = profileFields.filter(k => entreprise[k] && String(entreprise[k]).trim()).length;
-      const profileScore = Math.round((profileFilled / profileFields.length) * 100);
-      const showBadge = f26score < 100 || profileScore < 100;
-      const missingFieldsCount = f26checks.filter(c => !c).length + profileFields.filter(k => !entreprise[k] || !String(entreprise[k]).trim()).length;
+      // Badge : la note de la jauge « Profil complété » et de l'onglet Facture 2026 (lib/mentionsFacture, D-25).
+      // Avant, il calculait sa propre « Conformité Facture 2026 » (RCS et TVA intracom exigés de tous, RC Pro,
+      // IBAN, un critère toujours validé) : « 86 % » quand la jauge et l'onglet disaient 100 %.
+      const { note, total, remplies } = mentionsFacture(entreprise);
+      const manquantes = total - remplies;
       return {
         id: 'settings', icon: SettingsIcon, label: 'Param\u00e8tres',
-        badge: showBadge ? (missingFieldsCount || 1) : 0,
-        badgeColor: f26score < 50 ? '#ef4444' : f26score < 100 ? '#f59e0b' : undefined,
-        badgeTitle: f26score < 100
-          ? `Conformit\u00e9 Facture 2026 : ${f26score}% — ${missingFieldsCount} champ${missingFieldsCount > 1 ? 's' : ''} manquant${missingFieldsCount > 1 ? 's' : ''}`
-          : `Profil : ${profileScore}%`
+        badge: manquantes,
+        badgeColor: note < 50 ? '#ef4444' : '#f59e0b',
+        badgeTitle: manquantes > 0
+          ? `Profil complété : ${note} % — ${manquantes} mention${manquantes > 1 ? 's' : ''} obligatoire${manquantes > 1 ? 's' : ''} à compléter`
+          : ''
       };
     })(),
   ];
