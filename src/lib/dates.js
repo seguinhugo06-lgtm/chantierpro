@@ -9,4 +9,17 @@ export function jourLocal(date = new Date()) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+/**
+ * « AAAA-MM-JJ » décalé de `n` mois, le jour ramené au dernier jour du mois s'il n'existe pas : une
+ * mensualité du 31 tombe le 30 novembre, puis le 31 décembre. Avant (recette du 9 oct. 2026), `setMonth`
+ * débordait : 31/10 → 01/12, novembre sautait et décembre en avait deux.
+ */
+export function ajouterMois(jour, n) {
+  const [a, m, j] = String(jour || '').slice(0, 10).split('-').map(Number);
+  if (!a || !m || !j) return '';
+  const cible = new Date(a, m - 1 + n, 1);
+  const dernier = new Date(cible.getFullYear(), cible.getMonth() + 1, 0).getDate();
+  return jourLocal(new Date(cible.getFullYear(), cible.getMonth(), Math.min(j, dernier)));
+}
+
 export default jourLocal;

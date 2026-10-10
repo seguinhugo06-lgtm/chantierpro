@@ -13,6 +13,22 @@ import supabase, { isDemo, auth } from '../supabaseClient';
 import { saveItem, deleteItem, FIELD_MAPPINGS } from './useSupabaseSync';
 import { logger } from '../lib/logger';
 import { normaliserPrevision, statutPrevision } from '../lib/previsions';
+import { toast } from '../stores/toastStore';
+import { captureException } from '../lib/sentry';
+import { messageEcritureRefusee, estEcritureDifferable } from '../lib/erreursEcriture';
+
+/**
+ * Échec d'une écriture de trésorerie : l'écran revient à l'état d'avant et le dit. Avant (recette du 9 oct. 2026) :
+ * `console.error` seul, la prévision ajoutée, la suppression ou le nouveau solde restaient affichés jusqu'au
+ * rechargement, puis tout revenait ; et sans compte encore connu, l'écriture était sautée en silence.
+ */
+function signalerEchec(error, titre, annuler) {
+  annuler?.();
+  const passager = estEcritureDifferable(error);
+  toast.error(titre, passager ? 'Pas de connexion ou serveur indisponible : réessayez une fois la connexion revenue.' : messageEcritureRefusee(error));
+  captureException(error, { context: `trésorerie : ${titre}` });
+}
+const SESSION_INCONNUE = Object.assign(new Error('Session en cours de chargement'), { status: 0 });
 
 // localStorage keys (same as TresorerieModule used before)
 const STORAGE_KEY = 'cp_tresorerie_previsions';
@@ -119,6 +135,13 @@ export function useTresorerie() {
             .then(r => r, () => ({ data: [] })),
         ]);
 
+        // supabase-js ne lève pas : une lecture refusée revenait « vide » (0 prévision, solde par défaut)
+        const echec = [prevRes, settingsRes].find((r) => r?.error);
+        if (echec) {
+          toast.error('Finances non chargées', 'Vos prévisions et réglages n\'ont pas pu être lus. Rechargez la page.');
+          captureException(echec.error, { context: 'trésorerie : lecture' });
+          return;
+        }
         const mappedPrev = (prevRes.data || []).map(FIELD_MAPPINGS.tresorerie_previsions.fromSupabase).map(normaliserPrevision);
         const mappedSettings = settingsRes.data
           ? FIELD_MAPPINGS.tresorerie_settings.fromSupabase(settingsRes.data)
@@ -200,12 +223,13 @@ export function useTresorerie() {
     // Optimistic update
     setPrevisions(list => [...list, item]);
 
-    if (!isDemo && userId) {
+    if (!isDemo) {
       try {
+        if (!userId) throw SESSION_INCONNUE;
         await saveItem('tresorerie_previsions', item, userId);
       } catch (error) {
-        console.error('useTresorerie: Error saving prevision:', error);
-        // Keep optimistic update — localStorage fallback in demo
+        signalerEchec(error, 'Prévision non enregistrée', () => setPrevisions(list => list.filter(p => p.id !== item.id)));
+        return null;
       }
     }
 
@@ -214,20 +238,24 @@ export function useTresorerie() {
 
   const updatePrevision = useCallback(async (id, data) => {
     let updated = null;
+    let avant = null;
 
     setPrevisions(list => list.map(p => {
       if (p.id === id) {
+        avant = p;
         updated = normaliserPrevision({ ...p, ...data });
         return updated;
       }
       return p;
     }));
 
-    if (!isDemo && userId && updated) {
+    if (!isDemo && updated) {
       try {
+        if (!userId) throw SESSION_INCONNUE;
         await saveItem('tresorerie_previsions', updated, userId);
       } catch (error) {
-        console.error('useTresorerie: Error updating prevision:', error);
+        signalerEchec(error, 'Modification non enregistrée', () => setPrevisions(list => list.map(p => (p.id === id && avant ? avant : p))));
+        return null;
       }
     }
 
@@ -236,23 +264,31 @@ export function useTresorerie() {
 
   const deletePrevision = useCallback(async (id) => {
     // Also remove child recurring instances
-    setPrevisions(list => list.filter(p => p.id !== id && p.recurrenceParentId !== id));
+    let retirees = [];
+    setPrevisions(list => {
+      retirees = list.filter(p => p.id === id || p.recurrenceParentId === id);
+      return list.filter(p => p.id !== id && p.recurrenceParentId !== id);
+    });
 
-    if (!isDemo && userId) {
+    if (!isDemo) {
       try {
+        if (!userId) throw SESSION_INCONNUE;
         await deleteItem('tresorerie_previsions', id, userId);
         // Also delete children from Supabase
         if (supabase) {
-          await supabase
+          const { error } = await supabase
             .from('tresorerie_previsions')
             .delete()
             .eq('recurrence_parent_id', id)
             .eq('user_id', userId);
+          if (error) throw error;
         }
       } catch (error) {
-        console.error('useTresorerie: Error deleting prevision:', error);
+        signalerEchec(error, 'Suppression refusée', () => setPrevisions(list => [...list, ...retirees.filter(r => !list.some(p => p.id === r.id))]));
+        return false;
       }
     }
+    return true;
   }, [userId]);
 
   const markAsPaid = useCallback(async (id) => {
@@ -263,10 +299,12 @@ export function useTresorerie() {
 
   const updateSettings = useCallback(async (data) => {
     const newSettings = { ...settings, ...data };
+    const ancienSettings = settings;
     setSettings(newSettings);
 
-    if (!isDemo && userId) {
+    if (!isDemo) {
       try {
+        if (!userId) throw SESSION_INCONNUE;
         // Upsert: include userId for the unique constraint
         const toSave = { ...newSettings, id: newSettings.id || undefined };
         if (supabase) {
@@ -280,17 +318,18 @@ export function useTresorerie() {
             .select()
             .single();
 
-          if (error) {
-            console.error('useTresorerie: Error saving settings:', error);
-          } else if (result) {
+          if (error) throw error;
+          if (result) {
             const mapped = FIELD_MAPPINGS.tresorerie_settings.fromSupabase(result);
-            setSettings(prev => ({ ...DEFAULT_SETTINGS, ...mapped }));
+            setSettings(() => ({ ...DEFAULT_SETTINGS, ...mapped }));
           }
         }
       } catch (error) {
-        console.error('useTresorerie: Error saving settings:', error);
+        signalerEchec(error, 'Réglage non enregistré', () => setSettings(ancienSettings));
+        return false;
       }
     }
+    return true;
   }, [userId, settings]);
 
   // ── CRUD: Reglements ───────────────────────────────────────────────
@@ -353,11 +392,13 @@ export function useTresorerie() {
     // Optimistic update
     setMouvements(list => [item, ...list]);
 
-    if (!isDemo && userId) {
+    if (!isDemo) {
       try {
+        if (!userId) throw SESSION_INCONNUE;
         await saveItem('tresorerie_mouvements', item, userId);
       } catch (error) {
-        console.error('useTresorerie: Error saving mouvement:', error);
+        signalerEchec(error, 'Mouvement non enregistré', () => setMouvements(list => list.filter(m => m.id !== item.id)));
+        return null;
       }
     }
 
@@ -367,8 +408,10 @@ export function useTresorerie() {
   const updateMouvement = useCallback(async (id, data) => {
     let updated = null;
 
+    let avantMouvement = null;
     setMouvements(list => list.map(m => {
       if (m.id === id) {
+        avantMouvement = m;
         updated = { ...m, ...data };
         // Recalculate TVA if montant changed
         if (data.montant !== undefined) {
@@ -383,11 +426,13 @@ export function useTresorerie() {
       return m;
     }));
 
-    if (!isDemo && userId && updated) {
+    if (!isDemo && updated) {
       try {
+        if (!userId) throw SESSION_INCONNUE;
         await saveItem('tresorerie_mouvements', updated, userId);
       } catch (error) {
-        console.error('useTresorerie: Error updating mouvement:', error);
+        signalerEchec(error, 'Modification non enregistrée', () => setMouvements(list => list.map(m => (m.id === id && avantMouvement ? avantMouvement : m))));
+        return null;
       }
     }
 
@@ -396,23 +441,31 @@ export function useTresorerie() {
 
   const deleteMouvement = useCallback(async (id) => {
     // Also remove child recurring instances
-    setMouvements(list => list.filter(m => m.id !== id && m.parentRecurringId !== id));
+    let retires = [];
+    setMouvements(list => {
+      retires = list.filter(m => m.id === id || m.parentRecurringId === id);
+      return list.filter(m => m.id !== id && m.parentRecurringId !== id);
+    });
 
-    if (!isDemo && userId) {
+    if (!isDemo) {
       try {
+        if (!userId) throw SESSION_INCONNUE;
         await deleteItem('tresorerie_mouvements', id, userId);
         // Also delete children from Supabase
         if (supabase) {
-          await supabase
+          const { error } = await supabase
             .from('tresorerie_mouvements')
             .delete()
             .eq('parent_recurring_id', id)
             .eq('user_id', userId);
+          if (error) throw error;
         }
       } catch (error) {
-        console.error('useTresorerie: Error deleting mouvement:', error);
+        signalerEchec(error, 'Suppression refusée', () => setMouvements(list => [...retires.filter(r => !list.some(m => m.id === r.id)), ...list]));
+        return false;
       }
     }
+    return true;
   }, [userId]);
 
   const validerMouvement = useCallback(async (id) => {

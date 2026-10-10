@@ -12,6 +12,8 @@
 import { useCallback } from 'react';
 import { formatClientName } from '../lib/formatters';
 import { remettreFichier } from '../lib/natif';
+import { facturesEmises } from '../lib/ventes';
+import { totauxDocument } from '../lib/totauxDocument';
 
 const MONTH_NAMES = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
 
@@ -50,16 +52,16 @@ export function useExportComptable({ devis = [], depenses = [], reglements = [],
     const rows = [
       ['Déclaration CA3 simplifiée', '', ''],
       ['Entreprise', entreprise?.nom || 'Mallettico', ''],
-      ['N° TVA', entreprise?.numeroTva || '', ''],
+      ['N° TVA', entreprise?.tvaIntra || entreprise?.tva_intra || entreprise?.numeroTva || '', ''],
       ['Année', y, ''],
       ['', '', ''],
       ['Ligne', 'Libellé', 'Montant (€)'],
       ['01', 'Ventes, prestations de services (HT)', (ca3.ligne01 || 0).toFixed(2)],
       ['08', 'Opérations imposables à 20%', (ca3.ligne08 || 0).toFixed(2)],
-      ['09', 'Opérations imposables à 10%', (ca3.ligne09 || 0).toFixed(2)],
-      ['9B', 'Opérations imposables à 5,5%', (ca3.ligne9B || 0).toFixed(2)],
+      ['09', 'Opérations imposables à 5,5%', (ca3.ligne09 || 0).toFixed(2)],
+      ['9B', 'Opérations imposables à 10%', (ca3.ligne9B || 0).toFixed(2)],
       ['16', 'Total TVA brute', (ca3.ligne16 || 0).toFixed(2)],
-      ['19', 'TVA déductible sur biens et services', (ca3.ligne19 || 0).toFixed(2)],
+      ['20', 'TVA déductible sur autres biens et services', (ca3.ligne20 || 0).toFixed(2)],
       ['23', 'Total TVA déductible', (ca3.ligne23 || 0).toFixed(2)],
       ['28', 'TVA nette due (ou crédit)', (ca3.ligne28 || 0).toFixed(2)],
     ];
@@ -70,11 +72,9 @@ export function useExportComptable({ devis = [], depenses = [], reglements = [],
   // ── Export Journal des ventes ────────────────────────────────────────
   const exportJournalVentes = useCallback((year) => {
     const y = year || new Date().getFullYear();
-    const acceptedStatuts = ['accepte', 'signe', 'payee', 'paye'];
-    const factures = devis.filter(d => {
-      const dateYear = new Date(d.date || d.createdAt).getFullYear();
-      return acceptedStatuts.includes(d.statut) && dateYear === y;
-    });
+    // Factures et avoirs émis de l'année (src/lib/ventes.js) : avant, des devis signés passaient pour des ventes
+    // et les factures envoyées non payées manquaient (recette du 9 oct. 2026).
+    const factures = facturesEmises(devis, { du: `${y}-01-01`, au: `${y}-12-31` });
 
     const rows = [
       ['Date', 'N° Facture', 'Client', 'Objet', 'HT (€)', 'TVA (€)', 'TTC (€)', 'Taux TVA (%)'],
@@ -83,9 +83,9 @@ export function useExportComptable({ devis = [], depenses = [], reglements = [],
     factures.forEach(f => {
       const client = clients.find(c => c.id === f.client_id);
       const clientName = formatClientName(client, 'N/A');
-      const rate = f.tvaRate || f.tva_rate || 20;
-      const ht = f.total_ht || (f.total_ttc ? f.total_ttc / (1 + rate / 100) : 0);
-      const tva = (f.total_ttc || 0) - ht;
+      const t = totauxDocument(f);
+      const ht = Number(f.total_ht) || 0;
+      const ttc = Number(f.total_ttc) || 0;
 
       rows.push([
         f.date || '',
@@ -93,18 +93,15 @@ export function useExportComptable({ devis = [], depenses = [], reglements = [],
         clientName,
         f.objet || f.titre || '',
         ht.toFixed(2),
-        tva.toFixed(2),
-        (f.total_ttc || 0).toFixed(2),
-        rate,
+        (ttc - ht).toFixed(2),
+        ttc.toFixed(2),
+        t.tva.map(x => x.taux).join(' / '),
       ]);
     });
 
     // Total row
-    const totalHt = factures.reduce((s, f) => {
-      const rate = f.tvaRate || f.tva_rate || 20;
-      return s + (f.total_ht || (f.total_ttc ? f.total_ttc / (1 + rate / 100) : 0));
-    }, 0);
-    const totalTtc = factures.reduce((s, f) => s + (f.total_ttc || 0), 0);
+    const totalHt = factures.reduce((s, f) => s + (Number(f.total_ht) || 0), 0);
+    const totalTtc = factures.reduce((s, f) => s + (Number(f.total_ttc) || 0), 0);
     rows.push(['', '', '', 'TOTAL', totalHt.toFixed(2), (totalTtc - totalHt).toFixed(2), totalTtc.toFixed(2), '']);
 
     downloadCSV(rows, `journal_ventes_${y}.csv`);

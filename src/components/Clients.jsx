@@ -10,6 +10,7 @@ import Carte from './ui/Carte';
 import { Onglets } from './ui/Onglets';
 import EtatVide from './ui/EtatVide';
 import { statutFacture, resteAPayer, dejaPaye, dateLocale } from '../lib/paiementsFacture';
+import { encaisse, estOuverte, resteAFacturer } from '../lib/ventes';
 import { ouvrirLienExterne } from '../lib/natif';
 import { colorForString } from '../lib/uiTheme';
 
@@ -230,14 +231,11 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
       const s = map.get(cid);
       if (d.type === 'devis') s.devis++;
       if (d.type === 'facture') s.factures++;
-      // D2 fix: CA encaissé = only paid factures
-      if (d.type === 'facture' && d.statut === 'payee') {
-        s.ca += d.total_ttc || d.montant_ttc || (d.total_ht ? d.total_ht * 1.2 : 0);
-      }
-      // CA en cours = factures envoyées + devis acceptés (pipeline)
-      if ((d.type === 'facture' && d.statut !== 'payee') || (d.type === 'devis' && d.statut === 'accepte')) {
-        s.caEnCours += d.total_ttc || d.montant_ttc || 0;
-      }
+      // Encaissé : ce que les factures ont reçu (acomptes et paiements partiels compris) ; en cours : reste dû
+      // des factures ouvertes + part non facturée des devis signés (src/lib/ventes.js). Avant (recette du
+      // 9 oct.) : seules les factures « payée » comptaient, et un devis signé s'ajoutait à ses factures.
+      s.ca += encaisse(d, paiements);
+      s.caEnCours += estOuverte(d, paiements) ? resteAPayer(d, paiements) : resteAFacturer(d, devis);
       if (d.type === 'devis' && ['envoye', 'accepte', 'acompte_facture'].includes(d.statut)) s.devisActifs++;
     });
     (chantiers || []).forEach(ch => {
@@ -249,8 +247,9 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
       if (ch.statut === 'en_cours') s.chantiersEnCours++;
       if (ch.statut !== 'archive' && ch.statut !== 'abandonne' && ch.statut !== 'termine') s.chantiersActifs++;
     });
+    for (const st of map.values()) { st.ca = Math.round(st.ca * 100) / 100; st.caEnCours = Math.round(st.caEnCours * 100) / 100; }
     return map;
-  }, [devis, chantiers]);
+  }, [devis, chantiers, paiements]);
 
   const getClientStats = (id) => {
     return clientStatsMap.get(id) || { devis: 0, factures: 0, ca: 0, chantiers: 0, chantiersEnCours: 0, chantiersActifs: 0, devisActifs: 0 };

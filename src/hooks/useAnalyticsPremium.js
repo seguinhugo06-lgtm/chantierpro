@@ -7,6 +7,7 @@
  */
 
 import { useMemo } from 'react';
+import { estEmise, chiffreAffairesHT } from '../lib/ventes';
 
 const MONTHS_FR = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc'];
 
@@ -135,10 +136,11 @@ export function useAnalyticsPremium({
           lastActivity: null,
         };
       }
-      clientMap[cid].ca += (d.total_ttc || d.montant || 0);
-      clientMap[cid].devisCount += 1;
-      if (['accepte', 'signe', 'facture', 'payee'].includes(d.statut)) {
-        clientMap[cid].convertis += 1;
+      // CA : factures émises, HT, avoirs déduits (src/lib/ventes.js) ; avant, devis ET factures en TTC
+      if (estEmise(d)) clientMap[cid].ca += Number(d.total_ht) || 0;
+      if (d.type !== 'facture') {
+        clientMap[cid].devisCount += 1;
+        if (['accepte', 'signe', 'acompte_facture', 'facture', 'payee'].includes(d.statut)) clientMap[cid].convertis += 1;
       }
       const dDate = d.date || d.created_at;
       if (dDate) {
@@ -176,8 +178,9 @@ export function useAnalyticsPremium({
     const clientsRecurrents = clientStats.filter(c => c.convertis >= 2);
 
     // ── Top prestations ─────────────────────────────────────────
+    // Prestations vendues : lignes des devis signés, un devis compté une fois (avant : devis + factures)
     const prestationMap = {};
-    filteredDevis.forEach(d => {
+    filteredDevis.filter(d => d.type !== 'facture' && ['accepte', 'signe', 'acompte_facture', 'facture'].includes(d.statut)).forEach(d => {
       const lignes = d.lignes || d.items || [];
       (Array.isArray(lignes) ? lignes : []).forEach(l => {
         const desc = l.description || l.titre || l.nom || 'Autre';
@@ -198,9 +201,8 @@ export function useAnalyticsPremium({
       .filter(ch => ch.statut !== 'brouillon')
       .map(ch => {
         const chId = ch.id;
-        const caChantier = filteredDevis
-          .filter(d => (d.chantier_id || d.chantierId) === chId && ['accepte', 'signe', 'facture', 'payee'].includes(d.statut))
-          .reduce((sum, d) => sum + (d.total_ttc || d.montant || 0), 0);
+        // CA du chantier : ses factures émises, HT, avoirs déduits (avant : devis + factures, en TTC : doublé)
+        const caChantier = chiffreAffairesHT(filteredDevis.filter(d => (d.chantier_id || d.chantierId) === chId));
         const depChantier = filteredDepenses
           .filter(d => (d.chantier_id || d.chantierId) === chId)
           .reduce((sum, d) => sum + (d.montant || 0), 0);
@@ -245,16 +247,9 @@ export function useAnalyticsPremium({
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
       const label = `${MONTHS_FR[d.getMonth()]} ${d.getFullYear() !== now.getFullYear() ? d.getFullYear().toString().slice(-2) : ''}`.trim();
 
-      // CA mensuel (devis signés/facturés)
-      const caMonth = devis
-        .filter(dv => {
-          const dvDate = dv.date || dv.created_at;
-          if (!dvDate) return false;
-          const dd = new Date(dvDate);
-          return dd.getFullYear() === d.getFullYear() && dd.getMonth() === d.getMonth()
-            && ['accepte', 'signe', 'facture', 'payee'].includes(dv.statut);
-        })
-        .reduce((sum, dv) => sum + (dv.total_ttc || dv.montant || 0), 0);
+      // CA mensuel : factures émises du mois, HT, avoirs déduits
+      const finMois = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+      const caMonth = chiffreAffairesHT(devis, { du: `${key}-01`, au: `${key}-${String(finMois).padStart(2, '0')}` });
 
       // Dépenses mensuelles
       const depMonth = depenses

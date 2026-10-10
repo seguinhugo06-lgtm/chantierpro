@@ -93,7 +93,9 @@ import EntrepriseSwitcher from './components/ui/EntrepriseSwitcher';
 import { FONCTIONS } from './lib/fonctions';
 import { estNatif } from './lib/natif';
 import { appliquerTheme } from './lib/theme';
-import { dateEcheance } from './lib/paiementsFacture';
+import { dateEcheance, joursDeRetard, resteAPayer } from './lib/paiementsFacture';
+import { estOuverte, estEnRetard } from './lib/ventes';
+import { jourLocal } from './lib/dates';
 
 // Safe string renderer — prevents "Objects are not valid as React child" (#310)
 const safeStr = (v, fallback = '') => {
@@ -294,15 +296,16 @@ export default function App() {
       return c ? `${c.prenom || ''} ${c.nom || ''}`.trim() : '';
     };
 
-    // 1. Devis envoyés depuis >7 jours sans réponse
+    // 1. Devis envoyés depuis >7 jours sans réponse (les factures ont leur propre alerte, ci-dessous :
+    //    avant, une facture payée apparaissait ici « à relancer », en double de l'alerte d'impayé)
     (devis || []).forEach(d => {
-      if ((d.statut === 'envoye' || d.statut === 'vu') && d.date) {
+      if (d.type !== 'facture' && (d.statut === 'envoye' || d.statut === 'vu') && d.date) {
         const age = Math.floor((now - new Date(d.date)) / 86400000);
         if (age >= 7) {
           const cn = clientName(d.client_id);
           items.push({
             id: `devis-stale-${d.id}`,
-            message: `${(d.numero || '').startsWith('FAC') ? 'Facture' : 'Devis'} ${d.numero || ''} envoyé${(d.numero || '').startsWith('FAC') ? 'e' : ''} à ${cn || 'un client'} depuis ${age} jours — à relancer`,
+            message: `Devis ${d.numero || ''} envoyé à ${cn || 'un client'} depuis ${age} jours — à relancer`,
             date: relDate(d.date),
             type: 'warning',
             link: 'devis',
@@ -315,36 +318,35 @@ export default function App() {
       }
     });
 
-    // 2. Factures impayées >30 jours
+    // 2. Factures en retard : échéance passée et reste dû, comme l'Accueil (src/lib/ventes.js). Avant (recette
+    //    du 9 oct.) : statut brut et date d'émission — des factures payées « impayées depuis 34 jours », au total TTC.
     (devis || []).forEach(d => {
-      if (d.type === 'facture' && d.statut !== 'payee' && d.statut !== 'paye' && d.statut !== 'refuse' && d.date) {
-        const age = Math.floor((now - new Date(d.date)) / 86400000);
-        if (age >= 30) {
-          const cn = clientName(d.client_id);
-          items.push({
-            id: `facture-impayee-${d.id}`,
-            message: `Facture ${d.numero || ''} impayée depuis ${age} jours${cn ? ` (${cn})` : ''} — ${new Intl.NumberFormat('fr-FR', {style:'currency',currency:'EUR'}).format(d.total_ttc || 0)}`,
-            date: relDate(d.date),
-            type: 'alert',
-            link: 'devis',
-            itemId: d.id,
-            itemType: 'facture',
-            sortDate: new Date(d.date),
-            priority: 1,
-          });
-        }
+      if (estEnRetard(d, paiements, now)) {
+        const jours = joursDeRetard(d, paiements, now);
+        const cn = clientName(d.client_id);
+        items.push({
+          id: `facture-impayee-${d.id}`,
+          message: `Facture ${d.numero || ''} en retard de ${jours} jour${jours > 1 ? 's' : ''}${cn ? ` (${cn})` : ''} — reste ${new Intl.NumberFormat('fr-FR', {style:'currency',currency:'EUR'}).format(resteAPayer(d, paiements))}`,
+          date: relDate(d.date),
+          type: 'alert',
+          link: 'devis',
+          itemId: d.id,
+          itemType: 'facture',
+          sortDate: new Date(d.date),
+          priority: 1,
+        });
       }
     });
 
     // 3. Devis récemment acceptés (last 7 days)
     (devis || []).forEach(d => {
-      if ((d.statut === 'accepte' || d.statut === 'signe') && d.date) {
+      if (d.type !== 'facture' && (d.statut === 'accepte' || d.statut === 'signe') && d.date) {
         const age = Math.floor((now - new Date(d.date)) / 86400000);
         if (age <= 7) {
           const cn = clientName(d.client_id);
           items.push({
             id: `devis-accepte-${d.id}`,
-            message: `${(d.numero || '').startsWith('FAC') ? 'Facture' : 'Devis'} ${d.numero || ''} accepté${(d.numero || '').startsWith('FAC') ? 'e' : ''}${cn ? ` par ${cn}` : ''}`,
+            message: `Devis ${d.numero || ''} accepté${cn ? ` par ${cn}` : ''}`,
             date: relDate(d.date),
             type: 'success',
             link: 'devis',
@@ -490,7 +492,7 @@ export default function App() {
       ...n,
       read: readNotifIds.includes(n.id),
     }));
-  }, [devis, chantiers, clients, entreprise, getChantierBilan, readNotifIds]);
+  }, [devis, paiements, chantiers, clients, entreprise, getChantierBilan, readNotifIds]);
   const [showNotifs, setShowNotifs] = useState(false);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
@@ -1352,10 +1354,12 @@ export default function App() {
   );
 
   // Calculate stats for badges
-  const facturesImpayees = devis.filter(d => d.type === 'facture' && !['payee', 'brouillon'].includes(d.statut)).length;
+  // Factures à encaisser (reste dû), pas le statut brut : avant, des factures payées étaient « impayées »
+  const facturesImpayees = devis.filter(d => estOuverte(d, paiements)).length;
   const devisEnAttenteCount = devis.filter(d => d.type === 'devis' && ['envoye', 'vu'].includes(d.statut)).length;
-  const todayEvents = planningEvents.filter(e => e.date === new Date().toISOString().split('T')[0]).length;
-  const memosOverdueCount = memos.filter(m => !m.is_done && m.due_date && m.due_date < new Date().toISOString().split('T')[0]).length;
+  const aujourdHui = jourLocal(); // date du jour en heure locale (toISOString donnait la veille entre minuit et 2 h)
+  const todayEvents = planningEvents.filter(e => e.date === aujourdHui).length;
+  const memosOverdueCount = memos.filter(m => !m.is_done && m.due_date && m.due_date < aujourdHui).length;
 
   // Navigation items - full sidebar with all sections
   // Badges now include explicit context for clarity

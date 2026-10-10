@@ -41,8 +41,10 @@ import { Segmente, Onglets } from '../ui/Onglets';
 import Carte from '../ui/Carte';
 import { Bouton, BoutonIcone } from '../ui/Bouton';
 import { remettreFichier } from '../../lib/natif';
-import { statutFacture, resteAPayer, joursDeRetard, echeance } from '../../lib/paiementsFacture';
-import { jourLocal } from '../../lib/dates';
+import { statutFacture, resteAPayer, joursDeRetard, echeance, encaisseEntre, dateLocale } from '../../lib/paiementsFacture';
+import { estOuverte, resteAFacturer } from '../../lib/ventes';
+import { jourLocal, ajouterMois } from '../../lib/dates';
+import { captureException } from '../../lib/sentry';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -654,7 +656,7 @@ export default function TresorerieModule({
   const tvaHook = useTVA({ devis, depenses, mouvements, settings });
 
   // -- Hook: Export comptable ──────────────────────────────────────
-  const { exportCA3, exportJournalVentes, exportJournalAchats, exportReglements: exportReglementsCSV, exportFEC, exportMouvements: exportMouvementsCSV } = useExportComptable({
+  const { exportCA3, exportJournalVentes, exportJournalAchats, exportReglements: exportReglementsCSV, exportMouvements: exportMouvementsCSV } = useExportComptable({
     devis, depenses, reglements, mouvements, clients, entreprise, tvaData: tvaHook,
   });
 
@@ -914,43 +916,9 @@ export default function TresorerieModule({
     }
   }, [devis, clients, tresorerieLoading]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Auto-sync: paiements reçus → mouvements réels ────────────
-  useEffect(() => {
-    if (tresorerieLoading || !paiements.length) return;
-    if (!syncedIdsRef.current) syncedIdsRef.current = getSyncedIds();
-
-    const synced = syncedIdsRef.current;
-    if (!synced.paiements) synced.paiements = [];
-    const newMouvements = [];
-
-    paiements.forEach(p => {
-      if (synced.paiements.includes(p.id)) return;
-      if (mouvements.some(m => m.linkedPaiementId === p.id)) return;
-
-      const montant = p.montant || p.amount || 0;
-      if (montant <= 0) return;
-
-      newMouvements.push({
-        id: genId(),
-        type: 'entree',
-        description: `Paiement reçu ${p.documentNumero || p.document || ''} – ${montant.toLocaleString('fr-FR')} €`,
-        montant,
-        date: p.date || p.createdAt?.slice?.(0, 10) || jourLocal(),
-        categorie: 'Client',
-        statut: 'paye',
-        linkedPaiementId: p.id,
-        devisId: p.devisId || p.facture_id,
-        createdAt: new Date().toISOString(),
-      });
-      synced.paiements.push(p.id);
-    });
-
-    if (newMouvements.length > 0) {
-      newMouvements.forEach(m => addMouvement(m));
-      syncedIdsRef.current = synced;
-      saveSyncedIds(synced);
-    }
-  }, [paiements, tresorerieLoading]); // eslint-disable-line react-hooks/exhaustive-deps
+  // (Les paiements reçus ne sont plus recopiés en « mouvements » : la copie, faute de lien enregistré en base,
+  //  était recréée sur chaque appareil et doublait la TVA collectée — recette du 9 oct. 2026. Les paiements
+  //  comptent directement dans le solde et le graphique, src/lib/paiementsFacture.js `encaisseEntre`.)
 
   // ── Auto-renewal: generate missing future recurring instances ───
   const renewalDoneRef = useRef(false);
@@ -981,22 +949,18 @@ export default function TresorerieModule({
       // Find all existing instances (children + parent itself)
       const family = previsions.filter(p => p.id === parent.id || p.recurrenceParentId === parent.id);
       const existingDates = new Set(family.map(p => p.date));
+      const latest = family.reduce((max, p) => (p.date > max ? p.date : max), parent.date);
+      const aujourdhui = jourLocal(now);
+      const limite = jourLocal(maxDate);
 
-      // Find the latest date in the family
-      const latestDate = family.reduce((max, p) => {
-        const d = new Date(p.date);
-        return d > max ? d : max;
-      }, new Date(parent.date));
-
-      // Generate instances from the latest date forward
-      let nextDate = new Date(latestDate);
-      for (let i = 0; i < 4; i++) {
-        nextDate = new Date(nextDate);
-        nextDate.setMonth(nextDate.getMonth() + interval);
-        if (nextDate > maxDate) break;
-        if (nextDate < now) continue; // skip past dates
-        const dateStr = nextDate.toISOString().slice(0, 10);
+      // Échéances suivantes, comptées depuis la date du parent (le jour d'origine est gardé : 31 → 30 nov. → 31 déc.)
+      let ajoutees = 0;
+      for (let k = 1; k <= 120 && ajoutees < 4; k++) {
+        const dateStr = ajouterMois(parent.date, interval * k);
+        if (!dateStr || dateStr > limite) break;
+        if (dateStr <= latest || dateStr < aujourdhui) continue; // déjà générées, ou passées
         if (existingDates.has(dateStr)) continue;
+        const nextDate = dateLocale(dateStr);
 
         // Strong dedup: check description + month + montant
         const dedupKey = `${parent.description}|${nextDate.getFullYear()}-${String(nextDate.getMonth()).padStart(2, '0')}|${parent.montant}`;
@@ -1004,6 +968,7 @@ export default function TresorerieModule({
         globalDedup.add(dedupKey);
 
         existingDates.add(dateStr);
+        ajoutees++;
         newInstances.push({
           ...parent,
           id: genId(),
@@ -1015,11 +980,8 @@ export default function TresorerieModule({
       }
     });
 
-    if (newInstances.length > 0) {
-      setPrevisions(list => [...list, ...newInstances]);
-      // Save each to backend
-      newInstances.forEach(inst => addPrevision(inst).catch(() => {}));
-    }
+    // addPrevision ajoute l'échéance à l'écran et l'enregistre : un setPrevisions en plus la doublait en mémoire
+    newInstances.forEach(inst => addPrevision(inst).catch((err) => captureException(err, { context: 'échéance récurrente' })));
   }, [previsions, tresorerieLoading]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // CRUD handlers (delegate to hook)
@@ -1028,9 +990,9 @@ export default function TresorerieModule({
     if (existing) {
       await updatePrevision(prev.id, prev);
     } else {
-      await addPrevision(prev);
-      // Generate recurring instances
-      if (prev.recurrence && prev.recurrence !== 'unique') {
+      const creee = await addPrevision(prev);
+      // Échéances suivantes seulement si la première est enregistrée (sinon : refusée, déjà signalée)
+      if (creee && prev.recurrence && prev.recurrence !== 'unique') {
         const instances = generateRecurring(prev);
         for (const inst of instances) {
           await addPrevision(inst);
@@ -1168,18 +1130,16 @@ export default function TresorerieModule({
   // Generate recurring instances helper (3 months ahead max to avoid duplication with auto-renewal)
   const generateRecurring = (parent) => {
     const instances = [];
-    const startDate = new Date(parent.date);
     const interval = parent.recurrence === 'mensuel' ? 1 : parent.recurrence === 'trimestriel' ? 3 : 12;
     const maxMonths = 3; // Only create 3 months ahead; auto-renewal handles the rest
     const maxIterations = Math.ceil(maxMonths / interval);
     for (let i = 1; i <= maxIterations; i++) {
-      const nextDate = new Date(startDate);
-      nextDate.setMonth(nextDate.getMonth() + interval * i);
-      if (nextDate > new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)) break;
+      const date = ajouterMois(parent.date, interval * i);
+      if (!date) break;
       instances.push({
         ...parent,
         id: genId(),
-        date: nextDate.toISOString().slice(0, 10),
+        date,
         recurrenceParentId: parent.id,
         statut: 'prevu',
       });
@@ -1204,32 +1164,37 @@ export default function TresorerieModule({
     projections, negativeMonth, thresholdMonth, avgMonthlyEntrees, avgMonthlySorties,
     recurringSummary,
   } = useMemo(() => {
-    // 1. Classify devis / factures
-    const factures = devis.filter((d) => d.type === 'facture');
-    const facturesPayees = factures.filter((f) => f.statut === 'payee' || f.statut === 'paye');
-    const facturesImpayees = factures.filter((f) => !['payee', 'paye'].includes(f.statut) && f.statut !== 'refuse' && f.statut !== 'brouillon');
+    // 1. Documents : une seule définition (src/lib/ventes.js). Recette du 9 oct. 2026 : un devis signé était
+    //    compté en entier PLUS ses factures, une facture partiellement payée en entier, les paiements partiels
+    //    ignorés par le solde, les échéances en retard et celles du jour sorties des totaux.
+    const facturesOuvertes = devis.filter((f) => estOuverte(f, paiements, now));
+    const devisAFacturer = devis.filter((d) => resteAFacturer(d, devis) > 0);
+    const jourDe = (v) => {
+      const d = dateLocale(v);
+      return d ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` : '';
+    };
+    const echeanceDe = (f) => jourDe(echeance(f)) || jourDe(f.date);
 
-    // Devis acceptés (signés) qui ne sont pas encore facturés = revenus attendus
-    const devisAcceptes = devis.filter((d) =>
-      d.type === 'devis' && ['accepte', 'acompte_facture'].includes(d.statut)
-    );
+    // Solde : solde initial à SA date + ce qui est entré et sorti depuis (paiements reçus, factures payées,
+    // dépenses, prévisions réglées). Avant : la date du solde était ignorée, toute l'histoire s'y ajoutait.
+    const depuis = settings.soldeDate || '0000-01-01';
+    const totalEnc = encaisseEntre(devis, paiements, depuis, '9999-12-31');
+    const totalDep = depenses.filter((d) => (jourDe(d.date || d.createdAt) || depuis) >= depuis).reduce((s, d) => s + (d.montant || 0), 0);
 
-    const totalEnc = facturesPayees.reduce((s, f) => s + (f.total_ttc || 0), 0);
-    const totalDep = depenses.reduce((s, d) => s + (d.montant || 0), 0);
-
-    // Deduplicate previsions for KPI calculations (same desc + month + montant + type = 1 entry)
-    const kpiDedup = new Set();
-    const dedupPrevisions = previsionsComptees.filter(p => {
-      const d = new Date(p.date);
-      const key = `${p.description}|${d.getFullYear()}-${String(d.getMonth()).padStart(2, '0')}|${p.montant}|${p.type}`;
-      if (kpiDedup.has(key)) return false;
-      kpiDedup.add(key);
+    // Une prévision ne compte qu'une fois (même identifiant) ; avant, le dédoublonnage par « libellé + mois +
+    // montant » fusionnait deux vraies échéances identiques et masquait un double ajout en mémoire.
+    const vusIds = new Set();
+    const dedupPrevisions = previsionsComptees.filter((p) => {
+      if (!p?.id) return true;
+      if (vusIds.has(p.id)) return false;
+      vusIds.add(p.id);
       return true;
     });
 
-    // Include paid previsions (user-entered income/expenses)
-    const paidPrevEntrees = dedupPrevisions.filter(p => p.type === 'entree' && p.statut === 'paye').reduce((s, p) => s + (p.montant || 0), 0);
-    const paidPrevSorties = dedupPrevisions.filter(p => p.type === 'sortie' && p.statut === 'paye').reduce((s, p) => s + (p.montant || 0), 0);
+    // Prévisions réglées depuis la date du solde (saisies à la main)
+    const regleeDepuis = (p) => p.statut === 'paye' && (jourDe(p.date) || depuis) >= depuis;
+    const paidPrevEntrees = dedupPrevisions.filter(p => p.type === 'entree' && regleeDepuis(p)).reduce((s, p) => s + (p.montant || 0), 0);
+    const paidPrevSorties = dedupPrevisions.filter(p => p.type === 'sortie' && regleeDepuis(p)).reduce((s, p) => s + (p.montant || 0), 0);
 
     const solde = (settings.soldeInitial || 0) + totalEnc + paidPrevEntrees - totalDep - paidPrevSorties;
 
@@ -1237,26 +1202,18 @@ export default function TresorerieModule({
     const monthsAhead = periodMonths(period);
     const futureLimit = new Date(now);
     futureLimit.setMonth(futureLimit.getMonth() + monthsAhead);
+    const limite = jourDe(futureLimit);
 
-    // Entrées prévues des devis acceptés (signés mais pas encore facturés)
-    const devisAcceptesTotal = devisAcceptes.reduce((s, d) => {
-      const montant = (d.total_ttc || 0) - (d.montant_paye || 0);
-      return s + Math.max(montant, 0);
-    }, 0);
+    // Entrées prévues : reste dû des factures ouvertes à échéance dans la période (retard compris), part
+    // non facturée des devis signés, prévisions d'entrée non réglées dans la période (retard compris).
+    const devisAFacturerTotal = devisAFacturer.reduce((s, d) => s + resteAFacturer(d, devis), 0);
+    const entPrev = facturesOuvertes.filter((f) => echeanceDe(f) <= limite).reduce((s, f) => s + resteAPayer(f, paiements), 0)
+      + devisAFacturerTotal
+      + dedupPrevisions.filter(p => p.type === 'entree' && p.statut === 'prevu' && jourDe(p.date) <= limite).reduce((s, p) => s + (p.montant || 0), 0);
 
-    // Entrees prevues = unpaid invoices + devis acceptés + pending entree previsions (within period)
-    const entPrev = facturesImpayees.reduce((s, f) => {
-      const echeance = new Date(f.date_echeance || f.date_validite || f.date);
-      if (echeance < now || echeance > futureLimit) return s;
-      const reste = (f.total_ttc || 0) - (f.montant_paye || 0);
-      return s + Math.max(reste, 0);
-    }, 0) + devisAcceptesTotal + dedupPrevisions
-      .filter(p => p.type === 'entree' && p.statut === 'prevu' && new Date(p.date) >= now && new Date(p.date) <= futureLimit)
-      .reduce((s, p) => s + (p.montant || 0), 0);
-
-    // Sorties prevues = pending sortie previsions within selected period
+    // Sorties prévues : non réglées dans la période, retard compris (avant : une échéance en retard sortait du total)
     const sorPrev = dedupPrevisions
-      .filter(p => p.type === 'sortie' && p.statut === 'prevu' && new Date(p.date) >= now && new Date(p.date) <= futureLimit)
+      .filter(p => p.type === 'sortie' && p.statut === 'prevu' && jourDe(p.date) <= limite)
       .reduce((s, p) => s + (p.montant || 0), 0);
 
     const projFin = solde + entPrev - sorPrev;
@@ -1276,41 +1233,35 @@ export default function TresorerieModule({
       buckets.push({ month: d.getMonth(), year: d.getFullYear(), label: MONTH_NAMES[d.getMonth()], entrees: 0, sorties: 0, isCurrent: false, isFuture: true });
     }
 
-    // Populate past months with real data
-    facturesPayees.forEach((f) => {
-      const d = new Date(f.date_paiement || f.date);
-      const mk = monthKey(d);
-      const bucket = buckets.find((b) => sameMonth(b, mk));
-      if (bucket && !bucket.isFuture) bucket.entrees += f.total_ttc || 0;
+    // Mois passés : l'argent réellement reçu (src/lib/paiementsFacture.js `encaisseEntre`) et les dépenses.
+    // Avant : factures « payée » au total, et devis signés rangés comme entrées encaissées.
+    buckets.forEach((b) => {
+      if (b.isFuture) return;
+      const debut = `${b.year}-${String(b.month + 1).padStart(2, '0')}-01`;
+      const fin = jourDe(new Date(b.year, b.month + 1, 0));
+      b.entrees += encaisseEntre(devis, paiements, debut, fin);
     });
 
     depenses.forEach((dep) => {
-      const d = new Date(dep.date || dep.createdAt);
-      const mk = monthKey(d);
-      const bucket = buckets.find((b) => sameMonth(b, mk));
+      const d = dateLocale(dep.date || dep.createdAt);
+      if (!d) return;
+      const bucket = buckets.find((b) => sameMonth(b, monthKey(d)));
       if (bucket && !bucket.isFuture) bucket.sorties += dep.montant || 0;
     });
 
-    // Add devis acceptés to current/future month buckets as expected income
-    devisAcceptes.forEach((d) => {
-      const dateDevis = new Date(d.date_validite || d.date || now);
-      const mk = monthKey(dateDevis);
-      const bucket = buckets.find((b) => sameMonth(b, mk));
-      if (bucket) {
-        const reste = (d.total_ttc || 0) - (d.montant_paye || 0);
-        if (reste > 0) bucket.entrees += reste;
-      }
+    // Mois à venir : reste dû des factures ouvertes à leur échéance (en retard : ce mois-ci)
+    facturesOuvertes.forEach((f) => {
+      const ech = dateLocale(echeanceDe(f));
+      const d = ech && ech > now ? ech : now;
+      const bucket = buckets.find((b) => sameMonth(b, monthKey(d)));
+      if (bucket) bucket.entrees += resteAPayer(f, paiements);
     });
 
     // Add ALL previsions (paid = past, pending = future) to their month buckets
     // Deduplicate: same description + same month + same montant = counted only once
-    const chartPrevDedup = new Set();
-    previsionsComptees.forEach((p) => {
-      const d = new Date(p.date);
-      const dedupKey = `${p.description}|${d.getFullYear()}-${String(d.getMonth()).padStart(2, '0')}|${p.montant}|${p.type}`;
-      if (chartPrevDedup.has(dedupKey)) return; // skip duplicate
-      chartPrevDedup.add(dedupKey);
-
+    dedupPrevisions.forEach((p) => {
+      const d = dateLocale(p.date);
+      if (!d) return;
       const mk = monthKey(d);
       const bucket = buckets.find((b) => sameMonth(b, mk));
       if (!bucket) return;
@@ -1328,14 +1279,13 @@ export default function TresorerieModule({
     // 3. Upcoming payments list
     const payments = [];
 
-    // Unpaid invoices as upcoming entrees
-    facturesImpayees.forEach((f) => {
+    // Factures ouvertes : reste dû, à leur échéance
+    facturesOuvertes.forEach((f) => {
       const client = clients.find((c) => c.id === f.client_id);
-      const reste = (f.total_ttc || 0) - (f.montant_paye || 0);
-      if (reste <= 0) return;
-      const isOverdue = new Date(f.date_echeance || f.date_validite || f.date) < now;
+      const reste = resteAPayer(f, paiements);
+      const isOverdue = statutFacture(f, paiements, now) === 'en_retard';
       payments.push({
-        id: `fac_${f.id}`, date: f.date_echeance || f.date_validite || f.date,
+        id: `fac_${f.id}`, date: echeanceDe(f),
         description: `Facture ${f.numero || f.id?.slice(-6) || '---'} – ${formatClientName(client)}`,
         type: 'entree', montant: reste,
         statut: isOverdue ? 'En retard' : 'En attente',
@@ -1343,11 +1293,10 @@ export default function TresorerieModule({
       });
     });
 
-    // Devis acceptés (signés, pas encore facturés) as upcoming entrees
-    devisAcceptes.forEach((d) => {
+    // Devis signés : la part pas encore facturée
+    devisAFacturer.forEach((d) => {
       const client = clients.find((c) => c.id === d.client_id);
-      const reste = (d.total_ttc || 0) - (d.montant_paye || 0);
-      if (reste <= 0) return;
+      const reste = resteAFacturer(d, devis);
       payments.push({
         id: `devis_${d.id}`, date: d.date_validite || d.date || new Date().toISOString(),
         description: `Devis signé ${d.numero || d.id?.slice(-6) || '---'} – ${formatClientName(client, d.client_nom || 'Client')}`,
@@ -1369,14 +1318,9 @@ export default function TresorerieModule({
     });
 
     // User previsions (with deduplication: same description + same month + same montant = duplicate)
-    const prevDedup = new Set();
-    previsionsComptees.forEach((p) => {
-      const d = new Date(p.date);
-      const dedupKey = `${p.description}|${d.getFullYear()}-${String(d.getMonth()).padStart(2, '0')}|${p.montant}|${p.type}`;
-      if (prevDedup.has(dedupKey)) return; // skip duplicate
-      prevDedup.add(dedupKey);
-
-      const isOverdue = p.statut === 'prevu' && d < now;
+    dedupPrevisions.forEach((p) => {
+      // En retard : la veille ou avant (une échéance du jour n'est pas en retard)
+      const isOverdue = p.statut === 'prevu' && jourDe(p.date) < jourDe(now);
       payments.push({
         id: p.id, date: p.date, description: p.description,
         type: p.type, montant: p.montant,
@@ -1391,10 +1335,9 @@ export default function TresorerieModule({
     // 4. Alerts
     const futureNegative = chartData.filter((d) => d.isFuture || d.isCurrent).some((d) => d.cumulBalance < 0);
     const in7 = new Date(now); in7.setDate(in7.getDate() + 7);
-    const bigPayment = facturesImpayees.find((f) => {
-      const due = new Date(f.date_echeance || f.date);
-      const reste = (f.total_ttc || 0) - (f.montant_paye || 0);
-      return due <= in7 && due >= now && reste >= 10000;
+    const bigPayment = facturesOuvertes.find((f) => {
+      const due = echeanceDe(f);
+      return due <= jourDe(in7) && due >= jourDe(now) && resteAPayer(f, paiements) >= 10000;
     });
 
     const currentBucket = chartData.find((b) => b.isCurrent);
@@ -1430,11 +1373,12 @@ export default function TresorerieModule({
       return past6.reduce((s, b) => s + b.sorties, 0) / past6.length;
     })();
 
-    // Factures impayées pour la projection
-    const facturesForProjection = devis.filter(d =>
-      (d.type === 'facture' || d.statut === 'accepte' || d.statut === 'signe') &&
-      !['payee', 'paye', 'refuse', 'brouillon'].includes(d.statut)
-    );
+    // Factures ouvertes pour la projection, à leur échéance (en retard : le mois prochain)
+    const moisEncaissement = (f) => {
+      const ech = dateLocale(echeanceDe(f));
+      const premier = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+      return ech && ech >= premier ? ech : premier;
+    };
 
     const projections = [];
     let projBalance = solde;
@@ -1442,17 +1386,15 @@ export default function TresorerieModule({
       const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
       // Use scheduled previsions for this month, or fallback to averages
       const mk = { month: d.getMonth(), year: d.getFullYear() };
-      const monthPrevEntrees = previsionsComptees.filter(p => p.type === 'entree' && p.statut === 'prevu' && sameMonth(monthKey(new Date(p.date)), mk));
+      const moisDe = (p) => { const x = dateLocale(p.date); return x ? monthKey(x) : null; };
+      const monthPrevEntrees = dedupPrevisions.filter(p => p.type === 'entree' && p.statut === 'prevu' && moisDe(p) && sameMonth(moisDe(p), mk));
       const scheduledEntrees = monthPrevEntrees.reduce((s, p) => s + (p.montant || 0), 0);
-      const monthPrevSorties = previsionsComptees.filter(p => p.type === 'sortie' && p.statut === 'prevu' && sameMonth(monthKey(new Date(p.date)), mk));
+      const monthPrevSorties = dedupPrevisions.filter(p => p.type === 'sortie' && p.statut === 'prevu' && moisDe(p) && sameMonth(moisDe(p), mk));
       const scheduledSorties = monthPrevSorties.reduce((s, p) => s + (p.montant || 0), 0);
 
       // Include unpaid invoices/accepted devis as projected income for this month
-      const monthInvoices = facturesForProjection.filter(f => {
-        const echeance = new Date(f.date_echeance || f.date_validite || f.date);
-        return echeance.getMonth() === mk.month && echeance.getFullYear() === mk.year;
-      });
-      const invoiceEntrees = monthInvoices.reduce((s, f) => s + Math.max((f.total_ttc || 0) - (f.montant_paye || 0), 0), 0);
+      const monthInvoices = facturesOuvertes.filter(f => sameMonth(monthKey(moisEncaissement(f)), mk));
+      const invoiceEntrees = monthInvoices.reduce((s, f) => s + resteAPayer(f, paiements), 0);
 
       const entrees = (scheduledEntrees + invoiceEntrees) || avgMonthlyEntrees;
       const sorties = scheduledSorties || avgMonthlySorties;
@@ -1461,7 +1403,7 @@ export default function TresorerieModule({
       // Build items list for tooltip
       const items = [
         ...monthPrevEntrees.map(p => ({ label: p.description || 'Prévision', montant: p.montant || 0, type: 'entree' })),
-        ...monthInvoices.map(f => ({ label: `Facture ${f.numero || f.nom || ''}`.trim(), montant: Math.max((f.total_ttc || 0) - (f.montant_paye || 0), 0), type: 'entree' })),
+        ...monthInvoices.map(f => ({ label: `Facture ${f.numero || f.nom || ''}`.trim(), montant: resteAPayer(f, paiements), type: 'entree' })),
         ...monthPrevSorties.map(p => ({ label: p.description || 'Charge', montant: p.montant || 0, type: 'sortie' })),
       ];
 
@@ -1509,7 +1451,7 @@ export default function TresorerieModule({
       projections, negativeMonth, thresholdMonth, avgMonthlyEntrees, avgMonthlySorties,
       recurringSummary,
     };
-  }, [devis, depenses, clients, previsionsComptees, now, period, settings.soldeInitial]);
+  }, [devis, paiements, depenses, clients, previsionsComptees, now, period, settings.soldeInitial, settings.soldeDate, settings.seuilAlerte]);
 
   // TVA data from hook (replaces inline computation)
   const { tvaMonthly, tvaTotal, tvaByRate, tvaQuarterly, tvaNextDeadline } = tvaHook;
@@ -2705,11 +2647,8 @@ export default function TresorerieModule({
                   title="Export des achats avec TVA déductible">
                   <Receipt size={14} /> Achats
                 </button>
-                <button onClick={() => exportFEC()}
-                  className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-colors ${isDark ? 'bg-purple-900/30 hover:bg-purple-900/50 text-purple-300' : 'bg-purple-50 hover:bg-purple-100 text-purple-700'}`}
-                  title="Fichier d'Écritures Comptables — Format DGFiP">
-                  <FileText size={14} /> FEC
-                </button>
+                {/* Le FEC se fait depuis l'onglet « Export comptable » (un seul générateur) : celui-ci comptait des
+                    devis comme des ventes, oubliait les factures non payées, et séparait par des virgules. */}
                 <button onClick={() => {
                   const isQuarterly = (settings.regimeTva || 'trimestriel') === 'trimestriel';
                   const rows = isQuarterly

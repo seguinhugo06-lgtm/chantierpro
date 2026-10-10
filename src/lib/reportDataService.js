@@ -6,6 +6,7 @@
  */
 
 import { calcConversion, CONVERTED_STATUTS } from './statsUtils';
+import { facturesEmises, tvaFacturee } from './ventes';
 
 const MONTHS_FR = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
 const MONTHS_SHORT = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc'];
@@ -152,10 +153,12 @@ export function computeActivityReport(devis = [], clients = [], chantiers = [], 
   // N-1
   const devisPrev = devis.filter(d => inRange(d.date, prev.startDate, prev.endDate));
 
-  // KPIs
-  const devisAcceptes = devisInPeriod.filter(d => CONVERTED_STATUTS.includes(d.statut));
-  const ca = devisAcceptes.reduce((sum, d) => sum + (Number(d.total_ttc) || 0), 0);
-  const caHT = devisAcceptes.reduce((sum, d) => sum + (Number(d.total_ht) || (Number(d.total_ttc) || 0) / 1.2), 0);
+  // KPIs : devis signés (activité commerciale, sans les factures, qui ont aussi « payée ») ; CA = factures
+  // émises, avoirs déduits (src/lib/ventes.js) — avant, devis et factures s'additionnaient.
+  const devisAcceptes = devisInPeriod.filter(d => d.type !== 'facture' && CONVERTED_STATUTS.includes(d.statut));
+  const ventes = facturesEmises(devisInPeriod);
+  const ca = ventes.reduce((sum, d) => sum + (Number(d.total_ttc) || 0), 0);
+  const caHT = ventes.reduce((sum, d) => sum + (Number(d.total_ht) || 0), 0);
 
   const conversionResult = calcConversion(devisInPeriod);
   const tauxConversion = conversionResult.taux;
@@ -177,11 +180,10 @@ export function computeActivityReport(devis = [], clients = [], chantiers = [], 
     ? devisAcceptes.reduce((s, d) => s + (Number(d.total_ttc) || 0), 0) / devisAcceptes.length
     : 0;
 
-  const nbFacturesEmises = devisInPeriod.filter(d => d.type === 'facture').length;
+  const nbFacturesEmises = ventes.filter(d => d.facture_type !== 'avoir').length;
 
   // N-1 comparison
-  const prevAcceptes = devisPrev.filter(d => CONVERTED_STATUTS.includes(d.statut));
-  const prevCA = prevAcceptes.reduce((sum, d) => sum + (Number(d.total_ttc) || 0), 0);
+  const prevCA = facturesEmises(devisPrev).reduce((sum, d) => sum + (Number(d.total_ttc) || 0), 0);
   const prevConversion = calcConversion(devisPrev);
 
   const comparisons = {
@@ -192,7 +194,7 @@ export function computeActivityReport(devis = [], clients = [], chantiers = [], 
   // Monthly revenue (current year)
   const currentYear = new Date().getFullYear();
   const monthlyRevenue = Array.from({ length: 12 }, (_, i) => ({ mois: MONTHS_SHORT[i], montant: 0, depenses: 0, monthIndex: i }));
-  devis.filter(d => CONVERTED_STATUTS.includes(d.statut)).forEach(d => {
+  facturesEmises(devis).forEach(d => {
     if (!d.date) return;
     const date = new Date(d.date);
     if (date.getFullYear() === currentYear) {
@@ -309,20 +311,18 @@ export function computeFinancialReport(devis = [], clients = [], chantiers = [],
   const paiementsInPeriod = paiements.filter(p => inRange(p.date || p.created_at, startDate, endDate));
   const devisPrev = devis.filter(d => inRange(d.date, prev.startDate, prev.endDate));
 
-  const devisAcceptes = devisInPeriod.filter(d => CONVERTED_STATUTS.includes(d.statut));
-  const ca = devisAcceptes.reduce((sum, d) => sum + (Number(d.total_ttc) || 0), 0);
-  const caHT = devisAcceptes.reduce((sum, d) => sum + (Number(d.total_ht) || (Number(d.total_ttc) || 0) / 1.2), 0);
+  // Ventes de la période : factures émises, avoirs déduits (src/lib/ventes.js). Avant (recette du 9 oct. 2026) :
+  // devis signés + factures payées, la même vente comptée deux fois.
+  const ventes = facturesEmises(devisInPeriod);
+  const ca = ventes.reduce((sum, d) => sum + (Number(d.total_ttc) || 0), 0);
+  const caHT = ventes.reduce((sum, d) => sum + (Number(d.total_ht) || 0), 0);
   const totalDepenses = depensesInPeriod.reduce((sum, d) => sum + (Number(d.montant) || 0), 0);
   const margeBrute = ca - totalDepenses;
   const hasDepenses = totalDepenses > 0;
   const margePercent = ca > 0 && hasDepenses ? (margeBrute / ca) * 100 : 0;
 
   // TVA
-  const tvaCollectee = devisAcceptes.reduce((sum, d) => {
-    const ttc = Number(d.total_ttc) || 0;
-    const ht = Number(d.total_ht) || ttc / 1.2;
-    return sum + (ttc - ht);
-  }, 0);
+  const tvaCollectee = tvaFacturee(devisInPeriod).total;
   const tvaDeductible = depensesInPeriod.reduce((sum, d) => {
     const montant = Number(d.montant) || 0;
     const rate = Number(d.tva_rate || d.tauxTva) || 20;
@@ -361,8 +361,7 @@ export function computeFinancialReport(devis = [], clients = [], chantiers = [],
   const rentabiliteChantiers = chantiers
     .filter(c => c.statut === 'en_cours' || c.statut === 'termine')
     .map(chantier => {
-      const chantierDevis = devisInPeriod.filter(d => d.chantier_id === chantier.id && CONVERTED_STATUTS.includes(d.statut));
-      const chantierCA = chantierDevis.reduce((sum, d) => sum + (Number(d.total_ttc) || 0), 0);
+      const chantierCA = ventes.filter(d => d.chantier_id === chantier.id).reduce((sum, d) => sum + (Number(d.total_ttc) || 0), 0);
       const chantierDeps = depensesInPeriod.filter(d => (d.chantierId || d.chantier_id) === chantier.id);
       const chantierTotalDep = chantierDeps.reduce((sum, d) => sum + (Number(d.montant) || 0), 0);
       const marge = chantierCA - chantierTotalDep;
@@ -385,8 +384,7 @@ export function computeFinancialReport(devis = [], clients = [], chantiers = [],
   const totalPaiements = paiementsInPeriod.reduce((sum, p) => sum + (Number(p.amount || p.montant) || 0), 0);
 
   // N-1
-  const prevAcceptes = devisPrev.filter(d => CONVERTED_STATUTS.includes(d.statut));
-  const prevCA = prevAcceptes.reduce((sum, d) => sum + (Number(d.total_ttc) || 0), 0);
+  const prevCA = facturesEmises(devisPrev).reduce((sum, d) => sum + (Number(d.total_ttc) || 0), 0);
 
   return {
     kpis: {

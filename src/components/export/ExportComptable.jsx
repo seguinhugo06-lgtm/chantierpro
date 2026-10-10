@@ -20,11 +20,14 @@ import {
   Mail,
 } from 'lucide-react';
 import { remettreFichier } from '../../lib/natif';
+import { estEmise } from '../../lib/ventes';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 const fmtEUR = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' });
-const fmtNum = new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+// Montant d'un fichier comptable : virgule décimale, SANS séparateur de milliers (l'espace fine insécable
+// d'Intl, « 7 200,38 », rendait le FEC et les CSV illisibles par les logiciels — recette du 9 oct. 2026).
+const fmtMontant = (n) => (Math.round((Number(n) || 0) * 100) / 100).toFixed(2).replace('.', ',');
 
 const pad = (n) => String(n).padStart(2, '0');
 
@@ -123,7 +126,13 @@ const mapFactureToEntries = (facture, client, allFactures = []) => {
     }
   }
 
-  return entries;
+  // Un avoir a des montants négatifs : chaque écriture passe dans l'autre sens (le client est crédité, les
+  // ventes et la TVA débitées). Avant : des montants négatifs au débit du client (recette du 9 oct. 2026).
+  return entries.map((e) => {
+    const debit = (e.debit < 0 ? 0 : e.debit) + (e.credit < 0 ? -e.credit : 0);
+    const credit = (e.credit < 0 ? 0 : e.credit) + (e.debit < 0 ? -e.debit : 0);
+    return { ...e, debit, credit };
+  }).filter((e) => e.debit !== 0 || e.credit !== 0);
 };
 
 const mapDepenseToEntries = (depense) => {
@@ -241,8 +250,8 @@ const generateCSV = (entries) => {
       fmtDate(e.date),
       e.ref,
       `"${e.libelle}"`,
-      fmtNum.format(e.debit),
-      fmtNum.format(e.credit),
+      fmtMontant(e.debit),
+      fmtMontant(e.credit),
       e.compte,
       e.journal,
     ].join(';')
@@ -250,8 +259,11 @@ const generateCSV = (entries) => {
   return [header, ...rows].join('\r\n');
 };
 
-const generateFEC = (entries, entreprise) => {
-  const siren = entreprise?.siren || '000000000';
+const generateFEC = (entries, entreprise, dateCloture = new Date()) => {
+  // SIREN : celui du profil, sinon les 9 premiers chiffres du SIRET (le profil n'a pas de champ SIREN)
+  const siren = String(entreprise?.siren || '').replace(/\D/g, '').slice(0, 9)
+    || String(entreprise?.siret || '').replace(/\D/g, '').slice(0, 9)
+    || '000000000';
   const header = [
     'JournalCode',
     'JournalLib',
@@ -284,8 +296,13 @@ const generateFEC = (entries, entreprise) => {
     '512000': 'Banque',
   };
 
-  const rows = entries.map((e, i) => {
-    const ecritureNum = String(i + 1).padStart(6, '0');
+  // Une écriture = une pièce d'un journal (toutes ses lignes partagent le numéro et s'équilibrent) ; avant, un
+  // numéro par ligne : aucune écriture ne s'équilibrait.
+  const numeros = new Map();
+  const rows = entries.map((e) => {
+    const cle = `${e.journal}|${e.ref}|${fmtDateISO(e.date)}`;
+    if (!numeros.has(cle)) numeros.set(cle, String(numeros.size + 1).padStart(6, '0'));
+    const ecritureNum = numeros.get(cle);
     return [
       e.journal,
       journalLabels[e.journal] || e.journal,
@@ -298,8 +315,8 @@ const generateFEC = (entries, entreprise) => {
       e.ref,
       fmtDateISO(e.date),
       e.libelle,
-      fmtNum.format(e.debit),
-      fmtNum.format(e.credit),
+      fmtMontant(e.debit),
+      fmtMontant(e.credit),
       '',
       '',
       fmtDateISO(e.date),
@@ -308,7 +325,7 @@ const generateFEC = (entries, entreprise) => {
     ].join('\t');
   });
 
-  const filename = `${siren}FEC${fmtDateISO(new Date())}.txt`;
+  const filename = `${siren}FEC${fmtDateISO(dateCloture)}.txt`;
   return { content: [header, ...rows].join('\r\n'), filename };
 };
 
@@ -320,8 +337,8 @@ const generateExcel = (entries) => {
       fmtDate(e.date),
       e.ref,
       e.libelle,
-      fmtNum.format(e.debit),
-      fmtNum.format(e.credit),
+      fmtMontant(e.debit),
+      fmtMontant(e.credit),
       e.compte,
       e.journal,
     ].join('\t')
@@ -409,7 +426,8 @@ export default function ExportComptable({
   const factures = useMemo(
     () =>
       devis.filter((d) => {
-        if (d.type !== 'facture') return false;
+        // Factures et avoirs émis : un brouillon n'est pas une vente (il était exporté comme tel)
+        if (!estEmise(d)) return false;
         // Use d.date (the document date) as primary, fallback to createdAt
         const dt = new Date(d.date || d.createdAt || d.created_at);
         return dt >= from && dt <= to;
@@ -500,7 +518,7 @@ export default function ExportComptable({
       const csv = generateCSV(exportEntries);
       downloadFile(csv, `export_comptable_${monthStr}${journalSuffix}.csv`, 'text/csv');
     } else if (format === 'fec') {
-      const { content, filename } = generateFEC(exportEntries, entreprise);
+      const { content, filename } = generateFEC(exportEntries, entreprise, to);
       downloadFile(content, filename, 'text/plain');
     } else if (format === 'excel') {
       const excel = generateExcel(exportEntries);
@@ -739,8 +757,8 @@ export default function ExportComptable({
             >
               <Info className="w-4 h-4 mt-0.5 flex-shrink-0" />
               <span>
-                Le format FEC est obligatoire pour les contrôles fiscaux en France. Il respecte les
-                normes de l'article A.47 A-1 du Livre des Procédures Fiscales.
+                Fichier au format FEC (article A.47 A-1 du Livre des procédures fiscales), à faire contrôler
+                par votre comptable avant de le remettre à l'administration.
               </span>
             </div>
           )}

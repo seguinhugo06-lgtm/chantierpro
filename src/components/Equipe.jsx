@@ -28,6 +28,7 @@ import { Avatar } from './ui/LigneListe';
 import { remettreFichier } from '../lib/natif';
 import { tauxFacture, coutHoraire, coutDesPointages } from '../lib/tauxEquipe';
 import { decompteHeures, lundiDe, dimancheDe } from '../lib/paie';
+import { jourLocal } from '../lib/dates';
 
 // Lazy-load optional heavy dependencies to prevent crashes
 let NoteModal = null;
@@ -4534,46 +4535,32 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
         {tab === 'productivite' && (
           <motion.div className="space-y-4" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
             {(() => {
+              // Mêmes règles que l'export paie (src/lib/paie.js) : semaines civiles, rattachées au mois où elles
+              // finissent ; heures sup au-delà de 35 h (25 % jusqu'à 43 h, 50 % au-delà). Recette du 9 oct. 2026 :
+              // « semaines » de 7 jours du mois, surcoût à un taux de 45 € inventé, « utilisation » sur 7 h × 22 j,
+              // et une « marge » où un coût non saisi valait 0. Les sous-traitants ne sont pas des salariés.
               const now = new Date();
-              const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-              const monthPointages = pointages.filter(p => new Date(p.date) >= monthStart);
-              const monthHours = monthPointages.reduce((s, p) => s + (p.heures || 0), 0);
-              const monthCost = monthPointages.reduce((s, p) => {
-                const emp = equipe.find(e => e.id === p.employeId);
-                return s + (p.heures || 0) * (coutHoraire(emp) || 0);
-              }, 0);
-              const monthRevenue = monthPointages.reduce((s, p) => {
-                const emp = equipe.find(e => e.id === p.employeId);
-                return s + (p.heures || 0) * (tauxFacture(emp) || 0);
-              }, 0);
-              const workingDaysInMonth = 22;
-              const expectedHours = equipe.length * 7 * workingDaysInMonth;
-              const utilizationRate = expectedHours > 0 ? Math.round((monthHours / expectedHours) * 100) : 0;
+              const moisCourant = jourLocal(now).slice(0, 7);
+              const salaries = equipe.filter(e => e.type !== 'sous_traitant' && e.contrat !== 'sous_traitant');
+              const monthPointages = pointages.filter(p => p.date && dimancheDe(p.date).slice(0, 7) === moisCourant);
 
-              // Per-employee metrics
-              const empMetrics = equipe.map(emp => {
-                const empPointages = monthPointages.filter(p => p.employeId === emp.id);
-                const hours = empPointages.reduce((s, p) => s + (p.heures || 0), 0);
-                const cost = hours * (coutHoraire(emp) || 0);
-                const revenue = hours * (tauxFacture(emp) || 0);
-                const margin = revenue - cost;
-                // Overtime detection
-                const weeklyHours = {};
-                empPointages.forEach(p => {
-                  const d = new Date(p.date);
-                  const weekNum = Math.floor((d.getDate() - 1) / 7);
-                  weeklyHours[weekNum] = (weeklyHours[weekNum] || 0) + (p.heures || 0);
-                });
-                const overtimeHours = Object.values(weeklyHours).reduce((s, wh) => s + Math.max(0, wh - 35), 0);
-                return { emp, hours, cost, revenue, margin, overtimeHours, utilization: Math.min(100, Math.round((hours / (7 * workingDaysInMonth)) * 100)) };
+              const empMetrics = salaries.map(emp => {
+                const d = decompteHeures(monthPointages.filter(p => p.employeId === emp.id));
+                const taux = coutHoraire(emp) || 0;
+                // Coût des heures, majorations comprises, seulement si le coût horaire est saisi
+                const cost = taux > 0 ? d.normales * taux + d.sup25 * taux * 1.25 + d.sup50 * taux * 1.5 : null;
+                return { emp, hours: d.total, sup25: d.sup25, sup50: d.sup50, overtimeHours: d.sup25 + d.sup50, cost };
               }).sort((a, b) => b.hours - a.hours);
 
+              const monthHours = empMetrics.reduce((s, e) => s + e.hours, 0);
               const totalOvertime = empMetrics.reduce((s, e) => s + e.overtimeHours, 0);
+              const monthCost = empMetrics.reduce((s, e) => s + (e.cost || 0), 0);
+              const heuresSansCout = empMetrics.filter(e => e.cost === null).reduce((s, e) => s + e.hours, 0);
 
               return (
                 <>
                   {/* KPI cards */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div className={`rounded-2xl border p-4 ${cardBg}`}>
                       <div className="flex items-center gap-2 mb-2">
                         <Clock size={16} style={{ color: couleur }} />
@@ -4584,24 +4571,14 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                     </div>
                     <div className={`rounded-2xl border p-4 ${cardBg}`}>
                       <div className="flex items-center gap-2 mb-2">
-                        <Percent size={16} className="text-blue-500" />
-                        <span className={`text-xs font-medium uppercase ${textMuted}`}>Utilisation</span>
-                      </div>
-                      <p className={`text-2xl font-bold ${utilizationRate === 0 ? textMuted : utilizationRate >= 80 ? 'text-emerald-500' : utilizationRate >= 50 ? 'text-amber-500' : 'text-red-500'}`}>{utilizationRate}%</p>
-                      <div className={`w-full h-2 rounded-full mt-2 bg-bord`}>
-                        <div className="h-full rounded-full transition-all" style={{ width: `${Math.min(100, utilizationRate)}%`, background: utilizationRate === 0 ? '#94a3b8' : utilizationRate >= 80 ? '#22c55e' : utilizationRate >= 50 ? '#f59e0b' : '#ef4444' }} />
-                      </div>
-                    </div>
-                    <div className={`rounded-2xl border p-4 ${cardBg}`}>
-                      <div className="flex items-center gap-2 mb-2">
                         <Euro size={16} className="text-emerald-500" />
-                        <span className={`text-xs font-medium uppercase ${textMuted}`}>Marge</span>
+                        <span className={`text-xs font-medium uppercase ${textMuted}`}>Coût des heures</span>
                       </div>
-                      <p className={`text-2xl font-bold ${(monthRevenue - monthCost) === 0 ? textMuted : (monthRevenue - monthCost) > 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-                        {modeDiscret ? '***' : `${Math.round(monthRevenue - monthCost).toLocaleString('fr-FR')} €`}
+                      <p className={`text-2xl font-bold ${textPrimary}`}>
+                        {modeDiscret ? '***' : `${Math.round(monthCost).toLocaleString('fr-FR')} €`}
                       </p>
-                      <p className={`text-xs ${textMuted}`}>
-                        {modeDiscret ? '***' : `CA: ${Math.round(monthRevenue).toLocaleString('fr-FR')} € / Coûts: ${Math.round(monthCost).toLocaleString('fr-FR')} €`}
+                      <p className={`text-xs ${heuresSansCout > 0 ? 'text-alerte-texte' : textMuted}`}>
+                        {heuresSansCout > 0 ? `${Math.round(heuresSansCout * 10) / 10} h sans coût horaire saisi` : 'majorations des heures sup comprises'}
                       </p>
                     </div>
                     <div className={`rounded-2xl border p-4 ${cardBg}`}>
@@ -4610,11 +4587,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                         <span className={`text-xs font-medium uppercase ${textMuted}`}>Heures sup</span>
                       </div>
                       <p className={`text-2xl font-bold ${totalOvertime > 0 ? 'text-red-500' : textPrimary}`}>{Math.round(totalOvertime * 10) / 10}h</p>
-                      {totalOvertime > 0 && (
-                        <p className="text-xs text-red-500">
-                          Surcoût: {modeDiscret ? '***' : `~${Math.round(totalOvertime * 45 * 0.25).toLocaleString('fr-FR')} €`}
-                        </p>
-                      )}
+                      <p className={`text-xs ${textMuted}`}>au-delà de 35 h par semaine civile</p>
                     </div>
                   </div>
 
@@ -4630,13 +4603,12 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                             <th className={`text-left px-4 py-2 text-xs font-semibold uppercase ${textMuted}`}>#</th>
                             <th className={`text-left px-4 py-2 text-xs font-semibold uppercase ${textMuted}`}>Employé</th>
                             <th className={`text-center px-4 py-2 text-xs font-semibold uppercase ${textMuted}`}>Heures</th>
-                            <th className={`text-center px-4 py-2 text-xs font-semibold uppercase ${textMuted}`}>Utilisation</th>
                             <th className={`text-center px-4 py-2 text-xs font-semibold uppercase ${textMuted}`}>H. Sup</th>
-                            <th className={`text-right px-4 py-2 text-xs font-semibold uppercase ${textMuted}`}>Marge</th>
+                            <th className={`text-right px-4 py-2 text-xs font-semibold uppercase ${textMuted}`}>Coût</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {empMetrics.map(({ emp, hours, utilization, overtimeHours, margin }, idx) => (
+                          {empMetrics.map(({ emp, hours, sup25, sup50, overtimeHours, cost }, idx) => (
                             <tr key={emp.id} className={`border-t border-bord`}>
                               <td className={`px-4 py-3`}>
                                 <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${idx === 0 ? 'bg-amber-400 text-amber-900' : idx === 1 ? 'bg-slate-300 text-slate-700' : idx === 2 ? 'bg-amber-700 text-amber-100' : ('bg-surface-2 text-encre-3')}`}>
@@ -4655,19 +4627,12 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                                 </div>
                               </td>
                               <td className={`text-center px-4 py-3 text-sm font-semibold ${textPrimary}`}>{Math.round(hours)}h</td>
-                              <td className="text-center px-4 py-3">
-                                <div className="inline-flex items-center gap-1.5">
-                                  <div className={`w-12 h-2 rounded-full bg-bord`}>
-                                    <div className="h-full rounded-full" style={{ width: `${utilization}%`, background: utilization >= 80 ? '#22c55e' : utilization >= 50 ? '#f59e0b' : '#ef4444' }} />
-                                  </div>
-                                  <span className={`text-xs ${textMuted}`}>{utilization}%</span>
-                                </div>
-                              </td>
                               <td className={`text-center px-4 py-3 text-sm ${overtimeHours > 0 ? 'text-red-500 font-semibold' : textMuted}`}>
                                 {overtimeHours > 0 ? `+${Math.round(overtimeHours * 10) / 10}h` : '—'}
+                                {overtimeHours > 0 && <span className={`block text-xs font-normal ${textMuted}`}>{Math.round(sup25 * 10) / 10} h à 25 %{sup50 > 0 ? ` · ${Math.round(sup50 * 10) / 10} h à 50 %` : ''}</span>}
                               </td>
-                              <td className={`text-right px-4 py-3 text-sm font-semibold ${margin >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-                                {modeDiscret ? '***' : `${margin >= 0 ? '+' : ''}${Math.round(margin).toLocaleString('fr-FR')} €`}
+                              <td className={`text-right px-4 py-3 text-sm font-semibold ${cost === null ? 'text-alerte-texte' : textPrimary}`}>
+                                {cost === null ? 'coût non saisi' : modeDiscret ? '***' : `${Math.round(cost).toLocaleString('fr-FR')} €`}
                               </td>
                             </tr>
                           ))}

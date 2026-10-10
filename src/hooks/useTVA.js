@@ -6,6 +6,9 @@
  */
 
 import { useMemo } from 'react';
+import { facturesEmises } from '../lib/ventes';
+import { totauxDocument } from '../lib/totauxDocument';
+import { dateLocale } from '../lib/paiementsFacture';
 
 const MONTH_NAMES = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
 
@@ -23,9 +26,14 @@ export function useTVA({ devis = [], depenses = [], mouvements = [], settings = 
     const now = new Date();
     const regimeTva = settings.regimeTva || 'trimestriel';
 
-    // Filter factures (accepted/paid devis)
-    const acceptedStatuts = ['accepte', 'signe', 'payee', 'paye'];
-    const factures = devis.filter(d => acceptedStatuts.includes(d.statut));
+    // TVA collectée : celle des factures émises, avoirs déduits, taux par taux (src/lib/ventes.js), à la date
+    // de la facture. Recette du 9 oct. 2026 : les devis signés comptaient, une facture et son devis comptaient
+    // deux fois, les paiements recopiés en « mouvements » ajoutaient leur TVA (à 20 % quel que soit le taux),
+    // et un seul taux par document : 12 789 € annoncés pour environ 2 350 € réels.
+    // Franchise en base : aucune TVA collectée.
+    const franchise = regimeTva === 'franchise';
+    const factures = franchise ? [] : facturesEmises(devis);
+    const moisDe = (v) => { const d = dateLocale(v); return d && d.getFullYear() === currentYear ? d.getMonth() : null; };
 
     // ── Monthly breakdown ──────────────────────────────────────────
     const tvaMonthly = Array.from({ length: 12 }, (_, i) => ({
@@ -36,14 +44,11 @@ export function useTVA({ devis = [], depenses = [], mouvements = [], settings = 
       net: 0,
     }));
 
-    // TVA collectée from factures
-    factures.forEach(f => {
-      const d = new Date(f.date || f.createdAt);
-      if (d.getFullYear() !== currentYear) return;
-      const rate = f.tvaRate || f.tva_rate || 20;
-      const ht = f.total_ht || (f.total_ttc ? f.total_ttc / (1 + rate / 100) : 0);
-      const tva = (f.total_ttc || 0) - ht;
-      if (tva > 0) tvaMonthly[d.getMonth()].collectee += tva;
+    // TVA collectée des factures (un avoir la diminue)
+    const tvaParFacture = factures.map(f => ({ mois: moisDe(f.date || f.createdAt), tva: totauxDocument(f).tva }));
+    tvaParFacture.forEach(({ mois, tva }) => {
+      if (mois === null) return;
+      tvaMonthly[mois].collectee += tva.reduce((s, x) => s + x.montant, 0);
     });
 
     // TVA déductible from depenses
@@ -56,17 +61,12 @@ export function useTVA({ devis = [], depenses = [], mouvements = [], settings = 
       if (tva > 0) tvaMonthly[d.getMonth()].deductible += tva;
     });
 
-    // TVA from mouvements (if any have TVA data)
+    // TVA des mouvements de sortie réglés (dépenses saisies en trésorerie). Les entrées ne comptent pas :
+    // la TVA collectée vient des factures, et les entrées étaient souvent des copies de paiements.
     mouvements.forEach(m => {
-      const d = new Date(m.date);
-      if (d.getFullYear() !== currentYear || m.statut === 'annule') return;
-      if (m.montantTva && m.montantTva > 0) {
-        if (m.type === 'entree') {
-          tvaMonthly[d.getMonth()].collectee += m.montantTva;
-        } else {
-          tvaMonthly[d.getMonth()].deductible += m.montantTva;
-        }
-      }
+      const mois = moisDe(m.date);
+      if (mois === null || m.type === 'entree' || m.statut !== 'paye') return;
+      if (m.montantTva && m.montantTva > 0) tvaMonthly[mois].deductible += m.montantTva;
     });
 
     // Calculate net for each month
@@ -82,14 +82,13 @@ export function useTVA({ devis = [], depenses = [], mouvements = [], settings = 
     // ── By rate breakdown ────────────────────────────────────────────
     const tvaByRate = {};
 
-    factures.forEach(f => {
-      const d = new Date(f.date || f.createdAt);
-      if (d.getFullYear() !== currentYear) return;
-      const rate = f.tvaRate || f.tva_rate || 20;
-      if (!tvaByRate[rate]) tvaByRate[rate] = { collectee: 0, deductible: 0, base: 0, baseDeductible: 0 };
-      const ht = f.total_ht || (f.total_ttc ? f.total_ttc / (1 + rate / 100) : 0);
-      tvaByRate[rate].base += ht;
-      tvaByRate[rate].collectee += (f.total_ttc || 0) - ht;
+    tvaParFacture.forEach(({ mois, tva }) => {
+      if (mois === null) return;
+      tva.forEach(({ taux, base, montant }) => {
+        if (!tvaByRate[taux]) tvaByRate[taux] = { collectee: 0, deductible: 0, base: 0, baseDeductible: 0 };
+        tvaByRate[taux].base += base;
+        tvaByRate[taux].collectee += montant;
+      });
     });
 
     depenses.forEach(dep => {
@@ -148,13 +147,17 @@ export function useTVA({ devis = [], depenses = [], mouvements = [], settings = 
     }
 
     // ── CA3 export data ──────────────────────────────────────────────
+    // Formulaire 3310-CA3 : ligne 08 = taux normal 20 %, ligne 09 = taux réduit 5,5 %, ligne 9B = taux
+    // intermédiaire 10 % (avant : 09 et 9B inversées) ; TVA déductible sur les autres biens et services en
+    // ligne 20 (la ligne 19 est celle des immobilisations).
     const ca3Data = {
-      ligne01: (tvaByRate[20]?.base || 0) + (tvaByRate[10]?.base || 0) + (tvaByRate[5.5]?.base || 0),
+      ligne01: Object.values(tvaByRate).reduce((s, r) => s + (r.base || 0), 0),
       ligne08: tvaByRate[20]?.collectee || 0,
-      ligne09: tvaByRate[10]?.collectee || 0,
-      ligne9B: tvaByRate[5.5]?.collectee || 0,
+      ligne09: tvaByRate[5.5]?.collectee || 0,
+      ligne9B: tvaByRate[10]?.collectee || 0,
       ligne16: tvaTotal.collectee,
-      ligne19: tvaTotal.deductible,
+      ligne19: 0,
+      ligne20: tvaTotal.deductible,
       ligne23: tvaTotal.deductible,
       ligne28: tvaTotal.net,
     };

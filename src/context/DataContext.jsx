@@ -1050,8 +1050,10 @@ export function DataProvider({ children, initialData = {} }) {
     const memo = memos.find(m => m.id === id);
     if (!memo) return;
 
+    // `status` suit `is_done` : sinon la base gardait « a_faire » et l'écran relisait une tâche non faite
     const updates = {
       is_done: !memo.is_done,
+      status: !memo.is_done ? 'termine' : 'a_faire',
       done_at: !memo.is_done ? new Date().toISOString() : null,
       updated_at: new Date().toISOString(),
     };

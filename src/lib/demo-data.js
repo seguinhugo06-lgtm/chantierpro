@@ -160,7 +160,7 @@ export const DEMO_DEVIS = [
     ], total_ht: 3400, tva: 340, total_ttc: 3740 },
 
   // ch9 - Isolation Moreau — FAC payée TVA 5.5% (rénovation énergétique)
-  { id: 'd10', numero: 'FAC-2025-00010', type: 'facture', client_id: 'c9', chantier_id: 'ch9', date: '2025-11-05', statut: 'payee', tvaRate: 5.5,
+  { id: 'd10', numero: 'FAC-2025-00010', type: 'facture', facture_type: 'totale', devis_source_id: 'd11', client_id: 'c9', chantier_id: 'ch9', date: '2025-11-05', statut: 'payee', tvaRate: 5.5,
     lignes: [
       { id: 'l1', description: 'Fourniture laine de roche 120mm', quantite: 85, unite: 'm²', prixUnitaire: 18, montant: 1530 },
       { id: 'l2', description: 'Pose isolation sous toiture', quantite: 85, unite: 'm²', prixUnitaire: 42, montant: 3570 },
@@ -169,7 +169,7 @@ export const DEMO_DEVIS = [
     ], total_ht: 6825, tva: 375.38, total_ttc: 7200.38 },
 
   // ch9 - DEV initial Moreau TVA 5.5%
-  { id: 'd11', numero: 'DEV-2025-00018', type: 'devis', client_id: 'c9', chantier_id: 'ch9', date: '2025-09-28', validite: 30, statut: 'accepte', tvaRate: 5.5,
+  { id: 'd11', numero: 'DEV-2025-00018', type: 'devis', client_id: 'c9', chantier_id: 'ch9', date: '2025-09-28', validite: 30, statut: 'facture', tvaRate: 5.5,
     lignes: [
       { id: 'l1', description: 'Isolation combles perdus 85m²', quantite: 85, unite: 'm²', prixUnitaire: 75, montant: 6375 },
       { id: 'l2', description: 'Trappe d\'accès', quantite: 1, unite: 'forfait', prixUnitaire: 450, montant: 450 },

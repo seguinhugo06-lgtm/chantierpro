@@ -100,6 +100,7 @@ import { remettreFichier, estNatif, ouvrirLienExterne } from '../lib/natif';
 import { captureException } from '../lib/sentry';
 import { imprimerHtml } from '../lib/imprimerHtml';
 import { estFranchiseTva, sansTva, franchiseAppliquee, tvaARegulariser } from '../lib/franchiseTva';
+import { estOuverte, estEnRetard } from '../lib/ventes';
 import { urlPublique } from '../lib/urlPublique';
 
 // Email tracking : l'envoi passe par Resend (send-email) ; l'historique par document
@@ -539,6 +540,16 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     }
   };
 
+  // « En attente » et « À traiter » d'après le reste dû (src/lib/ventes.js) : avant (recette du 9 oct.),
+  // le statut brut y mettait des factures payées. Facture : reste dû ; devis : envoyé sans réponse.
+  const enAttente = (d) => (d.type === 'facture' ? estOuverte(d, paiements) : ['envoye', 'vu'].includes(d.statut));
+  const aTraiter = (d) => {
+    const jours = Math.floor((Date.now() - new Date(d.date)) / 86400000);
+    if (d.statut === 'brouillon') return jours > 2;
+    if (d.type === 'facture') return estEnRetard(d, paiements);
+    return ['envoye', 'vu'].includes(d.statut) && jours > 7;
+  };
+
   // B7: Period date boundaries
   const periodStart = useMemo(() => {
     const now = new Date();
@@ -562,14 +573,9 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     if (filter === 'situations' && d.facture_type !== 'situation') return false;
     if (filter === 'avoirs' && d.facture_type !== 'avoir') return false;
     if (filter === 'acomptes' && !(d.facture_type === 'acompte' || d.facture_type === 'solde' || (d.type === 'devis' && (d.statut === 'acompte_facture' || d.echeancier_id)))) return false;
-    if (filter === 'attente' && !['envoye', 'vu'].includes(d.statut)) return false;
-    if (filter === 'a_traiter') {
-      const days = Math.floor((Date.now() - new Date(d.date)) / 86400000);
-      if (d.statut === 'brouillon' && days > 2) return true;
-      if (['envoye', 'vu'].includes(d.statut) && days > 7) return true;
-      return false;
-    }
-    if (filter === 'factures_impayees' && !(d.type === 'facture' && d.statut !== 'payee')) return false;
+    if (filter === 'attente' && !enAttente(d)) return false;
+    if (filter === 'a_traiter') return aTraiter(d);
+    if (filter === 'factures_impayees' && !estOuverte(d, paiements)) return false;
     if (filter === 'en_relance' && !relances.getDocumentPending(d.id)) return false;
     if (filter === 'conversion' && !(d.type === 'devis' && ['envoye', 'vu', 'refuse'].includes(d.statut))) return false;
     // Client filter
@@ -602,13 +608,11 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       situations: base.filter(d => d.facture_type === 'situation').length,
       avoirs: base.filter(d => d.facture_type === 'avoir').length,
       acomptes: base.filter(d => d.facture_type === 'acompte' || d.facture_type === 'solde' || (d.type === 'devis' && (d.statut === 'acompte_facture' || d.echeancier_id))).length,
-      attente: base.filter(d => ['envoye', 'vu'].includes(d.statut)).length,
-      a_traiter: base.filter(d => {
-        const days = Math.floor((Date.now() - new Date(d.date)) / 86400000);
-        return (d.statut === 'brouillon' && days > 2) || (['envoye', 'vu'].includes(d.statut) && days > 7);
-      }).length,
+      attente: base.filter(enAttente).length,
+      a_traiter: base.filter(aTraiter).length,
     };
-  }, [devis, clients, periodStart]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [devis, clients, periodStart, paiements]);
 
   // Nettoyage affichage numéros — normalise les timestamps et padding court
   const cleanNumero = (numero) => {

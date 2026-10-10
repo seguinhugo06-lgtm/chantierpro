@@ -47,6 +47,7 @@ import LigneListe, { GroupeListe } from './ui/LigneListe';
 import { Bouton, BoutonIcone } from './ui/Bouton';
 import EtatVide from './ui/EtatVide';
 import { useSubscriptionStore, PLANS } from '../stores/subscriptionStore';
+import { jourLocal } from '../lib/dates';
 
 /** La mallette — marque Mallettico, reprise du jeu d'icônes (grille 48, contour 3,2). */
 function Mallette({ size = 24, style, className }) {
@@ -391,9 +392,11 @@ export default function Dashboard({
   }));
 
   // ---- Memos du jour ----
+  // Tâches non faites, pour aujourd'hui ou en retard. Avant (recette du 9 oct.) : le filtre lisait `done` et
+  // `date`, que les tâches n'ont pas (`is_done`, `due_date`) : toutes s'affichaient, faites et futures comprises.
   const memosJour = useMemo(() => {
-    const today = new Date().toISOString().substring(0, 10);
-    return memos.filter(m => !m.done && (!m.date || m.date === today));
+    const today = jourLocal();
+    return memos.filter(m => !m.is_done && m.due_date && m.due_date <= today);
   }, [memos]);
 
   // Merge memos into actions
@@ -402,8 +405,8 @@ export default function Dashboard({
       priority: 4,
       icon: CheckCircle,
       color: '#10b981',
-      label: m.text || m.titre || 'Mémo',
-      detail: 'Mémo du jour',
+      label: m.text || m.titre || 'Tâche',
+      detail: m.due_date < jourLocal() ? 'Tâche en retard' : 'Tâche du jour',
       actionLabel: 'Fait',
       onClick: () => toggleMemo?.(m.id),
     }));
