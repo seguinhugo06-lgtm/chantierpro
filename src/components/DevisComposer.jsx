@@ -25,7 +25,7 @@ import { calculerTotaux } from '../lib/totauxDocument';
 import { estFranchiseTva } from '../lib/franchiseTva';
 import { TRADE_LIBRARY } from '../lib/templates/trade-library';
 import { jourLocal } from '../lib/dates';
-import { estEntrepreneurIndividuel, estEirl } from '../lib/identiteEntreprise';
+import { profilManquant, enPhrase } from '../lib/profilLegal';
 
 const DRAFT_KEY = 'mallettico_devis_composer_draft';
 const MRU_KEY = 'mallettico_recent_clients';
@@ -639,17 +639,9 @@ export default function DevisComposer({
     }
   };
 
-  // Mentions légales manquantes — prévenir PENDANT la composition, pas au moment d'envoyer
-  const legalMissing = useMemo(() => {
-    const missing = [];
-    if (!entreprise?.siret) missing.push('SIRET');
-    if (!entreprise?.adresse) missing.push('adresse');
-    if (!(entreprise?.formeJuridique || entreprise?.forme_juridique)) missing.push('forme juridique');
-    if (!(entreprise?.decennaleAssureur || entreprise?.decennale_assureur) || !(entreprise?.decennaleNumero || entreprise?.decennale_numero)) missing.push('assurance décennale');
-    // Entrepreneur individuel : son nom, suivi de « EI » (C. com. R526-27) — même contrôle qu'à l'envoi
-    if ((estEntrepreneurIndividuel(entreprise) || estEirl(entreprise)) && !String(entreprise?.nomEntrepreneur || '').trim()) missing.push('votre prénom et nom (suivis de « EI »)');
-    return missing;
-  }, [entreprise]);
+  // Mentions légales manquantes — prévenir PENDANT la composition, pas au moment d'envoyer.
+  // Même liste que le contrôle d'envoi de DevisPage (lib/profilLegal) : le bandeau annonce exactement ce qui bloquera.
+  const legalMissing = useMemo(() => profilManquant(entreprise), [entreprise]);
 
   if (!isOpen || typeof document === 'undefined') return null;
   const isFacture = form.type === 'facture';
@@ -706,8 +698,8 @@ export default function DevisComposer({
       {legalMissing.length > 0 && (
         <div className="px-3 sm:px-5 py-2 text-xs flex items-center gap-2 bg-amber-500/10 border-b border-amber-500/20">
           <AlertTriangle size={13} className="text-amber-500 flex-shrink-0" />
-          <span className={`flex-1 min-w-0 truncate ${isDark ? 'text-amber-300' : 'text-amber-700'}`}>
-            L'envoi sera bloqué — profil incomplet : {legalMissing.join(', ')}.
+          <span className={`flex-1 min-w-0 sm:truncate ${isDark ? 'text-amber-300' : 'text-amber-700'}`}>
+            L'envoi sera bloqué — profil incomplet : {enPhrase(legalMissing)}.
           </span>
           {onCompleteProfile && (
             <button onClick={onCompleteProfile} className={`font-semibold whitespace-nowrap ${isDark ? 'text-amber-300' : 'text-amber-700'} hover:underline`}>

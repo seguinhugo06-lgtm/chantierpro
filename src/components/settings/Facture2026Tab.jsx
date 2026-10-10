@@ -42,7 +42,8 @@ const CHECKLIST_ITEMS = [
   {
     id: 'rcs',
     label: 'RCS complet',
-    check: (e) => !!e.rcs?.trim(),
+    // Réglages › Légal enregistre rcsVille + rcsNumero (lus par les PDF) ; `rcs` = ancien champ libre
+    check: (e) => !!(e.rcsVille?.trim() && e.rcsNumero?.trim()) || !!e.rcs?.trim(),
     tab: 'legal',
     icon: FileText,
   },
@@ -62,8 +63,10 @@ const CHECKLIST_ITEMS = [
   },
   {
     id: 'rcPro',
-    label: 'Assurance RC Pro valide',
-    check: (e) => !!e.rcPro?.numero?.trim(),
+    // Présence vérifiée, pas l'échéance : ne pas promettre « valide »
+    label: 'Assurance RC Pro',
+    // `rcPro.numero` n'a jamais existé : le critère restait « À compléter » même assurance saisie
+    check: (e) => !!(e.rcProAssureur?.trim() && e.rcProNumero?.trim()),
     tab: 'assurances',
     icon: ShieldCheck,
   },

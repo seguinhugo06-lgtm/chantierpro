@@ -48,6 +48,7 @@ import { Bouton, BoutonIcone } from './ui/Bouton';
 import EtatVide from './ui/EtatVide';
 import { useSubscriptionStore, PLANS } from '../stores/subscriptionStore';
 import { jourLocal, dateLue } from '../lib/dates';
+import { profilManquant } from '../lib/profilLegal';
 
 /** La mallette — marque Mallettico, reprise du jeu d'icônes (grille 48, contour 3,2). */
 function Mallette({ size = 24, style, className }) {
@@ -62,30 +63,6 @@ function Mallette({ size = 24, style, className }) {
     </svg>
   );
 }
-
-// ============ CONSTANTS ============
-
-const PROFILE_ALL_FIELDS = [
-  { key: 'nom', label: 'Nom', tab: 'identite' },
-  { key: 'adresse', label: 'Adresse', tab: 'identite' },
-  { key: 'siret', label: 'SIRET', tab: 'legal' },
-  { key: 'tel', label: 'Téléphone', tab: 'identite' },
-  { key: 'email', label: 'Email', tab: 'identite' },
-  { key: 'formeJuridique', label: 'Forme juridique', tab: 'legal' },
-  { key: 'codeApe', label: 'Code APE', tab: 'legal' },
-  { key: 'tvaIntra', label: 'TVA Intra', tab: 'legal' },
-  { key: 'rcProAssureur', label: 'RC Pro', tab: 'assurances' },
-  { key: 'decennaleAssureur', label: 'Décennale', tab: 'assurances' },
-];
-
-const F26_CRITERIA = [
-  { label: 'SIRET', key: 'siret' },
-  { label: 'N° TVA', key: 'tvaIntra' },
-  { label: 'RCS', key: 'rcs' },
-  { label: 'Banque', key: 'banque' },
-  { label: 'Adresse', key: 'adresse' },
-  { label: 'RC Pro', key: 'rcPro' },
-];
 
 // ============ HELPERS ============
 
@@ -336,24 +313,6 @@ export default function Dashboard({
     const chantierPrincipal = chantiersActifs
       .sort((a, b) => (b.avancement || 0) - (a.avancement || 0))[0] || null;
 
-    // Onboarding: profil + conformité
-    const profilComplete = entreprise
-      ? PROFILE_ALL_FIELDS.filter(f => entreprise[f.key]).length
-      : 0;
-    const profilPct = Math.round((profilComplete / PROFILE_ALL_FIELDS.length) * 100);
-
-    const f26Complete = entreprise
-      ? F26_CRITERIA.filter(c => {
-          if (c.key === 'banque') return entreprise.iban;
-          if (c.key === 'rcs') return entreprise.rcsVille || entreprise.rcsNumero;
-          if (c.key === 'rcPro') return entreprise.rcProAssureur;
-          return entreprise[c.key];
-        }).length
-      : 0;
-    const f26Pct = Math.round((f26Complete / F26_CRITERIA.length) * 100);
-
-
-
     // Encaissé par mois, 6 derniers mois : l'argent reçu (avant : la somme des devis signés, « CA »).
     const sparkData = [];
     for (let i = 5; i >= 0; i--) {
@@ -376,8 +335,6 @@ export default function Dashboard({
       actions: actions.sort((a, b) => a.priority - b.priority),
       score,
       chantierPrincipal,
-      profilPct,
-      f26Pct,
       caCeMois,
       caCeMoisTrend,
       lastMonthCA,
@@ -431,9 +388,9 @@ export default function Dashboard({
 
   // Onboarding (nouveaux comptes uniquement)
   const onboardingSteps = [
-    // « Fait » = les champs qui débloquent l'ENVOI d'un devis (mêmes règles que le garde légal),
+    // « Fait » = les champs qui débloquent l'ENVOI d'un devis (lib/profilLegal, la liste du contrôle d'envoi),
     // pas un simple % de profil — sinon l'étape se coche alors que l'envoi restera bloqué.
-    { key: 'profil', label: 'Configurer mon entreprise', done: !!(entreprise?.nom && entreprise?.siret && entreprise?.adresse && (entreprise?.formeJuridique || entreprise?.forme_juridique) && (entreprise?.decennaleAssureur || entreprise?.decennale_assureur) && (entreprise?.decennaleNumero || entreprise?.decennale_numero)), action: () => setPage('settings') },
+    { key: 'profil', label: 'Configurer mon entreprise', done: profilManquant(entreprise).length === 0, action: () => setPage('settings') },
     { key: 'client', label: 'Ajouter mon premier client', done: (clients?.length || 0) > 0, action: () => setPage('clients') },
     { key: 'devis', label: 'Créer mon premier devis', done: (devis?.length || 0) > 0, action: () => { setCreateMode?.(p => ({ ...p, devis: true })); setPage('devis'); } },
     { key: 'relances', label: 'Activer les relances automatiques', done: !!(entreprise?.relanceConfig?.enabled), action: () => { try { localStorage.setItem('cp_settings_tab', 'relances'); } catch { /* noop */ } setPage('settings'); } },

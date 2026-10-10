@@ -17,6 +17,7 @@ import PaymentConfigTab from './settings/PaymentConfigTab';
 import EntrepriseSettingsPage from './settings/EntrepriseSettingsPage';
 import TeamManagement from './settings/TeamManagement';
 import { usePermissions } from '../hooks/usePermissions';
+import useKeepInViewport from '../hooks/useKeepInViewport';
 import { useRelances } from '../hooks/useRelances';
 import { compressImage } from '../lib/image-utils';
 import { useOrg } from '../context/OrgContext';
@@ -29,6 +30,7 @@ import { jourLocal, dateLue } from '../lib/dates';
 import { estEntrepreneurIndividuel, estEirl, nomImprime } from '../lib/identiteEntreprise';
 import { URL_SIRENE, profilDepuisSirene } from '../lib/sirene';
 import { chiffreAffairesHT } from '../lib/ventes';
+import { profilManquant, PROFIL_EXIGE } from '../lib/profilLegal';
 
 // ── Tab groups for mobile navigation ────────────────────────────────────────
 const TAB_GROUPS = [
@@ -390,32 +392,37 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
   
   const COULEURS = ['#f97316', '#ef4444', '#22c55e', '#3b82f6', '#8b5cf6', '#ec4899', '#14b8a6', '#64748b'];
 
-  // Calcul score complétude
-  const PROFILE_FIELDS = [
-    { key: 'nom', label: 'Nom de l\'entreprise', required: true, tab: 'identite' },
-    { key: 'adresse', label: 'Adresse', required: true, tab: 'identite' },
-    { key: 'siret', label: 'N° SIRET', required: true, tab: 'legal' },
-    { key: 'tel', label: 'Téléphone', required: true, tab: 'identite' },
-    { key: 'email', label: 'Email', required: true, tab: 'identite' },
-    { key: 'formeJuridique', label: 'Forme juridique', required: true, tab: 'legal' },
-    { key: 'codeApe', label: 'Code APE', required: false, tab: 'legal' },
-    { key: 'rcsVille', label: 'Ville RCS', required: false, tab: 'legal' },
-    { key: 'rcsNumero', label: 'N° RCS', required: false, tab: 'legal' },
-    { key: 'tvaIntra', label: 'N° TVA Intracommunautaire', required: false, tab: 'legal' },
-    { key: 'rcProAssureur', label: 'Assureur RC Pro', required: false, tab: 'assurances' },
-    { key: 'rcProNumero', label: 'N° Police RC Pro', required: false, tab: 'assurances' },
-    { key: 'decennaleAssureur', label: 'Assureur Décennale', required: false, tab: 'assurances' },
-    { key: 'decennaleNumero', label: 'N° Police Décennale', required: false, tab: 'assurances' },
+  // Calcul score complétude. « Obligatoires » = ce qui bloque l'envoi (lib/profilLegal, la liste du
+  // contrôle d'envoi) + téléphone et e-mail, à donner au client sans que leur absence bloque l'envoi.
+  // Avant, la décennale n'était que « recommandée » ici : 100 % affiché, envoi bloqué.
+  const CONTACT_FIELDS = [
+    { key: 'tel', label: 'Téléphone', tab: 'identite' },
+    { key: 'email', label: 'Email', tab: 'identite' },
   ];
-  const missingFields = PROFILE_FIELDS.filter(f => !entreprise[f.key] || String(entreprise[f.key]).trim() === '');
-  const missingRequired = missingFields.filter(f => f.required);
-  const missingRecommended = missingFields.filter(f => !f.required);
-  const getCompletude = () => {
-    const required = PROFILE_FIELDS.filter(f => f.required);
-    const filled = required.filter(f => entreprise[f.key] && String(entreprise[f.key]).trim() !== '');
-    return Math.round((filled.length / required.length) * 100);
-  };
-  const completude = getCompletude();
+  const RECOMMENDED_FIELDS = [
+    { key: 'codeApe', label: 'Code APE', tab: 'legal' },
+    { key: 'rcsVille', label: 'Ville RCS', tab: 'legal' },
+    { key: 'rcsNumero', label: 'N° RCS', tab: 'legal' },
+    { key: 'tvaIntra', label: 'N° TVA Intracommunautaire', tab: 'legal' },
+    { key: 'rcProAssureur', label: 'Assureur RC Pro', tab: 'assurances' },
+    { key: 'rcProNumero', label: 'N° Police RC Pro', tab: 'assurances' },
+    { key: 'decennaleAssureurAdresse', label: 'Coordonnées de l\'assureur (décennale)', tab: 'assurances' },
+    { key: 'decennaleZone', label: 'Zone couverte (décennale)', tab: 'assurances' },
+    { key: 'mediateur', label: 'Médiateur de la consommation', tab: 'documents' },
+  ];
+  const NOM_ONGLET = { identite: 'Identité', legal: 'Légal', assurances: 'Assurances', documents: 'Documents' };
+  const estVide = (f) => !entreprise[f.key] || String(entreprise[f.key]).trim() === '';
+  const missingRequired = [
+    ...profilManquant(entreprise).map(m => ({ key: m.champ, label: m.libelle, tab: m.onglet })),
+    ...CONTACT_FIELDS.filter(estVide),
+  ];
+  const missingRecommended = RECOMMENDED_FIELDS.filter(estVide);
+  const missingFields = [...missingRequired, ...missingRecommended];
+  const totalRequired = PROFIL_EXIGE.length + CONTACT_FIELDS.length;
+  const completude = Math.round(((totalRequired - missingRequired.length) / totalRequired) * 100);
+  // Le menu des champs manquants est ancré à droite de la jauge : à 375 px il sortait de 77 px à gauche
+  const profileDetailRef = useRef(null);
+  useKeepInViewport(profileDetailRef, showProfileDetail && completude < 100);
 
   // Alertes assurances
   const alertesAssurances = useMemo(() => {
@@ -581,7 +588,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
 
             {/* Dropdown showing missing fields */}
             {showProfileDetail && completude < 100 && (
-              <div className={`absolute right-0 top-full mt-2 w-80 rounded-xl border shadow-xl z-50 bg-surface border-bord`}>
+              <div ref={profileDetailRef} className={`absolute right-0 top-full mt-2 w-80 rounded-xl border shadow-xl z-50 bg-surface border-bord`}>
                 <div className="p-4 space-y-3">
                   <div className="flex items-center justify-between">
                     <p className={`text-sm font-semibold ${textPrimary}`}>Champs manquants ({missingFields.length})</p>
@@ -597,7 +604,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                         {missingRequired.map(f => (
                           <button key={f.key} onClick={() => { setTab(f.tab); setShowProfileDetail(false); }} className={`w-full text-left px-3 py-1.5 rounded-lg text-sm transition-colors flex items-center justify-between hover:bg-surface-2 text-encre-2`}>
                             <span>{f.label}</span>
-                            <span className={`text-xs text-encre-3`}>→ {f.tab === 'identite' ? 'Identité' : f.tab === 'legal' ? 'Légal' : 'Assurances'}</span>
+                            <span className={`text-xs text-encre-3`}>→ {NOM_ONGLET[f.tab]}</span>
                           </button>
                         ))}
                       </div>
@@ -613,7 +620,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                         {missingRecommended.map(f => (
                           <button key={f.key} onClick={() => { setTab(f.tab); setShowProfileDetail(false); }} className={`w-full text-left px-3 py-1.5 rounded-lg text-sm transition-colors flex items-center justify-between hover:bg-surface-2 text-encre-2`}>
                             <span>{f.label}</span>
-                            <span className={`text-xs text-encre-3`}>→ {f.tab === 'identite' ? 'Identité' : f.tab === 'legal' ? 'Légal' : 'Assurances'}</span>
+                            <span className={`text-xs text-encre-3`}>→ {NOM_ONGLET[f.tab]}</span>
                           </button>
                         ))}
                       </div>
@@ -836,7 +843,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Statut juridique <span className="text-red-500">*</span></label>
-                <select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={entreprise.formeJuridique || ''} onChange={e => updateEntreprise(p => ({...p, formeJuridique: e.target.value}))}>
+                <select id="settings-field-formeJuridique" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={entreprise.formeJuridique || ''} onChange={e => updateEntreprise(p => ({...p, formeJuridique: e.target.value}))}>
                   <option value="">Sélectionner...</option>
                   {FORMES_JURIDIQUES.map(f => <option key={f.valeur} value={f.valeur}>{f.libelle}</option>)}
                 </select>
@@ -1086,7 +1093,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1">Compagnie d'assurance <span className="text-red-500">*</span></label>
-                <DebouncedInput className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="SMABTP, AXA..." value={entreprise.decennaleAssureur || ''} onChange={val => updateEntreprise(p => ({...p, decennaleAssureur: val}))} />
+                <DebouncedInput id="settings-field-decennaleAssureur" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="SMABTP, AXA..." value={entreprise.decennaleAssureur || ''} onChange={val => updateEntreprise(p => ({...p, decennaleAssureur: val}))} />
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Numéro de contrat <span className="text-red-500">*</span></label>

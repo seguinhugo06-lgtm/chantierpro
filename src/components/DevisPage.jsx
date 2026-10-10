@@ -99,7 +99,8 @@ import { mentionTvaReduiteHtml } from '../lib/mentionTvaReduite';
 import { remettreFichier, estNatif, ouvrirLienExterne } from '../lib/natif';
 import { captureException } from '../lib/sentry';
 import { imprimerHtml } from '../lib/imprimerHtml';
-import { nomImprime, formeImprimee, estEntrepreneurIndividuel, estEirl } from '../lib/identiteEntreprise';
+import { nomImprime, formeImprimee } from '../lib/identiteEntreprise';
+import { profilManquant } from '../lib/profilLegal';
 import { estFranchiseTva, sansTva, franchiseAppliquee, tvaARegulariser } from '../lib/franchiseTva';
 import { estOuverte, estEnRetard } from '../lib/ventes';
 import { urlPublique } from '../lib/urlPublique';
@@ -2096,35 +2097,10 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       issues.push({ id: 'zero_price_lines', label: desc, actionLabel: 'Corriger les prix', action: 'edit' });
     }
 
-    // 5. Entreprise info — SIRET required for legal compliance (art. R123-237 Code de commerce)
-    if (!entreprise?.siret) {
-      issues.push({ id: 'no_siret', label: 'SIRET non renseigné — mention obligatoire sur les devis et factures (loi française)', actionLabel: 'Compléter le profil →', action: 'settings', settingsTab: 'legal', settingsField: 'siret', isLegal: true });
-    }
-
-    // 6. Entreprise address — required for legal compliance
-    if (!entreprise?.adresse) {
-      issues.push({ id: 'no_adresse', label: 'Adresse entreprise manquante — mention obligatoire', actionLabel: 'Compléter le profil →', action: 'settings', settingsTab: 'identite', settingsField: 'adresse', isLegal: true });
-    }
-
-    // 7. Entreprise name
-    if (!entreprise?.nom) {
-      issues.push({ id: 'no_nom', label: 'Nom de l\'entreprise manquant', actionLabel: 'Compléter le profil →', action: 'settings', settingsTab: 'identite', settingsField: 'nom', isLegal: true });
-    }
-
-    // 8. Forme juridique — required for legal compliance
-    if (!entreprise?.formeJuridique) {
-      issues.push({ id: 'no_forme_juridique', label: 'Forme juridique non renseignée — mention obligatoire', actionLabel: 'Compléter le profil →', action: 'settings', settingsTab: 'legal', settingsField: 'formeJuridique', isLegal: true });
-    }
-
-    // 8 bis. Entrepreneur individuel : son nom, suivi de « EI », sur chaque document (C. com. R526-27)
-    if ((estEntrepreneurIndividuel(entreprise) || estEirl(entreprise)) && !String(entreprise?.nomEntrepreneur || '').trim()) {
-      issues.push({ id: 'no_nom_entrepreneur', label: 'Votre prénom et nom manquent — ils sont imprimés suivis de « EI » (mention obligatoire)', actionLabel: 'Compléter le profil →', action: 'settings', settingsTab: 'identite', settingsField: 'nomEntrepreneur', isLegal: true });
-    }
-
-    // 9. Assurance décennale — obligatoire pour les artisans BTP
-    if (!entreprise?.decennaleAssureur || !entreprise?.decennaleNumero) {
-      issues.push({ id: 'no_decennale', label: 'Assurance décennale manquante — obligatoire pour les artisans BTP', actionLabel: 'Compléter les assurances →', action: 'settings', settingsTab: 'assurances', settingsField: 'decennaleAssureur', isLegal: true });
-    }
+    // 5. Profil de l'entreprise (SIRET, adresse, nom, forme juridique, nom de l'EI, décennale) — liste unique : lib/profilLegal
+    profilManquant(entreprise).forEach((m) => {
+      issues.push({ id: m.id, label: m.pourquoi ? `${m.manque} — ${m.pourquoi}` : m.manque, actionLabel: m.onglet === 'assurances' ? 'Compléter les assurances →' : 'Compléter le profil →', action: 'settings', settingsTab: m.onglet, settingsField: m.champ, isLegal: true });
+    });
 
     return issues;
   };
@@ -2132,15 +2108,9 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   /**
    * getLegalIssues — returns only the legal profile issues (SIRET, adresse, etc.)
    */
-  const getLegalIssues = () => {
-    const issues = [];
-    if (!entreprise?.siret) issues.push({ id: 'no_siret', label: 'SIRET non renseigné', actionLabel: 'Compléter →', action: 'settings', settingsTab: 'legal', settingsField: 'siret', isLegal: true });
-    if (!entreprise?.adresse) issues.push({ id: 'no_adresse', label: 'Adresse entreprise manquante', actionLabel: 'Compléter →', action: 'settings', settingsTab: 'identite', settingsField: 'adresse', isLegal: true });
-    if (!entreprise?.formeJuridique) issues.push({ id: 'no_forme_juridique', label: 'Forme juridique non renseignée', actionLabel: 'Compléter →', action: 'settings', settingsTab: 'legal', settingsField: 'formeJuridique', isLegal: true });
-    if ((estEntrepreneurIndividuel(entreprise) || estEirl(entreprise)) && !String(entreprise?.nomEntrepreneur || '').trim()) issues.push({ id: 'no_nom_entrepreneur', label: 'Votre prénom et nom (suivis de « EI ») manquent', actionLabel: 'Compléter →', action: 'settings', settingsTab: 'identite', settingsField: 'nomEntrepreneur', isLegal: true });
-    if (!entreprise?.decennaleAssureur || !entreprise?.decennaleNumero) issues.push({ id: 'no_decennale', label: 'Assurance décennale manquante', actionLabel: 'Compléter →', action: 'settings', settingsTab: 'assurances', settingsField: 'decennaleAssureur', isLegal: true });
-    return issues;
-  };
+  const getLegalIssues = () => profilManquant(entreprise).map((m) => (
+    { id: m.id, label: m.manque, actionLabel: 'Compléter →', action: 'settings', settingsTab: m.onglet, settingsField: m.champ, isLegal: true }
+  ));
 
   /**
    * tryDownload — checks legal compliance before PDF download
@@ -3924,7 +3894,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                   >
                     Compris
                   </button>
-                  {sendValidationIssues.sendFn && sendValidationIssues.isDownload && sendValidationIssues.issues.every(i => ['no_siret', 'no_adresse', 'no_nom', 'no_forme_juridique', 'no_decennale'].includes(i.id)) && (
+                  {sendValidationIssues.sendFn && sendValidationIssues.isDownload && sendValidationIssues.issues.every(i => i.isLegal) && (
                     <button
                       onClick={() => { const fn = sendValidationIssues.sendFn; const doc = sendValidationIssues.doc; setSendValidationIssues(null); fn(doc); }}
                       className="flex-1 py-2.5 rounded-xl font-medium text-sm text-white transition-colors hover:opacity-90"
@@ -4689,11 +4659,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           <span className="inline-flex items-center gap-2">
             Devis & Factures
             {complianceDismissed && (() => {
-              const missing = [];
-              if (!entreprise?.siret) missing.push('SIRET');
-              if (!entreprise?.adresse) missing.push('Adresse');
-              if (!entreprise?.formeJuridique) missing.push('Forme juridique');
-              if (!entreprise?.decennaleAssureur) missing.push('Assurance décennale');
+              const missing = profilManquant(entreprise).map((m) => m.libelle);
               if (missing.length === 0) return null;
               return (
                 <span
@@ -4770,11 +4736,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 
       {/* === COMPLIANCE BANNER — compact + dismissable === */}
       {!complianceDismissed && (() => {
-        const missingLegal = [];
-        if (!entreprise?.siret) missingLegal.push('SIRET');
-        if (!entreprise?.adresse) missingLegal.push('Adresse');
-        if (!entreprise?.formeJuridique) missingLegal.push('Forme juridique');
-        if (!entreprise?.decennaleAssureur) missingLegal.push('Assurance décennale');
+        const missingLegal = profilManquant(entreprise).map((m) => m.libelle);
         if (missingLegal.length === 0) return null;
         return (
           <div className={`flex items-center gap-2 px-2 sm:px-3 py-2 rounded-xl border text-xs ${isDark ? 'bg-red-900/30 border-red-700 text-red-300' : 'bg-red-50 border-red-200 text-red-800'}`}>
