@@ -97,8 +97,13 @@ export function buildMiseEnDemeureHtml({
   const entTel = h(entreprise?.tel || entreprise?.telephone || '');
   const entEmail = h(entreprise?.email || '');
   const entRCS = h(getRCSComplet(entreprise));
-  const entCapital = h(entreprise?.capitalSocial || '');
+  // Les Réglages enregistrent le capital dans `capital` (Settings.jsx, entrepriseService.js) ; `capitalSocial`,
+  // seul lu jusqu'au 10 oct. 2026, n'était jamais rempli : le capital d'une société ne s'imprimait pas.
+  const entCapital = h(entreprise?.capital || entreprise?.capitalSocial || '');
   const entForme = h(formeImprimee(entreprise));
+  // Société : forme juridique ET montant du capital social côte à côte (service-public F31808),
+  // comme sur les devis et factures (devisHtmlBuilder.js : « SARL - Capital: 10000 € »)
+  const entFormeCapital = [entForme, entCapital ? `Capital : ${entCapital} €` : ''].filter(Boolean).join(' - ');
   const numero = h(doc.numero || '');
 
   const clientNom = h(client?.nom
@@ -270,11 +275,10 @@ export function buildMiseEnDemeureHtml({
   <div class="company-info">
     <div class="company-name">${entNom}</div>
     <div class="company-details">
-      ${entForme ? `${entForme}<br>` : ''}
+      ${entFormeCapital ? `${entFormeCapital}<br>` : ''}
       ${entAdresse ? `${entAdresse}<br>` : ''}
       ${entSiret ? `SIRET : ${entSiret}<br>` : ''}
       ${entRCS ? `${entRCS}<br>` : ''}
-      ${entCapital ? `Capital : ${entCapital} €<br>` : ''}
       ${entTel ? `Tél : ${entTel}` : ''}${entEmail ? ` · ${entEmail}` : ''}
     </div>
   </div>
@@ -410,7 +414,7 @@ ${estPro ? `
 
 <!-- Footer -->
 <div class="footer">
-  ${entNom}${entForme ? ` — ${entForme}` : ''}${entSiret ? ` — SIRET ${entSiret}` : ''}${entRCS ? ` — ${entRCS}` : ''}
+  ${entNom}${entFormeCapital ? ` — ${entFormeCapital}` : ''}${entSiret ? ` — SIRET ${entSiret}` : ''}${entRCS ? ` — ${entRCS}` : ''}
   <br>
   ${entAdresse ? `${entAdresse} — ` : ''}${entTel ? `Tél : ${entTel}` : ''}${entEmail ? ` — ${entEmail}` : ''}
   <br>

@@ -25,6 +25,22 @@ describe('mise en demeure', () => {
     expect(t).toMatch(/TOTAL DÛ 756,00 €/);
   });
 
+  // Relecture juridique du 10 oct. 2026 : le générateur lisait `capitalSocial`, alors que les Réglages
+  // enregistrent `capital` ; le capital d'une société n'était jamais imprimé (service-public F31808).
+  it('société : forme juridique et capital social lu dans `capital` (champ des Réglages), en tête et en pied', () => {
+    const sarl = { nom: 'Élec Sud', formeJuridique: 'SARL', capital: '10000', siret: '12345678900012' };
+    const t = texte(buildMiseEnDemeureHtml({ doc, client: { nom: 'Dupont' }, entreprise: sarl }));
+    expect(t.match(/SARL - Capital : 10000 €/g)).toHaveLength(2);
+  });
+
+  it('repli sur l\'ancien `capitalSocial`, et rien sur le capital quand il n\'est pas saisi', () => {
+    const ancien = texte(buildMiseEnDemeureHtml({ doc, client: { nom: 'Dupont' }, entreprise: { nom: 'X', formeJuridique: 'SAS', capitalSocial: 5000 } }));
+    expect(ancien).toContain('SAS - Capital : 5000 €');
+    const sans = texte(buildMiseEnDemeureHtml({ doc, client: { nom: 'Dupont' }, entreprise: { nom: 'X', formeJuridique: 'SAS' } }));
+    expect(sans).toContain('SAS');
+    expect(sans).not.toContain('Capital');
+  });
+
   it('ne parle de relances précédentes que s\'il y en a eu', () => {
     const sans = texte(buildMiseEnDemeureHtml({ doc, client: { nom: 'Dupont' }, entreprise }));
     expect(sans).not.toContain('précédentes relances');
