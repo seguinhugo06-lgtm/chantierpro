@@ -19,7 +19,7 @@ Dans l'ordre. Chaque action est aussi dans le Pilote (« À faire de votre côt�
 
 | Élément | État | Vérifié |
 |---|---|---|
-| `main` | `fe24606` (10 oct. : la mise en demeure imprime enfin le capital social d'une société, à côté de sa forme, en tête et en pied — elle lisait `capitalSocial`, jamais rempli, au lieu de `capital` ; jamais de capital pour une EI ou une EIRL ; RCS du champ libre `rcs` en repli (C. com. R123-237, R123-238) ; `lib/miseEnDemeureBuilder.js` ; aucune migration. Inclut `0174d46` : l'assistant de configuration liste ce qui bloque l'envoi, D-23, D-24) | `npm run statut` : Vercel ×2 + CI verts (10 oct.) |
+| `main` | `9c4e40b` (10 oct. : la jauge « Profil complété » des Paramètres range capital, RCS, n° de TVA intracom, médiateur et assureur décennal sous « Autres mentions obligatoires selon votre situation (n'empêchent pas l'envoi) », le code APE et la RC Pro sous « Recommandés » ; son pourcentage, le badge « Paramètres » et l'onglet Facture 2026 affichent la même note (D-25), verte seulement à 100 % ; le menu reste ouvrable à 100 % s'il manque le médiateur ou l'assureur ; `lib/jaugeProfil.js` ; contrôle d'envoi inchangé (Q-capital-envoi attend Hugo) ; aucune migration. Inclut `fe24606` : la mise en demeure imprime le capital social d'une société) | `npm run statut` : Vercel ×2 + CI verts (10 oct.) |
 | Vercel | 2 projets (`chantierpro`, `seguinhugo06-lgtm-chantierpro`), déploiement auto sur `main` | statut GitHub |
 | Domaine | `mallettico.fr` (DNS OVH) | 25 juil. |
 | Service worker | sert l'ancienne version jusqu'à rechargement : ne jamais vérifier un déploiement en rechargeant le site | — |
