@@ -22,13 +22,14 @@ const rempli = (valeur) => (typeof valeur === 'string' ? valeur.trim() !== '' : 
 // relue telle quelle depuis la base.
 export const PROFIL_EXIGE = [
   {
-    // C. com. R123-237 : numéro d'identification sur les documents de l'entreprise
+    // SIREN (inclus dans le SIRET) : C. com. R123-237 1°, D123-235 ; facture : service-public F31808 ;
+    // devis à un particulier : C. conso. R111-2 (relecture juriste-btp du 10 oct. 2026)
     id: 'no_siret',
     champ: 'siret',
     onglet: 'legal',
     libelle: 'SIRET',
     manque: 'SIRET non renseigné',
-    pourquoi: 'mention obligatoire sur les devis et factures (loi française)',
+    pourquoi: 'numéro obligatoire sur vos devis et factures',
     estRempli: (e) => rempli(e.siret),
   },
   {
@@ -73,7 +74,9 @@ export const PROFIL_EXIGE = [
     onglet: 'assurances',
     libelle: 'Assurance décennale',
     manque: 'Assurance décennale manquante',
-    pourquoi: 'obligatoire pour les artisans BTP',
+    // C. assur. L241-1 : l'obligation vise les travaux de construction (C. civ. 1792), pas tout artisan du
+    // bâtiment (dépannage, entretien : non). « Obligatoire pour les artisans BTP » était inexact.
+    pourquoi: 'obligatoire pour les travaux de construction',
     // L'assureur ET le numéro de police, comme le contrôle d'envoi l'a toujours exigé
     estRempli: (e) => rempli(e.decennaleAssureur || e.decennale_assureur) && rempli(e.decennaleNumero || e.decennale_numero),
   },

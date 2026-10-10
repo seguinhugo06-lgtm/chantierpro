@@ -50,3 +50,20 @@ Recommandation : `iphone-fr` — on ajoute l'iPad par une mise à jour quand l'a
 Irréversible : oui
 Bloque : ajout des plateformes natives (Capacitor)
 Décision : D-12
+
+### Q-contact-envoi · Bloquer l'envoi d'un devis sans votre téléphone ni votre e-mail ?
+Contexte : Envers un particulier, votre téléphone et votre e-mail font partie de l'information obligatoire avant contrat (C. conso. L111-1 4°, R111-1) ; hors établissement, un contrat qui ne les reprend pas peut être annulé (L221-9, L242-1). Entre professionnels, aucune obligation. Aujourd'hui la jauge des Paramètres les compte « obligatoires », mais l'envoi part sans eux (relecture juridique du 10 oct. 2026).
+Option `particulier` : bloquer seulement l'envoi à un client particulier — colle au texte ; l'app sait déjà distinguer un client professionnel.
+Option `toujours` : bloquer tout envoi sans eux — le plus simple ; gêne l'artisan qui ne travaille qu'avec des professionnels.
+Option `jamais` : garder le seul avertissement de la jauge — rien ne change ; le risque reste sur l'artisan.
+Recommandation : `particulier` — c'est exactement ce que la loi demande.
+Irréversible : non
+Bloque : rien (contrôle d'envoi des devis)
+
+### Q-decennale-non-soumis · Que faire de la décennale pour les travaux qui n'y sont pas soumis ?
+Contexte : L'envoi est bloqué tant que l'assureur et le n° de police de la décennale manquent. Or l'obligation (C. assur. L241-1) vise les travaux de construction : le dépannage et l'entretien n'y sont pas soumis. Un électricien qui ne fait que du dépannage ne peut donc pas envoyer de devis sans saisir une décennale (relecture juridique du 10 oct. 2026).
+Option `bloquer` : garder le blocage pour tous — simple ; pousse l'artisan non soumis à une saisie fictive.
+Option `declaration` : case « mes travaux ne sont pas soumis à l'assurance décennale » dans Paramètres, sous la responsabilité de l'artisan — débloque l'envoi ; aucune ligne d'assurance décennale sur ses documents.
+Recommandation : `declaration` — une saisie fictive serait pire qu'une déclaration assumée ; libellé à faire relire par juriste-btp.
+Irréversible : non
+Bloque : rien (contrôle d'envoi des devis)

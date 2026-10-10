@@ -390,7 +390,11 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
     { key: 'tvaIntra', label: 'N° TVA Intracommunautaire', tab: 'legal' },
     { key: 'rcProAssureur', label: 'Assureur RC Pro', tab: 'assurances' },
     { key: 'rcProNumero', label: 'N° Police RC Pro', tab: 'assurances' },
+    { key: 'decennaleAssureurAdresse', label: 'Coordonnées de l\'assureur (décennale)', tab: 'assurances' },
+    { key: 'decennaleZone', label: 'Zone couverte (décennale)', tab: 'assurances' },
+    { key: 'mediateur', label: 'Médiateur de la consommation', tab: 'documents' },
   ];
+  const NOM_ONGLET = { identite: 'Identité', legal: 'Légal', assurances: 'Assurances', documents: 'Documents' };
   const estVide = (f) => !entreprise[f.key] || String(entreprise[f.key]).trim() === '';
   const missingRequired = [
     ...profilManquant(entreprise).map(m => ({ key: m.champ, label: m.libelle, tab: m.onglet })),
@@ -578,7 +582,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                         {missingRequired.map(f => (
                           <button key={f.key} onClick={() => { setTab(f.tab); setShowProfileDetail(false); }} className={`w-full text-left px-3 py-1.5 rounded-lg text-sm transition-colors flex items-center justify-between hover:bg-surface-2 text-encre-2`}>
                             <span>{f.label}</span>
-                            <span className={`text-xs text-encre-3`}>→ {f.tab === 'identite' ? 'Identité' : f.tab === 'legal' ? 'Légal' : 'Assurances'}</span>
+                            <span className={`text-xs text-encre-3`}>→ {NOM_ONGLET[f.tab]}</span>
                           </button>
                         ))}
                       </div>
@@ -594,7 +598,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                         {missingRecommended.map(f => (
                           <button key={f.key} onClick={() => { setTab(f.tab); setShowProfileDetail(false); }} className={`w-full text-left px-3 py-1.5 rounded-lg text-sm transition-colors flex items-center justify-between hover:bg-surface-2 text-encre-2`}>
                             <span>{f.label}</span>
-                            <span className={`text-xs text-encre-3`}>→ {f.tab === 'identite' ? 'Identité' : f.tab === 'legal' ? 'Légal' : 'Assurances'}</span>
+                            <span className={`text-xs text-encre-3`}>→ {NOM_ONGLET[f.tab]}</span>
                           </button>
                         ))}
                       </div>
