@@ -25,6 +25,47 @@ describe('mise en demeure', () => {
     expect(t).toMatch(/TOTAL DÛ 756,00 €/);
   });
 
+  // Relecture juridique du 10 oct. 2026 : le générateur lisait `capitalSocial`, alors que les Réglages
+  // enregistrent `capital` ; le capital d'une société n'était jamais imprimé sur ses lettres (C. com. R123-238).
+  it('société : forme juridique et capital social lu dans `capital` (champ des Réglages), en tête et en pied', () => {
+    const sarl = { nom: 'Élec Sud', formeJuridique: 'SARL', capital: '10000', siret: '12345678900012' };
+    const t = texte(buildMiseEnDemeureHtml({ doc, client: { nom: 'Dupont' }, entreprise: sarl }));
+    expect(t.match(/SARL - Capital : 10000 €/g)).toHaveLength(2);
+  });
+
+  it('repli sur l\'ancien `capitalSocial`, et rien sur le capital quand il n\'est pas saisi', () => {
+    const ancien = texte(buildMiseEnDemeureHtml({ doc, client: { nom: 'Dupont' }, entreprise: { nom: 'X', formeJuridique: 'SAS', capitalSocial: 5000 } }));
+    expect(ancien).toContain('SAS - Capital : 5000 €');
+    const sans = texte(buildMiseEnDemeureHtml({ doc, client: { nom: 'Dupont' }, entreprise: { nom: 'X', formeJuridique: 'SAS' } }));
+    expect(sans).toContain('SAS');
+    expect(sans).not.toContain('Capital');
+  });
+
+  it('entrepreneur individuel : pas de capital social, même resté saisi après un changement de statut', () => {
+    for (const [formeJuridique, capital] of [['Micro-entreprise', '0'], ['EI', '10000'], ['EIRL', '5000']]) {
+      const t = texte(buildMiseEnDemeureHtml({ doc, client: { nom: 'Dupont' }, entreprise: { nom: 'Hugo Séguin', formeJuridique, capital } }));
+      expect(t).toContain('Entrepreneur individuel');
+      expect(t).not.toContain('Capital');
+    }
+  });
+
+  it('un « € » saisi avec le capital n\'est pas doublé', () => {
+    const t = texte(buildMiseEnDemeureHtml({ doc, client: { nom: 'Dupont' }, entreprise: { nom: 'X', formeJuridique: 'SARL', capital: '10 000 €' } }));
+    expect(t).toContain('SARL - Capital : 10 000 €');
+    expect(t).not.toMatch(/€\s*€/);
+  });
+
+  it('RCS (C. com. R123-237) : ville et numéro des Réglages, sinon l\'ancien champ libre `rcs`', () => {
+    const complet = texte(buildMiseEnDemeureHtml({ doc, client: { nom: 'Dupont' }, entreprise: { nom: 'X', formeJuridique: 'SARL', rcsVille: 'Bordeaux', rcsNumero: '123 456 789', rcs: 'Paris B 999' } }));
+    expect(complet.match(/RCS Bordeaux B 123 456 789/g)).toHaveLength(2);
+    expect(complet).not.toContain('Paris B 999');
+    const libre = texte(buildMiseEnDemeureHtml({ doc, client: { nom: 'Dupont' }, entreprise: { nom: 'X', formeJuridique: 'SARL', rcs: 'Paris B 123 456 789' } }));
+    expect(libre.match(/RCS Paris B 123 456 789/g)).toHaveLength(2);
+    const prefixe = texte(buildMiseEnDemeureHtml({ doc, client: { nom: 'Dupont' }, entreprise: { nom: 'X', formeJuridique: 'SARL', rcs: 'RCS Lyon 123 456 789' } }));
+    expect(prefixe).toContain('RCS Lyon 123 456 789');
+    expect(prefixe).not.toContain('RCS RCS');
+  });
+
   it('ne parle de relances précédentes que s\'il y en a eu', () => {
     const sans = texte(buildMiseEnDemeureHtml({ doc, client: { nom: 'Dupont' }, entreprise }));
     expect(sans).not.toContain('précédentes relances');

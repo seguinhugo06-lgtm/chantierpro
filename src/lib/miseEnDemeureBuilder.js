@@ -12,7 +12,7 @@ import { calculatePenalties, DEFAULT_PENALTY_RATE, estClientPro } from './relanc
 import { dateLocale } from './paiementsFacture';
 import { echapperHtml as h, couleurCss } from './echapperHtml';
 import { imprimerHtml } from './imprimerHtml';
-import { nomImprime, formeImprimee } from './identiteEntreprise';
+import { nomImprime, formeImprimee, estEntrepreneurIndividuel, estEirl } from './identiteEntreprise';
 import { dateLue } from './dates';
 
 /**
@@ -97,8 +97,18 @@ export function buildMiseEnDemeureHtml({
   const entTel = h(entreprise?.tel || entreprise?.telephone || '');
   const entEmail = h(entreprise?.email || '');
   const entRCS = h(getRCSComplet(entreprise));
-  const entCapital = h(entreprise?.capitalSocial || '');
+  // Les Réglages enregistrent le capital dans `capital` (Settings.jsx, entrepriseService.js) ; `capitalSocial`,
+  // seul lu jusqu'au 10 oct. 2026, n'était jamais rempli : le capital d'une société ne s'imprimait pas.
+  // Un entrepreneur individuel (EI, EIRL) n'a pas de capital social : un ancien capital resté dans ses
+  // Réglages après un changement de statut ne s'imprime pas. Un « € » saisi avec le montant (champ texte de la
+  // fiche entreprise, exemple « 10 000 € ») n'est pas doublé.
+  const sansCapital = estEntrepreneurIndividuel(entreprise) || estEirl(entreprise);
+  const capitalSaisi = String(entreprise?.capital || entreprise?.capitalSocial || '').replace(/\s*€\s*$/, '').trim();
+  const entCapital = sansCapital ? '' : h(capitalSaisi);
   const entForme = h(formeImprimee(entreprise));
+  // Société : dénomination « suivie immédiatement » de sa forme et du montant de son capital social sur ses
+  // lettres (C. com. R123-238, 3° SARL, 4° SA et SAS), comme sur les devis et factures (devisHtmlBuilder.js)
+  const entFormeCapital = [entForme, entCapital ? `Capital : ${entCapital} €` : ''].filter(Boolean).join(' - ');
   const numero = h(doc.numero || '');
 
   const clientNom = h(client?.nom
@@ -270,11 +280,10 @@ export function buildMiseEnDemeureHtml({
   <div class="company-info">
     <div class="company-name">${entNom}</div>
     <div class="company-details">
-      ${entForme ? `${entForme}<br>` : ''}
+      ${entFormeCapital ? `${entFormeCapital}<br>` : ''}
       ${entAdresse ? `${entAdresse}<br>` : ''}
       ${entSiret ? `SIRET : ${entSiret}<br>` : ''}
       ${entRCS ? `${entRCS}<br>` : ''}
-      ${entCapital ? `Capital : ${entCapital} €<br>` : ''}
       ${entTel ? `Tél : ${entTel}` : ''}${entEmail ? ` · ${entEmail}` : ''}
     </div>
   </div>
@@ -410,7 +419,7 @@ ${estPro ? `
 
 <!-- Footer -->
 <div class="footer">
-  ${entNom}${entForme ? ` — ${entForme}` : ''}${entSiret ? ` — SIRET ${entSiret}` : ''}${entRCS ? ` — ${entRCS}` : ''}
+  ${entNom}${entFormeCapital ? ` — ${entFormeCapital}` : ''}${entSiret ? ` — SIRET ${entSiret}` : ''}${entRCS ? ` — ${entRCS}` : ''}
   <br>
   ${entAdresse ? `${entAdresse} — ` : ''}${entTel ? `Tél : ${entTel}` : ''}${entEmail ? ` — ${entEmail}` : ''}
   <br>
@@ -422,15 +431,18 @@ ${estPro ? `
 }
 
 /**
- * Helper for RCS formatting
+ * « RCS + ville du greffe » sur les correspondances d'un inscrit au RCS (C. com. R123-237, 2°) : ville et numéro
+ * des Réglages, sinon le champ libre `rcs` (fiche entreprise, multi-entreprise), que les devis et factures
+ * impriment déjà et que l'onglet Facture 2026 compte comme renseigné (relecture juridique du 10 oct. 2026).
  */
 function getRCSComplet(entreprise) {
-  if (!entreprise?.rcsVille && !entreprise?.rcs_ville) return '';
-  const ville = entreprise.rcsVille || entreprise.rcs_ville || '';
-  const numero = entreprise.rcsNumero || entreprise.rcs_numero || '';
-  const type = entreprise.rcsType || entreprise.rcs_type || 'B';
-  if (!ville || !numero) return '';
-  return `RCS ${ville} ${type} ${numero}`;
+  const ville = entreprise?.rcsVille || entreprise?.rcs_ville || '';
+  const numero = entreprise?.rcsNumero || entreprise?.rcs_numero || '';
+  const type = entreprise?.rcsType || entreprise?.rcs_type || 'B';
+  if (ville && numero) return `RCS ${ville} ${type} ${numero}`;
+  const libre = String(entreprise?.rcs || '').trim();
+  if (!libre) return '';
+  return /^rcs\b/i.test(libre) ? libre : `RCS ${libre}`;
 }
 
 /**
