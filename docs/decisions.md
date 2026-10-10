@@ -66,4 +66,4 @@ Option `bloquer` : garder le blocage pour tous — simple ; pousse l'artisan non
 Option `declaration` : case « mes travaux ne sont pas soumis à l'assurance décennale » dans Paramètres, sous la responsabilité de l'artisan — débloque l'envoi ; aucune ligne d'assurance décennale sur ses documents.
 Recommandation : `declaration` — une saisie fictive serait pire qu'une déclaration assumée ; libellé à faire relire par juriste-btp.
 Irréversible : non
-Bloque : rien (contrôle d'envoi des devis)
+Bloque : rien (contrôle d'envoi des devis ; la liste de l'onglet Facture 2026, `src/lib/mentionsFacture.js`, lit la même règle et resterait sous 100 % sans décennale)

@@ -622,8 +622,11 @@ export function testFacturXCompliance(invoice, client, entreprise) {
     if (basicValidation.valid) {
       score += 15;
     } else {
+      // Le vendeur (nom, SIRET, adresse, TVA) est déjà vérifié plus haut : sans ce filtre, un SIRET absent
+      // sortait deux fois, et « N° TVA … manquant » doublé d'un « recommandé » classé en erreur
+      const VENDEUR_DEJA_VERIFIE = /SIRET|TVA intracommunautaire|Nom entreprise|Adresse entreprise/;
       basicValidation.errors.forEach(e => {
-        if (!errors.includes(e)) errors.push(e);
+        if (!VENDEUR_DEJA_VERIFIE.test(e) && !errors.includes(e)) errors.push(e);
       });
       // Partial credit: some fields present
       score += Math.max(0, 15 - basicValidation.errors.length * 3);

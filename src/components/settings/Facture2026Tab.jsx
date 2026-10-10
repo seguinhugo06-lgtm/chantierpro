@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useCallback } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import {
   Shield,
   CheckCircle,
@@ -11,7 +11,6 @@ import {
   Zap,
   Code,
   X,
-  Loader2,
 } from 'lucide-react';
 import { testFacturXCompliance, selectProfile } from '../../lib/facturx';
 import { jourLocal } from '../../lib/dates';
@@ -191,9 +190,11 @@ export default function Facture2026Tab({ entreprise, isDark, couleur }) {
           </h2>
           <p className={`mt-1 text-sm font-medium ${liste.complet ? 'text-succes-texte' : 'text-alerte-texte'}`}>
             {liste.complet
-              ? 'Vos informations d\'entreprise sont complètes.'
+              ? 'Toutes les informations obligatoires de la liste sont renseignées.'
               : `${manquantes} information${manquantes > 1 ? 's' : ''} obligatoire${manquantes > 1 ? 's' : ''} à compléter.`}
-            {` Émission par une Plateforme Agréée obligatoire dans ${joursAvantEmission} jours.`}
+            {/* L'émission électronique ne vise que les factures entre assujettis (CGI art. 289 bis) ; pour un
+                particulier, seules les données de la vente sont transmises (art. 290) — relecture du 10 oct. 2026 */}
+            {` Factures à vos clients professionnels : émission par une Plateforme Agréée obligatoire dans ${joursAvantEmission} jours.`}
           </p>
         </div>
       </div>
@@ -307,19 +308,9 @@ export default function Facture2026Tab({ entreprise, isDark, couleur }) {
 
           {/* Test button */}
           <div className="mt-4 flex flex-wrap gap-3">
-            <button
-              className="px-4 py-2.5 rounded-xl text-white text-sm font-medium flex items-center gap-2 transition-colors hover:opacity-90 disabled:opacity-50"
-              style={{ background: couleur }}
-              onClick={runComplianceTest}
-              disabled={testing}
-            >
-              {testing ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Shield className="w-4 h-4" />
-              )}
+            <Bouton variante="principal" icone={Shield} chargement={testing} onClick={runComplianceTest}>
               {testing ? 'Vérification…' : 'Vérifier mes informations'}
-            </button>
+            </Bouton>
           </div>
         </div>
 
@@ -348,10 +339,10 @@ export default function Facture2026Tab({ entreprise, isDark, couleur }) {
             {/* Errors */}
             {testResult.errors.length > 0 && (
               <div className="mt-3 space-y-1.5">
-                <p className="text-xs font-semibold text-red-600 uppercase tracking-wide">Erreurs</p>
+                <p className="text-xs font-semibold text-danger-texte uppercase tracking-wide">Erreurs</p>
                 {testResult.errors.map((err, i) => (
-                  <div key={i} className="flex items-start gap-2 text-sm text-red-700">
-                    <XCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                  <div key={i} className="flex items-start gap-2 text-sm text-danger-texte">
+                    <XCircle size={16} aria-hidden="true" className="shrink-0 mt-0.5" />
                     <span>{err}</span>
                   </div>
                 ))}
@@ -361,10 +352,10 @@ export default function Facture2026Tab({ entreprise, isDark, couleur }) {
             {/* Warnings */}
             {testResult.warnings.length > 0 && (
               <div className="mt-3 space-y-1.5">
-                <p className="text-xs font-semibold text-amber-600 uppercase tracking-wide">Avertissements</p>
+                <p className="text-xs font-semibold text-alerte-texte uppercase tracking-wide">Avertissements</p>
                 {testResult.warnings.map((warn, i) => (
-                  <div key={i} className="flex items-start gap-2 text-sm text-amber-700">
-                    <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                  <div key={i} className="flex items-start gap-2 text-sm text-alerte-texte">
+                    <AlertTriangle size={16} aria-hidden="true" className="shrink-0 mt-0.5" />
                     <span>{warn}</span>
                   </div>
                 ))}
@@ -373,7 +364,7 @@ export default function Facture2026Tab({ entreprise, isDark, couleur }) {
 
             {/* XML Preview toggle */}
             {testResult.xml && (
-              <XmlPreview xml={testResult.xml} isDark={isDark} couleur={couleur} />
+              <XmlPreview xml={testResult.xml} isDark={isDark} />
             )}
           </div>
         )}
@@ -403,7 +394,7 @@ export default function Facture2026Tab({ entreprise, isDark, couleur }) {
 /**
  * Collapsible XML preview component
  */
-function XmlPreview({ xml, isDark, couleur }) {
+function XmlPreview({ xml, isDark }) {
   const [expanded, setExpanded] = useState(false);
 
   // Show first ~500 chars when collapsed
@@ -411,14 +402,9 @@ function XmlPreview({ xml, isDark, couleur }) {
 
   return (
     <div className="mt-3">
-      <button
-        onClick={() => setExpanded(!expanded)}
-        className="flex items-center gap-1.5 text-xs font-medium hover:underline"
-        style={{ color: couleur }}
-      >
-        <Code className="w-3.5 h-3.5" />
+      <Bouton variante="discret" taille="compacte" icone={Code} onClick={() => setExpanded(!expanded)} aria-expanded={expanded} className="-ml-3.5">
         {expanded ? 'Masquer le XML' : 'Voir le XML généré'}
-      </button>
+      </Bouton>
       {expanded && (
         <pre className={`mt-2 p-3 rounded-lg text-xs overflow-x-auto max-h-64 overflow-y-auto font-mono leading-relaxed ${
           isDark ? 'bg-slate-900 text-slate-300' : 'bg-slate-100 text-slate-700'

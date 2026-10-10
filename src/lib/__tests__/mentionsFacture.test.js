@@ -20,6 +20,7 @@ const SARL = {
   siret: '98765432100015',
   adresse: '12 rue des Artisans, 75001 Paris',
   formeJuridique: 'SARL',
+  capital: '10000',
   decennaleAssureur: 'AXA',
   decennaleNumero: 'D-1',
   rcsVille: 'Paris',
@@ -67,12 +68,46 @@ describe('Facture 2026 : informations à vérifier pour les factures', () => {
     expect(mentionsFacture({ ...MICRO, siret: '' }).note).toBe(83);
   });
 
-  it('société : RCS et TVA intracom demandés ; complète quand ils sont saisis', () => {
+  it('société : capital, RCS et TVA intracom demandés ; complète quand ils sont saisis', () => {
     expect(mentionsFacture(SARL).complet).toBe(true);
-    const r = mentionsFacture({ ...SARL, rcsVille: '', rcsNumero: '', tvaIntra: '' });
-    expect(ids(r.obligatoires.filter((m) => !m.rempli))).toEqual(['rcs', 'tvaIntra']);
+    const r = mentionsFacture({ ...SARL, capital: '', rcsVille: '', rcsNumero: '', tvaIntra: '' });
+    expect(ids(r.obligatoires.filter((m) => !m.rempli))).toEqual(['capital', 'rcs', 'tvaIntra']);
     // Pas de « prénom et nom (suivis de EI) » coché d'office pour une société : la ligne n'apparaît pas
     expect(ids(r.obligatoires)).not.toContain('no_nom_entrepreneur');
+  });
+
+  // Service-public F31808 : une société porte sa forme juridique ET son capital social (contre-relecture du 10 oct.)
+  it('capital social : une SARL sans capital n\'est jamais « complète » ; pas demandé à un EI ni à une micro', () => {
+    const sansCapital = mentionsFacture({ ...SARL, capital: '' });
+    expect(sansCapital.complet).toBe(false);
+    expect(sansCapital.obligatoires.find((m) => m.id === 'capital')).toMatchObject({ onglet: 'identite', champ: 'capital' });
+    expect(ids(mentionsFacture({ ...MICRO }).obligatoires)).not.toContain('capital');
+    expect(ids(mentionsFacture({ ...MICRO, formeJuridique: 'EI' }).obligatoires)).not.toContain('capital');
+    expect(ids(mentionsFacture({ ...MICRO, formeJuridique: 'EIRL' }).obligatoires)).not.toContain('capital');
+  });
+
+  it('EIRL : le libellé annonce « EIRL », la mention imprimée', () => {
+    const libelle = (e) => mentionsFacture(e).obligatoires.find((m) => m.id === 'no_nom_entrepreneur').libelle;
+    expect(libelle({ ...MICRO, formeJuridique: 'EIRL' })).toBe('Votre prénom et nom (suivis de « EIRL »)');
+    expect(libelle(MICRO)).toBe('Votre prénom et nom (suivis de « EI »)');
+  });
+
+  it('RCS commencé par un EI : à compléter (les PDF n\'impriment rien sans la ville ET le numéro)', () => {
+    const ei = { ...MICRO, formeJuridique: 'EI', tvaIntra: 'FR12123456789' };
+    const villeSeule = mentionsFacture({ ...ei, rcsVille: 'Lyon' });
+    expect(villeSeule.complet).toBe(false);
+    expect(villeSeule.obligatoires.find((m) => m.id === 'rcs')).toMatchObject({ rempli: false, champ: 'rcsNumero' });
+    expect(mentionsFacture({ ...ei, rcsNumero: '123456789' }).obligatoires.find((m) => m.id === 'rcs').champ).toBe('rcs');
+    // Micro-entreprise : pas de formulaire RCS dans les Réglages, une donnée partielle ne la bloque pas
+    expect(ids(mentionsFacture({ ...MICRO, rcsVille: 'Lyon' }).obligatoires)).not.toContain('rcs');
+  });
+
+  it('entreprise relue depuis la base (clés snake_case)', () => {
+    const base = {
+      nom: SARL.nom, siret: SARL.siret, adresse: SARL.adresse, forme_juridique: 'SARL', capital: '10000',
+      decennale_assureur: 'AXA', decennale_numero: 'D-1', rcs_ville: 'Paris', rcs_numero: '987 654 321', tva_intra: 'FR12987654321',
+    };
+    expect(mentionsFacture(base).complet).toBe(true);
   });
 
   it('RCS : ville et numéro, ou l\'ancien champ libre ; EI qui l\'a saisi = commerçant, compté', () => {
@@ -109,6 +144,7 @@ describe('Facture 2026 : informations à vérifier pour les factures', () => {
       { formeJuridique: 'EI' },
       { formeJuridique: 'SARL' },
       { formeJuridique: 'SARL', rcsVille: 'Paris' },
+      { formeJuridique: 'EIRL', rcsNumero: '123' },
       { formeJuridique: 'Micro-entreprise', decennaleAssureur: 'SMABTP' },
     ];
     const vus = new Set();
@@ -121,7 +157,7 @@ describe('Facture 2026 : informations à vérifier pour les factures', () => {
       }
     }
     expect([...vus]).toEqual(expect.arrayContaining([
-      'legal/siret', 'legal/rcs', 'legal/rcsNumero', 'legal/tvaIntra', 'identite/adresse',
+      'legal/siret', 'legal/rcs', 'legal/rcsNumero', 'legal/tvaIntra', 'identite/adresse', 'identite/capital',
       'assurances/decennaleAssureur', 'assurances/decennaleNumero', 'banque/iban',
     ]));
   });
@@ -148,5 +184,13 @@ describe('test Factur-X de l\'onglet : cohérent avec la liste', () => {
     expect(sans.warnings.join(' ')).toMatch(/RCS/);
     const avec = testFacturXCompliance(facture, client, SARL);
     expect([...avec.errors, ...avec.warnings].join(' ')).not.toMatch(/RCS|TVA intra/i);
+  });
+
+  // Le vendeur était vérifié deux fois : « SIRET manquant » en double, « TVA … recommandé » classé en erreur
+  it('une information manquante n\'est signalée qu\'une fois', () => {
+    const facture20 = { ...facture, tva: 20, total_ttc: 120, tvaRate: 20 };
+    const r = testFacturXCompliance(facture20, client, { ...SARL, siret: '', tvaIntra: '' });
+    expect(r.errors.filter((e) => /SIRET/.test(e))).toHaveLength(1);
+    expect(r.errors.filter((e) => /TVA intra/i.test(e))).toHaveLength(1);
   });
 });

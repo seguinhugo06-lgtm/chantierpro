@@ -31,6 +31,7 @@ import { estEntrepreneurIndividuel, estEirl, nomImprime } from '../lib/identiteE
 import { URL_SIRENE, profilDepuisSirene } from '../lib/sirene';
 import { chiffreAffairesHT } from '../lib/ventes';
 import { profilManquant, PROFIL_EXIGE } from '../lib/profilLegal';
+import { estSociete, rcsConcerne, tvaIntraConcernee } from '../lib/mentionsFacture';
 
 // ── Tab groups for mobile navigation ────────────────────────────────────────
 const TAB_GROUPS = [
@@ -384,11 +385,14 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
     { key: 'tel', label: 'Téléphone', tab: 'identite' },
     { key: 'email', label: 'Email', tab: 'identite' },
   ];
+  // `si` : recommandé seulement à qui est concerné (lib/mentionsFacture) ; avant, RCS et TVA intracom étaient
+  // recommandés à une micro-entreprise en franchise, inscrite au seul RNE
   const RECOMMENDED_FIELDS = [
     { key: 'codeApe', label: 'Code APE', tab: 'legal' },
-    { key: 'rcsVille', label: 'Ville RCS', tab: 'legal' },
-    { key: 'rcsNumero', label: 'N° RCS', tab: 'legal' },
-    { key: 'tvaIntra', label: 'N° TVA Intracommunautaire', tab: 'legal' },
+    { key: 'capital', label: 'Capital social', tab: 'identite', si: estSociete },
+    { key: 'rcsVille', label: 'Ville RCS', tab: 'legal', si: rcsConcerne },
+    { key: 'rcsNumero', label: 'N° RCS', tab: 'legal', si: rcsConcerne },
+    { key: 'tvaIntra', label: 'N° TVA Intracommunautaire', tab: 'legal', si: tvaIntraConcernee },
     { key: 'rcProAssureur', label: 'Assureur RC Pro', tab: 'assurances' },
     { key: 'rcProNumero', label: 'N° Police RC Pro', tab: 'assurances' },
     { key: 'decennaleAssureurAdresse', label: 'Coordonnées de l\'assureur (décennale)', tab: 'assurances' },
@@ -401,7 +405,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
     ...profilManquant(entreprise).map(m => ({ key: m.champ, label: m.libelle, tab: m.onglet })),
     ...CONTACT_FIELDS.filter(estVide),
   ];
-  const missingRecommended = RECOMMENDED_FIELDS.filter(estVide);
+  const missingRecommended = RECOMMENDED_FIELDS.filter((f) => (!f.si || f.si(entreprise)) && estVide(f));
   const missingFields = [...missingRequired, ...missingRecommended];
   const totalRequired = PROFIL_EXIGE.length + CONTACT_FIELDS.length;
   const completude = Math.round(((totalRequired - missingRequired.length) / totalRequired) * 100);
@@ -831,11 +835,12 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">
-                  Capital (optionnel)
+                {/* Société : forme juridique ET capital social sur les factures (service-public F31808) */}
+                <label htmlFor="settings-field-capital" className="block text-sm font-medium mb-1">
+                  Capital social (obligatoire pour une société)
                 </label>
                 <div className="flex">
-                  <DebouncedInput type="number" className={`flex-1 px-4 py-2.5 border rounded-l-xl ${inputBg}`} placeholder="10000" value={entreprise.capital || ''} onChange={val => updateEntreprise(p => ({...p, capital: val}))} />
+                  <DebouncedInput id="settings-field-capital" type="number" className={`flex-1 px-4 py-2.5 border rounded-l-xl ${inputBg}`} placeholder="10000" value={entreprise.capital || ''} onChange={val => updateEntreprise(p => ({...p, capital: val}))} />
                   <span className={`px-4 py-2.5 border-y border-r rounded-r-xl bg-surface-2 text-encre-3 border-bord-fort`}>€</span>
                 </div>
               </div>
