@@ -76,11 +76,11 @@ describe('compte démo : de quoi tout montrer', () => {
     expect(encaisse(partielle, paiementsApp, AUJOURDHUI)).toBe(1000);
   });
 
-  it('des devis à tous les états, dont deux signés en ligne et du reste à facturer', () => {
+  it('des devis à tous les états, signés en ligne ou sur place, et du reste à facturer', () => {
     const etats = new Set(devis.map((d) => d.statut));
-    for (const s of ['brouillon', 'envoye', 'vu', 'refuse', 'acompte_facture', 'facture']) expect(etats).toContain(s);
-    expect(devis.filter((d) => d.signature_data).length).toBe(2);
-    expect(devis.filter((d) => d.signature).length).toBe(2);
+    for (const s of ['brouillon', 'envoye', 'refuse', 'acompte_facture', 'facture']) expect(etats).toContain(s);
+    expect(devis.filter((d) => d.signature_data).length).toBe(3);
+    expect(devis.filter((d) => d.signature).length).toBe(4);
     expect(devis.reduce((s, d) => s + resteAFacturer(d, jeu.devis), 0)).toBeGreaterThan(0);
   });
 
@@ -103,16 +103,26 @@ describe('compte démo : de quoi tout montrer', () => {
 
 describe('compte démo : le SQL ne touche qu’à l’organisation démo', () => {
   const sql = genererSql({ aujourdhui: AUJOURDHUI });
-  const instructions = sql.split('\n').filter((l) => /^(DELETE|UPDATE|INSERT)/.test(l));
+  const instructions = sql.split('\n').map((l) => l.trim()).filter((l) => /^(DELETE|UPDATE|INSERT)/.test(l));
 
-  it('commence par vérifier le compte et l’organisation, sinon n’écrit rien', () => {
+  it('un seul bloc (tout ou rien), qui vérifie le compte et l’organisation avant d’écrire', () => {
+    const utiles = sql.split('\n').filter((l) => l.trim() && !l.startsWith('--'));
+    expect(utiles[0]).toBe('DO $demo$');
+    expect(utiles[utiles.length - 1]).toBe('END $demo$;');
     expect(sql.indexOf('RAISE EXCEPTION')).toBeLessThan(sql.indexOf('DELETE'));
     expect(sql).toContain(`lower(u.email) = '${COMPTE_DEMO.email}'`);
+    expect(sql).toContain(`v_org uuid := '${COMPTE_DEMO.organizationId}'`);
+  });
+
+  it('refuse d’écrire si une autre organisation pointe vers les données démo (cascades)', () => {
+    expect(sql).toMatch(/FROM pg_constraint c[\s\S]*'public\.clients'::regclass, 'public\.chantiers'::regclass, 'public\.devis'::regclass/);
+    expect(sql.indexOf('v_croise THEN RAISE EXCEPTION')).toBeLessThan(sql.indexOf('DELETE'));
+    expect(instructions).toContain('DELETE FROM public.pointages WHERE organization_id = v_org;');
   });
 
   it('chaque effacement et chaque mise à jour visent l’organisation démo', () => {
     for (const l of instructions.filter((x) => /^(DELETE|UPDATE)/.test(x))) {
-      expect(l).toContain(`organization_id = '${COMPTE_DEMO.organizationId}'`);
+      expect(l).toContain('organization_id = v_org');
     }
     expect(instructions.some((l) => /^DELETE FROM public\.(catalogue|entreprise|subscriptions|organization_members)/.test(l))).toBe(false);
   });

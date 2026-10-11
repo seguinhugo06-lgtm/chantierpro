@@ -47,10 +47,10 @@ const CLIENTS = [
   { cle: 'dubreuil', prenom: 'Sophie', nom: 'Dubreuil', entreprise: 'Boulangerie Dubreuil', adresse: '3 place de la Mairie, 33600 Pessac', categorie: 'professionnel' },
   { cle: 'garnier', prenom: 'Thomas', nom: 'Garnier', adresse: '58 avenue de la Libération, 33130 Bègles', categorie: 'particulier' },
   { cle: 'rousseau', prenom: 'Nathalie', nom: 'Rousseau', adresse: '9 rue du Château, 33110 Le Bouscat', categorie: 'particulier' },
-  { cle: 'kine', prenom: 'Paul', nom: 'Martin', entreprise: 'Cabinet de kinésithérapie des Coteaux', adresse: '120 avenue de Paris, 33310 Lormont', categorie: 'professionnel' },
+  { cle: 'kine', prenom: 'Paul', nom: 'Martin', entreprise: 'Cabinet de kinésithérapie Martin', adresse: '120 avenue de Paris, 33310 Lormont', categorie: 'professionnel' },
   { cle: 'fournier', prenom: 'Isabelle', nom: 'Fournier', adresse: '31 chemin du Moulin, 33170 Gradignan', categorie: 'particulier' },
   { cle: 'lambert', prenom: 'Hervé', nom: 'Lambert', adresse: '6 impasse des Vignes, 33140 Villenave-d’Ornon', categorie: 'particulier' },
-  { cle: 'agence', prenom: 'Claire', nom: 'Petit', entreprise: 'Agence Gironde Habitat', adresse: '45 cours de l’Intendance, 33000 Bordeaux', categorie: 'professionnel' },
+  { cle: 'agence', prenom: 'Claire', nom: 'Petit', entreprise: 'Agence immobilière Logis du Parc', adresse: '45 cours de l’Intendance, 33000 Bordeaux', categorie: 'professionnel' },
   { cle: 'girard', prenom: 'Lucas', nom: 'Girard', adresse: '17 rue Camille-Pelletan, 33150 Cenon', categorie: 'particulier' },
   { cle: 'robin', prenom: 'Émilie', nom: 'Robin', adresse: '2 allée des Tilleuls, 33520 Bruges', categorie: 'particulier' },
   { cle: 'vidal', prenom: 'Pierre', nom: 'Vidal', adresse: '40 rue Gambetta, 33400 Talence', categorie: 'particulier' },
@@ -64,9 +64,43 @@ const L = (description, quantite, unite, prixUnitaire, prixAchat = 0) => ({ desc
 
 const DEVIS = [
   {
+    cle: 'dev-vidal', client: 'vidal', j: -185, envoi: -185, validite: 30, statut: 'facture',
+    objet: 'Remplacement du tableau électrique',
+    signe: { j: -182, nom: 'Pierre Vidal', aDistance: true },
+    lots: [['', [
+      L('Tableau électrique 2 rangées équipé', 1, 'u', 690, 310),
+      L('Mise à la terre et liaison équipotentielle', 1, 'forfait', 260, 40),
+      L('Reprise des circuits existants', 1, 'forfait', 1500, 220),
+    ]]],
+  },
+  {
+    cle: 'dev-garnier', client: 'garnier', j: -8, validite: 30, statut: 'facture',
+    objet: 'Dépannage : recherche de court-circuit et remplacement de prises',
+    signe: { j: -8, nom: 'Thomas Garnier', aDistance: false },
+    conditions: 'Devis de dépannage établi avant l’intervention, à la demande du client (réparation urgente). Déplacement et diagnostic payants. Les pièces remplacées sont laissées au client.',
+    lots: [['', [
+      L('Déplacement et diagnostic', 1, 'forfait', 65, 0),
+      L('Prise 2P+T 16 A remplacée', 3, 'u', 40, 7),
+      L('Main d’œuvre électricien', 2, 'h', 55, 0),
+    ]]],
+  },
+  {
+    cle: 'dev-chevalier', client: 'chevalier', j: -3, validite: 30, statut: 'facture',
+    objet: 'Dépannage : disjoncteur qui saute (circuit du lave-linge)',
+    signe: { j: -3, nom: 'Laura Chevalier', aDistance: false },
+    conditions: 'Devis de dépannage établi avant l’intervention, à la demande du client (réparation urgente). Déplacement et diagnostic payants. Les pièces remplacées sont laissées au client.',
+    lots: [['', [
+      L('Déplacement et diagnostic', 1, 'forfait', 65, 0),
+      L('Disjoncteur divisionnaire 20 A remplacé', 1, 'u', 38, 9),
+      L('Main d’œuvre électricien', 1, 'h', 55, 0),
+    ]]],
+  },
+  {
     cle: 'dev-lambert', client: 'lambert', chantier: 'lambert', j: -80, envoi: -80, validite: 30, statut: 'acompte_facture',
     objet: 'Électricité de l’extension (salon et suite parentale)',
     signe: { j: -75, nom: 'Hervé Lambert', aDistance: true }, acompte: 30,
+    // Le 2e acompte (40 %) doit figurer au devis signé (C. civ. 1103, 1193)
+    conditions: 'Acompte de 30 % à la commande, 40 % au passage des câbles, solde à la fin des travaux.',
     lots: [
       ['Tableau et protections', [
         L('Tableau électrique 3 rangées équipé (interrupteurs différentiels 30 mA type A et AC)', 1, 'u', 890, 420),
@@ -90,6 +124,8 @@ const DEVIS = [
     cle: 'dev-lefevre', client: 'lefevre', chantier: 'lefevre', j: -45, envoi: -45, validite: 30, statut: 'acompte_facture',
     objet: 'Rénovation électrique complète d’un appartement T3',
     signe: { j: -40, nom: 'Marie Lefèvre', aDistance: false }, acompte: 30,
+    // Signé chez la cliente : aucun paiement avant 7 jours (C. conso. L221-10, délit L242-7)
+    conditions: 'Acompte de 30 % à régler après le délai de 7 jours suivant la signature, solde à la fin des travaux.',
     lots: [
       ['Mise en sécurité', [
         L('Dépose de l’ancienne installation', 1, 'forfait', 380, 0),
@@ -129,7 +165,7 @@ const DEVIS = [
     ]]],
   },
   {
-    cle: 'dev-chartrons', client: 'chartrons', chantier: 'chartrons', j: -12, envoi: -12, validite: 30, statut: 'vu',
+    cle: 'dev-chartrons', client: 'chartrons', chantier: 'chartrons', j: -12, envoi: -12, validite: 30, statut: 'envoye',
     objet: 'Mise en conformité et éclairage LED des parties communes',
     lots: [
       ['Parties communes', [
@@ -183,7 +219,7 @@ const DEVIS = [
     ]]],
   },
   {
-    cle: 'dev-robin', client: 'robin', j: -18, envoi: -18, validite: 30, statut: 'vu',
+    cle: 'dev-robin', client: 'robin', j: -18, envoi: -18, validite: 30, statut: 'envoye',
     objet: 'Remplacement du tableau électrique',
     lots: [['', [
       L('Tableau électrique 2 rangées équipé', 1, 'u', 690, 310),
@@ -196,18 +232,18 @@ const DEVIS = [
 // Factures : depuis un devis (acompte, solde, totale) ou seules (dépannage, petites interventions).
 // paiements : [[jour, montant, mode]] ; echeance : délai en jours
 const FACTURES = [
-  { cle: 'fac-vidal', client: 'vidal', j: -170, echeance: 30, objet: 'Remplacement du tableau électrique', lignes: [L('Tableau électrique 2 rangées équipé', 1, 'u', 690, 310), L('Mise à la terre et liaison équipotentielle', 1, 'forfait', 260, 40), L('Reprise des circuits existants', 1, 'forfait', 1500, 220)], paiements: [[-160, 'tout', 'virement']] },
+  { cle: 'fac-vidal', client: 'vidal', devis: 'dev-vidal', type: 'totale', j: -170, echeance: 30, paiements: [[-160, 'tout', 'virement']] },
   { cle: 'fac-garnier-1', client: 'garnier', j: -150, echeance: 0, objet: 'Dépannage : remplacement d’un interrupteur différentiel', lignes: [L('Déplacement et diagnostic', 1, 'forfait', 65, 0), L('Interrupteur différentiel 40 A 30 mA type A', 1, 'u', 125, 58)], paiements: [[-150, 'tout', 'carte']] },
   { cle: 'fac-dubreuil-1', client: 'dubreuil', j: -140, echeance: 30, objet: 'Remplacement des néons du magasin', lignes: [L('Réglette LED 120 cm', 6, 'u', 45, 16), L('Main d’œuvre électricien', 1.5, 'h', 55, 0)], paiements: [[-130, 'tout', 'cheque']] },
   { cle: 'fac-agence-1', client: 'agence', j: -120, echeance: 30, objet: 'Remise en état électrique avant location (studio, rue Sainte-Catherine)', lignes: [L('Remplacement de prises et interrupteurs', 6, 'u', 45, 9), L('Détecteur de fumée', 2, 'u', 35, 12), L('Main d’œuvre électricien', 2, 'h', 55, 0)], paiements: [[-100, 'tout', 'virement']] },
   { cle: 'fac-chevalier', client: 'chevalier', j: -95, echeance: 30, objet: 'Éclairage de la cuisine et de la terrasse', lignes: [L('Spot LED encastré 6 W, fourni et posé', 10, 'u', 48, 13), L('Ruban LED sous meubles avec alimentation', 1, 'forfait', 260, 85), L('Applique extérieure avec détecteur de présence', 2, 'u', 135, 48), L('Main d’œuvre électricien', 3, 'h', 55, 0)], paiements: [[-80, 'tout', 'virement']] },
   { cle: 'fac-lambert-acompte', client: 'lambert', devis: 'dev-lambert', type: 'acompte', pct: 30, j: -74, echeance: 15, paiements: [[-70, 'tout', 'virement']] },
-  { cle: 'fac-dubreuil', client: 'dubreuil', devis: 'dev-dubreuil', type: 'totale', j: -30, echeance: 25 },
-  { cle: 'fac-lefevre-acompte', client: 'lefevre', devis: 'dev-lefevre', type: 'acompte', pct: 30, j: -40, echeance: 8, paiements: [[-38, 'tout', 'carte']] },
+  { cle: 'fac-dubreuil', client: 'dubreuil', devis: 'dev-dubreuil', type: 'totale', j: -35, echeance: 30 },
+  { cle: 'fac-lefevre-acompte', client: 'lefevre', devis: 'dev-lefevre', type: 'acompte', pct: 30, j: -40, echeance: 10, paiements: [[-31, 'tout', 'virement']] },
   { cle: 'fac-lambert-acompte-2', client: 'lambert', devis: 'dev-lambert', type: 'acompte', pct: 40, j: -28, echeance: 14, paiements: [[-20, 1000, 'cheque']] },
   { cle: 'fac-agence-2', client: 'agence', j: -50, echeance: 30, objet: 'Recherche de panne et remplacement du ballon d’eau chaude (T2, quai des Chartrons)', lignes: [L('Recherche de panne', 1, 'forfait', 90, 0), L('Thermostat et résistance stéatite', 1, 'u', 185, 72), L('Main d’œuvre électricien', 2.5, 'h', 55, 0), L('Déplacement', 1, 'forfait', 35, 0)] },
-  { cle: 'fac-garnier-2', client: 'garnier', j: -8, echeance: 0, objet: 'Dépannage : recherche de court-circuit et remplacement de prises', lignes: [L('Déplacement et diagnostic', 1, 'forfait', 65, 0), L('Prise 2P+T 16 A remplacée', 3, 'u', 40, 7), L('Main d’œuvre électricien', 2, 'h', 55, 0)], paiements: [[-8, 'tout', 'carte']] },
-  { cle: 'fac-chevalier-2', client: 'chevalier', j: -3, echeance: 0, objet: 'Dépannage : disjoncteur qui saute (circuit du lave-linge)', lignes: [L('Déplacement et diagnostic', 1, 'forfait', 65, 0), L('Disjoncteur divisionnaire 20 A remplacé', 1, 'u', 38, 9), L('Main d’œuvre électricien', 1, 'h', 55, 0)], paiements: [[-3, 'tout', 'carte']] },
+  { cle: 'fac-garnier-2', client: 'garnier', devis: 'dev-garnier', type: 'totale', j: -8, echeance: 0, paiements: [[-8, 'tout', 'carte']] },
+  { cle: 'fac-chevalier-2', client: 'chevalier', devis: 'dev-chevalier', type: 'totale', j: -3, echeance: 0, paiements: [[-3, 'tout', 'carte']] },
   { cle: 'fac-moreau', client: 'moreau', devis: 'dev-moreau', type: 'totale', j: -12, echeance: 30 },
   { cle: 'fac-agence-3', client: 'agence', j: -6, echeance: 30, objet: 'Pose de détecteurs de fumée et remplacement de luminaires (T3, cours Victor-Hugo)', lignes: [L('Détecteur de fumée', 3, 'u', 35, 12), L('Plafonnier LED', 4, 'u', 68, 24), L('Main d’œuvre électricien', 2, 'h', 55, 0)] },
 ];
@@ -215,10 +251,10 @@ const FACTURES = [
 // ─── Chantiers ──────────────────────────────────────────────────────────────
 
 const CHANTIERS = [
-  { cle: 'lambert', client: 'lambert', nom: 'Extension Lambert', statut: 'en_cours', debut: -60, fin: 20, avancement: 70, description: 'Électricité de l’extension de 40 m² (salon et suite parentale).', taches: [['Passage des gaines', true], ['Pose du tableau', true], ['Tirage des câbles', true], ['Pose de l’appareillage', false], ['Consuel', false]] },
+  { cle: 'lambert', client: 'lambert', nom: 'Extension Lambert', statut: 'en_cours', debut: -60, fin: 20, avancement: 70, description: 'Électricité de l’extension de 40 m² (salon et suite parentale).', taches: [['Passage des gaines', true], ['Pose du tableau', true], ['Tirage des câbles', true], ['Pose de l’appareillage', false], ['Essais et autocontrôle', false]] },
   { cle: 'lefevre', client: 'lefevre', nom: 'Rénovation T3 Lefèvre', statut: 'en_cours', debut: -14, fin: 10, avancement: 55, description: 'Rénovation électrique complète, appartement occupé.', taches: [['Dépose de l’ancienne installation', true], ['Saignées et gaines', true], ['Tableau', false], ['Appareillage et essais', false]] },
   { cle: 'moreau', client: 'moreau', nom: 'Borne de recharge Moreau', statut: 'termine', debut: -15, fin: -14, avancement: 100, description: 'Borne 7,4 kW au garage, ligne dédiée.', taches: [['Ligne dédiée', true], ['Pose de la borne', true], ['Mise en service', true]] },
-  { cle: 'dubreuil', client: 'dubreuil', nom: 'Fournil Boulangerie Dubreuil', statut: 'termine', debut: -34, fin: -31, avancement: 100, description: 'Tableau triphasé et circuits du four, travaux un lundi (jour de fermeture).', taches: [['Coupure et dépose', true], ['Nouveau tableau', true], ['Essais avec le four', true]] },
+  { cle: 'dubreuil', client: 'dubreuil', nom: 'Fournil Boulangerie Dubreuil', statut: 'termine', debut: -38, fin: -36, avancement: 100, description: 'Tableau triphasé et circuits du four, travaux un lundi (jour de fermeture).', taches: [['Coupure et dépose', true], ['Nouveau tableau', true], ['Essais avec le four', true]] },
   { cle: 'chartrons', client: 'chartrons', nom: 'Parties communes SCI Les Quais', statut: 'prospect', debut: 25, fin: 32, avancement: 0, description: 'Immeuble de 4 étages, cage d’escalier et caves.', taches: [] },
   { cle: 'fournier', client: 'fournier', nom: 'Domotique Fournier', statut: 'prospect', debut: 21, fin: 23, avancement: 0, description: 'Volets connectés et éclairage du jardin.', taches: [] },
   { cle: 'rousseau', client: 'rousseau', nom: 'VMC Rousseau', statut: 'prospect', debut: 30, fin: 30, avancement: 0, description: 'Maison de 1975, salle de bain à mettre aux normes.', taches: [] },
@@ -315,7 +351,7 @@ export function construireJeu({ aujourdhui = new Date(), boite = 'seguin.hugo06@
       lignes,
       sections,
       acompte_pct: d.acompte || null,
-      conditions: d.acompte ? `Acompte de ${d.acompte} % à la commande, solde à la fin des travaux.` : 'Paiement à réception de la facture.',
+      conditions: d.conditions || (d.acompte ? `Acompte de ${d.acompte} % à la commande, solde à la fin des travaux.` : 'Paiement à réception de la facture.'),
       notes: '',
       ...totaux(lignes),
       ...signature,
@@ -420,17 +456,17 @@ export function construireJeu({ aujourdhui = new Date(), boite = 'seguin.hugo06@
     { cle: 'chartrons', title: 'Visite technique SCI Les Quais', date: jour(2), time: '14:00', duration: 90, type: 'rdv', chantier: 'chartrons', client: 'chartrons', location: '22 rue Notre-Dame, Bordeaux' },
     { cle: 'lambert', title: 'Extension Lambert : pose de l’appareillage', date: jour(3), time: '08:00', duration: 480, type: 'chantier', chantier: 'lambert', client: 'lambert' },
     { cle: 'fournier', title: 'Rendez-vous Mme Fournier (domotique)', date: jour(6), time: '10:00', duration: 60, type: 'rdv', chantier: 'fournier', client: 'fournier', location: '31 chemin du Moulin, Gradignan' },
-    { cle: 'consuel', title: 'Visite Consuel : extension Lambert', date: jour(9), time: '09:00', duration: 60, type: 'rdv', chantier: 'lambert', client: 'lambert' },
+    { cle: 'consuel', title: 'Essais et autocontrôle : extension Lambert', date: jour(9), time: '09:00', duration: 60, type: 'rdv', chantier: 'lambert', client: 'lambert' },
   ].map((e) => ({
     id: id(`planning:${e.cle}`), title: e.title, date: e.date, time: e.time, duration: e.duration, type: e.type,
     chantierId: chantier[e.chantier]?.id || null, clientId: client[e.client]?.id || null, location: e.location || '', description: '',
   }));
 
   const memos = [
-    { cle: 'commande', text: 'Commander l’appareillage pour l’extension Lambert', due: 1, priority: 'high', chantier: 'lambert' },
-    { cle: 'rappel', text: 'Rappeler M. Bernard (SCI Les Quais) pour la visite', due: 0, priority: 'medium', client: 'chartrons' },
-    { cle: 'acompte', text: 'Faire le point sur le 2e acompte Lambert', due: 2, priority: 'medium', client: 'lambert' },
-    { cle: 'consuel', text: 'Envoyer l’attestation Consuel à M. Moreau', done: -10, client: 'moreau' },
+    { cle: 'commande', text: 'Commander l’appareillage pour l’extension Lambert', due: 1, priority: 'haute', chantier: 'lambert' },
+    { cle: 'rappel', text: 'Rappeler M. Bernard (SCI Les Quais) pour la visite', due: 0, priority: 'moyenne', client: 'chartrons' },
+    { cle: 'acompte', text: 'Faire le point sur le 2e acompte Lambert', due: 2, priority: 'moyenne', client: 'lambert' },
+    { cle: 'consuel', text: 'Envoyer à M. Moreau le procès-verbal de mise en service de la borne', done: -10, client: 'moreau' },
   ].map((m, k) => ({
     id: id(`memo:${m.cle}`), text: m.text, priority: m.priority || null, due_date: m.due != null ? jour(m.due) : null,
     chantier_id: m.chantier ? chantier[m.chantier].id : null, client_id: m.client ? client[m.client].id : null,
@@ -442,7 +478,7 @@ export function construireJeu({ aujourdhui = new Date(), boite = 'seguin.hugo06@
     { cle: 'lambert-cables', chantier: 'lambert', description: 'Câbles, gaines et boîtes', montant: 312.9, j: -55 },
     { cle: 'lefevre-materiel', chantier: 'lefevre', description: 'Appareillage et tableau 2 rangées', montant: 742.5, j: -13 },
     { cle: 'moreau-borne', chantier: 'moreau', description: 'Borne de recharge 7,4 kW et protection', montant: 768, j: -16 },
-    { cle: 'dubreuil-tableau', chantier: 'dubreuil', description: 'Tableau triphasé et disjoncteurs', montant: 912.3, j: -35 },
+    { cle: 'dubreuil-tableau', chantier: 'dubreuil', description: 'Tableau triphasé et disjoncteurs', montant: 912.3, j: -40 },
   ].map((dp) => ({
     id: id(`depense:${dp.cle}`), chantierId: chantier[dp.chantier].id, description: dp.description, montant: dp.montant,
     date: jour(dp.j), categorie: 'Matériaux', fournisseur: 'Grossiste en matériel électrique',

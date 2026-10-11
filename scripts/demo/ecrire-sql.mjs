@@ -12,4 +12,4 @@ const sortie = i > 0 ? process.argv[i + 1] : 'audit-ui/demo/compte-demo.sql';
 fs.mkdirSync(path.dirname(sortie), { recursive: true });
 const sql = genererSql();
 fs.writeFileSync(sortie, `${sql}\n`);
-console.log(`${sortie} : ${sql.split('\n').filter((l) => l.startsWith('INSERT')).length} insertions, ${(sql.length / 1024).toFixed(0)} Ko`);
+console.log(`${sortie} : ${sql.split('\n').filter((l) => l.trim().startsWith('INSERT')).length} insertions, ${(sql.length / 1024).toFixed(0)} Ko`);

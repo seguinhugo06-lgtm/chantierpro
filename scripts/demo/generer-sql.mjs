@@ -15,6 +15,7 @@
 import { FIELD_MAPPINGS } from '../../src/hooks/useSupabaseSync.js';
 import { DEFAULT_DEVIS_STEPS, DEFAULT_FACTURE_STEPS } from '../../src/components/settings/RelanceConfigTab.jsx';
 import { construireJeu, uuidDe } from './jeuDemo.js';
+import { SIGNATURE_DEMO } from './signatureDemo.js';
 
 // Compte démo (décision d'Hugo du 11 oct. 2026)
 export const COMPTE_DEMO = {
@@ -36,6 +37,8 @@ const q = (s) => `'${String(s).replace(/'/g, "''")}'`;
 
 function valeur(table, colonne, v) {
   if (v === null || v === undefined) return 'NULL';
+  // L'image de signature (7 Ko) est déclarée une fois dans le bloc (v_sig) au lieu d'être répétée
+  if (v === SIGNATURE_DEMO) return 'v_sig';
   const genre = JSONB[table]?.[colonne];
   if (genre === 'texte') return `to_jsonb(${q(typeof v === 'string' ? v : JSON.stringify(v))}::text)`;
   if (genre === 'objet') return `${q(JSON.stringify(v))}::jsonb`;
@@ -108,26 +111,39 @@ function relancesEnvoyees(jeu, base) {
   }];
 }
 
-/** Le SQL complet : garde, remise à zéro de l'organisation démo, écriture du jeu. */
+/**
+ * Le SQL complet : UN bloc DO (tout ou rien, quelle que soit la façon dont il est envoyé), qui
+ *   1. vérifie le compte et l'organisation ;
+ *   2. refuse si une ligne d'une AUTRE organisation pointe vers les clients, chantiers ou pièces du compte démo
+ *      (les clés étrangères ne vérifient pas l'organisation : un effacement en cascade ou une mise à NULL
+ *      toucherait cette autre organisation ; liens relevés dans pg_constraint, relecture gardien-securite) ;
+ *   3. efface le contenu de l'organisation démo, puis écrit le jeu.
+ */
 export function genererSql({ aujourdhui = new Date(), compte = COMPTE_DEMO } = {}) {
   const jeu = construireJeu({ aujourdhui, boite: compte.boite });
   const lignes = lignesDuJeu(jeu, compte);
-  const org = q(compte.organizationId);
   const scenario = { enabled: true, autoSend: false, devisSteps: DEFAULT_DEVIS_STEPS, factureSteps: DEFAULT_FACTURE_STEPS };
-  // Ordre d'effacement : ce qui pointe vers les pièces, puis les pièces, chantiers et clients
-  const aEffacer = ['relance_executions', 'paiements', 'echanges', 'planning_events', 'memos', 'depenses', 'devis', 'chantiers', 'clients'];
-  return [
-    `-- Compte démo ${compte.email} : jeu de démonstration généré le ${aujourdhui.toISOString().slice(0, 10)} (scripts/demo/generer-sql.mjs)`,
-    'DO $garde$ BEGIN',
-    `  IF NOT EXISTS (SELECT 1 FROM auth.users u JOIN public.organization_members m ON m.user_id = u.id`,
-    `                 WHERE u.id = ${q(compte.userId)} AND lower(u.email) = ${q(compte.email)}`,
-    `                   AND m.organization_id = ${org} AND m.role = 'owner')`,
-    `     OR NOT EXISTS (SELECT 1 FROM public.entreprise WHERE id = ${q(compte.entrepriseId)} AND organization_id = ${org}) THEN`,
-    `    RAISE EXCEPTION 'Compte démo introuvable ou organisation inattendue : rien n''est écrit';`,
+  // Ordre d'effacement : ce qui pointe vers les pièces et chantiers, puis les pièces, chantiers et clients
+  const aEffacer = ['relance_executions', 'paiements', 'echanges', 'planning_events', 'memos', 'depenses', 'pointages', 'devis', 'chantiers', 'clients'];
+  const corps = [
+    `IF NOT EXISTS (SELECT 1 FROM auth.users u JOIN public.organization_members m ON m.user_id = u.id`,
+    `               WHERE u.id = ${q(compte.userId)} AND lower(u.email) = ${q(compte.email)}`,
+    `                 AND m.organization_id = v_org AND m.role = 'owner')`,
+    `   OR NOT EXISTS (SELECT 1 FROM public.entreprise WHERE id = ${q(compte.entrepriseId)} AND organization_id = v_org) THEN`,
+    `  RAISE EXCEPTION 'Compte démo introuvable ou organisation inattendue : rien n''est écrit';`,
+    'END IF;',
+    'FOR r IN SELECT c.conrelid::regclass AS tbl, a.attname AS col, c.confrelid::regclass AS cible',
+    '         FROM pg_constraint c JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = c.conkey[1]',
+    "         WHERE c.contype = 'f' AND c.confrelid IN ('public.clients'::regclass, 'public.chantiers'::regclass, 'public.devis'::regclass)",
+    'LOOP',
+    "  IF EXISTS (SELECT 1 FROM pg_attribute WHERE attrelid = r.tbl AND attname = 'organization_id' AND NOT attisdropped) THEN",
+    "    EXECUTE format('SELECT EXISTS (SELECT 1 FROM %s x WHERE x.organization_id IS DISTINCT FROM $1 AND x.%I IN (SELECT id FROM %s WHERE organization_id = $1))', r.tbl, r.col, r.cible)",
+    '      INTO v_croise USING v_org;',
+    "    IF v_croise THEN RAISE EXCEPTION 'Une ligne de % (autre organisation) pointe vers % du compte démo : rien n''est écrit', r.tbl, r.cible; END IF;",
     '  END IF;',
-    'END $garde$;',
-    ...aEffacer.map((t) => `DELETE FROM public.${t} WHERE organization_id = ${org};`),
-    `UPDATE public.entreprise SET relance_config = ${q(JSON.stringify(scenario))}::jsonb WHERE id = ${q(compte.entrepriseId)} AND organization_id = ${org};`,
+    'END LOOP;',
+    ...aEffacer.map((t) => `DELETE FROM public.${t} WHERE organization_id = v_org;`),
+    `UPDATE public.entreprise SET relance_config = ${q(JSON.stringify(scenario))}::jsonb WHERE id = ${q(compte.entrepriseId)} AND organization_id = v_org;`,
     inserer('clients', lignes.clients),
     inserer('chantiers', lignes.chantiers),
     inserer('devis', lignes.devis),
@@ -137,5 +153,17 @@ export function genererSql({ aujourdhui = new Date(), compte = COMPTE_DEMO } = {
     inserer('memos', lignes.memos),
     inserer('depenses', lignes.depenses),
     inserer('relance_executions', lignes.relance_executions),
+  ].join('\n');
+  return [
+    `-- Compte démo ${compte.email} : jeu de démonstration généré le ${aujourdhui.toISOString().slice(0, 10)} (scripts/demo/generer-sql.mjs)`,
+    'DO $demo$',
+    'DECLARE',
+    `  v_org uuid := ${q(compte.organizationId)};`,
+    '  r record;',
+    '  v_croise boolean;',
+    `  v_sig text := ${q(SIGNATURE_DEMO)};`,
+    'BEGIN',
+    corps.split('\n').map((l) => `  ${l}`).join('\n'),
+    'END $demo$;',
   ].join('\n');
 }

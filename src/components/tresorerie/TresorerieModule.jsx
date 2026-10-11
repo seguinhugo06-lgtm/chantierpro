@@ -1587,7 +1587,7 @@ export default function TresorerieModule({
                   <div className={`pt-3 mt-1 border-t border-bord`}>
                     <label className={`block text-xs font-medium mb-1 ${textSecondary}`}>Régime TVA</label>
                     {franchiseImposee ? (
-                      <p className="text-sm text-encre">Franchise en base (micro-entreprise, art. 293 B du CGI) : pas de TVA facturée ni récupérée. Elle suit la forme juridique indiquée dans Paramètres.</p>
+                      <p className="text-sm text-encre">Franchise en base de TVA (art. 293 B du CGI) : pas de TVA facturée ni déductible. Mallettico l’applique d’après la forme « Micro-entreprise » indiquée dans Paramètres.</p>
                     ) : (<>
                     <select value={settings.regimeTva || 'trimestriel'}
                       onChange={(e) => updateSettings({ regimeTva: e.target.value })}
