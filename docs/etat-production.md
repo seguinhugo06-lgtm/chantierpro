@@ -9,7 +9,7 @@ Dernière mise à jour : **11 oct. 2026**.
 
 Dans l'ordre. Chaque action est aussi dans le Pilote (« À faire de votre côté »), avec sa commande et son contrôle. Migrations 071 → 078 : appliquées et vérifiées le 8 oct. (voir le tableau plus bas).
 
-1. **Faire tourner la clé Stripe exposée** — avant la migration 076, une clé Stripe d'artisan active (celle de Paramètres › Finance › Paiements, probablement la vôtre) était lisible par un visiteur : dans Stripe, Développeurs › Clés API › Faire tourner la clé ; puis la remplacer dans Mallettico, et dans le secret `STRIPE_SECRET_KEY` des fonctions Supabase si c'est la même ; contrôle : collez la date « Créée le » de la nouvelle clé secrète et les 4 derniers caractères que Stripe affiche (jamais la clé entière).
+1. **Faire tourner la clé Stripe exposée** — URGENT depuis le 11 oct. : Stripe encaisse en mode réel. Avant la migration 076, une clé Stripe d'artisan active (celle de Paramètres › Finance › Paiements, probablement la vôtre) était lisible par un visiteur : dans Stripe, Développeurs › Clés API › Faire tourner la clé ; puis la remplacer dans Mallettico, et dans le secret `STRIPE_SECRET_KEY` des fonctions Supabase si c'est la même ; contrôle : collez la date « Créée le » de la nouvelle clé secrète et les 4 derniers caractères que Stripe affiche (jamais la clé entière).
 2. **Fournir l'identité de l'éditeur** — nom suivi de « EI », SIREN (après l'immatriculation), adresse personnelle (décision du 8 oct.), téléphone ; Claude les reporte dans les mentions légales (`COMPANY`, `src/components/LegalPages.jsx`).
 3. **Coller le nouvel e-mail « mot de passe oublié »** — dans Supabase, Authentication › Emails › Reset Password : sujet « Réinitialiser votre mot de passe Mallettico », corps = tout le contenu de `supabase/templates/recuperation.html` (logo et bouton orange ; le logo est servi par mallettico.fr depuis la livraison du 8 oct.) ; contrôle : faites « Mot de passe oublié » sur mallettico.fr avec votre adresse, l'e-mail doit montrer le logo et le bouton « Choisir un nouveau mot de passe » ; collez son sujet.
 4. **Coller le nouvel e-mail de confirmation d'inscription** — dans Supabase, Authentication › Emails › Confirm signup : sujet « Confirmez votre adresse e-mail Mallettico », corps = tout le contenu de `supabase/templates/confirmation.html` ; contrôle : inscrivez-vous sur mallettico.fr avec votre adresse suivie de « +essai » avant le @, l'e-mail doit montrer le logo et le bouton « Confirmer mon adresse » ; collez son sujet.
@@ -65,7 +65,7 @@ Quand une migration est appliquée : passer sa ligne à « appliquée le JJ/MM �
 
 | Service | État | Remarque |
 |---|---|---|
-| Stripe | mode **test** (`sk_test_`) | passage en live = clé + secret de webhook ensemble (Hugo) |
+| Stripe | mode **réel** (constaté le 11/10 : l'abonnement Artisan de contact@mallettico.fr est prélevé chaque mois, 9,90 € le 30/08 et le 30/09 sur la carte d'Hugo, d'après son tableau de bord Stripe ; la carte n'est pas une carte de test). Ce fichier disait « test » à tort | les abonnements souscrits sur mallettico.fr sont de vrais paiements |
 | Resend | domaine `mallettico.fr` | e-mails transactionnels |
 | Sentry | **inactif en production** : `VITE_SENTRY_DSN` absent, `captureException` se réduit à `console.error` (JavaScript servi, 8 oct.) | à activer après sa mention dans la politique de confidentialité (tâche `rgpd-soustraitance`) |
 | GitHub Actions | « Vérifications » à chaque push ; « Santé hebdomadaire » le lundi | ouvre une issue en cas d'échec |
