@@ -3,7 +3,7 @@
 **Source de vérité de ce qui tourne réellement.** Le dépôt ne décrit pas exactement la production (migrations appliquées à la main, fonctions déployées à la main) : ce fichier fait le lien.
 Claude le lit au démarrage (hook) et le met à jour à chaque livraison ; Hugo le met à jour (ou le dit à Claude) quand il applique une migration, déploie une fonction ou change un réglage.
 
-Dernière mise à jour : **10 oct. 2026**.
+Dernière mise à jour : **11 oct. 2026**.
 
 ## En attente côté Hugo
 
@@ -19,7 +19,7 @@ Dans l'ordre. Chaque action est aussi dans le Pilote (« À faire de votre côt�
 
 | Élément | État | Vérifié |
 |---|---|---|
-| `main` | `9c4e40b` (10 oct. : la jauge « Profil complété » des Paramètres range capital, RCS, n° de TVA intracom, médiateur et assureur décennal sous « Autres mentions obligatoires selon votre situation (n'empêchent pas l'envoi) », le code APE et la RC Pro sous « Recommandés » ; son pourcentage, le badge « Paramètres » et l'onglet Facture 2026 affichent la même note (D-25), verte seulement à 100 % ; le menu reste ouvrable à 100 % s'il manque le médiateur ou l'assureur ; `lib/jaugeProfil.js` ; contrôle d'envoi inchangé (Q-capital-envoi attend Hugo) ; aucune migration. Inclut `fe24606` : la mise en demeure imprime le capital social d'une société) | `npm run statut` : Vercel ×2 + CI verts (10 oct.) |
+| `main` | `1445d88` (11 oct. : parcours d'invitation d'équipe refait après la recette d'Hugo sur iPhone. La page /invitation mène à l'inscription ou à la connexion puis y ramène (lien de confirmation compris) ; aucun espace vide n'est créé pour un invité ; l'app ouvre l'équipe rejointe pour un compte sans entreprise à lui, affiche « Équipe X · rôle » sur l'accueil et dans le menu, et bascule d'une organisation à l'autre. La copie locale de la fiche entreprise n'est plus recopiée dans une autre organisation (IBAN compris), et la déconnexion l'efface. E-mails de cycle de vie au logo Mallettico ; l'invitation cite son auteur. Relecture gardien-securite : rien de bloquant, points corrigés sauf l'adresse invitée (Q-invitation-adresse). Aucune migration) | `npm run statut` : Vercel ×2 + CI verts (11 oct.) |
 | Vercel | 2 projets (`chantierpro`, `seguinhugo06-lgtm-chantierpro`), déploiement auto sur `main` | statut GitHub |
 | Domaine | `mallettico.fr` (DNS OVH) | 25 juil. |
 | Service worker | sert l'ancienne version jusqu'à rechargement : ne jamais vérifier un déploiement en rechargeant le site | — |
@@ -53,7 +53,7 @@ Quand une migration est appliquée : passer sa ligne à « appliquée le JJ/MM �
 | Fonction | Déployée | Écart avec le dépôt |
 |---|---|---|
 | `send-email` | v17, redéployée le 08/10 par Hugo depuis `main` ; contrôlée par Claude avec le compte de contrôle : 403 pour une adresse qui n'est pas un client, 200 pour un client, compteur de 077 passé de 0 à 1 | — n'envoie qu'aux clients de l'utilisateur (lus sous RLS), à son adresse de compte et à contact@mallettico.fr ; 50 destinataires / 24 h par compte (secret facultatif `EMAIL_LIMITE_JOUR`) ; PDF seuls en pièce jointe |
-| `send-lifecycle-email` | v24, redéployée le 08/10 par Hugo depuis `main` ; contrôlée : 401 « Authentification requise » sans compte, 403 « Réservé au serveur » pour un compte connecté | — bienvenue au seul compte connecté, une fois ; invitation relue en base, par son auteur ; essai et paiement réservés au serveur ; tout est échappé |
+| `send-lifecycle-email` | v25, déployée le 11/10 par Claude (D-22) depuis `main` `1445d88` ; contrôlée : code déployé relu (logo, adresse de réponse, bienvenue épargnée aux membres d'une équipe), 401 « Authentification requise » sans compte, logo servi par mallettico.fr (200) | — bienvenue au seul compte connecté, une fois, pas à un membre d'équipe sans organisation à lui ; invitation relue en base, par son auteur, qui y est cité ; essai et paiement réservés au serveur, sans prix inventé ; tout est échappé |
 | `send-scheduled-relances` | v18, redéployée le 10/10 par Claude (D-22) depuis 1144682 ; contrôlée : démarre, 401 sans secret | relance le reste dû (paiements et avoirs de l'organisation déduits), pénalités et 40 € pour un professionnel seulement, jamais un avoir ni une facture soldée (`regles.ts`, testé) ; à constater au prochain passage nocturne (`relance_cron_runs`) |
 | `notify-signature` | v12, redéployée le 10/10 par Claude (D-22) depuis 809ad57 ; contrôlée : 404 « devis introuvable » pour un jeton inconnu | nom du signataire et numéro échappés dans l'e-mail « Devis signé » (un lien d'hameçonnage passait dans un e-mail authentifié par Mallettico) |
 | `subscription-billing` | oui | — |

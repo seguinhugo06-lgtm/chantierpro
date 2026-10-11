@@ -61,3 +61,11 @@ Option `signaler` : garder le signalement (onglet Facture 2026, jauge des Param�
 Recommandation : `bloquer` — mentions obligatoires, saisies une fois en une minute, et la règle « qui est concerné » existe déjà (`src/lib/mentionsFacture.js`).
 Irréversible : non
 Bloque : rien (contrôle d'envoi des devis et factures)
+
+### Q-invitation-adresse · N'accepter une invitation d'équipe qu'avec l'adresse invitée ?
+Contexte : Aujourd'hui, quiconque détient le lien d'une invitation rejoint l'équipe avec le rôle prévu, quelle que soit l'adresse de son compte (`accept_invitation`). Un lien transféré par erreur, ou un téléphone partagé sur lequel l'invité a commencé son inscription sans la finir, suffit (relecture gardien-securite du 11 oct. 2026, MOYEN). L'app oublie l'invitation à son expiration et à la déconnexion, mais pas si personne n'était connecté.
+Option `exiger` : migration — l'invitation n'est acceptée que par un compte à l'adresse invitée ; sinon « Cette invitation a été envoyée à une autre adresse : connectez-vous avec celle-ci ». Un invité qui veut utiliser une autre adresse doit être réinvité.
+Option `laisser` : le lien reste la seule clé, valable 7 jours ; rien ne change.
+Recommandation : `exiger` — c'est la règle habituelle des invitations, et réinviter prend dix secondes.
+Irréversible : non
+Bloque : rien (sécurité des équipes)
