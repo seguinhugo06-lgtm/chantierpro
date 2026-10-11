@@ -63,6 +63,14 @@ export async function verifier({ db, q, commeAnonyme, verifier }) {
   await q(`INSERT INTO devis (user_id, organization_id, client_id, numero, type, facture_type, statut, total_ttc, payment_token) VALUES ($1, $2, $3, 'FAC-085', 'facture', 'totale', 'envoye', 300, 'pay-085-vol')`, [SOLO, 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', clientPatron]);
   const vol = await commeAnonyme(async () => (await q('SELECT get_facture_for_payment($1) AS r', ['pay-085-vol'])).rows[0].r || {});
   verifier(vol.client && !vol.client.nom && !vol.client.email, `085 : le client d'un autre compte n'est pas livré (${JSON.stringify(vol.client)})`);
+  // Facture au nom de l'organisation du patron par quelqu'un qui n'en est pas (ou plus) membre : rien
+  await q(`INSERT INTO devis (user_id, organization_id, client_id, numero, type, facture_type, statut, total_ttc, payment_token) VALUES ($1, $2, $3, 'FAC-085', 'facture', 'totale', 'envoye', 300, 'pay-085-ancien')`, [SOLO, ORGA_PATRON, clientPatron]);
+  const ancien = await commeAnonyme(async () => (await q('SELECT get_facture_for_payment($1) AS r', ['pay-085-ancien'])).rows[0].r || {});
+  verifier(ancien.client && !ancien.client.nom && !ancien.client.email, `085 : un non-membre ne lit pas un client de l'équipe en se réclamant d'elle (${JSON.stringify(ancien.client)})`);
+  // La même facture par un membre de l'équipe : le client de l'équipe est bien transmis
+  await q(`INSERT INTO devis (user_id, organization_id, client_id, numero, type, facture_type, statut, total_ttc, payment_token) VALUES ($1, $2, $3, 'FAC-085', 'facture', 'totale', 'envoye', 300, 'pay-085-equipe')`, [SALARIE, ORGA_PATRON, clientPatron]);
+  const equipe = await commeAnonyme(async () => (await q('SELECT get_facture_for_payment($1) AS r', ['pay-085-equipe'])).rows[0].r || {});
+  verifier(equipe.client?.nom === 'Secret', `085 : un membre de l'équipe facture un client de l'équipe : client transmis (${equipe.client?.nom})`);
   // Facture sans client, auteur sans fiche : la page répond quand même (champs vides, pas d'erreur)
   const sansRien = await essayer(async () => {
     await q(`INSERT INTO auth.users (id, email) VALUES ('99999999-9999-4999-8999-999999999999', 'sans-fiche@exemple.fr') ON CONFLICT DO NOTHING`);
@@ -76,6 +84,13 @@ export async function verifier({ db, q, commeAnonyme, verifier }) {
   const avant = (await q(`SELECT pg_get_functiondef('public.get_devis_for_signature(uuid)'::regprocedure) AS a, pg_get_functiondef('public.get_facture_for_payment(text)'::regprocedure) AS b`)).rows[0];
   const fois = (texte, mot) => texte.split(mot).length - 1;
   verifier(fois(avant.a, 'donneesFictives') === 2 && fois(avant.b, 'donnees_fictives') === 1, '085 : une seule clé ajoutée par fonction');
+
+  // ── Droits et search_path inchangés (CREATE OR REPLACE garde les droits ; pg_get_functiondef réécrit le reste)
+  const droits = (await q(`SELECT p.proname, p.prosecdef, p.proconfig::text AS config, p.proacl::text AS acl,
+      has_function_privilege('anon', p.oid, 'EXECUTE') AS anon, has_function_privilege('authenticated', p.oid, 'EXECUTE') AS auth
+    FROM pg_proc p WHERE p.oid IN ('public.get_devis_for_signature(uuid)'::regprocedure, 'public.get_facture_for_payment(text)'::regprocedure)`)).rows;
+  verifier(droits.length === 2 && droits.every((d) => d.prosecdef && /search_path=public, pg_temp/.test(d.config || '') && d.anon && d.auth && !/(^|[{,])=X/.test(d.acl || '')),
+    `085 : SECURITY DEFINER, search_path fixé, exécutable par un visiteur, pas par PUBLIC (${droits.map((d) => `${d.proname} ${d.config} ${d.acl}`).join(' ; ')})`);
 
   // Ménage (d'autres vérifications comptent les lignes des comptes)
   await q(`DELETE FROM devis WHERE numero IN ('DEV-085', 'FAC-085')`);
