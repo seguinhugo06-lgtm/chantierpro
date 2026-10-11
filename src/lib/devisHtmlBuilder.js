@@ -12,6 +12,7 @@
  */
 
 import { filterValidLignes, formatClientName } from './formatters';
+import { marquerDocumentFictif } from './donneesFictives';
 import { mentionTvaReduiteHtml } from './mentionTvaReduite';
 import { urlPublique } from './urlPublique';
 import { euros, pourcent, quantite, blocConditionsPaiement } from './formatDocument';
@@ -191,7 +192,7 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mod
       </div>`;
   }
 
-  return `<!DOCTYPE html>
+  return marquerDocumentFictif(entreprise, `<!DOCTYPE html>
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
@@ -427,7 +428,7 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mod
   <!-- FOOTER -->
   ${buildFooterHtml(e, rcsComplet, !isFacture, isClientMode)}
 </body>
-</html>`;
+</html>`);
 }
 
 /**
@@ -575,7 +576,7 @@ export function buildSituationFactureHtml({ situation, parentDevis, client, chan
     ? tvaRates.map(([taux, data]) => `<div class="totals-row sub"><span>TVA ${pourcent(taux)} (base ${euros(data.base)})</span><span>${euros(data.montant)}</span></div>`).join('')
     : `<div class="totals-row sub"><span>TVA ${pourcent(tvaRates.length > 0 ? tvaRates[0][0] : defaultTvaRate)}</span><span>${euros(totalTVA)}</span></div>`;
 
-  return `<!DOCTYPE html>
+  return marquerDocumentFictif(entreprise, `<!DOCTYPE html>
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
@@ -716,7 +717,7 @@ export function buildSituationFactureHtml({ situation, parentDevis, client, chan
   <!-- FOOTER -->
   ${buildFooterHtml(e, rcsComplet)}
 </body>
-</html>`;
+</html>`);
 }
 
 /**

@@ -43,6 +43,9 @@ export const REGLAGES_SANS_COLONNE = {
   mentionRetractation: true,
   mentionGaranties: true,
   mentionPenalites: true,
+  // Compte de démonstration (D-26) : bandeau à l'écran, filigrane « EXEMPLE » sur les documents
+  // (src/lib/donneesFictives.js). Posé par scripts/demo, absent des écrans de réglage.
+  donneesFictives: false,
 };
 
 function reglagesDe(row) {

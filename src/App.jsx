@@ -90,6 +90,8 @@ import { usePWA } from './hooks/usePWA';
 import { registerNetworkListeners, getPendingCount, syncQueue, clearAllMutations, clearMutationsDe, checkConnectivity } from './lib/offline/sync';
 import OfflineIndicator from './components/ui/OfflineIndicator';
 import EntrepriseSwitcher from './components/ui/EntrepriseSwitcher';
+import BandeauDonneesFictives from './components/ui/BandeauDonneesFictives';
+import { estDonneesFictives } from './lib/donneesFictives';
 import { FONCTIONS } from './lib/fonctions';
 import { estNatif } from './lib/natif';
 import { appliquerTheme } from './lib/theme';
@@ -1724,6 +1726,12 @@ export default function App() {
           {/* Le flou est porté par un calque et non par <header> : un backdrop-filter sur un ancêtre
               enfermerait les fonds et panneaux position:fixed des menus dans la hauteur de l'en-tête. */}
           <div aria-hidden="true" className={`absolute inset-0 -z-10 backdrop-blur-xl bg-surface/90`} />
+          {/* Compte de démonstration (D-26) : le bandeau suit l'en-tête collant, sur tous les écrans */}
+          {estDonneesFictives(entreprise) && (
+            <div className="absolute left-1/2 -translate-x-1/2 top-full mt-1">
+              <BandeauDonneesFictives />
+            </div>
+          )}
 
           {/* LEFT GROUP: Menu + Logo + Badges */}
           <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
@@ -1921,6 +1929,8 @@ export default function App() {
             </button>
           </div>
         </header>
+        {/* Place du bandeau « Données fictives » (accroché à l'en-tête) : il ne recouvre pas le haut de l'écran */}
+        {estDonneesFictives(entreprise) && <div aria-hidden="true" className="h-7" />}
 
         {/* Échec de chargement : sans ce bandeau, une coupure réseau ressemblait à des données perdues. */}
         {loadError && (

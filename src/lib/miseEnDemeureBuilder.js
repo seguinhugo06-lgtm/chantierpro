@@ -9,6 +9,7 @@
  */
 
 import { calculatePenalties, DEFAULT_PENALTY_RATE, estClientPro } from './relanceUtils';
+import { marquerDocumentFictif } from './donneesFictives';
 import { dateLocale } from './paiementsFacture';
 import { echapperHtml as h, couleurCss } from './echapperHtml';
 import { imprimerHtml } from './imprimerHtml';
@@ -117,7 +118,7 @@ export function buildMiseEnDemeureHtml({
   const clientAdresse = h(client?.adresse || '');
   const clientEntreprise = h(client?.entreprise || '');
 
-  return `<!DOCTYPE html>
+  return marquerDocumentFictif(entreprise, `<!DOCTYPE html>
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
@@ -427,7 +428,7 @@ ${estPro ? `
 </div>
 
 </body>
-</html>`;
+</html>`);
 }
 
 /**

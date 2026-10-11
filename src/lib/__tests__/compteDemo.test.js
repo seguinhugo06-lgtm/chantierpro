@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { construireJeu } from '../../../scripts/demo/jeuDemo.js';
-import { genererSql, lignesDuJeu, COMPTE_DEMO } from '../../../scripts/demo/generer-sql.mjs';
+import { genererSql, lignesDuJeu, COMPTE_DEMO, IDENTITE_DEMO } from '../../../scripts/demo/generer-sql.mjs';
 import { FIELD_MAPPINGS } from '../../hooks/useSupabaseSync';
 import { statutFacture } from '../paiementsFacture';
 import { estOuverte, encaisse, resteAFacturer } from '../ventes';
@@ -148,3 +148,26 @@ describe('compte démo : le SQL ne touche qu’à l’organisation démo', () =>
     expect(ligneDevis).toMatch(/to_jsonb\('\[\{/);
   });
 });
+
+describe('compte démo : une identité clairement fictive (Q-identite-demo)', () => {
+  const { colonnes, reglages } = IDENTITE_DEMO;
+  it('aucune marque ni numéro qui puisse appartenir à quelqu’un', () => {
+    const texte = JSON.stringify(IDENTITE_DEMO);
+    for (const marque of ['SMABTP', 'MAAF', 'AXA', 'MMA', 'Allianz', 'Generali', 'MACIF', 'Mallettico']) expect(texte).not.toContain(marque);
+    expect(colonnes.siret).toBe('00000000000000');
+    expect(colonnes.email).toMatch(/@example\.com$/);
+    expect(colonnes.telephone).toMatch(/^06 39 98 /);
+    expect(colonnes.code_ape).toBe('4321A');
+    expect(colonnes.decennale_assureur).toContain('(exemple)');
+    expect(colonnes.iban).toBe('');
+  });
+  it('marquée « données fictives », avec un entrepreneur fictif', () => {
+    expect(reglages.donneesFictives).toBe(true);
+    expect(reglages.nomEntrepreneur).toBe('Julien Exemple');
+  });
+  it('le script pose l’identité sur la fiche du compte démo seulement, en gardant ses autres réglages', () => {
+    const sql = genererSql({ aujourdhui: AUJOURDHUI });
+    expect(sql).toMatch(/UPDATE public\.entreprise SET nom = 'Élec Exemple'[\s\S]*?COALESCE\(settings_json -> 'reglages', '\{\}'::jsonb\) \|\| '\{[^']*"donneesFictives":true[\s\S]*?WHERE id = '[0-9a-f-]+' AND organization_id = v_org;/);
+  });
+});
+

@@ -4,6 +4,8 @@ import {
   Copy, Check, Receipt, Info,
 } from 'lucide-react';
 import { supabase, isDemo } from '../../supabaseClient';
+import BandeauDonneesFictives from '../ui/BandeauDonneesFictives';
+import { estDonneesFictives } from '../../lib/donneesFictives';
 
 /**
  * Page publique de paiement de facture — /pay/:token
@@ -158,6 +160,8 @@ export default function PublicPaymentPage({ payToken }) {
   }
 
   const { facture, entreprise } = data;
+  // Compte de démonstration (D-26)
+  const fictif = estDonneesFictives(entreprise);
   const couleur = entreprise?.couleur || '#f97316';
   const totalTTC = facture.total_ttc || 0;
   // Reçu réel (paiements enregistrés compris, 081) et avoirs émis : le récapitulatif doit tomber juste
@@ -245,6 +249,7 @@ export default function PublicPaymentPage({ payToken }) {
   return (
     <div className="min-h-screen bg-slate-50 py-6 px-4 sm:py-10">
       <div className="max-w-lg mx-auto">
+        {fictif && <div className="flex justify-center mb-4"><BandeauDonneesFictives /></div>}
         {/* Entreprise header */}
         <div className="flex items-center gap-3 mb-6">
           {entreprise?.logo_url ? (

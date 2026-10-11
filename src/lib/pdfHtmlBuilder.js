@@ -10,6 +10,7 @@ import { lignesTotauxHtml, lignesAcompteHtml } from './totauxDocument';
 import { echeance } from './paiementsFacture';
 import { dateLue } from './dates';
 import { estFranchiseTva } from './franchiseTva';
+import { marquerDocumentFictif } from './donneesFictives';
 
 /**
  * Get entreprise data from localStorage
@@ -94,7 +95,7 @@ export function buildDocumentHTML(doc, client, chantier, entreprise, options = {
     </tr>`;
   }).join('');
 
-  return `<!DOCTYPE html>
+  return marquerDocumentFictif(entreprise, `<!DOCTYPE html>
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
@@ -317,7 +318,7 @@ export function buildDocumentHTML(doc, client, chantier, entreprise, options = {
   </div>
   ` : ''}
 </body>
-</html>`;
+</html>`);
 }
 
 /**

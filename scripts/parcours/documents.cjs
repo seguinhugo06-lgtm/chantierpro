@@ -68,7 +68,78 @@ const poserEntrepriseMicro = `
     localStorage.setItem('cp_entreprise', ${JSON.stringify(JSON.stringify(ENTREPRISE_MICRO_APP))});
   }`;
 
+// Compte de démonstration (D-26) : fiche marquée « données fictives » (réglage de settings_json.reglages)
+const ENTREPRISE_DEMO = { ...ENTREPRISE_MICRO, id: 'ent-demo', nom: 'Élec Exemple', settings_json: { reglages: { nomEntrepreneur: 'Julien Exemple', donneesFictives: true } } };
+// (aussi exécuté dans l'iframe d'aperçu, sans stockage : d'où le try)
+const poserEntrepriseDemo = `
+  try {
+    if (!sessionStorage.getItem('parcours-demo')) {
+      sessionStorage.setItem('parcours-demo', '1');
+      localStorage.setItem('mallettico_entreprises', ${JSON.stringify(JSON.stringify([ENTREPRISE_DEMO]))});
+      localStorage.setItem('mallettico_entreprise_active_id', 'ent-demo');
+      localStorage.setItem('mallettico_entreprise_migrated', 'true');
+    }
+  } catch (e) { /* iframe sans stockage */ }`;
+
 module.exports = [
+  {
+    // Q-identite-demo (11 oct. 2026) : rien de ce qui est filmé ne passe pour une vraie entreprise
+    nom: 'compte de démonstration : bandeau à l’écran, filigrane « EXEMPLE » sur l’aperçu du document',
+    async executer({ ouvrir, attendre, verifier }) {
+      const { page } = await ouvrir({ page: 'devis', largeur: 390, avantChargement: poserEntrepriseDemo });
+      await attendre(800);
+      const bandeau = await page.evaluate(() => (document.querySelector('[data-ui="BandeauDonneesFictives"]')?.innerText || '').trim());
+      verifier(bandeau === 'Données fictives — démonstration', `bandeau affiché (${bandeau || 'absent'})`);
+      const ouvert = await page.evaluate(() => {
+        const b = [...document.querySelectorAll('[data-ui="LigneListe"] > button')].find((x) => /(DEV|FAC)-\d{4}-\d{5}/.test(x.innerText || ''));
+        if (b) b.click();
+        return !!b;
+      });
+      verifier(ouvert, 'un document ouvert');
+      await attendre(900);
+      await actionFiche(page, attendre, ['Aperçu', 'Aperçu du document']);
+      await attendre(1200);
+      const doc = await page.evaluate(() => {
+        const html = [...document.querySelectorAll('iframe')].map((x) => x.getAttribute('srcdoc') || '').find((x) => x.length > 100) || '';
+        return { filigrane: html.includes('class="filigrane-demo"'), mention: html.includes('Données fictives — démonstration : document d’exemple') };
+      });
+      verifier(doc.filigrane && doc.mention, `aperçu (générateur de l’écran Devis) : filigrane et mention (${JSON.stringify(doc)})`);
+    },
+  },
+  {
+    // Migration 085 : la page publique reçoit le marqueur de la fiche (donneesFictives)
+    nom: 'compte de démonstration : la page de signature du client porte le bandeau et le filigrane',
+    reel: true,
+    async executer({ ouvrir, attendre, verifier, ORIGIN }) {
+      const json = (corps) => ({ status: 200, body: JSON.stringify(corps) });
+      const reponse = {
+        devis: { id: 'd-demo', numero: 'DEV-2026-00012', type: 'devis', statut: 'envoye', date: '2026-10-08', date_validite: '2099-11-07', validite: 30, objet: 'Volets roulants connectés',
+          lignes: JSON.stringify([{ id: 'l1', description: 'Motorisation radio de volet roulant', quantite: 5, unite: 'u', prixUnitaire: 245, montant: 1225, tva: 0 }]),
+          sections: '[]', total_ht: 1225, total_tva: 0, total_ttc: 1225, already_signed: false },
+        client: { nom: 'Fournier', prenom: 'Isabelle' },
+        chantier: null,
+        entreprise: { nom: 'Élec Exemple', forme_juridique: 'Micro-entreprise', siret: '00000000000000', couleur: '#f97316', nomEntrepreneur: 'Julien Exemple', donneesFictives: true },
+      };
+      const { page } = await ouvrir({ reel: true, largeur: 390, supabase: (req, u) => (u.pathname === '/rest/v1/rpc/get_devis_for_signature' ? json(reponse) : json([])) });
+      await page.goto(`${ORIGIN}/devis/signer/5d0c8a52-3c1e-4f8e-9a57-0c2f6e1b9d44`, { waitUntil: 'networkidle0' });
+      await attendre(1200);
+      const etat = await page.evaluate(() => ({
+        bandeau: (document.querySelector('[data-ui="BandeauDonneesFictives"]')?.innerText || '').trim(),
+        filigrane: [...document.querySelectorAll('iframe')].some((f) => (f.getAttribute('srcdoc') || '').includes('class="filigrane-demo"')),
+      }));
+      verifier(etat.bandeau === 'Données fictives — démonstration', `bandeau sur la page du client (${etat.bandeau || 'absent'})`);
+      verifier(etat.filigrane, 'filigrane sur le devis montré au client');
+    },
+  },
+  {
+    nom: 'compte ordinaire : ni bandeau ni filigrane',
+    async executer({ ouvrir, attendre, verifier }) {
+      const { page } = await ouvrir({ page: 'devis', largeur: 390, avantChargement: poserEntrepriseMicro });
+      await attendre(800);
+      const bandeau = await page.evaluate(() => !!document.querySelector('[data-ui="BandeauDonneesFictives"]'));
+      verifier(!bandeau, 'pas de bandeau');
+    },
+  },
   {
     nom: 'aperçu PDF : la certification TVA réduite figure sur les documents à 10 % / 5,5 %',
     async executer({ ouvrir, attendre, verifier }) {

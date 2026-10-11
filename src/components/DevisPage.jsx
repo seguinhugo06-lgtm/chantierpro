@@ -70,6 +70,7 @@ import { ReadOnlyBanner } from './ui/PermissionGate';
 import PageHeader from './ui/PageHeader';
 import KPICard from './ui/KPICard';
 import { printSituationFacture as printSitFacture, PAGE_CSS } from '../lib/devisHtmlBuilder';
+import { marquerDocumentFictif } from '../lib/donneesFictives';
 import { sendDocumentEmail, buildDocumentEmailBody, buildPaymentReceiptEmailBody } from '../lib/emailSender';
 import RelanceTimelineWidget from './RelanceTimelineWidget';
 import { useRelances } from '../hooks/useRelances';
@@ -1647,7 +1648,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         }).join('')
       : filterValidLignes(doc.lignes).map(renderRow).join('');
 
-    const content = `<!DOCTYPE html>
+    const content = marquerDocumentFictif(entreprise, `<!DOCTYPE html>
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
@@ -1891,7 +1892,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     ${isAvoirDoc ? `<div style="margin-top:6px;font-size:6.5pt;color:#666">Cet avoir rectifie la facture de référence citée ci-dessus ; il en réduit d'autant le montant dû.</div>` : !isFacture ? `<div style="margin-top:6px;font-size:6.5pt;color:#666">Devis reçu avant l'exécution des travaux. Conditions de paiement et pénalités de retard conformes à l'article L441-10 du Code de commerce.</div>` : ''}
   </div>
 </body>
-</html>`;
+</html>`);
 
     return content;
   };

@@ -8,9 +8,9 @@
  *
  * Le SQL ne touche qu'à l'organisation du compte démo : il vérifie d'abord que cette organisation appartient
  * bien à contact@mallettico.fr, efface ses clients, chantiers, pièces, paiements, échanges, rendez-vous,
- * mémos, dépenses et relances, puis écrit le jeu. Le catalogue, la fiche entreprise (sauf le scénario de
- * relances, envoi automatique coupé), l'équipe et l'abonnement restent tels quels. Un seul envoi : la base
- * l'exécute d'un bloc, tout ou rien.
+ * mémos, dépenses et relances, puis écrit le jeu. Sur la fiche entreprise : l'identité fictive (IDENTITE_DEMO,
+ * marquée « données fictives ») et le scénario de relances (envoi automatique coupé) ; ses autres réglages, le
+ * catalogue, l'équipe et l'abonnement restent tels quels. Un seul bloc : tout ou rien.
  */
 import { FIELD_MAPPINGS } from '../../src/hooks/useSupabaseSync.js';
 import { DEFAULT_DEVIS_STEPS, DEFAULT_FACTURE_STEPS } from '../../src/components/settings/RelanceConfigTab.jsx';
@@ -63,6 +63,60 @@ function inserer(table, lignes) {
     return `INSERT INTO public.${table} (${colonnes.join(', ')}) VALUES (\n${colonnes.map((c) => valeur(table, c, l[c])).join(',\n')}\n);`;
   }).join('\n');
 }
+
+/**
+ * Identité de l'entreprise de démonstration (Q-identite-demo, décision d'Hugo du 11 oct. 2026, sur
+ * recommandation de juriste-btp) : clairement fictive et signalée comme telle, sans marque d'assureur réelle
+ * ni numéro qui puisse appartenir à quelqu'un (SIRET à zéros, téléphone de la plage fiction ARCEP, e-mail sur
+ * example.com, domaine réservé aux exemples). Le marqueur `donneesFictives` met le bandeau à l'écran et le
+ * filigrane « EXEMPLE » sur les documents (src/lib/donneesFictives.js).
+ */
+export const IDENTITE_DEMO = {
+  colonnes: {
+    nom: 'Élec Exemple',
+    forme_juridique: 'Micro-entreprise',
+    siret: '00000000000000',
+    code_ape: '4321A',
+    adresse: '1 rue de l’Exemple\n33000 Bordeaux',
+    code_postal: '33000',
+    ville: 'Bordeaux',
+    telephone: '06 39 98 00 00',
+    email: 'elec-exemple@example.com',
+    site_web: '',
+    slogan: '',
+    logo_url: '',
+    logo_storage_path: '',
+    tva_intra: '',
+    rcs: '',
+    rcs_ville: '',
+    capital: '',
+    iban: '',
+    bic: '',
+    decennale_assureur: 'Assureur décennal (exemple)',
+    decennale_numero: 'EXEMPLE',
+    decennale_validite: '2027-12-31',
+    decennale_activites: 'Électricité générale (exemple)',
+    rc_pro_assureur: 'Assureur RC professionnelle (exemple)',
+    rc_pro_numero: 'EXEMPLE',
+    rc_pro_validite: '2027-12-31',
+    rc_pro_zone: 'France métropolitaine',
+    assurance_decennale_compagnie: null,
+    assurance_decennale_numero: null,
+    assurance_rc_pro_compagnie: null,
+    assurance_rc_pro_numero: null,
+  },
+  reglages: {
+    nomEntrepreneur: 'Julien Exemple',
+    donneesFictives: true,
+    mediateur: 'Médiateur de la consommation (exemple)',
+    mediateurContact: 'coordonnées fictives',
+    decennaleAssureurAdresse: '',
+    decennaleZone: 'France métropolitaine',
+    rcsNumero: '',
+    banque: '',
+    titulaireBanque: '',
+  },
+};
 
 /** Les lignes à écrire, table par table (exportée pour les tests). */
 export function lignesDuJeu(jeu, compte = COMPTE_DEMO) {
@@ -193,6 +247,10 @@ export function genererSql({ aujourdhui = new Date(), compte = COMPTE_DEMO } = {
     'END LOOP;',
     ...aEffacer.map((t) => `DELETE FROM public.${t} WHERE organization_id = v_org;`),
     `UPDATE public.entreprise SET relance_config = ${q(JSON.stringify(scenario))}::jsonb WHERE id = ${q(compte.entrepriseId)} AND organization_id = v_org;`,
+    // Identité fictive et marqueur « données fictives » (les autres réglages de la fiche sont conservés)
+    `UPDATE public.entreprise SET ${Object.entries(IDENTITE_DEMO.colonnes).map(([c, v]) => `${c} = ${v === null ? 'NULL' : q(v)}`).join(', ')},`,
+    `  settings_json = jsonb_set(COALESCE(settings_json, '{}'::jsonb), '{reglages}', COALESCE(settings_json -> 'reglages', '{}'::jsonb) || ${q(JSON.stringify(IDENTITE_DEMO.reglages))}::jsonb)`,
+    `  WHERE id = ${q(compte.entrepriseId)} AND organization_id = v_org;`,
     inserer('clients', lignes.clients),
     inserer('chantiers', lignes.chantiers),
     inserer('devis', lignes.devis),
