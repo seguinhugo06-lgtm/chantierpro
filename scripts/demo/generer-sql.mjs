@@ -77,9 +77,11 @@ export const IDENTITE_DEMO = {
     forme_juridique: 'Micro-entreprise',
     siret: '00000000000000',
     code_ape: '4321A',
+    // Comme les vraies fiches : code postal et ville dans l'adresse, colonnes vides (sinon la page de
+    // paiement, qui les ajoute à l'adresse, les affichait deux fois)
     adresse: '1 rue de l’Exemple\n33000 Bordeaux',
-    code_postal: '33000',
-    ville: 'Bordeaux',
+    code_postal: '',
+    ville: '',
     telephone: '06 39 98 00 00',
     email: 'elec-exemple@example.com',
     site_web: '',

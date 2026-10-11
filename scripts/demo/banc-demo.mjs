@@ -81,10 +81,11 @@ const sql = genererSql({ aujourdhui: new Date() });
   verifier(orgs.find((o) => o.id === AUTRE_ORG)?.name === 'Autre', 'nom de l’autre organisation intact');
   const e = (await db.query('SELECT relance_config FROM public.entreprise WHERE id = $1', [ENT])).rows[0];
   verifier(e.relance_config.enabled === true && e.relance_config.autoSend === false, 'scénario de relances posé, envoi automatique coupé');
-  const f = (await db.query("SELECT nom, siret, code_ape, iban, logo_url, decennale_assureur, settings_json FROM public.entreprise WHERE id = $1", [ENT])).rows[0];
+  const f = (await db.query("SELECT nom, siret, code_ape, iban, logo_url, decennale_assureur, adresse, code_postal, ville, settings_json FROM public.entreprise WHERE id = $1", [ENT])).rows[0];
   verifier(f.nom === 'Élec Exemple' && f.siret === '00000000000000' && f.code_ape === '4321A' && f.decennale_assureur === 'Assureur décennal (exemple)',
     `identité fictive posée (${f.nom}, ${f.siret}, ${f.decennale_assureur})`);
   verifier(f.iban === '' && f.logo_url === '', 'ni IBAN ni logo de l’ancienne fiche');
+  verifier(f.adresse.includes('33000 Bordeaux') && f.code_postal === '' && f.ville === '', 'adresse complète dans le champ adresse, comme les vraies fiches (pas de doublon sur la page de paiement)');
   const reg = f.settings_json.reglages;
   verifier(reg.donneesFictives === true && reg.nomEntrepreneur === 'Julien Exemple', 'marqueur « données fictives » et nom fictif de l’entrepreneur');
   verifier(reg.acompteDefaut === 40 && reg.mentionPenalites === true && f.settings_json.autre === 'garde', 'les autres réglages de la fiche sont conservés');
