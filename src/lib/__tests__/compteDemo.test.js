@@ -103,7 +103,8 @@ describe('compte démo : de quoi tout montrer', () => {
 
 describe('compte démo : le SQL ne touche qu’à l’organisation démo', () => {
   const sql = genererSql({ aujourdhui: AUJOURDHUI });
-  const instructions = sql.split('\n').map((l) => l.trim()).filter((l) => /^(DELETE|UPDATE|INSERT)/.test(l));
+  // Instructions entières (une valeur longue s'étend sur plusieurs lignes)
+  const instructions = sql.split(/;\s*\n/).map((l) => l.trim()).filter((l) => /^(DELETE|UPDATE|INSERT)/.test(l)).map((l) => `${l};`);
 
   it('un seul bloc (tout ou rien), qui vérifie le compte et l’organisation avant d’écrire', () => {
     const utiles = sql.split('\n').filter((l) => l.trim() && !l.startsWith('--'));

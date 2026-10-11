@@ -328,6 +328,8 @@ export function construireJeu({ aujourdhui = new Date(), boite = 'seguin.hugo06@
       id: id(`lot:${d.cle}:${s}`), titre, nom: titre, lignes: lignes.map((l) => ligne(d.cle, l, k++)),
     }));
     const lignes = sections.flatMap((s) => s.lignes);
+    // Lots enregistrés seulement s'ils ont un titre (sinon la pièce est à plat, comme une pièce sans lots)
+    const lots = sections.some((s) => s.titre) ? sections : [];
     const signature = d.signe ? {
       signatureDate: instant(d.signe.j, '18:42'),
       // Signature à distance (page /devis/signer) : colonnes écrites par sign_devis ; sur place : par l'app
@@ -349,7 +351,7 @@ export function construireJeu({ aujourdhui = new Date(), boite = 'seguin.hugo06@
       objet: d.objet,
       tvaRate: 0,
       lignes,
-      sections,
+      sections: lots,
       acompte_pct: d.acompte || null,
       conditions: d.conditions || (d.acompte ? `Acompte de ${d.acompte} % à la commande, solde à la fin des travaux.` : 'Paiement à réception de la facture.'),
       notes: '',
@@ -401,7 +403,7 @@ export function construireJeu({ aujourdhui = new Date(), boite = 'seguin.hugo06@
       objet,
       tvaRate: 0,
       lignes,
-      sections: [{ id: id(`lot:${f.cle}:0`), titre: '', nom: '', lignes }],
+      sections: [],
       conditions: f.echeance ? `Paiement à ${f.echeance} jours.` : 'Paiement à réception.',
       notes: '',
       ...t,

@@ -34,7 +34,15 @@ const JSONB = {
   relance_executions: { metadata: 'objet' },
 };
 
-const q = (s) => `'${String(s).replace(/'/g, "''")}'`;
+// Chaîne SQL ; une longue chaîne est coupée en morceaux sur des lignes successives, que PostgreSQL recolle
+// (constantes séparées par un saut de ligne) : le script reste lisible et transmissible ligne à ligne.
+const MORCEAU = 900;
+const q = (s) => {
+  const texte = String(s);
+  const morceaux = [];
+  for (let i = 0; i < texte.length; i += MORCEAU) morceaux.push(texte.slice(i, i + MORCEAU));
+  return (morceaux.length ? morceaux : ['']).map((m) => `'${m.replace(/'/g, "''")}'`).join('\n');
+};
 
 function valeur(table, colonne, v) {
   if (v === null || v === undefined) return 'NULL';
@@ -52,7 +60,7 @@ function valeur(table, colonne, v) {
 function inserer(table, lignes) {
   return lignes.map((l) => {
     const colonnes = Object.keys(l).filter((k) => l[k] !== undefined);
-    return `INSERT INTO public.${table} (${colonnes.join(', ')}) VALUES (${colonnes.map((c) => valeur(table, c, l[c])).join(', ')});`;
+    return `INSERT INTO public.${table} (${colonnes.join(', ')}) VALUES (\n${colonnes.map((c) => valeur(table, c, l[c])).join(',\n')}\n);`;
   }).join('\n');
 }
 
