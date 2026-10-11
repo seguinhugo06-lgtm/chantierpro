@@ -15,6 +15,7 @@
 import { FIELD_MAPPINGS } from '../../src/hooks/useSupabaseSync.js';
 import { DEFAULT_DEVIS_STEPS, DEFAULT_FACTURE_STEPS } from '../../src/components/settings/RelanceConfigTab.jsx';
 import { construireJeu, uuidDe } from './jeuDemo.js';
+import { createHash } from 'node:crypto';
 import { SIGNATURE_DEMO } from './signatureDemo.js';
 
 // Compte démo (décision d'Hugo du 11 oct. 2026)
@@ -111,6 +112,44 @@ function relancesEnvoyees(jeu, base) {
   }];
 }
 
+// Contrôle d'intégrité : les colonnes texte, nombres et dates écrites, par table. Le bloc en recalcule l'empreinte
+// (md5) après écriture et la compare à celle calculée ici : une erreur de transmission du script (il fait plus de
+// 100 Ko) le fait échouer sans rien écrire. Les colonnes jsonb sont lues comme texte brut (#>> '{}').
+const EMPREINTE = {
+  clients: ['nom', 'prenom', 'entreprise', 'email', 'telephone', 'adresse', 'categorie'],
+  chantiers: ['client_id', 'nom', 'description', 'adresse', 'ville', 'code_postal', 'statut', 'date_debut', 'date_fin', 'budget_prevu', 'avancement'],
+  devis: ['client_id', 'chantier_id', 'numero', 'type', 'statut', 'date', 'date_echeance', 'objet', 'conditions', 'client_nom', 'lignes', 'sections',
+    'total_ht', 'total_ttc', 'montant_paye', 'date_paiement', 'devis_source_id', 'facture_type', 'signature', 'signature_data', 'signataire', 'signataire_nom'],
+  paiements: ['devis_id', 'document_numero', 'montant', 'date', 'mode'],
+  echanges: ['client_id', 'devis_id', 'type', 'contenu'],
+  planning_events: ['title', 'date', 'type', 'location'],
+  memos: ['text', 'priority', 'due_date'],
+  depenses: ['chantier_id', 'description', 'montant', 'date', 'fournisseur'],
+  relance_executions: ['document_id', 'document_numero', 'step_id', 'subject'],
+};
+const JSON_TEXTE = new Set(['lignes', 'sections']);
+
+/** Empreinte attendue, calculée comme le fait le bloc (concat_ws ignore les valeurs nulles). */
+export function empreinteAttendue(lignes) {
+  const morceaux = [];
+  for (const [table, colonnes] of Object.entries(EMPREINTE)) {
+    for (const r of lignes[table] || []) {
+      const valeurs = colonnes.map((c) => r[c]).filter((v) => v !== null && v !== undefined).map(String);
+      morceaux.push([`${table}:${r.id}`, valeurs.join('§')]);
+    }
+  }
+  morceaux.sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
+  return createHash('md5').update(morceaux.map((m) => m[1]).join('|'), 'utf8').digest('hex');
+}
+
+function sqlEmpreinte() {
+  const selects = Object.entries(EMPREINTE).map(([table, colonnes]) => {
+    const cols = colonnes.map((c) => (JSON_TEXTE.has(c) ? `${c} #>> '{}'` : `${c}::text`)).join(', ');
+    return `SELECT '${table}:' || id::text AS k, concat_ws('§', ${cols}) AS t FROM public.${table} WHERE organization_id = v_org`;
+  });
+  return `SELECT md5(string_agg(t, '|' ORDER BY k COLLATE "C")) FROM (\n  ${selects.join('\n  UNION ALL ')}\n) e`;
+}
+
 /**
  * Le SQL complet : UN bloc DO (tout ou rien, quelle que soit la façon dont il est envoyé), qui
  *   1. vérifie le compte et l'organisation ;
@@ -153,6 +192,10 @@ export function genererSql({ aujourdhui = new Date(), compte = COMPTE_DEMO } = {
     inserer('memos', lignes.memos),
     inserer('depenses', lignes.depenses),
     inserer('relance_executions', lignes.relance_executions),
+    `SELECT md5_ecrit INTO v_empreinte FROM (${sqlEmpreinte()}) AS x(md5_ecrit);`,
+    `IF v_empreinte IS DISTINCT FROM '${empreinteAttendue(lignes)}' THEN`,
+    "  RAISE EXCEPTION 'Contrôle d''intégrité : le contenu écrit (%) ne correspond pas au jeu généré, rien n''est écrit', v_empreinte;",
+    'END IF;',
   ].join('\n');
   return [
     `-- Compte démo ${compte.email} : jeu de démonstration généré le ${aujourdhui.toISOString().slice(0, 10)} (scripts/demo/generer-sql.mjs)`,
@@ -161,6 +204,7 @@ export function genererSql({ aujourdhui = new Date(), compte = COMPTE_DEMO } = {
     `  v_org uuid := ${q(compte.organizationId)};`,
     '  r record;',
     '  v_croise boolean;',
+    '  v_empreinte text;',
     `  v_sig text := ${q(SIGNATURE_DEMO)};`,
     'BEGIN',
     corps.split('\n').map((l) => `  ${l}`).join('\n'),

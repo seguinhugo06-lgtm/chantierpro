@@ -120,6 +120,11 @@ describe('compte démo : le SQL ne touche qu’à l’organisation démo', () =>
     expect(instructions).toContain('DELETE FROM public.pointages WHERE organization_id = v_org;');
   });
 
+  it('vérifie l’empreinte de ce qu’il écrit avant de valider (une erreur de transmission n’écrit rien)', () => {
+    expect(sql).toMatch(/IF v_empreinte IS DISTINCT FROM '[0-9a-f]{32}' THEN/);
+    expect(sql.lastIndexOf('INSERT INTO')).toBeLessThan(sql.indexOf('v_empreinte IS DISTINCT'));
+  });
+
   it('chaque effacement et chaque mise à jour visent l’organisation démo', () => {
     for (const l of instructions.filter((x) => /^(DELETE|UPDATE)/.test(x))) {
       expect(l).toContain('organization_id = v_org');
