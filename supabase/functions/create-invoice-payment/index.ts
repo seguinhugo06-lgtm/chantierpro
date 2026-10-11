@@ -25,6 +25,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import Stripe from 'https://esm.sh/stripe@14.14.0?target=deno';
 import { corsHeaders } from '../_shared/cors.ts';
+import { estCleDeTest, refusFactureFictive } from './regles.ts';
 
 const APP_URL = Deno.env.get('APP_URL') || 'https://mallettico.fr';
 
@@ -56,11 +57,6 @@ async function loadFacture(paymentToken: string) {
     stripe_enabled?: boolean;
     commission_model?: string;
   };
-}
-
-/** Clé Stripe de test (mode test) : aucun argent réel ne circule. */
-export function estCleDeTest(cle: unknown): boolean {
-  return typeof cle === 'string' && /^(sk|rk)_test_/.test(cle);
 }
 
 async function getArtisanStripe(userId: string): Promise<{ stripe: Stripe; test: boolean } | null> {
@@ -96,11 +92,9 @@ async function handleCreate(req: Request, paymentToken: string, amountCents?: nu
 
   const artisan = await getArtisanStripe(facture.user_id as string);
   if (!artisan) return json({ error: 'Configuration Stripe incomplète' }, 400);
-  // Compte de démonstration (D-26, migration 085) : une facture fictive ne se paie jamais pour de vrai,
-  // seulement en mode test (carte 4242…), même si une clé réelle est enregistrée sur ce compte
-  if (data.entreprise?.donnees_fictives === true && !artisan.test) {
-    return json({ error: 'Compte de démonstration : seul un paiement de test est possible (clé Stripe de test).' }, 403);
-  }
+  // Compte de démonstration (D-26, migration 085) : une facture fictive ne se paie qu'en mode test
+  const refus = refusFactureFictive(data.entreprise, artisan.test);
+  if (refus) return json({ error: refus }, 403);
   const stripe = artisan.stripe;
 
   // Montant : reste à payer par défaut, ou acompte fourni (borné au reste dû). Le reste dû de la base déduit
