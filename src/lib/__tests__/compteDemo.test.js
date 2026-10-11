@@ -121,6 +121,12 @@ describe('compte démo : le SQL ne touche qu’à l’organisation démo', () =>
     expect(instructions).toContain('DELETE FROM public.pointages WHERE organization_id = v_org;');
   });
 
+  it('aucun texte ne s’étend sur deux lignes (l’indentation du bloc y entrerait)', () => {
+    const lignesImpaires = sql.split('\n').filter((l) => (l.match(/'/g) || []).length % 2 === 1);
+    expect(lignesImpaires).toEqual([]);
+    expect(sql).toContain("adresse = ('1 rue de l’Exemple' || chr(10) || '33000 Bordeaux')");
+  });
+
   it('vérifie l’empreinte de ce qu’il écrit avant de valider (une erreur de transmission n’écrit rien)', () => {
     expect(sql).toMatch(/IF v_empreinte IS DISTINCT FROM '[0-9a-f]{32}' THEN/);
     expect(sql.lastIndexOf('INSERT INTO')).toBeLessThan(sql.indexOf('v_empreinte IS DISTINCT'));

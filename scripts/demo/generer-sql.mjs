@@ -34,14 +34,18 @@ const JSONB = {
   relance_executions: { metadata: 'objet' },
 };
 
-// Chaîne SQL ; une longue chaîne est coupée en morceaux sur des lignes successives, que PostgreSQL recolle
-// (constantes séparées par un saut de ligne) : le script reste lisible et transmissible ligne à ligne.
+// Chaîne SQL ; une longue chaîne est coupée en morceaux sur des lignes successives, reliés par || : le script
+// reste lisible et transmissible ligne à ligne.
 const MORCEAU = 900;
 const q = (s) => {
   const texte = String(s);
   const morceaux = [];
   for (let i = 0; i < texte.length; i += MORCEAU) morceaux.push(texte.slice(i, i + MORCEAU));
-  return (morceaux.length ? morceaux : ['']).map((m) => `'${m.replace(/'/g, "''")}'`).join('\n');
+  // Un saut de ligne s'écrit chr(10) : dans le littéral, l'indentation du bloc entrerait dans le texte
+  // (constaté le 11 oct. 2026 : « 1 rue de l’Exemple⏎␣␣33000 Bordeaux »)
+  const litteral = (m) => m.split('\n').map((x) => `'${x.replace(/'/g, "''")}'`).join(' || chr(10) || ');
+  const parties = (morceaux.length ? morceaux : ['']).map(litteral);
+  return parties.length === 1 && !texte.includes('\n') ? parties[0] : `(${parties.join(' ||\n')})`;
 };
 
 function valeur(table, colonne, v) {
