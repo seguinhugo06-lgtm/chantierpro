@@ -49,7 +49,7 @@ import LigneListe, { GroupeListe } from './ui/LigneListe';
 import { Bouton, BoutonIcone } from './ui/Bouton';
 import EtatVide from './ui/EtatVide';
 import { useSubscriptionStore, PLANS } from '../stores/subscriptionStore';
-import { jourLocal, dateLue } from '../lib/dates';
+import { jourLocal } from '../lib/dates';
 import { profilManquant } from '../lib/profilLegal';
 
 /** La mallette — marque Mallettico, reprise du jeu d'icônes (grille 48, contour 3,2). */
@@ -410,7 +410,9 @@ export default function Dashboard({
     ? `${new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 1 }).format(n / 1000)} k€`
     : `${Math.round(n)} €`;
   const moisCourant = new Date().toLocaleDateString('fr-FR', { month: 'long' });
-  const moisPrecedent = dateLue(new Date().getFullYear(), new Date().getMonth() - 1, 1).toLocaleDateString('fr-FR', { month: 'long' });
+  // Mois précédent : `new Date(a, m - 1, 1)`. Avant (vu sur le compte démo le 11 oct. 2026), `dateLue(a, m - 1, 1)`
+  // ne lisait que l'année (2026 ms après 1970) : « janvier : … » sous « Encaissé · octobre », chaque mois.
+  const moisPrecedent = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1).toLocaleDateString('fr-FR', { month: 'long' });
   // Ton d'une action « à faire » d'après sa couleur historique (rouge = retard, etc.)
   const tonAction = (c) => ({ '#ef4444': 'bg-danger-fond text-danger-texte', '#f59e0b': 'bg-alerte-fond text-alerte-texte', '#10b981': 'bg-succes-fond text-succes-texte' }[c] || 'bg-info-fond text-info-texte');
 

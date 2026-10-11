@@ -53,6 +53,17 @@ export function tvaARegulariser(doc, entreprise) {
   return estFranchiseTva(entreprise) && !franchiseAppliquee(doc, entreprise);
 }
 
+/**
+ * Régime de TVA de la trésorerie : la franchise pour une micro-entreprise (ses pièces s'impriment sans TVA),
+ * sinon le régime réglé (réel trimestriel par défaut). Avant (compte démo, 11 oct. 2026), le réglage par défaut
+ * affichait à une micro-entreprise une « TVA déductible » et un « crédit estimé » qu'elle ne peut pas récupérer.
+ * @returns {'franchise'|'trimestriel'|'mensuel'}
+ */
+export function regimeTvaTresorerie(reglages, entreprise) {
+  if (estFranchiseTva(entreprise)) return 'franchise';
+  return reglages?.regimeTva || 'trimestriel';
+}
+
 /** Les lignes à 0 % de TVA (les titres de lot restent tels quels). */
 export function sansTva(lignes) {
   return (Array.isArray(lignes) ? lignes : []).map((l) => (l && !l._isSection ? { ...l, tva: 0 } : l));

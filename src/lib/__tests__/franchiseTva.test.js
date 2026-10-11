@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { estFranchiseTva, sansTva, franchiseAppliquee, tvaARegulariser } from '../franchiseTva';
+import { estFranchiseTva, sansTva, franchiseAppliquee, tvaARegulariser, regimeTvaTresorerie } from '../franchiseTva';
 import { calculerTotaux, totauxDocument, lignesTotauxHtml } from '../totauxDocument';
 import { lignesFactureAcompte } from '../facturation';
 import { generateFacturXMLBasic } from '../facturx';
@@ -79,5 +79,17 @@ describe('XML Factur-X : l\'échéance est celle imprimée', () => {
     const facture = { type: 'facture', numero: 'FAC-1', date: '2026-10-20', date_echeance: '2026-11-30', lignes: [ligne('Prise', 1, 100, 20)], total_ht: 100, tva: 20, total_ttc: 120 };
     const xml = generateFacturXMLBasic(facture, { nom: 'Dupont' }, { nom: 'Élec', siret: '12345678900012' });
     expect(xml).toMatch(/<ram:DueDateDateTime>\s*<udt:DateTimeString format="102">20261130</);
+  });
+});
+
+describe('trésorerie : régime de TVA', () => {
+  it('une micro-entreprise est en franchise, quel que soit le réglage enregistré', () => {
+    // Compte démo, 11 oct. 2026 : le réglage par défaut lui montrait 537 € de « TVA déductible »
+    expect(regimeTvaTresorerie({ regimeTva: 'trimestriel' }, { formeJuridique: 'Micro-entreprise' })).toBe('franchise');
+    expect(regimeTvaTresorerie({}, { forme_juridique: 'Auto-entrepreneur' })).toBe('franchise');
+  });
+  it('sinon le régime choisi, réel trimestriel par défaut', () => {
+    expect(regimeTvaTresorerie({ regimeTva: 'mensuel' }, { formeJuridique: 'SARL' })).toBe('mensuel');
+    expect(regimeTvaTresorerie(undefined, { formeJuridique: 'EI' })).toBe('trimestriel');
   });
 });

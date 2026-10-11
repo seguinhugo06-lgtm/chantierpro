@@ -22,8 +22,6 @@ import {
   Eye,
   Plus,
   Trash2,
-  ToggleLeft,
-  ToggleRight,
   TrendingUp,
   Euro,
   CalendarClock,
@@ -39,7 +37,7 @@ import { cn } from '../../lib/utils';
 
 // ============ DEFAULT SCENARIOS ============
 
-const DEFAULT_DEVIS_STEPS = [
+export const DEFAULT_DEVIS_STEPS = [
   {
     id: 'devis_step_1',
     enabled: true,
@@ -92,7 +90,7 @@ Bien cordialement,
   },
 ];
 
-const DEFAULT_FACTURE_STEPS = [
+export const DEFAULT_FACTURE_STEPS = [
   {
     id: 'facture_step_1',
     enabled: true,

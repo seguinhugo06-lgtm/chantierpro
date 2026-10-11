@@ -13,6 +13,7 @@
     "lint": "eslint src/ --ext .js,.jsx",
     "check": "npm run lint && npm run test && npm run build",
     "smoke": "bash scripts/smoke-test.sh",
+    "demo:sql": "vite-node scripts/demo/ecrire-sql.mjs",
     "banc:migrations": "node scripts/banc-migrations.mjs",
     "verifier": "node scripts/verifier.mjs",
     "parcours": "node scripts/parcours/lancer.cjs",

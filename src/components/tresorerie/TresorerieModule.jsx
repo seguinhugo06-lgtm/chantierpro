@@ -46,6 +46,7 @@ import { estOuverte, resteAFacturer } from '../../lib/ventes';
 import { jourLocal, ajouterMois, dateLue } from '../../lib/dates';
 import { captureException } from '../../lib/sentry';
 import { telInternational } from '../../lib/messageRelance';
+import { estFranchiseTva, regimeTvaTresorerie } from '../../lib/franchiseTva';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -646,12 +647,22 @@ export default function TresorerieModule({
   const {
     previsions, setPrevisions, loading: tresorerieLoading,
     addPrevision, updatePrevision, deletePrevision: hookDeletePrevision, markAsPaid: hookMarkAsPaid,
-    settings, updateSettings,
+    settings: reglagesTresorerie, updateSettings,
     reglements, addReglement, deleteReglement,
     mouvements, addMouvement, updateMouvement, deleteMouvement, validerMouvement,
     mouvementsKPIs,
     getSyncedIds, saveSyncedIds,
   } = useTresorerie();
+
+  // Micro-entreprise : franchise en base de TVA (art. 293 B du CGI), comme ses devis et factures, qui
+  // s'impriment sans TVA (src/lib/franchiseTva.js). Avant (vu sur le compte démo le 11 oct. 2026), le régime
+  // réglé par défaut (« trimestriel ») lui affichait une « TVA déductible » et un « crédit estimé » qu'elle ne
+  // peut pas récupérer.
+  const franchiseImposee = estFranchiseTva(entreprise);
+  const settings = useMemo(() => ({
+    ...reglagesTresorerie,
+    regimeTva: regimeTvaTresorerie(reglagesTresorerie, entreprise),
+  }), [reglagesTresorerie, entreprise]);
 
   // -- Hook: TVA computations ──────────────────────────────────────
   const tvaHook = useTVA({ devis, depenses, mouvements, settings });
@@ -1575,6 +1586,9 @@ export default function TresorerieModule({
                   </div>
                   <div className={`pt-3 mt-1 border-t border-bord`}>
                     <label className={`block text-xs font-medium mb-1 ${textSecondary}`}>Régime TVA</label>
+                    {franchiseImposee ? (
+                      <p className="text-sm text-encre">Franchise en base (micro-entreprise, art. 293 B du CGI) : pas de TVA facturée ni récupérée. Elle suit la forme juridique indiquée dans Paramètres.</p>
+                    ) : (<>
                     <select value={settings.regimeTva || 'trimestriel'}
                       onChange={(e) => updateSettings({ regimeTva: e.target.value })}
                       className={inputCls}>
@@ -1585,8 +1599,9 @@ export default function TresorerieModule({
                     <p className={`text-xs mt-0.5 ${textSecondary}`}>
                       {(settings.regimeTva || 'trimestriel') === 'mensuel' ? 'Déclaration le 24 de chaque mois' :
                        (settings.regimeTva || 'trimestriel') === 'trimestriel' ? 'Déclaration trimestrielle' :
-                       'Non assujetti à la TVA'}
+                       'TVA non applicable (art. 293 B du CGI)'}
                     </p>
+                    </>)}
                   </div>
                   <div>
                     <label className={`block text-xs font-medium mb-1 ${textSecondary}`}>N° TVA intracommunautaire</label>
@@ -2673,7 +2688,7 @@ export default function TresorerieModule({
             <div className={`flex items-center gap-3 p-5 rounded-xl border bg-surface-2 border-bord`}>
               <Info size={20} className={textSecondary} />
               <div>
-                <p className={`text-sm font-semibold ${textPrimary}`}>Non assujetti à la TVA</p>
+                <p className={`text-sm font-semibold ${textPrimary}`}>Franchise en base de TVA</p>
                 <p className={`text-xs mt-0.5 ${textSecondary}`}>
                   En franchise en base de TVA, vous n'avez pas de TVA à collecter ni à déduire.
                   Mention obligatoire sur vos factures : « TVA non applicable, art. 293 B du CGI ».
