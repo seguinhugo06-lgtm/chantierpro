@@ -136,6 +136,8 @@ const EMPREINTE = {
   relance_executions: ['document_id', 'document_numero', 'step_id', 'subject'],
 };
 const JSON_TEXTE = new Set(['lignes', 'sections']);
+// Montants : numeric(10,2) ou (12,2) en production (« 5618.00 ») ; trim_scale les rend comme JavaScript (« 5618 »)
+const MONTANTS = new Set(['budget_prevu', 'total_ht', 'total_ttc', 'montant_paye', 'montant']);
 
 /** Empreinte attendue, calculée comme le fait le bloc (concat_ws ignore les valeurs nulles). */
 export function empreinteAttendue(lignes) {
@@ -152,7 +154,7 @@ export function empreinteAttendue(lignes) {
 
 function sqlEmpreinte() {
   const selects = Object.entries(EMPREINTE).map(([table, colonnes]) => {
-    const cols = colonnes.map((c) => (JSON_TEXTE.has(c) ? `${c} #>> '{}'` : `${c}::text`)).join(', ');
+    const cols = colonnes.map((c) => (JSON_TEXTE.has(c) ? `${c} #>> '{}'` : MONTANTS.has(c) ? `trim_scale(${c})::text` : `${c}::text`)).join(', ');
     return `SELECT '${table}:' || id::text AS k, concat_ws('§', ${cols}) AS t FROM public.${table} WHERE organization_id = v_org`;
   });
   return `SELECT md5(string_agg(t, '|' ORDER BY k COLLATE "C")) FROM (\n  ${selects.join('\n  UNION ALL ')}\n) e`;
