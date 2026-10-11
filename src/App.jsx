@@ -3,6 +3,7 @@ import supabase, { auth, isDemo, lienEmail } from './supabaseClient';
 import { traduireErreurAuth, motDePasseValide } from './lib/authErreurs';
 import { captureException } from './lib/sentry';
 import { demanderBienvenue } from './lib/bienvenue';
+import { invitationEnAttente } from './lib/organisationActive';
 
 // Eager load critical components
 import Dashboard from './components/Dashboard';
@@ -169,10 +170,17 @@ export default function App() {
   const [authInfo, setAuthInfo] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showForgot, setShowForgot] = useState(false);
+  // Une invitation à rejoindre une équipe, gardée pendant l'inscription ou la connexion
+  // (page /invitation/:jeton) : l'écran de connexion l'annonce, et une fois connecté on y revient.
+  const [invitation] = useState(() => (isDemo ? null : invitationEnAttente()));
+  const versInvitation = !!(user && invitation);
+  useEffect(() => {
+    if (versInvitation) window.location.replace(`/invitation/${invitation.token}`);
+  }, [versInvitation, invitation]);
   // Une fois connecté depuis /connexion ou /inscription, l'adresse redevient « / »
   useEffect(() => {
-    if (user && ['/connexion', '/inscription'].includes(window.location.pathname)) window.history.replaceState({}, '', '/');
-  }, [user]);
+    if (user && !versInvitation && ['/connexion', '/inscription'].includes(window.location.pathname)) window.history.replaceState({}, '', '/');
+  }, [user, versInvitation]);
   // Arrivée par le lien « réinitialiser le mot de passe » : on demande le nouveau avant tout.
   const [recoveryMode, setRecoveryMode] = useState(lienEmail.recuperation);
 
@@ -684,7 +692,14 @@ export default function App() {
   // Keep localStorage cache of entreprise in sync (for offline/legacy compat)
   useEffect(() => {
     if (activeEntreprise) {
-      try { localStorage.setItem('cp_entreprise', JSON.stringify(entreprise)); } catch { /* préférence non enregistrée : quota plein ou navigation privée */ }
+      try {
+        localStorage.setItem('cp_entreprise', JSON.stringify(entreprise));
+        // Copie venue de la base : la migration des fiches d'avant la synchronisation (detectMigrationNeeded)
+        // ne doit jamais la recréer ailleurs. Sinon, en arrivant dans une organisation sans fiche (bascule
+        // d'organisation, autre compte sur le même téléphone), elle y recopiait celle-ci, IBAN compris
+        // (constaté en parcours le 11 oct. 2026).
+        localStorage.setItem('mallettico_entreprise_migrated', 'true');
+      } catch { /* préférence non enregistrée : quota plein ou navigation privée */ }
     }
   }, [entreprise, activeEntreprise]);
   useEffect(() => { try { localStorage.setItem('cp_theme', theme); } catch (e) { console.warn('Failed to save theme:', e.message); } }, [theme]);
@@ -749,7 +764,8 @@ export default function App() {
         if (session?.user) setUser(session.user);
       } else if (event === 'SIGNED_IN' && session?.user) {
         setUser(session.user);
-        demanderBienvenue(supabase, session.user);
+        // Un invité ne reçoit pas « configurez votre entreprise » : il rejoint celle qui l'invite
+        if (!invitationEnAttente()) demanderBienvenue(supabase, session.user);
       } else if (event === 'SIGNED_OUT') {
         setUser(null);
       } else if (event === 'TOKEN_REFRESHED' && session?.user) {
@@ -916,12 +932,14 @@ export default function App() {
     }
     setIsSubmitting(true);
     try {
-      const { data, error } = await auth.signUp(authForm.email, authForm.password, { nom: authForm.nom });
+      // Un invité revient sur son invitation en ouvrant le lien de confirmation
+      const { data, error } = await auth.signUp(authForm.email, authForm.password, { nom: authForm.nom }, invitation ? `/invitation/${invitation.token}` : '/');
       if (error) setAuthError(traduireErreurAuth(error));
       else {
         // Sans session, Supabase attend la confirmation de l'adresse : le dire, sinon l'artisan
         // essaie de se connecter et reçoit « adresse non confirmée » sans comprendre.
         if (data?.session) showToast('Compte créé ✓', 'success');
+        else if (invitation) setAuthInfo(`Compte créé. Ouvrez le lien envoyé à ${authForm.email} (pensez aux indésirables) : il vous ramène à l'invitation pour rejoindre ${invitation.organisation || "l'équipe"}.`);
         else setAuthInfo(`Compte créé. Confirmez votre adresse en ouvrant le lien envoyé à ${authForm.email}, puis connectez-vous.`);
         setShowSignUp(false);
         // L'e-mail de bienvenue part à la première connexion (demanderBienvenue, SIGNED_IN) :
@@ -1183,6 +1201,13 @@ export default function App() {
     </Suspense>
   );
 
+  // Connecté avec une invitation en attente : on part la rejoindre (effet plus haut)
+  if (versInvitation) return (
+    <div className="min-h-screen bg-fond flex items-center justify-center" role="status" aria-label="Ouverture de l'invitation">
+      <LogoMallettico taille={56} className="animate-pulse" />
+    </div>
+  );
+
   // Landing Page (for unauthenticated visitors before they click login)
   if (!user && !isDemo && showLanding) return (
     <>
@@ -1239,7 +1264,17 @@ export default function App() {
           </div>
           
           <h2 className="text-3xl font-bold text-white mb-2">{showForgot ? 'Mot de passe oublié' : showSignUp ? 'Créer un compte' : 'Connexion'}</h2>
-          <p className="text-slate-400 mb-8">{showForgot ? 'Recevez par e-mail un lien pour en choisir un nouveau.' : showSignUp ? 'Commencez gratuitement' : 'Accédez à votre espace'}</p>
+          <p className="text-slate-400 mb-8">{showForgot ? 'Recevez par e-mail un lien pour en choisir un nouveau.' : invitation ? `Pour rejoindre ${invitation.organisation || "l'équipe qui vous invite"}` : showSignUp ? 'Commencez gratuitement' : 'Accédez à votre espace'}</p>
+
+          {invitation && !showForgot && (
+            <div role="note" className="mb-4 p-3 bg-slate-800 border border-slate-700 rounded-xl text-slate-200 text-sm flex items-start gap-2">
+              <Users size={18} className="flex-shrink-0 mt-0.5 text-orange-400" aria-hidden="true" />
+              <span>
+                Invitation{invitation.organisation ? <> de <strong className="text-white">{invitation.organisation}</strong></> : null}.{' '}
+                {showSignUp ? 'Créez votre compte' : 'Connectez-vous'} : vous reviendrez à l'invitation pour rejoindre l'équipe.
+              </span>
+            </div>
+          )}
 
           {authInfo && (
             <div role="status" className="mb-4 p-3 bg-emerald-500/15 border border-emerald-500/40 rounded-xl text-emerald-200 text-sm">
@@ -1281,13 +1316,14 @@ export default function App() {
           ) : (<>
           <form onSubmit={showSignUp ? handleSignUp : handleSignIn} className="space-y-4">
             {showSignUp && (
+              // Un invité donne son nom (il apparaît dans l'équipe), pas celui d'une entreprise
               <input
                 className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white placeholder-slate-400 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20 transition-all"
-                placeholder="Nom entreprise"
+                placeholder={invitation ? 'Votre prénom et nom' : 'Nom entreprise'}
                 value={authForm.nom}
                 onChange={e => setAuthForm(p => ({...p, nom: e.target.value}))}
-                aria-label="Nom de l'entreprise"
-                autoComplete="organization"
+                aria-label={invitation ? 'Votre prénom et nom' : "Nom de l'entreprise"}
+                autoComplete={invitation ? 'name' : 'organization'}
               />
             )}
             <input

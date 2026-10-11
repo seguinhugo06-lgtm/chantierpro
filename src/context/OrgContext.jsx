@@ -2,6 +2,7 @@
 // Organization + Role context for multi-user RBAC
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { supabase, isDemo, auth } from '../supabaseClient';
+import { choisirOrganisation, organisationPreferee, memoriserOrganisation, invitationEnAttente } from '../lib/organisationActive';
 
 const creationsEnCours = new Map();
 
@@ -41,6 +42,8 @@ export function creerOrganisationParDefaut(client, uid) {
  * @property {boolean} isOwner
  * @property {boolean} isAdmin - owner OR admin
  * @property {Function} refreshOrg - Re-fetch org data
+ * @property {Array<{id: string, nom: string, role: OrgRole}>} organisations - Organisations du compte
+ * @property {Function} changerOrganisation - Ouvre une autre organisation du compte (recharge l'app)
  */
 
 const OrgContext = createContext(/** @type {OrgContextValue} */ ({
@@ -52,6 +55,8 @@ const OrgContext = createContext(/** @type {OrgContextValue} */ ({
   isOwner: true,
   isAdmin: true,
   refreshOrg: () => {},
+  organisations: [],
+  changerOrganisation: () => {},
 }));
 
 /**
@@ -71,6 +76,7 @@ export function OrgProvider({ children }) {
   const [orgName, setOrgName] = useState('');
   const [role, setRole] = useState(/** @type {OrgRole} */ ('owner'));
   const [members, setMembers] = useState([]);
+  const [organisations, setOrganisations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState(null);
 
@@ -107,6 +113,7 @@ export function OrgProvider({ children }) {
         setOrgName('');
         setRole('owner');
         setMembers([]);
+        setOrganisations([]);
         setLoading(false);
       }
     });
@@ -128,23 +135,47 @@ export function OrgProvider({ children }) {
         return;
       }
 
-      // 1. Try to get user's org via RPC
-      const { data: orgData, error: orgError } = await supabase.rpc('get_user_org_id', {
-        p_user_id: uid
-      });
+      // 1. Les adhésions du compte (« Membres : voir l'équipe » laisse lire les siennes) : l'organisation
+      //    choisie sur cet appareil, sinon l'équipe rejointe, sinon la plus ancienne
+      const { data: adhesions, error: adhesionsError } = await supabase
+        .from('organization_members')
+        .select('organization_id, role, joined_at')
+        .eq('user_id', uid);
+      const liste = adhesionsError ? [] : (adhesions || []).filter(a => a?.organization_id);
+      let resolvedOrgId = choisirOrganisation(liste, organisationPreferee(uid));
+      if (liste.length > 1) {
+        const { data: orgs, error: orgsError } = await supabase.from('organizations').select('id, name').in('id', liste.map(a => a.organization_id));
+        if (orgsError) console.warn('[OrgContext] Noms des organisations illisibles:', orgsError.message);
+        const noms = Object.fromEntries((orgs || []).map(o => [o.id, o.name || '']));
+        setOrganisations(liste.map(a => ({ id: a.organization_id, nom: noms[a.organization_id] || 'Organisation', role: a.role })));
+      } else {
+        setOrganisations([]);
+      }
 
-      // If RPC doesn't exist (404) or fails, fallback to owner mode
-      if (orgError) {
-        // Org RPC unavailable, using owner fallback
-        sessionStorage.setItem(orgUnavailableKey, '1');
-        setRole('owner');
+      // Liste vide ou illisible : la règle d'avant (la plus ancienne adhésion)
+      if (!resolvedOrgId) {
+        const { data: orgData, error: orgError } = await supabase.rpc('get_user_org_id', {
+          p_user_id: uid
+        });
+        // If RPC doesn't exist (404) or fails, fallback to owner mode
+        if (orgError) {
+          sessionStorage.setItem(orgUnavailableKey, '1');
+          setRole('owner');
+          setLoading(false);
+          return;
+        }
+        resolvedOrgId = orgData;
+      }
+
+      // 2. Aucune organisation : un invité qui vient de créer son compte rejoint l'équipe qui l'invite
+      //    (App le renvoie sur la page de l'invitation) ; on ne lui crée pas d'espace vide qu'il
+      //    ouvrirait ensuite à la place de l'équipe (recette du 11 oct. 2026).
+      if (!resolvedOrgId && invitationEnAttente()) {
         setLoading(false);
         return;
       }
 
-      let resolvedOrgId = orgData;
-
-      // 2. If no org found, auto-create one
+      // 3. Sinon, l'organisation par défaut du compte
       if (!resolvedOrgId) {
         const { data: createResult, error: createError } = await creerOrganisationParDefaut(supabase, uid);
 
@@ -167,7 +198,7 @@ export function OrgProvider({ children }) {
 
       setOrgId(resolvedOrgId);
 
-      // 3. Fetch org details + user's membership
+      // 4. Fetch org details + user's membership
       const [orgRes, membershipRes, membersRes] = await Promise.all([
         supabase.from('organizations').select('name, slug').eq('id', resolvedOrgId).maybeSingle(),
         supabase.from('organization_members')
@@ -236,6 +267,14 @@ export function OrgProvider({ children }) {
     }
   }, [userId, resolveOrg]);
 
+  // Changer d'organisation recharge l'app : données, entreprise, abonnement et file hors ligne
+  // repartent de la nouvelle organisation, sans reste de l'ancienne à l'écran.
+  const changerOrganisation = useCallback((id) => {
+    if (!userId || !id || id === orgId) return;
+    memoriserOrganisation(userId, id);
+    window.location.assign('/');
+  }, [userId, orgId]);
+
   const value = {
     orgId,
     orgName,
@@ -245,6 +284,8 @@ export function OrgProvider({ children }) {
     isOwner: role === 'owner',
     isAdmin: role === 'owner' || role === 'admin',
     refreshOrg,
+    organisations,
+    changerOrganisation,
   };
 
   return (

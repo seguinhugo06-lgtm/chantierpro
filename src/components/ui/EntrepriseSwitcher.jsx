@@ -1,19 +1,25 @@
 /**
- * EntrepriseSwitcher.jsx — Company switcher dropdown
+ * EntrepriseSwitcher.jsx — l'entreprise active, en haut du menu latéral et de l'en-tête.
  *
- * Shows the active entreprise name in the sidebar/header.
- * When hasMultiple === true, renders a dropdown to switch between companies.
- * When hasMultiple === false, just shows the company name (no dropdown).
+ * - Une seule entreprise, une seule organisation : le logo et le nom (le menu latéral mène aux
+ *   Paramètres pour qui y a accès).
+ * - Membre invité dans une équipe : « Équipe · Ouvrier » sous le nom (recette du 11 oct. 2026 : une
+ *   ouvrière invitée n'avait aucune indication d'être dans l'équipe).
+ * - Plusieurs organisations (son entreprise et une équipe rejointe) ou plusieurs entreprises : un
+ *   menu pour basculer. Changer d'organisation recharge l'app sur la nouvelle (OrgContext).
  */
 
 import React, { useState, useRef, useEffect, memo } from 'react';
-import { ChevronDown, Check, Settings, Plus } from 'lucide-react';
+import { ChevronDown, Check, Settings } from 'lucide-react';
 import LogoMallettico from './LogoMallettico';
 import { useEntreprise } from '../../context/EntrepriseContext';
+import { useOrg } from '../../context/OrgContext';
+import { isDemo } from '../../supabaseClient';
+import { canAccessPage, getRoleLabel } from '../../lib/permissions';
+import useKeepInViewport from '../../hooks/useKeepInViewport';
 
 /**
- * Compute initiales from a company name.
- * "Martin Renovation" → "MR", "Dupont" → "DU"
+ * Initiales d'un nom d'entreprise : « Martin Rénovation » → « MR », « Dupont » → « DU ».
  */
 function getInitiales(ent) {
   if (ent.initiales) return ent.initiales;
@@ -24,275 +30,214 @@ function getInitiales(ent) {
 }
 
 const EntrepriseSwitcher = memo(function EntrepriseSwitcher({
-  isDark = false,
   compact = false,
   user = null,
   onNavigateSettings,
 }) {
-  const {
-    entreprises,
-    activeEntreprise,
-    hasMultiple,
-    switchEntreprise,
-  } = useEntreprise();
+  const { entreprises, activeEntreprise, hasMultiple, switchEntreprise } = useEntreprise();
+  const { role, orgId, organisations = [], changerOrganisation } = useOrg();
 
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
+  const menuRef = useRef(null);
+  useKeepInViewport(menuRef, isOpen);
 
-  // Close dropdown on outside click
+  // Fermer au clic extérieur et à Échap
   useEffect(() => {
     if (!isOpen) return;
     const handleClick = (e) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
-        setIsOpen(false);
-      }
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) setIsOpen(false);
     };
+    const handleKey = (e) => { if (e.key === 'Escape') setIsOpen(false); };
     document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, [isOpen]);
-
-  // Close on Escape
-  useEffect(() => {
-    if (!isOpen) return;
-    const handleKey = (e) => {
-      if (e.key === 'Escape') setIsOpen(false);
-    };
     document.addEventListener('keydown', handleKey);
-    return () => document.removeEventListener('keydown', handleKey);
+    return () => {
+      document.removeEventListener('mousedown', handleClick);
+      document.removeEventListener('keydown', handleKey);
+    };
   }, [isOpen]);
 
-  const couleur = activeEntreprise?.couleur || '#f97316';
   const nom = activeEntreprise?.nom || 'Mallettico';
-  const initiales = activeEntreprise ? getInitiales(activeEntreprise) : 'MA';
+  const membre = !isDemo && !!role && role !== 'owner';
+  const plusieursOrgs = organisations.length > 1;
+  const avecMenu = hasMultiple || plusieursOrgs;
+  const peutReglages = canAccessPage(role, 'settings');
+  const sousTitre = membre ? `Équipe · ${getRoleLabel(role)}` : (user?.email || '');
 
-  // ── Single entreprise: simple display (no dropdown) ──
-  if (!hasMultiple) {
+  const logo = (
+    <span className="w-10 h-10 flex items-center justify-center flex-shrink-0">
+      <LogoMallettico taille={38} />
+    </span>
+  );
+
+  // ── Sans menu ──
+  if (!avecMenu) {
     if (compact) {
-      // Header: logo + name
       return (
         <div className="flex items-center gap-2 min-w-0">
-          {/* Le logo de l'app (avant : un carré d'accent avec une icône de bâtiment, sans rapport avec la marque) */}
-          <span className="w-10 h-10 flex items-center justify-center flex-shrink-0">
-            <LogoMallettico taille={38} />
-          </span>
-          <span
-            className="font-semibold text-sm truncate hidden sm:block lg:text-base text-encre"
-            title={nom}
-          >
+          {logo}
+          <span className="font-semibold text-sm truncate hidden sm:block lg:text-base text-encre" title={nom}>
             {nom}
           </span>
         </div>
       );
     }
-
-    // Sidebar: profile-style button
+    const contenu = (
+      <>
+        {logo}
+        <div className="flex-1 min-w-0 text-left">
+          <p className="font-semibold text-sm truncate text-encre" title={nom}>{nom}</p>
+          {sousTitre && <p className="text-xs truncate text-encre-3">{sousTitre}</p>}
+        </div>
+      </>
+    );
+    // Un ouvrier n'a pas accès aux Paramètres : pas de bouton qui ne mène nulle part
+    if (!peutReglages) {
+      return <div className="flex items-center gap-3 flex-1 min-w-0 -m-1 p-2">{contenu}</div>;
+    }
     return (
       <button
+        type="button"
         onClick={() => onNavigateSettings?.()}
         className="group flex items-center gap-3 flex-1 min-w-0 rounded-xl -m-1 p-2 transition-colors hover:bg-surface-2"
         title="Paramètres de l'entreprise"
       >
-        <span className="w-10 h-10 flex items-center justify-center flex-shrink-0">
-          <LogoMallettico taille={38} />
-        </span>
-        <div className="flex-1 min-w-0 text-left">
-          <p className="font-semibold text-sm truncate text-encre" title={nom}>
-            {nom}
-          </p>
-          {user?.email && (
-            <p className="text-xs truncate text-encre-3">{user.email}</p>
-          )}
-        </div>
+        {contenu}
       </button>
     );
   }
 
-  // ── Multiple entreprises: dropdown switcher ──
-  const handleSwitch = async (id) => {
-    if (id === activeEntreprise?.id) {
-      setIsOpen(false);
-      return;
-    }
-    await switchEntreprise(id);
+  // ── Avec menu : organisations et/ou entreprises ──
+  const choisirEntreprise = async (id) => {
     setIsOpen(false);
+    if (id !== activeEntreprise?.id) await switchEntreprise(id);
+  };
+  const choisirOrganisation = (id) => {
+    setIsOpen(false);
+    changerOrganisation?.(id);
   };
 
+  const menu = isOpen && (
+    <div
+      ref={menuRef}
+      className={`absolute top-full left-0 mt-2 ${compact ? 'w-72' : 'right-0'} rounded-2xl border border-bord bg-surface shadow-e3 z-50 overflow-hidden`}
+    >
+      <div className="py-2 max-h-[70vh] overflow-y-auto">
+        {plusieursOrgs && (
+          <>
+            <p className="px-4 py-2 text-xs font-medium uppercase tracking-wider text-encre-3">Mes organisations</p>
+            {organisations.map((org) => {
+              const active = org.id === orgId;
+              return (
+                <button
+                  key={org.id}
+                  type="button"
+                  onClick={() => choisirOrganisation(org.id)}
+                  aria-current={active || undefined}
+                  className={`w-full min-h-11 flex items-center gap-3 px-4 py-2 text-left transition-colors ${active ? 'bg-surface-2' : 'hover:bg-surface-2'}`}
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate text-encre">{org.nom}</p>
+                    <p className="text-xs truncate text-encre-3">{org.role === 'owner' ? 'Votre entreprise' : `Équipe · ${getRoleLabel(org.role)}`}</p>
+                  </div>
+                  {active && <Check size={16} className="flex-shrink-0 text-accent-texte" aria-hidden="true" />}
+                </button>
+              );
+            })}
+          </>
+        )}
+
+        {hasMultiple && (
+          <>
+            {plusieursOrgs && <div className="my-1 border-t border-bord" />}
+            <p className="px-4 py-2 text-xs font-medium uppercase tracking-wider text-encre-3">Mes entreprises</p>
+            {entreprises.map((ent) => {
+              const active = ent.id === activeEntreprise?.id;
+              return (
+                <button
+                  key={ent.id}
+                  type="button"
+                  onClick={() => choisirEntreprise(ent.id)}
+                  aria-current={active || undefined}
+                  className={`w-full min-h-11 flex items-center gap-3 px-4 py-2 text-left transition-colors ${active ? 'bg-surface-2' : 'hover:bg-surface-2'}`}
+                >
+                  <div
+                    className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 text-white text-xs font-bold"
+                    style={{ background: ent.couleur || '#64748b' }}
+                  >
+                    {getInitiales(ent)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate text-encre">{ent.nom}</p>
+                    <p className="text-xs truncate text-encre-3">
+                      {[ent.formeJuridique, ent.ville].filter(Boolean).join(' · ') || 'Entreprise'}
+                    </p>
+                  </div>
+                  {active && <Check size={16} className="flex-shrink-0 text-accent-texte" aria-hidden="true" />}
+                </button>
+              );
+            })}
+            {peutReglages && (
+              <>
+                <div className="my-1 border-t border-bord" />
+                <button
+                  type="button"
+                  onClick={() => { setIsOpen(false); onNavigateSettings?.(); }}
+                  className="w-full min-h-11 flex items-center gap-3 px-4 py-2 text-left text-sm text-encre-2 hover:bg-surface-2 hover:text-encre transition-colors"
+                >
+                  <Settings size={16} aria-hidden="true" />
+                  <span>Gérer les entreprises</span>
+                </button>
+              </>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+
+  const libelle = plusieursOrgs ? 'Changer d’organisation' : 'Changer d’entreprise';
+
   if (compact) {
-    // Header: compact switcher
     return (
       <div className="relative" ref={dropdownRef}>
         <button
+          type="button"
           onClick={() => setIsOpen(!isOpen)}
           aria-expanded={isOpen}
-          aria-haspopup="listbox"
-          aria-label="Changer d'entreprise"
-          className={`flex items-center gap-2 min-w-0 rounded-xl px-2 py-1.5 transition-colors ${
-            isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-200'
-          }`}
+          aria-haspopup="true"
+          aria-label={libelle}
+          className="flex items-center gap-2 min-w-0 rounded-xl px-1 py-1 transition-colors hover:bg-surface-2"
         >
-          <div
-            className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shadow-sm flex-shrink-0 text-white text-xs font-bold"
-            style={{ background: couleur }}
-          >
-            {initiales}
-          </div>
-          <span
-            className={`font-semibold text-sm truncate hidden sm:block lg:text-base ${isDark ? 'text-slate-100' : 'text-slate-900'}`}
-            title={nom}
-          >
-            {nom}
-          </span>
-          <ChevronDown
-            size={14}
-            className={`hidden sm:block flex-shrink-0 transition-transform ${
-              isOpen ? 'rotate-180' : ''
-            } ${isDark ? 'text-slate-400' : 'text-slate-500'}`}
-          />
+          {logo}
+          <span className="font-semibold text-sm truncate hidden sm:block lg:text-base text-encre" title={nom}>{nom}</span>
+          <ChevronDown size={14} aria-hidden="true" className={`hidden sm:block flex-shrink-0 text-encre-3 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
         </button>
-
-        {isOpen && (
-          <div
-            className={`absolute top-full left-0 mt-2 w-72 rounded-2xl border shadow-xl z-50 overflow-hidden ${
-              isDark
-                ? 'bg-slate-800 border-slate-700'
-                : 'bg-white border-gray-200'
-            }`}
-          >
-            <DropdownContent
-              entreprises={entreprises}
-              activeId={activeEntreprise?.id}
-              isDark={isDark}
-              onSwitch={handleSwitch}
-              onSettings={() => { setIsOpen(false); onNavigateSettings?.(); }}
-            />
-          </div>
-        )}
+        {menu}
       </div>
     );
   }
 
-  // Sidebar: full switcher
   return (
     <div className="relative flex-1 min-w-0" ref={dropdownRef}>
       <button
+        type="button"
         onClick={() => setIsOpen(!isOpen)}
         aria-expanded={isOpen}
-        aria-haspopup="listbox"
-        aria-label="Changer d'entreprise"
-        className="group flex items-center gap-3 flex-1 w-full min-w-0 rounded-xl -m-1 p-2 transition-all hover:bg-slate-800/80"
-        title="Changer d'entreprise"
+        aria-haspopup="true"
+        aria-label={`${libelle} (${nom}${sousTitre ? `, ${sousTitre}` : ''})`}
+        className="group flex items-center gap-3 w-full min-w-0 rounded-xl -m-1 p-2 transition-colors hover:bg-surface-2"
       >
-        <div
-          className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg transition-transform group-hover:scale-105 text-white text-xs font-bold"
-          style={{ background: `linear-gradient(135deg, ${couleur}, ${couleur}cc)` }}
-        >
-          {initiales}
-        </div>
+        {logo}
         <div className="flex-1 min-w-0 text-left">
-          <div className="flex items-center gap-1">
-            <p className={`font-semibold text-sm truncate ${isDark ? 'text-white' : 'text-slate-900'}`} title={nom}>
-              {nom}
-            </p>
-            <ChevronDown
-              size={12}
-              className={`flex-shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''} ${isDark ? 'text-slate-500' : 'text-slate-400'}`}
-            />
-          </div>
-          {user?.email && (
-            <p className={`text-[11px] truncate ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{user.email}</p>
-          )}
+          <p className="font-semibold text-sm truncate text-encre" title={nom}>{nom}</p>
+          {sousTitre && <p className="text-xs truncate text-encre-3">{sousTitre}</p>}
         </div>
+        <ChevronDown size={14} aria-hidden="true" className={`flex-shrink-0 text-encre-3 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </button>
-
-      {isOpen && (
-        <div
-          className={`absolute top-full left-0 right-0 mt-2 rounded-2xl border shadow-xl z-50 overflow-hidden ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}
-        >
-          <DropdownContent
-            entreprises={entreprises}
-            activeId={activeEntreprise?.id}
-            isDark={true}
-            onSwitch={handleSwitch}
-            onSettings={() => { setIsOpen(false); onNavigateSettings?.(); }}
-          />
-        </div>
-      )}
+      {menu}
     </div>
   );
 });
-
-/**
- * Shared dropdown content for both compact and full modes
- */
-function DropdownContent({ entreprises, activeId, isDark, onSwitch, onSettings }) {
-  return (
-    <div className="py-2">
-      {/* Header */}
-      <div className={`px-4 py-2 text-xs font-medium uppercase tracking-wider ${
-        isDark ? 'text-slate-500' : 'text-gray-500'
-      }`}>
-        Mes entreprises
-      </div>
-
-      {/* Entreprise list */}
-      <div className="max-h-64 overflow-y-auto">
-        {entreprises.map((ent) => {
-          const isActive = ent.id === activeId;
-          const entInitiales = getInitiales(ent);
-          return (
-            <button
-              key={ent.id}
-              onClick={() => onSwitch(ent.id)}
-              className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors ${
-                isActive
-                  ? isDark ? 'bg-slate-700/50' : 'bg-gray-50'
-                  : isDark ? 'hover:bg-slate-700/30' : 'hover:bg-gray-50'
-              }`}
-            >
-              {/* Color dot + initiales */}
-              <div
-                className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 text-white text-[11px] font-bold"
-                style={{ background: ent.couleur || '#94a3b8' }}
-              >
-                {entInitiales}
-              </div>
-
-              {/* Name + info */}
-              <div className="flex-1 min-w-0">
-                <p className={`text-sm font-medium truncate ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                  {ent.nom}
-                </p>
-                <p className={`text-[11px] truncate ${isDark ? 'text-slate-500' : 'text-gray-500'}`}>
-                  {[ent.formeJuridique, ent.ville].filter(Boolean).join(' · ') || 'Entreprise'}
-                </p>
-              </div>
-
-              {/* Active check */}
-              {isActive && (
-                <Check size={16} className="flex-shrink-0" style={{ color: ent.couleur || '#f97316' }} />
-              )}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Divider */}
-      <div className={`my-1 border-t ${isDark ? 'border-slate-700' : 'border-gray-100'}`} />
-
-      {/* Actions */}
-      <button
-        onClick={onSettings}
-        className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors text-sm ${
-          isDark
-            ? 'text-slate-400 hover:bg-slate-700/30 hover:text-white'
-            : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
-        }`}
-      >
-        <Settings size={16} />
-        <span>Gérer les entreprises</span>
-      </button>
-    </div>
-  );
-}
 
 export default EntrepriseSwitcher;

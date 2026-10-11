@@ -56,12 +56,14 @@ export const supabase = isDemo ? null : (supabaseUrl && supabaseAnonKey ? create
 
 // Auth wrapper
 export const auth = {
-  signUp: async (email, password, metadata) => {
+  // `retour` : la page où ramène le lien de confirmation (un invité revient sur son invitation).
+  // Une adresse absente de la liste autorisée de Supabase retombe sur l'adresse du site.
+  signUp: async (email, password, metadata, retour = '/') => {
     if (isDemo || !supabase) return { data: null, error: { message: 'Mode démo actif' } };
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: metadata, emailRedirectTo: urlRetour() }
+      options: { data: metadata, emailRedirectTo: urlPublique(retour) }
     });
     return { data, error };
   },
@@ -92,8 +94,11 @@ export const auth = {
     } catch (e) {
       error = e;
     }
-    // Recherches récentes : propres au compte (sur un téléphone partagé, le suivant les voyait)
-    try { localStorage.removeItem('mallettico_recent_items'); } catch { /* stockage indisponible */ }
+    // Recherches récentes et copie de la fiche entreprise : propres au compte (sur un téléphone partagé,
+    // le suivant les voyait ; la fiche pouvait même être recopiée dans son organisation)
+    try {
+      for (const cle of ['mallettico_recent_items', 'cp_entreprise', 'cp_entreprises']) localStorage.removeItem(cle);
+    } catch { /* stockage indisponible */ }
     if (error) {
       // Serveur injoignable (hors ligne) : supabase-js garde alors la session, et le compte était de nouveau
       // connecté au rechargement — téléphone partagé (recette du 9 oct. 2026). On l'efface de l'appareil quand même

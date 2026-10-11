@@ -46,6 +46,12 @@ serve((req) => traiterCycle(req, {
     if (error) throw new Error(error.message);
   },
 
+  async rolesDuCompte(userId) {
+    const { data, error } = await admin.from('organization_members').select('role').eq('user_id', userId);
+    if (error) return null;
+    return (data || []).map((m) => String(m.role));
+  },
+
   reserver: reserverEnvoi,
   liberer: libererEnvoi,
   envoyer: envoyerResend,

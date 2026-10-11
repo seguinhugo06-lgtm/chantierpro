@@ -82,6 +82,28 @@ describe('send-lifecycle-email : bienvenue', () => {
     expect(ancien.envoyer).not.toHaveBeenCalled();
   });
 
+  it('pas pour un membre invité dans une équipe (il n’a pas d’entreprise à configurer)', async () => {
+    const invite = { ...banc(), rolesDuCompte: vi.fn(async () => ['ouvrier']) };
+    expect((await appeler(invite, { type: 'welcome' })).corps).toMatchObject({ envoye: false, raison: 'membre d’une équipe' });
+    expect(invite.envoyer).not.toHaveBeenCalled();
+    // Noté : l'app ne la redemandera pas à chaque connexion
+    expect(invite.marquerBienvenue).toHaveBeenCalledWith('u-patron', MAINTENANT.toISOString());
+    // Gérant de sa propre organisation (même s'il est aussi membre d'une autre), ou lecture impossible : elle part
+    for (const roles of [['owner', 'ouvrier'], [], null]) {
+      const dep = { ...banc(), rolesDuCompte: vi.fn(async () => roles) };
+      expect((await appeler(dep, { type: 'welcome' })).status).toBe(200);
+      expect(dep.envoyer).toHaveBeenCalledTimes(1);
+    }
+  });
+
+  it('au logo de Mallettico, plus de pictogramme', async () => {
+    const dep = banc();
+    await appeler(dep, { type: 'welcome' });
+    const { html } = dep.envoyer.mock.calls[0][0];
+    expect(html).toContain('src="https://mallettico.fr/logo-email.png"');
+    expect(html).not.toMatch(/🏗|👥|⏰|📋|✅|⚠/u);
+  });
+
   it('règle d’âge : comptes créés depuis la mise en place, moins de 7 jours', () => {
     expect(raisonSansBienvenue(PATRON, MAINTENANT)).toBeNull();
     expect(raisonSansBienvenue({ ...PATRON, creeLe: '2026-10-07T23:00:00Z' }, MAINTENANT)).toMatch(/antérieur/);
@@ -117,6 +139,10 @@ describe('send-lifecycle-email : invitation d’équipe', () => {
     expect(message.html).not.toContain('<b>');
     expect(message.html).toContain('Ouvrier');
     expect(dep.reserver).toHaveBeenCalledWith('u-patron', 1, 50);
+    // Qui invite : l'adresse du compte de l'auteur, citée et en adresse de réponse
+    expect(message.html).toContain('patron@exemple.fr vous invite');
+    expect(message.reply_to).toBe('patron@exemple.fr');
+    expect(message.html).toContain('src="https://mallettico.fr/logo-email.png"');
   });
 
   it('seul l’auteur de l’invitation peut la faire envoyer', async () => {

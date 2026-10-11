@@ -29,6 +29,7 @@ import {
   TrendingUp,
   Plus,
   BellRing,
+  Users,
 } from 'lucide-react';
 
 import { useData } from '../context/DataContext';
@@ -37,6 +38,7 @@ import { useToast } from '../context/AppContext';
 import { usePermissions } from '../hooks/usePermissions';
 import { useRelances } from '../hooks/useRelances';
 import { useOrg } from '../context/OrgContext';
+import { getRoleLabel } from '../lib/permissions';
 import { captureException } from '../lib/sentry';
 import { statutFacture, resteAPayer, joursDeRetard, echeance, encaisseEntre } from '../lib/paiementsFacture';
 import { calcConversion, formatConversion } from '../lib/statsUtils';
@@ -147,7 +149,9 @@ export default function Dashboard({
   const { showToast } = useToast();
   const { canAccess, canPerform } = usePermissions();
   const canSeeFinances = canAccess('finances');
-  const { orgId } = useOrg();
+  const { orgId, orgName, role } = useOrg();
+  // Membre d'une équipe (invité) : on lui dit où il est ; le plan est l'affaire du gérant
+  const membreEquipe = !isDemo && !!role && role !== 'owner';
   const planId = useSubscriptionStore((s) => s.planId);
   const planCourant = PLANS[planId] || PLANS.gratuit;
 
@@ -423,9 +427,16 @@ export default function Dashboard({
           <p className="mt-1 text-sm text-encre-3 flex items-center gap-1.5 flex-wrap">
             <span>{formattedDate}</span>
             <span aria-hidden="true">·</span>
-            <button type="button" onClick={() => setPage('plan')} className="h-11 -my-3 inline-flex items-center gap-1 font-medium text-encre-2 hover:underline underline-offset-2">
-              Plan {planCourant.name}
-            </button>
+            {membreEquipe ? (
+              <span className="inline-flex items-center gap-1 font-medium text-encre-2">
+                <Users size={14} aria-hidden="true" />
+                Équipe {entreprise?.nom || orgName} · {getRoleLabel(role)}
+              </span>
+            ) : (
+              <button type="button" onClick={() => setPage('plan')} className="h-11 -my-3 inline-flex items-center gap-1 font-medium text-encre-2 hover:underline underline-offset-2">
+                Plan {planCourant.name}
+              </button>
+            )}
           </p>
         </div>
         <div className="flex items-center gap-1">

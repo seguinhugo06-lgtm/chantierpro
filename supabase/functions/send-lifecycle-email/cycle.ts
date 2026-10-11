@@ -14,10 +14,12 @@ import { TEMPLATES } from './modeles.ts';
  * Désormais :
  * - welcome : un utilisateur connecté, à SA propre adresse, une seule fois, pour un
  *   compte de moins de 7 jours (l'inscription n'a souvent pas de session : l'app le
- *   demande à la première connexion) ;
+ *   demande à la première connexion) ; pas pour un membre invité dans une équipe
+ *   (« complétez votre entreprise » ne le concerne pas, recette du 11 oct. 2026) ;
  * - invitation : l'auteur de l'invitation, d'après la ligne `invitations` lue avec
  *   son jeton (RLS) ; destinataire, organisation, rôle et lien viennent de la base ;
- *   compté dans le plafond quotidien (migration 077) ;
+ *   compté dans le plafond quotidien (migration 077) ; l'adresse de l'auteur (son
+ *   compte, pas la requête) est citée et sert d'adresse de réponse ;
  * - trial_*, payment_* : le serveur seul (aucun appelant aujourd'hui).
  */
 
@@ -60,6 +62,8 @@ export type DependancesCycle = {
   nomOrganisation: (jeton: string, id: string) => Promise<string | null>;
   /** Note dans le compte (app_metadata, non modifiable par l'utilisateur) que la bienvenue est partie. */
   marquerBienvenue: (userId: string, quand: string) => Promise<void>;
+  /** Rôles du compte dans ses organisations ; null si la lecture échoue. */
+  rolesDuCompte?: (userId: string) => Promise<string[] | null>;
   reserver: (userId: string, nb: number, limite: number) => Promise<{ id: number | null; indisponible?: boolean }>;
   liberer: (id: number) => Promise<void>;
   envoyer: (message: Record<string, unknown>) => Promise<{ ok: boolean; status: number; corps: Record<string, unknown> }>;
@@ -110,6 +114,7 @@ export async function traiterCycle(req: Request, dep: DependancesCycle): Promise
     let sujet: string;
     let html: string;
     let reservation: number | null = null;
+    let repondreA: string | undefined;
 
     if (type === 'welcome') {
       if (appelant.serveur) {
@@ -119,6 +124,12 @@ export async function traiterCycle(req: Request, dep: DependancesCycle): Promise
         // Jamais l'adresse fournie par le navigateur : celle du compte connecté.
         const raison = raisonSansBienvenue(appelant.utilisateur, maintenant);
         if (raison) return reponse({ success: true, envoye: false, raison });
+        // Membre d'une équipe sans organisation à lui : il n'a pas d'entreprise à configurer
+        const roles = dep.rolesDuCompte ? await dep.rolesDuCompte(appelant.utilisateur.id).catch(() => null) : null;
+        if (roles && roles.length > 0 && !roles.includes('owner')) {
+          await dep.marquerBienvenue(appelant.utilisateur.id, maintenant.toISOString());
+          return reponse({ success: true, envoye: false, raison: 'membre d’une équipe' });
+        }
         destinataire = appelant.utilisateur.email as string;
         // Noté avant l'envoi : un échec de Resend ne sera pas retenté à chaque connexion. Pas
         // atomique (deux appels simultanés peuvent en envoyer deux), sans enjeu : adresse du
@@ -148,12 +159,16 @@ export async function traiterCycle(req: Request, dep: DependancesCycle): Promise
 
       const nomOrg = nettoyerNom(await dep.nomOrganisation(jeton, inv.organization_id)) || 'une organisation';
       destinataire = inv.email;
+      // L'auteur, d'après son compte : l'invité reconnaît qui l'invite et peut lui répondre
+      const auteur = estEmail(utilisateur.email) ? utilisateur.email : undefined;
+      repondreA = auteur;
       sujet = `Invitation à rejoindre ${nomOrg} sur Mallettico`;
       html = TEMPLATES.invitation.html({
         orgName: nomOrg,
         roleLabel: LIBELLES_ROLE[inv.role] || 'Membre',
         inviteLink: `${SITE}/invitation/${inv.token}`,
         expiresAt: dateFr(inv.expires_at),
+        invitePar: auteur,
       });
     } else if (TYPES_SERVEUR.includes(type)) {
       if (!appelant.serveur) return reponse({ error: 'Réservé au serveur' }, 403);
@@ -167,7 +182,10 @@ export async function traiterCycle(req: Request, dep: DependancesCycle): Promise
 
     let resultat: Awaited<ReturnType<DependancesCycle['envoyer']>>;
     try {
-      resultat = await dep.envoyer({ from: `Mallettico <${dep.expediteur}>`, to: [destinataire], subject: sujet, html });
+      resultat = await dep.envoyer({
+        from: `Mallettico <${dep.expediteur}>`, to: [destinataire], subject: sujet, html,
+        ...(repondreA ? { reply_to: repondreA } : {}),
+      });
     } catch (e) {
       if (reservation != null) await dep.liberer(reservation).catch(() => {});
       journal('erreur', `Resend injoignable (${type}) : ${(e as Error)?.message || e}`);
