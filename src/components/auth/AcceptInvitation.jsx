@@ -8,7 +8,7 @@
 // celle que l'app ouvre.
 import React, { useState, useEffect } from 'react';
 import { Users, CheckCircle, AlertCircle, Loader2, LogIn, UserPlus, ArrowRight } from 'lucide-react';
-import { supabase, lienEmail } from '../../supabaseClient';
+import { supabase, auth, lienEmail } from '../../supabaseClient';
 import { dateLue } from '../../lib/dates';
 import { getRoleLabel, getRoleDescription } from '../../lib/permissions';
 import { memoriserInvitation, oublierInvitation, memoriserOrganisation } from '../../lib/organisationActive';
@@ -120,13 +120,20 @@ export default function AcceptInvitation({ token }) {
 
   // L'invité crée son compte (ou se connecte) puis revient ici : l'invitation est gardée sur l'appareil
   const allerVers = (chemin) => {
-    memoriserInvitation({ token, organisation: invitation?.organization_name, role: invitation?.role });
+    memoriserInvitation({ token, organisation: invitation?.organization_name, role: invitation?.role, expire: invitation?.expires_at });
     window.location.href = chemin;
   };
 
+  // Déconnexion de cet appareil seulement, avec le nettoyage des données du compte (supabaseClient)
   const changerDeCompte = async () => {
-    try { await supabase.auth.signOut(); } catch { /* la session locale part quand même */ }
+    await auth.signOut();
     setUser(null);
+  };
+
+  // Sortie de l'écran d'erreur : l'invitation est oubliée, sinon l'app y ramènerait aussitôt (boucle)
+  const quitter = (chemin) => {
+    oublierInvitation();
+    window.location.href = chemin;
   };
 
   const pasMaintenant = () => {
@@ -158,9 +165,9 @@ export default function AcceptInvitation({ token }) {
               : 'Elle a peut-être déjà été acceptée, ou elle a expiré (7 jours). Connectez-vous, ou demandez-en une nouvelle à la personne qui vous l’a envoyée.'}
           </p>
           {user ? (
-            <Bouton variante="principal" pleineLargeur iconeFin={ArrowRight} onClick={ouvrirApp}>Ouvrir Mallettico</Bouton>
+            <Bouton variante="principal" pleineLargeur iconeFin={ArrowRight} onClick={() => quitter('/')}>Ouvrir Mallettico</Bouton>
           ) : (
-            <Bouton variante="principal" pleineLargeur icone={LogIn} onClick={() => { window.location.href = '/connexion'; }}>Se connecter</Bouton>
+            <Bouton variante="principal" pleineLargeur icone={LogIn} onClick={() => quitter('/connexion')}>Se connecter</Bouton>
           )}
         </div>
       </Cadre>

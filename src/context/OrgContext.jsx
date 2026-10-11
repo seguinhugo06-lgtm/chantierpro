@@ -142,7 +142,18 @@ export function OrgProvider({ children }) {
         .select('organization_id, role, joined_at')
         .eq('user_id', uid);
       const liste = adhesionsError ? [] : (adhesions || []).filter(a => a?.organization_id);
-      let resolvedOrgId = choisirOrganisation(liste, organisationPreferee(uid));
+      const preferee = organisationPreferee(uid);
+      // Propriétaire d'une organisation ET membre d'une équipe, sans choix sur cet appareil : son entreprise
+      // à lui (une fiche) l'emporte ; un espace vide (créé à l'inscription d'un invité) ne compte pas.
+      let aSonEntreprise = false;
+      const siennes = liste.filter(a => a.role === 'owner').map(a => a.organization_id);
+      if (siennes.length && liste.some(a => a.role !== 'owner') && !liste.some(a => a.organization_id === preferee)) {
+        const { data: fiches, error: fichesError } = await supabase
+          .from('entreprise').select('organization_id').in('organization_id', siennes).limit(1);
+        // Lecture impossible : on reste prudent, son organisation à lui
+        aSonEntreprise = !!fichesError || (fiches || []).length > 0;
+      }
+      let resolvedOrgId = choisirOrganisation(liste, preferee, { aSonEntreprise });
       if (liste.length > 1) {
         const { data: orgs, error: orgsError } = await supabase.from('organizations').select('id, name').in('id', liste.map(a => a.organization_id));
         if (orgsError) console.warn('[OrgContext] Noms des organisations illisibles:', orgsError.message);

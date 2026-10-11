@@ -306,7 +306,7 @@ export default function TeamManagement({ isDark, couleur = '#F97316' }) {
                   type="email"
                   value={inviteForm.email}
                   onChange={e => setInviteForm(f => ({ ...f, email: e.target.value }))}
-                  placeholder="colleague@email.com"
+                  placeholder="prenom@exemple.fr"
                   className={`w-full pl-9 pr-3 py-2 border rounded-lg text-sm ${inputBg}`}
                 />
               </div>
@@ -338,6 +338,10 @@ export default function TeamManagement({ isDark, couleur = '#F97316' }) {
               ))}
             </select>
           </div>
+
+          <p className={`text-xs ${textMuted}`}>
+            La personne invitée reçoit un e-mail de Mallettico avec un lien valable 7 jours. Votre adresse e-mail y figure : elle sait qui l’invite et peut vous répondre.
+          </p>
 
           <div className="flex justify-end gap-2">
             <button

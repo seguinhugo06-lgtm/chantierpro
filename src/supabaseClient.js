@@ -94,10 +94,11 @@ export const auth = {
     } catch (e) {
       error = e;
     }
-    // Recherches récentes et copie de la fiche entreprise : propres au compte (sur un téléphone partagé,
-    // le suivant les voyait ; la fiche pouvait même être recopiée dans son organisation)
+    // Recherches récentes, copie de la fiche entreprise et invitation en attente : propres au compte (sur un
+    // téléphone partagé, le suivant les voyait ; la fiche pouvait être recopiée dans son organisation, et
+    // l'invitation l'aurait conduit à rejoindre l'équipe d'un autre)
     try {
-      for (const cle of ['mallettico_recent_items', 'cp_entreprise', 'cp_entreprises']) localStorage.removeItem(cle);
+      for (const cle of ['mallettico_recent_items', 'cp_entreprise', 'cp_entreprises', 'cp_pending_invitation']) localStorage.removeItem(cle);
     } catch { /* stockage indisponible */ }
     if (error) {
       // Serveur injoignable (hors ligne) : supabase-js garde alors la session, et le compte était de nouveau

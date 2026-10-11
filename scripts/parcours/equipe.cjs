@@ -99,6 +99,71 @@ module.exports = [
     },
   },
   {
+    // Relecture gardien-securite : « Changer de compte » déconnectait le compte partout (portée globale)
+    // et laissait sur l'appareil la copie de sa fiche entreprise.
+    nom: 'invitation : « Changer de compte » déconnecte cet appareil seulement et efface les données du compte',
+    reel: true,
+    async executer({ ouvrir, cliquer, attendre, verifier, sessionFactice, ORIGIN }) {
+      const session = sessionFactice('66666666-6666-4666-8666-666666666666', 'patron@exemple.fr');
+      const deconnexions = [];
+      const { page } = await ouvrir({
+        reel: true, largeur: 390, session,
+        supabase: (req, u) => {
+          if (u.pathname === '/auth/v1/user') return json(session.user);
+          if (u.pathname === '/auth/v1/logout') { deconnexions.push(u.search); return { status: 204, body: '' }; }
+          if (u.pathname === '/rest/v1/rpc/get_invitation_by_token') return json(INVITATION);
+          return json([]);
+        },
+      });
+      await page.goto(`${ORIGIN}/invitation/${JETON}`, { waitUntil: 'networkidle0' });
+      await attendre(800);
+      await page.evaluate((j) => {
+        localStorage.setItem('cp_pending_invitation', j);
+        localStorage.setItem('cp_entreprise', JSON.stringify({ nom: 'Entreprise du patron', iban: 'FR76 0000' }));
+      }, JETON);
+      await cliquer(page, 'Ce n’est pas vous ? Changer de compte');
+      await attendre(1000);
+      verifier(deconnexions.length === 1 && deconnexions[0].includes('scope=local'), `déconnexion de cet appareil seulement (${deconnexions.join(' | ') || 'aucune'})`);
+      const reste = await page.evaluate(() => ({
+        attente: localStorage.getItem('cp_pending_invitation'),
+        fiche: localStorage.getItem('cp_entreprise'),
+        session: Object.keys(localStorage).filter((k) => k.startsWith('sb-')),
+      }));
+      verifier(reste.attente === null && reste.fiche === null, `invitation et fiche effacées (${JSON.stringify(reste)})`);
+      verifier(reste.session.length === 0, `session effacée (${reste.session.join(', ')})`);
+      const boutons = await page.evaluate(() => [...document.querySelectorAll('button')].map((b) => b.innerText.trim()));
+      verifier(boutons.includes('Créer mon compte') && boutons.includes('J’ai déjà un compte'), 'l’autre personne peut créer son compte ou se connecter');
+    },
+  },
+  {
+    // Relecture gardien-securite : invitation illisible (panne) + « Ouvrir Mallettico » → l'app renvoyait
+    // aussitôt sur l'invitation, en boucle.
+    nom: 'invitation illisible : « Ouvrir Mallettico » mène à l’app sans y revenir en boucle',
+    reel: true,
+    async executer({ ouvrir, cliquer, attendre, verifier, sessionFactice, ORIGIN }) {
+      const session = sessionFactice('66666666-6666-4666-8666-666666666666', 'invite@exemple.fr');
+      const { page } = await ouvrir({
+        reel: true, largeur: 390, session,
+        supabase: (req, u) => {
+          if (u.pathname === '/auth/v1/user') return json(session.user);
+          if (u.pathname === '/rest/v1/rpc/get_invitation_by_token') return json({ message: 'panne' }, 500);
+          if (u.pathname === '/rest/v1/rpc/get_user_org_id') return json('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
+          return json([]);
+        },
+      });
+      await page.goto(`${ORIGIN}/invitation/${JETON}`, { waitUntil: 'networkidle0' });
+      await attendre(800);
+      await page.evaluate((j) => localStorage.setItem('cp_pending_invitation', j), JETON);
+      verifier((await texte(page)).includes('Impossible de charger l’invitation'), 'panne dite');
+      await Promise.all([
+        page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 15000 }).catch(() => {}),
+        cliquer(page, 'Ouvrir Mallettico'),
+      ]);
+      await attendre(2500);
+      verifier(new URL(page.url()).pathname === '/', `reste dans l’app (${page.url()})`);
+    },
+  },
+  {
     nom: 'invitation : un refus de la base est affiché, pas une fausse réussite',
     reel: true,
     async executer({ ouvrir, cliquer, attendre, verifier, sessionFactice, ORIGIN }) {
@@ -132,7 +197,7 @@ module.exports = [
       const { page } = await ouvrir({
         reel: true, largeur: 390, session,
         avantChargement: () => {
-          try { localStorage.setItem('cp_pending_invitation', JSON.stringify({ token: '5d0c8a52-3c1e-4f8e-9a57-0c2f6e1b9d44', organisation: 'Élec Durand', role: 'chef_chantier', le: Date.now() })); } catch { /* sans stockage */ }
+          try { localStorage.setItem('cp_pending_invitation', JSON.stringify({ token: '5d0c8a52-3c1e-4f8e-9a57-0c2f6e1b9d44', organisation: 'Élec Durand', role: 'chef_chantier', fin: Date.now() + 86400000 })); } catch { /* sans stockage */ }
         },
         supabase: (req, u) => {
           appels.push(u.pathname);

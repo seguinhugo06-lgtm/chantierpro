@@ -41,6 +41,13 @@ describe('choisirOrganisation', () => {
     expect(choisirOrganisation([perso, equipe, autre], null)).toBe(AUTRE);
   });
 
+  it('un artisan qui a sa propre entreprise la retrouve, même après avoir rejoint un confrère', () => {
+    // Sinon ses clients et devis partaient dans l'organisation du confrère (relecture gardien-securite)
+    expect(choisirOrganisation([perso, equipe], null, { aSonEntreprise: true })).toBe(PERSO);
+    // Son choix sur l'appareil reste respecté
+    expect(choisirOrganisation([perso, equipe], EQUIPE, { aSonEntreprise: true })).toBe(EQUIPE);
+  });
+
   it('un gérant de plusieurs organisations garde la plus ancienne (règle de get_user_org_id)', () => {
     const recente = { organization_id: AUTRE, role: 'owner', joined_at: '2026-10-12T08:00:00Z' };
     expect(choisirOrganisation([recente, perso], null)).toBe(PERSO);
@@ -73,9 +80,14 @@ describe('invitation gardée pendant l’inscription', () => {
     expect(localStorage.getItem('cp_pending_invitation')).toBeNull();
   });
 
-  it('oublie une invitation gardée depuis plus de 14 jours', () => {
-    memoriserInvitation({ token: JETON });
-    expect(invitationEnAttente(Date.now() + 15 * 24 * 3600 * 1000)).toBeNull();
+  it('oublie l’invitation à sa date d’expiration (à défaut, 7 jours après)', () => {
+    const maintenant = Date.parse('2026-10-11T12:00:00Z');
+    memoriserInvitation({ token: JETON, expire: '2026-10-13T12:00:00Z' }, maintenant);
+    expect(invitationEnAttente(Date.parse('2026-10-13T11:00:00Z'))?.token).toBe(JETON);
+    expect(invitationEnAttente(Date.parse('2026-10-13T12:00:00Z'))).toBeNull();
+    memoriserInvitation({ token: JETON }, maintenant);
+    expect(invitationEnAttente(maintenant + 6 * 24 * 3600 * 1000)?.token).toBe(JETON);
+    expect(invitationEnAttente(maintenant + 8 * 24 * 3600 * 1000)).toBeNull();
   });
 });
 
