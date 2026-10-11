@@ -247,6 +247,8 @@ export function genererSql({ aujourdhui = new Date(), compte = COMPTE_DEMO } = {
     'END LOOP;',
     ...aEffacer.map((t) => `DELETE FROM public.${t} WHERE organization_id = v_org;`),
     `UPDATE public.entreprise SET relance_config = ${q(JSON.stringify(scenario))}::jsonb WHERE id = ${q(compte.entrepriseId)} AND organization_id = v_org;`,
+    // Nom de l'organisation (visible dans l'équipe et le sélecteur) : celui de l'entreprise fictive
+    `UPDATE public.organizations SET name = ${q(IDENTITE_DEMO.colonnes.nom)}, updated_at = now() WHERE id = v_org AND owner_id = ${q(compte.userId)};`,
     // Identité fictive et marqueur « données fictives » (les autres réglages de la fiche sont conservés)
     `UPDATE public.entreprise SET ${Object.entries(IDENTITE_DEMO.colonnes).map(([c, v]) => `${c} = ${v === null ? 'NULL' : q(v)}`).join(', ')},`,
     `  settings_json = jsonb_set(COALESCE(settings_json, '{}'::jsonb), '{reglages}', COALESCE(settings_json -> 'reglages', '{}'::jsonb) || ${q(JSON.stringify(IDENTITE_DEMO.reglages))}::jsonb)`,

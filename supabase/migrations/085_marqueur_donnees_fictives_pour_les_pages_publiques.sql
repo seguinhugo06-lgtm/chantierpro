@@ -11,7 +11,8 @@
 --   VIDE (« v_entreprise IS NOT NULL » n'est vrai que si toutes ses colonnes sont remplies) : le client voyait
 --   « Votre artisan », sans adresse ni IBAN ; et la fiche lue était une fiche quelconque du compte.
 -- Effet : get_devis_for_signature transmet `donneesFictives` (vrai, sinon absent) parmi les réglages imprimés ;
---   get_facture_for_payment transmet la fiche de la facture (et le client) et `donnees_fictives` (vrai ou faux).
+--   get_facture_for_payment transmet la fiche de la facture, le client s'il est bien du compte de la facture
+--   (ou de son organisation), et `donnees_fictives` (vrai ou faux).
 --   Les définitions en place sont modifiées sur ces seuls points (relues en base, pas recopiées) ; la migration
 --   refuse de s'appliquer si elles n'ont pas la forme attendue.
 --
@@ -21,6 +22,8 @@
 --   → true, true
 --   SELECT get_facture_for_payment(payment_token) -> 'entreprise' ->> 'nom' FROM devis WHERE type = 'facture' AND payment_token IS NOT NULL LIMIT 1;
 --   → le nom de l'entreprise (avant : NULL, fiche vide)
+--   SELECT proname, proacl, proconfig FROM pg_proc WHERE proname IN ('get_devis_for_signature', 'get_facture_for_payment');
+--   → droits et search_path inchangés (anon, authenticated et service_role en exécution ; search_path=public, pg_temp)
 -- ============================================================
 
 DO $migration$
@@ -64,13 +67,28 @@ BEGIN
   ORDER BY (id IS NOT DISTINCT FROM v_facture.entreprise_id) DESC, (archived_at IS NULL) DESC,
            COALESCE(is_default, false) DESC, created_at
   LIMIT 1;$b$);
-      -- c) Le marqueur du compte de démonstration
+      -- c) Le client : seulement celui du compte de la facture (ou d'un membre de son organisation). Avant,
+      --    une facture pointant vers le client d'un autre compte en livrait le nom et l'e-mail ; a) l'aurait
+      --    étendu à tous les clients (relecture gardien-securite du 11 oct. 2026, même ancrage que 083)
+      v_neuf := replace(v_neuf,
+        $a$  SELECT id, nom, prenom, email INTO v_client
+  FROM clients
+  WHERE id = v_facture.client_id;$a$,
+        $b$  SELECT id, nom, prenom, email INTO v_client
+  FROM clients x
+  WHERE x.id = v_facture.client_id
+    AND (x.user_id = v_facture.user_id
+         OR (v_facture.organization_id IS NOT NULL AND x.organization_id = v_facture.organization_id
+             AND EXISTS (SELECT 1 FROM organization_members m
+                         WHERE m.organization_id = v_facture.organization_id AND m.user_id = x.user_id)));$b$);
+      -- d) Le marqueur du compte de démonstration
       v_neuf := replace(v_neuf,
         $a$'bic', v_entreprise.bic$a$,
         $b$'bic', v_entreprise.bic,
       'donnees_fictives', COALESCE(v_entreprise.settings_json -> 'reglages' ->> 'donneesFictives' = 'true', false)$b$);
       IF position('v_entreprise.id IS NOT NULL' in v_neuf) = 0 OR position('v_client.id IS NOT NULL' in v_neuf) = 0
          OR position('ORDER BY (id IS NOT DISTINCT FROM v_facture.entreprise_id)' in v_neuf) = 0
+         OR position('x.user_id = v_facture.user_id' in v_neuf) = 0
          OR position('donnees_fictives' in v_neuf) = 0 THEN
         RAISE EXCEPTION '085 : get_facture_for_payment n''a pas la forme attendue (081), rien n''est modifié';
       END IF;

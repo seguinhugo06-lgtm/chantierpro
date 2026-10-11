@@ -2,8 +2,8 @@
  * Jeu de démonstration du compte démo (contact@mallettico.fr, décision d'Hugo du 11 oct. 2026) : un électricien
  * micro-entrepreneur autour de Bordeaux, pour tester l'app de bout en bout et tourner des vidéos.
  *
- * - Clients, chantiers et pièces sont FICTIFS. L'entreprise, elle, est la fiche du compte (Paramètres), que ce
- *   jeu ne touche pas.
+ * - Clients, chantiers et pièces sont FICTIFS, adresses comprises (rues « de l’Exemple », « Imaginaire »…) ;
+ *   l'entreprise aussi (IDENTITE_DEMO, scripts/demo/generer-sql.mjs).
  * - Aucun e-mail ne peut partir chez un inconnu : chaque client a une adresse « + » de la boîte d'Hugo
  *   (seguin.hugo06+nom@gmail.com). Devis, liens de signature, relances et liens de paiement arrivent chez lui.
  * - Téléphones dans la plage que l'ARCEP réserve aux œuvres de fiction (06 39 98 xx xx).
@@ -41,20 +41,20 @@ function instantDecale(base, n, heure = '09:30') {
 // ─── Clients ────────────────────────────────────────────────────────────────
 
 const CLIENTS = [
-  { cle: 'lefevre', prenom: 'Marie', nom: 'Lefèvre', adresse: '14 rue des Écoles, 33400 Talence', categorie: 'particulier' },
-  { cle: 'moreau', prenom: 'Julien', nom: 'Moreau', adresse: '7 allée des Pins, 33700 Mérignac', categorie: 'particulier' },
-  { cle: 'chartrons', prenom: 'Antoine', nom: 'Bernard', entreprise: 'SCI Les Quais', adresse: '22 rue Notre-Dame, 33000 Bordeaux', categorie: 'professionnel' },
-  { cle: 'dubreuil', prenom: 'Sophie', nom: 'Dubreuil', entreprise: 'Boulangerie Dubreuil', adresse: '3 place de la Mairie, 33600 Pessac', categorie: 'professionnel' },
-  { cle: 'garnier', prenom: 'Thomas', nom: 'Garnier', adresse: '58 avenue de la Libération, 33130 Bègles', categorie: 'particulier' },
-  { cle: 'rousseau', prenom: 'Nathalie', nom: 'Rousseau', adresse: '9 rue du Château, 33110 Le Bouscat', categorie: 'particulier' },
-  { cle: 'kine', prenom: 'Paul', nom: 'Martin', entreprise: 'Cabinet de kinésithérapie Martin', adresse: '120 avenue de Paris, 33310 Lormont', categorie: 'professionnel' },
-  { cle: 'fournier', prenom: 'Isabelle', nom: 'Fournier', adresse: '31 chemin du Moulin, 33170 Gradignan', categorie: 'particulier' },
-  { cle: 'lambert', prenom: 'Hervé', nom: 'Lambert', adresse: '6 impasse des Vignes, 33140 Villenave-d’Ornon', categorie: 'particulier' },
-  { cle: 'agence', prenom: 'Claire', nom: 'Petit', entreprise: 'Agence immobilière Logis du Parc', adresse: '45 cours de l’Intendance, 33000 Bordeaux', categorie: 'professionnel' },
-  { cle: 'girard', prenom: 'Lucas', nom: 'Girard', adresse: '17 rue Camille-Pelletan, 33150 Cenon', categorie: 'particulier' },
-  { cle: 'robin', prenom: 'Émilie', nom: 'Robin', adresse: '2 allée des Tilleuls, 33520 Bruges', categorie: 'particulier' },
-  { cle: 'vidal', prenom: 'Pierre', nom: 'Vidal', adresse: '40 rue Gambetta, 33400 Talence', categorie: 'particulier' },
-  { cle: 'chevalier', prenom: 'Laura', nom: 'Chevalier', adresse: '12 rue de la Gare, 33700 Mérignac', categorie: 'particulier' },
+  { cle: 'lefevre', prenom: 'Marie', nom: 'Lefèvre', adresse: '14 rue de l’Exemple, 33400 Talence', categorie: 'particulier' },
+  { cle: 'moreau', prenom: 'Julien', nom: 'Moreau', adresse: '7 allée de la Démonstration, 33700 Mérignac', categorie: 'particulier' },
+  { cle: 'chartrons', prenom: 'Antoine', nom: 'Bernard', entreprise: 'SCI Les Quais', adresse: '22 quai Imaginaire, 33000 Bordeaux', categorie: 'professionnel' },
+  { cle: 'dubreuil', prenom: 'Sophie', nom: 'Dubreuil', entreprise: 'Boulangerie Dubreuil', adresse: '3 place de l’Exemple, 33600 Pessac', categorie: 'professionnel' },
+  { cle: 'garnier', prenom: 'Thomas', nom: 'Garnier', adresse: '58 avenue Fictive, 33130 Bègles', categorie: 'particulier' },
+  { cle: 'rousseau', prenom: 'Nathalie', nom: 'Rousseau', adresse: '9 rue de la Démo, 33110 Le Bouscat', categorie: 'particulier' },
+  { cle: 'kine', prenom: 'Paul', nom: 'Martin', entreprise: 'Cabinet de kinésithérapie Martin', adresse: '120 avenue de l’Exemple, 33310 Lormont', categorie: 'professionnel' },
+  { cle: 'fournier', prenom: 'Isabelle', nom: 'Fournier', adresse: '31 chemin Imaginaire, 33170 Gradignan', categorie: 'particulier' },
+  { cle: 'lambert', prenom: 'Hervé', nom: 'Lambert', adresse: '6 impasse de l’Exemple, 33140 Villenave-d’Ornon', categorie: 'particulier' },
+  { cle: 'agence', prenom: 'Claire', nom: 'Petit', entreprise: 'Agence immobilière Logis du Parc', adresse: '45 cours Fictif, 33000 Bordeaux', categorie: 'professionnel' },
+  { cle: 'girard', prenom: 'Lucas', nom: 'Girard', adresse: '17 rue de la Démonstration, 33150 Cenon', categorie: 'particulier' },
+  { cle: 'robin', prenom: 'Émilie', nom: 'Robin', adresse: '2 allée Imaginaire, 33520 Bruges', categorie: 'particulier' },
+  { cle: 'vidal', prenom: 'Pierre', nom: 'Vidal', adresse: '40 rue Fictive, 33400 Talence', categorie: 'particulier' },
+  { cle: 'chevalier', prenom: 'Laura', nom: 'Chevalier', adresse: '12 rue de la Démo, 33700 Mérignac', categorie: 'particulier' },
 ];
 
 // ─── Pièces ─────────────────────────────────────────────────────────────────
@@ -235,17 +235,17 @@ const FACTURES = [
   { cle: 'fac-vidal', client: 'vidal', devis: 'dev-vidal', type: 'totale', j: -170, echeance: 30, paiements: [[-160, 'tout', 'virement']] },
   { cle: 'fac-garnier-1', client: 'garnier', j: -150, echeance: 0, objet: 'Dépannage : remplacement d’un interrupteur différentiel', lignes: [L('Déplacement et diagnostic', 1, 'forfait', 65, 0), L('Interrupteur différentiel 40 A 30 mA type A', 1, 'u', 125, 58)], paiements: [[-150, 'tout', 'carte']] },
   { cle: 'fac-dubreuil-1', client: 'dubreuil', j: -140, echeance: 30, objet: 'Remplacement des néons du magasin', lignes: [L('Réglette LED 120 cm', 6, 'u', 45, 16), L('Main d’œuvre électricien', 1.5, 'h', 55, 0)], paiements: [[-130, 'tout', 'cheque']] },
-  { cle: 'fac-agence-1', client: 'agence', j: -120, echeance: 30, objet: 'Remise en état électrique avant location (studio, rue Sainte-Catherine)', lignes: [L('Remplacement de prises et interrupteurs', 6, 'u', 45, 9), L('Détecteur de fumée', 2, 'u', 35, 12), L('Main d’œuvre électricien', 2, 'h', 55, 0)], paiements: [[-100, 'tout', 'virement']] },
+  { cle: 'fac-agence-1', client: 'agence', j: -120, echeance: 30, objet: 'Remise en état électrique avant location (studio, rue de l’Exemple)', lignes: [L('Remplacement de prises et interrupteurs', 6, 'u', 45, 9), L('Détecteur de fumée', 2, 'u', 35, 12), L('Main d’œuvre électricien', 2, 'h', 55, 0)], paiements: [[-100, 'tout', 'virement']] },
   { cle: 'fac-chevalier', client: 'chevalier', j: -95, echeance: 30, objet: 'Éclairage de la cuisine et de la terrasse', lignes: [L('Spot LED encastré 6 W, fourni et posé', 10, 'u', 48, 13), L('Ruban LED sous meubles avec alimentation', 1, 'forfait', 260, 85), L('Applique extérieure avec détecteur de présence', 2, 'u', 135, 48), L('Main d’œuvre électricien', 3, 'h', 55, 0)], paiements: [[-80, 'tout', 'virement']] },
   { cle: 'fac-lambert-acompte', client: 'lambert', devis: 'dev-lambert', type: 'acompte', pct: 30, j: -74, echeance: 15, paiements: [[-70, 'tout', 'virement']] },
   { cle: 'fac-dubreuil', client: 'dubreuil', devis: 'dev-dubreuil', type: 'totale', j: -35, echeance: 30 },
   { cle: 'fac-lefevre-acompte', client: 'lefevre', devis: 'dev-lefevre', type: 'acompte', pct: 30, j: -40, echeance: 10, paiements: [[-31, 'tout', 'virement']] },
   { cle: 'fac-lambert-acompte-2', client: 'lambert', devis: 'dev-lambert', type: 'acompte', pct: 40, j: -28, echeance: 14, paiements: [[-20, 1000, 'cheque']] },
-  { cle: 'fac-agence-2', client: 'agence', j: -50, echeance: 30, objet: 'Recherche de panne et remplacement du ballon d’eau chaude (T2, quai des Chartrons)', lignes: [L('Recherche de panne', 1, 'forfait', 90, 0), L('Thermostat et résistance stéatite', 1, 'u', 185, 72), L('Main d’œuvre électricien', 2.5, 'h', 55, 0), L('Déplacement', 1, 'forfait', 35, 0)] },
+  { cle: 'fac-agence-2', client: 'agence', j: -50, echeance: 30, objet: 'Recherche de panne et remplacement du ballon d’eau chaude (T2, quai Imaginaire)', lignes: [L('Recherche de panne', 1, 'forfait', 90, 0), L('Thermostat et résistance stéatite', 1, 'u', 185, 72), L('Main d’œuvre électricien', 2.5, 'h', 55, 0), L('Déplacement', 1, 'forfait', 35, 0)] },
   { cle: 'fac-garnier-2', client: 'garnier', devis: 'dev-garnier', type: 'totale', j: -8, echeance: 0, paiements: [[-8, 'tout', 'carte']] },
   { cle: 'fac-chevalier-2', client: 'chevalier', devis: 'dev-chevalier', type: 'totale', j: -3, echeance: 0, paiements: [[-3, 'tout', 'carte']] },
   { cle: 'fac-moreau', client: 'moreau', devis: 'dev-moreau', type: 'totale', j: -12, echeance: 30 },
-  { cle: 'fac-agence-3', client: 'agence', j: -6, echeance: 30, objet: 'Pose de détecteurs de fumée et remplacement de luminaires (T3, cours Victor-Hugo)', lignes: [L('Détecteur de fumée', 3, 'u', 35, 12), L('Plafonnier LED', 4, 'u', 68, 24), L('Main d’œuvre électricien', 2, 'h', 55, 0)] },
+  { cle: 'fac-agence-3', client: 'agence', j: -6, echeance: 30, objet: 'Pose de détecteurs de fumée et remplacement de luminaires (T3, cours Fictif)', lignes: [L('Détecteur de fumée', 3, 'u', 35, 12), L('Plafonnier LED', 4, 'u', 68, 24), L('Main d’œuvre électricien', 2, 'h', 55, 0)] },
 ];
 
 // ─── Chantiers ──────────────────────────────────────────────────────────────
@@ -455,9 +455,9 @@ export function construireJeu({ aujourdhui = new Date(), boite = 'seguin.hugo06@
   const planning = [
     { cle: 'lefevre-1', title: 'Chantier Lefèvre : tableau et circuits', date: jour(0), time: '08:00', duration: 480, type: 'chantier', chantier: 'lefevre', client: 'lefevre' },
     { cle: 'lefevre-2', title: 'Chantier Lefèvre : appareillage', date: jour(1), time: '08:00', duration: 480, type: 'chantier', chantier: 'lefevre', client: 'lefevre' },
-    { cle: 'chartrons', title: 'Visite technique SCI Les Quais', date: jour(2), time: '14:00', duration: 90, type: 'rdv', chantier: 'chartrons', client: 'chartrons', location: '22 rue Notre-Dame, Bordeaux' },
+    { cle: 'chartrons', title: 'Visite technique SCI Les Quais', date: jour(2), time: '14:00', duration: 90, type: 'rdv', chantier: 'chartrons', client: 'chartrons', location: '22 quai Imaginaire, Bordeaux' },
     { cle: 'lambert', title: 'Extension Lambert : pose de l’appareillage', date: jour(3), time: '08:00', duration: 480, type: 'chantier', chantier: 'lambert', client: 'lambert' },
-    { cle: 'fournier', title: 'Rendez-vous Mme Fournier (domotique)', date: jour(6), time: '10:00', duration: 60, type: 'rdv', chantier: 'fournier', client: 'fournier', location: '31 chemin du Moulin, Gradignan' },
+    { cle: 'fournier', title: 'Rendez-vous Mme Fournier (domotique)', date: jour(6), time: '10:00', duration: 60, type: 'rdv', chantier: 'fournier', client: 'fournier', location: '31 chemin Imaginaire, Gradignan' },
     { cle: 'consuel', title: 'Essais et autocontrôle : extension Lambert', date: jour(9), time: '09:00', duration: 60, type: 'rdv', chantier: 'lambert', client: 'lambert' },
   ].map((e) => ({
     id: id(`planning:${e.cle}`), title: e.title, date: e.date, time: e.time, duration: e.duration, type: e.type,

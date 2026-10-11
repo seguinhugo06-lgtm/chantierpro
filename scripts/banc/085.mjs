@@ -4,13 +4,14 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { PATRON, SALARIE } from './socle.mjs';
+import { PATRON, SALARIE, SOLO } from './socle.mjs';
 
 const MIGRATION = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../supabase/migrations/085_marqueur_donnees_fictives_pour_les_pages_publiques.sql');
 
 const ORGA_PATRON = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 
 export async function verifier({ db, q, commeAnonyme, verifier }) {
+  const essayer = async (fn) => { try { return { ok: true, r: await fn() }; } catch (e) { return { ok: false, e: e.message }; } };
   // Les vérifications de 081 rejouent 081, qui remet l'ancienne page de paiement : on rejoue 085 (elle doit
   // s'appliquer sur l'état d'origine comme sur un état déjà modifié)
   let rejouee = true;
@@ -56,6 +57,21 @@ export async function verifier({ db, q, commeAnonyme, verifier }) {
   verifier(payeDemo.client?.nom === 'Client085' && payeDemo.client?.prenom === 'Léa', `085 : le client est transmis aussi (avant : vide) (${payeDemo.client?.nom})`);
   verifier(payeOrdinaire.entreprise?.nom === 'Patron SARL', `085 : la fiche désignée par la facture, parmi plusieurs (${payeOrdinaire.entreprise?.nom})`);
 
+  // Client d'un autre compte : jamais livré par la facture de quelqu'un d'autre (relecture gardien-securite)
+  const clientPatron = (await q(`INSERT INTO clients (user_id, organization_id, nom, prenom, email) VALUES ($1, $2, 'Secret', 'Client', 'secret@exemple.fr') RETURNING id`, [PATRON, ORGA_PATRON])).rows[0].id;
+  // (le solo n'est pas membre de l'organisation du patron ; l'employé, lui, l'est)
+  await q(`INSERT INTO devis (user_id, organization_id, client_id, numero, type, facture_type, statut, total_ttc, payment_token) VALUES ($1, $2, $3, 'FAC-085', 'facture', 'totale', 'envoye', 300, 'pay-085-vol')`, [SOLO, 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', clientPatron]);
+  const vol = await commeAnonyme(async () => (await q('SELECT get_facture_for_payment($1) AS r', ['pay-085-vol'])).rows[0].r || {});
+  verifier(vol.client && !vol.client.nom && !vol.client.email, `085 : le client d'un autre compte n'est pas livré (${JSON.stringify(vol.client)})`);
+  // Facture sans client, auteur sans fiche : la page répond quand même (champs vides, pas d'erreur)
+  const sansRien = await essayer(async () => {
+    await q(`INSERT INTO auth.users (id, email) VALUES ('99999999-9999-4999-8999-999999999999', 'sans-fiche@exemple.fr') ON CONFLICT DO NOTHING`);
+    await q(`INSERT INTO devis (user_id, numero, type, facture_type, statut, total_ttc, payment_token) VALUES ($1, 'FAC-085', 'facture', 'totale', 'envoye', 200, 'pay-085-nu')`, ['99999999-9999-4999-8999-999999999999']);
+    return commeAnonyme(async () => (await q('SELECT get_facture_for_payment($1) AS r', ['pay-085-nu'])).rows[0].r || {});
+  });
+  verifier(sansRien.ok && sansRien.r.facture?.numero === 'FAC-085' && JSON.stringify(sansRien.r.client) === '{}' && JSON.stringify(sansRien.r.entreprise) === '{}',
+    `085 : facture sans client et auteur sans fiche : réponse sans erreur (${sansRien.e || JSON.stringify({ client: sansRien.r?.client, entreprise: sansRien.r?.entreprise })})`);
+
   // ── Idempotente : rejouée, elle n'ajoute rien ─────────────────────────────
   const avant = (await q(`SELECT pg_get_functiondef('public.get_devis_for_signature(uuid)'::regprocedure) AS a, pg_get_functiondef('public.get_facture_for_payment(text)'::regprocedure) AS b`)).rows[0];
   const fois = (texte, mot) => texte.split(mot).length - 1;
@@ -63,6 +79,7 @@ export async function verifier({ db, q, commeAnonyme, verifier }) {
 
   // Ménage (d'autres vérifications comptent les lignes des comptes)
   await q(`DELETE FROM devis WHERE numero IN ('DEV-085', 'FAC-085')`);
-  await q(`DELETE FROM clients WHERE nom = 'Client085'`);
+  await q(`DELETE FROM auth.users WHERE id = '99999999-9999-4999-8999-999999999999'`);
+  await q(`DELETE FROM clients WHERE nom = 'Client085' OR id = $1`, [clientPatron]);
   await q(`DELETE FROM entreprise WHERE id IN ($1, $2)`, [fiche, fichePatron]);
 }

@@ -127,9 +127,13 @@ describe('compte démo : le SQL ne touche qu’à l’organisation démo', () =>
   });
 
   it('chaque effacement et chaque mise à jour visent l’organisation démo', () => {
-    for (const l of instructions.filter((x) => /^(DELETE|UPDATE)/.test(x))) {
+    for (const l of instructions.filter((x) => /^(DELETE|UPDATE)/.test(x) && !x.startsWith('UPDATE public.organizations '))) {
       expect(l).toContain('organization_id = v_org');
     }
+    // Seul le nom de l'organisation démo change, et seulement si le compte démo en est le propriétaire
+    expect(instructions.filter((x) => x.startsWith('UPDATE public.organizations '))).toEqual([
+      `UPDATE public.organizations SET name = 'Élec Exemple', updated_at = now() WHERE id = v_org AND owner_id = '${COMPTE_DEMO.userId}';`,
+    ]);
     expect(instructions.some((l) => /^DELETE FROM public\.(catalogue|entreprise|subscriptions|organization_members)/.test(l))).toBe(false);
   });
 

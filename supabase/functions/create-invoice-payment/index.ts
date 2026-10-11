@@ -52,20 +52,25 @@ async function loadFacture(paymentToken: string) {
     error?: string;
     facture?: Record<string, unknown>;
     client?: { nom?: string; prenom?: string; email?: string };
-    entreprise?: { nom?: string; email?: string };
+    entreprise?: { nom?: string; email?: string; donnees_fictives?: boolean };
     stripe_enabled?: boolean;
     commission_model?: string;
   };
 }
 
-async function getArtisanStripe(userId: string): Promise<Stripe | null> {
+/** Clé Stripe de test (mode test) : aucun argent réel ne circule. */
+export function estCleDeTest(cle: unknown): boolean {
+  return typeof cle === 'string' && /^(sk|rk)_test_/.test(cle);
+}
+
+async function getArtisanStripe(userId: string): Promise<{ stripe: Stripe; test: boolean } | null> {
   const { data: key, error } = await supabaseAdmin.rpc('get_stripe_secret_for_user', {
     p_user_id: userId,
   });
   if (error) console.error('[create-invoice-payment] Vault key error:', error.message);
   // Pas de fallback sur la clé plateforme : l'argent doit aller à l'artisan.
   if (!key) return null;
-  return new Stripe(key as string, { apiVersion: '2023-10-16' });
+  return { stripe: new Stripe(key as string, { apiVersion: '2023-10-16' }), test: estCleDeTest(key) };
 }
 
 // ────────────────────────────────────────────────────────────────────
@@ -89,8 +94,14 @@ async function handleCreate(req: Request, paymentToken: string, amountCents?: nu
     return json({ error: "Cette facture n'est pas à payer (annulée, en brouillon ou déjà soldée)" }, 400);
   }
 
-  const stripe = await getArtisanStripe(facture.user_id as string);
-  if (!stripe) return json({ error: 'Configuration Stripe incomplète' }, 400);
+  const artisan = await getArtisanStripe(facture.user_id as string);
+  if (!artisan) return json({ error: 'Configuration Stripe incomplète' }, 400);
+  // Compte de démonstration (D-26, migration 085) : une facture fictive ne se paie jamais pour de vrai,
+  // seulement en mode test (carte 4242…), même si une clé réelle est enregistrée sur ce compte
+  if (data.entreprise?.donnees_fictives === true && !artisan.test) {
+    return json({ error: 'Compte de démonstration : seul un paiement de test est possible (clé Stripe de test).' }, 403);
+  }
+  const stripe = artisan.stripe;
 
   // Montant : reste à payer par défaut, ou acompte fourni (borné au reste dû). Le reste dû de la base déduit
   // aussi les avoirs émis et les paiements enregistrés (081) ; sans lui, total − montant_paye.
@@ -175,8 +186,9 @@ async function handleVerify(paymentToken: string, sessionId: string) {
     return json({ status: 'paid', already: true, facture: { numero: facture.numero, statut: 'payee' } });
   }
 
-  const stripe = await getArtisanStripe(facture.user_id as string);
-  if (!stripe) return json({ error: 'Configuration Stripe incomplète' }, 400);
+  const artisan = await getArtisanStripe(facture.user_id as string);
+  if (!artisan) return json({ error: 'Configuration Stripe incomplète' }, 400);
+  const stripe = artisan.stripe;
 
   let session: Stripe.Checkout.Session;
   try {
