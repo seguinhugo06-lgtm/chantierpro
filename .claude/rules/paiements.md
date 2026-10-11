@@ -20,5 +20,5 @@ paths:
 - Offres testeurs : ligne sans `stripe_subscription_id` avec `current_period_end` → « Offert jusqu'au … », sans bouton Stripe ; fin gérée par `appliquerFinOffre` et la tâche nocturne (074).
 - Paiement des factures par le client : **jamais de frais ajoutés** (C. mon. fin. L112-12), montant exact.
 - Sorties vers Stripe : `ouvrirLienExterne(url, { memeOnglet: true })` (navigateur système dans l'app native ; pas de `window.open` après un `await`, bloqué par Safari).
-- Stripe est en mode test : passage en live = décision et action d'Hugo (clé + secret de webhook ensemble).
+- Stripe encaisse en **mode réel** (constaté le 11 oct. 2026 : l'abonnement de contact@mallettico.fr est prélevé sur la carte d'Hugo). Tout abonnement souscrit sur mallettico.fr est un vrai paiement : ne jamais en créer pour essayer (code testeur ou coupon à la place). Changement de clé = action d'Hugo (clé + secret de webhook ensemble).
 - Apps iOS / Android : aucun bouton d'achat avant la décision D-13 (`docs/decisions.md`).
