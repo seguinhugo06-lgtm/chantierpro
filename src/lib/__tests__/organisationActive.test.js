@@ -67,9 +67,10 @@ describe('invitation gardée pendant l’inscription', () => {
     expect(invitationEnAttente()).toBeNull();
   });
 
-  it('lit l’ancien format (le jeton seul)', () => {
+  it('oublie l’ancien format (le jeton seul, sans date)', () => {
     localStorage.setItem('cp_pending_invitation', JETON);
-    expect(invitationEnAttente()?.token).toBe(JETON);
+    expect(invitationEnAttente()).toBeNull();
+    expect(localStorage.getItem('cp_pending_invitation')).toBeNull();
   });
 
   it('refuse un jeton qui n’en est pas un (pas de redirection vers un chemin choisi)', () => {

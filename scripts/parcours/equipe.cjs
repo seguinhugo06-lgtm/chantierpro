@@ -78,7 +78,7 @@ module.exports = [
       await page.goto(`${ORIGIN}/invitation/${JETON}`, { waitUntil: 'networkidle0' });
       await attendre(800);
       // Invitation gardée pendant l'inscription, sur cet appareil
-      await page.evaluate((j) => localStorage.setItem('cp_pending_invitation', j), JETON);
+      await page.evaluate((j) => localStorage.setItem('cp_pending_invitation', JSON.stringify({ token: j, fin: Date.now() + 86400000 })), JETON);
       let t = await texte(page);
       verifier(t.includes('Connecté avec invite@exemple.fr'), 'compte connecté reconnu');
       verifier(t.includes('Changer de compte'), 'on peut changer de compte (téléphone partagé)');
@@ -118,7 +118,7 @@ module.exports = [
       await page.goto(`${ORIGIN}/invitation/${JETON}`, { waitUntil: 'networkidle0' });
       await attendre(800);
       await page.evaluate((j) => {
-        localStorage.setItem('cp_pending_invitation', j);
+        localStorage.setItem('cp_pending_invitation', JSON.stringify({ token: j, fin: Date.now() + 86400000 }));
         localStorage.setItem('cp_entreprise', JSON.stringify({ nom: 'Entreprise du patron', iban: 'FR76 0000' }));
       }, JETON);
       await cliquer(page, 'Ce n’est pas vous ? Changer de compte');
@@ -153,7 +153,7 @@ module.exports = [
       });
       await page.goto(`${ORIGIN}/invitation/${JETON}`, { waitUntil: 'networkidle0' });
       await attendre(800);
-      await page.evaluate((j) => localStorage.setItem('cp_pending_invitation', j), JETON);
+      await page.evaluate((j) => localStorage.setItem('cp_pending_invitation', JSON.stringify({ token: j, fin: Date.now() + 86400000 })), JETON);
       verifier((await texte(page)).includes('Impossible de charger l’invitation'), 'panne dite');
       await Promise.all([
         page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 15000 }).catch(() => {}),

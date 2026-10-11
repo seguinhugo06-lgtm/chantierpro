@@ -35,8 +35,12 @@ export function memoriserInvitation({ token, organisation = '', role = '', expir
 export function invitationEnAttente(maintenant = Date.now()) {
   const brut = lire(CLE_INVITATION);
   if (!brut) return null;
-  // Ancien format : le jeton seul
-  if (estJeton(brut)) return { token: brut, organisation: '', role: '' };
+  // Ancien format (le jeton seul, écrit par la page d'avant le 11 oct. 2026, jamais relu par elle) : sans
+  // date, il ne doit pas détourner indéfiniment les connexions de l'appareil (relecture gardien-securite)
+  if (estJeton(brut)) {
+    effacer(CLE_INVITATION);
+    return null;
+  }
   try {
     const inv = JSON.parse(brut);
     if (!estJeton(inv?.token) || !(maintenant < Number(inv.fin))) {
