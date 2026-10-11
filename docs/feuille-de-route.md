@@ -78,6 +78,7 @@ Conditions : macOS à jour (≥ 15.6 pour Xcode 26 ; le Xcode proposé aujourd'h
 - **E-reporting et transmission par une Plateforme Agréée** — après les échanges avec trois plateformes (fin janvier 2027 au plus tard) ; inclut les données d'encaissement et les factures d'abonnement de Mallettico lui-même.
 - **Prévenance avant la fin d'une offre testeur** — un e-mail un mois avant (D-14) : avant octobre 2027.
 - **Parcours de lancement dans Mallettico** — pas avant 10 artisans actifs, puis `critique-produit`.
+- **Page de paiement d'une facture : durcir avant de la démasquer** — quand le paiement en ligne sort du masque (D-21). Relecture `gardien-securite` du 11 oct. 2026 (FAIBLE) : un lien de paiement n'expire jamais (depuis 067, `payment_token_expires_at` est remis à vide à chaque émission) ; dans une équipe, la fiche entreprise affichée est choisie parmi celles du seul auteur de la facture (ancrer à l'organisation, comme le client depuis 085).
 
 ## Idées non engagées (à passer par `critique-produit` avant tout code)
 
