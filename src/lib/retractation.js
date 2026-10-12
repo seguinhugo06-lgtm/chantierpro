@@ -8,10 +8,11 @@ import { nomImprime } from './identiteEntreprise';
 import { urlPublique } from './urlPublique';
 
 /**
- * Jour de la mise en production de l'avis complet (avis type et formulaire) sur les trois générateurs. Un devis
- * signé sur place avant ce jour portait l'ancien avis, incomplet : son délai est prolongé de douze mois (L221-20).
+ * Lendemain de la mise en production de l'avis complet (avis type et formulaire) sur les trois générateurs, le
+ * 12 oct. 2026 : un devis signé sur place avant ce jour a pu porter l'ancien avis, incomplet ; au doute, son délai
+ * est compté prolongé de douze mois (L221-20).
  */
-export const DATE_AVIS_COMPLET = '2026-10-12';
+export const DATE_AVIS_COMPLET = '2026-10-13';
 
 /**
  * Client consommateur : catégorie « Particulier », ou ni catégorie ni entreprise. Une copropriété (catégorie
@@ -118,12 +119,13 @@ const PERTE_DU_DROIT = 'Vous perdez le droit de rétractation lorsque, à votre 
 
 /**
  * Adresse de la rétractation en ligne à annoncer dans l'avis (phrase (3) de l'annexe R221-3) : le lien de
- * signature, sauf pour un devis signé sur place, où la fonctionnalité n'existe pas (relecture juriste-btp du
- * 12 oct. 2026 : une promesse imprimée doit être tenue).
+ * signature, sauf là où la fonctionnalité n'existe pas — devis signé sur place, ou signé en ligne sans y avoir
+ * droit (avant le 19 juin 2026 : retractation_en_ligne faux) (relecture juriste-btp du 12 oct. 2026 : une
+ * promesse imprimée doit être tenue).
  */
 export function lienRetractationEnLigne(doc, jeton) {
   const t = jeton || doc?.signature_token;
-  if (!t || doc?.signature) return '';
+  if (!t || doc?.signature || (doc?.signature_data && doc?.retractation_en_ligne === false)) return '';
   return urlPublique(`/devis/signer/${t}`);
 }
 

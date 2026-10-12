@@ -111,6 +111,8 @@ describe('textes imprimés (annexes R221-3 et R221-1, mot pour mot)', () => {
     expect(lienRetractationEnLigne({ signature_token: 'abc' })).toMatch(/\/devis\/signer\/abc$/);
     expect(lienRetractationEnLigne({ signature_token: 'abc', signature: 'data:image/png;base64,x' })).toBe('');
     expect(lienRetractationEnLigne({ signature_token: 'abc', signature_data: 'data:image/png;base64,x' })).toMatch(/abc$/);
+    expect(lienRetractationEnLigne({ signature_token: 'abc', signature_data: 'x', retractation_en_ligne: true })).toMatch(/abc$/);
+    expect(lienRetractationEnLigne({ signature_token: 'abc', signature_data: 'x', retractation_en_ligne: false })).toBe('');
     expect(lienRetractationEnLigne({}, 'jeton')).toMatch(/\/devis\/signer\/jeton$/);
     expect(lienRetractationEnLigne({})).toBe('');
   });
@@ -118,7 +120,8 @@ describe('textes imprimés (annexes R221-3 et R221-1, mot pour mot)', () => {
   it('délai vu par l’artisan : prolongé sans l’avis complet (en ligne : selon la base ; sur place : avant la mise en production)', () => {
     expect(delaiRetractationDevis({ signature_data: 'x', avis_retractation: true }, '2026-10-12T09:00:00Z')).toEqual({ fin: '2026-10-26', prolonge: false });
     expect(delaiRetractationDevis({ signature_data: 'x', avis_retractation: false }, '2026-10-12T09:00:00Z')).toEqual({ fin: '2027-10-26', prolonge: true });
-    expect(delaiRetractationDevis({ signature: 'x' }, '2026-10-12T09:00:00Z').prolonge).toBe(false);
+    expect(delaiRetractationDevis({ signature: 'x' }, '2026-10-12T09:00:00Z').prolonge).toBe(true);
+    expect(delaiRetractationDevis({ signature: 'x' }, '2026-10-13T09:00:00Z').prolonge).toBe(false);
     expect(delaiRetractationDevis({ signature: 'x' }, '2026-10-01T09:00:00Z')).toEqual({ fin: '2027-10-15', prolonge: true });
     expect(delaiRetractationDevis({ signature: 'x' }, null)).toBeNull();
   });
