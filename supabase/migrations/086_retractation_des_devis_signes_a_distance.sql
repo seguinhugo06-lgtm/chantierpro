@@ -21,8 +21,15 @@
 --     devis.avis_retractation : la page de signature a montré l'avis et le formulaire complets avant la signature ;
 --     devis.retractation_* : la déclaration de rétractation reçue en ligne (date et heure, nom, adresse de
 --     l'accusé, IP) et l'envoi de l'accusé de réception ;
---   - ces colonnes ne se réécrivent pas après coup depuis l'app (déclencheur) : ni la rétractation d'un client,
---     ni sa demande expresse une fois le devis signé ;
+--   - devis.retractation_en_ligne : posé par sign_devis, vrai si le client était un particulier au moment de la
+--     signature en ligne (figé : changer la catégorie du client après coup ne ferme pas la rétractation) ; vrai
+--     aussi pour les devis déjà signés en ligne par un particulier depuis le 19 juin 2026 (avant, l'ancien droit
+--     s'applique et la fonctionnalité n'est pas due : décision attendue d'Hugo, Q-retractation-anterieurs) ;
+--   - l'app (rôles anon et authenticated) ne peut ni créer un devis « déjà signé en ligne » ou « rétracté », ni
+--     modifier la signature en ligne, la rétractation, la demande expresse ou l'option « réparation urgente » d'un
+--     devis signé, ni supprimer un devis dont le client s'est rétracté (déclencheur ; relecture gardien-securite
+--     du 12 oct. 2026 : sinon un compte fabriquait un devis signé pour envoyer des e-mails, ou effaçait une
+--     rétractation) ;
 --   - fin_delai_retractation(date, informé) : dernier jour du délai (L221-18, L221-19 : jour de la conclusion non
 --     compté, report au premier jour ouvrable après un samedi, un dimanche ou un jour férié ; douze mois de plus
 --     sans l'avis complet, L221-20) ;
@@ -38,17 +45,20 @@
 --   FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
 --   WHERE n.nspname = 'public' AND p.proname IN ('sign_devis', 'get_devis_for_signature', 'retracter_devis', 'fin_delai_retractation') ORDER BY 1;
 --   → quatre lignes ; visiteur t pour les trois fonctions de la page publique ; search_path=public, pg_temp ;
---     une seule sign_devis (six paramètres).
+--     une seule sign_devis (sept paramètres).
 --   SELECT public.fin_delai_retractation('2026-10-02'), public.fin_delai_retractation('2026-12-11'),
 --          public.fin_delai_retractation('2026-10-02', false);
 --   → 2026-10-16 (vendredi), 2026-12-28 (le 25 est férié, puis samedi et dimanche), 2027-10-18 (douze mois de plus)
 --   SELECT count(*) FROM public.devis WHERE retractation_le IS NOT NULL;  → 0
+--   SELECT count(*) FROM public.devis WHERE retractation_en_ligne;  → les devis signés en ligne par un particulier
+--     depuis le 19 juin 2026 (1 hors compte démo le 12 oct. 2026)
 -- ============================================================
 
 -- ─── 1. Colonnes ────────────────────────────────────────────────────────────
 ALTER TABLE public.devis ADD COLUMN IF NOT EXISTS execution_anticipee_le TIMESTAMPTZ;
 ALTER TABLE public.devis ADD COLUMN IF NOT EXISTS travaux_urgents BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE public.devis ADD COLUMN IF NOT EXISTS avis_retractation BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE public.devis ADD COLUMN IF NOT EXISTS retractation_en_ligne BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE public.devis ADD COLUMN IF NOT EXISTS retractation_le TIMESTAMPTZ;
 ALTER TABLE public.devis ADD COLUMN IF NOT EXISTS retractation_nom TEXT;
 ALTER TABLE public.devis ADD COLUMN IF NOT EXISTS retractation_email TEXT;
@@ -56,25 +66,50 @@ ALTER TABLE public.devis ADD COLUMN IF NOT EXISTS retractation_ip TEXT;
 ALTER TABLE public.devis ADD COLUMN IF NOT EXISTS retractation_accuse_le TIMESTAMPTZ;
 
 -- ─── 2. Ce que l'app ne peut pas réécrire ───────────────────────────────────
--- Un compte connecté (rôle authenticated, l'app) ne touche ni à une rétractation reçue, ni à la demande expresse
--- d'un devis déjà signé (il la pose seulement au moment où il enregistre la signature sur place), ni à l'option
--- « réparation urgente » après la signature (elle ferait disparaître la rétractation en ligne du client). Les fonctions
--- de la page publique (SECURITY DEFINER) et les fonctions serveur (service_role) ne sont pas concernées.
+-- Rôles anon et authenticated (l'app, la clé publique). Les fonctions de la page publique (SECURITY DEFINER),
+-- la suppression de compte (072) et les fonctions serveur (service_role) ne sont pas concernées.
+--   - création : pas de devis déjà signé en ligne, rétracté, ou ouvert à la rétractation en ligne ;
+--   - toujours : la rétractation (retractation_*), l'avis montré et l'éligibilité ne bougent pas ;
+--   - devis signé en ligne : sa signature (tracé, date, signataire, IP) non plus ; devis signé (en ligne ou sur
+--     place) : ni la demande expresse, ni l'option « réparation urgente » (elle se pose à la signature sur place) ;
+--   - suppression : pas d'un devis dont le client s'est rétracté (la preuve de sa rétractation).
 CREATE OR REPLACE FUNCTION public.garder_retractation()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SET search_path = public, pg_temp
 AS $$
 BEGIN
-  IF current_user NOT IN ('authenticated', 'anon') THEN RETURN NEW; END IF;
+  IF current_user NOT IN ('authenticated', 'anon') THEN
+    RETURN CASE WHEN TG_OP = 'DELETE' THEN OLD ELSE NEW END;
+  END IF;
+  IF TG_OP = 'DELETE' THEN
+    IF OLD.retractation_le IS NOT NULL THEN
+      RAISE EXCEPTION 'Un devis dont le client s''est rétracté ne se supprime pas : c''est la preuve de sa rétractation';
+    END IF;
+    RETURN OLD;
+  END IF;
+  IF TG_OP = 'INSERT' THEN
+    IF NEW.signature_data IS NOT NULL OR NEW.retractation_le IS NOT NULL OR NEW.retractation_nom IS NOT NULL
+       OR NEW.retractation_email IS NOT NULL OR NEW.retractation_ip IS NOT NULL OR NEW.retractation_accuse_le IS NOT NULL
+       OR NEW.avis_retractation OR NEW.retractation_en_ligne THEN
+      RAISE EXCEPTION 'Une signature en ligne ou une rétractation ne s''écrit que par la page de signature';
+    END IF;
+    RETURN NEW;
+  END IF;
   IF NEW.retractation_le IS DISTINCT FROM OLD.retractation_le
      OR NEW.retractation_nom IS DISTINCT FROM OLD.retractation_nom
      OR NEW.retractation_email IS DISTINCT FROM OLD.retractation_email
      OR NEW.retractation_ip IS DISTINCT FROM OLD.retractation_ip
      OR NEW.retractation_accuse_le IS DISTINCT FROM OLD.retractation_accuse_le
-     OR NEW.avis_retractation IS DISTINCT FROM OLD.avis_retractation THEN
+     OR NEW.avis_retractation IS DISTINCT FROM OLD.avis_retractation
+     OR NEW.retractation_en_ligne IS DISTINCT FROM OLD.retractation_en_ligne THEN
     RAISE EXCEPTION 'La rétractation du client ne se modifie pas'
       USING HINT = 'Elle est enregistrée par la page de signature (retracter_devis).';
+  END IF;
+  IF NEW.signature_data IS DISTINCT FROM OLD.signature_data
+     OR (OLD.signature_data IS NOT NULL AND (NEW.signature_date IS DISTINCT FROM OLD.signature_date
+         OR NEW.signataire_nom IS DISTINCT FROM OLD.signataire_nom OR NEW.signature_ip IS DISTINCT FROM OLD.signature_ip)) THEN
+    RAISE EXCEPTION 'La signature en ligne du client ne se modifie pas';
   END IF;
   IF (NEW.execution_anticipee_le IS DISTINCT FROM OLD.execution_anticipee_le
       OR NEW.travaux_urgents IS DISTINCT FROM OLD.travaux_urgents)
@@ -87,10 +122,21 @@ $$;
 
 DROP TRIGGER IF EXISTS trg_garder_retractation ON public.devis;
 CREATE TRIGGER trg_garder_retractation
-  BEFORE UPDATE OF retractation_le, retractation_nom, retractation_email, retractation_ip, retractation_accuse_le,
-                   avis_retractation, execution_anticipee_le, travaux_urgents
-  ON public.devis
+  BEFORE INSERT OR UPDATE OR DELETE ON public.devis
   FOR EACH ROW EXECUTE FUNCTION public.garder_retractation();
+
+-- Reprise : devis déjà signés en ligne par un particulier depuis le 19 juin 2026 (entrée en vigueur de L221-21,
+-- dernier alinéa, et de D221-5 ; les contrats antérieurs restent sous l'ancien droit). Sans l'avis complet, leur
+-- délai est prolongé de douze mois (avis_retractation reste faux). Une seule fois (rejouable sans effet).
+UPDATE public.devis dv SET retractation_en_ligne = true
+WHERE dv.signature_data IS NOT NULL AND dv.signature_date >= TIMESTAMPTZ '2026-06-19 00:00:00 Europe/Paris'
+  AND dv.retractation_en_ligne = false
+  AND EXISTS (
+    SELECT 1 FROM public.clients x
+    WHERE x.id = dv.client_id
+      AND (x.user_id = dv.user_id OR (dv.organization_id IS NOT NULL AND x.organization_id = dv.organization_id))
+      AND (lower(btrim(COALESCE(x.categorie, ''))) = 'particulier'
+           OR (btrim(COALESCE(x.categorie, '')) = '' AND btrim(COALESCE(x.entreprise, '')) = '')));
 
 -- ─── 3. Fin du délai de rétractation ────────────────────────────────────────
 -- L221-18 : quatorze jours à compter de la conclusion du contrat (prestation de services). L221-19 : le jour de
@@ -161,7 +207,6 @@ DECLARE
   v_org UUID;
   v_fin DATE;
   v_fin_retractation DATE;
-  v_particulier BOOLEAN;
 BEGIN
   IF p_token IS NULL THEN RETURN NULL; END IF;
   SELECT * INTO d FROM public.devis WHERE signature_token = p_token;
@@ -193,18 +238,17 @@ BEGIN
   -- Déjà signé, sur place (signature, statut « accepte ») ou à distance (signature_data, « signe »), ou facturé
   IF d.signature_data IS NOT NULL OR d.signature IS NOT NULL
      OR d.statut IN ('accepte', 'signe', 'acompte_facture', 'facture') THEN
-    -- Particulier : même règle que estClientParticulier (src/lib/retractation.js)
-    v_particulier := c.id IS NOT NULL AND (lower(btrim(COALESCE(c.categorie, ''))) = 'particulier'
-      OR (btrim(COALESCE(c.categorie, '')) = '' AND btrim(COALESCE(c.entreprise, '')) = ''));
-    -- Rétractation en ligne (L221-21, D221-5) : devis signé PAR LE LIEN, par un particulier
-    IF d.signature_data IS NULL OR d.signature_date IS NULL OR NOT v_particulier THEN
+    -- Rétractation en ligne (L221-21, D221-5) : devis signé PAR LE LIEN par un particulier depuis le 19 juin 2026
+    -- (retractation_en_ligne, figé à la signature) ; rien d'autre une fois le délai fini sans rétractation
+    v_fin_retractation := public.fin_delai_retractation((d.signature_date AT TIME ZONE 'Europe/Paris')::date, d.avis_retractation);
+    IF NOT d.retractation_en_ligne OR d.signature_data IS NULL OR d.signature_date IS NULL
+       OR (d.retractation_le IS NULL AND (now() AT TIME ZONE 'Europe/Paris')::date > v_fin_retractation) THEN
       RETURN json_build_object('devis', json_build_object('already_signed', true));
     END IF;
-    v_fin_retractation := public.fin_delai_retractation((d.signature_date AT TIME ZONE 'Europe/Paris')::date, d.avis_retractation);
     RETURN json_build_object(
       'devis', json_build_object(
-        'already_signed', true, 'numero', d.numero, 'date', d.date, 'objet', d.objet,
-        'total_ttc', d.total_ttc, 'signature_date', d.signature_date, 'signataire_nom', d.signataire_nom,
+        'already_signed', true, 'numero', d.numero, 'date', d.date, 'travaux_urgents', d.travaux_urgents,
+        'signature_date', d.signature_date, 'signataire_nom', d.signataire_nom,
         'retractation', json_build_object(
           'ouverte', d.retractation_le IS NULL AND (now() AT TIME ZONE 'Europe/Paris')::date <= v_fin_retractation,
           'fin', v_fin_retractation, 'le', d.retractation_le, 'nom', d.retractation_nom,
@@ -212,7 +256,8 @@ BEGIN
       ),
       'client', json_build_object('nom', c.nom, 'prenom', c.prenom, 'email', c.email),
       'entreprise', jsonb_build_object('nom', e.nom, 'couleur', COALESCE(e.couleur_principale, e.couleur))
-        || jsonb_strip_nulls(jsonb_build_object('nomEntrepreneur', r ->> 'nomEntrepreneur'))
+        || jsonb_strip_nulls(jsonb_build_object('nomEntrepreneur', r ->> 'nomEntrepreneur',
+                                                'donneesFictives', CASE WHEN r ->> 'donneesFictives' = 'true' THEN true END))
     );
   END IF;
   IF d.signature_expires_at IS NULL OR d.signature_expires_at <= now() THEN RETURN NULL; END IF;
@@ -299,6 +344,9 @@ DECLARE
   v_nom TEXT := btrim(COALESCE(p_signataire_nom, ''));
   v_ip TEXT;
   v_entetes JSON;
+  v_auteur UUID;
+  v_organisation UUID;
+  v_particulier BOOLEAN;
 BEGIN
   -- IP du signataire relevée par le serveur (la page ne peut pas la connaître) : d'abord l'en-tête posé par la
   -- passerelle (le client peut écrire lui-même le début de x-forwarded-for), à défaut celle transmise
@@ -319,7 +367,7 @@ BEGIN
     RETURN json_build_object('success', false, 'error', 'Indiquez votre nom (200 caractères au plus).');
   END IF;
 
-  SELECT dv.id, dv.client_id INTO v_devis_id, v_client_id
+  SELECT dv.id, dv.client_id, dv.user_id, dv.organization_id INTO v_devis_id, v_client_id, v_auteur, v_organisation
   FROM public.devis dv
   WHERE dv.signature_token = p_token
     AND dv.signature_expires_at > now()
@@ -334,6 +382,19 @@ BEGIN
     RETURN json_build_object('success', false, 'error', 'Ce lien ne permet plus de signer : devis déjà signé, plus valable, ou lien expiré. Contactez votre artisan.');
   END IF;
 
+  -- Client particulier au moment de la signature (même règle que estClientParticulier, src/lib/retractation.js ;
+  -- même ancrage du client que get_devis_for_signature) : ouvre la rétractation en ligne, figée ensuite
+  SELECT EXISTS (
+    SELECT 1 FROM public.clients x
+    WHERE x.id = v_client_id
+      AND (x.user_id = v_auteur
+           OR (v_organisation IS NOT NULL AND x.organization_id = v_organisation
+               AND EXISTS (SELECT 1 FROM public.organization_members m WHERE m.organization_id = v_organisation AND m.user_id = v_auteur)
+               AND EXISTS (SELECT 1 FROM public.organization_members m2 WHERE m2.organization_id = v_organisation AND m2.user_id = x.user_id)))
+      AND (lower(btrim(COALESCE(x.categorie, ''))) = 'particulier'
+           OR (btrim(COALESCE(x.categorie, '')) = '' AND btrim(COALESCE(x.entreprise, '')) = ''))
+  ) INTO v_particulier;
+
   UPDATE public.devis SET
     signature_data = p_signature_data,
     signature_date = now(),
@@ -345,6 +406,7 @@ BEGIN
     execution_anticipee_le = CASE WHEN p_execution_anticipee IS TRUE THEN now() END,
     -- La page a montré l'avis d'information et le formulaire type (L221-5, 7°) avant la signature
     avis_retractation = p_avis_retractation IS TRUE,
+    retractation_en_ligne = v_particulier,
     statut = 'signe',
     updated_at = now()
   WHERE id = v_devis_id;
@@ -359,8 +421,8 @@ $$;
 -- ─── 6. Renoncer au contrat (page publique, D221-5) ─────────────────────────
 -- Déclaration de rétractation en ligne : nom et prénom, contrat (le lien de signature l'identifie), adresse
 -- électronique où recevoir l'accusé de réception. Enregistrée une fois, pendant le délai (prolongé sans l'avis
--- complet), pour un devis signé en ligne par un particulier, réparation urgente comprise (le reste des travaux
--- garde le droit). Le devis passe à « annule » s'il n'est pas encore facturé ; sinon il garde son
+-- complet), pour un devis signé en ligne par un particulier depuis le 19 juin 2026 (retractation_en_ligne),
+-- réparation urgente comprise (le reste des travaux garde le droit). Le devis passe à « annule » s'il n'est pas encore facturé ; sinon il garde son
 -- statut et l'artisan voit la rétractation (remboursement sous 14 jours, avoir : L221-24).
 CREATE OR REPLACE FUNCTION public.retracter_devis(
   p_token UUID, p_nom TEXT, p_email TEXT, p_user_agent TEXT DEFAULT NULL
@@ -372,8 +434,6 @@ SET search_path = public, pg_temp
 AS $$
 DECLARE
   d public.devis%ROWTYPE;
-  c public.clients%ROWTYPE;
-  v_org UUID;
   v_nom TEXT := btrim(COALESCE(p_nom, ''));
   v_email TEXT := lower(btrim(COALESCE(p_email, '')));
   v_ip TEXT;
@@ -384,10 +444,14 @@ BEGIN
   IF p_token IS NULL THEN
     RETURN json_build_object('success', false, 'error', 'Lien invalide.');
   END IF;
-  IF length(v_nom) = 0 OR length(v_nom) > 200 THEN
+  -- Un nom, pas un lien ni une adresse (il est repris dans l'accusé envoyé depuis noreply@mallettico.fr)
+  IF length(v_nom) = 0 OR length(v_nom) > 200 OR v_nom ~* '(://|www\.|@)' THEN
     RETURN json_build_object('success', false, 'error', 'Indiquez votre nom et votre prénom (200 caractères au plus).');
   END IF;
-  IF length(v_email) > 254 OR v_email !~ '^[a-z0-9._+''-]+@[a-z0-9.-]+\.[a-z]{2,}$' THEN
+  -- Même règle que les fonctions d'envoi (supabase/functions/_shared/adresses.ts, RE_EMAIL) : une adresse acceptée
+  -- ici reçoit bien son accusé
+  IF length(v_email) > 254
+     OR v_email !~* '^[A-Za-z0-9.!#$&''+/=?^_`{|}~-]+@[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+$' THEN
     RETURN json_build_object('success', false, 'error', 'Indiquez une adresse e-mail valide pour recevoir l''accusé de réception.');
   END IF;
 
@@ -400,24 +464,12 @@ BEGIN
   v_ip := left(v_ip, 100);
 
   SELECT * INTO d FROM public.devis WHERE signature_token = p_token FOR UPDATE;
-  IF d.id IS NULL OR d.signature_data IS NULL OR d.signature_date IS NULL THEN
+  IF d.id IS NULL OR d.signature_data IS NULL OR d.signature_date IS NULL OR NOT d.retractation_en_ligne THEN
     RETURN json_build_object('success', false, 'error', 'Ce lien ne permet pas de renoncer en ligne à ce contrat. Contactez l''entreprise.');
   END IF;
   -- Déjà reçue : on ne la remplace pas (la première déclaration fait foi)
   IF d.retractation_le IS NOT NULL THEN
     RETURN json_build_object('success', true, 'deja', true, 'retractation_le', d.retractation_le);
-  END IF;
-
-  -- Particulier seulement (même ancrage du client que get_devis_for_signature)
-  SELECT m.organization_id INTO v_org FROM public.organization_members m
-  WHERE m.organization_id = d.organization_id AND m.user_id = d.user_id LIMIT 1;
-  SELECT * INTO c FROM public.clients x
-  WHERE x.id = d.client_id AND (x.user_id = d.user_id
-     OR (v_org IS NOT NULL AND x.organization_id = v_org
-         AND EXISTS (SELECT 1 FROM public.organization_members m3 WHERE m3.organization_id = v_org AND m3.user_id = x.user_id)));
-  IF c.id IS NULL OR NOT (lower(btrim(COALESCE(c.categorie, ''))) = 'particulier'
-       OR (btrim(COALESCE(c.categorie, '')) = '' AND btrim(COALESCE(c.entreprise, '')) = '')) THEN
-    RETURN json_build_object('success', false, 'error', 'Ce lien ne permet pas de renoncer en ligne à ce contrat. Contactez l''entreprise.');
   END IF;
 
   v_fin := public.fin_delai_retractation((d.signature_date AT TIME ZONE 'Europe/Paris')::date, d.avis_retractation);

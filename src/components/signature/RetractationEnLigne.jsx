@@ -103,7 +103,8 @@ export default function RetractationEnLigne({ token, devis, client, entreprise, 
     return (
       <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-left" data-ui="RetractationEnLigne">
         <p className="text-sm text-slate-700">
-          Vous pouvez vous rétracter de ce contrat sans donner de motif jusqu'au <strong>{jourLong(retractation.fin)}</strong> inclus.
+          Vous pouvez vous rétracter de ce contrat sans donner de motif jusqu'au <strong>{jourLong(retractation.fin)}</strong> inclus
+          {devis?.travaux_urgents ? ', sauf pour les pièces et travaux strictement nécessaires au dépannage urgent (art. L221-28, 8° du Code de la consommation)' : ''}.
         </p>
         <button type="button" onClick={() => setOuvert(true)}
           className="mt-3 w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl border-2 border-slate-300 bg-white text-slate-900 font-semibold min-h-[44px] hover:border-slate-400">

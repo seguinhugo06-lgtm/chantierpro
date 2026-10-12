@@ -81,9 +81,14 @@ export async function verifier({ db, q, commeAnonyme, verifier }) {
     `085 : facture sans client et auteur sans fiche : réponse sans erreur (${sansRien.e || JSON.stringify({ client: sansRien.r?.client, entreprise: sansRien.r?.entreprise })})`);
 
   // ── Idempotente : rejouée, elle n'ajoute rien ─────────────────────────────
-  const avant = (await q(`SELECT pg_get_functiondef('public.get_devis_for_signature(uuid)'::regprocedure) AS a, pg_get_functiondef('public.get_facture_for_payment(text)'::regprocedure) AS b`)).rows[0];
+  // (086 réécrit ensuite get_devis_for_signature : on constate que rejouer 085 ne la change plus)
+  const defs = async () => (await q(`SELECT pg_get_functiondef('public.get_devis_for_signature(uuid)'::regprocedure) AS a, pg_get_functiondef('public.get_facture_for_payment(text)'::regprocedure) AS b`)).rows[0];
+  const avant = await defs();
+  await db.exec(fs.readFileSync(MIGRATION, 'utf8'));
+  const apres = await defs();
   const fois = (texte, mot) => texte.split(mot).length - 1;
-  verifier(fois(avant.a, 'donneesFictives') === 2 && fois(avant.b, 'donnees_fictives') === 1, '085 : une seule clé ajoutée par fonction');
+  verifier(apres.a === avant.a && apres.b === avant.b && fois(avant.b, 'donnees_fictives') === 1 && avant.a.includes("'donneesFictives', CASE WHEN"),
+    '085 : rejouée, elle ne change plus rien ; une seule clé ajoutée à la page de paiement');
 
   // ── Droits et search_path inchangés (CREATE OR REPLACE garde les droits ; pg_get_functiondef réécrit le reste)
   const droits = (await q(`SELECT p.proname, p.prosecdef, p.proconfig::text AS config, p.proacl::text AS acl,

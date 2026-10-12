@@ -1,11 +1,16 @@
 // Vérifications de la migration 086 : rétractation des devis signés à distance (L221-21, L221-25, D221-5).
 // Effets constatés comme le client (la page publique, rôle anon) et comme l'artisan (l'app, rôle authenticated).
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { PATRON, SOLO } from './socle.mjs';
+
+const MIGRATION = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../supabase/migrations/086_retractation_des_devis_signes_a_distance.sql');
 
 const TRACE = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
 const ORGA_SOLO = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 
-export async function verifier({ q, en, commeAnonyme, verifier }) {
+export async function verifier({ db, q, en, commeAnonyme, verifier }) {
   const essayer = async (fn) => {
     try { return { ok: true, r: await fn() }; } catch (e) { return { ok: false, e: e.message }; }
   };
@@ -49,8 +54,8 @@ export async function verifier({ q, en, commeAnonyme, verifier }) {
   const jetonAvec = await devisEnvoye(particulier);
   const signe = (await q('SELECT sign_devis($1, $2, $3, NULL, $4, true, true) AS r', [jetonAvec, TRACE, 'Léa Client086', 'test'])).rows[0].r;
   const apresAvec = await ligne(jetonAvec);
-  verifier(signe.success && apresAvec.execution_anticipee_le !== null && apresAvec.statut === 'signe' && apresAvec.avis_retractation === true,
-    `086 : la demande expresse cochée à la signature est enregistrée avec sa date, et l'avis montré (${JSON.stringify(signe)})`);
+  verifier(signe.success && apresAvec.execution_anticipee_le !== null && apresAvec.statut === 'signe' && apresAvec.avis_retractation === true && apresAvec.retractation_en_ligne === true,
+    `086 : la demande expresse cochée à la signature est enregistrée avec sa date, l'avis montré, la rétractation en ligne ouverte (${JSON.stringify(signe)})`);
   const jetonSans = await devisEnvoye(particulier);
   // Une page encore en cache appelle sign_devis par noms, sans le nouveau paramètre
   const ancienne = await essayer(() => commeAnonyme(() => q(
@@ -69,8 +74,9 @@ export async function verifier({ q, en, commeAnonyme, verifier }) {
   const finAttendue = await fin(aujourdhui);
   verifier(lu?.devis?.already_signed && lu.devis.retractation?.ouverte === true && lu.devis.retractation.fin === finAttendue,
     `086 : signé en ligne par un particulier → « renoncer au contrat » ouvert jusqu'au ${lu?.devis?.retractation?.fin} (${finAttendue})`);
-  verifier(lu.devis.numero === 'DEV-086' && lu.client?.email === 'lea@exemple.fr' && lu.entreprise?.nom === 'Élec 086' && !('iban' in (lu.entreprise || {})) && !('lignes' in lu.devis),
-    '086 : la page reçoit de quoi préremplir la déclaration, et rien d\'autre (ni lignes ni IBAN)');
+  verifier(lu.devis.numero === 'DEV-086' && lu.client?.email === 'lea@exemple.fr' && lu.entreprise?.nom === 'Élec 086' && !('iban' in (lu.entreprise || {}))
+    && !('lignes' in lu.devis) && !('total_ttc' in lu.devis) && !('objet' in lu.devis),
+    '086 : la page reçoit de quoi préremplir la déclaration, et rien d\'autre (ni lignes, ni montant, ni IBAN)');
   // Une ancienne page (en cache) n'envoie pas l'avis : délai prolongé de douze mois, et le bouton reste ouvert
   const jetonAncien = await devisEnvoye(particulier);
   await q('SELECT sign_devis($1, $2, $3) AS r', [jetonAncien, TRACE, 'Léa Client086']);
@@ -123,7 +129,8 @@ export async function verifier({ q, en, commeAnonyme, verifier }) {
     '086 : le lien de signature a expiré (fin de validité de l\'offre) → la rétractation reste ouverte jusqu\'à la fin de son délai');
   const tard = await retracter(jetonVieux, 'Léa Client086', 'lea@exemple.fr');
   verifier(!tard.success && tard.expire && (await ligne(jetonVieux)).statut === 'signe', `086 : après le délai → refus (${tard.error})`);
-  verifier((await page(jetonVieux)).devis.retractation.ouverte === false, '086 : après le délai, la page ne propose plus de renoncer');
+  const luVieux = await page(jetonVieux);
+  verifier(luVieux.devis.already_signed && !luVieux.devis.retractation && !luVieux.devis.numero, '086 : après le délai, la page ne dit plus que « déjà signé »');
 
   // Signé sur place : pas de fonctionnalité en ligne
   const surPlace = (await q(
@@ -131,6 +138,34 @@ export async function verifier({ q, en, commeAnonyme, verifier }) {
      VALUES ($1, $2, $3, 'DEV-086', 'devis', 'accepte', now()::date, $4, gen_random_uuid(), now() + interval '5 days') RETURNING signature_token`,
     [SOLO, ORGA_SOLO, particulier, TRACE])).rows[0].signature_token;
   verifier(!(await retracter(surPlace, 'Léa Client086', 'lea@exemple.fr')).success, '086 : devis signé sur place → pas de rétractation par le lien');
+
+  // ── Nom et adresse de la déclaration (relecture gardien-securite) ──
+  const jetonNom = await devisEnvoye(particulier);
+  await q('SELECT sign_devis($1, $2, $3, NULL, NULL, false, true) AS r', [jetonNom, TRACE, 'Léa Client086']);
+  verifier(!(await retracter(jetonNom, 'Remboursement immédiat https://hamecon.fr', 'lea@exemple.fr')).success, '086 : un nom qui contient un lien est refusé');
+  verifier(!(await retracter(jetonNom, 'Léa contact@hamecon.fr', 'lea@exemple.fr')).success, '086 : un nom qui contient une adresse est refusé');
+  verifier(!(await retracter(jetonNom, 'Léa Client086', 'a@-x..fr')).success, '086 : une adresse refusée par les fonctions d\'envoi est refusée ici aussi');
+  verifier((await retracter(jetonNom, 'Léa Client086', 'lea+devis@exemple.fr')).success, '086 : une adresse « + » valide est acceptée');
+
+  // ── Éligibilité figée à la signature : changer la catégorie du client ensuite ne ferme rien ──
+  const jetonFige = await devisEnvoye(particulier);
+  await q('SELECT sign_devis($1, $2, $3, NULL, NULL, false, true) AS r', [jetonFige, TRACE, 'Léa Client086']);
+  await en(SOLO, () => q(`UPDATE clients SET categorie = 'professionnel', entreprise = 'SARL Léa' WHERE id = $1`, [particulier]));
+  verifier((await page(jetonFige))?.devis?.retractation?.ouverte === true, '086 : le client passé ensuite en « professionnel » garde sa rétractation en ligne');
+  await en(SOLO, () => q(`UPDATE clients SET categorie = 'Particulier', entreprise = NULL WHERE id = $1`, [particulier]));
+
+  // ── Reprise : devis signés en ligne avant cette migration ──
+  const ancienDevis = async (jour) => (await q(
+    `INSERT INTO devis (user_id, organization_id, client_id, numero, type, statut, date, signature_data, signature_date, signature_token)
+     VALUES ($1, $2, $3, 'DEV-086', 'devis', 'signe', $4::date, $5, ($4::date + time '10:00') AT TIME ZONE 'Europe/Paris', gen_random_uuid()) RETURNING id`,
+    [SOLO, ORGA_SOLO, particulier, jour, TRACE])).rows[0].id;
+  const juin = await ancienDevis('2026-06-01');
+  const juillet = await ancienDevis('2026-07-01');
+  await db.exec(fs.readFileSync(MIGRATION, 'utf8'));
+  const reprise = Object.fromEntries((await q('SELECT id, retractation_en_ligne FROM devis WHERE id IN ($1, $2)', [juin, juillet])).rows.map((r) => [r.id, r.retractation_en_ligne]));
+  verifier(reprise[juin] === false && reprise[juillet] === true, `086 : reprise — signé le 1er juin (ancien droit) : non ; le 1er juillet : oui (${JSON.stringify(Object.values(reprise))})`);
+  const finJuillet = await fin('2026-07-01', false);
+  verifier(finJuillet === '2027-07-15', `086 : signé le 1er juillet sans l'avis complet → ouvert jusqu'au ${finJuillet} (L221-20)`);
 
   // ── L'app ne réécrit ni la rétractation ni la demande expresse d'un devis signé ──
   const idRetracte = apres.id;
@@ -148,6 +183,18 @@ export async function verifier({ q, en, commeAnonyme, verifier }) {
   verifier(surPlaceAvec.ok && surPlaceAvec.r.rows[0]?.execution_anticipee_le, `086 : signature sur place avec la demande expresse, enregistrées ensemble (${surPlaceAvec.e || 'ok'})`);
   const autre = await essayer(() => en(PATRON, () => q('UPDATE devis SET retractation_le = now() WHERE id = $1 RETURNING id', [nouveau])));
   verifier(!autre.ok || autre.r.rows.length === 0, '086 : un autre compte ne touche pas aux devis du solo');
+  // Contournements relevés par gardien-securite (12 oct. 2026), tous refusés
+  const signeEnLigne = (await ligne(jetonFige)).id;
+  const tente = async (sql, params) => (await essayer(() => en(SOLO, () => q(sql, params)))).ok;
+  verifier(!(await tente(`UPDATE devis SET signature_date = now() - interval '40 days' WHERE id = $1`, [signeEnLigne])), '086 : l\'artisan ne recule pas la date de signature en ligne');
+  verifier(!(await tente(`UPDATE devis SET signature_date = NULL WHERE id = $1`, [signeEnLigne])), '086 : l\'artisan n\'efface pas la date de signature en ligne');
+  verifier(!(await tente(`UPDATE devis SET signature_data = NULL WHERE id = $1`, [signeEnLigne])), '086 : l\'artisan n\'efface pas le tracé signé en ligne (pour poser ensuite une demande expresse)');
+  verifier(!(await tente(`INSERT INTO devis (user_id, organization_id, client_id, numero, type, statut, signature_data, signature_date, signature_token) VALUES ($1, $2, $3, 'DEV-086', 'devis', 'signe', $4, now(), gen_random_uuid())`, [SOLO, ORGA_SOLO, particulier, TRACE])),
+    '086 : l\'artisan ne fabrique pas un devis « signé en ligne » (relais d\'e-mails)');
+  verifier(!(await tente(`INSERT INTO devis (user_id, organization_id, client_id, numero, type, statut, retractation_le, retractation_en_ligne) VALUES ($1, $2, $3, 'DEV-086', 'devis', 'annule', now(), true)`, [SOLO, ORGA_SOLO, particulier])),
+    '086 : l\'artisan ne crée pas un devis « rétracté »');
+  verifier(!(await tente(`DELETE FROM devis WHERE id = $1`, [idRetracte])), '086 : l\'artisan ne supprime pas un devis dont le client s\'est rétracté');
+  verifier(await tente(`DELETE FROM devis WHERE id = $1`, [nouveau]), '086 : un devis sans rétractation se supprime normalement');
 
   // ── Droits ───────────────────────────────────────────────────────────────────
   const droits = Object.fromEntries((await q(`SELECT p.proname, has_function_privilege('anon', p.oid, 'EXECUTE') AS anon,

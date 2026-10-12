@@ -8,6 +8,7 @@ import { echapperHtml, estEmail, nettoyerNom } from '../_shared/adresses.ts';
 export interface DevisRetracte {
   numero?: string | null;
   execution_anticipee_le?: string | null;
+  travaux_urgents?: boolean | null;
   date?: string | null;
   signature_date?: string | null;
   retractation_le?: string | null;
@@ -51,6 +52,9 @@ export function quatorzeJoursApres(iso: string | null | undefined): string {
     .format(new Date(d.getTime() + 14 * 86400000));
 }
 
+/** Demande expresse et rétractation : ce qui peut être facturé (L221-25). Rédaction juriste-btp du 12 oct. 2026. */
+export const TRAVAUX_DEMANDES = 'Le client avait demandé que les travaux commencent avant la fin du délai : seuls les travaux réellement exécutés jusqu\'à sa rétractation peuvent lui être facturés, au prorata du prix total (art. L221-25).';
+
 /** La déclaration affichée sur la page avant « Confirmer la rétractation » (reprise du modèle de l'annexe R221-1). */
 export const DECLARATION = 'Je vous notifie par la présente ma rétractation du contrat portant sur la prestation de services ci-dessus.';
 
@@ -92,6 +96,12 @@ export function accuseReception(devis: DevisRetracte, pro: Professionnel): Messa
     ['Déclaration', DECLARATION],
     ['Envoyée le', `${date} à ${heure} (heure de Paris)`],
   ];
+  // Remboursement (L221-24), après déduction des travaux faits à sa demande (L221-25) ; exception du dépannage
+  // urgent (L221-28, 8°). Rédaction juriste-btp du 12 oct. 2026.
+  const remboursement = `Les sommes versées vous seront remboursées au plus tard quatorze jours après cette date${devis.execution_anticipee_le ? ', déduction faite, le cas échéant, du montant des travaux réalisés à votre demande avant votre rétractation (article L221-25 du Code de la consommation)' : ''} (article L221-24 du Code de la consommation).`;
+  const urgence = devis.travaux_urgents
+    ? 'Votre rétractation vaut pour tout le contrat, sauf pour les pièces et travaux strictement nécessaires au dépannage urgent (article L221-28, 8° du Code de la consommation).'
+    : '';
   const texte = [
     `Bonjour ${nom},`,
     '',
@@ -100,7 +110,8 @@ export function accuseReception(devis: DevisRetracte, pro: Professionnel): Messa
     'Contenu de votre déclaration :',
     ...lignes.map(([k, v]) => `- ${k} : ${v}`),
     '',
-    `Les sommes versées vous seront remboursées au plus tard quatorze jours après cette date (article L221-24 du Code de la consommation).`,
+    remboursement,
+    ...(urgence ? ['', urgence] : []),
     '',
     `Accusé de réception envoyé par Mallettico pour le compte de ${nomPro}${coordonnees ? ` (${coordonnees})` : ''}. Conservez cet e-mail.`,
   ].join('\n');
@@ -114,8 +125,8 @@ export function accuseReception(devis: DevisRetracte, pro: Professionnel): Messa
     <table style="border-collapse:collapse;width:100%;font-size:14px">
       ${lignes.map(([k, v]) => `<tr><td style="padding:6px 8px;border:1px solid #e2e8f0;color:#64748b;width:42%">${echapperHtml(k)}</td><td style="padding:6px 8px;border:1px solid #e2e8f0">${echapperHtml(v)}</td></tr>`).join('')}
     </table>
-    <p>Les sommes versées vous seront remboursées au plus tard quatorze jours après cette date (article L221-24 du Code
-      de la consommation).</p>
+    <p>${echapperHtml(remboursement)}</p>
+    ${urgence ? `<p>${echapperHtml(urgence)}</p>` : ''}
     <p style="font-size:13px;color:#64748b">Accusé de réception envoyé par Mallettico pour le compte de
       ${echapperHtml(nomPro)}${coordonnees ? ` (${echapperHtml(coordonnees)})` : ''}. Conservez cet e-mail.</p>
   </div>`;
@@ -138,7 +149,7 @@ export function avisArtisan(devis: DevisRetracte, a: string | null | undefined, 
     `${nom} s'est rétracté du devis ${devis.numero || ''} le ${date} à ${heure} (rétractation en ligne, article L221-21 du Code de la consommation).`,
     'Le devis est passé à « annulé » s\'il n\'était pas encore facturé.',
     `Remboursez les sommes reçues au plus tard le ${quatorzeJoursApres(devis.retractation_le)}, par le même moyen de paiement (article L221-24), et annulez par un avoir toute facture émise.`,
-    ...(devis.execution_anticipee_le ? ['Les travaux ayant commencé à sa demande expresse, un montant proportionnel aux travaux faits reste dû (article L221-25).'] : []),
+    ...(devis.execution_anticipee_le ? [TRAVAUX_DEMANDES] : []),
     `Le client a reçu un accusé de réception à l'adresse ${devis.retractation_email || ''}.`,
     '',
     appUrl,
@@ -151,7 +162,7 @@ export function avisArtisan(devis: DevisRetracte, a: string | null | undefined, 
     <p>Le devis est passé à « annulé » s'il n'était pas encore facturé.</p>
     <p>Remboursez les sommes reçues <strong>au plus tard le ${echapperHtml(quatorzeJoursApres(devis.retractation_le))}</strong>, par le
       même moyen de paiement (article L221-24), et annulez par un avoir toute facture émise.</p>
-    ${devis.execution_anticipee_le ? '<p>Les travaux ayant commencé à sa demande expresse, un montant proportionnel aux travaux faits reste dû (article L221-25).</p>' : ''}
+    ${devis.execution_anticipee_le ? `<p>${echapperHtml(TRAVAUX_DEMANDES)}</p>` : ''}
     <p style="font-size:13px;color:#64748b">Le client a reçu un accusé de réception à l'adresse ${echapperHtml(devis.retractation_email || '')}.</p>
     <div style="text-align:center;margin:24px 0">
       <a href="${echapperHtml(appUrl)}" style="display:inline-block;background:#f97316;color:#ffffff;text-decoration:none;font-weight:bold;padding:12px 24px;border-radius:10px">Ouvrir Mallettico</a>

@@ -71,3 +71,27 @@ Option `laisser` : le lien reste la seule clé, valable 7 jours ; rien ne change
 Recommandation : `exiger` — c'est la règle habituelle des invitations, et réinviter prend dix secondes.
 Irréversible : non
 Bloque : rien (sécurité des équipes)
+
+### Q-retractation-anterieurs · Ouvrir « Renoncer au contrat ici » aux devis signés en ligne avant le 19 juin 2026 ?
+Contexte : Depuis le 19 juin 2026, un contrat conclu par la page de signature doit offrir la rétractation en ligne (C. conso. L221-21, D221-5) ; les contrats antérieurs restent sous l'ancien droit, sans cette obligation, mais leur délai court encore (prolongé de 12 mois faute d'avis complet, L221-20). La migration 086 applique le minimum légal : bouton pour les devis signés depuis le 19 juin seulement ; les plus anciens gardent leur droit par lettre ou e-mail (relecture juriste-btp du 12 oct. 2026).
+Option `minimum` : seulement depuis le 19 juin 2026 — le droit du client reste entier ; pas de bouton affichant une date limite en 2027 sur des chantiers souvent terminés.
+Option `tous` : aussi les plus anciens encore dans leur délai prolongé — plus commode pour le client, mais une date de fin en 2027 apparaît au nom de l'artisan sans qu'il l'ait choisi.
+Recommandation : `minimum` — ce que la loi exige, rien que l'artisan découvrirait après coup.
+Irréversible : non
+Bloque : rien (déjà appliqué en `minimum`)
+
+### Q-regularisation-avis · Envoyer l'avis et le formulaire aux clients des devis signés sans eux ?
+Contexte : Les devis signés par des particuliers avant le 12 oct. 2026 ne portaient pas le formulaire type : leur délai de rétractation est prolongé de 12 mois (L221-20). Envoyer maintenant l'avis complet et le formulaire le ramène à 14 jours après leur réception (L221-20, 2e alinéa). En production, hors compte démo : 7 devis signés en ligne par des particuliers, dont 1 depuis le 19 juin, et 2 signés sur place, sur 2 comptes (relevé du 12 oct. 2026).
+Option `envoyer` : un e-mail par client concerné, depuis l'app, avec l'avis et le formulaire — sécurise les artisans ; demande un e-mail clair qui ne semble pas inviter à se rétracter.
+Option `laisser` : rien — le risque reste : un client peut se rétracter jusqu'à un an après, sans rien devoir pour les travaux faits.
+Recommandation : `envoyer` — quelques e-mails, et un risque d'un an qui disparaît ; à relire par juriste-btp avant l'envoi.
+Irréversible : oui
+Bloque : rien
+
+### Q-petite-entreprise · Une case « petite entreprise hors de son métier » sur la fiche client ?
+Contexte : Un professionnel d'au plus 5 salariés qui signe hors établissement, pour des travaux sans rapport avec son activité principale (un boulanger qui fait refaire l'électricité de sa boutique), a les mêmes droits qu'un particulier (C. conso. L221-3) : avis, formulaire, 14 jours, pas de paiement avant 7 jours. L'app ne le sait pas : elle le traite en professionnel (relecture juriste-btp du 12 oct. 2026).
+Option `case` : une case sur la fiche client (« entreprise de 5 salariés au plus, travaux hors de son activité ») qui le traite comme un particulier pour la rétractation — conforme ; une question de plus pour l'artisan.
+Option `rien` : l'artisan imprime lui-même ces mentions s'il le sait — rien ne change ; le risque reste sur l'artisan.
+Recommandation : `case` — rare mais coûteux (contrat annulable, travaux non dus), et une case suffit.
+Irréversible : non
+Bloque : rien

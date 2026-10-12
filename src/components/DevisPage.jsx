@@ -61,7 +61,7 @@ import { totauxDocument, lignesTotauxHtml, lignesAcompteHtml, calculerTotaux } f
 import { lignesFactureAcompte, lignesFactureSolde } from '../lib/facturation';
 import { verifierNouvelleFacture, pourcentageAcompteValide, peutModifierDocument, peutSupprimerDocument, estEntierementFacture, dejaFactureTTC, montantCredite } from '../lib/gardeFacturation';
 import { DEFAULT_PENALTY_RATE, estClientPro } from '../lib/relanceUtils';
-import { blocRetractationHtml, estConcerneParRetractation, mentionsSignatureClientHtml } from '../lib/retractation';
+import { blocRetractationHtml, estConcerneParRetractation, lienRetractationEnLigne, mentionsSignatureClientHtml } from '../lib/retractation';
 import { soldeDe, texteCourt, telInternational } from '../lib/messageRelance';
 import { useDebounce } from '../hooks/useDebounce';
 import { useDevisModals } from '../hooks/useDevisModals';
@@ -1869,8 +1869,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   ${!isAvoirDoc && estConcerneParRetractation({ doc, client }) ? blocRetractationHtml({
     entreprise,
     doc,
-    // Lien de signature déjà donné : la rétractation en ligne s'y trouve (L221-5, 7° ; D221-5)
-    lienEnLigne: doc.signature_token ? urlPublique(`/devis/signer/${doc.signature_token}`) : '',
+    // Lien de signature déjà donné : la rétractation en ligne s'y trouve (L221-5, 7° ; D221-5), sauf signé sur place
+    lienEnLigne: lienRetractationEnLigne(doc),
   }) : ''}
 
   <!-- FOOTER -->

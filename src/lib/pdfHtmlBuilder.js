@@ -11,8 +11,7 @@ import { echeance } from './paiementsFacture';
 import { dateLue } from './dates';
 import { estFranchiseTva } from './franchiseTva';
 import { marquerDocumentFictif } from './donneesFictives';
-import { urlPublique } from './urlPublique';
-import { blocRetractationHtml, estConcerneParRetractation, mentionsSignatureClientHtml } from './retractation';
+import { blocRetractationHtml, estConcerneParRetractation, lienRetractationEnLigne, mentionsSignatureClientHtml } from './retractation';
 
 /**
  * Get entreprise data from localStorage
@@ -286,8 +285,8 @@ export function buildDocumentHTML(doc, client, chantier, entreprise, options = {
   ${!isAvoir && estConcerneParRetractation({ doc, client }) ? blocRetractationHtml({
     entreprise,
     doc,
-    // Lien de signature déjà donné : la rétractation en ligne s'y trouve (L221-5, 7° ; D221-5)
-    lienEnLigne: doc.signature_token ? urlPublique(`/devis/signer/${doc.signature_token}`) : '',
+    // Lien de signature déjà donné : la rétractation en ligne s'y trouve (L221-5, 7° ; D221-5), sauf signé sur place
+    lienEnLigne: lienRetractationEnLigne(doc),
   }) : ''}
 
   <!-- FOOTER -->

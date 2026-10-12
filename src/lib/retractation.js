@@ -5,6 +5,13 @@
  */
 import { echapperHtml as h } from './echapperHtml';
 import { nomImprime } from './identiteEntreprise';
+import { urlPublique } from './urlPublique';
+
+/**
+ * Jour de la mise en production de l'avis complet (avis type et formulaire) sur les trois générateurs. Un devis
+ * signé sur place avant ce jour portait l'ancien avis, incomplet : son délai est prolongé de douze mois (L221-20).
+ */
+export const DATE_AVIS_COMPLET = '2026-10-12';
 
 /**
  * Client consommateur : catégorie « Particulier », ou ni catégorie ni entreprise. Une copropriété (catégorie
@@ -109,6 +116,29 @@ export const DEMANDE_URGENCE = 'À ma demande, ces travaux de dépannage sont r�
 /** Information L221-5, 10° : circonstances dans lesquelles le client perd le droit (L221-28, 1°). Rédaction libre. */
 const PERTE_DU_DROIT = 'Vous perdez le droit de rétractation lorsque, à votre demande expresse, les travaux ont été entièrement exécutés avant la fin du délai de rétractation et que vous avez reconnu perdre ce droit (article L221-28, 1° du Code de la consommation).';
 
+/**
+ * Adresse de la rétractation en ligne à annoncer dans l'avis (phrase (3) de l'annexe R221-3) : le lien de
+ * signature, sauf pour un devis signé sur place, où la fonctionnalité n'existe pas (relecture juriste-btp du
+ * 12 oct. 2026 : une promesse imprimée doit être tenue).
+ */
+export function lienRetractationEnLigne(doc, jeton) {
+  const t = jeton || doc?.signature_token;
+  if (!t || doc?.signature) return '';
+  return urlPublique(`/devis/signer/${t}`);
+}
+
+/**
+ * Délai de rétractation d'un devis signé, vu par l'artisan : dernier jour et s'il est prolongé (L221-20). Signé
+ * par le lien : la base sait si l'avis complet a été montré (avis_retractation) ; sur place : l'avis complet est
+ * imprimé sur les devis présentés à partir de DATE_AVIS_COMPLET.
+ */
+export function delaiRetractationDevis(devis, dateSignature) {
+  const jour = dateSignature ? jourParis(dateSignature) : '';
+  if (!jour) return null;
+  const informe = devis?.signature_data ? devis.avis_retractation === true : jour >= DATE_AVIS_COMPLET;
+  return { fin: finDelaiRetractation(jour, informe), prolonge: !informe };
+}
+
 /** Réparation urgente (L221-28, 8°), en tête de l'avis. Rédaction libre. */
 const URGENCE = 'Dépannage urgent : vous avez expressément demandé que ces travaux de réparation soient réalisés en urgence à votre domicile. Pour les pièces de rechange et les travaux strictement nécessaires pour répondre à l\'urgence, vous ne bénéficiez pas du droit de rétractation (article L221-28, 8° du Code de la consommation).';
 
@@ -155,9 +185,9 @@ export function blocRetractationHtml({ entreprise, doc, lienEnLigne } = {}) {
       ${p('Pour que le délai de rétractation soit respecté, il suffit que vous transmettiez votre communication relative à l\'exercice du droit de rétractation avant l\'expiration du délai de rétractation.')}
       ${p('<strong>Effets de rétractation</strong>')}
       ${p('En cas de rétractation de votre part du présent contrat, nous vous rembourserons tous les paiements reçus de vous, y compris les frais de livraison (à l\'exception des frais supplémentaires découlant du fait que vous avez choisi, le cas échéant, un mode de livraison autre que le mode moins coûteux de livraison standard proposé par nous) sans retard excessif et, en tout état de cause, au plus tard quatorze jours à compter du jour où nous sommes informés de votre décision de rétractation du présent contrat. Nous procéderons au remboursement en utilisant le même moyen de paiement que celui que vous aurez utilisé pour la transaction initiale, sauf si vous convenez expressément d\'un moyen différent ; en tout état de cause, ce remboursement n\'occasionnera pas de frais pour vous.')}
-      ${p('Si vous avez demandé de commencer la prestation de services pendant le délai de rétractation, vous devrez nous payer un montant proportionnel à ce qui vous a été fourni jusqu\'au moment où vous nous avez informé de votre rétractation du présent contrat, par rapport à l\'ensemble des prestations prévues par le contrat.')}
-      ${p(h(PERTE_DU_DROIT), 'margin-bottom:0')}
+      ${p('Si vous avez demandé de commencer la prestation de services pendant le délai de rétractation, vous devrez nous payer un montant proportionnel à ce qui vous a été fourni jusqu\'au moment où vous nous avez informé de votre rétractation du présent contrat, par rapport à l\'ensemble des prestations prévues par le contrat.', 'margin-bottom:0')}
     </div>
+    ${p(h(PERTE_DU_DROIT), 'margin:6px 2px 0')}
     <div style="border:1px dashed #94a3b8;padding:10px 12px;border-radius:6px;margin-top:10px">
       ${p('<strong>MODÈLE DE FORMULAIRE DE RÉTRACTATION</strong>', 'font-size:9pt')}
       ${p('(Veuillez compléter et renvoyer le présent formulaire uniquement si vous souhaitez vous rétracter du contrat.)')}

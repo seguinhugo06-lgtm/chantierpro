@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
-  blocRetractationHtml, dateHeureParis, estClientParticulier, estConcerneParRetractation, finDelaiRetractation,
-  jourParis, mentionsSignatureClientHtml, paques, DEMANDE_EXPRESSE,
+  blocRetractationHtml, dateHeureParis, delaiRetractationDevis, estClientParticulier, estConcerneParRetractation,
+  finDelaiRetractation, jourParis, lienRetractationEnLigne, mentionsSignatureClientHtml, paques, DEMANDE_EXPRESSE,
 } from '../retractation';
 
 // Mêmes cas que le banc de la migration 086 (fin_delai_retractation, côté base).
@@ -98,6 +98,29 @@ describe('textes imprimés (annexes R221-3 et R221-1, mot pour mot)', () => {
     expect(urgent).toContain('Dépannage urgent');
     expect(urgent).toContain('article L221-28, 8°');
     expect(urgent).toContain('MODÈLE DE FORMULAIRE DE RÉTRACTATION');
+  });
+
+  it('la perte du droit (L221-5, 10°) est imprimée hors du cadre du modèle officiel', () => {
+    const avis = html.slice(html.indexOf('INFORMATIONS CONCERNANT'), html.indexOf('MODÈLE DE FORMULAIRE'));
+    const cadre = avis.slice(0, avis.indexOf('</div>'));
+    expect(cadre).not.toContain('L221-28, 1°');
+    expect(avis).toContain('L221-28, 1°');
+  });
+
+  it('pas de rétractation en ligne annoncée pour un devis signé sur place (la fonctionnalité n’y existe pas)', () => {
+    expect(lienRetractationEnLigne({ signature_token: 'abc' })).toMatch(/\/devis\/signer\/abc$/);
+    expect(lienRetractationEnLigne({ signature_token: 'abc', signature: 'data:image/png;base64,x' })).toBe('');
+    expect(lienRetractationEnLigne({ signature_token: 'abc', signature_data: 'data:image/png;base64,x' })).toMatch(/abc$/);
+    expect(lienRetractationEnLigne({}, 'jeton')).toMatch(/\/devis\/signer\/jeton$/);
+    expect(lienRetractationEnLigne({})).toBe('');
+  });
+
+  it('délai vu par l’artisan : prolongé sans l’avis complet (en ligne : selon la base ; sur place : avant la mise en production)', () => {
+    expect(delaiRetractationDevis({ signature_data: 'x', avis_retractation: true }, '2026-10-12T09:00:00Z')).toEqual({ fin: '2026-10-26', prolonge: false });
+    expect(delaiRetractationDevis({ signature_data: 'x', avis_retractation: false }, '2026-10-12T09:00:00Z')).toEqual({ fin: '2027-10-26', prolonge: true });
+    expect(delaiRetractationDevis({ signature: 'x' }, '2026-10-12T09:00:00Z').prolonge).toBe(false);
+    expect(delaiRetractationDevis({ signature: 'x' }, '2026-10-01T09:00:00Z')).toEqual({ fin: '2027-10-15', prolonge: true });
+    expect(delaiRetractationDevis({ signature: 'x' }, null)).toBeNull();
   });
 
   it('les valeurs saisies sont échappées', () => {

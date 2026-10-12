@@ -218,7 +218,9 @@ export const FIELD_MAPPINGS = {
         total_ttc: item.total_ttc || 0,
         // Signature fields
         signature: item.signature || null,
-        signature_date: item.signatureDate || null,
+        // Seulement si elle existe : une copie périmée (le client a signé par le lien entre-temps) n'efface pas la
+        // date de sa signature (relecture gardien-securite du 12 oct. 2026 ; la base le refuse aussi, migration 086)
+        ...(item.signatureDate ? { signature_date: item.signatureDate } : {}),
         signataire: item.signataire || null,
         // Demande expresse posée par la signature sur place (migration 086) : envoyée seulement si elle existe, pour
         // qu'une copie périmée du devis n'efface jamais celle qu'un client a cochée en signant par le lien. La
@@ -294,6 +296,7 @@ export const FIELD_MAPPINGS = {
       execution_anticipee_le: row.execution_anticipee_le || null,
       travaux_urgents: row.travaux_urgents === true,
       avis_retractation: row.avis_retractation === true,
+      retractation_en_ligne: row.retractation_en_ligne === true,
       retractation_le: row.retractation_le || null,
       retractation_nom: row.retractation_nom || null,
       retractation_email: row.retractation_email || null,

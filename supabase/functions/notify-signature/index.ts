@@ -12,9 +12,11 @@
  *
  * Rétractation en ligne (C. conso. L221-21, D221-5 ; migration 086) :
  *   supabase.functions.invoke('notify-signature', { body: { token, evenement: 'retractation' } })
- *   → accusé de réception au client (adresse qu'il a donnée, enregistrée par retracter_devis) et avis à
- *     l'artisan. Gardes : rétractation enregistrée en base ; un seul accusé (réservé par une mise à jour
- *     conditionnelle de retractation_accuse_le, rendu si l'envoi échoue) ; textes dans retractation.ts.
+ *   → accusé de réception au client (adresse qu'il a donnée, enregistrée par retracter_devis, et copie à
+ *     l'adresse de sa fiche si elle diffère) et avis à l'artisan. Gardes : rétractation enregistrée en base ;
+ *     un seul accusé (réservé par une mise à jour conditionnelle de retractation_accuse_le, rendu si l'envoi
+ *     échoue) ; plafond quotidien d'envois du compte de l'artisan (reserver_envoi_email, 077) ; textes dans
+ *     retractation.ts.
  */
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
@@ -34,27 +36,38 @@ const json = (body: Record<string, unknown>, status = 200) =>
 const fmtEUR = (n: number) =>
   new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(n || 0);
 
-/** Envoi par Resend ; vrai si le message est parti. */
+/** Envoi par Resend ; vrai si le message est parti. Ne lève jamais (une panne réseau rend faux). */
 async function envoyer(message: Message): Promise<boolean> {
   const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
   if (!RESEND_API_KEY) {
     console.error('[notify-signature] Resend non configuré');
     return false;
   }
-  const res = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      from: `Mallettico <${Deno.env.get('FROM_EMAIL') || 'noreply@mallettico.fr'}>`,
-      to: [message.a],
-      ...(message.repondreA ? { reply_to: message.repondreA } : {}),
-      subject: message.sujet,
-      html: message.html,
-      text: message.texte,
-    }),
-  });
-  if (!res.ok) console.error('[notify-signature] Resend error:', await res.text());
-  return res.ok;
+  try {
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        from: `Mallettico <${Deno.env.get('FROM_EMAIL') || 'noreply@mallettico.fr'}>`,
+        to: [message.a],
+        ...(message.repondreA ? { reply_to: message.repondreA } : {}),
+        subject: message.sujet,
+        html: message.html,
+        text: message.texte,
+      }),
+    });
+    if (!res.ok) console.error('[notify-signature] Resend error:', await res.text());
+    return res.ok;
+  } catch (e) {
+    console.error('[notify-signature] Resend injoignable :', (e as Error).message);
+    return false;
+  }
+}
+
+/** Plafond quotidien par compte (secret EMAIL_LIMITE_JOUR, 50 par défaut), comme send-email. */
+function limiteJour(): number {
+  const lue = Number.parseInt(Deno.env.get('EMAIL_LIMITE_JOUR') ?? '', 10);
+  return Number.isFinite(lue) && lue > 0 ? lue : 50;
 }
 
 // ─── Rétractation en ligne : accusé de réception (D221-5) et avis à l'artisan ───
@@ -62,7 +75,7 @@ async function envoyer(message: Message): Promise<boolean> {
 async function traiterRetractation(supabase: any, token: string): Promise<Response> {
   const { data: devis, error } = await supabase
     .from('devis')
-    .select('id, numero, date, user_id, entreprise_id, signature_date, execution_anticipee_le, retractation_le, retractation_nom, retractation_email, retractation_accuse_le')
+    .select('id, numero, date, user_id, organization_id, client_id, entreprise_id, signature_date, travaux_urgents, execution_anticipee_le, retractation_le, retractation_nom, retractation_email, retractation_accuse_le')
     .eq('signature_token', token)
     .maybeSingle();
   if (error || !devis) return json({ error: 'devis introuvable' }, 404);
@@ -94,11 +107,42 @@ async function traiterRetractation(supabase: any, token: string): Promise<Respon
     || Number(!!b.is_default) - Number(!!a.is_default)
     || String(a.created_at).localeCompare(String(b.created_at)))[0] || {};
 
-  const accuse = accuseReception(devis as DevisRetracte, fiche);
-  if (!accuse || !(await envoyer(accuse))) {
+  const echec = async (statut: number, message: string) => {
     const { error: errRendre } = await rendre();
     if (errRendre) console.error(`[notify-signature] ACCUSÉ NON ENVOYÉ ET RÉSERVATION GARDÉE devis=${devis.id} : ${errRendre.message}`);
-    return json({ error: 'accusé non envoyé' }, 502);
+    return json({ error: message }, statut);
+  };
+
+  const accuse = accuseReception(devis as DevisRetracte, fiche);
+  if (!accuse) return await echec(400, 'adresse de l\'accusé invalide');
+  // Copie à l'adresse de la fiche du client (prise en base) : s'il n'est pas l'auteur de la déclaration (quelqu'un
+  // d'autre détient le lien), il l'apprend (relecture gardien-securite du 12 oct. 2026)
+  let copie: typeof accuse | null = null;
+  if (devis.client_id) {
+    const { data: client } = await supabase
+      .from('clients').select('email, user_id, organization_id').eq('id', devis.client_id).maybeSingle();
+    const adresse = String(client?.email || '').trim().toLowerCase();
+    const duCompte = client && (client.user_id === devis.user_id || (devis.organization_id && client.organization_id === devis.organization_id));
+    if (duCompte && adresse && adresse !== accuse.a) copie = accuseReception({ ...(devis as DevisRetracte), retractation_email: adresse }, fiche);
+  }
+  // Plafond d'envois du compte de l'artisan (077) : un lien de signature ne sert pas de relais
+  const { data: reservation, error: errPlafond } = await supabase.rpc('reserver_envoi_email', {
+    p_user_id: devis.user_id, p_nb: copie ? 2 : 1, p_limite: limiteJour(),
+  });
+  if (errPlafond) {
+    console.error('[notify-signature] plafond d\'envois indisponible :', errPlafond.message);
+    return await echec(500, 'accusé non envoyé');
+  }
+  if (reservation == null) return await echec(429, 'plafond d\'envois atteint');
+
+  if (!(await envoyer(accuse))) {
+    // Rien n'est parti : la réservation du plafond est rendue aussi
+    const { error: errLiberer } = await supabase.from('envois_email').delete().eq('id', reservation);
+    if (errLiberer) console.error('[notify-signature] réservation du plafond non rendue :', errLiberer.message);
+    return await echec(502, 'accusé non envoyé');
+  }
+  if (copie && !(await envoyer(copie))) {
+    console.error(`[notify-signature] copie de l'accusé à la fiche du client non envoyée devis=${devis.id}`);
   }
 
   // Avis à l'artisan : au mieux (l'accusé du client est parti)

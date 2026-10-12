@@ -26,7 +26,7 @@ import { dateLue } from './dates';
 import { signatureDuClient } from './signatureDocument';
 import { finValidite } from './validiteDevis';
 import { estClientPro } from './relanceUtils';
-import { blocRetractationHtml, estConcerneParRetractation, mentionsSignatureClientHtml } from './retractation';
+import { blocRetractationHtml, estConcerneParRetractation, lienRetractationEnLigne, mentionsSignatureClientHtml } from './retractation';
 
 /**
  * Formatte un RCS complet
@@ -420,8 +420,8 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mod
   ${estConcerneParRetractation({ doc, client }) ? blocRetractationHtml({
     entreprise,
     doc,
-    // Lien de signature : la rétractation en ligne s'y trouve (L221-5, 7° ; D221-5)
-    lienEnLigne: (signatureToken || doc.signature_token) ? urlPublique(`/devis/signer/${signatureToken || doc.signature_token}`) : '',
+    // Lien de signature : la rétractation en ligne s'y trouve (L221-5, 7° ; D221-5), sauf devis signé sur place
+    lienEnLigne: lienRetractationEnLigne(doc, signatureToken),
   }) : ''}
 
   <!-- FOOTER -->

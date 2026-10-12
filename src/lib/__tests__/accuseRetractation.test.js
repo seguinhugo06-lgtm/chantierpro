@@ -34,6 +34,14 @@ describe('accusé de réception au client', () => {
     expect(m.html).toContain('Accusé de réception de votre rétractation');
   });
 
+  it('demande expresse : le remboursement se fait déduction faite des travaux réalisés ; dépannage urgent : l\'exception', () => {
+    const m2 = accuseReception({ ...devis, execution_anticipee_le: '2026-10-09T08:15:00Z', travaux_urgents: true }, pro);
+    expect(m2.texte).toContain('déduction faite, le cas échéant, du montant des travaux réalisés à votre demande avant votre rétractation (article L221-25');
+    expect(m2.texte).toContain('sauf pour les pièces et travaux strictement nécessaires au dépannage urgent (article L221-28, 8°');
+    expect(m.texte).not.toContain('déduction faite');
+    expect(m.texte).not.toContain('dépannage urgent');
+  });
+
   it('le texte du client est échappé dans le HTML', () => {
     const piege = accuseReception({ ...devis, retractation_nom: '<a href="https://hameçon.fr">cliquez</a>' }, pro);
     expect(piege.html).not.toContain('<a href="https://hameçon');
@@ -61,9 +69,10 @@ describe('avis à l’artisan', () => {
     expect(a.texte).not.toContain('L221-25');
   });
 
-  it('travaux commencés à sa demande expresse : montant proportionnel', () => {
+  it('demande expresse : seuls les travaux réellement exécutés peuvent être facturés (pas un montant affirmé dû)', () => {
     const a = avisArtisan({ ...devis, execution_anticipee_le: '2026-10-09T08:15:00Z' }, 'artisan@elec.fr', 'https://mallettico.fr');
-    expect(a.texte).toContain('un montant proportionnel aux travaux faits reste dû (article L221-25)');
+    expect(a.texte).toContain('seuls les travaux réellement exécutés jusqu\'à sa rétractation peuvent lui être facturés, au prorata du prix total (art. L221-25)');
+    expect(a.texte).not.toContain('reste dû');
   });
 
   it('sans adresse d’artisan valide : rien', () => {
