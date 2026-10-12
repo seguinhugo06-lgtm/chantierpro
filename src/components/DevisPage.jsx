@@ -2031,7 +2031,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   const getOrGenerateSignatureToken = async (doc) => {
     const expire = blocageExpiration(doc);
     if (expire) throw new Error(expire);
-    if (doc.signature_token && doc.signature_expires_at && new Date(doc.signature_expires_at) > new Date()) {
+    // Signé par le lien : le même lien, toujours (le client y renonce au contrat pendant tout le délai, D221-5)
+    if (doc.signature_token && (doc.signature_data || (doc.signature_expires_at && new Date(doc.signature_expires_at) > new Date()))) {
       return doc.signature_token;
     }
     if (!supabase || supabase._isDemo) return null;

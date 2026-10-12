@@ -22,7 +22,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
-import { echapperHtml } from '../_shared/adresses.ts';
+import { echapperHtml, estEmail } from '../_shared/adresses.ts';
 import { accuseReception, avisArtisan, type DevisRetracte, type Message } from './retractation.ts';
 
 const APP_URL = Deno.env.get('APP_URL') || 'https://mallettico.fr';
@@ -123,7 +123,8 @@ async function traiterRetractation(supabase: any, token: string): Promise<Respon
       .from('clients').select('email, user_id, organization_id').eq('id', devis.client_id).maybeSingle();
     const adresse = String(client?.email || '').trim().toLowerCase();
     const duCompte = client && (client.user_id === devis.user_id || (devis.organization_id && client.organization_id === devis.organization_id));
-    if (duCompte && adresse && adresse !== accuse.a) copie = accuseReception({ ...(devis as DevisRetracte), retractation_email: adresse }, fiche);
+    // Même contenu (l'adresse saisie dans la déclaration y reste), envoyé aussi à l'adresse de la fiche
+    if (duCompte && adresse && adresse !== accuse.a && estEmail(adresse)) copie = { ...accuse, a: adresse };
   }
   // Plafond d'envois du compte de l'artisan (077) : un lien de signature ne sert pas de relais
   const { data: reservation, error: errPlafond } = await supabase.rpc('reserver_envoi_email', {

@@ -195,6 +195,13 @@ export async function verifier({ db, q, en, commeAnonyme, verifier }) {
     '086 : l\'artisan ne crée pas un devis « rétracté »');
   verifier(!(await tente(`DELETE FROM devis WHERE id = $1`, [idRetracte])), '086 : l\'artisan ne supprime pas un devis dont le client s\'est rétracté');
   verifier(await tente(`DELETE FROM devis WHERE id = $1`, [nouveau]), '086 : un devis sans rétractation se supprime normalement');
+  // Le lien d'un devis signé en ligne ne change plus : c'est là que le client renonce au contrat (D221-5)
+  verifier(!(await tente(`UPDATE devis SET signature_token = NULL WHERE id = $1`, [signeEnLigne])), '086 : l\'artisan n\'efface pas le lien d\'un devis signé en ligne');
+  verifier(!(await tente(`UPDATE devis SET signature_token = gen_random_uuid() WHERE id = $1`, [signeEnLigne])), '086 : l\'artisan ne remplace pas le lien d\'un devis signé en ligne');
+  await q(`UPDATE devis SET signature_expires_at = now() - interval '1 day' WHERE id = $1`, [signeEnLigne]);
+  const regenere = await essayer(() => en(SOLO, () => q('SELECT generate_signature_token($1, 30) AS t', [signeEnLigne])));
+  verifier(regenere.ok && regenere.r.rows[0].t === jetonFige && (await page(jetonFige))?.devis?.retractation?.ouverte === true,
+    `086 : renvoyer un devis signé en ligne rend le même lien, toujours ouvert à la rétractation (${regenere.e || 'ok'})`);
 
   // ── Droits ───────────────────────────────────────────────────────────────────
   const droits = Object.fromEntries((await q(`SELECT p.proname, has_function_privilege('anon', p.oid, 'EXECUTE') AS anon,

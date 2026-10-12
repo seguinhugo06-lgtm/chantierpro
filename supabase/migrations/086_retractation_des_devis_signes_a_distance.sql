@@ -70,8 +70,9 @@ ALTER TABLE public.devis ADD COLUMN IF NOT EXISTS retractation_accuse_le TIMESTA
 -- la suppression de compte (072) et les fonctions serveur (service_role) ne sont pas concernées.
 --   - création : pas de devis déjà signé en ligne, rétracté, ou ouvert à la rétractation en ligne ;
 --   - toujours : la rétractation (retractation_*), l'avis montré et l'éligibilité ne bougent pas ;
---   - devis signé en ligne : sa signature (tracé, date, signataire, IP) non plus ; devis signé (en ligne ou sur
---     place) : ni la demande expresse, ni l'option « réparation urgente » (elle se pose à la signature sur place) ;
+--   - devis signé en ligne : sa signature (tracé, date, signataire, IP) et son lien (jeton : c'est là que le
+--     client renonce au contrat) non plus ; devis signé (en ligne ou sur place) : ni la demande expresse, ni
+--     l'option « réparation urgente » (elle se pose à la signature sur place) ;
 --   - suppression : pas d'un devis dont le client s'est rétracté (la preuve de sa rétractation).
 CREATE OR REPLACE FUNCTION public.garder_retractation()
 RETURNS TRIGGER
@@ -108,8 +109,9 @@ BEGIN
   END IF;
   IF NEW.signature_data IS DISTINCT FROM OLD.signature_data
      OR (OLD.signature_data IS NOT NULL AND (NEW.signature_date IS DISTINCT FROM OLD.signature_date
-         OR NEW.signataire_nom IS DISTINCT FROM OLD.signataire_nom OR NEW.signature_ip IS DISTINCT FROM OLD.signature_ip)) THEN
-    RAISE EXCEPTION 'La signature en ligne du client ne se modifie pas';
+         OR NEW.signataire_nom IS DISTINCT FROM OLD.signataire_nom OR NEW.signature_ip IS DISTINCT FROM OLD.signature_ip
+         OR NEW.signature_token IS DISTINCT FROM OLD.signature_token)) THEN
+    RAISE EXCEPTION 'La signature en ligne du client et son lien ne se modifient pas';
   END IF;
   IF (NEW.execution_anticipee_le IS DISTINCT FROM OLD.execution_anticipee_le
       OR NEW.travaux_urgents IS DISTINCT FROM OLD.travaux_urgents)
@@ -137,6 +139,59 @@ WHERE dv.signature_data IS NOT NULL AND dv.signature_date >= TIMESTAMPTZ '2026-0
       AND (x.user_id = dv.user_id OR (dv.organization_id IS NOT NULL AND x.organization_id = dv.organization_id))
       AND (lower(btrim(COALESCE(x.categorie, ''))) = 'particulier'
            OR (btrim(COALESCE(x.categorie, '')) = '' AND btrim(COALESCE(x.entreprise, '')) = '')));
+
+-- ─── 2 bis. Créer le lien de signature ──────────────────────────────────────
+-- Reprend 083. Nouveau : un devis déjà signé en ligne garde son lien (le client y renonce au contrat pendant tout
+-- le délai, D221-5) ; avant, renvoyer le devis en recréait un et l'ancien lien affichait « lien invalide »
+-- (relecture gardien-securite du 12 oct. 2026). Fonction SECURITY DEFINER : le déclencheur ne la voit pas.
+CREATE OR REPLACE FUNCTION public.generate_signature_token(p_devis_id UUID, p_expiry_days INTEGER DEFAULT 30)
+RETURNS UUID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_devis RECORD;
+  v_token UUID;
+  v_fin TIMESTAMPTZ;
+  v_aujourdhui DATE := (now() AT TIME ZONE 'Europe/Paris')::date;
+BEGIN
+  -- Fin de validité : la date enregistrée, sinon date + durée choisie, sinon 30 jours (le 10 oct. 2026, les 32 devis de
+  -- la production n'avaient que la durée : relecture juriste-btp)
+  SELECT d.id, d.user_id, d.organization_id, d.type, d.signature_data, d.signature_token,
+         COALESCE(d.date_validite, d.date + NULLIF(d.validite_jours, 0),
+                  d.date + COALESCE((SELECT en.validite_devis FROM public.entreprise en WHERE en.user_id = d.user_id ORDER BY COALESCE(en.is_default, false) DESC, en.created_at LIMIT 1), 30)) AS date_validite
+  INTO v_devis FROM public.devis d WHERE d.id = p_devis_id;
+  -- COALESCE : pour un non-membre le rôle est NULL, et « NOT (faux OR NULL) » vaut NULL, que IF lit comme faux
+  IF v_devis.id IS NULL OR auth.uid() IS NULL OR NOT COALESCE(
+       v_devis.user_id = auth.uid()
+       OR (v_devis.organization_id IS NOT NULL
+           AND public.mon_role_organisation(v_devis.organization_id) IN ('owner', 'admin', 'comptable')),
+       false) THEN
+    RAISE EXCEPTION 'Devis non trouve ou non autorise';
+  END IF;
+  -- Signé en ligne : le même lien, toujours
+  IF v_devis.signature_data IS NOT NULL AND v_devis.signature_token IS NOT NULL THEN
+    RETURN v_devis.signature_token;
+  END IF;
+  IF COALESCE(v_devis.type, 'devis') <> 'devis' THEN
+    RAISE EXCEPTION 'Seul un devis se signe en ligne';
+  END IF;
+  IF v_devis.date_validite IS NOT NULL AND v_devis.date_validite < v_aujourdhui THEN
+    RAISE EXCEPTION 'Devis expire : prolongez sa validite avant de l''envoyer';
+  END IF;
+
+  -- Durée demandée bornée à [1, 366] jours, et jamais au-delà de minuit (Paris) le soir du dernier jour de validité
+  v_fin := now() + make_interval(days => LEAST(GREATEST(COALESCE(p_expiry_days, 30), 1), 366));
+  IF v_devis.date_validite IS NOT NULL THEN
+    v_fin := LEAST(v_fin, ((v_devis.date_validite + 1)::timestamp AT TIME ZONE 'Europe/Paris'));
+  END IF;
+
+  v_token := gen_random_uuid();
+  UPDATE public.devis SET signature_token = v_token, signature_expires_at = v_fin, updated_at = now() WHERE id = p_devis_id;
+  RETURN v_token;
+END;
+$$;
 
 -- ─── 3. Fin du délai de rétractation ────────────────────────────────────────
 -- L221-18 : quatorze jours à compter de la conclusion du contrat (prestation de services). L221-19 : le jour de
@@ -496,6 +551,8 @@ $$;
 
 -- ─── 7. Droits ──────────────────────────────────────────────────────────────
 REVOKE ALL ON FUNCTION public.garder_retractation() FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.generate_signature_token(UUID, INTEGER) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.generate_signature_token(UUID, INTEGER) TO authenticated, service_role;
 REVOKE ALL ON FUNCTION public.premier_jour_ouvrable(DATE) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.premier_jour_ouvrable(DATE) TO anon, authenticated, service_role;
 REVOKE ALL ON FUNCTION public.fin_delai_retractation(DATE, BOOLEAN) FROM PUBLIC;
