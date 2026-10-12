@@ -1232,15 +1232,12 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
           <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
             <h3 className="font-semibold mb-4">Mentions légales sur les documents</h3>
             <div className="space-y-4">
-              <div className={`flex items-center justify-between p-3 rounded-xl bg-surface-2`}>
-                <div>
-                  <p className="font-medium">Droit de rétractation (14 jours)</p>
-                  <p className="text-sm text-slate-500">Article L221-18 du Code de la consommation</p>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input type="checkbox" checked={entreprise.mentionRetractation !== false} onChange={e => updateEntreprise(p => ({...p, mentionRetractation: e.target.checked}))} className="sr-only peer" />
-                  <div className="w-11 h-6 bg-slate-200 peer-focus:ring-2 rounded-full peer peer-checked:after:translate-x-full peer-checked:bg-emerald-500 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
-                </label>
+              {/* Plus d'interrupteur : l'avis et le formulaire de rétractation sont obligatoires pour un particulier
+                  (C. conso. L221-5, 7° ; sans eux, délai prolongé de douze mois, L221-20) et jamais imprimés pour un
+                  professionnel (relecture juriste-btp du 12 oct. 2026) */}
+              <div className="p-3 rounded-xl bg-surface-2">
+                <p className="font-medium">Droit de rétractation</p>
+                <p className="text-sm text-encre-2">Imprimé automatiquement sur les devis des clients particuliers (obligatoire) : conditions, délai de 14 jours et formulaire type.</p>
               </div>
               <div className={`flex items-center justify-between p-3 rounded-xl bg-surface-2`}>
                 <div>

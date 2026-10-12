@@ -1,12 +1,14 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import SignatureCanvas from 'react-signature-canvas';
-import { FileText, Check, X, RotateCcw, Pen, Calendar, Info, CheckCircle, AlertCircle, Loader2, ArrowRight, ArrowLeft, Shield, Download } from 'lucide-react';
+import { FileText, Check, RotateCcw, Pen, Calendar, Info, CheckCircle, AlertCircle, Loader2, ArrowRight, ArrowLeft, Shield, Download } from 'lucide-react';
 import { supabase } from '../../supabaseClient';
 import { buildDevisHtml } from '../../lib/devisHtmlBuilder';
 import { dateLue } from '../../lib/dates';
 import { captureException } from '../../lib/sentry';
 import BandeauDonneesFictives from '../ui/BandeauDonneesFictives';
 import { estDonneesFictives } from '../../lib/donneesFictives';
+import { estClientParticulier, estConcerneParRetractation, DEMANDE_EXPRESSE, DEMANDE_EXPRESSE_AIDE, DEMANDE_URGENCE } from '../../lib/retractation';
+import RetractationEnLigne from './RetractationEnLigne';
 
 /**
  * Page publique de signature électronique de devis
@@ -23,6 +25,10 @@ export default function DevisSignaturePage({ signatureToken }) {
   const [step, setStep] = useState('preview'); // preview, info, sign, success
   const [signataire, setSignataire] = useState('');
   const [acceptCGV, setAcceptCGV] = useState(false);
+  // Demande expresse de commencer avant la fin du délai de rétractation (L221-25) : facultative, non cochée
+  const [executionAnticipee, setExecutionAnticipee] = useState(false);
+  // Devis signé par le lien, client particulier : rétractation en ligne (D221-5), lue en base
+  const [signe, setSigne] = useState(null);
   const [isEmpty, setIsEmpty] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [telechargementEchoue, setTelechargementEchoue] = useState(false);
@@ -31,6 +37,14 @@ export default function DevisSignaturePage({ signatureToken }) {
   const couleur = devisData?.entreprise?.couleur || '#f97316';
   const formatMoney = (n) => (n || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2 }) + ' €';
   const today = new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+
+  // Après la signature (ou au retour sur le lien) : état de la rétractation en ligne, décidé par la base
+  const relireSigne = async () => {
+    const { data, error: e } = await supabase.rpc('get_devis_for_signature', { p_token: signatureToken });
+    if (e) throw e;
+    if (data?.devis?.already_signed && data.devis.retractation) setSigne(data);
+    return data;
+  };
 
   // Fetch devis data on mount
   useEffect(() => {
@@ -49,6 +63,7 @@ export default function DevisSignaturePage({ signatureToken }) {
         }
 
         if (data.devis?.already_signed) {
+          if (data.devis.retractation) setSigne(data);
           setAlreadySigned(true);
           setLoading(false);
           return;
@@ -123,7 +138,11 @@ export default function DevisSignaturePage({ signatureToken }) {
         p_signature_data: signatureImage,
         p_signataire_nom: signataire.trim(),
         p_ip: null, // Cannot reliably get IP client-side
-        p_user_agent: navigator.userAgent
+        p_user_agent: navigator.userAgent,
+        // Particulier : demande expresse cochée (L221-25), et l'avis et le formulaire de rétractation lui ont été
+        // montrés dans le devis (L221-5, 7°) ; sinon la base compte le délai prolongé (L221-20)
+        p_execution_anticipee: estClientParticulier(devisData?.client) && executionAnticipee,
+        p_avis_retractation: estConcerneParRetractation({ doc: devisData?.devis, client: devisData?.client }),
       });
 
       if (signError) throw signError;
@@ -143,6 +162,7 @@ export default function DevisSignaturePage({ signatureToken }) {
           }
         }));
         setStep('success');
+        relireSigne().catch((err) => captureException(err, { context: 'Rétractation en ligne : relecture après signature' }));
         // Notifier l'artisan par email (fire-and-forget — l'échec ne doit pas
         // gêner le client qui vient de signer)
         supabase.functions.invoke('notify-signature', { body: { token: signatureToken } })
@@ -168,6 +188,34 @@ export default function DevisSignaturePage({ signatureToken }) {
   }
 
   // === ALREADY SIGNED STATE ===
+  // Signé par le lien par un particulier : la rétractation en ligne reste disponible pendant tout le délai (D221-5)
+  if (alreadySigned && signe) {
+    const fictifSigne = estDonneesFictives(signe.entreprise);
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+        {fictifSigne && <div className="fixed top-2 left-1/2 -translate-x-1/2 z-50"><BandeauDonneesFictives /></div>}
+        <div className="bg-white rounded-2xl shadow-lg max-w-md w-full p-6 sm:p-8 text-center space-y-4">
+          <div className="w-16 h-16 mx-auto rounded-full bg-green-100 flex items-center justify-center">
+            <CheckCircle className="w-8 h-8 text-green-500" />
+          </div>
+          <h1 className="text-xl font-bold text-slate-900">Devis {signe.devis.numero} signé</h1>
+          <p className="text-slate-600 leading-relaxed">
+            {signe.entreprise?.nom ? `Contrat conclu avec ${signe.entreprise.nom}` : 'Contrat conclu'}
+            {signe.devis.signature_date ? ` le ${dateLue(signe.devis.signature_date).toLocaleDateString('fr-FR')}` : ''}.
+          </p>
+          <RetractationEnLigne
+            token={signatureToken}
+            devis={signe.devis}
+            client={signe.client}
+            entreprise={signe.entreprise}
+            retractation={signe.devis.retractation}
+            couleur={signe.entreprise?.couleur || '#f97316'}
+            onChange={() => relireSigne().catch((err) => captureException(err, { context: 'Rétractation en ligne : relecture' }))}
+          />
+        </div>
+      </div>
+    );
+  }
   if (alreadySigned) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
@@ -203,6 +251,8 @@ export default function DevisSignaturePage({ signatureToken }) {
   // Compte de démonstration (D-26) : bandeau sur la page, filigrane sur le document
   const fictif = estDonneesFictives(entreprise);
   const canProceed = acceptCGV && signataire.trim().length > 0;
+  // Client particulier : demande expresse proposée (l'avis et le formulaire sont imprimés dans le devis)
+  const particulier = estClientParticulier(client);
 
   // === SUCCESS STATE ===
   if (step === 'success') {
@@ -252,7 +302,8 @@ export default function DevisSignaturePage({ signatureToken }) {
                 chantier: devisData.chantier || null,
                 entreprise,
                 couleur,
-                mode: 'client'
+                mode: 'client',
+                signatureToken,
               });
               // Un vrai PDF, rendu sans script (src/lib/pdfDepuisHtml.js). Avant : une fenêtre à l'origine du site
               // où le document était écrit par document.write (relecture gardien-securite du 10 oct. 2026).
@@ -283,6 +334,19 @@ export default function DevisSignaturePage({ signatureToken }) {
           <p className="text-sm text-slate-500 mt-4">
             Votre signature est enregistrée. Votre artisan reviendra vers vous pour la suite.
           </p>
+          {signe?.devis?.retractation && (
+            <div className="mt-4">
+              <RetractationEnLigne
+                token={signatureToken}
+                devis={signe.devis}
+                client={signe.client}
+                entreprise={signe.entreprise}
+                retractation={signe.devis.retractation}
+                couleur={couleur}
+                onChange={() => relireSigne().catch((err) => captureException(err, { context: 'Rétractation en ligne : relecture' }))}
+              />
+            </div>
+          )}
         </div>
       </div>
     );
@@ -297,7 +361,8 @@ export default function DevisSignaturePage({ signatureToken }) {
       chantier: devisData.chantier || null,
       entreprise,
       couleur,
-      mode: 'client'
+      mode: 'client',
+      signatureToken,
     });
 
     return (
@@ -459,6 +524,8 @@ export default function DevisSignaturePage({ signatureToken }) {
                     {entreprise?.cgv
                       ? <>En signant, j'accepte ce devis et les conditions particulières qui y figurent.</>
                       : <>En signant, j'accepte ce devis.</>}
+                    {/* Réparation urgente (L221-28, 8°) : le client signe sa demande */}
+                    {devis.travaux_urgents && <> {DEMANDE_URGENCE}</>}
                     <button
                       type="button"
                       onClick={(ev) => { ev.preventDefault(); setStep('preview'); }}
@@ -470,6 +537,24 @@ export default function DevisSignaturePage({ signatureToken }) {
                   </p>
                 </div>
               </label>
+
+              {/* Demande expresse (L221-25) : particulier seulement, facultative, séparée de l'acceptation */}
+              {particulier && (
+                <label className={`flex items-start gap-3 p-4 mt-3 rounded-xl border cursor-pointer transition-colors ${
+                  executionAnticipee ? 'border-slate-400 bg-slate-50' : 'border-slate-200 hover:border-slate-300'
+                }`} data-ui="DemandeExpresse">
+                  <input
+                    type="checkbox"
+                    checked={executionAnticipee}
+                    onChange={e => setExecutionAnticipee(e.target.checked)}
+                    className="mt-1 w-5 h-5 rounded flex-shrink-0"
+                  />
+                  <div>
+                    <p className="text-sm font-medium text-slate-900">{DEMANDE_EXPRESSE}</p>
+                    <p className="text-sm text-slate-500 mt-1">{DEMANDE_EXPRESSE_AIDE} Facultatif.</p>
+                  </div>
+                </label>
+              )}
 
               {/* Continue button */}
               <button
@@ -556,7 +641,8 @@ export default function DevisSignaturePage({ signatureToken }) {
                   ) : (
                     <Check className="w-5 h-5" />
                   )}
-                  {submitting ? 'Envoi...' : 'Signer ce devis'}
+                  {/* L221-14 : la validation dit qu'elle oblige à payer (« commande avec obligation de paiement ») */}
+                  {submitting ? 'Envoi...' : 'Signer avec obligation de paiement'}
                 </button>
               </div>
 

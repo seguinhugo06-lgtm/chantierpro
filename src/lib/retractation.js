@@ -1,0 +1,190 @@
+/**
+ * Droit de rétractation d'un client particulier (C. conso. L221-5, L221-18 à L221-28, D221-5) : qui est concerné,
+ * fin du délai, textes imprimés sur le devis. Textes relevés sur Légifrance le 12 oct. 2026 (versions en vigueur)
+ * et relus par juriste-btp. Même calcul du délai côté base : fin_delai_retractation (migration 086).
+ */
+import { echapperHtml as h } from './echapperHtml';
+import { nomImprime } from './identiteEntreprise';
+
+/**
+ * Client consommateur : catégorie « Particulier », ou ni catégorie ni entreprise. Une copropriété (catégorie
+ * « Syndic ») est une personne morale, pas un consommateur : lui imprimer le bloc lui donnerait par contrat un droit
+ * qu'elle n'a pas (relecture juriste-btp du 12 oct. 2026). Même règle côté base (migration 086).
+ */
+export function estClientParticulier(client) {
+  if (!client) return false;
+  const categorie = String(client.categorie || '').trim().toLowerCase();
+  if (categorie) return categorie === 'particulier';
+  return !String(client.entreprise || '').trim();
+}
+
+/** Devis d'un client particulier, hors facture et avoir : le seul document qui porte le droit de rétractation. */
+export function estConcerneParRetractation({ doc, client } = {}) {
+  if (!doc || doc.type === 'facture' || doc.facture_type === 'avoir') return false;
+  return estClientParticulier(client);
+}
+
+const jourIso = (d) => d.toISOString().slice(0, 10);
+
+/** Le jour « AAAA-MM-JJ » à Paris d'un instant (horodatage, Date). */
+export function jourParis(instant) {
+  const d = instant instanceof Date ? instant : new Date(instant);
+  if (Number.isNaN(d.getTime())) return '';
+  const parties = Object.fromEntries(new Intl.DateTimeFormat('fr-FR', { timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit' })
+    .formatToParts(d).map((p) => [p.type, p.value]));
+  return `${parties.year}-${parties.month}-${parties.day}`;
+}
+
+/** « 12/10/2026 à 14 h 32 » à Paris. */
+export function dateHeureParis(instant) {
+  const d = instant instanceof Date ? instant : new Date(instant);
+  if (Number.isNaN(d.getTime())) return '';
+  const date = new Intl.DateTimeFormat('fr-FR', { timeZone: 'Europe/Paris', day: '2-digit', month: '2-digit', year: 'numeric' }).format(d);
+  const [hh, mm] = new Intl.DateTimeFormat('fr-FR', { timeZone: 'Europe/Paris', hour: '2-digit', minute: '2-digit' }).format(d).split(':');
+  return `${date} à ${hh} h ${mm}`;
+}
+
+/** Dimanche de Pâques (calendrier grégorien, algorithme anonyme de Meeus, Jones et Butcher), en UTC. */
+export function paques(annee) {
+  const a = annee % 19; const b = Math.floor(annee / 100); const c = annee % 100;
+  const d = Math.floor(b / 4); const e = b % 4; const f = Math.floor((b + 8) / 25); const g = Math.floor((b - f + 1) / 3);
+  const h2 = (19 * a + b - d - g + 15) % 30; const i = Math.floor(c / 4); const k = c % 4;
+  const l = (32 + 2 * e + 2 * i - h2 - k) % 7; const m = Math.floor((a + 11 * h2 + 22 * l) / 451);
+  const n = h2 + l - 7 * m + 114;
+  return new Date(Date.UTC(annee, Math.floor(n / 31) - 1, (n % 31) + 1));
+}
+
+/**
+ * Jours fériés de l'article L3133-1 du code du travail, plus le Vendredi saint et le 26 décembre (fériés en Moselle
+ * et en Alsace, L3134-13) : le délai calculé n'est jamais plus court que celui du client.
+ */
+export function joursFeries(annee) {
+  const p = paques(annee);
+  const decale = (jours) => jourIso(new Date(p.getTime() + jours * 86400000));
+  return new Set([
+    `${annee}-01-01`, decale(-2), decale(1), `${annee}-05-01`, `${annee}-05-08`, decale(39), decale(50),
+    `${annee}-07-14`, `${annee}-08-15`, `${annee}-11-01`, `${annee}-11-11`, `${annee}-12-25`, `${annee}-12-26`,
+  ]);
+}
+
+/** Premier jour ouvrable à partir d'une date UTC (samedi, dimanche et jours fériés sautés). */
+function premierJourOuvrable(d) {
+  let jour = d;
+  for (;;) {
+    const j = jour.getUTCDay();
+    if (j !== 0 && j !== 6 && !joursFeries(jour.getUTCFullYear()).has(jourIso(jour))) return jour;
+    jour = new Date(jour.getTime() + 86400000);
+  }
+}
+
+/**
+ * Dernier jour du délai de rétractation d'un contrat de prestation de services conclu le `jourConclusion`
+ * (« AAAA-MM-JJ ») : quatorze jours, le jour de la conclusion non compté (L221-18, L221-19), reporté au premier
+ * jour ouvrable ; sans l'avis complet (`informe` faux), douze mois de plus (L221-20). Il finit à 23 h 59 (Paris).
+ */
+export function finDelaiRetractation(jourConclusion, informe = true) {
+  const m = String(jourConclusion || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) return '';
+  const initial = premierJourOuvrable(new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]) + 14)));
+  if (informe) return jourIso(initial);
+  // + 12 mois, jour ramené au dernier du mois s'il n'existe pas (comme l'intervalle de PostgreSQL)
+  const cible = new Date(Date.UTC(initial.getUTCFullYear(), initial.getUTCMonth() + 12, 1));
+  const dernier = new Date(Date.UTC(cible.getUTCFullYear(), cible.getUTCMonth() + 1, 0)).getUTCDate();
+  return jourIso(premierJourOuvrable(new Date(Date.UTC(cible.getUTCFullYear(), cible.getUTCMonth(), Math.min(initial.getUTCDate(), dernier)))));
+}
+
+// ─── Textes ─────────────────────────────────────────────────────────────────
+
+/**
+ * Case de la page de signature : demande expresse de commencer avant la fin du délai (L221-25, al. 1 : le
+ * professionnel recueille la demande et fait reconnaître la perte du droit après exécution complète). Rédaction
+ * juriste-btp du 12 oct. 2026.
+ */
+export const DEMANDE_EXPRESSE = 'Je demande que les travaux commencent avant la fin du délai de rétractation de quatorze jours. Je reconnais qu\'une fois les travaux entièrement exécutés, je n\'aurai plus le droit de me rétracter.';
+/** Sous la case : information L221-5, 9° (frais dus en cas de rétractation après une demande expresse). */
+export const DEMANDE_EXPRESSE_AIDE = 'Si je me rétracte après le début des travaux, je paierai un montant proportionnel aux travaux réalisés jusqu\'à ma rétractation.';
+/** Réparation urgente (L221-28, 8°) : la phrase que le client signe. */
+export const DEMANDE_URGENCE = 'À ma demande, ces travaux de dépannage sont réalisés en urgence à mon domicile.';
+
+/** Information L221-5, 10° : circonstances dans lesquelles le client perd le droit (L221-28, 1°). Rédaction libre. */
+const PERTE_DU_DROIT = 'Vous perdez le droit de rétractation lorsque, à votre demande expresse, les travaux ont été entièrement exécutés avant la fin du délai de rétractation et que vous avez reconnu perdre ce droit (article L221-28, 1° du Code de la consommation).';
+
+/** Réparation urgente (L221-28, 8°), en tête de l'avis. Rédaction libre. */
+const URGENCE = 'Dépannage urgent : vous avez expressément demandé que ces travaux de réparation soient réalisés en urgence à votre domicile. Pour les pièces de rechange et les travaux strictement nécessaires pour répondre à l\'urgence, vous ne bénéficiez pas du droit de rétractation (article L221-28, 8° du Code de la consommation).';
+
+const coordonnees = (entreprise) => ({
+  nom: nomImprime(entreprise) || String(entreprise?.nom || '').trim(),
+  adresse: String(entreprise?.adresse || '').replace(/\s*\n\s*/g, ', ').trim(),
+  telephone: String(entreprise?.tel || entreprise?.telephone || '').trim(),
+  email: String(entreprise?.email || '').trim(),
+});
+
+/**
+ * Avis d'information et formulaire type, à imprimer sur le devis d'un client particulier.
+ *
+ * Avis : annexe à l'article R221-3, version en vigueur depuis le 19/06/2026 (décret n° 2026-3 du 5 janvier 2026),
+ * MOT POUR MOT, complété pour une prestation de services : (1) a), (2) coordonnées de l'entreprise, (3) quand le
+ * devis a un lien de signature en ligne, (6) ; (4) et (5) ne visent que la vente de biens. Puis l'information
+ * L221-5, 10°. Formulaire : annexe à l'article R221-1, version en vigueur depuis le 28/05/2022 (décret n° 2022-424
+ * du 25 mars 2022), MOT POUR MOT, « A l'attention de » complété. Imprimés, l'avis et le formulaire forment
+ * l'information du 7° de L221-5 : sans eux, le délai est prolongé de douze mois (L221-20).
+ *
+ * @param {object} p
+ * @param {object} p.entreprise  fiche de l'entreprise (valeurs brutes : échappées ici)
+ * @param {object} [p.doc]       le devis (travaux_urgents)
+ * @param {string} [p.lienEnLigne] adresse de la page de signature, où se trouve la fonctionnalité de rétractation
+ */
+export function blocRetractationHtml({ entreprise, doc, lienEnLigne } = {}) {
+  const c = coordonnees(entreprise);
+  const notifier = [c.nom, c.adresse, c.telephone, c.email].filter(Boolean).map(h).join(', ');
+  const attention = [c.nom, c.adresse, c.email].filter(Boolean).map(h).join(', ');
+  const enLigne = lienEnLigne
+    ? ` Vous pouvez également exercer votre droit de rétractation en ligne sur ${h(lienEnLigne)}. Si vous utilisez cette fonctionnalité en ligne, nous vous enverrons, dans les meilleurs délais, un accusé de réception de la rétractation sur un support durable (par exemple, par courriel), y compris son contenu ainsi que la date et l'heure de sa soumission.`
+    : '';
+  const p = (texte, style = '') => `<p style="margin:0 0 5px;${style}">${texte}</p>`;
+  return `
+  <!-- DROIT DE RÉTRACTATION : avis type (annexe R221-3) et formulaire type (annexe R221-1), client particulier -->
+  <div class="retractation-annexe" style="break-before:page;page-break-before:always;margin-top:14px;font-size:8pt;color:#334155;line-height:1.45">
+    ${doc?.travaux_urgents ? `<div style="border:1px solid #fcd34d;background:#fef3c7;color:#92400e;padding:8px 10px;border-radius:6px;margin-bottom:8px">${h(URGENCE)}</div>` : ''}
+    <div style="border:1px solid #cbd5e1;padding:10px 12px;border-radius:6px">
+      ${p('<strong>INFORMATIONS CONCERNANT L\'EXERCICE DU DROIT DE RÉTRACTATION</strong>', 'font-size:9pt')}
+      ${p('<strong>Droit de rétractation</strong>')}
+      ${p('Vous avez le droit de vous rétracter du présent contrat sans donner de motif dans un délai de quatorze jours.')}
+      ${p('Le délai de rétractation expire quatorze jours après le jour de la conclusion du contrat.')}
+      ${p(`Pour exercer le droit de rétractation, vous devez nous notifier (${notifier}) votre décision de rétractation du présent contrat au moyen d'une déclaration dénuée d'ambiguïté (par exemple, lettre envoyée par la poste ou courrier électronique). Vous pouvez utiliser le modèle de formulaire de rétractation mais ce n'est pas obligatoire.${enLigne}`)}
+      ${p('Pour que le délai de rétractation soit respecté, il suffit que vous transmettiez votre communication relative à l\'exercice du droit de rétractation avant l\'expiration du délai de rétractation.')}
+      ${p('<strong>Effets de rétractation</strong>')}
+      ${p('En cas de rétractation de votre part du présent contrat, nous vous rembourserons tous les paiements reçus de vous, y compris les frais de livraison (à l\'exception des frais supplémentaires découlant du fait que vous avez choisi, le cas échéant, un mode de livraison autre que le mode moins coûteux de livraison standard proposé par nous) sans retard excessif et, en tout état de cause, au plus tard quatorze jours à compter du jour où nous sommes informés de votre décision de rétractation du présent contrat. Nous procéderons au remboursement en utilisant le même moyen de paiement que celui que vous aurez utilisé pour la transaction initiale, sauf si vous convenez expressément d\'un moyen différent ; en tout état de cause, ce remboursement n\'occasionnera pas de frais pour vous.')}
+      ${p('Si vous avez demandé de commencer la prestation de services pendant le délai de rétractation, vous devrez nous payer un montant proportionnel à ce qui vous a été fourni jusqu\'au moment où vous nous avez informé de votre rétractation du présent contrat, par rapport à l\'ensemble des prestations prévues par le contrat.')}
+      ${p(h(PERTE_DU_DROIT), 'margin-bottom:0')}
+    </div>
+    <div style="border:1px dashed #94a3b8;padding:10px 12px;border-radius:6px;margin-top:10px">
+      ${p('<strong>MODÈLE DE FORMULAIRE DE RÉTRACTATION</strong>', 'font-size:9pt')}
+      ${p('(Veuillez compléter et renvoyer le présent formulaire uniquement si vous souhaitez vous rétracter du contrat.)')}
+      ${p(`A l'attention de ${attention} :`)}
+      ${p('Je/nous (*) vous notifie/notifions (*) par la présente ma/notre (*) rétractation du contrat portant sur la vente du bien (*)/pour la prestation de services (*) ci-dessous :')}
+      ${p('Commandé le (*)/reçu le (*) :', 'margin-top:10px')}
+      ${p('Nom du (des) consommateur(s) :', 'margin-top:10px')}
+      ${p('Adresse du (des) consommateur(s) :', 'margin-top:10px')}
+      ${p('Signature du (des) consommateur(s) (uniquement en cas de notification du présent formulaire sur papier) :', 'margin-top:10px')}
+      ${p('Date :', 'margin-top:18px')}
+      ${p('(*) Rayez la mention inutile.', 'margin-top:10px;margin-bottom:0')}
+    </div>
+  </div>`;
+}
+
+/**
+ * Sous la signature du client : la demande expresse (L221-25) et, pour un dépannage urgent, la phrase signée par
+ * le client (L221-28, 8°). Rien quand la case n'a pas été cochée (une date de début écrite deviendrait fausse si le
+ * délai est prolongé).
+ */
+export function mentionsSignatureClientHtml(doc) {
+  const blocs = [];
+  if (doc?.travaux_urgents) {
+    blocs.push(`<div style="font-size:7.5pt;color:#334155;margin-top:6px">${h(DEMANDE_URGENCE)}</div>`);
+  }
+  if (doc?.execution_anticipee_le) {
+    blocs.push(`<div style="font-size:7.5pt;color:#334155;margin-top:6px"><strong>Demande expresse du client</strong> (art. L221-25 du Code de la consommation) : « ${h(DEMANDE_EXPRESSE)} » — recueillie le ${h(dateHeureParis(doc.execution_anticipee_le))} (heure de Paris)${doc.signature_data ? ' lors de la signature en ligne' : ' lors de la signature sur place'}.</div>`);
+  }
+  return blocs.join('');
+}

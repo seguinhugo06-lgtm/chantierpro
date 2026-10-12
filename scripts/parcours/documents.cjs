@@ -131,6 +131,136 @@ module.exports = [
       verifier(etat.filigrane, 'filigrane sur le devis montré au client');
     },
   },
+  // ── Rétractation d'un devis signé à distance (migration 086, C. conso. L221-5, L221-14, L221-21, L221-25, D221-5) ──
+  {
+    nom: 'signature en ligne par un particulier : avis et formulaire de rétractation, demande expresse, « obligation de paiement »',
+    reel: true,
+    async executer({ ouvrir, attendre, verifier, ORIGIN }) {
+      const json = (corps) => ({ status: 200, body: JSON.stringify(corps) });
+      const jeton = '7a3f0c52-3c1e-4f8e-9a57-0c2f6e1b9d86';
+      const reponse = {
+        devis: { id: 'd-086', numero: 'DEV-2026-00086', type: 'devis', statut: 'envoye', date: '2026-10-12', date_validite: '2099-11-11', validite: 30, objet: 'Tableau électrique',
+          lignes: JSON.stringify([{ id: 'l1', description: 'Tableau électrique 2 rangées', quantite: 1, unite: 'u', prixUnitaire: 690, montant: 690, tva: 0 }]),
+          sections: '[]', total_ht: 690, total_tva: 0, total_ttc: 690, travaux_urgents: false, already_signed: false },
+        client: { nom: 'Martin', prenom: 'Léa', categorie: 'Particulier', email: 'lea@exemple.fr' },
+        chantier: null,
+        entreprise: { nom: 'Élec du Sud', forme_juridique: 'SARL', siret: '12345678900012', adresse: '3 rue des Lilas\n33000 Bordeaux', telephone: '06 00 00 00 00', email: 'contact@elec.fr', couleur: '#f97316' },
+      };
+      let appelSignature = null;
+      const { page } = await ouvrir({ reel: true, largeur: 390, supabase: (req, u) => {
+        if (u.pathname === '/rest/v1/rpc/get_devis_for_signature') return json(reponse);
+        if (u.pathname === '/rest/v1/rpc/sign_devis') { appelSignature = JSON.parse(req.postData() || '{}'); return json({ success: true, devis_id: 'd-086' }); }
+        return json({});
+      } });
+      await page.goto(`${ORIGIN}/devis/signer/${jeton}`, { waitUntil: 'networkidle0' });
+      await attendre(1200);
+      const doc = await page.evaluate(() => [...document.querySelectorAll('iframe')].map((f) => f.getAttribute('srcdoc') || '').join(''));
+      verifier(doc.includes('MODÈLE DE FORMULAIRE DE RÉTRACTATION') && doc.includes('INFORMATIONS CONCERNANT L\'EXERCICE DU DROIT DE RÉTRACTATION'), 'le devis montré au client porte l’avis et le formulaire type');
+      verifier(doc.includes(`/devis/signer/${jeton}`) && doc.includes('exercer votre droit de rétractation en ligne sur'), 'l’avis annonce la rétractation en ligne à l’adresse du lien');
+      verifier(!/lettre recommandée/.test(doc) && !/mention manuscrite/.test(doc), 'plus de lettre recommandée exigée, plus de mention manuscrite impossible');
+      // Étape « informations » : la case de demande expresse, séparée de l'acceptation
+      await page.evaluate(() => { const b = [...document.querySelectorAll('button')].find((x) => /Signer/.test(x.innerText || '')); if (b) b.click(); });
+      await attendre(500);
+      const etape = await page.evaluate(() => ({
+        demande: !!document.querySelector('[data-ui="DemandeExpresse"] input[type=checkbox]'),
+        texte: document.querySelector('[data-ui="DemandeExpresse"]')?.innerText || '',
+      }));
+      verifier(etape.demande && /avant la fin du délai de rétractation/.test(etape.texte) && /montant proportionnel/.test(etape.texte), `case de demande expresse proposée au particulier (${etape.texte.slice(0, 60)}…)`);
+      await page.evaluate(() => {
+        const cases = [...document.querySelectorAll('input[type=checkbox]')];
+        cases.forEach((c) => c.click());
+      });
+      await attendre(300);
+      await page.evaluate(() => { const b = [...document.querySelectorAll('button')].find((x) => /Passer à la signature/.test(x.innerText || '')); if (b) b.click(); });
+      await attendre(600);
+      // Tracé sur le canevas
+      const canevas = await page.$('canvas');
+      const boite = canevas && await canevas.boundingBox();
+      if (boite) {
+        await page.mouse.move(boite.x + 30, boite.y + 60);
+        await page.mouse.down();
+        await page.mouse.move(boite.x + 160, boite.y + 110, { steps: 8 });
+        await page.mouse.move(boite.x + 260, boite.y + 70, { steps: 8 });
+        await page.mouse.up();
+      }
+      await attendre(300);
+      const bouton = await page.evaluate(() => [...document.querySelectorAll('button')].map((b) => (b.innerText || '').trim()).find((t) => /obligation de paiement/.test(t)) || '');
+      verifier(bouton === 'Signer avec obligation de paiement', `bouton de validation explicite (L221-14) : « ${bouton || 'absent'} »`);
+      await page.evaluate(() => { const b = [...document.querySelectorAll('button')].find((x) => /obligation de paiement/.test(x.innerText || '')); if (b) b.click(); });
+      await attendre(1200);
+      verifier(appelSignature && appelSignature.p_execution_anticipee === true && appelSignature.p_avis_retractation === true,
+        `la signature transmet la demande expresse et l’avis montré (${JSON.stringify(appelSignature && { e: appelSignature.p_execution_anticipee, a: appelSignature.p_avis_retractation })})`);
+    },
+  },
+  {
+    nom: 'devis signé en ligne : « Renoncer au contrat ici », déclaration, « Confirmer la rétractation », accusé de réception',
+    reel: true,
+    async executer({ ouvrir, attendre, verifier, ORIGIN }) {
+      const json = (corps) => ({ status: 200, body: JSON.stringify(corps) });
+      let retracte = null;
+      let accuse = false;
+      const signe = () => ({
+        devis: { already_signed: true, numero: 'DEV-2026-00086', date: '2026-10-12', signature_date: '2026-10-12T09:00:00Z', signataire_nom: 'Léa Martin',
+          retractation: retracte
+            ? { ouverte: false, fin: '2026-10-26', le: retracte, nom: 'Léa Martin', email: 'lea@exemple.fr', accuse_le: accuse ? retracte : null }
+            : { ouverte: true, fin: '2026-10-26', le: null, nom: null, email: null, accuse_le: null } },
+        client: { nom: 'Martin', prenom: 'Léa', email: 'lea@exemple.fr' },
+        entreprise: { nom: 'Élec du Sud', couleur: '#f97316' },
+      });
+      let declaration = null;
+      const { page } = await ouvrir({ reel: true, largeur: 390, supabase: (req, u) => {
+        if (u.pathname === '/rest/v1/rpc/get_devis_for_signature') return json(signe());
+        if (u.pathname === '/rest/v1/rpc/retracter_devis') { declaration = JSON.parse(req.postData() || '{}'); retracte = '2026-10-12T12:32:00Z'; return json({ success: true, retractation_le: retracte, fin: '2026-10-26' }); }
+        if (u.pathname === '/functions/v1/notify-signature') { accuse = true; return json({ success: true }); }
+        return json({});
+      } });
+      await page.goto(`${ORIGIN}/devis/signer/7a3f0c52-3c1e-4f8e-9a57-0c2f6e1b9d86`, { waitUntil: 'networkidle0' });
+      await attendre(1000);
+      const avant = await page.evaluate(() => ({
+        texte: document.querySelector('[data-ui="RetractationEnLigne"]')?.innerText || '',
+        bouton: [...document.querySelectorAll('button')].some((b) => (b.innerText || '').trim() === 'Renoncer au contrat ici'),
+      }));
+      verifier(avant.bouton && /jusqu'au 26 octobre 2026 inclus/.test(avant.texte), `bouton « Renoncer au contrat ici » visible, délai affiché (${avant.texte.slice(0, 80)})`);
+      await page.evaluate(() => { [...document.querySelectorAll('button')].find((b) => (b.innerText || '').trim() === 'Renoncer au contrat ici').click(); });
+      await attendre(400);
+      const formulaire = await page.evaluate(() => ({
+        nom: document.querySelector('#retractation-nom')?.value,
+        email: document.querySelector('#retractation-email')?.value,
+        contrat: document.querySelector('[data-ui="DeclarationRetractation"]')?.innerText || '',
+      }));
+      verifier(formulaire.nom === 'Léa Martin' && formulaire.email === 'lea@exemple.fr' && /Devis n° DEV-2026-00086 du 12\/10\/2026/.test(formulaire.contrat) && /Je vous notifie par la présente ma rétractation/.test(formulaire.contrat),
+        'déclaration préremplie : nom, contrat, adresse de l’accusé, texte de la rétractation');
+      await page.evaluate(() => { [...document.querySelectorAll('button')].find((b) => (b.innerText || '').trim() === 'Confirmer la rétractation').click(); });
+      await attendre(1200);
+      const apres = await page.evaluate(() => document.querySelector('[data-ui="RetractationRecue"]')?.innerText || '');
+      verifier(declaration && declaration.p_nom === 'Léa Martin' && declaration.p_email === 'lea@exemple.fr', 'la déclaration est envoyée à la base');
+      verifier(/transmise à Élec du Sud le 12\/10\/2026 à 14 h 32/.test(apres) && /accusé de réception a été envoyé à lea@exemple.fr/.test(apres),
+        `confirmation avec date, heure et accusé envoyé (${apres.replace(/\s+/g, ' ').slice(0, 120)})`);
+    },
+  },
+  {
+    nom: 'signature en ligne par un professionnel : ni avis de rétractation, ni demande expresse',
+    reel: true,
+    async executer({ ouvrir, attendre, verifier, ORIGIN }) {
+      const json = (corps) => ({ status: 200, body: JSON.stringify(corps) });
+      const reponse = {
+        devis: { id: 'd-pro', numero: 'DEV-2026-00087', type: 'devis', statut: 'envoye', date: '2026-10-12', date_validite: '2099-11-11', validite: 30,
+          lignes: JSON.stringify([{ id: 'l1', description: 'Mise aux normes', quantite: 1, unite: 'u', prixUnitaire: 900, montant: 900, tva: 20 }]),
+          sections: '[]', total_ht: 900, total_tva: 180, total_ttc: 1080, already_signed: false },
+        client: { nom: 'Durand', entreprise: 'SCI Les Quais', categorie: 'Professionnel' },
+        chantier: null,
+        entreprise: { nom: 'Élec du Sud', forme_juridique: 'SARL', email: 'contact@elec.fr', couleur: '#f97316' },
+      };
+      const { page } = await ouvrir({ reel: true, largeur: 390, supabase: (req, u) => (u.pathname === '/rest/v1/rpc/get_devis_for_signature' ? json(reponse) : json({})) });
+      await page.goto(`${ORIGIN}/devis/signer/0b9e1c52-3c1e-4f8e-9a57-0c2f6e1b9d87`, { waitUntil: 'networkidle0' });
+      await attendre(1000);
+      const doc = await page.evaluate(() => [...document.querySelectorAll('iframe')].map((f) => f.getAttribute('srcdoc') || '').join(''));
+      verifier(!doc.includes('FORMULAIRE DE RÉTRACTATION') && !doc.includes('DROIT DE RÉTRACTATION'), 'pas d’avis de rétractation pour un professionnel');
+      await page.evaluate(() => { const b = [...document.querySelectorAll('button')].find((x) => /Signer/.test(x.innerText || '')); if (b) b.click(); });
+      await attendre(500);
+      verifier(!(await page.evaluate(() => !!document.querySelector('[data-ui="DemandeExpresse"]'))), 'pas de case de demande expresse pour un professionnel');
+    },
+  },
   {
     nom: 'compte ordinaire : ni bandeau ni filigrane',
     async executer({ ouvrir, attendre, verifier }) {

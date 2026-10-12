@@ -26,6 +26,7 @@ import { dateLue } from './dates';
 import { signatureDuClient } from './signatureDocument';
 import { finValidite } from './validiteDevis';
 import { estClientPro } from './relanceUtils';
+import { blocRetractationHtml, estConcerneParRetractation, mentionsSignatureClientHtml } from './retractation';
 
 /**
  * Formatte un RCS complet
@@ -96,7 +97,7 @@ export const PAGE_CSS = `
  * @param {string} [params.paymentQrDataUrl] - Data URL du QR code (base64 PNG)
  * @returns {string} HTML complet
  */
-export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mode = 'artisan', paymentToken, paymentQrDataUrl, echeancier }) {
+export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mode = 'artisan', paymentToken, paymentQrDataUrl, echeancier, signatureToken }) {
   const isClientMode = mode === 'client';
   const color = couleurCss(couleur || entreprise?.couleur);
   const isFacture = doc.type === 'facture';
@@ -381,16 +382,6 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mod
   </div>
   ` : ''}
 
-  ${!isFacture ? `
-  <!-- DROIT DE RÉTRACTATION -->
-  <div class="retractation">
-    <strong>DROIT DE RÉTRACTATION</strong> (Art. L221-18 du Code de la consommation)<br>
-    Vous disposez d'un délai de <strong>14 jours</strong> pour exercer votre droit de rétractation sans justification ni pénalité.
-    Le délai court à compter de la signature du présent devis.
-    Pour l'exercer, envoyez une lettre recommandée AR à : ${e.adresse ? e.adresse.replace(/\n/g, ', ') : e.nom || ''}
-  </div>
-  ` : ''}
-
   ${e.cgv ? `
   <!-- CGV PERSONNALISÉES -->
   <div class="conditions" style="margin-top:10px">
@@ -419,11 +410,19 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mod
     </div>
     <div class="signature-box">
       <h4>Le Client</h4>
-      <p>Signature précédée de la mention manuscrite:<br><strong>"Bon pour accord"</strong> + Date</p>
+      <p>Signature du client et date</p>
+      ${mentionsSignatureClientHtml(doc)}
       ${signatureBlock}
     </div>
   </div>
   ` : ''}
+
+  ${estConcerneParRetractation({ doc, client }) ? blocRetractationHtml({
+    entreprise,
+    doc,
+    // Lien de signature : la rétractation en ligne s'y trouve (L221-5, 7° ; D221-5)
+    lienEnLigne: (signatureToken || doc.signature_token) ? urlPublique(`/devis/signer/${signatureToken || doc.signature_token}`) : '',
+  }) : ''}
 
   <!-- FOOTER -->
   ${buildFooterHtml(e, rcsComplet, !isFacture, isClientMode)}

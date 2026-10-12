@@ -40,7 +40,6 @@ export const REGLAGES_SANS_COLONNE = {
   modePaiementDefaut: '',
   conditionsPaiementDefaut: '',
   acompteDefaut: 30,
-  mentionRetractation: true,
   mentionGaranties: true,
   mentionPenalites: true,
   // Compte de démonstration (D-26) : bandeau à l'écran, filigrane « EXEMPLE » sur les documents

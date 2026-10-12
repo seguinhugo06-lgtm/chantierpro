@@ -1,6 +1,7 @@
-import React, { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import SignatureCanvas from 'react-signature-canvas';
 import { X, Check, RotateCcw, Pen, Calendar, FileCheck, Info } from 'lucide-react';
+import { DEMANDE_URGENCE } from '../lib/retractation';
 
 /**
  * Composant de signature electronique
@@ -176,7 +177,11 @@ export default function SignaturePad({
                 <div>
                   <p className={`font-medium ${textPrimary}`}>J'accepte ce devis</p>
                   <p className={`text-sm ${textMuted}`}>
-                    En signant, j'accepte le devis et les conditions générales de vente de {entreprise?.nom || 'l\'entreprise'}.
+                    {/* Même texte que la page de signature en ligne (avant : des « conditions générales de vente »
+                        citées même sans conditions — relecture juriste-btp du 12 oct. 2026) */}
+                    {entreprise?.cgv ? 'En signant, j\'accepte ce devis et les conditions particulières qui y figurent.' : 'En signant, j\'accepte ce devis.'}
+                    {/* Réparation urgente (L221-28, 8°) : le client signe sa demande */}
+                    {document?.travaux_urgents ? ` ${DEMANDE_URGENCE}` : ''}
                   </p>
                 </div>
               </label>

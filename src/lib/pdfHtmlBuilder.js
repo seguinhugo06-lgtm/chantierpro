@@ -11,6 +11,8 @@ import { echeance } from './paiementsFacture';
 import { dateLue } from './dates';
 import { estFranchiseTva } from './franchiseTva';
 import { marquerDocumentFictif } from './donneesFictives';
+import { urlPublique } from './urlPublique';
+import { blocRetractationHtml, estConcerneParRetractation, mentionsSignatureClientHtml } from './retractation';
 
 /**
  * Get entreprise data from localStorage
@@ -257,16 +259,6 @@ export function buildDocumentHTML(doc, client, chantier, entreprise, options = {
   </div>
   ` : ''}
 
-  ${!isFacture && !isAvoir && (entreprise?.mentionRetractation !== false) ? `
-  <!-- DROIT DE RÉTRACTATION -->
-  <div class="retractation">
-    <strong>⚠️ DROIT DE RÉTRACTATION</strong> (Art. L221-18 du Code de la consommation)<br>
-    Vous disposez d'un délai de <strong>14 jours</strong> pour exercer votre droit de rétractation sans justification ni pénalité.
-    Le délai court à compter de la signature du présent devis.
-    Pour l'exercer, envoyez une lettre recommandée AR à : ${entreprise?.adresse ? entreprise.adresse.replace(/\n/g, ', ') : entreprise?.nom || ''}
-  </div>
-  ` : ''}
-
   ${!isAvoir && entreprise?.cgv ? `
   <!-- CGV PERSONNALISÉES -->
   <div class="conditions" style="margin-top:10px">
@@ -284,11 +276,19 @@ export function buildDocumentHTML(doc, client, chantier, entreprise, options = {
     </div>
     <div class="signature-box">
       <h4>Le Client</h4>
-      <p>Signature précédée de la mention manuscrite:<br><strong>"Bon pour accord"</strong> + Date</p>
+      <p>Signature du client et date</p>
+      ${mentionsSignatureClientHtml(doc)}
       ${doc.signature ? '<div style="margin-top:15px;color:#16a34a;font-weight:bold">[OK] Signé électroniquement le ' + dateLue(doc.signatureDate).toLocaleDateString('fr-FR') + '</div>' : ''}
     </div>
   </div>
   ` : ''}
+
+  ${!isAvoir && estConcerneParRetractation({ doc, client }) ? blocRetractationHtml({
+    entreprise,
+    doc,
+    // Lien de signature déjà donné : la rétractation en ligne s'y trouve (L221-5, 7° ; D221-5)
+    lienEnLigne: doc.signature_token ? urlPublique(`/devis/signer/${doc.signature_token}`) : '',
+  }) : ''}
 
   <!-- FOOTER -->
   <div class="footer">

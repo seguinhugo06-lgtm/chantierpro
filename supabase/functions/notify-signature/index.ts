@@ -9,12 +9,19 @@
  *   - dédupliqué via events_log (une seule notification par devis)
  *
  * Usage: supabase.functions.invoke('notify-signature', { body: { token } })
+ *
+ * Rétractation en ligne (C. conso. L221-21, D221-5 ; migration 086) :
+ *   supabase.functions.invoke('notify-signature', { body: { token, evenement: 'retractation' } })
+ *   → accusé de réception au client (adresse qu'il a donnée, enregistrée par retracter_devis) et avis à
+ *     l'artisan. Gardes : rétractation enregistrée en base ; un seul accusé (réservé par une mise à jour
+ *     conditionnelle de retractation_accuse_le, rendu si l'envoi échoue) ; textes dans retractation.ts.
  */
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
 import { echapperHtml } from '../_shared/adresses.ts';
+import { accuseReception, avisArtisan, type DevisRetracte, type Message } from './retractation.ts';
 
 const APP_URL = Deno.env.get('APP_URL') || 'https://mallettico.fr';
 
@@ -27,13 +34,105 @@ const json = (body: Record<string, unknown>, status = 200) =>
 const fmtEUR = (n: number) =>
   new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(n || 0);
 
+/** Envoi par Resend ; vrai si le message est parti. */
+async function envoyer(message: Message): Promise<boolean> {
+  const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
+  if (!RESEND_API_KEY) {
+    console.error('[notify-signature] Resend non configuré');
+    return false;
+  }
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      from: `Mallettico <${Deno.env.get('FROM_EMAIL') || 'noreply@mallettico.fr'}>`,
+      to: [message.a],
+      ...(message.repondreA ? { reply_to: message.repondreA } : {}),
+      subject: message.sujet,
+      html: message.html,
+      text: message.texte,
+    }),
+  });
+  if (!res.ok) console.error('[notify-signature] Resend error:', await res.text());
+  return res.ok;
+}
+
+// ─── Rétractation en ligne : accusé de réception (D221-5) et avis à l'artisan ───
+// deno-lint-ignore no-explicit-any
+async function traiterRetractation(supabase: any, token: string): Promise<Response> {
+  const { data: devis, error } = await supabase
+    .from('devis')
+    .select('id, numero, date, user_id, entreprise_id, signature_date, execution_anticipee_le, retractation_le, retractation_nom, retractation_email, retractation_accuse_le')
+    .eq('signature_token', token)
+    .maybeSingle();
+  if (error || !devis) return json({ error: 'devis introuvable' }, 404);
+  if (!devis.retractation_le) return json({ error: 'aucune rétractation enregistrée' }, 400);
+  if (devis.retractation_accuse_le) return json({ success: true, deja: true });
+
+  // Un seul accusé : on réserve l'envoi avant de le faire (deux appels simultanés n'en envoient qu'un)
+  const maintenant = new Date().toISOString();
+  const { data: reserve, error: errReserve } = await supabase
+    .from('devis')
+    .update({ retractation_accuse_le: maintenant })
+    .eq('id', devis.id)
+    .is('retractation_accuse_le', null)
+    .select('id');
+  if (errReserve) {
+    console.error('[notify-signature] réservation de l\'accusé impossible :', errReserve.message);
+    return json({ error: 'accusé non envoyé' }, 500);
+  }
+  if (!reserve || reserve.length === 0) return json({ success: true, deja: true });
+  const rendre = () => supabase.from('devis').update({ retractation_accuse_le: null }).eq('id', devis.id);
+
+  // L'entreprise du devis (sinon la fiche par défaut de son auteur) : nom, coordonnées, adresse de réponse
+  const { data: fiches } = await supabase
+    .from('entreprise')
+    .select('id, nom, adresse, telephone, email, is_default, created_at')
+    .eq('user_id', devis.user_id);
+  const fiche = (fiches || []).sort((a: Record<string, unknown>, b: Record<string, unknown>) =>
+    Number(b.id === devis.entreprise_id) - Number(a.id === devis.entreprise_id)
+    || Number(!!b.is_default) - Number(!!a.is_default)
+    || String(a.created_at).localeCompare(String(b.created_at)))[0] || {};
+
+  const accuse = accuseReception(devis as DevisRetracte, fiche);
+  if (!accuse || !(await envoyer(accuse))) {
+    const { error: errRendre } = await rendre();
+    if (errRendre) console.error(`[notify-signature] ACCUSÉ NON ENVOYÉ ET RÉSERVATION GARDÉE devis=${devis.id} : ${errRendre.message}`);
+    return json({ error: 'accusé non envoyé' }, 502);
+  }
+
+  // Avis à l'artisan : au mieux (l'accusé du client est parti)
+  try {
+    let artisanEmail: string | null = null;
+    try {
+      const { data: userData } = await supabase.auth.admin.getUserById(devis.user_id as string);
+      artisanEmail = userData?.user?.email ?? null;
+    } catch { /* repli ci-dessous */ }
+    const avis = avisArtisan(devis as DevisRetracte, artisanEmail || (fiche as { email?: string }).email, APP_URL);
+    if (avis && !(await envoyer(avis))) console.error(`[notify-signature] avis de rétractation à l'artisan non envoyé devis=${devis.id}`);
+  } catch (e) {
+    console.error('[notify-signature] avis à l\'artisan :', (e as Error).message);
+  }
+
+  const { error: errJournal } = await supabase.from('events_log').insert([{
+    event_type: 'devis_retractation_accuse',
+    entity_type: 'devis',
+    entity_id: devis.id,
+    success: true,
+    metadata: { numero: devis.numero, retractation_le: devis.retractation_le },
+    triggered_at: maintenant,
+  }]);
+  if (errJournal) console.error(`[notify-signature] journal de l'accusé perdu devis=${devis.id} : ${errJournal.message}`);
+  return json({ success: true });
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
   try {
-    const { token } = await req.json();
+    const { token, evenement } = await req.json();
     if (!token || typeof token !== 'string') {
       return json({ error: 'token manquant' }, 400);
     }
@@ -42,6 +141,8 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
+
+    if (evenement === 'retractation') return await traiterRetractation(supabase, token);
 
     // 1. Charger le devis par son token de signature
     const { data: devis, error } = await supabase

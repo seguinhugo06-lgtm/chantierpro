@@ -24,7 +24,8 @@ describe('entreprise : ce qui est saisi dans les Paramètres revient au recharge
     const e = fromSupabase(LIGNE);
     expect(e.mediateur).toBe('CNPM');
     expect(e.acompteDefaut).toBe(40);
-    expect(e.mentionRetractation).toBe(true); // défaut
+    expect(e.mentionGaranties).toBe(true); // défaut
+    expect(e).not.toHaveProperty('mentionRetractation'); // plus de réglage : obligatoire pour un particulier
     expect(e.tauxPenalites).toBe(''); // défaut : le taux légal s'applique
   });
 

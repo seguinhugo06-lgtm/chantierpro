@@ -220,6 +220,11 @@ export const FIELD_MAPPINGS = {
         signature: item.signature || null,
         signature_date: item.signatureDate || null,
         signataire: item.signataire || null,
+        // Demande expresse posée par la signature sur place (migration 086) : envoyée seulement si elle existe, pour
+        // qu'une copie périmée du devis n'efface jamais celle qu'un client a cochée en signant par le lien. La
+        // rétractation (retractation_*) n'est jamais écrite par l'app : la base la refuse (déclencheur).
+        ...(item.execution_anticipee_le ? { execution_anticipee_le: item.execution_anticipee_le } : {}),
+        travaux_urgents: item.travaux_urgents === true,
         // Facture-specific fields
         facture_type: item.facture_type || null,
         devis_source_id: item.devis_source_id || null,
@@ -284,6 +289,15 @@ export const FIELD_MAPPINGS = {
       // rechargement en créait un nouveau, et le lien du premier e-mail répondait « Lien invalide »)
       signature_token: row.signature_token || null,
       signature_expires_at: row.signature_expires_at || null,
+      // Rétractation (migration 086) : demande expresse de commencer avant la fin du délai (L221-25), réparation
+      // urgente demandée par le client (L221-28, 8°), déclaration de rétractation reçue en ligne (D221-5)
+      execution_anticipee_le: row.execution_anticipee_le || null,
+      travaux_urgents: row.travaux_urgents === true,
+      avis_retractation: row.avis_retractation === true,
+      retractation_le: row.retractation_le || null,
+      retractation_nom: row.retractation_nom || null,
+      retractation_email: row.retractation_email || null,
+      retractation_accuse_le: row.retractation_accuse_le || null,
       // Facture-specific fields
       facture_type: row.facture_type || null,
       devis_source_id: row.devis_source_id || null,

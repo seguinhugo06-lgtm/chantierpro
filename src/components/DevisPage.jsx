@@ -61,6 +61,7 @@ import { totauxDocument, lignesTotauxHtml, lignesAcompteHtml, calculerTotaux } f
 import { lignesFactureAcompte, lignesFactureSolde } from '../lib/facturation';
 import { verifierNouvelleFacture, pourcentageAcompteValide, peutModifierDocument, peutSupprimerDocument, estEntierementFacture, dejaFactureTTC, montantCredite } from '../lib/gardeFacturation';
 import { DEFAULT_PENALTY_RATE, estClientPro } from '../lib/relanceUtils';
+import { blocRetractationHtml, estConcerneParRetractation, mentionsSignatureClientHtml } from '../lib/retractation';
 import { soldeDe, texteCourt, telInternational } from '../lib/messageRelance';
 import { useDebounce } from '../hooks/useDebounce';
 import { useDevisModals } from '../hooks/useDevisModals';
@@ -107,6 +108,7 @@ import { estOuverte, estEnRetard } from '../lib/ventes';
 import { urlPublique } from '../lib/urlPublique';
 import { jourLocal, dateLue } from '../lib/dates';
 import { signatureDuClient } from '../lib/signatureDocument';
+import RetractationDevis from './devis/RetractationDevis';
 import { finValidite, joursRestants, estExpire } from '../lib/validiteDevis';
 import { createPortal } from 'react-dom';
 
@@ -1823,16 +1825,6 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   </div>
   ` : ''}
 
-  ${!isFacture && !isAvoirDoc && (E?.mentionRetractation !== false) ? `
-  <!-- DROIT DE RÉTRACTATION -->
-  <div class="retractation">
-    <strong>⚠️ DROIT DE RÉTRACTATION</strong> (Art. L221-18 du Code de la consommation)<br>
-    Vous disposez d'un délai de <strong>14 jours</strong> pour exercer votre droit de rétractation sans justification ni pénalité.
-    Le délai court à compter de la signature du présent devis.
-    Pour l'exercer, envoyez une lettre recommandée AR à : ${E?.adresse ? E.adresse.replace(/\n/g, ', ') : E?.nom || ''}
-  </div>
-  ` : ''}
-
   ${!isAvoirDoc && !estClientPro(client) && (E?.mediateur || E?.mediateurContact) ? `
   <!-- MÉDIATEUR DE LA CONSOMMATION : client particulier seulement (C. conso. L611-3, 1° : pas entre professionnels) -->
   <div class="retractation" style="margin-top:10px">
@@ -1860,7 +1852,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     </div>
     <div class="signature-box">
       <h4>Le Client</h4>
-      <p>Signature précédée de la mention manuscrite:<br><strong>"Bon pour accord"</strong> + Date</p>
+      <p>Signature du client et date</p>
+      ${mentionsSignatureClientHtml(doc)}
       ${(() => {
         // Tracé, nom et date, que le client ait signé sur place ou par le lien (avant : texte seul, jamais le
         // tracé, et rien pour une signature à distance — recette du 9 oct. 2026)
@@ -1872,6 +1865,13 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     </div>
   </div>
   ` : ''}
+
+  ${!isAvoirDoc && estConcerneParRetractation({ doc, client }) ? blocRetractationHtml({
+    entreprise,
+    doc,
+    // Lien de signature déjà donné : la rétractation en ligne s'y trouve (L221-5, 7° ; D221-5)
+    lienEnLigne: doc.signature_token ? urlPublique(`/devis/signer/${doc.signature_token}`) : '',
+  }) : ''}
 
   <!-- FOOTER -->
   <div class="footer">
@@ -3366,6 +3366,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                   </div>
                 );
               })()}
+              {/* Rétractation du client particulier : reçue, demande expresse, ou date des travaux (migration 086) */}
+              <RetractationDevis devis={selected} client={clients.find(c => c.id === selected.client_id)} />
 
               {/* Notes */}
               {selected.notes && (

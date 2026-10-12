@@ -131,6 +131,7 @@ export default function DevisComposer({
     acompte: 0,
     conditions: '',
     notes: '',
+    travauxUrgents: false,
   });
 
   const [form, setForm] = useState(blankForm);
@@ -197,6 +198,7 @@ export default function DevisComposer({
         acompte: initialData.acompte_pct || initialData.acompte || 0,
         conditions: initialData.conditions || '',
         notes: initialData.notes || '',
+        travauxUrgents: initialData.travaux_urgents === true,
       });
       return;
     }
@@ -610,6 +612,8 @@ export default function DevisComposer({
       acompte_pct: form.acompte || undefined,
       conditions: form.conditions || undefined,
       notes: form.notes,
+      // Réparation urgente demandée par le client (C. conso. L221-28, 8°) : mention sur le devis (src/lib/retractation.js)
+      travaux_urgents: !isFacture && form.travauxUrgents === true,
       total_ht: roundEuro(totals.htApresRemise),
       tva: roundEuro(totals.tvaApresRemise),
       total_ttc: roundEuro(totals.totalTTC),
@@ -863,6 +867,16 @@ export default function DevisComposer({
                     </select>
                   </div>
                 </div>
+                {!isFacture && (
+                  <label className="flex items-start gap-3 cursor-pointer" data-ui="TravauxUrgents">
+                    <input type="checkbox" checked={form.travauxUrgents === true} onChange={e => setForm(p => ({ ...p, travauxUrgents: e.target.checked }))}
+                      className="mt-0.5 w-5 h-5 rounded flex-shrink-0" />
+                    <span>
+                      <span className={`block text-sm font-medium ${textPrimary}`}>Dépannage urgent demandé par le client</span>
+                      <span className={`block text-xs ${textMuted}`}>Réparation urgente à son domicile, à sa demande : pas de rétractation pour le strict nécessaire (art. L221-28, 8° du Code de la consommation). Mettez les autres travaux sur un devis séparé.</span>
+                    </span>
+                  </label>
+                )}
                 <div>
                   <label className={`block text-[11px] font-semibold uppercase tracking-wide mb-1.5 ${textMuted}`}><StickyNote size={12} className="inline mr-1" />Notes (visibles sur le PDF)</label>
                   <textarea value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} rows={2}
