@@ -5,8 +5,12 @@ const json = (corps, status = 200) => ({ status, body: JSON.stringify(corps) });
 
 const JETON = '5d0c8a52-3c1e-4f8e-9a57-0c2f6e1b9d44';
 const ORG = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
-// Réponse de get_invitation_by_token après 078 : ces quatre champs, rien d'autre.
-const INVITATION = { organization_name: 'Élec Durand', role: 'chef_chantier', invited_by_email: 'patron@exemple.fr', expires_at: '2026-10-15T10:00:00Z' };
+// Réponse de get_invitation_by_token après 078 : ces quatre champs, rien d'autre. Échéance dans 7 jours (comme
+// une vraie invitation) : une date figée finit par passer, et l'app oublie alors l'invitation expirée (échec du
+// 17 oct. 2026, date du 15 oct. écrite en dur).
+const ECHEANCE = new Date(Date.now() + 7 * 864e5);
+const INVITATION = { organization_name: 'Élec Durand', role: 'chef_chantier', invited_by_email: 'patron@exemple.fr', expires_at: ECHEANCE.toISOString() };
+const ECHEANCE_LUE = ECHEANCE.toLocaleDateString('fr-FR', { timeZone: 'Europe/Paris' });
 const texte = (page) => page.evaluate(() => document.body.innerText);
 
 module.exports = [
@@ -33,7 +37,7 @@ module.exports = [
       let t = await texte(page);
       verifier(t.includes('Rejoindre Élec Durand') && t.includes('Invitation de patron@exemple.fr'), 'équipe et auteur affichés');
       verifier(t.includes('Chef de chantier'), 'rôle affiché en français');
-      verifier(t.includes('15/10/2026'), 'date de fin de validité affichée');
+      verifier(t.includes(ECHEANCE_LUE), `date de fin de validité affichée (${ECHEANCE_LUE})`);
       const boutons = await page.evaluate(() => [...document.querySelectorAll('button')].map((b) => b.innerText.trim()));
       verifier(boutons.includes('Créer mon compte') && boutons.includes('J’ai déjà un compte') && !boutons.includes('Rejoindre l’équipe'), `sans compte : créer son compte ou se connecter, pas de bouton Rejoindre (${boutons.join(' | ')})`);
 
