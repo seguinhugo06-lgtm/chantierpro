@@ -2,7 +2,7 @@
  * QuickFeaturesGrid — Compact grid for secondary features.
  *
  * Small cards with icon + title + one-liner for mobile, integrations,
- * client portal, catalogue, conformity, import/export.
+ * online signature, catalogue, conformity, import/export.
  */
 
 import React from 'react';
@@ -21,21 +21,21 @@ const FEATURES = [
   {
     icon: Smartphone,
     title: 'Mobile & tablette',
-    description: 'Installez l\'app sur votre t\u00e9l\u00e9phone. Fonctionne m\u00eame hors-ligne.',
+    description: 'Installez l\'app sur votre t\u00e9l\u00e9phone : elle s\u2019ouvre comme une application.',
     color: '#f97316',
     bg: 'bg-orange-50',
   },
   {
     icon: Puzzle,
     title: 'Int\u00e9grations',
-    description: 'Paiement en ligne Stripe, envoi d\u2019emails avec PDF, m\u00e9t\u00e9o chantier.',
+    description: 'Envoi d\u2019e-mails avec le PDF, export comptable, m\u00e9t\u00e9o chantier.',
     color: '#3b82f6',
     bg: 'bg-blue-50',
   },
   {
     icon: Globe,
-    title: 'Portail client',
-    description: 'Vos clients consultent et signent leurs documents en ligne.',
+    title: 'Signature en ligne',
+    description: 'Vos clients signent leurs devis en ligne, sans cr\u00e9er de compte.',
     color: '#22c55e',
     bg: 'bg-green-50',
   },

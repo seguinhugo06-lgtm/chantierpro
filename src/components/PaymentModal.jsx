@@ -6,6 +6,7 @@ import supabase, { isDemo } from '../supabaseClient';
 import { buildPaymentUrl } from '../lib/paymentUtils';
 import { jourLocal } from '../lib/dates';
 import { telInternational } from '../lib/messageRelance';
+import { FONCTIONS } from '../lib/fonctions';
 
 // Check if Stripe is configured (either Connect or direct keys)
 const STRIPE_CONFIGURED = import.meta.env.VITE_STRIPE_PUBLIC_KEY && !import.meta.env.VITE_STRIPE_PUBLIC_KEY.includes('demo');
@@ -99,13 +100,14 @@ export default function PaymentModal({
     if (isOpen) {
       setStep('amount');
       setPaymentLink(null);
-      setPaymentType('link');
+      // Paiement en ligne masqué (D-21) : on enregistre un paiement reçu, montant prérempli au reste dû
+      setPaymentType(FONCTIONS.paiementEnLigne ? 'link' : 'offline');
       setCustomAmount('');
       setError(null);
       setOfflineMode(entreprise?.modePaiementDefaut || 'virement');
       setOfflineDate(jourLocal());
       setOfflineReference('');
-      setOfflineAmount('');
+      setOfflineAmount(FONCTIONS.paiementEnLigne ? '' : (Number.isFinite(resteDu) ? Math.round(resteDu * 100) / 100 : (document?.total_ttc || 0)).toFixed(2));
       setSendReceipt(true);
     }
   }, [isOpen, entreprise?.modePaiementDefaut]);
@@ -238,7 +240,7 @@ export default function PaymentModal({
               <CreditCard size={20} style={{ color: couleur }} />
             </div>
             <div>
-              <h2 className={`font-bold text-lg ${textPrimary}`}>Recevoir un paiement</h2>
+              <h2 className={`font-bold text-lg ${textPrimary}`}>{FONCTIONS.paiementEnLigne ? 'Recevoir un paiement' : 'Enregistrer un paiement reçu'}</h2>
               <p className={`text-sm ${textMuted}`}>{document.numero}</p>
             </div>
           </div>
@@ -263,6 +265,8 @@ export default function PaymentModal({
 
               {/* Options de paiement */}
               <div className="space-y-3 mb-5">
+                {/* Options 1 à 3 : paiement en ligne, masqué en v1 (D-21) */}
+                {FONCTIONS.paiementEnLigne && (<>
                 {/* Option 1: Envoyer un lien de paiement (NEW) */}
                 <button
                   onClick={() => setPaymentType('link')}
@@ -319,6 +323,8 @@ export default function PaymentModal({
                     Personnaliser
                   </span>
                 </button>
+
+                </>)}
 
                 {/* Option 4: Paiement reçu hors ligne */}
                 <button

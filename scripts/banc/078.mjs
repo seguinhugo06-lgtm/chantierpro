@@ -38,6 +38,8 @@ export async function verifier({ db, q, en, commeAnonyme, compte, verifier }) {
     INSERT INTO organizations (id, name, slug, owner_id) VALUES ('${ORG}','Élec Durand','elec-durand-078','${CHEF}'),('${ORG_INTRUS}','Intrus','intrus-078','${INTRUS}');
     INSERT INTO organization_members (organization_id, user_id, role) VALUES ('${ORG}','${CHEF}','owner'),('${ORG}','${ADJOINT}','admin'),
       ('${ORG}','${OUVRIER}','ouvrier'),('${ORG_INTRUS}','${INTRUS}','owner');
+    -- Abonné Équipe : depuis 087, le nombre de membres suit l'abonnement du propriétaire (ici 3 membres et plus).
+    INSERT INTO subscriptions (user_id, plan, status) VALUES ('${CHEF}','equipe','active');
     -- Une table de l'organisation protégée comme les clients et devis en production (policies de 038).
     CREATE TABLE banc078_clients (id SERIAL PRIMARY KEY, organization_id UUID, nom TEXT);
     ALTER TABLE banc078_clients ENABLE ROW LEVEL SECURITY;
@@ -252,6 +254,7 @@ export async function verifier({ db, q, en, commeAnonyme, compte, verifier }) {
   await db.exec(`
     DROP TABLE banc078_clients;
     DELETE FROM organizations WHERE owner_id IN ('${CHEF}','${INTRUS}','${NOUVEAU}','${INVITE}');
+    DELETE FROM subscriptions WHERE user_id = '${CHEF}';
     DELETE FROM auth.users WHERE id IN ('${CHEF}','${ADJOINT}','${OUVRIER}','${INTRUS}','${INVITE}','${INVITE2}','${NOUVEAU}');
   `);
 }

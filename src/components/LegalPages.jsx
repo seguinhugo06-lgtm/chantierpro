@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowLeft, Shield, FileText, Scale, Lock } from 'lucide-react';
+import { ArrowLeft, Shield, FileText, Scale, Lock, Trash2 } from 'lucide-react';
 
 // ─── Mallettico SaaS Company Info (editor) ────────────────────────────────────
 // Update these values with the actual company details before launch
@@ -41,6 +41,7 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
     confidentialite: { title: 'Politique de Confidentialité', icon: Lock },
     'mentions-legales': { title: 'Mentions Légales', icon: Shield },
     accessibilite: { title: 'Déclaration d\'Accessibilité', icon: Shield },
+    'supprimer-mon-compte': { title: 'Supprimer mon compte', icon: Trash2 },
   };
 
   const config = pageConfig[page] || pageConfig.cgv;
@@ -129,7 +130,7 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
               <tr className={`border-b ${tableBorder}`}>
                 <td className={`px-4 py-3 font-medium ${textPrimary}`}>Gratuit</td>
                 <td className={`px-4 py-3 ${textSecondary}`}>0,00 EUR / mois</td>
-                <td className={`px-4 py-3 ${textSecondary}`}>Accès limité pour découvrir la plateforme. 5 devis/mois, 10 clients, 2 chantiers actifs, 10 dictées vocales/mois.</td>
+                <td className={`px-4 py-3 ${textSecondary}`}>Accès limité pour découvrir la plateforme. 5 devis/mois, 10 clients, 2 chantiers actifs.</td>
               </tr>
               <tr className={`border-b ${tableBorder}`}>
                 <td className={`px-4 py-3 font-medium ${textPrimary}`}>Artisan</td>
@@ -139,7 +140,7 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
               <tr>
                 <td className={`px-4 py-3 font-medium ${textPrimary}`}>Équipe</td>
                 <td className={`px-4 py-3 ${textSecondary}`}>19,90 EUR / mois HT (ou 199 EUR / an HT) — tarif fondateur, conservé tant que l'abonnement reste actif</td>
-                <td className={`px-4 py-3 ${textSecondary}`}>Pour les entreprises avec équipes. Jusqu'à 10 utilisateurs, pointage, trésorerie, sous-traitants, portail client, analytics avancés.</td>
+                <td className={`px-4 py-3 ${textSecondary}`}>Pour les entreprises avec équipes. Jusqu'à 10 utilisateurs, pointage, trésorerie, sous-traitants, statistiques avancées.</td>
               </tr>
             </tbody>
           </table>
@@ -190,8 +191,8 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
           <li>L'utilisateur peut résilier son abonnement à tout moment depuis son espace client ou par email</li>
           <li>La résiliation prend effet à la fin de la période de facturation en cours</li>
           <li>L'accès aux fonctionnalités payantes est maintenu jusqu'à la fin de la période payée</li>
-          <li>Les données de l'utilisateur sont conservées pendant 30 jours après la résiliation, puis supprimées</li>
-          <li>L'utilisateur peut demander l'export de ses données avant la suppression</li>
+          <li>À la fin de l'abonnement, le compte revient au plan Gratuit : les données sont conservées et restent exportables</li>
+          <li>L'utilisateur peut à tout moment supprimer son compte et ses données (page « Supprimer mon compte ») ; la suppression est immédiate et définitive</li>
         </UL>
       </Section>
 
@@ -503,8 +504,8 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
       <Section title="Article 3 - Durée de conservation">
         <P>Les données personnelles sont conservées selon les durées suivantes :</P>
         <UL>
-          <li><strong className={textPrimary}>Données du compte :</strong> pendant toute la durée de l'abonnement, puis 30 jours après résiliation</li>
-          <li><strong className={textPrimary}>Données de facturation :</strong> 10 ans conformément aux obligations légales comptables (Code de commerce, Art. L123-22)</li>
+          <li><strong className={textPrimary}>Données du compte et données que vous saisissez (devis, factures, clients, chantiers…) :</strong> tant que votre compte existe, y compris au plan Gratuit après la résiliation d'un abonnement ; elles sont effacées dès que vous supprimez votre compte (voir « Supprimer mon compte »)</li>
+          <li><strong className={textPrimary}>Factures de votre abonnement Mallettico :</strong> 10 ans à compter de la clôture de l'exercice (Code de commerce, Art. L123-22), chez notre prestataire de paiement Stripe. Les devis et factures que vous établissez pour vos clients sont les vôtres : vous devez les conserver 10 ans ; ils sont effacés avec votre compte, téléchargez-les avant</li>
           <li><strong className={textPrimary}>Données de connexion :</strong> 12 mois conformément à la législation en vigueur</li>
           <li><strong className={textPrimary}>Données de géolocalisation :</strong> 3 mois</li>
           <li><strong className={textPrimary}>Cookies :</strong> 13 mois maximum</li>
@@ -569,7 +570,8 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
         <UL>
           <li><strong className={textPrimary}>Droit d'accès (Art. 15 RGPD) :</strong> obtenir la confirmation que des données le concernant sont traitées et en obtenir une copie</li>
           <li><strong className={textPrimary}>Droit de rectification (Art. 16 RGPD) :</strong> demander la correction de données inexactes ou incomplètes</li>
-          <li><strong className={textPrimary}>Droit à l'effacement (Art. 17 RGPD) :</strong> demander la suppression de ses données personnelles (« droit à l'oubli »)</li>
+          <li><strong className={textPrimary}>Droit à l'effacement (Art. 17 RGPD) :</strong> demander la suppression de ses données personnelles (« droit à l'oubli ») ; comment supprimer son compte et ce qui est effacé :{' '}
+            <button type="button" onClick={() => setPage('supprimer-mon-compte')} style={linkStyle} className="underline font-medium">Supprimer mon compte</button></li>
           <li><strong className={textPrimary}>Droit à la portabilité (Art. 20 RGPD) :</strong> recevoir ses données dans un format structuré, couramment utilisé et lisible par machine (JSON, CSV)</li>
           <li><strong className={textPrimary}>Droit d'opposition (Art. 21 RGPD) :</strong> s'opposer au traitement de ses données pour des motifs légitimes</li>
           <li><strong className={textPrimary}>Droit à la limitation (Art. 18 RGPD) :</strong> demander la limitation du traitement de ses données</li>
@@ -753,6 +755,49 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
     </>
   );
 
+  // Page publique « Supprimer mon compte » (Google Play l'exige en plus de la suppression dans l'app). Elle décrit
+  // ce que fait réellement supprimer_mon_compte (migration 072) et l'écran Paramètres › Avancé › Données.
+  const renderSuppressionCompte = () => (
+    <>
+      <P>Vous pouvez supprimer votre compte Mallettico depuis l'application, ou le demander par e-mail sans ouvrir l'application (voir plus bas).</P>
+      <Section title="Depuis l'application">
+        <P>Connectez-vous à Mallettico, puis ouvrez <strong className={textPrimary}>Paramètres › Avancé › Données</strong> et choisissez «&nbsp;Supprimer mon compte&nbsp;».</P>
+        <UL>
+          <li>Si vous avez un abonnement payant, résiliez-le d'abord (« Gérer mon abonnement ») : sinon il continuerait d'être prélevé, et la suppression est refusée.</li>
+          <li>Avant de continuer, téléchargez le PDF de vos factures et de vos devis signés : vous devez conserver vos factures 10 ans (Code de commerce, art. L123-22), sous la forme où vous les avez envoyées. Le bouton « Exporter mes données d'abord » fournit en plus un fichier de vos données (JSON), qui ne remplace pas les factures. Après la suppression, Mallettico ne pourra plus vous les rendre.</li>
+          <li>Si un client particulier a signé un devis en ligne il y a moins de 14 jours, sa page de signature et son bouton « renoncer au contrat ici » disparaîtront : attendez la fin de son délai de rétractation avant de supprimer votre compte.</li>
+          <li>Tapez le mot demandé pour confirmer. La suppression est immédiate et définitive.</li>
+          <li>Si vous êtes le propriétaire d'une équipe qui compte d'autres membres, retirez-les d'abord : la suppression est refusée tant qu'ils en font partie.</li>
+        </UL>
+      </Section>
+      <Section title="Ce qui est supprimé">
+        <UL>
+          <li>Votre compte : adresse e-mail et mot de passe ; vous ne pourrez plus vous connecter.</li>
+          <li>Vos devis, factures, clients, chantiers, photos et fichiers, notes, plannings et paramètres, y compris vos réglages de paiement et de banque.</li>
+          <li>Les liens de signature et de paiement déjà envoyés à vos clients cessent de fonctionner.</li>
+          <li>Si vous étiez membre de l'équipe d'un autre artisan : ce que vous avez créé dans son équipe (devis, clients…) reste à l'entreprise et lui est rattaché ; vos photos et fichiers, vos réglages de paiement et de banque sont supprimés.</li>
+        </UL>
+      </Section>
+      <Section title="Ce qui est conservé">
+        <UL>
+          <li>Une trace de la suppression : un identifiant technique et la date, sans nom ni adresse e-mail, pour pouvoir répondre d'une suppression demandée.</li>
+          <li>Si vous avez été abonné : les factures de votre abonnement Mallettico et la fiche client qui les accompagne (nom, adresse e-mail), conservées chez notre prestataire de paiement Stripe pendant 10 ans (obligation comptable, Code de commerce, art. L123-22).</li>
+        </UL>
+      </Section>
+      <Section title="Sans accès à l'application">
+        <P>
+          Écrivez à <a href={`mailto:${COMPANY.dpo}?subject=Supprimer%20mon%20compte`} style={linkStyle} className="underline font-medium">{COMPANY.dpo}</a> depuis l'adresse e-mail de votre compte, avec l'objet «&nbsp;Supprimer mon compte&nbsp;».
+          Nous vérifions que la demande vient bien de vous. Si un abonnement payant est en cours, nous le résilions. Si d'autres membres utilisent votre équipe, nous vous demandons d'abord de confirmer qu'ils perdront l'accès à l'espace de l'entreprise.
+          Puis nous supprimons le compte et les données décrites ci-dessus. Vous recevez une réponse dans un délai d'un mois au plus (RGPD, art. 12).
+        </P>
+        <P>
+          Pour en savoir plus sur vos données et vos droits :{' '}
+          <button type="button" onClick={() => setPage('confidentialite')} style={linkStyle} className="underline font-medium">politique de confidentialité</button>.
+        </P>
+      </Section>
+    </>
+  );
+
   const renderAccessibilite = () => (
     <>
       <Section title="1. État de conformité">
@@ -856,6 +901,8 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
         return renderMentionsLegales();
       case 'accessibilite':
         return renderAccessibilite();
+      case 'supprimer-mon-compte':
+        return renderSuppressionCompte();
       default:
         return renderCGV();
     }

@@ -10,6 +10,11 @@ describe('pages légales à leur adresse (recette du 9 oct. 2026 : elles afficha
     expect(pageLegaleDe('/accessibilite')).toBe('accessibilite');
   });
 
+  it('la page publique « Supprimer mon compte » (exigée par Google Play), sans connexion', () => {
+    expect(pageLegaleDe('/supprimer-mon-compte')).toBe('supprimer-mon-compte');
+    expect(pageLegaleDe('/supprimer-mon-compte/')).toBe('supprimer-mon-compte');
+  });
+
   it('rien d\'autre', () => {
     expect(pageLegaleDe('/')).toBeNull();
     expect(pageLegaleDe('/constructor')).toBeNull();

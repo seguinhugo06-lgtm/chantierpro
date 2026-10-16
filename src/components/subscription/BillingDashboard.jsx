@@ -79,7 +79,8 @@ export default function BillingDashboard({ isDark, couleur }) {
         toast.error('Erreur', error.message);
         return;
       }
-      if (url) window.open(url, '_blank');
+      // Après un await, window.open est bloqué par Safari ; dans l'app native, navigateur système
+      if (url) await ouvrirLienExterne(url, { memeOnglet: true });
       else toast.info('Non disponible', 'Portail Stripe non disponible en mode démo');
     } finally {
       setLoadingAction(null);
@@ -105,8 +106,8 @@ export default function BillingDashboard({ isDark, couleur }) {
         toast.error('Gestion indisponible', 'Écrivez-nous à contact@mallettico.fr, nous le faisons pour vous.');
         return;
       }
-      window.open(url, '_blank');
       if (action === 'cancel') setShowCancelConfirm(false);
+      await ouvrirLienExterne(url, { memeOnglet: true });
     } finally {
       setLoadingAction(null);
     }

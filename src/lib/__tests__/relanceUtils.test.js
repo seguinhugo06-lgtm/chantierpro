@@ -48,3 +48,10 @@ describe('relances (app) : montant, pénalités, éligibilité', () => {
     expect(isDocumentEligible(facture({ montant_credite: 1000 }), [], CONFIG)).toBe(false);
   });
 });
+
+describe('resolveVariables : variable vide seule sur sa ligne', () => {
+  it('ne laisse pas de double ligne vide (lien de paiement masqué, D-21)', () => {
+    const texte = resolveVariables('Bonjour,\n\nIl reste à payer.\n\n{{lien_paiement}}\n\nCordialement,', facture({ payment_token: 'abc' }), { categorie: 'Particulier' }, {});
+    expect(texte).toBe('Bonjour,\n\nIl reste à payer.\n\nCordialement,');
+  });
+});

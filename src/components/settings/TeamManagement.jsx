@@ -152,7 +152,14 @@ export default function TeamManagement({ isDark, couleur = '#F97316' }) {
       setInvitations(prev => [data, ...prev]);
     } catch (err) {
       console.error('[TeamManagement] Error sending invitation:', err);
-      showToast('Erreur lors de l\'envoi de l\'invitation', 'error');
+      // Refus de la base (42501) : équipe complète pour l'abonnement (migration 087, compté aussi côté
+      // serveur) ou droit d'inviter retiré entre-temps
+      if (err?.code === '42501') {
+        showToast('Invitation refusée : votre équipe est complète pour votre abonnement, ou vous n\'avez plus le droit d\'inviter.', 'error');
+        loadInvitations();
+      } else {
+        showToast('Erreur lors de l\'envoi de l\'invitation', 'error');
+      }
     } finally {
       setInviteLoading(false);
     }

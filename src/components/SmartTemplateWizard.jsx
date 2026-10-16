@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import {
   X, ChevronRight, ChevronLeft, Check, Search, Sparkles, Users,
-  Leaf, ChevronDown, Zap, Plus, UserPlus
+  ChevronDown, Zap, Plus, UserPlus
 } from 'lucide-react';
 import {
   SMART_TEMPLATES,
@@ -145,7 +145,10 @@ export default function SmartTemplateWizard({
       }],
       tvaDefaut: tva,
       remise: 0,
-      notes: metierData.creditImpot ? 'Service a la personne - Eligible au credit d\'impot de 50%' : '',
+      // Plus de mention « crédit d'impôt 50 % » (relecture juridique du 16 oct. 2026) : il ne vise que les petits
+      // travaux de jardinage d'un prestataire déclaré services à la personne (CGI 199 sexdecies, C. trav. D7231-1),
+      // pas la création ou l'aménagement d'un jardin ; l'imprimer sur le devis serait une promesse fiscale trompeuse.
+      notes: '',
       total_ht: totalHT,
       total_tva: totalTVA,
       total_ttc: totalTTC,
@@ -376,11 +379,6 @@ export default function SmartTemplateWizard({
                   >
                     <span className="text-2xl block mb-1">{metier.icon}</span>
                     <p className={`text-xs font-medium ${textPrimary} leading-tight`}>{metier.nom}</p>
-                    {metier.creditImpot && (
-                      <span className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
-                        <Leaf className="w-2.5 h-2.5 text-white" />
-                      </span>
-                    )}
                   </button>
                 ))}
               </div>
@@ -391,11 +389,6 @@ export default function SmartTemplateWizard({
                   <div className="p-3 flex items-center gap-2" style={{ backgroundColor: `${SMART_TEMPLATES[expandedMetier].color}15` }}>
                     <span className="text-xl">{SMART_TEMPLATES[expandedMetier].icon}</span>
                     <span className={`font-semibold ${textPrimary}`}>{SMART_TEMPLATES[expandedMetier].nom}</span>
-                    {SMART_TEMPLATES[expandedMetier].creditImpot && (
-                      <span className={`ml-auto px-2 py-0.5 rounded-full text-xs ${isDark ? 'bg-green-900/50 text-green-400' : 'bg-green-100 text-green-700'}`}>
-                        Credit impot 50%
-                      </span>
-                    )}
                   </div>
                   <div className={`divide-y ${isDark ? 'divide-slate-700' : 'divide-slate-200'}`}>
                     {getMissions(expandedMetier).map((mission) => (
@@ -498,16 +491,6 @@ export default function SmartTemplateWizard({
                   </button>
                 ))}
               </div>
-
-              {/* Credit impot */}
-              {SMART_TEMPLATES[selectedMetier?.id]?.creditImpot && (
-                <div className={`p-3 rounded-xl flex items-center gap-3 ${isDark ? 'bg-green-900/30' : 'bg-green-50'}`}>
-                  <Leaf className="w-5 h-5 text-green-600" />
-                  <p className={`text-sm ${isDark ? 'text-green-400' : 'text-green-700'}`}>
-                    <strong>Credit d'impot 50%</strong> - Service a la personne
-                  </p>
-                </div>
-              )}
 
               {/* Total */}
               <div className={`p-4 rounded-xl ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>

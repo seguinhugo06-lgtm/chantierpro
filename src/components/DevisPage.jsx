@@ -106,6 +106,7 @@ import { profilManquant } from '../lib/profilLegal';
 import { estFranchiseTva, sansTva, franchiseAppliquee, tvaARegulariser } from '../lib/franchiseTva';
 import { estOuverte, estEnRetard } from '../lib/ventes';
 import { urlPublique } from '../lib/urlPublique';
+import { FONCTIONS } from '../lib/fonctions';
 import { jourLocal, dateLue } from '../lib/dates';
 import { signatureDuClient } from '../lib/signatureDocument';
 import RetractationDevis from './devis/RetractationDevis';
@@ -451,6 +452,13 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 
   // Franchise en base (art. 293 B CGI) : aucune TVA sur les documents créés (src/lib/franchiseTva.js)
   const isMicro = estFranchiseTva(entreprise);
+  // Totaux à enregistrer, arrondis par taux (calculerTotaux) : HT + TVA = TTC au centime, franchise respectée.
+  // Relecture juridique du 9 oct. 2026 (tâche totaux-arrondis) : Devis Express, l'assistant par métier et le
+  // formulaire intégré enregistraient des totaux non arrondis, calculés à part (règle EN 16931 BR-CO-15).
+  const totauxEnregistres = (lignes, { remise = 0, tauxDefaut } = {}) => {
+    const t = calculerTotaux(lignes, { remisePct: Number(remise) || 0, tauxDefaut: tauxDefaut ?? (entreprise?.tvaDefaut ?? 10), franchise: isMicro });
+    return { total_ht: t.totalHT, tva: t.totalTVA, total_tva: t.totalTVA, total_ttc: t.totalTTC, tvaParTaux: t.tvaParTaux, tvaDetails: t.tvaParTaux };
+  };
   const formatMoney = (n) => fmtMoney(n, 2);
 
   // Calcul pénalités de retard (Article L441-10 Code de commerce)
@@ -866,7 +874,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         marge: totals.marge,
         tauxMarge: totals.tauxMarge,
         conditionsPaiement: form.conditionsPaiement,
-        notes: form.notes
+        notes: form.notes,
+        ...totauxEnregistres(form.sections.flatMap(s => s.lignes), { remise: form.remise, tauxDefaut: form.tvaDefaut }),
       });
 
       // Reset form
@@ -1111,7 +1120,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       cout_revient: devisData.cout_revient,
       marge: devisData.marge,
       marge_pourcent: devisData.marge_pourcent,
-      template: devisData.template
+      template: devisData.template,
+      ...totauxEnregistres(allLignes, { remise: devisData.remise, tauxDefaut: devisData.tvaDefaut }),
     };
 
     // Submit the devis
@@ -2172,7 +2182,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     // Rappel seulement si la facture est échue ; sinon un envoi normal (date limite, reste à régler)
     const solde = soldeDe({ ...doc, statut: wasBrouillon ? 'envoye' : doc.statut }, paiements);
     const relance = solde?.enRetard ? solde : null;
-    const lienPaiement = doc.type === 'facture' && doc.payment_token ? urlPublique(`/pay/${doc.payment_token}`) : '';
+    const lienPaiement = FONCTIONS.paiementEnLigne && doc.type === 'facture' && doc.payment_token ? urlPublique(`/pay/${doc.payment_token}`) : '';
     // « Message préparé » : c'est l'artisan qui l'envoie depuis WhatsApp (relecture juridique du 10 oct. 2026)
     if (addEchange) addEchange({ type: 'whatsapp', client_id: doc.client_id, devis_id: doc.id, document: doc.numero, montant: solde ? solde.reste : doc.total_ttc, objet: `Message préparé : ${relance || relanceDevis ? 'relance' : 'envoi'} ${doc.type === 'facture' ? 'facture' : 'devis'} ${doc.numero}` });
     // Indicatif international, chiffres seuls (avant : « 06.12… » ou « +33 6… » donnaient un lien cassé)
@@ -2231,7 +2241,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       // « envoyée » partait en « Rappel… je vous la joins à nouveau » à son premier envoi)
       const solde = soldeDe({ ...doc, statut: doc.statut === 'brouillon' ? 'envoye' : doc.statut }, paiements);
       const relance = solde?.enRetard ? solde : null;
-      const lienPaiement = isFacture && doc.payment_token ? urlPublique(`/pay/${doc.payment_token}`) : '';
+      const lienPaiement = FONCTIONS.paiementEnLigne && isFacture && doc.payment_token ? urlPublique(`/pay/${doc.payment_token}`) : '';
       const bodyHtml = buildDocumentEmailBody({
         doc, client, entreprise, couleur, signatureUrl, lienPaiement,
         montantFormatte: euros(doc.total_ttc),
@@ -2303,7 +2313,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     }
     const solde = soldeDe({ ...doc, statut: doc.statut === 'brouillon' ? 'envoye' : doc.statut }, paiements);
     const relance = solde?.enRetard ? solde : null;
-    const lienPaiement = doc.type === 'facture' && doc.payment_token ? urlPublique(`/pay/${doc.payment_token}`) : '';
+    const lienPaiement = FONCTIONS.paiementEnLigne && doc.type === 'facture' && doc.payment_token ? urlPublique(`/pay/${doc.payment_token}`) : '';
     if (addEchange) addEchange({ type: 'sms', client_id: doc.client_id, devis_id: doc.id, document: doc.numero, montant: solde ? solde.reste : doc.total_ttc, objet: `Message préparé : ${relance || relanceDevis ? 'relance' : 'envoi'} ${doc.type === 'facture' ? 'facture' : 'devis'} ${doc.numero}` });
     const message = texteCourt(doc, { solde, lienPaiement, lienSignature, entrepriseNom: nomImprime(entreprise), relanceDevis });
     setTimeout(() => {
@@ -5494,6 +5504,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       {/* Devis Express Modal - New improved version with BTP templates */}
       <DevisExpressModal
         isOpen={showDevisExpressModal}
+        tvaDefaut={isMicro ? 0 : (entreprise?.tvaDefaut ?? 10)}
         onClose={() => setShowDevisExpressModal(false)}
         onCreateDevis={async (devisData) => {
           const numero = await generateNumero(devisData.type || 'devis');
@@ -5502,6 +5513,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
             ...devisData,
             numero,
             client_nom: client ? `${client.prenom || ''} ${client.nom}`.trim() : '',
+            ...totauxEnregistres(devisData.lignes, { remise: devisData.remise, tauxDefaut: devisData.tvaRate }),
           });
           if (newDevis?.id) {
             setSelected(newDevis);
@@ -5513,7 +5525,6 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         addClient={addClient}
         isDark={isDark}
         couleur={couleur}
-        tvaDefaut={(entreprise?.tvaDefaut ?? 10)}
         customTemplates={ctxTemplates}
         recentTemplates={enrichedRecentTemplates}
         onTrackUsage={trackTemplateUsage}

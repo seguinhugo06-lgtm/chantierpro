@@ -78,7 +78,7 @@ export const FEATURES_CONTENT = {
       },
       {
         q: 'Et si je me trouve sans réseau ?',
-        a: 'L\'analyse de la dictée a besoin d\'une connexion. Sans réseau, utilisez la saisie habituelle — le reste de l\'application continue de fonctionner hors ligne et se synchronise au retour du signal.',
+        a: 'L\'analyse de la dictée a besoin d\'une connexion. Sans réseau, utilisez la saisie habituelle dès le retour du signal.',
       },
       {
         q: 'Ma voix est-elle enregistrée quelque part ?',
@@ -262,7 +262,7 @@ export const FEATURES_CONTENT = {
     ],
     faq: [
       { q: 'La rentabilité est-elle calculée automatiquement ?', a: 'Oui : les devis et factures liés au chantier, les dépenses saisies et les heures pointées alimentent la marge en temps réel.' },
-      { q: 'Ça fonctionne sur le chantier, sans réseau ?', a: 'Mallettico est une application web installable (PWA) qui fonctionne aussi hors-ligne pour consulter vos données. Les modifications se synchronisent au retour du réseau.' },
+      { q: 'Ça fonctionne sur le chantier, sans réseau ?', a: 'Mallettico s\'installe sur votre téléphone depuis le navigateur. Il a besoin d\'une connexion internet : le fonctionnement sans réseau n\'est pas encore garanti.' },
     ],
     related: ['devis-factures', 'equipe'],
   },

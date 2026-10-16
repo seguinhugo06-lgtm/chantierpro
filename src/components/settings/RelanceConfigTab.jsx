@@ -9,6 +9,7 @@
  */
 
 import { useState, useCallback, useMemo, useRef } from 'react';
+import { FONCTIONS } from '../../lib/fonctions';
 import {
   Mail,
   Clock,
@@ -187,7 +188,8 @@ const AVAILABLE_VARIABLES = [
   { key: '{{date_échéance}}', description: 'Date d\'échéance' },
   { key: '{{entreprise_nom}}', description: 'Nom de l\'entreprise' },
   { key: '{{jours_retard}}', description: 'Jours de retard' },
-  { key: '{{lien_paiement}}', description: 'Lien de paiement en ligne' },
+  // Paiement en ligne masqué en v1 (D-21) : la variable reste lue (vide) dans les anciens modèles
+  ...(FONCTIONS.paiementEnLigne ? [{ key: '{{lien_paiement}}', description: 'Lien de paiement en ligne' }] : []),
 ];
 
 // ============ SUB-COMPONENTS ============

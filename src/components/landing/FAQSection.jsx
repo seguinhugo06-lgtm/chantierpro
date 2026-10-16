@@ -34,7 +34,7 @@ const FAQ_ITEMS = [
   {
     category: 'general',
     q: 'Puis-je utiliser Mallettico sur mon t\u00e9l\u00e9phone ?',
-    a: 'Absolument. Mallettico est une application web progressive (PWA) qui s\'installe directement sur votre t\u00e9l\u00e9phone comme une application native. Pas besoin de t\u00e9l\u00e9charger une app sur l\'App Store ou Play Store. Elle fonctionne sur iPhone, Android, tablette et ordinateur, m\u00eame hors-ligne.',
+    a: 'Absolument. Mallettico est une application web progressive (PWA) qui s\'installe directement sur votre t\u00e9l\u00e9phone comme une application native. Pas besoin de t\u00e9l\u00e9charger une app sur l\'App Store ou Play Store. Elle fonctionne sur iPhone, Android, tablette et ordinateur, avec une connexion internet.',
   },
   {
     category: 'features',
@@ -46,11 +46,8 @@ const FAQ_ITEMS = [
     q: 'Comment fonctionnent les relances automatiques ?',
     a: 'Vous configurez des templates de relance personnalis\u00e9s avec des variables dynamiques (nom du client, montant, num\u00e9ro de devis...). Mallettico envoie automatiquement les relances par email selon le calendrier que vous d\u00e9finissez. Vous gardez un historique complet de chaque relance.',
   },
-  {
-    category: 'features',
-    q: 'Le portail client, c\'est quoi exactement ?',
-    a: 'Le portail client est un espace en ligne s\u00e9curis\u00e9 o\u00f9 vos clients peuvent consulter leurs devis et factures, et signer leurs devis \u00e9lectroniquement. Chaque client re\u00e7oit un lien unique. Pas besoin de cr\u00e9er un compte pour eux.',
-  },
+  // « Le portail client, c'est quoi ? » retiré tant que FONCTIONS.portailClient est éteint (relecture juridique du
+  // 16 oct. 2026) ; la signature en ligne, elle, existe (lien unique, sans compte).
   {
     category: 'tech',
     q: 'Mallettico est-il pr\u00eat pour la facturation \u00e9lectronique ?',

@@ -21,12 +21,19 @@
  * (constaté), et l'écran appelait les services avec de mauvais arguments : en réel, « Erreur lors de la
  * réception » ; en démo, « Réception validée » puis « Chantier non réceptionné ». À rallumer avec la tâche
  * [reception-chantier] (migration des tables, appels corrigés, parcours).
+ *
+ * paiementEnLigne — le paiement des factures par carte (lien /pay/…, Stripe de l'artisan) : l'option « Envoyer
+ * un lien de paiement » d'Encaisser, l'onglet Paramètres › Paiements, le lien dans les relances (app et envois
+ * automatiques). Éteint en v1 (décision D-21 : jamais essayé de bout en bout, règle des 7 jours hors
+ * établissement, « système de caisse » à voir avec le comptable) ; virement avec IBAN et « Paiement reçu »
+ * suffisent. Les liens déjà envoyés restent valables (page /pay/…).
  */
 export const FONCTIONS = Object.freeze({
   ia: false,
   facturesSituation: false,
   portailClient: false,
   receptionChantier: false,
+  paiementEnLigne: false,
 });
 
 export default FONCTIONS;

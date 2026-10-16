@@ -61,7 +61,7 @@ const PLANS = [
       'Gestion des cong\u00e9s',
       'Tr\u00e9sorerie avanc\u00e9e',
       'Sous-traitants',
-      'Portail client',
+      // « Portail client » retiré tant que FONCTIONS.portailClient est éteint (relecture juridique du 16 oct. 2026)
       'Journal d\'audit',
     ],
     cta: 'Commencer avec \u00c9quipe',

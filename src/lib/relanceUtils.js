@@ -5,6 +5,7 @@
  */
 import { resteAPayer } from './paiementsFacture';
 import { urlPublique } from './urlPublique';
+import { FONCTIONS } from './fonctions';
 
 // ============ CONSTANTS ============
 
@@ -254,7 +255,9 @@ export function resolveVariables(template, doc, client, entreprise) {
     result = result.replace(singlePattern, value || '');
   });
 
-  return result;
+  // Une variable vide seule sur sa ligne ({{lien_paiement}} quand le paiement en ligne est masqué) ne laisse pas
+  // de trou : au plus une ligne vide entre deux paragraphes
+  return result.replace(/\n[ \t]*\n(?:[ \t]*\n)+/g, '\n\n');
 }
 
 /**
@@ -319,8 +322,8 @@ function buildVariableMap(doc, client, entreprise) {
     mention_retard: pro
       ? 'Conformément aux articles L.441-10 et D.441-5 du Code de commerce, des pénalités de retard et une indemnité forfaitaire de 40 € pour frais de recouvrement sont dues depuis le lendemain de l’échéance.'
       : "Conformément à l'article 1231-6 du Code civil, la somme due produit intérêts au taux légal à compter de la mise en demeure.",
-    // Lien paiement en ligne
-    lien_paiement: doc?.payment_token
+    // Lien paiement en ligne (masqué en v1, D-21)
+    lien_paiement: FONCTIONS.paiementEnLigne && doc?.payment_token
       ? urlPublique(`/pay/${doc.payment_token}`)
       : '',
   };

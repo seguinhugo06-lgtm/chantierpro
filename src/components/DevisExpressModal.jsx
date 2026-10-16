@@ -13,6 +13,7 @@ const EXPRESS_DRAFT_KEY = 'mallettico_devis_express_draft';
 import TemplateSelector from './TemplateSelector';
 import QuickClientModal from './QuickClientModal';
 import { jourLocal } from '../lib/dates';
+import { calculerTotaux } from '../lib/totauxDocument';
 
 export default function DevisExpressModal({
   isOpen,
@@ -176,7 +177,7 @@ export default function DevisExpressModal({
       unite: l.unite || 'u',
       prixUnitaire: l.prixUnitaire || 0,
       prixAchat: l.prixAchat || 0,
-      tva: l.tva || tvaDefaut,
+      tva: l.tva ?? tvaDefaut,
       total: (l.quantite || 1) * (l.prixUnitaire || 0)
     }));
     setLignes(adaptedLignes);
@@ -219,10 +220,12 @@ export default function DevisExpressModal({
   const totals = useMemo(() => {
     const totalHT = lignes.reduce((sum, l) => sum + (l.total || 0), 0);
     const totalAchat = lignes.reduce((sum, l) => sum + ((l.quantite || 0) * (l.prixAchat || 0)), 0);
-    const remiseAmount = totalHT * (remise / 100);
-    const totalApresRemise = totalHT - remiseAmount;
-    const tva = totalApresRemise * (tvaDefaut / 100);
-    const ttc = totalApresRemise + tva;
+    // Mêmes totaux que ceux enregistrés : par taux de ligne, arrondis (calculerTotaux)
+    const t = calculerTotaux(lignes.map((l) => ({ ...l, montant: l.total ?? l.montant })), { remisePct: remise, tauxDefaut: tvaDefaut, toutesLesLignes: true });
+    const remiseAmount = t.remiseMontant;
+    const totalApresRemise = t.totalHT;
+    const tva = t.totalTVA;
+    const ttc = t.totalTTC;
     const marge = totalHT > 0 ? Math.round(((totalHT - totalAchat) / totalHT) * 100) : 0;
 
     return { totalHT, totalAchat, remiseAmount, totalApresRemise, tva, ttc, marge };
@@ -463,7 +466,7 @@ export default function DevisExpressModal({
                                   unite: l.unite || 'u',
                                   prixUnitaire: l.prixUnitaire || 0,
                                   prixAchat: l.prixAchat || 0,
-                                  tva: l.tva || tvaDefaut,
+                                  tva: l.tva ?? tvaDefaut,
                                   total: (l.quantite || 1) * (l.prixUnitaire || 0),
                                 })));
                                 setStep(3);

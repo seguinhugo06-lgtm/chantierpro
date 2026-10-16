@@ -168,6 +168,12 @@ if (!FONCTIONS.ia) {
     if (Array.isArray(plan.featureLabels)) plan.featureLabels = plan.featureLabels.filter((f) => !/dict[ée]e/i.test(f.name));
   }
 }
+// Même règle pour le portail client, éteint (FONCTIONS.portailClient) : ne pas le vendre (relecture juridique du 16 oct. 2026)
+if (!FONCTIONS.portailClient) {
+  for (const plan of Object.values(PLANS)) {
+    if (Array.isArray(plan.featureLabels)) plan.featureLabels = plan.featureLabels.filter((f) => !/portail client/i.test(f.name));
+  }
+}
 
 // Yearly discount percentage
 export const YEARLY_DISCOUNT = 17;

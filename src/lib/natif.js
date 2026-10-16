@@ -104,6 +104,10 @@ export async function remettreFichier(contenu, nomFichier, type = 'application/o
  * @param {{ memeOnglet?: boolean }} [options]
  */
 export async function ouvrirLienExterne(url, { memeOnglet = false } = {}) {
+  // Défense : seulement une page web (pas de javascript:, data:… même si l'adresse vient d'un serveur)
+  let protocole = '';
+  try { protocole = new URL(url, window.location.href).protocol; } catch { /* adresse illisible */ }
+  if (protocole !== 'https:' && protocole !== 'http:') throw new Error('Adresse externe refusée');
   if (estNatif()) {
     const { Browser } = await import('@capacitor/browser');
     await Browser.open({ url });

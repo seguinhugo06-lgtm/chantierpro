@@ -90,13 +90,9 @@ export default function AcceptInvitation({ token }) {
     if (!user || !invitation) return;
     setAccepting(true);
     try {
-      // L'invitation est acceptée pour le compte connecté (auth.uid() côté base, migration 078).
-      // p_user_id reste exigé par la fonction d'avant 078 ; 078 vérifie qu'il désigne bien le
-      // compte connecté. À retirer une fois 078 constatée appliquée (docs/etat-production.md).
-      const { data, error: rpcError } = await supabase.rpc('accept_invitation', {
-        p_token: token,
-        p_user_id: user.id,
-      });
+      // L'invitation est acceptée pour le compte connecté (auth.uid() côté base, migration 078 ; p_user_id y est
+      // facultatif, constaté en production le 16 oct. 2026)
+      const { data, error: rpcError } = await supabase.rpc('accept_invitation', { p_token: token });
 
       if (rpcError) throw rpcError;
       if (data?.error) {

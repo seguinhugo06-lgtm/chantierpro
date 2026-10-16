@@ -733,7 +733,7 @@ export default function App() {
   // RBAC: redirect to dashboard if user accesses a restricted page
   useEffect(() => {
     if (orgLoading) return; // Wait for org resolution
-    const publicPages = ['dashboard', 'profil', 'plan', 'pricing', 'checkout-success', 'cgv', 'cgu', 'confidentialite', 'mentions-legales', 'accessibilite', 'changelog'];
+    const publicPages = ['dashboard', 'profil', 'plan', 'pricing', 'checkout-success', 'cgv', 'cgu', 'confidentialite', 'mentions-legales', 'accessibilite', 'supprimer-mon-compte', 'changelog'];
     // Billing is restricted to owner only
     if ((page === 'billing') && !canAccessBilling) {
       logger.debug('[RBAC] Billing restricted to owner, redirecting → dashboard');
@@ -1190,7 +1190,7 @@ export default function App() {
   }
 
   // Legal / public pages (accessible without auth)
-  const publicPages = ['cgv', 'cgu', 'confidentialite', 'mentions-legales', 'accessibilite', 'changelog'];
+  const publicPages = ['cgv', 'cgu', 'confidentialite', 'mentions-legales', 'accessibilite', 'supprimer-mon-compte', 'changelog'];
   if (!user && !isDemo && publicPages.includes(page)) return (
     <Suspense fallback={<div className="min-h-screen bg-[#f5f5f5] flex items-center justify-center"><LogoMallettico taille={56} className="animate-bounce" /></div>}>
       <div className="min-h-screen bg-[#f5f5f5] p-4 sm:p-6">
@@ -1996,6 +1996,7 @@ export default function App() {
               {page === 'confidentialite' && <LegalPages page="confidentialite" isDark={isDark} couleur={couleur} setPage={setPage} />}
               {page === 'mentions-legales' && <LegalPages page="mentions-legales" isDark={isDark} couleur={couleur} setPage={setPage} />}
               {page === 'accessibilite' && <LegalPages page="accessibilite" isDark={isDark} couleur={couleur} setPage={setPage} />}
+              {page === 'supprimer-mon-compte' && <LegalPages page="supprimer-mon-compte" isDark={isDark} couleur={couleur} setPage={setPage} />}
               {page === 'changelog' && <Changelog isDark={isDark} couleur={couleur} setPage={setPage} />}
             </Suspense>
           </ErrorBoundary>

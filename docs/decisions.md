@@ -95,3 +95,27 @@ Option `rien` : l'artisan imprime lui-même ces mentions s'il le sait — rien n
 Recommandation : `case` — rare mais coûteux (contrat annulable, travaux non dus), et une case suffit.
 Irréversible : non
 Bloque : rien
+
+### Q-suppression-retractation · Refuser la suppression du compte pendant un délai de rétractation en cours ?
+Contexte : Supprimer son compte efface la page de signature des clients, donc le bouton « renoncer au contrat ici » qu'un particulier ayant signé en ligne doit garder pendant tout son délai (C. conso. L221-21, D221-5). Depuis le 16 oct. 2026, la page « Supprimer mon compte » et la fenêtre de suppression avertissent ; rien ne bloque (relecture juriste-btp du 16 oct. 2026).
+Option `refuser` : la suppression est refusée tant qu'un devis signé en ligne par un particulier a moins de 14 jours, avec la date à partir de laquelle elle sera possible — protège l'artisan d'un manquement ; il attend au plus deux semaines.
+Option `avertir` : l'avertissement actuel suffit — l'artisan décide ; le risque reste sur lui.
+Recommandation : `refuser` — le cas est rare, l'attente courte, et l'obligation pèse sur l'artisan.
+Irréversible : non
+Bloque : rien
+
+### Q-suppression-email · Comment traiter une demande de suppression reçue par e-mail ?
+Contexte : La page publique « Supprimer mon compte » (exigée par Google Play) dit depuis le 16 oct. 2026 : « Nous vérifions que la demande vient bien de vous. Si un abonnement payant est en cours, nous le résilions. Si d'autres membres utilisent votre équipe, nous vous demandons d'abord de confirmer qu'ils perdront l'accès à l'espace de l'entreprise. » C'est vous qui le ferez (portail Stripe, puis suppression du compte) ; la page promet aussi une réponse sous un mois (RGPD art. 12), l'app « sous 72 h » (`src/services/suppressionCompte.js`).
+Option `ok` : ce texte vous convient — rien à changer ; tenir le délai annoncé.
+Option `autre` : vous préférez une autre procédure — dites laquelle, la page sera réécrite.
+Recommandation : `ok` — c'est ce qu'attend Google, et les cas seront rares.
+Irréversible : non
+Bloque : rien
+
+### Q-suppression-traces · Combien de temps garder la trace des comptes supprimés, et la fiche client Stripe ?
+Contexte : `comptes_supprimes` garde un identifiant et une date sans durée annoncée ni purge ; Stripe garde la fiche client (nom, e-mail) avec les factures d'abonnement (10 ans). La CNIL recommande aussi de supprimer les comptes inactifs après une durée annoncée (relecture juriste-btp du 16 oct. 2026).
+Option `5ans` : trace 5 ans (prescription, C. civ. art. 2224), fiche Stripe gardée avec les factures, pas de règle d'inactivité pour l'instant — simple ; à écrire dans la politique de confidentialité.
+Option `autre` : d'autres durées, ou une règle d'inactivité (par exemple 3 ans sans connexion, avec un e-mail avant).
+Recommandation : `5ans` — couvre les litiges sans garder plus que nécessaire.
+Irréversible : non
+Bloque : rien

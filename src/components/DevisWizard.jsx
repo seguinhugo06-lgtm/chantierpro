@@ -7,6 +7,8 @@ import { generateId } from '../lib/utils';
 import { formatClientName } from '../lib/formatters';
 import useConfirm from '../hooks/useConfirm';
 import { jourLocal } from '../lib/dates';
+import { calculerTotaux } from '../lib/totauxDocument';
+import { estFranchiseTva } from '../lib/franchiseTva';
 
 // Draft localStorage key
 const DRAFT_KEY = 'mallettico_devis_draft';
@@ -310,8 +312,9 @@ export default function DevisWizard({
       montant: Math.abs(l.quantite || 1) * Math.abs(l.prixUnitaire || 0)
     }));
 
-    // Round all monetary values to 2 decimals to prevent floating-point issues
-    const roundEuro = (v) => Math.round((v + Number.EPSILON) * 100) / 100;
+    // Totaux enregistrés arrondis par taux (calculerTotaux, tâche totaux-arrondis), sur les lignes saisies (même
+    // signe que l'affichage)
+    const t = calculerTotaux(form.lignes, { remisePct: Number(form.remise) || 0, tauxDefaut: form.tvaDefaut, toutesLesLignes: true, franchise: estFranchiseTva(entreprise) });
 
     const devisData = {
       type: form.type,
@@ -325,9 +328,10 @@ export default function DevisWizard({
       lignes: lignesFormatted,
       remise: form.remise,
       notes: form.notes,
-      total_ht: roundEuro(totals.htApresRemise),
-      tva: roundEuro(totals.tvaApresRemise),
-      total_ttc: roundEuro(totals.totalTTC)
+      total_ht: t.totalHT,
+      tva: t.totalTVA,
+      total_ttc: t.totalTTC,
+      tvaParTaux: t.tvaParTaux
     };
 
     // Attempt save — do NOT close modal if save fails

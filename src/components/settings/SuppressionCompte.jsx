@@ -94,7 +94,8 @@ export default function SuppressionCompte({ isDark, showToast, onExporter }) {
         paramètres sont effacés définitivement, ainsi que votre accès.
       </p>
       <p className={`text-xs mb-4 ${isDark ? 'text-red-400/70' : 'text-red-600/70'}`}>
-        Vos factures doivent être conservées 10 ans : exportez-les avant de continuer.
+        Vos factures doivent être conservées 10 ans, sous la forme où vous les avez envoyées : téléchargez leur PDF avant
+        de continuer (l'export des données, en JSON, ne les remplace pas).
       </p>
       <button
         type="button"
@@ -124,6 +125,7 @@ export default function SuppressionCompte({ isDark, showToast, onExporter }) {
           <ul className={`text-sm space-y-1.5 ${textMuted}`}>
             <li className="flex gap-2"><AlertTriangle size={15} className="text-red-500 flex-shrink-0 mt-0.5" /> Irréversible : rien ne pourra être récupéré.</li>
             <li className="flex gap-2"><AlertTriangle size={15} className="text-red-500 flex-shrink-0 mt-0.5" /> Les liens de signature et de paiement déjà envoyés à vos clients cesseront de fonctionner.</li>
+            <li className="flex gap-2"><AlertTriangle size={15} className="text-red-500 flex-shrink-0 mt-0.5" /> Un client particulier qui a signé en ligne il y a moins de 14 jours perdrait son bouton « renoncer au contrat ici » : attendez la fin de son délai de rétractation.</li>
           </ul>
           {onExporter && (
             <button type="button" onClick={onExporter} className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium ${isDark ? 'border-slate-600 text-slate-200 hover:bg-slate-700' : 'border-slate-300 text-slate-700 hover:bg-slate-50'}`}>

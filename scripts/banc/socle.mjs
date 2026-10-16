@@ -152,6 +152,34 @@ export const SCHEMA = `
   CREATE POLICY "Users update own subscription" ON subscriptions FOR UPDATE TO authenticated USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
   CREATE FUNCTION get_org_subscription(p_org_id UUID, p_user_id UUID) RETURNS JSON LANGUAGE sql SECURITY DEFINER AS $$ SELECT NULL::json $$;
   GRANT EXECUTE ON FUNCTION get_org_subscription TO authenticated;
+  -- Journal du cron des relances (070), écrit par la fonction Edge send-scheduled-relances
+  CREATE TABLE relance_cron_runs (id UUID DEFAULT gen_random_uuid() PRIMARY KEY, ran_at TIMESTAMPTZ DEFAULT now(),
+    dry_run BOOLEAN DEFAULT true, duration_ms INTEGER, entreprises_scanned INTEGER DEFAULT 0, entreprises_enabled INTEGER DEFAULT 0,
+    entreprises_auto_send INTEGER DEFAULT 0, total_due INTEGER DEFAULT 0, sent INTEGER DEFAULT 0, failed INTEGER DEFAULT 0,
+    skipped_autosend_off INTEGER DEFAULT 0, error TEXT, created_at TIMESTAMPTZ DEFAULT now());
+  ALTER TABLE relance_cron_runs ENABLE ROW LEVEL SECURITY;
+  -- Plan d'un compte et limites par plan : définitions de production relevées le 16 oct. 2026 (get_user_plan
+  -- réécrite hors dépôt ; get_plan_limit de 059, abrégée aux ressources lues par les migrations).
+  CREATE FUNCTION get_user_plan(p_user_id UUID) RETURNS TEXT LANGUAGE plpgsql STABLE SECURITY DEFINER AS $$
+  DECLARE v_plan TEXT;
+  BEGIN
+    BEGIN
+      SELECT plan INTO v_plan FROM subscriptions WHERE user_id = p_user_id AND status IN ('active', 'trialing') ORDER BY created_at DESC LIMIT 1;
+    EXCEPTION WHEN undefined_table OR undefined_column THEN v_plan := NULL;
+    END;
+    RETURN COALESCE(v_plan, 'gratuit');
+  END $$;
+  GRANT EXECUTE ON FUNCTION get_user_plan TO authenticated;
+  CREATE FUNCTION get_plan_limit(p_plan text, p_resource text) RETURNS integer LANGUAGE plpgsql IMMUTABLE AS $$
+  DECLARE v_plan text;
+  BEGIN
+    v_plan := CASE WHEN p_plan = 'artisan' THEN 'artisan' WHEN p_plan IN ('pro', 'entreprise', 'equipe') THEN 'equipe' ELSE 'gratuit' END;
+    RETURN CASE v_plan
+      WHEN 'gratuit' THEN CASE p_resource WHEN 'devis' THEN 5 WHEN 'clients' THEN 10 WHEN 'equipe' THEN 1 ELSE -1 END
+      WHEN 'artisan' THEN CASE p_resource WHEN 'equipe' THEN 1 ELSE -1 END
+      ELSE CASE p_resource WHEN 'storage_mb' THEN 10240 WHEN 'equipe' THEN 10 ELSE -1 END
+    END;
+  END $$;
 
   CREATE TABLE clients (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
     organization_id UUID REFERENCES organizations(id), nom TEXT);

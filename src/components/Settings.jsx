@@ -25,6 +25,7 @@ import TemplateManager from './settings/TemplateManager';
 import SuppressionCompte from './settings/SuppressionCompte';
 import PostChantierSettings from './settings/PostChantierSettings';
 import { remettreFichier } from '../lib/natif';
+import { FONCTIONS } from '../lib/fonctions';
 import { Bouton, BoutonIcone } from './ui/Bouton';
 import { jourLocal, dateLue } from '../lib/dates';
 import { estEntrepreneurIndividuel, estEirl, nomImprime } from '../lib/identiteEntreprise';
@@ -51,7 +52,8 @@ const TAB_GROUPS = [
   { id: 'finance', label: 'Finance', icon: Calculator, tabs: [
     { key: 'comptabilite', label: 'Comptabilité', icon: Calculator },
     { key: 'rentabilite', label: 'Rentabilité', icon: BarChart3 },
-    { key: 'paiements', label: 'Paiements', icon: CreditCard },
+    // Paiement en ligne des factures masqué en v1 (D-21, src/lib/fonctions.js)
+    ...(FONCTIONS.paiementEnLigne ? [{ key: 'paiements', label: 'Paiements', icon: CreditCard }] : []),
   ]},
   { id: 'equipe', label: 'Équipe', icon: Users, tabs: [
     { key: 'team', label: 'Équipe & Accès', icon: Users },
@@ -1694,7 +1696,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
       )}
 
       {/* PAIEMENTS EN LIGNE */}
-      {tab === 'paiements' && (
+      {tab === 'paiements' && FONCTIONS.paiementEnLigne && (
         <PaymentConfigTab
           entreprise={entreprise}
           isDark={isDark}

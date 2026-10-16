@@ -23,6 +23,9 @@ import { corsHeaders } from '../_shared/cors.ts';
 import { estClientPro, creditsParFacture, paiementsParDocument, resteDu, relancable, penalites, mentionRetard } from './regles.ts';
 
 const APP_ORIGIN = 'https://mallettico.fr';
+// Paiement en ligne des factures masqué en v1 (décision D-21, FONCTIONS.paiementEnLigne côté app) : aucun lien
+// /pay/… dans les relances automatiques
+const PAIEMENT_EN_LIGNE = false;
 
 // ─────────────────────────────────────────────────────────────
 // Logique pure (portée de relanceUtils.js)
@@ -156,7 +159,7 @@ function buildVariableMap(doc: any, client: any, entreprise: any) {
     penalites: formatMoneyValue(pen.penalites),
     total_du: formatMoneyValue(pen.totalDu),
     mention_retard: mentionRetard(pro),
-    lien_paiement: doc?.payment_token ? `${APP_ORIGIN}/pay/${doc.payment_token}` : '',
+    lien_paiement: PAIEMENT_EN_LIGNE && doc?.payment_token ? `${APP_ORIGIN}/pay/${doc.payment_token}` : '',
   } as Record<string, string>;
 }
 
@@ -170,7 +173,8 @@ function resolveVariables(template: string, doc: any, client: any, entreprise: a
   for (const [key, value] of Object.entries(variables)) {
     result = result.replace(new RegExp(`(?<!\\{)\\{${key}\\}(?!\\})`, 'g'), value || '');
   }
-  return result;
+  // Même règle que l'app (relanceUtils.js) : une variable vide seule sur sa ligne ne laisse pas de trou
+  return result.replace(/\n[ \t]*\n(?:[ \t]*\n)+/g, '\n\n');
 }
 
 function buildRelanceEmailHtml(body: string, entreprise: any, options: any = {}): string {

@@ -41,7 +41,7 @@ const CATEGORIES = [
       { name: 'Fiches client', values: ['10', 'Illimit\u00e9', 'Illimit\u00e9'] },
       { name: 'Historique des projets', values: [true, true, true] },
       { name: 'D\u00e9tection de doublons', values: [false, true, true] },
-      { name: 'Portail client', values: [false, false, true] },
+      // « Portail client » retiré tant que FONCTIONS.portailClient est éteint (relecture juridique du 16 oct. 2026)
     ],
   },
   {
