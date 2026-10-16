@@ -8,9 +8,10 @@ const ORG = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 // Réponse de get_invitation_by_token après 078 : ces quatre champs, rien d'autre. Échéance dans 7 jours (comme
 // une vraie invitation) : une date figée finit par passer, et l'app oublie alors l'invitation expirée (échec du
 // 17 oct. 2026, date du 15 oct. écrite en dur).
-const ECHEANCE = new Date(Date.now() + 7 * 864e5);
+// À midi UTC : même jour affiché à Paris et sur la CI (navigateur en UTC).
+const ECHEANCE = new Date(`${new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10)}T12:00:00Z`);
 const INVITATION = { organization_name: 'Élec Durand', role: 'chef_chantier', invited_by_email: 'patron@exemple.fr', expires_at: ECHEANCE.toISOString() };
-const ECHEANCE_LUE = ECHEANCE.toLocaleDateString('fr-FR', { timeZone: 'Europe/Paris' });
+const ECHEANCE_LUE = ECHEANCE.toLocaleDateString('fr-FR', { timeZone: 'UTC' });
 const texte = (page) => page.evaluate(() => document.body.innerText);
 
 module.exports = [
