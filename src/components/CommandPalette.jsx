@@ -4,10 +4,10 @@ import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import Fuse from 'fuse.js';
 import {
-  Search, X, FileText, Building2, Users, Plus, Calendar, Package,
-  Home, Settings, HardHat, ChevronRight, Command, ArrowUp, ArrowDown,
-  Zap, Receipt, Clock, BarChart3, History, Star, Wallet, Library,
-  UserCheck, ShoppingCart, Camera, ClipboardList, PenTool, Download, Sparkles,
+  Search, X, FileText, Building2, Users, Calendar, Package,
+  Home, Settings, HardHat, ChevronRight,
+  Zap, Receipt, Clock, BarChart3, History, Wallet,
+  ClipboardList,
   RotateCcw, CreditCard, Bell, CalendarCheck
 } from 'lucide-react';
 import { dateLue } from '../lib/dates';
