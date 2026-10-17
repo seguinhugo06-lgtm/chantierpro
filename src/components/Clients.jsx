@@ -373,6 +373,13 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
     });
     if (!confirmed) return;
 
+    // Une facture émise ne change pas de client (la base le refuse, migration 093) : vérifié AVANT tout transfert
+    const facturesEmisesDuDoublon = (devis || []).filter((d) => d.client_id === sourceId && d.type === 'facture' && d.statut !== 'brouillon');
+    if (facturesEmisesDuDoublon.length > 0) {
+      showToast(`Fusion impossible : « ${source.nom} » a ${facturesEmisesDuDoublon.length} facture${facturesEmisesDuDoublon.length > 1 ? 's' : ''} émise${facturesEmisesDuDoublon.length > 1 ? 's' : ''}, qui ne change${facturesEmisesDuDoublon.length > 1 ? 'nt' : ''} pas de client. Gardez plutôt ce client-là et fusionnez l'autre dans celui-ci.`, 'error');
+      return;
+    }
+
     // Merge: fill in blanks from source
     const merged = {};
     ['prenom', 'entreprise', 'email', 'telephone', 'adresse', 'notes', 'categorie', 'siret', 'tva_intra'].forEach(field => {
@@ -609,6 +616,11 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
     // doivent être conservées 10 ans avec le nom et l'adresse de l'acheteur.
     if (stats.factures > 0) {
       showToast(`Impossible de supprimer ${client?.nom || 'ce client'} : il a ${stats.factures} facture${stats.factures > 1 ? 's' : ''}, à conserver 10 ans.`, 'error');
+      return;
+    }
+    // Un devis signé est la preuve du contrat : il resterait sans client (la base refuse aussi, migration 093)
+    if ((devis || []).some((d) => d.client_id === id && (d.signature || d.signature_data))) {
+      showToast(`Impossible de supprimer ${client?.nom || 'ce client'} : il a un devis signé, à conserver.`, 'error');
       return;
     }
     const confirmed = await confirm({ title: 'Supprimer le client', message });

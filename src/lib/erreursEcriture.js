@@ -44,8 +44,8 @@ export function messageEcritureRefusee(error) {
   if (estSessionExpiree(error)) {
     return 'Votre session a expiré. Reconnectez-vous puis recommencez.';
   }
-  // Garde de la base qui dit quoi faire (091 : signature sur place figée) : rendue telle quelle
-  if (code === '42501' && /avenant/i.test(texte)) return String(error?.message || error?.messageBase || '').trim();
+  // Garde de la base qui dit quoi faire (091 : signature sur place figée ; 093 : facture émise) : rendue telle quelle
+  if (code === '42501' && /faites (signer )?un (avenant|avoir)|numérotation doit rester continue/i.test(texte)) return String(error?.message || error?.messageBase || '').trim();
   if (code === '42501' || status === 403 || /row-level security|permission denied/i.test(texte)) {
     return "Votre compte n'a pas le droit de faire cette modification.";
   }

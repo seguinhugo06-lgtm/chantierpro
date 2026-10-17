@@ -4218,7 +4218,9 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
             couleur={couleur}
             modeDiscret={modeDiscret}
             onClose={() => setViewingSnapshot(null)}
-            onRestore={async (snap) => {
+            // Seulement sur un document encore modifiable : une facture émise ou un devis signé se corrigent par un
+            // avoir ou un avenant (la base refuse la réécriture, migrations 091 et 093)
+            onRestore={!peutModifierDocument(selected, devis) ? undefined : async (snap) => {
               const confirmed = await confirm({ title: 'Restaurer cette version ?', message: 'Les données actuelles seront remplacées par cette version. Cette action est irréversible.' });
               if (!confirmed) return;
               const restoreData = { ...snap.data };

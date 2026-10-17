@@ -52,6 +52,14 @@ describe('messageEcritureRefusee', () => {
     expect(messageEcritureRefusee({ status: 403, code: '42501', message })).toBe(message);
   });
 
+  it('idem pour une facture émise (093) : « faites un avoir »', () => {
+    const message = 'Une facture émise ne se modifie pas : faites un avoir';
+    expect(messageEcritureRefusee({ status: 403, code: '42501', message })).toBe(message);
+    expect(messageEcritureRefusee({ status: 403, code: '42501', message: 'permission denied for table devis' })).toMatch(/droit/);
+    const numerotee = 'Une facture numérotée garde son numéro : la numérotation doit rester continue';
+    expect(messageEcritureRefusee({ status: 403, code: '42501', message: numerotee })).toBe(numerotee);
+  });
+
   it('une session expirée (401, même avec 42501) invite à se reconnecter, pas « pas le droit »', () => {
     expect(estSessionExpiree({ status: 401, code: '42501' })).toBe(true);
     expect(messageEcritureRefusee({ status: 401, code: '42501' })).toMatch(/Reconnectez-vous/);

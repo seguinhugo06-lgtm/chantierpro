@@ -211,7 +211,8 @@ export const SCHEMA = `
     ADD COLUMN date_echeance DATE, ADD COLUMN objet TEXT, ADD COLUMN total_ht NUMERIC, ADD COLUMN total_tva NUMERIC,
     ADD COLUMN total_ttc NUMERIC, ADD COLUMN montant_paye NUMERIC, ADD COLUMN payment_token TEXT,
     ADD COLUMN payment_token_expires_at TIMESTAMPTZ, ADD COLUMN payment_status TEXT, ADD COLUMN payment_completed_at TIMESTAMPTZ,
-    ADD COLUMN stripe_session_id TEXT, ADD COLUMN lignes JSONB;
+    ADD COLUMN stripe_session_id TEXT, ADD COLUMN lignes JSONB,
+    ADD COLUMN devis_source_id UUID;  -- facture → devis d'origine (production, relevé du 17 oct. 2026, lu par 093)
   ALTER TABLE clients ADD COLUMN prenom TEXT, ADD COLUMN email TEXT;
   ALTER TABLE entreprise ADD COLUMN adresse TEXT, ADD COLUMN ville TEXT, ADD COLUMN code_postal TEXT, ADD COLUMN telephone TEXT,
     ADD COLUMN email TEXT, ADD COLUMN siret TEXT, ADD COLUMN logo_url TEXT, ADD COLUMN couleur_principale TEXT, ADD COLUMN iban TEXT, ADD COLUMN bic TEXT;

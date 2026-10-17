@@ -160,6 +160,14 @@ Recommandation : `garder` — un contrat signé est une preuve (et une pièce à
 Irréversible : non
 Bloque : rien
 
+### Q-numero-a-l-envoi · Numéroter une facture à son envoi plutôt qu'à sa création ?
+Contexte : L'app numérote une facture dès sa création (brouillon) ; depuis le 17 oct. 2026 (migration 093), un brouillon numéroté ne se supprime plus et garde son numéro (séquence continue, CGI ann. II art. 242 nonies A, I, 7°). Deux effets : un brouillon N, dont la date reste modifiable, peut partir après N+1 avec une date postérieure (la séquence n'est plus chronologique) ; une facture brouillon créée par erreur ne peut ni être supprimée ni annulée (relecture juriste-btp du 17 oct. 2026, C6).
+Option `envoi` : le numéro est attribué à l'envoi (ou à la validation) — séquence chronologique garantie ; un brouillon sans numéro se supprime librement.
+Option `creation` : on garde la numérotation à la création — rien ne change ; un brouillon raté reste dans la liste, à utiliser.
+Recommandation : `envoi` — c'est la pratique des logiciels de facturation, et elle règle les deux effets.
+Irréversible : non
+Bloque : rien
+
 ### Q-penalites-particulier · Quelles conditions de retard imprimer sur un devis ou une facture de particulier ?
 Contexte : Tous les devis et factures impriment « Taux de la BCE majoré de 10 points (art. L441-10 C. com.) » et l'indemnité de 40 € « due entre professionnels ». L441-10 ne vise que les débiteurs professionnels ; pour un particulier, ce sont les intérêts au taux légal à compter de la mise en demeure (C. civ. art. 1231-6). Retirer une mention demande une décision (relecture juriste-btp du 17 oct. 2026, C5).
 Option `adapter` : pour un client particulier, « Retard de paiement : intérêts au taux légal à compter de la mise en demeure (art. 1231-6 du Code civil) », sans la ligne des 40 € ; inchangé pour un professionnel — chaque document dit la règle qui s'applique à son client.

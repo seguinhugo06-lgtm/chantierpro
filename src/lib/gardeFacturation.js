@@ -73,7 +73,8 @@ export function peutModifierDocument(doc, documents = []) {
 export function peutSupprimerDocument(doc, documents = []) {
   if (!doc) return false;
   // Un document de facturation déjà numéroté reste dans la séquence, même en brouillon : on l'annule
-  // (relecture juridique du 10 oct. 2026 — numérotation continue, CGI ann. II art. 242 nonies A I 1°).
+  // (relecture juridique du 10 oct. 2026 — numérotation continue, CGI ann. II art. 242 nonies A, I, 7°).
+  // La base le refuse aussi (migration 093).
   if (doc.type === 'facture') return doc.statut === 'brouillon' && !doc.numero;
   if (['acompte_facture', 'facture'].includes(doc.statut)) return false;
   // Un devis signé (sur place ou par le lien) est la preuve du contrat : il s'annule, un avenant le modifie
