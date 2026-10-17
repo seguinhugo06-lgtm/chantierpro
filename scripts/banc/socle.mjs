@@ -330,6 +330,12 @@ export const SCHEMA = `
 
   -- Droits par défaut de Supabase : toute fonction créée dans public est exécutable par les rôles de l'API.
   ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT EXECUTE ON FUNCTIONS TO anon, authenticated, service_role;
+  -- Fonction et vue ouvertes aux visiteurs, relevées en production le 17 oct. 2026 (092 les ferme) ; abrégées :
+  -- get_pending_reminders rendait aussi le montant, la date et le nom du client ; la vue, le stock et les prix.
+  CREATE FUNCTION get_pending_reminders(p_user_id UUID, p_days_threshold INTEGER) RETURNS TABLE (id UUID, numero TEXT)
+    LANGUAGE plpgsql STABLE SECURITY DEFINER AS $$
+    BEGIN RETURN QUERY SELECT d.id, d.numero FROM devis d WHERE d.user_id = p_user_id; END $$;
+  CREATE VIEW v_stock_alerts AS SELECT id, user_id, nom FROM catalogue;
   -- Paiement en ligne : clés Stripe de l'artisan dans Vault (012, et 029 effacée du dépôt par 227534e).
   CREATE SCHEMA vault;
   CREATE TABLE vault.decrypted_secrets (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), decrypted_secret TEXT);
