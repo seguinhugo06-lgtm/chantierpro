@@ -152,6 +152,12 @@ export const SCHEMA = `
   CREATE POLICY "Users update own subscription" ON subscriptions FOR UPDATE TO authenticated USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
   CREATE FUNCTION get_org_subscription(p_org_id UUID, p_user_id UUID) RETURNS JSON LANGUAGE sql SECURITY DEFINER AS $$ SELECT NULL::json $$;
   GRANT EXECUTE ON FUNCTION get_org_subscription TO authenticated;
+  -- Journal des événements (006), policies de production relevées le 17 oct. 2026 (091 ferme l'insertion)
+  CREATE TABLE events_log (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), event_type TEXT NOT NULL, entity_type TEXT NOT NULL, entity_id UUID NOT NULL,
+    user_id UUID, success BOOLEAN, metadata JSONB DEFAULT '{}', triggered_at TIMESTAMPTZ DEFAULT now());
+  ALTER TABLE events_log ENABLE ROW LEVEL SECURITY;
+  CREATE POLICY "Service role can insert events" ON events_log FOR INSERT WITH CHECK (true);
+  CREATE POLICY "Users can view their own events" ON events_log FOR SELECT USING (auth.uid() = user_id);
   -- Journal du cron des relances (070), écrit par la fonction Edge send-scheduled-relances
   CREATE TABLE relance_cron_runs (id UUID DEFAULT gen_random_uuid() PRIMARY KEY, ran_at TIMESTAMPTZ DEFAULT now(),
     dry_run BOOLEAN DEFAULT true, duration_ms INTEGER, entreprises_scanned INTEGER DEFAULT 0, entreprises_enabled INTEGER DEFAULT 0,

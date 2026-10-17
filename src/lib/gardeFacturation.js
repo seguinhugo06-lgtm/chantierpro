@@ -76,6 +76,9 @@ export function peutSupprimerDocument(doc, documents = []) {
   // (relecture juridique du 10 oct. 2026 — numérotation continue, CGI ann. II art. 242 nonies A I 1°).
   if (doc.type === 'facture') return doc.statut === 'brouillon' && !doc.numero;
   if (['acompte_facture', 'facture'].includes(doc.statut)) return false;
+  // Un devis signé (sur place ou par le lien) est la preuve du contrat : il s'annule, un avenant le modifie
+  // (la base le refuse aussi, migration 091)
+  if (doc.signature || doc.signature_data) return false;
   return facturesDuDevis(doc.id, documents).length === 0;
 }
 

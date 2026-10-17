@@ -61,7 +61,7 @@ import { totauxDocument, lignesTotauxHtml, lignesAcompteHtml, calculerTotaux } f
 import { lignesFactureAcompte, lignesFactureSolde } from '../lib/facturation';
 import { verifierNouvelleFacture, pourcentageAcompteValide, peutModifierDocument, peutSupprimerDocument, estEntierementFacture, dejaFactureTTC, montantCredite } from '../lib/gardeFacturation';
 import { DEFAULT_PENALTY_RATE, estClientPro } from '../lib/relanceUtils';
-import { blocRetractationHtml, estConcerneParRetractation, lienRetractationEnLigne, mentionsSignatureClientHtml, delaiSeptJours, raisonSeptJours } from '../lib/retractation';
+import { blocRetractationHtml, estConcerneParRetractation, lienRetractationEnLigne, mentionsSignatureClientHtml, delaiSeptJours, raisonSeptJours, echeanceApresSeptJours } from '../lib/retractation';
 import { soldeDe, texteCourt, telInternational } from '../lib/messageRelance';
 import { useDebounce } from '../hooks/useDebounce';
 import { useDevisModals } from '../hooks/useDevisModals';
@@ -1541,6 +1541,9 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       tvaParTaux, tvaDetails: tvaParTaux,
       lignes, total_ht: montantSoldeHT, tva, total_ttc: ttc
     };
+    // Pendant les sept jours d'un devis signé sur place chez un particulier (L221-10) : aucun paiement réclamé
+    // avant la fin du délai (échéance et phrase imprimée dans les trois générateurs)
+    Object.assign(facture, echeanceApresSeptJours(septJoursDe(selected), facture.date_echeance, selected.conditionsPaiement || selected.conditions) || {});
     // Refus de la base : le devis reste tel quel (avant : « facturé » sans facture)
     if (!(await onSubmit(facture))) return;
     const soldeUpdate = {

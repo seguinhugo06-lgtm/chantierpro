@@ -40,7 +40,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
 import { echapperHtml, estEmail } from '../_shared/adresses.ts';
 import { nomImprime } from '../_shared/identite.ts';
-import { accuseReception, avisArtisan, type DevisRetracte, type Message } from './retractation.ts';
+import { accuseReception, avisArtisan, avisEchecAccuse, type DevisRetracte, type Message } from './retractation.ts';
 import { messageExemplaire, nomFichierExemplaire, pdfAcceptable } from './exemplaire.ts';
 
 const APP_URL = Deno.env.get('APP_URL') || 'https://mallettico.fr';
@@ -226,17 +226,87 @@ async function traiterExemplaire(supabase: any, token: string, pdf: unknown): Pr
   return json({ success: true });
 }
 
+/**
+ * Envoi unique d'un événement par devis (index unique de 091) : la ligne du journal est posée « en cours »
+ * (success false) AVANT l'envoi, confirmée après, rendue s'il échoue. Une réservation restée « en cours » plus de
+ * 2 minutes (fonction interrompue) se reprend — relecture gardien-securite du 17 oct. 2026.
+ */
+// deno-lint-ignore no-explicit-any
+async function reserver(supabase: any, type: string, devis: any, metadata: Record<string, unknown>): Promise<'ok' | 'deja' | 'erreur'> {
+  const { error } = await supabase.from('events_log').insert([{
+    event_type: type, entity_type: 'devis', entity_id: devis.id, user_id: devis.user_id,
+    success: false, metadata, triggered_at: new Date().toISOString(),
+  }]);
+  if (!error) return 'ok';
+  if (error.code !== '23505') {
+    console.error(`[notify-signature] réservation ${type} impossible devis=${devis.id} : ${error.message}`);
+    return 'erreur';
+  }
+  const { data: reprise, error: errReprise } = await supabase.from('events_log')
+    .update({ triggered_at: new Date().toISOString() })
+    .eq('event_type', type).eq('entity_id', devis.id).eq('success', false)
+    .lt('triggered_at', new Date(Date.now() - 2 * 60 * 1000).toISOString())
+    .select('id');
+  if (errReprise) {
+    console.error(`[notify-signature] reprise de la réservation ${type} impossible devis=${devis.id} : ${errReprise.message}`);
+    return 'erreur';
+  }
+  return reprise && reprise.length > 0 ? 'ok' : 'deja';
+}
+
+// deno-lint-ignore no-explicit-any
+async function confirmerReservation(supabase: any, type: string, devisId: string) {
+  const { error } = await supabase.from('events_log').update({ success: true }).eq('event_type', type).eq('entity_id', devisId);
+  if (error) console.error(`[notify-signature] ${type} envoyé mais non confirmé au journal devis=${devisId} : ${error.message}`);
+}
+
+// deno-lint-ignore no-explicit-any
+async function rendreReservation(supabase: any, type: string, devisId: string, raison: string) {
+  const { error } = await supabase.from('events_log').delete().eq('event_type', type).eq('entity_id', devisId);
+  if (error) console.error(`[notify-signature] ${type} NON ENVOYÉ (${raison}) ET RÉSERVATION GARDÉE devis=${devisId} : ${error.message}`);
+  else console.error(`[notify-signature] ${type} non envoyé (${raison}) devis=${devisId}`);
+}
+
+/** Avis d'échec de l'accusé à l'artisan : une seule fois par devis. */
+// deno-lint-ignore no-explicit-any
+async function prevenirEchecAccuse(supabase: any, devis: any, fiche: { email?: string }) {
+  const TYPE = 'devis_retractation_accuse_echec';
+  if ((await reserver(supabase, TYPE, devis, { numero: devis.numero })) !== 'ok') return;
+  try {
+    let artisan: string | null = null;
+    try {
+      const { data: userData } = await supabase.auth.admin.getUserById(devis.user_id as string);
+      artisan = userData?.user?.email ?? null;
+    } catch { /* repli ci-dessous */ }
+    const avis = avisEchecAccuse(devis as DevisRetracte, fiche, artisan || fiche.email, APP_URL);
+    if (avis && (await envoyer(avis))) await confirmerReservation(supabase, TYPE, devis.id);
+    else await rendreReservation(supabase, TYPE, devis.id, avis ? 'envoi' : 'adresse');
+  } catch (e) {
+    await rendreReservation(supabase, TYPE, devis.id, (e as Error).message);
+  }
+}
+
 // ─── Rétractation en ligne : accusé de réception (D221-5) et avis à l'artisan ───
 // deno-lint-ignore no-explicit-any
 async function traiterRetractation(supabase: any, token: string): Promise<Response> {
   const { data: devis, error } = await supabase
     .from('devis')
-    .select('id, numero, date, user_id, organization_id, client_id, entreprise_id, signature_date, travaux_urgents, execution_anticipee_le, retractation_le, retractation_nom, retractation_email, retractation_accuse_le')
+    .select('id, numero, date, user_id, organization_id, client_id, entreprise_id, signature_date, travaux_urgents, execution_anticipee_le, retractation_le, retractation_nom, retractation_email, retractation_accuse_le, retractation_accuse_essais')
     .eq('signature_token', token)
     .maybeSingle();
   if (error || !devis) return json({ error: 'devis introuvable' }, 404);
   if (!devis.retractation_le) return json({ error: 'aucune rétractation enregistrée' }, 400);
-  if (devis.retractation_accuse_le) return json({ success: true, deja: true });
+  if (devis.retractation_accuse_le) {
+    // Réservé il y a moins de 2 minutes et pas encore journalisé : un envoi est en cours (le bouton ne doit pas
+    // annoncer « envoyé » s'il échoue ensuite — relecture gardien-securite du 17 oct. 2026)
+    const recent = Date.now() - new Date(devis.retractation_accuse_le).getTime() < 2 * 60 * 1000;
+    if (recent) {
+      const { data: journal } = await supabase.from('events_log').select('id')
+        .eq('event_type', 'devis_retractation_accuse').eq('entity_id', devis.id).limit(1);
+      if (!journal || journal.length === 0) return json({ success: false, en_cours: true });
+    }
+    return json({ success: true, deja: true });
+  }
 
   // Un seul accusé : on réserve l'envoi avant de le faire (deux appels simultanés n'en envoient qu'un)
   const maintenant = new Date().toISOString();
@@ -258,6 +328,9 @@ async function traiterRetractation(supabase: any, token: string): Promise<Respon
   const echec = async (statut: number, message: string) => {
     const { error: errRendre } = await rendre();
     if (errRendre) console.error(`[notify-signature] ACCUSÉ NON ENVOYÉ ET RÉSERVATION GARDÉE devis=${devis.id} : ${errRendre.message}`);
+    // Dernier essai du serveur (089) en échec : l'artisan est prévenu, une fois, hors plafond (un seul e-mail, à
+    // l'adresse de son compte, prise en base) — tâche accuse-echec
+    if (Number(devis.retractation_accuse_essais || 0) >= 5) await prevenirEchecAccuse(supabase, devis, fiche);
     return json({ error: message }, statut);
   };
 
@@ -360,100 +433,71 @@ serve(async (req) => {
       return json({ error: 'signature trop ancienne' }, 400);
     }
 
-    // 3. Déduplication (une notification par devis)
-    const { data: already } = await supabase
-      .from('events_log')
-      .select('id')
-      .eq('event_type', 'devis_signed_notified')
-      .eq('entity_id', devis.id)
-      .limit(1);
-    if (already && already.length > 0) {
-      return json({ success: true, deduped: true });
-    }
-
-    // 4. Email de l'artisan : compte auth, sinon email entreprise
-    let artisanEmail: string | null = null;
+    // 3. Une notification par devis, réservée au journal avant l'envoi (index unique, 091) — avant, lire puis écrire
+    //    laissait des appels simultanés envoyer plusieurs e-mails
+    const TYPE = 'devis_signed_notified';
+    const reservation = await reserver(supabase, TYPE, devis, { numero: devis.numero, signataire: devis.signataire_nom || null });
+    if (reservation === 'deja') return json({ success: true, deduped: true });
+    if (reservation === 'erreur') return json({ error: 'notification non envoyée' }, 500);
     try {
-      const { data: userData } = await supabase.auth.admin.getUserById(devis.user_id as string);
-      artisanEmail = userData?.user?.email ?? null;
-    } catch { /* fallback ci-dessous */ }
-    if (!artisanEmail) {
-      const { data: ent } = await supabase
-        .from('entreprise')
-        .select('email')
-        .eq('user_id', devis.user_id)
-        .limit(1)
-        .maybeSingle();
-      artisanEmail = ent?.email ?? null;
+      // 4. Email de l'artisan : compte auth, sinon email entreprise
+      let artisanEmail: string | null = null;
+      try {
+        const { data: userData } = await supabase.auth.admin.getUserById(devis.user_id as string);
+        artisanEmail = userData?.user?.email ?? null;
+      } catch { /* fallback ci-dessous */ }
+      if (!artisanEmail) {
+        const { data: ent } = await supabase
+          .from('entreprise')
+          .select('email')
+          .eq('user_id', devis.user_id)
+          .limit(1)
+          .maybeSingle();
+        artisanEmail = ent?.email ?? null;
+      }
+      if (!artisanEmail) { await rendreReservation(supabase, TYPE, devis.id, 'adresse'); return json({ error: 'email artisan introuvable' }, 404); }
+
+      const client =devis.client as { nom?: string; prenom?: string } | null;
+      const clientNom = [client?.prenom, client?.nom].filter(Boolean).join(' ') || 'Votre client';
+      // Le nom du signataire est saisi librement par quiconque détient le lien : échappé dans le HTML (un lien
+      // d'hameçonnage passait dans un e-mail authentifié par Mallettico — relecture gardien-securite du 10 oct. 2026)
+      const signataire = (devis.signataire_nom as string) || clientNom;
+      const montant = fmtEUR(devis.total_ttc as number);
+
+      const html = `
+    <div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#1e293b;line-height:1.6;max-width:560px;margin:0 auto">
+      <div style="text-align:center;padding:24px 0 8px">
+        <div style="font-size:40px">✍️</div>
+        <h2 style="margin:8px 0 0">Devis signé !</h2>
+      </div>
+      <p style="text-align:center;font-size:16px">
+        <strong>${echapperHtml(signataire)}</strong> vient de signer le devis
+        <strong>${echapperHtml(devis.numero)}</strong> d'un montant de <strong>${montant}</strong>.
+      </p>
+      <div style="text-align:center;margin:24px 0">
+        <a href="${APP_URL}" style="display:inline-block;background:#f97316;color:#ffffff;text-decoration:none;font-weight:bold;padding:12px 24px;border-radius:10px">
+          Ouvrir Mallettico
+        </a>
+      </div>
+      <p style="font-size:13px;color:#64748b;text-align:center">
+        Prochaine étape : transformez ce devis en facture d'acompte en un clic.
+      </p>
+    </div>`;
+
+      // 5. Envoi (délai maximal, ne lève pas), confirmé au journal
+      const texte = `${signataire} vient de signer le devis ${devis.numero} d'un montant de ${montant}.\n\n${APP_URL}`;
+      const parti = await envoyer({ a: artisanEmail, sujet: `✍️ Devis ${devis.numero} signé — ${montant}`, html, texte });
+      if (!parti) {
+        await rendreReservation(supabase, TYPE, devis.id, 'envoi');
+        return json({ error: 'envoi email échoué' }, 502);
+      }
+      await confirmerReservation(supabase, TYPE, devis.id);
+      return json({ success: true });
+    } catch (e) {
+      // Erreur imprévue après la réservation : la rendre, sinon la notification serait perdue pour de bon
+      await rendreReservation(supabase, TYPE, devis.id, (e as Error).message);
+      throw e;
     }
-    if (!artisanEmail) return json({ error: 'email artisan introuvable' }, 404);
-
-    // 5. Envoi via Resend
-    const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
-    if (!RESEND_API_KEY) return json({ error: 'Resend non configuré' }, 500);
-
-    const client = devis.client as { nom?: string; prenom?: string } | null;
-    const clientNom = [client?.prenom, client?.nom].filter(Boolean).join(' ') || 'Votre client';
-    // Le nom du signataire est saisi librement par quiconque détient le lien : échappé dans le HTML (un lien
-    // d'hameçonnage passait dans un e-mail authentifié par Mallettico — relecture gardien-securite du 10 oct. 2026)
-    const signataire = (devis.signataire_nom as string) || clientNom;
-    const montant = fmtEUR(devis.total_ttc as number);
-
-    const html = `
-  <div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#1e293b;line-height:1.6;max-width:560px;margin:0 auto">
-    <div style="text-align:center;padding:24px 0 8px">
-      <div style="font-size:40px">✍️</div>
-      <h2 style="margin:8px 0 0">Devis signé !</h2>
-    </div>
-    <p style="text-align:center;font-size:16px">
-      <strong>${echapperHtml(signataire)}</strong> vient de signer le devis
-      <strong>${echapperHtml(devis.numero)}</strong> d'un montant de <strong>${montant}</strong>.
-    </p>
-    <div style="text-align:center;margin:24px 0">
-      <a href="${APP_URL}" style="display:inline-block;background:#f97316;color:#ffffff;text-decoration:none;font-weight:bold;padding:12px 24px;border-radius:10px">
-        Ouvrir Mallettico
-      </a>
-    </div>
-    <p style="font-size:13px;color:#64748b;text-align:center">
-      Prochaine étape : transformez ce devis en facture d'acompte en un clic.
-    </p>
-  </div>`;
-
-    const emailRes = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${RESEND_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        from: `Mallettico <${Deno.env.get('FROM_EMAIL') || 'noreply@mallettico.fr'}>`,
-        to: [artisanEmail],
-        subject: `✍️ Devis ${devis.numero} signé — ${montant}`,
-        html,
-      }),
-    });
-
-    if (!emailRes.ok) {
-      const errBody = await emailRes.text();
-      console.error('[notify-signature] Resend error:', errBody);
-      return json({ error: 'envoi email échoué' }, 502);
-    }
-
-    // 6. Log — sert aussi de clé de DÉDUP. S'il échoue en silence, l'artisan
-    //    peut recevoir plusieurs fois la même notification de signature.
-    const { error: errJournal } = await supabase.from('events_log').insert([{
-      event_type: 'devis_signed_notified',
-      entity_type: 'devis',
-      entity_id: devis.id,
-      success: true,
-      metadata: { numero: devis.numero, signataire },
-      triggered_at: new Date().toISOString(),
-    }]);
-    if (errJournal) {
-      console.error(`[notify-signature] JOURNAL/DÉDUP PERDU devis=${devis.id} : ${errJournal.message}`);
-    }
-
-    return json({ success: true });
   } catch (error) {
     console.error('[notify-signature] Error:', error);
     return json({ error: (error as Error).message || 'Erreur interne' }, 500);

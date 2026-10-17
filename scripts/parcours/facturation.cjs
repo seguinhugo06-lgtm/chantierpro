@@ -243,7 +243,8 @@ module.exports = [
         const ecart = Math.round((Date.UTC(+m[3], +m[2] - 1, +m[1]) - Date.UTC(...new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Paris' }).split('-').map((x, i) => (i === 1 ? +x - 1 : +x)))) / 864e5);
         return ecart >= 8 && ecart <= 11;
       };
-      const surPlace = { ...DEVIS_SIGNE, id: 'd-sept-jours', numero: 'DEV-2026-00097', signature: 'data:image/png;base64,AA==', signataire: 'Marie Dupont', signatureDate: signeLe };
+      // Payable « à réception » : sans la règle, la facture complète réclamerait le paiement le jour même
+      const surPlace = { ...DEVIS_SIGNE, id: 'd-sept-jours', numero: 'DEV-2026-00097', signature: 'data:image/png;base64,AA==', signataire: 'Marie Dupont', signatureDate: signeLe, conditionsPaiement: 'reception' };
       // Second devis signé sur place, déjà facturé : sa facture ne s'encaisse pas non plus pendant les sept jours
       const surPlaceFacture = { ...surPlace, id: 'd-sept-jours-2', numero: 'DEV-2026-00098' };
       const facture = { ...FACTURE_EMISE, id: 'f-sept-jours', numero: 'FAC-2026-00097', devis_source_id: 'd-sept-jours-2' };
@@ -262,6 +263,24 @@ module.exports = [
       verifier(fenetre.bouton === true, '« Facturer » est désactivé');
       const { devis = [] } = await documentsEnregistres(page);
       verifier(!devis.some((d) => d.devis_source_id === 'd-sept-jours' && d.facture_type === 'acompte'), 'aucune facture d’acompte créée');
+
+      // Facture complète pendant le délai (tâche sept-jours-factures) : émise, mais aucun paiement réclamé avant la fin
+      await page.keyboard.press('Escape');
+      await attendre(300);
+      await page.evaluate(() => [...document.querySelectorAll('button')].find((b) => /^Annuler/.test((b.innerText || '').trim()))?.click());
+      await attendre(400);
+      const cent = await page.evaluate(() => { const b = [...document.querySelectorAll('button')].find((x) => /^100 %/.test((x.innerText || '').trim())); b?.click(); return !!b; });
+      verifier(cent, 'option « 100 % » de la facturation');
+      await attendre(500);
+      const dialogue = await page.evaluate(() => document.querySelector('[role="dialog"]')?.innerText || '');
+      verifier(/n'acceptez aucun paiement avant le/.test(dialogue), `la confirmation rappelle la règle (${dialogue.slice(0, 60)}…)`);
+      await page.evaluate(() => { const d = document.querySelector('[role="dialog"]'); [...(d?.querySelectorAll('button') || [])].find((x) => /^Confirmer/.test((x.innerText || '').trim()))?.click(); });
+      await attendre(1500);
+      const apresFacture = await documentsEnregistres(page);
+      const complete = (apresFacture.devis || []).find((d) => d.devis_source_id === 'd-sept-jours' && d.type === 'facture');
+      const aujourdhui = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Paris' });
+      verifier(complete && /^Paiement au plus tôt le \d{2}\/\d{2}\/\d{4} \(article L221-10 du Code de la consommation\)$/.test(complete.conditions || '') && complete.date_echeance > aujourdhui,
+        `facture complète émise, échéance au plus tôt (${complete?.date_echeance}, « ${complete?.conditions} »)`);
 
       await page.keyboard.press('Escape');
       await attendre(300);

@@ -6,6 +6,7 @@
 import { echapperHtml as h } from './echapperHtml';
 import { nomImprime } from './identiteEntreprise';
 import { urlPublique } from './urlPublique';
+import { delaiDeConditions } from './paiementsFacture';
 
 /**
  * Lendemain de la mise en production de l'avis complet (avis type et formulaire) sur les trois générateurs, le
@@ -182,6 +183,29 @@ export function raisonSeptJours(delai) {
   if (!d?.possibleLe) return '';
   const [a, m, j] = d.possibleLe.split('-');
   return `Devis signé sur place par un client particulier : n'acceptez aucun paiement avant le ${j}/${m}/${a}, ni acompte, ni chèque (même non encaissé), ni virement. Un contrat signé hors de vos locaux interdit tout paiement pendant les sept jours qui suivent la signature${d.reporte ? ', délai reporté au premier jour ouvrable s\'il finit un samedi, un dimanche ou un jour férié' : ''} (article L221-10 du Code de la consommation).`;
+}
+
+/**
+ * Facture complète ou de solde émise pendant les sept jours (tâche sept-jours-factures) : elle peut être émise, mais
+ * ne doit réclamer aucun paiement avant la fin du délai (L242-7 punit le fait d'« exiger »). Si l'échéance calculée
+ * tombe avant le jour où le paiement devient possible, la facture prend ce jour pour échéance et imprime, à la place
+ * de ses conditions (« à réception »…), la phrase de la relecture juriste-btp du 17 oct. 2026.
+ * @param {{ possibleLe: string }|null} delai résultat de delaiSeptJours
+ * @param {string|null} echeance échéance calculée (AAAA-MM-JJ)
+ * @returns {null | { date_echeance: string, conditions: string, conditionsPaiement: null }} champs à poser, ou null
+ */
+export function echeanceApresSeptJours(delai, echeance, conditions) {
+  if (!delai?.possibleLe) return null;
+  const [a, m, j] = delai.possibleLe.split('-');
+  const phrase = `Paiement au plus tôt le ${j}/${m}/${a} (article L221-10 du Code de la consommation)`;
+  const e = String(echeance || '').slice(0, 10);
+  if (e && e >= delai.possibleLe) {
+    // Échéance déjà après le délai, mais conditions illisibles (« Paiement comptant ») : imprimées telles quelles,
+    // elles exigeraient un paiement immédiat (L242-7) — relecture juriste-btp du 17 oct. 2026 (C4)
+    const c = String(conditions || '').trim();
+    return c && !delaiDeConditions(c) ? { conditions: phrase, conditionsPaiement: null } : null;
+  }
+  return { date_echeance: delai.possibleLe, conditions: phrase, conditionsPaiement: null };
 }
 
 /** Réparation urgente (L221-28, 8°), en tête de l'avis. Rédaction libre. */

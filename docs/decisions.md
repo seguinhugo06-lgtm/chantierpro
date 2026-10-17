@@ -151,3 +151,19 @@ Option `case` : une case « J'accepte de recevoir mon exemplaire par e-mail » s
 Recommandation : `phrase` — la plupart des signatures par le lien sont vraiment à distance, où l'e-mail ne demande pas d'accord.
 Irréversible : non
 Bloque : rien
+
+### Q-suppression-devis-signe · Un devis signé ne se supprime plus : garder ce refus ?
+Contexte : Depuis le 17 oct. 2026 (migration 091), un devis signé, sur place ou par le lien, ne se supprime plus dans l'app ni par l'API : on l'annule, ou un avenant le modifie. Sans ce refus, supprimer puis réinsérer le même devis signé permettait de changer après coup la demande expresse ou l'accord pour l'e-mail (relecture gardien-securite du 17 oct. 2026). La suppression du compte efface toujours tout.
+Option `garder` : le refus reste — la preuve du contrat ne disparaît pas ; un devis signé par erreur s'annule.
+Option `permettre` : la suppression d'un devis signé revient — un devis d'essai signé disparaît de la liste ; le contournement revient.
+Recommandation : `garder` — un contrat signé est une preuve (et une pièce à conserver), l'annulation suffit pour le retirer des listes actives.
+Irréversible : non
+Bloque : rien
+
+### Q-penalites-particulier · Quelles conditions de retard imprimer sur un devis ou une facture de particulier ?
+Contexte : Tous les devis et factures impriment « Taux de la BCE majoré de 10 points (art. L441-10 C. com.) » et l'indemnité de 40 € « due entre professionnels ». L441-10 ne vise que les débiteurs professionnels ; pour un particulier, ce sont les intérêts au taux légal à compter de la mise en demeure (C. civ. art. 1231-6). Retirer une mention demande une décision (relecture juriste-btp du 17 oct. 2026, C5).
+Option `adapter` : pour un client particulier, « Retard de paiement — Intérêts au taux légal à compter de la mise en demeure (art. 1231-6 du Code civil). », sans la ligne des 40 € ; inchangé pour un professionnel — chaque document dit la règle qui s'applique à son client.
+Option `garder` : la même mention pour tous — rien ne change ; un particulier lit des pénalités qui ne le visent pas.
+Recommandation : `adapter` — la fiche client sait déjà si c'est un particulier (`estClientParticulier`), et les relances suivent déjà cette règle.
+Irréversible : non
+Bloque : la tâche `penalites-particulier`

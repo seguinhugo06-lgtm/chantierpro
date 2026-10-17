@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { verifierNouvelleFacture, montantCredite, dejaFactureTTC, pourcentageAcompteValide, estEntierementFacture } from '../gardeFacturation';
+import { verifierNouvelleFacture, montantCredite, dejaFactureTTC, pourcentageAcompteValide, estEntierementFacture, peutSupprimerDocument } from '../gardeFacturation';
 
 const DEVIS = { id: 'd1', type: 'devis', statut: 'signe', client_id: 'c1', total_ttc: 1100 };
 const facture = (o) => ({ type: 'facture', devis_source_id: 'd1', statut: 'envoye', ...o });
@@ -74,5 +74,14 @@ describe('pourcentageAcompteValide', () => {
     expect(pourcentageAcompteValide(150)).toBe(false);
     expect(pourcentageAcompteValide(-20)).toBe(false);
     expect(pourcentageAcompteValide('')).toBe(false);
+  });
+});
+
+describe('peutSupprimerDocument', () => {
+  it('un devis signé, sur place ou par le lien, ne se supprime pas (la base le refuse aussi, 091)', () => {
+    const devis = { id: 'd9', type: 'devis', statut: 'accepte' };
+    expect(peutSupprimerDocument(devis, [devis])).toBe(true);
+    expect(peutSupprimerDocument({ ...devis, signature: 'data:image/png;base64,AA==' }, [])).toBe(false);
+    expect(peutSupprimerDocument({ ...devis, signature_data: 'data:image/png;base64,AA==' }, [])).toBe(false);
   });
 });

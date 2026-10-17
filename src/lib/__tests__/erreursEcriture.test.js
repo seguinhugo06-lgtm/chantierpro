@@ -47,6 +47,11 @@ describe('messageEcritureRefusee', () => {
     expect(messageEcritureRefusee(cas[1])).toMatch(/n'existe plus/);
   });
 
+  it('une garde de la base qui dit quoi faire (signature sur place figée, 091) est rendue telle quelle', () => {
+    const message = 'Un devis signé sur place ne se modifie plus : pour changer les travaux ou le prix, faites signer un avenant au client';
+    expect(messageEcritureRefusee({ status: 403, code: '42501', message })).toBe(message);
+  });
+
   it('une session expirée (401, même avec 42501) invite à se reconnecter, pas « pas le droit »', () => {
     expect(estSessionExpiree({ status: 401, code: '42501' })).toBe(true);
     expect(messageEcritureRefusee({ status: 401, code: '42501' })).toMatch(/Reconnectez-vous/);

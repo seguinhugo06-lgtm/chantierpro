@@ -57,6 +57,15 @@ describe('devis', () => {
     expect(FIELD_MAPPINGS.devis.toSupabase({ ...base, tvaRate: 0 }).tva_rate).toBe(0);
     expect(FIELD_MAPPINGS.devis.fromSupabase({ ...base, tva_rate: 0, lignes: '[]', sections: '[]' }).tvaRate).toBe(0);
   });
+
+  it('signature sur place et signataire : envoyés seulement s\'ils existent (une copie d\'avant la signature ne les efface pas, 091)', () => {
+    const sans = FIELD_MAPPINGS.devis.toSupabase(base);
+    expect('signature' in sans).toBe(false);
+    expect('signataire' in sans).toBe(false);
+    const avec = FIELD_MAPPINGS.devis.toSupabase({ ...base, signature: 'data:image/png;base64,AA==', signataire: 'Léa' });
+    expect(avec.signature).toBe('data:image/png;base64,AA==');
+    expect(avec.signataire).toBe('Léa');
+  });
 });
 
 describe('catalogue', () => {

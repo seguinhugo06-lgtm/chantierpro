@@ -2,8 +2,9 @@ import { describe, it, expect } from 'vitest';
 import {
   blocRetractationHtml, dateHeureParis, delaiRetractationDevis, estClientParticulier, estConcerneParRetractation,
   finDelaiRetractation, jourParis, lienRetractationEnLigne, mentionsSignatureClientHtml, paques, DEMANDE_EXPRESSE,
-  paiementPossibleLe, raisonSeptJours, delaiSeptJours,
+  paiementPossibleLe, raisonSeptJours, delaiSeptJours, echeanceApresSeptJours,
 } from '../retractation';
+import { blocConditionsPaiement } from '../formatDocument';
 
 // Mêmes cas que le banc de la migration 086 (fin_delai_retractation, côté base).
 describe('fin du délai de rétractation (L221-18, L221-19, L221-20)', () => {
@@ -188,5 +189,39 @@ describe('paiement possible à partir du 8e jour (L221-10)', () => {
     const d = delaiSeptJours({ devis: { ...surPlace, signatureDate: signe }, client: particulier, maintenant: a(vu) });
     expect(d).toEqual({ possibleLe: possible, reporte });
     expect(paiementPossibleLe({ devis: { ...surPlace, signatureDate: signe }, client: particulier, maintenant: a(possible) })).toBeNull();
+  });
+});
+
+// Tâche sept-jours-factures : une facture émise pendant le délai ne réclame aucun paiement avant sa fin (L242-7).
+describe('échéance d’une facture émise pendant les sept jours', () => {
+  const delai = { possibleLe: '2026-10-24', reporte: false };
+  it('« à réception » (échéance le jour même) : échéance au jour possible, phrase à la place des conditions', () => {
+    expect(echeanceApresSeptJours(delai, '2026-10-17')).toEqual({
+      date_echeance: '2026-10-24',
+      conditions: 'Paiement au plus tôt le 24/10/2026 (article L221-10 du Code de la consommation)',
+      conditionsPaiement: null,
+    });
+  });
+  it('échéance déjà après la fin du délai (30 jours), ou pas de délai en cours : rien ne change', () => {
+    expect(echeanceApresSeptJours(delai, '2026-11-16')).toBeNull();
+    expect(echeanceApresSeptJours(delai, '2026-10-24')).toBeNull();
+    expect(echeanceApresSeptJours(null, '2026-10-17')).toBeNull();
+  });
+  it('imprimé par le bloc commun des générateurs : la phrase remplace « À réception de facture », avec la date', () => {
+    const facture = { type: 'facture', conditionsPaiement: 'reception', date_echeance: '2026-10-17' };
+    Object.assign(facture, echeanceApresSeptJours(delai, facture.date_echeance));
+    const bloc = blocConditionsPaiement({ doc: facture, entreprise: {}, isFacture: true, dateEcheance: facture.date_echeance });
+    expect(bloc).toContain('Paiement au plus tôt le 24/10/2026 (article L221-10 du Code de la consommation).');
+    expect(bloc).toContain('Date d\'échéance : 24/10/2026');
+    expect(bloc).not.toContain('À réception de facture');
+  });
+  it('conditions en texte libre illisibles (« Paiement comptant ») : la phrase les remplace, l’échéance reste', () => {
+    expect(echeanceApresSeptJours(delai, '2026-11-16', 'Paiement comptant')).toEqual({
+      conditions: 'Paiement au plus tôt le 24/10/2026 (article L221-10 du Code de la consommation)',
+      conditionsPaiement: null,
+    });
+    expect(echeanceApresSeptJours(delai, '2026-11-16', '30_jours')).toBeNull();
+    expect(echeanceApresSeptJours(delai, '2026-11-16', 'Paiement à 30 jours')).toBeNull();
+    expect(echeanceApresSeptJours(delai, '2026-10-17', 'Paiement comptant').date_echeance).toBe('2026-10-24');
   });
 });

@@ -217,11 +217,13 @@ export const FIELD_MAPPINGS = {
         total_tva: item.tva || 0,
         total_ttc: item.total_ttc || 0,
         // Signature fields
-        signature: item.signature || null,
+        // Signature sur place et signataire : envoyés seulement s'ils existent — une copie chargée avant la
+        // signature (autre appareil) ne doit pas l'effacer, et la base les refuse une fois posés (091)
+        ...(item.signature ? { signature: item.signature } : {}),
         // Seulement si elle existe : une copie périmée (le client a signé par le lien entre-temps) n'efface pas la
         // date de sa signature (relecture gardien-securite du 12 oct. 2026 ; la base le refuse aussi, migration 086)
         ...(item.signatureDate ? { signature_date: item.signatureDate } : {}),
-        signataire: item.signataire || null,
+        ...(item.signataire ? { signataire: item.signataire } : {}),
         // Demande expresse posée par la signature sur place (migration 086) : envoyée seulement si elle existe, pour
         // qu'une copie périmée du devis n'efface jamais celle qu'un client a cochée en signant par le lien. La
         // rétractation (retractation_*) n'est jamais écrite par l'app : la base la refuse (déclencheur).

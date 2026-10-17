@@ -46,6 +46,7 @@ function RetractationRecue({ devis }) {
     try {
       const { data, error } = await supabase.functions.invoke('notify-signature', { body: { token: devis.signature_token, evenement: 'retractation' } });
       if (error) throw new Error(await messageErreurFonction(error));
+      if (data?.en_cours) { setEnvoi({ etat: 'en_cours', message: '' }); return; }
       if (!data?.success) throw new Error(data?.error || 'accusé non envoyé');
       setEnvoi({ etat: 'ok', message: '' });
     } catch (e) {
@@ -74,6 +75,7 @@ function RetractationRecue({ devis }) {
           <Bouton taille="compacte" icone={Send} chargement={envoi.etat === 'envoi'} onClick={envoyerAccuse} data-ui="EnvoyerAccuse">
             Envoyer l'accusé
           </Bouton>
+          {envoi.etat === 'en_cours' && <p role="status" className="mt-1 text-encre">Envoi de l'accusé en cours. Dans une minute, rouvrez la fiche : si elle n'indique pas « Accusé de réception envoyé », envoyez-le vous-même depuis votre messagerie ou par courrier (article D221-5 du Code de la consommation).</p>}
           {envoi.etat === 'erreur' && <p role="alert" className="mt-1 text-encre">Accusé non envoyé : {envoi.message}. Envoyez-le sans attendre depuis votre messagerie ou par courrier.</p>}
         </div>
       )}

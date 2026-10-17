@@ -194,7 +194,10 @@ export async function verifier({ db, q, en, commeAnonyme, verifier }) {
   verifier(!(await tente(`INSERT INTO devis (user_id, organization_id, client_id, numero, type, statut, retractation_le, retractation_en_ligne) VALUES ($1, $2, $3, 'DEV-086', 'devis', 'annule', now(), true)`, [SOLO, ORGA_SOLO, particulier])),
     '086 : l\'artisan ne crée pas un devis « rétracté »');
   verifier(!(await tente(`DELETE FROM devis WHERE id = $1`, [idRetracte])), '086 : l\'artisan ne supprime pas un devis dont le client s\'est rétracté');
-  verifier(await tente(`DELETE FROM devis WHERE id = $1`, [nouveau]), '086 : un devis sans rétractation se supprime normalement');
+  // (un devis non signé : depuis 091, un devis signé — comme `nouveau`, signé sur place plus haut — ne se supprime plus)
+  const nonSigne = (await q(`INSERT INTO devis (user_id, organization_id, client_id, numero, type, statut) VALUES ($1, $2, $3, 'DEV-086b', 'devis', 'envoye') RETURNING id`, [SOLO, ORGA_SOLO, particulier])).rows[0].id;
+  verifier(await tente(`DELETE FROM devis WHERE id = $1`, [nonSigne]), '086 : un devis sans rétractation se supprime normalement');
+  await q('DELETE FROM devis WHERE id = $1', [nouveau]);
   // Le lien d'un devis signé en ligne ne change plus : c'est là que le client renonce au contrat (D221-5)
   verifier(!(await tente(`UPDATE devis SET signature_token = NULL WHERE id = $1`, [signeEnLigne])), '086 : l\'artisan n\'efface pas le lien d\'un devis signé en ligne');
   verifier(!(await tente(`UPDATE devis SET signature_token = gen_random_uuid() WHERE id = $1`, [signeEnLigne])), '086 : l\'artisan ne remplace pas le lien d\'un devis signé en ligne');
