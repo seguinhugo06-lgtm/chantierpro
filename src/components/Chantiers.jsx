@@ -245,7 +245,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
   }, [view]);
     const [newTache, setNewTache] = useState('');
   // Montant HT, et le taux de TVA porté sur la facture du fournisseur ('' : à préciser, rien ne se déduit)
-  const [newDepense, setNewDepense] = useState({ description: '', montant: '', categorie: 'Matériaux', catalogueId: '', quantite: 1, prixUnitaire: '', tauxTva: '' });
+  const [newDepense, setNewDepense] = useState({ description: '', montant: '', categorie: 'Matériaux', catalogueId: '', quantite: 1, prixUnitaire: '', tauxTva: '', montantTva: '' });
   const franchiseTva = estFranchiseTva(entreprise);
   const [showAjustement, setShowAjustement] = useState(null);
   const [showMODetail, setShowMODetail] = useState(false);
@@ -409,7 +409,10 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
     const qty = parseInt(newDepense.quantite) || 1;
     const montant = parseFloat(String(newDepense.montant).replace(',', '.'));
     const taux = franchiseTva || newDepense.tauxTva === '' ? null : Number(newDepense.tauxTva);
-    const m = montantsDepense({ montant, tauxTva: taux });
+    // TVA écrite sur la facture, si l'artisan la saisit : c'est elle qui se déduit (CGI art. 271, II-1-a), elle peut
+    // différer du HT × taux (arrondis par ligne, facture à plusieurs taux) ; sinon, HT × taux
+    const tvaEcrite = franchiseTva ? NaN : parseFloat(String(newDepense.montantTva).replace(/\s/g, '').replace(',', '.'));
+    const m = montantsDepense({ montant, tauxTva: taux, montantTva: Number.isFinite(tvaEcrite) ? tvaEcrite : null });
     const creee = await ctxAddDepense({
       chantierId: view,
       description: newDepense.description + (qty > 1 ? ` (x${qty})` : ''),
@@ -424,7 +427,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
     if (!creee) return; // refus : la saisie reste, DataContext a dit pourquoi
     if (newDepense.catalogueId && deductStock) deductStock(newDepense.catalogueId, qty);
     // Le taux choisi reste pour la dépense suivante (souvent le même fournisseur)
-    setNewDepense(p => ({ description: '', montant: '', categorie: 'Matériaux', catalogueId: '', quantite: 1, prixUnitaire: '', tauxTva: p.tauxTva }));
+    setNewDepense(p => ({ description: '', montant: '', categorie: 'Matériaux', catalogueId: '', quantite: 1, prixUnitaire: '', tauxTva: p.tauxTva, montantTva: '' }));
     setShowQuickMateriau(false);
   };
   // Taux de la facture d'une dépense déjà saisie : la TVA enregistrée est recalculée (une TVA saisie prime sur le taux)
@@ -1330,7 +1333,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                     <div key={d.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 p-3 rounded-xl bg-surface-2">
                       <span className={`text-sm w-24 ${textMuted}`}>{dateLue(d.date).toLocaleDateString('fr-FR')}</span>
                       <span className={`flex-1 min-w-[8rem] ${textPrimary}`}>{d.description}</span>
-                      <span className="font-bold text-red-500 tabular-nums">{formatMoney(d.montant)}{!franchiseTva && <span className="text-xs font-normal"> HT</span>}</span>
+                      <span className="font-bold text-red-500 tabular-nums">{formatMoney(d.montant)}{!franchiseTva && <span className="text-xs font-normal"> HT{m.connue ? ` · TVA ${modeDiscret ? '·····' : `${m.tva.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`}` : ''}</span>}</span>
                       <div className="flex items-center gap-2 w-full sm:w-auto">
                         <span className="text-xs px-2 py-1 rounded bg-bord text-encre-2">{d.categorie}</span>
                         {!franchiseTva && (
@@ -2166,7 +2169,30 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                     <select id="depense-tva" className={`w-full px-4 py-3 border rounded-xl min-h-[48px] ${inputBg}`} value={newDepense.tauxTva} onChange={e => setNewDepense(p => ({...p, tauxTva: e.target.value}))} aria-describedby="depense-tva-aide">
                       {TAUX_DEPENSE.map(t => <option key={t.valeur} value={t.valeur}>{t.libelle}</option>)}
                     </select>
-                    <p id="depense-tva-aide" className={`text-xs mt-1 ${textMuted}`}>Seule la TVA portée sur la facture se déduit. Sans taux, elle n’est pas comptée.</p>
+                    <p id="depense-tva-aide" className={`text-xs mt-1 ${textMuted}`}>Seule la TVA portée sur la facture se déduit. Sans taux, elle n’est pas comptée. Sous-traitance en autoliquidation : non gérée, voyez votre comptable.</p>
+                  </div>
+                )}
+
+                {!franchiseTva && (
+                  <div>
+                    <label htmlFor="depense-tva-montant" className={`block text-sm font-medium mb-2 ${textPrimary}`}>Montant de TVA écrit sur la facture (facultatif)</label>
+                    <div className="relative">
+                      <input
+                        id="depense-tva-montant"
+                        type="text"
+                        inputMode="decimal"
+                        className={`w-full px-4 py-3 border rounded-xl min-h-[48px] ${inputBg}`}
+                        placeholder={(() => {
+                          const ht = parseFloat(String(newDepense.montant).replace(',', '.'));
+                          return newDepense.tauxTva !== '' && Number.isFinite(ht) ? `Calculé : ${(Math.round(ht * Number(newDepense.tauxTva)) / 100).toFixed(2).replace('.', ',')}` : 'Ex : 30,00';
+                        })()}
+                        value={newDepense.montantTva}
+                        onChange={e => setNewDepense(p => ({...p, montantTva: e.target.value}))}
+                        aria-describedby="depense-tva-montant-aide"
+                      />
+                      <span className={`absolute right-3 top-1/2 -translate-y-1/2 ${textMuted}`}>€</span>
+                    </div>
+                    <p id="depense-tva-montant-aide" className={`text-xs mt-1 ${textMuted}`}>À remplir si la facture porte un autre montant (arrondis, plusieurs taux) : c’est lui qui se déduit.</p>
                   </div>
                 )}
 
@@ -2186,7 +2212,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
               {/* Action buttons - Big touch targets */}
               <div className="flex gap-3 mt-6">
                 <button
-                  onClick={() => { setShowQuickMateriau(false); setNewDepense(p => ({ description: '', montant: '', categorie: 'Matériaux', catalogueId: '', quantite: 1, prixUnitaire: '', tauxTva: p.tauxTva })); }}
+                  onClick={() => { setShowQuickMateriau(false); setNewDepense(p => ({ description: '', montant: '', categorie: 'Matériaux', catalogueId: '', quantite: 1, prixUnitaire: '', tauxTva: p.tauxTva, montantTva: '' })); }}
                   className={`flex-1 px-4 py-3 rounded-xl min-h-[52px] font-medium bg-surface-2 text-encre-2`}
                 >
                   Annuler

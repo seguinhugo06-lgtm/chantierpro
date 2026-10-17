@@ -230,7 +230,7 @@ export default function TVAManager({
           <div className="flex items-center gap-2 mb-2">
             <Euro size={18} className={tvaSummary.due > 0 ? 'text-red-600' : 'text-emerald-600'} />
             <p className={`text-sm ${tvaSummary.due > 0 ? (isDark ? 'text-red-400' : 'text-red-700') : (isDark ? 'text-emerald-400' : 'text-emerald-700')}`}>
-              {tvaSummary.due > 0 ? 'Solde estimé (débits)' : 'Crédit estimé (débits)'}
+              {tvaSummary.due >= 0 ? 'Solde estimé (débits)' : 'Crédit estimé (débits)'}
             </p>
           </div>
           <p className={`text-xl font-bold ${tvaSummary.due > 0 ? 'text-red-600' : 'text-emerald-600'}`}>

@@ -206,6 +206,18 @@ export const SCHEMA = `
     organization_id UUID REFERENCES organizations(id), nom TEXT NOT NULL, type TEXT, siret TEXT, decennale_numero TEXT);
   CREATE TABLE pointages (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
     organization_id UUID REFERENCES organizations(id), employe_id UUID, chantier_id UUID, date DATE, heures NUMERIC NOT NULL, description TEXT);
+  -- Dépenses, telles qu'en production le 17 oct. 2026 : colonnes HT / taux / TVA ajoutées hors dépôt, taux à 20 % par
+  -- défaut (096 le retire), RLS activée et les 8 policies relevées en production (par compte, et par organisation).
+  CREATE TABLE depenses (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), user_id UUID NOT NULL REFERENCES auth.users(id),
+    organization_id UUID REFERENCES organizations(id) ON DELETE CASCADE, chantier_id UUID REFERENCES chantiers(id) ON DELETE SET NULL,
+    description TEXT NOT NULL, montant NUMERIC NOT NULL, date DATE, categorie TEXT, fournisseur TEXT, numero_facture TEXT, notes TEXT,
+    created_at TIMESTAMPTZ DEFAULT now(), updated_at TIMESTAMPTZ DEFAULT now(),
+    montant_ht NUMERIC, taux_tva NUMERIC DEFAULT 20, montant_tva NUMERIC, sous_traitant_id UUID REFERENCES equipe(id) ON DELETE SET NULL);
+  ALTER TABLE depenses ENABLE ROW LEVEL SECURITY;
+  CREATE POLICY "Users can view own depenses" ON depenses FOR SELECT TO authenticated USING (user_id = auth.uid());
+  CREATE POLICY "Users can create own depenses" ON depenses FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+  CREATE POLICY "Users can update own depenses" ON depenses FOR UPDATE TO authenticated USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
+  CREATE POLICY "Users can delete own depenses" ON depenses FOR DELETE TO authenticated USING (user_id = auth.uid());
   -- Colonnes de production lues par la page de paiement (get_facture_for_payment, 067 puis 081), relevées le 10 oct. 2026.
   ALTER TABLE devis ADD COLUMN type TEXT, ADD COLUMN facture_type TEXT, ADD COLUMN statut TEXT, ADD COLUMN date DATE,
     ADD COLUMN date_echeance DATE, ADD COLUMN objet TEXT, ADD COLUMN total_ht NUMERIC, ADD COLUMN total_tva NUMERIC,
@@ -358,6 +370,11 @@ export const SCHEMA = `
   REVOKE EXECUTE ON FUNCTION get_stripe_secret_for_user(UUID) FROM anon;           -- tel quel dans 029 :
   REVOKE EXECUTE ON FUNCTION get_stripe_secret_for_user(UUID) FROM authenticated;  -- PUBLIC garde le droit
 ${ORGANISATIONS}
+  -- Policies « Org » des dépenses (production, 17 oct. 2026) : après user_org_ids, définie ci-dessus
+  CREATE POLICY "Org members can view depenses" ON depenses FOR SELECT TO authenticated USING (organization_id = ANY (user_org_ids(auth.uid())));
+  CREATE POLICY "Org members can insert depenses" ON depenses FOR INSERT TO authenticated WITH CHECK (organization_id = ANY (user_org_ids(auth.uid())));
+  CREATE POLICY "Org members can update depenses" ON depenses FOR UPDATE TO authenticated USING (organization_id = ANY (user_org_ids(auth.uid())));
+  CREATE POLICY "Org admins can delete depenses" ON depenses FOR DELETE TO authenticated USING (organization_id = ANY (user_org_ids(auth.uid())));
   -- entreprise : RLS et policies de production relevées le 10 oct. 2026 (pg_policies) ; 084 corrige update et delete.
   ALTER TABLE entreprise ENABLE ROW LEVEL SECURITY;
   CREATE POLICY "Org admins can delete entreprise" ON entreprise FOR DELETE TO authenticated USING (organization_id = ANY (user_org_ids(auth.uid())));

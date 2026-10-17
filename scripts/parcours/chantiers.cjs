@@ -86,6 +86,17 @@ module.exports = [
       const corrigee = (base.tables.depenses || []).find((d) => d.description === 'Câble R2V 3G2,5');
       verifier(Number(corrigee?.taux_tva) === 20 && Number(corrigee?.montant_tva) === 20, `taux corrigé à 20 %, TVA 20 € (${corrigee?.taux_tva} / ${corrigee?.montant_tva})`);
       verifier(base.journal.some((j) => j.m === 'PATCH' && j.table === 'depenses'), 'la correction est envoyée à la base');
+
+      // Facture à plusieurs lignes : la TVA écrite sur la facture (19,98 €) prime sur HT × taux (20 €)
+      await cliquer(page, 'Dépense');
+      await saisir(page, 'input[placeholder="Ex: Sac de ciment 35kg"]', 'Disjoncteurs');
+      await saisir(page, '#depense-montant', '100');
+      await page.select('#depense-tva', '20');
+      await saisir(page, '#depense-tva-montant', '19,98');
+      await cliquer(page, '✓ Acheté');
+      await attendre(1500);
+      const ecrite = (base.tables.depenses || []).find((d) => d.description === 'Disjoncteurs');
+      verifier(Number(ecrite?.montant_tva) === 19.98 && Number(ecrite?.taux_tva) === 20, `TVA écrite sur la facture enregistrée (${ecrite?.taux_tva} / ${ecrite?.montant_tva})`);
     },
   },
 ];

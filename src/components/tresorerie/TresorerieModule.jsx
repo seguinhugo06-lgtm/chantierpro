@@ -2845,7 +2845,8 @@ export default function TresorerieModule({
               {/* Disclaimer */}
               <div className={`mt-5 p-3 rounded-xl border text-xs ${isDark ? 'bg-blue-500/5 border-blue-500/20 text-blue-400' : 'bg-blue-50 border-blue-100 text-blue-600'}`}>
                 <Info size={14} className="inline mr-1.5" />
-                Ces données sont indicatives. Consultez votre expert-comptable pour la déclaration officielle.
+                Ces données sont indicatives. La TVA d’un achat de services (sous-traitance, location) se déduit au paiement, et la
+                sous-traitance en autoliquidation n’est pas prise en compte. Consultez votre expert-comptable pour la déclaration officielle.
               </div>
             </>
           )}
