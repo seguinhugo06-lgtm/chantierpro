@@ -351,7 +351,20 @@ export const SCHEMA = `
   CREATE VIEW v_stock_alerts AS SELECT id, user_id, nom FROM catalogue;
   -- Paiement en ligne : clés Stripe de l'artisan dans Vault (012, et 029 effacée du dépôt par 227534e).
   CREATE SCHEMA vault;
-  CREATE TABLE vault.decrypted_secrets (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), decrypted_secret TEXT);
+  CREATE TABLE vault.decrypted_secrets (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), decrypted_secret TEXT, name TEXT UNIQUE);
+  -- Création d'un secret nommé (signature de production : create_secret(text, text, text, uuid))
+  CREATE FUNCTION vault.create_secret(new_secret TEXT, new_name TEXT DEFAULT NULL, new_description TEXT DEFAULT '', new_key_id UUID DEFAULT NULL)
+    RETURNS UUID LANGUAGE sql AS $$ INSERT INTO vault.decrypted_secrets (decrypted_secret, name) VALUES (new_secret, new_name) RETURNING id $$;
+  -- pg_cron : la table des jobs et alter_job (097). Sans pg_net au banc, 088, 089 et 095 ne planifient toujours rien.
+  CREATE SCHEMA cron;
+  CREATE TABLE cron.job (jobid BIGSERIAL PRIMARY KEY, schedule TEXT, command TEXT, nodename TEXT DEFAULT 'localhost',
+    nodeport INT DEFAULT 5432, database TEXT DEFAULT 'postgres', username TEXT DEFAULT 'postgres', active BOOLEAN DEFAULT true, jobname TEXT);
+  CREATE FUNCTION cron.alter_job(job_id BIGINT, schedule TEXT DEFAULT NULL, command TEXT DEFAULT NULL, database TEXT DEFAULT NULL,
+    username TEXT DEFAULT NULL, active BOOLEAN DEFAULT NULL) RETURNS VOID LANGUAGE plpgsql AS $$
+  BEGIN
+    UPDATE cron.job j SET schedule = COALESCE($2, j.schedule), command = COALESCE($3, j.command), active = COALESCE($6, j.active)
+     WHERE j.jobid = $1;
+  END $$;
   GRANT USAGE ON SCHEMA vault TO service_role;
   -- organization_id : ajoutée par 036 (effacée du dépôt par 227534e) à stripe_config comme aux autres tables de données.
   CREATE TABLE stripe_config (user_id UUID PRIMARY KEY REFERENCES auth.users(id), organization_id UUID REFERENCES organizations(id), stripe_enabled BOOLEAN DEFAULT false,

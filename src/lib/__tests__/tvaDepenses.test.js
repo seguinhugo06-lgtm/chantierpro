@@ -24,6 +24,8 @@ describe('TVA d\'une dépense', () => {
   it('TVA saisie : elle prime sur le taux ; sans taux, rangée sous le taux qu\'elle représente', () => {
     expect(montantsDepense({ montant: 100, tauxTva: 20, montantTva: 19.5 }).tva).toBe(19.5);
     expect(montantsDepense({ montant: 100, montantTva: 10 })).toEqual({ ht: 100, tva: 10, ttc: 110, taux: 10, connue: true });
+    // une facture à 0 % ne porte pas de TVA, même si un montant a été saisi
+    expect(montantsDepense({ montant: 100, tauxTva: 0, montantTva: 5 })).toEqual({ ht: 100, tva: 0, ttc: 100, taux: 0, connue: true });
   });
 
   it('sans taux ni TVA : TVA inconnue, rien d\'inventé', () => {

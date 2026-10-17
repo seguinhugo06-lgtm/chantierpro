@@ -176,13 +176,16 @@ async function traiterExemplaire(supabase: any, token: string, pdf: unknown): Pr
     return json({ error: erreur }, statut);
   };
 
-  // Copie cachée du même fichier à l'artisan (adresse de son compte, sinon de sa fiche, prises en base)
+  // Copie cachée du même fichier à l'artisan : l'adresse de son compte seulement (vérifiée à l'inscription). Plus de repli
+  // sur l'adresse de sa fiche, modifiable par lui (relecture gardien-securite du 17 oct. 2026, R7) : sans compte lisible,
+  // pas de copie.
   let artisan: string | null = null;
   try {
-    const { data: userData } = await supabase.auth.admin.getUserById(devis.user_id as string);
+    const { data: userData, error: errCompte } = await supabase.auth.admin.getUserById(devis.user_id as string);
+    if (errCompte) console.error(`[notify-signature] compte de l'artisan illisible devis=${devis.id} : ${errCompte.message}`);
     artisan = userData?.user?.email ?? null;
-  } catch { /* repli ci-dessous */ }
-  artisan = String(artisan || (fiche as { email?: string }).email || '').trim().toLowerCase();
+  } catch (e) { console.error('[notify-signature] compte de l\'artisan :', (e as Error).message); }
+  artisan = String(artisan || '').trim().toLowerCase();
   const copieCachee = estEmail(artisan) && artisan !== message.a ? artisan : undefined;
 
   let reservation: unknown = null;
@@ -275,10 +278,13 @@ async function prevenirEchecAccuse(supabase: any, devis: any, fiche: { email?: s
   try {
     let artisan: string | null = null;
     try {
-      const { data: userData } = await supabase.auth.admin.getUserById(devis.user_id as string);
+      const { data: userData, error: errCompte } = await supabase.auth.admin.getUserById(devis.user_id as string);
+      if (errCompte) console.error(`[notify-signature] compte de l'artisan illisible devis=${devis.id} : ${errCompte.message}`);
       artisan = userData?.user?.email ?? null;
-    } catch { /* repli ci-dessous */ }
-    const avis = avisEchecAccuse(devis as DevisRetracte, fiche, artisan || fiche.email, APP_URL);
+    } catch (e) { console.error('[notify-signature] compte de l\'artisan :', (e as Error).message); }
+    // Sans adresse de compte : réservation rendue et journalisée ; le job s'arrête à 5 essais, l'alerte horaire (095)
+    // prévient l'exploitant que l'accusé attend
+    const avis = avisEchecAccuse(devis as DevisRetracte, fiche, artisan, APP_URL);
     if (avis && (await envoyer(avis))) await confirmerReservation(supabase, TYPE, devis.id);
     else await rendreReservation(supabase, TYPE, devis.id, avis ? 'envoi' : 'adresse');
   } catch (e) {
@@ -371,10 +377,12 @@ async function traiterRetractation(supabase: any, token: string): Promise<Respon
   try {
     let artisanEmail: string | null = null;
     try {
-      const { data: userData } = await supabase.auth.admin.getUserById(devis.user_id as string);
+      const { data: userData, error: errCompte } = await supabase.auth.admin.getUserById(devis.user_id as string);
+      if (errCompte) console.error(`[notify-signature] compte de l'artisan illisible devis=${devis.id} : ${errCompte.message}`);
       artisanEmail = userData?.user?.email ?? null;
-    } catch { /* repli ci-dessous */ }
-    const avis = avisArtisan(devis as DevisRetracte, artisanEmail || (fiche as { email?: string }).email, APP_URL);
+    } catch (e) { console.error('[notify-signature] compte de l\'artisan :', (e as Error).message); }
+    const avis = avisArtisan(devis as DevisRetracte, artisanEmail, APP_URL);
+    if (!avis) console.error(`[notify-signature] avis de rétractation à l'artisan non envoyé (pas d'adresse de compte) devis=${devis.id}`);
     if (avis && !(await envoyer(avis))) console.error(`[notify-signature] avis de rétractation à l'artisan non envoyé devis=${devis.id}`);
   } catch (e) {
     console.error('[notify-signature] avis à l\'artisan :', (e as Error).message);
@@ -440,22 +448,15 @@ serve(async (req) => {
     if (reservation === 'deja') return json({ success: true, deduped: true });
     if (reservation === 'erreur') return json({ error: 'notification non envoyée' }, 500);
     try {
-      // 4. Email de l'artisan : compte auth, sinon email entreprise
+      // 4. Email de l'artisan : l'adresse de son compte seulement (R7, 17 oct. 2026 : plus de repli sur sa fiche)
       let artisanEmail: string | null = null;
       try {
-        const { data: userData } = await supabase.auth.admin.getUserById(devis.user_id as string);
+        const { data: userData, error: errCompte } = await supabase.auth.admin.getUserById(devis.user_id as string);
+        if (errCompte) console.error(`[notify-signature] compte de l'artisan illisible devis=${devis.id} : ${errCompte.message}`);
         artisanEmail = userData?.user?.email ?? null;
-      } catch { /* fallback ci-dessous */ }
-      if (!artisanEmail) {
-        const { data: ent } = await supabase
-          .from('entreprise')
-          .select('email')
-          .eq('user_id', devis.user_id)
-          .limit(1)
-          .maybeSingle();
-        artisanEmail = ent?.email ?? null;
-      }
-      if (!artisanEmail) { await rendreReservation(supabase, TYPE, devis.id, 'adresse'); return json({ error: 'email artisan introuvable' }, 404); }
+      } catch (e) { console.error('[notify-signature] compte de l\'artisan :', (e as Error).message); }
+      // Compte illisible : réservation rendue (un nouvel appel pourra notifier), 502 plutôt que 404 (panne, pas absence)
+      if (!artisanEmail) { await rendreReservation(supabase, TYPE, devis.id, 'adresse'); return json({ error: 'email artisan introuvable' }, 502); }
 
       const client =devis.client as { nom?: string; prenom?: string } | null;
       const clientNom = [client?.prenom, client?.nom].filter(Boolean).join(' ') || 'Votre client';

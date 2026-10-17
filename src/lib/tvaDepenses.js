@@ -35,6 +35,8 @@ export function montantsDepense(depense, { franchise = false } = {}) {
   const ht = nombre(depense?.montantHt ?? depense?.montant_ht) ?? (nombre(depense?.montant) ?? 0);
   if (franchise) return { ht, tva: 0, ttc: ht, taux: null, connue: true };
   const taux = tauxSaisiDepense(depense);
+  // Une facture à 0 % ne porte pas de TVA : un montant saisi avec ce taux ne se déduit pas
+  if (taux === 0) return { ht, tva: 0, ttc: ht, taux: 0, connue: true };
   const tvaSaisie = nombre(depense?.montantTva ?? depense?.montant_tva);
   if (tvaSaisie !== null) {
     // TVA saisie sans taux : le taux qu'elle représente, au dixième (pour la ranger dans la ventilation par taux)

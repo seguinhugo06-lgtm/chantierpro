@@ -411,7 +411,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
     const taux = franchiseTva || newDepense.tauxTva === '' ? null : Number(newDepense.tauxTva);
     // TVA écrite sur la facture, si l'artisan la saisit : c'est elle qui se déduit (CGI art. 271, II-1-a), elle peut
     // différer du HT × taux (arrondis par ligne, facture à plusieurs taux) ; sinon, HT × taux
-    const tvaEcrite = franchiseTva ? NaN : parseFloat(String(newDepense.montantTva).replace(/\s/g, '').replace(',', '.'));
+    const tvaEcrite = franchiseTva || taux === 0 ? NaN : parseFloat(String(newDepense.montantTva).replace(/\s/g, '').replace(',', '.'));
     const m = montantsDepense({ montant, tauxTva: taux, montantTva: Number.isFinite(tvaEcrite) ? tvaEcrite : null });
     const creee = await ctxAddDepense({
       chantierId: view,
@@ -430,11 +430,20 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
     setNewDepense(p => ({ description: '', montant: '', categorie: 'Matériaux', catalogueId: '', quantite: 1, prixUnitaire: '', tauxTva: p.tauxTva, montantTva: '' }));
     setShowQuickMateriau(false);
   };
-  // Taux de la facture d'une dépense déjà saisie : la TVA enregistrée est recalculée (une TVA saisie prime sur le taux)
-  const changerTauxDepense = (dep, valeur) => {
+  // Taux de la facture d'une dépense déjà saisie : la TVA enregistrée devient HT × taux (le nouveau taux remplace l'ancien
+  // montant). Une TVA écrite sur la facture (différente de HT × ancien taux) n'est remplacée qu'après accord.
+  const changerTauxDepense = async (dep, valeur) => {
     const taux = valeur === '' ? null : Number(valeur);
-    const { ht } = montantsDepense(dep);
-    ctxUpdateDepense(dep.id, { tauxTva: taux, tvaRate: undefined, tva_rate: undefined, montantTva: taux === null ? null : arrondi(ht * taux / 100) });
+    const { ht, tva, taux: ancien, connue } = montantsDepense(dep);
+    const nouvelle = taux === null ? null : arrondi(ht * taux / 100);
+    if (connue && ancien !== null && tva !== arrondi(ht * ancien / 100)) {
+      const ok = await confirm({
+        title: 'Remplacer la TVA écrite ?',
+        message: `La TVA écrite sur la facture (${tva.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €) sera remplacée par ${nouvelle === null ? 'une TVA non saisie' : `${nouvelle.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} € (HT × taux)`}.`,
+      });
+      if (!ok) return;
+    }
+    ctxUpdateDepense(dep.id, { tauxTva: taux, tvaRate: undefined, tva_rate: undefined, montantTva: nouvelle });
   };
   const supprimerDepense = async (dep) => {
     const ok = await confirm({ title: 'Supprimer', message: `Supprimer la dépense « ${dep.description} » ?` });
@@ -2169,11 +2178,11 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                     <select id="depense-tva" className={`w-full px-4 py-3 border rounded-xl min-h-[48px] ${inputBg}`} value={newDepense.tauxTva} onChange={e => setNewDepense(p => ({...p, tauxTva: e.target.value}))} aria-describedby="depense-tva-aide">
                       {TAUX_DEPENSE.map(t => <option key={t.valeur} value={t.valeur}>{t.libelle}</option>)}
                     </select>
-                    <p id="depense-tva-aide" className={`text-xs mt-1 ${textMuted}`}>Seule la TVA portée sur la facture se déduit. Sans taux, elle n’est pas comptée. Sous-traitance en autoliquidation : non gérée, voyez votre comptable.</p>
+                    <p id="depense-tva-aide" className={`text-xs mt-1 ${textMuted}`}>Seule la TVA portée sur la facture se déduit. Sans taux ni montant de TVA, elle n’est pas comptée. Sous-traitance en autoliquidation : non gérée, voyez votre comptable.</p>
                   </div>
                 )}
 
-                {!franchiseTva && (
+                {!franchiseTva && newDepense.tauxTva !== '0' && (
                   <div>
                     <label htmlFor="depense-tva-montant" className={`block text-sm font-medium mb-2 ${textPrimary}`}>Montant de TVA écrit sur la facture (facultatif)</label>
                     <div className="relative">

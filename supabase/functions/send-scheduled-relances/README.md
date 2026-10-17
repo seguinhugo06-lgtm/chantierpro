@@ -49,7 +49,9 @@ select cron.schedule(
   select net.http_post(
     url     := 'https://<PROJECT>.supabase.co/functions/v1/send-scheduled-relances',
     headers := jsonb_build_object('Content-Type','application/json'),
-    body    := jsonb_build_object('dryRun', false, 'cronSecret', '<CRON_SECRET>')
+    -- Le secret est lu dans Vault à chaque exécution, jamais écrit dans la commande (migration 097)
+    body    := jsonb_build_object('dryRun', false, 'cronSecret',
+                 (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'cron_secret_relances'))
   );
   $$
 );
