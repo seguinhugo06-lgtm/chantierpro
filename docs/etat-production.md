@@ -19,7 +19,7 @@ Dans l'ordre. Chaque action est aussi dans le Pilote (« À faire de votre côt�
 
 | Élément | État | Vérifié |
 |---|---|---|
-| `main` | `ff2cf2b` (17 oct. : ménage des fonctions (094) et alerte à l'exploitant quand une rétractation attend son accusé (095, `alerte-relances` v2) — tâches rpc-hygiene et accuse-alerte ; relecture gardien-securite intégrée, vérification complète verte ; CI : un parcours sensible au minutage a échoué puis réussi à la relance, rendu robuste dans le lot suivant) | `npm run statut` : Vercel ×2 et CI verts |
+| `main` | `df63860` (17 oct. : une seule règle de TVA pour les dépenses — montant HT, TVA déductible seulement quand elle est saisie, taux corrigeable dans la fiche du chantier, un seul FEC, résumés de TVA et CA3 alignés, D-28 — tâche tva-depenses ; relectures juriste-btp intégrées, vérification complète verte ; parcours « profil d'un compte neuf » attendu sur l'événement) | `npm run statut` : Vercel ×2 et CI verts |
 | Vercel | 2 projets (`chantierpro`, `seguinhugo06-lgtm-chantierpro`), déploiement auto sur `main` | statut GitHub |
 | Domaine | `mallettico.fr` (DNS OVH) | 25 juil. |
 | Service worker | sert l'ancienne version jusqu'à rechargement : ne jamais vérifier un déploiement en rechargeant le site | — |
