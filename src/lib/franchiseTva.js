@@ -64,6 +64,28 @@ export function regimeTvaTresorerie(reglages, entreprise) {
   return reglages?.regimeTva || 'trimestriel';
 }
 
+/** Premier taux de TVA renseigné : 0 % est un vrai taux (`||` le remplaçait par 10 ou 20 %, recettes des 9 et
+ * 16 oct. 2026). Accepte « 5,5 ». */
+export function premierTaux(...valeurs) {
+  for (const v of valeurs) {
+    if (v === '' || v === null || v === undefined) continue;
+    const n = Number(String(v).replace(',', '.'));
+    if (Number.isFinite(n)) return n;
+  }
+  return 10;
+}
+
+/** Taux d'un nouveau document : 0 en franchise, sinon le taux réglé par l'entreprise (0 compris), sinon 10 %. */
+export function tauxTvaParDefaut(entreprise) {
+  if (estFranchiseTva(entreprise)) return 0;
+  return premierTaux(entreprise?.tvaDefaut, entreprise?.tva_defaut, 10);
+}
+
+/** Taux d'un document existant : le sien (0 compris), sinon celui de l'entreprise (relecture juriste-btp du 16 oct. 2026). */
+export function tauxTvaDocument(doc, entreprise) {
+  return premierTaux(doc?.tvaRate, doc?.tva_rate, tauxTvaParDefaut(entreprise));
+}
+
 /** Les lignes à 0 % de TVA (les titres de lot restent tels quels). */
 export function sansTva(lignes) {
   return (Array.isArray(lignes) ? lignes : []).map((l) => (l && !l._isSection ? { ...l, tva: 0 } : l));

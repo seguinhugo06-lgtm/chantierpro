@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { tauxTvaParDefaut, estFranchiseTva } from '../lib/franchiseTva';
 import {
   X, ChevronRight, ChevronLeft, Check, Search, Sparkles, Users,
   ChevronDown, Zap, Plus, UserPlus
@@ -32,7 +33,8 @@ export default function SmartTemplateWizard({
   const [selectedMission, setSelectedMission] = useState(null);
   const [expandedMetier, setExpandedMetier] = useState(null);
   const [prix, setPrix] = useState(0);
-  const [tva, setTva] = useState(10);
+  // Taux de l'entreprise (0 en franchise, 0 % compris) : partait de 10 % (relecture juriste-btp du 16 oct. 2026)
+  const [tva, setTva] = useState(() => tauxTvaParDefaut(entreprise));
   const [clientSearch, setClientSearch] = useState('');
   const [metierSearch, setMetierSearch] = useState('');
   const [isCreating, setIsCreating] = useState(false);
@@ -47,7 +49,7 @@ export default function SmartTemplateWizard({
       setSelectedMission(null);
       setExpandedMetier(null);
       setPrix(0);
-      setTva(10);
+      setTva(tauxTvaParDefaut(entreprise));
       setClientSearch('');
       setMetierSearch('');
       setShowNewClientForm(false);
@@ -471,7 +473,10 @@ export default function SmartTemplateWizard({
                 </div>
               </div>
 
-              {/* TVA */}
+              {/* TVA : pas de choix de taux en franchise (art. 293 B du CGI) — relecture juriste-btp du 17 oct. 2026 */}
+              {estFranchiseTva(entreprise) ? (
+                <p className={`text-sm ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>TVA non applicable, art. 293 B du CGI</p>
+              ) : (
               <div className="flex gap-2">
                 {[
                   { value: 20, label: '20%' },
@@ -491,6 +496,7 @@ export default function SmartTemplateWizard({
                   </button>
                 ))}
               </div>
+              )}
 
               {/* Total */}
               <div className={`p-4 rounded-xl ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>

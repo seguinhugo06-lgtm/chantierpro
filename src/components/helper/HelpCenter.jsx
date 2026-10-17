@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { FONCTIONS } from '../../lib/fonctions';
 import {
   X, Search, PlayCircle, MessageCircle, Book, Sparkles,
   FileText, CreditCard, Building2, PieChart, Settings, ChevronRight,
@@ -143,7 +144,8 @@ export default function HelpCenter({
       ],
       tip: 'Utilisez les templates pré-remplis pour aller 10× plus vite !'
     },
-    'qr-payment': {
+    // Paiement par carte éteint en v1 (D-21) : la fiche ne revient qu'avec l'interrupteur (relecture juriste-btp du 16 oct. 2026)
+    ...(FONCTIONS.paiementEnLigne ? { 'qr-payment': {
       title: 'Comment recevoir un acompte par QR Code',
       videoUrl: 'https://example.com/video2',
       steps: [
@@ -155,7 +157,7 @@ export default function HelpCenter({
         'Vous recevez une notification de paiement'
       ],
       tip: 'L\'argent arrive sur votre compte en 2-3 jours ouvrés !'
-    }
+    } } : {}),
   };
 
   // Search results

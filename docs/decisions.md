@@ -168,6 +168,22 @@ Recommandation : `envoi` — c'est la pratique des logiciels de facturation, et 
 Irréversible : non
 Bloque : rien
 
+### Q-taux-tva-defaut · Quand l'artisan n'a réglé aucun taux de TVA : deviner 10 % ou lui faire choisir ?
+Contexte : Depuis le 17 oct. 2026, un taux de 0 % est respecté partout ; quand ni le document ni l'entreprise n'ont de taux, l'app part de 10 % (comme l'écran Paramètres). En droit, 20 % est le taux normal (CGI art. 278) ; 10 % est une exception sous conditions (logement de plus de deux ans, art. 279-0 bis, avec la certification du client) — relecture juriste-btp du 17 oct. 2026.
+Option `choisir` : tant que le taux n'est pas réglé, l'éditeur demande de le choisir, et l'inscription le fait régler — aucun taux deviné ; une question de plus à l'inscription.
+Option `dix` : on garde 10 % par défaut — rien ne change ; un artisan qui travaille surtout en neuf ou pour des professionnels doit penser à le changer.
+Recommandation : `choisir` — un taux deviné finit sur une facture ; la question ne se pose qu'une fois.
+Irréversible : non
+Bloque : rien
+
+### Q-zero-societe · L'option « 0 % » de TVA pour une société qui n'est pas en franchise ?
+Contexte : Paramètres propose « 0% (franchise TVA) » à toute entreprise. Une société (SARL, SAS…) qui la choisit émettrait des factures sans TVA et sans motif : la mention 293 B est réservée à la micro-entreprise, et l'autoliquidation (sous-traitance dans le bâtiment, CGI art. 283-2 nonies) n'est pas gérée — relecture juriste-btp du 17 oct. 2026.
+Option `masquer` : l'option « 0 % » n'est proposée qu'à une micro-entreprise — plus de facture sans TVA ni motif ; une société en sous-traitance devra attendre l'autoliquidation.
+Option `autoliquidation` : gérer l'autoliquidation (mention « Autoliquidation », TVA due par le preneur) — couvre la sous-traitance ; un vrai chantier (mentions, Factur-X, déclaration).
+Recommandation : `masquer` maintenant, l'autoliquidation en tâche si un testeur sous-traite.
+Irréversible : non
+Bloque : rien
+
 ### Q-penalites-particulier · Quelles conditions de retard imprimer sur un devis ou une facture de particulier ?
 Contexte : Tous les devis et factures impriment « Taux de la BCE majoré de 10 points (art. L441-10 C. com.) » et l'indemnité de 40 € « due entre professionnels ». L441-10 ne vise que les débiteurs professionnels ; pour un particulier, ce sont les intérêts au taux légal à compter de la mise en demeure (C. civ. art. 1231-6). Retirer une mention demande une décision (relecture juriste-btp du 17 oct. 2026, C5).
 Option `adapter` : pour un client particulier, « Retard de paiement : intérêts au taux légal à compter de la mise en demeure (art. 1231-6 du Code civil) », sans la ligne des 40 € ; inchangé pour un professionnel — chaque document dit la règle qui s'applique à son client.

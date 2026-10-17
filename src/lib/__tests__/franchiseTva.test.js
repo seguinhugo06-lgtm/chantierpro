@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { estFranchiseTva, sansTva, franchiseAppliquee, tvaARegulariser, regimeTvaTresorerie } from '../franchiseTva';
+import { estFranchiseTva, sansTva, franchiseAppliquee, tvaARegulariser, regimeTvaTresorerie, premierTaux, tauxTvaParDefaut, tauxTvaDocument } from '../franchiseTva';
 import { calculerTotaux, totauxDocument, lignesTotauxHtml } from '../totauxDocument';
 import { lignesFactureAcompte } from '../facturation';
 import { generateFacturXMLBasic } from '../facturx';
@@ -91,5 +91,26 @@ describe('trésorerie : régime de TVA', () => {
   it('sinon le régime choisi, réel trimestriel par défaut', () => {
     expect(regimeTvaTresorerie({ regimeTva: 'mensuel' }, { formeJuridique: 'SARL' })).toBe('mensuel');
     expect(regimeTvaTresorerie(undefined, { formeJuridique: 'EI' })).toBe('trimestriel');
+  });
+});
+
+describe('taux de TVA par défaut : 0 % reste 0 %', () => {
+  it('premierTaux : le premier renseigné, 0 compris, virgule acceptée', () => {
+    expect(premierTaux(0, 20)).toBe(0);
+    expect(premierTaux('', null, undefined, '5,5')).toBe(5.5);
+    expect(premierTaux(undefined)).toBe(10);
+  });
+  it('entreprise : 0 en franchise, son taux (0 compris), sinon 10 %', () => {
+    expect(tauxTvaParDefaut({ formeJuridique: 'Micro-entreprise', tvaDefaut: 20 })).toBe(0);
+    expect(tauxTvaParDefaut({ formeJuridique: 'SARL', tvaDefaut: 0 })).toBe(0);
+    expect(tauxTvaParDefaut({ formeJuridique: 'SARL', tvaDefaut: 5.5 })).toBe(5.5);
+    expect(tauxTvaParDefaut({ formeJuridique: 'SARL' })).toBe(10);
+    expect(tauxTvaParDefaut(null)).toBe(10);
+  });
+  it('document : le sien (0 compris), sinon celui de l\'entreprise', () => {
+    expect(tauxTvaDocument({ tvaRate: 0 }, { formeJuridique: 'SARL', tvaDefaut: 20 })).toBe(0);
+    expect(tauxTvaDocument({ tva_rate: 20 }, { formeJuridique: 'Micro-entreprise' })).toBe(20);
+    expect(tauxTvaDocument({}, { formeJuridique: 'SARL', tvaDefaut: 0 })).toBe(0);
+    expect(tauxTvaDocument(null, null)).toBe(10);
   });
 });

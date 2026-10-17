@@ -57,7 +57,7 @@ async function createPaymentLinkEdge(documentId, montantCentimes, totalCentimes)
 
 /**
  * Modal de paiement — 4 modes :
- * 1. Envoyer un lien de paiement (CB/SEPA/Virement en ligne)
+ * 1. Envoyer un lien de paiement (carte bancaire en ligne)
  * 2. Paiement intégral (lien de paiement)
  * 3. Paiement partiel (lien de paiement)
  * 4. Paiement reçu hors ligne (virement, chèque, espèces…)
@@ -286,7 +286,7 @@ export default function PaymentModal({
                         Recommandé
                       </span>
                     </div>
-                    <p className={`text-sm ${textMuted}`}>CB, SEPA ou virement — le client choisit</p>
+                    <p className={`text-sm ${textMuted}`}>Par carte bancaire, sur une page de paiement</p>
                   </div>
                   <Link2 size={20} style={{ color: paymentType === 'link' ? couleur : '#94a3b8' }} />
                 </button>
@@ -550,7 +550,7 @@ export default function PaymentModal({
                     </p>
                     <p className={`text-xs mt-1 ${isDark ? 'text-blue-400' : 'text-blue-700'}`}>
                       {paymentType === 'link'
-                        ? 'Votre client pourra choisir de payer par carte bancaire, prélèvement SEPA ou virement bancaire.'
+                        ? 'Votre client paiera par carte bancaire sur la page du lien.'
                         : 'Le client scanne le QR code avec son téléphone, puis paie de manière sécurisée.'}
                     </p>
                   </div>

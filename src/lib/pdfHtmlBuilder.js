@@ -9,7 +9,7 @@ import { euros, pourcent, blocConditionsPaiement } from './formatDocument';
 import { lignesTotauxHtml, lignesAcompteHtml } from './totauxDocument';
 import { echeance } from './paiementsFacture';
 import { dateLue } from './dates';
-import { estFranchiseTva } from './franchiseTva';
+import { estFranchiseTva, tauxTvaDocument } from './franchiseTva';
 import { marquerDocumentFictif } from './donneesFictives';
 import { blocRetractationHtml, estConcerneParRetractation, lienRetractationEnLigne, mentionsSignatureClientHtml } from './retractation';
 
@@ -91,7 +91,7 @@ export function buildDocumentHTML(doc, client, chantier, entreprise, options = {
       <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${l.quantite || 0}</td>
       <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${l.unite || 'unité'}</td>
       <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:right">${euros(pu)}</td>
-      <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${isMicro ? '-' : pourcent(l.tva !== undefined ? l.tva : (doc.tvaRate || 10))}</td>
+      <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${isMicro ? '-' : pourcent(l.tva !== undefined ? l.tva : tauxTvaDocument(doc, entreprise))}</td>
       <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:right;font-weight:600;${total < 0 ? 'color:#dc2626;' : ''}">${euros(total)}</td>
     </tr>`;
   }).join('');
@@ -222,7 +222,7 @@ export function buildDocumentHTML(doc, client, chantier, entreprise, options = {
 
   <!-- TOTAUX -->
   <div class="totals">
-    ${lignesTotauxHtml(doc, { isMicro, tauxDefaut: entreprise?.tvaDefaut || 10 })}
+    ${lignesTotauxHtml(doc, { isMicro, tauxDefaut: tauxTvaDocument(doc, entreprise) })}
     ${doc.acompte_pct ? `
     ${lignesAcompteHtml(doc, doc.total_ttc || 0, doc.acompte_pct)}
     ` : ''}

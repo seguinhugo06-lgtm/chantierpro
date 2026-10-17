@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { FONCTIONS } from '../lib/fonctions';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import Fuse from 'fuse.js';
@@ -143,7 +144,8 @@ export default function CommandPalette({
     { id: 'nav-tasks', label: 'Tâches & Planning', keywords: 'calendrier agenda planning semaine mois jour mémos notes rappels tâches todo inbox', icon: CalendarCheck, action: () => { setPage('tasks'); onClose(); } },
     { id: 'nav-catalogue', label: 'Catalogue', keywords: 'produits articles fournitures matériaux stock ouvrages bibliothèque', icon: Package, action: () => { setPage('catalogue'); onClose(); } },
     { id: 'nav-finances', label: 'Finances', keywords: 'trésorerie cash flow finances tréso banque export comptabilité fec csv statistiques analytique', icon: Wallet, action: () => { setPage('finances'); onClose(); } },
-    { id: 'nav-paiements', label: 'Paiements en ligne', keywords: 'paiements stripe gocardless sepa carte bancaire prélèvement lien paiement', icon: CreditCard, action: () => { setPage('finances'); onClose(); }, color: '#8b5cf6' },
+    // Paiement en ligne éteint en v1 (D-21) : la commande ne revient qu'avec l'interrupteur (relecture juriste-btp du 17 oct. 2026)
+    ...(FONCTIONS.paiementEnLigne ? [{ id: 'nav-paiements', label: 'Paiements en ligne', keywords: 'paiements stripe carte bancaire lien paiement', icon: CreditCard, action: () => { setPage('finances'); onClose(); }, color: '#8b5cf6' }] : []),
     { id: 'nav-rapports', label: 'Rapports PDF', keywords: 'rapport pdf export activite financier synthese bilan chantier', icon: FileText, action: () => { setPage('finances'); onClose(); }, color: '#f97316' },
     { id: 'nav-settings', label: 'Paramètres', keywords: 'configuration réglages paramètres entreprise profil admin', icon: Settings, action: () => { setPage('settings'); onClose(); } },
   ], [setPage, onClose]);

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { FONCTIONS } from '../../lib/fonctions';
 import {
   FileText, CreditCard, PieChart, Wifi, WifiOff, Shield, Check,
   ChevronRight, X, Play, Pause, RotateCcw, Zap, Clock, QrCode,
@@ -33,7 +34,8 @@ export default function OnboardingTour({
       icon: FileText,
       color: '#f97316'
     },
-    {
+    // Paiement par carte éteint en v1 (D-21) : étape seulement avec l'interrupteur (relecture juriste-btp du 16 oct. 2026)
+    ...(FONCTIONS.paiementEnLigne ? [{
       id: 'paiement',
       title: 'Encaissez l\'acompte sur place',
       subtitle: 'Le client paie par CB en 10 secondes',
@@ -43,7 +45,7 @@ export default function OnboardingTour({
       gain: '🎯 Trésorerie sécurisée à 100%',
       icon: CreditCard,
       color: '#10b981'
-    },
+    }] : []),
     {
       id: 'marge',
       title: 'Suivez vos marges en temps réel',

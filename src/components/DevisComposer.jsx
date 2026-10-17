@@ -21,8 +21,8 @@ import QuickClientModal from './QuickClientModal';
 import { generateId } from '../lib/utils';
 import { formatClientName } from '../lib/formatters';
 import { buildDevisHtml } from '../lib/devisHtmlBuilder';
-import { calculerTotaux } from '../lib/totauxDocument';
-import { estFranchiseTva } from '../lib/franchiseTva';
+import { calculerTotaux, messageLigneSansDesignation } from '../lib/totauxDocument';
+import { estFranchiseTva, premierTaux } from '../lib/franchiseTva';
 import { TRADE_LIBRARY } from '../lib/templates/trade-library';
 import { jourLocal } from '../lib/dates';
 import { profilManquant, enPhrase } from '../lib/profilLegal';
@@ -53,15 +53,6 @@ const num = (v) => {
   return isNaN(n) ? 0 : n;
 };
 
-/** Premier taux de TVA renseigné : 0 % est un vrai taux (`||` le remplaçait par 10 %, recette du 9 oct. 2026). */
-const premierTaux = (...valeurs) => {
-  for (const v of valeurs) {
-    if (v === '' || v === null || v === undefined) continue;
-    const n = Number(String(v).replace(',', '.'));
-    if (Number.isFinite(n)) return n;
-  }
-  return 10;
-};
 
 /** Normalise pour recherche : minuscules + sans accents (« faience » trouve « faïence »). */
 const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
@@ -253,7 +244,7 @@ export default function DevisComposer({
     const totalTTC = t.totalTTC;
     const costAfterRemise = totalCost * (1 - form.remise / 100);
     const margePercent = htApresRemise > 0 ? ((htApresRemise - costAfterRemise) / htApresRemise) * 100 : 0;
-    return { totalHT, tvaTotal, remiseAmount, htApresRemise, tvaApresRemise, totalTTC, margePercent };
+    return { totalHT, tvaTotal, remiseAmount, htApresRemise, tvaApresRemise, totalTTC, margePercent, tvaParTaux: t.tvaParTaux };
   }, [form.lignes, form.tvaDefaut, form.remise, franchise]);
 
   const animatedTTC = useAnimatedNumber(totals.totalTTC);
@@ -617,6 +608,8 @@ export default function DevisComposer({
       total_ht: roundEuro(totals.htApresRemise),
       tva: roundEuro(totals.tvaApresRemise),
       total_ttc: roundEuro(totals.totalTTC),
+      // TVA par taux, imprimée par les deux générateurs (avant : jamais enregistrée par l'éditeur)
+      tvaParTaux: totals.tvaParTaux,
     };
   };
 
@@ -625,6 +618,10 @@ export default function DevisComposer({
     if (!form.clientId) { setError('Choisissez un client.'); setShowClientPicker(true); return; }
     const priced = form.lignes.filter(l => !l._isSection && (l.description || '').trim());
     if (priced.length === 0) { setError('Ajoutez au moins une ligne.'); return; }
+    // Une ligne chiffrée sans désignation compte dans les totaux mais n'est pas enregistrée ni imprimée : le total
+    // ne correspondrait plus aux lignes du document (CGI ann. II art. 242 nonies A) — relecture juriste-btp du 16 oct. 2026
+    const sansDesignation = messageLigneSansDesignation(form.lignes);
+    if (sansDesignation) { setError(sansDesignation); return; }
     setError('');
     const devisData = buildDevisData();
     setIsSubmitting(true);

@@ -15,11 +15,12 @@ import { filterValidLignes, formatClientName } from './formatters';
 import { marquerDocumentFictif } from './donneesFictives';
 import { mentionTvaReduiteHtml } from './mentionTvaReduite';
 import { urlPublique } from './urlPublique';
+import { FONCTIONS } from './fonctions';
 import { euros, pourcent, quantite, blocConditionsPaiement } from './formatDocument';
 import { echapperHtml as h, couleurCss } from './echapperHtml';
 import { lignesTotauxHtml, lignesAcompteHtml, totauxDocument } from './totauxDocument';
 import { echeance } from './paiementsFacture';
-import { franchiseAppliquee } from './franchiseTva';
+import { franchiseAppliquee, tauxTvaDocument, premierTaux } from './franchiseTva';
 import { imprimerHtml } from './imprimerHtml';
 import { nomImprime, formeImprimee } from './identiteEntreprise';
 import { dateLue } from './dates';
@@ -111,7 +112,7 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mod
   // Calculate TVA details from lignes
   const calculatedTvaDetails = doc.tvaDetails || (() => {
     const details = {};
-    const defaultRate = doc.tvaRate || doc.tva_rate || entreprise?.tvaDefaut || 10;
+    const defaultRate = tauxTvaDocument(doc, entreprise);
     (doc.lignes || []).forEach(l => {
       const rate = l.tva !== undefined ? l.tva : defaultRate;
       if (!details[rate]) {
@@ -142,7 +143,7 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mod
       <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${quantite(l.quantite)}</td>
       <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${h(l.unite || 'unité')}</td>
       <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:right">${euros(pu)}</td>
-      <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${isMicro ? '-' : pourcent(l.tva !== undefined ? l.tva : (doc.tvaRate || doc.tva_rate || 10))}</td>
+      <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${isMicro ? '-' : pourcent(l.tva !== undefined ? l.tva : tauxTvaDocument(doc, entreprise))}</td>
       <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:right;font-weight:600;${total < 0 ? 'color:#dc2626;' : ''}">${euros(total)}</td>
     </tr>`;
   };
@@ -312,7 +313,7 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mod
 
   <!-- TOTAUX -->
   <div class="totals">
-    ${lignesTotauxHtml(doc, { isMicro, tauxDefaut: entreprise?.tvaDefaut || 10 })}
+    ${lignesTotauxHtml(doc, { isMicro, tauxDefaut: tauxTvaDocument(doc, entreprise) })}
     ${echeancier && echeancier.etapes && echeancier.etapes.length > 0 ? `
     <div style="margin-top:12px;border-top:1px dashed #ccc;padding-top:10px;">
       <div style="font-size:8pt;font-weight:600;color:#334155;margin-bottom:6px;">ÉCHÉANCIER DE PAIEMENT</div>
@@ -341,7 +342,8 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mod
 
   ${''/* « Solde de tout compte » (droit du travail) et « L441-3 » (périmé) retirés — relecture juridique du 10 oct. 2026 */}
 
-  ${isFacture && paymentToken ? `
+  ${''/* Paiement en ligne éteint en v1 (D-21) : bloc conditionné à l'interrupteur, sans prélèvement SEPA jamais proposé — relecture juriste-btp du 16 oct. 2026 */}
+  ${isFacture && paymentToken && FONCTIONS.paiementEnLigne ? `
   <!-- PAIEMENT EN LIGNE -->
   <div style="margin-top:20px; padding:15px; border:2px solid ${color}; border-radius:8px; display:flex; align-items:center; gap:15px;">
     ${paymentQrDataUrl ? `<img src="${paymentQrDataUrl}" style="width:80px;height:80px;" alt="QR Code paiement" />` : ''}
@@ -349,7 +351,7 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mod
       <strong style="color:${color}; font-size:9pt;">💳 Paiement en ligne</strong><br>
       <span style="font-size:8pt; color:#475569;">Scannez le QR code ou visitez :</span><br>
       <span style="font-size:7.5pt; color:#64748b; word-break:break-all;">${urlPublique(`/pay/${paymentToken}`)}</span><br>
-      <span style="font-size:7pt; color:#94a3b8;">Carte bancaire · Prélèvement SEPA · Virement</span>
+      <span style="font-size:7pt; color:#94a3b8;">Carte bancaire</span>
     </div>
   </div>
   ` : ''}
@@ -524,7 +526,7 @@ export function buildSituationFactureHtml({ situation, parentDevis, client, chan
   const cl = champsClient(client);
 
   const lignes = filterValidLignes(situation.lignes);
-  const defaultTvaRate = situation.tvaRate || parentDevis?.tvaRate || parentDevis?.tva_rate || 10;
+  const defaultTvaRate = premierTaux(situation.tvaRate, parentDevis?.tvaRate, parentDevis?.tva_rate, 10);
 
   // Calculate totals from lignes with multi-TVA support
   let totalMarcheHT = 0;

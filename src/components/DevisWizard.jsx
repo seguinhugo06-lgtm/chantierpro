@@ -7,8 +7,8 @@ import { generateId } from '../lib/utils';
 import { formatClientName } from '../lib/formatters';
 import useConfirm from '../hooks/useConfirm';
 import { jourLocal } from '../lib/dates';
-import { calculerTotaux } from '../lib/totauxDocument';
-import { estFranchiseTva } from '../lib/franchiseTva';
+import { estFranchiseTva, tauxTvaParDefaut, tauxTvaDocument } from '../lib/franchiseTva';
+import { lignesPourEdition, lignesDepuisEdition, totauxDesLignes } from '../lib/avoir';
 
 // Draft localStorage key
 const DRAFT_KEY = 'mallettico_devis_draft';
@@ -44,7 +44,7 @@ export default function DevisWizard({
     chantierId: '',
     date: jourLocal(),
     validite: entreprise?.validiteDevis || 30,
-    tvaDefaut: entreprise?.tvaDefaut || 10,
+    tvaDefaut: tauxTvaParDefaut(entreprise),
     lignes: [],
     remise: 0,
     notes: ''
@@ -67,16 +67,17 @@ export default function DevisWizard({
           chantierId: initialData.chantier_id || '',
           date: initialData.date || jourLocal(),
           validite: initialData.validite || entreprise?.validiteDevis || 30,
-          tvaDefaut: initialData.tvaRate || entreprise?.tvaDefaut || 10,
-          lignes: (initialData.lignes || []).map((l, i) => ({
+          tvaDefaut: tauxTvaDocument(initialData, entreprise),
+          // Avoir : prix saisis en valeur absolue, signe de chaque ligne gardé (lignesPourEdition)
+          lignes: lignesPourEdition((initialData.lignes || []).map((l, i) => ({
             id: l.id || `line-${i}`,
             description: l.description || '',
             quantite: l.quantite || 1,
             unite: l.unite || 'u',
             prixUnitaire: l.prixUnitaire || 0,
             prixAchat: l.prixAchat || 0,
-            tva: l.tva !== undefined ? l.tva : (initialData.tvaRate || 10),
-          })),
+            tva: l.tva !== undefined ? l.tva : tauxTvaDocument(initialData, entreprise),
+          })), initialData.facture_type === 'avoir'),
           remise: initialData.remise || 0,
           notes: initialData.notes || ''
         });
@@ -134,7 +135,7 @@ export default function DevisWizard({
         chantierId: '',
         date: jourLocal(),
         validite: entreprise?.validiteDevis || 30,
-        tvaDefaut: entreprise?.tvaDefaut || 10,
+        tvaDefaut: tauxTvaParDefaut(entreprise),
         lignes: [],
         remise: 0,
         notes: ''
@@ -163,33 +164,20 @@ export default function DevisWizard({
     );
   }, [clients, clientSearch]);
 
-  // Calculate totals and margin
+  // Totaux affichés = totaux enregistrés : mêmes lignes (signées pour un avoir) et même calcul que l'enregistrement.
+  // Avant (relecture juriste-btp du 17 oct. 2026) : un avoir s'affichait en valeurs absolues, la remise ajoutée au lieu
+  // d'être déduite, et l'artisan validait un total différent de celui enregistré.
   const totals = useMemo(() => {
-    let totalHT = 0;
-    let tvaTotal = 0;
-    let totalCost = 0;
-
-    form.lignes.forEach(l => {
-      const montant = (l.quantite || 1) * (l.prixUnitaire || 0);
-      const cost = (l.quantite || 1) * (l.prixAchat || 0);
-      const taux = l.tva !== undefined ? l.tva : form.tvaDefaut;
-      totalHT += montant;
-      totalCost += cost;
-      tvaTotal += montant * (taux / 100);
-    });
-
-    const remiseAmount = totalHT * (form.remise / 100);
-    const htApresRemise = totalHT - remiseAmount;
-    const tvaApresRemise = tvaTotal * (1 - form.remise / 100);
-    const totalTTC = htApresRemise + tvaApresRemise;
-
-    // Calculate margin (after discount)
-    const costAfterRemise = totalCost * (1 - form.remise / 100);
+    const estAvoir = initialData?.facture_type === 'avoir';
+    const lignes = lignesDepuisEdition(form.lignes, estAvoir);
+    const t = totauxDesLignes(lignes, estAvoir, { remisePct: Number(form.remise) || 0, tauxDefaut: form.tvaDefaut, toutesLesLignes: true, franchise: estFranchiseTva(entreprise) });
+    const totalCost = form.lignes.reduce((somme, l) => somme + (Number(l.quantite) || 0) * (Number(l.prixAchat) || 0), 0);
+    const htApresRemise = t.totalHT;
+    const costAfterRemise = totalCost * (1 - (Number(form.remise) || 0) / 100);
     const marge = htApresRemise - costAfterRemise;
     const margePercent = htApresRemise > 0 ? (marge / htApresRemise) * 100 : 0;
-
-    return { totalHT, tvaTotal, remiseAmount, htApresRemise, tvaApresRemise, totalTTC, totalCost, marge, margePercent };
-  }, [form.lignes, form.tvaDefaut, form.remise]);
+    return { totalHT: t.totalLignesHT, tvaTotal: t.totalTVA, remiseAmount: t.remiseMontant, htApresRemise, tvaApresRemise: t.totalTVA, totalTTC: t.totalTTC, totalCost, marge, margePercent };
+  }, [form.lignes, form.tvaDefaut, form.remise, initialData, entreprise]);
 
   // MRU (Most Recently Used) clients
   const MRU_KEY = 'mallettico_recent_clients';
@@ -304,17 +292,11 @@ export default function DevisWizard({
       return;
     }
 
-    // Transform lignes to expected format — ensure positive values
-    const lignesFormatted = form.lignes.map(l => ({
-      ...l,
-      quantite: Math.max(1, Math.abs(l.quantite || 1)),
-      prixUnitaire: Math.abs(l.prixUnitaire || 0),
-      montant: Math.abs(l.quantite || 1) * Math.abs(l.prixUnitaire || 0)
-    }));
+    // Lignes enregistrées : quantité telle que saisie, prix remis à son signe pour un avoir (src/lib/avoir.js)
+    const lignesFormatted = lignesDepuisEdition(form.lignes, initialData?.facture_type === 'avoir');
 
-    // Totaux enregistrés arrondis par taux (calculerTotaux, tâche totaux-arrondis), sur les lignes saisies (même
-    // signe que l'affichage)
-    const t = calculerTotaux(form.lignes, { remisePct: Number(form.remise) || 0, tauxDefaut: form.tvaDefaut, toutesLesLignes: true, franchise: estFranchiseTva(entreprise) });
+    // Totaux enregistrés arrondis par taux (calculerTotaux), sur les lignes enregistrées : un avoir reste négatif
+    const t = totauxDesLignes(lignesFormatted, initialData?.facture_type === 'avoir', { remisePct: Number(form.remise) || 0, tauxDefaut: form.tvaDefaut, toutesLesLignes: true, franchise: estFranchiseTva(entreprise) });
 
     const devisData = {
       type: form.type,
@@ -434,7 +416,7 @@ export default function DevisWizard({
                   chantierId: '',
                   date: jourLocal(),
                   validite: entreprise?.validiteDevis || 30,
-                  tvaDefaut: entreprise?.tvaDefaut || 10,
+                  tvaDefaut: tauxTvaParDefaut(entreprise),
                   lignes: [],
                   remise: 0,
                   notes: ''
@@ -1015,6 +997,7 @@ function LigneCard({ ligne, index, totalLignes, onUpdate, onRemove, onMoveUp, on
           placeholder="Ex: Pose carrelage, Peinture murale..."
           className={`flex-1 px-3 py-2 border rounded-lg text-sm font-medium ${inputBg}`}
         />
+        {ligne._signe === 1 && <span className="shrink-0 self-center text-xs text-encre-2">Remise déduite de l'avoir</span>}
         {totalLignes > 1 && (
           <div className="flex flex-col gap-0.5">
             {index > 0 && (

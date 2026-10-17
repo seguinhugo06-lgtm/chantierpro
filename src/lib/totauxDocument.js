@@ -175,3 +175,37 @@ export function calculerTotaux(lignes, { remisePct = 0, tauxDefaut = 20, toutesL
   totalTVA = arrondi(totalTVA);
   return { totalLignesHT, remiseMontant: arrondi(totalLignesHT - totalHT), totalHT, totalTVA, totalTTC: arrondi(totalHT + totalTVA), tvaParTaux };
 }
+
+/**
+ * Message pour la première ligne chiffrée sans désignation, sinon '' (relecture juriste-btp du 17 oct. 2026 : l'éditeur
+ * ne numérote pas ses lignes, « Ligne 3 » obligeait à compter).
+ */
+export function messageLigneSansDesignation(lignes) {
+  const n = ligneChiffreeSansDesignation(lignes);
+  if (!n) return '';
+  const l = (Array.isArray(lignes) ? lignes : []).filter((x) => x && !x._isSection)[n - 1];
+  const nombre = (v) => { const x = typeof v === 'number' ? v : parseFloat(String(v ?? '').replace(/\s/g, '').replace(',', '.')); return Number.isFinite(x) ? x : 0; };
+  const montant = l.montant !== undefined && l.montant !== null && l.montant !== '' ? nombre(l.montant) : nombre(l.quantite) * nombre(l.prixUnitaire);
+  const texte = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(montant);
+  return `Une ligne à ${texte} HT n'a pas de désignation : ajoutez-la ou supprimez la ligne (sinon elle ne serait pas imprimée).`;
+}
+
+/**
+ * Numéro (à partir de 1, titres de lot exclus) de la première ligne chiffrée sans désignation, sinon 0. Une telle ligne
+ * compte dans les totaux mais n'est ni enregistrée ni imprimée : le total ne correspondrait plus aux lignes
+ * (CGI ann. II art. 242 nonies A ; EN 16931 BR-CO-10) — relecture juriste-btp du 16 oct. 2026.
+ */
+export function ligneChiffreeSansDesignation(lignes) {
+  const nombre = (v) => {
+    const n = typeof v === 'number' ? v : parseFloat(String(v ?? '').replace(/\s/g, '').replace(',', '.'));
+    return Number.isFinite(n) ? n : 0;
+  };
+  const vraies = (Array.isArray(lignes) ? lignes : []).filter((l) => l && !l._isSection);
+  const i = vraies.findIndex((l) => {
+    if (String(l.description ?? l.designation ?? '').trim()) return false;
+    const montant = l.montant !== undefined && l.montant !== null && l.montant !== ''
+      ? nombre(l.montant) : nombre(l.quantite) * nombre(l.prixUnitaire);
+    return Math.abs(montant) >= 0.005;
+  });
+  return i + 1;
+}

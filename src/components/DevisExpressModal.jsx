@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { sansTva } from '../lib/franchiseTva';
 import { X, ChevronLeft, ChevronRight, Search, Check, FileText, Euro, TrendingUp, Minus, Plus, Trash2, Edit3, FolderOpen, UserPlus, Loader2, Star, Clock, RotateCcw } from 'lucide-react';
 import { MODELES_DEVIS, getMetiersWithModeles, getModelesByMetier, prepareModeleLignes, calculateModeleTotal, calculateModeleMarge, searchModeles } from '../lib/data/modeles-devis';
 import { formatClientName } from '../lib/formatters';
@@ -13,7 +14,7 @@ const EXPRESS_DRAFT_KEY = 'mallettico_devis_express_draft';
 import TemplateSelector from './TemplateSelector';
 import QuickClientModal from './QuickClientModal';
 import { jourLocal } from '../lib/dates';
-import { calculerTotaux } from '../lib/totauxDocument';
+import { calculerTotaux, messageLigneSansDesignation } from '../lib/totauxDocument';
 
 export default function DevisExpressModal({
   isOpen,
@@ -24,6 +25,8 @@ export default function DevisExpressModal({
   isDark = false,
   couleur = '#f97316',
   tvaDefaut = 10,
+  // Micro-entreprise en franchise (art. 293 B du CGI) : aucune TVA, même sur les lignes des modèles
+  franchise = false,
   recentTemplates = [],
   onTrackUsage,
   customTemplates = [],
@@ -157,7 +160,7 @@ export default function DevisExpressModal({
   // Select modèle
   const handleSelectModele = (modele) => {
     setSelectedModele(modele);
-    setLignes(prepareModeleLignes(modele, tvaDefaut));
+    setLignes(franchise ? sansTva(prepareModeleLignes(modele, 0)) : prepareModeleLignes(modele, tvaDefaut));
     setStep(3);
   };
 
@@ -177,7 +180,7 @@ export default function DevisExpressModal({
       unite: l.unite || 'u',
       prixUnitaire: l.prixUnitaire || 0,
       prixAchat: l.prixAchat || 0,
-      tva: l.tva ?? tvaDefaut,
+      tva: franchise ? 0 : (l.tva ?? tvaDefaut),
       total: (l.quantite || 1) * (l.prixUnitaire || 0)
     }));
     setLignes(adaptedLignes);
@@ -221,19 +224,22 @@ export default function DevisExpressModal({
     const totalHT = lignes.reduce((sum, l) => sum + (l.total || 0), 0);
     const totalAchat = lignes.reduce((sum, l) => sum + ((l.quantite || 0) * (l.prixAchat || 0)), 0);
     // Mêmes totaux que ceux enregistrés : par taux de ligne, arrondis (calculerTotaux)
-    const t = calculerTotaux(lignes.map((l) => ({ ...l, montant: l.total ?? l.montant })), { remisePct: remise, tauxDefaut: tvaDefaut, toutesLesLignes: true });
+    const t = calculerTotaux(lignes.map((l) => ({ ...l, montant: l.total ?? l.montant })), { remisePct: remise, tauxDefaut: tvaDefaut, toutesLesLignes: true, franchise });
     const remiseAmount = t.remiseMontant;
     const totalApresRemise = t.totalHT;
     const tva = t.totalTVA;
     const ttc = t.totalTTC;
     const marge = totalHT > 0 ? Math.round(((totalHT - totalAchat) / totalHT) * 100) : 0;
 
-    return { totalHT, totalAchat, remiseAmount, totalApresRemise, tva, ttc, marge };
-  }, [lignes, remise, tvaDefaut]);
+    return { totalHT, totalAchat, remiseAmount, totalApresRemise, tva, ttc, marge, tvaParTaux: t.tvaParTaux };
+  }, [lignes, remise, tvaDefaut, franchise]);
 
   // Create devis — async with loading + success animation
   const handleCreateDevis = async () => {
     if (!selectedClient || isCreating) return;
+    // Une ligne chiffrée sans désignation : le total ne correspondrait plus aux lignes imprimées (relecture juriste-btp du 16 oct. 2026)
+    const sansDesignation = messageLigneSansDesignation(lignes.map((l) => ({ ...l, montant: l.total ?? l.montant })));
+    if (sansDesignation) { setCreationError(sansDesignation); return; }
 
     setIsCreating(true);
     setCreationError(null);
@@ -258,6 +264,7 @@ export default function DevisExpressModal({
         total_ht: totals.totalApresRemise,
         tva: totals.tva,
         total_ttc: totals.ttc,
+        tvaParTaux: totals.tvaParTaux,
         notes,
         modele_source: selectedModele?.id,
       });
@@ -423,7 +430,7 @@ export default function DevisExpressModal({
                       key={`${modele.metierId}-${modele.id}`}
                       onClick={() => {
                         setSelectedModele(modele);
-                        setLignes(prepareModeleLignes(modele, tvaDefaut));
+                        setLignes(franchise ? sansTva(prepareModeleLignes(modele, 0)) : prepareModeleLignes(modele, tvaDefaut));
                         setGlobalSearch('');
                         setStep(3);
                       }}
@@ -466,7 +473,7 @@ export default function DevisExpressModal({
                                   unite: l.unite || 'u',
                                   prixUnitaire: l.prixUnitaire || 0,
                                   prixAchat: l.prixAchat || 0,
-                                  tva: l.tva ?? tvaDefaut,
+                                  tva: franchise ? 0 : (l.tva ?? tvaDefaut),
                                   total: (l.quantite || 1) * (l.prixUnitaire || 0),
                                 })));
                                 setStep(3);
@@ -804,7 +811,7 @@ export default function DevisExpressModal({
                     </div>
                   )}
                   <div className="flex justify-between">
-                    <span className={textMuted}>TVA ({tvaDefaut}%)</span>
+                    <span className={textMuted}>{franchise ? 'TVA non applicable, art. 293 B du CGI' : `TVA (${tvaDefaut}%)`}</span>
                     <span className={textPrimary}>{totals.tva.toLocaleString('fr-FR')} €</span>
                   </div>
                   <div className={`flex justify-between pt-2 border-t ${borderColor}`}>

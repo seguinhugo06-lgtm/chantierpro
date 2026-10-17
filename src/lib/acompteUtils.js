@@ -1,4 +1,5 @@
 import { lignesFactureAcompte, lignesFactureSolde } from './facturation';
+import { premierTaux } from './franchiseTva';
 import { pourcent } from './formatDocument';
 /**
  * acompteUtils.js — Pure functions & constants for Acompte Échéanciers
@@ -112,7 +113,7 @@ export function computeEtapeMontants(devis, pourcentage, defaultTvaRate = 20) {
     tva = round2(tva);
   } else {
     // Single rate fallback
-    tva = round2(montant_ht * ((devis.tvaRate || defaultTvaRate) / 100));
+    tva = round2(montant_ht * (premierTaux(devis.tvaRate, devis.tva_rate, defaultTvaRate) / 100));
   }
 
   const montant_ttc = round2(montant_ht + tva);

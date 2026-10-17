@@ -106,3 +106,50 @@ export function avoirPartiel(facture, selection = [], { tauxDefaut = 20 } = {}) 
     tvaParTaux: inverser(tot.tvaParTaux),
   };
 }
+
+const nombreSaisi = (v) => {
+  const n = typeof v === 'number' ? v : parseFloat(String(v ?? '').replace(/\s/g, '').replace(',', '.'));
+  return Number.isFinite(n) ? n : 0;
+};
+
+/**
+ * Lignes d'un document pour l'édition dans l'assistant. Pour un avoir, les prix se saisissent en valeur absolue et
+ * chaque ligne garde son signe (`_signe`) : la ligne créditée reste négative, la remise rendue reste positive.
+ * Avant (relecture juriste-btp du 16 oct. 2026) : l'assistant exigeait un prix positif et appliquait Math.abs,
+ * modifier un avoir l'enregistrait en positif.
+ */
+export function lignesPourEdition(lignes, estAvoir) {
+  return (Array.isArray(lignes) ? lignes : []).map((l) => {
+    if (!estAvoir) return l;
+    const pu = nombreSaisi(l.prixUnitaire ?? l.prix_unitaire);
+    return { ...l, prixUnitaire: Math.abs(pu), _signe: pu > 0 ? 1 : -1 };
+  });
+}
+
+/**
+ * Lignes enregistrées depuis l'assistant : quantité saisie telle quelle (0,5 m² reste 0,5 ; avant : arrondie à 1),
+ * prix en valeur absolue remis à son signe pour un avoir (nouvelle ligne d'un avoir : créditée, donc négative).
+ */
+export function lignesDepuisEdition(lignes, estAvoir) {
+  return (Array.isArray(lignes) ? lignes : []).map(({ _signe, ...l }) => {
+    const quantite = Math.abs(nombreSaisi(l.quantite));
+    const signe = estAvoir ? (_signe === 1 ? 1 : -1) : 1;
+    const absolu = Math.abs(nombreSaisi(l.prixUnitaire));
+    // Arrondi sur la valeur absolue, puis signé : arrondir un négatif ne donne pas toujours l'inverse (−6,17 au lieu
+    // de −6,18 pour 0,5 × 12,35) — relecture juriste-btp du 17 oct. 2026
+    return { ...l, quantite, prixUnitaire: signe * absolu, montant: signe * arrondi(quantite * absolu) };
+  });
+}
+
+/**
+ * Totaux des lignes enregistrées : pour un avoir, calculés sur les lignes inversées (en positif) puis inversés, comme
+ * avoirPartiel — arrondir un montant négatif ne tombe pas toujours sur l'inverse de l'arrondi du positif.
+ */
+export function totauxDesLignes(lignes, estAvoir, options = {}) {
+  if (!estAvoir) return calculerTotaux(lignes, options);
+  const positives = (Array.isArray(lignes) ? lignes : []).map((l) => ({
+    ...l, prixUnitaire: -(Number(l.prixUnitaire) || 0), montant: -(Number(l.montant) || 0),
+  }));
+  const t = calculerTotaux(positives, options);
+  return { ...t, totalLignesHT: -t.totalLignesHT, remiseMontant: -t.remiseMontant, totalHT: -t.totalHT, totalTVA: -t.totalTVA, totalTTC: -t.totalTTC, tvaParTaux: inverser(t.tvaParTaux) };
+}

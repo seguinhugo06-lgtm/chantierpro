@@ -103,7 +103,7 @@ import { captureException } from '../lib/sentry';
 import { imprimerHtml } from '../lib/imprimerHtml';
 import { nomImprime, formeImprimee } from '../lib/identiteEntreprise';
 import { profilManquant } from '../lib/profilLegal';
-import { estFranchiseTva, sansTva, franchiseAppliquee, tvaARegulariser } from '../lib/franchiseTva';
+import { estFranchiseTva, sansTva, franchiseAppliquee, tvaARegulariser, premierTaux, tauxTvaParDefaut, tauxTvaDocument } from '../lib/franchiseTva';
 import { estOuverte, estEnRetard } from '../lib/ventes';
 import { urlPublique } from '../lib/urlPublique';
 import { FONCTIONS } from '../lib/fonctions';
@@ -310,7 +310,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     setShowAcompteModal(true);
   };
   // Montant TTC de la facture d'acompte telle qu'elle sera créée (lignes par taux, arrondies)
-  const ttcAcompte = (pct) => calculerTotaux(lignesFactureAcompte(selected, pct, { tauxDefaut: entreprise?.tvaDefaut || 20 }), { tauxDefaut: entreprise?.tvaDefaut || 20, franchise: isMicro }).totalTTC;
+  const ttcAcompte = (pct) => calculerTotaux(lignesFactureAcompte(selected, pct, { tauxDefaut: tauxTvaParDefaut(entreprise) }), { tauxDefaut: tauxTvaParDefaut(entreprise), franchise: isMicro }).totalTTC;
   const [newClient, setNewClient] = useState({ nom: '', telephone: '' });
   const [snackbar, setSnackbar] = useState(null);
   const canvasRef = useRef(null);
@@ -445,7 +445,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     date: jourLocal(),
     validite: entreprise?.validiteDevis || 30,
     sections: [{ id: '1', titre: '', lignes: [] }],
-    tvaDefaut: (entreprise?.tvaDefaut ?? 10),
+    tvaDefaut: tauxTvaParDefaut(entreprise),
     remise: 0,
     retenueGarantie: false, // Retenue de garantie 5% (BTP)
     conditionsPaiement: entreprise?.conditionsPaiementDefaut || '30_jours',
@@ -458,7 +458,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   // Relecture juridique du 9 oct. 2026 (tâche totaux-arrondis) : Devis Express, l'assistant par métier et le
   // formulaire intégré enregistraient des totaux non arrondis, calculés à part (règle EN 16931 BR-CO-15).
   const totauxEnregistres = (lignes, { remise = 0, tauxDefaut } = {}) => {
-    const t = calculerTotaux(lignes, { remisePct: Number(remise) || 0, tauxDefaut: tauxDefaut ?? (entreprise?.tvaDefaut ?? 10), franchise: isMicro });
+    const t = calculerTotaux(lignes, { remisePct: Number(remise) || 0, tauxDefaut: tauxDefaut ?? tauxTvaParDefaut(entreprise), franchise: isMicro });
     return { total_ht: t.totalHT, tva: t.totalTVA, total_tva: t.totalTVA, total_ttc: t.totalTTC, tvaParTaux: t.tvaParTaux, tvaDetails: t.tvaParTaux };
   };
   const formatMoney = (n) => fmtMoney(n, 2);
@@ -507,7 +507,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       ...prev,
       type: 'devis',
       clientId: aiPrefill.client_id || '',
-      tvaDefaut: aiPrefill.tvaRate || prev.tvaDefaut,
+      tvaDefaut: aiPrefill.tvaRate ?? prev.tvaDefaut,
       validite: aiPrefill.validite || prev.validite,
       notes: [aiPrefill.objet || aiPrefill.description || '', aiPrefill.notes || ''].filter(Boolean).join('\n'),
       sections: [{ id: '1', titre: aiPrefill.objet || aiPrefill.description || '', lignes }],
@@ -667,7 +667,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       : (d.lignes || []);
     if (allLignes.length === 0) return 0;
     const ht = allLignes.reduce((s, l) => s + getLineTotal(l), 0);
-    const tvaRate = d.tvaRate || 20;
+    const tvaRate = tauxTvaDocument(d, entreprise);
     return ht * (1 + tvaRate / 100);
   };
 
@@ -888,7 +888,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         date: jourLocal(),
         validite: entreprise?.validiteDevis || 30,
         sections: [{ id: '1', titre: '', lignes: [] }],
-        tvaDefaut: (entreprise?.tvaDefaut ?? 10),
+        tvaDefaut: tauxTvaParDefaut(entreprise),
         remise: 0,
         retenueGarantie: false,
         notes: ''
@@ -944,7 +944,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       lignes: newLignes,
       tvaParTaux: doc.tvaParTaux,
       tvaDetails: doc.tvaDetails,
-      tvaRate: doc.tvaRate || (entreprise?.tvaDefaut ?? 10),
+      tvaRate: tauxTvaDocument(doc, entreprise),
       remise: doc.remise || 0,
       retenueGarantie: doc.retenueGarantie || false,
       total_ht: doc.total_ht,
@@ -1002,7 +1002,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       lignes: newLignes,
       tvaParTaux: doc.tvaParTaux,
       tvaDetails: doc.tvaDetails,
-      tvaRate: doc.tvaRate || (entreprise?.tvaDefaut ?? 10),
+      tvaRate: tauxTvaDocument(doc, entreprise),
       remise: doc.remise || 0,
       total_ht: doc.total_ht,
       tva: doc.tva,
@@ -1103,7 +1103,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     // Build tvaParTaux from lignes for multi-rate TVA support
     const tvaParTaux = {};
     allLignes.forEach(l => {
-      const rate = l.tva !== undefined ? l.tva : (devisData.tvaDefaut || 20);
+      const rate = l.tva !== undefined ? l.tva : premierTaux(devisData.tvaDefaut, tauxTvaParDefaut(entreprise));
       const montant = (parseFloat(l.quantite) || 1) * (parseFloat(l.prixUnitaire || l.prix_unitaire) || 0);
       if (!tvaParTaux[rate]) tvaParTaux[rate] = { base: 0, montant: 0 };
       tvaParTaux[rate].base += montant;
@@ -1122,7 +1122,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       validite: devisData.validite,
       sections: devisData.sections,
       lignes: allLignes,
-      tvaRate: devisData.tvaDefaut || 20,
+      tvaRate: premierTaux(devisData.tvaDefaut, tauxTvaParDefaut(entreprise)),
       tvaParTaux,
       tvaDetails: tvaParTaux,
       remise: devisData.remise || 0,
@@ -1336,9 +1336,9 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   const facturerEtape = (echeancier, etape) => facturerUneFois(async () => {
     if (!selected || !echeancier) return;
     const last = isLastEtape(etape, echeancier.etapes);
-    const lignesEtape = buildFactureLignesForEtape(selected, etape, echeancier.etapes, entreprise?.tvaDefaut || 20);
+    const lignesEtape = buildFactureLignesForEtape(selected, etape, echeancier.etapes, tauxTvaParDefaut(entreprise));
     const lignes = isMicro ? sansTva(lignesEtape) : lignesEtape;
-    const t = calculerTotaux(lignes, { tauxDefaut: entreprise?.tvaDefaut || 20, franchise: isMicro });
+    const t = calculerTotaux(lignes, { tauxDefaut: tauxTvaParDefaut(entreprise), franchise: isMicro });
     const montants = { montant_ht: t.totalHT, tva: t.totalTVA, montant_ttc: t.totalTTC, tvaParTaux: t.tvaParTaux };
     const factureType = last ? 'solde' : 'acompte';
     if (!facturationAutorisee('etape', t.totalTTC)) return;
@@ -1355,7 +1355,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       statut: 'envoye',
       date_echeance: dateEcheance(new Date(), { conditionsPaiement: selected.conditionsPaiement || selected.conditions, delaiJours: entreprise?.delaiPaiement }),
       conditions: selected.conditions, conditionsPaiement: selected.conditionsPaiement,
-      tvaRate: selected.tvaRate || entreprise?.tvaDefaut || 20,
+      tvaRate: tauxTvaDocument(selected, entreprise),
       tvaParTaux: montants.tvaParTaux,
       tvaDetails: montants.tvaParTaux,
       lignes,
@@ -1445,9 +1445,9 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     if (!pourcentageAcompteValide(acomptePct)) return showToast('Le pourcentage d\'acompte doit être compris entre 1 et 99 %.', 'error');
     if (getAcompteFacture(selected.id)) return showToast('Un acompte existe déjà', 'error');
     // Une ligne par taux de TVA du devis, sur les bases après remise (src/lib/facturation.js)
-    const lignesParTaux = lignesFactureAcompte(selected, acomptePct, { tauxDefaut: entreprise?.tvaDefaut || 20 });
+    const lignesParTaux = lignesFactureAcompte(selected, acomptePct, { tauxDefaut: tauxTvaParDefaut(entreprise) });
     const lignesAcompte = isMicro ? sansTva(lignesParTaux) : lignesParTaux;
-    const tAcompte = calculerTotaux(lignesAcompte, { tauxDefaut: entreprise?.tvaDefaut || 20, franchise: isMicro });
+    const tAcompte = calculerTotaux(lignesAcompte, { tauxDefaut: tauxTvaParDefaut(entreprise), franchise: isMicro });
     const montantHT = tAcompte.totalHT;
     const tva = tAcompte.totalTVA;
     const ttc = tAcompte.totalTTC;
@@ -1459,7 +1459,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       date: jourLocal(), statut: 'envoye',
       date_echeance: dateEcheance(new Date(), { conditionsPaiement: selected.conditionsPaiement || selected.conditions, delaiJours: entreprise?.delaiPaiement }),
       conditions: selected.conditions, conditionsPaiement: selected.conditionsPaiement,
-      tvaRate: selected.tvaRate || entreprise?.tvaDefaut || 20,
+      tvaRate: tauxTvaDocument(selected, entreprise),
       tvaParTaux, tvaDetails: tvaParTaux,
       lignes: lignesAcompte,
       total_ht: montantHT, tva, total_ttc: ttc, acompte_pct: acomptePct
@@ -1489,10 +1489,10 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     const lignesSolde = lignesFactureSolde(
       doc,
       allAcomptes.map(a => ({ libelle: `Acompte déjà facturé (${a.numero})`, lignes: a.lignes, tvaParTaux: a.tvaParTaux || a.tvaDetails, montant_ht: a.total_ht })),
-      { tauxDefaut: entreprise?.tvaDefaut || 20 },
+      { tauxDefaut: tauxTvaParDefaut(entreprise) },
     );
     const lignes = isMicro ? sansTva(lignesSolde) : lignesSolde;
-    return { allAcomptes, lignes, totaux: calculerTotaux(lignes, { tauxDefaut: entreprise?.tvaDefaut || 20, franchise: isMicro }) };
+    return { allAcomptes, lignes, totaux: calculerTotaux(lignes, { tauxDefaut: tauxTvaParDefaut(entreprise), franchise: isMicro }) };
   };
 
   const confirmAndCreateSolde = async () => {
@@ -1537,7 +1537,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       date: jourLocal(), statut: 'envoye',
       date_echeance: dateEcheance(new Date(), { conditionsPaiement: selected.conditionsPaiement || selected.conditions, delaiJours: entreprise?.delaiPaiement }),
       conditions: selected.conditions, conditionsPaiement: selected.conditionsPaiement,
-      tvaRate: selected.tvaRate || entreprise?.tvaDefaut || 20,
+      tvaRate: tauxTvaDocument(selected, entreprise),
       tvaParTaux, tvaDetails: tvaParTaux,
       lignes, total_ht: montantSoldeHT, tva, total_ttc: ttc
     };
@@ -1616,7 +1616,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
             quantite: 1,
             prixUnitaire: getLineTotal(l),
             unite: l.unite || 'ens',
-            tva: l.tva !== undefined ? l.tva : (doc.tvaRate || 10),
+            tva: l.tva !== undefined ? l.tva : tauxTvaDocument(doc, entreprise),
             cumulActuel: 100,
             cumulPrecedent: 0,
           })) || [],
@@ -1653,7 +1653,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     // Calculate TVA details from lignes if not present in doc
     const calculatedTvaDetails = doc.tvaDetails || (() => {
       const details = {};
-      const defaultRate = doc.tvaRate || (entreprise?.tvaDefaut ?? 10);
+      const defaultRate = tauxTvaDocument(doc, entreprise);
       filterValidLignes(doc.lignes).forEach(l => {
         const rate = l.tva !== undefined ? l.tva : defaultRate;
         if (!details[rate]) {
@@ -1672,7 +1672,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${quantite(l.quantite)}</td>
         <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${echap(l.unite || 'unité')}</td>
         <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:right">${formatMoney(parseFloat(l.prixUnitaire||l.prix_unitaire||0))}</td>
-        <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${isMicro ? '-' : pourcent(l.tva !== undefined ? l.tva : (doc.tvaRate||10))}</td>
+        <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${isMicro ? '-' : pourcent(l.tva !== undefined ? l.tva : tauxTvaDocument(doc, entreprise))}</td>
         <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:right;font-weight:600;${getLineTotal(l)<0?'color:#dc2626;':''}">${formatMoney(getLineTotal(l))}</td>
       </tr>
     `;
@@ -1820,7 +1820,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 
   <!-- TOTAUX -->
   <div class="totals">
-    ${lignesTotauxHtml(doc, { isMicro, tauxDefaut: (E?.tvaDefaut ?? 10) })}
+    ${lignesTotauxHtml(doc, { isMicro, tauxDefaut: tauxTvaDocument(doc, E) })}
     ${doc.acompte_pct ? `
     ${lignesAcompteHtml(doc, totauxDocument(doc, { isMicro }).totalTTC, doc.acompte_pct)}
     ` : ''}
@@ -3389,7 +3389,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                   {/* Mêmes totaux que les documents imprimés (src/lib/totauxDocument.js) */}
                   {(() => {
                     const microDoc = franchiseAppliquee(selected, entreprise);
-                    const t = totauxDocument(selected, { tauxDefaut: (entreprise?.tvaDefaut ?? 10), isMicro: microDoc });
+                    const t = totauxDocument(selected, { tauxDefaut: tauxTvaDocument(selected, entreprise), isMicro: microDoc });
                     const ligneTotal = (libelle, valeur, cls = textSecondary) => (
                       <div key={libelle} className={`flex justify-between gap-3 py-1 text-sm ${cls}`}><span>{libelle}</span><span className="tabular-nums">{valeur}</span></div>
                     );
@@ -3404,7 +3404,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                         ) : ligneTotal('Total HT', formatMoney(t.totalHT), textPrimary)}
                         {!microDoc && (t.tva.length
                           ? t.tva.map((x) => ligneTotal(`TVA ${pourcent(x.taux)}`, formatMoney(x.montant)))
-                          : ligneTotal(`TVA ${pourcent(selected.tvaRate || entreprise?.tvaDefaut || 20)}`, formatMoney(selected.tva || selected.total_tva || 0)))}
+                          : ligneTotal(`TVA ${pourcent(tauxTvaDocument(selected, entreprise))}`, formatMoney(selected.tva || selected.total_tva || 0)))}
                         <div className={`flex justify-between py-2 border-t font-bold text-encre ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
                           <span>{!microDoc ? 'Total TTC' : selected.facture_type === 'avoir' ? 'Total de l’avoir' : selected.type === 'facture' ? 'Net à payer' : 'Total'}</span>
                           <span className="tabular-nums">{formatMoney(t.totalTTC)}</span>
@@ -5610,7 +5610,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       {/* Devis Express Modal - New improved version with BTP templates */}
       <DevisExpressModal
         isOpen={showDevisExpressModal}
-        tvaDefaut={isMicro ? 0 : (entreprise?.tvaDefaut ?? 10)}
+        tvaDefaut={tauxTvaParDefaut(entreprise)}
+        franchise={isMicro}
         onClose={() => setShowDevisExpressModal(false)}
         onCreateDevis={async (devisData) => {
           const numero = await generateNumero(devisData.type || 'devis');

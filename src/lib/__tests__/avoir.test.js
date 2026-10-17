@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { avoirTotal, avoirPartiel, lignesCreditables, facteursRemise } from '../avoir';
+import { avoirTotal, avoirPartiel, lignesCreditables, facteursRemise, lignesPourEdition, lignesDepuisEdition, totauxDesLignes } from '../avoir';
 import { calculerTotaux, totalLigne, arrondi } from '../totauxDocument';
 import { lignesFactureSolde } from '../facturation';
 
@@ -73,5 +73,46 @@ describe('lignes créditables et facteurs de remise', () => {
   it('remise de 7 % : 0,93 payé par euro de ligne', () => {
     expect(facteursRemise(FACTURE_REMISEE)['20']).toBeCloseTo(0.93, 3);
     expect(facteursRemise(FACTURE_SOLDE)['10']).toBe(1); // une déduction d'acompte n'est pas une remise
+  });
+});
+
+// Relecture juriste-btp du 16 oct. 2026 (tâche avoir-signe) : modifier un avoir dans l'assistant l'enregistrait en positif
+describe('modifier un avoir garde montant et signe', () => {
+  const facture = {
+    tvaRate: 20,
+    lignes: [
+      { id: 'a', description: 'Tableau électrique', quantite: 1, prixUnitaire: 800, tva: 20 },
+      { id: 'b', description: 'Câble 2,5 mm²', quantite: 4, prixUnitaire: 12.5, tva: 20 },
+      { id: 'r', description: 'Remise 7 %', quantite: 1, prixUnitaire: -59.5, tva: 20 },
+    ],
+  };
+  const avoir = avoirPartiel(facture, [{ ligne: facture.lignes[1], quantite: 2.5 }]);
+
+  it('l\'édition montre des prix positifs, le réenregistrement à l\'identique rend les mêmes lignes et totaux', () => {
+    const edition = lignesPourEdition(avoir.lignes, true);
+    expect(edition.every((l) => l.prixUnitaire >= 0)).toBe(true);
+    const relu = lignesDepuisEdition(edition, true);
+    expect(relu.map((l) => l.prixUnitaire)).toEqual(avoir.lignes.map((l) => l.prixUnitaire));
+    expect(relu.map((l) => l.montant)).toEqual(avoir.lignes.map((l) => l.montant));
+    expect(relu.find((l) => l.description.startsWith('Remise')).montant).toBeGreaterThan(0);
+    const t = totauxDesLignes(relu, true, { tauxDefaut: 20 });
+    expect([t.totalHT, t.totalTVA, t.totalTTC]).toEqual([avoir.totalHT, avoir.totalTVA, avoir.totalTTC]);
+    expect(t.totalTTC).toBeLessThan(0);
+  });
+
+  it('une quantité partielle n\'est plus arrondie à 1 ; une ligne ajoutée à un avoir est créditée (négative)', () => {
+    const relu = lignesDepuisEdition([{ description: 'Câble', quantite: '0,5', prixUnitaire: '12,5' }], true);
+    expect(relu[0]).toMatchObject({ quantite: 0.5, prixUnitaire: -12.5, montant: -6.25 });
+  });
+
+  it('l\'arrondi d\'une ligne créditée est symétrique (0,5 × 12,35 → −6,18, comme avoirPartiel)', () => {
+    const relu = lignesDepuisEdition([{ description: 'Câble', quantite: 0.5, prixUnitaire: 12.35 }], true);
+    expect(relu[0].montant).toBe(-6.18);
+  });
+
+  it('un document ordinaire n\'est pas inversé', () => {
+    const relu = lignesDepuisEdition([{ description: 'Prise', quantite: 2, prixUnitaire: 25 }], false);
+    expect(relu[0]).toMatchObject({ quantite: 2, prixUnitaire: 25, montant: 50 });
+    expect(lignesPourEdition([{ prixUnitaire: -5 }], false)[0].prixUnitaire).toBe(-5);
   });
 });
