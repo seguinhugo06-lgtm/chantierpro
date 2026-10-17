@@ -19,7 +19,7 @@ Dans l'ordre. Chaque action est aussi dans le Pilote (« À faire de votre côt�
 
 | Élément | État | Vérifié |
 |---|---|---|
-| `main` | `afe63d1` (17 oct. : factures émises verrouillées en base, client avec pièces à conserver non supprimable, migration 093 — tâche factures-verrou-base ; relectures juriste-btp et gardien-securite intégrées, vérification complète verte) | `npm run statut` : Vercel ×2 et CI verts |
+| `main` | `fbacff3` (17 oct. : un taux de TVA à 0 % reste 0 % partout, les deux générateurs compris ; une ligne chiffrée sans désignation est refusée ; modifier un avoir garde son signe ; plus de promesse de paiement par carte ou SEPA hors de l'interrupteur — tâches taux-zero, lignes-sans-designation, avoir-signe, paiement-code-mort ; relecture juriste-btp intégrée, vérification complète verte) | `npm run statut` : Vercel ×2 et CI verts |
 | Vercel | 2 projets (`chantierpro`, `seguinhugo06-lgtm-chantierpro`), déploiement auto sur `main` | statut GitHub |
 | Domaine | `mallettico.fr` (DNS OVH) | 25 juil. |
 | Service worker | sert l'ancienne version jusqu'à rechargement : ne jamais vérifier un déploiement en rechargeant le site | — |
