@@ -119,3 +119,27 @@ Option `autre` : d'autres durées, ou une règle d'inactivité (par exemple 3 an
 Recommandation : `5ans` — couvre les litiges sans garder plus que nécessaire.
 Irréversible : non
 Bloque : rien
+
+### Q-lien-hors-etablissement · Une signature par le lien juste après votre visite : bloquer les paiements sept jours ?
+Contexte : Si le client signe par le lien en votre présence chez lui, ou juste après votre visite, le contrat est « hors établissement » (C. conso. L221-1, I, 2°) : aucun paiement avant la fin du délai de sept jours (L221-10, délit L242-7). L'app ne bloque aujourd'hui que les devis signés sur place sur votre téléphone ; elle ne sait pas si une signature par le lien a suivi une visite (relecture juriste-btp du 17 oct. 2026).
+Option `avertir` : dans la fenêtre d'acompte d'un devis de particulier signé par le lien depuis moins de 8 jours, un avertissement (« Si votre client a signé par le lien en votre présence chez lui, ou juste après votre visite… aucun paiement avant le JJ/MM ») — rien n'est bloqué ; vous jugez.
+Option `bloquer` : traiter toute signature par le lien d'un particulier comme hors établissement — le plus prudent ; toutes les signatures à distance attendent sept jours.
+Recommandation : `avertir` — la plupart des signatures par le lien sont vraiment à distance.
+Irréversible : non
+Bloque : rien
+
+### Q-paiement-recu-sept-jours · Un paiement réellement reçu pendant les sept jours : refuser de l'enregistrer ?
+Contexte : Depuis le 17 oct. 2026, « Encaisser » refuse d'enregistrer un paiement pendant le délai de L221-10 (devis signé sur place par un particulier). Si un client a quand même payé (chèque, virement), il ne peut être enregistré qu'après la date : vos comptes sont en retard d'autant (relectures juriste-btp et gardien-securite du 17 oct. 2026).
+Option `refuser` : garder le refus — rappelle la règle ; le paiement s'enregistre après la date (ou se rembourse).
+Option `avertir` : l'enregistrer avec un avertissement (« paiement reçu pendant le délai de sept jours : à rembourser si le client le demande, article L242-9 ») — comptes justes ; la règle n'est plus qu'un rappel.
+Recommandation : `avertir` — un paiement reçu est un fait comptable ; le cacher fausse la trésorerie et les relances.
+Irréversible : non
+Bloque : rien
+
+### Q-accuse-plafond · L'accusé de rétractation hors du plafond quotidien d'e-mails ?
+Contexte : Chaque compte a un plafond d'envois par 24 h (50 par défaut, migration 077), contre les relais d'e-mails. L'accusé de réception d'une rétractation, obligatoire (D221-5), compte dans ce plafond : un artisan qui l'a atteint ne peut plus l'envoyer, et les essais automatiques échouent (relecture juriste-btp du 17 oct. 2026 ; à voir avec gardien-securite).
+Option `exempter` : l'accusé ne compte plus dans le plafond (un par rétractation, déjà dédoublonné) — l'obligation légale passe toujours ; un abus reste borné par le nombre de rétractations.
+Option `garder` : il reste dans le plafond — rien ne change ; rare en pratique.
+Recommandation : `exempter` — un seul accusé par rétractation, et c'est une obligation de l'artisan.
+Irréversible : non
+Bloque : rien

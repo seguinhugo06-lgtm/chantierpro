@@ -141,6 +141,49 @@ export function delaiRetractationDevis(devis, dateSignature) {
   return { fin: finDelaiRetractation(jour, informe), prolonge: !informe };
 }
 
+/**
+ * Pas de paiement dans les sept jours d'un contrat signé hors établissement par un particulier (C. conso. L221-10 ;
+ * L242-7 punit le fait d'« exiger ou d'obtenir » un paiement pendant ce délai) : ni acompte, ni paiement reçu, sous
+ * quelque forme que ce soit, même si le client a demandé que les travaux commencent (la demande expresse ne lève pas
+ * l'interdiction). Exception : dépannage urgent expressément demandé par le client (L221-10, 4°, case
+ * `travaux_urgents`). Concerne la signature sur place (pavé de l'app : `signature`), pas la signature par le lien
+ * (`signature_data`) ; l'app ne sait pas si la signature sur place a eu lieu dans les locaux de l'artisan : elle
+ * bloque par prudence. Calcul (aucun texte propre à L221-10, appliqué par prudence) : le jour de la signature ne
+ * compte pas (C. proc. civ. art. 641), le délai finit le 7e jour à minuit, reporté au premier jour ouvrable s'il
+ * tombe un samedi, un dimanche ou un jour férié (art. 642) ; le paiement est possible le lendemain (tâche
+ * sept-jours, relectures juriste-btp des 12 et 17 oct. 2026).
+ *
+ * @returns {null | { possibleLe: string, reporte: boolean }} le jour (AAAA-MM-JJ, Paris) à partir duquel un paiement
+ *   est possible si on est avant, et si le délai a été reporté ; sinon null (aucune interdiction en cours)
+ */
+export function delaiSeptJours({ devis, client, maintenant = new Date() } = {}) {
+  if (!devis || !estConcerneParRetractation({ doc: devis, client })) return null;
+  if (!devis.signature || devis.signature_data || devis.travaux_urgents) return null;
+  const jour = jourParis(devis.signature_date || devis.signatureDate || '');
+  if (!jour) return null;
+  const [a, m, j] = jour.split('-').map(Number);
+  const septieme = new Date(Date.UTC(a, m - 1, j + 7));
+  const fin = premierJourOuvrable(septieme);
+  const possibleLe = jourIso(new Date(fin.getTime() + 86400000));
+  return jourParis(maintenant) < possibleLe ? { possibleLe, reporte: fin.getTime() !== septieme.getTime() } : null;
+}
+
+/** Le jour (AAAA-MM-JJ) à partir duquel un paiement est possible, ou null (voir delaiSeptJours). */
+export function paiementPossibleLe(p = {}) {
+  return delaiSeptJours(p)?.possibleLe || null;
+}
+
+/**
+ * Explication à l'artisan (texte juriste-btp du 17 oct. 2026). Reçoit le résultat de delaiSeptJours (ou une date
+ * seule). Cite les formes de paiement que l'artisan croit permises (chèque non encaissé, virement).
+ */
+export function raisonSeptJours(delai) {
+  const d = typeof delai === 'string' ? { possibleLe: delai, reporte: false } : delai;
+  if (!d?.possibleLe) return '';
+  const [a, m, j] = d.possibleLe.split('-');
+  return `Devis signé sur place par un client particulier : n'acceptez aucun paiement avant le ${j}/${m}/${a}, ni acompte, ni chèque (même non encaissé), ni virement. Un contrat signé hors de vos locaux interdit tout paiement pendant les sept jours qui suivent la signature${d.reporte ? ', délai reporté au premier jour ouvrable s\'il finit un samedi, un dimanche ou un jour férié' : ''} (article L221-10 du Code de la consommation).`;
+}
+
 /** Réparation urgente (L221-28, 8°), en tête de l'avis. Rédaction libre. */
 const URGENCE = 'Dépannage urgent : vous avez expressément demandé que ces travaux de réparation soient réalisés en urgence à votre domicile. Pour les pièces de rechange et les travaux strictement nécessaires pour répondre à l\'urgence, vous ne bénéficiez pas du droit de rétractation (article L221-28, 8° du Code de la consommation).';
 

@@ -17,6 +17,11 @@
  *     un seul accusé (réservé par une mise à jour conditionnelle de retractation_accuse_le, rendu si l'envoi
  *     échoue) ; plafond quotidien d'envois du compte de l'artisan (reserver_envoi_email, 077) ; textes dans
  *     retractation.ts.
+ *   Appelée aussi par l'artisan (bouton « Envoyer l'accusé », fiche du devis) et, toutes les 10 minutes, par le
+ *   job pg_cron « accuses-retractation » (migration 089) pour les accusés que la page du client n'a pas pu
+ *   envoyer. Le job n'envoie pas de jeton : déployer SANS vérification de jeton (la sécurité repose sur le lien de
+ *   signature, pas sur la clé publique) :
+ *     npx supabase functions deploy notify-signature --no-verify-jwt --project-ref kofsbgxkrmryfetevetn
  */
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';

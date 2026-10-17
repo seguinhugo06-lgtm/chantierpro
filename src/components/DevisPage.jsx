@@ -61,7 +61,7 @@ import { totauxDocument, lignesTotauxHtml, lignesAcompteHtml, calculerTotaux } f
 import { lignesFactureAcompte, lignesFactureSolde } from '../lib/facturation';
 import { verifierNouvelleFacture, pourcentageAcompteValide, peutModifierDocument, peutSupprimerDocument, estEntierementFacture, dejaFactureTTC, montantCredite } from '../lib/gardeFacturation';
 import { DEFAULT_PENALTY_RATE, estClientPro } from '../lib/relanceUtils';
-import { blocRetractationHtml, estConcerneParRetractation, lienRetractationEnLigne, mentionsSignatureClientHtml } from '../lib/retractation';
+import { blocRetractationHtml, estConcerneParRetractation, lienRetractationEnLigne, mentionsSignatureClientHtml, delaiSeptJours, raisonSeptJours } from '../lib/retractation';
 import { soldeDe, texteCourt, telInternational } from '../lib/messageRelance';
 import { useDebounce } from '../hooks/useDebounce';
 import { useDevisModals } from '../hooks/useDevisModals';
@@ -1298,8 +1298,20 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   };
   // Vérifiée sur TOUS les documents (et non sur l'écran au moment du clic) : déjà facturé, dépassement du
   // devis, montant nul ou négatif, devis sans client, mélange avec les situations (src/lib/gardeFacturation.js).
+  // Pas de paiement dans les sept jours d'une signature sur place chez un particulier (C. conso. L221-10, tâche
+  // sept-jours) : pour un devis, ou une facture tirée d'un tel devis. Rend { possibleLe, reporte }, ou null.
+  const septJoursDe = (doc) => {
+    if (!doc) return null;
+    const source = doc.type === 'facture' ? devis.find(d => d.id === doc.devis_source_id) : (devis.find(d => d.id === doc.id) || doc);
+    if (!source) return null;
+    return delaiSeptJours({ devis: source, client: clients.find(c => c.id === source.client_id) });
+  };
+
   const facturationAutorisee = (nature, montantTTC) => {
     const source = devis.find(d => d.id === selected?.id) || selected;
+    // Acompte et étape d'échéancier : une demande de paiement, interdite pendant les sept jours
+    const septJours = ['acompte', 'etape'].includes(nature) ? septJoursDe(source) : null;
+    if (septJours) { showToast(raisonSeptJours(septJours), 'error'); return false; }
     const v = verifierNouvelleFacture(source, devis, { nature, montantTTC });
     if (!v.ok) showToast(v.raison, 'error');
     return v.ok;
@@ -1485,7 +1497,9 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     const label = allAcomptes.length > 0 ? `Facturer le solde de ${montant}` : `Créer la facture complète de ${montant}`;
     const ok = await confirm({
       title: allAcomptes.length > 0 ? 'Facturer le solde ?' : 'Créer la facture complète ?',
-      message: `${label} pour ${clientName}. Cette action est irréversible.`
+      // Pendant les sept jours (L221-10), la facture peut être émise mais ne doit réclamer aucun paiement (L242-7 :
+      // « exiger ») : l'artisan le lit avant de créer (palliatif, relecture juriste-btp du 17 oct. 2026)
+      message: `${label} pour ${clientName}. Cette action est irréversible.${septJoursDe(selected) ? `\n\n${raisonSeptJours(septJoursDe(selected))}` : ''}`
     });
     if (!ok) return;
     await createSolde();
@@ -3561,7 +3575,12 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                   (l'ancien message « limité à 30 % par la loi, art. L. 214-1 » était faux). Le devis signé fait foi
                   (C. civ. art. 1103) ; chez un particulier, contrat signé hors établissement : aucun paiement avant
                   7 jours (C. conso. art. L221-10), sauf dépannage urgent demandé par le client. */}
-              {Number(selected.acompte_pct) > 0 && Number(acomptePct) > Number(selected.acompte_pct) ? (
+              {septJoursDe(selected) ? (
+                <div role="alert" data-ui="AcompteSeptJours" className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4 text-xs text-amber-800 flex items-start gap-2">
+                  <AlertTriangle size={14} className="flex-shrink-0 mt-0.5" />
+                  <span>{raisonSeptJours(septJoursDe(selected))}</span>
+                </div>
+              ) : Number(selected.acompte_pct) > 0 && Number(acomptePct) > Number(selected.acompte_pct) ? (
                 <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4 text-xs text-amber-800 flex items-center gap-2">
                   <AlertTriangle size={14} className="flex-shrink-0" />
                   <span>Le devis signé prévoit un acompte de {pourcent(Number(selected.acompte_pct))} : en facturer davantage demande l'accord du client.</span>
@@ -3577,7 +3596,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
               )}
               <div className="flex gap-3">
                 <button onClick={() => setShowAcompteModal(false)} className="flex-1 px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-xl flex items-center justify-center gap-1.5 min-h-[44px] transition-colors"><X size={16} />Annuler</button>
-                <button onClick={createAcompte} disabled={facturationEnCours || !pourcentageAcompteValide(acomptePct)} className="flex-1 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white rounded-xl flex items-center justify-center gap-1.5 min-h-[44px] transition-colors font-semibold">
+                <button onClick={createAcompte} disabled={facturationEnCours || !pourcentageAcompteValide(acomptePct) || !!septJoursDe(selected)} className="flex-1 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white rounded-xl flex items-center justify-center gap-1.5 min-h-[44px] transition-colors font-semibold">
                   {acomptePct > 30 ? <AlertTriangle size={16} /> : <Check size={16} />}
                   {facturationEnCours ? 'Facturation…' : `Facturer ${pourcentageAcompteValide(acomptePct) ? formatMoney(ttcAcompte(acomptePct)) : ''}`}
                 </button>
@@ -4087,6 +4106,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           client={selected ? clients.find(c => c.id === selected.client_id) : null}
           entreprise={entreprise}
           resteDu={selected?.type === 'facture' ? resteAPayer(selected, paiements) : undefined}
+          paiementBloque={raisonSeptJours(septJoursDe(selected))}
           // Avant : un rappel que le module n'appelait jamais — le paiement saisi n'était pas enregistré
           onPaymentCreated={handlePaymentCreated}
           isDark={isDark}
@@ -5437,6 +5457,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         client={selected ? clients.find(c => c.id === selected.client_id) : null}
         entreprise={entreprise}
         resteDu={selected?.type === 'facture' ? resteAPayer(selected, paiements) : undefined}
+        paiementBloque={raisonSeptJours(septJoursDe(selected))}
         onPaymentCreated={handlePaymentCreated}
         isDark={isDark}
         couleur={couleur}

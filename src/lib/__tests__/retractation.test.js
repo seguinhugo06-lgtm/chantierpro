@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   blocRetractationHtml, dateHeureParis, delaiRetractationDevis, estClientParticulier, estConcerneParRetractation,
   finDelaiRetractation, jourParis, lienRetractationEnLigne, mentionsSignatureClientHtml, paques, DEMANDE_EXPRESSE,
+  paiementPossibleLe, raisonSeptJours, delaiSeptJours,
 } from '../retractation';
 
 // Mêmes cas que le banc de la migration 086 (fin_delai_retractation, côté base).
@@ -137,5 +138,50 @@ describe('textes imprimés (annexes R221-3 et R221-1, mot pour mot)', () => {
     expect(m).toContain(DEMANDE_EXPRESSE.replace(/'/g, '&#39;'));
     expect(m).toContain('recueillie le 12/10/2026 à 14 h 32 (heure de Paris) lors de la signature en ligne');
     expect(m).toContain('ces travaux de dépannage sont réalisés en urgence à mon domicile');
+  });
+});
+
+// Tâche sept-jours : aucun paiement dans les 7 jours d'une signature sur place chez un particulier (L221-10).
+describe('paiement possible à partir du 8e jour (L221-10)', () => {
+  const particulier = { categorie: 'Particulier' };
+  const surPlace = { type: 'devis', signature: 'data:image/png;base64,AA==', signatureDate: '2026-10-16T14:30:00Z' };
+  const a = (jour) => new Date(`${jour}T10:00:00Z`);
+
+  it('signé sur place le 16 : rien avant le 24, plus d\'interdiction le 24', () => {
+    expect(paiementPossibleLe({ devis: surPlace, client: particulier, maintenant: a('2026-10-16') })).toBe('2026-10-24');
+    expect(paiementPossibleLe({ devis: surPlace, client: particulier, maintenant: a('2026-10-23') })).toBe('2026-10-24');
+    expect(paiementPossibleLe({ devis: surPlace, client: particulier, maintenant: a('2026-10-24') })).toBeNull();
+  });
+  it('signature tard le soir : le jour de Paris compte (23 h 30 à Paris le 16 = 21 h 30 UTC)', () => {
+    const tard = { ...surPlace, signatureDate: '2026-10-16T21:30:00Z' };
+    expect(paiementPossibleLe({ devis: tard, client: particulier, maintenant: a('2026-10-17') })).toBe('2026-10-24');
+  });
+  it('ne concerne ni un professionnel, ni une signature par le lien, ni un dépannage urgent, ni un devis non signé', () => {
+    const maintenant = a('2026-10-17');
+    expect(paiementPossibleLe({ devis: surPlace, client: { categorie: 'Professionnel' }, maintenant })).toBeNull();
+    expect(paiementPossibleLe({ devis: { type: 'devis', signature_data: 'x', signature_date: '2026-10-16T14:30:00Z' }, client: particulier, maintenant })).toBeNull();
+    expect(paiementPossibleLe({ devis: { ...surPlace, travaux_urgents: true }, client: particulier, maintenant })).toBeNull();
+    expect(paiementPossibleLe({ devis: { type: 'devis' }, client: particulier, maintenant })).toBeNull();
+  });
+  it('la demande expresse de commencer ne lève pas l\'interdiction', () => {
+    expect(paiementPossibleLe({ devis: { ...surPlace, execution_anticipee_le: '2026-10-16T14:30:00Z' }, client: particulier, maintenant: a('2026-10-17') })).toBe('2026-10-24');
+  });
+  it('explique la date à l\'artisan, et le report quand il a lieu', () => {
+    expect(raisonSeptJours('2026-10-24')).toMatch(/n'acceptez aucun paiement avant le 24\/10\/2026, ni acompte, ni chèque .*L221-10/);
+    expect(raisonSeptJours('2026-10-24')).not.toMatch(/reporté/);
+    expect(raisonSeptJours({ possibleLe: '2026-10-27', reporte: true })).toMatch(/délai reporté au premier jour ouvrable/);
+    expect(raisonSeptJours(null)).toBe('');
+  });
+  // Relecture juriste-btp du 17 oct. 2026 : 7e jour un samedi, un dimanche ou un jour férié → premier jour ouvrable
+  // (C. proc. civ. art. 642), paiement possible le lendemain
+  it.each([
+    ['2026-10-17T10:00:00Z', '2026-10-25', '2026-10-27', true, '7e jour samedi 24/10 → lundi 26'],
+    ['2026-10-24T10:00:00Z', '2026-11-01', '2026-11-03', true, '7e jour samedi 31/10, puis 1er novembre férié → lundi 2'],
+    ['2026-11-04T10:00:00Z', '2026-11-12', '2026-11-13', true, '7e jour 11 novembre férié → jeudi 12'],
+    ['2026-10-16T10:00:00Z', '2026-10-23', '2026-10-24', false, '7e jour vendredi 23/10 : pas de report'],
+  ])('signé le %s, vu le %s : paiement possible le %s (%s)', (signe, vu, possible, reporte) => {
+    const d = delaiSeptJours({ devis: { ...surPlace, signatureDate: signe }, client: particulier, maintenant: a(vu) });
+    expect(d).toEqual({ possibleLe: possible, reporte });
+    expect(paiementPossibleLe({ devis: { ...surPlace, signatureDate: signe }, client: particulier, maintenant: a(possible) })).toBeNull();
   });
 });

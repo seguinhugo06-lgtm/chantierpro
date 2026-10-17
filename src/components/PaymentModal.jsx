@@ -70,6 +70,9 @@ export default function PaymentModal({
   entreprise,
   onPaymentCreated,
   resteDu,
+  // Raison d'une interdiction de paiement en cours (sept jours après une signature sur place, L221-10) : rien ne
+  // s'enregistre ni ne se demande tant qu'elle dure (tâche sept-jours)
+  paiementBloque = '',
   isDark,
   couleur
 }) {
@@ -161,7 +164,7 @@ export default function PaymentModal({
   /** Confirm offline payment — marks facture as paid */
   const handleConfirmOffline = () => {
     const montant = lireMontant(offlineAmount) || du;
-    if (montant <= 0) return;
+    if (montant <= 0 || paiementBloque) return;
 
     onPaymentCreated?.({
       amount: montant,
@@ -467,6 +470,13 @@ export default function PaymentModal({
                 </div>
               )}
 
+              {paiementBloque && (
+                <div role="alert" data-ui="PaiementSeptJours" className={`rounded-xl p-3 mb-4 flex items-start gap-2 ${isDark ? 'bg-amber-900/30 border border-amber-800' : 'bg-amber-50 border border-amber-200'}`}>
+                  <AlertTriangle size={16} className="flex-shrink-0 mt-0.5 text-amber-600" />
+                  <p className={`text-xs ${isDark ? 'text-amber-200' : 'text-amber-800'}`}>{paiementBloque}</p>
+                </div>
+              )}
+
               {/* Error message */}
               {error && (
                 <div className={`rounded-xl p-3 mb-4 flex items-start gap-2 ${isDark ? 'bg-red-900/30 border border-red-800' : 'bg-red-50 border border-red-200'}`}>
@@ -479,7 +489,7 @@ export default function PaymentModal({
               {paymentType === 'offline' ? (
                 <button
                   onClick={handleConfirmOffline}
-                  disabled={(parseFloat(offlineAmount) || 0) <= 0}
+                  disabled={(parseFloat(offlineAmount) || 0) <= 0 || !!paiementBloque}
                   className="w-full py-4 text-white rounded-xl font-semibold flex items-center justify-center gap-2 disabled:opacity-50 transition-all hover:shadow-lg bg-emerald-500 hover:bg-emerald-600"
                 >
                   <Check size={20} />
@@ -488,7 +498,7 @@ export default function PaymentModal({
               ) : (
                 <button
                   onClick={handleGenerateLink}
-                  disabled={loading || amount <= 0}
+                  disabled={loading || amount <= 0 || !!paiementBloque}
                   className="w-full py-4 text-white rounded-xl font-medium flex items-center justify-center gap-2 disabled:opacity-50 transition-all hover:shadow-lg"
                   style={{ background: couleur }}
                 >

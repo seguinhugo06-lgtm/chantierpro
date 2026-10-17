@@ -145,4 +145,59 @@ module.exports = [
       verifier(/Annulée/.test(await texte(page)), 'la facture est « Annulée »');
     },
   },
+  {
+    // Tâche sept-jours : devis signé sur place (pavé de l'app) aujourd'hui chez un particulier (c1, sans catégorie
+    // ni entreprise) : aucun acompte ni paiement enregistré avant le 8e jour (C. conso. L221-10).
+    nom: 'signé sur place chez un particulier aujourd’hui : ni acompte ni paiement avant le 8e jour (375 px)',
+    async executer({ ouvrir, cliquer, attendre, verifier }) {
+      const signeLe = new Date().toISOString();
+      // Date annoncée : le 8e jour, ou 1 à 3 jours plus tard si le 7e tombe un samedi, un dimanche ou un jour férié
+      const dateAnnonceeValide = (texte) => {
+        const m = texte.match(/avant le (\d{2})\/(\d{2})\/(\d{4})/);
+        if (!m) return false;
+        const ecart = Math.round((Date.UTC(+m[3], +m[2] - 1, +m[1]) - Date.UTC(...new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Paris' }).split('-').map((x, i) => (i === 1 ? +x - 1 : +x)))) / 864e5);
+        return ecart >= 8 && ecart <= 11;
+      };
+      const surPlace = { ...DEVIS_SIGNE, id: 'd-sept-jours', numero: 'DEV-2026-00097', signature: 'data:image/png;base64,AA==', signataire: 'Marie Dupont', signatureDate: signeLe };
+      // Second devis signé sur place, déjà facturé : sa facture ne s'encaisse pas non plus pendant les sept jours
+      const surPlaceFacture = { ...surPlace, id: 'd-sept-jours-2', numero: 'DEV-2026-00098' };
+      const facture = { ...FACTURE_EMISE, id: 'f-sept-jours', numero: 'FAC-2026-00097', devis_source_id: 'd-sept-jours-2' };
+      const { page } = await ouvrir({ page: 'devis', largeur: 375, avantChargement: await demoAvec([surPlace, surPlaceFacture, facture]) });
+      await attendre(800);
+      verifier(await ouvrirDocument(page, 'DEV-2026-00097'), 'le devis signé sur place est dans la liste');
+      await attendre(800);
+      await cliquer(page, 'Facturer');
+      await attendre(600);
+      const fenetre = await page.evaluate(() => ({
+        raison: document.querySelector('[data-ui="AcompteSeptJours"]')?.innerText || '',
+        bouton: [...document.querySelectorAll('button')].find((x) => /^Facturer\s.*€/.test(x.innerText.trim()))?.disabled ?? null,
+      }));
+      verifier(/n'acceptez aucun paiement avant le/.test(fenetre.raison) && dateAnnonceeValide(fenetre.raison) && /L221-10/.test(fenetre.raison),
+        `la fenêtre d’acompte dit pourquoi et jusqu’à quand (${fenetre.raison.slice(0, 120)})`);
+      verifier(fenetre.bouton === true, '« Facturer » est désactivé');
+      const { devis = [] } = await documentsEnregistres(page);
+      verifier(!devis.some((d) => d.devis_source_id === 'd-sept-jours' && d.facture_type === 'acompte'), 'aucune facture d’acompte créée');
+
+      await page.keyboard.press('Escape');
+      await attendre(300);
+      await page.evaluate(() => [...document.querySelectorAll('button')].find((b) => /Annuler/.test(b.innerText))?.click());
+      await attendre(300);
+      await cliquer(page, 'Retour à la liste');
+      await attendre(600);
+      await page.evaluate(() => [...document.querySelectorAll('button')].find((b) => b.innerText.trim() === 'Factures')?.click());
+      await attendre(600);
+      verifier(await ouvrirDocument(page, 'FAC-2026-00097'), 'la facture tirée de ce devis est dans la liste');
+      await attendre(800);
+      await cliquer(page, 'Encaisser');
+      await attendre(600);
+      const encaisser = await page.evaluate(() => ({
+        raison: document.querySelector('[data-ui="PaiementSeptJours"]')?.innerText || '',
+        bouton: [...document.querySelectorAll('button')].find((x) => /^Confirmer le paiement/.test(x.innerText.trim()))?.disabled ?? null,
+      }));
+      verifier(/n'acceptez aucun paiement avant le/.test(encaisser.raison) && encaisser.bouton === true,
+        `« Encaisser » explique et n’enregistre rien (${encaisser.raison.slice(0, 80)} ; bouton désactivé : ${encaisser.bouton})`);
+      const apres = await documentsEnregistres(page);
+      verifier(!(apres.paiements || []).some((x) => x.facture_id === 'f-sept-jours' || x.devisId === 'f-sept-jours'), 'aucun paiement enregistré');
+    },
+  },
 ];
