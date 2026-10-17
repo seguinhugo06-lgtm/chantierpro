@@ -162,7 +162,7 @@ Bloque : rien
 
 ### Q-penalites-particulier · Quelles conditions de retard imprimer sur un devis ou une facture de particulier ?
 Contexte : Tous les devis et factures impriment « Taux de la BCE majoré de 10 points (art. L441-10 C. com.) » et l'indemnité de 40 € « due entre professionnels ». L441-10 ne vise que les débiteurs professionnels ; pour un particulier, ce sont les intérêts au taux légal à compter de la mise en demeure (C. civ. art. 1231-6). Retirer une mention demande une décision (relecture juriste-btp du 17 oct. 2026, C5).
-Option `adapter` : pour un client particulier, « Retard de paiement — Intérêts au taux légal à compter de la mise en demeure (art. 1231-6 du Code civil). », sans la ligne des 40 € ; inchangé pour un professionnel — chaque document dit la règle qui s'applique à son client.
+Option `adapter` : pour un client particulier, « Retard de paiement : intérêts au taux légal à compter de la mise en demeure (art. 1231-6 du Code civil) », sans la ligne des 40 € ; inchangé pour un professionnel — chaque document dit la règle qui s'applique à son client.
 Option `garder` : la même mention pour tous — rien ne change ; un particulier lit des pénalités qui ne le visent pas.
 Recommandation : `adapter` — la fiche client sait déjà si c'est un particulier (`estClientParticulier`), et les relances suivent déjà cette règle.
 Irréversible : non
