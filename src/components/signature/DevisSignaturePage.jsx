@@ -32,6 +32,8 @@ export default function DevisSignaturePage({ signatureToken }) {
   const [isEmpty, setIsEmpty] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [telechargementEchoue, setTelechargementEchoue] = useState(false);
+  // Exemplaire signé envoyé par e-mail au client (L221-13, tâche confirmation-client) : '', envoi, ok, erreur
+  const [exemplaire, setExemplaire] = useState('');
   const sigPad = useRef(null);
 
   const couleur = devisData?.entreprise?.couleur || '#f97316';
@@ -124,6 +126,40 @@ export default function DevisSignaturePage({ signatureToken }) {
     }
   };
 
+  // Le PDF du devis signé, tel que le client le télécharge et le reçoit (src/lib/pdfDepuisHtml.js, sans script)
+  const pdfDuDevisSigne = async (devisSigne) => {
+    const html = buildDevisHtml({
+      doc: devisSigne,
+      client: devisData.client,
+      chantier: devisData.chantier || null,
+      entreprise: devisData.entreprise,
+      couleur,
+      mode: 'client',
+      signatureToken,
+    });
+    const { pdfDepuisHtml } = await import('../../lib/pdfDepuisHtml');
+    return pdfDepuisHtml(html);
+  };
+
+  // Juste après la signature : le PDF part à l'adresse de la fiche du client (le serveur la lit en base, vérifie le
+  // PDF et n'en envoie qu'un). Le téléchargement reste proposé quoi qu'il arrive.
+  const envoyerExemplaire = async (devisSigne) => {
+    setExemplaire('envoi');
+    try {
+      const octets = await pdfDuDevisSigne(devisSigne);
+      let binaire = '';
+      for (let i = 0; i < octets.length; i += 0x8000) binaire += String.fromCharCode.apply(null, octets.subarray(i, i + 0x8000));
+      const { data, error: e } = await supabase.functions.invoke('notify-signature', {
+        body: { token: signatureToken, evenement: 'exemplaire', pdf: btoa(binaire) },
+      });
+      if (e || !data?.success) throw new Error(data?.error || e?.message || 'exemplaire non envoyé');
+      setExemplaire('ok');
+    } catch (err) {
+      captureException(err, { context: 'exemplaire signé envoyé au client (page de signature)' });
+      setExemplaire('erreur');
+    }
+  };
+
   // Submit signature
   const handleSign = async () => {
     if (!sigPad.current || submitting) return;
@@ -151,17 +187,18 @@ export default function DevisSignaturePage({ signatureToken }) {
         setTitreErreur('Signature non enregistrée');
         setError(data?.error || 'Erreur lors de la signature. Veuillez réessayer.');
       } else {
-        // Update local devis data with signature info for PDF download
-        setDevisData(prev => ({
-          ...prev,
-          devis: {
-            ...prev.devis,
-            signature_data: signatureImage,
-            signature_date: new Date().toISOString(),
-            signataire_nom: signataire.trim()
-          }
-        }));
+        // Le devis tel qu'il vient d'être signé : pour le PDF téléchargé et l'exemplaire envoyé
+        const maintenant = new Date().toISOString();
+        const devisSigne = {
+          ...devisData.devis,
+          signature_data: signatureImage,
+          signature_date: maintenant,
+          signataire_nom: signataire.trim(),
+          ...(estClientParticulier(devisData?.client) && executionAnticipee ? { execution_anticipee_le: maintenant } : {}),
+        };
+        setDevisData(prev => ({ ...prev, devis: devisSigne }));
         setStep('success');
+        envoyerExemplaire(devisSigne);
         relireSigne().catch((err) => captureException(err, { context: 'Rétractation en ligne : relecture après signature' }));
         // Notifier l'artisan par email (fire-and-forget — l'échec ne doit pas
         // gêner le client qui vient de signer)
@@ -287,29 +324,25 @@ export default function DevisSignaturePage({ signatureToken }) {
             </div>
           </div>
 
+          {exemplaire && (
+            <p role="status" data-ui="ExemplaireEnvoye" className="text-sm text-slate-600 mb-4">
+              {exemplaire === 'envoi' && 'Envoi de votre exemplaire signé par e-mail…'}
+              {exemplaire === 'ok' && (client?.email
+                ? `Votre exemplaire signé vous a été envoyé par e-mail, à l'adresse ${client.email}. Conservez-le. Si cette adresse n'est pas la vôtre, téléchargez-le ci-dessous et prévenez l'entreprise.`
+                : 'Votre exemplaire signé vous a été envoyé par e-mail. Conservez-le.')}
+              {exemplaire === 'erreur' && 'Votre exemplaire n\'a pas pu vous être envoyé par e-mail : téléchargez-le ci-dessous et conservez-le.'}
+            </p>
+          )}
+
           {/* Download signed PDF button */}
           <button
             onClick={async () => {
               setTelechargementEchoue(false);
-              const signedHtml = buildDevisHtml({
-                doc: {
-                  ...devis,
-                  signature_data: devis.signature_data,
-                  signature_date: devis.signature_date,
-                  signataire_nom: devis.signataire_nom
-                },
-                client,
-                chantier: devisData.chantier || null,
-                entreprise,
-                couleur,
-                mode: 'client',
-                signatureToken,
-              });
               // Un vrai PDF, rendu sans script (src/lib/pdfDepuisHtml.js). Avant : une fenêtre à l'origine du site
               // où le document était écrit par document.write (relecture gardien-securite du 10 oct. 2026).
               try {
-                const [{ pdfDepuisHtml }, { remettreFichier }] = await Promise.all([import('../../lib/pdfDepuisHtml'), import('../../lib/natif')]);
-                const octets = await pdfDepuisHtml(signedHtml);
+                const { remettreFichier } = await import('../../lib/natif');
+                const octets = await pdfDuDevisSigne(devis);
                 await remettreFichier(new Blob([octets], { type: 'application/pdf' }), `Devis_${devis.numero || 'signe'}.pdf`, 'application/pdf', { titre: `Devis ${devis.numero || ''} signé` });
               } catch (err) {
                 captureException(err, { context: 'PDF du devis signé (page de signature)' });

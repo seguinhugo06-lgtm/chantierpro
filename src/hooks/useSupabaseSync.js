@@ -227,6 +227,11 @@ export const FIELD_MAPPINGS = {
         // rétractation (retractation_*) n'est jamais écrite par l'app : la base la refuse (déclencheur).
         ...(item.execution_anticipee_le ? { execution_anticipee_le: item.execution_anticipee_le } : {}),
         travaux_urgents: item.travaux_urgents === true,
+        // Exemplaire signé envoyé au client (migration 090) : seulement s'il existe, pour qu'une copie périmée
+        // n'efface jamais la date posée par le serveur
+        ...(item.exemplaire_client_le ? { exemplaire_client_le: item.exemplaire_client_le } : {}),
+        // Accord du client pour l'exemplaire par e-mail : écrit avec la signature sur place, jamais effacé (090)
+        ...(item.exemplaire_email_accepte_le ? { exemplaire_email_accepte_le: item.exemplaire_email_accepte_le } : {}),
         // Facture-specific fields
         facture_type: item.facture_type || null,
         devis_source_id: item.devis_source_id || null,
@@ -298,6 +303,8 @@ export const FIELD_MAPPINGS = {
       avis_retractation: row.avis_retractation === true,
       retractation_en_ligne: row.retractation_en_ligne === true,
       retractation_le: row.retractation_le || null,
+      exemplaire_client_le: row.exemplaire_client_le || null,
+      exemplaire_email_accepte_le: row.exemplaire_email_accepte_le || null,
       retractation_nom: row.retractation_nom || null,
       retractation_email: row.retractation_email || null,
       retractation_accuse_le: row.retractation_accuse_le || null,

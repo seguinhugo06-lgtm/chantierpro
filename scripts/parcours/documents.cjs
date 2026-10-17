@@ -147,9 +147,11 @@ module.exports = [
         entreprise: { nom: 'Élec du Sud', forme_juridique: 'SARL', siret: '12345678900012', adresse: '3 rue des Lilas\n33000 Bordeaux', telephone: '06 00 00 00 00', email: 'contact@elec.fr', couleur: '#f97316' },
       };
       let appelSignature = null;
+      const appelsNotify = [];
       const { page } = await ouvrir({ reel: true, largeur: 390, supabase: (req, u) => {
         if (u.pathname === '/rest/v1/rpc/get_devis_for_signature') return json(reponse);
         if (u.pathname === '/rest/v1/rpc/sign_devis') { appelSignature = JSON.parse(req.postData() || '{}'); return json({ success: true, devis_id: 'd-086' }); }
+        if (u.pathname === '/functions/v1/notify-signature') { appelsNotify.push(JSON.parse(req.postData() || '{}')); return json({ success: true }); }
         return json({});
       } });
       await page.goto(`${ORIGIN}/devis/signer/${jeton}`, { waitUntil: 'networkidle0' });
@@ -190,6 +192,14 @@ module.exports = [
       await attendre(1200);
       verifier(appelSignature && appelSignature.p_execution_anticipee === true && appelSignature.p_avis_retractation === true,
         `la signature transmet la demande expresse et l’avis montré (${JSON.stringify(appelSignature && { e: appelSignature.p_execution_anticipee, a: appelSignature.p_avis_retractation })})`);
+      // Tâche confirmation-client : l'exemplaire signé (vrai PDF) part au client, par le serveur ; la page le dit
+      for (let i = 0; i < 20 && !appelsNotify.some((a) => a.evenement === 'exemplaire'); i++) await attendre(500);
+      const exemplaire = appelsNotify.find((a) => a.evenement === 'exemplaire');
+      verifier(exemplaire && exemplaire.token === jeton && /^JVBER/.test(exemplaire.pdf || '') && !exemplaire.email && !exemplaire.to,
+        `exemplaire envoyé : jeton, PDF (${exemplaire ? `${Math.round((exemplaire.pdf || '').length / 1024)} Ko en base64` : 'aucun appel'}), aucune adresse fournie par la page`);
+      await attendre(500);
+      const message = await page.evaluate(() => document.querySelector('[data-ui="ExemplaireEnvoye"]')?.innerText || '');
+      verifier(/vous a été envoyé par e-mail/.test(message), `la page dit que l’exemplaire est parti (${message})`);
     },
   },
   {

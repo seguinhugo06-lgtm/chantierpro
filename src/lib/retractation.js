@@ -261,5 +261,9 @@ export function mentionsSignatureClientHtml(doc) {
   if (doc?.execution_anticipee_le) {
     blocs.push(`<div style="font-size:7.5pt;color:#334155;margin-top:6px"><strong>Demande expresse du client</strong> (art. L221-25 du Code de la consommation) : « ${h(DEMANDE_EXPRESSE)} » — recueillie le ${h(dateHeureParis(doc.execution_anticipee_le))} (heure de Paris)${doc.signature_data ? ' lors de la signature en ligne' : ' lors de la signature sur place'}.</div>`);
   }
+  // Accord du client pour recevoir son exemplaire par e-mail (L221-9), donné à la signature sur place (migration 090)
+  if (doc?.exemplaire_email_accepte_le) {
+    blocs.push(`<div style="font-size:7.5pt;color:#334155;margin-top:6px">Le client a accepté de recevoir son exemplaire par e-mail (art. L221-9 du Code de la consommation) — le ${h(dateHeureParis(doc.exemplaire_email_accepte_le))} (heure de Paris).</div>`);
+  }
   return blocs.join('');
 }

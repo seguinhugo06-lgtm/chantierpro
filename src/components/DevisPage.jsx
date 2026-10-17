@@ -110,6 +110,8 @@ import { FONCTIONS } from '../lib/fonctions';
 import { jourLocal, dateLue } from '../lib/dates';
 import { signatureDuClient } from '../lib/signatureDocument';
 import RetractationDevis from './devis/RetractationDevis';
+import ExemplaireSigne from './devis/ExemplaireSigne';
+import { messageExemplaire, nomFichierExemplaire } from '../../supabase/functions/notify-signature/exemplaire.ts';
 import { finValidite, joursRestants, estExpire } from '../lib/validiteDevis';
 import { createPortal } from 'react-dom';
 
@@ -1033,16 +1035,28 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   const saveSignature = () => { if (!selected) return; onUpdate(selected.id, { signature: canvasRef.current?.toDataURL() || 'signed', signataire: signataireName || '', signatureDate: new Date().toISOString(), statut: 'accepte' }); setMode('list'); setSelected(null); setSignataireName(''); setSnackbar({ type: 'success', message: 'Devis signé et accepté !' }); };
 
   // New signature pad handler (react-signature-canvas)
-  const handleSignatureSave = (signatureData) => {
+  const handleSignatureSave = async (signatureData) => {
     if (!selected) return;
-    onUpdate(selected.id, {
+    // Demande expresse recueillie avec la signature sur place (L221-25) : posée dans la même écriture que la
+    // signature (après, la base la refuse, migration 086)
+    const signe = {
       signature: signatureData.signature,
       signatureDate: signatureData.signatureDate,
       signataire: signatureData.signataire,
-      statut: 'accepte'
-    });
-    setSelected(s => ({ ...s, signature: signatureData.signature, signatureDate: signatureData.signatureDate, statut: 'accepte' }));
-    setSnackbar({ type: 'success', message: 'Devis signé et accepté ✓' });
+      statut: 'accepte',
+      ...(signatureData.executionAnticipee ? { execution_anticipee_le: signatureData.signatureDate } : {}),
+      // Accord du client pour recevoir son exemplaire par e-mail (L221-9), conservé avec la signature (090)
+      ...(signatureData.exemplaireParEmail ? { exemplaire_email_accepte_le: signatureData.signatureDate } : {}),
+    };
+    const enregistre = await onUpdate(selected.id, signe);
+    setSelected(s => ({ ...s, ...signe }));
+    const particulier = estConcerneParRetractation({ doc: selected, client: clients.find(c => c.id === selected.client_id) });
+    // Particulier sans e-mail : l'exemplaire papier est dû tout de suite (L221-9) ; la fiche le rappelle aussi
+    setSnackbar(particulier && !signatureData.exemplaireParEmail
+      ? { type: 'warning', message: 'Devis signé. Remettez maintenant au client son exemplaire daté, imprimé et signé par vous deux (article L221-9 du Code de la consommation).' }
+      : { type: 'success', message: 'Devis signé et accepté ✓' });
+    // Exemplaire signé par e-mail, avec l'accord du client (L221-9) : envoyé aussitôt (tâche confirmation-client)
+    if (signatureData.exemplaireParEmail && enregistre !== false) await envoyerExemplaireSigne({ ...selected, ...signe }, { accordDonne: true });
   };
 
   // Template selection handler
@@ -2207,6 +2221,70 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     // Le message est PRÉPARÉ dans WhatsApp : c'est l'artisan qui l'envoie (avant : « Devis envoyé ! »)
     const clientName = `${client.prenom || ''} ${client.nom || ''}`.trim();
     setShowSendConfirmation({ clientName, montant: doc.total_ttc, canal: 'WhatsApp', doc, prepare: true });
+  };
+
+  // Exemplaire signé envoyé au client par l'artisan (signature sur place, ou envoi de la page en échec) : le PDF
+  // du devis signé, à l'adresse de la fiche du client, avec le même e-mail que celui du serveur (exemplaire.ts ;
+  // C. conso. L221-9, L221-13 ; tâche confirmation-client)
+  const envoyerExemplaireSigne = async (doc, { accordDonne = false } = {}) => {
+    const client = clients.find(c => c.id === doc.client_id);
+    const surPlace = !!doc.signature && !doc.signature_data;
+    const particulier = estConcerneParRetractation({ doc, client });
+    // Hors établissement, l'e-mail suppose l'accord du client (L221-9) : s'il ne l'a pas donné à la signature
+    if (surPlace && particulier && !accordDonne && !doc.exemplaire_email_accepte_le) {
+      const ok = await confirm({
+        title: 'Le client a-t-il accepté l\'e-mail ?',
+        message: 'Le client a-t-il accepté de recevoir son exemplaire par e-mail ? Sinon, remettez-le-lui sur papier signé par vous deux (article L221-9 du Code de la consommation).',
+      });
+      if (!ok) return;
+    }
+    const message = messageExemplaire({
+      devis: doc,
+      pro: { nom: nomImprime(entreprise) || entreprise?.nom, adresse: entreprise?.adresse, telephone: entreprise?.tel || entreprise?.telephone, email: entreprise?.email },
+      client: client || {},
+      particulier,
+      lienRetractation: lienRetractationEnLigne(doc) || '',
+      surPlace,
+      accordEmail: !!doc.exemplaire_email_accepte_le,
+    });
+    if (!message) { showToast('La fiche du client n\'a pas d\'adresse e-mail valide : ajoutez-la pour lui envoyer son exemplaire.', 'error'); return; }
+    const maintenant = new Date().toISOString();
+    if (isDemo || !supabase) {
+      await onUpdate(doc.id, { exemplaire_client_le: maintenant });
+      setSelected(s => s?.id === doc.id ? { ...s, exemplaire_client_le: maintenant } : s);
+      showToast(`Mode démo : envoi simulé à ${message.a} ✓`, 'success');
+      return;
+    }
+    setActionLoading('exemplaire');
+    try {
+      // La page du client a pu l'envoyer entre-temps : relire en base avant d'en envoyer un second
+      const { data: frais } = await supabase.from('devis').select('exemplaire_client_le').eq('id', doc.id).maybeSingle();
+      if (frais?.exemplaire_client_le) {
+        setSelected(s => s?.id === doc.id ? { ...s, exemplaire_client_le: frais.exemplaire_client_le } : s);
+        showToast('L\'exemplaire signé a déjà été envoyé au client.', 'info');
+        return;
+      }
+      await sendDocumentEmail({
+        to: message.a,
+        subject: message.sujet,
+        bodyHtml: message.html,
+        fromName: nomImprime(entreprise) || entreprise?.nom,
+        replyTo: entreprise?.email,
+        pdfHtml: downloadPDF(doc),
+        pdfFilename: nomFichierExemplaire(doc.numero),
+      });
+      const enregistre = await onUpdate(doc.id, { exemplaire_client_le: maintenant });
+      setSelected(s => s?.id === doc.id ? { ...s, exemplaire_client_le: maintenant } : s);
+      if (addEchange) addEchange({ type: 'email', client_id: doc.client_id, devis_id: doc.id, document: doc.numero, montant: doc.total_ttc, objet: `Exemplaire signé ${doc.numero}` });
+      showToast(enregistre
+        ? `Exemplaire signé envoyé à ${message.a} ✓`
+        : `L'exemplaire est parti à ${message.a}, mais la date d'envoi n'a pas été enregistrée : ne le renvoyez pas.`, enregistre ? 'success' : 'error');
+    } catch (e) {
+      captureException(e, { context: 'exemplaire signé envoyé par l\'artisan' });
+      showToast(`Exemplaire non envoyé : ${e?.message || 'erreur inconnue'}`, 'error');
+    } finally {
+      setActionLoading(null);
+    }
   };
 
   const sendEmail = async (doc, emailOverride = null, { relanceDevis = false } = {}) => {
@@ -3393,6 +3471,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
               })()}
               {/* Rétractation du client particulier : reçue, demande expresse, ou date des travaux (migration 086) */}
               <RetractationDevis devis={selected} client={clients.find(c => c.id === selected.client_id)} />
+              {/* Exemplaire signé du client : envoyé, ou à envoyer (migration 090) */}
+              <ExemplaireSigne devis={selected} client={clients.find(c => c.id === selected.client_id)} onEnvoyer={() => envoyerExemplaireSigne(selected)} envoiEnCours={actionLoading === 'exemplaire'} />
 
               {/* Notes */}
               {selected.notes && (

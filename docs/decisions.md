@@ -143,3 +143,11 @@ Option `garder` : il reste dans le plafond — rien ne change ; rare en pratique
 Recommandation : `exempter` — un seul accusé par rétractation, et c'est une obligation de l'artisan.
 Irréversible : non
 Bloque : rien
+
+### Q-exemplaire-lien · Signature par le lien en votre présence : demander l'accord pour l'e-mail ?
+Contexte : Si un client signe par le lien chez lui en votre présence (ou juste après votre visite), le contrat est « hors établissement » (C. conso. L221-1, I, 2°) : son exemplaire est dû sur papier signé par les deux ou, avec son accord, par e-mail (L221-9). Depuis le 17 oct. 2026, la page de signature lui envoie son exemplaire par e-mail sans lui demander cet accord, comme pour un contrat à distance (relecture juriste-btp du 17 oct. 2026 ; même logique que Q-lien-hors-etablissement).
+Option `phrase` : avant la signature, la page annonce « Votre exemplaire signé vous sera envoyé par e-mail, à l'adresse {email}. » — le client est prévenu ; rien ne change pour lui.
+Option `case` : une case « J'accepte de recevoir mon exemplaire par e-mail » sur la page, conservée comme sur place — l'accord se prouve ; une case de plus pour tous les clients.
+Recommandation : `phrase` — la plupart des signatures par le lien sont vraiment à distance, où l'e-mail ne demande pas d'accord.
+Irréversible : non
+Bloque : rien

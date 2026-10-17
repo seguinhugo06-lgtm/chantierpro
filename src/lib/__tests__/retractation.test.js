@@ -139,6 +139,11 @@ describe('textes imprimés (annexes R221-3 et R221-1, mot pour mot)', () => {
     expect(m).toContain('recueillie le 12/10/2026 à 14 h 32 (heure de Paris) lors de la signature en ligne');
     expect(m).toContain('ces travaux de dépannage sont réalisés en urgence à mon domicile');
   });
+
+  it('sous la signature sur place : l’accord du client pour recevoir son exemplaire par e-mail (L221-9)', () => {
+    const m = mentionsSignatureClientHtml({ signature: 'x', exemplaire_email_accepte_le: '2026-10-17T08:15:00Z' });
+    expect(m).toContain('Le client a accepté de recevoir son exemplaire par e-mail (art. L221-9 du Code de la consommation) — le 17/10/2026 à 10 h 15');
+  });
 });
 
 // Tâche sept-jours : aucun paiement dans les 7 jours d'une signature sur place chez un particulier (L221-10).

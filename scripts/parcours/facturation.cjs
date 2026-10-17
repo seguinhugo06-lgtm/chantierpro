@@ -146,6 +146,91 @@ module.exports = [
     },
   },
   {
+    // Tâche confirmation-client : signature sur place chez un particulier (c1, avec adresse e-mail) ; la demande
+    // expresse est recueillie avec la signature, et l'exemplaire part par e-mail avec l'accord du client (démo : simulé)
+    nom: 'signature sur place : demande expresse enregistrée, exemplaire signé envoyé par e-mail avec l’accord du client (375 px)',
+    async executer({ ouvrir, cliquer, attendre, verifier }) {
+      const envoye = { ...DEVIS_SIGNE, id: 'd-sur-place', numero: 'DEV-2026-00099', statut: 'envoye' };
+      const { page } = await ouvrir({ page: 'devis', largeur: 375, avantChargement: await demoAvec([envoye]) });
+      await attendre(800);
+      verifier(await ouvrirDocument(page, 'DEV-2026-00099'), 'le devis envoyé est dans la liste');
+      await attendre(800);
+      await cliquer(page, 'Faire signer');
+      await attendre(600);
+      const cases = await page.evaluate(() => ({
+        demande: !!document.querySelector('[data-ui="DemandeExpresseSurPlace"] input'),
+        exemplaire: document.querySelector('[data-ui="ExemplaireParEmail"]')?.innerText || '',
+      }));
+      verifier(cases.demande && /marie\.dupont@email\.fr/.test(cases.exemplaire), `cases proposées au particulier : demande expresse, exemplaire par e-mail (${cases.exemplaire.slice(0, 70)})`);
+      await page.evaluate(() => [...document.querySelectorAll('[role="dialog"] input[type=checkbox], .fixed input[type=checkbox]')].forEach((c) => c.click()));
+      await attendre(300);
+      await cliquer(page, 'Passer a la signature');
+      await attendre(600);
+      const canevas = await page.$('canvas');
+      const boite = canevas && await canevas.boundingBox();
+      if (boite) {
+        await page.mouse.move(boite.x + 30, boite.y + 40);
+        await page.mouse.down();
+        await page.mouse.move(boite.x + 120, boite.y + 80, { steps: 8 });
+        await page.mouse.move(boite.x + 200, boite.y + 50, { steps: 8 });
+        await page.mouse.up();
+      }
+      await attendre(300);
+      await cliquer(page, 'Valider');
+      await attendre(2000);
+      const { devis = [] } = await documentsEnregistres(page);
+      const d = devis.find((x) => x.id === 'd-sur-place');
+      verifier(d && d.signature && d.statut === 'accepte', `devis signé sur place (${d?.statut})`);
+      verifier(d && d.execution_anticipee_le && d.execution_anticipee_le === d.signatureDate, `demande expresse enregistrée avec la signature (${d?.execution_anticipee_le})`);
+      verifier(d && d.exemplaire_client_le, `exemplaire signé envoyé (démo : simulé) le ${d?.exemplaire_client_le}`);
+      verifier(d && d.exemplaire_email_accepte_le === d.signatureDate, `accord du client pour l’e-mail conservé avec la signature (${d?.exemplaire_email_accepte_le})`);
+      const fiche = await page.evaluate(() => document.querySelector('[data-ui="ExemplaireEnvoye"]')?.innerText || '');
+      verifier(/Exemplaire signé envoyé au client par e-mail le/.test(fiche), `la fiche le dit (${fiche})`);
+    },
+  },
+  {
+    // Relecture juriste-btp du 17 oct. 2026 : signé sur place sans accord pour l'e-mail → rappel persistant de
+    // l'exemplaire papier signé par les deux (L221-9, nullité L242-1), et rien ne part
+    nom: 'signature sur place sans e-mail : la fiche rappelle l’exemplaire papier, rien ne part (375 px)',
+    async executer({ ouvrir, cliquer, attendre, verifier }) {
+      const envoye = { ...DEVIS_SIGNE, id: 'd-sur-place-papier', numero: 'DEV-2026-00100', statut: 'envoye' };
+      const { page } = await ouvrir({ page: 'devis', largeur: 375, avantChargement: await demoAvec([envoye]) });
+      await attendre(800);
+      verifier(await ouvrirDocument(page, 'DEV-2026-00100'), 'le devis envoyé est dans la liste');
+      await attendre(800);
+      await cliquer(page, 'Faire signer');
+      await attendre(600);
+      // Seulement l'acceptation du devis : ni demande expresse, ni e-mail
+      await page.evaluate(() => {
+        const accepte = [...document.querySelectorAll('input[type=checkbox]')].find((c) => /J'accepte ce devis/.test(c.closest('label')?.innerText || ''));
+        accepte?.click();
+      });
+      await attendre(300);
+      await cliquer(page, 'Passer a la signature');
+      await attendre(600);
+      const canevas = await page.$('canvas');
+      const boite = canevas && await canevas.boundingBox();
+      if (boite) {
+        await page.mouse.move(boite.x + 30, boite.y + 40);
+        await page.mouse.down();
+        await page.mouse.move(boite.x + 150, boite.y + 70, { steps: 8 });
+        await page.mouse.up();
+      }
+      await attendre(300);
+      await cliquer(page, 'Valider');
+      await attendre(1500);
+      const { devis = [] } = await documentsEnregistres(page);
+      const d = devis.find((x) => x.id === 'd-sur-place-papier');
+      verifier(d && d.signature && !d.exemplaire_client_le && !d.exemplaire_email_accepte_le, 'signé, aucun exemplaire envoyé ni accord enregistré');
+      const rappel = await page.evaluate(() => {
+        const el = document.querySelector('[data-ui="ExemplaireAEnvoyer"]');
+        return { texte: el?.innerText || '', role: el?.getAttribute('role') };
+      });
+      verifier(rappel.role === 'alert' && /papier signé par vous deux/.test(rappel.texte) && /contrat est nul/.test(rappel.texte) && /L221-9/.test(rappel.texte),
+        `rappel persistant sur la fiche (${rappel.texte.slice(0, 90)})`);
+    },
+  },
+  {
     // Tâche sept-jours : devis signé sur place (pavé de l'app) aujourd'hui chez un particulier (c1, sans catégorie
     // ni entreprise) : aucun acompte ni paiement enregistré avant le 8e jour (C. conso. L221-10).
     nom: 'signé sur place chez un particulier aujourd’hui : ni acompte ni paiement avant le 8e jour (375 px)',

@@ -1,7 +1,7 @@
 import { useRef, useState, useEffect } from 'react';
 import SignatureCanvas from 'react-signature-canvas';
 import { X, Check, RotateCcw, Pen, Calendar, FileCheck, Info } from 'lucide-react';
-import { DEMANDE_URGENCE } from '../lib/retractation';
+import { DEMANDE_URGENCE, DEMANDE_EXPRESSE, DEMANDE_EXPRESSE_AIDE, estConcerneParRetractation } from '../lib/retractation';
 
 /**
  * Composant de signature electronique
@@ -22,6 +22,11 @@ export default function SignaturePad({
   const [acceptCGV, setAcceptCGV] = useState(false);
   const [clientName, setClientName] = useState('');
   const [step, setStep] = useState('info'); // 'info' ou 'sign'
+  // Signature sur place chez un particulier (contrat hors établissement) : demande expresse de commencer avant la
+  // fin du délai, recueillie avec la signature (L221-25, sur support durable : le devis signé et l'exemplaire), et
+  // accord pour recevoir l'exemplaire signé par e-mail plutôt que sur papier (L221-9) — tâche confirmation-client
+  const [executionAnticipee, setExecutionAnticipee] = useState(false);
+  const [exemplaireParEmail, setExemplaireParEmail] = useState(false);
 
   // Theme classes
   const cardBg = isDark ? "bg-slate-800" : "bg-white";
@@ -35,6 +40,8 @@ export default function SignaturePad({
     if (isOpen) {
       setStep('info');
       setAcceptCGV(false);
+      setExecutionAnticipee(false);
+      setExemplaireParEmail(false);
       setClientName(client ? `${client.prenom || ''} ${client.nom || ''}`.trim() : '');
       setIsEmpty(true);
       if (sigPad.current) {
@@ -44,6 +51,8 @@ export default function SignaturePad({
   }, [isOpen, client]);
 
   if (!isOpen || !document) return null;
+  const particulier = estConcerneParRetractation({ doc: document, client });
+  const emailClient = String(client?.email || '').trim();
 
   const formatMoney = (n) => (n || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2 }) + ' EUR';
   const today = new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -84,7 +93,9 @@ export default function SignaturePad({
       signature: signatureData,
       signatureDate: new Date().toISOString(),
       signataire: clientName,
-      acceptCGV: true
+      acceptCGV: true,
+      executionAnticipee: particulier && executionAnticipee,
+      exemplaireParEmail: !!emailClient && exemplaireParEmail,
     });
     onClose();
   };
@@ -185,6 +196,25 @@ export default function SignaturePad({
                   </p>
                 </div>
               </label>
+
+              {/* Demande expresse (L221-25) : particulier seulement, facultative, séparée de l'acceptation */}
+              {particulier && (
+                <label className={`flex items-start gap-3 p-4 mt-3 rounded-xl border cursor-pointer transition-colors ${isDark ? 'border-slate-600' : 'border-slate-200'}`} data-ui="DemandeExpresseSurPlace">
+                  <input type="checkbox" checked={executionAnticipee} onChange={e => setExecutionAnticipee(e.target.checked)} className="mt-1 w-5 h-5 rounded flex-shrink-0" />
+                  <div>
+                    <p className={`text-sm font-medium ${textPrimary}`}>{DEMANDE_EXPRESSE}</p>
+                    <p className={`text-sm mt-1 ${textMuted}`}>{DEMANDE_EXPRESSE_AIDE} Facultatif.</p>
+                  </div>
+                </label>
+              )}
+
+              {/* Exemplaire signé par e-mail : avec l'accord du client (L221-9), sinon il reçoit un exemplaire papier */}
+              {emailClient && (
+                <label className={`flex items-start gap-3 p-4 mt-3 rounded-xl border cursor-pointer transition-colors ${isDark ? 'border-slate-600' : 'border-slate-200'}`} data-ui="ExemplaireParEmail">
+                  <input type="checkbox" checked={exemplaireParEmail} onChange={e => setExemplaireParEmail(e.target.checked)} className="mt-1 w-5 h-5 rounded flex-shrink-0" />
+                  <p className={`text-sm ${textPrimary}`}>J'accepte de recevoir mon exemplaire du contrat signé par e-mail, à l'adresse {emailClient}, plutôt que sur papier.</p>
+                </label>
+              )}
 
               {/* Bouton continuer */}
               <button
