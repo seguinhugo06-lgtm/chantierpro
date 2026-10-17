@@ -4,6 +4,11 @@ import {
   AlertTriangle, HelpCircle, ArrowLeft, Download, FileText, ClipboardList
 } from 'lucide-react';
 import { remettreFichier } from '../../lib/natif';
+import { calculateTVASummary } from '../../lib/integrations/accounting';
+import { facturesEmises } from '../../lib/ventes';
+import { totauxDocument } from '../../lib/totauxDocument';
+import { estFranchiseTva, tvaARegulariser } from '../../lib/franchiseTva';
+import { jourLocal } from '../../lib/dates';
 
 /**
  * TVAManager - Gestion TVA multi-taux BTP (simplifié)
@@ -25,7 +30,7 @@ const TVA_RATES = [
     description: 'Travaux amélioration logement >2 ans',
     color: '#f59e0b',
     examples: ['Rénovation cuisine', 'Électricité', 'Plomberie'],
-    ca3Line: '09',
+    ca3Line: '9B',
   },
   {
     rate: 5.5,
@@ -33,7 +38,7 @@ const TVA_RATES = [
     description: 'Rénovation énergétique logement >2 ans',
     color: '#22c55e',
     examples: ['Isolation', 'Pompe à chaleur', 'Fenêtres double vitrage'],
-    ca3Line: '9B',
+    ca3Line: '09',
   },
 ];
 
@@ -68,12 +73,6 @@ function getPeriodDateRange(period) {
   return { start: new Date(year, 0, 1), end: new Date(year, 11, 31) };
 }
 
-function isInPeriod(dateStr, periodRange) {
-  if (!periodRange.start || !periodRange.end) return true;
-  const d = new Date(dateStr);
-  return d >= periodRange.start && d <= periodRange.end;
-}
-
 /** Generate period options for the dropdown */
 function generatePeriodOptions() {
   const now = new Date();
@@ -94,8 +93,8 @@ export default function TVAManager({
   isDark = false,
   couleur = '#f97316',
   devis = [],
-  factures = [],
   depenses = [],
+  entreprise = null,
 }) {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [selectedPeriod, setSelectedPeriod] = useState(() => {
@@ -110,88 +109,55 @@ export default function TVAManager({
   const borderColor = isDark ? 'border-slate-700' : 'border-slate-200';
   const inputBg = isDark ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-slate-200';
 
-  // Helper for safe currency calculation
-  const calcTVA = (montantHT, tvaRate) => {
-    return Math.round(montantHT * tvaRate) / 100;
-  };
-
   const periodOptions = useMemo(() => generatePeriodOptions(), []);
   const periodRange = useMemo(() => getPeriodDateRange(selectedPeriod), [selectedPeriod]);
 
-  // Calculate TVA summary from real data — filtered by period
+  // Résumé de la période sur les règles communes (src/lib/integrations/accounting.js) : factures et avoirs émis, taux
+  // par taux ; TVA des dépenses seulement quand elle est saisie ; rien en franchise. Avant (relecture juriste-btp du
+  // 17 oct. 2026) : brouillons comptés, 10 % d'office pour une facture et 20 % pour une dépense.
+  const franchise = estFranchiseTva(entreprise);
   const tvaSummary = useMemo(() => {
-    const facturesList = devis.filter(d =>
-      d.type === 'facture' && isInPeriod(d.date, periodRange)
-    );
-    const filteredDepenses = depenses.filter(d =>
-      isInPeriod(d.date || d.createdAt, periodRange)
-    );
+    const du = periodRange.start ? jourLocal(periodRange.start) : undefined;
+    const au = periodRange.end ? jourLocal(periodRange.end) : undefined;
+    const r = calculateTVASummary(devis, depenses, du, au, { franchise });
 
-    // Breakdown by rate
     const byRate = {};
-    TVA_RATES.forEach(r => {
-      byRate[r.rate] = { baseHT: 0, tva: 0, count: 0 };
+    TVA_RATES.forEach(x => { byRate[x.rate] = { baseHT: 0, tva: 0, count: 0 }; });
+    Object.entries(r.detailParTaux).forEach(([taux, d]) => {
+      const k = Number(taux);
+      if (!byRate[k]) byRate[k] = { baseHT: 0, tva: 0, count: 0 };
+      byRate[k].baseHT += d.base;
+      byRate[k].tva += d.collectee;
     });
-
-    facturesList.forEach(f => {
-      if (f.tvaDetails && typeof f.tvaDetails === 'object') {
-        // Multi-rate support
-        Object.entries(f.tvaDetails).forEach(([rate, detail]) => {
-          const rateNum = parseFloat(rate);
-          if (!byRate[rateNum]) byRate[rateNum] = { baseHT: 0, tva: 0, count: 0 };
-          byRate[rateNum].baseHT += detail.base || 0;
-          byRate[rateNum].tva += detail.montant || 0;
-          byRate[rateNum].count += 1;
-        });
-      } else if (f.tvaParTaux && typeof f.tvaParTaux === 'object') {
-        Object.entries(f.tvaParTaux).forEach(([rate, detail]) => {
-          const rateNum = parseFloat(rate);
-          if (!byRate[rateNum]) byRate[rateNum] = { baseHT: 0, tva: 0, count: 0 };
-          byRate[rateNum].baseHT += detail.base || detail.baseHT || 0;
-          byRate[rateNum].tva += detail.tva || detail.montant || 0;
-          byRate[rateNum].count += 1;
-        });
-      } else {
-        // Single rate fallback
-        const rate = f.tvaRate || 10;
-        if (!byRate[rate]) byRate[rate] = { baseHT: 0, tva: 0, count: 0 };
-        byRate[rate].baseHT += f.total_ht || 0;
-        byRate[rate].tva += calcTVA(f.total_ht || 0, rate);
-        byRate[rate].count += 1;
-      }
-    });
-
-    const collected = Object.values(byRate).reduce((sum, r) => sum + r.tva, 0);
-
-    const deductible = filteredDepenses.reduce((acc, d) => {
-      const rate = d.tvaRate || 20;
-      return acc + calcTVA(d.montant || 0, rate);
-    }, 0);
-
-    const totalBaseHT = Object.values(byRate).reduce((sum, r) => sum + r.baseHT, 0);
+    if (!franchise) {
+      facturesEmises(devis, { du, au }).forEach(f => {
+        totauxDocument(f).tva.forEach(({ taux }) => { if (byRate[taux]) byRate[taux].count += 1; });
+      });
+    }
 
     return {
-      collected: Math.round(collected * 100) / 100,
-      deductible: Math.round(deductible * 100) / 100,
-      due: Math.round((collected - deductible) * 100) / 100,
-      facturesCount: facturesList.length,
-      depensesCount: filteredDepenses.length,
+      collected: r.tvaCollectee,
+      deductible: r.tvaDeductible,
+      due: r.tvaNetteAPayer,
+      facturesCount: r.nbFactures,
+      depensesCount: r.nbDepenses,
+      depensesSansTva: r.depensesSansTva,
       byRate,
-      totalBaseHT: Math.round(totalBaseHT * 100) / 100,
+      totalBaseHT: Math.round(Object.values(byRate).reduce((sum, x) => sum + x.baseHT, 0) * 100) / 100,
     };
-  }, [devis, depenses, periodRange]);
+  }, [devis, depenses, periodRange, franchise]);
 
   // Export CSV
   const exportCSV = () => {
     const rows = [
       ['Période', selectedPeriod],
       [''],
-      ['Taux', 'Base HT', 'TVA collectée', 'Nb factures'],
+      ['Taux', 'Base HT', 'TVA facturée', 'Nb factures'],
     ];
 
     TVA_RATES.forEach(r => {
       const data = tvaSummary.byRate[r.rate];
-      if (data && (data.baseHT > 0 || data.tva > 0)) {
+      if (data && (data.baseHT !== 0 || data.tva !== 0)) {
         rows.push([
           `${r.rate}%`,
           data.baseHT.toFixed(2),
@@ -202,9 +168,11 @@ export default function TVAManager({
     });
 
     rows.push(['']);
-    rows.push(['Total TVA collectée', '', tvaSummary.collected.toFixed(2)]);
-    rows.push(['TVA déductible', '', tvaSummary.deductible.toFixed(2)]);
-    rows.push(['TVA nette à payer', '', tvaSummary.due.toFixed(2)]);
+    rows.push(['Total TVA facturée', '', tvaSummary.collected.toFixed(2)]);
+    rows.push(['TVA déductible (saisie sur les dépenses)', '', tvaSummary.deductible.toFixed(2)]);
+    rows.push(['Solde estimé (débits)', '', tvaSummary.due.toFixed(2)]);
+    rows.push(['']);
+    rows.push(['Montants calculés sur vos factures émises (régime des débits). Sans option pour les débits, la TVA de vos travaux est due à l’encaissement (art. 269 du CGI) : déclarez la TVA des sommes encaissées sur la période.']);
 
     const csv = rows.map(r => r.join(';')).join('\n');
     const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
@@ -234,7 +202,7 @@ export default function TVAManager({
         <div className={`p-4 rounded-xl ${cardBg} border ${borderColor}`}>
           <div className="flex items-center gap-2 mb-2">
             <TrendingUp size={18} className="text-red-500" />
-            <p className={`text-sm ${textMuted}`}>TVA collectée</p>
+            <p className={`text-sm ${textMuted}`}>TVA facturée</p>
           </div>
           <p className="text-xl font-bold text-red-500">
             {fmt(tvaSummary.collected)} €
@@ -251,13 +219,18 @@ export default function TVAManager({
             {fmt(tvaSummary.deductible)} €
           </p>
           <p className={`text-xs ${textMuted} mt-1`}>{tvaSummary.depensesCount} achats</p>
+          {tvaSummary.depensesSansTva > 0 && (
+            <p className="text-xs mt-1 text-alerte-texte">
+              dont {tvaSummary.depensesSansTva} sans TVA saisie, non comptée{tvaSummary.depensesSansTva > 1 ? 's' : ''}
+            </p>
+          )}
         </div>
 
         <div className={`p-4 rounded-xl border-2 ${tvaSummary.due > 0 ? (isDark ? 'border-red-700 bg-red-900/30' : 'border-red-300 bg-red-50') : (isDark ? 'border-emerald-700 bg-emerald-900/30' : 'border-emerald-300 bg-emerald-50')}`}>
           <div className="flex items-center gap-2 mb-2">
             <Euro size={18} className={tvaSummary.due > 0 ? 'text-red-600' : 'text-emerald-600'} />
             <p className={`text-sm ${tvaSummary.due > 0 ? (isDark ? 'text-red-400' : 'text-red-700') : (isDark ? 'text-emerald-400' : 'text-emerald-700')}`}>
-              {tvaSummary.due > 0 ? 'TVA à payer' : 'Crédit TVA'}
+              {tvaSummary.due > 0 ? 'Solde estimé (débits)' : 'Crédit estimé (débits)'}
             </p>
           </div>
           <p className={`text-xl font-bold ${tvaSummary.due > 0 ? 'text-red-600' : 'text-emerald-600'}`}>
@@ -337,14 +310,23 @@ export default function TVAManager({
   );
 
   const renderCA3 = () => {
+    // Lignes du formulaire 3310-CA3, millésime 2026 (cerfa n° 10963*31), vérifiées par juriste-btp le 17 oct. 2026 :
+    // A1 = opérations taxées (sans les bases à 0 %), 08 = 20 %, 09 = 5,5 %, 9B = 10 %, 16 = TVA brute, 20 = autres
+    // biens et services, 23 = total déductible ; puis TD = 16 − 23 et 28 = TD − X5 (jamais négative) ou, si la TVA
+    // déductible l'emporte, 25 = crédit (23 − 16). Avant : une ligne « 01 » qui n'existe plus, un crédit en ligne 28.
+    const base = (t) => tvaSummary.byRate[t]?.baseHT || 0;
     const ca3Fields = [
-      { line: '01', label: 'Ventes, prestations de services', value: tvaSummary.totalBaseHT, editable: false },
-      { line: '08', label: 'Opérations imposables à 20%', value: tvaSummary.byRate[20]?.baseHT || 0, tva: tvaSummary.byRate[20]?.tva || 0, rate: 20 },
-      { line: '09', label: 'Opérations imposables à 10%', value: tvaSummary.byRate[10]?.baseHT || 0, tva: tvaSummary.byRate[10]?.tva || 0, rate: 10 },
-      { line: '9B', label: 'Opérations imposables à 5,5%', value: tvaSummary.byRate[5.5]?.baseHT || 0, tva: tvaSummary.byRate[5.5]?.tva || 0, rate: 5.5 },
-      { line: '16', label: 'Total TVA brute', value: tvaSummary.collected, editable: false, bold: true },
-      { line: '20', label: 'TVA déductible sur biens et services', value: tvaSummary.deductible, editable: false },
-      { line: '28', label: 'TVA nette due (ou crédit)', value: tvaSummary.due, editable: false, bold: true, highlight: true },
+      { line: 'A1', label: 'Ventes, prestations de services', value: base(20) + base(10) + base(5.5) },
+      { line: '08', label: 'Taux normal 20 %', value: base(20), tva: tvaSummary.byRate[20]?.tva || 0, rate: 20 },
+      { line: '09', label: 'Taux réduit 5,5 %', value: base(5.5), tva: tvaSummary.byRate[5.5]?.tva || 0, rate: 5.5 },
+      { line: '9B', label: 'Taux réduit 10 %', value: base(10), tva: tvaSummary.byRate[10]?.tva || 0, rate: 10 },
+      { line: '16', label: 'Total de la TVA brute due', value: tvaSummary.collected, bold: true },
+      { line: '20', label: 'Autres biens et services', value: tvaSummary.deductible },
+      { line: '23', label: 'Total TVA déductible', value: tvaSummary.deductible },
+      ...(tvaSummary.due >= 0
+        ? [{ line: 'TD', label: 'TVA due (ligne 16 – ligne 23)', value: tvaSummary.due },
+          { line: '28', label: 'TVA nette due (ligne TD – ligne X5)', value: tvaSummary.due, bold: true, highlight: true }]
+        : [{ line: '25', label: 'Crédit de TVA (ligne 23 – ligne 16)', value: -tvaSummary.due, bold: true, highlight: true }]),
     ];
 
     return (
@@ -417,7 +399,7 @@ export default function TVAManager({
                   ) : (
                     <p className={`text-sm font-medium ${field.bold ? 'text-base font-bold' : ''} ${
                       field.highlight
-                        ? (field.value > 0 ? 'text-red-600' : 'text-emerald-600')
+                        ? (tvaSummary.due > 0 ? 'text-red-600' : 'text-emerald-600')
                         : textPrimary
                     }`}>
                       {fmt(field.value)} €
@@ -434,8 +416,9 @@ export default function TVAManager({
             <HelpCircle className="text-blue-500 flex-shrink-0 mt-0.5" size={16} />
             <div>
               <p className={`text-sm ${isDark ? 'text-blue-200' : 'text-blue-700'}`}>
-                <strong>Note :</strong> Ces valeurs sont calculées automatiquement à partir de vos factures et dépenses.
-                Vérifiez les montants avant de reporter sur votre déclaration officielle.
+                <strong>Note :</strong> Montants calculés sur vos factures émises (régime des débits). Sans option pour les débits, la TVA de vos travaux est due à l’encaissement (art. 269 du CGI) : déclarez la TVA des sommes encaissées sur la période. La TVA des dépenses n’est comptée que lorsqu’elle est saisie ; la
+                sous-traitance autoliquidée (art. 283-2 nonies du CGI) n’est pas prise en compte. Vérifiez les montants avant
+                de les reporter sur votre déclaration.
               </p>
             </div>
           </div>
@@ -496,6 +479,28 @@ export default function TVAManager({
     </div>
   );
 
+  if (franchise) {
+    // Franchise en base : ni TVA facturée ni TVA déductible, pas de CA3. Une facture émise par erreur avec de la TVA
+    // la rend due (CGI art. 283, 3) : la signaler plutôt qu'annoncer « rien à déclarer ».
+    const aRegulariser = devis.filter(d => d.type === 'facture' && tvaARegulariser(d, entreprise)).length;
+    return (
+      <div className="space-y-4">
+        <h2 className={`text-lg font-bold ${textPrimary}`}>Gestion TVA</h2>
+        <div className={`p-4 rounded-xl ${cardBg} border ${borderColor}`}>
+          <p className={`font-semibold ${textPrimary}`}>Franchise en base de TVA</p>
+          <p className={`text-sm mt-1 ${textMuted}`}>
+            En franchise en base de TVA (art. 293 B du CGI), vous ne facturez pas de TVA et n’en déduisez pas : pas de déclaration CA3.
+            Mallettico l’applique d’après la forme « Micro-entreprise » indiquée dans vos Paramètres.
+          </p>
+        </div>
+        {aRegulariser > 0 && (
+          <div role="status" className="p-4 rounded-xl bg-alerte-fond text-alerte-texte text-sm">
+            {aRegulariser === 1 ? '1 facture émise porte de la TVA' : `${aRegulariser} factures émises portent de la TVA`} : cette TVA est due du seul fait de la facture (art. 283, 3 du CGI). Faites un avoir puis une nouvelle facture sans TVA.
+          </div>
+        )}
+      </div>
+    );
+  }
   if (activeTab === 'rates') return renderRatesGuide();
   if (activeTab === 'ca3') return renderCA3();
   return renderDashboard();

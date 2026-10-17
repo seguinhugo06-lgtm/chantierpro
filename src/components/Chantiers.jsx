@@ -29,6 +29,9 @@ import SituationsTravaux from './chantiers/SituationsTravaux';
 import RapportChantier from './chantiers/RapportChantier';
 import { CHANTIER_STATUS_LABELS, getAvailableChantierTransitions } from '../lib/constants';
 import { formatClientName } from '../lib/formatters';
+import { estFranchiseTva } from '../lib/franchiseTva';
+import { montantsDepense, TAUX_DEPENSE } from '../lib/tvaDepenses';
+import { arrondi } from '../lib/totauxDocument';
 import { calculateGlobalAvancement, getCumulativeInvoiced } from '../lib/situationUtils';
 import ChantierJournal from './audit/ChantierJournal';
 import { getUserWeather, getChantierWeather } from '../services/WeatherService';
@@ -89,7 +92,7 @@ const calculateSmartProgression = (chantier, bilan, tasksDone, tasksTotal) => {
 
 export default function Chantiers({ chantiers, addChantier, updateChantier, clients, depenses, setDepenses, pointages, setPointages, equipe, devis, ajustements, addAjustement, deleteAjustement, getChantierBilan, couleur, modeDiscret, entreprise, selectedChantier, setSelectedChantier, catalogue, deductStock, isDark, createMode, setCreateMode, setPage, memos = [], addMemo, updateMemo, deleteMemo, toggleMemo, onPlanEvent, addDevis, generateNextNumero, nouveauDevisPour }) {
   const { confirm } = useConfirm();
-  const { addDepense: ctxAddDepense, addPointage: ctxAddPointage, updatePointage: ctxUpdatePointage, deletePointage: ctxDeletePointage } = useData();
+  const { addDepense: ctxAddDepense, updateDepense: ctxUpdateDepense, deleteDepense: ctxDeleteDepense, addPointage: ctxAddPointage, updatePointage: ctxUpdatePointage, deletePointage: ctxDeletePointage } = useData();
   const { showToast } = useToast();
   const isOnline = useOnlineStatus();
 
@@ -241,7 +244,9 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
     }
   }, [view]);
     const [newTache, setNewTache] = useState('');
-  const [newDepense, setNewDepense] = useState({ description: '', montant: '', categorie: 'Matériaux', catalogueId: '', quantite: 1, prixUnitaire: '' });
+  // Montant HT, et le taux de TVA porté sur la facture du fournisseur ('' : à préciser, rien ne se déduit)
+  const [newDepense, setNewDepense] = useState({ description: '', montant: '', categorie: 'Matériaux', catalogueId: '', quantite: 1, prixUnitaire: '', tauxTva: '' });
+  const franchiseTva = estFranchiseTva(entreprise);
   const [showAjustement, setShowAjustement] = useState(null);
   const [showMODetail, setShowMODetail] = useState(false);
   const [showAddMO, setShowAddMO] = useState(false);
@@ -396,20 +401,41 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
   };
   // Écritures par DataContext (base + écran). Avant (recette du 9 oct. 2026) : setDepenses / setPointages
   // seuls, la dépense et les heures disparaissaient au rechargement.
+  // Le montant saisi est HT (en franchise : le montant payé, la TVA ne se déduisant pas). La TVA de la dépense vient du
+  // taux choisi, celui de la facture du fournisseur ; sans taux, elle reste « non saisie » et ne se déduit pas
+  // (src/lib/tvaDepenses.js, relecture juriste-btp du 17 oct. 2026).
   const addDepenseToChantier = async () => {
     if (!newDepense.description || !newDepense.montant) return;
     const qty = parseInt(newDepense.quantite) || 1;
+    const montant = parseFloat(String(newDepense.montant).replace(',', '.'));
+    const taux = franchiseTva || newDepense.tauxTva === '' ? null : Number(newDepense.tauxTva);
+    const m = montantsDepense({ montant, tauxTva: taux });
     const creee = await ctxAddDepense({
       chantierId: view,
       description: newDepense.description + (qty > 1 ? ` (x${qty})` : ''),
-      montant: parseFloat(String(newDepense.montant).replace(',', '.')),
+      montant,
+      // En franchise, le montant saisi est ce qui a été payé (TVA comprise, non récupérable) : ce n'est pas un HT
+      montantHt: franchiseTva ? null : montant,
+      tauxTva: taux,
+      montantTva: m.connue ? m.tva : null,
       categorie: newDepense.categorie,
       date: jourLocal()
     });
     if (!creee) return; // refus : la saisie reste, DataContext a dit pourquoi
     if (newDepense.catalogueId && deductStock) deductStock(newDepense.catalogueId, qty);
-    setNewDepense({ description: '', montant: '', categorie: 'Matériaux', catalogueId: '', quantite: 1, prixUnitaire: '' });
+    // Le taux choisi reste pour la dépense suivante (souvent le même fournisseur)
+    setNewDepense(p => ({ description: '', montant: '', categorie: 'Matériaux', catalogueId: '', quantite: 1, prixUnitaire: '', tauxTva: p.tauxTva }));
     setShowQuickMateriau(false);
+  };
+  // Taux de la facture d'une dépense déjà saisie : la TVA enregistrée est recalculée (une TVA saisie prime sur le taux)
+  const changerTauxDepense = (dep, valeur) => {
+    const taux = valeur === '' ? null : Number(valeur);
+    const { ht } = montantsDepense(dep);
+    ctxUpdateDepense(dep.id, { tauxTva: taux, tvaRate: undefined, tva_rate: undefined, montantTva: taux === null ? null : arrondi(ht * taux / 100) });
+  };
+  const supprimerDepense = async (dep) => {
+    const ok = await confirm({ title: 'Supprimer', message: `Supprimer la dépense « ${dep.description} » ?` });
+    if (ok) ctxDeleteDepense(dep.id);
   };
   const handleAddAjustement = () => { if (!adjForm.libelle || !adjForm.montant_ht) return; addAjustement({ chantierId: view, type: showAjustement, libelle: adjForm.libelle, montant_ht: parseFloat(adjForm.montant_ht) }); setAdjForm({ libelle: '', montant_ht: '' }); setShowAjustement(null); };
   const handleAddMO = async () => {
@@ -1286,11 +1312,48 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
             )}
             <div className={`${cardBg} rounded-2xl border p-5`}>
               <h3 className={`font-semibold mb-4 ${textPrimary}`}>Dépenses Matériaux</h3>
-              <div className="space-y-2 mb-4">{chDepenses.map(d => (<div key={d.id} className={`flex items-center gap-3 p-3 rounded-xl bg-surface-2`}><span className={`text-sm w-24 ${textMuted}`}>{dateLue(d.date).toLocaleDateString('fr-FR')}</span><span className={`flex-1 ${textPrimary}`}>{d.description}</span><span className={`text-xs px-2 py-1 rounded bg-bord text-encre-2`}>{d.categorie}</span><span className="font-bold text-red-500">{formatMoney(d.montant)}</span></div>))}{chDepenses.length === 0 && <p className={`text-center py-4 ${textMuted}`}>Aucune dépense</p>}</div>
+              <div className="space-y-2 mb-4">
+                {(() => {
+                  const n = franchiseTva ? 0 : chDepenses.filter(d => !montantsDepense(d).connue).length;
+                  return n > 0 && (
+                    <p role="status" className="p-3 rounded-xl text-sm bg-alerte-fond text-alerte-texte">
+                      {n === 1 ? '1 dépense n’a pas sa TVA saisie : aucune TVA n’est déduite pour elle.' : `${n} dépenses n’ont pas leur TVA saisie : aucune TVA n’est déduite pour elles.`}
+                      {' '}Choisissez le taux porté sur la facture du fournisseur.
+                    </p>
+                  );
+                })()}
+                {chDepenses.map(d => {
+                  const m = montantsDepense(d);
+                  const valeur = m.connue && m.taux !== null ? String(m.taux) : '';
+                  const options = TAUX_DEPENSE.some(t => t.valeur === valeur) ? TAUX_DEPENSE : [...TAUX_DEPENSE, { valeur, libelle: `TVA ${valeur.replace('.', ',')} %` }];
+                  return (
+                    <div key={d.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 p-3 rounded-xl bg-surface-2">
+                      <span className={`text-sm w-24 ${textMuted}`}>{dateLue(d.date).toLocaleDateString('fr-FR')}</span>
+                      <span className={`flex-1 min-w-[8rem] ${textPrimary}`}>{d.description}</span>
+                      <span className="font-bold text-red-500 tabular-nums">{formatMoney(d.montant)}{!franchiseTva && <span className="text-xs font-normal"> HT</span>}</span>
+                      <div className="flex items-center gap-2 w-full sm:w-auto">
+                        <span className="text-xs px-2 py-1 rounded bg-bord text-encre-2">{d.categorie}</span>
+                        {!franchiseTva && (
+                          <select value={valeur} onChange={e => changerTauxDepense(d, e.target.value)} className={`px-2 py-1.5 border rounded-lg text-sm min-h-[44px] ${inputBg}`} aria-label={`TVA de la facture : ${d.description}`}>
+                            {options.map(t => <option key={t.valeur} value={t.valeur}>{t.libelle}</option>)}
+                          </select>
+                        )}
+                        <BoutonIcone icone={Trash2} libelle={`Supprimer la dépense ${d.description}`} taille={16} onClick={() => supprimerDepense(d)} className="ml-auto sm:ml-0" />
+                      </div>
+                    </div>
+                  );
+                })}
+                {chDepenses.length === 0 && <p className={`text-center py-4 ${textMuted}`}>Aucune dépense</p>}
+              </div>
               <div className="flex gap-2 flex-wrap">
-                <select value={newDepense.catalogueId} onChange={e => { const item = catalogue?.find(c => c.id === e.target.value); if (item) setNewDepense(p => ({...p, catalogueId: e.target.value, description: item.nom, montant: item.prixAchat?.toString() || '' })); }} className={`px-3 py-2.5 border rounded-xl text-sm ${inputBg}`} aria-label="Sélectionner un article du catalogue"><option value="">Catalogue...</option>{catalogue?.map(c => <option key={c.id} value={c.id}>{c.nom} ({c.prixAchat}€)</option>)}</select>
+                <select value={newDepense.catalogueId} onChange={e => { const item = catalogue?.find(c => c.id === e.target.value); if (item) setNewDepense(p => ({...p, catalogueId: e.target.value, description: item.nom, montant: item.prixAchat?.toString() || '' })); }} className={`w-full sm:w-auto max-w-full px-3 py-2.5 border rounded-xl text-sm ${inputBg}`} aria-label="Sélectionner un article du catalogue"><option value="">Catalogue...</option>{catalogue?.map(c => <option key={c.id} value={c.id}>{c.nom} ({c.prixAchat}€)</option>)}</select>
                 <input placeholder="Ex: Carrelage, Peinture murale..." value={newDepense.description} onChange={e => setNewDepense(p => ({...p, description: e.target.value}))} className={`flex-1 min-w-[150px] px-4 py-2.5 border rounded-xl ${inputBg}`} aria-label="Description de la dépense" />
-                <input type="number" placeholder="€ HT" value={newDepense.montant} onChange={e => setNewDepense(p => ({...p, montant: e.target.value}))} className={`w-28 px-4 py-2.5 border rounded-xl ${inputBg}`} aria-label="Montant HT en euros" />
+                <input type="number" placeholder={franchiseTva ? '€' : '€ HT'} value={newDepense.montant} onChange={e => setNewDepense(p => ({...p, montant: e.target.value}))} className={`w-28 px-4 py-2.5 border rounded-xl ${inputBg}`} aria-label={franchiseTva ? 'Montant payé en euros' : 'Montant HT en euros'} />
+                {!franchiseTva && (
+                  <select value={newDepense.tauxTva} onChange={e => setNewDepense(p => ({...p, tauxTva: e.target.value}))} className={`px-3 py-2.5 border rounded-xl text-sm ${inputBg}`} aria-label="TVA portée sur la facture du fournisseur">
+                    {TAUX_DEPENSE.map(t => <option key={t.valeur} value={t.valeur}>{t.libelle}</option>)}
+                  </select>
+                )}
                 <button onClick={addDepenseToChantier} className="px-4 py-2.5 text-white rounded-xl min-h-[44px]" style={{background: couleur}}>+</button>
               </div>
             </div>
@@ -2069,7 +2132,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                       </div>
                     </div>
                     <div>
-                      <label className={`block text-sm font-medium mb-2 ${textPrimary}`}>Prix unitaire</label>
+                      <label className={`block text-sm font-medium mb-2 ${textPrimary}`}>{franchiseTva ? 'Prix unitaire' : 'Prix unitaire HT'}</label>
                       <div className="relative">
                         <input
                           type="number"
@@ -2088,12 +2151,24 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                 )}
 
                 <div>
-                  <label className={`block text-sm font-medium mb-2 ${textPrimary}`}>Montant total TTC *</label>
+                  {/* Montant HT : c'est ce que compte la marge du chantier et ce que donne le catalogue (prix d'achat HT).
+                      L'étiquette disait « TTC » alors que tout le reste le traitait en HT (relecture du 17 oct. 2026). */}
+                  <label htmlFor="depense-montant" className={`block text-sm font-medium mb-2 ${textPrimary}`}>{franchiseTva ? 'Montant payé *' : 'Montant total HT *'}</label>
                   <div className="relative">
-                    <input type="number" className={`w-full px-4 py-3 border rounded-xl min-h-[48px] text-lg font-semibold ${inputBg}`} placeholder="Ex: 150" value={newDepense.montant} onChange={e => setNewDepense(p => ({...p, montant: e.target.value}))} />
+                    <input id="depense-montant" type="number" className={`w-full px-4 py-3 border rounded-xl min-h-[48px] text-lg font-semibold ${inputBg}`} placeholder="Ex: 150" value={newDepense.montant} onChange={e => setNewDepense(p => ({...p, montant: e.target.value}))} />
                     <span className={`absolute right-3 top-1/2 -translate-y-1/2 ${textMuted}`}>€</span>
                   </div>
                 </div>
+
+                {!franchiseTva && (
+                  <div>
+                    <label htmlFor="depense-tva" className={`block text-sm font-medium mb-2 ${textPrimary}`}>TVA de la facture du fournisseur</label>
+                    <select id="depense-tva" className={`w-full px-4 py-3 border rounded-xl min-h-[48px] ${inputBg}`} value={newDepense.tauxTva} onChange={e => setNewDepense(p => ({...p, tauxTva: e.target.value}))} aria-describedby="depense-tva-aide">
+                      {TAUX_DEPENSE.map(t => <option key={t.valeur} value={t.valeur}>{t.libelle}</option>)}
+                    </select>
+                    <p id="depense-tva-aide" className={`text-xs mt-1 ${textMuted}`}>Seule la TVA portée sur la facture se déduit. Sans taux, elle n’est pas comptée.</p>
+                  </div>
+                )}
 
                 <div>
                   <label className={`block text-sm font-medium mb-2 ${textPrimary}`}>Catégorie</label>
@@ -2111,7 +2186,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
               {/* Action buttons - Big touch targets */}
               <div className="flex gap-3 mt-6">
                 <button
-                  onClick={() => { setShowQuickMateriau(false); setNewDepense({ description: '', montant: '', categorie: 'Matériaux', catalogueId: '', quantite: 1, prixUnitaire: '' }); }}
+                  onClick={() => { setShowQuickMateriau(false); setNewDepense(p => ({ description: '', montant: '', categorie: 'Matériaux', catalogueId: '', quantite: 1, prixUnitaire: '', tauxTva: p.tauxTva })); }}
                   className={`flex-1 px-4 py-3 rounded-xl min-h-[52px] font-medium bg-surface-2 text-encre-2`}
                 >
                   Annuler

@@ -9,6 +9,7 @@ import { useMemo } from 'react';
 import { facturesEmises } from '../lib/ventes';
 import { totauxDocument } from '../lib/totauxDocument';
 import { dateLocale } from '../lib/paiementsFacture';
+import { montantsDepense } from '../lib/tvaDepenses';
 
 const MONTH_NAMES = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
 
@@ -51,21 +52,23 @@ export function useTVA({ devis = [], depenses = [], mouvements = [], settings = 
       tvaMonthly[mois].collectee += tva.reduce((s, x) => s + x.montant, 0);
     });
 
-    // TVA déductible from depenses
-    depenses.forEach(dep => {
-      const d = new Date(dep.date || dep.createdAt);
-      if (d.getFullYear() !== currentYear) return;
-      const rate = dep.tvaRate || dep.tauxTva || dep.tva_rate || 20;
-      const montant = dep.montant || 0;
-      const tva = montant - (montant / (1 + rate / 100));
-      if (tva > 0) tvaMonthly[d.getMonth()].deductible += tva;
+    // TVA déductible des dépenses : seule celle portée sur la facture du fournisseur (CGI art. 271). Le montant d'une
+    // dépense est HT (src/lib/tvaDepenses.js) ; sans taux ni TVA saisis, rien ne se déduit et la dépense est comptée
+    // dans « depensesSansTva » pour le dire. Avant (relecture juriste-btp du 17 oct. 2026) : le montant était pris
+    // pour un TTC à 20 % d'office. En franchise, aucune TVA ne se déduit.
+    const depensesAnnee = depenses.filter(dep => moisDe(dep.date || dep.createdAt) !== null);
+    let depensesSansTva = 0;
+    const tvaDepenses = depensesAnnee.map(dep => ({ mois: moisDe(dep.date || dep.createdAt), ...montantsDepense(dep, { franchise }) }));
+    tvaDepenses.forEach(({ mois, tva, connue }) => {
+      if (!connue) { depensesSansTva += 1; return; }
+      if (tva) tvaMonthly[mois].deductible += tva;
     });
 
     // TVA des mouvements de sortie réglés (dépenses saisies en trésorerie). Les entrées ne comptent pas :
     // la TVA collectée vient des factures, et les entrées étaient souvent des copies de paiements.
     mouvements.forEach(m => {
       const mois = moisDe(m.date);
-      if (mois === null || m.type === 'entree' || m.statut !== 'paye') return;
+      if (franchise || mois === null || m.type === 'entree' || m.statut !== 'paye') return;
       if (m.montantTva && m.montantTva > 0) tvaMonthly[mois].deductible += m.montantTva;
     });
 
@@ -91,15 +94,12 @@ export function useTVA({ devis = [], depenses = [], mouvements = [], settings = 
       });
     });
 
-    depenses.forEach(dep => {
-      const d = new Date(dep.date || dep.createdAt);
-      if (d.getFullYear() !== currentYear) return;
-      const rate = dep.tvaRate || dep.tauxTva || dep.tva_rate || 20;
-      if (!tvaByRate[rate]) tvaByRate[rate] = { collectee: 0, deductible: 0, base: 0, baseDeductible: 0 };
-      const montant = dep.montant || 0;
-      const ht = montant / (1 + rate / 100);
-      tvaByRate[rate].baseDeductible += ht;
-      tvaByRate[rate].deductible += montant - ht;
+    // Ventilation par taux : les dépenses dont la TVA est connue
+    if (!franchise) tvaDepenses.forEach(({ taux, ht, tva, connue }) => {
+      if (!connue) return;
+      if (!tvaByRate[taux]) tvaByRate[taux] = { collectee: 0, deductible: 0, base: 0, baseDeductible: 0 };
+      tvaByRate[taux].baseDeductible += ht;
+      tvaByRate[taux].deductible += tva;
     });
 
     // ── Quarterly breakdown ──────────────────────────────────────────
@@ -171,6 +171,7 @@ export function useTVA({ devis = [], depenses = [], mouvements = [], settings = 
       regimeTva,
       ca3Data,
       isFranchise: regimeTva === 'franchise',
+      depensesSansTva,
     };
   }, [devis, depenses, mouvements, settings, year]);
 }

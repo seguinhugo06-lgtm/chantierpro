@@ -142,11 +142,19 @@ module.exports = [
           return json(lignes);
         },
       });
+      // Attentes sur l'événement, pas sur l'horloge : sur une machine lente (CI du 17 oct. 2026), rien n'était encore
+      // parti après 2,5 + 1 + 4 s et le parcours échouait sans rapport avec l'app
+      const jusqua = async (condition, max = 20000) => {
+        const debut = Date.now();
+        while (!condition() && Date.now() - debut < max) await attendre(200);
+      };
+      const ADRESSE = '1 rue du Parcours, 33000 Bordeaux';
       await attendre(2500);
       await saisir(page, '#settings-field-nom', 'Entreprise du parcours');
-      await attendre(1000); // le nom part : la création de la fiche commence (1,5 s)
-      await saisir(page, '#settings-field-adresse', '1 rue du Parcours, 33000 Bordeaux');
-      await attendre(4000);
+      await jusqua(() => creations.length >= 1); // le nom part : la création de la fiche commence (réponse dans 1,5 s)
+      await saisir(page, '#settings-field-adresse', ADRESSE);
+      await jusqua(() => [...creations, ...modifications].some((c) => c.adresse === ADRESSE));
+      await attendre(1000); // laisse passer une éventuelle écriture en trop
       const toutes = [...creations, ...modifications];
       const adresse = toutes.find((c) => c.adresse === '1 rue du Parcours, 33000 Bordeaux');
       verifier(creations.length === 1, `une seule fiche créée (${creations.length})`);

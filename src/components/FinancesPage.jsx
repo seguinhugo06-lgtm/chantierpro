@@ -1,9 +1,10 @@
-import React, { lazy, Suspense, useState } from 'react';
+import React, { lazy, Suspense, useState, useEffect } from 'react';
 import { Wallet, Download, BarChart3, Landmark, CreditCard, Eye, EyeOff, FileText, AlertTriangle, RefreshCw } from 'lucide-react';
 import TabBar from './ui/TabBar';
 import ErrorBoundary from './ui/ErrorBoundary';
 import PageHeader from './ui/PageHeader';
 import { usePermissions } from '../hooks/usePermissions';
+import { captureException } from '../lib/sentry';
 
 // Lazy load the 5 sub-modules
 const TresorerieModule = lazy(() => import('./tresorerie/TresorerieModule'));
@@ -47,7 +48,20 @@ const TAB_CONFIG = [
 export default function FinancesPage({ devis, depenses, clients, chantiers, entreprise, equipe, paiements, pointages = [], isDark, couleur = '#F97316', setPage, modeDiscret: modeDiscretGlobal, ouvrirDocument}) {
   const textPrimary = isDark ? 'text-slate-100' : 'text-slate-900';
   const textMuted = isDark ? 'text-slate-400' : 'text-slate-600';
-  const [activeTab, setActiveTab] = useState('tresorerie');
+  // Onglet demandé par une autre page (Réglages › Comptabilité → « Ouvrir l'export comptable ») : lu au premier rendu,
+  // effacé après le montage (un premier rendu abandonné puis repris le relit)
+  const [activeTab, setActiveTab] = useState(() => {
+    try {
+      const demande = sessionStorage.getItem('cp_finances_onglet');
+      if (TAB_CONFIG.some(t => t.key === demande)) return demande;
+    } catch (e) {
+      captureException(e, { contexte: 'FinancesPage.ongletDemande' });
+    }
+    return 'tresorerie';
+  });
+  useEffect(() => {
+    try { sessionStorage.removeItem('cp_finances_onglet'); } catch (e) { captureException(e, { contexte: 'FinancesPage.ongletDemande' }); }
+  }, []);
   const [localDiscret, setLocalDiscret] = useState(false);
   const modeDiscret = modeDiscretGlobal || localDiscret;
 

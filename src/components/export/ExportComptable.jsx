@@ -21,6 +21,9 @@ import {
 } from 'lucide-react';
 import { remettreFichier } from '../../lib/natif';
 import { estEmise } from '../../lib/ventes';
+import { estFranchiseTva } from '../../lib/franchiseTva';
+import { montantsDepense } from '../../lib/tvaDepenses';
+import { ecrituresDepense } from '../../lib/ecrituresAchat';
 import { dateLue } from '../../lib/dates';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -134,52 +137,6 @@ const mapFactureToEntries = (facture, client, allFactures = []) => {
     const credit = (e.credit < 0 ? 0 : e.credit) + (e.debit < 0 ? -e.debit : 0);
     return { ...e, debit, credit };
   }).filter((e) => e.debit !== 0 || e.credit !== 0);
-};
-
-const mapDepenseToEntries = (depense) => {
-  const date = new Date(depense.date);
-  const ref = depense.reference || `D-${date.getFullYear()}-${String(depense.id).slice(0, 4)}`;
-  const montant = depense.montant || 0;
-  const tvaRate = depense.tva_rate != null ? depense.tva_rate / 100 : 0.2;
-  const montantHT = Math.round((montant / (1 + tvaRate)) * 100) / 100;
-  const montantTVA = Math.round((montant - montantHT) * 100) / 100;
-
-  const entries = [
-    {
-      date,
-      ref,
-      libelle: `${depense.categorie || 'Charge'} - ${depense.description || depense.fournisseur || ''}`,
-      debit: montantHT,
-      credit: 0,
-      compte: '606000',
-      journal: 'AC',
-    },
-  ];
-
-  // Add TVA déductible entry if applicable
-  if (montantTVA > 0) {
-    entries.push({
-      date,
-      ref,
-      libelle: `TVA déductible - ${depense.fournisseur || depense.categorie || 'Achat'}`,
-      debit: montantTVA,
-      credit: 0,
-      compte: '445660',
-      journal: 'AC',
-    });
-  }
-
-  entries.push({
-    date,
-    ref,
-    libelle: `${depense.fournisseur || 'Fournisseur'}`,
-    debit: 0,
-    credit: montant,
-    compte: '401000',
-    journal: 'AC',
-  });
-
-  return entries;
 };
 
 /** Map a paiement (bank transaction) to Journal Banque entries */
@@ -477,7 +434,7 @@ export default function ExportComptable({
     const factureEntries = factures.flatMap((f) =>
       mapFactureToEntries(f, clientsMap[f.client_id], factures)
     );
-    const depenseEntries = filteredDepenses.flatMap((d) => mapDepenseToEntries(d));
+    const depenseEntries = filteredDepenses.flatMap((d) => ecrituresDepense(d, { franchise: estFranchiseTva(entreprise) }));
     const paiementEntries = filteredPaiements.flatMap((p) => {
       const facture = devisMap[p.devis_id] || devisMap[p.facture_id];
       const client = facture ? clientsMap[facture.client_id] : null;
@@ -486,13 +443,15 @@ export default function ExportComptable({
     const all = [...factureEntries, ...depenseEntries, ...paiementEntries];
     all.sort((a, b) => a.date - b.date);
     return all;
-  }, [factures, filteredDepenses, filteredPaiements, clientsMap, devisMap]);
+  }, [factures, filteredDepenses, filteredPaiements, clientsMap, devisMap, entreprise]);
 
   // ─── Summaries ──────────────────────────────────────────────────────────
 
   const totalHTFactures = factures.reduce((s, f) => s + (f.total_ht || 0), 0);
   const totalTTCFactures = factures.reduce((s, f) => s + (f.total_ttc || 0), 0);
-  const totalDepenses = filteredDepenses.reduce((s, d) => s + (d.montant || 0), 0);
+  const franchise = estFranchiseTva(entreprise);
+  const totalDepenses = filteredDepenses.reduce((s, d) => s + montantsDepense(d, { franchise }).ht, 0);
+  const depensesSansTva = franchise ? 0 : filteredDepenses.filter((d) => !montantsDepense(d).connue).length;
   const totalDebit = entries.reduce((s, e) => s + e.debit, 0);
   const totalCredit = entries.reduce((s, e) => s + e.credit, 0);
 
@@ -597,7 +556,7 @@ export default function ExportComptable({
       color: couleur,
     },
     {
-      label: 'Total dépenses',
+      label: franchise ? 'Total dépenses' : 'Total dépenses HT',
       value: fmtEUR.format(totalDepenses),
       icon: Euro,
       color: isDark ? '#94a3b8' : '#64748b',
@@ -752,6 +711,17 @@ export default function ExportComptable({
               );
             })}
           </div>
+
+          {/* Dépenses sans TVA saisie : passées HT, sans TVA déductible */}
+          {depensesSansTva > 0 && (
+            <div role="status" className="mt-4 rounded-lg p-3 flex items-start gap-2 text-sm bg-alerte-fond text-alerte-texte">
+              <Info className="w-4 h-4 mt-0.5 flex-shrink-0" aria-hidden="true" />
+              <span>
+                {depensesSansTva === 1 ? '1 dépense de la période n’a pas sa TVA saisie : elle est exportée hors taxes, sans TVA déductible, avec la mention « TVA non saisie ».' : `${depensesSansTva} dépenses de la période n’ont pas leur TVA saisie : elles sont exportées hors taxes, sans TVA déductible, avec la mention « TVA non saisie ».`}
+                {' '}Choisissez le taux de leur facture dans la fiche du chantier (onglet Finances), ou transmettez la facture à votre comptable.
+              </span>
+            </div>
+          )}
 
           {/* FEC info banner */}
           {format === 'fec' && (

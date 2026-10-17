@@ -9,6 +9,10 @@ import TVAManager from './TVAManager';
 import AdminCalendar from './AdminCalendar';
 import DocumentChecklist from './DocumentChecklist';
 import ConformityReport from './ConformityReport';
+import { calculateTVASummary } from '../../lib/integrations/accounting';
+import { estFranchiseTva } from '../../lib/franchiseTva';
+import { estOuverte } from '../../lib/ventes';
+import { jourLocal } from '../../lib/dates';
 
 /**
  * Module Aide Administrative - Version simplifiée
@@ -46,7 +50,6 @@ const FAQ_ITEMS = [
 export default function AdminHelp({
   chantiers = [],
   devis = [],
-  factures = [],
   depenses = [],
   entreprise = {},
   isDark = false,
@@ -67,30 +70,20 @@ export default function AdminHelp({
     try { localStorage.setItem('cp_admin_alert_settings', JSON.stringify(newSettings)); } catch { /* préférence non enregistrée : quota plein ou navigation privée */ }
   };
 
-  // TVA auto-calculation from factures & depenses
+  // TVA du trimestre en cours, sur les règles communes (src/lib/integrations/accounting.js). Avant (relecture
+  // juriste-btp du 17 oct. 2026) : la TVA collectée lisait des champs inexistants (montant_ttc, montant_ht : toujours
+  // 0) et la TVA déductible était estimée à 20 % de chaque dépense.
   const tvaStats = useMemo(() => {
     const now = new Date();
     const qStart = new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1);
     const qEnd = new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3 + 3, 0);
-
-    const quarterFactures = (factures || devis || []).filter(f => {
-      if (f.type !== 'facture') return false;
-      const d = new Date(f.date_creation || f.created_at);
-      return d >= qStart && d <= qEnd;
-    });
-
-    const quarterDepenses = (depenses || []).filter(d => {
-      const dt = new Date(d.date);
-      return dt >= qStart && dt <= qEnd;
-    });
-
-    const tvaCollectee = quarterFactures.reduce((s, f) => s + ((f.montant_ttc || 0) - (f.montant_ht || 0)), 0);
-    const tvaDeductible = quarterDepenses.reduce((s, d) => s + ((d.montant || 0) * 0.2), 0); // Estimated 20% TVA on expenses
-    const tvaADeclarer = tvaCollectee - tvaDeductible;
+    const r = calculateTVASummary(devis, depenses, jourLocal(qStart), jourLocal(qEnd), { franchise: estFranchiseTva(entreprise) });
     const quarterLabel = `T${Math.floor(now.getMonth() / 3) + 1} ${now.getFullYear()}`;
-
-    return { tvaCollectee, tvaDeductible, tvaADeclarer, quarterLabel, facturesCount: quarterFactures.length, depensesCount: quarterDepenses.length };
-  }, [devis, factures, depenses]);
+    return {
+      tvaCollectee: r.tvaCollectee, tvaDeductible: r.tvaDeductible, tvaADeclarer: r.tvaNetteAPayer, quarterLabel,
+      facturesCount: r.nbFactures, depensesCount: r.nbDepenses, depensesSansTva: r.depensesSansTva,
+    };
+  }, [devis, depenses, entreprise]);
 
   const textPrimary = isDark ? 'text-white' : 'text-slate-900';
   const textSecondary = isDark ? 'text-slate-300' : 'text-slate-600';
@@ -146,7 +139,8 @@ export default function AdminHelp({
   const stats = {
     chantiersActifs: chantiers.filter(c => c.statut === 'en_cours').length,
     devisEnAttente: devis.filter(d => d.type === 'devis' && d.statut === 'envoye').length,
-    facturesImpayees: devis.filter(d => d.type === 'facture' && d.statut !== 'payee').length,
+    // Factures à encaisser (src/lib/ventes.js) : ni brouillon, ni avoir, ni annulée, avec un reste dû
+    facturesImpayees: devis.filter(d => estOuverte(d)).length,
   };
 
   // Navigation tabs (simplified)
@@ -219,8 +213,8 @@ export default function AdminHelp({
               </div>
             )}
 
-            {/* TVA Pre-fill Summary */}
-            <div className={`p-4 rounded-xl ${cardBg} border ${borderColor}`}>
+            {/* Résumé TVA du trimestre (pas en franchise : ni TVA facturée ni TVA déductible) */}
+            {!estFranchiseTva(entreprise) && <div className={`p-4 rounded-xl ${cardBg} border ${borderColor}`}>
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <TrendingUp size={18} style={{ color: couleur }} />
@@ -232,24 +226,25 @@ export default function AdminHelp({
               </div>
               <div className="grid grid-cols-3 gap-3">
                 <div className={`p-3 rounded-lg text-center ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
-                  <p className={`text-xs ${textMuted} mb-1`}>TVA collectée</p>
+                  <p className={`text-xs ${textMuted} mb-1`}>TVA facturée</p>
                   <p className="text-lg font-bold text-emerald-500">{tvaStats.tvaCollectee.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} €</p>
-                  <p className={`text-[10px] ${textMuted}`}>{tvaStats.facturesCount} facture{tvaStats.facturesCount > 1 ? 's' : ''}</p>
+                  <p className={`text-xs ${textMuted}`}>{tvaStats.facturesCount} facture{tvaStats.facturesCount > 1 ? 's' : ''}</p>
                 </div>
                 <div className={`p-3 rounded-lg text-center ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
                   <p className={`text-xs ${textMuted} mb-1`}>TVA déductible</p>
                   <p className="text-lg font-bold text-blue-500">{tvaStats.tvaDeductible.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} €</p>
-                  <p className={`text-[10px] ${textMuted}`}>{tvaStats.depensesCount} dépense{tvaStats.depensesCount > 1 ? 's' : ''}</p>
+                  <p className={`text-xs ${textMuted}`}>{tvaStats.depensesCount} dépense{tvaStats.depensesCount > 1 ? 's' : ''}{tvaStats.depensesSansTva > 0 ? `, dont ${tvaStats.depensesSansTva} sans TVA saisie` : ''}</p>
                 </div>
                 <div className={`p-3 rounded-lg text-center ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
-                  <p className={`text-xs ${textMuted} mb-1`}>TVA à déclarer</p>
+                  <p className={`text-xs ${textMuted} mb-1`}>Solde estimé (débits)</p>
                   <p className={`text-lg font-bold ${tvaStats.tvaADeclarer >= 0 ? 'text-red-500' : 'text-emerald-500'}`}>
                     {tvaStats.tvaADeclarer.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} €
                   </p>
-                  <p className={`text-[10px] ${textMuted}`}>{tvaStats.tvaADeclarer >= 0 ? 'À reverser' : 'Crédit TVA'}</p>
+                  <p className={`text-xs ${textMuted}`}>{tvaStats.tvaADeclarer >= 0 ? 'Sur vos factures émises' : 'Crédit estimé'}</p>
                 </div>
               </div>
-            </div>
+              <p className={`text-xs mt-3 ${textMuted}`}>Sans option pour les débits, la TVA de vos travaux est due à l’encaissement (art. 269 du CGI) : le montant à déclarer peut différer.</p>
+            </div>}
 
             {/* Quick Actions */}
             <div>
@@ -445,7 +440,7 @@ export default function AdminHelp({
         );
 
       case 'tva':
-        return <TVAManager isDark={isDark} couleur={couleur} devis={devis} factures={factures} depenses={depenses} />;
+        return <TVAManager isDark={isDark} couleur={couleur} devis={devis} depenses={depenses} entreprise={entreprise} />;
 
       case 'calendar':
         return <AdminCalendar isDark={isDark} couleur={couleur} />;

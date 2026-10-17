@@ -7,6 +7,7 @@
 
 import { calcConversion, CONVERTED_STATUTS } from './statsUtils';
 import { facturesEmises, tvaFacturee } from './ventes';
+import { tvaDeductible, decaisseDepense } from './tvaDepenses';
 
 const MONTHS_FR = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
 const MONTHS_SHORT = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc'];
@@ -301,7 +302,7 @@ export function computeActivityReport(devis = [], clients = [], chantiers = [], 
 /**
  * Compute all data for a Financial Report
  */
-export function computeFinancialReport(devis = [], clients = [], chantiers = [], depenses = [], paiements = [], periodeDebut, periodeFin) {
+export function computeFinancialReport(devis = [], clients = [], chantiers = [], depenses = [], paiements = [], periodeDebut, periodeFin, { franchise = false } = {}) {
   const startDate = new Date(periodeDebut);
   const endDate = new Date(periodeFin);
   const prev = getPrevPeriodRange(startDate, endDate);
@@ -316,19 +317,18 @@ export function computeFinancialReport(devis = [], clients = [], chantiers = [],
   const ventes = facturesEmises(devisInPeriod);
   const ca = ventes.reduce((sum, d) => sum + (Number(d.total_ttc) || 0), 0);
   const caHT = ventes.reduce((sum, d) => sum + (Number(d.total_ht) || 0), 0);
+  // Compte de résultat HT : le montant d'une dépense est HT (src/lib/tvaDepenses.js ; en franchise, c'est la charge
+  // payée). Avant (relecture juriste-btp du 17 oct. 2026) : marge = chiffre d'affaires TTC − dépenses HT.
   const totalDepenses = depensesInPeriod.reduce((sum, d) => sum + (Number(d.montant) || 0), 0);
-  const margeBrute = ca - totalDepenses;
+  const margeBrute = caHT - totalDepenses;
   const hasDepenses = totalDepenses > 0;
-  const margePercent = ca > 0 && hasDepenses ? (margeBrute / ca) * 100 : 0;
+  const margePercent = caHT > 0 && hasDepenses ? (margeBrute / caHT) * 100 : 0;
 
-  // TVA
-  const tvaCollectee = tvaFacturee(devisInPeriod).total;
-  const tvaDeductible = depensesInPeriod.reduce((sum, d) => {
-    const montant = Number(d.montant) || 0;
-    const rate = Number(d.tva_rate || d.tauxTva) || 20;
-    return sum + (montant - montant / (1 + rate / 100));
-  }, 0);
-  const tvaNet = tvaCollectee - tvaDeductible;
+  // TVA : facturée sur les factures émises ; déductible seulement quand elle est saisie sur la dépense (avant : 20 %
+  // d'office sur un montant pris pour un TTC)
+  const tvaCollectee = tvaFacturee(devisInPeriod, {}, { isMicro: franchise }).total;
+  const deductible = tvaDeductible(depensesInPeriod, { franchise });
+  const tvaNet = tvaCollectee - deductible.total;
 
   // Cash flow mensuel
   const currentYear = new Date().getFullYear();
@@ -342,7 +342,7 @@ export function computeFinancialReport(devis = [], clients = [], chantiers = [],
   depenses.forEach(d => {
     const date = new Date(d.date);
     if (date && date.getFullYear() === currentYear) {
-      cashFlowMensuel[date.getMonth()].depenses += Number(d.montant) || 0;
+      cashFlowMensuel[date.getMonth()].depenses += decaisseDepense(d, { franchise });
     }
   });
   cashFlowMensuel.forEach(m => { m.solde = m.paiements - m.depenses; });
@@ -361,7 +361,7 @@ export function computeFinancialReport(devis = [], clients = [], chantiers = [],
   const rentabiliteChantiers = chantiers
     .filter(c => c.statut === 'en_cours' || c.statut === 'termine')
     .map(chantier => {
-      const chantierCA = ventes.filter(d => d.chantier_id === chantier.id).reduce((sum, d) => sum + (Number(d.total_ttc) || 0), 0);
+      const chantierCA = ventes.filter(d => d.chantier_id === chantier.id).reduce((sum, d) => sum + (Number(d.total_ht) || 0), 0);
       const chantierDeps = depensesInPeriod.filter(d => (d.chantierId || d.chantier_id) === chantier.id);
       const chantierTotalDep = chantierDeps.reduce((sum, d) => sum + (Number(d.montant) || 0), 0);
       const marge = chantierCA - chantierTotalDep;
@@ -384,20 +384,21 @@ export function computeFinancialReport(devis = [], clients = [], chantiers = [],
   const totalPaiements = paiementsInPeriod.reduce((sum, p) => sum + (Number(p.amount || p.montant) || 0), 0);
 
   // N-1
-  const prevCA = facturesEmises(devisPrev).reduce((sum, d) => sum + (Number(d.total_ttc) || 0), 0);
+  const prevCA = facturesEmises(devisPrev).reduce((sum, d) => sum + (Number(d.total_ht) || 0), 0);
 
   return {
     kpis: {
       ca, caHT, totalDepenses, margeBrute, margePercent, hasDepenses,
       totalPaiements,
-      solde: totalPaiements - totalDepenses,
+      // Encaissements (TTC) moins ce que les dépenses ont fait sortir (TTC payé quand leur TVA est connue)
+      solde: totalPaiements - depensesInPeriod.reduce((sum, d) => sum + decaisseDepense(d, { franchise }), 0),
     },
-    tva: { collectee: tvaCollectee, deductible: tvaDeductible, net: tvaNet },
+    tva: { collectee: tvaCollectee, deductible: deductible.total, net: tvaNet, depensesSansTva: deductible.sansTva, franchise },
     cashFlowMensuel,
     depensesParCategorie,
     rentabiliteChantiers,
     comparisons: {
-      ca: prevCA > 0 ? ((ca - prevCA) / prevCA) * 100 : null,
+      ca: prevCA > 0 ? ((caHT - prevCA) / prevCA) * 100 : null,
     },
     periode: { debut: startDate, fin: endDate, label: getPeriodLabel(periodeDebut, periodeFin) },
   };
@@ -414,11 +415,14 @@ export function computeChantierReport(chantierId, devis = [], clients = [], chan
 
   const client = clients.find(c => c.id === (chantier.clientId || chantier.client_id));
   const chantierDevis = devis.filter(d => d.chantier_id === chantierId);
-  const chantierDevisAcceptes = chantierDevis.filter(d => CONVERTED_STATUTS.includes(d.statut));
   const chantierDepenses = depenses.filter(d => (d.chantierId || d.chantier_id) === chantierId);
   const chantierPointages = pointages.filter(p => (p.chantierId || p.chantier_id) === chantierId);
 
-  const totalCA = chantierDevisAcceptes.reduce((sum, d) => sum + (Number(d.total_ttc) || 0), 0);
+  // Revenu du chantier : ses devis signés, HT, comme sa fiche (src/lib/business/margin-calculator.js) ; avant (relecture
+  // du 17 oct. 2026) : devis et factures payées additionnés, en TTC, face à des dépenses HT
+  const totalCA = chantierDevis
+    .filter(d => d.type !== 'facture' && ['accepte', 'signe', 'acompte_facture', 'facture'].includes(d.statut))
+    .reduce((sum, d) => sum + (Number(d.total_ht) || 0), 0);
   const totalDepenses = chantierDepenses.reduce((sum, d) => sum + (Number(d.montant) || 0), 0);
   const budgetPrevu = Number(chantier.budgetPrevu || chantier.budget_estime) || 0;
   const marge = totalCA - totalDepenses;

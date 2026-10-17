@@ -37,6 +37,7 @@ export const ALERT_TYPES = {
  */
 const ACCEPTED_STATUSES = [
   DEVIS_STATUS.ACCEPTE,
+  DEVIS_STATUS.SIGNE, // signé par le lien (fonction sign_devis) : un revenu comme un devis signé sur place
   DEVIS_STATUS.ACOMPTE_FACTURE,
   DEVIS_STATUS.FACTURE,
   DEVIS_STATUS.PAYEE

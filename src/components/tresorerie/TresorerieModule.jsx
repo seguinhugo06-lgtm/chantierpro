@@ -46,7 +46,8 @@ import { estOuverte, resteAFacturer } from '../../lib/ventes';
 import { jourLocal, ajouterMois, dateLue } from '../../lib/dates';
 import { captureException } from '../../lib/sentry';
 import { telInternational } from '../../lib/messageRelance';
-import { estFranchiseTva, regimeTvaTresorerie } from '../../lib/franchiseTva';
+import { estFranchiseTva, regimeTvaTresorerie, tvaARegulariser } from '../../lib/franchiseTva';
+import { decaisseDepense } from '../../lib/tvaDepenses';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -89,7 +90,7 @@ const TVA_RATES = {
   100: { label: '10%', rate: 0.10, desc: 'Rénovation' },
   55: { label: '5,5%', rate: 0.055, desc: 'Rénovation énergétique' },
   21: { label: '2,1%', rate: 0.021, desc: 'Taux réduit' },
-  0: { label: '0%', rate: 0, desc: 'Exonéré' },
+  0: { label: '0%', rate: 0, desc: 'Sans TVA' },
 };
 
 /** Categories for previsions */
@@ -669,7 +670,7 @@ export default function TresorerieModule({
 
   // -- Hook: Export comptable ──────────────────────────────────────
   const { exportJournalVentes, exportJournalAchats, exportReglements: exportReglementsCSV, exportMouvements: exportMouvementsCSV } = useExportComptable({
-    devis, depenses, reglements, mouvements, clients, entreprise, tvaData: tvaHook,
+    devis, depenses, reglements, mouvements, clients, entreprise,
   });
 
   // -- State ----------------------------------------------------------------
@@ -871,7 +872,7 @@ export default function TresorerieModule({
         id: genId(),
         type: 'sortie',
         description: dep.description || dep.libelle || `Dépense ${dep.fournisseur || dep.categorie || ''}`.trim(),
-        montant: dep.montant,
+        montant: decaisseDepense(dep, { franchise: franchiseImposee }),
         date: dep.date || dep.createdAt || jourLocal(),
         categorie: dep.categorie || 'Fournisseur',
         recurrence: 'unique',
@@ -1193,7 +1194,8 @@ export default function TresorerieModule({
     // dépenses, prévisions réglées). Avant : la date du solde était ignorée, toute l'histoire s'y ajoutait.
     const depuis = settings.soldeDate || '0000-01-01';
     const totalEnc = encaisseEntre(devis, paiements, depuis, '9999-12-31');
-    const totalDep = depenses.filter((d) => (jourDe(d.date || d.createdAt) || depuis) >= depuis).reduce((s, d) => s + (d.montant || 0), 0);
+    // Sorties d'argent : le TTC payé quand la TVA de la dépense est connue (son montant est HT, src/lib/tvaDepenses.js)
+    const totalDep = depenses.filter((d) => (jourDe(d.date || d.createdAt) || depuis) >= depuis).reduce((s, d) => s + decaisseDepense(d, { franchise: franchiseImposee }), 0);
 
     // Une prévision ne compte qu'une fois (même identifiant) ; avant, le dédoublonnage par « libellé + mois +
     // montant » fusionnait deux vraies échéances identiques et masquait un double ajout en mémoire.
@@ -1260,7 +1262,7 @@ export default function TresorerieModule({
       const d = dateLocale(dep.date || dep.createdAt);
       if (!d) return;
       const bucket = buckets.find((b) => sameMonth(b, monthKey(d)));
-      if (bucket && !bucket.isFuture) bucket.sorties += dep.montant || 0;
+      if (bucket && !bucket.isFuture) bucket.sorties += decaisseDepense(dep, { franchise: franchiseImposee });
     });
 
     // Mois à venir : reste dû des factures ouvertes à leur échéance (en retard : ce mois-ci)
@@ -1326,7 +1328,7 @@ export default function TresorerieModule({
       payments.push({
         id: `dep_${dep.id}`, date: dep.date || dep.createdAt,
         description: dep.description || dep.libelle || `Dépense ${dep.fournisseur || ''}`,
-        type: 'sortie', montant: dep.montant || 0,
+        type: 'sortie', montant: decaisseDepense(dep, { franchise: franchiseImposee }),
         statut: 'Payé', source: 'depense', categorie: dep.categorie || 'Fournisseur',
       });
     });
@@ -1465,10 +1467,10 @@ export default function TresorerieModule({
       projections, negativeMonth, thresholdMonth, avgMonthlyEntrees, avgMonthlySorties,
       recurringSummary,
     };
-  }, [devis, paiements, depenses, clients, previsionsComptees, now, period, settings.soldeInitial, settings.soldeDate, settings.seuilAlerte]);
+  }, [devis, paiements, depenses, clients, previsionsComptees, now, period, settings.soldeInitial, settings.soldeDate, settings.seuilAlerte, franchiseImposee]);
 
   // TVA data from hook (replaces inline computation)
-  const { tvaMonthly, tvaTotal, tvaByRate, tvaQuarterly, tvaNextDeadline } = tvaHook;
+  const { tvaMonthly, tvaTotal, tvaByRate, tvaQuarterly, tvaNextDeadline, depensesSansTva } = tvaHook;
 
   // Filtered payments for current tab
   const filteredPayments = useMemo(() => {
@@ -2693,6 +2695,15 @@ export default function TresorerieModule({
                   En franchise en base de TVA, vous n'avez pas de TVA à collecter ni à déduire.
                   Mention obligatoire sur vos factures : « TVA non applicable, art. 293 B du CGI ».
                 </p>
+                {/* Une facture émise par erreur avec de la TVA la rend due (relecture juriste-btp du 17 oct. 2026) */}
+                {(() => {
+                  const n = devis.filter(d => d.type === 'facture' && tvaARegulariser(d, entreprise)).length;
+                  return n > 0 && (
+                    <p role="status" className="text-xs mt-2 text-alerte-texte">
+                      {n === 1 ? '1 facture émise porte de la TVA : cette TVA est due du seul fait de la facture (art. 283, 3 du CGI). Faites un avoir puis une nouvelle facture sans TVA.' : `${n} factures émises portent de la TVA : cette TVA est due du seul fait de la facture (art. 283, 3 du CGI). Faites un avoir puis une nouvelle facture sans TVA.`}
+                    </p>
+                  );
+                })()}
               </div>
             </div>
           ) : (
@@ -2724,6 +2735,17 @@ export default function TresorerieModule({
                   </div>
                 )}
               </div>
+
+              {/* Dépenses sans TVA saisie : rien n'est déduit pour elles, le dire plutôt que de supposer 20 % */}
+              {depensesSansTva > 0 && (
+                <div role="status" className="mb-6 p-3 rounded-xl bg-alerte-fond text-alerte-texte text-sm flex items-start gap-2">
+                  <AlertTriangle size={16} className="mt-0.5 flex-shrink-0" aria-hidden="true" />
+                  <span>
+                    {depensesSansTva === 1 ? '1 dépense de l’année n’a pas sa TVA saisie : aucune TVA n’est déduite pour elle.' : `${depensesSansTva} dépenses de l’année n’ont pas leur TVA saisie : aucune TVA n’est déduite pour elles.`}
+                    {' '}Choisissez le taux porté sur la facture du fournisseur dans la fiche du chantier, onglet Finances.
+                  </span>
+                </div>
+              )}
 
               {/* TVA Table — quarterly or monthly based on regime */}
               <div className="overflow-x-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
@@ -2793,7 +2815,8 @@ export default function TresorerieModule({
                   <h3 className={`text-sm font-bold mb-3 ${textPrimary}`}>Ventilation par taux</h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                     {Object.entries(tvaByRate).sort(([a], [b]) => Number(b) - Number(a)).map(([rate, data]) => {
-                      const info = TVA_RATES[rate] || { label: `${rate}%`, desc: '' };
+                      // Les clés de TVA_RATES sont en dixièmes de point (200 = 20 %, 55 = 5,5 %)
+                      const info = TVA_RATES[Math.round(Number(rate) * 10)] || { label: `${String(rate).replace('.', ',')}%`, desc: '' };
                       return (
                         <div key={rate} className={`p-3 rounded-xl border bg-surface-2 border-bord`}>
                           <div className="flex items-center justify-between mb-1">

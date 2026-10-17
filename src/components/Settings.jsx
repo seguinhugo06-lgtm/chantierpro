@@ -1,15 +1,10 @@
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useToast, useConfirm } from '../context/AppContext';
-import { Download, FileSpreadsheet, FileText, RefreshCw, CheckCircle, AlertCircle, Calendar, Calculator, Building2, ArrowLeft, Shield, Search, ChevronDown, ChevronRight, Zap, Palette, FileCheck, BellRing, Package, Check, X, Loader2, Home, Smartphone, Fuel, Landmark, BarChart3, CreditCard, Users, Settings2, HardDrive, FolderOpen, Construction, Receipt, Mail, Sparkles, ClipboardList, GraduationCap } from 'lucide-react';
+import { Download, FileText, RefreshCw, CheckCircle, AlertCircle, Calendar, Calculator, Building2, ArrowLeft, Shield, Search, ChevronDown, ChevronRight, Zap, Palette, FileCheck, BellRing, Package, Check, X, Loader2, Home, Smartphone, Fuel, Landmark, BarChart3, CreditCard, Users, Settings2, HardDrive, FolderOpen, Construction, Receipt, Mail, Sparkles, ClipboardList, GraduationCap } from 'lucide-react';
 import { captureException } from '../lib/sentry';
 import AdminHelp from './admin-help/AdminHelp';
-import {
-  exportInvoicesToCSV,
-  exportExpensesToCSV,
-  generateFEC,
-  downloadFile,
-  calculateTVASummary,
-} from '../lib/integrations/accounting';
+import { calculateTVASummary } from '../lib/integrations/accounting';
+import { estFranchiseTva, tvaARegulariser } from '../lib/franchiseTva';
 
 import Facture2026Tab from './settings/Facture2026Tab';
 import RelanceConfigTab from './settings/RelanceConfigTab';
@@ -209,8 +204,6 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
   const textMuted = isDark ? "text-slate-400" : "text-slate-600";
 
   const [tab, setTab] = useState('identite');
-  const [showExportModal, setShowExportModal] = useState(false);
-  const [exportYear, setExportYear] = useState(new Date().getFullYear());
   const [showSetupWizard, setShowSetupWizard] = useState(false);
   const [wizardStep, setWizardStep] = useState(() => {
     try { return parseInt(localStorage.getItem('cp_wizard_step')) || 0; } catch { return 0; }
@@ -335,16 +328,14 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
     const handleEscape = (e) => {
       if (e.key === 'Escape') {
         if (showSetupWizard) { setShowSetupWizard(false); return; }
-        if (showExportModal) { setShowExportModal(false); return; }
         if (showProfileDetail) { setShowProfileDetail(false); return; }
       }
     };
     window.addEventListener('keydown', handleEscape);
     return () => window.removeEventListener('keydown', handleEscape);
-  }, [showSetupWizard, showExportModal, showProfileDetail]);
+  }, [showSetupWizard, showProfileDetail]);
 
   // Comptabilite state
-  const [comptaSubTab, setComptaSubTab] = useState('export');
   const [exportPeriod, setExportPeriod] = useState(() => {
     const now = new Date();
     const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -451,63 +442,17 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
 
   const hasAssuranceAlerts = alertesAssurances.some(a => a.severity === 'critical' || a.severity === 'warning');
 
-  // Factures only for comptabilite
-  const factures = useMemo(() => devis.filter(d => d.type === 'facture'), [devis]);
-
-  // TVA Summary for comptabilite
+  // Résumé de TVA de la période : règles communes (src/lib/integrations/accounting.js). Les exports (FEC, CSV) sont
+  // ceux de Finances › Export comptable ; ceux d'ici comptaient les brouillons et recalculaient la TVA à 20 %
+  // (relecture juriste-btp du 17 oct. 2026).
+  const franchiseTva = estFranchiseTva(entreprise);
   const tvaSummary = useMemo(() => {
-    return calculateTVASummary(devis, depenses, exportPeriod.debut, exportPeriod.fin);
-  }, [devis, depenses, exportPeriod]);
+    return calculateTVASummary(devis, depenses, exportPeriod.debut, exportPeriod.fin, { franchise: franchiseTva });
+  }, [devis, depenses, exportPeriod, franchiseTva]);
 
-  const handleExportCSV = (type) => {
-    if (type === 'factures') {
-      const csv = exportInvoicesToCSV(factures, clients, entreprise);
-      downloadFile(csv, `factures_${exportPeriod.debut}_${exportPeriod.fin}.csv`);
-      showToast(`${factures.length} factures exportées`, 'success');
-    } else if (type === 'depenses') {
-      const csv = exportExpensesToCSV(depenses, chantiers);
-      downloadFile(csv, `depenses_${exportPeriod.debut}_${exportPeriod.fin}.csv`);
-      showToast(`${depenses.length} dépenses exportées`, 'success');
-    }
-  };
-
-  const handleExportFEC = () => {
-    const fec = generateFEC(factures, depenses, clients, chantiers, entreprise, exportPeriod.debut, exportPeriod.fin);
-    downloadFile(fec, `FEC_${entreprise?.siret || 'SIRET'}_${exportPeriod.debut.replace(/-/g, '')}_${exportPeriod.fin.replace(/-/g, '')}.txt`, 'text/plain');
-    showToast('Fichier FEC généré', 'success');
-  };
-
-  // Export comptable Excel
-  const handleExportComptable = () => {
-    const devisYear = devis.filter(d => {
-      const date = new Date(d.date);
-      return date.getFullYear() === exportYear;
-    });
-
-    // Créer CSV (compatible Excel)
-    const headers = ['N° Document', 'Type', 'Date', 'Client', 'Total HT', 'TVA 5.5%', 'TVA 10%', 'TVA 20%', 'Total TTC', 'Statut'];
-    const rows = devisYear.map(d => {
-      const tva55 = d.tvaRate === 5.5 ? d.tva : 0;
-      const tva10 = d.tvaRate === 10 ? d.tva : 0;
-      const tva20 = d.tvaRate === 20 ? d.tva : 0;
-      return [
-        d.numero,
-        d.type === 'facture' ? 'Facture' : 'Devis',
-        dateLue(d.date).toLocaleDateString('fr-FR'),
-        d.client_nom || '',
-        (d.total_ht || 0).toFixed(2),
-        tva55.toFixed(2),
-        tva10.toFixed(2),
-        tva20.toFixed(2),
-        (d.total_ttc || 0).toFixed(2),
-        d.statut
-      ];
-    });
-
-    const csvContent = [headers, ...rows].map(row => row.join(';')).join('\n');
-    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
-    remettreFichier(blob, `Export_Comptable_${exportYear}.csv`);
-    setShowExportModal(false);
+  const ouvrirExportComptable = () => {
+    try { sessionStorage.setItem('cp_finances_onglet', 'export'); } catch (e) { captureException(e, { contexte: 'ouvrirExportComptable' }); }
+    setPage?.('finances');
   };
 
   // Validation format TVA
@@ -1463,41 +1408,47 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
       {/* COMPTABILITÉ */}
       {tab === 'comptabilite' && (
         <div className="space-y-4 sm:space-y-6">
-          {/* Sub-tabs */}
-          <div className="flex gap-2 flex-wrap">
-            {[
-              { id: 'export', label: 'Export', icon: Download },
-              { id: 'tva', label: 'Résumé TVA', icon: Calculator }
-            ].map(subtab => (
-              <button
-                key={subtab.id}
-                onClick={() => setComptaSubTab(subtab.id)}
-                className={`px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition-colors ${
-                  comptaSubTab === subtab.id
-                    ? 'text-white'
-                    : 'bg-surface-2 text-encre-2 hover:bg-bord'
-                }`}
-                style={comptaSubTab === subtab.id ? { background: couleur } : {}}
-              >
-                <subtab.icon size={16} />
-                {subtab.label}
-              </button>
-            ))}
+          {/* Exports : un seul endroit, Finances › Export comptable */}
+          <div className={`${cardBg} rounded-xl border p-4`}>
+            <h3 className={`font-semibold mb-1 flex items-center gap-2 ${textPrimary}`}>
+              <FileText size={18} style={{ color: couleur }} />
+              Exports pour votre comptable
+            </h3>
+            <p className={`text-sm mb-3 ${textSecondary}`}>
+              Le fichier des écritures comptables (FEC) et les fichiers par journal se préparent dans Finances › Export comptable :
+              factures émises seulement, avoirs déduits, TVA des dépenses seulement quand elle est saisie.
+            </p>
+            {setPage && <Bouton icone={Download} onClick={ouvrirExportComptable}>Ouvrir l’export comptable</Bouton>}
           </div>
 
-          {/* Export Sub-tab */}
-          {comptaSubTab === 'export' && (
-            <div className="space-y-6">
+          {franchiseTva ? (
+            <div className={`${cardBg} rounded-xl border p-4`}>
+              <p className={`font-semibold ${textPrimary}`}>Franchise en base de TVA</p>
+              <p className={`text-sm mt-1 ${textSecondary}`}>
+                En franchise en base de TVA (art. 293 B du CGI), vous ne facturez pas de TVA et n’en déduisez pas. Mallettico l’applique d’après la forme « Micro-entreprise » indiquée dans vos Paramètres.
+              </p>
+              {(() => {
+                const n = devis.filter(d => d.type === 'facture' && tvaARegulariser(d, entreprise)).length;
+                return n > 0 && (
+                  <p role="status" className="text-sm mt-2 text-alerte-texte">
+                    {n === 1 ? '1 facture émise porte de la TVA : cette TVA est due du seul fait de la facture (art. 283, 3 du CGI). Faites un avoir puis une nouvelle facture sans TVA.' : `${n} factures émises portent de la TVA : cette TVA est due du seul fait de la facture (art. 283, 3 du CGI). Faites un avoir puis une nouvelle facture sans TVA.`}
+                  </p>
+                );
+              })()}
+            </div>
+          ) : (
+            <>
               {/* Period Selector */}
               <div className={`${cardBg} rounded-xl border p-4`}>
                 <h3 className={`font-semibold mb-3 flex items-center gap-2 ${textPrimary}`}>
                   <Calendar size={18} style={{ color: couleur }} />
-                  Période d'export
+                  Période
                 </h3>
                 <div className="flex flex-wrap gap-4">
                   <div>
-                    <label className={`block text-sm mb-1 ${textMuted}`}>Du</label>
+                    <label htmlFor="compta-du" className={`block text-sm mb-1 ${textMuted}`}>Du</label>
                     <input
+                      id="compta-du"
                       type="date"
                       value={exportPeriod.debut}
                       onChange={(e) => setExportPeriod(p => ({ ...p, debut: e.target.value }))}
@@ -1505,8 +1456,9 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                     />
                   </div>
                   <div>
-                    <label className={`block text-sm mb-1 ${textMuted}`}>Au</label>
+                    <label htmlFor="compta-au" className={`block text-sm mb-1 ${textMuted}`}>Au</label>
                     <input
+                      id="compta-au"
                       type="date"
                       value={exportPeriod.fin}
                       onChange={(e) => setExportPeriod(p => ({ ...p, fin: e.target.value }))}
@@ -1516,181 +1468,112 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                 </div>
               </div>
 
-              {/* Export Options */}
-              <div className="grid sm:grid-cols-2 gap-4">
-                {/* CSV Factures */}
-                <div className={`${cardBg} rounded-xl border p-4`}>
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className={`p-2 rounded-lg bg-info-fond`}>
-                      <FileSpreadsheet size={20} className={'text-info-texte'} />
-                    </div>
-                    <div>
-                      <h3 className={`font-semibold ${textPrimary}`}>Factures (CSV)</h3>
-                      <p className={`text-xs ${textMuted}`}>{factures.length} facture{factures.length > 1 ? 's' : ''}</p>
-                    </div>
+              <div className="space-y-6">
+                {/* Summary Cards */}
+                <div className="grid sm:grid-cols-3 gap-4">
+                  <div className={`${cardBg} rounded-xl border p-4`}>
+                    <p className={`text-sm ${textMuted} mb-1`}>TVA facturée</p>
+                    <p className={`text-2xl font-bold text-emerald-500`}>
+                      {tvaSummary.tvaCollectee.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
+                    </p>
+                    <p className={`text-xs ${textMuted} mt-1`}>{tvaSummary.nbFactures} facture{tvaSummary.nbFactures > 1 ? 's' : ''}</p>
                   </div>
-                  <p className={`text-sm mb-4 ${textSecondary}`}>
-                    Export compatible Excel, Google Sheets et logiciels comptables
-                  </p>
-                  <button
-                    onClick={() => handleExportCSV('factures')}
-                    className="w-full py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-2 text-white"
-                    style={{ background: couleur }}
-                  >
-                    <Download size={16} />
-                    Télécharger CSV
-                  </button>
-                </div>
 
-                {/* CSV Depenses */}
-                <div className={`${cardBg} rounded-xl border p-4`}>
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className={`p-2 rounded-lg bg-alerte-fond`}>
-                      <FileSpreadsheet size={20} className={'text-alerte-texte'} />
-                    </div>
-                    <div>
-                      <h3 className={`font-semibold ${textPrimary}`}>Dépenses (CSV)</h3>
-                      <p className={`text-xs ${textMuted}`}>{depenses.length} dépense{depenses.length > 1 ? 's' : ''}</p>
-                    </div>
+                  <div className={`${cardBg} rounded-xl border p-4`}>
+                    <p className={`text-sm ${textMuted} mb-1`}>TVA déductible</p>
+                    <p className={`text-2xl font-bold text-blue-500`}>
+                      {tvaSummary.tvaDeductible.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
+                    </p>
+                    <p className={`text-xs ${textMuted} mt-1`}>{tvaSummary.nbDepenses} dépense{tvaSummary.nbDepenses > 1 ? 's' : ''}</p>
                   </div>
-                  <p className={`text-sm mb-4 ${textSecondary}`}>
-                    Export des achats et frais pour votre comptable
-                  </p>
-                  <button
-                    onClick={() => handleExportCSV('depenses')}
-                    className="w-full py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-2 text-white"
-                    style={{ background: couleur }}
-                  >
-                    <Download size={16} />
-                    Télécharger CSV
-                  </button>
-                </div>
 
-                {/* FEC */}
-                <div className={`${cardBg} rounded-xl border p-4 sm:col-span-2`}>
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className={`p-2 rounded-lg bg-succes-fond`}>
-                      <FileText size={20} className={'text-succes-texte'} />
-                    </div>
-                    <div>
-                      <h3 className={`font-semibold ${textPrimary}`}>Fichier FEC</h3>
-                      <p className={`text-xs ${textMuted}`}>Fichier des Écritures Comptables</p>
-                    </div>
-                  </div>
-                  <p className={`text-sm mb-4 ${textSecondary}`}>
-                    Format obligatoire pour les contrôles fiscaux (article A.47 A-1 du LPF).
-                    Compatible avec tous les logiciels comptables agréés.
-                  </p>
-                  <button
-                    onClick={handleExportFEC}
-                    className={`w-full py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-2 ${
-                      isDark ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-emerald-500 hover:bg-emerald-600'
-                    } text-white`}
-                  >
-                    <Download size={16} />
-                    Générer FEC
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* TVA Sub-tab */}
-          {comptaSubTab === 'tva' && (
-            <div className="space-y-6">
-              {/* Summary Cards */}
-              <div className="grid sm:grid-cols-3 gap-4">
-                <div className={`${cardBg} rounded-xl border p-4`}>
-                  <p className={`text-sm ${textMuted} mb-1`}>TVA collectée</p>
-                  <p className={`text-2xl font-bold text-emerald-500`}>
-                    {tvaSummary.tvaCollectee.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
-                  </p>
-                  <p className={`text-xs ${textMuted} mt-1`}>{tvaSummary.nbFactures} facture{tvaSummary.nbFactures > 1 ? 's' : ''}</p>
-                </div>
-
-                <div className={`${cardBg} rounded-xl border p-4`}>
-                  <p className={`text-sm ${textMuted} mb-1`}>TVA déductible</p>
-                  <p className={`text-2xl font-bold text-blue-500`}>
-                    {tvaSummary.tvaDeductible.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
-                  </p>
-                  <p className={`text-xs ${textMuted} mt-1`}>{tvaSummary.nbDepenses} dépense{tvaSummary.nbDepenses > 1 ? 's' : ''}</p>
-                </div>
-
-                <div className={`${cardBg} rounded-xl border p-4 ${
-                  tvaSummary.isCredit
-                    ? (isDark ? 'border-blue-800' : 'border-blue-200')
-                    : (isDark ? 'border-amber-800' : 'border-amber-200')
-                }`}>
-                  <p className={`text-sm ${textMuted} mb-1`}>
-                    {tvaSummary.isCredit ? 'Crédit de TVA' : 'TVA à payer'}
-                  </p>
-                  <p className={`text-2xl font-bold ${tvaSummary.isCredit ? 'text-blue-500' : 'text-amber-500'}`}>
-                    {Math.abs(tvaSummary.tvaNetteAPayer).toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
-                  </p>
-                  <p className={`text-xs ${textMuted} mt-1`}>
-                    {tvaSummary.periode.debut} au {tvaSummary.periode.fin}
-                  </p>
-                </div>
-              </div>
-
-              {/* Detail par taux */}
-              <div className={`${cardBg} rounded-xl border overflow-hidden`}>
-                <div className={`px-4 py-3 border-b border-bord bg-surface-2`}>
-                  <h3 className={`font-semibold ${textPrimary}`}>Détail par taux de TVA</h3>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full" aria-label="Détail par taux de TVA">
-                    <thead className={'bg-surface-2'}>
-                      <tr>
-                        <th scope="col" className={`text-left px-4 py-3 text-sm font-medium ${textMuted}`}>Taux</th>
-                        <th scope="col" className={`text-right px-4 py-3 text-sm font-medium ${textMuted}`}>Base HT</th>
-                        <th scope="col" className={`text-right px-4 py-3 text-sm font-medium ${textMuted}`}>Collectée</th>
-                        <th scope="col" className={`text-right px-4 py-3 text-sm font-medium ${textMuted}`}>Déductible</th>
-                        <th scope="col" className={`text-right px-4 py-3 text-sm font-medium ${textMuted}`}>Solde</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {Object.entries(tvaSummary.detailParTaux)
-                        .filter(([, data]) => data.base > 0 || data.deductible > 0)
-                        .map(([taux, data]) => {
-                          const solde = data.collectee - data.deductible;
-                          return (
-                            <tr key={taux} className={`border-t border-bord`}>
-                              <td className={`px-4 py-3 font-medium ${textPrimary}`}>{taux}%</td>
-                              <td className={`text-right px-4 py-3 ${textSecondary}`}>
-                                {data.base.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
-                              </td>
-                              <td className={`text-right px-4 py-3 text-emerald-500`}>
-                                {data.collectee.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
-                              </td>
-                              <td className={`text-right px-4 py-3 text-blue-500`}>
-                                {data.deductible.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
-                              </td>
-                              <td className={`text-right px-4 py-3 font-medium ${solde >= 0 ? 'text-amber-500' : 'text-blue-500'}`}>
-                                {solde >= 0 ? '+' : ''}{solde.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
-                              </td>
-                            </tr>
-                          );
-                        })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              {/* Info */}
-              <div className={`rounded-xl p-4 ${isDark ? 'bg-blue-900/20 border border-blue-800' : 'bg-blue-50 border border-blue-200'}`}>
-                <div className="flex items-start gap-3">
-                  <AlertCircle size={20} className="text-blue-500 mt-0.5 flex-shrink-0" />
-                  <div>
-                    <p className={`font-medium ${isDark ? 'text-blue-300' : 'text-blue-800'}`}>Information</p>
-                    <p className={`text-sm mt-1 text-info-texte`}>
-                      Ce résumé TVA est indicatif et basé sur les données saisies dans Mallettico.
-                      Pour votre déclaration officielle, consultez votre expert-comptable.
+                  <div className={`${cardBg} rounded-xl border p-4 ${
+                    tvaSummary.isCredit
+                      ? (isDark ? 'border-blue-800' : 'border-blue-200')
+                      : (isDark ? 'border-amber-800' : 'border-amber-200')
+                  }`}>
+                    <p className={`text-sm ${textMuted} mb-1`}>
+                      {tvaSummary.isCredit ? 'Crédit estimé (débits)' : 'Solde estimé (débits)'}
+                    </p>
+                    <p className={`text-2xl font-bold ${tvaSummary.isCredit ? 'text-blue-500' : 'text-amber-500'}`}>
+                      {Math.abs(tvaSummary.tvaNetteAPayer).toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
+                    </p>
+                    <p className={`text-xs ${textMuted} mt-1`}>
+                      {tvaSummary.periode.debut} au {tvaSummary.periode.fin}
                     </p>
                   </div>
                 </div>
+
+                {tvaSummary.depensesSansTva > 0 && (
+                  <div role="status" className="rounded-xl p-3 flex items-start gap-2 text-sm bg-alerte-fond text-alerte-texte">
+                    <AlertCircle size={16} className="mt-0.5 flex-shrink-0" aria-hidden="true" />
+                    <span>
+                      {tvaSummary.depensesSansTva === 1 ? '1 dépense de la période n’a pas sa TVA saisie : aucune TVA n’est déduite pour elle.' : `${tvaSummary.depensesSansTva} dépenses de la période n’ont pas leur TVA saisie : aucune TVA n’est déduite pour elles.`}
+                      {' '}Choisissez le taux porté sur la facture du fournisseur dans la fiche du chantier, onglet Finances.
+                    </span>
+                  </div>
+                )}
+
+                {/* Detail par taux */}
+                <div className={`${cardBg} rounded-xl border overflow-hidden`}>
+                  <div className={`px-4 py-3 border-b border-bord bg-surface-2`}>
+                    <h3 className={`font-semibold ${textPrimary}`}>Détail par taux de TVA</h3>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full" aria-label="Détail par taux de TVA">
+                      <thead className={'bg-surface-2'}>
+                        <tr>
+                          <th scope="col" className={`text-left px-4 py-3 text-sm font-medium ${textMuted}`}>Taux</th>
+                          <th scope="col" className={`text-right px-4 py-3 text-sm font-medium ${textMuted}`}>Base HT</th>
+                          <th scope="col" className={`text-right px-4 py-3 text-sm font-medium ${textMuted}`}>Facturée</th>
+                          <th scope="col" className={`text-right px-4 py-3 text-sm font-medium ${textMuted}`}>Déductible</th>
+                          <th scope="col" className={`text-right px-4 py-3 text-sm font-medium ${textMuted}`}>Solde</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {Object.entries(tvaSummary.detailParTaux)
+                          .sort(([a], [b]) => Number(b) - Number(a))
+                          .map(([taux, data]) => {
+                            const solde = data.collectee - data.deductible;
+                            return (
+                              <tr key={taux} className={`border-t border-bord`}>
+                                <td className={`px-4 py-3 font-medium ${textPrimary}`}>{String(taux).replace('.', ',')} %</td>
+                                <td className={`text-right px-4 py-3 ${textSecondary}`}>
+                                  {data.base.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
+                                </td>
+                                <td className={`text-right px-4 py-3 text-emerald-500`}>
+                                  {data.collectee.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
+                                </td>
+                                <td className={`text-right px-4 py-3 text-blue-500`}>
+                                  {data.deductible.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
+                                </td>
+                                <td className={`text-right px-4 py-3 font-medium ${solde >= 0 ? 'text-amber-500' : 'text-blue-500'}`}>
+                                  {solde >= 0 ? '+' : ''}{solde.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
+                                </td>
+                              </tr>
+                            );
+                          })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Info */}
+                <div className={`rounded-xl p-4 ${isDark ? 'bg-blue-900/20 border border-blue-800' : 'bg-blue-50 border border-blue-200'}`}>
+                  <div className="flex items-start gap-3">
+                    <AlertCircle size={20} className="text-blue-500 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className={`font-medium ${isDark ? 'text-blue-300' : 'text-blue-800'}`}>Information</p>
+                      <p className={`text-sm mt-1 text-info-texte`}>
+                        Ce résumé est calculé sur vos factures émises (régime des débits). Sans option pour les débits, la TVA de vos
+                        travaux est due à l’encaissement (art. 269 du CGI) : le montant à déclarer peut différer. Pour votre
+                        déclaration, consultez votre expert-comptable.
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </div>
-            </div>
+            </>
           )}
         </div>
       )}
@@ -1939,7 +1822,6 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
           chantiers={chantiers}
           clients={clients}
           devis={devis}
-          factures={devis.filter(d => d.type === 'facture')}
           depenses={depenses}
           entreprise={entreprise}
           isDark={isDark}
@@ -2284,29 +2166,6 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
         );
       })()}
 
-      {/* Modal Export Comptable */}
-      {showExportModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className={`bg-surface rounded-2xl p-6 w-full max-w-md`}>
-            <h3 className={`font-bold text-lg mb-4 ${textPrimary}`}> Export pour comptable</h3>
-            <p className={`${textMuted} mb-4`}>Exportez vos devis et factures au format Excel/CSV pour votre comptable.</p>
-            <div className="mb-6">
-              <label className="block text-sm font-medium mb-2">Année à exporter</label>
-              <select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={exportYear} onChange={e => setExportYear(parseInt(e.target.value))}>
-                {[2024, 2025, 2026].map(y => <option key={y} value={y}>{y}</option>)}
-              </select>
-            </div>
-            <div className={`bg-surface-2 rounded-xl p-4 mb-6 text-sm`}>
-              <p className="font-medium mb-2">Colonnes exportées:</p>
-              <p className="text-slate-600">N° Document, Type, Date, Client, Total HT, TVA 5.5%, TVA 10%, TVA 20%, Total TTC, Statut</p>
-            </div>
-            <div className="flex gap-3">
-              <button onClick={() => setShowExportModal(false)} className={`flex-1 px-4 py-2 rounded-xl bg-surface-2`}>Annuler</button>
-              <button onClick={handleExportComptable} className="flex-1 px-4 py-2 bg-emerald-500 text-white rounded-xl"> Télécharger CSV</button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

@@ -4,6 +4,7 @@ import {
   Calendar, Settings, Loader2, CheckCircle, AlertCircle, Clock, ChevronDown,
   BarChart3, RefreshCw
 } from 'lucide-react';
+import { estFranchiseTva } from '../../lib/franchiseTva';
 import { computeActivityReport, computeFinancialReport, computeChantierReport, getPeriodPresets, getPeriodLabel } from '../../lib/reportDataService';
 import { generateActivityPDF, generateFinancialPDF, generateChantierPDF, downloadReportPDF, previewReportPDF } from '../../lib/reportPdfBuilder';
 import supabase, { isDemo } from '../../supabaseClient';
@@ -96,7 +97,7 @@ export default function RapportsTab({ devis = [], depenses = [], clients = [], c
         data = computeActivityReport(devis, clients, chantiers, depenses, paiements, debut, fin);
         result = await generateActivityPDF(data, entreprise, { couleur });
       } else if (type === 'financier') {
-        data = computeFinancialReport(devis, clients, chantiers, depenses, paiements, debut, fin);
+        data = computeFinancialReport(devis, clients, chantiers, depenses, paiements, debut, fin, { franchise: estFranchiseTva(entreprise) });
         result = await generateFinancialPDF(data, entreprise, { couleur });
       } else if (type === 'chantier') {
         if (!selectedChantier) {
@@ -151,7 +152,7 @@ export default function RapportsTab({ devis = [], depenses = [], clients = [], c
       data = computeActivityReport(devis, clients, chantiers, depenses, paiements, debut, fin);
       result = await generateActivityPDF(data, entreprise, { couleur });
     } else if (report.type === 'financier') {
-      data = computeFinancialReport(devis, clients, chantiers, depenses, paiements, debut, fin);
+      data = computeFinancialReport(devis, clients, chantiers, depenses, paiements, debut, fin, { franchise: estFranchiseTva(entreprise) });
       result = await generateFinancialPDF(data, entreprise, { couleur });
     } else if (report.type === 'chantier' && report.chantier_id) {
       data = computeChantierReport(report.chantier_id, devis, clients, chantiers, depenses, pointages || []);

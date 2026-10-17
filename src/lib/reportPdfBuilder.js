@@ -585,8 +585,9 @@ export async function generateFinancialPDF(data, entreprise, options = {}) {
   const kh = 24;
   const { kpis } = data;
 
-  drawKPICard(doc, m, y, kw, kh, 'Chiffre d\'affaires', fmtMoney(kpis.ca), data.comparisons?.ca, brandRgb);
-  drawKPICard(doc, m + kw + 6, y, kw, kh, 'Dépenses', fmtMoney(kpis.totalDepenses), null, [239, 68, 68]);
+  // Compte de résultat hors taxes : chiffre d'affaires HT, dépenses HT (en franchise, sans TVA)
+  drawKPICard(doc, m, y, kw, kh, 'Chiffre d\'affaires HT', fmtMoney(kpis.caHT), data.comparisons?.ca, brandRgb);
+  drawKPICard(doc, m + kw + 6, y, kw, kh, data.tva?.franchise ? 'Dépenses' : 'Dépenses HT', fmtMoney(kpis.totalDepenses), null, [239, 68, 68]);
   drawKPICard(doc, m + (kw + 6) * 2, y, kw, kh, 'Marge brute', fmtMoney(kpis.margeBrute), null,
     kpis.margeBrute >= 0 ? [34, 197, 94] : [239, 68, 68]);
   y += kh + 4;
@@ -597,23 +598,27 @@ export async function generateFinancialPDF(data, entreprise, options = {}) {
   drawKPICard(doc, m + (kw + 6) * 2, y, kw, kh, 'Marge %', kpis.hasDepenses ? fmtPct(kpis.margePercent) : 'N/A', null, brandRgb);
   y += kh + 8;
 
-  // === TVA ===
-  y = checkNewPage(y, 40);
-  y = sectionHeader(doc, y, 'TVA', brandRgb);
-  const tvaHeaders = ['', 'Montant'];
-  const tvaWidths = [100, 70];
-  const tvaRows = [
-    ['TVA collectée', fmtMoney2(data.tva?.collectee || 0)],
-    ['TVA déductible', fmtMoney2(data.tva?.deductible || 0)],
-    ['TVA nette (à reverser)', fmtMoney2(data.tva?.net || 0)],
-  ];
-  y = drawTable(doc, y, tvaHeaders, tvaRows, tvaWidths, brandRgb, checkNewPage);
+  // === TVA === (pas de section en franchise : ni TVA facturée ni TVA déductible)
+  if (!data.tva?.franchise) {
+    y = checkNewPage(y, 40);
+    y = sectionHeader(doc, y, 'TVA', brandRgb);
+    const tvaHeaders = ['', 'Montant'];
+    const tvaWidths = [100, 70];
+    const sansTva = data.tva?.depensesSansTva || 0;
+    const tvaRows = [
+      ['TVA facturée', fmtMoney2(data.tva?.collectee || 0)],
+      ['TVA déductible (saisie sur les dépenses)', fmtMoney2(data.tva?.deductible || 0)],
+      ['Solde de TVA estimé (débits)', fmtMoney2(data.tva?.net || 0)],
+      ...(sansTva ? [[`Dépenses sans TVA saisie, non comptées : ${sansTva}`, '']] : []),
+    ];
+    y = drawTable(doc, y, tvaHeaders, tvaRows, tvaWidths, brandRgb, checkNewPage);
+  }
 
   // === RENTABILITÉ CHANTIERS ===
   if (data.rentabiliteChantiers && data.rentabiliteChantiers.length > 0) {
     y = checkNewPage(y, 40);
     y = sectionHeader(doc, y, 'Rentabilité par chantier', brandRgb);
-    const headers = ['Chantier', 'CA TTC', 'Dépenses', 'Marge', 'Marge %'];
+    const headers = ['Chantier', 'CA HT', 'Dépenses', 'Marge', 'Marge %'];
     const widths = [50, 30, 30, 30, 30];
     const rows = data.rentabiliteChantiers.map(c => [
       (c.nom || '').substring(0, 25),
@@ -728,7 +733,7 @@ export async function generateChantierPDF(data, entreprise, options = {}) {
   const kw = (CONTENT_W - 6) / 2;
   const kh = 24;
   drawKPICard(doc, m, y, kw, kh, 'Budget prévu', fmtMoney(data.budgetPrevu), null, brandRgb);
-  drawKPICard(doc, m + kw + 6, y, kw, kh, 'CA réel', fmtMoney(data.totalCA), null, brandRgb);
+  drawKPICard(doc, m + kw + 6, y, kw, kh, 'Devis signés HT', fmtMoney(data.totalCA), null, brandRgb);
   y += kh + 4;
 
   drawKPICard(doc, m, y, kw, kh, 'Dépenses', fmtMoney(data.totalDepenses), null, [239, 68, 68]);

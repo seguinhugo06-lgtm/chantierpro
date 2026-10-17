@@ -1,12 +1,8 @@
 /**
  * useExportComptable - Hook for accounting exports
  *
- * Generates CSV/FEC exports for accounting purposes.
- * Provides export functions for:
- * - CA3 TVA declaration (simplified)
- * - Grand livre comptable
- * - Journal des ventes / achats
- * - FEC (Fichier des Ecritures Comptables)
+ * Exports CSV de la trésorerie : journal des ventes, journal des achats, règlements, mouvements.
+ * Le FEC est produit par Finances › Export comptable (src/components/export/ExportComptable.jsx).
  */
 
 import { useCallback } from 'react';
@@ -14,8 +10,8 @@ import { formatClientName } from '../lib/formatters';
 import { remettreFichier } from '../lib/natif';
 import { facturesEmises } from '../lib/ventes';
 import { totauxDocument } from '../lib/totauxDocument';
-
-const MONTH_NAMES = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
+import { estFranchiseTva } from '../lib/franchiseTva';
+import { montantsDepense } from '../lib/tvaDepenses';
 
 function downloadCSV(rows, filename) {
   const BOM = '\uFEFF'; // UTF-8 BOM for Excel compatibility
@@ -40,34 +36,8 @@ function downloadCSV(rows, filename) {
  * @param {Array} options.mouvements - All tresorerie mouvements
  * @param {Array} options.clients - All clients
  * @param {Object} options.entreprise - Entreprise info
- * @param {Object} options.tvaData - TVA computation results from useTVA
  */
-export function useExportComptable({ devis = [], depenses = [], reglements = [], mouvements = [], clients = [], entreprise = {}, tvaData = {} } = {}) {
-
-  // ── Export CA3 (TVA declaration) ────────────────────────────────────
-  const exportCA3 = useCallback((year) => {
-    const y = year || new Date().getFullYear();
-    const ca3 = tvaData.ca3Data || {};
-
-    const rows = [
-      ['Déclaration CA3 simplifiée', '', ''],
-      ['Entreprise', entreprise?.nom || 'Mallettico', ''],
-      ['N° TVA', entreprise?.tvaIntra || entreprise?.tva_intra || entreprise?.numeroTva || '', ''],
-      ['Année', y, ''],
-      ['', '', ''],
-      ['Ligne', 'Libellé', 'Montant (€)'],
-      ['01', 'Ventes, prestations de services (HT)', (ca3.ligne01 || 0).toFixed(2)],
-      ['08', 'Opérations imposables à 20%', (ca3.ligne08 || 0).toFixed(2)],
-      ['09', 'Opérations imposables à 5,5%', (ca3.ligne09 || 0).toFixed(2)],
-      ['9B', 'Opérations imposables à 10%', (ca3.ligne9B || 0).toFixed(2)],
-      ['16', 'Total TVA brute', (ca3.ligne16 || 0).toFixed(2)],
-      ['20', 'TVA déductible sur autres biens et services', (ca3.ligne20 || 0).toFixed(2)],
-      ['23', 'Total TVA déductible', (ca3.ligne23 || 0).toFixed(2)],
-      ['28', 'TVA nette due (ou crédit)', (ca3.ligne28 || 0).toFixed(2)],
-    ];
-
-    downloadCSV(rows, `declaration_tva_ca3_${y}.csv`);
-  }, [tvaData, entreprise]);
+export function useExportComptable({ devis = [], depenses = [], reglements = [], mouvements = [], clients = [], entreprise = {} } = {}) {
 
   // ── Export Journal des ventes ────────────────────────────────────────
   const exportJournalVentes = useCallback((year) => {
@@ -108,44 +78,48 @@ export function useExportComptable({ devis = [], depenses = [], reglements = [],
   }, [devis, clients]);
 
   // ── Export Journal des achats ────────────────────────────────────────
+  // Le montant d'une dépense est HT ; sa TVA est celle saisie (taux ou montant), sinon « non saisie » : colonnes TVA
+  // et TTC vides, rien d'inventé (avant, relecture juriste-btp du 17 oct. 2026 : le montant pris pour un TTC à 20 %).
+  // En franchise, la TVA payée ne se déduit pas : le montant est la charge.
   const exportJournalAchats = useCallback((year) => {
     const y = year || new Date().getFullYear();
+    const franchise = estFranchiseTva(entreprise);
     const yearDepenses = depenses.filter(d => {
       const dateYear = new Date(d.date || d.createdAt).getFullYear();
       return dateYear === y;
     });
 
     const rows = [
-      ['Date', 'Fournisseur', 'Description', 'Catégorie', 'HT (€)', 'TVA (€)', 'TTC (€)', 'Taux TVA (%)'],
+      ['Date', 'Fournisseur', 'Description', 'Catégorie', franchise ? 'Montant payé (€)' : 'HT (€)', 'TVA (€)', 'TTC (€)', 'Taux TVA (%)', 'Remarque'],
     ];
 
+    let totalHt = 0;
+    let totalTva = 0;
+    let sansTva = 0;
     yearDepenses.forEach(dep => {
-      const rate = dep.tvaRate || dep.tauxTva || dep.tva_rate || 20;
-      const montant = dep.montant || 0;
-      const ht = dep.montantHt || montant / (1 + rate / 100);
-      const tva = montant - ht;
-
+      const m = montantsDepense(dep, { franchise });
+      totalHt += m.ht;
+      if (m.connue) totalTva += m.tva; else sansTva += 1;
       rows.push([
         dep.date || '',
         dep.fournisseur || '',
         dep.description || dep.libelle || '',
         dep.categorie || '',
-        ht.toFixed(2),
-        tva.toFixed(2),
-        montant.toFixed(2),
-        rate,
+        m.ht.toFixed(2),
+        m.connue && !franchise ? m.tva.toFixed(2) : '',
+        m.connue && !franchise ? m.ttc.toFixed(2) : '',
+        m.taux ?? '',
+        franchise ? 'Franchise : TVA non déductible' : (m.connue ? '' : 'TVA non saisie'),
       ]);
     });
 
-    const totalMontant = yearDepenses.reduce((s, d) => s + (d.montant || 0), 0);
-    const totalHt = yearDepenses.reduce((s, d) => {
-      const rate = d.tvaRate || d.tauxTva || d.tva_rate || 20;
-      return s + (d.montantHt || (d.montant || 0) / (1 + rate / 100));
-    }, 0);
-    rows.push(['', '', '', 'TOTAL', totalHt.toFixed(2), (totalMontant - totalHt).toFixed(2), totalMontant.toFixed(2), '']);
+    rows.push([
+      '', '', '', 'TOTAL', totalHt.toFixed(2), franchise ? '' : totalTva.toFixed(2), sansTva || franchise ? '' : (totalHt + totalTva).toFixed(2), '',
+      sansTva ? `dont ${sansTva} dépense${sansTva > 1 ? 's' : ''} sans TVA saisie (non comptée)` : '',
+    ]);
 
     downloadCSV(rows, `journal_achats_${y}.csv`);
-  }, [depenses]);
+  }, [depenses, entreprise]);
 
   // ── Export Règlements ─────────────────────────────────────────────────
   const exportReglements = useCallback((year) => {
@@ -179,72 +153,6 @@ export function useExportComptable({ devis = [], depenses = [], reglements = [],
     downloadCSV(rows, `reglements_${y}.csv`);
   }, [reglements, devis, clients]);
 
-  // ── Export FEC (Fichier des Ecritures Comptables) ───────────────────
-  const exportFEC = useCallback((year) => {
-    const y = year || new Date().getFullYear();
-    const acceptedStatuts = ['accepte', 'signe', 'payee', 'paye'];
-
-    // FEC header per French regulation
-    const rows = [
-      ['JournalCode', 'JournalLib', 'EcritureNum', 'EcritureDate', 'CompteNum', 'CompteLib', 'CompAuxNum', 'CompAuxLib', 'PieceRef', 'PieceDate', 'EcritureLib', 'Debit', 'Credit', 'EcrtureLettrage', 'DateLettrage', 'ValidDate', 'Montantdevise', 'Idevise'],
-    ];
-
-    let ecritureNum = 1;
-
-    // Journal VE (Ventes)
-    const factures = devis.filter(d => {
-      const dateYear = new Date(d.date || d.createdAt).getFullYear();
-      return acceptedStatuts.includes(d.statut) && dateYear === y;
-    });
-
-    factures.forEach(f => {
-      const client = clients.find(c => c.id === f.client_id);
-      const clientName = formatClientName(client, '');
-      const rate = f.tvaRate || f.tva_rate || 20;
-      const ht = f.total_ht || (f.total_ttc ? f.total_ttc / (1 + rate / 100) : 0);
-      const tva = (f.total_ttc || 0) - ht;
-      const dateStr = (f.date || '').replace(/-/g, '');
-      const num = String(ecritureNum).padStart(6, '0');
-
-      // Débit client (411)
-      rows.push(['VE', 'Journal des ventes', num, dateStr, '411000', 'Clients', f.client_id || '', clientName, f.numero || '', dateStr, f.objet || 'Vente', (f.total_ttc || 0).toFixed(2), '0.00', '', '', dateStr, '', 'EUR']);
-      // Crédit produit (706)
-      rows.push(['VE', 'Journal des ventes', num, dateStr, '706000', 'Prestations de services', '', '', f.numero || '', dateStr, f.objet || 'Vente', '0.00', ht.toFixed(2), '', '', dateStr, '', 'EUR']);
-      // Crédit TVA collectée (44571)
-      if (tva > 0) {
-        rows.push(['VE', 'Journal des ventes', num, dateStr, '445710', 'TVA collectée', '', '', f.numero || '', dateStr, `TVA ${rate}%`, '0.00', tva.toFixed(2), '', '', dateStr, '', 'EUR']);
-      }
-      ecritureNum++;
-    });
-
-    // Journal HA (Achats)
-    const yearDepenses = depenses.filter(d => {
-      const dateYear = new Date(d.date || d.createdAt).getFullYear();
-      return dateYear === y;
-    });
-
-    yearDepenses.forEach(dep => {
-      const rate = dep.tvaRate || dep.tauxTva || dep.tva_rate || 20;
-      const montant = dep.montant || 0;
-      const ht = dep.montantHt || montant / (1 + rate / 100);
-      const tva = montant - ht;
-      const dateStr = (dep.date || '').replace(/-/g, '');
-      const num = String(ecritureNum).padStart(6, '0');
-
-      // Débit charge (606)
-      rows.push(['HA', 'Journal des achats', num, dateStr, '606000', 'Achats', '', dep.fournisseur || '', dep.numeroFacture || '', dateStr, dep.description || dep.libelle || 'Achat', ht.toFixed(2), '0.00', '', '', dateStr, '', 'EUR']);
-      // Débit TVA déductible (44566)
-      if (tva > 0) {
-        rows.push(['HA', 'Journal des achats', num, dateStr, '445660', 'TVA déductible', '', '', dep.numeroFacture || '', dateStr, `TVA ${rate}%`, tva.toFixed(2), '0.00', '', '', dateStr, '', 'EUR']);
-      }
-      // Crédit fournisseur (401)
-      rows.push(['HA', 'Journal des achats', num, dateStr, '401000', 'Fournisseurs', '', dep.fournisseur || '', dep.numeroFacture || '', dateStr, dep.description || dep.libelle || 'Achat', '0.00', montant.toFixed(2), '', '', dateStr, '', 'EUR']);
-      ecritureNum++;
-    });
-
-    downloadCSV(rows, `FEC_${entreprise?.siret || 'ENTREPRISE'}_${y}0101_${y}1231.csv`);
-  }, [devis, depenses, clients, entreprise]);
-
   // ── Export Trésorerie Mouvements ────────────────────────────────────
   const exportMouvements = useCallback((year) => {
     const y = year || new Date().getFullYear();
@@ -267,7 +175,7 @@ export function useExportComptable({ devis = [], depenses = [], reglements = [],
         (m.montantHt || 0).toFixed(2),
         (m.montantTva || 0).toFixed(2),
         (m.montant || 0).toFixed(2),
-        m.tauxTva ?? 20,
+        m.tauxTva ?? '',
         m.isRecurring ? 'Oui' : 'Non',
         m.notes || '',
       ]);
@@ -277,11 +185,9 @@ export function useExportComptable({ devis = [], depenses = [], reglements = [],
   }, [mouvements]);
 
   return {
-    exportCA3,
     exportJournalVentes,
     exportJournalAchats,
     exportReglements,
-    exportFEC,
     exportMouvements,
   };
 }
