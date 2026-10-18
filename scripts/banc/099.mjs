@@ -107,7 +107,8 @@ export async function verifier({ db, q, en, verifier }) {
 
   // 8. Une facture encaissée ne se supprime pas, même en brouillon (ses paiements resteraient sans pièce)
   const BR = await doc({ numero: null, statut: 'brouillon', total: 300 });
-  await payer(BR, 50);
+  // Encaissement d'avant 100 (depuis, un brouillon ne s'encaisse plus) : écrit en propriétaire
+  await q('INSERT INTO paiements (user_id, organization_id, devis_id, montant) VALUES ($1, $2, $3, 50)', [SOLO, ORG_SOLO, BR]);
   const supprimee = await refus(() => commeSolo('DELETE FROM devis WHERE id = $1', [BR]));
   const sansEncaissement = await doc({ numero: null, statut: 'brouillon', total: 10 });
   const supprimeeVide = await refus(() => commeSolo('DELETE FROM devis WHERE id = $1', [sansEncaissement]));

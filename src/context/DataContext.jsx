@@ -461,6 +461,9 @@ export function DataProvider({ children, initialData = {} }) {
 
   // Relance manuelle après un échec de chargement (bandeau « Réessayer »).
   const retryLoad = useCallback(() => setReloadToken((n) => n + 1), []);
+  // Relecture complète, après un refus définitif de la base au rejeu de la file : l'écran gardait ce qui a été refusé
+  // (ex. une facture « payée » hors ligne, migration 099) jusqu'au prochain chargement (relecture juriste-btp du 18 oct. 2026)
+  const rechargerDonnees = useCallback(() => { if (!isDemo) setDataLoaded(false); }, []);
 
   /**
    * Garde-fou d'abonnement, posé au seul endroit par lequel TOUTES les créations
@@ -1230,6 +1233,7 @@ export function DataProvider({ children, initialData = {} }) {
     dataLoading,
     loadError,
     retryLoad,
+    rechargerDonnees,
 
     // Setters (for direct access when needed)
     setClients,
@@ -1340,7 +1344,7 @@ export function DataProvider({ children, initialData = {} }) {
     userId,
   }), [
     clients, devisAvecAvoirs, chantiers, depenses, pointages, equipe, ajustements,
-    catalogue, paiements, echanges, ouvrages, planningEvents, memos, loading, dataLoading, loadError, retryLoad,
+    catalogue, paiements, echanges, ouvrages, planningEvents, memos, loading, dataLoading, loadError, retryLoad, rechargerDonnees,
     customTemplates, templateUsages,
     addClient, updateClient, deleteClient, getClient,
     addDevis, updateDevis, deleteDevis, getDevis, getDevisByClient, getDevisByChantier, generateNextNumero,

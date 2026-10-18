@@ -1589,6 +1589,12 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   // Créer un avoir (note de crédit) — via AvoirCreationModal
   const handleCreateAvoir = async (avoirData) => {
     const { sourceFacture, type: avoirType, motif, motifDetail, lignes, totalHT, totalTVA, totalTTC, tvaParTaux } = avoirData;
+    // Un avoir rectifie une facture émise (CGI art. 272, 1) : sur un brouillon, il entrerait seul dans le chiffre
+    // d'affaires et la TVA facturée (relecture juriste-btp du 18 oct. 2026 ; la base le refuse, migration 100)
+    if (sourceFacture?.statut === 'brouillon') {
+      showToast('Ce brouillon n\'est pas encore émis : corrigez-le directement, sans avoir.', 'error');
+      return;
+    }
 
     const avoir = {
       id: crypto.randomUUID(),
@@ -2949,7 +2955,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
             isDevis && !hasChantier && canCreateChantier && { groupe: 'document', libelle: 'Créer le chantier', icone: Building2, onClick: openChantierModal },
             peutCreer && selected.type === 'devis' && ['accepte', 'signe'].includes(selected.statut) && canAcompte && { groupe: 'document', libelle: 'Demander un acompte', icone: CreditCard, onClick: () => setShowEcheancierModal(true) },
             peutModifier && selected.type === 'devis' && ['accepte', 'signe', 'envoye', 'facture'].includes(selected.statut) && { groupe: 'document', libelle: 'Créer un avenant', icone: Edit3, onClick: () => createAvenant(selected) },
-            peutCreer && selected.type === 'facture' && !isAvoir && { groupe: 'document', libelle: 'Créer un avoir', icone: RotateCcw, onClick: () => setShowAvoirModal(true) },
+            // Un avoir rectifie une facture émise : un brouillon se corrige directement (CGI art. 272, 1 ; migration 100)
+            peutCreer && selected.type === 'facture' && !isAvoir && selected.statut !== 'brouillon' && { groupe: 'document', libelle: 'Créer un avoir', icone: RotateCcw, onClick: () => setShowAvoirModal(true) },
             // Un avoir brouillon est déjà numéroté : il ne se supprime pas (trou dans la séquence), il s'annule
             peutModifier && isAvoir && selected.statut === 'brouillon' && { groupe: 'document', libelle: 'Annuler cet avoir', icone: X, onClick: async () => {
               const ok = await confirm({ title: 'Annuler cet avoir ?', message: `${selected.numero} restera dans la numérotation, marqué « annulé », et ne réduira pas la facture.` });
