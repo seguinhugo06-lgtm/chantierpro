@@ -17,8 +17,8 @@ export async function verifier({ db, q, en, verifier }) {
   const creer = async (o) => {
     const r = (await commeSolo(
       `INSERT INTO devis (user_id, organization_id, entreprise_id, type, facture_type, statut, total_ttc, avoir_source_id, numero)
-       VALUES ($1, $2, $3, 'facture', $4, 'envoye', 100, $5, 'X') RETURNING id, numero, entreprise_id`,
-      [SOLO, ORG_SOLO, o.ent ?? null, o.nature || 'totale', o.avoirDe || null])).rows[0];
+       VALUES ($1, $2, $3, 'facture', $4, $6, 100, $5, 'X') RETURNING id, numero, entreprise_id, siren_emetteur`,
+      [SOLO, ORG_SOLO, o.ent ?? null, o.nature || 'totale', o.avoirDe || null, o.statut || 'envoye'])).rows[0];
     ids.push(r.id);
     return r;
   };
@@ -43,8 +43,9 @@ export async function verifier({ db, q, en, verifier }) {
   const b2 = await creer({ ent: B });
   const b3 = await creer({ ent: B });
   const b4 = await creer({ ent: B });
-  verifier(a1.numero === fac(1) && a2.numero === fac(2) && a3.numero === fac(3) && b1.numero === fac(1) && b4.numero === fac(4),
-    `102 : une série par SIREN (même EI : ${a1.numero}, ${a2.numero}, ${a3.numero} ; autre SIREN : ${b1.numero} … ${b4.numero})`);
+  verifier(a1.numero === fac(1) && a2.numero === fac(2) && a3.numero === fac(3) && b1.numero === fac(1) && b4.numero === fac(4)
+    && a1.siren_emetteur === '111111111' && a2.siren_emetteur === '111111111',
+    `102 : une série par SIREN, inscrit sur la facture (même EI : ${a1.numero}, ${a2.numero}, ${a3.numero} ; autre SIREN : ${b1.numero} … ${b4.numero} ; ${a1.siren_emetteur})`);
 
   // 2. Archiver une fiche ne fait plus sauter de numéros dans la série d'une autre (critère du juriste : B à 4, A continue à 4)
   await q('UPDATE entreprise SET archived_at = now() WHERE id = $1', [B]);
@@ -59,11 +60,23 @@ export async function verifier({ db, q, en, verifier }) {
   verifier(apres.entreprise_id === A1 && apres.objet === 'Note 102',
     `102 : l'entreprise d'une facture émise ne change pas, sans bloquer l'enregistrement (${apres.entreprise_id === A1})`);
 
-  // 4. Un avoir est émis par l'entreprise de sa facture
+  // 4. Un avoir est émis par l'entreprise de sa facture, même si l'app en envoie une autre (l'entreprise ouverte à l'écran)
   const av = await creer({ nature: 'avoir', avoirDe: a3.id });
-  const autreEntreprise = await refus(() => creer({ nature: 'avoir', avoirDe: a3.id, ent: B }));
-  verifier(av.entreprise_id === A1 && av.numero === `AV-${an}-00001` && /rectifie une facture émise de votre entreprise/.test(autreEntreprise || ''),
-    `102 : un avoir prend l'entreprise de sa facture ; une autre est refusée (${av.entreprise_id === A1}, ${av.numero} / ${autreEntreprise})`);
+  const av2 = await creer({ nature: 'avoir', avoirDe: a3.id, ent: B });
+  verifier(av.entreprise_id === A1 && av.numero === `AV-${an}-00001` && av2.entreprise_id === A1 && av2.numero === `AV-${an}-00002`,
+    `102 : un avoir prend l'entreprise de sa facture (${av.entreprise_id === A1}, ${av.numero} ; envoyé avec une autre : ${av2.entreprise_id === A1}, ${av2.numero})`);
+
+  // R1 (juriste) : corriger le SIRET d'une fiche ne déplace pas ses factures numérotées ; pas de doublon dans la série S1
+  await q(`UPDATE entreprise SET siret = '33333333300011' WHERE id = $1`, [A1]);
+  const a2bis = await creer({ ent: A2 });
+  verifier(a2bis.numero === fac(5), `102 : après correction du SIRET d'une fiche, la série de son ancien SIREN continue sans doublon (${a2bis.numero})`);
+
+  // R2 : un brouillon numéroté garde son entreprise et son SIREN
+  const brouillon = await creer({ ent: A2, statut: 'brouillon' });
+  await commeSolo('UPDATE devis SET entreprise_id = $2, siren_emetteur = $3 WHERE id = $1', [brouillon.id, B, '999999999']);
+  const brApres = (await q('SELECT entreprise_id, siren_emetteur FROM devis WHERE id = $1', [brouillon.id])).rows[0];
+  verifier(brouillon.numero === fac(6) && brApres.entreprise_id === A2 && brApres.siren_emetteur === '111111111',
+    `102 : un brouillon numéroté garde son entreprise et son SIREN (${brouillon.numero}, ${brApres.entreprise_id === A2}, ${brApres.siren_emetteur})`);
 
   // 5. Les fiches sans SIREN forment ensemble une série ; une facture sans entreprise compte dans chaque série
   const C1 = await fiche('Sans SIRET 102 a', null);
@@ -74,10 +87,10 @@ export async function verifier({ db, q, en, verifier }) {
     VALUES ($1, $2, $3, 'facture', 'totale', 'envoye', 100) RETURNING id`, [SOLO, ORG_SOLO, fac(30)])).rows[0].id;
   ids.push(ancienne);
   const a5 = await creer({ ent: A1 });
-  verifier(c1.numero === fac(1) && c2.numero === fac(2) && a5.numero === fac(31),
+  verifier(c1.numero === fac(1) && c2.numero === fac(2) && a5.numero === fac(31) && c1.siren_emetteur === null,
     `102 : fiches sans SIREN ensemble (${c1.numero}, ${c2.numero}) ; une facture sans entreprise compte dans chaque série (${a5.numero})`);
 
-  const fonction = (await q(`SELECT position('siren' in pg_get_functiondef('public.dernier_numero_facture(uuid, uuid, text, integer)'::regprocedure)) > 0 AS s,
+  const fonction = (await q(`SELECT position('siren_emetteur' in pg_get_functiondef('public.dernier_numero_facture(uuid, uuid, text, integer)'::regprocedure)) > 0 AS s,
     position('NEW.entreprise_id := OLD.entreprise_id' in pg_get_functiondef('public.garder_organisation_piece_emise()'::regprocedure)) > 0 AS e`)).rows[0];
   verifier(fonction.s && fonction.e, `102 : contrôles de l'en-tête (${JSON.stringify(fonction)})`);
   const rejeu = await refus(() => db.exec(fs.readFileSync(MIGRATION, 'utf8')));

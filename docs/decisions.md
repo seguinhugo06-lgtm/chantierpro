@@ -171,9 +171,9 @@ Bloque : rien
 
 ### Q-multi-entreprise · Restreindre l'ajout d'une deuxième fiche entreprise du même SIREN ?
 Contexte : Depuis le 18 oct. 2026 (migration 101), la série des factures est celle de l'organisation tant qu'elle n'a qu'une fiche entreprise active, celle de la fiche sinon. Avec deux fiches d'un même SIREN (un électricien qui ajoute une fiche « plomberie » sous la même EI), la seconde repartirait à FAC-AAAA-00001 : deux factures d'une même année au même numéro pour un même contribuable (BOI-TVA-DECLA-30-20-20-10 § 90) ; et archiver une fiche ferait sauter des numéros dans la série de l'autre. Aucune organisation n'a deux fiches aujourd'hui — relecture juriste-btp du 18 oct. 2026 (M1). Depuis la migration 102 (même jour), la série suit le SIREN : deux fiches d'un même SIREN partagent la numérotation et archiver une fiche ne fait plus sauter de numéros ; la restriction n'est plus nécessaire pour la numérotation.
-Option `aucune` : ne rien restreindre — deux activités d'une même EI peuvent avoir chacune leur fiche (nom commercial, couleur) et partagent la numérotation (102).
+Option `aucune` : ne rien restreindre — deux activités d'une même EI peuvent avoir chacune leur fiche (nom commercial, couleur) ; elles partagent la numérotation (102) et doivent porter la même identité légale (nom de l'entrepreneur suivi de « EI », SIREN, n° de TVA, régime de TVA : un seul contribuable).
 Option `meme-siren` : refuser une deuxième fiche active du même SIREN — une seule fiche par contribuable, plus simple à comprendre.
-Recommandation : `aucune`, la numérotation étant juste depuis 102.
+Recommandation : `aucune`, la numérotation étant juste depuis 102 (SIREN de l'émetteur figé sur la facture), sous réserve d'une identité légale commune aux fiches d'un même SIREN, à recopier ou contrôler à la création de la seconde fiche (« Plus tard » : Multi-entreprise).
 Irréversible : non
 Bloque : rien
 
