@@ -1398,7 +1398,10 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     };
 
     // Refus de la base : le devis reste tel quel (avant : « facturé » sans facture)
-    if (!(await onSubmit(facture))) return;
+    const enregistreeEtape = await onSubmit(facture);
+    if (!enregistreeEtape) return;
+    // Numéro attribué par la base à l'enregistrement (migration 101) : celui de la ligne enregistrée fait foi
+    if (enregistreeEtape.numero) facture.numero = enregistreeEtape.numero;
 
     // Update échéancier étape
     const updatedEtapes = updateEtape(echeancier.etapes, etape.numero, {
@@ -1494,7 +1497,10 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       total_ht: montantHT, tva, total_ttc: ttc, acompte_pct: acomptePct
     };
     // Refus de la base : le devis reste tel quel (avant : « facturé » sans facture)
-    if (!(await onSubmit(facture))) return;
+    const enregistreeAcompte = await onSubmit(facture);
+    if (!enregistreeAcompte) return;
+    // Numéro attribué par la base à l'enregistrement (migration 101) : celui de la ligne enregistrée fait foi
+    if (enregistreeAcompte.numero) facture.numero = enregistreeAcompte.numero;
     const acompteUpdate = {
       statut: 'acompte_facture',
       // Le devis signé garde le pourcentage qu'il annonce ; celui facturé est sur la facture d'acompte
@@ -1574,7 +1580,10 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     // avant la fin du délai (échéance et phrase imprimée dans les trois générateurs)
     Object.assign(facture, echeanceApresSeptJours(septJoursDe(selected), facture.date_echeance, selected.conditionsPaiement || selected.conditions) || {});
     // Refus de la base : le devis reste tel quel (avant : « facturé » sans facture)
-    if (!(await onSubmit(facture))) return;
+    const enregistreeSolde = await onSubmit(facture);
+    if (!enregistreeSolde) return;
+    // Numéro attribué par la base à l'enregistrement (migration 101) : celui de la ligne enregistrée fait foi
+    if (enregistreeSolde.numero) facture.numero = enregistreeSolde.numero;
     const soldeUpdate = {
       statut: 'facture',
       facture_solde_id: facture.id,
@@ -1622,7 +1631,10 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       conditionsPaiement: sourceFacture.conditionsPaiement,
     };
 
-    if (!(await onSubmit(avoir))) return;
+    const enregistre = await onSubmit(avoir);
+    if (!enregistre) return;
+    // Numéro attribué par la base à l'enregistrement (migration 101) : celui de la ligne enregistrée fait foi
+    if (enregistre.numero) avoir.numero = enregistre.numero;
     setShowAvoirModal(false);
     setSnackbar({
       type: 'success',

@@ -401,7 +401,10 @@ export default function SituationsTravaux({
 
       try {
         // Refus de la base : la situation reste « validée », DataContext a dit pourquoi
-        if (!(await addDevis(facture))) return;
+        const enregistree = await addDevis(facture);
+        if (!enregistree) return;
+        // Numéro attribué par la base à l'enregistrement (migration 101) : celui de la ligne enregistrée fait foi
+        const numeroEnregistre = enregistree.numero || numero;
         // Update situation status
         const updated = situations.map((s) =>
           s.id === sitId
@@ -409,7 +412,7 @@ export default function SituationsTravaux({
                 ...s,
                 statut: SITUATION_STATUS.FACTUREE,
                 facture_id: facture.id,
-                facture_numero: numero,
+                facture_numero: numeroEnregistre,
                 facturee_at: new Date().toISOString(),
               }
             : s

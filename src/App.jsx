@@ -642,6 +642,10 @@ export default function App() {
         // (sinon les écritures encore en attente disparaîtraient de l'écran jusqu'à leur envoi — relecture
         // gardien-securite du 18 oct. 2026)
         if (count === 0) rechargerDonnees?.();
+      } else if (results.success > 0 && count === 0) {
+        // Écritures rejouées : la base a pu les compléter (numéro de facture attribué à l'enregistrement, migration 101 ;
+        // montant encaissé, 098) — on relit une fois la file vide
+        rechargerDonnees?.();
       } else if (results.cleared > 0 && results.success === 0 && results.failed === 0) {
         showToast('File d\'attente nettoyée', 'info');
       }

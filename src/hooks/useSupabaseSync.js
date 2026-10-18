@@ -1268,30 +1268,11 @@ const _numeroCursor = {};
  * Uses an in-memory cursor to guarantee monotonic numbers even under rapid creation.
  */
 export async function getNextNumero(type, userId, localDevis = [], entrepriseId = null) {
-  // If we have an entrepriseId and Supabase, try the atomic RPC first
-  if (!isDemo && supabase && entrepriseId) {
-    try {
-      const rpcType = type === 'avoir' ? 'avoir' : type === 'facture' ? 'facture' : 'devis';
-      const { data, error } = await supabase.rpc('fn_next_document_number', {
-        p_entreprise_id: entrepriseId,
-        p_type: rpcType,
-      });
-      if (!error && data) {
-        // Update cursor to stay in sync locally
-        const m = data.match(/^([A-Z]+)-(\d{4})-(\d+)$/);
-        if (m) {
-          const cursorKey = `${m[1]}-${m[2]}`;
-          _numeroCursor[cursorKey] = parseInt(m[3], 10);
-        }
-        return data;
-      }
-      console.warn('getNextNumero: RPC failed, falling back to legacy', error?.message);
-    } catch (e) {
-      console.warn('getNextNumero: RPC unavailable, falling back to legacy', e.message);
-    }
-  }
+  // Pour une facture ou un avoir, ce numéro n'est qu'une proposition : la base attribue le numéro définitif à
+  // l'enregistrement, sous verrou, à la suite de la série (migration 101) ; l'app reprend celui de la ligne enregistrée.
+  // (L'appel à fn_next_document_number, fonction absente de la production, échouait à chaque création : retiré.)
 
-  // Legacy fallback: compute from existing numeros
+  // Plus grand numéro connu + 1
   const prefix = type === 'facture' ? 'FAC' : type === 'avoir' ? 'AV' : 'DEV';
   const year = new Date().getFullYear();
   const cursorKey = `${prefix}-${year}`;
