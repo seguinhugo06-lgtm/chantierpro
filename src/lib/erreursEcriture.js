@@ -44,14 +44,17 @@ export function messageEcritureRefusee(error) {
   if (estSessionExpiree(error)) {
     return 'Votre session a expiré. Reconnectez-vous puis recommencez.';
   }
-  // Garde de la base qui dit quoi faire (091 : signature sur place figée ; 093 : facture émise) : rendue telle quelle
-  if (code === '42501' && /faites (signer )?un (avenant|avoir)|numérotation doit rester continue/i.test(texte)) return String(error?.message || error?.messageBase || '').trim();
+  // Garde de la base qui dit quoi faire (091 : signature sur place figée ; 093 : facture émise ; 098 : devis déjà
+  // facturé, encaissements) : rendue telle quelle
+  if (code === '42501' && /faites (signer )?un (avenant|avoir)|numérotation doit rester continue|déjà facturé|encaissement|correction/i.test(texte)) return String(error?.message || error?.messageBase || '').trim();
   if (code === '42501' || status === 403 || /row-level security|permission denied/i.test(texte)) {
     return "Votre compte n'a pas le droit de faire cette modification.";
   }
   if (code === 'PGRST116' || status === 406 || status === 404) {
     return "Cet élément n'existe plus ou ne vous appartient pas. Rechargez la page.";
   }
+  // Numéro de facture unique dans l'entreprise (098) : un autre appareil vient de prendre ce numéro
+  if (code === '23505' && /devis_factures_numero_unique/.test(texte)) return 'Ce numéro de facture vient d\'être utilisé. Rechargez la page puis recommencez : un nouveau numéro sera attribué.';
   if (code === '23505') return 'Cet élément existe déjà (numéro ou identifiant en double).';
   if (code === '23514' || /check constraint/i.test(texte)) return 'Une des valeurs saisies est refusée par la base.';
   if (code === '23502') return 'Une information obligatoire manque.';

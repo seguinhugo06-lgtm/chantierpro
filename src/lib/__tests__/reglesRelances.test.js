@@ -31,6 +31,13 @@ describe('relances automatiques (cron) : règles', () => {
     }
   });
 
+  it('une correction d\'encaissement (098) rouvre le reste dû : la facture est de nouveau relancée', () => {
+    const paiements = paiementsParDocument([{ devis_id: 'f1', montant: 1000 }, { devis_id: 'f1', montant: -400 }]);
+    // montant_paye tenu par la base : 600 après la correction
+    expect(resteDu(facture({ montant_paye: 600 }), new Map(), paiements)).toBe(400);
+    expect(relancable(facture({ montant_paye: 600 }), new Map(), paiements)).toBe(true);
+  });
+
   it('un paiement négatif ne fait pas remonter le reste dû', () => {
     expect(resteDu(facture(), new Map(), paiementsParDocument([{ devis_id: 'f1', montant: -500 }]))).toBe(1000);
   });

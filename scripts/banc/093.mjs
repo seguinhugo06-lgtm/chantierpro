@@ -32,8 +32,10 @@ export async function verifier({ q, en, verifier }) {
     && await refuse(() => parSolo(`UPDATE devis SET type = 'devis' WHERE id = $1`, emise))
     && await refuse(() => parSolo(`UPDATE devis SET facture_type = 'avoir' WHERE id = $1`, emise)),
   '093 : ni son numéro, ni sa date, ni sa nature');
-  verifier(await refuse(() => parSolo('UPDATE devis SET montant_paye = 10 WHERE id = $1', emise)),
-    '093 : le montant encaissé ne baisse pas');
+  // Depuis 098, la valeur envoyée par l'app est ignorée (le montant encaissé suit les paiements) : ni baisse ni refus
+  await parSolo('UPDATE devis SET montant_paye = 10 WHERE id = $1', emise).catch(() => null);
+  verifier(Number((await q('SELECT montant_paye FROM devis WHERE id = $1', [emise])).rows[0].montant_paye) === 0,
+    '093 : le montant encaissé ne se réécrit pas depuis l\'app');
   verifier(await refuse(() => parSolo(`UPDATE devis SET statut = 'annule' WHERE id = $1`, emise))
     && await refuse(() => parSolo(`UPDATE devis SET statut = 'annulee' WHERE id = $1`, emise))
     && await refuse(() => parSolo(`UPDATE devis SET statut = 'refuse' WHERE id = $1`, emise))

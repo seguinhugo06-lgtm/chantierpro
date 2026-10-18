@@ -13,9 +13,11 @@ export async function verifier({ db, q, commeAnonyme, verifier }) {
     `INSERT INTO devis (user_id, numero, type, facture_type, statut, total_ttc, montant_paye, payment_token)
      VALUES ($1, $2, 'facture', $3, $4, $5, $6, $7) RETURNING id`,
     [o.user || SOLO, o.numero || `FAC-081-${jeton}`, o.type || 'totale', o.statut || 'envoye', o.total ?? 1000, o.paye ?? 0, jeton])).rows[0].id;
+  // Numéros distincts : un numéro de facture est unique dans l'organisation (098)
+  let n = 0;
   const avoir = (source, montant, statut = 'envoye', user = SOLO) => q(
-    `INSERT INTO devis (user_id, numero, type, facture_type, statut, total_ttc, avoir_source_id) VALUES ($1, 'AV-081', 'facture', 'avoir', $2, $3, $4)`,
-    [user, statut, -montant, source]);
+    `INSERT INTO devis (user_id, numero, type, facture_type, statut, total_ttc, avoir_source_id) VALUES ($1, $2, 'facture', 'avoir', $3, $4, $5)`,
+    [user, `AV-081-${++n}`, statut, -montant, source]);
   const lire = (jeton) => commeAnonyme(async () => (await q('SELECT get_facture_for_payment($1) AS r', [jeton])).rows[0].r);
 
   // Facture ordinaire : payable, reste dû = total

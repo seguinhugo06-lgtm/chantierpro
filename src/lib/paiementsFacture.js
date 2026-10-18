@@ -77,6 +77,47 @@ export function paiementsDe(facture, paiements = []) {
 }
 
 /**
+ * Correction d'un encaissement (tâche encaissement-corriger, migration 098) : un encaissement enregistré est
+ * inaltérable (CGI art. 286 I 3° bis) ; il se corrige par un paiement négatif, motivé (notes), qui cite le paiement
+ * corrigé (reference). La base refuse une correction sans motif ou qui passe l'encaissé de la facture sous zéro.
+ */
+export const estCorrection = (p) => montantPaiement(p) < 0;
+
+/** Ce qui peut encore être retiré d'un paiement : son montant moins ses corrections, sans dépasser l'encaissé. */
+export function correctionPossible(paiement, paiements = [], facture = null) {
+  const montant = montantPaiement(paiement);
+  if (!(montant > 0)) return 0;
+  const dejaCorrige = paiements.filter((p) => estCorrection(p) && p?.reference && p.reference === paiement?.id)
+    .reduce((s, p) => s - montantPaiement(p), 0);
+  const encaisse = facture ? paiementsDe(facture, paiements).reduce((s, p) => s + montantPaiement(p), 0) : Infinity;
+  return Math.max(0, Math.round(Math.min(montant - dejaCorrige, encaisse) * 100) / 100);
+}
+
+/** Reste dû sans plancher : négatif quand la facture a reçu plus que son dû (trop-perçu). */
+export function resteSigne(facture, paiements = []) {
+  return Math.round(((Number(facture?.total_ttc) || 0) - credite(facture) - dejaPaye(facture, paiements)) * 100) / 100;
+}
+
+/**
+ * Effet d'une correction sur la facture, pour le dire à l'artisan avant qu'il la valide (relecture juriste-btp du
+ * 18 oct. 2026 : annoncer « il restera X € à encaisser » après l'annulation d'un trop-perçu ferait réclamer au client
+ * une somme qu'il ne doit pas).
+ * @param {number} resteAvant reste dû signé (resteSigne) avant la correction
+ * @param {number} montant montant retiré (positif)
+ * @returns {{ effet: 'soldee'|'rouverte'|'reste', apres: number }}
+ */
+export function effetCorrection(resteAvant, montant) {
+  const avant = Math.round((Number(resteAvant) || 0) * 100) / 100;
+  const apres = Math.round((avant + (Number(montant) || 0)) * 100) / 100;
+  if (apres <= 0.01) return { effet: 'soldee', apres: 0 };
+  if (avant <= 0.01) return { effet: 'rouverte', apres };
+  return { effet: 'reste', apres };
+}
+
+/** Motif d'une correction tel qu'il est affiché (enregistré « Correction : motif »). */
+export const motifCorrection = (p) => String(p?.notes || '').replace(/^Correction\s*:\s*/i, '').trim();
+
+/**
  * Ce que la facture a déjà reçu : le plus grand de `montant_paye` (paiement en ligne, Stripe) et de la
  * somme des paiements enregistrés (les deux sources se recouvrent, on ne les additionne pas).
  */

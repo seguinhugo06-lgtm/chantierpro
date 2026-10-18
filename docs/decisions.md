@@ -169,6 +169,22 @@ Recommandation : `envoi` — c'est la pratique des logiciels de facturation, et 
 Irréversible : non
 Bloque : rien
 
+### Q-correction-date · La date d'une correction d'encaissement : toujours celle du jour, ou au choix ?
+Contexte : Depuis le 18 oct. 2026 (migration 098), un encaissement saisi par erreur se corrige par une écriture négative motivée (« Corriger » dans les paiements de la facture), datée du jour de la saisie et horodatée par la base. C'est conforme (BOI-TVA-DECLA-30-10-30 § 90 : une opération de « moins » se date du jour où elle est passée) ; mais pour un chèque revenu impayé, la date utile en comptabilité est celle du rejet par la banque — relecture juriste-btp du 18 oct. 2026.
+Option `jour` : la correction est toujours datée du jour de la saisie — rien à choisir, aucun antidatage possible ; l'artisan voit avec son comptable si le rejet date d'une autre période.
+Option `choix` : l'artisan choisit la date entre celle de l'encaissement corrigé et aujourd'hui — la date du rejet bancaire est respectée ; l'horodatage de la base reste la preuve de la saisie.
+Recommandation : `choix` — la date du rejet est la bonne pour la TVA à l'encaissement, et l'horodatage empêche tout maquillage.
+Irréversible : non
+Bloque : rien
+
+### Q-correction-roles · Qui peut corriger un encaissement dans une équipe ?
+Contexte : Depuis le 18 oct. 2026 (migration 098), tout membre de l'entreprise qui peut encaisser peut aussi corriger un encaissement, à son propre nom (la base refuse une correction au nom d'un autre). Un ouvrier pourrait ainsi annuler un encaissement en espèces qu'il a lui-même saisi — relecture gardien-securite du 18 oct. 2026.
+Option `tous` : tout membre qui encaisse peut corriger — rien ne change ; la correction reste tracée, à son nom, avec son motif.
+Option `responsables` : seuls le propriétaire et les administrateurs corrigent un encaissement — un contrôle de plus ; un salarié doit demander la correction.
+Recommandation : `responsables` — corriger un encaissement touche à la caisse : c'est le rôle du patron.
+Irréversible : non
+Bloque : rien
+
 ### Q-mouvements-tva · Les sorties saisies dans la Trésorerie : suivre la règle de TVA des dépenses, ou ne plus compter leur TVA ?
 Contexte : Depuis le 17 oct. 2026, la TVA d'une dépense de chantier ne se déduit que si son taux est saisi (CGI art. 271). La Trésorerie a un second moyen de saisir un achat (« Nouveau mouvement », sortie), avec 20 % présélectionné, et seul l'onglet Trésorerie › TVA compte leur TVA : la TVA déductible y diffère des autres écrans, et un achat saisi des deux façons compte deux fois — contre-relecture juriste-btp du 17 oct. 2026.
 Option `aligner` : les sorties suivent la même règle (taux « à préciser » par défaut) et comptent sur tous les écrans, FEC compris — un seul chiffre partout ; un champ de plus à remplir sur chaque sortie.

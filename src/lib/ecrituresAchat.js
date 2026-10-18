@@ -4,13 +4,14 @@
  * dans les cas TVA connue, TVA non saisie, franchise et avoir du fournisseur).
  */
 import { montantsDepense } from './tvaDepenses';
+import { dateLocale } from './paiementsFacture';
 
 // Le montant d'une dépense est HT (src/lib/tvaDepenses.js). Seule la TVA saisie (taux ou montant, celle de la facture
 // du fournisseur) passe en TVA déductible ; sans TVA saisie, l'achat est passé HT, sans 445660, et le libellé le
 // signale pour que le comptable complète avec la facture. En franchise, la TVA ne se déduit pas : le montant est la
 // charge. Avant (relecture juriste-btp du 17 oct. 2026) : le montant pris pour un TTC à 20 % d'office.
 export const ecrituresDepense = (depense, { franchise = false } = {}) => {
-  const date = new Date(depense.date);
+  const date = dateLocale(depense.date); // « AAAA-MM-JJ » lu comme une date locale
   const ref = depense.numeroFacture || depense.reference || `D-${date.getFullYear()}-${String(depense.id).slice(0, 4)}`;
   const m = montantsDepense(depense, { franchise });
   const montantHT = m.ht;

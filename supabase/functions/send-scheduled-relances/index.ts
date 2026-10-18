@@ -335,7 +335,11 @@ serve(async (req) => {
         dansOrg(admin.from('clients').select('id, nom, prenom, email, telephone, categorie, entreprise').eq('user_id', ent.user_id)),
         admin.from('relance_executions').select('document_id, step_id, status').eq('user_id', ent.user_id),
         admin.from('relance_exclusions').select('scope, document_id, client_id, excluded_until').eq('user_id', ent.user_id),
-        dansOrg(admin.from('paiements').select('devis_id, montant').eq('user_id', ent.user_id)),
+        // Paiements de toute l'organisation (un salarié peut encaisser ou corriger), comme le montant encaissé
+        // que la base tient (098) ; sans organisation, ceux du compte
+        ent.organization_id
+          ? admin.from('paiements').select('devis_id, montant').eq('organization_id', ent.organization_id)
+          : admin.from('paiements').select('devis_id, montant').eq('user_id', ent.user_id),
         // Les avoirs quel que soit leur statut : un avoir « appliqué » est `payee`, exclu de la requête ci-dessus
         dansOrg(admin.from('devis').select('id, facture_type, statut, total_ttc, avoir_source_id').eq('user_id', ent.user_id).eq('facture_type', 'avoir')),
       ]);

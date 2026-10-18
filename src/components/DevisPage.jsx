@@ -49,7 +49,8 @@ import { mapError } from '../lib/errorMapper';
 import { formatMoney as fmtMoney, filterValidLignes, formatClientName } from '../lib/formatters';
 import { normalizeNumero } from '../lib/devis-utils';
 import { calcConversion, formatConversion } from '../lib/statsUtils';
-import { apresPaiement, statutFacture, resteAPayer, dejaPaye, echeance, dateEcheance, joursDeRetard } from '../lib/paiementsFacture';
+import { apresPaiement, statutFacture, resteAPayer, dejaPaye, echeance, dateEcheance, joursDeRetard, paiementsDe, montantPaiement, estCorrection, correctionPossible, motifCorrection, resteSigne } from '../lib/paiementsFacture';
+import CorrectionEncaissementModal from './devis/CorrectionEncaissementModal';
 import EnTeteDocument from './devis/EnTeteDocument';
 import LigneListe from './ui/LigneListe';
 import { Bouton } from './ui/Bouton';
@@ -1162,6 +1163,32 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   };
 
   // Payment creation handler
+  // Corriger un encaissement (tâche encaissement-corriger, migration 098) : écriture négative motivée ; la base
+  // recalcule le montant encaissé et repasse la facture « envoyée » si elle n'est plus soldée, l'écran suit
+  const [correctionDe, setCorrectionDe] = useState(null);
+  const corrigerEncaissement = async (paiement, montant, motif) => {
+    if (!addPaiement || !selected) return false;
+    const enregistre = await addPaiement({
+      amount: -montant,
+      montant: -montant,
+      date: jourLocal(),
+      mode: 'correction',
+      reference: paiement.id,
+      notes: `Correction : ${motif}`,
+      facture_id: selected.id,
+      devisId: selected.id,
+      documentNumero: selected.numero,
+      document: selected.numero,
+    });
+    if (!enregistre) return false;
+    const encaisse = Math.round((paiementsDe(selected, paiements).reduce((t, x) => t + montantPaiement(x), 0) - montant) * 100) / 100;
+    const reste = (Number(selected.total_ttc) || 0) - (Number(selected.montant_credite) || 0) - encaisse;
+    const maj = { montant_paye: encaisse, ...(selected.statut === 'payee' && reste > 0.01 ? { statut: 'envoye' } : {}) };
+    onUpdate(selected.id, maj);
+    setSelected(s => (s ? { ...s, ...maj } : s));
+    return true;
+  };
+
   const handlePaymentCreated = async (paymentData) => {
     // Seul un paiement REÇU s'enregistre : générer un lien ou un QR n'est pas un paiement (avant, le
     // lien enregistrait un paiement et pouvait marquer la facture payée).
@@ -3435,12 +3462,34 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                     return (
                       <div className={`mt-3 pt-3 border-t ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
                         <p className={`text-xs font-medium mb-2 ${textMuted}`}>Paiements reçus</p>
-                        {linkedPaiements.map(p => (
-                          <div key={p.id} className={`flex justify-between text-sm py-1 ${textSecondary}`}>
-                            <span>{dateLue(p.date).toLocaleDateString('fr-FR')} · {p.mode || 'Virement'}</span>
-                            <span className="font-medium text-emerald-600">{formatMoney(p.montant)}</span>
-                          </div>
-                        ))}
+                        {linkedPaiements.map(p => {
+                          // Correction (098) : écriture négative motivée, jamais un encaissement effacé
+                          if (estCorrection(p)) {
+                            const corrige = linkedPaiements.find(x => x.id === p.reference);
+                            return (
+                              <div key={p.id} className="flex justify-between gap-3 text-sm py-1 text-danger-texte">
+                                <span className="min-w-0">{dateLue(p.date).toLocaleDateString('fr-FR')} · Correction{corrige ? ` de l'encaissement du ${dateLue(corrige.date).toLocaleDateString('fr-FR')}` : ''}{motifCorrection(p) ? ` : ${motifCorrection(p)}` : ''}</span>
+                                <span className="font-medium tabular-nums whitespace-nowrap">{formatMoney(p.montant)}</span>
+                              </div>
+                            );
+                          }
+                          const corrigeable = correctionPossible(p, linkedPaiements, selected);
+                          return (
+                            <div key={p.id} className={`flex items-center justify-between gap-3 text-sm py-1 ${textSecondary}`}>
+                              <span className="min-w-0">{dateLue(p.date).toLocaleDateString('fr-FR')} · {p.mode || 'Virement'}</span>
+                              <span className="flex items-center gap-2">
+                                <span className="font-medium text-emerald-600 tabular-nums whitespace-nowrap">{formatMoney(p.montant)}</span>
+                                {corrigeable > 0 && addPaiement && (
+                                  <button type="button" onClick={() => setCorrectionDe({ paiement: p, max: corrigeable })}
+                                    className="min-h-[44px] px-2 text-xs font-medium text-encre-2 hover:text-encre underline underline-offset-2"
+                                    aria-label={`Corriger l'encaissement du ${dateLue(p.date).toLocaleDateString('fr-FR')}`}>
+                                    Corriger
+                                  </button>
+                                )}
+                              </span>
+                            </div>
+                          );
+                        })}
                         <div className={`flex justify-between font-bold pt-2 mt-1 border-t text-sm ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
                           <span className={resteAPayer <= 0 ? 'text-emerald-600' : ''}>
                             {resteAPayer <= 0 ? '✅ Soldé' : 'Reste à payer'}
@@ -4181,6 +4230,14 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           </div>
         )}
 
+        <CorrectionEncaissementModal
+          paiement={correctionDe?.paiement || null}
+          max={correctionDe?.max || 0}
+          reste={selected ? resteSigne(selected, paiements) : 0}
+          onConfirmer={(montant, motif) => corrigerEncaissement(correctionDe.paiement, montant, motif)}
+          onClose={() => setCorrectionDe(null)}
+          isDark={isDark}
+        />
         {/* Payment Modal — also needed in preview mode */}
         <PaymentModal
           isOpen={showPaymentModal}
@@ -5534,6 +5591,14 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         </div>
       )}
 
+      <CorrectionEncaissementModal
+        paiement={correctionDe?.paiement || null}
+        max={correctionDe?.max || 0}
+        reste={selected ? resteSigne(selected, paiements) : 0}
+        onConfirmer={(montant, motif) => corrigerEncaissement(correctionDe.paiement, montant, motif)}
+        onClose={() => setCorrectionDe(null)}
+        isDark={isDark}
+      />
       {/* Payment Modal */}
       <PaymentModal
         isOpen={showPaymentModal}

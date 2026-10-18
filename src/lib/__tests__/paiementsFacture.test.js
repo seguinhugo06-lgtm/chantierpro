@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { montantPaiement, paiementsDe, dejaPaye, resteAPayer, statutFacture, joursDeRetard, apresPaiement, echeance, encaisseEntre, dateEcheance } from '../paiementsFacture';
+import { montantPaiement, paiementsDe, dejaPaye, resteAPayer, statutFacture, joursDeRetard, apresPaiement, echeance, encaisseEntre, dateEcheance, estCorrection, correctionPossible, motifCorrection, resteSigne, effetCorrection } from '../paiementsFacture';
 
 const facture = (x = {}) => ({ id: 'f1', numero: 'FAC-2026-00002', type: 'facture', statut: 'envoye', total_ttc: 6105, date: '2026-09-20', ...x });
 const LE_1_OCT = new Date('2026-10-01T10:00:00');
@@ -107,6 +107,35 @@ describe('avoirs (montant_credite posé par DataContext)', () => {
   it('une facture entièrement créditée est annulée : ni à encaisser, ni en retard', () => {
     expect(statutFacture(facture({ total_ttc: 1000, montant_credite: 1000 }), [], LE_1_OCT)).toBe('annulee');
     expect(resteAPayer(facture({ total_ttc: 1000, montant_credite: 1000 }), [])).toBe(0);
+  });
+  it('correction d\'un encaissement (098) : négative, motivée, au plus le montant du paiement moins ses corrections', () => {
+    const f = facture({ id: 'f9', total_ttc: 1000 });
+    const p1 = { id: 'p1', devis_id: 'f9', montant: 600 };
+    const p2 = { id: 'p2', devis_id: 'f9', montant: 400 };
+    const c1 = { id: 'c1', devis_id: 'f9', montant: -100, reference: 'p1', notes: 'Correction : Virement saisi en double' };
+    const tous = [p1, p2, c1];
+    expect(estCorrection(c1)).toBe(true);
+    expect(estCorrection(p1)).toBe(false);
+    expect(correctionPossible(p1, tous, f)).toBe(500);
+    expect(correctionPossible(p2, tous, f)).toBe(400);
+    expect(correctionPossible(c1, tous, f)).toBe(0);
+    expect(motifCorrection(c1)).toBe('Virement saisi en double');
+    // l'encaissé de la facture borne la correction (ici 900 en tout)
+    expect(correctionPossible({ id: 'p3', montant: 2000 }, tous, f)).toBe(900);
+    expect(dejaPaye(f, tous)).toBe(900);
+    expect(resteAPayer(f, tous)).toBe(100);
+  });
+  it('effet d\'une correction annoncé à l\'artisan : rouverte, reste qui augmente, ou toujours soldée (trop-perçu)', () => {
+    // Soldée (1000 reçus sur 1000), correction de 100 : rouverte, 100 € à encaisser
+    expect(effetCorrection(resteSigne(facture({ total_ttc: 1000 }), [{ devis_id: 'f1', montant: 1000 }]), 100)).toEqual({ effet: 'rouverte', apres: 100 });
+    // Pas soldée (400 reçus), correction de 100 : il restera 700
+    expect(effetCorrection(resteSigne(facture({ total_ttc: 1000 }), [{ devis_id: 'f1', montant: 400 }]), 100)).toEqual({ effet: 'reste', apres: 700 });
+    // Trop-perçu (1050 reçus), correction de 50 : toujours soldée, rien à réclamer
+    const tropPercu = resteSigne(facture({ total_ttc: 1000 }), [{ devis_id: 'f1', montant: 1050 }]);
+    expect(tropPercu).toBe(-50);
+    expect(effetCorrection(tropPercu, 50)).toEqual({ effet: 'soldee', apres: 0 });
+    // Trop-perçu de 50, correction de 80 : rouverte pour 30
+    expect(effetCorrection(tropPercu, 80)).toEqual({ effet: 'rouverte', apres: 30 });
   });
   it('avoir partiel + paiement du reste : payée', () => {
     expect(statutFacture(facture({ total_ttc: 1000, montant_credite: 300, montant_paye: 700 }), [], LE_1_OCT)).toBe('payee');

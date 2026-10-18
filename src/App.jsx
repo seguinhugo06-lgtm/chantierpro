@@ -53,7 +53,6 @@ const ExportComptable = lazyWithRetry(() => import('./components/export/ExportCo
 const BillingDashboard = lazyWithRetry(() => import('./components/subscription/BillingDashboard'), 'Billing');
 const PricingPage = lazyWithRetry(() => import('./components/subscription/PricingPage'), 'Pricing');
 const CheckoutSuccess = lazyWithRetry(() => import('./components/subscription/CheckoutSuccess'), 'Checkout');
-const AnalyticsPage = lazyWithRetry(() => import('./components/AnalyticsPage'), 'Analytique');
 const AnalyticsPremium = lazyWithRetry(() => import('./components/AnalyticsPremium'), 'AnalyticsPremium');
 const ImportModal = lazyWithRetry(() => import('./components/ImportModal'), 'Import');
 const LegalPages = lazyWithRetry(() => import('./components/LegalPages'), 'Legal');
@@ -565,7 +564,14 @@ export default function App() {
   const addAjustement = async (data) => { const a = await dataAddAjustement(data); if (a) showToast('Ajustement enregistré', 'success'); return a; };
   const deleteAjustement = async (id) => { const ok = await dataDeleteAjustement(id); if (ok) showToast('Ajustement supprimé', 'info'); return ok; };
   const addEchange = async (data) => { const e = await dataAddEchange(data); if (e) showToast('Échange ajouté', 'success'); return e; };
-  const addPaiement = async (data) => { const p = await dataAddPaiement(data); if (p) showToast(`Paiement de ${(data.amount || 0).toLocaleString('fr-FR')} € enregistré`, 'success'); return p; };
+  const addPaiement = async (data) => {
+    const p = await dataAddPaiement(data);
+    const montant = Number(data.amount ?? data.montant) || 0;
+    // Une correction d'encaissement (098) est un montant négatif : la dire comme telle
+    const euros = (n) => n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    if (p) showToast(montant < 0 ? `Correction de ${euros(-montant)} € enregistrée` : `Paiement de ${euros(montant)} € enregistré`, 'success');
+    return p;
+  };
   const addEmployee = async (data) => { const e = await dataAddEmployee(data); if (e) showToast(`Employé "${data.prenom || ''} ${data.nom || ''}" ajouté`, 'success'); return e; };
   const updateEmployee = async (id, data) => dataUpdateEmployee(id, data);
   const deleteEmployee = async (id) => { const ok = await dataDeleteEmployee(id); if (ok) showToast('Employé supprimé', 'success'); return ok; };

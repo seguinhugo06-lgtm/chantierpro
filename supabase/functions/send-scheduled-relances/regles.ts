@@ -47,12 +47,16 @@ export function creditsParFacture(documents: Doc[]): Map<string, number> {
   return credits;
 }
 
-/** Paiements reçus, par document (table `paiements`). */
+/**
+ * Paiements reçus, par document (table `paiements`), corrections comprises : une correction d'encaissement est un
+ * paiement négatif (migration 098). Les ignorer laissait une facture rouverte (« chèque revenu impayé ») sans
+ * relance — relecture gardien-securite du 18 oct. 2026.
+ */
 export function paiementsParDocument(paiements: Doc[]): Map<string, number> {
   const m = new Map<string, number>();
   for (const p of paiements) {
     if (!p?.devis_id) continue;
-    m.set(p.devis_id, (m.get(p.devis_id) || 0) + Math.max(0, Number(p.montant) || 0));
+    m.set(p.devis_id, (m.get(p.devis_id) || 0) + (Number(p.montant) || 0));
   }
   return m;
 }

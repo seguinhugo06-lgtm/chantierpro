@@ -60,6 +60,17 @@ describe('messageEcritureRefusee', () => {
     expect(messageEcritureRefusee({ status: 403, code: '42501', message: numerotee })).toBe(numerotee);
   });
 
+  it('idem pour un devis déjà facturé et un encaissement (098) ; un numéro de facture pris est expliqué', () => {
+    const deja = 'Ce devis est déjà facturé : avec cette facture (840,00 €), le total facturé dépasserait le devis (1200,00 €, dont 1200,00 € déjà facturés). Rechargez la page.';
+    expect(messageEcritureRefusee({ status: 403, code: '42501', message: deja })).toBe(deja);
+    const encaisse = 'Un encaissement enregistré ne se modifie ni ne s\'efface : corrigez-le avec « Corriger » dans les paiements de la facture.';
+    expect(messageEcritureRefusee({ status: 403, code: '42501', message: encaisse })).toBe(encaisse);
+    expect(messageEcritureRefusee({ status: 409, code: '23505', message: 'duplicate key value violates unique constraint "devis_factures_numero_unique"' }))
+      .toMatch(/numéro de facture vient d'être utilisé/);
+    expect(messageEcritureRefusee({ status: 409, code: '23505', message: 'duplicate key value violates unique constraint "clients_pkey"' }))
+      .toMatch(/existe déjà/);
+  });
+
   it('une session expirée (401, même avec 42501) invite à se reconnecter, pas « pas le droit »', () => {
     expect(estSessionExpiree({ status: 401, code: '42501' })).toBe(true);
     expect(messageEcritureRefusee({ status: 401, code: '42501' })).toMatch(/Reconnectez-vous/);

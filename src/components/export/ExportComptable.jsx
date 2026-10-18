@@ -24,6 +24,7 @@ import { estEmise } from '../../lib/ventes';
 import { estFranchiseTva } from '../../lib/franchiseTva';
 import { montantsDepense } from '../../lib/tvaDepenses';
 import { ecrituresDepense } from '../../lib/ecrituresAchat';
+import { ecrituresPaiement } from '../../lib/ecrituresBanque';
 import { dateLue } from '../../lib/dates';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -137,38 +138,6 @@ const mapFactureToEntries = (facture, client, allFactures = []) => {
     const credit = (e.credit < 0 ? 0 : e.credit) + (e.debit < 0 ? -e.debit : 0);
     return { ...e, debit, credit };
   }).filter((e) => e.debit !== 0 || e.credit !== 0);
-};
-
-/** Map a paiement (bank transaction) to Journal Banque entries */
-const mapPaiementToEntries = (paiement, facture, client) => {
-  const date = new Date(paiement.date || paiement.createdAt);
-  const ref = paiement.reference || `P-${date.getFullYear()}-${String(paiement.id).slice(0, 4)}`;
-  const montant = Number(paiement.amount || paiement.montant) || 0;
-  if (montant <= 0) return [];
-
-  const clientName = client?.nom || client?.entreprise || 'Client';
-  const factureNum = facture?.numero || '';
-
-  return [
-    {
-      date,
-      ref,
-      libelle: `Encaissement ${factureNum ? `fact. ${factureNum}` : ''} - ${clientName}`.trim(),
-      debit: montant,
-      credit: 0,
-      compte: '512000',
-      journal: 'BQ',
-    },
-    {
-      date,
-      ref,
-      libelle: `Règlement client ${clientName}`,
-      debit: 0,
-      credit: montant,
-      compte: '411000',
-      journal: 'BQ',
-    },
-  ];
 };
 
 // ─── Period presets ──────────────────────────────────────────────────────────
@@ -438,7 +407,7 @@ export default function ExportComptable({
     const paiementEntries = filteredPaiements.flatMap((p) => {
       const facture = devisMap[p.devis_id] || devisMap[p.facture_id];
       const client = facture ? clientsMap[facture.client_id] : null;
-      return mapPaiementToEntries(p, facture, client);
+      return ecrituresPaiement(p, facture, client);
     });
     const all = [...factureEntries, ...depenseEntries, ...paiementEntries];
     all.sort((a, b) => a.date - b.date);
@@ -539,7 +508,8 @@ export default function ExportComptable({
     },
     {
       label: 'Paiements reçus',
-      value: filteredPaiements.length,
+      // Les corrections d'encaissement (montants négatifs, 098) ne sont pas des paiements reçus ; « Total encaissé » les déduit
+      value: filteredPaiements.filter((p) => (Number(p.amount ?? p.montant) || 0) > 0).length,
       icon: Euro,
       color: couleur,
     },

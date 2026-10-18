@@ -44,7 +44,7 @@ export async function verifier({ db, q, commeAnonyme, verifier }) {
   const facture = async (uid, entreprise = null) => {
     const jeton = `pay-085-${uid.slice(0, 8)}`;
     const client = (await q(`INSERT INTO clients (user_id, nom, prenom) VALUES ($1, 'Client085', 'Léa') RETURNING id`, [uid])).rows[0].id;
-    await q(`INSERT INTO devis (user_id, client_id, entreprise_id, numero, type, facture_type, statut, total_ttc, payment_token) VALUES ($1, $2, $3, 'FAC-085', 'facture', 'totale', 'envoye', 500, $4)`, [uid, client, entreprise, jeton]);
+    await q(`INSERT INTO devis (user_id, client_id, entreprise_id, numero, type, facture_type, statut, total_ttc, payment_token) VALUES ($1, $2, $3, $5, 'facture', 'totale', 'envoye', 500, $4)`, [uid, client, entreprise, jeton, `FAC-085-${uid.slice(0, 8)}`]);
     return commeAnonyme(async () => (await q('SELECT get_facture_for_payment($1) AS r', [jeton])).rows[0].r || {});
   };
   const payeDemo = await facture(SALARIE);
@@ -60,24 +60,24 @@ export async function verifier({ db, q, commeAnonyme, verifier }) {
   // Client d'un autre compte : jamais livré par la facture de quelqu'un d'autre (relecture gardien-securite)
   const clientPatron = (await q(`INSERT INTO clients (user_id, organization_id, nom, prenom, email) VALUES ($1, $2, 'Secret', 'Client', 'secret@exemple.fr') RETURNING id`, [PATRON, ORGA_PATRON])).rows[0].id;
   // (le solo n'est pas membre de l'organisation du patron ; l'employé, lui, l'est)
-  await q(`INSERT INTO devis (user_id, organization_id, client_id, numero, type, facture_type, statut, total_ttc, payment_token) VALUES ($1, $2, $3, 'FAC-085', 'facture', 'totale', 'envoye', 300, 'pay-085-vol')`, [SOLO, 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', clientPatron]);
+  await q(`INSERT INTO devis (user_id, organization_id, client_id, numero, type, facture_type, statut, total_ttc, payment_token) VALUES ($1, $2, $3, 'FAC-085-b', 'facture', 'totale', 'envoye', 300, 'pay-085-vol')`, [SOLO, 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', clientPatron]);
   const vol = await commeAnonyme(async () => (await q('SELECT get_facture_for_payment($1) AS r', ['pay-085-vol'])).rows[0].r || {});
   verifier(vol.client && !vol.client.nom && !vol.client.email, `085 : le client d'un autre compte n'est pas livré (${JSON.stringify(vol.client)})`);
   // Facture au nom de l'organisation du patron par quelqu'un qui n'en est pas (ou plus) membre : rien
-  await q(`INSERT INTO devis (user_id, organization_id, client_id, numero, type, facture_type, statut, total_ttc, payment_token) VALUES ($1, $2, $3, 'FAC-085', 'facture', 'totale', 'envoye', 300, 'pay-085-ancien')`, [SOLO, ORGA_PATRON, clientPatron]);
+  await q(`INSERT INTO devis (user_id, organization_id, client_id, numero, type, facture_type, statut, total_ttc, payment_token) VALUES ($1, $2, $3, 'FAC-085-c', 'facture', 'totale', 'envoye', 300, 'pay-085-ancien')`, [SOLO, ORGA_PATRON, clientPatron]);
   const ancien = await commeAnonyme(async () => (await q('SELECT get_facture_for_payment($1) AS r', ['pay-085-ancien'])).rows[0].r || {});
   verifier(ancien.client && !ancien.client.nom && !ancien.client.email, `085 : un non-membre ne lit pas un client de l'équipe en se réclamant d'elle (${JSON.stringify(ancien.client)})`);
   // La même facture par un membre de l'équipe : le client de l'équipe est bien transmis
-  await q(`INSERT INTO devis (user_id, organization_id, client_id, numero, type, facture_type, statut, total_ttc, payment_token) VALUES ($1, $2, $3, 'FAC-085', 'facture', 'totale', 'envoye', 300, 'pay-085-equipe')`, [SALARIE, ORGA_PATRON, clientPatron]);
+  await q(`INSERT INTO devis (user_id, organization_id, client_id, numero, type, facture_type, statut, total_ttc, payment_token) VALUES ($1, $2, $3, 'FAC-085-d', 'facture', 'totale', 'envoye', 300, 'pay-085-equipe')`, [SALARIE, ORGA_PATRON, clientPatron]);
   const equipe = await commeAnonyme(async () => (await q('SELECT get_facture_for_payment($1) AS r', ['pay-085-equipe'])).rows[0].r || {});
   verifier(equipe.client?.nom === 'Secret', `085 : un membre de l'équipe facture un client de l'équipe : client transmis (${equipe.client?.nom})`);
   // Facture sans client, auteur sans fiche : la page répond quand même (champs vides, pas d'erreur)
   const sansRien = await essayer(async () => {
     await q(`INSERT INTO auth.users (id, email) VALUES ('99999999-9999-4999-8999-999999999999', 'sans-fiche@exemple.fr') ON CONFLICT DO NOTHING`);
-    await q(`INSERT INTO devis (user_id, numero, type, facture_type, statut, total_ttc, payment_token) VALUES ($1, 'FAC-085', 'facture', 'totale', 'envoye', 200, 'pay-085-nu')`, ['99999999-9999-4999-8999-999999999999']);
+    await q(`INSERT INTO devis (user_id, numero, type, facture_type, statut, total_ttc, payment_token) VALUES ($1, 'FAC-085-e', 'facture', 'totale', 'envoye', 200, 'pay-085-nu')`, ['99999999-9999-4999-8999-999999999999']);
     return commeAnonyme(async () => (await q('SELECT get_facture_for_payment($1) AS r', ['pay-085-nu'])).rows[0].r || {});
   });
-  verifier(sansRien.ok && sansRien.r.facture?.numero === 'FAC-085' && JSON.stringify(sansRien.r.client) === '{}' && JSON.stringify(sansRien.r.entreprise) === '{}',
+  verifier(sansRien.ok && sansRien.r.facture?.numero === 'FAC-085-e' && JSON.stringify(sansRien.r.client) === '{}' && JSON.stringify(sansRien.r.entreprise) === '{}',
     `085 : facture sans client et auteur sans fiche : réponse sans erreur (${sansRien.e || JSON.stringify({ client: sansRien.r?.client, entreprise: sansRien.r?.entreprise })})`);
 
   // ── Idempotente : rejouée, elle n'ajoute rien ─────────────────────────────
@@ -98,7 +98,7 @@ export async function verifier({ db, q, commeAnonyme, verifier }) {
     `085 : SECURITY DEFINER, search_path fixé, exécutable par un visiteur, pas par PUBLIC (${droits.map((d) => `${d.proname} ${d.config} ${d.acl}`).join(' ; ')})`);
 
   // Ménage (d'autres vérifications comptent les lignes des comptes)
-  await q(`DELETE FROM devis WHERE numero IN ('DEV-085', 'FAC-085')`);
+  await q(`DELETE FROM devis WHERE numero = 'DEV-085' OR numero LIKE 'FAC-085%'`);
   await q(`DELETE FROM auth.users WHERE id = '99999999-9999-4999-8999-999999999999'`);
   await q(`DELETE FROM clients WHERE nom = 'Client085' OR id = $1`, [clientPatron]);
   await q(`DELETE FROM entreprise WHERE id IN ($1, $2)`, [fiche, fichePatron]);

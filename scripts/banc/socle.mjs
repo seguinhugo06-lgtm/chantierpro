@@ -229,7 +229,9 @@ export const SCHEMA = `
   ALTER TABLE entreprise ADD COLUMN adresse TEXT, ADD COLUMN ville TEXT, ADD COLUMN code_postal TEXT, ADD COLUMN telephone TEXT,
     ADD COLUMN email TEXT, ADD COLUMN siret TEXT, ADD COLUMN logo_url TEXT, ADD COLUMN couleur_principale TEXT, ADD COLUMN iban TEXT, ADD COLUMN bic TEXT;
   CREATE TABLE paiements (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-    organization_id UUID REFERENCES organizations(id), devis_id UUID, montant NUMERIC, date DATE, mode TEXT);
+    organization_id UUID REFERENCES organizations(id), devis_id UUID, montant NUMERIC, date DATE, mode TEXT,
+    -- Colonnes de production (relevé du 18 oct. 2026, lues par 098) : une correction porte son motif dans notes
+    document_numero TEXT, reference TEXT, notes TEXT, created_at TIMESTAMPTZ DEFAULT now(), updated_at TIMESTAMPTZ DEFAULT now());
   -- Portail client (007), tel qu'en production le 10 oct. 2026 : jeton UUID permanent sur la fiche client, deux
   -- fonctions SECURITY DEFINER exécutables par un visiteur (082 les ferme), sans search_path.
   ALTER TABLE clients ADD COLUMN portal_access_token UUID;
@@ -383,6 +385,23 @@ export const SCHEMA = `
   REVOKE EXECUTE ON FUNCTION get_stripe_secret_for_user(UUID) FROM anon;           -- tel quel dans 029 :
   REVOKE EXECUTE ON FUNCTION get_stripe_secret_for_user(UUID) FROM authenticated;  -- PUBLIC garde le droit
 ${ORGANISATIONS}
+  -- Devis et paiements : RLS et policies de production (relevé du 18 oct. 2026, lues par 098). Les policies
+  -- « Org members can insert » ne contrôlent pas user_id (038) : un membre écrit au nom d'un autre de son organisation.
+  ALTER TABLE devis ENABLE ROW LEVEL SECURITY;
+  CREATE POLICY "Users can view own devis" ON devis FOR SELECT TO authenticated USING (user_id = auth.uid());
+  CREATE POLICY "Users can create own devis" ON devis FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+  CREATE POLICY "Users can update own devis" ON devis FOR UPDATE TO authenticated USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
+  CREATE POLICY "Users can delete own devis" ON devis FOR DELETE TO authenticated USING (user_id = auth.uid());
+  CREATE POLICY "Org members can view devis" ON devis FOR SELECT TO authenticated USING (organization_id = ANY (user_org_ids(auth.uid())));
+  CREATE POLICY "Org members can insert devis" ON devis FOR INSERT TO authenticated WITH CHECK (organization_id = ANY (user_org_ids(auth.uid())));
+  CREATE POLICY "Org members can update devis" ON devis FOR UPDATE TO authenticated USING (organization_id = ANY (user_org_ids(auth.uid())));
+  CREATE POLICY "Org admins can delete devis" ON devis FOR DELETE TO authenticated USING (organization_id = ANY (user_org_ids(auth.uid())));
+  ALTER TABLE paiements ENABLE ROW LEVEL SECURITY;
+  CREATE POLICY "Users can manage their own paiements" ON paiements FOR ALL TO authenticated USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+  CREATE POLICY "Org members can view paiements" ON paiements FOR SELECT TO authenticated USING (organization_id = ANY (user_org_ids(auth.uid())));
+  CREATE POLICY "Org members can insert paiements" ON paiements FOR INSERT TO authenticated WITH CHECK (organization_id = ANY (user_org_ids(auth.uid())));
+  CREATE POLICY "Org members can update paiements" ON paiements FOR UPDATE TO authenticated USING (organization_id = ANY (user_org_ids(auth.uid())));
+  CREATE POLICY "Org admins can delete paiements" ON paiements FOR DELETE TO authenticated USING (organization_id = ANY (user_org_ids(auth.uid())));
   -- Policies « Org » des dépenses (production, 17 oct. 2026) : après user_org_ids, définie ci-dessus
   CREATE POLICY "Org members can view depenses" ON depenses FOR SELECT TO authenticated USING (organization_id = ANY (user_org_ids(auth.uid())));
   CREATE POLICY "Org members can insert depenses" ON depenses FOR INSERT TO authenticated WITH CHECK (organization_id = ANY (user_org_ids(auth.uid())));

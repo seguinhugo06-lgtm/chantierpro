@@ -205,20 +205,54 @@ async function handleVerify(paymentToken: string, sessionId: string) {
   const creditCents = parseInt(session.metadata?.amount_original_cents || '', 10)
     || session.amount_total || 0;
   const totalTTC = (facture.total_ttc as number) || 0;
-  // Reçu avant ce paiement : le plus grand de montant_paye et des paiements enregistrés (`recu`, 081) — sans
-  // cela, une facture réglée en partie par chèque n'était jamais soldée et restait payable une seconde fois
-  const recuAvant = Math.max((facture.montant_paye as number) || 0, (facture.recu as number) || 0);
-  const nouveauPaye = recuAvant + creditCents / 100;
-  // Soldée quand le reçu couvre le total moins les avoirs émis (avant : un avoir partiel empêchait à jamais
-  // le passage à « payée », et les relances continuaient)
   const credite = (facture.montant_credite as number) || 0;
-  const fullyPaid = nouveauPaye >= totalTTC - credite - 0.01;
   const now = new Date();
+  // Date de l'encaissement à Paris (un paiement à 0 h 30 n'est pas daté de la veille : période de TVA sur les
+  // encaissements — relecture gardien-securite du 18 oct. 2026)
+  const jourParis = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit' }).format(now);
+  const echec = (message: string) => {
+    console.error(`[create-invoice-payment] ${message}`);
+    return json({ error: 'Paiement reçu mais enregistrement de la facture échoué' }, 500);
+  };
+
+  // Le paiement est une ligne de `paiements` (migration 098) : la base en déduit le montant encaissé de la facture
+  // (devis.montant_paye n'est plus écrit ici). Une seule ligne par session Stripe : l'index unique
+  // paiements_session_stripe_unique (098) départage deux vérifications simultanées ; un doublon vaut « déjà
+  // enregistré ».
+  const { data: ligneFacture, error: errFacture } = await supabaseAdmin
+    .from('devis').select('organization_id').eq('id', factureId).single();
+  if (errFacture || !ligneFacture) return echec(`facture illisible : ${errFacture?.message}`);
+  const { error: errPaiement } = await supabaseAdmin.from('paiements').insert([{
+    user_id: facture.user_id,
+    organization_id: ligneFacture.organization_id,
+    devis_id: factureId,
+    document_numero: facture.numero,
+    montant: creditCents / 100,
+    date: jourParis,
+    mode: 'cb',
+    reference: sessionId,
+    notes: 'Paiement en ligne (Stripe)',
+  }]);
+  if (errPaiement && errPaiement.code !== '23505') return echec(`enregistrement du paiement impossible : ${errPaiement.message}`);
+  if (errPaiement) {
+    // Déjà enregistrée : elle doit l'être sur CETTE facture (une référence de session ne sert qu'une fois)
+    const { data: existante, error: errExistante } = await supabaseAdmin
+      .from('paiements').select('devis_id').eq('reference', sessionId).eq('mode', 'cb').maybeSingle();
+    if (errExistante || existante?.devis_id !== factureId) {
+      return echec(`session ${sessionId} déjà enregistrée sur une autre facture (${errExistante?.message || existante?.devis_id})`);
+    }
+  }
+
+  // Soldée ? D'après le montant encaissé relu en base, après l'enregistrement (avant : reçu + crédit, compté deux
+  // fois quand verify était rappelé alors que la ligne existait déjà)
+  const { data: apres, error: errRelecture } = await supabaseAdmin
+    .from('devis').select('montant_paye').eq('id', factureId).single();
+  if (errRelecture || !apres) return echec(`relecture de la facture impossible : ${errRelecture?.message}`);
+  const fullyPaid = (Number(apres.montant_paye) || 0) >= totalTTC - credite - 0.01;
 
   const { error: updateError } = await supabaseAdmin
     .from('devis')
     .update({
-      montant_paye: nouveauPaye,
       payment_status: 'succeeded',
       payment_completed_at: now.toISOString(),
       stripe_payment_intent_id: (session.payment_intent as string) || null,
@@ -231,7 +265,7 @@ async function handleVerify(paymentToken: string, sessionId: string) {
       },
       ...(fullyPaid ? {
         statut: 'payee',
-        date_paiement: now.toISOString().slice(0, 10),
+        date_paiement: jourParis,
         mode_paiement: 'cb',
       } : {}),
     })
@@ -280,19 +314,21 @@ async function handleVerify(paymentToken: string, sessionId: string) {
 async function notifyArtisan(
   facture: Record<string, unknown>,
   client: { nom?: string; prenom?: string },
-  entreprise: { email?: string },
+  _entreprise: { email?: string },
   montant: number,
   fullyPaid: boolean
 ) {
   const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
   if (!RESEND_API_KEY) throw new Error('Resend non configuré');
 
+  // L'adresse du compte de l'artisan seulement (vérifiée) : plus de repli sur l'adresse de sa fiche, qu'il peut
+  // modifier (relecture gardien-securite du 17 oct. 2026, R7, comme notify-signature)
   let artisanEmail: string | null = null;
   try {
-    const { data: userData } = await supabaseAdmin.auth.admin.getUserById(facture.user_id as string);
+    const { data: userData, error: errCompte } = await supabaseAdmin.auth.admin.getUserById(facture.user_id as string);
+    if (errCompte) console.error(`[create-invoice-payment] compte de l'artisan illisible : ${errCompte.message}`);
     artisanEmail = userData?.user?.email ?? null;
-  } catch { /* fallback ci-dessous */ }
-  if (!artisanEmail) artisanEmail = entreprise?.email ?? null;
+  } catch (e) { console.error('[create-invoice-payment] compte de l\'artisan :', (e as Error).message); }
   if (!artisanEmail) throw new Error('email artisan introuvable');
 
   const clientNom = [client?.prenom, client?.nom].filter(Boolean).join(' ') || 'Votre client';

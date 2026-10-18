@@ -19,9 +19,9 @@ const FACTURE_EMISE = {
   lignes: [ligne], tvaRate: 10, total_ht: 1000, tva: 100, total_ttc: 1100,
 };
 
-async function demoAvec(documents) {
+async function demoAvec(documents, paiements = []) {
   const { DEMO_DEVIS } = await import(path.resolve(__dirname, '../../src/lib/demo-data.js'));
-  return `localStorage.setItem('mallettico_demo_data', ${JSON.stringify(JSON.stringify({ devis: [...DEMO_DEVIS, ...documents], paiements: [] }))});`;
+  return `localStorage.setItem('mallettico_demo_data', ${JSON.stringify(JSON.stringify({ devis: [...DEMO_DEVIS, ...documents], paiements }))});`;
 }
 const ouvrirDocument = (page, numero) => page.evaluate((n) => {
   const b = [...document.querySelectorAll('[data-ui="LigneListe"] > button')].find((x) => x.innerText.includes(n));
@@ -124,6 +124,53 @@ module.exports = [
       const f = devis.find((d) => d.id === 'f-parcours-emise');
       verifier(f && Number(f.montant_paye) === 400, `montant reçu sur la facture : ${f?.montant_paye}`);
       verifier(/reste 700/.test((await texte(page)).replace(/ | /g, ' ')), 'la fiche affiche le reste dû (700 €)');
+    },
+  },
+  {
+    // Tâche encaissement-corriger (migration 098) : un encaissement ne s'efface pas, il se corrige par une écriture
+    // négative motivée qui cite le paiement corrigé
+    nom: '« Corriger » un encaissement : écriture négative motivée, reste dû mis à jour (375 px)',
+    async executer({ ouvrir, attendre, verifier }) {
+      const PAIEMENT = { id: 'p-parcours-1', devis_id: 'f-parcours-emise', facture_id: 'f-parcours-emise', devisId: 'f-parcours-emise',
+        montant: 400, amount: 400, date: '2026-10-05', mode: 'virement' };
+      const facture = { ...FACTURE_EMISE, montant_paye: 400 };
+      const { page } = await ouvrir({ page: 'devis', largeur: 375, avantChargement: await demoAvec([DEVIS_FACTURE, facture], [PAIEMENT]) });
+      await attendre(800);
+      await page.evaluate(() => [...document.querySelectorAll('button')].find((b) => b.innerText.trim() === 'Factures')?.click());
+      await attendre(600);
+      verifier(await ouvrirDocument(page, 'FAC-2026-00096'), 'la facture est dans la liste');
+      await attendre(800);
+      const ouvert = await page.evaluate(() => {
+        const b = [...document.querySelectorAll('button')].find((x) => /^Corriger l'encaissement du/.test(x.getAttribute('aria-label') || ''));
+        b?.click();
+        return !!b;
+      });
+      verifier(ouvert, 'bouton « Corriger » sur l’encaissement de 400 €');
+      await attendre(500);
+      const saisir = (index, valeur) => page.evaluate((i, v) => {
+        const champs = [...document.querySelectorAll('[role="dialog"] input')];
+        Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(champs[i], v);
+        champs[i].dispatchEvent(new Event('input', { bubbles: true }));
+      }, index, valeur);
+      await saisir(0, '100');
+      await saisir(1, 'Virement saisi en double');
+      await attendre(300);
+      const enregistre = await page.evaluate(() => {
+        const b = [...document.querySelectorAll('[role="dialog"] button')].find((x) => x.innerText.trim() === 'Enregistrer la correction');
+        b?.click();
+        return !!b && !b.disabled;
+      });
+      verifier(enregistre, 'bouton « Enregistrer la correction » actif');
+      await attendre(1500);
+      const { paiements = [], devis = [] } = await documentsEnregistres(page);
+      const c = paiements.find((x) => Number(x.montant ?? x.amount) < 0);
+      verifier(!!c && Number(c.montant ?? c.amount) === -100 && c.reference === 'p-parcours-1' && /^Correction : Virement saisi en double$/.test(c.notes || ''),
+        `correction enregistrée : -100 €, motif, paiement cité (${JSON.stringify(c || null)})`);
+      verifier(paiements.some((x) => x.id === 'p-parcours-1' && Number(x.montant) === 400), 'l’encaissement d’origine reste dans l’historique');
+      const f = devis.find((d) => d.id === 'f-parcours-emise');
+      verifier(f && Number(f.montant_paye) === 300, `montant reçu sur la facture : ${f?.montant_paye}`);
+      verifier(/Correction de l'encaissement du 05\/10\/2026 : Virement saisi en double/.test(await texte(page)),
+        'la correction, l’encaissement corrigé et le motif sont affichés');
     },
   },
   {
