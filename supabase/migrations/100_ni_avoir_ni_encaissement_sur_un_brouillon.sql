@@ -52,9 +52,16 @@ BEGIN
   IF NEW.facture_type IS DISTINCT FROM 'avoir' THEN
     RETURN NEW;
   END IF;
-  -- Un avoir déjà rattaché garde son rattachement : sa facture d'origine, émise, ne repasse ni en brouillon ni en devis
-  -- (093)
-  IF TG_OP = 'UPDATE' AND OLD.facture_type = 'avoir' AND NEW.avoir_source_id IS NOT DISTINCT FROM OLD.avoir_source_id THEN
+  -- Phase INSERT d'un upsert sur une ligne existante : la phase UPDATE contrôlera avec la ligne enregistrée (comme 099 ;
+  -- sinon faux refus quand l'organisation n'est pas envoyée — contre-relecture gardien-securite du 18 oct. 2026)
+  IF TG_OP = 'INSERT' AND EXISTS (SELECT 1 FROM public.devis WHERE id = NEW.id) THEN
+    RETURN NEW;
+  END IF;
+  -- Un avoir déjà rattaché, dans la même organisation, garde son rattachement : sa facture d'origine, émise, ne repasse
+  -- ni en brouillon ni en devis (093) ni ne change d'organisation (099). Un avoir brouillon qui change d'organisation
+  -- repasse par le contrôle (la facture qu'il cite doit être dans la nouvelle)
+  IF TG_OP = 'UPDATE' AND OLD.facture_type = 'avoir' AND NEW.avoir_source_id IS NOT DISTINCT FROM OLD.avoir_source_id
+     AND NEW.organization_id IS NOT DISTINCT FROM OLD.organization_id THEN
     RETURN NEW;
   END IF;
   -- La facture d'origine : existante et visible, une facture (ni devis ni avoir), émise, de la même organisation

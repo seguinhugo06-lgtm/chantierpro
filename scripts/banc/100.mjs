@@ -45,6 +45,19 @@ export async function verifier({ db, q, en, verifier }) {
   const surAutreOrg = await avoirSur(autreOrg, 'AV-100-6');
   verifier([sansSource, surDevis, surAvoir, surAutreOrg].every((m) => /rectifie une facture émise de votre entreprise/.test(m || '')),
     `100 : un avoir sans source, sur un devis, sur un avoir ou sur la pièce d'une autre organisation est refusé (${sansSource} / ${surDevis} / ${surAvoir} / ${surAutreOrg})`);
+  // Contre-relecture gardien-securite : un avoir brouillon ne change pas d'organisation sans sa facture (compte membre
+  // des deux) ; l'upsert d'un avoir existant dont la source est devenue vide (clé ON DELETE SET NULL) passe
+  await q(`INSERT INTO organization_members (organization_id, user_id, role) VALUES ($1, $2, 'admin')`, [ORG_PATRON, SOLO]);
+  await avoirSur(E, 'AV-100-7');
+  const A7 = (await q(`SELECT id FROM devis WHERE numero = 'AV-100-7'`)).rows[0].id;
+  const deplace = await refus(() => commeSolo('UPDATE devis SET organization_id = $2 WHERE id = $1', [A7, ORG_PATRON]));
+  await q('DELETE FROM organization_members WHERE organization_id = $1 AND user_id = $2', [ORG_PATRON, SOLO]);
+  await q('UPDATE devis SET avoir_source_id = NULL WHERE id = $1', [A]);
+  const upsertSansSource = await refus(() => commeSolo(
+    `INSERT INTO devis (id, user_id, numero, type, facture_type, statut, total_ttc) VALUES ($1, $2, 'AV-100-2', 'facture', 'avoir', 'envoye', -100)
+     ON CONFLICT (id) DO UPDATE SET objet = 'Upsert 100'`, [A, SOLO]));
+  verifier(/rectifie une facture émise de votre entreprise/.test(deplace || '') && upsertSansSource === false,
+    `100 : un avoir brouillon ne quitte pas l'organisation de sa facture ; l'upsert d'un avoir existant passe (${deplace} / ${upsertSansSource})`);
 
   // 2. Un encaissement se rattache à une facture émise
   const surBrouillonPaye = await payer(B);
