@@ -76,6 +76,8 @@ describe('messageEcritureRefusee', () => {
     expect(messageEcritureRefusee({ status: 403, code: '42501', message: pasSoldee })).toBe(pasSoldee);
     const annulee = 'Cette facture est annulée par un avoir : aucun encaissement n\'est à constater.';
     expect(messageEcritureRefusee({ status: 403, code: '42501', message: annulee })).toBe(annulee);
+    const entreprise = 'Une pièce émise (facture ou avoir) reste dans son entreprise.';
+    expect(messageEcritureRefusee({ status: 403, code: '42501', message: entreprise })).toBe(entreprise);
   });
 
   it('une session expirée (401, même avec 42501) invite à se reconnecter, pas « pas le droit »', () => {

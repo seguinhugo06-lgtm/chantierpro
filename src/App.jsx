@@ -637,7 +637,7 @@ export default function App() {
         // Le motif du premier refus (avant : « rejetée et supprimée » sans dire pourquoi ; relecture juriste-btp du
         // 18 oct. 2026 — une facture « payée » hors ligne, refusée au retour du réseau, doit se voir)
         const n = permanentErrors.length;
-        showToast(`${n} modification${n > 1 ? 's' : ''} faite${n > 1 ? 's' : ''} hors ligne refusée${n > 1 ? 's' : ''} : ${messageEcritureRefusee(permanentErrors[0].cause || { message: permanentErrors[0].error })}`, 'error');
+        showToast(`${n} modification${n > 1 ? 's' : ''} gardée${n > 1 ? 's' : ''} sur cet appareil, refusée${n > 1 ? 's' : ''} par la base : ${messageEcritureRefusee(permanentErrors[0].cause || { message: permanentErrors[0].error })}`, 'error');
       } else if (results.cleared > 0 && results.success === 0 && results.failed === 0) {
         showToast('File d\'attente nettoyée', 'info');
       }

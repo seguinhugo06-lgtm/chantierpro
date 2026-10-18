@@ -49,8 +49,9 @@
 --     and coalesce(a.statut, '') not in ('brouillon', 'annule', 'annulee')), 0) - 0.01;          -- attendu : 0
 --   select count(*) from devis where type = 'facture' and coalesce(facture_type, '') <> 'avoir' and statut = 'payee'
 --     and coalesce(montant_paye, 0) <= 0;                                                         -- attendu : 0
---   select position('FOR UPDATE' in pg_get_functiondef('public.recalculer_encaisse(uuid, boolean)'::regprocedure)) > 0;
---     attendu : true
+--   select position('FOR NO KEY UPDATE' in pg_get_functiondef('public.recalculer_encaisse(uuid, boolean)'::regprocedure)) > 0;
+--     attendu : true (ne jamais rejouer 098 après 099 : elle remettrait le recalcul sans verrou)
+--   select count(*) from devis where type = 'facture' and statut <> 'brouillon' and organization_id is null;  -- attendu : 0
 -- ============================================================
 
 -- 1 et 2. « Payée » selon les paiements
@@ -141,7 +142,7 @@ BEGIN
     RETURN NEW;
   END IF;
   IF NEW.organization_id IS DISTINCT FROM OLD.organization_id THEN
-    RAISE EXCEPTION 'Une facture émise reste dans son entreprise : pour l''annuler, faites un avoir'
+    RAISE EXCEPTION 'Une pièce émise (facture ou avoir) reste dans son entreprise.'
       USING ERRCODE = '42501';
   END IF;
   -- L'app écrit le compte qui enregistre (src/lib/queryHelper.js withOrgScope) : un salarié qui encaisse la facture du
@@ -167,7 +168,9 @@ BEGIN
     RETURN OLD;
   END IF;
   IF OLD.type = 'facture' AND EXISTS (SELECT 1 FROM public.paiements WHERE devis_id = OLD.id) THEN
-    RAISE EXCEPTION 'Cette facture a des encaissements enregistrés : elle ne se supprime pas. Corrigez un encaissement avec « Corriger », ou faites un avoir'
+    -- Une facture émise ou numérotée est déjà refusée par 093 (déclencheur qui passe avant) : ce message ne s'affiche que
+    -- pour un brouillon sans numéro, qu'un avoir ne rectifie pas (relecture juriste-btp du 18 oct. 2026)
+    RAISE EXCEPTION 'Cette facture a des encaissements enregistrés : elle se conserve avec eux et ne se supprime pas. Un encaissement saisi par erreur se corrige avec « Corriger » ; un paiement réel : émettez la facture.'
       USING ERRCODE = '42501';
   END IF;
   RETURN OLD;
@@ -179,7 +182,7 @@ CREATE TRIGGER trg_garder_facture_encaissee
   BEFORE DELETE ON public.devis
   FOR EACH ROW EXECUTE FUNCTION public.garder_facture_encaissee();
 
--- 5. Le recalcul du montant encaissé verrouille la facture (définition de 098, ligne lue FOR UPDATE)
+-- 5. Le recalcul du montant encaissé verrouille la facture (définition de 098, ligne lue FOR NO KEY UPDATE)
 CREATE OR REPLACE FUNCTION public.recalculer_encaisse(p_facture UUID, p_rouvrir BOOLEAN DEFAULT false)
 RETURNS VOID
 LANGUAGE plpgsql
@@ -194,10 +197,11 @@ BEGIN
   IF p_facture IS NULL THEN
     RETURN;
   END IF;
-  -- FOR UPDATE : un passage à « payée » en cours sur une autre connexion est attendu, puis relu (relecture
-  -- gardien-securite du 18 oct. 2026 : sans verrou, la correction ne voyait pas le statut et ne rouvrait pas)
+  -- FOR NO KEY UPDATE (le verrou d'un UPDATE) : un passage à « payée » en cours sur une autre connexion est attendu, puis
+  -- relu (relecture gardien-securite du 18 oct. 2026 : sans verrou, la correction ne voyait pas le statut et ne rouvrait
+  -- pas)
   SELECT id, user_id, organization_id, type, facture_type, statut, total_ttc, montant_paye INTO v_fac
-    FROM public.devis WHERE id = p_facture FOR UPDATE;
+    FROM public.devis WHERE id = p_facture FOR NO KEY UPDATE;
   IF v_fac.id IS NULL OR v_fac.type IS DISTINCT FROM 'facture' OR v_fac.facture_type = 'avoir' THEN
     RETURN;
   END IF;

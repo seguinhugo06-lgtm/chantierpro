@@ -111,7 +111,7 @@ export async function verifier({ db, q, en, verifier }) {
   const supprimee = await refus(() => commeSolo('DELETE FROM devis WHERE id = $1', [BR]));
   const sansEncaissement = await doc({ numero: null, statut: 'brouillon', total: 10 });
   const supprimeeVide = await refus(() => commeSolo('DELETE FROM devis WHERE id = $1', [sansEncaissement]));
-  verifier(/encaissements enregistrés : elle ne se supprime pas/.test(supprimee || '') && supprimeeVide === false,
+  verifier(/encaissements enregistrés : elle se conserve avec eux et ne se supprime pas/.test(supprimee || '') && supprimeeVide === false,
     `099 : un brouillon encaissé ne se supprime pas, un brouillon sans encaissement si (${supprimee} / ${supprimeeVide})`);
 
   // 9. Un devis et le serveur ne sont pas concernés
@@ -123,7 +123,7 @@ export async function verifier({ db, q, en, verifier }) {
 
   const tg = Object.fromEntries((await q(`SELECT tgname, tgtype FROM pg_trigger WHERE tgrelid = 'public.devis'::regclass
     AND tgname IN ('trg_verifier_statut_payee', 'trg_garder_organisation_piece', 'trg_garder_facture_encaissee')`)).rows.map((r) => [r.tgname, Number(r.tgtype)]));
-  const verrou = (await q(`SELECT position('FOR UPDATE' in pg_get_functiondef('public.recalculer_encaisse(uuid, boolean)'::regprocedure)) > 0 AS v`)).rows[0].v;
+  const verrou = (await q(`SELECT position('FOR NO KEY UPDATE' in pg_get_functiondef('public.recalculer_encaisse(uuid, boolean)'::regprocedure)) > 0 AS v`)).rows[0].v;
   verifier(tg.trg_verifier_statut_payee === 23 && tg.trg_garder_organisation_piece === 19 && tg.trg_garder_facture_encaissee === 11 && verrou === true,
     `099 : contrôles de l'en-tête (${JSON.stringify(tg)}, verrou du recalcul ${verrou})`);
 
