@@ -77,6 +77,13 @@ describe('encaisseEntre', () => {
     const main = [{ id: 'f9', numero: 'FAC-9', type: 'facture', statut: 'payee', total_ttc: 250, updated_at: '2026-10-08T09:00:00Z' }];
     expect(encaisseEntre(main, [], '2026-10-01', '2026-10-31')).toBe(250);
   });
+
+  it('une facture annulée par avoir, « payée » sans paiement, n\'a rien reçu (relecture juriste-btp du 18 oct. 2026)', () => {
+    const annulee = [{ id: 'f10', numero: 'FAC-10', type: 'facture', statut: 'payee', total_ttc: 1000, montant_credite: 1000, updated_at: '2026-10-08T09:00:00Z' }];
+    expect(encaisseEntre(annulee, [], '2026-10-01', '2026-10-31')).toBe(0);
+    const enPartie = [{ ...annulee[0], montant_credite: 300 }];
+    expect(encaisseEntre(enPartie, [], '2026-10-01', '2026-10-31')).toBe(700);
+  });
 });
 
 describe('dateEcheance', () => {

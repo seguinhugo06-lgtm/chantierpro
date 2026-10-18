@@ -261,7 +261,8 @@ export const syncQueue = async (rejouer, { proprietaire } = {}) => {
         console.warn(`Mutation ${mutation.id} refusée par la base, suppression:`, errMsg);
         await removeMutation(mutation.id);
         results.cleared++;
-        results.errors.push({ mutation, error: errMsg, permanent: true });
+        // `cause` : l'erreur entière, pour dire à l'artisan pourquoi la base a refusé (099 : « payée » non soldée…)
+        results.errors.push({ mutation, error: errMsg, permanent: true, cause: error });
         continue;
       }
 

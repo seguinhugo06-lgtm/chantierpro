@@ -96,6 +96,7 @@ import { estNatif } from './lib/natif';
 import { appliquerTheme } from './lib/theme';
 import { dateEcheance, joursDeRetard, resteAPayer } from './lib/paiementsFacture';
 import { estOuverte, estEnRetard } from './lib/ventes';
+import { messageEcritureRefusee } from './lib/erreursEcriture';
 import { jourLocal } from './lib/dates';
 import { mentionsFacture } from './lib/mentionsFacture';
 import PortailIndisponible from './components/portal/PortailIndisponible';
@@ -633,7 +634,10 @@ export default function App() {
       // Show specific info about cleared/rejected mutations
       const permanentErrors = results.errors?.filter(e => e.permanent) || [];
       if (permanentErrors.length > 0) {
-        showToast(`${permanentErrors.length} modification${permanentErrors.length > 1 ? 's' : ''} rejetée${permanentErrors.length > 1 ? 's' : ''} et supprimée${permanentErrors.length > 1 ? 's' : ''}`, 'info');
+        // Le motif du premier refus (avant : « rejetée et supprimée » sans dire pourquoi ; relecture juriste-btp du
+        // 18 oct. 2026 — une facture « payée » hors ligne, refusée au retour du réseau, doit se voir)
+        const n = permanentErrors.length;
+        showToast(`${n} modification${n > 1 ? 's' : ''} faite${n > 1 ? 's' : ''} hors ligne refusée${n > 1 ? 's' : ''} : ${messageEcritureRefusee(permanentErrors[0].cause || { message: permanentErrors[0].error })}`, 'error');
       } else if (results.cleared > 0 && results.success === 0 && results.failed === 0) {
         showToast('File d\'attente nettoyée', 'info');
       }

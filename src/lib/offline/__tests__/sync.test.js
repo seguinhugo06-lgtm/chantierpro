@@ -44,6 +44,7 @@ describe('file hors ligne', () => {
     const r = await syncQueue(async () => { throw refusBase; }, { proprietaire: 'A' });
     expect(r.cleared).toBe(1);
     expect(r.errors[0].permanent).toBe(true);
+    expect(r.errors[0].cause).toBe(refusBase); // pour dire à l'artisan pourquoi
     expect((await getPendingMutations()).length).toBe(0);
   });
 

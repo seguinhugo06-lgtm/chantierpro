@@ -43,9 +43,9 @@ export function estEnRetard(f, paiements = [], maintenant = new Date()) {
 }
 
 /**
- * Ce que la facture a reçu, plafonné à son total (« payée » à la main sans paiement : son dû). Depuis la migration 099,
- * la base n'accepte « payée » que si les paiements soldent la facture : ce repli ne sert plus qu'aux données de
- * démonstration et d'avant.
+ * Ce que la facture a reçu, plafonné à son total (« payée » sans paiement : son dû). Depuis la migration 099, la base
+ * n'accepte « payée » que si les paiements soldent la facture : ce repli ne couvre plus que la tolérance d'un centime
+ * de la base et d'anciennes données locales de démonstration.
  */
 export function encaisse(f, paiements = [], maintenant = new Date()) {
   if (!estEmise(f) || estAvoir(f)) return 0;

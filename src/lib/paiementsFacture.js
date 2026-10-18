@@ -181,8 +181,9 @@ const datePaiement = (p) => p?.date || p?.date_paiement || (p?.createdAt ? Strin
 
 /**
  * Argent réellement reçu entre deux dates (incluses, « AAAA-MM-JJ ») : les paiements enregistrés,
- * plus les factures sans ligne de paiement — payées en ligne (montant_paye) ou marquées « payées »
- * à la main (date_paiement, sinon date de mise à jour).
+ * plus les factures sans ligne de paiement — payées en ligne avant 098 (montant_paye), ou « payées » sans
+ * montant encaissé (anciennes données locales de démonstration ; depuis 099, la base n'accepte « payée » que si
+ * les paiements soldent la facture), à leur date de paiement, sinon de mise à jour.
  * Avant : « Encaissé ce mois » additionnait des devis signés.
  */
 export function encaisseEntre(documents = [], paiements = [], debut, fin) {
@@ -190,9 +191,12 @@ export function encaisseEntre(documents = [], paiements = [], debut, fin) {
   let total = paiements.filter((p) => dans(datePaiement(p))).reduce((s, p) => s + montantPaiement(p), 0);
   for (const f of documents) {
     if (f?.type !== 'facture' || f.facture_type === 'avoir' || paiementsDe(f, paiements).length) continue;
-    // Sans ligne de paiement : payée en ligne (montant_paye) ou marquée « payée » à la main (total).
+    // Sans ligne de paiement : payée en ligne (montant_paye, tenu par la base depuis 098). « Payée » sans montant
+    // encaissé (démonstration, données d'avant 099) : son dû, avoirs déduits — une facture annulée par avoir n'a
+    // rien reçu (relecture juriste-btp du 18 oct. 2026).
     const payeeMain = f.statut === 'payee' || f.statut === 'paye';
-    const montant = Number(f.montant_paye) > 0 ? Number(f.montant_paye) : (payeeMain ? Number(f.total_ttc) || 0 : 0);
+    const du = Math.max(0, (Number(f.total_ttc) || 0) - (Number(f.montant_credite) || 0));
+    const montant = Number(f.montant_paye) > 0 ? Number(f.montant_paye) : (payeeMain ? du : 0);
     // L'app relit `updatedAt` (camelCase) : `updated_at` seul laissait ces factures hors de l'encaissé
     const quand = String(f.date_paiement || (payeeMain ? f.updated_at || f.updatedAt || '' : '')).slice(0, 10);
     if (montant > 0 && dans(quand)) total += montant;

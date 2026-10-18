@@ -138,16 +138,9 @@ export function useBankTransactions({ devis = [], clients = [], userId } = {}) {
 
         if (insertError) throw insertError;
 
-        // Update matched invoices to 'payee' status
-        for (const m of matched) {
-          if (m.facture_id) {
-            await supabase
-              .from('devis')
-              .update({ statut: 'payee', date_paiement: m.date, mode_paiement: 'virement' })
-              .eq('id', m.facture_id)
-              .eq('user_id', userId);
-          }
-        }
+        // Plus de passage direct à « payée » (relecture juriste-btp du 18 oct. 2026) : il écrivait un encaissement
+        // sans ligne de paiement, et la base le refuse depuis la migration 099. Avant de réactiver ce module (importé
+        // nulle part) : enregistrer un paiement par transaction rapprochée, et laisser la base décider du statut.
 
         // Log reconciliation actions
         const logs = matched.map(m => ({
@@ -207,12 +200,7 @@ export function useBankTransactions({ devis = [], clients = [], userId } = {}) {
           .update({ statut: 'rapproche', facture_id: factureId })
           .eq('id', transactionId);
 
-        // Update invoice status
-        await supabase
-          .from('devis')
-          .update({ statut: 'payee', mode_paiement: 'virement' })
-          .eq('id', factureId)
-          .eq('user_id', userId);
+        // Statut de la facture : voir l'import ci-dessus (un paiement d'abord, la base décide, migration 099)
 
         await loadTransactions();
       }
@@ -220,7 +208,7 @@ export function useBankTransactions({ devis = [], clients = [], userId } = {}) {
       console.error('Match error:', err);
       setError(err.message);
     }
-  }, [userId, loadTransactions, persistDemo]);
+  }, [loadTransactions, persistDemo]);
 
   const unmatchTransaction = useCallback(async (transactionId) => {
     try {

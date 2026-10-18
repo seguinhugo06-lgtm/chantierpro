@@ -74,6 +74,8 @@ describe('messageEcritureRefusee', () => {
   it('une facture marquée « payée » sans être soldée (099) : le reste à encaisser est dit tel quel', () => {
     const pasSoldee = 'Cette facture n\'est pas soldée : il reste 150,00 € à encaisser. Enregistrez l\'encaissement reçu avec « Encaisser » ; si c\'est déjà fait, rechargez la page.';
     expect(messageEcritureRefusee({ status: 403, code: '42501', message: pasSoldee })).toBe(pasSoldee);
+    const annulee = 'Cette facture est annulée par un avoir : aucun encaissement n\'est à constater.';
+    expect(messageEcritureRefusee({ status: 403, code: '42501', message: annulee })).toBe(annulee);
   });
 
   it('une session expirée (401, même avec 42501) invite à se reconnecter, pas « pas le droit »', () => {

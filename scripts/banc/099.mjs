@@ -1,10 +1,11 @@
 // Vérifications de la migration 099 : une facture ne passe « payée » que si ses paiements la soldent ; elle ne revient
-// pas à « envoyée » tant qu'ils la soldent (seule la base la rouvre, 098). Le socle porte la RLS de production de
-// `devis` et `paiements`.
+// pas à « envoyée » tant qu'ils la soldent (seule la base la rouvre, 098) ; une pièce émise reste dans son organisation et
+// garde son auteur ; une facture encaissée ne se supprime pas. Le socle porte la RLS de production de `devis` et
+// `paiements` (dont « Org members can update », qui ne contrôle pas user_id).
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { SOLO, ORG_SOLO } from './socle.mjs';
+import { SOLO, ORG_SOLO, PATRON, SALARIE, ORG_PATRON } from './socle.mjs';
 
 const MIGRATION = path.resolve(path.dirname(fileURLToPath(import.meta.url)),
   '../../supabase/migrations/099_payee_seulement_si_les_paiements_soldent.sql');
@@ -15,13 +16,16 @@ export async function verifier({ db, q, en, verifier }) {
   const doc = async (o) => (await q(
     `INSERT INTO devis (user_id, organization_id, numero, type, facture_type, statut, total_ttc, avoir_source_id)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
-    [SOLO, ORG_SOLO, o.numero, o.type || 'facture', o.nature || 'totale', o.statut || 'envoye', o.total, o.avoirDe || null])).rows[0].id;
+    [o.user || SOLO, o.org || ORG_SOLO, o.numero, o.type || 'facture', o.nature || 'totale', o.statut || 'envoye', o.total,
+      o.avoirDe || null])).rows[0].id;
   const commeSolo = (sql, p) => en(SOLO, () => q(sql, p));
-  const lire = async (id) => (await q('SELECT statut, montant_paye, objet FROM devis WHERE id = $1', [id])).rows[0];
-  const payer = async (facture, montant, o = {}) => (await commeSolo(
+  const lire = async (id) => (await q('SELECT statut, montant_paye, objet, user_id, organization_id FROM devis WHERE id = $1', [id])).rows[0];
+  const payer = async (facture, montant, o = {}) => (await en(o.par || SOLO, () => q(
     'INSERT INTO paiements (user_id, devis_id, montant, notes, reference) VALUES ($1, $2, $3, $4, $5) RETURNING id',
-    [SOLO, facture, montant, o.notes || null, o.reference || null])).rows[0].id;
+    [o.par || SOLO, facture, montant, o.notes || null, o.reference || null]))).rows[0].id;
   const marquerPayee = (id) => refus(() => commeSolo(`UPDATE devis SET statut = 'payee' WHERE id = $1`, [id]));
+  // Les vérifications de 098 rejouent sa définition de recalculer_encaisse : remettre celle de 099
+  await db.exec(fs.readFileSync(MIGRATION, 'utf8'));
 
   // 1. « Payée » sans paiement, ou pas soldée : refusé, avec ce qui reste à encaisser
   const F = await doc({ numero: 'FAC-099-1', total: 1000 });
@@ -59,6 +63,16 @@ export async function verifier({ db, q, en, verifier }) {
   verifier(avecAvoir === false && (await lire(G)).statut === 'payee', `099 : 700 € reçus et 300 € d'avoir soldent une facture de 1 000 € (${avecAvoir})`);
   const avoirApplique = await marquerPayee(A);
   verifier(avoirApplique === false, `099 : un avoir s'applique (« payée ») sans paiement (${avoirApplique})`);
+  // Annulée par un avoir total, rien encaissé : aucun règlement à constater (relecture juriste-btp du 18 oct. 2026)
+  const K = await doc({ numero: 'FAC-099-5', total: 500 });
+  const AK = await doc({ numero: 'AV-099-2', nature: 'avoir', total: -500, avoirDe: K });
+  const annulee = await marquerPayee(K);
+  verifier(/annulée par un avoir : aucun encaissement/.test(annulee || '') && (await lire(K)).statut === 'envoye',
+    `099 : une facture annulée par avoir ne passe pas « payée » sans paiement (${annulee})`);
+  // Rien à payer, rien reçu : pas « payée » non plus (relecture gardien-securite du 18 oct. 2026)
+  const Z = await doc({ numero: 'FAC-099-6', total: 0 });
+  const aZero = await marquerPayee(Z);
+  verifier(/aucun encaissement/.test(aZero || ''), `099 : une facture à 0 € sans encaissement ne passe pas « payée » (${aZero})`);
 
   // 5. Créée « payée » sans paiement, ou brouillon passé « payée » : refusé
   const creee = await refus(() => commeSolo(
@@ -68,21 +82,56 @@ export async function verifier({ db, q, en, verifier }) {
   verifier(/n'est pas soldée/.test(creee || '') && /n'est pas soldée/.test(brouillon || ''),
     `099 : ni une facture créée « payée », ni un brouillon ne passent « payés » sans paiement (${creee} / ${brouillon})`);
 
-  // 6. Un devis et le serveur ne sont pas concernés
+  // 6. Upsert de l'app (file différée) sans organisation, sur une facture payée et soldée : pas de faux refus
+  const upsert = await refus(() => commeSolo(
+    `INSERT INTO devis (id, user_id, numero, type, facture_type, statut, total_ttc) VALUES ($1, $2, 'FAC-099-2', 'facture', 'totale', 'payee', 1000)
+     ON CONFLICT (id) DO UPDATE SET statut = EXCLUDED.statut, objet = 'Upsert 099'`, [G, SOLO]));
+  const upsertSansPaiement = await refus(() => commeSolo(
+    `INSERT INTO devis (id, user_id, numero, type, facture_type, statut, total_ttc) VALUES ($1, $2, 'FAC-099-5', 'facture', 'totale', 'payee', 500)
+     ON CONFLICT (id) DO UPDATE SET statut = EXCLUDED.statut`, [K, SOLO]));
+  verifier(upsert === false && (await lire(G)).objet === 'Upsert 099' && /annulée par un avoir/.test(upsertSansPaiement || ''),
+    `099 : un upsert sans organisation d'une facture soldée passe, d'une facture non soldée non (${upsert} / ${upsertSansPaiement})`);
+
+  // 7. Une pièce émise reste dans son organisation et garde son auteur (salarié de l'organisation du patron)
+  const FP = await doc({ user: PATRON, org: ORG_PATRON, numero: 'FAC-099-P', total: 1000 });
+  const AP = await doc({ user: PATRON, org: ORG_PATRON, numero: 'AV-099-P', nature: 'avoir', total: -999, avoirDe: FP });
+  const commeSalarie = (sql, p) => en(SALARIE, () => q(sql, p));
+  const avoirDetache = await refus(() => commeSalarie(`UPDATE devis SET organization_id = NULL, user_id = $2 WHERE id = $1`, [AP, SALARIE]));
+  const factureDetachee = await refus(() => commeSalarie(`UPDATE devis SET organization_id = NULL, user_id = $2 WHERE id = $1`, [FP, SALARIE]));
+  verifier(/reste dans son entreprise/.test(avoirDetache || '') && /reste dans son entreprise/.test(factureDetachee || ''),
+    `099 : une facture ou un avoir émis ne quitte pas son organisation (${avoirDetache} / ${factureDetachee})`);
+  const encaisseeParSalarie = await refus(() => commeSalarie(`UPDATE devis SET objet = 'Vue par le salarié', user_id = $2 WHERE id = $1`, [FP, SALARIE]));
+  const fp = await lire(FP);
+  verifier(encaisseeParSalarie === false && fp.user_id === PATRON && fp.objet === 'Vue par le salarié',
+    `099 : un salarié qui enregistre la facture du patron ne la fait pas sienne (${encaisseeParSalarie} / ${fp.user_id})`);
+
+  // 8. Une facture encaissée ne se supprime pas, même en brouillon (ses paiements resteraient sans pièce)
+  const BR = await doc({ numero: null, statut: 'brouillon', total: 300 });
+  await payer(BR, 50);
+  const supprimee = await refus(() => commeSolo('DELETE FROM devis WHERE id = $1', [BR]));
+  const sansEncaissement = await doc({ numero: null, statut: 'brouillon', total: 10 });
+  const supprimeeVide = await refus(() => commeSolo('DELETE FROM devis WHERE id = $1', [sansEncaissement]));
+  verifier(/encaissements enregistrés : elle ne se supprime pas/.test(supprimee || '') && supprimeeVide === false,
+    `099 : un brouillon encaissé ne se supprime pas, un brouillon sans encaissement si (${supprimee} / ${supprimeeVide})`);
+
+  // 9. Un devis et le serveur ne sont pas concernés
   const D = await doc({ numero: 'DEV-099-1', type: 'devis', nature: null, statut: 'accepte', total: 100 });
   const devisPaye = await marquerPayee(D);
   const H = await doc({ numero: 'FAC-099-4', total: 80 });
   await q(`UPDATE devis SET statut = 'payee' WHERE id = $1`, [H]);
   verifier(devisPaye === false && (await lire(H)).statut === 'payee', `099 : un devis et le serveur ne sont pas concernés (${devisPaye})`);
 
-  const tgtype = (await q(`SELECT tgtype FROM pg_trigger WHERE tgrelid = 'public.devis'::regclass AND tgname = 'trg_verifier_statut_payee'`)).rows[0]?.tgtype;
-  verifier(Number(tgtype) === 23, `099 : contrôle de l'en-tête (tgtype ${tgtype})`);
+  const tg = Object.fromEntries((await q(`SELECT tgname, tgtype FROM pg_trigger WHERE tgrelid = 'public.devis'::regclass
+    AND tgname IN ('trg_verifier_statut_payee', 'trg_garder_organisation_piece', 'trg_garder_facture_encaissee')`)).rows.map((r) => [r.tgname, Number(r.tgtype)]));
+  const verrou = (await q(`SELECT position('FOR UPDATE' in pg_get_functiondef('public.recalculer_encaisse(uuid, boolean)'::regprocedure)) > 0 AS v`)).rows[0].v;
+  verifier(tg.trg_verifier_statut_payee === 23 && tg.trg_garder_organisation_piece === 19 && tg.trg_garder_facture_encaissee === 11 && verrou === true,
+    `099 : contrôles de l'en-tête (${JSON.stringify(tg)}, verrou du recalcul ${verrou})`);
 
   // Rejouable
   const rejeu = await refus(() => db.exec(fs.readFileSync(MIGRATION, 'utf8')));
   verifier(rejeu === false, `099 : la migration se rejoue sans erreur (${rejeu})`);
 
   // Ménage (en propriétaire) : les vérifications de 072 comptent les devis du compte
-  await q('DELETE FROM paiements WHERE devis_id = ANY($1)', [[F, G]]);
-  await q('DELETE FROM devis WHERE id = ANY($1)', [[A, F, G, B, D, H]]);
+  await q('DELETE FROM paiements WHERE devis_id = ANY($1)', [[F, G, BR]]);
+  await q('DELETE FROM devis WHERE id = ANY($1)', [[A, AK, AP, F, G, K, Z, B, BR, sansEncaissement, D, H, FP]]);
 }
