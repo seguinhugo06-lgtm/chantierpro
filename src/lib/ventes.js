@@ -42,7 +42,11 @@ export function estEnRetard(f, paiements = [], maintenant = new Date()) {
   return estOuverte(f, paiements, maintenant) && statutFacture(f, paiements, maintenant) === 'en_retard';
 }
 
-/** Ce que la facture a reçu, plafonné à son total (« payée » à la main sans paiement : son dû). */
+/**
+ * Ce que la facture a reçu, plafonné à son total (« payée » à la main sans paiement : son dû). Depuis la migration 099,
+ * la base n'accepte « payée » que si les paiements soldent la facture : ce repli ne sert plus qu'aux données de
+ * démonstration et d'avant.
+ */
 export function encaisse(f, paiements = [], maintenant = new Date()) {
   if (!estEmise(f) || estAvoir(f)) return 0;
   const total = Number(f.total_ttc) || 0;

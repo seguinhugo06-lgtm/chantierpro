@@ -1264,7 +1264,9 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         if (paymentData.mode_paiement) updatePayload.mode_paiement = paymentData.mode_paiement;
         if (paymentData.reference_paiement) updatePayload.reference_paiement = paymentData.reference_paiement;
 
-        onUpdate(selected.id, updatePayload);
+        // La base n'accepte « payée » que si les paiements la soldent (migration 099) : sa réponse d'abord. Un refus
+        // est dit par DataContext et l'écran revient à l'état enregistré ; le paiement, lui, est déjà enregistré.
+        if (await onUpdate(selected.id, updatePayload) === false) return;
         setSelected(s => s ? { ...s, ...updatePayload } : s);
 
         // Cancel any pending automatic relances for this document

@@ -16,6 +16,8 @@ export async function verifier({ q, en, verifier }) {
   const encaisse = await parSolo(`UPDATE devis SET numero = numero, date = date, type = type, facture_type = facture_type,
     client_id = client_id, total_ht = total_ht, total_tva = total_tva, total_ttc = total_ttc, lignes = lignes,
     montant_paye = 50, objet = 'Prises de la cuisine' WHERE id = $1 RETURNING id`, emise);
+  // Depuis 099, « payée » suppose des paiements qui soldent la facture (comme dans l'app : « Encaisser » d'abord)
+  await en(SOLO, () => q('INSERT INTO paiements (user_id, devis_id, montant) VALUES ($1, $2, 120)', [SOLO, emise]));
   const soldee = await parSolo(`UPDATE devis SET montant_paye = 120, statut = 'payee' WHERE id = $1 RETURNING id`, emise);
   verifier(encaisse.rows.length === 1 && soldee.rows.length === 1,
     '093 : encaisser une facture émise (ligne réécrite à l\'identique, puis soldée) reste possible');
@@ -34,7 +36,7 @@ export async function verifier({ q, en, verifier }) {
   '093 : ni son numéro, ni sa date, ni sa nature');
   // Depuis 098, la valeur envoyée par l'app est ignorée (le montant encaissé suit les paiements) : ni baisse ni refus
   await parSolo('UPDATE devis SET montant_paye = 10 WHERE id = $1', emise).catch(() => null);
-  verifier(Number((await q('SELECT montant_paye FROM devis WHERE id = $1', [emise])).rows[0].montant_paye) === 0,
+  verifier(Number((await q('SELECT montant_paye FROM devis WHERE id = $1', [emise])).rows[0].montant_paye) === 120,
     '093 : le montant encaissé ne se réécrit pas depuis l\'app');
   verifier(await refuse(() => parSolo(`UPDATE devis SET statut = 'annule' WHERE id = $1`, emise))
     && await refuse(() => parSolo(`UPDATE devis SET statut = 'annulee' WHERE id = $1`, emise))
@@ -103,5 +105,6 @@ export async function verifier({ q, en, verifier }) {
   await q('ALTER TABLE devis DROP CONSTRAINT devis_client_id_fkey');
   await q('ALTER TABLE devis ADD CONSTRAINT devis_client_id_fkey FOREIGN KEY (client_id) REFERENCES clients(id)');
 
+  await q('DELETE FROM paiements WHERE devis_id = $1', [emise]);
   await q('DELETE FROM devis WHERE id = ANY($1)', [[emise, brouillon, brouillonNumerote, devis, avoirBrouillon]]);
 }

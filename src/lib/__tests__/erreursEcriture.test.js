@@ -71,6 +71,11 @@ describe('messageEcritureRefusee', () => {
       .toMatch(/existe déjà/);
   });
 
+  it('une facture marquée « payée » sans être soldée (099) : le reste à encaisser est dit tel quel', () => {
+    const pasSoldee = 'Cette facture n\'est pas soldée : il reste 150,00 € à encaisser. Enregistrez l\'encaissement reçu avec « Encaisser » ; si c\'est déjà fait, rechargez la page.';
+    expect(messageEcritureRefusee({ status: 403, code: '42501', message: pasSoldee })).toBe(pasSoldee);
+  });
+
   it('une session expirée (401, même avec 42501) invite à se reconnecter, pas « pas le droit »', () => {
     expect(estSessionExpiree({ status: 401, code: '42501' })).toBe(true);
     expect(messageEcritureRefusee({ status: 401, code: '42501' })).toMatch(/Reconnectez-vous/);

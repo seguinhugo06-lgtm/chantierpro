@@ -346,21 +346,29 @@ export function DataProvider({ children, initialData = {} }) {
     pendingSavesRef.current = [];
     logger.debug(`🔄 Flushing ${pending.length} pending saves now that userId is available`);
 
-    pending.forEach(async ({ table, item }) => {
-      try {
-        await saveItem(table, item, userId, orgId);
-        logger.debug(`✅ Pending save flushed: ${table}/${item.id}`);
-      } catch (error) {
-        console.error(`❌ Failed to flush pending save for ${table}:`, error);
-        // Réseau : en file sous ce compte. Refus : dit à l'artisan (avant : mis en file sans un mot).
-        if (estEcritureDifferable(error)) {
-          await queueOffline('create', table, item, userId);
-        } else {
-          toast.error('Non enregistré', messageEcritureRefusee(error));
-          captureException(error, { context: `écriture différée ${table}`, code: error?.code, status: error?.status });
+    // Une à une, dans l'ordre (avant : toutes en même temps) : un paiement passe avant la facture « payée » qu'il
+    // solde, que la base refuserait sinon (migration 099). Dès qu'une écriture attend le réseau, les suivantes
+    // attendent derrière elle, dans la file hors ligne qui garde l'ordre.
+    (async () => {
+      let enFile = false;
+      for (const { table, item } of pending) {
+        if (enFile) { await queueOffline('create', table, item, userId); continue; }
+        try {
+          await saveItem(table, item, userId, orgId);
+          logger.debug(`✅ Pending save flushed: ${table}/${item.id}`);
+        } catch (error) {
+          console.error(`❌ Failed to flush pending save for ${table}:`, error);
+          // Réseau : en file sous ce compte. Refus : dit à l'artisan (avant : mis en file sans un mot).
+          if (estEcritureDifferable(error)) {
+            enFile = true;
+            await queueOffline('create', table, item, userId);
+          } else {
+            toast.error('Non enregistré', messageEcritureRefusee(error));
+            captureException(error, { context: `écriture différée ${table}`, code: error?.code, status: error?.status });
+          }
         }
       }
-    });
+    })();
   }, [userId, orgId, orgLoading]);
 
   // Reload data when entrepriseId changes (company switch)
