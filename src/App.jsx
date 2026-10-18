@@ -638,8 +638,10 @@ export default function App() {
         // 18 oct. 2026 — une facture « payée » hors ligne, refusée au retour du réseau, doit se voir)
         const n = permanentErrors.length;
         showToast(`${n} modification${n > 1 ? 's' : ''} gardée${n > 1 ? 's' : ''} sur cet appareil, refusée${n > 1 ? 's' : ''} par la base : ${messageEcritureRefusee(permanentErrors[0].cause || { message: permanentErrors[0].error })}`, 'error');
-        // L'écran affichait ce qui vient d'être refusé : on relit la base
-        rechargerDonnees?.();
+        // L'écran affichait ce qui vient d'être refusé : on relit la base, seulement si plus rien n'attend dans la file
+        // (sinon les écritures encore en attente disparaîtraient de l'écran jusqu'à leur envoi — relecture
+        // gardien-securite du 18 oct. 2026)
+        if (count === 0) rechargerDonnees?.();
       } else if (results.cleared > 0 && results.success === 0 && results.failed === 0) {
         showToast('File d\'attente nettoyée', 'info');
       }

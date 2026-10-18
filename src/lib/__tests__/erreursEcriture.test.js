@@ -78,7 +78,7 @@ describe('messageEcritureRefusee', () => {
     expect(messageEcritureRefusee({ status: 403, code: '42501', message: annulee })).toBe(annulee);
     const entreprise = 'Une pièce émise (facture ou avoir) reste dans son entreprise.';
     expect(messageEcritureRefusee({ status: 403, code: '42501', message: entreprise })).toBe(entreprise);
-    const avoirBrouillon = 'Un avoir rectifie une facture émise : ce brouillon se corrige directement, sans avoir.';
+    const avoirBrouillon = 'Un avoir rectifie une facture émise de votre entreprise : choisissez la facture qu\'il corrige (un brouillon se corrige directement).';
     expect(messageEcritureRefusee({ status: 403, code: '42501', message: avoirBrouillon })).toBe(avoirBrouillon);
   });
 

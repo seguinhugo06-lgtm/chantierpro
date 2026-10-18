@@ -3,7 +3,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { SOLO, ORG_SOLO } from './socle.mjs';
+import { SOLO, ORG_SOLO, PATRON, ORG_PATRON } from './socle.mjs';
 
 const MIGRATION = path.resolve(path.dirname(fileURLToPath(import.meta.url)),
   '../../supabase/migrations/100_ni_avoir_ni_encaissement_sur_un_brouillon.sql');
@@ -27,7 +27,7 @@ export async function verifier({ db, q, en, verifier }) {
   const E = await doc({ numero: 'FAC-100-1', total: 500 });
   const surBrouillon = await avoirSur(B, 'AV-100-1');
   const surEmise = await avoirSur(E, 'AV-100-2');
-  verifier(/rectifie une facture émise : ce brouillon se corrige directement/.test(surBrouillon || '') && surEmise === false,
+  verifier(/rectifie une facture émise de votre entreprise/.test(surBrouillon || '') && surEmise === false,
     `100 : un avoir se crée sur une facture émise, pas sur un brouillon (${surBrouillon} / ${surEmise})`);
   // Rattacher après coup un avoir à un brouillon : refusé aussi
   const A = (await q(`SELECT id FROM devis WHERE numero = 'AV-100-2'`)).rows[0].id;
@@ -35,11 +35,21 @@ export async function verifier({ db, q, en, verifier }) {
   const emis = await refus(() => commeSolo(`UPDATE devis SET statut = 'envoye' WHERE id = $1`, [A]));
   verifier(/rectifie une facture émise/.test(rattache || '') && emis === false,
     `100 : un avoir ne se rattache pas à un brouillon après coup ; rattaché à une facture émise, il s'émet (${rattache} / ${emis})`);
+  // Par l'API (relectures du 18 oct. 2026) : sans source, sur un devis, sur un avoir, sur une pièce d'une autre organisation
+  const sansSource = await refus(() => commeSolo(
+    `INSERT INTO devis (user_id, numero, type, facture_type, statut, total_ttc) VALUES ($1, 'AV-100-3', 'facture', 'avoir', 'envoye', -50)`, [SOLO]));
+  const devisSigne = (await q(`INSERT INTO devis (user_id, organization_id, numero, type, statut, total_ttc) VALUES ($1, $2, 'DEV-100-1', 'devis', 'accepte', 500) RETURNING id`, [SOLO, ORG_SOLO])).rows[0].id;
+  const surDevis = await avoirSur(devisSigne, 'AV-100-4');
+  const surAvoir = await avoirSur(A, 'AV-100-5');
+  const autreOrg = (await q(`INSERT INTO devis (user_id, organization_id, numero, type, facture_type, statut, total_ttc) VALUES ($1, $2, 'FAC-100-P', 'facture', 'totale', 'envoye', 500) RETURNING id`, [PATRON, ORG_PATRON])).rows[0].id;
+  const surAutreOrg = await avoirSur(autreOrg, 'AV-100-6');
+  verifier([sansSource, surDevis, surAvoir, surAutreOrg].every((m) => /rectifie une facture émise de votre entreprise/.test(m || '')),
+    `100 : un avoir sans source, sur un devis, sur un avoir ou sur la pièce d'une autre organisation est refusé (${sansSource} / ${surDevis} / ${surAvoir} / ${surAutreOrg})`);
 
   // 2. Un encaissement se rattache à une facture émise
   const surBrouillonPaye = await payer(B);
   const surEmisePaye = await payer(E, '0aaaaaaa-0100-4000-8000-000000000001');
-  verifier(/se rattache à une facture émise : envoyez d'abord la facture/.test(surBrouillonPaye || '') && surEmisePaye === false,
+  verifier(/se rattache à une facture émise : émettez d'abord la facture/.test(surBrouillonPaye || '') && surEmisePaye === false,
     `100 : un encaissement s'enregistre sur une facture émise, pas sur un brouillon (${surBrouillonPaye} / ${surEmisePaye})`);
   // Rejeu à l'identique (upsert de la file hors ligne) d'un paiement déjà enregistré : passe
   const rejeu = await refus(() => commeSolo(
@@ -62,5 +72,5 @@ export async function verifier({ db, q, en, verifier }) {
   // Ménage (en propriétaire) : les vérifications de 072 comptent les devis du compte
   await q('DELETE FROM paiements WHERE devis_id = ANY($1)', [[B, E]]);
   await q(`DELETE FROM devis WHERE numero LIKE 'AV-100-%'`);
-  await q('DELETE FROM devis WHERE id = ANY($1)', [[B, E]]);
+  await q('DELETE FROM devis WHERE id = ANY($1)', [[B, E, devisSigne, autreOrg]]);
 }

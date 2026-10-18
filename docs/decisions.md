@@ -162,12 +162,20 @@ Irréversible : non
 Bloque : rien
 
 ### Q-numero-a-l-envoi · Numéroter une facture à son envoi plutôt qu'à sa création ?
-Contexte : L'app numérote une facture dès sa création (brouillon) ; depuis le 17 oct. 2026 (migration 093), un brouillon numéroté ne se supprime plus et garde son numéro (séquence continue, CGI ann. II art. 242 nonies A, I, 7°). Deux effets : un brouillon N, dont la date reste modifiable, peut partir après N+1 avec une date postérieure (la séquence n'est plus chronologique) ; une facture brouillon créée par erreur ne peut ni être supprimée ni annulée (relecture juriste-btp du 17 oct. 2026, C6).
-Option `envoi` : le numéro est attribué à l'envoi (ou à la validation) — séquence chronologique garantie ; un brouillon sans numéro se supprime librement.
-Option `creation` : on garde la numérotation à la création — rien ne change ; un brouillon raté reste dans la liste, à utiliser.
+Contexte : L'app numérote une facture dès sa création (brouillon) ; depuis le 17 oct. 2026 (migration 093), un brouillon numéroté ne se supprime plus et garde son numéro (séquence continue, CGI ann. II art. 242 nonies A, I, 7°). Deux effets : un brouillon N, dont la date reste modifiable, peut partir après N+1 avec une date postérieure (la séquence n'est plus chronologique) ; une facture brouillon créée par erreur ne peut ni être supprimée ni annulée (relecture juriste-btp du 17 oct. 2026, C6) — ni, depuis le 18 oct. (migration 100), annulée par un avoir : il ne reste qu'à la corriger et s'en servir. Les avoirs sont dans le même cas : numérotés à leur création, ils gardent la date du brouillon, qui peut ne pas être leur date d'émission (relecture juriste-btp du 18 oct. 2026, P4).
+Option `envoi` : le numéro (facture ou avoir) est attribué à l'envoi (ou à la validation), avec la date de ce jour — séquence chronologique garantie ; un brouillon sans numéro se supprime librement.
+Option `creation` : on garde la numérotation à la création — rien ne change ; un brouillon raté reste dans la liste, à utiliser (un bouton « Annuler ce brouillon », qui le garde avec son numéro au statut « annulé » comme pour un avoir, serait à ajouter).
 Recommandation : `envoi` — c'est la pratique des logiciels de facturation, et elle règle les deux effets.
 Irréversible : non
 Bloque : rien
+
+### Q-pdf-brouillon · Que faire quand on télécharge le PDF d'un brouillon de facture ?
+Contexte : Le bouton « PDF » est proposé sur un brouillon de facture, et le document imprimé ressemble en tout point à une facture émise (aucune mention « brouillon » dans les deux générateurs). Un artisan peut le remettre en main propre : pour le client, c'est une facture ; dans l'app, elle reste modifiable et hors du chiffre d'affaires et de la TVA tant qu'elle n'est pas émise. L'intégrité du contenu est due dès l'émission (CGI art. 289 V) — relecture juriste-btp du 18 oct. 2026 (A1).
+Option `emettre` : « PDF » d'un brouillon propose d'abord d'émettre la facture (contrôle des mentions légales) — le PDF remis est une vraie facture, comptée.
+Option `filigrane` : le PDF d'un brouillon porte « Brouillon — document non émis, sans valeur de facture » — rien n'est émis ; le client voit qu'il ne s'agit pas d'une facture.
+Recommandation : `emettre` pour « PDF » (c'est le geste de la remise en main propre), et le filigrane pour l'aperçu.
+Irréversible : non
+Bloque : pdf-brouillon
 
 ### Q-correction-date · La date d'une correction d'encaissement : toujours celle du jour, ou au choix ?
 Contexte : Depuis le 18 oct. 2026 (migration 098), un encaissement saisi par erreur se corrige par une écriture négative motivée (« Corriger » dans les paiements de la facture), datée du jour de la saisie et horodatée par la base. C'est conforme (BOI-TVA-DECLA-30-10-30 § 90 : une opération de « moins » se date du jour où elle est passée) ; mais pour un chèque revenu impayé, la date utile en comptabilité est celle du rejet par la banque — relecture juriste-btp du 18 oct. 2026.
