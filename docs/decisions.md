@@ -169,6 +169,14 @@ Recommandation : `envoi` — c'est la pratique des logiciels de facturation, et 
 Irréversible : non
 Bloque : rien
 
+### Q-multi-entreprise · En attendant une numérotation par SIREN, restreindre l'ajout d'une deuxième fiche entreprise active ?
+Contexte : Depuis le 18 oct. 2026 (migration 101), la série des factures est celle de l'organisation tant qu'elle n'a qu'une fiche entreprise active, celle de la fiche sinon. Avec deux fiches d'un même SIREN (un électricien qui ajoute une fiche « plomberie » sous la même EI), la seconde repartirait à FAC-AAAA-00001 : deux factures d'une même année au même numéro pour un même contribuable (BOI-TVA-DECLA-30-20-20-10 § 90) ; et archiver une fiche ferait sauter des numéros dans la série de l'autre. Aucune organisation n'a deux fiches aujourd'hui — relecture juriste-btp du 18 oct. 2026 (M1, tâche `serie-siren`).
+Option `meme-siren` : refuser dès maintenant une deuxième fiche active du même SIREN — le cas réaliste est fermé ; des SIREN distincts restent possibles (chacun sa série).
+Option `masquer` : masquer l'ajout d'une deuxième fiche active jusqu'à `serie-siren` — rien ne peut mal tourner ; la fonction « Multi-entreprise » attend.
+Recommandation : `meme-siren` maintenant, et `serie-siren` avant d'annoncer « Multi-entreprise ».
+Irréversible : non
+Bloque : serie-siren
+
 ### Q-serie-avoirs · Les avoirs dans une série à part (AV-), ou dans celle des factures (FAC-) ?
 Contexte : Depuis le 18 oct. 2026 (migration 101), la base numérote les avoirs dans leur propre série, AV-AAAA-NNNNN, distincte de celle des factures. Des séries distinctes sont admises si l'activité le justifie, avec un préfixe distinct (BOI-TVA-DECLA-30-20-20-10 § 80 et 90) ; un avoir est une pièce rectificative (CGI art. 289, I, 5), mais ce cas n'est pas cité parmi les exemples du § 100. Aucun avoir n'existe encore en production : c'est le moment de trancher — relecture juriste-btp du 18 oct. 2026.
 Option `serie-av` : les avoirs gardent leur série AV- — pratique courante ; justification consignée (docs/metier-btp.md), à confirmer au rendez-vous avec l'expert-comptable.

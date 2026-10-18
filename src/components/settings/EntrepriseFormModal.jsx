@@ -555,8 +555,8 @@ const EntrepriseFormModal = memo(function EntrepriseFormModal({
                   admis sans raison (BOI-TVA-DECLA-30-20-20-10 § 80). */}
               <h3 className={`text-sm font-semibold ${tc.text}`}>Numérotation</h3>
               <p className={`text-sm ${tc.label}`}>
-                Les numéros sont attribués automatiquement, avec un compteur par année : devis DEV-AAAA-NNNNN ; factures
-                FAC-AAAA-NNNNN et avoirs AV-AAAA-NNNNN, à la suite et sans trou.
+                Les numéros sont attribués automatiquement, avec un compteur par année : factures FAC-AAAA-NNNNN et avoirs
+                AV-AAAA-NNNNN, à la suite et sans trou, pour chaque entreprise ; devis DEV-AAAA-NNNNN.
               </p>
 
               {/* Paramètres métier */}
