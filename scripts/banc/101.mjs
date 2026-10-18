@@ -29,7 +29,8 @@ export async function verifier({ db, q, en, commeAnonyme, verifier }) {
   // État maîtrisé : une seule fiche entreprise active pour l'organisation du compte (les autres, mises de côté, reviennent)
   const actives = (await q('SELECT id FROM entreprise WHERE organization_id = $1 AND archived_at IS NULL', [ORG_SOLO])).rows.map((r) => r.id);
   await q('UPDATE entreprise SET archived_at = now() WHERE id = ANY($1)', [actives]);
-  const E1 = (await q(`INSERT INTO entreprise (user_id, organization_id, nom) VALUES ($1, $2, 'Élec Solo 101') RETURNING id`, [SOLO, ORG_SOLO])).rows[0].id;
+  // SIRET distincts : depuis 102, la série est celle du SIREN (des fiches sans SIRET la partagent)
+  const E1 = (await q(`INSERT INTO entreprise (user_id, organization_id, nom, siret) VALUES ($1, $2, 'Élec Solo 101', '10110110100011') RETURNING id`, [SOLO, ORG_SOLO])).rows[0].id;
 
   // 1. La base fixe le numéro qui suit, quelle que soit la proposition de l'app (périmée, trop haute, autre année, format libre)
   const a = await creer({ ent: E1, numero: `FAC-${an}-00042` });
@@ -48,6 +49,8 @@ export async function verifier({ db, q, en, commeAnonyme, verifier }) {
   ids.push(ancienne);
   const apres = await creer({ ent: E1 });
   verifier(apres.numero === fac(11), `101 : les factures sans entreprise comptent dans la série d'une organisation à une entreprise (${apres.numero})`);
+  // Depuis 102, une facture sans entreprise compte dans chaque série : retirée ici pour la suite (série propre à E2)
+  await q('DELETE FROM devis WHERE id = $1', [ancienne]);
 
   // 3. Préfixe selon la nature ; série d'avoirs à part
   const av = await creer({ ent: E1, numero: `FAC-${an}-00099`, nature: 'avoir', avoirDe: a.id, statut: 'brouillon' });
@@ -64,7 +67,7 @@ export async function verifier({ db, q, en, commeAnonyme, verifier }) {
     `101 : une entreprise inventée ou d'une autre organisation est refusée (${inventee} / ${etrangere})`);
 
   // 5. Deux entreprises : sans entreprise, refus ; une série par entreprise, sans doublon
-  const E2 = (await q(`INSERT INTO entreprise (user_id, organization_id, nom) VALUES ($1, $2, 'Second établissement 101') RETURNING id`, [SOLO, ORG_SOLO])).rows[0].id;
+  const E2 = (await q(`INSERT INTO entreprise (user_id, organization_id, nom, siret) VALUES ($1, $2, 'Second établissement 101', '20220220200022') RETURNING id`, [SOLO, ORG_SOLO])).rows[0].id;
   const choisir = await refus(() => creer({}));
   const e2 = await creer({ ent: E2 });
   const e1 = await creer({ ent: E1 });
