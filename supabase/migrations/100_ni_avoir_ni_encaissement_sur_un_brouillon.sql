@@ -13,7 +13,8 @@
 -- Relectures du lot (gardien-securite et juriste-btp, 18 oct. 2026) : contrôler le seul statut « brouillon » de la source
 -- laissait passer, par l'API, un avoir sans source, rattaché à un devis (qui pouvait ensuite devenir un brouillon de
 -- facture), à un autre avoir, ou à une pièce d'une autre organisation : même effet, chiffre d'affaires et TVA facturée
--- diminués sans facture initiale émise. L'avoir porte la référence de la facture qu'il rectifie (mention obligatoire).
+-- diminués sans facture initiale émise. L'avoir porte la référence de la facture qu'il rectifie (mention obligatoire :
+-- CGI art. 289, I, 5 ; au CIBS à partir du 1er janv. 2027).
 -- Relevé du 18 oct. 2026 : aucune facture en brouillon, aucun avoir, aucun paiement sans facture ; la clé
 -- devis_avoir_source_id_fkey existe. Rien à reprendre.
 --
@@ -89,7 +90,7 @@ BEGIN
     RETURN NEW;
   END IF;
   IF EXISTS (SELECT 1 FROM public.devis WHERE id = NEW.devis_id AND statut = 'brouillon') THEN
-    RAISE EXCEPTION 'Un encaissement se rattache à une facture émise : émettez d''abord la facture (« Envoyer », ou « Changer le statut » si vous l''avez remise en main propre).'
+    RAISE EXCEPTION 'Un encaissement se rattache à une facture émise : émettez d''abord la facture (« Envoyer », ou « Changer le statut » → « Envoyé » si vous l''avez remise en main propre).'
       USING ERRCODE = '42501';
   END IF;
   RETURN NEW;
