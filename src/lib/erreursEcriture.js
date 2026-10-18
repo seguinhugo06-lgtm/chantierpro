@@ -45,8 +45,8 @@ export function messageEcritureRefusee(error) {
     return 'Votre session a expiré. Reconnectez-vous puis recommencez.';
   }
   // Garde de la base qui dit quoi faire (091 : signature sur place figée ; 093 : facture émise ; 098 : devis déjà
-  // facturé, encaissements ; 099 : « payée », pièce émise gardée dans son entreprise ; 100 : avoir d'un brouillon) : rendue telle quelle
-  if (code === '42501' && /faites (signer )?un (avenant|avoir)|numérotation doit rester continue|déjà facturé|encaissement|correction|reste dans son entreprise|rectifie une facture émise/i.test(texte)) return String(error?.message || error?.messageBase || '').trim();
+  // facturé, encaissements ; 099 : « payée », pièce émise gardée dans son entreprise ; 100 : avoir d'un brouillon ; 101 : entreprise qui émet) : rendue telle quelle
+  if (code === '42501' && /faites (signer )?un (avenant|avoir)|numérotation doit rester continue|déjà facturé|encaissement|correction|reste dans son entreprise|rectifie une facture émise|entreprise inconnue dans votre organisation|choisissez l'entreprise/i.test(texte)) return String(error?.message || error?.messageBase || '').trim();
   if (code === '42501' || status === 403 || /row-level security|permission denied/i.test(texte)) {
     return "Votre compte n'a pas le droit de faire cette modification.";
   }

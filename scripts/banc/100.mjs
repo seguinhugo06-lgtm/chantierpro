@@ -16,9 +16,13 @@ export async function verifier({ db, q, en, verifier }) {
      VALUES ($1, $2, $3, 'facture', $4, $5, $6, $7) RETURNING id`,
     [SOLO, ORG_SOLO, o.numero, o.nature || 'totale', o.statut || 'envoye', o.total, o.avoirDe || null])).rows[0].id;
   const commeSolo = (sql, p) => en(SOLO, () => q(sql, p));
-  const avoirSur = (source, numero) => refus(() => commeSolo(
-    `INSERT INTO devis (user_id, numero, type, facture_type, statut, total_ttc, avoir_source_id)
-     VALUES ($1, $2, 'facture', 'avoir', 'brouillon', -100, $3)`, [SOLO, numero, source]));
+  // Depuis 101, la base attribue le numéro : les avoirs créés se retrouvent par leur identifiant
+  const avoirs = {};
+  const avoirSur = (source, numero) => refus(async () => {
+    avoirs[numero] = (await commeSolo(
+      `INSERT INTO devis (user_id, numero, type, facture_type, statut, total_ttc, avoir_source_id)
+       VALUES ($1, $2, 'facture', 'avoir', 'brouillon', -100, $3) RETURNING id`, [SOLO, numero, source])).rows[0].id;
+  });
   const payer = (facture, id = null) => refus(() => commeSolo(
     `INSERT INTO paiements (id, user_id, devis_id, montant) VALUES (COALESCE($3, gen_random_uuid()), $1, $2, 100)`, [SOLO, facture, id]));
 
@@ -30,7 +34,7 @@ export async function verifier({ db, q, en, verifier }) {
   verifier(/rectifie une facture émise de votre entreprise/.test(surBrouillon || '') && surEmise === false,
     `100 : un avoir se crée sur une facture émise, pas sur un brouillon (${surBrouillon} / ${surEmise})`);
   // Rattacher après coup un avoir à un brouillon : refusé aussi
-  const A = (await q(`SELECT id FROM devis WHERE numero = 'AV-100-2'`)).rows[0].id;
+  const A = avoirs['AV-100-2'];
   const rattache = await refus(() => commeSolo('UPDATE devis SET avoir_source_id = $2 WHERE id = $1', [A, B]));
   const emis = await refus(() => commeSolo(`UPDATE devis SET statut = 'envoye' WHERE id = $1`, [A]));
   verifier(/rectifie une facture émise/.test(rattache || '') && emis === false,
@@ -49,7 +53,7 @@ export async function verifier({ db, q, en, verifier }) {
   // des deux) ; l'upsert d'un avoir existant dont la source est devenue vide (clé ON DELETE SET NULL) passe
   await q(`INSERT INTO organization_members (organization_id, user_id, role) VALUES ($1, $2, 'admin')`, [ORG_PATRON, SOLO]);
   await avoirSur(E, 'AV-100-7');
-  const A7 = (await q(`SELECT id FROM devis WHERE numero = 'AV-100-7'`)).rows[0].id;
+  const A7 = avoirs['AV-100-7'];
   const deplace = await refus(() => commeSolo('UPDATE devis SET organization_id = $2 WHERE id = $1', [A7, ORG_PATRON]));
   await q('DELETE FROM organization_members WHERE organization_id = $1 AND user_id = $2', [ORG_PATRON, SOLO]);
   await q('UPDATE devis SET avoir_source_id = NULL WHERE id = $1', [A]);
@@ -84,6 +88,6 @@ export async function verifier({ db, q, en, verifier }) {
 
   // Ménage (en propriétaire) : les vérifications de 072 comptent les devis du compte
   await q('DELETE FROM paiements WHERE devis_id = ANY($1)', [[B, E]]);
-  await q(`DELETE FROM devis WHERE numero LIKE 'AV-100-%'`);
+  await q(`DELETE FROM devis WHERE numero LIKE 'AV-100-%' OR id = ANY($1)`, [Object.values(avoirs)]);
   await q('DELETE FROM devis WHERE id = ANY($1)', [[B, E, devisSigne, autreOrg]]);
 }

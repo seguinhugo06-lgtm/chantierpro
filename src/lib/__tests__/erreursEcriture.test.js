@@ -80,6 +80,10 @@ describe('messageEcritureRefusee', () => {
     expect(messageEcritureRefusee({ status: 403, code: '42501', message: entreprise })).toBe(entreprise);
     const avoirBrouillon = 'Un avoir rectifie une facture émise de votre entreprise : choisissez la facture qu\'il corrige (un brouillon se corrige directement).';
     expect(messageEcritureRefusee({ status: 403, code: '42501', message: avoirBrouillon })).toBe(avoirBrouillon);
+    const choisir = 'Choisissez l\'entreprise qui émet cette facture.';
+    expect(messageEcritureRefusee({ status: 403, code: '42501', message: choisir })).toBe(choisir);
+    const inconnue = 'Entreprise inconnue dans votre organisation : rechargez la page.';
+    expect(messageEcritureRefusee({ status: 403, code: '42501', message: inconnue })).toBe(inconnue);
   });
 
   it('une session expirée (401, même avec 42501) invite à se reconnecter, pas « pas le droit »', () => {

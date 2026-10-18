@@ -550,49 +550,14 @@ const EntrepriseFormModal = memo(function EntrepriseFormModal({
 
           {tab === 'documents' && (
             <>
-              {/* Préfixes */}
+              {/* Numérotation : attribuée par Mallettico (migration 101). Les anciens champs « Préfixe » étaient enregistrés
+                  sans jamais servir (relecture juriste-btp du 18 oct. 2026) : changer de série en cours d'année n'est pas
+                  admis sans raison (BOI-TVA-DECLA-30-20-20-10 § 80). */}
               <h3 className={`text-sm font-semibold ${tc.text}`}>Numérotation</h3>
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <label className={`block text-sm font-medium mb-1 ${tc.label}`}>
-                    Préfixe devis
-                  </label>
-                  <input
-                    type="text"
-                    value={form.prefixeDevis}
-                    onChange={e => updateField('prefixeDevis', e.target.value.toUpperCase())}
-                    className={inputCls}
-                    placeholder="DEV"
-                    maxLength={5}
-                  />
-                </div>
-                <div>
-                  <label className={`block text-sm font-medium mb-1 ${tc.label}`}>
-                    Préfixe facture
-                  </label>
-                  <input
-                    type="text"
-                    value={form.prefixeFacture}
-                    onChange={e => updateField('prefixeFacture', e.target.value.toUpperCase())}
-                    className={inputCls}
-                    placeholder="FAC"
-                    maxLength={5}
-                  />
-                </div>
-                <div>
-                  <label className={`block text-sm font-medium mb-1 ${tc.label}`}>
-                    Préfixe avoir
-                  </label>
-                  <input
-                    type="text"
-                    value={form.prefixeAvoir}
-                    onChange={e => updateField('prefixeAvoir', e.target.value.toUpperCase())}
-                    className={inputCls}
-                    placeholder="AVC"
-                    maxLength={5}
-                  />
-                </div>
-              </div>
+              <p className={`text-sm ${tc.label}`}>
+                Les numéros sont attribués automatiquement, avec un compteur par année : devis DEV-AAAA-NNNNN ; factures
+                FAC-AAAA-NNNNN et avoirs AV-AAAA-NNNNN, à la suite et sans trou.
+              </p>
 
               {/* Paramètres métier */}
               <h3 className={`text-sm font-semibold mt-4 ${tc.text}`}>Paramètres par défaut</h3>

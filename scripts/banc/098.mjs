@@ -28,7 +28,8 @@ export async function verifier({ db, q, en, commeAnonyme, verifier }) {
   const facturer = async (numero, nature, total) => (await commeSolo(
     `INSERT INTO devis (user_id, numero, type, facture_type, statut, total_ttc, devis_source_id)
      VALUES ($1, $2, 'facture', $3, 'envoye', $4, $5) RETURNING id`, [SOLO, numero, nature, total, D])).rows[0].id;
-  await facturer('FAC-098-1', 'acompte', 360);
+  // Depuis 101, la base attribue le numéro d'une facture créée par un compte connecté : on garde l'identifiant
+  const F1 = await facturer('FAC-098-1', 'acompte', 360);
   const S = await facturer('FAC-098-2', 'solde', 840);
   const second = await refus(() => facturer('FAC-098-3', 'solde', 840));
   verifier(/déjà facturé.*1 200,00 €/.test(second || ''), `098 : un second solde du même devis est refusé (${second})`);
@@ -54,10 +55,11 @@ export async function verifier({ db, q, en, commeAnonyme, verifier }) {
   verifier(/déjà facturé/.test(tropAvoir || ''), `098 : un avoir plus gros que sa facture ne libère pas de place (${tropAvoir})`);
 
   // 2. Numéro de facture unique dans son entreprise
-  const doublon = await refus(() => doc({ numero: 'FAC-098-1', nature: 'totale', total: 10 }));
+  const f1 = (await q('SELECT numero, entreprise_id FROM devis WHERE id = $1', [F1])).rows[0];
+  const doublon = await refus(() => doc({ numero: f1.numero, nature: 'totale', total: 10, entreprise: f1.entreprise_id }));
   verifier(/unique|duplicate/i.test(doublon || ''), `098 : un numéro de facture en double est refusé (${doublon})`);
-  const ailleurs = await refus(() => doc({ user: PATRON, org: ORG_PATRON, numero: 'FAC-098-1', nature: 'totale', total: 10 }));
-  const autreEntreprise = await refus(() => doc({ numero: 'FAC-098-1', nature: 'totale', total: 10, entreprise: '0ddddddd-0000-4000-8000-000000000001' }));
+  const ailleurs = await refus(() => doc({ user: PATRON, org: ORG_PATRON, numero: f1.numero, nature: 'totale', total: 10 }));
+  const autreEntreprise = await refus(() => doc({ numero: f1.numero, nature: 'totale', total: 10, entreprise: '0ddddddd-0000-4000-8000-000000000001' }));
   verifier(ailleurs === false && autreEntreprise === false,
     `098 : le même numéro dans une autre organisation ou une autre entreprise passe (${ailleurs} / ${autreEntreprise})`);
 
@@ -160,4 +162,9 @@ export async function verifier({ db, q, en, commeAnonyme, verifier }) {
   await q('DELETE FROM paiements WHERE devis_id = ANY($1)', [[F, G, FP, FS]]);
   await q(`DELETE FROM devis WHERE numero LIKE 'AV-098%'`);
   await q(`DELETE FROM devis WHERE numero LIKE 'FAC-098%' OR numero LIKE 'DEV-098%'`);
+  // Factures créées par un compte connecté (numérotées par la base depuis 101) : par leur devis d'origine ou leur identifiant
+  await q('DELETE FROM devis WHERE devis_source_id = ANY($1) AND facture_type = $2', [[D, D2], 'avoir']);
+  await q('DELETE FROM devis WHERE devis_source_id = ANY($1) OR id = ANY($2)', [[D, D2], [G, H, F1, D, D2]]);
+  // Copies de son numéro écrites en propriétaire (unicité : même entreprise, autre organisation, autre entreprise)
+  await q('DELETE FROM devis WHERE numero = $1', [f1.numero]);
 }

@@ -169,6 +169,14 @@ Recommandation : `envoi` — c'est la pratique des logiciels de facturation, et 
 Irréversible : non
 Bloque : rien
 
+### Q-serie-avoirs · Les avoirs dans une série à part (AV-), ou dans celle des factures (FAC-) ?
+Contexte : Depuis le 18 oct. 2026 (migration 101), la base numérote les avoirs dans leur propre série, AV-AAAA-NNNNN, distincte de celle des factures. Des séries distinctes sont admises si l'activité le justifie, avec un préfixe distinct (BOI-TVA-DECLA-30-20-20-10 § 80 et 90) ; un avoir est une pièce rectificative (CGI art. 289, I, 5), mais ce cas n'est pas cité parmi les exemples du § 100. Aucun avoir n'existe encore en production : c'est le moment de trancher — relecture juriste-btp du 18 oct. 2026.
+Option `serie-av` : les avoirs gardent leur série AV- — pratique courante ; justification consignée (docs/metier-btp.md), à confirmer au rendez-vous avec l'expert-comptable.
+Option `serie-fac` : les avoirs prennent le numéro suivant de la série des factures — une seule séquence, aucune justification à donner ; les avoirs ne se repèrent plus à leur préfixe.
+Recommandation : `serie-av`, confirmée par l'expert-comptable.
+Irréversible : non (tant qu'aucun avoir n'est émis)
+Bloque : rien
+
 ### Q-pdf-brouillon · Que faire quand on télécharge le PDF d'un brouillon de facture ?
 Contexte : Le bouton « PDF » est proposé sur un brouillon de facture, et le document imprimé ressemble en tout point à une facture émise (aucune mention « brouillon » dans les deux générateurs). Un artisan peut le remettre en main propre : pour le client, c'est une facture ; dans l'app, elle reste modifiable et hors du chiffre d'affaires et de la TVA tant qu'elle n'est pas émise. L'intégrité du contenu est due dès l'émission (CGI art. 289 V) — relecture juriste-btp du 18 oct. 2026 (A1).
 Option `emettre` : « PDF » d'un brouillon propose d'abord d'émettre la facture (contrôle des mentions légales) — le PDF remis est une vraie facture, comptée.
