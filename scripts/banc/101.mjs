@@ -90,9 +90,9 @@ export async function verifier({ db, q, en, commeAnonyme, verifier }) {
   // 8. Un numéro attribué ne change plus ; un upsert de l'app le garde
   const change = await refus(() => commeSolo(`UPDATE devis SET numero = $2 WHERE id = $1`, [a.id, fac(50)]));
   await commeSolo(`INSERT INTO devis (id, user_id, numero, type, facture_type, statut, total_ttc) VALUES ($1, $2, $3, 'facture', 'totale', 'envoye', 100)
-    ON CONFLICT (id) DO UPDATE SET objet = 'Upsert 101'`, [b.id, SOLO, fac(77)]);
-  const bApres = (await q('SELECT numero, objet FROM devis WHERE id = $1', [b.id])).rows[0];
-  verifier(!!change && bApres.numero === fac(2) && bApres.objet === 'Upsert 101',
+    ON CONFLICT (id) DO UPDATE SET payment_status = 'upsert-101'`, [b.id, SOLO, fac(77)]);
+  const bApres = (await q('SELECT numero, payment_status FROM devis WHERE id = $1', [b.id])).rows[0];
+  verifier(!!change && bApres.numero === fac(2) && bApres.payment_status === 'upsert-101',
     `101 : un numéro attribué ne change plus, un upsert le garde (${change} / ${bApres.numero})`);
 
   // 9. Devis et serveur non concernés

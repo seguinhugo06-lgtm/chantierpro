@@ -19,7 +19,8 @@ export async function verifier({ db, q, en, verifier }) {
     [o.user || SOLO, o.org || ORG_SOLO, o.numero, o.type || 'facture', o.nature || 'totale', o.statut || 'envoye', o.total,
       o.avoirDe || null])).rows[0].id;
   const commeSolo = (sql, p) => en(SOLO, () => q(sql, p));
-  const lire = async (id) => (await q('SELECT statut, montant_paye, objet, user_id, organization_id FROM devis WHERE id = $1', [id])).rows[0];
+  // payment_status : une colonne qui reste modifiable sur une facture émise (le contenu imprimé est figé depuis 103)
+  const lire = async (id) => (await q('SELECT statut, montant_paye, objet, payment_status, user_id, organization_id FROM devis WHERE id = $1', [id])).rows[0];
   const payer = async (facture, montant, o = {}) => (await en(o.par || SOLO, () => q(
     'INSERT INTO paiements (user_id, devis_id, montant, notes, reference) VALUES ($1, $2, $3, $4, $5) RETURNING id',
     [o.par || SOLO, facture, montant, o.notes || null, o.reference || null]))).rows[0].id;
@@ -40,10 +41,10 @@ export async function verifier({ db, q, en, verifier }) {
   verifier(soldee === false && (await lire(F)).statut === 'payee', `099 : une facture soldée par ses paiements passe « payée » (${soldee})`);
 
   // 2. Un onglet périmé (l'app réécrit toute la ligne) ne la repasse pas « envoyée » ni « vue », sans bloquer
-  const perime = await refus(() => commeSolo(`UPDATE devis SET statut = 'envoye', objet = 'Note 099' WHERE id = $1`, [F]));
+  const perime = await refus(() => commeSolo(`UPDATE devis SET statut = 'envoye', payment_status = 'note-099' WHERE id = $1`, [F]));
   const vue = await refus(() => commeSolo(`UPDATE devis SET statut = 'vu' WHERE id = $1`, [F]));
   const apres = await lire(F);
-  verifier(perime === false && vue === false && apres.statut === 'payee' && apres.objet === 'Note 099',
+  verifier(perime === false && vue === false && apres.statut === 'payee' && apres.payment_status === 'note-099',
     `099 : une facture soldée reste « payée » malgré la valeur périmée d'un onglet, et l'enregistrement passe (${perime} / ${vue} / ${apres.statut})`);
 
   // 3. Une correction qui rouvre la facture (098) : « envoyée » ; la remettre « payée » est refusé
@@ -85,11 +86,11 @@ export async function verifier({ db, q, en, verifier }) {
   // 6. Upsert de l'app (file différée) sans organisation, sur une facture payée et soldée : pas de faux refus
   const upsert = await refus(() => commeSolo(
     `INSERT INTO devis (id, user_id, numero, type, facture_type, statut, total_ttc) VALUES ($1, $2, 'FAC-099-2', 'facture', 'totale', 'payee', 1000)
-     ON CONFLICT (id) DO UPDATE SET statut = EXCLUDED.statut, objet = 'Upsert 099'`, [G, SOLO]));
+     ON CONFLICT (id) DO UPDATE SET statut = EXCLUDED.statut, payment_status = 'upsert-099'`, [G, SOLO]));
   const upsertSansPaiement = await refus(() => commeSolo(
     `INSERT INTO devis (id, user_id, numero, type, facture_type, statut, total_ttc) VALUES ($1, $2, 'FAC-099-5', 'facture', 'totale', 'payee', 500)
      ON CONFLICT (id) DO UPDATE SET statut = EXCLUDED.statut`, [K, SOLO]));
-  verifier(upsert === false && (await lire(G)).objet === 'Upsert 099' && /annulée par un avoir/.test(upsertSansPaiement || ''),
+  verifier(upsert === false && (await lire(G)).payment_status === 'upsert-099' && /annulée par un avoir/.test(upsertSansPaiement || ''),
     `099 : un upsert sans organisation d'une facture soldée passe, d'une facture non soldée non (${upsert} / ${upsertSansPaiement})`);
 
   // 7. Une pièce émise reste dans son organisation et garde son auteur (salarié de l'organisation du patron)
@@ -100,9 +101,9 @@ export async function verifier({ db, q, en, verifier }) {
   const factureDetachee = await refus(() => commeSalarie(`UPDATE devis SET organization_id = NULL, user_id = $2 WHERE id = $1`, [FP, SALARIE]));
   verifier(/reste dans son entreprise/.test(avoirDetache || '') && /reste dans son entreprise/.test(factureDetachee || ''),
     `099 : une facture ou un avoir émis ne quitte pas son organisation (${avoirDetache} / ${factureDetachee})`);
-  const encaisseeParSalarie = await refus(() => commeSalarie(`UPDATE devis SET objet = 'Vue par le salarié', user_id = $2 WHERE id = $1`, [FP, SALARIE]));
+  const encaisseeParSalarie = await refus(() => commeSalarie(`UPDATE devis SET payment_status = 'vue-salarie', user_id = $2 WHERE id = $1`, [FP, SALARIE]));
   const fp = await lire(FP);
-  verifier(encaisseeParSalarie === false && fp.user_id === PATRON && fp.objet === 'Vue par le salarié',
+  verifier(encaisseeParSalarie === false && fp.user_id === PATRON && fp.payment_status === 'vue-salarie',
     `099 : un salarié qui enregistre la facture du patron ne la fait pas sienne (${encaisseeParSalarie} / ${fp.user_id})`);
 
   // 8. Une facture encaissée ne se supprime pas, même en brouillon (ses paiements resteraient sans pièce)

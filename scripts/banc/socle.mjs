@@ -269,6 +269,9 @@ export const SCHEMA = `
   -- Signature en ligne (011, modifiée hors dépôt), telle qu'en production le 10 oct. 2026 (pg_get_functiondef) :
   -- trois fonctions SECURITY DEFINER sans search_path, exécutables par PUBLIC et anon ; colonnes relevées le même
   -- jour (information_schema). 083 les réécrit.
+  -- Colonnes de contenu de production (relevé du 18 oct. 2026), figées sur une facture émise par 103
+  ALTER TABLE devis ADD COLUMN IF NOT EXISTS tva NUMERIC, ADD COLUMN IF NOT EXISTS tva_details JSONB, ADD COLUMN IF NOT EXISTS notes TEXT,
+    ADD COLUMN IF NOT EXISTS client_nom TEXT, ADD COLUMN IF NOT EXISTS situation_id UUID, ADD COLUMN IF NOT EXISTS situation_numero INTEGER;
   ALTER TABLE devis ADD COLUMN validite_jours INTEGER, ADD COLUMN date_validite DATE, ADD COLUMN sections JSONB,
     ADD COLUMN conditions TEXT, ADD COLUMN remise_globale NUMERIC, ADD COLUMN tva_rate NUMERIC, ADD COLUMN acompte_percent NUMERIC,
     ADD COLUMN acompte_montant NUMERIC, ADD COLUMN acompte_pct NUMERIC, ADD COLUMN entreprise_id UUID, ADD COLUMN signature TEXT,

@@ -64,9 +64,9 @@ export async function verifier({ db, q, en, verifier }) {
   await q('UPDATE entreprise SET archived_at = NULL WHERE id = $1', [B]);
 
   // 3. L'entreprise d'une facture émise ne change plus
-  await commeSolo('UPDATE devis SET entreprise_id = $2, objet = $3 WHERE id = $1', [a1.id, B, 'Note 102']);
-  const apres = (await q('SELECT entreprise_id, objet FROM devis WHERE id = $1', [a1.id])).rows[0];
-  verifier(apres.entreprise_id === A1 && apres.objet === 'Note 102',
+  await commeSolo('UPDATE devis SET entreprise_id = $2, payment_status = $3 WHERE id = $1', [a1.id, B, 'note-102']);
+  const apres = (await q('SELECT entreprise_id, payment_status FROM devis WHERE id = $1', [a1.id])).rows[0];
+  verifier(apres.entreprise_id === A1 && apres.payment_status === 'note-102',
     `102 : l'entreprise d'une facture émise ne change pas, sans bloquer l'enregistrement (${apres.entreprise_id === A1})`);
 
   // 4. Un avoir est émis par l'entreprise de sa facture, même si l'app en envoie une autre (l'entreprise ouverte à l'écran)
