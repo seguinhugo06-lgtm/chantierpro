@@ -25,8 +25,17 @@ export async function verifier({ db, q, en, verifier }) {
   const fiche = async (nom, siret) => (await q(`INSERT INTO entreprise (user_id, organization_id, nom, siret) VALUES ($1, $2, $3, $4) RETURNING id`,
     [SOLO, ORG_SOLO, nom, siret])).rows[0].id;
 
+  // Une facture d'avant 102 (numérotée, sans SIREN inscrit) : la reprise de la migration lui inscrit celui de sa fiche
+  const ficheAncienne = (await q(`INSERT INTO entreprise (user_id, organization_id, nom, siret, archived_at) VALUES ($1, $2, 'Ancienne 102', '44444444400011', now()) RETURNING id`, [SOLO, ORG_SOLO])).rows[0].id;
+  const avant102 = (await q(`INSERT INTO devis (user_id, organization_id, entreprise_id, numero, type, facture_type, statut, total_ttc)
+    VALUES ($1, $2, $3, 'FAC-2019-00001', 'facture', 'totale', 'envoye', 10) RETURNING id`, [SOLO, ORG_SOLO, ficheAncienne])).rows[0].id;
+  await q('UPDATE devis SET siren_emetteur = NULL WHERE id = $1', [avant102]);
   // Les vérifications de 101 rejouent ses définitions (dernier_numero_facture, suivre_numerotation) : remettre celles de 102
   await db.exec(fs.readFileSync(MIGRATION, 'utf8'));
+  const reprise = (await q('SELECT siren_emetteur FROM devis WHERE id = $1', [avant102])).rows[0].siren_emetteur;
+  verifier(reprise === '444444444', `102 : la reprise inscrit le SIREN de leur fiche sur les factures déjà numérotées (${reprise})`);
+  await q('DELETE FROM devis WHERE id = $1', [avant102]);
+  await q('DELETE FROM entreprise WHERE id = $1', [ficheAncienne]);
 
   // État maîtrisé : les fiches actives de l'organisation mises de côté (elles reviennent à la fin)
   const actives = (await q('SELECT id FROM entreprise WHERE organization_id = $1 AND archived_at IS NULL', [ORG_SOLO])).rows.map((r) => r.id);

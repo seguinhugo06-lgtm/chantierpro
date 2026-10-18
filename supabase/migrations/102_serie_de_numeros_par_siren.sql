@@ -17,7 +17,9 @@
 -- sur le SIRET actuel de la fiche (une correction de SIRET déplaçait les factures d'une série à l'autre : doublon
 -- possible) ; un avoir prend l'entreprise de sa facture plutôt qu'être refusé.
 -- Relevé du 18 oct. 2026 : une fiche entreprise par organisation ; celles qui ont des factures ont un SIRET complet ;
--- aucune facture sans entreprise. Les numéros attribués restent les mêmes. Rien à reprendre.
+-- aucune facture sans entreprise. Les numéros attribués restent les mêmes. Reprise : le SIREN de l'émetteur est inscrit
+-- sur les 16 factures déjà numérotées (celui de leur fiche).
+-- Relecture gardien-securite de 102 : applicable ; un brouillon sans numéro ne garde pas de SIREN envoyé.
 --
 -- Effet, pour un compte connecté (le serveur et les fonctions SECURITY DEFINER ne sont pas concernés) :
 --   1. quand une facture ou un avoir reçoit son numéro, la base y inscrit le SIREN de l'émetteur (siren_emetteur :
@@ -36,6 +38,8 @@
 --     attendu : true
 --   select position('NEW.entreprise_id := OLD.entreprise_id' in pg_get_functiondef('public.garder_organisation_piece_emise()'::regprocedure)) > 0;
 --     attendu : true
+--   select count(*) from devis where type = 'facture' and nullif(numero, '') is not null and entreprise_id is not null
+--     and siren_emetteur is null;                                      -- attendu : 0 (sauf fiche sans SIRET)
 --   select count(*) from devis a join devis f on f.id = a.avoir_source_id
 --    where a.facture_type = 'avoir' and a.entreprise_id is distinct from f.entreprise_id;           -- attendu : 0
 --   Ne jamais rejouer 099, 100 ou 101 après 102 : elles remettraient une définition antérieure (entreprise non figée,
@@ -66,6 +70,34 @@ AS $$
 $$;
 REVOKE ALL ON FUNCTION public.siren_entreprise(UUID) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.siren_entreprise(UUID) TO authenticated, service_role;
+
+-- Factures déjà numérotées : le SIREN de leur fiche au moment de 102 (sinon elles suivraient le SIRET actuel de la fiche :
+-- contre-relecture juriste-btp, R1-a). Sans toucher à leur date de mise à jour ni à leur lien de paiement : les deux
+-- déclencheurs de production qui les écrivent sont coupés le temps de cette seule écriture (même transaction).
+DO $reprise$
+DECLARE
+  v_maj BOOLEAN := EXISTS (SELECT 1 FROM pg_trigger WHERE tgrelid = 'public.devis'::regclass
+                            AND tgname = 'update_devis_updated_at' AND tgenabled <> 'D');
+  v_jeton BOOLEAN := EXISTS (SELECT 1 FROM pg_trigger WHERE tgrelid = 'public.devis'::regclass
+                              AND tgname = 'trg_devis_payment_token' AND tgenabled <> 'D');
+BEGIN
+  IF v_maj THEN
+    ALTER TABLE public.devis DISABLE TRIGGER update_devis_updated_at;
+  END IF;
+  IF v_jeton THEN
+    ALTER TABLE public.devis DISABLE TRIGGER trg_devis_payment_token;
+  END IF;
+  UPDATE public.devis d SET siren_emetteur = public.siren_entreprise(d.entreprise_id)
+   WHERE d.type = 'facture' AND NULLIF(btrim(d.numero), '') IS NOT NULL
+     AND d.siren_emetteur IS NULL AND d.entreprise_id IS NOT NULL;
+  IF v_maj THEN
+    ALTER TABLE public.devis ENABLE TRIGGER update_devis_updated_at;
+  END IF;
+  IF v_jeton THEN
+    ALTER TABLE public.devis ENABLE TRIGGER trg_devis_payment_token;
+  END IF;
+END
+$reprise$;
 
 -- 2. Plus grand numéro de la série du SIREN, pour un membre de l'organisation seulement
 CREATE OR REPLACE FUNCTION public.dernier_numero_facture(p_org UUID, p_entreprise UUID, p_prefixe TEXT, p_annee INTEGER)
@@ -133,8 +165,10 @@ BEGIN
   IF NEW.facture_type = 'avoir' AND NEW.avoir_source_id IS NOT NULL THEN
     NEW.entreprise_id := COALESCE((SELECT entreprise_id FROM public.devis WHERE id = NEW.avoir_source_id), NEW.entreprise_id);
   END IF;
-  -- Brouillon sans numéro : rien à attribuer (l'app numérote à la création ; Q-numero-a-l-envoi)
+  -- Brouillon sans numéro : rien à attribuer (l'app numérote à la création ; Q-numero-a-l-envoi) ; pas de SIREN
+  -- d'émetteur avant la numérotation (une valeur envoyée ne resterait pas pour une écriture serveur)
   IF NULLIF(btrim(NEW.numero), '') IS NULL AND COALESCE(NEW.statut, '') = 'brouillon' THEN
+    NEW.siren_emetteur := NULL;
     RETURN NEW;
   END IF;
 
