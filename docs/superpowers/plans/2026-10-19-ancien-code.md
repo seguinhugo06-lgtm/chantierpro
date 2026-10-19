@@ -69,9 +69,9 @@
 - [ ] **Step 4 :** baisser le plafond aux nouveaux totaux ; test vert.
 - [ ] **Step 5 :** commit `refactor: legacy theme ternaries and orange classes moved to tokens`.
 
-### Tasks 4 à 9 : passes manuelles par groupe d'écrans
+### Tasks 4 à 9 : passes manuelles par groupe d'écrans, avec l'audit d'expérience
 
-Chaque tâche traite **tout l'ancien code restant** (compté par `compterAncienCode`) dans son groupe : convertir selon la table de la spec ; pour ce que la table ne couvre pas, utiliser les tons ou les primitives de `src/components/ui/` ; supprimer les variables de thème devenues inutiles ; garder les props `isDark`/`couleur` dans les signatures. Puis : lint, tests, build, captures clair et sombre 375/1440 des écrans du groupe, lues ; baisser le plafond ; commit `refactor(<groupe>): legacy colours moved to tokens`.
+Demande d'Hugo (20 oct. 2026) : « rendre l'app incroyable en lisibilité, organisation, UX, UI ». Chaque tâche applique aussi, pour son groupe, **les constats P1 et P2 de l'audit** `docs/audit-ux-2026-10-20.md` (section 3, rattachés aux Tasks 4 à 9) et ses principes transverses (section 2), et les P3 quand ils sont simples ; ne pas toucher à ce que la section 4 de l'audit dit de garder ; une décision de produit (ex. réglage « Je gère un stock ») attend Hugo. Elle traite aussi **tout l'ancien code restant** (compté par `compterAncienCode`) dans son groupe : convertir selon la table de la spec ; pour ce que la table ne couvre pas, utiliser les tons ou les primitives de `src/components/ui/` ; supprimer les variables de thème devenues inutiles ; garder les props `isDark`/`couleur` dans les signatures. Puis : lint, tests, build, captures clair et sombre 375/1440 des écrans du groupe, lues ; baisser le plafond ; commit `refactor(<groupe>): legacy colours moved to tokens`.
 
 - **Task 4 — Devis et factures** : `src/components/DevisPage.jsx` (hors générateur HTML), `DevisComposer.jsx`, `DevisWizard.jsx`, `DevisExpressModal.jsx`, `PaymentModal.jsx`, `src/components/devis/**`, `src/components/signature/**` (page publique : vérifier aussi `/devis/signer/…`).
 - **Task 5 — Coque et accueil** : `src/App.jsx`, `src/components/layout/**`, `Dashboard.jsx`, `CommandPalette.jsx`, `FABMenu.jsx`, `PWAUpdatePrompt.jsx`, `CookieConsent.jsx`, `src/components/retours/**` ; puis `npm run parcours` complet.
