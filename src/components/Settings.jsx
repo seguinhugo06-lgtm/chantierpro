@@ -197,11 +197,11 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
   };
 
   // Theme classes
-  const cardBg = isDark ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200";
+  const cardBg = "bg-surface border-bord";
   const inputBg = isDark ? "bg-slate-700 border-slate-600 text-white placeholder-slate-400" : "bg-white border-slate-300";
-  const textPrimary = isDark ? "text-slate-100" : "text-slate-900";
-  const textSecondary = isDark ? "text-slate-300" : "text-slate-600";
-  const textMuted = isDark ? "text-slate-400" : "text-slate-600";
+  const textPrimary = "text-encre";
+  const textSecondary = "text-encre-2";
+  const textMuted = "text-encre-2";
 
   const [tab, setTab] = useState('identite');
   const [showSetupWizard, setShowSetupWizard] = useState(false);
@@ -1313,8 +1313,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
               </div>
               <button
                 onClick={() => setShowFraisCalc(!showFraisCalc)}
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90"
-                style={{ backgroundColor: couleur }}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all hover:opacity-90 bg-accent text-sur-accent"
               >
                 <Calculator size={16} /> {showFraisCalc ? 'Masquer' : 'Calculer mes frais'}
               </button>
@@ -1349,7 +1348,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                   </div>
                   <div className="text-right">
                     <p className={`text-xs ${textSecondary}`}>Taux suggéré</p>
-                    <p className="text-xl font-bold" style={{ color: couleur }}>{tauxSuggere === null ? '—' : `${tauxSuggere} %`}</p>
+                    <p className="text-xl font-bold text-accent-texte">{tauxSuggere === null ? '—' : `${tauxSuggere} %`}</p>
                   </div>
                 </div>
                 {tauxSuggere === null ? (
@@ -1361,8 +1360,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                       setShowFraisCalc(false);
                       showToast(`Taux mis à jour : ${tauxSuggere} %`, 'success');
                     }}
-                    className="w-full py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90"
-                    style={{ backgroundColor: couleur }}
+                    className="w-full py-2.5 rounded-xl text-sm font-semibold transition-all hover:opacity-90 bg-accent text-sur-accent"
                   >
                     Appliquer {tauxSuggere} % comme taux de frais de structure
                   </button>
@@ -1374,7 +1372,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             <div className={`rounded-xl border p-5 ${isDark ? 'bg-slate-700/50 border-slate-600' : 'bg-gradient-to-br from-slate-50 to-blue-50/50 border-slate-200'}`}>
               <p className={`text-sm font-semibold mb-3 ${textPrimary}`}>Formule de calcul</p>
               <div className="flex flex-wrap items-center gap-2 text-sm">
-                <span className="px-3 py-1.5 rounded-lg font-semibold text-white" style={{ backgroundColor: couleur }}>Marge Réelle</span>
+                <span className="px-3 py-1.5 rounded-lg font-semibold bg-accent text-sur-accent">Marge Réelle</span>
                 <span className={`text-lg font-bold ${textMuted}`}>=</span>
                 <span className={`px-3 py-1.5 rounded-lg font-medium bg-succes-fond text-succes-texte`}>CA HT</span>
                 <span className={`text-lg font-bold ${textMuted}`}>+</span>
@@ -1411,7 +1409,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
           {/* Exports : un seul endroit, Finances › Export comptable */}
           <div className={`${cardBg} rounded-xl border p-4`}>
             <h3 className={`font-semibold mb-1 flex items-center gap-2 ${textPrimary}`}>
-              <FileText size={18} style={{ color: couleur }} />
+              <FileText size={18} className="text-accent-texte" />
               Exports pour votre comptable
             </h3>
             <p className={`text-sm mb-3 ${textSecondary}`}>
@@ -1441,7 +1439,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
               {/* Period Selector */}
               <div className={`${cardBg} rounded-xl border p-4`}>
                 <h3 className={`font-semibold mb-3 flex items-center gap-2 ${textPrimary}`}>
-                  <Calendar size={18} style={{ color: couleur }} />
+                  <Calendar size={18} className="text-accent-texte" />
                   Période
                 </h3>
                 <div className="flex flex-wrap gap-4">
@@ -1595,7 +1593,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
           {/* Export Global */}
           <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
             <h3 className={`font-semibold mb-2 flex items-center gap-2 ${textPrimary}`}>
-              <Download size={18} style={{ color: couleur }} />
+              <Download size={18} className="text-accent-texte" />
               Export global des données
             </h3>
             <p className={`text-sm ${textMuted} mb-4`}>
@@ -1648,8 +1646,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                   showToast('Erreur lors de l\'export', 'error');
                 }
               }}
-              className="flex items-center gap-2 px-5 py-3 rounded-xl text-white font-medium transition-all hover:shadow-lg"
-              style={{ background: couleur }}
+              className="flex items-center gap-2 px-5 py-3 rounded-xl font-medium transition-all hover:shadow-lg bg-accent text-sur-accent"
             >
               <Download size={18} />
               Exporter toutes les données (.json)
@@ -1759,14 +1756,14 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
               {Object.keys(localStorage).filter(k => k.startsWith('cp_') || k.startsWith('mallettico')).length > 0 && (
                 <div className={`p-3 rounded-xl bg-surface-2`}>
                   <p className={`text-xs ${textMuted}`}>Clés stockées</p>
-                  <p className="text-lg font-bold" style={{ color: couleur }}>
+                  <p className="text-lg font-bold text-accent-texte">
                     {Object.keys(localStorage).filter(k => k.startsWith('cp_') || k.startsWith('mallettico')).length}
                   </p>
                 </div>
               )}
               <div className={`p-3 rounded-xl bg-surface-2`}>
                 <p className={`text-xs ${textMuted}`}>Taille estimée</p>
-                <p className="text-lg font-bold" style={{ color: couleur }}>
+                <p className="text-lg font-bold text-accent-texte">
                   {(() => {
                     let total = 0;
                     Object.keys(localStorage).forEach(k => { total += (localStorage.getItem(k) || '').length; });
@@ -1892,7 +1889,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             <div className={`bg-surface rounded-t-2xl sm:rounded-2xl w-full max-w-lg max-h-[90vh] flex flex-col`} onClick={e => e.stopPropagation()}>
               {/* Progress bar */}
               <div className="h-1.5 rounded-t-2xl overflow-hidden" style={{ background: isDark ? '#334155' : '#e2e8f0' }}>
-                <div className="h-full transition-all duration-500" style={{ width: `${progress}%`, background: couleur }} />
+                <div className="h-full transition-all duration-500 bg-accent" style={{ width: `${progress}%` }} />
               </div>
 
               {/* Step dots */}
@@ -1984,8 +1981,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                         <button
                           onClick={lookupSIRENE}
                           disabled={sireneLoading}
-                          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90 disabled:opacity-50"
-                          style={{ backgroundColor: couleur }}
+                          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all hover:opacity-90 disabled:opacity-50 bg-accent text-sur-accent"
                         >
                           {sireneLoading ? <Loader2 size={16} className="animate-spin" /> : <Search size={16} />}
                           Auto-remplir
@@ -2067,7 +2063,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                           { jour: 'J+30', type: 'Email', desc: 'Dernière relance' },
                         ].map(r => (
                           <div key={r.jour} className={`flex items-center gap-3 text-sm ${textSecondary}`}>
-                            <span className="font-mono font-bold w-10" style={{ color: couleur }}>{r.jour}</span>
+                            <span className="font-mono font-bold w-10 text-accent-texte">{r.jour}</span>
                             <span className={`px-2 py-0.5 rounded text-xs font-medium bg-bord text-encre-2`}>{r.type}</span>
                             <span className={textPrimary}>{r.desc}</span>
                           </div>
@@ -2141,8 +2137,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                 {safeStep < totalSteps - 1 ? (
                   <button
                     onClick={() => setWizardStep(s => s + 1)}
-                    className="px-5 py-2.5 text-white rounded-xl text-sm font-semibold transition-colors"
-                    style={{ background: couleur }}
+                    className="px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors bg-accent text-sur-accent"
                   >
                     Suivant →
                   </button>

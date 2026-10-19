@@ -26,11 +26,11 @@ export default function AuditTimeline({
   onViewSnapshot,
   showEntityBadge = false,
 }) {
-  const textPrimary = isDark ? 'text-slate-100' : 'text-slate-900';
-  const textSecondary = isDark ? 'text-slate-300' : 'text-slate-600';
-  const textMuted = isDark ? 'text-slate-400' : 'text-slate-500';
-  const borderColor = isDark ? 'border-slate-700' : 'border-slate-200';
-  const cardBg = isDark ? 'bg-slate-800' : 'bg-white';
+  const textPrimary = 'text-encre';
+  const textSecondary = 'text-encre-2';
+  const textMuted = 'text-encre-3';
+  const borderColor = 'border-bord';
+  const cardBg = 'bg-surface';
 
   if (isLoading) {
     return (
@@ -113,14 +113,14 @@ function AuditEntry({
         }}
       />
 
-      <div className={`rounded-lg p-3 ${isDark ? 'hover:bg-slate-800/50' : 'hover:bg-slate-50'} transition-colors`}>
+      <div className={`rounded-lg p-3 hover:bg-surface-2 transition-colors`}>
         {/* Header row */}
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-sm">{actionInfo.emoji}</span>
               {showEntityBadge && (
-                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-500'}`}>
+                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-surface-2 text-encre-3`}>
                   {entityLabel}
                 </span>
               )}
@@ -130,11 +130,11 @@ function AuditEntry({
             {/* Status change detail */}
             {entry.action === 'status_changed' && changes.statut && (
               <div className="flex items-center gap-1.5 mt-1 text-xs">
-                <span className={`px-1.5 py-0.5 rounded ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-500'}`}>
+                <span className={`px-1.5 py-0.5 rounded bg-surface-2 text-encre-3`}>
                   {formatStatut(changes.statut.old)}
                 </span>
                 <span className={textMuted}>→</span>
-                <span className="px-1.5 py-0.5 rounded font-medium" style={{ background: `${couleur}20`, color: couleur }}>
+                <span className="px-1.5 py-0.5 rounded font-medium text-accent-texte" style={{ background: `${couleur}20` }}>
                   {formatStatut(changes.statut.new)}
                 </span>
               </div>
@@ -158,7 +158,7 @@ function AuditEntry({
             {hasChanges && (
               <button
                 onClick={() => setExpanded(!expanded)}
-                className={`flex items-center gap-1 text-xs px-2 py-1 rounded-lg transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}
+                className={`flex items-center gap-1 text-xs px-2 py-1 rounded-lg transition-colors hover:bg-surface-2 text-encre-3`}
               >
                 {expanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
                 {Object.keys(changes).length} modification{Object.keys(changes).length > 1 ? 's' : ''}
@@ -167,8 +167,7 @@ function AuditEntry({
             {hasSnapshot && onViewSnapshot && (
               <button
                 onClick={() => onViewSnapshot(entry.snapshot_id)}
-                className={`flex items-center gap-1 text-xs px-2 py-1 rounded-lg transition-colors`}
-                style={{ color: couleur }}
+                className={`flex items-center gap-1 text-xs px-2 py-1 rounded-lg transition-colors text-accent-texte`}
               >
                 <Eye size={12} />
                 Voir la version
@@ -179,7 +178,7 @@ function AuditEntry({
 
         {/* Expanded changes */}
         {expanded && hasChanges && (
-          <div className={`mt-2 rounded-lg border p-3 space-y-1.5 ${borderColor} ${isDark ? 'bg-slate-900/50' : 'bg-slate-50'}`}>
+          <div className={`mt-2 rounded-lg border p-3 space-y-1.5 ${borderColor} bg-fond`}>
             {Object.entries(changes).map(([field, change]) => {
               if (field === 'statut') return null; // Already shown above
               return (

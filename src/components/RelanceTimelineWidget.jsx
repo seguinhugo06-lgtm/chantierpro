@@ -80,10 +80,10 @@ export default function RelanceTimelineWidget({
 }) {
   const [showExcludeMenu, setShowExcludeMenu] = useState(false);
 
-  const textPrimary = isDark ? 'text-white' : 'text-slate-900';
-  const textMuted = isDark ? 'text-slate-400' : 'text-slate-500';
-  const cardBg = isDark ? 'bg-slate-800/50' : 'bg-white';
-  const borderColor = isDark ? 'border-slate-700' : 'border-slate-200';
+  const textPrimary = 'text-encre';
+  const textMuted = 'text-encre-3';
+  const cardBg = 'bg-surface';
+  const borderColor = 'border-bord';
   // Anneau de focus clavier visible (a11y — WCAG 2.4.7), cohérent avec ui/
   const focusRing = cn(
     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2',
@@ -145,14 +145,14 @@ export default function RelanceTimelineWidget({
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <BellRing className="w-4 h-4" style={{ color: couleur }} />
+          <BellRing className="w-4 h-4 text-accent-texte" />
           <span className={cn('text-sm font-semibold', textPrimary)}>
             {isExcluded ? 'Relances désactivées' : isEnabled ? 'Relance automatique' : 'Historique relances'}
           </span>
           {executions.length > 0 && (
             <span className={cn(
               'text-xs px-1.5 py-0.5 rounded-full font-medium',
-              isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'
+              'bg-surface-2 text-encre-2'
             )}>
               {executions.filter(e => e.status !== 'cancelled').length} envoyée{executions.filter(e => e.status !== 'cancelled').length !== 1 ? 's' : ''}
             </span>
@@ -170,7 +170,7 @@ export default function RelanceTimelineWidget({
               className={cn(
                 'flex items-center gap-1 px-2 py-1 min-h-[32px] rounded-lg text-xs font-medium transition-colors',
                 focusRing,
-                isDark ? 'text-slate-400 hover:bg-slate-700' : 'text-slate-500 hover:bg-slate-100'
+                'text-encre-3 hover:bg-surface-2'
               )}
             >
               <Ban className="w-3 h-3" />
@@ -193,7 +193,7 @@ export default function RelanceTimelineWidget({
                   onKeyDown={(e) => { if (e.key === 'Escape') setShowExcludeMenu(false); }}
                   className={cn(
                     'absolute right-0 top-full mt-1 w-52 rounded-lg border shadow-lg z-20 py-1',
-                    isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'
+                    'bg-surface border-bord'
                   )}
                 >
                   {[
@@ -213,7 +213,7 @@ export default function RelanceTimelineWidget({
                       className={cn(
                         'w-full text-left px-3 py-2 min-h-[40px] text-xs transition-colors',
                         focusRing,
-                        isDark ? 'text-slate-300 hover:bg-slate-700' : 'text-slate-700 hover:bg-slate-50'
+                        'text-encre-2 hover:bg-surface-2'
                       )}
                     >
                       {opt.label}
@@ -251,7 +251,7 @@ export default function RelanceTimelineWidget({
                       ? (RELANCE_STATUS_COLORS[entry.status]?.bg || 'bg-blue-100')
                       : entry.isDue
                         ? 'bg-amber-100'
-                        : (isDark ? 'bg-slate-700' : 'bg-slate-100')
+                        : 'bg-surface-2'
                   )}
                 >
                   <SIcon className={cn(
@@ -285,7 +285,7 @@ export default function RelanceTimelineWidget({
                   </span>
                   <span className={cn(
                     'inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs',
-                    isDark ? 'bg-slate-700 text-slate-400' : 'bg-slate-100 text-slate-500'
+                    'bg-surface-2 text-encre-3'
                   )}>
                     <CIcon className="w-3 h-3" />
                     {CHANNEL_LABELS[entry.step.channel] || entry.step.channel}
@@ -348,7 +348,7 @@ export default function RelanceTimelineWidget({
       {isEnabled && !isExcluded && (onSendNow || onSkipToNext) && (
         <div className={cn(
           'flex items-center gap-2 mt-2 pt-3 border-t',
-          isDark ? 'border-slate-700' : 'border-slate-200'
+          'border-bord'
         )}>
           {onSendNow && nextStep && (
             <button
@@ -371,7 +371,7 @@ export default function RelanceTimelineWidget({
               className={cn(
                 'flex items-center gap-1.5 px-3 py-1.5 min-h-[40px] sm:min-h-[32px] rounded-lg text-xs font-medium transition-colors',
                 focusRing,
-                isDark ? 'text-slate-400 hover:bg-slate-700' : 'text-slate-500 hover:bg-slate-100'
+                'text-encre-3 hover:bg-surface-2'
               )}
             >
               <SkipForward className="w-3.5 h-3.5" />

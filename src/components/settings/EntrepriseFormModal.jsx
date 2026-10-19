@@ -99,12 +99,12 @@ const EntrepriseFormModal = memo(function EntrepriseFormModal({
   };
 
   const tc = {
-    card: isDark ? 'bg-slate-800' : 'bg-white',
+    card: 'bg-surface',
     input: isDark ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400' : 'bg-white border-gray-300 text-gray-900',
-    text: isDark ? 'text-white' : 'text-gray-900',
-    textMuted: isDark ? 'text-slate-400' : 'text-gray-500',
-    label: isDark ? 'text-slate-300' : 'text-gray-700',
-    border: isDark ? 'border-slate-700' : 'border-gray-200',
+    text: 'text-encre',
+    textMuted: 'text-encre-3',
+    label: 'text-encre-2',
+    border: 'border-bord',
   };
 
   const inputCls = `w-full px-3 py-2 rounded-xl border text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-0 ${tc.input}`;
@@ -123,7 +123,7 @@ const EntrepriseFormModal = memo(function EntrepriseFormModal({
           </h2>
           <button
             onClick={onClose}
-            className={`p-2 rounded-lg transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-gray-100 text-gray-400'}`}
+            className={`p-2 rounded-lg transition-colors hover:bg-surface-2 text-encre-3`}
           >
             <X size={18} />
           </button>
@@ -140,9 +140,7 @@ const EntrepriseFormModal = memo(function EntrepriseFormModal({
                 whitespace-nowrap transition-colors flex-shrink-0
                 ${tab === t.key
                   ? 'text-white'
-                  : isDark
-                    ? 'text-slate-400 hover:bg-slate-700 hover:text-white'
-                    : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900'
+                  : 'text-encre-3 hover:bg-surface-2 hover:text-encre'
                 }
               `}
               style={tab === t.key ? { background: couleur } : undefined}
@@ -682,17 +680,14 @@ const EntrepriseFormModal = memo(function EntrepriseFormModal({
           <button
             type="button"
             onClick={onClose}
-            className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
-              isDark ? 'text-slate-400 hover:bg-slate-700' : 'text-gray-500 hover:bg-gray-100'
-            }`}
+            className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors text-encre-3 hover:bg-surface-2`}
           >
             Annuler
           </button>
           <button
             onClick={handleSubmit}
             disabled={!form.nom.trim() || isProcessing}
-            className="px-6 py-2 rounded-xl text-sm font-medium text-white transition-colors disabled:opacity-50"
-            style={{ background: couleur }}
+            className="px-6 py-2 rounded-xl text-sm font-medium transition-colors disabled:opacity-50 bg-accent text-sur-accent"
           >
             {isProcessing ? 'Enregistrement...' : isEdit ? 'Enregistrer' : 'Créer'}
           </button>

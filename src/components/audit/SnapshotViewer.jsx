@@ -25,11 +25,11 @@ export default function SnapshotViewer({
   onClose,
   onCompare,
 }) {
-  const textPrimary = isDark ? 'text-slate-100' : 'text-slate-900';
-  const textSecondary = isDark ? 'text-slate-300' : 'text-slate-600';
-  const textMuted = isDark ? 'text-slate-400' : 'text-slate-500';
-  const cardBg = isDark ? 'bg-slate-800' : 'bg-white';
-  const borderColor = isDark ? 'border-slate-700' : 'border-slate-200';
+  const textPrimary = 'text-encre';
+  const textSecondary = 'text-encre-2';
+  const textMuted = 'text-encre-3';
+  const cardBg = 'bg-surface';
+  const borderColor = 'border-bord';
 
   if (!snapshot) return null;
 
@@ -46,7 +46,7 @@ export default function SnapshotViewer({
         <div className={`p-5 border-b ${borderColor} flex items-center justify-between shrink-0`}>
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${couleur}20` }}>
-              <FileText size={20} style={{ color: couleur }} />
+              <FileText size={20} className="text-accent-texte" />
             </div>
             <div>
               <h2 className={`font-bold text-lg ${textPrimary}`}>
@@ -59,7 +59,7 @@ export default function SnapshotViewer({
           </div>
           <button
             onClick={onClose}
-            className={`p-2 rounded-xl ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'} transition-colors`}
+            className={`p-2 rounded-xl hover:bg-surface-2 transition-colors`}
           >
             <X size={20} className={textSecondary} />
           </button>
@@ -69,28 +69,28 @@ export default function SnapshotViewer({
         <div className="flex-1 overflow-y-auto p-5 space-y-4">
           {/* Summary badges */}
           <div className="flex flex-wrap gap-2">
-            <span className={`flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>
+            <span className={`flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-surface-2 text-encre-2`}>
               <Hash size={12} />
               Version {snapshot.version}
             </span>
             {data.numero && (
-              <span className={`flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>
+              <span className={`flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-surface-2 text-encre-2`}>
                 <FileText size={12} />
                 {data.numero}
               </span>
             )}
             {data.statut && (
-              <span className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg font-medium" style={{ background: `${couleur}20`, color: couleur }}>
+              <span className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg font-medium text-accent-texte" style={{ background: `${couleur}20` }}>
                 <Tag size={12} />
                 {data.statut}
               </span>
             )}
             {data.client_nom && (
-              <span className={`flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>
+              <span className={`flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-surface-2 text-encre-2`}>
                 {data.client_nom}
               </span>
             )}
-            <span className={`flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>
+            <span className={`flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-surface-2 text-encre-2`}>
               <Calendar size={12} />
               {data.date ? dateLue(data.date).toLocaleDateString('fr-FR') : '—'}
             </span>
@@ -111,7 +111,7 @@ export default function SnapshotViewer({
               <div className={`rounded-lg border ${borderColor} overflow-hidden overflow-x-auto`}>
                 <table className="w-full text-sm min-w-[400px]">
                   <thead>
-                    <tr className={isDark ? 'bg-slate-700/50' : 'bg-slate-50'}>
+                    <tr className="bg-fond">
                       <th className={`text-left px-3 py-2 text-xs font-medium ${textMuted}`}>Description</th>
                       <th className={`text-right px-3 py-2 text-xs font-medium ${textMuted}`}>Qté</th>
                       <th className={`text-right px-3 py-2 text-xs font-medium ${textMuted}`}>P.U.</th>
@@ -153,7 +153,7 @@ export default function SnapshotViewer({
           {onCompare && (
             <button
               onClick={() => onCompare(snapshot)}
-              className={`px-4 py-2 rounded-xl text-sm font-medium ${isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-100 text-slate-600'} transition-colors`}
+              className={`px-4 py-2 rounded-xl text-sm font-medium hover:bg-surface-2 text-encre-2 transition-colors`}
             >
               Comparer avec l'actuel
             </button>
@@ -161,8 +161,7 @@ export default function SnapshotViewer({
           {onRestore && (
             <button
               onClick={() => onRestore(snapshot)}
-              className="px-4 py-2 rounded-xl text-sm font-medium text-white flex items-center gap-2 transition-colors"
-              style={{ background: couleur }}
+              className="px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition-colors bg-accent text-sur-accent"
             >
               <RotateCcw size={14} />
               Restaurer cette version

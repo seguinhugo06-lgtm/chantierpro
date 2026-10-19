@@ -49,7 +49,7 @@ export function formatTrend(value, showSign = true) {
  * @returns {string} Classe Tailwind de couleur
  */
 export function getTrendColor(value, inverted = false, isDark = false) {
-  if (value == null || value === 0) return isDark ? 'text-slate-400' : 'text-slate-500';
+  if (value == null || value === 0) return 'text-encre-3';
 
   const isPositive = inverted ? value < 0 : value > 0;
   return isPositive
@@ -64,7 +64,7 @@ export function getTrendColor(value, inverted = false, isDark = false) {
  * @returns {string} Classes Tailwind de couleur pour badge
  */
 export function getTrendBgColor(value, inverted = false, isDark = false) {
-  if (value == null || value === 0) return isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600';
+  if (value == null || value === 0) return 'bg-surface-2 text-encre-2';
 
   const isPositive = inverted ? value < 0 : value > 0;
   return isPositive
@@ -358,7 +358,7 @@ export function getStatusLabel(status) {
  */
 export function getStatusColor(status, isDark = false) {
   const colors = isDark ? STATUS_COLORS_DARK : STATUS_COLORS_LIGHT;
-  const fallback = isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-700';
+  const fallback = 'bg-surface-2 text-encre-2';
   return colors[status] || fallback;
 }
 

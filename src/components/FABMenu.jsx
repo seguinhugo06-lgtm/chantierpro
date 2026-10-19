@@ -64,8 +64,7 @@ export default function FABMenu({
           onClick={() => setIsOpen(!isOpen)}
           className={`w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-all hover:shadow-xl hover:brightness-110 ${
             isOpen ? 'rotate-45' : ''
-          }`}
-          style={{ backgroundColor: couleur }}
+          } bg-accent`}
           aria-label={isOpen ? 'Fermer le menu' : 'Ouvrir le menu actions rapides'}
           aria-expanded={isOpen}
         >

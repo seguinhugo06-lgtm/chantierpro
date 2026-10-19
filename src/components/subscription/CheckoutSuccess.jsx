@@ -112,50 +112,50 @@ export default function CheckoutSuccess({ isDark, couleur, setPage }) {
         </div>
 
         {/* Title */}
-        <h1 className={`text-3xl font-bold mb-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+        <h1 className={`text-3xl font-bold mb-2 text-encre`}>
           Bienvenue dans le plan {plan.name} !
         </h1>
-        <p className={`text-lg mb-8 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+        <p className={`text-lg mb-8 text-encre-2`}>
           Votre paiement a été approuvé
         </p>
 
         {/* Recap card */}
-        <div className={`rounded-xl p-6 text-left mb-8 ${isDark ? 'bg-slate-800 border border-slate-700' : 'bg-white border border-slate-200'} shadow-sm`}>
+        <div className={`rounded-xl p-6 text-left mb-8 bg-surface border border-bord shadow-sm`}>
           <div className="space-y-3">
             <div className="flex justify-between text-sm">
-              <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>Plan choisi</span>
-              <span className={`font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+              <span className="text-encre-3">Plan choisi</span>
+              <span className={`font-semibold text-encre`}>
                 {plan.name} — {billingInterval}
               </span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>Prix</span>
-              <span className={`font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+              <span className="text-encre-3">Prix</span>
+              <span className={`font-semibold text-encre`}>
                 {price}
               </span>
             </div>
             {nextBilling && (
               <div className="flex justify-between text-sm">
-                <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>Prochaine facturation</span>
-                <span className={`font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                <span className="text-encre-3">Prochaine facturation</span>
+                <span className={`font-semibold text-encre`}>
                   {nextBilling}
                 </span>
               </div>
             )}
           </div>
-          <div className={`mt-4 pt-4 border-t text-xs ${isDark ? 'border-slate-700 text-slate-500' : 'border-slate-100 text-slate-400'}`}>
+          <div className={`mt-4 pt-4 border-t text-xs border-bord text-encre-3`}>
             Confirmation envoyée par email
           </div>
         </div>
 
         {/* Suggestions */}
         <div className="mb-10">
-          <h3 className={`text-sm font-semibold mb-4 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+          <h3 className={`text-sm font-semibold mb-4 text-encre-2`}>
             Vos nouvelles fonctionnalités déverrouillées :
           </h3>
           <div className="space-y-2 text-left max-w-sm mx-auto">
             {suggestions.map((s, i) => (
-              <div key={i} className={`flex items-center gap-3 text-sm ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+              <div key={i} className={`flex items-center gap-3 text-sm text-encre-2`}>
                 <span className="text-lg">{s.emoji}</span>
                 <span>{s.text}</span>
               </div>
@@ -167,25 +167,21 @@ export default function CheckoutSuccess({ isDark, couleur, setPage }) {
         <div className="space-y-3">
           <button
             onClick={() => setPage && setPage('dashboard')}
-            className="w-full py-3 rounded-xl bg-orange-500 text-white font-bold text-sm hover:bg-orange-600 hover:shadow-lg transition-all flex items-center justify-center gap-2"
+            className="w-full py-3 rounded-xl bg-accent text-sur-accent font-bold text-sm hover:opacity-90 hover:shadow-lg transition-all flex items-center justify-center gap-2"
           >
             Explorer mes nouvelles fonctionnalités
             <ArrowRight size={16} />
           </button>
           <button
             onClick={() => setPage && setPage('billing')}
-            className={`w-full py-2.5 rounded-xl border text-sm font-medium transition-colors ${
-              isDark
-                ? 'border-slate-600 text-slate-300 hover:bg-slate-800'
-                : 'border-slate-200 text-slate-600 hover:bg-slate-50'
-            }`}
+            className={`w-full py-2.5 rounded-xl border text-sm font-medium transition-colors border-bord text-encre-2 hover:bg-surface-2`}
           >
             Voir mes paramètres d'abonnement
           </button>
         </div>
 
         {/* Help text */}
-        <p className={`text-xs mt-8 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+        <p className={`text-xs mt-8 text-encre-3`}>
           Questions ? Consultez notre aide ou contactez contact@mallettico.fr
         </p>
       </div>

@@ -97,7 +97,7 @@ export default function UsageAlerts({ isDark, couleur }) {
   if (warnings.length === 0 && !isTrial && !isFree) return null;
 
   return (
-    <div className={`rounded-2xl border p-4 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+    <div className={`rounded-2xl border p-4 bg-surface border-bord`}>
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
@@ -108,7 +108,7 @@ export default function UsageAlerts({ isDark, couleur }) {
             <FileText size={16} />
           </div>
           <div>
-            <h3 className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+            <h3 className={`text-sm font-semibold text-encre`}>
               Plan {plan.name}
             </h3>
             <p className="text-[10px] text-slate-500">
@@ -160,7 +160,7 @@ export default function UsageAlerts({ isDark, couleur }) {
         <div className="mt-3 pt-3 border-t border-slate-100">
           <button
             onClick={() => openUpgradeModal()}
-            className="w-full text-center text-xs text-orange-500 hover:text-orange-600 font-medium transition-colors"
+            className="w-full text-center text-xs text-alerte-texte hover:underline font-medium transition-colors"
           >
             Vous approchez de vos limites — Voir les plans →
           </button>

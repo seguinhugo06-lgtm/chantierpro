@@ -130,7 +130,7 @@ function StatutBadge({ statut, isDark }) {
     );
   }
   return (
-    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-surface-2 text-encre-2`}>
       <Edit3 size={12} /> Brouillon
     </span>
   );
@@ -139,13 +139,13 @@ function StatutBadge({ statut, isDark }) {
 /** Collapsible card section wrapper with a colored left border. */
 function Section({ title, icon: Icon, borderColor, isDark, children, collapsible = false, defaultOpen = true }) {
   const [open, setOpen] = useState(defaultOpen);
-  const cardBg = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200';
+  const cardBg = 'bg-surface border-bord';
 
   return (
     <div className={`rounded-lg border ${cardBg} overflow-hidden`} style={{ borderLeftWidth: '4px', borderLeftColor: borderColor }}>
       <button
         type="button"
-        className={`w-full flex items-center justify-between px-4 py-3 ${isDark ? 'text-slate-100' : 'text-slate-900'} font-semibold text-sm`}
+        className={`w-full flex items-center justify-between px-4 py-3 text-encre font-semibold text-sm`}
         onClick={() => collapsible && setOpen((o) => !o)}
       >
         <span className="flex items-center gap-2">
@@ -165,12 +165,12 @@ function Section({ title, icon: Icon, borderColor, isDark, children, collapsible
 
 export default function RapportChantier({ chantier, equipe = [], isDark = false, couleur = '#f97316', onClose }) {
   // Theme helpers
-  const cardBg = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200';
+  const cardBg = 'bg-surface border-bord';
   const inputCls = isDark
     ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400'
     : 'bg-white border-slate-300 text-slate-900';
-  const textPrimary = isDark ? 'text-slate-100' : 'text-slate-900';
-  const textSecondary = isDark ? 'text-slate-300' : 'text-slate-600';
+  const textPrimary = 'text-encre';
+  const textSecondary = 'text-encre-2';
 
   // ---------------------------------------------------------------------------
   // State
@@ -413,8 +413,7 @@ export default function RapportChantier({ chantier, equipe = [], isDark = false,
         <div className="flex gap-2">
           <button
             onClick={handleNew}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-white text-sm font-medium transition-colors"
-            style={{ backgroundColor: couleur }}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-accent text-sur-accent"
           >
             <Plus size={16} /> Nouveau rapport
           </button>
@@ -445,8 +444,7 @@ export default function RapportChantier({ chantier, equipe = [], isDark = false,
           >
             <div className="flex items-center gap-3 min-w-0">
               <div
-                className="flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold text-sm"
-                style={{ backgroundColor: couleur }}
+                className="flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm bg-accent text-sur-accent"
               >
                 #{rapport.numero}
               </div>
@@ -464,7 +462,7 @@ export default function RapportChantier({ chantier, equipe = [], isDark = false,
               {rapport.statut === 'valide' ? (
                 <button
                   onClick={(e) => { e.stopPropagation(); handleView(rapport); }}
-                  className={`p-2 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'} transition-colors`}
+                  className={`p-2 rounded-lg hover:bg-surface-2 transition-colors`}
                   title="Voir le rapport"
                 >
                   <Eye size={16} className={textSecondary} />
@@ -472,7 +470,7 @@ export default function RapportChantier({ chantier, equipe = [], isDark = false,
               ) : (
                 <button
                   onClick={(e) => { e.stopPropagation(); handleEdit(rapport); }}
-                  className={`p-2 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'} transition-colors`}
+                  className={`p-2 rounded-lg hover:bg-surface-2 transition-colors`}
                   title="Modifier"
                 >
                   <Edit3 size={16} className={textSecondary} />
@@ -501,7 +499,7 @@ export default function RapportChantier({ chantier, equipe = [], isDark = false,
         {/* Editor header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <button onClick={handleBack} className={`p-2 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'} transition-colors`}>
+            <button onClick={handleBack} className={`p-2 rounded-lg hover:bg-surface-2 transition-colors`}>
               <ArrowLeft size={18} className={textPrimary} />
             </button>
             <div>
@@ -520,8 +518,7 @@ export default function RapportChantier({ chantier, equipe = [], isDark = false,
             </button>
             <button
               onClick={handleValidate}
-              className="inline-flex items-center gap-1 px-3 py-2 rounded-lg text-white text-sm font-medium transition-colors"
-              style={{ backgroundColor: couleur }}
+              className="inline-flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors bg-accent text-sur-accent"
             >
               <CheckCircle size={14} /> Valider le rapport
             </button>
@@ -659,7 +656,7 @@ export default function RapportChantier({ chantier, equipe = [], isDark = false,
               )}
               <div className="space-y-4">
                 {draft.travaux.map((travail) => (
-                  <div key={travail.id} className={`rounded-lg border p-3 space-y-3 ${isDark ? 'border-slate-600 bg-slate-700/30' : 'border-slate-200 bg-slate-50'}`}>
+                  <div key={travail.id} className={`rounded-lg border p-3 space-y-3 border-bord bg-fond`}>
                     <div className="flex justify-between items-start gap-2">
                       <textarea
                         value={travail.description}
@@ -709,7 +706,7 @@ export default function RapportChantier({ chantier, equipe = [], isDark = false,
                   </div>
                 ))}
               </div>
-              <button onClick={addTravail} className="mt-2 inline-flex items-center gap-1 text-sm font-medium hover:underline" style={{ color: couleur }}>
+              <button onClick={addTravail} className="mt-2 inline-flex items-center gap-1 text-sm font-medium hover:underline text-accent-texte">
                 <Plus size={14} /> Ajouter travaux
               </button>
             </Section>
@@ -869,7 +866,7 @@ export default function RapportChantier({ chantier, equipe = [], isDark = false,
         {/* View header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <button onClick={handleBack} className={`p-2 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'} transition-colors`}>
+            <button onClick={handleBack} className={`p-2 rounded-lg hover:bg-surface-2 transition-colors`}>
               <ArrowLeft size={18} className={textPrimary} />
             </button>
             <div>
@@ -961,7 +958,7 @@ export default function RapportChantier({ chantier, equipe = [], isDark = false,
                     </div>
                     {/* Progress bar */}
                     <div className={`mt-2 h-2 rounded-full ${isDark ? 'bg-slate-600' : 'bg-slate-200'}`}>
-                      <div className="h-full rounded-full transition-all" style={{ width: `${t.avancement}%`, backgroundColor: couleur }} />
+                      <div className="h-full rounded-full transition-all bg-accent" style={{ width: `${t.avancement}%` }} />
                     </div>
                   </div>
                 ))}
@@ -1014,7 +1011,7 @@ export default function RapportChantier({ chantier, equipe = [], isDark = false,
                   </thead>
                   <tbody>
                     {draft.materiaux.map((m) => (
-                      <tr key={m.id} className={`border-t ${isDark ? 'border-slate-700' : 'border-slate-100'}`}>
+                      <tr key={m.id} className={`border-t border-bord`}>
                         <td className={`py-2 ${textPrimary}`}>{m.description || '—'}</td>
                         <td className={`py-2 ${textPrimary}`}>{m.quantite || '—'}</td>
                         <td className={`py-2 ${textPrimary}`}>{m.fournisseur || '—'}</td>
@@ -1027,7 +1024,7 @@ export default function RapportChantier({ chantier, equipe = [], isDark = false,
           )}
 
           {/* Signature block */}
-          <div className={`pt-4 border-t ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+          <div className={`pt-4 border-t border-bord`}>
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
                 <span className={`block text-xs ${textSecondary}`}>Signé par</span>
@@ -1050,7 +1047,7 @@ export default function RapportChantier({ chantier, equipe = [], isDark = false,
   // Main render
   // ---------------------------------------------------------------------------
   return (
-    <div className={`min-h-0 ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
+    <div className={`min-h-0 text-encre`}>
       {/* Toast notification */}
       {toast && (
         <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-top">

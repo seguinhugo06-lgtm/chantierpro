@@ -18,8 +18,8 @@ import { cn } from '../../lib/utils';
 
 const getCardVariants = (isDark) => ({
   default: isDark ? 'bg-slate-800 border border-slate-700/50 shadow-sm' : 'bg-white border border-gray-100 shadow-sm',
-  elevated: isDark ? 'bg-slate-800 shadow-md' : 'bg-white shadow-md',
-  outlined: isDark ? 'bg-slate-800 border border-slate-700' : 'bg-white border border-gray-200',
+  elevated: 'bg-surface shadow-md',
+  outlined: 'bg-surface border border-bord',
   ghost: 'bg-transparent',
 });
 
@@ -135,8 +135,8 @@ CardFooter.displayName = 'CardFooter';
 // ============ CARD SKELETON ============
 
 export function CardSkeleton({ className, rows = 3, isDark = false }) {
-  const skeletonBg = isDark ? 'bg-slate-700' : 'bg-gray-100';
-  const skeletonBgLight = isDark ? 'bg-slate-700/50' : 'bg-gray-50';
+  const skeletonBg = 'bg-surface-2';
+  const skeletonBgLight = 'bg-fond';
   return (
     <Card className={cn('animate-pulse', className)} isDark={isDark}>
       <CardContent>
@@ -171,11 +171,11 @@ export function StatCard({ label, value, subtext, trend, icon: Icon, className, 
     up: 'text-emerald-400',
     down: 'text-red-400',
     warning: 'text-amber-400',
-    neutral: isDark ? 'text-slate-400' : 'text-slate-500',
+    neutral: 'text-encre-3',
   };
 
-  const textPrimary = isDark ? 'text-white' : 'text-slate-900';
-  const textSecondary = isDark ? 'text-slate-400' : 'text-slate-500';
+  const textPrimary = 'text-encre';
+  const textSecondary = 'text-encre-3';
   const iconColor = isDark ? 'text-slate-700' : 'text-slate-300';
 
   return (

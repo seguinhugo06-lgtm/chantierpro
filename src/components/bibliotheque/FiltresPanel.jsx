@@ -19,14 +19,12 @@ export default function FiltresPanel({
     return count;
   }, [filters]);
 
-  const bg = isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200';
+  const bg = 'bg-surface border-bord';
   const inputBg = isDark
     ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400'
     : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400';
-  const textSecondary = isDark ? 'text-gray-400' : 'text-gray-500';
-  const btnBase = isDark
-    ? 'bg-gray-700 border-gray-600 text-gray-200 hover:bg-gray-600'
-    : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50';
+  const textSecondary = 'text-encre-3';
+  const btnBase = 'bg-surface border-bord-fort text-encre-2 hover:bg-surface-2';
 
   const difficulties = [
     { label: 'Tous', value: null },
@@ -59,16 +57,13 @@ export default function FiltresPanel({
       <div className="flex items-center justify-between px-4 py-2.5">
         <button
           onClick={() => setIsExpanded((prev) => !prev)}
-          className={`flex items-center gap-2 text-sm font-medium ${
-            isDark ? 'text-gray-200' : 'text-gray-700'
-          } hover:opacity-80 transition-opacity`}
+          className={`flex items-center gap-2 text-sm font-medium text-encre-2 hover:opacity-80 transition-opacity`}
         >
           <SlidersHorizontal size={16} />
           <span>Filtres</span>
           {activeCount > 0 && (
             <span
-              className="inline-flex items-center justify-center text-xs font-bold text-white rounded-full min-w-[20px] h-5 px-1.5"
-              style={{ backgroundColor: couleur }}
+              className="inline-flex items-center justify-center text-xs font-bold rounded-full min-w-[20px] h-5 px-1.5 bg-accent text-sur-accent"
             >
               {activeCount}
             </span>
@@ -101,7 +96,7 @@ export default function FiltresPanel({
           isExpanded ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
         } overflow-hidden`}
       >
-        <div className={`px-4 pb-4 pt-1 border-t ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
+        <div className={`px-4 pb-4 pt-1 border-t border-bord`}>
           <div className="flex flex-wrap items-end gap-4">
             {/* Price Range */}
             <div className="flex flex-col gap-1.5">
@@ -141,8 +136,8 @@ export default function FiltresPanel({
                       key={d.label}
                       onClick={() => handleDifficultyChange(d.value)}
                       className={`px-3 py-1.5 text-xs font-medium transition-all duration-150 ${
-                        i > 0 ? (isDark ? 'border-l border-gray-600' : 'border-l border-gray-300') : ''
-                      } ${isActive ? 'text-white' : isDark ? 'text-gray-200 hover:bg-gray-600' : 'text-gray-700 hover:bg-gray-50'}`}
+                        i > 0 ? 'border-l border-bord-fort' : ''
+                      } ${isActive ? 'text-white' : 'text-encre-2 hover:bg-surface-2'}`}
                       style={isActive ? { backgroundColor: couleur } : {}}
                     >
                       {d.label}
@@ -173,11 +168,7 @@ export default function FiltresPanel({
             {activeCount > 0 && (
               <button
                 onClick={resetFilters}
-                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-150 ${
-                  isDark
-                    ? 'text-gray-300 hover:bg-gray-700 hover:text-white'
-                    : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'
-                }`}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-150 text-encre-3 hover:bg-surface-2 hover:text-encre-2`}
               >
                 <X size={14} />
                 <span>Réinitialiser</span>

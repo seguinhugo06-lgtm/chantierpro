@@ -4,7 +4,7 @@ import { cn } from '../../lib/utils';
 // WCAG AA compliant variant styles
 const getVariantStyles = (isDark) => ({
   default: isDark ? 'bg-slate-700 text-gray-100 border-slate-600' : 'bg-gray-100 text-gray-800 border-gray-200',
-  secondary: isDark ? 'bg-slate-700 text-gray-200 border-slate-600' : 'bg-gray-100 text-gray-700 border-gray-200',
+  secondary: 'bg-surface-2 text-encre-2 border-bord',
   success: isDark ? 'bg-green-900/30 text-green-300 border-green-800' : 'bg-green-100 text-green-800 border-green-200',
   warning: isDark ? 'bg-orange-900/30 text-orange-300 border-orange-800' : 'bg-orange-100 text-orange-800 border-orange-200',
   danger: isDark ? 'bg-red-900/30 text-red-300 border-red-800' : 'bg-red-100 text-red-800 border-red-200',

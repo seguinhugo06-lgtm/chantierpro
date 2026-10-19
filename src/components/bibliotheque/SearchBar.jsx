@@ -61,13 +61,11 @@ export default function SearchBar({
   const inputBg = isDark
     ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400'
     : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400';
-  const dropdownBg = isDark
-    ? 'bg-gray-800 border-gray-700'
-    : 'bg-white border-gray-200';
-  const itemHover = isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-50';
-  const highlightBg = isDark ? 'bg-gray-700' : 'bg-gray-100';
-  const textSecondary = isDark ? 'text-gray-400' : 'text-gray-500';
-  const textMuted = isDark ? 'text-gray-400' : 'text-gray-500';
+  const dropdownBg = 'bg-surface border-bord';
+  const itemHover = 'hover:bg-surface-2';
+  const highlightBg = 'bg-surface-2';
+  const textSecondary = 'text-encre-3';
+  const textMuted = 'text-encre-3';
 
   // ── Autocomplete results ──────────────────────────────────────────────────
   const autocompleteResults = useMemo(() => {
@@ -247,8 +245,7 @@ export default function SearchBar({
                     }}
                   >
                     <Package
-                      className="w-4 h-4"
-                      style={{ color: couleur }}
+                      className="w-4 h-4 text-accent-texte"
                     />
                   </div>
 
@@ -256,9 +253,7 @@ export default function SearchBar({
                   <div className="flex-1 min-w-0">
                     {/* Ouvrage name */}
                     <div
-                      className={`text-sm font-medium truncate ${
-                        isDark ? 'text-gray-100' : 'text-gray-900'
-                      }`}
+                      className={`text-sm font-medium truncate text-encre`}
                     >
                       {highlightMatch(ouvrage.nom, searchQuery)}
                     </div>
@@ -300,8 +295,7 @@ export default function SearchBar({
                   {/* Price */}
                   <div className="flex-shrink-0 text-right ml-2">
                     <div
-                      className="text-sm font-semibold whitespace-nowrap"
-                      style={{ color: couleur }}
+                      className="text-sm font-semibold whitespace-nowrap text-accent-texte"
                     >
                       {formatPrice(ouvrage.prixUnitaireHT)}
                     </div>
@@ -325,22 +319,16 @@ export default function SearchBar({
                 setShowDropdown(false);
                 inputRef.current?.blur();
               }}
-              className={`w-full flex items-center justify-center gap-2 text-sm font-medium py-1 rounded-lg transition-colors ${
-                isDark
-                  ? 'text-gray-300 hover:text-white'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-              style={{ color: couleur }}
+              className={`w-full flex items-center justify-center gap-2 text-sm font-medium py-1 rounded-lg transition-colors text-accent-texte`}
             >
               <Search className="w-3.5 h-3.5" />
               Voir tous les r&eacute;sultats
               <span
-                className="text-xs font-normal px-1.5 py-0.5 rounded-full"
+                className="text-xs font-normal px-1.5 py-0.5 rounded-full text-accent-texte"
                 style={{
                   backgroundColor: isDark
                     ? 'rgba(255,255,255,0.08)'
                     : `${couleur}15`,
-                  color: couleur,
                 }}
               >
                 {autocompleteResults.length}+

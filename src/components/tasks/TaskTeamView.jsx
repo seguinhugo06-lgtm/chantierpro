@@ -102,18 +102,14 @@ function MiniTaskCard({ memo, isDark, couleur, onSelect, onDragStart }) {
         e.stopPropagation();
         onSelect?.(memo.id);
       }}
-      className={`group cursor-grab active:cursor-grabbing rounded-md border px-2 py-1.5 text-xs transition-all hover:shadow-sm mb-1 ${
-        isDark
-          ? 'bg-slate-700/80 border-slate-600 hover:border-slate-500'
-          : 'bg-white border-slate-200 hover:border-slate-300'
-      }`}
+      className={`group cursor-grab active:cursor-grabbing rounded-md border px-2 py-1.5 text-xs transition-all hover:shadow-sm mb-1 bg-surface border-bord hover:border-bord-fort`}
     >
       <div className="flex items-center gap-1.5 min-w-0">
         <span
           className="w-1.5 h-1.5 rounded-full flex-shrink-0"
           style={{ background: priorityColor }}
         />
-        <span className={`truncate font-medium ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+        <span className={`truncate font-medium text-encre`}>
           {memo.title || memo.text || 'Sans titre'}
         </span>
       </div>
@@ -143,7 +139,7 @@ function LoadIndicator({ hours, capacity, isDark }) {
         className="w-2 h-2 rounded-full flex-shrink-0"
         style={{ background: dot }}
       />
-      <span className={`text-[10px] font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+      <span className={`text-[10px] font-medium text-encre-3`}>
         {hours}h / {capacity}h
       </span>
     </div>
@@ -187,7 +183,7 @@ function DayCell({ memos, dateStr, isToday, isDark, couleur, onSelect, onDragSta
           : isToday
             ? isDark ? 'bg-slate-700/30' : 'bg-orange-50/30'
             : ''
-      } ${isDark ? 'border-slate-700' : 'border-slate-200'}`}
+      } border-bord`}
     >
       {memos.map(memo => (
         <MiniTaskCard
@@ -214,16 +210,15 @@ function MemberRow({ membre, weekDays, memosByDay, totalHours, isDark, couleur, 
   const weekCapacity = weekDays.length * DEFAULT_CAPACITY;
 
   return (
-    <div className={`grid border-b last:border-b-0 ${isDark ? 'border-slate-700' : 'border-slate-200'}`}
+    <div className={`grid border-b last:border-b-0 border-bord`}
       style={{ gridTemplateColumns: `160px repeat(${weekDays.length}, 1fr)` }}
     >
       {/* Member info column */}
-      <div className={`p-2 flex flex-col justify-center border-r ${isDark ? 'border-slate-700 bg-slate-800/50' : 'border-slate-200 bg-slate-50/50'}`}>
+      <div className={`p-2 flex flex-col justify-center border-r border-bord bg-fond/50`}>
         <div className="flex items-center gap-2">
           {membre ? (
             <div
-              className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
-              style={{ background: couleur }}
+              className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 bg-accent text-sur-accent"
             >
               {(membre.prenom || '?')[0]}{(membre.nom || '?')[0]}
             </div>
@@ -233,11 +228,11 @@ function MemberRow({ membre, weekDays, memosByDay, totalHours, isDark, couleur, 
             </div>
           )}
           <div className="min-w-0">
-            <p className={`text-xs font-semibold truncate ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+            <p className={`text-xs font-semibold truncate text-encre`}>
               {displayName}
             </p>
             {membre?.role && (
-              <p className={`text-[10px] truncate ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+              <p className={`text-[10px] truncate text-encre-3`}>
                 {membre.role}
               </p>
             )}
@@ -282,17 +277,14 @@ function MemberAccordion({ membre, weekDays, memosByDay, totalHours, isDark, cou
   const weekCapacity = weekDays.length * DEFAULT_CAPACITY;
 
   return (
-    <div className={`border rounded-xl mb-2 overflow-hidden ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+    <div className={`border rounded-xl mb-2 overflow-hidden border-bord`}>
       <button
         onClick={() => setOpen(!open)}
-        className={`w-full flex items-center gap-3 p-3 text-left transition-colors ${
-          isDark ? 'bg-slate-800 hover:bg-slate-750' : 'bg-white hover:bg-slate-50'
-        }`}
+        className={`w-full flex items-center gap-3 p-3 text-left transition-colors bg-surface hover:bg-surface-2`}
       >
         {membre ? (
           <div
-            className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
-            style={{ background: couleur }}
+            className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 bg-accent text-sur-accent"
           >
             {(membre.prenom || '?')[0]}{(membre.nom || '?')[0]}
           </div>
@@ -302,21 +294,21 @@ function MemberAccordion({ membre, weekDays, memosByDay, totalHours, isDark, cou
           </div>
         )}
         <div className="flex-1 min-w-0">
-          <p className={`text-sm font-semibold truncate ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+          <p className={`text-sm font-semibold truncate text-encre`}>
             {displayName}
           </p>
           <div className="flex items-center gap-2">
             <LoadIndicator hours={totalHours} capacity={weekCapacity} isDark={isDark} />
-            <span className={`text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+            <span className={`text-[10px] text-encre-3`}>
               {allMemos.length} tache{allMemos.length !== 1 ? 's' : ''}
             </span>
           </div>
         </div>
-        {open ? <ChevronUp size={16} className={isDark ? 'text-slate-400' : 'text-slate-500'} /> : <ChevronDown size={16} className={isDark ? 'text-slate-400' : 'text-slate-500'} />}
+        {open ? <ChevronUp size={16} className="text-encre-3" /> : <ChevronDown size={16} className="text-encre-3" />}
       </button>
 
       {open && (
-        <div className={`p-2 ${isDark ? 'bg-slate-800/50' : 'bg-slate-50/50'}`}>
+        <div className={`p-2 bg-fond/50`}>
           {weekDays.map(day => {
             const dateStr = toDateStr(day);
             const dayMemos = memosByDay[dateStr] || [];
@@ -325,8 +317,8 @@ function MemberAccordion({ membre, weekDays, memosByDay, totalHours, isDark, cou
               <div key={dateStr} className="mb-2">
                 <p className={`text-[10px] font-semibold uppercase tracking-wide px-1 mb-1 ${
                   dateStr === todayStr
-                    ? 'text-orange-500'
-                    : isDark ? 'text-slate-500' : 'text-slate-400'
+                    ? 'text-accent-texte'
+                    : 'text-encre-3'
                 }`}>
                   {formatShortDate(day)} {day.getDate() < 10 ? '0' : ''}{MONTHS_FR[day.getMonth()]}
                 </p>
@@ -344,7 +336,7 @@ function MemberAccordion({ membre, weekDays, memosByDay, totalHours, isDark, cou
             );
           })}
           {allMemos.length === 0 && (
-            <p className={`text-xs text-center py-3 ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>
+            <p className={`text-xs text-center py-3 text-encre-3`}>
               Aucune tache cette semaine
             </p>
           )}
@@ -505,8 +497,8 @@ export default function TaskTeamView({
   const selectedMemo = memos.find(m => m.id === selectedMemoId);
   const todayStr = toDateStr(new Date());
 
-  const headerBg = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200';
-  const headerText = isDark ? 'text-slate-200' : 'text-slate-800';
+  const headerBg = 'bg-surface border-bord';
+  const headerText = 'text-encre';
 
   return (
     <>
@@ -515,20 +507,20 @@ export default function TaskTeamView({
         <div className="flex items-center gap-2">
           <button
             onClick={goBack}
-            className={`p-1.5 rounded-lg transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}
+            className={`p-1.5 rounded-lg transition-colors hover:bg-surface-2 text-encre-3`}
             aria-label="Precedent"
           >
             <ChevronLeft size={18} />
           </button>
           <button
             onClick={goToday}
-            className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-100 text-slate-600'}`}
+            className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors hover:bg-surface-2 text-encre-2`}
           >
             Aujourd'hui
           </button>
           <button
             onClick={goForward}
-            className={`p-1.5 rounded-lg transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}
+            className={`p-1.5 rounded-lg transition-colors hover:bg-surface-2 text-encre-3`}
             aria-label="Suivant"
           >
             <ChevronRight size={18} />
@@ -542,7 +534,7 @@ export default function TaskTeamView({
           }
         </h2>
 
-        <div className={`flex rounded-lg border p-0.5 ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
+        <div className={`flex rounded-lg border p-0.5 border-bord`}>
           {[
             { id: 'day', label: 'Jour' },
             { id: 'week', label: 'Semaine' },
@@ -558,7 +550,7 @@ export default function TaskTeamView({
               className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${
                 rangeMode === m.id
                   ? 'text-white shadow-sm'
-                  : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-700'
+                  : 'text-encre-3 hover:text-encre-2'
               }`}
               style={rangeMode === m.id ? { background: couleur } : {}}
             >
@@ -569,15 +561,15 @@ export default function TaskTeamView({
       </div>
 
       {/* Desktop grid view (hidden on mobile) */}
-      <div className={`hidden sm:block rounded-xl border overflow-hidden ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+      <div className={`hidden sm:block rounded-xl border overflow-hidden border-bord`}>
         {/* Column headers */}
         <div
-          className={`grid border-b ${isDark ? 'border-slate-700 bg-slate-900/50' : 'border-slate-200 bg-slate-50'}`}
+          className={`grid border-b border-bord bg-fond`}
           style={{ gridTemplateColumns: `160px repeat(${weekDays.length}, 1fr)` }}
         >
-          <div className={`p-2 flex items-center gap-1.5 border-r ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
-            <Users size={14} style={{ color: couleur }} />
-            <span className={`text-xs font-semibold ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>Membre</span>
+          <div className={`p-2 flex items-center gap-1.5 border-r border-bord`}>
+            <Users size={14} className="text-accent-texte" />
+            <span className={`text-xs font-semibold text-encre-2`}>Membre</span>
           </div>
           {weekDays.map(day => {
             const dateStr = toDateStr(day);
@@ -585,21 +577,21 @@ export default function TaskTeamView({
             return (
               <div
                 key={dateStr}
-                className={`p-2 text-center border-r last:border-r-0 ${isDark ? 'border-slate-700' : 'border-slate-200'} ${
-                  isTodayCol ? (isDark ? 'bg-slate-700/30' : 'bg-orange-50/50') : ''
+                className={`p-2 text-center border-r last:border-r-0 border-bord ${
+                  isTodayCol ? 'bg-accent/5' : ''
                 }`}
               >
                 <p className={`text-[10px] uppercase tracking-wide font-medium ${
                   isTodayCol
-                    ? 'text-orange-500'
-                    : isDark ? 'text-slate-500' : 'text-slate-400'
+                    ? 'text-accent-texte'
+                    : 'text-encre-3'
                 }`}>
                   {DAYS_FR[day.getDay()]}
                 </p>
                 <p className={`text-sm font-bold ${
                   isTodayCol
-                    ? 'text-orange-500'
-                    : isDark ? 'text-slate-200' : 'text-slate-700'
+                    ? 'text-accent-texte'
+                    : 'text-encre-2'
                 }`}>
                   {day.getDate()}
                 </p>
@@ -642,7 +634,7 @@ export default function TaskTeamView({
 
         {/* Empty state */}
         {memberData.length === 0 && !hasUnassigned && (
-          <div className={`text-center py-12 ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>
+          <div className={`text-center py-12 text-encre-3`}>
             <Users size={36} className="mx-auto mb-3 opacity-30" />
             <p className="text-sm font-medium">Aucun membre dans l'équipe</p>
             <p className="text-xs mt-1">Ajoutez des membres depuis la page Équipe</p>
@@ -683,7 +675,7 @@ export default function TaskTeamView({
         )}
 
         {memberData.length === 0 && !hasUnassigned && (
-          <div className={`text-center py-12 ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>
+          <div className={`text-center py-12 text-encre-3`}>
             <Users size={36} className="mx-auto mb-3 opacity-30" />
             <p className="text-sm font-medium">Aucun membre dans l'équipe</p>
             <p className="text-xs mt-1">Ajoutez des membres depuis la page Équipe</p>

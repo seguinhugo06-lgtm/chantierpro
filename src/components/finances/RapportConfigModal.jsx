@@ -22,12 +22,12 @@ export default function RapportConfigModal({ isOpen, onClose, isDark, couleur = 
   });
   const [emailInput, setEmailInput] = useState('');
 
-  const cardBg = isDark ? 'bg-slate-800' : 'bg-white';
-  const textPrimary = isDark ? 'text-white' : 'text-slate-900';
-  const textSecondary = isDark ? 'text-slate-300' : 'text-slate-600';
-  const textMuted = isDark ? 'text-slate-400' : 'text-slate-500';
-  const borderColor = isDark ? 'border-slate-700' : 'border-slate-200';
-  const inputBg = isDark ? 'bg-slate-700 text-white' : 'bg-white text-slate-900';
+  const cardBg = 'bg-surface';
+  const textPrimary = 'text-encre';
+  const textSecondary = 'text-encre-2';
+  const textMuted = 'text-encre-3';
+  const borderColor = 'border-bord';
+  const inputBg = 'bg-surface text-encre';
 
   useEffect(() => {
     loadConfig();
@@ -150,7 +150,7 @@ export default function RapportConfigModal({ isOpen, onClose, isDark, couleur = 
             {/* Header */}
             <div className={`flex items-center justify-between px-6 py-4 border-b ${borderColor}`}>
               <h2 className={`text-lg font-bold ${textPrimary}`}>Rapports automatiques</h2>
-              <button onClick={onClose} className={`p-2 rounded-xl transition-all ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
+              <button onClick={onClose} className={`p-2 rounded-xl transition-all hover:bg-surface-2`}>
                 <X size={20} className={textMuted} />
               </button>
             </div>
@@ -186,7 +186,7 @@ export default function RapportConfigModal({ isOpen, onClose, isDark, couleur = 
                         className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
                           form.activite_periodicite === p
                             ? 'text-white'
-                            : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'
+                            : 'bg-surface-2 text-encre-2'
                         }`}
                         style={form.activite_periodicite === p ? { backgroundColor: couleur } : undefined}
                       >
@@ -226,7 +226,7 @@ export default function RapportConfigModal({ isOpen, onClose, isDark, couleur = 
                         className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
                           form.financier_periodicite === p
                             ? 'text-white'
-                            : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'
+                            : 'bg-surface-2 text-encre-2'
                         }`}
                         style={form.financier_periodicite === p ? { backgroundColor: couleur } : undefined}
                       >
@@ -258,8 +258,7 @@ export default function RapportConfigModal({ isOpen, onClose, isDark, couleur = 
                   <button
                     onClick={addEmail}
                     disabled={!emailInput.trim()}
-                    className="px-3 py-2 rounded-lg text-sm font-medium text-white disabled:opacity-50 transition-all"
-                    style={{ backgroundColor: couleur }}
+                    className="px-3 py-2 rounded-lg text-sm font-medium disabled:opacity-50 transition-all bg-accent text-sur-accent"
                   >
                     Ajouter
                   </button>
@@ -269,9 +268,7 @@ export default function RapportConfigModal({ isOpen, onClose, isDark, couleur = 
                     {form.destinataires.map(email => (
                       <span
                         key={email}
-                        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium ${
-                          isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-700'
-                        }`}
+                        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium bg-surface-2 text-encre-2`}
                       >
                         {email}
                         <button onClick={() => removeEmail(email)} className="hover:text-red-500 transition-colors">
@@ -326,8 +323,7 @@ export default function RapportConfigModal({ isOpen, onClose, isDark, couleur = 
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="px-4 py-2.5 rounded-xl text-sm font-medium text-white transition-all disabled:opacity-50 flex items-center gap-2"
-                style={{ backgroundColor: couleur }}
+                className="px-4 py-2.5 rounded-xl text-sm font-medium transition-all disabled:opacity-50 flex items-center gap-2 bg-accent text-sur-accent"
               >
                 {saving ? (
                   <><Loader2 size={16} className="animate-spin" /> Enregistrement...</>

@@ -62,7 +62,7 @@ export default function TasksAndPlanning({
     return { totalActive, overdueCount };
   }, [memos]);
 
-  const cardBg = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200';
+  const cardBg = 'bg-surface border-bord';
 
   return (
     <div className="pb-4">

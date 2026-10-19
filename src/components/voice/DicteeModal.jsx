@@ -62,12 +62,10 @@ const TAUX_TVA = [20, 10, 5.5, 0];
 
 /** Champ de saisie compact, aligné sur les conventions du reste de l'app. */
 function Champ({ label, value, onChange, isDark, type = 'text', placeholder, largeur = '' }) {
-  const inputBg = isDark
-    ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400'
-    : 'bg-white border-slate-300 text-slate-900 placeholder-slate-400';
+  const inputBg = 'bg-surface border-bord-fort text-encre placeholder:text-encre-3';
   return (
     <label className={`block ${largeur}`}>
-      <span className={`block text-xs mb-1 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>{label}</span>
+      <span className={`block text-xs mb-1 text-encre-2`}>{label}</span>
       <input
         type={type}
         value={value ?? ''}
@@ -81,30 +79,30 @@ function Champ({ label, value, onChange, isDark, type = 'text', placeholder, lar
 
 /** Bloc repliable avec interrupteur « je crée / je ne crée pas ». */
 function Carte({ icone: Icone, titre, sousTitre, actif, onToggle, isDark, couleur, children, badge, liaison }) {
-  const cardBg = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200';
+  const cardBg = 'bg-surface border-bord';
   return (
     <div className={`rounded-2xl border ${cardBg} overflow-hidden transition-opacity ${actif ? '' : 'opacity-50'}`}>
       <div className="flex items-center gap-3 p-3 sm:p-4">
         <div
-          className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-          style={{ background: `${couleur}18`, color: couleur }}
+          className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 text-accent-texte"
+          style={{ background: `${couleur}18` }}
         >
           <Icone size={18} />
         </div>
         <div className="min-w-0 flex-1">
-          <div className={`font-semibold text-sm ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
+          <div className={`font-semibold text-sm text-encre`}>
             {titre}
             {badge && (
               <span
-                className="ml-2 text-[11px] font-medium px-2 py-0.5 rounded-full align-middle"
-                style={{ background: `${couleur}18`, color: couleur }}
+                className="ml-2 text-[11px] font-medium px-2 py-0.5 rounded-full align-middle text-accent-texte"
+                style={{ background: `${couleur}18` }}
               >
                 {badge}
               </span>
             )}
           </div>
           {sousTitre && (
-            <div className={`text-xs truncate ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>{sousTitre}</div>
+            <div className={`text-xs truncate text-encre-2`}>{sousTitre}</div>
           )}
         </div>
         <button
@@ -127,7 +125,7 @@ function Carte({ icone: Icone, titre, sousTitre, actif, onToggle, isDark, couleu
       {actif && liaison && (
         <div className={`mx-3 sm:mx-4 mb-3 flex items-start gap-1.5 text-xs rounded-lg px-2.5 py-2 ${
           liaison.ok
-            ? isDark ? 'bg-slate-700/50 text-slate-300' : 'bg-slate-50 text-slate-600'
+            ? 'bg-fond text-encre-2'
             : isDark ? 'bg-amber-500/10 text-amber-200' : 'bg-amber-50 text-amber-800'
         }`}>
           {liaison.ok ? <Link2 size={13} className="shrink-0 mt-0.5" /> : <AlertTriangle size={13} className="shrink-0 mt-0.5" />}
@@ -184,9 +182,9 @@ export default function DicteeModal({
   const panneauRef = useRef(null);  // pour enfermer le focus clavier
   const microRef = useRef(null);    // pour donner le focus à l'ouverture
 
-  const cardBg = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200';
-  const textPrimary = isDark ? 'text-slate-100' : 'text-slate-900';
-  const textMuted = isDark ? 'text-slate-400' : 'text-slate-600';
+  const cardBg = 'bg-surface border-bord';
+  const textPrimary = 'text-encre';
+  const textMuted = 'text-encre-2';
 
   const reinitialiser = useCallback(() => {
     dictation.stop();
@@ -540,8 +538,8 @@ export default function DicteeModal({
         {/* En-tête */}
         <div className="flex items-center gap-3 p-4 border-b border-slate-200/20 shrink-0">
           <div
-            className="w-9 h-9 rounded-xl flex items-center justify-center"
-            style={{ background: `${couleur}18`, color: couleur }}
+            className="w-9 h-9 rounded-xl flex items-center justify-center text-accent-texte"
+            style={{ background: `${couleur}18` }}
           >
             <Mic size={18} />
           </div>
@@ -555,7 +553,7 @@ export default function DicteeModal({
             onClick={onClose}
             disabled={creation}
             aria-label="Fermer"
-            className={`p-2 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'} disabled:opacity-40`}
+            className={`p-2 rounded-lg hover:bg-surface-2 disabled:opacity-40`}
           >
             <X size={20} className={textMuted} />
           </button>
@@ -564,16 +562,14 @@ export default function DicteeModal({
         {/* Récap collant — ce qui sera créé, sans avoir à scroller */}
         {etape === 'relecture' && !rienASoumettre && (
           <div
-            className={`px-4 py-2.5 border-b border-slate-200/20 flex items-center gap-2 flex-wrap shrink-0 ${
-              isDark ? 'bg-slate-800/60' : 'bg-slate-50'
-            }`}
+            className={`px-4 py-2.5 border-b border-slate-200/20 flex items-center gap-2 flex-wrap shrink-0 bg-fond`}
           >
             <span className={`text-xs font-medium ${textMuted}`}>À créer :</span>
             {recap.map((r) => (
               <span
                 key={r}
-                className="text-xs font-semibold px-2 py-1 rounded-lg"
-                style={{ background: `${couleur}18`, color: couleur }}
+                className="text-xs font-semibold px-2 py-1 rounded-lg text-accent-texte"
+                style={{ background: `${couleur}18` }}
               >
                 {r}
               </span>
@@ -605,11 +601,10 @@ export default function DicteeModal({
                   onClick={dictation.toggle}
                   disabled={!dictation.supported}
                   aria-label={dictation.listening ? 'Arrêter la dictée' : 'Démarrer la dictée'}
-                  className={`w-20 h-20 rounded-full flex items-center justify-center text-white transition-transform active:scale-95 disabled:opacity-40 ${
+                  className={`w-20 h-20 rounded-full flex items-center justify-center transition-transform active:scale-95 disabled:opacity-40 ${
                     dictation.listening ? 'animate-pulse' : ''
-                  }`}
+                  } bg-accent text-sur-accent`}
                   style={{
-                    background: couleur,
                     boxShadow: dictation.listening ? `0 0 0 12px ${couleur}22` : 'none',
                   }}
                 >
@@ -669,10 +664,7 @@ export default function DicteeModal({
                   onChange={(e) => { dictation.setTranscript(e.target.value); }}
                   rows={4}
                   placeholder="« Madame Dupont, 12 rue des Lilas, 15 m² de carrelage à 45 euros… »"
-                  className={`w-full px-3 py-2 rounded-xl border text-sm ${
-                    isDark ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400'
-                           : 'bg-white border-slate-300 text-slate-900 placeholder-slate-400'
-                  }`}
+                  className={`w-full px-3 py-2 rounded-xl border text-sm bg-surface border-bord-fort text-encre placeholder:text-encre-3`}
                 />
                 {/* L'analyse refuse au-delà de 5 000 caractères : on prévient avant
                     de laisser quelqu'un parler dix minutes pour rien. */}
@@ -698,15 +690,12 @@ export default function DicteeModal({
                       <button
                         key={ex.titre}
                         onClick={() => dictation.setTranscript(ex.texte)}
-                        className={`w-full text-left p-2.5 rounded-lg border ${
-                          isDark ? 'border-slate-700 hover:bg-slate-700/50'
-                                 : 'border-slate-200 hover:bg-slate-50'
-                        }`}
+                        className={`w-full text-left p-2.5 rounded-lg border border-bord hover:bg-surface-2`}
                       >
-                        <span className="block text-xs font-semibold mb-0.5" style={{ color: couleur }}>
+                        <span className="block text-xs font-semibold mb-0.5 text-accent-texte">
                           {ex.titre}
                         </span>
-                        <span className={`block text-xs ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+                        <span className={`block text-xs text-encre-2`}>
                           « {ex.texte} »
                         </span>
                       </button>
@@ -720,7 +709,7 @@ export default function DicteeModal({
           {/* ── Étape 2 : analyse ──────────────────────────────────────────── */}
           {etape === 'analyse' && (
             <div className="flex flex-col items-center py-10 gap-3" role="status" aria-live="polite">
-              <Loader2 size={32} className="animate-spin" style={{ color: couleur }} />
+              <Loader2 size={32} className="animate-spin text-accent-texte" />
               <p className={`text-sm ${textMuted}`}>Je démêle tout ça…</p>
             </div>
           )}
@@ -729,8 +718,8 @@ export default function DicteeModal({
           {etape === 'relecture' && (
             <>
               {resume && (
-                <div className={`rounded-xl p-3 text-sm flex gap-2 ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
-                  <Sparkles size={16} className="shrink-0 mt-0.5" style={{ color: couleur }} />
+                <div className={`rounded-xl p-3 text-sm flex gap-2 bg-fond`}>
+                  <Sparkles size={16} className="shrink-0 mt-0.5 text-accent-texte" />
                   <div className={textMuted}>
                     {resume}
                     {source === 'local' && (
@@ -854,9 +843,7 @@ export default function DicteeModal({
                         <select
                           value={docChantierIdx}
                           onChange={(e) => setDocChantierIdx(Number(e.target.value))}
-                          className={`w-full px-3 py-2 rounded-lg border text-sm ${
-                            isDark ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-slate-300'
-                          }`}
+                          className={`w-full px-3 py-2 rounded-lg border text-sm bg-surface border-bord-fort`}
                         >
                           {listeChantiers.map((it, j) => (
                             <option key={j} value={j}>{it.data.nom}</option>
@@ -866,20 +853,18 @@ export default function DicteeModal({
                     )}
 
                     {doc.lignes.map((l, i) => (
-                      <div key={i} className={`rounded-xl p-2.5 border ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+                      <div key={i} className={`rounded-xl p-2.5 border border-bord`}>
                         <div className="flex gap-2 items-start">
                           <input
                             value={l.description}
                             onChange={(e) => majLigne(i, 'description', e.target.value)}
                             aria-label={`Désignation ligne ${i + 1}`}
-                            className={`flex-1 px-2 py-1.5 rounded-lg border text-sm ${
-                              isDark ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-slate-300'
-                            }`}
+                            className={`flex-1 px-2 py-1.5 rounded-lg border text-sm bg-surface border-bord-fort`}
                           />
                           <button
                             onClick={() => setDoc((d) => ({ ...d, lignes: d.lignes.filter((_, j) => j !== i) }))}
                             aria-label={`Supprimer la ligne ${i + 1}`}
-                            className={`p-1.5 rounded-lg ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}
+                            className={`p-1.5 rounded-lg hover:bg-surface-2 text-encre-3`}
                           >
                             <Trash2 size={15} />
                           </button>
@@ -889,12 +874,12 @@ export default function DicteeModal({
                             type="text" inputMode="decimal" value={l.quantite ?? ''}
                             onChange={(e) => majLigne(i, 'quantite', e.target.value.replace(',', '.'))}
                             aria-label="Quantité" placeholder="Qté"
-                            className={`px-2 py-1.5 rounded-lg border text-sm ${isDark ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-slate-300'}`}
+                            className={`px-2 py-1.5 rounded-lg border text-sm bg-surface border-bord-fort`}
                           />
                           <select
                             value={l.unite || 'u'} onChange={(e) => majLigne(i, 'unite', e.target.value)}
                             aria-label="Unité"
-                            className={`px-2 py-1.5 rounded-lg border text-sm ${isDark ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-slate-300'}`}
+                            className={`px-2 py-1.5 rounded-lg border text-sm bg-surface border-bord-fort`}
                           >
                             {[...new Set([l.unite || 'u', ...UNITES])].map((u) => <option key={u} value={u}>{u}</option>)}
                           </select>
@@ -903,8 +888,8 @@ export default function DicteeModal({
                             onChange={(e) => majLigne(i, 'prixUnitaire', e.target.value.replace(',', '.'))}
                             aria-label="Prix unitaire" placeholder="Prix €"
                             className={`px-2 py-1.5 rounded-lg border text-sm ${
-                              !l.prixUnitaire ? 'border-amber-400' : isDark ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-slate-300'
-                            } ${isDark ? 'bg-slate-700 text-white' : 'bg-white'}`}
+                              !l.prixUnitaire ? 'border-amber-400' : 'bg-surface border-bord-fort'
+                            } bg-surface`}
                           />
                           <div className={`px-2 py-1.5 text-sm text-right font-medium ${textPrimary}`}>
                             {euros((Number(l.quantite) || 0) * (Number(l.prixUnitaire) || 0))}
@@ -927,9 +912,7 @@ export default function DicteeModal({
 
                     <button
                       onClick={() => setDoc((d) => ({ ...d, lignes: [...d.lignes, { description: '', quantite: 1, unite: 'u', prixUnitaire: null }] }))}
-                      className={`w-full py-2 rounded-xl border border-dashed text-sm flex items-center justify-center gap-1.5 ${
-                        isDark ? 'border-slate-600 text-slate-400 hover:bg-slate-700/50' : 'border-slate-300 text-slate-600 hover:bg-slate-50'
-                      }`}
+                      className={`w-full py-2 rounded-xl border border-dashed text-sm flex items-center justify-center gap-1.5 border-bord-fort text-encre-2 hover:bg-surface-2`}
                     >
                       <Plus size={15} /> Ajouter une ligne
                     </button>
@@ -947,9 +930,7 @@ export default function DicteeModal({
                               id="dictee-tva"
                               value={tvaDoc}
                               onChange={(e) => setTvaDoc(Number(e.target.value))}
-                              className={`px-2 py-1 rounded-lg border text-sm ${
-                                isDark ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-slate-300'
-                              }`}
+                              className={`px-2 py-1 rounded-lg border text-sm bg-surface border-bord-fort`}
                             >
                               {[...new Set([tvaDefaut, ...TAUX_TVA])].sort((a, b) => b - a).map((t) => (
                                 <option key={t} value={t}>{String(t).replace('.', ',')} %</option>
@@ -974,7 +955,7 @@ export default function DicteeModal({
               )}
 
               {!client && !listeChantiers.length && !doc && (
-                <div className={`rounded-xl p-4 text-sm text-center ${isDark ? 'bg-slate-700/50 text-slate-300' : 'bg-slate-50 text-slate-600'}`}>
+                <div className={`rounded-xl p-4 text-sm text-center bg-fond text-encre-2`}>
                   Je n'ai rien reconnu dans cette dictée. Reformulez en donnant le nom du
                   client, les travaux et les prix.
                 </div>
@@ -995,8 +976,7 @@ export default function DicteeModal({
             <button
               onClick={() => lancerAnalyse(texteDicte)}
               disabled={!texteDicte || texteDicte.trim().length < 3}
-              className="flex-1 py-3 rounded-xl text-white font-semibold text-sm disabled:opacity-40"
-              style={{ background: couleur }}
+              className="flex-1 py-3 rounded-xl font-semibold text-sm disabled:opacity-40 bg-accent text-sur-accent"
             >
               {dictation.listening ? 'Terminé, analyser' : 'Analyser ma dictée'}
             </button>
@@ -1007,17 +987,14 @@ export default function DicteeModal({
               <button
                 onClick={() => { setEtape('parler'); setErreur(null); }}
                 disabled={creation}
-                className={`px-4 py-3 rounded-xl text-sm font-medium flex items-center gap-1.5 disabled:opacity-40 ${
-                  isDark ? 'bg-slate-700 text-slate-200' : 'bg-slate-100 text-slate-700'
-                }`}
+                className={`px-4 py-3 rounded-xl text-sm font-medium flex items-center gap-1.5 disabled:opacity-40 bg-surface-2 text-encre-2`}
               >
                 <RotateCcw size={15} /> Redicter
               </button>
               {suiteLogique ? (
                 <button
                   onClick={suiteLogique.action}
-                  className="flex-1 py-3 rounded-xl text-white font-semibold text-sm flex items-center justify-center gap-2"
-                  style={{ background: couleur }}
+                  className="flex-1 py-3 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 bg-accent text-sur-accent"
                 >
                   {suiteLogique.label}
                 </button>
@@ -1025,8 +1002,7 @@ export default function DicteeModal({
                 <button
                   onClick={creer}
                   disabled={creation || rienASoumettre}
-                  className="flex-1 py-3 rounded-xl text-white font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-40"
-                  style={{ background: couleur }}
+                  className="flex-1 py-3 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-40 bg-accent text-sur-accent"
                 >
                   {creation ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
                   {creation ? 'Création…' : rienASoumettre ? 'Rien de nouveau à créer' : `Créer ${recap.join(' + ')}`}

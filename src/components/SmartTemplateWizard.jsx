@@ -167,11 +167,11 @@ export default function SmartTemplateWizard({
 
   if (!isOpen) return null;
 
-  const cardBg = isDark ? 'bg-slate-800' : 'bg-white';
-  const textPrimary = isDark ? 'text-white' : 'text-slate-900';
-  const textMuted = isDark ? 'text-slate-400' : 'text-slate-600';
-  const inputBg = isDark ? 'bg-slate-700 border-slate-600' : 'bg-white border-slate-300';
-  const hoverBg = isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50';
+  const cardBg = 'bg-surface';
+  const textPrimary = 'text-encre';
+  const textMuted = 'text-encre-2';
+  const inputBg = 'bg-surface border-bord-fort';
+  const hoverBg = 'hover:bg-surface-2';
 
   const totalHT = prix;
   const totalTVA = totalHT * (tva / 100);
@@ -230,8 +230,7 @@ export default function SmartTemplateWizard({
                     </div>
                     <button
                       onClick={() => setShowNewClientForm(true)}
-                      className="px-4 py-3 rounded-xl text-white font-medium flex items-center gap-2 transition-all hover:opacity-90 active:scale-[0.98] shrink-0"
-                      style={{ backgroundColor: couleur }}
+                      className="px-4 py-3 rounded-xl font-medium flex items-center gap-2 transition-all hover:opacity-90 active:scale-[0.98] shrink-0 bg-accent text-sur-accent"
                     >
                       <UserPlus className="w-5 h-5" />
                       <span className="hidden sm:inline">Nouveau</span>
@@ -244,8 +243,7 @@ export default function SmartTemplateWizard({
                       <p className="font-medium mb-2">Aucun client</p>
                       <button
                         onClick={() => setShowNewClientForm(true)}
-                        className="text-sm font-medium hover:underline"
-                        style={{ color: couleur }}
+                        className="text-sm font-medium hover:underline text-accent-texte"
                       >
                         Créer votre premier client
                       </button>
@@ -256,12 +254,11 @@ export default function SmartTemplateWizard({
                         <button
                           key={client.id}
                           onClick={() => handleSelectClient(client)}
-                          className={`p-3 rounded-xl border ${isDark ? 'border-slate-700' : 'border-slate-200'} ${hoverBg} text-left transition-all active:scale-[0.98]`}
+                          className={`p-3 rounded-xl border border-bord ${hoverBg} text-left transition-all active:scale-[0.98]`}
                         >
                           <div className="flex items-center gap-2">
                             <div
-                              className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0"
-                              style={{ backgroundColor: couleur }}
+                              className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shrink-0 bg-accent text-sur-accent"
                             >
                               {client.nom?.charAt(0).toUpperCase()}
                             </div>
@@ -336,8 +333,7 @@ export default function SmartTemplateWizard({
                   <button
                     onClick={handleCreateClient}
                     disabled={!newClient.nom.trim()}
-                    className="w-full py-3 rounded-xl text-white font-medium flex items-center justify-center gap-2 transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50"
-                    style={{ backgroundColor: couleur }}
+                    className="w-full py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50 bg-accent text-sur-accent"
                   >
                     <Check className="w-5 h-5" />
                     Creer et continuer
@@ -375,7 +371,7 @@ export default function SmartTemplateWizard({
                     className={`relative p-3 rounded-xl border-2 transition-all text-center ${
                       expandedMetier === metier.id
                         ? 'border-current shadow-lg scale-[1.02]'
-                        : isDark ? 'border-slate-700' : 'border-slate-200'
+                        : 'border-bord'
                     }`}
                     style={expandedMetier === metier.id ? { borderColor: metier.color, backgroundColor: `${metier.color}10` } : {}}
                   >
@@ -387,7 +383,7 @@ export default function SmartTemplateWizard({
 
               {/* Expanded Missions */}
               {expandedMetier && (
-                <div className={`rounded-xl border-2 overflow-hidden ${isDark ? 'border-slate-700 bg-slate-800/50' : 'border-slate-200 bg-slate-50'}`}>
+                <div className={`rounded-xl border-2 overflow-hidden border-bord bg-fond`}>
                   <div className="p-3 flex items-center gap-2" style={{ backgroundColor: `${SMART_TEMPLATES[expandedMetier].color}15` }}>
                     <span className="text-xl">{SMART_TEMPLATES[expandedMetier].icon}</span>
                     <span className={`font-semibold ${textPrimary}`}>{SMART_TEMPLATES[expandedMetier].nom}</span>
@@ -401,7 +397,7 @@ export default function SmartTemplateWizard({
                       >
                         <div className="flex-1">
                           <p className={`text-sm font-medium ${textPrimary}`}>{mission.nom}</p>
-                          <p className={`text-xs font-medium mt-0.5 ${isDark ? 'text-orange-400' : 'text-orange-600'}`}>
+                          <p className={`text-xs font-medium mt-0.5 text-accent-texte`}>
                             {formatPriceRange(mission)}
                           </p>
                         </div>
@@ -441,14 +437,14 @@ export default function SmartTemplateWizard({
               </div>
 
               {/* Price input - BIG and editable */}
-              <div className={`p-5 rounded-xl border-2 ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
+              <div className={`p-5 rounded-xl border-2 border-bord`}>
                 <label className={`block text-sm font-medium ${textMuted} mb-2 text-center`}>Montant HT</label>
                 <div className="relative">
                   <input
                     type="number"
                     value={prix || ''}
                     onChange={(e) => setPrix(Math.max(0, parseInt(e.target.value) || 0))}
-                    className={`w-full text-center text-4xl font-bold py-4 rounded-xl border-0 bg-transparent ${textPrimary} focus:outline-none focus:ring-2 focus:ring-orange-500`}
+                    className={`w-full text-center text-4xl font-bold py-4 rounded-xl border-0 bg-transparent ${textPrimary} focus:outline-none focus:ring-2 focus:ring-accent`}
                     placeholder="0"
                   />
                   <span className={`absolute right-4 top-1/2 -translate-y-1/2 text-2xl ${textMuted}`}>€</span>
@@ -463,7 +459,7 @@ export default function SmartTemplateWizard({
                       className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
                         prix === p
                           ? 'text-white'
-                          : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'
+                          : 'bg-surface-2 text-encre-2'
                       }`}
                       style={prix === p ? { backgroundColor: couleur } : {}}
                     >
@@ -475,7 +471,7 @@ export default function SmartTemplateWizard({
 
               {/* TVA : pas de choix de taux en franchise (art. 293 B du CGI) — relecture juriste-btp du 17 oct. 2026 */}
               {estFranchiseTva(entreprise) ? (
-                <p className={`text-sm ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>TVA non applicable, art. 293 B du CGI</p>
+                <p className={`text-sm text-encre-2`}>TVA non applicable, art. 293 B du CGI</p>
               ) : (
               <div className="flex gap-2">
                 {[
@@ -488,7 +484,7 @@ export default function SmartTemplateWizard({
                     key={opt.value}
                     onClick={() => setTva(opt.value)}
                     className={`flex-1 py-2.5 rounded-lg font-semibold text-sm transition-all ${
-                      tva === opt.value ? 'text-white shadow-lg' : isDark ? 'bg-slate-700 text-slate-400' : 'bg-slate-100 text-slate-500'
+                      tva === opt.value ? 'text-white shadow-lg' : 'bg-surface-2 text-encre-3'
                     }`}
                     style={tva === opt.value ? { backgroundColor: couleur } : {}}
                   >
@@ -499,7 +495,7 @@ export default function SmartTemplateWizard({
               )}
 
               {/* Total */}
-              <div className={`p-4 rounded-xl ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
+              <div className={`p-4 rounded-xl bg-surface-2`}>
                 <div className="flex justify-between text-sm mb-2">
                   <span className={textMuted}>HT</span>
                   <span className={textPrimary}>{formatMoney(totalHT)}</span>
@@ -508,9 +504,9 @@ export default function SmartTemplateWizard({
                   <span className={textMuted}>TVA {tva}%</span>
                   <span className={textPrimary}>{formatMoney(totalTVA)}</span>
                 </div>
-                <div className={`flex justify-between pt-2 border-t ${isDark ? 'border-slate-600' : 'border-slate-300'}`}>
+                <div className={`flex justify-between pt-2 border-t border-bord-fort`}>
                   <span className={`font-bold ${textPrimary}`}>Total TTC</span>
-                  <span className="font-bold text-2xl" style={{ color: couleur }}>{formatMoney(totalTTC)}</span>
+                  <span className="font-bold text-2xl text-accent-texte">{formatMoney(totalTTC)}</span>
                 </div>
               </div>
             </div>
@@ -519,12 +515,11 @@ export default function SmartTemplateWizard({
 
         {/* Footer */}
         {step === 3 && (
-          <div className={`p-4 border-t ${isDark ? 'border-slate-700' : 'border-slate-200'} shrink-0`}>
+          <div className={`p-4 border-t border-bord shrink-0`}>
             <button
               onClick={handleCreateDevis}
               disabled={isCreating || !prix}
-              className="w-full py-4 rounded-xl text-white font-bold text-lg flex items-center justify-center gap-2 transition-all hover:shadow-lg active:scale-[0.98] disabled:opacity-50"
-              style={{ backgroundColor: couleur }}
+              className="w-full py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-2 transition-all hover:shadow-lg active:scale-[0.98] disabled:opacity-50 bg-accent text-sur-accent"
             >
               {isCreating ? (
                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />

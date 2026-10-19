@@ -65,12 +65,12 @@ function KPICard({ label, value, dot, alert, isDark }) {
             style={{ backgroundColor: dot }}
           />
         )}
-        {alert && <AlertTriangle className={`w-4 h-4 ${isAlert ? 'text-orange-500' : isDark ? 'text-slate-500' : 'text-slate-400'}`} />}
-        <span className={`text-xs font-medium truncate ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+        {alert && <AlertTriangle className={`w-4 h-4 ${isAlert ? 'text-alerte-texte' : 'text-encre-3'}`} />}
+        <span className={`text-xs font-medium truncate text-encre-3`}>
           {label}
         </span>
       </div>
-      <p className={`text-2xl font-bold ${isAlert ? 'text-orange-500' : isDark ? 'text-white' : 'text-slate-900'}`}>
+      <p className={`text-2xl font-bold ${isAlert ? 'text-alerte-texte' : 'text-encre'}`}>
         {value}
       </p>
     </div>
@@ -92,7 +92,7 @@ function WarrantyCard({ garantie, isDark, couleur, onViewDetail }) {
     <div
       className={`
         rounded-xl border p-3 transition-all hover:shadow-sm
-        ${isDark ? 'bg-slate-800/50 border-slate-700 hover:border-slate-600' : 'bg-white border-slate-200 hover:border-slate-300'}
+        bg-surface border-bord hover:border-bord-fort
       `}
     >
       {/* Header: Type + Status Badge */}
@@ -102,7 +102,7 @@ function WarrantyCard({ garantie, isDark, couleur, onViewDetail }) {
             className="w-2 h-2 rounded-full flex-shrink-0"
             style={{ backgroundColor: typeInfo?.color || '#6b7280' }}
           />
-          <span className={`text-sm font-semibold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+          <span className={`text-sm font-semibold text-encre`}>
             {typeInfo?.label || garantie.typeGarantie}
           </span>
         </div>
@@ -126,12 +126,12 @@ function WarrantyCard({ garantie, isDark, couleur, onViewDetail }) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           {interventionCount > 0 && (
-            <span className={`inline-flex items-center gap-1 text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+            <span className={`inline-flex items-center gap-1 text-xs text-encre-3`}>
               <Wrench className="w-3 h-3" />
               {interventionCount} intervention{interventionCount > 1 ? 's' : ''}
             </span>
           )}
-          <span className={`text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+          <span className={`text-[11px] text-encre-3`}>
             {typeInfo?.duration}
           </span>
         </div>
@@ -154,19 +154,19 @@ function WarrantyCard({ garantie, isDark, couleur, onViewDetail }) {
 
 function ChantierGroup({ chantierNom, receptionDate, garanties, isDark, couleur, onViewDetail }) {
   return (
-    <div className={`rounded-2xl border overflow-hidden ${isDark ? 'bg-slate-800/30 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
+    <div className={`rounded-2xl border overflow-hidden bg-fond border-bord`}>
       {/* Chantier Header */}
-      <div className={`px-4 py-3 border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+      <div className={`px-4 py-3 border-b border-bord`}>
         <div className="flex items-center gap-2">
-          <Building2 className={`w-4 h-4 flex-shrink-0 ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />
-          <h3 className={`text-sm font-semibold truncate ${isDark ? 'text-white' : 'text-slate-900'}`}>
+          <Building2 className={`w-4 h-4 flex-shrink-0 text-encre-3`} />
+          <h3 className={`text-sm font-semibold truncate text-encre`}>
             {chantierNom || 'Chantier sans nom'}
           </h3>
         </div>
         {receptionDate && (
           <div className="flex items-center gap-1.5 mt-1 ml-6">
-            <Calendar className={`w-3 h-3 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
-            <span className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+            <Calendar className={`w-3 h-3 text-encre-3`} />
+            <span className={`text-xs text-encre-3`}>
               Réception : {dateLue(receptionDate).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
             </span>
           </div>
@@ -194,13 +194,13 @@ function ChantierGroup({ chantierNom, receptionDate, garanties, isDark, couleur,
 function EmptyState({ isDark }) {
   return (
     <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
-      <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-4 ${isDark ? 'bg-slate-800' : 'bg-slate-100'}`}>
-        <Shield className={`w-8 h-8 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
+      <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-4 bg-surface-2`}>
+        <Shield className={`w-8 h-8 text-encre-3`} />
       </div>
-      <h3 className={`text-lg font-semibold mb-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+      <h3 className={`text-lg font-semibold mb-2 text-encre`}>
         Aucune garantie
       </h3>
-      <p className={`text-sm max-w-md ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+      <p className={`text-sm max-w-md text-encre-3`}>
         Les garanties sont automatiquement créées lors de la réception d'un chantier.
         Pour commencer : terminez un chantier, puis effectuez la réception.
         Les 3 garanties légales (parfait achèvement, biennale, décennale) seront générées automatiquement.
@@ -335,10 +335,10 @@ export default function GarantiesDashboard({ isDark = false, couleur, showToast,
 
   // ── Render ──────────────────────────────────────────────────────────────────
 
-  const textPrimary = isDark ? 'text-white' : 'text-slate-900';
-  const textSecondary = isDark ? 'text-slate-400' : 'text-slate-500';
-  const bgInput = isDark ? 'bg-slate-800 border-slate-700 text-slate-200' : 'bg-white border-slate-300 text-slate-700';
-  const bgPage = isDark ? 'bg-slate-900' : 'bg-slate-50';
+  const textPrimary = 'text-encre';
+  const textSecondary = 'text-encre-3';
+  const bgInput = 'bg-surface border-bord-fort text-encre-2';
+  const bgPage = 'bg-fond';
 
   return (
     <div className={`min-h-screen ${bgPage}`}>
@@ -391,7 +391,7 @@ export default function GarantiesDashboard({ isDark = false, couleur, showToast,
         )}
 
         {/* ── Filters ─────────────────────────────────────────────────────────── */}
-        <div className={`rounded-2xl border p-4 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+        <div className={`rounded-2xl border p-4 bg-surface border-bord`}>
           <div className="flex flex-wrap items-center gap-3">
             <Filter className={`w-4 h-4 flex-shrink-0 ${textSecondary}`} />
 

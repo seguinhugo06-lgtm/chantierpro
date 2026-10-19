@@ -16,11 +16,11 @@ export default function TemplateManager({ isDark, couleur, modeDiscret }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [editForm, setEditForm] = useState({ nom: '', categorie: '', notes: '' });
 
-  const cardBg = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200';
+  const cardBg = 'bg-surface border-bord';
   const inputBg = isDark ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400' : 'bg-white border-slate-300';
-  const textPrimary = isDark ? 'text-slate-100' : 'text-slate-900';
-  const textSecondary = isDark ? 'text-slate-300' : 'text-slate-600';
-  const textMuted = isDark ? 'text-slate-400' : 'text-slate-500';
+  const textPrimary = 'text-encre';
+  const textSecondary = 'text-encre-2';
+  const textMuted = 'text-encre-3';
 
   // Filter templates by search
   const filteredTemplates = useMemo(() => {
@@ -105,7 +105,7 @@ export default function TemplateManager({ isDark, couleur, modeDiscret }) {
 
         {/* Search */}
         {customTemplates.length > 3 && (
-          <div className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border ${isDark ? 'bg-slate-700/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
+          <div className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border bg-fond border-bord`}>
             <Search size={16} className={textMuted} />
             <input
               type="text"
@@ -184,15 +184,14 @@ export default function TemplateManager({ isDark, couleur, modeDiscret }) {
                       <div className="flex items-center justify-end gap-2">
                         <button
                           onClick={() => setEditingId(null)}
-                          className={`px-3 py-1.5 rounded-lg text-sm ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'} ${textSecondary}`}
+                          className={`px-3 py-1.5 rounded-lg text-sm hover:bg-surface-2 ${textSecondary}`}
                         >
                           Annuler
                         </button>
                         <button
                           onClick={saveEdit}
                           disabled={!editForm.nom.trim()}
-                          className="px-4 py-1.5 rounded-lg text-sm text-white font-medium disabled:opacity-50"
-                          style={{ background: couleur }}
+                          className="px-4 py-1.5 rounded-lg text-sm font-medium disabled:opacity-50 bg-accent text-sur-accent"
                         >
                           <Check size={14} className="inline mr-1" /> Enregistrer
                         </button>
@@ -217,13 +216,13 @@ export default function TemplateManager({ isDark, couleur, modeDiscret }) {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <h4 className={`font-medium ${textPrimary} truncate`}>{t.nom}</h4>
-                          <span className={`text-xs px-2 py-0.5 rounded-full shrink-0 ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-500'}`}>
+                          <span className={`text-xs px-2 py-0.5 rounded-full shrink-0 bg-surface-2 text-encre-3`}>
                             {t.categorie || t.category || 'Mes modèles'}
                           </span>
                         </div>
                         <div className="flex items-center gap-3 text-xs">
                           <span className={textMuted}>{(t.lignes || []).length} lignes</span>
-                          <span className="font-medium" style={{ color: couleur }}>
+                          <span className="font-medium text-accent-texte">
                             {fmt(total)} HT
                           </span>
                           <span className={`flex items-center gap-0.5 ${marge >= 30 ? 'text-emerald-500' : 'text-amber-500'}`}>
@@ -245,21 +244,21 @@ export default function TemplateManager({ isDark, couleur, modeDiscret }) {
                       <div className="flex items-center gap-1 shrink-0">
                         <button
                           onClick={() => setExpandedId(isExpanded ? null : t.id)}
-                          className={`p-1.5 rounded-lg transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}
+                          className={`p-1.5 rounded-lg transition-colors hover:bg-surface-2`}
                           title="Aperçu des lignes"
                         >
                           {isExpanded ? <ChevronUp size={14} className={textMuted} /> : <ChevronDown size={14} className={textMuted} />}
                         </button>
                         <button
                           onClick={() => startEdit(t)}
-                          className={`p-1.5 rounded-lg transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}
+                          className={`p-1.5 rounded-lg transition-colors hover:bg-surface-2`}
                           title="Modifier"
                         >
                           <Edit3 size={14} className={textMuted} />
                         </button>
                         <button
                           onClick={() => handleDuplicate(t)}
-                          className={`p-1.5 rounded-lg transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}
+                          className={`p-1.5 rounded-lg transition-colors hover:bg-surface-2`}
                           title="Dupliquer"
                         >
                           <Copy size={14} className={textMuted} />
@@ -278,7 +277,7 @@ export default function TemplateManager({ isDark, couleur, modeDiscret }) {
 
                 {/* Expanded lines preview */}
                 {isExpanded && !isEditing && (
-                  <div className={`px-4 sm:px-5 pb-4 pt-0 border-t ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+                  <div className={`px-4 sm:px-5 pb-4 pt-0 border-t border-bord`}>
                     <p className={`text-xs font-medium mb-2 mt-3 ${textMuted}`}>Aperçu des lignes :</p>
                     <div className="space-y-1.5">
                       {(t.lignes || []).map((ligne, idx) => (
@@ -293,7 +292,7 @@ export default function TemplateManager({ isDark, couleur, modeDiscret }) {
                         </div>
                       ))}
                     </div>
-                    <div className={`flex items-center justify-end mt-3 pt-2 border-t text-sm font-medium ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+                    <div className={`flex items-center justify-end mt-3 pt-2 border-t text-sm font-medium border-bord`}>
                       <span className={textMuted}>Total HT :</span>
                       <span className={`ml-2 ${textPrimary}`}>{fmt(total)}</span>
                     </div>

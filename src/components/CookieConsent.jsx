@@ -44,12 +44,12 @@ export default function CookieConsent({ isDark = false, couleur = '#f97316', set
   });
 
   // Theme classes
-  const cardBg = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200';
-  const textPrimary = isDark ? 'text-white' : 'text-slate-900';
-  const textSecondary = isDark ? 'text-slate-300' : 'text-slate-600';
-  const textMuted = isDark ? 'text-slate-400' : 'text-slate-500';
-  const toggleBg = isDark ? 'bg-slate-700' : 'bg-slate-100';
-  const categoryBorder = isDark ? 'border-slate-700' : 'border-slate-200';
+  const cardBg = 'bg-surface border-bord';
+  const textPrimary = 'text-encre';
+  const textSecondary = 'text-encre-2';
+  const textMuted = 'text-encre-3';
+  const toggleBg = 'bg-surface-2';
+  const categoryBorder = 'border-bord';
 
   // Check if consent already given
   useEffect(() => {
@@ -144,11 +144,7 @@ export default function CookieConsent({ isDark = false, couleur = '#f97316', set
             exit={{ scale: 0, opacity: 0 }}
             transition={{ type: 'spring', stiffness: 300, damping: 25 }}
             onClick={handleReopen}
-            className={`fixed bottom-4 left-4 z-[1050] flex items-center gap-2 px-3 py-2 rounded-full shadow-lg border text-sm font-medium transition-colors ${
-              isDark
-                ? 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'
-                : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-            }`}
+            className={`fixed bottom-4 left-4 z-[1050] flex items-center gap-2 px-3 py-2 rounded-full shadow-lg border text-sm font-medium transition-colors bg-surface border-bord text-encre-2 hover:bg-surface-2`}
             aria-label="Gérer les cookies"
           >
             <Cookie className="w-4 h-4" />
@@ -177,7 +173,7 @@ export default function CookieConsent({ isDark = false, couleur = '#f97316', set
                     className="flex items-center justify-center w-9 h-9 rounded-xl"
                     style={{ backgroundColor: `${couleur}15` }}
                   >
-                    <Shield className="w-4.5 h-4.5" style={{ color: couleur }} />
+                    <Shield className="w-4.5 h-4.5 text-accent-texte" />
                   </div>
                   <div>
                     <h3 className={`text-sm font-semibold ${textPrimary}`}>
@@ -190,9 +186,7 @@ export default function CookieConsent({ isDark = false, couleur = '#f97316', set
                 </div>
                 <button
                   onClick={handleRefuse}
-                  className={`p-1.5 rounded-lg transition-colors ${
-                    isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-400'
-                  }`}
+                  className={`p-1.5 rounded-lg transition-colors hover:bg-surface-2 text-encre-3`}
                   aria-label="Fermer"
                 >
                   <X className="w-4 h-4" />
@@ -206,7 +200,7 @@ export default function CookieConsent({ isDark = false, couleur = '#f97316', set
                   {setPage && (
                     <>
                       {' '}
-                      <button onClick={() => { setPage('confidentialite'); setVisible(false); }} className="underline hover:no-underline" style={{ color: couleur }}>
+                      <button onClick={() => { setPage('confidentialite'); setVisible(false); }} className="underline hover:no-underline text-accent-texte">
                         Politique de confidentialité
                       </button>
                     </>
@@ -234,9 +228,7 @@ export default function CookieConsent({ isDark = false, couleur = '#f97316', set
                               {cat.label}
                             </span>
                             {cat.locked ? (
-                              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                                isDark ? 'bg-slate-700 text-slate-400' : 'bg-slate-100 text-slate-500'
-                              }`}>
+                              <span className={`text-xs px-2 py-0.5 rounded-full font-medium bg-surface-2 text-encre-3`}>
                                 Toujours actif
                               </span>
                             ) : (
@@ -284,22 +276,14 @@ export default function CookieConsent({ isDark = false, couleur = '#f97316', set
                 <div className="flex items-center gap-2">
                   <button
                     onClick={handleRefuse}
-                    className={`flex-1 px-4 py-2.5 text-sm font-medium rounded-xl border transition-colors ${
-                      isDark
-                        ? 'border-slate-600 text-slate-300 hover:bg-slate-700'
-                        : 'border-slate-300 text-slate-700 hover:bg-slate-50'
-                    }`}
+                    className={`flex-1 px-4 py-2.5 text-sm font-medium rounded-xl border transition-colors border-bord-fort text-encre-2 hover:bg-surface-2`}
                   >
                     Refuser
                   </button>
 
                   <button
                     onClick={() => setShowCustomize((prev) => !prev)}
-                    className={`flex items-center justify-center gap-1.5 flex-1 px-4 py-2.5 text-sm font-medium rounded-xl border transition-colors ${
-                      isDark
-                        ? 'border-slate-600 text-slate-300 hover:bg-slate-700'
-                        : 'border-slate-300 text-slate-700 hover:bg-slate-50'
-                    }`}
+                    className={`flex items-center justify-center gap-1.5 flex-1 px-4 py-2.5 text-sm font-medium rounded-xl border transition-colors border-bord-fort text-encre-2 hover:bg-surface-2`}
                   >
                     Personnaliser
                     {showCustomize ? (
@@ -312,16 +296,14 @@ export default function CookieConsent({ isDark = false, couleur = '#f97316', set
                   {showCustomize ? (
                     <button
                       onClick={handleSavePreferences}
-                      className="flex-1 px-4 py-2.5 text-sm font-semibold rounded-xl text-white transition-opacity hover:opacity-90"
-                      style={{ backgroundColor: couleur }}
+                      className="flex-1 px-4 py-2.5 text-sm font-semibold rounded-xl transition-opacity hover:opacity-90 bg-accent text-sur-accent"
                     >
                       Enregistrer
                     </button>
                   ) : (
                     <button
                       onClick={handleAcceptAll}
-                      className="flex-1 px-4 py-2.5 text-sm font-semibold rounded-xl text-white transition-opacity hover:opacity-90"
-                      style={{ backgroundColor: couleur }}
+                      className="flex-1 px-4 py-2.5 text-sm font-semibold rounded-xl transition-opacity hover:opacity-90 bg-accent text-sur-accent"
                     >
                       Accepter tout
                     </button>

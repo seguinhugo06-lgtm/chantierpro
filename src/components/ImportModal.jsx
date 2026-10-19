@@ -110,16 +110,16 @@ export default function ImportModal({
   const fields = FIELD_DEFINITIONS[type] || FIELD_DEFINITIONS.clients;
 
   // ── Theme ─────────────────────────────────────────────────
-  const cardBg = isDark ? 'bg-slate-800' : 'bg-white';
-  const inputBg = isDark ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-slate-200 text-slate-900';
-  const textPrimary = isDark ? 'text-white' : 'text-slate-900';
-  const textSecondary = isDark ? 'text-slate-300' : 'text-slate-600';
-  const textMuted = isDark ? 'text-slate-400' : 'text-slate-500';
-  const borderColor = isDark ? 'border-slate-700' : 'border-slate-200';
-  const hoverBg = isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50';
-  const dropZoneBg = isDark ? 'bg-slate-700/50' : 'bg-slate-50';
-  const tableBg = isDark ? 'bg-slate-700/50' : 'bg-slate-50';
-  const tableRowBg = isDark ? 'even:bg-slate-700/30' : 'even:bg-slate-50';
+  const cardBg = 'bg-surface';
+  const inputBg = 'bg-surface border-bord text-encre';
+  const textPrimary = 'text-encre';
+  const textSecondary = 'text-encre-2';
+  const textMuted = 'text-encre-3';
+  const borderColor = 'border-bord';
+  const hoverBg = 'hover:bg-surface-2';
+  const dropZoneBg = 'bg-fond';
+  const tableBg = 'bg-fond';
+  const tableRowBg = 'even:bg-fond';
 
   // ── Reset on close ────────────────────────────────────────
   useEffect(() => {
@@ -404,7 +404,7 @@ export default function ImportModal({
                       className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4"
                       style={{ backgroundColor: `${couleur}15` }}
                     >
-                      <Upload size={28} style={{ color: couleur }} />
+                      <Upload size={28} className="text-accent-texte" />
                     </div>
                     <p className={`text-base font-medium mb-1 ${textPrimary}`}>
                       Glissez votre fichier ici
@@ -455,7 +455,7 @@ export default function ImportModal({
                 <div className="space-y-5">
                   {/* File info */}
                   <div className={`flex items-center gap-3 p-3 rounded-xl ${tableBg}`}>
-                    <FileSpreadsheet size={18} style={{ color: couleur }} />
+                    <FileSpreadsheet size={18} className="text-accent-texte" />
                     <div className="flex-1 min-w-0">
                       <p className={`text-sm font-medium truncate ${textPrimary}`}>{fileName}</p>
                       <p className={`text-xs ${textMuted}`}>
@@ -526,7 +526,7 @@ export default function ImportModal({
                             {csvHeaders.map((h, i) => (
                               <th key={i} scope="col" className={`px-3 py-2 text-left font-medium whitespace-nowrap ${textSecondary}`}>
                                 {mapping[i] ? (
-                                  <span style={{ color: couleur }}>
+                                  <span className="text-accent-texte">
                                     {fields.find(f => f.key === mapping[i])?.label || h}
                                   </span>
                                 ) : (
@@ -569,8 +569,7 @@ export default function ImportModal({
                     <button
                       onClick={handleImport}
                       disabled={mappedCount === 0}
-                      className="w-full sm:flex-1 px-4 py-3 rounded-xl font-medium text-white transition-all min-h-[48px] flex items-center justify-center gap-2 disabled:opacity-50 hover:shadow-lg active:scale-[0.98]"
-                      style={{ backgroundColor: couleur }}
+                      className="w-full sm:flex-1 px-4 py-3 rounded-xl font-medium transition-all min-h-[48px] flex items-center justify-center gap-2 disabled:opacity-50 hover:shadow-lg active:scale-[0.98] bg-accent text-sur-accent"
                     >
                       <Upload size={18} />
                       <span>Importer {csvRows.length} lignes</span>
@@ -584,7 +583,7 @@ export default function ImportModal({
                 <div className="space-y-6 py-8">
                   <div className="text-center">
                     <div className="w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-                      <Loader2 size={40} className="animate-spin" style={{ color: couleur }} />
+                      <Loader2 size={40} className="animate-spin text-accent-texte" />
                     </div>
                     <p className={`text-base font-medium ${textPrimary}`}>
                       Importation en cours...
@@ -597,8 +596,7 @@ export default function ImportModal({
                   {/* Progress bar */}
                   <div className={`w-full h-3 rounded-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`}>
                     <motion.div
-                      className="h-full rounded-full"
-                      style={{ backgroundColor: couleur }}
+                      className="h-full rounded-full bg-accent"
                       initial={{ width: '0%' }}
                       animate={{ width: `${importProgress}%` }}
                       transition={{ duration: 0.3, ease: 'easeOut' }}
@@ -617,7 +615,7 @@ export default function ImportModal({
                           className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center"
                           style={{ backgroundColor: `${couleur}15` }}
                         >
-                          <Check size={32} style={{ color: couleur }} />
+                          <Check size={32} className="text-accent-texte" />
                         </div>
                         <p className={`text-lg font-bold ${textPrimary}`}>
                           Importation reussie
@@ -643,8 +641,7 @@ export default function ImportModal({
 
                   <button
                     onClick={onClose}
-                    className="w-full px-4 py-3 rounded-xl font-medium text-white transition-all min-h-[48px] flex items-center justify-center gap-2 hover:shadow-lg active:scale-[0.98]"
-                    style={{ backgroundColor: couleur }}
+                    className="w-full px-4 py-3 rounded-xl font-medium transition-all min-h-[48px] flex items-center justify-center gap-2 hover:shadow-lg active:scale-[0.98] bg-accent text-sur-accent"
                   >
                     <Check size={18} />
                     <span>Fermer</span>

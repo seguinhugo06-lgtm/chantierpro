@@ -215,11 +215,11 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   });
 
   // Theme classes
-  const cardBg = isDark ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200";
+  const cardBg = "bg-surface border-bord";
   const inputBg = isDark ? "bg-slate-700 border-slate-600 text-white placeholder-slate-400" : "bg-white border-slate-300";
-  const textPrimary = isDark ? "text-slate-100" : "text-slate-900";
-  const textSecondary = isDark ? "text-slate-300" : "text-slate-600";
-  const textMuted = isDark ? "text-slate-400" : "text-slate-600";
+  const textPrimary = "text-encre";
+  const textSecondary = "text-encre-2";
+  const textMuted = "text-encre-2";
 
   // Helper for PDF - format RCS complet
   const getRCSComplet = () => {
@@ -2604,7 +2604,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         <p className="text-sm text-slate-500 mt-2">Dessinez votre signature ci-dessus</p>
         <div className="flex justify-center gap-4 mt-4">
           <button onClick={clearCanvas} className="px-6 py-3 bg-slate-100 hover:bg-slate-200 rounded-xl flex items-center gap-1.5 min-h-[44px] transition-colors"><X size={16} />Effacer</button>
-          <button onClick={saveSignature} className="px-6 py-3 text-white rounded-xl flex items-center gap-1.5 min-h-[44px] hover:shadow-lg transition-all" style={{background: couleur}}><Check size={16} />Valider</button>
+          <button onClick={saveSignature} className="px-6 py-3 rounded-xl flex items-center gap-1.5 min-h-[44px] hover:shadow-lg transition-all bg-accent text-sur-accent"><Check size={16} />Valider</button>
         </div>
       </div>
       <Snackbar />
@@ -2616,17 +2616,17 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   const fenetreModele = showSaveTemplateModal && selected ? createPortal(
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4 animate-fade-in">
           <div className={`${cardBg} rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md shadow-2xl overflow-hidden`}>
-            <div className={`p-5 border-b flex items-center justify-between ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+            <div className={`p-5 border-b flex items-center justify-between border-bord`}>
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${couleur}20` }}>
-                  <Star size={20} style={{ color: couleur }} />
+                  <Star size={20} className="text-accent-texte" />
                 </div>
                 <div>
                   <h2 className={`font-bold text-lg ${textPrimary}`}>Sauvegarder comme modèle</h2>
                   <p className={`text-sm ${textMuted}`}>{(selected.lignes || []).length} lignes · {selected.numero}</p>
                 </div>
               </div>
-              <button onClick={() => setShowSaveTemplateModal(false)} className={`p-2 rounded-xl ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
+              <button onClick={() => setShowSaveTemplateModal(false)} className={`p-2 rounded-xl hover:bg-surface-2`}>
                 <X size={20} className={textSecondary} />
               </button>
             </div>
@@ -2675,8 +2675,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                   showToast(`Modèle "${templateName}" sauvegardé`, 'success');
                 }}
                 disabled={!templateName.trim()}
-                className="w-full py-3.5 text-white rounded-xl font-medium flex items-center justify-center gap-2 transition-all disabled:opacity-50 hover:shadow-lg"
-                style={{ background: couleur }}
+                className="w-full py-3.5 rounded-xl font-medium flex items-center justify-center gap-2 transition-all disabled:opacity-50 hover:shadow-lg bg-accent text-sur-accent"
               >
                 <Star size={16} /> Sauvegarder le modèle
               </button>
@@ -3053,7 +3052,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
               </button>
             </div>
             {selected.avoir_motif && (
-              <div className={`text-sm ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+              <div className={`text-sm text-encre-2`}>
                 <span className="font-medium">Motif :</span> {AVOIR_MOTIFS[selected.avoir_motif] || selected.avoir_motif}
                 {selected.avoir_motif_detail && <p className={`mt-1 text-xs ${textMuted}`}>{selected.avoir_motif_detail}</p>}
               </div>
@@ -3083,15 +3082,15 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
             </div>
             <div className="space-y-2">
               {avoirsLies.map(avoir => (
-                <div key={avoir.id} className={`flex items-center justify-between py-2 px-3 rounded-lg ${isDark ? 'bg-slate-700/50' : 'bg-white'}`}>
+                <div key={avoir.id} className={`flex items-center justify-between py-2 px-3 rounded-lg bg-surface`}>
                   <div className="flex items-center gap-2">
-                    <button onClick={() => setSelected(avoir)} className="text-sm font-medium hover:underline" style={{ color: couleur }}>
+                    <button onClick={() => setSelected(avoir)} className="text-sm font-medium hover:underline text-accent-texte">
                       {avoir.numero}
                     </button>
                     <span className={`text-xs px-1.5 py-0.5 rounded ${
                       avoir.statut === 'payee' ? (isDark ? 'bg-emerald-900/50 text-emerald-400' : 'bg-emerald-100 text-emerald-700') :
                       avoir.statut === 'envoye' ? (isDark ? 'bg-blue-900/50 text-blue-400' : 'bg-blue-100 text-blue-700') :
-                      (isDark ? 'bg-slate-600 text-slate-300' : 'bg-slate-100 text-slate-600')
+                      'bg-surface-2 text-encre-2'
                     }`}>
                       {avoir.statut === 'payee' ? 'Appliqué' : avoir.statut === 'envoye' ? 'Émis' : 'Brouillon'}
                     </span>
@@ -3191,14 +3190,14 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 
         {/* Devis expiry alert */}
         {isDevis && (isExpiringSoon(selected) || isExpired(selected)) && (
-          <div className={`rounded-xl p-4 border ${isExpired(selected) ? (isDark ? 'bg-red-900/30 border-red-700' : 'bg-red-50 border-red-200') : (isDark ? 'bg-orange-900/30 border-orange-700' : 'bg-orange-50 border-orange-200')}`}>
+          <div className={`rounded-xl p-4 border ${isExpired(selected) ? 'bg-danger-fond border-danger-point/40' : 'bg-alerte-fond border-alerte-point/40'}`}>
             <div className="flex items-center gap-3">
               <span className="text-xl">{isExpired(selected) ? '❌' : '⏳'}</span>
               <div>
-                <p className={`font-medium text-sm ${isExpired(selected) ? (isDark ? 'text-red-300' : 'text-red-800') : (isDark ? 'text-orange-300' : 'text-orange-800')}`}>
+                <p className={`font-medium text-sm ${isExpired(selected) ? 'text-danger-texte' : 'text-alerte-texte'}`}>
                   {isExpired(selected) ? 'Devis expiré' : getExpiryDaysLeft(selected) === 0 ? 'Dernier jour de validité' : `Expire dans ${getExpiryDaysLeft(selected)} jour${getExpiryDaysLeft(selected) > 1 ? 's' : ''}`}
                 </p>
-                <p className={`text-xs ${isExpired(selected) ? (isDark ? 'text-red-400' : 'text-red-600') : (isDark ? 'text-orange-400' : 'text-orange-600')}`}>
+                <p className={`text-xs ${isExpired(selected) ? 'text-danger-texte' : 'text-alerte-texte'}`}>
                   Valable jusqu'au {dateLue(finValidite(selected, entreprise)).toLocaleDateString('fr-FR')} · Émis le {dateLue(selected.date).toLocaleDateString('fr-FR')}
                   {isExpired(selected) && ' · il ne peut plus être envoyé ni signé en ligne'}
                 </p>
@@ -3258,10 +3257,10 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           const pro = estClientPro(clientRetard);
           if (!pro && pen.joursRetard < 30) return null;
           return (
-            <div className={`rounded-xl p-4 border ${isDark ? 'bg-orange-900/20 border-orange-700' : 'bg-orange-50 border-orange-200'}`}>
+            <div className="rounded-xl p-4 border bg-alerte-fond border-alerte-point/40">
               <div className="flex items-center gap-2 mb-3">
-                <AlertTriangle size={16} className="text-orange-500" />
-                <span className={`font-medium text-sm ${isDark ? 'text-orange-300' : 'text-orange-800'}`}>
+                <AlertTriangle size={16} className="text-alerte-texte" />
+                <span className="font-medium text-sm text-alerte-texte">
                   {pro ? 'Pénalités de retard' : 'Retard de paiement'} · {pen.joursRetard} jour{pen.joursRetard > 1 ? 's' : ''}
                 </span>
               </div>
@@ -3275,7 +3274,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                     <span>Indemnité forfaitaire de recouvrement</span>
                     <span className="font-medium">{formatMoney(pen.indemnite)}</span>
                   </div>
-                  <div className={`flex justify-between pt-2 border-t font-bold ${isDark ? 'border-orange-700 text-orange-300' : 'border-orange-200 text-orange-800'}`}>
+                  <div className={`flex justify-between pt-2 border-t font-bold border-alerte-point/40 text-alerte-texte`}>
                     <span>Total pénalités</span>
                     <span>{formatMoney(pen.total)}</span>
                   </div>
@@ -3285,8 +3284,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                   Un client particulier ne doit ni les pénalités de retard du Code de commerce ni l'indemnité de 40 €. Une mise en demeure lui réclame la somme due, qui produit alors des intérêts au taux légal.
                 </p>
               )}
-              <div className={`flex items-center justify-between gap-2 mt-3 pt-2 border-t ${isDark ? 'border-orange-700' : 'border-orange-200'}`}>
-                <p className={`text-xs ${isDark ? 'text-orange-400' : 'text-orange-600'}`}>
+              <div className="flex items-center justify-between gap-2 mt-3 pt-2 border-t border-alerte-point/40">
+                <p className="text-xs text-alerte-texte">
                   {pro ? 'Art. L441-10 C. com.' : 'Art. 1231-6 C. civ.'} — Échéance : {pen.echeance.toLocaleDateString('fr-FR')}
                 </p>
                 {pen.joursRetard >= 30 && (
@@ -3314,7 +3313,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         {/* ============ ZONE 3: TABBED DOCUMENT VIEW ============ */}
         <div className={`rounded-xl sm:rounded-2xl border overflow-hidden ${cardBg}`}>
           <Tabs defaultValue="document" isDark={isDark}>
-            <div className={`px-4 pt-4 border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+            <div className={`px-4 pt-4 border-b border-bord`}>
               <TabsList variant="underline" className="w-full justify-start gap-4">
                 <TabsTrigger value="document" variant="underline" className="pb-3">Document</TabsTrigger>
                 {isDevis && (
@@ -3335,12 +3334,12 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 
             <TabsContent value="document" className="mt-0 p-2 sm:p-6 overflow-x-auto">
               {/* Document header */}
-              <div className={`flex justify-between items-start mb-6 pb-6 border-b ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
+              <div className={`flex justify-between items-start mb-6 pb-6 border-b border-bord`}>
                 <div className="flex items-center gap-3">
                   {entreprise?.logo ? (
                     <img src={entreprise.logo} className="h-12 rounded-lg object-cover" alt={entreprise?.nom || ''} onError={(e) => { e.target.style.display = 'none'; }} />
                   ) : (
-                    <div className="w-12 h-12 rounded-lg flex items-center justify-center text-lg font-bold" style={{background: `${couleur}20`, color: couleur}}>
+                    <div className="w-12 h-12 rounded-lg flex items-center justify-center text-lg font-bold text-accent-texte" style={{background: `${couleur}20`}}>
                       {(entreprise?.nom || 'E').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
                     </div>
                   )}
@@ -3350,13 +3349,13 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-lg font-bold" style={{color: couleur}}>{selected.type === 'facture' ? 'FACTURE' : 'DEVIS'}</p>
+                  <p className="text-lg font-bold text-accent-texte">{selected.type === 'facture' ? 'FACTURE' : 'DEVIS'}</p>
                   <p className={`text-sm ${textMuted}`}>{selected.numero}</p>
                 </div>
               </div>
 
               {/* Client info */}
-              <div className={`mb-6 p-3 rounded-lg ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+              <div className={`mb-6 p-3 rounded-lg bg-fond`}>
                 <p className={`text-xs font-medium mb-1 ${textMuted}`}>Client</p>
                 <p className={`font-semibold ${client ? textPrimary : 'text-red-500'}`}>
                   {client ? `${client.prenom || ''} ${client.nom}`.trim() : (selected.client_nom || 'Client supprimé')}
@@ -3376,17 +3375,16 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 
               {/* Avenant banner */}
               {selected.is_avenant && (
-                <div className={`mb-4 p-3 rounded-lg border flex items-center gap-3 ${isDark ? 'bg-orange-900/20 border-orange-700/50' : 'bg-orange-50 border-orange-200'}`}>
-                  <Edit3 size={16} className="text-orange-500 flex-shrink-0" />
+                <div className={`mb-4 p-3 rounded-lg border flex items-center gap-3 bg-accent/10 border-accent/30`}>
+                  <Edit3 size={16} className="text-accent-texte flex-shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <p className={`text-sm font-medium ${isDark ? 'text-orange-300' : 'text-orange-800'}`}>
+                    <p className="text-sm font-medium text-accent-texte">
                       Avenant n°{selected.avenant_numero} du devis {selected.avenant_source_numero}
                     </p>
                   </div>
                   <button
                     onClick={() => { const src = devis.find(d => d.id === selected.avenant_source_id); if (src) setSelected(src); }}
-                    className="text-xs font-medium px-2 py-1 rounded hover:underline"
-                    style={{ color: couleur }}
+                    className="text-xs font-medium px-2 py-1 rounded hover:underline text-accent-texte"
                   >
                     Voir l'original
                   </button>
@@ -3401,14 +3399,14 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                 ).map((section, si) => (
                   <div key={si}>
                     {section.titre && (
-                      <h4 className={`font-semibold text-sm ${si > 0 ? 'mt-4 pt-3 border-t' : ''} pb-1 ${textPrimary} ${si > 0 ? (isDark ? 'border-slate-600' : 'border-slate-200') : ''}`}>
+                      <h4 className={`font-semibold text-sm ${si > 0 ? 'mt-4 pt-3 border-t' : ''} pb-1 ${textPrimary} ${si > 0 ? 'border-bord' : ''}`}>
                         {section.titre}
                       </h4>
                     )}
                     <table className="w-full text-xs sm:text-sm" aria-label={section.titre || 'Lignes du devis'}>
                       {si === 0 && (
                         <thead>
-                          <tr className={`border-b ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
+                          <tr className={`border-b border-bord`}>
                             <th scope="col" className={`text-left py-2 font-medium ${textPrimary}`}>Description</th>
                             <th scope="col" className={`text-right py-2 w-16 font-medium ${textPrimary}`}>Qté</th>
                             <th scope="col" className={`text-right py-2 w-20 font-medium ${textPrimary}`}>PU HT</th>
@@ -3418,7 +3416,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                       )}
                       <tbody>
                         {filterValidLignes(section.lignes).map((l, i) => (
-                          <tr key={i} className={`border-b ${isDark ? 'border-slate-700' : 'border-slate-100'}`}>
+                          <tr key={i} className={`border-b border-bord`}>
                             <td className={`py-2.5 whitespace-pre-line ${textPrimary}`}>{l.description || ''}</td>
                             <td className={`text-right ${textSecondary}`}>{l.quantite || 0} {l.unite || ''}</td>
                             <td className={`text-right ${textSecondary}`}>{formatMoney(parseFloat(l.prixUnitaire || l.prix_unitaire || 0))}</td>
@@ -3453,7 +3451,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                         {!microDoc && (t.tva.length
                           ? t.tva.map((x) => ligneTotal(`TVA ${pourcent(x.taux)}`, formatMoney(x.montant)))
                           : ligneTotal(`TVA ${pourcent(tauxTvaDocument(selected, entreprise))}`, formatMoney(selected.tva || selected.total_tva || 0)))}
-                        <div className={`flex justify-between py-2 border-t font-bold text-encre ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
+                        <div className={`flex justify-between py-2 border-t font-bold text-encre border-bord`}>
                           <span>{!microDoc ? 'Total TTC' : selected.facture_type === 'avoir' ? 'Total de l’avoir' : selected.type === 'facture' ? 'Net à payer' : 'Total'}</span>
                           <span className="tabular-nums">{formatMoney(t.totalTTC)}</span>
                         </div>
@@ -3481,7 +3479,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                     const totalPaye = linkedPaiements.reduce((s, p) => s + (p.montant || 0), 0);
                     const resteAPayer = (selected.total_ttc || 0) - totalPaye;
                     return (
-                      <div className={`mt-3 pt-3 border-t ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
+                      <div className={`mt-3 pt-3 border-t border-bord`}>
                         <p className={`text-xs font-medium mb-2 ${textMuted}`}>Paiements reçus</p>
                         {linkedPaiements.map(p => {
                           // Correction (098) : écriture négative motivée, jamais un encaissement effacé
@@ -3511,7 +3509,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                             </div>
                           );
                         })}
-                        <div className={`flex justify-between font-bold pt-2 mt-1 border-t text-sm ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
+                        <div className={`flex justify-between font-bold pt-2 mt-1 border-t text-sm border-bord`}>
                           <span className={resteAPayer <= 0 ? 'text-emerald-600' : ''}>
                             {resteAPayer <= 0 ? '✅ Soldé' : 'Reste à payer'}
                           </span>
@@ -3530,7 +3528,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                 const sig = signatureDuClient(selected);
                 if (!sig) return null;
                 return (
-                  <div className={`mt-6 pt-4 border-t ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
+                  <div className={`mt-6 pt-4 border-t border-bord`}>
                     <div className="flex items-center gap-2 flex-wrap">
                       <CheckCircle size={16} className="text-emerald-500" />
                       <span className="text-emerald-600 font-medium text-sm">
@@ -3549,7 +3547,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 
               {/* Notes */}
               {selected.notes && (
-                <div className={`mt-6 pt-4 border-t ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
+                <div className={`mt-6 pt-4 border-t border-bord`}>
                   <p className={`text-xs font-medium mb-1 ${textMuted}`}>Notes</p>
                   <p className={`text-sm whitespace-pre-wrap ${textSecondary}`}>{selected.notes}</p>
                 </div>
@@ -3557,7 +3555,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 
               {/* Conditions de paiement */}
               {selected.conditionsPaiement && CONDITIONS_PAIEMENT[selected.conditionsPaiement] && (
-                <div className={`mt-4 pt-3 border-t ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
+                <div className={`mt-4 pt-3 border-t border-bord`}>
                   <p className={`text-xs font-medium mb-1 ${textMuted}`}>Conditions de paiement</p>
                   <p className={`text-sm ${textSecondary}`}>{CONDITIONS_PAIEMENT[selected.conditionsPaiement]}</p>
                 </div>
@@ -3590,14 +3588,13 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
               return (
                 <TabsContent value="source" className="mt-0 p-4 sm:p-6 space-y-4">
                   {/* Devis source link */}
-                  <div className={`p-4 rounded-lg ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+                  <div className={`p-4 rounded-lg bg-fond`}>
                     <p className={`text-sm ${textMuted} mb-2`}>
                       {isAcompteFacture ? 'Facture d\'acompte créée à partir du devis :' : isSoldeFacture ? 'Facture de solde créée à partir du devis :' : 'Cette facture a été créée à partir du devis :'}
                     </p>
                     <button
                       onClick={() => { if (sourceDevis) setSelected(sourceDevis); }}
-                      className="text-sm font-medium hover:underline flex items-center gap-2"
-                      style={{ color: couleur }}
+                      className="text-sm font-medium hover:underline flex items-center gap-2 text-accent-texte"
                     >
                       <FileText size={16} />
                       {sourceDevis ? `${sourceDevis.numero} · ${formatMoney(sourceDevis.total_ttc)}` : 'Voir le devis source'}
@@ -3606,7 +3603,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 
                   {/* Acompte context: show all acompte factures linked to same devis */}
                   {(isAcompteFacture || isSoldeFacture) && allAcomptesForSource.length > 0 && (
-                    <div className={`rounded-lg border p-4 ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+                    <div className={`rounded-lg border p-4 border-bord`}>
                       <p className={`text-sm font-medium mb-3 ${textPrimary}`}>
                         Factures d'acompte ({allAcomptesForSource.length})
                       </p>
@@ -3620,7 +3617,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                               className={cn(
                                 'flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors',
                                 isCurrent ? (isDark ? 'bg-blue-900/30 border border-blue-700' : 'bg-blue-50 border border-blue-200') : 'cursor-pointer',
-                                !isCurrent && (isDark ? 'hover:bg-slate-700/50' : 'hover:bg-slate-50'),
+                                !isCurrent && 'hover:bg-surface-2',
                               )}
                             >
                               <div className="flex items-center gap-2">
@@ -3637,7 +3634,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                       </div>
                       {/* Total acomptes vs devis */}
                       {sourceDevis && (
-                        <div className={`mt-3 pt-3 border-t ${isDark ? 'border-slate-700' : 'border-slate-200'} flex items-center justify-between`}>
+                        <div className={`mt-3 pt-3 border-t border-bord flex items-center justify-between`}>
                           <span className={`text-xs ${textMuted}`}>Total acomptes / Devis</span>
                           <span className={`text-sm font-bold ${textPrimary}`}>
                             {formatMoney(allAcomptesForSource.reduce((s, a) => s + (a.total_ttc || 0), 0))} / {formatMoney(sourceDevis.total_ttc)}
@@ -3661,7 +3658,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                               {(etape.statut === 'facture' || etape.statut === 'paye') ? (
                                 <CheckCircle size={12} className={etape.statut === 'paye' ? 'text-emerald-500' : 'text-blue-500'} />
                               ) : (
-                                <span className={`w-3 h-3 rounded-full border ${isDark ? 'border-slate-600' : 'border-slate-300'}`} />
+                                <span className={`w-3 h-3 rounded-full border border-bord-fort`} />
                               )}
                               <span className={textPrimary}>{etape.label}</span>
                               <span>{etape.pourcentage}%</span>
@@ -3681,7 +3678,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                 <div className="space-y-3">
                   <p className={`text-sm font-medium ${textPrimary}`}>Historique d'envoi</p>
                   {getDocumentEmailStatus(selected.id).records.map((rec, idx) => (
-                    <div key={rec.id || idx} className={`flex items-center gap-3 p-3 rounded-lg ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+                    <div key={rec.id || idx} className={`flex items-center gap-3 p-3 rounded-lg bg-fond`}>
                       <Mail size={16} className="text-sky-500 flex-shrink-0" />
                       <div className="flex-1 min-w-0">
                         <p className={`text-sm ${textPrimary} truncate`}>{rec.to}</p>
@@ -3712,12 +3709,12 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
               <p className={`mb-4 text-sm ${textMuted}`}>Sécurisez votre engagement avant les travaux</p>
               <div className="space-y-3 mb-4">
                 {[20, 30, 40, 50].map(pct => (
-                  <button key={pct} onClick={() => setAcomptePct(pct)} className={`w-full flex items-center justify-between p-4 rounded-xl border-2 transition-all ${acomptePct === pct ? (isDark ? 'border-purple-500 bg-purple-900/30' : 'border-purple-500 bg-purple-50') : (isDark ? 'border-slate-600' : 'border-slate-200')}`}>
+                  <button key={pct} onClick={() => setAcomptePct(pct)} className={`w-full flex items-center justify-between p-4 rounded-xl border-2 transition-all ${acomptePct === pct ? (isDark ? 'border-purple-500 bg-purple-900/30' : 'border-purple-500 bg-purple-50') : 'border-bord'}`}>
                     <span className="font-medium">Acompte {pct}%</span>
                     <span className="text-lg font-bold" style={{ color: acomptePct === pct ? couleur : '#64748b' }}>{formatMoney(ttcAcompte(pct))}</span>
                   </button>
                 ))}
-                <div className={`flex items-center gap-3 p-3 ${isDark ? 'bg-slate-700' : 'bg-slate-50'} rounded-xl`}>
+                <div className={`flex items-center gap-3 p-3 bg-fond rounded-xl`}>
                   {/* Saisie libre : effacer puis taper ne remet plus 30 ; bornes vérifiées à la création (1 à 99 %) */}
                   <input type="text" inputMode="decimal" aria-label="Pourcentage d'acompte" value={acomptePct} onChange={e => { const v = e.target.value.replace(',', '.').replace(/[^\d.]/g, ''); setAcomptePct(v === '' ? '' : (v.endsWith('.') ? v : Number(v))); }} className="w-20 px-3 py-2 border rounded-xl text-center" />
                   <span className="text-slate-500">%</span>
@@ -3793,10 +3790,10 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         {/* Modal création chantier */}
         {showChantierModal && (
           <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={() => setShowChantierModal(false)}>
-            <div className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-t-2xl sm:rounded-2xl p-6 w-full max-w-lg animate-slide-up sm:animate-fade-in`} onClick={e => e.stopPropagation()}>
+            <div className={`bg-surface rounded-t-2xl sm:rounded-2xl p-6 w-full max-w-lg animate-slide-up sm:animate-fade-in`} onClick={e => e.stopPropagation()}>
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${couleur}15` }}>
-                  <Building2 size={20} style={{ color: couleur }} />
+                  <Building2 size={20} className="text-accent-texte" />
                 </div>
                 <div>
                   <h3 className={`text-lg font-bold ${textPrimary}`}>Créer un chantier</h3>
@@ -3807,7 +3804,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
               {/* Récapitulatif financier */}
               <div className={`rounded-xl p-4 mb-4 ${isDark ? 'bg-emerald-900/20 border border-emerald-800' : 'bg-emerald-50 border border-emerald-200'}`}>
                 <p className={`text-sm font-medium mb-2 ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>Revenu prévu</p>
-                <p className="text-2xl font-bold" style={{ color: couleur }}>{modeDiscret ? '·····' : `${(selected.total_ht || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} € HT`}</p>
+                <p className="text-2xl font-bold text-accent-texte">{modeDiscret ? '·····' : `${(selected.total_ht || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} € HT`}</p>
                 <p className={`text-sm ${textMuted}`}>{(selected.total_ttc || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} € TTC</p>
               </div>
 
@@ -3840,14 +3837,13 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 
               {/* Actions */}
               <div className="flex gap-3 mt-6">
-                <button onClick={() => setShowChantierModal(false)} className={`flex-1 px-4 py-2.5 rounded-xl ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-700'}`}>
+                <button onClick={() => setShowChantierModal(false)} className={`flex-1 px-4 py-2.5 rounded-xl bg-surface-2 text-encre-2`}>
                   Annuler
                 </button>
                 <button
                   onClick={createChantierFromDevis}
                   disabled={!chantierForm.nom}
-                  className="flex-1 px-4 py-2.5 text-white rounded-xl disabled:opacity-50 flex items-center justify-center gap-2"
-                  style={{ background: couleur }}
+                  className="flex-1 px-4 py-2.5 rounded-xl disabled:opacity-50 flex items-center justify-center gap-2 bg-accent text-sur-accent"
                 >
                   <Building2 size={16} /> Créer le chantier
                 </button>
@@ -3859,11 +3855,11 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         {/* PDF Preview Modal */}
         {showPdfPreview && (
           <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4 animate-fade-in" onClick={() => setShowPdfPreview(false)}>
-            <div className={`${isDark ? 'bg-slate-800' : 'bg-slate-100'} rounded-t-2xl sm:rounded-2xl w-full sm:max-w-4xl h-[95vh] sm:h-[90vh] shadow-2xl flex flex-col overflow-hidden`} onClick={e => e.stopPropagation()}>
-              <div className={`p-3 sm:p-4 border-b ${isDark ? 'border-slate-700 bg-slate-800' : 'border-slate-200 bg-white'} flex items-center justify-between gap-2 flex-shrink-0`}>
+            <div className={`bg-surface-2 rounded-t-2xl sm:rounded-2xl w-full sm:max-w-4xl h-[95vh] sm:h-[90vh] shadow-2xl flex flex-col overflow-hidden`} onClick={e => e.stopPropagation()}>
+              <div className={`p-3 sm:p-4 border-b border-bord bg-surface flex items-center justify-between gap-2 flex-shrink-0`}>
                 <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                   <div className="p-2 rounded-lg flex-shrink-0" style={{ background: `${couleur}20` }}>
-                    <FileText size={18} className="sm:w-5 sm:h-5" style={{ color: couleur }} />
+                    <FileText size={18} className="sm:w-5 sm:h-5 text-accent-texte" />
                   </div>
                   <div className="min-w-0">
                     <h2 className={`font-bold text-base sm:text-lg ${textPrimary} truncate`}>Aperçu du document</h2>
@@ -3909,20 +3905,20 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         {/* Creation success modal */}
         {showCreationSuccess && (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={() => setShowCreationSuccess(null)}>
-            <div className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-t-2xl sm:rounded-2xl w-full sm:max-w-sm shadow-2xl p-6`} onClick={e => e.stopPropagation()}>
+            <div className={`bg-surface rounded-t-2xl sm:rounded-2xl w-full sm:max-w-sm shadow-2xl p-6`} onClick={e => e.stopPropagation()}>
               {/* Success animation */}
               <div className="flex justify-center mb-4">
                 <div className="w-16 h-16 rounded-full flex items-center justify-center" style={{ backgroundColor: `${couleur}15` }}>
-                  <CheckCircle size={32} style={{ color: couleur }} />
+                  <CheckCircle size={32} className="text-accent-texte" />
                 </div>
               </div>
-              <h3 className={`text-xl font-bold text-center mb-1 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+              <h3 className={`text-xl font-bold text-center mb-1 text-encre`}>
                 {showCreationSuccess.devis?.type === 'facture' ? 'Facture' : 'Devis'} cree !
               </h3>
-              <p className={`text-sm text-center mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+              <p className={`text-sm text-center mb-1 text-encre-3`}>
                 N&deg; {showCreationSuccess.numero}
               </p>
-              <p className={`text-2xl font-bold text-center mb-5`} style={{ color: couleur }}>
+              <p className={`text-2xl font-bold text-center mb-5 text-accent-texte`}>
                 {formatMoney(showCreationSuccess.devis?.total_ttc)}
               </p>
 
@@ -3931,14 +3927,13 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                   setShowCreationSuccess(null);
                   if (showCreationSuccess.devis) trySend(showCreationSuccess.devis, sendEmail);
                 }}
-                className="w-full py-3 rounded-xl text-white font-semibold flex items-center justify-center gap-2 transition-all hover:opacity-90 shadow-md mb-3"
-                style={{ backgroundColor: couleur }}
+                className="w-full py-3 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all hover:opacity-90 shadow-md mb-3 bg-accent text-sur-accent"
               >
                 <Send size={16} /> Envoyer maintenant
               </button>
               <button
                 onClick={() => setShowCreationSuccess(null)}
-                className={`w-full py-2.5 rounded-xl text-sm font-medium transition-colors ${isDark ? 'text-slate-400 hover:text-slate-300' : 'text-slate-500 hover:text-slate-700'}`}
+                className={`w-full py-2.5 rounded-xl text-sm font-medium transition-colors text-encre-3 hover:text-encre-2`}
               >
                 Plus tard
               </button>
@@ -3949,7 +3944,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         {/* Email client manquant — saisie inline + enregistrement sur la fiche */}
         {askEmail && (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={() => setAskEmail(null)}>
-            <div className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-t-2xl sm:rounded-2xl w-full sm:max-w-sm shadow-2xl p-6`} onClick={e => e.stopPropagation()}>
+            <div className={`bg-surface rounded-t-2xl sm:rounded-2xl w-full sm:max-w-sm shadow-2xl p-6`} onClick={e => e.stopPropagation()}>
               <h3 className={`text-lg font-bold mb-1 ${textPrimary}`}>Email du client ?</h3>
               <p className={`text-sm mb-4 ${textMuted}`}>
                 {(() => { const c = clients.find(x => x.id === askEmail.doc?.client_id); return `${formatClientName(c) || 'Ce client'} n'a pas d'email enregistré. Saisissez-le pour envoyer le ${askEmail.doc?.type === 'facture' ? 'la facture' : 'devis'} — il sera ajouté à sa fiche.`; })()}
@@ -3970,12 +3965,11 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                   try { await ctxUpdateClient?.(doc.client_id, { email }); } catch { /* l'envoi reste possible */ }
                   sendEmail(doc, email);
                 }}
-                className="w-full py-3 rounded-xl text-white font-semibold flex items-center justify-center gap-2 transition-all hover:opacity-90 shadow-md disabled:opacity-50 mb-2"
-                style={{ backgroundColor: couleur }}
+                className="w-full py-3 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all hover:opacity-90 shadow-md disabled:opacity-50 mb-2 bg-accent text-sur-accent"
               >
                 <Send size={16} /> Enregistrer et envoyer
               </button>
-              <button onClick={() => setAskEmail(null)} className={`w-full py-2.5 rounded-xl text-sm font-medium ${isDark ? 'text-slate-400 hover:text-slate-300' : 'text-slate-500 hover:text-slate-700'}`}>
+              <button onClick={() => setAskEmail(null)} className={`w-full py-2.5 rounded-xl text-sm font-medium text-encre-3 hover:text-encre-2`}>
                 Annuler
               </button>
             </div>
@@ -3985,7 +3979,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         {/* Pre-send validation issues modal */}
         {sendValidationIssues && (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={() => setSendValidationIssues(null)}>
-            <div className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md shadow-2xl`} onClick={e => e.stopPropagation()}>
+            <div className={`bg-surface rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md shadow-2xl`} onClick={e => e.stopPropagation()}>
               <div className="p-6">
                 {/* Header */}
                 <div className="flex items-center gap-3 mb-4">
@@ -4029,7 +4023,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                 {/* Issues list */}
                 <div className="space-y-2 mb-6">
                   {sendValidationIssues.issues.map(issue => (
-                    <div key={issue.id} className={`flex items-start gap-3 p-3 rounded-xl border ${isDark ? 'bg-slate-700/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
+                    <div key={issue.id} className={`flex items-start gap-3 p-3 rounded-xl border bg-fond border-bord`}>
                       <XCircle size={16} className="text-red-500 shrink-0 mt-0.5" />
                       <div className="flex-1 min-w-0">
                         <p className={`text-sm ${textPrimary}`}>{issue.label}</p>
@@ -4049,8 +4043,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                               }, 200);
                             }
                           }}
-                          className="text-xs font-medium px-2.5 py-1 rounded-lg shrink-0 transition-colors"
-                          style={{ color: couleur, backgroundColor: `${couleur}15` }}
+                          className="text-xs font-medium px-2.5 py-1 rounded-lg shrink-0 transition-colors text-accent-texte"
+                          style={{ backgroundColor: `${couleur}15` }}
                         >
                           {issue.actionLabel}
                         </button>
@@ -4062,8 +4056,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                             setSendValidationIssues(null);
                             if (doc) openEditor(doc);
                           }}
-                          className="text-xs font-medium px-2.5 py-1 rounded-lg shrink-0 transition-colors"
-                          style={{ color: couleur, backgroundColor: `${couleur}15` }}
+                          className="text-xs font-medium px-2.5 py-1 rounded-lg shrink-0 transition-colors text-accent-texte"
+                          style={{ backgroundColor: `${couleur}15` }}
                         >
                           {issue.actionLabel}
                         </button>
@@ -4083,8 +4077,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                   {sendValidationIssues.sendFn && sendValidationIssues.isDownload && sendValidationIssues.issues.every(i => i.isLegal) && (
                     <button
                       onClick={() => { const fn = sendValidationIssues.sendFn; const doc = sendValidationIssues.doc; setSendValidationIssues(null); fn(doc); }}
-                      className="flex-1 py-2.5 rounded-xl font-medium text-sm text-white transition-colors hover:opacity-90"
-                      style={{ backgroundColor: couleur }}
+                      className="flex-1 py-2.5 rounded-xl font-medium text-sm transition-colors hover:opacity-90 bg-accent text-sur-accent"
                     >
                       Télécharger quand même
                     </button>
@@ -4098,37 +4091,37 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         {/* Post-send confirmation modal */}
         {showSendConfirmation && (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={() => setShowSendConfirmation(null)}>
-            <div className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-t-2xl sm:rounded-2xl w-full sm:max-w-sm shadow-2xl p-6`} onClick={e => e.stopPropagation()}>
+            <div className={`bg-surface rounded-t-2xl sm:rounded-2xl w-full sm:max-w-sm shadow-2xl p-6`} onClick={e => e.stopPropagation()}>
               {/* Success icon */}
               <div className="flex justify-center mb-4">
                 <div className="w-14 h-14 rounded-full flex items-center justify-center" style={{ backgroundColor: `${couleur}15` }}>
-                  <CheckCircle size={28} style={{ color: couleur }} />
+                  <CheckCircle size={28} className="text-accent-texte" />
                 </div>
               </div>
-              <h3 className={`text-lg font-bold text-center mb-1 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+              <h3 className={`text-lg font-bold text-center mb-1 text-encre`}>
                 {showSendConfirmation.prepare
                   ? `Message prêt dans ${showSendConfirmation.canal}`
                   : showSendConfirmation.relance ? 'Relance envoyée !' : `${showSendConfirmation.doc?.type === 'facture' ? 'Facture envoyée' : 'Devis envoyé'} !`}
               </h3>
-              <p className={`text-sm text-center mb-5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+              <p className={`text-sm text-center mb-5 text-encre-3`}>
                 {showSendConfirmation.prepare
                   ? `Appuyez sur « Envoyer » dans ${showSendConfirmation.canal} pour que votre client le reçoive.`
                   : `via ${showSendConfirmation.canal}`}
               </p>
 
               {/* Summary */}
-              <div className={`rounded-xl p-4 mb-4 space-y-2 ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+              <div className={`rounded-xl p-4 mb-4 space-y-2 bg-fond`}>
                 <div className="flex justify-between text-sm">
-                  <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>Client</span>
-                  <span className={`font-medium ${isDark ? 'text-white' : 'text-slate-900'}`}>{showSendConfirmation.clientName}</span>
+                  <span className="text-encre-3">Client</span>
+                  <span className={`font-medium text-encre`}>{showSendConfirmation.clientName}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>Montant</span>
-                  <span className={`font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{formatMoney(showSendConfirmation.montant)}</span>
+                  <span className="text-encre-3">Montant</span>
+                  <span className={`font-bold text-encre`}>{formatMoney(showSendConfirmation.montant)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>Canal</span>
-                  <span className={`font-medium ${isDark ? 'text-white' : 'text-slate-900'}`}>{showSendConfirmation.canal}</span>
+                  <span className="text-encre-3">Canal</span>
+                  <span className={`font-medium text-encre`}>{showSendConfirmation.canal}</span>
                 </div>
               </div>
 
@@ -4168,8 +4161,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 
               <button
                 onClick={() => setShowSendConfirmation(null)}
-                className="w-full py-2.5 rounded-xl text-sm font-semibold text-white transition-all"
-                style={{ backgroundColor: couleur }}
+                className="w-full py-2.5 rounded-xl text-sm font-semibold transition-all bg-accent text-sur-accent"
               >
                 OK
               </button>
@@ -4179,31 +4171,30 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 
         {showSignatureLinkModal && signatureLinkUrl && (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={() => setShowSignatureLinkModal(false)}>
-            <div className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md shadow-2xl p-5`} onClick={e => e.stopPropagation()}>
+            <div className={`bg-surface rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md shadow-2xl p-5`} onClick={e => e.stopPropagation()}>
               <div className="flex items-center justify-between mb-4">
-                <h3 className={`text-lg font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>Lien de signature</h3>
-                <button onClick={() => setShowSignatureLinkModal(false)} className={`p-1 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
-                  <X size={20} className={isDark ? 'text-slate-400' : 'text-slate-500'} />
+                <h3 className={`text-lg font-bold text-encre`}>Lien de signature</h3>
+                <button onClick={() => setShowSignatureLinkModal(false)} className={`p-1 rounded-lg hover:bg-surface-2`}>
+                  <X size={20} className="text-encre-3" />
                 </button>
               </div>
-              <p className={`text-sm mb-4 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+              <p className={`text-sm mb-4 text-encre-2`}>
                 Partagez ce lien avec votre client pour qu'il puisse signer le devis <strong>{selected?.numero}</strong> en ligne.
               </p>
               {/* URL display + copy */}
-              <div className={`flex items-center gap-2 p-3 rounded-xl mb-4 ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
+              <div className={`flex items-center gap-2 p-3 rounded-xl mb-4 bg-surface-2`}>
                 <input
                   type="text"
                   readOnly
                   value={signatureLinkUrl}
-                  className={`flex-1 text-sm bg-transparent outline-none ${isDark ? 'text-slate-200' : 'text-slate-700'}`}
+                  className={`flex-1 text-sm bg-transparent outline-none text-encre-2`}
                 />
                 <button
                   onClick={() => {
                     navigator.clipboard.writeText(signatureLinkUrl);
                     showToast('Lien copié !', 'success');
                   }}
-                  className="px-3 py-1.5 rounded-lg text-sm font-medium text-white"
-                  style={{ background: couleur }}
+                  className="px-3 py-1.5 rounded-lg text-sm font-medium bg-accent text-sur-accent"
                 >
                   <Copy size={14} />
                 </button>
@@ -4355,7 +4346,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
             } else {
               setMode('list');
             }
-          }} className={`p-2.5 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'} rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors`}><ArrowLeft size={20} /></button>
+          }} className={`p-2.5 hover:bg-surface-2 rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors`}><ArrowLeft size={20} /></button>
           <h2 className={`text-lg sm:text-2xl font-bold ${textPrimary}`}>Nouveau {form.type}</h2>
           <button
             onClick={() => {
@@ -4369,7 +4360,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                 setMode('list');
               }
             }}
-            className={`text-sm px-3 py-1.5 rounded-lg min-h-[44px] ${isDark ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-700' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'}`}
+            className={`text-sm px-3 py-1.5 rounded-lg min-h-[44px] text-encre-3 hover:text-encre-2 hover:bg-surface-2`}
           >
             Annuler
           </button>
@@ -4419,7 +4410,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                   setForm(prev => ({ ...prev, sections }));
                   showToast?.(`Modèle "${tpl.label}" chargé`, 'success');
                 }}
-                className={`p-3 rounded-xl border text-center transition-all hover:shadow-md ${isDark ? 'border-slate-600 hover:border-slate-500 bg-slate-800' : 'border-slate-200 hover:border-slate-300 bg-white'}`}
+                className={`p-3 rounded-xl border text-center transition-all hover:shadow-md border-bord hover:border-bord-fort bg-surface`}
               >
                 <tpl.icon size={20} className="mx-auto mb-1" style={{ color: couleur }} />
                 <p className={`text-xs font-medium ${textPrimary}`}>{tpl.label}</p>
@@ -4439,13 +4430,13 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6 space-y-4 sm:space-y-6`}>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
             <div><label className={`block text-sm mb-1 ${textPrimary}`}>Type</label><select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.type} onChange={e => setForm(p => ({...p, type: e.target.value}))}><option value="devis">Devis</option><option value="facture">Facture</option></select></div>
-            <div><label className={`block text-sm mb-1 ${textPrimary}`}>Client *</label><div className="flex gap-2"><select className={`flex-1 min-w-0 px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.clientId} onChange={e => setForm(p => ({...p, clientId: e.target.value}))}><option value="">Choisir...</option>{clients.map(c => <option key={c.id} value={c.id}>{c.nom}</option>)}</select><button onClick={() => setShowClientModal(true)} aria-label="Nouveau client" title="Nouveau client" className="px-3 py-2 rounded-xl min-h-[44px] flex items-center justify-center flex-shrink-0 hover:shadow-md transition-all" style={{background: `${couleur}20`, color: couleur}}><Plus size={18} /></button></div></div>
+            <div><label className={`block text-sm mb-1 ${textPrimary}`}>Client *</label><div className="flex gap-2"><select className={`flex-1 min-w-0 px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.clientId} onChange={e => setForm(p => ({...p, clientId: e.target.value}))}><option value="">Choisir...</option>{clients.map(c => <option key={c.id} value={c.id}>{c.nom}</option>)}</select><button onClick={() => setShowClientModal(true)} aria-label="Nouveau client" title="Nouveau client" className="px-3 py-2 rounded-xl min-h-[44px] flex items-center justify-center flex-shrink-0 hover:shadow-md transition-all text-accent-texte" style={{background: `${couleur}20`}}><Plus size={18} /></button></div></div>
             <div><label className={`block text-sm mb-1 ${textPrimary}`}>Chantier</label><select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.chantierId} onChange={e => setForm(p => ({...p, chantierId: e.target.value}))}><option value="">Aucun</option>{chantiers.map(c => <option key={c.id} value={c.id}>{c.nom}</option>)}</select></div>
             <div><label className={`block text-sm mb-1 ${textPrimary}`}>Date</label><input type="date" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.date} onChange={e => setForm(p => ({...p, date: e.target.value}))} /></div>
           </div>
           
           {/* TVA par défaut - Quick Buttons pour Jean-Marc fatigue */}
-          <div className={`p-3 ${isDark ? 'bg-slate-700' : 'bg-slate-50'} rounded-xl`}>
+          <div className={`p-3 bg-fond rounded-xl`}>
             <div className="flex flex-wrap items-center gap-3">
               <span className={`text-sm ${textMuted}`}>TVA:</span>
               <div className="flex gap-2 flex-wrap">
@@ -4492,20 +4483,20 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
               </div>
               <button
                 onClick={() => setShowCatalogBrowser(true)}
-                className="px-4 py-2.5 rounded-xl font-medium flex items-center gap-2 transition-all hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]"
-                style={{ backgroundColor: `${couleur}15`, color: couleur, border: `1px solid ${couleur}30` }}
+                className="px-4 py-2.5 rounded-xl font-medium flex items-center gap-2 transition-all hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] text-accent-texte"
+                style={{ backgroundColor: `${couleur}15`, border: `1px solid ${couleur}30` }}
               >
                 <Sparkles size={18} />
                 <span className="hidden sm:inline">Parcourir</span>
               </button>
             </div>
             {catalogueSearch && (
-              <div className={`border rounded-xl max-h-40 overflow-y-auto ${isDark ? 'border-slate-600 bg-slate-800' : 'border-slate-200 bg-white'}`}>
+              <div className={`border rounded-xl max-h-40 overflow-y-auto border-bord bg-surface`}>
                 {catalogueFiltered.map(item => (
                   <button
                     key={item.id}
                     onClick={() => { addLigne(item, form.sections[0].id); setCatalogueSearch(''); }}
-                    className={`w-full flex justify-between px-4 py-2 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'} border-b last:border-0 text-left`}
+                    className={`w-full flex justify-between px-4 py-2 hover:bg-surface-2 border-b last:border-0 text-left`}
                   >
                     <span>{item.nom}</span>
                     <span className="text-slate-500">{item.prix}€/{item.unite}</span>
@@ -4530,7 +4521,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                 {section.lignes.map((l, idx) => (
                   <div
                     key={l.id}
-                    className={`border-2 rounded-xl p-4 transition-all hover:shadow-md ${isDark ? 'border-slate-700 bg-slate-800/50' : 'border-slate-200 bg-white'}`}
+                    className={`border-2 rounded-xl p-4 transition-all hover:shadow-md border-bord bg-surface`}
                   >
                     {/* Top row: Description + Total + Delete */}
                     <div className="flex items-start gap-3 mb-3">
@@ -4543,19 +4534,19 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                         />
                       </div>
                       <div className="text-right flex-shrink-0">
-                        <p className="text-lg font-bold tabular-nums transition-all" style={{ color: couleur }}>
+                        <p className="text-lg font-bold tabular-nums transition-all text-accent-texte">
                           {getLineTotal(l).toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
                         </p>
                         <p className={`text-xs ${textMuted}`}>HT</p>
                       </div>
                       <div className="flex flex-col gap-0.5">
                         {idx > 0 && (
-                          <button onClick={() => moveLigne(section.id, idx, -1)} className={`p-1 rounded transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-400'}`} aria-label="Monter la ligne">
+                          <button onClick={() => moveLigne(section.id, idx, -1)} className={`p-1 rounded transition-colors hover:bg-surface-2 text-encre-3`} aria-label="Monter la ligne">
                             <ChevronUp size={14} />
                           </button>
                         )}
                         {idx < section.lignes.length - 1 && (
-                          <button onClick={() => moveLigne(section.id, idx, 1)} className={`p-1 rounded transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-400'}`} aria-label="Descendre la ligne">
+                          <button onClick={() => moveLigne(section.id, idx, 1)} className={`p-1 rounded transition-colors hover:bg-surface-2 text-encre-3`} aria-label="Descendre la ligne">
                             <ChevronDown size={14} />
                           </button>
                         )}
@@ -4648,7 +4639,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                     {(l.subItems || []).length > 0 && (
                       <div className="pl-8 mt-2 space-y-1.5">
                         {l.subItems.map((sub, subIdx) => (
-                          <div key={sub.id} className={`flex items-center gap-2 py-1.5 px-3 rounded-lg ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+                          <div key={sub.id} className={`flex items-center gap-2 py-1.5 px-3 rounded-lg bg-fond`}>
                             <span className={`text-xs ${textMuted}`}>↳</span>
                             <input
                               value={sub.description}
@@ -4684,7 +4675,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                     )}
                     <button
                       onClick={() => addSubItem(section.id, l.id)}
-                      className={`mt-1 ml-8 text-xs px-2 py-1 rounded-lg transition-colors ${isDark ? 'text-slate-400 hover:text-slate-300 hover:bg-slate-700' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'}`}
+                      className={`mt-1 ml-8 text-xs px-2 py-1 rounded-lg transition-colors text-encre-3 hover:text-encre-2 hover:bg-surface-2`}
                     >
                       + Sous-ligne
                     </button>
@@ -4697,8 +4688,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                 onClick={() => addLigne({ nom: '', prix: 0, unite: 'unité' }, section.id)}
                 className={`w-full py-3 border-2 rounded-xl flex items-center justify-center gap-2 transition-all hover:shadow-md ${isDark ? 'border-slate-600 hover:border-slate-500 hover:bg-slate-800' : 'border-slate-300 hover:border-slate-400 hover:bg-slate-50'}`}
               >
-                <Plus size={18} style={{ color: couleur }} />
-                <span className="font-medium" style={{ color: couleur }}>Ajouter une ligne</span>
+                <Plus size={18} className="text-accent-texte" />
+                <span className="font-medium text-accent-texte">Ajouter une ligne</span>
               </button>
               {/* B2: Inline error when no lines */}
               {section.lignes.length === 0 && (
@@ -4760,7 +4751,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                 )}
               </div>
             )}
-            <div className={`w-full sm:w-72 p-4 rounded-xl ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
+            <div className={`w-full sm:w-72 p-4 rounded-xl bg-fond`}>
               <div className={`flex justify-between py-1 ${textPrimary}`}><span>Total HT</span><span>{formatMoney(totals.totalHT)}</span></div>
               {form.remise > 0 && <div className="flex justify-between py-1 text-red-500"><span>Remise {form.remise}%</span><span>-{formatMoney(totals.remiseAmount)}</span></div>}
               {!isMicro && Object.entries(totals.tvaParTaux).filter(([_, data]) => data.base > 0).sort((a, b) => parseFloat(a[0]) - parseFloat(b[0])).map(([taux, data]) => (
@@ -4770,7 +4761,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                 </div>
               ))}
               {isMicro && <div className={`text-xs py-1 ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>TVA non applicable (art. 293B CGI)</div>}
-              <div className={`flex justify-between py-2 border-t font-bold mt-1 ${isDark ? 'border-slate-600' : 'border-slate-200'}`} style={{color: couleur}}><span>Total TTC</span><span>{formatMoney(totals.ttc)}</span></div>
+              <div className={`flex justify-between py-2 border-t font-bold mt-1 border-bord text-accent-texte`}><span>Total TTC</span><span>{formatMoney(totals.ttc)}</span></div>
               {form.retenueGarantie && (
                 <>
                   <div className={`flex justify-between py-1 text-sm ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>
@@ -4789,17 +4780,17 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           
           {/* Sticky Footer with Save Actions */}
         </div>
-        <div className={`sticky bottom-0 left-0 right-0 p-4 border-t shadow-lg ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+        <div className={`sticky bottom-0 left-0 right-0 p-4 border-t shadow-lg bg-surface border-bord`}>
           <div className="flex flex-col sm:flex-row justify-between items-center gap-3 max-w-full">
             <div className={`text-sm ${textMuted} hidden sm:block`}>
-              {form.sections[0]?.lignes?.length || 0} ligne{(form.sections[0]?.lignes?.length || 0) > 1 ? 's' : ''} • Total: <span className="font-bold" style={{color: couleur}}>{formatMoney(totals.ttc)}</span>
+              {form.sections[0]?.lignes?.length || 0} ligne{(form.sections[0]?.lignes?.length || 0) > 1 ? 's' : ''} • Total: <span className="font-bold text-accent-texte">{formatMoney(totals.ttc)}</span>
             </div>
             <div className="flex flex-wrap justify-center sm:justify-end gap-2 sm:gap-3">
               <button onClick={() => setMode('list')} className={`px-4 py-2.5 rounded-xl flex items-center gap-1.5 min-h-[44px] transition-colors ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'}`}>
                 <X size={16} />
                 <span>Annuler</span>
               </button>
-              <button onClick={() => { handleCreate(); }} disabled={isSubmitting} className={`px-5 py-2.5 rounded-xl flex items-center gap-1.5 min-h-[44px] transition-all font-medium disabled:opacity-50 border ${isDark ? 'border-slate-600 text-slate-300 hover:bg-slate-700' : 'border-slate-300 text-slate-600 hover:bg-slate-100'}`}>
+              <button onClick={() => { handleCreate(); }} disabled={isSubmitting} className={`px-5 py-2.5 rounded-xl flex items-center gap-1.5 min-h-[44px] transition-all font-medium disabled:opacity-50 border border-bord-fort text-encre-2 hover:bg-surface-2`}>
                 <FileText size={16} />
                 <span>Enregistrer brouillon</span>
               </button>
@@ -4810,7 +4801,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
             </div>
           </div>
         </div>
-        {showClientModal && <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4"><div className={`${cardBg} rounded-t-2xl sm:rounded-2xl p-6 w-full sm:max-w-md`}><h3 className="font-bold mb-4">Nouveau client</h3><div className="space-y-4"><input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="Nom *" value={newClient.nom} onChange={e => setNewClient(p => ({...p, nom: e.target.value}))} /><input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="Téléphone" value={newClient.telephone} onChange={e => setNewClient(p => ({...p, telephone: e.target.value}))} /></div><div className="flex justify-end gap-3 mt-6"><button onClick={() => setShowClientModal(false)} className={`px-4 py-2 rounded-xl ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`}>Annuler</button><button onClick={() => { if (newClient.nom) { const c = { id: generateId(), ...newClient }; setClients(prev => [...prev, c]); setForm(p => ({...p, clientId: c.id})); setShowClientModal(false); setNewClient({ nom: '', telephone: '' }); }}} className="px-4 py-2 text-white rounded-xl" style={{background: couleur}}>Créer</button></div></div></div>}
+        {showClientModal && <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4"><div className={`${cardBg} rounded-t-2xl sm:rounded-2xl p-6 w-full sm:max-w-md`}><h3 className="font-bold mb-4">Nouveau client</h3><div className="space-y-4"><input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="Nom *" value={newClient.nom} onChange={e => setNewClient(p => ({...p, nom: e.target.value}))} /><input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="Téléphone" value={newClient.telephone} onChange={e => setNewClient(p => ({...p, telephone: e.target.value}))} /></div><div className="flex justify-end gap-3 mt-6"><button onClick={() => setShowClientModal(false)} className={`px-4 py-2 rounded-xl bg-surface-2`}>Annuler</button><button onClick={() => { if (newClient.nom) { const c = { id: generateId(), ...newClient }; setClients(prev => [...prev, c]); setForm(p => ({...p, clientId: c.id})); setShowClientModal(false); setNewClient({ nom: '', telephone: '' }); }}} className="px-4 py-2 rounded-xl bg-accent text-sur-accent">Créer</button></div></div></div>}
 
         {/* Template Selector Modal - also needed in create mode */}
         <TemplateSelector
@@ -4864,8 +4855,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                   title={`Profil incomplet : ${missing.join(', ')}`}
                   onClick={() => setPage?.('settings')}
                 >
-                  <span className="w-2.5 h-2.5 rounded-full inline-block" style={{ background: couleur }} />
-                  <span className="absolute inset-0 w-2.5 h-2.5 rounded-full animate-ping opacity-50" style={{ background: couleur }} />
+                  <span className="w-2.5 h-2.5 rounded-full inline-block bg-accent" />
+                  <span className="absolute inset-0 w-2.5 h-2.5 rounded-full animate-ping opacity-50 bg-accent" />
                 </span>
               );
             })()}
@@ -4897,10 +4888,10 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           {showCreateMenu && (
             <>
               <div className="fixed inset-0 z-40" aria-hidden="true" onClick={() => setShowCreateMenu(false)} />
-              <div ref={createMenuRef} onKeyDown={(e) => { if (e.key === 'Escape') setShowCreateMenu(false); }} className={`absolute right-0 mt-1 w-56 rounded-xl border shadow-xl z-50 overflow-hidden ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+              <div ref={createMenuRef} onKeyDown={(e) => { if (e.key === 'Escape') setShowCreateMenu(false); }} className={`absolute right-0 mt-1 w-56 rounded-xl border shadow-xl z-50 overflow-hidden bg-surface border-bord`}>
                 <button
                   onClick={() => { setShowCreateMenu(false); setShowDevisExpressModal(true); }}
-                  className={`w-full px-4 py-3 flex items-center gap-3 text-left transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}
+                  className={`w-full px-4 py-3 flex items-center gap-3 text-left transition-colors hover:bg-surface-2`}
                 >
                   <Zap size={16} className="text-amber-500" />
                   <div>
@@ -4910,9 +4901,9 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                 </button>
                 <button
                   onClick={() => { setShowCreateMenu(false); setEditingDevis(null); setShowDevisWizard(true); }}
-                  className={`w-full px-4 py-3 flex items-center gap-3 text-left transition-colors border-t ${isDark ? 'hover:bg-slate-700 border-slate-700' : 'hover:bg-slate-50 border-slate-100'}`}
+                  className={`w-full px-4 py-3 flex items-center gap-3 text-left transition-colors border-t hover:bg-surface-2 border-bord`}
                 >
-                  <Edit3 size={16} style={{ color: couleur }} />
+                  <Edit3 size={16} className="text-accent-texte" />
                   <div>
                     <p className={`text-sm font-medium ${textPrimary}`}>Devis manuel</p>
                     <p className={`text-[11px] ${textMuted}`}>Création détaillée</p>
@@ -5030,7 +5021,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         <div className={`rounded-xl sm:rounded-2xl border p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center gap-3 ${isDark ? 'bg-amber-900/20 border-amber-800' : 'bg-amber-50 border-amber-200'}`}>
           <div className="flex items-center gap-3 flex-1 min-w-0">
             <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${couleur}20` }}>
-              <BellRing size={18} style={{ color: couleur }} />
+              <BellRing size={18} className="text-accent-texte" />
             </div>
             <div className="min-w-0">
               <p className={`text-sm font-semibold ${textPrimary}`}>
@@ -5067,8 +5058,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                 setActionLoading(null);
               }
             }}
-            className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-white disabled:opacity-60 flex-shrink-0"
-            style={{ background: couleur }}
+            className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm font-medium disabled:opacity-60 flex-shrink-0 bg-accent text-sur-accent"
           >
             {actionLoading === 'bulk-relance' ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
             {actionLoading === 'bulk-relance' ? 'Envoi…' : 'Tout envoyer'}
@@ -5099,7 +5089,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         const typesOptions = TYPES
           .map(([valeur, libelle, icone]) => ({ valeur, libelle, icone, compte: valeur === 'en_relance' ? relances.counts.total : (filterCounts[valeur] || 0) }))
           .filter(o => !(o.valeur === 'acomptes' && o.compte === 0));
-        const boutonSecondaire = `h-11 px-4 rounded-xl text-sm font-medium transition-colors disabled:opacity-40 ${isDark ? 'text-slate-300 hover:bg-slate-700' : 'text-slate-600 hover:bg-slate-100'}`;
+        const boutonSecondaire = `h-11 px-4 rounded-xl text-sm font-medium transition-colors disabled:opacity-40 text-encre-2 hover:bg-surface-2`;
         return (
           <div className="space-y-3">
             <div className="flex items-center gap-2">
@@ -5115,7 +5105,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
               pied={(
                 <>
                   <button type="button" onClick={toutEffacer} disabled={!nbFiltres} className={boutonSecondaire}>Tout effacer</button>
-                  <button type="button" onClick={() => setVolet(null)} className="flex-1 h-11 rounded-xl text-white text-sm font-bold shadow-sm" style={{ background: couleur }}>
+                  <button type="button" onClick={() => setVolet(null)} className="flex-1 h-11 rounded-xl text-sm font-bold shadow-sm bg-accent text-sur-accent">
                     Voir {filtered.length} document{filtered.length > 1 ? 's' : ''}
                   </button>
                 </>
@@ -5141,10 +5131,10 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                 <fieldset>
                   <legend className={`text-[11px] font-semibold uppercase tracking-wider mb-2.5 ${textMuted}`}>Exporter les {filtered.length} documents affichés</legend>
                   <div className="flex flex-wrap gap-2">
-                    <button type="button" onClick={() => { exportCSV(filtered); setVolet(null); }} className={`min-h-[40px] inline-flex items-center gap-2 px-4 rounded-full border text-sm font-medium ${isDark ? 'border-slate-600 text-slate-200 hover:bg-slate-700' : 'border-slate-200 text-slate-700 hover:bg-slate-50'}`}>
+                    <button type="button" onClick={() => { exportCSV(filtered); setVolet(null); }} className={`min-h-[40px] inline-flex items-center gap-2 px-4 rounded-full border text-sm font-medium border-bord text-encre-2 hover:bg-surface-2`}>
                       <Download size={15} /> Tableur (CSV)
                     </button>
-                    <button type="button" onClick={() => { batchExportPDF(filtered); setVolet(null); }} disabled={actionLoading === 'batch'} className={`min-h-[40px] inline-flex items-center gap-2 px-4 rounded-full border text-sm font-medium disabled:opacity-50 ${isDark ? 'border-slate-600 text-slate-200 hover:bg-slate-700' : 'border-slate-200 text-slate-700 hover:bg-slate-50'}`}>
+                    <button type="button" onClick={() => { batchExportPDF(filtered); setVolet(null); }} disabled={actionLoading === 'batch'} className={`min-h-[40px] inline-flex items-center gap-2 px-4 rounded-full border text-sm font-medium disabled:opacity-50 border-bord text-encre-2 hover:bg-surface-2`}>
                       {actionLoading === 'batch' ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} />} PDF
                     </button>
                   </div>
@@ -5179,30 +5169,30 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 
           {/* Features grid */}
           {!search && filter === 'all' && (
-            <div className={`p-6 sm:p-8 border-t ${isDark ? 'border-slate-700 bg-slate-800/50' : 'border-slate-100 bg-slate-50/50'}`}>
+            <div className={`p-6 sm:p-8 border-t border-bord bg-fond/50`}>
               <p className={`text-xs font-medium uppercase tracking-wider mb-4 ${textMuted}`}>Fonctionnalités</p>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-                <div className={`flex items-start gap-3 p-3 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-white'}`}>
+                <div className={`flex items-start gap-3 p-3 rounded-xl bg-surface`}>
                   <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${couleur}20` }}>
-                    <Send size={18} style={{ color: couleur }} />
+                    <Send size={18} className="text-accent-texte" />
                   </div>
                   <div>
                     <p className={`font-medium text-sm ${textPrimary}`}>Envoi rapide</p>
                     <p className={`text-xs ${textMuted}`}>Email, WhatsApp, PDF</p>
                   </div>
                 </div>
-                <div className={`flex items-start gap-3 p-3 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-white'}`}>
+                <div className={`flex items-start gap-3 p-3 rounded-xl bg-surface`}>
                   <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${couleur}20` }}>
-                    <CreditCard size={18} style={{ color: couleur }} />
+                    <CreditCard size={18} className="text-accent-texte" />
                   </div>
                   <div>
                     <p className={`font-medium text-sm ${textPrimary}`}>Acomptes</p>
                     <p className={`text-xs ${textMuted}`}>Factures d'acompte et solde</p>
                   </div>
                 </div>
-                <div className={`flex items-start gap-3 p-3 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-white'}`}>
+                <div className={`flex items-start gap-3 p-3 rounded-xl bg-surface`}>
                   <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${couleur}20` }}>
-                    <CheckCircle size={18} style={{ color: couleur }} />
+                    <CheckCircle size={18} className="text-accent-texte" />
                   </div>
                   <div>
                     <p className={`font-medium text-sm ${textPrimary}`}>Suivi des paiements</p>
@@ -5212,11 +5202,11 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
               </div>
 
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                <button onClick={ouvrirNouveauDevis} className="px-6 py-3 text-white rounded-xl flex items-center justify-center gap-2 hover:shadow-lg transition-all font-medium" style={{ background: couleur }}>
+                <button onClick={ouvrirNouveauDevis} className="px-6 py-3 rounded-xl flex items-center justify-center gap-2 hover:shadow-lg transition-all font-medium bg-accent text-sur-accent">
                   <FileText size={18} />
                   Créer mon premier devis
                 </button>
-                <button onClick={() => { setMode('create'); setForm(p => ({...p, type: 'facture'})); }} className={`px-6 py-3 rounded-xl flex items-center justify-center gap-2 hover:shadow-lg transition-all font-medium border-2 ${isDark ? 'border-slate-600 text-slate-300 hover:bg-slate-700' : 'border-slate-200 text-slate-700 hover:bg-slate-50'}`}>
+                <button onClick={() => { setMode('create'); setForm(p => ({...p, type: 'facture'})); }} className={`px-6 py-3 rounded-xl flex items-center justify-center gap-2 hover:shadow-lg transition-all font-medium border-2 border-bord text-encre-2 hover:bg-surface-2`}>
                   <Receipt size={18} />
                   Ou créer une facture
                 </button>
@@ -5226,8 +5216,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 
           {/* Simple CTA for filtered empty state */}
           {(search || filter !== 'all') && (
-            <div className={`p-6 border-t ${isDark ? 'border-slate-700' : 'border-slate-100'} text-center`}>
-              <button onClick={ouvrirNouveauDevis} className="px-6 py-3 text-white rounded-xl flex items-center justify-center gap-2 mx-auto hover:shadow-lg transition-all font-medium" style={{ background: couleur }}>
+            <div className={`p-6 border-t border-bord text-center`}>
+              <button onClick={ouvrirNouveauDevis} className="px-6 py-3 rounded-xl flex items-center justify-center gap-2 mx-auto hover:shadow-lg transition-all font-medium bg-accent text-sur-accent">
                 <Plus size={18} />
                 Créer un nouveau document
               </button>
@@ -5287,10 +5277,10 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         <div className="relative">
           {/* Multi-select action bar */}
           {selectedIds.size > 0 && (
-            <div className={`sticky top-0 z-20 flex items-center gap-3 px-4 py-2.5 rounded-xl mb-2 ${isDark ? 'bg-slate-700 border border-slate-600' : 'bg-slate-100 border border-slate-200'}`}>
+            <div className={`sticky top-0 z-20 flex items-center gap-3 px-4 py-2.5 rounded-xl mb-2 bg-surface-2 border border-bord`}>
               <span className={`text-sm font-semibold ${textPrimary}`}>{selectedIds.size} élément{selectedIds.size > 1 ? 's' : ''} sélectionné{selectedIds.size > 1 ? 's' : ''}</span>
               <div className="flex-1" />
-              <button onClick={() => batchExportPDF(filtered.filter(d => selectedIds.has(d.id)))} className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white flex items-center gap-1.5" style={{ background: couleur }}>
+              <button onClick={() => batchExportPDF(filtered.filter(d => selectedIds.has(d.id)))} className="px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 bg-accent text-sur-accent">
                 <Download size={13} /> Exporter PDF
               </button>
               {!isViewOnly && canPerform('devis', 'delete') && (
@@ -5322,7 +5312,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className={isDark ? 'bg-slate-700/50' : 'bg-slate-50'}>
+                <tr className="bg-fond">
                   <th className="px-2 py-2.5 w-8">
                     <input type="checkbox" checked={filtered.length > 0 && selectedIds.size === filtered.length} onChange={() => toggleSelectAll(filtered)} className="rounded border-slate-300 cursor-pointer" />
                   </th>
@@ -5336,7 +5326,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                     <th
                       key={col.key}
                       onClick={() => handleTableSort(col.key)}
-                      className={`px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wider cursor-pointer select-none transition-colors ${isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-700'} ${col.key === 'montant' ? 'text-right' : ''}`}
+                      className={`px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wider cursor-pointer select-none transition-colors text-encre-3 hover:text-encre-2 ${col.key === 'montant' ? 'text-right' : ''}`}
                     >
                       <span className="inline-flex items-center gap-1">
                         {col.label}
@@ -5348,7 +5338,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                       </span>
                     </th>
                   ))}
-                  <th className={`px-3 py-2.5 text-right text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Actions</th>
+                  <th className={`px-3 py-2.5 text-right text-xs font-semibold uppercase tracking-wider text-encre-3`}>Actions</th>
                 </tr>
               </thead>
               <tbody className={`divide-y ${isDark ? 'divide-slate-700' : 'divide-slate-100'}`}>
@@ -5365,7 +5355,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                     <tr
                       key={d.id}
                       onClick={() => { setSelected(d); setMode('preview'); }}
-                      className={`cursor-pointer transition-colors ${isDark ? (idx % 2 === 0 ? 'bg-slate-800' : 'bg-slate-800/50') : (idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50')} ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}
+                      className={`cursor-pointer transition-colors ${isDark ? (idx % 2 === 0 ? 'bg-slate-800' : 'bg-slate-800/50') : (idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50')} hover:bg-surface-2`}
                       style={{ borderLeft: `4px solid ${rowBorderColor}` }}
                     >
                       <td className="px-2 py-2.5 w-8">
@@ -5406,11 +5396,11 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                       <td className="px-3 py-2.5 text-right">
                         <div className="flex items-center justify-end gap-1">
                           <button onClick={(e) => { e.stopPropagation(); setSelected(d); setMode('preview'); }} className={`p-1.5 rounded-lg transition-all ${isDark ? 'hover:bg-slate-600' : 'hover:bg-slate-200'}`} title="Voir">
-                            <Eye size={14} className={isDark ? 'text-slate-400' : 'text-slate-500'} />
+                            <Eye size={14} className="text-encre-3" />
                           </button>
                           {!isViewOnly && canPerform('devis', 'edit') && peutModifierDocument(d, devis) && (
                             <button onClick={(e) => { e.stopPropagation(); openEditor(d); }} className={`p-1.5 rounded-lg transition-all ${isDark ? 'hover:bg-slate-600' : 'hover:bg-slate-200'}`} title="Modifier">
-                              <Edit3 size={14} className={isDark ? 'text-slate-400' : 'text-slate-500'} />
+                              <Edit3 size={14} className="text-encre-3" />
                             </button>
                           )}
                         </div>
@@ -5521,7 +5511,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       {assigningClientDevisId && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={() => setAssigningClientDevisId(null)}>
           <div className={`${cardBg} border rounded-t-2xl sm:rounded-2xl w-full sm:max-w-sm shadow-2xl`} onClick={e => e.stopPropagation()}>
-            <div className={`p-4 border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+            <div className={`p-4 border-b border-bord`}>
               <h3 className={`font-bold ${textPrimary}`}>Assigner un client</h3>
               <p className={`text-xs ${textMuted} mt-1`}>Sélectionnez le client pour ce devis</p>
             </div>
@@ -5534,8 +5524,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                     showToast(`Client "${`${c.prenom || ''} ${c.nom}`.trim()}" assigné`, 'success');
                   }
                   setAssigningClientDevisId(null);
-                }} className={`w-full text-left px-3 py-2.5 rounded-xl flex items-center gap-3 transition-all ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}>
-                  <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0" style={{ background: couleur }}>
+                }} className={`w-full text-left px-3 py-2.5 rounded-xl flex items-center gap-3 transition-all hover:bg-surface-2`}>
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 bg-accent text-sur-accent">
                     {(c.prenom?.[0] || c.nom?.[0] || '?').toUpperCase()}
                   </div>
                   <div className="min-w-0">
@@ -5548,7 +5538,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                 <p className={`text-sm text-center py-4 ${textMuted}`}>Aucun client disponible</p>
               )}
             </div>
-            <div className={`p-3 border-t ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+            <div className={`p-3 border-t border-bord`}>
               <button onClick={() => setAssigningClientDevisId(null)} className={`w-full py-2 rounded-xl text-sm font-medium ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
                 Annuler
               </button>
@@ -5560,12 +5550,12 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       {/* PDF Preview Modal */}
       {showPdfPreview && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in" onClick={() => setShowPdfPreview(false)}>
-          <div className={`${isDark ? 'bg-slate-800' : 'bg-slate-100'} rounded-2xl w-full max-w-4xl h-[90vh] shadow-2xl flex flex-col overflow-hidden`} onClick={e => e.stopPropagation()}>
+          <div className={`bg-surface-2 rounded-2xl w-full max-w-4xl h-[90vh] shadow-2xl flex flex-col overflow-hidden`} onClick={e => e.stopPropagation()}>
             {/* Header */}
-            <div className={`p-3 sm:p-4 border-b ${isDark ? 'border-slate-700 bg-slate-800' : 'border-slate-200 bg-white'} flex items-center justify-between gap-2 flex-shrink-0`}>
+            <div className={`p-3 sm:p-4 border-b border-bord bg-surface flex items-center justify-between gap-2 flex-shrink-0`}>
               <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                 <div className="p-2 rounded-lg flex-shrink-0" style={{ background: `${couleur}20` }}>
-                  <FileText size={18} className="sm:w-5 sm:h-5" style={{ color: couleur }} />
+                  <FileText size={18} className="sm:w-5 sm:h-5 text-accent-texte" />
                 </div>
                 <div className="min-w-0">
                   <h2 className={`font-bold text-base sm:text-lg ${textPrimary} truncate`}>Aperçu du document</h2>

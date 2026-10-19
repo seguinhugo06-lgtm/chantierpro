@@ -28,11 +28,11 @@ export default function AcompteEcheancierModal({
   onEcheancierCreated,
 }) {
   // Theme
-  const cardBg = isDark ? 'bg-slate-800' : 'bg-white';
-  const textPrimary = isDark ? 'text-slate-100' : 'text-slate-900';
-  const textMuted = isDark ? 'text-slate-400' : 'text-slate-500';
-  const inputBg = isDark ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-slate-300';
-  const borderColor = isDark ? 'border-slate-700' : 'border-slate-200';
+  const cardBg = 'bg-surface';
+  const textPrimary = 'text-encre';
+  const textMuted = 'text-encre-3';
+  const inputBg = 'bg-surface border-bord-fort';
+  const borderColor = 'border-bord';
 
   const fm = (amount) => {
     if (modeDiscret) return '·····';
@@ -169,7 +169,7 @@ export default function AcompteEcheancierModal({
             <div className={cn('flex items-center justify-between p-5 border-b', borderColor)}>
               <div>
                 <h3 className={cn('font-bold text-lg', textPrimary)}>
-                  <ClipboardList size={18} className="inline mr-2" style={{ color: couleur }} />
+                  <ClipboardList size={18} className="inline mr-2 text-accent-texte" />
                   Échéancier d'acomptes
                 </h3>
                 <p className={cn('text-sm mt-0.5', textMuted)}>
@@ -178,7 +178,7 @@ export default function AcompteEcheancierModal({
               </div>
               <button
                 onClick={onClose}
-                className={cn('p-2 rounded-xl transition-colors', isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100')}
+                className={cn('p-2 rounded-xl transition-colors', 'hover:bg-surface-2')}
               >
                 <X size={18} className={textMuted} />
               </button>
@@ -201,7 +201,7 @@ export default function AcompteEcheancierModal({
                           'p-3 rounded-xl border-2 text-left transition-all',
                           isActive
                             ? (isDark ? 'border-orange-500 bg-orange-900/20' : 'border-orange-500 bg-orange-50')
-                            : (isDark ? 'border-slate-600 hover:border-slate-500' : 'border-slate-200 hover:border-slate-300'),
+                            : 'border-bord hover:border-bord-fort',
                         )}
                       >
                         <span className={cn('font-medium text-sm block', textPrimary)}>{tmpl.label}</span>
@@ -215,7 +215,7 @@ export default function AcompteEcheancierModal({
                       'p-3 rounded-xl border-2 text-left transition-all',
                       selectedTemplate === 'custom'
                         ? (isDark ? 'border-orange-500 bg-orange-900/20' : 'border-orange-500 bg-orange-50')
-                        : (isDark ? 'border-slate-600 hover:border-slate-500' : 'border-slate-200 hover:border-slate-300'),
+                        : 'border-bord hover:border-bord-fort',
                     )}
                   >
                     <span className={cn('font-medium text-sm block', textPrimary)}>Personnalisé</span>
@@ -290,8 +290,7 @@ export default function AcompteEcheancierModal({
                     <div key={idx} className={cn('flex items-center justify-between py-1.5', idx > 0 && `border-t ${borderColor}`)}>
                       <div className="flex items-center gap-2">
                         <div
-                          className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white"
-                          style={{ backgroundColor: couleur }}
+                          className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold bg-accent text-sur-accent"
                         >
                           {etape.numero}
                         </div>

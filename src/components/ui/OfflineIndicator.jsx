@@ -272,7 +272,7 @@ export function NetworkStatus({ isDark = false, showLabel = true }) {
     return () => clearTimeout(timer);
   }, []);
 
-  const textColor = isDark ? 'text-slate-400' : 'text-slate-500';
+  const textColor = 'text-encre-3';
 
   return (
     <div

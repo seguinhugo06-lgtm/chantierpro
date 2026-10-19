@@ -105,10 +105,10 @@ function ErrorFallback({
   isDark = false,
   showDetails = false
 }) {
-  const bgColor = isDark ? 'bg-slate-900' : 'bg-slate-50';
-  const cardBg = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200';
-  const textPrimary = isDark ? 'text-white' : 'text-slate-900';
-  const textMuted = isDark ? 'text-slate-400' : 'text-slate-600';
+  const bgColor = 'bg-fond';
+  const cardBg = 'bg-surface border-bord';
+  const textPrimary = 'text-encre';
+  const textMuted = 'text-encre-2';
 
   return (
     <div className={`min-h-[400px] flex items-center justify-center p-6 ${bgColor}`}>
@@ -164,9 +164,7 @@ function ErrorFallback({
             <summary className="cursor-pointer hover:text-slate-600 mb-2">
               Détails techniques
             </summary>
-            <div className={`p-3 rounded-lg font-mono text-xs overflow-auto max-h-40 ${
-              isDark ? 'bg-slate-900' : 'bg-slate-100'
-            }`}>
+            <div className={`p-3 rounded-lg font-mono text-xs overflow-auto max-h-40 bg-surface-2`}>
               <p className="font-bold text-red-500">{error.toString()}</p>
               {errorInfo && (
                 <pre className="mt-2 whitespace-pre-wrap">
@@ -185,7 +183,7 @@ function ErrorFallback({
  * Minimal error fallback for inline components
  */
 function MinimalErrorFallback({ error, onRetry, isDark = false }) {
-  const textMuted = isDark ? 'text-slate-400' : 'text-slate-600';
+  const textMuted = 'text-encre-2';
 
   return (
     <div className={`p-4 text-center ${textMuted}`}>

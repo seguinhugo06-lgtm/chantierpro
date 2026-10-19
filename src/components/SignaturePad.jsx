@@ -29,11 +29,11 @@ export default function SignaturePad({
   const [exemplaireParEmail, setExemplaireParEmail] = useState(false);
 
   // Theme classes
-  const cardBg = isDark ? "bg-slate-800" : "bg-white";
-  const textPrimary = isDark ? "text-slate-100" : "text-slate-900";
-  const textSecondary = isDark ? "text-slate-300" : "text-slate-600";
-  const textMuted = isDark ? "text-slate-400" : "text-slate-600";
-  const inputBg = isDark ? "bg-slate-700 border-slate-600 text-white" : "bg-white border-slate-300";
+  const cardBg = "bg-surface";
+  const textPrimary = "text-encre";
+  const textSecondary = "text-encre-2";
+  const textMuted = "text-encre-2";
+  const inputBg = "bg-surface border-bord-fort";
 
   // Reset on open
   useEffect(() => {
@@ -111,7 +111,7 @@ export default function SignaturePad({
         <div className="p-5 border-b flex items-center justify-between" style={{ borderColor: isDark ? '#334155' : '#e2e8f0' }}>
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${couleur}20` }}>
-              <Pen size={20} style={{ color: couleur }} />
+              <Pen size={20} className="text-accent-texte" />
             </div>
             <div>
               <h2 className={`font-bold text-lg ${textPrimary}`}>Signature electronique</h2>
@@ -120,7 +120,7 @@ export default function SignaturePad({
           </div>
           <button
             onClick={onClose}
-            className={`p-2 rounded-xl ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'} transition-colors`}
+            className={`p-2 rounded-xl hover:bg-surface-2 transition-colors`}
           >
             <X size={20} className={textSecondary} />
           </button>
@@ -131,9 +131,9 @@ export default function SignaturePad({
           {step === 'info' && (
             <>
               {/* Resume du document */}
-              <div className={`rounded-xl p-4 mb-5 ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
+              <div className={`rounded-xl p-4 mb-5 bg-fond`}>
                 <div className="flex items-center gap-3 mb-3">
-                  <FileCheck size={24} style={{ color: couleur }} />
+                  <FileCheck size={24} className="text-accent-texte" />
                   <div>
                     <p className={`font-medium ${textPrimary}`}>
                       {document.type === 'devis' ? 'Devis' : 'Facture'} {document.numero}
@@ -143,10 +143,10 @@ export default function SignaturePad({
                     </p>
                   </div>
                 </div>
-                <div className={`pt-3 border-t ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
+                <div className={`pt-3 border-t border-bord`}>
                   <div className="flex justify-between items-center">
                     <span className={textSecondary}>Montant TTC</span>
-                    <span className="text-xl font-bold" style={{ color: couleur }}>
+                    <span className="text-xl font-bold text-accent-texte">
                       {formatMoney(document.total_ttc)}
                     </span>
                   </div>
@@ -177,7 +177,7 @@ export default function SignaturePad({
               <label className={`flex items-start gap-3 p-4 rounded-xl border cursor-pointer transition-colors ${
                 acceptCGV
                   ? (isDark ? 'border-emerald-500 bg-emerald-900/20' : 'border-emerald-500 bg-emerald-50')
-                  : (isDark ? 'border-slate-600' : 'border-slate-200')
+                  : 'border-bord'
               }`}>
                 <input
                   type="checkbox"
@@ -199,7 +199,7 @@ export default function SignaturePad({
 
               {/* Demande expresse (L221-25) : particulier seulement, facultative, séparée de l'acceptation */}
               {particulier && (
-                <label className={`flex items-start gap-3 p-4 mt-3 rounded-xl border cursor-pointer transition-colors ${isDark ? 'border-slate-600' : 'border-slate-200'}`} data-ui="DemandeExpresseSurPlace">
+                <label className={`flex items-start gap-3 p-4 mt-3 rounded-xl border cursor-pointer transition-colors border-bord`} data-ui="DemandeExpresseSurPlace">
                   <input type="checkbox" checked={executionAnticipee} onChange={e => setExecutionAnticipee(e.target.checked)} className="mt-1 w-5 h-5 rounded flex-shrink-0" />
                   <div>
                     <p className={`text-sm font-medium ${textPrimary}`}>{DEMANDE_EXPRESSE}</p>
@@ -210,7 +210,7 @@ export default function SignaturePad({
 
               {/* Exemplaire signé par e-mail : avec l'accord du client (L221-9), sinon il reçoit un exemplaire papier */}
               {emailClient && (
-                <label className={`flex items-start gap-3 p-4 mt-3 rounded-xl border cursor-pointer transition-colors ${isDark ? 'border-slate-600' : 'border-slate-200'}`} data-ui="ExemplaireParEmail">
+                <label className={`flex items-start gap-3 p-4 mt-3 rounded-xl border cursor-pointer transition-colors border-bord`} data-ui="ExemplaireParEmail">
                   <input type="checkbox" checked={exemplaireParEmail} onChange={e => setExemplaireParEmail(e.target.checked)} className="mt-1 w-5 h-5 rounded flex-shrink-0" />
                   <p className={`text-sm ${textPrimary}`}>J'accepte de recevoir mon exemplaire du contrat signé par e-mail, à l'adresse {emailClient}, plutôt que sur papier.</p>
                 </label>
@@ -220,8 +220,7 @@ export default function SignaturePad({
               <button
                 onClick={() => setStep('sign')}
                 disabled={!canProceed}
-                className="w-full mt-5 py-4 text-white rounded-xl font-medium flex items-center justify-center gap-2 disabled:opacity-50 transition-all hover:shadow-lg"
-                style={{ background: couleur }}
+                className="w-full mt-5 py-4 rounded-xl font-medium flex items-center justify-center gap-2 disabled:opacity-50 transition-all hover:shadow-lg bg-accent text-sur-accent"
               >
                 <Pen size={20} />
                 Passer a la signature
@@ -240,7 +239,7 @@ export default function SignaturePad({
               </div>
 
               {/* Zone de signature */}
-              <div className={`relative border-2 rounded-xl overflow-hidden mb-4 ${isDark ? 'border-slate-600 bg-white' : 'border-slate-300 bg-white'}`}>
+              <div className={`relative border-2 rounded-xl overflow-hidden mb-4 border-bord-fort bg-surface`}>
                 <SignatureCanvas
                   ref={sigPad}
                   canvasProps={{
@@ -280,15 +279,14 @@ export default function SignaturePad({
               <div className="flex gap-3">
                 <button
                   onClick={() => setStep('info')}
-                  className={`flex-1 py-3 rounded-xl font-medium ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}
+                  className={`flex-1 py-3 rounded-xl font-medium bg-surface-2 text-encre-2`}
                 >
                   Retour
                 </button>
                 <button
                   onClick={handleSave}
                   disabled={!canSign || isEmpty}
-                  className="flex-1 py-3 text-white rounded-xl font-medium flex items-center justify-center gap-2 disabled:opacity-50 transition-all hover:shadow-lg"
-                  style={{ background: couleur }}
+                  className="flex-1 py-3 rounded-xl font-medium flex items-center justify-center gap-2 disabled:opacity-50 transition-all hover:shadow-lg bg-accent text-sur-accent"
                 >
                   <Check size={20} />
                   Valider

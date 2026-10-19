@@ -71,7 +71,7 @@ export function initials(name = '') {
  * @param {boolean} isDark
  */
 export function surface(isDark) {
-  return isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200';
+  return 'bg-surface border-bord';
 }
 
 /**

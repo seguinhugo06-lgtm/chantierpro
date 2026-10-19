@@ -58,8 +58,8 @@ const GarantieProgressBar = memo(function GarantieProgressBar({
   };
 
   const isExpired = statut === 'expiree' || progress.daysRemaining <= 0;
-  const textPrimary = isDark ? 'text-slate-200' : 'text-slate-700';
-  const textMuted = isDark ? 'text-slate-400' : 'text-slate-500';
+  const textPrimary = 'text-encre-2';
+  const textMuted = 'text-encre-3';
 
   if (size === 'compact') {
     return (

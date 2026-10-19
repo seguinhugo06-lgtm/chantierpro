@@ -57,8 +57,8 @@ export const TabsList = React.forwardRef(
     // vertical scrollbar: CSS promotes overflow-y to `auto` when only overflow-x
     // is set, and the tab border/margin math overflows the row by ~2px.
     const variantStyles = {
-      default: cn('p-1 rounded-xl overflow-x-auto overflow-y-hidden flex-nowrap', isDark ? 'bg-slate-800' : 'bg-gray-100'),
-      underline: cn('border-b overflow-x-auto overflow-y-hidden flex-nowrap', isDark ? 'border-slate-700' : 'border-gray-200'),
+      default: cn('p-1 rounded-xl overflow-x-auto overflow-y-hidden flex-nowrap', 'bg-surface-2'),
+      underline: cn('border-b overflow-x-auto overflow-y-hidden flex-nowrap', 'border-bord'),
       pills: 'gap-2 overflow-x-auto overflow-y-hidden flex-nowrap',
     };
 
@@ -98,14 +98,14 @@ export const TabsTrigger = React.forwardRef(
 
     const variantStyles = {
       default: isSelected
-        ? cn(isDark ? 'bg-slate-700 text-white' : 'bg-white text-gray-900', 'shadow-sm rounded-lg')
-        : cn(isDark ? 'text-gray-400 hover:text-white hover:bg-slate-700/50' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50', 'rounded-lg'),
+        ? cn('bg-surface text-encre', 'shadow-sm rounded-lg')
+        : cn('text-encre-2 hover:text-encre hover:bg-surface-2', 'rounded-lg'),
       underline: isSelected
-        ? cn(isDark ? 'text-white' : 'text-gray-900', 'border-b-2 border-current -mb-px font-semibold')
-        : cn(isDark ? 'text-gray-400 hover:text-gray-300' : 'text-gray-500 hover:text-gray-700', 'border-b-2 border-transparent -mb-px'),
+        ? cn('text-encre', 'border-b-2 border-current -mb-px font-semibold')
+        : cn('text-encre-3 hover:text-encre-2', 'border-b-2 border-transparent -mb-px'),
       pills: isSelected
         ? 'bg-primary-500 text-white rounded-full'
-        : cn(isDark ? 'text-gray-400 hover:bg-slate-700' : 'text-gray-600 hover:bg-gray-100', 'rounded-full'),
+        : cn('text-encre-2 hover:bg-surface-2', 'rounded-full'),
     };
 
     return (

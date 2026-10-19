@@ -163,11 +163,11 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
   const formatMoney = (n, d) => modeDiscret ? '·····' : fmtMoney(n || 0, d);
 
   // Theme classes
-  const cardBg = isDark ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200";
-  const inputBg = isDark ? "bg-slate-700 border-slate-600 text-white" : "bg-white border-slate-300";
-  const textPrimary = isDark ? "text-slate-100" : "text-slate-900";
-  const textSecondary = isDark ? "text-slate-300" : "text-slate-600";
-  const textMuted = isDark ? "text-slate-400" : "text-slate-600";
+  const cardBg = "bg-surface border-bord";
+  const inputBg = "bg-surface border-bord-fort";
+  const textPrimary = "text-encre";
+  const textSecondary = "text-encre-2";
+  const textMuted = "text-encre-2";
 
   // Channel config for échanges multi-canal
   const CHANNEL_CONFIG = useMemo(() => ({
@@ -175,7 +175,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
     sms: { label: 'SMS', icon: MessageCircle, color: '#22c55e', bg: 'bg-succes-fond text-succes-texte', btnBg: isDark ? 'bg-green-900/30 text-green-400 hover:bg-green-900/50' : 'bg-green-50 text-green-600 hover:bg-green-100' },
     whatsapp: { label: 'WhatsApp', icon: MessageCircle, color: '#25d366', bg: 'bg-succes-fond text-succes-texte', btnBg: isDark ? 'bg-emerald-900/30 text-emerald-400 hover:bg-emerald-900/50' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100' },
     appel: { label: 'Appel', icon: Phone, color: '#8b5cf6', bg: isDark ? 'bg-purple-900/50 text-purple-400' : 'bg-purple-100 text-purple-600', btnBg: isDark ? 'bg-purple-900/30 text-purple-400 hover:bg-purple-900/50' : 'bg-purple-50 text-purple-600 hover:bg-purple-100' },
-    visite: { label: 'Visite', icon: MapPin, color: '#f97316', bg: isDark ? 'bg-orange-900/50 text-orange-400' : 'bg-orange-100 text-orange-600', btnBg: isDark ? 'bg-orange-900/30 text-orange-400 hover:bg-orange-900/50' : 'bg-orange-50 text-orange-600 hover:bg-orange-100' },
+    visite: { label: 'Visite', icon: MapPin, color: '#f97316', bg: 'bg-alerte-fond text-alerte-texte', btnBg: 'bg-alerte-fond text-alerte-texte hover:opacity-80' },
   }), [isDark]);
 
   // Type icons for categories
@@ -1119,7 +1119,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                           )}
                           <div className="flex items-center gap-3 mt-1">
                             {e.duree && <span className={`text-xs ${textMuted} flex items-center gap-1`}><Clock size={10} /> {e.duree} min</span>}
-                            {e.montant && !modeDiscret && <span className="text-xs font-medium" style={{color: couleur}}>{formatMoney(e.montant)}</span>}
+                            {e.montant && !modeDiscret && <span className="text-xs font-medium text-accent-texte">{formatMoney(e.montant)}</span>}
                           </div>
                         </div>
                         <ChevronRight size={14} className={`${textMuted} flex-shrink-0 mt-3`} />
@@ -1202,7 +1202,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                   {e.montant && !modeDiscret && (
                     <div>
                       <p className={`text-xs font-medium uppercase tracking-wider mb-1 ${textMuted}`}>Montant</p>
-                      <p className="text-sm font-semibold" style={{color: couleur}}>{formatMoney(e.montant)}</p>
+                      <p className="text-sm font-semibold text-accent-texte">{formatMoney(e.montant)}</p>
                     </div>
                   )}
                   {/* Content */}
@@ -1290,8 +1290,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                           input.value = '';
                         }
                       }}
-                      className="px-3 py-2 rounded-xl text-white text-sm font-medium"
-                      style={{ backgroundColor: couleur }}
+                      className="px-3 py-2 rounded-xl text-sm font-medium bg-accent text-sur-accent"
                     >
                       <Plus size={16} />
                     </button>
@@ -1379,8 +1378,8 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                           if (setSelectedChantier) setSelectedChantier(clientChantiers[0].id);
                           if (setPage) setPage('chantiers');
                         }}
-                        className="inline-flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-medium transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5"
-                        style={{ background: couleur, color: 'white' }}
+                        className="inline-flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-medium transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5 bg-accent"
+                        style={{ color: 'white' }}
                       >
                         <Plus size={18} /> Ajouter une photo
                       </button>
@@ -1399,8 +1398,8 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                           if (setSelectedChantier) setSelectedChantier(clientChantiers[0].id);
                           if (setPage) setPage('chantiers');
                         }}
-                        className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-colors shadow-sm hover:shadow-md"
-                        style={{ background: `${couleur}15`, color: couleur }}
+                        className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-colors shadow-sm hover:shadow-md text-accent-texte"
+                        style={{ background: `${couleur}15` }}
                       >
                         <Camera size={14} /> Ajouter une photo
                       </button>
@@ -1446,7 +1445,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                 <AlertTriangle size={13} className="shrink-0 mt-0.5 text-amber-500" />
                 <span>
                   Un client avec ce téléphone existe déjà : <strong>{phoneDuplicates[0].nom} {phoneDuplicates[0].prenom || ''}</strong>
-                  <button type="button" onClick={() => { setShow(false); setEditId(null); setViewId(phoneDuplicates[0].id); }} className="ml-1 underline font-medium" style={{ color: couleur }}>Voir la fiche →</button>
+                  <button type="button" onClick={() => { setShow(false); setEditId(null); setViewId(phoneDuplicates[0].id); }} className="ml-1 underline font-medium text-accent-texte">Voir la fiche →</button>
                 </span>
               </div>
             )}
@@ -1460,7 +1459,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                 <AlertTriangle size={13} className="shrink-0 mt-0.5 text-amber-500" />
                 <span>
                   Un client avec cet email existe déjà : <strong>{emailDuplicates[0].nom} {emailDuplicates[0].prenom || ''}</strong>
-                  <button type="button" onClick={() => { setShow(false); setEditId(null); setViewId(emailDuplicates[0].id); }} className="ml-1 underline font-medium" style={{ color: couleur }}>Voir la fiche →</button>
+                  <button type="button" onClick={() => { setShow(false); setEditId(null); setViewId(emailDuplicates[0].id); }} className="ml-1 underline font-medium text-accent-texte">Voir la fiche →</button>
                 </span>
               </div>
             )}
@@ -1489,7 +1488,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                     className={`w-full text-left px-4 py-2.5 text-sm flex items-center gap-2.5 transition-colors ${!form.categorie ? ('bg-surface-2 text-encre') : 'text-encre-2 hover:bg-surface-2'}`}
                   >
                     <span className="w-5 text-center">—</span> Non défini
-                    {!form.categorie && <Check size={14} className="ml-auto" style={{color: couleur}} />}
+                    {!form.categorie && <Check size={14} className="ml-auto text-accent-texte" />}
                   </button>
                   {CLIENT_TYPES.map(t => (
                     <button
@@ -1499,7 +1498,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                       className={`w-full text-left px-4 py-2.5 text-sm flex items-center gap-2.5 transition-colors ${form.categorie === t ? ('bg-surface-2 text-encre') : 'text-encre-2 hover:bg-surface-2'}`}
                     >
                       <span className="w-5 text-center">{TYPE_ICONS[t] || '📋'}</span> {t}
-                      {form.categorie === t && <Check size={14} className="ml-auto" style={{color: couleur}} />}
+                      {form.categorie === t && <Check size={14} className="ml-auto text-accent-texte" />}
                     </button>
                   ))}
                 </div>
@@ -1526,7 +1525,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
           <button onClick={() => { setShow(false); setEditId(null); }} className={`px-4 py-2.5 rounded-xl flex items-center gap-1.5 min-h-[44px] transition-colors bg-surface-2 hover:bg-bord`}>
             <X size={16} />Annuler
           </button>
-          <button onClick={submit} className="px-6 py-2.5 text-white rounded-xl flex items-center gap-1.5 min-h-[44px] hover:shadow-lg transition-all" style={{background: couleur}}>
+          <button onClick={submit} className="px-6 py-2.5 rounded-xl flex items-center gap-1.5 min-h-[44px] hover:shadow-lg transition-all bg-accent text-sur-accent">
             <Check size={16} />{editId ? 'Enregistrer' : 'Créer'}
           </button>
         </div>
@@ -1576,8 +1575,8 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                     </div>
                     <button
                       onClick={() => { setShowDupeConfirm(false); setPendingSubmit(null); setShow(false); setEditId(null); clearDupes(); setViewId(dup.id); }}
-                      className="text-xs font-medium px-3 py-1.5 rounded-lg transition-colors"
-                      style={{ color: couleur, backgroundColor: `${couleur}15` }}
+                      className="text-xs font-medium px-3 py-1.5 rounded-lg transition-colors text-accent-texte"
+                      style={{ backgroundColor: `${couleur}15` }}
                     >
                       Voir la fiche
                     </button>
@@ -1593,8 +1592,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                 </button>
                 <button
                   onClick={async () => { setShowDupeConfirm(false); await doSubmit(pendingSubmit); setPendingSubmit(null); }}
-                  className="flex-1 py-2.5 rounded-xl font-medium text-sm text-white transition-colors hover:opacity-90"
-                  style={{ backgroundColor: couleur }}
+                  className="flex-1 py-2.5 rounded-xl font-medium text-sm transition-colors hover:opacity-90 bg-accent text-sur-accent"
                 >
                   Créer quand même
                 </button>
@@ -1621,7 +1619,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                 title="Importer depuis mes contacts"
                 aria-label="Importer des clients depuis le répertoire du téléphone"
               >
-                <Smartphone size={16} style={{ color: couleur }} />
+                <Smartphone size={16} className="text-accent-texte" />
               </button>
             )}
             {onImportClients && (
@@ -1751,8 +1749,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                   </div>
                   <button
                     onClick={() => mergeClients(pair.a.id, pair.b.id)}
-                    className="px-2.5 py-1 rounded-lg text-xs font-semibold text-white flex-shrink-0 hover:opacity-90"
-                    style={{ background: couleur }}
+                    className="px-2.5 py-1 rounded-lg text-xs font-semibold flex-shrink-0 hover:opacity-90 bg-accent text-sur-accent"
                   >
                     Fusionner
                   </button>
@@ -1804,7 +1801,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
               pied={(
                 <>
                   <button type="button" onClick={toutEffacer} disabled={!nbFiltres} className={`h-11 px-4 rounded-xl text-sm font-medium transition-colors disabled:opacity-40 text-encre-2 hover:bg-surface-2`}>Tout effacer</button>
-                  <button type="button" onClick={() => setVolet(null)} className="flex-1 h-11 rounded-xl text-white text-sm font-bold shadow-sm" style={{ background: couleur }}>
+                  <button type="button" onClick={() => setVolet(null)} className="flex-1 h-11 rounded-xl text-sm font-bold shadow-sm bg-accent text-sur-accent">
                     Voir {filtered.length} client{filtered.length > 1 ? 's' : ''}
                   </button>
                 </>
@@ -1862,7 +1859,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                     <p className={`text-sm sm:text-base ${textMuted} max-w-md mx-auto`}>Gérez vos contacts clients, leur historique et facilitez vos échanges.</p>
                   </div>
                 </div>
-                <div className={`p-6 sm:p-8 border-t ${isDark ? 'border-slate-700 bg-slate-800/50' : 'border-slate-100 bg-slate-50/50'}`}>
+                <div className={`p-6 sm:p-8 border-t border-bord bg-fond/50`}>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
                     {[
                       { icon: Phone, label: 'Contact rapide', sub: 'Appel, SMS, WhatsApp' },
@@ -1878,12 +1875,12 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                     ))}
                   </div>
                   <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                    <button onClick={() => setShow(true)} className="px-6 py-3 text-white rounded-xl flex items-center justify-center gap-2 hover:shadow-lg transition-all font-medium" style={{ background: couleur }}>
+                    <button onClick={() => setShow(true)} className="px-6 py-3 rounded-xl flex items-center justify-center gap-2 hover:shadow-lg transition-all font-medium bg-accent text-sur-accent">
                       <Plus size={18} /> Ajouter un client
                     </button>
                     {contactPickerOk && (
                       <button onClick={handleImportFromContacts} disabled={importingContacts} className={`px-6 py-3 rounded-xl flex items-center justify-center gap-2 border-2 border-dashed font-medium transition-all disabled:opacity-60 border-bord-fort text-encre-2 hover:bg-surface`}>
-                        <Smartphone size={18} style={{ color: couleur }} /> {importingContacts ? 'Ouverture…' : 'Depuis mes contacts'}
+                        <Smartphone size={18} className="text-accent-texte" /> {importingContacts ? 'Ouverture…' : 'Depuis mes contacts'}
                       </button>
                     )}
                   </div>
@@ -1903,8 +1900,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                 <p className={`text-sm ${textMuted} mb-6`}>Vérifiez l'orthographe ou créez un nouveau client.</p>
                 <button
                   onClick={() => { setForm(p => ({...p, nom: debouncedSearch})); setShow(true); setSearch(''); }}
-                  className="px-6 py-3 text-white rounded-xl flex items-center justify-center gap-2 mx-auto hover:shadow-lg transition-all font-medium"
-                  style={{ background: couleur }}
+                  className="px-6 py-3 rounded-xl flex items-center justify-center gap-2 mx-auto hover:shadow-lg transition-all font-medium bg-accent text-sur-accent"
                 >
                   <Plus size={18} /> Créer « {debouncedSearch} » comme client
                 </button>

@@ -48,7 +48,7 @@ export default function CGUAcceptanceModal({ onAccept, couleur = '#f97316' }) {
       <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden">
         {/* Header */}
         <div className="px-6 py-5 border-b border-slate-200 flex items-center gap-3 flex-shrink-0">
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: couleur }}>
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-accent">
             <ScrollText size={20} className="text-white" />
           </div>
           <div>

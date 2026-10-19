@@ -96,8 +96,8 @@ function CircularProgress({ score, size = 120, strokeWidth = 10 }) {
  * - ce que Mallettico fait, et ce qu'il ne fait pas (transmission, conservation).
  */
 export default function Facture2026Tab({ entreprise, isDark, couleur }) {
-  const cardBg = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200';
-  const textSecondary = isDark ? 'text-slate-300' : 'text-slate-600';
+  const cardBg = 'bg-surface border-bord';
+  const textSecondary = 'text-encre-2';
 
   const [testResult, setTestResult] = useState(null);
   const [testing, setTesting] = useState(false);
@@ -239,8 +239,8 @@ export default function Facture2026Tab({ entreprise, isDark, couleur }) {
         plateforme est une démarche qui lui appartient, et il doit le savoir.
       */}
       <div className={`${cardBg} rounded-2xl border p-5`}>
-        <h3 className={`font-semibold mb-4 flex items-center gap-2 ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
-          <Info className="w-5 h-5" style={{ color: couleur }} />
+        <h3 className={`font-semibold mb-4 flex items-center gap-2 text-encre`}>
+          <Info className="w-5 h-5 text-accent-texte" />
           Ce que Mallettico fait, et ce qu'il vous reste à faire
         </h3>
         <div className="space-y-3">
@@ -281,8 +281,8 @@ export default function Facture2026Tab({ entreprise, isDark, couleur }) {
 
       {/* ── Factur-X Info + Test card ── */}
       <div className={`${cardBg} rounded-2xl border p-5`}>
-        <h3 className={`font-semibold mb-4 flex items-center gap-2 ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
-          <FileText className="w-5 h-5" style={{ color: couleur }} />
+        <h3 className={`font-semibold mb-4 flex items-center gap-2 text-encre`}>
+          <FileText className="w-5 h-5 text-accent-texte" />
           Format Factur-X / ZUGFeRD
         </h3>
         <div className="space-y-3">
@@ -292,15 +292,15 @@ export default function Facture2026Tab({ entreprise, isDark, couleur }) {
             le traitement automatisé par les Plateformes Agréées.
           </p>
           <div className={`flex flex-wrap gap-3 mt-3 text-sm ${textSecondary}`}>
-            <div className={`flex items-center gap-2 px-3 py-2 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+            <div className={`flex items-center gap-2 px-3 py-2 rounded-xl bg-fond`}>
               <CheckCircle className="w-4 h-4 text-emerald-500" />
               <span>XML Factur-X joint au PDF</span>
             </div>
-            <div className={`flex items-center gap-2 px-3 py-2 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
-              <Info className="w-4 h-4" style={{ color: couleur }} />
+            <div className={`flex items-center gap-2 px-3 py-2 rounded-xl bg-fond`}>
+              <Info className="w-4 h-4 text-accent-texte" />
               <span>Profil : <strong>{achievableProfile === 'basic' ? 'BASIC' : 'MINIMUM'}</strong></span>
             </div>
-            <div className={`flex items-center gap-2 px-3 py-2 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+            <div className={`flex items-center gap-2 px-3 py-2 rounded-xl bg-fond`}>
               <Zap className="w-4 h-4 text-blue-500" />
               <span>Génération 100% automatique</span>
             </div>
@@ -372,8 +372,8 @@ export default function Facture2026Tab({ entreprise, isDark, couleur }) {
 
       {/* ── Conservation des factures : ce que fait Mallettico, et ce qu'il ne fait pas (D-02) ── */}
       <div className={`${cardBg} rounded-2xl border p-5`}>
-        <h3 className={`font-semibold mb-4 flex items-center gap-2 ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
-          <Lock className="w-5 h-5" style={{ color: couleur }} />
+        <h3 className={`font-semibold mb-4 flex items-center gap-2 text-encre`}>
+          <Lock className="w-5 h-5 text-accent-texte" />
           Conservation de vos factures (10 ans)
         </h3>
         <div className="space-y-3">
@@ -406,16 +406,12 @@ function XmlPreview({ xml, isDark }) {
         {expanded ? 'Masquer le XML' : 'Voir le XML généré'}
       </Bouton>
       {expanded && (
-        <pre className={`mt-2 p-3 rounded-lg text-xs overflow-x-auto max-h-64 overflow-y-auto font-mono leading-relaxed ${
-          isDark ? 'bg-slate-900 text-slate-300' : 'bg-slate-100 text-slate-700'
-        }`}>
+        <pre className={`mt-2 p-3 rounded-lg text-xs overflow-x-auto max-h-64 overflow-y-auto font-mono leading-relaxed bg-surface-2 text-encre-2`}>
           {xml}
         </pre>
       )}
       {!expanded && (
-        <pre className={`mt-2 p-3 rounded-lg text-xs overflow-hidden max-h-20 font-mono leading-relaxed ${
-          isDark ? 'bg-slate-900/50 text-slate-400' : 'bg-slate-50 text-slate-500'
-        }`}>
+        <pre className={`mt-2 p-3 rounded-lg text-xs overflow-hidden max-h-20 font-mono leading-relaxed bg-fond text-encre-3`}>
           {preview}
         </pre>
       )}

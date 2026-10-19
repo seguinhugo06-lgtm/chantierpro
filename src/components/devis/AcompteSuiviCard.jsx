@@ -48,7 +48,7 @@ export default function AcompteSuiviCard({
   situationsFacturees = [], // factures de situation de travaux déjà émises sur ce devis
   situationsEnCours = false, // le chantier a des situations sur ce devis (même pas encore facturées)
 }) {
-  const borderColor = isDark ? 'border-slate-700' : 'border-slate-200';
+  const borderColor = 'border-bord';
 
   // --- Mode 0 : facturé par situations de travaux ---
   // Plus de facture complète, d'acompte ni de solde : la dernière situation (décompte général définitif) solde le marché.
@@ -99,10 +99,9 @@ export default function AcompteSuiviCard({
         {/* Progress bar */}
         <div className={cn('h-2 rounded-full mb-4', isDark ? 'bg-slate-700' : 'bg-blue-200')}>
           <div
-            className="h-full rounded-full transition-all duration-500"
+            className="h-full rounded-full transition-all duration-500 bg-accent"
             style={{
               width: `${progress.pourcentageFacture}%`,
-              backgroundColor: couleur,
             }}
           />
         </div>
@@ -172,8 +171,7 @@ export default function AcompteSuiviCard({
             </div>
             <button
               onClick={() => onFacturerEtape?.(echeancier, nextEtape)}
-              className="w-full py-2.5 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 text-sm text-white"
-              style={{ backgroundColor: couleur }}
+              className="w-full py-2.5 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 text-sm bg-accent text-sur-accent"
             >
               <Receipt size={16} />
               Facturer : {nextEtape.label} ({nextEtape.pourcentage}%)
@@ -239,7 +237,7 @@ export default function AcompteSuiviCard({
         'rounded-xl border p-4',
         (devis.statut === 'accepte' || devis.statut === 'signe')
           ? (isDark ? 'bg-emerald-900/20 border-emerald-700' : 'bg-emerald-50 border-emerald-200')
-          : (isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-slate-50 border-slate-200'),
+          : 'bg-fond border-bord',
       )}>
         <div className="flex items-center gap-2 mb-3">
           {(devis.statut === 'accepte' || devis.statut === 'signe') ? (
@@ -312,11 +310,11 @@ export default function AcompteSuiviCard({
               onClick={onOpenSituation}
               className={cn(
                 'p-3 rounded-lg border text-left transition-all hover:shadow-md',
-                isDark ? 'border-orange-700 bg-orange-900/30 hover:bg-orange-900/50' : 'border-orange-200 bg-white hover:bg-orange-50',
+                'border-accent/30 bg-surface hover:bg-accent/10',
               )}
             >
               <div className="flex items-center gap-2 mb-1">
-                <BarChart3 size={16} className="text-orange-500" />
+                <BarChart3 size={16} className="text-accent-texte" />
                 <span className={cn('font-medium text-sm', textPrimary)}>Situation</span>
               </div>
               <p className={cn('text-xs', textMuted)}>Par avancement</p>
@@ -329,7 +327,7 @@ export default function AcompteSuiviCard({
 
   // --- Mode 4: Devis not yet accepted — show guidance ---
   return (
-    <div className={cn('rounded-xl border p-4', isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-slate-50 border-slate-200')}>
+    <div className={cn('rounded-xl border p-4', 'bg-fond border-bord')}>
       <div className="flex items-center gap-2 mb-1">
         <Receipt size={18} className={textMuted} />
         <p className={cn('text-sm font-medium', textMuted)}>Options de facturation</p>

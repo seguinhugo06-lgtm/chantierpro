@@ -30,12 +30,12 @@ const ReceptionForm = memo(function ReceptionForm({
   const [pvFile, setPvFile] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  const textPrimary = isDark ? 'text-white' : 'text-gray-900';
-  const textMuted = isDark ? 'text-slate-400' : 'text-gray-500';
+  const textPrimary = 'text-encre';
+  const textMuted = 'text-encre-3';
   const inputBg = isDark
     ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400'
     : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400';
-  const cardBg = isDark ? 'bg-slate-800' : 'bg-white';
+  const cardBg = 'bg-surface';
   const overlayBg = 'bg-black/50';
 
   // -- Reserve helpers --
@@ -102,9 +102,9 @@ const ReceptionForm = memo(function ReceptionForm({
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
-        <div className={`flex items-center justify-between p-5 border-b ${isDark ? 'border-slate-700' : 'border-gray-200'}`}>
+        <div className={`flex items-center justify-between p-5 border-b border-bord`}>
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white" style={{ background: couleur }}>
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-accent text-sur-accent">
               <FileText size={20} />
             </div>
             <div>
@@ -118,7 +118,7 @@ const ReceptionForm = memo(function ReceptionForm({
           </div>
           <button
             onClick={onClose}
-            className={`p-1.5 rounded-lg ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-gray-100 text-gray-400'}`}
+            className={`p-1.5 rounded-lg hover:bg-surface-2 text-encre-3`}
           >
             <X size={18} />
           </button>
@@ -153,10 +153,8 @@ const ReceptionForm = memo(function ReceptionForm({
                     className={`flex items-start gap-2 p-3 rounded-xl border cursor-pointer transition-all ${
                       isSelected
                         ? 'ring-2 ring-offset-1'
-                        : isDark
-                          ? 'border-slate-600 hover:border-slate-500'
-                          : 'border-gray-200 hover:border-gray-300'
-                    } ${isDark ? 'bg-slate-700' : 'bg-white'}`}
+                        : 'border-bord hover:border-bord-fort'
+                    } bg-surface`}
                     style={isSelected ? { borderColor: couleur, ringColor: couleur } : undefined}
                   >
                     <input
@@ -219,14 +217,13 @@ const ReceptionForm = memo(function ReceptionForm({
             <div>
               <div className="flex items-center justify-between mb-2">
                 <label className={`text-xs font-medium ${textPrimary}`}>
-                  <AlertTriangle size={12} className="inline mr-1 text-orange-500" />
+                  <AlertTriangle size={12} className="inline mr-1 text-alerte-texte" />
                   Reserves ({reserves.length})
                 </label>
                 <button
                   type="button"
                   onClick={addReserve}
-                  className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg text-white font-medium"
-                  style={{ background: couleur }}
+                  className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg font-medium bg-accent text-sur-accent"
                 >
                   <Plus size={12} /> Ajouter une reserve
                 </button>
@@ -242,7 +239,7 @@ const ReceptionForm = memo(function ReceptionForm({
                 {reserves.map((reserve, idx) => (
                   <div
                     key={reserve.id}
-                    className={`p-3 rounded-xl border ${isDark ? 'bg-slate-700 border-slate-600' : 'bg-slate-50 border-slate-200'}`}
+                    className={`p-3 rounded-xl border bg-fond border-bord`}
                   >
                     <div className="flex items-center justify-between mb-2">
                       <span className={`text-xs font-semibold ${textPrimary}`}>Reserve {idx + 1}</span>
@@ -338,22 +335,17 @@ const ReceptionForm = memo(function ReceptionForm({
         </div>
 
         {/* Footer buttons */}
-        <div className={`flex gap-2 p-5 border-t ${isDark ? 'border-slate-700' : 'border-gray-200'}`}>
+        <div className={`flex gap-2 p-5 border-t border-bord`}>
           <button
             onClick={onClose}
-            className={`flex-1 py-2.5 rounded-xl text-sm font-medium border ${
-              isDark
-                ? 'border-slate-600 text-slate-300 hover:bg-slate-700'
-                : 'border-gray-300 text-gray-600 hover:bg-gray-50'
-            }`}
+            className={`flex-1 py-2.5 rounded-xl text-sm font-medium border border-bord-fort text-encre-2 hover:bg-surface-2`}
           >
             Annuler
           </button>
           <button
             onClick={handleSubmit}
             disabled={loading || !dateReception}
-            className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50 flex items-center justify-center gap-2"
-            style={{ background: couleur }}
+            className="flex-1 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50 flex items-center justify-center gap-2 bg-accent text-sur-accent"
           >
             {loading ? (
               <span className="animate-spin w-4 h-4 border-2 border-white/30 border-t-white rounded-full" />

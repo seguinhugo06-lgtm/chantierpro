@@ -31,9 +31,9 @@ const ReservesList = memo(function ReservesList({
 }) {
   const [expanded, setExpanded] = useState({});
 
-  const textPrimary = isDark ? 'text-slate-200' : 'text-slate-800';
-  const textMuted = isDark ? 'text-slate-400' : 'text-slate-500';
-  const cardBg = isDark ? 'bg-slate-700 border-slate-600' : 'bg-slate-50 border-slate-200';
+  const textPrimary = 'text-encre';
+  const textMuted = 'text-encre-3';
+  const cardBg = 'bg-fond border-bord';
 
   const totalCount = reserves.length;
   const leveesCount = reserves.filter(r => r.statut === 'levee').length;
@@ -56,7 +56,7 @@ const ReservesList = memo(function ReservesList({
 
   if (reserves.length === 0) {
     return (
-      <div className={`p-4 text-center rounded-xl ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
+      <div className={`p-4 text-center rounded-xl bg-fond`}>
         <CheckCircle size={24} className={`mx-auto mb-2 text-green-500`} />
         <p className={`text-sm ${textMuted}`}>Aucune réserve</p>
       </div>
@@ -80,8 +80,7 @@ const ReservesList = memo(function ReservesList({
         {!readOnly && !allLevees && onLeverToutes && (
           <button
             onClick={onLeverToutes}
-            className="text-xs px-3 py-1.5 rounded-lg text-white font-medium"
-            style={{ background: couleur }}
+            className="text-xs px-3 py-1.5 rounded-lg font-medium bg-accent text-sur-accent"
           >
             Lever toutes
           </button>

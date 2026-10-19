@@ -65,10 +65,10 @@ export default function ArbreNomenclature({
   }, [countByNode]);
 
   // Container theme
-  const containerBg = isDark ? 'bg-gray-800' : 'bg-white';
-  const containerText = isDark ? 'text-gray-100' : 'text-gray-900';
-  const containerBorder = isDark ? 'border-gray-700' : 'border-gray-200';
-  const hoverBg = isDark ? 'hover:bg-gray-700/50' : 'hover:bg-gray-50';
+  const containerBg = 'bg-surface';
+  const containerText = 'text-encre';
+  const containerBorder = 'border-bord';
+  const hoverBg = 'hover:bg-surface-2';
 
   // "Tous" button styling
   const isAllSelected = selectedNodeId === null;

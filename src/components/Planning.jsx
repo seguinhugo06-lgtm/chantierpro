@@ -60,11 +60,11 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
   const isViewOnly = planningPerm === 'view' || planningPerm === 'own';
 
   // Theme classes
-  const cardBg = isDark ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200";
+  const cardBg = "bg-surface border-bord";
   const inputBg = isDark ? "bg-slate-700 border-slate-600 text-white placeholder-slate-400" : "bg-white border-slate-300";
-  const textPrimary = isDark ? "text-slate-100" : "text-slate-900";
-  const textSecondary = isDark ? "text-slate-300" : "text-slate-600";
-  const textMuted = isDark ? "text-slate-400" : "text-slate-600";
+  const textPrimary = "text-encre";
+  const textSecondary = "text-encre-2";
+  const textMuted = "text-encre-2";
 
   const [date, setDate] = useState(new Date());
   const [viewMode, setViewMode] = useState(() => window.innerWidth < 640 ? 'week' : 'month'); // default to week on mobile
@@ -673,8 +673,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                         {dayEvents.length > (window.innerWidth < 640 ? 2 : 3) && (
                           <button
                             onClick={(e) => { e.stopPropagation(); setDate(new Date(year, month, day)); setViewMode('day'); }}
-                            className={`text-xs font-semibold px-1.5 py-0 rounded transition-colors hover:underline`}
-                            style={{ color: couleur }}
+                            className={`text-xs font-semibold px-1.5 py-0 rounded transition-colors hover:underline text-accent-texte`}
                           >
                             +{dayEvents.length - (window.innerWidth < 640 ? 2 : 3)}
                           </button>
@@ -693,7 +692,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                 <div className={`flex flex-col items-center py-8 text-center ${textMuted}`}>
                   <Filter size={32} className="mb-2 opacity-40" />
                   <p className="text-sm font-medium">Aucun événement pour ce filtre</p>
-                  <button onClick={() => { setFilterTypes(new Set()); setFilterEmploye(''); }} className="mt-2 text-xs hover:underline" style={{ color: couleur }}>Réinitialiser les filtres</button>
+                  <button onClick={() => { setFilterTypes(new Set()); setFilterEmploye(''); }} className="mt-2 text-xs hover:underline text-accent-texte">Réinitialiser les filtres</button>
                 </div>
               ) : (
                 <EmptyState
@@ -898,7 +897,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                     <div className={`flex flex-col items-center py-8 text-center ${textMuted}`}>
                       <Filter size={32} className="mb-2 opacity-40" />
                       <p className="text-sm font-medium">Aucun événement pour ce filtre</p>
-                      <button onClick={() => { setFilterTypes(new Set()); setFilterEmploye(''); }} className="mt-2 text-xs hover:underline" style={{ color: couleur }}>Réinitialiser les filtres</button>
+                      <button onClick={() => { setFilterTypes(new Set()); setFilterEmploye(''); }} className="mt-2 text-xs hover:underline text-accent-texte">Réinitialiser les filtres</button>
                     </div>
                   );
 
@@ -1050,7 +1049,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                     <div className={`flex flex-col items-center py-8 text-center ${textMuted}`}>
                       <Filter size={32} className="mb-2 opacity-40" />
                       <p className="text-sm font-medium">Aucun événement pour ce filtre</p>
-                      <button onClick={() => { setFilterTypes(new Set()); setFilterEmploye(''); }} className="mt-2 text-xs hover:underline" style={{ color: couleur }}>Réinitialiser les filtres</button>
+                      <button onClick={() => { setFilterTypes(new Set()); setFilterEmploye(''); }} className="mt-2 text-xs hover:underline text-accent-texte">Réinitialiser les filtres</button>
                     </div>
                   ) : (
                     <EmptyState
@@ -1098,7 +1097,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                   const isToday = dateStr === formatLocalDate(new Date());
                   return (
                     <div key={dateStr}>
-                      <div className={`sticky top-0 z-10 px-4 py-2 text-xs font-semibold uppercase tracking-wider ${isToday ? (isDark ? 'bg-slate-700' : 'bg-orange-50') : 'bg-surface-2'}`} style={isToday ? { color: couleur } : {}}>
+                      <div className={`sticky top-0 z-10 px-4 py-2 text-xs font-semibold uppercase tracking-wider ${isToday ? 'bg-accent/10' : 'bg-surface-2'}`} style={isToday ? { color: couleur } : {}}>
                         {isToday ? "Aujourd'hui — " : ''}{dayDate.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
                       </div>
                       {dayEvts.length === 0 ? (
@@ -1139,7 +1138,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                     <div className={`flex flex-col items-center py-8 text-center ${textMuted}`}>
                       <Filter size={32} className="mb-2 opacity-40" />
                       <p className="text-sm font-medium">Aucun événement pour ce filtre</p>
-                      <button onClick={() => { setFilterTypes(new Set()); setFilterEmploye(''); }} className="mt-2 text-xs hover:underline" style={{ color: couleur }}>Réinitialiser les filtres</button>
+                      <button onClick={() => { setFilterTypes(new Set()); setFilterEmploye(''); }} className="mt-2 text-xs hover:underline text-accent-texte">Réinitialiser les filtres</button>
                     </div>
                   ) : (
                     <EmptyState
@@ -1199,7 +1198,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                   {recurrenceLabel && <p className="flex items-center gap-2"><RefreshCw size={14} /> {recurrenceLabel}</p>}
                 </div>
                 <button onClick={() => { setTooltip(null); handleEventClick(null, ev); }}
-                  className="w-full mt-4 py-3 rounded-xl text-sm font-semibold text-white transition-colors" style={{ backgroundColor: couleur }}>
+                  className="w-full mt-4 py-3 rounded-xl text-sm font-semibold transition-colors bg-accent text-sur-accent">
                   Voir le détail
                 </button>
               </div>
@@ -1245,7 +1244,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
               <li>Les chantiers datés apparaissent tout seuls.</li>
             </ul>
           </div>
-          <button onClick={() => { setShowTips(false); try { localStorage.setItem('cp_planning_tips_dismissed', 'true'); } catch { /* préférence non enregistrée : quota plein ou navigation privée */ } }} className={`p-1.5 rounded-lg flex-shrink-0 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-orange-100'}`} aria-label="Fermer les astuces">
+          <button onClick={() => { setShowTips(false); try { localStorage.setItem('cp_planning_tips_dismissed', 'true'); } catch { /* préférence non enregistrée : quota plein ou navigation privée */ } }} className={`p-1.5 rounded-lg flex-shrink-0 hover:bg-accent/10`} aria-label="Fermer les astuces">
             <X size={14} className={'text-encre-3'} />
           </button>
         </div>
@@ -1381,7 +1380,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                       return ch ? (
                         <div className="flex items-center gap-2.5">
                           <Home size={14} className={textMuted} />
-                          <button onClick={() => goToChantier(ch.id)} className="text-sm hover:underline" style={{ color: couleur }}>{ch.nom}</button>
+                          <button onClick={() => goToChantier(ch.id)} className="text-sm hover:underline text-accent-texte">{ch.nom}</button>
                         </div>
                       ) : null;
                     })()}
@@ -1463,7 +1462,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                       return ch ? (
                         <div className="flex items-center gap-2.5">
                           <Home size={14} className={textMuted} />
-                          <button onClick={() => goToChantier(ch.id)} className="text-sm hover:underline" style={{ color: couleur }}>{ch.nom}</button>
+                          <button onClick={() => goToChantier(ch.id)} className="text-sm hover:underline text-accent-texte">{ch.nom}</button>
                         </div>
                       ) : null;
                     })()}
@@ -1482,7 +1481,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
 
               <div className={`px-4 py-3 border-t border-bord bg-surface-2 rounded-b-xl flex gap-2`}>
                 {showDetail.isChantier ? (
-                  <button onClick={() => goToChantier(showDetail.chantierId)} className="flex-1 py-2 text-white rounded-lg text-sm font-medium flex items-center justify-center gap-1.5" style={{ background: couleur }}>
+                  <button onClick={() => goToChantier(showDetail.chantierId)} className="flex-1 py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-1.5 bg-accent text-sur-accent">
                     <Home size={14} /> Voir le chantier
                   </button>
                 ) : showDetail.isMemo ? (
@@ -1511,22 +1510,21 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                   // (recette du 9 oct.), « Supprimer » et « Modifier » annonçaient un succès sans rien faire.
                   <button
                     onClick={() => { if (setPage) setPage('devis'); setShowDetail(null); }}
-                    className="flex-1 py-2 text-white rounded-lg text-sm font-medium flex items-center justify-center gap-1.5"
-                    style={{ background: couleur }}
+                    className="flex-1 py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-1.5 bg-accent text-sur-accent"
                   >
                     Voir dans Devis &amp; Factures
                   </button>
                 ) : editMode ? (
                   <>
                     <button onClick={() => setEditMode(false)} className={`flex-1 py-2 rounded-lg text-sm font-medium bg-bord`}>Annuler</button>
-                    <button onClick={handleUpdateEvent} className="flex-1 py-2 text-white rounded-lg text-sm font-medium" style={{ background: couleur }}>Enregistrer</button>
+                    <button onClick={handleUpdateEvent} className="flex-1 py-2 rounded-lg text-sm font-medium bg-accent text-sur-accent">Enregistrer</button>
                   </>
                 ) : (
                   <>
                     <button onClick={() => handleDeleteEvent(showDetail.id)} className={`px-3 py-2 rounded-lg bg-danger-fond text-danger-texte`} aria-label="Supprimer">
                       <Trash2 size={14} />
                     </button>
-                    <button onClick={startEdit} className="flex-1 py-2 text-white rounded-lg text-sm font-medium flex items-center justify-center gap-1.5" style={{ background: couleur }}>
+                    <button onClick={startEdit} className="flex-1 py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-1.5 bg-accent text-sur-accent">
                       <Edit3 size={14} /> Modifier
                     </button>
                     {showDetail.chantierId && !showDetail.isChantier && (() => {
@@ -1723,7 +1721,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
             {/* Footer sticky */}
             <div className={`sticky bottom-0 flex gap-3 px-4 py-3 border-t bg-surface border-bord`}>
               <button onClick={() => { setShowAdd(false); setQuickAdd(null); setForm(emptyForm); }} className={`flex-1 py-3 rounded-xl text-sm font-medium min-h-[44px] active:scale-95 transition-all bg-surface-2 text-encre-2`}>Annuler</button>
-              <button onClick={submit} className="flex-1 py-3 text-white rounded-xl text-sm font-medium min-h-[44px] flex items-center justify-center gap-1.5 active:scale-95 transition-all" style={{background: couleur}}>
+              <button onClick={submit} className="flex-1 py-3 rounded-xl text-sm font-medium min-h-[44px] flex items-center justify-center gap-1.5 active:scale-95 transition-all bg-accent text-sur-accent">
                 <Check size={16} /> Créer
               </button>
             </div>

@@ -148,11 +148,11 @@ export default function DevisComposer({
   const [error, setError] = useState('');
 
   // ── Theme ──
-  const cardBg = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200';
-  const inputBg = isDark ? 'bg-slate-900/60 border-slate-700 text-white placeholder-slate-500' : 'bg-white border-slate-200 text-slate-900 placeholder-slate-400';
-  const textPrimary = isDark ? 'text-white' : 'text-slate-900';
-  const textMuted = isDark ? 'text-slate-400' : 'text-slate-500';
-  const rowHover = isDark ? 'hover:bg-slate-800/60' : 'hover:bg-slate-50';
+  const cardBg = 'bg-surface border-bord';
+  const inputBg = 'bg-surface border-bord text-encre placeholder:text-encre-3';
+  const textPrimary = 'text-encre';
+  const textMuted = 'text-encre-3';
+  const rowHover = 'hover:bg-surface-2';
 
   // ── Load initialData / restore draft ──
   useEffect(() => {
@@ -658,7 +658,7 @@ export default function DevisComposer({
     <div role="dialog" aria-modal="true" aria-label={`${isEditMode ? 'Modifier' : (isFacture ? 'Nouvelle' : 'Nouveau')} ${isFacture ? 'facture' : 'devis'}`}
       className="fixed inset-0 z-[1000] flex flex-col" style={{ background: isDark ? '#0b1220' : '#f8fafc' }}>
       {/* ── Top bar ── */}
-      <header className={`flex items-center gap-3 px-3 sm:px-5 h-14 border-b ${isDark ? 'border-slate-800 bg-slate-900' : 'border-slate-200 bg-white'} flex-shrink-0`}>
+      <header className={`flex items-center gap-3 px-3 sm:px-5 h-14 border-b border-bord bg-surface flex-shrink-0`}>
         <button onClick={onClose} aria-label="Fermer" className={`p-2 rounded-lg ${rowHover} ${textMuted} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`}>
           <ArrowLeft size={20} />
         </button>
@@ -671,7 +671,7 @@ export default function DevisComposer({
         </div>
         {/* Type toggle (visible aussi en mobile) */}
         {!isEditMode && (
-          <div className={`flex items-center rounded-xl p-0.5 ${isDark ? 'bg-slate-800' : 'bg-slate-100'}`}>
+          <div className={`flex items-center rounded-xl p-0.5 bg-surface-2`}>
             {[{ v: 'devis', label: 'Devis', Icon: FileText }, { v: 'facture', label: 'Facture', Icon: Receipt }].map(({ v, label, Icon }) => (
               <button key={v} onClick={() => setForm(p => ({ ...p, type: v }))} aria-label={label} aria-pressed={form.type === v}
                 className={`flex items-center gap-1.5 px-3 h-9 rounded-lg text-sm font-semibold transition-colors ${form.type === v ? 'bg-surface text-encre shadow-e1' : 'text-encre-2 hover:text-encre'}`}>
@@ -681,7 +681,7 @@ export default function DevisComposer({
           </div>
         )}
         <button onClick={() => setShowLibrary(true)} aria-label="Ouvrir la bibliothèque de modèles"
-          className={`flex items-center gap-1.5 px-2.5 sm:px-3 h-9 rounded-xl text-xs font-semibold border transition-all ${isDark ? 'border-slate-700 text-slate-200 hover:bg-slate-800' : 'border-slate-200 text-slate-700 hover:bg-slate-50'}`}>
+          className={`flex items-center gap-1.5 px-2.5 sm:px-3 h-9 rounded-xl text-xs font-semibold border transition-all border-bord text-encre-2 hover:bg-surface-2`}>
           <Library size={15} /> <span className="hidden md:inline">Bibliothèque</span>
         </button>
         <button onClick={() => handleSubmit(false)} disabled={isSubmitting}
@@ -749,7 +749,7 @@ export default function DevisComposer({
           <div className={`rounded-2xl border ${cardBg}`}>
             {/* header row (desktop) */}
             {form.lignes.length > 0 && (
-              <div className={`hidden sm:grid grid-cols-[14px_1fr_52px_60px_74px_54px_92px_30px] gap-2 px-4 py-2 rounded-t-2xl text-[11px] font-semibold uppercase tracking-wide ${textMuted} ${isDark ? 'bg-slate-800/50' : 'bg-slate-50'} border-b ${isDark ? 'border-slate-700' : 'border-slate-100'}`}>
+              <div className={`hidden sm:grid grid-cols-[14px_1fr_52px_60px_74px_54px_92px_30px] gap-2 px-4 py-2 rounded-t-2xl text-[11px] font-semibold uppercase tracking-wide ${textMuted} bg-fond border-b border-bord`}>
                 <span /><span>Désignation</span><span className="text-center">Qté</span><span className="text-center">Unité</span><span className="text-center">PU HT</span><span className="text-center">TVA</span><span className="text-right">Total HT</span><span />
               </div>
             )}
@@ -784,12 +784,12 @@ export default function DevisComposer({
             {form.lignes.length > 0 && (
               <div className={`px-3 sm:px-4 pb-3 flex flex-wrap items-center gap-2 ${hasLots ? '' : 'pt-0'}`}>
                 <button type="button" onClick={addLot}
-                  className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg border transition-all ${isDark ? 'border-slate-700 text-slate-300 hover:bg-slate-800' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
+                  className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg border transition-all border-bord text-encre-2 hover:bg-surface-2`}>
                   <Plus size={13} /> Ajouter un lot
                 </button>
                 {addTemplate && (
                   <button type="button" onClick={() => setShowSaveTemplate(true)}
-                    className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg border transition-all ${isDark ? 'border-slate-700 text-slate-300 hover:bg-slate-800' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
+                    className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg border transition-all border-bord text-encre-2 hover:bg-surface-2`}>
                     <Star size={13} /> Enregistrer comme modèle
                   </button>
                 )}
@@ -799,7 +799,7 @@ export default function DevisComposer({
 
             {/* Démarrage éclair (uniquement quand le devis est vide) */}
             {form.lignes.length === 0 && (
-              <div className={`border-t ${isDark ? 'border-slate-800' : 'border-slate-100'} p-3 sm:p-4`}>
+              <div className={`border-t border-bord p-3 sm:p-4`}>
                 <QuickStart templates={METIER_TEMPLATES} articles={quickArticles} persoTemplates={customTemplates}
                   onApplyTemplate={applyTemplate} onApplyPerso={applyPersoTemplate} onAddArticle={addLigne}
                   onOpenLibrary={() => setShowLibrary(true)}
@@ -811,11 +811,11 @@ export default function DevisComposer({
           {/* Options (remise / notes) */}
           <div className={`rounded-2xl border ${cardBg}`}>
             <button onClick={() => setShowOptions(o => !o)} className={`w-full flex items-center justify-between px-4 py-3 text-sm font-medium ${textPrimary}`}>
-              <span className="flex items-center gap-2"><Percent size={15} style={{ color: couleur }} /> Remise, notes & options</span>
+              <span className="flex items-center gap-2"><Percent size={15} className="text-accent-texte" /> Remise, notes & options</span>
               <ChevronDown size={16} className={`${textMuted} transition-transform ${showOptions ? 'rotate-180' : ''}`} />
             </button>
             {showOptions && (
-              <div className={`px-4 pb-4 space-y-3 border-t ${isDark ? 'border-slate-700' : 'border-slate-100'} pt-3`}>
+              <div className={`px-4 pb-4 space-y-3 border-t border-bord pt-3`}>
                 {franchise ? (
                   <p className="text-xs text-encre-2">TVA non applicable, art. 293 B du CGI (micro-entreprise) : aucune TVA n'est ajoutée.</p>
                 ) : (
@@ -825,7 +825,7 @@ export default function DevisComposer({
                     {[{ v: 20, sub: 'neuf' }, { v: 10, sub: 'réno' }, { v: 5.5, sub: 'éco-réno' }, { v: 0, sub: 'exonéré' }].map(({ v, sub }) => (
                       <button key={v} type="button"
                         onClick={() => setForm(p => ({ ...p, tvaDefaut: v, lignes: p.lignes.map(l => l._isSection ? l : { ...l, tva: v }) }))}
-                        className={`px-3 h-9 rounded-lg text-xs font-semibold border transition-all ${form.tvaDefaut === v && form.lignes.every(l => l._isSection || l.tva === v) ? 'text-white' : isDark ? 'border-slate-700 text-slate-300 hover:bg-slate-800' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+                        className={`px-3 h-9 rounded-lg text-xs font-semibold border transition-all ${form.tvaDefaut === v && form.lignes.every(l => l._isSection || l.tva === v) ? 'text-white' : 'border-bord text-encre-2 hover:bg-surface-2'}`}
                         style={form.tvaDefaut === v && form.lignes.every(l => l._isSection || l.tva === v) ? { background: couleur, borderColor: couleur } : undefined}>
                         {String(v).replace('.', ',')} % <span className="font-normal opacity-70">{sub}</span>
                       </button>
@@ -893,7 +893,7 @@ export default function DevisComposer({
       </div>
 
       {/* ── Sticky total bar ── */}
-      <footer className={`flex-shrink-0 border-t ${isDark ? 'border-slate-800 bg-slate-900' : 'border-slate-200 bg-white'} shadow-[0_-4px_20px_rgba(0,0,0,0.06)]`}
+      <footer className={`flex-shrink-0 border-t border-bord bg-surface shadow-[0_-4px_20px_rgba(0,0,0,0.06)]`}
         style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
         <div className="max-w-3xl mx-auto px-3 sm:px-5 py-3 flex items-center gap-2 sm:gap-5">
           <div className="flex-1 min-w-0 flex items-baseline gap-3 sm:gap-5 flex-wrap">
@@ -929,7 +929,7 @@ export default function DevisComposer({
           {form.lignes.some(l => !l._isSection && (l.description || '').trim()) && (
             <button onClick={() => setShowPdfPreview(true)} disabled={isSubmitting}
               aria-label="Aperçu du document"
-              className={`flex-shrink-0 flex items-center justify-center gap-2 w-11 sm:w-auto px-0 sm:px-4 h-11 rounded-xl text-sm font-semibold border transition-all ${isDark ? 'border-slate-700 text-slate-200 hover:bg-slate-800' : 'border-slate-200 text-slate-700 hover:bg-slate-50'}`}>
+              className={`flex-shrink-0 flex items-center justify-center gap-2 w-11 sm:w-auto px-0 sm:px-4 h-11 rounded-xl text-sm font-semibold border transition-all border-bord text-encre-2 hover:bg-surface-2`}>
               <Eye size={16} /> <span className="hidden sm:inline">Aperçu</span>
             </button>
           )}
@@ -1038,11 +1038,11 @@ function ClientField({ selectedClient, couleur, isDark, textPrimary, textMuted, 
     <div className="relative" ref={ref}>
       <label className={`block text-[11px] font-semibold uppercase tracking-wide mb-1.5 ${textMuted}`}>Client</label>
       <button onClick={() => setOpen(o => !o)}
-        className={`w-full flex items-center gap-2.5 px-3 h-11 rounded-xl border text-sm text-left transition-all ${isDark ? 'bg-slate-900/60 border-slate-700' : 'bg-white border-slate-200'} hover:border-current focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`}
+        className={`w-full flex items-center gap-2.5 px-3 h-11 rounded-xl border text-sm text-left transition-all bg-surface border-bord hover:border-current focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`}
         style={selectedClient ? { borderColor: `${couleur}55` } : undefined} aria-haspopup="true" aria-expanded={open}>
         {selectedClient ? (
           <>
-            <span className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style={{ background: couleur }}>
+            <span className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 bg-accent text-sur-accent">
               {(selectedClient.nom || '?')[0]?.toUpperCase()}
             </span>
             <span className={`flex-1 truncate font-medium ${textPrimary}`}>{formatClientName(selectedClient)}</span>
@@ -1053,8 +1053,8 @@ function ClientField({ selectedClient, couleur, isDark, textPrimary, textMuted, 
         <ChevronDown size={16} className={textMuted} />
       </button>
       {open && (
-        <div className={`absolute left-0 right-0 top-full mt-1 z-30 rounded-xl border shadow-xl overflow-hidden ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
-          <div className={`p-2 border-b ${isDark ? 'border-slate-700' : 'border-slate-100'}`}>
+        <div className={`absolute left-0 right-0 top-full mt-1 z-30 rounded-xl border shadow-xl overflow-hidden bg-surface border-bord`}>
+          <div className={`p-2 border-b border-bord`}>
             <div className="relative">
               <Search size={15} className={`absolute left-3 top-1/2 -translate-y-1/2 ${textMuted}`} />
               <input autoFocus value={clientSearch} onChange={e => setClientSearch(e.target.value)} placeholder="Rechercher un client…"
@@ -1066,8 +1066,8 @@ function ClientField({ selectedClient, couleur, isDark, textPrimary, textMuted, 
               <p className={`px-3 pt-1 pb-1 text-[10px] font-semibold uppercase tracking-wide ${textMuted}`}>Récents</p>
             )}
             {list.map(c => (
-              <button key={c.id} onClick={() => onSelect(c.id)} className={`w-full flex items-center gap-2.5 px-3 py-2 text-left text-sm ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}>
-                <span className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style={{ background: couleur }}>{(c.nom || '?')[0]?.toUpperCase()}</span>
+              <button key={c.id} onClick={() => onSelect(c.id)} className={`w-full flex items-center gap-2.5 px-3 py-2 text-left text-sm hover:bg-surface-2`}>
+                <span className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 bg-accent text-sur-accent">{(c.nom || '?')[0]?.toUpperCase()}</span>
                 <span className="flex-1 min-w-0">
                   <span className={`block truncate font-medium ${textPrimary}`}>{formatClientName(c)}</span>
                   {c.entreprise && <span className={`block truncate text-xs ${textMuted}`}>{c.entreprise}</span>}
@@ -1076,7 +1076,7 @@ function ClientField({ selectedClient, couleur, isDark, textPrimary, textMuted, 
             ))}
             {list.length === 0 && <p className={`px-3 py-4 text-center text-sm ${textMuted}`}>Aucun client</p>}
           </div>
-          <button onClick={onQuickAdd} className={`w-full flex items-center gap-2 px-3 py-2.5 text-sm font-semibold border-t ${isDark ? 'border-slate-700 hover:bg-slate-700' : 'border-slate-100 hover:bg-slate-50'}`} style={{ color: couleur }}>
+          <button onClick={onQuickAdd} className={`w-full flex items-center gap-2 px-3 py-2.5 text-sm font-semibold border-t border-bord hover:bg-surface-2 text-accent-texte`}>
             <UserPlus size={16} /> Nouveau client
           </button>
         </div>
@@ -1096,7 +1096,7 @@ function SectionRow({ ligne, index, total, subtotal, count = 0, collapsed = fals
     // Bandeau plein + liseré coloré : un lot structure le prix, il ne doit pas
     // se lire comme une ligne de plus.
     <div data-row-index={rowIndex}
-      className={`group border-y ${isDark ? 'border-slate-700' : 'border-slate-200'} ${isDragged ? 'opacity-40' : ''}`}
+      className={`group border-y border-bord ${isDragged ? 'opacity-40' : ''}`}
       style={{ background: `${couleur}14`, borderLeft: `3px solid ${couleur}`, ...(isDropTarget ? { boxShadow: `inset 0 0 0 2px ${couleur}` } : null) }}>
       {/* Au téléphone, le titre prend toute la première ligne (sinon il était coupé à deux mots) ; le compte, le
           sous-total et les boutons passent dessous, à droite. */}
@@ -1105,12 +1105,12 @@ function SectionRow({ ligne, index, total, subtotal, count = 0, collapsed = fals
             sélectionner le texte du titre. Le lot emporte ses lignes. */}
         <button type="button" aria-label={`Déplacer le lot ${titre || 'sans titre'}`}
           onPointerDown={onGrab} style={{ touchAction: 'none' }}
-          className={`p-0.5 rounded cursor-grab active:cursor-grabbing flex-shrink-0 ${textMuted} ${isDark ? 'hover:bg-slate-700' : 'hover:bg-white/70'}`}>
+          className={`p-0.5 rounded cursor-grab active:cursor-grabbing flex-shrink-0 ${textMuted} hover:bg-surface/70`}>
           <GripVertical size={14} />
         </button>
         <button onClick={onToggle} aria-expanded={!collapsed}
           aria-label={collapsed ? `Déplier le lot ${titre || 'sans titre'}` : `Replier le lot ${titre || 'sans titre'}`}
-          className={`p-1 rounded flex-shrink-0 ${textMuted} ${isDark ? 'hover:bg-slate-700' : 'hover:bg-white/70'}`}>
+          className={`p-1 rounded flex-shrink-0 ${textMuted} hover:bg-surface/70`}>
           <ChevronDown size={15} className={`transition-transform ${collapsed ? '-rotate-90' : ''}`} />
         </button>
         <Layers size={14} style={{ color: couleur }} className="flex-shrink-0 hidden sm:block" />
@@ -1120,13 +1120,13 @@ function SectionRow({ ligne, index, total, subtotal, count = 0, collapsed = fals
           onChange={e => onUpdate(e.target.value.replace(/\s*\n\s*/g, ' '))} onInput={e => ajusterHauteur(e.target)}
           onKeyDown={e => { if (e.key === 'Enter') e.preventDefault(); }}
           className={`grow min-w-0 basis-[calc(100%-4.5rem)] sm:basis-0 min-h-8 py-1.5 leading-5 resize-none overflow-hidden px-2 rounded-lg border-0 bg-transparent text-sm font-bold uppercase tracking-wide ${textPrimary} placeholder:font-normal placeholder:normal-case focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`} />
-        <span className={`ml-auto sm:ml-0 text-[10px] font-semibold whitespace-nowrap px-1.5 py-0.5 rounded-full flex-shrink-0 ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-white/80 text-slate-500'}`}>
+        <span className={`ml-auto sm:ml-0 text-[10px] font-semibold whitespace-nowrap px-1.5 py-0.5 rounded-full flex-shrink-0 bg-surface/80 text-encre-3`}>
           {count} ligne{count > 1 ? 's' : ''}
         </span>
         <span className={`text-sm font-extrabold tabular-nums whitespace-nowrap ${textPrimary}`}>{eur(subtotal)}</span>
         <div className="flex items-center flex-shrink-0">
-          <button onClick={onMoveUp} disabled={index === 0} aria-label="Monter le lot" className={`p-1 rounded ${textMuted} disabled:opacity-30 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-white/70'}`}><ChevronUp size={14} /></button>
-          <button onClick={onMoveDown} disabled={index === total - 1} aria-label="Descendre le lot" className={`p-1 rounded ${textMuted} disabled:opacity-30 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-white/70'}`}><ChevronDown size={14} /></button>
+          <button onClick={onMoveUp} disabled={index === 0} aria-label="Monter le lot" className={`p-1 rounded ${textMuted} disabled:opacity-30 hover:bg-surface/70`}><ChevronUp size={14} /></button>
+          <button onClick={onMoveDown} disabled={index === total - 1} aria-label="Descendre le lot" className={`p-1 rounded ${textMuted} disabled:opacity-30 hover:bg-surface/70`}><ChevronDown size={14} /></button>
           <button onClick={onRemove} aria-label="Supprimer le lot" className="p-1 rounded text-red-500 hover:bg-red-500/10"><Trash2 size={14} /></button>
         </div>
       </div>
@@ -1163,7 +1163,7 @@ function LigneRow({ ligne, index, total, franchise = false, isDark, couleur, inp
   const numKeyDown = (e) => { if (e.key === 'Enter') { e.preventDefault(); onLineEnter?.(); } };
   return (
     <div data-row-index={rowIndex}
-      className={`group border-b last:border-b-0 ${isDark ? 'border-slate-800' : 'border-slate-100'} ${rowHover} transition-colors ${isDragged ? 'opacity-40' : ''}`}
+      className={`group border-b last:border-b-0 border-bord ${rowHover} transition-colors ${isDragged ? 'opacity-40' : ''}`}
       style={isDropTarget ? { boxShadow: `inset 0 2px 0 0 ${couleur}` } : undefined}>
       {/* Desktop grid — la poignée n'apparaît qu'au survol pour ne pas charger la ligne */}
       <div className="hidden sm:grid grid-cols-[14px_1fr_52px_60px_74px_54px_92px_30px] gap-2 items-center px-4 py-2">
@@ -1247,18 +1247,18 @@ function LineMenu({ isDark, textMuted, index, total, onMoveUp, onMoveDown, onDup
   return (
     <div className="relative flex justify-center" ref={ref}>
       <button onClick={() => setOpen(o => !o)} aria-label="Actions de ligne" aria-haspopup="true" aria-expanded={open}
-        className={`rounded-lg transition-opacity ${toujoursVisible ? 'w-11 h-11 flex items-center justify-center' : 'p-1.5 opacity-0 group-hover:opacity-100 focus:opacity-100'} ${textMuted} ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
+        className={`rounded-lg transition-opacity ${toujoursVisible ? 'w-11 h-11 flex items-center justify-center' : 'p-1.5 opacity-0 group-hover:opacity-100 focus:opacity-100'} ${textMuted} hover:bg-surface-2`}>
         <span className="text-lg leading-none">⋯</span>
       </button>
       {open && (
-        <div onKeyDown={e => e.key === 'Escape' && setOpen(false)} role="menu" className={`absolute right-0 top-full mt-1 z-30 w-56 rounded-xl border shadow-e3 py-1 text-sm [&>button]:min-h-[44px] ${isDark ? 'bg-slate-800 border-slate-700 text-slate-200' : 'bg-white border-slate-200 text-slate-700'}`}>
-          {onMetre && <button role="menuitem" onClick={() => { onMetre(); setOpen(false); }} className={`w-full flex items-center gap-2 px-3 py-2 text-left ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}><Ruler size={14} /> Métré L × l</button>}
-          {onMarge && <button role="menuitem" onClick={() => { onMarge(); setOpen(false); }} className={`w-full flex items-center gap-2 px-3 py-2 text-left ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}><Zap size={14} /> Prix d'achat / marge</button>}
-          {onInsertLot && <button role="menuitem" onClick={() => { onInsertLot(); setOpen(false); }} className={`w-full flex items-center gap-2 px-3 py-2 text-left ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}><Plus size={14} /> Lot au-dessus</button>}
-          {onToLot && <button role="menuitem" onClick={() => { onToLot(); setOpen(false); }} className={`w-full flex items-center gap-2 px-3 py-2 text-left ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}><Layers size={14} /> Transformer en lot</button>}
-          <button role="menuitem" disabled={index === 0} onClick={() => { onMoveUp(); setOpen(false); }} className={`w-full flex items-center gap-2 px-3 py-2 text-left disabled:opacity-40 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}><ChevronUp size={14} /> Monter</button>
-          <button role="menuitem" disabled={index === total - 1} onClick={() => { onMoveDown(); setOpen(false); }} className={`w-full flex items-center gap-2 px-3 py-2 text-left disabled:opacity-40 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}><ChevronDown size={14} /> Descendre</button>
-          <button role="menuitem" onClick={() => { onDuplicate(); setOpen(false); }} className={`w-full flex items-center gap-2 px-3 py-2 text-left ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}><Plus size={14} /> Dupliquer</button>
+        <div onKeyDown={e => e.key === 'Escape' && setOpen(false)} role="menu" className={`absolute right-0 top-full mt-1 z-30 w-56 rounded-xl border shadow-e3 py-1 text-sm [&>button]:min-h-[44px] bg-surface border-bord text-encre-2`}>
+          {onMetre && <button role="menuitem" onClick={() => { onMetre(); setOpen(false); }} className={`w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-surface-2`}><Ruler size={14} /> Métré L × l</button>}
+          {onMarge && <button role="menuitem" onClick={() => { onMarge(); setOpen(false); }} className={`w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-surface-2`}><Zap size={14} /> Prix d'achat / marge</button>}
+          {onInsertLot && <button role="menuitem" onClick={() => { onInsertLot(); setOpen(false); }} className={`w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-surface-2`}><Plus size={14} /> Lot au-dessus</button>}
+          {onToLot && <button role="menuitem" onClick={() => { onToLot(); setOpen(false); }} className={`w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-surface-2`}><Layers size={14} /> Transformer en lot</button>}
+          <button role="menuitem" disabled={index === 0} onClick={() => { onMoveUp(); setOpen(false); }} className={`w-full flex items-center gap-2 px-3 py-2 text-left disabled:opacity-40 hover:bg-surface-2`}><ChevronUp size={14} /> Monter</button>
+          <button role="menuitem" disabled={index === total - 1} onClick={() => { onMoveDown(); setOpen(false); }} className={`w-full flex items-center gap-2 px-3 py-2 text-left disabled:opacity-40 hover:bg-surface-2`}><ChevronDown size={14} /> Descendre</button>
+          <button role="menuitem" onClick={() => { onDuplicate(); setOpen(false); }} className={`w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-surface-2`}><Plus size={14} /> Dupliquer</button>
           <button role="menuitem" onClick={() => { onRemove(); setOpen(false); }} className={`w-full flex items-center gap-2 px-3 py-2 text-left text-red-500 ${isDark ? 'hover:bg-red-900/30' : 'hover:bg-red-50'}`}><Trash2 size={14} /> Supprimer</button>
         </div>
       )}
@@ -1284,16 +1284,16 @@ function MetreModal({ isDark, couleur, inputBg, textPrimary, textMuted, onClose,
   const has3d = nh > 0;
   const qty = Math.round(nL * nl * (has3d ? nh : 1) * nN * (1 + nC / 100) * 100) / 100;
   const unite = has3d ? 'm³' : 'm²';
-  const card = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200';
+  const card = 'bg-surface border-bord';
   const fieldCls = `w-full px-3 h-11 rounded-xl border text-sm ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`;
   const labelCls = `block text-[11px] font-semibold uppercase tracking-wide mb-1.5 ${textMuted}`;
   return (
     <div className="fixed inset-0 z-[1100] flex items-end sm:items-center justify-center sm:p-4" role="dialog" aria-modal="true" aria-label="Métré express">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
       <div className={`relative w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl border shadow-2xl ${card}`}>
-        <div className={`flex items-center justify-between px-5 py-4 border-b ${isDark ? 'border-slate-700' : 'border-slate-100'}`}>
-          <h3 className={`text-base font-bold flex items-center gap-2 ${textPrimary}`}><Ruler size={18} style={{ color: couleur }} /> Métré express</h3>
-          <button onClick={onClose} aria-label="Fermer" className={`p-1.5 rounded-lg ${textMuted} ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}><X size={18} /></button>
+        <div className={`flex items-center justify-between px-5 py-4 border-b border-bord`}>
+          <h3 className={`text-base font-bold flex items-center gap-2 ${textPrimary}`}><Ruler size={18} className="text-accent-texte" /> Métré express</h3>
+          <button onClick={onClose} aria-label="Fermer" className={`p-1.5 rounded-lg ${textMuted} hover:bg-surface-2`}><X size={18} /></button>
         </div>
         <div className="p-5 space-y-4">
           <div className="grid grid-cols-2 gap-3">
@@ -1303,15 +1303,15 @@ function MetreModal({ isDark, couleur, inputBg, textPrimary, textMuted, onClose,
             <div><label className={labelCls}>Nombre</label><input type="number" min="0" step="any" inputMode="decimal" value={nb} onChange={e => setNb(e.target.value)} placeholder="1" className={fieldCls} /></div>
           </div>
           <div><label className={labelCls}>Chutes / pertes %</label><input type="number" min="0" step="any" inputMode="decimal" value={chutes} onChange={e => setChutes(e.target.value)} placeholder="0" className={fieldCls} /></div>
-          <div className={`rounded-xl px-4 py-3 flex items-center justify-between ${isDark ? 'bg-slate-900/60' : 'bg-slate-50'}`}>
+          <div className={`rounded-xl px-4 py-3 flex items-center justify-between bg-fond`}>
             <span className={`text-sm ${textMuted}`}>Quantité calculée</span>
-            <span className="text-2xl font-extrabold tabular-nums" style={{ color: couleur }}>{qty.toLocaleString('fr-FR')} <span className="text-sm font-semibold">{unite}</span></span>
+            <span className="text-2xl font-extrabold tabular-nums text-accent-texte">{qty.toLocaleString('fr-FR')} <span className="text-sm font-semibold">{unite}</span></span>
           </div>
         </div>
-        <div className={`flex gap-2 px-5 py-4 border-t ${isDark ? 'border-slate-700' : 'border-slate-100'}`}>
-          <button onClick={onClose} className={`flex-1 h-11 rounded-xl border text-sm font-semibold ${isDark ? 'border-slate-700 text-slate-200 hover:bg-slate-700' : 'border-slate-200 text-slate-700 hover:bg-slate-50'}`}>Annuler</button>
+        <div className={`flex gap-2 px-5 py-4 border-t border-bord`}>
+          <button onClick={onClose} className={`flex-1 h-11 rounded-xl border text-sm font-semibold border-bord text-encre-2 hover:bg-surface-2`}>Annuler</button>
           <button onClick={() => onApply(qty, unite)} disabled={qty <= 0}
-            className="flex-1 h-11 rounded-xl text-white text-sm font-bold disabled:opacity-50 transition-all" style={{ background: couleur }}>
+            className="flex-1 h-11 rounded-xl text-sm font-bold disabled:opacity-50 transition-all bg-accent text-sur-accent">
             Appliquer
           </button>
         </div>
@@ -1358,14 +1358,14 @@ function LibraryPanel({ open, onClose, persoTemplates = [], articles = [], onApp
   return (
     <div className="fixed inset-0 z-[1150] flex justify-end" role="dialog" aria-modal="true" aria-label="Bibliothèque de modèles">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <aside className={`relative w-full sm:w-[440px] h-full flex flex-col shadow-2xl border-l ${isDark ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-200'}`}>
-        <div className={`flex items-center gap-2 px-4 h-14 border-b flex-shrink-0 ${isDark ? 'border-slate-800' : 'border-slate-100'}`}>
-          <Library size={18} style={{ color: couleur }} />
+      <aside className={`relative w-full sm:w-[440px] h-full flex flex-col shadow-2xl border-l bg-surface border-bord`}>
+        <div className={`flex items-center gap-2 px-4 h-14 border-b flex-shrink-0 border-bord`}>
+          <Library size={18} className="text-accent-texte" />
           <h2 className={`flex-1 text-sm font-bold ${textPrimary}`}>Bibliothèque</h2>
-          <button onClick={onClose} aria-label="Fermer la bibliothèque" className={`p-2 rounded-lg ${textMuted} ${isDark ? 'hover:bg-slate-800' : 'hover:bg-slate-100'}`}><X size={18} /></button>
+          <button onClick={onClose} aria-label="Fermer la bibliothèque" className={`p-2 rounded-lg ${textMuted} hover:bg-surface-2`}><X size={18} /></button>
         </div>
 
-        <div className={`px-4 py-3 border-b flex-shrink-0 ${isDark ? 'border-slate-800' : 'border-slate-100'}`}>
+        <div className={`px-4 py-3 border-b flex-shrink-0 border-bord`}>
           <div className="relative">
             <Search size={15} className={`absolute left-3 top-1/2 -translate-y-1/2 ${textMuted}`} />
             <input value={q} onChange={e => setQ(e.target.value)} placeholder="Rechercher un métier, une prestation…"
@@ -1382,14 +1382,14 @@ function LibraryPanel({ open, onClose, persoTemplates = [], articles = [], onApp
                   const lignes = tpl.lignes || [];
                   const total = lignes.reduce((s, l) => s + num(l.quantite ?? 1) * num(l.prixUnitaire ?? l.prix ?? 0), 0);
                   return (
-                    <div key={tpl.id} className={`rounded-xl border ${isDark ? 'bg-slate-800/60 border-slate-700' : 'bg-white border-slate-200'}`}>
+                    <div key={tpl.id} className={`rounded-xl border bg-surface border-bord`}>
                       <div className="flex items-center gap-2 p-3">
                         <div className="flex-1 min-w-0">
                           <p className={`text-sm font-semibold truncate ${textPrimary}`}>{tpl.nom}</p>
                           <p className={`text-[11px] ${textMuted}`}>{lignes.length} ligne{lignes.length > 1 ? 's' : ''}{total > 0 ? ` · ${eur(total)} HT` : ''}</p>
                         </div>
                         <button type="button" onClick={() => onAppendBloc(lignes, tpl.nom)}
-                          className="px-3 h-8 rounded-lg text-xs font-semibold text-white flex-shrink-0" style={{ background: couleur }}>
+                          className="px-3 h-8 rounded-lg text-xs font-semibold flex-shrink-0 bg-accent text-sur-accent">
                           Ajouter
                         </button>
                       </div>
@@ -1406,9 +1406,9 @@ function LibraryPanel({ open, onClose, persoTemplates = [], articles = [], onApp
               {trades.map(([key, t]) => {
                 const isOpen = openTrade === key;
                 return (
-                  <div key={key} className={`rounded-xl border overflow-hidden ${isDark ? 'bg-slate-800/60 border-slate-700' : 'bg-white border-slate-200'}`}>
+                  <div key={key} className={`rounded-xl border overflow-hidden bg-surface border-bord`}>
                     <button type="button" onClick={() => setOpenTrade(isOpen ? null : key)} aria-expanded={isOpen}
-                      className={`w-full flex items-center gap-2.5 p-3 text-left transition-colors ${isDark ? 'hover:bg-slate-700/50' : 'hover:bg-slate-50'}`}>
+                      className={`w-full flex items-center gap-2.5 p-3 text-left transition-colors hover:bg-surface-2`}>
                       <span aria-hidden="true" className="text-lg flex-shrink-0">{t.icon}</span>
                       <span className="flex-1 min-w-0">
                         <span className={`block text-sm font-semibold truncate ${textPrimary}`}>{t.nom}</span>
@@ -1418,7 +1418,7 @@ function LibraryPanel({ open, onClose, persoTemplates = [], articles = [], onApp
                     </button>
 
                     {isOpen && (
-                      <div className={`border-t ${isDark ? 'border-slate-700' : 'border-slate-100'}`}>
+                      <div className={`border-t border-bord`}>
                         {/* Lots types : un chantier complet, déjà proportionné */}
                         <p className={`px-3 pt-2.5 pb-1 text-[10px] font-semibold uppercase tracking-wide ${textMuted}`}>Lots types</p>
                         {t.lots.map(lot => {
@@ -1426,8 +1426,8 @@ function LibraryPanel({ open, onClose, persoTemplates = [], articles = [], onApp
                           return (
                             <button key={lot.id} type="button"
                               onClick={() => onAppendBloc(lot.lignes, lot.nom)}
-                              className={`w-full flex items-start gap-2.5 px-3 py-2.5 text-left transition-colors ${isDark ? 'hover:bg-slate-700/60' : 'hover:bg-slate-50'}`}>
-                              <Layers size={13} style={{ color: couleur }} className="flex-shrink-0 mt-1" />
+                              className={`w-full flex items-start gap-2.5 px-3 py-2.5 text-left transition-colors hover:bg-surface-2`}>
+                              <Layers size={13} className="flex-shrink-0 mt-1 text-accent-texte" />
                               <span className="flex-1 min-w-0">
                                 <span className={`block text-sm font-medium ${textPrimary}`}>{lot.nom}</span>
                                 <span className={`block text-[11px] ${textMuted}`}>{lot.resume}</span>
@@ -1435,7 +1435,7 @@ function LibraryPanel({ open, onClose, persoTemplates = [], articles = [], onApp
                                   {lot.lignes.length} lignes · base {lot.base.quantite} {lot.base.unite}
                                 </span>
                               </span>
-                              <span className="text-xs font-bold whitespace-nowrap tabular-nums" style={{ color: couleur }}>
+                              <span className="text-xs font-bold whitespace-nowrap tabular-nums text-accent-texte">
                                 {Math.round(total).toLocaleString('fr-FR')} €
                               </span>
                             </button>
@@ -1443,16 +1443,16 @@ function LibraryPanel({ open, onClose, persoTemplates = [], articles = [], onApp
                         })}
 
                         {/* Prestations unitaires : une ligne à la fois */}
-                        <p className={`px-3 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-wide border-t ${textMuted} ${isDark ? 'border-slate-700' : 'border-slate-100'}`}>Prestations</p>
+                        <p className={`px-3 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-wide border-t ${textMuted} border-bord`}>Prestations</p>
                         {t.prestations.map((p, i) => (
                           <button key={`${t.id}-p${i}`} type="button"
                             onClick={() => onAddArticle(p)}
-                            className={`w-full flex items-center gap-2.5 px-3 py-2 text-left text-sm transition-colors ${isDark ? 'hover:bg-slate-700/60' : 'hover:bg-slate-50'}`}>
-                            <Plus size={13} style={{ color: couleur }} className="flex-shrink-0" />
+                            className={`w-full flex items-center gap-2.5 px-3 py-2 text-left text-sm transition-colors hover:bg-surface-2`}>
+                            <Plus size={13} className="flex-shrink-0 text-accent-texte" />
                             <span className={`flex-1 min-w-0 ${textPrimary}`}>{p.designation}</span>
                             {/* Prix AU M² (ou à l'unité du métier) : c'est ce qui rend
                                 la ligne ajustable une fois dans le devis. */}
-                            <span className="text-xs font-semibold whitespace-nowrap tabular-nums" style={{ color: couleur }}>
+                            <span className="text-xs font-semibold whitespace-nowrap tabular-nums text-accent-texte">
                               {p.prixUnitaire.toLocaleString('fr-FR')} €/{p.unite}
                             </span>
                           </button>
@@ -1475,11 +1475,11 @@ function LibraryPanel({ open, onClose, persoTemplates = [], articles = [], onApp
               <div className={`rounded-xl border divide-y ${isDark ? 'bg-slate-800/60 border-slate-700 divide-slate-700' : 'bg-white border-slate-200 divide-slate-100'}`}>
                 {articlesFiltered.slice(0, 12).map(a => (
                   <button key={a.id || a.nom} type="button" onClick={() => onAddArticle(a)}
-                    className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-left text-sm transition-colors ${isDark ? 'hover:bg-slate-700/60' : 'hover:bg-slate-50'}`}>
-                    <Plus size={13} style={{ color: couleur }} className="flex-shrink-0" />
+                    className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-left text-sm transition-colors hover:bg-surface-2`}>
+                    <Plus size={13} className="flex-shrink-0 text-accent-texte" />
                     <span className={`flex-1 min-w-0 truncate ${textPrimary}`}>{a.nom}</span>
                     {(a.prix ?? a.prixUnitaire) > 0 && (
-                      <span className="text-xs font-semibold whitespace-nowrap tabular-nums" style={{ color: couleur }}>
+                      <span className="text-xs font-semibold whitespace-nowrap tabular-nums text-accent-texte">
                         {eur(a.prix ?? a.prixUnitaire)}
                       </span>
                     )}
@@ -1504,13 +1504,13 @@ function PdfPreviewModal({ isDark, couleur, textPrimary, textMuted, html, onClos
   return (
     <div className="fixed inset-0 z-[1100] flex flex-col" role="dialog" aria-modal="true" aria-label="Aperçu du document">
       <div className="absolute inset-0 bg-black/60" onClick={onClose} />
-      <div className={`relative m-2 sm:m-6 flex-1 flex flex-col rounded-2xl overflow-hidden border shadow-2xl ${isDark ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-200'}`}>
-        <div className={`flex items-center justify-between px-4 sm:px-5 py-3 border-b flex-shrink-0 ${isDark ? 'border-slate-700' : 'border-slate-100'}`}>
+      <div className={`relative m-2 sm:m-6 flex-1 flex flex-col rounded-2xl overflow-hidden border shadow-2xl bg-surface border-bord`}>
+        <div className={`flex items-center justify-between px-4 sm:px-5 py-3 border-b flex-shrink-0 border-bord`}>
           <div className="min-w-0">
-            <h3 className={`text-sm sm:text-base font-bold flex items-center gap-2 ${textPrimary}`}><Eye size={17} style={{ color: couleur }} /> Ce que votre client recevra</h3>
+            <h3 className={`text-sm sm:text-base font-bold flex items-center gap-2 ${textPrimary}`}><Eye size={17} className="text-accent-texte" /> Ce que votre client recevra</h3>
             <p className={`text-[11px] ${textMuted} hidden sm:block`}>Aperçu en direct — rien n'est encore créé</p>
           </div>
-          <button onClick={onClose} aria-label="Fermer l'aperçu" className={`p-2 rounded-lg flex-shrink-0 ${textMuted} ${isDark ? 'hover:bg-slate-800' : 'hover:bg-slate-100'}`}><X size={18} /></button>
+          <button onClick={onClose} aria-label="Fermer l'aperçu" className={`p-2 rounded-lg flex-shrink-0 ${textMuted} hover:bg-surface-2`}><X size={18} /></button>
         </div>
         {/* fond neutre : le document dessine lui-même sa feuille A4 sur fond gris */}
         <iframe srcDoc={html} sandbox="" title="Aperçu du devis" className="flex-1 w-full border-0 bg-slate-200" />
@@ -1533,14 +1533,14 @@ function MargeModal({ isDark, couleur, inputBg, textPrimary, textMuted, ligne, o
   const npa = num(pa);
   const margePct = pu > 0 ? Math.round(((pu - npa) / pu) * 100) : 0;
   const margeEur = (pu - npa) * num(ligne.quantite);
-  const card = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200';
+  const card = 'bg-surface border-bord';
   return (
     <div className="fixed inset-0 z-[1100] flex items-end sm:items-center justify-center sm:p-4" role="dialog" aria-modal="true" aria-label="Prix d'achat et marge">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
       <div className={`relative w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl border shadow-2xl ${card}`}>
-        <div className={`flex items-center justify-between px-5 py-4 border-b ${isDark ? 'border-slate-700' : 'border-slate-100'}`}>
-          <h3 className={`text-base font-bold flex items-center gap-2 ${textPrimary}`}><Zap size={18} style={{ color: couleur }} /> Prix d'achat / marge</h3>
-          <button onClick={onClose} aria-label="Fermer" className={`p-1.5 rounded-lg ${textMuted} ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}><X size={18} /></button>
+        <div className={`flex items-center justify-between px-5 py-4 border-b border-bord`}>
+          <h3 className={`text-base font-bold flex items-center gap-2 ${textPrimary}`}><Zap size={18} className="text-accent-texte" /> Prix d'achat / marge</h3>
+          <button onClick={onClose} aria-label="Fermer" className={`p-1.5 rounded-lg ${textMuted} hover:bg-surface-2`}><X size={18} /></button>
         </div>
         <div className="p-5 space-y-4">
           <p className={`text-sm truncate ${textMuted}`}>{ligne.description || 'Ligne sans désignation'} — vendu {eur(pu)}/{ligne.unite || 'u'}</p>
@@ -1549,7 +1549,7 @@ function MargeModal({ isDark, couleur, inputBg, textPrimary, textMuted, ligne, o
             <input ref={ref} type="text" inputMode="decimal" value={pa} onChange={e => setPa(e.target.value)} placeholder="0"
               className={`w-full px-3 h-11 rounded-xl border text-sm ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`} />
           </div>
-          <div className={`rounded-xl px-4 py-3 flex items-center justify-between ${isDark ? 'bg-slate-900/60' : 'bg-slate-50'}`}>
+          <div className={`rounded-xl px-4 py-3 flex items-center justify-between bg-fond`}>
             <span className={`text-sm ${textMuted}`}>Marge sur la ligne</span>
             <span className={`text-xl font-extrabold tabular-nums ${margePct >= 25 ? 'text-emerald-500' : margePct >= 10 ? 'text-amber-500' : 'text-red-500'}`}>
               {margePct} % <span className="text-sm font-semibold">({eur(margeEur)})</span>
@@ -1557,9 +1557,9 @@ function MargeModal({ isDark, couleur, inputBg, textPrimary, textMuted, ligne, o
           </div>
           <p className={`text-[11px] ${textMuted}`}>Jamais visible par le client — sert uniquement au badge de marge du devis.</p>
         </div>
-        <div className={`flex gap-2 px-5 py-4 border-t ${isDark ? 'border-slate-700' : 'border-slate-100'}`}>
-          <button onClick={onClose} className={`flex-1 h-11 rounded-xl border text-sm font-semibold ${isDark ? 'border-slate-700 text-slate-200 hover:bg-slate-700' : 'border-slate-200 text-slate-700 hover:bg-slate-50'}`}>Annuler</button>
-          <button onClick={() => onApply(npa)} className="flex-1 h-11 rounded-xl text-white text-sm font-bold transition-all" style={{ background: couleur }}>Appliquer</button>
+        <div className={`flex gap-2 px-5 py-4 border-t border-bord`}>
+          <button onClick={onClose} className={`flex-1 h-11 rounded-xl border text-sm font-semibold border-bord text-encre-2 hover:bg-surface-2`}>Annuler</button>
+          <button onClick={() => onApply(npa)} className="flex-1 h-11 rounded-xl text-sm font-bold transition-all bg-accent text-sur-accent">Appliquer</button>
         </div>
       </div>
     </div>
@@ -1577,26 +1577,26 @@ function SaveTemplateModal({ isDark, couleur, inputBg, textPrimary, textMuted, d
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, [onClose]);
-  const card = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200';
+  const card = 'bg-surface border-bord';
   const fieldCls = `w-full px-3 h-11 rounded-xl border text-sm ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`;
   const labelCls = `block text-[11px] font-semibold uppercase tracking-wide mb-1.5 ${textMuted}`;
   return (
     <div className="fixed inset-0 z-[1100] flex items-end sm:items-center justify-center sm:p-4" role="dialog" aria-modal="true" aria-label="Enregistrer comme modèle">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
       <div className={`relative w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl border shadow-2xl ${card}`}>
-        <div className={`flex items-center justify-between px-5 py-4 border-b ${isDark ? 'border-slate-700' : 'border-slate-100'}`}>
-          <h3 className={`text-base font-bold flex items-center gap-2 ${textPrimary}`}><Star size={18} style={{ color: couleur }} /> Enregistrer comme modèle</h3>
-          <button onClick={onClose} aria-label="Fermer" className={`p-1.5 rounded-lg ${textMuted} ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}><X size={18} /></button>
+        <div className={`flex items-center justify-between px-5 py-4 border-b border-bord`}>
+          <h3 className={`text-base font-bold flex items-center gap-2 ${textPrimary}`}><Star size={18} className="text-accent-texte" /> Enregistrer comme modèle</h3>
+          <button onClick={onClose} aria-label="Fermer" className={`p-1.5 rounded-lg ${textMuted} hover:bg-surface-2`}><X size={18} /></button>
         </div>
         <div className="p-5 space-y-4">
           <div><label className={labelCls}>Nom du modèle</label><input ref={ref} value={nom} onChange={e => setNom(e.target.value)} placeholder="ex : Rénovation salle de bain type" className={fieldCls} /></div>
           <div><label className={labelCls}>Catégorie — option</label><input value={categorie} onChange={e => setCategorie(e.target.value)} placeholder="Mes modèles" className={fieldCls} /></div>
           <p className={`text-xs ${textMuted}`}>Les lignes chiffrées du devis seront enregistrées. Vous les retrouverez dans « Vos modèles » au prochain devis.</p>
         </div>
-        <div className={`flex gap-2 px-5 py-4 border-t ${isDark ? 'border-slate-700' : 'border-slate-100'}`}>
-          <button onClick={onClose} className={`flex-1 h-11 rounded-xl border text-sm font-semibold ${isDark ? 'border-slate-700 text-slate-200 hover:bg-slate-700' : 'border-slate-200 text-slate-700 hover:bg-slate-50'}`}>Annuler</button>
+        <div className={`flex gap-2 px-5 py-4 border-t border-bord`}>
+          <button onClick={onClose} className={`flex-1 h-11 rounded-xl border text-sm font-semibold border-bord text-encre-2 hover:bg-surface-2`}>Annuler</button>
           <button onClick={() => onSave(nom, categorie)} disabled={!nom.trim()}
-            className="flex-1 h-11 rounded-xl text-white text-sm font-bold disabled:opacity-50 transition-all" style={{ background: couleur }}>Enregistrer</button>
+            className="flex-1 h-11 rounded-xl text-sm font-bold disabled:opacity-50 transition-all bg-accent text-sur-accent">Enregistrer</button>
         </div>
       </div>
     </div>
@@ -1606,18 +1606,18 @@ function SaveTemplateModal({ isDark, couleur, inputBg, textPrimary, textMuted, d
 /* ── Démarrage éclair : modèles métier + articles fréquents ── */
 function QuickStart({ templates, articles, persoTemplates = [], onApplyTemplate, onApplyPerso, onAddArticle, onOpenLibrary, isDark, couleur, textPrimary, textMuted }) {
   const trades = Object.entries(TRADE_LIBRARY);
-  const cardCls = `group flex flex-col items-center gap-1.5 p-3 rounded-xl border transition-all hover:-translate-y-0.5 hover:shadow-md active:scale-95 ${isDark ? 'bg-slate-800 border-slate-700 hover:border-slate-600' : 'bg-white border-slate-200 hover:border-slate-300'}`;
+  const cardCls = `group flex flex-col items-center gap-1.5 p-3 rounded-xl border transition-all hover:-translate-y-0.5 hover:shadow-md active:scale-95 bg-surface border-bord hover:border-bord-fort`;
   return (
     <div className="space-y-4">
       {persoTemplates.length > 0 && (
         <div>
           <p className={`text-[11px] font-semibold uppercase tracking-wide mb-2 flex items-center gap-1.5 ${textMuted}`}>
-            <FileText size={12} style={{ color: couleur }} /> Vos modèles
+            <FileText size={12} className="text-accent-texte" /> Vos modèles
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
             {persoTemplates.map(tpl => (
               <button key={tpl.id} type="button" onClick={() => onApplyPerso(tpl)}
-                className={`group flex flex-col items-start gap-0.5 p-3 rounded-xl border text-left transition-all hover:-translate-y-0.5 hover:shadow-md active:scale-95 ${isDark ? 'bg-slate-800 border-slate-700 hover:border-slate-600' : 'bg-white border-slate-200 hover:border-slate-300'}`}>
+                className={`group flex flex-col items-start gap-0.5 p-3 rounded-xl border text-left transition-all hover:-translate-y-0.5 hover:shadow-md active:scale-95 bg-surface border-bord hover:border-bord-fort`}>
                 <span className={`text-sm font-semibold truncate w-full ${textPrimary}`}>{tpl.nom}</span>
                 <span className={`text-[10px] ${textMuted}`}>{(tpl.lignes || []).length} lignes{tpl.categorie ? ` · ${tpl.categorie}` : ''}</span>
               </button>
@@ -1627,12 +1627,12 @@ function QuickStart({ templates, articles, persoTemplates = [], onApplyTemplate,
       )}
       <div>
         <p className={`text-[11px] font-semibold uppercase tracking-wide mb-2 flex items-center gap-1.5 ${textMuted}`}>
-          <Sparkles size={12} style={{ color: couleur }} /> Démarrer avec un modèle métier
+          <Sparkles size={12} className="text-accent-texte" /> Démarrer avec un modèle métier
         </p>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           {templates.map(tpl => (
             <button key={tpl.label} type="button" onClick={() => onApplyTemplate(tpl)} className={cardCls}>
-              <span className="w-9 h-9 rounded-lg flex items-center justify-center transition-transform group-hover:scale-110" style={{ background: `${couleur}18`, color: couleur }}>
+              <span className="w-9 h-9 rounded-lg flex items-center justify-center transition-transform group-hover:scale-110 text-accent-texte" style={{ background: `${couleur}18` }}>
                 <tpl.Icon size={18} />
               </span>
               <span className={`text-xs font-medium text-center leading-tight ${textPrimary}`}>{tpl.label}</span>
@@ -1646,7 +1646,7 @@ function QuickStart({ templates, articles, persoTemplates = [], onApplyTemplate,
         {/* Accès aux 17 métiers CHIFFRÉS : c'est la vraie valeur, on l'annonce
             explicitement plutôt que de la cacher derrière « Tous les métiers ». */}
         <button type="button" onClick={onOpenLibrary}
-          className={`mt-2 inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg border transition-all ${isDark ? 'border-slate-700 text-slate-300 hover:bg-slate-800' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
+          className={`mt-2 inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg border transition-all border-bord text-encre-2 hover:bg-surface-2`}>
           <Library size={13} /> Parcourir les {trades.length} métiers chiffrés
         </button>
       </div>
@@ -1654,15 +1654,15 @@ function QuickStart({ templates, articles, persoTemplates = [], onApplyTemplate,
       {articles.length > 0 && (
         <div>
           <p className={`text-[11px] font-semibold uppercase tracking-wide mb-2 flex items-center gap-1.5 ${textMuted}`}>
-            <Star size={12} style={{ color: couleur }} /> Vos articles fréquents
+            <Star size={12} className="text-accent-texte" /> Vos articles fréquents
           </p>
           <div className="flex flex-wrap gap-2">
             {articles.map(a => (
               <button key={a.id} type="button" onClick={() => onAddArticle(a)}
-                className={`group flex items-center gap-2 pl-3 pr-2 h-9 rounded-full border text-sm transition-all hover:-translate-y-0.5 hover:shadow-sm active:scale-95 ${isDark ? 'bg-slate-800 border-slate-700 hover:border-slate-600' : 'bg-white border-slate-200 hover:border-slate-300'}`}>
+                className={`group flex items-center gap-2 pl-3 pr-2 h-9 rounded-full border text-sm transition-all hover:-translate-y-0.5 hover:shadow-sm active:scale-95 bg-surface border-bord hover:border-bord-fort`}>
                 <span className={`font-medium truncate max-w-[180px] ${textPrimary}`}>{a.nom}</span>
-                <span className="font-bold text-xs" style={{ color: couleur }}>{eur(a.prix ?? a.prixUnitaire ?? 0)}</span>
-                <span className="w-5 h-5 rounded-full flex items-center justify-center transition-transform group-hover:scale-110" style={{ background: `${couleur}18`, color: couleur }}><Plus size={12} /></span>
+                <span className="font-bold text-xs text-accent-texte">{eur(a.prix ?? a.prixUnitaire ?? 0)}</span>
+                <span className="w-5 h-5 rounded-full flex items-center justify-center transition-transform group-hover:scale-110 text-accent-texte" style={{ background: `${couleur}18` }}><Plus size={12} /></span>
               </button>
             ))}
           </div>
@@ -1714,22 +1714,22 @@ function AddLineRow({ catalogue, isDark, couleur, inputBg, textPrimary, textMute
 
   return (
     <div className="relative">
-      <div className={`flex items-center gap-2 px-3 sm:px-4 py-2.5 ${empty ? '' : `border-t ${isDark ? 'border-slate-800' : 'border-slate-100'}`}`}>
-        <span className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${couleur}18`, color: couleur }}>
+      <div className={`flex items-center gap-2 px-3 sm:px-4 py-2.5 ${empty ? '' : `border-t border-bord`}`}>
+        <span className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 text-accent-texte" style={{ background: `${couleur}18` }}>
           <Plus size={16} />
         </span>
         <input ref={inputRef} value={q} onChange={e => { setQ(e.target.value); setHighlight(0); }} onKeyDown={onKeyDown}
           placeholder={catalogue.length ? 'Ajouter une prestation… (tapez pour chercher dans le catalogue)' : 'Ajouter une ligne… (désignation libre)'}
           className={`flex-1 h-9 px-2 rounded-lg border-0 bg-transparent text-sm ${textPrimary} placeholder:${textMuted} focus:outline-none`} />
-        {q.trim() && <button onClick={pickFree} className="flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-lg" style={{ color: couleur }}><CornerDownLeft size={13} /> Ajouter</button>}
+        {q.trim() && <button onClick={pickFree} className="flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-lg text-accent-texte"><CornerDownLeft size={13} /> Ajouter</button>}
       </div>
 
       {(suggestions.length > 0 || showFree) && (
-        <div className={`absolute left-2 right-2 sm:left-4 sm:right-4 top-full z-30 rounded-xl border shadow-xl overflow-hidden ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+        <div className={`absolute left-2 right-2 sm:left-4 sm:right-4 top-full z-30 rounded-xl border shadow-xl overflow-hidden bg-surface border-bord`}>
           {suggestions.map((a, i) => (
             <button key={a.id || i} onMouseEnter={() => setHighlight(i)} onClick={() => pick(a)}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 text-left ${highlight === i ? (isDark ? 'bg-slate-700' : 'bg-slate-50') : ''}`}>
-              <Package size={16} style={{ color: couleur }} className="flex-shrink-0" />
+              className={`w-full flex items-center gap-3 px-3 py-2.5 text-left ${highlight === i ? 'bg-fond' : ''}`}>
+              <Package size={16} className="flex-shrink-0 text-accent-texte" />
               <span className="flex-1 min-w-0">
                 <span className={`block truncate text-sm font-medium ${textPrimary}`}>{a.nom || a.designation}</span>
                 {a.categorie && <span className={`block truncate text-xs ${textMuted}`}>{a.categorie}</span>}
@@ -1739,8 +1739,8 @@ function AddLineRow({ catalogue, isDark, couleur, inputBg, textPrimary, textMute
           ))}
           {showFree && (
             <button onMouseEnter={() => setHighlight(suggestions.length)} onClick={pickFree}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 text-left border-t ${isDark ? 'border-slate-700' : 'border-slate-100'} ${highlight === suggestions.length ? (isDark ? 'bg-slate-700' : 'bg-slate-50') : ''}`}>
-              <Plus size={16} style={{ color: couleur }} className="flex-shrink-0" />
+              className={`w-full flex items-center gap-3 px-3 py-2.5 text-left border-t border-bord ${highlight === suggestions.length ? 'bg-fond' : ''}`}>
+              <Plus size={16} className="flex-shrink-0 text-accent-texte" />
               <span className={`text-sm ${textPrimary}`}>Créer <span className="font-semibold">« {q.trim()} »</span> <span className={textMuted}>(ligne libre)</span></span>
             </button>
           )}

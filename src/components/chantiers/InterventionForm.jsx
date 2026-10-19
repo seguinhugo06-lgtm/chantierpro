@@ -37,12 +37,12 @@ const InterventionForm = memo(function InterventionForm({
   const [photos, setPhotos] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  const textPrimary = isDark ? 'text-white' : 'text-gray-900';
-  const textMuted = isDark ? 'text-slate-400' : 'text-gray-500';
+  const textPrimary = 'text-encre';
+  const textMuted = 'text-encre-3';
   const inputBg = isDark
     ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400'
     : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400';
-  const cardBg = isDark ? 'bg-slate-800' : 'bg-white';
+  const cardBg = 'bg-surface';
   const overlayBg = 'bg-black/50';
 
   // -- Photo handler --
@@ -102,9 +102,9 @@ const InterventionForm = memo(function InterventionForm({
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
-        <div className={`flex items-center justify-between p-5 border-b ${isDark ? 'border-slate-700' : 'border-gray-200'}`}>
+        <div className={`flex items-center justify-between p-5 border-b border-bord`}>
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white" style={{ background: couleur }}>
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-accent text-sur-accent">
               <Wrench size={20} />
             </div>
             <div>
@@ -118,7 +118,7 @@ const InterventionForm = memo(function InterventionForm({
           </div>
           <button
             onClick={onClose}
-            className={`p-1.5 rounded-lg ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-gray-100 text-gray-400'}`}
+            className={`p-1.5 rounded-lg hover:bg-surface-2 text-encre-3`}
           >
             <X size={18} />
           </button>
@@ -231,9 +231,7 @@ const InterventionForm = memo(function InterventionForm({
                 {photos.map((photo, idx) => (
                   <div
                     key={idx}
-                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs ${
-                      isDark ? 'bg-slate-700 text-slate-300' : 'bg-gray-100 text-gray-700'
-                    }`}
+                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs bg-surface-2 text-encre-2`}
                   >
                     <Camera size={10} />
                     <span className="max-w-[120px] truncate">{photo.name}</span>
@@ -252,22 +250,17 @@ const InterventionForm = memo(function InterventionForm({
         </div>
 
         {/* Footer buttons */}
-        <div className={`flex gap-2 p-5 border-t ${isDark ? 'border-slate-700' : 'border-gray-200'}`}>
+        <div className={`flex gap-2 p-5 border-t border-bord`}>
           <button
             onClick={onClose}
-            className={`flex-1 py-2.5 rounded-xl text-sm font-medium border ${
-              isDark
-                ? 'border-slate-600 text-slate-300 hover:bg-slate-700'
-                : 'border-gray-300 text-gray-600 hover:bg-gray-50'
-            }`}
+            className={`flex-1 py-2.5 rounded-xl text-sm font-medium border border-bord-fort text-encre-2 hover:bg-surface-2`}
           >
             Annuler
           </button>
           <button
             onClick={handleSubmit}
             disabled={loading || !description.trim()}
-            className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50 flex items-center justify-center gap-2"
-            style={{ background: couleur }}
+            className="flex-1 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50 flex items-center justify-center gap-2 bg-accent text-sur-accent"
           >
             {loading ? (
               <span className="animate-spin w-4 h-4 border-2 border-white/30 border-t-white rounded-full" />
