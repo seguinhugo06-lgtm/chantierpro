@@ -42,7 +42,7 @@ describe('explorateur des métiers — logique', () => {
     });
   });
 
-  it('arrondit sans l\'erreur du binaire (1,005 × 1 000 = 1 005, pas 1 004)', () => {
+  it('arrondit sans l\'erreur du binaire (1,0045 × 1 000 = 1 004,5 → 1 005, pas 1 004)', () => {
     const lot = { id: 'y', nom: 'y', lignes: [{ designation: 'a', quantite: 1000, prixUnitaire: 1.0045, tva: 20 }] };
     expect(apercuDuLot(lot).totalHT).toBe(1005);
     expect(apercuDuLot(lot).resume).toBe('');

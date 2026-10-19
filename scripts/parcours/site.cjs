@@ -420,6 +420,18 @@ module.exports = [
         await page.keyboard.press('ArrowLeft');
         await attendre(300);
         verifier((await presse()) === 'Plomberie', `flèche gauche : retour à Plomberie ${a}`);
+        // Barre d'outils nommée ; Alt+→ (avancer dans l'historique du navigateur) ne change pas de métier
+        const barre = await page.evaluate(() => {
+          const t = document.querySelector('#metiers [role="toolbar"]');
+          return { label: t?.getAttribute('aria-label') || '', puces: t?.querySelectorAll('button[aria-pressed]').length || 0 };
+        });
+        verifier(barre.label.length > 0 && barre.puces === 17, `pastilles dans une barre d'outils nommée ${a} (${JSON.stringify(barre)})`);
+        await page.focus('#metiers button[aria-pressed="true"]');
+        await page.keyboard.down('Alt');
+        await page.keyboard.press('ArrowRight');
+        await page.keyboard.up('Alt');
+        await attendre(400);
+        verifier((await presse()) === 'Plomberie', `Alt+flèche droite ne change pas de métier ${a} (${await presse()})`);
         await capturer(page, RACINE, `metiers-${largeur}`);
 
         // ── Le cycle : trois étapes aux titres exacts, leurs liens, la légende des captures
@@ -482,6 +494,28 @@ module.exports = [
         const suite = f2.numeros.map((t) => Number(t.slice(-5)));
         verifier(f2.numeros.every((t) => /^FAC-2026-\d{5}$/.test(t)) && suite.every((n, i) => i === 0 || n === suite[i - 1] + 1), `le compteur montre des numéros qui se suivent ${a} (${f2.numeros.join(', ')})`);
         verifier(f1.part !== f2.part, `la barre d'encaissement avance à l'écran ${a} (${f1.part} → ${f2.part})`);
+        // La barre n'avance jamais à reculons : sur plus d'un cycle, sa largeur peinte ne baisse que lorsqu'une nouvelle
+        // facture commence (rang suivant, premier palier), et une facture « Payée » ne redevient pas « Payée en partie »
+        const releves = [];
+        for (let i = 0; i < 45; i++) {
+          releves.push(await page.evaluate(() => {
+            const bloc = document.querySelector('[data-encaissement]');
+            const barre = bloc?.querySelector('[data-barre]');
+            return {
+              facture: Number(bloc?.getAttribute('data-facture')),
+              part: Number(bloc?.getAttribute('data-encaissement')),
+              largeur: barre ? barre.getBoundingClientRect().width : -1,
+              statut: bloc?.querySelector('[data-statut]')?.textContent.trim(),
+            };
+          }));
+          await attendre(150);
+        }
+        const reculs = releves.filter((r, i) => i > 0 && r.facture === releves[i - 1].facture
+          && (r.largeur < releves[i - 1].largeur - 0.5 || (releves[i - 1].statut === 'Payée' && r.statut !== 'Payée')));
+        const nouvelles = releves.map((r, i) => ({ r, avant: releves[i - 1] })).filter(({ r, avant }) => avant && r.facture !== avant.facture);
+        verifier(reculs.length === 0, `la barre d'encaissement ne recule jamais pour une même facture ${a} (${JSON.stringify(reculs[0] || {})})`);
+        verifier(nouvelles.length >= 1 && nouvelles.every(({ r, avant }) => r.facture === avant.facture + 1 && r.part === 0.3),
+          `au bout du cycle, une nouvelle facture repart du premier palier ${a} (${nouvelles.map(({ r }) => `${r.facture}:${r.part}`).join(', ')})`);
         await capturer(page, RACINE, `fiabilite-${largeur}`);
         await page.evaluate(() => window.scrollTo(0, 0));
         await attendre(400);

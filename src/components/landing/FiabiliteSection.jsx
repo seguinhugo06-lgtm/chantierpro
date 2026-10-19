@@ -88,19 +88,35 @@ function Cadenas({ reduit }) {
   );
 }
 
-/** La barre d'encaissement : paliers à 30 %, 65 %, puis 100 % ; la pastille ne dit « Payée » qu'au solde. */
+/**
+ * La barre d'encaissement d'une facture : paliers à 30 %, 65 %, puis 100 % ; la pastille ne dit « Payée » qu'au
+ * solde. Elle n'avance jamais à reculons : une facture « Payée » ne redevient pas « Payée en partie ». Au bout du
+ * cycle, c'est une nouvelle facture (comme le registre voisin, qui passe au numéro suivant) : le bloc est recréé,
+ * apparaît en fondu et sa barre repart de zéro vers le premier palier, sans transition arrière.
+ * `data-facture` (rang de la facture montrée) et `data-barre` : lus par le parcours.
+ */
 function Encaissement({ actif, reduit }) {
-  const [palier, setPalier] = useState(0);
+  const [pas, setPas] = useState(0);
   useEffect(() => {
     if (!actif) return undefined;
-    const minuterie = setInterval(() => setPalier((p) => (p + 1) % PALIERS.length), RYTHME_MS);
+    const minuterie = setInterval(() => setPas((p) => p + 1), RYTHME_MS);
     return () => clearInterval(minuterie);
   }, [actif]);
 
-  const part = PALIERS[reduit ? PALIERS.length - 1 : palier];
+  const facture = reduit ? 0 : Math.floor(pas / PALIERS.length);
+  const part = reduit ? 1 : PALIERS[pas % PALIERS.length];
   const payee = part >= 1;
+  const nouvelle = facture > 0;
   return (
-    <div data-encaissement={part} className="w-full">
+    <motion.div
+      key={facture}
+      data-encaissement={part}
+      data-facture={facture}
+      initial={nouvelle ? { opacity: 0 } : false}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.3 }}
+      className="w-full"
+    >
       <div className="flex items-center justify-between gap-3">
         <span
           data-statut=""
@@ -111,14 +127,15 @@ function Encaissement({ actif, reduit }) {
         <span className="text-sm tabular-nums text-marque-acier">{`${Math.round(part * 100)} %`}</span>
       </div>
       <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/[0.12]">
-        <div
-          className={`h-full rounded-full transition-[width,background-color] duration-700 ease-out motion-reduce:transition-none ${
-            payee ? 'bg-emerald-300' : 'bg-gradient-to-r from-marque-glacier-3 to-marque-acier'
-          }`}
-          style={{ width: `${part * 100}%` }}
+        <motion.div
+          data-barre=""
+          initial={nouvelle ? { width: '0%' } : false}
+          animate={{ width: `${part * 100}%` }}
+          transition={{ duration: 0.7, ease: 'easeOut' }}
+          className={`h-full rounded-full ${payee ? 'bg-emerald-300' : 'bg-gradient-to-r from-marque-glacier-3 to-marque-acier'}`}
         />
       </div>
-    </div>
+    </motion.div>
   );
 }
 

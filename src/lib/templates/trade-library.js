@@ -1594,7 +1594,7 @@ serrurerie: {
       base: { quantite: 1, unite: 'u' },
       lignes: [
         { designation: 'Dépose de la serrure existante et du cylindre', unite: 'u', quantite: 1, prixUnitaire: 75, tva: 10 },
-        { designation: 'Fourniture et pose de serrure 3 points en applique certifiée A2P*', unite: 'u', quantite: 1, prixUnitaire: 520, tva: 10 },
+        { designation: 'Fourniture et pose de serrure 3 points en applique A2P*', unite: 'u', quantite: 1, prixUnitaire: 520, tva: 10 },
         { designation: 'Fourniture et pose de cylindre haute sûreté avec carte de propriété', unite: 'u', quantite: 1, prixUnitaire: 165, tva: 10 },
         { designation: 'Fourniture et pose de cornière anti-pince acier sur dormant', unite: 'ml', quantite: 2.1, prixUnitaire: 68, tva: 10 },
         { designation: 'Fourniture et pose de paumelles renforcées anti-dégondage', unite: 'u', quantite: 3, prixUnitaire: 58, tva: 10 },
@@ -1605,7 +1605,7 @@ serrurerie: {
     {
       id: 'garde-corps-acier',
       nom: 'Garde-corps acier sur mesure',
-      resume: 'Fabrication atelier et pose de garde-corps conforme NF P01-012',
+      resume: 'Fabrication atelier et pose de garde-corps selon la norme NF P01-012',
       base: { quantite: 12, unite: 'ml' },
       lignes: [
         { designation: 'Relevé de cotes sur site et plan de fabrication', unite: 'h', quantite: 4, prixUnitaire: 58, tva: 10 },
@@ -1666,8 +1666,8 @@ serrurerie: {
   prestations: [
     { designation: 'Ouverture de porte claquée sans dégradation', unite: 'forfait', quantite: 1, prixUnitaire: 145, tva: 10 },
     { designation: 'Remplacement de cylindre européen standard', unite: 'u', quantite: 1, prixUnitaire: 130, tva: 10 },
-    { designation: 'Fourniture et pose de cylindre haute sûreté certifié A2P', unite: 'u', quantite: 1, prixUnitaire: 165, tva: 10 },
-    { designation: 'Fourniture et pose de serrure 3 points en applique certifiée A2P*', unite: 'u', quantite: 1, prixUnitaire: 520, tva: 10 },
+    { designation: 'Fourniture et pose de cylindre haute sûreté A2P', unite: 'u', quantite: 1, prixUnitaire: 165, tva: 10 },
+    { designation: 'Fourniture et pose de serrure 3 points en applique A2P*', unite: 'u', quantite: 1, prixUnitaire: 520, tva: 10 },
     { designation: 'Fourniture et pose de serrure à encastrer avec têtière', unite: 'u', quantite: 1, prixUnitaire: 290, tva: 10 },
     { designation: 'Fourniture et pose de verrou de sûreté à bouton', unite: 'u', quantite: 1, prixUnitaire: 115, tva: 10 },
     { designation: 'Fourniture et pose de cornière anti-pince acier sur dormant', unite: 'ml', quantite: 2, prixUnitaire: 68, tva: 10 },

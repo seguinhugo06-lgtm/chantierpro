@@ -2,6 +2,9 @@ import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { TRADE_LIBRARY } from '../../../lib/templates/trade-library.js';
+import { lotsMontres } from '../metiers.js';
+import { lotDemonstration } from '../devisVivantEtapes.js';
 
 /**
  * Test d'honnêteté du site public (refonte d'octobre 2026, règles : `.claude/rules/marketing.md`).
@@ -132,6 +135,79 @@ describe('honnêteté du site public', () => {
       .filter((relatif) => !relatif.startsWith('..'))
       .flatMap((relatif) => chercher(lire(relatif), [PRIX_EN_DUR], relatif));
     expect(trouves, `Prix écrits en dur (utiliser PLANS) :\n${trouves.join('\n')}`).toEqual([]);
+  });
+});
+
+/**
+ * Les textes de la bibliothèque des métiers que la page affiche : ils ne sont écrits dans aucun fichier du site,
+ * le contrôle des fichiers ne les voit donc pas. L'explorateur des métiers montre, pour chacun des 17 métiers, le
+ * nom, le résumé et les premières lignes de ses premiers lots (`lotsMontres`) ; le devis vivant montre le nom et
+ * toutes les lignes de son lot (`lotDemonstration`). `ou` situe le texte : métier, lot, champ.
+ */
+function textesDeLaBibliothequeAffiches(bibliotheque) {
+  const textes = [];
+  for (const metier of Object.values(bibliotheque)) {
+    for (const lot of lotsMontres(bibliotheque, metier.id)) {
+      const lieu = `${metier.nom} — lot « ${lot.nom} »`;
+      textes.push({ ou: `${lieu} — nom`, texte: lot.nom });
+      if (lot.resume) textes.push({ ou: `${lieu} — résumé`, texte: lot.resume });
+      lot.lignes.forEach((ligne, i) => textes.push({ ou: `${lieu} — ligne ${i + 1}`, texte: ligne.designation }));
+    }
+  }
+  const demonstration = lotDemonstration(bibliotheque);
+  const lieu = `Devis vivant — lot « ${demonstration.nom} »`;
+  textes.push({ ou: `${lieu} — nom`, texte: demonstration.nom });
+  demonstration.lignes.forEach((ligne, i) => textes.push({ ou: `${lieu} — ligne ${i + 1}`, texte: ligne.designation }));
+  return textes;
+}
+
+/**
+ * Exceptions : noms de documents ou de prestations du métier qui contiennent un mot interdit sans rien affirmer de
+ * Mallettico ni de l'ouvrage (ex. « certificat de conformité », un document que l'artisan fournit). Chaque entrée
+ * donne le passage EXACT toléré et la raison ; le passage est retiré du texte avant le contrôle, le reste du texte
+ * est contrôlé. Liste à relire par le juriste (T8). Une affirmation (« conforme à… », « certifié… ») ne va pas ici :
+ * elle se reformule dans la bibliothèque (« selon la norme… », la classe du produit seule).
+ */
+const EXCEPTIONS_BIBLIOTHEQUE = [];
+
+/** « où — motif : « extrait » » pour chaque mot interdit trouvé dans les textes affichés, exceptions retirées. */
+function controlerTextes(textes, exceptions = EXCEPTIONS_BIBLIOTHEQUE) {
+  const trouves = [];
+  for (const { ou, texte } of textes) {
+    const reste = exceptions.reduce((t, e) => t.split(e.texte).join(' '), texte);
+    for (const { nom, motif } of INTERDITS) {
+      const m = motif.exec(reste);
+      if (m) trouves.push(`${ou} — ${nom} : « ${texte} »`);
+    }
+  }
+  return trouves;
+}
+
+describe('honnêteté des textes de la bibliothèque affichés par le site', () => {
+  const textes = textesDeLaBibliothequeAffiches(TRADE_LIBRARY);
+
+  it('relève les textes de l\'explorateur (17 métiers) et du devis vivant', () => {
+    const metiers = new Set(textes.map((t) => t.ou.split(' — ')[0]));
+    expect(metiers.size).toBe(18); // 17 métiers + le devis vivant
+    expect(textes.some((t) => t.ou.startsWith('Serrurerie') && t.ou.endsWith('résumé'))).toBe(true);
+  });
+
+  it('aucune promesse invérifiable dans ce que l\'explorateur et le devis vivant affichent', () => {
+    const trouves = controlerTextes(textes);
+    expect(trouves, `Textes interdits affichés depuis src/lib/templates/trade-library.js :\n${trouves.join('\n')}`).toEqual([]);
+  });
+
+  it('chaque exception sert encore (une exception devenue inutile est retirée de la liste)', () => {
+    const inutiles = EXCEPTIONS_BIBLIOTHEQUE.filter((e) => !textes.some((t) => t.texte.includes(e.texte)));
+    expect(inutiles.map((e) => e.texte)).toEqual([]);
+  });
+
+  it('le contrôle nomme le métier, le lot et le texte, et une exception ne couvre que son passage exact', () => {
+    const exemple = [{ ou: 'Serrurerie — lot « Garde-corps » — résumé', texte: 'Pose de garde-corps conforme à la norme' }];
+    expect(controlerTextes(exemple, [])).toEqual(['Serrurerie — lot « Garde-corps » — résumé — conforme : « Pose de garde-corps conforme à la norme »']);
+    const exception = [{ texte: 'certificat de conformité', raison: 'document du métier' }];
+    expect(controlerTextes([{ ou: 'x', texte: 'Remise du certificat de conformité' }], exception)).toEqual([]);
+    expect(controlerTextes([{ ou: 'x', texte: 'Remise du certificat de conformité, travaux conformes' }], exception)).toHaveLength(1);
   });
 });
 

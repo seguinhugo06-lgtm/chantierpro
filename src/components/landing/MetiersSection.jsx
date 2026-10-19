@@ -6,8 +6,10 @@
  * premières lignes avec leur montant). Tout est lu dans la bibliothèque des métiers, chargée à la demande et une
  * seule fois pour la page (`site/bibliotheque.js`, partagé avec le devis vivant) ; la logique est dans `metiers.js`.
  *
- * Accessibilité : les pastilles sont des boutons `aria-pressed` ; une seule est dans l'ordre de tabulation (celle
- * qui est choisie), les flèches gauche/droite passent au métier précédent/suivant (Début, Fin : premier, dernier).
+ * Accessibilité : les pastilles sont des boutons `aria-pressed` dans une barre d'outils (`role="toolbar"`) ; une
+ * seule est dans l'ordre de tabulation (celle qui est choisie), les flèches gauche/droite passent au métier
+ * précédent/suivant (Début, Fin : premier, dernier). Une touche accompagnée d'Alt, Ctrl ou Méta garde son rôle
+ * habituel (Alt+← est le retour arrière du navigateur).
  * Un changement de métier fait par le visiteur est annoncé brièvement (texte hors écran, poli).
  * Bibliothèque introuvable : un message à la place de l'explorateur, pas un squelette pour toujours.
  * Attributs `data-*` lus par le parcours `scripts/parcours/site.cjs`.
@@ -95,6 +97,7 @@ export default function MetiersSection() {
   };
 
   const auClavier = (e) => {
+    if (e.altKey || e.ctrlKey || e.metaKey) return;
     const cible = metierVoisin(ids, e.target.dataset?.metier || actif, e.key);
     if (!cible) return;
     e.preventDefault();
@@ -128,8 +131,8 @@ export default function MetiersSection() {
         </div>
       ) : (
         <>
-          {/* Flèches : `onKeyDown` sur le groupe, qui reçoit les touches de ses boutons (événements délégués). */}
-          <div role="group" aria-label="Métiers" onKeyDown={auClavier} className="mt-8 flex flex-wrap gap-2">
+          {/* Flèches : `onKeyDown` sur la barre, qui reçoit les touches de ses boutons (événements délégués). */}
+          <div role="toolbar" aria-label="Métiers" onKeyDown={auClavier} className="mt-8 flex flex-wrap gap-2">
             {metiers.map((metier) => {
               const presse = metier.id === actif;
               return (
