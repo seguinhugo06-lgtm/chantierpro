@@ -88,35 +88,44 @@
 - [ ] **Step 3 :** regarder chaque image (Read) : aucune donnée réelle (pas de « Hugo », pas d'adresse personnelle, pas de SIRET plausible), aucun bandeau d'installation, titres de lot non coupés.
 - [ ] **Step 4 :** commit `feat(site): real app captures with a fictitious identity`.
 
-### Task 4 : barre, premier écran et bande de faits ; parcours du site
+### Task 4 : barre, premier écran avec le devis vivant, bande de faits ; parcours du site
+
+Version validée par Hugo sur le prototype (19 oct.) : la spec, sections 1 à 3, « Données de la bibliothèque » et « Mouvement et accessibilité ». Le prototype jetable sert de référence visuelle : `/private/tmp/claude-501/-Users-hugoseguin--claude-worktrees-chantierpro-app-elegant-pike/d3664859-7406-446d-b481-52ae7497f35f/scratchpad/charte/.superpowers/brainstorm/73493-1792428548/content/site-prototype.html` (HTML et CSS à transposer en composants et en classes Tailwind de la palette `marque` ; ne pas copier son script tel quel).
 
 **Files :**
 - Modify : `src/components/landing/LandingNav.jsx`, `HeroSection.jsx`, `LandingPage.jsx`
-- Create : `src/components/landing/FaitsSection.jsx`, `scripts/parcours/site.cjs`
-- Test : `scripts/parcours/site.cjs`, `honnetete.test.js` (`FICHIERS_CONTROLES` += les trois fichiers)
+- Create : `src/components/landing/DevisVivant.jsx`, `src/components/landing/devisVivant.js` (logique pure), `src/components/landing/FaitsSection.jsx`, `src/components/landing/site/PlanArchitecte.jsx` (le quadrillage, décoratif), `scripts/parcours/site.cjs`
+- Test : `src/components/landing/__tests__/devisVivant.test.js`, `scripts/parcours/site.cjs`, `honnetete.test.js` (`FICHIERS_CONTROLES` += les fichiers refaits)
 
 **Interfaces :**
-- Consumes : briques de la Task 2, images de la Task 3, `onLogin`, `onSignup` (props existantes de `LandingPage`).
-- Produces : `scripts/parcours/site.cjs` exporte `[{ nom, reel: true, executer }]` ; les tâches suivantes y ajoutent des vérifications dans le même parcours ou des parcours voisins.
+- Consumes : briques de la Task 2 (`BoutonSite`, `SectionSite`, `Apparition`), logo `public/icon.svg` (remplacé plus tard par le logo v2 si Hugo le choisit), `onLogin`, `onSignup`.
+- Produces :
+  - `devisVivant.js` : `etapesDuDevis(lot) → Array<{ type: 'ligne', ligne, totalTTC } | { type: 'signe' } | { type: 'facture', numero: 'FAC-2026-00042' } | { type: 'encaisse', part: 0.4 | 1 }>` ; `totalTTC(lignes)` = somme de `quantite × prixUnitaire × (1 + tva / 100)` arrondie au centime ; `lotDemonstration(TRADE_LIBRARY)` = le lot dont l'`id` contient `tableau` dans `electricite` (lève une erreur explicite s'il n'existe plus).
+  - `DevisVivant({ reduit?: boolean })` : importe `TRADE_LIBRARY` par `import()` ; cadre et titre affichés tout de suite ; boucle des étapes (rythme du prototype) seulement si la carte est visible et l'onglet affiché ; `reduit` (ou `useReducedMotion()`) → état final complet et « Payée », sans boucle ; `aria-hidden` sur l'animation + texte hors écran de la spec.
+  - `scripts/parcours/site.cjs` exporte `[{ nom, reel: true, executer }]`, complété par les tâches suivantes.
 
-- [ ] **Step 1 : écrire le parcours** « site : premier écran » (`reel: true`, réponses Supabase vides), à 375 puis 1440 px : un seul `h1`, texte exact de la spec ; boutons au texte « Connexion » et « Créer mon compte gratuit » présents et visibles ; lien « Voir la démo » avec `href` `/?demo=true` ; `document.documentElement.scrollWidth <= innerWidth` ; chaque `img` du premier écran a `naturalWidth > 0` ; contraste du `h1` sur son fond et du bouton orange ≥ 4,5 (calculé depuis `getComputedStyle`, fond remonté jusqu'au premier ancêtre opaque) ; clic sur « Créer mon compte gratuit » → un champ `input[type="email"]` apparaît.
-- [ ] **Step 2 :** `npm run build && npm run parcours -- site` → échoue (ancien titre).
-- [ ] **Step 3 :** réécrire `LandingNav` (liens « Fonctionnalités » `#fonctionnalites`, « Tarifs » `#pricing`, « FAQ » `#faq` par `allerALaSection`, bouton « Connexion », bouton plein « Créer mon compte » ; menu au téléphone), `HeroSection` (textes et visuel de la spec, `CadreOrdi` + `CadreTel` prioritaires), `FaitsSection` (quatre faits, sans compteur) ; `LandingPage` : retirer `StatsBar`, insérer `FaitsSection` après le premier écran ; `MotionConfig reducedMotion="user"` autour de `<main>`.
-- [ ] **Step 4 :** parcours vert ; `npm run parcours -- reel` vert (« Connexion » toujours cliquable) ; test d'honnêteté vert.
-- [ ] **Step 5 :** commit `feat(site): new header, first screen and facts strip`.
+- [ ] **Step 1 : écrire les tests** `devisVivant.test.js` : `totalTTC` sur deux lignes à TVA 10 % et 20 % ; `etapesDuDevis` d'un lot de 7 lignes → 7 étapes `ligne` dont le dernier `totalTTC` égale `totalTTC(lot.lignes)`, puis `signe`, `facture`, `encaisse` 0,4 puis 1, dans cet ordre ; `lotDemonstration(TRADE_LIBRARY)` renvoie un lot de `electricite` dont le nom contient « tableau ».
+- [ ] **Step 2 : écrire le parcours** « site : premier écran » (`reel: true`, réponses Supabase vides), à 375 puis 1440 px : un seul `h1` au texte exact ; « Connexion » et « Créer mon compte gratuit » visibles ; « Voir la démo » → `href` `/?demo=true` ; aucun défilement horizontal ; après 4 s, la carte du devis vivant compte au moins 3 lignes et un total « … € » non nul ; le texte hors écran de la carte est présent ; avec `page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'reduce' }])`, la carte est complète et « Payée » dès l'arrivée ; contraste du `h1` et du bouton plein ≥ 4,5 (calculé depuis `getComputedStyle`) ; clic sur « Créer mon compte gratuit » → un `input[type="email"]` apparaît.
+- [ ] **Step 3 :** tests et parcours rouges (`npm run build && npm run parcours -- site`).
+- [ ] **Step 4 :** écrire `devisVivant.js`, `DevisVivant.jsx`, `PlanArchitecte.jsx`, `FaitsSection.jsx`, réécrire `LandingNav` (liens de la spec, « Connexion » au texte exact, pilule « Créer mon compte », menu au téléphone) et `HeroSection` ; `LandingPage` : retirer `StatsBar`, insérer `FaitsSection` ; `MotionConfig reducedMotion="user"` autour de `<main>`. Reprendre de la Task 2 : survol perceptible du bouton plein (ombre et léger soulèvement, comme le prototype) ; garde `typeof IntersectionObserver === 'undefined'` dans `Apparition`.
+- [ ] **Step 5 :** tests, parcours (`site` et `reel`) et test d'honnêteté verts ; lint 0 erreur ; regarder les captures du parcours à 375 et 1440 px.
+- [ ] **Step 6 :** commit `feat(site): header, first screen with the live quote, facts strip`.
 
-### Task 5 : le cycle, la fiabilité, le terrain
+### Task 5 : l'explorateur des métiers, le cycle au défilement, la fiabilité
 
 **Files :**
-- Create : `src/components/landing/CycleSection.jsx`, `FiabiliteSection.jsx`, `TerrainSection.jsx`
-- Modify : `src/components/landing/LandingPage.jsx` (retirer `FeatureShowcase`, `QuickFeaturesGrid`, `CtaBanner` de l'accueil ; ordre de la spec)
+- Create : `src/components/landing/MetiersSection.jsx`, `CycleSection.jsx`, `FiabiliteSection.jsx`
+- Modify : `src/components/landing/LandingPage.jsx` (ordre de la spec ; retirer `FeatureShowcase`, `QuickFeaturesGrid`, `CtaBanner` de l'accueil)
 - Test : `scripts/parcours/site.cjs`, `honnetete.test.js`
 
-- [ ] **Step 1 : ajouter au parcours** « site : sections » à 375 et 1440 px : `#fonctionnalites` contient quatre étapes numérotées dont les titres exacts de la spec et quatre liens « En savoir plus » vers les adresses de la spec ; la section fiabilité affiche ses quatre garanties exactes ; après `scrollIntoView` de chaque `h2` et 800 ms, son opacité calculée vaut 1 ; légende « Captures de l'application, données fictives » présente.
-- [ ] **Step 2 :** parcours → échoue.
-- [ ] **Step 3 :** écrire les trois sections (textes de la spec, captures de la Task 3, `Apparition`) et réordonner `LandingPage`.
-- [ ] **Step 4 :** parcours et test d'honnêteté verts.
-- [ ] **Step 5 :** commit `feat(site): the cycle, reliability and on-site sections`.
+**Interfaces :**
+- Consumes : `TRADE_LIBRARY` par `import()` (même module que la Task 4, un seul chargement), captures `public/site/tel-*.webp` (Task 3), briques de la Task 2.
+
+- [ ] **Step 1 : ajouter au parcours** « site : sections » à 375 et 1440 px : `#metiers` montre 17 boutons de métiers (`aria-pressed`, Électricité pressé d'abord) ; cliquer « Plomberie » affiche trois cartes dont les noms sont les trois premiers lots de `TRADE_LIBRARY.plomberie` (lus dans le module depuis le parcours) avec un total HT en « € » ; flèche droite depuis un métier passe au suivant ; `#fonctionnalites` a trois étapes aux titres exacts de la spec ; au bureau (1440), après défilement jusqu'à l'étape 3, l'image visible du téléphone est `tel-facture.webp` ; `#fiabilite` affiche les quatre garanties exactes ; après `scrollIntoView` de chaque `h2` et 800 ms, son opacité calculée vaut 1 ; légende « Captures de l'application, données fictives » présente ; chaque `img` de ces sections a `naturalWidth > 0`.
+- [ ] **Step 2 :** parcours rouge.
+- [ ] **Step 3 :** écrire les trois sections (textes de la spec ; le compteur et la barre de la fiabilité s'arrêtent hors écran et en mouvement réduit), réordonner `LandingPage`.
+- [ ] **Step 4 :** parcours et test d'honnêteté verts ; lint ; captures du parcours regardées.
+- [ ] **Step 5 :** commit `feat(site): trades explorer, scroll-told cycle, reliability band`.
 
 ### Task 6 : tarifs et « construit en public »
 

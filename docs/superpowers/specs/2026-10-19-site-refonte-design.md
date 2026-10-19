@@ -45,37 +45,44 @@ Le nouveau site doit faire comprendre en un écran ce qu'est Mallettico, montrer
 
 ## Structure de la page d'accueil
 
-1. **Barre de navigation** (fixe, blanche, ombre légère au défilement) : logo + « Mallettico » ; liens « Fonctionnalités » (`#fonctionnalites`), « Tarifs » (`#pricing`), « FAQ » (`#faq`) ; bouton texte « Connexion » ; bouton orange « Créer mon compte ». Au téléphone : logo, « Connexion », menu.
-2. **Premier écran**, fond glacier (dégradé `#F0FAFF` → `#DCEFFB`, lueur orange très douce en haut à droite), titre bleu nuit :
-   - surtitre (bleu nuit) : « Devis · Factures · Relances » ;
-   - `h1` : « L'administratif du chantier, rangé dans une mallette. », les mots « rangé dans une mallette » soulignés d'un trait orange épais ;
-   - texte : « Le devis se monte à partir de prestations déjà chiffrées, le client le signe en ligne, il devient une facture sans rien ressaisir, et Mallettico suit les paiements. Sur téléphone comme sur ordinateur. » ;
-   - boutons en pilule : « Créer mon compte gratuit » (bleu nuit, texte blanc) et « Voir la démo » (contour bleu nuit, lien `/?demo=true`) ;
-   - ligne de réassurance (ardoise) : « Gratuit pour commencer, sans carte bancaire · Base de données hébergée à Paris » ;
-   - visuel : capture ordinateur (devis par lots) dans un cadre de navigateur, capture téléphone (accueil) qui la chevauche. **(choix de Claude)**
-3. **Bande de faits** (fond blanc, quatre faits sans animation) : « 1 000+ prestations et ouvrages déjà chiffrés » · « 17 métiers » · « Sur téléphone et ordinateur » · « Gratuit pour commencer ».
-4. **Le cycle** (`id="fonctionnalites"`), titre « Du devis au paiement, sans rien ressaisir. » ; quatre étapes numérotées, chacune une capture, un titre, deux phrases et un lien « En savoir plus » vers sa page :
-   1. « Montez le devis » — « Partez d'un modèle parmi 17 métiers ou de plus de 1 000 prestations déjà chiffrées, ajustez, regroupez par lots. Le total se calcule pendant que vous tapez. » → `/fonctionnalites/devis-factures`
-   2. « Faites-le signer » — « Votre client reçoit le devis par e-mail et le signe en ligne, au doigt, sans créer de compte. Le devis passe en « Signé » tout seul. » → `/fonctionnalites/signature-electronique`
-   3. « Facturez » — « Un devis signé devient une facture d'acompte ou de solde, sans rien ressaisir. Les mentions légales du bâtiment s'ajoutent toutes seules. » → `/fonctionnalites/devis-factures`
-   4. « Relancez et encaissez » — « Les relances partent au rythme que vous choisissez. Chaque paiement est noté, même partiel : vous voyez ce qui reste à recevoir. » → `/fonctionnalites/relances`
-5. **Fiabilité**, bande bleu nuit, titre « Une facture, ça ne se bricole pas. », texte « Les règles importantes ne dépendent pas de l'écran : la base de données les fait respecter elle-même. » ; quatre garanties :
-   - « Des numéros qui se suivent, sans trou » ;
-   - « Une facture envoyée ne se supprime pas : on la corrige par un avoir » ;
-   - « Une facture n'est « payée » que si les paiements la soldent » ;
-   - « Assurance décennale, TVA réduite, pénalités de retard : les mentions s'ajoutent toutes seules ».
-6. **Fait pour le chantier**, trois captures téléphone (accueil, devis par lots, facture) et quatre points : « Des boutons faciles à toucher », « Lisible en plein soleil », « Un mode sombre pour le soir », « S'installe sur l'écran d'accueil du téléphone ».
-7. **Tarifs** (`id="pricing"`) : les trois plans de `PLANS`, prix HT par mois, « tarif fondateur » tel qu'affiché aujourd'hui ; le tableau de comparaison reste, sous un bouton « Comparer les plans en détail » (replié par défaut). **(choix de Claude)**
+Direction validée par Hugo le 19 oct. 2026 sur un prototype cliquable (« oui, continue le site dans cette direction ») : un site **qui montre le produit en action, avec de vraies données**, sobre et sérieux. Trois idées le portent : le **devis vivant** du premier écran, l'**explorateur des 17 métiers** (essayer avant de s'inscrire), le **cycle au défilement** sur un téléphone fixe ; un motif discret de **plan d'architecte** (quadrillage glacier) signe le bâtiment.
+
+1. **Barre de navigation** (fixe, blanche translucide avec flou, trait bas) : logo v2 + « Mallettico » ; liens « Métiers » (`#metiers`), « Fonctionnalités » (`#fonctionnalites`), « Fiabilité » (`#fiabilite`), « Tarifs » (`#pricing`), « FAQ » (`#faq`) ; bouton texte « Connexion » ; pilule bleu nuit « Créer mon compte ». Au téléphone : logo, « Connexion », menu.
+2. **Premier écran**, fond glacier (`#F0FAFF` vers blanc) avec le **plan d'architecte** (quadrillage glacier 120 px et 24 px, estompé vers les bords) et une lueur orange très douce en haut à droite ; deux colonnes au bureau, une au téléphone :
+   - à gauche : surtitre en pastille blanche avec le point orange lumineux, « Devis · Factures · Relances » ; `h1` « L'administratif du chantier, rangé dans une mallette. », « rangé dans une mallette » souligné d'un trait orange épais ; texte « Montez un devis à partir de prestations déjà chiffrées, faites-le signer en ligne, facturez sans rien ressaisir. Mallettico relance et suit les paiements. Sur téléphone comme sur ordinateur. » ; pilules « Créer mon compte gratuit → » (bleu nuit) et « Voir la démo » (contour, `/?demo=true`) ; réassurance : « Gratuit pour commencer, sans carte bancaire » · « Base de données hébergée à Paris » ;
+   - à droite, le **devis vivant** : une carte « DEV-2026-00012 · M. Martin », titre du lot « Mise aux normes du tableau électrique » (lu dans `TRADE_LIBRARY.electricite`, jamais recopié) ; ses lignes apparaissent une à une (désignation, quantité × prix, montant), le total TTC (TVA de chaque ligne) se calcule en direct ; puis pastille « Signé » et tampon « SIGNÉ EN LIGNE » ; puis « FAC-2026-00042 », « Facture envoyée », barre d'encaissement à 40 % « Payée en partie », puis 100 % « Payée » ; la boucle reprend. Une petite carte flottante : point orange + « Relance envoyée à J+7, au rythme que vous choisissez ». Légende : « Démonstration : le lot « Mise aux normes du tableau électrique » de la bibliothèque Électricité, prix moyens indicatifs du marché. »
+3. **Bande de faits** (blanche, quatre cases séparées par un trait, sans compteur animé) : « 1 000+ » prestations et ouvrages déjà chiffrés · « 17 » métiers du bâtiment · « 2 écrans » téléphone et ordinateur · « 0 € » pour commencer.
+4. **Votre métier est déjà chiffré** (`id="metiers"`) : texte « Choisissez le vôtre : voici les lots types que vous insérez en un geste dans un devis, avec leurs prix moyens. Vous ajustez les quantités et vos tarifs, c'est tout. » ; 17 pastilles de métiers (`TRADE_LIBRARY`, ordre de la bibliothèque, Électricité choisi d'abord) ; pour le métier choisi, ses trois premiers lots types en cartes : nom, résumé, « N lignes · HT », total HT arrondi à l'euro, les trois premières lignes avec leur montant ; note : « Prix moyens indicatifs du marché français (2026), fourniture et pose HT. Ils font gagner du temps ; vos propres tarifs restent les vôtres. »
+5. **Le cycle au défilement** (`id="fonctionnalites"`, fond glacier) : trois étapes numérotées à gauche, un téléphone collant à droite dont l'écran change avec l'étape lue (captures `tel-accueil`, `tel-devis-lots`, `tel-facture`) ; au téléphone, les étapes s'empilent avec leur capture :
+   1. « Le chantier du jour, d'un coup d'œil » — « À l'ouverture : ce qu'il reste à encaisser, les devis à relancer, les brouillons à finir. Rien d'autre. »
+   2. « Le devis se monte par lots » — « Un lot de la bibliothèque, quelques quantités à ajuster, le total se calcule pendant que vous tapez. »
+   3. « Signé, facturé, encaissé » — « Le client signe en ligne. Le devis devient une facture sans ressaisie, chaque paiement est noté, même partiel. »
+   Chaque étape porte un lien « En savoir plus » (`/fonctionnalites/devis-factures`, `/fonctionnalites/devis-factures`, `/fonctionnalites/signature-electronique`). Légende : « Captures de l'application, données fictives. »
+6. **Fiabilité** (`id="fiabilite"`, bande bleu nuit avec le quadrillage en blanc très léger), titre « Une facture, ça ne se bricole pas. », texte « Les règles importantes ne dépendent pas de l'écran : la base de données les fait respecter elle-même. » ; quatre garanties animées sobrement :
+   - un compteur « FAC-2026-00041 » qui avance d'une unité, sans trou — « Des numéros qui se suivent, sans trou » ;
+   - un cadenas (icône `lucide-react`) — « Une facture envoyée ne se supprime pas : on la corrige par un avoir » ;
+   - une barre d'encaissement qui se remplit — « Une facture n'est « payée » que si les paiements la soldent » ;
+   - trois mentions en texte acier — « Assurance décennale, TVA réduite, pénalités de retard : les mentions s'ajoutent toutes seules ».
+7. **Tarifs** (`id="pricing"`) : les trois plans de `PLANS` (libellés de D-29), prix HT par mois, « tarif fondateur » tel qu'affiché aujourd'hui ; le tableau de comparaison reste, sous un bouton « Comparer les plans en détail » (replié par défaut). **(choix de Claude)**
 8. **Construit en public** (contenu de `EarlyAdoptersSection`, nouvelle charte) : « Pas de faux avis ici. Les avis viendront des artisans qui utilisent Mallettico, avec leur accord. »
 9. **FAQ** (`id="faq"`) : questions actuelles, réponses relues pour l'honnêteté (Factur-X, intégrations, support : ne garder que ce qui existe).
-10. **Dernier appel**, bande bleu nuit : « Votre prochain devis, dès ce soir. » ; bouton en pilule blanche « Créer mon compte gratuit ». Ligne en dessous : « Mallettico — tout y est, rien ne pèse. »
-11. **Pied de page** bleu nuit foncé, liens actuels.
+10. **Dernier appel** (dégradé blanc vers glacier) : « Votre prochain devis, dès ce soir. » ; pilules « Créer mon compte gratuit → » et « Voir la démo ». Ligne en dessous : « Mallettico — tout y est, rien ne pèse. »
+11. **Pied de page** bleu-noir (`#0B1324`), liens actuels.
 
-Sections retirées de la page : `StatsBar`, `QuickFeaturesGrid`, `CtaBanner`, `FeatureShowcase` (fichiers gardés tant que d'autres pages les importent ; sinon retirés de l'accueil seulement).
+Sections retirées de la page : `StatsBar`, `QuickFeaturesGrid`, `CtaBanner`, `FeatureShowcase`, « Fait pour le chantier » de la première version (fichiers gardés tant que d'autres pages les importent).
 
-## Mouvement
+## Données de la bibliothèque
 
-Apparition douce des sections au défilement (fondu + 16 px, 0,4 s, une fois) avec `framer-motion` ; `MotionConfig reducedMotion="user"` autour de la page. Pas de parallaxe, pas d'objets flottants.
+`TRADE_LIBRARY` (`src/lib/templates/trade-library.js`, 149 Ko) est importé **à la demande** (`import()`) par le devis vivant et l'explorateur, pour ne pas alourdir le premier affichage : la carte du devis vivant montre son cadre et son titre tout de suite, puis ses lignes dès que les données sont là. Aucun prix n'est recopié dans le site.
+
+## Mouvement et accessibilité
+
+- Apparition douce des sections au défilement (fondu + 16 px, 0,4 s, une fois) ; jamais sur le premier écran ; `MotionConfig reducedMotion="user"`.
+- **Mouvement réduit** demandé par l'appareil : le devis vivant s'affiche d'emblée complet et « Payé », sans boucle ; le compteur et la barre de la fiabilité restent fixes ; le téléphone du cycle change sans fondu.
+- Le devis vivant est décoratif pour les lecteurs d'écran (`aria-hidden`), doublé d'un texte lisible hors écran : « Exemple : un devis de 7 lignes pour une mise aux normes de tableau électrique, signé en ligne, facturé puis payé. » ; pas de région `aria-live` qui annoncerait la boucle.
+- Les boucles s'arrêtent quand la carte sort de l'écran ou que l'onglet est caché (`IntersectionObserver`, `visibilitychange`).
+- Pastilles des métiers : boutons avec `aria-pressed` ; flèches gauche/droite pour passer d'un métier à l'autre.
+- Contrastes ≥ 4,5:1 partout ; cibles ≥ 44 px ; aucune information portée par la seule couleur.
 
 ## Captures
 
