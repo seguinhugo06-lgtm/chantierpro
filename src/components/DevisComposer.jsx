@@ -9,7 +9,7 @@
  * @module DevisComposer
  */
 
-import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import { useState, useMemo, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import {
   ArrowLeft, Plus, Search, Trash2, ChevronUp, ChevronDown, User,
@@ -26,6 +26,7 @@ import { estFranchiseTva, premierTaux } from '../lib/franchiseTva';
 import { TRADE_LIBRARY } from '../lib/templates/trade-library';
 import { jourLocal } from '../lib/dates';
 import { profilManquant, enPhrase } from '../lib/profilLegal';
+import { couleurPleine } from '../lib/theme';
 
 const DRAFT_KEY = 'mallettico_devis_composer_draft';
 const MRU_KEY = 'mallettico_recent_clients';
@@ -650,6 +651,8 @@ export default function DevisComposer({
   // un devis non — les confondre coûte cher. Le PDF, lui, garde la couleur de
   // l'entreprise (identité visuelle) : ne pas propager `accent` à buildDevisHtml.
   const accent = isFacture ? FACTURE_ACCENT : couleur;
+  // Aplats (boutons, pastille) : la même teinte assombrie qui porte du blanc (charte du 19 oct. 2026)
+  const accentPlein = couleurPleine(accent);
 
   return createPortal(
     <div role="dialog" aria-modal="true" aria-label={`${isEditMode ? 'Modifier' : (isFacture ? 'Nouvelle' : 'Nouveau')} ${isFacture ? 'facture' : 'devis'}`}
@@ -662,7 +665,7 @@ export default function DevisComposer({
         <div className="flex-1 min-w-0 flex items-center gap-2">
           <h1 className={`${isEditMode ? '' : 'sr-only sm:not-sr-only'} text-base font-bold truncate ${textPrimary}`}>{isEditMode ? 'Modifier' : (isFacture ? 'Nouvelle' : 'Nouveau')} {isFacture ? 'facture' : 'devis'}</h1>
           <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide text-white flex-shrink-0"
-            style={{ background: accent }}>
+            style={{ background: accentPlein }}>
             {isFacture ? <><Receipt size={10} /> Facture</> : <><FileText size={10} /> Devis</>}
           </span>
         </div>
@@ -683,7 +686,7 @@ export default function DevisComposer({
         </button>
         <button onClick={() => handleSubmit(false)} disabled={isSubmitting}
           className="hidden sm:flex items-center gap-2 px-4 h-9 rounded-xl text-white text-sm font-semibold shadow-lg disabled:opacity-60 transition-all hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
-          style={{ background: accent }}>
+          style={{ background: accentPlein }}>
           {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
           <span>{isEditMode ? 'Enregistrer' : 'Créer'}</span>
         </button>
@@ -915,7 +918,7 @@ export default function DevisComposer({
             )}
             <div className="flex flex-col sm:flex-row sm:items-baseline sm:gap-1.5">
               <span className={`text-[10px] sm:text-xs font-semibold uppercase leading-none ${textMuted}`}>{franchise ? 'Total' : 'TTC'}</span>
-              <span className="text-lg sm:text-3xl font-extrabold tabular-nums whitespace-nowrap leading-tight" style={{ color: accent }}>{eur(animatedTTC)}</span>
+              <span className="text-lg sm:text-3xl font-extrabold tabular-nums whitespace-nowrap leading-tight" style={{ color: isFacture ? accent : 'rgb(var(--accent-texte))' }}>{eur(animatedTTC)}</span>
             </div>
             {totals.margePercent > 0 && form.lignes.some(l => l.prixAchat > 0) && (
               <div className={`hidden md:flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold ${totals.margePercent >= 25 ? 'bg-emerald-500/15 text-emerald-500' : totals.margePercent >= 10 ? 'bg-amber-500/15 text-amber-500' : 'bg-red-500/15 text-red-500'}`}>
@@ -932,7 +935,7 @@ export default function DevisComposer({
           )}
           <button onClick={() => handleSubmit(false)} disabled={isSubmitting}
             className="flex items-center gap-2 px-4 sm:px-5 h-11 rounded-xl text-white text-sm font-bold shadow-lg disabled:opacity-60 transition-all hover:opacity-90 whitespace-nowrap flex-shrink-0"
-            style={{ background: accent }}>
+            style={{ background: accentPlein }}>
             {isSubmitting ? <Loader2 size={18} className="animate-spin" /> : <Check size={18} />}
             {isEditMode ? 'Enregistrer' : (isFacture ? 'Créer la facture' : 'Créer le devis')}
           </button>
@@ -1087,6 +1090,7 @@ function SectionRow({ ligne, index, total, subtotal, count = 0, collapsed = fals
   rowIndex, onGrab, isDragged, isDropTarget }) {
   const inputRef = useRef(null);
   useEffect(() => { if (shouldFocus) inputRef.current?.focus(); }, [shouldFocus]);
+  useLayoutEffect(() => { ajusterHauteur(inputRef.current); }, [ligne.description]);
   const titre = (ligne.description || '').trim();
   return (
     // Bandeau plein + liseré coloré : un lot structure le prix, il ne doit pas
@@ -1094,7 +1098,9 @@ function SectionRow({ ligne, index, total, subtotal, count = 0, collapsed = fals
     <div data-row-index={rowIndex}
       className={`group border-y ${isDark ? 'border-slate-700' : 'border-slate-200'} ${isDragged ? 'opacity-40' : ''}`}
       style={{ background: `${couleur}14`, borderLeft: `3px solid ${couleur}`, ...(isDropTarget ? { boxShadow: `inset 0 0 0 2px ${couleur}` } : null) }}>
-      <div className="flex items-center gap-1.5 px-2 sm:px-3 py-2.5">
+      {/* Au téléphone, le titre prend toute la première ligne (sinon il était coupé à deux mots) ; le compte, le
+          sous-total et les boutons passent dessous, à droite. */}
+      <div className="flex flex-wrap sm:flex-nowrap items-center gap-1.5 px-2 sm:px-3 py-2.5">
         {/* Poignée : le glissement ne part que d'ici, sinon on ne pourrait plus
             sélectionner le texte du titre. Le lot emporte ses lignes. */}
         <button type="button" aria-label={`Déplacer le lot ${titre || 'sans titre'}`}
@@ -1108,9 +1114,13 @@ function SectionRow({ ligne, index, total, subtotal, count = 0, collapsed = fals
           <ChevronDown size={15} className={`transition-transform ${collapsed ? '-rotate-90' : ''}`} />
         </button>
         <Layers size={14} style={{ color: couleur }} className="flex-shrink-0 hidden sm:block" />
-        <input ref={inputRef} value={ligne.description} onChange={e => onUpdate(e.target.value)} placeholder="Titre du lot (ex : Salle de bain)"
-          className={`flex-1 min-w-0 h-8 px-2 rounded-lg border-0 bg-transparent text-sm font-bold uppercase tracking-wide ${textPrimary} placeholder:font-normal placeholder:normal-case focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`} />
-        <span className={`text-[10px] font-semibold whitespace-nowrap px-1.5 py-0.5 rounded-full flex-shrink-0 ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-white/80 text-slate-500'}`}>
+        {/* Zone de texte d'une ligne qui grandit : un titre long passe à la ligne au lieu d'être coupé (un titre
+            reste sur une ligne : Entrée et retours collés ignorés) */}
+        <textarea ref={inputRef} rows={1} value={ligne.description} placeholder="Titre du lot (ex : Salle de bain)"
+          onChange={e => onUpdate(e.target.value.replace(/\s*\n\s*/g, ' '))} onInput={e => ajusterHauteur(e.target)}
+          onKeyDown={e => { if (e.key === 'Enter') e.preventDefault(); }}
+          className={`grow min-w-0 basis-[calc(100%-4.5rem)] sm:basis-0 min-h-8 py-1.5 leading-5 resize-none overflow-hidden px-2 rounded-lg border-0 bg-transparent text-sm font-bold uppercase tracking-wide ${textPrimary} placeholder:font-normal placeholder:normal-case focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`} />
+        <span className={`ml-auto sm:ml-0 text-[10px] font-semibold whitespace-nowrap px-1.5 py-0.5 rounded-full flex-shrink-0 ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-white/80 text-slate-500'}`}>
           {count} ligne{count > 1 ? 's' : ''}
         </span>
         <span className={`text-sm font-extrabold tabular-nums whitespace-nowrap ${textPrimary}`}>{eur(subtotal)}</span>
@@ -1124,6 +1134,13 @@ function SectionRow({ ligne, index, total, subtotal, count = 0, collapsed = fals
   );
 }
 
+// Hauteur d'une désignation ajustée à son texte (un champ masqué — l'autre format d'écran — n'a pas de hauteur : ignoré)
+function ajusterHauteur(el) {
+  if (!el || el.offsetParent === null) return;
+  el.style.height = 'auto';
+  el.style.height = `${el.scrollHeight}px`;
+}
+
 /* ── Editable line row ── */
 function LigneRow({ ligne, index, total, franchise = false, isDark, couleur, inputBg, textPrimary, textMuted, rowHover, onUpdate, onRemove, onMoveUp, onMoveDown, onDuplicate, onMetre, onInsertLot, onMarge, onToLot, focusField, onFocusHandled, onLineEnter,
   rowIndex, onGrab, isDragged, isDropTarget }) {
@@ -1131,6 +1148,10 @@ function LigneRow({ ligne, index, total, franchise = false, isDark, couleur, inp
   const numCls = `w-full h-9 rounded-lg border text-sm text-center ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`;
   // Boucle clavier : focus + sélection du champ demandé (desktop OU mobile selon visibilité)
   const qtyDesktopRef = useRef(null), qtyMobileRef = useRef(null), puDesktopRef = useRef(null), puMobileRef = useRef(null);
+  // Désignation à la bonne hauteur aussi quand le texte vient d'un modèle, d'un lot de la bibliothèque ou d'un devis
+  // rouvert (avant : seulement à la frappe — un texte de deux lignes restait coupé à une)
+  const desiDesktopRef = useRef(null), desiMobileRef = useRef(null);
+  useLayoutEffect(() => { ajusterHauteur(desiDesktopRef.current); ajusterHauteur(desiMobileRef.current); }, [ligne.description]);
   useEffect(() => {
     if (!focusField) return;
     const pair = focusField === 'quantite' ? [qtyDesktopRef, qtyMobileRef] : [puDesktopRef, puMobileRef];
@@ -1151,8 +1172,8 @@ function LigneRow({ ligne, index, total, franchise = false, isDark, couleur, inp
           className={`opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity cursor-grab active:cursor-grabbing ${textMuted}`}>
           <GripVertical size={14} />
         </button>
-        <textarea value={ligne.description} onChange={e => onUpdate('description', e.target.value)} placeholder="Désignation…" rows={1}
-          onInput={e => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
+        <textarea ref={desiDesktopRef} value={ligne.description} onChange={e => onUpdate('description', e.target.value)} placeholder="Désignation…" rows={1}
+          onInput={e => ajusterHauteur(e.target)}
           className={`w-full min-h-[36px] px-2 py-1.5 rounded-lg border text-sm resize-none overflow-hidden leading-snug ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`} />
         <input ref={qtyDesktopRef} type="text" inputMode="decimal" value={ligne.quantite} onChange={e => onUpdate('quantite', e.target.value)} onKeyDown={numKeyDown} aria-label="Quantité" className={numCls} />
         <select value={UNITES.includes(ligne.unite) ? ligne.unite : (ligne.unite ? '__autre' : 'u')} onChange={e => onUpdate('unite', e.target.value === '__autre' ? (ligne.unite || '') : e.target.value)} aria-label="Unité"
@@ -1182,8 +1203,8 @@ function LigneRow({ ligne, index, total, franchise = false, isDark, couleur, inp
             className="w-7 h-11 -ml-1 flex items-center justify-center flex-shrink-0 cursor-grab active:cursor-grabbing text-encre-3">
             <GripVertical size={16} />
           </button>
-          <textarea value={ligne.description} onChange={e => onUpdate('description', e.target.value)} placeholder="Désignation…" rows={1} aria-label="Désignation"
-            onInput={e => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
+          <textarea ref={desiMobileRef} value={ligne.description} onChange={e => onUpdate('description', e.target.value)} placeholder="Désignation…" rows={1} aria-label="Désignation"
+            onInput={e => ajusterHauteur(e.target)}
             className={`flex-1 min-w-0 min-h-[44px] px-3 py-2.5 rounded-xl border text-base resize-none overflow-hidden leading-snug ${inputBg}`} />
           <LineMenu toujoursVisible isDark={isDark} textMuted={textMuted} index={index} total={total} onMoveUp={onMoveUp} onMoveDown={onMoveDown} onDuplicate={onDuplicate} onRemove={onRemove} onMetre={onMetre} onInsertLot={onInsertLot} onMarge={onMarge} onToLot={onToLot} />
         </div>

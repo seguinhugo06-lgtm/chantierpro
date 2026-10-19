@@ -33,6 +33,10 @@ paths:
 
     Ils sont tous visibles sur la page cachée `/styleguide`. Pour les tokens exportés pour Figma : `npm run jetons` (`design/tokens/`).
   - **Statuts** : `src/lib/statuts.js`, un statut = un mot et un ton, partout. L'orange (l'accent) n'est jamais un statut : il signale l'action ou la sélection. **Un seul bouton plein par écran.**
+  - **Charte du 19 oct. 2026** (choix d'Hugo : le noir sur orange vif faisait daté et peu lisible) :
+    - **bleu nuit** (`bg-nuit text-sur-nuit`, libellé `text-nuit-libelle`, contexte `text-nuit-contexte`) : la couleur de Mallettico, **fixe**, pour les tuiles vedettes (`TuileChiffre heros`) ;
+    - **accent** : la couleur de l'entreprise assombrie jusqu'à porter du **texte blanc** (≥ 5:1, `src/lib/theme.js`) ; plus jamais de texte noir sur un aplat ; l'orange par défaut devient `#c2410c` ;
+    - ancien code qui pose la couleur en style : `couleurPleine(couleur)` pour un aplat ; les documents imprimés et les e-mails gardent la couleur brute de l'entreprise (tâche `charte-suite`).
   - **Texte** : 12 px au moins ; tailles `text-xs`, `sm`, `base`, `lg`, `2xl`, `4xl` ; chiffres en `tabular-nums`. Montants avec `formatMoney` de `src/lib/formatters.js`, arrondis à l'euro dans les tuiles.
   - **Cliquet** : `src/lib/__tests__/plafondsDesign.test.js` empêche de réintroduire du texte sous 12 px, la palette `gray` ou des classes `dark:`.
 - Code existant (en cours de migration) : prop `isDark` + variables (`cardBg`, `inputBg`, `textPrimary`…), **jamais** les classes `dark:` de Tailwind ; accent par la prop `couleur` en `style` inline (`${couleur}15` pour une teinte). En touchant un module, le passer sur les jetons.

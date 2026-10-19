@@ -21,6 +21,9 @@ export default {
         accent: v('--accent'),
         'accent-texte': v('--accent-texte'),
         'sur-accent': v('--sur-accent'),
+        // Bleu nuit de Mallettico (tuiles vedettes), fixe : bg-nuit text-sur-nuit text-nuit-libelle text-nuit-contexte
+        nuit: { DEFAULT: v('--nuit'), libelle: v('--nuit-libelle'), contexte: v('--nuit-contexte') },
+        'sur-nuit': v('--sur-nuit'),
         // Tons : bg-succes-fond text-succes-texte, bg-danger-point… (un statut = un ton, src/lib/statuts.js)
         neutre: { fond: v('--neutre-fond'), texte: v('--neutre-texte'), point: v('--neutre-point') },
         info: { fond: v('--info-fond'), texte: v('--info-texte'), point: v('--info-point') },

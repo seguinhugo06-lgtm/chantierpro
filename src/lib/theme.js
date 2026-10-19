@@ -4,10 +4,13 @@
  * `App.jsx` pose sur <html> :
  *   - data-theme="clair|sombre" (d'après isDark) → palette neutre de src/styles/theme.css ;
  *   - les variables d'accent tirées de la couleur de l'entreprise, chacune garantie lisible :
- *       --accent        la couleur choisie, telle quelle : boutons pleins, onglet actif, barres, teintes ;
- *       --sur-accent    le texte posé sur --accent : encre presque noire ou blanc, le plus contrasté
- *                       des deux (orange : noir 7,3:1 au lieu de blanc 2,8:1 — le panneau de chantier) ;
+ *       --accent        la couleur choisie, assombrie s'il le faut pour porter du texte blanc (≥ 4,5:1) :
+ *                       boutons pleins, onglet actif, barres, teintes ;
+ *       --sur-accent    le texte posé sur --accent : toujours blanc (charte du 19 oct. 2026 : le noir sur
+ *                       orange vif faisait daté et lourd ; orange par défaut → #c2410c environ, blanc 5,2:1) ;
  *       --accent-texte  la couleur comme texte sur la surface du thème (≥ 4,5:1).
+ *   Le bleu nuit des tuiles vedettes (--nuit, src/styles/theme.css) est la couleur de Mallettico : fixe,
+ *   il ne suit pas la couleur de l'entreprise.
  * Les primitives de ui/ lisent ces variables (classes bg-accent-fort, text-accent-texte…) :
  * plus besoin de passer isDark ni couleur, et toujours aucune classe `dark:`.
  * Les valeurs sont des triplets « r g b » pour que Tailwind gère l'opacité (bg-accent/10).
@@ -16,7 +19,6 @@
 const ACCENT_DEFAUT = '#f97316';
 const SURFACE_CLAIRE = [255, 255, 255];
 const SURFACE_SOMBRE = [30, 41, 59]; // slate-800, la surface des cartes en sombre
-const ENCRE_NOIRE = [2, 6, 23]; // slate-950
 const BLANC = [255, 255, 255];
 
 function versRgb(hex) {
@@ -80,6 +82,23 @@ function ajuster(rgb, fond, sens, cible = 4.5) {
 }
 
 const triplet = (rgb) => rgb.join(' ');
+const versHex = (rgb) => `#${rgb.map((c) => c.toString(16).padStart(2, '0')).join('')}`;
+
+// La couleur choisie, assombrie (teinte gardée) jusqu'à porter du texte blanc lisible ; 5:1 plutôt que 4,5 pour
+// garder de la marge au survol (hover:brightness-95, opacity-90). L'orange par défaut a sa teinte choisie à la main
+// (#c2410c, blanc 5,2:1, maquette validée le 19 oct. 2026) : assombri tel quel, il tirait vers le brun.
+const ORANGE_PLEIN = [194, 65, 12];
+const plein = (brut) => (triplet(brut) === triplet(versRgb(ACCENT_DEFAUT)) ? ORANGE_PLEIN : ajuster(brut, BLANC, -1, 5));
+
+/**
+ * Couleur d'un aplat qui porte du texte blanc (≥ 4,5:1), pour le code qui pose encore la couleur de
+ * l'entreprise en style (`style={{ background }}`). Les documents imprimés gardent la couleur telle quelle.
+ * @param {string} couleur hex ; une valeur illisible retombe sur l'orange
+ * @returns {string} hex #rrggbb
+ */
+export function couleurPleine(couleur) {
+  return versHex(plein(versRgb(couleur) || versRgb(ACCENT_DEFAUT)));
+}
 
 /**
  * Variables CSS de l'accent pour une couleur d'entreprise et un thème.
@@ -89,11 +108,10 @@ const triplet = (rgb) => rgb.join(' ');
  */
 export function variablesAccent(couleur, sombre = false) {
   const brut = versRgb(couleur) || versRgb(ACCENT_DEFAUT);
-  const surAccent = contraste(brut, ENCRE_NOIRE) >= contraste(brut, BLANC) ? ENCRE_NOIRE : BLANC;
   const texte = sombre ? ajuster(brut, SURFACE_SOMBRE, +1) : ajuster(brut, SURFACE_CLAIRE, -1);
   return {
-    '--accent': triplet(brut),
-    '--sur-accent': triplet(surAccent),
+    '--accent': triplet(plein(brut)),
+    '--sur-accent': triplet(BLANC),
     '--accent-texte': triplet(texte),
   };
 }

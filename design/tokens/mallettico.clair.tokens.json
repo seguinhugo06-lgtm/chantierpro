@@ -46,12 +46,12 @@
     "accent": {
       "accent": {
         "$type": "color",
-        "$value": "#f97316",
+        "$value": "#c2410c",
         "$description": "Action et sélection (couleur de l'entreprise, orange par défaut)"
       },
       "sur-accent": {
         "$type": "color",
-        "$value": "#020617",
+        "$value": "#ffffff",
         "$description": "Texte posé sur l'accent (calculé : le plus contrasté du noir et du blanc)"
       },
       "accent-texte": {
