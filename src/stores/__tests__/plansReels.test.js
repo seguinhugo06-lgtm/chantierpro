@@ -14,7 +14,7 @@ describe('plans : l\'offre réelle (D-29)', () => {
       '10 clients',
       '2 chantiers',
       '50 photos de chantier',
-      '1 utilisateur',
+      'Vous + 1 collaborateur',
       'Signature en ligne des devis',
       'Relances automatiques',
       'Catalogue complet : plus de 1 000 prestations chiffrées',
@@ -25,14 +25,14 @@ describe('plans : l\'offre réelle (D-29)', () => {
     expect(noms('artisan')).toEqual([
       'Tout le plan Gratuit, sans limite',
       'Devis, clients, chantiers et photos illimités',
-      '1 utilisateur',
+      'Vous + 1 collaborateur',
     ]);
   });
 
   it('Équipe annonce ce qui s\'ajoute pour plusieurs utilisateurs', () => {
     expect(noms('equipe')).toEqual([
       'Tout le plan Artisan',
-      "Jusqu'à 10 utilisateurs",
+      'Vous + 10 collaborateurs',
       'Rôles et accès pour chaque membre',
       "Pointage des heures de l'équipe",
     ]);
@@ -60,11 +60,24 @@ describe('plans : l\'offre réelle (D-29)', () => {
     expect(PLANS.equipe.limits.equipe).toBe(10);
   });
 
+  it('« illimités » est tenu par les limites : Artisan et Équipe ne plafonnent ni devis, ni clients, ni chantiers, ni photos', () => {
+    for (const id of ['artisan', 'equipe']) {
+      for (const ressource of ['devis', 'clients', 'chantiers', 'photos']) {
+        expect(PLANS[id].limits[ressource], `${id}.${ressource}`).toBe(-1);
+      }
+    }
+  });
+
+  it('la limite d\'équipe ne compte pas le propriétaire (TeamManagement) : libellés « Vous + N collaborateur(s) »', () => {
+    expect(noms('artisan')).toContain(`Vous + ${PLANS.artisan.limits.equipe} collaborateur`);
+    expect(noms('equipe')).toContain(`Vous + ${PLANS.equipe.limits.equipe} collaborateurs`);
+  });
+
   it('chaque limite chiffrée du plan Gratuit apparaît dans le libellé de sa ressource', () => {
-    const motDeLaRessource = { devis: 'devis', clients: 'clients', chantiers: 'chantiers', photos: 'photos', equipe: 'utilisateur' };
+    const motDeLaRessource = { devis: 'devis', clients: 'clients', chantiers: 'chantiers', photos: 'photos', equipe: 'collaborateur' };
     for (const [ressource, mot] of Object.entries(motDeLaRessource)) {
       const limite = PLANS.gratuit.limits[ressource];
-      const trouve = noms('gratuit').some((nom) => new RegExp(`^${limite} ${mot}`).test(nom));
+      const trouve = noms('gratuit').some((nom) => new RegExp(`^(Vous \\+ )?${limite} ${mot}`).test(nom));
       expect(trouve, `${ressource} = ${limite} doit figurer dans un libellé « ${limite} ${mot}… »`).toBe(true);
     }
   });

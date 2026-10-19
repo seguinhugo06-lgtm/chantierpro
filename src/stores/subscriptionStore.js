@@ -17,9 +17,14 @@ import { FONCTIONS } from '../lib/fonctions';
 // D-29 (docs/decisions.md) : les `featureLabels` annoncent ce que l'application fait réellement,
 // ni plus ni moins. Ils sont lus par « Mon plan », la fenêtre d'abonnement, la page des tarifs et
 // le site public. Seules limites appliquées aujourd'hui, au plan Gratuit : 5 devis par mois,
-// 10 clients, 2 chantiers, 50 photos et 1 utilisateur (Équipe : 10). La signature, les relances et
-// le catalogue ne sont pas bridés ; les factures non plus. Toute ligne ajoutée ici doit être vraie
-// le jour même : une limite annoncée est une limite appliquée, et inversement.
+// 10 clients, 2 chantiers, 50 photos et 1 collaborateur invité ; Équipe : 10 collaborateurs.
+// La signature, les relances et le catalogue ne sont pas bridés ; les factures non plus. Toute
+// ligne ajoutée ici doit être vraie le jour même : une limite annoncée est une limite appliquée,
+// et inversement.
+// La limite d'équipe (`limits.equipe`) ne compte pas le propriétaire : TeamManagement.jsx compare
+// (collaborateurs + invitations en attente) à la limite, hors propriétaire. Avec `equipe: 1`, le
+// propriétaire peut donc inviter 1 collaborateur ; avec `equipe: 10`, 10. D'où « Vous + 1
+// collaborateur » et « Vous + 10 collaborateurs », et non « 1 utilisateur » ni « 10 utilisateurs ».
 export const PLANS = {
   gratuit: {
     id: 'gratuit',
@@ -49,7 +54,7 @@ export const PLANS = {
       { name: '10 clients', included: true },
       { name: '2 chantiers', included: true },
       { name: '50 photos de chantier', included: true },
-      { name: '1 utilisateur', included: true },
+      { name: 'Vous + 1 collaborateur', included: true },
       { name: 'Signature en ligne des devis', included: true },
       { name: 'Relances automatiques', included: true },
       { name: 'Catalogue complet : plus de 1 000 prestations chiffrées', included: true }
@@ -93,7 +98,7 @@ export const PLANS = {
     featureLabels: [
       { name: 'Tout le plan Gratuit, sans limite', included: true },
       { name: 'Devis, clients, chantiers et photos illimités', included: true },
-      { name: '1 utilisateur', included: true }
+      { name: 'Vous + 1 collaborateur', included: true }
     ],
     badge: 'Pour un artisan seul',
     color: '#F97316',
@@ -132,7 +137,7 @@ export const PLANS = {
     ],
     featureLabels: [
       { name: 'Tout le plan Artisan', included: true },
-      { name: 'Jusqu\'à 10 utilisateurs', included: true },
+      { name: 'Vous + 10 collaborateurs', included: true },
       { name: 'Rôles et accès pour chaque membre', included: true },
       { name: 'Pointage des heures de l\'équipe', included: true }
     ],
