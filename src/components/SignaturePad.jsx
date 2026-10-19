@@ -239,7 +239,7 @@ export default function SignaturePad({
               </div>
 
               {/* Zone de signature */}
-              <div className={`relative border-2 rounded-xl overflow-hidden mb-4 border-bord-fort bg-surface`}>
+              <div className={`relative border-2 rounded-xl overflow-hidden mb-4 border-bord-fort bg-white`}>
                 <SignatureCanvas
                   ref={sigPad}
                   canvasProps={{

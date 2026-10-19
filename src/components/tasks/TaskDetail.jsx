@@ -349,7 +349,7 @@ export default function TaskDetail({ memo, onUpdate, onDelete, onClose, chantier
               </span>
             )}
             {saveStatus === 'error' && (
-              <span className="text-xs flex items-center gap-1 text-alerte-texte">
+              <span className="text-xs flex items-center gap-1 text-danger-texte">
                 <AlertCircle size={11} /> Erreur
                 <button onClick={retrySave} className="underline hover:no-underline ml-0.5">Réessayer</button>
               </span>
