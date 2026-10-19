@@ -1253,7 +1253,7 @@ export default function App() {
         </div>
         <div className="relative z-10 flex flex-col justify-center p-16">
           <div className="max-w-lg">
-            <LogoMallettico taille={72} fond="blanc" className="mb-8 rounded-2xl shadow-lg" />
+            <LogoMallettico taille={72} fond="blanc" className="mb-8 shadow-lg" />
             <h1 className="text-5xl font-bold text-white mb-4">Mallettico</h1>
             <p className="text-2xl text-white/90 mb-8">Pilotez votre rentabilité</p>
             <div className="space-y-6">
@@ -1279,7 +1279,7 @@ export default function App() {
       <div className="flex-1 flex items-center justify-center p-6">
         <div className="w-full max-w-md">
           <div className="lg:hidden flex items-center gap-3 mb-8">
-            <LogoMallettico taille={48} fond="blanc" className="rounded-xl" />
+            <LogoMallettico taille={48} fond="blanc" />
             <span className="text-2xl font-bold text-white">Mallettico</span>
           </div>
           

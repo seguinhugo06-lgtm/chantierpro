@@ -287,7 +287,7 @@ async function capturerOg() {
     .lueur { position: absolute; right: -120px; top: -160px; width: 640px; height: 640px; border-radius: 50%; background: radial-gradient(circle, rgba(191,242,255,.28), rgba(191,242,255,0) 68%); }
     .texte { position: absolute; left: 64px; top: 0; bottom: 0; width: 440px; display: flex; flex-direction: column; justify-content: center; }
     .marque { display: flex; align-items: center; gap: 18px; margin-bottom: 30px; }
-    .marque img { width: 72px; height: 72px; border-radius: 18px; }
+    .marque img { width: 72px; height: 72px; }
     .marque span { font-size: 52px; font-weight: 800; letter-spacing: -1px; }
     .accroche { font-size: 30px; line-height: 1.28; font-weight: 600; color: #DCEFFB; }
     .cadre { position: absolute; left: 520px; top: 115px; width: 640px; border-radius: 22px; overflow: hidden; background: #fff;

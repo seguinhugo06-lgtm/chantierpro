@@ -259,7 +259,7 @@ export default function PWAUpdatePrompt({ syncHandlers = {}, className, isDark =
 
               {/* Header with app icon */}
               <div className="flex items-center gap-4 mb-4 pr-8">
-                <LogoMallettico taille={64} fond="blanc" className="flex-shrink-0 rounded-2xl shadow-lg" />
+                <LogoMallettico taille={64} fond="blanc" className="flex-shrink-0 shadow-lg" />
                 <div>
                   <p className={cn('text-xl font-bold', textPrimary)}>Mallettico</p>
                   <p className={cn('text-sm', textSecondary)}>Devis, factures et relances</p>
