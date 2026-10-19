@@ -90,7 +90,7 @@ Un script versionné `scripts/site-captures.cjs` produit, depuis `dist/` en dém
 
 ## Décisions après la relecture indépendante (19 oct.)
 
-- **Offre gratuite** (question à Hugo, en attente) : `PLANS` et le tableau annoncent un plan Gratuit sans signature en ligne, sans relances et à 30 articles, mais l'application ne limite que 5 devis par mois, 10 clients et 2 chantiers (`autoriserCreation`, `DataContext.jsx`) ; les listes des cartes de tarifs (en dur) et `PLANS.featureLabels` ne concordent pas. Le site affichera une seule liste par plan, lue dans `PLANS`, et cette liste dira ce que l'application fait réellement après la décision d'Hugo.
+- **Offre gratuite — décision D-29 d'Hugo (19 oct.) : le site dit ce que fait l'application aujourd'hui.** `PLANS` et le tableau annonçaient un plan Gratuit sans signature en ligne, sans relances et à 30 articles, mais l'application ne limite que 5 devis par mois (les factures ne sont pas limitées), 10 clients, 2 chantiers, 50 photos et 1 utilisateur ; l'Équipe va jusqu'à 10 utilisateurs. Une seule liste par plan, dans `PLANS`, corrigée et lue partout (site, « Mon plan », fenêtre d'abonnement). Libellés exacts : voir la Task 1 du plan.
 - **Livraison** (choix de Claude) : la page est la première que voit un artisan ; elle est livrée après qu'Hugo a vu les captures avant/après, pas seulement sur une vérification verte.
 
 ## Laissé au réalisateur
