@@ -35,7 +35,7 @@ import {
   analyserBrancheClaire, analyserClasse, estChaineDeClasses, remplacerOranges, estCouleurDeTexte, estCouleurDeFond,
   traductionOrange,
 } from './correspondances.mjs';
-import { fichiersConcernes, compterAncienCode, MOTIFS, EXCEPTIONS } from './fichiers.mjs';
+import { fichiersConcernes, fichiersAtteignables, compterAncienCode, MOTIFS, EXCEPTIONS } from './fichiers.mjs';
 
 const traverse = babelTraverse.default ?? babelTraverse;
 const { parse } = babelParser;
@@ -174,7 +174,7 @@ function fondDeLElement(elementPath, source) {
   else {
     valeur.traverse({
       StringLiteral(s) { lire(s.node, estBrancheIsDark(s)); }, // un ternaire isDark suit le thème
-      TemplateLiteral(t) { if (!gabaritHtml(t.node)) lire(t.node, false); },
+      TemplateLiteral(t) { if (!gabaritHtml(t.node)) lire(t.node, estBrancheIsDark(t)); },
       Identifier(i) { if (NOM_DE_FOND.test(i.node.name)) nomDeFond = true; },
     });
   }
@@ -268,8 +268,8 @@ function passeTernaires(source, ast, bilan) {
         ignorer(bilan, 'couleur sombre sans pendant clair (trait, anneau…)');
         return;
       }
-      const { resultat, manquantes } = analyserBrancheClaire(clair);
-      if (resultat === null) {
+      const { resultat: traduit, manquantes } = analyserBrancheClaire(clair);
+      if (traduit === null) {
         if (manquantes.length) {
           ignorer(bilan, 'classe claire sans correspondance');
           for (const c of manquantes) bilan.sansCorrespondance[c] = (bilan.sansCorrespondance[c] || 0) + 1;
@@ -278,6 +278,8 @@ function passeTernaires(source, ast, bilan) {
         }
         return;
       }
+      // les espaces de tête et de fin de la branche claire restent : 'flex' + (isDark ? ' a' : ' b') → 'flex' + ' …'
+      const resultat = clair.trim() === '' ? clair : clair.match(/^\s*/)[0] + traduit + clair.match(/\s*$/)[0];
 
       // l'étendue : le ternaire, avec ses parenthèses devenues inutiles autour d'une simple chaîne
       let debut = n.start;
@@ -294,9 +296,12 @@ function passeTernaires(source, ast, bilan) {
       const guillemet = source[n.alternate.start];
       bilan.detail.ternaires++;
 
+      // barre oblique inverse, retour à la ligne, tabulation, séparateurs U+2028 / U+2029 : à échapper dans une chaîne
+      const caracteresAEchapper = /[\\\n\r\t]/.test(resultat) || [0x2028, 0x2029].some((c) => resultat.includes(String.fromCharCode(c)));
       // seul contenu d'un attribut JSX : className={isDark ? … : …} → className="…"
       if (parent.isJSXExpressionContainer() && parent.parentPath.isJSXAttribute()
-        && source.slice(parent.node.start + 1, parent.node.end - 1).trim() === texteTernaire && !resultat.includes('"')) {
+        && source.slice(parent.node.start + 1, parent.node.end - 1).trim() === texteTernaire
+        && !resultat.includes('"') && !caracteresAEchapper) {
         editions.push({ debut: parent.node.start, fin: parent.node.end, texte: `"${resultat}"` });
         return;
       }
@@ -312,8 +317,9 @@ function passeTernaires(source, ast, bilan) {
           return;
         }
       }
-      // même guillemet que la branche claire ; JSON si une valeur arbitraire le contient (content-['x'])
-      const chaine = resultat.includes(guillemet) || resultat.includes('\\') ? JSON.stringify(resultat) : guillemet + resultat + guillemet;
+      // même guillemet que la branche claire ; JSON si une valeur arbitraire le contient (content-['x']) ou s'il
+      // faut échapper un caractère (retour à la ligne de la branche d'origine)
+      const chaine = resultat.includes(guillemet) || caracteresAEchapper ? JSON.stringify(resultat) : guillemet + resultat + guillemet;
       editions.push({ debut, fin, texte: chaine });
     },
   });
@@ -418,6 +424,133 @@ function elementSur(nom, surs) {
     && surs.motions.has(nom.object.name) && /^[a-z]/.test(nom.property.name);
 }
 
+/* ------------------------------------------------------------------------------------------------
+ * D'où vient la couleur : `couleur` / `accent` ne valent la couleur de l'entreprise (donc bg-accent,
+ * text-accent-texte) que si leur déclaration y remonte. Contre-exemples du dépôt : DevisComposer passe à SectionRow
+ * couleur={accentPlein}, la teinte des factures ; EntrepriseBadge prend `ent.couleur`, celle d'une des entreprises.
+ * Un composant est « douteux » pour une prop (clé « Composant.prop ») si l'un de ses appels JSX lui passe autre
+ * chose que la couleur de l'entreprise ; la ligne de commande réunit ces clés sur tout le dépôt (option `douteux`).
+ * Un identifiant sans déclaration (extrait isolé, jamais dans un vrai fichier : ce serait une ReferenceError) est
+ * présumé être la couleur de l'entreprise.
+ * ---------------------------------------------------------------------------------------------- */
+
+/** Props d'appel examinées : celles qui portent une couleur (couleur, accent, color, accentColor…). */
+const PROP_DE_COULEUR = /couleur|color|accent/i;
+
+/** Le nom du composant (capitale initiale) que déclare cette fonction, ou null (rappel de .map, fonction utilitaire). */
+function nomDuComposant(fonction) {
+  if (!fonction?.isFunction()) return null;
+  let nom = fonction.node.id?.name ?? null;
+  if (!nom) {
+    let p = fonction.parentPath;
+    while (p?.isCallExpression()) p = p.parentPath; // memo(…), forwardRef(…)
+    if (p?.isVariableDeclarator() && p.node.id.type === 'Identifier') nom = p.node.id.name;
+  }
+  return nom && /^[A-Z]/.test(nom) ? nom : null;
+}
+
+/** La prop d'où sort un identifiant dans un motif déstructuré ({ couleur: c = '#…' } → 'couleur'), ou null. */
+function propDuMotif(motif, identifiant) {
+  for (const pr of motif.properties) {
+    if (pr.type !== 'ObjectProperty' || pr.computed) continue;
+    const valeur = pr.value.type === 'AssignmentPattern' ? pr.value.left : pr.value;
+    if (valeur === identifiant) return nomCle(pr.key);
+  }
+  return null;
+}
+
+/** Clé « Composant.prop » douteuse ? null si la prop du composant est sûre, sinon la raison. */
+function verdictDeProp(composant, prop, douteux) {
+  if (!composant) return 'paramètre d\'une fonction qui n\'est pas un composant';
+  if (!prop) return 'paramètre non déstructuré';
+  return douteux.has(`${composant}.${prop}`) ? `${composant} reçoit ailleurs une autre couleur (${prop})` : null;
+}
+
+function origineIdentifiant(chemin, douteux, profondeur) {
+  const binding = chemin.scope.getBinding(chemin.node.name);
+  if (!binding) return null; // présumée (voir plus haut)
+  if (binding.constantViolations.length) return `${chemin.node.name} est réaffectée`;
+  if (binding.kind === 'param') {
+    const prop = binding.path.isObjectPattern() ? propDuMotif(binding.path.node, binding.identifier) : null;
+    return verdictDeProp(nomDuComposant(binding.scope.path), prop, douteux);
+  }
+  const declaration = binding.path;
+  if (!declaration.isVariableDeclarator()) return `${chemin.node.name} : déclaration inconnue`;
+  if (declaration.node.id.type === 'Identifier') {
+    return declaration.node.init ? origineExpression(declaration.get('init'), douteux, profondeur + 1) : `${chemin.node.name} sans valeur`;
+  }
+  if (declaration.node.id.type === 'ObjectPattern') {
+    const init = declaration.get('init');
+    // const { couleur } = props : une prop du composant
+    const source = init.isIdentifier() ? init.scope.getBinding(init.node.name) : null;
+    if (source?.kind === 'param' && source.path.isIdentifier()) {
+      return verdictDeProp(nomDuComposant(source.scope.path), propDuMotif(declaration.node.id, binding.identifier), douteux);
+    }
+    // const { couleur } = entreprise (ou useEntreprise()…)
+    return init.node && /entreprise/i.test(init.toString()) ? null : `${chemin.node.name} déstructurée d'un objet inconnu`;
+  }
+  return `${chemin.node.name} : déclaration inconnue`;
+}
+
+/** La valeur est-elle la couleur de l'entreprise ? null si oui, sinon la raison. */
+function origineExpression(chemin, douteux, profondeur = 0) {
+  if (profondeur > 6) return 'origine trop indirecte';
+  const n = chemin.node;
+  if (chemin.isIdentifier()) return origineIdentifiant(chemin, douteux, profondeur);
+  if (chemin.isMemberExpression() || chemin.isOptionalMemberExpression()) {
+    // entreprise.couleur, signe.entreprise?.couleur, devisData?.entreprise?.couleur
+    if (n.computed || nomCle(n.property) !== 'couleur') return `autre valeur (${chemin.toString()})`;
+    const noms = [];
+    let objet = chemin.get('object');
+    while (objet.isMemberExpression() || objet.isOptionalMemberExpression()) {
+      noms.push(objet.node.computed ? '' : nomCle(objet.node.property));
+      objet = objet.get('object');
+    }
+    if (!objet.isIdentifier()) return `autre valeur (${chemin.toString()})`;
+    noms.push(objet.node.name);
+    if (!noms.some((x) => /^entreprise$/i.test(x || ''))) return `couleur d'un autre objet (${chemin.toString()})`;
+    const racine = objet.scope.getBinding(objet.node.name);
+    if (racine?.kind === 'param' && !nomDuComposant(racine.scope.path)) return 'paramètre d\'une fonction qui n\'est pas un composant';
+    return null;
+  }
+  if (chemin.isLogicalExpression() && (n.operator === '||' || n.operator === '??')) {
+    const gauche = origineExpression(chemin.get('left'), douteux, profondeur + 1);
+    if (gauche) return gauche;
+    return chemin.get('right').isStringLiteral() ? null : origineExpression(chemin.get('right'), douteux, profondeur + 1);
+  }
+  // couleurPleine(couleur, isDark) : la couleur de l'entreprise assombrie pour un aplat, c'est bg-accent
+  if (chemin.isCallExpression() && chemin.get('callee').isIdentifier({ name: 'couleurPleine' }) && n.arguments.length) {
+    return origineExpression(chemin.get('arguments.0'), douteux, profondeur + 1);
+  }
+  return `autre valeur (${chemin.toString().slice(0, 60)})`;
+}
+
+/**
+ * Les clés « Composant.prop » qu'un code appelle avec une couleur qui n'est pas celle de l'entreprise (en plus de
+ * `connus`) : point fixe, un composant douteux qui passe sa prop à un autre le rend douteux à son tour.
+ */
+export function appelsDouteux(ast, connus = new Set()) {
+  const douteux = new Set(connus);
+  for (let tour = 0; tour < 6; tour++) {
+    const avant = douteux.size;
+    traverse(ast, {
+      JSXAttribute(p) {
+        const prop = nomAttribut(p.node);
+        const nom = p.parentPath.node.name;
+        if (!prop || !PROP_DE_COULEUR.test(prop) || nom.type !== 'JSXIdentifier' || !/^[A-Z]/.test(nom.name)) return;
+        const cle = `${nom.name}.${prop}`;
+        if (douteux.has(cle)) return;
+        const valeur = p.get('value');
+        const sure = valeur.isJSXExpressionContainer() && !valeur.get('expression').isJSXEmptyExpression()
+          && origineExpression(valeur.get('expression'), douteux) === null;
+        if (!sure) douteux.add(cle);
+      },
+    });
+    if (douteux.size === avant) break;
+  }
+  return douteux;
+}
+
 /** Retirer des propriétés d'un objet littéral : chaque suite de propriétés retirées avec son séparateur. */
 function retraitsDeProprietes(proprietes, retirees) {
   const editions = [];
@@ -433,15 +566,20 @@ function retraitsDeProprietes(proprietes, retirees) {
   return editions;
 }
 
-function passeStyles(source, ast, bilan) {
+/** Variantes de pseudo-élément : le style posé sur l'élément ne les recouvrait pas (placeholder:text-…). */
+const PSEUDO_ELEMENT = /(?:^|:)(?:placeholder|before|after|file|marker|selection|first-letter|first-line|backdrop):/;
+
+function passeStyles(source, ast, bilan, options) {
   const editions = [];
   const surs = composantsSurs(ast);
+  const douteux = appelsDouteux(ast, options.douteux);
   traverse(ast, {
     JSXAttribute(p) {
       if (nomAttribut(p.node) !== 'style' || p.node.value?.type !== 'JSXExpressionContainer' || dansDuHtml(p)) return;
-      const candidats = [];
-      p.get('value').traverse({ ObjectProperty(op) { if (estCandidat(op.node)) candidats.push(op.node); } });
-      if (!candidats.length) return;
+      const chemins = [];
+      p.get('value').traverse({ ObjectProperty(op) { if (estCandidat(op.node)) chemins.push(op); } });
+      if (!chemins.length) return;
+      const candidats = chemins.map((c) => c.node);
       const objet = p.node.value.expression;
       const directs = objet.type === 'ObjectExpression' ? candidats.filter((c) => objet.properties.includes(c)) : [];
       if (candidats.length > directs.length) ignorer(bilan, 'style qui n\'est pas un objet littéral', candidats.length - directs.length);
@@ -451,6 +589,10 @@ function passeStyles(source, ast, bilan) {
         if (signaler) bilan.signalements.push({ position: p.node.start, motif: signaler });
       };
 
+      for (const c of chemins.filter((ch) => directs.includes(ch.node))) {
+        const raison = origineExpression(c.get('value'), douteux);
+        if (raison) return refuser('couleur qui n\'est peut-être pas celle de l\'entreprise', `couleur laissée : ${raison}`);
+      }
       const ouvrant = p.parentPath.node;
       const element = p.parentPath.parentPath.node;
       if (!elementSur(ouvrant.name, surs)) return refuser('composant qui ne transmet peut-être pas className');
@@ -480,6 +622,9 @@ function passeStyles(source, ast, bilan) {
       }
       const analyses = lues.classes.map((c) => ({ ...c, a: analyserClasse(c.texte) }));
       const deBase = analyses.filter((c) => c.a.variantes === '');
+      // le style recouvrait la propriété dans tous les états (hover:, disabled:, sm:…) : gardées en classe, ces
+      // variantes l'emporteraient désormais ; seules restent celles des pseudo-éléments (placeholder:…)
+      const recouvertes = (estPropriete) => analyses.filter((c) => estPropriete(c.a) && !PSEUDO_ELEMENT.test(c.a.variantes));
       const autresProprietes = objet.properties.filter((pr) => !directs.includes(pr));
       const couleurDuStyle = autresProprietes.find((pr) => nomCle(pr.key) === 'color');
 
@@ -497,7 +642,7 @@ function passeStyles(source, ast, bilan) {
         if (fonce || styleFonce) {
           return refuser('texte foncé sur un aplat d\'accent', `aplat laissé : texte non blanc (${fonce ? fonce.texte : 'color du style'})`);
         }
-        for (const c of deBase) if (estCouleurDeFond(c.a)) retraits.push(c);
+        retraits.push(...recouvertes(estCouleurDeFond));
         const blancs = couleursTexte.filter((c) => c.a.base === 'text-white');
         retraits.push(...blancs);
         ajouts.push('bg-accent');
@@ -505,7 +650,7 @@ function passeStyles(source, ast, bilan) {
         if (dynamique) signal = 'className dynamique : vérifier la couleur du texte sur l\'aplat';
         else if (!couleursTexte.length && !couleurDuStyle && aDuContenu(element)) signal = 'aplat d\'accent sans couleur de texte';
       } else {
-        for (const c of deBase) if (estCouleurDeTexte(c.a)) retraits.push(c);
+        retraits.push(...recouvertes(estCouleurDeTexte));
         ajouts.push('text-accent-texte');
         if (dynamique) signal = 'className dynamique : vérifier qu\'aucune autre couleur de texte ne s\'y ajoute';
       }
@@ -547,15 +692,18 @@ function passeStyles(source, ast, bilan) {
 /**
  * Transforme le code d'un fichier : { source, changements, ignores, detail: { ternaires, classes, styles }, raisons,
  * signalements: [{ ligne, motif, extrait }] (lignes du texte final), sansCorrespondance: { classe: nombre } }.
+ * options.douteux : clés « Composant.prop » appelées ailleurs dans le dépôt avec une couleur qui n'est pas celle de
+ * l'entreprise (douteuxDuDepot) ; celles du fichier lui-même sont toujours ajoutées.
  * Lève une erreur si le code ne se lit pas (@babel/parser, plugin jsx).
  */
-export function transformer(source) {
+export function transformer(source, options = {}) {
+  const reglages = { douteux: options.douteux ?? new Set() };
   const bilan = nouveauBilan();
   let texte = source;
   const enAttente = []; // signalements des passes déjà faites, positions dans le texte courant
   for (const passe of [passeTernaires, passeOranges, passeStyles]) {
     const avant = bilan.signalements.length;
-    const editions = passe(texte, analyser(texte), bilan);
+    const editions = passe(texte, analyser(texte), bilan, reglages);
     enAttente.push(...bilan.signalements.splice(avant));
     if (!editions.length) continue;
     const { texte: suivant, recaler } = appliquer(texte, editions);
@@ -586,6 +734,29 @@ export function transformer(source) {
 
 const estException = (f) => EXCEPTIONS.fichiers.includes(f) || EXCEPTIONS.dossiers.some((d) => f.startsWith(d));
 
+/**
+ * Les clés « Composant.prop » appelées, quelque part dans les fichiers atteignables (exceptions comprises : un
+ * appel du site public compte aussi), avec une couleur qui n'est pas celle de l'entreprise ; point fixe entre
+ * fichiers (un composant douteux qui transmet sa prop rend douteux celui qu'il appelle).
+ */
+export function douteuxDuDepot(racine) {
+  const arbres = [];
+  for (const f of fichiersAtteignables(racine)) {
+    try {
+      arbres.push(analyser(fs.readFileSync(path.join(racine, f), 'utf8')));
+    } catch {
+      continue; // illisible : signalé par la transformation elle-même
+    }
+  }
+  let douteux = new Set();
+  for (let tour = 0; tour < 6; tour++) {
+    const avant = douteux.size;
+    for (const arbre of arbres) douteux = appelsDouteux(arbre, douteux);
+    if (douteux.size === avant) break;
+  }
+  return douteux;
+}
+
 function executer(argv) {
   const racine = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
   const appliquerVraiment = argv.includes('--appliquer');
@@ -606,12 +777,13 @@ function executer(argv) {
   const ancienApres = Object.fromEntries(MOTIFS.map((m) => [m, 0]));
   const parFichier = [];
   const echecs = [];
+  const douteux = douteuxDuDepot(racine);
   for (const f of fichiers) {
     const chemin = path.join(racine, f);
     const source = fs.readFileSync(chemin, 'utf8');
     let r;
     try {
-      r = transformer(source);
+      r = transformer(source, { douteux });
     } catch (e) {
       echecs.push(`${f} : ${e.message}`);
       continue;

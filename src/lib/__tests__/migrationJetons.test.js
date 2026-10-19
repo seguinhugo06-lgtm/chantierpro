@@ -149,6 +149,16 @@ describe('transformer — ternaires isDark', () => {
       .toBe("const h = 'placeholder:text-encre-3';");
   });
 
+  it('garde les espaces de tête et de fin de la branche claire (concaténation, gabarit)', () => {
+    expect(transforme("const c = 'flex' + (isDark ? ' text-white' : ' text-slate-900');").source)
+      .toBe("const c = 'flex' + ' text-encre';");
+    expect(transforme("const t = `p-2${isDark ? ' bg-slate-800' : ' bg-white'}`;").source)
+      .toBe('const t = `p-2 bg-surface`;');
+    expect(transforme("const u = isDark ? 'bg-slate-800 ' : 'bg-white ';").source).toBe("const u = 'bg-surface ';");
+    // un retour à la ligne échappé dans la branche reste échappé
+    expect(transforme("const v = isDark ? 'bg-slate-800\\n' : 'bg-white\\n';").source).toBe('const v = "bg-surface\\n";');
+  });
+
   it('cite sans erreur une valeur arbitraire qui contient le guillemet de la chaîne', () => {
     expect(transforme("const c = isDark ? 'text-white before:content-[\\'x\\']' : 'text-slate-900 before:content-[\\'x\\']';").source)
       .toBe('const c = "text-encre before:content-[\'x\']";');
@@ -268,6 +278,9 @@ describe('transformer — classes orange des className', () => {
       .toBe('const i = <div className="bg-surface"><div className="bg-accent/10"><p className="text-accent-texte">x</p></div></div>;');
     expect(transforme("const i = <div className={isDark ? 'bg-slate-800' : 'bg-red-50'}><p className=\"text-orange-600\">x</p></div>;").source)
       .toBe("const i = <div className={isDark ? 'bg-slate-800' : 'bg-red-50'}><p className=\"text-accent-texte\">x</p></div>;");
+    // branches en gabarit d'un ternaire isDark (GarantiesDashboard) : le fond suit aussi le thème
+    const gabarits = 'const g = <div className={`p-4 ${isDark ? `bg-slate-800 ${a}` : `bg-white ${b}`}`}><p className="text-orange-500">x</p></div>;';
+    expect(transforme(gabarits).source).toBe(gabarits.replace('"text-orange-500"', '"text-accent-texte"'));
   });
 
   it('ne touche pas l\'orange hors d\'un className, ni dans un ternaire isDark laissé intact', () => {
@@ -339,6 +352,61 @@ describe('transformer — couleur de l\'entreprise posée en style', () => {
       .toBe('const p = <p className="font-bold text-lg text-accent-texte">x</p>;');
     expect(transforme('const d = <div className="bg-white text-white p-2" style={{ background: couleur }}>x</div>;').source)
       .toBe('const d = <div className="p-2 bg-accent text-sur-accent">x</div>;');
+  });
+
+  it('retire aussi les variantes de la propriété que le style recouvrait (survol, désactivé…), pas les pseudo-éléments', () => {
+    // SearchBar : le style gagnait même au survol ; gardé en classe, hover:text-encre l'emporterait au survol
+    expect(transforme("const b = <button className={`py-1 ${isDark ? 'text-slate-300 hover:text-white' : 'text-slate-600 hover:text-slate-900'}`} style={{ color: couleur }}>x</button>;").source)
+      .toBe('const b = <button className={`py-1 text-accent-texte`}>x</button>;');
+    expect(transforme('const i = <input className="p-1 hover:text-slate-900 placeholder:text-slate-400" style={{ color: couleur }} />;').source)
+      .toBe('const i = <input className="p-1 placeholder:text-slate-400 text-accent-texte" />;');
+    expect(transforme('const b = <button className="px-2 text-white hover:bg-slate-700 disabled:bg-slate-300" style={{ background: couleur }}>Ok</button>;').source)
+      .toBe('const b = <button className="px-2 bg-accent text-sur-accent">Ok</button>;');
+  });
+
+  it('ne prend pour la couleur de l\'entreprise que ce qui y remonte (déclaration, appels du composant)', () => {
+    // DevisComposer : SectionRow reçoit la teinte des factures (accentPlein), pas la couleur de l'entreprise
+    const composer = [
+      "import { Layers } from 'lucide-react';",
+      'function Composer({ couleur, isFacture }) {',
+      '  const accent = isFacture ? FACTURE_ACCENT : couleur;',
+      '  const accentPlein = couleurPleine(accent, false);',
+      '  return <SectionRow couleur={accentPlein} />;',
+      '}',
+      'function SectionRow({ couleur }) {',
+      '  return <Layers size={14} style={{ color: couleur }} />;',
+      '}',
+    ].join('\n');
+    const r = transforme(composer);
+    expect(r.source).toBe(composer);
+    expect(r.ignores).toBe(1);
+    expect(r.signalements.map((s) => s.ligne)).toEqual([8]);
+    // appelé avec la couleur de l'entreprise : traduit
+    for (const appel of ['couleur={couleur}', "couleur={entreprise?.couleur || '#f97316'}", 'couleur={couleurPleine(couleur, false)}']) {
+      const sain = composer.replace('couleur={accentPlein}', appel);
+      expect(transforme(sain).source, appel).toContain('<Layers size={14} className="text-accent-texte" />');
+    }
+    // appelé ailleurs (autre fichier) avec une autre valeur : la clé « Composant.prop » est passée en option
+    const seul = "function SectionRow({ couleur }) {\n  return <span style={{ color: couleur }}>x</span>;\n}";
+    expect(transformer(seul).source).toContain('className="text-accent-texte"');
+    expect(transformer(seul, { douteux: new Set(['SectionRow.couleur']) }).source).toBe(seul);
+  });
+
+  it('laisse une couleur qui vient d\'un autre objet ou d\'une fonction qui n\'est pas un composant', () => {
+    for (const source of [
+      // EntrepriseBadge : la couleur d'une des entreprises, pas de l'entreprise courante
+      "function Badge({ ent }) {\n  const couleur = ent.couleur || '#94a3b8';\n  return <span style={{ color: couleur }}>x</span>;\n}",
+      'function Liste({ items }) {\n  return items.map(({ couleur }) => <i key={couleur} style={{ background: couleur }} />);\n}',
+      'function Pastille({ statut }) {\n  let couleur = \'#f97316\';\n  if (statut) couleur = statut.couleur;\n  return <i style={{ background: couleur }} />;\n}',
+    ]) {
+      const r = transforme(source);
+      expect(r.source, source).toBe(source);
+      expect(r.ignores, source).toBe(1);
+      expect(r.signalements, source).toHaveLength(1);
+    }
+    // la couleur de l'entreprise déclarée localement : traduite
+    const page = "function Page({ devisData }) {\n  const couleur = devisData?.entreprise?.couleur || '#f97316';\n  return <b style={{ color: couleur }}>x</b>;\n}";
+    expect(transforme(page).source).toContain('<b className="text-accent-texte">x</b>');
   });
 
   it('étend un className écrit entre accolades ou en gabarit', () => {
