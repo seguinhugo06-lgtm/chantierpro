@@ -81,6 +81,8 @@ describe('lotDemonstration', () => {
   it('lève une erreur explicite si le lot a disparu de la bibliothèque', () => {
     expect(() => lotDemonstration({ electricite: { lots: [] } })).toThrow(/tableau.*Électricité/);
     expect(() => lotDemonstration({})).toThrow(/tableau/);
+    // Le message désigne le fichier à modifier, sous son nom actuel
+    expect(() => lotDemonstration({})).toThrow(/src\/components\/landing\/devisVivantEtapes\.js/);
   });
 
   // Le titre s'affiche avant le chargement de la bibliothèque, la légende et le texte hors écran

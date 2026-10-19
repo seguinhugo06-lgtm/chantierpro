@@ -2,12 +2,14 @@
  * DevisVivant — la carte du premier écran du site : un devis qui se monte tout seul avec un vrai lot de la
  * bibliothèque Électricité, se fait signer, devient une facture, puis est payé ; la boucle reprend.
  *
- * - La bibliothèque (149 Ko) est chargée à la demande (`import()`) : le cadre et le titre s'affichent tout de
- *   suite, les lignes dès que les données sont là. Aucun prix n'est recopié ici. Si elle ne se charge pas, la
- *   carte se réduit à son en-tête et à la légende.
- * - La bulle « Relance du devis à J+7 » n'est montrée que pendant les étapes du devis (lignes, signé).
- * - La boucle ne tourne que si la carte est à l'écran et l'onglet affiché (IntersectionObserver,
- *   visibilitychange) ; `reduit` ou « réduire les animations » du système : état final complet et « Payée ».
+ * - La bibliothèque (149 Ko) est chargée à la demande, une seule fois pour la page (`site/bibliotheque.js`,
+ *   partagé avec l'explorateur des métiers) : le cadre et le titre s'affichent tout de suite, les lignes dès que
+ *   les données sont là. Aucun prix n'est recopié ici. Si elle ne se charge pas, la carte se réduit à son en-tête
+ *   et à la légende.
+ * - La bulle « Relance du devis à J+7 » n'est montrée que pendant les étapes du devis (lignes, signé), une fois
+ *   les lignes arrivées.
+ * - La boucle ne tourne que si la carte est à l'écran et l'onglet affiché (`site/useALEcran.js`) ; `reduit` ou
+ *   « réduire les animations » du système : état final complet et « Payée ».
  * - L'animation est masquée aux lecteurs d'écran (`aria-hidden`), doublée d'un texte hors écran ; aucune région
  *   `aria-live` (la boucle serait annoncée sans fin).
  * - Attributs `data-*` lus par le parcours `scripts/parcours/site.cjs`.
@@ -17,6 +19,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useReducedMotion } from 'framer-motion';
 import { formatMoney } from '../../lib/formatters';
 import { captureException } from '../../lib/sentry';
+import { chargerBibliotheque } from './site/bibliotheque';
+import useALEcran from './site/useALEcran';
 import {
   CLIENT,
   NB_LIGNES_DEMONSTRATION,
@@ -113,13 +117,13 @@ export default function DevisVivant({ reduit: reduitDemande = false }) {
   const [lot, setLot] = useState(null);
   const [echec, setEchec] = useState(false);
   const [index, setIndex] = useState(-1);
-  const [aLEcran, setALEcran] = useState(false);
-  const [ongletAffiche, setOngletAffiche] = useState(() => typeof document === 'undefined' || document.visibilityState !== 'hidden');
+  // À l'écran = au moins 30 % de la carte visible (au téléphone, elle est sous le texte), et l'onglet affiché.
+  const visible = useALEcran(carte, 0.3);
 
   useEffect(() => {
     let annule = false;
-    import('../../lib/templates/trade-library.js')
-      .then((module) => { if (!annule) setLot(lotDemonstration(module.TRADE_LIBRARY)); })
+    chargerBibliotheque()
+      .then((bibliotheque) => { if (!annule) setLot(lotDemonstration(bibliotheque)); })
       .catch((erreur) => {
         // Bibliothèque introuvable (déploiement remplacé, réseau coupé) ou lot disparu : la carte se réduit à son
         // en-tête et à la légende, plutôt qu'à des emplacements vides et « 0,00 € » pour toujours.
@@ -129,29 +133,8 @@ export default function DevisVivant({ reduit: reduitDemande = false }) {
     return () => { annule = true; };
   }, []);
 
-  // À l'écran = au moins 30 % de la carte visible (au téléphone, elle est sous le texte).
-  useEffect(() => {
-    const element = carte.current;
-    if (!element || typeof IntersectionObserver === 'undefined') {
-      setALEcran(true);
-      return undefined;
-    }
-    const observateur = new IntersectionObserver(
-      ([entree]) => setALEcran(entree.isIntersecting && entree.intersectionRatio >= 0.3),
-      { threshold: [0, 0.3] },
-    );
-    observateur.observe(element);
-    return () => observateur.disconnect();
-  }, []);
-
-  useEffect(() => {
-    const suivre = () => setOngletAffiche(document.visibilityState !== 'hidden');
-    document.addEventListener('visibilitychange', suivre);
-    return () => document.removeEventListener('visibilitychange', suivre);
-  }, []);
-
   const etapes = useMemo(() => (lot ? etapesDuDevis(lot) : []), [lot]);
-  const actif = !reduit && etapes.length > 0 && aLEcran && ongletAffiche;
+  const actif = !reduit && etapes.length > 0 && visible;
 
   useEffect(() => {
     if (!actif) return undefined;
@@ -170,7 +153,9 @@ export default function DevisVivant({ reduit: reduitDemande = false }) {
   const lignes = lot ? lot.lignes : [];
   // La bulle parle de la relance du DEVIS : visible pendant les étapes du devis seulement (en facture, l'app relance
   // après l'échéance, pas à J+7). Elle reste dans le texte lu par les lecteurs d'écran (opacité), sans décalage.
-  const relanceVisible = etat.statut === 'brouillon' || etat.statut === 'signe';
+  // Pas avant l'arrivée des lignes : en mouvement réduit, elle apparaîtrait le temps du chargement puis
+  // disparaîtrait (l'état final est la facture payée).
+  const relanceVisible = !!lot && (etat.statut === 'brouillon' || etat.statut === 'signe');
 
   return (
     <figure className="relative">

@@ -3,12 +3,37 @@
 // Chaque tâche de la refonte ajoute ici les parcours des sections qu'elle refait.
 const path = require('path');
 const fs = require('fs');
+const { pathToFileURL } = require('url');
 
 const json = (corps, status = 200) => ({ status, body: JSON.stringify(corps) });
 
 const TITRE = "L'administratif du chantier, rangé dans une mallette.";
 const TEXTE_HORS_ECRAN = 'Exemple : un devis de 7 lignes pour une mise aux normes de tableau électrique, signé en ligne, facturé puis payé.';
 const TEXTE_RELANCE = 'Relance du devis à J+7, au rythme que vous choisissez';
+
+// Textes exacts de la spec (sections 5 et 6)
+const ETAPES_DU_CYCLE = [
+  "Le chantier du jour, d'un coup d'œil",
+  'Le devis se monte par lots',
+  'Signé, facturé, encaissé',
+];
+const LIENS_DU_CYCLE = ['/fonctionnalites/devis-factures', '/fonctionnalites/devis-factures', '/fonctionnalites/signature-electronique'];
+const GARANTIES = [
+  'Des numéros qui se suivent, sans trou',
+  'Une facture envoyée ne se supprime pas : on la corrige par un avoir',
+  'Une facture n\'est « payée » que si les paiements la soldent',
+  "Assurance décennale, TVA réduite, pénalités de retard : les mentions s'ajoutent toutes seules",
+];
+const LEGENDE_CAPTURES = "Captures de l'application, données fictives.";
+
+/** Texte lisible d'un élément : espaces (y compris insécables et fines) ramenés à une espace ordinaire. */
+const NORMALISER = (t) => (t || '').replace(/[\s  ]+/g, ' ').trim();
+
+/** La bibliothèque des métiers, lue dans le module (pas recopiée dans le parcours). */
+async function bibliotheque(RACINE) {
+  const module = await import(pathToFileURL(path.join(RACINE, 'src', 'lib', 'templates', 'trade-library.js')).href);
+  return module.TRADE_LIBRARY;
+}
 
 /** Capture rangée dans audit-ui/ (ignoré par git), pour la regarder après le parcours. */
 async function capturer(page, RACINE, nom) {
@@ -313,8 +338,248 @@ module.exports = [
         });
         verifier(e.echec && e.lignes === 0 && !e.total && !e.relance, `bibliothèque introuvable : ni emplacements, ni total, ni bulle à ${largeur} px (${JSON.stringify(e)})`);
         verifier(e.numero === 'DEV-2026-00012 · M. Martin' && e.titre && e.legende.startsWith('Démonstration'), `bibliothèque introuvable : en-tête et légende gardés à ${largeur} px`);
+
+        // L'explorateur des métiers partage le même chargement : pas de squelette pour toujours, un message
+        const m = await page.evaluate(() => {
+          const section = document.querySelector('#metiers');
+          return {
+            titre: !!section?.querySelector('h2'),
+            puces: section?.querySelectorAll('button[aria-pressed]').length,
+            attente: !!section?.querySelector('[data-metiers-attente]'),
+            message: section?.querySelector('[data-metiers-echec]')?.textContent.trim() || '',
+          };
+        });
+        verifier(m.titre && m.puces === 0 && !m.attente && m.message.length > 0, `bibliothèque introuvable : l'explorateur des métiers le dit à ${largeur} px (${JSON.stringify(m)})`);
+        await browser.close();
+      }
+    },
+  },
+  {
+    nom: 'site : sections',
+    reel: true,
+    async executer({ ouvrir, cliquer, attendre, verifier, RACINE }) {
+      const TRADE_LIBRARY = await bibliotheque(RACINE);
+      const metiers = Object.values(TRADE_LIBRARY).map((m) => m.nom);
+      const lotsPlomberie = TRADE_LIBRARY.plomberie.lots.slice(0, 3).map((l) => l.nom);
+
+      for (const largeur of [375, 1440]) {
+        const { page, browser } = await ouvrir({ reel: true, largeur, supabase: () => json([]) });
+        const a = `à ${largeur} px`;
+        const auBureau = largeur >= 1024;
+
+        // ── Métiers : 17 pastilles, Électricité d'abord
+        await page.evaluate(() => document.querySelector('#metiers')?.scrollIntoView());
+        await attendre(800);
+        const puces = await page.evaluate(() => [...document.querySelectorAll('#metiers button[aria-pressed]')].map((b) => ({
+          nom: b.textContent.trim(),
+          presse: b.getAttribute('aria-pressed'),
+          hauteur: b.getBoundingClientRect().height,
+        })));
+        verifier(puces.length === 17, `#metiers : 17 boutons de métiers ${a} (${puces.length})`);
+        verifier(JSON.stringify(puces.map((p) => p.nom)) === JSON.stringify(metiers), `#metiers : les métiers de la bibliothèque, dans son ordre ${a}`);
+        verifier(puces.filter((p) => p.presse === 'true').map((p) => p.nom).join() === 'Électricité', `#metiers : Électricité pressé d'abord ${a}`);
+        verifier(Math.min(...puces.map((p) => p.hauteur)) >= 44, `#metiers : pastilles d'au moins 44 px ${a} (${Math.min(...puces.map((p) => p.hauteur))})`);
+
+        const lireCartes = () => page.evaluate(() => [...document.querySelectorAll('#metiers [data-lot]')].map((c) => ({
+          nom: c.querySelector('h3')?.textContent.trim(),
+          total: c.querySelector('[data-total-ht]')?.textContent.trim() || '',
+          compte: c.querySelector('[data-nb-lignes]')?.textContent.trim() || '',
+          lignes: c.querySelectorAll('li').length,
+        })));
+        const electricite = await lireCartes();
+        const lotsElectricite = TRADE_LIBRARY.electricite.lots.slice(0, 3).map((l) => l.nom);
+        verifier(JSON.stringify(electricite.map((c) => c.nom)) === JSON.stringify(lotsElectricite), `#metiers : les trois premiers lots d'Électricité ${a}`);
+
+        // Cliquer « Plomberie » : ses trois premiers lots, chacun avec un total HT en euros et trois lignes
+        await cliquer(page, 'Plomberie', { dans: '#metiers' });
+        await attendre(700);
+        const cartes = await lireCartes();
+        verifier(JSON.stringify(cartes.map((c) => c.nom)) === JSON.stringify(lotsPlomberie), `Plomberie : trois cartes aux noms des trois premiers lots ${a} (${cartes.map((c) => c.nom).join(' | ')})`);
+        verifier(cartes.every((c) => /^\d[\d\s  ]*€$/.test(c.total)), `Plomberie : total HT arrondi à l'euro, en « € » ${a} (${cartes.map((c) => c.total).join(' | ')})`);
+        const nbLignes = TRADE_LIBRARY.plomberie.lots.slice(0, 3).map((l) => `${l.lignes.length} lignes · HT`);
+        verifier(JSON.stringify(cartes.map((c) => NORMALISER(c.compte))) === JSON.stringify(nbLignes), `Plomberie : « N lignes · HT » ${a} (${cartes.map((c) => c.compte).join(' | ')})`);
+        verifier(cartes.every((c) => c.lignes === 3), `Plomberie : trois premières lignes par carte ${a}`);
+        const presse = () => page.evaluate(() => document.querySelector('#metiers button[aria-pressed="true"]')?.textContent.trim());
+        verifier((await presse()) === 'Plomberie', `Plomberie pressé après le clic ${a}`);
+
+        // Flèche droite : le métier suivant, pressé et focalisé ; flèche gauche : retour
+        await page.focus('#metiers button[aria-pressed="true"]');
+        await page.keyboard.press('ArrowRight');
+        await attendre(500);
+        const suivant = metiers[metiers.indexOf('Plomberie') + 1];
+        const apresFleche = await page.evaluate(() => ({
+          presse: document.querySelector('#metiers button[aria-pressed="true"]')?.textContent.trim(),
+          focus: document.activeElement?.textContent.trim(),
+          tabulables: [...document.querySelectorAll('#metiers button[aria-pressed]')].filter((b) => b.tabIndex === 0).length,
+        }));
+        verifier(apresFleche.presse === suivant && apresFleche.focus === suivant, `flèche droite : de Plomberie à ${suivant} ${a} (${JSON.stringify(apresFleche)})`);
+        verifier(apresFleche.tabulables === 1, `une seule pastille dans l'ordre de tabulation ${a} (${apresFleche.tabulables})`);
+        const apresSuivant = await lireCartes();
+        const idSuivant = Object.keys(TRADE_LIBRARY)[Object.keys(TRADE_LIBRARY).indexOf('plomberie') + 1];
+        verifier(apresSuivant[0]?.nom === TRADE_LIBRARY[idSuivant].lots[0].nom, `flèche droite : les lots de ${suivant} ${a}`);
+        await page.keyboard.press('ArrowLeft');
+        await attendre(300);
+        verifier((await presse()) === 'Plomberie', `flèche gauche : retour à Plomberie ${a}`);
+        await capturer(page, RACINE, `metiers-${largeur}`);
+
+        // ── Le cycle : trois étapes aux titres exacts, leurs liens, la légende des captures
+        const cycle = await page.evaluate(() => {
+          const section = document.querySelector('#parcours');
+          const visible = (el) => !!el && el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden';
+          return {
+            titres: [...(section?.querySelectorAll('[data-etape] h3') || [])].map((h) => h.textContent.trim()),
+            liens: [...(section?.querySelectorAll('[data-etape] a') || [])].map((x) => ({ href: x.getAttribute('href'), texte: x.innerText.trim() })),
+            legende: [...(section?.querySelectorAll('p') || [])].filter(visible).map((p) => p.textContent.trim()),
+            telephone: visible(section?.querySelector('[data-telephone]')),
+            capturesDesEtapes: [...(section?.querySelectorAll('[data-etape] img') || [])].filter(visible).length,
+          };
+        });
+        verifier(JSON.stringify(cycle.titres) === JSON.stringify(ETAPES_DU_CYCLE), `#parcours : trois étapes aux titres exacts ${a} (${cycle.titres.join(' | ')})`);
+        verifier(JSON.stringify(cycle.liens.map((l) => l.href)) === JSON.stringify(LIENS_DU_CYCLE) && cycle.liens.every((l) => l.texte.startsWith('En savoir plus')), `#parcours : « En savoir plus » vers les pages de la spec ${a}`);
+        verifier(cycle.legende.includes(LEGENDE_CAPTURES), `#parcours : légende « ${LEGENDE_CAPTURES} » visible ${a}`);
+        if (auBureau) {
+          verifier(cycle.telephone && cycle.capturesDesEtapes === 0, `#parcours : téléphone collant au bureau, pas de capture par étape ${a}`);
+          // Le téléphone change d'écran avec l'étape lue
+          const ecranVisible = () => page.evaluate(() => [...document.querySelectorAll('[data-telephone] img')]
+            .filter((i) => parseFloat(getComputedStyle(i).opacity) > 0.5).map((i) => i.getAttribute('src')));
+          const attendus = ['tel-accueil.webp', 'tel-devis-lots.webp', 'tel-facture.webp'];
+          for (const i of [0, 1, 2]) {
+            await page.evaluate((n) => document.querySelector(`#parcours [data-etape="${n}"]`).scrollIntoView({ block: 'center' }), i);
+            await attendre(1000);
+            const ecran = await ecranVisible();
+            verifier(ecran.length === 1 && ecran[0].endsWith(attendus[i]), `étape ${i + 1} : le téléphone montre ${attendus[i]} ${a} (${ecran.join(', ')})`);
+            const active = await page.evaluate(() => [...document.querySelectorAll('#parcours [data-etape]')].map((e) => e.getAttribute('data-active')));
+            verifier(active[i] === 'true' && active.filter((x) => x === 'true').length === 1, `étape ${i + 1} marquée comme lue ${a} (${active.join(',')})`);
+            if (i === 2) await capturer(page, RACINE, `cycle-${largeur}-etape-3`);
+          }
+          const telephoneMasque = await page.evaluate(() => document.querySelector('[data-telephone]')?.closest('[aria-hidden="true"]') !== null);
+          verifier(telephoneMasque, `le téléphone collant est décoratif (aria-hidden) ${a}`);
+        } else {
+          verifier(!cycle.telephone && cycle.capturesDesEtapes === 3, `#parcours : au téléphone, chaque étape a sa capture ${a} (${cycle.capturesDesEtapes})`);
+          const alts = await page.evaluate(() => [...document.querySelectorAll('#parcours [data-etape] img')].map((i) => i.getAttribute('alt') || ''));
+          verifier(alts.every((t) => t.length > 20), `#parcours : chaque capture a un texte de remplacement ${a}`);
+          await page.evaluate(() => document.querySelector('#parcours [data-etape="2"]').scrollIntoView({ block: 'center' }));
+          await attendre(800);
+          await capturer(page, RACINE, `cycle-${largeur}-etape-3`);
+        }
+
+        // ── Fiabilité : les quatre garanties exactes ; le compteur avance d'une unité à l'écran, s'arrête hors écran
+        const garanties = await page.evaluate(() => [...document.querySelectorAll('#fiabilite h3')].map((h) => h.textContent));
+        verifier(JSON.stringify(garanties.map(NORMALISER)) === JSON.stringify(GARANTIES), `#fiabilite : les quatre garanties exactes ${a} (${garanties.map(NORMALISER).join(' | ')})`);
+        const lireFiabilite = () => page.evaluate(() => ({
+          numeros: [...document.querySelectorAll('[data-compteur] [data-numero-facture]')].map((x) => x.textContent.trim()),
+          dernier: Number(document.querySelector('[data-compteur]')?.getAttribute('data-compteur')),
+          part: document.querySelector('[data-encaissement]')?.getAttribute('data-encaissement'),
+          masque: document.querySelector('[data-compteur]')?.closest('[aria-hidden="true"]') !== null,
+        }));
+        await page.evaluate(() => document.querySelector('[data-compteur]').scrollIntoView({ block: 'center' }));
+        await attendre(300);
+        const f1 = await lireFiabilite();
+        await attendre(3600);
+        const f2 = await lireFiabilite();
+        verifier(f1.masque, `animations de la fiabilité masquées aux lecteurs d'écran ${a}`);
+        verifier(f2.dernier > f1.dernier, `le compteur avance à l'écran ${a} (${f1.dernier} → ${f2.dernier})`);
+        const suite = f2.numeros.map((t) => Number(t.slice(-5)));
+        verifier(f2.numeros.every((t) => /^FAC-2026-\d{5}$/.test(t)) && suite.every((n, i) => i === 0 || n === suite[i - 1] + 1), `le compteur montre des numéros qui se suivent ${a} (${f2.numeros.join(', ')})`);
+        verifier(f1.part !== f2.part, `la barre d'encaissement avance à l'écran ${a} (${f1.part} → ${f2.part})`);
+        await capturer(page, RACINE, `fiabilite-${largeur}`);
+        await page.evaluate(() => window.scrollTo(0, 0));
+        await attendre(400);
+        const f3 = await lireFiabilite();
+        await attendre(3600);
+        const f4 = await lireFiabilite();
+        verifier(f3.dernier === f4.dernier && f3.part === f4.part, `compteur et barre arrêtés hors de l'écran ${a} (${f3.dernier}/${f3.part} → ${f4.dernier}/${f4.part})`);
+
+        // ── Chaque titre de section (h2) est visible une fois amené à l'écran (aucune apparition restée transparente) :
+        // opacité du titre et de tous ses parents. Sections refaites seulement : les anciennes (tarifs, construit en
+        // public…) ont des apparitions plus longues que 800 ms ; leurs tâches les ajouteront à TITRES_CONTROLES.
+        const TITRES_CONTROLES = '#metiers h2, #parcours h2, #fiabilite h2';
+        const nbTitres = await page.evaluate((s) => document.querySelectorAll(s).length, TITRES_CONTROLES);
+        verifier(nbTitres === 3, `un titre h2 par section refaite ${a} (${nbTitres})`);
+        for (let i = 0; i < nbTitres; i++) {
+          await page.evaluate((s, n) => document.querySelectorAll(s)[n].scrollIntoView(), TITRES_CONTROLES, i);
+          await attendre(800);
+          const o = await page.evaluate((s, n) => {
+            const h = document.querySelectorAll(s)[n];
+            let opacite = 1;
+            for (let el = h; el; el = el.parentElement) opacite *= parseFloat(getComputedStyle(el).opacity);
+            return { opacite, propre: getComputedStyle(h).opacity, texte: h.textContent.trim().slice(0, 40) };
+          }, TITRES_CONTROLES, i);
+          verifier(o.opacite === 1 && o.propre === '1', `titre « ${o.texte} » entièrement visible ${a} (${o.opacite})`);
+        }
+
+        // ── Images des sections chargées (après le défilement complet, les images paresseuses sont arrivées)
+        const images = await page.evaluate(() => [...document.querySelectorAll('#metiers img, #parcours img, #fiabilite img')]
+          .filter((i) => i.getClientRects().length > 0)
+          .map((i) => ({ src: i.getAttribute('src'), largeur: i.naturalWidth, l: i.getAttribute('width'), h: i.getAttribute('height'), chargement: i.getAttribute('loading') })));
+        verifier(images.length > 0 && images.every((i) => i.largeur > 0), `images des sections chargées ${a} (${images.filter((i) => !i.largeur).map((i) => i.src).join(', ')})`);
+        verifier(images.every((i) => i.l && i.h && i.chargement === 'lazy'), `images des sections : dimensions et chargement paresseux ${a}`);
+
+        // ── Aucun débordement ni élément hors de l'écran dans ces sections
+        const debord = await page.evaluate(() => {
+          const sortants = [...document.querySelectorAll('#metiers *, #parcours *, #fiabilite *')].filter((el) => {
+            if (el.closest('[data-decor]')) return false;
+            const r = el.getBoundingClientRect();
+            return r.width > 0 && r.height > 0 && (r.left < -1 || r.right > innerWidth + 1);
+          });
+          return { page: document.documentElement.scrollWidth - innerWidth, elements: sortants.slice(0, 3).map((el) => `${el.tagName.toLowerCase()}.${String(el.className).slice(0, 40)}`) };
+        });
+        verifier(debord.page <= 0 && debord.elements.length === 0, `sections sans débordement ${a} (${debord.page} px ; ${debord.elements.join(' | ')})`);
+
+        // ── Contrastes des textes clés (fond réellement peint derrière)
+        for (const selecteur of [
+          '#metiers h2', '#metiers [data-intro]', '#metiers button[aria-pressed="false"]', '#metiers button[aria-pressed="true"]',
+          '#metiers [data-lot] h3', '#metiers [data-lot] [data-nb-lignes]', '#metiers [data-lot] li', '#metiers [data-note]',
+          '#parcours [data-etape] h3', '#parcours [data-etape] p', '#parcours [data-etape] a',
+          '#fiabilite h2', '#fiabilite [data-intro]', '#fiabilite h3', '[data-compteur] [data-numero-facture]', '[data-encaissement] [data-statut]',
+          '[data-mentions] li',
+        ]) {
+          const c = await contrasteDe(page, selecteur);
+          verifier(c >= 4.5, `contraste de ${selecteur} ≥ 4,5 ${a} (${c.toFixed(2)})`);
+        }
+
+        // ── La barre mène aux sections Métiers, Fonctionnalités (pour l'instant le cycle) et Fiabilité
+        for (const [libelle, attendu] of [['Métiers', '#metiers'], ['Fonctionnalités', null], ['Fiabilité', '#fiabilite']]) {
+          await page.evaluate(() => window.scrollTo(0, 0));
+          await attendre(300);
+          const href = await page.evaluate((t) => [...document.querySelectorAll('header a')].find((x) => x.textContent.trim() === t)?.getAttribute('href'), libelle);
+          const ancre = (href || '').replace(/^\//, '');
+          if (attendu) verifier(ancre === attendu, `« ${libelle} » vise ${attendu} ${a} (${href})`);
+          if (auBureau) {
+            await cliquer(page, libelle, { dans: 'header' });
+          } else {
+            await cliquer(page, 'Ouvrir le menu');
+            await cliquer(page, libelle, { dans: '#menu-site' });
+          }
+          await attendre(1500);
+          const haut = await page.evaluate((s) => (/^#[a-z][\w-]*$/.test(s) ? document.querySelector(s)?.getBoundingClientRect().top : undefined), ancre);
+          verifier(typeof haut === 'number' && haut > -10 && haut < 200, `« ${libelle} » mène à sa section ${ancre} ${a} (haut : ${haut})`);
+        }
+
+        // ── Mouvement réduit : compteur et barre fixes, le téléphone change sans fondu, l'explorateur reste utilisable
+        await page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'reduce' }]);
+        await page.reload({ waitUntil: 'networkidle0' });
+        await attendre(500);
+        await page.evaluate(() => document.querySelector('[data-compteur]').scrollIntoView({ block: 'center' }));
+        await attendre(300);
+        const r1 = await lireFiabilite();
+        await attendre(3600);
+        const r2 = await lireFiabilite();
+        verifier(r1.dernier === r2.dernier && r1.part === r2.part, `mouvement réduit : compteur et barre fixes ${a} (${r1.dernier}/${r1.part} → ${r2.dernier}/${r2.part})`);
+        verifier(r2.numeros.length > 0 && garanties.length === 4, `mouvement réduit : la fiabilité reste lisible ${a}`);
+        if (auBureau) {
+          const fondu = await page.evaluate(() => [...document.querySelectorAll('[data-telephone] img')].map((i) => getComputedStyle(i).transitionDuration));
+          // 0 s, ou 0,01 ms imposé par la feuille globale de l'app en mouvement réduit (« 1e-05s »)
+          verifier(fondu.every((d) => parseFloat(d) <= 0.001), `mouvement réduit : le téléphone change sans fondu ${a} (${fondu.join(', ')})`);
+        }
+        await cliquer(page, 'Plomberie', { dans: '#metiers' });
+        await attendre(300);
+        const reduitCartes = await lireCartes();
+        verifier(JSON.stringify(reduitCartes.map((c) => c.nom)) === JSON.stringify(lotsPlomberie), `mouvement réduit : l'explorateur change de métier ${a}`);
+        await capturer(page, RACINE, `fiabilite-${largeur}-reduit`);
         await browser.close();
       }
     },
   },
 ];
+

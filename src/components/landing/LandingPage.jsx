@@ -2,8 +2,10 @@
  * LandingPage — la page d'accueil publique de Mallettico (visiteur non connecté, hors démo).
  *
  * Toujours en clair (couleurs fixes de la palette `marque`, pas de thème). Refonte d'octobre 2026
- * (spec docs/superpowers/specs/2026-10-19-site-refonte-design.md), en cours : barre, premier écran avec le
- * devis vivant et bande de faits sont refaits ; les sections suivantes le seront par les tâches suivantes.
+ * (spec docs/superpowers/specs/2026-10-19-site-refonte-design.md), en cours ; ordre de la spec : barre, premier
+ * écran avec le devis vivant, bande de faits, explorateur des métiers, (fonctionnalités en action, à venir),
+ * cycle au défilement, fiabilité, tarifs, construit en public, FAQ, dernier appel, pied de page. Les sections
+ * tarifs et suivantes seront refaites par les tâches suivantes.
  *
  * `MotionConfig reducedMotion="user"` : les animations framer-motion s'effacent si l'appareil demande moins de
  * mouvement. Ancres conservées : `#pricing`, `#faq` (src/lib/sectionsAccueil.js).
@@ -14,9 +16,9 @@ import { MotionConfig } from 'framer-motion';
 import LandingNav from './LandingNav';
 import HeroSection from './HeroSection';
 import FaitsSection from './FaitsSection';
-import FeatureShowcase from './FeatureShowcase';
-import QuickFeaturesGrid from './QuickFeaturesGrid';
-import CtaBanner from './CtaBanner';
+import MetiersSection from './MetiersSection';
+import CycleSection from './CycleSection';
+import FiabiliteSection from './FiabiliteSection';
 import PricingSection from './PricingSection';
 import PricingComparisonTable from './PricingComparisonTable';
 import EarlyAdoptersSection from './EarlyAdoptersSection';
@@ -53,9 +55,9 @@ export default function LandingPage({ onLogin, onSignup, onNavigate }) {
         <main>
           <HeroSection onSignup={onSignup} />
           <FaitsSection />
-          <FeatureShowcase />
-          <QuickFeaturesGrid />
-          <CtaBanner onSignup={onSignup} />
+          <MetiersSection />
+          <CycleSection />
+          <FiabiliteSection />
           <PricingSection onSignup={onSignup} />
           <PricingComparisonTable />
           <EarlyAdoptersSection onSignup={onSignup} />

@@ -30,6 +30,11 @@ const FICHIERS_CONTROLES = [
   'DevisVivant.jsx',
   'devisVivantEtapes.js',
   'FaitsSection.jsx',
+  // Task 5 : explorateur des métiers, cycle au défilement, fiabilité
+  'MetiersSection.jsx',
+  'metiers.js',
+  'CycleSection.jsx',
+  'FiabiliteSection.jsx',
 ];
 
 const DOSSIER_SITE = fileURLToPath(new URL('..', import.meta.url));

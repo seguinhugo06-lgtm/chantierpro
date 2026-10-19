@@ -14,7 +14,7 @@ const puppeteer = require(require.resolve('puppeteer', { paths: [RACINE] }));
 const ORIGIN = 'http://localhost:4999';
 const HOTE_SUPABASE_FACTICE = 'fauxprojet.supabase.co';
 const MIME = { '.html': 'text/html', '.js': 'application/javascript', '.css': 'text/css', '.svg': 'image/svg+xml',
-  '.png': 'image/png', '.jpg': 'image/jpeg', '.json': 'application/json', '.woff2': 'font/woff2', '.ico': 'image/x-icon',
+  '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp', '.json': 'application/json', '.woff2': 'font/woff2', '.ico': 'image/x-icon',
   '.webmanifest': 'application/manifest+json' };
 const HAUTEURS = { 375: 812, 390: 844, 768: 1024, 1024: 768, 1440: 900 };
 const attendre = (ms) => new Promise((r) => setTimeout(r, ms));

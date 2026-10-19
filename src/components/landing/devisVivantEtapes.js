@@ -59,7 +59,7 @@ export function lotDemonstration(bibliotheque) {
   if (!lot) {
     throw new Error(
       'Devis vivant : aucun lot « tableau » dans la bibliothèque Électricité (src/lib/templates/trade-library.js). '
-      + 'Choisir un autre lot dans src/components/landing/devisVivant.js et mettre à jour la légende.',
+      + 'Choisir un autre lot dans src/components/landing/devisVivantEtapes.js et mettre à jour la légende.',
     );
   }
   return lot;

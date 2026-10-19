@@ -16,7 +16,7 @@ const REASSURANCES = ['Gratuit pour commencer, sans carte bancaire', 'Base de do
 export default function HeroSection({ onSignup }) {
   return (
     // Couleur de fond = le haut du dégradé (le plus foncé) : c'est contre elle que se mesure le contraste du titre.
-    <section className="relative overflow-hidden bg-marque-glacier-1 bg-[linear-gradient(180deg,#F0FAFF,#FFFFFF_85%)] pt-16">
+    <section className="relative overflow-hidden bg-marque-glacier-1 bg-gradient-to-b from-marque-glacier-1 to-white to-85% pt-16">
       <PlanArchitecte />
       <div
         aria-hidden="true"

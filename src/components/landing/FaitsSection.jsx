@@ -2,8 +2,14 @@
  * FaitsSection — la bande de faits sous le premier écran : quatre cases séparées par un trait, sans compteur animé.
  *
  * D'où viennent les chiffres (règle `.claude/rules/marketing.md`, chiffres vérifiés) :
- *   « 1 000+ »  bibliothèque des métiers (`src/lib/templates/trade-library.js` : 97 lots types, 671 lignes de lots,
- *               244 prestations, relevé du 19 oct. 2026) et référentiel du catalogue (`src/lib/data/articles-btp.js`) ;
+ *   « 1 000+ »  prestations et ouvrages chiffrés (quantité, unité, prix moyen) que l'artisan peut insérer, comptés le
+ *               20 oct. 2026 :
+ *                 - bibliothèque des métiers (`src/lib/templates/trade-library.js`, `TRADE_LIBRARY`) : 244 prestations
+ *                   et 671 lignes réparties dans 97 lots types, soit 835 désignations différentes ;
+ *                 - référentiel du catalogue (`src/lib/data/index.js`, `ALL_ARTICLES_BTP` = articles-btp.js +
+ *                   -suite.js + -fin.js, bouton « Importer Référentiel BTP ») : 523 articles ;
+ *               ensemble 1 354 désignations différentes (doublons retirés après mise en minuscules, sans accents ni
+ *               espaces multiples), sans compter les 97 lots eux-mêmes. Recompter si l'une de ces listes rétrécit ;
  *   « 17 »      métiers de `TRADE_LIBRARY` ;
  *   « 2 écrans » l'application web s'adapte au téléphone et à l'ordinateur ;
  *   « 0 € »     le plan Gratuit de `PLANS` (`src/stores/subscriptionStore.js`), sans carte bancaire.
