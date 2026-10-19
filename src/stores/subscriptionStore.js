@@ -14,6 +14,12 @@ import { FONCTIONS } from '../lib/fonctions';
 
 // ─── Plan catalog (static, matches DB seed) ────────────────────────────────
 
+// D-29 (docs/decisions.md) : les `featureLabels` annoncent ce que l'application fait réellement,
+// ni plus ni moins. Ils sont lus par « Mon plan », la fenêtre d'abonnement, la page des tarifs et
+// le site public. Seules limites appliquées aujourd'hui, au plan Gratuit : 5 devis par mois,
+// 10 clients, 2 chantiers, 50 photos et 1 utilisateur (Équipe : 10). La signature, les relances et
+// le catalogue ne sont pas bridés ; les factures non plus. Toute ligne ajoutée ici doit être vraie
+// le jour même : une limite annoncée est une limite appliquée, et inversement.
 export const PLANS = {
   gratuit: {
     id: 'gratuit',
@@ -26,8 +32,8 @@ export const PLANS = {
       devis: 5,
       clients: 10,
       chantiers: 2,
-      catalogue: 30,
-      signatures: 0,
+      catalogue: -1,
+      signatures: -1,
       photos: 50,
       dictees: 10,
       storage_mb: 100,
@@ -39,18 +45,14 @@ export const PLANS = {
     ],
     featureLabels: [
       { name: '5 devis par mois', included: true },
+      { name: 'Factures sans limite', included: true },
       { name: '10 clients', included: true },
-      { name: '2 chantiers actifs', included: true },
-      { name: '30 articles catalogue', included: true },
-      { name: 'Planning basique', included: true },
-      { name: '10 dictées vocales par mois', included: true },
-      { name: '100 Mo stockage', included: true },
-      { name: 'Signatures électroniques', included: false },
-      { name: 'Export comptable', included: false },
-      { name: 'Analyse de marges', included: false },
-      { name: 'Multi-utilisateurs', included: false },
-      { name: 'Trésorerie & Bilan', included: false },
-      { name: 'Support prioritaire', included: false }
+      { name: '2 chantiers', included: true },
+      { name: '50 photos de chantier', included: true },
+      { name: '1 utilisateur', included: true },
+      { name: 'Signature en ligne des devis', included: true },
+      { name: 'Relances automatiques', included: true },
+      { name: 'Catalogue complet : plus de 1 000 prestations chiffrées', included: true }
     ],
     badge: null,
     color: '#6B7280',
@@ -89,21 +91,9 @@ export const PLANS = {
       'carte_chantiers', 'entretien'
     ],
     featureLabels: [
-      { name: 'Dictée vocale illimitée', included: true },
-      { name: 'Devis & factures illimités', included: true },
-      { name: 'Clients illimités', included: true },
-      { name: 'Chantiers illimités', included: true },
-      { name: 'Catalogue illimité', included: true },
-      { name: 'Signatures électroniques', included: true },
-      { name: 'Export comptable', included: true },
-      { name: 'Analyse de marges', included: true },
-      { name: 'Pipeline commercial', included: true },
-      { name: 'Relances automatiques', included: true },
-      { name: 'Photos GPS & horodatées', included: true },
-      { name: '2 Go stockage', included: true },
-      { name: 'Multi-utilisateurs', included: false },
-      { name: 'Trésorerie & Bilan', included: false },
-      { name: 'Support prioritaire', included: false }
+      { name: 'Tout le plan Gratuit, sans limite', included: true },
+      { name: 'Devis, clients, chantiers et photos illimités', included: true },
+      { name: '1 utilisateur', included: true }
     ],
     badge: 'Pour un artisan seul',
     color: '#F97316',
@@ -143,15 +133,8 @@ export const PLANS = {
     featureLabels: [
       { name: 'Tout le plan Artisan', included: true },
       { name: 'Jusqu\'à 10 utilisateurs', included: true },
-      { name: 'Pointage & heures équipe', included: true },
-      { name: 'Gérez les accès de votre équipe', included: true },
-      { name: 'Trésorerie & Bilan', included: true },
-      { name: 'Export FEC comptable', included: true },
-      { name: 'Portail client', included: true },
-      { name: 'Alertes de stock', included: true },
-      { name: 'Statistiques avancées', included: true },
-      { name: '10 Go stockage', included: true },
-      { name: 'Support prioritaire', included: true }
+      { name: 'Rôles et accès pour chaque membre', included: true },
+      { name: 'Pointage des heures de l\'équipe', included: true }
     ],
     badge: 'Pour une équipe',
     color: '#8B5CF6',
