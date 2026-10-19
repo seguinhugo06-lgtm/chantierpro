@@ -1,282 +1,139 @@
 /**
- * LandingNav — Enhanced fixed navbar with Framer Motion mobile menu,
- * new page links, and glass-morphism on scroll.
+ * LandingNav — la barre fixe du site public (accueil et sous-pages marketing), charte « Glacier vif ».
+ *
+ * Bureau : logo, liens vers les sections, « Connexion » (texte exact : cliqué par `scripts/parcours/reel.cjs`) et
+ * la pilule « Créer mon compte ». Téléphone : logo, « Connexion » et le menu (liens + « Créer mon compte »).
+ * Les liens visent les sections de l'accueil ; depuis une sous-page, `allerALaSection` ouvre l'accueil au bon
+ * endroit. Le flou est posé sur un calque (`absolute inset-0`), pas sur la barre : sinon le voile `fixed` du menu
+ * serait enfermé dans la barre (règle « interface »).
  */
-
-import { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import LogoMallettico from '../ui/LogoMallettico';
+import { useEffect, useRef, useState } from 'react';
+import { Menu, X } from 'lucide-react';
 import { allerALaSection } from '../../lib/sectionsAccueil';
-import { Menu, X, FileText, Bell, Building, TrendingUp, ChevronDown, PenLine, Package } from 'lucide-react';
+import BoutonSite from './site/BoutonSite';
 
-const NAV_LINKS = [
-  { label: 'Fonctionnalit\u00e9s', href: '#features', hasDropdown: true },
-  { label: 'Tarifs', href: '#pricing' },
-  { label: 'Pourquoi Mallettico', href: '#early-adopters' },
-  { label: 'Ressources', href: '/ressources', isPage: true },
-  { label: 'FAQ', href: '#faq' },
+const LIENS = [
+  { libelle: 'Métiers', ancre: '#metiers' },
+  { libelle: 'Fonctionnalités', ancre: '#fonctionnalites' },
+  { libelle: 'Fiabilité', ancre: '#fiabilite' },
+  { libelle: 'Tarifs', ancre: '#pricing' },
+  { libelle: 'FAQ', ancre: '#faq' },
 ];
 
-const FEATURE_DROPDOWN = [
-  { icon: FileText, label: 'Devis & Factures', description: 'Cr\u00e9ation, PDF, envoi', href: '/fonctionnalites/devis-factures' },
-  { icon: PenLine, label: 'Signature \u00e9lectronique', description: 'Vos devis sign\u00e9s en ligne', href: '/fonctionnalites/signature-electronique' },
-  { icon: Bell, label: 'Relances auto', description: 'Encaissez sans relancer \u00e0 la main', href: '/fonctionnalites/relances' },
-  { icon: Building, label: 'Chantiers', description: 'Suivi, rentabilit\u00e9, photos', href: '/fonctionnalites/chantiers' },
-  { icon: Package, label: 'Catalogue BTP', description: '1 000+ articles pr\u00e9-chiffr\u00e9s', href: '/fonctionnalites/catalogue' },
-  { icon: TrendingUp, label: 'Tr\u00e9sorerie', description: 'Projections, impay\u00e9s, exports', href: '/fonctionnalites/tresorerie' },
-];
+const FOCUS = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-marque-nuit-2 focus-visible:ring-offset-2 focus-visible:ring-offset-white';
 
 export default function LandingNav({ onLogin, onSignup }) {
-  const [scrolled, setScrolled] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [dropdownOpen, setDropdownOpen] = useState(false);
-  const dropdownRef = useRef(null);
-  const dropdownTimeout = useRef(null);
+  const [menuOuvert, setMenuOuvert] = useState(false);
+  const boutonMenu = useRef(null);
 
+  // Menu ouvert : la page ne défile plus derrière (un doigt sur le voile ferait filer le contenu) ; Échap le ferme.
   useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 20);
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
-  // Menu ouvert → la page ne défile plus derrière. Sans ça, un doigt qui glisse
-  // sur le voile fait filer le contenu sous le menu : on ne sait plus où on est.
-  useEffect(() => {
-    if (!menuOpen) return undefined;
+    if (!menuOuvert) return undefined;
     const avant = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = avant; };
-  }, [menuOpen]);
-
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClick = (e) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
-        setDropdownOpen(false);
-      }
+    const echap = (e) => {
+      if (e.key !== 'Escape') return;
+      setMenuOuvert(false);
+      boutonMenu.current?.focus();
     };
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, []);
+    document.addEventListener('keydown', echap);
+    return () => {
+      document.body.style.overflow = avant;
+      document.removeEventListener('keydown', echap);
+    };
+  }, [menuOuvert]);
 
-  const scrollTo = (href, fromMobile = false) => {
-    setDropdownOpen(false);
-    if (href.startsWith('/')) {
-      setMenuOpen(false);
-      // Pages marketing servies par main.jsx au chargement (pas de router SPA) :
-      // navigation complète obligatoire.
-      window.location.assign(href);
+  const aller = (e, ancre) => {
+    e.preventDefault();
+    if (!menuOuvert) {
+      allerALaSection(ancre);
       return;
     }
-    if (fromMobile && menuOpen) {
-      // Close mobile menu first, then scroll after exit animation completes
-      setMenuOpen(false);
-      setTimeout(() => allerALaSection(href), 150);
-    } else {
-      setMenuOpen(false);
-      allerALaSection(href);
-    }
+    // Le menu se ferme d'abord : la page doit pouvoir défiler de nouveau.
+    setMenuOuvert(false);
+    setTimeout(() => allerALaSection(ancre), 60);
   };
-
-  const handleDropdownEnter = () => {
-    clearTimeout(dropdownTimeout.current);
-    setDropdownOpen(true);
-  };
-
-  const handleDropdownLeave = () => {
-    dropdownTimeout.current = setTimeout(() => setDropdownOpen(false), 400);
-  };
-
-  // Nav text color depends on scroll AND hero background
-  const textColor = scrolled ? 'text-slate-600 hover:text-slate-900' : 'text-slate-600 hover:text-slate-900';
-  const logoColor = scrolled ? 'text-slate-900' : 'text-slate-900';
 
   return (
-    // Menu ouvert → en-tête opaque. En translucide, le panneau blanc du menu
-    // tranchait avec la barre au-dessus : deux blocs au lieu d'un.
-    <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-      menuOpen
-        ? 'bg-white shadow-sm'
-        : scrolled
-          ? 'bg-white/90 backdrop-blur-xl shadow-sm border-b border-slate-100'
-          : 'bg-white/50 backdrop-blur-sm'
-    }`}>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
-        {/* Logo */}
-        <a href="/" className="flex items-center gap-2 group">
-          <LogoMallettico taille={36} className="group-hover:scale-105 transition-transform" />
-          <span className={`text-lg font-bold ${logoColor}`}>
-            Mallettico
-          </span>
+    <header className="fixed inset-x-0 top-0 z-50">
+      <div aria-hidden="true" className="absolute inset-0 border-b border-marque-acier/60 bg-white/90 backdrop-blur-md backdrop-saturate-150" />
+
+      <div className="relative mx-auto flex h-16 max-w-6xl items-center gap-2 px-4 sm:px-6 lg:gap-6">
+        <a href="/" className={`-ml-1 flex min-h-[44px] shrink-0 items-center gap-2.5 rounded-xl px-1 ${FOCUS}`}>
+          <img src="/icon.svg" alt="" width="34" height="34" className="h-[34px] w-[34px]" />
+          <span className="text-lg font-extrabold tracking-tight text-marque-nuit">Mallettico</span>
         </a>
 
-        {/* Desktop nav */}
-        <div className="hidden md:flex items-center gap-1">
-          {NAV_LINKS.map((link) => (
-            link.hasDropdown ? (
-              <div
-                key={link.href}
-                ref={dropdownRef}
-                className="relative"
-                onMouseEnter={handleDropdownEnter}
-                onMouseLeave={handleDropdownLeave}
-              >
-                <button
-                  className={`flex items-center gap-1 text-sm font-medium px-3 py-2 rounded-lg transition-colors ${textColor}`}
-                  onClick={() => scrollTo(link.href)}
+        <nav aria-label="Sections du site" className="hidden lg:block">
+          <ul className="flex items-center gap-1">
+            {LIENS.map((lien) => (
+              <li key={lien.ancre}>
+                <a
+                  href={`/${lien.ancre}`}
+                  onClick={(e) => aller(e, lien.ancre)}
+                  className={`flex min-h-[44px] items-center rounded-full px-3 text-[15px] font-medium text-slate-600 transition-colors hover:text-marque-nuit ${FOCUS}`}
                 >
-                  {link.label}
-                  <ChevronDown
-                    size={14}
-                    className={`transition-transform ${dropdownOpen ? 'rotate-180' : ''}`}
-                  />
-                </button>
+                  {lien.libelle}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </nav>
 
-                {/* Invisible bridge to prevent flicker when moving cursor from trigger to dropdown */}
-                {dropdownOpen && (
-                  <div className="absolute top-full left-0 right-0 h-3" />
-                )}
-
-                {/* Dropdown */}
-                <AnimatePresence>
-                  {dropdownOpen && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 8, scale: 0.95 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: 8, scale: 0.95 }}
-                      transition={{ duration: 0.2 }}
-                      className="absolute top-full left-1/2 -translate-x-1/2 pt-2 w-[420px]"
-                    >
-                      <div className="bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-200 p-4">
-                      <div className="grid grid-cols-2 gap-1">
-                        {FEATURE_DROPDOWN.map((item) => {
-                          const Icon = item.icon;
-                          return (
-                            <button
-                              key={item.label}
-                              onClick={() => scrollTo(item.href)}
-                              className="flex items-start gap-3 p-3 rounded-xl hover:bg-orange-50 transition-colors text-left group"
-                            >
-                              <div className="w-9 h-9 rounded-lg bg-slate-100 group-hover:bg-orange-100 flex items-center justify-center flex-shrink-0 transition-colors">
-                                <Icon size={16} className="text-slate-500 group-hover:text-orange-500 transition-colors" />
-                              </div>
-                              <div>
-                                <p className="text-sm font-medium text-slate-900">{item.label}</p>
-                                <p className="text-xs text-slate-400">{item.description}</p>
-                              </div>
-                            </button>
-                          );
-                        })}
-                      </div>
-                      <div className="mt-3 pt-3 border-t border-slate-100">
-                        <button
-                          onClick={() => scrollTo('/fonctionnalites')}
-                          className="flex items-center justify-center gap-1 text-sm text-orange-500 font-medium hover:text-orange-600 transition-colors py-1 w-full"
-                        >
-                          Voir toutes les fonctionnalit&eacute;s &rarr;
-                        </button>
-                      </div>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            ) : (
-              <button
-                key={link.href}
-                onClick={() => scrollTo(link.href)}
-                className={`text-sm font-medium px-3 py-2 rounded-lg transition-colors ${textColor}`}
-              >
-                {link.label}
-              </button>
-            )
-          ))}
-        </div>
-
-        {/* Desktop CTA */}
-        <div className="hidden md:flex items-center gap-3">
+        <div className="ml-auto flex items-center gap-1 sm:gap-3">
           <button
+            type="button"
             onClick={onLogin}
-            className="text-sm font-medium px-4 py-2 rounded-xl text-slate-700 hover:bg-slate-100 transition-colors"
+            className={`min-h-[44px] rounded-full px-3 text-base font-semibold text-marque-nuit-2 transition-colors hover:bg-marque-glacier-2 ${FOCUS}`}
           >
             Connexion
           </button>
+          <BoutonSite variante="plein" onClick={onSignup} className="hidden sm:inline-flex">
+            Créer mon compte
+          </BoutonSite>
           <button
-            onClick={onSignup}
-            className="text-sm font-medium px-4 py-2 rounded-xl bg-orange-500 text-white hover:bg-orange-600 transition-colors shadow-sm"
+            ref={boutonMenu}
+            type="button"
+            onClick={() => setMenuOuvert((o) => !o)}
+            aria-expanded={menuOuvert}
+            aria-controls="menu-site"
+            aria-label={menuOuvert ? 'Fermer le menu' : 'Ouvrir le menu'}
+            className={`flex h-11 w-11 items-center justify-center rounded-full text-marque-nuit transition-colors hover:bg-marque-glacier-2 lg:hidden ${FOCUS}`}
           >
-            Compte gratuit
+            {menuOuvert ? <X size={24} aria-hidden="true" /> : <Menu size={24} aria-hidden="true" />}
           </button>
         </div>
-
-        {/* Mobile menu button */}
-        <button
-          onClick={() => setMenuOpen(!menuOpen)}
-          aria-label={menuOpen ? 'Fermer le menu' : 'Ouvrir le menu'}
-          aria-expanded={menuOpen}
-          className="md:hidden p-2 rounded-lg text-slate-900"
-        >
-          {menuOpen ? <X size={24} /> : <Menu size={24} />}
-        </button>
       </div>
 
-      {/* Mobile menu */}
-      <AnimatePresence>
-        {menuOpen && (
-          <>
-            {/* Backdrop */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              // `top-[56px]` était une hauteur d'en-tête devinée : elle ne
-              // correspondait pas à la vraie, d'où la bande grise sous la barre.
-              // `inset-0` couvre tout ; la nav (z-50) reste au-dessus du voile.
-              className="md:hidden fixed inset-0 bg-slate-900/30 z-40"
-              onClick={() => setMenuOpen(false)}
-            />
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-              className="md:hidden bg-white border-t border-slate-100 shadow-lg overflow-hidden relative z-50"
-            >
-              <div className="px-4 py-3 space-y-1">
-                {NAV_LINKS.map((link) => (
-                  <button
-                    key={link.href}
-                    onClick={() => scrollTo(link.href, true)}
-                    className="w-full text-left px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50 rounded-lg font-medium transition-colors"
+      {menuOuvert && (
+        <>
+          <div
+            aria-hidden="true"
+            className="fixed inset-x-0 bottom-0 top-16 bg-marque-encre-sombre/30 lg:hidden"
+            onClick={() => setMenuOuvert(false)}
+          />
+          <nav id="menu-site" aria-label="Menu" className="relative border-b border-marque-acier/60 bg-white shadow-lg lg:hidden">
+            <ul className="mx-auto max-w-6xl px-4 py-2 sm:px-6">
+              {LIENS.map((lien) => (
+                <li key={lien.ancre}>
+                  <a
+                    href={`/${lien.ancre}`}
+                    onClick={(e) => aller(e, lien.ancre)}
+                    className={`flex min-h-[48px] items-center rounded-xl px-3 text-base font-medium text-marque-nuit hover:bg-marque-glacier-1 ${FOCUS}`}
                   >
-                    {link.label}
-                  </button>
-                ))}
-                {/* Connexion était un lien de la même taille que les ancres de
-                    navigation, relégué sous un trait. Or le visiteur qui ouvre ce
-                    menu est souvent un client qui revient : se connecter est SON
-                    action principale. Les deux actions ont désormais le même
-                    poids visuel, seul le style les distingue. */}
-                <div className="pt-3 mt-2 border-t border-slate-100 space-y-2">
-                  <button
-                    onClick={() => { setMenuOpen(false); onLogin(); }}
-                    className="w-full px-3 py-3 text-sm font-semibold text-slate-800 border border-slate-300 rounded-xl hover:bg-slate-50 hover:border-slate-400 transition-colors"
-                  >
-                    Connexion
-                  </button>
-                  <button
-                    onClick={() => { setMenuOpen(false); onSignup(); }}
-                    className="w-full px-3 py-3 text-sm font-semibold text-white bg-orange-500 hover:bg-orange-600 rounded-xl transition-colors"
-                  >
-                    Créer un compte gratuit
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
-    </nav>
+                    {lien.libelle}
+                  </a>
+                </li>
+              ))}
+            </ul>
+            <div className="mx-auto max-w-6xl border-t border-marque-acier/60 px-4 pb-4 pt-3 sm:hidden">
+              <BoutonSite variante="plein" onClick={() => { setMenuOuvert(false); onSignup(); }} className="w-full">
+                Créer mon compte
+              </BoutonSite>
+            </div>
+          </nav>
+        </>
+      )}
+    </header>
   );
 }

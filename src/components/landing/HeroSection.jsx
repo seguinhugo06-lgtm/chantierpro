@@ -1,235 +1,77 @@
 /**
- * HeroSection — Animated hero with parallax art, floating shapes, and app mockup.
+ * HeroSection — le premier écran du site (spec de la refonte, 19 oct. 2026, section 2).
  *
- * Design: Light gradient background, Z-pattern layout (text left, mockup right),
- * scroll-triggered parallax on floating elements, staggered text entrance.
+ * Fond glacier vers blanc, plan d'architecte et lueur orange très douce en haut à droite (décor) ; deux colonnes
+ * au bureau, une au téléphone : à gauche ce qu'est Mallettico et les deux actions, à droite le devis vivant.
+ * Rien n'y est animé à l'entrée (pas d'`Apparition`) : le contenu est lisible dès le premier affichage.
+ * `pt-16` laisse la place de la barre fixe.
  */
+import { ArrowRight, Check } from 'lucide-react';
+import BoutonSite from './site/BoutonSite';
+import PlanArchitecte from './site/PlanArchitecte';
+// Extension obligatoire : sur un disque insensible à la casse (macOS), « ./DevisVivant » se résout en
+// devisVivant.js (la logique pure), essayé avant .jsx.
+import DevisVivant from './DevisVivant.jsx';
 
-import React from 'react';
-import { motion, useScroll, useTransform } from 'framer-motion';
-import { ArrowRight, Play, Shield, CheckCircle, Sparkles } from 'lucide-react';
-import HeroMockup from './HeroMockup';
-
-const textVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { staggerChildren: 0.08, delayChildren: 0.1 },
-  },
-};
-
-const wordVariant = {
-  hidden: { opacity: 0, y: 20, filter: 'blur(8px)' },
-  visible: {
-    opacity: 1,
-    y: 0,
-    filter: 'blur(0px)',
-    transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] },
-  },
-};
-
-const fadeUp = {
-  hidden: { opacity: 0, y: 20 },
-  visible: (i) => ({
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.6, delay: i * 0.1, ease: [0.22, 1, 0.36, 1] },
-  }),
-};
+const REASSURANCES = ['Gratuit pour commencer, sans carte bancaire', 'Base de données hébergée à Paris'];
 
 export default function HeroSection({ onSignup }) {
-  const { scrollY } = useScroll();
-
-  // Parallax for floating shapes — move at different rates
-  const shape1Y = useTransform(scrollY, [0, 600], [0, -80]);
-  const shape2Y = useTransform(scrollY, [0, 600], [0, -50]);
-  const shape3Y = useTransform(scrollY, [0, 600], [0, -120]);
-  const shape4Y = useTransform(scrollY, [0, 600], [0, -30]);
-
-  // Hero text fade-out on scroll
-  const textOpacity = useTransform(scrollY, [0, 400], [1, 0]);
-  const textScale = useTransform(scrollY, [0, 400], [1, 0.95]);
-
-  const headlineWords = ['Pilotez', 'vos', 'chantiers,'];
-  const headlineAccent = ['boostez', 'votre', 'rentabilité'];
-  const headlineEnd = ['sans', 'effort.'];
-
   return (
-    <section className="relative overflow-hidden bg-gradient-to-b from-white via-orange-50/30 to-white">
-      {/* Animated background mesh */}
-      <div className="absolute inset-0 overflow-hidden">
-        {/* Large gradient orbs */}
-        <motion.div
-          style={{ y: shape1Y }}
-          className="absolute -top-20 -right-20 w-[500px] h-[500px] bg-gradient-to-br from-orange-200/40 to-orange-100/20 rounded-full blur-3xl"
-        />
-        <motion.div
-          style={{ y: shape2Y }}
-          className="absolute top-1/3 -left-32 w-[400px] h-[400px] bg-gradient-to-br from-blue-100/30 to-cyan-50/20 rounded-full blur-3xl"
-        />
-        <motion.div
-          style={{ y: shape3Y }}
-          className="absolute bottom-0 right-1/4 w-[300px] h-[300px] bg-gradient-to-br from-orange-100/20 to-yellow-50/10 rounded-full blur-3xl"
-        />
+    // Couleur de fond = le haut du dégradé (le plus foncé) : c'est contre elle que se mesure le contraste du titre.
+    <section className="relative overflow-hidden bg-marque-glacier-1 bg-[linear-gradient(180deg,#F0FAFF,#FFFFFF_85%)] pt-16">
+      <PlanArchitecte />
+      <div
+        aria-hidden="true"
+        data-decor=""
+        className="pointer-events-none absolute -right-32 -top-24 h-[520px] w-[520px] rounded-full bg-[radial-gradient(circle,rgba(238,123,32,0.18),transparent_60%)]"
+      />
 
-        {/* Floating geometric shapes */}
-        <motion.div
-          style={{ y: shape1Y }}
-          animate={{ rotate: [0, 5, -5, 0] }}
-          transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut' }}
-          className="absolute top-32 right-[15%] w-16 h-16 rounded-2xl bg-gradient-to-br from-orange-400/10 to-orange-300/5 border border-orange-200/30 backdrop-blur-sm"
-        />
-        <motion.div
-          style={{ y: shape2Y }}
-          animate={{ rotate: [0, -8, 8, 0] }}
-          transition={{ duration: 15, repeat: Infinity, ease: 'easeInOut' }}
-          className="absolute top-64 left-[8%] w-12 h-12 rounded-full bg-gradient-to-br from-blue-400/10 to-blue-300/5 border border-blue-200/30"
-        />
-        <motion.div
-          style={{ y: shape3Y }}
-          animate={{ rotate: [0, 10, -10, 0] }}
-          transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }}
-          className="absolute bottom-32 left-[20%] w-10 h-10 rounded-xl bg-gradient-to-br from-green-400/10 to-green-300/5 border border-green-200/30"
-        />
-        <motion.div
-          style={{ y: shape4Y }}
-          animate={{ rotate: [0, -6, 6, 0] }}
-          transition={{ duration: 18, repeat: Infinity, ease: 'easeInOut' }}
-          className="absolute top-48 right-[40%] w-8 h-8 rounded-lg bg-gradient-to-br from-violet-400/10 to-violet-300/5 border border-violet-200/30"
-        />
+      <div className="relative mx-auto grid max-w-6xl items-center gap-12 px-4 pb-14 pt-8 sm:px-6 sm:pt-12 lg:grid-cols-[1.05fr_0.95fr] lg:pb-12 lg:pt-10 [&>*]:min-w-0">
+        <div>
+          <p className="inline-flex items-center gap-2 rounded-full border border-marque-acier/70 bg-white px-3 py-1.5 text-xs font-bold uppercase tracking-[0.08em] text-marque-nuit-2">
+            <span
+              aria-hidden="true"
+              className="h-2 w-2 rounded-full bg-marque-orange shadow-[0_0_0_3px_rgba(238,123,32,0.2),0_0_10px_rgba(238,123,32,0.8)]"
+            />
+            Devis · Factures · Relances
+          </p>
 
-        {/* Grid pattern overlay */}
-        <div
-          className="absolute inset-0 opacity-[0.03]"
-          style={{
-            backgroundImage: 'radial-gradient(circle, #94a3b8 1px, transparent 1px)',
-            backgroundSize: '40px 40px',
-          }}
-        />
-      </div>
+          <h1 className="mt-5 text-balance text-[clamp(2.125rem,5vw,3.625rem)] font-extrabold leading-[1.04] tracking-[-0.035em] text-marque-nuit">
+            L'administratif du chantier,{' '}
+            <span className="box-decoration-clone bg-[linear-gradient(transparent_78%,rgba(238,123,32,0.9)_78%,rgba(238,123,32,0.9)_90%,transparent_90%)]">
+              rangé dans une mallette.
+            </span>
+          </h1>
 
-      {/* Content */}
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 pt-20 sm:pt-36 pb-12 sm:pb-24">
-        {/* `min-w-0` sur les deux colonnes : par défaut, un élément de grille ne
-            rétrécit JAMAIS sous la largeur minimale de son contenu. L'aperçu de
-            droite (cadre navigateur + capture) pouvait donc élargir la grille
-            au-delà de l'écran, et tout le texte de gauche partait avec —
-            boutons compris, qui font 100 % d'une colonne devenue trop large. */}
-        <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center [&>*]:min-w-0">
-          {/* Left — Text content */}
-          <motion.div style={{ opacity: textOpacity, scale: textScale }}>
-            {/* Badge */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.8, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-              className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-orange-50 border border-orange-200/60 text-orange-600 text-[11px] sm:text-xs font-semibold mb-4 sm:mb-6"
-            >
-              <Sparkles size={14} />
-              Nouveau : Relances de devis automatisées
-            </motion.div>
+          <p className="mt-5 max-w-[34em] text-lg leading-relaxed text-marque-ardoise">
+            Montez un devis à partir de prestations déjà chiffrées, faites-le signer en ligne, facturez sans rien
+            ressaisir. Mallettico relance et suit les paiements. Sur téléphone comme sur ordinateur.
+          </p>
 
-            {/* Animated headline */}
-            <motion.h1
-              variants={textVariants}
-              initial="hidden"
-              animate="visible"
-              className="text-2xl sm:text-5xl lg:text-[3.5rem] font-bold text-slate-900 leading-[1.1] mb-5 sm:mb-6"
-            >
-              {headlineWords.map((word, i) => (
-                <motion.span key={i} variants={wordVariant} className="inline-block mr-[0.3em]">
-                  {word}
-                </motion.span>
-              ))}
-              <br className="hidden sm:block" />
-              {headlineAccent.map((word, i) => (
-                <motion.span
-                  key={`a-${i}`}
-                  variants={wordVariant}
-                  className="inline-block mr-[0.3em] text-transparent bg-clip-text"
-                  style={{ backgroundImage: 'linear-gradient(135deg, #f97316, #ea580c)' }}
-                >
-                  {word}
-                </motion.span>
-              ))}
-              <br className="hidden sm:block" />
-              {headlineEnd.map((word, i) => (
-                <motion.span key={`e-${i}`} variants={wordVariant} className="inline-block mr-[0.3em]">
-                  {word}
-                </motion.span>
-              ))}
-            </motion.h1>
-
-            {/* Subtitle */}
-            <motion.p
-              custom={0.8}
-              variants={fadeUp}
-              initial="hidden"
-              animate="visible"
-              className="text-sm sm:text-lg text-slate-500 mb-6 sm:mb-8 max-w-lg leading-relaxed"
-            >
-              Devis, factures, chantiers, tr&eacute;sorerie &mdash; tout au m&ecirc;me endroit.
-              Pens&eacute; pour les artisans du b&acirc;timent : moins de paperasse, plus de temps sur vos chantiers.
-            </motion.p>
-
-            {/* CTA buttons */}
-            <motion.div
-              custom={1}
-              variants={fadeUp}
-              initial="hidden"
-              animate="visible"
-              className="flex flex-col sm:flex-row items-start gap-3 sm:gap-4 mb-8"
-            >
-              <button
-                onClick={onSignup}
-                className="group w-full sm:w-auto px-7 py-3.5 rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 text-white font-semibold hover:from-orange-600 hover:to-orange-700 transition-all shadow-lg shadow-orange-500/25 flex items-center justify-center gap-2 relative overflow-hidden"
-              >
-                {/* Shimmer effect */}
-                <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
-                <span className="relative flex items-center gap-2">
-                  Créer mon compte gratuit
-                  <ArrowRight size={18} className="group-hover:translate-x-0.5 transition-transform" />
-                </span>
-              </button>
-              <a
-                href="/?demo=true"
-                className="w-full sm:w-auto px-7 py-3.5 rounded-xl border border-slate-200 text-slate-700 font-medium hover:bg-slate-50 hover:border-slate-300 transition-all flex items-center justify-center gap-2"
-              >
-                <Play size={16} className="text-orange-500" />
-                Tester la d&eacute;mo en direct
-              </a>
-            </motion.div>
-
-            {/* Trust badges */}
-            <motion.div
-              custom={1.2}
-              variants={fadeUp}
-              initial="hidden"
-              animate="visible"
-              className="flex flex-wrap items-center gap-4 sm:gap-5 text-slate-500 text-xs"
-            >
-              {[
-                { icon: CheckCircle, text: 'Gratuit pour d\u00e9marrer — sans carte bancaire', color: 'text-green-500' },
-                { icon: Shield, text: 'Mentions l\u00e9gales BTP incluses', color: 'text-blue-500' },
-                { icon: CheckCircle, text: 'Base de donn\u00e9es h\u00e9berg\u00e9e \u00e0 Paris', color: 'text-green-500' },
-              ].map((badge) => (
-                <div key={badge.text} className="flex items-center gap-1.5">
-                  <badge.icon size={14} className={badge.color} />
-                  <span>{badge.text}</span>
-                </div>
-              ))}
-            </motion.div>
-          </motion.div>
-
-          {/* Right — App mockup */}
-          <div className="relative lg:pl-8">
-            <HeroMockup className="w-full max-w-xl mx-auto lg:max-w-none" />
+          <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+            <BoutonSite variante="plein" onClick={onSignup} className="w-full sm:w-auto">
+              Créer mon compte gratuit
+              <ArrowRight size={18} aria-hidden="true" />
+            </BoutonSite>
+            <BoutonSite variante="contour" href="/?demo=true" className="w-full sm:w-auto">
+              Voir la démo
+            </BoutonSite>
           </div>
+
+          <ul className="mt-5 flex flex-col gap-x-5 gap-y-1.5 text-sm text-marque-ardoise sm:flex-row sm:flex-wrap">
+            {REASSURANCES.map((texte) => (
+              <li key={texte} className="flex items-center gap-1.5">
+                <Check size={16} strokeWidth={3} aria-hidden="true" className="shrink-0 text-marque-nuit-2" />
+                {texte}
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div className="mx-auto w-full max-w-xl lg:max-w-none">
+          <DevisVivant />
         </div>
       </div>
-
-      {/* Bottom fade */}
-      <div className="absolute bottom-0 inset-x-0 h-24 bg-gradient-to-t from-white to-transparent" />
     </section>
   );
 }

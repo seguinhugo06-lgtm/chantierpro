@@ -23,6 +23,13 @@ import { fileURLToPath } from 'node:url';
  */
 const FICHIERS_CONTROLES = [
   'site/*',
+  // Task 4 : barre, premier écran avec le devis vivant, bande de faits
+  'LandingNav.jsx',
+  'HeroSection.jsx',
+  'LandingPage.jsx',
+  'DevisVivant.jsx',
+  'devisVivant.js',
+  'FaitsSection.jsx',
 ];
 
 const DOSSIER_SITE = fileURLToPath(new URL('..', import.meta.url));

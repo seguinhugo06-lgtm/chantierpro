@@ -3,7 +3,7 @@
  *
  * Variantes (hauteur ≥ 44 px, anneau de focus visible sur fond clair comme sur la bande bleu nuit) :
  *   plein         pilule nuit-2 à texte blanc (12,2:1)           l'action principale sur fond clair
- *   contour       pilule à bordure nuit-2, texte nuit-2           l'action secondaire sur fond clair
+ *   contour       pilule à bordure nuit-2, texte nuit-2           l'action secondaire sur fond clair ou glacier
  *   clair         pilule blanche à texte nuit (12,9:1)            l'action principale sur une bande `nuit`
  *   contour-clair pilule à bordure et texte blancs                l'action secondaire sur une bande `nuit`
  *
@@ -13,14 +13,19 @@
 
 const BASE =
   'inline-flex items-center justify-center gap-2 min-h-[44px] px-6 py-2.5 rounded-full border-2 text-base font-semibold ' +
-  'text-center no-underline transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2';
+  'text-center no-underline transition-[color,background-color,border-color,box-shadow,transform] duration-150 ' +
+  'motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2';
 
 // Anneau : bleu nuit sur fond clair, blanc sur la bande nuit (l'espace de l'anneau reprend la couleur du fond).
+// Survol du plein : nuit-2 → nuit seul ne se voit pas ; l'ombre s'allonge et le bouton monte d'un pixel (prototype).
+// Survol du contour : glacier-2, visible sur blanc comme sur le fond glacier du premier écran.
 const VARIANTES = {
   plein:
-    'border-transparent bg-marque-nuit-2 text-white hover:bg-marque-nuit focus-visible:ring-marque-nuit-2 focus-visible:ring-offset-white',
+    'border-transparent bg-marque-nuit-2 text-white shadow-[0_10px_24px_-12px_rgba(13,46,108,0.7)] ' +
+    'hover:bg-marque-nuit hover:-translate-y-px hover:shadow-[0_14px_28px_-12px_rgba(13,46,108,0.8)] motion-reduce:hover:translate-y-0 ' +
+    'focus-visible:ring-marque-nuit-2 focus-visible:ring-offset-white',
   contour:
-    'border-marque-nuit-2 bg-transparent text-marque-nuit-2 hover:bg-marque-glacier-1 focus-visible:ring-marque-nuit-2 focus-visible:ring-offset-white',
+    'border-marque-nuit-2 bg-transparent text-marque-nuit-2 hover:bg-marque-glacier-2 focus-visible:ring-marque-nuit-2 focus-visible:ring-offset-white',
   clair:
     'border-transparent bg-white text-marque-nuit hover:bg-marque-glacier-2 focus-visible:ring-white focus-visible:ring-offset-marque-nuit',
   'contour-clair':
