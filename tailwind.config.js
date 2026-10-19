@@ -25,6 +25,19 @@ export default {
         vedette: { bord: v('--vedette-bord'), libelle: v('--vedette-libelle'), valeur: v('--vedette-valeur'), contexte: v('--vedette-contexte') },
         // Orange du logo : signature décorative seulement (point, liseré), jamais sous ni comme texte
         signature: v('--signature'),
+        // Site public (src/components/landing/), charte « Glacier vif » du 19 oct. 2026 : valeurs fixes, le site
+        // ne suit pas le mode sombre de l'app. Orange = décoratif seulement (jamais de texte sur fond clair).
+        marque: {
+          nuit: '#0D2E6C',
+          'nuit-2': '#12336F',
+          ardoise: '#2B4A7A',
+          acier: '#BCD3E2',
+          'glacier-1': '#F0FAFF',
+          'glacier-2': '#DCEFFB',
+          'glacier-3': '#BFF2FF',
+          'encre-sombre': '#0B1324',
+          orange: '#EE7B20',
+        },
         // Tons : bg-succes-fond text-succes-texte, bg-danger-point… (un statut = un ton, src/lib/statuts.js)
         neutre: { fond: v('--neutre-fond'), texte: v('--neutre-texte'), point: v('--neutre-point') },
         info: { fond: v('--info-fond'), texte: v('--info-texte'), point: v('--info-point') },
