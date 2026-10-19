@@ -108,9 +108,13 @@ function gabarit(src, debut) {
   return { sortie: fixe.includes('<') ? blanchir(src.slice(debut, j)) : sortie, fin: j };
 }
 
-/** Débute-t-on une expression régulière ici ? (d'après le dernier caractère significatif émis) */
+/**
+ * Débute-t-on une expression régulière ici ? (d'après le dernier caractère significatif émis)
+ * Pas après « } » : c'est presque toujours la fin d'une expression d'attribut JSX (<Icone size={14} />),
+ * et une barre qui la suit est le « /> » de la balise, pas une expression régulière.
+ */
 function debutDeRegex(dernier, sortie) {
-  if (dernier === '' || '(,=:[!&|?{};+-*%~^'.includes(dernier)) return true;
+  if (dernier === '' || '(,=:[!&|?{;+-*%~^'.includes(dernier)) return true;
   return /(?:^|[^\w$])(?:return|typeof|case)\s*$/.test(sortie.slice(-12));
 }
 

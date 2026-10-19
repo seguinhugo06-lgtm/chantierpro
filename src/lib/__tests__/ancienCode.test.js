@@ -205,6 +205,17 @@ describe('compterAncienCode', () => {
     expect(compterAncienCode(regex)).toEqual({ ...zero, ternaires: 1 });
   });
 
+  it('ne prend pas le « /> » qui suit une expression d\'attribut JSX pour le début d\'une expression régulière', () => {
+    // lu comme /><b className={`w-1/ , le « /> » décalait le balayage : le gabarit refermé après w-1/2 devenait
+    // l'ouverture d'un gabarit à HTML qui avalait, jusqu'au prochain accent grave, le ternaire de la ligne suivante
+    const extrait = [
+      'const a = <p><Icon size={14} /><b className={`w-1/2 ${x}`}>x</b></p>;',
+      "const c = isDark ? 'bg-slate-800' : 'bg-white';",
+      'const d = `fin`;',
+    ].join('\n');
+    expect(compterAncienCode(extrait)).toEqual({ ...zero, ternaires: 1 });
+  });
+
   it('garde les positions : mêmes longueurs, mêmes numéros de ligne', () => {
     const extrait = [
       "/* commentaire",
