@@ -65,35 +65,31 @@ function KanbanCard({ devis, client, isDark, couleur, onOpenDevis, onDragStart }
       }}
       onClick={() => onOpenDevis?.(devis)}
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpenDevis?.(devis); } }}
-      className={`group cursor-pointer rounded-xl border p-3 transition-all hover:shadow-md hover:scale-[1.01] active:scale-[0.98] ${
-        isDark
-          ? 'bg-slate-800 border-slate-700 hover:border-slate-500'
-          : 'bg-white border-slate-200 hover:border-slate-300'
-      } ${isVeryLate ? 'border-red-300' : isLate ? 'border-amber-300' : ''}`}
+      className={`group cursor-pointer rounded-xl border p-3 transition-all hover:shadow-md hover:scale-[1.01] active:scale-[0.98] bg-surface border-bord hover:border-bord-fort ${isVeryLate ? 'border-red-300' : isLate ? 'border-amber-300' : ''}`}
     >
       {/* Header: numero + grip */}
       <div className="flex items-center justify-between mb-2">
-        <span className={`text-xs font-mono font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+        <span className={`text-xs font-mono font-medium text-encre-3`}>
           {devis.numero || '—'}
         </span>
         <GripVertical size={14} className="text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity" />
       </div>
 
       {/* Client name */}
-      <p className={`text-sm font-semibold truncate mb-1 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+      <p className={`text-sm font-semibold truncate mb-1 text-encre`}>
         {client?.nom || client?.name || 'Client inconnu'}
       </p>
 
       {/* Object/description */}
       {devis.objet && (
-        <p className={`text-xs truncate mb-2 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+        <p className={`text-xs truncate mb-2 text-encre-3`}>
           {devis.objet}
         </p>
       )}
 
       {/* Amount + delay */}
       <div className="flex items-center justify-between">
-        <span className="text-sm font-bold" style={{ color: couleur }}>
+        <span className="text-sm font-bold text-accent-texte">
           {(devis.total_ttc || 0).toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} €
         </span>
         <div className={`flex items-center gap-1 text-[11px] ${
@@ -144,7 +140,7 @@ function KanbanColumn({ column, cards, clients, isDark, couleur, onOpenDevis, on
         isDragOver
           ? 'ring-2 ring-offset-2'
           : ''
-      } ${isDark ? 'border-slate-700' : 'border-slate-200'}`}
+      } border-bord`}
       style={isDragOver ? { ringColor: column.color } : {}}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
@@ -155,10 +151,10 @@ function KanbanColumn({ column, cards, clients, isDark, couleur, onOpenDevis, on
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Icon size={14} style={{ color: column.color }} />
-            <span className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+            <span className={`text-sm font-semibold text-encre`}>
               {column.label}
             </span>
-            <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-white text-slate-500'}`}>
+            <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium bg-surface text-encre-3`}>
               {cards.length}
             </span>
           </div>
@@ -172,7 +168,7 @@ function KanbanColumn({ column, cards, clients, isDark, couleur, onOpenDevis, on
 
       {/* Cards */}
       <div className={`flex-1 p-2 space-y-2 overflow-y-auto max-h-[calc(100vh-320px)] min-h-[100px] ${
-        isDragOver ? (isDark ? 'bg-slate-800/50' : 'bg-slate-50') : ''
+        isDragOver ? 'bg-fond' : ''
       }`}>
         {cards.length === 0 ? (
           <div className={`text-center py-8 text-xs ${isDark ? 'text-slate-600' : 'text-slate-300'}`}>
@@ -228,13 +224,13 @@ function PipelineStats({ devis, isDark, couleur }) {
       {statItems.map((item, i) => (
         <div
           key={i}
-          className={`rounded-xl border p-3 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}
+          className={`rounded-xl border p-3 bg-surface border-bord`}
         >
           <div className="flex items-center gap-2 mb-1">
             <item.icon size={14} style={{ color: item.color }} />
-            <span className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{item.label}</span>
+            <span className={`text-xs text-encre-3`}>{item.label}</span>
           </div>
-          <p className={`text-lg font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+          <p className={`text-lg font-bold text-encre`}>
             {item.value}
           </p>
         </div>
@@ -347,18 +343,18 @@ export default function PipelineKanban({
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div>
-          <h1 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+          <h1 className={`text-2xl font-bold text-encre`}>
             Pipeline commercial
           </h1>
-          <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+          <p className={`text-sm text-encre-3`}>
             Suivez vos devis de la création au paiement
           </p>
         </div>
 
         <div className="flex items-center gap-2">
           {/* Search */}
-          <div className={`relative ${isDark ? '' : ''}`}>
-            <Search size={14} className={`absolute left-2.5 top-1/2 -translate-y-1/2 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
+          <div className={`relative `}>
+            <Search size={14} className={`absolute left-2.5 top-1/2 -translate-y-1/2 text-encre-3`} />
             <input
               type="text"
               value={searchQuery}
@@ -376,11 +372,7 @@ export default function PipelineKanban({
           <select
             value={filterPeriod}
             onChange={(e) => setFilterPeriod(e.target.value)}
-            className={`text-sm rounded-lg border py-1.5 px-2 ${
-              isDark
-                ? 'bg-slate-800 border-slate-700 text-white'
-                : 'bg-white border-slate-200 text-slate-700'
-            }`}
+            className={`text-sm rounded-lg border py-1.5 px-2 bg-surface border-bord text-encre-2`}
           >
             <option value="all">Tout</option>
             <option value="month">Ce mois</option>
@@ -394,7 +386,7 @@ export default function PipelineKanban({
             className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${
               showRefused
                 ? 'bg-red-50 border-red-200 text-red-600'
-                : isDark ? 'border-slate-700 text-slate-400 hover:text-slate-200' : 'border-slate-200 text-slate-500 hover:text-slate-700'
+                : 'border-bord text-encre-3 hover:text-encre-2'
             }`}
           >
             <XCircle size={12} className="inline mr-1" />
@@ -428,7 +420,7 @@ export default function PipelineKanban({
       </div>
 
       {/* Legend */}
-      <div className={`flex items-center gap-4 text-xs flex-wrap ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+      <div className={`flex items-center gap-4 text-xs flex-wrap text-encre-3`}>
         <span className="flex items-center gap-1"><AlertTriangle size={10} className="text-amber-500" /> Envoyé {'>'} 7 jours</span>
         <span className="flex items-center gap-1"><AlertTriangle size={10} className="text-red-500" /> Envoyé {'>'} 14 jours</span>
         <span>Glissez-déposez les cartes pour changer le statut</span>

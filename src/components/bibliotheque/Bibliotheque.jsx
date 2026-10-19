@@ -140,18 +140,16 @@ export default function Bibliotheque({ isDark, couleur = '#f97316', setPage, dev
   }, [addToDevisSelected, addToDevisModal, addToDevisQty, devis, updateDevis, showToast, closeAddToDevisModal]);
 
   // ── Theme helpers ───────────────────────────────────────────────────────────
-  const pageBg = isDark ? 'bg-gray-900 text-gray-100' : 'bg-gray-50 text-gray-900';
-  const sidebarBg = isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200';
-  const cardBg = isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200';
+  const pageBg = 'bg-fond text-encre';
+  const sidebarBg = 'bg-surface border-bord';
+  const cardBg = 'bg-surface border-bord';
   const inputBg = isDark
     ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400'
     : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400';
-  const textSecondary = isDark ? 'text-gray-400' : 'text-gray-500';
-  const textMuted = isDark ? 'text-gray-400' : 'text-gray-500';
-  const toolbarBg = isDark ? 'bg-gray-800/50' : 'bg-white/80';
-  const btnBase = isDark
-    ? 'bg-gray-700 border-gray-600 text-gray-200 hover:bg-gray-600'
-    : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50';
+  const textSecondary = 'text-encre-3';
+  const textMuted = 'text-encre-3';
+  const toolbarBg = 'bg-surface/80';
+  const btnBase = 'bg-surface border-bord-fort text-encre-2 hover:bg-surface-2';
   const btnActive = `border-transparent text-white`;
 
   // ── Ouvrage detail modal handlers ───────────────────────────────────────────
@@ -254,8 +252,7 @@ export default function Bibliotheque({ isDark, couleur = '#f97316', setPage, dev
       </select>
       {hasActiveCoeff && activeDept && (
         <span
-          className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full text-white"
-          style={{ backgroundColor: couleur }}
+          className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-accent text-sur-accent"
         >
           &times;{coefficientGeo.toFixed(2)}
           <button
@@ -303,11 +300,11 @@ export default function Bibliotheque({ isDark, couleur = '#f97316', setPage, dev
 
   // ── View toggle ─────────────────────────────────────────────────────────────
   const ViewToggle = (
-    <div className={`inline-flex rounded-lg border overflow-hidden ${isDark ? 'border-gray-600' : 'border-gray-300'}`}>
+    <div className={`inline-flex rounded-lg border overflow-hidden border-bord-fort`}>
       <button
         onClick={() => setViewMode('grid')}
         className={`p-1.5 transition-colors ${
-          viewMode === 'grid' ? btnActive : isDark ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-700'
+          viewMode === 'grid' ? btnActive : 'text-encre-3 hover:text-encre-2'
         }`}
         style={viewMode === 'grid' ? { backgroundColor: couleur } : undefined}
         aria-label="Vue grille"
@@ -318,7 +315,7 @@ export default function Bibliotheque({ isDark, couleur = '#f97316', setPage, dev
       <button
         onClick={() => setViewMode('list')}
         className={`p-1.5 transition-colors ${
-          viewMode === 'list' ? btnActive : isDark ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-700'
+          viewMode === 'list' ? btnActive : 'text-encre-3 hover:text-encre-2'
         }`}
         style={viewMode === 'list' ? { backgroundColor: couleur } : undefined}
         aria-label="Vue liste"
@@ -360,14 +357,14 @@ export default function Bibliotheque({ isDark, couleur = '#f97316', setPage, dev
         className={`absolute inset-y-0 left-0 w-80 max-w-[85vw] shadow-xl flex flex-col transition-transform duration-300 ${sidebarBg}`}
       >
         {/* Drawer header */}
-        <div className={`flex items-center justify-between px-4 py-3 border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
+        <div className={`flex items-center justify-between px-4 py-3 border-b border-bord`}>
           <div className="flex items-center gap-2">
-            <TreePine className="w-5 h-5" style={{ color: couleur }} />
+            <TreePine className="w-5 h-5 text-accent-texte" />
             <span className="font-semibold text-sm">Nomenclature</span>
           </div>
           <button
             onClick={() => setShowTreeDrawer(false)}
-            className={`p-1.5 rounded-lg transition-colors ${isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}
+            className={`p-1.5 rounded-lg transition-colors hover:bg-surface-2`}
             aria-label="Fermer"
           >
             <X className="w-5 h-5" />
@@ -402,7 +399,7 @@ export default function Bibliotheque({ isDark, couleur = '#f97316', setPage, dev
   const EmptyState = (
     <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
       <Library className={`w-12 h-12 mb-4 ${textMuted}`} />
-      <h3 className={`text-lg font-semibold mb-2 ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>
+      <h3 className={`text-lg font-semibold mb-2 text-encre-2`}>
         Aucun ouvrage trouv&eacute;
       </h3>
       <p className={`text-sm max-w-md ${textSecondary}`}>
@@ -415,8 +412,7 @@ export default function Bibliotheque({ isDark, couleur = '#f97316', setPage, dev
       {(isSearching || filters.priceRange[0] != null || filters.priceRange[1] != null || filters.difficulty || filters.unite) && (
         <button
           onClick={() => { setSearchQuery(''); resetFilters(); }}
-          className="mt-4 text-sm font-medium px-4 py-2 rounded-lg transition-colors text-white"
-          style={{ backgroundColor: couleur }}
+          className="mt-4 text-sm font-medium px-4 py-2 rounded-lg transition-colors bg-accent text-sur-accent"
         >
           {isSearching ? 'Effacer la recherche' : 'Réinitialiser les filtres'}
         </button>
@@ -433,8 +429,8 @@ export default function Bibliotheque({ isDark, couleur = '#f97316', setPage, dev
       {/* ── Header ────────────────────────────────────────────────────────── */}
       <div className="px-4 sm:px-6 pt-4 pb-2">
         <div className="flex items-center gap-3 mb-4">
-          <Library className="w-6 h-6 flex-shrink-0" style={{ color: couleur }} />
-          <h1 className={`text-xl sm:text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+          <Library className="w-6 h-6 flex-shrink-0 text-accent-texte" />
+          <h1 className={`text-xl sm:text-2xl font-bold text-encre`}>
             Biblioth&egrave;que de Prix
           </h1>
           <span className={`text-sm ${textSecondary}`}>
@@ -579,7 +575,7 @@ export default function Bibliotheque({ isDark, couleur = '#f97316', setPage, dev
           {/* Searching indicator */}
           {isSearching && (
             <div className={`flex items-center gap-2 mb-3 text-sm ${textSecondary}`}>
-              <Search className="w-4 h-4 animate-pulse" style={{ color: couleur }} />
+              <Search className="w-4 h-4 animate-pulse text-accent-texte" />
               <span>
                 Recherche de &laquo;&nbsp;{searchQuery}&nbsp;&raquo;...
               </span>
@@ -614,24 +610,23 @@ export default function Bibliotheque({ isDark, couleur = '#f97316', setPage, dev
       {addToDevisModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={closeAddToDevisModal} />
-          <div className={`relative w-full max-w-md rounded-2xl p-6 shadow-2xl ${isDark ? 'bg-gray-800' : 'bg-white'}`}>
-            <h3 className={`font-bold text-lg mb-1 ${isDark ? 'text-white' : 'text-gray-900'}`}>Ajouter au devis</h3>
+          <div className={`relative w-full max-w-md rounded-2xl p-6 shadow-2xl bg-surface`}>
+            <h3 className={`font-bold text-lg mb-1 text-encre`}>Ajouter au devis</h3>
             <p className={`text-sm mb-4 ${textSecondary}`}>
-              <span className="font-medium" style={{ color: couleur }}>{addToDevisModal.nom}</span>
+              <span className="font-medium text-accent-texte">{addToDevisModal.nom}</span>
               {' — '}
               {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(addToDevisModal.prixUnitaireHT || 0)}
               /{addToDevisModal.unite || 'u'}
             </p>
 
             {devisBrouillons.length === 0 ? (
-              <div className={`text-center py-6 rounded-xl ${isDark ? 'bg-gray-700/50' : 'bg-gray-50'}`}>
+              <div className={`text-center py-6 rounded-xl bg-fond`}>
                 <FileText size={32} className={`mx-auto mb-2 ${textSecondary}`} />
-                <p className={`text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>Aucun devis brouillon</p>
+                <p className={`text-sm font-medium text-encre`}>Aucun devis brouillon</p>
                 <p className={`text-xs mt-1 ${textSecondary}`}>Créez d'abord un devis pour y ajouter des ouvrages.</p>
                 <button
                   onClick={() => { closeAddToDevisModal(); if (setPage) setPage('devis'); }}
-                  className="mt-3 px-4 py-2 text-white rounded-xl text-sm font-medium"
-                  style={{ backgroundColor: couleur }}
+                  className="mt-3 px-4 py-2 rounded-xl text-sm font-medium bg-accent text-sur-accent"
                 >
                   Créer un devis
                 </button>
@@ -667,10 +662,10 @@ export default function Bibliotheque({ isDark, couleur = '#f97316', setPage, dev
                       onChange={e => setAddToDevisQty(Math.max(1, parseInt(e.target.value) || 1))}
                     />
                   </div>
-                  <div className={`p-3 rounded-xl ${isDark ? 'bg-gray-700/50' : 'bg-gray-50'}`}>
+                  <div className={`p-3 rounded-xl bg-fond`}>
                     <div className="flex items-center justify-between">
                       <span className={`text-sm ${textSecondary}`}>Sous-total HT</span>
-                      <span className="text-lg font-bold" style={{ color: couleur }}>
+                      <span className="text-lg font-bold text-accent-texte">
                         {((parseFloat(addToDevisModal.prixUnitaireHT) || 0) * addToDevisQty).toFixed(2)} €
                       </span>
                     </div>
@@ -679,15 +674,14 @@ export default function Bibliotheque({ isDark, couleur = '#f97316', setPage, dev
                 <div className="flex gap-3 mt-5">
                   <button
                     onClick={closeAddToDevisModal}
-                    className={`flex-1 py-3 rounded-xl font-medium ${isDark ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-700'}`}
+                    className={`flex-1 py-3 rounded-xl font-medium bg-surface-2 text-encre-2`}
                   >
                     Annuler
                   </button>
                   <button
                     onClick={handleAddToDevis}
                     disabled={!addToDevisSelected}
-                    className="flex-1 py-3 text-white rounded-xl font-medium flex items-center justify-center gap-2 disabled:opacity-50"
-                    style={{ backgroundColor: couleur }}
+                    className="flex-1 py-3 rounded-xl font-medium flex items-center justify-center gap-2 disabled:opacity-50 bg-accent text-sur-accent"
                   >
                     <Plus size={16} /> Ajouter
                   </button>

@@ -104,11 +104,11 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
   const fmtPriceShort = (n) => modeDiscret ? '·····' : `${Number(n || 0).toLocaleString('fr-FR', { maximumFractionDigits: 2 })} €`;
 
   // Theme classes
-  const cardBg = isDark ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200";
+  const cardBg = "bg-surface border-bord";
   const inputBg = isDark ? "bg-slate-700 border-slate-600 text-white placeholder-slate-400" : "bg-white border-slate-300";
-  const textPrimary = isDark ? "text-slate-100" : "text-slate-900";
-  const textSecondary = isDark ? "text-slate-300" : "text-slate-600";
-  const textMuted = isDark ? "text-slate-400" : "text-slate-600";
+  const textPrimary = "text-encre";
+  const textSecondary = "text-encre-2";
+  const textMuted = "text-encre-2";
 
   // ====== CORE STATE ======
   const [activeTab, setActiveTab] = useState('catalogue'); // catalogue, fournisseurs, mouvements, packs, inventaire, parametres
@@ -1010,11 +1010,11 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
             }} className={`px-3 py-2 rounded-xl text-sm font-medium bg-surface-2 hover:bg-bord`}>
               <PackagePlus size={14} className="inline mr-1" /> Dupliquer
             </button>
-            <button onClick={() => { setArticleDetail(null); startEdit(item); }} className="px-4 py-2 rounded-xl text-sm font-medium" style={{ background: `${couleur}15`, color: couleur }}>
+            <button onClick={() => { setArticleDetail(null); startEdit(item); }} className="px-4 py-2 rounded-xl text-sm font-medium text-accent-texte" style={{ background: `${couleur}15` }}>
               <Edit3 size={14} className="inline mr-1" /> Modifier
             </button>
             {/* Ajouter au devis button */}
-            <button onClick={() => openAddToDevisModal(item)} className="px-4 py-2 rounded-xl text-sm font-medium text-white flex items-center gap-1.5 shadow-md" style={{ background: couleur }}>
+            <button onClick={() => openAddToDevisModal(item)} className="px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-1.5 shadow-md bg-accent text-sur-accent">
               <FileText size={14} /> Ajouter au devis
             </button>
           </div>
@@ -1039,7 +1039,7 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
         {/* Fournisseurs comparateur */}
         <div className={`${cardBg} rounded-2xl border p-5`}>
           <div className="flex items-center justify-between mb-3">
-            <h3 className={`font-semibold flex items-center gap-2 ${textPrimary}`}><Truck size={16} style={{ color: couleur }} /> Fournisseurs ({itemFournisseurs.length})</h3>
+            <h3 className={`font-semibold flex items-center gap-2 ${textPrimary}`}><Truck size={16} className="text-accent-texte" /> Fournisseurs ({itemFournisseurs.length})</h3>
             <button onClick={() => {
               const fId = prompt('ID ou nom du fournisseur à lier ?');
               const found = fournisseurs.find(f => f.nom.toLowerCase().includes((fId || '').toLowerCase()));
@@ -1077,7 +1077,7 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
         {/* Historique prix */}
         {itemHistory.length > 0 && (
           <div className={`${cardBg} rounded-2xl border p-5`}>
-            <h3 className={`font-semibold flex items-center gap-2 mb-3 ${textPrimary}`}><History size={16} style={{ color: couleur }} /> Historique prix</h3>
+            <h3 className={`font-semibold flex items-center gap-2 mb-3 ${textPrimary}`}><History size={16} className="text-accent-texte" /> Historique prix</h3>
             <div className="space-y-2">
               {itemHistory.map(h => (
                 <div key={h.id} className={`flex items-center justify-between py-2 border-b last:border-0 border-bord`}>
@@ -1094,7 +1094,7 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
 
         {/* Mouvements récents */}
         <div className={`${cardBg} rounded-2xl border p-5`}>
-          <h3 className={`font-semibold flex items-center gap-2 mb-3 ${textPrimary}`}><ArrowRightLeft size={16} style={{ color: couleur }} /> Mouvements récents</h3>
+          <h3 className={`font-semibold flex items-center gap-2 mb-3 ${textPrimary}`}><ArrowRightLeft size={16} className="text-accent-texte" /> Mouvements récents</h3>
           {itemMouvements.length === 0 ? (
             <p className={`text-sm ${textMuted} text-center py-4`}>Aucun mouvement enregistré</p>
           ) : (
@@ -1170,7 +1170,7 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
               <input type="number" min="0.01" step="0.01" className={`w-full px-4 py-2.5 border rounded-xl transition-all duration-300 ${inputBg} ${priceFlash ? 'ring-2 ring-offset-1' : ''} ${formErrors.prix ? 'border-red-400 ring-1 ring-red-400' : ''}`} style={priceFlash ? { '--tw-ring-color': couleur, '--tw-ring-offset-color': isDark ? '#1e293b' : '#fff' } : {}} value={form.prix} onChange={e => { setForm(p => ({...p, prix: e.target.value, coefAuto: false})); if (formErrors.prix) setFormErrors(p => ({...p, prix: ''})); }} />
               {formErrors.prix && <p className="text-xs text-red-500 mt-1">{formErrors.prix}</p>}
               {form.coefAuto && form.prixAchat && (
-                <p className="text-xs mt-1 flex items-center gap-1" style={{ color: couleur }}>
+                <p className="text-xs mt-1 flex items-center gap-1 text-accent-texte">
                   <Zap size={10} /> Calculé auto (×{coefficients[form.categorie] || 1.5})
                 </p>
               )}
@@ -1276,7 +1276,7 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
         </div>
         <div className={`flex justify-end gap-3 mt-6 pt-6 border-t `}>
           <button onClick={fermerFormulaire} className={`px-4 py-2.5 rounded-xl min-h-[44px] bg-surface-2`}>Annuler</button>
-          <button onClick={submit} className="px-6 py-2.5 text-white rounded-xl min-h-[44px] flex items-center gap-2" style={{background: couleur}}>
+          <button onClick={submit} className="px-6 py-2.5 rounded-xl min-h-[44px] flex items-center gap-2 bg-accent text-sur-accent">
             {editId ? <Edit3 size={16} /> : <Plus size={16} />} {editId ? 'Enregistrer' : 'Ajouter'}
           </button>
         </div>
@@ -1298,14 +1298,14 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
               <p className={`text-sm ${textMuted}`}>{Object.keys(inventaireCounts).length} articles à compter · {counted} écart{counted > 1 ? 's' : ''}</p>
             </div>
           </div>
-          <button onClick={finishInventaire} className="px-5 py-2.5 text-white rounded-xl font-medium flex items-center gap-2 shadow-lg" style={{ background: couleur }}>
+          <button onClick={finishInventaire} className="px-5 py-2.5 rounded-xl font-medium flex items-center gap-2 shadow-lg bg-accent text-sur-accent">
             <Check size={16} /> Terminer
           </button>
         </div>
 
         {/* Progress */}
         <div className={`w-full h-2 rounded-full bg-bord`}>
-          <div className="h-full rounded-full transition-all" style={{ width: `${(Object.keys(inventaireCounts).length / Math.max(stockItems.length, 1)) * 100}%`, background: couleur }} />
+          <div className="h-full rounded-full transition-all bg-accent" style={{ width: `${(Object.keys(inventaireCounts).length / Math.max(stockItems.length, 1)) * 100}%` }} />
         </div>
 
         <div className="space-y-2">
@@ -1360,7 +1360,7 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
               Centralisez vos matériaux, tarifs et marges. Commencez en important des articles depuis notre référentiel BTP ou ajoutez-les manuellement.
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <button onClick={() => setOnboardingStep('metiers')} className="px-8 py-4 text-white rounded-2xl font-semibold flex items-center justify-center gap-3 shadow-xl hover:shadow-2xl transition-all text-lg" style={{ background: couleur }}>
+              <button onClick={() => setOnboardingStep('metiers')} className="px-8 py-4 rounded-2xl font-semibold flex items-center justify-center gap-3 shadow-xl hover:shadow-2xl transition-all text-lg bg-accent text-sur-accent">
                 <Sparkles size={22} /> Importer le Référentiel BTP
               </button>
               <button onClick={ouvrirNouvelArticle} className={`px-6 py-4 rounded-2xl font-medium flex items-center justify-center gap-2 border-2 transition-all text-encre-2 border-bord hover:bg-surface-2`}>
@@ -1390,7 +1390,7 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
                   <button key={cat.id} onClick={() => setSelectedMetiers(prev => isSelected ? prev.filter(id => id !== cat.id) : [...prev, cat.id])}
                     className={`relative p-4 rounded-xl border-2 text-center transition-all hover:scale-[1.02] ${isSelected ? 'shadow-lg' : 'border-bord hover:border-bord-fort'}`}
                     style={isSelected ? { borderColor: couleur, background: `${couleur}10` } : {}}>
-                    {isSelected && <div className="absolute top-2 right-2 w-5 h-5 rounded-full flex items-center justify-center text-white" style={{ background: couleur }}><Check size={12} /></div>}
+                    {isSelected && <div className="absolute top-2 right-2 w-5 h-5 rounded-full flex items-center justify-center bg-accent text-sur-accent"><Check size={12} /></div>}
                     <div className="text-3xl mb-2">{cat.icon}</div>
                     <p className={`font-medium text-sm ${textPrimary}`}>{cat.nom}</p>
                     <p className={`text-xs ${textMuted}`}>{sousCount} articles</p>
@@ -1403,8 +1403,7 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
                 {selectedMetiers.length > 0 ? `${selectedMetiers.length} métier${selectedMetiers.length > 1 ? 's' : ''} sélectionné${selectedMetiers.length > 1 ? 's' : ''}` : 'Aucun métier sélectionné'}
               </p>
               <button onClick={() => handleBulkImport(selectedMetiers)} disabled={selectedMetiers.length === 0}
-                className="px-6 py-3 text-white rounded-xl font-semibold flex items-center gap-2 shadow-lg disabled:opacity-40 transition-all"
-                style={{ background: couleur }}>
+                className="px-6 py-3 rounded-xl font-semibold flex items-center gap-2 shadow-lg disabled:opacity-40 transition-all bg-accent text-sur-accent">
                 <Download size={18} /> Importer {selectedMetiers.length > 0 ? `(${selectedMetiers.reduce((s, id) => s + getSousCategories(id).reduce((ss, sc) => ss + sc.articlesCount, 0), 0)} articles)` : ''}
               </button>
             </div>
@@ -1414,14 +1413,14 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
         {onboardingStep === 'importing' && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className={`${cardBg} rounded-2xl border p-12 text-center`}>
             <div className="w-16 h-16 mx-auto mb-6 rounded-2xl flex items-center justify-center animate-pulse" style={{ background: `${couleur}20` }}>
-              <Download size={32} style={{ color: couleur }} />
+              <Download size={32} className="text-accent-texte" />
             </div>
             <h3 className={`text-xl font-bold mb-2 ${textPrimary}`}>Import en cours...</h3>
             <p className={`text-sm ${textMuted} mb-6`}>Ajout des articles depuis le Référentiel BTP</p>
             <div className={`w-full max-w-md mx-auto h-3 rounded-full bg-bord`}>
-              <motion.div className="h-full rounded-full" style={{ background: couleur }} initial={{ width: 0 }} animate={{ width: `${importProgress}%` }} transition={{ ease: 'easeOut' }} />
+              <motion.div className="h-full rounded-full bg-accent" initial={{ width: 0 }} animate={{ width: `${importProgress}%` }} transition={{ ease: 'easeOut' }} />
             </div>
-            <p className="text-sm font-bold mt-3" style={{ color: couleur }}>{importProgress}%</p>
+            <p className="text-sm font-bold mt-3 text-accent-texte">{importProgress}%</p>
           </motion.div>
         )}
 
@@ -1776,12 +1775,12 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
           {filtered.length === 0 ? (
             <div className={`${cardBg} rounded-2xl border p-12 text-center`}>
               <div className="w-20 h-20 mx-auto mb-4 rounded-2xl flex items-center justify-center shadow-lg" style={{ background: `${couleur}20` }}>
-                <Package size={40} style={{ color: couleur }} />
+                <Package size={40} className="text-accent-texte" />
               </div>
               <h2 className={`text-xl font-bold mb-2 ${textPrimary}`}>{search || catFilter !== 'Tous' ? 'Aucun article trouvé' : 'Créez votre catalogue'}</h2>
               <p className={`text-sm ${textMuted} mb-4`}>{search || catFilter !== 'Tous' ? 'Modifiez vos filtres ou ajoutez un nouvel article.' : 'Centralisez vos matériaux, tarifs et stocks.'}</p>
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                <button onClick={() => setShowArticlePicker(true)} className="px-6 py-3 text-white rounded-xl flex items-center justify-center gap-2 font-medium hover:shadow-lg transition-all" style={{ background: couleur }}>
+                <button onClick={() => setShowArticlePicker(true)} className="px-6 py-3 rounded-xl flex items-center justify-center gap-2 font-medium hover:shadow-lg transition-all bg-accent text-sur-accent">
                   <Sparkles size={18} /> Importer depuis le Référentiel BTP
                 </button>
                 <button onClick={ouvrirNouvelArticle} className={`px-6 py-3 rounded-xl flex items-center justify-center gap-2 border-2 font-medium transition-all text-encre-2 border-bord hover:bg-surface-2`}>
@@ -1796,7 +1795,7 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
               <div className={`mb-4 p-4 rounded-xl border relative ${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-gradient-to-r from-orange-50 to-amber-50 border-orange-200'}`}>
                 <button
                   onClick={() => { setOnboardingDismissed(true); try { localStorage.setItem('cp_catalogue_onboarding_dismissed', 'true'); } catch { /* préférence non enregistrée : quota plein ou navigation privée */ } }}
-                  className={`absolute top-2 right-2 p-1.5 rounded-lg ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-white/80 text-slate-400'}`}
+                  className={`absolute top-2 right-2 p-1.5 rounded-lg hover:bg-surface/80 text-encre-3`}
                   aria-label="Fermer le bandeau"
                 >
                   <X size={14} />
@@ -1819,7 +1818,7 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
                     </div>
                   </div>
                   <div className="flex gap-2 flex-shrink-0">
-                    <button onClick={() => setShowArticlePicker(true)} className="px-4 py-2 text-white rounded-lg text-sm font-medium flex items-center gap-2 whitespace-nowrap hover:shadow-lg transition-all" style={{ background: couleur }}>
+                    <button onClick={() => setShowArticlePicker(true)} className="px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 whitespace-nowrap hover:shadow-lg transition-all bg-accent text-sur-accent">
                       <Sparkles size={14} /> Référentiel BTP
                     </button>
                     <button onClick={() => fileInputRef.current?.click()} className={`px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-2 whitespace-nowrap border bg-surface text-encre-2 border-bord hover:bg-surface-2`}>
@@ -1979,18 +1978,18 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <p className={`text-sm ${textMuted}`}>{fournisseurs.length} fournisseur{fournisseurs.length > 1 ? 's' : ''}</p>
-            <button onClick={() => setShowFournisseurForm(true)} className="px-4 py-2.5 text-white rounded-xl text-sm font-medium flex items-center gap-2 shadow-md" style={{ background: couleur }}><Plus size={16} /> Ajouter</button>
+            <button onClick={() => setShowFournisseurForm(true)} className="px-4 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2 shadow-md bg-accent text-sur-accent"><Plus size={16} /> Ajouter</button>
           </div>
 
           {fournisseurs.length === 0 ? (
             <div className={`${cardBg} rounded-2xl border p-12 text-center`}>
               <div className="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center" style={{ background: `${couleur}15` }}>
-                <Truck size={32} style={{ color: couleur }} />
+                <Truck size={32} className="text-accent-texte" />
               </div>
               <p className={`text-lg font-bold ${textPrimary}`}>Gérez vos fournisseurs</p>
               <p className={`text-sm ${textMuted} mt-1 max-w-md mx-auto`}>Centralisez vos contacts fournisseurs, comparez les prix et suivez les délais de livraison.</p>
               <div className="flex flex-col sm:flex-row gap-3 justify-center mt-6">
-                <button onClick={() => setShowFournisseurForm(true)} className="px-5 py-2.5 text-white rounded-xl text-sm font-medium flex items-center justify-center gap-2 shadow-lg hover:opacity-90 transition-all" style={{ background: couleur }}>
+                <button onClick={() => setShowFournisseurForm(true)} className="px-5 py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2 shadow-lg hover:opacity-90 transition-all bg-accent text-sur-accent">
                   <Plus size={16} /> Ajouter un fournisseur
                 </button>
                 <button onClick={() => fileInputRef.current?.click()} className={`px-5 py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2 border-2 transition-all text-encre-2 border-bord hover:bg-surface-2`}>
@@ -2006,7 +2005,7 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
                 return (
                   <div key={f.id} className={`${cardBg} rounded-xl border p-4`}>
                     <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold flex-shrink-0" style={{ background: couleur }}>
+                      <div className="w-12 h-12 rounded-xl flex items-center justify-center font-bold flex-shrink-0 bg-accent text-sur-accent">
                         {f.nom.charAt(0).toUpperCase()}
                       </div>
                       <div className="flex-1 min-w-0">
@@ -2092,7 +2091,7 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
                   </div>
                   <div className="flex gap-3 mt-5">
                     <button onClick={() => { setShowFournisseurForm(false); setEditFournisseurId(null); }} className={`flex-1 py-3 rounded-xl bg-surface-2`}>Annuler</button>
-                    <button onClick={addFournisseur} className="flex-1 py-3 text-white rounded-xl font-medium" style={{ background: couleur }}>{editFournisseurId ? 'Modifier' : 'Ajouter'}</button>
+                    <button onClick={addFournisseur} className="flex-1 py-3 rounded-xl font-medium bg-accent text-sur-accent">{editFournisseurId ? 'Modifier' : 'Ajouter'}</button>
                   </div>
                 </motion.div>
               </motion.div>
@@ -2188,8 +2187,7 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
                             showToast(`"${linkSelected.nom}" lié à ${linkModal.fournisseurNom}`, 'success');
                             setLinkModal(null);
                           }}
-                          className="flex-1 py-3 text-white rounded-xl text-sm font-medium"
-                          style={{ background: couleur }}
+                          className="flex-1 py-3 rounded-xl text-sm font-medium bg-accent text-sur-accent"
                         >
                           Lier l'article
                         </button>
@@ -2214,7 +2212,7 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
                   <Download size={14} /> CSV
                 </button>
               )}
-              <button onClick={() => setShowMouvementForm(true)} className="px-4 py-2.5 text-white rounded-xl text-sm font-medium flex items-center gap-2 shadow-md" style={{ background: couleur }}><Plus size={16} /> Nouveau mouvement</button>
+              <button onClick={() => setShowMouvementForm(true)} className="px-4 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2 shadow-md bg-accent text-sur-accent"><Plus size={16} /> Nouveau mouvement</button>
             </div>
           </div>
 
@@ -2235,7 +2233,7 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
                 </div>
                 <div className={`p-3 rounded-xl border bg-surface border-bord`}>
                   <p className={`text-xs ${textMuted}`}>Articles</p>
-                  <p className="text-lg font-bold" style={{ color: couleur }}>{uniqueArticles}</p>
+                  <p className="text-lg font-bold text-accent-texte">{uniqueArticles}</p>
                 </div>
               </div>
             );
@@ -2270,7 +2268,7 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
           {mouvements.length === 0 ? (
             <div className={`${cardBg} rounded-2xl border p-12 text-center`}>
               <div className="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center" style={{ background: `${couleur}15` }}>
-                <ArrowRightLeft size={32} style={{ color: couleur }} />
+                <ArrowRightLeft size={32} className="text-accent-texte" />
               </div>
               <p className={`text-lg font-bold ${textPrimary}`}>Tracez vos mouvements de stock</p>
               <p className={`text-sm ${textMuted} mt-1 max-w-md mx-auto`}>Enregistrez les entrées et sorties pour un suivi précis de vos stocks en temps réel.</p>
@@ -2284,7 +2282,7 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
                   <span className={`text-xs ${textMuted}`}>Sorties</span>
                 </div>
               </div>
-              <button onClick={() => setShowMouvementForm(true)} className="mt-6 px-5 py-2.5 text-white rounded-xl text-sm font-medium inline-flex items-center gap-2 shadow-lg hover:opacity-90 transition-all" style={{ background: couleur }}>
+              <button onClick={() => setShowMouvementForm(true)} className="mt-6 px-5 py-2.5 rounded-xl text-sm font-medium inline-flex items-center gap-2 shadow-lg hover:opacity-90 transition-all bg-accent text-sur-accent">
                 <Plus size={16} /> Enregistrer un mouvement
               </button>
             </div>
@@ -2292,7 +2290,7 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
             <div className={`${cardBg} rounded-2xl border p-8 text-center`}>
               <Filter size={32} className={`mx-auto mb-2 ${textMuted}`} />
               <p className={`text-sm font-medium ${textPrimary}`}>Aucun mouvement pour ces filtres</p>
-              <button onClick={() => { setMouvTypeFilter('all'); setMouvArticleFilter(''); }} className="text-sm mt-2" style={{ color: couleur }}>Réinitialiser</button>
+              <button onClick={() => { setMouvTypeFilter('all'); setMouvArticleFilter(''); }} className="text-sm mt-2 text-accent-texte">Réinitialiser</button>
             </div>
           ) : (
             <div className="space-y-2">
@@ -2307,7 +2305,7 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
                 const isOut = typeNormalized === 'out';
                 return (
                   <div key={m.id} className={`${cardBg} rounded-xl border p-4 flex items-center gap-4`}>
-                    <span className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold ${isIn ? 'bg-succes-fond text-succes-texte' : isOut ? 'bg-danger-fond text-danger-texte' : isDark ? 'bg-orange-900/40 text-orange-400' : 'bg-orange-100 text-orange-700'}`}>
+                    <span className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold ${isIn ? 'bg-succes-fond text-succes-texte' : isOut ? 'bg-danger-fond text-danger-texte' : 'bg-alerte-fond text-alerte-texte'}`}>
                       {isIn ? '↗' : isOut ? '↘' : '⇄'}
                     </span>
                     <div className="flex-1 min-w-0">
@@ -2323,7 +2321,7 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className={`font-bold ${isIn ? 'text-emerald-500' : isOut ? 'text-red-500' : isDark ? 'text-orange-400' : 'text-orange-600'}`}>
+                      <p className={`font-bold ${isIn ? 'text-emerald-500' : isOut ? 'text-red-500' : 'text-alerte-texte'}`}>
                         {isIn ? '+' : isOut ? '-' : ''}{Math.abs(m.quantite)}
                       </p>
                       <p className={`text-xs ${textMuted}`}>{dateLue(m.date).toLocaleDateString('fr-FR')}</p>
@@ -2363,7 +2361,7 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
                   </div>
                   <div className="flex gap-3 mt-5">
                     <button onClick={() => setShowMouvementForm(false)} className={`flex-1 py-3 rounded-xl bg-surface-2`}>Annuler</button>
-                    <button onClick={addMouvement} className="flex-1 py-3 text-white rounded-xl font-medium" style={{ background: couleur }}>Valider</button>
+                    <button onClick={addMouvement} className="flex-1 py-3 rounded-xl font-medium bg-accent text-sur-accent">Valider</button>
                   </div>
                 </motion.div>
               </motion.div>
@@ -2377,13 +2375,13 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <p className={`text-sm ${textMuted}`}>{packs.length} pack{packs.length > 1 ? 's' : ''}</p>
-            <button onClick={() => { setEditPackId(null); setPackForm({ nom: '', description: '', articles: [], prixVente: '' }); setShowPackForm(true); }} className="px-4 py-2.5 text-white rounded-xl text-sm font-medium flex items-center gap-2 shadow-md" style={{ background: couleur }}><PackagePlus size={16} /> Nouveau pack</button>
+            <button onClick={() => { setEditPackId(null); setPackForm({ nom: '', description: '', articles: [], prixVente: '' }); setShowPackForm(true); }} className="px-4 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2 shadow-md bg-accent text-sur-accent"><PackagePlus size={16} /> Nouveau pack</button>
           </div>
 
           {packs.length === 0 ? (
             <div className={`${cardBg} rounded-2xl border p-12 text-center`}>
               <div className="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center" style={{ background: `${couleur}15` }}>
-                <Layers size={32} style={{ color: couleur }} />
+                <Layers size={32} className="text-accent-texte" />
               </div>
               <p className={`text-lg font-bold ${textPrimary}`}>Créez des packs / kits</p>
               <p className={`text-sm ${textMuted} mt-1 max-w-md mx-auto`}>Regroupez plusieurs articles fréquemment utilisés ensemble pour les ajouter d'un clic à vos devis.</p>
@@ -2392,7 +2390,7 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
                   <span key={ex} className={`text-xs px-2.5 py-1 rounded-full bg-surface-2 text-encre-2`}>{ex}</span>
                 ))}
               </div>
-              <button onClick={() => { setEditPackId(null); setPackForm({ nom: '', description: '', articles: [], prixVente: '' }); setShowPackForm(true); }} className="mt-6 px-5 py-2.5 text-white rounded-xl text-sm font-medium inline-flex items-center gap-2 shadow-lg hover:opacity-90 transition-all" style={{ background: couleur }}>
+              <button onClick={() => { setEditPackId(null); setPackForm({ nom: '', description: '', articles: [], prixVente: '' }); setShowPackForm(true); }} className="mt-6 px-5 py-2.5 rounded-xl text-sm font-medium inline-flex items-center gap-2 shadow-lg hover:opacity-90 transition-all bg-accent text-sur-accent">
                 <PackagePlus size={16} /> Créer un pack
               </button>
             </div>
@@ -2441,7 +2439,7 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
                     </div>
                     <div className={`pt-3 border-t flex items-center justify-between border-bord`}>
                       <div>
-                        <span className={`text-lg font-bold`} style={{ color: couleur }}>{prixVente.toFixed(0)} €</span>
+                        <span className={`text-lg font-bold text-accent-texte`}>{prixVente.toFixed(0)} €</span>
                         {totalCout > 0 && <span className={`text-xs ml-2 ${textMuted}`}>Coût: {totalCout.toFixed(0)} €</span>}
                       </div>
                       {marge !== null && <span className={`text-sm font-semibold ${getMargeColor(marge)}`}>Marge {marge.toFixed(0)}%</span>}
@@ -2493,7 +2491,7 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
                   </div>
                   <div className="flex gap-3 mt-5">
                     <button onClick={() => { setShowPackForm(false); setEditPackId(null); setPackForm({ nom: '', description: '', articles: [], prixVente: '' }); }} className={`flex-1 py-3 rounded-xl bg-surface-2`}>Annuler</button>
-                    <button onClick={addPack} className="flex-1 py-3 text-white rounded-xl font-medium" style={{ background: couleur }}>{editPackId ? 'Enregistrer' : 'Créer le pack'}</button>
+                    <button onClick={addPack} className="flex-1 py-3 rounded-xl font-medium bg-accent text-sur-accent">{editPackId ? 'Enregistrer' : 'Créer le pack'}</button>
                   </div>
                 </motion.div>
               </motion.div>
@@ -2517,13 +2515,13 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
           {favoris.length === 0 ? (
             <div className={`text-center py-12`}>
               <div className="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center" style={{ background: `${couleur}15` }}>
-                <Star size={32} style={{ color: couleur }} />
+                <Star size={32} className="text-accent-texte" />
               </div>
               <p className={`text-lg font-bold ${textPrimary}`}>Aucun article en favoris</p>
               <p className={`text-sm ${textMuted} mt-1 max-w-md mx-auto`}>Cliquez sur l'étoile ★ d'un article pour l'ajouter à vos favoris.</p>
-              <p className={`text-xs ${textMuted} mt-2 max-w-sm mx-auto`} style={{ color: couleur }}>Les articles favoris apparaissent en premier lors de la création de devis</p>
+              <p className={`text-xs mt-2 max-w-sm mx-auto text-accent-texte`}>Les articles favoris apparaissent en premier lors de la création de devis</p>
               <button onClick={() => setActiveTab('catalogue')}
-                className="mt-6 inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium text-white shadow-md hover:opacity-90 transition-all" style={{ backgroundColor: couleur }}>
+                className="mt-6 inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium shadow-md hover:opacity-90 transition-all bg-accent text-sur-accent">
                 <Package size={16} /> Voir le catalogue
               </button>
             </div>
@@ -2615,7 +2613,7 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div className={`p-3 rounded-xl border bg-surface border-bord`} title="Nombre d'articles avec gestion de stock activée">
                   <p className={`text-xs ${textMuted}`}>Articles suivis</p>
-                  <p className="text-xl font-bold" style={{ color: couleur }}>{stockItems.length}</p>
+                  <p className="text-xl font-bold text-accent-texte">{stockItems.length}</p>
                 </div>
                 <div className={`p-3 rounded-xl border bg-surface border-bord`} title="Articles dont le stock actuel est inférieur au minimum défini">
                   <p className={`text-xs ${textMuted}`}>Stock bas</p>
@@ -2670,13 +2668,13 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
                 <div className={`p-4 rounded-xl mb-4 bg-alerte-fond`}>
                   <p className={`text-sm text-amber-600 font-medium mb-1`}>Aucun article avec gestion de stock</p>
                   <p className={`text-xs ${textMuted}`}>Pour activer le suivi de stock, modifiez un article et remplissez les champs "Stock actuel" et "Stock minimum".</p>
-                  <button onClick={() => setActiveTab('catalogue')} className="mt-2 text-sm font-medium" style={{ color: couleur }}>Aller au catalogue</button>
+                  <button onClick={() => setActiveTab('catalogue')} className="mt-2 text-sm font-medium text-accent-texte">Aller au catalogue</button>
                 </div>
               ) : (
                 <button onClick={async () => {
                   const confirmed = await confirm({ title: 'Démarrer un inventaire', message: `Vous allez compter ${stockItems.length} article${stockItems.length !== 1 ? 's' : ''}. Les écarts seront enregistrés comme ajustements de stock.` });
                   if (confirmed) startInventaire();
-                }} className="px-8 py-3 text-white rounded-xl font-medium flex items-center justify-center gap-2 mx-auto shadow-lg" style={{ background: couleur }}>
+                }} className="px-8 py-3 rounded-xl font-medium flex items-center justify-center gap-2 mx-auto shadow-lg bg-accent text-sur-accent">
                   <RefreshCw size={18} /> Démarrer l'inventaire ({stockItems.length} article{stockItems.length > 1 ? 's' : ''})
                 </button>
               )}
@@ -2711,7 +2709,7 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
         <div className="space-y-4">
           <div className={`${cardBg} rounded-2xl border p-5`}>
             <div className="flex items-center justify-between mb-4">
-              <h3 className={`font-semibold flex items-center gap-2 ${textPrimary}`}><Percent size={16} style={{ color: couleur }} /> Coefficients par catégorie</h3>
+              <h3 className={`font-semibold flex items-center gap-2 ${textPrimary}`}><Percent size={16} className="text-accent-texte" /> Coefficients par catégorie</h3>
               {/* #1: Auto-save feedback */}
               <div className="flex items-center gap-2" role="status" aria-live="polite">
                 {coefSaved === 'saving' && (
@@ -2759,7 +2757,7 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
                       }}
                     />
                   </div>
-                  <span className={`text-xs ${textMuted} w-48 text-right flex-shrink-0 hidden sm:block`}>100€ → {modeDiscret ? '·····' : `${((coefficients[cat] || 1.5) * 100).toFixed(0)}€`} <span className="font-medium" style={{ color: couleur }}>(+{(((coefficients[cat] || 1.5) - 1) * 100).toFixed(0)}%)</span></span>
+                  <span className={`text-xs ${textMuted} w-48 text-right flex-shrink-0 hidden sm:block`}>100€ → {modeDiscret ? '·····' : `${((coefficients[cat] || 1.5) * 100).toFixed(0)}€`} <span className="font-medium text-accent-texte">(+{(((coefficients[cat] || 1.5) - 1) * 100).toFixed(0)}%)</span></span>
                 </div>
               ))}
             </div>
@@ -2794,8 +2792,7 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
                 if (refuses) showToast(`${modifies} prix modifié${modifies > 1 ? 's' : ''}, ${refuses} non enregistré${refuses > 1 ? 's' : ''}`, 'error');
                 else showToast(modifies ? `${modifies} prix modifié${modifies > 1 ? 's' : ''}` : 'Tous les prix étaient déjà à jour', 'success');
               }}
-              className={`text-sm flex items-center gap-1.5 px-3 py-2 rounded-lg transition-colors text-white`}
-              style={{ background: couleur }}
+              className={`text-sm flex items-center gap-1.5 px-3 py-2 rounded-lg transition-colors bg-accent text-sur-accent`}
             >
               <Check size={14} /> Appliquer à tous les articles
             </button>
@@ -2847,7 +2844,7 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
               </div>
               <div className="flex gap-3">
                 <button onClick={() => setShowImport(false)} className={`flex-1 py-3 rounded-xl bg-surface-2`}>Annuler</button>
-                <button onClick={executeImport} disabled={!importMapping.designation} className="flex-1 py-3 text-white rounded-xl font-medium disabled:opacity-50" style={{ background: couleur }}>
+                <button onClick={executeImport} disabled={!importMapping.designation} className="flex-1 py-3 rounded-xl font-medium disabled:opacity-50 bg-accent text-sur-accent">
                   <Upload size={16} className="inline mr-2" />Importer {importData.rows.length} articles
                 </button>
               </div>
@@ -2863,7 +2860,7 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
             <div className="absolute inset-0 bg-black/70" onClick={stopScanner} />
             <motion.div className={`relative w-full max-w-lg rounded-2xl overflow-hidden bg-surface shadow-2xl`} initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }}>
               <div className={`p-4 border-b flex items-center justify-between border-bord`}>
-                <h3 className={`font-bold text-lg flex items-center gap-2 ${textPrimary}`}><Camera size={20} style={{ color: couleur }} /> Scanner un code-barres</h3>
+                <h3 className={`font-bold text-lg flex items-center gap-2 ${textPrimary}`}><Camera size={20} className="text-accent-texte" /> Scanner un code-barres</h3>
                 <button onClick={stopScanner} className={`p-2 rounded-lg hover:bg-surface-2`}><X size={20} className={textMuted} /></button>
               </div>
               {!scanResult ? (
@@ -2895,7 +2892,7 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
                       <p className={`text-sm ${textMuted} mb-4`}>Scanner non supporté. Entrez le code manuellement :</p>
                       <form onSubmit={(e) => { e.preventDefault(); const v = e.target.barcode.value; if (v) handleBarcodeDetected(v); }}>
                         <input name="barcode" type="text" placeholder="Code-barres (EAN)" className={`w-full px-4 py-3 border rounded-xl text-center text-lg font-mono ${inputBg}`} autoFocus />
-                        <button type="submit" className="mt-3 w-full py-3 text-white rounded-xl font-medium" style={{ background: couleur }}>Rechercher</button>
+                        <button type="submit" className="mt-3 w-full py-3 rounded-xl font-medium bg-accent text-sur-accent">Rechercher</button>
                       </form>
                     </div>
                   )}
@@ -2907,7 +2904,7 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
                       <p className={`font-bold text-lg mb-1 ${textPrimary}`}>{scanResult.article.nom}</p>
                       <p className={`text-sm ${textMuted} mb-4`}>Trouvé dans votre catalogue</p>
                       <div className="flex gap-2">
-                        <button onClick={() => { stopScanner(); setArticleDetail(scanResult.article.id); }} className="flex-1 py-3 text-white rounded-xl font-medium" style={{ background: couleur }}>Voir la fiche</button>
+                        <button onClick={() => { stopScanner(); setArticleDetail(scanResult.article.id); }} className="flex-1 py-3 rounded-xl font-medium bg-accent text-sur-accent">Voir la fiche</button>
                         <button onClick={() => setScanResult(null)} className={`flex-1 py-3 rounded-xl bg-surface-2`}>Scanner encore</button>
                       </div>
                     </div>
@@ -2925,7 +2922,7 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
                         stopScanner();
                         setForm(prev => ({ ...prev, nom: scanResult.product.nom, reference: scanResult.product.barcode }));
                         setShow(true);
-                      }} className="w-full py-3 text-white rounded-xl font-medium flex items-center justify-center gap-2" style={{ background: couleur }}>
+                      }} className="w-full py-3 rounded-xl font-medium flex items-center justify-center gap-2 bg-accent text-sur-accent">
                         <Plus size={18} /> Ajouter au catalogue
                       </button>
                     </div>
@@ -2942,7 +2939,7 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
                           stopScanner();
                           setForm(prev => ({ ...prev, reference: scanResult.barcode }));
                           setShow(true);
-                        }} className="flex-1 py-3 text-white rounded-xl font-medium" style={{ background: couleur }}>Créer l'article</button>
+                        }} className="flex-1 py-3 rounded-xl font-medium bg-accent text-sur-accent">Créer l'article</button>
                         <button onClick={() => setScanResult(null)} className={`flex-1 py-3 rounded-xl bg-surface-2`}>Réessayer</button>
                       </div>
                     </div>
@@ -2962,7 +2959,7 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
             <motion.div className={`relative w-full max-w-md rounded-2xl p-6 bg-surface shadow-2xl`} initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }}>
               <h3 className={`font-bold text-lg mb-1 ${textPrimary}`}>Ajouter au devis</h3>
               <p className={`text-sm ${textMuted} mb-4`}>
-                <span className="font-medium" style={{ color: couleur }}>{addToDevisModal.nom}</span> — {addToDevisModal.prix}€/{addToDevisModal.unite || 'u'}
+                <span className="font-medium text-accent-texte">{addToDevisModal.nom}</span> — {addToDevisModal.prix}€/{addToDevisModal.unite || 'u'}
               </p>
 
               {devisBrouillons.length === 0 ? (
@@ -2970,7 +2967,7 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
                   <FileText size={32} className={`mx-auto mb-2 ${textMuted}`} />
                   <p className={`text-sm font-medium ${textPrimary}`}>Aucun devis brouillon</p>
                   <p className={`text-xs ${textMuted} mt-1`}>Créez d'abord un devis pour y ajouter des articles.</p>
-                  <button onClick={() => { setAddToDevisModal(null); if (setPage) setPage('devis'); }} className="mt-3 px-4 py-2 text-white rounded-xl text-sm font-medium" style={{ background: couleur }}>
+                  <button onClick={() => { setAddToDevisModal(null); if (setPage) setPage('devis'); }} className="mt-3 px-4 py-2 rounded-xl text-sm font-medium bg-accent text-sur-accent">
                     Créer un devis
                   </button>
                 </div>
@@ -3008,7 +3005,7 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
                     <div className={`p-3 rounded-xl bg-surface-2`}>
                       <div className="flex items-center justify-between">
                         <span className={`text-sm ${textMuted}`}>Sous-total HT</span>
-                        <span className={`text-lg font-bold`} style={{ color: couleur }}>
+                        <span className={`text-lg font-bold text-accent-texte`}>
                           {((parseFloat(addToDevisModal.prix) || 0) * addToDevisQty).toFixed(2)} €
                         </span>
                       </div>
@@ -3021,8 +3018,7 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
                     <button
                       onClick={handleAddToDevis}
                       disabled={!addToDevisSelected}
-                      className="flex-1 py-3 text-white rounded-xl font-medium flex items-center justify-center gap-2 disabled:opacity-50"
-                      style={{ background: couleur }}
+                      className="flex-1 py-3 rounded-xl font-medium flex items-center justify-center gap-2 disabled:opacity-50 bg-accent text-sur-accent"
                     >
                       <Plus size={16} /> Ajouter
                     </button>

@@ -20,18 +20,17 @@ const LoadingSpinner = ({ couleur }) => (
 );
 
 const ModuleErrorFallback = ({ moduleName, isDark, couleur, onRetry }) => (
-  <div className={`rounded-xl border p-6 text-center ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+  <div className={`rounded-xl border p-6 text-center bg-surface border-bord`}>
     <AlertTriangle size={32} className="mx-auto mb-3 text-amber-500" />
-    <p className={`font-medium mb-1 ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+    <p className={`font-medium mb-1 text-encre`}>
       Impossible de charger le module {moduleName}
     </p>
-    <p className={`text-sm mb-4 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+    <p className={`text-sm mb-4 text-encre-3`}>
       Une erreur est survenue. Vérifiez votre connexion ou réessayez.
     </p>
     <button
       onClick={onRetry || (() => window.location.reload())}
-      className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-white text-sm font-medium"
-      style={{ backgroundColor: couleur }}
+      className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-accent text-sur-accent"
     >
       <RefreshCw size={14} /> Réessayer
     </button>
@@ -46,8 +45,8 @@ const TAB_CONFIG = [
 ];
 
 export default function FinancesPage({ devis, depenses, clients, chantiers, entreprise, equipe, paiements, pointages = [], isDark, couleur = '#F97316', setPage, modeDiscret: modeDiscretGlobal, ouvrirDocument}) {
-  const textPrimary = isDark ? 'text-slate-100' : 'text-slate-900';
-  const textMuted = isDark ? 'text-slate-400' : 'text-slate-600';
+  const textPrimary = 'text-encre';
+  const textMuted = 'text-encre-2';
   // Onglet demandé par une autre page (Réglages › Comptabilité → « Ouvrir l'export comptable ») : lu au premier rendu,
   // effacé après le montage (un premier rendu abandonné puis repris le relit)
   const [activeTab, setActiveTab] = useState(() => {

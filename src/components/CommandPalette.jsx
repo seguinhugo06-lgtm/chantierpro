@@ -108,11 +108,11 @@ export default function CommandPalette({
   const debouncedQuery = useDebounce(query, 300);
 
   // Theme classes
-  const cardBg = isDark ? 'bg-slate-800' : 'bg-white';
-  const borderColor = isDark ? 'border-slate-700' : 'border-slate-200';
-  const textPrimary = isDark ? 'text-white' : 'text-slate-900';
-  const textMuted = isDark ? 'text-slate-400' : 'text-slate-500';
-  const selectedBg = isDark ? 'bg-slate-700' : 'bg-slate-100';
+  const cardBg = 'bg-surface';
+  const borderColor = 'border-bord';
+  const textPrimary = 'text-encre';
+  const textMuted = 'text-encre-3';
+  const selectedBg = 'bg-surface-2';
 
   // Load recent items on mount
   useEffect(() => {
@@ -473,7 +473,7 @@ export default function CommandPalette({
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                       >
-                        {idx > 0 && <div className={`mx-4 my-1 border-t ${isDark ? 'border-slate-700' : 'border-slate-200'}`} />}
+                        {idx > 0 && <div className={`mx-4 my-1 border-t border-bord`} />}
                         <div className={`flex items-center gap-2 text-xs font-semibold uppercase tracking-wider px-5 py-2 ${textMuted}`}>
                           {item.label === 'Récents' && <History size={12} />}
                           {item.label === 'Actions rapides' && <Zap size={12} />}
@@ -505,9 +505,7 @@ export default function CommandPalette({
                     >
                       {/* Number badge for quick select */}
                       {currentIndex < 9 && (
-                        <span className={`w-5 h-5 text-[10px] font-medium rounded flex items-center justify-center flex-shrink-0 ${
-                          isDark ? 'bg-slate-700 text-slate-400' : 'bg-slate-100 text-slate-500'
-                        }`}>
+                        <span className={`w-5 h-5 text-[10px] font-medium rounded flex items-center justify-center flex-shrink-0 bg-surface-2 text-encre-3`}>
                           {currentIndex + 1}
                         </span>
                       )}
@@ -563,7 +561,7 @@ export default function CommandPalette({
             </div>
 
             {/* Footer */}
-            <div className={`flex items-center justify-between px-5 py-3 border-t ${borderColor} ${isDark ? 'bg-slate-900/50' : 'bg-slate-50'}`}>
+            <div className={`flex items-center justify-between px-5 py-3 border-t ${borderColor} bg-fond`}>
               <div className="flex items-center gap-4 text-xs">
                 <span className={`flex items-center gap-1 ${textMuted}`}>
                   <kbd className={`px-1.5 py-0.5 rounded ${isDark ? 'bg-slate-700' : 'bg-white border'}`}>↑</kbd>
@@ -589,8 +587,8 @@ export default function CommandPalette({
                 </span>
               </div>
               <div className="flex items-center gap-1.5">
-                <Zap size={14} style={{ color: couleur }} />
-                <span className={`text-xs font-medium`} style={{ color: couleur }}>Mallettico</span>
+                <Zap size={14} className="text-accent-texte" />
+                <span className={`text-xs font-medium text-accent-texte`}>Mallettico</span>
               </div>
             </div>
           </motion.div>

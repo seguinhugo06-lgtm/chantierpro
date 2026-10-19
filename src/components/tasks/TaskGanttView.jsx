@@ -138,13 +138,11 @@ function Tooltip({ memo, x, y, isDark }) {
 
   return (
     <div
-      className={`fixed z-50 px-3 py-2 rounded-lg shadow-lg text-xs max-w-xs pointer-events-none ${
-        isDark ? 'bg-slate-700 text-slate-100 border border-slate-600' : 'bg-white text-slate-800 border border-slate-200'
-      }`}
+      className={`fixed z-50 px-3 py-2 rounded-lg shadow-lg text-xs max-w-xs pointer-events-none bg-surface text-encre border border-bord`}
       style={{ left: x + 12, top: y - 10 }}
     >
       <div className="font-semibold mb-1 truncate">{memo.title || memo.text || 'Sans titre'}</div>
-      <div className={isDark ? 'text-slate-300' : 'text-slate-500'}>
+      <div className="text-encre-3">
         {memo.due_date}{memo.due_date_end ? ` → ${memo.due_date_end}` : ''}
       </div>
       {status && <div className="mt-0.5">Statut : {status}</div>}
@@ -309,16 +307,16 @@ export default function TaskGanttView({ memos, updateMemo, chantiers, clients, i
   const totalWidth = timeline.length * cellWidth;
   const totalHeight = sortedMemos.length * ROW_HEIGHT;
 
-  const gridBorder = isDark ? 'border-slate-700' : 'border-slate-200';
-  const bgMain = isDark ? 'bg-slate-900' : 'bg-white';
-  const bgHeader = isDark ? 'bg-slate-800' : 'bg-slate-50';
-  const textColor = isDark ? 'text-slate-300' : 'text-slate-700';
-  const textMuted = isDark ? 'text-slate-400' : 'text-slate-500';
-  const nameBg = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200';
+  const gridBorder = 'border-bord';
+  const bgMain = 'bg-surface';
+  const bgHeader = 'bg-fond';
+  const textColor = 'text-encre-2';
+  const textMuted = 'text-encre-3';
+  const nameBg = 'bg-surface border-bord';
 
   if (sortedMemos.length === 0) {
     return (
-      <div className={`rounded-xl border p-8 text-center ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+      <div className={`rounded-xl border p-8 text-center bg-surface border-bord`}>
         <p className={`text-sm ${textMuted}`}>
           Aucune tâche avec date à afficher.
         </p>
@@ -341,7 +339,7 @@ export default function TaskGanttView({ memos, updateMemo, chantiers, clients, i
               className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
                 zoom === z.id
                   ? 'text-white shadow-sm'
-                  : isDark ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-700' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'
+                  : 'text-encre-3 hover:text-encre-2 hover:bg-surface-2'
               }`}
               style={zoom === z.id ? { background: couleur } : {}}
             >
@@ -352,19 +350,19 @@ export default function TaskGanttView({ memos, updateMemo, chantiers, clients, i
         <div className="flex items-center gap-1">
           <button
             onClick={scrollLeft}
-            className={`p-1.5 rounded-lg transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}
+            className={`p-1.5 rounded-lg transition-colors hover:bg-surface-2 text-encre-3`}
           >
             <ChevronLeft size={16} />
           </button>
           <button
             onClick={scrollToToday}
-            className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-100 text-slate-600'}`}
+            className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors hover:bg-surface-2 text-encre-2`}
           >
             Aujourd'hui
           </button>
           <button
             onClick={scrollRight}
-            className={`p-1.5 rounded-lg transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}
+            className={`p-1.5 rounded-lg transition-colors hover:bg-surface-2 text-encre-3`}
           >
             <ChevronRight size={16} />
           </button>
@@ -387,9 +385,7 @@ export default function TaskGanttView({ memos, updateMemo, chantiers, clients, i
             {sortedMemos.map(memo => (
               <div
                 key={memo.id}
-                className={`flex items-center px-3 border-b cursor-pointer transition-colors ${gridBorder} ${
-                  isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'
-                }`}
+                className={`flex items-center px-3 border-b cursor-pointer transition-colors ${gridBorder} hover:bg-surface-2`}
                 style={{ height: ROW_HEIGHT }}
                 onClick={() => onSelectMemo?.(memo.id)}
               >
@@ -419,7 +415,7 @@ export default function TaskGanttView({ memos, updateMemo, chantiers, clients, i
                   key={i}
                   className={`flex-shrink-0 flex items-center justify-center border-r text-xs ${gridBorder} ${
                     cell.isWeekend
-                      ? isDark ? 'text-slate-500' : 'text-slate-400'
+                      ? 'text-encre-3'
                       : textMuted
                   }`}
                   style={{ width: cellWidth }}
@@ -437,7 +433,7 @@ export default function TaskGanttView({ memos, updateMemo, chantiers, clients, i
               <div
                 key={i}
                 className={`absolute top-0 bottom-0 border-r ${gridBorder} ${
-                  cell.isWeekend ? (isDark ? 'bg-slate-800/50' : 'bg-slate-50/80') : ''
+                  cell.isWeekend ? 'bg-fond/80' : ''
                 }`}
                 style={{ left: i * cellWidth, width: cellWidth }}
               />

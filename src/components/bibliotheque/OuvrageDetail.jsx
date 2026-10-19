@@ -63,7 +63,7 @@ function PriceRangeBar({ prixMin, prixMax, prixUnitaireHT, isDark, couleur }) {
   const clampedPosition = Math.max(0, Math.min(100, position));
 
   const trackBg = isDark ? 'bg-gray-600' : 'bg-gray-200';
-  const textSecondary = isDark ? 'text-gray-400' : 'text-gray-500';
+  const textSecondary = 'text-encre-3';
 
   return (
     <div className="mt-3">
@@ -78,19 +78,17 @@ function PriceRangeBar({ prixMin, prixMax, prixUnitaireHT, isDark, couleur }) {
       <div className={`relative w-full h-2 rounded-full ${trackBg}`}>
         {/* Filled portion up to the indicator */}
         <div
-          className="absolute inset-y-0 left-0 rounded-full opacity-30"
+          className="absolute inset-y-0 left-0 rounded-full opacity-30 bg-accent"
           style={{
             width: `${clampedPosition}%`,
-            backgroundColor: couleur,
           }}
         />
         {/* Position indicator */}
         <div
-          className="absolute top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-2 border-white shadow-md"
+          className="absolute top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-2 border-white shadow-md bg-accent"
           style={{
             left: `${clampedPosition}%`,
             transform: `translate(-50%, -50%)`,
-            backgroundColor: couleur,
           }}
         />
       </div>
@@ -127,11 +125,11 @@ export default function OuvrageDetail({
   if (!isOpen || !ouvrage) return null;
 
   // ── Theme classes ───────────────────────────────────────────────────────────
-  const bg = isDark ? 'bg-gray-800' : 'bg-white';
-  const textPrimary = isDark ? 'text-white' : 'text-gray-900';
-  const textSecondary = isDark ? 'text-gray-400' : 'text-gray-500';
-  const borderColor = isDark ? 'border-gray-700' : 'border-gray-200';
-  const sectionBg = isDark ? 'bg-gray-700/50' : 'bg-gray-50';
+  const bg = 'bg-surface';
+  const textPrimary = 'text-encre';
+  const textSecondary = 'text-encre-3';
+  const borderColor = 'border-bord';
+  const sectionBg = 'bg-fond';
 
   // ── Ouvrage data ────────────────────────────────────────────────────────────
   const {
@@ -178,9 +176,7 @@ export default function OuvrageDetail({
               <ArrowRight className={`w-3 h-3 flex-shrink-0 ${textSecondary}`} />
             )}
             <span
-              className={`px-2 py-0.5 rounded-md font-medium ${
-                isDark ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'
-              }`}
+              className={`px-2 py-0.5 rounded-md font-medium bg-surface-2 text-encre-2`}
             >
               {item.nom}
             </span>
@@ -219,11 +215,7 @@ export default function OuvrageDetail({
           {/* Close button */}
           <button
             onClick={onClose}
-            className={`absolute top-4 right-4 p-2 rounded-xl transition-colors ${
-              isDark
-                ? 'hover:bg-gray-700 text-gray-400 hover:text-gray-200'
-                : 'hover:bg-gray-100 text-gray-400 hover:text-gray-600'
-            }`}
+            className={`absolute top-4 right-4 p-2 rounded-xl transition-colors hover:bg-surface-2 text-encre-3 hover:text-encre-2`}
             aria-label="Fermer"
           >
             <X className="w-5 h-5" />
@@ -235,9 +227,7 @@ export default function OuvrageDetail({
           {/* Code */}
           {code && (
             <span
-              className={`inline-block text-xs font-mono px-2 py-0.5 rounded-md mb-2 ${
-                isDark ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-500'
-              }`}
+              className={`inline-block text-xs font-mono px-2 py-0.5 rounded-md mb-2 bg-surface-2 text-encre-3`}
             >
               {code}
             </span>
@@ -259,7 +249,7 @@ export default function OuvrageDetail({
           {/* ── Price Section ─────────────────────────────────────────────── */}
           <div className={`rounded-xl p-5 border ${borderColor} ${sectionBg}`}>
             <div className="flex items-center gap-2 mb-4">
-              <Euro className="w-5 h-5" style={{ color: couleur }} />
+              <Euro className="w-5 h-5 text-accent-texte" />
               <h3 className={`text-sm font-semibold uppercase tracking-wide ${textSecondary}`}>
                 Tarification
               </h3>
@@ -272,12 +262,12 @@ export default function OuvrageDetail({
                   <span className={`text-lg line-through ${textSecondary}`}>
                     {formatPrice(_prixOriginal)}
                   </span>
-                  <span className="text-3xl font-bold" style={{ color: couleur }}>
+                  <span className="text-3xl font-bold text-accent-texte">
                     {formatPrice(prixUnitaireHT)}
                   </span>
                 </>
               ) : (
-                <span className="text-3xl font-bold" style={{ color: couleur }}>
+                <span className="text-3xl font-bold text-accent-texte">
                   {formatPrice(prixUnitaireHT)}
                 </span>
               )}
@@ -289,8 +279,7 @@ export default function OuvrageDetail({
             {/* Geo coefficient badge */}
             {hasGeoCoeff && (
               <span
-                className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full text-white mt-2"
-                style={{ backgroundColor: couleur }}
+                className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full mt-2 bg-accent text-sur-accent"
               >
                 &times;{coefficientGeo.toFixed(2)} {selectedDept}
               </span>
@@ -320,7 +309,7 @@ export default function OuvrageDetail({
           {/* ── Technical Details ─────────────────────────────────────────── */}
           <div className={`rounded-xl p-5 border ${borderColor} ${sectionBg}`}>
             <div className="flex items-center gap-2 mb-4">
-              <FileText className="w-5 h-5" style={{ color: couleur }} />
+              <FileText className="w-5 h-5 text-accent-texte" />
               <h3 className={`text-sm font-semibold uppercase tracking-wide ${textSecondary}`}>
                 Détails techniques
               </h3>
@@ -329,7 +318,7 @@ export default function OuvrageDetail({
             {/* Description */}
             {description && (
               <div className="mb-4">
-                <p className={`text-sm leading-relaxed ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                <p className={`text-sm leading-relaxed text-encre-2`}>
                   {description}
                 </p>
               </div>
@@ -339,9 +328,7 @@ export default function OuvrageDetail({
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               {/* Temps de pose */}
               <div
-                className={`rounded-lg p-3 text-center ${
-                  isDark ? 'bg-gray-600/50' : 'bg-white'
-                }`}
+                className={`rounded-lg p-3 text-center bg-surface`}
               >
                 <Clock className={`w-4 h-4 mx-auto mb-1.5 ${textSecondary}`} />
                 <p className={`text-xs font-medium mb-0.5 ${textSecondary}`}>
@@ -354,9 +341,7 @@ export default function OuvrageDetail({
 
               {/* Unite */}
               <div
-                className={`rounded-lg p-3 text-center ${
-                  isDark ? 'bg-gray-600/50' : 'bg-white'
-                }`}
+                className={`rounded-lg p-3 text-center bg-surface`}
               >
                 <Star className={`w-4 h-4 mx-auto mb-1.5 ${textSecondary}`} />
                 <p className={`text-xs font-medium mb-0.5 ${textSecondary}`}>
@@ -369,9 +354,7 @@ export default function OuvrageDetail({
 
               {/* TVA */}
               <div
-                className={`rounded-lg p-3 text-center ${
-                  isDark ? 'bg-gray-600/50' : 'bg-white'
-                }`}
+                className={`rounded-lg p-3 text-center bg-surface`}
               >
                 <Percent className={`w-4 h-4 mx-auto mb-1.5 ${textSecondary}`} />
                 <p className={`text-xs font-medium mb-0.5 ${textSecondary}`}>
@@ -384,9 +367,7 @@ export default function OuvrageDetail({
 
               {/* Difficulte */}
               <div
-                className={`rounded-lg p-3 text-center ${
-                  isDark ? 'bg-gray-600/50' : 'bg-white'
-                }`}
+                className={`rounded-lg p-3 text-center bg-surface`}
               >
                 <Star className={`w-4 h-4 mx-auto mb-1.5 ${textSecondary}`} />
                 <p className={`text-xs font-medium mb-0.5 ${textSecondary}`}>
@@ -403,7 +384,7 @@ export default function OuvrageDetail({
           {tags && tags.length > 0 && (
             <div>
               <div className="flex items-center gap-2 mb-3">
-                <Tag className="w-4 h-4" style={{ color: couleur }} />
+                <Tag className="w-4 h-4 text-accent-texte" />
                 <h3 className={`text-sm font-semibold uppercase tracking-wide ${textSecondary}`}>
                   Tags
                 </h3>
@@ -435,19 +416,14 @@ export default function OuvrageDetail({
         >
           <button
             onClick={onClose}
-            className={`flex-1 sm:flex-none px-6 py-2.5 rounded-xl text-sm font-medium transition-colors border ${
-              isDark
-                ? 'border-gray-600 text-gray-300 hover:bg-gray-700'
-                : 'border-gray-300 text-gray-700 hover:bg-gray-50'
-            }`}
+            className={`flex-1 sm:flex-none px-6 py-2.5 rounded-xl text-sm font-medium transition-colors border border-bord-fort text-encre-2 hover:bg-surface-2`}
           >
             Fermer
           </button>
           {onAddToDevis && (
             <button
               onClick={() => onAddToDevis(ouvrage)}
-              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:shadow-lg active:scale-[0.98]"
-              style={{ backgroundColor: couleur }}
+              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold transition-all hover:shadow-lg active:scale-[0.98] bg-accent text-sur-accent"
             >
               <ShoppingCart className="w-4 h-4" />
               Ajouter au devis

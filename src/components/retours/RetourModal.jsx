@@ -35,8 +35,8 @@ export default function RetourModal({ isOpen, onClose, isDark, couleur = '#f9731
     return () => { annule = true; };
   }, [isOpen]);
 
-  const textMuted = isDark ? 'text-slate-400' : 'text-slate-600';
-  const textPrimary = isDark ? 'text-slate-100' : 'text-slate-900';
+  const textMuted = 'text-encre-2';
+  const textPrimary = 'text-encre';
   const inputBg = isDark ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400' : 'bg-white border-slate-300';
 
   const envoyer = async () => {
@@ -68,7 +68,7 @@ export default function RetourModal({ isOpen, onClose, isDark, couleur = '#f9731
                 role="radio"
                 aria-checked={actif}
                 onClick={() => setType(cle)}
-                className={`flex flex-col items-center gap-1 px-2 py-3 rounded-xl border text-sm font-medium transition-colors ${actif ? 'text-white border-transparent' : isDark ? 'border-slate-600 text-slate-300 hover:bg-slate-700' : 'border-slate-200 text-slate-700 hover:bg-slate-50'}`}
+                className={`flex flex-col items-center gap-1 px-2 py-3 rounded-xl border text-sm font-medium transition-colors ${actif ? 'text-white border-transparent' : 'border-bord text-encre-2 hover:bg-surface-2'}`}
                 style={actif ? { background: couleur } : undefined}
               >
                 <Icone size={18} />
@@ -95,11 +95,11 @@ export default function RetourModal({ isOpen, onClose, isDark, couleur = '#f9731
         )}
 
         {mesRetours.length > 0 && (
-          <div className={`pt-3 border-t ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+          <div className={`pt-3 border-t border-bord`}>
             <h3 className={`text-sm font-semibold mb-2 ${textPrimary}`}>Vos derniers retours</h3>
             <ul className="space-y-2">
               {mesRetours.slice(0, 5).map((r) => (
-                <li key={r.id} className={`p-3 rounded-xl text-sm ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+                <li key={r.id} className={`p-3 rounded-xl text-sm bg-fond`}>
                   <div className="flex items-center justify-between gap-2 mb-1">
                     <span className={`text-xs ${textMuted}`}>
                       {TYPES_RETOUR[r.type] || r.type} · {dateLue(r.created_at).toLocaleDateString('fr-FR')}
@@ -111,7 +111,7 @@ export default function RetourModal({ isOpen, onClose, isDark, couleur = '#f9731
                   <p className={`${textPrimary} line-clamp-2 whitespace-pre-line`}>{r.message}</p>
                   {r.reponse && (
                     <p className={`mt-2 pl-3 border-l-2 text-sm whitespace-pre-line ${textMuted}`} style={{ borderColor: couleur }}>
-                      <CheckCircle size={13} className="inline mr-1 -mt-0.5" style={{ color: couleur }} />
+                      <CheckCircle size={13} className="inline mr-1 -mt-0.5 text-accent-texte" />
                       {r.reponse}
                     </p>
                   )}
@@ -122,15 +122,14 @@ export default function RetourModal({ isOpen, onClose, isDark, couleur = '#f9731
         )}
       </ModalBody>
       <ModalFooter>
-        <button type="button" onClick={onClose} disabled={enCours} className={`px-4 py-2.5 rounded-xl text-sm font-medium ${isDark ? 'text-slate-300 hover:bg-slate-700' : 'text-slate-700 hover:bg-slate-100'}`}>
+        <button type="button" onClick={onClose} disabled={enCours} className={`px-4 py-2.5 rounded-xl text-sm font-medium text-encre-2 hover:bg-surface-2`}>
           Fermer
         </button>
         <button
           type="button"
           onClick={envoyer}
           disabled={enCours || message.trim().length < 3}
-          className="px-4 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-          style={{ background: couleur }}
+          className="px-4 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 bg-accent text-sur-accent"
         >
           {enCours && <Loader2 size={16} className="animate-spin" />}
           {enCours ? 'Envoi…' : 'Envoyer'}

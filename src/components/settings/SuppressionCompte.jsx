@@ -31,8 +31,8 @@ export default function SuppressionCompte({ isDark, showToast, onExporter }) {
     && !abonnement?.cancel_at_period_end
     && !!abonnement?.stripe_subscription_id;
 
-  const textPrimary = isDark ? 'text-slate-100' : 'text-slate-900';
-  const textMuted = isDark ? 'text-slate-400' : 'text-slate-600';
+  const textPrimary = 'text-encre';
+  const textMuted = 'text-encre-2';
   const inputBg = isDark ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400' : 'bg-white border-slate-300';
 
   const fermer = () => { if (!enCours) { setOuvert(false); setSaisie(''); setErreur(''); } };
@@ -128,7 +128,7 @@ export default function SuppressionCompte({ isDark, showToast, onExporter }) {
             <li className="flex gap-2"><AlertTriangle size={15} className="text-red-500 flex-shrink-0 mt-0.5" /> Un client particulier qui a signé en ligne il y a moins de 14 jours perdrait son bouton « renoncer au contrat ici » : attendez la fin de son délai de rétractation.</li>
           </ul>
           {onExporter && (
-            <button type="button" onClick={onExporter} className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium ${isDark ? 'border-slate-600 text-slate-200 hover:bg-slate-700' : 'border-slate-300 text-slate-700 hover:bg-slate-50'}`}>
+            <button type="button" onClick={onExporter} className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium border-bord-fort text-encre-2 hover:bg-surface-2`}>
               <Download size={16} /> Exporter mes données d’abord
             </button>
           )}
@@ -151,7 +151,7 @@ export default function SuppressionCompte({ isDark, showToast, onExporter }) {
           )}
         </ModalBody>
         <ModalFooter>
-          <button type="button" onClick={fermer} disabled={enCours} className={`px-4 py-2.5 rounded-xl text-sm font-medium ${isDark ? 'text-slate-300 hover:bg-slate-700' : 'text-slate-700 hover:bg-slate-100'}`}>
+          <button type="button" onClick={fermer} disabled={enCours} className={`px-4 py-2.5 rounded-xl text-sm font-medium text-encre-2 hover:bg-surface-2`}>
             Annuler
           </button>
           <button

@@ -38,7 +38,7 @@ export default function PageLegalePublique({ pageInitiale }) {
   };
 
   return (
-    <div className="min-h-screen bg-[#f5f5f5] p-4 sm:p-6">
+    <div data-theme="clair" className="min-h-screen bg-[#f5f5f5] p-4 sm:p-6">
       <Suspense fallback={<div className="min-h-screen" />}>
         <LegalPages page={page} isDark={false} couleur="#f97316" setPage={aller} />
       </Suspense>

@@ -130,24 +130,22 @@ export function AppProvider({ children, initialValues = {} }) {
   // Theme helper classes (memoized)
   const theme = useMemo(() => ({
     // Background colors
-    cardBg: isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200',
-    pageBg: isDark ? 'bg-slate-900' : 'bg-slate-50',
+    cardBg: 'bg-surface border-bord',
+    pageBg: 'bg-fond',
 
     // Input styling
-    inputBg: isDark
-      ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400'
-      : 'bg-white border-slate-300 text-slate-900 placeholder-slate-400',
+    inputBg: 'bg-surface border-bord-fort text-encre placeholder:text-encre-3',
 
     // Text colors
-    textPrimary: isDark ? 'text-white' : 'text-slate-900',
-    textSecondary: isDark ? 'text-slate-300' : 'text-slate-600',
-    textMuted: isDark ? 'text-slate-400' : 'text-slate-500',
+    textPrimary: 'text-encre',
+    textSecondary: 'text-encre-2',
+    textMuted: 'text-encre-3',
 
     // Border colors
-    borderColor: isDark ? 'border-slate-700' : 'border-slate-200',
+    borderColor: 'border-bord',
 
     // Hover states
-    hoverBg: isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'
+    hoverBg: 'hover:bg-surface-2'
   }), [isDark]);
 
   const value = useMemo(() => ({

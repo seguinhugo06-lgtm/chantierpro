@@ -42,11 +42,11 @@ export default function QuickChantierModal({
   const dropdownRef = useRef(null);
 
   // Theme classes
-  const cardBg = isDark ? 'bg-slate-800' : 'bg-white';
-  const inputBg = isDark ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400' : 'bg-white border-slate-200 text-slate-900 placeholder-slate-400';
-  const textPrimary = isDark ? 'text-white' : 'text-slate-900';
-  const textMuted = isDark ? 'text-slate-400' : 'text-slate-600';
-  const borderColor = isDark ? 'border-slate-700' : 'border-slate-200';
+  const cardBg = 'bg-surface';
+  const inputBg = 'bg-surface border-bord text-encre placeholder:text-encre-3';
+  const textPrimary = 'text-encre';
+  const textMuted = 'text-encre-2';
+  const borderColor = 'border-bord';
 
   // Auto-focus on open
   useEffect(() => {
@@ -228,7 +228,7 @@ export default function QuickChantierModal({
               className="w-10 h-10 rounded-xl flex items-center justify-center"
               style={{ backgroundColor: `${couleur}20` }}
             >
-              <Building2 size={20} style={{ color: couleur }} />
+              <Building2 size={20} className="text-accent-texte" />
             </div>
             <div>
               <h2 className={`text-lg font-bold ${textPrimary}`}>{isEditMode ? 'Modifier le chantier' : 'Nouveau chantier'}</h2>
@@ -237,7 +237,7 @@ export default function QuickChantierModal({
           </div>
           <button
             onClick={onClose}
-            className={`p-3 rounded-xl transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}
+            className={`p-3 rounded-xl transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-surface-2`}
             aria-label="Fermer"
           >
             <X size={20} className={textMuted} />
@@ -322,11 +322,11 @@ export default function QuickChantierModal({
                           onClick={() => selectClient(c)}
                           className={`w-full px-4 py-2.5 text-left text-sm flex items-center gap-2 transition-colors ${
                             form.client_id === c.id
-                              ? isDark ? 'bg-slate-700' : 'bg-slate-100'
-                              : isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'
+                              ? 'bg-surface-2'
+                              : 'hover:bg-surface-2'
                           }`}
                         >
-                          <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold" style={{ backgroundColor: couleur }}>
+                          <div className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold bg-accent text-sur-accent">
                             {c.nom?.[0]?.toUpperCase()}
                           </div>
                           <div>
@@ -349,11 +349,11 @@ export default function QuickChantierModal({
                         onClick={() => selectClient(c)}
                         className={`w-full px-4 py-2.5 text-left text-sm flex items-center gap-2 transition-colors ${
                           form.client_id === c.id
-                            ? isDark ? 'bg-slate-700' : 'bg-slate-100'
-                            : isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'
+                            ? 'bg-surface-2'
+                            : 'hover:bg-surface-2'
                         }`}
                       >
-                        <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold" style={{ backgroundColor: couleur }}>
+                        <div className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold bg-accent text-sur-accent">
                           {c.nom?.[0]?.toUpperCase()}
                         </div>
                         <div>
@@ -606,14 +606,13 @@ export default function QuickChantierModal({
             type="button"
             onClick={handleSubmit}
             disabled={!form.nom.trim()}
-            className="w-full py-3.5 text-white rounded-xl font-medium flex items-center justify-center gap-2 transition-all hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-            style={{ backgroundColor: couleur }}
+            className="w-full py-3.5 rounded-xl font-medium flex items-center justify-center gap-2 transition-all hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed bg-accent text-sur-accent"
           >
             {isEditMode ? <Check size={18} /> : <Zap size={18} />}
             {isEditMode ? 'Enregistrer les modifications' : 'Créer le chantier'}
           </button>
           <p className={`text-center text-xs ${textMuted}`}>
-            Appuyez sur <kbd className={`px-1.5 py-0.5 rounded ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>Entrée</kbd> pour {isEditMode ? 'enregistrer' : 'créer rapidement'}
+            Appuyez sur <kbd className={`px-1.5 py-0.5 rounded bg-surface-2`}>Entrée</kbd> pour {isEditMode ? 'enregistrer' : 'créer rapidement'}
           </p>
         </div>
       </div>

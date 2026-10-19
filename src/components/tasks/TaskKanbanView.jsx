@@ -81,10 +81,8 @@ function KanbanCard({ memo, chantier, isDark, couleur, onSelect, onDragStart, is
       onClick={() => onSelect?.(memo.id)}
       className={`group cursor-grab active:cursor-grabbing rounded-lg border p-3 transition-all hover:shadow-md ${
         isTermine
-          ? (isDark ? 'bg-slate-800/40 border-slate-700 opacity-60' : 'bg-slate-50 border-slate-200 opacity-60')
-          : isDark
-            ? 'bg-slate-800 border-slate-700 hover:border-slate-600'
-            : 'bg-white border-slate-200 hover:border-slate-300'
+          ? 'bg-fond border-bord opacity-60'
+          : 'bg-surface border-bord hover:border-bord-fort'
       } ${isOverdue ? (isDark ? 'border-red-500/50' : 'border-red-300') : ''}`}
     >
       {/* Header: priority dot + grip */}
@@ -97,7 +95,7 @@ function KanbanCard({ memo, chantier, isDark, couleur, onSelect, onDragStart, is
             title={PRIORITY_LABELS[memo.priority] || 'Moyenne'}
           />
           {/* Title */}
-          <p className={`text-sm font-medium line-clamp-2 ${isTermine ? 'line-through' : ''} ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
+          <p className={`text-sm font-medium line-clamp-2 ${isTermine ? 'line-through' : ''} text-encre`}>
             {memo.title || memo.text || 'Sans titre'}
           </p>
         </div>
@@ -136,9 +134,7 @@ function KanbanCard({ memo, chantier, isDark, couleur, onSelect, onDragStart, is
             className={`inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
               isOverdue
                 ? 'bg-red-100 text-red-600'
-                : isDark
-                  ? 'bg-slate-700 text-slate-300'
-                  : 'bg-slate-100 text-slate-500'
+                : 'bg-surface-2 text-encre-3'
             }`}
           >
             <Calendar size={8} />
@@ -149,9 +145,7 @@ function KanbanCard({ memo, chantier, isDark, couleur, onSelect, onDragStart, is
         {/* Subtask progress */}
         {subtaskProgress && (
           <span
-            className={`inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
-              isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-500'
-            }`}
+            className={`inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-surface-2 text-encre-3`}
           >
             <ListTodo size={8} />
             {subtaskProgress.done}/{subtaskProgress.total}
@@ -161,12 +155,11 @@ function KanbanCard({ memo, chantier, isDark, couleur, onSelect, onDragStart, is
 
       {/* Subtask progress bar */}
       {subtaskProgress && (
-        <div className={`mt-2 h-1 rounded-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
+        <div className={`mt-2 h-1 rounded-full overflow-hidden bg-surface-2`}>
           <div
-            className="h-full rounded-full transition-all"
+            className="h-full rounded-full transition-all bg-accent"
             style={{
               width: `${(subtaskProgress.done / subtaskProgress.total) * 100}%`,
-              background: couleur,
             }}
           />
         </div>
@@ -174,7 +167,7 @@ function KanbanCard({ memo, chantier, isDark, couleur, onSelect, onDragStart, is
 
       {/* Chantier link */}
       {chantier && (
-        <p className={`text-xs mt-2 truncate ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+        <p className={`text-xs mt-2 truncate text-encre-3`}>
           {chantier.nom || chantier.name || ''}
         </p>
       )}
@@ -220,26 +213,24 @@ function KanbanColumn({
         isDragOver
           ? `ring-2 ring-offset-1 ${isDark ? 'ring-offset-slate-900' : 'ring-offset-white'}`
           : ''
-      } ${isDark ? 'border-slate-700' : 'border-slate-200'}`}
+      } border-bord`}
       style={isDragOver ? { '--tw-ring-color': column.color } : {}}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
       {/* Column header */}
-      <div className={`px-3 py-3 rounded-t-xl ${isDark ? 'bg-slate-900/50' : 'bg-slate-50/80'}`}>
+      <div className={`px-3 py-3 rounded-t-xl bg-fond/80`}>
         <div className="flex items-center gap-2">
           <div
             className="w-1 h-5 rounded-full flex-shrink-0"
             style={{ background: column.color }}
           />
           <Icon size={14} style={{ color: column.color }} />
-          <span className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+          <span className={`text-sm font-semibold text-encre`}>
             {column.label}
           </span>
-          <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${
-            isDark ? 'bg-slate-700 text-slate-300' : 'bg-white text-slate-500'
-          }`}>
+          <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium bg-surface text-encre-3`}>
             {cards.length}
           </span>
         </div>
@@ -249,7 +240,7 @@ function KanbanColumn({
       <div
         className={`flex-1 p-2 space-y-2 overflow-y-auto max-h-[calc(100vh-320px)] min-h-[200px] transition-colors ${
           isDragOver
-            ? (isDark ? 'bg-slate-800/30' : 'bg-slate-50')
+            ? 'bg-fond'
             : ''
         }`}
       >
@@ -276,14 +267,10 @@ function KanbanColumn({
       </div>
 
       {/* Add button */}
-      <div className={`p-2 border-t ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+      <div className={`p-2 border-t border-bord`}>
         <button
           onClick={() => onAddMemo?.(column.id)}
-          className={`w-full flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-colors ${
-            isDark
-              ? 'text-slate-400 hover:bg-slate-700 hover:text-slate-200'
-              : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'
-          }`}
+          className={`w-full flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-colors text-encre-3 hover:bg-surface-2 hover:text-encre-2`}
         >
           <Plus size={14} />
           Ajouter

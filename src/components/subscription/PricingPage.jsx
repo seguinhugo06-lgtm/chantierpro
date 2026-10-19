@@ -29,7 +29,7 @@ function PricingToggle({ billing, setBilling }) {
       </span>
       <button
         onClick={() => setBilling(b => b === 'monthly' ? 'yearly' : 'monthly')}
-        className={`relative w-14 h-7 rounded-full transition-colors ${billing === 'yearly' ? 'bg-orange-500' : 'bg-slate-300'}`}
+        className={`relative w-14 h-7 rounded-full transition-colors ${billing === 'yearly' ? 'bg-accent' : 'bg-slate-300'}`}
         aria-label="Basculer entre facturation mensuelle et annuelle"
       >
         <span className={`absolute top-0.5 w-6 h-6 rounded-full bg-white shadow-md transition-transform ${billing === 'yearly' ? 'translate-x-7' : 'translate-x-0.5'}`} />
@@ -128,7 +128,7 @@ function PricingCard({ plan, billing, isCurrent, isLoading, onSelect }) {
             </div>
             {plan.offreLancement && (
               <div className="mt-1">
-                <span className="inline-block px-2 py-0.5 text-[11px] font-bold rounded-full bg-orange-50 text-orange-700">
+                <span className="inline-block px-2 py-0.5 text-[11px] font-bold rounded-full bg-accent/10 text-accent-texte">
                   {plan.offreLancement} — prix gardé tant que vous restez abonné
                 </span>
               </div>
@@ -155,7 +155,7 @@ function PricingCard({ plan, billing, isCurrent, isLoading, onSelect }) {
           isCurrent
             ? 'bg-slate-100 text-slate-400 cursor-default'
             : isPopular
-              ? 'bg-orange-500 text-white hover:bg-orange-600 hover:shadow-lg hover:shadow-orange-500/25'
+              ? 'bg-accent text-sur-accent hover:opacity-90 hover:shadow-lg hover:shadow-accent/25'
               : isRecommended
                 ? 'bg-purple-500 text-white hover:bg-purple-600 hover:shadow-lg hover:shadow-purple-500/25'
                 : 'text-white hover:opacity-90'
@@ -233,22 +233,20 @@ function FAQSection({ isDark }) {
 
   return (
     <section className="py-16 max-w-3xl mx-auto">
-      <h2 className={`text-2xl font-bold text-center mb-10 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+      <h2 className={`text-2xl font-bold text-center mb-10 text-encre`}>
         Questions fréquentes
       </h2>
       <div className="space-y-3">
         {FAQ_ITEMS.map((item, i) => (
           <div
             key={i}
-            className={`rounded-xl border overflow-hidden transition-colors ${
-              isDark ? 'border-slate-700 bg-slate-800' : 'border-slate-200 bg-white'
-            }`}
+            className={`rounded-xl border overflow-hidden transition-colors border-bord bg-surface`}
           >
             <button
               onClick={() => setOpenIndex(openIndex === i ? null : i)}
-              className={`w-full flex items-center justify-between px-5 py-4 text-left ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'} transition-colors`}
+              className={`w-full flex items-center justify-between px-5 py-4 text-left hover:bg-surface-2 transition-colors`}
             >
-              <span className={`font-semibold text-sm ${isDark ? 'text-white' : 'text-slate-900'}`}>
+              <span className={`font-semibold text-sm text-encre`}>
                 {item.q}
               </span>
               <ChevronDown
@@ -257,7 +255,7 @@ function FAQSection({ isDark }) {
               />
             </button>
             {openIndex === i && (
-              <div className={`px-5 pb-4 text-sm leading-relaxed ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+              <div className={`px-5 pb-4 text-sm leading-relaxed text-encre-2`}>
                 {item.a}
               </div>
             )}
@@ -282,10 +280,10 @@ function TrustSection({ isDark }) {
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto py-10">
       {TRUST_ITEMS.map((item, i) => (
         <div key={i} className="flex flex-col items-center text-center gap-2">
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
-            <item.icon size={18} className="text-orange-500" />
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center bg-surface-2`}>
+            <item.icon size={18} className="text-accent-texte" />
           </div>
-          <p className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>{item.label}</p>
+          <p className={`text-sm font-semibold text-encre`}>{item.label}</p>
           <p className="text-xs text-slate-500">{item.desc}</p>
         </div>
       ))}
@@ -364,10 +362,10 @@ export default function PricingPage({ isDark, couleur, setPage }) {
     <div className="max-w-6xl mx-auto">
       {/* Header */}
       <div className="text-center pt-6 pb-2">
-        <h1 className={`text-3xl md:text-4xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+        <h1 className={`text-3xl md:text-4xl font-bold text-encre`}>
           Le plan adapté à votre activité
         </h1>
-        <p className={`mt-3 text-lg ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+        <p className={`mt-3 text-lg text-encre-2`}>
           Commencez gratuitement, évoluez à votre rythme
         </p>
 

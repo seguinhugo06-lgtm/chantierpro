@@ -468,11 +468,11 @@ function TypeBadge({ type, isDark }) {
 export default function BibliothequeOuvrages({ catalogue = [], ouvrages: ouvragesProp, setOuvrages: setOuvragesProp, isDark, couleur }) {
   const { confirm, ConfirmDialog } = useConfirm();
   // ---------- Theme classes ----------
-  const cardBg = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200';
+  const cardBg = 'bg-surface border-bord';
   const inputBg = isDark ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400' : 'bg-white border-slate-300';
-  const textPrimary = isDark ? 'text-slate-100' : 'text-slate-900';
-  const textSecondary = isDark ? 'text-slate-300' : 'text-slate-600';
-  const textMuted = isDark ? 'text-slate-400' : 'text-slate-500';
+  const textPrimary = 'text-encre';
+  const textSecondary = 'text-encre-2';
+  const textMuted = 'text-encre-3';
 
   // ---------- State ----------
   const [localOuvrages, setLocalOuvrages] = useState(() => {
@@ -687,7 +687,7 @@ export default function BibliothequeOuvrages({ catalogue = [], ouvrages: ouvrage
           <div className="flex items-center gap-3">
             <button
               onClick={handleCancel}
-              className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}
+              className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl transition-colors hover:bg-surface-2`}
             >
               <X size={20} className={textPrimary} />
             </button>
@@ -704,8 +704,7 @@ export default function BibliothequeOuvrages({ catalogue = [], ouvrages: ouvrage
             </button>
             <button
               onClick={handleSave}
-              className="px-6 py-2.5 text-white rounded-xl min-h-[44px] hover:shadow-lg transition-all flex items-center gap-2"
-              style={{ background: couleur }}
+              className="px-6 py-2.5 rounded-xl min-h-[44px] hover:shadow-lg transition-all flex items-center gap-2 bg-accent text-sur-accent"
             >
               <Save size={16} />
               Enregistrer
@@ -716,7 +715,7 @@ export default function BibliothequeOuvrages({ catalogue = [], ouvrages: ouvrage
         {/* General info */}
         <div className={`${cardBg} rounded-2xl border p-6`}>
           <h2 className={`text-lg font-semibold mb-4 flex items-center gap-2 ${textPrimary}`}>
-            <Layers size={18} style={{ color: couleur }} />
+            <Layers size={18} className="text-accent-texte" />
             Informations générales
           </h2>
           <div className="space-y-4">
@@ -820,21 +819,21 @@ export default function BibliothequeOuvrages({ catalogue = [], ouvrages: ouvrage
         {/* Composants Table */}
         <div className={`${cardBg} rounded-2xl border`}>
           <div
-            className={`flex items-center justify-between p-5 cursor-pointer ${isDark ? 'hover:bg-slate-700/50' : 'hover:bg-slate-50'} rounded-t-2xl transition-colors`}
+            className={`flex items-center justify-between p-5 cursor-pointer hover:bg-surface-2 rounded-t-2xl transition-colors`}
             onClick={() => setExpandedComposants(!expandedComposants)}
           >
             <h2 className={`text-lg font-semibold flex items-center gap-2 ${textPrimary}`}>
-              <Package size={18} style={{ color: couleur }} />
+              <Package size={18} className="text-accent-texte" />
               Composants ({editingOuvrage.composants.length})
             </h2>
             {expandedComposants ? <ChevronUp size={20} className={textMuted} /> : <ChevronDown size={20} className={textMuted} />}
           </div>
 
           {expandedComposants && (
-            <div className={`border-t ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+            <div className={`border-t border-bord`}>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm" aria-label="Composants de l'ouvrage">
-                  <thead className={isDark ? 'bg-slate-700/50' : 'bg-slate-50'}>
+                  <thead className="bg-fond">
                     <tr>
                       <th scope="col" className={`text-left px-4 py-3 ${textPrimary}`}>Type</th>
                       <th scope="col" className={`text-left px-4 py-3 ${textPrimary}`}>Description</th>
@@ -849,7 +848,7 @@ export default function BibliothequeOuvrages({ catalogue = [], ouvrages: ouvrage
                     {editingOuvrage.composants.map((comp, idx) => {
                       const montant = (comp.quantite || 0) * (comp.prixUnitaire || 0);
                       return (
-                        <tr key={comp.id} className={`border-t ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+                        <tr key={comp.id} className={`border-t border-bord`}>
                           <td className="px-4 py-3">
                             <select
                               className={`w-full px-2 py-1.5 border rounded-lg text-xs ${inputBg}`}
@@ -961,7 +960,7 @@ export default function BibliothequeOuvrages({ catalogue = [], ouvrages: ouvrage
                   </tbody>
                 </table>
               </div>
-              <div className={`px-4 py-3 border-t ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+              <div className={`px-4 py-3 border-t border-bord`}>
                 <button
                   onClick={addComposant}
                   className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-colors ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}
@@ -986,7 +985,7 @@ export default function BibliothequeOuvrages({ catalogue = [], ouvrages: ouvrage
                   .reduce((sum, c) => sum + (c.quantite || 0) * (c.prixUnitaire || 0), 0);
                 const Icon = type.icon;
                 return (
-                  <div key={type.value} className={`p-3 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+                  <div key={type.value} className={`p-3 rounded-xl bg-fond`}>
                     <div className={`flex items-center gap-1.5 mb-1 ${textMuted}`}>
                       <Icon size={14} />
                       <span className="text-xs">{type.label}</span>
@@ -997,7 +996,7 @@ export default function BibliothequeOuvrages({ catalogue = [], ouvrages: ouvrage
               })}
             </div>
 
-            <div className={`border-t pt-4 space-y-4 ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+            <div className={`border-t pt-4 space-y-4 border-bord`}>
               {/* Prix de revient */}
               <div className="flex items-center justify-between">
                 <span className={`font-medium ${textPrimary}`}>Prix de revient HT</span>
@@ -1008,7 +1007,7 @@ export default function BibliothequeOuvrages({ catalogue = [], ouvrages: ouvrage
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <span className={`font-medium ${textPrimary}`}>Coefficient de vente</span>
-                  <span className="font-mono font-bold text-lg" style={{ color: couleur }}>
+                  <span className="font-mono font-bold text-lg text-accent-texte">
                     x{editingOuvrage.coefficientVente.toFixed(2)}
                   </span>
                 </div>
@@ -1031,9 +1030,9 @@ export default function BibliothequeOuvrages({ catalogue = [], ouvrages: ouvrage
               </div>
 
               {/* Prix de vente */}
-              <div className={`flex items-center justify-between p-4 rounded-xl ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
+              <div className={`flex items-center justify-between p-4 rounded-xl bg-fond`}>
                 <span className={`font-semibold ${textPrimary}`}>Prix de vente HT</span>
-                <span className="text-xl font-bold" style={{ color: couleur }}>
+                <span className="text-xl font-bold text-accent-texte">
                   {formatEUR.format(editorPrixVente)}
                 </span>
               </div>
@@ -1071,7 +1070,7 @@ export default function BibliothequeOuvrages({ catalogue = [], ouvrages: ouvrage
           <div className="flex items-center gap-3">
             <button
               onClick={() => { setShowTemplates(false); setTemplateTradeFilter(null); }}
-              className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}
+              className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl transition-colors hover:bg-surface-2`}
             >
               <X size={20} className={textPrimary} />
             </button>
@@ -1146,14 +1145,14 @@ export default function BibliothequeOuvrages({ catalogue = [], ouvrages: ouvrage
                       {/* Composants summary */}
                       <div className={`flex flex-wrap gap-1 mb-3`}>
                         {tpl.composants.map((c, ci) => (
-                          <span key={ci} className={`text-xs px-1.5 py-0.5 rounded ${isDark ? 'bg-slate-700 text-slate-400' : 'bg-slate-100 text-slate-500'}`}>
+                          <span key={ci} className={`text-xs px-1.5 py-0.5 rounded bg-surface-2 text-encre-3`}>
                             {c.description.length > 20 ? c.description.substring(0, 20) + '…' : c.description}
                           </span>
                         ))}
                       </div>
 
                       {/* Price info */}
-                      <div className={`p-3 rounded-xl mb-3 ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+                      <div className={`p-3 rounded-xl mb-3 bg-fond`}>
                         <div className="flex items-center justify-between mb-1">
                           <span className={`text-xs ${textMuted}`}>Prix de revient</span>
                           <span className={`text-sm ${textSecondary}`}>{formatEUR.format(prixRevient)}</span>
@@ -1162,7 +1161,7 @@ export default function BibliothequeOuvrages({ catalogue = [], ouvrages: ouvrage
                           <span className={`text-xs ${textMuted}`}>Prix de vente HT</span>
                           <span className="text-sm font-bold" style={{ color: trade.color }}>{formatEUR.format(prixVente)}</span>
                         </div>
-                        <div className={`flex items-center justify-between mt-1 pt-1 border-t ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
+                        <div className={`flex items-center justify-between mt-1 pt-1 border-t border-bord`}>
                           <span className={`text-xs ${textMuted}`}>Marge · Coeff x{tpl.coefficientVente.toFixed(2)}</span>
                           <span className={`text-sm font-bold ${marge >= 30 ? 'text-emerald-500' : marge >= 15 ? 'text-amber-500' : 'text-red-500'}`}>
                             {marge.toFixed(1)}%
@@ -1225,8 +1224,7 @@ export default function BibliothequeOuvrages({ catalogue = [], ouvrages: ouvrage
           </button>
           <button
             onClick={handleCreate}
-            className="px-4 py-2.5 text-white rounded-xl min-h-[44px] flex items-center gap-2 hover:shadow-lg transition-all"
-            style={{ background: couleur }}
+            className="px-4 py-2.5 rounded-xl min-h-[44px] flex items-center gap-2 hover:shadow-lg transition-all bg-accent text-sur-accent"
           >
             <Plus size={16} />
             <span className="hidden sm:inline">Nouvel ouvrage</span>
@@ -1249,10 +1247,10 @@ export default function BibliothequeOuvrages({ catalogue = [], ouvrages: ouvrage
             />
           </div>
           {/* View toggle */}
-          <div className={`flex rounded-xl border overflow-hidden ${isDark ? 'border-slate-600' : 'border-slate-300'}`}>
+          <div className={`flex rounded-xl border overflow-hidden border-bord-fort`}>
             <button
               onClick={() => setViewMode('grid')}
-              className={`px-3 py-2 text-sm transition-colors ${viewMode === 'grid' ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-white text-slate-600'}`}
+              className={`px-3 py-2 text-sm transition-colors ${viewMode === 'grid' ? 'text-white' : 'bg-surface text-encre-2'}`}
               style={viewMode === 'grid' ? { background: couleur } : {}}
               title="Vue grille"
             >
@@ -1260,7 +1258,7 @@ export default function BibliothequeOuvrages({ catalogue = [], ouvrages: ouvrage
             </button>
             <button
               onClick={() => setViewMode('list')}
-              className={`px-3 py-2 text-sm transition-colors ${viewMode === 'list' ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-white text-slate-600'}`}
+              className={`px-3 py-2 text-sm transition-colors ${viewMode === 'list' ? 'text-white' : 'bg-surface text-encre-2'}`}
               style={viewMode === 'list' ? { background: couleur } : {}}
               title="Vue liste"
             >
@@ -1310,30 +1308,30 @@ export default function BibliothequeOuvrages({ catalogue = [], ouvrages: ouvrage
           </div>
 
           {!search && catFilter === 'Tous' && (
-            <div className={`p-6 sm:p-8 border-t ${isDark ? 'border-slate-700 bg-slate-800/50' : 'border-slate-100 bg-slate-50/50'}`}>
+            <div className={`p-6 sm:p-8 border-t border-bord bg-fond/50`}>
               <p className={`text-xs font-medium uppercase tracking-wider mb-4 ${textMuted}`}>Avantages</p>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-                <div className={`flex items-start gap-3 p-3 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-white'}`}>
+                <div className={`flex items-start gap-3 p-3 rounded-xl bg-surface`}>
                   <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${couleur}20` }}>
-                    <Layers size={18} style={{ color: couleur }} />
+                    <Layers size={18} className="text-accent-texte" />
                   </div>
                   <div>
                     <p className={`font-medium text-sm ${textPrimary}`}>Prix composites</p>
                     <p className={`text-xs ${textMuted}`}>Assemblez plusieurs postes de coût</p>
                   </div>
                 </div>
-                <div className={`flex items-start gap-3 p-3 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-white'}`}>
+                <div className={`flex items-start gap-3 p-3 rounded-xl bg-surface`}>
                   <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${couleur}20` }}>
-                    <Star size={18} style={{ color: couleur }} />
+                    <Star size={18} className="text-accent-texte" />
                   </div>
                   <div>
                     <p className={`font-medium text-sm ${textPrimary}`}>Marges maîtrisées</p>
                     <p className={`text-xs ${textMuted}`}>Coefficient de vente ajustable</p>
                   </div>
                 </div>
-                <div className={`flex items-start gap-3 p-3 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-white'}`}>
+                <div className={`flex items-start gap-3 p-3 rounded-xl bg-surface`}>
                   <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${couleur}20` }}>
-                    <Clock size={18} style={{ color: couleur }} />
+                    <Clock size={18} className="text-accent-texte" />
                   </div>
                   <div>
                     <p className={`font-medium text-sm ${textPrimary}`}>Devis rapides</p>
@@ -1351,8 +1349,7 @@ export default function BibliothequeOuvrages({ catalogue = [], ouvrages: ouvrage
                 </button>
                 <button
                   onClick={handleCreate}
-                  className="w-full sm:w-auto px-6 py-3 text-white rounded-xl flex items-center justify-center gap-2 hover:shadow-lg transition-all font-medium"
-                  style={{ background: couleur }}
+                  className="w-full sm:w-auto px-6 py-3 rounded-xl flex items-center justify-center gap-2 hover:shadow-lg transition-all font-medium bg-accent text-sur-accent"
                 >
                   <Plus size={18} />
                   Créer de zéro
@@ -1362,11 +1359,10 @@ export default function BibliothequeOuvrages({ catalogue = [], ouvrages: ouvrage
           )}
 
           {(search || catFilter !== 'Tous') && (
-            <div className={`p-6 border-t ${isDark ? 'border-slate-700' : 'border-slate-100'} text-center`}>
+            <div className={`p-6 border-t border-bord text-center`}>
               <button
                 onClick={handleCreate}
-                className="px-6 py-3 text-white rounded-xl flex items-center justify-center gap-2 mx-auto hover:shadow-lg transition-all font-medium"
-                style={{ background: couleur }}
+                className="px-6 py-3 rounded-xl flex items-center justify-center gap-2 mx-auto hover:shadow-lg transition-all font-medium bg-accent text-sur-accent"
               >
                 <Plus size={18} />
                 Créer un ouvrage
@@ -1389,7 +1385,7 @@ export default function BibliothequeOuvrages({ catalogue = [], ouvrages: ouvrage
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className={`text-xs font-mono px-2 py-0.5 rounded ${isDark ? 'bg-slate-700 text-slate-400' : 'bg-slate-100 text-slate-500'}`}>
+                      <span className={`text-xs font-mono px-2 py-0.5 rounded bg-surface-2 text-encre-3`}>
                         {ouvrage.reference}
                       </span>
                       {!ouvrage.actif && (
@@ -1430,16 +1426,16 @@ export default function BibliothequeOuvrages({ catalogue = [], ouvrages: ouvrage
                 </div>
 
                 {/* Prices */}
-                <div className={`p-3 rounded-xl mb-3 ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+                <div className={`p-3 rounded-xl mb-3 bg-fond`}>
                   <div className="flex items-center justify-between mb-1">
                     <span className={`text-xs ${textMuted}`}>Revient</span>
                     <span className={`text-sm font-medium ${textSecondary}`}>{formatEUR.format(ouvrage.prixRevientHT)}</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className={`text-xs ${textMuted}`}>Vente HT</span>
-                    <span className="text-sm font-bold" style={{ color: couleur }}>{formatEUR.format(ouvrage.prixVenteHT)}</span>
+                    <span className="text-sm font-bold text-accent-texte">{formatEUR.format(ouvrage.prixVenteHT)}</span>
                   </div>
-                  <div className={`flex items-center justify-between mt-1 pt-1 border-t ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
+                  <div className={`flex items-center justify-between mt-1 pt-1 border-t border-bord`}>
                     <span className={`text-xs ${textMuted}`}>Marge</span>
                     <span className={`text-sm font-bold ${
                       marge >= 30 ? 'text-emerald-500' :
@@ -1481,7 +1477,7 @@ export default function BibliothequeOuvrages({ catalogue = [], ouvrages: ouvrage
         <div className={`${cardBg} rounded-2xl border overflow-hidden`}>
           <div className="overflow-x-auto">
             <table className="w-full text-sm" aria-label="Bibliothèque des ouvrages">
-              <thead className={`border-b ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
+              <thead className={`border-b bg-fond`}>
                 <tr>
                   <th scope="col" className={`text-left px-4 py-3 ${textPrimary}`}>Ouvrage</th>
                   <th scope="col" className={`text-right px-4 py-3 w-28 hidden sm:table-cell ${textPrimary}`}>Revient HT</th>
@@ -1498,13 +1494,13 @@ export default function BibliothequeOuvrages({ catalogue = [], ouvrages: ouvrage
                   return (
                     <tr
                       key={ouvrage.id}
-                      className={`border-b last:border-0 transition-colors cursor-pointer ${isDark ? 'hover:bg-slate-700/70' : 'hover:bg-slate-50'} ${!ouvrage.actif ? 'opacity-60' : ''}`}
+                      className={`border-b last:border-0 transition-colors cursor-pointer hover:bg-surface-2 ${!ouvrage.actif ? 'opacity-60' : ''}`}
                       onClick={() => handleEdit(ouvrage)}
                     >
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${couleur}20` }}>
-                            <Layers size={16} style={{ color: couleur }} />
+                            <Layers size={16} className="text-accent-texte" />
                           </div>
                           <div className="min-w-0">
                             <div className="flex items-center gap-2">
@@ -1523,7 +1519,7 @@ export default function BibliothequeOuvrages({ catalogue = [], ouvrages: ouvrage
                         {formatEUR.format(ouvrage.prixRevientHT)}
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <span className="font-medium" style={{ color: couleur }}>{formatEUR.format(ouvrage.prixVenteHT)}</span>
+                        <span className="font-medium text-accent-texte">{formatEUR.format(ouvrage.prixVenteHT)}</span>
                       </td>
                       <td className="px-4 py-3 text-right hidden sm:table-cell">
                         <span className={`font-medium ${

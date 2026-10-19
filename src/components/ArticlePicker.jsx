@@ -18,14 +18,14 @@ export default function ArticlePicker({ isOpen, onClose, onSelect, isDark = fals
   const [quantite, setQuantite] = useState(1);
 
   // Theme classes
-  const bgMain = isDark ? 'bg-slate-900' : 'bg-white';
-  const bgCard = isDark ? 'bg-slate-800' : 'bg-slate-50';
-  const bgHover = isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100';
-  const textPrimary = isDark ? 'text-white' : 'text-slate-900';
-  const textSecondary = isDark ? 'text-slate-300' : 'text-slate-600';
-  const textMuted = isDark ? 'text-slate-400' : 'text-slate-500';
-  const borderColor = isDark ? 'border-slate-700' : 'border-slate-200';
-  const inputBg = isDark ? 'bg-slate-800 border-slate-600' : 'bg-white border-slate-300';
+  const bgMain = 'bg-surface';
+  const bgCard = 'bg-fond';
+  const bgHover = 'hover:bg-surface-2';
+  const textPrimary = 'text-encre';
+  const textSecondary = 'text-encre-2';
+  const textMuted = 'text-encre-3';
+  const borderColor = 'border-bord';
+  const inputBg = 'bg-surface border-bord-fort';
 
   // Reset state when closing
   const handleClose = () => {
@@ -134,7 +134,7 @@ export default function ArticlePicker({ isOpen, onClose, onSelect, isDark = fals
         <div className={`p-4 border-b ${borderColor} flex items-center justify-between`}>
           <div className="flex items-center gap-3">
             {step > 1 && (
-              <button onClick={handleBack} aria-label="Retour" className={`p-2.5 min-w-[44px] min-h-[44px] rounded-lg flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 ${bgHover} ${textSecondary}`}>
+              <button onClick={handleBack} aria-label="Retour" className={`p-2.5 min-w-[44px] min-h-[44px] rounded-lg flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 ${bgHover} ${textSecondary}`}>
                 <ChevronLeft size={20} />
               </button>
             )}
@@ -153,7 +153,7 @@ export default function ArticlePicker({ isOpen, onClose, onSelect, isDark = fals
               </p>
             </div>
           </div>
-          <button onClick={handleClose} aria-label="Fermer" className={`p-2.5 min-w-[44px] min-h-[44px] rounded-lg flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 ${bgHover} ${textMuted}`}>
+          <button onClick={handleClose} aria-label="Fermer" className={`p-2.5 min-w-[44px] min-h-[44px] rounded-lg flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 ${bgHover} ${textMuted}`}>
             <X size={20} />
           </button>
         </div>
@@ -220,7 +220,7 @@ export default function ArticlePicker({ isOpen, onClose, onSelect, isDark = fals
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className="font-bold" style={{ color: couleur }}>{article.prixDefaut} €</p>
+                      <p className="font-bold text-accent-texte">{article.prixDefaut} €</p>
                       <p className={`text-xs ${textMuted}`}>/ {article.unite}</p>
                     </div>
                   </div>
@@ -297,7 +297,7 @@ export default function ArticlePicker({ isOpen, onClose, onSelect, isDark = fals
                       </p>
                     </div>
                     <div className="text-right ml-4">
-                      <p className="font-bold text-lg" style={{ color: couleur }}>{article.prixDefaut} €</p>
+                      <p className="font-bold text-lg text-accent-texte">{article.prixDefaut} €</p>
                       <p className={`text-xs ${textMuted}`}>prix conseillé</p>
                     </div>
                   </div>
@@ -428,8 +428,7 @@ export default function ArticlePicker({ isOpen, onClose, onSelect, isDark = fals
           <div className={`p-4 border-t ${borderColor}`}>
             <button
               onClick={handleConfirm}
-              className="w-full py-3 rounded-xl text-white font-semibold flex items-center justify-center gap-2 transition-all hover:opacity-90"
-              style={{ backgroundColor: couleur }}
+              className="w-full py-3 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all hover:opacity-90 bg-accent text-sur-accent"
             >
               <Plus size={20} />
               Ajouter au catalogue

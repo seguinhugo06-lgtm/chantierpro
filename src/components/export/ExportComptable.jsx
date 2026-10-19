@@ -325,19 +325,17 @@ export default function ExportComptable({
 
   // ─── Styles ──────────────────────────────────────────────────────────────
 
-  const cardCls = isDark
-    ? 'bg-slate-800 border-slate-700'
-    : 'bg-white border-slate-200';
+  const cardCls = 'bg-surface border-bord';
 
   const inputCls = isDark
     ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400'
     : 'bg-white border-slate-300 text-slate-900';
 
-  const textCls = isDark ? 'text-slate-100' : 'text-slate-900';
-  const mutedCls = isDark ? 'text-slate-400' : 'text-slate-600';
-  const bgPage = isDark ? 'bg-slate-900' : 'bg-slate-50';
-  const hoverRow = isDark ? 'hover:bg-slate-700/50' : 'hover:bg-slate-50';
-  const borderCls = isDark ? 'border-slate-700' : 'border-slate-200';
+  const textCls = 'text-encre';
+  const mutedCls = 'text-encre-2';
+  const bgPage = 'bg-fond';
+  const hoverRow = 'hover:bg-surface-2';
+  const borderCls = 'border-bord';
 
   // ─── Filtered data ──────────────────────────────────────────────────────
 
@@ -546,7 +544,7 @@ export default function ExportComptable({
               className="w-10 h-10 rounded-xl flex items-center justify-center"
               style={{ backgroundColor: `${couleur}20` }}
             >
-              <Download className="w-5 h-5" style={{ color: couleur }} />
+              <Download className="w-5 h-5 text-accent-texte" />
             </div>
             <div>
               <h1 className={`text-2xl font-bold ${textCls}`}>Export Comptable</h1>
@@ -560,7 +558,7 @@ export default function ExportComptable({
         {/* ── Period selector ────────────────────────────────────────────── */}
         <div className={`border rounded-xl p-5 ${cardCls}`}>
           <h2 className={`text-sm font-semibold mb-4 ${textCls} flex items-center gap-2`}>
-            <Calendar className="w-4 h-4" style={{ color: couleur }} />
+            <Calendar className="w-4 h-4 text-accent-texte" />
             Période
           </h2>
 
@@ -634,7 +632,7 @@ export default function ExportComptable({
         {/* ── Format selector ────────────────────────────────────────────── */}
         <div className={`border rounded-xl p-5 ${cardCls}`}>
           <h2 className={`text-sm font-semibold mb-4 ${textCls} flex items-center gap-2`}>
-            <FileText className="w-4 h-4" style={{ color: couleur }} />
+            <FileText className="w-4 h-4 text-accent-texte" />
             Format d'export
           </h2>
 
@@ -650,9 +648,7 @@ export default function ExportComptable({
                   className={`border rounded-xl p-4 text-left transition-all ${
                     isActive
                       ? 'ring-2 shadow-sm'
-                      : isDark
-                        ? 'border-slate-600 hover:border-slate-500'
-                        : 'border-slate-200 hover:border-slate-300'
+                      : 'border-bord hover:border-bord-fort'
                   } ${cardCls}`}
                   style={
                     isActive
@@ -696,8 +692,8 @@ export default function ExportComptable({
           {/* FEC info banner */}
           {format === 'fec' && (
             <div
-              className="mt-4 rounded-lg p-3 flex items-start gap-2 text-sm"
-              style={{ backgroundColor: `${couleur}10`, color: couleur }}
+              className="mt-4 rounded-lg p-3 flex items-start gap-2 text-sm text-accent-texte"
+              style={{ backgroundColor: `${couleur}10` }}
             >
               <Info className="w-4 h-4 mt-0.5 flex-shrink-0" />
               <span>
@@ -711,7 +707,7 @@ export default function ExportComptable({
         {/* ── Journal filter ────────────────────────────────────────────── */}
         <div className={`border rounded-xl p-5 ${cardCls}`}>
           <h2 className={`text-sm font-semibold mb-4 ${textCls} flex items-center gap-2`}>
-            <Filter className="w-4 h-4" style={{ color: couleur }} />
+            <Filter className="w-4 h-4 text-accent-texte" />
             Filtre par journal
           </h2>
           <div className="flex flex-wrap gap-2">
@@ -760,14 +756,13 @@ export default function ExportComptable({
             className={`w-full flex items-center justify-between p-5 ${textCls}`}
           >
             <div className="flex items-center gap-2">
-              <Eye className="w-4 h-4" style={{ color: couleur }} />
+              <Eye className="w-4 h-4 text-accent-texte" />
               <span className="text-sm font-semibold">
                 Aperçu des écritures ({filteredEntries.length} lignes{journalFilter !== 'all' ? ` — ${JOURNALS.find(j => j.key === journalFilter)?.label}` : ''})
               </span>
             </div>
             <ChevronDown
-              className={`w-4 h-4 transition-transform ${showPreview ? 'rotate-180' : ''}`}
-              style={{ color: couleur }}
+              className={`w-4 h-4 transition-transform ${showPreview ? 'rotate-180' : ''} text-accent-texte`}
             />
           </button>
 
@@ -783,7 +778,7 @@ export default function ExportComptable({
                 <div className="overflow-x-auto rounded-lg border" style={{ borderColor: isDark ? '#334155' : '#e2e8f0' }}>
                   <table className="w-full text-sm" aria-label="Écritures comptables">
                     <thead>
-                      <tr className={isDark ? 'bg-slate-700/60' : 'bg-slate-50'}>
+                      <tr className="bg-fond">
                         <th scope="col" className={`text-left px-3 py-2.5 font-semibold ${mutedCls} text-xs`}>
                           Date
                         </th>
@@ -863,9 +858,7 @@ export default function ExportComptable({
 
                       {/* Total row */}
                       <tr
-                        className={`border-t-2 font-semibold ${
-                          isDark ? 'border-slate-600 bg-slate-700/40' : 'border-slate-300 bg-slate-50'
-                        }`}
+                        className={`border-t-2 font-semibold border-bord-fort bg-fond`}
                       >
                         <td className={`px-3 py-2.5 ${textCls}`} colSpan={3}>
                           Total ({filteredEntries.length} écritures{journalFilter !== 'all' ? ` — ${journalFilter}` : ''})
@@ -892,9 +885,7 @@ export default function ExportComptable({
                       <button
                         onClick={() => setPreviewPage((p) => Math.max(0, p - 1))}
                         disabled={previewPage === 0}
-                        className={`p-2 rounded-lg transition-colors disabled:opacity-30 ${
-                          isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-100 text-slate-600'
-                        }`}
+                        className={`p-2 rounded-lg transition-colors disabled:opacity-30 hover:bg-surface-2 text-encre-2`}
                       >
                         <ChevronLeft className="w-4 h-4" />
                       </button>
@@ -929,9 +920,7 @@ export default function ExportComptable({
                       <button
                         onClick={() => setPreviewPage((p) => Math.min(totalPreviewPages - 1, p + 1))}
                         disabled={previewPage >= totalPreviewPages - 1}
-                        className={`p-2 rounded-lg transition-colors disabled:opacity-30 ${
-                          isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-100 text-slate-600'
-                        }`}
+                        className={`p-2 rounded-lg transition-colors disabled:opacity-30 hover:bg-surface-2 text-encre-2`}
                       >
                         <ChevronRight className="w-4 h-4" />
                       </button>
@@ -949,9 +938,7 @@ export default function ExportComptable({
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
               <p className={`text-sm font-semibold ${textCls} mb-1`}>Fichier de sortie</p>
-              <p className={`text-xs font-mono ${mutedCls} px-2 py-1 rounded ${
-                isDark ? 'bg-slate-700' : 'bg-slate-100'
-              }`}>
+              <p className={`text-xs font-mono ${mutedCls} px-2 py-1 rounded bg-surface-2`}>
                 {getFilenamePreview()}
               </p>
               <p className={`text-xs mt-2 ${mutedCls}`}>
@@ -994,7 +981,7 @@ export default function ExportComptable({
               ) : (
                 <button
                   onClick={() => { try { localStorage.setItem('cp_settings_tab', 'comptabilite'); } catch { /* préférence non enregistrée : quota plein ou navigation privée */ } setPage?.('settings'); }}
-                  className={`flex items-center gap-2 px-4 py-3 rounded-xl text-xs font-medium transition-all ${isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-700'}`}
+                  className={`flex items-center gap-2 px-4 py-3 rounded-xl text-xs font-medium transition-all text-encre-3 hover:text-encre-2`}
                 >
                   <Mail className="w-4 h-4" />
                   Configurer l'email comptable →
@@ -1010,7 +997,7 @@ export default function ExportComptable({
           {filteredEntries.length > 0 && (
             <div className={`mt-4 pt-4 border-t ${borderCls}`}>
               <div className="flex items-center gap-2">
-                <ArrowUpDown className="w-4 h-4" style={{ color: couleur }} />
+                <ArrowUpDown className="w-4 h-4 text-accent-texte" />
                 <span className={`text-xs font-medium ${mutedCls}`}>
                   Équilibre des écritures{journalFilter !== 'all' ? ` (${journalFilter})` : ''} :
                 </span>

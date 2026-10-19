@@ -60,10 +60,10 @@ export default function TeamManagement({ isDark, couleur = '#F97316' }) {
   const teamLimitReached = memberLimit.limit !== -1 && (nonOwnerCount + pendingCount) >= memberLimit.limit;
 
   // Theme
-  const cardBg = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200';
+  const cardBg = 'bg-surface border-bord';
   const inputBg = isDark ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400' : 'bg-white border-slate-300';
-  const textPrimary = isDark ? 'text-slate-100' : 'text-slate-900';
-  const textMuted = isDark ? 'text-slate-400' : 'text-slate-500';
+  const textPrimary = 'text-encre';
+  const textMuted = 'text-encre-3';
 
   // Load invitations
   const loadInvitations = useCallback(async () => {
@@ -285,8 +285,7 @@ export default function TeamManagement({ isDark, couleur = '#F97316' }) {
           ) : (
             <button
               onClick={() => setShowInviteForm(true)}
-              className="px-4 py-2.5 text-white rounded-xl text-sm font-semibold flex items-center gap-2 hover:opacity-90 transition-all"
-              style={{ background: couleur }}
+              className="px-4 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-2 hover:opacity-90 transition-all bg-accent text-sur-accent"
             >
               <UserPlus size={16} /> Inviter
             </button>
@@ -299,7 +298,7 @@ export default function TeamManagement({ isDark, couleur = '#F97316' }) {
         <div className={`${cardBg} rounded-xl border p-4 space-y-3`}>
           <div className="flex items-center justify-between">
             <h3 className={`font-semibold ${textPrimary}`}>Nouvelle invitation</h3>
-            <button onClick={() => setShowInviteForm(false)} className={`p-1.5 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
+            <button onClick={() => setShowInviteForm(false)} className={`p-1.5 rounded-lg hover:bg-surface-2`}>
               <X size={16} className={textMuted} />
             </button>
           </div>
@@ -360,8 +359,7 @@ export default function TeamManagement({ isDark, couleur = '#F97316' }) {
             <button
               onClick={handleInvite}
               disabled={inviteLoading}
-              className="px-4 py-2 rounded-lg text-sm font-semibold text-white flex items-center gap-2 hover:opacity-90 disabled:opacity-50"
-              style={{ background: couleur }}
+              className="px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 hover:opacity-90 disabled:opacity-50 bg-accent text-sur-accent"
             >
               {inviteLoading ? <Loader2 size={14} className="animate-spin" /> : <Mail size={14} />}
               Envoyer l'invitation
@@ -372,7 +370,7 @@ export default function TeamManagement({ isDark, couleur = '#F97316' }) {
 
       {/* Members List */}
       <div className={`${cardBg} rounded-xl border overflow-hidden`}>
-        <div className={`px-4 py-3 border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+        <div className={`px-4 py-3 border-b border-bord`}>
           <h3 className={`font-semibold text-sm ${textPrimary}`}>Membres actifs</h3>
         </div>
         <div className="divide-y divide-slate-200">
@@ -381,7 +379,7 @@ export default function TeamManagement({ isDark, couleur = '#F97316' }) {
             const displayName = getMemberDisplayName({ ...member, isCurrentUser: isMe }, currentUserEmail);
             const initials = displayName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) || '?';
             return (
-              <div key={member.id} className={`px-4 py-3 flex items-center gap-3 ${isDark ? 'hover:bg-slate-700/50' : 'hover:bg-slate-50'} transition-colors`}>
+              <div key={member.id} className={`px-4 py-3 flex items-center gap-3 hover:bg-surface-2 transition-colors`}>
                 <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold"
                   style={{ background: member.role === 'owner' ? '#f59e0b' : couleur }}>
                   {initials}
@@ -425,7 +423,7 @@ export default function TeamManagement({ isDark, couleur = '#F97316' }) {
       {/* Pending Invitations */}
       {pendingInvitations.length > 0 && (
         <div className={`${cardBg} rounded-xl border overflow-hidden`}>
-          <div className={`px-4 py-3 border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+          <div className={`px-4 py-3 border-b border-bord`}>
             <h3 className={`font-semibold text-sm ${textPrimary}`}>
               Invitations en attente ({pendingInvitations.length})
             </h3>
@@ -443,7 +441,7 @@ export default function TeamManagement({ isDark, couleur = '#F97316' }) {
                 <div className="flex items-center gap-1.5">
                   <button
                     onClick={() => copyInviteLink(inv.token)}
-                    className={`p-1.5 rounded-lg ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}
+                    className={`p-1.5 rounded-lg hover:bg-surface-2 text-encre-3`}
                     title="Copier le lien d'invitation"
                   >
                     <Copy size={14} />
@@ -467,7 +465,7 @@ export default function TeamManagement({ isDark, couleur = '#F97316' }) {
       {/* Past Invitations (collapsed) */}
       {pastInvitations.length > 0 && (
         <details className={`${cardBg} rounded-xl border overflow-hidden`}>
-          <summary className={`px-4 py-3 cursor-pointer ${isDark ? 'hover:bg-slate-700/50' : 'hover:bg-slate-50'}`}>
+          <summary className={`px-4 py-3 cursor-pointer hover:bg-surface-2`}>
             <span className={`text-sm font-medium ${textMuted}`}>
               Historique ({pastInvitations.length})
             </span>

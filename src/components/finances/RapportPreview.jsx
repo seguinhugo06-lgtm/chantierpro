@@ -5,10 +5,10 @@ import { X, Download, Printer, FileText } from 'lucide-react';
 export default function RapportPreview({ blob, filename, onClose, onDownload, isDark }) {
   const [objectUrl, setObjectUrl] = useState(null);
 
-  const textPrimary = isDark ? 'text-white' : 'text-slate-900';
-  const textMuted = isDark ? 'text-slate-400' : 'text-slate-500';
-  const cardBg = isDark ? 'bg-slate-800' : 'bg-white';
-  const borderColor = isDark ? 'border-slate-700' : 'border-slate-200';
+  const textPrimary = 'text-encre';
+  const textMuted = 'text-encre-3';
+  const cardBg = 'bg-surface';
+  const borderColor = 'border-bord';
 
   useEffect(() => {
     if (blob) {
@@ -79,14 +79,14 @@ export default function RapportPreview({ blob, filename, onClose, onDownload, is
             </button>
             <button
               onClick={handlePrint}
-              className={`p-2 rounded-xl transition-all ${isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-100 text-slate-600'}`}
+              className={`p-2 rounded-xl transition-all hover:bg-surface-2 text-encre-2`}
               title="Imprimer"
             >
               <Printer size={18} />
             </button>
             <button
               onClick={onClose}
-              className={`p-2 rounded-xl transition-all ${isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-100 text-slate-600'}`}
+              className={`p-2 rounded-xl transition-all hover:bg-surface-2 text-encre-2`}
               title="Fermer"
             >
               <X size={18} />

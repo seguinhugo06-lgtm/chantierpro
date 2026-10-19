@@ -118,13 +118,13 @@ export default function PWAUpdatePrompt({ syncHandlers = {}, className, isDark =
   const showUpdate = needsRefresh && !dismissed.update;
 
   // Theme-aware classes
-  const cardBg = isDark ? 'bg-slate-800' : 'bg-white';
-  const cardBorder = isDark ? 'border-slate-700' : 'border-slate-200';
-  const textPrimary = isDark ? 'text-white' : 'text-slate-900';
-  const textSecondary = isDark ? 'text-slate-400' : 'text-slate-600';
-  const textMuted = isDark ? 'text-slate-400' : 'text-slate-500';
-  const stepBg = isDark ? 'bg-slate-700/50' : 'bg-slate-100';
-  const closeBtnHover = isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100';
+  const cardBg = 'bg-surface';
+  const cardBorder = 'border-bord';
+  const textPrimary = 'text-encre';
+  const textSecondary = 'text-encre-2';
+  const textMuted = 'text-encre-3';
+  const stepBg = 'bg-surface-2';
+  const closeBtnHover = 'hover:bg-surface-2';
 
   return (
     <div className={cn('fixed bottom-4 left-4 right-4 z-50 flex flex-col gap-3 sm:left-auto sm:right-4 sm:w-96', className)}>
@@ -200,7 +200,7 @@ export default function PWAUpdatePrompt({ syncHandlers = {}, className, isDark =
                 className="flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center"
                 style={{ backgroundColor: `${couleur}20` }}
               >
-                <Sparkles className="w-6 h-6" style={{ color: couleur }} />
+                <Sparkles className="w-6 h-6 text-accent-texte" />
               </div>
               <div className="flex-1 min-w-0">
                 <p className={cn('text-base font-bold mb-1', textPrimary)}>
@@ -239,8 +239,7 @@ export default function PWAUpdatePrompt({ syncHandlers = {}, className, isDark =
           >
             {/* Accent bar at top */}
             <div
-              className="absolute top-0 left-0 right-0 h-1.5"
-              style={{ backgroundColor: couleur }}
+              className="absolute top-0 left-0 right-0 h-1.5 bg-accent"
             />
 
             <div className="relative p-5 pt-6">
@@ -303,14 +302,13 @@ export default function PWAUpdatePrompt({ syncHandlers = {}, className, isDark =
                   </p>
                   <div className={cn('flex items-center gap-4 p-3 rounded-xl', stepBg)}>
                     <div
-                      className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm"
-                      style={{ backgroundColor: couleur }}
+                      className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm bg-accent text-sur-accent"
                     >
                       1
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
-                        <Share className="w-4 h-4" style={{ color: couleur }} />
+                        <Share className="w-4 h-4 text-accent-texte" />
                         <p className={cn('font-semibold text-sm', textPrimary)}>Appuyez sur Partager</p>
                       </div>
                       <p className={cn('text-xs', textMuted)}>Icône en bas de Safari</p>
@@ -318,14 +316,13 @@ export default function PWAUpdatePrompt({ syncHandlers = {}, className, isDark =
                   </div>
                   <div className={cn('flex items-center gap-4 p-3 rounded-xl', stepBg)}>
                     <div
-                      className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm"
-                      style={{ backgroundColor: couleur }}
+                      className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm bg-accent text-sur-accent"
                     >
                       2
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
-                        <PlusSquare className="w-4 h-4" style={{ color: couleur }} />
+                        <PlusSquare className="w-4 h-4 text-accent-texte" />
                         <p className={cn('font-semibold text-sm', textPrimary)}>Sur l'écran d'accueil</p>
                       </div>
                       <p className={cn('text-xs', textMuted)}>Puis « Ajouter »</p>
@@ -340,8 +337,7 @@ export default function PWAUpdatePrompt({ syncHandlers = {}, className, isDark =
                   </p>
                   <div className={cn('flex items-center gap-4 p-3 rounded-xl', stepBg)}>
                     <div
-                      className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm"
-                      style={{ backgroundColor: couleur }}
+                      className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm bg-accent text-sur-accent"
                     >
                       1
                     </div>
@@ -355,14 +351,13 @@ export default function PWAUpdatePrompt({ syncHandlers = {}, className, isDark =
                   </div>
                   <div className={cn('flex items-center gap-4 p-3 rounded-xl', stepBg)}>
                     <div
-                      className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm"
-                      style={{ backgroundColor: couleur }}
+                      className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm bg-accent text-sur-accent"
                     >
                       2
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
-                        <PlusSquare className="w-4 h-4" style={{ color: couleur }} />
+                        <PlusSquare className="w-4 h-4 text-accent-texte" />
                         <p className={cn('font-semibold text-sm', textPrimary)}>Ajouter à l'écran d'accueil</p>
                       </div>
                       <p className={cn('text-xs', textMuted)}>L'appli sera installée</p>

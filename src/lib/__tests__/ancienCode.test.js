@@ -13,10 +13,12 @@ import { fichiersConcernes, compterAncienCode, neutraliser } from '../../../scri
  *   styleCouleur    background|color|… : couleur|accent (couleur brute de l'entreprise en style)
  *   teinteCouleur   ${couleur}NN (teinte hexadécimale à deux chiffres)
  *   orange          classes orange Tailwind et #f97316 / #ea580c en dur
- * Le plafond (ancienCode.plafond.json) ne fait que baisser : quand un lot en retire, l'abaisser ici
- * aux nouveaux totaux ; il vaut 0 quand l'ancien code a disparu.
- * Exceptions (jamais comptées) : le site public, les générateurs de documents et d'e-mails, le HTML
- * produit en chaîne dans DevisPage.jsx, les fichiers jamais importés.
+ * Le plafond (ancienCode.plafond.json) est un cliquet qui ne fait que baisser, et il colle à la mesure : un total
+ * AU-DESSUS du plafond échoue (l'ancien code est revenu), un total EN DESSOUS aussi (un lot en a retiré et n'a pas
+ * abaissé le plafond : « abaissez le plafond à N »). Il vaut 0 quand l'ancien code a disparu.
+ * Exceptions (jamais comptées) : le site public, les générateurs de documents et d'e-mails, les pages publiques de
+ * l'artisan (signature, paiement, portail, nouveau mot de passe : la couleur brute de sa marque face à son client),
+ * le HTML produit en chaîne dans DevisPage.jsx, les fichiers jamais importés.
  */
 
 const RACINE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
@@ -29,6 +31,11 @@ describe('fichiersConcernes', () => {
     expect(fichiers).toContain('src/components/Dashboard.jsx');
     expect(fichiers).toContain('src/components/DevisPage.jsx');
     expect(fichiers.filter((f) => f.startsWith('src/components/landing/'))).toEqual([]);
+    // pages publiques de l'artisan : sa couleur brute, jamais l'accent du thème
+    for (const dossier of ['src/components/signature/', 'src/components/payment/', 'src/components/portal/']) {
+      expect(fichiers.filter((f) => f.startsWith(dossier)), dossier).toEqual([]);
+    }
+    expect(fichiers).not.toContain('src/components/auth/NouveauMotDePasse.jsx');
     for (const exception of [
       'src/lib/devisHtmlBuilder.js', 'src/lib/pdfHtmlBuilder.js', 'src/lib/miseEnDemeureBuilder.js',
       'src/lib/rapportChantierPdf.js', 'src/lib/reportPdfBuilder.js', 'src/lib/emailSender.js',
@@ -39,7 +46,7 @@ describe('fichiersConcernes', () => {
   });
 
   it('donne des chemins relatifs à la racine, existants, uniques, en code source seulement', () => {
-    expect(fichiers.length).toBeGreaterThan(200);
+    expect(fichiers.length).toBeGreaterThanOrEqual(290);
     expect(new Set(fichiers).size).toBe(fichiers.length);
     for (const f of fichiers) {
       expect(f.startsWith('src/'), f).toBe(true);
@@ -256,5 +263,10 @@ describe('cliquet : l\'ancien code ne revient pas', () => {
   it.each(MOTIFS)('%s ne dépasse pas son plafond', (motif) => {
     expect(totaux[motif], `${motif} : ${totaux[motif]} occurrences pour un plafond de ${plafond[motif]}`)
       .toBeLessThanOrEqual(plafond[motif]);
+  }, 30000);
+
+  it.each(MOTIFS)('%s colle à son plafond (le plafond baisse avec chaque lot)', (motif) => {
+    expect(totaux[motif], `${motif} : ${totaux[motif]} occurrences sous un plafond de ${plafond[motif]} : abaissez le plafond à ${totaux[motif]} dans ancienCode.plafond.json`)
+      .toBe(plafond[motif]);
   }, 30000);
 }, 30000);

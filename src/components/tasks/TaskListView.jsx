@@ -48,29 +48,29 @@ function StatsBar({ memos, isDark, couleur }) {
 
   return (
     <div className="bandeau-chiffres grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
-      <div className={`rounded-xl border px-3 py-2.5 text-center transition-all ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`} style={{ borderLeftWidth: '3px', borderLeftColor: couleur }}>
-        <div className="text-lg font-bold" style={{ color: couleur }}>{stats.completedThisWeek}</div>
-        <div className={`text-[10px] font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Cette semaine</div>
+      <div className={`rounded-xl border px-3 py-2.5 text-center transition-all bg-surface border-bord`} style={{ borderLeftWidth: '3px', borderLeftColor: couleur }}>
+        <div className="text-lg font-bold text-accent-texte">{stats.completedThisWeek}</div>
+        <div className={`text-[10px] font-medium text-encre-3`}>Cette semaine</div>
       </div>
-      <div className={`rounded-xl border px-3 py-2.5 text-center transition-all ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`} style={{ borderLeftWidth: '3px', borderLeftColor: completionColor }}>
+      <div className={`rounded-xl border px-3 py-2.5 text-center transition-all bg-surface border-bord`} style={{ borderLeftWidth: '3px', borderLeftColor: completionColor }}>
         <div className="text-lg font-bold" style={{ color: completionColor }}>{stats.completionRate}%</div>
-        <div className={`h-1 rounded-full mt-1 mb-0.5 ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
+        <div className={`h-1 rounded-full mt-1 mb-0.5 bg-surface-2`}>
           <div className="h-full rounded-full transition-all" style={{ width: `${stats.completionRate}%`, background: `linear-gradient(90deg, ${completionColor}, ${completionColor}cc)` }} />
         </div>
-        <div className={`text-[10px] font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+        <div className={`text-[10px] font-medium text-encre-3`}>
           {stats.completedThisMonth} / {stats.totalThisMonth || stats.total} ce mois
         </div>
       </div>
-      <div className={`rounded-xl border px-3 py-2.5 text-center transition-all ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`} style={{ borderLeftWidth: '3px', borderLeftColor: overdueNeutral ? (isDark ? '#475569' : '#cbd5e1') : '#ef4444' }}>
-        <div className={`text-lg font-bold ${overdueNeutral ? (isDark ? 'text-slate-500' : 'text-slate-400') : 'text-red-500'}`}>{stats.overdueCount}</div>
-        <div className={`text-[10px] font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>En retard</div>
+      <div className={`rounded-xl border px-3 py-2.5 text-center transition-all bg-surface border-bord`} style={{ borderLeftWidth: '3px', borderLeftColor: overdueNeutral ? (isDark ? '#475569' : '#cbd5e1') : '#ef4444' }}>
+        <div className={`text-lg font-bold ${overdueNeutral ? 'text-encre-3' : 'text-red-500'}`}>{stats.overdueCount}</div>
+        <div className={`text-[10px] font-medium text-encre-3`}>En retard</div>
       </div>
-      <div className={`rounded-xl border px-3 py-2.5 text-center transition-all ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`} style={{ borderLeftWidth: '3px', borderLeftColor: '#3b82f6' }}>
+      <div className={`rounded-xl border px-3 py-2.5 text-center transition-all bg-surface border-bord`} style={{ borderLeftWidth: '3px', borderLeftColor: '#3b82f6' }}>
         <div className="text-lg font-bold text-blue-500 flex items-center justify-center gap-1">
           <CheckCircle2 size={14} className="text-emerald-500" />
           {stats.completedThisMonth}
         </div>
-        <div className={`text-[10px] font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Complétées ce mois</div>
+        <div className={`text-[10px] font-medium text-encre-3`}>Complétées ce mois</div>
       </div>
     </div>
   );
@@ -114,12 +114,12 @@ export default function TaskListView({
   const debouncedSearch = useDebounce(filters.search || '', 300);
 
   const tc = {
-    bg: isDark ? 'bg-slate-900' : 'bg-slate-50',
-    card: isDark ? 'bg-slate-800' : 'bg-white',
-    text: isDark ? 'text-white' : 'text-slate-900',
-    muted: isDark ? 'text-slate-400' : 'text-slate-500',
-    border: isDark ? 'border-slate-700' : 'border-slate-200',
-    input: isDark ? 'bg-slate-700 text-white placeholder-slate-400 border-slate-600' : 'bg-white text-slate-900 placeholder-slate-400 border-slate-300',
+    bg: 'bg-fond',
+    card: 'bg-surface',
+    text: 'text-encre',
+    muted: 'text-encre-3',
+    border: 'border-bord',
+    input: 'bg-surface text-encre placeholder:text-encre-3 border-bord-fort',
   };
 
   // ── Web Speech API ──
@@ -474,14 +474,12 @@ export default function TaskListView({
         <div className="flex items-center gap-1">
           <button
             onClick={() => toggleSection(key)}
-            className={`flex items-center gap-2 flex-1 text-left px-2 py-1.5 rounded-md text-xs font-semibold uppercase tracking-wide ${
-              isDark ? 'text-slate-400 hover:bg-slate-800' : 'text-slate-500 hover:bg-slate-100'
-            }`}
+            className={`flex items-center gap-2 flex-1 text-left px-2 py-1.5 rounded-md text-xs font-semibold uppercase tracking-wide text-encre-3 hover:bg-surface-2`}
           >
             {isCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
             {Icon && <Icon size={13} style={{ color }} />}
             <span style={{ color }}>{title}</span>
-            <span className={`ml-auto text-xs font-normal ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+            <span className={`ml-auto text-xs font-normal text-encre-3`}>
               {items.length}
             </span>
           </button>
@@ -574,14 +572,13 @@ export default function TaskListView({
             onChange={(e) => setNewMemoText(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={isListening ? 'En écoute...' : 'Nouvelle tâche'}
-            className={`flex-1 bg-transparent border-none outline-none text-sm min-w-0 ${isDark ? 'text-white placeholder-slate-500' : 'text-slate-900 placeholder-slate-400'}`}
+            className={`flex-1 bg-transparent border-none outline-none text-sm min-w-0 text-encre placeholder:text-encre-3`}
             aria-label="Créer une nouvelle tâche"
           />
           <button
             onClick={handleQuickAdd}
             disabled={!newMemoText.trim()}
-            className="flex-shrink-0 w-11 h-11 rounded-xl flex items-center justify-center text-white transition-all disabled:opacity-40"
-            style={{ backgroundColor: couleur }}
+            className="flex-shrink-0 w-11 h-11 rounded-xl flex items-center justify-center transition-all disabled:opacity-40 bg-accent text-sur-accent"
             aria-label="Ajouter la tâche"
           >
             <Plus size={20} strokeWidth={2.5} />
@@ -594,7 +591,7 @@ export default function TaskListView({
               <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-bounce" style={{ animationDelay: '150ms' }} />
               <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-bounce" style={{ animationDelay: '300ms' }} />
             </div>
-            <span className={`text-xs ${isDark ? 'text-orange-400' : 'text-orange-500'}`}>
+            <span className={`text-xs text-accent-texte`}>
               En écoute... (envoi automatique après 2s de silence)
             </span>
           </div>
@@ -651,7 +648,7 @@ export default function TaskListView({
                   showToast(`${sections.done.length} tâches archivées`, 'success');
                 }
               }}
-              className={`text-xs flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors ${isDark ? 'text-slate-400 hover:bg-slate-700 hover:text-slate-300' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'}`}
+              className={`text-xs flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors text-encre-3 hover:bg-surface-2 hover:text-encre-2`}
             >
               <Archive size={13} />
               Archiver les {sections.done.length} terminés

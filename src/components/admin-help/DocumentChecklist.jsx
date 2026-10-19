@@ -61,10 +61,10 @@ export default function DocumentChecklist({ isDark = false, couleur = '#f97316',
     } catch { /* ignore */ }
   }, [checklists]);
 
-  const textPrimary = isDark ? 'text-white' : 'text-slate-900';
-  const textMuted = isDark ? 'text-slate-400' : 'text-slate-600';
-  const cardBg = isDark ? 'bg-slate-800' : 'bg-white';
-  const borderColor = isDark ? 'border-slate-700' : 'border-slate-200';
+  const textPrimary = 'text-encre';
+  const textMuted = 'text-encre-2';
+  const cardBg = 'bg-surface';
+  const borderColor = 'border-bord';
 
   // Use real chantiers only
   const displayChantiers = chantiers.filter(c => c.statut === 'en_cours');
@@ -97,7 +97,7 @@ export default function DocumentChecklist({ isDark = false, couleur = '#f97316',
         <div className="flex items-center gap-3">
           <button
             onClick={() => setSelectedChantier(null)}
-            className={`p-2 rounded-xl ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}
+            className={`p-2 rounded-xl bg-surface-2`}
             aria-label="Retour"
           >
             <ArrowLeft size={18} />
@@ -146,11 +146,11 @@ export default function DocumentChecklist({ isDark = false, couleur = '#f97316',
                       className={`w-full p-3 rounded-lg flex items-center gap-3 text-left transition-all ${
                         isChecked
                           ? 'bg-emerald-50 border border-emerald-200'
-                          : isDark ? 'bg-slate-700' : 'bg-slate-50'
+                          : 'bg-fond'
                       }`}
                     >
                       <div className={`w-5 h-5 rounded flex items-center justify-center flex-shrink-0 ${
-                        isChecked ? 'bg-emerald-500 text-white' : isDark ? 'bg-slate-600 border border-slate-500' : 'bg-white border border-slate-300'
+                        isChecked ? 'bg-emerald-500 text-white' : 'bg-surface border border-bord-fort'
                       }`}>
                         {isChecked && <Check size={12} />}
                       </div>

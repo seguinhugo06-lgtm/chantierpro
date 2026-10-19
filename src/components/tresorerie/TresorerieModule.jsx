@@ -1613,7 +1613,7 @@ export default function TresorerieModule({
                   </div>
                 </div>
                 <button onClick={() => setShowSettingsPanel(false)}
-                  className="mt-3 text-xs font-medium w-full py-2 rounded-lg text-white" style={{ backgroundColor: couleur }}>
+                  className="mt-3 text-xs font-medium w-full py-2 rounded-lg bg-accent text-sur-accent">
                   Fermer
                 </button>
               </div>
@@ -1686,7 +1686,7 @@ export default function TresorerieModule({
               className={`w-full flex items-center justify-between px-5 py-3 transition-colors ${isDark ? 'hover:bg-slate-700/50' : 'hover:bg-blue-50/50'}`}
             >
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: `${couleur}20`, color: couleur }}>
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center text-accent-texte" style={{ backgroundColor: `${couleur}20` }}>
                   <Wallet size={16} />
                 </div>
                 <div className="text-left">
@@ -1720,7 +1720,7 @@ export default function TresorerieModule({
           {wizardStep === 0 && (
             <div className="px-5 pb-5">
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${couleur}20`, color: couleur }}>
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-accent-texte" style={{ backgroundColor: `${couleur}20` }}>
                   <Wallet size={20} />
                 </div>
                 <div>
@@ -1739,8 +1739,7 @@ export default function TresorerieModule({
                   <p className={`text-xs mt-1 ${textSecondary}`}>Ce sera votre point de départ pour les projections</p>
                 </div>
                 <button onClick={() => setWizardStep(1)}
-                  className="w-full py-3 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90"
-                  style={{ backgroundColor: couleur }}>
+                  className="w-full py-3 rounded-xl text-sm font-semibold transition-all hover:opacity-90 bg-accent text-sur-accent">
                   Suivant →
                 </button>
                 {/* UX-010: bouton pour passer le wizard */}
@@ -1755,7 +1754,7 @@ export default function TresorerieModule({
           {wizardStep === 1 && (
             <div className="px-5 pb-5">
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${couleur}20`, color: couleur }}>
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-accent-texte" style={{ backgroundColor: `${couleur}20` }}>
                   <Zap size={20} />
                 </div>
                 <div>
@@ -1818,8 +1817,7 @@ export default function TresorerieModule({
                   {'\u2190'} Retour
                 </button>
                 <button onClick={handleWizardFinish}
-                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90"
-                  style={{ backgroundColor: couleur }}>
+                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all hover:opacity-90 bg-accent text-sur-accent">
                   {Object.keys(wizardCharges).length > 0
                     ? `Ajouter ${Object.keys(wizardCharges).length} charge${Object.keys(wizardCharges).length > 1 ? 's' : ''} et commencer`
                     : 'Commencer sans charges'}
@@ -2100,7 +2098,7 @@ export default function TresorerieModule({
               <p className="text-xs mb-4">Ajoutez vos charges récurrentes et entrées prévues pour suivre votre trésorerie.</p>
               {previsions.length === 0 && (
                 <button onClick={() => setShowPrefillConfirm(true)}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-white shadow-md" style={{ backgroundColor: couleur }}>
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium shadow-md bg-accent text-sur-accent">
                   <Zap size={16} /> Pré-remplir les charges courantes BTP
                 </button>
               )}
@@ -2285,15 +2283,14 @@ export default function TresorerieModule({
           {/* Add mouvement button */}
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <Wallet size={18} style={{ color: couleur }} />
+              <Wallet size={18} className="text-accent-texte" />
               <h2 className={`text-base font-bold ${textPrimary}`}>Mouvements de trésorerie</h2>
               <span className={`text-xs font-medium px-2 py-0.5 rounded-full bg-surface-2 text-encre-3`}>
                 {filteredMouvements.length}
               </span>
             </div>
             <button onClick={() => { setEditingMouv(null); setShowMouvModal(true); }}
-              className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold text-white transition-all hover:opacity-90 shadow-md"
-              style={{ backgroundColor: couleur }}>
+              className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-all hover:opacity-90 shadow-md bg-accent text-sur-accent">
               <Plus size={14} /> Nouveau mouvement
             </button>
           </div>
@@ -2304,7 +2301,7 @@ export default function TresorerieModule({
               <p className="text-sm font-medium mb-2">Aucun mouvement enregistré</p>
               <p className="text-xs mb-4">Les mouvements représentent vos transactions réelles (encaissements, décaissements) avec ventilation TVA.</p>
               <button onClick={() => { setEditingMouv(null); setShowMouvModal(true); }}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-white shadow-md" style={{ backgroundColor: couleur }}>
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium shadow-md bg-accent text-sur-accent">
                 <Plus size={16} /> Créer un mouvement
               </button>
             </div>
@@ -2410,7 +2407,7 @@ export default function TresorerieModule({
           {/* Scenario Presets */}
           <div className={`rounded-2xl border ${cardBg} p-5`}>
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${couleur}20`, color: couleur }}>
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center text-accent-texte" style={{ backgroundColor: `${couleur}20` }}>
                 <Sliders size={20} />
               </div>
               <div>
@@ -2768,10 +2765,10 @@ export default function TresorerieModule({
                         return (
                           <tr key={q.label} className={`border-b last:border-b-0 transition-colors ${isCurrent ? isDark ? 'bg-slate-700/30' : 'bg-blue-50/50' : ''} border-bord hover:bg-surface-2`}>
                             <td className={`py-3 pr-4 font-medium ${isCurrent ? 'font-bold' : ''} ${hasData ? textPrimary : textSecondary}`}>
-                              {q.label} {isCurrent && <span className="text-xs ml-1 px-1.5 py-0.5 rounded font-medium" style={{ backgroundColor: `${couleur}20`, color: couleur }}>actuel</span>}
+                              {q.label} {isCurrent && <span className="text-xs ml-1 px-1.5 py-0.5 rounded font-medium text-accent-texte" style={{ backgroundColor: `${couleur}20` }}>actuel</span>}
                             </td>
                             <td className={`py-3 pr-4 text-right ${hasData ? 'text-info-texte' : textSecondary}`}>{hasData ? formatMoney(q.collectee) : '—'}</td>
-                            <td className={`py-3 pr-4 text-right ${hasData ? isDark ? 'text-orange-400' : 'text-orange-600' : textSecondary}`}>{hasData ? formatMoney(q.deductible) : '—'}</td>
+                            <td className={`py-3 pr-4 text-right ${hasData ? 'text-alerte-texte' : textSecondary}`}>{hasData ? formatMoney(q.deductible) : '—'}</td>
                             <td className={`py-3 text-right font-semibold ${!hasData ? textSecondary : q.net >= 0 ? 'text-red-500' : 'text-green-500'}`}>
                               {hasData ? (q.net >= 0 ? '+' : '') + formatMoney(q.net) : '—'}
                             </td>
@@ -2786,10 +2783,10 @@ export default function TresorerieModule({
                         return (
                           <tr key={m.mois} className={`border-b last:border-b-0 transition-colors ${isCurrent ? isDark ? 'bg-slate-700/30' : 'bg-blue-50/50' : ''} border-bord hover:bg-surface-2`}>
                             <td className={`py-2.5 pr-4 font-medium ${isCurrent ? 'font-bold' : ''} ${hasData ? textPrimary : textSecondary}`}>
-                              {m.mois} {isCurrent && <span className="text-xs ml-1 px-1.5 py-0.5 rounded font-medium" style={{ backgroundColor: `${couleur}20`, color: couleur }}>actuel</span>}
+                              {m.mois} {isCurrent && <span className="text-xs ml-1 px-1.5 py-0.5 rounded font-medium text-accent-texte" style={{ backgroundColor: `${couleur}20` }}>actuel</span>}
                             </td>
                             <td className={`py-2.5 pr-4 text-right ${hasData ? 'text-info-texte' : textSecondary}`}>{hasData ? formatMoney(m.collectee) : '—'}</td>
-                            <td className={`py-2.5 pr-4 text-right ${hasData ? isDark ? 'text-orange-400' : 'text-orange-600' : textSecondary}`}>{hasData ? formatMoney(m.deductible) : '—'}</td>
+                            <td className={`py-2.5 pr-4 text-right ${hasData ? 'text-alerte-texte' : textSecondary}`}>{hasData ? formatMoney(m.deductible) : '—'}</td>
                             <td className={`py-2.5 text-right font-semibold ${!hasData ? textSecondary : m.net >= 0 ? 'text-red-500' : 'text-green-500'}`}>
                               {hasData ? (m.net >= 0 ? '+' : '') + formatMoney(m.net) : '—'}
                             </td>
@@ -2802,7 +2799,7 @@ export default function TresorerieModule({
                     <tr className={`border-t-2 border-bord-fort`}>
                       <td className={`py-3 pr-4 font-bold ${textPrimary}`}>Total annuel</td>
                       <td className={`py-3 pr-4 text-right font-bold text-info-texte`}>{formatMoney(tvaTotal.collectee)}</td>
-                      <td className={`py-3 pr-4 text-right font-bold ${isDark ? 'text-orange-400' : 'text-orange-600'}`}>{formatMoney(tvaTotal.deductible)}</td>
+                      <td className={`py-3 pr-4 text-right font-bold text-alerte-texte`}>{formatMoney(tvaTotal.deductible)}</td>
                       <td className={`py-3 text-right font-bold ${tvaTotal.net >= 0 ? 'text-red-500' : 'text-green-500'}`}>{(tvaTotal.net >= 0 ? '+' : '') + formatMoney(tvaTotal.net)}</td>
                     </tr>
                   </tfoot>
@@ -2831,7 +2828,7 @@ export default function TresorerieModule({
                             {(data.deductible || 0) > 0 && (
                               <div className="text-right">
                                 <p className={`text-xs ${textSecondary}`}>Base HT achats : {formatMoney(data.baseDeductible || 0)}</p>
-                                <p className={`text-sm font-semibold ${isDark ? 'text-orange-400' : 'text-orange-600'}`}>Déductible : {formatMoney(data.deductible)}</p>
+                                <p className={`text-sm font-semibold text-alerte-texte`}>Déductible : {formatMoney(data.deductible)}</p>
                               </div>
                             )}
                           </div>
@@ -2920,7 +2917,7 @@ export default function TresorerieModule({
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" role="presentation" onClick={() => setShowPrefillConfirm(false)} />
           <div className={`relative w-full max-w-md rounded-2xl border shadow-2xl p-6 bg-surface border-bord`}>
             <div className="flex items-start gap-3 mb-4">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${couleur}20`, color: couleur }}>
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 text-accent-texte" style={{ backgroundColor: `${couleur}20` }}>
                 <Zap size={20} />
               </div>
               <div>
@@ -2945,8 +2942,7 @@ export default function TresorerieModule({
                 Annuler
               </button>
               <button onClick={handlePrefill}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90 active:scale-[0.98] shadow-md"
-                style={{ backgroundColor: couleur }}>
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all hover:opacity-90 active:scale-[0.98] shadow-md bg-accent text-sur-accent">
                 <Zap size={16} /> Confirmer
               </button>
             </div>

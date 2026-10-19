@@ -27,12 +27,12 @@ const ADRESSE = COMPANY.adresse || 'communiquée sur demande à contact@malletti
 
 export default function LegalPages({ page, isDark, couleur, setPage }) {
   // Theme classes
-  const mainBg = isDark ? 'bg-slate-900' : 'bg-slate-50';
-  const cardBg = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200';
-  const textPrimary = isDark ? 'text-slate-100' : 'text-slate-900';
-  const textSecondary = isDark ? 'text-slate-400' : 'text-slate-600';
-  const tableBorder = isDark ? 'border-slate-600' : 'border-slate-300';
-  const tableHeaderBg = isDark ? 'bg-slate-700' : 'bg-slate-100';
+  const mainBg = 'bg-fond';
+  const cardBg = 'bg-surface border-bord';
+  const textPrimary = 'text-encre';
+  const textSecondary = 'text-encre-2';
+  const tableBorder = 'border-bord-fort';
+  const tableHeaderBg = 'bg-surface-2';
   const linkStyle = { color: couleur };
 
   const pageConfig = {
@@ -915,9 +915,7 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center gap-4">
           <button
             onClick={() => setPage('dashboard')}
-            className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
-              isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-100 text-slate-600'
-            }`}
+            className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors hover:bg-surface-2 text-encre-2`}
           >
             <ArrowLeft className="w-5 h-5" />
             <span className="hidden sm:inline">Retour</span>
@@ -942,7 +940,7 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
           {renderContent()}
 
           {/* Last updated */}
-          <div className={`mt-12 pt-6 border-t ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+          <div className={`mt-12 pt-6 border-t border-bord`}>
             <p className={`text-sm ${textSecondary}`}>
               Dernière mise à jour : {new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
             </p>

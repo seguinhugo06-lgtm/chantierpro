@@ -147,32 +147,28 @@ const OuvrageCard = React.memo(function OuvrageCard({
         tabIndex={0}
         onClick={handleClick}
         onKeyDown={handleKeyDown}
-        className={`flex items-center gap-4 px-4 py-3 border-b cursor-pointer transition-colors ${
-          isDark
-            ? 'border-gray-700 hover:bg-gray-700/50'
-            : 'border-gray-200 hover:bg-gray-50'
-        }`}
+        className={`flex items-center gap-4 px-4 py-3 border-b cursor-pointer transition-colors border-bord hover:bg-surface-2`}
       >
         {/* Code */}
-        <span className={`text-xs font-mono w-20 shrink-0 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+        <span className={`text-xs font-mono w-20 shrink-0 text-encre-3`}>
           {code}
         </span>
 
         {/* Nom / Unité */}
         <div className="flex-1 min-w-0">
-          <p className={`text-sm font-medium truncate ${isDark ? 'text-white' : 'text-gray-900'}`}>
+          <p className={`text-sm font-medium truncate text-encre`}>
             {nom || description || '—'}
           </p>
-          <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+          <p className={`text-xs text-encre-3`}>
             {unite || '—'}
           </p>
         </div>
 
         {/* Prix HT */}
-        <span className="w-24 text-right shrink-0 text-sm font-semibold" style={{ color: couleur }}>
+        <span className="w-24 text-right shrink-0 text-sm font-semibold text-accent-texte">
           {hasGeoCoeff ? (
             <span className="flex flex-col items-end leading-tight">
-              <span className={`text-xs line-through ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+              <span className={`text-xs line-through text-encre-3`}>
                 {formatPrice(_prixOriginal)}
               </span>
               <span>{formatPrice(prixUnitaireHT)}</span>
@@ -183,14 +179,14 @@ const OuvrageCard = React.memo(function OuvrageCard({
         </span>
 
         {/* F / MO / Mat */}
-        <span className={`text-xs w-32 shrink-0 hidden md:flex items-center gap-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+        <span className={`text-xs w-32 shrink-0 hidden md:flex items-center gap-1 text-encre-3`}>
           <span className="text-amber-500">F:{fourniture ?? '—'}</span>
           <span className="text-blue-500">MO:{mainOeuvre ?? '—'}</span>
           <span className="text-emerald-500">M:{materiel ?? '—'}</span>
         </span>
 
         {/* Temps */}
-        <span className={`text-xs w-14 text-center shrink-0 hidden sm:block ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+        <span className={`text-xs w-14 text-center shrink-0 hidden sm:block text-encre-3`}>
           {tempsPoseH != null ? `${tempsPoseH}h` : '—'}
         </span>
 
@@ -209,28 +205,24 @@ const OuvrageCard = React.memo(function OuvrageCard({
       tabIndex={0}
       onClick={handleClick}
       onKeyDown={handleKeyDown}
-      className={`rounded-xl border p-4 cursor-pointer transition-all hover:shadow-md ${
-        isDark
-          ? 'bg-gray-800 border-gray-700 hover:border-orange-500'
-          : 'bg-white border-gray-200 hover:border-orange-300'
-      }`}
+      className={`rounded-xl border p-4 cursor-pointer transition-all hover:shadow-md bg-surface border-bord hover:border-accent/30`}
     >
       {/* Header: code + difficulty */}
       <div className="flex items-center justify-between gap-2 mb-2">
-        <span className={`text-xs font-mono ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+        <span className={`text-xs font-mono text-encre-3`}>
           {code}
         </span>
         <DifficultyBadge difficulte={difficulte} isDark={isDark} />
       </div>
 
       {/* Nom */}
-      <h3 className={`text-sm font-semibold leading-snug mb-1 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+      <h3 className={`text-sm font-semibold leading-snug mb-1 text-encre`}>
         {nom}
       </h3>
 
       {/* Description (2 lines truncated) */}
       {description && (
-        <p className={`text-xs leading-relaxed line-clamp-2 mb-3 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+        <p className={`text-xs leading-relaxed line-clamp-2 mb-3 text-encre-3`}>
           {description}
         </p>
       )}
@@ -238,27 +230,27 @@ const OuvrageCard = React.memo(function OuvrageCard({
       {/* Price + temps */}
       <div className="flex items-baseline justify-between gap-2 mb-2">
         <div className="flex items-baseline gap-1">
-          <Euro size={14} className={isDark ? 'text-gray-500' : 'text-gray-400'} />
+          <Euro size={14} className="text-encre-3" />
           {hasGeoCoeff ? (
             <span className="flex items-baseline gap-1.5">
-              <span className={`text-xs line-through ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+              <span className={`text-xs line-through text-encre-3`}>
                 {formatPrice(_prixOriginal)}
               </span>
-              <span className="text-lg font-bold" style={{ color: couleur }}>
+              <span className="text-lg font-bold text-accent-texte">
                 {formatPrice(prixUnitaireHT)}
               </span>
             </span>
           ) : (
-            <span className="text-lg font-bold" style={{ color: couleur }}>
+            <span className="text-lg font-bold text-accent-texte">
               {formatPrice(prixUnitaireHT)}
             </span>
           )}
-          <span className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+          <span className={`text-xs text-encre-3`}>
             /{unite}
           </span>
         </div>
         {tempsPoseH != null && (
-          <span className={`flex items-center gap-1 text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+          <span className={`flex items-center gap-1 text-xs text-encre-3`}>
             <Clock size={12} />
             {tempsPoseH}h
           </span>
@@ -297,22 +289,14 @@ const OuvrageCard = React.memo(function OuvrageCard({
           {tags.slice(0, 3).map((tag) => (
             <span
               key={tag}
-              className={`text-xs px-2 py-0.5 rounded-full ${
-                isDark
-                  ? 'bg-gray-700 text-gray-300'
-                  : 'bg-gray-100 text-gray-600'
-              }`}
+              className={`text-xs px-2 py-0.5 rounded-full bg-surface-2 text-encre-2`}
             >
               {tag}
             </span>
           ))}
           {tags.length > 3 && (
             <span
-              className={`text-xs px-2 py-0.5 rounded-full cursor-pointer ${
-                isDark
-                  ? 'bg-gray-700 text-gray-400 hover:text-gray-200'
-                  : 'bg-gray-100 text-gray-500 hover:text-gray-700'
-              }`}
+              className={`text-xs px-2 py-0.5 rounded-full cursor-pointer bg-surface-2 text-encre-3 hover:text-encre-2`}
               title={tags.slice(3).join(', ')}
             >
               +{tags.length - 3}

@@ -66,9 +66,9 @@ export default function BillingDashboard({ isDark, couleur }) {
   const PlanIcon = PLAN_ICONS[planId] || Zap;
   const isFree = planId === 'gratuit';
 
-  const cardBg = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200';
-  const textPrimary = isDark ? 'text-white' : 'text-slate-900';
-  const textSecondary = isDark ? 'text-slate-400' : 'text-slate-500';
+  const cardBg = 'bg-surface border-bord';
+  const textPrimary = 'text-encre';
+  const textSecondary = 'text-encre-3';
 
   // Stripe portal
   const handleOpenPortal = useCallback(async () => {
@@ -178,7 +178,7 @@ export default function BillingDashboard({ isDark, couleur }) {
               <button
                 onClick={handleOpenPortal}
                 disabled={loadingAction === 'portal'}
-                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm border ${isDark ? 'border-slate-600 text-slate-300 hover:bg-slate-700' : 'border-slate-200 text-slate-600 hover:bg-slate-50'} transition-colors`}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm border border-bord text-encre-2 hover:bg-surface-2 transition-colors`}
               >
                 <ExternalLink size={14} />
                 Stripe
@@ -212,7 +212,7 @@ export default function BillingDashboard({ isDark, couleur }) {
               return (
                 <div
                   key={key}
-                  className={`rounded-xl p-3 border ${isDanger ? (isDark ? 'border-red-500/30 bg-red-900/10' : 'border-red-200 bg-red-50/50') : isWarning ? 'border-amber-200 bg-amber-50/50' : isDark ? 'border-slate-700 bg-slate-700/50' : 'border-slate-100 bg-slate-50'}`}
+                  className={`rounded-xl p-3 border ${isDanger ? (isDark ? 'border-red-500/30 bg-red-900/10' : 'border-red-200 bg-red-50/50') : isWarning ? 'border-amber-200 bg-amber-50/50' : 'border-bord bg-fond'}`}
                 >
                   <div className="flex items-center gap-1.5 mb-1">
                     <Icon size={12} className={textSecondary} />
@@ -243,7 +243,7 @@ export default function BillingDashboard({ isDark, couleur }) {
             <span className={billing === 'monthly' ? textPrimary : textSecondary}>Mensuel</span>
             <button
               onClick={() => setBilling(b => b === 'monthly' ? 'yearly' : 'monthly')}
-              className={`relative w-10 h-5 rounded-full transition-colors ${billing === 'yearly' ? 'bg-orange-500' : 'bg-slate-300'}`}
+              className={`relative w-10 h-5 rounded-full transition-colors ${billing === 'yearly' ? 'bg-accent' : 'bg-slate-300'}`}
             >
               <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${billing === 'yearly' ? 'translate-x-5' : 'translate-x-0.5'}`} />
             </button>
@@ -268,14 +268,14 @@ export default function BillingDashboard({ isDark, couleur }) {
                 className={`rounded-xl border p-5 transition-all ${
                   isCurrent
                     ? 'border-2 border-orange-500 shadow-sm'
-                    : isDark ? 'border-slate-700 hover:border-slate-500' : 'border-slate-200 hover:border-slate-300'
+                    : 'border-bord hover:border-bord-fort'
                 }`}
               >
                 <div className="flex items-center gap-2 mb-2">
                   <Icon size={16} style={{ color: p.color }} />
                   <span className={`font-semibold text-sm ${textPrimary}`}>{p.name}</span>
-                  {isCurrent && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-700 font-medium">Actuel</span>}
-                  {p.badge && !isCurrent && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-orange-500 text-white font-bold">{p.badge}</span>}
+                  {isCurrent && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-accent/10 text-accent-texte font-medium">Actuel</span>}
+                  {p.badge && !isCurrent && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-accent text-sur-accent font-bold">{p.badge}</span>}
                 </div>
                 <div className={`text-2xl font-bold ${textPrimary}`}>
                   {price ? `${price}€/mois` : 'Gratuit'}
@@ -346,7 +346,7 @@ export default function BillingDashboard({ isDark, couleur }) {
                 </button>
                 <button
                   onClick={() => setShowCancelConfirm(false)}
-                  className={`px-4 py-2 rounded-xl text-sm ${isDark ? 'text-slate-300 hover:bg-slate-700' : 'text-slate-600 hover:bg-slate-100'} transition-colors`}
+                  className={`px-4 py-2 rounded-xl text-sm text-encre-2 hover:bg-surface-2 transition-colors`}
                 >
                   Garder mon plan
                 </button>

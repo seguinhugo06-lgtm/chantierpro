@@ -26,11 +26,11 @@ export default function PaymentConfigTab({ entreprise, isDark, couleur = '#F9731
   const [keySaved, setKeySaved] = useState(false);
 
   // Theme
-  const cardBg = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200';
-  const textPrimary = isDark ? 'text-slate-100' : 'text-slate-900';
-  const textSecondary = isDark ? 'text-slate-300' : 'text-slate-600';
-  const textMuted = isDark ? 'text-slate-400' : 'text-slate-500';
-  const inputBg = isDark ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-slate-300';
+  const cardBg = 'bg-surface border-bord';
+  const textPrimary = 'text-encre';
+  const textSecondary = 'text-encre-2';
+  const textMuted = 'text-encre-3';
+  const inputBg = 'bg-surface border-bord-fort';
 
   // Load payment config from stripe_config
   const loadConfig = useCallback(async () => {
@@ -132,7 +132,7 @@ export default function PaymentConfigTab({ entreprise, isDark, couleur = '#F9731
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16">
-        <Loader2 size={24} className="animate-spin" style={{ color: couleur }} />
+        <Loader2 size={24} className="animate-spin text-accent-texte" />
       </div>
     );
   }
@@ -145,7 +145,7 @@ export default function PaymentConfigTab({ entreprise, isDark, couleur = '#F9731
       <div className={`${cardBg} rounded-2xl border p-5`}>
         <div className="flex items-start gap-4">
           <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${couleur}15` }}>
-            <CreditCard size={24} style={{ color: couleur }} />
+            <CreditCard size={24} className="text-accent-texte" />
           </div>
           <div className="flex-1 min-w-0">
             <h3 className={`text-lg font-bold ${textPrimary}`}>Paiements en ligne</h3>
@@ -158,7 +158,7 @@ export default function PaymentConfigTab({ entreprise, isDark, couleur = '#F9731
               <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
                 isActive
                   ? (isDark ? 'bg-emerald-900/40 text-emerald-400' : 'bg-emerald-50 text-emerald-700')
-                  : (isDark ? 'bg-slate-700 text-slate-400' : 'bg-slate-100 text-slate-500')
+                  : 'bg-surface-2 text-encre-3'
               }`}>
                 <CreditCard size={12} />
                 CB {isActive ? '✓' : '—'}
@@ -222,7 +222,7 @@ export default function PaymentConfigTab({ entreprise, isDark, couleur = '#F9731
           {(!config?.has_key || showKeyForm) ? (
             <>
               {/* Key entry */}
-              <div className={`rounded-xl p-4 ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+              <div className={`rounded-xl p-4 bg-fond`}>
                 <div className="flex items-start gap-3">
                   <Info size={16} className={`flex-shrink-0 mt-0.5 ${textMuted}`} />
                   <div className={`text-sm ${textSecondary}`}>
@@ -291,7 +291,7 @@ export default function PaymentConfigTab({ entreprise, isDark, couleur = '#F9731
           ) : (
             <>
               {/* Connected state */}
-              <div className={`rounded-xl p-4 flex items-center gap-3 ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+              <div className={`rounded-xl p-4 flex items-center gap-3 bg-fond`}>
                 <Lock size={16} className="text-emerald-500 flex-shrink-0" />
                 <div className="flex-1 min-w-0">
                   <p className={`text-sm font-medium ${textPrimary}`}>Clé Stripe enregistrée</p>
@@ -306,7 +306,7 @@ export default function PaymentConfigTab({ entreprise, isDark, couleur = '#F9731
               </div>
 
               {/* Enabled toggle */}
-              <div className={`rounded-xl p-4 flex items-center justify-between ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+              <div className={`rounded-xl p-4 flex items-center justify-between bg-fond`}>
                 <div className="flex-1 mr-4">
                   <p className={`text-sm font-medium ${textPrimary}`}>Paiement en ligne actif</p>
                   <p className={`text-xs ${textMuted} mt-0.5`}>
@@ -321,7 +321,7 @@ export default function PaymentConfigTab({ entreprise, isDark, couleur = '#F9731
                   aria-label={config.stripe_enabled ? 'Désactiver le paiement en ligne' : 'Activer le paiement en ligne'}
                 >
                   {config.stripe_enabled ? (
-                    <ToggleRight size={32} style={{ color: couleur }} />
+                    <ToggleRight size={32} className="text-accent-texte" />
                   ) : (
                     <ToggleLeft size={32} className={textMuted} />
                   )}
@@ -330,7 +330,7 @@ export default function PaymentConfigTab({ entreprise, isDark, couleur = '#F9731
 
               {/* Frais : toujours à la charge de l'artisan. L'ancien interrupteur proposait d'ajouter
                   1,7 % au client, surtaxe interdite pour les paiements par carte (art. L112-12 C. mon. fin.). */}
-              <div className={`rounded-xl p-4 ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+              <div className={`rounded-xl p-4 bg-fond`}>
                 <p className={`text-sm font-medium ${textPrimary}`}>Frais de transaction</p>
                 <p className={`text-xs ${textMuted} mt-0.5`}>
                   Votre client paie le montant exact de la facture ; les frais Stripe sont déduits de votre encaissement.
@@ -382,7 +382,7 @@ export default function PaymentConfigTab({ entreprise, isDark, couleur = '#F9731
         </div>
 
         {/* Security note */}
-        <div className={`mt-5 pt-5 border-t ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+        <div className={`mt-5 pt-5 border-t border-bord`}>
           <div className="flex items-start gap-3">
             <Shield size={16} className={`flex-shrink-0 mt-0.5 ${textMuted}`} />
             <div className={`text-xs ${textMuted}`}>
@@ -399,8 +399,8 @@ export default function PaymentConfigTab({ entreprise, isDark, couleur = '#F9731
 
       {saving && (
         <div className="fixed bottom-4 right-4 z-50">
-          <div className={`px-4 py-2 rounded-xl shadow-lg flex items-center gap-2 text-sm ${isDark ? 'bg-slate-700 text-slate-200' : 'bg-white text-slate-700'}`}>
-            <Loader2 size={14} className="animate-spin" style={{ color: couleur }} />
+          <div className={`px-4 py-2 rounded-xl shadow-lg flex items-center gap-2 text-sm bg-surface text-encre-2`}>
+            <Loader2 size={14} className="animate-spin text-accent-texte" />
             Enregistrement...
           </div>
         </div>
@@ -412,7 +412,7 @@ export default function PaymentConfigTab({ entreprise, isDark, couleur = '#F9731
 /** Payment method row component */
 function PaymentMethodRow({ icon, label, description, enabled, fees, isDark, textPrimary, textMuted, alwaysAvailable }) {
   return (
-    <div className={`flex items-center gap-3 p-3 rounded-xl ${isDark ? 'bg-slate-700/30' : 'bg-slate-50'}`}>
+    <div className={`flex items-center gap-3 p-3 rounded-xl bg-fond`}>
       <div className="flex-shrink-0">{icon}</div>
       <div className="flex-1 min-w-0">
         <p className={`text-sm font-medium ${textPrimary}`}>{label}</p>

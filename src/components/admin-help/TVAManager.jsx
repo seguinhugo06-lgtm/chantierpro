@@ -103,11 +103,11 @@ export default function TVAManager({
     return `T${q}-${now.getFullYear()}`;
   });
 
-  const textPrimary = isDark ? 'text-white' : 'text-slate-900';
-  const textMuted = isDark ? 'text-slate-400' : 'text-slate-600';
-  const cardBg = isDark ? 'bg-slate-800' : 'bg-white';
-  const borderColor = isDark ? 'border-slate-700' : 'border-slate-200';
-  const inputBg = isDark ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-slate-200';
+  const textPrimary = 'text-encre';
+  const textMuted = 'text-encre-2';
+  const cardBg = 'bg-surface';
+  const borderColor = 'border-bord';
+  const inputBg = 'bg-surface border-bord';
 
   const periodOptions = useMemo(() => generatePeriodOptions(), []);
   const periodRange = useMemo(() => getPeriodDateRange(selectedPeriod), [selectedPeriod]);
@@ -247,7 +247,7 @@ export default function TVAManager({
             const data = tvaSummary.byRate[rate.rate];
             if (!data || (data.baseHT === 0 && data.tva === 0)) return null;
             return (
-              <div key={rate.rate} className={`flex items-center gap-3 p-2 rounded-lg ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+              <div key={rate.rate} className={`flex items-center gap-3 p-2 rounded-lg bg-fond`}>
                 <span
                   className="px-2 py-0.5 rounded text-xs font-bold text-white flex-shrink-0"
                   style={{ backgroundColor: rate.color }}
@@ -273,7 +273,7 @@ export default function TVAManager({
           onClick={() => setActiveTab('ca3')}
           className={`p-4 rounded-xl ${cardBg} border ${borderColor} flex items-center gap-3 transition-all hover:shadow-md text-left`}
         >
-          <ClipboardList size={20} style={{ color: couleur }} />
+          <ClipboardList size={20} className="text-accent-texte" />
           <div>
             <p className={`font-medium ${textPrimary}`}>Formulaire CA3</p>
             <p className={`text-xs ${textMuted}`}>Pré-rempli automatiquement</p>
@@ -284,7 +284,7 @@ export default function TVAManager({
           onClick={() => setActiveTab('rates')}
           className={`p-4 rounded-xl ${cardBg} border ${borderColor} flex items-center gap-3 transition-all hover:shadow-md text-left`}
         >
-          <Calculator size={20} style={{ color: couleur }} />
+          <Calculator size={20} className="text-accent-texte" />
           <div>
             <p className={`font-medium ${textPrimary}`}>Guide des taux TVA</p>
             <p className={`text-xs ${textMuted}`}>Quel taux selon les travaux ?</p>
@@ -347,17 +347,16 @@ export default function TVAManager({
           </div>
           <button
             onClick={exportCSV}
-            className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-white transition-all hover:shadow-md"
-            style={{ background: couleur }}
+            className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm transition-all hover:shadow-md bg-accent text-sur-accent"
           >
             <Download size={16} /> Export CSV
           </button>
         </div>
 
         <div className={`rounded-xl border ${borderColor} overflow-hidden`}>
-          <div className={`px-4 py-3 ${isDark ? 'bg-slate-700' : 'bg-slate-50'} border-b ${borderColor}`}>
+          <div className={`px-4 py-3 bg-fond border-b ${borderColor}`}>
             <div className="flex items-center gap-2">
-              <FileText size={16} style={{ color: couleur }} />
+              <FileText size={16} className="text-accent-texte" />
               <p className={`text-sm font-medium ${textPrimary}`}>Formulaire CA3 — Pré-rempli</p>
             </div>
           </div>
@@ -374,7 +373,7 @@ export default function TVAManager({
                     : ''
                 }`}
               >
-                <span className={`text-xs font-mono px-2 py-0.5 rounded ${isDark ? 'bg-slate-700 text-slate-400' : 'bg-slate-100 text-slate-500'} flex-shrink-0`}>
+                <span className={`text-xs font-mono px-2 py-0.5 rounded bg-surface-2 text-encre-3 flex-shrink-0`}>
                   L.{field.line}
                 </span>
                 <div className="flex-1 min-w-0">
@@ -458,7 +457,7 @@ export default function TVAManager({
               {rate.examples.map((ex, i) => (
                 <span
                   key={i}
-                  className={`px-2 py-1 rounded text-xs ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}
+                  className={`px-2 py-1 rounded text-xs bg-surface-2 text-encre-2`}
                 >
                   {ex}
                 </span>

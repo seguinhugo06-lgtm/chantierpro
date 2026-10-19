@@ -38,11 +38,11 @@ export default function RapportsTab({ devis = [], depenses = [], clients = [], c
   const presets = useMemo(() => getPeriodPresets(), []);
   const currentPreset = presets.find(p => p.key === selectedPeriod);
 
-  const cardBg = isDark ? 'bg-slate-800' : 'bg-white';
-  const textPrimary = isDark ? 'text-white' : 'text-slate-900';
-  const textSecondary = isDark ? 'text-slate-300' : 'text-slate-600';
-  const textMuted = isDark ? 'text-slate-400' : 'text-slate-500';
-  const borderColor = isDark ? 'border-slate-700' : 'border-slate-200';
+  const cardBg = 'bg-surface';
+  const textPrimary = 'text-encre';
+  const textSecondary = 'text-encre-2';
+  const textMuted = 'text-encre-3';
+  const borderColor = 'border-bord';
 
   // Fetch report history
   useEffect(() => {
@@ -215,7 +215,7 @@ export default function RapportsTab({ devis = [], depenses = [], clients = [], c
                 <select
                   value={selectedChantier}
                   onChange={e => setSelectedChantier(e.target.value)}
-                  className={`w-full px-3 py-2 mb-3 rounded-lg text-sm border ${borderColor} ${isDark ? 'bg-slate-700 text-white' : 'bg-white text-slate-900'}`}
+                  className={`w-full px-3 py-2 mb-3 rounded-lg text-sm border ${borderColor} bg-surface text-encre`}
                 >
                   <option value="">Choisir un chantier...</option>
                   {activeChantiers.map(c => (
@@ -297,7 +297,7 @@ export default function RapportsTab({ devis = [], depenses = [], clients = [], c
                   <div className="flex items-center gap-1.5">
                     <button
                       onClick={() => handleDownloadHistory(r)}
-                      className={`p-2 rounded-lg transition-all ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}
+                      className={`p-2 rounded-lg transition-all hover:bg-surface-2`}
                       title="Télécharger"
                     >
                       <Download size={16} className={textMuted} />

@@ -92,11 +92,11 @@ export default function PaymentModal({
   const [sendReceipt, setSendReceipt] = useState(true);
 
   // Theme classes
-  const cardBg = isDark ? "bg-slate-800" : "bg-white";
-  const textPrimary = isDark ? "text-slate-100" : "text-slate-900";
-  const textSecondary = isDark ? "text-slate-300" : "text-slate-600";
-  const textMuted = isDark ? "text-slate-400" : "text-slate-600";
-  const inputBg = isDark ? "bg-slate-700 border-slate-600 text-white" : "bg-white border-slate-300";
+  const cardBg = "bg-surface";
+  const textPrimary = "text-encre";
+  const textSecondary = "text-encre-2";
+  const textMuted = "text-encre-2";
+  const inputBg = "bg-surface border-bord-fort";
 
   // Reset state when modal opens
   useEffect(() => {
@@ -240,7 +240,7 @@ export default function PaymentModal({
         <div className="p-5 border-b flex items-center justify-between flex-shrink-0" style={{ borderColor: isDark ? '#334155' : '#e2e8f0' }}>
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${couleur}20` }}>
-              <CreditCard size={20} style={{ color: couleur }} />
+              <CreditCard size={20} className="text-accent-texte" />
             </div>
             <div>
               <h2 className={`font-bold text-lg ${textPrimary}`}>{FONCTIONS.paiementEnLigne ? 'Recevoir un paiement' : 'Enregistrer un paiement reçu'}</h2>
@@ -249,7 +249,7 @@ export default function PaymentModal({
           </div>
           <button
             onClick={onClose}
-            className={`p-2 rounded-xl ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'} transition-colors`}
+            className={`p-2 rounded-xl hover:bg-surface-2 transition-colors`}
           >
             <X size={20} className={textSecondary} />
           </button>
@@ -260,9 +260,9 @@ export default function PaymentModal({
           {step === 'amount' && (
             <>
               {/* Montant total */}
-              <div className={`rounded-xl p-4 mb-5 ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
+              <div className={`rounded-xl p-4 mb-5 bg-fond`}>
                 <p className={`text-sm ${textMuted} mb-1`}>{du < totalTTC - 0.005 ? 'Reste dû' : 'Montant de la facture'}</p>
-                <p className="text-2xl font-bold" style={{ color: couleur }}>{formatAmount(du)}</p>
+                <p className="text-2xl font-bold text-accent-texte">{formatAmount(du)}</p>
                 {du < totalTTC - 0.005 && <p className={`text-xs ${textMuted} mt-1`}>sur {formatAmount(totalTTC)} TTC</p>}
               </div>
 
@@ -276,13 +276,13 @@ export default function PaymentModal({
                   className={`w-full p-4 rounded-xl border-2 flex items-center justify-between transition-all ${
                     paymentType === 'link'
                       ? (isDark ? 'border-orange-500 bg-orange-900/20' : 'border-orange-500 bg-orange-50')
-                      : (isDark ? 'border-slate-600' : 'border-slate-200')
+                      : 'border-bord'
                   }`}
                 >
                   <div className="text-left">
                     <div className="flex items-center gap-2">
                       <p className={`font-medium ${textPrimary}`}>Envoyer un lien de paiement</p>
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${isDark ? 'bg-orange-900/50 text-orange-400' : 'bg-orange-100 text-orange-700'}`}>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold bg-accent/10 text-accent-texte`}>
                         Recommandé
                       </span>
                     </div>
@@ -297,7 +297,7 @@ export default function PaymentModal({
                   className={`w-full p-4 rounded-xl border-2 flex items-center justify-between transition-all ${
                     paymentType === 'full'
                       ? (isDark ? 'border-emerald-500 bg-emerald-900/20' : 'border-emerald-500 bg-emerald-50')
-                      : (isDark ? 'border-slate-600' : 'border-slate-200')
+                      : 'border-bord'
                   }`}
                 >
                   <div className="text-left">
@@ -315,7 +315,7 @@ export default function PaymentModal({
                   className={`w-full p-4 rounded-xl border-2 flex items-center justify-between transition-all ${
                     paymentType === 'custom'
                       ? (isDark ? 'border-purple-500 bg-purple-900/20' : 'border-purple-500 bg-purple-50')
-                      : (isDark ? 'border-slate-600' : 'border-slate-200')
+                      : 'border-bord'
                   }`}
                 >
                   <div className="text-left">
@@ -335,7 +335,7 @@ export default function PaymentModal({
                   className={`w-full p-4 rounded-xl border-2 flex items-center justify-between transition-all ${
                     paymentType === 'offline'
                       ? (isDark ? 'border-blue-500 bg-blue-900/20' : 'border-blue-500 bg-blue-50')
-                      : (isDark ? 'border-slate-600' : 'border-slate-200')
+                      : 'border-bord'
                   }`}
                 >
                   <div className="text-left">
@@ -358,7 +358,7 @@ export default function PaymentModal({
                         className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
                           parseFloat(customAmount) === parseFloat((totalTTC * opt.value / 100).toFixed(2))
                             ? 'text-white'
-                            : (isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600')
+                            : 'bg-surface-2 text-encre-2'
                         }`}
                         style={parseFloat(customAmount) === parseFloat((totalTTC * opt.value / 100).toFixed(2)) ? { background: couleur } : {}}
                       >
@@ -398,7 +398,7 @@ export default function PaymentModal({
                             className={`p-3 rounded-xl border-2 flex items-center gap-2 transition-all text-left ${
                               isSelected
                                 ? (isDark ? 'border-blue-500 bg-blue-900/20' : 'border-blue-500 bg-blue-50')
-                                : (isDark ? 'border-slate-600 hover:border-slate-500' : 'border-slate-200 hover:border-slate-300')
+                                : 'border-bord hover:border-bord-fort'
                             }`}
                           >
                             <Icon size={16} style={{ color: isSelected ? '#3b82f6' : '#94a3b8' }} />
@@ -453,7 +453,7 @@ export default function PaymentModal({
 
                   {/* Reçu par email au client */}
                   {client?.email ? (
-                    <label className={`flex items-start gap-2.5 p-3 rounded-xl cursor-pointer ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+                    <label className={`flex items-start gap-2.5 p-3 rounded-xl cursor-pointer bg-fond`}>
                       <input
                         type="checkbox"
                         checked={sendReceipt}
@@ -499,8 +499,7 @@ export default function PaymentModal({
                 <button
                   onClick={handleGenerateLink}
                   disabled={loading || amount <= 0 || !!paiementBloque}
-                  className="w-full py-4 text-white rounded-xl font-medium flex items-center justify-center gap-2 disabled:opacity-50 transition-all hover:shadow-lg"
-                  style={{ background: couleur }}
+                  className="w-full py-4 rounded-xl font-medium flex items-center justify-center gap-2 disabled:opacity-50 transition-all hover:shadow-lg bg-accent text-sur-accent"
                 >
                   {loading ? (
                     <Loader size={20} className="animate-spin" />
@@ -521,7 +520,7 @@ export default function PaymentModal({
             <>
               {/* QR Code */}
               <div className="flex flex-col items-center mb-5">
-                <div className={`p-4 rounded-2xl ${isDark ? 'bg-white' : 'bg-slate-50'} mb-4`}>
+                <div className={`p-4 rounded-2xl bg-fond mb-4`}>
                   <QRCodeSVG
                     value={paymentLink.paymentUrl}
                     size={200}
@@ -603,7 +602,7 @@ export default function PaymentModal({
               </div>
 
               {/* Lien URL */}
-              <div className={`rounded-xl p-3 ${isDark ? 'bg-slate-700' : 'bg-slate-100'} flex items-center gap-2`}>
+              <div className={`rounded-xl p-3 bg-surface-2 flex items-center gap-2`}>
                 <input
                   type="text"
                   readOnly

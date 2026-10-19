@@ -43,10 +43,10 @@ export default function TaskGeneratorModal({
   const [expandedPhase, setExpandedPhase] = useState(null);
 
   // Theme classes
-  const cardBg = isDark ? 'bg-slate-800' : 'bg-white';
-  const textPrimary = isDark ? 'text-white' : 'text-slate-900';
-  const textMuted = isDark ? 'text-slate-400' : 'text-slate-500';
-  const borderColor = isDark ? 'border-slate-700' : 'border-slate-200';
+  const cardBg = 'bg-surface';
+  const textPrimary = 'text-encre';
+  const textMuted = 'text-encre-3';
+  const borderColor = 'border-bord';
 
   const existingTexts = existingTasks.map(t => t.text.toLowerCase());
 
@@ -165,7 +165,7 @@ export default function TaskGeneratorModal({
               className="w-10 h-10 rounded-xl flex items-center justify-center"
               style={{ backgroundColor: `${couleur}20` }}
             >
-              <Sparkles size={20} style={{ color: couleur }} />
+              <Sparkles size={20} className="text-accent-texte" />
             </div>
             <div>
               <h2 className={`text-lg font-bold ${textPrimary}`}>
@@ -178,7 +178,7 @@ export default function TaskGeneratorModal({
           </div>
           <button
             onClick={handleClose}
-            className={`p-3 rounded-xl transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}
+            className={`p-3 rounded-xl transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-surface-2`}
           >
             <X size={20} className={textMuted} />
           </button>
@@ -248,9 +248,9 @@ export default function TaskGeneratorModal({
 
               {/* Génération intelligente */}
               {entrepriseMetier && (
-                <div className={`p-4 rounded-xl border-2 border-dashed ${isDark ? 'border-slate-600' : 'border-slate-300'}`}>
+                <div className={`p-4 rounded-xl border-2 border-dashed border-bord-fort`}>
                   <p className={`text-sm font-medium mb-2 ${textPrimary}`}>
-                    <Sparkles size={14} className="inline mr-1" style={{ color: couleur }} />
+                    <Sparkles size={14} className="inline mr-1 text-accent-texte" />
                     Génération automatique
                   </p>
                   <p className={`text-xs mb-3 ${textMuted}`}>
@@ -258,8 +258,7 @@ export default function TaskGeneratorModal({
                   </p>
                   <button
                     onClick={() => handleGenerateSmart(null)}
-                    className="w-full py-3 text-white rounded-xl font-medium transition-all hover:opacity-90"
-                    style={{ background: couleur }}
+                    className="w-full py-3 rounded-xl font-medium transition-all hover:opacity-90 bg-accent text-sur-accent"
                   >
                     Générer automatiquement
                   </button>
@@ -281,7 +280,7 @@ export default function TaskGeneratorModal({
                     {/* Phase header */}
                     <button
                       onClick={() => setExpandedPhase(isExpanded ? null : phase.id)}
-                      className={`w-full flex items-center gap-3 p-3 ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}
+                      className={`w-full flex items-center gap-3 p-3 bg-fond`}
                     >
                       <div
                         className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold"
@@ -318,13 +317,13 @@ export default function TaskGeneratorModal({
                               className={`w-full flex items-center gap-3 p-2 rounded-lg text-left transition-all ${
                                 task.selected
                                   ? (isDark ? 'bg-blue-900/30' : 'bg-blue-50')
-                                  : (isDark ? 'bg-slate-800 opacity-50' : 'bg-white opacity-50')
+                                  : 'bg-surface opacity-50'
                               }`}
                             >
                               <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${
                                 task.selected
                                   ? 'bg-blue-500 border-blue-500'
-                                  : isDark ? 'border-slate-600' : 'border-slate-300'
+                                  : 'border-bord-fort'
                               }`}>
                                 {task.selected && <Check size={12} className="text-white" />}
                               </div>
@@ -359,15 +358,14 @@ export default function TaskGeneratorModal({
           <div className={`px-5 py-4 border-t ${borderColor} flex gap-3 flex-shrink-0`}>
             <button
               onClick={() => setStep(1)}
-              className={`flex-1 py-3 rounded-xl font-medium ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-700'}`}
+              className={`flex-1 py-3 rounded-xl font-medium bg-surface-2 text-encre-2`}
             >
               Retour
             </button>
             <button
               onClick={handleConfirm}
               disabled={selectedCount === 0}
-              className="flex-1 py-3 text-white rounded-xl font-medium transition-all hover:opacity-90 disabled:opacity-50"
-              style={{ background: couleur }}
+              className="flex-1 py-3 rounded-xl font-medium transition-all hover:opacity-90 disabled:opacity-50 bg-accent text-sur-accent"
             >
               Ajouter {selectedCount} tâche{selectedCount > 1 ? 's' : ''}
             </button>

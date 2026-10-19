@@ -30,7 +30,7 @@ const TreeNode = React.memo(function TreeNode({
   const selectedBg = isDark
     ? 'bg-orange-900/20 border-l-2 border-orange-500'
     : 'bg-orange-50 border-l-2 border-orange-500';
-  const hoverBg = isDark ? 'hover:bg-gray-700/50' : 'hover:bg-gray-50';
+  const hoverBg = 'hover:bg-surface-2';
   const defaultBorder = 'border-l-2 border-transparent';
 
   const rowClasses = [
@@ -39,8 +39,8 @@ const TreeNode = React.memo(function TreeNode({
     isSelected ? selectedBg : `${defaultBorder} ${hoverBg}`,
   ].join(' ');
 
-  const textColor = isDark ? 'text-gray-100' : 'text-gray-900';
-  const mutedColor = isDark ? 'text-gray-400' : 'text-gray-500';
+  const textColor = 'text-encre';
+  const mutedColor = 'text-encre-3';
 
   function handleClick() {
     onSelectNode(node.id);

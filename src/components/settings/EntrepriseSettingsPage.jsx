@@ -120,10 +120,10 @@ const EntrepriseSettingsPage = memo(function EntrepriseSettingsPage({
   };
 
   const tc = {
-    card: isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200',
-    text: isDark ? 'text-white' : 'text-gray-900',
-    textMuted: isDark ? 'text-slate-400' : 'text-gray-500',
-    bg: isDark ? 'bg-slate-900' : 'bg-gray-50',
+    card: 'bg-surface border-bord',
+    text: 'text-encre',
+    textMuted: 'text-encre-3',
+    bg: 'bg-fond',
   };
 
   return (
@@ -143,9 +143,8 @@ const EntrepriseSettingsPage = memo(function EntrepriseSettingsPage({
           disabled={!canAdd || isProcessing}
           className={`
             flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium
-            transition-colors text-white disabled:opacity-50 disabled:cursor-not-allowed
+            transition-colors disabled:opacity-50 disabled:cursor-not-allowed bg-accent text-sur-accent
           `}
-          style={{ background: couleur }}
         >
           <Plus size={16} />
           Nouvelle entreprise
@@ -205,9 +204,7 @@ const EntrepriseSettingsPage = memo(function EntrepriseSettingsPage({
                     <button
                       onClick={() => handleActivate(ent.id)}
                       disabled={isProcessing}
-                      className={`min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg transition-colors ${
-                        isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-gray-100 text-gray-400'
-                      }`}
+                      className={`min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg transition-colors hover:bg-surface-2 text-encre-3`}
                       title="Activer cette entreprise"
                     >
                       <Star size={16} />
@@ -215,18 +212,14 @@ const EntrepriseSettingsPage = memo(function EntrepriseSettingsPage({
                   )}
                   <button
                     onClick={() => handleEdit(ent)}
-                    className={`min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg transition-colors ${
-                      isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-gray-100 text-gray-400'
-                    }`}
+                    className={`min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg transition-colors hover:bg-surface-2 text-encre-3`}
                     title="Modifier"
                   >
                     <Edit2 size={16} />
                   </button>
                   <button
                     onClick={() => setExpandedId(isExpanded ? null : ent.id)}
-                    className={`min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg transition-colors ${
-                      isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-gray-100 text-gray-400'
-                    }`}
+                    className={`min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg transition-colors hover:bg-surface-2 text-encre-3`}
                     title={isExpanded ? 'Réduire' : 'Détails'}
                   >
                     {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
@@ -294,8 +287,7 @@ const EntrepriseSettingsPage = memo(function EntrepriseSettingsPage({
           <p className={`text-sm mt-1 ${tc.textMuted}`}>Créez votre première entreprise pour commencer</p>
           <button
             onClick={handleAdd}
-            className="mt-4 px-4 py-2 rounded-xl text-sm font-medium text-white"
-            style={{ background: couleur }}
+            className="mt-4 px-4 py-2 rounded-xl text-sm font-medium bg-accent text-sur-accent"
           >
             Créer une entreprise
           </button>
@@ -317,7 +309,7 @@ const EntrepriseSettingsPage = memo(function EntrepriseSettingsPage({
       {/* Processing overlay */}
       {isProcessing && (
         <div className="fixed inset-0 bg-black/10 z-40 flex items-center justify-center pointer-events-none">
-          <Loader2 size={24} className="animate-spin text-orange-500" />
+          <Loader2 size={24} className="animate-spin text-accent-texte" />
         </div>
       )}
     </div>

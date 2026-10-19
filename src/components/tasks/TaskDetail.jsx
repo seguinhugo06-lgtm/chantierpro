@@ -13,8 +13,8 @@ import { dateLue } from '../../lib/dates';
 function SubtaskList({ subtasks = [], onUpdate, couleur, isDark }) {
   const [newText, setNewText] = useState('');
   const tc = {
-    muted: isDark ? 'text-slate-400' : 'text-slate-500',
-    input: isDark ? 'bg-slate-700 text-white border-slate-600' : 'bg-white text-slate-900 border-slate-300',
+    muted: 'text-encre-3',
+    input: 'bg-surface text-encre border-bord-fort',
   };
 
   const done = subtasks.filter(s => s.done).length;
@@ -47,7 +47,7 @@ function SubtaskList({ subtasks = [], onUpdate, couleur, isDark }) {
       </div>
 
       {total > 0 && (
-        <div className={`h-1 rounded-full mb-2 ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
+        <div className={`h-1 rounded-full mb-2 bg-surface-2`}>
           <div
             className="h-full rounded-full transition-all duration-300"
             style={{ width: `${progress}%`, backgroundColor: done === total ? '#22c55e' : couleur }}
@@ -63,12 +63,12 @@ function SubtaskList({ subtasks = [], onUpdate, couleur, isDark }) {
               className={`flex-shrink-0 w-4 h-4 rounded border flex items-center justify-center transition-colors ${
                 st.done
                   ? 'border-green-500 bg-green-500 text-white'
-                  : isDark ? 'border-slate-500' : 'border-slate-300'
+                  : 'border-bord-fort'
               }`}
             >
               {st.done && <CheckCircle2 size={10} />}
             </button>
-            <span className={`text-sm flex-1 ${st.done ? 'line-through opacity-50' : ''} ${isDark ? 'text-white' : 'text-slate-900'}`}>
+            <span className={`text-sm flex-1 ${st.done ? 'line-through opacity-50' : ''} text-encre`}>
               {st.text}
             </span>
             <button
@@ -96,8 +96,7 @@ function SubtaskList({ subtasks = [], onUpdate, couleur, isDark }) {
         <button
           onClick={addSubtask}
           disabled={!newText.trim()}
-          className="px-2 py-1.5 rounded-lg text-xs text-white disabled:opacity-40"
-          style={{ backgroundColor: couleur }}
+          className="px-2 py-1.5 rounded-lg text-xs disabled:opacity-40 bg-accent text-sur-accent"
           aria-label="Ajouter la sous-tâche"
         >
           <Plus size={12} />
@@ -312,11 +311,11 @@ export default function TaskDetail({ memo, onUpdate, onDelete, onClose, chantier
   const StatusIcon = currentStatus === 'termine' ? CheckCircle2 : currentStatus === 'en_cours' ? Clock : Circle;
 
   const tc = {
-    bg: isDark ? 'bg-slate-800' : 'bg-white',
-    text: isDark ? 'text-white' : 'text-slate-900',
-    muted: isDark ? 'text-slate-400' : 'text-slate-500',
-    border: isDark ? 'border-slate-700' : 'border-slate-200',
-    input: isDark ? 'bg-slate-700 text-white border-slate-600' : 'bg-white text-slate-900 border-slate-300',
+    bg: 'bg-surface',
+    text: 'text-encre',
+    muted: 'text-encre-3',
+    border: 'border-bord',
+    input: 'bg-surface text-encre border-bord-fort',
   };
 
   return (
@@ -334,7 +333,7 @@ export default function TaskDetail({ memo, onUpdate, onDelete, onClose, chantier
       >
         {/* Header */}
         <div className={`flex items-center justify-between px-4 py-3 border-b ${tc.border}`}>
-          <button onClick={onClose} className={`p-1.5 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`} aria-label="Fermer le panneau de détail">
+          <button onClick={onClose} className={`p-1.5 rounded-lg hover:bg-surface-2`} aria-label="Fermer le panneau de détail">
             <ChevronLeft size={20} className={tc.muted} />
           </button>
           {/* Auto-save indicator */}
@@ -350,9 +349,9 @@ export default function TaskDetail({ memo, onUpdate, onDelete, onClose, chantier
               </span>
             )}
             {saveStatus === 'error' && (
-              <span className="text-xs flex items-center gap-1 text-orange-500">
+              <span className="text-xs flex items-center gap-1 text-alerte-texte">
                 <AlertCircle size={11} /> Erreur
-                <button onClick={retrySave} className="underline hover:text-orange-600 ml-0.5">Réessayer</button>
+                <button onClick={retrySave} className="underline hover:no-underline ml-0.5">Réessayer</button>
               </span>
             )}
             {saveStatus === 'idle' && (
@@ -363,7 +362,7 @@ export default function TaskDetail({ memo, onUpdate, onDelete, onClose, chantier
             <div className="relative">
               <button
                 onClick={() => setShowShareMenu(!showShareMenu)}
-                className={`p-1.5 rounded-lg ${isDark ? 'text-slate-300 hover:bg-slate-700' : 'text-slate-500 hover:bg-slate-100'}`}
+                className={`p-1.5 rounded-lg text-encre-3 hover:bg-surface-2`}
                 aria-label="Partager la tâche"
                 title="Partager"
                 aria-haspopup="true"
@@ -374,10 +373,10 @@ export default function TaskDetail({ memo, onUpdate, onDelete, onClose, chantier
               {showShareMenu && (
                 <>
                   <div className="fixed inset-0 z-50" aria-hidden="true" onClick={() => setShowShareMenu(false)} />
-                  <div onKeyDown={(e) => { if (e.key === 'Escape') setShowShareMenu(false); }} className={`absolute right-0 top-full mt-1 z-50 rounded-lg shadow-xl border min-w-[200px] py-1 ${isDark ? 'bg-slate-700 border-slate-600' : 'bg-white border-slate-200'}`}>
+                  <div onKeyDown={(e) => { if (e.key === 'Escape') setShowShareMenu(false); }} className={`absolute right-0 top-full mt-1 z-50 rounded-lg shadow-xl border min-w-[200px] py-1 bg-surface border-bord`}>
                     <button
                       onClick={handleCopyShare}
-                      className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 ${isDark ? 'text-white hover:bg-slate-600' : 'text-slate-700 hover:bg-slate-50'}`}
+                      className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 text-encre-2 hover:bg-surface-2`}
                     >
                       <Copy size={14} /> Copier le contenu
                     </button>
@@ -386,9 +385,9 @@ export default function TaskDetail({ memo, onUpdate, onDelete, onClose, chantier
                       disabled={!hasNativeShare}
                       className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 ${
                         hasNativeShare
-                          ? isDark ? 'text-white hover:bg-slate-600' : 'text-slate-700 hover:bg-slate-50'
+                          ? 'text-encre-2 hover:bg-surface-2'
                           : 'opacity-40 cursor-not-allowed'
-                      } ${isDark ? 'text-white' : 'text-slate-700'}`}
+                      } text-encre-2`}
                     >
                       <ExternalLink size={14} /> Partager par SMS/Email
                       {!hasNativeShare && <span className={`text-[10px] ml-auto ${tc.muted}`}>Non disponible</span>}
@@ -423,9 +422,7 @@ export default function TaskDetail({ memo, onUpdate, onDelete, onClose, chantier
                     className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-all border ${
                       isActive
                         ? 'text-white border-transparent'
-                        : isDark
-                          ? 'border-slate-600 text-slate-300 hover:bg-slate-700'
-                          : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                        : 'border-bord text-encre-2 hover:bg-surface-2'
                     }`}
                     style={isActive ? { backgroundColor: st.color } : {}}
                   >

@@ -38,14 +38,14 @@ export default function GanttView({
   });
 
   // Theme classes
-  const cardBg = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200';
-  const textPrimary = isDark ? 'text-slate-100' : 'text-slate-900';
-  const textSecondary = isDark ? 'text-slate-300' : 'text-slate-600';
-  const textMuted = isDark ? 'text-slate-400' : 'text-slate-600';
-  const inputBg = isDark ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-slate-300';
-  const hoverBg = isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50';
-  const gridBg = isDark ? 'bg-slate-900' : 'bg-slate-50';
-  const todayBg = isDark ? 'bg-orange-900/30' : 'bg-orange-100';
+  const cardBg = 'bg-surface border-bord';
+  const textPrimary = 'text-encre';
+  const textSecondary = 'text-encre-2';
+  const textMuted = 'text-encre-2';
+  const inputBg = 'bg-surface border-bord-fort';
+  const hoverBg = 'hover:bg-surface-2';
+  const gridBg = 'bg-fond';
+  const todayBg = 'bg-accent/10';
 
   // Calculate date range based on view mode
   const dateRange = useMemo(() => {
@@ -237,7 +237,7 @@ export default function GanttView({
         <h2 className={`text-xl font-bold ${textPrimary}`}>Planning Gantt</h2>
         <div className="flex items-center gap-3">
           {/* View mode toggle */}
-          <div className={`flex rounded-lg overflow-hidden border ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
+          <div className={`flex rounded-lg overflow-hidden border border-bord`}>
             {['week', 'month'].map(mode => (
               <button
                 key={mode}
@@ -245,7 +245,7 @@ export default function GanttView({
                 className={`px-3 py-1.5 text-sm font-medium ${
                   viewMode === mode
                     ? 'text-white'
-                    : isDark ? 'bg-slate-700 text-slate-300' : 'bg-white text-slate-600'
+                    : 'bg-surface text-encre-2'
                 }`}
                 style={viewMode === mode ? { background: couleur } : {}}
               >
@@ -261,7 +261,7 @@ export default function GanttView({
             </button>
             <button
               onClick={goToToday}
-              className={`px-3 py-1.5 text-sm font-medium rounded-lg ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}
+              className={`px-3 py-1.5 text-sm font-medium rounded-lg bg-surface-2 text-encre-2`}
             >
               Aujourd'hui
             </button>
@@ -273,8 +273,7 @@ export default function GanttView({
           {/* Add task */}
           <button
             onClick={() => setShowAddTask(true)}
-            className="px-4 py-2 text-white rounded-xl font-medium flex items-center gap-2"
-            style={{ background: couleur }}
+            className="px-4 py-2 rounded-xl font-medium flex items-center gap-2 bg-accent text-sur-accent"
           >
             <Plus size={18} />
             Tache
@@ -296,21 +295,21 @@ export default function GanttView({
         <div className="overflow-x-auto" ref={containerRef}>
           <div style={{ minWidth: dateRange.length * cellWidth + 200 }}>
             {/* Date header */}
-            <div className={`flex border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
-              <div className={`w-[200px] flex-shrink-0 px-4 py-3 font-medium ${textPrimary} border-r ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+            <div className={`flex border-b border-bord`}>
+              <div className={`w-[200px] flex-shrink-0 px-4 py-3 font-medium ${textPrimary} border-r border-bord`}>
                 Chantiers
               </div>
               <div className="flex">
                 {dateRange.map((date, i) => (
                   <div
                     key={i}
-                    className={`flex-shrink-0 text-center py-2 border-r ${isDark ? 'border-slate-700' : 'border-slate-200'} ${
-                      isToday(date) ? todayBg : isWeekend(date) ? (isDark ? 'bg-slate-800' : 'bg-slate-100') : ''
+                    className={`flex-shrink-0 text-center py-2 border-r border-bord ${
+                      isToday(date) ? todayBg : isWeekend(date) ? 'bg-surface-2' : ''
                     }`}
                     style={{ width: cellWidth }}
                   >
                     <p className={`text-xs ${textMuted}`}>{formatDayName(date)}</p>
-                    <p className={`text-sm font-medium ${isToday(date) ? 'text-orange-500' : textPrimary}`}>
+                    <p className={`text-sm font-medium ${isToday(date) ? 'text-accent-texte' : textPrimary}`}>
                       {date.getDate()}
                     </p>
                   </div>
@@ -326,12 +325,12 @@ export default function GanttView({
               </div>
             ) : (
               Object.entries(tasksByChantier).map(([chantierId, { chantier, tasks }]) => (
-                <div key={chantierId} className={`border-b ${isDark ? 'border-slate-700' : 'border-slate-100'}`}>
+                <div key={chantierId} className={`border-b border-bord`}>
                   {/* Chantier row */}
                   <div className="flex">
-                    <div className={`w-[200px] flex-shrink-0 px-4 py-3 border-r ${isDark ? 'border-slate-700 bg-slate-800/50' : 'border-slate-200 bg-slate-50'}`}>
+                    <div className={`w-[200px] flex-shrink-0 px-4 py-3 border-r border-bord bg-fond`}>
                       <div className="flex items-center gap-2">
-                        <Building2 size={16} style={{ color: couleur }} />
+                        <Building2 size={16} className="text-accent-texte" />
                         <span className={`font-medium truncate ${textPrimary}`}>{chantier.nom}</span>
                       </div>
                       <p className={`text-xs ${textMuted} mt-1`}>
@@ -344,8 +343,8 @@ export default function GanttView({
                         {dateRange.map((date, i) => (
                           <div
                             key={i}
-                            className={`flex-shrink-0 h-full border-r ${isDark ? 'border-slate-700' : 'border-slate-200'} ${
-                              isToday(date) ? todayBg : isWeekend(date) ? (isDark ? 'bg-slate-800/50' : 'bg-slate-100/50') : ''
+                            className={`flex-shrink-0 h-full border-r border-bord ${
+                              isToday(date) ? todayBg : isWeekend(date) ? 'bg-surface-2/50' : ''
                             }`}
                             style={{ width: cellWidth }}
                           />
@@ -379,7 +378,7 @@ export default function GanttView({
 
                     return (
                       <div key={task.id} className="flex">
-                        <div className={`w-[200px] flex-shrink-0 px-4 py-2 pl-8 border-r ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+                        <div className={`w-[200px] flex-shrink-0 px-4 py-2 pl-8 border-r border-bord`}>
                           <div className="flex items-center gap-2">
                             <div className="w-2 h-2 rounded-full" style={{ background: task.couleur || couleur }} />
                             <span className={`text-sm truncate ${textSecondary}`}>{task.nom}</span>
@@ -391,8 +390,8 @@ export default function GanttView({
                             {dateRange.map((date, i) => (
                               <div
                                 key={i}
-                                className={`flex-shrink-0 h-full border-r ${isDark ? 'border-slate-700' : 'border-slate-200'} ${
-                                  isWeekend(date) ? (isDark ? 'bg-slate-800/50' : 'bg-slate-100/50') : ''
+                                className={`flex-shrink-0 h-full border-r border-bord ${
+                                  isWeekend(date) ? 'bg-surface-2/50' : ''
                                 }`}
                                 style={{ width: cellWidth }}
                               />
@@ -435,7 +434,7 @@ export default function GanttView({
       {/* Add/Edit Task Modal */}
       {showAddTask && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-2xl w-full max-w-lg p-6`}>
+          <div className={`bg-surface rounded-2xl w-full max-w-lg p-6`}>
             <div className="flex items-center justify-between mb-6">
               <h2 className={`text-lg font-bold ${textPrimary}`}>
                 {editingTask ? 'Modifier la tache' : 'Nouvelle tache'}
@@ -538,7 +537,7 @@ export default function GanttView({
                         className={`px-3 py-1.5 rounded-full text-sm flex items-center gap-2 ${
                           form.assignes.includes(e.id)
                             ? 'text-white'
-                            : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'
+                            : 'bg-surface-2 text-encre-2'
                         }`}
                         style={form.assignes.includes(e.id) ? { background: couleur } : {}}
                       >
@@ -573,14 +572,13 @@ export default function GanttView({
               )}
               <button
                 onClick={resetForm}
-                className={`flex-1 py-2.5 rounded-xl ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}
+                className={`flex-1 py-2.5 rounded-xl bg-surface-2 text-encre-2`}
               >
                 Annuler
               </button>
               <button
                 onClick={handleSubmit}
-                className="flex-1 py-2.5 rounded-xl font-medium text-white flex items-center justify-center gap-2"
-                style={{ background: couleur }}
+                className="flex-1 py-2.5 rounded-xl font-medium flex items-center justify-center gap-2 bg-accent text-sur-accent"
               >
                 <Check size={18} />
                 {editingTask ? 'Enregistrer' : 'Créer'}

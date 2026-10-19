@@ -128,11 +128,11 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
   }, [showToast]);
 
   // Theme classes
-  const cardBg = isDark ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200";
+  const cardBg = "bg-surface border-bord";
   const inputBg = isDark ? "bg-slate-700 border-slate-600 text-white placeholder-slate-400" : "bg-white border-slate-300";
-  const textPrimary = isDark ? "text-slate-100" : "text-slate-900";
-  const textSecondary = isDark ? "text-slate-300" : "text-slate-600";
-  const textMuted = isDark ? "text-slate-300" : "text-slate-600";
+  const textPrimary = "text-encre";
+  const textSecondary = "text-encre-2";
+  const textMuted = "text-encre-2";
 
   // C1: Duplicate chantier detection
   const duplicateMap = React.useMemo(() => findDuplicateChantiers(chantiers || []), [chantiers]);
@@ -701,7 +701,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
             <div className={`${cardBg} rounded-xl border p-4`}>
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
-                  <BarChart3 size={16} style={{ color: couleur }} />
+                  <BarChart3 size={16} className="text-accent-texte" />
                   <span className={`text-sm font-semibold ${textPrimary}`}>Avancement travaux</span>
                   <span className={`text-xs px-1.5 py-0.5 rounded-full bg-surface-2 text-encre-2`}>{sitCount} situation{sitCount > 1 ? 's' : ''}</span>
                 </div>
@@ -802,7 +802,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
               {weather?.daily?.length > 0 && !weather.isDefault && (
                 <div className={`mt-3 rounded-xl border p-3 bg-surface border-bord`}>
                   <div className="flex items-center gap-2 mb-2">
-                    <Cloud size={14} style={{ color: couleur }} />
+                    <Cloud size={14} className="text-accent-texte" />
                     <span className={`text-xs font-medium text-encre-3`}>
                       Météo {weather.location || ch.ville || 'chantier'}
                     </span>
@@ -1069,7 +1069,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                         <button onClick={() => deleteTask(editingTask.id)} className={`px-4 py-2 rounded-xl text-red-500 ${isDark ? 'hover:bg-red-900/20' : 'hover:bg-red-50'} text-sm font-medium`}><Trash2 size={16} className="inline mr-1" /> Supprimer</button>
                         <div className="flex-1" />
                         <button onClick={() => setEditingTask(null)} className={`px-4 py-2 rounded-xl text-sm font-medium bg-surface-2 hover:bg-bord`}>Annuler</button>
-                        <button onClick={() => updateTask(editingTask.id, { text: editingTask.text, phase: editingTask.phase, critical: editingTask.critical })} className="px-4 py-2 rounded-xl text-white text-sm font-medium" style={{ background: couleur }}>Sauvegarder</button>
+                        <button onClick={() => updateTask(editingTask.id, { text: editingTask.text, phase: editingTask.phase, critical: editingTask.critical })} className="px-4 py-2 rounded-xl text-sm font-medium bg-accent text-sur-accent">Sauvegarder</button>
                       </div>
                     </div>
                   </div>
@@ -1249,7 +1249,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                   <>
                     <button onClick={() => toggleFin('projection')} className={`w-full flex items-center gap-2 p-2.5 rounded-lg text-left transition-all hover:bg-surface-2`}>
                       <ChevronRight size={14} className={`transition-transform ${finExpanded.projection ? 'rotate-90' : ''} ${textMuted}`} />
-                      <BarChart3 size={14} style={{ color: couleur }} />
+                      <BarChart3 size={14} className="text-accent-texte" />
                       <span className="text-sm font-medium flex-1 text-encre">Projection fin de chantier</span>
                     </button>
                     {finExpanded.projection && (
@@ -1366,7 +1366,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                     {TAUX_DEPENSE.map(t => <option key={t.valeur} value={t.valeur}>{t.libelle}</option>)}
                   </select>
                 )}
-                <button onClick={addDepenseToChantier} className="px-4 py-2.5 text-white rounded-xl min-h-[44px]" style={{background: couleur}}>+</button>
+                <button onClick={addDepenseToChantier} className="px-4 py-2.5 rounded-xl min-h-[44px] bg-accent text-sur-accent">+</button>
               </div>
             </div>
           </div>
@@ -1451,8 +1451,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                 <label className="cursor-pointer">
                   <input type="file" accept="image/*" capture="environment" className="hidden" onChange={e => handlePhotoAdd(e, 'pendant')} />
                   <span
-                    className="inline-flex items-center gap-2 px-5 min-h-[48px] rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90 active:scale-95"
-                    style={{ background: couleur }}
+                    className="inline-flex items-center gap-2 px-5 min-h-[48px] rounded-xl text-sm font-semibold transition-all hover:opacity-90 active:scale-95 bg-accent text-sur-accent"
                   >
                     <Camera size={18} /> Prendre une photo
                   </span>
@@ -1504,7 +1503,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
 
         {activeTab === 'documents' && (
           <div role="tabpanel" id="panel-documents" aria-labelledby="tab-documents" className={`${cardBg} rounded-2xl border p-5`}>
-            <h3 className={`font-semibold mb-4 flex items-center gap-2 ${textPrimary}`}><Paperclip size={18} style={{ color: couleur }} /> Documents</h3>
+            <h3 className={`font-semibold mb-4 flex items-center gap-2 ${textPrimary}`}><Paperclip size={18} className="text-accent-texte" /> Documents</h3>
             <p className={`text-sm ${textMuted} mb-4`}>Plans, permis, attestations, contrats... Stockez tous vos documents liés au chantier.</p>
 
             {/* Document categories */}
@@ -1524,7 +1523,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                       {docs.map(doc => (
                         <div key={doc.id} className={`flex items-center gap-3 p-3 rounded-xl bg-surface-2`}>
                           <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${couleur}20` }}>
-                            <FileText size={18} style={{ color: couleur }} />
+                            <FileText size={18} className="text-accent-texte" />
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className={`text-sm font-medium truncate ${textPrimary}`}>{doc.nom}</p>
@@ -1609,8 +1608,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                             addDoc(null);
                           }
                         }}
-                        className="px-4 py-2 text-white rounded-xl text-sm flex items-center gap-2 min-h-[44px]"
-                        style={{ background: couleur }}
+                        className="px-4 py-2 rounded-xl text-sm flex items-center gap-2 min-h-[44px] bg-accent text-sur-accent"
                       >
                         <Plus size={14} /> Ajouter
                       </button>
@@ -1631,7 +1629,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
 
         {activeTab === 'soustraitants' && (
           <div role="tabpanel" id="panel-soustraitants" aria-labelledby="tab-soustraitants" className={`${cardBg} rounded-2xl border p-5`}>
-            <h3 className={`font-semibold mb-4 flex items-center gap-2 ${textPrimary}`}><UserCog size={18} style={{ color: couleur }} /> Sous-traitants du chantier</h3>
+            <h3 className={`font-semibold mb-4 flex items-center gap-2 ${textPrimary}`}><UserCog size={18} className="text-accent-texte" /> Sous-traitants du chantier</h3>
             <p className={`text-sm ${textMuted} mb-4`}>Gérez les sous-traitants affectés à ce chantier, suivez leurs interventions et montants.</p>
 
             {/* Sous-traitants affectés */}
@@ -1663,7 +1661,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                       <div key={st.id || idx} className={`p-4 rounded-xl border bg-surface-2 border-bord`}>
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm" style={{ background: couleur }}>
+                            <div className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm bg-accent text-sur-accent">
                               {stName.charAt(0).toUpperCase()}
                             </div>
                             <div>
@@ -1796,7 +1794,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
 
         {activeTab === 'memos' && (
           <div role="tabpanel" id="panel-memos" aria-labelledby="tab-memos" className={`${cardBg} rounded-2xl border p-3 sm:p-5`}>
-            <h3 className={`font-semibold mb-4 flex items-center gap-2 ${textPrimary}`}><ClipboardList size={18} style={{ color: couleur }} /> Mémos</h3>
+            <h3 className={`font-semibold mb-4 flex items-center gap-2 ${textPrimary}`}><ClipboardList size={18} className="text-accent-texte" /> Mémos</h3>
             {(() => {
               const chantierMemos = memos.filter(m => m.chantier_id === ch.id);
               const activeMemos = chantierMemos.filter(m => !m.is_done);
@@ -1825,8 +1823,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                           input.value = '';
                         }
                       }}
-                      className="px-3 py-2 rounded-xl text-white text-sm font-medium"
-                      style={{ backgroundColor: couleur }}
+                      className="px-3 py-2 rounded-xl text-sm font-medium bg-accent text-sur-accent"
                     >
                       <Plus size={16} />
                     </button>
@@ -1895,7 +1892,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
 
         {activeTab === 'messages' && (
           <div role="tabpanel" id="panel-messages" aria-labelledby="tab-messages" className={`${cardBg} rounded-2xl border p-5`}>
-            <h3 className={`font-semibold mb-4 flex items-center gap-2 ${textPrimary}`}><MessageSquare size={18} style={{ color: couleur }} /> Historique des échanges</h3>
+            <h3 className={`font-semibold mb-4 flex items-center gap-2 ${textPrimary}`}><MessageSquare size={18} className="text-accent-texte" /> Historique des échanges</h3>
             <p className={`text-sm ${textMuted} mb-4`}>Centralisez ici tous vos échanges avec le client (emails, SMS, appels...).</p>
 
             {/* Existing messages */}
@@ -1934,7 +1931,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                 const msg = { id: generateId(), type: newMessage.type || 'email', content: newMessage.content, date: new Date().toISOString() };
                 updateChantier(ch.id, { messages: [...(ch.messages || []), msg] });
                 setNewMessage && setNewMessage({ type: 'email', content: '' });
-              }} className="mt-2 px-4 py-2 text-white rounded-xl text-sm flex items-center gap-2" style={{ background: couleur }}>
+              }} className="mt-2 px-4 py-2 rounded-xl text-sm flex items-center gap-2 bg-accent text-sur-accent">
                 <Plus size={14} /> Ajouter
               </button>
             </div>
@@ -2229,8 +2226,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                 <button
                   onClick={addDepenseToChantier}
                   disabled={!newDepense.description || !newDepense.montant}
-                  className="flex-1 px-4 py-3 text-white rounded-xl disabled:opacity-50 min-h-[52px] font-semibold"
-                  style={{background: couleur}}
+                  className="flex-1 px-4 py-3 rounded-xl disabled:opacity-50 min-h-[52px] font-semibold bg-accent text-sur-accent"
                 >
                   ✓ Acheté
                 </button>
@@ -2246,7 +2242,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
         {showMODetail && (
           <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
             <div className={`bg-surface rounded-t-2xl sm:rounded-2xl p-4 sm:p-6 w-full max-w-lg animate-slide-up sm:animate-fade-in max-h-[85vh] overflow-y-auto`}>
-              <div className="flex justify-between items-center mb-4"><h3 className="text-lg font-bold">⏱ Détail Main d'oeuvre</h3><button onClick={() => setShowAddMO(true)} className="px-3 py-1.5 text-sm text-white rounded-lg" style={{background: couleur}}>+ Heures</button></div>
+              <div className="flex justify-between items-center mb-4"><h3 className="text-lg font-bold">⏱ Détail Main d'oeuvre</h3><button onClick={() => setShowAddMO(true)} className="px-3 py-1.5 text-sm rounded-lg bg-accent text-sur-accent">+ Heures</button></div>
               <div className="space-y-2 mb-4">{chPointages.map(p => { const emp = equipe.find(e => e.id === p.employeId); const cout = coutHoraire(emp) || 0; return (
                 <div key={p.id} className={`p-3 rounded-xl ${p.manuel ? 'bg-blue-50' : 'bg-slate-50'} ${p.verrouille ? 'opacity-60' : ''}`}>
                   <div className="flex items-center justify-between"><div className="flex items-center gap-3"><span>{p.approuve ? '[OK]' : '⏳'}</span>{p.manuel && <span className="text-xs bg-blue-200 text-blue-700 px-2 py-0.5 rounded">Manuel</span>}{p.verrouille && <span className="text-xs bg-slate-400 text-white px-2 py-0.5 rounded"></span>}</div>{!p.verrouille && <button onClick={() => deletePointage(p.id)} aria-label="Supprimer le pointage" className="text-red-400 min-w-[44px] min-h-[44px] flex items-center justify-center"></button>}</div>
@@ -2278,7 +2274,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                 <div className="grid grid-cols-2 gap-4"><input type="date" className={`px-4 py-2.5 border rounded-xl ${inputBg}`} value={moForm.date} onChange={e => setMoForm(p => ({...p, date: e.target.value}))} aria-label="Date du pointage" /><input type="number" step="0.5" placeholder="Nb heures *" className={`px-4 py-2.5 border rounded-xl ${inputBg}`} value={moForm.heures} onChange={e => setMoForm(p => ({...p, heures: e.target.value}))} aria-label="Nombre d'heures" /></div>
                 <input placeholder="Ex: Pose carrelage salle de bain..." className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={moForm.note} onChange={e => setMoForm(p => ({...p, note: e.target.value}))} aria-label="Note ou description du travail" />
               </div>
-              <div className="flex justify-end gap-3 mt-6"><button onClick={() => setShowAddMO(false)} className={`px-4 py-2 rounded-xl bg-surface-2`}>Annuler</button><button onClick={handleAddMO} className="px-4 py-2 text-white rounded-xl" style={{background: couleur}}>Ajouter</button></div>
+              <div className="flex justify-end gap-3 mt-6"><button onClick={() => setShowAddMO(false)} className={`px-4 py-2 rounded-xl bg-surface-2`}>Annuler</button><button onClick={handleAddMO} className="px-4 py-2 rounded-xl bg-accent text-sur-accent">Ajouter</button></div>
               </>)}
             </div>
           </div>
@@ -2320,8 +2316,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                     updateChantier(ch.id, { budget_estime: budgetForm.budget_estime ? parseFloat(budgetForm.budget_estime) : undefined });
                     setShowEditBudget(false);
                   }}
-                  className="flex-1 px-4 py-2.5 text-white rounded-xl"
-                  style={{ background: couleur }}
+                  className="flex-1 px-4 py-2.5 rounded-xl bg-accent text-sur-accent"
                 >
                   Enregistrer
                 </button>
@@ -2354,7 +2349,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${couleur}20` }}>
-                      <Sparkles size={20} style={{ color: couleur }} />
+                      <Sparkles size={20} className="text-accent-texte" />
                     </div>
                     <div>
                       <h3 className={`font-bold ${textPrimary}`}>Modèles de tâches</h3>
@@ -2405,8 +2400,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                             <span className={`font-medium capitalize ${textPrimary}`}>{key.replace(/-/g, ' ')}</span>
                             <button
                               onClick={() => addTasksFromTemplate(tasks)}
-                              className="px-3 py-1.5 text-white rounded-lg text-sm"
-                              style={{ background: couleur }}
+                              className="px-3 py-1.5 rounded-lg text-sm bg-accent text-sur-accent"
                             >
                               Ajouter tout ({tasks.length})
                             </button>
@@ -2865,12 +2859,12 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
           </div>
 
           {/* Features grid */}
-          <div className={`p-6 sm:p-8 border-t ${isDark ? 'border-slate-700 bg-slate-800/50' : 'border-slate-100 bg-slate-50/50'}`}>
+          <div className={`p-6 sm:p-8 border-t border-bord bg-fond/50`}>
             <p className={`text-xs font-medium uppercase tracking-wider mb-4 ${textMuted}`}>Ce que vous pouvez faire</p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
               <div className={`flex items-start gap-3 p-3 rounded-xl bg-surface`}>
                 <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${couleur}20` }}>
-                  <DollarSign size={18} style={{ color: couleur }} />
+                  <DollarSign size={18} className="text-accent-texte" />
                 </div>
                 <div>
                   <p className={`font-medium text-sm ${textPrimary}`}>Suivi financier</p>
@@ -2879,7 +2873,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
               </div>
               <div className={`flex items-start gap-3 p-3 rounded-xl bg-surface`}>
                 <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${couleur}20` }}>
-                  <Camera size={18} style={{ color: couleur }} />
+                  <Camera size={18} className="text-accent-texte" />
                 </div>
                 <div>
                   <p className={`font-medium text-sm ${textPrimary}`}>Carnet photos</p>
@@ -2888,7 +2882,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
               </div>
               <div className={`flex items-start gap-3 p-3 rounded-xl bg-surface`}>
                 <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${couleur}20` }}>
-                  <CheckSquare size={18} style={{ color: couleur }} />
+                  <CheckSquare size={18} className="text-accent-texte" />
                 </div>
                 <div>
                   <p className={`font-medium text-sm ${textPrimary}`}>Liste de tâches</p>
@@ -2897,7 +2891,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
               </div>
             </div>
 
-            <button onClick={() => setShow(true)} className="w-full sm:w-auto px-6 py-3 text-white rounded-xl flex items-center justify-center gap-2 mx-auto hover:shadow-lg transition-all font-medium" style={{ background: couleur }}>
+            <button onClick={() => setShow(true)} className="w-full sm:w-auto px-6 py-3 rounded-xl flex items-center justify-center gap-2 mx-auto hover:shadow-lg transition-all font-medium bg-accent text-sur-accent">
               <Plus size={18} />
               Créer mon premier chantier
             </button>
@@ -2987,7 +2981,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                 <div className={`h-[500px] rounded-xl flex flex-col items-center justify-center gap-3 bg-surface-2 text-encre-2`}>
                   <AlertTriangle size={24} className="text-amber-500" />
                   <p className="font-medium">La carte n'a pas pu se charger</p>
-                  <button onClick={() => setViewMode('list')} className="px-4 py-2 rounded-xl text-sm font-medium text-white" style={{ background: couleur }}>
+                  <button onClick={() => setViewMode('list')} className="px-4 py-2 rounded-xl text-sm font-medium bg-accent text-sur-accent">
                     Revenir à la liste
                   </button>
                 </div>
@@ -3042,7 +3036,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
               <p className={`font-medium ${textPrimary}`}>{searchQuery ? 'Aucun résultat' : filterStatus === 'termine' ? 'Aucun chantier terminé' : filterStatus === 'archive' ? 'Aucun chantier archivé' : 'Aucun chantier trouvé'}</p>
               <p className={`text-sm ${textMuted} mt-1`}>{searchQuery ? `Aucun chantier ne correspond à "${searchQuery}"` : 'Les chantiers de cette catégorie apparaîtront ici'}</p>
               {(searchQuery || filterClient) && (
-                <button onClick={() => { setSearchQuery(''); setFilterClient(''); }} className="mt-3 px-4 py-2 rounded-xl text-sm font-medium text-white" style={{ background: couleur }}>
+                <button onClick={() => { setSearchQuery(''); setFilterClient(''); }} className="mt-3 px-4 py-2 rounded-xl text-sm font-medium bg-accent text-sur-accent">
                   Réinitialiser les filtres
                 </button>
               )}
@@ -3247,7 +3241,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                     className={`flex-1 px-4 py-3 border rounded-xl min-h-[48px] ${inputBg}`}
                     autoFocus
                   />
-                  <button type="submit" className="px-4 py-3 text-white rounded-xl min-h-[48px] font-medium" style={{ background: couleur }}>
+                  <button type="submit" className="px-4 py-3 rounded-xl min-h-[48px] font-medium bg-accent text-sur-accent">
                     <Plus size={20} />
                   </button>
                 </form>
@@ -3283,7 +3277,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                           <button onClick={() => toggleCritical(task.id)} aria-label="Retirer de prioritaire" className={`p-2.5 min-w-[44px] min-h-[44px] rounded flex items-center justify-center opacity-50 group-hover:opacity-100 focus:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 ${isDark ? 'focus-visible:ring-offset-slate-900 hover:bg-red-900/50' : 'hover:bg-red-100'}`} title="Retirer critique">
                             <AlertCircle size={16} className="text-red-500" />
                           </button>
-                          <button onClick={() => deleteTask(task.id)} aria-label="Supprimer la tâche" className={`p-2.5 min-w-[44px] min-h-[44px] rounded flex items-center justify-center opacity-50 group-hover:opacity-100 focus:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 hover:bg-surface-2 text-encre-3`}>
+                          <button onClick={() => deleteTask(task.id)} aria-label="Supprimer la tâche" className={`p-2.5 min-w-[44px] min-h-[44px] rounded flex items-center justify-center opacity-50 group-hover:opacity-100 focus:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 hover:bg-surface-2 text-encre-3`}>
                             <Trash2 size={16} />
                           </button>
                         </div>
@@ -3304,10 +3298,10 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                           <button onClick={() => toggleTask(task.id)}
                             className={`w-6 h-6 rounded-md border-2 flex-shrink-0 border-bord-fort`} />
                           <span className={`flex-1 text-sm ${textPrimary}`}>{task.text}</span>
-                          <button onClick={() => toggleCritical(task.id)} aria-label="Marquer comme prioritaire" className={`p-2.5 min-w-[44px] min-h-[44px] rounded flex items-center justify-center opacity-50 group-hover:opacity-100 focus:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 hover:bg-surface-2 text-encre-3`} title="Marquer critique">
+                          <button onClick={() => toggleCritical(task.id)} aria-label="Marquer comme prioritaire" className={`p-2.5 min-w-[44px] min-h-[44px] rounded flex items-center justify-center opacity-50 group-hover:opacity-100 focus:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 hover:bg-surface-2 text-encre-3`} title="Marquer critique">
                             <AlertCircle size={16} />
                           </button>
-                          <button onClick={() => deleteTask(task.id)} aria-label="Supprimer la tâche" className={`p-2.5 min-w-[44px] min-h-[44px] rounded flex items-center justify-center opacity-50 group-hover:opacity-100 focus:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 hover:bg-surface-2 text-encre-3`}>
+                          <button onClick={() => deleteTask(task.id)} aria-label="Supprimer la tâche" className={`p-2.5 min-w-[44px] min-h-[44px] rounded flex items-center justify-center opacity-50 group-hover:opacity-100 focus:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 hover:bg-surface-2 text-encre-3`}>
                             <Trash2 size={16} />
                           </button>
                         </div>
@@ -3355,8 +3349,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                     <div className="flex gap-2 justify-center flex-wrap">
                       <button
                         onClick={() => setShowTaskTemplates(true)}
-                        className="px-4 min-h-[44px] rounded-xl text-sm font-medium flex items-center gap-2 text-white transition-all hover:opacity-90"
-                        style={{ background: couleur }}
+                        className="px-4 min-h-[44px] rounded-xl text-sm font-medium flex items-center gap-2 transition-all hover:opacity-90 bg-accent text-sur-accent"
                       >
                         <Sparkles size={16} /> Utiliser un modèle
                       </button>
@@ -3461,8 +3454,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                 </button>
                 <button
                   onClick={() => handleMergeDuplicates(mergeDialog.primaryId, mergeDialog.secondaryId)}
-                  className="flex-1 py-2.5 rounded-xl text-sm font-medium text-white"
-                  style={{ backgroundColor: couleur }}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-medium bg-accent text-sur-accent"
                 >
                   Fusionner
                 </button>

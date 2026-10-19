@@ -45,12 +45,10 @@ function buildPageNumbers(currentPage, totalPages) {
  * List header row for list view mode
  */
 function ListHeader({ isDark }) {
-  const textClass = isDark ? 'text-gray-400' : 'text-gray-500';
+  const textClass = 'text-encre-3';
   return (
     <div
-      className={`flex items-center gap-4 px-4 py-2 border-b text-xs font-semibold uppercase tracking-wide ${
-        isDark ? 'border-gray-700 bg-gray-800/50' : 'border-gray-200 bg-gray-50'
-      } ${textClass}`}
+      className={`flex items-center gap-4 px-4 py-2 border-b text-xs font-semibold uppercase tracking-wide border-bord bg-fond ${textClass}`}
     >
       <span className="w-20 shrink-0">Code</span>
       <span className="flex-1 min-w-0">Nom / Unité</span>
@@ -69,21 +67,19 @@ function EmptyState({ isDark, isSearching, searchQuery }) {
   return (
     <div className="flex flex-col items-center justify-center py-16 px-4">
       <div
-        className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-4 ${
-          isDark ? 'bg-gray-800' : 'bg-gray-100'
-        }`}
+        className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-4 bg-surface-2`}
       >
         {isSearching ? (
-          <Search size={28} className={isDark ? 'text-gray-500' : 'text-gray-400'} />
+          <Search size={28} className="text-encre-3" />
         ) : (
-          <PackageOpen size={28} className={isDark ? 'text-gray-500' : 'text-gray-400'} />
+          <PackageOpen size={28} className="text-encre-3" />
         )}
       </div>
-      <p className={`text-sm font-medium mb-1 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+      <p className={`text-sm font-medium mb-1 text-encre-2`}>
         Aucun ouvrage trouvé
       </p>
       {isSearching && searchQuery && (
-        <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+        <p className={`text-xs text-encre-3`}>
           Aucun résultat pour « {searchQuery} »
         </p>
       )}
@@ -125,8 +121,8 @@ export default function OuvragesList({
     [currentPage, totalPages]
   );
 
-  const textPrimary = isDark ? 'text-white' : 'text-gray-900';
-  const textSecondary = isDark ? 'text-gray-400' : 'text-gray-500';
+  const textPrimary = 'text-encre';
+  const textSecondary = 'text-encre-3';
 
   // ── Empty state ──
   if (!ouvrages || ouvrages.length === 0) {
@@ -172,9 +168,7 @@ export default function OuvragesList({
       {/* List layout */}
       {viewMode === 'list' && (
         <div
-          className={`rounded-xl border overflow-hidden ${
-            isDark ? 'border-gray-700' : 'border-gray-200'
-          }`}
+          className={`rounded-xl border overflow-hidden border-bord`}
         >
           <ListHeader isDark={isDark} />
           {ouvrages.map((ouvrage) => (
@@ -203,12 +197,8 @@ export default function OuvragesList({
             aria-label="Page précédente"
             className={`px-3 py-1 rounded border text-sm flex items-center gap-1 transition-colors ${
               currentPage <= 1
-                ? `opacity-50 cursor-not-allowed ${isDark ? 'border-gray-700 text-gray-500' : 'border-gray-200 text-gray-400'}`
-                : `cursor-pointer ${
-                    isDark
-                      ? 'border-gray-600 text-gray-300 hover:bg-gray-700'
-                      : 'border-gray-300 text-gray-600 hover:bg-gray-50'
-                  }`
+                ? `opacity-50 cursor-not-allowed border-bord text-encre-3`
+                : `cursor-pointer border-bord-fort text-encre-2 hover:bg-surface-2`
             }`}
           >
             <ChevronLeft size={14} />
@@ -232,11 +222,7 @@ export default function OuvragesList({
                 className={`px-3 py-1 rounded border text-sm transition-colors ${
                   page === currentPage
                     ? 'text-white border-transparent font-semibold'
-                    : `cursor-pointer ${
-                        isDark
-                          ? 'border-gray-600 text-gray-300 hover:bg-gray-700'
-                          : 'border-gray-300 text-gray-600 hover:bg-gray-50'
-                      }`
+                    : `cursor-pointer border-bord-fort text-encre-2 hover:bg-surface-2`
                 }`}
                 style={
                   page === currentPage
@@ -256,12 +242,8 @@ export default function OuvragesList({
             aria-label="Page suivante"
             className={`px-3 py-1 rounded border text-sm flex items-center gap-1 transition-colors ${
               currentPage >= totalPages
-                ? `opacity-50 cursor-not-allowed ${isDark ? 'border-gray-700 text-gray-500' : 'border-gray-200 text-gray-400'}`
-                : `cursor-pointer ${
-                    isDark
-                      ? 'border-gray-600 text-gray-300 hover:bg-gray-700'
-                      : 'border-gray-300 text-gray-600 hover:bg-gray-50'
-                  }`
+                ? `opacity-50 cursor-not-allowed border-bord text-encre-3`
+                : `cursor-pointer border-bord-fort text-encre-2 hover:bg-surface-2`
             }`}
           >
             <ChevronRight size={14} />

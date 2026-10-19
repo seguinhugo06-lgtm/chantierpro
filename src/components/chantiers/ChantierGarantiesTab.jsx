@@ -85,10 +85,10 @@ const ChantierGarantiesTab = memo(function ChantierGarantiesTab({
   couleur = '#f97316',
   modeDiscret = false,
 }) {
-  const textPrimary = isDark ? 'text-slate-200' : 'text-slate-800';
-  const textMuted = isDark ? 'text-slate-400' : 'text-slate-500';
-  const cardBg = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200';
-  const subBg = isDark ? 'bg-slate-700' : 'bg-slate-50';
+  const textPrimary = 'text-encre';
+  const textMuted = 'text-encre-3';
+  const cardBg = 'bg-surface border-bord';
+  const subBg = 'bg-fond';
 
   // Sort interventions by date DESC
   const sortedInterventions = useMemo(() => {
@@ -144,7 +144,7 @@ const ChantierGarantiesTab = memo(function ChantierGarantiesTab({
       {reception && garanties.length > 0 && (
         <div className="space-y-4">
           <h3 className={`text-base font-semibold flex items-center gap-2 ${textPrimary}`}>
-            <Shield size={18} style={{ color: couleur }} />
+            <Shield size={18} className="text-accent-texte" />
             Garanties legales
           </h3>
           <div className="space-y-3">
@@ -175,7 +175,7 @@ const ChantierGarantiesTab = memo(function ChantierGarantiesTab({
       {reception && sortedInterventions.length > 0 && (
         <div className="space-y-3">
           <h3 className={`text-base font-semibold flex items-center gap-2 ${textPrimary}`}>
-            <Wrench size={18} style={{ color: couleur }} />
+            <Wrench size={18} className="text-accent-texte" />
             Historique des interventions
             <span className={`text-xs font-normal ${textMuted}`}>
               ({sortedInterventions.length})
@@ -227,7 +227,7 @@ function ReceptionSection({
   return (
     <div className={`p-4 rounded-xl border ${cardBg}`}>
       <div className="flex items-center gap-2 mb-3">
-        <FileText size={18} style={{ color: couleur }} />
+        <FileText size={18} className="text-accent-texte" />
         <h3 className={`text-base font-semibold ${textPrimary}`}>Reception</h3>
       </div>
 
@@ -254,8 +254,7 @@ function ReceptionSection({
               href={reception.pvSigneUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-xs font-medium flex items-center gap-1 hover:underline"
-              style={{ color: couleur }}
+              className="text-xs font-medium flex items-center gap-1 hover:underline text-accent-texte"
             >
               Voir le PV <ExternalLink size={12} />
             </a>
@@ -267,7 +266,7 @@ function ReceptionSection({
       {reception.typeReception === 'avec_reserves' && reserves.length > 0 && (
         <div className="mt-4">
           <div className="flex items-center gap-2 mb-2">
-            <AlertTriangle size={14} className="text-orange-500" />
+            <AlertTriangle size={14} className="text-alerte-texte" />
             <span className={`text-sm font-medium ${textPrimary}`}>
               Reserves ({leveesCount}/{reserves.length} levees)
             </span>
@@ -294,7 +293,7 @@ function EmptyReceptionState({ onReceptionner, isDark, couleur, textPrimary, tex
         className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4"
         style={{ background: `${couleur}15` }}
       >
-        <FileText size={28} style={{ color: couleur }} />
+        <FileText size={28} className="text-accent-texte" />
       </div>
       <h3 className={`text-base font-semibold mb-1 ${textPrimary}`}>
         Chantier non receptionne
@@ -305,8 +304,7 @@ function EmptyReceptionState({ onReceptionner, isDark, couleur, textPrimary, tex
       {onReceptionner && (
         <button
           onClick={onReceptionner}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-white text-sm font-medium shadow-sm hover:opacity-90 transition-opacity"
-          style={{ background: couleur }}
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium shadow-sm hover:opacity-90 transition-opacity bg-accent text-sur-accent"
         >
           <FileText size={16} />
           Receptionner ce chantier
@@ -375,7 +373,7 @@ function GarantieCard({
         {/* Decennale extras: assureur + police */}
         {typeKey === 'decennale' && (garantie.assureur || garantie.numeroPolice) && (
           <div
-            className={`text-xs p-2 rounded-lg mb-3 ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}
+            className={`text-xs p-2 rounded-lg mb-3 bg-fond`}
           >
             {garantie.assureur && (
               <p className={textPrimary}>

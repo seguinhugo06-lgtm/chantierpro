@@ -20,10 +20,10 @@ export default function NoteModal({
   const inputRef = useRef(null);
 
   // Theme classes
-  const cardBg = isDark ? 'bg-slate-800' : 'bg-white';
-  const inputBg = isDark ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400' : 'bg-white border-slate-200 text-slate-900 placeholder-slate-400';
-  const textPrimary = isDark ? 'text-white' : 'text-slate-900';
-  const textMuted = isDark ? 'text-slate-400' : 'text-slate-500';
+  const cardBg = 'bg-surface';
+  const inputBg = 'bg-surface border-bord text-encre placeholder:text-encre-3';
+  const textPrimary = 'text-encre';
+  const textMuted = 'text-encre-3';
 
   // Auto-focus on open
   useEffect(() => {
@@ -153,8 +153,7 @@ export default function NoteModal({
                 </button>
                 <button
                   onClick={handleSubmit}
-                  className="flex-1 px-4 py-3 rounded-xl font-medium text-white transition-all min-h-[48px] flex items-center justify-center gap-2 hover:shadow-lg active:scale-[0.98]"
-                  style={{ backgroundColor: couleur }}
+                  className="flex-1 px-4 py-3 rounded-xl font-medium transition-all min-h-[48px] flex items-center justify-center gap-2 hover:shadow-lg active:scale-[0.98] bg-accent text-sur-accent"
                 >
                   <Check size={18} />
                   <span>Confirmer</span>

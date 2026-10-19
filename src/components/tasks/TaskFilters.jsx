@@ -39,8 +39,8 @@ export default function TaskFilters({ filters, onFiltersChange, equipe = [], isD
         ouvert={ouvert} onFermer={() => setOuvert(false)} titre="Filtrer les tâches" ancreRef={ancreRef} largeur={360} isDark={isDark}
         pied={(
           <>
-            <button type="button" onClick={toutEffacer} disabled={!nbFiltres} className={`h-11 px-4 rounded-xl text-sm font-medium transition-colors disabled:opacity-40 ${isDark ? 'text-slate-300 hover:bg-slate-700' : 'text-slate-600 hover:bg-slate-100'}`}>Tout effacer</button>
-            <button type="button" onClick={() => setOuvert(false)} className="flex-1 h-11 rounded-xl text-white text-sm font-bold shadow-sm" style={{ background: couleur }}>Afficher les tâches</button>
+            <button type="button" onClick={toutEffacer} disabled={!nbFiltres} className={`h-11 px-4 rounded-xl text-sm font-medium transition-colors disabled:opacity-40 text-encre-2 hover:bg-surface-2`}>Tout effacer</button>
+            <button type="button" onClick={() => setOuvert(false)} className="flex-1 h-11 rounded-xl text-sm font-bold shadow-sm bg-accent text-sur-accent">Afficher les tâches</button>
           </>
         )}
       >

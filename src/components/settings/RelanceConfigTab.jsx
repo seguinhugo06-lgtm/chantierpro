@@ -240,7 +240,7 @@ function ChannelBadge({ channel, isDark }) {
     <span
       className={cn(
         'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium',
-        isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'
+        'bg-surface-2 text-encre-2'
       )}
     >
       <Icon className="w-3 h-3" />
@@ -264,9 +264,9 @@ function ScenarioStep({
   scenarioType,
 }) {
   const [expanded, setExpanded] = useState(false);
-  const textPrimary = isDark ? 'text-white' : 'text-slate-900';
-  const textMuted = isDark ? 'text-slate-400' : 'text-slate-500';
-  const inputBg = isDark ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-slate-300 text-slate-900';
+  const textPrimary = 'text-encre';
+  const textMuted = 'text-encre-3';
+  const inputBg = 'bg-surface border-bord-fort text-encre';
 
   const handleFieldChange = useCallback(
     (field, value) => {
@@ -352,7 +352,7 @@ function ScenarioStep({
           <div
             className={cn(
               'mt-3 p-4 rounded-xl border space-y-4',
-              isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-slate-50 border-slate-200'
+              'bg-fond border-bord'
             )}
           >
             {/* Name and delay row */}
@@ -501,7 +501,7 @@ function TemplatePreview({ template, isDark, onClose }) {
           onClick={onClose}
           className={cn(
             'text-xs px-2 py-1 rounded hover:bg-black/10 transition-colors',
-            isDark ? 'text-slate-400' : 'text-slate-500'
+            'text-encre-3'
           )}
         >
           Fermer
@@ -510,7 +510,7 @@ function TemplatePreview({ template, isDark, onClose }) {
       <pre
         className={cn(
           'whitespace-pre-wrap text-sm leading-relaxed font-sans',
-          isDark ? 'text-slate-200' : 'text-slate-800'
+          'text-encre'
         )}
       >
         {rendered}
@@ -532,10 +532,10 @@ function ScenarioCard({
   scenarioType,
 }) {
   const [previewStepId, setPreviewStepId] = useState(null);
-  const textPrimary = isDark ? 'text-white' : 'text-slate-900';
-  const textMuted = isDark ? 'text-slate-400' : 'text-slate-500';
-  const cardBg = isDark ? 'bg-slate-800' : 'bg-white';
-  const borderColor = isDark ? 'border-slate-700' : 'border-slate-200';
+  const textPrimary = 'text-encre';
+  const textMuted = 'text-encre-3';
+  const cardBg = 'bg-surface';
+  const borderColor = 'border-bord';
 
   const handleUpdateStep = useCallback(
     (updatedStep) => {
@@ -634,9 +634,7 @@ function ScenarioCard({
           onClick={handleAddStep}
           className={cn(
             'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors',
-            isDark
-              ? 'text-slate-300 hover:bg-slate-700'
-              : 'text-slate-600 hover:bg-slate-100'
+            'text-encre-2 hover:bg-surface-2'
           )}
         >
           <Plus className="w-3.5 h-3.5" />
@@ -655,9 +653,7 @@ function ScenarioCard({
             }}
             className={cn(
               'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors',
-              isDark
-                ? 'text-slate-300 hover:bg-slate-700'
-                : 'text-slate-600 hover:bg-slate-100'
+              'text-encre-2 hover:bg-surface-2'
             )}
           >
             <Eye className="w-3.5 h-3.5" />
@@ -674,10 +670,10 @@ function ScenarioCard({
  */
 function VariablesCard({ isDark, couleur }) {
   const [expanded, setExpanded] = useState(true);
-  const textPrimary = isDark ? 'text-white' : 'text-slate-900';
-  const textMuted = isDark ? 'text-slate-400' : 'text-slate-500';
-  const cardBg = isDark ? 'bg-slate-800' : 'bg-white';
-  const borderColor = isDark ? 'border-slate-700' : 'border-slate-200';
+  const textPrimary = 'text-encre';
+  const textMuted = 'text-encre-3';
+  const cardBg = 'bg-surface';
+  const borderColor = 'border-bord';
 
   return (
     <div className={cn('rounded-2xl border p-5', cardBg, borderColor)}>
@@ -691,7 +687,7 @@ function VariablesCard({ isDark, couleur }) {
             className="w-10 h-10 rounded-xl flex items-center justify-center"
             style={{ backgroundColor: `${couleur}20` }}
           >
-            <Settings className="w-5 h-5" style={{ color: couleur }} />
+            <Settings className="w-5 h-5 text-accent-texte" />
           </div>
           <div className="text-left">
             <h3 className={cn('text-base font-semibold', textPrimary)}>Variables disponibles</h3>
@@ -714,7 +710,7 @@ function VariablesCard({ isDark, couleur }) {
               key={v.key}
               className={cn(
                 'flex items-center justify-between px-3 py-2 rounded-lg',
-                isDark ? 'bg-slate-700/50' : 'bg-slate-50'
+                'bg-fond'
               )}
             >
               <code
@@ -738,10 +734,10 @@ function VariablesCard({ isDark, couleur }) {
  * Statistics card (read-only)
  */
 function StatsCard({ isDark, couleur, stats: realStats, modeDiscret }) {
-  const textPrimary = isDark ? 'text-white' : 'text-slate-900';
-  const textMuted = isDark ? 'text-slate-400' : 'text-slate-500';
-  const cardBg = isDark ? 'bg-slate-800' : 'bg-white';
-  const borderColor = isDark ? 'border-slate-700' : 'border-slate-200';
+  const textPrimary = 'text-encre';
+  const textMuted = 'text-encre-3';
+  const cardBg = 'bg-surface';
+  const borderColor = 'border-bord';
 
   const hasData = realStats && realStats.totalSent > 0;
 
@@ -773,7 +769,7 @@ function StatsCard({ isDark, couleur, stats: realStats, modeDiscret }) {
           className="w-10 h-10 rounded-xl flex items-center justify-center"
           style={{ backgroundColor: `${couleur}20` }}
         >
-          <TrendingUp className="w-5 h-5" style={{ color: couleur }} />
+          <TrendingUp className="w-5 h-5 text-accent-texte" />
         </div>
         <div>
           <h3 className={cn('text-base font-semibold', textPrimary)}>Statistiques</h3>
@@ -791,7 +787,7 @@ function StatsCard({ isDark, couleur, stats: realStats, modeDiscret }) {
               key={stat.label}
               className={cn(
                 'flex flex-col items-center justify-center p-4 rounded-xl text-center',
-                isDark ? 'bg-slate-700/50' : 'bg-slate-50'
+                'bg-fond'
               )}
             >
               <StatIcon className="w-5 h-5 mb-2" style={{ color: stat.color }} />
@@ -809,10 +805,10 @@ function StatsCard({ isDark, couleur, stats: realStats, modeDiscret }) {
  * Exclusions management card
  */
 function ExclusionsCard({ exclusions = [], onRemove, clients = [], devis = [], isDark, couleur }) {
-  const textPrimary = isDark ? 'text-white' : 'text-slate-900';
-  const textMuted = isDark ? 'text-slate-400' : 'text-slate-500';
-  const cardBg = isDark ? 'bg-slate-800' : 'bg-white';
-  const borderColor = isDark ? 'border-slate-700' : 'border-slate-200';
+  const textPrimary = 'text-encre';
+  const textMuted = 'text-encre-3';
+  const cardBg = 'bg-surface';
+  const borderColor = 'border-bord';
 
   if (!exclusions.length) return null;
 
@@ -833,7 +829,7 @@ function ExclusionsCard({ exclusions = [], onRemove, clients = [], devis = [], i
           className="w-10 h-10 rounded-xl flex items-center justify-center"
           style={{ backgroundColor: `${couleur}20` }}
         >
-          <Shield className="w-5 h-5" style={{ color: couleur }} />
+          <Shield className="w-5 h-5 text-accent-texte" />
         </div>
         <div>
           <h3 className={cn('text-base font-semibold', textPrimary)}>
@@ -851,7 +847,7 @@ function ExclusionsCard({ exclusions = [], onRemove, clients = [], devis = [], i
             key={ex.id}
             className={cn(
               'flex items-center justify-between px-3 py-2.5 rounded-lg',
-              isDark ? 'bg-slate-700/50' : 'bg-slate-50'
+              'bg-fond'
             )}
           >
             <div className="flex items-center gap-3 min-w-0 flex-1">
@@ -913,8 +909,8 @@ export default function RelanceConfigTab({
   stats, exclusions, onRemoveExclusion, onSaveConfig,
   clients, devis, modeDiscret,
 }) {
-  const textPrimary = isDark ? 'text-white' : 'text-slate-900';
-  const textMuted = isDark ? 'text-slate-400' : 'text-slate-500';
+  const textPrimary = 'text-encre';
+  const textMuted = 'text-encre-3';
 
   // Initialize relanceConfig from entreprise or use defaults
   const relanceConfig = useMemo(() => {
@@ -1034,8 +1030,8 @@ export default function RelanceConfigTab({
           className={cn(
             'flex items-start justify-between gap-4 p-4 rounded-xl border',
             relanceConfig.autoSend
-              ? (isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200')
-              : (isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-slate-50 border-slate-200')
+              ? 'bg-surface border-bord'
+              : 'bg-fond border-bord'
           )}
         >
           <div className="flex items-start gap-3 min-w-0">
@@ -1085,14 +1081,14 @@ export default function RelanceConfigTab({
       </div>
 
       {/* Penalties info */}
-      <div className={cn('rounded-2xl border p-5', isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200')}>
+      <div className={cn('rounded-2xl border p-5', 'bg-surface border-bord')}>
         <div className="flex items-center gap-3 mb-3">
           <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: '#ef444420' }}>
             <AlertTriangle className="w-5 h-5 text-red-500" />
           </div>
           <div>
-            <h3 className={cn('text-base font-semibold', isDark ? 'text-white' : 'text-slate-900')}>Pénalités de retard</h3>
-            <p className={cn('text-xs', isDark ? 'text-slate-400' : 'text-slate-500')}>Calcul automatique selon la loi française</p>
+            <h3 className={cn('text-base font-semibold', 'text-encre')}>Pénalités de retard</h3>
+            <p className={cn('text-xs', 'text-encre-3')}>Calcul automatique selon la loi française</p>
           </div>
         </div>
         <div className={cn('grid grid-cols-1 sm:grid-cols-2 gap-3')}>
@@ -1107,7 +1103,7 @@ export default function RelanceConfigTab({
             <p className={cn('text-[11px]', isDark ? 'text-slate-400' : 'text-amber-600')}>Art. D441-5 — par facture impayée</p>
           </div>
         </div>
-        <p className={cn('text-[11px] mt-3', isDark ? 'text-slate-500' : 'text-slate-400')}>
+        <p className={cn('text-[11px] mt-3', 'text-encre-3')}>
           Pénalités et indemnité de 40 € : clients professionnels seulement (art. L441-10 et D441-5 C. com.) ; zéro pour un
           particulier. Variables : {'{{penalites}}'}, {'{{total_du}}'} et {'{{mention_retard}}'} (texte adapté au client).
         </p>

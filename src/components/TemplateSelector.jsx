@@ -21,10 +21,10 @@ export default function TemplateSelector({
   const [searchQuery, setSearchQuery] = useState('');
 
   // Theme classes
-  const cardBg = isDark ? "bg-slate-800" : "bg-white";
-  const textPrimary = isDark ? "text-slate-100" : "text-slate-900";
-  const textSecondary = isDark ? "text-slate-300" : "text-slate-600";
-  const textMuted = isDark ? "text-slate-400" : "text-slate-600";
+  const cardBg = "bg-surface";
+  const textPrimary = "text-encre";
+  const textSecondary = "text-encre-2";
+  const textMuted = "text-encre-2";
 
   if (!isOpen) return null;
 
@@ -61,7 +61,7 @@ export default function TemplateSelector({
             {selectedMetier && (
               <button
                 onClick={handleBack}
-                className={`p-2 rounded-xl ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'} transition-colors`}
+                className={`p-2 rounded-xl hover:bg-surface-2 transition-colors`}
               >
                 <ArrowLeft size={20} className={textSecondary} />
               </button>
@@ -70,7 +70,7 @@ export default function TemplateSelector({
               {selectedMetierData ? (
                 <span className="text-xl">{selectedMetierData.icon}</span>
               ) : (
-                <FileText size={20} style={{ color: couleur }} />
+                <FileText size={20} className="text-accent-texte" />
               )}
             </div>
             <div>
@@ -84,7 +84,7 @@ export default function TemplateSelector({
           </div>
           <button
             onClick={onClose}
-            className={`p-2 rounded-xl ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'} transition-colors`}
+            className={`p-2 rounded-xl hover:bg-surface-2 transition-colors`}
           >
             <X size={20} className={textSecondary} />
           </button>
@@ -96,7 +96,7 @@ export default function TemplateSelector({
             <div>
               {/* Barre de recherche globale */}
               <div className="mb-4">
-                <div className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border ${isDark ? 'bg-slate-700/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
+                <div className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border bg-fond border-bord`}>
                   <Search size={16} className={textMuted} />
                   <input
                     type="text"
@@ -125,12 +125,12 @@ export default function TemplateSelector({
                       {searchResults.map(result => (
                         <div
                           key={`${result.metierId}-${result.id}`}
-                          className={`p-3 rounded-xl border-2 cursor-pointer transition-all ${isDark ? 'border-slate-700 hover:border-slate-500 bg-slate-800' : 'border-slate-200 hover:border-slate-300'}`}
+                          className={`p-3 rounded-xl border-2 cursor-pointer transition-all border-bord hover:border-bord-fort`}
                           onClick={() => handleSelectTemplate(result.metierId, result)}
                         >
                           <div className="flex items-center gap-2 mb-1">
                             <span className="text-sm">{result.metierIcon}</span>
-                            <span className={`text-xs px-1.5 py-0.5 rounded-full ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-500'}`}>
+                            <span className={`text-xs px-1.5 py-0.5 rounded-full bg-surface-2 text-encre-3`}>
                               {result.metierNom}
                             </span>
                           </div>
@@ -149,9 +149,9 @@ export default function TemplateSelector({
                   {customTemplates.length > 0 && (
                     <div className="mb-5">
                       <div className="flex items-center gap-2 mb-3">
-                        <Star size={16} style={{ color: couleur }} />
+                        <Star size={16} className="text-accent-texte" />
                         <p className={`text-sm font-semibold ${textPrimary}`}>Mes modèles</p>
-                        <span className={`text-xs px-2 py-0.5 rounded-full ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-500'}`}>
+                        <span className={`text-xs px-2 py-0.5 rounded-full bg-surface-2 text-encre-3`}>
                           {customTemplates.length}
                         </span>
                       </div>
@@ -159,7 +159,7 @@ export default function TemplateSelector({
                         {customTemplates.map(t => (
                           <div
                             key={t.id}
-                            className={`p-3 rounded-xl border-2 flex items-center justify-between cursor-pointer transition-all ${isDark ? 'border-slate-700 hover:border-slate-500 bg-slate-800' : 'border-slate-200 hover:border-slate-300'}`}
+                            className={`p-3 rounded-xl border-2 flex items-center justify-between cursor-pointer transition-all border-bord hover:border-bord-fort`}
                             onClick={() => {
                               onSelectTemplate({
                                 template: t,
@@ -173,7 +173,7 @@ export default function TemplateSelector({
                               <p className={`text-xs ${textMuted}`}>{t.categorie || t.category} · {(t.lignes || []).length} lignes</p>
                             </div>
                             <div className="flex items-center gap-2 flex-shrink-0">
-                              <span className="text-sm font-medium" style={{ color: couleur }}>
+                              <span className="text-sm font-medium text-accent-texte">
                                 ~{formatMoney((t.lignes || []).reduce((s, l) => s + ((l.quantite || 0) * (l.prixUnitaire || 0)), 0))} HT
                               </span>
                               {onDeleteTemplate && (
@@ -188,7 +188,7 @@ export default function TemplateSelector({
                           </div>
                         ))}
                       </div>
-                      <div className={`mt-4 pt-4 border-t ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+                      <div className={`mt-4 pt-4 border-t border-bord`}>
                         <p className={`text-xs font-medium ${textMuted} mb-3`}>Modèles par métier</p>
                       </div>
                     </div>
@@ -200,9 +200,7 @@ export default function TemplateSelector({
                       <button
                         key={metier.id}
                         onClick={() => setSelectedMetier(metier.id)}
-                        className={`relative p-4 rounded-xl border-2 flex flex-col items-center gap-3 transition-all hover:shadow-lg ${
-                          isDark ? 'border-slate-700 hover:border-slate-500 bg-slate-800' : 'border-slate-200 hover:border-slate-300 bg-white'
-                        }`}
+                        className={`relative p-4 rounded-xl border-2 flex flex-col items-center gap-3 transition-all hover:shadow-lg border-bord hover:border-bord-fort bg-surface`}
                       >
                         {metier.isNew && (
                           <span className="absolute -top-1.5 -right-1.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold text-white bg-emerald-500 shadow-sm">
@@ -234,23 +232,21 @@ export default function TemplateSelector({
                   className={`rounded-xl border-2 overflow-hidden transition-all ${
                     hoveredTemplate === template.id
                       ? (isDark ? 'border-slate-500' : 'border-slate-400')
-                      : (isDark ? 'border-slate-700' : 'border-slate-200')
+                      : 'border-bord'
                   }`}
                   onMouseEnter={() => setHoveredTemplate(template.id)}
                   onMouseLeave={() => setHoveredTemplate(null)}
                 >
                   {/* Header du template */}
                   <div
-                    className={`p-4 cursor-pointer flex items-center justify-between ${
-                      isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'
-                    }`}
+                    className={`p-4 cursor-pointer flex items-center justify-between hover:bg-surface-2`}
                     onClick={() => handleSelectTemplate(selectedMetier, template)}
                   >
                     <div className="flex-1">
                       <p className={`font-medium ${textPrimary}`}>{template.nom}</p>
                       <p className={`text-sm ${textMuted}`}>{template.description}</p>
                       <div className="flex items-center gap-3 mt-2">
-                        <span className={`text-xs px-2 py-0.5 rounded ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>
+                        <span className={`text-xs px-2 py-0.5 rounded bg-surface-2 text-encre-2`}>
                           {template.lignes.length} lignes
                         </span>
                         <span className="text-sm font-medium" style={{ color: selectedMetierData?.color }}>
@@ -269,7 +265,7 @@ export default function TemplateSelector({
 
                   {/* Preview des lignes (au hover) */}
                   {hoveredTemplate === template.id && (
-                    <div className={`p-4 border-t ${isDark ? 'bg-slate-700/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
+                    <div className={`p-4 border-t bg-fond border-bord`}>
                       <p className={`text-xs font-medium mb-2 ${textMuted}`}>Aperçu des lignes :</p>
                       <div className="space-y-1 max-h-32 overflow-y-auto">
                         {template.lignes.slice(0, 6).map((ligne, idx) => (
@@ -301,7 +297,7 @@ export default function TemplateSelector({
         </div>
 
         {/* Footer */}
-        <div className={`p-4 border-t shrink-0 ${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
+        <div className={`p-4 border-t shrink-0 bg-fond border-bord`}>
           <p className={`text-xs text-center ${textMuted}`}>
             {Object.keys(MODELES_DEVIS).length} métiers · Les prix sont indicatifs et basés sur les moyennes du marché. Ajustez selon vos tarifs.
           </p>

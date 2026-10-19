@@ -13,7 +13,7 @@ import { fileURLToPath } from 'node:url';
  */
 const PLAFONDS = {
   'micro-texte': 161,
-  gris: 1113,
+  gris: 759,
   'dark:': 0,
 };
 const MOTIFS = {

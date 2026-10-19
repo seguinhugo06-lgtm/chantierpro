@@ -22,11 +22,11 @@ export default function AvoirCreationModal({
   formatMoney: formatMoneyProp,
 }) {
   // Theme
-  const cardBg = isDark ? 'bg-slate-800' : 'bg-white';
-  const textPrimary = isDark ? 'text-slate-100' : 'text-slate-900';
-  const textMuted = isDark ? 'text-slate-400' : 'text-slate-500';
-  const inputBg = isDark ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-slate-300';
-  const borderColor = isDark ? 'border-slate-700' : 'border-slate-200';
+  const cardBg = 'bg-surface';
+  const textPrimary = 'text-encre';
+  const textMuted = 'text-encre-3';
+  const inputBg = 'bg-surface border-bord-fort';
+  const borderColor = 'border-bord';
 
   // Format money helper
   const fm = (amount) => {
@@ -182,7 +182,7 @@ export default function AvoirCreationModal({
           </div>
           <button
             onClick={onClose}
-            className={`p-2 rounded-lg transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}
+            className={`p-2 rounded-lg transition-colors hover:bg-surface-2`}
           >
             <X size={20} className={textMuted} />
           </button>
@@ -190,11 +190,11 @@ export default function AvoirCreationModal({
 
         {/* Step indicator */}
         <div className="px-5 py-3 flex items-center gap-2">
-          <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${step === 1 ? 'text-white' : isDark ? 'bg-slate-700 text-slate-400' : 'bg-slate-100 text-slate-500'}`} style={step === 1 ? { background: couleur } : {}}>
+          <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${step === 1 ? 'text-white' : 'bg-surface-2 text-encre-3'}`} style={step === 1 ? { background: couleur } : {}}>
             <span>1</span> Type & Motif
           </div>
           <ChevronRight size={14} className={textMuted} />
-          <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${step === 2 ? 'text-white' : isDark ? 'bg-slate-700 text-slate-400' : 'bg-slate-100 text-slate-500'}`} style={step === 2 ? { background: couleur } : {}}>
+          <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${step === 2 ? 'text-white' : 'bg-surface-2 text-encre-3'}`} style={step === 2 ? { background: couleur } : {}}>
             <span>2</span> {avoirType === 'total' ? 'Confirmation' : 'Lignes'}
           </div>
         </div>
@@ -221,7 +221,7 @@ export default function AvoirCreationModal({
           {step === 1 && remaining > 0 && (
             <>
               {/* Facture source summary */}
-              <div className={`p-4 rounded-xl border ${borderColor} ${isDark ? 'bg-slate-700/30' : 'bg-slate-50'}`}>
+              <div className={`p-4 rounded-xl border ${borderColor} bg-fond`}>
                 <div className="flex items-center justify-between mb-2">
                   <span className={`text-sm font-medium ${textPrimary}`}>Facture source</span>
                   <span className={`text-xs px-2 py-0.5 rounded font-medium ${isDark ? 'bg-purple-900/50 text-purple-400' : 'bg-purple-100 text-purple-700'}`}>
@@ -253,7 +253,7 @@ export default function AvoirCreationModal({
                         className={`p-4 rounded-xl border-2 text-left transition-all disabled:opacity-40 ${
                           isSelected
                             ? 'border-red-500 shadow-md'
-                            : isDark ? 'border-slate-600 hover:border-slate-500' : 'border-slate-200 hover:border-slate-300'
+                            : 'border-bord hover:border-bord-fort'
                         }`}
                         style={isSelected ? { borderColor: '#ef4444', background: isDark ? 'rgba(239,68,68,0.1)' : 'rgba(239,68,68,0.05)' } : {}}
                       >
@@ -351,7 +351,7 @@ export default function AvoirCreationModal({
                     </div>
                   </div>
 
-                  <div className={`flex items-start gap-2 p-3 rounded-xl text-xs ${isDark ? 'bg-slate-700/50 text-slate-400' : 'bg-slate-50 text-slate-500'}`}>
+                  <div className={`flex items-start gap-2 p-3 rounded-xl text-xs bg-fond text-encre-3`}>
                     <Info size={14} className="flex-shrink-0 mt-0.5" />
                     L'avoir sera créé en brouillon. Vous pourrez le vérifier et l'émettre ensuite.
                   </div>
@@ -381,7 +381,7 @@ export default function AvoirCreationModal({
                           className={`p-3 transition-colors ${
                             isSelected
                               ? isDark ? 'bg-red-900/10' : 'bg-red-50/50'
-                              : isDark ? 'bg-slate-800' : 'bg-white'
+                              : 'bg-surface'
                           }`}
                         >
                           {/* Section header */}
@@ -398,7 +398,7 @@ export default function AvoirCreationModal({
                               className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition-colors disabled:opacity-30 ${
                                 isSelected
                                   ? 'bg-red-500 border-red-500 text-white'
-                                  : isDark ? 'border-slate-500' : 'border-slate-300'
+                                  : 'border-bord-fort'
                               }`}
                             >
                               {isSelected && <Check size={12} />}
@@ -441,7 +441,7 @@ export default function AvoirCreationModal({
                   </div>
 
                   {/* Partial totals */}
-                  <div className={`p-4 rounded-xl border ${exceedsRemaining ? (isDark ? 'bg-red-900/30 border-red-800' : 'bg-red-50 border-red-300') : (isDark ? 'bg-slate-700/30 border-slate-600' : 'bg-slate-50 border-slate-200')}`}>
+                  <div className={`p-4 rounded-xl border ${exceedsRemaining ? (isDark ? 'bg-red-900/30 border-red-800' : 'bg-red-50 border-red-300') : 'bg-fond border-bord'}`}>
                     {exceedsRemaining && (
                       <div className="flex items-center gap-2 text-sm text-red-600 mb-3">
                         <AlertTriangle size={14} />

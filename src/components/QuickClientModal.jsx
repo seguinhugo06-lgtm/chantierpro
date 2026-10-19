@@ -127,11 +127,11 @@ export default function QuickClientModal({
   };
 
   // Theme classes
-  const cardBg = isDark ? 'bg-slate-800' : 'bg-white';
-  const inputBg = isDark ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400' : 'bg-white border-slate-200 text-slate-900 placeholder-slate-400';
-  const textPrimary = isDark ? 'text-white' : 'text-slate-900';
-  const textSecondary = isDark ? 'text-slate-300' : 'text-slate-600';
-  const textMuted = isDark ? 'text-slate-400' : 'text-slate-600';
+  const cardBg = 'bg-surface';
+  const inputBg = 'bg-surface border-bord text-encre placeholder:text-encre-3';
+  const textPrimary = 'text-encre';
+  const textSecondary = 'text-encre-2';
+  const textMuted = 'text-encre-2';
 
   // Auto-focus on open (robust: retry if animation blocks focus)
   useEffect(() => {
@@ -308,9 +308,9 @@ export default function QuickClientModal({
               type="button"
               onClick={fillFromContact}
               disabled={pickingContact}
-              className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed text-sm font-semibold transition-all disabled:opacity-60 active:scale-[0.99] ${isDark ? 'border-slate-600 text-slate-200 hover:bg-slate-700/60' : 'border-slate-300 text-slate-700 hover:bg-slate-50'}`}
+              className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed text-sm font-semibold transition-all disabled:opacity-60 active:scale-[0.99] border-bord-fort text-encre-2 hover:bg-surface-2`}
             >
-              <Smartphone size={17} style={{ color: couleur }} />
+              <Smartphone size={17} className="text-accent-texte" />
               {pickingContact ? 'Ouverture du répertoire…' : 'Remplir depuis mes contacts'}
             </button>
           )}
@@ -320,7 +320,7 @@ export default function QuickClientModal({
             {/* Nom field - required */}
             <div>
               <label htmlFor="qc-nom" className={`flex items-center gap-2 text-sm font-medium mb-2 ${textPrimary}`}>
-                <User size={14} style={{ color: couleur }} />
+                <User size={14} className="text-accent-texte" />
                 Nom *
               </label>
               <input
@@ -369,7 +369,7 @@ export default function QuickClientModal({
             {/* Telephone field */}
             <div>
               <label htmlFor="qc-telephone" className={`flex items-center gap-2 text-sm font-medium mb-2 ${textPrimary}`}>
-                <Phone size={14} style={{ color: couleur }} />
+                <Phone size={14} className="text-accent-texte" />
                 Téléphone
               </label>
               <input
@@ -406,7 +406,7 @@ export default function QuickClientModal({
                 onClick={() => setForm(p => ({ ...p, categorie: type }))}
                 className={`flex-1 py-2 rounded-xl text-sm font-medium border transition-all ${form.categorie === type
                   ? 'text-white border-transparent shadow-sm'
-                  : isDark ? 'border-slate-600 text-slate-400 hover:border-slate-500' : 'border-slate-200 text-slate-500 hover:border-slate-300'
+                  : 'border-bord text-encre-3 hover:border-bord-fort'
                 }`}
                 style={form.categorie === type ? { background: couleur } : {}}
               >
@@ -418,7 +418,7 @@ export default function QuickClientModal({
           {/* Email field — promoted out of accordion */}
           <div>
             <label htmlFor="qc-email" className={`flex items-center gap-2 text-sm font-medium mb-2 ${textPrimary}`}>
-              <Mail size={14} style={{ color: couleur }} />
+              <Mail size={14} className="text-accent-texte" />
               Email
             </label>
             <input
@@ -447,7 +447,7 @@ export default function QuickClientModal({
                 <span>
                   Un client avec cet email existe déjà : <strong>{emailDuplicates[0].nom} {emailDuplicates[0].prenom || ''}</strong>
                   {onViewClient && (
-                    <button type="button" onClick={() => { onClose(); setTimeout(() => onViewClient(emailDuplicates[0].id), 100); }} className="ml-1 underline font-medium" style={{ color: couleur }}>Voir la fiche →</button>
+                    <button type="button" onClick={() => { onClose(); setTimeout(() => onViewClient(emailDuplicates[0].id), 100); }} className="ml-1 underline font-medium text-accent-texte">Voir la fiche →</button>
                   )}
                 </span>
               </div>
@@ -473,8 +473,7 @@ export default function QuickClientModal({
                   {onViewClient && (
                     <button
                       onClick={(e) => { e.preventDefault(); onClose(); setTimeout(() => onViewClient(dup.id), 100); }}
-                      className="text-[10px] font-medium flex items-center gap-0.5 px-2 py-1 rounded-md transition-colors hover:bg-amber-500/20"
-                      style={{ color: couleur }}
+                      className="text-[10px] font-medium flex items-center gap-0.5 px-2 py-1 rounded-md transition-colors hover:bg-amber-500/20 text-accent-texte"
                     >
                       Voir <ExternalLink size={10} />
                     </button>
@@ -485,11 +484,11 @@ export default function QuickClientModal({
           )}
 
           {/* Expandable details section */}
-          <div className={`border rounded-xl overflow-hidden transition-all ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+          <div className={`border rounded-xl overflow-hidden transition-all border-bord`}>
             <button
               type="button"
               onClick={() => setShowDetails(!showDetails)}
-              className={`w-full px-4 py-3 flex items-center justify-between transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}
+              className={`w-full px-4 py-3 flex items-center justify-between transition-colors hover:bg-surface-2`}
             >
               <span className={`text-sm font-medium ${textSecondary}`}>
                 {form.categorie === 'Professionnel' ? 'Entreprise, adresse…' : 'Adresse, entreprise…'}
@@ -509,7 +508,7 @@ export default function QuickClientModal({
                   animate={{ height: 'auto', opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }}
                   transition={{ duration: 0.2 }}
-                  className={`overflow-hidden border-t ${isDark ? 'border-slate-700' : 'border-slate-200'}`}
+                  className={`overflow-hidden border-t border-bord`}
                 >
                   <div className="px-4 pb-4 pt-3 space-y-3">
                     <div>
@@ -584,8 +583,7 @@ export default function QuickClientModal({
             <button
               onClick={handleSubmit}
               disabled={!canSubmit || isSubmitting}
-              className="w-full sm:flex-1 px-4 py-3 rounded-xl font-medium text-white transition-all min-h-[48px] flex items-center justify-center gap-2 disabled:opacity-50 hover:shadow-lg active:scale-[0.98]"
-              style={{ backgroundColor: couleur }}
+              className="w-full sm:flex-1 px-4 py-3 rounded-xl font-medium transition-all min-h-[48px] flex items-center justify-center gap-2 disabled:opacity-50 hover:shadow-lg active:scale-[0.98] bg-accent text-sur-accent"
             >
               {isSubmitting ? (
                 <>
@@ -625,23 +623,23 @@ export default function QuickClientModal({
   const dupeConfirmModal = showDupeConfirm && allStrongDupes.length > 0 ? (
     <div className="fixed inset-0 z-[1250] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowDupeConfirm(false)} />
-      <div className={`relative w-full max-w-sm rounded-2xl shadow-2xl border ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+      <div className={`relative w-full max-w-sm rounded-2xl shadow-2xl border bg-surface border-bord`}>
         <div className="p-5">
           <div className="flex items-center gap-3 mb-3">
             <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isDark ? 'bg-amber-900/40' : 'bg-amber-100'}`}>
               <AlertTriangle size={20} className="text-amber-500" />
             </div>
-            <h3 className={`text-base font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>Doublon potentiel</h3>
+            <h3 className={`text-base font-bold text-encre`}>Doublon potentiel</h3>
           </div>
-          <p className={`text-sm mb-3 ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+          <p className={`text-sm mb-3 text-encre-2`}>
             Ce client semble être un doublon de :
           </p>
           <div className="space-y-2 mb-4">
             {allStrongDupes.map(dup => (
-              <div key={dup.id} className={`flex items-center justify-between p-3 rounded-xl border ${isDark ? 'bg-slate-700/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
+              <div key={dup.id} className={`flex items-center justify-between p-3 rounded-xl border bg-fond border-bord`}>
                 <div>
-                  <p className={`font-semibold text-sm ${isDark ? 'text-white' : 'text-slate-900'}`}>{dup.nom} {dup.prenom || ''}</p>
-                  <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                  <p className={`font-semibold text-sm text-encre`}>{dup.nom} {dup.prenom || ''}</p>
+                  <p className={`text-xs text-encre-3`}>
                     {dup.matchReason || dup.reason}
                     {dup.telephone && ` · ${dup.telephone}`}
                     {dup.email && ` · ${dup.email}`}
@@ -650,8 +648,8 @@ export default function QuickClientModal({
                 {onViewClient && (
                   <button
                     onClick={() => { setShowDupeConfirm(false); onClose(); setTimeout(() => onViewClient(dup.id), 100); }}
-                    className="text-xs font-medium px-2.5 py-1 rounded-lg transition-colors"
-                    style={{ color: couleur, backgroundColor: `${couleur}15` }}
+                    className="text-xs font-medium px-2.5 py-1 rounded-lg transition-colors text-accent-texte"
+                    style={{ backgroundColor: `${couleur}15` }}
                   >
                     Voir
                   </button>
@@ -668,8 +666,7 @@ export default function QuickClientModal({
             </button>
             <button
               onClick={async () => { setShowDupeConfirm(false); await doFinalSubmit(); }}
-              className="flex-1 py-2.5 rounded-xl font-medium text-sm text-white transition-colors hover:opacity-90"
-              style={{ backgroundColor: couleur }}
+              className="flex-1 py-2.5 rounded-xl font-medium text-sm transition-colors hover:opacity-90 bg-accent text-sur-accent"
             >
               Créer quand même
             </button>

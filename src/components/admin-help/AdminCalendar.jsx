@@ -52,10 +52,10 @@ function AddReminderModal({ isOpen, onClose, onAdd, isDark, couleur }) {
     notes: ''
   });
 
-  const textPrimary = isDark ? 'text-white' : 'text-slate-900';
-  const textMuted = isDark ? 'text-slate-400' : 'text-slate-600';
-  const cardBg = isDark ? 'bg-slate-800' : 'bg-white';
-  const inputBg = isDark ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-slate-300';
+  const textPrimary = 'text-encre';
+  const textMuted = 'text-encre-2';
+  const cardBg = 'bg-surface';
+  const inputBg = 'bg-surface border-bord-fort';
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -72,7 +72,7 @@ function AddReminderModal({ isOpen, onClose, onAdd, isDark, couleur }) {
       <div className={`relative max-w-md w-full p-6 rounded-3xl ${cardBg} shadow-2xl`}>
         <div className="flex items-center justify-between mb-6">
           <h3 className={`text-lg font-bold ${textPrimary}`}>Ajouter un rappel</h3>
-          <button onClick={onClose} className={`p-2 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
+          <button onClick={onClose} className={`p-2 rounded-lg hover:bg-surface-2`}>
             <X size={20} className={textMuted} />
           </button>
         </div>
@@ -121,7 +121,7 @@ function AddReminderModal({ isOpen, onClose, onAdd, isDark, couleur }) {
                   className={`px-3 py-2 rounded-xl text-sm transition-all ${
                     form.type === t.id
                       ? 'text-white'
-                      : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'
+                      : 'bg-surface-2 text-encre-2'
                   }`}
                   style={form.type === t.id ? { background: couleur } : {}}
                 >
@@ -147,7 +147,7 @@ function AddReminderModal({ isOpen, onClose, onAdd, isDark, couleur }) {
                   className={`px-3 py-2 rounded-xl text-sm font-medium transition-all ${
                     form.priority === p.id
                       ? `${p.color} text-white`
-                      : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'
+                      : 'bg-surface-2 text-encre-2'
                   }`}
                 >
                   {p.label}
@@ -179,8 +179,7 @@ function AddReminderModal({ isOpen, onClose, onAdd, isDark, couleur }) {
             </button>
             <button
               type="submit"
-              className="flex-1 py-3 rounded-xl font-medium text-white transition-all hover:shadow-lg"
-              style={{ background: couleur }}
+              className="flex-1 py-3 rounded-xl font-medium transition-all hover:shadow-lg bg-accent text-sur-accent"
             >
               Ajouter
             </button>
@@ -199,9 +198,9 @@ export default function AdminCalendar({ isDark = false, couleur = '#f97316' }) {
   const [customReminders, setCustomReminders] = useState([]);
   const [snoozed, setSnoozed] = useState({});
 
-  const textPrimary = isDark ? 'text-white' : 'text-slate-900';
-  const textMuted = isDark ? 'text-slate-400' : 'text-slate-600';
-  const cardBg = isDark ? 'bg-slate-800' : 'bg-white';
+  const textPrimary = 'text-encre';
+  const textMuted = 'text-encre-2';
+  const cardBg = 'bg-surface';
 
   const today = new Date();
 
@@ -300,8 +299,7 @@ export default function AdminCalendar({ isDark = false, couleur = '#f97316' }) {
         </div>
         <button
           onClick={() => setShowAddReminder(true)}
-          className="px-4 py-2 rounded-xl text-white font-medium flex items-center gap-2 hover:shadow-lg transition-shadow"
-          style={{ background: couleur }}
+          className="px-4 py-2 rounded-xl font-medium flex items-center gap-2 hover:shadow-lg transition-shadow bg-accent text-sur-accent"
         >
           <Plus size={16} />
           Ajouter rappel
@@ -322,7 +320,7 @@ export default function AdminCalendar({ isDark = false, couleur = '#f97316' }) {
             className={`px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${
               filter === f.id
                 ? 'text-white'
-                : isDark ? 'bg-slate-700 text-slate-400' : 'bg-slate-100 text-slate-600'
+                : 'bg-surface-2 text-encre-2'
             }`}
             style={filter === f.id ? { background: couleur } : {}}
           >
@@ -333,12 +331,12 @@ export default function AdminCalendar({ isDark = false, couleur = '#f97316' }) {
       </div>
 
       {/* Calendar grid */}
-      <div className={`p-4 rounded-2xl ${cardBg} border ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+      <div className={`p-4 rounded-2xl ${cardBg} border border-bord`}>
         {/* Month navigation */}
         <div className="flex items-center justify-between mb-4">
           <button
             onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1))}
-            className={`p-2 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}
+            className={`p-2 rounded-lg hover:bg-surface-2`}
           >
             <ChevronLeft size={20} className={textMuted} />
           </button>
@@ -347,7 +345,7 @@ export default function AdminCalendar({ isDark = false, couleur = '#f97316' }) {
           </h3>
           <button
             onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1))}
-            className={`p-2 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}
+            className={`p-2 rounded-lg hover:bg-surface-2`}
           >
             <ChevronRight size={20} className={textMuted} />
           </button>
@@ -381,7 +379,7 @@ export default function AdminCalendar({ isDark = false, couleur = '#f97316' }) {
                       : hasEvents
                         ? 'cursor-pointer hover:scale-105'
                         : ''
-                } ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}
+                } hover:bg-surface-2`}
                 style={isToday ? { ringColor: couleur } : {}}
               >
                 <span className={`text-sm ${isToday ? 'font-bold' : ''} ${textPrimary}`}>
@@ -404,9 +402,9 @@ export default function AdminCalendar({ isDark = false, couleur = '#f97316' }) {
       </div>
 
       {/* Upcoming events list */}
-      <div className={`p-4 rounded-2xl ${cardBg} border ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+      <div className={`p-4 rounded-2xl ${cardBg} border border-bord`}>
         <div className="flex items-center gap-2 mb-4">
-          <Clock size={20} style={{ color: couleur }} />
+          <Clock size={20} className="text-accent-texte" />
           <h3 className={`font-bold ${textPrimary}`}>Prochaines échéances</h3>
         </div>
 
@@ -423,7 +421,7 @@ export default function AdminCalendar({ isDark = false, couleur = '#f97316' }) {
               return (
                 <div
                   key={event.id}
-                  className={`p-4 rounded-xl ${style.light} border ${isDark ? 'border-slate-700' : 'border-slate-200'}`}
+                  className={`p-4 rounded-xl ${style.light} border border-bord`}
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex items-start gap-3">
@@ -444,7 +442,7 @@ export default function AdminCalendar({ isDark = false, couleur = '#f97316' }) {
                           <button
                             key={preset.days}
                             onClick={() => handleSnooze(event.id, preset.days)}
-                            className={`text-xs px-2 py-1 rounded ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-white hover:bg-slate-50'}`}
+                            className={`text-xs px-2 py-1 rounded bg-surface hover:bg-surface-2`}
                           >
                             <Bell size={10} className="inline mr-1" />
                             {preset.label}
@@ -506,7 +504,7 @@ export default function AdminCalendar({ isDark = false, couleur = '#f97316' }) {
             </div>
             <button
               onClick={() => setSelectedDate(null)}
-              className={`w-full mt-4 py-3 rounded-xl font-medium ${isDark ? 'bg-slate-700 text-white' : 'bg-slate-100 text-slate-700'}`}
+              className={`w-full mt-4 py-3 rounded-xl font-medium bg-surface-2 text-encre-2`}
             >
               Fermer
             </button>

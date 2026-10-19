@@ -98,11 +98,11 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
   const { errors: formErrors, validateAll: validateEmployee, clearErrors: clearFormErrors } = useFormValidation(employeeFullSchema);
 
   // Theme classes
-  const cardBg = isDark ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200";
+  const cardBg = "bg-surface border-bord";
   const inputBg = isDark ? "bg-slate-700 border-slate-600 text-white placeholder-slate-400" : "bg-white border-slate-300";
-  const textPrimary = isDark ? "text-slate-100" : "text-slate-900";
-  const textSecondary = isDark ? "text-slate-300" : "text-slate-600";
-  const textMuted = isDark ? "text-slate-400" : "text-slate-600";
+  const textPrimary = "text-encre";
+  const textSecondary = "text-encre-2";
+  const textMuted = "text-encre-2";
 
   // Core state
   const [viewMode, setViewMode] = useState('employes'); // 'employes' | 'sous_traitants'
@@ -1069,7 +1069,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
 
         {/* Compétences & Certifications */}
         <div className={`mt-6 pt-6 border-t border-bord`}>
-          <h4 className={`font-medium mb-4 flex items-center gap-2 ${textPrimary}`}><HardHat size={16} style={{ color: couleur }} /> Compétences & Certifications</h4>
+          <h4 className={`font-medium mb-4 flex items-center gap-2 ${textPrimary}`}><HardHat size={16} className="text-accent-texte" /> Compétences & Certifications</h4>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Compétences</label>
@@ -1137,7 +1137,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
         )}
 
         <div className={`mt-6 pt-6 border-t border-bord`}>
-          <h4 className={`font-medium mb-4 flex items-center gap-2 ${textPrimary}`}><Euro size={16} style={{ color: couleur }} /> Tarification</h4>
+          <h4 className={`font-medium mb-4 flex items-center gap-2 ${textPrimary}`}><Euro size={16} className="text-accent-texte" /> Tarification</h4>
           {isSousTraitants && (
             <div className="flex gap-2 mb-4">
               {['horaire', 'forfait'].map(t => (
@@ -1178,7 +1178,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
 
         <div className={`flex flex-col sm:flex-row justify-end gap-3 mt-6 pt-6 border-t border-bord`}>
           <button onClick={() => { setShowAdd(false); setEditId(null); }} className={`px-4 py-2.5 rounded-xl min-h-[44px] bg-surface-2 text-encre-2`}>Annuler</button>
-          <button onClick={addEmploye} disabled={false} className="px-6 py-2.5 text-white rounded-xl min-h-[44px] flex items-center justify-center gap-2" style={{background: couleur}}>
+          <button onClick={addEmploye} disabled={false} className="px-6 py-2.5 rounded-xl min-h-[44px] flex items-center justify-center gap-2 bg-accent text-sur-accent">
             <Check size={16} /> {editId ? 'Enregistrer' : 'Ajouter'}
           </button>
         </div>
@@ -1280,8 +1280,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
             <button
               onClick={addBulkPointages}
               disabled={!bulkForm.chantierId || bulkForm.selectedEmployees.length === 0 || !bulkForm.heures}
-              className="px-6 py-2.5 text-white rounded-xl min-h-[44px] flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-              style={{ background: couleur }}
+              className="px-6 py-2.5 rounded-xl min-h-[44px] flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed transition-all bg-accent text-sur-accent"
               title={!bulkForm.chantierId ? 'Sélectionnez un chantier' : bulkForm.selectedEmployees.length === 0 ? 'Sélectionnez au moins un employé' : !bulkForm.heures ? 'Indiquez les heures' : ''}
             >
               <Plus size={16} /> Ajouter {bulkForm.selectedEmployees.length} pointage{bulkForm.selectedEmployees.length > 1 ? 's' : ''}
@@ -1339,12 +1338,12 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
           </p>
         </div>
 
-        <div className={`p-6 sm:p-8 border-t ${isDark ? 'border-slate-700 bg-slate-800/50' : 'border-slate-100 bg-slate-50/50'}`}>
+        <div className={`p-6 sm:p-8 border-t border-bord bg-fond/50`}>
           <p className={`text-xs font-medium uppercase tracking-wider mb-4 ${textMuted}`}>Fonctionnalités</p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
             <div className={`flex items-start gap-3 p-3 rounded-xl bg-surface`}>
               <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${couleur}20` }}>
-                <Timer size={18} style={{ color: couleur }} />
+                <Timer size={18} className="text-accent-texte" />
               </div>
               <div>
                 <p className={`font-medium text-sm ${textPrimary}`}>Chronomètre</p>
@@ -1353,7 +1352,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
             </div>
             <div className={`flex items-start gap-3 p-3 rounded-xl bg-surface`}>
               <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${couleur}20` }}>
-                <TrendingUp size={18} style={{ color: couleur }} />
+                <TrendingUp size={18} className="text-accent-texte" />
               </div>
               <div>
                 <p className={`font-medium text-sm ${textPrimary}`}>Coût de revient</p>
@@ -1362,7 +1361,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
             </div>
             <div className={`flex items-start gap-3 p-3 rounded-xl bg-surface`}>
               <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${couleur}20` }}>
-                <Download size={18} style={{ color: couleur }} />
+                <Download size={18} className="text-accent-texte" />
               </div>
               <div>
                 <p className={`font-medium text-sm ${textPrimary}`}>Export CSV</p>
@@ -1371,7 +1370,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
             </div>
           </div>
 
-          <button onClick={() => setShowAdd(true)} className="w-full sm:w-auto px-6 py-3 text-white rounded-xl flex items-center justify-center gap-2 mx-auto hover:shadow-lg transition-all font-medium" style={{ background: couleur }}>
+          <button onClick={() => setShowAdd(true)} className="w-full sm:w-auto px-6 py-3 rounded-xl flex items-center justify-center gap-2 mx-auto hover:shadow-lg transition-all font-medium bg-accent text-sur-accent">
             <UserPlus size={18} />
             Ajouter mon premier employé
           </button>
@@ -1396,7 +1395,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
             />
             <div className="flex gap-3">
               <button onClick={() => { stopChronoWithNote(''); setNoteModalOpen(false); }} className={`flex-1 px-4 py-2.5 rounded-xl bg-surface-2 text-encre-2`}>Sans note</button>
-              <button onClick={() => { const note = document.getElementById('chrono-note')?.value || ''; stopChronoWithNote(note); setNoteModalOpen(false); }} className="flex-1 px-4 py-2.5 rounded-xl text-white" style={{background: couleur}}>Confirmer</button>
+              <button onClick={() => { const note = document.getElementById('chrono-note')?.value || ''; stopChronoWithNote(note); setNoteModalOpen(false); }} className="flex-1 px-4 py-2.5 rounded-xl bg-accent text-sur-accent">Confirmer</button>
             </div>
           </div>
         </div>
@@ -1598,7 +1597,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                           <MapPin size={10} className="inline mr-1" />
                           {currentCh?.nom || 'Sans chantier'}
                         </span>
-                        <span className="text-xs font-bold" style={{ color: couleur }}>{todayH.toFixed(1)}h</span>
+                        <span className="text-xs font-bold text-accent-texte">{todayH.toFixed(1)}h</span>
                       </div>
                     </div>
                     {e.telephone && (
@@ -1783,8 +1782,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                     <p className={`text-sm ${textMuted} mt-1`}>Essayez avec d'autres critères de recherche</p>
                     <button
                       onClick={() => { setSearchQuery(''); setFilterRole(''); }}
-                      className="mt-4 px-4 py-2.5 rounded-xl text-sm font-medium text-white min-h-[44px] inline-flex items-center gap-2 transition-all hover:opacity-90"
-                      style={{ background: couleur }}
+                      className="mt-4 px-4 py-2.5 rounded-xl text-sm font-medium min-h-[44px] inline-flex items-center gap-2 transition-all hover:opacity-90 bg-accent text-sur-accent"
                     >
                       <X size={16} /> Effacer les filtres
                     </button>
@@ -1792,14 +1790,13 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                 ) : (
                   <>
                     <div className="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center" style={{ background: `${couleur}15` }}>
-                      {isSousTraitants ? <UserCheck size={32} style={{ color: couleur }} /> : <Users size={32} style={{ color: couleur }} />}
+                      {isSousTraitants ? <UserCheck size={32} className="text-accent-texte" /> : <Users size={32} className="text-accent-texte" />}
                     </div>
                     <p className={`font-medium ${textPrimary}`}>{isSousTraitants ? 'Aucun sous-traitant' : 'Aucun employé'}</p>
                     <p className={`text-sm ${textMuted} mt-1`}>{isSousTraitants ? 'Ajoutez votre premier sous-traitant pour gérer vos partenaires' : 'Ajoutez votre premier employé pour commencer'}</p>
                     <button
                       onClick={() => setShowAdd(true)}
-                      className="mt-4 px-5 py-2.5 rounded-xl text-sm font-medium text-white min-h-[44px] inline-flex items-center gap-2 transition-all hover:opacity-90 shadow-lg"
-                      style={{ background: couleur }}
+                      className="mt-4 px-5 py-2.5 rounded-xl text-sm font-medium min-h-[44px] inline-flex items-center gap-2 transition-all hover:opacity-90 shadow-lg bg-accent text-sur-accent"
                     >
                       <UserPlus size={16} /> {isSousTraitants ? 'Ajouter un sous-traitant' : 'Ajouter un employé'}
                     </button>
@@ -2028,8 +2025,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                         ) : (
                           <button
                             onClick={smartClocking.requestPermission}
-                            className="px-3 py-1 rounded-lg text-xs text-white"
-                            style={{ background: couleur }}
+                            className="px-3 py-1 rounded-lg text-xs bg-accent text-sur-accent"
                           >
                             Activer GPS
                           </button>
@@ -2046,7 +2042,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                                 className={`flex items-center justify-between p-2 rounded-lg bg-surface`}
                               >
                                 <div className="flex items-center gap-2">
-                                  <MapPin size={14} style={{ color: couleur }} />
+                                  <MapPin size={14} className="text-accent-texte" />
                                   <span className={`text-sm ${textPrimary}`}>{ch.nom}</span>
                                 </div>
                                 <span className={`text-xs ${textMuted}`}>{ch.distance}m</span>
@@ -2089,7 +2085,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
               <div className={`${cardBg} rounded-xl border p-4`}>
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ background: `${couleur}15` }}>
-                    <Smartphone size={18} style={{ color: couleur }} />
+                    <Smartphone size={18} className="text-accent-texte" />
                   </div>
                   <div>
                     <p className={`text-sm font-medium ${textPrimary}`}>Mode Terrain</p>
@@ -2100,7 +2096,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
               <div className={`${cardBg} rounded-xl border p-4`}>
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ background: `${couleur}15` }}>
-                    <WifiOff size={18} style={{ color: couleur }} />
+                    <WifiOff size={18} className="text-accent-texte" />
                   </div>
                   <div>
                     <p className={`text-sm font-medium ${textPrimary}`}>Hors ligne</p>
@@ -2111,7 +2107,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
               <div className={`${cardBg} rounded-xl border p-4`}>
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ background: `${couleur}15` }}>
-                    <Navigation size={18} style={{ color: couleur }} />
+                    <Navigation size={18} className="text-accent-texte" />
                   </div>
                   <div>
                     <p className={`text-sm font-medium ${textPrimary}`}>GPS Intelligent</p>
@@ -2337,7 +2333,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
             <div className={`${cardBg} rounded-2xl border p-5`}>
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${couleur}15` }}>
-                  <Edit3 size={18} style={{ color: couleur }} />
+                  <Edit3 size={18} className="text-accent-texte" />
                 </div>
                 <div>
                   <h3 className={`font-semibold ${textPrimary}`}>Saisie manuelle</h3>
@@ -2388,8 +2384,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                 <button
                   onClick={addPointageManuel}
                   disabled={!pForm.employeId || !pForm.heures}
-                  className="col-span-2 sm:col-span-1 px-4 py-3 text-white rounded-xl flex items-center justify-center gap-2 font-medium disabled:opacity-50 transition-all hover:shadow-lg"
-                  style={{ background: couleur }}
+                  className="col-span-2 sm:col-span-1 px-4 py-3 rounded-xl flex items-center justify-center gap-2 font-medium disabled:opacity-50 transition-all hover:shadow-lg bg-accent text-sur-accent"
                 >
                   <Plus size={18} />
                   Ajouter
@@ -2409,7 +2404,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
               if (recentPointages.length === 0) return (
                 <div className={`${cardBg} rounded-2xl border p-8 text-center`}>
                   <div className="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center" style={{ background: `${couleur}15` }}>
-                    <Timer size={28} style={{ color: couleur }} />
+                    <Timer size={28} className="text-accent-texte" />
                   </div>
                   <p className={`font-semibold ${textPrimary} mb-1`}>Aucun pointage cette semaine</p>
                   <p className={`text-sm ${textMuted} max-w-sm mx-auto`}>
@@ -2422,7 +2417,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                 <div className={`${cardBg} rounded-2xl border overflow-hidden`}>
                   <div className="p-4 flex items-center justify-between">
                     <h3 className={`font-semibold ${textPrimary} flex items-center gap-2`}>
-                      <History size={18} style={{ color: couleur }} />
+                      <History size={18} className="text-accent-texte" />
                       Pointages de la semaine
                     </h3>
                     <span className={`text-xs px-2 py-1 rounded-full bg-surface-2 text-encre-2`}>
@@ -2568,7 +2563,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                           {emp?.nom?.[0]}{emp?.prenom?.[0] || ''}
                         </div>
                         <span
-                          className={`absolute -top-1 -right-1 w-4 h-4 rounded-full border-2 ${p.manuel ? 'bg-blue-500' : 'bg-orange-500'}`}
+                          className={`absolute -top-1 -right-1 w-4 h-4 rounded-full border-2 ${p.manuel ? 'bg-blue-500' : 'bg-signature'}`}
                           style={{ borderColor: isDark ? '#1e293b' : '#fff' }}
                           title={p.manuel ? 'Saisie manuelle' : 'Chronomètre'}
                         />
@@ -2600,8 +2595,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                             step="0.5"
                             value={p.heures}
                             onChange={e => updatePointage(p.id, 'heures', e.target.value)}
-                            className={`w-20 px-3 py-2 border rounded-xl text-center text-lg font-bold ${inputBg}`}
-                            style={{ color: couleur }}
+                            className={`w-20 px-3 py-2 border rounded-xl text-center text-lg font-bold bg-surface border-bord-fort text-accent-texte`}
                           />
                           <span className={`absolute right-2 top-1/2 -translate-y-1/2 text-xs ${textMuted}`}>h</span>
                         </div>
@@ -2636,7 +2630,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
             <div className={`${cardBg} rounded-2xl border p-5`}>
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${couleur}15` }}>
-                  <PenTool size={18} style={{ color: couleur }} />
+                  <PenTool size={18} className="text-accent-texte" />
                 </div>
                 <div>
                   <h3 className={`font-semibold ${textPrimary}`}>Signatures employés</h3>
@@ -2670,8 +2664,8 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                       ) : (
                         <motion.button
                           onClick={() => setSignatureModal({ open: true, pointageIds: empWeekPts.map(p => p.id), employeId: emp.id })}
-                          className="px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 flex-shrink-0"
-                          style={{ background: `${couleur}15`, color: couleur }}
+                          className="px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 flex-shrink-0 text-accent-texte"
+                          style={{ background: `${couleur}15` }}
                           whileHover={{ scale: 1.02 }}
                           whileTap={{ scale: 0.98 }}
                         >
@@ -2764,8 +2758,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                       <button
                         onClick={saveSignature}
                         disabled={!signatureData}
-                        className="flex-1 px-4 py-3 text-white rounded-xl text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50 shadow-lg"
-                        style={{ background: couleur }}
+                        className="flex-1 px-4 py-3 rounded-xl text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50 shadow-lg bg-accent text-sur-accent"
                       >
                         <Check size={16} />
                         Valider & Signer
@@ -2793,7 +2786,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
             <div className={`flex items-center justify-between flex-wrap gap-3 p-4 rounded-xl bg-surface-2`}>
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${couleur}15` }}>
-                  <History size={20} style={{ color: couleur }} />
+                  <History size={20} className="text-accent-texte" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
@@ -2820,8 +2813,8 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
               <div className="flex items-center gap-2 flex-wrap">
                 <motion.button
                   onClick={exportCSV}
-                  className="px-3 py-2 rounded-xl text-sm font-medium flex items-center gap-2 shadow-sm"
-                  style={{ background: `${couleur}15`, color: couleur }}
+                  className="px-3 py-2 rounded-xl text-sm font-medium flex items-center gap-2 shadow-sm text-accent-texte"
+                  style={{ background: `${couleur}15` }}
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >
@@ -2830,8 +2823,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                 </motion.button>
                 <motion.button
                   onClick={() => exportPaieCSV('week')}
-                  className="px-3 py-2 rounded-xl text-sm font-medium flex items-center gap-2 text-white shadow-sm"
-                  style={{ background: couleur }}
+                  className="px-3 py-2 rounded-xl text-sm font-medium flex items-center gap-2 shadow-sm bg-accent text-sur-accent"
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >
@@ -2867,7 +2859,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   <div className={`p-3 rounded-xl border bg-surface border-bord`}>
                     <p className={`text-xs font-medium ${textMuted}`}>Employés</p>
-                    <p className="text-xl font-bold" style={{ color: couleur }}>{employesConcernes}</p>
+                    <p className="text-xl font-bold text-accent-texte">{employesConcernes}</p>
                     <p className={`text-xs ${textMuted}`}>{chantiersConcernes} chantier{chantiersConcernes > 1 ? 's' : ''}</p>
                   </div>
                   <div className={`p-3 rounded-xl border bg-surface border-bord`}>
@@ -2885,7 +2877,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                   </div>
                   <div className={`p-3 rounded-xl border bg-surface border-bord`}>
                     <p className={`text-xs font-medium ${textMuted}`}>Coût estimé</p>
-                    <p className="text-xl font-bold" style={{ color: couleur }}>{coutEstime.toFixed(0)}€</p>
+                    <p className="text-xl font-bold text-accent-texte">{coutEstime.toFixed(0)}€</p>
                     <p className={`text-xs ${textMuted}`}>charges incluses</p>
                   </div>
                 </div>
@@ -2967,13 +2959,13 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
 
                         {/* Source indicator */}
                         <span
-                          className={`w-2 h-2 rounded-full flex-shrink-0 ${p.manuel ? 'bg-blue-500' : 'bg-orange-500'}`}
+                          className={`w-2 h-2 rounded-full flex-shrink-0 ${p.manuel ? 'bg-blue-500' : 'bg-signature'}`}
                           title={p.manuel ? 'Saisie manuelle' : 'Chronomètre'}
                         />
 
                         {/* Hours */}
                         <div className="w-16 text-right flex-shrink-0">
-                          <span className="text-lg font-bold" style={{ color: couleur }}>
+                          <span className="text-lg font-bold text-accent-texte">
                             {(p.heures || 0).toFixed(1)}
                           </span>
                           <span className={`text-sm ${textMuted}`}>h</span>
@@ -2988,7 +2980,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
             <div className={`flex flex-wrap items-center gap-4 p-3 rounded-xl text-sm bg-surface-2`}>
               <span className={`font-medium ${textMuted}`}>Legende:</span>
               <span className="inline-flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-orange-500" />
+                <span className="w-2 h-2 rounded-full bg-signature" />
                 <span className={textMuted}>Chrono</span>
               </span>
               <span className="inline-flex items-center gap-1.5">
@@ -3051,8 +3043,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                     </div>
                     <motion.button
                       onClick={() => setShowCongeForm(true)}
-                      className="px-4 py-2.5 text-white rounded-xl text-sm font-medium flex items-center gap-2 shadow-md"
-                      style={{ background: couleur }}
+                      className="px-4 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2 shadow-md bg-accent text-sur-accent"
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
                     >
@@ -3251,7 +3242,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                           <div className="flex items-center justify-between mb-5">
                             <div className="flex items-center gap-3">
                               <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${couleur}15` }}>
-                                <CalendarPlus size={20} style={{ color: couleur }} />
+                                <CalendarPlus size={20} className="text-accent-texte" />
                               </div>
                               <h3 className={`font-bold text-lg ${textPrimary}`}>Nouvelle demande</h3>
                             </div>
@@ -3304,8 +3295,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                             <button
                               onClick={addConge}
                               disabled={!congeForm.employeId || !congeForm.dateDebut || !congeForm.dateFin}
-                              className="w-full px-4 py-3 text-white rounded-xl text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-50 shadow-lg"
-                              style={{ background: couleur }}
+                              className="w-full px-4 py-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-50 shadow-lg bg-accent text-sur-accent"
                             >
                               <CalendarPlus size={18} />
                               Créer la demande
@@ -3728,13 +3718,13 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                   <div className="flex gap-3">
                     {emp.telephone && (
                       <a href={`tel:${emp.telephone}`} className={`flex-1 flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm bg-surface-2 text-encre-2`}>
-                        <Phone size={14} style={{ color: couleur }} />
+                        <Phone size={14} className="text-accent-texte" />
                         {emp.telephone}
                       </a>
                     )}
                     {emp.email && (
                       <a href={`mailto:${emp.email}`} className={`flex-1 flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm truncate bg-surface-2 text-encre-2`}>
-                        <Mail size={14} style={{ color: couleur }} />
+                        <Mail size={14} className="text-accent-texte" />
                         <span className="truncate">{emp.email}</span>
                       </a>
                     )}
@@ -3854,7 +3844,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                             <div key={p.id} className={`flex items-center justify-between px-3 py-2 text-xs ${i > 0 ? ('border-t border-bord') : ''}`}>
                               <span className={textMuted}>{dateLue(p.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}</span>
                               <span className={`truncate mx-2 ${textPrimary}`}>{ch?.nom || '—'}</span>
-                              <span className="font-bold" style={{ color: couleur }}>{p.heures}h</span>
+                              <span className="font-bold text-accent-texte">{p.heures}h</span>
                               <span className={`ml-2 w-2 h-2 rounded-full ${p.verrouille ? 'bg-blue-500' : p.approuve ? 'bg-emerald-500' : 'bg-amber-400'}`} />
                             </div>
                           );
@@ -3875,8 +3865,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                     <button
                       onClick={() => callPhone(emp.telephone)}
                       disabled={!emp.telephone}
-                      className="flex-1 py-3 text-white rounded-xl text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50"
-                      style={{ background: couleur }}
+                      className="flex-1 py-3 rounded-xl text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50 bg-accent text-sur-accent"
                     >
                       <PhoneCall size={16} />
                       Appeler
@@ -4085,7 +4074,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                   {weekPlanningEvents.length > 0 && (
                     <div className={`rounded-2xl border ${cardBg} p-4`}>
                       <h4 className={`text-sm font-semibold mb-3 flex items-center gap-2 ${textPrimary}`}>
-                        <CalendarDays size={16} style={{ color: couleur }} />
+                        <CalendarDays size={16} className="text-accent-texte" />
                         Événements planning ({weekPlanningEvents.length})
                       </h4>
                       <div className="flex flex-wrap gap-2">
@@ -4108,7 +4097,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                     <div className={`p-4 rounded-xl text-center bg-surface-2`}>
                       <p className={`text-sm ${textMuted}`}>
                         Aucun événement planning cette semaine.{' '}
-                        <button onClick={() => setPage('tasks')} className="underline font-medium" style={{ color: couleur }}>
+                        <button onClick={() => setPage('tasks')} className="underline font-medium text-accent-texte">
                           Aller au planning
                         </button>
                       </p>
@@ -4125,7 +4114,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                             {weekDays.map((day, i) => {
                               const isToday = formatLocalDate(day) === today;
                               return (
-                                <th key={i} className={`text-center px-2 py-3 text-sm ${isToday ? 'font-bold' : 'font-medium'} ${isToday ? (isDark ? 'text-orange-400' : 'text-orange-600') : textMuted}`}>
+                                <th key={i} className={`text-center px-2 py-3 text-sm ${isToday ? 'font-bold' : 'font-medium'} ${isToday ? 'text-accent-texte' : textMuted}`}>
                                   <div>{daysOfWeek[i]}</div>
                                   <div className={`text-lg ${isToday ? '' : ''}`}>{day.getDate()}</div>
                                 </th>
@@ -4243,7 +4232,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
             {equipe.length === 0 ? (
               <div className={`${cardBg} rounded-2xl border p-12 text-center`}>
                 <div className="w-20 h-20 rounded-full mx-auto mb-4 flex items-center justify-center" style={{ background: `${couleur}15` }}>
-                  <Users size={40} style={{ color: couleur }} />
+                  <Users size={40} className="text-accent-texte" />
                 </div>
                 <p className={`font-semibold text-lg ${textPrimary} mb-2`}>Ajoutez votre équipe d'abord</p>
                 <p className={`text-sm ${textMuted} mb-4 max-w-sm mx-auto`}>
@@ -4251,8 +4240,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                 </p>
                 <motion.button
                   onClick={() => { setTab('overview'); setShowAdd(true); }}
-                  className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white shadow-lg"
-                  style={{ background: couleur }}
+                  className="px-5 py-2.5 rounded-xl text-sm font-semibold shadow-lg bg-accent text-sur-accent"
                   whileHover={{ scale: 1.03 }}
                   whileTap={{ scale: 0.97 }}
                 >
@@ -4344,7 +4332,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
 
                   {/* Skills Matrix */}
                   <div className={`rounded-2xl border ${cardBg} p-4`}>
-                    <h3 className={`text-lg font-bold ${textPrimary} mb-3 flex items-center gap-2`}><Award size={20} style={{color: couleur}} /> Matrice des compétences</h3>
+                    <h3 className={`text-lg font-bold ${textPrimary} mb-3 flex items-center gap-2`}><Award size={20} className="text-accent-texte" /> Matrice des compétences</h3>
                     {sortedSkills.length > 0 ? (
                       <div className="space-y-2">
                         {sortedSkills.map(([skill, emps]) => (
@@ -4366,14 +4354,14 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                     ) : (
                       <div className={`p-8 text-center rounded-xl bg-surface-2`}>
                         <div className="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center" style={{ background: `${couleur}15` }}>
-                          <Award size={32} style={{ color: couleur }} />
+                          <Award size={32} className="text-accent-texte" />
                         </div>
                         <p className={`font-semibold ${textPrimary} mb-2`}>Aucune compétence renseignée</p>
                         <p className={`text-sm ${textMuted} mb-4 max-w-md mx-auto`}>
                           Ajoutez des compétences à vos employés pour visualiser la matrice des compétences et obtenir des suggestions d'affectation intelligentes.
                         </p>
                         <div className={`inline-flex flex-col gap-2 text-left text-sm ${textMuted} p-4 rounded-xl bg-surface border border-bord`}>
-                          <p className="font-medium" style={{ color: couleur }}>💡 Comment faire :</p>
+                          <p className="font-medium text-accent-texte">💡 Comment faire :</p>
                           <p>1. Allez sur l'onglet <strong className={textPrimary}>Équipe</strong></p>
                           <p>2. Cliquez sur <Edit3 size={12} className="inline" /> pour modifier un employé</p>
                           <p>3. Remplissez le champ <strong className={textPrimary}>Compétences</strong> (séparées par des virgules)</p>
@@ -4401,7 +4389,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
 
                     return (
                       <div className={`rounded-2xl border ${cardBg} p-4`}>
-                        <h3 className={`text-lg font-bold ${textPrimary} mb-3 flex items-center gap-2`}><Sparkles size={20} style={{color: couleur}} /> Suggestions d'affectation</h3>
+                        <h3 className={`text-lg font-bold ${textPrimary} mb-3 flex items-center gap-2`}><Sparkles size={20} className="text-accent-texte" /> Suggestions d'affectation</h3>
                         <div className="space-y-5">
                           {uniqueChantiers.map(chantier => {
                             const matches = equipe.filter(emp => emp.actif !== false && emp.contrat !== 'sous_traitant').map(emp => ({ emp, ...getMatchScore(emp, chantier) })).sort((a, b) => b.score - a.score);
@@ -4473,8 +4461,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                                           quickStartTimer(emp.id, chantier.id);
                                           showToast(`${emp.prenom} affecté à ${chantier.nom}`, 'success');
                                         }}
-                                        className="flex-shrink-0 px-2.5 py-1.5 rounded-lg text-xs font-medium text-white min-h-[36px]"
-                                        style={{ backgroundColor: couleur }}
+                                        className="flex-shrink-0 px-2.5 py-1.5 rounded-lg text-xs font-medium min-h-[36px] bg-accent text-sur-accent"
                                       >
                                         Affecter
                                       </button>
@@ -4491,7 +4478,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
 
                   {/* All certifications */}
                   <div className={`rounded-2xl border ${cardBg} p-4`}>
-                    <h3 className={`text-lg font-bold ${textPrimary} mb-3 flex items-center gap-2`}><Shield size={20} style={{color: couleur}} /> Toutes les certifications</h3>
+                    <h3 className={`text-lg font-bold ${textPrimary} mb-3 flex items-center gap-2`}><Shield size={20} className="text-accent-texte" /> Toutes les certifications</h3>
                     {certAlerts.length > 0 ? (
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         {certAlerts.map((c, i) => (
@@ -4517,7 +4504,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                           Ajoutez des certifications avec dates d'expiration pour un suivi automatique.
                         </p>
                         <div className={`inline-block text-left text-xs ${textMuted} p-3 rounded-lg bg-surface border border-bord`}>
-                          <p className="font-medium mb-1" style={{ color: couleur }}>📋 Formats acceptés :</p>
+                          <p className="font-medium mb-1 text-accent-texte">📋 Formats acceptés :</p>
                           <p>• CACES R489 (exp: 2026-06)</p>
                           <p>• Habilitation électrique (expire: 2025-12-31)</p>
                           <p>• SST (valide: 2027-03)</p>
@@ -4566,7 +4553,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div className={`rounded-2xl border p-4 ${cardBg}`}>
                       <div className="flex items-center gap-2 mb-2">
-                        <Clock size={16} style={{ color: couleur }} />
+                        <Clock size={16} className="text-accent-texte" />
                         <span className={`text-xs font-medium uppercase ${textMuted}`}>Heures mois</span>
                       </div>
                       <p className={`text-2xl font-bold ${textPrimary}`}>{Math.round(monthHours)}h</p>
@@ -4597,7 +4584,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                   {/* Employee ranking table */}
                   <div className={`rounded-2xl border ${cardBg} overflow-hidden`}>
                     <div className="px-4 py-3 border-b flex items-center justify-between" style={{ borderColor: isDark ? '#334155' : '#e2e8f0' }}>
-                      <h3 className={`font-bold ${textPrimary} flex items-center gap-2`}><TrendingUp size={18} style={{color: couleur}} /> Classement productivité</h3>
+                      <h3 className={`font-bold ${textPrimary} flex items-center gap-2`}><TrendingUp size={18} className="text-accent-texte" /> Classement productivité</h3>
                     </div>
                     <div className="overflow-x-auto">
                       <table className="w-full">

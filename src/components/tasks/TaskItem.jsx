@@ -29,14 +29,14 @@ export default function TaskItem({
     ? 'text-red-500'
     : isToday(memo)
       ? 'text-amber-500'
-      : isDark ? 'text-slate-400' : 'text-slate-500';
+      : 'text-encre-3';
 
   return (
     <div
       className={`group flex items-start gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-all ${
         isSelected
           ? isDark ? 'bg-slate-700 ring-1 ring-slate-600' : 'bg-slate-100 ring-1 ring-slate-200'
-          : isDark ? 'hover:bg-slate-800' : 'hover:bg-slate-50'
+          : 'hover:bg-surface-2'
       } ${memo.is_done ? 'opacity-60' : ''}`}
       onClick={() => selectionMode ? onMultiSelect(memo.id) : onSelect(memo.id)}
     >
@@ -47,7 +47,7 @@ export default function TaskItem({
           className={`mt-0.5 flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
             isMultiSelected
               ? 'border-blue-500 bg-blue-500 text-white'
-              : isDark ? 'border-slate-500' : 'border-slate-300'
+              : 'border-bord-fort'
           }`}
         >
           {isMultiSelected && <CheckCircle2 size={12} />}
@@ -71,11 +71,11 @@ export default function TaskItem({
       {/* Content */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5">
-          <p className={`text-sm leading-snug flex-1 ${memo.is_done ? 'line-through' : ''} ${isDark ? 'text-white' : 'text-slate-900'}`}>
+          <p className={`text-sm leading-snug flex-1 ${memo.is_done ? 'line-through' : ''} text-encre`}>
             {priority && <span className="mr-1.5" title={`Priorité ${priority.label}`}>{priority.dot}</span>}
             {memo.recurrence && (
               <span className="mr-1 inline-flex items-center" title="Récurrent">
-                <Repeat size={12} style={{ color: couleur }} />
+                <Repeat size={12} className="text-accent-texte" />
               </span>
             )}
             {memo.text}
@@ -121,7 +121,7 @@ export default function TaskItem({
           )}
           {chantier && (
             <span
-              className={`inline-flex items-center gap-1 text-xs hover:underline cursor-pointer max-w-[180px] truncate ${isDark ? 'text-slate-400' : 'text-slate-500'}`}
+              className={`inline-flex items-center gap-1 text-xs hover:underline cursor-pointer max-w-[180px] truncate text-encre-3`}
               onClick={(e) => { e.stopPropagation(); setPage?.('chantiers'); }}
               title={chantier.nom}
             >
@@ -131,7 +131,7 @@ export default function TaskItem({
           )}
           {client && (
             <span
-              className={`inline-flex items-center gap-1 text-xs hover:underline cursor-pointer ${isDark ? 'text-slate-400' : 'text-slate-500'}`}
+              className={`inline-flex items-center gap-1 text-xs hover:underline cursor-pointer text-encre-3`}
               onClick={(e) => { e.stopPropagation(); setPage?.('clients'); }}
               title={client.nom}
             >
@@ -144,7 +144,7 @@ export default function TaskItem({
               className={`inline-flex items-center gap-1 text-xs font-medium px-1.5 py-0.5 rounded-md ${
                 stDone === stTotal
                   ? isDark ? 'bg-green-900/30 text-green-400' : 'bg-green-50 text-green-600'
-                  : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'
+                  : 'bg-surface-2 text-encre-2'
               }`}
             >
               {stDone === stTotal ? '☑' : '◻'} {stDone}/{stTotal}

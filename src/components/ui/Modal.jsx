@@ -201,8 +201,8 @@ function Modal({
   const isLegacyMode = title !== undefined || footer !== undefined;
 
   // Theme classes for legacy mode
-  const cardBg = isDark ? 'bg-slate-800' : 'bg-white';
-  const borderColor = isDark ? 'border-slate-700' : 'border-gray-200';
+  const cardBg = 'bg-surface';
+  const borderColor = 'border-bord';
 
   // Rendue dans <body> : un ancêtre avec transform / filter / backdrop-filter enfermerait sinon
   // la modale (position: fixed) dans sa propre boîte au lieu de couvrir l'écran.
@@ -260,12 +260,12 @@ function Modal({
                 <div className={cn('flex items-start justify-between gap-4 px-6 pt-6 pb-4 border-b', borderColor)}>
                   <div className="flex-1 min-w-0">
                     {title && (
-                      <h2 id={titleId} className={cn('text-lg font-bold', isDark ? 'text-white' : 'text-gray-900')}>
+                      <h2 id={titleId} className={cn('text-lg font-bold', 'text-encre')}>
                         {title}
                       </h2>
                     )}
                     {description && (
-                      <p id={descId} className={cn('text-sm mt-1', isDark ? 'text-gray-400' : 'text-gray-600')}>
+                      <p id={descId} className={cn('text-sm mt-1', 'text-encre-2')}>
                         {description}
                       </p>
                     )}
@@ -275,7 +275,7 @@ function Modal({
                       onClick={onClose}
                       className={cn(
                         'p-2 rounded-lg transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500',
-                        isDark ? 'hover:bg-slate-700 text-gray-400' : 'hover:bg-gray-100 text-gray-500'
+                        'hover:bg-surface-2 text-encre-3'
                       )}
                       aria-label="Fermer"
                     >
@@ -391,7 +391,7 @@ export const ModalHeader = forwardRef(({
       className={cn(
         'flex items-start justify-between gap-4 px-6 pt-6 pb-4',
         'border-b',
-        isDark ? 'border-slate-700' : 'border-gray-200',
+        'border-bord',
         className
       )}
       {...props}
@@ -404,7 +404,7 @@ export const ModalHeader = forwardRef(({
           onClick={onClose}
           className={cn(
             'p-2 rounded-lg transition-colors flex-shrink-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500',
-            isDark ? 'hover:bg-slate-700 text-gray-400' : 'hover:bg-gray-100 text-gray-500'
+            'hover:bg-surface-2 text-encre-3'
           )}
           aria-label="Fermer"
         >
@@ -438,7 +438,7 @@ export const ModalTitle = forwardRef(({
       id={context?.titleId}
       className={cn(
         'text-lg font-bold',
-        isDark ? 'text-white' : 'text-gray-900',
+        'text-encre',
         className
       )}
       {...props}
@@ -471,7 +471,7 @@ export const ModalDescription = forwardRef(({
       id={context?.descId}
       className={cn(
         'text-sm',
-        isDark ? 'text-gray-400' : 'text-gray-600',
+        'text-encre-2',
         className
       )}
       {...props}
@@ -544,7 +544,7 @@ export const ModalFooter = forwardRef(({
       className={cn(
         'px-6 py-4 flex items-center justify-end gap-3',
         bordered && 'border-t',
-        bordered && (isDark ? 'border-slate-700' : 'border-gray-200'),
+        bordered && 'border-bord',
         className
       )}
       {...props}
@@ -595,7 +595,7 @@ export function ConfirmModal({
         <ModalTitle>{title}</ModalTitle>
       </ModalHeader>
       <ModalBody>
-        <p className={isDark ? 'text-gray-300' : 'text-gray-600'}>
+        <p className="text-encre-2">
           {message}
         </p>
       </ModalBody>
@@ -657,7 +657,7 @@ export function AlertModal({
         <ModalTitle>{title}</ModalTitle>
       </ModalHeader>
       <ModalBody>
-        <p className={isDark ? 'text-gray-300' : 'text-gray-600'}>
+        <p className="text-encre-2">
           {message}
         </p>
       </ModalBody>

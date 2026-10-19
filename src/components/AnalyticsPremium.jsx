@@ -47,7 +47,7 @@ function ChartTooltip({ active, payload, label, isDark, formatter }) {
       {payload.map((entry, i) => (
         <p key={i} className="flex items-center gap-1.5">
           <span className="w-2 h-2 rounded-full shrink-0" style={{ background: entry.color }} />
-          <span className={isDark ? 'text-slate-400' : 'text-gray-500'}>{entry.name} :</span>
+          <span className="text-encre-3">{entry.name} :</span>
           <span className="font-medium">{formatter ? formatter(entry.value) : formatEUR(entry.value)}</span>
         </p>
       ))}
@@ -94,17 +94,17 @@ function KPICard({ icon: Icon, label, value, sub, couleur, isDark, gauge, gaugeV
             <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: `${couleur}15` }}>
               <Icon size={16} style={{ color: couleur }} />
             </div>
-            <span className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>{label}</span>
+            <span className={`text-xs font-medium text-encre-3`}>{label}</span>
           </div>
-          <div className={`text-xl sm:text-2xl font-bold tracking-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>
+          <div className={`text-xl sm:text-2xl font-bold tracking-tight text-encre`}>
             {value}
           </div>
-          {sub && <p className={`text-[11px] mt-1 ${isDark ? 'text-slate-500' : 'text-gray-400'}`}>{sub}</p>}
+          {sub && <p className={`text-[11px] mt-1 text-encre-3`}>{sub}</p>}
         </div>
         {gauge && (
           <div className="relative flex items-center justify-center">
             <CircularGauge value={gaugeValue || 0} couleur={couleur} isDark={isDark} />
-            <span className={`absolute text-xs font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+            <span className={`absolute text-xs font-bold text-encre`}>
               {gaugeValue}%
             </span>
           </div>
@@ -123,7 +123,7 @@ function Section({ title, icon: Icon, couleur, isDark, children, className = '' 
         <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: `${couleur}15` }}>
           <Icon size={15} style={{ color: couleur }} />
         </div>
-        <h2 className={`text-base sm:text-lg font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>{title}</h2>
+        <h2 className={`text-base sm:text-lg font-semibold text-encre`}>{title}</h2>
       </div>
       <div className="px-5 pb-5">
         {children}
@@ -172,9 +172,9 @@ export default function AnalyticsPremium({
     retardMoyenPaiement,
   } = useAnalyticsPremium({ devis, clients, chantiers, depenses, equipe, paiements, pointages, period });
 
-  const textPrimary = isDark ? 'text-white' : 'text-gray-900';
-  const textSecondary = isDark ? 'text-slate-400' : 'text-gray-500';
-  const textMuted = isDark ? 'text-slate-500' : 'text-gray-400';
+  const textPrimary = 'text-encre';
+  const textSecondary = 'text-encre-3';
+  const textMuted = 'text-encre-3';
   const gridColor = isDark ? '#334155' : '#f1f5f9';
   const axisColor = isDark ? '#64748b' : '#94a3b8';
 
@@ -190,7 +190,7 @@ export default function AnalyticsPremium({
           <h1 className={`text-xl sm:text-2xl font-bold tracking-tight ${textPrimary}`}>Analytics</h1>
           <p className={`text-xs sm:text-sm ${textSecondary} mt-0.5`}>Vue d'ensemble de votre performance commerciale</p>
         </div>
-        <div className={`flex items-center gap-1 p-1 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-gray-100'}`}>
+        <div className={`flex items-center gap-1 p-1 rounded-xl bg-surface-2`}>
           {PERIOD_OPTIONS.map(opt => (
             <button
               key={opt.key}
@@ -198,7 +198,7 @@ export default function AnalyticsPremium({
               className={`min-h-[44px] px-4 py-2.5 text-xs font-medium rounded-lg transition-all ${
                 period === opt.key
                   ? 'text-white shadow-sm'
-                  : isDark ? 'text-slate-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'
+                  : 'text-encre-3 hover:text-encre'
               }`}
               style={period === opt.key ? { backgroundColor: couleur } : undefined}
             >
@@ -261,16 +261,14 @@ export default function AnalyticsPremium({
                   <span className={`text-xs font-medium ${textSecondary}`}>{step.etape}</span>
                   <div className="flex items-center gap-2">
                     {convRate !== null && i > 0 && (
-                      <span className={`text-[11px] px-1.5 py-0.5 rounded-full ${
-                        isDark ? 'bg-slate-700 text-slate-400' : 'bg-gray-100 text-gray-500'
-                      }`}>
+                      <span className={`text-[11px] px-1.5 py-0.5 rounded-full bg-surface-2 text-encre-3`}>
                         {convRate}%
                       </span>
                     )}
                     <span className={`text-xs font-bold ${textPrimary}`}>{step.count}</span>
                   </div>
                 </div>
-                <div className={`h-8 rounded-lg overflow-hidden ${isDark ? 'bg-slate-700/50' : 'bg-gray-100'}`}>
+                <div className={`h-8 rounded-lg overflow-hidden bg-surface-2`}>
                   <div
                     className="h-full rounded-lg transition-all duration-1000 ease-out flex items-center px-3"
                     style={{
@@ -355,20 +353,17 @@ export default function AnalyticsPremium({
                   <div className="flex items-center justify-between mb-1">
                     <span className={`text-xs font-medium truncate ${textPrimary}`}>{cl.nom}</span>
                     <div className="flex items-center gap-2 shrink-0">
-                      <span className={`text-[11px] px-1.5 py-0.5 rounded-full ${
-                        isDark ? 'bg-slate-700 text-slate-400' : 'bg-gray-100 text-gray-500'
-                      }`}>
+                      <span className={`text-[11px] px-1.5 py-0.5 rounded-full bg-surface-2 text-encre-3`}>
                         {cl.tauxConversion}%
                       </span>
                       <span className={`text-xs font-semibold ${textPrimary}`}>{formatCompact(cl.ca)}</span>
                     </div>
                   </div>
-                  <div className={`h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-slate-700/50' : 'bg-gray-100'}`}>
+                  <div className={`h-1.5 rounded-full overflow-hidden bg-surface-2`}>
                     <div
-                      className="h-full rounded-full transition-all duration-700"
+                      className="h-full rounded-full transition-all duration-700 bg-accent"
                       style={{
                         width: `${Math.max((cl.ca / maxClientCA) * 100, 3)}%`,
-                        background: couleur,
                         opacity: 1 - (i * 0.07),
                       }}
                     />
@@ -388,9 +383,7 @@ export default function AnalyticsPremium({
             {clientsDormants.map(cl => (
               <div
                 key={cl.id}
-                className={`flex items-center justify-between p-3 rounded-lg ${
-                  isDark ? 'bg-slate-700/40' : 'bg-gray-50'
-                }`}
+                className={`flex items-center justify-between p-3 rounded-lg bg-fond`}
               >
                 <div className="min-w-0 flex-1">
                   <p className={`text-sm font-medium truncate ${textPrimary}`}>{cl.nom}</p>
@@ -443,12 +436,11 @@ export default function AnalyticsPremium({
                     <span className={`text-xs font-semibold ${textPrimary}`}>{formatCompact(p.ca)}</span>
                   </div>
                 </div>
-                <div className={`h-2 rounded-full overflow-hidden ${isDark ? 'bg-slate-700/50' : 'bg-gray-100'}`}>
+                <div className={`h-2 rounded-full overflow-hidden bg-surface-2`}>
                   <div
-                    className="h-full rounded-full transition-all duration-700"
+                    className="h-full rounded-full transition-all duration-700 bg-accent"
                     style={{
                       width: `${Math.max((p.ca / maxPrestCA) * 100, 3)}%`,
-                      background: couleur,
                       opacity: 1 - (i * 0.08),
                     }}
                   />
@@ -471,9 +463,7 @@ export default function AnalyticsPremium({
             return (
               <div
                 key={ch.id}
-                className={`flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 p-3 rounded-lg ${
-                  isDark ? 'bg-slate-700/40' : 'bg-gray-50'
-                }`}
+                className={`flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 p-3 rounded-lg bg-fond`}
               >
                 <div className="flex items-center gap-2 min-w-0 sm:w-1/3">
                   <span
@@ -559,7 +549,7 @@ export default function AnalyticsPremium({
                       <p className={`text-xs font-medium ${textPrimary}`}>{cfg.label}</p>
                     </div>
                     <div className="flex-1">
-                      <div className={`h-5 rounded-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-gray-100'}`}>
+                      <div className={`h-5 rounded-full overflow-hidden bg-surface-2`}>
                         <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: cfg.color }} />
                       </div>
                     </div>
@@ -598,7 +588,7 @@ export default function AnalyticsPremium({
                       )}
                     </div>
                   </div>
-                  <div className={`h-2 rounded-full overflow-hidden ${isDark ? 'bg-slate-700/50' : 'bg-gray-100'}`}>
+                  <div className={`h-2 rounded-full overflow-hidden bg-surface-2`}>
                     <div
                       className="h-full rounded-full transition-all duration-700"
                       style={{

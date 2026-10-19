@@ -125,10 +125,10 @@ export default function PriceDecomposition({
   ].filter((d) => d.value > 0);
 
   // ── Styling tokens ──────────────────────────────────────────────
-  const bg = isDark ? 'bg-gray-700/50' : 'bg-gray-50';
-  const textPrimary = isDark ? 'text-white' : 'text-gray-900';
-  const textSecondary = isDark ? 'text-gray-400' : 'text-gray-500';
-  const borderColor = isDark ? 'border-gray-600' : 'border-gray-200';
+  const bg = 'bg-fond';
+  const textPrimary = 'text-encre';
+  const textSecondary = 'text-encre-3';
+  const borderColor = 'border-bord';
 
   return (
     <div className={`rounded-xl ${bg} p-4`}>

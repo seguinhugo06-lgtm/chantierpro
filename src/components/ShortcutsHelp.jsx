@@ -19,12 +19,12 @@ export default function ShortcutsHelp({
   couleur = '#f97316'
 }) {
   // Theme classes
-  const cardBg = isDark ? 'bg-slate-800' : 'bg-white';
-  const textPrimary = isDark ? 'text-white' : 'text-slate-900';
-  const textSecondary = isDark ? 'text-slate-300' : 'text-slate-600';
-  const textMuted = isDark ? 'text-slate-400' : 'text-slate-500';
-  const borderColor = isDark ? 'border-slate-700' : 'border-slate-200';
-  const kbdBg = isDark ? 'bg-slate-700' : 'bg-slate-100';
+  const cardBg = 'bg-surface';
+  const textPrimary = 'text-encre';
+  const textSecondary = 'text-encre-2';
+  const textMuted = 'text-encre-3';
+  const borderColor = 'border-bord';
+  const kbdBg = 'bg-surface-2';
 
   const isMac = typeof navigator !== 'undefined' &&
     navigator.platform.toLowerCase().includes('mac');
@@ -93,9 +93,7 @@ export default function ShortcutsHelp({
                   {shortcuts.map((shortcut, idx) => (
                     <div
                       key={idx}
-                      className={`flex items-center justify-between py-2 px-3 rounded-lg ${
-                        isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'
-                      }`}
+                      className={`flex items-center justify-between py-2 px-3 rounded-lg hover:bg-surface-2`}
                     >
                       <span className={`text-sm ${textPrimary}`}>
                         {shortcut.description}

@@ -140,13 +140,13 @@ export default function PostChantierSettings({ isDark, couleur, showToast }) {
   const [showVars, setShowVars] = useState(false);
 
   // Theme
-  const cardBg = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200';
+  const cardBg = 'bg-surface border-bord';
   const inputBg = isDark ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400' : 'bg-white border-slate-300';
-  const textPrimary = isDark ? 'text-slate-100' : 'text-slate-900';
-  const textSecondary = isDark ? 'text-slate-300' : 'text-slate-600';
-  const textMuted = isDark ? 'text-slate-400' : 'text-slate-500';
-  const hoverBg = isDark ? 'hover:bg-slate-700/50' : 'hover:bg-slate-50';
-  const modalBg = isDark ? 'bg-slate-800' : 'bg-white';
+  const textPrimary = 'text-encre';
+  const textSecondary = 'text-encre-2';
+  const textMuted = 'text-encre-3';
+  const hoverBg = 'hover:bg-surface-2';
+  const modalBg = 'bg-surface';
   const overlayBg = 'bg-black/50';
 
   // Persist on change
@@ -210,7 +210,7 @@ export default function PostChantierSettings({ isDark, couleur, showToast }) {
               className="w-10 h-10 rounded-xl flex items-center justify-center"
               style={{ background: `${couleur}15` }}
             >
-              <Sparkles size={20} style={{ color: couleur }} />
+              <Sparkles size={20} className="text-accent-texte" />
             </div>
             <div>
               <h3 className={`font-semibold text-base sm:text-lg ${textPrimary}`}>
@@ -237,7 +237,7 @@ export default function PostChantierSettings({ isDark, couleur, showToast }) {
               title={config.enabled ? 'Désactiver la séquence' : 'Activer la séquence'}
             >
               {config.enabled ? (
-                <ToggleRight size={28} style={{ color: couleur }} />
+                <ToggleRight size={28} className="text-accent-texte" />
               ) : (
                 <ToggleLeft size={28} className={textMuted} />
               )}
@@ -285,9 +285,7 @@ export default function PostChantierSettings({ isDark, couleur, showToast }) {
                     className={`rounded-xl border p-3 sm:p-4 transition-colors ${
                       step.active
                         ? cardBg
-                        : isDark
-                          ? 'bg-slate-800/50 border-slate-700/50'
-                          : 'bg-slate-50 border-slate-200/50'
+                        : 'bg-fond border-bord/50'
                     } ${hoverBg}`}
                   >
                     <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -323,7 +321,7 @@ export default function PostChantierSettings({ isDark, couleur, showToast }) {
                           title={step.active ? 'Désactiver' : 'Activer'}
                         >
                           {step.active ? (
-                            <ToggleRight size={22} style={{ color: couleur }} />
+                            <ToggleRight size={22} className="text-accent-texte" />
                           ) : (
                             <ToggleLeft size={22} className={textMuted} />
                           )}
@@ -360,9 +358,9 @@ export default function PostChantierSettings({ isDark, couleur, showToast }) {
         }}
       >
         <div className="flex items-start gap-2">
-          <Clock size={16} className="shrink-0 mt-0.5" style={{ color: couleur }} />
+          <Clock size={16} className="shrink-0 mt-0.5 text-accent-texte" />
           <div>
-            <p className="font-medium" style={{ color: couleur }}>
+            <p className="font-medium text-accent-texte">
               Comment ça marche ?
             </p>
             <p className="mt-1">
@@ -378,11 +376,11 @@ export default function PostChantierSettings({ isDark, couleur, showToast }) {
       {editingStep && editForm && (
         <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 ${overlayBg}`} onClick={closeEdit}>
           <div
-            className={`w-full max-w-lg rounded-2xl border shadow-2xl ${modalBg} ${isDark ? 'border-slate-700' : 'border-slate-200'}`}
+            className={`w-full max-w-lg rounded-2xl border shadow-2xl ${modalBg} border-bord`}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal header */}
-            <div className={`flex items-center justify-between p-4 sm:p-5 border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+            <div className={`flex items-center justify-between p-4 sm:p-5 border-b border-bord`}>
               <div className="flex items-center gap-3">
                 <div
                   className="w-9 h-9 rounded-lg flex items-center justify-center"
@@ -473,7 +471,7 @@ export default function PostChantierSettings({ isDark, couleur, showToast }) {
 
                 {showVars && (
                   <div
-                    className={`mb-2 p-3 rounded-xl border text-xs ${isDark ? 'bg-slate-700/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}
+                    className={`mb-2 p-3 rounded-xl border text-xs bg-fond border-bord`}
                   >
                     <div className="grid grid-cols-2 gap-1.5">
                       {TEMPLATE_VARIABLES.map((v) => (
@@ -488,7 +486,7 @@ export default function PostChantierSettings({ isDark, couleur, showToast }) {
                           }
                           className={`text-left px-2 py-1 rounded-lg ${hoverBg} transition-colors`}
                         >
-                          <code style={{ color: couleur }}>{v.var}</code>
+                          <code className="text-accent-texte">{v.var}</code>
                           <span className={`block text-xs ${textMuted}`}>{v.desc}</span>
                         </button>
                       ))}
@@ -507,7 +505,7 @@ export default function PostChantierSettings({ isDark, couleur, showToast }) {
             </div>
 
             {/* Modal footer */}
-            <div className={`flex items-center justify-end gap-2 p-4 sm:p-5 border-t ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+            <div className={`flex items-center justify-end gap-2 p-4 sm:p-5 border-t border-bord`}>
               <button
                 onClick={closeEdit}
                 className={`px-4 py-2 rounded-xl text-sm border transition-colors ${cardBg} ${textSecondary} ${hoverBg}`}
@@ -516,8 +514,7 @@ export default function PostChantierSettings({ isDark, couleur, showToast }) {
               </button>
               <button
                 onClick={saveEdit}
-                className="px-4 py-2 rounded-xl text-sm text-white transition-colors"
-                style={{ background: couleur }}
+                className="px-4 py-2 rounded-xl text-sm transition-colors bg-accent text-sur-accent"
               >
                 <Save size={14} className="inline mr-1.5" />
                 Enregistrer

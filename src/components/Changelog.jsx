@@ -121,9 +121,9 @@ const typeConfig = {
 export default function Changelog({ isDark, couleur, setPage }) {
   const [expandedVersion, setExpandedVersion] = useState(CHANGELOG[0]?.version);
 
-  const cardBg = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200';
-  const textPrimary = isDark ? 'text-slate-100' : 'text-slate-900';
-  const textMuted = isDark ? 'text-slate-400' : 'text-slate-500';
+  const cardBg = 'bg-surface border-bord';
+  const textPrimary = 'text-encre';
+  const textMuted = 'text-encre-3';
 
   return (
     <div className="max-w-3xl mx-auto">
@@ -150,26 +150,26 @@ export default function Changelog({ isDark, couleur, setPage }) {
               {/* Version header */}
               <button
                 onClick={() => setExpandedVersion(isExpanded ? null : release.version)}
-                className={`w-full flex items-center gap-4 p-4 sm:p-5 text-left transition-colors ${isDark ? 'hover:bg-slate-700/50' : 'hover:bg-slate-50'}`}
+                className={`w-full flex items-center gap-4 p-4 sm:p-5 text-left transition-colors hover:bg-surface-2`}
               >
                 <div
                   className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
                   style={{ background: `${couleur}20` }}
                 >
-                  <Package size={20} style={{ color: couleur }} />
+                  <Package size={20} className="text-accent-texte" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className={`font-bold text-base ${textPrimary}`}>v{release.version}</span>
                     {release.highlights && (
-                      <span className="px-2 py-0.5 text-[10px] font-bold uppercase rounded-full text-white" style={{ background: couleur }}>
+                      <span className="px-2 py-0.5 text-[10px] font-bold uppercase rounded-full bg-accent text-sur-accent">
                         Dernier
                       </span>
                     )}
                   </div>
                   <p className={`text-sm ${textMuted}`}>{release.title} — {dateLue(release.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
                 </div>
-                <span className={`${textMuted} flex-shrink-0 px-2 py-1 rounded-lg text-xs ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
+                <span className={`${textMuted} flex-shrink-0 px-2 py-1 rounded-lg text-xs bg-surface-2`}>
                   {release.changes.length} changements
                 </span>
                 {isExpanded ? <ChevronUp size={18} className={textMuted} /> : <ChevronDown size={18} className={textMuted} />}
@@ -177,7 +177,7 @@ export default function Changelog({ isDark, couleur, setPage }) {
 
               {/* Changes list */}
               {isExpanded && (
-                <div className={`px-4 sm:px-5 pb-4 sm:pb-5 border-t ${isDark ? 'border-slate-700' : 'border-slate-100'}`}>
+                <div className={`px-4 sm:px-5 pb-4 sm:pb-5 border-t border-bord`}>
                   <ul className="space-y-2.5 pt-4">
                     {release.changes.map((change, idx) => {
                       const config = typeConfig[change.type] || typeConfig.new;
@@ -198,7 +198,7 @@ export default function Changelog({ isDark, couleur, setPage }) {
                             <Icon size={10} />
                             {config.label}
                           </span>
-                          <span className={`text-sm ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>{change.text}</span>
+                          <span className={`text-sm text-encre-2`}>{change.text}</span>
                         </li>
                       );
                     })}
@@ -213,7 +213,7 @@ export default function Changelog({ isDark, couleur, setPage }) {
       {/* Footer */}
       <div className={`mt-8 text-center text-sm ${textMuted}`}>
         <p>Mallettico est mis à jour régulièrement.</p>
-        <p className="mt-1">Des questions ? Contactez-nous à <span style={{ color: couleur }}>contact@mallettico.fr</span></p>
+        <p className="mt-1">Des questions ? Contactez-nous à <span className="text-accent-texte">contact@mallettico.fr</span></p>
       </div>
     </div>
   );

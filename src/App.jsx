@@ -112,10 +112,10 @@ const safeStr = (v, fallback = '') => {
 
 // Theme classes helper — Linear-inspired palette
 const getThemeClasses = (isDark) => ({
-  card: isDark ? "bg-slate-800 border-slate-700/50" : "bg-white border-gray-200/70",
+  card: "bg-surface border-bord/70",
   cardHover: isDark ? "hover:bg-slate-700" : "hover:bg-[#f5f5f5]",
   input: isDark ? "bg-slate-800 border-slate-700 text-slate-100 placeholder-slate-500" : "bg-white border-[#ebebeb] text-[#1a1a1a] placeholder-[#999]",
-  text: isDark ? "text-slate-100" : "text-[#1a1a1a]",
+  text: "text-encre",
   textSecondary: isDark ? "text-slate-400" : "text-[#666]",
   textMuted: isDark ? "text-slate-500" : "text-[#999]",
   bg: isDark ? "bg-slate-900" : "bg-[#fafafa]",
@@ -1211,13 +1211,13 @@ export default function App() {
   const publicPages = ['cgv', 'cgu', 'confidentialite', 'mentions-legales', 'accessibilite', 'supprimer-mon-compte', 'changelog'];
   if (!user && !isDemo && publicPages.includes(page)) return (
     <Suspense fallback={<div className="min-h-screen bg-[#f5f5f5] flex items-center justify-center"><LogoMallettico taille={56} className="animate-bounce" /></div>}>
-      <div className="min-h-screen bg-[#f5f5f5] p-4 sm:p-6">
+      <div data-theme="clair" className="min-h-screen bg-[#f5f5f5] p-4 sm:p-6">
         {page === 'changelog'
           ? <Changelog isDark={false} couleur={entreprise.couleur || '#f97316'} setPage={(p) => { setPage(p); if (!publicPages.includes(p)) setShowLanding(true); }} />
           : <LegalPages page={page} isDark={false} couleur={entreprise.couleur || '#f97316'} setPage={(p) => { setPage(p); if (!publicPages.includes(p)) setShowLanding(true); }} />
         }
       </div>
-      <CookieConsent isDark={false} couleur={entreprise.couleur || '#f97316'} />
+      <div data-theme="clair"><CookieConsent isDark={false} couleur={entreprise.couleur || '#f97316'} /></div>
     </Suspense>
   );
 
@@ -1237,7 +1237,7 @@ export default function App() {
         onSignup={() => { setShowLanding(false); setShowSignUp(true); }}
         onNavigate={(p) => { setPage(p); setShowLanding(false); }}
       />
-      <CookieConsent isDark={false} couleur={entreprise.couleur || '#f97316'} />
+      <div data-theme="clair"><CookieConsent isDark={false} couleur={entreprise.couleur || '#f97316'} /></div>
     </>
   );
 
@@ -1706,7 +1706,7 @@ export default function App() {
             className={`w-full flex items-center justify-center xl:justify-start gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-all active:scale-95 text-encre-2 hover:bg-surface-2`}
             title="Signaler un problème ou proposer une idée"
           >
-            <MessageCircle size={16} style={{ color: couleur }} />
+            <MessageCircle size={16} className="text-accent-texte" />
             <span className="md:hidden xl:inline">Un bug ? Une idée ?</span>
           </button>
           <div className="flex gap-1 md:flex-col xl:flex-row">
@@ -1807,8 +1807,7 @@ export default function App() {
             {/* Dictée vocale — l'atout malin, accessible depuis n'importe quelle page */}
             <button
               onClick={() => setShowDictee(true)}
-              className="h-11 px-3 sm:px-3.5 rounded-xl flex items-center gap-1.5 text-white font-medium text-sm transition-transform active:scale-95"
-              style={{ background: couleur }}
+              className="h-11 px-3 sm:px-3.5 rounded-xl flex items-center gap-1.5 font-medium text-sm transition-transform active:scale-95 bg-accent text-sur-accent"
               title="Dictée vocale — créez un client, un chantier ou un devis à la voix"
               aria-label="Dictée vocale"
             >
@@ -1964,8 +1963,7 @@ export default function App() {
             <button
               type="button"
               onClick={retryLoad}
-              className="self-start sm:self-auto px-4 py-2 rounded-xl text-sm font-semibold text-white flex-shrink-0"
-              style={{ background: couleur }}
+              className="self-start sm:self-auto px-4 py-2 rounded-xl text-sm font-semibold flex-shrink-0 bg-accent text-sur-accent"
             >
               Réessayer
             </button>
@@ -2244,7 +2242,7 @@ export default function App() {
           />
           {/* Modal */}
           <div
-            className={`relative w-full max-w-lg max-h-[85vh] flex flex-col rounded-2xl shadow-2xl overflow-hidden ${isDark ? 'bg-slate-800' : 'bg-white'}`}
+            className={`relative w-full max-w-lg max-h-[85vh] flex flex-col rounded-2xl shadow-2xl overflow-hidden bg-surface`}
             role="dialog"
             aria-modal="true"
             aria-labelledby="notif-title"
@@ -2254,7 +2252,7 @@ export default function App() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{background: `${couleur}20`}}>
-                    <Bell size={20} style={{color: couleur}} />
+                    <Bell size={20} className="text-accent-texte" />
                   </div>
                   <div>
                     <h3 id="notif-title" className={`font-semibold text-base sm:text-lg ${tc.text}`}>Notifications</h3>
@@ -2278,7 +2276,7 @@ export default function App() {
               {notifications.length === 0 ? (
                 <div className="px-6 py-16 text-center">
                   <div className="w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center" style={{background: `${couleur}15`}}>
-                    <Bell size={28} style={{color: couleur}} />
+                    <Bell size={28} className="text-accent-texte" />
                   </div>
                   <p className={`text-lg font-medium ${tc.text}`}>Tout est à jour</p>
                   <p className={`text-sm mt-2 ${tc.textMuted}`}>Aucune notification pour le moment</p>
@@ -2291,7 +2289,7 @@ export default function App() {
                       warning: { icon: '⚠️', bg: isDark ? 'bg-amber-900/40' : 'bg-amber-100' },
                       info: { icon: 'ℹ️', bg: isDark ? 'bg-blue-900/40' : 'bg-blue-100' },
                       message: { icon: '💬', bg: isDark ? 'bg-purple-900/40' : 'bg-purple-100' },
-                      alert: { icon: '🔔', bg: isDark ? 'bg-orange-900/40' : 'bg-orange-100' }
+                      alert: { icon: '🔔', bg: 'bg-alerte-fond' }
                     };
                     const config = typeConfig[n.type] || typeConfig.alert;
 
@@ -2324,14 +2322,14 @@ export default function App() {
                             <div className="flex items-center gap-2 mt-2">
                               <p className={`text-xs ${tc.textMuted}`}>{safeStr(n.date)}</p>
                               {n.link && (
-                                <span className="text-xs px-2 py-0.5 rounded-full" style={{background: `${couleur}15`, color: couleur}}>
+                                <span className="text-xs px-2 py-0.5 rounded-full text-accent-texte" style={{background: `${couleur}15`}}>
                                   Voir →
                                 </span>
                               )}
                             </div>
                           </div>
                           {!n.read && (
-                            <span className="w-3 h-3 rounded-full flex-shrink-0 mt-1" style={{background: couleur}} />
+                            <span className="w-3 h-3 rounded-full flex-shrink-0 mt-1 bg-accent" />
                           )}
                         </div>
                       </button>
@@ -2485,7 +2483,7 @@ function HelpModal({ showHelp, setShowHelp, isDark, couleur, tc }) {
   const [helpSection, setHelpSection] = useState('overview');
   const [searchQuery, setSearchQuery] = useState('');
 
-  const textPrimary = isDark ? 'text-slate-100' : 'text-[#1a1a1a]';
+  const textPrimary = 'text-encre';
   const textSecondary = isDark ? 'text-slate-400' : 'text-[#666]';
 
   const helpSections = {
@@ -2702,8 +2700,7 @@ function HelpModal({ showHelp, setShowHelp, isDark, couleur, tc }) {
           </div>
           <a
             href="mailto:contact@mallettico.fr?subject=Support Mallettico"
-            className="block w-full py-3 rounded-xl text-center text-white font-semibold text-sm transition-all hover:opacity-90"
-            style={{ backgroundColor: couleur }}
+            className="block w-full py-3 rounded-xl text-center font-semibold text-sm transition-all hover:opacity-90 bg-accent text-sur-accent"
           >
             Envoyer un email au support
           </a>
@@ -2716,7 +2713,7 @@ function HelpModal({ showHelp, setShowHelp, isDark, couleur, tc }) {
 
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in" onClick={() => setShowHelp(false)}>
-      <div className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-2xl w-full max-w-3xl shadow-2xl animate-slide-up max-h-[90vh] overflow-hidden flex flex-col`} onClick={e => e.stopPropagation()}>
+      <div className={`bg-surface rounded-2xl w-full max-w-3xl shadow-2xl animate-slide-up max-h-[90vh] overflow-hidden flex flex-col`} onClick={e => e.stopPropagation()}>
         {/* Header */}
         <div className={`p-4 sm:p-5 border-b ${isDark ? 'border-slate-700' : 'border-[#ebebeb]'}`}>
           <div className="flex items-center justify-between">
@@ -2801,7 +2798,7 @@ function HelpModal({ showHelp, setShowHelp, isDark, couleur, tc }) {
 function OnboardingModal({ setShowOnboarding, isDark, couleur }) {
   const [step, setStep] = useState(0);
 
-  const textPrimary = isDark ? 'text-slate-100' : 'text-[#1a1a1a]';
+  const textPrimary = 'text-encre';
   const textSecondary = isDark ? 'text-slate-400' : 'text-[#666]';
 
   const steps = [
@@ -2841,7 +2838,7 @@ function OnboardingModal({ setShowOnboarding, isDark, couleur }) {
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: couleur + '30' }}>
-                  <FileText size={18} style={{ color: couleur }} />
+                  <FileText size={18} className="text-accent-texte" />
                 </div>
                 <div>
                   <p className={`font-medium ${textPrimary}`}>DEV-2025-001</p>
@@ -2850,14 +2847,14 @@ function OnboardingModal({ setShowOnboarding, isDark, couleur }) {
               </div>
               <span className={`px-3 py-1 rounded-full text-xs ${isDark ? 'bg-emerald-900/50 text-emerald-400' : 'bg-emerald-100 text-emerald-700'}`}>Accepté</span>
             </div>
-            <div className={`p-3 rounded-xl ${isDark ? 'bg-slate-800/80' : 'bg-white'} space-y-2`}>
+            <div className={`p-3 rounded-xl bg-surface space-y-2`}>
               <div className="flex justify-between text-sm">
                 <span className={textSecondary}>Rénovation cuisine complète</span>
                 <span className={textPrimary}>5 000 €</span>
               </div>
               <div className={`pt-2 border-t ${isDark ? 'border-slate-700' : 'border-[#ebebeb]'} flex justify-between`}>
                 <span className={`font-medium ${textPrimary}`}>Total TTC</span>
-                <span className="font-bold text-lg" style={{ color: couleur }}>5 500 €</span>
+                <span className="font-bold text-lg text-accent-texte">5 500 €</span>
               </div>
             </div>
           </div>
@@ -2887,15 +2884,15 @@ function OnboardingModal({ setShowOnboarding, isDark, couleur }) {
               </div>
             </div>
             <div className="grid grid-cols-3 gap-2">
-              <div className={`p-3 rounded-xl text-center ${isDark ? 'bg-slate-800' : 'bg-white'}`}>
+              <div className={`p-3 rounded-xl text-center bg-surface`}>
                 <p className="font-bold text-blue-500">5 500€</p>
                 <p className={`text-xs ${textSecondary}`}>CA</p>
               </div>
-              <div className={`p-3 rounded-xl text-center ${isDark ? 'bg-slate-800' : 'bg-white'}`}>
+              <div className={`p-3 rounded-xl text-center bg-surface`}>
                 <p className="font-bold text-red-500">1 200€</p>
                 <p className={`text-xs ${textSecondary}`}>Dépenses</p>
               </div>
-              <div className={`p-3 rounded-xl text-center ${isDark ? 'bg-slate-800' : 'bg-white'}`}>
+              <div className={`p-3 rounded-xl text-center bg-surface`}>
                 <p className="font-bold text-emerald-500">3 685€</p>
                 <p className={`text-xs ${textSecondary}`}>Marge</p>
               </div>
@@ -2916,21 +2913,21 @@ function OnboardingModal({ setShowOnboarding, isDark, couleur }) {
           <div className={`p-5 rounded-2xl ${isDark ? 'bg-gradient-to-br from-slate-800 to-slate-800/80' : 'bg-gradient-to-br from-[#fafafa] to-white'} border ${isDark ? 'border-slate-700' : 'border-[#ebebeb]'}`}>
             <ol className="space-y-4">
               <li className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0" style={{ background: couleur }}>1</div>
+                <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 bg-accent text-sur-accent">1</div>
                 <div>
                   <p className={`font-medium ${textPrimary}`}>Configurez votre entreprise</p>
                   <p className={`text-sm ${textSecondary}`}>Allez dans Paramètres pour ajouter votre logo et vos infos</p>
                 </div>
               </li>
               <li className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0" style={{ background: couleur }}>2</div>
+                <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 bg-accent text-sur-accent">2</div>
                 <div>
                   <p className={`font-medium ${textPrimary}`}>Créez votre premier client</p>
                   <p className={`text-sm ${textSecondary}`}>Ajoutez les coordonnées de vos clients pour les retrouver facilement</p>
                 </div>
               </li>
               <li className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0" style={{ background: couleur }}>3</div>
+                <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 bg-accent text-sur-accent">3</div>
                 <div>
                   <p className={`font-medium ${textPrimary}`}>Créez votre premier devis</p>
                   <p className={`text-sm ${textSecondary}`}>Générez un devis professionnel en quelques minutes</p>
@@ -2960,7 +2957,7 @@ function OnboardingModal({ setShowOnboarding, isDark, couleur }) {
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[1050] p-4 animate-fade-in">
-      <div className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden relative`}>
+      <div className={`bg-surface rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden relative`}>
         {/* Close button */}
         <button
           onClick={skipOnboarding}
@@ -2972,7 +2969,7 @@ function OnboardingModal({ setShowOnboarding, isDark, couleur }) {
 
         {/* Progress bar */}
         <div className={`h-1 ${isDark ? 'bg-slate-700' : 'bg-[#ebebeb]'}`}>
-          <div className="h-full transition-all duration-300" style={{ width: `${((step + 1) / steps.length) * 100}%`, background: couleur }}></div>
+          <div className="h-full transition-all duration-300 bg-accent" style={{ width: `${((step + 1) / steps.length) * 100}%` }}></div>
         </div>
 
         {/* Content */}
@@ -3018,8 +3015,7 @@ function OnboardingModal({ setShowOnboarding, isDark, couleur }) {
               )}
               <button
                 onClick={() => step < steps.length - 1 ? setStep(step + 1) : completeOnboarding()}
-                className="px-4 py-2 text-white rounded-xl text-sm hover:shadow-lg transition-all"
-                style={{ background: couleur }}
+                className="px-4 py-2 rounded-xl text-sm hover:shadow-lg transition-all bg-accent text-sur-accent"
               >
                 {step < steps.length - 1 ? 'Suivant' : 'Terminer'}
               </button>

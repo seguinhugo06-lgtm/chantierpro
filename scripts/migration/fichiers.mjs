@@ -17,13 +17,21 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const ENTREE = 'src/main.jsx';
 
-/** Exceptions, jamais comptées ni transformées : le site public et les générateurs de documents et d'e-mails. */
+/**
+ * Exceptions, jamais comptées ni transformées : le site public, les générateurs de documents et d'e-mails,
+ * et les pages publiques de l'artisan (signature, paiement, portail, nouveau mot de passe). Celles-ci montrent
+ * à son client la couleur brute de l'artisan (sa marque face à son client), pas l'accent lisible du thème.
+ */
 export const EXCEPTIONS = {
-  dossiers: ['src/components/landing/'],
+  dossiers: [
+    'src/components/landing/',
+    'src/components/signature/', 'src/components/payment/', 'src/components/portal/',
+  ],
   fichiers: [
     'src/lib/devisHtmlBuilder.js', 'src/lib/pdfHtmlBuilder.js', 'src/lib/miseEnDemeureBuilder.js',
     'src/lib/rapportChantierPdf.js', 'src/lib/reportPdfBuilder.js', 'src/lib/emailSender.js',
     'src/lib/relanceUtils.js', 'src/lib/echapperHtml.js',
+    'src/components/auth/NouveauMotDePasse.jsx',
   ],
 };
 

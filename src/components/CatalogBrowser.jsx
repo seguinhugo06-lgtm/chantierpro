@@ -37,11 +37,11 @@ export default function CatalogBrowser({
   const [addedItems, setAddedItems] = useState(new Set());
 
   // Theme classes
-  const cardBg = isDark ? 'bg-slate-800' : 'bg-white';
-  const inputBg = isDark ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400' : 'bg-white border-slate-200 text-slate-900 placeholder-slate-400';
-  const textPrimary = isDark ? 'text-white' : 'text-slate-900';
-  const textSecondary = isDark ? 'text-slate-300' : 'text-slate-600';
-  const textMuted = isDark ? 'text-slate-400' : 'text-slate-600';
+  const cardBg = 'bg-surface';
+  const inputBg = 'bg-surface border-bord text-encre placeholder:text-encre-3';
+  const textPrimary = 'text-encre';
+  const textSecondary = 'text-encre-2';
+  const textMuted = 'text-encre-2';
 
   // Group items by category
   const groupedItems = useMemo(() => {
@@ -136,7 +136,7 @@ export default function CatalogBrowser({
           </div>
           <button
             onClick={onClose}
-            className={`p-3 rounded-xl transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}
+            className={`p-3 rounded-xl transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-surface-2`}
           >
             <X size={20} className={textMuted} />
           </button>
@@ -191,9 +191,7 @@ export default function CatalogBrowser({
                   <button
                     key={cat.name}
                     onClick={() => setSelectedCategory(cat.name)}
-                    className={`p-3 rounded-xl border-2 text-center transition-all hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] ${
-                      isDark ? 'border-slate-700 hover:border-slate-600' : 'border-slate-200 hover:border-slate-300'
-                    }`}
+                    className={`p-3 rounded-xl border-2 text-center transition-all hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] border-bord hover:border-bord-fort`}
                   >
                     <span className="text-2xl block mb-1">{cat.icon}</span>
                     <p className={`text-xs font-medium truncate ${textPrimary}`}>{cat.name}</p>
@@ -212,7 +210,7 @@ export default function CatalogBrowser({
                 <div className="flex items-center gap-3 mb-4">
                   <button
                     onClick={() => setSelectedCategory(null)}
-                    className={`p-2 rounded-lg transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}
+                    className={`p-2 rounded-lg transition-colors hover:bg-surface-2`}
                   >
                     <X size={16} className={textMuted} />
                   </button>
@@ -267,8 +265,8 @@ export default function CatalogBrowser({
 
 // Individual item card component
 function ItemCard({ item, onSelect, isAdded, isDark, couleur }) {
-  const textPrimary = isDark ? 'text-white' : 'text-slate-900';
-  const textMuted = isDark ? 'text-slate-400' : 'text-slate-600';
+  const textPrimary = 'text-encre';
+  const textMuted = 'text-encre-2';
   const catConfig = CATEGORY_CONFIG[item.categorie] || CATEGORY_CONFIG['Autre'];
 
   return (
@@ -278,9 +276,7 @@ function ItemCard({ item, onSelect, isAdded, isDark, couleur }) {
       className={`p-3 rounded-xl border-2 text-left transition-all hover:shadow-lg relative overflow-hidden ${
         isAdded
           ? 'border-emerald-500 bg-emerald-500/10'
-          : isDark
-            ? 'border-slate-700 hover:border-slate-600'
-            : 'border-slate-200 hover:border-slate-300'
+          : 'border-bord hover:border-bord-fort'
       }`}
     >
       {/* Added checkmark overlay */}
@@ -309,7 +305,7 @@ function ItemCard({ item, onSelect, isAdded, isDark, couleur }) {
         </div>
         <div className="flex items-center justify-between">
           <span className={`text-xs ${textMuted}`}>{item.unite || 'unite'}</span>
-          <span className="text-sm font-bold whitespace-nowrap" style={{ color: couleur }}>
+          <span className="text-sm font-bold whitespace-nowrap text-accent-texte">
             {(item.prix || 0).toLocaleString('fr-FR')} €
           </span>
         </div>
@@ -318,8 +314,7 @@ function ItemCard({ item, onSelect, isAdded, isDark, couleur }) {
       {/* Add indicator */}
       {!isAdded && (
         <div
-          className="absolute bottom-2 right-2 w-6 h-6 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-          style={{ backgroundColor: couleur }}
+          className="absolute bottom-2 right-2 w-6 h-6 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-accent"
         >
           <Plus size={14} className="text-white" />
         </div>
