@@ -53,7 +53,7 @@ Direction validée par Hugo le 19 oct. 2026 sur un prototype cliquable (« oui, 
    - à droite, le **devis vivant** : une carte « DEV-2026-00012 · M. Martin », titre du lot « Mise aux normes du tableau électrique » (lu dans `TRADE_LIBRARY.electricite`, jamais recopié) ; ses lignes apparaissent une à une (désignation, quantité × prix, montant), le total TTC (TVA de chaque ligne) se calcule en direct ; puis pastille « Signé » et tampon « SIGNÉ EN LIGNE » ; puis « FAC-2026-00042 », « Facture envoyée », barre d'encaissement à 40 % « Payée en partie », puis 100 % « Payée » ; la boucle reprend. Une petite carte flottante : point orange + « Relance envoyée à J+7, au rythme que vous choisissez ». Légende : « Démonstration : le lot « Mise aux normes du tableau électrique » de la bibliothèque Électricité, prix moyens indicatifs du marché. »
 3. **Bande de faits** (blanche, quatre cases séparées par un trait, sans compteur animé) : « 1 000+ » prestations et ouvrages déjà chiffrés · « 17 » métiers du bâtiment · « 2 écrans » téléphone et ordinateur · « 0 € » pour commencer.
 4. **Votre métier est déjà chiffré** (`id="metiers"`) : texte « Choisissez le vôtre : voici les lots types que vous insérez en un geste dans un devis, avec leurs prix moyens. Vous ajustez les quantités et vos tarifs, c'est tout. » ; 17 pastilles de métiers (`TRADE_LIBRARY`, ordre de la bibliothèque, Électricité choisi d'abord) ; pour le métier choisi, ses trois premiers lots types en cartes : nom, résumé, « N lignes · HT », total HT arrondi à l'euro, les trois premières lignes avec leur montant ; note : « Prix moyens indicatifs du marché français (2026), fourniture et pose HT. Ils font gagner du temps ; vos propres tarifs restent les vôtres. »
-5. **Le cycle au défilement** (`id="fonctionnalites"`, fond glacier) : trois étapes numérotées à gauche, un téléphone collant à droite dont l'écran change avec l'étape lue (captures `tel-accueil`, `tel-devis-lots`, `tel-facture`) ; au téléphone, les étapes s'empilent avec leur capture :
+5. **Le cycle au défilement** (`id="parcours"`, fond glacier ; « Fonctionnalités » mène à la section « Les fonctionnalités en action ») : trois étapes numérotées à gauche, un téléphone collant à droite dont l'écran change avec l'étape lue (captures `tel-accueil`, `tel-devis-lots`, `tel-facture`) ; au téléphone, les étapes s'empilent avec leur capture :
    1. « Le chantier du jour, d'un coup d'œil » — « À l'ouverture : ce qu'il reste à encaisser, les devis à relancer, les brouillons à finir. Rien d'autre. »
    2. « Le devis se monte par lots » — « Un lot de la bibliothèque, quelques quantités à ajuster, le total se calcule pendant que vous tapez. »
    3. « Signé, facturé, encaissé » — « Le client signe en ligne. Le devis devient une facture sans ressaisie, chaque paiement est noté, même partiel. »
@@ -70,6 +70,24 @@ Direction validée par Hugo le 19 oct. 2026 sur un prototype cliquable (« oui, 
 11. **Pied de page** bleu-noir (`#0B1324`), liens actuels.
 
 Sections retirées de la page : `StatsBar`, `QuickFeaturesGrid`, `CtaBanner`, `FeatureShowcase`, « Fait pour le chantier » de la première version (fichiers gardés tant que d'autres pages les importent).
+
+## Les fonctionnalités en action (demande d'Hugo, 20 oct. 2026 : « joue bien sur nos fonctionnalités avec de beaux exemples, je veux que tout soit incroyable »)
+
+Une section `id="fonctionnalites"` (le lien « Fonctionnalités » de la barre y mène ; le cycle au défilement prend l'ancre `#parcours`), placée entre l'explorateur des métiers et le cycle. Titre : « Essayez, c'est l'application. » ; texte : « Chaque exemple ci-dessous tourne avec le vrai code de Mallettico, sur des données fictives. »
+
+Au bureau : une colonne d'onglets à gauche (titre + une phrase), l'exemple à droite dans un cadre d'application. Au téléphone : les onglets en pastilles défilantes au-dessus de l'exemple. Cinq onglets :
+
+1. **« Le document que reçoit votre client »** — le **vrai** générateur (`buildDevisHtml`, `src/lib/devisHtmlBuilder.js`, chargé par `import()`) rend un devis fictif d'« Élec Exemple » pour « M. Martin » (le lot « Mise aux normes du tableau électrique » de la bibliothèque, TVA 10 %), affiché dans un cadre réduit et défilant. À côté, la liste des mentions que le document porte réellement, lue dans le HTML produit (un test le vérifie) : identité et SIRET, assurance décennale, attestation de TVA réduite, conditions de paiement et pénalités, droit de rétractation. Légende : « Exemple fictif généré par Mallettico. »
+2. **« Signature en ligne »** — une carte « Devis DEV-2026-00012 · 2 081,20 € TTC » avec une zone « Signez ici » où l'on trace au doigt ou à la souris ; « Valider la signature » pose le tampon « Signé le JJ/MM/AAAA à HH:MM ». Rien n'est envoyé : « Démonstration : votre signature ne quitte pas cette page. »
+3. **« Métré express »** — longueur, largeur, nombre, chutes (%) : la quantité en m² et le montant d'une vraie ligne de la bibliothèque (une prestation de carrelage de `TRADE_LIBRARY.carrelage`, prix moyen) se recalculent en direct, avec le même calcul que la fenêtre « Métré » de l'éditeur (fonction pure partagée, déplacée dans `src/lib/metre.js` et utilisée par les deux).
+4. **« Relances »** — la frise du scénario de relance de devis proposé par l'application (étapes et délais lus dans le code de `RelanceConfigTab`, exportés au besoin), chaque étape avec l'objet du message ; « Vous réglez les délais et les messages ; l'envoi automatique est une option. »
+5. **« Encaissements »** — une facture de 4 136,00 € : acompte de 30 % reçu, un virement partiel, le reste dû qui baisse à chaque clic sur « Encaisser 500 € », et la pastille qui ne passe à « Payée » qu'au solde exact. « Une facture n'est « payée » que si les paiements la soldent. »
+
+Accessibilité : onglets au clavier (flèches, `role="tablist"`), chaque exemple utilisable au clavier (la zone de signature a un bouton « Signer avec mon nom » qui écrit le nom en cursive), mouvement réduit respecté. Honnêteté : tout montant vient du code ou de la bibliothèque ; aucun chiffre inventé ; aucune fonction éteinte (paiement en ligne, portail) n'apparaît.
+
+## Passe de finition « incroyable »
+
+Avant les relectures finales, une passe de finition sur toute la page : rythme vertical régulier, alignements, tailles de titres, transitions entre sections (fond blanc / glacier / nuit), états de survol et de focus, images nettes, et un contrôle visuel à 375, 768, 1024 et 1440 px, en mouvement normal et réduit, par une relecture « directeur artistique » qui liste les défauts à corriger.
 
 ## Données de la bibliothèque
 

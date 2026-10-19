@@ -121,11 +121,29 @@ Version validée par Hugo sur le prototype (19 oct.) : la spec, sections 1 à 3,
 **Interfaces :**
 - Consumes : `TRADE_LIBRARY` par `import()` (même module que la Task 4, un seul chargement), captures `public/site/tel-*.webp` (Task 3), briques de la Task 2.
 
-- [ ] **Step 1 : ajouter au parcours** « site : sections » à 375 et 1440 px : `#metiers` montre 17 boutons de métiers (`aria-pressed`, Électricité pressé d'abord) ; cliquer « Plomberie » affiche trois cartes dont les noms sont les trois premiers lots de `TRADE_LIBRARY.plomberie` (lus dans le module depuis le parcours) avec un total HT en « € » ; flèche droite depuis un métier passe au suivant ; `#fonctionnalites` a trois étapes aux titres exacts de la spec ; au bureau (1440), après défilement jusqu'à l'étape 3, l'image visible du téléphone est `tel-facture.webp` ; `#fiabilite` affiche les quatre garanties exactes ; après `scrollIntoView` de chaque `h2` et 800 ms, son opacité calculée vaut 1 ; légende « Captures de l'application, données fictives » présente ; chaque `img` de ces sections a `naturalWidth > 0`.
+- [ ] **Step 1 : ajouter au parcours** « site : sections » à 375 et 1440 px : `#metiers` montre 17 boutons de métiers (`aria-pressed`, Électricité pressé d'abord) ; cliquer « Plomberie » affiche trois cartes dont les noms sont les trois premiers lots de `TRADE_LIBRARY.plomberie` (lus dans le module depuis le parcours) avec un total HT en « € » ; flèche droite depuis un métier passe au suivant ; `#parcours` a trois étapes aux titres exacts de la spec ; les liens « Métiers », « Fonctionnalités », « Fiabilité » de la barre mènent à leur section ; au bureau (1440), après défilement jusqu'à l'étape 3, l'image visible du téléphone est `tel-facture.webp` ; `#fiabilite` affiche les quatre garanties exactes ; après `scrollIntoView` de chaque `h2` et 800 ms, son opacité calculée vaut 1 ; légende « Captures de l'application, données fictives » présente ; chaque `img` de ces sections a `naturalWidth > 0`.
 - [ ] **Step 2 :** parcours rouge.
 - [ ] **Step 3 :** écrire les trois sections (textes de la spec ; le compteur et la barre de la fiabilité s'arrêtent hors écran et en mouvement réduit), réordonner `LandingPage`.
 - [ ] **Step 4 :** parcours et test d'honnêteté verts ; lint ; captures du parcours regardées.
 - [ ] **Step 5 :** commit `feat(site): trades explorer, scroll-told cycle, reliability band`.
+
+### Task 5b : les fonctionnalités en action
+
+Spec : section « Les fonctionnalités en action ».
+
+**Files :**
+- Create : `src/components/landing/FonctionnalitesSection.jsx`, `src/components/landing/exemples/ExempleDocument.jsx`, `ExempleSignature.jsx`, `ExempleMetre.jsx`, `ExempleRelances.jsx`, `ExempleEncaissements.jsx`, `src/lib/metre.js`
+- Modify : `src/components/DevisComposer.jsx` (la fenêtre « Métré » utilise `calculerMetre` de `src/lib/metre.js`, sans changement de comportement), `src/components/settings/RelanceConfigTab.jsx` (exporter le scénario de devis proposé, si ce n'est pas déjà le cas), `src/components/landing/LandingPage.jsx`, `CycleSection.jsx` (ancre `#parcours`), `LandingNav.jsx` si besoin
+- Test : `src/lib/__tests__/metre.test.js`, `src/components/landing/__tests__/exemples.test.js`, `scripts/parcours/site.cjs`, `honnetete.test.js`
+
+**Interfaces :**
+- Produces : `calculerMetre({ longueur, largeur, hauteur?, nombre = 1, chutes = 0 }) → { quantite: number, unite: 'm²' | 'm³' | 'ml' }` (mêmes règles que l'actuel `MetreModal` : lire son code et en reprendre exactement le calcul et les arrondis) ; `mentionsDuDocument(html: string) → string[]` (repère dans le HTML produit les mentions listées par la spec ; utilisé par l'exemple et par le test).
+
+- [ ] **Step 1 : tests** : `calculerMetre` sur 3 cas lus dans le comportement actuel de `MetreModal` (surface avec chutes, volume avec hauteur, nombre > 1) ; `mentionsDuDocument(buildDevisHtml(exempleFictif))` contient au moins « Assurance décennale », « TVA », « rétractation » (vérifier les libellés exacts produits par le générateur et les écrire tels quels) ; l'exemple d'encaissements ne passe « Payée » qu'au solde exact (logique pure testée).
+- [ ] **Step 2 : parcours** « site : fonctionnalités » à 375 et 1440 px : 5 onglets au clavier (flèche droite passe au suivant) ; l'onglet document affiche un cadre dont le contenu contient « DEVIS » et « Élec Exemple » ; signature : tracer un trait (souris) puis « Valider la signature » → « Signé le » ; métré : saisir 4 × 3, chutes 10 → quantité 13,2 m² (adapter au calcul exact) et un montant en « € » ; encaissements : cliquer jusqu'au solde → « Payée » ; aucun défilement horizontal.
+- [ ] **Step 3 :** rouge, puis implémenter ; `buildDevisHtml` et `TRADE_LIBRARY` par `import()` seulement.
+- [ ] **Step 4 :** vert ; vérifier que l'éditeur de devis réel donne toujours le même métré (test + `npm run parcours -- documents`) ; captures regardées.
+- [ ] **Step 5 :** commit `feat(site): features in action — real document, signature, measurement, reminders, payments`.
 
 ### Task 6 : tarifs et « construit en public »
 
@@ -153,6 +171,12 @@ Version validée par Hugo sur le prototype (19 oct.) : la spec, sections 1 à 3,
 - [ ] **Step 3 :** corriger les réponses de la FAQ et `featuresContent.js` selon le code (ne garder que ce qui existe : vérifier chaque affirmation dans `src/` avant de la garder ; une affirmation qu'on ne peut pas vérifier est retirée) ; `FinalCta` et `FooterSection` à la charte et aux textes de la spec ; sous-pages à la palette `marque` ; retirer de l'accueil les imports devenus inutiles.
 - [ ] **Step 4 :** test d'honnêteté et parcours verts ; `npm run verifier` vert.
 - [ ] **Step 5 :** commit `feat(site): FAQ, final call, footer and feature pages on the new palette`.
+
+### Task 7b : passe de finition « incroyable »
+
+- [ ] **Step 1 :** captures pleine page à 375, 768, 1024, 1440 px (mouvement normal après animations, et réduit) ; relecture « directeur artistique » (agent de relecture dédié) qui liste les défauts : rythme vertical, alignements, tailles, transitions de fonds, survols et focus, netteté des images, cohérence des pilules et des cartes, textes trop longs.
+- [ ] **Step 2 :** corriger la liste ; recapturer ; recommencer jusqu'à une liste vide de défauts P1/P2.
+- [ ] **Step 3 :** commit `style(site): finishing pass`.
 
 ### Task 8 : relectures, vérification complète, captures pour Hugo
 
