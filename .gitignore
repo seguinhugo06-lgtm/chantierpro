@@ -35,3 +35,6 @@ supabase/.temp/
 
 # Audit d'interface (node scripts/audit-ui.cjs)
 audit-ui/
+
+# Espaces de travail des compétences superpowers (registres, consignes, rapports)
+.superpowers/
