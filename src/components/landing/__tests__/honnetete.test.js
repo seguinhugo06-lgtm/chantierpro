@@ -28,7 +28,7 @@ const FICHIERS_CONTROLES = [
   'HeroSection.jsx',
   'LandingPage.jsx',
   'DevisVivant.jsx',
-  'devisVivant.js',
+  'devisVivantEtapes.js',
   'FaitsSection.jsx',
 ];
 

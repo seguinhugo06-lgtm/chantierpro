@@ -1,13 +1,13 @@
 /**
  * Le « devis vivant » du premier écran du site — logique pure (sans React), testée dans
- * `__tests__/devisVivant.test.js`. L'affichage est dans `DevisVivant.jsx`.
+ * `__tests__/devisVivantEtapes.test.js`. L'affichage est dans `DevisVivant.jsx`.
  *
  * Le devis se monte avec un vrai lot de la bibliothèque des métiers (`src/lib/templates/trade-library.js`) :
  * aucun prix n'est recopié dans le site. Les étapes : une par ligne (total TTC cumulé), puis signé,
  * facturé, payé à 40 %, payé en entier ; la boucle reprend.
  *
- * Piège : `DevisVivant.jsx` et ce fichier ne diffèrent que par la casse. Sur un disque insensible à la casse
- * (macOS), un import sans extension de « ./DevisVivant » arrive ICI : toujours importer avec l'extension.
+ * Nom distinct de `DevisVivant.jsx` (pas seulement par la casse) : sur un disque insensible à la casse (macOS),
+ * `./DevisVivant` se résolvait sur la logique, essayée avant le `.jsx`.
  */
 
 /** Numéros et client de la démonstration (fictifs, affichés comme tels par la légende). */

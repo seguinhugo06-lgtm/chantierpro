@@ -9,9 +9,7 @@
 import { ArrowRight, Check } from 'lucide-react';
 import BoutonSite from './site/BoutonSite';
 import PlanArchitecte from './site/PlanArchitecte';
-// Extension obligatoire : sur un disque insensible à la casse (macOS), « ./DevisVivant » se résout en
-// devisVivant.js (la logique pure), essayé avant .jsx.
-import DevisVivant from './DevisVivant.jsx';
+import DevisVivant from './DevisVivant';
 
 const REASSURANCES = ['Gratuit pour commencer, sans carte bancaire', 'Base de données hébergée à Paris'];
 

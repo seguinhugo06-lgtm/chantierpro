@@ -3,13 +3,15 @@
  * bibliothèque Électricité, se fait signer, devient une facture, puis est payé ; la boucle reprend.
  *
  * - La bibliothèque (149 Ko) est chargée à la demande (`import()`) : le cadre et le titre s'affichent tout de
- *   suite, les lignes dès que les données sont là. Aucun prix n'est recopié ici.
+ *   suite, les lignes dès que les données sont là. Aucun prix n'est recopié ici. Si elle ne se charge pas, la
+ *   carte se réduit à son en-tête et à la légende.
+ * - La bulle « Relance du devis à J+7 » n'est montrée que pendant les étapes du devis (lignes, signé).
  * - La boucle ne tourne que si la carte est à l'écran et l'onglet affiché (IntersectionObserver,
  *   visibilitychange) ; `reduit` ou « réduire les animations » du système : état final complet et « Payée ».
  * - L'animation est masquée aux lecteurs d'écran (`aria-hidden`), doublée d'un texte hors écran ; aucune région
  *   `aria-live` (la boucle serait annoncée sans fin).
  * - Attributs `data-*` lus par le parcours `scripts/parcours/site.cjs`.
- * La logique (étapes, totaux, rythme) est dans `devisVivant.js`.
+ * La logique (étapes, totaux, rythme) est dans `devisVivantEtapes.js`.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useReducedMotion } from 'framer-motion';
@@ -24,7 +26,7 @@ import {
   etatDuDevis,
   libelleTotal,
   lotDemonstration,
-} from './devisVivant.js'; // extension explicite : ce fichier et lui ne diffèrent que par la casse (macOS)
+} from './devisVivantEtapes';
 
 const TEXTE_HORS_ECRAN =
   `Exemple : un devis de ${NB_LIGNES_DEMONSTRATION} lignes pour une mise aux normes de tableau électrique, signé en ligne, facturé puis payé.`;
@@ -42,13 +44,16 @@ const quantite = (q) => q.toLocaleString('fr-FR');
 
 /**
  * Une ligne du devis. Pas encore écrite (ou données pas encore chargées : `ligne` nulle) : un emplacement en
- * pointillés, contenu invisible mais à sa place, pour que la carte garde sa hauteur. Au bureau, la désignation
- * tient sur une ligne (hauteur fixe : rien ne bouge au chargement) ; au téléphone, sur deux au plus.
+ * pointillés, contenu invisible mais à sa place, pour que la carte garde sa hauteur quand la bibliothèque arrive.
+ * Désignation : deux lignes, ni plus ni moins, au téléphone (les désignations y passent toutes sur deux lignes) ;
+ * une seule au bureau (ellipse). Entre les deux (640 à 1023 px), la hauteur naturelle : les désignations y tiennent
+ * sur une ligne, en réserver deux laisserait un blanc dans chaque ligne.
  */
 function Ligne({ ligne, vue }) {
   return (
     <li
       data-ligne={ligne ? (vue ? 'vue' : 'attente') : undefined}
+      data-emplacement={ligne ? undefined : ''}
       className={`rounded-[10px] border px-2.5 py-1 transition-colors duration-300 motion-reduce:transition-none ${
         vue ? 'border-transparent bg-marque-glacier-1' : 'border-dashed border-marque-acier/70 bg-transparent'
       }`}
@@ -59,7 +64,8 @@ function Ligne({ ligne, vue }) {
         }`}
       >
         <span className="min-w-0">
-          <span className="line-clamp-2 text-sm leading-snug text-slate-900 lg:line-clamp-1">
+          {/* 2,75em = deux lignes de leading-snug (1,375) */}
+          <span className="line-clamp-2 min-h-[2.75em] text-sm leading-snug text-slate-900 sm:min-h-0 lg:line-clamp-1">
             {ligne ? ligne.designation : <>&nbsp;</>}
           </span>
           <span className="mt-0.5 block text-xs tabular-nums text-slate-600">
@@ -105,6 +111,7 @@ export default function DevisVivant({ reduit: reduitDemande = false }) {
   const reduit = reduitDemande || !!mouvementReduit;
   const carte = useRef(null);
   const [lot, setLot] = useState(null);
+  const [echec, setEchec] = useState(false);
   const [index, setIndex] = useState(-1);
   const [aLEcran, setALEcran] = useState(false);
   const [ongletAffiche, setOngletAffiche] = useState(() => typeof document === 'undefined' || document.visibilityState !== 'hidden');
@@ -113,7 +120,12 @@ export default function DevisVivant({ reduit: reduitDemande = false }) {
     let annule = false;
     import('../../lib/templates/trade-library.js')
       .then((module) => { if (!annule) setLot(lotDemonstration(module.TRADE_LIBRARY)); })
-      .catch((erreur) => captureException(erreur, { composant: 'DevisVivant' }));
+      .catch((erreur) => {
+        // Bibliothèque introuvable (déploiement remplacé, réseau coupé) ou lot disparu : la carte se réduit à son
+        // en-tête et à la légende, plutôt qu'à des emplacements vides et « 0,00 € » pour toujours.
+        captureException(erreur, { composant: 'DevisVivant' });
+        if (!annule) setEchec(true);
+      });
     return () => { annule = true; };
   }, []);
 
@@ -156,6 +168,9 @@ export default function DevisVivant({ reduit: reduitDemande = false }) {
   const pastille = PASTILLES[etat.statut];
   const part = etat.encaisse ?? 0;
   const lignes = lot ? lot.lignes : [];
+  // La bulle parle de la relance du DEVIS : visible pendant les étapes du devis seulement (en facture, l'app relance
+  // après l'échéance, pas à J+7). Elle reste dans le texte lu par les lecteurs d'écran (opacité), sans décalage.
+  const relanceVisible = etat.statut === 'brouillon' || etat.statut === 'signe';
 
   return (
     <figure className="relative">
@@ -166,7 +181,10 @@ export default function DevisVivant({ reduit: reduitDemande = false }) {
         data-devis-vivant=""
         data-etape={indexAffiche}
         data-etat={etat.statut}
-        className="relative overflow-hidden rounded-[22px] border border-marque-acier/60 bg-white px-4 pb-10 pt-5 shadow-[0_30px_60px_-28px_rgba(13,46,108,0.45)] sm:px-5"
+        data-echec={echec ? '' : undefined}
+        className={`relative overflow-hidden rounded-[22px] border border-marque-acier/60 bg-white px-4 pt-5 shadow-[0_30px_60px_-28px_rgba(13,46,108,0.45)] sm:px-5 ${
+          echec ? 'pb-5' : 'pb-10'
+        }`}
       >
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
@@ -185,55 +203,72 @@ export default function DevisVivant({ reduit: reduitDemande = false }) {
           </span>
         </div>
 
-        <ol className="mt-3.5 flex flex-col gap-1.5">
-          {/* Clé = rang : les emplacements d'avant le chargement deviennent les lignes, sans être recréés. */}
-          {lot
-            ? lot.lignes.map((ligne, i) => <Ligne key={i} ligne={ligne} vue={i < etat.lignesVues} />)
-            : Array.from({ length: NB_LIGNES_DEMONSTRATION }, (_, i) => <Ligne key={i} ligne={null} vue={false} />)}
-        </ol>
+        {!echec && (
+          <>
+            <ol className="mt-3.5 flex flex-col gap-1.5">
+              {/* Clé = rang : les emplacements d'avant le chargement deviennent les lignes, sans être recréés. */}
+              {lot
+                ? lot.lignes.map((ligne, i) => <Ligne key={i} ligne={ligne} vue={i < etat.lignesVues} />)
+                : Array.from({ length: NB_LIGNES_DEMONSTRATION }, (_, i) => <Ligne key={i} ligne={null} vue={false} />)}
+            </ol>
 
-        <div className="mt-3 flex items-baseline justify-between gap-3 border-t border-dashed border-marque-acier pt-3">
-          <span className="text-sm text-slate-600">{libelleTotal(lignes)}</span>
-          <span data-total="" className="whitespace-nowrap text-2xl font-extrabold tabular-nums tracking-tight text-marque-nuit sm:text-3xl">
-            {formatMoney(total, 2)}
-          </span>
-        </div>
+            <div className="mt-3 flex items-baseline justify-between gap-3 border-t border-dashed border-marque-acier pt-3">
+              <span className="text-sm text-slate-600">{libelleTotal(lignes)}</span>
+              <span data-total="" className="whitespace-nowrap text-2xl font-extrabold tabular-nums tracking-tight text-marque-nuit sm:text-3xl">
+                {formatMoney(total, 2)}
+              </span>
+            </div>
 
-        <div className={`transition-opacity duration-300 motion-reduce:transition-none ${etat.encaisse === null ? 'opacity-0' : 'opacity-100'}`}>
-          <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-100">
-            <div
-              className={`h-full rounded-full transition-[width,background-color] duration-1000 ease-out motion-reduce:transition-none ${
-                part >= 1 ? 'bg-emerald-600' : 'bg-marque-nuit-2'
+            {/* Barre d'encaissement dès la facture ; sa légende seulement quand quelque chose est encaissé. */}
+            <div className={`transition-opacity duration-300 motion-reduce:transition-none ${etat.encaisse === null ? 'opacity-0' : 'opacity-100'}`}>
+              <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-100">
+                <div
+                  className={`h-full rounded-full transition-[width,background-color] duration-1000 ease-out motion-reduce:transition-none ${
+                    part >= 1 ? 'bg-emerald-600' : 'bg-marque-nuit-2'
+                  }`}
+                  style={{ width: `${part * 100}%` }}
+                />
+              </div>
+              <p
+                data-encaisse={part > 0 ? 'visible' : 'cache'}
+                className={`mt-1.5 flex justify-between text-xs tabular-nums text-slate-600 transition-opacity duration-300 motion-reduce:transition-none ${
+                  part > 0 ? 'opacity-100' : 'opacity-0'
+                }`}
+              >
+                <span>Encaissé : {formatMoney(part * etat.totalTTC, 2)}</span>
+                <span>{Math.round(part * 100)} %</span>
+              </p>
+            </div>
+
+            {/* Le tampon se pose sous le total, là où viendra la barre d'encaissement (encore cachée à la signature) :
+                il ne masque aucune ligne. Vert assombri (emerald-700) : 5,5:1 sur blanc. */}
+            <span
+              className={`pointer-events-none absolute bottom-9 right-5 z-10 rotate-[-7deg] rounded-[10px] border-[3px] border-emerald-700 bg-white/90 px-3 py-1 text-base font-extrabold tracking-[0.06em] text-emerald-700 transition-[opacity,transform] duration-300 ease-[cubic-bezier(0.2,1.6,0.4,1)] motion-reduce:transition-none ${
+                etat.tampon ? 'scale-100 opacity-100' : 'scale-[0.6] opacity-0'
               }`}
-              style={{ width: `${part * 100}%` }}
-            />
-          </div>
-          <p className="mt-1.5 flex justify-between text-xs tabular-nums text-slate-600">
-            <span>Encaissé : {formatMoney(part * etat.totalTTC, 2)}</span>
-            <span>{Math.round(part * 100)} %</span>
-          </p>
-        </div>
-
-        {/* Le tampon se pose sous le total, là où viendra la barre d'encaissement (encore cachée à la signature) :
-            il ne masque aucune ligne. Vert assombri (emerald-700) : 5,5:1 sur blanc. */}
-        <span
-          className={`pointer-events-none absolute bottom-9 right-5 z-10 rotate-[-7deg] rounded-[10px] border-[3px] border-emerald-700 bg-white/90 px-3 py-1 text-base font-extrabold tracking-[0.06em] text-emerald-700 transition-[opacity,transform] duration-300 ease-[cubic-bezier(0.2,1.6,0.4,1)] motion-reduce:transition-none ${
-            etat.tampon ? 'scale-100 opacity-100' : 'scale-[0.6] opacity-0'
-          }`}
-        >
-          SIGNÉ EN LIGNE
-        </span>
+            >
+              SIGNÉ EN LIGNE
+            </span>
+          </>
+        )}
       </div>
 
-      <p className="relative z-10 -mt-6 ml-3 mr-3 flex w-fit items-center gap-2.5 rounded-2xl border border-marque-acier/60 bg-white px-3.5 py-2.5 text-sm text-slate-700 shadow-[0_20px_40px_-24px_rgba(13,46,108,0.5)] lg:-ml-8">
-        <span
-          aria-hidden="true"
-          className="h-2 w-2 shrink-0 rounded-full bg-marque-orange shadow-[0_0_0_3px_rgba(238,123,32,0.2),0_0_10px_rgba(238,123,32,0.8)]"
-        />
-        <span>
-          Relance envoyée à <strong className="font-bold text-marque-nuit">J+7</strong>, au rythme que vous choisissez
-        </span>
-      </p>
+      {!echec && (
+        <p
+          data-relance={relanceVisible ? 'visible' : 'cachee'}
+          className={`relative z-10 -mt-6 ml-3 mr-3 flex w-fit items-center gap-2.5 rounded-2xl border border-marque-acier/60 bg-white px-3.5 py-2.5 text-sm text-slate-700 shadow-[0_20px_40px_-24px_rgba(13,46,108,0.5)] transition-[opacity,transform] duration-300 motion-reduce:transition-none lg:-ml-8 ${
+            relanceVisible ? 'translate-y-0 opacity-100' : 'translate-y-1 opacity-0'
+          }`}
+        >
+          <span
+            aria-hidden="true"
+            className="h-2 w-2 shrink-0 rounded-full bg-marque-orange shadow-[0_0_0_3px_rgba(238,123,32,0.2),0_0_10px_rgba(238,123,32,0.8)]"
+          />
+          <span>
+            Relance du devis à <strong className="font-bold text-marque-nuit">J+7</strong>, au rythme que vous choisissez
+          </span>
+        </p>
+      )}
 
       <figcaption className="mt-3 text-xs leading-relaxed text-slate-600">
         Démonstration : le lot « {NOM_LOT_DEMONSTRATION} » de la bibliothèque Électricité, prix moyens indicatifs du marché.

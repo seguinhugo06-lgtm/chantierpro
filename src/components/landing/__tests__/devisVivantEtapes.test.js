@@ -11,7 +11,7 @@ import {
   NB_LIGNES_DEMONSTRATION,
   NUMERO_DEVIS,
   NUMERO_FACTURE,
-} from '../devisVivant.js';
+} from '../devisVivantEtapes.js';
 
 /** Un lot de 7 lignes à TVA mêlées, comme ceux de la bibliothèque. */
 const LOT_7 = {

@@ -40,6 +40,8 @@ function construireDistReel() {
  * @param {object} [o.session] - session Supabase à placer dans le stockage (mode réel)
  * @param {Function} [o.avantChargement] - code exécuté dans la page avant le chargement
  * @param {string} [o.chemin] - adresse ouverte (défaut : « / », ou « /?demo=true » en démo), ex. « /fonctionnalites »
+ * @param {Function} [o.fichiers] - (url) => 'bloquer' | délai en ms | undefined, pour un fichier du build : simule un
+ *   fichier introuvable (déploiement remplacé, réseau coupé) ou lent (ex. un module chargé à la demande)
  */
 async function ouvrir(o = {}) {
   const largeur = o.largeur || 1440;
@@ -66,9 +68,13 @@ async function ouvrir(o = {}) {
     }
     if (u.origin !== ORIGIN) return req.abort();
     if (u.pathname === '/sw.js' || u.pathname === '/registerSW.js') return req.respond({ status: 404, body: '' });
+    const consigne = o.fichiers ? o.fichiers(u) : undefined;
+    if (consigne === 'bloquer') return req.abort('failed');
     let f = path.join(dist, decodeURIComponent(u.pathname));
     if (!f.startsWith(dist) || !fs.existsSync(f) || fs.statSync(f).isDirectory()) f = path.join(dist, 'index.html');
-    req.respond({ status: 200, contentType: MIME[path.extname(f)] || 'application/octet-stream', body: fs.readFileSync(f) });
+    const servir = () => req.respond({ status: 200, contentType: MIME[path.extname(f)] || 'application/octet-stream', body: fs.readFileSync(f) });
+    if (typeof consigne === 'number') return attendre(consigne).then(servir);
+    return servir();
   });
   await page.evaluateOnNewDocument((p) => {
     try {

@@ -8,6 +8,7 @@ const json = (corps, status = 200) => ({ status, body: JSON.stringify(corps) });
 
 const TITRE = "L'administratif du chantier, rangé dans une mallette.";
 const TEXTE_HORS_ECRAN = 'Exemple : un devis de 7 lignes pour une mise aux normes de tableau électrique, signé en ligne, facturé puis payé.';
+const TEXTE_RELANCE = 'Relance du devis à J+7, au rythme que vous choisissez';
 
 /** Capture rangée dans audit-ui/ (ignoré par git), pour la regarder après le parcours. */
 async function capturer(page, RACINE, nom) {
@@ -28,6 +29,9 @@ const lireCarte = (page) => page.evaluate(() => {
     vues: carte.querySelectorAll('[data-ligne="vue"]').length,
     pastille: carte.querySelector('[data-pastille]')?.textContent.trim() || '',
     numero: carte.querySelector('[data-numero]')?.textContent.trim() || '',
+    relance: carte.closest('figure').querySelector('[data-relance]')?.getAttribute('data-relance') || '',
+    relanceTexte: carte.closest('figure').querySelector('[data-relance]')?.textContent.replace(/\s+/g, ' ').trim() || '',
+    encaisse: carte.querySelector('[data-encaisse]')?.getAttribute('data-encaisse') || '',
     total,
     montant: Number(total.replace(/[^\d,]/g, '').replace(',', '.')),
   };
@@ -138,6 +142,7 @@ module.exports = [
         const apres = await lireCarte(page);
         verifier(apres && apres.vues >= 3, `au moins 3 lignes du devis vivant après 4 s ${a} (${apres?.vues})`);
         verifier(apres && /€$/.test(apres.total) && apres.montant > 0, `total « … € » non nul ${a} (« ${apres?.total} »)`);
+        verifier(apres.relance === 'visible' && apres.relanceTexte === TEXTE_RELANCE, `bulle « ${TEXTE_RELANCE} » montrée pendant le devis ${a} (${apres.relance}, « ${apres.relanceTexte} »)`);
         await capturer(page, RACINE, `premier-ecran-${largeur}-anime`);
 
         // Hors de l'écran, la boucle s'arrête ; elle reprend au retour
@@ -151,6 +156,23 @@ module.exports = [
         let reprise = false;
         for (let i = 0; i < 25 && !reprise; i++) { await attendre(250); reprise = (await lireCarte(page)).etape !== toujours.etape; }
         verifier(reprise, `boucle reprise au retour de la carte à l'écran ${a}`);
+
+        // Étapes de la facture : plus de bulle de relance du devis ; légende d'encaissement seulement une fois
+        // quelque chose encaissé
+        const jusqua = async (etat) => {
+          for (let i = 0; i < 100; i++) {
+            const c = await lireCarte(page);
+            if (c.etat === etat) return c;
+            await attendre(200);
+          }
+          return lireCarte(page);
+        };
+        const facture = await jusqua('facture');
+        verifier(facture.etat === 'facture', `étape « Facture envoyée » atteinte ${a} (${facture.etat})`);
+        verifier(facture.relance === 'cachee', `bulle de relance du devis cachée sur la facture ${a} (${facture.relance})`);
+        verifier(facture.encaisse === 'cache', `pas de « Encaissé : 0,00 € » sur la facture envoyée ${a} (${facture.encaisse})`);
+        const partiel = await jusqua('partiel');
+        verifier(partiel.etat === 'partiel' && partiel.encaisse === 'visible', `légende d'encaissement une fois payée en partie ${a} (${partiel.etat}, ${partiel.encaisse})`);
 
         // Onglet caché : la boucle s'arrête aussi
         await page.evaluate(() => {
@@ -169,13 +191,44 @@ module.exports = [
         verifier(reduite && reduite.lignes >= 3 && reduite.vues === reduite.lignes, `mouvement réduit : toutes les lignes ${a} (${reduite?.vues}/${reduite?.lignes})`);
         verifier(reduite.pastille === 'Payée' && reduite.etat === 'payee', `mouvement réduit : « Payée » dès l'arrivée ${a} (« ${reduite.pastille} »)`);
         verifier(reduite.numero.includes('FAC-2026-00042') && reduite.montant > 0, `mouvement réduit : facture et total ${a} (${reduite.numero}, ${reduite.total})`);
+        verifier(reduite.relance === 'cachee' && reduite.encaisse === 'visible', `mouvement réduit : pas de bulle de relance du devis, encaissement affiché ${a}`);
         await attendre(2000);
         verifier((await lireCarte(page)).etape === reduite.etape, `mouvement réduit : pas de boucle ${a}`);
         await capturer(page, RACINE, `premier-ecran-${largeur}-reduit`);
 
+        // Menu du téléphone au clavier : aria-controls désigne un élément qui existe ; ouvert, la page derrière est
+        // inerte et Tab entre dans le menu ; Échap le ferme et rend le focus au bouton
+        await page.evaluate(() => window.scrollTo(0, 0));
+        if (largeur < 1024) {
+          const menuFerme = await page.evaluate(() => {
+            const bouton = document.querySelector('[aria-controls="menu-site"]');
+            const menu = document.getElementById('menu-site');
+            return { cible: !!menu, cache: !!menu?.hidden, etendu: bouton?.getAttribute('aria-expanded') };
+          });
+          verifier(menuFerme.cible && menuFerme.cache && menuFerme.etendu === 'false', `menu fermé : aria-controls désigne le menu caché ${a}`);
+          await page.focus('[aria-controls="menu-site"]');
+          await page.keyboard.press('Enter');
+          await attendre(300);
+          await page.keyboard.press('Tab');
+          const ouvert = await page.evaluate(() => ({
+            etendu: document.querySelector('[aria-controls="menu-site"]').getAttribute('aria-expanded'),
+            inerte: !!document.querySelector('main')?.hasAttribute('inert'),
+            focusDansMenu: !!document.activeElement?.closest('#menu-site'),
+          }));
+          verifier(ouvert.etendu === 'true' && ouvert.inerte, `menu ouvert : page derrière inerte ${a}`);
+          verifier(ouvert.focusDansMenu, `menu ouvert : Tab entre dans le menu ${a}`);
+          await page.keyboard.press('Escape');
+          await attendre(300);
+          const referme = await page.evaluate(() => ({
+            cache: document.getElementById('menu-site').hidden,
+            inerte: !!document.querySelector('main')?.hasAttribute('inert'),
+            focusBouton: document.activeElement === document.querySelector('[aria-controls="menu-site"]'),
+          }));
+          verifier(referme.cache && !referme.inerte && referme.focusBouton, `Échap ferme le menu, la page revient, focus sur le bouton ${a}`);
+        }
+
         // La barre mène aux sections : « Tarifs » au bureau ; au téléphone, le menu puis « FAQ » (menu refermé,
         // page de nouveau défilable)
-        await page.evaluate(() => window.scrollTo(0, 0));
         const ancre = largeur >= 1024 ? '#pricing' : '#faq';
         if (largeur >= 1024) {
           await cliquer(page, 'Tarifs');
@@ -186,11 +239,12 @@ module.exports = [
         await attendre(1500);
         const arrivee = await page.evaluate((s) => ({
           haut: document.querySelector(s)?.getBoundingClientRect().top,
-          menu: !!document.getElementById('menu-site'),
+          menu: !document.getElementById('menu-site').hidden,
           bloquee: document.body.style.overflow === 'hidden',
+          inerte: !!document.querySelector('main')?.hasAttribute('inert'),
         }), ancre);
         verifier(arrivee.haut > -10 && arrivee.haut < 200, `la barre mène à ${ancre} ${a} (haut : ${arrivee.haut})`);
-        verifier(!arrivee.menu && !arrivee.bloquee, `menu refermé et page défilable ${a}`);
+        verifier(!arrivee.menu && !arrivee.bloquee && !arrivee.inerte, `menu refermé, page défilable et active ${a}`);
 
         // « Créer mon compte gratuit » ouvre l'inscription
         await page.evaluate(() => window.scrollTo(0, 0));
@@ -202,6 +256,63 @@ module.exports = [
           return !!r && r.width > 0 && r.height > 0;
         });
         verifier(email, `« Créer mon compte gratuit » ouvre un champ e-mail ${a}`);
+        await browser.close();
+      }
+    },
+  },
+  {
+    // La bibliothèque des métiers (149 Ko) est chargée à la demande : lente, la carte ne doit pas changer de
+    // hauteur à son arrivée ; introuvable (déploiement remplacé, réseau coupé), pas d'emplacements vides ni de
+    // « 0,00 € » pour toujours.
+    nom: 'site : devis vivant, bibliothèque lente ou introuvable',
+    reel: true,
+    async executer({ ouvrir, attendre, verifier }) {
+      const BIBLIOTHEQUE = /\/trade-library-[^/]*\.js$/;
+      // Dans la page : hauteur de la carte tant qu'elle n'a que ses emplacements (dernière mesure avant les lignes)
+      const mesurerAvant = () => {
+        const minuterie = setInterval(() => {
+          const carte = document.querySelector('[data-devis-vivant]');
+          if (!carte) return;
+          if (carte.querySelector('[data-emplacement]')) window.__hauteurAvant = carte.getBoundingClientRect().height;
+          else if (carte.querySelector('[data-ligne]')) clearInterval(minuterie);
+        }, 50);
+      };
+      for (const largeur of [375, 768, 1440]) {
+        const { page, browser } = await ouvrir({
+          reel: true, largeur, supabase: () => json([]), avantChargement: mesurerAvant,
+          fichiers: (u) => (BIBLIOTHEQUE.test(u.pathname) ? 2000 : undefined),
+        });
+        const h = await page.evaluate(() => ({
+          avant: window.__hauteurAvant,
+          apres: document.querySelector('[data-devis-vivant]').getBoundingClientRect().height,
+          lignes: document.querySelectorAll('[data-devis-vivant] [data-ligne]').length,
+        }));
+        verifier(h.avant > 0 && h.lignes > 0, `emplacements mesurés puis lignes chargées à ${largeur} px (${h.avant}, ${h.lignes} lignes)`);
+        verifier(Math.abs(h.apres - h.avant) <= 1, `la carte garde sa hauteur quand la bibliothèque arrive à ${largeur} px (${h.avant} → ${h.apres})`);
+        await browser.close();
+      }
+
+      for (const largeur of [375, 1440]) {
+        const { page, browser } = await ouvrir({
+          reel: true, largeur, supabase: () => json([]),
+          fichiers: (u) => (BIBLIOTHEQUE.test(u.pathname) ? 'bloquer' : undefined),
+        });
+        await attendre(500);
+        const e = await page.evaluate(() => {
+          const carte = document.querySelector('[data-devis-vivant]');
+          const figure = carte.closest('figure');
+          return {
+            echec: carte.hasAttribute('data-echec'),
+            lignes: carte.querySelectorAll('[data-emplacement], [data-ligne]').length,
+            total: !!carte.querySelector('[data-total]'),
+            relance: !!figure.querySelector('[data-relance]'),
+            numero: carte.querySelector('[data-numero]')?.textContent.trim(),
+            titre: carte.textContent.includes('Mise aux normes du tableau électrique'),
+            legende: figure.querySelector('figcaption')?.textContent || '',
+          };
+        });
+        verifier(e.echec && e.lignes === 0 && !e.total && !e.relance, `bibliothèque introuvable : ni emplacements, ni total, ni bulle à ${largeur} px (${JSON.stringify(e)})`);
+        verifier(e.numero === 'DEV-2026-00012 · M. Martin' && e.titre && e.legende.startsWith('Démonstration'), `bibliothèque introuvable : en-tête et légende gardés à ${largeur} px`);
         await browser.close();
       }
     },
