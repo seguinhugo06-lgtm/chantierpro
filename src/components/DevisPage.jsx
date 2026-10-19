@@ -4877,8 +4877,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           <div className="flex items-stretch">
             <button
               onClick={ouvrirNouveauDevis}
-              className="px-4 py-2.5 text-white rounded-l-xl text-sm font-semibold flex items-center gap-2 hover:opacity-90 transition-all"
-              style={{ background: couleur }}
+              className="px-4 py-2.5 bg-accent text-sur-accent rounded-l-full text-sm font-semibold flex items-center gap-2 hover:brightness-95 transition-all"
             >
               <Plus size={16} />
               <span className="hidden sm:inline">Nouveau devis</span>
@@ -4886,8 +4885,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
             </button>
             <button
               onClick={() => setShowCreateMenu(!showCreateMenu)}
-              className="px-2 text-white rounded-r-xl border-l border-white/20 hover:opacity-80 transition-all"
-              style={{ background: couleur }}
+              className="pl-2 pr-3 bg-accent text-sur-accent rounded-r-full border-l border-white/20 hover:brightness-95 transition-all"
               aria-label="Options de création"
               aria-haspopup="true"
               aria-expanded={showCreateMenu}

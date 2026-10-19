@@ -34,11 +34,11 @@ Le nouveau site doit faire comprendre en un écran ce qu'est Mallettico, montrer
 ## Contraintes
 
 - Pile existante : React 18, Tailwind 3.4, `framer-motion` (déjà installé), `lucide-react`. Aucune dépendance nouvelle.
-- Le site est toujours en clair (il n'utilise pas les jetons de thème, qui suivent le mode sombre de l'app) : couleurs **fixes** dans une palette Tailwind `marque` :
-  - `marque-nuit` `#12336F` (bleu nuit du logo, fonds de bandeaux), `marque-nuit-fonce` `#0B2350` (pied de page, survol) ;
-  - `marque-orange` `#C2410C` (actions, texte blanc 5,2:1), `marque-orange-fonce` `#9A3412` (survol, texte orange sur fond clair 7,3:1) ;
-  - `marque-orange-clair` `#FDBA74` (libellés sur bleu nuit, 7,2:1) ;
-  - neutres : `slate` de Tailwind (texte `slate-900`, secondaire `slate-600`, fonds `white` / `slate-50`).
+- Le site est toujours en clair (il n'utilise pas les jetons de thème, qui suivent le mode sombre de l'app) : couleurs **fixes**, charte **« Glacier vif »** choisie par Hugo le 19 oct. parmi six propositions tirées du logo (palette Tailwind `marque`, valeurs exactes dans le plan) :
+  - bleu nuit du logo (`#0D2E6C`, `#12336F`) pour les titres, les boutons en pilule et les bandes sombres ;
+  - glacier du reflet du logo (`#F0FAFF` → `#DCEFFB` → `#BFF2FF`) pour les fonds clairs et le premier écran ;
+  - ardoise `#2B4A7A` et acier `#BCD3E2` pour les textes secondaires et les traits ;
+  - l'orange du logo `#EE7B20` en **touche décorative seulement** : point lumineux, mot du titre souligné d'orange, lueur ; jamais de texte orange sur fond clair (2,8:1).
 - Police Inter (déjà servie par l'app).
 - Prix : lus dans `PLANS` de `src/stores/subscriptionStore.js` (aujourd'hui recopiés en dur dans `PricingSection.jsx` : à corriger).
 - Images : WebP, dimensions explicites (`width`/`height`), `loading="lazy"` sauf le premier écran (`fetchpriority="high"`).
@@ -46,12 +46,12 @@ Le nouveau site doit faire comprendre en un écran ce qu'est Mallettico, montrer
 ## Structure de la page d'accueil
 
 1. **Barre de navigation** (fixe, blanche, ombre légère au défilement) : logo + « Mallettico » ; liens « Fonctionnalités » (`#fonctionnalites`), « Tarifs » (`#pricing`), « FAQ » (`#faq`) ; bouton texte « Connexion » ; bouton orange « Créer mon compte ». Au téléphone : logo, « Connexion », menu.
-2. **Premier écran**, fond bleu nuit uni, texte blanc :
-   - surtitre (orange clair) : « Devis · Factures · Relances » ;
-   - `h1` : « L'administratif du chantier, rangé dans une mallette. » ;
+2. **Premier écran**, fond glacier (dégradé `#F0FAFF` → `#DCEFFB`, lueur orange très douce en haut à droite), titre bleu nuit :
+   - surtitre (bleu nuit) : « Devis · Factures · Relances » ;
+   - `h1` : « L'administratif du chantier, rangé dans une mallette. », les mots « rangé dans une mallette » soulignés d'un trait orange épais ;
    - texte : « Le devis se monte à partir de prestations déjà chiffrées, le client le signe en ligne, il devient une facture sans rien ressaisir, et Mallettico suit les paiements. Sur téléphone comme sur ordinateur. » ;
-   - boutons : « Créer mon compte gratuit » (orange) et « Voir la démo » (contour blanc, lien `/?demo=true`) ;
-   - ligne de réassurance (blanc à 80 %) : « Gratuit pour commencer, sans carte bancaire · Base de données hébergée à Paris » ;
+   - boutons en pilule : « Créer mon compte gratuit » (bleu nuit, texte blanc) et « Voir la démo » (contour bleu nuit, lien `/?demo=true`) ;
+   - ligne de réassurance (ardoise) : « Gratuit pour commencer, sans carte bancaire · Base de données hébergée à Paris » ;
    - visuel : capture ordinateur (devis par lots) dans un cadre de navigateur, capture téléphone (accueil) qui la chevauche. **(choix de Claude)**
 3. **Bande de faits** (fond blanc, quatre faits sans animation) : « 1 000+ prestations et ouvrages déjà chiffrés » · « 17 métiers » · « Sur téléphone et ordinateur » · « Gratuit pour commencer ».
 4. **Le cycle** (`id="fonctionnalites"`), titre « Du devis au paiement, sans rien ressaisir. » ; quatre étapes numérotées, chacune une capture, un titre, deux phrases et un lien « En savoir plus » vers sa page :
@@ -68,7 +68,7 @@ Le nouveau site doit faire comprendre en un écran ce qu'est Mallettico, montrer
 7. **Tarifs** (`id="pricing"`) : les trois plans de `PLANS`, prix HT par mois, « tarif fondateur » tel qu'affiché aujourd'hui ; le tableau de comparaison reste, sous un bouton « Comparer les plans en détail » (replié par défaut). **(choix de Claude)**
 8. **Construit en public** (contenu de `EarlyAdoptersSection`, nouvelle charte) : « Pas de faux avis ici. Les avis viendront des artisans qui utilisent Mallettico, avec leur accord. »
 9. **FAQ** (`id="faq"`) : questions actuelles, réponses relues pour l'honnêteté (Factur-X, intégrations, support : ne garder que ce qui existe).
-10. **Dernier appel**, bande bleu nuit : « Votre prochain devis, ce soir, en quelques minutes. » ; bouton « Créer mon compte gratuit ». Ligne en dessous : « Mallettico — tout y est, rien ne pèse. »
+10. **Dernier appel**, bande bleu nuit : « Votre prochain devis, dès ce soir. » ; bouton en pilule blanche « Créer mon compte gratuit ». Ligne en dessous : « Mallettico — tout y est, rien ne pèse. »
 11. **Pied de page** bleu nuit foncé, liens actuels.
 
 Sections retirées de la page : `StatsBar`, `QuickFeaturesGrid`, `CtaBanner`, `FeatureShowcase` (fichiers gardés tant que d'autres pages les importent ; sinon retirés de l'accueil seulement).

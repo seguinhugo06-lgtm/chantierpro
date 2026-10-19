@@ -4,21 +4,24 @@
  * `App.jsx` pose sur <html> :
  *   - data-theme="clair|sombre" (d'après isDark) → palette neutre de src/styles/theme.css ;
  *   - les variables d'accent tirées de la couleur de l'entreprise, chacune garantie lisible :
- *       --accent        la couleur choisie, assombrie s'il le faut pour porter du texte blanc (≥ 4,5:1) :
- *                       boutons pleins, onglet actif, barres, teintes ;
- *       --sur-accent    le texte posé sur --accent : toujours blanc (charte du 19 oct. 2026 : le noir sur
- *                       orange vif faisait daté et lourd ; orange par défaut → #c2410c environ, blanc 5,2:1) ;
+ *       --accent        la couleur choisie, assombrie s'il le faut pour porter du texte blanc (≥ 5:1), et en
+ *                       sombre éclaircie s'il le faut pour se voir sur le fond (≥ 3:1) : boutons pleins,
+ *                       onglet actif, barres, teintes ;
+ *       --sur-accent    le texte posé sur --accent : toujours blanc ;
  *       --accent-texte  la couleur comme texte sur la surface du thème (≥ 4,5:1).
- *   Le bleu nuit des tuiles vedettes (--nuit, src/styles/theme.css) est la couleur de Mallettico : fixe,
- *   il ne suit pas la couleur de l'entreprise.
+ *   Charte « Glacier vif » (choix d'Hugo, 19 oct. 2026), tirée du logo : sans couleur d'entreprise, ou avec
+ *   l'ancien orange par défaut (#f97316, jamais choisi en connaissance de cause), l'accent est le bleu nuit
+ *   du logo (#12336F). La tuile vedette (dégradé glacier, src/styles/theme.css) est fixe.
  * Les primitives de ui/ lisent ces variables (classes bg-accent-fort, text-accent-texte…) :
  * plus besoin de passer isDark ni couleur, et toujours aucune classe `dark:`.
  * Les valeurs sont des triplets « r g b » pour que Tailwind gère l'opacité (bg-accent/10).
  */
 
-const ACCENT_DEFAUT = '#f97316';
+const ANCIEN_DEFAUT = '#f97316'; // orange par défaut jusqu'au 19 oct. 2026, enregistré sur les fiches jamais personnalisées
+const NUIT = [18, 51, 111]; // #12336F, bleu nuit du logo : l'accent par défaut
 const SURFACE_CLAIRE = [255, 255, 255];
-const SURFACE_SOMBRE = [30, 41, 59]; // slate-800, la surface des cartes en sombre
+const SURFACE_SOMBRE = [20, 33, 58]; // #14213A, la surface des cartes en sombre
+const FOND_SOMBRE = [11, 19, 36]; // #0B1324, le fond de page en sombre
 const BLANC = [255, 255, 255];
 
 function versRgb(hex) {
@@ -84,33 +87,49 @@ function ajuster(rgb, fond, sens, cible = 4.5) {
 const triplet = (rgb) => rgb.join(' ');
 const versHex = (rgb) => `#${rgb.map((c) => c.toString(16).padStart(2, '0')).join('')}`;
 
-// La couleur choisie, assombrie (teinte gardée) jusqu'à porter du texte blanc lisible ; 5:1 plutôt que 4,5 pour
-// garder de la marge au survol (hover:brightness-95, opacity-90). L'orange par défaut a sa teinte choisie à la main
-// (#c2410c, blanc 5,2:1, maquette validée le 19 oct. 2026) : assombri tel quel, il tirait vers le brun.
-const ORANGE_PLEIN = [194, 65, 12];
-const plein = (brut) => (triplet(brut) === triplet(versRgb(ACCENT_DEFAUT)) ? ORANGE_PLEIN : ajuster(brut, BLANC, -1, 5));
+// La couleur de l'entreprise ; sans couleur lisible, ou avec l'ancien orange par défaut, le bleu nuit du logo
+function couleurDeBase(couleur) {
+  const rgb = versRgb(couleur);
+  return !rgb || triplet(rgb) === triplet(versRgb(ANCIEN_DEFAUT)) ? NUIT : rgb;
+}
+
+// Aplat : la couleur assombrie (teinte gardée) jusqu'à porter du texte blanc ; 5:1 plutôt que 4,5 pour garder de la
+// marge au survol (hover:brightness-95, opacity-90). En sombre, éclaircie si elle se perd sur le fond (< 3:1, ex. le
+// bleu nuit) tant que le blanc reste lisible dessus.
+function plein(brut, sombre) {
+  const fonce = ajuster(brut, BLANC, -1, 5);
+  if (!sombre || contraste(fonce, FOND_SOMBRE) >= 3) return fonce;
+  const [h, s, l0] = versTsl(fonce);
+  for (let l = l0; l <= 1; l += 0.01) {
+    const essai = depuisTsl([h, s, l]);
+    if (contraste(BLANC, essai) < 4.5) break;
+    if (contraste(essai, FOND_SOMBRE) >= 3) return essai;
+  }
+  return fonce;
+}
 
 /**
- * Couleur d'un aplat qui porte du texte blanc (≥ 4,5:1), pour le code qui pose encore la couleur de
- * l'entreprise en style (`style={{ background }}`). Les documents imprimés gardent la couleur telle quelle.
- * @param {string} couleur hex ; une valeur illisible retombe sur l'orange
+ * Couleur d'un aplat qui porte du texte blanc, pour le code qui pose encore la couleur de l'entreprise en style
+ * (`style={{ background }}`). Les documents imprimés et les e-mails gardent la couleur brute de l'entreprise.
+ * @param {string} couleur hex ; absente, illisible ou ancien orange par défaut : le bleu nuit
+ * @param {boolean} [sombre]
  * @returns {string} hex #rrggbb
  */
-export function couleurPleine(couleur) {
-  return versHex(plein(versRgb(couleur) || versRgb(ACCENT_DEFAUT)));
+export function couleurPleine(couleur, sombre = false) {
+  return versHex(plein(couleurDeBase(couleur), sombre));
 }
 
 /**
  * Variables CSS de l'accent pour une couleur d'entreprise et un thème.
- * @param {string} couleur hex (#rrggbb ou #rgb) ; une valeur illisible retombe sur l'orange.
+ * @param {string} couleur hex (#rrggbb ou #rgb) ; absente, illisible ou ancien orange par défaut : le bleu nuit.
  * @param {boolean} sombre
  * @returns {Record<string, string>}
  */
 export function variablesAccent(couleur, sombre = false) {
-  const brut = versRgb(couleur) || versRgb(ACCENT_DEFAUT);
+  const brut = couleurDeBase(couleur);
   const texte = sombre ? ajuster(brut, SURFACE_SOMBRE, +1) : ajuster(brut, SURFACE_CLAIRE, -1);
   return {
-    '--accent': triplet(plein(brut)),
+    '--accent': triplet(plein(brut, sombre)),
     '--sur-accent': triplet(BLANC),
     '--accent-texte': triplet(texte),
   };

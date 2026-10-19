@@ -18,51 +18,61 @@
 /* Clair par défaut ; un bloc [data-theme] redéfinit le thème pour son sous-arbre (styleguide clair + sombre côte à côte). */
 :root, [data-theme='clair'] {
   /* Fonds */
-  --fond: 248 250 252;       /* page — slate-50 */
+  /* Charte « Glacier vif » (19 oct. 2026) : neutres légèrement bleutés, comme le reflet du logo */
+  --fond: 247 250 253;       /* page — #F7FAFD */
   --surface: 255 255 255;    /* carte, volet, barre */
-  --surface-2: 241 245 249;  /* creux, survol, puce neutre — slate-100 */
+  --surface-2: 240 246 251;  /* creux, survol, puce neutre — #F0F6FB (même clarté que slate-100) */
   /* Traits */
-  --bord: 226 232 240;       /* slate-200 */
-  --bord-fort: 203 213 225;  /* champs — slate-300 */
+  --bord: 225 235 243;       /* #E1EBF3 */
+  --bord-fort: 200 214 228;  /* champs — #C8D6E4 */
   /* Encres (≥ 4,5:1 sur fond et surface) */
   --encre: 15 23 42;         /* titres, montants — slate-900 */
   --encre-2: 71 85 105;      /* texte secondaire — slate-600 */
   --encre-3: 100 116 139;    /* méta, libellés — slate-500 (4,8:1 sur blanc) */
-  /* Accent par défaut (remplacé à l'exécution, voir src/lib/theme.js) : l'orange assombri qui porte du blanc */
-  --accent: 194 65 12;        /* #c2410c, blanc 5,2:1 */
+  /* Accent par défaut (remplacé à l'exécution, voir src/lib/theme.js) : le bleu nuit du logo */
+  --accent: 18 51 111;        /* #12336F, blanc 12,2:1 */
   --sur-accent: 255 255 255;
-  --accent-texte: 195 83 5;
-  /* Bleu nuit du logo : la couleur de Mallettico, fixe (ne suit pas la couleur de l'entreprise). Tuiles vedettes :
-     montant en blanc 12,2:1, libellé orange clair 7,2:1, contexte 8,2:1 (charte du 19 oct. 2026). */
-  --nuit: 18 51 111;           /* #12336F */
-  --sur-nuit: 255 255 255;
-  --nuit-libelle: 253 186 116; /* orange-300 */
-  --nuit-contexte: 203 213 225; /* slate-300 */
+  --accent-texte: 18 51 111;
+  /* Tuile vedette, fixe (ne suit pas la couleur de l'entreprise) : dégradé glacier du reflet du logo ; libellé
+     nuit 11,5:1, montant nuit 10,7:1, contexte ardoise 7,4:1 (mesurés sur la teinte la plus foncée du dégradé). */
+  --vedette-degrade: linear-gradient(135deg, #F0FAFF 0%, #DCEFFB 60%, #BFF2FF 100%);
+  --vedette-bord: 188 211 226;     /* #BCD3E2 */
+  --vedette-libelle: 18 51 111;    /* #12336F */
+  --vedette-valeur: 13 46 108;     /* #0D2E6C */
+  --vedette-contexte: 43 74 122;   /* #2B4A7A */
+  /* Orange du logo (#EE7B20) : signature décorative seulement (point, liseré, lueur). Jamais de texte dessus ni
+     en texte sur fond clair (2,8:1). */
+  --signature: 238 123 32;
   /* Tons de sens (pastilles, alertes) : un fond teinté, un texte ≥ 6:1 dessus, un point vif.
      Un statut = un ton, partout (src/lib/statuts.js). Bleu = chez le client, vert = acquis,
-     ambre = à surveiller, rouge = problème, gris = brouillon ou clos. L'orange reste la marque. */
+     ambre = à surveiller, rouge = problème, gris = brouillon ou clos. L'accent (bleu nuit par défaut) n'est jamais un statut. */
   --neutre-fond: 241 245 249;  --neutre-texte: 51 65 85;    --neutre-point: 148 163 184;  /* slate 100/700/400 */
   --info-fond: 219 234 254;    --info-texte: 30 64 175;     --info-point: 59 130 246;    /* blue 100/800/500 */
   --succes-fond: 209 250 229;  --succes-texte: 6 95 70;     --succes-point: 16 185 129;  /* emerald 100/800/500 */
   --alerte-fond: 254 243 199;  --alerte-texte: 146 64 14;   --alerte-point: 245 158 11;  /* amber 100/800/500 */
   --danger-fond: 254 226 226;  --danger-texte: 153 27 27;   --danger-point: 239 68 68;   /* red 100/800/500 */
   /* Élévations */
-  --e1: 0 1px 2px rgb(15 23 42 / 0.06);
-  --e2: 0 8px 24px -6px rgb(15 23 42 / 0.18);
-  --e3: 0 24px 48px -12px rgb(15 23 42 / 0.3);
+  --e1: 0 1px 2px rgb(18 51 111 / 0.06);
+  --e2: 0 8px 24px -6px rgb(18 51 111 / 0.18);
+  --e3: 0 24px 48px -12px rgb(18 51 111 / 0.3);
 }
 
 [data-theme='sombre'] {
-  --fond: 15 23 42;          /* slate-900 */
-  --surface: 30 41 59;       /* slate-800 */
-  --surface-2: 51 65 85;     /* slate-700 */
-  --bord: 51 65 85;          /* slate-700 */
-  --bord-fort: 71 85 105;    /* slate-600 */
+  /* Bleu-noir profond, tiré du bleu nuit du logo */
+  --fond: 11 19 36;          /* #0B1324 */
+  --surface: 20 33 58;       /* #14213A */
+  --surface-2: 27 43 74;     /* #1B2B4A */
+  --bord: 36 54 90;          /* #24365A */
+  --bord-fort: 47 69 112;    /* #2F4570 */
   --encre: 248 250 252;      /* slate-50 */
   --encre-2: 203 213 225;    /* slate-300 */
-  --encre-3: 148 163 184;    /* slate-400 (5,7:1 sur slate-800) */
-  /* Bleu nuit un cran plus clair pour se détacher du fond : blanc 10,2:1, libellé 6:1, contexte 6,8:1 */
-  --nuit: 23 62 133;         /* #173E85 */
+  --encre-3: 148 163 184;    /* slate-400 (6,3:1 sur #14213A, 5,5:1 sur #1B2B4A) */
+  /* Tuile vedette en sombre : libellé glacier 9,3:1, montant blanc 11,3:1, contexte 7,3:1 (sur #1B3A6B) */
+  --vedette-degrade: linear-gradient(135deg, #13284D, #1B3A6B);
+  --vedette-bord: 42 74 138;       /* #2A4A8A */
+  --vedette-libelle: 191 242 255;  /* #BFF2FF */
+  --vedette-valeur: 255 255 255;
+  --vedette-contexte: 188 211 226; /* #BCD3E2 */
   /* Tons en sombre : fonds -950, textes -300 (≥ 8:1). */
   --neutre-fond: 51 65 85;     --neutre-texte: 226 232 240; --neutre-point: 148 163 184;
   --info-fond: 23 37 84;       --info-texte: 147 197 253;   --info-point: 96 165 250;

@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal :** remplacer la page d'accueil publique de Mallettico par une page plus courte et plus forte, à la charte « nuit et orange », montrant l'application réelle, honnête jusque dans les tarifs.
+**Goal :** remplacer la page d'accueil publique de Mallettico par une page plus courte et plus forte, à la charte « Glacier vif » (couleurs du logo), montrant l'application réelle, honnête jusque dans les tarifs.
 
 **Architecture :** les sections de `src/components/landing/` sont réécrites ou remplacées, sur de petites briques communes (`src/components/landing/site/`) et une palette Tailwind fixe `marque` (le site ne suit pas le mode sombre de l'app). Les listes des tarifs viennent d'une seule source, `PLANS`, corrigée selon D-29. Les captures sont produites par un script versionné. Un test d'honnêteté et un parcours navigateur gardent le tout.
 
@@ -14,7 +14,7 @@
 
 - Français partout ; aucun mot anglais visible ; vrais caractères dans le texte JSX (pas d'échappements `é` dans le JSX, voir `.claude/rules/marketing.md`).
 - Rien d'invérifiable : pas d'avis, de statistiques d'usage, de « conforme », « certifié », « toutes les mentions », « archivage », « SHA-256 », « EN 16931 », « RGPD », « Factur-X », « hébergées en France » ; aucune mention de l'IA ni de la dictée ; aucune fonction éteinte (`src/lib/fonctions.js`) présentée comme disponible.
-- Couleurs du site (palette Tailwind `marque`, valeurs exactes) : `nuit` `#12336F`, `nuit-fonce` `#0B2350`, `orange` `#C2410C`, `orange-fonce` `#9A3412`, `orange-clair` `#FDBA74` ; neutres `slate`. Texte sur `orange` et sur `nuit` : blanc. Contraste de tout texte ≥ 4,5:1.
+- Couleurs du site : charte « Glacier vif » choisie par Hugo le 19 oct. (palette Tailwind `marque`, valeurs exactes) : `nuit` `#0D2E6C`, `nuit-2` `#12336F`, `ardoise` `#2B4A7A`, `acier` `#BCD3E2`, `glacier-1` `#F0FAFF`, `glacier-2` `#DCEFFB`, `glacier-3` `#BFF2FF`, `encre-sombre` `#0B1324`, `orange` `#EE7B20` ; neutres `slate`. Actions : pilule `nuit-2` à texte blanc (12,2:1) ; sur une bande `nuit`, pilule blanche à texte `nuit` (12,9:1). L'orange du logo est **décoratif seulement** (point lumineux, soulignement épais d'un mot du titre, lueur radiale) : jamais de texte orange sur fond clair (2,8:1) ni de texte sur l'orange ; texte orange permis uniquement sur `nuit` (4,6:1). Contraste de tout texte ≥ 4,5:1.
 - Un seul `h1` par page. Cibles tactiles ≥ 44 px. Focus visible (`focus-visible:ring-2`).
 - Animations : `MotionConfig reducedMotion="user"` ; le contenu est lisible sans animation (pas d'`opacity: 0` permanent si JavaScript ou l'animation ne joue pas).
 - Ancres conservées : `#pricing`, `#faq` (`src/lib/sectionsAccueil.js`) ; bouton de la barre au texte exact « Connexion » (`scripts/parcours/reel.cjs`).

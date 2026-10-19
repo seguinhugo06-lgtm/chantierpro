@@ -652,7 +652,7 @@ export default function DevisComposer({
   // l'entreprise (identité visuelle) : ne pas propager `accent` à buildDevisHtml.
   const accent = isFacture ? FACTURE_ACCENT : couleur;
   // Aplats (boutons, pastille) : la même teinte assombrie qui porte du blanc (charte du 19 oct. 2026)
-  const accentPlein = couleurPleine(accent);
+  const accentPlein = couleurPleine(accent, isDark);
 
   return createPortal(
     <div role="dialog" aria-modal="true" aria-label={`${isEditMode ? 'Modifier' : (isFacture ? 'Nouvelle' : 'Nouveau')} ${isFacture ? 'facture' : 'devis'}`}
@@ -758,7 +758,7 @@ export default function DevisComposer({
                 ligne._isSection ? (
                   <SectionRow key={ligne.id} ligne={ligne} index={index} total={form.lignes.length} subtotal={sectionSubtotals[index] || 0}
                     count={sectionCounts[index] || 0} collapsed={collapsedLots.has(ligne.id)} onToggle={() => toggleLot(ligne.id)}
-                    shouldFocus={ligne.id === focusLotId} isDark={isDark} couleur={accent} textPrimary={textPrimary} textMuted={textMuted}
+                    shouldFocus={ligne.id === focusLotId} isDark={isDark} couleur={accentPlein} textPrimary={textPrimary} textMuted={textMuted}
                     onUpdate={(v) => updateLigne(ligne.id, 'description', v)} onRemove={() => removeLigne(ligne.id)}
                     onMoveUp={() => moveLigne(index, -1)} onMoveDown={() => moveLigne(index, 1)} {...dragProps(index)} />
                 ) : collapsedLots.has(lotOfLine[ligne.id]) ? null : (

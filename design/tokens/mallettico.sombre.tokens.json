@@ -4,27 +4,27 @@
     "neutre": {
       "fond": {
         "$type": "color",
-        "$value": "#0f172a",
+        "$value": "#0b1324",
         "$description": "Fond de page"
       },
       "surface": {
         "$type": "color",
-        "$value": "#1e293b",
+        "$value": "#14213a",
         "$description": "Carte, volet, barre"
       },
       "surface-2": {
         "$type": "color",
-        "$value": "#334155",
+        "$value": "#1b2b4a",
         "$description": "Creux, survol, puce neutre"
       },
       "bord": {
         "$type": "color",
-        "$value": "#334155",
+        "$value": "#24365a",
         "$description": "Traits"
       },
       "bord-fort": {
         "$type": "color",
-        "$value": "#475569",
+        "$value": "#2f4570",
         "$description": "Bord des champs"
       },
       "encre": {
@@ -46,7 +46,7 @@
     "accent": {
       "accent": {
         "$type": "color",
-        "$value": "#c2410c",
+        "$value": "#215dcb",
         "$description": "Action et sélection (couleur de l'entreprise, orange par défaut)"
       },
       "sur-accent": {
@@ -56,7 +56,7 @@
       },
       "accent-texte": {
         "$type": "color",
-        "$value": "#f97316",
+        "$value": "#5588e3",
         "$description": "L'accent écrit en texte sur une surface (≥ 4,5:1)"
       }
     },

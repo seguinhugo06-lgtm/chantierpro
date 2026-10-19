@@ -8,6 +8,7 @@ import { Loader2 } from 'lucide-react';
  *   discret    : sans fond, pour les actions de faible poids ;
  *   danger     : rouge plein, pour une action destructrice confirmée.
  * Hauteurs : normale 44 px, grande 48 px ; compacte 36 px au bureau seulement (44 au téléphone).
+ * Forme pilule (charte « Glacier vif », 19 oct. 2026).
  * Lit le thème sur <html> : ni isDark ni couleur à passer.
  */
 const VARIANTES = {
@@ -17,9 +18,9 @@ const VARIANTES = {
   danger: 'bg-red-600 text-white font-semibold hover:bg-red-700',
 };
 const TAILLES = {
-  compacte: 'h-11 sm:h-9 px-3.5 text-sm gap-1.5 rounded-xl',
-  normale: 'h-11 px-4 text-sm gap-2 rounded-xl',
-  grande: 'h-12 px-5 text-base gap-2 rounded-xl',
+  compacte: 'h-11 sm:h-9 px-3.5 text-sm gap-1.5 rounded-full',
+  normale: 'h-11 px-4 text-sm gap-2 rounded-full',
+  grande: 'h-12 px-5 text-base gap-2 rounded-full',
 };
 
 export const Bouton = forwardRef(function Bouton(

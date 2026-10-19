@@ -4,7 +4,7 @@
     "neutre": {
       "fond": {
         "$type": "color",
-        "$value": "#f8fafc",
+        "$value": "#f7fafd",
         "$description": "Fond de page"
       },
       "surface": {
@@ -14,17 +14,17 @@
       },
       "surface-2": {
         "$type": "color",
-        "$value": "#f1f5f9",
+        "$value": "#f0f6fb",
         "$description": "Creux, survol, puce neutre"
       },
       "bord": {
         "$type": "color",
-        "$value": "#e2e8f0",
+        "$value": "#e1ebf3",
         "$description": "Traits"
       },
       "bord-fort": {
         "$type": "color",
-        "$value": "#cbd5e1",
+        "$value": "#c8d6e4",
         "$description": "Bord des champs"
       },
       "encre": {
@@ -46,7 +46,7 @@
     "accent": {
       "accent": {
         "$type": "color",
-        "$value": "#c2410c",
+        "$value": "#12336f",
         "$description": "Action et sélection (couleur de l'entreprise, orange par défaut)"
       },
       "sur-accent": {
@@ -56,7 +56,7 @@
       },
       "accent-texte": {
         "$type": "color",
-        "$value": "#c35305",
+        "$value": "#12336f",
         "$description": "L'accent écrit en texte sur une surface (≥ 4,5:1)"
       }
     },
@@ -142,7 +142,7 @@
     "pose": {
       "$type": "shadow",
       "$value": {
-        "color": "#0f172a0f",
+        "color": "#12336f0f",
         "offsetX": "0px",
         "offsetY": "1px",
         "blur": "2px",
@@ -152,7 +152,7 @@
     "flottant": {
       "$type": "shadow",
       "$value": {
-        "color": "#0f172a2e",
+        "color": "#12336f2e",
         "offsetX": "0px",
         "offsetY": "8px",
         "blur": "24px",
@@ -162,7 +162,7 @@
     "modal": {
       "$type": "shadow",
       "$value": {
-        "color": "#0f172a4d",
+        "color": "#12336f4d",
         "offsetX": "0px",
         "offsetY": "24px",
         "blur": "48px",

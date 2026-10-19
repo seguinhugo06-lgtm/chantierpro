@@ -21,9 +21,10 @@ export default {
         accent: v('--accent'),
         'accent-texte': v('--accent-texte'),
         'sur-accent': v('--sur-accent'),
-        // Bleu nuit de Mallettico (tuiles vedettes), fixe : bg-nuit text-sur-nuit text-nuit-libelle text-nuit-contexte
-        nuit: { DEFAULT: v('--nuit'), libelle: v('--nuit-libelle'), contexte: v('--nuit-contexte') },
-        'sur-nuit': v('--sur-nuit'),
+        // Tuile vedette (charte « Glacier vif », fixe) : bg-degrade-vedette border-vedette-bord text-vedette-valeur…
+        vedette: { bord: v('--vedette-bord'), libelle: v('--vedette-libelle'), valeur: v('--vedette-valeur'), contexte: v('--vedette-contexte') },
+        // Orange du logo : signature décorative seulement (point, liseré), jamais sous ni comme texte
+        signature: v('--signature'),
         // Tons : bg-succes-fond text-succes-texte, bg-danger-point… (un statut = un ton, src/lib/statuts.js)
         neutre: { fond: v('--neutre-fond'), texte: v('--neutre-texte'), point: v('--neutre-point') },
         info: { fond: v('--info-fond'), texte: v('--info-texte'), point: v('--info-point') },
@@ -154,6 +155,9 @@ export default {
       },
       borderRadius: {
         '4xl': '2rem',
+      },
+      backgroundImage: {
+        'degrade-vedette': 'var(--vedette-degrade)',
       },
     },
   },
