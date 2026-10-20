@@ -1,222 +1,129 @@
 /**
- * PricingSection — Enhanced pricing with Framer Motion animations.
+ * PricingSection — « Des prix simples, sans surprise. » (spec de la refonte, section 7, `id="pricing"`).
  *
- * 3 plan cards with stagger entrance, animated toggle, and savings badge.
+ * Les trois plans de `PLAN_ORDER`, lus dans `PLANS` (src/stores/subscriptionStore.js, décision D-29) : le nom, le prix
+ * mensuel hors taxes, l'offre de lancement et la liste `featureLabels`, sans rien ajouter ni retirer. Aucun prix, aucun
+ * libellé n'est écrit ici ; le test d'honnêteté le vérifie. Pas de prix barré, pas de « populaire » : la carte Artisan
+ * est seulement mise en avant (bordure bleu nuit, pastille lue dans `PLANS.artisan.badge`), les trois boutons mènent à
+ * la même inscription (`onSignup`, le compte commence au plan Gratuit ; le plan payant se choisit dans l'application).
+ * Tarif fondateur : « garanti tant que l'abonnement reste actif » (décision D-08), rien de plus. Le plan Gratuit, qui
+ * n'a pas d'offre de lancement, dit à la place « Sans limite de durée, sans carte bancaire » : `PLANS.gratuit` n'a ni
+ * date de fin ni prix, et le formulaire d'inscription (App.jsx) ne demande que l'entreprise, l'e-mail et un mot de passe.
+ * Le tableau de comparaison est replié sous les cartes (`PricingComparisonTable`).
+ *
+ * Au bureau, les quatre blocs de chaque carte (titre et prix, tarif fondateur, liste, bouton) partagent les rangées de
+ * la grille (`subgrid`) : prix, listes et boutons s'alignent d'une carte à l'autre. Sans `subgrid` (vieux navigateur),
+ * les cartes s'empilent normalement, seul l'alignement se perd.
+ * Attributs `data-*` lus par le parcours `scripts/parcours/site.cjs`.
  */
+import { ArrowRight, Check } from 'lucide-react';
+import { PLANS, PLAN_ORDER } from '../../stores/subscriptionStore';
+import { formatMoney } from '../../lib/formatters';
+import SectionSite from './site/SectionSite';
+import EnTeteSection from './site/EnTeteSection';
+import Apparition from './site/Apparition';
+import BoutonSite from './site/BoutonSite';
+import PricingComparisonTable from './PricingComparisonTable';
 
-import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Check, ArrowRight } from 'lucide-react';
-import { ScrollReveal, staggerContainer, fadeInUp } from './animations';
+const POINT_ORANGE = 'h-2 w-2 shrink-0 rounded-full bg-marque-orange shadow-[0_0_0_3px_rgba(238,123,32,0.2),0_0_10px_rgba(238,123,32,0.8)]';
 
-const PLANS = [
-  {
-    id: 'gratuit',
-    name: 'Gratuit',
-    monthly: 0,
-    yearly: 0,
-    description: 'Id\u00e9al pour d\u00e9marrer — cr\u00e9ez vos premiers devis en minutes',
-    features: [
-      '5 devis / mois',
-      '10 clients',
-      '2 chantiers actifs',
-      'Planning basique',
-      'Catalogue 30 articles',
-    ],
-    cta: 'Commencer gratuitement — 0 \u20ac',
-    highlighted: false,
-  },
-  {
-    id: 'artisan',
-    name: 'Artisan',
-    monthly: 9.90,
-    yearly: 99,
-    prixNormal: 14.90,
-    offreLancement: 'Tarif fondateur',
-    description: 'Pour les pros qui veulent gagner du temps au quotidien',
-    features: [
-      'Devis & factures illimit\u00e9s',
-      'Clients illimit\u00e9s',
-      'Chantiers illimit\u00e9s',
-      'Relances automatiques',
-      'Fichier Factur-X joint aux factures',
-      'Catalogue complet',
-    ],
-    cta: 'Commencer avec Artisan',
-    highlighted: true,
-    badge: 'Pour un artisan seul',
-  },
-  {
-    id: 'equipe',
-    name: '\u00c9quipe',
-    monthly: 19.90,
-    yearly: 199,
-    prixNormal: 29.90,
-    offreLancement: 'Tarif fondateur',
-    description: 'G\u00e9rez votre \u00e9quipe et vos chantiers sans stress',
-    features: [
-      'Tout Artisan inclus',
-      'Jusqu\'\u00e0 10 utilisateurs',
-      'Pointage & heures',
-      'Gestion des cong\u00e9s',
-      'Tr\u00e9sorerie avanc\u00e9e',
-      'Sous-traitants',
-      // « Portail client » retiré tant que FONCTIONS.portailClient est éteint (relecture juridique du 16 oct. 2026)
-      'Journal d\'audit',
-    ],
-    cta: 'Commencer avec \u00c9quipe',
-    highlighted: false,
-  },
-];
+/** La carte mise en avant : celle du plan que `PLANS` décrit comme « pour un artisan seul ». */
+const PLAN_MIS_EN_AVANT = 'artisan';
+
+function CartePlan({ plan, onSignup }) {
+  const miseEnAvant = plan.id === PLAN_MIS_EN_AVANT;
+  const payant = plan.priceMonthly > 0;
+  return (
+    <article
+      data-plan={plan.id}
+      className={`relative flex flex-col rounded-3xl bg-white lg:row-span-4 lg:grid lg:grid-rows-subgrid ${
+        // Bordure de 2 px : 1 px de marge en moins, pour que le contenu reste aligné sur les autres cartes
+        miseEnAvant
+          ? 'border-2 border-marque-nuit-2 p-[1.4375rem] shadow-[0_30px_60px_-34px_rgba(13,46,108,0.65)] sm:p-[1.6875rem]'
+          : 'border border-marque-acier/60 p-6 shadow-[0_20px_44px_-34px_rgba(13,46,108,0.45)] sm:p-7'
+      }`}
+    >
+      {miseEnAvant && plan.badge ? (
+        <p
+          data-badge=""
+          className="absolute -top-3.5 left-6 inline-flex items-center gap-2 rounded-full bg-marque-nuit-2 px-3.5 py-1 text-xs font-bold tracking-wide text-white"
+        >
+          <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-marque-orange shadow-[0_0_8px_rgba(238,123,32,0.9)]" />
+          {plan.badge}
+        </p>
+      ) : null}
+
+      <div>
+        <h3 className="text-xl font-bold tracking-tight text-marque-nuit">{plan.name}</h3>
+        <p className="mt-4 flex flex-wrap items-baseline gap-x-2 gap-y-1">
+          <span data-prix="" className="whitespace-nowrap text-5xl font-extrabold lg:text-[2.5rem] xl:text-5xl leading-none tracking-[-0.03em] tabular-nums text-marque-nuit">
+            {formatMoney(plan.priceMonthly)}
+          </span>
+          <span data-unite="" className="text-sm text-slate-600">
+            {payant ? 'HT par mois' : 'par mois'}
+          </span>
+        </p>
+      </div>
+
+      {plan.offreLancement ? (
+        <p data-fondateur="" className="mt-4 flex items-start gap-2.5 text-sm leading-snug text-marque-ardoise">
+          <span aria-hidden="true" className={`mt-[5px] ${POINT_ORANGE}`} />
+          <span>
+            <strong className="font-bold text-marque-nuit">{plan.offreLancement}</strong>, garanti tant que l'abonnement reste actif
+          </span>
+        </p>
+      ) : (
+        <p data-sans-limite="" className="mt-4 flex items-start gap-2.5 text-sm leading-snug text-marque-ardoise">
+          <span aria-hidden="true" className={`mt-[5px] ${POINT_ORANGE}`} />
+          <span>
+            <strong className="font-bold text-marque-nuit">Sans limite de durée</strong>, sans carte bancaire
+          </span>
+        </p>
+      )}
+
+      <ul className="mt-6 flex flex-col gap-3 border-t border-marque-acier/50 pt-6">
+        {plan.featureLabels.map((f) => (
+          <li key={f.name} className="flex items-start gap-3 text-[15px] leading-snug text-slate-700">
+            <span aria-hidden="true" className="mt-px flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-marque-glacier-2 text-marque-nuit-2">
+              <Check size={13} strokeWidth={3.5} />
+            </span>
+            {f.name}
+          </li>
+        ))}
+      </ul>
+
+      <div className="mt-8">
+        <BoutonSite variante={miseEnAvant ? 'plein' : 'contour'} onClick={onSignup} className="w-full">
+          {payant ? 'Créer mon compte' : 'Créer mon compte gratuit'}
+          <ArrowRight size={18} aria-hidden="true" />
+        </BoutonSite>
+      </div>
+    </article>
+  );
+}
 
 export default function PricingSection({ onSignup }) {
-  const [annual, setAnnual] = useState(false);
-
   return (
-    <section id="pricing" className="py-16 sm:py-24 bg-slate-50">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6">
-        {/* Header */}
-        <ScrollReveal className="text-center mb-10 sm:mb-14">
-          <p className="text-sm font-semibold text-orange-500 uppercase tracking-wide mb-2">
-            Tarifs
-          </p>
-          <h2 className="text-2xl sm:text-4xl font-bold text-slate-900 mb-4">
-            Des prix simples, sans surprise
-          </h2>
-          <p className="text-slate-500 mb-6">
-            Tous les prix sont HT. Commencez gratuitement, passez au plan supérieur quand vous en avez besoin. Au mois, sans engagement ; à l'année, payé pour 12 mois.
-          </p>
+    <SectionSite id="pricing" fond="blanc">
+      <EnTeteSection titre="Des prix simples, sans surprise.">
+        Les prix sont indiqués hors taxes, par mois. Commencez gratuitement, passez à un plan payant quand vous en avez
+        besoin.
+      </EnTeteSection>
 
-          {/* Animated toggle */}
-          <div className="inline-flex items-center gap-1 bg-white rounded-xl p-1 border border-slate-200 relative">
-            <button
-              onClick={() => setAnnual(false)}
-              className="relative px-4 py-2 rounded-lg text-sm font-medium transition-colors z-10"
-              style={{ color: !annual ? 'white' : '#475569' }}
-            >
-              Mensuel
-            </button>
-            <button
-              onClick={() => setAnnual(true)}
-              className="relative px-4 py-2 rounded-lg text-sm font-medium transition-colors z-10"
-              style={{ color: annual ? 'white' : '#475569' }}
-            >
-              Annuel
-              <span className="ml-1 text-xs opacity-80">-17%</span>
-            </button>
-            {/* Sliding indicator */}
-            <motion.div
-              layout
-              className="absolute top-1 bottom-1 rounded-lg bg-orange-500"
-              style={{
-                left: annual ? 'calc(50% - 2px)' : '4px',
-                width: annual ? 'calc(50% - 2px)' : 'calc(50% - 4px)',
-              }}
-              transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-            />
-          </div>
+      <Apparition delai={0.1}>
+        <div className="mt-12 grid gap-8 lg:grid-cols-3 lg:gap-x-6 lg:gap-y-0">
+          {PLAN_ORDER.map((id) => (
+            <CartePlan key={id} plan={PLANS[id]} onSignup={onSignup} />
+          ))}
+        </div>
+      </Apparition>
 
-          {/* Savings badge */}
-          <AnimatePresence>
-            {annual && (
-              <motion.div
-                initial={{ opacity: 0, y: -10, scale: 0.9 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -10, scale: 0.9 }}
-                className="mt-3 inline-flex items-center gap-1 px-3 py-1 rounded-full bg-green-50 border border-green-200 text-green-700 text-xs font-semibold"
-              >
-                &Eacute;conomisez jusqu'&agrave; 17% avec l'abonnement annuel
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </ScrollReveal>
+      <p data-note-inscription="" className="mt-8 max-w-[48em] text-sm leading-relaxed text-slate-600">
+        Votre compte commence au plan Gratuit ; vous passez à un plan payant depuis l'application, quand vous le
+        souhaitez.
+      </p>
 
-        {/* Plans */}
-        <motion.div
-          variants={staggerContainer}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, amount: 0.2 }}
-          className="grid sm:grid-cols-3 gap-6 sm:gap-4 lg:gap-6 max-w-4xl mx-auto"
-        >
-          {PLANS.map((plan) => {
-            const price = annual ? plan.yearly : plan.monthly;
-            const period = annual ? '/an' : '/mois';
-
-            return (
-              <motion.div
-                key={plan.id}
-                variants={fadeInUp}
-                whileHover={plan.highlighted ? { scale: 1.03 } : { scale: 1.02 }}
-                transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-                className={`relative rounded-2xl p-6 ${
-                  plan.highlighted
-                    ? 'bg-white border-2 border-orange-500 shadow-xl shadow-orange-500/10 sm:scale-105'
-                    : 'bg-white border border-slate-200'
-                }`}
-              >
-                {/* Badge */}
-                {plan.badge && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-orange-500 text-white text-xs font-semibold shadow-sm">
-                    {plan.badge}
-                  </div>
-                )}
-
-                {/* Plan info */}
-                <div className="mb-6">
-                  <h3 className="text-lg font-bold text-slate-900">{plan.name}</h3>
-                  <p className="text-sm text-slate-500 mt-1">{plan.description}</p>
-                  <div className="mt-4">
-                    <AnimatePresence mode="wait">
-                      <motion.span
-                        key={`${plan.id}-${annual}`}
-                        initial={{ opacity: 0, y: -10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: 10 }}
-                        transition={{ duration: 0.2 }}
-                        className="text-3xl font-bold text-slate-900 inline-block"
-                      >
-                        {price === 0 ? '0' : price.toLocaleString('fr-FR', { minimumFractionDigits: price % 1 ? 2 : 0 })} &euro;
-                      </motion.span>
-                    </AnimatePresence>
-                    {price > 0 && (
-                      <span className="text-slate-500 text-sm ml-1">{period} HT</span>
-                    )}
-                  </div>
-                  {plan.offreLancement && (
-                    <span className="inline-block mt-2 px-2.5 py-1 text-xs font-semibold rounded-full bg-orange-50 text-orange-700">
-                      {plan.offreLancement} — prix gardé tant que vous restez abonné
-                    </span>
-                  )}
-                </div>
-
-                {/* Features */}
-                <ul className="space-y-2.5 mb-6">
-                  {plan.features.map((f) => (
-                    <li key={f} className="flex items-start gap-2 text-sm text-slate-600">
-                      <Check size={16} className="text-orange-500 flex-shrink-0 mt-0.5" />
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-
-                {/* CTA */}
-                <button
-                  onClick={onSignup}
-                  className={`w-full py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-all ${
-                    plan.highlighted
-                      ? 'bg-orange-500 text-white hover:bg-orange-600 shadow-sm'
-                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                  }`}
-                >
-                  {plan.cta}
-                  <ArrowRight size={14} />
-                </button>
-              </motion.div>
-            );
-          })}
-        </motion.div>
-      </div>
-    </section>
+      <PricingComparisonTable />
+    </SectionSite>
   );
 }

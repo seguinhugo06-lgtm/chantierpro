@@ -41,6 +41,36 @@ const SIGNE_LE = /^Signé le \d{2}\/\d{2}\/\d{4} à \d{2}:\d{2}$/;
 const euros = (n) => NORMALISER(new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(n));
 const PANNEAU = '#fonctionnalites [role="tabpanel"]:not([hidden])';
 
+// Textes exacts de la spec, sections « Tarifs » et « Construit en public »
+const GARANTIE_FONDATEUR = "garanti tant que l'abonnement reste actif";
+const TEXTE_CONSTRUIT_EN_PUBLIC = 'Pas de faux avis ici. Les avis viendront des artisans qui utilisent Mallettico, avec leur accord.';
+const BOUTON_COMPARER = 'Comparer les plans en détail';
+const CARTES_PUBLIC = [
+  'Une ligne directe avec le créateur',
+  'Vous voyez ce que devient votre idée',
+  'Un tarif fondateur garanti',
+  'Essayer sans carte bancaire',
+];
+// Libellés des lignes de limites du tableau de comparaison ; les valeurs viennent de `limits` de PLANS.
+const LIMITES_DU_TABLEAU = [['devis', 'Devis'], ['clients', 'Clients'], ['chantiers', 'Chantiers'], ['photos', 'Photos de chantier'], ['equipe', 'Collaborateurs']];
+const valeurDeLimite = (cle, n) => (n < 0 ? 'Illimité' : cle === 'equipe' ? `Vous + ${n}` : cle === 'devis' ? `${n} par mois` : String(n));
+
+/**
+ * `PLANS` et `PLAN_ORDER` lus dans le code de l'application (src/stores/subscriptionStore.js), jamais recopiés dans
+ * le parcours : le module est regroupé par esbuild (déjà là pour Vite) puis évalué, ses imports n'ayant pas
+ * d'extension, Node ne les lirait pas tels quels.
+ */
+function plansDuSite(RACINE) {
+  const esbuild = require(require.resolve('esbuild', { paths: [RACINE] }));
+  const sortie = esbuild.buildSync({
+    entryPoints: [path.join(RACINE, 'src', 'stores', 'subscriptionStore.js')],
+    bundle: true, platform: 'node', format: 'cjs', write: false, logLevel: 'silent',
+  });
+  const module = { exports: {} };
+  new Function('module', 'exports', 'require', sortie.outputFiles[0].text)(module, module.exports, require);
+  return { PLANS: module.exports.PLANS, PLAN_ORDER: module.exports.PLAN_ORDER };
+}
+
 /**
  * Capture d'une section entière (élément), rangée dans audit-ui/ (ignoré par git). Plus haute que l'écran, la fenêtre
  * est agrandie le temps de la capture : au-delà de l'écran, le cadre du document (iframe) n'est pas peint et la
@@ -680,11 +710,11 @@ module.exports = [
         verifier(f3.dernier === f4.dernier && f3.part === f4.part, `compteur et barre arrêtés hors de l'écran ${a} (${f3.dernier}/${f3.part} → ${f4.dernier}/${f4.part})`);
 
         // ── Chaque titre de section (h2) est visible une fois amené à l'écran (aucune apparition restée transparente) :
-        // opacité du titre et de tous ses parents. Sections refaites seulement : les anciennes (tarifs, construit en
-        // public…) ont des apparitions plus longues que 800 ms ; leurs tâches les ajouteront à TITRES_CONTROLES.
-        const TITRES_CONTROLES = '#metiers h2, #fonctionnalites h2, #parcours h2, #fiabilite h2';
+        // opacité du titre et de tous ses parents. Sections refaites seulement : les anciennes (FAQ…) ont des
+        // apparitions plus longues que 800 ms ; leurs tâches les ajouteront à TITRES_CONTROLES.
+        const TITRES_CONTROLES = '#metiers h2, #fonctionnalites h2, #parcours h2, #fiabilite h2, #pricing h2, #early-adopters h2';
         const nbTitres = await page.evaluate((s) => document.querySelectorAll(s).length, TITRES_CONTROLES);
-        verifier(nbTitres === 4, `un titre h2 par section refaite ${a} (${nbTitres})`);
+        verifier(nbTitres === 6, `un titre h2 par section refaite ${a} (${nbTitres})`);
         for (let i = 0; i < nbTitres; i++) {
           await page.evaluate((s, n) => document.querySelectorAll(s)[n].scrollIntoView(), TITRES_CONTROLES, i);
           await attendre(800);
@@ -1179,6 +1209,321 @@ module.exports = [
         verifier(m1.barre > m0.barre && Math.abs(m1.barre - m2.barre) <= 1, `mouvement réduit : la barre d'encaissement change sans animation ${a} (${m0.barre} → ${m1.barre} → ${m2.barre})`);
         await capturerSection(page, RACINE, '#fonctionnalites', `fonctionnalites-${largeur}-5-encaissements-reduit`);
         await browser.close();
+      }
+    },
+  },
+  {
+    // Tarifs (#pricing) et « construit en public » (#early-adopters) : cartes, tableau de comparaison et textes lus
+    // dans PLANS (aucune liste en dur), tableau replié par défaut, arrivées sur /tarifs et /faq, mouvement réduit.
+    nom: 'site : tarifs et construit en public',
+    reel: true,
+    async executer({ ouvrir, cliquer, attendre, verifier, RACINE }) {
+      const { PLANS, PLAN_ORDER } = plansDuSite(RACINE);
+      const prixDuPlan = (id) => (PLANS[id].priceMonthly === 0 ? '0 €' : euros(PLANS[id].priceMonthly));
+      verifier(
+        JSON.stringify(PLAN_ORDER.map(prixDuPlan)) === JSON.stringify(['0 €', '9,90 €', '19,90 €']),
+        `les prix de PLANS au format de la spec (${PLAN_ORDER.map(prixDuPlan).join(' | ')})`,
+      );
+      const tousLesLibelles = [...new Set(PLAN_ORDER.flatMap((id) => PLANS[id].featureLabels.map((f) => f.name)))];
+
+      /** Les cartes de #pricing, telles qu'on les lit. */
+      const lireCartes = (page) => page.evaluate(() => [...document.querySelectorAll('#pricing [data-plan]')].map((c) => {
+        const bouton = c.querySelector('button, a');
+        return {
+          id: c.getAttribute('data-plan'),
+          nom: c.querySelector('h3')?.textContent.trim() || '',
+          prix: c.querySelector('[data-prix]')?.textContent.replace(/\s+/g, ' ').trim() || '',
+          unite: c.querySelector('[data-unite]')?.textContent.replace(/\s+/g, ' ').trim() || '',
+          libelles: [...c.querySelectorAll('li')].map((li) => li.textContent.replace(/\s+/g, ' ').trim()),
+          fondateur: c.querySelector('[data-fondateur]')?.textContent.replace(/\s+/g, ' ').trim() || '',
+          sansLimite: c.querySelector('[data-sans-limite]')?.textContent.replace(/\s+/g, ' ').trim() || '',
+          badge: c.querySelector('[data-badge]')?.textContent.replace(/\s+/g, ' ').trim() || '',
+          bouton: bouton?.innerText.replace(/\s+/g, ' ').trim() || '',
+          hauteurBouton: bouton?.getBoundingClientRect().height ?? 0,
+          bordure: getComputedStyle(c).borderTopColor,
+        };
+      }));
+
+      /**
+       * La comparaison, telle qu'on la lit : un tableau dès 640 px, une liste sur téléphone (deux présentations des
+       * mêmes lignes, une seule rendue). Les lignes et les cases portent les mêmes attributs dans les deux.
+       */
+      const lireComparaison = (page) => page.evaluate(() => {
+        const norm = (x) => (x || '').replace(/\s+/g, ' ').trim();
+        const rendu = (el) => el.getClientRects().length > 0;
+        const presentation = [...document.querySelectorAll('#pricing [data-rendu]')].find(rendu);
+        const lignes = [...document.querySelectorAll('#pricing [data-ligne]')].filter(rendu);
+        return {
+          visible: lignes.length > 0,
+          rendu: presentation?.getAttribute('data-rendu') || null,
+          entetes: presentation ? [...presentation.querySelectorAll('[data-entete]')].slice(0, 3).map((e) => norm(e.textContent)) : [],
+          groupes: [...document.querySelectorAll('#pricing [data-groupe-titre]')].filter(rendu).map((e) => norm(e.textContent)),
+          lignes: lignes.map((el) => ({
+            groupe: el.getAttribute('data-groupe'),
+            libelle: norm(el.querySelector('[data-libelle]')?.textContent),
+            cellules: [...el.querySelectorAll('[data-case]')].map((c) => ({ plan: c.getAttribute('data-plan-nom'), texte: norm(c.textContent), inclus: c.getAttribute('data-inclus') })),
+          })),
+          note: norm(document.querySelector('#pricing [data-note-tableau]')?.textContent),
+        };
+      });
+
+      for (const largeur of [375, 1440]) {
+        const a = `à ${largeur} px`;
+        const { page, browser } = await ouvrir({ reel: true, largeur, supabase: () => json([]) });
+
+        // ── Cartes : les trois plans de PLAN_ORDER, lus dans PLANS
+        await page.evaluate(() => document.querySelector('#pricing').scrollIntoView());
+        await attendre(1200);
+        const entete = await page.evaluate(() => ({
+          h2: document.querySelectorAll('#pricing h2').length,
+          titre: document.querySelector('#pricing h2')?.textContent.trim(),
+        }));
+        verifier(entete.h2 === 1 && entete.titre.length > 0, `#pricing : un seul titre h2 ${a} (${entete.h2})`);
+        const cartes = await lireCartes(page);
+        verifier(JSON.stringify(cartes.map((c) => c.id)) === JSON.stringify(PLAN_ORDER), `#pricing : les trois plans de PLAN_ORDER, dans l'ordre ${a} (${cartes.map((c) => c.id).join(', ')})`);
+        for (const carte of cartes) {
+          const plan = PLANS[carte.id];
+          verifier(carte.nom === plan.name, `plan ${plan.name} : son nom ${a} (« ${carte.nom} »)`);
+          verifier(carte.prix === prixDuPlan(carte.id), `plan ${plan.name} : prix mensuel « ${prixDuPlan(carte.id)} » ${a} (« ${carte.prix} »)`);
+          verifier(carte.unite === (plan.priceMonthly === 0 ? 'par mois' : 'HT par mois'), `plan ${plan.name} : prix par mois, « HT » pour un plan payant ${a} (« ${carte.unite} »)`);
+          verifier(
+            JSON.stringify(carte.libelles) === JSON.stringify(plan.featureLabels.map((f) => f.name)),
+            `plan ${plan.name} : exactement les featureLabels de PLANS, sans rien ajouter ni retirer ${a} (${carte.libelles.join(' | ')})`,
+          );
+          if (plan.offreLancement) {
+            verifier(carte.fondateur.includes(plan.offreLancement) && carte.fondateur.includes(GARANTIE_FONDATEUR), `plan ${plan.name} : « ${plan.offreLancement} … ${GARANTIE_FONDATEUR} » ${a} (« ${carte.fondateur} »)`);
+          } else {
+            verifier(carte.fondateur === '', `plan ${plan.name} : pas de tarif fondateur ${a} (« ${carte.fondateur} »)`);
+            verifier(carte.sansLimite === 'Sans limite de durée, sans carte bancaire', `plan ${plan.name} : « Sans limite de durée, sans carte bancaire » ${a} (« ${carte.sansLimite} »)`);
+          }
+          verifier(carte.hauteurBouton >= 44, `plan ${plan.name} : bouton d'au moins 44 px ${a} (${carte.hauteurBouton})`);
+        }
+        verifier(cartes.find((c) => c.id === 'artisan').badge === PLANS.artisan.badge, `plan Artisan : pastille « ${PLANS.artisan.badge} » lue dans PLANS ${a} (« ${cartes.find((c) => c.id === 'artisan').badge} »)`);
+        verifier(cartes.filter((c) => c.badge).length === 1, `une seule carte mise en avant ${a}`);
+        const bordures = cartes.map((c) => c.bordure);
+        verifier(bordures[1] === 'rgb(18, 51, 111)' && bordures[0] !== bordures[1] && bordures[2] !== bordures[1], `Artisan : bordure nuit-2, les autres plus discrètes ${a} (${bordures.join(' | ')})`);
+
+        // Rien de l'ancienne grille en dur, aucune affirmation sans source
+        const texte = NORMALISER(await page.evaluate(() => document.querySelector('#pricing').textContent));
+        const absents = ['Factur-X', "Piste d'audit", "Journal d'audit", 'Support prioritaire', 'Planning basique', '30 articles', 'Trésorerie avancée', 'Sous-traitants', 'Gestion des congés', 'populaire', 'recommandé', 'meilleur choix', 'économisez', '−17', '-17'];
+        const presents = absents.filter((t) => texte.toLowerCase().includes(t.toLowerCase()));
+        verifier(presents.length === 0, `#pricing : aucun texte de l'ancienne grille ni affirmation sans source ${a} (${presents.join(', ')})`);
+        await capturerSection(page, RACINE, '#pricing', `tarifs-${largeur}-replie`);
+
+        // ── Le tableau : replié par défaut, s'ouvre au clic
+        const bouton = await page.evaluate((libelle) => {
+          const b = [...document.querySelectorAll('#pricing button')].find((x) => x.innerText.trim() === libelle);
+          const cible = b ? document.getElementById(b.getAttribute('aria-controls') || '') : null;
+          const r = b?.getBoundingClientRect();
+          return { present: !!b, etendu: b?.getAttribute('aria-expanded'), cible: !!cible, cache: !!cible?.hidden, hauteur: r?.height ?? 0 };
+        }, BOUTON_COMPARER);
+        verifier(bouton.present, `« ${BOUTON_COMPARER} » présent ${a}`);
+        verifier(bouton.etendu === 'false' && bouton.cible && bouton.cache, `tableau replié par défaut : aria-expanded=false, aria-controls désigne un panneau caché ${a} (${JSON.stringify(bouton)})`);
+        verifier(bouton.hauteur >= 44, `« ${BOUTON_COMPARER} » d'au moins 44 px ${a} (${bouton.hauteur})`);
+        const ferme = await lireComparaison(page);
+        verifier(!ferme.visible, `aucune ligne de comparaison visible tant que le bouton n'est pas cliqué ${a}`);
+
+        // Un vrai clic de souris (le focus suit), pas un clic programmatique
+        await page.click('#pricing button[aria-controls]');
+        await attendre(900);
+        const ouvert = await page.evaluate(() => {
+          const b = [...document.querySelectorAll('#pricing button')].find((x) => x.innerText.trim() === 'Comparer les plans en détail');
+          return { etendu: b?.getAttribute('aria-expanded'), cache: !!document.getElementById(b?.getAttribute('aria-controls') || '')?.hidden, focus: document.activeElement === b };
+        });
+        verifier(ouvert.etendu === 'true' && !ouvert.cache, `un clic ouvre le tableau : aria-expanded=true, panneau visible ${a}`);
+        verifier(ouvert.focus, `le focus reste sur le bouton ${a}`);
+        const tableau = await lireComparaison(page);
+        verifier(tableau.visible, `la comparaison des plans est visible ${a}`);
+        verifier(tableau.rendu === (largeur >= 640 ? 'tableau' : 'liste'), `comparaison : un tableau dès 640 px, une liste sur téléphone ${a} (${tableau.rendu})`);
+        verifier(JSON.stringify(tableau.entetes) === JSON.stringify(PLAN_ORDER.map((id) => PLANS[id].name)), `comparaison : une colonne ou une case par plan, dans l'ordre ${a} (${tableau.entetes.join(' | ')})`);
+        verifier(JSON.stringify(tableau.groupes.map((g) => g.toLowerCase())) === JSON.stringify(['limites', 'fonctions']), `comparaison : deux groupes, limites puis fonctions ${a} (${tableau.groupes.join(' | ')})`);
+        verifier(tableau.lignes.every((l) => JSON.stringify(l.cellules.map((c) => c.plan)) === JSON.stringify(PLAN_ORDER.map((id) => PLANS[id].name))), `comparaison : chaque ligne a une case par plan, dans l'ordre ${a}`);
+
+        // Limites : les valeurs de `limits` de PLANS
+        const limites = tableau.lignes.filter((l) => l.groupe === 'Limites');
+        verifier(
+          JSON.stringify(limites.map((l) => l.libelle)) === JSON.stringify(LIMITES_DU_TABLEAU.map(([, nom]) => nom)),
+          `tableau : les cinq limites réellement appliquées ${a} (${limites.map((l) => l.libelle).join(' | ')})`,
+        );
+        for (const [cle, nom] of LIMITES_DU_TABLEAU) {
+          const ligne = limites.find((l) => l.libelle === nom);
+          const attendu = PLAN_ORDER.map((id) => valeurDeLimite(cle, PLANS[id].limits[cle]));
+          verifier(ligne && JSON.stringify(ligne.cellules.map((c) => c.texte)) === JSON.stringify(attendu), `tableau : ${nom} = ${attendu.join(' | ')} (limits de PLANS) ${a} (${ligne?.cellules.map((c) => c.texte).join(' | ')})`);
+        }
+
+        // Fonctions : uniquement des libellés de featureLabels ; chacun inclus à partir du plan qui l'annonce
+        const fonctions = tableau.lignes.filter((l) => l.groupe === 'Fonctions');
+        verifier(fonctions.length > 0 && fonctions.every((l) => tousLesLibelles.includes(l.libelle)), `tableau : chaque fonction est un libellé de PLANS ${a} (${fonctions.map((l) => l.libelle).filter((x) => !tousLesLibelles.includes(x)).join(' | ')})`);
+        const premierPlan = (libelle) => PLAN_ORDER.findIndex((id) => PLANS[id].featureLabels.some((f) => f.name === libelle));
+        const fautes = fonctions.filter((l) => l.cellules.map((c) => c.inclus).join() !== PLAN_ORDER.map((_, j) => (j >= premierPlan(l.libelle) ? 'oui' : 'non')).join());
+        verifier(fautes.length === 0, `tableau : chaque fonction est incluse à partir du plan qui l'annonce ${a} (${fautes.map((l) => l.libelle).join(' | ')})`);
+        // Aucun libellé de PLANS ne manque : il est une ligne du tableau, une limite, ou « Tout le plan … »
+        const comptes = (libelle) => /^Tout le plan /.test(libelle) || /^(Vous \+ )?\d+ /.test(libelle) || /illimit/i.test(libelle);
+        const manquants = tousLesLibelles.filter((l) => !comptes(l) && !fonctions.some((f) => f.libelle === l));
+        verifier(manquants.length === 0, `tableau : aucune fonction de PLANS oubliée ${a} (${manquants.join(' | ')})`);
+        verifier(tableau.note.length > 0, `comparaison : la note qui explique le tiret ${a}`);
+        verifier(fonctions.every((l) => l.cellules.every((c) => (c.inclus === 'oui' ? c.texte === 'Inclus' : /Non annoncé$/.test(c.texte)))), `comparaison : chaque case dit « Inclus » ou « Non annoncé » en texte, pas seulement par le symbole ${a}`);
+
+        // Jamais de défilement horizontal de la page ; le tableau, s'il déborde, défile dans son propre conteneur
+        // (région nommée, au clavier, libellés fixes)
+        const defilement = await page.evaluate(() => {
+          const t = [...document.querySelectorAll('#pricing table')].find((x) => x.getClientRects().length > 0);
+          const c = t?.closest('[data-defilement]');
+          return {
+            page: document.documentElement.scrollWidth - innerWidth,
+            tableau: !!t,
+            conteneur: !!c,
+            deborde: !!c && c.scrollWidth > c.clientWidth + 1,
+            focalisable: !!c && c.tabIndex === 0 && !!c.getAttribute('aria-label') && c.getAttribute('role') === 'region',
+            colonneFixe: !!t && getComputedStyle(t.querySelector('tbody th[scope="row"]')).position === 'sticky',
+          };
+        });
+        verifier(defilement.page <= 0, `comparaison : aucun défilement horizontal de la page ${a} (${defilement.page} px)`);
+        verifier(defilement.tableau === (largeur >= 640) && (!defilement.tableau || defilement.conteneur), `comparaison : le tableau est dans un conteneur de défilement ${a} (${JSON.stringify(defilement)})`);
+        verifier(!defilement.deborde || (defilement.focalisable && defilement.colonneFixe), `comparaison : si le tableau déborde, conteneur au clavier et libellés fixes ${a} (${JSON.stringify(defilement)})`);
+        await capturerSection(page, RACINE, '#pricing', `tarifs-${largeur}-ouvert`);
+
+        // Fermer et rouvrir : le panneau suit
+        await cliquer(page, BOUTON_COMPARER, { dans: '#pricing' });
+        await attendre(300);
+        const refermé = await page.evaluate(() => {
+          const b = [...document.querySelectorAll('#pricing button')].find((x) => x.innerText.trim() === 'Comparer les plans en détail');
+          return { etendu: b.getAttribute('aria-expanded'), cache: document.getElementById(b.getAttribute('aria-controls')).hidden };
+        });
+        verifier(refermé.etendu === 'false' && refermé.cache, `un second clic referme le tableau ${a}`);
+        await cliquer(page, BOUTON_COMPARER, { dans: '#pricing' });
+        await attendre(300);
+
+        // ── Les boutons des cartes mènent à l'inscription actuelle
+        await page.evaluate(() => document.querySelector('#pricing [data-plan="artisan"]').scrollIntoView({ block: 'center' }));
+        await attendre(300);
+        const nbInscriptions = await page.evaluate(() => document.querySelectorAll('#pricing [data-plan] button').length);
+        verifier(nbInscriptions === PLAN_ORDER.length, `#pricing : un bouton d'inscription par plan ${a} (${nbInscriptions})`);
+
+        // ── Construit en public
+        await page.evaluate(() => document.querySelector('#early-adopters').scrollIntoView());
+        await attendre(1200);
+        const public_ = await page.evaluate(() => {
+          const s = document.querySelector('#early-adopters');
+          const norm = (x) => (x || '').replace(/\s+/g, ' ').trim();
+          const b = s?.querySelector('button, a');
+          const cs = b ? getComputedStyle(b) : null;
+          return {
+            h2: [...(s?.querySelectorAll('h2') || [])].map((h) => norm(h.textContent)),
+            intro: norm(s?.querySelector('[data-intro]')?.textContent),
+            cartes: [...(s?.querySelectorAll('[data-carte-public]') || [])].map((c) => ({ titre: norm(c.querySelector('h3')?.textContent), texte: norm(c.querySelector('p')?.textContent) })),
+            bouton: norm(b?.innerText),
+            fond: cs?.backgroundColor,
+            couleur: cs?.color,
+            hauteur: b?.getBoundingClientRect().height ?? 0,
+            texteComplet: norm(s?.textContent),
+          };
+        });
+        verifier(public_.h2.length === 1, `#early-adopters : un seul titre h2 ${a} (${public_.h2.join(' | ')})`);
+        verifier(public_.intro === TEXTE_CONSTRUIT_EN_PUBLIC, `#early-adopters : texte exact de la spec ${a} (« ${public_.intro} »)`);
+        verifier(JSON.stringify(public_.cartes.map((c) => c.titre)) === JSON.stringify(CARTES_PUBLIC), `#early-adopters : quatre cartes aux titres vérifiés ${a} (${public_.cartes.map((c) => c.titre).join(' | ')})`);
+        const garantie = public_.cartes[2].texte;
+        verifier(garantie.includes(GARANTIE_FONDATEUR) && garantie.includes('tarif fondateur'), `#early-adopters : la garantie du tarif dit D-08, ${GARANTIE_FONDATEUR} ${a} (« ${garantie} »)`);
+        const enTrop = ['Réponse rapide', "file d'attente", 'Zéro risque', 'premiers artisans', "n'augmentera pas", 'logiciel établi', 'maintenant'].filter((t) => public_.texteComplet.includes(t));
+        verifier(enTrop.length === 0, `#early-adopters : aucune affirmation sans source de l'ancienne version ${a} (${enTrop.join(', ')})`);
+        verifier(public_.bouton.startsWith('Créer mon compte gratuit') && public_.fond === 'rgb(18, 51, 111)' && public_.couleur === 'rgb(255, 255, 255)', `#early-adopters : pilule nuit-2 à texte blanc, plus de bouton noir ${a} (« ${public_.bouton} », ${public_.fond}, ${public_.couleur})`);
+        verifier(public_.hauteur >= 44, `#early-adopters : bouton d'au moins 44 px ${a} (${public_.hauteur})`);
+        await capturerSection(page, RACINE, '#early-adopters', `public-${largeur}`);
+
+        // ── Aucun débordement ni élément hors de l'écran dans les deux sections (le conteneur du tableau défile)
+        const debord = await page.evaluate(() => {
+          const sortants = [...document.querySelectorAll('#pricing *, #early-adopters *')].filter((el) => {
+            if (el.closest('[data-decor]') || el.closest('[data-defilement]')) return false;
+            const r = el.getBoundingClientRect();
+            return r.width > 0 && r.height > 0 && (r.left < -1 || r.right > innerWidth + 1);
+          });
+          return { page: document.documentElement.scrollWidth - innerWidth, elements: sortants.slice(0, 3).map((el) => `${el.tagName.toLowerCase()}.${String(el.className).slice(0, 40)}`) };
+        });
+        verifier(debord.page <= 0 && debord.elements.length === 0, `tarifs et construit en public sans débordement ${a} (${debord.page} px ; ${debord.elements.join(' | ')})`);
+
+        // ── Cibles tactiles de 44 px
+        const petites = await page.evaluate(() => [...document.querySelectorAll('#pricing button, #pricing a, #early-adopters button, #early-adopters a')]
+          .filter((el) => el.getClientRects().length > 0)
+          .map((el) => ({ texte: el.innerText.trim().slice(0, 30), h: el.getBoundingClientRect().height }))
+          .filter((x) => x.h < 44));
+        verifier(petites.length === 0, `cibles de 44 px au moins ${a} (${petites.map((x) => `${x.texte} ${x.h}`).join(' | ')})`);
+
+        // ── Contrastes des textes clés (fond réellement peint derrière) ; la présentation de la comparaison rendue
+        // est marquée, pour mesurer celle qu'on voit (l'autre est en `display: none`)
+        await page.evaluate(() => [...document.querySelectorAll('#pricing [data-rendu]')].filter((e) => e.getClientRects().length > 0).forEach((e) => e.setAttribute('data-rendu-visible', '')));
+        for (const selecteur of [
+          '#pricing h2', '#pricing [data-intro]', '#pricing [data-plan] h3', '#pricing [data-prix]', '#pricing [data-unite]',
+          '#pricing [data-plan] li', '#pricing [data-fondateur]', '#pricing [data-badge]', '#pricing [data-plan="gratuit"] button',
+          '#pricing [data-plan="artisan"] button', '#pricing [data-note-inscription]', '#pricing [data-sans-limite]',
+          '[data-rendu-visible] [data-entete]', '[data-rendu-visible] [data-libelle]', '[data-rendu-visible] [data-case]', '[data-rendu-visible] [data-groupe-titre]', '#pricing [data-note-tableau]',
+          '#early-adopters h2', '#early-adopters [data-intro]', '#early-adopters h3', '#early-adopters [data-carte-public] p', '#early-adopters button',
+        ]) {
+          const c = await contrasteDe(page, selecteur);
+          verifier(c >= 4.5, `contraste de ${selecteur} ≥ 4,5 ${a} (${c.toFixed(2)})`);
+        }
+
+        // ── Le bouton « Créer mon compte gratuit » de la section ouvre l'inscription
+        await page.evaluate(() => document.querySelector('#early-adopters button, #early-adopters a').scrollIntoView({ block: 'center' }));
+        await cliquer(page, 'Créer mon compte gratuit', { dans: '#early-adopters' });
+        await attendre(800);
+        const email = await page.evaluate(() => {
+          const champ = document.querySelector('input[type="email"]');
+          const r = champ?.getBoundingClientRect();
+          return !!r && r.width > 0 && r.height > 0;
+        });
+        verifier(email, `« Créer mon compte gratuit » (construit en public) ouvre un champ e-mail ${a}`);
+        await browser.close();
+
+        // ── Un bouton de carte ouvre la même inscription
+        const second = await ouvrir({ reel: true, largeur, supabase: () => json([]) });
+        await second.page.evaluate(() => document.querySelector('#pricing [data-plan="artisan"]').scrollIntoView({ block: 'center' }));
+        await attendre(500);
+        await second.page.evaluate(() => document.querySelector('#pricing [data-plan="artisan"] button').click());
+        await attendre(800);
+        const emailCarte = await second.page.evaluate(() => {
+          const champ = document.querySelector('input[type="email"]');
+          const r = champ?.getBoundingClientRect();
+          return !!r && r.width > 0 && r.height > 0;
+        });
+        verifier(emailCarte, `le bouton de la carte Artisan ouvre l'inscription ${a}`);
+        await second.browser.close();
+
+        // ── Mouvement réduit : tout est lisible d'emblée, le tableau s'ouvre sans transition
+        const reduit = await ouvrir({ reel: true, largeur, supabase: () => json([]) });
+        await reduit.page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'reduce' }]);
+        await reduit.page.reload({ waitUntil: 'networkidle0' });
+        await attendre(500);
+        await reduit.page.evaluate(() => document.querySelector('#pricing').scrollIntoView());
+        await attendre(150);
+        const opacites = await reduit.page.evaluate(() => [...document.querySelectorAll('#pricing [data-plan], #pricing h2, #early-adopters h2')].map((el) => {
+          let o = 1;
+          for (let n = el; n; n = n.parentElement) o *= parseFloat(getComputedStyle(n).opacity);
+          return o;
+        }));
+        verifier(opacites.length === PLAN_ORDER.length + 2 && opacites.every((o) => o === 1), `mouvement réduit : cartes et titres entièrement visibles d'emblée ${a} (${opacites.join(', ')})`);
+        await cliquer(reduit.page, BOUTON_COMPARER, { dans: '#pricing' });
+        await attendre(60);
+        const tableReduit = await lireComparaison(reduit.page);
+        verifier(tableReduit.visible, `mouvement réduit : la comparaison s'ouvre ${a}`);
+        const opaciteTable = await reduit.page.evaluate(() => {
+          let o = 1;
+          for (const n of [...document.querySelectorAll('#pricing [data-ligne]')].filter((x) => x.getClientRects().length > 0).slice(0, 1)) {
+            for (let m = n; m; m = m.parentElement) o *= parseFloat(getComputedStyle(m).opacity);
+          }
+          return o;
+        });
+        verifier(opaciteTable === 1, `mouvement réduit : la comparaison est opaque dès l'ouverture ${a} (${opaciteTable})`);
+        await capturerSection(reduit.page, RACINE, '#pricing', `tarifs-${largeur}-reduit`);
+        await reduit.browser.close();
+
+        // ── Arrivée sur /tarifs et /faq : la section est dans la fenêtre
+        for (const [chemin, section] of [['/tarifs', '#pricing'], ['/faq', '#faq']]) {
+          const arrivee = await ouvrir({ reel: true, largeur, chemin, supabase: () => json([]) });
+          await attendre(1500);
+          const haut = await arrivee.page.evaluate((s) => document.querySelector(s)?.getBoundingClientRect().top, section);
+          verifier(typeof haut === 'number' && haut > -10 && haut < 200, `arrivée sur ${chemin} : ${section} dans la fenêtre ${a} (haut : ${haut})`);
+          await arrivee.browser.close();
+        }
       }
     },
   },

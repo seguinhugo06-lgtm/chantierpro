@@ -44,6 +44,11 @@ const FICHIERS_CONTROLES = [
   'FonctionnalitesSection.jsx',
   'fonctionnalitesOnglets.js',
   'exemples/*',
+  // Task 6 : tarifs (cartes et tableau lus dans PLANS) et construit en public
+  'PricingSection.jsx',
+  'PricingComparisonTable.jsx',
+  'comparaisonPlans.js',
+  'EarlyAdoptersSection.jsx',
 ];
 
 const DOSSIER_SITE = fileURLToPath(new URL('..', import.meta.url));
