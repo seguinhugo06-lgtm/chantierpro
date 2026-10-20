@@ -63,7 +63,7 @@ Direction validée par Hugo le 19 oct. 2026 sur un prototype cliquable (« oui, 
    - un cadenas (icône `lucide-react`) — « Une facture envoyée ne se supprime pas : on la corrige par un avoir » ;
    - une barre d'encaissement qui se remplit — « Une facture n'est « payée » que si les paiements la soldent » ;
    - trois mentions en texte acier — « Assurance décennale, TVA réduite, pénalités de retard : les mentions s'ajoutent toutes seules ».
-7. **Tarifs** (`id="pricing"`) : les trois plans de `PLANS` (libellés de D-29), prix HT par mois, « tarif fondateur » tel qu'affiché aujourd'hui ; le tableau de comparaison reste, sous un bouton « Comparer les plans en détail » (replié par défaut). **(choix de Claude)**
+7. **Tarifs** (`id="pricing"`) : les trois plans de `PLANS` (libellés de D-29), prix par mois avec la mention « TVA non applicable, art. 293 B du CGI » (D-19), « tarif fondateur » tel qu’affiché aujourd’hui, et une ligne pour l’offre annuelle lue dans `PLANS` ; le tableau de comparaison reste, sous un bouton « Comparer les plans en détail » (replié par défaut). **(choix de Claude)**
 8. **Construit en public** (contenu de `EarlyAdoptersSection`, nouvelle charte) : « Pas de faux avis ici. Les avis viendront des artisans qui utilisent Mallettico, avec leur accord. »
 9. **FAQ** (`id="faq"`) : questions actuelles, réponses relues pour l'honnêteté (Factur-X, intégrations, support : ne garder que ce qui existe).
 10. **Dernier appel** (dégradé blanc vers glacier) : « Votre prochain devis, dès ce soir. » ; pilules « Créer mon compte gratuit → » et « Voir la démo ». Ligne en dessous : « Mallettico — tout y est, rien ne pèse. »
