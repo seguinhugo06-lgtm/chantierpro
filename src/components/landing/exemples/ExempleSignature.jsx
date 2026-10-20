@@ -21,6 +21,7 @@ import { statut } from '../../../lib/statuts';
 import { captureException } from '../../../lib/sentry';
 import { chargerBibliotheque } from '../site/bibliotheque';
 import BoutonSite from '../site/BoutonSite';
+import { FOCUS } from '../site/focus';
 import { CLIENT, NOM_LOT_DEMONSTRATION, NUMERO_DEVIS, lotDemonstration } from '../devisVivantEtapes';
 import { ENTREPRISE_FICTIVE } from './donneesFictives';
 import { TRACE_MINIMAL_PX, longueurDesTraits, tamponDeSignature, totauxDuDevis } from './exemples';
@@ -210,7 +211,7 @@ export default function ExempleSignature() {
           {/* Ce que le client signe : les totaux du devis, calculés comme l'éditeur (place tenue avant le chargement) */}
           {echec ? (
             <p data-signature-echec="" className="mt-4 rounded-xl bg-marque-glacier-1 px-4 py-3 text-sm text-marque-ardoise">
-              Les montants n'ont pas pu être chargés. Rechargez la page pour les voir.
+              Les montants n’ont pas pu être chargés. Rechargez la page pour les voir.
             </p>
           ) : (
             <dl className="mt-4 grid grid-cols-3 gap-2 rounded-xl bg-marque-glacier-1 px-3 py-2.5 text-center sm:px-4">
@@ -255,7 +256,7 @@ export default function ExempleSignature() {
               <button
                 type="button"
                 onClick={effacer}
-                className="absolute right-2 top-2 inline-flex min-h-[44px] items-center gap-1.5 rounded-full border border-marque-acier/70 bg-white/90 px-3 text-sm font-semibold text-marque-ardoise transition-colors hover:border-marque-nuit-2/60 hover:text-marque-nuit focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-marque-nuit-2"
+                className={`absolute right-2 top-2 inline-flex min-h-[44px] items-center gap-1.5 rounded-full border border-marque-acier/70 bg-white/90 px-3 text-sm font-semibold text-marque-ardoise transition-colors hover:border-marque-nuit-2/60 hover:text-marque-nuit ${FOCUS}`}
               >
                 <Eraser size={16} strokeWidth={2} aria-hidden="true" />
                 Effacer
@@ -267,7 +268,8 @@ export default function ExempleSignature() {
                 initial={reduit ? false : { opacity: 0, scale: 1.35, rotate: -7 }}
                 animate={{ opacity: 1, scale: 1, rotate: -7 }}
                 transition={{ duration: 0.32, ease: [0.2, 0.8, 0.2, 1] }}
-                className="pointer-events-none absolute bottom-3 right-3 rounded-lg border-[3px] border-double border-emerald-700 bg-white/90 px-3 py-1.5 text-sm font-extrabold tracking-wide text-emerald-800 shadow-sm sm:bottom-5 sm:right-5"
+                // Au-dessus de la ligne de signature (bottom-9) : au téléphone, le tampon couvrait la ligne et le « × »
+                className="pointer-events-none absolute bottom-12 right-3 rounded-lg border-[3px] border-double border-emerald-700 bg-white/90 px-3 py-1.5 text-sm font-extrabold tracking-wide text-emerald-800 shadow-sm sm:bottom-14 sm:right-5"
               >
                 {tampon}
               </motion.span>

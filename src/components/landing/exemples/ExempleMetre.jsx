@@ -48,7 +48,7 @@ function Plan({ longueur, largeur, nombre, chutes }) {
   const horizontales = ok && pas >= 4 ? Array.from({ length: Math.min(60, Math.floor(largeur / 0.6)) }, (_, i) => y + (i + 1) * pas) : [];
   const marge = ok && chutes > 0 ? Math.min(12, 3 + chutes * 0.5) : 0;
   return (
-    <svg viewBox="0 0 300 172" aria-hidden="true" className="block h-auto w-full max-w-[22rem]">
+    <svg viewBox="0 0 300 172" aria-hidden="true" className="block h-auto max-h-[22rem] w-full max-w-[22rem] lg:max-w-none">
       <defs>
         <clipPath id={id}>
           <rect x={x} y={y} width={l} height={h} />
@@ -124,16 +124,18 @@ export default function ExempleMetre() {
           </div>
         </div>
 
-        <div className="flex flex-col rounded-2xl border border-marque-acier/60 bg-white p-4 shadow-[0_18px_40px_-30px_rgba(13,46,108,0.5)] sm:p-5 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:self-start">
+        {/* Au bureau, la colonne de droite occupe toute la hauteur du cadre, « Montant de la ligne » en bas ; le schéma
+            remplit la sienne (avant, 40 % du cadre restait vide) */}
+        <div className="flex flex-col rounded-2xl border border-marque-acier/60 bg-white p-4 shadow-[0_18px_40px_-30px_rgba(13,46,108,0.5)] sm:p-5 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:self-stretch">
           <p className="text-sm font-semibold text-slate-600">Quantité calculée</p>
           <p data-quantite="" className="mt-1 whitespace-nowrap text-4xl font-extrabold tabular-nums tracking-tight text-marque-nuit sm:text-5xl">
             {fr(quantite)} <span className="text-xl font-bold sm:text-2xl">{unite}</span>
           </p>
           <p className="mt-1.5 text-sm tabular-nums text-slate-600">{formule}</p>
 
-          <div className="mt-5 flex flex-col border-t border-dashed border-marque-acier pt-5">
+          <div className="mt-5 flex flex-1 flex-col border-t border-dashed border-marque-acier pt-5">
             {echec ? (
-              <p data-metre-echec="" className="text-base text-marque-ardoise">La ligne de la bibliothèque n'a pas pu être chargée. Rechargez la page pour voir son montant.</p>
+              <p data-metre-echec="" className="text-base text-marque-ardoise">La ligne de la bibliothèque n’a pas pu être chargée. Rechargez la page pour voir son montant.</p>
             ) : (
               <>
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">Bibliothèque Carrelage</p>
@@ -143,7 +145,7 @@ export default function ExempleMetre() {
                 <p data-prix-unitaire={ligne ? ligne.prixUnitaire : undefined} className="mt-1 text-sm tabular-nums text-slate-600">
                   {ligne ? <>{fr(quantite)} {unite} × {formatMoney(ligne.prixUnitaire, 2)} HT · TVA {ligne.tva} %</> : '\u00a0'}
                 </p>
-                <div className="pt-4">
+                <div className="pt-4 lg:mt-auto">
                   <div className="rounded-xl bg-marque-glacier-1 px-4 py-3">
                     <p className="text-sm font-semibold text-slate-700">Montant de la ligne</p>
                     <p data-montant="" className="mt-0.5 whitespace-nowrap text-2xl font-extrabold tabular-nums tracking-tight text-slate-900 sm:text-3xl">
@@ -159,12 +161,12 @@ export default function ExempleMetre() {
           </p>
         </div>
 
-        <div className="flex items-center justify-center rounded-2xl bg-marque-glacier-1/70 px-3 py-4 ring-1 ring-inset ring-marque-acier/40 lg:col-start-1 lg:row-start-2">
+        <div className="flex items-center justify-center rounded-2xl bg-marque-glacier-1/70 px-3 py-4 ring-1 ring-inset ring-marque-acier/40 lg:col-start-1 lg:row-start-2 lg:h-full">
           <Plan longueur={L} largeur={l} nombre={n} chutes={c} />
         </div>
       </div>
       <LegendeExemple>
-        Même calcul que la fenêtre « Métré » de l'éditeur de devis. Prix moyen indicatif de la bibliothèque, hors taxes.
+        Même calcul que la fenêtre « Métré » de l’éditeur de devis. Prix moyen indicatif de la bibliothèque, hors taxes.
       </LegendeExemple>
     </>
   );

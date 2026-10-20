@@ -15,6 +15,7 @@ import { jourLocal } from '../../../lib/dates';
 import { formatMoney } from '../../../lib/formatters';
 import { statutFacture } from '../../../lib/paiementsFacture';
 import { objetDeRelance } from '../../../lib/objetRelance';
+import { resolveVariables } from '../../../lib/relanceUtils';
 import { statut } from '../../../lib/statuts';
 import { NUMERO_DEVIS, lotDemonstration } from '../devisVivantEtapes';
 import { CLIENT_FICTIF, ENTREPRISE_FICTIVE, PAS_ENCAISSEMENT_CENTIMES } from './donneesFictives';
@@ -185,13 +186,33 @@ export function montantDuMetre(quantite, prixUnitaire) {
  * La frise du scénario de relance de devis : ses étapes actives, dans l'ordre, avec le délai, son libellé et le nom
  * de l'étape lus dans le scénario (`DEFAULT_DEVIS_STEPS`, src/lib/scenariosRelance.js), et l'objet du message tel que
  * l'app l'envoie (`objetDeRelance`, la fonction du moteur de relances) pour le devis fictif de M. Martin.
- * @returns {{ id: string, delai: number, libelleDelai: string, nom: string, objet: string }[]}
+ * `phrase` (passe de finition, relecture DA-12) : la première phrase du message de l'étape, le modèle de l'app
+ * (`template`) rempli par la fonction de l'app (`resolveVariables`, src/lib/relanceUtils.js) avec le devis fictif ;
+ * `null` tant que le montant du devis (`montantTTC`, calculé depuis la bibliothèque) n'est pas connu : la phrase ne
+ * dit jamais « 0,00 € ». Rien n'est recopié : changer le modèle de l'app change le site.
+ * @returns {{ id: string, delai: number, libelleDelai: string, nom: string, objet: string, phrase: string|null }[]}
  */
-export function friseDesRelances(etapes, numero) {
-  const doc = { numero, type: 'devis', statut: 'envoye' };
+export function friseDesRelances(etapes, numero, montantTTC = null) {
+  const doc = { numero, type: 'devis', statut: 'envoye', ...(montantTTC == null ? {} : { total_ttc: montantTTC }) };
   return (etapes || []).filter((e) => e.enabled).map((e) => ({
-    id: e.id, delai: e.delay, libelleDelai: e.delayLabel, nom: e.name, objet: objetDeRelance(e, doc, CLIENT_FICTIF, ENTREPRISE_FICTIVE),
+    id: e.id,
+    delai: e.delay,
+    libelleDelai: e.delayLabel,
+    nom: e.name,
+    objet: objetDeRelance(e, doc, CLIENT_FICTIF, ENTREPRISE_FICTIVE),
+    phrase: montantTTC == null ? null : premierePhraseDuMessage(resolveVariables(e.template, doc, CLIENT_FICTIF, ENTREPRISE_FICTIVE)),
   }));
+}
+
+/**
+ * La première phrase d'un message de relance : le paragraphe qui suit la salutation (« Bonjour M. Martin, »), jusqu'à
+ * son premier point.
+ */
+export function premierePhraseDuMessage(message) {
+  const paragraphes = String(message || '').split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
+  const corps = paragraphes[1] ?? paragraphes[0] ?? '';
+  // Seuls les blancs ordinaires sont repliés : les espaces insécables des montants restent
+  return corps.split(/(?<=[.!?])[ \t\n]+/)[0].replace(/[ \t\n]+/g, ' ');
 }
 
 // ─── Les encaissements ────────────────────────────────────────────────────────────────────────────────────

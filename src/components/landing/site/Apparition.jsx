@@ -1,8 +1,6 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 import { motion, useInView, useReducedMotion } from 'framer-motion';
-
-/** Vieux navigateur sans IntersectionObserver : rien n'attendrait jamais d'être vu, le contenu est rendu tel quel. */
-const SANS_OBSERVATEUR = typeof IntersectionObserver === 'undefined';
+import { SANS_OBSERVATEUR, zoneObservee } from './observateur';
 
 /**
  * Apparition — fondu et glissement de 16 px au défilement, une seule fois (0,4 s). `delai` en secondes (décalage
@@ -15,13 +13,14 @@ const SANS_OBSERVATEUR = typeof IntersectionObserver === 'undefined';
  *   on l'ouvre.
  * - Le bloc apparaît dès que son haut passe au-dessus des 90 % de la hauteur de la fenêtre (marge de l'observateur,
  *   n'importe quelle part de sa surface) : un bloc plus haut que l'écran apparaît comme un autre.
- * - Sous « réduire les animations » du système, ou sans `IntersectionObserver`, un simple `div` : le contenu est lu tel
- *   quel, sans mouvement ni état de départ transparent.
+ * - Sous « réduire les animations » du système, ou sans `IntersectionObserver`, un simple `div`, et AUCUN observateur
+ *   (`site/observateur.js`) : le contenu est lu tel quel, sans mouvement ni état de départ transparent, et un vieux
+ *   navigateur ne plante pas.
  */
 export function Apparition({ children, delai = 0, className }) {
-  const reduit = useReducedMotion();
+  const reduit = !!useReducedMotion();
   const zone = useRef(null);
-  const vu = useInView(zone, { once: true, margin: '0px 0px -10% 0px' });
+  const vu = useInView(zoneObservee(zone, { reduit }), { once: true, margin: '0px 0px -10% 0px' });
   const [enAttente, setEnAttente] = useState(false);
 
   useLayoutEffect(() => {

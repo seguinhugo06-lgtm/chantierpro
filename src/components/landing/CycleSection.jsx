@@ -5,7 +5,8 @@
  * l'étape lue (celle qui passe au milieu de la fenêtre : IntersectionObserver). Le téléphone est décoratif
  * (`aria-hidden`) : chaque étape porte son propre texte. Il change d'écran par un fondu, sans fondu si l'appareil
  * demande moins de mouvement (`motion-reduce:transition-none`).
- * Téléphone et tablette : les étapes s'empilent, chacune avec sa capture (texte de remplacement en français).
+ * Téléphone et tablette : les étapes s'empilent, chacune avec sa capture à côté du texte (texte de remplacement en
+ * français).
  * Les étapes gardent toutes un contraste franc ; l'étape lue se distingue par sa pastille pleine, son trait bleu
  * nuit et son titre plus foncé (pas d'estompage, qui ferait tomber le contraste des autres sous 4,5:1).
  * Captures : `public/site/tel-*.webp` (scripts/site-captures.cjs), données fictives, dites par la légende.
@@ -20,15 +21,15 @@ import { ArrowRight } from 'lucide-react';
 import SectionSite from './site/SectionSite';
 import EnTeteSection from './site/EnTeteSection';
 import { CadreTel } from './site/Cadres';
-import { FOCUS_SUR_GLACIER as FOCUS } from './site/focus';
+import { FOCUS } from './site/focus';
 
 const ETAPES = [
   {
-    titre: "Le chantier du jour, d'un coup d'œil",
-    texte: "À l'ouverture\u202f: ce qu'il reste à encaisser, les devis à relancer, les brouillons à finir. Rien d'autre.",
+    titre: "Le chantier du jour, d’un coup d’œil",
+    texte: "À l’ouverture\u202f: ce qu’il reste à encaisser, les devis à relancer, les brouillons à finir. Rien d’autre.",
     lien: '/fonctionnalites/devis-factures',
     capture: '/site/tel-accueil.webp',
-    alt: "L'accueil de Mallettico sur téléphone\u202f: le montant à encaisser, les devis à relancer et le brouillon à finaliser.",
+    alt: "L’accueil de Mallettico sur téléphone\u202f: le montant à encaisser, les devis à relancer et le brouillon à finaliser.",
   },
   {
     titre: 'Le devis se monte par lots',
@@ -48,7 +49,7 @@ const ETAPES = [
 
 const LARGEUR_CAPTURE = 1170;
 const HAUTEUR_CAPTURE = 2532;
-const LEGENDE = "Captures de l'application, données fictives.";
+const LEGENDE = "Captures de l’application, données fictives.";
 
 /** Le téléphone collant du bureau : les trois captures superposées, seule celle de l'étape lue est visible. */
 function TelephoneCollant({ active }) {
@@ -111,8 +112,10 @@ export default function CycleSection() {
 
   return (
     // Au bureau, la dernière étape occupe déjà presque une fenêtre : la bande se contente d'un espacement réduit en bas.
-    <SectionSite id="parcours" fond="glacier" className="lg:pb-12">
-      <EnTeteSection titre="Du devis à l'encaissement, en trois étapes." />
+    // Fond blanc : la section précédente (« Essayez, c'est l'application. ») est glacier, les deux ne se fondent plus en
+    // un seul bloc (passe de finition, DA-4).
+    <SectionSite id="parcours" fond="blanc" className="lg:pb-12">
+      <EnTeteSection titre="Du devis à l’encaissement, en trois étapes." />
       <div className="mt-10 grid gap-12 sm:mt-12 lg:grid-cols-[minmax(0,35rem)_340px] lg:gap-20 xl:gap-28">
         {/* Au bureau, un rail estompé aux deux bouts relie les trois étapes ; le trait de l'étape lue passe par-dessus
             (étapes en `relative` : peintes après le rail). */}
@@ -125,9 +128,10 @@ export default function CycleSection() {
                 ref={(el) => { etapes.current[i] = el; }}
                 data-etape={i}
                 data-active={lue ? 'true' : 'false'}
-                // Bureau : une bande par étape, le texte au milieu ; la première commence en haut (sous le titre) et la
-                // dernière est un peu plus courte, pour ne pas ouvrir ni fermer la section sur un grand vide.
-                className="relative grid gap-8 py-8 first:pt-0 last:pb-0 sm:grid-cols-[minmax(0,1fr)_15rem] sm:items-center lg:flex lg:min-h-[78vh] lg:flex-col lg:items-stretch lg:justify-center lg:py-0 lg:first:min-h-[64vh] lg:first:justify-start lg:last:min-h-[70vh]"
+                // Téléphone : le texte et sa capture côte à côte (empilés, les trois téléphones allongeaient la page de
+                // 1 500 px). Bureau : une bande par étape, le texte au milieu ; la première commence en haut (sous le
+                // titre) et la dernière est un peu plus courte, pour ne pas ouvrir ni fermer la section sur un grand vide.
+                className="relative grid grid-cols-[minmax(0,1fr)_8.5rem] items-start gap-4 py-8 first:pt-0 last:pb-0 sm:grid-cols-[minmax(0,1fr)_15rem] sm:items-center sm:gap-8 lg:flex lg:min-h-[78vh] lg:flex-col lg:items-stretch lg:justify-center lg:py-0 lg:first:min-h-[64vh] lg:first:justify-start lg:last:min-h-[70vh]"
               >
                 <div
                   className={`border-l-2 pl-5 transition-colors duration-300 motion-reduce:transition-none sm:pl-8 ${
@@ -143,13 +147,13 @@ export default function CycleSection() {
                     {i + 1}
                   </span>
                   <h3
-                    className={`mt-4 text-balance text-2xl font-extrabold leading-tight tracking-[-0.03em] transition-colors duration-300 motion-reduce:transition-none lg:text-[1.875rem] ${
+                    className={`mt-4 text-balance text-xl font-extrabold leading-tight tracking-[-0.03em] transition-colors sm:text-2xl duration-300 motion-reduce:transition-none lg:text-[1.875rem] ${
                       lue ? 'text-marque-nuit' : 'text-marque-ardoise'
                     }`}
                   >
                     {etape.titre}
                   </h3>
-                  <p className="mt-3 max-w-[30em] text-lg leading-relaxed text-marque-ardoise">{etape.texte}</p>
+                  <p className="mt-3 max-w-[30em] text-base leading-relaxed text-marque-ardoise sm:text-lg">{etape.texte}</p>
                   <a
                     href={etape.lien}
                     className={`-ml-1 mt-3 inline-flex min-h-[44px] items-center gap-1.5 rounded-full px-1 text-base font-semibold text-marque-nuit-2 underline-offset-4 hover:underline ${FOCUS}`}
@@ -165,7 +169,7 @@ export default function CycleSection() {
                     alt={etape.alt}
                     largeur={LARGEUR_CAPTURE}
                     hauteur={HAUTEUR_CAPTURE}
-                    className="max-w-[15rem]"
+                    className="max-w-[15rem] !rounded-[1.5rem] !border-[6px] sm:!rounded-[2.25rem] sm:!border-[10px]"
                   />
                 </div>
               </li>

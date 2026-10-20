@@ -6,7 +6,8 @@ const lireSolde = (page) => page.evaluate(() => {
   const m = /Solde aujourd'hui\s*\n\s*([^\n]+)/.exec(document.body.innerText);
   return m ? m[1].trim() : '';
 });
-const enEuros = (texte) => Number(texte.replace(/[^\d,-]/g, '').replace(',', '.'));
+// Le signe moins peut être le tiret (« -3 077 € ») ou le vrai signe U+2212 (« −3 077 € », Intl) : les deux comptent
+const enEuros = (texte) => Number(texte.replace(/−/g, '-').replace(/[^\d,-]/g, '').replace(',', '.'));
 
 module.exports = [
   {

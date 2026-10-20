@@ -369,6 +369,12 @@ describe('les motifs interdits reconnaissent ce qu\'ils doivent et laissent pass
     'Noté 4,8\u202f/\u202f5',
     'toutes les\u202fmentions obligatoires',
     'Ils nous\u202ffont confiance',
+    // Apostrophe typographique du site (site/typographie.js) : elle ne cache aucun mot interdit non plus
+    'L\u2019IA rédige vos devis',
+    'Durée d\u2019archivage : 10 ans',
+    'l\u2019intelligence artificielle',
+    'Lisez nos avis d\u2019artisans : avis clients 4,8',
+    'Factures conformes à l\u2019EN 16931',
   ])('rapporte : %s', (texte) => {
     expect(rapporte(texte)).toBe(true);
   });

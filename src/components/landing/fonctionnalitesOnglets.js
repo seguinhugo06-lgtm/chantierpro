@@ -3,7 +3,8 @@
  * `__tests__/exemples.test.js`, affichée par `exemples/OngletsExemples.jsx` (chargé à la demande avec les exemples par
  * `FonctionnalitesSection.jsx`).
  *
- * `titre` : texte exact de la spec ; `phrase` : la ligne sous le titre, au bureau ; `cadre` : ce que dit la barre du
+ * `titre` : texte exact de la spec ; `titreCourt` : l'onglet sous 1024 px (passe de finition : avec les titres longs,
+ * un seul onglet tenait dans la largeur d'un téléphone) ; `phrase` : la ligne sous le titre, au bureau ; `cadre` : ce que dit la barre du
  * cadre d'application autour de l'exemple, `cadreCourt` au téléphone (le numéro n'y est jamais coupé).
  */
 import { NUMERO_DEVIS } from './devisVivantEtapes';
@@ -13,6 +14,7 @@ export const ONGLETS = [
   {
     id: 'document',
     titre: 'Le document que reçoit votre client',
+    titreCourt: 'Le document',
     phrase: 'Produit par le générateur de Mallettico, sur un devis fictif.',
     cadre: `Aperçu du devis ${NUMERO_DEVIS}`,
     cadreCourt: `Aperçu · ${NUMERO_DEVIS}`,
@@ -20,6 +22,7 @@ export const ONGLETS = [
   {
     id: 'signature',
     titre: 'Signature en ligne',
+    titreCourt: 'Signature',
     phrase: 'Essayez\u202f: signez au doigt ou à la souris.',
     cadre: `Signature du devis ${NUMERO_DEVIS}`,
     cadreCourt: `Signature · ${NUMERO_DEVIS}`,
@@ -27,6 +30,7 @@ export const ONGLETS = [
   {
     id: 'metre',
     titre: 'Métré express',
+    titreCourt: 'Métré',
     phrase: 'Les dimensions donnent la quantité et le montant de la ligne.',
     cadre: 'Métré express',
     cadreCourt: 'Métré express',
@@ -34,6 +38,7 @@ export const ONGLETS = [
   {
     id: 'relances',
     titre: 'Relances',
+    titreCourt: 'Relances',
     phrase: 'Le scénario proposé pour un devis resté sans réponse.',
     cadre: 'Relance Devis',
     cadreCourt: 'Relance Devis',
@@ -41,6 +46,7 @@ export const ONGLETS = [
   {
     id: 'encaissements',
     titre: 'Encaissements',
+    titreCourt: 'Encaissements',
     phrase: 'Chaque paiement est noté, même partiel.',
     cadre: `Facture ${FACTURE_FICTIVE.numero}`,
     cadreCourt: `Facture ${FACTURE_FICTIVE.numero}`,

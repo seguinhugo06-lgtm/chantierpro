@@ -46,6 +46,9 @@ const PASTILLES = {
 
 const quantite = (q) => q.toLocaleString('fr-FR');
 
+/** Étape de départ du premier passage de la boucle : les trois premières lignes du lot déjà écrites. */
+const INDEX_DE_DEPART = 2;
+
 /**
  * Une ligne du devis. Pas encore écrite (ou données pas encore chargées : `ligne` nulle) : un emplacement en
  * pointillés, contenu invisible mais à sa place, pour que la carte garde sa hauteur quand la bibliothèque arrive.
@@ -69,7 +72,8 @@ function Ligne({ ligne, vue }) {
       >
         <span className="min-w-0">
           {/* 2,75em = deux lignes de leading-snug (1,375) */}
-          <span className="line-clamp-2 min-h-[2.75em] text-sm leading-snug text-slate-900 sm:min-h-0 lg:line-clamp-1">
+          {/* Entre 1024 et 1279 px, la colonne est étroite : 13 px, pour que les désignations tiennent sur leur ligne */}
+          <span className="line-clamp-2 min-h-[2.75em] text-sm leading-snug text-slate-900 sm:min-h-0 lg:line-clamp-1 lg:text-[13px] xl:text-sm">
             {ligne ? ligne.designation : '\u00a0'}
           </span>
           <span className="mt-0.5 block text-xs tabular-nums text-slate-600">
@@ -116,9 +120,12 @@ export default function DevisVivant({ reduit: reduitDemande = false }) {
   const carte = useRef(null);
   const [lot, setLot] = useState(null);
   const [echec, setEchec] = useState(false);
-  const [index, setIndex] = useState(-1);
-  // À l'écran = au moins 30 % de la carte visible (au téléphone, elle est sous le texte), et l'onglet affiché.
-  const visible = useALEcran(carte, 0.3);
+  // Premier passage : trois lignes déjà écrites (passe de finition) — au téléphone, le haut de la carte, seul visible
+  // dans le premier écran, ne montre jamais des emplacements vides. La boucle repart de la carte vide ensuite.
+  const [index, setIndex] = useState(reduit ? -1 : INDEX_DE_DEPART);
+  // À l'écran = au moins 10 % de la carte visible (au téléphone, seul son haut paraît sous le texte : avec 30 %, la
+  // boucle ne démarrait pas dans le premier écran), et l'onglet affiché. En mouvement réduit, rien n'est observé.
+  const visible = useALEcran(carte, 0.1, { observer: !reduit });
 
   useEffect(() => {
     let annule = false;
@@ -225,10 +232,11 @@ export default function DevisVivant({ reduit: reduitDemande = false }) {
               </p>
             </div>
 
-            {/* Le tampon se pose sous le total, là où viendra la barre d'encaissement (encore cachée à la signature) :
-                il ne masque aucune ligne. Vert assombri (emerald-700) : 5,5:1 sur blanc. */}
+            {/* Le tampon se pose en haut à droite des lignes, comme dans le prototype validé : sous le total, il touchait
+                le total et la bulle de relance (trois objets dans 90 px). Son fond blanc voilé masque ce qu'il couvre.
+                Vert assombri (emerald-700) : 5,5:1 sur blanc. */}
             <span
-              className={`pointer-events-none absolute bottom-9 right-5 z-10 rotate-[-7deg] rounded-[10px] border-[3px] border-emerald-700 bg-white/90 px-3 py-1 text-base font-extrabold tracking-[0.06em] text-emerald-700 transition-[opacity,transform] duration-300 ease-[cubic-bezier(0.2,1.6,0.4,1)] motion-reduce:transition-none ${
+              className={`pointer-events-none absolute right-6 top-[5.5rem] z-10 rotate-[-7deg] rounded-[10px] border-[3px] border-emerald-700 bg-white/90 px-3 py-1 text-base font-extrabold tracking-[0.06em] text-emerald-700 transition-[opacity,transform] duration-300 ease-[cubic-bezier(0.2,1.6,0.4,1)] motion-reduce:transition-none ${
                 etat.tampon ? 'scale-100 opacity-100' : 'scale-[0.6] opacity-0'
               }`}
             >
@@ -238,11 +246,13 @@ export default function DevisVivant({ reduit: reduitDemande = false }) {
         )}
       </div>
 
-      {!echec && (
+      {/* En mouvement réduit, la bulle n'est pas rendue : le devis y est montré payé, elle ne paraîtrait jamais et
+          garderait sa place (40 px de vide sous la carte) */}
+      {!echec && !reduit && (
         <p
           data-relance={relanceVisible ? 'visible' : 'cachee'}
           // Cachée : aussi `invisible` (une fois le fondu fini), pour qu'un lecteur d'écran ne lise pas une bulle qu'on ne
-          // voit pas ; en mouvement réduit, elle reste ainsi cachée (le devis est montré payé)
+          // voit pas
           className={`relative z-10 -mt-6 ml-3 mr-3 flex w-fit items-center gap-2.5 rounded-2xl border border-marque-acier/60 bg-white px-3.5 py-2.5 text-sm text-slate-700 shadow-[0_20px_40px_-24px_rgba(13,46,108,0.5)] transition-[opacity,transform,visibility] duration-300 motion-reduce:transition-none lg:-ml-8 ${
             relanceVisible ? 'visible translate-y-0 opacity-100' : 'invisible translate-y-1 opacity-0'
           }`}

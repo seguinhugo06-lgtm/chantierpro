@@ -81,20 +81,20 @@ export default function EarlyAdoptersSection({ onSignup }) {
       <Apparition delai={0.1}>
         <ul className="mt-10 grid gap-4 md:grid-cols-2 lg:gap-5">
           <Carte icone={MessageSquare} titre="Une ligne directe avec le créateur">
-            Depuis l'application, avec le bouton de retours, votre message arrive directement chez le créateur de
-            Mallettico. Sa réponse s'affiche dans l'application.
+            Depuis l’application, avec le bouton de retours, votre message arrive directement chez le créateur de
+            Mallettico. Sa réponse s’affiche dans l’application.
           </Carte>
 
           <Carte
             icone={ListChecks}
             titre="Vous voyez ce que devient votre idée"
             extra={
-              <Etiquettes nom="Les statuts d'un retour">
+              <Etiquettes nom="Les statuts d’un retour">
                 {STATUTS.map((statut) => <Etiquette key={statut}>{statut}</Etiquette>)}
               </Etiquettes>
             }
           >
-            Chaque retour envoyé depuis l'application a un statut que vous suivez. Les retours des artisans servent à
+            Chaque retour envoyé depuis l’application a un statut que vous suivez. Les retours des artisans servent à
             décider de la suite.
           </Carte>
 
@@ -112,12 +112,12 @@ export default function EarlyAdoptersSection({ onSignup }) {
               </>
             }
           >
-            Le tarif fondateur est garanti tant que l'abonnement reste actif.
+            Le tarif fondateur est garanti tant que l’abonnement reste actif.
           </Carte>
 
           <Carte icone={ShieldCheck} titre="Essayer sans carte bancaire">
-            Le plan Gratuit n'a pas de limite de durée et l'inscription ne demande pas de carte bancaire. Vos clients,
-            devis, factures, chantiers et dépenses s'exportent dans un fichier depuis les réglages.
+            Le plan Gratuit n’a pas de limite de durée et l’inscription ne demande pas de carte bancaire. Vos clients,
+            devis, factures, chantiers et dépenses s’exportent dans un fichier depuis les réglages.
           </Carte>
         </ul>
       </Apparition>

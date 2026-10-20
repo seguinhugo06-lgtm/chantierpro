@@ -29,8 +29,8 @@ function Galerie() {
   // chargent qu'au choix du visiteur.
   const premiere = vue.id === VUES_RESSOURCES[0].id;
   return (
-    <div className="mt-10">
-      <div role="group" aria-label="Choisir une vue de l'application" className="flex flex-wrap gap-2">
+    <div>
+      <div role="group" aria-label="Choisir une vue de l’application" className="flex flex-wrap gap-2">
         {VUES_RESSOURCES.map((v) => {
           const Icone = ICONES[v.icone];
           return (
@@ -47,7 +47,7 @@ function Galerie() {
         <CadreCapture key={vue.id} capture={vue.capture} prioritaire={premiere} premiere={premiere} classeTel="max-w-[17rem]" />
         <figcaption className="mt-4 text-center">
           <span className="block text-base text-marque-ardoise">{vue.description}</span>
-          <span className="mt-1 block text-xs text-slate-600">Capture de l'application, données fictives.</span>
+          <span className="mt-1 block text-xs text-slate-600">Capture de l’application, données fictives.</span>
         </figcaption>
       </figure>
     </div>
@@ -60,13 +60,13 @@ export default function ResourcesPage() {
       <EnTetePage
         surtitre="Ressources"
         titre="Mallettico en images."
-        intro="Les écrans de l'application, tels que vous les verrez, sur des données fictives. Puis les quatre étapes, de l'inscription à l'encaissement."
+        intro="Les écrans de l’application, tels que vous les verrez, sur des données fictives. Puis les quatre étapes, de l’inscription à l’encaissement."
       />
 
       <SectionSite fond="blanc" className="!pt-6 sm:!pt-10">
-        <EnTeteSection titre="L'application, écran par écran">
-          Choisissez un écran pour l'afficher.
-        </EnTeteSection>
+        {/* Titre pour le plan du document seulement : visible, il faisait deux en-têtes de suite sous celui de la page,
+            et 300 px avant la première image ; les pastilles se suffisent */}
+        <h2 className="sr-only">L’application, écran par écran</h2>
         <Galerie />
       </SectionSite>
 
@@ -91,7 +91,7 @@ export default function ResourcesPage() {
 
       <BandeAppel
         titre="Essayez Mallettico gratuitement."
-        texte="Le plan Gratuit n'a pas de limite de durée et l'inscription ne demande pas de carte bancaire."
+        texte="Le plan Gratuit n’a pas de limite de durée et l’inscription ne demande pas de carte bancaire."
       />
     </MarketingLayout>
   );

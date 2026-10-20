@@ -77,9 +77,11 @@ export function useEcranTelephone() {
  *   - capture d'ordinateur avec sa version téléphone (`mobile`) : au téléphone, la version téléphone dans un cadre de
  *     téléphone (une capture d'ordinateur réduite à 340 px ne se lit plus : texte de 3 px) ; ailleurs, l'ordinateur ;
  *   - sinon le cadre de navigateur.
- * `classeTel` / `classeOrdi` : l'encombrement de chaque cadre. `prioritaire`, `premiere` : voir plus haut.
+ * `recadree` : sur ordinateur, la vignette recadrée (`vignette` : la zone utile, sans la barre latérale) quand la
+ * capture en a une. `classeTel` / `classeOrdi` : l'encombrement de chaque cadre. `prioritaire`, `premiere` : voir plus
+ * haut.
  */
-export function CadreCapture({ capture, prioritaire = false, premiere = false, classeTel = '', classeOrdi = '' }) {
+export function CadreCapture({ capture, recadree = false, prioritaire = false, premiere = false, classeTel = '', classeOrdi = '' }) {
   const telephone = useEcranTelephone();
   const vue = capture.telephone ? capture : telephone && capture.mobile ? capture.mobile : null;
   if (vue) {
@@ -87,7 +89,8 @@ export function CadreCapture({ capture, prioritaire = false, premiere = false, c
       <CadreTel src={vue.src} alt={vue.alt} largeur={vue.largeur} hauteur={vue.hauteur} prioritaire={prioritaire} premiere={premiere} className={classeTel} />
     );
   }
+  const ordi = recadree && capture.vignette ? capture.vignette : capture;
   return (
-    <CadreOrdi src={capture.src} alt={capture.alt} largeur={capture.largeur} hauteur={capture.hauteur} prioritaire={prioritaire} premiere={premiere} className={classeOrdi} />
+    <CadreOrdi src={ordi.src} alt={capture.alt} largeur={ordi.largeur} hauteur={ordi.hauteur} prioritaire={prioritaire} premiere={premiere} className={classeOrdi} />
   );
 }

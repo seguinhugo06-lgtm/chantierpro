@@ -11,12 +11,13 @@ import { FOCUS } from './focus';
  * mouvement si l'appareil en demande moins. `id` : identifiant unique de la question dans la page.
  * `data-question`, `data-reponse` : lus par le parcours `scripts/parcours/site.cjs`.
  */
-export function Question({ id, question, reponse, ouverte, onBasculer, niveau = 3 }) {
+export function Question({ id, question, reponse, ouverte, onBasculer, niveau = 3, cachee = false }) {
   const Titre = `h${niveau}`;
   const idBouton = `${id}-question`;
   const idReponse = `${id}-reponse`;
   return (
-    <li className="rounded-2xl border border-marque-acier/60 bg-white shadow-[0_14px_32px_-28px_rgba(13,46,108,0.5)]">
+    // `cachee` : hors de la vue sous 1024 px (la FAQ de l'accueil en montre six, puis « Voir les N autres questions »)
+    <li className={`rounded-2xl border border-marque-acier/60 bg-white shadow-[0_14px_32px_-28px_rgba(13,46,108,0.5)]${cachee ? ' hidden lg:block' : ''}`}>
       <Titre className="m-0">
         <button
           type="button"

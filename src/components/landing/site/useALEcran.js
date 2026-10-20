@@ -5,8 +5,9 @@ import { useEffect, useState } from 'react';
  * affiché. Les boucles du site (devis vivant, compteur et barre de la fiabilité) ne tournent qu'à cette
  * condition (spec, « Mouvement et accessibilité ») : IntersectionObserver et `visibilitychange`.
  * Sans IntersectionObserver (vieux navigateur), l'élément est tenu pour visible.
+ * `observer: false` (mouvement réduit : la boucle ne tourne pas) : aucun observateur n'est créé, la valeur reste fausse.
  */
-export function useALEcran(ref, seuil = 0) {
+export function useALEcran(ref, seuil = 0, { observer = true } = {}) {
   const [visible, setVisible] = useState(false);
   const [ongletAffiche, setOngletAffiche] = useState(
     () => typeof document === 'undefined' || document.visibilityState !== 'hidden',
@@ -14,6 +15,10 @@ export function useALEcran(ref, seuil = 0) {
 
   useEffect(() => {
     const element = ref.current;
+    if (!observer) {
+      setVisible(false);
+      return undefined;
+    }
     if (!element || typeof IntersectionObserver === 'undefined') {
       setVisible(true);
       return undefined;
@@ -24,7 +29,7 @@ export function useALEcran(ref, seuil = 0) {
     );
     observateur.observe(element);
     return () => observateur.disconnect();
-  }, [ref, seuil]);
+  }, [ref, seuil, observer]);
 
   useEffect(() => {
     const suivre = () => setOngletAffiche(document.visibilityState !== 'hidden');

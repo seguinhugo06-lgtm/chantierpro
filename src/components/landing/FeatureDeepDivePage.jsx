@@ -22,12 +22,15 @@ import { CadreCapture } from './site/Cadres';
 import { FOCUS_SUR_GLACIER } from './site/focus';
 import { FEATURES_CONTENT } from './featuresContent';
 
-/** La capture de l'en-tête (premier écran) : chargée tout de suite, en priorité ; au téléphone, sa vue téléphone. */
-function Capture({ capture }) {
+/**
+ * La capture de l'en-tête (premier écran) : chargée tout de suite, en priorité ; au téléphone, sa vue téléphone ;
+ * `recadree` : la vignette recadrée sur la zone utile (page du devis : l'éditeur n'occupe que le tiers de l'écran).
+ */
+function Capture({ capture, recadree = false }) {
   return (
     <figure className="mx-auto w-full max-w-2xl lg:max-w-none">
-      <CadreCapture capture={capture} prioritaire premiere classeTel="max-w-[17rem]" />
-      <figcaption className="mt-3 text-center text-xs text-slate-600">Capture de l'application, données fictives.</figcaption>
+      <CadreCapture capture={capture} recadree={recadree} prioritaire premiere classeTel="max-w-[17rem]" />
+      <figcaption className="mt-3 text-center text-xs text-slate-600">Capture de l’application, données fictives.</figcaption>
     </figure>
   );
 }
@@ -78,7 +81,7 @@ export default function FeatureDeepDivePage({ slug }) {
         surtitre={fonction.badge}
         titre={fonction.title}
         intro={fonction.tagline}
-        aside={<Capture capture={fonction.capture} />}
+        aside={<Capture capture={fonction.capture} recadree={!!fonction.enTeteRecadree} />}
       >
         <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
           <BoutonSite variante="plein" href="/inscription" className="w-full sm:w-auto">
@@ -178,7 +181,7 @@ export default function FeatureDeepDivePage({ slug }) {
 
       <BandeAppel
         titre="Essayez Mallettico gratuitement."
-        texte="Le plan Gratuit n'a pas de limite de durée et l'inscription ne demande pas de carte bancaire."
+        texte="Le plan Gratuit n’a pas de limite de durée et l’inscription ne demande pas de carte bancaire."
       />
     </MarketingLayout>
   );

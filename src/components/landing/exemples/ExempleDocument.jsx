@@ -28,7 +28,7 @@ import DocumentEnGrand, { LARGEUR_PAGE_A4 } from './DocumentEnGrand';
 
 // Largeurs des pastilles d'attente des mentions (à peu près celles des libellés) : la place est tenue
 const ATTENTE_MENTIONS = ['w-20', 'w-48', 'w-52', 'w-40', 'w-44', 'w-40', 'w-48'];
-const TITRE_DU_CADRE = `Devis ${NUMERO_DEVIS} d'Élec Exemple pour M. Martin (exemple fictif)`;
+const TITRE_DU_CADRE = `Devis ${NUMERO_DEVIS} d’Élec Exemple pour M. Martin (exemple fictif)`;
 
 /** Le générateur de devis, chargé une seule fois pour la page. */
 const chargerGenerateur = chargerUneFois(() => import('../../../lib/devisHtmlBuilder.js').then((module) => module.buildDevisHtml));
@@ -105,7 +105,7 @@ export default function ExempleDocument() {
     return (
       <div className="flex flex-1 items-center justify-center p-6">
         <p data-document-echec="" className="max-w-sm text-center text-base text-marque-ardoise">
-          Le document n'a pas pu être chargé. Rechargez la page pour le voir.
+          Le document n’a pas pu être chargé. Rechargez la page pour le voir.
         </p>
       </div>
     );
@@ -124,6 +124,9 @@ export default function ExempleDocument() {
                 title={TITRE_DU_CADRE}
                 srcDoc={html}
                 sandbox=""
+                // Hors de l'ordre de tabulation : arrêt sans anneau visible ; le panneau est déjà focalisable et « Voir le
+                // document en grand » donne la version lisible au clavier
+                tabIndex={-1}
                 className="absolute left-0 top-0 block border-0"
                 style={{ width: LARGEUR_PAGE_A4, height: h / echelle, transform: `scale(${echelle})`, transformOrigin: '0 0' }}
               />

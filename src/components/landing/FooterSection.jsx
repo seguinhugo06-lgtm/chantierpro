@@ -67,8 +67,10 @@ export default function FooterSection({ onNavigate }) {
   return (
     <footer className="bg-marque-encre-sombre text-marque-acier">
       <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6 sm:py-16">
-        <div className="grid grid-cols-2 gap-x-6 gap-y-10 md:grid-cols-[1.4fr_1fr_1fr_1fr] md:gap-10">
-          <div className="col-span-2 md:col-span-1">
+        {/* Tablette : la marque sur toute la largeur, puis trois colonnes de liens (à quatre colonnes, « Signature
+            électronique » ou « Pourquoi Mallettico » passaient sur deux lignes) ; bureau : quatre colonnes */}
+        <div className="grid grid-cols-2 gap-x-6 gap-y-10 md:grid-cols-3 md:gap-10 lg:grid-cols-[1.4fr_1fr_1fr_1fr]">
+          <div className="col-span-2 md:col-span-3 lg:col-span-1">
             <div className="flex items-center gap-3">
               <LogoMallettico taille={40} fond="blanc" />
               <span className="text-xl font-extrabold tracking-tight text-white">Mallettico</span>

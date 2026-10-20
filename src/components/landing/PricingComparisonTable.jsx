@@ -30,7 +30,7 @@ import { PLANS, PLAN_ORDER } from '../../stores/subscriptionStore';
 import BoutonSite from './site/BoutonSite';
 import Apparition from './site/Apparition';
 import { FOCUS } from './site/focus';
-import { libelleAffiche, lignesDeComparaison } from './comparaisonPlans';
+import { fonctionsCommunes, libelleAffiche, lignesDeComparaison } from './comparaisonPlans';
 
 /** Les lignes ne dépendent que de `PLANS` : calculées une fois. */
 const TABLEAU = lignesDeComparaison(PLANS, PLAN_ORDER);
@@ -38,11 +38,19 @@ const TABLEAU = lignesDeComparaison(PLANS, PLAN_ORDER);
 /** Une fonction absente d'un plan se lit par un tiret : seulement dans ce cas, une note l'explique. */
 const A_DES_TIRETS = TABLEAU.fonctions.some((f) => f.inclus.includes(false));
 
-/** Les deux groupes, dans l'ordre : limites puis fonctions. `valeur` : texte (limite) ou booléen (fonction). */
+/**
+ * Une fonction présente dans tous les plans ne compare rien : pas de ligne (quatre lignes de trois coches
+ * occupaient 450 px au téléphone), elle est dite sous le tableau, « Dans tous les plans : … » (passe de finition, DA-16).
+ */
+const COMMUNES = fonctionsCommunes(TABLEAU);
+const DISTINCTES = TABLEAU.fonctions.filter((f) => !COMMUNES.includes(f.libelle));
+
+/** Les groupes, dans l'ordre : limites puis fonctions qui distinguent les plans (s'il y en a). `valeur` : texte (limite)
+ * ou booléen (fonction). */
 const GROUPES = [
   { titre: 'Limites', lignes: TABLEAU.limites.map((l) => ({ id: l.cle, libelle: l.libelle, valeurs: l.valeurs })) },
-  { titre: 'Fonctions', lignes: TABLEAU.fonctions.map((f) => ({ id: f.libelle, libelle: f.libelle, valeurs: f.inclus })) },
-];
+  { titre: 'Fonctions', lignes: DISTINCTES.map((f) => ({ id: f.libelle, libelle: f.libelle, valeurs: f.inclus })) },
+].filter((g) => g.lignes.length > 0);
 
 const ID_PANNEAU = 'comparaison-plans';
 const BORDURE = 'border-b border-marque-acier/40';
@@ -218,9 +226,15 @@ export default function PricingComparisonTable() {
             <Tableau />
             <Liste />
           </div>
-          <p data-note-tableau="" className="mt-4 max-w-[48em] text-sm leading-relaxed text-slate-600">
-            Les limites sont celles que l'application applique aujourd'hui.
-            {A_DES_TIRETS ? " Un tiret signale une fonction que le plan n'annonce pas." : ''}
+          {COMMUNES.length ? (
+            <p data-communes="" className="mt-4 max-w-[48em] text-sm leading-relaxed text-slate-700">
+              <span className="font-semibold text-marque-nuit">Dans tous les plans{' '}:</span>{' '}
+              {COMMUNES.map(libelleAffiche).join(' · ')}
+            </p>
+          ) : null}
+          <p data-note-tableau="" className="mt-2 max-w-[48em] text-sm leading-relaxed text-slate-600">
+            Les limites sont celles que l’application applique aujourd’hui.
+            {A_DES_TIRETS ? " Un tiret signale une fonction que le plan n’annonce pas." : ''}
           </p>
         </Apparition>
       </div>

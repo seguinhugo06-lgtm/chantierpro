@@ -31,11 +31,12 @@ export default function HeroSection({ onSignup }) {
               aria-hidden="true"
               className="h-2 w-2 rounded-full bg-marque-orange shadow-[0_0_0_3px_rgba(238,123,32,0.2),0_0_10px_rgba(238,123,32,0.8)]"
             />
-            Devis · Factures · Relances
+            {/* Pour qui, dès le premier regard (la formulation du pied de page et de l'image de partage) */}
+            Pour les artisans du bâtiment
           </p>
 
           <h1 className="mt-5 text-balance text-[clamp(2.125rem,5vw,3.625rem)] font-extrabold leading-[1.04] tracking-[-0.035em] text-marque-nuit">
-            L'administratif du chantier,{' '}
+            L’administratif du chantier,{' '}
             <span className="box-decoration-clone bg-[linear-gradient(transparent_78%,rgba(238,123,32,0.9)_78%,rgba(238,123,32,0.9)_90%,transparent_90%)]">
               rangé dans une mallette.
             </span>
@@ -43,7 +44,9 @@ export default function HeroSection({ onSignup }) {
 
           <p className="mt-5 max-w-[34em] text-lg leading-relaxed text-marque-ardoise">
             Montez un devis à partir de prestations déjà chiffrées, faites-le signer en ligne, facturez sans rien
-            ressaisir. Mallettico relance et suit les paiements. Sur téléphone comme sur ordinateur.
+            ressaisir. Mallettico relance et suit les paiements.
+            {/* Au téléphone, la phrase est retirée (la bande de faits dit « 2 écrans ») : le produit remonte d'une ligne */}
+            <span className="hidden sm:inline"> Sur téléphone comme sur ordinateur.</span>
           </p>
 
           <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
@@ -66,7 +69,8 @@ export default function HeroSection({ onSignup }) {
           </ul>
         </div>
 
-        <div className="mx-auto w-full max-w-xl lg:max-w-none">
+        {/* Entre 640 et 1023 px, la carte s'aligne à gauche sur le texte (un seul axe) */}
+        <div className="mx-auto w-full max-w-xl sm:mx-0 lg:max-w-none">
           <DevisVivant />
         </div>
       </div>

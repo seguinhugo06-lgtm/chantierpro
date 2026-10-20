@@ -91,3 +91,26 @@ export function lignesDeComparaison(plans, ordre) {
 
   return { plans: liste.map((p) => ({ id: p.id, nom: p.name })), limites, fonctions };
 }
+
+/**
+ * Ce que montre la carte d'un plan dans « Des prix simples, sans surprise. » (passe de finition, relecture DA-1) :
+ *   - `limites` : le même bloc dans les trois cartes, les cinq limites réellement appliquées, avec la valeur de ce plan
+ *     (celles du tableau, lues dans `limits`) : l'œil compare « 5 par mois → Illimité » d'une carte à l'autre, et les
+ *     cartes payantes ne paraissent plus vides à côté des neuf lignes du plan Gratuit ;
+ *   - `fonctions` : les libellés de `featureLabels` qui ne disent pas une limite (`ditUneLimite`, la règle du tableau).
+ *     Un libellé de limite (« 5 devis par mois ») est dit par sa ligne du bloc : pas de doublon.
+ * Rien n'est écrit ici : tout vient de `PLANS` (décision D-29).
+ */
+export function contenuDeCarte(plans, ordre, id) {
+  const tableau = lignesDeComparaison(plans, ordre);
+  const rang = tableau.plans.findIndex((p) => p.id === id);
+  return {
+    limites: tableau.limites.map((l) => ({ cle: l.cle, libelle: l.libelle, valeur: l.valeurs[rang] })),
+    fonctions: (plans[id]?.featureLabels || []).filter((f) => f.included).map((f) => f.name).filter((nom) => !ditUneLimite(nom)),
+  };
+}
+
+/** Les fonctions présentes dans tous les plans : le tableau ne leur donne pas de ligne, il les dit en une phrase. */
+export function fonctionsCommunes(tableau) {
+  return tableau.fonctions.filter((f) => f.inclus.every(Boolean)).map((f) => f.libelle);
+}

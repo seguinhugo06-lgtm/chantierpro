@@ -15,6 +15,7 @@
 import { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
+import { FOCUS_SUR_GLACIER } from '../site/focus';
 
 export const LARGEUR_PAGE_A4 = 794;
 export const ID_TITRE_DOCUMENT_EN_GRAND = 'document-en-grand-titre';
@@ -74,7 +75,7 @@ export default function DocumentEnGrand({ html, titre, titreDuCadre, onFermer })
             ref={boutonFermer}
             type="button"
             onClick={() => fermer.current?.()}
-            className="inline-flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-full border-2 border-marque-nuit-2 bg-white px-4 text-base font-semibold text-marque-nuit-2 transition-colors hover:bg-marque-glacier-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-marque-nuit-2 focus-visible:ring-offset-2"
+            className={`inline-flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-full border-2 border-marque-nuit-2 bg-white px-4 text-base font-semibold text-marque-nuit-2 transition-colors hover:bg-marque-glacier-2 ${FOCUS_SUR_GLACIER}`}
           >
             <X size={18} strokeWidth={2.2} aria-hidden="true" />
             Fermer

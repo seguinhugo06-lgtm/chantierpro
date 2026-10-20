@@ -80,13 +80,22 @@ describe('typographie fine du site', () => {
     expect(fautesDeTypographie(fine(texte))).toEqual([]);
   });
 
-  it('cas témoin : chaque faute est relevée (espace ordinaire ou insécable, guillemets collés)', () => {
+  it('cas témoin : chaque faute est relevée (espace ordinaire ou insécable, guillemets collés, apostrophe droite, 1er)', () => {
     expect(fautesDeTypographie('Pourquoi ?')).toHaveLength(1);
     expect(fautesDeTypographie('Objet\u00a0:')).toHaveLength(1);
     expect(fautesDeTypographie('« Signé »')).toHaveLength(2);
     expect(fautesDeTypographie('«Signé»')).toHaveLength(2);
     expect(fautesDeTypographie('10 %')).toHaveLength(1);
     expect(fautesDeTypographie('1 000 prestations')).toHaveLength(1);
+    expect(fautesDeTypographie("L'administratif du chantier")).toHaveLength(1);
+    expect(fautesDeTypographie('Le 1er septembre 2027')).toHaveLength(1);
+    expect(fautesDeTypographie('L\u2019administratif, le 1\u1d49\u02b3 septembre')).toEqual([]);
+  });
+
+  it('apostrophe typographique entre deux lettres, « 1ᵉʳ » ; rien d\'autre ne bouge (guillemets de code, 11er, 1ere)', () => {
+    expect(fine("L'administratif d'un chantier")).toBe('L\u2019administratif d\u2019un chantier');
+    expect(fine('À partir du 1er septembre 2027')).toBe('À partir du 1\u1d49\u02b3 septembre 2027');
+    for (const texte of ["'Créer'", "data-x='1'", '11er', 'le 1erement', "l'"]) expect(fine(texte), texte).toBe(texte);
   });
 
   it('les libellés de PLANS que le site affiche passent par la règle (ils ne sont pas réécrits dans PLANS)', () => {

@@ -126,7 +126,7 @@ export default function ExempleEncaissements() {
             {payee ? (
               <BoutonSite variante="contour" onClick={recommencer}>
                 <RotateCcw size={18} strokeWidth={2} aria-hidden="true" />
-                Recommencer l'exemple
+                Recommencer l’exemple
               </BoutonSite>
             ) : (
               <BoutonSite variante="plein" onClick={encaisserUnPas}>
@@ -139,7 +139,9 @@ export default function ExempleEncaissements() {
           </p>
         </div>
       </div>
-      <LegendeExemple>Une facture n'est « payée » que si les paiements la soldent.</LegendeExemple>
+      {/* La règle « payée seulement au solde » est déjà le titre d'une carte de la fiabilité : la légende dit autre chose,
+          de vrai (relecture DA-7) */}
+      <LegendeExemple>Démonstration : rien n’est encaissé pour de vrai ; le reste dû se recalcule à chaque paiement.</LegendeExemple>
     </>
   );
 }

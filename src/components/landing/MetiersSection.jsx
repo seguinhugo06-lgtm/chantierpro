@@ -107,12 +107,12 @@ export default function MetiersSection() {
     <SectionSite id="metiers" fond="blanc">
       <EnTeteSection titre="Votre métier est déjà chiffré.">
         Choisissez le vôtre : voici les lots types que vous insérez en un geste dans un devis, avec leurs prix moyens.
-        Vous ajustez les quantités et vos tarifs, c'est tout.
+        Vous ajustez les quantités et vos tarifs, c’est tout.
       </EnTeteSection>
 
       {echec ? (
         <p data-metiers-echec="" className="mt-8 rounded-2xl border border-marque-acier/60 bg-marque-glacier-1 px-5 py-4 text-base text-marque-ardoise">
-          Les lots types n'ont pas pu être chargés. Rechargez la page pour les parcourir.
+          Les lots types n’ont pas pu être chargés. Rechargez la page pour les parcourir.
         </p>
       ) : !bibliotheque ? (
         <div data-metiers-attente="" aria-hidden="true">

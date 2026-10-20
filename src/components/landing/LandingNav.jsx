@@ -70,7 +70,8 @@ export default function LandingNav({ onLogin, onSignup }) {
 
   return (
     <header ref={entete} className="fixed inset-x-0 top-0 z-50">
-      <div aria-hidden="true" className="absolute inset-0 border-b border-marque-acier/60 bg-white/90 backdrop-blur-md backdrop-saturate-150" />
+      {/* Presque opaque : à 90 %, une bande bleu nuit dessous la grisait */}
+      <div aria-hidden="true" className="absolute inset-0 border-b border-marque-acier/60 bg-white/[0.97] backdrop-blur-md backdrop-saturate-150" />
 
       <div className="relative mx-auto flex h-16 max-w-6xl items-center gap-2 px-4 sm:px-6 lg:gap-6">
         <a href="/" className={`-ml-1 flex min-h-[44px] shrink-0 items-center gap-2.5 rounded-xl px-1 ${FOCUS}`}>

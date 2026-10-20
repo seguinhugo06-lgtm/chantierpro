@@ -104,61 +104,189 @@ async function jeuDemoFictif() {
   (donnees.echanges || []).forEach((ech) => {
     if (ech.destinataire && courriels[ech.destinataire]) ech.destinataire = courriels[ech.destinataire];
   });
+  semaineDeTravailFictive(donnees);
   jeuDemo = { donnees, originaux: originaux.filter(Boolean) };
   return jeuDemo;
 }
 
+/**
+ * Une semaine de travail fictive (relecture DA-5) : les pointages de la démo datent de janvier, la page Équipe
+ * montrait « 0 h pointées » et le planning « 0 tâches ». Le script ajoute, dans le jeu posé avant le chargement (jamais
+ * dans src/lib/demo-data.js), des pointages de la semaine en cours, du lundi à aujourd'hui, et des tâches à faire sur
+ * les chantiers de la démo. Données fictives, comme le reste des captures.
+ */
+function semaineDeTravailFictive(donnees) {
+  const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const aujourdhui = new Date();
+  const lundi = new Date(aujourdhui);
+  lundi.setDate(aujourdhui.getDate() - ((aujourdhui.getDay() + 6) % 7));
+  const jours = [];
+  for (const d = new Date(lundi); d <= aujourdhui; d.setDate(d.getDate() + 1)) jours.push(iso(d));
+  // Qui, où, combien d'heures par jour (employés et chantiers du jeu de démonstration)
+  const equipes = [['e1', 'ch1', 8], ['e2', 'ch1', 7.5], ['e3', 'ch8', 7], ['e4', 'ch2', 8]];
+  const pointages = jours.flatMap((jour, j) => equipes.map(([employeId, chantierId, heures], k) => ({
+    id: `p-semaine-${j}-${k}`, employeId, chantierId, date: jour, heures, approuve: j < jours.length - 1,
+  })));
+  donnees.pointages = [...(donnees.pointages || []), ...pointages];
+  const dans = (n) => { const d = new Date(aujourdhui); d.setDate(d.getDate() + n); return iso(d); };
+  const maintenant = aujourdhui.toISOString();
+  const taches = [
+    ['Commander le coffret 2 rangées et les disjoncteurs', 'haute', 0, 'ch8'],
+    ['Passer les gaines de la cuisine avant le placo', 'haute', 1, 'ch1'],
+    ['Relever les cotes de la salle de bain', 'moyenne', 1, 'ch2'],
+    ['Rappeler M. Dubois pour la date de pose', 'moyenne', 2, 'ch8'],
+    ['Préparer l\'attestation de TVA réduite', 'basse', 3, 'ch8'],
+    ['Poser les prises et interrupteurs du séjour', 'basse', 4, 'ch1'],
+  ].map(([text, priority, jour, chantier], i) => ({
+    id: `t-semaine-${i}`, text, notes: null, priority, due_date: dans(jour), due_time: null, category: null,
+    chantier_id: chantier, client_id: null, is_done: false, done_at: null, status: 'a_faire', position: i,
+    subtasks: [], recurrence: null, sort_order: i, assigned_to: null, created_at: maintenant, updated_at: maintenant,
+  }));
+  donnees.memos = [...(donnees.memos || []), ...taches];
+}
+
 // ─── Trésorerie fictive ──────────────────────────────────────────────────────────────────────────────────
-// Les réglages de trésorerie de la démo (src/lib/demo-data.js, non modifié : 24 500 € au 1er janvier) donnent, une fois
-// l'année de dépenses de la démo passée, un solde négatif et deux alertes rouge et jaune sur la capture des finances :
-// peu engageant pour la vitrine. Les captures posent un solde de départ fictif au premier jour du mois en cours (posé
-// avant le chargement, la démo ne remplace pas une valeur déjà là) : le solde du jour reste celui que l'app calcule
-// avec les encaissements et dépenses fictifs du mois, au-dessus du seuil d'alerte de la démo. Aucune valeur n'est
-// affirmée ailleurs que sur ces captures, légendées « données fictives ».
+// Le solde négatif des anciennes captures venait d'un défaut de l'app, corrigé le 20 oct. 2026 (src/hooks/useTresorerie.js
+// relisait ses réglages trop tard : le solde de départ de la démo, 24 500 €, repartait à 0 € à chaque chargement) ; la
+// démo est positive depuis. Les captures posent tout de même leur propre solde de départ fictif, au premier jour du mois
+// en cours (avant le chargement, la démo ne remplace pas une valeur déjà là) : la capture des finances ne dépend ni de
+// la date ni du jeu de démonstration, et le solde du jour reste celui que l'app calcule avec les encaissements et
+// dépenses fictifs du mois. Aucune valeur n'est affirmée ailleurs que sur ces captures, légendées « données fictives ».
 const debutDuMois = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`; };
 const TRESORERIE_FICTIVE = () => ({ seuilAlerte: 5000, soldeInitial: 14200, soldeDate: debutDuMois() });
 
 // ─── Gestes ──────────────────────────────────────────────────────────────────────────────────────────────
 // Clique d'abord un bouton visible au texte exact, sinon le plus petit élément visible qui contient le texte.
+// Un élément au premier plan passe avant un élément caché par un calque : l'éditeur de devis couvre la page des devis,
+// qui contient aussi « Philippe Dubois » ; le clic partait derrière l'éditeur et le client n'était jamais choisi.
 const cliquer = (page, texte) => page.evaluate((t) => {
   const visible = (el) => { const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0; };
+  const auPremierPlan = (el) => {
+    const r = el.getBoundingClientRect();
+    const dessus = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+    return !!dessus && (dessus === el || el.contains(dessus) || dessus.contains(el));
+  };
   const bouton = [...document.querySelectorAll('button')].filter(visible).find((b) => b.innerText.trim() === t);
   if (bouton) { bouton.click(); return true; }
   const candidats = [...document.querySelectorAll('button, a, [role="button"], li, article, div, span, p')]
     .filter(visible).filter((el) => (el.innerText || '').includes(t));
-  candidats.sort((a, b) => a.innerText.length - b.innerText.length);
+  const devant = new Set(candidats.filter(auPremierPlan));
+  candidats.sort((a, b) => (devant.has(b) - devant.has(a)) || (a.innerText.length - b.innerText.length));
   const el = candidats[0];
   if (!el) return false;
   el.click();
   return true;
 }, texte);
 
-// Construction du lot « Mise aux normes du tableau électrique » dans l'éditeur de devis
+// Construction du lot « Mise aux normes du tableau électrique » dans l'éditeur de devis, pour un client et un chantier
+// de la démo (relecture DA-5 : un devis sans client se lisait comme un brouillon inachevé, jusque dans l'image de
+// partage)
 const GESTES_LOT = [
   ['Nouveau devis'],
   ['Parcourir les 17 métiers chiffrés'],
   ['Électricité\n7 lots types'],
   ['Mise aux normes du tableau électrique'],
   ['__echap'],
+  ['Choisir un client'],
+  // La liste n'affiche que les premiers clients : la recherche ramène celui-ci à l'écran
+  ['__taper', 'Dubois'],
+  ['Philippe Dubois'],
+  ['__choisir', 'Rénovation appartement Dubois'],
 ];
 
 // ─── Les vues de l'app ───────────────────────────────────────────────────────────────────────────────────
 // Sur téléphone l'éditeur s'ouvre depuis l'accueil, sur ordinateur depuis la page des devis.
 // Pages de fonctionnalités (/fonctionnalites, /fonctionnalites/:slug, /ressources) : chantier, catalogue, clients,
 // planning, équipe, trésorerie et relances, en plus des vues du premier écran et du cycle.
+// `vignette` : la vignette recadrée de la zone utile, sans la barre latérale (relecture DA-6 : l'écran entier réduit dans
+// une carte de 310 px rendait un texte de 2 px). `x`, `y` : son coin haut gauche en px CSS ; `largeur` : sa largeur en px
+// CSS, 720 par défaut, un peu plus quand il le faut pour qu'aucun texte ne soit tranché par un bord (contrôlé avant
+// l'écriture). Le fichier fait toujours 1440 × 900 px : 720 × 450 px CSS à densité 2, ou la zone plus large réduite.
+const TAILLE_VIGNETTE = { width: 720, height: 450 };
+// La largeur est un multiple de 8 : la hauteur (5/8 de la largeur) tombe juste, et la vignette réduite fait exactement
+// 1440 × 900 px (Puppeteer arrondit la découpe au pixel : une largeur de 852 donnait 901 px de haut)
+const cadreVignette = ({ x, y, largeur = TAILLE_VIGNETTE.width }) => {
+  if (largeur % 8) throw new Error(`Largeur de vignette ${largeur} : un multiple de 8 est attendu`);
+  return {
+    x, y, width: largeur, height: (largeur * TAILLE_VIGNETTE.height) / TAILLE_VIGNETTE.width,
+    scale: TAILLE_VIGNETTE.width / largeur,
+  };
+};
+
+/**
+ * Les textes visibles qu'un bord de la découpe tranche (une ligne à moitié dedans). Les cadres de document (iframes) sont
+ * lus aussi ; un texte caché sous un calque (la page des devis sous l'éditeur) ne compte pas.
+ */
+const textesTranches = (page, cadre) => page.evaluate((c) => {
+  const tranches = [];
+  // La partie visible d'une boîte : un parent qui ne laisse pas déborder (texte tronqué par « … ») la rogne déjà
+  const rogner = (el, r) => {
+    let { left: g, right: d, top: h, bottom: b } = r;
+    for (let a = el; a && a !== a.ownerDocument.body; a = a.parentElement) {
+      const s = a.ownerDocument.defaultView.getComputedStyle(a);
+      if (s.overflowX === 'visible' && s.overflowY === 'visible') continue;
+      const p = a.getBoundingClientRect();
+      if (s.overflowX !== 'visible') { g = Math.max(g, p.left); d = Math.min(d, p.right); }
+      if (s.overflowY !== 'visible') { h = Math.max(h, p.top); b = Math.min(b, p.bottom); }
+    }
+    return { left: g, right: d, top: h, bottom: b, width: d - g, height: b - h };
+  };
+  const lire = (doc, dx, dy) => {
+    const marcheur = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
+    const plage = doc.createRange();
+    for (let n = marcheur.nextNode(); n; n = marcheur.nextNode()) {
+      if (!n.textContent.trim() || !n.parentElement) continue;
+      plage.selectNodeContents(n);
+      for (const brute of plage.getClientRects()) {
+        const r = rogner(n.parentElement, brute);
+        const g = r.left + dx; const d = r.right + dx; const h = r.top + dy; const b = r.bottom + dy;
+        if (r.width < 1 || r.height < 1 || d <= c.x || g >= c.x + c.width || b <= c.y || h >= c.y + c.height) continue;
+        // Au premier plan ? (le point testé est dans la partie visible de la découpe)
+        const px = (Math.max(g, c.x) + Math.min(d, c.x + c.width)) / 2 - dx;
+        const py = (Math.max(h, c.y) + Math.min(b, c.y + c.height)) / 2 - dy;
+        const dessus = doc.elementFromPoint(px, py);
+        if (!dessus || !(dessus === n.parentElement || n.parentElement.contains(dessus) || dessus.contains(n.parentElement))) continue;
+        // Le texte et sa boîte (x de gauche à droite, y de haut en bas, px CSS), pour corriger le cadre
+        const boite = `${Math.round(g)}-${Math.round(d)} × ${Math.round(h)}-${Math.round(b)}`;
+        if (g < c.x - 1 || d > c.x + c.width + 1 || h < c.y - 1 || b > c.y + c.height + 1) tranches.push(`${n.textContent.trim().slice(0, 40)} [${boite}]`);
+      }
+    }
+  };
+  lire(document, 0, 0);
+  for (const f of document.querySelectorAll('iframe')) {
+    let doc = null;
+    try { doc = f.contentDocument; } catch { doc = null; }
+    if (!doc?.body) continue;
+    const r = f.getBoundingClientRect();
+    lire(doc, r.left + f.clientLeft, r.top + f.clientTop);
+  }
+  return [...new Set(tranches)];
+}, cadre);
+
+/**
+ * Écrit la vignette si aucun texte n'est tranché par un bord ; sinon la refuse (le programme échoue à la fin, avec la
+ * liste de toutes les vignettes refusées et de leurs textes tranchés).
+ */
+const vignettesRefusees = [];
+async function ecrireVignette(page, nom, vignette) {
+  const cadre = cadreVignette(vignette);
+  const tranches = await textesTranches(page, cadre);
+  if (tranches.length) { vignettesRefusees.push(`${nom} : ${tranches.join(' | ')}`); return; }
+  await ecrireWebp(page, nom, cadre);
+}
 const VUES = [
-  { nom: 'ordi-accueil', page: 'dashboard', largeur: 1440 },
-  { nom: 'ordi-devis-lots', page: 'devis', largeur: 1440, gestes: GESTES_LOT },
-  { nom: 'ordi-facture', page: 'devis', largeur: 1440, gestes: [['FAC-2026-00003']] },
-  { nom: 'ordi-chantier', page: 'chantiers', largeur: 1440, gestes: [['Rénovation cuisine Dupont']] },
-  { nom: 'ordi-catalogue', page: 'catalogue', largeur: 1440 },
-  { nom: 'ordi-clients', page: 'clients', largeur: 1440 },
-  { nom: 'ordi-planning', page: 'planning', largeur: 1440 },
-  { nom: 'ordi-equipe', page: 'equipe', largeur: 1440 },
+  { nom: 'ordi-accueil', page: 'dashboard', largeur: 1440, vignette: { x: 340, y: 64 } },
+  { nom: 'ordi-devis-lots', page: 'devis', largeur: 1440, gestes: GESTES_LOT, vignette: { x: 360, y: 60 } },
+  { nom: 'ordi-facture', page: 'devis', largeur: 1440, gestes: [['FAC-2026-00003']], vignette: { x: 268, y: 72, largeur: 800 } },
+  { nom: 'ordi-chantier', page: 'chantiers', largeur: 1440, gestes: [['Rénovation cuisine Dupont']], vignette: { x: 268, y: 72, largeur: 904 } },
+  { nom: 'ordi-catalogue', page: 'catalogue', largeur: 1440, vignette: { x: 268, y: 72, largeur: 744 } },
+  { nom: 'ordi-clients', page: 'clients', largeur: 1440, vignette: { x: 268, y: 64, largeur: 856 } },
+  { nom: 'ordi-planning', page: 'planning', largeur: 1440, vignette: { x: 268, y: 234, largeur: 832 } },
+  { nom: 'ordi-equipe', page: 'equipe', largeur: 1440, vignette: { x: 268, y: 80, largeur: 792 } },
   // La page Finances s'ouvre défilée vers le bas : `enHaut` la ramène en haut avant la capture
-  { nom: 'ordi-tresorerie', page: 'finances', largeur: 1440, enHaut: true },
+  { nom: 'ordi-tresorerie', page: 'finances', largeur: 1440, enHaut: true, vignette: { x: 268, y: 64 } },
   // Relances : réglages › Documents › Relances, l'interrupteur général allumé (il est éteint dans la démo)
-  { nom: 'ordi-relances', page: 'settings', largeur: 1440, gestes: [['Documents'], ['Relances'], ['__selecteur', '[role="switch"][aria-checked="false"]']], enHaut: true },
+  { nom: 'ordi-relances', page: 'settings', largeur: 1440, gestes: [['Documents'], ['Relances'], ['__selecteur', '[role="switch"][aria-checked="false"]']], enHaut: true, vignette: { x: 268, y: 330, largeur: 784 } },
   { nom: 'tel-accueil', page: 'dashboard', largeur: 390 },
   { nom: 'tel-devis-lots', page: 'dashboard', largeur: 390, gestes: GESTES_LOT },
   { nom: 'tel-facture', page: 'devis', largeur: 390, gestes: [['FAC-2026-00003']] },
@@ -178,13 +306,13 @@ const VUES = [
 const bilan = [];
 
 /** Enregistre une capture en WebP ; si elle dépasse 400 Ko, la qualité baisse pour ce fichier seul. */
-async function ecrireWebp(page, nom) {
+async function ecrireWebp(page, nom, clip) {
   const fichier = path.join(SITE, `${nom}.webp`);
   let qualite = QUALITE_WEBP;
-  let octets = await page.screenshot({ type: 'webp', quality: qualite });
+  let octets = await page.screenshot({ type: 'webp', quality: qualite, ...(clip ? { clip } : {}) });
   while (octets.length > POIDS_MAX && qualite > 40) {
     qualite -= 6;
-    octets = await page.screenshot({ type: 'webp', quality: qualite });
+    octets = await page.screenshot({ type: 'webp', quality: qualite, ...(clip ? { clip } : {}) });
   }
   fs.writeFileSync(fichier, octets);
   bilan.push({ nom: `${nom}.webp`, ko: Math.round(octets.length / 1024), qualite });
@@ -226,12 +354,31 @@ async function capturerVue(v) {
     await attendre(1500);
     for (const [texte, selecteur] of v.gestes || []) {
       if (texte === '__echap') { await page.keyboard.press('Escape'); await attendre(600); continue; }
+      // Saisie au clavier dans le champ qui a le focus (la recherche du sélecteur de client s'ouvre focalisée)
+      if (texte === '__taper') { await page.keyboard.type(selecteur, { delay: 30 }); await attendre(600); continue; }
+      if (texte === '__choisir') {
+        // La liste déroulante qui propose cette option : l'option est choisie comme au doigt (événement « change »)
+        const ok = await page.evaluate((t) => {
+          const liste = [...document.querySelectorAll('select')].find((s) => [...s.options].some((o) => o.textContent.trim() === t));
+          if (!liste) return false;
+          const option = [...liste.options].find((o) => o.textContent.trim() === t);
+          Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(liste, option.value);
+          liste.dispatchEvent(new Event('change', { bubbles: true }));
+          return true;
+        }, selecteur);
+        if (!ok) throw new Error(`(${v.nom}) option introuvable : ${selecteur}`);
+        await attendre(800);
+        continue;
+      }
       if (texte === '__defiler') {
         // Le plus petit élément visible au texte exact passe en haut de l'écran, sous la barre de l'app
         const ok = await page.evaluate((t) => {
           const el = [...document.querySelectorAll('h1, h2, h3, h4, p, span')].find((x) => x.innerText?.trim() === t && x.getClientRects().length > 0);
           if (!el) return false;
-          const haut = el.getBoundingClientRect().top + window.scrollY - 88;
+          // Juste sous la barre de l'app (sa hauteur réelle) : avec un décalage fixe de 88 px, le bas de la carte
+          // précédente (« Équipe ») apparaissait coupé à moitié en haut de la capture (relecture DA-23)
+          const barre = document.querySelector('header')?.getBoundingClientRect().bottom || 64;
+          const haut = el.getBoundingClientRect().top + window.scrollY - barre - 16;
           window.scrollTo({ top: haut, behavior: 'instant' });
           return true;
         }, selecteur);
@@ -266,6 +413,8 @@ async function capturerVue(v) {
     await attendre(400);
     await controler(page, v.nom);
     await ecrireWebp(page, v.nom);
+    // La vignette recadrée de l'écran d'ordinateur (relecture DA-6) : la zone utile, sans la barre latérale
+    if (v.vignette) await ecrireVignette(page, `vignette-${v.nom.replace(/^ordi-/, '')}`, v.vignette);
     console.log('ok', v.nom);
   } finally {
     await browser.close();
@@ -322,6 +471,8 @@ function devisPourSignature() {
 }
 
 /** La page de signature, sur ordinateur (`signature`) ou sur téléphone (`tel-signature`). */
+// Vignette : la barre « Signer ce devis » et le haut du document, sur toute sa largeur
+const VIGNETTE_SIGNATURE = { x: 300, y: 0, largeur: 840 };
 async function capturerSignature({ nom = 'signature', largeur = 1440 } = {}) {
   const reponse = (corps) => ({ status: 200, body: JSON.stringify(corps) });
   const { browser, page, attendre } = await ouvrir({
@@ -333,8 +484,17 @@ async function capturerSignature({ nom = 'signature', largeur = 1440 } = {}) {
     await page.setViewport({ width: largeur, height: HAUTEURS[largeur], deviceScaleFactor: densite(largeur), isMobile: largeur < 768, hasTouch: largeur < 768 });
     await attendre(1500);
     await page.evaluate(() => document.querySelectorAll('[role="status"]').forEach((e) => { e.style.display = 'none'; }));
+    if (largeur < 768) {
+      // Au téléphone, le tableau du devis dépasse de 11 px le cadre du document, qui défile en largeur (constaté le
+      // 20 oct. 2026, la page de signature n'est pas modifiée ici) : la capture montre le document défilé jusqu'au
+      // bout, la colonne « Total HT » entière, comme le verrait le client qui fait glisser le document.
+      const cadre = await (await page.$('iframe'))?.contentFrame();
+      await cadre?.evaluate(() => window.scrollTo({ left: document.documentElement.scrollWidth }));
+      await attendre(300);
+    }
     await controler(page, nom);
     await ecrireWebp(page, nom);
+    if (largeur >= 768) await ecrireVignette(page, 'vignette-signature', VIGNETTE_SIGNATURE);
     console.log('ok', nom);
   } finally {
     await browser.close();
@@ -401,4 +561,5 @@ async function capturerOg() {
   console.table(bilan);
   const trop = bilan.filter((b) => b.nom.endsWith('.webp') && b.ko * 1024 > POIDS_MAX);
   if (trop.length) throw new Error(`WebP au-dessus de 400 Ko : ${trop.map((b) => b.nom).join(', ')}`);
+  if (vignettesRefusees.length) throw new Error(`Vignettes refusées, un bord tranche du texte :\n  ${vignettesRefusees.join('\n  ')}`);
 })().catch((e) => { console.error(e); process.exit(1); });

@@ -26,8 +26,12 @@ import FAQSection from './FAQSection';
 import FinalCta from './FinalCta';
 import FooterSection from './FooterSection';
 import { sectionDemandee } from '../../lib/sectionsAccueil';
+import useDefilementSousLaBarre from './site/useDefilementSousLaBarre';
 
 export default function LandingPage({ onLogin, onSignup, onNavigate }) {
+  // Le défilement réserve la place de la barre fixe (focus au clavier, ancres) : avant le défilement vers la section
+  useDefilementSousLaBarre();
+
   // Arrivée sur /tarifs, /faq ou /#section : descendre à la section dès qu'elle existe, puis
   // une seconde fois quand les images au-dessus ont pris leur place.
   useEffect(() => {

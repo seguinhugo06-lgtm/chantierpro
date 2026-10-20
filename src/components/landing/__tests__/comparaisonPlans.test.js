@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { PLANS, PLAN_ORDER } from '../../../stores/subscriptionStore.js';
-import { LIMITES_AFFICHEES, ditUneLimite, libelleAffiche, lignesDeComparaison, valeurDeLimite } from '../comparaisonPlans.js';
+import { LIMITES_AFFICHEES, contenuDeCarte, ditUneLimite, fonctionsCommunes, libelleAffiche, lignesDeComparaison, valeurDeLimite } from '../comparaisonPlans.js';
 
 describe('tableau de comparaison des plans : lignes construites depuis PLANS', () => {
   const tableau = lignesDeComparaison(PLANS, PLAN_ORDER);
@@ -103,5 +103,57 @@ describe('tableau de comparaison des plans : lignes construites depuis PLANS', (
     expect(valeurDeLimite('equipe', -1)).toBe('Illimité');
     expect(valeurDeLimite('equipe', 3)).toBe('Vous + 3');
     expect(valeurDeLimite('chantiers', 2)).toBe('2');
+  });
+});
+
+describe('cartes de tarifs : le même bloc de limites, puis les fonctions (relecture DA-1)', () => {
+  const tableau = lignesDeComparaison(PLANS, PLAN_ORDER);
+
+  it('chaque carte a les cinq limites, dans l\'ordre du tableau, avec la valeur de son plan', () => {
+    PLAN_ORDER.forEach((id, rang) => {
+      const carte = contenuDeCarte(PLANS, PLAN_ORDER, id);
+      expect(carte.limites.map((l) => l.libelle), id).toEqual(tableau.limites.map((l) => l.libelle));
+      expect(carte.limites.map((l) => l.valeur), id).toEqual(tableau.limites.map((l) => l.valeurs[rang]));
+    });
+    expect(contenuDeCarte(PLANS, PLAN_ORDER, 'artisan').limites.find((l) => l.cle === 'devis').valeur).toBe('Illimité');
+  });
+
+  it('la carte ne montre que les libellés qui ne disent pas une limite : pas de doublon « 5 devis par mois »', () => {
+    expect(contenuDeCarte(PLANS, PLAN_ORDER, 'gratuit').fonctions).toEqual([
+      'Factures sans limite', 'Signature en ligne des devis', 'Relances automatiques',
+      'Catalogue complet et bibliothèque : plus de 1 000 prestations chiffrées',
+    ]);
+    expect(contenuDeCarte(PLANS, PLAN_ORDER, 'artisan').fonctions).toEqual(['Tout le plan Gratuit, sans limite']);
+    expect(contenuDeCarte(PLANS, PLAN_ORDER, 'equipe').fonctions).toEqual(['Tout le plan Artisan']);
+  });
+
+  it('aucun libellé de PLANS n\'est perdu : une fonction de sa carte, ou une limite dite par une ligne du bloc à la valeur de `limits`', () => {
+    for (const id of PLAN_ORDER) {
+      const carte = contenuDeCarte(PLANS, PLAN_ORDER, id);
+      for (const { name } of PLANS[id].featureLabels.filter((f) => f.included)) {
+        if (!ditUneLimite(name)) {
+          expect(carte.fonctions, `${id} : ${name}`).toContain(name);
+          continue;
+        }
+        // Les lignes du bloc dont la ressource est nommée par le libellé ; l'une d'elles dit son chiffre, ou toutes « Illimité »
+        const lignes = LIMITES_AFFICHEES.filter((l) => l.mot.test(name)).map((l) => carte.limites.find((x) => x.cle === l.cle));
+        expect(lignes.length, `${id} : ${name}`).toBeGreaterThan(0);
+        if (/illimit/i.test(name)) {
+          expect(lignes.every((l) => l.valeur === 'Illimité'), `${id} : ${name}`).toBe(true);
+        } else {
+          const chiffres = name.match(/\d+/g) || [];
+          expect(lignes.some((l) => chiffres.every((c) => (l.valeur.match(/\d+/g) || []).includes(c))), `${id} : ${name}`).toBe(true);
+        }
+      }
+    }
+  });
+
+  it('fonctionsCommunes : les fonctions présentes dans tous les plans (le tableau les dit en une phrase)', () => {
+    expect(fonctionsCommunes(tableau)).toEqual(tableau.fonctions.map((f) => f.libelle));
+    const plans = {
+      a: { id: 'a', name: 'A', limits: {}, featureLabels: [{ name: 'Signature', included: true }] },
+      b: { id: 'b', name: 'B', limits: {}, featureLabels: [{ name: 'Pointage', included: true }, { name: 'Signature', included: true }] },
+    };
+    expect(fonctionsCommunes(lignesDeComparaison(plans, ['a', 'b']))).toEqual(['Signature']);
   });
 });

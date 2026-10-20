@@ -17,7 +17,8 @@ export default function FinalCta({ onSignup }) {
     // Couleur de fond = le haut du dégradé (blanc) : les contrastes se mesurent contre le plus clair et le plus foncé
     <section
       data-dernier-appel=""
-      className="relative overflow-hidden bg-white bg-gradient-to-b from-white to-marque-glacier-1 py-20 sm:py-28"
+      // Marge haute réduite : la FAQ (blanche) la précède, ses 96 px de bas suffisent (208 px de blanc avant)
+      className="relative overflow-hidden bg-white bg-gradient-to-b from-white to-marque-glacier-1 pb-20 pt-12 sm:pb-28 sm:pt-16"
     >
       {/* Pas de lueur orange ici : juste au-dessus du pied de page sombre, elle se lisait comme une tache ; le point
           orange de la dernière ligne suffit. Quadrillage net en bas, nul en haut : la section suit la FAQ (blanche)

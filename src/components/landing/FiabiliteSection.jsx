@@ -22,6 +22,7 @@ import EnTeteSection from './site/EnTeteSection';
 import Apparition from './site/Apparition';
 import PlanArchitecte from './site/PlanArchitecte';
 import useALEcran from './site/useALEcran';
+import { SANS_OBSERVATEUR, zoneObservee } from './site/observateur';
 
 /** Numéro de départ du registre (fictif, comme celui du devis vivant). */
 const PREMIER_NUMERO = 41;
@@ -70,8 +71,9 @@ function Registre({ actif }) {
 /** Le cadenas se ferme une fois, quand il arrive à l'écran ; fermé d'emblée en mouvement réduit. */
 function Cadenas({ reduit }) {
   const zone = useRef(null);
-  const vu = useInView(zone, { once: true, amount: 0.8 });
-  const ferme = reduit || vu || typeof IntersectionObserver === 'undefined';
+  // Sans observateur ou en mouvement réduit, rien n'est observé (site/observateur.js) : le cadenas est fermé d'emblée
+  const vu = useInView(zoneObservee(zone, { reduit }), { once: true, amount: 0.8 });
+  const ferme = reduit || vu || SANS_OBSERVATEUR;
   const Icone = ferme ? Lock : Unlock;
   return (
     <div ref={zone}>
@@ -113,6 +115,8 @@ function Encaissement({ actif, reduit }) {
   const part = reduit ? 1 : PALIERS[pas % PALIERS.length];
   const pleine = part >= 1;
   const payee = pleine && (reduit || soldee === facture);
+  // Le pourcentage écrit suit la pastille : pas de « 100 % » à côté de « Payée en partie » pendant le remplissage
+  const pourcentage = pleine && !payee ? PALIERS[PALIERS.length - 2] : part;
   const nouvelle = facture > 0;
   return (
     <motion.div
@@ -131,7 +135,7 @@ function Encaissement({ actif, reduit }) {
         >
           {payee ? 'Payée' : 'Payée en partie'}
         </span>
-        <span className="text-sm tabular-nums text-marque-acier">{`${Math.round(part * 100)}\u202f%`}</span>
+        <span className="text-sm tabular-nums text-marque-acier">{`${Math.round(pourcentage * 100)}\u202f%`}</span>
       </div>
       <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/[0.12]">
         <motion.div
@@ -157,14 +161,15 @@ function Encaissement({ actif, reduit }) {
 
 /** Les trois mentions s'ajoutent l'une après l'autre, une fois à l'écran ; présentes d'emblée en mouvement réduit. */
 function Mentions({ reduit }) {
-  const anime = !reduit && typeof IntersectionObserver !== 'undefined';
+  const anime = !reduit && !SANS_OBSERVATEUR;
   return (
     <ul data-mentions="" className="flex flex-col gap-1.5 text-sm text-marque-acier">
       {MENTIONS.map((mention, i) => (
         <motion.li
           key={mention}
           initial={anime ? { opacity: 0, x: -8 } : false}
-          whileInView={{ opacity: 1, x: 0 }}
+          // Pas d'observation quand rien ne s'anime (mouvement réduit, vieux navigateur)
+          whileInView={anime ? { opacity: 1, x: 0 } : undefined}
           viewport={{ once: true, amount: 1 }}
           transition={{ duration: 0.3, delay: 0.3 + i * 0.35 }}
           className="flex items-center gap-2"
@@ -191,13 +196,13 @@ function Garantie({ visuel, children }) {
 export default function FiabiliteSection() {
   const reduit = !!useReducedMotion();
   const grille = useRef(null);
-  const aLEcran = useALEcran(grille, 0.25);
+  const aLEcran = useALEcran(grille, 0.25, { observer: !reduit });
   const actif = !reduit && aLEcran;
 
   return (
     <SectionSite id="fiabilite" fond="nuit" decor={<PlanArchitecte ton="nuit" />}>
       <EnTeteSection titre="Une facture, ça ne se bricole pas." sombre>
-        Les règles importantes ne dépendent pas de l'écran : la base de données les fait respecter elle-même.
+        Les règles importantes ne dépendent pas de l’écran : la base de données les fait respecter elle-même.
       </EnTeteSection>
 
       <Apparition delai={0.1}>
@@ -207,10 +212,13 @@ export default function FiabiliteSection() {
             Une facture envoyée ne se supprime pas : on la corrige par un avoir
           </Garantie>
           <Garantie visuel={<Encaissement actif={actif} reduit={reduit} />}>
-            Une facture n'est « payée » que si les paiements la soldent
+            Une facture n’est « payée » que si les paiements la soldent
           </Garantie>
+          {/* Titre court du prototype validé ; la liste des mentions, déjà montrée par le visuel (masqué aux lecteurs
+              d'écran), reste dite en texte caché */}
           <Garantie visuel={<Mentions reduit={reduit} />}>
-            Assurance décennale, TVA réduite, pénalités de retard : les mentions s'ajoutent toutes seules
+            <span className="sr-only">Assurance décennale, TVA réduite, pénalités de retard : </span>
+            Les mentions du bâtiment s’ajoutent toutes seules
           </Garantie>
         </ul>
       </Apparition>

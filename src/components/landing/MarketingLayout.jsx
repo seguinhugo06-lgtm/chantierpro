@@ -8,8 +8,11 @@
 import { MotionConfig } from 'framer-motion';
 import LandingNav from './LandingNav';
 import FooterSection from './FooterSection';
+import useDefilementSousLaBarre from './site/useDefilementSousLaBarre';
 
 export default function MarketingLayout({ children }) {
+  // Un élément atteint au clavier n'est jamais amené sous la barre fixe
+  useDefilementSousLaBarre();
   // L'app ouvre directement le formulaire à ces adresses (avant : « /app », qui menait à l'accueil)
   const connexion = () => { window.location.href = '/connexion'; };
   const inscription = () => { window.location.href = '/inscription'; };

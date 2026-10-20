@@ -8,14 +8,14 @@ const { plansDuSite, charger } = require('../lib/plans.cjs');
 
 const json = (corps, status = 200) => ({ status, body: JSON.stringify(corps) });
 
-const TITRE = "L'administratif du chantier, rangé dans une mallette.";
+const TITRE = "L’administratif du chantier, rangé dans une mallette.";
 // Typographie fine du site (src/components/landing/site/typographie.js) : espace fine insécable avant « : »
 const TEXTE_HORS_ECRAN = 'Exemple\u202f: un devis de 7 lignes pour une mise aux normes de tableau électrique, signé en ligne, facturé puis payé.';
 const TEXTE_RELANCE = 'Relance du devis à J+7, au rythme que vous choisissez';
 
 // Textes exacts de la spec (sections 5 et 6)
 const ETAPES_DU_CYCLE = [
-  "Le chantier du jour, d'un coup d'œil",
+  "Le chantier du jour, d’un coup d’œil",
   'Le devis se monte par lots',
   'Signé, facturé, encaissé',
 ];
@@ -23,28 +23,30 @@ const LIENS_DU_CYCLE = ['/fonctionnalites/devis-factures', '/fonctionnalites/dev
 const GARANTIES = [
   'Des numéros qui se suivent, sans trou',
   'Une facture envoyée ne se supprime pas : on la corrige par un avoir',
-  'Une facture n\'est « payée » que si les paiements la soldent',
-  "Assurance décennale, TVA réduite, pénalités de retard : les mentions s'ajoutent toutes seules",
+  'Une facture n’est « payée » que si les paiements la soldent',
+  // Titre court du prototype validé (relecture DA-7), la liste des mentions en texte caché devant
+  'Assurance décennale, TVA réduite, pénalités de retard : Les mentions du bâtiment s’ajoutent toutes seules',
 ];
-const LEGENDE_CAPTURES = "Captures de l'application, données fictives.";
+const LEGENDE_CAPTURES = "Captures de l’application, données fictives.";
 
 // Textes exacts de la spec, section « Les fonctionnalités en action »
-const TITRE_FONCTIONNALITES = "Essayez, c'est l'application.";
-const INTRO_FONCTIONNALITES = "Des exemples à manipuler, sur des données fictives. Le document, le métré et les relances sortent du code même de l'application.";
-const ECHEC_MONTANTS_SIGNATURE = "Les montants n'ont pas pu être chargés. Rechargez la page pour les voir.";
+const TITRE_FONCTIONNALITES = "Essayez, c’est l’application.";
+const INTRO_FONCTIONNALITES = "Des exemples à manipuler, sur des données fictives. Le document, le métré et les relances sortent du code même de l’application.";
+const ECHEC_MONTANTS_SIGNATURE = "Les montants n’ont pas pu être chargés. Rechargez la page pour les voir.";
 const ONGLETS = ['Le document que reçoit votre client', 'Signature en ligne', 'Métré express', 'Relances', 'Encaissements'];
 const LEGENDES = {
   'Le document que reçoit votre client': 'Exemple fictif généré par Mallettico.',
   'Signature en ligne': 'Démonstration : votre signature ne quitte pas cette page.',
-  Relances: "Vous réglez les délais et les messages ; l'envoi automatique est une option.",
-  Encaissements: 'Une facture n\'est « payée » que si les paiements la soldent.',
+  Relances: "Vous réglez les délais et les messages ; l’envoi automatique est une option.",
+  // La règle « payée au solde » est le titre d'une carte de la fiabilité : la légende dit autre chose (relecture DA-7)
+  Encaissements: 'Démonstration : rien n’est encaissé pour de vrai ; le reste dû se recalcule à chaque paiement.',
 };
 const SIGNE_LE = /^Signé le \d{2}\/\d{2}\/\d{4} à \d{2}:\d{2}$/;
 const euros = (n) => NORMALISER(new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(n));
 const PANNEAU = '#fonctionnalites [role="tabpanel"]:not([hidden])';
 
 // Textes exacts de la spec, sections « Tarifs » et « Construit en public »
-const GARANTIE_FONDATEUR = "garanti tant que l'abonnement reste actif";
+const GARANTIE_FONDATEUR = "garanti tant que l’abonnement reste actif";
 const TEXTE_CONSTRUIT_EN_PUBLIC = 'Pas de faux avis ici. Les avis viendront des artisans qui utilisent Mallettico, avec leur accord.';
 const BOUTON_COMPARER = 'Comparer les plans en détail';
 // Franchise de TVA des abonnements (D-19) : la mention remplace « HT » partout ; texte de la décision, pas lu dans le code.
@@ -154,7 +156,7 @@ const lireFacture = (page) => page.evaluate((s) => {
     encaisse: Number(p?.querySelector('[data-encaisse]')?.getAttribute('data-encaisse')),
     resteTexte: p?.querySelector('[data-reste]')?.textContent || '',
     bouton: bouton?.innerText.trim() || '',
-    recommencer: [...(p?.querySelectorAll('button') || [])].some((b) => b.innerText.trim() === "Recommencer l'exemple"),
+    recommencer: [...(p?.querySelectorAll('button') || [])].some((b) => b.innerText.trim() === "Recommencer l’exemple"),
     barre: p?.querySelector('[data-barre-encaisse]')?.getBoundingClientRect().width ?? -1,
   };
 }, PANNEAU);
@@ -349,7 +351,8 @@ module.exports = [
         verifier(reduite && reduite.lignes >= 3 && reduite.vues === reduite.lignes, `mouvement réduit : toutes les lignes ${a} (${reduite?.vues}/${reduite?.lignes})`);
         verifier(reduite.pastille === 'Payée' && reduite.etat === 'payee', `mouvement réduit : « Payée » dès l'arrivée ${a} (« ${reduite.pastille} »)`);
         verifier(reduite.numero.includes('FAC-2026-00042') && reduite.montant > 0, `mouvement réduit : facture et total ${a} (${reduite.numero}, ${reduite.total})`);
-        verifier(reduite.relance === 'cachee' && reduite.encaisse === 'visible', `mouvement réduit : pas de bulle de relance du devis, encaissement affiché ${a}`);
+        // La bulle n'est pas rendue du tout (relecture DA-19 : invisible, elle gardait 40 px de vide sous la carte)
+        verifier(reduite.relance === '' && reduite.encaisse === 'visible', `mouvement réduit : pas de bulle de relance du devis, encaissement affiché ${a}`);
         await attendre(2000);
         verifier((await lireCarte(page)).etape === reduite.etape, `mouvement réduit : pas de boucle ${a}`);
         await capturer(page, RACINE, `premier-ecran-${largeur}-reduit`);
@@ -1098,12 +1101,17 @@ module.exports = [
         const frise = await page.evaluate((s) => [...document.querySelectorAll(`${s} [data-etape-relance]`)].map((e) => ({
           delai: e.querySelector('[data-delai]')?.textContent.trim() || '',
           nom: e.querySelector('[data-nom]')?.textContent.trim() || '',
-          objet: e.querySelector('[data-objet]')?.textContent.replace(/\s+/g, ' ').trim() || '',
+          phrase: e.querySelector('[data-phrase]')?.textContent.replace(/\s+/g, ' ').trim() || '',
           opacite: parseFloat(getComputedStyle(e).opacity),
         })), PANNEAU);
+        const objets = await page.evaluate((s) => [...document.querySelectorAll(`${s} [data-objet]`)].map((o) => o.textContent.replace(/\s+/g, ' ').trim()), PANNEAU);
         const jours = frise.map((e) => Number((/J\+(\d+)/.exec(e.delai) || [])[1]));
         verifier(frise.length >= 3 && jours.every((j, i) => j > 0 && (i === 0 || j > jours[i - 1])), `frise : au moins trois relances aux délais croissants ${a} (${frise.map((e) => e.delai).join(' | ')})`);
-        verifier(frise.every((e) => e.nom && e.objet.includes('Relance : Devis DEV-2026-00012')), `chaque relance a un nom et l'objet du message ${a} (${frise.map((e) => e.objet).join(' | ')})`);
+        // L'objet, le même pour les trois relances, est dit une fois en tête ; chaque étape montre la première phrase de
+        // son message (modèle de l'app rempli avec le devis fictif), toutes différentes (relecture DA-12)
+        verifier(objets.length === 1 && objets[0].includes('Relance : Devis DEV-2026-00012'), `l'objet des messages dit une fois ${a} (${objets.join(' | ')})`);
+        verifier(frise.every((e) => e.nom && e.phrase.includes('DEV-2026-00012') && e.phrase.includes('2 081,20 €')) && new Set(frise.map((e) => e.phrase)).size === frise.length,
+          `chaque relance a un nom et la première phrase de son message ${a} (${frise.map((e) => e.phrase).join(' | ')})`);
         verifier(frise.every((e) => e.opacite === 1), `toutes les étapes de la frise visibles après l'animation ${a}`);
         const traits = await page.evaluate((s) => {
           const etapes = [...document.querySelectorAll(`${s} ol > li`)];
@@ -1146,7 +1154,7 @@ module.exports = [
         verifier(legendeEncaissements === LEGENDES.Encaissements, `légende « ${LEGENDES.Encaissements} » ${a}`);
         await capturerSection(page, RACINE, '#fonctionnalites', `fonctionnalites-${largeur}-5-encaissements-payee`);
         // « Recommencer l'exemple » : retour à l'état de départ, sans que la barre reparte en arrière
-        await page.evaluate((s) => [...document.querySelectorAll(`${s} button`)].find((b) => b.innerText.trim() === "Recommencer l'exemple")?.click(), PANNEAU);
+        await page.evaluate((s) => [...document.querySelectorAll(`${s} button`)].find((b) => b.innerText.trim() === "Recommencer l’exemple")?.click(), PANNEAU);
         await attendre(60);
         const r1 = await lireFacture(page);
         await attendre(1000);
@@ -1187,9 +1195,11 @@ module.exports = [
 
         // ── Contrastes des textes clés (fond réellement peint derrière)
         await choisirOnglet(page, ONGLETS[0], attendre);
+        // Le titre affiché de l'onglet : celui de la spec au bureau, le titre court en dessous (relecture DA-8)
+        const titreOnglet = auBureau ? '[data-titre]' : '[data-titre-court]';
         const selecteurs = [
           '#fonctionnalites h2', '#fonctionnalites [data-intro]',
-          '#fonctionnalites [role="tab"][aria-selected="true"] [data-titre]', '#fonctionnalites [role="tab"][aria-selected="false"] [data-titre]',
+          `#fonctionnalites [role="tab"][aria-selected="true"] ${titreOnglet}`, `#fonctionnalites [role="tab"][aria-selected="false"] ${titreOnglet}`,
           `${PANNEAU} [data-legende]`, `${PANNEAU} [data-mention]`, '#fonctionnalites [data-cadre-titre]',
         ];
         if (auBureau) selecteurs.push('#fonctionnalites [role="tab"][aria-selected="false"] [data-phrase]', '#fonctionnalites [role="tab"][aria-selected="true"] [data-phrase]');
@@ -1197,7 +1207,7 @@ module.exports = [
           const c = await contrasteDe(page, s);
           verifier(c >= 4.5, `contraste de ${s} ≥ 4,5 ${a} (${c.toFixed(2)})`);
         }
-        for (const [onglet, s] of [['Signature en ligne', '[data-montant-devis]'], ['Métré express', '[data-montant]'], ['Métré express', 'label'], ['Relances', '[data-objet]'], ['Relances', '[data-delai]'], ['Encaissements', '[data-statut-facture]'], ['Encaissements', '[data-reste]']]) {
+        for (const [onglet, s] of [['Signature en ligne', '[data-montant-devis]'], ['Métré express', '[data-montant]'], ['Métré express', 'label'], ['Relances', '[data-objet]'], ['Relances', '[data-phrase]'], ['Relances', '[data-delai]'], ['Encaissements', '[data-statut-facture]'], ['Encaissements', '[data-reste]']]) {
           await choisirOnglet(page, onglet, attendre);
           const c = await contrasteDe(page, `${PANNEAU} ${s}`);
           verifier(c >= 4.5, `contraste de ${s} (${onglet}) ≥ 4,5 ${a} (${c.toFixed(2)})`);
@@ -1242,18 +1252,20 @@ module.exports = [
     reel: true,
     async executer({ ouvrir, cliquer, attendre, verifier, RACINE }) {
       const { PLANS, PLAN_ORDER, MENTION_TVA_ABONNEMENT } = plansDuSite(RACINE);
+      // La règle qui sépare une limite d'une fonction (celle du tableau et des cartes), lue dans le module du site
+      const { ditUneLimite, LIMITES_AFFICHEES } = charger(RACINE, 'src', 'components', 'landing', 'comparaisonPlans.js');
       // Un prix de PLANS au format français, sans centimes inutiles : « 0 € », « 9,90 € », « 99 € »
       const prix = (n) => (Number.isInteger(n) ? `${n} €` : euros(n));
       const prixDuPlan = (id) => prix(PLANS[id].priceMonthly);
       const plansALAnnee = PLAN_ORDER.filter((id) => PLANS[id].priceYearly > 0);
-      const texteAnnuel = `Aussi à l'année : ${plansALAnnee.map((id) => `${prix(PLANS[id].priceYearly)} pour ${PLANS[id].name}`).join(', ')}. ${MENTION_TVA}.`;
+      const texteAnnuel = `Aussi à l’année : ${plansALAnnee.map((id) => `${prix(PLANS[id].priceYearly)} pour ${PLANS[id].name}`).join(', ')}. ${MENTION_TVA}.`;
       verifier(
         JSON.stringify(PLAN_ORDER.map(prixDuPlan)) === JSON.stringify(['0 €', '9,90 €', '19,90 €']),
         `les prix de PLANS au format de la spec (${PLAN_ORDER.map(prixDuPlan).join(' | ')})`,
       );
       verifier(MENTION_TVA_ABONNEMENT === MENTION_TVA, `la mention de l'outil de prix est celle de D-19 (« ${MENTION_TVA_ABONNEMENT} »)`);
       verifier(
-        texteAnnuel === `Aussi à l'année : 99 € pour Artisan, 199 € pour Équipe. ${MENTION_TVA}.`,
+        texteAnnuel === `Aussi à l’année : 99 € pour Artisan, 199 € pour Équipe. ${MENTION_TVA}.`,
         `la ligne de l'offre annuelle lue dans PLANS (« ${texteAnnuel} »)`,
       );
       const tousLesLibelles = [...new Set(PLAN_ORDER.flatMap((id) => PLANS[id].featureLabels.map((f) => f.name)))];
@@ -1267,6 +1279,12 @@ module.exports = [
           prix: c.querySelector('[data-prix]')?.textContent.replace(/\s+/g, ' ').trim() || '',
           unite: c.querySelector('[data-unite]')?.textContent.replace(/\s+/g, ' ').trim() || '',
           libelles: [...c.querySelectorAll('li')].map((li) => li.textContent.replace(/\s+/g, ' ').trim()),
+          // Le bloc des limites (relecture DA-1) : libellé et valeur de chaque ligne
+          limites: [...c.querySelectorAll('[data-limites] [data-limite]')].map((l) => ({
+            cle: l.getAttribute('data-limite'),
+            libelle: l.querySelector('dt')?.textContent.trim() || '',
+            valeur: l.querySelector('dd')?.textContent.replace(/\s+/g, ' ').trim() || '',
+          })),
           fondateur: c.querySelector('[data-fondateur]')?.textContent.replace(/\s+/g, ' ').trim() || '',
           sansLimite: c.querySelector('[data-sans-limite]')?.textContent.replace(/\s+/g, ' ').trim() || '',
           badge: c.querySelector('[data-badge]')?.textContent.replace(/\s+/g, ' ').trim() || '',
@@ -1296,6 +1314,7 @@ module.exports = [
             cellules: [...el.querySelectorAll('[data-case]')].map((c) => ({ plan: c.getAttribute('data-plan-nom'), texte: norm(c.textContent), inclus: c.getAttribute('data-inclus') })),
           })),
           note: norm(document.querySelector('#pricing [data-note-tableau]')?.textContent),
+          communes: norm(document.querySelector('#pricing [data-communes]')?.textContent),
         };
       });
 
@@ -1327,10 +1346,25 @@ module.exports = [
           verifier(carte.nom === plan.name, `plan ${plan.name} : son nom ${a} (« ${carte.nom} »)`);
           verifier(carte.prix === prixDuPlan(carte.id), `plan ${plan.name} : prix mensuel « ${prixDuPlan(carte.id)} » ${a} (« ${carte.prix} »)`);
           verifier(carte.unite === 'par mois', `plan ${plan.name} : « par mois », jamais « HT » ${a} (« ${carte.unite} »)`);
-          verifier(
-            JSON.stringify(carte.libelles) === JSON.stringify(plan.featureLabels.map((f) => f.name)),
-            `plan ${plan.name} : exactement les featureLabels de PLANS, sans rien ajouter ni retirer ${a} (${carte.libelles.join(' | ')})`,
-          );
+          // Le même bloc des cinq limites dans chaque carte, aux valeurs de `limits` (relecture DA-1)
+          const attenduesLimites = LIMITES_DU_TABLEAU.map(([cle, nom]) => ({ cle, libelle: nom, valeur: valeurDeLimite(cle, plan.limits[cle] ?? -1) }));
+          verifier(JSON.stringify(carte.limites) === JSON.stringify(attenduesLimites),
+            `plan ${plan.name} : le bloc des cinq limites, valeurs de limits ${a} (${carte.limites.map((l) => `${l.libelle} ${l.valeur}`).join(' | ')})`);
+          // Puis exactement les libellés de featureLabels qui ne disent pas une limite, dans l'ordre, sans rien ajouter
+          const fonctionsAttendues = plan.featureLabels.filter((f) => f.included && !ditUneLimite(f.name)).map((f) => NORMALISER(f.name));
+          verifier(JSON.stringify(carte.libelles.map(NORMALISER)) === JSON.stringify(fonctionsAttendues),
+            `plan ${plan.name} : les fonctions de featureLabels, sans doublon des limites ni rien d'ajouté ${a} (${carte.libelles.join(' | ')})`);
+          // Chaque libellé de PLANS est dit quelque part dans la carte : tel quel, ou par sa ligne de limite (son chiffre, ou
+          // « Illimité » partout pour un libellé « illimités »)
+          const nonDits = plan.featureLabels.filter((f) => f.included).map((f) => f.name).filter((nom) => {
+            if (!ditUneLimite(nom)) return !carte.libelles.map(NORMALISER).includes(NORMALISER(nom));
+            const lignes = LIMITES_AFFICHEES.filter((l) => l.mot.test(nom)).map((l) => carte.limites.find((x) => x.cle === l.cle));
+            if (!lignes.length || lignes.some((l) => !l)) return true;
+            if (/illimit/i.test(nom)) return !lignes.every((l) => l.valeur === 'Illimité');
+            const chiffres = nom.match(/\d+/g) || [];
+            return !lignes.some((l) => chiffres.every((c) => (l.valeur.match(/\d+/g) || []).includes(c)));
+          });
+          verifier(nonDits.length === 0, `plan ${plan.name} : chaque libellé de PLANS est dit dans la carte ou son bloc de limites ${a} (${nonDits.join(' | ')})`);
           if (plan.offreLancement) {
             verifier(carte.fondateur.includes(plan.offreLancement) && carte.fondateur.includes(GARANTIE_FONDATEUR), `plan ${plan.name} : « ${plan.offreLancement} … ${GARANTIE_FONDATEUR} » ${a} (« ${carte.fondateur} »)`);
           } else {
@@ -1339,9 +1373,11 @@ module.exports = [
           }
           verifier(carte.hauteurBouton >= 44, `plan ${plan.name} : bouton d'au moins 44 px ${a} (${carte.hauteurBouton})`);
         }
+        const equipeCarte = cartes.find((c) => c.id === 'equipe');
         verifier(
-          JSON.stringify(cartes.find((c) => c.id === 'equipe').libelles) === JSON.stringify(['Tout le plan Artisan', 'Vous + 10 collaborateurs, chacun avec son rôle']),
-          `plan Équipe : ni rôles ni pointage réservés, un seul libellé de collaborateurs ${a}`,
+          JSON.stringify(equipeCarte.libelles) === JSON.stringify(['Tout le plan Artisan'])
+            && equipeCarte.limites.find((l) => l.cle === 'equipe')?.valeur === `Vous + ${PLANS.equipe.limits.equipe}`,
+          `plan Équipe : ni rôles ni pointage réservés, les collaborateurs dits par la ligne de limite ${a} (${equipeCarte.libelles.join(' | ')})`,
         );
         verifier(cartes.find((c) => c.id === 'artisan').badge === PLANS.artisan.badge, `plan Artisan : pastille « ${PLANS.artisan.badge} » lue dans PLANS ${a} (« ${cartes.find((c) => c.id === 'artisan').badge} »)`);
         verifier(cartes.filter((c) => c.badge).length === 1, `une seule carte mise en avant ${a}`);
@@ -1351,7 +1387,8 @@ module.exports = [
         // Rien de l'ancienne grille en dur, aucune affirmation sans source
         const texte = NORMALISER(await page.evaluate(() => document.querySelector('#pricing').textContent));
         const absents = ['Factur-X', "Piste d'audit", "Journal d'audit", 'Support prioritaire', 'Planning basique', '30 articles', 'Trésorerie avancée', 'Sous-traitants', 'Gestion des congés', 'populaire', 'recommandé', 'meilleur choix', 'économisez', '−17', '-17', 'mois offerts', 'remise', 'Pointage', 'Rôles et accès', 'hors taxes'];
-        const presents = absents.filter((t) => texte.toLowerCase().includes(t.toLowerCase()));
+        // Apostrophes ramenées à la droite : un texte retiré revenu avec l'apostrophe typographique est trouvé aussi
+        const presents = absents.filter((t) => texte.toLowerCase().replace(/’/g, "'").includes(t.toLowerCase()));
         verifier(presents.length === 0, `#pricing : aucun texte de l'ancienne grille ni affirmation sans source ${a} (${presents.join(', ')})`);
         verifier(!/\bHT\b/.test(texte), `#pricing : aucun « HT » (abonnements en franchise de TVA, D-19) ${a}`);
         const textes = await page.evaluate(() => ({
@@ -1392,7 +1429,9 @@ module.exports = [
         verifier(tableau.visible, `la comparaison des plans est visible ${a}`);
         verifier(tableau.rendu === (largeur >= 640 ? 'tableau' : 'liste'), `comparaison : un tableau dès 640 px, une liste sur téléphone ${a} (${tableau.rendu})`);
         verifier(JSON.stringify(tableau.entetes) === JSON.stringify(PLAN_ORDER.map((id) => PLANS[id].name)), `comparaison : une colonne ou une case par plan, dans l'ordre ${a} (${tableau.entetes.join(' | ')})`);
-        verifier(JSON.stringify(tableau.groupes.map((g) => g.toLowerCase())) === JSON.stringify(['limites', 'fonctions']), `comparaison : deux groupes, limites puis fonctions ${a} (${tableau.groupes.join(' | ')})`);
+        // Avec les plans d'aujourd'hui, toutes les fonctions sont dans tous les plans : elles ne font pas de lignes (elles
+        // ne comparent rien), le tableau n'a que le groupe des limites (relecture DA-16)
+        verifier(JSON.stringify(tableau.groupes.map((g) => g.toLowerCase())) === JSON.stringify(['limites']), `comparaison : le seul groupe des limites ${a} (${tableau.groupes.join(' | ')})`);
         verifier(tableau.lignes.every((l) => JSON.stringify(l.cellules.map((c) => c.plan)) === JSON.stringify(PLAN_ORDER.map((id) => PLANS[id].name))), `comparaison : chaque ligne a une case par plan, dans l'ordre ${a}`);
 
         // Limites : les valeurs de `limits` de PLANS
@@ -1407,18 +1446,17 @@ module.exports = [
           verifier(ligne && JSON.stringify(ligne.cellules.map((c) => c.texte)) === JSON.stringify(attendu), `tableau : ${nom} = ${attendu.join(' | ')} (limits de PLANS) ${a} (${ligne?.cellules.map((c) => c.texte).join(' | ')})`);
         }
 
-        // Fonctions : uniquement des libellés de featureLabels ; chacun inclus à partir du plan qui l'annonce
+        // Fonctions : une ligne seulement pour une fonction qui distingue les plans (aucune aujourd'hui) ; celles de tous
+        // les plans sont dites sous le tableau, « Dans tous les plans : … », lues dans PLANS
         const fonctions = tableau.lignes.filter((l) => l.groupe === 'Fonctions');
-        verifier(fonctions.length > 0 && fonctions.every((l) => tousLesLibelles.includes(l.libelle)), `tableau : chaque fonction est un libellé de PLANS ${a} (${fonctions.map((l) => l.libelle).filter((x) => !tousLesLibelles.includes(x)).join(' | ')})`);
-        const premierPlan = (libelle) => PLAN_ORDER.findIndex((id) => PLANS[id].featureLabels.some((f) => f.name === libelle));
-        const fautes = fonctions.filter((l) => l.cellules.map((c) => c.inclus).join() !== PLAN_ORDER.map((_, j) => (j >= premierPlan(l.libelle) ? 'oui' : 'non')).join());
-        verifier(fautes.length === 0, `tableau : chaque fonction est incluse à partir du plan qui l'annonce ${a} (${fautes.map((l) => l.libelle).join(' | ')})`);
-        // Aucun libellé de PLANS ne manque : il est une ligne du tableau, une limite, ou « Tout le plan … »
-        const comptes = (libelle) => /^Tout le plan /.test(libelle) || /^(Vous \+ )?\d+ /.test(libelle) || /illimit/i.test(libelle);
-        const manquants = tousLesLibelles.filter((l) => !comptes(l) && !fonctions.some((f) => f.libelle === l));
+        verifier(fonctions.length === 0, `comparaison : aucune ligne de fonction (aucune n'est réservée à un plan, D-29) ${a} (${fonctions.map((l) => l.libelle).join(' | ')})`);
+        const communes = tousLesLibelles.filter((l) => !ditUneLimite(l) && !/^Tout le plan /.test(l));
+        verifier(tableau.communes.startsWith('Dans tous les plans') && communes.every((l) => tableau.communes.includes(NORMALISER(l))),
+          `comparaison : « Dans tous les plans : … » dit chaque fonction de PLANS ${a} (« ${tableau.communes} »)`);
+        // Aucun libellé de PLANS ne manque : il est une limite (ligne du tableau), « Tout le plan … », ou dans tous les plans
+        const manquants = tousLesLibelles.filter((l) => !ditUneLimite(l) && !/^Tout le plan /.test(l) && !tableau.communes.includes(NORMALISER(l)));
         verifier(manquants.length === 0, `tableau : aucune fonction de PLANS oubliée ${a} (${manquants.join(' | ')})`);
-        verifier(fonctions.length === 4 && fonctions.every((l) => l.cellules.every((c) => c.inclus === 'oui' && c.texte === 'Inclus')), `comparaison : aucune fonction réservée à un plan, toutes « Inclus » en texte ${a} (${fonctions.map((l) => l.libelle).join(' | ')})`);
-        verifier(tableau.note === "Les limites sont celles que l'application applique aujourd'hui.", `comparaison : la note ne parle plus de tiret ${a} (« ${tableau.note} »)`);
+        verifier(tableau.note === "Les limites sont celles que l’application applique aujourd’hui.", `comparaison : la note ne parle plus de tiret ${a} (« ${tableau.note} »)`);
         const equipe = limites.find((l) => l.libelle === 'Collaborateurs');
         verifier(JSON.stringify(equipe.cellules.map((c) => c.texte)) === JSON.stringify(['Vous + 1', 'Vous + 1', 'Vous + 10']), `comparaison : la ligne d'équipe reste une limite ${a}`);
 
@@ -1515,7 +1553,7 @@ module.exports = [
         verifier(public_.cartes[0].texte.includes('bouton de retours') && !public_.cartes[0].texte.includes('Un bug ? Une idée ?'), `#early-adopters : « le bouton de retours », pas le libellé qui n'est qu'une icône entre 768 et 1279 px ${a} (« ${public_.cartes[0].texte} »)`);
         verifier(public_.cartes[2].complet.includes(MENTION_TVA) && !/\bHT\b/.test(public_.texteComplet), `#early-adopters : la mention de franchise de TVA, aucun « HT » ${a}`);
         verifier(public_.cartes[2].complet.includes(`Artisan ${prixDuPlan('artisan')} par mois`) && public_.cartes[2].complet.includes(`Équipe ${prixDuPlan('equipe')} par mois`), `#early-adopters : les prix du tarif fondateur lus dans PLANS ${a}`);
-        const enTrop = ['Réponse rapide', "file d'attente", 'Zéro risque', 'premiers artisans', "n'augmentera pas", 'logiciel établi', 'maintenant'].filter((t) => public_.texteComplet.includes(t));
+        const enTrop = ['Réponse rapide', "file d'attente", 'Zéro risque', 'premiers artisans', "n'augmentera pas", 'logiciel établi', 'maintenant'].filter((t) => public_.texteComplet.replace(/’/g, "'").includes(t));
         verifier(enTrop.length === 0, `#early-adopters : aucune affirmation sans source de l'ancienne version ${a} (${enTrop.join(', ')})`);
         verifier(public_.bouton.startsWith('Créer mon compte gratuit') && public_.fond === 'rgb(18, 51, 111)' && public_.couleur === 'rgb(255, 255, 255)', `#early-adopters : pilule nuit-2 à texte blanc, plus de bouton noir ${a} (« ${public_.bouton} », ${public_.fond}, ${public_.couleur})`);
         verifier(public_.hauteur >= 44, `#early-adopters : bouton d'au moins 44 px ${a} (${public_.hauteur})`);
@@ -1670,6 +1708,26 @@ module.exports = [
         verifier(JSON.stringify(faq.questions) === JSON.stringify(questions.map((q) => q.q)), `#faq : les questions de faq.js, dans l'ordre ${a} (${faq.questions.length})`);
         verifier(faq.fermees && faq.liees, `#faq : questions fermées à l'arrivée, chacune liée à sa réponse (aria-controls) ${a}`);
         verifier(faq.jsonLd === questions.length, `#faq : données structurées FAQPage, une entrée par question ${a} (${faq.jsonLd})`);
+
+        // Sous 1024 px : six questions, puis « Voir les N autres questions » (N compté dans faq.js) ; le bouton dit
+        // aria-expanded, et à l'ouverture le focus va à la septième question (relecture DA-15)
+        if (largeur < 1024) {
+          const replie = await page.evaluate(() => {
+            const visibles = [...document.querySelectorAll('#faq [data-question]')].filter((b) => b.getClientRects().length > 0);
+            const bouton = document.querySelector('#faq [data-voir-autres]');
+            return { visibles: visibles.length, texte: bouton?.innerText.trim() || '', etendu: bouton?.getAttribute('aria-expanded'), liste: !!document.getElementById(bouton?.getAttribute('aria-controls') || '-'), hauteur: bouton?.getBoundingClientRect().height || 0 };
+          });
+          verifier(replie.visibles === 6 && replie.texte === `Voir les ${questions.length - 6} autres questions` && replie.etendu === 'false' && replie.liste && replie.hauteur >= 44,
+            `#faq : six questions, puis « Voir les ${questions.length - 6} autres questions » ${a} (${JSON.stringify(replie)})`);
+          await page.click('#faq [data-voir-autres]');
+          await attendre(400);
+          const deplie = await page.evaluate((septieme) => ({
+            visibles: [...document.querySelectorAll('#faq [data-question]')].filter((b) => b.getClientRects().length > 0).length,
+            focus: document.activeElement?.hasAttribute('data-question') ? document.activeElement.textContent.trim() : document.activeElement?.tagName,
+            attendu: septieme,
+          }), questions[6].q);
+          verifier(deplie.visibles === questions.length && deplie.focus === deplie.attendu, `#faq : toutes les questions, le focus sur la septième ${a} (${JSON.stringify(deplie)})`);
+        }
 
         // Ouvrir « Puis-je essayer avant de payer ? » : la réponse est lue dans faq.js (limites et prix de PLANS)
         const essai = questions.find((q) => q.q.startsWith('Puis-je essayer'));
@@ -1844,7 +1902,8 @@ module.exports = [
               texte: document.body.innerText,
               // Typographie fine (src/components/landing/site/typographie.js) : espace fine insécable dans les « » et
               // avant ; : ? ! %, jamais une espace ordinaire ou insécable à ces places
-              typographie: [/«(?! )/g, /(?<! )»/g, /[  ]([;:?!%])(?=$|[\s"'’)\],.…»])/gm]
+              // (et apostrophe typographique entre deux lettres, « 1ᵉʳ » : relecture DA-17)
+              typographie: [/«(?!\u202f)/g, /(?<!\u202f)»/g, /[ \u00a0]([;:?!%])(?=$|[\s"'\u2019)\],.…»])/gm, /\p{L}'(?=\p{L})/gu, /(?<![\d\p{L}])1er(?![\p{L}\d])/gu]
                 .flatMap((m) => [...document.querySelector('main').innerText.matchAll(m)].map((x) => x.input.slice(Math.max(0, x.index - 25), x.index + 5))),
               oranges: [...document.querySelectorAll('main *, footer *')]
                 .filter((el) => [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim()))
@@ -1918,6 +1977,53 @@ module.exports = [
         }));
         verifier(opacites.length > 3 && opacites.every((o) => o === 1), `/fonctionnalites, mouvement réduit : titres opaques d'emblée ${a}`);
         await reduit.browser.close();
+      }
+    },
+  },
+  {
+    // Vieux navigateur sans IntersectionObserver (relecture du code de la manche A : `useInView` en créait un sans garde,
+    // « IntersectionObserver is not a constructor », /fonctionnalites et /ressources s'affichaient vides) : l'accueil et
+    // les sous-pages montrent tout leur contenu, opaque, sans erreur JavaScript.
+    nom: 'site : vieux navigateur sans IntersectionObserver',
+    reel: true,
+    async executer({ ouvrir, attendre, verifier }) {
+      const sansObservateur = () => {
+        delete window.IntersectionObserver;
+        delete window.IntersectionObserverEntry;
+      };
+      for (const chemin of ['/', '/fonctionnalites', '/ressources']) {
+        for (const largeur of [375, 1440]) {
+          const ou = `${chemin} à ${largeur} px`;
+          const { page, browser, erreurs } = await ouvrir({ reel: true, largeur, chemin, supabase: () => json([]), avantChargement: sansObservateur });
+          await attendre(1500);
+          await page.evaluate(async () => {
+            for (let y = 0; y < document.body.scrollHeight; y += Math.round(innerHeight * 0.8)) {
+              window.scrollTo(0, y);
+              await new Promise((r) => setTimeout(r, 80));
+            }
+            window.scrollTo(0, 0);
+          });
+          await attendre(800);
+          const etat = await page.evaluate(() => {
+            const opacite = (el) => { let o = 1; for (let n = el; n; n = n.parentElement) o *= parseFloat(getComputedStyle(n).opacity); return o; };
+            const titres = [...document.querySelectorAll('main h1, main h2, main h3')].filter((t) => t.getClientRects().length > 0);
+            return {
+              observateur: typeof window.IntersectionObserver,
+              h1: document.querySelector('h1')?.textContent.trim() || '',
+              texte: document.querySelector('main')?.innerText.length || 0,
+              titres: titres.length,
+              transparents: titres.filter((t) => opacite(t) < 1).map((t) => t.textContent.trim().slice(0, 30)),
+              images: [...document.querySelectorAll('main img')].filter((i) => i.getClientRects().length > 0).length,
+              pied: !!document.querySelector('footer') && document.querySelector('footer').textContent.includes('Mentions légales'),
+            };
+          });
+          verifier(etat.observateur === 'undefined', `${ou} : IntersectionObserver retiré pour l'essai (${etat.observateur})`);
+          verifier(etat.h1.length > 0 && etat.texte > 600 && etat.titres > 3 && etat.pied && (chemin === '/' || etat.images > 0),
+            `${ou} : le contenu s'affiche (${JSON.stringify({ ...etat, transparents: undefined })})`);
+          verifier(etat.transparents.length === 0, `${ou} : aucun titre transparent (${etat.transparents.join(' | ')})`);
+          verifier(erreurs.length === 0, `${ou} : aucune erreur JavaScript (${erreurs[0] || ''})`);
+          await browser.close();
+        }
       }
     },
   },

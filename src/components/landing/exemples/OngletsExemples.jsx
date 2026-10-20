@@ -21,6 +21,7 @@ import ExempleSignature from './ExempleSignature';
 import ExempleMetre from './ExempleMetre';
 import ExempleRelances from './ExempleRelances';
 import ExempleEncaissements from './ExempleEncaissements';
+import { FOCUS_INTERIEUR, FOCUS_SUR_GLACIER } from '../site/focus';
 
 const ICONES = { document: FileText, signature: PenLine, metre: Ruler, relances: BellRing, encaissements: Wallet };
 const EXEMPLES = {
@@ -51,7 +52,7 @@ function Onglet({ onglet, choisi, refBouton, onChoisir }) {
       tabIndex={choisi ? 0 : -1}
       data-onglet={onglet.id}
       onClick={() => onChoisir(onglet.id)}
-      className={`relative flex min-h-[44px] shrink-0 snap-start items-center gap-2 rounded-full border px-4 text-left text-sm font-semibold transition-[color,background-color,border-color,box-shadow] duration-150 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-marque-nuit-2 focus-visible:ring-offset-2 focus-visible:ring-offset-marque-glacier-1 lg:w-full lg:shrink lg:gap-3.5 lg:rounded-2xl lg:py-3.5 lg:pl-5 lg:pr-4 lg:text-base ${
+      className={`relative flex min-h-[44px] shrink-0 snap-start items-center gap-2 rounded-full border px-4 text-left text-sm font-semibold transition-[color,background-color,border-color,box-shadow] duration-150 motion-reduce:transition-none ${FOCUS_SUR_GLACIER} lg:w-full lg:shrink lg:gap-3.5 lg:rounded-2xl lg:py-3.5 lg:pl-5 lg:pr-4 lg:text-base ${
         choisi
           ? 'border-marque-nuit-2 bg-marque-nuit-2 text-white shadow-[0_8px_18px_-10px_rgba(13,46,108,0.7)] lg:border-marque-acier/70 lg:bg-white lg:text-marque-nuit lg:shadow-[0_18px_40px_-28px_rgba(13,46,108,0.55)]'
           : 'border-marque-acier bg-white text-marque-ardoise hover:border-marque-nuit-2/60 hover:text-marque-nuit lg:border-transparent lg:bg-transparent lg:text-slate-800 lg:hover:border-marque-acier/60 lg:hover:bg-white/70'
@@ -67,8 +68,13 @@ function Onglet({ onglet, choisi, refBouton, onChoisir }) {
         <Icone size={18} strokeWidth={2} className="h-4 w-4 lg:h-5 lg:w-5" />
       </span>
       <span className="min-w-0">
-        <span data-titre="" className="block whitespace-nowrap leading-snug lg:whitespace-normal">
+        {/* Sous 1024 px, le titre court (trois onglets tiennent dans un téléphone) ; au bureau, le titre de la spec.
+            `data-titre` garde le titre de la spec (lu par le parcours, même caché). */}
+        <span data-titre="" className="hidden leading-snug lg:block">
           {onglet.titre}
+        </span>
+        <span data-titre-court="" className="block whitespace-nowrap leading-snug lg:hidden">
+          {onglet.titreCourt}
         </span>
         <span data-phrase="" className="mt-0.5 hidden text-sm font-normal leading-snug text-slate-600 lg:block">
           {onglet.phrase}
@@ -119,7 +125,8 @@ export default function OngletsExemples() {
         role="tablist"
         aria-label="Fonctionnalités à essayer"
         onKeyDown={auClavier}
-        className="-mx-4 flex snap-x scroll-px-4 gap-2 overflow-x-auto px-4 py-1 scrollbar-hide sm:-mx-6 sm:scroll-px-6 sm:px-6 lg:mx-0 lg:flex-col lg:gap-1.5 lg:overflow-visible lg:px-0"
+        // Sous 1024 px, un fondu au bord droit dit que la rangée continue (les onglets suivants défilent)
+        className="-mx-4 flex snap-x scroll-px-4 gap-2 overflow-x-auto px-4 py-1 scrollbar-hide [mask-image:linear-gradient(to_right,#000_85%,transparent)] sm:-mx-6 sm:scroll-px-6 sm:px-6 lg:mx-0 lg:flex-col lg:gap-1.5 lg:overflow-visible lg:px-0 lg:[mask-image:none]"
       >
         {ONGLETS.map((onglet) => (
           <Onglet
@@ -163,7 +170,7 @@ export default function OngletsExemples() {
                 aria-labelledby={`onglet-${onglet.id}`}
                 hidden={!visible}
                 tabIndex={0}
-                className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-marque-nuit-2"
+                className={FOCUS_INTERIEUR}
               >
                 {/* Au bureau, les cinq exemples ont la même hauteur (celle du plus haut : le document, et la facture
                     soldée) : le cadre ne change pas d'un onglet à l'autre ; chacun occupe la place (`flex-1`). */}

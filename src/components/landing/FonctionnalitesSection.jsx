@@ -35,7 +35,7 @@ function Attente({ echec }) {
         <div aria-hidden="true" className="h-11 border-b border-marque-acier/60 bg-marque-glacier-1" />
         {echec ? (
           <p data-fonctionnalites-echec="" className="flex min-h-[46rem] items-center justify-center px-6 text-center text-base text-marque-ardoise lg:min-h-[40rem]">
-            Les exemples n'ont pas pu être chargés. Rechargez la page pour les essayer.
+            Les exemples n’ont pas pu être chargés. Rechargez la page pour les essayer.
           </p>
         ) : (
           <div aria-hidden="true" className="min-h-[46rem] lg:min-h-[40rem]" />
@@ -85,9 +85,9 @@ export default function FonctionnalitesSection() {
 
   return (
     <SectionSite id="fonctionnalites" fond="glacier" decor={<PlanArchitecte ton="glacier" />}>
-      <EnTeteSection titre="Essayez, c'est l'application.">
+      <EnTeteSection titre="Essayez, c’est l’application.">
         Des exemples à manipuler, sur des données fictives. Le document, le métré et les relances sortent du code même
-        de l'application.
+        de l’application.
       </EnTeteSection>
       <div ref={zone} className="mt-10">
         {Onglets ? <Onglets /> : <Attente echec={echec} />}

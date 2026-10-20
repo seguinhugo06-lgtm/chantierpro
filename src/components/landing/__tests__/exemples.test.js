@@ -6,6 +6,7 @@ import { buildDevisHtml } from '../../../lib/devisHtmlBuilder.js';
 import { calculerTotaux } from '../../../lib/totauxDocument.js';
 import { DEFAULT_DEVIS_STEPS } from '../../../lib/scenariosRelance.js';
 import { objetDeRelance } from '../../../lib/objetRelance.js';
+import { resolveVariables } from '../../../lib/relanceUtils.js';
 import { DEFAULT_DEVIS_STEPS as SCENARIO_DES_REGLAGES } from '../../settings/RelanceConfigTab.jsx';
 import { NUMERO_DEVIS, lotDemonstration } from '../devisVivantEtapes.js';
 import { ENTREPRISE_FICTIVE, CLIENT_FICTIF, FACTURE_FICTIVE, PAS_ENCAISSEMENT_CENTIMES } from '../exemples/donneesFictives.js';
@@ -21,6 +22,7 @@ import {
   ligneDuMetre,
   montantDuMetre,
   friseDesRelances,
+  premierePhraseDuMessage,
   paiementsDeDepart,
   etatDesEncaissements,
   encaisser,
@@ -201,6 +203,33 @@ describe('relances : le scénario de devis proposé par l’app', () => {
     // La fonction du moteur de relances de l'app, pas une copie
     const doc = { numero: NUMERO_DEVIS, type: 'devis', statut: 'envoye' };
     expect(frise.map((e) => e.objet)).toEqual(actives.map((e) => objetDeRelance(e, doc, CLIENT_FICTIF, ENTREPRISE_FICTIVE)));
+  });
+
+  it('la première phrase de chaque message est le modèle de l’app rempli par sa fonction (rien de recopié, relecture DA-12)', () => {
+    const montant = montantDuDevis(lotDemonstration(TRADE_LIBRARY));
+    const avecMontant = friseDesRelances(DEFAULT_DEVIS_STEPS, NUMERO_DEVIS, montant);
+    const doc = { numero: NUMERO_DEVIS, type: 'devis', statut: 'envoye', total_ttc: montant };
+    expect(avecMontant.map((e) => e.phrase)).toEqual(
+      actives.map((e) => premierePhraseDuMessage(resolveVariables(e.template, doc, CLIENT_FICTIF, ENTREPRISE_FICTIVE))),
+    );
+    // Chaque phrase cite le devis et son montant (2 081,20 € pour le lot du tableau), trois phrases différentes
+    for (const e of avecMontant) {
+      expect(e.phrase).toContain(NUMERO_DEVIS);
+      expect(e.phrase.replace(/[\s  ]/g, '')).toContain('2081,20');
+      expect(e.phrase).not.toMatch(/\{\{|Bonjour/);
+    }
+    expect(new Set(avecMontant.map((e) => e.phrase)).size).toBe(avecMontant.length);
+    // Sans montant (bibliothèque pas encore là), pas de phrase : jamais « 0,00 € »
+    expect(frise.every((e) => e.phrase === null)).toBe(true);
+    // Le texte n'est écrit dans aucun fichier du site
+    const source = ['../exemples/ExempleRelances.jsx', '../exemples/exemples.js']
+      .map((f) => fs.readFileSync(fileURLToPath(new URL(f, import.meta.url)), 'utf8')).join('\n');
+    expect(source).not.toMatch(/Je reviens vers vous|Je me permets de revenir|Je vous contacte une dernière fois/);
+  });
+
+  it('premierePhraseDuMessage : le paragraphe après la salutation, jusqu’au premier point', () => {
+    expect(premierePhraseDuMessage('Bonjour M. Martin,\n\nPremière phrase. Deuxième.\n\nFin')).toBe('Première phrase.');
+    expect(premierePhraseDuMessage('Une seule ligne ? Oui.')).toBe('Une seule ligne ?');
   });
 });
 

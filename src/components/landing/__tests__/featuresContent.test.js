@@ -34,10 +34,15 @@ const capturesDesPages = () => [
   ...VUES_RESSOURCES.map((v) => ({ ou: `/ressources — ${v.libelle}`, capture: v.capture })),
 ];
 
-/** Chaque capture, et sa vue téléphone (`mobile`) quand elle en a une : les deux s'affichent selon l'écran. */
-const toutesLesCaptures = () => capturesDesPages().flatMap(({ ou, capture }) => (
-  capture?.mobile ? [{ ou, capture }, { ou: `${ou} (téléphone)`, capture: capture.mobile }] : [{ ou, capture }]
-));
+/**
+ * Chaque capture, sa vue téléphone (`mobile`) et sa vignette recadrée (`vignette`, avec le texte de remplacement de la
+ * capture) quand elle en a : toutes s'affichent selon l'écran.
+ */
+const toutesLesCaptures = () => capturesDesPages().flatMap(({ ou, capture }) => [
+  { ou, capture },
+  ...(capture?.mobile ? [{ ou: `${ou} (téléphone)`, capture: capture.mobile }] : []),
+  ...(capture?.vignette ? [{ ou: `${ou} (vignette)`, capture: { ...capture.vignette, alt: capture.alt } }] : []),
+]);
 
 describe('pages de fonctionnalités : captures', () => {
   it('chaque page et chaque carte montre une capture du site (public/site/*.webp), aux dimensions réelles du fichier', () => {
@@ -58,6 +63,15 @@ describe('pages de fonctionnalités : captures', () => {
     for (const { ou, capture } of capturesDesPages().filter((c) => c.capture.mobile)) {
       expect(capture.mobile.src, ou).toMatch(/^\/site\/tel-[a-z0-9-]+\.webp$/);
       expect({ largeur: capture.mobile.largeur, hauteur: capture.mobile.hauteur }, ou).toEqual({ largeur: 1170, hauteur: 2532 });
+    }
+  });
+
+  it('chaque capture d\'ordinateur a sa vignette recadrée de 720 × 450 px à densité 2 (relecture DA-6)', () => {
+    const sansVignette = capturesDesPages().filter(({ capture }) => !capture.telephone && !capture.vignette).map(({ ou }) => ou);
+    expect(sansVignette).toEqual([]);
+    for (const { ou, capture } of capturesDesPages().filter((c) => c.capture.vignette)) {
+      expect(capture.vignette.src, ou).toMatch(/^\/site\/vignette-[a-z0-9-]+\.webp$/);
+      expect({ largeur: capture.vignette.largeur, hauteur: capture.vignette.hauteur }, ou).toEqual({ largeur: 1440, hauteur: 900 });
     }
   });
 
@@ -95,7 +109,7 @@ describe('pages de fonctionnalités : ce qui est annoncé', () => {
     // DevisPage.jsx (« Accepté par … · date ») et AuditTimeline.jsx n'affichent pas l'heure ; devisHtmlBuilder.js l'imprime
     const tout = JSON.stringify({ FEATURES_CONTENT, CARTES_FONCTIONNALITES, VUES_RESSOURCES });
     expect(tout).not.toMatch(/dans votre application, avec le nom du signataire, la date et l'heure/);
-    expect(tout).toContain("Le devis passe en «\u202fSigné\u202f» dans votre application, avec le nom du signataire et la date. L'heure est enregistrée et figure sur l'exemplaire signé du client");
+    expect(tout).toContain("Le devis passe en «\u202fSigné\u202f» dans votre application, avec le nom du signataire et la date. L\u2019heure est enregistrée et figure sur l\u2019exemplaire signé du client");
   });
 
   it('« plus de 1 000 » n\'est jamais dit du catalogue seul (523 articles) : toujours avec la bibliothèque', () => {
