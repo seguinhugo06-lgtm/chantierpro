@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { TRADE_LIBRARY } from '../../../lib/templates/trade-library.js';
 import { lotsMontres } from '../metiers.js';
 import { lotDemonstration } from '../devisVivantEtapes.js';
+import { ligneDuMetre } from '../exemples/exemples.js';
 
 /**
  * Test d'honnêteté du site public (refonte d'octobre 2026, règles : `.claude/rules/marketing.md`).
@@ -38,6 +39,10 @@ const FICHIERS_CONTROLES = [
   'metiers.js',
   'CycleSection.jsx',
   'FiabiliteSection.jsx',
+  // Task 5b : les fonctionnalités en action
+  'FonctionnalitesSection.jsx',
+  'fonctionnalitesOnglets.js',
+  'exemples/*',
 ];
 
 const DOSSIER_SITE = fileURLToPath(new URL('..', import.meta.url));
@@ -142,7 +147,9 @@ describe('honnêteté du site public', () => {
  * Les textes de la bibliothèque des métiers que la page affiche : ils ne sont écrits dans aucun fichier du site,
  * le contrôle des fichiers ne les voit donc pas. L'explorateur des métiers montre, pour chacun des 17 métiers, le
  * nom, le résumé et les premières lignes de ses premiers lots (`lotsMontres`) ; le devis vivant montre le nom et
- * toutes les lignes de son lot (`lotDemonstration`). `ou` situe le texte : métier, lot, champ.
+ * toutes les lignes de son lot (`lotDemonstration`) ; « Les fonctionnalités en action » montrent la ligne de carrelage
+ * du métré (`ligneDuMetre`) et le lot du document et de la signature (`lotDemonstration`, rendu par le générateur de
+ * devis). `ou` situe le texte : métier ou exemple, lot, champ.
  */
 function textesDeLaBibliothequeAffiches(bibliotheque) {
   const textes = [];
@@ -155,9 +162,12 @@ function textesDeLaBibliothequeAffiches(bibliotheque) {
     }
   }
   const demonstration = lotDemonstration(bibliotheque);
-  const lieu = `Devis vivant — lot « ${demonstration.nom} »`;
-  textes.push({ ou: `${lieu} — nom`, texte: demonstration.nom });
-  demonstration.lignes.forEach((ligne, i) => textes.push({ ou: `${lieu} — ligne ${i + 1}`, texte: ligne.designation }));
+  for (const exemple of ['Devis vivant', 'Fonctionnalités, document et signature']) {
+    const lieu = `${exemple} — lot « ${demonstration.nom} »`;
+    textes.push({ ou: `${lieu} — nom`, texte: demonstration.nom });
+    demonstration.lignes.forEach((ligne, i) => textes.push({ ou: `${lieu} — ligne ${i + 1}`, texte: ligne.designation }));
+  }
+  textes.push({ ou: 'Fonctionnalités, métré — ligne de carrelage', texte: ligneDuMetre(bibliotheque).designation });
   return textes;
 }
 
@@ -186,13 +196,14 @@ function controlerTextes(textes, exceptions = EXCEPTIONS_BIBLIOTHEQUE) {
 describe('honnêteté des textes de la bibliothèque affichés par le site', () => {
   const textes = textesDeLaBibliothequeAffiches(TRADE_LIBRARY);
 
-  it('relève les textes de l\'explorateur (17 métiers) et du devis vivant', () => {
-    const metiers = new Set(textes.map((t) => t.ou.split(' — ')[0]));
-    expect(metiers.size).toBe(18); // 17 métiers + le devis vivant
+  it('relève les textes de l\'explorateur (17 métiers), du devis vivant et des fonctionnalités en action', () => {
+    const lieux = new Set(textes.map((t) => t.ou.split(' — ')[0]));
+    expect(lieux.size).toBe(20); // 17 métiers + le devis vivant + le document et la signature + le métré
     expect(textes.some((t) => t.ou.startsWith('Serrurerie') && t.ou.endsWith('résumé'))).toBe(true);
+    expect(textes.some((t) => t.ou.startsWith('Fonctionnalités, métré'))).toBe(true);
   });
 
-  it('aucune promesse invérifiable dans ce que l\'explorateur et le devis vivant affichent', () => {
+  it('aucune promesse invérifiable dans ce que l\'explorateur, le devis vivant et les exemples affichent', () => {
     const trouves = controlerTextes(textes);
     expect(trouves, `Textes interdits affichés depuis src/lib/templates/trade-library.js :\n${trouves.join('\n')}`).toEqual([]);
   });

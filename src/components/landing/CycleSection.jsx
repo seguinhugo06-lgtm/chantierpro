@@ -10,7 +10,9 @@
  * nuit et son titre plus foncé (pas d'estompage, qui ferait tomber le contraste des autres sous 4,5:1).
  * Captures : `public/site/tel-*.webp` (scripts/site-captures.cjs), données fictives, dites par la légende.
  * Titre `h2` hors écran : la section n'a pas de titre visible (prototype validé), mais le plan du document en a
- * besoin pour que les étapes (`h3`) ne se rangent pas sous « Votre métier est déjà chiffré ».
+ * besoin pour que les étapes (`h3`) ne se rangent pas sous le titre de la section précédente (« Essayez, c'est
+ * l'application. »). Ancre `#parcours` : le lien « Fonctionnalités » de la barre mène à la section précédente,
+ * « Les fonctionnalités en action » (`#fonctionnalites`).
  */
 import { useEffect, useRef, useState } from 'react';
 import { ArrowRight } from 'lucide-react';

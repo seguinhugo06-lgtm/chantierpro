@@ -26,6 +26,120 @@ const GARANTIES = [
 ];
 const LEGENDE_CAPTURES = "Captures de l'application, données fictives.";
 
+// Textes exacts de la spec, section « Les fonctionnalités en action »
+const TITRE_FONCTIONNALITES = "Essayez, c'est l'application.";
+const INTRO_FONCTIONNALITES = 'Chaque exemple ci-dessous tourne avec le vrai code de Mallettico, sur des données fictives.';
+const ONGLETS = ['Le document que reçoit votre client', 'Signature en ligne', 'Métré express', 'Relances', 'Encaissements'];
+const LEGENDES = {
+  'Le document que reçoit votre client': 'Exemple fictif généré par Mallettico.',
+  'Signature en ligne': 'Démonstration : votre signature ne quitte pas cette page.',
+  Relances: "Vous réglez les délais et les messages ; l'envoi automatique est une option.",
+  Encaissements: 'Une facture n\'est « payée » que si les paiements la soldent.',
+};
+const SIGNE_LE = /^Signé le \d{2}\/\d{2}\/\d{4} à \d{2}:\d{2}$/;
+const euros = (n) => NORMALISER(new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(n));
+const PANNEAU = '#fonctionnalites [role="tabpanel"]:not([hidden])';
+
+/**
+ * Capture d'une section entière (élément), rangée dans audit-ui/ (ignoré par git). Plus haute que l'écran, la fenêtre
+ * est agrandie le temps de la capture : au-delà de l'écran, le cadre du document (iframe) n'est pas peint et la
+ * capture le montrerait blanc.
+ */
+async function capturerSection(page, RACINE, selecteur, nom) {
+  const fichier = path.join(RACINE, 'audit-ui', `site-${nom}.png`);
+  fs.mkdirSync(path.dirname(fichier), { recursive: true });
+  const ecran = page.viewport();
+  const hauteur = await page.evaluate((s) => Math.ceil(document.querySelector(s).getBoundingClientRect().height), selecteur);
+  const agrandir = hauteur + 80 > ecran.height;
+  if (agrandir) {
+    await page.setViewport({ ...ecran, height: hauteur + 80 });
+    await new Promise((r) => setTimeout(r, 500));
+  }
+  // La barre fixe du haut se poserait au milieu de la capture : masquée le temps de la prendre
+  await page.evaluate(() => { const h = document.querySelector('header'); if (h) h.style.visibility = 'hidden'; });
+  const element = await page.$(selecteur);
+  await element.screenshot({ path: fichier });
+  await page.evaluate(() => { const h = document.querySelector('header'); if (h) h.style.visibility = ''; });
+  if (agrandir) {
+    await page.setViewport(ecran);
+    await new Promise((r) => setTimeout(r, 300));
+  }
+}
+
+/** État des onglets de « Les fonctionnalités en action ». */
+const lireOnglets = (page) => page.evaluate(() => {
+  const liste = document.querySelector('#fonctionnalites [role="tablist"]');
+  const onglets = [...(liste?.querySelectorAll('[role="tab"]') || [])];
+  const visibles = [...document.querySelectorAll('#fonctionnalites [role="tabpanel"]')].filter((p) => !p.hidden && p.getClientRects().length > 0);
+  const choisi = onglets.find((o) => o.getAttribute('aria-selected') === 'true');
+  return {
+    titres: onglets.map((o) => o.querySelector('[data-titre]')?.textContent.trim() || ''),
+    choisi: choisi?.querySelector('[data-titre]')?.textContent.trim() || '',
+    nbChoisis: onglets.filter((o) => o.getAttribute('aria-selected') === 'true').length,
+    tabulables: onglets.filter((o) => o.tabIndex === 0).length,
+    focus: document.activeElement?.closest('[role="tab"]')?.querySelector('[data-titre]')?.textContent.trim() || '',
+    panneaux: visibles.length,
+    panneauLie: visibles.length === 1 && !!choisi && visibles[0].getAttribute('aria-labelledby') === choisi.id
+      && choisi.getAttribute('aria-controls') === visibles[0].id,
+  };
+});
+
+/** Choisit un onglet de « Les fonctionnalités en action » d'un clic. */
+async function choisirOnglet(page, titre, attendre) {
+  const ok = await page.evaluate((t) => {
+    const onglet = [...document.querySelectorAll('#fonctionnalites [role="tab"]')]
+      .find((o) => o.querySelector('[data-titre]')?.textContent.trim() === t);
+    onglet?.click();
+    return !!onglet;
+  }, titre);
+  if (!ok) throw new Error(`Onglet « ${titre} » introuvable`);
+  await attendre(500);
+}
+
+/** Texte visible du panneau ouvert, espaces normalisés. */
+const textePanneau = (page) => page.evaluate((s) => document.querySelector(s)?.innerText || '', PANNEAU).then(NORMALISER);
+
+/** Trace un trait en zigzag sur la zone de signature, à la souris ou au doigt. */
+async function tracer(page, { doigt = false } = {}) {
+  // Défilement sans animation, puis mesure une fois la page posée (une capture d'élément peut l'avoir déplacée)
+  await page.evaluate((s) => document.querySelector(`${s} canvas`).scrollIntoView({ block: 'center', behavior: 'instant' }), PANNEAU);
+  await new Promise((r) => setTimeout(r, 400));
+  const r = await page.evaluate((s) => {
+    const c = document.querySelector(`${s} canvas`);
+    const b = c.getBoundingClientRect();
+    const dessous = document.elementFromPoint(b.left + b.width * 0.15, b.top + b.height * 0.65);
+    return { x: b.left, y: b.top, l: b.width, h: b.height, surLaZone: dessous === c };
+  }, PANNEAU);
+  if (!r.surLaZone) throw new Error(`zone de signature masquée ou hors de l'écran (${JSON.stringify(r)})`);
+  const points = Array.from({ length: 14 }, (_, i) => ({ x: r.x + r.l * (0.15 + i * 0.05), y: r.y + r.h * (i % 2 ? 0.35 : 0.65) }));
+  if (doigt) {
+    const contact = await page.touchscreen.touchStart(points[0].x, points[0].y);
+    for (const p of points.slice(1)) await contact.move(p.x, p.y);
+    await contact.end();
+  } else {
+    await page.mouse.move(points[0].x, points[0].y);
+    await page.mouse.down();
+    for (const p of points.slice(1)) await page.mouse.move(p.x, p.y, { steps: 2 });
+    await page.mouse.up();
+  }
+}
+
+/** Les montants affichés par l'exemple d'encaissements (attributs posés par ExempleEncaissements.jsx). */
+const lireFacture = (page) => page.evaluate((s) => {
+  const p = document.querySelector(s);
+  const bouton = [...(p?.querySelectorAll('button') || [])].find((b) => /^Encaisser/.test(b.innerText.trim()));
+  return {
+    statut: p?.querySelector('[data-statut-facture]')?.textContent.trim() || '',
+    total: p?.querySelector('[data-total-facture]')?.textContent || '',
+    reste: Number(p?.querySelector('[data-reste]')?.getAttribute('data-reste')),
+    encaisse: Number(p?.querySelector('[data-encaisse]')?.getAttribute('data-encaisse')),
+    resteTexte: p?.querySelector('[data-reste]')?.textContent || '',
+    bouton: bouton?.innerText.trim() || '',
+    recommencer: [...(p?.querySelectorAll('button') || [])].some((b) => b.innerText.trim() === "Recommencer l'exemple"),
+    barre: p?.querySelector('[data-barre-encaisse]')?.getBoundingClientRect().width ?? -1,
+  };
+}, PANNEAU);
+
 /** Texte lisible d'un élément : espaces (y compris insécables et fines) ramenés à une espace ordinaire. */
 const NORMALISER = (t) => (t || '').replace(/[\s  ]+/g, ' ').trim();
 
@@ -527,9 +641,9 @@ module.exports = [
         // ── Chaque titre de section (h2) est visible une fois amené à l'écran (aucune apparition restée transparente) :
         // opacité du titre et de tous ses parents. Sections refaites seulement : les anciennes (tarifs, construit en
         // public…) ont des apparitions plus longues que 800 ms ; leurs tâches les ajouteront à TITRES_CONTROLES.
-        const TITRES_CONTROLES = '#metiers h2, #parcours h2, #fiabilite h2';
+        const TITRES_CONTROLES = '#metiers h2, #fonctionnalites h2, #parcours h2, #fiabilite h2';
         const nbTitres = await page.evaluate((s) => document.querySelectorAll(s).length, TITRES_CONTROLES);
-        verifier(nbTitres === 3, `un titre h2 par section refaite ${a} (${nbTitres})`);
+        verifier(nbTitres === 4, `un titre h2 par section refaite ${a} (${nbTitres})`);
         for (let i = 0; i < nbTitres; i++) {
           await page.evaluate((s, n) => document.querySelectorAll(s)[n].scrollIntoView(), TITRES_CONTROLES, i);
           await attendre(800);
@@ -572,13 +686,13 @@ module.exports = [
           verifier(c >= 4.5, `contraste de ${selecteur} ≥ 4,5 ${a} (${c.toFixed(2)})`);
         }
 
-        // ── La barre mène aux sections Métiers, Fonctionnalités (pour l'instant le cycle) et Fiabilité
-        for (const [libelle, attendu] of [['Métiers', '#metiers'], ['Fonctionnalités', null], ['Fiabilité', '#fiabilite']]) {
+        // ── La barre mène aux sections Métiers, Fonctionnalités (« Les fonctionnalités en action ») et Fiabilité
+        for (const [libelle, attendu] of [['Métiers', '#metiers'], ['Fonctionnalités', '#fonctionnalites'], ['Fiabilité', '#fiabilite']]) {
           await page.evaluate(() => window.scrollTo(0, 0));
           await attendre(300);
           const href = await page.evaluate((t) => [...document.querySelectorAll('header a')].find((x) => x.textContent.trim() === t)?.getAttribute('href'), libelle);
           const ancre = (href || '').replace(/^\//, '');
-          if (attendu) verifier(ancre === attendu, `« ${libelle} » vise ${attendu} ${a} (${href})`);
+          verifier(ancre === attendu, `« ${libelle} » vise ${attendu} ${a} (${href})`);
           if (auBureau) {
             await cliquer(page, libelle, { dans: 'header' });
           } else {
@@ -611,6 +725,307 @@ module.exports = [
         const reduitCartes = await lireCartes();
         verifier(JSON.stringify(reduitCartes.map((c) => c.nom)) === JSON.stringify(lotsPlomberie), `mouvement réduit : l'explorateur change de métier ${a}`);
         await capturer(page, RACINE, `fiabilite-${largeur}-reduit`);
+        await browser.close();
+      }
+    },
+  },
+  {
+    // « Les fonctionnalités en action » (#fonctionnalites) : cinq onglets, chaque exemple utilisable, le vrai générateur
+    // de devis chargé à la demande, rien qui quitte la page pendant la signature.
+    nom: 'site : fonctionnalités en action',
+    reel: true,
+    async executer({ ouvrir, cliquer, attendre, verifier, RACINE }) {
+      const TRADE_LIBRARY = await bibliotheque(RACINE);
+      const lignesCarrelage = Object.values(TRADE_LIBRARY.carrelage.lots).flatMap((l) => l.lignes);
+
+      for (const largeur of [375, 1440]) {
+        const a = `à ${largeur} px`;
+        const auBureau = largeur >= 1024;
+        const fichiersDemandes = [];
+        const appelsBase = [];
+        const { page, browser } = await ouvrir({
+          reel: true, largeur,
+          supabase: (req, u) => { appelsBase.push(u.pathname); return json([]); },
+          fichiers: (u) => { fichiersDemandes.push(u.pathname); return undefined; },
+        });
+        const generateur = () => fichiersDemandes.some((p) => /\/devisHtmlBuilder-[^/]*\.js$/.test(p));
+
+        // ── Le générateur de devis n'est pas chargé par le premier écran : seulement quand la section approche
+        verifier(!generateur(), `générateur de devis non chargé à l'arrivée ${a}`);
+        await page.evaluate(() => document.querySelector('#fonctionnalites')?.scrollIntoView());
+        let cadre = false;
+        for (let i = 0; i < 40 && !cadre; i++) {
+          await attendre(200);
+          cadre = await page.evaluate((s) => !!document.querySelector(`${s} iframe`), PANNEAU);
+        }
+        verifier(cadre && generateur(), `section à l'écran : générateur chargé et document affiché ${a}`);
+
+        // ── Titre, texte, onglets
+        const entete = await page.evaluate(() => ({
+          titre: document.querySelector('#fonctionnalites h2')?.textContent.trim(),
+          intro: document.querySelector('#fonctionnalites [data-intro]')?.textContent.replace(/\s+/g, ' ').trim(),
+        }));
+        verifier(entete.titre === TITRE_FONCTIONNALITES, `titre « ${TITRE_FONCTIONNALITES} » ${a} (« ${entete.titre} »)`);
+        verifier(entete.intro === INTRO_FONCTIONNALITES, `texte d'introduction exact ${a} (« ${entete.intro} »)`);
+        const depart = await lireOnglets(page);
+        verifier(JSON.stringify(depart.titres) === JSON.stringify(ONGLETS), `cinq onglets aux titres de la spec ${a} (${depart.titres.join(' | ')})`);
+        verifier(depart.choisi === ONGLETS[0] && depart.nbChoisis === 1 && depart.tabulables === 1, `premier onglet choisi, seul dans l'ordre de tabulation ${a} (${JSON.stringify(depart)})`);
+        verifier(depart.panneauLie, `un seul panneau visible, lié à l'onglet choisi ${a}`);
+        const hauteurs = await page.evaluate(() => [...document.querySelectorAll('#fonctionnalites [role="tab"]')].map((o) => o.getBoundingClientRect().height));
+        verifier(Math.min(...hauteurs) >= 44, `onglets d'au moins 44 px ${a} (${Math.min(...hauteurs)})`);
+
+        // ── Le document : le vrai générateur, dans un cadre sans script ; les mentions lues dans le HTML produit
+        const doc = await page.evaluate((s) => {
+          const f = document.querySelector(`${s} iframe`);
+          const srcdoc = f?.getAttribute('srcdoc') || '';
+          const texte = new DOMParser().parseFromString(srcdoc, 'text/html').body.textContent.replace(/\s+/g, ' ');
+          const r = f?.getBoundingClientRect();
+          return {
+            sandbox: f?.getAttribute('sandbox'),
+            titre: f?.getAttribute('title') || '',
+            texte,
+            visible: !!r && r.width > 100 && r.height > 100,
+            mentions: [...document.querySelectorAll(`${s} [data-mention]`)].map((m) => m.textContent.trim()),
+            legende: document.querySelector(`${s} [data-legende]`)?.textContent.replace(/\s+/g, ' ').trim(),
+          };
+        }, PANNEAU);
+        verifier(doc.sandbox === '' && doc.visible && doc.titre.length > 10, `document dans un cadre sans script (sandbox vide), visible et nommé ${a}`);
+        verifier(doc.texte.includes('DEVIS') && doc.texte.includes('Élec Exemple') && doc.texte.includes('M. Martin'), `le cadre contient « DEVIS », « Élec Exemple » et « M. Martin » ${a}`);
+        verifier(doc.mentions.includes('Assurance décennale') && doc.mentions.some((m) => m.includes('TVA')) && doc.mentions.some((m) => m.includes('rétractation')),
+          `mentions affichées : assurance décennale, TVA, rétractation ${a} (${doc.mentions.join(' | ')})`);
+        const absentes = doc.mentions.filter((m) => !doc.texte.toLowerCase().includes(m.toLowerCase()));
+        verifier(absentes.length === 0, `chaque mention affichée est dans le document ${a} (absentes : ${absentes.join(', ')})`);
+        verifier(doc.legende === LEGENDES[ONGLETS[0]], `légende « ${LEGENDES[ONGLETS[0]]} » ${a} (« ${doc.legende} »)`);
+        await attendre(300);
+        await capturerSection(page, RACINE, '#fonctionnalites', `fonctionnalites-${largeur}-1-document`);
+
+        // ── Au clavier : flèche droite passe à l'onglet suivant (choisi, focalisé, son panneau affiché)
+        await page.focus('#fonctionnalites [role="tab"][aria-selected="true"]');
+        for (let i = 1; i < ONGLETS.length; i++) {
+          await page.keyboard.press('ArrowRight');
+          await attendre(250);
+          const o = await lireOnglets(page);
+          verifier(o.choisi === ONGLETS[i] && o.focus === ONGLETS[i] && o.panneauLie && o.tabulables === 1, `flèche droite : « ${ONGLETS[i]} » ${a} (${JSON.stringify({ choisi: o.choisi, focus: o.focus })})`);
+        }
+        await page.keyboard.press('ArrowRight');
+        await attendre(250);
+        verifier((await lireOnglets(page)).choisi === ONGLETS[0], `flèche droite après le dernier : retour au premier ${a}`);
+        await page.keyboard.press('End');
+        await attendre(250);
+        verifier((await lireOnglets(page)).choisi === ONGLETS[4], `Fin : dernier onglet ${a}`);
+        await page.keyboard.press('ArrowUp');
+        await attendre(250);
+        verifier((await lireOnglets(page)).choisi === ONGLETS[3], `flèche haut : onglet précédent ${a}`);
+        await page.keyboard.press('ArrowDown');
+        await attendre(250);
+        verifier((await lireOnglets(page)).choisi === ONGLETS[4], `flèche bas : onglet suivant ${a}`);
+        await page.keyboard.press('Home');
+        await attendre(250);
+        verifier((await lireOnglets(page)).choisi === ONGLETS[0], `Début : premier onglet ${a}`);
+        await page.keyboard.down('Alt');
+        await page.keyboard.press('ArrowRight');
+        await page.keyboard.up('Alt');
+        await attendre(250);
+        verifier((await lireOnglets(page)).choisi === ONGLETS[0], `Alt+flèche droite ne change pas d'onglet ${a}`);
+        if (!auBureau) {
+          // Au téléphone : seule la rangée de pastilles défile ; la pastille choisie au clavier y est visible
+          await page.keyboard.press('End');
+          await attendre(500);
+          const rangee = await page.evaluate(() => {
+            const l = document.querySelector('#fonctionnalites [role="tablist"]');
+            const choisi = l.querySelector('[aria-selected="true"]').getBoundingClientRect();
+            const r = l.getBoundingClientRect();
+            return { defile: l.scrollWidth > l.clientWidth, debordement: getComputedStyle(l).overflowX, gauche: r.left, droite: r.right, choisiGauche: choisi.left, choisiDroite: choisi.right };
+          });
+          verifier(rangee.defile && ['auto', 'scroll'].includes(rangee.debordement), `pastilles en rangée défilante ${a} (${JSON.stringify(rangee)})`);
+          verifier(rangee.gauche >= -1 && rangee.droite <= largeur + 1 && rangee.choisiGauche >= -1 && rangee.choisiDroite <= largeur + 1, `la rangée tient dans l'écran et montre la pastille choisie ${a} (${JSON.stringify(rangee)})`);
+          await page.keyboard.press('Home');
+          await attendre(300);
+        }
+
+        // ── Signature : un trait à la souris, « Valider la signature », le tampon ; rien ne quitte la page
+        await choisirOnglet(page, 'Signature en ligne', attendre);
+        const carte = await textePanneau(page);
+        verifier(carte.includes('Devis DEV-2026-00012 · 2 081,20 € TTC'), `carte « Devis DEV-2026-00012 · 2 081,20 € TTC » ${a}`);
+        const validerActif = () => page.evaluate((s) => {
+          const b = [...document.querySelectorAll(`${s} button`)].find((x) => x.innerText.trim() === 'Valider la signature');
+          return b ? !b.disabled : null;
+        }, PANNEAU);
+        verifier((await validerActif()) === false, `« Valider la signature » inactif tant que rien n'est tracé ${a}`);
+        await capturerSection(page, RACINE, '#fonctionnalites', `fonctionnalites-${largeur}-2-signature`);
+        const avant = { fichiers: fichiersDemandes.length, base: appelsBase.length };
+        await tracer(page);
+        await attendre(200);
+        verifier((await validerActif()) === true, `un trait à la souris active « Valider la signature » ${a}`);
+        await cliquer(page, 'Valider la signature', { dans: '#fonctionnalites' });
+        const lireTampon = () => page.evaluate((s) => document.querySelector(`${s} [data-tampon]`)?.textContent.replace(/\s+/g, ' ').trim() || '', PANNEAU);
+        const tampon = await lireTampon();
+        const aujourdhui = await page.evaluate(() => { const d = new Date(); return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`; });
+        verifier(SIGNE_LE.test(tampon) && tampon.includes(aujourdhui), `tampon « Signé le ${aujourdhui} à HH:MM » ${a} (« ${tampon} »)`);
+        const legendeSignature = await page.evaluate((s) => document.querySelector(`${s} [data-legende]`)?.textContent.replace(/\s+/g, ' ').trim(), PANNEAU);
+        verifier(legendeSignature === LEGENDES['Signature en ligne'], `légende « ${LEGENDES['Signature en ligne']} » ${a}`);
+        verifier(fichiersDemandes.length === avant.fichiers && appelsBase.length === avant.base, `signer n'envoie rien ${a} (${fichiersDemandes.length - avant.fichiers} fichier(s), ${appelsBase.length - avant.base} appel(s) à la base)`);
+        await capturerSection(page, RACINE, '#fonctionnalites', `fonctionnalites-${largeur}-2-signature-signee`);
+        // Au clavier : « Recommencer », puis « Signer avec mon nom » et « Valider la signature » avec Entrée
+        await cliquer(page, 'Recommencer', { dans: '#fonctionnalites' });
+        verifier((await lireTampon()) === '' && (await validerActif()) === false, `« Recommencer » efface la signature ${a}`);
+        const focaliser = (texte) => page.evaluate((s, t) => {
+          const b = [...document.querySelectorAll(`${s} button`)].find((x) => x.innerText.trim() === t);
+          b?.focus();
+          return document.activeElement === b;
+        }, PANNEAU, texte);
+        verifier(await focaliser('Signer avec mon nom'), `« Signer avec mon nom » atteignable au clavier ${a}`);
+        await page.keyboard.press('Enter');
+        await attendre(300);
+        verifier(await focaliser('Valider la signature'), `« Valider la signature » actif après « Signer avec mon nom » ${a}`);
+        await page.keyboard.press('Enter');
+        await attendre(400);
+        verifier(SIGNE_LE.test(await lireTampon()), `signé au clavier ${a}`);
+        if (!auBureau) {
+          // Au doigt
+          await cliquer(page, 'Recommencer', { dans: '#fonctionnalites' });
+          await tracer(page, { doigt: true });
+          await attendre(200);
+          verifier((await validerActif()) === true, `un trait au doigt active « Valider la signature » ${a}`);
+        }
+
+        // ── Métré : 4 × 3 m, 10 % de chutes → 13,2 m² et le montant de la ligne de carrelage
+        await choisirOnglet(page, 'Métré express', attendre);
+        const etatInitial = await page.evaluate((s) => document.querySelector(`${s} [data-quantite]`)?.textContent.replace(/\s+/g, ' ').trim(), PANNEAU);
+        verifier(/^\d[\d,]* m²$/.test(NORMALISER(etatInitial)) && !NORMALISER(etatInitial).startsWith('0 '), `métré déjà chiffré à l'arrivée ${a} (« ${etatInitial} »)`);
+        await capturerSection(page, RACINE, '#fonctionnalites', `fonctionnalites-${largeur}-3-metre`);
+        for (const [libelle, valeur] of [['Longueur (m)', '4'], ['Largeur (m)', '3'], ['Nombre', '1'], ['Chutes (%)', '10']]) {
+          const id = await page.evaluate((s, l) => [...document.querySelectorAll(`${s} label`)].find((x) => x.textContent.trim() === l)?.htmlFor, PANNEAU, libelle);
+          verifier(!!id, `champ « ${libelle} » étiqueté ${a}`);
+          await page.click(`#${id}`, { clickCount: 3 });
+          await page.keyboard.press('Backspace');
+          await page.type(`#${id}`, valeur, { delay: 10 });
+        }
+        await attendre(400);
+        const metre = await page.evaluate((s) => {
+          const p = document.querySelector(s);
+          return {
+            quantite: p.querySelector('[data-quantite]')?.textContent || '',
+            montant: p.querySelector('[data-montant]')?.textContent || '',
+            designation: p.querySelector('[data-designation]')?.textContent.trim() || '',
+            prix: Number(p.querySelector('[data-prix-unitaire]')?.getAttribute('data-prix-unitaire')),
+          };
+        }, PANNEAU);
+        const ligne = lignesCarrelage.find((l) => l.designation === metre.designation);
+        verifier(NORMALISER(metre.quantite) === '13,2 m²', `4 × 3 m et 10 % de chutes : 13,2 m² ${a} (« ${NORMALISER(metre.quantite)} »)`);
+        verifier(!!ligne && ligne.unite === 'm²' && ligne.prixUnitaire === metre.prix, `une vraie ligne de carrelage de la bibliothèque, au m² ${a} (« ${metre.designation} », ${metre.prix})`);
+        const attendu = euros(Math.round(13.2 * (ligne?.prixUnitaire || 0) * 100) / 100);
+        verifier(NORMALISER(metre.montant).startsWith(attendu), `montant de la ligne : ${attendu} ${a} (« ${NORMALISER(metre.montant)} »)`);
+        await capturerSection(page, RACINE, '#fonctionnalites', `fonctionnalites-${largeur}-3-metre-saisi`);
+
+        // ── Relances : la frise du scénario de devis, chaque étape avec son délai et l'objet du message
+        await choisirOnglet(page, 'Relances', attendre);
+        // La frise se dessine une fois à l'écran : on l'y amène, puis on laisse l'animation finir
+        await page.evaluate((s) => document.querySelector(`${s} ol`).scrollIntoView({ block: 'center', behavior: 'instant' }), PANNEAU);
+        await attendre(2500);
+        const frise = await page.evaluate((s) => [...document.querySelectorAll(`${s} [data-etape-relance]`)].map((e) => ({
+          delai: e.querySelector('[data-delai]')?.textContent.trim() || '',
+          nom: e.querySelector('[data-nom]')?.textContent.trim() || '',
+          objet: e.querySelector('[data-objet]')?.textContent.replace(/\s+/g, ' ').trim() || '',
+          opacite: parseFloat(getComputedStyle(e).opacity),
+        })), PANNEAU);
+        const jours = frise.map((e) => Number((/J\+(\d+)/.exec(e.delai) || [])[1]));
+        verifier(frise.length >= 3 && jours.every((j, i) => j > 0 && (i === 0 || j > jours[i - 1])), `frise : au moins trois relances aux délais croissants ${a} (${frise.map((e) => e.delai).join(' | ')})`);
+        verifier(frise.every((e) => e.nom && e.objet.includes('Relance : Devis DEV-2026-00012')), `chaque relance a un nom et l'objet du message ${a} (${frise.map((e) => e.objet).join(' | ')})`);
+        verifier(frise.every((e) => e.opacite === 1), `toutes les étapes de la frise visibles après l'animation ${a}`);
+        const legendeRelances = await page.evaluate((s) => document.querySelector(`${s} [data-legende]`)?.textContent.replace(/\s+/g, ' ').trim(), PANNEAU);
+        verifier(legendeRelances === LEGENDES.Relances, `légende « ${LEGENDES.Relances} » ${a}`);
+        await capturerSection(page, RACINE, '#fonctionnalites', `fonctionnalites-${largeur}-4-relances`);
+
+        // ── Encaissements : « Encaisser » jusqu'au solde, « Payée » seulement au solde exact, jamais plus que le dû
+        await choisirOnglet(page, 'Encaissements', attendre);
+        const f0 = await lireFacture(page);
+        verifier(f0.statut === 'Payée en partie' && NORMALISER(f0.total).includes('4 136,00 €'), `facture de 4 136,00 € payée en partie à l'arrivée ${a} (${f0.statut}, ${NORMALISER(f0.total)})`);
+        verifier(NORMALISER(f0.bouton) === 'Encaisser 500 €',`bouton « Encaisser 500 € » ${a} (« ${f0.bouton} »)`);
+        await capturerSection(page, RACINE, '#fonctionnalites', `fonctionnalites-${largeur}-5-encaissements`);
+        let f = f0;
+        let clics = 0;
+        while (f.reste > 0 && clics < 12) {
+          const prevu = Math.min(500, f.reste);
+          const bouton = f.bouton;
+          verifier(NORMALISER(bouton) === `Encaisser ${euros(prevu).replace(',00 €', ' €')}`, `le bouton annonce ${euros(prevu)} ${a} (« ${bouton} »)`);
+          await cliquer(page, bouton, { dans: '#fonctionnalites' });
+          clics++;
+          const g = await lireFacture(page);
+          verifier(Math.abs(g.reste - (f.reste - prevu)) < 0.001 && g.encaisse <= 4136 + 0.001, `clic ${clics} : ${euros(prevu)} encaissés, reste ${euros(g.reste)} ${a} (${g.reste})`);
+          verifier((g.statut === 'Payée') === (g.reste === 0), `« Payée » seulement au solde ${a} (${g.statut}, reste ${g.reste})`);
+          f = g;
+        }
+        verifier(f.reste === 0 && f.statut === 'Payée' && NORMALISER(f.resteTexte).includes('0,00 €') && f.recommencer && !f.bouton, `soldée : « Payée », reste 0,00 €, « Recommencer l'exemple » ${a} (${JSON.stringify(f)})`);
+        const legendeEncaissements = await page.evaluate((s) => document.querySelector(`${s} [data-legende]`)?.textContent.replace(/\s+/g, ' ').trim(), PANNEAU);
+        verifier(legendeEncaissements === LEGENDES.Encaissements, `légende « ${LEGENDES.Encaissements} » ${a}`);
+        await capturerSection(page, RACINE, '#fonctionnalites', `fonctionnalites-${largeur}-5-encaissements-payee`);
+        // « Recommencer l'exemple » : retour à l'état de départ, sans que la barre reparte en arrière
+        await page.evaluate((s) => [...document.querySelectorAll(`${s} button`)].find((b) => b.innerText.trim() === "Recommencer l'exemple")?.click(), PANNEAU);
+        await attendre(60);
+        const r1 = await lireFacture(page);
+        await attendre(1000);
+        const r2 = await lireFacture(page);
+        verifier(r2.statut === 'Payée en partie' && Math.abs(r2.reste - f0.reste) < 0.001, `« Recommencer l'exemple » rend la facture de départ ${a}`);
+        verifier(Math.abs(r1.barre - r2.barre) <= 1 && Math.abs(r2.barre - f0.barre) <= 1, `la barre revient d'un coup, sans animation arrière ${a} (${r1.barre} → ${r2.barre}, départ ${f0.barre})`);
+
+        // ── Aucun défilement horizontal ; rien ne sort de l'écran hors de la rangée de pastilles (qui défile)
+        const debord = await page.evaluate(() => {
+          const sortants = [...document.querySelectorAll('#fonctionnalites *')].filter((el) => {
+            if (el.closest('[data-decor]') || el.closest('[role="tablist"] [role="tab"]')) return false;
+            const r = el.getBoundingClientRect();
+            return r.width > 0 && r.height > 0 && (r.left < -1 || r.right > innerWidth + 1);
+          });
+          return { page: document.documentElement.scrollWidth - innerWidth, elements: sortants.slice(0, 3).map((el) => `${el.tagName.toLowerCase()}.${String(el.className).slice(0, 40)}`) };
+        });
+        verifier(debord.page <= 0 && debord.elements.length === 0, `aucun défilement horizontal ni élément hors de l'écran ${a} (${debord.page} px ; ${debord.elements.join(' | ')})`);
+
+        // ── Contrastes des textes clés (fond réellement peint derrière)
+        await choisirOnglet(page, ONGLETS[0], attendre);
+        const selecteurs = [
+          '#fonctionnalites h2', '#fonctionnalites [data-intro]',
+          '#fonctionnalites [role="tab"][aria-selected="true"] [data-titre]', '#fonctionnalites [role="tab"][aria-selected="false"] [data-titre]',
+          `${PANNEAU} [data-legende]`, `${PANNEAU} [data-mention]`, '#fonctionnalites [data-cadre-titre]',
+        ];
+        if (auBureau) selecteurs.push('#fonctionnalites [role="tab"][aria-selected="false"] [data-phrase]', '#fonctionnalites [role="tab"][aria-selected="true"] [data-phrase]');
+        for (const s of selecteurs) {
+          const c = await contrasteDe(page, s);
+          verifier(c >= 4.5, `contraste de ${s} ≥ 4,5 ${a} (${c.toFixed(2)})`);
+        }
+        for (const [onglet, s] of [['Signature en ligne', '[data-montant-devis]'], ['Métré express', '[data-montant]'], ['Métré express', 'label'], ['Relances', '[data-objet]'], ['Relances', '[data-delai]'], ['Encaissements', '[data-statut-facture]'], ['Encaissements', '[data-reste]']]) {
+          await choisirOnglet(page, onglet, attendre);
+          const c = await contrasteDe(page, `${PANNEAU} ${s}`);
+          verifier(c >= 4.5, `contraste de ${s} (${onglet}) ≥ 4,5 ${a} (${c.toFixed(2)})`);
+        }
+        await choisirOnglet(page, ONGLETS[0], attendre);
+
+        // ── Mouvement réduit : tout est là d'emblée ; la barre d'encaissement change sans animation
+        await page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'reduce' }]);
+        await page.reload({ waitUntil: 'networkidle0' });
+        await attendre(500);
+        await page.evaluate(() => document.querySelector('#fonctionnalites').scrollIntoView());
+        for (let i = 0, pret = false; i < 40 && !pret; i++) {
+          await attendre(200);
+          pret = await page.evaluate((s) => !!document.querySelector(`${s} iframe`), PANNEAU);
+        }
+        await capturerSection(page, RACINE, '#fonctionnalites', `fonctionnalites-${largeur}-1-document-reduit`);
+        await choisirOnglet(page, 'Signature en ligne', attendre);
+        await capturerSection(page, RACINE, '#fonctionnalites', `fonctionnalites-${largeur}-2-signature-reduit`);
+        await choisirOnglet(page, 'Métré express', attendre);
+        await capturerSection(page, RACINE, '#fonctionnalites', `fonctionnalites-${largeur}-3-metre-reduit`);
+        await choisirOnglet(page, 'Relances', attendre);
+        const opacites = await page.evaluate((s) => [...document.querySelectorAll(`${s} [data-etape-relance]`)].map((e) => parseFloat(getComputedStyle(e).opacity)), PANNEAU);
+        verifier(opacites.length >= 3 && opacites.every((o) => o === 1), `mouvement réduit : la frise est entière d'emblée ${a} (${opacites.join(', ')})`);
+        await capturerSection(page, RACINE, '#fonctionnalites', `fonctionnalites-${largeur}-4-relances-reduit`);
+        await choisirOnglet(page, 'Encaissements', attendre);
+        const m0 = await lireFacture(page);
+        await page.evaluate((s) => [...document.querySelectorAll(`${s} button`)].find((b) => /^Encaisser/.test(b.innerText.trim()))?.click(), PANNEAU);
+        await attendre(40);
+        const m1 = await lireFacture(page);
+        await attendre(800);
+        const m2 = await lireFacture(page);
+        verifier(m1.barre > m0.barre && Math.abs(m1.barre - m2.barre) <= 1, `mouvement réduit : la barre d'encaissement change sans animation ${a} (${m0.barre} → ${m1.barre} → ${m2.barre})`);
+        await capturerSection(page, RACINE, '#fonctionnalites', `fonctionnalites-${largeur}-5-encaissements-reduit`);
         await browser.close();
       }
     },

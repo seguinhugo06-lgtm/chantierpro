@@ -15,9 +15,7 @@ import BoutonSite from './site/BoutonSite';
 
 const LIENS = [
   { libelle: 'Métiers', ancre: '#metiers' },
-  // Mène au cycle au défilement en attendant la section « Les fonctionnalités en action » (`#fonctionnalites`,
-  // Task 5b de la refonte), qui prendra ce lien.
-  { libelle: 'Fonctionnalités', ancre: '#parcours' },
+  { libelle: 'Fonctionnalités', ancre: '#fonctionnalites' },
   { libelle: 'Fiabilité', ancre: '#fiabilite' },
   { libelle: 'Tarifs', ancre: '#pricing' },
   { libelle: 'FAQ', ancre: '#faq' },

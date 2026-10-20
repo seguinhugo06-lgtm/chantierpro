@@ -3,7 +3,7 @@
  *
  * Toujours en clair (couleurs fixes de la palette `marque`, pas de thème). Refonte d'octobre 2026
  * (spec docs/superpowers/specs/2026-10-19-site-refonte-design.md), en cours ; ordre de la spec : barre, premier
- * écran avec le devis vivant, bande de faits, explorateur des métiers, (fonctionnalités en action, à venir),
+ * écran avec le devis vivant, bande de faits, explorateur des métiers, fonctionnalités en action (`#fonctionnalites`),
  * cycle au défilement, fiabilité, tarifs, construit en public, FAQ, dernier appel, pied de page. Les sections
  * tarifs et suivantes seront refaites par les tâches suivantes.
  *
@@ -17,6 +17,7 @@ import LandingNav from './LandingNav';
 import HeroSection from './HeroSection';
 import FaitsSection from './FaitsSection';
 import MetiersSection from './MetiersSection';
+import FonctionnalitesSection from './FonctionnalitesSection';
 import CycleSection from './CycleSection';
 import FiabiliteSection from './FiabiliteSection';
 import PricingSection from './PricingSection';
@@ -56,6 +57,7 @@ export default function LandingPage({ onLogin, onSignup, onNavigate }) {
           <HeroSection onSignup={onSignup} />
           <FaitsSection />
           <MetiersSection />
+          <FonctionnalitesSection />
           <CycleSection />
           <FiabiliteSection />
           <PricingSection onSignup={onSignup} />

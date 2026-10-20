@@ -27,6 +27,7 @@ import { TRADE_LIBRARY } from '../lib/templates/trade-library';
 import { jourLocal } from '../lib/dates';
 import { profilManquant, enPhrase } from '../lib/profilLegal';
 import { couleurPleine } from '../lib/theme';
+import { calculerMetre } from '../lib/metre';
 
 const DRAFT_KEY = 'mallettico_devis_composer_draft';
 const MRU_KEY = 'mallettico_recent_clients';
@@ -1280,10 +1281,8 @@ function MetreModal({ isDark, couleur, inputBg, textPrimary, textMuted, onClose,
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, [onClose]);
-  const nL = parseFloat(L) || 0, nl = parseFloat(larg) || 0, nh = parseFloat(haut) || 0, nN = parseFloat(nb) || 1, nC = parseFloat(chutes) || 0;
-  const has3d = nh > 0;
-  const qty = Math.round(nL * nl * (has3d ? nh : 1) * nN * (1 + nC / 100) * 100) / 100;
-  const unite = has3d ? 'm³' : 'm²';
+  // Calcul partagé avec le site public (src/lib/metre.js) : mêmes règles, même arrondi
+  const { quantite: qty, unite } = calculerMetre({ longueur: L, largeur: larg, hauteur: haut, nombre: nb, chutes });
   const card = 'bg-surface border-bord';
   const fieldCls = `w-full px-3 h-11 rounded-xl border text-sm ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`;
   const labelCls = `block text-[11px] font-semibold uppercase tracking-wide mb-1.5 ${textMuted}`;

@@ -406,6 +406,83 @@ module.exports = [
     },
   },
   {
+    // Le calcul de la fenêtre « Métré » est partagé avec le site public (src/lib/metre.js, refonte du site, T5b) :
+    // l'éditeur réel doit donner le même métré qu'avant l'extraction, et l'appliquer à la ligne.
+    nom: 'éditeur de devis : le métré express (4 × 3 m, 10 % de chutes) donne 13,2 m² et l’applique à la ligne (1440 px)',
+    async executer({ ouvrir, attendre, verifier }) {
+      const { page } = await ouvrir({ page: 'devis', largeur: 1440 });
+      await attendre(800);
+      await page.evaluate(() => { const b = [...document.querySelectorAll('button')].find((x) => /^Nouveau$/.test((x.innerText || '').trim()) && x.getBoundingClientRect().width > 0); b?.click(); });
+      await attendre(600);
+      await page.evaluate(() => { const b = [...document.querySelectorAll('button, [role=menuitem], a')].find((x) => (x.innerText || '').trim() === 'Nouveau devis'); b?.click(); });
+      await attendre(1500);
+      // Le client n'est pas nécessaire pour chiffrer une ligne
+      const champ = await page.$('input[placeholder^="Ajouter une prestation"]');
+      verifier(!!champ, 'éditeur de devis ouvert');
+      await champ.click(); await champ.type('Carrelage sol', { delay: 15 }); await attendre(400);
+      await page.keyboard.press('Enter'); await attendre(600);
+
+      // Menu « ⋯ » de la ligne, puis « Métré L × l »
+      const menu = await page.evaluate(() => {
+        const b = [...document.querySelectorAll('button[aria-label="Actions de ligne"]')].find((x) => x.getBoundingClientRect().width > 0);
+        b?.click();
+        return !!b;
+      });
+      verifier(menu, 'menu de la ligne ouvert');
+      await attendre(300);
+      const metre = await page.evaluate(() => {
+        const b = [...document.querySelectorAll('[role=menuitem]')].find((x) => x.getBoundingClientRect().width > 0 && /Métré/.test(x.innerText || ''));
+        b?.click();
+        return !!b;
+      });
+      verifier(metre, '« Métré L × l » ouvre la fenêtre');
+      await attendre(400);
+
+      // Champs de la fenêtre, dans l'ordre : longueur, largeur, hauteur, nombre, chutes
+      const CHAMPS = ['longueur', 'largeur', 'hauteur', 'nombre', 'chutes'];
+      const remplir = async (nom, valeur) => {
+        const champs = await page.$$('[role=dialog][aria-label="Métré express"] input');
+        const el = champs[CHAMPS.indexOf(nom)];
+        await el.click({ clickCount: 3 });
+        await page.keyboard.press('Backspace');
+        if (valeur) await el.type(valeur, { delay: 10 });
+        await attendre(150);
+      };
+      const quantite = () => page.evaluate(() => {
+        const d = document.querySelector('[role=dialog][aria-label="Métré express"]');
+        const ligne = [...d.querySelectorAll('span')].find((s) => s.textContent.trim() === 'Quantité calculée');
+        return (ligne?.nextElementSibling?.textContent || '').replace(/[\s  ]+/g, ' ').trim();
+      });
+      await remplir('longueur', '4');
+      await remplir('largeur', '3');
+      await remplir('chutes', '10');
+      const surface = await quantite();
+      verifier(surface === '13,2 m²', `4 × 3 m et 10 % de chutes : 13,2 m² (« ${surface} »)`);
+      await remplir('hauteur', '0.5');
+      const volume = await quantite();
+      verifier(volume === '6,6 m³', `avec une hauteur de 0,5 m : 6,6 m³ (« ${volume} »)`);
+      await remplir('hauteur', '');
+      await remplir('nombre', '2');
+      const double = await quantite();
+      verifier(double === '26,4 m²', `nombre 2 : 26,4 m² (« ${double} »)`);
+      await remplir('nombre', '1');
+      await page.evaluate(() => {
+        const b = [...document.querySelectorAll('[role=dialog][aria-label="Métré express"] button')].find((x) => (x.innerText || '').trim() === 'Appliquer');
+        b?.click();
+      });
+      await attendre(500);
+      const ligne = await page.evaluate(() => {
+        const vu = (el) => el.getBoundingClientRect().width > 0;
+        return {
+          quantite: [...document.querySelectorAll('input[aria-label="Quantité"]')].find(vu)?.value,
+          unite: [...document.querySelectorAll('select[aria-label="Unité"]')].find(vu)?.value,
+          fenetre: !!document.querySelector('[role=dialog][aria-label="Métré express"]'),
+        };
+      });
+      verifier(!ligne.fenetre && ligne.quantite === '13.2' && ligne.unite === 'm²', `« Appliquer » pose 13,2 m² sur la ligne (${JSON.stringify(ligne)})`);
+    },
+  },
+  {
     nom: 'export CSV du catalogue sur téléphone : fichier remis avec le bon nom',
     async executer({ ouvrir, cliquer, attendre, verifier }) {
       const { page } = await ouvrir({ page: 'catalogue', largeur: 375 });
