@@ -156,16 +156,23 @@ export default function LegalPages({ page, couleur, setPage }) {
           </table>
         </div>
         <P>Les prix sont indiqués en euros, sans TVA : {MENTION_TVA_ABONNEMENT}.</P>
+        {/* D-19 : la sortie de franchise doit être écrite dans les CGV (relecture juriste du 20 oct. 2026) */}
+        <P>
+          Si l'éditeur cesse de bénéficier de la franchise en base de TVA, la TVA au taux en vigueur (20 % à ce jour)
+          s'ajoutera aux prix indiqués à compter de l'échéance suivant ce changement. Le prix hors taxes du tarif
+          fondateur reste celui indiqué. L'utilisateur est prévenu par e-mail au moins 30 jours avant et peut résilier
+          sans frais avant cette date.
+        </P>
       </Section>
 
       <Section title="Article 5 - Modalités de paiement">
         <P>
           Le paiement des abonnements est effectué par carte bancaire via la plateforme sécurisée
-          <strong> Stripe</strong>. Les paiements sont prélevés automatiquement chaque mois à la date
-          anniversaire de la souscription.
+          <strong> Stripe</strong>. Il est prélevé automatiquement chaque mois (abonnement mensuel) ou une fois par an
+          (abonnement annuel, payé pour douze mois), à la date anniversaire de la souscription.
         </P>
         <UL>
-          <li>Les paiements sont sécurisés par le protocole SSL/TLS</li>
+          <li>Le paiement se fait sur la page sécurisée de Stripe (connexion chiffrée TLS)</li>
           <li>Stripe est certifié PCI DSS niveau 1</li>
           <li>Mallettico ne stocke aucune donnée de carte bancaire</li>
           <li>Une facture est émise automatiquement à chaque paiement</li>
@@ -195,14 +202,19 @@ export default function LegalPages({ page, couleur, setPage }) {
 
       <Section title="Article 7 - Durée et résiliation">
         <P>
-          L'abonnement est souscrit pour une durée indéterminée, avec une facturation mensuelle.
+          L'abonnement est souscrit pour une durée indéterminée, avec une facturation mensuelle ou annuelle selon la
+          périodicité choisie.
         </P>
         <UL>
           <li>L'utilisateur peut résilier son abonnement à tout moment depuis son espace client ou par email</li>
-          <li>La résiliation prend effet à la fin de la période de facturation en cours</li>
+          <li>La résiliation prend effet à la fin de la période de facturation en cours (le mois, ou l'année pour un
+            abonnement annuel) ; la période déjà payée n'est pas remboursée, sous réserve du droit de rétractation de
+            l'article 6</li>
           <li>L'accès aux fonctionnalités payantes est maintenu jusqu'à la fin de la période payée</li>
           <li>À la fin de l'abonnement, le compte revient au plan Gratuit : les données sont conservées et restent exportables</li>
-          <li>L'utilisateur peut à tout moment supprimer son compte et ses données (page « Supprimer mon compte ») ; la suppression est immédiate et définitive</li>
+          <li>L'utilisateur peut supprimer son compte et ses données depuis « Supprimer mon compte ». Si un abonnement
+            payant est en cours, il faut d'abord le résilier ; si des membres d'équipe dépendent du compte, il faut
+            d'abord les retirer. La suppression est ensuite immédiate et définitive</li>
         </UL>
       </Section>
 
@@ -544,7 +556,7 @@ export default function LegalPages({ page, couleur, setPage }) {
                 <td className={`px-4 py-3 font-medium ${textPrimary}`}>Supabase</td>
                 <td className="px-4 py-3">Base de données, authentification, stockage fichiers</td>
                 <td className="px-4 py-3">France (AWS eu-west-3, Paris)</td>
-                <td className="px-4 py-3">SOC 2 Type II, RGPD, chiffrement AES-256</td>
+                <td className="px-4 py-3">SOC 2 Type 2 et chiffrement AES-256 au repos, selon Supabase ; accord de traitement des données (DPA)</td>
               </tr>
               <tr className={`border-b ${tableBorder}`}>
                 <td className={`px-4 py-3 font-medium ${textPrimary}`}>Stripe</td>
@@ -556,7 +568,7 @@ export default function LegalPages({ page, couleur, setPage }) {
                 <td className={`px-4 py-3 font-medium ${textPrimary}`}>Resend</td>
                 <td className="px-4 py-3">Envoi d'emails transactionnels</td>
                 <td className="px-4 py-3">US</td>
-                <td className="px-4 py-3">SCC, chiffrement TLS</td>
+                <td className="px-4 py-3">Accord de traitement des données ; chiffrement TLS à l'envoi</td>
               </tr>
               <tr>
                 <td className={`px-4 py-3 font-medium ${textPrimary}`}>Vercel</td>
@@ -609,11 +621,13 @@ export default function LegalPages({ page, couleur, setPage }) {
       <Section title="Article 7 - Sécurité des données">
         <P>Mallettico met en oeuvre les mesures de sécurité suivantes :</P>
         <UL>
-          <li><strong className={textPrimary}>Chiffrement HTTPS/TLS :</strong> toutes les communications sont chiffrées en transit</li>
-          <li><strong className={textPrimary}>Row Level Security (RLS) :</strong> isolation des données au niveau de la base de données - chaque utilisateur n'accède qu'à ses propres données</li>
+          <li><strong className={textPrimary}>Chiffrement HTTPS/TLS :</strong> les échanges entre votre navigateur et l'application passent par HTTPS (TLS)</li>
+          <li><strong className={textPrimary}>Row Level Security (RLS) :</strong> isolation des données au niveau de la base de données - chaque organisation n'accède qu'à ses propres données ; au sein d'une équipe, chaque membre voit ce que son
+            rôle autorise</li>
           <li><strong className={textPrimary}>Authentification JWT :</strong> tokens sécurisés avec expiration automatique</li>
-          <li><strong className={textPrimary}>Chiffrement au repos :</strong> les données stockées sont chiffrées (AES-256)</li>
-          <li><strong className={textPrimary}>Mises à jour régulières :</strong> correctifs de sécurité appliqués en continu</li>
+          <li><strong className={textPrimary}>Chiffrement au repos :</strong> chez notre hébergeur de base de données
+            (Supabase), les données stockées sont chiffrées au repos (AES-256, selon sa documentation)</li>
+          <li><strong className={textPrimary}>Mises à jour régulières :</strong> les mises à jour de sécurité sont appliquées régulièrement</li>
         </UL>
       </Section>
 

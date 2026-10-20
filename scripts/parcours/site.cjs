@@ -11,7 +11,7 @@ const json = (corps, status = 200) => ({ status, body: JSON.stringify(corps) });
 const TITRE = "L’administratif du chantier, rangé dans une mallette.";
 // Typographie fine du site (src/components/landing/site/typographie.js) : espace fine insécable avant « : »
 const TEXTE_HORS_ECRAN = 'Exemple\u202f: un devis de 7 lignes pour une mise aux normes de tableau électrique, signé en ligne, facturé puis payé.';
-const TEXTE_RELANCE = 'Relance du devis à J+7, au rythme que vous choisissez';
+const TEXTE_RELANCE = 'Relance du devis proposée à J+7, au rythme que vous choisissez';
 
 // Textes exacts de la spec (sections 5 et 6)
 const ETAPES_DU_CYCLE = [
@@ -25,7 +25,7 @@ const GARANTIES = [
   'Une facture envoyée ne se supprime pas : on la corrige par un avoir',
   'Une facture n’est « payée » que si les paiements la soldent',
   // Titre court du prototype validé (relecture DA-7), la liste des mentions en texte caché devant
-  'Assurance décennale, TVA réduite, pénalités de retard : Les mentions du bâtiment s’ajoutent toutes seules',
+  'Assurance décennale, TVA réduite, pénalités de retard : Les mentions de votre profil s’ajoutent à vos documents',
 ];
 const LEGENDE_CAPTURES = "Captures de l’application, données fictives.";
 

@@ -44,7 +44,7 @@ export default function HeroSection({ onSignup }) {
 
           <p className="mt-5 max-w-[34em] text-lg leading-relaxed text-marque-ardoise">
             Montez un devis à partir de prestations déjà chiffrées, faites-le signer en ligne, facturez sans rien
-            ressaisir. Mallettico relance et suit les paiements.
+            ressaisir. Mallettico prépare vos relances et suit les paiements.
             {/* Au téléphone, la phrase est retirée (la bande de faits dit « 2 écrans ») : le produit remonte d'une ligne */}
             <span className="hidden sm:inline"> Sur téléphone comme sur ordinateur.</span>
           </p>

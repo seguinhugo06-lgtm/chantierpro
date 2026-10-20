@@ -152,7 +152,7 @@ export const FEATURES_CONTENT = {
       { title: 'Composez vos lignes', text: "Recherche dans votre catalogue, lots repliables avec sous-totaux, métré (longueur × largeur × hauteur, chutes en\u202f%), 12 unités, TVA par ligne ou pour tout le devis (20, 10, 5,5 ou 0\u202f%)." },
       // Aperçu avant création (:1509) ; mentions imprimées : rétractation (devisHtmlBuilder.js:425), décennale (:449),
       // pénalités (:454, 714)
-      { title: "Vérifiez l’aperçu", text: "Avant de créer le devis, l’aperçu montre le document que recevra votre client. Les mentions de votre profil s’y ajoutent\u202f: assurance décennale, droit de rétractation, pénalités de retard." },
+      { title: "Vérifiez l’aperçu", text: "Avant de créer le devis, l’aperçu montre le document que recevra votre client. Les mentions de votre profil s’y ajoutent, selon le type de client\u202f: assurance décennale, droit de rétractation, pénalités de retard." },
       // PDF joint (DevisPage.jsx:2380-2400, emailSender.js:63-79), bouton de signature (emailSender.js:106-114),
       // acompte et solde (DevisPage.jsx:1396, 1515)
       { title: 'Envoyez et faites signer', text: "Le devis part par e-mail avec son PDF et un lien pour le signer en ligne. Signé, il devient une facture d’acompte ou de solde, sans ressaisie." },
@@ -186,7 +186,7 @@ export const FEATURES_CONTENT = {
       { q: "Est-ce que je pars d’une page blanche\u202f?", a: "Non. La bibliothèque des 17 métiers propose des lots types déjà chiffrés, à insérer en un geste dans un devis, et le Référentiel BTP ajoute à votre catalogue les articles chiffrés de votre métier\u202f: en tout, plus de 1\u202f000 prestations et ouvrages chiffrés. Vous pouvez aussi enregistrer vos propres modèles." },
       // Mentions (devisHtmlBuilder.js:425, 449, 454, 714) ; envoi bloqué si le profil est incomplet (DevisComposer.jsx:707,
       // validation à l'envoi DevisPage.jsx:2161)
-      { q: 'Les mentions légales sont-elles gérées\u202f?', a: "Elles s’ajoutent à partir de votre profil\u202f: assurance décennale, droit de rétractation, pénalités de retard et conditions de règlement. Tant que votre profil est incomplet, l’envoi est bloqué et l’application vous dit ce qui manque." },
+      { q: 'Les mentions légales sont-elles ajoutées\u202f?', a: "Elles s’ajoutent à partir de votre profil et selon le type de client (le droit de rétractation pour un particulier, par exemple)\u202f: assurance décennale, droit de rétractation, pénalités de retard et conditions de règlement. Tant que votre profil est incomplet, l’envoi est bloqué et l’application vous dit ce qui manque." },
       // Acompte et solde (DevisPage.jsx:1396, 1515) ; situations de travaux éteintes (FONCTIONS.facturesSituation)
       { q: 'Puis-je facturer en plusieurs fois\u202f?', a: "Oui\u202f: une facture d’acompte, puis la facture de solde, toutes deux tirées du devis." },
     ],
@@ -365,7 +365,7 @@ export const FEATURES_CONTENT = {
       {
         name: 'Contenu inclus',
         items: [
-          'Les lots types de 17 métiers, avec leurs prix moyens', // trade-library.js
+          'Les lots types de 17 métiers, avec des prix indicatifs', // trade-library.js
           'Le Référentiel BTP\u202f: plus de 500 articles chiffrés, en 15 métiers', // src/lib/data/index.js
           'Prix indicatifs et modifiables\u202f: vos tarifs restent les vôtres',
         ],

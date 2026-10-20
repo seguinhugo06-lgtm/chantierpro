@@ -106,7 +106,7 @@ export default function MetiersSection() {
   return (
     <SectionSite id="metiers" fond="blanc">
       <EnTeteSection titre="Votre métier est déjà chiffré.">
-        Choisissez le vôtre : voici les lots types que vous insérez en un geste dans un devis, avec leurs prix moyens.
+        Choisissez le vôtre : voici les lots types que vous insérez en un geste dans un devis, avec des prix indicatifs.
         Vous ajustez les quantités et vos tarifs, c’est tout.
       </EnTeteSection>
 
@@ -156,7 +156,7 @@ export default function MetiersSection() {
           </div>
 
           <p data-note="" className="mt-6 max-w-[48em] text-sm leading-relaxed text-slate-600">
-            Prix moyens indicatifs du marché français (2026), fourniture et pose HT. Ils font gagner du temps ; vos propres
+            Prix indicatifs pour 2026, fourniture et pose hors taxes. Ils font gagner du temps ; vos propres
             tarifs restent les vôtres.
           </p>
         </>

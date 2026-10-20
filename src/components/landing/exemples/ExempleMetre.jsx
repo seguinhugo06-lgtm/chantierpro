@@ -166,7 +166,7 @@ export default function ExempleMetre() {
         </div>
       </div>
       <LegendeExemple>
-        Même calcul que la fenêtre « Métré » de l’éditeur de devis. Prix moyen indicatif de la bibliothèque, hors taxes.
+        Même calcul que la fenêtre « Métré » de l’éditeur de devis. Prix indicatif de la bibliothèque, hors taxes.
       </LegendeExemple>
     </>
   );

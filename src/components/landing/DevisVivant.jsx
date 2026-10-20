@@ -262,13 +262,13 @@ export default function DevisVivant({ reduit: reduitDemande = false }) {
             className="h-2 w-2 shrink-0 rounded-full bg-marque-orange shadow-[0_0_0_3px_rgba(238,123,32,0.2),0_0_10px_rgba(238,123,32,0.8)]"
           />
           <span>
-            Relance du devis à <strong className="font-bold text-marque-nuit">J+7</strong>, au rythme que vous choisissez
+            Relance du devis proposée à <strong className="font-bold text-marque-nuit">J+7</strong>, au rythme que vous choisissez
           </span>
         </p>
       )}
 
       <figcaption className="mt-3 text-xs leading-relaxed text-slate-600">
-        Démonstration : le lot « {NOM_LOT_DEMONSTRATION} » de la bibliothèque Électricité, prix moyens indicatifs du marché.
+        Démonstration : le lot « {NOM_LOT_DEMONSTRATION} » de la bibliothèque Électricité, prix indicatifs, à ajuster à vos tarifs.
       </figcaption>
     </figure>
   );

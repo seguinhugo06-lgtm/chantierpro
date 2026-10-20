@@ -202,7 +202,7 @@ export default function FiabiliteSection() {
   return (
     <SectionSite id="fiabilite" fond="nuit" decor={<PlanArchitecte ton="nuit" />}>
       <EnTeteSection titre="Une facture, ça ne se bricole pas." sombre>
-        Les règles importantes ne dépendent pas de l’écran : la base de données les fait respecter elle-même.
+        Les règles importantes ne dépendent pas de l’écran : la base de données fait elle-même respecter la numérotation, le verrou des factures émises et le statut « payée ».
       </EnTeteSection>
 
       <Apparition delai={0.1}>
@@ -218,7 +218,7 @@ export default function FiabiliteSection() {
               d'écran), reste dite en texte caché */}
           <Garantie visuel={<Mentions reduit={reduit} />}>
             <span className="sr-only">Assurance décennale, TVA réduite, pénalités de retard : </span>
-            Les mentions du bâtiment s’ajoutent toutes seules
+            Les mentions de votre profil s’ajoutent à vos documents
           </Garantie>
         </ul>
       </Apparition>
