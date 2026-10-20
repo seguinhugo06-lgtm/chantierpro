@@ -9,11 +9,13 @@ import { MENTION_TVA_ABONNEMENT, prixAbonnement } from '../stores/prixAbonnement
 // 01 23 45 67 89, médiateur CM2C) étaient fictives : mieux vaut « en cours » que du faux.
 // Un champ à null n'est pas affiché.
 const COMPANY = {
-  nom: 'Hugo Seguin — Mallettico',
-  forme: 'Entreprise en cours d’immatriculation',
+  // Fournie par Hugo dans le Pilote (20 oct. 2026) ; SIREN contrôlé sur l'annuaire des entreprises (EI active depuis
+  // 2016). Adresse publiée : son domicile (D-18) ; le transfert du siège au registre est en cours.
+  nom: 'Hugo Seguin EI — Mallettico',
+  forme: 'Entreprise individuelle (EI)',
   capital: null,
-  adresse: null,
-  siret: 'en cours d’attribution',
+  adresse: '127 cours du Médoc, 33300 Bordeaux',
+  siren: '820 207 405',
   rcs: null,
   tva: null,
   email: 'contact@mallettico.fr',
@@ -79,8 +81,8 @@ export default function LegalPages({ page, couleur, setPage }) {
         <UL>
           <li>Forme juridique : {COMPANY.forme}</li>
           {COMPANY.capital && <li>Capital social : {COMPANY.capital} euros</li>}
-          <li>Siège social : {ADRESSE}</li>
-          <li>SIRET : {COMPANY.siret}</li>
+          <li>Adresse : {ADRESSE}</li>
+          <li>SIREN : {COMPANY.siren}</li>
           {COMPANY.rcs && <li>RCS : {COMPANY.rcs}</li>}
           {COMPANY.tva && <li>Numéro de TVA intracommunautaire : {COMPANY.tva}</li>}
           <li>Email : {COMPANY.email}</li>
@@ -668,8 +670,8 @@ export default function LegalPages({ page, couleur, setPage }) {
           <li>Raison sociale : <strong className={textPrimary}>{COMPANY.nom}</strong></li>
           <li>Forme juridique : {COMPANY.forme}</li>
           {COMPANY.capital && <li>Capital social : {COMPANY.capital} euros</li>}
-          <li>Siège social : {ADRESSE}</li>
-          <li>SIRET : {COMPANY.siret}</li>
+          <li>Adresse : {ADRESSE}</li>
+          <li>SIREN : {COMPANY.siren}</li>
           {COMPANY.rcs && <li>RCS : {COMPANY.rcs}</li>}
           {COMPANY.tva && <li>Numéro de TVA intracommunautaire : {COMPANY.tva}</li>}
           <li>Email : <span style={linkStyle}>{COMPANY.email}</span></li>
