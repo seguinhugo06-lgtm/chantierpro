@@ -73,7 +73,7 @@ Sections retirées de la page : `StatsBar`, `QuickFeaturesGrid`, `CtaBanner`, `F
 
 ## Les fonctionnalités en action (demande d'Hugo, 20 oct. 2026 : « joue bien sur nos fonctionnalités avec de beaux exemples, je veux que tout soit incroyable »)
 
-Une section `id="fonctionnalites"` (le lien « Fonctionnalités » de la barre y mène ; le cycle au défilement prend l'ancre `#parcours`), placée entre l'explorateur des métiers et le cycle. Titre : « Essayez, c'est l'application. » ; texte : « Chaque exemple ci-dessous tourne avec le vrai code de Mallettico, sur des données fictives. »
+Une section `id="fonctionnalites"` (le lien « Fonctionnalités » de la barre y mène ; le cycle au défilement prend l'ancre `#parcours`), placée entre l'explorateur des métiers et le cycle. Titre : « Essayez, c'est l'application. » ; texte : « Des exemples à manipuler, sur des données fictives. Le document, le métré et les relances sortent du code même de l’application. » (décision du 20 oct. : la signature et les encaissements ont leur propre code de démonstration)
 
 Au bureau : une colonne d'onglets à gauche (titre + une phrase), l'exemple à droite dans un cadre d'application. Au téléphone : les onglets en pastilles défilantes au-dessus de l'exemple. Cinq onglets :
 
