@@ -76,7 +76,7 @@
 
 **Files :**
 - Create : `scripts/site-captures.cjs`
-- Create (produits) : `public/site/ordi-devis-lots.webp`, `ordi-devis-signe.webp`, `ordi-facture.webp`, `ordi-accueil.webp`, `tel-accueil.webp`, `tel-devis-lots.webp`, `tel-facture.webp`, `signature.webp` ; `public/og-image.png` (1200 × 630)
+- Create (produits) : `public/site/ordi-devis-lots.webp`, `ordi-facture.webp`, `ordi-accueil.webp`, `tel-accueil.webp`, `tel-devis-lots.webp`, `tel-facture.webp`, `signature.webp` ; `public/og-image.png` (1200 × 630)
 - Modify : `public/screenshots/signature.png` (remplacée par la version fictive, même nom : les pages de fonctionnalités la lisent)
 
 **Interfaces :**
