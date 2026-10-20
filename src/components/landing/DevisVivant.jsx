@@ -70,10 +70,10 @@ function Ligne({ ligne, vue }) {
         <span className="min-w-0">
           {/* 2,75em = deux lignes de leading-snug (1,375) */}
           <span className="line-clamp-2 min-h-[2.75em] text-sm leading-snug text-slate-900 sm:min-h-0 lg:line-clamp-1">
-            {ligne ? ligne.designation : <>&nbsp;</>}
+            {ligne ? ligne.designation : '\u00a0'}
           </span>
           <span className="mt-0.5 block text-xs tabular-nums text-slate-600">
-            {ligne ? <>{quantite(ligne.quantite)} {ligne.unite} × {formatMoney(ligne.prixUnitaire)}</> : <>&nbsp;</>}
+            {ligne ? <>{quantite(ligne.quantite)} {ligne.unite} × {formatMoney(ligne.prixUnitaire)}</> : '\u00a0'}
           </span>
         </span>
         <span className="text-sm font-bold tabular-nums text-slate-900">

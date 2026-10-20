@@ -1,132 +1,114 @@
 /**
- * FooterSection — Expanded 4-column footer with product, resources, legal, and contact links.
+ * FooterSection — le pied de page du site public (accueil et sous-pages), spec de la refonte, section 11 : bande
+ * bleu-noir (`marque-encre-sombre`, #0B1324), le logo `LogoMallettico`, les liens actuels.
+ *
+ * Le contact est une pilule blanche à texte nuit (charte : sur une bande sombre, l'action est blanche ; l'ancien lien
+ * orange est retiré, l'orange du logo est décoratif). Chaque lien fait 44 px de haut au moins (cibles tactiles).
+ * Retirés, faute de preuve : le lien « Blog — Bientôt » (une promesse), le lien vers une page LinkedIn dont l'existence
+ * n'est vérifiée nulle part, « Fait avec soin en France » (l'adresse de l'éditeur n'est pas publiée : LegalPages.jsx),
+ * « l'outil de gestion tout-en-un ». Aucun lien ne mène à une fonction éteinte (src/lib/fonctions.js : paiement en
+ * ligne, portail).
+ * Attributs `data-*` lus par le parcours `scripts/parcours/site.cjs`.
  */
-
-import { Linkedin } from 'lucide-react';
+import { Mail } from 'lucide-react';
 import LogoMallettico from '../ui/LogoMallettico';
 import { allerALaSection } from '../../lib/sectionsAccueil';
 import { pageLegaleDe } from '../legal/pageLegale';
+import BoutonSite from './site/BoutonSite';
 
-const COLUMNS = [
+const COLONNES = [
   {
-    title: 'Produit',
-    links: [
-      { label: 'Fonctionnalit\u00e9s', href: '/fonctionnalites', isPage: true },
-      { label: 'Tarifs', href: '#pricing' },
-      { label: 'Signature \u00e9lectronique', href: '/fonctionnalites/signature-electronique', isPage: true },
-      { label: 'Relances automatiques', href: '/fonctionnalites/relances', isPage: true },
-      { label: 'Facture \u00e9lectronique', href: '#faq' },
+    titre: 'Produit',
+    liens: [
+      { libelle: 'Fonctionnalités', href: '/fonctionnalites', page: true },
+      { libelle: 'Tarifs', href: '#pricing' },
+      { libelle: 'Signature électronique', href: '/fonctionnalites/signature-electronique', page: true },
+      { libelle: 'Relances automatiques', href: '/fonctionnalites/relances', page: true },
+      { libelle: 'Facture électronique', href: '#faq' },
     ],
   },
   {
-    title: 'Ressources',
-    links: [
-      { label: 'Ressources', href: '/ressources', isPage: true },
-      { label: 'Pourquoi Mallettico', href: '#early-adopters' },
-      { label: 'FAQ', href: '#faq' },
-      { label: 'Blog', href: '#', disabled: true },
+    titre: 'Ressources',
+    liens: [
+      { libelle: 'Ressources', href: '/ressources', page: true },
+      { libelle: 'Pourquoi Mallettico', href: '#early-adopters' },
+      { libelle: 'FAQ', href: '#faq' },
     ],
   },
   {
-    title: 'L\u00e9gal',
-    links: [
-      { label: 'Mentions l\u00e9gales', href: '/mentions-legales', isPage: true },
-      { label: 'CGU', href: '/cgu', isPage: true },
-      { label: 'CGV', href: '/cgv', isPage: true },
-      { label: 'Confidentialit\u00e9', href: '/confidentialite', isPage: true },
+    titre: 'Légal',
+    liens: [
+      { libelle: 'Mentions légales', href: '/mentions-legales', page: true },
+      { libelle: 'CGU', href: '/cgu', page: true },
+      { libelle: 'CGV', href: '/cgv', page: true },
+      { libelle: 'Confidentialité', href: '/confidentialite', page: true },
     ],
   },
 ];
 
-export default function FooterSection({ onNavigate }) {
-  const year = new Date().getFullYear();
+const PAGES_DU_SITE = ['/fonctionnalites', '/ressources'];
 
-  const MARKETING_ROUTES = ['/fonctionnalites', '/ressources'];
-  const handleNavClick = (e, link) => {
+const FOCUS =
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-marque-encre-sombre';
+
+export default function FooterSection({ onNavigate }) {
+  const annee = new Date().getFullYear();
+
+  const suivre = (e, lien) => {
     e.preventDefault();
-    if (link.isPage) {
-      // Pages légales : leur vraie adresse, partageable (avant : affichées à l'adresse « / »)
-      if (MARKETING_ROUTES.some(r => link.href.startsWith(r)) || pageLegaleDe(link.href)) {
-        window.location.assign(link.href);
-      } else if (onNavigate) {
-        onNavigate(link.href.replace('/', ''));
-      } else {
-        window.location.assign(link.href);
-      }
-    } else if (link.href.startsWith('#')) {
-      allerALaSection(link.href);
+    if (lien.page) {
+      // Pages du site et pages légales : leur vraie adresse, partageable (avant : affichées à l'adresse « / »)
+      if (PAGES_DU_SITE.some((r) => lien.href.startsWith(r)) || pageLegaleDe(lien.href)) window.location.assign(lien.href);
+      else if (onNavigate) onNavigate(lien.href.replace('/', ''));
+      else window.location.assign(lien.href);
+    } else if (lien.href.startsWith('#')) {
+      allerALaSection(lien.href);
     }
   };
 
   return (
-    <footer className="bg-slate-900 text-slate-400">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12 sm:py-16">
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-8 sm:gap-12">
-          {/* Brand */}
-          <div className="col-span-2 sm:col-span-1">
-            <div className="flex items-center gap-2 mb-4">
-              <LogoMallettico taille={32} fond="blanc" />
-              <span className="text-white font-bold text-lg">Mallettico</span>
+    <footer className="bg-marque-encre-sombre text-marque-acier">
+      <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6 sm:py-16">
+        <div className="grid grid-cols-2 gap-x-6 gap-y-10 md:grid-cols-[1.4fr_1fr_1fr_1fr] md:gap-10">
+          <div className="col-span-2 md:col-span-1">
+            <div className="flex items-center gap-3">
+              <LogoMallettico taille={40} fond="blanc" />
+              <span className="text-xl font-extrabold tracking-tight text-white">Mallettico</span>
             </div>
-            <p className="text-sm leading-relaxed mb-4 max-w-xs">
-              L'outil de gestion tout-en-un pour les artisans et entreprises du b&acirc;timent.
+            <p data-accroche="" className="mt-4 max-w-xs text-base leading-relaxed text-marque-acier">
+              Devis, factures et relances pour les artisans du bâtiment.
             </p>
-            <a
-              href="mailto:contact@mallettico.fr"
-              className="text-sm text-orange-400 hover:text-orange-300 transition-colors"
-            >
+            <BoutonSite variante="clair" href="mailto:contact@mallettico.fr" data-contact="" className="mt-6">
+              <Mail size={16} aria-hidden="true" />
               contact@mallettico.fr
-            </a>
-            <div className="flex items-center gap-3 mt-4">
-              <a
-                href="https://www.linkedin.com/company/mallettico"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 flex items-center justify-center transition-colors"
-                aria-label="LinkedIn"
-              >
-                <Linkedin size={16} className="text-slate-400" />
-              </a>
-            </div>
+            </BoutonSite>
           </div>
 
-          {/* Link columns */}
-          {COLUMNS.map((col) => (
-            <div key={col.title}>
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-4">
-                {col.title}
+          {COLONNES.map((colonne) => (
+            <nav key={colonne.titre} aria-label={colonne.titre}>
+              <p data-titre-colonne="" className="text-xs font-bold uppercase tracking-[0.12em] text-slate-400">
+                {colonne.titre}
               </p>
-              <ul className="space-y-2.5">
-                {col.links.map((link) => (
-                  <li key={link.label}>
-                    {link.disabled ? (
-                      <span className="text-sm text-slate-600 cursor-default">
-                        {link.label}
-                        <span className="ml-1 text-[10px] bg-slate-800 text-slate-500 px-1.5 py-0.5 rounded">Bient&ocirc;t</span>
-                      </span>
-                    ) : (
-                      <a
-                        href={link.href}
-                        onClick={(e) => handleNavClick(e, link)}
-                        className="text-sm hover:text-white transition-colors"
-                      >
-                        {link.label}
-                      </a>
-                    )}
+              <ul className="mt-3">
+                {colonne.liens.map((lien) => (
+                  <li key={lien.libelle}>
+                    <a
+                      href={lien.href}
+                      onClick={(e) => suivre(e, lien)}
+                      className={`-mx-1 inline-flex min-h-[44px] items-center rounded px-1 text-sm text-marque-acier transition-colors hover:text-white motion-reduce:transition-none ${FOCUS}`}
+                    >
+                      {lien.libelle}
+                    </a>
                   </li>
                 ))}
               </ul>
-            </div>
+            </nav>
           ))}
         </div>
 
-        {/* Bottom */}
-        <div className="mt-12 pt-8 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="text-xs text-center sm:text-left">
-            &copy; {year} Mallettico. Tous droits r&eacute;serv&eacute;s.
-          </p>
-          <p className="text-xs text-slate-600">
-            Fait avec soin en France
+        <div className="mt-12 border-t border-white/10 pt-6">
+          <p data-copyright="" className="text-sm text-slate-400">
+            © {annee} Mallettico. Tous droits réservés.
           </p>
         </div>
       </div>

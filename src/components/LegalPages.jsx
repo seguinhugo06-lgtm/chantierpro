@@ -1,6 +1,5 @@
-import React from 'react';
 import { ArrowLeft, Shield, FileText, Scale, Lock, Trash2 } from 'lucide-react';
-import { PLANS } from '../stores/subscriptionStore';
+import { PLANS, PLAN_ORDER } from '../stores/subscriptionStore';
 import { MENTION_TVA_ABONNEMENT, prixAbonnement } from '../stores/prixAbonnement';
 
 // ─── Mallettico SaaS Company Info (editor) ────────────────────────────────────
@@ -27,7 +26,7 @@ const COMPANY = {
 };
 const ADRESSE = COMPANY.adresse || 'communiquée sur demande à contact@mallettico.fr (immatriculation en cours)';
 
-export default function LegalPages({ page, isDark, couleur, setPage }) {
+export default function LegalPages({ page, couleur, setPage }) {
   // Theme classes
   const mainBg = 'bg-fond';
   const cardBg = 'bg-surface border-bord';
@@ -129,21 +128,28 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
               </tr>
             </thead>
             <tbody>
-              <tr className={`border-b ${tableBorder}`}>
-                <td className={`px-4 py-3 font-medium ${textPrimary}`}>Gratuit</td>
-                <td className={`px-4 py-3 ${textSecondary}`}>0,00 EUR / mois</td>
-                <td className={`px-4 py-3 ${textSecondary}`}>Accès limité pour découvrir la plateforme. 5 devis/mois, 10 clients, 2 chantiers actifs.</td>
-              </tr>
-              <tr className={`border-b ${tableBorder}`}>
-                <td className={`px-4 py-3 font-medium ${textPrimary}`}>Artisan</td>
-                <td className={`px-4 py-3 ${textSecondary}`}>{prixAbonnement(PLANS.artisan)} par mois (ou {prixAbonnement(PLANS.artisan, 'an')} par an) — tarif fondateur, conservé tant que l'abonnement reste actif</td>
-                <td className={`px-4 py-3 ${textSecondary}`}>Idéal pour les artisans indépendants. Devis, factures, clients et chantiers illimités, signatures électroniques, export comptable.</td>
-              </tr>
-              <tr>
-                <td className={`px-4 py-3 font-medium ${textPrimary}`}>Équipe</td>
-                <td className={`px-4 py-3 ${textSecondary}`}>{prixAbonnement(PLANS.equipe)} par mois (ou {prixAbonnement(PLANS.equipe, 'an')} par an) — tarif fondateur, conservé tant que l'abonnement reste actif</td>
-                <td className={`px-4 py-3 ${textSecondary}`}>Pour les entreprises avec équipes. Jusqu'à 10 utilisateurs, pointage, trésorerie, sous-traitants, statistiques avancées.</td>
-              </tr>
+              {/* Description de chaque plan : sa liste de PLANS, mot pour mot (décision D-29 : une seule liste par plan,
+                  lue partout). Avant (20 oct. 2026) : « 2 chantiers actifs » (l'application compte tous les chantiers),
+                  « signatures électroniques, export comptable » sous Artisan (inclus dès le plan Gratuit) et « Jusqu'à
+                  10 utilisateurs, pointage, trésorerie, sous-traitants, statistiques avancées » sous Équipe (rien de cela
+                  n'est réservé à Équipe ; la limite est de 10 collaborateurs en plus du titulaire). */}
+              {PLAN_ORDER.map((id, i) => {
+                const plan = PLANS[id];
+                const payant = plan.priceMonthly > 0;
+                return (
+                  <tr key={id} className={i < PLAN_ORDER.length - 1 ? `border-b ${tableBorder}` : undefined}>
+                    <td className={`px-4 py-3 font-medium ${textPrimary}`}>{plan.name}</td>
+                    <td className={`px-4 py-3 ${textSecondary}`}>
+                      {payant
+                        ? `${prixAbonnement(plan)} par mois (ou ${prixAbonnement(plan, 'an')} par an)${plan.offreLancement ? ` — ${plan.offreLancement.toLowerCase()}, conservé tant que l'abonnement reste actif` : ''}`
+                        : '0,00 EUR / mois'}
+                    </td>
+                    <td className={`px-4 py-3 ${textSecondary}`}>
+                      {plan.description}. {plan.featureLabels.map((f) => f.name).join(' · ')}.
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

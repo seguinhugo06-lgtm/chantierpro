@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { TRADE_LIBRARY } from '../../../lib/templates/trade-library.js';
-import { lotsMontres } from '../metiers.js';
+import { lotsMontres, metiersDeLaBibliotheque } from '../metiers.js';
 import { lotDemonstration } from '../devisVivantEtapes.js';
 import { buildDevisHtml } from '../../../lib/devisHtmlBuilder.js';
 import { htmlDuDocument, ligneDuMetre, texteDuDocument } from '../exemples/exemples.js';
@@ -15,10 +15,9 @@ import { htmlDuDocument, ligneDuMetre, texteDuDocument } from '../exemples/exemp
  * « conforme », « certifié », mentions de l'IA ou de la dictée, hébergement « en France », prix en dur…
  * Chaque correspondance est rapportée avec le fichier et la ligne.
  *
- * PÉRIMÈTRE PROGRESSIF. Pendant la refonte, seuls les fichiers de `FICHIERS_CONTROLES` sont contrôlés
- * (les autres, pas encore refaits, contiennent encore des textes à retirer et bloqueraient `npm run verifier`).
- * Chaque tâche de la refonte y ajoute les fichiers qu'elle refait ; la dernière le remplace par '*'
- * (tous les fichiers du site) et ajoute 'index.html'.
+ * PÉRIMÈTRE : tous les fichiers du site (`src/components/landing/`, récursif, hors `__tests__`), les pages de
+ * fonctionnalités et `featuresContent.js` compris, et le `index.html` de la racine (balises, JSON-LD). Pendant la
+ * refonte, le périmètre s'est étendu tâche après tâche ; depuis la tâche 7, plus aucun fichier du site n'y échappe.
  *
  * Syntaxe des entrées, relatives à `src/components/landing/` :
  *   'HeroSection.jsx'              un fichier
@@ -26,30 +25,7 @@ import { htmlDuDocument, ligneDuMetre, texteDuDocument } from '../exemples/exemp
  *   '*'                            tous les fichiers du site
  *   '../../../index.html'          le `index.html` de la racine (JSON-LD, balises) : pas de contrôle des prix
  */
-const FICHIERS_CONTROLES = [
-  'site/*',
-  // Task 4 : barre, premier écran avec le devis vivant, bande de faits
-  'LandingNav.jsx',
-  'HeroSection.jsx',
-  'LandingPage.jsx',
-  'DevisVivant.jsx',
-  'devisVivantEtapes.js',
-  'FaitsSection.jsx',
-  // Task 5 : explorateur des métiers, cycle au défilement, fiabilité
-  'MetiersSection.jsx',
-  'metiers.js',
-  'CycleSection.jsx',
-  'FiabiliteSection.jsx',
-  // Task 5b : les fonctionnalités en action
-  'FonctionnalitesSection.jsx',
-  'fonctionnalitesOnglets.js',
-  'exemples/*',
-  // Task 6 : tarifs (cartes et tableau lus dans PLANS) et construit en public
-  'PricingSection.jsx',
-  'PricingComparisonTable.jsx',
-  'comparaisonPlans.js',
-  'EarlyAdoptersSection.jsx',
-];
+const FICHIERS_CONTROLES = ['*', '../../../index.html'];
 
 const DOSSIER_SITE = fileURLToPath(new URL('..', import.meta.url));
 const RACINE = fileURLToPath(new URL('../../../../', import.meta.url));
@@ -76,8 +52,32 @@ const INTERDITS = [
   { nom: 'essai gratuit de', motif: /essai\s+gratuit\s+de/i },
   { nom: 'statistique « n % des artisans »', motif: /\b\d+\s?%\s+des\s+artisans/i },
   { nom: 'avis ou note de clients', motif: /\b(?:avis|note)\s+(?:clients|4[,.]\d)/i },
+  { nom: 'dictez', motif: /\bdictez\b/i },
+  { nom: 'commande vocale', motif: /commandes?\s+vocales?/i },
+  // « 4,8/5 », « 4.9 / 5 », « 5/5 » : une note sur 5 (un « 12/5 », un « 1/50 » ou la classe Tailwind « w-1/5 » ne
+  // sont pas des notes)
+  { nom: 'note sur 5', motif: /(?<![\w,.-])\d(?:[,.]\d+)?\s*\/\s*5(?!\d)/ },
+  { nom: '« N artisans nous font confiance »', motif: /(?:\bartisans|\bclients|\butilisateurs)\s+(?:nous\s+)?font\s+confiance|\bnous\s+font\s+confiance/i },
 ];
 const PRIX_EN_DUR = { nom: 'prix en dur (ils viennent de PLANS)', motif: /\b(?:9|19)[.,]90/ };
+
+/**
+ * Règles de code des fichiers du site (pas de `index.html`) : la charte et la typographie, pas le sens des textes.
+ *   - pas de texte orange : l'orange du logo est décoratif, illisible sur fond clair (2,8:1) ; `bg-marque-orange`
+ *     (point, lueur) reste permis ;
+ *   - pas de couleur de la palette recopiée en dur (#F0FAFF, #DCEFFB) : les jetons `marque` de Tailwind ;
+ *   - une fonction présentée comme réservée à un plan, entre parenthèses (« (plan Équipe) ») : aucun plan ne
+ *     verrouille une fonction aujourd'hui, seulement des limites (décision D-29, `PLANS`).
+ * Les entités HTML (`&nbsp;`, `&eacute;`…) sont contrôlées à part, dans les seuls fichiers JSX (`ENTITES_JSX`).
+ */
+const INTERDITS_CODE = [
+  { nom: 'texte orange (text-marque-orange)', motif: /\btext-marque-orange\b/ },
+  { nom: 'texte orange (ancienne palette text-orange-…)', motif: /\btext-orange-\d/ },
+  { nom: 'couleur de la palette en dur (#F0FAFF, #DCEFFB : jetons marque)', motif: /#(?:F0FAFF|DCEFFB)\b/i },
+  { nom: 'fonction réservée à un plan', motif: /\(plan\s+(?:Gratuit|Artisan|[ÉE]quipe)\)/i },
+];
+/** Le texte JSX s'écrit avec de vrais caractères (espace insécable comprise), pas en entités HTML. */
+const ENTITES_JSX = { nom: 'entité HTML dans le JSX (écrire le vrai caractère)', motif: /&(?:[a-zA-Z]+|#\d+|#x[\da-fA-F]+);/ };
 
 /** Les chaînes JS du site écrivent le français en échappements (`dictée`) : on les décode avant de chercher. */
 function decoder(source) {
@@ -147,18 +147,42 @@ describe('honnêteté du site public', () => {
       .flatMap((relatif) => chercher(lire(relatif), [PRIX_EN_DUR], relatif));
     expect(trouves, `Prix écrits en dur (utiliser PLANS) :\n${trouves.join('\n')}`).toEqual([]);
   });
+
+  it('le périmètre couvre tout le site : pages de fonctionnalités, featuresContent.js et index.html compris', () => {
+    const controles = fichiersControles();
+    for (const attendu of ['featuresContent.js', 'FeaturesDetailPage.jsx', 'FeatureDeepDivePage.jsx', 'ResourcesPage.jsx', 'FAQSection.jsx', 'FinalCta.jsx', 'FooterSection.jsx', '../../../index.html']) {
+      expect(controles, attendu).toContain(attendu);
+    }
+    expect(controles.length).toBe(candidats().length);
+  });
+
+  it('ni texte orange, ni couleur en dur, ni fonction réservée à un plan dans les fichiers du site', () => {
+    const trouves = fichiersControles()
+      .filter((relatif) => !relatif.startsWith('..'))
+      .flatMap((relatif) => chercher(lire(relatif), INTERDITS_CODE, relatif));
+    expect(trouves, `Règles de la charte (voir global-constraints) :\n${trouves.join('\n')}`).toEqual([]);
+  });
+
+  it('aucune entité HTML (&nbsp;, &eacute;…) dans le JSX du site : les vrais caractères', () => {
+    const trouves = fichiersControles()
+      .filter((relatif) => relatif.endsWith('.jsx'))
+      .flatMap((relatif) => chercher(lire(relatif), [ENTITES_JSX], relatif));
+    expect(trouves, `Entités HTML dans le JSX :\n${trouves.join('\n')}`).toEqual([]);
+  });
 });
 
 /**
  * Les textes de la bibliothèque des métiers que la page affiche : ils ne sont écrits dans aucun fichier du site,
- * le contrôle des fichiers ne les voit donc pas. L'explorateur des métiers montre, pour chacun des 17 métiers, le
- * nom, le résumé et les premières lignes de ses premiers lots (`lotsMontres`) ; le devis vivant montre le nom et
+ * le contrôle des fichiers ne les voit donc pas. L'explorateur des métiers montre les 17 noms de métiers en pastilles
+ * (`metiersDeLaBibliotheque`) et, pour chacun, le nom, le résumé et les premières lignes de ses premiers lots
+ * (`lotsMontres`) ; le devis vivant montre le nom et
  * toutes les lignes de son lot (`lotDemonstration`) ; « Les fonctionnalités en action » montrent la ligne de carrelage
  * du métré (`ligneDuMetre`) et le lot du document et de la signature (`lotDemonstration`, rendu par le générateur de
  * devis). `ou` situe le texte : métier ou exemple, lot, champ.
  */
 function textesDeLaBibliothequeAffiches(bibliotheque) {
   const textes = [];
+  for (const { nom } of metiersDeLaBibliotheque(bibliotheque)) textes.push({ ou: `${nom} — pastille du métier`, texte: nom });
   for (const metier of Object.values(bibliotheque)) {
     for (const lot of lotsMontres(bibliotheque, metier.id)) {
       const lieu = `${metier.nom} — lot « ${lot.nom} »`;
@@ -206,6 +230,7 @@ describe('honnêteté des textes de la bibliothèque affichés par le site', () 
     const lieux = new Set(textes.map((t) => t.ou.split(' — ')[0]));
     expect(lieux.size).toBe(20); // 17 métiers + le devis vivant + le document et la signature + le métré
     expect(textes.some((t) => t.ou.startsWith('Serrurerie') && t.ou.endsWith('résumé'))).toBe(true);
+    expect(textes.filter((t) => t.ou.endsWith('pastille du métier'))).toHaveLength(17);
     expect(textes.some((t) => t.ou.startsWith('Fonctionnalités, métré'))).toBe(true);
   });
 
@@ -323,8 +348,40 @@ describe('les motifs interdits reconnaissent ce qu\'ils doivent et laissent pass
     '83 % des artisans',
     'avis clients',
     'note 4,8',
+    'Dictez votre devis',
+    'par commande vocale',
+    'Noté 4,8/5',
+    'note de 4.9 / 5',
+    '5/5 sur les stores',
+    '500 artisans nous font confiance',
+    'Ils nous font confiance',
   ])('rapporte : %s', (texte) => {
     expect(rapporte(texte)).toBe(true);
+  });
+
+  it.each([
+    ['<p className="text-marque-orange">', true],
+    ['<p className="text-orange-500">', true],
+    ["style={{ background: '#F0FAFF' }}", true],
+    ["color: '#dceffb'", true],
+    ["'Export FEC (plan Équipe)'", true],
+    ['<span className="bg-marque-orange" />', false],
+    ['<p className="text-marque-nuit">', false],
+    ['bg-marque-glacier-1', false],
+    ['le plan Équipe va jusqu\'à 10 collaborateurs', false],
+  ])('règles de code — %s : %s', (texte, attendu) => {
+    expect(chercher(texte, INTERDITS_CODE, 'x.jsx').length > 0).toBe(attendu);
+  });
+
+  it.each([
+    ['<p>Questions fr&eacute;quentes</p>', true],
+    ['<>&nbsp;</>', true],
+    ['&#160;', true],
+    ["{'\\u00a0'}", false],
+    ['a && b', false],
+    ['R&D', false],
+  ])('entités JSX — %s : %s', (texte, attendu) => {
+    expect(chercher(texte, [ENTITES_JSX], 'x.jsx').length > 0).toBe(attendu);
   });
 
   it.each([
@@ -337,6 +394,11 @@ describe('les motifs interdits reconnaissent ce qu\'ils doivent et laissent pass
     'Dictionnaire des métiers',
     'Plus de 1 000 prestations chiffrées',
     'Signature en ligne des devis',
+    'Le 12/5, livraison',
+    'Étape 1/50',
+    '<span className="h-6 w-1/5" />',
+    'Les artisans font le choix',
+    'La confiance se gagne',
   ])('laisse passer : %s', (texte) => {
     expect(rapporte(texte)).toBe(false);
   });

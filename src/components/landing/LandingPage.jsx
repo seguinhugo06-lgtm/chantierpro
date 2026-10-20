@@ -2,10 +2,10 @@
  * LandingPage — la page d'accueil publique de Mallettico (visiteur non connecté, hors démo).
  *
  * Toujours en clair (couleurs fixes de la palette `marque`, pas de thème). Refonte d'octobre 2026
- * (spec docs/superpowers/specs/2026-10-19-site-refonte-design.md), en cours ; ordre de la spec : barre, premier
+ * (spec docs/superpowers/specs/2026-10-19-site-refonte-design.md) ; ordre de la spec : barre, premier
  * écran avec le devis vivant, bande de faits, explorateur des métiers, fonctionnalités en action (`#fonctionnalites`),
  * cycle au défilement, fiabilité, tarifs (le tableau de comparaison est replié dans la section), construit en public,
- * FAQ, dernier appel, pied de page. La FAQ et le dernier appel seront refaits par les tâches suivantes.
+ * FAQ, dernier appel, pied de page.
  *
  * `MotionConfig reducedMotion="user"` : les animations framer-motion s'effacent si l'appareil demande moins de
  * mouvement. Ancres conservées : `#pricing`, `#faq` (src/lib/sectionsAccueil.js).

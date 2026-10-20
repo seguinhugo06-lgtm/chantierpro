@@ -7,7 +7,7 @@
  */
 const path = require('path');
 
-/** Regroupe un module de `src/` et rend ses exports. */
+/** Regroupe un module de `src/` et rend ses exports (ex. la FAQ du site, `src/components/landing/faq.js`). */
 function charger(RACINE, ...chemin) {
   const esbuild = require(require.resolve('esbuild', { paths: [RACINE] }));
   const sortie = esbuild.buildSync({
@@ -26,4 +26,4 @@ function plansDuSite(RACINE) {
   return { PLANS, PLAN_ORDER, MENTION_TVA_ABONNEMENT, prixAbonnement };
 }
 
-module.exports = { plansDuSite };
+module.exports = { plansDuSite, charger };

@@ -141,7 +141,7 @@ export default function ExempleMetre() {
                   {ligne ? ligne.designation : ''}
                 </p>
                 <p data-prix-unitaire={ligne ? ligne.prixUnitaire : undefined} className="mt-1 text-sm tabular-nums text-slate-600">
-                  {ligne ? <>{fr(quantite)} {unite} × {formatMoney(ligne.prixUnitaire, 2)} HT · TVA {ligne.tva} %</> : <>&nbsp;</>}
+                  {ligne ? <>{fr(quantite)} {unite} × {formatMoney(ligne.prixUnitaire, 2)} HT · TVA {ligne.tva} %</> : '\u00a0'}
                 </p>
                 <div className="pt-4">
                   <div className="rounded-xl bg-marque-glacier-1 px-4 py-3">

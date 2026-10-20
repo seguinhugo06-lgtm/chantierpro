@@ -8,13 +8,14 @@
  * 4. Cancel / reactivate
  */
 
-import React, { useState, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import {
-  CreditCard, ArrowUpRight, ExternalLink, AlertTriangle,
-  Check, Zap, Crown, FileText, Users, HardHat, Camera, HardDrive,
+  ArrowUpRight, ExternalLink, AlertTriangle,
+  Zap, Crown, FileText, Users, HardHat, Camera, HardDrive,
   RefreshCw, Package
 } from 'lucide-react';
 import { useSubscriptionStore, PLANS, PLAN_ORDER, YEARLY_DISCOUNT } from '../../stores/subscriptionStore';
+import { MENTION_TVA_ABONNEMENT, prixAbonnement } from '../../stores/prixAbonnement';
 import {
   createCheckoutSession,
   createPortalSession
@@ -161,7 +162,8 @@ export default function BillingDashboard({ isDark, couleur }) {
             <div>
               <h2 className={`text-xl font-bold ${textPrimary}`}>Plan {plan.name}</h2>
               <p className={`text-sm ${textSecondary}`}>
-                {isFree ? 'Gratuit' : `${plan.priceMonthly.toFixed(2).replace('.', ',')}€/mois`}
+                {/* Prix et mention de franchise de TVA (D-19) par l'outil commun, comme « Mon plan » */}
+                {isFree ? 'Gratuit' : `${prixAbonnement(plan)} par mois, ${MENTION_TVA_ABONNEMENT}`}
                 {sub?.cancel_at_period_end && (
                   <span className="ml-2 text-red-500 font-medium">• Annulation prévue</span>
                 )}
@@ -258,9 +260,10 @@ export default function BillingDashboard({ isDark, couleur }) {
             const p = PLANS[pid];
             const Icon = PLAN_ICONS[pid];
             const isCurrent = pid === planId;
+            // Comme « Mon plan » (profil/PlanPage.jsx) : à l'année, l'équivalent mensuel ; au mois, prixAbonnement
             const price = billing === 'yearly' && p.priceYearly
-              ? (p.priceYearly / 12).toFixed(2).replace('.', ',')
-              : p.priceMonthly === 0 ? null : p.priceMonthly.toFixed(2).replace('.', ',');
+              ? `${(p.priceYearly / 12).toFixed(2).replace('.', ',')} €`
+              : p.priceMonthly === 0 ? null : prixAbonnement(p);
 
             return (
               <div
@@ -278,8 +281,9 @@ export default function BillingDashboard({ isDark, couleur }) {
                   {p.badge && !isCurrent && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-accent text-sur-accent font-bold">{p.badge}</span>}
                 </div>
                 <div className={`text-2xl font-bold ${textPrimary}`}>
-                  {price ? `${price}€/mois` : 'Gratuit'}
+                  {price ? `${price} par mois` : 'Gratuit'}
                 </div>
+                {price && <p className={`text-xs mt-0.5 ${textSecondary}`}>{MENTION_TVA_ABONNEMENT}</p>}
                 <p className={`text-xs mt-1 ${textSecondary}`}>{p.description}</p>
                 <button
                   onClick={() => handleSelectPlan(pid)}

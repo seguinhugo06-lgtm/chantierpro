@@ -4,7 +4,7 @@
 const path = require('path');
 const fs = require('fs');
 const { pathToFileURL } = require('url');
-const { plansDuSite } = require('../lib/plans.cjs');
+const { plansDuSite, charger } = require('../lib/plans.cjs');
 
 const json = (corps, status = 200) => ({ status, body: JSON.stringify(corps) });
 
@@ -1573,5 +1573,264 @@ module.exports = [
       }
     },
   },
-];
+  {
+    // FAQ (#faq), dernier appel et pied de page de l'accueil (tâche 7) : réponses lues dans faq.js (elles-mêmes lues
+    // dans PLANS), accordéon accessible, textes exacts de la spec pour le dernier appel, pied de page à la charte.
+    nom: 'site : FAQ, dernier appel et pied de page',
+    reel: true,
+    async executer({ ouvrir, attendre, verifier, RACINE }) {
+      const { questionsFaq } = charger(RACINE, 'src', 'components', 'landing', 'faq.js');
+      const { PLANS } = plansDuSite(RACINE);
+      const questions = questionsFaq();
+      verifier(questions.length >= 10, `la FAQ a ses questions (${questions.length})`);
 
+      for (const largeur of [375, 1440]) {
+        const a = `à ${largeur} px`;
+        const { page, browser } = await ouvrir({ reel: true, largeur, supabase: () => json([]) });
+
+        // ── FAQ : un titre, toutes les questions, l'accordéon s'ouvre au clic et le dit (aria-expanded)
+        await page.evaluate(() => document.querySelector('#faq').scrollIntoView());
+        await attendre(700);
+        const faq = await page.evaluate(() => {
+          const s = document.querySelector('#faq');
+          const boutons = [...s.querySelectorAll('[data-question]')];
+          return {
+            h2: [...s.querySelectorAll('h2')].map((h) => h.textContent.trim()),
+            questions: boutons.map((b) => b.textContent.replace(/\s+/g, ' ').trim()),
+            fermees: boutons.every((b) => b.getAttribute('aria-expanded') === 'false'),
+            liees: boutons.every((b) => !!document.getElementById(b.getAttribute('aria-controls') || '-')),
+            jsonLd: (() => {
+              try { return JSON.parse(document.getElementById('faq-jsonld')?.textContent || '{}').mainEntity?.length || 0; } catch { return -1; }
+            })(),
+          };
+        });
+        verifier(faq.h2.length === 1, `#faq : un seul titre h2 ${a} (${faq.h2.join(' | ')})`);
+        verifier(JSON.stringify(faq.questions) === JSON.stringify(questions.map((q) => q.q)), `#faq : les questions de faq.js, dans l'ordre ${a} (${faq.questions.length})`);
+        verifier(faq.fermees && faq.liees, `#faq : questions fermées à l'arrivée, chacune liée à sa réponse (aria-controls) ${a}`);
+        verifier(faq.jsonLd === questions.length, `#faq : données structurées FAQPage, une entrée par question ${a} (${faq.jsonLd})`);
+
+        // Ouvrir « Puis-je essayer avant de payer ? » : la réponse est lue dans faq.js (limites et prix de PLANS)
+        const essai = questions.find((q) => q.q.startsWith('Puis-je essayer'));
+        await page.evaluate((q) => [...document.querySelectorAll('#faq [data-question]')].find((b) => b.textContent.includes(q)).click(), essai.q);
+        await attendre(500);
+        const ouverte = await page.evaluate((q) => {
+          const b = [...document.querySelectorAll('#faq [data-question]')].find((x) => x.textContent.includes(q));
+          const r = document.getElementById(b.getAttribute('aria-controls'));
+          let o = 1;
+          for (let n = r; n; n = n.parentElement) o *= parseFloat(getComputedStyle(n).opacity);
+          return { etat: b.getAttribute('aria-expanded'), texte: (r?.innerText || '').replace(/[\s  ]+/g, ' ').trim(), opacite: o, hauteur: r?.getBoundingClientRect().height || 0 };
+        }, essai.q);
+        verifier(ouverte.etat === 'true' && ouverte.hauteur > 20 && ouverte.opacite === 1, `#faq : la réponse s'ouvre au clic ${a} (${JSON.stringify({ ...ouverte, texte: undefined })})`);
+        verifier(NORMALISER(ouverte.texte) === NORMALISER(essai.a), `#faq : la réponse affichée est celle de faq.js ${a}`);
+        const { devis, clients, chantiers } = PLANS.gratuit.limits;
+        verifier(ouverte.texte.includes(`${devis} devis par mois`) && ouverte.texte.includes(`${clients} clients`) && ouverte.texte.includes(`${chantiers} chantiers`) && !/actifs/.test(ouverte.texte),
+          `#faq : limites du plan Gratuit lues dans PLANS, « ${chantiers} chantiers » sans « actifs » ${a}`);
+        verifier(ouverte.texte.includes(MENTION_TVA) && !/\bHT\b/.test(ouverte.texte), `#faq : prix avec la mention de franchise de TVA, jamais « HT » ${a}`);
+        await capturerSection(page, RACINE, '#faq', `faq-${largeur}`);
+
+        // Filtre par catégorie : boutons aria-pressed, une seule catégorie pressée
+        const categories = await page.evaluate(() => [...document.querySelectorAll('#faq [data-categorie]')].map((b) => ({ texte: b.textContent.trim(), presse: b.getAttribute('aria-pressed'), h: b.getBoundingClientRect().height })));
+        verifier(categories.length >= 2 && categories.filter((c) => c.presse === 'true').length === 1, `#faq : catégories en boutons pressables, une seule pressée ${a} (${categories.map((c) => c.texte).join(', ')})`);
+        await page.evaluate(() => [...document.querySelectorAll('#faq [data-categorie]')].find((b) => b.textContent.trim() === 'Tarifs').click());
+        await attendre(400);
+        const tarifs = await page.evaluate(() => [...document.querySelectorAll('#faq [data-question]')].map((b) => b.textContent.trim()));
+        const attendues = questions.filter((q) => q.categorie === 'pricing').map((q) => q.q);
+        verifier(JSON.stringify(tarifs) === JSON.stringify(attendues), `#faq : « Tarifs » ne garde que les questions de tarifs ${a} (${tarifs.length})`);
+
+        // ── Dernier appel : textes exacts de la spec, deux pilules
+        const dernier = await page.evaluate(() => {
+          const s = document.querySelector('[data-dernier-appel]');
+          if (!s) return null;
+          s.scrollIntoView();
+          const liens = [...s.querySelectorAll('a, button')];
+          const creer = liens.find((x) => x.innerText.trim().startsWith('Créer mon compte gratuit'));
+          const demo = liens.find((x) => x.innerText.trim() === 'Voir la démo');
+          const cs = creer ? getComputedStyle(creer) : null;
+          return {
+            h2: s.querySelector('h2')?.textContent.trim(),
+            signature: s.querySelector('[data-signature]')?.textContent.trim(),
+            creer: !!creer, demo: demo?.getAttribute('href') || '',
+            fond: cs?.backgroundColor, couleur: cs?.color,
+            texte: s.textContent,
+          };
+        });
+        verifier(dernier && dernier.h2 === 'Votre prochain devis, dès ce soir.', `dernier appel : titre de la spec ${a} (« ${dernier?.h2} »)`);
+        verifier(dernier.signature === 'Mallettico — tout y est, rien ne pèse.', `dernier appel : la ligne de la spec ${a} (« ${dernier.signature} »)`);
+        verifier(dernier.creer && dernier.fond === 'rgb(18, 51, 111)' && dernier.couleur === 'rgb(255, 255, 255)', `dernier appel : « Créer mon compte gratuit » en pilule nuit-2 à texte blanc ${a} (${dernier.fond}, ${dernier.couleur})`);
+        verifier(dernier.demo === '/?demo=true', `dernier appel : « Voir la démo » mène à la démo ${a} (${dernier.demo})`);
+        const promesses = ['vitesse supérieure', '2 minutes', 'Sans engagement', 'tableurs'].filter((t) => dernier.texte.includes(t));
+        verifier(promesses.length === 0, `dernier appel : aucune promesse non vérifiée ${a} (${promesses.join(', ')})`);
+        await attendre(500);
+        await capturerSection(page, RACINE, '[data-dernier-appel]', `dernier-appel-${largeur}`);
+
+        // ── Pied de page : bleu-noir, logo, liens actuels sans « Blog », pilule blanche à texte nuit, rien d'éteint
+        const pied = await page.evaluate(() => {
+          const f = document.querySelector('footer');
+          f.scrollIntoView();
+          const contact = f.querySelector('[data-contact]');
+          const cs = contact ? getComputedStyle(contact) : null;
+          return {
+            fond: getComputedStyle(f).backgroundColor,
+            logo: f.querySelector('svg[role="img"]')?.getAttribute('aria-label') || '',
+            liens: [...f.querySelectorAll('a')].map((l) => ({ texte: l.innerText.trim(), href: l.getAttribute('href') || '' })),
+            texte: f.textContent,
+            contact: contact ? { href: contact.getAttribute('href'), fond: cs.backgroundColor, couleur: cs.color, h: contact.getBoundingClientRect().height } : null,
+          };
+        });
+        verifier(pied.fond === 'rgb(11, 19, 36)', `pied de page bleu-noir #0B1324 ${a} (${pied.fond})`);
+        verifier(pied.logo === 'Mallettico', `pied de page : le logo LogoMallettico ${a} (« ${pied.logo} »)`);
+        const libelles = pied.liens.map((l) => l.texte);
+        const attendus = ['Fonctionnalités', 'Tarifs', 'Signature électronique', 'Relances automatiques', 'Facture électronique', 'Ressources', 'Pourquoi Mallettico', 'FAQ', 'Mentions légales', 'CGU', 'CGV', 'Confidentialité'];
+        const manquants = attendus.filter((t) => !libelles.includes(t));
+        verifier(manquants.length === 0, `pied de page : les liens actuels ${a} (manquent : ${manquants.join(', ')})`);
+        verifier(!/Blog|Bientôt/.test(pied.texte), `pied de page : ni « Blog » ni « Bientôt » ${a}`);
+        const eteints = pied.liens.filter((l) => /\/pay\/|\/portal|portail|paiement/i.test(`${l.href} ${l.texte}`));
+        verifier(eteints.length === 0, `pied de page : aucun lien vers une fonction éteinte ${a} (${eteints.map((l) => l.href).join(', ')})`);
+        verifier(pied.contact && pied.contact.href === 'mailto:contact@mallettico.fr' && pied.contact.fond === 'rgb(255, 255, 255)' && pied.contact.couleur === 'rgb(13, 46, 108)' && pied.contact.h >= 44,
+          `pied de page : le contact en pilule blanche à texte nuit, plus de bouton orange ${a} (${JSON.stringify(pied.contact)})`);
+        await capturerSection(page, RACINE, 'footer', `pied-${largeur}`);
+
+        // ── Les trois blocs : sans débordement, cibles de 44 px, contrastes, aucun texte orange
+        const debord = await page.evaluate(() => {
+          const sortants = [...document.querySelectorAll('#faq *, [data-dernier-appel] *, footer *')].filter((el) => {
+            if (el.closest('[data-decor]')) return false;
+            const r = el.getBoundingClientRect();
+            return r.width > 0 && r.height > 0 && (r.left < -1 || r.right > innerWidth + 1);
+          });
+          return { page: document.documentElement.scrollWidth - innerWidth, elements: sortants.slice(0, 3).map((el) => `${el.tagName.toLowerCase()}.${String(el.className).slice(0, 40)}`) };
+        });
+        verifier(debord.page <= 0 && debord.elements.length === 0, `FAQ, dernier appel et pied de page sans débordement ${a} (${debord.page} px ; ${debord.elements.join(' | ')})`);
+        const petites = await page.evaluate(() => [...document.querySelectorAll('#faq button, #faq a, [data-dernier-appel] a, [data-dernier-appel] button, footer a, footer button')]
+          .filter((el) => el.getClientRects().length > 0)
+          .map((el) => ({ texte: el.innerText.trim().slice(0, 30), h: el.getBoundingClientRect().height }))
+          .filter((x) => x.h < 44));
+        verifier(petites.length === 0, `cibles de 44 px au moins ${a} (${petites.map((x) => `${x.texte} ${x.h}`).join(' | ')})`);
+        const oranges = await page.evaluate(() => [...document.querySelectorAll('#faq *, [data-dernier-appel] *, footer *')]
+          .filter((el) => el.childNodes.length && [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim()))
+          .filter((el) => ['rgb(238, 123, 32)', 'rgb(249, 115, 22)', 'rgb(234, 88, 12)', 'rgb(251, 146, 60)', 'rgb(253, 186, 116)'].includes(getComputedStyle(el).color))
+          .map((el) => el.textContent.trim().slice(0, 30)));
+        verifier(oranges.length === 0, `aucun texte orange ${a} (${oranges.join(' | ')})`);
+        for (const selecteur of ['#faq h2', '#faq [data-intro]', '#faq [data-question]', '#faq [data-categorie][aria-pressed="true"]', '#faq [data-categorie][aria-pressed="false"]', '#faq [data-reponse]', '#faq [data-contact-faq]',
+          '[data-dernier-appel] h2', '[data-dernier-appel] [data-signature]', 'footer [data-accroche]', 'footer [data-titre-colonne]', 'footer li a', 'footer [data-copyright]', 'footer [data-contact]']) {
+          const c = await contrasteDe(page, selecteur);
+          verifier(c >= 4.5, `contraste de ${selecteur} ≥ 4,5 ${a} (${c.toFixed(2)})`);
+        }
+        await browser.close();
+
+        // ── Mouvement réduit : FAQ, dernier appel et pied de page lisibles d'emblée
+        const reduit = await ouvrir({ reel: true, largeur, supabase: () => json([]) });
+        await reduit.page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'reduce' }]);
+        await reduit.page.reload({ waitUntil: 'networkidle0' });
+        await attendre(500);
+        await reduit.page.evaluate(() => document.querySelector('#faq').scrollIntoView());
+        await attendre(150);
+        const opacites = await reduit.page.evaluate(() => [...document.querySelectorAll('#faq h2, #faq [data-question], [data-dernier-appel] h2, footer')].map((el) => {
+          let o = 1;
+          for (let n = el; n; n = n.parentElement) o *= parseFloat(getComputedStyle(n).opacity);
+          return o;
+        }));
+        verifier(opacites.length >= questions.length + 3 && opacites.every((o) => o === 1), `mouvement réduit : FAQ, dernier appel et pied de page opaques d'emblée ${a}`);
+        await reduit.browser.close();
+      }
+    },
+  },
+  {
+    // Sous-pages marketing (tâche 7) : /fonctionnalites, une page de détail, /ressources, à la charte « Glacier vif ».
+    nom: 'site : sous-pages',
+    reel: true,
+    async executer({ ouvrir, attendre, verifier, RACINE }) {
+      const CHEMINS = ['/fonctionnalites', '/fonctionnalites/devis-factures', '/fonctionnalites/relances', '/fonctionnalites/signature-electronique', '/ressources'];
+      for (const largeur of [375, 1440]) {
+        const a = `à ${largeur} px`;
+        for (const chemin of CHEMINS) {
+          const ou = `${chemin} ${a}`;
+          const { page, browser, erreurs } = await ouvrir({ reel: true, largeur, chemin, supabase: () => json([]) });
+          await attendre(800);
+          // Toute la page parcourue (images paresseuses chargées, apparitions jouées), puis retour en haut
+          await page.evaluate(async () => {
+            for (let y = 0; y < document.body.scrollHeight; y += Math.round(innerHeight * 0.7)) {
+              window.scrollTo(0, y);
+              await new Promise((r) => setTimeout(r, 120));
+            }
+          });
+          await attendre(900);
+          const etat = await page.evaluate(() => {
+            const visible = (el) => !!el && el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden';
+            const imgs = [...document.querySelectorAll('main img')];
+            return {
+              connexion: [...document.querySelectorAll('header button, header a')].some((b) => visible(b) && b.innerText.trim() === 'Connexion'),
+              pied: visible(document.querySelector('footer')) && document.querySelector('footer').textContent.includes('Mentions légales'),
+              h1: [...document.querySelectorAll('h1')].map((h) => h.textContent.trim()),
+              debord: document.documentElement.scrollWidth - innerWidth,
+              images: imgs.map((i) => ({ src: i.getAttribute('src'), charge: i.complete && i.naturalWidth > 0, l: i.getAttribute('width'), h: i.getAttribute('height'), alt: i.getAttribute('alt') || '' })),
+              anciennes: [...document.querySelectorAll('[src*="/screenshots/"], [href*="/screenshots/"]')].length,
+              texte: document.body.innerText,
+              oranges: [...document.querySelectorAll('main *, footer *')]
+                .filter((el) => [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim()))
+                .filter((el) => ['rgb(238, 123, 32)', 'rgb(249, 115, 22)', 'rgb(234, 88, 12)', 'rgb(251, 146, 60)', 'rgb(253, 186, 116)'].includes(getComputedStyle(el).color))
+                .map((el) => el.textContent.trim().slice(0, 30)),
+              petites: [...document.querySelectorAll('main a, main button, footer a, footer button')]
+                .filter((el) => el.getClientRects().length > 0 && !el.closest('p, li p'))
+                .map((el) => ({ texte: el.innerText.trim().slice(0, 30), h: el.getBoundingClientRect().height }))
+                .filter((x) => x.h < 44),
+            };
+          });
+          verifier(etat.connexion, `${ou} : la barre et son bouton « Connexion »`);
+          verifier(etat.pied, `${ou} : le pied de page`);
+          verifier(etat.h1.length === 1, `${ou} : un seul titre h1 (${etat.h1.join(' | ')})`);
+          verifier(etat.debord <= 0, `${ou} : aucun défilement horizontal (${etat.debord} px)`);
+          verifier(etat.images.length > 0 && etat.images.every((i) => i.charge && /^\/site\/[a-z0-9-]+\.webp$/.test(i.src) && i.l && i.h && i.alt.length > 10),
+            `${ou} : captures du site chargées, en WebP, dimensions et texte de remplacement (${etat.images.filter((i) => !i.charge || !/^\/site\//.test(i.src)).map((i) => i.src).join(', ')})`);
+          verifier(etat.anciennes === 0, `${ou} : plus aucune image de public/screenshots/`);
+          const interdits = ['Factur-X', 'dictée', 'Dictée', 'BTP Rénovation', 'gmail', 'Bientôt', 'bientôt', 'Plan Équipe', '(plan Équipe)', 'LEGO', 'drag-and-drop', 'Dashboard', 'widgets', 'templates', '30, 60 et 90', '30/60/90', 'Pennylane', 'Indy', 'app.mallettico.fr']
+            .filter((t) => etat.texte.includes(t));
+          verifier(interdits.length === 0, `${ou} : aucun texte retiré par la relecture d'honnêteté (${interdits.join(', ')})`);
+          verifier(etat.oranges.length === 0, `${ou} : aucun texte orange (${etat.oranges.join(' | ')})`);
+          verifier(etat.petites.length === 0, `${ou} : cibles de 44 px au moins (${etat.petites.map((x) => `${x.texte} ${x.h}`).join(' | ')})`);
+          for (const selecteur of ['h1', 'main [data-intro]', 'main h2', 'main h3', 'footer li a']) {
+            const c = await contrasteDe(page, selecteur);
+            verifier(c >= 4.5, `${ou} : contraste de ${selecteur} ≥ 4,5 (${c.toFixed(2)})`);
+          }
+          verifier(erreurs.length === 0, `${ou} : aucune erreur JavaScript (${erreurs[0] || ''})`);
+          await page.evaluate(() => window.scrollTo(0, 0));
+          await attendre(300);
+          const nom = `sous-page${chemin.replace(/\//g, '-')}-${largeur}`;
+          const fichier = path.join(RACINE, 'audit-ui', `site-${nom}.png`);
+          await page.screenshot({ path: fichier, fullPage: true });
+          await browser.close();
+        }
+
+        // Questions d'une page de détail : accordéon accessible
+        const detail = await ouvrir({ reel: true, largeur, chemin: '/fonctionnalites/relances', supabase: () => json([]) });
+        await attendre(600);
+        const avant = await detail.page.evaluate(() => {
+          const b = document.querySelector('main [data-question]');
+          b?.scrollIntoView({ block: 'center' });
+          return { etat: b?.getAttribute('aria-expanded'), lie: !!document.getElementById(b?.getAttribute('aria-controls') || '-') };
+        });
+        await detail.page.evaluate(() => document.querySelector('main [data-question]').click());
+        await attendre(500);
+        const apres = await detail.page.evaluate(() => {
+          const b = document.querySelector('main [data-question]');
+          const r = document.getElementById(b.getAttribute('aria-controls'));
+          return { etat: b.getAttribute('aria-expanded'), hauteur: r?.getBoundingClientRect().height || 0 };
+        });
+        verifier(avant.etat === 'false' && avant.lie && apres.etat === 'true' && apres.hauteur > 20, `/fonctionnalites/relances : une question s'ouvre et le dit (aria-expanded) ${a}`);
+        await detail.browser.close();
+
+        // Mouvement réduit : la page des fonctionnalités est lisible d'emblée
+        const reduit = await ouvrir({ reel: true, largeur, chemin: '/fonctionnalites', supabase: () => json([]) });
+        await reduit.page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'reduce' }]);
+        await reduit.page.reload({ waitUntil: 'networkidle0' });
+        await attendre(500);
+        const opacites = await reduit.page.evaluate(() => [...document.querySelectorAll('h1, main h2, main h3')].map((el) => {
+          let o = 1;
+          for (let n = el; n; n = n.parentElement) o *= parseFloat(getComputedStyle(n).opacity);
+          return o;
+        }));
+        verifier(opacites.length > 3 && opacites.every((o) => o === 1), `/fonctionnalites, mouvement réduit : titres opaques d'emblée ${a}`);
+        await reduit.browser.close();
+      }
+    },
+  },
+];

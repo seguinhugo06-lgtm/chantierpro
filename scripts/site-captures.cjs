@@ -7,8 +7,9 @@
  *
  * Produit :
  *   public/site/*.webp              ordinateur 1440 × 900 à densité 2 (2880 × 1800), téléphone 390 × 844 à densité 3 (1170 × 2532)
- *   public/screenshots/signature.png  la page de signature du client (même vue que public/site/signature.webp)
  *   public/og-image.png             vignette de partage, 1200 × 630
+ * Les pages de fonctionnalités (featuresContent.js) lisent ces WebP ; plus rien n'est écrit dans public/screenshots/ (ses
+ * anciennes captures montraient une entreprise de démonstration, des adresses gmail et, pour la signature, un compte réel).
  *
  * Le filtre ne retient que les captures dont le nom le contient (ex. « tel- », « signature », « og-image »).
  * dist/ est construit s'il manque ; --construire le reconstruit d'abord (à faire après chaque changement de l'app).
@@ -92,6 +93,17 @@ async function jeuDemoFictif() {
   donnees.chantiers.forEach((ch) => {
     if (adresses[ch.client_id]) { originaux.push(ch.adresse); ch.adresse = adresses[ch.client_id]; }
   });
+  // L'équipe (page Équipe) : e-mails sur un vrai nom de domaine et numéros hors de la plage de fiction
+  (donnees.equipe || []).forEach((e, i) => {
+    originaux.push(e.email, e.telephone);
+    e.email = `${sansAccent(e.prenom)}.${sansAccent(e.nom)}@example.com`;
+    e.telephone = `06 39 98 01 ${String(i + 1).padStart(2, '0')}`;
+  });
+  // Les échanges d'un chantier gardent l'adresse du client à qui ils ont été envoyés
+  const courriels = Object.fromEntries(DEMO_DATA.clients.map((c, i) => [c.email, donnees.clients[i].email]));
+  (donnees.echanges || []).forEach((ech) => {
+    if (ech.destinataire && courriels[ech.destinataire]) ech.destinataire = courriels[ech.destinataire];
+  });
   jeuDemo = { donnees, originaux: originaux.filter(Boolean) };
   return jeuDemo;
 }
@@ -122,11 +134,22 @@ const GESTES_LOT = [
 
 // ─── Les vues de l'app ───────────────────────────────────────────────────────────────────────────────────
 // Sur téléphone l'éditeur s'ouvre depuis l'accueil, sur ordinateur depuis la page des devis.
+// Pages de fonctionnalités (/fonctionnalites, /fonctionnalites/:slug, /ressources) : chantier, catalogue, clients,
+// planning, équipe, trésorerie et relances, en plus des vues du premier écran et du cycle.
 const VUES = [
   { nom: 'ordi-accueil', page: 'dashboard', largeur: 1440 },
   { nom: 'ordi-devis-lots', page: 'devis', largeur: 1440, gestes: GESTES_LOT },
   { nom: 'ordi-devis-signe', page: 'devis', largeur: 1440, gestes: [['DEV-2026-00007']] },
   { nom: 'ordi-facture', page: 'devis', largeur: 1440, gestes: [['FAC-2026-00003']] },
+  { nom: 'ordi-chantier', page: 'chantiers', largeur: 1440, gestes: [['Rénovation cuisine Dupont']] },
+  { nom: 'ordi-catalogue', page: 'catalogue', largeur: 1440 },
+  { nom: 'ordi-clients', page: 'clients', largeur: 1440 },
+  { nom: 'ordi-planning', page: 'planning', largeur: 1440 },
+  { nom: 'ordi-equipe', page: 'equipe', largeur: 1440 },
+  // La page Finances s'ouvre défilée vers le bas : `enHaut` la ramène en haut avant la capture
+  { nom: 'ordi-tresorerie', page: 'finances', largeur: 1440, enHaut: true },
+  // Relances : réglages › Documents › Relances, l'interrupteur général allumé (il est éteint dans la démo)
+  { nom: 'ordi-relances', page: 'settings', largeur: 1440, gestes: [['Documents'], ['Relances'], ['__selecteur', '[role="switch"][aria-checked="false"]']], enHaut: true },
   { nom: 'tel-accueil', page: 'dashboard', largeur: 390 },
   { nom: 'tel-devis-lots', page: 'dashboard', largeur: 390, gestes: GESTES_LOT },
   { nom: 'tel-facture', page: 'devis', largeur: 390, gestes: [['FAC-2026-00003']] },
@@ -181,11 +204,24 @@ async function capturerVue(v) {
     }, ENTREPRISE_FICTIVE, donnees);
     await page.reload({ waitUntil: 'networkidle0' }).catch(() => {});
     await attendre(1500);
-    for (const [texte] of v.gestes || []) {
+    for (const [texte, selecteur] of v.gestes || []) {
       if (texte === '__echap') { await page.keyboard.press('Escape'); await attendre(600); continue; }
+      if (texte === '__selecteur') {
+        const ok = await page.evaluate((s) => { const el = document.querySelector(s); el?.click(); return !!el; }, selecteur);
+        if (!ok) throw new Error(`(${v.nom}) élément introuvable : ${selecteur}`);
+        await attendre(1200);
+        continue;
+      }
       const ok = await cliquer(page, texte);
       if (!ok) throw new Error(`(${v.nom}) geste introuvable : ${texte}`);
       await attendre(1200);
+    }
+    if (v.enHaut) {
+      await page.evaluate(() => {
+        window.scrollTo(0, 0);
+        document.querySelectorAll('*').forEach((el) => { if (el.scrollTop > 0) el.scrollTop = 0; });
+      });
+      await attendre(600);
     }
     // Notifications passagères masquées, ainsi que l'adresse du compte de démonstration dans le menu latéral
     await page.evaluate(() => {
@@ -265,10 +301,6 @@ async function capturerSignature() {
     await page.evaluate(() => document.querySelectorAll('[role="status"]').forEach((e) => { e.style.display = 'none'; }));
     await controler(page, 'signature');
     await ecrireWebp(page, 'signature');
-    // Même vue en PNG, au nom lu par les pages de fonctionnalités
-    const png = await page.screenshot({ type: 'png' });
-    fs.writeFileSync(path.join(RACINE, 'public', 'screenshots', 'signature.png'), png);
-    bilan.push({ nom: 'screenshots/signature.png', ko: Math.round(png.length / 1024), qualite: 'png' });
     console.log('ok signature');
   } finally {
     await browser.close();

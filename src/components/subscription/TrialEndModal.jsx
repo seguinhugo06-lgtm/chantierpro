@@ -9,11 +9,12 @@
  * Shows only once (localStorage flag: cp_trial_end_modal_shown)
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
-  X, Check, Crown, Zap, ArrowRight, FileText, Users, Hammer, Euro
+  X, Check, Crown, ArrowRight, FileText, Users, Hammer, Euro
 } from 'lucide-react';
 import { useSubscriptionStore, PLANS } from '../../stores/subscriptionStore';
+import { MENTION_TVA_ABONNEMENT, prixAbonnement } from '../../stores/prixAbonnement';
 import { useClients, useDevis, useChantiers } from '../../context/DataContext';
 
 const SHOWN_KEY = 'cp_trial_end_modal_shown';
@@ -22,7 +23,6 @@ export default function TrialEndModal() {
   const planId = useSubscriptionStore((s) => s.planId);
   const subscription = useSubscriptionStore((s) => s.subscription);
   const isTrial = useSubscriptionStore((s) => s.isTrial());
-  const daysLeft = useSubscriptionStore((s) => s.trialDaysLeft());
   const openUpgradeModal = useSubscriptionStore((s) => s.openUpgradeModal);
 
   const { clients } = useClients();
@@ -77,7 +77,6 @@ export default function TrialEndModal() {
 
   if (!visible) return null;
 
-  const gratuit = PLANS.gratuit;
   const artisan = PLANS.artisan;
 
   return (
@@ -169,9 +168,11 @@ export default function TrialEndModal() {
             className="w-full py-3 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 text-white font-bold text-sm hover:shadow-lg hover:shadow-orange-500/25 transition-all flex items-center justify-center gap-2"
           >
             <Crown size={16} />
-            Passer au plan Artisan — {artisan.priceMonthly.toFixed(2).replace('.', ',')}€/mois
+            Passer au plan {artisan.name} — {prixAbonnement(artisan)} par mois
             <ArrowRight size={16} />
           </button>
+          {/* Franchise de TVA des abonnements (D-19) : la mention accompagne le prix, comme dans « Mon plan » */}
+          <p className="text-center text-xs text-encre-3">{MENTION_TVA_ABONNEMENT}</p>
           <button
             onClick={handleClose}
             className="w-full py-2 text-sm text-slate-400 hover:text-slate-600 transition-colors"

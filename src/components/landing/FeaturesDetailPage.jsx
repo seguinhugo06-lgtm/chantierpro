@@ -1,303 +1,141 @@
 /**
- * FeaturesDetailPage — Dedicated /fonctionnalites page.
+ * FeaturesDetailPage — la page /fonctionnalites : une carte par fonctionnalité, filtrable par catégorie, chacune avec
+ * une capture de l'application (données fictives) ; une carte qui a sa page de détail y mène.
  *
- * Comprehensive feature catalog organized by category with
- * screenshots, descriptions, and benefits.
+ * Contenu et captures : `featuresContent.js` (`CARTES_FONCTIONNALITES`, chaque affirmation vérifiée dans le code).
+ * Charte « Glacier vif » : en-tête glacier avec le plan d'architecte (`site/EnTetePage`), filtres en pastilles
+ * `aria-pressed`, cartes blanches, appel final sur la bande bleu nuit (`site/BandeAppel`).
+ * Retirés de l'ancienne version : « Tout ce dont vous avez besoin, au même endroit » et « tout est intégré »
+ * (affirmations absolues), le cadre de navigateur à fausse adresse, les couleurs de l'ancienne palette.
  */
-
-import React, { useState } from 'react';
-import { motion } from 'framer-motion';
-import {
-  FileText,
-  Package,
-  Building2,
-  Calendar,
-  Users,
-  TrendingUp,
-  Bell,
-  UserCog,
-  Smartphone,
-  Shield,
-  Globe,
-  BookOpen,
-  ArrowRight,
-} from 'lucide-react';
+import { useState } from 'react';
+import { ArrowRight, Check } from 'lucide-react';
 import MarketingLayout from './MarketingLayout';
-import BrowserFrame from './BrowserFrame';
-import { ScrollReveal, StaggerReveal, fadeInUp } from './animations';
+import SectionSite from './site/SectionSite';
+import EnTetePage from './site/EnTetePage';
+import BandeAppel from './site/BandeAppel';
+import Apparition from './site/Apparition';
+import { CadreOrdi, CadreTel } from './site/Cadres';
+import { ICONES } from './site/icones';
+import { CARTES_FONCTIONNALITES, CATEGORIES_FONCTIONNALITES } from './featuresContent';
 
-const CATEGORIES = [
-  { id: 'all', label: 'Tout', icon: null },
-  { id: 'devis', label: 'Devis & Factures', icon: FileText },
-  { id: 'chantiers', label: 'Chantiers', icon: Building2 },
-  { id: 'gestion', label: 'Gestion', icon: Users },
-  { id: 'finance', label: 'Finances', icon: TrendingUp },
-  { id: 'tech', label: 'Technique', icon: Shield },
-];
+const FOCUS =
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-marque-nuit-2 focus-visible:ring-offset-2 focus-visible:ring-offset-white';
 
-const FEATURES = [
-  {
-    category: 'devis',
-    icon: FileText,
-    color: '#f97316',
-    bg: 'bg-orange-50',
-    title: 'Cr\u00e9ation de devis & factures',
-    slug: 'devis-factures',
-    description: 'Cr\u00e9ez des devis et factures professionnels en quelques clics. Ajoutez des lignes depuis votre catalogue, appliquez des remises, calculez automatiquement la TVA et g\u00e9n\u00e9rez un PDF avec toutes les mentions obligatoires.',
-    benefits: ['PDF avec mentions obligatoires', 'Calcul automatique TVA', 'Templates personnalisables', 'Num\u00e9rotation automatique'],
-    screenshot: '/screenshots/devis-editor.png',
-  },
-  {
-    category: 'devis',
-    icon: Package,
-    color: '#8b5cf6',
-    bg: 'bg-violet-50',
-    title: 'Catalogue BTP pr\u00eat \u00e0 l\'emploi',
-    slug: 'catalogue',
-    description: 'D\u00e9marrez avec des centaines d\'articles et prestations chiffr\u00e9s par m\u00e9tier. Composez vos devis en quelques clics, sans jamais partir de la page blanche.',
-    benefits: ['1 000+ articles et ouvrages pr\u00e9-chiffr\u00e9s', 'Import par m\u00e9tier en un clic', 'Prix d\'achat et marge automatiques', 'Import CSV fournisseurs'],
-    screenshot: '/screenshots/catalogue.png',
-  },
-  {
-    category: 'devis',
-    icon: Globe,
-    color: '#22c55e',
-    bg: 'bg-green-50',
-    title: 'Signature \u00e9lectronique',
-    slug: 'signature-electronique',
-    description: 'Envoyez vos devis pour signature \u00e9lectronique. Vos clients signent en ligne depuis un lien s\u00e9curis\u00e9, sans cr\u00e9er de compte.',
-    benefits: ['Signature au doigt sur mobile', 'Lien unique, valable jusqu\u2019\u00e0 la fin de validit\u00e9 du devis', 'Horodatage et signataire enregistr\u00e9s', 'Statut \u00ab Sign\u00e9 \u00bb automatique'],
-    screenshot: '/screenshots/signature.png',
-  },
-  {
-    category: 'chantiers',
-    icon: Building2,
-    color: '#3b82f6',
-    bg: 'bg-blue-50',
-    title: 'Suivi de chantier complet',
-    slug: 'chantiers',
-    description: 'Suivez chaque chantier de A \u00e0 Z : avancement, rentabilit\u00e9, d\u00e9penses, t\u00e2ches. Centralisez toutes les informations dans un tableau de bord par chantier.',
-    benefits: ['Marge en temps r\u00e9el', 'Journal d\'activit\u00e9', 'Check-lists et t\u00e2ches', 'Statuts personnalis\u00e9s'],
-    screenshot: '/screenshots/chantier-detail.png',
-  },
-  {
-    category: 'chantiers',
-    icon: Calendar,
-    color: '#06b6d4',
-    bg: 'bg-cyan-50',
-    title: 'Planning interactif',
-    description: 'Planifiez vos chantiers et rendez-vous dans un calendrier interactif avec drag-and-drop, vue par \u00e9quipe et code couleur.',
-    benefits: ['Vue jour/semaine/mois', 'Drag-and-drop', 'Vue par \u00e9quipe', 'Rappels automatiques'],
-    screenshot: '/screenshots/planning.png',
-  },
-  {
-    category: 'gestion',
-    icon: Users,
-    color: '#22c55e',
-    bg: 'bg-green-50',
-    title: 'Gestion clients & CRM',
-    description: 'Centralisez tous vos contacts, suivez l\'historique des projets par client, d\u00e9tectez les doublons et g\u00e9rez vos prospects.',
-    benefits: ['Fiche client compl\u00e8te', 'D\u00e9tection doublons', 'Historique projets', 'Recherche rapide'],
-    screenshot: '/screenshots/clients.png',
-  },
-  {
-    category: 'gestion',
-    icon: UserCog,
-    color: '#6366f1',
-    bg: 'bg-indigo-50',
-    title: '\u00c9quipe & sous-traitants',
-    slug: 'equipe',
-    description: 'G\u00e9rez votre \u00e9quipe et vos sous-traitants : r\u00f4les, permissions, pointage, cong\u00e9s. Affectez les membres aux chantiers.',
-    benefits: ['R\u00f4les & permissions', 'Pointage des heures', 'Gestion des cong\u00e9s', 'Affectation chantiers'],
-    screenshot: '/screenshots/equipe.png',
-  },
-  {
-    category: 'gestion',
-    icon: BookOpen,
-    color: '#f59e0b',
-    bg: 'bg-amber-50',
-    title: 'Catalogue de prestations',
-    description: 'Cr\u00e9ez une biblioth\u00e8que de prestations r\u00e9utilisables avec prix, cat\u00e9gories et descriptions. Construisez vos devis comme un jeu de LEGO.',
-    benefits: ['Prestations r\u00e9utilisables', 'Cat\u00e9gories personnalis\u00e9es', 'Import/export', 'Prix et unit\u00e9s'],
-    screenshot: '/screenshots/dashboard.png',
-  },
-  {
-    category: 'finance',
-    icon: TrendingUp,
-    color: '#10b981',
-    bg: 'bg-emerald-50',
-    title: 'Tr\u00e9sorerie & projections',
-    slug: 'tresorerie',
-    description: 'Anticipez vos flux de tr\u00e9sorerie avec des projections \u00e0 30, 60 et 90 jours. D\u00e9tectez les impay\u00e9s et ma\u00eetrisez votre BFR.',
-    benefits: ['Projections automatiques', 'Suivi des impay\u00e9s', 'Tableau de bord financier', 'Exports comptables'],
-    screenshot: '/screenshots/tresorerie.png',
-  },
-  {
-    category: 'finance',
-    icon: Bell,
-    color: '#f59e0b',
-    bg: 'bg-amber-50',
-    title: 'Relances automatiques',
-    slug: 'relances',
-    description: 'Programmez des relances automatiques par email avec des templates personnalis\u00e9s et des variables dynamiques.',
-    benefits: ['Templates personnalisables', 'Planification intelligente', 'Variables dynamiques', 'Historique complet'],
-    screenshot: '/screenshots/relances.png',
-  },
-  {
-    category: 'tech',
-    icon: Shield,
-    color: '#ef4444',
-    bg: 'bg-red-50',
-    title: 'Facture \u00e9lectronique',
-    description: 'Vos factures portent les mentions obligatoires et un fichier Factur-X. \u00c0 partir du 1er septembre 2027, les TPE devront \u00e9mettre leurs factures par une Plateforme Agr\u00e9\u00e9e : le raccordement de Mallettico est en pr\u00e9paration.',
-    benefits: ['Fichier Factur-X', 'Mentions obligatoires', 'Export comptable'],
-    screenshot: '/screenshots/dashboard.png',
-  },
-  {
-    category: 'tech',
-    icon: Smartphone,
-    color: '#f97316',
-    bg: 'bg-orange-50',
-    title: 'Mobile & tablette',
-    description: 'Installez Mallettico sur votre t\u00e9l\u00e9phone : elle s\u2019ouvre comme une application, en plein \u00e9cran.',
-    benefits: ['Installation depuis le navigateur', 'Multi-appareils'],
-    screenshot: '/screenshots/mobile.png',
-  },
-];
+const LEGENDE = "Captures de l'application, données fictives.";
 
-function FeatureCard({ feature }) {
-  const Icon = feature.icon;
-  const Wrapper = feature.slug ? motion.a : motion.div;
-  const wrapperProps = feature.slug ? { href: `/fonctionnalites/${feature.slug}` } : {};
+/** La capture d'une carte, dans une vignette de hauteur fixe : le cadre déborde par le bas et y est coupé. */
+function Vignette({ capture }) {
   return (
-    <Wrapper
-      {...wrapperProps}
-      variants={fadeInUp}
-      className="group block bg-white rounded-2xl border border-slate-200 overflow-hidden hover:border-orange-200 hover:shadow-xl hover:shadow-orange-500/5 transition-all"
-    >
-      {/* Screenshot */}
-      <div className="p-3 pb-0">
-        <BrowserFrame
-          src={feature.screenshot}
-          alt={feature.title}
-          className="!shadow-none !border-slate-100"
-        />
-      </div>
-
-      {/* Content */}
-      <div className="p-5 sm:p-6">
-        <div className="flex items-center gap-3 mb-3">
-          <div className={`w-9 h-9 rounded-lg ${feature.bg} flex items-center justify-center`}>
-            <Icon size={18} style={{ color: feature.color }} />
-          </div>
-          <h3 className="text-base font-bold text-slate-900">{feature.title}</h3>
-        </div>
-
-        <p className="text-sm text-slate-500 leading-relaxed mb-4">{feature.description}</p>
-
-        <ul className="space-y-1.5">
-          {feature.benefits.map((b, i) => (
-            <li key={i} className="flex items-center gap-2 text-xs text-slate-600">
-              <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: feature.color }} />
-              {b}
-            </li>
-          ))}
-        </ul>
-        {feature.slug && (
-          <p className="mt-4 inline-flex items-center gap-1 text-sm font-semibold group-hover:gap-2 transition-all" style={{ color: feature.color }}>
-            En savoir plus <ArrowRight size={15} />
-          </p>
-        )}
-      </div>
-    </Wrapper>
+    <div className="relative aspect-[16/10] overflow-hidden rounded-t-2xl bg-marque-glacier-1 px-4 pt-4 sm:px-5 sm:pt-5">
+      {capture.telephone ? (
+        <CadreTel src={capture.src} alt={capture.alt} largeur={capture.largeur} hauteur={capture.hauteur} className="max-w-[46%] !border-[6px] !rounded-[1.5rem]" />
+      ) : (
+        <CadreOrdi src={capture.src} alt={capture.alt} largeur={capture.largeur} hauteur={capture.hauteur} />
+      )}
+    </div>
   );
 }
 
-export default function FeaturesDetailPage() {
-  const [activeCategory, setActiveCategory] = useState('all');
+function Carte({ carte }) {
+  const Icone = ICONES[carte.icone];
+  const contenu = (
+    <>
+      <Vignette capture={carte.capture} />
+      <div className="flex flex-1 flex-col p-5 sm:p-6">
+        <div className="flex items-center gap-3">
+          {Icone ? (
+            <span aria-hidden="true" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-marque-glacier-2 text-marque-nuit-2">
+              <Icone size={20} strokeWidth={2} />
+            </span>
+          ) : null}
+          <h3 className="text-lg font-bold leading-snug tracking-tight text-marque-nuit">{carte.titre}</h3>
+        </div>
+        <p className="mt-3 text-base leading-relaxed text-slate-700">{carte.description}</p>
+        <ul className="mt-4 flex flex-col gap-2">
+          {carte.points.map((point) => (
+            <li key={point} className="flex items-start gap-2.5 text-sm leading-snug text-slate-700">
+              <span aria-hidden="true" className="mt-px flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-marque-glacier-2 text-marque-nuit-2">
+                <Check size={12} strokeWidth={3.5} />
+              </span>
+              {point}
+            </li>
+          ))}
+        </ul>
+        {carte.slug ? (
+          <span className="mt-auto inline-flex items-center gap-1.5 pt-5 text-base font-semibold text-marque-nuit-2">
+            En savoir plus
+            <ArrowRight size={18} aria-hidden="true" className="transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none" />
+          </span>
+        ) : null}
+      </div>
+    </>
+  );
+  const classes = 'group flex h-full flex-col rounded-2xl border border-marque-acier/60 bg-white shadow-[0_18px_40px_-30px_rgba(13,46,108,0.5)]';
+  if (carte.slug) {
+    return (
+      <a
+        href={`/fonctionnalites/${carte.slug}`}
+        className={`${classes} transition-[border-color,box-shadow] hover:border-marque-nuit-2/60 hover:shadow-[0_24px_48px_-30px_rgba(13,46,108,0.6)] motion-reduce:transition-none ${FOCUS}`}
+      >
+        {contenu}
+      </a>
+    );
+  }
+  return <article className={classes}>{contenu}</article>;
+}
 
-  const filtered = activeCategory === 'all'
-    ? FEATURES
-    : FEATURES.filter((f) => f.category === activeCategory);
+export default function FeaturesDetailPage() {
+  const [categorie, setCategorie] = useState('tout');
+  const cartes = categorie === 'tout' ? CARTES_FONCTIONNALITES : CARTES_FONCTIONNALITES.filter((c) => c.categorie === categorie);
 
   return (
     <MarketingLayout>
-      {/* Hero */}
-      <section className="py-16 sm:py-24 bg-gradient-to-b from-orange-50/50 to-white">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 text-center">
-          <ScrollReveal>
-            <p className="text-sm font-semibold text-orange-500 uppercase tracking-wide mb-3">
-              Fonctionnalit&eacute;s
-            </p>
-            <h1 className="text-3xl sm:text-5xl font-bold text-slate-900 mb-4 leading-tight">
-              Tout ce dont vous avez besoin,<br className="hidden sm:block" />
-              au m&ecirc;me endroit
-            </h1>
-            <p className="text-lg text-slate-500 max-w-2xl mx-auto">
-              D&eacute;couvrez en d&eacute;tail chaque fonctionnalit&eacute; de Mallettico.
-              De la cr&eacute;ation de devis au suivi financier, tout est int&eacute;gr&eacute;.
-            </p>
-          </ScrollReveal>
-        </div>
-      </section>
+      <EnTetePage
+        surtitre="Fonctionnalités"
+        titre="Du devis à l'encaissement, au même endroit."
+        intro="Chaque fonctionnalité de Mallettico, avec une capture de l'application. Ouvrez une carte pour le détail."
+      />
 
-      {/* Category filter */}
-      <section className="sticky top-[60px] z-30 bg-white/90 backdrop-blur-xl border-b border-slate-100">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3">
-          <div className="flex items-center gap-2 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
-            {CATEGORIES.map((cat) => (
+      <SectionSite fond="blanc" className="!pt-6 sm:!pt-10">
+        <h2 className="sr-only">Les fonctionnalités</h2>
+        <div role="group" aria-label="Filtrer par catégorie" className="flex flex-wrap gap-2">
+          {CATEGORIES_FONCTIONNALITES.map((c) => {
+            const pressee = categorie === c.id;
+            return (
               <button
-                key={cat.id}
-                onClick={() => setActiveCategory(cat.id)}
-                className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${
-                  activeCategory === cat.id
-                    ? 'bg-orange-50 text-orange-600 border border-orange-200'
-                    : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50 border border-transparent'
+                key={c.id}
+                type="button"
+                aria-pressed={pressee}
+                onClick={() => setCategorie(c.id)}
+                className={`min-h-[44px] rounded-full border px-4 text-sm font-semibold transition-colors motion-reduce:transition-none ${FOCUS} ${
+                  pressee
+                    ? 'border-marque-nuit-2 bg-marque-nuit-2 text-white'
+                    : 'border-marque-acier bg-white text-marque-ardoise hover:border-marque-nuit-2 hover:text-marque-nuit'
                 }`}
               >
-                {cat.icon && <cat.icon size={14} />}
-                {cat.label}
+                {c.libelle}
               </button>
-            ))}
-          </div>
+            );
+          })}
         </div>
-      </section>
 
-      {/* Features grid */}
-      <section className="py-12 sm:py-20">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6">
-          <StaggerReveal
-            className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6"
-            key={activeCategory}
-            staggerDelay={0.06}
-          >
-            {filtered.map((feature) => (
-              <FeatureCard key={feature.title} feature={feature} />
-            ))}
-          </StaggerReveal>
-        </div>
-      </section>
+        <ul className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {cartes.map((carte) => (
+            <li key={carte.titre}>
+              <Apparition className="h-full">
+                <Carte carte={carte} />
+              </Apparition>
+            </li>
+          ))}
+        </ul>
+        <p className="mt-8 text-sm text-slate-600">{LEGENDE}</p>
+      </SectionSite>
 
-      {/* Bottom CTA */}
-      <section className="py-16 sm:py-24 bg-slate-50">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 text-center">
-          <ScrollReveal>
-            <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-4">
-              Pr&ecirc;t &agrave; essayer ?
-            </h2>
-            <p className="text-slate-500 mb-8">
-              Cr&eacute;ez votre compte gratuitement et d&eacute;couvrez toutes ces fonctionnalit&eacute;s par vous-m&ecirc;me.
-            </p>
-            <a
-              href="/inscription"
-              className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl bg-orange-500 text-white font-semibold hover:bg-orange-600 transition-colors shadow-lg shadow-orange-500/25"
-            >
-              Essayer gratuitement
-              <ArrowRight size={18} />
-            </a>
-          </ScrollReveal>
-        </div>
-      </section>
+      <BandeAppel
+        titre="Essayez Mallettico gratuitement."
+        texte="Le plan Gratuit n'a pas de limite de durée et l'inscription ne demande pas de carte bancaire."
+      />
     </MarketingLayout>
   );
 }
