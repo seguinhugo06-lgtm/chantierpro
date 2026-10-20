@@ -28,7 +28,8 @@ const LEGENDE_CAPTURES = "Captures de l'application, données fictives.";
 
 // Textes exacts de la spec, section « Les fonctionnalités en action »
 const TITRE_FONCTIONNALITES = "Essayez, c'est l'application.";
-const INTRO_FONCTIONNALITES = 'Chaque exemple ci-dessous tourne avec le vrai code de Mallettico, sur des données fictives.';
+const INTRO_FONCTIONNALITES = "Des exemples à manipuler, sur des données fictives. Le document, le métré et les relances sortent du code même de l'application.";
+const ECHEC_MONTANTS_SIGNATURE = "Les montants n'ont pas pu être chargés. Rechargez la page pour les voir.";
 const ONGLETS = ['Le document que reçoit votre client', 'Signature en ligne', 'Métré express', 'Relances', 'Encaissements'];
 const LEGENDES = {
   'Le document que reçoit votre client': 'Exemple fictif généré par Mallettico.',
@@ -464,6 +465,46 @@ module.exports = [
           };
         });
         verifier(m.titre && m.puces === 0 && !m.attente && m.message.length > 0, `bibliothèque introuvable : l'explorateur des métiers le dit à ${largeur} px (${JSON.stringify(m)})`);
+
+        // « Les fonctionnalités en action » : le document, la signature et le métré le disent aussi, sans cases vides
+        await page.evaluate(() => document.querySelector('#fonctionnalites').scrollIntoView());
+        let onglets = false;
+        for (let i = 0; i < 40 && !onglets; i++) {
+          await attendre(200);
+          onglets = await page.evaluate(() => !!document.querySelector('#panneau-document [data-document-echec]'));
+        }
+        const docEchec = await page.evaluate(() => {
+          const p = document.querySelector('#panneau-document');
+          return {
+            message: p?.querySelector('[data-document-echec]')?.textContent.trim() || '',
+            cadre: !!p?.querySelector('iframe'),
+            legende: !!p?.querySelector('[data-legende]'),
+            bouton: [...(p?.querySelectorAll('button') || [])].some((b) => b.innerText.includes('en grand')),
+          };
+        });
+        verifier(docEchec.message.length > 0 && !docEchec.cadre && !docEchec.legende && !docEchec.bouton, `bibliothèque introuvable : le document le dit, sans cadre, légende ni bouton à ${largeur} px (${JSON.stringify(docEchec)})`);
+        await page.evaluate(() => document.querySelector('#onglet-signature').click());
+        await attendre(600);
+        const sigEchec = await page.evaluate(() => {
+          const p = document.querySelector('#panneau-signature');
+          return {
+            message: p?.querySelector('[data-signature-echec]')?.textContent.replace(/\s+/g, ' ').trim() || '',
+            totaux: !!p?.querySelector('dl'),
+            titre: p?.querySelector('[data-montant-devis]')?.textContent.replace(/\s+/g, ' ').trim() || '',
+          };
+        });
+        verifier(sigEchec.message === ECHEC_MONTANTS_SIGNATURE && !sigEchec.totaux && sigEchec.titre === 'Devis DEV-2026-00012', `bibliothèque introuvable : la signature dit que les montants manquent à ${largeur} px (${JSON.stringify(sigEchec)})`);
+        await page.evaluate(() => document.querySelector('#onglet-metre').click());
+        await attendre(600);
+        const metreEchec = await page.evaluate(() => {
+          const p = document.querySelector('#panneau-metre');
+          return {
+            message: p?.querySelector('[data-metre-echec]')?.textContent.trim() || '',
+            quantite: p?.querySelector('[data-quantite]')?.textContent.replace(/\s+/g, ' ').trim() || '',
+            montant: !!p?.querySelector('[data-montant]'),
+          };
+        });
+        verifier(metreEchec.message.length > 0 && /m²$/.test(metreEchec.quantite) && !metreEchec.montant, `bibliothèque introuvable : le métré calcule, et dit que la ligne manque à ${largeur} px (${JSON.stringify(metreEchec)})`);
         await browser.close();
       }
     },
@@ -799,6 +840,73 @@ module.exports = [
         await attendre(300);
         await capturerSection(page, RACINE, '#fonctionnalites', `fonctionnalites-${largeur}-1-document`);
 
+        // ── « Voir le document en grand » : visible à toutes les largeurs ; au téléphone, le document s'y lit (police du
+        // corps ≥ 10 px CSS), la fenêtre garde le focus, la page derrière ne défile plus, Échap ferme et rend le focus
+        const grand = await page.evaluate((s) => {
+          const b = [...document.querySelectorAll(`${s} button`)].find((x) => x.innerText.trim() === 'Voir le document en grand');
+          const r = b?.getBoundingClientRect();
+          return { present: !!b, hauteur: r?.height || 0, actif: !!b && !b.disabled };
+        }, PANNEAU);
+        verifier(grand.present && grand.actif && grand.hauteur >= 44, `bouton « Voir le document en grand » visible, actif, 44 px ${a} (${JSON.stringify(grand)})`);
+        const cGrand = await page.evaluate((s) => {
+          const b = [...document.querySelectorAll(`${s} button`)].find((x) => x.innerText.trim() === 'Voir le document en grand');
+          b.setAttribute('data-parcours-grand', '');
+          return true;
+        }, PANNEAU) && await contrasteDe(page, '[data-parcours-grand]');
+        verifier(cGrand >= 4.5, `contraste du bouton « Voir le document en grand » ≥ 4,5 ${a} (${cGrand.toFixed(2)})`);
+        if (!auBureau) {
+          await page.focus('[data-parcours-grand]');
+          await page.keyboard.press('Enter');
+          await attendre(600);
+          const fenetre = await page.evaluate(() => {
+            const d = document.querySelector('[role="dialog"][aria-modal="true"]');
+            const f = d?.querySelector('iframe');
+            const r = f?.getBoundingClientRect();
+            const defile = d?.querySelector('[data-defilement-document]');
+            const titre = d && document.getElementById(d.getAttribute('aria-labelledby'));
+            return {
+              ouverte: !!d,
+              titre: titre?.textContent.trim() || '',
+              focusDedans: !!d && d.contains(document.activeElement),
+              focus: document.activeElement?.innerText?.trim() || document.activeElement?.tagName,
+              pageBloquee: document.body.style.overflow === 'hidden',
+              pageInerte: !!document.querySelector('#root')?.hasAttribute('inert'),
+              sandbox: f?.getAttribute('sandbox'),
+              echelle: f ? r.width / f.offsetWidth : 0,
+              largeurPage: f?.offsetWidth || 0,
+              defileEnLargeur: !!defile && defile.scrollWidth > defile.clientWidth,
+              memeHtml: f?.getAttribute('srcdoc') === document.querySelector('#panneau-document iframe')?.getAttribute('srcdoc'),
+            };
+          });
+          verifier(fenetre.ouverte && fenetre.titre.length > 0, `la fenêtre s'ouvre, nommée par son titre ${a} (${JSON.stringify(fenetre)})`);
+          verifier(fenetre.focusDedans && fenetre.focus === 'Fermer', `le focus va à « Fermer » dans la fenêtre ${a} (${fenetre.focus})`);
+          verifier(fenetre.pageBloquee && fenetre.pageInerte, `la page derrière ne défile plus et devient inerte ${a}`);
+          verifier(fenetre.sandbox === '' && fenetre.memeHtml && Math.abs(fenetre.echelle - 1) < 0.001 && fenetre.largeurPage === 794 && fenetre.defileEnLargeur,
+            `le même document, sans script, à l'échelle 1 et à la largeur d'une page (794 px), qui défile en largeur ${a} (${JSON.stringify(fenetre)})`);
+          // Taille de police calculée du corps du document, lue dans le cadre
+          const cadreGrand = await (await page.$('[role="dialog"] iframe')).contentFrame();
+          const police = await cadreGrand.evaluate(() => parseFloat(getComputedStyle(document.body).fontSize)).catch((e) => `illisible : ${e.message}`);
+          verifier(typeof police === 'number' && police * fenetre.echelle >= 10, `police du corps du document ≥ 10 px CSS dans la fenêtre ${a} (${police} px × ${fenetre.echelle})`);
+          await capturer(page, RACINE, `fonctionnalites-${largeur}-1-document-en-grand`);
+          // Tab ne sort pas de la fenêtre
+          for (let i = 0; i < 4; i++) await page.keyboard.press('Tab');
+          const resteDedans = await page.evaluate(() => {
+            const d = document.querySelector('[role="dialog"]');
+            return !!d && (d.contains(document.activeElement) || document.activeElement?.tagName === 'IFRAME');
+          });
+          verifier(resteDedans, `Tab reste dans la fenêtre ${a}`);
+          await page.focus('[role="dialog"] button');
+          await page.keyboard.press('Escape');
+          await attendre(400);
+          const fermee = await page.evaluate(() => ({
+            ouverte: !!document.querySelector('[role="dialog"][aria-modal="true"]'),
+            focusBouton: document.activeElement?.hasAttribute('data-parcours-grand') || false,
+            pageBloquee: document.body.style.overflow === 'hidden',
+            pageInerte: !!document.querySelector('#root')?.hasAttribute('inert'),
+          }));
+          verifier(!fermee.ouverte && fermee.focusBouton && !fermee.pageBloquee && !fermee.pageInerte, `Échap ferme la fenêtre, le focus revient au bouton, la page revit ${a} (${JSON.stringify(fermee)})`);
+        }
+
         // ── Au clavier : flèche droite passe à l'onglet suivant (choisi, focalisé, son panneau affiché)
         await page.focus('#fonctionnalites [role="tab"][aria-selected="true"]');
         for (let i = 1; i < ONGLETS.length; i++) {
@@ -854,6 +962,17 @@ module.exports = [
         verifier((await validerActif()) === false, `« Valider la signature » inactif tant que rien n'est tracé ${a}`);
         await capturerSection(page, RACINE, '#fonctionnalites', `fonctionnalites-${largeur}-2-signature`);
         const avant = { fichiers: fichiersDemandes.length, base: appelsBase.length };
+        // Un simple toucher (clic sans déplacement) n'est pas une signature
+        const centre = await page.evaluate((s) => {
+          const c = document.querySelector(`${s} canvas`);
+          c.scrollIntoView({ block: 'center', behavior: 'instant' });
+          const b = c.getBoundingClientRect();
+          return { x: b.left + b.width / 2, y: b.top + b.height / 2 };
+        }, PANNEAU);
+        await attendre(300);
+        await page.mouse.click(centre.x, centre.y);
+        await attendre(200);
+        verifier((await validerActif()) === false, `un simple toucher n'active pas « Valider la signature » ${a}`);
         await tracer(page);
         await attendre(200);
         verifier((await validerActif()) === true, `un trait à la souris active « Valider la signature » ${a}`);
@@ -933,6 +1052,18 @@ module.exports = [
         verifier(frise.length >= 3 && jours.every((j, i) => j > 0 && (i === 0 || j > jours[i - 1])), `frise : au moins trois relances aux délais croissants ${a} (${frise.map((e) => e.delai).join(' | ')})`);
         verifier(frise.every((e) => e.nom && e.objet.includes('Relance : Devis DEV-2026-00012')), `chaque relance a un nom et l'objet du message ${a} (${frise.map((e) => e.objet).join(' | ')})`);
         verifier(frise.every((e) => e.opacite === 1), `toutes les étapes de la frise visibles après l'animation ${a}`);
+        const traits = await page.evaluate((s) => {
+          const etapes = [...document.querySelectorAll(`${s} ol > li`)];
+          const derniere = etapes[etapes.length - 1].getBoundingClientRect();
+          const bas = Math.max(...[...document.querySelectorAll(`${s} [data-trait]`)].map((t) => t.getBoundingClientRect().bottom));
+          return { traits: document.querySelectorAll(`${s} [data-trait]`).length, etapes: etapes.length, depasse: bas - derniere.top };
+        }, PANNEAU);
+        verifier(traits.traits === traits.etapes - 1 && traits.depasse <= 1, `le trait de la frise s'arrête à la dernière étape ${a} (${JSON.stringify(traits)})`);
+        await choisirOnglet(page, 'Encaissements', attendre);
+        await page.evaluate(() => document.querySelector('#onglet-relances').click());
+        await attendre(350);
+        const retour = await page.evaluate((s) => [...document.querySelectorAll(`${s} [data-etape-relance]`)].map((e) => parseFloat(getComputedStyle(e).opacity)), PANNEAU);
+        verifier(retour.every((o) => o === 1), `au retour sur l'onglet, la frise ne se rejoue pas ${a} (${retour.join(', ')})`);
         const legendeRelances = await page.evaluate((s) => document.querySelector(`${s} [data-legende]`)?.textContent.replace(/\s+/g, ' ').trim(), PANNEAU);
         verifier(legendeRelances === LEGENDES.Relances, `légende « ${LEGENDES.Relances} » ${a}`);
         await capturerSection(page, RACINE, '#fonctionnalites', `fonctionnalites-${largeur}-4-relances`);
@@ -957,6 +1088,7 @@ module.exports = [
           f = g;
         }
         verifier(f.reste === 0 && f.statut === 'Payée' && NORMALISER(f.resteTexte).includes('0,00 €') && f.recommencer && !f.bouton, `soldée : « Payée », reste 0,00 €, « Recommencer l'exemple » ${a} (${JSON.stringify(f)})`);
+        const hauteurCadreSoldee = await page.evaluate((s) => Math.round(document.querySelector(s).parentElement.getBoundingClientRect().height), PANNEAU);
         const legendeEncaissements = await page.evaluate((s) => document.querySelector(`${s} [data-legende]`)?.textContent.replace(/\s+/g, ' ').trim(), PANNEAU);
         verifier(legendeEncaissements === LEGENDES.Encaissements, `légende « ${LEGENDES.Encaissements} » ${a}`);
         await capturerSection(page, RACINE, '#fonctionnalites', `fonctionnalites-${largeur}-5-encaissements-payee`);
@@ -968,6 +1100,26 @@ module.exports = [
         const r2 = await lireFacture(page);
         verifier(r2.statut === 'Payée en partie' && Math.abs(r2.reste - f0.reste) < 0.001, `« Recommencer l'exemple » rend la facture de départ ${a}`);
         verifier(Math.abs(r1.barre - r2.barre) <= 1 && Math.abs(r2.barre - f0.barre) <= 1, `la barre revient d'un coup, sans animation arrière ${a} (${r1.barre} → ${r2.barre}, départ ${f0.barre})`);
+
+        // ── La barre du cadre n'est coupée sur aucun onglet ; au bureau, le cadre a la même hauteur pour les cinq (facture
+        // soldée comprise, elle est la plus haute)
+        const cadres = [];
+        for (const onglet of ONGLETS) {
+          await choisirOnglet(page, onglet, attendre);
+          cadres.push(await page.evaluate(() => {
+            const t = document.querySelector('#fonctionnalites [data-cadre-titre]');
+            return {
+              titre: t.innerText.trim(),
+              coupe: t.scrollWidth > t.clientWidth + 1,
+              hauteur: Math.round(document.querySelector('#fonctionnalites [role="tabpanel"]:not([hidden])').parentElement.getBoundingClientRect().height),
+            };
+          }));
+        }
+        verifier(cadres.every((c) => !c.coupe), `barre du cadre jamais coupée ${a} (${cadres.map((c) => `${c.titre}${c.coupe ? ' [coupée]' : ''}`).join(' | ')})`);
+        if (auBureau) {
+          const hauteursCadre = [...cadres.map((c) => c.hauteur), hauteurCadreSoldee];
+          verifier(hauteursCadre.every((x) => Math.abs(x - hauteursCadre[0]) <= 1), `même hauteur de cadre pour les cinq onglets ${a} (${hauteursCadre.join(', ')})`);
+        }
 
         // ── Aucun défilement horizontal ; rien ne sort de l'écran hors de la rangée de pastilles (qui défile)
         const debord = await page.evaluate(() => {

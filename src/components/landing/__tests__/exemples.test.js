@@ -5,6 +5,7 @@ import { TRADE_LIBRARY } from '../../../lib/templates/trade-library.js';
 import { buildDevisHtml } from '../../../lib/devisHtmlBuilder.js';
 import { calculerTotaux } from '../../../lib/totauxDocument.js';
 import { DEFAULT_DEVIS_STEPS } from '../../../lib/scenariosRelance.js';
+import { objetDeRelance } from '../../../lib/objetRelance.js';
 import { DEFAULT_DEVIS_STEPS as SCENARIO_DES_REGLAGES } from '../../settings/RelanceConfigTab.jsx';
 import { NUMERO_DEVIS, lotDemonstration } from '../devisVivantEtapes.js';
 import { ENTREPRISE_FICTIVE, CLIENT_FICTIF, FACTURE_FICTIVE, PAS_ENCAISSEMENT_CENTIMES } from '../exemples/donneesFictives.js';
@@ -14,6 +15,9 @@ import {
   montantDuDevis,
   totauxDuDevis,
   tamponDeSignature,
+  longueurDesTraits,
+  TRACE_MINIMAL_PX,
+  texteDuDocument,
   ligneDuMetre,
   montantDuMetre,
   friseDesRelances,
@@ -53,7 +57,6 @@ describe('identité fictive : celle des captures du site', () => {
     const valeurs = Object.fromEntries([...bloc.matchAll(/^\s+(\w+): (?:'([^']*)'|(\d+)),/gm)].map((m) => [m[1], m[2] ?? Number(m[3])]));
     expect(Object.keys(valeurs).length).toBeGreaterThan(15);
     const identite = { ...ENTREPRISE_FICTIVE };
-    delete identite.donneesFictives;
     for (const [cle, valeur] of Object.entries(identite)) {
       expect(valeur, `ENTREPRISE_FICTIVE.${cle}`).toBe(valeurs[cle]);
     }
@@ -62,8 +65,8 @@ describe('identité fictive : celle des captures du site', () => {
     }
   });
 
-  it('marquée « données fictives » : le document porte le filigrane « EXEMPLE » de l’app', () => {
-    expect(ENTREPRISE_FICTIVE.donneesFictives).toBe(true);
+  it('sans le réglage du compte de démonstration : pas de filigrane « EXEMPLE », comme les captures du site', () => {
+    expect(ENTREPRISE_FICTIVE.donneesFictives).toBeUndefined();
   });
 
   it('le client est M. Martin, 2 rue de l’Exemple, 33000 Bordeaux (même adresse que la capture de la signature)', () => {
@@ -87,7 +90,7 @@ describe('le document que reçoit le client : le vrai générateur', () => {
     expect(texte).toContain(lot.nom);
     for (const ligne of lot.lignes) expect(texte).toContain(ligne.designation);
     expect(texte).toContain('TVA 10 %');
-    expect(html).toContain('data-filigrane="EXEMPLE"');
+    expect(html).not.toContain('data-filigrane');
   });
 
   it('le total TTC est celui du code de l’app (calculerTotaux) : 2 081,20 €', () => {
@@ -136,6 +139,24 @@ describe('signature en ligne', () => {
     expect(tamponDeSignature(MAINTENANT)).toBe('Signé le 20/10/2026 à 09:05');
     expect(tamponDeSignature(new Date(2026, 0, 3, 18, 42))).toBe('Signé le 03/01/2026 à 18:42');
   });
+
+  it('la longueur tracée, en px de la zone : un simple toucher mesure 0, un vrai trait se mesure', () => {
+    expect(longueurDesTraits([], 300, 200)).toBe(0);
+    expect(longueurDesTraits([[{ x: 0.5, y: 0.5 }]], 300, 200)).toBe(0);
+    expect(longueurDesTraits([[{ x: 0.5, y: 0.5 }], [{ x: 0.2, y: 0.2 }]], 300, 200)).toBe(0);
+    // 30 px vers la droite puis 40 px vers le bas : 70 px
+    expect(longueurDesTraits([[{ x: 0, y: 0 }, { x: 0.1, y: 0 }, { x: 0.1, y: 0.2 }]], 300, 200)).toBeCloseTo(70, 6);
+    // Un tremblement de quelques pixels ne suffit pas à signer ; un trait de 12 px, si
+    expect(longueurDesTraits([[{ x: 0.5, y: 0.5 }, { x: 0.51, y: 0.5 }]], 300, 200)).toBeLessThan(TRACE_MINIMAL_PX);
+    expect(longueurDesTraits([[{ x: 0.5, y: 0.5 }, { x: 0.54, y: 0.5 }]], 300, 200)).toBeGreaterThanOrEqual(TRACE_MINIMAL_PX);
+  });
+});
+
+describe('texteDuDocument : le texte que lit le visiteur', () => {
+  it('retire styles, commentaires et balises, décode les entités usuelles', () => {
+    const html = '<html><head><style>body{color:red}</style></head><body><!-- PAIEMENT EN LIGNE --><p>L&#39;artisan &amp; M.&nbsp;Martin</p></body></html>';
+    expect(texteDuDocument(html).trim()).toBe("L'artisan & M. Martin");
+  });
 });
 
 describe('métré express', () => {
@@ -177,10 +198,9 @@ describe('relances : le scénario de devis proposé par l’app', () => {
     expect(frise.every((e) => e.objet === `Relance : Devis ${NUMERO_DEVIS}`)).toBe(true);
     const avecObjet = friseDesRelances([{ ...actives[0], objet_email: 'Votre devis {{devis_numero}}' }], NUMERO_DEVIS);
     expect(avecObjet[0].objet).toBe(`Votre devis ${NUMERO_DEVIS}`);
-    // La règle est celle du moteur de l'app et de la fonction d'envoi programmée : si elle change là-bas, ce test casse
-    const regle = "step.objet_email || `Relance : ${";
-    expect(lire('src/lib/relanceEngine.js')).toContain(regle);
-    expect(lire('supabase/functions/send-scheduled-relances/index.ts')).toContain(regle);
+    // La fonction du moteur de relances de l'app, pas une copie
+    const doc = { numero: NUMERO_DEVIS, type: 'devis', statut: 'envoye' };
+    expect(frise.map((e) => e.objet)).toEqual(actives.map((e) => objetDeRelance(e, doc, CLIENT_FICTIF, ENTREPRISE_FICTIVE)));
   });
 });
 
@@ -234,7 +254,7 @@ describe('les onglets', () => {
       'Relances',
       'Encaissements',
     ]);
-    expect(ONGLETS.every((o) => o.phrase && o.cadre && o.id)).toBe(true);
+    expect(ONGLETS.every((o) => o.phrase && o.cadre && o.cadreCourt && o.id)).toBe(true);
   });
 
   it('flèches droite et bas : suivant ; gauche et haut : précédent (en boucle) ; Début et Fin ; autre touche : rien', () => {

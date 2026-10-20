@@ -7,6 +7,8 @@
  * - Déjà chiffré à l'arrivée (une pièce de 5,2 × 3,8 m, 10 % de chutes) : rien à saisir pour voir le résultat.
  * - Champs en texte avec clavier décimal : la virgule française est acceptée.
  * - Le plan (décor) dessine la pièce à l'échelle, carreaux de 60 cm et marge des chutes ; les chiffres sont écrits à côté.
+ * - Au téléphone, le résultat (quantité et montant) suit les champs, avant le plan : il reste en vue clavier ouvert.
+ *   Au bureau : champs et plan à gauche, résultat à droite.
  * Attributs `data-*` lus par le parcours `scripts/parcours/site.cjs`.
  */
 import { useEffect, useId, useState } from 'react';
@@ -100,8 +102,8 @@ export default function ExempleMetre() {
 
   return (
     <>
-      <div className="grid flex-1 gap-6 p-4 sm:p-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:gap-8">
-        <div className="flex flex-col">
+      <div className="grid flex-1 gap-5 p-4 sm:p-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:grid-rows-[auto_minmax(0,1fr)] lg:gap-x-8 lg:gap-y-5">
+        <div className="lg:col-start-1 lg:row-start-1">
           <div className="grid grid-cols-2 gap-3">
             {CHAMPS.map((champ) => (
               <div key={champ.cle}>
@@ -120,21 +122,18 @@ export default function ExempleMetre() {
               </div>
             ))}
           </div>
-          <div className="mt-5 flex flex-1 items-center justify-center rounded-2xl bg-marque-glacier-1/70 px-3 py-4 ring-1 ring-inset ring-marque-acier/40">
-            <Plan longueur={L} largeur={l} nombre={n} chutes={c} />
-          </div>
         </div>
 
-        <div className="flex flex-col rounded-2xl border border-marque-acier/60 bg-white p-4 shadow-[0_18px_40px_-30px_rgba(13,46,108,0.5)] sm:p-5">
+        <div className="flex flex-col rounded-2xl border border-marque-acier/60 bg-white p-4 shadow-[0_18px_40px_-30px_rgba(13,46,108,0.5)] sm:p-5 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:self-start">
           <p className="text-sm font-semibold text-slate-600">Quantité calculée</p>
           <p data-quantite="" className="mt-1 whitespace-nowrap text-4xl font-extrabold tabular-nums tracking-tight text-marque-nuit sm:text-5xl">
             {fr(quantite)} <span className="text-xl font-bold sm:text-2xl">{unite}</span>
           </p>
           <p className="mt-1.5 text-sm tabular-nums text-slate-600">{formule}</p>
 
-          <div className="mt-5 flex flex-1 flex-col border-t border-dashed border-marque-acier pt-5">
+          <div className="mt-5 flex flex-col border-t border-dashed border-marque-acier pt-5">
             {echec ? (
-              <p className="text-base text-marque-ardoise">La ligne de la bibliothèque n'a pas pu être chargée. Rechargez la page pour voir son montant.</p>
+              <p data-metre-echec="" className="text-base text-marque-ardoise">La ligne de la bibliothèque n'a pas pu être chargée. Rechargez la page pour voir son montant.</p>
             ) : (
               <>
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">Bibliothèque Carrelage</p>
@@ -144,7 +143,7 @@ export default function ExempleMetre() {
                 <p data-prix-unitaire={ligne ? ligne.prixUnitaire : undefined} className="mt-1 text-sm tabular-nums text-slate-600">
                   {ligne ? <>{fr(quantite)} {unite} × {formatMoney(ligne.prixUnitaire, 2)} HT · TVA {ligne.tva} %</> : <>&nbsp;</>}
                 </p>
-                <div className="mt-auto pt-4">
+                <div className="pt-4">
                   <div className="rounded-xl bg-marque-glacier-1 px-4 py-3">
                     <p className="text-sm font-semibold text-slate-700">Montant de la ligne</p>
                     <p data-montant="" className="mt-0.5 whitespace-nowrap text-2xl font-extrabold tabular-nums tracking-tight text-slate-900 sm:text-3xl">
@@ -158,6 +157,10 @@ export default function ExempleMetre() {
           <p className="sr-only" role="status">
             {montant != null ? `Quantité ${fr(quantite)} ${unite}, montant de la ligne ${formatMoney(montant, 2)} hors taxes.` : `Quantité ${fr(quantite)} ${unite}.`}
           </p>
+        </div>
+
+        <div className="flex items-center justify-center rounded-2xl bg-marque-glacier-1/70 px-3 py-4 ring-1 ring-inset ring-marque-acier/40 lg:col-start-1 lg:row-start-2">
+          <Plan longueur={L} largeur={l} nombre={n} chutes={c} />
         </div>
       </div>
       <LegendeExemple>

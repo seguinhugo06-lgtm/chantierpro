@@ -7,8 +7,11 @@
  *   à chaque changement de taille (les points sont gardés en proportions). Ni le pavé de signature de l'app, ni une
  *   dépendance : rien de plus à charger.
  * - Au clavier : « Signer avec mon nom » écrit « M. Martin » en cursive (polices du système, aucune police chargée).
+ * - « Valider la signature » demande un vrai tracé (12 px au moins en tout, `longueurDesTraits`) : un simple toucher
+ *   ne suffit pas ; « Signer avec mon nom » l'active toujours.
  * - Rien ne quitte la page : aucune requête, aucun stockage ; « Recommencer » efface tout.
  * - Statuts : libellés de l'app (`statuts.js`) : « Envoyé », puis « Signé ».
+ * - Bibliothèque introuvable : la carte le dit à la place des montants ; la signature s'essaie quand même.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
@@ -20,7 +23,7 @@ import { chargerBibliotheque } from '../site/bibliotheque';
 import BoutonSite from '../site/BoutonSite';
 import { CLIENT, NOM_LOT_DEMONSTRATION, NUMERO_DEVIS, lotDemonstration } from '../devisVivantEtapes';
 import { ENTREPRISE_FICTIVE } from './donneesFictives';
-import { tamponDeSignature, totauxDuDevis } from './exemples';
+import { TRACE_MINIMAL_PX, longueurDesTraits, tamponDeSignature, totauxDuDevis } from './exemples';
 import { LegendeExemple, PastilleExemple } from './communs';
 
 // Polices cursives des systèmes (macOS, Windows, Linux), puis la famille générique : aucune police nouvelle.
@@ -55,16 +58,21 @@ export default function ExempleSignature() {
   const nomRef = useRef(false);
   const actions = useRef(null);
   const [nbTraits, setNbTraits] = useState(0);
+  const [assezLong, setAssezLong] = useState(false);
   const [nomEcrit, setNomEcrit] = useState(false);
   const [signeLe, setSigneLe] = useState(null);
   const [lot, setLot] = useState(null);
+  const [echec, setEchec] = useState(false);
 
   useEffect(() => {
     let annule = false;
     chargerBibliotheque()
       .then((bibliotheque) => { if (!annule) setLot(lotDemonstration(bibliotheque)); })
-      // Sans la bibliothèque, la carte reste sans montant : la signature s'essaie quand même
-      .catch((erreur) => captureException(erreur, { composant: 'ExempleSignature' }));
+      // Sans la bibliothèque, la carte dit que les montants manquent : la signature s'essaie quand même
+      .catch((erreur) => {
+        captureException(erreur, { composant: 'ExempleSignature' });
+        if (!annule) setEchec(true);
+      });
     return () => { annule = true; };
   }, []);
 
@@ -144,20 +152,26 @@ export default function ExempleSignature() {
     dessiner();
   };
 
+  // Fin d'un trait : la signature compte si l'ensemble des traits mesure au moins 12 px (un toucher mesure 0)
   const finir = () => {
+    if (!enCours.current) return;
     enCours.current = null;
+    const c = zone.current;
+    setAssezLong(longueurDesTraits(traits.current, c?.clientWidth || 0, c?.clientHeight || 0) >= TRACE_MINIMAL_PX);
   };
 
   const effacer = () => {
     traits.current = [];
     enCours.current = null;
     setNbTraits(0);
+    setAssezLong(false);
     setNomEcrit(false);
   };
 
   const signerAvecMonNom = () => {
     traits.current = [];
     setNbTraits(0);
+    setAssezLong(false);
     setNomEcrit(true);
   };
 
@@ -166,7 +180,9 @@ export default function ExempleSignature() {
     setSigneLe(null);
   };
 
+  // Quelque chose dans la zone (« Signez ici » s'efface, « Effacer » paraît) ; une signature à valider
   const rempli = nbTraits > 0 || nomEcrit;
+  const signable = assezLong || nomEcrit;
   const totaux = lot ? totauxDuDevis(lot) : null;
   const tampon = signeLe ? tamponDeSignature(signeLe) : '';
   const etat = statut('devis', signeLe ? 'signe' : 'envoye');
@@ -192,18 +208,24 @@ export default function ExempleSignature() {
           </div>
 
           {/* Ce que le client signe : les totaux du devis, calculés comme l'éditeur (place tenue avant le chargement) */}
-          <dl className="mt-4 grid grid-cols-3 gap-2 rounded-xl bg-marque-glacier-1 px-3 py-2.5 text-center sm:px-4">
-            {[
-              ['Total HT', totaux && formatMoney(totaux.totalHT, 2)],
-              [totaux && totaux.taux.length === 1 ? `TVA ${String(totaux.taux[0]).replace('.', ',')} %` : 'TVA', totaux && formatMoney(totaux.totalTVA, 2)],
-              ['Total TTC', totaux && formatMoney(totaux.totalTTC, 2)],
-            ].map(([libelle, valeur], i) => (
-              <div key={i} className="min-w-0">
-                <dt className="text-xs font-semibold text-slate-600">{libelle}</dt>
-                <dd className="mt-0.5 whitespace-nowrap text-sm font-bold tabular-nums text-slate-900 sm:text-base">{valeur || '\u00a0'}</dd>
-              </div>
-            ))}
-          </dl>
+          {echec ? (
+            <p data-signature-echec="" className="mt-4 rounded-xl bg-marque-glacier-1 px-4 py-3 text-sm text-marque-ardoise">
+              Les montants n'ont pas pu être chargés. Rechargez la page pour les voir.
+            </p>
+          ) : (
+            <dl className="mt-4 grid grid-cols-3 gap-2 rounded-xl bg-marque-glacier-1 px-3 py-2.5 text-center sm:px-4">
+              {[
+                ['Total HT', totaux && formatMoney(totaux.totalHT, 2)],
+                [totaux && totaux.taux.length === 1 ? `TVA ${String(totaux.taux[0]).replace('.', ',')} %` : 'TVA', totaux && formatMoney(totaux.totalTVA, 2)],
+                ['Total TTC', totaux && formatMoney(totaux.totalTTC, 2)],
+              ].map(([libelle, valeur], i) => (
+                <div key={i} className="min-w-0">
+                  <dt className="text-xs font-semibold text-slate-600">{libelle}</dt>
+                  <dd className="mt-0.5 whitespace-nowrap text-sm font-bold tabular-nums text-slate-900 sm:text-base">{valeur || '\u00a0'}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
 
           <div className="relative mt-4">
             <canvas
@@ -216,7 +238,7 @@ export default function ExempleSignature() {
               onPointerMove={continuer}
               onPointerUp={finir}
               onPointerCancel={finir}
-              className={`block h-44 w-full touch-none select-none rounded-xl border-2 bg-marque-glacier-1/60 text-marque-nuit sm:h-52 ${
+              className={`block h-44 w-full touch-none select-none rounded-xl border-2 bg-marque-glacier-1/60 text-marque-nuit sm:h-52 lg:h-64 ${
                 signeLe ? 'cursor-default border-solid border-emerald-600/60' : 'cursor-crosshair border-dashed border-marque-acier'
               }`}
             />
@@ -265,7 +287,7 @@ export default function ExempleSignature() {
                   <Type size={18} strokeWidth={2} aria-hidden="true" />
                   Signer avec mon nom
                 </BoutonSite>
-                <BoutonSite variante="plein" disabled={!rempli} onClick={() => setSigneLe(new Date())} className={BOUTON_INACTIF}>
+                <BoutonSite variante="plein" disabled={!signable} onClick={() => setSigneLe(new Date())} className={BOUTON_INACTIF}>
                   Valider la signature
                 </BoutonSite>
               </>

@@ -5,7 +5,8 @@ import { fileURLToPath } from 'node:url';
 import { TRADE_LIBRARY } from '../../../lib/templates/trade-library.js';
 import { lotsMontres } from '../metiers.js';
 import { lotDemonstration } from '../devisVivantEtapes.js';
-import { ligneDuMetre } from '../exemples/exemples.js';
+import { buildDevisHtml } from '../../../lib/devisHtmlBuilder.js';
+import { htmlDuDocument, ligneDuMetre, texteDuDocument } from '../exemples/exemples.js';
 
 /**
  * Test d'honnêteté du site public (refonte d'octobre 2026, règles : `.claude/rules/marketing.md`).
@@ -219,6 +220,77 @@ describe('honnêteté des textes de la bibliothèque affichés par le site', () 
     const exception = [{ texte: 'certificat de conformité', raison: 'document du métier' }];
     expect(controlerTextes([{ ou: 'x', texte: 'Remise du certificat de conformité' }], exception)).toEqual([]);
     expect(controlerTextes([{ ou: 'x', texte: 'Remise du certificat de conformité, travaux conformes' }], exception)).toHaveLength(1);
+  });
+});
+
+/**
+ * Le document montré par l'exemple « Le document que reçoit votre client » (« Les fonctionnalités en action ») : le
+ * HTML du vrai générateur de devis (src/lib/devisHtmlBuilder.js, que le site ne modifie pas), produit par la fonction
+ * même de la page (`htmlDuDocument`). Son texte passe sous les mots interdits ; son HTML, en plus, sous les liens de
+ * paiement en ligne (`/pay/`, fonction éteinte : `FONCTIONS.paiementEnLigne`).
+ *
+ * Exceptions : passages EXACTS du document de l'artisan, imprimés par le générateur, qui contiennent un mot interdit
+ * sans rien promettre de Mallettico. Le passage est retiré du texte avant le contrôle, le reste est contrôlé. Liste à
+ * relire par le juriste (T8), qui tranchera aussi le texte du générateur.
+ */
+const EXCEPTIONS_DOCUMENT = [
+  {
+    texte: "Conditions de paiement et pénalités de retard conformes à l'article L441-10",
+    raison: "renvoi légal au pied du devis de l'artisan (art. L441-10 C. com.) : il porte sur ses conditions, pas sur Mallettico",
+  },
+  {
+    texte: 'CERTIFICATION DU CLIENT',
+    raison: "titre de l'attestation de TVA à taux réduit : depuis la loi n° 2025-127 (art. 41), le client certifie sur le devis (src/lib/mentionTvaReduite.js, modèles du BOFiP)",
+  },
+  {
+    texte: 'M. Martin certifie',
+    raison: "« Je soussigné(e) M. Martin certifie… » : le texte du modèle I du BOFiP, signé par le client fictif",
+  },
+  {
+    texte: 'vaut certification',
+    raison: "« La signature du présent devis vaut certification. » : même mécanisme légal de la TVA à taux réduit",
+  },
+];
+
+/** Mots interdits du document seulement : un lien vers la page de paiement en ligne (fonction éteinte). */
+const INTERDITS_DOCUMENT_HTML = [{ nom: 'lien de paiement en ligne', motif: /\/pay\// }];
+
+/** « document — motif : « …extrait… » » pour chaque mot interdit trouvé (texte, exceptions retirées ; puis HTML). */
+function controlerDocument(html, exceptions = EXCEPTIONS_DOCUMENT) {
+  const extrait = (source, m) => source.slice(Math.max(0, m.index - 40), m.index + m[0].length + 40).trim();
+  const texte = exceptions.reduce((t, e) => t.split(e.texte).join(' '), texteDuDocument(html));
+  const trouves = [];
+  for (const { nom, motif } of INTERDITS) {
+    const m = motif.exec(texte);
+    if (m) trouves.push(`document — ${nom} : « …${extrait(texte, m)}… »`);
+  }
+  for (const { nom, motif } of INTERDITS_DOCUMENT_HTML) {
+    const m = motif.exec(html);
+    if (m) trouves.push(`document (HTML) — ${nom} : « …${extrait(html, m)}… »`);
+  }
+  return trouves;
+}
+
+describe('honnêteté du document affiché par « Les fonctionnalités en action »', () => {
+  const html = htmlDuDocument(buildDevisHtml, TRADE_LIBRARY);
+
+  it('aucune promesse invérifiable ni lien de paiement en ligne dans le document (exceptions retirées)', () => {
+    const trouves = controlerDocument(html);
+    expect(trouves, `Textes interdits dans le document produit par src/lib/devisHtmlBuilder.js :\n${trouves.join('\n')}`).toEqual([]);
+  });
+
+  it('chaque exception du document sert encore (une exception devenue inutile est retirée de la liste)', () => {
+    const texte = texteDuDocument(html);
+    const inutiles = EXCEPTIONS_DOCUMENT.filter((e) => !texte.includes(e.texte));
+    expect(inutiles.map((e) => e.texte)).toEqual([]);
+  });
+
+  it('cas témoin : un nouveau mot interdit ou un lien /pay/ est rapporté ; une exception ne couvre que son passage exact', () => {
+    expect(controlerDocument('<p>Réglez par paiement en ligne</p>')).toEqual(['document — paiement en ligne : « …Réglez par paiement en ligne… »']);
+    expect(controlerDocument('<p>Payer : <a href="https://mallettico.fr/pay/abc">ici</a></p>')).toHaveLength(1);
+    expect(controlerDocument("<p>Conditions de paiement et pénalités de retard conformes à l'article L441-10</p>")).toEqual([]);
+    expect(controlerDocument("<p>Conditions de paiement et pénalités de retard conformes à l'article L441-10 ; ouvrage conforme</p>")).toHaveLength(1);
+    expect(controlerDocument('<p>Le client certifie</p>')).toHaveLength(1);
   });
 });
 

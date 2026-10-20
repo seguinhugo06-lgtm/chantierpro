@@ -136,16 +136,17 @@ export default function OngletsExemples() {
         <div className="overflow-hidden rounded-[22px] border border-marque-acier/70 bg-white shadow-[0_30px_60px_-28px_rgba(13,46,108,0.45)]">
           {/* Barre du cadre d'application (décor et rappel de l'exemple ouvert ; l'onglet porte déjà son nom). */}
           <div aria-hidden="true" className="flex h-11 items-center gap-3 border-b border-marque-acier/60 bg-marque-glacier-1 px-4">
-            <span className="flex shrink-0 gap-1.5">
+            <span className="hidden shrink-0 gap-1.5 sm:flex">
               <span className="h-2.5 w-2.5 rounded-full bg-marque-acier" />
               <span className="h-2.5 w-2.5 rounded-full bg-marque-acier" />
               <span className="h-2.5 w-2.5 rounded-full bg-marque-acier" />
             </span>
             <span className="flex min-w-0 items-center gap-2">
               <img src="/icon.svg" alt="" width="18" height="18" loading="lazy" className="h-[18px] w-[18px] shrink-0" />
+              {/* Téléphone : le titre court, que le numéro tienne entier */}
               <span data-cadre-titre="" className="truncate text-sm font-semibold text-marque-ardoise">
-                <span className="hidden sm:inline">Mallettico · </span>
-                {ongletActif.cadre}
+                <span className="hidden sm:inline">Mallettico · {ongletActif.cadre}</span>
+                <span className="sm:hidden">{ongletActif.cadreCourt}</span>
               </span>
             </span>
             <span className={`ml-auto ${POINT_ORANGE}`} />
@@ -164,11 +165,11 @@ export default function OngletsExemples() {
                 tabIndex={0}
                 className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-marque-nuit-2"
               >
-                {/* Au bureau, une hauteur commune aux exemples courts : le cadre saute peu d'un onglet à l'autre, sans
-                    étirer un exemple ; chacun occupe la place (`flex-1`). Le document, plus haut, garde la sienne. */}
+                {/* Au bureau, les cinq exemples ont la même hauteur (celle du plus haut : le document, et la facture
+                    soldée) : le cadre ne change pas d'un onglet à l'autre ; chacun occupe la place (`flex-1`). */}
                 {ouverts.has(onglet.id) ? (
                   <motion.div
-                    className="flex flex-col lg:min-h-[34rem]"
+                    className="flex flex-col lg:min-h-[40rem]"
                     initial={choixFait && !reduit ? { opacity: 0, y: 6 } : false}
                     animate={visible ? { opacity: 1, y: 0 } : { opacity: 0, y: 6 }}
                     transition={{ duration: visible && !reduit ? 0.28 : 0, ease: 'easeOut' }}

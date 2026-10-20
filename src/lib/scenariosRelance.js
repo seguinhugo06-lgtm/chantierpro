@@ -1,10 +1,12 @@
 /**
  * Les scénarios de relance proposés par l'app (réglages « Relances » : « Relance Devis » et « Relance Factures
- * impayées ») : étapes, délais, noms et modèles de message.
+ * impayées ») : étapes, délais, noms et modèles de message. L'objet du message est dans src/lib/objetRelance.js.
  *
  * Sortis de src/components/settings/RelanceConfigTab.jsx (qui les réexporte) pour être lus sans charger l'écran des
  * réglages : le site public montre le scénario de devis (« Les fonctionnalités en action », exemple « Relances »), le
  * jeu de démonstration (scripts/demo/generer-sql.mjs) et ses tests s'en servent aussi.
+ * Modèles de devis (20 oct. 2026) : « devis n° {{devis_numero}} » et « {{montant}} € », comme ceux des factures ; avant,
+ * le client lisait « devis nDEV-2026-00012 » et « 2 081,20 EUR » (le serveur remplit `montant` sans symbole).
  */
 
 export const DEFAULT_DEVIS_STEPS = [
@@ -17,7 +19,7 @@ export const DEFAULT_DEVIS_STEPS = [
     channel: 'email',
     template: `Bonjour {{client_nom}},
 
-Je reviens vers vous concernant le devis n{{devis_numero}} d'un montant de {{montant}} EUR que je vous ai adressé récemment.
+Je reviens vers vous concernant le devis n° {{devis_numero}} d'un montant de {{montant}} € que je vous ai adressé récemment.
 
 Avez-vous pu en prendre connaissance ? Je reste à votre disposition pour toute question ou pour organiser un rendez-vous.
 
@@ -33,7 +35,7 @@ Cordialement,
     channel: 'email',
     template: `Bonjour {{client_nom}},
 
-Je me permets de revenir vers vous une nouvelle fois au sujet du devis n{{devis_numero}} ({{montant}} EUR).
+Je me permets de revenir vers vous une nouvelle fois au sujet du devis n° {{devis_numero}} ({{montant}} €).
 
 Si vous avez des questions ou souhaitez discuter de certains points, je suis disponible pour en échanger.
 
@@ -51,7 +53,7 @@ Cordialement,
     channel: 'email',
     template: `Bonjour {{client_nom}},
 
-Je vous contacte une dernière fois concernant le devis n{{devis_numero}} d'un montant de {{montant}} EUR.
+Je vous contacte une dernière fois concernant le devis n° {{devis_numero}} d'un montant de {{montant}} €.
 
 Si ce projet ne correspond plus à vos attentes, je comprendrai tout à fait. Dans le cas contraire, je reste disponible pour finaliser les details.
 

@@ -14,6 +14,7 @@ import {
 import { scopeToOrg, withOrgScope } from './queryHelper';
 import { logger } from './logger';
 import { invoquerEnvoiEmail } from './emailSender';
+import { objetDeRelance } from './objetRelance';
 
 // ============ DETECTION ============
 
@@ -101,10 +102,8 @@ export async function executeRelance(doc, client, step, entreprise, options = {}
 
   // Resolve template variables
   const resolvedBody = resolveVariables(step.template || '', doc, client, entreprise);
-  const resolvedSubject = resolveVariables(
-    step.objet_email || `Relance : ${doc.type === 'facture' ? 'Facture' : 'Devis'} ${doc.numero}`,
-    doc, client, entreprise
-  );
+  // Objet : celui de l'étape, sinon « Relance : Devis <numéro> » (src/lib/objetRelance.js, montré aussi par le site)
+  const resolvedSubject = objetDeRelance(step, doc, client, entreprise);
 
   // Construit l'email HTML. Email uniquement (le pivot coupe SMS/WhatsApp) ;
   // le tracking pixel/désinscription arrivera en Phase 2 (Edge Function track-relance).

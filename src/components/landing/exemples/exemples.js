@@ -1,20 +1,22 @@
 /**
  * « Les fonctionnalités en action » du site public — logique pure des cinq exemples (sans React), testée dans
- * `__tests__/exemples.test.js`. L'affichage est dans `Exemple*.jsx`, les onglets dans `FonctionnalitesSection.jsx`.
+ * `__tests__/exemples.test.js`. L'affichage est dans `Exemple*.jsx`, les onglets dans `OngletsExemples.jsx`.
  *
  * Chaque montant vient du code de l'app ou de la bibliothèque des métiers, jamais d'un chiffre écrit ici :
  *   - le devis : un lot de la bibliothèque, totalisé par `calculerTotaux` (le calcul de l'éditeur de devis) ;
  *   - le métré : `calculerMetre` (src/lib/metre.js, celui de la fenêtre « Métré ») et une ligne de la bibliothèque ;
- *   - les relances : le scénario proposé par l'app (`DEFAULT_DEVIS_STEPS`), objets résolus par `resolveVariables` ;
+ *   - les relances : le scénario proposé par l'app (`DEFAULT_DEVIS_STEPS`) et l'objet de ses messages
+ *     (`objetDeRelance`, src/lib/objetRelance.js, celui du moteur de relances) ;
  *   - les encaissements : le statut d'une facture selon l'app (`statutFacture`, libellés de `statuts.js`).
+ * Les données d'exemple (identité et client fictifs, facture, virement rond, pas de 500 €) sont dans `donneesFictives.js`.
  */
 import { calculerTotaux } from '../../../lib/totauxDocument';
 import { jourLocal } from '../../../lib/dates';
 import { formatMoney } from '../../../lib/formatters';
 import { statutFacture } from '../../../lib/paiementsFacture';
-import { resolveVariables } from '../../../lib/relanceUtils';
+import { objetDeRelance } from '../../../lib/objetRelance';
 import { statut } from '../../../lib/statuts';
-import { NUMERO_DEVIS } from '../devisVivantEtapes';
+import { NUMERO_DEVIS, lotDemonstration } from '../devisVivantEtapes';
 import { CLIENT_FICTIF, ENTREPRISE_FICTIVE, PAS_ENCAISSEMENT_CENTIMES } from './donneesFictives';
 
 /** Taux de TVA du devis d'exemple : celui de la fiche fictive (10 %, rénovation de logement). */
@@ -70,8 +72,20 @@ export function parametresDuDocument(lot, maintenant = new Date()) {
   return { doc, client: CLIENT_FICTIF, chantier: null, entreprise: ENTREPRISE_FICTIVE, couleur: ENTREPRISE_FICTIVE.couleur, mode: 'client' };
 }
 
-/** Texte lisible d'un document HTML : styles, commentaires et balises retirés, entités usuelles décodées. */
-function texteDuDocument(html) {
+/**
+ * Le HTML du document montré par l'exemple : `buildDevisHtml` (le générateur de devis, passé en paramètre parce que la
+ * page le charge à la demande) sur le lot « tableau » de la bibliothèque Électricité. Appelée telle quelle par la page
+ * (`ExempleDocument.jsx`) et par le test d'honnêteté du site : le texte contrôlé est celui que le visiteur lit.
+ */
+export function htmlDuDocument(buildDevisHtml, bibliotheque, maintenant = new Date()) {
+  return buildDevisHtml(parametresDuDocument(lotDemonstration(bibliotheque), maintenant));
+}
+
+/**
+ * Texte lisible d'un document HTML : styles, commentaires et balises retirés, entités usuelles décodées, espaces
+ * ramenés à un. Lu par `mentionsDuDocument` et par le test d'honnêteté du site (le texte du document affiché).
+ */
+export function texteDuDocument(html) {
   return String(html || '')
     .replace(/<style[\s\S]*?<\/style>/gi, ' ')
     .replace(/<!--[\s\S]*?-->/g, ' ')
@@ -121,6 +135,22 @@ export function mentionsDuDocument(html) {
 
 const deuxChiffres = (n) => String(n).padStart(2, '0');
 
+/** Longueur tracée qui compte pour une signature (en px CSS) : un simple toucher ne suffit pas. */
+export const TRACE_MINIMAL_PX = 12;
+
+/**
+ * Longueur totale des traits, en px CSS, pour une zone de `l` × `h` px (les points sont gardés en proportions de la
+ * zone). Un point seul (un toucher) mesure 0.
+ * @param {{ x: number, y: number }[][]} traits
+ */
+export function longueurDesTraits(traits, l, h) {
+  let total = 0;
+  for (const trait of traits || []) {
+    for (let i = 1; i < trait.length; i++) total += Math.hypot((trait[i].x - trait[i - 1].x) * l, (trait[i].y - trait[i - 1].y) * h);
+  }
+  return total;
+}
+
 /** Le tampon posé à la validation : « Signé le JJ/MM/AAAA à HH:MM », à l'heure locale du visiteur. */
 export function tamponDeSignature(date) {
   return `Signé le ${deuxChiffres(date.getDate())}/${deuxChiffres(date.getMonth() + 1)}/${date.getFullYear()} à ${deuxChiffres(date.getHours())}:${deuxChiffres(date.getMinutes())}`;
@@ -152,24 +182,15 @@ export function montantDuMetre(quantite, prixUnitaire) {
 // ─── Les relances ─────────────────────────────────────────────────────────────────────────────────────────
 
 /**
- * L'objet du message d'une étape, comme l'app l'envoie : l'objet de l'étape s'il y en a un, sinon
- * « Relance : Devis <numéro> » (règle du moteur, src/lib/relanceEngine.js, et de l'envoi programmé,
- * supabase/functions/send-scheduled-relances ; un test casse si elle change là-bas), variables résolues par
- * `resolveVariables` de l'app.
- */
-export function objetDeRelance(etape, numero) {
-  const doc = { numero, type: 'devis', statut: 'envoye' };
-  return resolveVariables(etape.objet_email || `Relance : Devis ${numero}`, doc, CLIENT_FICTIF, ENTREPRISE_FICTIVE);
-}
-
-/**
  * La frise du scénario de relance de devis : ses étapes actives, dans l'ordre, avec le délai, son libellé et le nom
- * de l'étape lus dans le scénario (`DEFAULT_DEVIS_STEPS`, src/lib/scenariosRelance.js), et l'objet du message.
+ * de l'étape lus dans le scénario (`DEFAULT_DEVIS_STEPS`, src/lib/scenariosRelance.js), et l'objet du message tel que
+ * l'app l'envoie (`objetDeRelance`, la fonction du moteur de relances) pour le devis fictif de M. Martin.
  * @returns {{ id: string, delai: number, libelleDelai: string, nom: string, objet: string }[]}
  */
 export function friseDesRelances(etapes, numero) {
+  const doc = { numero, type: 'devis', statut: 'envoye' };
   return (etapes || []).filter((e) => e.enabled).map((e) => ({
-    id: e.id, delai: e.delay, libelleDelai: e.delayLabel, nom: e.name, objet: objetDeRelance(e, numero),
+    id: e.id, delai: e.delay, libelleDelai: e.delayLabel, nom: e.name, objet: objetDeRelance(e, doc, CLIENT_FICTIF, ENTREPRISE_FICTIVE),
   }));
 }
 

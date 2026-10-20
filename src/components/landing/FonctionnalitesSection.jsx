@@ -17,20 +17,10 @@ import { captureException } from '../../lib/sentry';
 import SectionSite from './site/SectionSite';
 import EnTeteSection from './site/EnTeteSection';
 import PlanArchitecte from './site/PlanArchitecte';
+import { chargerUneFois } from './site/chargerUneFois';
 
 /** Les onglets et leurs exemples, chargés une seule fois ; un échec n'est pas gardé (l'appel suivant retente). */
-let chargement = null;
-function chargerExemples() {
-  if (!chargement) {
-    chargement = import('./exemples/OngletsExemples.jsx')
-      .then((module) => module.default)
-      .catch((erreur) => {
-        chargement = null;
-        throw erreur;
-      });
-  }
-  return chargement;
-}
+const chargerExemples = chargerUneFois(() => import('./exemples/OngletsExemples.jsx').then((module) => module.default));
 
 /** La place des onglets et du cadre avant leur arrivée (décor), ou le message si le chargement échoue. */
 function Attente({ echec }) {
@@ -44,11 +34,11 @@ function Attente({ echec }) {
       <div className="mt-5 overflow-hidden rounded-[22px] border border-marque-acier/70 bg-white lg:mt-0">
         <div aria-hidden="true" className="h-11 border-b border-marque-acier/60 bg-marque-glacier-1" />
         {echec ? (
-          <p data-fonctionnalites-echec="" className="flex min-h-[40rem] items-center justify-center px-6 text-center text-base text-marque-ardoise lg:min-h-[42.5rem]">
+          <p data-fonctionnalites-echec="" className="flex min-h-[46rem] items-center justify-center px-6 text-center text-base text-marque-ardoise lg:min-h-[40rem]">
             Les exemples n'ont pas pu être chargés. Rechargez la page pour les essayer.
           </p>
         ) : (
-          <div aria-hidden="true" className="min-h-[40rem] lg:min-h-[42.5rem]" />
+          <div aria-hidden="true" className="min-h-[46rem] lg:min-h-[40rem]" />
         )}
       </div>
     </div>
@@ -96,7 +86,8 @@ export default function FonctionnalitesSection() {
   return (
     <SectionSite id="fonctionnalites" fond="glacier" decor={<PlanArchitecte ton="glacier" />}>
       <EnTeteSection titre="Essayez, c'est l'application.">
-        Chaque exemple ci-dessous tourne avec le vrai code de Mallettico, sur des données fictives.
+        Des exemples à manipuler, sur des données fictives. Le document, le métré et les relances sortent du code même
+        de l'application.
       </EnTeteSection>
       <div ref={zone} className="mt-10">
         {Onglets ? <Onglets /> : <Attente echec={echec} />}

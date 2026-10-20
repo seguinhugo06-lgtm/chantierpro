@@ -1,10 +1,10 @@
 /**
- * Les onglets de « Les fonctionnalités en action » (site public, `FonctionnalitesSection.jsx`) — logique pure, testée
- * dans `__tests__/exemples.test.js`. Gardée à part des exemples : la barre d'onglets est affichée tout de suite, les
- * exemples arrivent à la demande (`exemples/index.js`).
+ * Les onglets de « Les fonctionnalités en action » (site public) — logique pure, testée dans
+ * `__tests__/exemples.test.js`, affichée par `exemples/OngletsExemples.jsx` (chargé à la demande avec les exemples par
+ * `FonctionnalitesSection.jsx`).
  *
  * `titre` : texte exact de la spec ; `phrase` : la ligne sous le titre, au bureau ; `cadre` : ce que dit la barre du
- * cadre d'application autour de l'exemple.
+ * cadre d'application autour de l'exemple, `cadreCourt` au téléphone (le numéro n'y est jamais coupé).
  */
 import { NUMERO_DEVIS } from './devisVivantEtapes';
 import { FACTURE_FICTIVE } from './exemples/donneesFictives';
@@ -13,32 +13,37 @@ export const ONGLETS = [
   {
     id: 'document',
     titre: 'Le document que reçoit votre client',
-    phrase: 'Le devis tel que votre client le reçoit, avec ses mentions.',
+    phrase: 'Produit par le générateur de Mallettico, sur un devis fictif.',
     cadre: `Aperçu du devis ${NUMERO_DEVIS}`,
+    cadreCourt: `Aperçu · ${NUMERO_DEVIS}`,
   },
   {
     id: 'signature',
     titre: 'Signature en ligne',
     phrase: 'Essayez : signez au doigt ou à la souris.',
     cadre: `Signature du devis ${NUMERO_DEVIS}`,
+    cadreCourt: `Signature · ${NUMERO_DEVIS}`,
   },
   {
     id: 'metre',
     titre: 'Métré express',
     phrase: 'Les dimensions donnent la quantité et le montant de la ligne.',
     cadre: 'Métré express',
+    cadreCourt: 'Métré express',
   },
   {
     id: 'relances',
     titre: 'Relances',
     phrase: 'Le scénario proposé pour un devis resté sans réponse.',
     cadre: 'Relance Devis',
+    cadreCourt: 'Relance Devis',
   },
   {
     id: 'encaissements',
     titre: 'Encaissements',
     phrase: 'Chaque paiement est noté, même partiel.',
     cadre: `Facture ${FACTURE_FICTIVE.numero}`,
+    cadreCourt: `Facture ${FACTURE_FICTIVE.numero}`,
   },
 ];
 

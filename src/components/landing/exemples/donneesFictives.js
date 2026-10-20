@@ -5,8 +5,9 @@
  * (`ENTREPRISE_FICTIVE` de scripts/site-captures.cjs, script en CommonJS qu'on ne modifie pas) ; un test
  * (`__tests__/exemples.test.js`) vérifie que les valeurs restent les mêmes. SIRET, RCS et TVA à zéros, téléphone
  * de la plage 06 39 98 réservée à la fiction par l'Arcep, e-mail en example.com, adresse « rue de l'Exemple ».
- * `donneesFictives` : le réglage du compte de démonstration (D-26) ; le générateur de devis pose alors le
- * filigrane « EXEMPLE » et la mention « Données fictives — démonstration » (src/lib/donneesFictives.js).
+ * Pas le réglage `donneesFictives` du compte de démonstration (D-26) : comme sur les captures du site, le document
+ * n'a pas le filigrane « EXEMPLE », dont un morceau coupé apparaissait au bas du cadre réduit ; l'exemple est dit
+ * fictif par sa légende et par le texte de la section (relecture du 20 oct. 2026).
  */
 
 export const ENTREPRISE_FICTIVE = {
@@ -32,7 +33,6 @@ export const ENTREPRISE_FICTIVE = {
   decennale_assureur: 'Assureur (exemple)',
   decennale_numero: 'EXEMPLE',
   decennale_validite: '2027-12-31',
-  donneesFictives: true,
 };
 
 /**

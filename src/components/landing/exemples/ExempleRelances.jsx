@@ -3,11 +3,12 @@
  * réglages) ; étapes, délais et noms lus dans le code (`DEFAULT_DEVIS_STEPS`, src/lib/scenariosRelance.js, que
  * l'écran des réglages RelanceConfigTab réexporte), chaque étape avec l'objet du message que l'app envoie.
  *
- * Une fois à l'écran, la frise se dessine une fois de haut en bas (trait qui descend, étapes l'une après l'autre) ;
- * en mouvement réduit, ou sans IntersectionObserver, elle est entière d'emblée.
+ * Une fois à l'écran, la frise se dessine une seule fois de haut en bas (étapes l'une après l'autre, chaque trait
+ * descend jusqu'à l'étape suivante) ; elle ne se rejoue pas au retour sur l'onglet. En mouvement réduit, ou sans
+ * IntersectionObserver, elle est entière d'emblée. Le trait s'arrête à la dernière étape.
  * Attributs `data-*` lus par le parcours `scripts/parcours/site.cjs`.
  */
-import { useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { motion, useInView, useReducedMotion } from 'framer-motion';
 import { Mail, Send } from 'lucide-react';
 import { statut } from '../../../lib/statuts';
@@ -18,19 +19,36 @@ import { LegendeExemple, PastilleExemple } from './communs';
 
 const FRISE = friseDesRelances(DEFAULT_DEVIS_STEPS, NUMERO_DEVIS);
 const PAS = 0.45;
+const CACHEE = { opacity: 0, x: -10 };
+const MONTREE = { opacity: 1, x: 0 };
 
-/** Une étape de la frise : son repère sur le trait, puis son contenu. */
-function Etape({ rang, anime, joue, repere, children, ...autres }) {
+/**
+ * Une étape de la frise : son repère, son contenu et, sauf pour la dernière, le trait qui descend jusqu'au repère de
+ * l'étape suivante (l'étape occupe la place jusqu'à elle). `montree` ne repasse jamais à faux : pas de rejeu.
+ */
+function Etape({ rang, anime, montree, derniere = false, repere, children, ...autres }) {
   return (
     <motion.li
       {...autres}
-      initial={anime ? { opacity: 0, x: -10 } : false}
-      animate={joue ? { opacity: 1, x: 0 } : undefined}
+      initial={anime ? CACHEE : false}
+      animate={montree ? MONTREE : CACHEE}
       transition={{ duration: 0.35, delay: rang * PAS, ease: 'easeOut' }}
-      className="relative grid grid-cols-[2.5rem_minmax(0,1fr)] gap-3"
+      className={`relative grid grid-cols-[2.5rem_minmax(0,1fr)] gap-3 ${derniere ? '' : 'flex-1 pb-4'}`}
     >
+      {!derniere ? (
+        <>
+          <span aria-hidden="true" data-trait="" className="absolute bottom-0 left-5 top-10 w-0.5 -translate-x-1/2 bg-marque-acier/70" />
+          <motion.span
+            aria-hidden="true"
+            initial={anime ? { scaleY: 0 } : false}
+            animate={{ scaleY: montree ? 1 : 0 }}
+            transition={{ duration: PAS, delay: rang * PAS + 0.2, ease: 'linear' }}
+            className="absolute bottom-0 left-5 top-10 w-0.5 origin-top -translate-x-1/2 bg-marque-nuit-2"
+          />
+        </>
+      ) : null}
       <span className="relative z-10 flex h-10 w-10 items-center justify-center">{repere}</span>
-      <div className="min-w-0 pb-1">{children}</div>
+      <div className="min-w-0">{children}</div>
     </motion.li>
   );
 }
@@ -40,7 +58,12 @@ export default function ExempleRelances({ visible = true }) {
   const liste = useRef(null);
   const vue = useInView(liste, { once: true, amount: 0.35 });
   const anime = !reduit && typeof IntersectionObserver !== 'undefined';
-  const joue = !anime || (vue && visible);
+  // Jouée une fois (onglet affiché et frise à l'écran), elle le reste : au retour sur l'onglet, rien ne se rejoue
+  const [jouee, setJouee] = useState(false);
+  useEffect(() => {
+    if (vue && visible) setJouee(true);
+  }, [vue, visible]);
+  const montree = !anime || jouee;
   const envoye = statut('devis', 'envoye');
 
   return (
@@ -54,21 +77,11 @@ export default function ExempleRelances({ visible = true }) {
           <PastilleExemple ton="info">{envoye.libelle}</PastilleExemple>
         </div>
 
-        <ol ref={liste} className="relative mt-5 flex flex-1 flex-col justify-between gap-4">
-          {/* Le trait de la frise, et sa part déjà « parcourue » qui descend une fois (décor) */}
-          <span aria-hidden="true" className="absolute bottom-5 left-5 top-5 w-0.5 -translate-x-1/2 rounded-full bg-marque-acier/70" />
-          <motion.span
-            aria-hidden="true"
-            initial={anime ? { scaleY: 0 } : false}
-            animate={joue ? { scaleY: 1 } : undefined}
-            transition={{ duration: PAS * (FRISE.length + 1), ease: 'linear' }}
-            className="absolute bottom-5 left-5 top-5 w-0.5 origin-top -translate-x-1/2 rounded-full bg-marque-nuit-2"
-          />
-
+        <ol ref={liste} className="relative mt-5 flex flex-1 flex-col">
           <Etape
             rang={0}
             anime={anime}
-            joue={joue}
+            montree={montree}
             repere={(
               <span className="flex h-10 w-10 items-center justify-center rounded-full bg-marque-nuit-2 text-white shadow-[0_6px_14px_-6px_rgba(13,46,108,0.7)]">
                 <Send size={17} strokeWidth={2} aria-hidden="true" />
@@ -83,7 +96,8 @@ export default function ExempleRelances({ visible = true }) {
               key={etape.id}
               rang={i + 1}
               anime={anime}
-              joue={joue}
+              montree={montree}
+              derniere={i === FRISE.length - 1}
               data-etape-relance=""
               repere={(
                 <span className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-marque-nuit-2 bg-white text-marque-nuit-2">
