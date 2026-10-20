@@ -84,7 +84,7 @@ import { usePermissions } from './hooks/usePermissions';
 import { PermissionGate } from './components/ui/PermissionGate';
 import { fetchSubscription, computeLiveUsage } from './services/subscriptionsApi';
 import { isDraftChantier } from './lib/utils';
-import { Home, FileText, Building2, Calendar, Users, Package, HardHat, Settings as SettingsIcon, Eye, EyeOff, Sun, Moon, LogOut, Menu, Bell, Plus, ChevronRight, BarChart3, HelpCircle, Search, X, CheckCircle, AlertCircle, Info, Wifi, WifiOff, Wallet, ClipboardList, Smartphone, CreditCard, MessageCircle, CalendarCheck, Mic } from 'lucide-react';
+import { Home, FileText, Building2, Calendar, Users, Package, HardHat, Settings as SettingsIcon, Eye, EyeOff, Sun, Moon, LogOut, Menu, Bell, Plus, ChevronRight, BarChart3, HelpCircle, Search, X, CheckCircle, AlertCircle, Info, Wifi, WifiOff, Wallet, ClipboardList, Smartphone, CreditCard, MessageCircle, CalendarCheck, Mic, PenLine } from 'lucide-react';
 import { usePWA } from './hooks/usePWA';
 import { registerNetworkListeners, getPendingCount, syncQueue, clearAllMutations, clearMutationsDe, checkConnectivity } from './lib/offline/sync';
 import OfflineIndicator from './components/ui/OfflineIndicator';
@@ -1241,63 +1241,77 @@ export default function App() {
     </>
   );
 
-  // Login Page
-  if (!user) return (
-    <div className="min-h-screen bg-slate-900 flex">
-      {/* Left - Hero */}
-      <div className="hidden lg:flex flex-1 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-orange-500 via-orange-600 to-amber-600" />
-        <div className="absolute inset-0 opacity-20">
-          <div className="absolute top-20 left-20 w-72 h-72 bg-white rounded-full blur-3xl animate-pulse" />
-          <div className="absolute bottom-32 right-20 w-96 h-96 bg-amber-300 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}} />
-        </div>
+  // Login Page — charte « Glacier vif » (20 oct. 2026) : bande bleu nuit du site, formulaire clair, action en pilule
+  // bleu nuit à texte blanc, orange du logo en décor seulement. Les points cités sont ceux que le site vérifie dans le
+  // code (devis par prestations chiffrées, signature en ligne, facture sans ressaisie, relances préparées).
+  if (!user) {
+    const champ = 'w-full rounded-xl border border-marque-acier bg-white px-4 py-3 text-marque-encre-sombre placeholder:text-slate-500 transition-colors focus:border-marque-nuit-2 focus:outline-none focus:ring-2 focus:ring-marque-nuit-2/20';
+    const boutonPlein = 'flex w-full items-center justify-center gap-2 rounded-full bg-marque-nuit-2 py-3.5 font-semibold text-white shadow-[0_8px_20px_-8px_rgba(18,51,111,0.6)] transition-all hover:-translate-y-px hover:bg-marque-nuit focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-marque-nuit-2 focus-visible:ring-offset-2 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-70';
+    const lien = 'font-semibold text-marque-nuit-2 underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-marque-nuit-2 rounded';
+    return (
+    <div data-theme="clair" className="min-h-screen bg-marque-glacier-1 flex">
+      {/* Gauche : la bande bleu nuit du site, avec le quadrillage d'architecte et la lueur du logo */}
+      <div className="hidden lg:flex flex-1 relative overflow-hidden bg-marque-nuit">
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 opacity-[0.12]"
+          style={{ backgroundImage: 'linear-gradient(rgba(188,211,226,0.6) 1px, transparent 1px), linear-gradient(90deg, rgba(188,211,226,0.6) 1px, transparent 1px)', backgroundSize: '32px 32px' }}
+        />
+        <div aria-hidden="true" className="absolute -left-24 top-1/4 h-96 w-96 rounded-full bg-marque-glacier-3/20 blur-3xl" />
+        <div aria-hidden="true" className="absolute -bottom-24 right-0 h-80 w-80 rounded-full bg-marque-orange/20 blur-3xl" />
         <div className="relative z-10 flex flex-col justify-center p-16">
           <div className="max-w-lg">
-            <LogoMallettico taille={72} fond="blanc" className="mb-8 shadow-lg" />
-            <h1 className="text-5xl font-bold text-white mb-4">Mallettico</h1>
-            <p className="text-2xl text-white/90 mb-8">Pilotez votre rentabilité</p>
-            <div className="space-y-6">
+            <LogoMallettico taille={64} fond="blanc" className="mb-10 shadow-lg" />
+            <p className="mb-4 inline-flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-marque-acier">
+              <span aria-hidden="true" className="h-2 w-2 rounded-full bg-marque-orange shadow-[0_0_10px_rgba(238,123,32,0.8)]" />
+              Pour les artisans du bâtiment
+            </p>
+            <h1 className="mb-10 text-5xl font-extrabold leading-[1.05] tracking-tight text-white">
+              L’administratif du chantier, rangé dans une mallette.
+            </h1>
+            <ul className="space-y-4">
               {[
-                { icon: BarChart3, text: 'Marge temps réel' },
-                { icon: Users, text: 'Gestion équipe' },
-                { icon: FileText, text: 'Devis & Factures' },
-                { icon: Calendar, text: 'Planning' }
-              ].map((f, i) => (
-                <div key={i} className="flex items-center gap-4 text-white/90">
-                  <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
-                    <f.icon size={20} />
-                  </div>
-                  <span>{f.text}</span>
-                </div>
+                { icon: FileText, text: 'Des devis à partir de prestations déjà chiffrées' },
+                { icon: PenLine, text: 'La signature en ligne, depuis le téléphone du client' },
+                { icon: Wallet, text: 'La facture sans rien ressaisir, les paiements suivis' },
+                { icon: Bell, text: 'Les relances préparées, au rythme que vous choisissez' },
+              ].map((f) => (
+                <li key={f.text} className="flex items-center gap-4 text-marque-glacier-2">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/10 ring-1 ring-white/15">
+                    <f.icon size={20} aria-hidden="true" />
+                  </span>
+                  <span className="text-lg">{f.text}</span>
+                </li>
               ))}
-            </div>
+            </ul>
           </div>
         </div>
       </div>
-      
-      {/* Right - Form */}
-      <div className="flex-1 flex items-center justify-center p-6">
+
+      {/* Droite : le formulaire, sur fond clair */}
+      <main className="flex flex-1 items-center justify-center p-6">
         <div className="w-full max-w-md">
-          <div className="lg:hidden flex items-center gap-3 mb-8">
-            <LogoMallettico taille={48} fond="blanc" />
-            <span className="text-2xl font-bold text-white">Mallettico</span>
+          <div className="mb-10 flex items-center gap-3 lg:hidden">
+            <LogoMallettico taille={44} fond="blanc" className="shadow-sm" />
+            <span className="text-2xl font-bold text-marque-nuit">Mallettico</span>
           </div>
-          
-          <h2 className="text-3xl font-bold text-white mb-2">{showForgot ? 'Mot de passe oublié' : showSignUp ? 'Créer un compte' : 'Connexion'}</h2>
-          <p className="text-slate-400 mb-8">{showForgot ? 'Recevez par e-mail un lien pour en choisir un nouveau.' : invitation ? `Pour rejoindre ${invitation.organisation || "l'équipe qui vous invite"}` : showSignUp ? 'Commencez gratuitement' : 'Accédez à votre espace'}</p>
+
+          <div className="rounded-3xl border border-marque-acier/60 bg-white p-6 shadow-[0_24px_48px_-24px_rgba(13,46,108,0.35)] sm:p-8">
+          <h2 className="mb-2 text-3xl font-bold tracking-tight text-marque-nuit">{showForgot ? 'Mot de passe oublié' : showSignUp ? 'Créer un compte' : 'Connexion'}</h2>
+          <p className="mb-8 text-slate-600">{showForgot ? 'Recevez par e-mail un lien pour en choisir un nouveau.' : invitation ? `Pour rejoindre ${invitation.organisation || "l'équipe qui vous invite"}` : showSignUp ? 'Commencez gratuitement' : 'Accédez à votre espace'}</p>
 
           {invitation && !showForgot && (
-            <div role="note" className="mb-4 p-3 bg-slate-800 border border-slate-700 rounded-xl text-slate-200 text-sm flex items-start gap-2">
-              <Users size={18} className="flex-shrink-0 mt-0.5 text-orange-400" aria-hidden="true" />
+            <div role="note" className="mb-4 flex items-start gap-2 rounded-xl border border-marque-acier bg-marque-glacier-1 p-3 text-sm text-marque-encre-sombre">
+              <Users size={18} className="mt-0.5 flex-shrink-0 text-marque-nuit-2" aria-hidden="true" />
               <span>
-                Invitation{invitation.organisation ? <> de <strong className="text-white">{invitation.organisation}</strong></> : null}.{' '}
+                Invitation{invitation.organisation ? <> de <strong className="text-marque-nuit">{invitation.organisation}</strong></> : null}.{' '}
                 {showSignUp ? 'Créez votre compte' : 'Connectez-vous'} : vous reviendrez à l'invitation pour rejoindre l'équipe.
               </span>
             </div>
           )}
 
           {authInfo && (
-            <div role="status" className="mb-4 p-3 bg-emerald-500/15 border border-emerald-500/40 rounded-xl text-emerald-200 text-sm">
+            <div role="status" className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
               {authInfo}
             </div>
           )}
@@ -1306,7 +1320,7 @@ export default function App() {
             <form onSubmit={handleForgot} className="space-y-4" noValidate>
               <input
                 type="email"
-                className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white placeholder-slate-400 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20 transition-all"
+                className={champ}
                 placeholder="Email du compte"
                 value={authForm.email}
                 onChange={e => setAuthForm(p => ({...p, email: e.target.value}))}
@@ -1316,19 +1330,15 @@ export default function App() {
                 autoComplete="email"
               />
               {authError && (
-                <div role="alert" className="p-3 bg-red-500/20 border border-red-500/50 rounded-xl text-red-300 text-sm">{safeStr(authError)}</div>
+                <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{safeStr(authError)}</div>
               )}
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="w-full py-3.5 bg-gradient-to-r from-orange-500 to-amber-500 text-white font-semibold rounded-xl hover:shadow-lg hover:shadow-orange-500/25 transition-all disabled:opacity-70 disabled:cursor-not-allowed"
-              >
+              <button type="submit" disabled={isSubmitting} className={boutonPlein}>
                 {isSubmitting ? 'Envoi…' : 'Envoyer le lien'}
               </button>
               <button
                 type="button"
                 onClick={() => { setShowForgot(false); setAuthError(''); setAuthInfo(''); }}
-                className="w-full py-2 text-sm text-slate-400 hover:text-white transition-colors"
+                className="w-full py-2 text-sm text-slate-600 transition-colors hover:text-marque-nuit"
               >
                 Retour à la connexion
               </button>
@@ -1338,7 +1348,7 @@ export default function App() {
             {showSignUp && (
               // Un invité donne son nom (il apparaît dans l'équipe), pas celui d'une entreprise
               <input
-                className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white placeholder-slate-400 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20 transition-all"
+                className={champ}
                 placeholder={invitation ? 'Votre prénom et nom' : 'Nom entreprise'}
                 value={authForm.nom}
                 onChange={e => setAuthForm(p => ({...p, nom: e.target.value}))}
@@ -1348,7 +1358,7 @@ export default function App() {
             )}
             <input
               type="email"
-              className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white placeholder-slate-400 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20 transition-all"
+              className={champ}
               placeholder="Email"
               value={authForm.email}
               onChange={e => setAuthForm(p => ({...p, email: e.target.value}))}
@@ -1359,7 +1369,7 @@ export default function App() {
             <div>
               <input
                 type="password"
-                className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white placeholder-slate-400 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20 transition-all"
+                className={champ}
                 placeholder="Mot de passe"
                 value={authForm.password}
                 onChange={e => setAuthForm(p => ({...p, password: e.target.value}))}
@@ -1368,31 +1378,27 @@ export default function App() {
                 autoComplete={showSignUp ? "new-password" : "current-password"}
               />
               {showSignUp && (
-                <p className="text-xs text-slate-500 mt-2">Au moins 8 caractères, avec des lettres et des chiffres.</p>
+                <p className="mt-2 text-xs text-slate-600">Au moins 8 caractères, avec des lettres et des chiffres.</p>
               )}
               {!showSignUp && (
                 <button
                   type="button"
                   onClick={() => { setShowForgot(true); setAuthError(''); setAuthInfo(''); }}
-                  className="text-sm text-slate-400 hover:text-orange-400 mt-2 py-1 transition-colors self-end"
+                  className="mt-2 self-end py-1 text-sm text-slate-600 transition-colors hover:text-marque-nuit-2"
                 >
                   Mot de passe oublié ?
                 </button>
               )}
             </div>
             {authError && (
-              <div role="alert" className="p-3 bg-red-500/20 border border-red-500/50 rounded-xl text-red-300 text-sm">
+              <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
                 {safeStr(authError)}
               </div>
             )}
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="w-full py-3.5 bg-gradient-to-r from-orange-500 to-amber-500 text-white font-semibold rounded-xl hover:shadow-lg hover:shadow-orange-500/25 transition-all disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            >
+            <button type="submit" disabled={isSubmitting} className={boutonPlein}>
               {isSubmitting ? (
                 <>
-                  <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <svg className="h-5 w-5 animate-spin text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
@@ -1403,18 +1409,20 @@ export default function App() {
               )}
             </button>
           </form>
-          
-          <p className="text-center text-slate-400 mt-6">
+
+          <p className="mt-6 text-center text-slate-600">
             {showSignUp ? 'Déjà inscrit ?' : 'Pas de compte ?'}{' '}
-            <button onClick={() => { setShowSignUp(!showSignUp); setAuthError(''); setAuthInfo(''); }} className="text-orange-500 hover:text-orange-400 font-medium py-2">
+            <button onClick={() => { setShowSignUp(!showSignUp); setAuthError(''); setAuthInfo(''); }} className={`${lien} py-2`}>
               {showSignUp ? 'Se connecter' : "S'inscrire"}
             </button>
           </p>
           </>)}
+          </div>
         </div>
-      </div>
+      </main>
     </div>
-  );
+    );
+  }
 
   // Arrivée par le lien de réinitialisation : choisir le nouveau mot de passe avant d'entrer.
   if (recoveryMode) return (
