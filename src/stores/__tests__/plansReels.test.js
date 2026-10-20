@@ -17,7 +17,7 @@ describe('plans : l\'offre réelle (D-29)', () => {
       'Vous + 1 collaborateur',
       'Signature en ligne des devis',
       'Relances automatiques',
-      'Catalogue complet : plus de 1 000 prestations chiffrées',
+      'Catalogue complet et bibliothèque : plus de 1 000 prestations chiffrées',
     ]);
   });
 

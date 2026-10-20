@@ -43,7 +43,7 @@ describe('tableau de comparaison des plans : lignes construites depuis PLANS', (
       { libelle: 'Factures sans limite', inclus: [true, true, true] },
       { libelle: 'Signature en ligne des devis', inclus: [true, true, true] },
       { libelle: 'Relances automatiques', inclus: [true, true, true] },
-      { libelle: 'Catalogue complet : plus de 1 000 prestations chiffrées', inclus: [true, true, true] },
+      { libelle: 'Catalogue complet et bibliothèque : plus de 1 000 prestations chiffrées', inclus: [true, true, true] },
     ]);
   });
 
@@ -86,12 +86,12 @@ describe('tableau de comparaison des plans : lignes construites depuis PLANS', (
     expect(ditUneLimite('Vous + 10 collaborateurs, chacun avec son rôle')).toBe(true);
     expect(ditUneLimite('Devis, clients, chantiers et photos illimités')).toBe(true);
     expect(ditUneLimite('Signature en ligne des devis')).toBe(false);
-    expect(ditUneLimite('Catalogue complet : plus de 1 000 prestations chiffrées')).toBe(false);
+    expect(ditUneLimite('Catalogue complet et bibliothèque : plus de 1 000 prestations chiffrées')).toBe(false);
     expect(ditUneLimite('Factures sans limite')).toBe(false);
   });
 
   it('libelleAffiche : un nombre à espace (« 1 000 ») ne se coupe pas, le reste est intact', () => {
-    expect(libelleAffiche('Catalogue complet : plus de 1 000 prestations chiffrées')).toBe('Catalogue complet : plus de 1\u00a0000 prestations chiffrées');
+    expect(libelleAffiche('Catalogue complet et bibliothèque : plus de 1 000 prestations chiffrées')).toBe('Catalogue complet et bibliothèque : plus de 1\u00a0000 prestations chiffrées');
     expect(libelleAffiche('Vous + 10 collaborateurs, chacun avec son rôle')).toBe('Vous + 10 collaborateurs, chacun avec son rôle');
     expect(libelleAffiche('5 devis par mois')).toBe('5 devis par mois');
     // Après normalisation des espaces, le texte est celui de PLANS

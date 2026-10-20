@@ -24,6 +24,7 @@
  */
 
 import { PLANS, PLAN_ORDER } from '../../stores/subscriptionStore';
+import { DEFAULT_DEVIS_STEPS, DEFAULT_FACTURE_STEPS, bornes, delais } from './site/delaisRelance';
 
 const ORDI = { largeur: 2880, hauteur: 1800 };
 const TEL = { largeur: 1170, hauteur: 2532, telephone: true };
@@ -34,7 +35,7 @@ export const CAPTURES = {
   devis: { src: '/site/ordi-devis-lots.webp', ...ORDI, alt: 'L\'éditeur de devis : le lot « Mise aux normes du tableau électrique », ses lignes chiffrées et le total TTC.' },
   facture: { src: '/site/ordi-facture.webp', ...ORDI, alt: 'Une facture de solde payée en partie : le montant reçu, le reste dû, et le document avec ses totaux.' },
   signature: { src: '/site/signature.webp', ...ORDI, alt: 'La page de signature que reçoit le client : le devis complet et le bouton « Signer ce devis ».' },
-  relances: { src: '/site/ordi-relances.webp', ...ORDI, alt: 'Les réglages des relances : le scénario des devis à J+7, J+15 et J+30, et l\'envoi automatique en option.' },
+  relances: { src: '/site/ordi-relances.webp', ...ORDI, alt: `Les réglages des relances : le scénario des devis à ${delais(DEFAULT_DEVIS_STEPS)}, et l'envoi automatique en option.` },
   chantier: { src: '/site/ordi-chantier.webp', ...ORDI, alt: "Un chantier : l'itinéraire, l'appel au client, les messages « en route », « arrivé », « fini » et le pointage des heures." },
   catalogue: { src: '/site/ordi-catalogue.webp', ...ORDI, alt: 'Le catalogue : les articles favoris avec leur prix, la marge moyenne et les articles en stock bas.' },
   clients: { src: '/site/ordi-clients.webp', ...ORDI, alt: 'La liste des clients : ce qui est encaissé, en cours, et les devis à relancer.' },
@@ -120,7 +121,8 @@ export const FEATURES_CONTENT = {
     ],
     faq: [
       // 17 métiers (trade-library.js) ; « 1 000+ » compté dans FaitsSection.jsx:5-12 ; modèles (DevisComposer.jsx:794)
-      { q: "Est-ce que je pars d'une page blanche ?", a: "Non. La bibliothèque des 17 métiers propose des lots types déjà chiffrés, et le catalogue réunit plus de 1 000 prestations et ouvrages chiffrés. Vous pouvez aussi enregistrer vos propres modèles." },
+      // Même tournure que la FAQ de l'accueil (faq.js) : le « 1 000+ » additionne la bibliothèque et le Référentiel
+      { q: "Est-ce que je pars d'une page blanche ?", a: "Non. La bibliothèque des 17 métiers propose des lots types déjà chiffrés, à insérer en un geste dans un devis, et le Référentiel BTP ajoute à votre catalogue les articles chiffrés de votre métier : en tout, plus de 1 000 prestations et ouvrages chiffrés. Vous pouvez aussi enregistrer vos propres modèles." },
       // Mentions (devisHtmlBuilder.js:425, 449, 454, 714) ; envoi bloqué si le profil est incomplet (DevisComposer.jsx:707,
       // validation à l'envoi DevisPage.jsx:2161)
       { q: 'Les mentions légales sont-elles gérées ?', a: "Elles s'ajoutent à partir de votre profil : assurance décennale, droit de rétractation, pénalités de retard et conditions de règlement. Tant que votre profil est incomplet, l'envoi est bloqué et l'application vous dit ce qui manque." },
@@ -147,8 +149,10 @@ export const FEATURES_CONTENT = {
       // emailSender.js:106-114 ; durée du lien : 083:31, 82-85 et DevisPage.jsx:2127-2131
       { title: 'Envoyez votre devis', text: "L'e-mail contient le PDF et un bouton « Consulter et signer le devis en ligne ». Le lien est propre à ce devis et reste valable jusqu'à la fin de validité du devis." },
       { title: 'Votre client lit et signe', text: "Il lit le devis complet dans son navigateur, sur téléphone ou ordinateur, et signe du doigt ou à la souris. Aucun compte à créer." },
-      // Nom, date, heure (083:254-259) ; exemplaire envoyé par e-mail et téléchargeable (DevisSignaturePage.jsx:153, 330-356)
-      { title: 'Vous êtes fixé', text: "Le devis passe en « Signé » dans votre application, avec le nom du signataire, la date et l'heure. Votre client télécharge son exemplaire signé, qui lui est aussi envoyé par e-mail." },
+      // L'application montre le nom et la date (DevisPage.jsx:3535-3537, AuditTimeline.jsx:283-298) ; l'heure est
+      // enregistrée (083:254-259) et imprimée sur l'exemplaire du client (devisHtmlBuilder.js:192), envoyé par e-mail et
+      // téléchargeable (DevisSignaturePage.jsx:153, 330-356)
+      { title: 'Vous êtes fixé', text: "Le devis passe en « Signé » dans votre application, avec le nom du signataire et la date. L'heure est enregistrée et figure sur l'exemplaire signé du client, qu'il télécharge et reçoit aussi par e-mail." },
     ],
     groups: [
       {
@@ -174,7 +178,7 @@ export const FEATURES_CONTENT = {
       { q: 'Mon client doit-il créer un compte ?', a: "Non. Il ouvre le lien reçu par e-mail et signe directement." },
       // 083:31, 78 (« Devis expire : prolongez sa validite ») ; « Prolonger la validité » (DevisPage.jsx:2161, 2909)
       { q: 'Combien de temps le lien reste-t-il valable ?', a: "Jusqu'à la fin de validité du devis. Un devis expiré ne se signe plus en ligne : prolongez sa validité, puis renvoyez-le." },
-      { q: 'Que se passe-t-il après la signature ?', a: "Le devis passe en « Signé » dans votre application, avec le nom du signataire, la date et l'heure. Vous pouvez alors en tirer une facture d'acompte ou de solde." },
+      { q: 'Que se passe-t-il après la signature ?', a: "Le devis passe en « Signé » dans votre application, avec le nom du signataire et la date. L'heure est enregistrée et figure sur l'exemplaire signé du client. Vous pouvez alors en tirer une facture d'acompte ou de solde." },
     ],
     related: ['devis-factures', 'relances'],
   },
@@ -191,10 +195,10 @@ export const FEATURES_CONTENT = {
       "Deux scénarios de relance par e-mail, l'un pour les devis sans réponse, l'autre pour les factures impayées, avec des messages que vous modifiez. Vous envoyez les relances dues en un clic depuis l'accueil, ou vous les laissez partir seules chaque jour.",
     capture: CAPTURES.relances,
     metaDescription:
-      'Relances de devis et de factures pour artisans du bâtiment : devis à J+7, J+15 et J+30, factures impayées en quatre étapes, messages modifiables, envoi en un clic ou automatique.',
+      `Relances de devis et de factures pour artisans du bâtiment : devis à ${delais(DEFAULT_DEVIS_STEPS)}, factures impayées ${bornes(DEFAULT_FACTURE_STEPS)}, messages modifiables, envoi en un clic ou automatique.`,
     steps: [
-      // Délais (scenariosRelance.js:16-126), modifiables (RelanceConfigTab.jsx:259-261), étapes ajoutées (:440-448, 515)
-      { title: 'Activez vos scénarios', text: "Les relances des devis (J+7, J+15 et J+30 après l'envoi) et des factures impayées (J+3, J+15, J+30 et J+45 après l'échéance) sont prêtes. Vous changez les délais, ajoutez ou retirez des étapes." },
+      // Délais lus dans scenariosRelance.js (site/delaisRelance.js), modifiables (RelanceConfigTab.jsx:259-261), étapes ajoutées (:440-448, 515)
+      { title: 'Activez vos scénarios', text: `Les relances des devis (${delais(DEFAULT_DEVIS_STEPS)} après l'envoi) et des factures impayées (${delais(DEFAULT_FACTURE_STEPS)} après l'échéance) sont prêtes. Vous changez les délais, ajoutez ou retirez des étapes.` },
       // Variables (RelanceConfigTab.jsx:52-64), aperçu avec des données d'exemple (:342-371, 534)
       { title: 'Modifiez vos messages', text: "Chaque étape a son modèle de message, avec des variables : nom du client, montant, numéro du document, échéance. Un aperçu montre le message avec des données d'exemple." },
       { title: 'Relancez sans y penser', text: "Les relances dues apparaissent sur votre accueil : « Tout envoyer », et c'est parti. Ou activez l'envoi automatique : elles partent seules chaque jour." },
@@ -203,8 +207,8 @@ export const FEATURES_CONTENT = {
       {
         name: 'Scénarios',
         items: [
-          'Devis : trois étapes (J+7, J+15, J+30), modifiables', // scenariosRelance.js:16, 32, 50
-          'Factures impayées : quatre étapes, de J+3 à J+45', // scenariosRelance.js:69, 87, 107, 124
+          `Devis : ${delais(DEFAULT_DEVIS_STEPS)}, modifiables`, // scenariosRelance.js (DEFAULT_DEVIS_STEPS)
+          `Factures impayées : ${bornes(DEFAULT_FACTURE_STEPS)} après l'échéance`, // scenariosRelance.js (DEFAULT_FACTURE_STEPS)
           'Messages modifiables, avec variables', // RelanceConfigTab.jsx:52-64
           'Aperçu du message avant activation', // RelanceConfigTab.jsx:371, 534
         ],
@@ -280,14 +284,14 @@ export const FEATURES_CONTENT = {
   // 20 oct. 2026) ; bibliothèque des métiers : src/lib/templates/trade-library.js (17 métiers, 97 lots types)
   catalogue: {
     slug: 'catalogue',
-    label: 'Catalogue',
+    label: 'Catalogue et bibliothèque',
     badge: 'Déjà chiffré',
-    title: 'Plus de 1 000 prestations et ouvrages, déjà chiffrés', // compté dans FaitsSection.jsx:5-12
+    title: 'Bibliothèque et catalogue : plus de 1 000 prestations et ouvrages déjà chiffrés', // compté dans FaitsSection.jsx:5-12
     tagline:
       "La bibliothèque des 17 métiers propose des lots types chiffrés à insérer dans un devis, et le Référentiel BTP ajoute à votre catalogue plus de 500 articles chiffrés, métier par métier. Vous ajustez les prix : ce sont les vôtres.",
     capture: CAPTURES.catalogue,
     metaDescription:
-      "Catalogue pour artisans du bâtiment : plus de 1 000 prestations et ouvrages chiffrés, lots types de 17 métiers, import par métier, prix d'achat et marge, import de vos tarifs fournisseurs en CSV ou Excel.",
+      "Bibliothèque et catalogue pour artisans du bâtiment : plus de 1 000 prestations et ouvrages chiffrés en tout, lots types de 17 métiers, import par métier, prix d'achat et marge, import de vos tarifs fournisseurs en CSV ou Excel.",
     steps: [
       // « Importer le Référentiel BTP » (Catalogue.jsx:1364, 1407) ; 15 métiers (src/lib/data/index.js)
       { title: 'Importez votre métier', text: "Dans le catalogue, « Importer le Référentiel BTP » : choisissez vos métiers parmi 15 (plomberie, électricité, maçonnerie, peinture, menuiserie…), les articles arrivent chiffrés." },
@@ -441,7 +445,7 @@ export const CARTES_FONCTIONNALITES = [
   {
     categorie: 'devis', icone: 'catalogue', slug: 'catalogue', titre: 'Catalogue et bibliothèque', capture: CAPTURES.catalogue,
     description: "Les lots types de 17 métiers et le Référentiel BTP, déjà chiffrés : vous composez vos devis sans partir d'une page blanche.",
-    points: ['Plus de 1 000 prestations et ouvrages chiffrés', 'Import par métier', "Prix d'achat et marge", 'Import de vos tarifs (CSV ou Excel)'],
+    points: ['Plus de 1 000 prestations et ouvrages chiffrés, bibliothèque comprise', 'Import par métier', "Prix d'achat et marge", 'Import de vos tarifs (CSV ou Excel)'],
   },
   {
     categorie: 'devis', icone: 'signature', slug: 'signature-electronique', titre: 'Signature en ligne', capture: CAPTURES.signature,

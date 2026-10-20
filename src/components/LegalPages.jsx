@@ -140,12 +140,14 @@ export default function LegalPages({ page, couleur, setPage }) {
                   <tr key={id} className={i < PLAN_ORDER.length - 1 ? `border-b ${tableBorder}` : undefined}>
                     <td className={`px-4 py-3 font-medium ${textPrimary}`}>{plan.name}</td>
                     <td className={`px-4 py-3 ${textSecondary}`}>
+                      {/* Tous les prix par l'outil commun (« 0 € par mois » pour le plan Gratuit) */}
                       {payant
                         ? `${prixAbonnement(plan)} par mois (ou ${prixAbonnement(plan, 'an')} par an)${plan.offreLancement ? ` — ${plan.offreLancement.toLowerCase()}, conservé tant que l'abonnement reste actif` : ''}`
-                        : '0,00 EUR / mois'}
+                        : `${prixAbonnement(plan)} par mois`}
                     </td>
                     <td className={`px-4 py-3 ${textSecondary}`}>
-                      {plan.description}. {plan.featureLabels.map((f) => f.name).join(' · ')}.
+                      {/* Seulement ce que le plan comprend (un libellé `included: false` n'est pas une promesse) */}
+                      {plan.description}. {plan.featureLabels.filter((f) => f.included !== false).map((f) => f.name).join(' · ')}.
                     </td>
                   </tr>
                 );

@@ -34,6 +34,11 @@ describe('CGV : plans tarifaires lus dans PLANS', () => {
     }
   });
 
+  it('le plan Gratuit aussi : « 0 € par mois » par prixAbonnement, plus de « 0,00 EUR / mois »', () => {
+    expect(ligneDuPlan(html, PLANS.gratuit.name)).toContain(lu(`${prixAbonnement(PLANS.gratuit)} par mois`));
+    expect(lu(html)).not.toMatch(/EUR \/ mois/);
+  });
+
   it('les prix des plans payants passent par prixAbonnement, avec la mention de franchise de TVA', () => {
     expect(ligneDuPlan(html, PLANS.artisan.name)).toContain(lu(`${prixAbonnement(PLANS.artisan)} par mois`));
     expect(ligneDuPlan(html, PLANS.equipe.name)).toContain(lu(`${prixAbonnement(PLANS.equipe)} par mois`));

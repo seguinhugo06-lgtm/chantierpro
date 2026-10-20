@@ -77,7 +77,7 @@ describe('FAQ du site', () => {
 
   it('ne promet rien qui n\'existe pas : ni support prioritaire, ni intégrations à venir, ni Factur-X', () => {
     const texte = toutLeTexte(items);
-    for (const promesse of [/support\s+prioritaire/i, /en\s+cours\s+de\s+d[ée]veloppement/i, /Factur-X/i, /pr[ée]viendrons/i,
+    for (const promesse of [/support\s+prioritaire/i, /AES/, /\bTLS\b/, /chiffr[ée]e?\s+(?:par|au|en)/i, /en\s+cours\s+de\s+d[ée]veloppement/i, /Factur-X/i, /pr[ée]viendrons/i,
       /Pennylane/i, /\bIndy\b/i, /\bSaaS\b/, /\bPWA\b/, /templates?/i, /\bCRM\b/, /situations?\s+de\s+travaux/i]) {
       expect(texte, String(promesse)).not.toMatch(promesse);
     }

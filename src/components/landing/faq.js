@@ -13,11 +13,12 @@
  * accompagner dans la migration » et « d'autres intégrations sont en cours de développement » (promesses), le
  * support prioritaire du plan Équipe (absent de `PLANS` : seule la limite d'équipe distingue Équipe), « résilier en
  * un clic » (la résiliation passe par la page de Stripe), les mots anglais (application web progressive, logiciel en
- * ligne « SaaS », « CRM », « templates »).
+ * ligne « SaaS », « CRM », « templates »), le chiffrement « au repos et en transit » (sa seule source est la page
+ * sécurité de Supabase, pas le code : tour de correction 1).
  */
 import { PLANS as PLANS_APP } from '../../stores/subscriptionStore';
 import { MENTION_TVA_ABONNEMENT, prixAbonnement } from '../../stores/prixAbonnement';
-import { DEFAULT_DEVIS_STEPS, DEFAULT_FACTURE_STEPS } from '../../lib/scenariosRelance';
+import { DEFAULT_DEVIS_STEPS, DEFAULT_FACTURE_STEPS, delais } from './site/delaisRelance';
 
 export const CATEGORIES_FAQ = [
   { id: 'tout', libelle: 'Tout' },
@@ -42,12 +43,6 @@ function offreAnnuelle(plans) {
   return memesMois ? `${liste}, soit ${moisOfferts(payants[0])} mois offerts par rapport au prix mensuel` : liste;
 }
 
-/** « J+7, J+15 et J+30 » : les délais d'un scénario de relance proposé par l'application. */
-function delais(etapes) {
-  const j = etapes.map((e) => `J+${e.delay}`);
-  return j.length > 1 ? `${j.slice(0, -1).join(', ')} et ${j[j.length - 1]}` : j[0];
-}
-
 /**
  * Les questions et réponses, dans l'ordre d'affichage. `plans` : `PLANS` de l'application (un jeu fictif dans les tests).
  * @returns {{ categorie: string, q: string, a: string }[]}
@@ -64,7 +59,8 @@ export function questionsFaq(plans = PLANS_APP) {
       q: "C'est quoi Mallettico ?",
       // Menu de l'application : Devis & Factures, Chantiers, Clients, Tâches & Planning, Équipe, Catalogue, Finances
       // (App.jsx:1443-1476)
-      a: "Une application en ligne de devis, de factures et de relances pour les artisans du bâtiment. Elle suit aussi vos chantiers, vos clients, votre planning, votre équipe et votre trésorerie. Elle s'utilise dans le navigateur, sur téléphone comme sur ordinateur.",
+      // Mallettico est toujours « il » (le logiciel)
+      a: "Un logiciel en ligne de devis, de factures et de relances pour les artisans du bâtiment. Il suit aussi vos chantiers, vos clients, votre planning, votre équipe et votre trésorerie. Il s'utilise dans le navigateur, sur téléphone comme sur ordinateur.",
     },
     {
       categorie: 'general',
@@ -97,11 +93,11 @@ export function questionsFaq(plans = PLANS_APP) {
     {
       categorie: 'tech',
       q: 'Mes données sont-elles sécurisées ?',
-      // Chiffrement : engagement de Supabase, « All customer data is encrypted at rest with AES-256 and in transit via TLS »
-      // (supabase.com/security, relu le 8 oct. 2026) ; base à Paris (règle marketing, AWS eu-west-3). Export : Réglages ›
+      // Base à Paris : chiffre vérifié de la règle marketing (Supabase, AWS eu-west-3). Rien sur le chiffrement : sa seule
+      // source est la page sécurité de Supabase, pas le code (retiré au tour de correction 1). Export : Réglages ›
       // Données (Settings.jsx:1617-1652). Suppression du compte : refusée tant qu'un abonnement payant ou une équipe est
       // actif (migration 072, src/services/suppressionCompte.js:7-8). Conservation 10 ans : docs/metier-btp.md § 3.
-      a: "Votre base de données est hébergée à Paris (Supabase, région AWS eu-west-3), chiffrée par Supabase au repos (AES-256) et en transit (TLS). Depuis les paramètres, vous exportez vos clients, devis, factures, chantiers et dépenses dans un fichier (JSON), puis vous pouvez supprimer votre compte, une fois l'abonnement payant résilié et les membres de l'équipe retirés. Exportez vos factures avant : vous devez les conserver 10 ans.",
+      a: "Votre base de données est hébergée à Paris (Supabase, région eu-west-3). Depuis les paramètres, vous exportez vos clients, devis, factures, chantiers et dépenses dans un fichier (JSON), puis vous pouvez supprimer votre compte, une fois l'abonnement payant résilié et les membres de l'équipe retirés. Exportez vos factures avant : vous devez les conserver 10 ans.",
     },
     {
       categorie: 'tech',

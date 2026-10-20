@@ -848,7 +848,7 @@ export default function RelanceConfigTab({
             Relances automatiques
           </h2>
           <p className={cn('text-sm mt-1', textMuted)}>
-            Configurez vos scénarios de relance pour ne plus jamais oublier un impaye
+            Configurez vos scénarios de relance pour ne plus jamais oublier un impayé
           </p>
         </div>
         <div className="flex items-center gap-3">

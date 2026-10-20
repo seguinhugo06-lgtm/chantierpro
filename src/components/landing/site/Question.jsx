@@ -37,10 +37,10 @@ export function Question({ id, question, reponse, ouverte, onBasculer, niveau = 
           />
         </button>
       </Titre>
+      {/* Pas de `role="region"` : une région par réponse alourdirait la liste des repères du lecteur d'écran ; le bouton
+          (`aria-expanded`, `aria-controls`) suffit à relier la question et sa réponse. */}
       <div
         id={idReponse}
-        role="region"
-        aria-labelledby={idBouton}
         className={`grid transition-[grid-template-rows] duration-300 ease-out motion-reduce:transition-none ${
           ouverte ? 'grid-rows-[1fr]' : 'invisible grid-rows-[0fr]'
         }`}

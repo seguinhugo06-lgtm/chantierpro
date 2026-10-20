@@ -60,7 +60,7 @@ export const PLANS = {
       { name: 'Vous + 1 collaborateur', included: true },
       { name: 'Signature en ligne des devis', included: true },
       { name: 'Relances automatiques', included: true },
-      { name: 'Catalogue complet : plus de 1 000 prestations chiffrées', included: true }
+      { name: 'Catalogue complet et bibliothèque : plus de 1 000 prestations chiffrées', included: true }
     ],
     badge: null,
     color: '#6B7280',

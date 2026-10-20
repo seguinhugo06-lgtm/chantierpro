@@ -43,6 +43,8 @@ const INTERDITS = [
   { nom: 'toutes les mentions', motif: /toutes\s+les\s+mentions/i },
   { nom: 'archivage', motif: /archivage/i },
   { nom: 'SHA-256', motif: /SHA-256/i },
+  // Le chiffrement de Supabase n'est prouvé par rien dans `src/` (tâche 7, tour de correction 1)
+  { nom: 'AES-256', motif: /AES[\s-]?256/i },
   { nom: 'EN 16931', motif: /EN\s+16931/i },
   { nom: 'RGPD', motif: /RGPD/i },
   { nom: 'Factur-X', motif: /Factur-X/i },
@@ -338,6 +340,8 @@ describe('les motifs interdits reconnaissent ce qu\'ils doivent et laissent pass
     'toutes les\n   mentions obligatoires',
     'archivage 10 ans',
     'scellé SHA-256',
+    'chiffrée au repos (AES-256)',
+    'chiffrement AES 256 bits',
     'norme EN 16931',
     'conformes RGPD',
     'fichier Factur-X',

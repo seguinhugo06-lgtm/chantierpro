@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { PLANS } from '../../../stores/subscriptionStore';
 import { FONCTIONS } from '../../../lib/fonctions';
 import { CAPTURES, CARTES_FONCTIONNALITES, FEATURES_CONTENT, FEATURE_SLUGS, VUES_RESSOURCES } from '../featuresContent';
+import { questionsFaq } from '../faq';
 
 /**
  * Les pages de fonctionnalités (/fonctionnalites, /fonctionnalites/:slug, /ressources) lisent leur contenu dans
@@ -74,6 +75,25 @@ describe('pages de fonctionnalités : ce qui est annoncé', () => {
     const tout = JSON.stringify({ FEATURES_CONTENT, CARTES_FONCTIONNALITES, VUES_RESSOURCES });
     expect(tout).not.toMatch(/Plan\s+[ÉE]quipe/);
     expect(tout).not.toMatch(/\(plan\s/i);
+  });
+
+  it('l\'application montre le nom et la date de la signature ; l\'heure, seulement l\'exemplaire du client', () => {
+    // DevisPage.jsx (« Accepté par … · date ») et AuditTimeline.jsx n'affichent pas l'heure ; devisHtmlBuilder.js l'imprime
+    const tout = JSON.stringify({ FEATURES_CONTENT, CARTES_FONCTIONNALITES, VUES_RESSOURCES });
+    expect(tout).not.toMatch(/dans votre application, avec le nom du signataire, la date et l'heure/);
+    expect(tout).toContain("Le devis passe en « Signé » dans votre application, avec le nom du signataire et la date. L'heure est enregistrée et figure sur l'exemplaire signé du client");
+  });
+
+  it('« plus de 1 000 » n\'est jamais dit du catalogue seul (523 articles) : toujours avec la bibliothèque', () => {
+    // Toutes les chaînes des pages (feuilles de l'objet), une par une
+    const chaines = (v) => (typeof v === 'string' ? [v] : v && typeof v === 'object' ? Object.values(v).flatMap(chaines) : []);
+    const textes = [
+      ...chaines({ FEATURES_CONTENT, CARTES_FONCTIONNALITES, VUES_RESSOURCES }),
+      ...questionsFaq().flatMap((q) => [q.q, q.a]),
+      ...Object.values(PLANS).flatMap((p) => p.featureLabels.map((f) => f.name)),
+    ].map((t) => t.replace(/[  ]/g, ' '));
+    const fautifs = textes.filter((t) => /1 000/.test(t) && !/biblioth[eè]que/i.test(t));
+    expect(fautifs).toEqual([]);
   });
 
   it('le lien de signature vit jusqu\'à la fin de validité du devis, pas « 30 jours » (migration 083)', () => {

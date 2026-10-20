@@ -139,7 +139,6 @@ const GESTES_LOT = [
 const VUES = [
   { nom: 'ordi-accueil', page: 'dashboard', largeur: 1440 },
   { nom: 'ordi-devis-lots', page: 'devis', largeur: 1440, gestes: GESTES_LOT },
-  { nom: 'ordi-devis-signe', page: 'devis', largeur: 1440, gestes: [['DEV-2026-00007']] },
   { nom: 'ordi-facture', page: 'devis', largeur: 1440, gestes: [['FAC-2026-00003']] },
   { nom: 'ordi-chantier', page: 'chantiers', largeur: 1440, gestes: [['Rénovation cuisine Dupont']] },
   { nom: 'ordi-catalogue', page: 'catalogue', largeur: 1440 },
