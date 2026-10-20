@@ -20,7 +20,7 @@ Dans l'ordre. Chaque action est aussi dans le Pilote (« À faire de votre côt�
 
 | Élément | État | Vérifié |
 |---|---|---|
-| `main` | `67db355` (19 oct. : nouvelle charte — tuiles vedettes bleu nuit fixe, texte blanc sur un accent assombri ; éditeur de devis : désignations et titres de lot plus coupés ; contenu d'une facture émise figé (103, appliquée) — vérification complète verte) | `npm run statut` : Vercel ×2 et CI verts |
+| `main` | `1e1d6e4` et son commit `docs:` (20 oct. : site public refait — premier écran avec devis vivant, explorateur des 17 métiers, cinq exemples à manipuler, cycle, fiabilité, tarifs lus dans `PLANS` avec la mention « TVA non applicable, art. 293 B du CGI », FAQ et pages de fonctionnalités vérifiées dans le code, captures fictives ; logo 05f ; ancien code du thème passé aux jetons ; CGV : facturation mensuelle ou annuelle, clause de sortie de franchise (D-19), conditions de suppression du compte, accord d'Hugo du 20 oct. ; aucune migration ni fonction Edge — vérification complète verte) | `npm run statut` : Vercel ×2 et CI |
 | Vercel | 2 projets (`chantierpro`, `seguinhugo06-lgtm-chantierpro`), déploiement auto sur `main` | statut GitHub |
 | Domaine | `mallettico.fr` (DNS OVH) | 25 juil. |
 | Service worker | sert l'ancienne version jusqu'à rechargement : ne jamais vérifier un déploiement en rechargeant le site | — |
