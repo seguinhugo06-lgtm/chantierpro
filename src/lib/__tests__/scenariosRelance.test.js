@@ -1,4 +1,6 @@
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { DEFAULT_DEVIS_STEPS, DEFAULT_FACTURE_STEPS } from '../scenariosRelance';
 import { objetDeRelance } from '../objetRelance';
 import { resolveVariables } from '../relanceUtils';
@@ -23,6 +25,13 @@ describe('objetDeRelance : l’objet du message d’une relance', () => {
   it('avec un objet propre à l’étape : ses variables sont remplies', () => {
     expect(objetDeRelance({ objet_email: 'Votre devis {{devis_numero}} — {{entreprise_nom}}' }, devis, client, entreprise))
       .toBe('Votre devis DEV-2026-00012 — Élec Exemple');
+  });
+
+  it('la tâche programmée (Deno, qui ne lit pas src/) applique la même règle : si elle change d’un côté, ce test casse', () => {
+    const lire = (relatif) => readFileSync(fileURLToPath(new URL(`../../../${relatif}`, import.meta.url)), 'utf8');
+    expect(lire('src/lib/objetRelance.js')).toContain("etape?.objet_email || `Relance : ${doc?.type === 'facture' ? 'Facture' : 'Devis'} ${doc?.numero}`");
+    expect(lire('supabase/functions/send-scheduled-relances/index.ts'))
+      .toContain("step.objet_email || `Relance : ${item.sequenceType === 'facture' ? 'Facture' : 'Devis'} ${doc.numero}`");
   });
 });
 
