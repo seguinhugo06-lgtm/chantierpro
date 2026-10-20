@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Check, Sparkles, Loader2, ArrowRight, Crown, Zap } from 'lucide-react';
 import { PLANS, PLAN_ORDER } from '../../stores/subscriptionStore';
 import { useSubscriptionStore } from '../../stores/subscriptionStore';
+import { MENTION_TVA_ABONNEMENT, prixAbonnement } from '../../stores/prixAbonnement';
 
 const FEATURE_LABELS = {
   devis_basic: 'Devis & Factures',
@@ -107,7 +108,7 @@ export default function UpgradeModal({ currentPlan, highlightFeature, onClose })
         {upgradePlans.map((planId) => {
           const plan = PLANS[planId];
           const isCurrent = planId === currentPlan;
-          const price = interval === 'monthly' ? plan.price.monthly : plan.price.yearly;
+          const price = prixAbonnement(plan, interval === 'monthly' ? 'mois' : 'an');
           const PlanIcon = PLAN_ICONS[planId];
           const isPopular = planId === 'artisan';
 
@@ -135,10 +136,11 @@ export default function UpgradeModal({ currentPlan, highlightFeature, onClose })
 
               {/* Price */}
               <div className="mb-4">
-                <span className="text-3xl font-bold text-slate-900">{price} €</span>
+                <span className="text-3xl font-bold text-slate-900">{price}</span>
                 <span className="text-slate-500 text-sm">
-                  /{interval === 'monthly' ? 'mois' : 'an'} HT
+                  {' '}par {interval === 'monthly' ? 'mois' : 'an'}
                 </span>
+                <p className="text-xs text-slate-500 mt-1">{MENTION_TVA_ABONNEMENT}</p>
               </div>
 
               {/* Limits */}

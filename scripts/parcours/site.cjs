@@ -4,6 +4,7 @@
 const path = require('path');
 const fs = require('fs');
 const { pathToFileURL } = require('url');
+const { plansDuSite } = require('../lib/plans.cjs');
 
 const json = (corps, status = 200) => ({ status, body: JSON.stringify(corps) });
 
@@ -45,6 +46,8 @@ const PANNEAU = '#fonctionnalites [role="tabpanel"]:not([hidden])';
 const GARANTIE_FONDATEUR = "garanti tant que l'abonnement reste actif";
 const TEXTE_CONSTRUIT_EN_PUBLIC = 'Pas de faux avis ici. Les avis viendront des artisans qui utilisent Mallettico, avec leur accord.';
 const BOUTON_COMPARER = 'Comparer les plans en détail';
+// Franchise de TVA des abonnements (D-19) : la mention remplace « HT » partout ; texte de la décision, pas lu dans le code.
+const MENTION_TVA = 'TVA non applicable, art. 293 B du CGI';
 const CARTES_PUBLIC = [
   'Une ligne directe avec le créateur',
   'Vous voyez ce que devient votre idée',
@@ -54,22 +57,6 @@ const CARTES_PUBLIC = [
 // Libellés des lignes de limites du tableau de comparaison ; les valeurs viennent de `limits` de PLANS.
 const LIMITES_DU_TABLEAU = [['devis', 'Devis'], ['clients', 'Clients'], ['chantiers', 'Chantiers'], ['photos', 'Photos de chantier'], ['equipe', 'Collaborateurs']];
 const valeurDeLimite = (cle, n) => (n < 0 ? 'Illimité' : cle === 'equipe' ? `Vous + ${n}` : cle === 'devis' ? `${n} par mois` : String(n));
-
-/**
- * `PLANS` et `PLAN_ORDER` lus dans le code de l'application (src/stores/subscriptionStore.js), jamais recopiés dans
- * le parcours : le module est regroupé par esbuild (déjà là pour Vite) puis évalué, ses imports n'ayant pas
- * d'extension, Node ne les lirait pas tels quels.
- */
-function plansDuSite(RACINE) {
-  const esbuild = require(require.resolve('esbuild', { paths: [RACINE] }));
-  const sortie = esbuild.buildSync({
-    entryPoints: [path.join(RACINE, 'src', 'stores', 'subscriptionStore.js')],
-    bundle: true, platform: 'node', format: 'cjs', write: false, logLevel: 'silent',
-  });
-  const module = { exports: {} };
-  new Function('module', 'exports', 'require', sortie.outputFiles[0].text)(module, module.exports, require);
-  return { PLANS: module.exports.PLANS, PLAN_ORDER: module.exports.PLAN_ORDER };
-}
 
 /**
  * Capture d'une section entière (élément), rangée dans audit-ui/ (ignoré par git). Plus haute que l'écran, la fenêtre
@@ -1218,11 +1205,20 @@ module.exports = [
     nom: 'site : tarifs et construit en public',
     reel: true,
     async executer({ ouvrir, cliquer, attendre, verifier, RACINE }) {
-      const { PLANS, PLAN_ORDER } = plansDuSite(RACINE);
-      const prixDuPlan = (id) => (PLANS[id].priceMonthly === 0 ? '0 €' : euros(PLANS[id].priceMonthly));
+      const { PLANS, PLAN_ORDER, MENTION_TVA_ABONNEMENT } = plansDuSite(RACINE);
+      // Un prix de PLANS au format français, sans centimes inutiles : « 0 € », « 9,90 € », « 99 € »
+      const prix = (n) => (Number.isInteger(n) ? `${n} €` : euros(n));
+      const prixDuPlan = (id) => prix(PLANS[id].priceMonthly);
+      const plansALAnnee = PLAN_ORDER.filter((id) => PLANS[id].priceYearly > 0);
+      const texteAnnuel = `Aussi à l'année : ${plansALAnnee.map((id) => `${prix(PLANS[id].priceYearly)} pour ${PLANS[id].name}`).join(', ')}. ${MENTION_TVA}.`;
       verifier(
         JSON.stringify(PLAN_ORDER.map(prixDuPlan)) === JSON.stringify(['0 €', '9,90 €', '19,90 €']),
         `les prix de PLANS au format de la spec (${PLAN_ORDER.map(prixDuPlan).join(' | ')})`,
+      );
+      verifier(MENTION_TVA_ABONNEMENT === MENTION_TVA, `la mention de l'outil de prix est celle de D-19 (« ${MENTION_TVA_ABONNEMENT} »)`);
+      verifier(
+        texteAnnuel === `Aussi à l'année : 99 € pour Artisan, 199 € pour Équipe. ${MENTION_TVA}.`,
+        `la ligne de l'offre annuelle lue dans PLANS (« ${texteAnnuel} »)`,
       );
       const tousLesLibelles = [...new Set(PLAN_ORDER.flatMap((id) => PLANS[id].featureLabels.map((f) => f.name)))];
 
@@ -1285,7 +1281,7 @@ module.exports = [
           const plan = PLANS[carte.id];
           verifier(carte.nom === plan.name, `plan ${plan.name} : son nom ${a} (« ${carte.nom} »)`);
           verifier(carte.prix === prixDuPlan(carte.id), `plan ${plan.name} : prix mensuel « ${prixDuPlan(carte.id)} » ${a} (« ${carte.prix} »)`);
-          verifier(carte.unite === (plan.priceMonthly === 0 ? 'par mois' : 'HT par mois'), `plan ${plan.name} : prix par mois, « HT » pour un plan payant ${a} (« ${carte.unite} »)`);
+          verifier(carte.unite === 'par mois', `plan ${plan.name} : « par mois », jamais « HT » ${a} (« ${carte.unite} »)`);
           verifier(
             JSON.stringify(carte.libelles) === JSON.stringify(plan.featureLabels.map((f) => f.name)),
             `plan ${plan.name} : exactement les featureLabels de PLANS, sans rien ajouter ni retirer ${a} (${carte.libelles.join(' | ')})`,
@@ -1298,6 +1294,10 @@ module.exports = [
           }
           verifier(carte.hauteurBouton >= 44, `plan ${plan.name} : bouton d'au moins 44 px ${a} (${carte.hauteurBouton})`);
         }
+        verifier(
+          JSON.stringify(cartes.find((c) => c.id === 'equipe').libelles) === JSON.stringify(['Tout le plan Artisan', 'Vous + 10 collaborateurs, chacun avec son rôle']),
+          `plan Équipe : ni rôles ni pointage réservés, un seul libellé de collaborateurs ${a}`,
+        );
         verifier(cartes.find((c) => c.id === 'artisan').badge === PLANS.artisan.badge, `plan Artisan : pastille « ${PLANS.artisan.badge} » lue dans PLANS ${a} (« ${cartes.find((c) => c.id === 'artisan').badge} »)`);
         verifier(cartes.filter((c) => c.badge).length === 1, `une seule carte mise en avant ${a}`);
         const bordures = cartes.map((c) => c.bordure);
@@ -1305,9 +1305,20 @@ module.exports = [
 
         // Rien de l'ancienne grille en dur, aucune affirmation sans source
         const texte = NORMALISER(await page.evaluate(() => document.querySelector('#pricing').textContent));
-        const absents = ['Factur-X', "Piste d'audit", "Journal d'audit", 'Support prioritaire', 'Planning basique', '30 articles', 'Trésorerie avancée', 'Sous-traitants', 'Gestion des congés', 'populaire', 'recommandé', 'meilleur choix', 'économisez', '−17', '-17'];
+        const absents = ['Factur-X', "Piste d'audit", "Journal d'audit", 'Support prioritaire', 'Planning basique', '30 articles', 'Trésorerie avancée', 'Sous-traitants', 'Gestion des congés', 'populaire', 'recommandé', 'meilleur choix', 'économisez', '−17', '-17', 'mois offerts', 'remise', 'Pointage', 'Rôles et accès', 'hors taxes'];
         const presents = absents.filter((t) => texte.toLowerCase().includes(t.toLowerCase()));
         verifier(presents.length === 0, `#pricing : aucun texte de l'ancienne grille ni affirmation sans source ${a} (${presents.join(', ')})`);
+        verifier(!/\bHT\b/.test(texte), `#pricing : aucun « HT » (abonnements en franchise de TVA, D-19) ${a}`);
+        const textes = await page.evaluate(() => ({
+          intro: document.querySelector('#pricing [data-intro]')?.textContent.replace(/\s+/g, ' ').trim(),
+          annuel: document.querySelector('#pricing [data-annuel]')?.textContent.replace(/\s+/g, ' ').trim(),
+          note: document.querySelector('#pricing [data-note-inscription]')?.textContent.replace(/\s+/g, ' ').trim(),
+          bascule: !!document.querySelector('#pricing [role="switch"], #pricing [aria-label*="annuel" i]'),
+        }));
+        verifier(NORMALISER(textes.intro).includes(`Prix par mois — ${MENTION_TVA}.`), `#pricing : l'introduction dit la franchise de TVA ${a} (« ${textes.intro} »)`);
+        verifier(NORMALISER(textes.annuel) === texteAnnuel, `#pricing : ligne de l'offre annuelle, lue dans PLANS, suivie de la mention ${a} (« ${textes.annuel} »)`);
+        verifier(!textes.bascule, `#pricing : pas de bascule mensuel / annuel ${a}`);
+        verifier(textes.note.includes('depuis « Mon plan »'), `#pricing : le plan payant se prend depuis « Mon plan » ${a} (« ${textes.note} »)`);
         await capturerSection(page, RACINE, '#pricing', `tarifs-${largeur}-replie`);
 
         // ── Le tableau : replié par défaut, s'ouvre au clic
@@ -1361,8 +1372,10 @@ module.exports = [
         const comptes = (libelle) => /^Tout le plan /.test(libelle) || /^(Vous \+ )?\d+ /.test(libelle) || /illimit/i.test(libelle);
         const manquants = tousLesLibelles.filter((l) => !comptes(l) && !fonctions.some((f) => f.libelle === l));
         verifier(manquants.length === 0, `tableau : aucune fonction de PLANS oubliée ${a} (${manquants.join(' | ')})`);
-        verifier(tableau.note.length > 0, `comparaison : la note qui explique le tiret ${a}`);
-        verifier(fonctions.every((l) => l.cellules.every((c) => (c.inclus === 'oui' ? c.texte === 'Inclus' : /Non annoncé$/.test(c.texte)))), `comparaison : chaque case dit « Inclus » ou « Non annoncé » en texte, pas seulement par le symbole ${a}`);
+        verifier(fonctions.length === 4 && fonctions.every((l) => l.cellules.every((c) => c.inclus === 'oui' && c.texte === 'Inclus')), `comparaison : aucune fonction réservée à un plan, toutes « Inclus » en texte ${a} (${fonctions.map((l) => l.libelle).join(' | ')})`);
+        verifier(tableau.note === "Les limites sont celles que l'application applique aujourd'hui.", `comparaison : la note ne parle plus de tiret ${a} (« ${tableau.note} »)`);
+        const equipe = limites.find((l) => l.libelle === 'Collaborateurs');
+        verifier(JSON.stringify(equipe.cellules.map((c) => c.texte)) === JSON.stringify(['Vous + 1', 'Vous + 1', 'Vous + 10']), `comparaison : la ligne d'équipe reste une limite ${a}`);
 
         // Jamais de défilement horizontal de la page ; le tableau, s'il déborde, défile dans son propre conteneur
         // (région nommée, au clavier, libellés fixes)
@@ -1374,13 +1387,43 @@ module.exports = [
             tableau: !!t,
             conteneur: !!c,
             deborde: !!c && c.scrollWidth > c.clientWidth + 1,
-            focalisable: !!c && c.tabIndex === 0 && !!c.getAttribute('aria-label') && c.getAttribute('role') === 'region',
+            marque: c?.getAttribute('data-deborde') || '',
+            tabindex: c?.getAttribute('tabindex'),
+            nomme: !!c && !!c.getAttribute('aria-label') && c.getAttribute('role') === 'region',
             colonneFixe: !!t && getComputedStyle(t.querySelector('tbody th[scope="row"]')).position === 'sticky',
+            enteteCollant: !!t && [...t.querySelectorAll('thead th')].every((th) => getComputedStyle(th).position === 'sticky' && getComputedStyle(th).top === '64px'),
           };
         });
         verifier(defilement.page <= 0, `comparaison : aucun défilement horizontal de la page ${a} (${defilement.page} px)`);
         verifier(defilement.tableau === (largeur >= 640) && (!defilement.tableau || defilement.conteneur), `comparaison : le tableau est dans un conteneur de défilement ${a} (${JSON.stringify(defilement)})`);
-        verifier(!defilement.deborde || (defilement.focalisable && defilement.colonneFixe), `comparaison : si le tableau déborde, conteneur au clavier et libellés fixes ${a} (${JSON.stringify(defilement)})`);
+        verifier(!defilement.tableau || (defilement.nomme && defilement.marque === (defilement.deborde ? 'oui' : 'non')), `comparaison : conteneur nommé, débordement mesuré ${a} (${JSON.stringify(defilement)})`);
+        verifier(!defilement.tableau || (defilement.tabindex === (defilement.deborde ? '0' : null)), `comparaison : le conteneur ne prend le focus que s'il déborde réellement ${a} (${JSON.stringify(defilement)})`);
+        verifier(!defilement.deborde || defilement.colonneFixe, `comparaison : si le tableau déborde, libellés fixes ${a}`);
+        if (defilement.tableau) {
+          verifier(defilement.enteteCollant, `comparaison : l'en-tête des plans est collant sous la barre fixe (top : 64 px) ${a}`);
+          // Vrai défilement : le tableau passe sous la barre, l'en-tête reste juste dessous
+          await page.evaluate(() => { const r = document.querySelector('#pricing table').getBoundingClientRect(); window.scrollBy(0, r.top - 64 + 220); });
+          await attendre(500);
+          const collee = await page.evaluate(() => {
+            const t = document.querySelector('#pricing table').getBoundingClientRect();
+            return { tableau: Math.round(t.top), entete: [...document.querySelectorAll('#pricing thead th')].map((th) => Math.round(th.getBoundingClientRect().top)) };
+          });
+          verifier(collee.tableau < 0 && collee.entete.every((h) => Math.abs(h - 64) <= 1), `comparaison : l'en-tête reste collé à 64 px quand le tableau défile ${a} (${JSON.stringify(collee)})`);
+          await page.evaluate(() => document.querySelector('#pricing').scrollIntoView());
+          await attendre(300);
+          // Fenêtre étroite (640 px) : le tableau tient, pas de conteneur au clavier ; élargi de force : il défile, nommé et au clavier
+          const ecran = page.viewport();
+          await page.setViewport({ ...ecran, width: 640 });
+          await attendre(500);
+          const etroit = await page.evaluate(() => { const c = document.querySelector('#pricing [data-defilement]'); return { visible: c.getClientRects().length > 0, deborde: c.scrollWidth > c.clientWidth + 1, marque: c.getAttribute('data-deborde'), tabindex: c.getAttribute('tabindex'), page: document.documentElement.scrollWidth - innerWidth }; });
+          verifier(etroit.visible && !etroit.deborde && etroit.marque === 'non' && etroit.tabindex === null && etroit.page <= 0, `comparaison à 640 px : le tableau tient, sans focus de conteneur ${a} (${JSON.stringify(etroit)})`);
+          await page.addStyleTag({ content: '#pricing table { min-width: 900px !important; }' });
+          await attendre(500);
+          const force = await page.evaluate(() => { const c = document.querySelector('#pricing [data-defilement]'); return { deborde: c.scrollWidth > c.clientWidth + 1, marque: c.getAttribute('data-deborde'), tabindex: c.getAttribute('tabindex'), defile: getComputedStyle(c).overflowX, nomme: c.getAttribute('role') === 'region' && !!c.getAttribute('aria-label'), page: document.documentElement.scrollWidth - innerWidth }; });
+          verifier(force.deborde && force.marque === 'oui' && force.tabindex === '0' && force.defile === 'auto' && force.nomme && force.page <= 0, `comparaison élargie de force : défilement dans son conteneur, au clavier, nommé, page intacte ${a} (${JSON.stringify(force)})`);
+          await page.setViewport(ecran);
+          await attendre(300);
+        }
         await capturerSection(page, RACINE, '#pricing', `tarifs-${largeur}-ouvert`);
 
         // Fermer et rouvrir : le panneau suit
@@ -1411,7 +1454,7 @@ module.exports = [
           return {
             h2: [...(s?.querySelectorAll('h2') || [])].map((h) => norm(h.textContent)),
             intro: norm(s?.querySelector('[data-intro]')?.textContent),
-            cartes: [...(s?.querySelectorAll('[data-carte-public]') || [])].map((c) => ({ titre: norm(c.querySelector('h3')?.textContent), texte: norm(c.querySelector('p')?.textContent) })),
+            cartes: [...(s?.querySelectorAll('[data-carte-public]') || [])].map((c) => ({ titre: norm(c.querySelector('h3')?.textContent), texte: norm(c.querySelector('p')?.textContent), complet: norm(c.textContent) })),
             bouton: norm(b?.innerText),
             fond: cs?.backgroundColor,
             couleur: cs?.color,
@@ -1424,6 +1467,9 @@ module.exports = [
         verifier(JSON.stringify(public_.cartes.map((c) => c.titre)) === JSON.stringify(CARTES_PUBLIC), `#early-adopters : quatre cartes aux titres vérifiés ${a} (${public_.cartes.map((c) => c.titre).join(' | ')})`);
         const garantie = public_.cartes[2].texte;
         verifier(garantie.includes(GARANTIE_FONDATEUR) && garantie.includes('tarif fondateur'), `#early-adopters : la garantie du tarif dit D-08, ${GARANTIE_FONDATEUR} ${a} (« ${garantie} »)`);
+        verifier(public_.cartes[0].texte.includes('bouton de retours') && !public_.cartes[0].texte.includes('Un bug ? Une idée ?'), `#early-adopters : « le bouton de retours », pas le libellé qui n'est qu'une icône entre 768 et 1279 px ${a} (« ${public_.cartes[0].texte} »)`);
+        verifier(public_.cartes[2].complet.includes(MENTION_TVA) && !/\bHT\b/.test(public_.texteComplet), `#early-adopters : la mention de franchise de TVA, aucun « HT » ${a}`);
+        verifier(public_.cartes[2].complet.includes(`Artisan ${prixDuPlan('artisan')} par mois`) && public_.cartes[2].complet.includes(`Équipe ${prixDuPlan('equipe')} par mois`), `#early-adopters : les prix du tarif fondateur lus dans PLANS ${a}`);
         const enTrop = ['Réponse rapide', "file d'attente", 'Zéro risque', 'premiers artisans', "n'augmentera pas", 'logiciel établi', 'maintenant'].filter((t) => public_.texteComplet.includes(t));
         verifier(enTrop.length === 0, `#early-adopters : aucune affirmation sans source de l'ancienne version ${a} (${enTrop.join(', ')})`);
         verifier(public_.bouton.startsWith('Créer mon compte gratuit') && public_.fond === 'rgb(18, 51, 111)' && public_.couleur === 'rgb(255, 255, 255)', `#early-adopters : pilule nuit-2 à texte blanc, plus de bouton noir ${a} (« ${public_.bouton} », ${public_.fond}, ${public_.couleur})`);
@@ -1454,7 +1500,7 @@ module.exports = [
         for (const selecteur of [
           '#pricing h2', '#pricing [data-intro]', '#pricing [data-plan] h3', '#pricing [data-prix]', '#pricing [data-unite]',
           '#pricing [data-plan] li', '#pricing [data-fondateur]', '#pricing [data-badge]', '#pricing [data-plan="gratuit"] button',
-          '#pricing [data-plan="artisan"] button', '#pricing [data-note-inscription]', '#pricing [data-sans-limite]',
+          '#pricing [data-plan="artisan"] button', '#pricing [data-note-inscription]', '#pricing [data-annuel]', '#pricing [data-sans-limite]', '#early-adopters [data-carte-public] ul + p',
           '[data-rendu-visible] [data-entete]', '[data-rendu-visible] [data-libelle]', '[data-rendu-visible] [data-case]', '[data-rendu-visible] [data-groupe-titre]', '#pricing [data-note-tableau]',
           '#early-adopters h2', '#early-adopters [data-intro]', '#early-adopters h3', '#early-adopters [data-carte-public] p', '#early-adopters button',
         ]) {

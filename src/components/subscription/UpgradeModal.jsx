@@ -16,6 +16,7 @@ import {
   useSubscriptionStore, PLANS, PLAN_ORDER, YEARLY_DISCOUNT,
   UPGRADE_CONTEXTS
 } from '../../stores/subscriptionStore';
+import { MENTION_TVA_ABONNEMENT, prixAbonnement } from '../../stores/prixAbonnement';
 import { createCheckoutSession } from '../../services/subscriptionsApi';
 import { toast } from '../../stores/toastStore';
 import { isDemo } from '../../supabaseClient';
@@ -127,8 +128,8 @@ export default function UpgradeModal() {
             // « Recommandé » seulement quand une fonction précise est bloquée (l'offre qui la débloque) ; pas en contexte générique.
             const isRecommended = context !== UPGRADE_CONTEXTS.generic && plan.id === recommendedPlanId;
             const price = billing === 'yearly' && plan.priceYearly
-              ? (plan.priceYearly / 12).toFixed(2).replace('.', ',')
-              : plan.priceMonthly.toFixed(2).replace('.', ',');
+              ? `${(plan.priceYearly / 12).toFixed(2).replace('.', ',')} €`
+              : prixAbonnement(plan);
 
             return (
               <div
@@ -163,10 +164,11 @@ export default function UpgradeModal() {
                 <div className="mb-4">
                   <div className="flex items-baseline gap-2 flex-wrap">
                     <span className="text-2xl font-bold" style={{ color: plan.color }}>
-                      {price}€
+                      {price}
                     </span>
-                    <span className="text-sm text-slate-500">HT/mois</span>
+                    <span className="text-sm text-slate-500">par mois</span>
                   </div>
+                  <p className="text-xs text-slate-500 mt-0.5">{MENTION_TVA_ABONNEMENT}</p>
                   {plan.offreLancement && (
                     <span className="inline-block mt-1 px-2 py-0.5 text-[10px] font-bold rounded-full bg-accent/10 text-accent-texte">
                       {plan.offreLancement} — prix gardé tant que vous restez abonné
@@ -174,7 +176,7 @@ export default function UpgradeModal() {
                   )}
                   {billing === 'yearly' && (
                     <p className="text-xs text-slate-400 mt-0.5">
-                      Facturé {plan.priceYearly}€/an
+                      Facturé {prixAbonnement(plan, 'an')} par an
                     </p>
                   )}
                   {billing === 'yearly' && (

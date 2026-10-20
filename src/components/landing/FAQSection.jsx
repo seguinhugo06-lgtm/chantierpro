@@ -10,6 +10,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, HelpCircle } from 'lucide-react';
 import { ScrollReveal } from './animations';
 import { PLANS } from '../../stores/subscriptionStore';
+import { MENTION_TVA_ABONNEMENT, prixAbonnement } from '../../stores/prixAbonnement';
 
 // Les prix se lisent depuis PLANS, jamais en dur : cette réponse annonçait
 // encore 4,99 € / 9,99 € (tarifs de l'ancien pivot) alors que le produit est
@@ -69,7 +70,7 @@ const FAQ_ITEMS = [
   {
     category: 'pricing',
     q: 'Puis-je essayer avant de payer ?',
-    a: `Oui, et sans limite de temps : le plan Gratuit inclut 5 devis/mois, 10 clients et 2 chantiers actifs, sans carte bancaire. Quand vous \u00eates pr\u00eat, passez \u00e0 Artisan (${euros(PLANS.artisan.priceMonthly)} HT/mois) ou \u00c9quipe (${euros(PLANS.equipe.priceMonthly)} HT/mois) \u2014 tarif fondateur, conserv\u00e9 tant que vous restez abonn\u00e9. Sans engagement, et vous pouvez revenir au plan Gratuit \u00e0 tout moment sans perdre vos donn\u00e9es.`,
+    a: `Oui, et sans limite de temps : le plan Gratuit inclut 5 devis/mois, 10 clients et 2 chantiers actifs, sans carte bancaire. Quand vous \u00eates pr\u00eat, passez \u00e0 Artisan (${prixAbonnement(PLANS.artisan)} par mois) ou \u00c9quipe (${prixAbonnement(PLANS.equipe)} par mois), ${MENTION_TVA_ABONNEMENT} \u2014 tarif fondateur, conserv\u00e9 tant que vous restez abonn\u00e9. Sans engagement, et vous pouvez revenir au plan Gratuit \u00e0 tout moment sans perdre vos donn\u00e9es.`,
   },
   {
     category: 'pricing',
@@ -89,7 +90,7 @@ const FAQ_ITEMS = [
   {
     category: 'pricing',
     q: 'Comment fonctionne la facturation ?',
-    a: `La facturation est mensuelle ou annuelle (2 mois offerts : ${euros(PLANS.artisan.priceYearly)} HT/an au lieu de ${euros(PLANS.artisan.priceMonthly * 12)} pour Artisan). Vous payez par carte bancaire via Stripe. Aucun engagement : vous pouvez r\u00e9silier \u00e0 tout moment depuis votre espace de gestion.`,
+    a: `La facturation est mensuelle ou annuelle (2 mois offerts : ${prixAbonnement(PLANS.artisan, 'an')} par an au lieu de ${euros(PLANS.artisan.priceMonthly * 12)} pour Artisan ; ${MENTION_TVA_ABONNEMENT}). Vous payez par carte bancaire via Stripe. Aucun engagement : vous pouvez r\u00e9silier \u00e0 tout moment depuis votre espace de gestion.`,
   },
   {
     category: 'general',

@@ -25,6 +25,9 @@ import { FONCTIONS } from '../lib/fonctions';
 // (collaborateurs + invitations en attente) à la limite, hors propriétaire. Avec `equipe: 1`, le
 // propriétaire peut donc inviter 1 collaborateur ; avec `equipe: 10`, 10. D'où « Vous + 1
 // collaborateur » et « Vous + 10 collaborateurs », et non « 1 utilisateur » ni « 10 utilisateurs ».
+// Équipe ne liste ni les rôles ni le pointage comme des fonctions à part : aucun plan ne les verrouille (ni
+// `FeatureGuard` ni `useFeatureGate` n'y sont appelés), les annoncer sous Équipe seule laisserait croire qu'ils lui
+// sont réservés. Chaque membre a son rôle (TeamManagement.jsx) : c'est dit dans la ligne des collaborateurs.
 export const PLANS = {
   gratuit: {
     id: 'gratuit',
@@ -137,9 +140,7 @@ export const PLANS = {
     ],
     featureLabels: [
       { name: 'Tout le plan Artisan', included: true },
-      { name: 'Vous + 10 collaborateurs', included: true },
-      { name: 'Rôles et accès pour chaque membre', included: true },
-      { name: 'Pointage des heures de l\'équipe', included: true }
+      { name: 'Vous + 10 collaborateurs, chacun avec son rôle', included: true }
     ],
     badge: 'Pour une équipe',
     color: '#8B5CF6',

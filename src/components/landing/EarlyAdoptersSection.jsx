@@ -4,14 +4,17 @@
  *
  * Remplace les faux avis par de la transparence (en inventer est interdit : C. consom. L121-2). Chaque phrase
  * est vérifiée dans le code ou les décisions du projet (relevé du 20 oct. 2026) :
- *   - Une ligne directe avec le créateur : le bouton « Un bug ? Une idée ? » du menu de l'application ouvre
- *     `RetourModal` : « Votre message arrive directement chez le créateur de Mallettico, qui vous répond ici »
- *     (table `retours`, migration 074, en production) ; la réponse s'affiche dans le même écran (`reponse`).
+ *   - Une ligne directe avec le créateur : le bouton de retours de l'application (« Un bug ? Une idée ? » dans le
+ *     menu ; entre 768 et 1279 px ce n'est qu'une icône, d'où « le bouton de retours » sur le site et non son
+ *     libellé) ouvre `RetourModal` : « Votre message arrive directement chez le créateur de Mallettico, qui vous
+ *     répond ici » (table `retours`, migration 074, en production) ; la réponse s'affiche dans le même écran
+ *     (`reponse`).
  *   - Vous voyez ce que devient votre idée : chaque retour a un statut visible de l'artisan, ceux de
  *     `STATUTS_RETOUR` (src/services/retoursService.js) ; le tri des retours qui nourrit la feuille de route est
  *     le rituel hebdomadaire de docs/organisation.md et du skill `retours`.
  *   - Un tarif fondateur garanti : décision D-08 (docs/decisions.md), « garanti tant que l'abonnement reste
- *     actif », rien de plus ; les prix sont lus dans `PLANS`.
+ *     actif », rien de plus ; les prix sont lus dans `PLANS` (`prixAbonnement`) et se disent en franchise de TVA
+ *     (décision D-19), jamais « HT ».
  *   - Essayer sans carte bancaire : le plan Gratuit de `PLANS` n'a ni date de fin ni prix ; le formulaire
  *     d'inscription (App.jsx) ne demande que le nom de l'entreprise, l'e-mail et un mot de passe ; l'export est
  *     « Exporter toutes les données » de Réglages › Données (Settings.jsx : entreprise, devis et factures, clients,
@@ -24,7 +27,7 @@
 import { ArrowRight, MessageSquare, ListChecks, Tag, ShieldCheck } from 'lucide-react';
 import { PLANS, PLAN_ORDER } from '../../stores/subscriptionStore';
 import { STATUTS_RETOUR } from '../../services/retoursService';
-import { formatMoney } from '../../lib/formatters';
+import { MENTION_TVA_ABONNEMENT, prixAbonnement } from '../../stores/prixAbonnement';
 import SectionSite from './site/SectionSite';
 import EnTeteSection from './site/EnTeteSection';
 import Apparition from './site/Apparition';
@@ -78,7 +81,7 @@ export default function EarlyAdoptersSection({ onSignup }) {
       <Apparition delai={0.1}>
         <ul className="mt-10 grid gap-4 md:grid-cols-2 lg:gap-5">
           <Carte icone={MessageSquare} titre="Une ligne directe avec le créateur">
-            Dans l'application, le bouton « Un bug ? Une idée ? » envoie votre message directement au créateur de
+            Depuis l'application, avec le bouton de retours, votre message arrive directement chez le créateur de
             Mallettico. Sa réponse s'affiche dans l'application.
           </Carte>
 
@@ -99,11 +102,14 @@ export default function EarlyAdoptersSection({ onSignup }) {
             icone={Tag}
             titre="Un tarif fondateur garanti"
             extra={
-              <Etiquettes nom="Les plans au tarif fondateur">
-                {PLANS_FONDATEUR.map((plan) => (
-                  <Etiquette key={plan.id}>{`${plan.name} ${formatMoney(plan.priceMonthly)} HT par mois`}</Etiquette>
-                ))}
-              </Etiquettes>
+              <>
+                <Etiquettes nom="Les plans au tarif fondateur">
+                  {PLANS_FONDATEUR.map((plan) => (
+                    <Etiquette key={plan.id}>{`${plan.name} ${prixAbonnement(plan)} par mois`}</Etiquette>
+                  ))}
+                </Etiquettes>
+                <p className="mt-2 text-xs leading-snug text-slate-600">{MENTION_TVA_ABONNEMENT}</p>
+              </>
             }
           >
             Le tarif fondateur est garanti tant que l'abonnement reste actif.

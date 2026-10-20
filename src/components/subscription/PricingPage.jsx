@@ -12,6 +12,7 @@ import {
   Shield, Clock, CreditCard, MapPin
 } from 'lucide-react';
 import { useSubscriptionStore, PLANS, PLAN_ORDER, YEARLY_DISCOUNT } from '../../stores/subscriptionStore';
+import { MENTION_TVA_ABONNEMENT, prixAbonnement } from '../../stores/prixAbonnement';
 import { createCheckoutSession } from '../../services/subscriptionsApi';
 import { toast } from '../../stores/toastStore';
 import { isDemo } from '../../supabaseClient';
@@ -122,10 +123,11 @@ function PricingCard({ plan, billing, isCurrent, isLoading, onSelect }) {
           <div>
             <div className="flex items-baseline gap-2 flex-wrap">
               <span className="text-3xl font-bold" style={{ color: plan.color }}>
-                {billing === 'yearly' ? price : typeof plan.priceMonthly === 'number' ? plan.priceMonthly.toFixed(2).replace('.', ',') : plan.priceMonthly}€
+                {billing === 'yearly' ? `${price} €` : prixAbonnement(plan)}
               </span>
-              <span className="text-sm text-slate-500">HT/mois</span>
+              <span className="text-sm text-slate-500">par mois</span>
             </div>
+            <p className="text-xs text-slate-500 mt-1">{MENTION_TVA_ABONNEMENT}</p>
             {plan.offreLancement && (
               <div className="mt-1">
                 <span className="inline-block px-2 py-0.5 text-[11px] font-bold rounded-full bg-accent/10 text-accent-texte">

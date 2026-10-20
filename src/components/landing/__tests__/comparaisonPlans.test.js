@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { PLANS, PLAN_ORDER } from '../../../stores/subscriptionStore.js';
-import { LIMITES_AFFICHEES, ditUneLimite, lignesDeComparaison, valeurDeLimite } from '../comparaisonPlans.js';
+import { LIMITES_AFFICHEES, ditUneLimite, libelleAffiche, lignesDeComparaison, valeurDeLimite } from '../comparaisonPlans.js';
 
 describe('tableau de comparaison des plans : lignes construites depuis PLANS', () => {
   const tableau = lignesDeComparaison(PLANS, PLAN_ORDER);
@@ -31,15 +31,27 @@ describe('tableau de comparaison des plans : lignes construites depuis PLANS', (
     expect(lignes.find((l) => l.cle === 'clients').valeurs[0]).toBe('Illimité');
   });
 
+  it('une clé absente de `limits` vaut « Illimité », comme dans autoriserCreation, jamais « 0 »', () => {
+    const plans = { a: { id: 'a', name: 'A', limits: { devis: 5 }, featureLabels: [] }, b: { id: 'b', name: 'B', featureLabels: [] } };
+    const valeurs = Object.fromEntries(lignesDeComparaison(plans, ['a', 'b']).limites.map((l) => [l.cle, l.valeurs]));
+    expect(valeurs.devis).toEqual(['5 par mois', 'Illimité']);
+    expect(valeurs.clients).toEqual(['Illimité', 'Illimité']);
+  });
+
   it('les fonctions sont les libellés de featureLabels qui ne disent pas une limite, incluses à partir du plan qui les annonce', () => {
     expect(tableau.fonctions).toEqual([
       { libelle: 'Factures sans limite', inclus: [true, true, true] },
       { libelle: 'Signature en ligne des devis', inclus: [true, true, true] },
       { libelle: 'Relances automatiques', inclus: [true, true, true] },
       { libelle: 'Catalogue complet : plus de 1 000 prestations chiffrées', inclus: [true, true, true] },
-      { libelle: 'Rôles et accès pour chaque membre', inclus: [false, false, true] },
-      { libelle: "Pointage des heures de l'équipe", inclus: [false, false, true] },
     ]);
+  });
+
+  it('aucune fonction n\'est réservée à un plan : la ligne d\'équipe est une limite (Vous + 1, Vous + 1, Vous + 10)', () => {
+    // Ni les rôles ni le pointage ne sont verrouillés par un plan (D-29) : aucune ligne ne les réserve à Équipe
+    expect(tableau.fonctions.every((f) => f.inclus.every(Boolean))).toBe(true);
+    expect(tableau.fonctions.map((f) => f.libelle).join(' ')).not.toMatch(/pointage|rôles/i);
+    expect(tableau.limites.find((l) => l.cle === 'equipe').valeurs).toEqual(['Vous + 1', 'Vous + 1', 'Vous + 10']);
   });
 
   it('aucun libellé de PLANS n\'est perdu : il est une fonction, une limite ou « Tout le plan … »', () => {
@@ -71,10 +83,19 @@ describe('tableau de comparaison des plans : lignes construites depuis PLANS', (
   it('ditUneLimite sépare « 5 devis par mois » de « Signature en ligne des devis »', () => {
     expect(ditUneLimite('5 devis par mois')).toBe(true);
     expect(ditUneLimite('Vous + 10 collaborateurs')).toBe(true);
+    expect(ditUneLimite('Vous + 10 collaborateurs, chacun avec son rôle')).toBe(true);
     expect(ditUneLimite('Devis, clients, chantiers et photos illimités')).toBe(true);
     expect(ditUneLimite('Signature en ligne des devis')).toBe(false);
     expect(ditUneLimite('Catalogue complet : plus de 1 000 prestations chiffrées')).toBe(false);
     expect(ditUneLimite('Factures sans limite')).toBe(false);
+  });
+
+  it('libelleAffiche : un nombre à espace (« 1 000 ») ne se coupe pas, le reste est intact', () => {
+    expect(libelleAffiche('Catalogue complet : plus de 1 000 prestations chiffrées')).toBe('Catalogue complet : plus de 1\u00a0000 prestations chiffrées');
+    expect(libelleAffiche('Vous + 10 collaborateurs, chacun avec son rôle')).toBe('Vous + 10 collaborateurs, chacun avec son rôle');
+    expect(libelleAffiche('5 devis par mois')).toBe('5 devis par mois');
+    // Après normalisation des espaces, le texte est celui de PLANS
+    expect(libelleAffiche('plus de 1 000 prestations').replace(/\s/g, ' ')).toBe('plus de 1 000 prestations');
   });
 
   it('valeurDeLimite : -1 est « Illimité »', () => {

@@ -29,13 +29,13 @@ describe('plans : l\'offre réelle (D-29)', () => {
     ]);
   });
 
-  it('Équipe annonce ce qui s\'ajoute pour plusieurs utilisateurs', () => {
+  it('Équipe annonce ce qui s\'ajoute pour plusieurs utilisateurs, sans réserver à Équipe ce qu\'aucun plan ne verrouille', () => {
     expect(noms('equipe')).toEqual([
       'Tout le plan Artisan',
-      'Vous + 10 collaborateurs',
-      'Rôles et accès pour chaque membre',
-      "Pointage des heures de l'équipe",
+      'Vous + 10 collaborateurs, chacun avec son rôle',
     ]);
+    // Les rôles et le pointage ne sont verrouillés par aucun plan : ils ne figurent pas comme fonctions d'Équipe
+    for (const nom of noms('equipe')) expect(nom).not.toMatch(/pointage|accès/i);
   });
 
   it('aucune ligne « non incluse » : tout ce qui est listé est inclus', () => {
@@ -70,7 +70,7 @@ describe('plans : l\'offre réelle (D-29)', () => {
 
   it('la limite d\'équipe ne compte pas le propriétaire (TeamManagement) : libellés « Vous + N collaborateur(s) »', () => {
     expect(noms('artisan')).toContain(`Vous + ${PLANS.artisan.limits.equipe} collaborateur`);
-    expect(noms('equipe')).toContain(`Vous + ${PLANS.equipe.limits.equipe} collaborateurs`);
+    expect(noms('equipe').some((nom) => nom.startsWith(`Vous + ${PLANS.equipe.limits.equipe} collaborateurs`))).toBe(true);
   });
 
   it('chaque limite chiffrée du plan Gratuit apparaît dans le libellé de sa ressource', () => {

@@ -1,4 +1,5 @@
-// Compte : suppression (démo), code testeur, retours utilisateurs, assistant de configuration.
+// Compte : suppression (démo), code testeur, retours utilisateurs, assistant de configuration, prix des abonnements.
+const { plansDuSite } = require('../lib/plans.cjs');
 
 // Ouvre l'assistant depuis la jauge « Profil complété » et va à sa dernière étape
 // (`pendant(etape)` : geste fait dans l'assistant à l'étape donnée, avant « Suivant »)
@@ -174,6 +175,46 @@ module.exports = [
       await attendre(500);
       const liste = await page.evaluate(() => [...document.querySelectorAll('[role="dialog"] li')].map((l) => l.innerText));
       verifier(liste.some((l) => l.includes('Envoyé') && l.includes('ne réagit pas')), 'retour listé avec le statut « Envoyé »');
+    },
+  },
+  {
+    // Les abonnements sont en franchise de TVA (D-19) : « TVA non applicable, art. 293 B du CGI » à la place de « HT »
+    // dans « Mon plan » ; prix lus dans PLANS. (La fenêtre d'abonnement n'a pas de chemin court en démo : elle est couverte par `prixAbonnementAffiche.test.jsx` ; la page `pricing` de l'app n'a aucun lien qui y mène : non parcourue.)
+    nom: 'abonnements : franchise de TVA à la place de « HT » (D-19)',
+    async executer({ ouvrir, attendre, verifier, RACINE }) {
+      const { PLANS } = plansDuSite(RACINE);
+      const MENTION = 'TVA non applicable, art. 293 B du CGI';
+      const lire = (page) => page.evaluate(() => document.body.innerText.replace(/[\s\u00a0\u202f]+/g, ' '));
+      const sansHT = (texte) => !/\bHT\b/.test(texte);
+      const prix = (n) => (Number.isInteger(n) ? `${n} €` : `${n.toFixed(2).replace('.', ',')} €`);
+
+      for (const largeur of [375, 1440]) {
+        const a = `à ${largeur} px`;
+
+        // « Mon plan », plan Gratuit : les deux plans payants, au mois puis à l'année
+        const mon = await ouvrir({ page: 'plan', largeur, plan: 'gratuit' });
+        await attendre(500);
+        let texte = await lire(mon.page);
+        verifier(texte.includes('Mon plan'), `« Mon plan » affiché ${a}`);
+        verifier(sansHT(texte), `« Mon plan » : aucun « HT » ${a}`);
+        verifier(texte.includes(MENTION), `« Mon plan » : la mention de franchise de TVA ${a}`);
+        for (const id of ['artisan', 'equipe']) {
+          verifier(texte.includes(`${prix(PLANS[id].priceMonthly)} par mois`), `« Mon plan » : ${PLANS[id].name} à ${prix(PLANS[id].priceMonthly)} par mois ${a}`);
+        }
+        await mon.page.evaluate(() => [...document.querySelectorAll('button')].find((b) => b.innerText.trim().startsWith('Annuel'))?.click());
+        await attendre(400);
+        texte = await lire(mon.page);
+        verifier(texte.includes(`Facturé ${prix(PLANS.artisan.priceYearly)}/an`) && texte.includes(`Facturé ${prix(PLANS.equipe.priceYearly)}/an`), `« Mon plan », annuel : prix annuels lus dans PLANS ${a}`);
+        verifier(sansHT(texte), `« Mon plan », annuel : aucun « HT » ${a}`);
+        await mon.browser.close();
+
+        // « Mon plan », abonné Artisan : la ligne du plan actuel
+        const abonne = await ouvrir({ page: 'plan', largeur, plan: 'artisan' });
+        await attendre(500);
+        texte = await lire(abonne.page);
+        verifier(texte.includes(`${prix(PLANS.artisan.priceMonthly)} par mois, ${MENTION}`) && sansHT(texte), `« Mon plan », abonné Artisan : prix, mention, aucun « HT » ${a}`);
+        await abonne.browser.close();
+      }
     },
   },
 ];

@@ -36,6 +36,14 @@ export function ditUneLimite(nom) {
   return LIMITES_AFFICHEES.some((l) => l.mot.test(nom)) && PORTE_UNE_QUANTITE.test(nom);
 }
 
+/**
+ * Un libellé de `PLANS` tel qu'on l'affiche : une espace entre deux groupes de chiffres devient insécable, pour qu'un
+ * nombre (« 1 000 ») ne soit jamais coupé en fin de ligne. Le texte lu (`textContent` normalisé) reste celui de `PLANS`.
+ */
+export function libelleAffiche(nom) {
+  return String(nom).replace(/(\d) (?=\d{3}(?!\d))/g, '$1\u00a0');
+}
+
 /** « 5 par mois », « 10 », « Vous + 1 », « Illimité » : la valeur de `limits` telle qu'on la lit. */
 export function valeurDeLimite(cle, valeur) {
   if (valeur < 0) return 'Illimité';
@@ -59,7 +67,8 @@ export function lignesDeComparaison(plans, ordre) {
   const limites = LIMITES_AFFICHEES.map(({ cle, libelle }) => ({
     cle,
     libelle,
-    valeurs: liste.map((plan) => valeurDeLimite(cle, plan.limits?.[cle] ?? 0)),
+    // Une clé absente de `limits` vaut « illimité », comme dans `autoriserCreation` (DataContext.jsx : `?? -1`)
+    valeurs: liste.map((plan) => valeurDeLimite(cle, plan.limits?.[cle] ?? -1)),
   }));
 
   // Fonctions de chaque plan, cumulées quand sa liste commence par « Tout le plan … »

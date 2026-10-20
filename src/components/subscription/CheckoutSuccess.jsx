@@ -10,6 +10,7 @@ import { FONCTIONS } from '../../lib/fonctions';
 import { CheckCircle, ArrowRight, Sparkles, FileText, PenTool, Camera, Settings } from 'lucide-react';
 import { useSubscriptionStore, PLANS } from '../../stores/subscriptionStore';
 import { dateLue } from '../../lib/dates';
+import { MENTION_TVA_ABONNEMENT, prixAbonnement } from '../../stores/prixAbonnement';
 
 // Simple confetti effect using CSS
 function Confetti() {
@@ -98,8 +99,8 @@ export default function CheckoutSuccess({ isDark, couleur, setPage }) {
 
   const billingInterval = sub?.billing_interval === 'yearly' ? 'Annuel' : 'Mensuel';
   const price = sub?.billing_interval === 'yearly' && plan.priceYearly
-    ? `${plan.priceYearly}€ HT/an`
-    : plan.priceMonthly ? `${plan.priceMonthly}€ HT/mois` : 'Gratuit';
+    ? `${prixAbonnement(plan, 'an')} par an`
+    : plan.priceMonthly ? `${prixAbonnement(plan)} par mois` : 'Gratuit';
 
   return (
     <div className={`min-h-[80vh] flex flex-col items-center justify-center ${isDark ? '' : 'bg-gradient-to-b from-green-50 to-transparent'} rounded-2xl`}>
@@ -134,6 +135,7 @@ export default function CheckoutSuccess({ isDark, couleur, setPage }) {
                 {price}
               </span>
             </div>
+            {plan.priceMonthly > 0 && <p className="text-xs text-right text-encre-3">{MENTION_TVA_ABONNEMENT}</p>}
             {nextBilling && (
               <div className="flex justify-between text-sm">
                 <span className="text-encre-3">Prochaine facturation</span>

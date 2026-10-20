@@ -12,6 +12,7 @@ import {
   Zap, Hammer, ExternalLink, Clock,
 } from 'lucide-react';
 import { useSubscriptionStore, PLANS, PLAN_ORDER, YEARLY_DISCOUNT } from '../../stores/subscriptionStore';
+import { MENTION_TVA_ABONNEMENT, prixAbonnement } from '../../stores/prixAbonnement';
 import { createCheckoutSession, createPortalSession, utiliserCodeTesteur } from '../../services/subscriptionsApi';
 import { toast } from '../../stores/toastStore';
 import { auth, isDemo } from '../../supabaseClient';
@@ -200,7 +201,7 @@ export default function PlanPage({ isDark, couleur = '#f97316', setPage }) {
                   {offreTesteur
                     ? `Offert jusqu'au ${nextBilling} — aucun prélèvement`
                     : isPaid
-                    ? `${plan.priceMonthly.toFixed(2).replace('.', ',')} € HT/mois${plan.offreLancement ? ` · ${plan.offreLancement}` : ''}`
+                    ? `${prixAbonnement(plan)} par mois, ${MENTION_TVA_ABONNEMENT}${plan.offreLancement ? ` · ${plan.offreLancement}` : ''}`
                     : 'Gratuit — Découverte'
                   }
                 </p>
@@ -323,8 +324,8 @@ export default function PlanPage({ isDark, couleur = '#f97316', setPage }) {
               // Un seul bouton plein : l'offre juste au-dessus de la vôtre ; les autres en secondaire.
               const estOffreSuivante = PLAN_ORDER.indexOf(pid) === PLAN_ORDER.indexOf(planId) + 1;
               const price = billing === 'yearly' && p.priceYearly
-                ? (p.priceYearly / 12).toFixed(2).replace('.', ',')
-                : p.priceMonthly?.toFixed(2).replace('.', ',') || '0';
+                ? `${(p.priceYearly / 12).toFixed(2).replace('.', ',')} €`
+                : prixAbonnement(p);
 
               return (
                 <div
@@ -347,9 +348,10 @@ export default function PlanPage({ isDark, couleur = '#f97316', setPage }) {
                       de rétention le plus fort du produit, invisible. */}
                   <div className="mb-3">
                     <span className="text-2xl font-bold text-encre tabular-nums">
-                      {price} €
+                      {price}
                     </span>
-                    <span className="text-sm text-encre-3"> HT/mois</span>
+                    <span className="text-sm text-encre-3"> par mois</span>
+                    {p.priceMonthly > 0 && <p className="text-sm mt-0.5 text-encre-3">{MENTION_TVA_ABONNEMENT}</p>}
                     {p.offreLancement && (
                       <p className="text-sm mt-1 font-medium text-encre-2">
                         {p.offreLancement} : prix gardé tant que vous restez abonné

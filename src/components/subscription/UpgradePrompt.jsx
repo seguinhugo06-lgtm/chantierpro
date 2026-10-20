@@ -8,6 +8,7 @@ import React from 'react';
 import { Lock, ArrowRight, Sparkles } from 'lucide-react';
 import { PLANS } from '../../stores/subscriptionStore';
 import { useSubscriptionStore } from '../../stores/subscriptionStore';
+import { MENTION_TVA_ABONNEMENT, prixAbonnement } from '../../stores/prixAbonnement';
 
 const FEATURE_LABELS = {
   tresorerie: 'Trésorerie & Projections',
@@ -40,7 +41,7 @@ export default function UpgradePrompt({
 
   const featureLabel = FEATURE_LABELS[feature] || feature;
   const planLabel = PLANS[requiredPlan]?.name || requiredPlan;
-  const planPrice = PLANS[requiredPlan]?.price?.monthly;
+  const planPrice = PLANS[requiredPlan]?.priceMonthly;
 
   return (
     <div className="flex items-center justify-center py-12 px-4">
@@ -64,7 +65,7 @@ export default function UpgradePrompt({
         {/* Price */}
         {planPrice > 0 && (
           <div className={`text-sm ${textMuted}`}>
-            À partir de <span className="font-bold text-lg" style={{ color: couleur }}>{planPrice} €</span>/mois HT
+            À partir de <span className="font-bold text-lg" style={{ color: couleur }}>{prixAbonnement(PLANS[requiredPlan])}</span> par mois, {MENTION_TVA_ABONNEMENT}
           </div>
         )}
 

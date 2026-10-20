@@ -1,5 +1,7 @@
 import React from 'react';
 import { ArrowLeft, Shield, FileText, Scale, Lock, Trash2 } from 'lucide-react';
+import { PLANS } from '../stores/subscriptionStore';
+import { MENTION_TVA_ABONNEMENT, prixAbonnement } from '../stores/prixAbonnement';
 
 // ─── Mallettico SaaS Company Info (editor) ────────────────────────────────────
 // Update these values with the actual company details before launch
@@ -134,18 +136,18 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
               </tr>
               <tr className={`border-b ${tableBorder}`}>
                 <td className={`px-4 py-3 font-medium ${textPrimary}`}>Artisan</td>
-                <td className={`px-4 py-3 ${textSecondary}`}>9,90 EUR / mois HT (ou 99 EUR / an HT) — tarif fondateur, conservé tant que l'abonnement reste actif</td>
+                <td className={`px-4 py-3 ${textSecondary}`}>{prixAbonnement(PLANS.artisan)} par mois (ou {prixAbonnement(PLANS.artisan, 'an')} par an) — tarif fondateur, conservé tant que l'abonnement reste actif</td>
                 <td className={`px-4 py-3 ${textSecondary}`}>Idéal pour les artisans indépendants. Devis, factures, clients et chantiers illimités, signatures électroniques, export comptable.</td>
               </tr>
               <tr>
                 <td className={`px-4 py-3 font-medium ${textPrimary}`}>Équipe</td>
-                <td className={`px-4 py-3 ${textSecondary}`}>19,90 EUR / mois HT (ou 199 EUR / an HT) — tarif fondateur, conservé tant que l'abonnement reste actif</td>
+                <td className={`px-4 py-3 ${textSecondary}`}>{prixAbonnement(PLANS.equipe)} par mois (ou {prixAbonnement(PLANS.equipe, 'an')} par an) — tarif fondateur, conservé tant que l'abonnement reste actif</td>
                 <td className={`px-4 py-3 ${textSecondary}`}>Pour les entreprises avec équipes. Jusqu'à 10 utilisateurs, pointage, trésorerie, sous-traitants, statistiques avancées.</td>
               </tr>
             </tbody>
           </table>
         </div>
-        <P>Les prix sont indiqués en euros hors taxes (HT). La TVA applicable sera ajoutée au moment de la facturation.</P>
+        <P>Les prix sont indiqués en euros, sans TVA : {MENTION_TVA_ABONNEMENT}.</P>
       </Section>
 
       <Section title="Article 5 - Modalités de paiement">
