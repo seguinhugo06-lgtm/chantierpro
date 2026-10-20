@@ -20,7 +20,7 @@ export const ONGLETS = [
   {
     id: 'signature',
     titre: 'Signature en ligne',
-    phrase: 'Essayez : signez au doigt ou à la souris.',
+    phrase: 'Essayez\u202f: signez au doigt ou à la souris.',
     cadre: `Signature du devis ${NUMERO_DEVIS}`,
     cadreCourt: `Signature · ${NUMERO_DEVIS}`,
   },

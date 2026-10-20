@@ -40,7 +40,8 @@ export default function PageLegalePublique({ pageInitiale }) {
   return (
     <div data-theme="clair" className="min-h-screen bg-[#f5f5f5] p-4 sm:p-6">
       <Suspense fallback={<div className="min-h-screen" />}>
-        <LegalPages page={page} isDark={false} couleur="#f97316" setPage={aller} />
+        {/* Liens et icônes au bleu nuit du logo (charte « Glacier vif ») : l'ancien orange tombait à 2,8:1 sur blanc */}
+        <LegalPages page={page} isDark={false} couleur="#12336F" setPage={aller} />
       </Suspense>
     </div>
   );

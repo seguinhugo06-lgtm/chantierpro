@@ -17,7 +17,9 @@
  *
  * Chaque carte se lit de haut en bas : nom et prix, tarif fondateur, bouton, puis la liste. Le bouton est sous le prix
  * (et non en bas de carte) : trois listes de longueurs différentes laisseraient un grand vide au milieu des cartes
- * courtes ; les cartes gardent chacune leur hauteur, alignées par le haut.
+ * courtes. Au bureau, les trois cartes ont la même hauteur (celle de la plus longue liste, Gratuit) : leurs bords du
+ * bas s'alignent, au lieu de trois hauteurs en escalier (636, 438 et 392 px à 1440 px) qui laissaient un vide sous les
+ * deux dernières.
  * Attributs `data-*` lus par le parcours `scripts/parcours/site.cjs`.
  */
 import { ArrowRight, Check } from 'lucide-react';
@@ -44,7 +46,7 @@ function CartePlan({ plan, onSignup }) {
   return (
     <article
       data-plan={plan.id}
-      className={`relative flex flex-col rounded-3xl bg-white ${
+      className={`relative flex h-full flex-col rounded-3xl bg-white ${
         // Bordure de 2 px : 1 px de marge en moins, pour que le contenu reste aligné sur les autres cartes
         miseEnAvant
           ? 'border-2 border-marque-nuit-2 p-[1.4375rem] shadow-[0_30px_60px_-34px_rgba(13,46,108,0.65)] sm:p-[1.6875rem]'
@@ -87,9 +89,11 @@ function CartePlan({ plan, onSignup }) {
       )}
 
       <div className="mt-6">
-        <BoutonSite variante={miseEnAvant ? 'plein' : 'contour'} onClick={onSignup} className="w-full">
+        {/* Entre 1024 et 1279 px, les cartes sont étroites (251 px de bouton) : marges réduites et sans flèche, le
+            libellé « Créer mon compte gratuit » (276 px avec la flèche) tient sur une ligne, comme les deux autres */}
+        <BoutonSite variante={miseEnAvant ? 'plein' : 'contour'} onClick={onSignup} className="w-full lg:px-4 xl:px-6">
           {payant ? 'Créer mon compte' : 'Créer mon compte gratuit'}
-          <ArrowRight size={18} aria-hidden="true" />
+          <ArrowRight size={18} aria-hidden="true" className="shrink-0 lg:hidden xl:block" />
         </BoutonSite>
       </div>
 
@@ -115,7 +119,7 @@ export default function PricingSection({ onSignup }) {
       </EnTeteSection>
 
       <Apparition delai={0.1}>
-        <div className="mt-12 grid gap-8 lg:grid-cols-3 lg:items-start lg:gap-6">
+        <div className="mt-12 grid gap-8 lg:grid-cols-3 lg:items-stretch lg:gap-6">
           {PLAN_ORDER.map((id) => (
             <CartePlan key={id} plan={PLANS[id]} onSignup={onSignup} />
           ))}
@@ -123,10 +127,10 @@ export default function PricingSection({ onSignup }) {
       </Apparition>
 
       <p data-annuel="" className="mt-8 max-w-[48em] text-sm leading-relaxed text-slate-600">
-        {`Aussi à l'année : ${PLANS_A_L_ANNEE.map((plan) => `${prixAbonnement(plan, 'an')} pour ${plan.name}`).join(', ')}. ${MENTION_TVA_ABONNEMENT}.`}
+        {`Aussi à l'année\u202f: ${PLANS_A_L_ANNEE.map((plan) => `${prixAbonnement(plan, 'an')} pour ${plan.name}`).join(', ')}. ${MENTION_TVA_ABONNEMENT}.`}
       </p>
       <p data-note-inscription="" className="mt-2 max-w-[48em] text-sm leading-relaxed text-slate-600">
-        Votre compte commence au plan Gratuit ; vous passez à un plan payant depuis « Mon plan », quand vous le
+        Votre compte commence au plan Gratuit ; vous passez à un plan payant depuis « Mon plan », quand vous le
         souhaitez.
       </p>
 

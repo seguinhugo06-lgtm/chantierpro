@@ -58,7 +58,7 @@ export function lotDemonstration(bibliotheque) {
   const lot = bibliotheque?.electricite?.lots?.find((l) => l.id.includes('tableau'));
   if (!lot) {
     throw new Error(
-      'Devis vivant : aucun lot « tableau » dans la bibliothèque Électricité (src/lib/templates/trade-library.js). '
+      'Devis vivant\u202f: aucun lot «\u202ftableau\u202f» dans la bibliothèque Électricité (src/lib/templates/trade-library.js). '
       + 'Choisir un autre lot dans src/components/landing/devisVivantEtapes.js et mettre à jour la légende.',
     );
   }
@@ -111,5 +111,5 @@ export function dureeEtape(etapes, index) {
 export function libelleTotal(lignes) {
   const taux = [...new Set(lignes.map((l) => l.tva))];
   if (taux.length !== 1) return 'Total TTC';
-  return `Total TTC (TVA ${String(taux[0]).replace('.', ',')} %)`;
+  return `Total TTC (TVA ${String(taux[0]).replace('.', ',')}\u202f%)`;
 }

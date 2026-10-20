@@ -113,14 +113,14 @@ export default function ExempleRelances({ visible = true }) {
                   <span data-nom="" className="text-sm font-bold text-slate-900">{etape.nom}</span>
                 </div>
                 <p data-objet="" className="mt-1.5 text-sm leading-snug text-slate-600">
-                  Objet : <span className="whitespace-nowrap font-medium text-slate-800">{etape.objet}</span>
+                  Objet : <span className="whitespace-nowrap font-medium text-slate-800">{etape.objet}</span>
                 </p>
               </div>
             </Etape>
           ))}
         </ol>
       </div>
-      <LegendeExemple>Vous réglez les délais et les messages ; l'envoi automatique est une option.</LegendeExemple>
+      <LegendeExemple>Vous réglez les délais et les messages ; l'envoi automatique est une option.</LegendeExemple>
     </>
   );
 }

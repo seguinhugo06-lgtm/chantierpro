@@ -167,7 +167,7 @@ export function ligneDuMetre(bibliotheque) {
   const ligne = lot?.lignes?.find((l) => l.unite === 'm²' && /^Fourniture et pose/.test(l.designation));
   if (!ligne) {
     throw new Error(
-      'Métré express : aucune fourniture et pose au m² dans le lot « sol-piece-de-vie » de la bibliothèque Carrelage '
+      'Métré express\u202f: aucune fourniture et pose au m² dans le lot «\u202fsol-piece-de-vie\u202f» de la bibliothèque Carrelage '
       + '(src/lib/templates/trade-library.js). Choisir une autre ligne dans src/components/landing/exemples/exemples.js.',
     );
   }
@@ -201,7 +201,7 @@ const ID_FACTURE = 'exemple-encaissements';
 /** Les paiements reçus au départ : l'acompte (calculé) puis le virement partiel. Montants en centimes. */
 export function paiementsDeDepart(facture) {
   return [
-    { id: 'acompte', libelle: `Acompte de ${facture.acomptePct} %`, centimes: Math.round((facture.totalCentimes * facture.acomptePct) / 100) },
+    { id: 'acompte', libelle: `Acompte de ${facture.acomptePct}\u202f%`, centimes: Math.round((facture.totalCentimes * facture.acomptePct) / 100) },
     { id: 'virement', libelle: 'Virement partiel', centimes: facture.virementCentimes },
   ];
 }

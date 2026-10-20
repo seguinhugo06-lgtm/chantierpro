@@ -17,43 +17,34 @@ import EnTetePage from './site/EnTetePage';
 import EnTeteSection from './site/EnTeteSection';
 import BandeAppel from './site/BandeAppel';
 import Apparition from './site/Apparition';
-import { CadreOrdi } from './site/Cadres';
+import PastilleFiltre from './site/PastilleFiltre';
+import { CadreCapture } from './site/Cadres';
 import { ICONES } from './site/icones';
 import { ETAPES_RESSOURCES, VUES_RESSOURCES } from './featuresContent';
-
-const FOCUS =
-  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-marque-nuit-2 focus-visible:ring-offset-2 focus-visible:ring-offset-white';
 
 function Galerie() {
   const [choisie, setChoisie] = useState(VUES_RESSOURCES[0].id);
   const vue = VUES_RESSOURCES.find((v) => v.id === choisie) || VUES_RESSOURCES[0];
+  // La première vue est dans le premier écran au bureau : chargée tout de suite, en priorité. Les autres ne se
+  // chargent qu'au choix du visiteur.
+  const premiere = vue.id === VUES_RESSOURCES[0].id;
   return (
     <div className="mt-10">
       <div role="group" aria-label="Choisir une vue de l'application" className="flex flex-wrap gap-2">
         {VUES_RESSOURCES.map((v) => {
           const Icone = ICONES[v.icone];
-          const pressee = v.id === vue.id;
           return (
-            <button
-              key={v.id}
-              type="button"
-              aria-pressed={pressee}
-              onClick={() => setChoisie(v.id)}
-              className={`inline-flex min-h-[44px] items-center gap-2 rounded-full border px-4 text-sm font-semibold transition-colors motion-reduce:transition-none ${FOCUS} ${
-                pressee
-                  ? 'border-marque-nuit-2 bg-marque-nuit-2 text-white'
-                  : 'border-marque-acier bg-white text-marque-ardoise hover:border-marque-nuit-2 hover:text-marque-nuit'
-              }`}
-            >
+            <PastilleFiltre key={v.id} pressee={v.id === vue.id} onClick={() => setChoisie(v.id)}>
               {Icone ? <Icone size={16} aria-hidden="true" /> : null}
               {v.libelle}
-            </button>
+            </PastilleFiltre>
           );
         })}
       </div>
       <figure className="mt-8">
-        {/* `key` : une nouvelle image par vue (pas d'ancienne capture affichée le temps du chargement) */}
-        <CadreOrdi key={vue.id} src={vue.capture.src} alt={vue.capture.alt} largeur={vue.capture.largeur} hauteur={vue.capture.hauteur} />
+        {/* `key` : une nouvelle image par vue (pas d'ancienne capture affichée le temps du chargement). Au téléphone,
+            la vue téléphone de l'écran, dans un cadre de téléphone : une capture d'ordinateur n'y serait plus lisible. */}
+        <CadreCapture key={vue.id} capture={vue.capture} prioritaire={premiere} premiere={premiere} classeTel="max-w-[17rem]" />
         <figcaption className="mt-4 text-center">
           <span className="block text-base text-marque-ardoise">{vue.description}</span>
           <span className="mt-1 block text-xs text-slate-600">Capture de l'application, données fictives.</span>

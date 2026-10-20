@@ -33,7 +33,7 @@ import {
 } from './devisVivantEtapes';
 
 const TEXTE_HORS_ECRAN =
-  `Exemple : un devis de ${NB_LIGNES_DEMONSTRATION} lignes pour une mise aux normes de tableau électrique, signé en ligne, facturé puis payé.`;
+  `Exemple\u202f: un devis de ${NB_LIGNES_DEMONSTRATION} lignes pour une mise aux normes de tableau électrique, signé en ligne, facturé puis payé.`;
 
 // Un statut = un mot et un ton ; le texte porte l'information (pas la seule couleur). Contrastes ≥ 6,8:1.
 const PASTILLES = {
@@ -220,8 +220,8 @@ export default function DevisVivant({ reduit: reduitDemande = false }) {
                   part > 0 ? 'opacity-100' : 'opacity-0'
                 }`}
               >
-                <span>Encaissé : {formatMoney(part * etat.totalTTC, 2)}</span>
-                <span>{Math.round(part * 100)} %</span>
+                <span>Encaissé : {formatMoney(part * etat.totalTTC, 2)}</span>
+                <span>{Math.round(part * 100)} %</span>
               </p>
             </div>
 
@@ -241,8 +241,10 @@ export default function DevisVivant({ reduit: reduitDemande = false }) {
       {!echec && (
         <p
           data-relance={relanceVisible ? 'visible' : 'cachee'}
-          className={`relative z-10 -mt-6 ml-3 mr-3 flex w-fit items-center gap-2.5 rounded-2xl border border-marque-acier/60 bg-white px-3.5 py-2.5 text-sm text-slate-700 shadow-[0_20px_40px_-24px_rgba(13,46,108,0.5)] transition-[opacity,transform] duration-300 motion-reduce:transition-none lg:-ml-8 ${
-            relanceVisible ? 'translate-y-0 opacity-100' : 'translate-y-1 opacity-0'
+          // Cachée : aussi `invisible` (une fois le fondu fini), pour qu'un lecteur d'écran ne lise pas une bulle qu'on ne
+          // voit pas ; en mouvement réduit, elle reste ainsi cachée (le devis est montré payé)
+          className={`relative z-10 -mt-6 ml-3 mr-3 flex w-fit items-center gap-2.5 rounded-2xl border border-marque-acier/60 bg-white px-3.5 py-2.5 text-sm text-slate-700 shadow-[0_20px_40px_-24px_rgba(13,46,108,0.5)] transition-[opacity,transform,visibility] duration-300 motion-reduce:transition-none lg:-ml-8 ${
+            relanceVisible ? 'visible translate-y-0 opacity-100' : 'invisible translate-y-1 opacity-0'
           }`}
         >
           <span
@@ -256,7 +258,7 @@ export default function DevisVivant({ reduit: reduitDemande = false }) {
       )}
 
       <figcaption className="mt-3 text-xs leading-relaxed text-slate-600">
-        Démonstration : le lot « {NOM_LOT_DEMONSTRATION} » de la bibliothèque Électricité, prix moyens indicatifs du marché.
+        Démonstration : le lot « {NOM_LOT_DEMONSTRATION} » de la bibliothèque Électricité, prix moyens indicatifs du marché.
       </figcaption>
     </figure>
   );

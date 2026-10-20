@@ -90,8 +90,8 @@ describe('tableau de comparaison des plans : lignes construites depuis PLANS', (
     expect(ditUneLimite('Factures sans limite')).toBe(false);
   });
 
-  it('libelleAffiche : un nombre à espace (« 1 000 ») ne se coupe pas, le reste est intact', () => {
-    expect(libelleAffiche('Catalogue complet et bibliothèque : plus de 1 000 prestations chiffrées')).toBe('Catalogue complet et bibliothèque : plus de 1\u00a0000 prestations chiffrées');
+  it('libelleAffiche : typographie fine du site — un nombre à espace (1 000) ne se coupe pas, « : » non plus', () => {
+    expect(libelleAffiche('Catalogue complet et bibliothèque : plus de 1 000 prestations chiffrées')).toBe('Catalogue complet et bibliothèque\u202f: plus de 1\u202f000 prestations chiffrées');
     expect(libelleAffiche('Vous + 10 collaborateurs, chacun avec son rôle')).toBe('Vous + 10 collaborateurs, chacun avec son rôle');
     expect(libelleAffiche('5 devis par mois')).toBe('5 devis par mois');
     // Après normalisation des espaces, le texte est celui de PLANS

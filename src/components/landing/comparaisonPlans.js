@@ -18,6 +18,7 @@
  * Le test `comparaisonPlans.test.js` fige le résultat pour les plans d'aujourd'hui : un libellé ajouté à `PLANS`
  * que cette règle classerait de travers fait échouer le test, il ne disparaît pas du tableau en silence.
  */
+import { fine } from './site/typographie';
 
 /** Ressources limitées : clé de `limits`, ligne du tableau, mot qui la désigne dans les libellés. */
 export const LIMITES_AFFICHEES = [
@@ -40,8 +41,11 @@ export function ditUneLimite(nom) {
  * Un libellé de `PLANS` tel qu'on l'affiche : une espace entre deux groupes de chiffres devient insécable, pour qu'un
  * nombre (« 1 000 ») ne soit jamais coupé en fin de ligne. Le texte lu (`textContent` normalisé) reste celui de `PLANS`.
  */
+// Passe de finition (octobre 2026) : la r\u00e8gle est celle de tout le site (`site/typographie.js`) \u2014 espace fine
+// ins\u00e9cable entre les groupes de chiffres ET avant \u00ab : \u00bb (\u00ab biblioth\u00e8que : plus de 1 000 \u00bb). `PLANS` n'est pas r\u00e9\u00e9crit :
+// l'application affiche aussi ces libell\u00e9s.
 export function libelleAffiche(nom) {
-  return String(nom).replace(/(\d) (?=\d{3}(?!\d))/g, '$1\u00a0');
+  return fine(nom);
 }
 
 /** « 5 par mois », « 10 », « Vous + 1 », « Illimité » : la valeur de `limits` telle qu'on la lit. */

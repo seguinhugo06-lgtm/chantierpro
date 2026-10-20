@@ -7,7 +7,8 @@
  *   enfermerait un élément `fixed`, règle « interface »).
  * - `role="dialog"`, `aria-modal`, titre ; le reste de la page devient inerte (`inert`) et ne défile plus ; le focus
  *   va au bouton « Fermer », reste dans la fenêtre (deux sentinelles le renvoient au début ou à la fin, même depuis le
- *   document) ; Échap, « Fermer » ou un clic sur le voile la ferment. Le parent rend le focus au bouton d'ouverture.
+ *   document) ; Échap, « Fermer » ou un clic sur le voile la ferment. Le parent rend le focus au bouton d'ouverture,
+ *   dans les trois cas.
  * - Limite connue : le focus dans le document (cadre isolé, sans script), Échap n'arrive pas à la page ; Tab ressort
  *   vers « Fermer ».
  */
@@ -22,6 +23,7 @@ export default function DocumentEnGrand({ html, titre, titreDuCadre, onFermer })
   const voile = useRef(null);
   const boutonFermer = useRef(null);
   const cadre = useRef(null);
+  const appuiSurVoile = useRef(false);
   const fermer = useRef(onFermer);
   fermer.current = onFermer;
 
@@ -45,10 +47,14 @@ export default function DocumentEnGrand({ html, titre, titreDuCadre, onFermer })
   }, []);
 
   return createPortal(
+    // Fermeture au `click` (pas au `mousedown`) : le clic est fini quand la fenêtre se ferme, le focus que le navigateur
+    // pose au `mousedown` est déjà passé et le parent peut le rendre au bouton d'ouverture. Seul un clic commencé ET
+    // fini sur le voile ferme (un glisser depuis le document jusqu'au voile ne ferme pas).
     <div
       ref={voile}
       data-document-en-grand=""
-      onMouseDown={(e) => { if (e.target === voile.current) fermer.current?.(); }}
+      onMouseDown={(e) => { appuiSurVoile.current = e.target === voile.current; }}
+      onClick={(e) => { if (appuiSurVoile.current && e.target === voile.current) fermer.current?.(); }}
       className="fixed inset-0 z-[70] flex items-stretch justify-center bg-marque-encre-sombre/70 sm:items-center sm:p-6"
     >
       <div
@@ -57,8 +63,9 @@ export default function DocumentEnGrand({ html, titre, titreDuCadre, onFermer })
         aria-labelledby={ID_TITRE_DOCUMENT_EN_GRAND}
         className="flex h-full w-full flex-col overflow-hidden bg-white sm:h-[min(92vh,64rem)] sm:max-w-[54rem] sm:rounded-2xl sm:shadow-2xl"
       >
-        {/* Sentinelle de début : Maj+Tab depuis « Fermer » repart vers le document */}
-        <span tabIndex={0} aria-hidden="true" onFocus={() => cadre.current?.focus()} className="sr-only" />
+        {/* Sentinelle de début : Maj+Tab depuis « Fermer » repart vers le document. Focalisable, donc pas `aria-hidden`
+            (un élément focalisable caché aux lecteurs d'écran est une faute) : elle ne garde le focus qu'un instant. */}
+        <span tabIndex={0} data-sentinelle="" onFocus={() => cadre.current?.focus()} className="sr-only" />
         <div className="flex min-h-[64px] items-center gap-3 border-b border-marque-acier/60 bg-marque-glacier-1 px-4 py-2 sm:px-5">
           <h2 id={ID_TITRE_DOCUMENT_EN_GRAND} className="min-w-0 flex-1 text-base font-bold leading-snug text-marque-nuit">
             {titre}
@@ -84,7 +91,7 @@ export default function DocumentEnGrand({ html, titre, titreDuCadre, onFermer })
           />
         </div>
         {/* Sentinelle de fin : Tab depuis le document revient à « Fermer » */}
-        <span tabIndex={0} aria-hidden="true" onFocus={() => boutonFermer.current?.focus()} className="sr-only" />
+        <span tabIndex={0} data-sentinelle="" onFocus={() => boutonFermer.current?.focus()} className="sr-only" />
       </div>
     </div>,
     document.body,

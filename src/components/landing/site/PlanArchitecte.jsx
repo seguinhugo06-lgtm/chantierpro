@@ -6,10 +6,17 @@
  *   glacier : traits glacier-2 tous les 120 px et 24 px (ceux-ci à 45 %), estompés vers les bords (premier écran)
  *   nuit    : traits blancs très légers tous les 48 px (bande bleu nuit de la fiabilité)
  * Les couleurs viennent de la palette Tailwind `marque` (`theme()`), pas d'un code recopié.
+ * `foyer` (motif glacier) : où le quadrillage est le plus net, il s'estompe autour :
+ *   haut  en haut à droite (premier écran, en-têtes des sous-pages : le haut est caché sous la barre fixe)
+ *   bas   en bas au centre, nul sur le bord du haut : une section qui en suit une autre ne s'ouvre pas sur un trait net
+ *         (le motif commence par un trait à y = 0 ; dernier appel)
  * `data-decor` : les parcours ne cherchent pas de débordement dans le décor (il est coupé par le parent).
  */
 
-const MASQUE = 'radial-gradient(ellipse 80% 70% at 70% 30%, #000 30%, transparent 75%)';
+const MASQUES = {
+  haut: 'radial-gradient(ellipse 80% 70% at 70% 30%, #000 30%, transparent 75%)',
+  bas: 'radial-gradient(ellipse 85% 80% at 50% 85%, #000 25%, transparent 78%)',
+};
 
 const CLASSES = {
   glacier:
@@ -20,19 +27,15 @@ const CLASSES = {
     'bg-[length:48px_48px] opacity-[0.07]',
 };
 
-const STYLES = {
-  glacier: { maskImage: MASQUE, WebkitMaskImage: MASQUE },
-  nuit: undefined,
-};
-
-export function PlanArchitecte({ ton = 'glacier', className = '' }) {
+export function PlanArchitecte({ ton = 'glacier', foyer = 'haut', className = '' }) {
   const motif = CLASSES[ton] ? ton : 'glacier';
+  const masque = MASQUES[foyer] || MASQUES.haut;
   return (
     <div
       aria-hidden="true"
       data-decor=""
       className={`pointer-events-none absolute inset-0 ${CLASSES[motif]}${className ? ` ${className}` : ''}`}
-      style={STYLES[motif]}
+      style={motif === 'glacier' ? { maskImage: masque, WebkitMaskImage: masque } : undefined}
     />
   );
 }

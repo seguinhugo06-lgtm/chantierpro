@@ -359,6 +359,16 @@ describe('les motifs interdits reconnaissent ce qu\'ils doivent et laissent pass
     '5/5 sur les stores',
     '500 artisans nous font confiance',
     'Ils nous font confiance',
+    // Typographie fine du site (site/typographie.js) : les espaces fines insécables, écrites en échappement dans les
+    // chaînes JS (décodé par `decoder`) ou en vrai caractère dans le texte JSX, ne cachent aucun mot interdit
+    '«\u202fconforme\u202f»',
+    "«\\u202fconforme\\u202f»",
+    '83\u202f% des artisans',
+    '83\\u202f% des artisans',
+    'données hébergées\u202fen\u202fFrance',
+    'Noté 4,8\u202f/\u202f5',
+    'toutes les\u202fmentions obligatoires',
+    'Ils nous\u202ffont confiance',
   ])('rapporte : %s', (texte) => {
     expect(rapporte(texte)).toBe(true);
   });

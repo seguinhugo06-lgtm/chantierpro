@@ -17,12 +17,14 @@ const BASE =
   'motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2';
 
 // Anneau : bleu nuit sur fond clair, blanc sur la bande nuit (l'espace de l'anneau reprend la couleur du fond).
-// Survol du plein : nuit-2 → nuit seul ne se voit pas ; l'ombre s'allonge et le bouton monte d'un pixel (prototype).
+// Survol du plein : nuit-2 → nuit seul ne se voit pas ; l'ombre s'allonge nettement et le bouton monte de 2 px
+// (passe de finition : à 1 px et une ombre à peine plus longue, le survol restait presque invisible). En mouvement
+// réduit, le bouton ne monte pas : l'ombre reste le signal.
 // Survol du contour : glacier-2, visible sur blanc comme sur le fond glacier du premier écran.
 const VARIANTES = {
   plein:
     'border-transparent bg-marque-nuit-2 text-white shadow-[0_10px_24px_-12px_rgba(13,46,108,0.7)] ' +
-    'hover:bg-marque-nuit hover:-translate-y-px hover:shadow-[0_14px_28px_-12px_rgba(13,46,108,0.8)] motion-reduce:hover:translate-y-0 ' +
+    'hover:bg-marque-nuit hover:-translate-y-0.5 hover:shadow-[0_18px_34px_-12px_rgba(13,46,108,0.95)] motion-reduce:hover:translate-y-0 ' +
     'focus-visible:ring-marque-nuit-2 focus-visible:ring-offset-white',
   contour:
     'border-marque-nuit-2 bg-transparent text-marque-nuit-2 hover:bg-marque-glacier-2 focus-visible:ring-marque-nuit-2 focus-visible:ring-offset-white',

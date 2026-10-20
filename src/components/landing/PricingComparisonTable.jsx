@@ -29,6 +29,7 @@ import { Check, ChevronDown } from 'lucide-react';
 import { PLANS, PLAN_ORDER } from '../../stores/subscriptionStore';
 import BoutonSite from './site/BoutonSite';
 import Apparition from './site/Apparition';
+import { FOCUS } from './site/focus';
 import { libelleAffiche, lignesDeComparaison } from './comparaisonPlans';
 
 /** Les lignes ne dépendent que de `PLANS` : calculées une fois. */
@@ -45,8 +46,6 @@ const GROUPES = [
 
 const ID_PANNEAU = 'comparaison-plans';
 const BORDURE = 'border-b border-marque-acier/40';
-const FOCUS =
-  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-marque-nuit-2 focus-visible:ring-offset-2 focus-visible:ring-offset-white';
 
 /** Le contenu d'une case : la valeur d'une limite, ou le symbole « inclus » / « non annoncé » doublé d'un texte. */
 function Valeur({ valeur }) {
@@ -75,7 +74,8 @@ const attributsDeCase = (valeur, plan) => ({
  */
 function Tableau() {
   const zone = useRef(null);
-  const [deborde, setDeborde] = useState(false);
+  // Sans ResizeObserver (vieux navigateur), rien ne se mesure : le conteneur défile d'office, le tableau reste lisible
+  const [deborde, setDeborde] = useState(() => typeof ResizeObserver === 'undefined');
 
   useEffect(() => {
     const element = zone.current;
@@ -101,7 +101,7 @@ function Tableau() {
         className={deborde ? `overflow-x-auto ${FOCUS} focus-visible:ring-inset` : undefined}
       >
         <table className="w-full border-separate border-spacing-0 text-left">
-          <caption className="sr-only">Comparaison des plans : limites et fonctions</caption>
+          <caption className="sr-only">Comparaison des plans : limites et fonctions</caption>
           <thead>
             <tr>
               <th scope="col" className={`sticky left-0 top-16 z-30 bg-white px-5 py-4 ${BORDURE}`}>
@@ -210,8 +210,11 @@ export default function PricingComparisonTable() {
 
       <div id={ID_PANNEAU} hidden={!ouvert}>
         <Apparition className="mt-6">
-          {/* `overflow-clip` et non `overflow-hidden` : pas de conteneur de défilement, l'en-tête du tableau peut coller */}
-          <div className="overflow-clip rounded-3xl border border-marque-acier/60 bg-white shadow-[0_20px_44px_-34px_rgba(13,46,108,0.45)]">
+          {/* `overflow-clip` et non `overflow-hidden` : pas de conteneur de défilement, l'en-tête du tableau peut coller.
+              Repli pour Safari avant 16 (qui ignore `clip` et laisserait déborder les coins carrés des cases) :
+              `overflow-hidden` d'abord, remplacé par `clip` là où il existe ; l'en-tête n'y colle plus, le tableau reste
+              propre et lisible. La liste du téléphone n'a rien de collant : `overflow-hidden` partout. */}
+          <div className="overflow-hidden rounded-3xl border border-marque-acier/60 bg-white shadow-[0_20px_44px_-34px_rgba(13,46,108,0.45)] sm:supports-[overflow:clip]:overflow-clip">
             <Tableau />
             <Liste />
           </div>

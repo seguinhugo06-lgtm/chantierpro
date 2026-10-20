@@ -56,7 +56,7 @@ export function questionsFaq(plans = PLANS_APP) {
   return [
     {
       categorie: 'general',
-      q: "C'est quoi Mallettico ?",
+      q: "C'est quoi Mallettico\u202f?",
       // Menu de l'application : Devis & Factures, Chantiers, Clients, Tâches & Planning, Équipe, Catalogue, Finances
       // (App.jsx:1443-1476)
       // Mallettico est toujours « il » (le logiciel)
@@ -64,92 +64,92 @@ export function questionsFaq(plans = PLANS_APP) {
     },
     {
       categorie: 'general',
-      q: 'Puis-je utiliser Mallettico sur mon téléphone ?',
+      q: 'Puis-je utiliser Mallettico sur mon téléphone\u202f?',
       // Application installable, ouverte en plein écran (vite.config.js:29, display standalone)
-      a: "Oui. Mallettico s'ouvre dans le navigateur de votre téléphone et s'installe sur l'écran d'accueil : il s'ouvre alors en plein écran, comme une application. Il a besoin d'une connexion internet.",
+      a: "Oui. Mallettico s'ouvre dans le navigateur de votre téléphone et s'installe sur l'écran d'accueil\u202f: il s'ouvre alors en plein écran, comme une application. Il a besoin d'une connexion internet.",
     },
     {
       categorie: 'features',
-      q: "Est-ce que je pars d'une page blanche pour mes devis ?",
+      q: "Est-ce que je pars d'une page blanche pour mes devis\u202f?",
       // Bibliothèque des 17 métiers (trade-library.js) ; Référentiel BTP (Catalogue.jsx:1364) ; « 1 000+ » compté dans
       // FaitsSection.jsx:5-12 ; import CSV ou Excel (Catalogue.jsx:1469, 1504)
-      a: "Non. La bibliothèque des 17 métiers propose des lots types déjà chiffrés, à insérer en un geste dans un devis, et le Référentiel BTP ajoute à votre catalogue les articles chiffrés de votre métier : en tout, plus de 1 000 prestations et ouvrages chiffrés. Vous ajoutez vos propres articles, ou importez vos tarifs fournisseurs en CSV ou Excel.",
+      a: "Non. La bibliothèque des 17 métiers propose des lots types déjà chiffrés, à insérer en un geste dans un devis, et le Référentiel BTP ajoute à votre catalogue les articles chiffrés de votre métier\u202f: en tout, plus de 1\u202f000 prestations et ouvrages chiffrés. Vous ajoutez vos propres articles, ou importez vos tarifs fournisseurs en CSV ou Excel.",
     },
     {
       categorie: 'features',
-      q: 'Comment fonctionnent les relances automatiques ?',
+      q: 'Comment fonctionnent les relances automatiques\u202f?',
       // Scénarios (src/lib/scenariosRelance.js), variables (RelanceConfigTab.jsx:52-64), « Tout envoyer » (Dashboard.jsx:
       // 506-517), envoi quotidien en option (RelanceConfigTab.jsx:900-925), historique par document
       // (RelanceTimelineWidget.jsx)
-      a: `Deux scénarios sont prêts : les devis sans réponse (${delais(DEFAULT_DEVIS_STEPS)} après l'envoi) et les factures impayées (${delais(DEFAULT_FACTURE_STEPS)} après l'échéance). Vous modifiez les délais et les messages, qui reprennent le nom du client, le montant ou le numéro du document. Les relances dues s'envoient en un clic depuis l'accueil, ou partent seules chaque jour si vous activez l'envoi automatique. Chaque document garde l'historique de ses relances.`,
+      a: `Deux scénarios sont prêts\u202f: les devis sans réponse (${delais(DEFAULT_DEVIS_STEPS)} après l'envoi) et les factures impayées (${delais(DEFAULT_FACTURE_STEPS)} après l'échéance). Vous modifiez les délais et les messages, qui reprennent le nom du client, le montant ou le numéro du document. Les relances dues s'envoient en un clic depuis l'accueil, ou partent seules chaque jour si vous activez l'envoi automatique. Chaque document garde l'historique de ses relances.`,
     },
     {
       categorie: 'tech',
-      q: 'Mallettico est-il prêt pour la facturation électronique ?',
+      q: 'Mallettico est-il prêt pour la facturation électronique\u202f?',
       // Calendrier : docs/metier-btp.md § 8 (réception au 1er sept. 2026, émission au 1er sept. 2027 pour les TPE) ;
       // Mallettico n'est pas une Plateforme Agréée ; raccordement décidé (D-03), au programme (feuille de route)
-      a: "Pas encore, et nous préférons le dire. Aujourd'hui, Mallettico produit des factures PDF avec les mentions de votre profil. Depuis le 1er septembre 2026, toutes les entreprises doivent pouvoir recevoir des factures électroniques : cela passe par la Plateforme Agréée de votre choix (liste officielle sur impots.gouv.fr). À partir du 1er septembre 2027, les TPE devront aussi les émettre par une Plateforme Agréée : Mallettico prévoit de s'y raccorder, ce n'est pas encore fait.",
+      a: "Pas encore, et nous préférons le dire. Aujourd'hui, Mallettico produit des factures PDF avec les mentions de votre profil. Depuis le 1er septembre 2026, toutes les entreprises doivent pouvoir recevoir des factures électroniques\u202f: cela passe par la Plateforme Agréée de votre choix (liste officielle sur impots.gouv.fr). À partir du 1er septembre 2027, les TPE devront aussi les émettre par une Plateforme Agréée\u202f: Mallettico prévoit de s'y raccorder, ce n'est pas encore fait.",
     },
     {
       categorie: 'tech',
-      q: 'Mes données sont-elles sécurisées ?',
+      q: 'Mes données sont-elles sécurisées\u202f?',
       // Base à Paris : chiffre vérifié de la règle marketing (Supabase, AWS eu-west-3). Rien sur le chiffrement : sa seule
       // source est la page sécurité de Supabase, pas le code (retiré au tour de correction 1). Export : Réglages ›
       // Données (Settings.jsx:1617-1652). Suppression du compte : refusée tant qu'un abonnement payant ou une équipe est
       // actif (migration 072, src/services/suppressionCompte.js:7-8). Conservation 10 ans : docs/metier-btp.md § 3.
-      a: "Votre base de données est hébergée à Paris (Supabase, région eu-west-3). Depuis les paramètres, vous exportez vos clients, devis, factures, chantiers et dépenses dans un fichier (JSON), puis vous pouvez supprimer votre compte, une fois l'abonnement payant résilié et les membres de l'équipe retirés. Exportez vos factures avant : vous devez les conserver 10 ans.",
+      a: "Votre base de données est hébergée à Paris (Supabase, région eu-west-3). Depuis les paramètres, vous exportez vos clients, devis, factures, chantiers et dépenses dans un fichier (JSON), puis vous pouvez supprimer votre compte, une fois l'abonnement payant résilié et les membres de l'équipe retirés. Exportez vos factures avant\u202f: vous devez les conserver 10 ans.",
     },
     {
       categorie: 'tech',
-      q: 'Puis-je exporter mes données ?',
+      q: 'Puis-je exporter mes données\u202f?',
       // PDF (DevisPage.jsx:2954), export comptable (ExportComptable.jsx:285-289), export complet (Settings.jsx:1617-1652)
       a: "Oui. Vos devis et factures en PDF, vos écritures comptables au format FEC, CSV ou Excel (Finances › Export comptable), et vos clients, devis, factures, chantiers et dépenses dans un fichier JSON, depuis les paramètres.",
     },
     {
       categorie: 'pricing',
-      q: 'Puis-je essayer avant de payer ?',
+      q: 'Puis-je essayer avant de payer\u202f?',
       // Limites et prix lus dans PLANS ; tarif fondateur : D-08 ; retour au plan Gratuit, données conservées : CGV art. 7
       // (LegalPages.jsx, « À la fin de l'abonnement, le compte revient au plan Gratuit »)
-      a: `Oui, sans limite de durée : le plan ${gratuit.name} inclut ${devis} devis par mois, ${clients} clients et ${chantiers} chantiers, sans carte bancaire. Quand vous êtes prêt, passez à ${artisan.name} (${prixAbonnement(artisan)} par mois, sans ces limites) ou à ${equipe.name} (${prixAbonnement(equipe)} par mois, vous + ${equipe.limits.equipe} collaborateurs), ${MENTION_TVA_ABONNEMENT} — tarif fondateur, garanti tant que l'abonnement reste actif. Si vous arrêtez, votre compte revient au plan ${gratuit.name} : vos données sont conservées.`,
+      a: `Oui, sans limite de durée\u202f: le plan ${gratuit.name} inclut ${devis} devis par mois, ${clients} clients et ${chantiers} chantiers, sans carte bancaire. Quand vous êtes prêt, passez à ${artisan.name} (${prixAbonnement(artisan)} par mois, sans ces limites) ou à ${equipe.name} (${prixAbonnement(equipe)} par mois, vous + ${equipe.limits.equipe} collaborateurs), ${MENTION_TVA_ABONNEMENT} — tarif fondateur, garanti tant que l'abonnement reste actif. Si vous arrêtez, votre compte revient au plan ${gratuit.name}\u202f: vos données sont conservées.`,
     },
     {
       categorie: 'pricing',
-      q: 'Puis-je changer de plan en cours de route ?',
+      q: 'Puis-je changer de plan en cours de route\u202f?',
       // « Passer au … » (profil/PlanPage.jsx:397) ; portail Stripe pour gérer et arrêter l'abonnement (PlanPage.jsx:84-140)
-      a: `Oui. Depuis « Mon plan », vous passez à un plan supérieur à tout moment. Pour arrêter un abonnement payant et revenir au plan ${gratuit.name}, « Mon plan » vous mène à votre espace d'abonnement chez Stripe.`,
+      a: `Oui. Depuis «\u202fMon plan\u202f», vous passez à un plan supérieur à tout moment. Pour arrêter un abonnement payant et revenir au plan ${gratuit.name}, «\u202fMon plan\u202f» vous mène à votre espace d'abonnement chez Stripe.`,
     },
     {
       categorie: 'general',
-      q: 'Comment migrer depuis un autre logiciel ?',
+      q: 'Comment migrer depuis un autre logiciel\u202f?',
       // Import des clients en CSV (App.jsx:2408-2425, ImportModal.jsx:399) ; catalogue en CSV ou Excel (Catalogue.jsx:1504)
       a: "Importez vos clients (fichier CSV) et votre catalogue ou vos tarifs fournisseurs (CSV ou Excel). Pour une question, écrivez-nous à contact@mallettico.fr.",
     },
     {
       categorie: 'tech',
-      q: 'Quelles intégrations sont disponibles ?',
+      q: 'Quelles intégrations sont disponibles\u202f?',
       // E-mail avec PDF joint (DevisPage.jsx:2380-2400, emailSender.js:63-79), météo du chantier (Chantiers.jsx:796-811,
       // src/services/WeatherService.js), export comptable (ExportComptable.jsx:285-289)
       a: "Mallettico envoie vos devis et factures par e-mail avec leur PDF joint, affiche la météo de vos chantiers et exporte vos écritures comptables au format FEC, CSV ou Excel pour votre comptable.",
     },
     {
       categorie: 'pricing',
-      q: 'Comment fonctionne la facturation ?',
+      q: 'Comment fonctionne la facturation\u202f?',
       // Annuel lu dans PLANS (priceYearly) ; « Au mois, sans engagement · À l'année, payé pour 12 mois · Paiement sécurisé
       // par Stripe » (PlanPage.jsx:411) ; carte bancaire par Stripe (CGV art. 5)
-      a: `Au mois ou à l'année : ${offreAnnuelle(plans)} ; ${MENTION_TVA_ABONNEMENT}. Vous payez par carte bancaire, par Stripe. Au mois, sans engagement : vous résiliez quand vous voulez depuis « Mon plan » ; à l'année, l'abonnement est payé pour douze mois.`,
+      a: `Au mois ou à l'année\u202f: ${offreAnnuelle(plans)}\u202f; ${MENTION_TVA_ABONNEMENT}. Vous payez par carte bancaire, par Stripe. Au mois, sans engagement\u202f: vous résiliez quand vous voulez depuis «\u202fMon plan\u202f»\u202f; à l'année, l'abonnement est payé pour douze mois.`,
     },
     {
       categorie: 'general',
-      q: 'Y a-t-il un support client ?',
+      q: 'Y a-t-il un support client\u202f?',
       // Bouton de retours de l'application (RetourModal, table `retours`, migration 074 ; réponse affichée dans l'écran),
       // relevé dans EarlyAdoptersSection.jsx
-      a: "Oui. Écrivez-nous à contact@mallettico.fr, ou utilisez le bouton de retours de l'application : votre message arrive directement chez le créateur de Mallettico, et sa réponse s'affiche dans l'application.",
+      a: "Oui. Écrivez-nous à contact@mallettico.fr, ou utilisez le bouton de retours de l'application\u202f: votre message arrive directement chez le créateur de Mallettico, et sa réponse s'affiche dans l'application.",
     },
     {
       categorie: 'pricing',
-      q: 'Puis-je annuler mon abonnement à tout moment ?',
+      q: 'Puis-je annuler mon abonnement à tout moment\u202f?',
       // PlanPage.jsx:126-135 (« Vous gardez l'accès à toutes les fonctionnalités jusqu'au … ») ; CGV art. 7 (LegalPages.jsx)
-      a: `Oui, depuis « Mon plan » : la résiliation se fait sur la page de Stripe. Vous gardez l'accès jusqu'à la fin de la période déjà payée, puis votre compte revient au plan ${gratuit.name} : vos données sont conservées et restent exportables.`,
+      a: `Oui, depuis «\u202fMon plan\u202f»\u202f: la résiliation se fait sur la page de Stripe. Vous gardez l'accès jusqu'à la fin de la période déjà payée, puis votre compte revient au plan ${gratuit.name}\u202f: vos données sont conservées et restent exportables.`,
     },
   ];
 }

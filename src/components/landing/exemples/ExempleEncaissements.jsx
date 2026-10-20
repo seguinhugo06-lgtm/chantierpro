@@ -72,7 +72,7 @@ export default function ExempleEncaissements() {
           </div>
 
           {/* La barre : la part encaissée, des traits blancs entre les paiements (décor : les montants sont écrits dessous) */}
-          <p className="mt-5 text-right text-sm font-semibold tabular-nums text-slate-600">{pourcent} % encaissé</p>
+          <p className="mt-5 text-right text-sm font-semibold tabular-nums text-slate-600">{pourcent} % encaissé</p>
           <div key={tour} aria-hidden="true" className="relative mt-1.5 h-3 overflow-hidden rounded-full bg-marque-glacier-2">
             <motion.div
               data-barre-encaisse=""
@@ -135,11 +135,11 @@ export default function ExempleEncaissements() {
             )}
           </div>
           <p className="sr-only" aria-live="polite">
-            {`${etat.libelle}. Reste dû : ${euros(etat.resteCentimes)}.`}
+            {`${etat.libelle}. Reste dû\u202f: ${euros(etat.resteCentimes)}.`}
           </p>
         </div>
       </div>
-      <LegendeExemple>Une facture n'est « payée » que si les paiements la soldent.</LegendeExemple>
+      <LegendeExemple>Une facture n'est « payée » que si les paiements la soldent.</LegendeExemple>
     </>
   );
 }

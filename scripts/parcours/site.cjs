@@ -9,7 +9,8 @@ const { plansDuSite, charger } = require('../lib/plans.cjs');
 const json = (corps, status = 200) => ({ status, body: JSON.stringify(corps) });
 
 const TITRE = "L'administratif du chantier, rangé dans une mallette.";
-const TEXTE_HORS_ECRAN = 'Exemple : un devis de 7 lignes pour une mise aux normes de tableau électrique, signé en ligne, facturé puis payé.';
+// Typographie fine du site (src/components/landing/site/typographie.js) : espace fine insécable avant « : »
+const TEXTE_HORS_ECRAN = 'Exemple\u202f: un devis de 7 lignes pour une mise aux normes de tableau électrique, signé en ligne, facturé puis payé.';
 const TEXTE_RELANCE = 'Relance du devis à J+7, au rythme que vous choisissez';
 
 // Textes exacts de la spec (sections 5 et 6)
@@ -621,8 +622,25 @@ module.exports = [
         verifier(JSON.stringify(cycle.titres) === JSON.stringify(ETAPES_DU_CYCLE), `#parcours : trois étapes aux titres exacts ${a} (${cycle.titres.join(' | ')})`);
         verifier(JSON.stringify(cycle.liens.map((l) => l.href)) === JSON.stringify(LIENS_DU_CYCLE) && cycle.liens.every((l) => l.texte.startsWith('En savoir plus')), `#parcours : « En savoir plus » vers les pages de la spec ${a}`);
         verifier(cycle.legende.includes(LEGENDE_CAPTURES), `#parcours : légende « ${LEGENDE_CAPTURES} » visible ${a}`);
+        // Le cycle a un titre visible (pas seulement pour les lecteurs d'écran)
+        const titreCycle = await page.evaluate(() => {
+          const h = document.querySelector('#parcours h2');
+          const r = h?.getBoundingClientRect();
+          return { texte: h?.textContent.trim() || '', visible: !!r && r.width > 100 && r.height > 20 };
+        });
+        verifier(titreCycle.visible, `#parcours : titre visible ${a} (« ${titreCycle.texte} »)`);
         if (auBureau) {
           verifier(cycle.telephone && cycle.capturesDesEtapes === 0, `#parcours : téléphone collant au bureau, pas de capture par étape ${a}`);
+          // Mise en page : la première étape suit le titre de près, le téléphone suit la colonne de texte (avant : 250 px
+          // de vide sous le haut de la section et 220 px entre le texte et le téléphone)
+          const ecarts = await page.evaluate(() => {
+            const titre = document.querySelector('#parcours h2').getBoundingClientRect();
+            const etape = document.querySelector('#parcours [data-etape="0"] h3').getBoundingClientRect();
+            const textes = [...document.querySelectorAll('#parcours [data-etape] p')].map((p) => p.getBoundingClientRect().right);
+            const tel = document.querySelector('[data-telephone]').getBoundingClientRect();
+            return { titreEtape: Math.round(etape.top - titre.bottom), texteTelephone: Math.round(tel.left - Math.max(...textes)) };
+          });
+          verifier(ecarts.titreEtape <= 140 && ecarts.texteTelephone <= 160, `#parcours : étapes près du titre, téléphone près du texte ${a} (${JSON.stringify(ecarts)})`);
           // Le téléphone change d'écran avec l'étape lue
           const ecranVisible = () => page.evaluate(() => [...document.querySelectorAll('[data-telephone] img')]
             .filter((i) => parseFloat(getComputedStyle(i).opacity) > 0.5).map((i) => i.getAttribute('src')));
@@ -922,6 +940,24 @@ module.exports = [
             pageInerte: !!document.querySelector('#root')?.hasAttribute('inert'),
           }));
           verifier(!fermee.ouverte && fermee.focusBouton && !fermee.pageBloquee && !fermee.pageInerte, `Échap ferme la fenêtre, le focus revient au bouton, la page revit ${a} (${JSON.stringify(fermee)})`);
+        } else {
+          // Au bureau, la fenêtre laisse voir le voile : un clic dessus la ferme et rend le focus au bouton d'ouverture
+          // (fermeture au « click », après le focus que le navigateur pose au « mousedown »). Les sentinelles qui
+          // gardent le focus dans la fenêtre sont focalisables, donc jamais cachées aux lecteurs d'écran.
+          await page.focus('[data-parcours-grand]');
+          await page.keyboard.press('Enter');
+          await attendre(600);
+          const sentinelles = await page.evaluate(() => [...document.querySelectorAll('[role="dialog"] [data-sentinelle]')]
+            .map((s) => ({ tab: s.tabIndex, cache: s.closest('[aria-hidden="true"]') !== null })));
+          verifier(sentinelles.length === 2 && sentinelles.every((s) => s.tab === 0 && !s.cache), `sentinelles focalisables et non cachées ${a} (${JSON.stringify(sentinelles)})`);
+          await page.mouse.click(8, 8);
+          await attendre(500);
+          const parLeVoile = await page.evaluate(() => ({
+            ouverte: !!document.querySelector('[role="dialog"][aria-modal="true"]'),
+            focusBouton: document.activeElement?.hasAttribute('data-parcours-grand') || false,
+            pageInerte: !!document.querySelector('#root')?.hasAttribute('inert'),
+          }));
+          verifier(!parLeVoile.ouverte && parLeVoile.focusBouton && !parLeVoile.pageInerte, `un clic sur le voile ferme la fenêtre et rend le focus au bouton ${a} (${JSON.stringify(parLeVoile)})`);
         }
 
         // ── Au clavier : flèche droite passe à l'onglet suivant (choisi, focalisé, son panneau affiché)
@@ -1277,6 +1313,15 @@ module.exports = [
         verifier(entete.h2 === 1 && entete.titre.length > 0, `#pricing : un seul titre h2 ${a} (${entete.h2})`);
         const cartes = await lireCartes(page);
         verifier(JSON.stringify(cartes.map((c) => c.id)) === JSON.stringify(PLAN_ORDER), `#pricing : les trois plans de PLAN_ORDER, dans l'ordre ${a} (${cartes.map((c) => c.id).join(', ')})`);
+        if (largeur >= 1024) {
+          // Au bureau, les trois cartes côte à côte ont la même hauteur : bords du bas alignés, pas d'escalier
+          const bords = await page.evaluate(() => [...document.querySelectorAll('#pricing [data-plan]')].map((c) => {
+            const r = c.getBoundingClientRect();
+            return { haut: Math.round(r.top), bas: Math.round(r.bottom) };
+          }));
+          verifier(bords.every((b) => Math.abs(b.bas - bords[0].bas) <= 1 && Math.abs(b.haut - bords[0].haut) <= 1),
+            `#pricing : cartes de même hauteur, alignées en haut et en bas ${a} (${bords.map((b) => `${b.haut}-${b.bas}`).join(' | ')})`);
+        }
         for (const carte of cartes) {
           const plan = PLANS[carte.id];
           verifier(carte.nom === plan.name, `plan ${plan.name} : son nom ${a} (« ${carte.nom} »)`);
@@ -1596,7 +1641,8 @@ module.exports = [
           const boutons = [...s.querySelectorAll('[data-question]')];
           return {
             h2: [...s.querySelectorAll('h2')].map((h) => h.textContent.trim()),
-            questions: boutons.map((b) => b.textContent.replace(/\s+/g, ' ').trim()),
+            // Les blancs du code sont repliés, pas les espaces fines insécables du texte (typographie fine du site)
+            questions: boutons.map((b) => b.textContent.replace(/[ \t\n\r]+/g, ' ').trim()),
             fermees: boutons.every((b) => b.getAttribute('aria-expanded') === 'false'),
             liees: boutons.every((b) => !!document.getElementById(b.getAttribute('aria-controls') || '-')),
             jsonLd: (() => {
@@ -1605,6 +1651,22 @@ module.exports = [
           };
         });
         verifier(faq.h2.length === 1, `#faq : un seul titre h2 ${a} (${faq.h2.join(' | ')})`);
+        // Composition : au bureau, le titre à gauche et les questions à droite (plus de moitié droite vide) ; au
+        // téléphone, une colonne, le contact après les questions
+        const composition = await page.evaluate(() => {
+          const r = (s) => document.querySelector(s)?.getBoundingClientRect();
+          const titre = r('#faq h2');
+          const questions = r('#faq ul');
+          const contact = r('#faq [data-contact-faq]');
+          const section = document.querySelector('#faq > div').getBoundingClientRect();
+          return { titreG: titre.left, titreD: titre.right, questionsG: questions.left, questionsD: questions.right, questionsBas: questions.bottom, contactHaut: contact.top, contenuD: section.right };
+        });
+        if (largeur >= 1024) {
+          verifier(composition.questionsG >= composition.titreD && composition.contenuD - composition.questionsD <= 40,
+            `#faq : titre à gauche, questions à droite jusqu'au bord du contenu ${a} (${JSON.stringify(composition)})`);
+        } else {
+          verifier(composition.contactHaut >= composition.questionsBas, `#faq : au téléphone, le contact après les questions ${a} (${JSON.stringify(composition)})`);
+        }
         verifier(JSON.stringify(faq.questions) === JSON.stringify(questions.map((q) => q.q)), `#faq : les questions de faq.js, dans l'ordre ${a} (${faq.questions.length})`);
         verifier(faq.fermees && faq.liees, `#faq : questions fermées à l'arrivée, chacune liée à sa réponse (aria-controls) ${a}`);
         verifier(faq.jsonLd === questions.length, `#faq : données structurées FAQPage, une entrée par question ${a} (${faq.jsonLd})`);
@@ -1746,6 +1808,21 @@ module.exports = [
           const ou = `${chemin} ${a}`;
           const { page, browser, erreurs } = await ouvrir({ reel: true, largeur, chemin, supabase: () => json([]) });
           await attendre(800);
+          // À l'arrivée : les images du premier écran ne sont pas paresseuses, la première est prioritaire ; rien du
+          // premier écran n'est transparent (aucune apparition n'y attend)
+          const arrivee = await page.evaluate(() => {
+            const dansLEcran = (el) => { const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0 && r.top < innerHeight && r.bottom > 0; };
+            const imgs = [...document.querySelectorAll('main img')].filter(dansLEcran);
+            const transparents = [...document.querySelectorAll('main *')].filter((el) => dansLEcran(el) && !el.closest('[aria-hidden="true"]')
+              && parseFloat(getComputedStyle(el).opacity) < 1);
+            return {
+              images: imgs.map((i) => ({ src: i.getAttribute('src'), chargement: i.getAttribute('loading'), priorite: i.getAttribute('fetchpriority') })),
+              transparents: transparents.slice(0, 3).map((el) => `${el.tagName.toLowerCase()}.${String(el.className).slice(0, 30)}`),
+            };
+          });
+          verifier(arrivee.images.every((i) => i.chargement !== 'lazy') && (arrivee.images.length === 0 || arrivee.images[0].priorite === 'high'),
+            `${ou} : images du premier écran chargées tout de suite, la première en priorité (${JSON.stringify(arrivee.images)})`);
+          verifier(arrivee.transparents.length === 0, `${ou} : rien de transparent dans le premier écran à l'arrivée (${arrivee.transparents.join(' | ')})`);
           // Toute la page parcourue (images paresseuses chargées, apparitions jouées), puis retour en haut
           await page.evaluate(async () => {
             for (let y = 0; y < document.body.scrollHeight; y += Math.round(innerHeight * 0.7)) {
@@ -1765,6 +1842,10 @@ module.exports = [
               images: imgs.map((i) => ({ src: i.getAttribute('src'), charge: i.complete && i.naturalWidth > 0, l: i.getAttribute('width'), h: i.getAttribute('height'), alt: i.getAttribute('alt') || '' })),
               anciennes: [...document.querySelectorAll('[src*="/screenshots/"], [href*="/screenshots/"]')].length,
               texte: document.body.innerText,
+              // Typographie fine (src/components/landing/site/typographie.js) : espace fine insécable dans les « » et
+              // avant ; : ? ! %, jamais une espace ordinaire ou insécable à ces places
+              typographie: [/«(?! )/g, /(?<! )»/g, /[  ]([;:?!%])(?=$|[\s"'’)\],.…»])/gm]
+                .flatMap((m) => [...document.querySelector('main').innerText.matchAll(m)].map((x) => x.input.slice(Math.max(0, x.index - 25), x.index + 5))),
               oranges: [...document.querySelectorAll('main *, footer *')]
                 .filter((el) => [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim()))
                 .filter((el) => ['rgb(238, 123, 32)', 'rgb(249, 115, 22)', 'rgb(234, 88, 12)', 'rgb(251, 146, 60)', 'rgb(253, 186, 116)'].includes(getComputedStyle(el).color))
@@ -1782,6 +1863,13 @@ module.exports = [
           verifier(etat.images.length > 0 && etat.images.every((i) => i.charge && /^\/site\/[a-z0-9-]+\.webp$/.test(i.src) && i.l && i.h && i.alt.length > 10),
             `${ou} : captures du site chargées, en WebP, dimensions et texte de remplacement (${etat.images.filter((i) => !i.charge || !/^\/site\//.test(i.src)).map((i) => i.src).join(', ')})`);
           verifier(etat.anciennes === 0, `${ou} : plus aucune image de public/screenshots/`);
+          verifier(etat.typographie.length === 0, `${ou} : typographie fine, espace fine dans les « » et avant ; : ? ! % (${etat.typographie.slice(0, 3).join(' | ')})`);
+          // Au téléphone, les captures lisibles : les vues téléphone de l'application (une capture d'ordinateur réduite
+          // à la largeur d'un téléphone ne se lit plus)
+          if (largeur < 640) {
+            const ordinateur = etat.images.filter((i) => !/^\/site\/tel-/.test(i.src)).map((i) => i.src);
+            verifier(ordinateur.length === 0, `${ou} : au téléphone, les captures de téléphone (${ordinateur.join(', ')})`);
+          }
           const interdits = ['Factur-X', 'dictée', 'Dictée', 'BTP Rénovation', 'gmail', 'Bientôt', 'bientôt', 'Plan Équipe', '(plan Équipe)', 'LEGO', 'drag-and-drop', 'Dashboard', 'widgets', 'templates', '30, 60 et 90', '30/60/90', 'Pennylane', 'Indy', 'app.mallettico.fr']
             .filter((t) => etat.texte.includes(t));
           verifier(interdits.length === 0, `${ou} : aucun texte retiré par la relecture d'honnêteté (${interdits.join(', ')})`);

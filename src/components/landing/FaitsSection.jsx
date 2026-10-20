@@ -16,7 +16,7 @@
  */
 
 const FAITS = [
-  { valeur: '1 000+', libelle: 'prestations et ouvrages déjà chiffrés' },
+  { valeur: '1\u202f000+', libelle: 'prestations et ouvrages déjà chiffrés' },
   { valeur: '17', libelle: 'métiers du bâtiment' },
   { valeur: '2 écrans', libelle: 'téléphone et ordinateur' },
   { valeur: '0 €', libelle: 'pour commencer' },

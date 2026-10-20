@@ -211,7 +211,7 @@ describe('encaissements : une facture de 4 136,00 €', () => {
     const depart = paiementsDeDepart(facture);
     expect(facture.totalCentimes).toBe(413600);
     expect(depart.map((p) => p.centimes)).toEqual([124080, facture.virementCentimes]);
-    expect(depart[0].libelle).toBe('Acompte de 30 %');
+    expect(depart[0].libelle).toBe('Acompte de 30\u202f%');
     const etat = etatDesEncaissements(facture, depart);
     expect(etat.resteCentimes).toBe(413600 - 124080 - facture.virementCentimes);
     expect(etat.statut).toBe('partielle');

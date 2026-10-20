@@ -20,11 +20,9 @@ import { formatMoney } from '../../lib/formatters';
 import { captureException } from '../../lib/sentry';
 import SectionSite from './site/SectionSite';
 import EnTeteSection from './site/EnTeteSection';
+import PastilleFiltre from './site/PastilleFiltre';
 import { chargerBibliotheque } from './site/bibliotheque';
 import { METIER_INITIAL, lotsMontres, metiersDeLaBibliotheque, metierVoisin } from './metiers';
-
-const FOCUS =
-  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-marque-nuit-2 focus-visible:ring-offset-2 focus-visible:ring-offset-white';
 
 // Largeurs des pastilles d'attente (à peu près celles des noms de métiers) : la place est tenue avant le chargement.
 const ATTENTE = ['w-28', 'w-32', 'w-28', 'w-28', 'w-28', 'w-28', 'w-28', 'w-28', 'w-24', 'w-24', 'w-24', 'w-24', 'w-28', 'w-28', 'w-28', 'w-24', 'w-28'];
@@ -93,7 +91,7 @@ export default function MetiersSection() {
   const choisir = (id) => {
     setChoisi(id);
     const nom = metiers.find((m) => m.id === id)?.nom;
-    setAnnonce(nom ? `${nom} : ${lotsMontres(bibliotheque, id).length} lots types affichés.` : '');
+    setAnnonce(nom ? `${nom}\u202f: ${lotsMontres(bibliotheque, id).length} lots types affichés.` : '');
   };
 
   const auClavier = (e) => {
@@ -136,22 +134,16 @@ export default function MetiersSection() {
             {metiers.map((metier) => {
               const presse = metier.id === actif;
               return (
-                <button
+                <PastilleFiltre
                   key={metier.id}
                   ref={(el) => { boutons.current[metier.id] = el; }}
-                  type="button"
                   data-metier={metier.id}
-                  aria-pressed={presse}
+                  pressee={presse}
                   tabIndex={presse ? 0 : -1}
                   onClick={() => choisir(metier.id)}
-                  className={`min-h-[44px] rounded-full border px-4 text-sm font-semibold transition-colors duration-150 motion-reduce:transition-none ${FOCUS} ${
-                    presse
-                      ? 'border-marque-nuit-2 bg-marque-nuit-2 text-white shadow-[0_8px_18px_-10px_rgba(13,46,108,0.7)]'
-                      : 'border-marque-acier bg-white text-marque-ardoise hover:border-marque-nuit-2/60 hover:bg-marque-glacier-1 hover:text-marque-nuit'
-                  }`}
                 >
                   {metier.nom}
-                </button>
+                </PastilleFiltre>
               );
             })}
           </div>

@@ -99,7 +99,12 @@ export function useTresorerie() {
         saveToStorage(STORAGE_KEY, cleanPrevisions);
       }
       setPrevisions(cleanPrevisions);
-      setSettings(prev => ({ ...DEFAULT_SETTINGS, ...loadFromStorage(SETTINGS_KEY, {}) }));
+      // Lus TOUT DE SUITE, pas dans une fonction de mise à jour (évaluée au rendu suivant) : l'effet d'enregistrement
+      // de la démo, plus bas, tourne dans le même passage et écrit d'abord les réglages par défaut dans le stockage.
+      // Avant (constaté le 20 oct. 2026), la lecture différée retrouvait ces défauts : le solde de départ de la démo
+      // (24 500 €) et tout réglage du visiteur étaient effacés à chaque chargement, d'où un solde négatif affiché.
+      const reglagesEnregistres = loadFromStorage(SETTINGS_KEY, {});
+      setSettings({ ...DEFAULT_SETTINGS, ...reglagesEnregistres });
       setReglements(loadFromStorage(REGLEMENTS_KEY, []));
       setMouvements(loadFromStorage(MOUVEMENTS_KEY, []));
       setLoading(false);

@@ -92,7 +92,7 @@ describe('lotDemonstration', () => {
     expect(lot.nom).toBe(NOM_LOT_DEMONSTRATION);
     expect(lot.lignes).toHaveLength(7);
     expect(NB_LIGNES_DEMONSTRATION).toBe(7);
-    expect(libelleTotal(lot.lignes)).toBe('Total TTC (TVA 10 %)');
+    expect(libelleTotal(lot.lignes)).toBe('Total TTC (TVA 10\u202f%)');
   });
 });
 
@@ -149,7 +149,7 @@ describe('dureeEtape (rythme de la boucle)', () => {
 
 describe('libelleTotal', () => {
   it('nomme la TVA quand elle est la même sur toutes les lignes, au format français', () => {
-    expect(libelleTotal([{ tva: 5.5 }, { tva: 5.5 }])).toBe('Total TTC (TVA 5,5 %)');
+    expect(libelleTotal([{ tva: 5.5 }, { tva: 5.5 }])).toBe('Total TTC (TVA 5,5\u202f%)');
   });
 
   it('reste « Total TTC » quand les taux diffèrent ou sans ligne', () => {

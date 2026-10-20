@@ -12,6 +12,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Menu, X } from 'lucide-react';
 import { allerALaSection } from '../../lib/sectionsAccueil';
 import BoutonSite from './site/BoutonSite';
+import { FOCUS } from './site/focus';
 
 const LIENS = [
   { libelle: 'Métiers', ancre: '#metiers' },
@@ -20,8 +21,6 @@ const LIENS = [
   { libelle: 'Tarifs', ancre: '#pricing' },
   { libelle: 'FAQ', ancre: '#faq' },
 ];
-
-const FOCUS = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-marque-nuit-2 focus-visible:ring-offset-2 focus-visible:ring-offset-white';
 
 export default function LandingNav({ onLogin, onSignup }) {
   const [menuOuvert, setMenuOuvert] = useState(false);

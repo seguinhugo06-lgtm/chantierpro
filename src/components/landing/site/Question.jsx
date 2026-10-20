@@ -1,4 +1,5 @@
 import { ChevronDown } from 'lucide-react';
+import { FOCUS } from './focus';
 
 /**
  * Question — une question d'accordéon du site public (FAQ de l'accueil, questions des pages de fonctionnalités), dans
@@ -10,9 +11,6 @@ import { ChevronDown } from 'lucide-react';
  * mouvement si l'appareil en demande moins. `id` : identifiant unique de la question dans la page.
  * `data-question`, `data-reponse` : lus par le parcours `scripts/parcours/site.cjs`.
  */
-const FOCUS =
-  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-marque-nuit-2 focus-visible:ring-offset-2 focus-visible:ring-offset-white';
-
 export function Question({ id, question, reponse, ouverte, onBasculer, niveau = 3 }) {
   const Titre = `h${niveau}`;
   const idBouton = `${id}-question`;

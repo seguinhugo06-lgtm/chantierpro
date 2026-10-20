@@ -20,8 +20,9 @@ export default function FinalCta({ onSignup }) {
       className="relative overflow-hidden bg-white bg-gradient-to-b from-white to-marque-glacier-1 py-20 sm:py-28"
     >
       {/* Pas de lueur orange ici : juste au-dessus du pied de page sombre, elle se lisait comme une tache ; le point
-          orange de la dernière ligne suffit. */}
-      <PlanArchitecte />
+          orange de la dernière ligne suffit. Quadrillage net en bas, nul en haut : la section suit la FAQ (blanche)
+          sans trait net à la jonction. */}
+      <PlanArchitecte foyer="bas" />
       <div className="relative mx-auto max-w-3xl px-4 text-center sm:px-6">
         <Apparition>
           <h2 className="text-balance text-[clamp(2rem,4.6vw,3.25rem)] font-extrabold leading-[1.06] tracking-[-0.035em] text-marque-nuit">

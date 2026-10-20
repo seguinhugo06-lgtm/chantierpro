@@ -93,10 +93,16 @@ function Cadenas({ reduit }) {
  * solde. Elle n'avance jamais à reculons : une facture « Payée » ne redevient pas « Payée en partie ». Au bout du
  * cycle, c'est une nouvelle facture (comme le registre voisin, qui passe au numéro suivant) : le bloc est recréé,
  * apparaît en fondu et sa barre repart de zéro vers le premier palier, sans transition arrière.
+ * Le vert du solde arrive AVEC la barre pleine : il se pose en calque sur le dégradé et monte au même rythme que la
+ * largeur (même durée, même courbe) ; la pastille passe à « Payée » quand la barre a fini de se remplir.
  * `data-facture` (rang de la facture montrée) et `data-barre` : lus par le parcours.
  */
+const REMPLISSAGE = { duration: 0.7, ease: 'easeOut' };
+
 function Encaissement({ actif, reduit }) {
   const [pas, setPas] = useState(0);
+  // Rang de la facture dont la barre a fini de se remplir jusqu'au solde
+  const [soldee, setSoldee] = useState(-1);
   useEffect(() => {
     if (!actif) return undefined;
     const minuterie = setInterval(() => setPas((p) => p + 1), RYTHME_MS);
@@ -105,7 +111,8 @@ function Encaissement({ actif, reduit }) {
 
   const facture = reduit ? 0 : Math.floor(pas / PALIERS.length);
   const part = reduit ? 1 : PALIERS[pas % PALIERS.length];
-  const payee = part >= 1;
+  const pleine = part >= 1;
+  const payee = pleine && (reduit || soldee === facture);
   const nouvelle = facture > 0;
   return (
     <motion.div
@@ -120,20 +127,29 @@ function Encaissement({ actif, reduit }) {
       <div className="flex items-center justify-between gap-3">
         <span
           data-statut=""
-          className={`rounded-full px-2.5 py-1 text-xs font-bold ${payee ? 'bg-emerald-400/15 text-emerald-200' : 'bg-white/10 text-marque-glacier-3'}`}
+          className={`rounded-full px-2.5 py-1 text-xs font-bold transition-colors duration-200 motion-reduce:transition-none ${payee ? 'bg-emerald-400/15 text-emerald-200' : 'bg-white/10 text-marque-glacier-3'}`}
         >
           {payee ? 'Payée' : 'Payée en partie'}
         </span>
-        <span className="text-sm tabular-nums text-marque-acier">{`${Math.round(part * 100)} %`}</span>
+        <span className="text-sm tabular-nums text-marque-acier">{`${Math.round(part * 100)}\u202f%`}</span>
       </div>
       <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/[0.12]">
         <motion.div
           data-barre=""
           initial={nouvelle ? { width: '0%' } : false}
           animate={{ width: `${part * 100}%` }}
-          transition={{ duration: 0.7, ease: 'easeOut' }}
-          className={`h-full rounded-full ${payee ? 'bg-emerald-300' : 'bg-gradient-to-r from-marque-glacier-3 to-marque-acier'}`}
-        />
+          transition={REMPLISSAGE}
+          onAnimationComplete={() => { if (pleine) setSoldee(facture); }}
+          className="relative h-full overflow-hidden rounded-full bg-gradient-to-r from-marque-glacier-3 to-marque-acier"
+        >
+          <motion.span
+            data-barre-solde=""
+            className="absolute inset-0 bg-emerald-300"
+            initial={false}
+            animate={{ opacity: pleine ? 1 : 0 }}
+            transition={REMPLISSAGE}
+          />
+        </motion.div>
       </div>
     </motion.div>
   );

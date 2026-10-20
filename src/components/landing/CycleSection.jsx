@@ -9,46 +9,46 @@
  * Les étapes gardent toutes un contraste franc ; l'étape lue se distingue par sa pastille pleine, son trait bleu
  * nuit et son titre plus foncé (pas d'estompage, qui ferait tomber le contraste des autres sous 4,5:1).
  * Captures : `public/site/tel-*.webp` (scripts/site-captures.cjs), données fictives, dites par la légende.
- * Titre `h2` hors écran : la section n'a pas de titre visible (prototype validé), mais le plan du document en a
- * besoin pour que les étapes (`h3`) ne se rangent pas sous le titre de la section précédente (« Essayez, c'est
- * l'application. »). Ancre `#parcours` : le lien « Fonctionnalités » de la barre mène à la section précédente,
- * « Les fonctionnalités en action » (`#fonctionnalites`).
+ * Titre `h2` visible (passe de finition) : sans lui, la section s'ouvrait au bureau sur 250 px de glacier vide.
+ * Au bureau, la première étape s'aligne en haut de sa bande (sous le titre, à la hauteur du haut du téléphone) et la
+ * colonne du téléphone suit la colonne de texte à une distance fixe, au lieu d'être repoussée au bord droit.
+ * Ancre `#parcours` : le lien « Fonctionnalités » de la barre mène à la section précédente, « Les fonctionnalités en
+ * action » (`#fonctionnalites`).
  */
 import { useEffect, useRef, useState } from 'react';
 import { ArrowRight } from 'lucide-react';
 import SectionSite from './site/SectionSite';
+import EnTeteSection from './site/EnTeteSection';
 import { CadreTel } from './site/Cadres';
+import { FOCUS_SUR_GLACIER as FOCUS } from './site/focus';
 
 const ETAPES = [
   {
     titre: "Le chantier du jour, d'un coup d'œil",
-    texte: "À l'ouverture : ce qu'il reste à encaisser, les devis à relancer, les brouillons à finir. Rien d'autre.",
+    texte: "À l'ouverture\u202f: ce qu'il reste à encaisser, les devis à relancer, les brouillons à finir. Rien d'autre.",
     lien: '/fonctionnalites/devis-factures',
     capture: '/site/tel-accueil.webp',
-    alt: "L'accueil de Mallettico sur téléphone : le montant à encaisser, les devis à relancer et le brouillon à finaliser.",
+    alt: "L'accueil de Mallettico sur téléphone\u202f: le montant à encaisser, les devis à relancer et le brouillon à finaliser.",
   },
   {
     titre: 'Le devis se monte par lots',
     texte: 'Un lot de la bibliothèque, quelques quantités à ajuster, le total se calcule pendant que vous tapez.',
     lien: '/fonctionnalites/devis-factures',
     capture: '/site/tel-devis-lots.webp',
-    alt: 'Un devis en cours sur téléphone : le lot « Mise aux normes du tableau électrique », ses lignes chiffrées et le total TTC.',
+    alt: 'Un devis en cours sur téléphone\u202f: le lot «\u202fMise aux normes du tableau électrique\u202f», ses lignes chiffrées et le total TTC.',
   },
   {
     titre: 'Signé, facturé, encaissé',
     texte: 'Le client signe en ligne. Le devis devient une facture sans ressaisie, chaque paiement est noté, même partiel.',
     lien: '/fonctionnalites/signature-electronique',
     capture: '/site/tel-facture.webp',
-    alt: 'Une facture payée en partie sur téléphone : le montant reçu, le reste dû et les boutons pour encaisser ou relancer.',
+    alt: 'Une facture payée en partie sur téléphone\u202f: le montant reçu, le reste dû et les boutons pour encaisser ou relancer.',
   },
 ];
 
 const LARGEUR_CAPTURE = 1170;
 const HAUTEUR_CAPTURE = 2532;
 const LEGENDE = "Captures de l'application, données fictives.";
-
-const FOCUS =
-  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-marque-nuit-2 focus-visible:ring-offset-2 focus-visible:ring-offset-marque-glacier-1';
 
 /** Le téléphone collant du bureau : les trois captures superposées, seule celle de l'étape lue est visible. */
 function TelephoneCollant({ active }) {
@@ -110,10 +110,10 @@ export default function CycleSection() {
   }, []);
 
   return (
-    // Au bureau, chaque étape occupe déjà presque une fenêtre (centrée) : la bande se contente d'un espacement réduit.
-    <SectionSite id="parcours" fond="glacier" className="lg:py-12">
-      <h2 className="sr-only">Du devis à l'encaissement, en trois étapes</h2>
-      <div className="grid gap-12 lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-16">
+    // Au bureau, la dernière étape occupe déjà presque une fenêtre : la bande se contente d'un espacement réduit en bas.
+    <SectionSite id="parcours" fond="glacier" className="lg:pb-12">
+      <EnTeteSection titre="Du devis à l'encaissement, en trois étapes." />
+      <div className="mt-10 grid gap-12 sm:mt-12 lg:grid-cols-[minmax(0,35rem)_340px] lg:gap-20 xl:gap-28">
         {/* Au bureau, un rail estompé aux deux bouts relie les trois étapes ; le trait de l'étape lue passe par-dessus
             (étapes en `relative` : peintes après le rail). */}
         <ol className="relative lg:before:absolute lg:before:inset-y-0 lg:before:left-0 lg:before:w-0.5 lg:before:bg-gradient-to-b lg:before:from-transparent lg:before:via-marque-acier lg:before:to-transparent lg:before:content-['']">
@@ -125,7 +125,9 @@ export default function CycleSection() {
                 ref={(el) => { etapes.current[i] = el; }}
                 data-etape={i}
                 data-active={lue ? 'true' : 'false'}
-                className="relative grid gap-8 py-8 first:pt-0 last:pb-0 sm:grid-cols-[minmax(0,1fr)_15rem] sm:items-center lg:flex lg:min-h-[78vh] lg:flex-col lg:items-stretch lg:justify-center lg:py-0"
+                // Bureau : une bande par étape, le texte au milieu ; la première commence en haut (sous le titre) et la
+                // dernière est un peu plus courte, pour ne pas ouvrir ni fermer la section sur un grand vide.
+                className="relative grid gap-8 py-8 first:pt-0 last:pb-0 sm:grid-cols-[minmax(0,1fr)_15rem] sm:items-center lg:flex lg:min-h-[78vh] lg:flex-col lg:items-stretch lg:justify-center lg:py-0 lg:first:min-h-[64vh] lg:first:justify-start lg:last:min-h-[70vh]"
               >
                 <div
                   className={`border-l-2 pl-5 transition-colors duration-300 motion-reduce:transition-none sm:pl-8 ${
@@ -153,7 +155,7 @@ export default function CycleSection() {
                     className={`-ml-1 mt-3 inline-flex min-h-[44px] items-center gap-1.5 rounded-full px-1 text-base font-semibold text-marque-nuit-2 underline-offset-4 hover:underline ${FOCUS}`}
                   >
                     En savoir plus
-                    <span className="sr-only"> : {etape.titre}</span>
+                    <span className="sr-only"> : {etape.titre}</span>
                     <ArrowRight size={18} aria-hidden="true" />
                   </a>
                 </div>
@@ -170,7 +172,7 @@ export default function CycleSection() {
             );
           })}
         </ol>
-        <div className="hidden lg:block lg:pt-[6vh]">
+        <div className="hidden lg:block">
           <TelephoneCollant active={active} />
         </div>
       </div>

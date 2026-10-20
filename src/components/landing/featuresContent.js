@@ -29,20 +29,61 @@ import { DEFAULT_DEVIS_STEPS, DEFAULT_FACTURE_STEPS, bornes, delais } from './si
 const ORDI = { largeur: 2880, hauteur: 1800 };
 const TEL = { largeur: 1170, hauteur: 2532, telephone: true };
 
+/**
+ * La même vue sur téléphone (`mobile`) : le site la montre à la place de la capture d'ordinateur sur un écran de moins
+ * de 640 px, où une capture d'ordinateur réduite ne se lit plus (`site/Cadres.jsx`, `CadreCapture`).
+ */
+const surTelephone = (nom, alt) => ({ src: `/site/tel-${nom}.webp`, largeur: 1170, hauteur: 2532, alt });
+
+const ALT_TEL_ACCUEIL = "L'accueil de Mallettico sur téléphone\u202f: le montant à encaisser, les devis à relancer et le brouillon à finaliser.";
+
 /** Les captures de l'application, une par vue (textes de remplacement : ce que la capture montre). */
 export const CAPTURES = {
-  accueil: { src: '/site/ordi-accueil.webp', ...ORDI, alt: "L'accueil de Mallettico sur ordinateur : le montant à encaisser, les devis à relancer et le brouillon à finir." },
-  devis: { src: '/site/ordi-devis-lots.webp', ...ORDI, alt: 'L\'éditeur de devis : le lot « Mise aux normes du tableau électrique », ses lignes chiffrées et le total TTC.' },
-  facture: { src: '/site/ordi-facture.webp', ...ORDI, alt: 'Une facture de solde payée en partie : le montant reçu, le reste dû, et le document avec ses totaux.' },
-  signature: { src: '/site/signature.webp', ...ORDI, alt: 'La page de signature que reçoit le client : le devis complet et le bouton « Signer ce devis ».' },
-  relances: { src: '/site/ordi-relances.webp', ...ORDI, alt: `Les réglages des relances : le scénario des devis à ${delais(DEFAULT_DEVIS_STEPS)}, et l'envoi automatique en option.` },
-  chantier: { src: '/site/ordi-chantier.webp', ...ORDI, alt: "Un chantier : l'itinéraire, l'appel au client, les messages « en route », « arrivé », « fini » et le pointage des heures." },
-  catalogue: { src: '/site/ordi-catalogue.webp', ...ORDI, alt: 'Le catalogue : les articles favoris avec leur prix, la marge moyenne et les articles en stock bas.' },
-  clients: { src: '/site/ordi-clients.webp', ...ORDI, alt: 'La liste des clients : ce qui est encaissé, en cours, et les devis à relancer.' },
-  planning: { src: '/site/ordi-planning.webp', ...ORDI, alt: 'Le planning du mois : les chantiers jour par jour, avec les vues mois, semaine, jour et agenda.' },
-  equipe: { src: '/site/ordi-equipe.webp', ...ORDI, alt: "La page Équipe : les heures pointées de la semaine, les pointages à valider et le coût de chaque personne." },
-  tresorerie: { src: '/site/ordi-tresorerie.webp', ...ORDI, alt: "Les finances : le solde du jour, le seuil d'alerte et les factures à encaisser." },
-  telAccueil: { src: '/site/tel-accueil.webp', ...TEL, alt: "L'accueil de Mallettico sur téléphone : le montant à encaisser, les devis à relancer et le brouillon à finaliser." },
+  accueil: {
+    src: '/site/ordi-accueil.webp', ...ORDI, alt: "L'accueil de Mallettico sur ordinateur\u202f: le montant à encaisser, les devis à relancer et le brouillon à finir.",
+    mobile: surTelephone('accueil', ALT_TEL_ACCUEIL),
+  },
+  devis: {
+    src: '/site/ordi-devis-lots.webp', ...ORDI, alt: 'L\'éditeur de devis\u202f: le lot «\u202fMise aux normes du tableau électrique\u202f», ses lignes chiffrées et le total TTC.',
+    mobile: surTelephone('devis-lots', 'Un devis en cours sur téléphone\u202f: le lot «\u202fMise aux normes du tableau électrique\u202f», ses lignes chiffrées et le total TTC.'),
+  },
+  facture: {
+    src: '/site/ordi-facture.webp', ...ORDI, alt: 'Une facture de solde payée en partie\u202f: le montant reçu, le reste dû, et le document avec ses totaux.',
+    mobile: surTelephone('facture', 'Une facture payée en partie sur téléphone\u202f: le montant reçu, le reste dû et les boutons pour encaisser ou relancer.'),
+  },
+  signature: {
+    src: '/site/signature.webp', ...ORDI, alt: 'La page de signature que reçoit le client\u202f: le devis complet et le bouton «\u202fSigner ce devis\u202f».',
+    mobile: surTelephone('signature', 'La page de signature que reçoit le client, sur téléphone\u202f: le devis et le bouton «\u202fSigner ce devis\u202f».'),
+  },
+  relances: {
+    src: '/site/ordi-relances.webp', ...ORDI, alt: `Les réglages des relances\u202f: le scénario des devis à ${delais(DEFAULT_DEVIS_STEPS)}, et l'envoi automatique en option.`,
+    mobile: surTelephone('relances', 'Les réglages des relances sur téléphone\u202f: les relances automatiques activées et le début de leurs scénarios.'),
+  },
+  chantier: {
+    src: '/site/ordi-chantier.webp', ...ORDI, alt: "Un chantier\u202f: l'itinéraire, l'appel au client, les messages «\u202fen route\u202f», «\u202farrivé\u202f», «\u202ffini\u202f» et le pointage des heures.",
+    mobile: surTelephone('chantier', "Un chantier sur téléphone\u202f: l'itinéraire, l'appel au client, les messages «\u202fen route\u202f», «\u202farrivé\u202f», «\u202ffini\u202f» et le pointage des heures."),
+  },
+  catalogue: {
+    src: '/site/ordi-catalogue.webp', ...ORDI, alt: 'Le catalogue\u202f: les articles favoris avec leur prix, la marge moyenne et les articles en stock bas.',
+    mobile: surTelephone('catalogue', 'Le catalogue sur téléphone\u202f: le nombre d\'articles, la valeur du stock, la marge moyenne et les articles en stock bas.'),
+  },
+  clients: {
+    src: '/site/ordi-clients.webp', ...ORDI, alt: 'La liste des clients\u202f: ce qui est encaissé, en cours, et les devis à relancer.',
+    mobile: surTelephone('clients', 'La liste des clients sur téléphone\u202f: ce qui est encaissé, en cours, et les devis à relancer.'),
+  },
+  planning: {
+    src: '/site/ordi-planning.webp', ...ORDI, alt: 'Le planning du mois\u202f: les chantiers jour par jour, avec les vues mois, semaine, jour et agenda.',
+    mobile: surTelephone('planning', 'Le planning sur téléphone\u202f: la semaine et ses chantiers, avec les vues mois, semaine, jour et agenda.'),
+  },
+  equipe: {
+    src: '/site/ordi-equipe.webp', ...ORDI, alt: "La page Équipe\u202f: les heures pointées de la semaine, les pointages à valider et le coût de chaque personne.",
+    mobile: surTelephone('equipe', 'La page Équipe sur téléphone\u202f: les heures pointées de la semaine, leur coût et les pointages à valider.'),
+  },
+  tresorerie: {
+    src: '/site/ordi-tresorerie.webp', ...ORDI, alt: "Les finances\u202f: le solde du jour, le seuil d'alerte et les factures à encaisser.",
+    mobile: surTelephone('tresorerie', "Les finances sur téléphone\u202f: le solde du jour, le seuil d'alerte et les factures à encaisser."),
+  },
+  telAccueil: { src: '/site/tel-accueil.webp', ...TEL, alt: ALT_TEL_ACCUEIL },
 };
 
 /**
@@ -79,19 +120,19 @@ export const FEATURES_CONTENT = {
     // TVA par ligne (:1189-1190), aperçu « Ce que votre client recevra » (:1509), lien de signature dans l'e-mail
     // (emailSender.js:106-114), factures d'acompte et de solde tirées du devis (DevisPage.jsx:1396, 1515-1518)
     tagline:
-      "Un éditeur plein écran : les lots types des 17 métiers, des lots avec sous-totaux, le métré, la TVA par ligne. L'aperçu montre le document que recevra votre client ; il signe en ligne, et le devis devient une facture sans rien ressaisir.",
+      "Un éditeur plein écran\u202f: les lots types des 17 métiers, des lots avec sous-totaux, le métré, la TVA par ligne. L'aperçu montre le document que recevra votre client\u202f; il signe en ligne, et le devis devient une facture sans rien ressaisir.",
     capture: CAPTURES.devis,
     metaDescription:
-      "Devis et factures pour artisans du bâtiment : lots avec sous-totaux, métré, TVA par ligne, aperçu du document avant envoi, signature en ligne, factures d'acompte et de solde tirées du devis.",
+      "Devis et factures pour artisans du bâtiment\u202f: lots avec sous-totaux, métré, TVA par ligne, aperçu du document avant envoi, signature en ligne, factures d'acompte et de solde tirées du devis.",
     steps: [
       // Bibliothèque : DevisComposer.jsx:1322-1460 et « Parcourir les 17 métiers chiffrés » (:1649) ; modèles perso
       // « Vos modèles » (:1378) ; favoris et récents (:279-293)
       { title: "Partez d'un lot ou d'un modèle", text: "Les lots types des 17 métiers de la bibliothèque, vos propres modèles, ou une page blanche. Vos articles favoris et récents sont proposés en premier." },
       // Unités (:35, 12 unités), lots (:429, 789), métré (:1271), TVA pour tout le devis (:824-826) ou par ligne (:1189-1190)
-      { title: 'Composez vos lignes', text: "Recherche dans votre catalogue, lots repliables avec sous-totaux, métré (longueur × largeur × hauteur, chutes en %), 12 unités, TVA par ligne ou pour tout le devis (20, 10, 5,5 ou 0 %)." },
+      { title: 'Composez vos lignes', text: "Recherche dans votre catalogue, lots repliables avec sous-totaux, métré (longueur × largeur × hauteur, chutes en\u202f%), 12 unités, TVA par ligne ou pour tout le devis (20, 10, 5,5 ou 0\u202f%)." },
       // Aperçu avant création (:1509) ; mentions imprimées : rétractation (devisHtmlBuilder.js:425), décennale (:449),
       // pénalités (:454, 714)
-      { title: "Vérifiez l'aperçu", text: "Avant de créer le devis, l'aperçu montre le document que recevra votre client. Les mentions de votre profil s'y ajoutent : assurance décennale, droit de rétractation, pénalités de retard." },
+      { title: "Vérifiez l'aperçu", text: "Avant de créer le devis, l'aperçu montre le document que recevra votre client. Les mentions de votre profil s'y ajoutent\u202f: assurance décennale, droit de rétractation, pénalités de retard." },
       // PDF joint (DevisPage.jsx:2380-2400, emailSender.js:63-79), bouton de signature (emailSender.js:106-114),
       // acompte et solde (DevisPage.jsx:1396, 1515)
       { title: 'Envoyez et faites signer', text: "Le devis part par e-mail avec son PDF et un lien pour le signer en ligne. Signé, il devient une facture d'acompte ou de solde, sans ressaisie." },
@@ -102,10 +143,10 @@ export const FEATURES_CONTENT = {
         items: [
           'Éditeur plein écran, total et marge calculés pendant la saisie', // DevisComposer.jsx:233-249, 924-926
           'Lots repliables avec sous-total par lot', // :429, 789
-          'Métré : longueur × largeur (× hauteur), chutes en %', // :1271, src/lib/metre.js
+          'Métré\u202f: longueur × largeur (× hauteur), chutes en\u202f%', // :1271, src/lib/metre.js
           "Prix d'achat et marge par ligne", // :1257, 1521
-          'Acompte en %, conditions de règlement, adresse du chantier', // :854, 860, 740
-          "Brouillon gardé sur l'appareil : vous reprenez où vous en étiez", // :32, 199, 224 (localStorage)
+          'Acompte en\u202f%, conditions de règlement, adresse du chantier', // :854, 860, 740
+          "Brouillon gardé sur l'appareil\u202f: vous reprenez où vous en étiez", // :32, 199, 224 (localStorage)
         ],
       },
       {
@@ -114,20 +155,20 @@ export const FEATURES_CONTENT = {
           "Factures d'acompte et de solde tirées du devis, avoirs", // DevisPage.jsx:1396, 1515, 1598
           'Numéro de chaque facture attribué par la base de données', // migration 101_numero_de_facture_attribue_par_la_base.sql
           "Duplication d'un devis ou d'une facture", // DevisPage.jsx:919-920, 2930
-          'Mentions tirées de votre profil : assurance décennale, rétractation, pénalités de retard', // devisHtmlBuilder.js:425, 449, 454
-          'Statut de chaque document : envoyé, signé, payé…', // src/lib/statuts.js:19, 32
+          'Mentions tirées de votre profil\u202f: assurance décennale, rétractation, pénalités de retard', // devisHtmlBuilder.js:425, 449, 454
+          'Statut de chaque document\u202f: envoyé, signé, payé…', // src/lib/statuts.js:19, 32
         ],
       },
     ],
     faq: [
       // 17 métiers (trade-library.js) ; « 1 000+ » compté dans FaitsSection.jsx:5-12 ; modèles (DevisComposer.jsx:794)
       // Même tournure que la FAQ de l'accueil (faq.js) : le « 1 000+ » additionne la bibliothèque et le Référentiel
-      { q: "Est-ce que je pars d'une page blanche ?", a: "Non. La bibliothèque des 17 métiers propose des lots types déjà chiffrés, à insérer en un geste dans un devis, et le Référentiel BTP ajoute à votre catalogue les articles chiffrés de votre métier : en tout, plus de 1 000 prestations et ouvrages chiffrés. Vous pouvez aussi enregistrer vos propres modèles." },
+      { q: "Est-ce que je pars d'une page blanche\u202f?", a: "Non. La bibliothèque des 17 métiers propose des lots types déjà chiffrés, à insérer en un geste dans un devis, et le Référentiel BTP ajoute à votre catalogue les articles chiffrés de votre métier\u202f: en tout, plus de 1\u202f000 prestations et ouvrages chiffrés. Vous pouvez aussi enregistrer vos propres modèles." },
       // Mentions (devisHtmlBuilder.js:425, 449, 454, 714) ; envoi bloqué si le profil est incomplet (DevisComposer.jsx:707,
       // validation à l'envoi DevisPage.jsx:2161)
-      { q: 'Les mentions légales sont-elles gérées ?', a: "Elles s'ajoutent à partir de votre profil : assurance décennale, droit de rétractation, pénalités de retard et conditions de règlement. Tant que votre profil est incomplet, l'envoi est bloqué et l'application vous dit ce qui manque." },
+      { q: 'Les mentions légales sont-elles gérées\u202f?', a: "Elles s'ajoutent à partir de votre profil\u202f: assurance décennale, droit de rétractation, pénalités de retard et conditions de règlement. Tant que votre profil est incomplet, l'envoi est bloqué et l'application vous dit ce qui manque." },
       // Acompte et solde (DevisPage.jsx:1396, 1515) ; situations de travaux éteintes (FONCTIONS.facturesSituation)
-      { q: 'Puis-je facturer en plusieurs fois ?', a: "Oui : une facture d'acompte, puis la facture de solde, toutes deux tirées du devis." },
+      { q: 'Puis-je facturer en plusieurs fois\u202f?', a: "Oui\u202f: une facture d'acompte, puis la facture de solde, toutes deux tirées du devis." },
     ],
     related: ['signature-electronique', 'relances', 'catalogue'],
   },
@@ -141,18 +182,18 @@ export const FEATURES_CONTENT = {
     // Lien propre au devis (083:87, gen_random_uuid) ; tracé au doigt ou à la souris (DevisSignaturePage.jsx:2,
     // react-signature-canvas) ; page testée à 390 px (scripts/parcours/documents.cjs:123) ; statut « signe » (083:261)
     tagline:
-      "Votre client reçoit un lien, lit le devis sur son téléphone ou son ordinateur et signe du doigt ou à la souris. Pas de compte à créer, pas d'impression. Le devis passe « Signé » dans votre application.",
+      "Votre client reçoit un lien, lit le devis sur son téléphone ou son ordinateur et signe du doigt ou à la souris. Pas de compte à créer, pas d'impression. Le devis passe «\u202fSigné\u202f» dans votre application.",
     capture: CAPTURES.signature,
     metaDescription:
-      "Signature en ligne des devis pour artisans du bâtiment : un lien propre à chaque devis, signature au doigt sur téléphone, nom du signataire, date et heure enregistrés. Votre client signe sans créer de compte.",
+      "Signature en ligne des devis pour artisans du bâtiment\u202f: un lien propre à chaque devis, signature au doigt sur téléphone, nom du signataire, date et heure enregistrés. Votre client signe sans créer de compte.",
     steps: [
       // emailSender.js:106-114 ; durée du lien : 083:31, 82-85 et DevisPage.jsx:2127-2131
-      { title: 'Envoyez votre devis', text: "L'e-mail contient le PDF et un bouton « Consulter et signer le devis en ligne ». Le lien est propre à ce devis et reste valable jusqu'à la fin de validité du devis." },
+      { title: 'Envoyez votre devis', text: "L'e-mail contient le PDF et un bouton «\u202fConsulter et signer le devis en ligne\u202f». Le lien est propre à ce devis et reste valable jusqu'à la fin de validité du devis." },
       { title: 'Votre client lit et signe', text: "Il lit le devis complet dans son navigateur, sur téléphone ou ordinateur, et signe du doigt ou à la souris. Aucun compte à créer." },
       // L'application montre le nom et la date (DevisPage.jsx:3535-3537, AuditTimeline.jsx:283-298) ; l'heure est
       // enregistrée (083:254-259) et imprimée sur l'exemplaire du client (devisHtmlBuilder.js:192), envoyé par e-mail et
       // téléchargeable (DevisSignaturePage.jsx:153, 330-356)
-      { title: 'Vous êtes fixé', text: "Le devis passe en « Signé » dans votre application, avec le nom du signataire et la date. L'heure est enregistrée et figure sur l'exemplaire signé du client, qu'il télécharge et reçoit aussi par e-mail." },
+      { title: 'Vous êtes fixé', text: "Le devis passe en «\u202fSigné\u202f» dans votre application, avec le nom du signataire et la date. L'heure est enregistrée et figure sur l'exemplaire signé du client, qu'il télécharge et reçoit aussi par e-mail." },
     ],
     groups: [
       {
@@ -175,10 +216,10 @@ export const FEATURES_CONTENT = {
       },
     ],
     faq: [
-      { q: 'Mon client doit-il créer un compte ?', a: "Non. Il ouvre le lien reçu par e-mail et signe directement." },
+      { q: 'Mon client doit-il créer un compte\u202f?', a: "Non. Il ouvre le lien reçu par e-mail et signe directement." },
       // 083:31, 78 (« Devis expire : prolongez sa validite ») ; « Prolonger la validité » (DevisPage.jsx:2161, 2909)
-      { q: 'Combien de temps le lien reste-t-il valable ?', a: "Jusqu'à la fin de validité du devis. Un devis expiré ne se signe plus en ligne : prolongez sa validité, puis renvoyez-le." },
-      { q: 'Que se passe-t-il après la signature ?', a: "Le devis passe en « Signé » dans votre application, avec le nom du signataire et la date. L'heure est enregistrée et figure sur l'exemplaire signé du client. Vous pouvez alors en tirer une facture d'acompte ou de solde." },
+      { q: 'Combien de temps le lien reste-t-il valable\u202f?', a: "Jusqu'à la fin de validité du devis. Un devis expiré ne se signe plus en ligne\u202f: prolongez sa validité, puis renvoyez-le." },
+      { q: 'Que se passe-t-il après la signature\u202f?', a: "Le devis passe en «\u202fSigné\u202f» dans votre application, avec le nom du signataire et la date. L'heure est enregistrée et figure sur l'exemplaire signé du client. Vous pouvez alors en tirer une facture d'acompte ou de solde." },
     ],
     related: ['devis-factures', 'relances'],
   },
@@ -195,20 +236,20 @@ export const FEATURES_CONTENT = {
       "Deux scénarios de relance par e-mail, l'un pour les devis sans réponse, l'autre pour les factures impayées, avec des messages que vous modifiez. Vous envoyez les relances dues en un clic depuis l'accueil, ou vous les laissez partir seules chaque jour.",
     capture: CAPTURES.relances,
     metaDescription:
-      `Relances de devis et de factures pour artisans du bâtiment : devis à ${delais(DEFAULT_DEVIS_STEPS)}, factures impayées ${bornes(DEFAULT_FACTURE_STEPS)}, messages modifiables, envoi en un clic ou automatique.`,
+      `Relances de devis et de factures pour artisans du bâtiment\u202f: devis à ${delais(DEFAULT_DEVIS_STEPS)}, factures impayées ${bornes(DEFAULT_FACTURE_STEPS)}, messages modifiables, envoi en un clic ou automatique.`,
     steps: [
       // Délais lus dans scenariosRelance.js (site/delaisRelance.js), modifiables (RelanceConfigTab.jsx:259-261), étapes ajoutées (:440-448, 515)
       { title: 'Activez vos scénarios', text: `Les relances des devis (${delais(DEFAULT_DEVIS_STEPS)} après l'envoi) et des factures impayées (${delais(DEFAULT_FACTURE_STEPS)} après l'échéance) sont prêtes. Vous changez les délais, ajoutez ou retirez des étapes.` },
       // Variables (RelanceConfigTab.jsx:52-64), aperçu avec des données d'exemple (:342-371, 534)
-      { title: 'Modifiez vos messages', text: "Chaque étape a son modèle de message, avec des variables : nom du client, montant, numéro du document, échéance. Un aperçu montre le message avec des données d'exemple." },
-      { title: 'Relancez sans y penser', text: "Les relances dues apparaissent sur votre accueil : « Tout envoyer », et c'est parti. Ou activez l'envoi automatique : elles partent seules chaque jour." },
+      { title: 'Modifiez vos messages', text: "Chaque étape a son modèle de message, avec des variables\u202f: nom du client, montant, numéro du document, échéance. Un aperçu montre le message avec des données d'exemple." },
+      { title: 'Relancez sans y penser', text: "Les relances dues apparaissent sur votre accueil\u202f: «\u202fTout envoyer\u202f», et c'est parti. Ou activez l'envoi automatique\u202f: elles partent seules chaque jour." },
     ],
     groups: [
       {
         name: 'Scénarios',
         items: [
-          `Devis : ${delais(DEFAULT_DEVIS_STEPS)}, modifiables`, // scenariosRelance.js (DEFAULT_DEVIS_STEPS)
-          `Factures impayées : ${bornes(DEFAULT_FACTURE_STEPS)} après l'échéance`, // scenariosRelance.js (DEFAULT_FACTURE_STEPS)
+          `Devis\u202f: ${delais(DEFAULT_DEVIS_STEPS)}, modifiables`, // scenariosRelance.js (DEFAULT_DEVIS_STEPS)
+          `Factures impayées\u202f: ${bornes(DEFAULT_FACTURE_STEPS)} après l'échéance`, // scenariosRelance.js (DEFAULT_FACTURE_STEPS)
           'Messages modifiables, avec variables', // RelanceConfigTab.jsx:52-64
           'Aperçu du message avant activation', // RelanceConfigTab.jsx:371, 534
         ],
@@ -216,7 +257,7 @@ export const FEATURES_CONTENT = {
       {
         name: 'Contrôle',
         items: [
-          "Envoi en un clic depuis l'accueil (« À faire aujourd'hui »)", // Dashboard.jsx:504-517
+          "Envoi en un clic depuis l'accueil («\u202fÀ faire aujourd'hui\u202f»)", // Dashboard.jsx:504-517
           'Envoi automatique chaque jour, en option', // RelanceConfigTab.jsx:900-925
           'Historique des relances de chaque document', // RelanceTimelineWidget.jsx:1-5, DevisPage.jsx:3210-3245
           "Un client ou un document exclu des relances (litige, arrangement)", // RelanceTimelineWidget.jsx:199-203
@@ -225,9 +266,9 @@ export const FEATURES_CONTENT = {
     ],
     faq: [
       // Interrupteur général éteint au départ, envoi automatique à part (RelanceConfigTab.jsx:854-861, 900-925)
-      { q: 'Les relances partent-elles toutes seules ?', a: "C'est vous qui choisissez. Une fois les relances activées, celles qui sont dues s'affichent sur votre accueil et partent en un clic ; l'envoi automatique est une option à part." },
-      { q: 'Puis-je exclure un client des relances ?', a: "Oui : depuis un document, vous excluez ce document ou ce client, par exemple en cas de litige ou d'arrangement de paiement." },
-      { q: 'Les messages sont-ils modifiables ?', a: "Chaque étape a son propre modèle, avec des variables (nom, montant, numéro…). Vous l'écrivez une fois, Mallettico le remplit à chaque envoi." },
+      { q: 'Les relances partent-elles toutes seules\u202f?', a: "C'est vous qui choisissez. Une fois les relances activées, celles qui sont dues s'affichent sur votre accueil et partent en un clic\u202f; l'envoi automatique est une option à part." },
+      { q: 'Puis-je exclure un client des relances\u202f?', a: "Oui\u202f: depuis un document, vous excluez ce document ou ce client, par exemple en cas de litige ou d'arrangement de paiement." },
+      { q: 'Les messages sont-ils modifiables\u202f?', a: "Chaque étape a son propre modèle, avec des variables (nom, montant, numéro…). Vous l'écrivez une fois, Mallettico le remplit à chaque envoi." },
     ],
     related: ['devis-factures', 'tresorerie'],
   },
@@ -240,22 +281,22 @@ export const FEATURES_CONTENT = {
     title: 'Chaque chantier suivi, du devis à la facture',
     // Onglets photos, documents, journal (Chantiers.jsx:1285-1295), tâches (:869), « sur place » (:728-793)
     tagline:
-      "Avancement, marge, dépenses, photos, documents et tâches : tout est rattaché au chantier. Sur place, l'itinéraire, l'appel au client, un message prêt à envoyer et le pointage des heures sont à un geste.",
+      "Avancement, marge, dépenses, photos, documents et tâches\u202f: tout est rattaché au chantier. Sur place, l'itinéraire, l'appel au client, un message prêt à envoyer et le pointage des heures sont à un geste.",
     capture: CAPTURES.chantier,
     metaDescription:
-      'Suivi de chantier pour artisans du bâtiment : avancement, marge calculée avec les dépenses et les heures, photos, documents, tâches, itinéraire et pointage depuis le téléphone.',
+      'Suivi de chantier pour artisans du bâtiment\u202f: avancement, marge calculée avec les dépenses et les heures, photos, documents, tâches, itinéraire et pointage depuis le téléphone.',
     steps: [
       // margin-calculator.js:55-110 (devis signés, dépenses, heures au coût chargé)
-      { title: 'Créez le chantier', text: "Client, adresse des travaux, dates, budget. Le chantier est lié à ses devis et factures : la marge se calcule avec les devis signés, les dépenses et les heures pointées." },
+      { title: 'Créez le chantier', text: "Client, adresse des travaux, dates, budget. Le chantier est lié à ses devis et factures\u202f: la marge se calcule avec les devis signés, les dépenses et les heures pointées." },
       { title: 'Suivez au quotidien', text: "Avancement, dépenses, photos, documents, tâches. Le journal du chantier garde la trace de ce qui change." },
       // Chantiers.jsx:728-793 : itinéraire, appel, messages copiés pour les SMS, « Pointer des heures »
-      { title: 'Sur place', text: "L'itinéraire vers l'adresse, l'appel au client, un message « en route », « arrivé » ou « fini » copié pour vos SMS, et le pointage des heures, depuis la fiche du chantier." },
+      { title: 'Sur place', text: "L'itinéraire vers l'adresse, l'appel au client, un message «\u202fen route\u202f», «\u202farrivé\u202f» ou «\u202ffini\u202f» copié pour vos SMS, et le pointage des heures, depuis la fiche du chantier." },
     ],
     groups: [
       {
         name: 'Pilotage',
         items: [
-          'Marge calculée : devis signés, moins les dépenses et les heures au coût chargé', // margin-calculator.js:66-100
+          'Marge calculée\u202f: devis signés, moins les dépenses et les heures au coût chargé', // margin-calculator.js:66-100
           'Avancement et budget consommé sur la même échelle', // Chantiers.jsx:1134-1139
           'Dépenses rattachées au chantier', // Chantiers.jsx:1179-1188
           'Tâches à cocher, à partir de listes types', // Chantiers.jsx:869-1021
@@ -265,7 +306,7 @@ export const FEATURES_CONTENT = {
         name: 'Terrain',
         items: [
           "Itinéraire vers l'adresse du chantier", // Chantiers.jsx:755
-          'Message au client copié pour vos SMS : en route, arrivé, fini', // Chantiers.jsx:732-790
+          'Message au client copié pour vos SMS\u202f: en route, arrivé, fini', // Chantiers.jsx:732-790
           'Photos de chantier', // Chantiers.jsx:1285
           'Documents et pièces jointes', // Chantiers.jsx:1289
           'Météo du chantier', // Chantiers.jsx:796-811
@@ -273,9 +314,9 @@ export const FEATURES_CONTENT = {
       },
     ],
     faq: [
-      { q: 'La marge est-elle calculée automatiquement ?', a: "Oui : les devis signés liés au chantier, les dépenses saisies et les heures pointées, au coût chargé de chaque personne, donnent la marge." },
+      { q: 'La marge est-elle calculée automatiquement\u202f?', a: "Oui\u202f: les devis signés liés au chantier, les dépenses saisies et les heures pointées, au coût chargé de chaque personne, donnent la marge." },
       // Application installable (vite.config.js:29, display standalone) ; aucune promesse hors ligne
-      { q: 'Ça fonctionne sur le chantier, sans réseau ?', a: "Mallettico s'installe sur votre téléphone depuis le navigateur. Il a besoin d'une connexion internet : le fonctionnement sans réseau n'est pas garanti." },
+      { q: 'Ça fonctionne sur le chantier, sans réseau\u202f?', a: "Mallettico s'installe sur votre téléphone depuis le navigateur. Il a besoin d'une connexion internet\u202f: le fonctionnement sans réseau n'est pas garanti." },
     ],
     related: ['devis-factures', 'equipe'],
   },
@@ -286,27 +327,27 @@ export const FEATURES_CONTENT = {
     slug: 'catalogue',
     label: 'Catalogue et bibliothèque',
     badge: 'Déjà chiffré',
-    title: 'Bibliothèque et catalogue : plus de 1 000 prestations et ouvrages déjà chiffrés', // compté dans FaitsSection.jsx:5-12
+    title: 'Bibliothèque et catalogue\u202f: plus de 1\u202f000 prestations et ouvrages déjà chiffrés', // compté dans FaitsSection.jsx:5-12
     tagline:
-      "La bibliothèque des 17 métiers propose des lots types chiffrés à insérer dans un devis, et le Référentiel BTP ajoute à votre catalogue plus de 500 articles chiffrés, métier par métier. Vous ajustez les prix : ce sont les vôtres.",
+      "La bibliothèque des 17 métiers propose des lots types chiffrés à insérer dans un devis, et le Référentiel BTP ajoute à votre catalogue plus de 500 articles chiffrés, métier par métier. Vous ajustez les prix\u202f: ce sont les vôtres.",
     capture: CAPTURES.catalogue,
     metaDescription:
-      "Bibliothèque et catalogue pour artisans du bâtiment : plus de 1 000 prestations et ouvrages chiffrés en tout, lots types de 17 métiers, import par métier, prix d'achat et marge, import de vos tarifs fournisseurs en CSV ou Excel.",
+      "Bibliothèque et catalogue pour artisans du bâtiment\u202f: plus de 1\u202f000 prestations et ouvrages chiffrés en tout, lots types de 17 métiers, import par métier, prix d'achat et marge, import de vos tarifs fournisseurs en CSV ou Excel.",
     steps: [
       // « Importer le Référentiel BTP » (Catalogue.jsx:1364, 1407) ; 15 métiers (src/lib/data/index.js)
-      { title: 'Importez votre métier', text: "Dans le catalogue, « Importer le Référentiel BTP » : choisissez vos métiers parmi 15 (plomberie, électricité, maçonnerie, peinture, menuiserie…), les articles arrivent chiffrés." },
+      { title: 'Importez votre métier', text: "Dans le catalogue, «\u202fImporter le Référentiel BTP\u202f»\u202f: choisissez vos métiers parmi 15 (plomberie, électricité, maçonnerie, peinture, menuiserie…), les articles arrivent chiffrés." },
       // Prix d'achat et favori dans la fiche article (Catalogue.jsx:130)
       { title: 'Ajustez vos prix', text: "Prix de vente, prix d'achat pour suivre la marge, articles favoris." },
       // Favoris et récents proposés dans l'éditeur (DevisComposer.jsx:279-293)
-      { title: 'Composez vos devis', text: "Dans l'éditeur de devis, la recherche retrouve vos articles ; vos favoris et vos articles récents sont proposés en premier." },
+      { title: 'Composez vos devis', text: "Dans l'éditeur de devis, la recherche retrouve vos articles\u202f; vos favoris et vos articles récents sont proposés en premier." },
     ],
     groups: [
       {
         name: 'Contenu inclus',
         items: [
           'Les lots types de 17 métiers, avec leurs prix moyens', // trade-library.js
-          'Le Référentiel BTP : plus de 500 articles chiffrés, en 15 métiers', // src/lib/data/index.js
-          'Prix indicatifs et modifiables : vos tarifs restent les vôtres',
+          'Le Référentiel BTP\u202f: plus de 500 articles chiffrés, en 15 métiers', // src/lib/data/index.js
+          'Prix indicatifs et modifiables\u202f: vos tarifs restent les vôtres',
         ],
       },
       {
@@ -320,8 +361,8 @@ export const FEATURES_CONTENT = {
       },
     ],
     faq: [
-      { q: 'Les prix du catalogue sont-ils fiables ?', a: "Ce sont des prix indicatifs moyens du marché, pensés comme point de départ. Vous les ajustez à votre réalité : vos prix restent prioritaires." },
-      { q: 'Puis-je importer mes propres tarifs ?', a: "Oui, par fichier CSV ou Excel (l'export de votre fournisseur ou de votre ancien logiciel), ou article par article." },
+      { q: 'Les prix du catalogue sont-ils fiables\u202f?', a: "Ce sont des prix indicatifs moyens du marché, pensés comme point de départ. Vous les ajustez à votre réalité\u202f: vos prix restent prioritaires." },
+      { q: 'Puis-je importer mes propres tarifs\u202f?', a: "Oui, par fichier CSV ou Excel (l'export de votre fournisseur ou de votre ancien logiciel), ou article par article." },
     ],
     related: ['devis-factures', 'chantiers'],
   },
@@ -337,12 +378,12 @@ export const FEATURES_CONTENT = {
       "Le solde, ce qu'il reste à encaisser et une projection sur six mois, à partir de vos factures, de vos devis signés et des charges que vous prévoyez. L'export comptable part chez votre comptable.",
     capture: CAPTURES.tresorerie,
     metaDescription:
-      'Trésorerie pour artisans du bâtiment : solde, factures à encaisser, projection sur six mois, charges récurrentes, export comptable FEC, CSV ou Excel.',
+      'Trésorerie pour artisans du bâtiment\u202f: solde, factures à encaisser, projection sur six mois, charges récurrentes, export comptable FEC, CSV ou Excel.',
     steps: [
       // Factures et dépenses reprises (TresorerieModule.jsx:1370-1373)
       { title: 'Vos flux se construisent seuls', text: 'Factures, paiements reçus et dépenses alimentent la trésorerie.' },
       // Factures ouvertes à leur échéance, devis signés, prévisions (TresorerieModule.jsx:1224, 1375-1439) ; solde négatif signalé (:1664)
-      { title: 'Anticipez les creux', text: "La projection sur six mois tient compte des factures ouvertes à leur échéance, des devis signés et de vos prévisions ; un solde qui passerait sous zéro est signalé." },
+      { title: 'Anticipez les creux', text: "La projection sur six mois tient compte des factures ouvertes à leur échéance, des devis signés et de vos prévisions\u202f; un solde qui passerait sous zéro est signalé." },
       { title: 'Transmettez à votre comptable', text: 'Export comptable au format FEC, CSV ou Excel, par période et par journal.' }, // ExportComptable.jsx:274-296
     ],
     groups: [
@@ -365,8 +406,8 @@ export const FEATURES_CONTENT = {
       },
     ],
     faq: [
-      { q: 'Dois-je saisir mes flux à la main ?', a: "Non pour l'essentiel : factures, paiements et dépenses alimentent la trésorerie. Vous ajoutez les charges que vous prévoyez (loyer, assurances…)." },
-      { q: 'Mon comptable peut-il récupérer les données ?', a: "Oui : export au format FEC (le fichier des écritures comptables), CSV ou Excel." },
+      { q: 'Dois-je saisir mes flux à la main\u202f?', a: "Non pour l'essentiel\u202f: factures, paiements et dépenses alimentent la trésorerie. Vous ajoutez les charges que vous prévoyez (loyer, assurances…)." },
+      { q: 'Mon comptable peut-il récupérer les données\u202f?', a: "Oui\u202f: export au format FEC (le fichier des écritures comptables), CSV ou Excel." },
     ],
     related: ['relances', 'devis-factures'],
   },
@@ -377,13 +418,13 @@ export const FEATURES_CONTENT = {
     label: 'Équipe et pointage',
     badge: 'Équipe',
     title: 'Votre équipe organisée, vos heures comptées',
-    tagline: `Invitez vos collaborateurs : ${collaborateursParPlan()}, chacun avec son rôle. Pointage des heures, planning de la semaine et sous-traitants.`,
+    tagline: `Invitez vos collaborateurs\u202f: ${collaborateursParPlan()}, chacun avec son rôle. Pointage des heures, planning de la semaine et sous-traitants.`,
     capture: CAPTURES.equipe,
     metaDescription:
-      'Équipe et pointage pour artisans du bâtiment : collaborateurs invités avec leur rôle, pointage des heures, planning de la semaine, coût des heures dans la marge des chantiers, sous-traitants.',
+      'Équipe et pointage pour artisans du bâtiment\u202f: collaborateurs invités avec leur rôle, pointage des heures, planning de la semaine, coût des heures dans la marge des chantiers, sous-traitants.',
     steps: [
       // permissions.js:24-33 : un ouvrier n'a ni les devis ni les finances
-      { title: 'Invitez votre équipe', text: "Chaque collaborateur a son compte et son rôle : un ouvrier voit ses chantiers et son pointage, pas vos devis ni vos finances." },
+      { title: 'Invitez votre équipe', text: "Chaque collaborateur a son compte et son rôle\u202f: un ouvrier voit ses chantiers et son pointage, pas vos devis ni vos finances." },
       { title: 'Planifiez la semaine', text: 'Le planning de la semaine, chantier par chantier, et les rendez-vous du calendrier.' }, // Equipe.jsx:3991-4010
       // Pointage (Equipe.jsx:1641), validation (:342, 1643), coût de la semaine (:370-371), depuis la fiche chantier (Chantiers.jsx:793)
       { title: 'Suivez les heures', text: 'Pointage depuis le téléphone, y compris depuis la fiche du chantier, validation des heures et coût de la semaine.' },
@@ -392,7 +433,7 @@ export const FEATURES_CONTENT = {
       {
         name: 'Organisation',
         items: [
-          'Un rôle par collaborateur : chacun voit ce qui le concerne', // permissions.js:23-50
+          'Un rôle par collaborateur\u202f: chacun voit ce qui le concerne', // permissions.js:23-50
           'Planning de la semaine par chantier', // Equipe.jsx:3991-4010
           'Fiches des sous-traitants', // Equipe.jsx:1636
         ],
@@ -408,9 +449,9 @@ export const FEATURES_CONTENT = {
       },
     ],
     faq: [
-      { q: 'Combien de collaborateurs puis-je inviter ?', a: `${capitale(collaborateursParPlan())}. La limite ne compte pas le titulaire du compte.` },
-      { q: 'Mes salariés voient-ils tout ?', a: "Non : chaque rôle ouvre une partie de l'application. Un ouvrier voit ses chantiers et son pointage, pas vos devis ni vos finances." },
-      { q: 'Le pointage fonctionne-t-il sur téléphone ?', a: 'Oui : on pointe depuis le téléphone, y compris directement depuis la fiche du chantier.' },
+      { q: 'Combien de collaborateurs puis-je inviter\u202f?', a: `${capitale(collaborateursParPlan())}. La limite ne compte pas le titulaire du compte.` },
+      { q: 'Mes salariés voient-ils tout\u202f?', a: "Non\u202f: chaque rôle ouvre une partie de l'application. Un ouvrier voit ses chantiers et son pointage, pas vos devis ni vos finances." },
+      { q: 'Le pointage fonctionne-t-il sur téléphone\u202f?', a: 'Oui\u202f: on pointe depuis le téléphone, y compris directement depuis la fiche du chantier.' },
     ],
     related: ['chantiers', 'tresorerie'],
   },
@@ -444,13 +485,13 @@ export const CARTES_FONCTIONNALITES = [
   },
   {
     categorie: 'devis', icone: 'catalogue', slug: 'catalogue', titre: 'Catalogue et bibliothèque', capture: CAPTURES.catalogue,
-    description: "Les lots types de 17 métiers et le Référentiel BTP, déjà chiffrés : vous composez vos devis sans partir d'une page blanche.",
-    points: ['Plus de 1 000 prestations et ouvrages chiffrés, bibliothèque comprise', 'Import par métier', "Prix d'achat et marge", 'Import de vos tarifs (CSV ou Excel)'],
+    description: "Les lots types de 17 métiers et le Référentiel BTP, déjà chiffrés\u202f: vous composez vos devis sans partir d'une page blanche.",
+    points: ['Plus de 1\u202f000 prestations et ouvrages chiffrés, bibliothèque comprise', 'Import par métier', "Prix d'achat et marge", 'Import de vos tarifs (CSV ou Excel)'],
   },
   {
     categorie: 'devis', icone: 'signature', slug: 'signature-electronique', titre: 'Signature en ligne', capture: CAPTURES.signature,
     description: "Votre client signe le devis en ligne, depuis le lien reçu par e-mail, sans créer de compte.",
-    points: ['Signature au doigt sur téléphone', "Lien valable jusqu'à la fin de validité du devis", 'Nom, date et heure enregistrés', "Statut « Signé » dans l'application"],
+    points: ['Signature au doigt sur téléphone', "Lien valable jusqu'à la fin de validité du devis", 'Nom, date et heure enregistrés', "Statut «\u202fSigné\u202f» dans l'application"],
   },
   {
     categorie: 'chantiers', icone: 'chantier', slug: 'chantiers', titre: 'Suivi de chantier', capture: CAPTURES.chantier,
@@ -488,27 +529,27 @@ export const CARTES_FONCTIONNALITES = [
     // Calendrier : docs/metier-btp.md § 8 ; raccordement à une Plateforme Agréée : décision D-03, feuille de route
     // (« E-reporting et transmission par une Plateforme Agréée »). Mallettico n'est pas une Plateforme Agréée.
     categorie: 'technique', icone: 'facture', titre: 'Facture électronique', capture: CAPTURES.facture,
-    description: "Aujourd'hui, Mallettico produit des factures PDF avec les mentions de votre profil. À partir du 1er septembre 2027, les TPE devront émettre leurs factures par une Plateforme Agréée : Mallettico prévoit de s'y raccorder, ce n'est pas encore fait.",
-    points: ['Factures PDF avec les mentions de votre profil', 'Export comptable', "Raccordement à une Plateforme Agréée : prévu, pas encore fait"],
+    description: "Aujourd'hui, Mallettico produit des factures PDF avec les mentions de votre profil. À partir du 1er septembre 2027, les TPE devront émettre leurs factures par une Plateforme Agréée\u202f: Mallettico prévoit de s'y raccorder, ce n'est pas encore fait.",
+    points: ['Factures PDF avec les mentions de votre profil', 'Export comptable', "Raccordement à une Plateforme Agréée\u202f: prévu, pas encore fait"],
   },
   {
     // Application installable, ouverte en plein écran (vite.config.js:29, display standalone)
     categorie: 'technique', icone: 'telephone', titre: 'Sur téléphone', capture: CAPTURES.telAccueil,
-    description: "Installez Mallettico sur votre téléphone depuis le navigateur : il s'ouvre en plein écran, comme une application.",
+    description: "Installez Mallettico sur votre téléphone depuis le navigateur\u202f: il s'ouvre en plein écran, comme une application.",
     points: ['Installation depuis le navigateur', 'Téléphone et ordinateur'],
   },
 ];
 
 /** La galerie de /ressources : une vue de l'application par onglet. */
 export const VUES_RESSOURCES = [
-  { id: 'accueil', libelle: 'Accueil', icone: 'accueil', capture: CAPTURES.accueil, description: "À l'ouverture : ce qu'il reste à encaisser, les devis à relancer, les brouillons à finir." },
-  { id: 'devis', libelle: 'Devis', icone: 'devis', capture: CAPTURES.devis, description: "L'éditeur de devis : lots, quantités, TVA par ligne, total calculé pendant la saisie." },
-  { id: 'catalogue', libelle: 'Catalogue', icone: 'catalogue', capture: CAPTURES.catalogue, description: 'Le catalogue : vos articles et leurs prix, la marge moyenne et le stock.' },
-  { id: 'chantier', libelle: 'Chantier', icone: 'chantier', capture: CAPTURES.chantier, description: "Un chantier : itinéraire, appel, message au client, pointage et tâches." },
-  { id: 'planning', libelle: 'Planning', icone: 'planning', capture: CAPTURES.planning, description: 'Le planning : vos chantiers et rendez-vous, au mois, à la semaine ou au jour.' },
-  { id: 'clients', libelle: 'Clients', icone: 'clients', capture: CAPTURES.clients, description: "Les clients : ce qui est encaissé, ce qui est en cours, les devis à relancer." },
-  { id: 'tresorerie', libelle: 'Trésorerie', icone: 'tresorerie', capture: CAPTURES.tresorerie, description: "Les finances : le solde du jour, le seuil d'alerte, les factures à encaisser." },
-  { id: 'relances', libelle: 'Relances', icone: 'relances', capture: CAPTURES.relances, description: "Les relances : les scénarios des devis et des factures, l'envoi automatique en option." },
+  { id: 'accueil', libelle: 'Accueil', icone: 'accueil', capture: CAPTURES.accueil, description: "À l'ouverture\u202f: ce qu'il reste à encaisser, les devis à relancer, les brouillons à finir." },
+  { id: 'devis', libelle: 'Devis', icone: 'devis', capture: CAPTURES.devis, description: "L'éditeur de devis\u202f: lots, quantités, TVA par ligne, total calculé pendant la saisie." },
+  { id: 'catalogue', libelle: 'Catalogue', icone: 'catalogue', capture: CAPTURES.catalogue, description: 'Le catalogue\u202f: vos articles et leurs prix, la marge moyenne et le stock.' },
+  { id: 'chantier', libelle: 'Chantier', icone: 'chantier', capture: CAPTURES.chantier, description: "Un chantier\u202f: itinéraire, appel, message au client, pointage et tâches." },
+  { id: 'planning', libelle: 'Planning', icone: 'planning', capture: CAPTURES.planning, description: 'Le planning\u202f: vos chantiers et rendez-vous, au mois, à la semaine ou au jour.' },
+  { id: 'clients', libelle: 'Clients', icone: 'clients', capture: CAPTURES.clients, description: "Les clients\u202f: ce qui est encaissé, ce qui est en cours, les devis à relancer." },
+  { id: 'tresorerie', libelle: 'Trésorerie', icone: 'tresorerie', capture: CAPTURES.tresorerie, description: "Les finances\u202f: le solde du jour, le seuil d'alerte, les factures à encaisser." },
+  { id: 'relances', libelle: 'Relances', icone: 'relances', capture: CAPTURES.relances, description: "Les relances\u202f: les scénarios des devis et des factures, l'envoi automatique en option." },
 ];
 
 /** Les étapes de /ressources, de l'inscription à l'encaissement. */

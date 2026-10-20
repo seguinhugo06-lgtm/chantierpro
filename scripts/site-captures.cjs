@@ -108,6 +108,16 @@ async function jeuDemoFictif() {
   return jeuDemo;
 }
 
+// ─── Trésorerie fictive ──────────────────────────────────────────────────────────────────────────────────
+// Les réglages de trésorerie de la démo (src/lib/demo-data.js, non modifié : 24 500 € au 1er janvier) donnent, une fois
+// l'année de dépenses de la démo passée, un solde négatif et deux alertes rouge et jaune sur la capture des finances :
+// peu engageant pour la vitrine. Les captures posent un solde de départ fictif au premier jour du mois en cours (posé
+// avant le chargement, la démo ne remplace pas une valeur déjà là) : le solde du jour reste celui que l'app calcule
+// avec les encaissements et dépenses fictifs du mois, au-dessus du seuil d'alerte de la démo. Aucune valeur n'est
+// affirmée ailleurs que sur ces captures, légendées « données fictives ».
+const debutDuMois = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`; };
+const TRESORERIE_FICTIVE = () => ({ seuilAlerte: 5000, soldeInitial: 14200, soldeDate: debutDuMois() });
+
 // ─── Gestes ──────────────────────────────────────────────────────────────────────────────────────────────
 // Clique d'abord un bouton visible au texte exact, sinon le plus petit élément visible qui contient le texte.
 const cliquer = (page, texte) => page.evaluate((t) => {
@@ -152,6 +162,16 @@ const VUES = [
   { nom: 'tel-accueil', page: 'dashboard', largeur: 390 },
   { nom: 'tel-devis-lots', page: 'dashboard', largeur: 390, gestes: GESTES_LOT },
   { nom: 'tel-facture', page: 'devis', largeur: 390, gestes: [['FAC-2026-00003']] },
+  // Les mêmes vues au téléphone, pour les pages de fonctionnalités lues sur un téléphone : une capture d'ordinateur
+  // réduite à la largeur d'un téléphone ne se lit plus (texte de 3 px)
+  { nom: 'tel-chantier', page: 'chantiers', largeur: 390, gestes: [['Rénovation cuisine Dupont']] },
+  { nom: 'tel-catalogue', page: 'catalogue', largeur: 390 },
+  { nom: 'tel-clients', page: 'clients', largeur: 390 },
+  { nom: 'tel-planning', page: 'planning', largeur: 390 },
+  { nom: 'tel-equipe', page: 'equipe', largeur: 390 },
+  { nom: 'tel-tresorerie', page: 'finances', largeur: 390, enHaut: true },
+  // Au téléphone, le réglage des relances est sous le menu des paramètres : la page est descendue jusqu'à son titre
+  { nom: 'tel-relances', page: 'settings', largeur: 390, gestes: [['Documents'], ['Relances'], ['__selecteur', '[role="switch"][aria-checked="false"]'], ['__defiler', 'Relances automatiques']] },
 ];
 
 // ─── Écriture des images ─────────────────────────────────────────────────────────────────────────────────
@@ -193,18 +213,32 @@ async function capturerVue(v) {
       isMobile: v.largeur < 768, hasTouch: v.largeur < 768 });
     // Pas d'invitation à installer l'app par-dessus les captures ; identité fictive posée avant le rechargement
     const { donnees } = await jeuDemoFictif();
-    await page.evaluate((ligne, jeu) => {
+    await page.evaluate((ligne, jeu, tresorerie) => {
       localStorage.setItem('pwa-install-dismissed', String(Date.now()));
       localStorage.setItem('mallettico_demo_data', JSON.stringify(jeu));
+      localStorage.setItem('cp_tresorerie_settings', JSON.stringify(tresorerie));
       localStorage.setItem('mallettico_entreprises', JSON.stringify([ligne]));
       localStorage.setItem('mallettico_entreprise_active_id', ligne.id);
       localStorage.setItem('mallettico_entreprise_migrated', 'true');
       localStorage.removeItem('cp_entreprise'); // ancienne fiche (legacy), recréée depuis la fiche active
-    }, ENTREPRISE_FICTIVE, donnees);
+    }, ENTREPRISE_FICTIVE, donnees, TRESORERIE_FICTIVE());
     await page.reload({ waitUntil: 'networkidle0' }).catch(() => {});
     await attendre(1500);
     for (const [texte, selecteur] of v.gestes || []) {
       if (texte === '__echap') { await page.keyboard.press('Escape'); await attendre(600); continue; }
+      if (texte === '__defiler') {
+        // Le plus petit élément visible au texte exact passe en haut de l'écran, sous la barre de l'app
+        const ok = await page.evaluate((t) => {
+          const el = [...document.querySelectorAll('h1, h2, h3, h4, p, span')].find((x) => x.innerText?.trim() === t && x.getClientRects().length > 0);
+          if (!el) return false;
+          const haut = el.getBoundingClientRect().top + window.scrollY - 88;
+          window.scrollTo({ top: haut, behavior: 'instant' });
+          return true;
+        }, selecteur);
+        if (!ok) throw new Error(`(${v.nom}) texte introuvable pour le défilement : ${selecteur}`);
+        await attendre(800);
+        continue;
+      }
       if (texte === '__selecteur') {
         const ok = await page.evaluate((s) => { const el = document.querySelector(s); el?.click(); return !!el; }, selecteur);
         if (!ok) throw new Error(`(${v.nom}) élément introuvable : ${selecteur}`);
@@ -287,20 +321,21 @@ function devisPourSignature() {
   };
 }
 
-async function capturerSignature() {
+/** La page de signature, sur ordinateur (`signature`) ou sur téléphone (`tel-signature`). */
+async function capturerSignature({ nom = 'signature', largeur = 1440 } = {}) {
   const reponse = (corps) => ({ status: 200, body: JSON.stringify(corps) });
   const { browser, page, attendre } = await ouvrir({
-    reel: true, largeur: 1440, chemin: `/devis/signer/${JETON_FICTIF}`,
+    reel: true, largeur, chemin: `/devis/signer/${JETON_FICTIF}`,
     // La seule réponse utile est celle du devis ; tout le reste (autres appels) reçoit une réponse vide et neutre
     supabase: (req, u) => (u.pathname === '/rest/v1/rpc/get_devis_for_signature' ? reponse(devisPourSignature()) : reponse([])),
   });
   try {
-    await page.setViewport({ width: 1440, height: 900, deviceScaleFactor: 2 });
+    await page.setViewport({ width: largeur, height: HAUTEURS[largeur], deviceScaleFactor: densite(largeur), isMobile: largeur < 768, hasTouch: largeur < 768 });
     await attendre(1500);
     await page.evaluate(() => document.querySelectorAll('[role="status"]').forEach((e) => { e.style.display = 'none'; }));
-    await controler(page, 'signature');
-    await ecrireWebp(page, 'signature');
-    console.log('ok signature');
+    await controler(page, nom);
+    await ecrireWebp(page, nom);
+    console.log('ok', nom);
   } finally {
     await browser.close();
   }
@@ -360,6 +395,7 @@ async function capturerOg() {
 
   for (const v of VUES.filter((x) => voulu(x.nom))) await capturerVue(v);
   if (voulu('signature')) await capturerSignature();
+  if (voulu('tel-signature')) await capturerSignature({ nom: 'tel-signature', largeur: 390 });
   if (voulu('og-image')) await capturerOg();
 
   console.table(bilan);

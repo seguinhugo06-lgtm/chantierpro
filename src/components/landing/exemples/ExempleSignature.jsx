@@ -216,7 +216,7 @@ export default function ExempleSignature() {
             <dl className="mt-4 grid grid-cols-3 gap-2 rounded-xl bg-marque-glacier-1 px-3 py-2.5 text-center sm:px-4">
               {[
                 ['Total HT', totaux && formatMoney(totaux.totalHT, 2)],
-                [totaux && totaux.taux.length === 1 ? `TVA ${String(totaux.taux[0]).replace('.', ',')} %` : 'TVA', totaux && formatMoney(totaux.totalTVA, 2)],
+                [totaux && totaux.taux.length === 1 ? `TVA ${String(totaux.taux[0]).replace('.', ',')}\u202f%` : 'TVA', totaux && formatMoney(totaux.totalTVA, 2)],
                 ['Total TTC', totaux && formatMoney(totaux.totalTTC, 2)],
               ].map(([libelle, valeur], i) => (
                 <div key={i} className="min-w-0">
@@ -233,7 +233,7 @@ export default function ExempleSignature() {
               role="img"
               aria-label={signeLe
                 ? `Signature de ${CLIENT}, ${tampon.charAt(0).toLowerCase()}${tampon.slice(1)}`
-                : 'Zone de signature : tracez votre signature au doigt ou à la souris, ou choisissez « Signer avec mon nom ».'}
+                : 'Zone de signature\u202f: tracez votre signature au doigt ou à la souris, ou choisissez «\u202fSigner avec mon nom\u202f».'}
               onPointerDown={commencer}
               onPointerMove={continuer}
               onPointerUp={finir}
@@ -295,7 +295,7 @@ export default function ExempleSignature() {
           </div>
         </div>
       </div>
-      <LegendeExemple>Démonstration : votre signature ne quitte pas cette page.</LegendeExemple>
+      <LegendeExemple>Démonstration : votre signature ne quitte pas cette page.</LegendeExemple>
       <p className="sr-only" aria-live="polite">{tampon}</p>
     </>
   );

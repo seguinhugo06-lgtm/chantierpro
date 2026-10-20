@@ -15,6 +15,7 @@ import LogoMallettico from '../ui/LogoMallettico';
 import { allerALaSection } from '../../lib/sectionsAccueil';
 import { pageLegaleDe } from '../legal/pageLegale';
 import BoutonSite from './site/BoutonSite';
+import { FOCUS_SUR_SOMBRE as FOCUS } from './site/focus';
 
 const COLONNES = [
   {
@@ -47,9 +48,6 @@ const COLONNES = [
 ];
 
 const PAGES_DU_SITE = ['/fonctionnalites', '/ressources'];
-
-const FOCUS =
-  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-marque-encre-sombre';
 
 export default function FooterSection({ onNavigate }) {
   const annee = new Date().getFullYear();

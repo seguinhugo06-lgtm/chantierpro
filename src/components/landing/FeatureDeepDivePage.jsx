@@ -18,20 +18,15 @@ import BandeAppel from './site/BandeAppel';
 import Apparition from './site/Apparition';
 import BoutonSite from './site/BoutonSite';
 import Question from './site/Question';
-import { CadreOrdi, CadreTel } from './site/Cadres';
+import { CadreCapture } from './site/Cadres';
+import { FOCUS_SUR_GLACIER } from './site/focus';
 import { FEATURES_CONTENT } from './featuresContent';
 
-const FOCUS =
-  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-marque-nuit-2 focus-visible:ring-offset-2';
-
+/** La capture de l'en-tête (premier écran) : chargée tout de suite, en priorité ; au téléphone, sa vue téléphone. */
 function Capture({ capture }) {
   return (
     <figure className="mx-auto w-full max-w-2xl lg:max-w-none">
-      {capture.telephone ? (
-        <CadreTel src={capture.src} alt={capture.alt} largeur={capture.largeur} hauteur={capture.hauteur} prioritaire className="max-w-[17rem]" />
-      ) : (
-        <CadreOrdi src={capture.src} alt={capture.alt} largeur={capture.largeur} hauteur={capture.hauteur} prioritaire />
-      )}
+      <CadreCapture capture={capture} prioritaire premiere classeTel="max-w-[17rem]" />
       <figcaption className="mt-3 text-center text-xs text-slate-600">Capture de l'application, données fictives.</figcaption>
     </figure>
   );
@@ -74,7 +69,7 @@ export default function FeatureDeepDivePage({ slug }) {
         avant={
           <a
             href="/fonctionnalites"
-            className={`-ml-1 mb-4 flex w-fit min-h-[44px] items-center gap-1.5 rounded-full px-1 text-base font-semibold text-marque-nuit-2 underline-offset-4 hover:underline ${FOCUS} focus-visible:ring-offset-marque-glacier-1`}
+            className={`-ml-1 mb-4 flex w-fit min-h-[44px] items-center gap-1.5 rounded-full px-1 text-base font-semibold text-marque-nuit-2 underline-offset-4 hover:underline ${FOCUS_SUR_GLACIER}`}
           >
             <ArrowLeft size={18} aria-hidden="true" />
             Toutes les fonctionnalités
@@ -167,7 +162,7 @@ export default function FeatureDeepDivePage({ slug }) {
               <li key={liee.slug}>
                 <a
                   href={`/fonctionnalites/${liee.slug}`}
-                  className={`group flex h-full min-h-[88px] items-center justify-between gap-4 rounded-2xl border border-marque-acier/60 bg-white p-5 shadow-[0_18px_40px_-30px_rgba(13,46,108,0.5)] transition-[border-color,box-shadow] hover:border-marque-nuit-2/60 motion-reduce:transition-none ${FOCUS} focus-visible:ring-offset-marque-glacier-1`}
+                  className={`group flex h-full min-h-[88px] items-center justify-between gap-4 rounded-2xl border border-marque-acier/60 bg-white p-5 shadow-[0_18px_40px_-30px_rgba(13,46,108,0.5)] transition-[border-color,box-shadow] hover:border-marque-nuit-2/60 hover:shadow-[0_24px_48px_-30px_rgba(13,46,108,0.6)] motion-reduce:transition-none ${FOCUS_SUR_GLACIER}`}
                 >
                   <span className="min-w-0">
                     <span className="block text-base font-bold text-marque-nuit">{liee.label}</span>

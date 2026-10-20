@@ -98,7 +98,7 @@ export default function ExempleMetre() {
   const l = lire(valeurs.largeur);
   const n = lire(valeurs.nombre) || 1;
   const c = lire(valeurs.chutes);
-  const formule = `${fr(L)} × ${fr(l)} m${n > 1 ? `, × ${fr(n)}` : ''}${c > 0 ? `, + ${fr(c)} % de chutes` : ''}`;
+  const formule = `${fr(L)} × ${fr(l)} m${n > 1 ? `, × ${fr(n)}` : ''}${c > 0 ? `, + ${fr(c)}\u202f% de chutes` : ''}`;
 
   return (
     <>
@@ -141,7 +141,7 @@ export default function ExempleMetre() {
                   {ligne ? ligne.designation : ''}
                 </p>
                 <p data-prix-unitaire={ligne ? ligne.prixUnitaire : undefined} className="mt-1 text-sm tabular-nums text-slate-600">
-                  {ligne ? <>{fr(quantite)} {unite} × {formatMoney(ligne.prixUnitaire, 2)} HT · TVA {ligne.tva} %</> : '\u00a0'}
+                  {ligne ? <>{fr(quantite)} {unite} × {formatMoney(ligne.prixUnitaire, 2)} HT · TVA {ligne.tva} %</> : '\u00a0'}
                 </p>
                 <div className="pt-4">
                   <div className="rounded-xl bg-marque-glacier-1 px-4 py-3">
@@ -164,7 +164,7 @@ export default function ExempleMetre() {
         </div>
       </div>
       <LegendeExemple>
-        Même calcul que la fenêtre « Métré » de l'éditeur de devis. Prix moyen indicatif de la bibliothèque, hors taxes.
+        Même calcul que la fenêtre « Métré » de l'éditeur de devis. Prix moyen indicatif de la bibliothèque, hors taxes.
       </LegendeExemple>
     </>
   );

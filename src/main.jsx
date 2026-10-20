@@ -187,10 +187,19 @@ if (isDemo) {
   logger.debug('🔐 Production mode - data from Supabase')
 }
 
-// Public page loading spinner
+// Attente des pages publiques de l'artisan (signature, paiement, portail) : non modifiée par la refonte du site, ces
+// pages gardent la couleur de l'artisan.
 const PublicFallback = () => (
   <div className="min-h-screen bg-slate-50 flex items-center justify-center">
     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
+  </div>
+)
+
+// Attente des pages de Mallettico (site, pages légales, invitation, app) : cercle bleu nuit sur le glacier de la charte
+// « Glacier vif » (l'orange du logo est décoratif seulement).
+const ChargementSite = () => (
+  <div className="min-h-screen bg-marque-glacier-1 flex items-center justify-center">
+    <div className="animate-spin rounded-full h-8 w-8 border-[3px] border-marque-glacier-2 border-t-marque-nuit-2"></div>
   </div>
 )
 
@@ -199,23 +208,23 @@ const PublicFallback = () => (
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     {marketingPage === 'features' ? (
-      <Suspense fallback={<PublicFallback />}>
+      <Suspense fallback={<ChargementSite />}>
         <FeaturesDetailPage />
       </Suspense>
     ) : marketingPage?.page === 'feature-detail' ? (
-      <Suspense fallback={<PublicFallback />}>
+      <Suspense fallback={<ChargementSite />}>
         <FeatureDeepDivePage slug={marketingPage.slug} />
       </Suspense>
     ) : marketingPage === 'resources' ? (
-      <Suspense fallback={<PublicFallback />}>
+      <Suspense fallback={<ChargementSite />}>
         <ResourcesPage />
       </Suspense>
     ) : pageLegale ? (
-      <Suspense fallback={<PublicFallback />}>
+      <Suspense fallback={<ChargementSite />}>
         <PageLegalePublique pageInitiale={pageLegale} />
       </Suspense>
     ) : marketingPage === 'styleguide' ? (
-      <Suspense fallback={<PublicFallback />}>
+      <Suspense fallback={<ChargementSite />}>
         <Styleguide />
       </Suspense>
     ) : signatureToken ? (
@@ -235,7 +244,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         </Suspense>
       ) : <PortailIndisponible />
     ) : invitationToken ? (
-      <Suspense fallback={<PublicFallback />}>
+      <Suspense fallback={<ChargementSite />}>
         <AcceptInvitation token={invitationToken} />
       </Suspense>
     ) : (
@@ -243,7 +252,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         <OrgProvider>
           <EntrepriseProvider>
             <DataProvider initialData={initialData}>
-              <Suspense fallback={<PublicFallback />}>
+              <Suspense fallback={<ChargementSite />}>
                 <App />
               </Suspense>
             </DataProvider>

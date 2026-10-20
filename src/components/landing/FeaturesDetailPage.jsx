@@ -15,33 +15,42 @@ import SectionSite from './site/SectionSite';
 import EnTetePage from './site/EnTetePage';
 import BandeAppel from './site/BandeAppel';
 import Apparition from './site/Apparition';
-import { CadreOrdi, CadreTel } from './site/Cadres';
+import PastilleFiltre from './site/PastilleFiltre';
+import { CadreCapture } from './site/Cadres';
+import { FOCUS } from './site/focus';
 import { ICONES } from './site/icones';
 import { CARTES_FONCTIONNALITES, CATEGORIES_FONCTIONNALITES } from './featuresContent';
 
-const FOCUS =
-  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-marque-nuit-2 focus-visible:ring-offset-2 focus-visible:ring-offset-white';
-
 const LEGENDE = "Captures de l'application, données fictives.";
 
-/** La capture d'une carte, dans une vignette de hauteur fixe : le cadre déborde par le bas et y est coupé. */
-function Vignette({ capture }) {
+/** Cartes de la première rangée au bureau (trois colonnes) : leurs images sont dans le premier écran. */
+const PREMIERE_RANGEE = 3;
+
+/**
+ * La capture d'une carte, dans une vignette de hauteur fixe : le cadre déborde par le bas et y est coupé. Au
+ * téléphone, la vue téléphone de la capture (lisible), dans un cadre de téléphone plus large que sur ordinateur et une
+ * vignette plus haute ; sur un écran plus large, la capture d'ordinateur.
+ * `rang` : place de la carte dans la liste ; les images de la première rangée sont chargées tout de suite, la toute
+ * première en priorité (premier écran à 1440 px).
+ */
+function Vignette({ capture, rang }) {
   return (
-    <div className="relative aspect-[16/10] overflow-hidden rounded-t-2xl bg-marque-glacier-1 px-4 pt-4 sm:px-5 sm:pt-5">
-      {capture.telephone ? (
-        <CadreTel src={capture.src} alt={capture.alt} largeur={capture.largeur} hauteur={capture.hauteur} className="max-w-[46%] !border-[6px] !rounded-[1.5rem]" />
-      ) : (
-        <CadreOrdi src={capture.src} alt={capture.alt} largeur={capture.largeur} hauteur={capture.hauteur} />
-      )}
+    <div className="relative aspect-[4/3] overflow-hidden rounded-t-2xl bg-marque-glacier-1 px-4 pt-4 sm:aspect-[16/10] sm:px-5 sm:pt-5">
+      <CadreCapture
+        capture={capture}
+        prioritaire={rang < PREMIERE_RANGEE}
+        premiere={rang === 0}
+        classeTel="max-w-[64%] !border-[6px] !rounded-[1.5rem] sm:max-w-[46%]"
+      />
     </div>
   );
 }
 
-function Carte({ carte }) {
+function Carte({ carte, rang }) {
   const Icone = ICONES[carte.icone];
   const contenu = (
     <>
-      <Vignette capture={carte.capture} />
+      <Vignette capture={carte.capture} rang={rang} />
       <div className="flex flex-1 flex-col p-5 sm:p-6">
         <div className="flex items-center gap-3">
           {Icone ? (
@@ -100,31 +109,18 @@ export default function FeaturesDetailPage() {
       <SectionSite fond="blanc" className="!pt-6 sm:!pt-10">
         <h2 className="sr-only">Les fonctionnalités</h2>
         <div role="group" aria-label="Filtrer par catégorie" className="flex flex-wrap gap-2">
-          {CATEGORIES_FONCTIONNALITES.map((c) => {
-            const pressee = categorie === c.id;
-            return (
-              <button
-                key={c.id}
-                type="button"
-                aria-pressed={pressee}
-                onClick={() => setCategorie(c.id)}
-                className={`min-h-[44px] rounded-full border px-4 text-sm font-semibold transition-colors motion-reduce:transition-none ${FOCUS} ${
-                  pressee
-                    ? 'border-marque-nuit-2 bg-marque-nuit-2 text-white'
-                    : 'border-marque-acier bg-white text-marque-ardoise hover:border-marque-nuit-2 hover:text-marque-nuit'
-                }`}
-              >
-                {c.libelle}
-              </button>
-            );
-          })}
+          {CATEGORIES_FONCTIONNALITES.map((c) => (
+            <PastilleFiltre key={c.id} pressee={categorie === c.id} onClick={() => setCategorie(c.id)}>
+              {c.libelle}
+            </PastilleFiltre>
+          ))}
         </div>
 
         <ul className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {cartes.map((carte) => (
+          {cartes.map((carte, rang) => (
             <li key={carte.titre}>
               <Apparition className="h-full">
-                <Carte carte={carte} />
+                <Carte carte={carte} rang={rang} />
               </Apparition>
             </li>
           ))}
