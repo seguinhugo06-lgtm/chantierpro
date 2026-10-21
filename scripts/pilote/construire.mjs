@@ -20,8 +20,11 @@ const RACINE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..
 const P = (...x) => path.join(RACINE, 'scripts/pilote', ...x);
 const lire = (f) => fs.readFileSync(f, 'utf8');
 
-const contenu = lire(P('page/contenu.js'));
-const app = lire(P('page/app.js'));
+// Onglet « Réseaux sociaux » : données générées par scripts/pilote/reseaux.mjs, rendu dans page/reseaux-vue.js
+// (assemblé avant app.js : il ne contient que des fonctions, appelées une fois la page chargée).
+if (!fs.existsSync(P('page/reseaux-donnees.js'))) throw new Error('page/reseaux-donnees.js absent : lancer node scripts/pilote/reseaux.mjs');
+const contenu = lire(P('page/contenu.js')) + '\n' + lire(P('page/reseaux-donnees.js'));
+const app = lire(P('page/reseaux-vue.js')) + '\n' + lire(P('page/app.js'));
 const page = lire(P('page/squelette.html'))
   .replace('/*@@STYLES@@*/', () => lire(P('page/styles.css')))
   .replace('<!--@@LOGO@@-->', () => lire(P('page/logo.svg')).trim())
@@ -35,7 +38,7 @@ fs.mkdirSync(path.dirname(tmp), { recursive: true });
 const script = page.slice(page.indexOf('<script>') + 8, page.lastIndexOf('</script>'));
 fs.writeFileSync(tmp, script);
 execFileSync('node', ['--check', tmp], { stdio: 'inherit' });
-const donnees = new Function(`${contenu}\nreturn { JALONS, ETAPES, PLUS_TARD, FICHES, vueReperes };`)();
+const donnees = new Function(`${contenu}\nreturn { JALONS, ETAPES, PLUS_TARD, FICHES, vueReperes, RESEAUX };`)();
 const erreurs = [];
 const ids = new Set();
 for (const e of donnees.ETAPES) {
@@ -47,6 +50,19 @@ for (const e of donnees.ETAPES) {
 }
 for (const j of donnees.JALONS) if (!j.sortie) erreurs.push(`jalon ${j.id} sans condition de sortie`);
 if (typeof donnees.vueReperes !== 'function') erreurs.push('vueReperes absente de contenu.js');
+// Onglet « Réseaux sociaux » : identifiants uniques, miniatures présentes, guide non vide.
+const R = donnees.RESEAUX;
+const dossierReseaux = path.join(RACINE, 'audit-ui/pilote');
+const idsR = new Set();
+for (const p of R.publications) {
+  if (idsR.has(p.id)) erreurs.push(`réseaux : identifiant en double ${p.id}`);
+  idsR.add(p.id);
+  for (const im of p.images) if (!fs.existsSync(path.join(dossierReseaux, 'reseaux/miniatures', p.dossier, im.fichier))) erreurs.push(`réseaux : miniature absente ${p.dossier}/${im.fichier} (relancer node scripts/pilote/reseaux.mjs)`);
+  if (!p.ig || !p.fb) erreurs.push(`réseaux : légende manquante pour ${p.id}`);
+}
+if (R.publications.length !== 11) erreurs.push(`réseaux : ${R.publications.length} publications au lieu de 11`);
+if (!fs.existsSync(path.join(dossierReseaux, 'reseaux/planche.html'))) erreurs.push('réseaux : reseaux/planche.html absent');
+if (!R.guide.sections.length || !R.aValider.sections.length) erreurs.push('réseaux : guide ou liste à valider vide');
 fs.rmSync(tmp, { force: true });
 if (erreurs.length) { console.error('✗ Contenu incohérent :\n  ' + erreurs.join('\n  ')); process.exit(1); }
 
@@ -59,5 +75,8 @@ if (process.argv.includes('--banc')) {
   fs.mkdirSync(path.dirname(banc), { recursive: true });
   fs.writeFileSync(banc, '<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">'
     + `<script>${lire(P('banc/faux-claude.js'))}</script></head><body>${page}</body></html>`);
+  // Les fichiers publiés à côté de la page (miniatures, planche) : le banc les sert aussi.
+  const reseauxLocal = path.join(RACINE, 'audit-ui/pilote/reseaux');
+  if (fs.existsSync(reseauxLocal)) { fs.rmSync(path.join(path.dirname(banc), 'reseaux'), { recursive: true, force: true }); fs.cpSync(reseauxLocal, path.join(path.dirname(banc), 'reseaux'), { recursive: true }); }
   console.log(`✓ ${path.relative(RACINE, banc)} (fausse base en mémoire : window.__semer(chemin, données), window.__fauxDocs)`);
 }

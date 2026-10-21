@@ -7,6 +7,7 @@ const DOSSIER = path.resolve(__dirname, '../../../audit-ui/pilote-banc');
 http.createServer((req, res) => {
   const f = path.join(DOSSIER, req.url === '/' ? 'index.html' : path.normalize(req.url).replace(/^(\.\.[/\\])+/, ''));
   if (!f.startsWith(DOSSIER) || !fs.existsSync(f)) { res.writeHead(404); res.end(); return; }
-  res.writeHead(200, { 'content-type': f.endsWith('.html') ? 'text/html; charset=utf-8' : 'text/javascript', 'cache-control': 'no-store' });
+  const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.jpg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp', '.json': 'application/json' };
+  res.writeHead(200, { 'content-type': TYPES[path.extname(f)] || 'application/octet-stream', 'cache-control': 'no-store' });
   res.end(fs.readFileSync(f));
 }).listen(4777, '127.0.0.1');

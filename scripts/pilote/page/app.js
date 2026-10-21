@@ -7,6 +7,8 @@
      questions/<id>      — générées par Claude depuis docs/decisions.md ; Hugo répond (choix…)
      attentes/<id>       — générées depuis docs/etat-production.md ; Hugo coche et colle la preuve
      livraisons/<id>, claude/etat — écrits par Claude seul
+   Onglet « Réseaux sociaux » : les cases cochées (points à valider, publications programmées) sont dans le
+   document principal, champ reseaux {valide, prog} ; le contenu vient de reseaux-donnees.js (généré).
    Règle : la page n'écrit jamais un champ qui appartient à Claude, et inversement.
    ════════════════════════════════════════════════════════════════════ */
 
@@ -18,6 +20,11 @@ const CLE = "mallettico-pilote-v1", CLE_F = "mallettico-pilote-frictions-v1", CL
 function lireLocal(k, def){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : def; }catch(e){ return def; } }
 function ecrireLocal(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){ /* stockage navigateur indisponible : l’outil continue en mémoire */ } }
 
+function objetSimple(o){
+  const r = {};
+  if (o && typeof o === "object" && !Array.isArray(o)) Object.keys(o).forEach(k => { if (o[k]) r[k] = o[k]; });
+  return r;
+}
 function normaliser(d){
   const x = d && typeof d === "object" ? d : {};
   const perso = Array.isArray(x.perso) ? x.perso.filter(p => p && p.id && p.titre) : [];
@@ -28,19 +35,21 @@ function normaliser(d){
     focus: Array.isArray(x.focus) ? x.focus.filter(existe).slice(0,3) : [],
     perso,
     vuLe: typeof x.vuLe === "string" ? x.vuLe : "",
+    // Onglet « Réseaux sociaux » : points validés et publications programmées, { identifiant: horodatage }.
+    reseaux: { valide: objetSimple(x.reseaux && x.reseaux.valide), prog: objetSimple(x.reseaux && x.reseaux.prog) },
   };
 }
 let etat = normaliser(lireLocal(CLE, null));
 let ui = Object.assign({ onglet:"aujourdhui", ouvert:null, type:"demande", copie:null, confirmer:null, preuve:null }, lireLocal(CLE_UI, {}));
-ui.copie = null; ui.confirmer = null; ui.preuve = null;
-if (!["aujourdhui","etapes","claude","reperes"].includes(ui.onglet)) ui.onglet = "aujourdhui";
+ui.copie = null; ui.confirmer = null; ui.preuve = null; ui.ouv = {};
+if (!["aujourdhui","etapes","claude","reseaux","reperes"].includes(ui.onglet)) ui.onglet = "aujourdhui";
 
 const STORE = { mode:"local", ref:null, statut:"init", col:{} };
 let boite = [], questions = [], attentes = [], livraisons = [], etatClaude = null;
 let notesLocales = lireLocal(CLE_F, []); if (!Array.isArray(notesLocales)) notesLocales = [];
 let minuteur = null, enCours = false, sale = false;
 
-function serialiser(){ return { v:2, etapes:etat.etapes, focus:etat.focus, perso:etat.perso, vuLe:etat.vuLe }; }
+function serialiser(){ return { v:2, etapes:etat.etapes, focus:etat.focus, perso:etat.perso, vuLe:etat.vuLe, reseaux:etat.reseaux }; }
 function sauverUi(){ ecrireLocal(CLE_UI, { onglet:ui.onglet, ouvert:ui.ouvert, type:ui.type }); }
 
 function planifier(){
@@ -541,7 +550,7 @@ function vueClaude(){
 
 function rendre(){
   const v = $("#vue");
-  const vues = { aujourdhui:vueAujourdhui, etapes:vueEtapes, claude:vueClaude, reperes:vueReperes };
+  const vues = { aujourdhui:vueAujourdhui, etapes:vueEtapes, claude:vueClaude, reseaux:vueReseaux, reperes:vueReperes };
   // Un re-rendu ne doit jamais faire perdre une saisie : on garde les valeurs et le focus.
   const garde = {};
   v.querySelectorAll("#note-txt, #perso-txt").forEach(el => { garde[el.id] = el.value; });
@@ -573,6 +582,7 @@ function rendre(){
 document.addEventListener("click", ev => {
   const b = ev.target.closest("[data-act]"); if (!b || b.tagName === "FORM") return;
   const a = b.dataset.act, id = b.dataset.id, v = b.dataset.v;
+  if (a.startsWith("rz-")) { if (a === "rz-aller") ev.preventDefault(); rzAgir(a, b); return; }
   if (a === "onglet") { ui.onglet = v; ui.copie = null; sauverUi(); rendre(); window.scrollTo({ top:0 }); return; }
   if (a === "ouvrir") { ui.ouvert = ui.ouvert === id ? null : id; ui.copie = null; sauverUi(); rendre(); return; }
   if (a === "ouvrir-etape") { ouvrirEtape(id); return; }
