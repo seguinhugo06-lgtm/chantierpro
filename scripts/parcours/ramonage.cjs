@@ -97,7 +97,8 @@ module.exports = [
       await attendre(500);
       const apercu = await page.evaluate(() => document.querySelector('[role="dialog"] iframe')?.getAttribute('srcdoc') || '');
       for (const t of ['Attestation de ramonage', 'Article R. 1331-75 du code de la santé publique', 'Vacuité du conduit sur toute sa longueur</th><td>Assurée',
-        'par action mécanique directe', 'Dépôts et suie</th><td>Normaux', 'État du conduit</th><td>Bon', 'Conseils donnés (article R. 1331-77',
+        'par action mécanique directe', 'Dépôts et suie</th><td>Normaux', 'État apparent du conduit</th><td>Bon', 'Conseils donnés (article R. 1331-77',
+        'pourra vous rappeler par e-mail ou par SMS',
         'ne vaut pas attestation d’entretien', 'À conserver au moins deux ans', 'alt="Signature"', 'Jean Exemple']) {
         verifier(apercu.includes(t), `l'aperçu porte « ${t.replace(/<[^>]+>/g, ' ')} »`);
       }
@@ -165,6 +166,8 @@ module.exports = [
       const sms = await page.evaluate(() => document.querySelector('[role="dialog"] a[href^="sms:"]')?.getAttribute('href') || '');
       verifier(sms.startsWith('sms:0612345678') && decodeURIComponent(sms).includes('répondez STOP') && !/obligatoire/i.test(decodeURIComponent(sms)),
         'le SMS de rappel est pré-rempli (identité, opposition STOP)');
+      const appeler = await page.evaluate(() => !!document.querySelector('[role="dialog"] a[href^="tel:"]'));
+      verifier(!appeler, 'pas de bouton « Appeler » pour un client particulier (consentement exigé, L. 223-1)');
       await page.evaluate(() => {
         document.addEventListener('click', (e) => { if (e.target.closest('a[href^="sms:"]')) e.preventDefault(); }, { once: true });
         document.querySelector('[role="dialog"] a[href^="sms:"]').click();
@@ -176,6 +179,49 @@ module.exports = [
       await attendre(500);
       const apres = await page.evaluate(() => document.querySelector('section[aria-label="À faire aujourd\'hui"]')?.innerText || '');
       verifier(!apres.includes('Ramonage à prévoir'), 'puis le rappel disparaît de « À faire »');
+    },
+  },
+  {
+    nom: 'ramonage (base) : le refus des rappels dit au passage est noté sur la fiche, l’attestation ne l’annonce plus',
+    reel: true,
+    async executer({ ouvrir, cliquer, attendre, verifier, sessionFactice }) {
+      const ORG = '0e0e0e0e-0e0e-4e0e-8e0e-0e0e0e0e0e0e';
+      const CLIENT = { id: 'c0c0c0c0-0000-4000-8000-000000000106', nom: 'Exemple', prenom: 'Paul', telephone: '0600000002', created_at: '2026-10-01T08:00:00Z' };
+      const ENTREPRISE = { id: 'e0e0e0e0-0000-4000-8000-000000000106', user_id: UID, organization_id: ORG, nom: 'Ramonage Exemple', forme_juridique: 'Micro-entreprise',
+        siret: '00000000000000', telephone: '0500000000', email: 'contact@exemple.fr', is_active: true, is_default: true,
+        settings_json: { reglages: { ramonageActif: true, nomEntrepreneur: 'Jean Exemple' } }, cgu_accepted_at: '2026-01-01T00:00:00Z', cgu_version: '2025-02',
+        created_at: '2026-01-01T00:00:00Z' };
+      const base = creerBase({ clients: [CLIENT], entreprise: [ENTREPRISE] }, {
+        refuser: (m, table, { corps }) => {
+          if (m !== 'POST' || table !== 'ramonages') return null;
+          const r = Array.isArray(corps) ? corps[0] : corps;
+          const ligne = { ...r, numero: `RAM-${AN}-00008`, jeton_rappel: 'a0a0a0a0-0000-4000-8000-000000000106', organization_id: ORG, user_id: UID, created_at: new Date().toISOString() };
+          (base.tables.ramonages = base.tables.ramonages || []).push(ligne);
+          return json(ligne, 201);
+        },
+      });
+      const { page } = await ouvrir({ reel: true, largeur: 375, page: 'clients', session: sessionFactice(UID), supabase: base.reponse, avantChargement: sansInstallation });
+      await attendre(1500);
+      await ouvrirFiche(page, attendre, 'Exemple');
+      await cliquer(page, 'Nouveau ramonage', { dans: '[data-testid="onglet-ramonage"]' });
+      await attendre(600);
+      await remplirAttestation(page, attendre);
+      await page.evaluate(() => {
+        const l = [...document.querySelectorAll('[role="dialog"] label')].find((x) => x.innerText.includes('Le client refuse les rappels'));
+        l.querySelector('input').click();
+      });
+      await cliquer(page, 'Vérifier l’attestation', { dans: '[role="dialog"]' });
+      await attendre(400);
+      const apercu = await page.evaluate(() => document.querySelector('[role="dialog"] iframe')?.getAttribute('srcdoc') || '');
+      verifier(!apercu.includes('pourra vous rappeler'), 'l’attestation n’annonce plus de rappel');
+      await cliquer(page, 'Enregistrer l’attestation', { dans: '[role="dialog"]' });
+      await attendre(1500);
+      const patch = base.journal.find((j) => j.m === 'PATCH' && j.table === 'clients');
+      verifier(!!patch?.corps?.rappels_refuses_le, 'le refus est enregistré sur la fiche du client');
+      await page.keyboard.press('Escape');
+      await attendre(400);
+      const fiche = await page.evaluate(() => document.querySelector('[data-testid="onglet-ramonage"]')?.innerText || '');
+      verifier(/a refusé les rappels de ramonage/.test(fiche), 'la fiche le dit');
     },
   },
   {
