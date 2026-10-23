@@ -7,7 +7,7 @@ import Champ from '../ui/Champ';
 import {
   TYPES_APPAREIL, COMBUSTIBLES, CONDUITS, METHODES, QUALITES, RACCORDEMENTS, VACUITES, CONSTATS, CONSEILS,
   AIDE_FREQUENCE, AIDE_CHIMIQUE, manquants, nouveauBrouillon, prochainParDefaut, horsDelaiDouzeMois, nbDansAnnee,
-  conseilsExiges, ramonagePrecedent, jourDe,
+  conseilsExiges, ramonagePrecedent, jourDe, emetteurDe,
 } from '../../lib/ramonage';
 import { buildAttestationRamonageHtml } from '../../lib/attestationRamonageHtml';
 
@@ -80,7 +80,7 @@ function Signature({ valeur, onChange }) {
         />
       </div>
       <div className="mt-1.5 flex items-center justify-between gap-2">
-        <p className="text-sm text-encre-3">Signez avec le doigt. Elle sera reprise pour vos prochaines attestations.</p>
+        <p className="text-sm text-encre-3">Signez avec le doigt. Elle sera reprise pour les prochaines attestations signées par ce même intervenant.</p>
         <Bouton variante="discret" taille="compacte" onClick={() => { pad.current?.clear(); onChange(null); }}>Effacer</Bouton>
       </div>
     </div>
@@ -105,17 +105,25 @@ const heureDe = (iso) => {
  * @param {Function} p.onFermer
  */
 export default function SaisieRamonage({ client, precedent = null, remplace = null, ramonages = [], entreprise, onEnregistrer, onFermer }) {
-  const signatureConnue = useMemo(() => [...ramonages]
-    .filter((r) => r.signature)
-    .sort((a, b) => String(b.created_at || b.realise_le || '').localeCompare(String(a.created_at || a.realise_le || '')))[0]?.signature || null, [ramonages]);
+  // La signature reprise est celle du même intervenant, jamais celle d'un autre (relecture juriste-btp : « je soussigné(e) B »
+  // ne peut pas porter la signature de A)
+  const normaliser = (n) => String(n || '').toLowerCase().replace(/\s+/g, ' ').trim();
+  const signaturePour = (nom) => (normaliser(nom) ? [...ramonages]
+    .filter((r) => r.signature && normaliser(r.intervenant_nom) === normaliser(nom))
+    .sort((a, b) => String(b.created_at || b.realise_le || '').localeCompare(String(a.created_at || a.realise_le || '')))[0]?.signature || null : null);
   const [form, setForm] = useState(() => {
     if (remplace) {
-      const { id, numero, annulee_le, annulation_motif, rappel_fait_le, rappel_canal, jeton_rappel, created_at, user_id, facture_id, ...reste } = remplace; // eslint-disable-line no-unused-vars
+      const { id, numero, annulee_le, annulation_motif, rappel_fait_le, rappel_canal, jeton_rappel, created_at, user_id, facture_id, emetteur, ...reste } = remplace; // eslint-disable-line no-unused-vars
       return { ...reste, remplace_id: remplace.id };
     }
     const b = nouveauBrouillon({ client, precedent, entreprise });
-    return { ...b, signature: signatureConnue, intervenant_nom: b.intervenant_nom || [...ramonages].find((r) => r.intervenant_nom)?.intervenant_nom || '' };
+    const intervenant = b.intervenant_nom || [...ramonages].find((r) => r.intervenant_nom)?.intervenant_nom || '';
+    return { ...b, intervenant_nom: intervenant, signature: signaturePour(intervenant) };
   });
+  // Signature reprise (pas tracée ici) : elle suit le nom de l'intervenant
+  const [signatureReprise, setSignatureReprise] = useState(!remplace);
+  // Refus des rappels dit le jour du passage (CPCE L. 34-5, al. 4 : au recueil des coordonnées)
+  const [refusRappels, setRefusRappels] = useState(!!client?.rappels_refuses_le);
   const [nbSaisi, setNbSaisi] = useState(null);
   const [prochainManuel, setProchainManuel] = useState(!!remplace);
   const [etape, setEtape] = useState('saisie');
@@ -124,9 +132,10 @@ export default function SaisieRamonage({ client, precedent = null, remplace = nu
   const corps = useRef(null);
 
   const maj = (champs) => setForm((f) => ({ ...f, ...champs }));
+  const changerIntervenant = (nom) => setForm((f) => ({ ...f, intervenant_nom: nom, ...(signatureReprise ? { signature: signaturePour(nom) } : {}) }));
   const nbCalcule = nbDansAnnee(ramonages, form.appareil_ref, form.realise_le, remplace?.id);
   const nb = nbSaisi ?? (remplace ? remplace.nb_dans_annee : nbCalcule);
-  const donnees = { ...form, nb_dans_annee: nb };
+  const donnees = { ...form, nb_dans_annee: nb, emetteur: emetteurDe(entreprise) };
   const erreurDe = (champ) => erreurs.find((e) => e.champ === champ)?.message;
 
   useEffect(() => { corps.current?.scrollTo?.(0, 0); }, [etape]);
@@ -161,14 +170,14 @@ export default function SaisieRamonage({ client, precedent = null, remplace = nu
     if (enCours) return;
     setEnCours(true);
     try {
-      await onEnregistrer(donnees);
+      await onEnregistrer(donnees, { refusRappels: refusRappels && !client?.rappels_refuses_le });
     } finally {
       setEnCours(false);
     }
   };
 
   const apercu = useMemo(() => (etape === 'apercu'
-    ? buildAttestationRamonageHtml({ ramonage: { ...donnees, numero: null }, entreprise, precedent: ramonagePrecedent(ramonages, donnees), remplace })
+    ? buildAttestationRamonageHtml({ ramonage: { ...donnees, numero: null }, entreprise, precedent: ramonagePrecedent(ramonages, donnees), remplace, rappelsRefuses: refusRappels })
     : ''), [etape]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const solide = conseilsExiges(form);
@@ -236,7 +245,7 @@ export default function SaisieRamonage({ client, precedent = null, remplace = nu
               )}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <Champ id="ramonage-intervenant_nom" libelle="Intervenant (nom de la personne qui signe)" value={form.intervenant_nom}
-                  erreur={erreurDe('intervenant_nom')} onChange={(e) => maj({ intervenant_nom: e.target.value })} />
+                  erreur={erreurDe('intervenant_nom')} onChange={(e) => changerIntervenant(e.target.value)} />
                 <Champ libelle="Ramonages de cet appareil dans l’année" type="text" inputMode="numeric" value={String(nb)}
                   aide={nbSaisi === null ? 'Compté d’après vos attestations ; modifiable.' : undefined}
                   onChange={(e) => { const n = parseInt(e.target.value, 10); setNbSaisi(Number.isFinite(n) ? Math.min(12, Math.max(1, n)) : 1); }} />
@@ -312,10 +321,18 @@ export default function SaisieRamonage({ client, precedent = null, remplace = nu
               <Champ libelle="Prix (€ HT)" facultatif type="text" inputMode="decimal" value={form.prix_ht === null || form.prix_ht === undefined ? '' : String(form.prix_ht).replace('.', ',')}
                 aide="Repris du dernier passage ou de vos tarifs ; il sert à la facture."
                 onChange={(e) => { const v = e.target.value.replace(',', '.'); maj({ prix_ht: v === '' ? null : v }); }} />
+              <label className="flex items-start gap-3 min-h-[44px] cursor-pointer">
+                <input type="checkbox" className="mt-1 h-5 w-5 accent-[rgb(var(--accent))]" checked={refusRappels}
+                  disabled={!!client?.rappels_refuses_le} onChange={(e) => setRefusRappels(e.target.checked)} />
+                <span>
+                  <span className="block text-base text-encre">Le client refuse les rappels de son prochain ramonage</span>
+                  <span className="block text-sm text-encre-3">{client?.rappels_refuses_le ? 'Déjà noté sur sa fiche.' : 'Noté sur sa fiche : ni e-mail automatique, ni SMS proposé.'}</span>
+                </span>
+              </label>
             </Section>
 
             <Section titre="Signature">
-              <Signature valeur={form.signature} onChange={(s) => maj({ signature: s })} />
+              <Signature valeur={form.signature} onChange={(s) => { setSignatureReprise(false); maj({ signature: s }); }} />
             </Section>
 
             {erreurs.length > 0 && (

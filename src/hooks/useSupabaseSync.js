@@ -1007,16 +1007,19 @@ export const FIELD_MAPPINGS = {
   // ── Attestations de ramonage (migration 104) ────────────────────────
   // Le numéro, le jeton du lien de désinscription et la date de création sont posés par la base, jamais envoyés.
   // Une attestation est figée dès l'insertion : à la mise à jour, la base ignore tout sauf la facture liée,
-  // l'annulation et le suivi du rappel.
+  // l'annulation et le suivi du rappel. Ceux-là ne partent que s'ils sont connus de la ligne : une création rejouée
+  // (upsert, file hors ligne) n'efface ni le rappel noté ni l'annulation faits entre-temps (relecture gardien-securite, F3).
   ramonages: {
     toSupabase: (item) => ({
       id: item.id,
       client_id: item.client_id || null,
       appareil_ref: item.appareil_ref,
       remplace_id: item.remplace_id || null,
-      facture_id: item.facture_id || null,
+      ...Object.fromEntries(['facture_id', 'annulee_le', 'annulation_motif', 'rappel_fait_le', 'rappel_canal']
+        .filter((cle) => item[cle] !== undefined).map((cle) => [cle, item[cle] || null])),
       realise_le: item.realise_le,
       intervenant_nom: item.intervenant_nom || '',
+      emetteur: item.emetteur || null,
       client_nom: item.client_nom || '',
       client_contact: item.client_contact || null,
       qualite_client: item.qualite_client,
@@ -1039,10 +1042,6 @@ export const FIELD_MAPPINGS = {
       nb_dans_annee: Number(item.nb_dans_annee) || 1,
       prix_ht: item.prix_ht === '' || item.prix_ht === null || item.prix_ht === undefined ? null : Number(item.prix_ht),
       signature: item.signature || null,
-      annulee_le: item.annulee_le || null,
-      annulation_motif: item.annulation_motif || null,
-      rappel_fait_le: item.rappel_fait_le || null,
-      rappel_canal: item.rappel_canal || null,
     }),
     fromSupabase: (row) => ({
       id: row.id,
@@ -1053,6 +1052,7 @@ export const FIELD_MAPPINGS = {
       facture_id: row.facture_id || null,
       realise_le: row.realise_le,
       intervenant_nom: row.intervenant_nom || '',
+      emetteur: (typeof row.emetteur === 'string' ? JSON.parse(row.emetteur) : row.emetteur) || null,
       client_nom: row.client_nom || '',
       client_contact: row.client_contact || '',
       qualite_client: row.qualite_client,

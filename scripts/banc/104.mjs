@@ -50,15 +50,16 @@ export async function verifier({ db, q, en, commeAnonyme, verifier }) {
   verifier(!!ailleurs, `104 : pas d'attestation dans l'organisation d'un autre (${ailleurs})`);
 
   // 3. Contenu figé dès l'insertion ; le suivi du rappel et l'annulation passent
-  const contenu = async (id) => (await q(`SELECT numero, vacuite, client_nom, prochain_avant::text AS prochain, prix_ht, user_id,
+  await q(`UPDATE ramonages SET emetteur = '{"nom":"Ramonage 104"}' WHERE id = $1`, [a.id]);
+  const contenu = async (id) => (await q(`SELECT numero, vacuite, client_nom, emetteur->>'nom' AS emetteur, prochain_avant::text AS prochain, prix_ht, user_id,
     rappel_canal, rappel_fait_le, annulee_le, annulation_motif FROM ramonages WHERE id = $1`, [id])).rows[0];
   const avant = await contenu(a.id);
   const reecrit = await refus(() => en(SOLO, () => q(
-    `UPDATE ramonages SET numero = 'RAM-1999-00001', vacuite = 'non_assuree', vacuite_precision = 'x', client_nom = 'Autre',
+    `UPDATE ramonages SET numero = 'RAM-1999-00001', vacuite = 'non_assuree', vacuite_precision = 'x', client_nom = 'Autre', emetteur = '{"nom":"Autre"}',
        prochain_avant = '2030-01-01', prix_ht = 1, user_id = $2, rappel_canal = 'sms', rappel_fait_le = now() WHERE id = $1`, [a.id, PATRON])));
   const apres = await contenu(a.id);
   verifier(reecrit === false && apres.numero === avant.numero && apres.vacuite === 'assuree' && apres.client_nom === avant.client_nom
-    && apres.prochain === avant.prochain && Number(apres.prix_ht) === 100 && apres.user_id === SOLO
+    && apres.prochain === avant.prochain && Number(apres.prix_ht) === 100 && apres.user_id === SOLO && apres.emetteur === 'Ramonage 104'
     && apres.rappel_canal === 'sms' && apres.rappel_fait_le !== null,
     `104 : le contenu d'une attestation ne change plus ; le suivi du rappel s'enregistre (${reecrit} / ${apres.numero}, ${apres.vacuite}, ${apres.rappel_canal})`);
   const sansMotif = await refus(() => en(SOLO, () => q(`UPDATE ramonages SET annulee_le = now() WHERE id = $1`, [b.id])));
@@ -147,11 +148,65 @@ export async function verifier({ db, q, en, commeAnonyme, verifier }) {
   const serveur = (await q(`SELECT rappel_canal, observations FROM ramonages WHERE id = $1`, [nonAssureePrecisee.id])).rows[0];
   verifier(serveur.rappel_canal === 'email_auto' && serveur.observations === 'Note du serveur', '104 : le serveur n\'est pas concerné');
 
+  // 11. Relecture gardien-securite du 24 oct. 2026
+  // M1 : le client d'une autre organisation est refusé ; le lien n'écrit que dans l'organisation de l'attestation
+  const clientEtranger = await refus(() => creer({ client: clientPatron }));
+  verifier(/Client inconnu dans votre organisation/.test(clientEtranger || ''), `104 : le client d'une autre organisation est refusé (${clientEtranger})`);
+  await q('ALTER TABLE ramonages DISABLE TRIGGER trg_sceller_ramonage');
+  const forge = (await q(`INSERT INTO ramonages (user_id, organization_id, numero, client_id, appareil_ref, realise_le, intervenant_nom, client_nom,
+      qualite_client, adresse_intervention, appareil_type, combustible, conduit, methode, vacuite, prochain_avant)
+    VALUES ($1, $2, 'RAM-FORGE', $3, $4, now(), 'I', 'C', 'autre', 'A', 'autre', 'autre', 'autre', 'mecanique_manuelle', 'assuree', '2099-01-01')
+    RETURNING jeton_rappel`, [SOLO, ORG_SOLO, clientPatron, appareil])).rows[0];
+  await q('ALTER TABLE ramonages ENABLE TRIGGER trg_sceller_ramonage');
+  await q(`SELECT refuser_rappels_ramonage($1)`, [forge.jeton_rappel]);
+  const patronIntact = (await q(`SELECT rappels_refuses_le FROM clients WHERE id = $1`, [clientPatron])).rows[0].rappels_refuses_le;
+  verifier(patronIntact === null, '104 : le lien d\'une attestation ne pose pas le refus chez le client d\'une autre organisation');
+
+  // M2 : un salarié retiré de l'équipe ne lit ni n'annule plus les attestations qu'il a faites
+  const ex = '10400000-0000-4000-8000-0000000000ee';
+  await q(`INSERT INTO auth.users VALUES ($1, 'ex104@x.fr')`, [ex]);
+  await q(`INSERT INTO organization_members (organization_id, user_id, role) VALUES ($1, $2, 'ouvrier')`, [ORG_PATRON, ex]);
+  const faite = await creer({ par: ex, org: ORG_PATRON, client: clientPatron });
+  await q(`DELETE FROM organization_members WHERE user_id = $1`, [ex]);
+  const luApres = (await en(ex, () => q(`SELECT count(*)::int AS n FROM ramonages WHERE id = $1`, [faite.id]))).rows[0].n;
+  await en(ex, () => q(`UPDATE ramonages SET annulee_le = now(), annulation_motif = 'Départ' WHERE id = $1`, [faite.id]));
+  const nonAnnulee = (await q(`SELECT annulee_le FROM ramonages WHERE id = $1`, [faite.id])).rows[0].annulee_le === null;
+  verifier(luApres === 0 && nonAnnulee, `104 : sorti de l'équipe, l'auteur ne lit ni n'annule plus ses attestations (${luApres} lue)`);
+
+  // F2 : l'annulation est datée par la base ; on ne remplace qu'une attestation annulée, et une seule fois
+  const c2 = await creer({});
+  await en(SOLO, () => q(`UPDATE ramonages SET annulee_le = '2001-01-01', annulation_motif = 'Erreur' WHERE id = $1`, [c2.id]));
+  const dateAnnulation = (await q(`SELECT annulee_le > now() - interval '1 hour' AS recente FROM ramonages WHERE id = $1`, [c2.id])).rows[0].recente;
+  const remplacer = (id) => en(SOLO, () => q(`INSERT INTO ramonages (user_id, organization_id, client_id, appareil_ref, realise_le, intervenant_nom,
+      client_nom, qualite_client, adresse_intervention, appareil_type, combustible, conduit, methode, vacuite, prochain_avant, remplace_id)
+    VALUES ($1, $2, $3, $4, now(), 'I', 'C', 'proprietaire', 'A', 'insert', 'bois', 'maconne', 'mecanique_manuelle', 'assuree', '2099-01-01', $5)
+    RETURNING id`, [SOLO, ORG_SOLO, clientSolo, appareil, id]));
+  const vivanteRemplacee = await refus(() => remplacer(nonAssureePrecisee.id));
+  const premierRemplacement = await refus(() => remplacer(c2.id));
+  const second = await refus(() => remplacer(c2.id));
+  verifier(dateAnnulation === true && !!vivanteRemplacee && premierRemplacement === false && !!second,
+    `104 : annulation datée par la base, seule une annulée se remplace, une fois (${vivanteRemplacee ? 'vivante refusée' : 'vivante acceptée'} / ${second ? 'second refusé' : 'second accepté'})`);
+
+  // F5 : un compte n'efface pas le refus d'un client ; le serveur le peut
+  await en(SOLO, () => q(`UPDATE clients SET rappels_refuses_le = NULL WHERE id = $1`, [clientSolo]));
+  const toujours = (await q(`SELECT rappels_refuses_le FROM clients WHERE id = $1`, [clientSolo])).rows[0].rappels_refuses_le;
+  verifier(toujours !== null, '104 : le refus des rappels ne s\'efface pas par l\'API');
+
+  // Non-régression : la vraie suppression du compte d'un salarié rend ses attestations au gérant
+  const sal = '10400000-0000-4000-8000-0000000000ef';
+  await q(`INSERT INTO auth.users VALUES ($1, 'sal104@x.fr')`, [sal]);
+  await q(`INSERT INTO organization_members (organization_id, user_id, role) VALUES ($1, $2, 'ouvrier')`, [ORG_PATRON, sal]);
+  const deSal = await creer({ par: sal, org: ORG_PATRON, client: clientPatron });
+  const sup = await refus(() => en(sal, () => q(`SELECT supprimer_mon_compte() AS b`)));
+  const rendue = (await q(`SELECT user_id FROM ramonages WHERE id = $1`, [deSal.id])).rows[0]?.user_id;
+  verifier(sup === false && rendue === PATRON, `104 : la suppression du compte d'un salarié rend ses attestations au gérant (${sup || rendue})`);
+  await q(`DELETE FROM auth.users WHERE id = $1`, [ex]);
+
   const rejeu = await refus(() => db.exec(fs.readFileSync(MIGRATION, 'utf8')));
   verifier(rejeu === false, `104 : la migration se rejoue sans erreur (${rejeu})`);
 
   // Ménage (en propriétaire)
-  await q(`DELETE FROM ramonages WHERE user_id = ANY($1)`, [[SOLO, PATRON]]);
+  await q(`DELETE FROM ramonages WHERE user_id = ANY($1)`, [[SOLO, PATRON, ex]]);
   await q('DELETE FROM devis WHERE id = ANY($1)', [[factureSolo, devisSolo, facturePatron]]);
   await q('DELETE FROM clients WHERE id = ANY($1)', [[clientSolo, clientPatron]]);
 }

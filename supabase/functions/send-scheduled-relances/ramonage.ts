@@ -11,6 +11,8 @@
  *   - jamais à un client qui a refusé, un seul rappel par échéance, seulement pour un ramonage enregistré.
  */
 
+import { estEmail } from '../_shared/adresses.ts';
+
 export interface RamonageServeur {
   id: string;
   client_id: string | null;
@@ -64,12 +66,14 @@ export function rappelsAEnvoyer(
     const actuel = derniers.get(r.appareil_ref);
     if (!actuel || String(r.realise_le) > String(actuel.realise_le)) derniers.set(r.appareil_ref, r);
   }
-  const delai = Math.max(0, Number(jours) || 0);
+  // Borné comme dans l'app (Paramètres → Ramonage : 1 à 120 jours)
+  const delai = Math.min(120, Math.max(1, Math.round(Number(jours) || 30)));
   const dus: { ramonage: RamonageServeur; client: ClientServeur }[] = [];
   for (const r of derniers.values()) {
     const client = r.client_id ? parClient.get(r.client_id) : undefined;
     if (!client || client.rappels_refuses_le || r.rappel_fait_le || !r.prochain_avant) continue;
-    if (!String(client.email || '').includes('@')) continue;
+    // Une adresse que send-email refuserait échouerait chaque nuit (et tiendrait l'alerte 088 allumée) : écartée ici
+    if (!estEmail(String(client.email || '').trim())) continue;
     const prochain = String(r.prochain_avant).slice(0, 10);
     if (aujourdhui < decalerJour(prochain, -delai) || aujourdhui > prochain) continue;
     dus.push({ ramonage: r, client });
@@ -105,7 +109,7 @@ export function emailRappelRamonage({ entreprise, client, ramonage, lien }: {
 }): { objet: string; html: string; texte: string } {
   const prochain = dateFr(ramonage.prochain_avant);
   const dernier = dateFr(String(ramonage.realise_le).slice(0, 10));
-  const appareil = `${TYPES[ramonage.appareil_type || ''] || 'appareil'}${ramonage.localisation ? ` (${ramonage.localisation})` : ''}`;
+  const appareil = `${TYPES[ramonage.appareil_type || ''] || 'appareil'}${ramonage.localisation ? `, ${ramonage.localisation}` : ''}`;
   const qui = [client.prenom, client.nom].filter(Boolean).join(' ').trim();
   const contact = [entreprise.telephone, entreprise.email].filter(Boolean).join(' · ');
   const pourquoi = `Vous recevez ce rappel parce que ${entreprise.nom}${[entreprise.adresse, entreprise.telephone].filter(Boolean).length ? ` (${[entreprise.adresse, entreprise.telephone].filter(Boolean).join(', ')})` : ''} a ramoné votre conduit le ${dernier}.`;
@@ -115,13 +119,13 @@ export function emailRappelRamonage({ entreprise, client, ramonage, lien }: {
   const texte = [
     `Bonjour${qui ? ` ${qui}` : ''},`,
     '',
-    `Votre ramonage (${appareil}) est à prévoir avant le ${prochain}.`,
+    `Le ramonage de votre ${appareil} est à prévoir avant le ${prochain}.`,
     contact ? `Pour convenir d'un rendez-vous : ${contact}, ou répondez simplement à cet e-mail.` : 'Pour convenir d\'un rendez-vous, répondez simplement à cet e-mail.',
     '',
     entreprise.nom,
     '',
     pourquoi,
-    `Pour ne plus recevoir de rappel : ${lien}, ou répondez STOP.`,
+    `Pour ne plus recevoir de rappel : ${lien} — ou répondez STOP à cet e-mail.`,
   ].join('\n');
 
   const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"></head>
@@ -131,13 +135,13 @@ export function emailRappelRamonage({ entreprise, client, ramonage, lien }: {
   <tr><td style="background:${couleur};color:#ffffff;padding:18px 24px;font-size:17px;font-weight:bold;">${echapper(entreprise.nom)}</td></tr>
   <tr><td style="padding:24px;font-size:15px;line-height:1.55;">
     <p style="margin:0 0 14px;">Bonjour${qui ? ` ${echapper(qui)}` : ''},</p>
-    <p style="margin:0 0 14px;">Votre ramonage (${echapper(appareil)}) est à prévoir avant le <strong>${echapper(prochain)}</strong>.</p>
+    <p style="margin:0 0 14px;">Le ramonage de votre ${echapper(appareil)} est à prévoir avant le <strong>${echapper(prochain)}</strong>.</p>
     <p style="margin:0 0 14px;">${contact ? `Pour convenir d’un rendez-vous : ${echapper(contact)}, ou répondez simplement à cet e-mail.` : 'Pour convenir d’un rendez-vous, répondez simplement à cet e-mail.'}</p>
     <p style="margin:0;">${echapper(entreprise.nom)}</p>
   </td></tr>
   <tr><td style="background:#f8fafc;padding:16px 24px;font-size:12px;color:#475569;border-top:1px solid #e2e8f0;line-height:1.5;">
     <p style="margin:0 0 6px;">${echapper(pourquoi)}</p>
-    <p style="margin:0;">Pour ne plus recevoir de rappel : <a href="${echapper(lien)}" style="color:#1e3a8a;">ne plus recevoir de rappel</a>, ou répondez STOP.</p>
+    <p style="margin:0;">Pour ne plus recevoir de rappel : <a href="${echapper(lien)}" style="color:#1e3a8a;">Ne plus recevoir de rappel</a> — ou répondez STOP à cet e-mail.</p>
   </td></tr>
 </table></td></tr></table></body></html>`;
 

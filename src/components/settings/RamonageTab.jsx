@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Flame, BellRing } from 'lucide-react';
+import { Flame, BellRing, AlertTriangle } from 'lucide-react';
 import Carte from '../ui/Carte';
 import Champ from '../ui/Champ';
 import { TYPES_APPAREIL, AIDE_FREQUENCE, DELAI_RAPPEL_DEFAUT } from '../../lib/ramonage';
@@ -102,6 +102,13 @@ export default function RamonageTab({ entreprise, setEntreprise }) {
                 libelle="Envoyer les rappels automatiquement par e-mail"
                 description="Chaque matin, Mallettico envoie en votre nom un e-mail aux clients dont le ramonage approche, une seule fois par échéance, avec un lien pour ne plus en recevoir. Jamais à un client qui a refusé les rappels. Les clients sans e-mail restent dans « À faire »."
               />
+              {envoiAuto && !String(entreprise?.email || '').includes('@') && (
+                <p role="alert" className="flex gap-2 text-sm text-alerte-texte">
+                  <AlertTriangle size={16} className="flex-shrink-0 mt-0.5" aria-hidden="true" />
+                  Ajoutez votre e-mail dans Paramètres → Mon entreprise : vos clients doivent pouvoir vous répondre. Sans lui, aucun rappel automatique ne part.
+                </p>
+              )}
+              <p className="text-sm text-encre-3">Si un client vous répond STOP ou vous le dit, touchez « Le client refuse les rappels » sur sa fiche (onglet Ramonage).</p>
               <p className="text-sm text-encre-3">{AIDE_FREQUENCE} La date du prochain ramonage est la vôtre : douze mois après le passage par défaut, modifiable à chaque attestation.</p>
             </div>
           </Carte>
@@ -109,6 +116,8 @@ export default function RamonageTab({ entreprise, setEntreprise }) {
           <Carte>
             <h3 className="text-lg font-semibold text-encre mb-1">Vos tarifs</h3>
             <p className="text-sm text-encre-2 mb-3">Prix hors taxes proposé pour un nouvel appareil, selon son type (facultatif). Pour un appareil déjà connu, le prix de son dernier passage est repris.</p>
+            {/* Rappel du risque de D-30 (relecture juriste-btp du 24 oct. 2026), sans bloquer */}
+            <p className="text-sm text-encre-2 mb-3">Client particulier : un devis détaillé est obligatoire avant tout ramonage (arrêté du 24 janvier 2017, article 4) et, si le contrat est conclu chez lui, aucun paiement ne peut être reçu avant sept jours (code de la consommation, article L. 221-10). Le parcours ramonage ne fait pas ce devis : faites-le depuis « Devis ».</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {TYPES_APPAREIL.map((t) => (
                 <Champ

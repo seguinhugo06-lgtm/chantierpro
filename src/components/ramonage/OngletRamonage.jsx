@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Flame, Plus } from 'lucide-react';
+import { Flame, Plus, BellOff } from 'lucide-react';
 import { Bouton } from '../ui/Bouton';
 import Carte from '../ui/Carte';
 import EtatVide from '../ui/EtatVide';
@@ -46,9 +46,10 @@ export default function OngletRamonage({ client, entreprise, updateClient, setPa
     else setChoixAppareil((v) => !v);
   };
 
-  const enregistrer = async (donnees) => {
+  const enregistrer = async (donnees, { refusRappels = false } = {}) => {
     const enregistre = await addRamonage(donnees);
     if (!enregistre) return;
+    if (refusRappels) await updateClient(client.id, { rappels_refuses_le: new Date().toISOString() });
     setSaisie(null);
     setChoixAppareil(false);
     setFicheId(enregistre.id);
@@ -70,9 +71,14 @@ export default function OngletRamonage({ client, entreprise, updateClient, setPa
         <RappelRamonage key={r.ramonage.id} rappel={r} entreprise={entreprise} suivreRamonage={suivreRamonage} refuserRappels={refuserRappels}
           envoiAutoPrevu={!!entreprise?.ramonageEnvoiAuto} />
       ))}
-      {client.rappels_refuses_le && (
+      {client.rappels_refuses_le ? (
         <p className="text-sm text-encre-2">Ce client a refusé les rappels de ramonage le {jourFr(jourDe(client.rappels_refuses_le))}.</p>
-      )}
+      ) : appareils.length > 0 ? (
+        // Un refus dit au téléphone, par SMS (STOP) ou de vive voix se note à tout moment (CPCE L. 34-5 ; RGPD art. 21)
+        <div className="flex justify-start">
+          <Bouton variante="discret" taille="compacte" icone={BellOff} onClick={() => refuserRappels(client)}>Le client refuse les rappels</Bouton>
+        </div>
+      ) : null}
 
       {appareils.length === 0 ? (
         <Carte marge="aucun">

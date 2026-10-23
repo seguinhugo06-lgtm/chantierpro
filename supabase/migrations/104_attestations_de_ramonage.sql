@@ -11,6 +11,7 @@
 --      (client, lieu, appareil, conduit) : l'attestation ne bouge pas si la fiche client change. Les passages d'un
 --      même appareil partagent `appareil_ref` (pas de table d'appareils : la fiche liste le dernier passage).
 --      Lecture et écriture par les membres de l'organisation, comme les devis ; aucune suppression par l'app ;
+--      L'identité de l'émetteur (nom imprimé, forme, adresse, SIRET, RC pro) y est recopiée aussi (`emetteur`).
 --   2. numéro attribué par la base, sous verrou, à l'insertion : RAM-AAAA-NNNNN, série par organisation et par
 --      année (Paris), à la suite du plus grand, la proposition de l'app ignorée ; unique ;
 --   3. contenu figé dès l'insertion pour un compte connecté (valeurs envoyées ignorées, comme 103) : seuls
@@ -31,6 +32,11 @@
 --   select count(*) from information_schema.columns where table_name = 'clients' and column_name = 'rappels_refuses_le'; -- 1
 --   select has_function_privilege('anon', 'public.refuser_rappels_ramonage(uuid)', 'execute');          -- true
 --   select has_function_privilege('anon', 'public.sceller_ramonage()', 'execute');                       -- false
+--   select has_table_privilege('authenticated', 'public.ramonages', 'DELETE');                           -- false
+--   select tgname from pg_trigger where tgrelid = 'public.clients'::regclass and tgname = 'trg_garder_refus_rappels'; -- 1 ligne
+-- Relecture gardien-securite du 24 oct. 2026 : applicable après M1 (client d'une autre organisation), M2 (lecture par
+-- l'auteur sorti de l'équipe), F1 (droits), F2 (annulation datée par la base, remplacement d'une annulée, une fois),
+-- F5 (refus non effaçable) — corrigés ici.
 -- ============================================================
 
 -- 1. La table
@@ -45,7 +51,9 @@ CREATE TABLE IF NOT EXISTS public.ramonages (
   facture_id UUID REFERENCES public.devis(id) ON DELETE SET NULL,
   realise_le TIMESTAMPTZ NOT NULL,
   intervenant_nom TEXT NOT NULL CHECK (length(btrim(intervenant_nom)) > 0),
-  -- Copie à la saisie de ce qui est imprimé
+  -- Copie à la saisie de ce qui est imprimé, émetteur compris (relecture juriste-btp du 24 oct. 2026 : un PDF
+  -- retéléchargé après un changement d'assureur ou d'adresse ne change pas d'émetteur)
+  emetteur JSONB CHECK (emetteur IS NULL OR jsonb_typeof(emetteur) = 'object'),
   client_nom TEXT NOT NULL CHECK (length(btrim(client_nom)) > 0),
   client_contact TEXT,
   qualite_client TEXT NOT NULL CHECK (qualite_client IN ('proprietaire', 'locataire', 'autre')),
@@ -88,6 +96,8 @@ COMMENT ON TABLE public.ramonages IS
 CREATE UNIQUE INDEX IF NOT EXISTS ramonages_numero_unique
   ON public.ramonages (coalesce(organization_id, user_id), numero) WHERE numero IS NOT NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS ramonages_jeton_rappel_unique ON public.ramonages (jeton_rappel);
+-- Une attestation annulée n'est remplacée qu'une fois
+CREATE UNIQUE INDEX IF NOT EXISTS ramonages_remplace_unique ON public.ramonages (remplace_id) WHERE remplace_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_ramonages_user ON public.ramonages (user_id);
 CREATE INDEX IF NOT EXISTS idx_ramonages_org ON public.ramonages (organization_id);
 CREATE INDEX IF NOT EXISTS idx_ramonages_client ON public.ramonages (client_id);
@@ -98,18 +108,21 @@ ALTER TABLE public.ramonages ENABLE ROW LEVEL SECURITY;
 
 -- Membres de l'organisation, comme les devis ; aucune suppression (aucune policy DELETE : l'attestation remise
 -- reste ; une erreur s'annule). La suppression du compte passe par la cascade de auth.users.
+-- Relecture gardien-securite (M2) : l'auteur seul ne suffit pas (un salarié retiré de l'équipe lisait et annulait
+-- encore ses attestations) ; sans organisation, l'auteur (un compte sans équipe : 079 remplit sinon l'organisation)
 DROP POLICY IF EXISTS "Ramonages : lecture" ON public.ramonages;
 CREATE POLICY "Ramonages : lecture" ON public.ramonages FOR SELECT TO authenticated
-  USING (user_id = auth.uid() OR organization_id = ANY (public.user_org_ids(auth.uid())));
+  USING (organization_id = ANY (public.user_org_ids(auth.uid())) OR (organization_id IS NULL AND user_id = auth.uid()));
 DROP POLICY IF EXISTS "Ramonages : création" ON public.ramonages;
 CREATE POLICY "Ramonages : création" ON public.ramonages FOR INSERT TO authenticated
   WITH CHECK (user_id = auth.uid() AND (organization_id IS NULL OR organization_id = ANY (public.user_org_ids(auth.uid()))));
 DROP POLICY IF EXISTS "Ramonages : suivi" ON public.ramonages;
 CREATE POLICY "Ramonages : suivi" ON public.ramonages FOR UPDATE TO authenticated
-  USING (user_id = auth.uid() OR organization_id = ANY (public.user_org_ids(auth.uid())))
-  WITH CHECK (user_id = auth.uid() OR organization_id = ANY (public.user_org_ids(auth.uid())));
+  USING (organization_id = ANY (public.user_org_ids(auth.uid())) OR (organization_id IS NULL AND user_id = auth.uid()))
+  WITH CHECK (organization_id = ANY (public.user_org_ids(auth.uid())) OR (organization_id IS NULL AND user_id = auth.uid()));
 
-REVOKE ALL ON public.ramonages FROM anon;
+-- Les droits par défaut laissent DELETE, TRUNCATE… aux comptes : tout retirer, puis accorder le nécessaire (F1)
+REVOKE ALL ON public.ramonages FROM anon, authenticated;
 GRANT SELECT, INSERT, UPDATE ON public.ramonages TO authenticated;
 
 -- 2. Organisation : remplie si absente (079), contrôlée (084) — mêmes déclencheurs que les autres tables métier
@@ -167,10 +180,19 @@ BEGIN
   IF NEW.facture_id IS NOT NULL AND NOT public.ramonage_facture_valide(NEW.facture_id, NEW.organization_id, NEW.user_id) THEN
     RAISE EXCEPTION 'Facture inconnue dans votre organisation' USING ERRCODE = '42501';
   END IF;
+  -- Le client : de la même organisation (relecture gardien-securite, M1 : sinon le lien de désinscription écrivait
+  -- chez le client d'une autre organisation)
+  IF NEW.client_id IS NOT NULL AND NOT EXISTS (
+    SELECT 1 FROM public.clients c WHERE c.id = NEW.client_id AND coalesce(c.organization_id, c.user_id) = v_serie
+  ) THEN
+    RAISE EXCEPTION 'Client inconnu dans votre organisation' USING ERRCODE = '42501';
+  END IF;
+  -- « Annule et remplace » : une attestation déjà annulée de la même organisation (F2)
   IF NEW.remplace_id IS NOT NULL AND NOT EXISTS (
     SELECT 1 FROM public.ramonages r WHERE r.id = NEW.remplace_id AND coalesce(r.organization_id, r.user_id) = v_serie
+       AND r.annulee_le IS NOT NULL
   ) THEN
-    RAISE EXCEPTION 'Attestation remplacée inconnue dans votre organisation' USING ERRCODE = '42501';
+    RAISE EXCEPTION 'Seule une attestation annulée de votre organisation peut être remplacée' USING ERRCODE = '42501';
   END IF;
   RETURN NEW;
 END;
@@ -203,10 +225,12 @@ BEGIN
   IF NEW.remplace_id IS NOT NULL AND NEW.remplace_id IS DISTINCT FROM OLD.remplace_id THEN
     NEW.remplace_id := OLD.remplace_id;
   END IF;
-  -- L'annulation : une fois, définitive
+  -- L'annulation : une fois, définitive, à la date du jour (la date envoyée est ignorée : F2)
   IF OLD.annulee_le IS NOT NULL THEN
     NEW.annulee_le := OLD.annulee_le;
     NEW.annulation_motif := OLD.annulation_motif;
+  ELSIF NEW.annulee_le IS NOT NULL THEN
+    NEW.annulee_le := now();
   END IF;
   -- La facture liée : une facture que le compte voit (RLS), de la même organisation
   IF NEW.facture_id IS NOT NULL AND NEW.facture_id IS DISTINCT FROM OLD.facture_id AND NOT EXISTS (
@@ -241,20 +265,44 @@ SET search_path = public, pg_temp
 AS $$
 DECLARE
   v_client UUID;
+  v_serie UUID;
   v_trouve BOOLEAN;
 BEGIN
   IF p_jeton IS NULL THEN
     RETURN false;
   END IF;
-  SELECT true, client_id INTO v_trouve, v_client FROM public.ramonages WHERE jeton_rappel = p_jeton;
+  SELECT true, client_id, coalesce(organization_id, user_id) INTO v_trouve, v_client, v_serie
+    FROM public.ramonages WHERE jeton_rappel = p_jeton;
   IF NOT coalesce(v_trouve, false) THEN
     RETURN false;
   END IF;
+  -- Le client de l'attestation, dans l'organisation de l'attestation seulement
   IF v_client IS NOT NULL THEN
-    UPDATE public.clients SET rappels_refuses_le = coalesce(rappels_refuses_le, now()) WHERE id = v_client;
+    UPDATE public.clients SET rappels_refuses_le = coalesce(rappels_refuses_le, now())
+     WHERE id = v_client AND coalesce(organization_id, user_id) = v_serie;
   END IF;
   RETURN true;
 END;
 $$;
 REVOKE ALL ON FUNCTION public.refuser_rappels_ramonage(UUID) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.refuser_rappels_ramonage(UUID) TO anon, authenticated;
+
+-- 6. Un refus ne s'efface pas par l'API (relecture gardien-securite, F5 : la prospection reprendrait malgré l'opposition
+--    du client, RGPD art. 21) ; le serveur n'est pas concerné. Seulement quand la colonne est écrite.
+CREATE OR REPLACE FUNCTION public.garder_refus_rappels()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  IF current_user IN ('authenticated', 'anon') AND OLD.rappels_refuses_le IS NOT NULL THEN
+    NEW.rappels_refuses_le := OLD.rappels_refuses_le;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+REVOKE ALL ON FUNCTION public.garder_refus_rappels() FROM PUBLIC, anon, authenticated;
+
+DROP TRIGGER IF EXISTS trg_garder_refus_rappels ON public.clients;
+CREATE TRIGGER trg_garder_refus_rappels BEFORE UPDATE OF rappels_refuses_le ON public.clients
+  FOR EACH ROW EXECUTE FUNCTION public.garder_refus_rappels();

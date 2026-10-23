@@ -10,6 +10,7 @@
  * L'app ne fixe aucune fréquence (R. 1331-71 : au moins tous les douze mois, davantage si un arrêté local l'impose).
  */
 import { jourLocal, ajouterMois, dateLue } from './dates';
+import { nomImprime, formeImprimee } from './identiteEntreprise';
 
 const liste = (paires) => paires.map(([valeur, libelle]) => ({ valeur, libelle }));
 
@@ -29,7 +30,7 @@ export const VACUITES = liste([['assuree', 'Assurée'], ['non_assuree', 'Non ass
 
 /** Constats facultatifs : un point laissé vide n'est pas imprimé. */
 export const CONSTATS = [
-  { cle: 'etat_conduit', libelle: 'État du conduit', options: liste([['bon', 'Bon'], ['passable', 'Passable'], ['mauvais', 'Mauvais']]) },
+  { cle: 'etat_conduit', libelle: 'État apparent du conduit', options: liste([['bon', 'Bon'], ['passable', 'Passable'], ['mauvais', 'Mauvais']]) },
   { cle: 'tubage', libelle: 'Tubage', options: liste([['present', 'Présent'], ['absent', 'Absent'], ['non_visible', 'Non visible']]) },
   { cle: 'depots', libelle: 'Dépôts et suie', options: liste([['faibles', 'Faibles'], ['normaux', 'Normaux'], ['importants', 'Importants']]) },
   { cle: 'bistre', libelle: 'Bistre (dépôt vitrifié)', options: liste([['absent', 'Absent'], ['present', 'Présent']]) },
@@ -42,6 +43,7 @@ export const CONSTATS = [
 
 /** Conseils dus à l'usager au ramonage d'un appareil à combustible solide (R. 1331-77 ; arrêté du 20 juillet 2023, annexe 2). */
 export const CONSEILS = liste([
+  ['ameliorations', 'Améliorations possibles de l’installation'],
   ['usage', 'Bon usage de l’appareil et réduction des émissions'],
   ['combustible', 'Qualité et stockage du combustible'],
   ['frequence', 'Ramonages plus fréquents selon l’usage'],
@@ -156,10 +158,14 @@ export function rappelsDus(ramonages, clients, { jours = DELAI_RAPPEL_DEFAUT, au
 
 const dateFr = (jour) => (jour ? dateLue(String(jour).slice(0, 10)).toLocaleDateString('fr-FR') : '');
 
-/** Le SMS de rappel (texte relu par juriste-btp : identité, objet, opposition par STOP ; jamais « obligatoire »). */
-export function texteSms({ entreprise, ramonage }) {
-  const qui = [entreprise?.nom, entreprise?.tel || entreprise?.telephone].filter(Boolean).join(', ');
-  return `Bonjour, votre ramonage est à prévoir avant le ${dateFr(ramonage?.prochain_avant)}. ${qui}${qui ? ', ' : ''}`
+/**
+ * Le SMS de rappel (texte relu par juriste-btp, 24 oct. 2026 : identité avec « EI », objet, opposition par STOP ;
+ * jamais « obligatoire » ; une échéance passée se dit au passé).
+ */
+export function texteSms({ entreprise, ramonage, aujourdhui = jourLocal() }) {
+  const qui = [nomImprime(entreprise), entreprise?.tel || entreprise?.telephone].filter(Boolean).join(', ');
+  const echeance = String(ramonage?.prochain_avant || '') < aujourdhui ? 'était conseillé avant le' : 'est à prévoir avant le';
+  return `Bonjour, votre ramonage ${echeance} ${dateFr(ramonage?.prochain_avant)}. ${qui}${qui ? ', ' : ''}`
     + `qui a ramoné votre conduit le ${dateFr(jourDe(ramonage?.realise_le))}. Pour ne plus recevoir de rappel, répondez STOP.`;
 }
 
@@ -271,4 +277,23 @@ export function numeroRamonageDemo(ramonages, maintenant = new Date()) {
   const motif = new RegExp(`^RAM-${an}-(\\d{5})$`);
   const dernier = Math.max(0, ...(ramonages || []).map((r) => Number(String(r.numero || '').match(motif)?.[1] || 0)));
   return `RAM-${an}-${String(dernier + 1).padStart(5, '0')}`;
+}
+
+/**
+ * Identité de l'émetteur, recopiée dans l'attestation à son enregistrement puis figée par la base (relecture juriste-btp
+ * du 24 oct. 2026 : un PDF retéléchargé après un changement d'assureur ou d'adresse ne doit pas changer d'émetteur).
+ */
+export function emetteurDe(entreprise) {
+  if (!entreprise) return null;
+  const champs = ['nom', 'formeJuridique', 'nomEntrepreneur', 'capital', 'adresse', 'codePostal', 'ville', 'tel', 'email', 'siteWeb',
+    'siret', 'rcsVille', 'rcsNumero', 'rcsType', 'rcs', 'rcProAssureur', 'rcProNumero', 'couleur', 'donneesFictives'];
+  const e = {};
+  for (const c of champs) {
+    const v = entreprise[c];
+    if (v !== undefined && v !== null && v !== '') e[c] = v;
+  }
+  if (!e.tel && entreprise.telephone) e.tel = entreprise.telephone;
+  e.nomImprime = nomImprime(entreprise);
+  e.formeImprimee = formeImprimee(entreprise);
+  return e;
 }

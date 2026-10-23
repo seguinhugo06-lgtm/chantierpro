@@ -13,7 +13,7 @@ const ramonage = {
   appareil_type: 'poele_bois', combustible: 'bois', conduit: 'tube_chemise', precisions: 'Marque X modèle Y', localisation: 'Salon, RDC',
   methode: 'mecanique_rotative', complement_chimique: true, raccordement: 'ramone', vacuite: 'assuree',
   constats: { etat_conduit: 'bon', depots: 'normaux' }, observations: 'Bois humide', conseils: { choix: ['combustible'], texte: '' },
-  prochain_avant: '2027-10-19', nb_dans_annee: 1,
+  prochain_avant: '2027-10-19', nb_dans_annee: 1, created_at: '2026-10-19T15:00:00',
 };
 
 describe('attestation de ramonage — contenu imprimé', () => {
@@ -37,13 +37,14 @@ describe('attestation de ramonage — contenu imprimé', () => {
   it('client, lieu, qualité, appareil, méthode, complément chimique, dernier ramonage, prochain ramonage', () => {
     for (const t of ['Lucie Exemple', '3 chemin de l’Exemple', 'Propriétaire', 'Poêle à bois', 'Marque X modèle Y', 'Tubé-chemisé',
       'Salon, RDC', 'Mécanique rotative', 'Produit chimique utilisé en complément du ramonage mécanique', '10 octobre 2025 (attestation n° RAM-2025-00007)',
-      'Prochain ramonage conseillé avant le', '19 octobre 2027', 'Fait à Imaginaire, le 19 octobre 2026']) {
+      'Prochain ramonage conseillé avant le', '19 octobre 2027', 'Fait le 19 octobre 2026']) {
       expect(html).toContain(t);
     }
   });
 
   it('constats remplis seulement ; conseils (R. 1331-77) avec leur mention ; foyer fermé : pas une attestation d’entretien', () => {
-    expect(html).toContain('État du conduit</th><td>Bon');
+    expect(html).toContain('État apparent du conduit</th><td>Bon');
+    expect(html).not.toContain('06 00 00 00 01'); // contact du client : gardé en base, pas imprimé (RGPD art. 5.1.c)
     expect(html).not.toContain('Tubage</th>');
     expect(html).toContain('Conseils donnés (article R. 1331-77 du code de la santé publique)');
     expect(html).toContain(MENTION_CONSEILS);
@@ -53,8 +54,9 @@ describe('attestation de ramonage — contenu imprimé', () => {
   it('pied : conservation deux ans et agents de contrôle ; information sur les rappels', () => {
     expect(html).toContain(PIED_CONSERVATION);
     expect(html).not.toContain('transmettre à votre assurance');
-    expect(html).toContain('pourra vous contacter avant votre prochain ramonage');
-    expect(buildAttestationRamonageHtml({ ramonage, entreprise, rappelsRefuses: true })).not.toContain('pourra vous contacter');
+    expect(html).toContain('pourra vous rappeler par e-mail ou par SMS la date de votre prochain ramonage. Vous pouvez le refuser gratuitement');
+    expect(html).not.toMatch(/pourra vous (contacter|appeler)/);
+    expect(buildAttestationRamonageHtml({ ramonage, entreprise, rappelsRefuses: true })).not.toContain('pourra vous rappeler');
   });
 
   it('vacuité non assurée : la précision dans la phrase ; cheminée ouverte : pas de mention d’entretien', () => {
@@ -80,5 +82,17 @@ describe('attestation de ramonage — contenu imprimé', () => {
 
   it('compte de démonstration : filigrane « EXEMPLE »', () => {
     expect(buildAttestationRamonageHtml({ ramonage, entreprise: { ...entreprise, donneesFictives: true } })).toContain('data-filigrane="EXEMPLE"');
+  });
+});
+
+describe('attestation de ramonage — émetteur figé', () => {
+  it('imprime l’émetteur recopié à l’enregistrement, pas la fiche du moment', () => {
+    const emetteur = { nom: 'Ancien nom', formeJuridique: 'SARL', capital: '5000', siret: '11111111111111', rcsVille: 'Périgueux', rcsNumero: '111 111 111', rcProAssureur: 'Ancien assureur' };
+    const h = buildAttestationRamonageHtml({ ramonage: { ...ramonage, emetteur }, entreprise: { ...entreprise, nom: 'Nouveau nom', rcProAssureur: 'Nouvel assureur' } });
+    expect(h).toContain('Ancien nom');
+    expect(h).toContain('SARL au capital de 5000 €');
+    expect(h).toContain('RCS Périgueux B 111 111 111');
+    expect(h).toContain('Ancien assureur');
+    expect(h).not.toContain('Nouvel assureur');
   });
 });

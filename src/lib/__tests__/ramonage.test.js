@@ -156,6 +156,9 @@ describe('ramonage — brouillon, SMS et facture', () => {
     const t = texteSms({ entreprise: { nom: 'Ramonage Exemple', tel: '05 00 00 00 00' }, ramonage: passage({ id: 'r', le: '2026-10-19T14:00:00', prochain: '2027-10-19' }) });
     expect(t).toBe('Bonjour, votre ramonage est à prévoir avant le 19/10/2027. Ramonage Exemple, 05 00 00 00 00, qui a ramoné votre conduit le 19/10/2026. Pour ne plus recevoir de rappel, répondez STOP.');
     expect(t).not.toMatch(/obligatoire|avis/i);
+    const enRetard = texteSms({ entreprise: { nom: 'Ramonage Exemple', formeJuridique: 'Micro-entreprise', nomEntrepreneur: 'Jean Exemple' },
+      ramonage: passage({ id: 'r', le: '2025-10-19T14:00:00', prochain: '2026-10-19' }), aujourdhui: '2026-10-25' });
+    expect(enRetard).toMatch(/^Bonjour, votre ramonage était conseillé avant le 19\/10\/2026\. Ramonage Exemple — Jean Exemple EI, qui a ramoné/);
     expect(lienSms('06 00 00 00 01', 'a b')).toBe('sms:0600000001?&body=a%20b');
     expect(lienSms('', 'x')).toBe('');
   });

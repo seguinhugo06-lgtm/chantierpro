@@ -3,6 +3,7 @@ import { MessageCircle, Phone, BellOff, BellRing } from 'lucide-react';
 import { Bouton } from '../ui/Bouton';
 import { texteSms, lienSms, lienAppel, descriptionAppareil } from '../../lib/ramonage';
 import { dateLue } from '../../lib/dates';
+import { estClientPro } from '../../lib/relanceUtils';
 
 const jourFr = (jour) => dateLue(String(jour || '').slice(0, 10)).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
 
@@ -14,15 +15,17 @@ export function echeanceLue(joursRestants) {
 }
 
 /**
- * Un rappel de ramonage à faire : SMS pré-rempli et appel depuis le téléphone (l'app ne sait pas si le SMS est parti :
- * le toucher marque le rappel comme fait, avec « Annuler »), ou « Ne plus rappeler » (refus du client, CPCE L. 34-5).
+ * Un rappel de ramonage à faire : SMS pré-rempli depuis le téléphone (l'app ne sait pas si le SMS est parti : le toucher
+ * marque le rappel comme fait, avec « Annuler »), ou « Ne plus rappeler » (refus du client, CPCE L. 34-5). « Appeler »
+ * pour un client professionnel seulement : appeler un consommateur pour lui proposer une prestation exige son
+ * consentement préalable depuis le 11 août 2026 (C. conso. L. 223-1 ; relecture juriste-btp du 24 oct. 2026).
  * @param {{ ramonage, client, joursRestants }} rappel  élément de rappelsDus()
  */
 export default function RappelRamonage({ rappel, entreprise, suivreRamonage, refuserRappels, envoiAutoPrevu = false }) {
   const { ramonage, client, joursRestants } = rappel;
   const [fait, setFait] = useState(null); // canal noté à l'instant, pour « Annuler »
   const sms = lienSms(client?.telephone, texteSms({ entreprise, ramonage }));
-  const appel = lienAppel(client?.telephone);
+  const appel = estClientPro(client) ? lienAppel(client?.telephone) : '';
 
   const noter = (canal) => {
     setFait(canal);
@@ -61,9 +64,8 @@ export default function RappelRamonage({ rappel, entreprise, suivreRamonage, ref
             <a href={appel} onClick={() => noter('appel')} className="inline-flex items-center gap-2 h-11 px-4 rounded-full bg-surface border border-bord-fort text-sm font-semibold text-encre">
               <Phone size={18} aria-hidden="true" /> Appeler
             </a>
-          ) : (
-            <p className="text-sm text-encre-2 self-center">Aucun téléphone sur la fiche.</p>
-          )}
+          ) : null}
+          {!sms ? <p className="text-sm text-encre-2 self-center">Aucun téléphone sur la fiche.</p> : null}
           <Bouton variante="discret" taille="compacte" icone={BellOff} onClick={() => refuserRappels(client)}>Ne plus rappeler</Bouton>
         </div>
       )}

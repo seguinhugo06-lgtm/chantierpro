@@ -28,6 +28,14 @@ describe('rappels automatiques de ramonage (cron) : règles', () => {
     expect(dus.map((d) => d.ramonage.id)).toEqual(['a-recent']);
   });
 
+  it('une adresse invalide est écartée (elle échouerait chaque nuit) ; le délai est borné à 1-120 jours', () => {
+    const invalide = [{ ...clients[0], email: 'pas-une-adresse@' }];
+    expect(rappelsAEnvoyer(ramonages, invalide, { jours: 30, aujourdhui: '2026-10-25' })).toEqual([]);
+    // 100 000 jours demandés → 120 : a-recent (10/11) entre le 13/07, f (01/10) dès le 03/06
+    expect(rappelsAEnvoyer(ramonages, clients, { jours: 100000, aujourdhui: '2026-07-14' }).map((d) => d.ramonage.id)).toEqual(['f', 'a-recent']);
+    expect(rappelsAEnvoyer(ramonages, clients, { jours: 100000, aujourdhui: '2026-07-12' }).map((d) => d.ramonage.id)).toEqual(['f']);
+  });
+
   it('même règle que l’app pour les clients joignables par e-mail (avant la date)', () => {
     const app = rappelsDus(ramonages, clients, { jours: 30, aujourdhui: '2026-10-25' })
       .filter((d) => d.client.email && !d.enRetard).map((d) => d.ramonage.id);
@@ -56,7 +64,8 @@ describe('rappels automatiques de ramonage (cron) : e-mail', () => {
 
   it('pied : pourquoi ce rappel, lien de désinscription sans compte, ou STOP', () => {
     expect(texte).toContain('Vous recevez ce rappel parce que Ramonage Exemple — Jean Exemple EI (1 rue de l’Exemple, 24000 Imaginaire, 05 00 00 00 00) a ramoné votre conduit le 10/11/2025.');
-    expect(texte).toContain('Pour ne plus recevoir de rappel : https://mallettico.fr/rappel-ramonage/j-a-recent, ou répondez STOP.');
+    expect(texte).toContain('Le ramonage de votre poêle à bois, Salon est à prévoir avant le 10/11/2026.');
+    expect(texte).toContain('Pour ne plus recevoir de rappel : https://mallettico.fr/rappel-ramonage/j-a-recent — ou répondez STOP à cet e-mail.');
     expect(html).toContain('href="https://mallettico.fr/rappel-ramonage/j-a-recent"');
   });
 

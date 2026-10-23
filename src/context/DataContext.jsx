@@ -1078,10 +1078,6 @@ export function DataProvider({ children, initialData = {} }) {
       // Démo : pas de base pour numéroter ; la série locale suit la même forme
       numero: isDemo ? numeroRamonageDemo(ramonages) : null,
       jeton_rappel: isDemo ? crypto.randomUUID() : null,
-      annulee_le: null,
-      annulation_motif: '',
-      rappel_fait_le: null,
-      rappel_canal: null,
       user_id: userId,
       created_at: new Date().toISOString(),
     };
@@ -1090,12 +1086,17 @@ export function DataProvider({ children, initialData = {} }) {
   }, [ramonages, userId, creerEnBase]);
 
   const suivreRamonage = useCallback(async (id, suivi) => {
+    // Sans compte connu, la modification partirait par un upsert différé qui la perdrait (F3) : la dire plutôt
+    if (!isDemo && !userId) {
+      toast.info('Connexion en cours', 'Réessayez dans un instant.');
+      return false;
+    }
     const permis = ['facture_id', 'annulee_le', 'annulation_motif', 'rappel_fait_le', 'rappel_canal'];
     const updates = Object.fromEntries(Object.entries(suivi || {}).filter(([cle]) => permis.includes(cle)));
     const avant = ramonages.find(x => x.id === id);
     setRamonages(prev => prev.map(r => (r.id === id ? { ...r, ...updates } : r)));
     return modifierEnBase('ramonages', id, avant, updates, setRamonages);
-  }, [ramonages, modifierEnBase]);
+  }, [ramonages, userId, modifierEnBase]);
 
   const toggleMemo = useCallback(async (id) => {
     const memo = memos.find(m => m.id === id);

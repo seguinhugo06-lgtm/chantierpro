@@ -12,7 +12,7 @@
  */
 import { echapperHtml as h, couleurCss } from './echapperHtml';
 import { nomImprime, formeImprimee } from './identiteEntreprise';
-import { marquerDocumentFictif } from './donneesFictives';
+import { marquerDocumentFictif, estDonneesFictives } from './donneesFictives';
 import { dateLue } from './dates';
 import { PAGE_CSS } from './devisHtmlBuilder';
 import {
@@ -32,9 +32,13 @@ export const PIED_CONSERVATION = 'À conserver au moins deux ans et à présente
 export const MENTION_ENTRETIEN = 'Cette attestation porte sur le ramonage. Elle ne vaut pas attestation d’entretien de l’appareil (articles R. 1331-67 et R. 1331-68 du code de la santé publique).';
 export const MENTION_CONSEILS = 'Ces conseils sont donnés à titre indicatif : aucun investissement proposé n’est obligatoire.';
 
-/** Information sur les rappels, imprimée en paragraphe séparé (sauf si le client les a déjà refusés). */
+/**
+ * Information sur les rappels, imprimée en paragraphe séparé (sauf si le client les a déjà refusés). Relecture juriste-btp
+ * du 24 oct. 2026 : e-mail ou SMS seulement (un appel de démarchage exige le consentement préalable du consommateur depuis
+ * le 11 août 2026, C. conso. L. 223-1) ; refus gratuit, au recueil et dans chaque message (CPCE L. 34-5, al. 4).
+ */
 export function informationRappels(nomEntreprise) {
-  return `${nomEntreprise || 'Votre ramoneur'} pourra vous contacter avant votre prochain ramonage. Vous pouvez le refuser dès maintenant en le disant à votre ramoneur, ou à tout moment en répondant STOP à un rappel ou grâce au lien présent dans chaque e-mail de rappel.`;
+  return `${nomEntreprise || 'Votre ramoneur'} pourra vous rappeler par e-mail ou par SMS la date de votre prochain ramonage. Vous pouvez le refuser gratuitement : dès maintenant, en le disant à votre ramoneur, ou à tout moment, en répondant STOP à un rappel ou par le lien présent dans chaque e-mail de rappel.`;
 }
 
 /** La phrase d'attestation, selon la vacuité constatée. */
@@ -55,20 +59,24 @@ export function phraseAttestation(r, nomEntreprise) {
  * @param {string} [p.couleur]
  */
 export function buildAttestationRamonageHtml({ ramonage: r, entreprise, precedent = null, remplace = null, rappelsRefuses = false, couleur }) {
-  const color = couleurCss(couleur || entreprise?.couleur);
-  const nom = nomImprime(entreprise);
+  // L'émetteur figé dans l'attestation à son enregistrement, sinon (aperçu) la fiche entreprise du moment
+  const source = r.emetteur && typeof r.emetteur === 'object' && Object.keys(r.emetteur).length ? r.emetteur : (entreprise || {});
+  const color = couleurCss(couleur || source.couleur || entreprise?.couleur);
+  const nom = nomImprime(source);
+  const rcs = source.rcsVille && source.rcsNumero ? `RCS ${source.rcsVille} ${source.rcsType || 'B'} ${source.rcsNumero}` : (source.rcs ? `RCS ${source.rcs}` : '');
   const e = {
     nom: h(nom),
-    forme: h(formeImprimee(entreprise)),
-    adresse: h([entreprise?.adresse, [entreprise?.codePostal || entreprise?.code_postal, entreprise?.ville].filter(Boolean).join(' ')].filter(Boolean).join(', ')),
-    tel: h(entreprise?.tel || entreprise?.telephone),
-    email: h(entreprise?.email),
-    site: h(entreprise?.siteWeb || entreprise?.site_web),
-    siret: h(entreprise?.siret),
-    rcAssureur: h(entreprise?.rcProAssureur || entreprise?.rc_pro_assureur),
-    rcNumero: h(entreprise?.rcProNumero || entreprise?.rc_pro_numero),
-    ville: h(entreprise?.ville),
+    forme: h(`${formeImprimee(source)}${source.capital ? ` au capital de ${source.capital} €` : ''}`),
+    adresse: h([source.adresse, [source.codePostal || source.code_postal, source.ville].filter(Boolean).join(' ')].filter(Boolean).join(', ')),
+    tel: h(source.tel || source.telephone),
+    email: h(source.email),
+    site: h(source.siteWeb || source.site_web),
+    siret: h(source.siret),
+    rcs: h(rcs),
+    rcAssureur: h(source.rcProAssureur || source.rc_pro_assureur),
+    rcNumero: h(source.rcProNumero || source.rc_pro_numero),
   };
+  const fictif = estDonneesFictives(source) || estDonneesFictives(entreprise);
   const ligne = (libelle, valeur) => (valeur ? `<tr><th>${libelle}</th><td>${valeur}</td></tr>` : '');
   const type = r.appareil_type === 'autre' ? 'Autre' : libelleDe(TYPES_APPAREIL, r.appareil_type);
   const qualite = libelleDe(QUALITES, r.qualite_client) + (r.qualite_client === 'autre' && r.qualite_precision ? ` (${h(r.qualite_precision)})` : '');
@@ -84,7 +92,7 @@ export function buildAttestationRamonageHtml({ ramonage: r, entreprise, preceden
     ? `<img src="${h(r.signature)}" alt="Signature" style="max-height:70px;max-width:220px;display:block;margin-top:6px" />`
     : '';
 
-  return marquerDocumentFictif(entreprise, `<!DOCTYPE html>
+  return marquerDocumentFictif({ donneesFictives: fictif }, `<!DOCTYPE html>
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
@@ -121,7 +129,7 @@ export function buildAttestationRamonageHtml({ ramonage: r, entreprise, preceden
       <div class="info">
         ${e.forme ? `${e.forme}<br>` : ''}${e.adresse ? `${e.adresse}<br>` : ''}
         ${[e.tel ? `Tél. ${e.tel}` : '', e.email, e.site].filter(Boolean).join(' · ')}<br>
-        ${e.siret ? `SIRET ${e.siret}` : ''}
+        ${e.siret ? `SIRET ${e.siret}` : ''}${e.rcs ? ` · ${e.rcs}` : ''}
         ${e.rcAssureur || e.rcNumero ? `<br>Assurance responsabilité civile professionnelle : ${[e.rcAssureur, e.rcNumero ? `n° ${e.rcNumero}` : ''].filter(Boolean).join(', ')}` : ''}
       </div>
     </div>
@@ -136,7 +144,6 @@ export function buildAttestationRamonageHtml({ ramonage: r, entreprise, preceden
   <h2>Client et lieu d’intervention</h2>
   <table>
     ${ligne('Nom', h(r.client_nom))}
-    ${ligne('Téléphone, e-mail', h(r.client_contact))}
     ${ligne('Adresse de l’intervention', h(r.adresse_intervention))}
     ${ligne('Qualité du client', qualite)}
   </table>
@@ -158,6 +165,7 @@ export function buildAttestationRamonageHtml({ ramonage: r, entreprise, preceden
     ${ligne('Localisation (pièce, étage)', h(r.localisation))}
     ${ligne('Conduits ramonés', `conduit de fumée : ramoné ; conduit ou tuyau de raccordement : ${r.raccordement === 'sans_objet' ? 'sans objet' : 'ramoné'}`)}
   </table>
+  ${estFoyerFermeSolide(r) ? `<p class="mention">${MENTION_ENTRETIEN}</p>` : ''}
 
   <h2>Méthode</h2>
   <table>
@@ -181,12 +189,11 @@ export function buildAttestationRamonageHtml({ ramonage: r, entreprise, preceden
 
   <div class="attestation">
     <p>${h(phraseAttestation(r, nom))}</p>
-    <p style="margin-top:8px">${e.ville ? `Fait à ${e.ville}, le ` : 'Le '}${jourFr(jourDe(r.realise_le))}</p>
+    <p style="margin-top:8px">Fait le ${jourFr(jourDe(r.created_at || new Date().toISOString()))}</p>
     <p style="margin-top:6px"><strong>Signature : ${h(r.intervenant_nom)}</strong></p>
     ${signature}
   </div>
 
-  ${estFoyerFermeSolide(r) ? `<p class="mention">${MENTION_ENTRETIEN}</p>` : ''}
   ${rappelsRefuses ? '' : `<p class="mention">${h(informationRappels(nom))}</p>`}
   <div class="pied">${PIED_CONSERVATION}</div>
 </body>

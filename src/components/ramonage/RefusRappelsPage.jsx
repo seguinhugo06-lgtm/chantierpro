@@ -44,7 +44,7 @@ export default function RefusRappelsPage({ jeton }) {
           <div role="alert" className="text-center space-y-3">
             <AlertCircle size={40} className="mx-auto text-alerte-texte" aria-hidden="true" />
             <h1 className="text-xl font-semibold text-encre">{etat === 'inconnu' ? 'Lien non reconnu' : 'Service momentanément indisponible'}</h1>
-            <p className="text-base text-encre-2">Pour ne plus recevoir de rappel, répondez « STOP » à l’e-mail de rappel, ou dites-le directement à votre ramoneur.</p>
+            <p className="text-base text-encre-2">Pour ne plus recevoir de rappel, répondez « STOP » à l’e-mail de rappel, ou dites-le directement à votre ramoneur (ses coordonnées sont dans l’e-mail de rappel).</p>
             {etat === 'erreur' ? <Bouton variante="secondaire" onClick={refuser}>Réessayer</Bouton> : null}
           </div>
         ) : (
@@ -57,6 +57,11 @@ export default function RefusRappelsPage({ jeton }) {
         )}
       </Carte>
       <p className="mt-6 text-sm text-encre-3 text-center max-w-md">Mallettico est le logiciel de devis et de factures utilisé par votre ramoneur pour vous envoyer ses rappels.</p>
+      <p className="mt-2 text-sm text-center">
+        <a href="/mentions-legales" className="text-accent-texte underline">Mentions légales</a>
+        <span className="text-encre-3" aria-hidden="true"> · </span>
+        <a href="/confidentialite" className="text-accent-texte underline">Confidentialité</a>
+      </p>
     </main>
   );
 }

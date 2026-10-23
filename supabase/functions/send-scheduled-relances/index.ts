@@ -504,6 +504,12 @@ serve(async (req) => {
       if (ent.archived_at) continue;
       const reglages = ent.settings_json?.reglages || {};
       if (reglages.ramonageActif !== true && reglages.ramonageActif !== 'true') continue;
+      // Le client doit pouvoir répondre à l'artisan (STOP, rendez-vous) : pas d'envoi sans e-mail sur la fiche entreprise
+      // (relecture juriste-btp du 24 oct. 2026 ; sinon la réponse partirait vers noreply@)
+      if (!String(ent.email || '').includes('@')) {
+        ramonage.details.push({ entreprise: ent.nom, action: 'sans-email-entreprise' });
+        continue;
+      }
       const serie = ent.organization_id || ent.user_id;
       if (organisationsVues.has(serie)) continue; // une organisation à plusieurs fiches : une seule fois
       organisationsVues.add(serie);
@@ -522,7 +528,7 @@ serve(async (req) => {
         report.failed++;
         continue;
       }
-      const jours = Number(reglages.ramonageRappelJours) || 30;
+      const jours = Math.min(120, Math.max(1, Math.round(Number(reglages.ramonageRappelJours) || 30)));
       const dus = rappelsAEnvoyer(resR.data || [], resC.data || [], { jours, aujourdhui }).slice(0, maxPerOrg);
       ramonage.dus += dus.length;
       report.totalDue += dus.length;
