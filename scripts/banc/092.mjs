@@ -6,7 +6,8 @@ import { PATRON, SALARIE, SOLO, ORG_PATRON, ORG_SOLO } from './socle.mjs';
 
 const MIGRATION = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../supabase/migrations/092_fonctions_fermees_aux_visiteurs.sql');
 
-const PUBLIQUES = ['get_devis_for_signature', 'get_facture_for_payment', 'get_invitation_by_token', 'retracter_devis', 'sign_devis'];
+// refuser_rappels_ramonage : lien « ne plus recevoir de rappel » de chaque rappel de ramonage (104)
+const PUBLIQUES = ['get_devis_for_signature', 'get_facture_for_payment', 'get_invitation_by_token', 'refuser_rappels_ramonage', 'retracter_devis', 'sign_devis'];
 
 // ai_suggestions et ses 11 policies telles qu'en production (relevé du 17 oct. 2026), avant 092
 const SUGGESTIONS_PRODUCTION = `
@@ -32,6 +33,8 @@ export async function verifier({ db, q, en, commeAnonyme, verifier }) {
   // avoir posé ai_suggestions telle qu'en production (ses policies appellent user_org_ids, absente du socle à ce stade)
   await db.exec(SUGGESTIONS_PRODUCTION);
   await db.exec(fs.readFileSync(MIGRATION, 'utf8'));
+  // Fonctions publiques créées APRÈS 092 : en production, leur GRANT … TO anon vient après 092 ; le rejouer ici
+  await db.exec('GRANT EXECUTE ON FUNCTION public.refuser_rappels_ramonage(uuid) TO anon'); // 104
   const refuse = async (fn) => { try { await fn(); return false; } catch { return true; } };
   const ouvertesAuxVisiteurs = async () => (await q(`SELECT p.proname FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
     WHERE n.nspname = 'public' AND p.prosecdef AND has_function_privilege('anon', p.oid, 'EXECUTE') ORDER BY 1`)).rows.map((r) => r.proname);
@@ -39,7 +42,7 @@ export async function verifier({ db, q, en, commeAnonyme, verifier }) {
   // 1. Un visiteur : les seules fonctions des pages publiques
   const ouvertes = await ouvertesAuxVisiteurs();
   // Égalité exacte : une fonction publique recréée sans GRANT … TO anon (règle 6) casserait sa page
-  verifier(ouvertes.join(',') === PUBLIQUES.join(','), `092 : un visiteur n'exécute que les cinq fonctions publiques, toutes (${ouvertes.join(', ')})`);
+  verifier(ouvertes.join(',') === PUBLIQUES.join(','), `092 : un visiteur n'exécute que les six fonctions publiques, toutes (${ouvertes.join(', ')})`);
   verifier(await refuse(() => commeAnonyme(() => q('SELECT * FROM get_pending_reminders($1, 0)', [SOLO])))
     && await refuse(() => commeAnonyme(() => q('SELECT user_org_ids($1)', [PATRON])))
     && await refuse(() => commeAnonyme(() => q('SELECT get_user_org_id($1)', [PATRON])))
