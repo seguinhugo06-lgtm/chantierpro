@@ -191,6 +191,12 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 300);
   const [activeTab, setActiveTab] = useState(() => (entreprise?.ramonageActif ? 'ramonage' : 'documents'));
+  // Un ramoneur arrive sur l'onglet « Ramonage », même quand la fiche entreprise est lue après l'affichage (compte
+  // réel) ; jamais contre un onglet choisi par l'artisan
+  const ongletChoisi = useRef(false);
+  useEffect(() => {
+    if (ramonageActif && !ongletChoisi.current) setActiveTab('ramonage');
+  }, [ramonageActif]);
   const [form, setForm] = useState({ nom: '', prenom: '', entreprise: '', email: '', telephone: '', adresse: '', notes: '', categorie: '', siret: '', tva_intra: '' });
   const [sortBy, setSortBy] = useState('recent'); // recent, name, ca, activite
   const [sortDir, setSortDir] = useState('desc'); // 'asc' | 'desc'
@@ -886,7 +892,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
             <Onglets
               ariaLabel="Sections de la fiche client"
               actif={activeTab}
-              onChange={setActiveTab}
+              onChange={(id) => { ongletChoisi.current = true; setActiveTab(id); }}
               onglets={[
                 ...(ramonageActif ? [{ id: 'ramonage', libelle: 'Ramonage', compte: ramonages.filter(r => r.client_id === client.id && !r.annulee_le).length }] : []),
                 { id: 'documents', libelle: 'Documents', compte: stats.devis + stats.factures },

@@ -10,7 +10,7 @@ import { useConfirm } from '../../context/AppContext';
 import { formatMoney } from '../../lib/formatters';
 import { dateLue, jourLocal } from '../../lib/dates';
 import {
-  appareilsDuClient, rappelsDus, descriptionAppareil, libelleDe, METHODES, jourDuRappel, jourDe, DELAI_RAPPEL_DEFAUT,
+  appareilsDuClient, rappelsDus, descriptionAppareil, jourDuRappel, jourDe, DELAI_RAPPEL_DEFAUT,
 } from '../../lib/ramonage';
 import SaisieRamonage from './SaisieRamonage';
 import FicheAttestation from './FicheAttestation';
@@ -20,6 +20,7 @@ const jourFr = (jour, court = false) => (jour
   ? dateLue(String(jour).slice(0, 10)).toLocaleDateString('fr-FR', court ? { day: 'numeric', month: 'short', year: 'numeric' } : { day: 'numeric', month: 'long', year: 'numeric' })
   : '');
 
+const METHODE_COURTE = { mecanique_manuelle: 'manuel', mecanique_rotative: 'rotatif' };
 const CANAUX = { email_auto: 'e-mail automatique', email: 'e-mail', sms: 'SMS', appel: 'appel', autre: 'autre' };
 
 /**
@@ -117,9 +118,10 @@ export default function OngletRamonage({ client, entreprise, updateClient, setPa
                       <LigneListe
                         key={p.id}
                         onClick={() => setFicheId(p.id)}
-                        titre={`${jourFr(jourDe(p.realise_le), true)} · ${p.numero || 'numéro en attente'}`}
-                        meta={[libelleDe(METHODES, p.methode).replace(' (hérisson, écouvillon)', ''), p.prix_ht != null ? `${prix(p.prix_ht)} HT` : null,
-                          facture ? `facture ${facture.numero || ''}`.trim() : null, `prochain avant le ${jourFr(p.prochain_avant, true)}`].filter(Boolean).join(' · ')}
+                        // Comme la fiche papier : date, méthode, prix et n° de facture ; le prochain ramonage est en tête
+                        titre={`${jourFr(jourDe(p.realise_le), true)} · ${METHODE_COURTE[p.methode] || ''}`}
+                        montant={p.prix_ht != null ? `${prix(p.prix_ht)} HT` : undefined}
+                        meta={[p.numero || 'numéro en attente', facture ? (facture.numero || 'facture') : 'pas de facture'].join(' · ')}
                         pastille={p.annulee_le ? <Pastille ton="danger">Annulée</Pastille> : undefined}
                       />
                     );
