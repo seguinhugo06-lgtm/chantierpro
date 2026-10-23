@@ -1,6 +1,12 @@
 # Cadrage — Parcours ramoneur (tâche `ramonage`, feuille de route 0 quater septies)
 
-23 oct. 2026. Relu par le critique produit (verdict « plus petit ») et par juriste-btp (textes vérifiés sur Légifrance et le BOFiP le jour même). **À valider par Hugo avant tout code** (§ 8).
+23 oct. 2026. Relu par le critique produit (verdict « plus petit ») et par juriste-btp (textes vérifiés sur Légifrance et le BOFiP le jour même).
+
+> **Décisions d'Hugo, 24 oct. 2026 (D-30)** — elles remplacent ce qui suit là où il diffère :
+> - **Pas d'étape de devis** : ses amis ont un tarif fixe ; le parcours va de la fiche client à l'attestation, puis à la facture tirée de l'attestation. Le risque (devis obligatoire, arrêté du 24 janv. 2017, art. 4 ; pas de paiement avant sept jours chez un particulier) lui a été rappelé et est consigné dans D-30. Les tarifs fixes se règlent par type d'appareil dans Paramètres → Ramonage.
+> - **Rappel automatique par e-mail dans ce lot**, prochain ramonage un an après le passage (modifiable), rappel 30 jours avant (délai réglable), envoi activé par l'artisan, lien de désinscription sans compte (`/rappel-ramonage/:jeton`, migration 104) ; SMS pré-rempli et appel pour les clients sans e-mail ou en retard.
+> - Bibliothèque, métier à l'inscription et attestation d'entretien : plus tard (recommandations retenues par défaut).
+> - Livré dans la branche `claude/parcours-ramoneur-c107a1` ; rien de poussé sans l'accord d'Hugo.
 
 ## 1. Le problème, avec sa preuve
 
