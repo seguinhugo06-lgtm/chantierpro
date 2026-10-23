@@ -14,6 +14,7 @@ import { useSubscriptionStore, PLANS } from '../stores/subscriptionStore';
 import { celebrateMilestone } from '../lib/celebrate';
 import { captureException } from '../lib/sentry';
 import { estEcritureDifferable, estSessionExpiree, messageEcritureRefusee } from '../lib/erreursEcriture';
+import { numeroRamonageDemo } from '../lib/ramonage';
 
 /**
  * DataContext - Global data state (clients, devis, chantiers, etc.)
@@ -210,6 +211,14 @@ export function DataProvider({ children, initialData = {} }) {
     }
     return initialData.memos ?? [];
   });
+  // Attestations de ramonage (migration 104, tâche ramonage)
+  const [ramonages, setRamonages] = useState(() => {
+    if (isDemo) {
+      const data = loadDemoData();
+      return data?.ramonages ?? initialData.ramonages ?? [];
+    }
+    return initialData.ramonages ?? [];
+  });
 
   // Custom templates (user-saved devis templates)
   const [customTemplates, setCustomTemplates] = useState(() => {
@@ -289,12 +298,13 @@ export function DataProvider({ children, initialData = {} }) {
         templateUsages,
         // Oubliés jusqu'au 10 oct. 2026 : un rendez-vous de démo disparaissait au rechargement
         planningEvents,
+        ramonages,
       });
       logger.debug('💾 Demo data saved to localStorage');
     }, 500);
 
     return () => clearTimeout(timeoutId);
-  }, [clients, devis, chantiers, depenses, pointages, equipe, ajustements, catalogue, paiements, echanges, ouvrages, memos, customTemplates, templateUsages, planningEvents]);
+  }, [clients, devis, chantiers, depenses, pointages, equipe, ajustements, catalogue, paiements, echanges, ouvrages, memos, customTemplates, templateUsages, planningEvents, ramonages]);
 
   // Listen for auth state changes to get userId
   useEffect(() => {
@@ -431,6 +441,7 @@ export function DataProvider({ children, initialData = {} }) {
         if (data.ajustements) setAjustements(clean(data.ajustements));
         if (data.ouvrages) setOuvrages(clean(data.ouvrages));
         appliquer('memos', setMemos, data.memos && clean(data.memos));
+        appliquer('ramonages', setRamonages, data.ramonages && clean(data.ramonages));
         if (data.devisTemplates) setCustomTemplates(clean(data.devisTemplates));
         if (data.templateUsages) setTemplateUsages(clean(data.templateUsages));
 
@@ -1057,6 +1068,35 @@ export function DataProvider({ children, initialData = {} }) {
     return supprimerEnBase('memos', id, avant, setMemos);
   }, [memos, supprimerEnBase]);
 
+  // ============ RAMONAGES (attestations, migration 104) ============
+  // Une attestation est figée dès l'enregistrement : la base lui attribue son numéro (RAM-AAAA-NNNNN) et ignore
+  // ensuite toute réécriture de son contenu. Seuls changent la facture liée, l'annulation et le suivi du rappel.
+  const addRamonage = useCallback(async (data) => {
+    const nouveau = {
+      ...data,
+      id: crypto.randomUUID(),
+      // Démo : pas de base pour numéroter ; la série locale suit la même forme
+      numero: isDemo ? numeroRamonageDemo(ramonages) : null,
+      jeton_rappel: isDemo ? crypto.randomUUID() : null,
+      annulee_le: null,
+      annulation_motif: '',
+      rappel_fait_le: null,
+      rappel_canal: null,
+      user_id: userId,
+      created_at: new Date().toISOString(),
+    };
+    setRamonages(prev => [nouveau, ...prev]);
+    return creerEnBase('ramonages', nouveau, setRamonages);
+  }, [ramonages, userId, creerEnBase]);
+
+  const suivreRamonage = useCallback(async (id, suivi) => {
+    const permis = ['facture_id', 'annulee_le', 'annulation_motif', 'rappel_fait_le', 'rappel_canal'];
+    const updates = Object.fromEntries(Object.entries(suivi || {}).filter(([cle]) => permis.includes(cle)));
+    const avant = ramonages.find(x => x.id === id);
+    setRamonages(prev => prev.map(r => (r.id === id ? { ...r, ...updates } : r)));
+    return modifierEnBase('ramonages', id, avant, updates, setRamonages);
+  }, [ramonages, modifierEnBase]);
+
   const toggleMemo = useCallback(async (id) => {
     const memo = memos.find(m => m.id === id);
     if (!memo) return;
@@ -1172,9 +1212,9 @@ export function DataProvider({ children, initialData = {} }) {
   // changement) : envoyer seulement les champs modifiés effacerait les autres colonnes.
   const etatsParTable = useMemo(() => ({
     clients, devis, chantiers, depenses, pointages, equipe, catalogue, ajustements, paiements, echanges,
-    ouvrages, memos, planning_events: planningEvents, devis_templates: customTemplates,
+    ouvrages, memos, planning_events: planningEvents, devis_templates: customTemplates, ramonages,
   }), [clients, devis, chantiers, depenses, pointages, equipe, catalogue, ajustements, paiements, echanges,
-    ouvrages, memos, planningEvents, customTemplates]);
+    ouvrages, memos, planningEvents, customTemplates, ramonages]);
 
   const rejouerEcriture = useCallback(async ({ action, entity, data }) => {
     if (isDemo || !userId) return false;
@@ -1326,6 +1366,11 @@ export function DataProvider({ children, initialData = {} }) {
     deleteMemo,
     toggleMemo,
 
+    // Ramonage (attestations)
+    ramonages,
+    addRamonage,
+    suivreRamonage,
+
     // Template operations
     customTemplates,
     setCustomTemplates,
@@ -1344,7 +1389,7 @@ export function DataProvider({ children, initialData = {} }) {
     userId,
   }), [
     clients, devisAvecAvoirs, chantiers, depenses, pointages, equipe, ajustements,
-    catalogue, paiements, echanges, ouvrages, planningEvents, memos, loading, dataLoading, loadError, retryLoad, rechargerDonnees,
+    catalogue, paiements, echanges, ouvrages, planningEvents, memos, ramonages, loading, dataLoading, loadError, retryLoad, rechargerDonnees,
     customTemplates, templateUsages,
     addClient, updateClient, deleteClient, getClient,
     addDevis, updateDevis, deleteDevis, getDevis, getDevisByClient, getDevisByChantier, generateNextNumero,
@@ -1359,6 +1404,7 @@ export function DataProvider({ children, initialData = {} }) {
     addOuvrage, updateOuvrage, deleteOuvrage,
     addPlanningEvent, updatePlanningEvent, deletePlanningEvent,
     addMemo, updateMemo, deleteMemo, toggleMemo,
+    addRamonage, suivreRamonage,
     addTemplate, updateTemplate, deleteTemplate, toggleTemplateFavori, trackTemplateUsage,
     getChantierBilan, rejouerEcriture, userId,
   ]);

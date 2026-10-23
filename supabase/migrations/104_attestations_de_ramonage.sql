@@ -76,6 +76,8 @@ CREATE TABLE IF NOT EXISTS public.ramonages (
   rappel_canal TEXT CHECK (rappel_canal IS NULL OR rappel_canal IN ('email_auto', 'email', 'sms', 'appel', 'autre')),
   jeton_rappel UUID NOT NULL DEFAULT gen_random_uuid(),
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  -- Écrite par l'app à chaque enregistrement (comme les autres tables) ; seule date qui suit le suivi du rappel
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   CONSTRAINT ramonages_vacuite_precisee CHECK (vacuite = 'assuree' OR length(btrim(coalesce(vacuite_precision, ''))) > 0),
   CONSTRAINT ramonages_annulation_motivee CHECK (annulee_le IS NULL OR length(btrim(coalesce(annulation_motif, ''))) > 0)
 );
@@ -161,6 +163,7 @@ BEGIN
   NEW.rappel_canal := NULL;
   NEW.jeton_rappel := gen_random_uuid();
   NEW.created_at := now();
+  NEW.updated_at := now();
   IF NEW.facture_id IS NOT NULL AND NOT public.ramonage_facture_valide(NEW.facture_id, NEW.organization_id, NEW.user_id) THEN
     RAISE EXCEPTION 'Facture inconnue dans votre organisation' USING ERRCODE = '42501';
   END IF;
@@ -192,7 +195,7 @@ BEGIN
   END IF;
   -- Tout reprend sa valeur, sauf ce qui suit l'attestation
   NEW := jsonb_populate_record(NEW, to_jsonb(OLD)
-    - ARRAY['facture_id', 'client_id', 'remplace_id', 'annulee_le', 'annulation_motif', 'rappel_fait_le', 'rappel_canal']);
+    - ARRAY['facture_id', 'client_id', 'remplace_id', 'annulee_le', 'annulation_motif', 'rappel_fait_le', 'rappel_canal', 'updated_at']);
   -- Le client et l'attestation remplacée : seulement vidés, jamais remplacés
   IF NEW.client_id IS NOT NULL AND NEW.client_id IS DISTINCT FROM OLD.client_id THEN
     NEW.client_id := OLD.client_id;

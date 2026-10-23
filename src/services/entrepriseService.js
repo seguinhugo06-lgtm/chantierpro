@@ -45,6 +45,13 @@ export const REGLAGES_SANS_COLONNE = {
   // Compte de démonstration (D-26) : bandeau à l'écran, filigrane « EXEMPLE » sur les documents
   // (src/lib/donneesFictives.js). Posé par scripts/demo, absent des écrans de réglage.
   donneesFictives: false,
+  // Parcours ramoneur (D-30, migration 104) : onglet « Ramonage » de la fiche client, attestations, rappels. Délai du
+  // rappel avant le prochain ramonage (jours), envoi automatique des rappels par e-mail (fonction planifiée
+  // send-scheduled-relances), tarifs fixes par type d'appareil (prix HT proposés à la saisie).
+  ramonageActif: false,
+  ramonageRappelJours: 30,
+  ramonageEnvoiAuto: false,
+  ramonageTarifs: {},
 };
 
 function reglagesDe(row) {

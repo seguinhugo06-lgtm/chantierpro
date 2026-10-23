@@ -254,12 +254,21 @@ export function nouveauBrouillon({ client, precedent = null, entreprise = null, 
   };
 }
 
-/** La ligne de la facture tirée d'une attestation (prix HT, une unité). */
+/** La ligne de la facture tirée d'une attestation (prix HT, une unité) ; la date de la prestation y figure. */
 export function ligneFacture(r) {
+  const le = r?.realise_le ? ` du ${dateFr(jourDe(r.realise_le))}` : '';
   return {
-    description: `Ramonage — ${descriptionAppareil(r)}${r?.numero ? ` — attestation n° ${r.numero}` : ''}`,
+    description: `Ramonage${le} — ${descriptionAppareil(r)}${r?.numero ? ` — attestation n° ${r.numero}` : ''}`,
     quantite: 1,
     unite: 'u',
     prixUnitaire: Number(r?.prix_ht) || 0,
   };
+}
+
+/** Mode démo (pas de base) : la série locale suit la forme de la base, RAM-AAAA-NNNNN, à la suite du plus grand. */
+export function numeroRamonageDemo(ramonages, maintenant = new Date()) {
+  const an = new Date(maintenant).getFullYear() || new Date().getFullYear();
+  const motif = new RegExp(`^RAM-${an}-(\\d{5})$`);
+  const dernier = Math.max(0, ...(ramonages || []).map((r) => Number(String(r.numero || '').match(motif)?.[1] || 0)));
+  return `RAM-${an}-${String(dernier + 1).padStart(5, '0')}`;
 }

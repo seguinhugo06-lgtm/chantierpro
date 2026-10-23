@@ -30,6 +30,7 @@ import {
   Plus,
   BellRing,
   Users,
+  Flame,
 } from 'lucide-react';
 
 import { useData } from '../context/DataContext';
@@ -49,7 +50,10 @@ import LigneListe, { GroupeListe } from './ui/LigneListe';
 import { Bouton, BoutonIcone } from './ui/Bouton';
 import EtatVide from './ui/EtatVide';
 import { useSubscriptionStore, PLANS } from '../stores/subscriptionStore';
-import { jourLocal } from '../lib/dates';
+import { jourLocal, dateLue } from '../lib/dates';
+import Modal, { ModalHeader, ModalTitle, ModalBody } from './ui/Modal';
+import RappelRamonage, { echeanceLue } from './ramonage/RappelRamonage';
+import { rappelsDus, DELAI_RAPPEL_DEFAUT } from '../lib/ramonage';
 import { profilManquant } from '../lib/profilLegal';
 
 /** La mallette — marque Mallettico, reprise du jeu d'icônes (grille 48, contour 3,2). */
@@ -145,7 +149,12 @@ export default function Dashboard({
   addMemo,
   toggleMemo,
 }) {
-  const { dataLoading, paiements = [] } = useData();
+  const { dataLoading, paiements = [], ramonages = [], suivreRamonage, updateClient } = useData();
+  // Rappels du prochain ramonage (module ramonage, D-30) : le client apparaît ici dès « prochain − délai »
+  const [rappelOuvert, setRappelOuvert] = useState(null);
+  const rappelsRamonage = useMemo(() => (entreprise?.ramonageActif
+    ? rappelsDus(ramonages, clients, { jours: Number(entreprise?.ramonageRappelJours) || DELAI_RAPPEL_DEFAUT, aujourdhui: jourLocal() })
+    : []), [entreprise?.ramonageActif, entreprise?.ramonageRappelJours, ramonages, clients]);
   const { showToast } = useToast();
   const { canAccess, canPerform } = usePermissions();
   const canSeeFinances = canAccess('finances');
@@ -376,8 +385,19 @@ export default function Dashboard({
       actionLabel: 'Fait',
       onClick: () => toggleMemo?.(m.id),
     }));
-    return [...computed.actions, ...memoActions];
-  }, [computed.actions, memosJour, toggleMemo]);
+    const ramonageActions = rappelsRamonage.map((r) => ({
+      priority: 2,
+      icon: Flame,
+      color: '#f59e0b',
+      label: `Ramonage à prévoir — ${[r.client.prenom, r.client.nom].filter(Boolean).join(' ') || r.client.entreprise || 'client'}`,
+      detail: `Avant le ${dateLue(r.ramonage.prochain_avant).toLocaleDateString('fr-FR')} (${echeanceLue(r.joursRestants)})`,
+      actionLabel: 'Rappeler',
+      // Le rappel ouvert est gardé tel quel : la fenêtre reste ouverte après « SMS » (pour « Annuler »)
+      onClick: () => setRappelOuvert(r),
+    }));
+    return [...computed.actions, ...ramonageActions, ...memoActions].sort((a, b) => a.priority - b.priority);
+  }, [computed.actions, memosJour, toggleMemo, rappelsRamonage]);
+  const rappelAffiche = rappelOuvert;
 
   const visibleActions = showAllActions ? allActions : allActions.slice(0, 5);
 
@@ -543,6 +563,24 @@ export default function Dashboard({
           )}
         </GroupeListe>
       </section>
+
+      {/* Rappel de ramonage ouvert depuis « À faire » */}
+      <Modal isOpen={!!rappelAffiche} onClose={() => setRappelOuvert(null)} size="md">
+        <ModalHeader>
+          <ModalTitle>{rappelAffiche ? `Rappeler ${[rappelAffiche.client.prenom, rappelAffiche.client.nom].filter(Boolean).join(' ')}` : 'Rappel'}</ModalTitle>
+        </ModalHeader>
+        <ModalBody>
+          {rappelAffiche && (
+            <RappelRamonage
+              rappel={rappelAffiche}
+              entreprise={entreprise}
+              envoiAutoPrevu={!!entreprise?.ramonageEnvoiAuto}
+              suivreRamonage={suivreRamonage}
+              refuserRappels={(c) => { updateClient(c.id, { rappels_refuses_le: new Date().toISOString() }); setRappelOuvert(null); }}
+            />
+          )}
+        </ModalBody>
+      </Modal>
 
       {/* ===== LE POULS : l'argent reçu, mois par mois ===== */}
       {canSeeFinances && (

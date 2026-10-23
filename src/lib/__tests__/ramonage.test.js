@@ -163,6 +163,6 @@ describe('ramonage — brouillon, SMS et facture', () => {
   it('ligne de facture : l’appareil, le numéro d’attestation et le prix', () => {
     const r = { ...passage({ id: 'r', le: '2026-10-19T14:00:00', prochain: '2027-10-19', numero: 'RAM-2026-00001' }) };
     expect(descriptionAppareil(r)).toBe('Poêle à bois — bois, conduit tubé-chemisé (Salon)');
-    expect(ligneFacture(r)).toEqual({ description: 'Ramonage — Poêle à bois — bois, conduit tubé-chemisé (Salon) — attestation n° RAM-2026-00001', quantite: 1, unite: 'u', prixUnitaire: 90 });
+    expect(ligneFacture(r)).toEqual({ description: 'Ramonage du 19/10/2026 — Poêle à bois — bois, conduit tubé-chemisé (Salon) — attestation n° RAM-2026-00001', quantite: 1, unite: 'u', prixUnitaire: 90 });
   });
 });

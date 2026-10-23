@@ -97,6 +97,8 @@ const ClientPortal = lazy(() => import('./components/portal/ClientPortal'))
 const DevisSignaturePage = lazy(() => import('./components/signature/DevisSignaturePage'))
 const AcceptInvitation = lazy(() => import('./components/auth/AcceptInvitation'))
 const PublicPaymentPage = lazy(() => import('./components/payment/PublicPaymentPage'))
+// Lien « ne plus recevoir de rappel » des e-mails de rappel de ramonage (migration 104)
+const RefusRappelsPage = lazy(() => import('./components/ramonage/RefusRappelsPage'))
 
 // Marketing sub-pages (lazy loaded, light-mode only)
 const FeaturesDetailPage = lazy(() => import('./components/landing/FeaturesDetailPage'))
@@ -146,6 +148,12 @@ function getPayToken() {
   return match ? match[1] : null
 }
 
+// Refus des rappels de ramonage : /rappel-ramonage/{uuid}
+function getJetonRappelRamonage() {
+  const match = window.location.pathname.match(/^\/rappel-ramonage\/([a-f0-9-]{36})\/?$/i)
+  return match ? match[1] : null
+}
+
 // Check for demo data mode via URL param: ?demo=true (only works in demo mode)
 function shouldUseDemoData() {
   const params = new URLSearchParams(window.location.search)
@@ -156,6 +164,7 @@ const portalToken = getPortalToken()
 const signatureToken = getSignatureToken()
 const invitationToken = getInvitationToken()
 const payToken = getPayToken()
+const jetonRappelRamonage = getJetonRappelRamonage()
 const marketingPage = getMarketingPage()
 const pageLegale = pageLegaleDe(window.location.pathname)
 
@@ -230,6 +239,10 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     ) : signatureToken ? (
       <Suspense fallback={<PublicFallback />}>
         <DevisSignaturePage signatureToken={signatureToken} />
+      </Suspense>
+    ) : jetonRappelRamonage ? (
+      <Suspense fallback={<ChargementSite />}>
+        <RefusRappelsPage jeton={jetonRappelRamonage} />
       </Suspense>
     ) : payToken ? (
       <Suspense fallback={<PublicFallback />}>

@@ -34,6 +34,7 @@ import { urlPublique } from '../lib/urlPublique';
 import { jourLocal, dateLue } from '../lib/dates';
 import { FONCTIONS } from '../lib/fonctions';
 import { telInternational } from '../lib/messageRelance';
+import OngletRamonage from './ramonage/OngletRamonage';
 
 // Skeleton loader for client cards
 function ClientSkeleton({ isDark, count = 6 }) {
@@ -93,7 +94,9 @@ function HighlightText({ text, query, className = '' }) {
 export default function Clients({ clients, setClients, updateClient, deleteClient: deleteClientProp, devis, chantiers, echanges = [], onSubmit, couleur, setPage, setSelectedChantier, setSelectedDevis, isDark, createMode, setCreateMode, modeDiscret, memos = [], addMemo, updateMemo, deleteMemo, toggleMemo, onImportClients, entreprise, nouveauDevisPour, nouveauChantierPour }) {
   const { confirm } = useConfirm();
   const { showToast } = useToast();
-  const { addClient: ctxAddClient, updateDevis: ctxUpdateDevis, updateChantier: ctxUpdateChantier, paiements = [] } = useData();
+  const { addClient: ctxAddClient, updateDevis: ctxUpdateDevis, updateChantier: ctxUpdateChantier, paiements = [], ramonages = [] } = useData();
+  // Parcours ramoneur (D-30) : onglet « Ramonage » des fiches clients, activé dans Paramètres → Ramonage
+  const ramonageActif = !!entreprise?.ramonageActif;
 
   // Ce que chaque client doit (reste des factures ouvertes) et son dernier devis — pour la ligne de liste.
   const dueParClient = useMemo(() => {
@@ -187,7 +190,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
   const [viewId, setViewId] = useState(null);
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 300);
-  const [activeTab, setActiveTab] = useState('documents');
+  const [activeTab, setActiveTab] = useState(() => (entreprise?.ramonageActif ? 'ramonage' : 'documents'));
   const [form, setForm] = useState({ nom: '', prenom: '', entreprise: '', email: '', telephone: '', adresse: '', notes: '', categorie: '', siret: '', tva_intra: '' });
   const [sortBy, setSortBy] = useState('recent'); // recent, name, ca, activite
   const [sortDir, setSortDir] = useState('desc'); // 'asc' | 'desc'
@@ -885,6 +888,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
               actif={activeTab}
               onChange={setActiveTab}
               onglets={[
+                ...(ramonageActif ? [{ id: 'ramonage', libelle: 'Ramonage', compte: ramonages.filter(r => r.client_id === client.id && !r.annulee_le).length }] : []),
                 { id: 'documents', libelle: 'Documents', compte: stats.devis + stats.factures },
                 { id: 'chantiers', libelle: 'Chantiers', compte: stats.chantiers },
                 { id: 'activite', libelle: 'Activité' },
@@ -973,6 +977,11 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
             </div>
           );
         })()}
+
+        {activeTab === 'ramonage' && ramonageActif && (
+          <OngletRamonage client={client} entreprise={entreprise} updateClient={updateClient} setPage={setPage}
+            setSelectedDevis={setSelectedDevis} showToast={showToast} modeDiscret={modeDiscret} />
+        )}
 
         {activeTab === 'chantiers' && (
           clientChantiers.length === 0 ? (
