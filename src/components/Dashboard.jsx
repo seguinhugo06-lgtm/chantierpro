@@ -576,7 +576,10 @@ export default function Dashboard({
               entreprise={entreprise}
               envoiAutoPrevu={!!entreprise?.ramonageEnvoiAuto}
               suivreRamonage={suivreRamonage}
-              refuserRappels={(c) => { updateClient(c.id, { rappels_refuses_le: new Date().toISOString() }); setRappelOuvert(null); }}
+              refuserRappels={async (c) => {
+                setRappelOuvert(null);
+                if ((await updateClient(c.id, { rappels_refuses_le: new Date().toISOString() })) !== false) showToast('Refus des rappels noté : plus aucun rappel pour ce client.', 'success');
+              }}
             />
           )}
         </ModalBody>

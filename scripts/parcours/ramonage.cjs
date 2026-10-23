@@ -186,7 +186,7 @@ module.exports = [
     reel: true,
     async executer({ ouvrir, cliquer, attendre, verifier, sessionFactice }) {
       const ORG = '0e0e0e0e-0e0e-4e0e-8e0e-0e0e0e0e0e0e';
-      const CLIENT = { id: 'c0c0c0c0-0000-4000-8000-000000000106', nom: 'Exemple', prenom: 'Paul', telephone: '0600000002', created_at: '2026-10-01T08:00:00Z' };
+      const CLIENT = { id: 'c0c0c0c0-0000-4000-8000-000000000106', nom: 'Exemple', prenom: 'Paul', telephone: '0600000002', adresse: '5 rue Imaginaire, 24000 Exempleville', created_at: '2026-10-01T08:00:00Z' };
       const ENTREPRISE = { id: 'e0e0e0e0-0000-4000-8000-000000000106', user_id: UID, organization_id: ORG, nom: 'Ramonage Exemple', forme_juridique: 'Micro-entreprise',
         siret: '00000000000000', telephone: '0500000000', email: 'contact@exemple.fr', is_active: true, is_default: true,
         settings_json: { reglages: { ramonageActif: true, nomEntrepreneur: 'Jean Exemple' } }, cgu_accepted_at: '2026-01-01T00:00:00Z', cgu_version: '2025-02',

@@ -28,8 +28,9 @@ const CANAUX = { email_auto: 'e-mail automatique', email: 'e-mail', sms: 'SMS', 
  * historique (date, méthode, prix, n° de facture, prochain ramonage), le rappel du prochain ramonage, et le parcours
  * « Nouveau ramonage » → attestation → PDF, envoi, facture.
  */
-export default function OngletRamonage({ client, entreprise, updateClient, setPage, setSelectedDevis, showToast, modeDiscret }) {
-  const { ramonages = [], clients = [], devis = [], addRamonage, suivreRamonage, addDevis } = useData();
+export default function OngletRamonage({ client, entreprise, setPage, setSelectedDevis, showToast, modeDiscret }) {
+  // updateClient du contexte (celui de la page affiche « Client "…" modifié », sans nom ici)
+  const { ramonages = [], clients = [], devis = [], addRamonage, suivreRamonage, addDevis, updateClient } = useData();
   const { confirm } = useConfirm();
   const [saisie, setSaisie] = useState(null); // { precedent?, remplace? }
   const [ficheId, setFicheId] = useState(null);
@@ -49,7 +50,9 @@ export default function OngletRamonage({ client, entreprise, updateClient, setPa
   const enregistrer = async (donnees, { refusRappels = false } = {}) => {
     const enregistre = await addRamonage(donnees);
     if (!enregistre) return;
-    if (refusRappels) await updateClient(client.id, { rappels_refuses_le: new Date().toISOString() });
+    if (refusRappels && (await updateClient(client.id, { rappels_refuses_le: new Date().toISOString() })) !== false) {
+      showToast?.('Refus des rappels noté sur la fiche du client.', 'success');
+    }
     setSaisie(null);
     setChoixAppareil(false);
     setFicheId(enregistre.id);
@@ -62,7 +65,9 @@ export default function OngletRamonage({ client, entreprise, updateClient, setPa
       confirmText: 'Ne plus rappeler',
       variant: 'warning',
     });
-    if (ok) updateClient(c.id, { rappels_refuses_le: new Date().toISOString() });
+    if (ok && (await updateClient(c.id, { rappels_refuses_le: new Date().toISOString() })) !== false) {
+      showToast?.('Refus des rappels noté : plus aucun rappel pour ce client.', 'success');
+    }
   };
 
   return (

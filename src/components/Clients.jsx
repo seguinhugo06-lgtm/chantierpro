@@ -985,7 +985,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
         })()}
 
         {activeTab === 'ramonage' && ramonageActif && (
-          <OngletRamonage client={client} entreprise={entreprise} updateClient={updateClient} setPage={setPage}
+          <OngletRamonage client={client} entreprise={entreprise} setPage={setPage}
             setSelectedDevis={setSelectedDevis} showToast={showToast} modeDiscret={modeDiscret} />
         )}
 

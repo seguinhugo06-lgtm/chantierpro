@@ -24,9 +24,10 @@ export default function FicheAttestation({
   const email = String(client?.email || '').trim();
 
   useEffect(() => {
-    const echap = (e) => { if (e.key === 'Escape') onFermer(); };
-    document.addEventListener('keydown', echap);
-    return () => document.removeEventListener('keydown', echap);
+    // Échap ferme cette fenêtre seulement (capturé avant la fiche client et l'app, qui fermeraient aussi la leur)
+    const echap = (e) => { if (e.key === 'Escape') { e.stopPropagation(); onFermer(); } };
+    window.addEventListener('keydown', echap, true);
+    return () => window.removeEventListener('keydown', echap, true);
   }, [onFermer]);
 
   const pdf = async () => {
