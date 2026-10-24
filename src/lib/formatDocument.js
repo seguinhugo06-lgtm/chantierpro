@@ -6,6 +6,7 @@
  */
 
 import { echapperHtml } from './echapperHtml';
+import { estClientPro } from './relanceUtils';
 
 const EUROS = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const NOMBRE = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 2 });
@@ -63,9 +64,14 @@ const dateFr = (d) => {
  * BCE) » de l'autre — deux taux sur un même document, dont un faux (le plancher légal est 3 fois
  * le taux d'intérêt légal, pas 3 fois le taux BCE).
  *
- * @param {{ doc: object, entreprise?: object, isFacture: boolean, dateEcheance?: Date|string|null }} o
+ * Les pénalités de l'art. L441-10 et l'indemnité de 40 € (D441-5) ne valent qu'entre professionnels : le bloc
+ * « Pénalités de retard » ne s'imprime que pour un client professionnel (`estClientPro`, la règle des relances et de
+ * la mise en demeure). Pour un particulier, ou un client inconnu, il n'y a que le délai de paiement : avant la
+ * relecture juridique du 20 oct. 2026, ces mentions s'imprimaient sur tous les documents.
+ *
+ * @param {{ doc: object, entreprise?: object, isFacture: boolean, dateEcheance?: Date|string|null, client?: object|null }} o
  */
-export function blocConditionsPaiement({ doc, entreprise, isFacture, dateEcheance }) {
+export function blocConditionsPaiement({ doc, entreprise, isFacture, dateEcheance, client }) {
   // Conditions : clé de l'ancien formulaire, ou texte choisi dans l'éditeur (`conditions`), qui
   // n'était imprimé nulle part (relecture juridique du 9 oct.).
   const texteConditions = doc?.conditions && !CONDITIONS_PAIEMENT[doc.conditions] ? echapperHtml(String(doc.conditions).trim().replace(/\.$/, '')) : '';
@@ -74,14 +80,16 @@ export function blocConditionsPaiement({ doc, entreprise, isFacture, dateEcheanc
   const delaiTexte = libelle
     ? `${libelle}.`
     : `${delai} jours à compter de la date ${isFacture ? 'de facture' : 'de réception des travaux'}.`;
+  const blocDelai = `<strong>Délai de paiement</strong><br>
+        ${delaiTexte}<br>
+        ${isFacture && dateEcheance ? `Date d'échéance : ${dateFr(dateEcheance)}<br>` : ''}
+        ${isFacture ? 'Escompte pour paiement anticipé : néant.<br>' : ''}`;
+  if (!estClientPro(client)) return blocDelai;
   const taux = Number(entreprise?.tauxPenalites);
   const tauxTexte = Number.isFinite(taux) && taux > 0
     ? `Taux annuel de ${pourcent(taux)}`
     : 'Taux de la BCE majoré de 10 points';
-  return `<strong>Délai de paiement</strong><br>
-        ${delaiTexte}<br>
-        ${isFacture && dateEcheance ? `Date d'échéance : ${dateFr(dateEcheance)}<br>` : ''}
-        ${isFacture ? 'Escompte pour paiement anticipé : néant.<br>' : ''}<br>
+  return `${blocDelai}<br>
         <strong>Pénalités de retard</strong><br>
         ${tauxTexte} (art. L441-10 C. com.).<br>
         Indemnité forfaitaire pour frais de recouvrement : 40 € (art. L441-10 II et D441-5 C. com.), due entre professionnels.`;

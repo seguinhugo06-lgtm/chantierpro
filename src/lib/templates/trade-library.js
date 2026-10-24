@@ -92,7 +92,7 @@ maconnerie: {
       resume: 'Piquage, agrafage des fissures et enduit de façade neuf',
       base: { quantite: 80, unite: 'm²' },
       lignes: [
-        { designation: 'Montage et location d\'échafaudage de pied conforme', unite: 'm²', quantite: 80, prixUnitaire: 16, tva: 10 },
+        { designation: 'Montage et location d\'échafaudage de pied', unite: 'm²', quantite: 80, prixUnitaire: 16, tva: 10 },
         { designation: 'Piquage des enduits dégradés et brossage du support', unite: 'm²', quantite: 80, prixUnitaire: 14, tva: 10 },
         { designation: 'Ouverture des fissures en V et agrafage par armatures inox', unite: 'ml', quantite: 18, prixUnitaire: 48, tva: 10 },
         { designation: 'Rebouchage des fissures au mortier de réparation fibré', unite: 'ml', quantite: 18, prixUnitaire: 26, tva: 10 },

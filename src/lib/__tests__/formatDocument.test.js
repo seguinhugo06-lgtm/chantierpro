@@ -40,7 +40,9 @@ describe('document avec remise (relecture juridique du 9 oct. 2026)', () => {
     lignes: [{ id: 'l1', description: 'Pose', quantite: 1, unite: 'forfait', prixUnitaire: 1000, tva: 20, montant: 1000 }],
     remise: 10, total_ht: 900, tva: 180, total_ttc: 1080, conditionsPaiement: '30_jours',
   };
-  const html = fines(buildDevisHtml({ doc, client: { nom: 'Dupont' }, entreprise: { nom: 'BTP Test', delaiPaiement: 30 }, couleur: '#f97316' }));
+  // Les pénalités de l'art. L441-10 ne valent qu'entre professionnels (relecture juridique du 20 oct. 2026)
+  const html = fines(buildDevisHtml({ doc, client: { nom: 'SCI Dupont', categorie: 'professionnel' }, entreprise: { nom: 'BTP Test', delaiPaiement: 30 }, couleur: '#f97316' }));
+  const htmlParticulier = fines(buildDevisHtml({ doc, client: { nom: 'Dupont', categorie: 'particulier' }, entreprise: { nom: 'BTP Test', delaiPaiement: 30 }, couleur: '#f97316' }));
 
   it('imprime la remise sur le total des lignes et la TVA après remise', () => {
     expect(html).toContain('Total HT avant remise');
@@ -58,5 +60,10 @@ describe('document avec remise (relecture juridique du 9 oct. 2026)', () => {
     expect(html).not.toMatch(/3 fois le taux directeur/);
     expect(html).not.toMatch(/~13/);
     expect(html).toMatch(/Date d'échéance : \d{2}\/\d{2}\/2026/);
+  });
+
+  it('un client particulier n\'a ni taux de pénalités ni indemnité de 40 €, mais son délai de paiement', () => {
+    expect(htmlParticulier).toContain('Délai de paiement');
+    expect(htmlParticulier).not.toMatch(/L441-10|D441-5|BCE|Indemnité forfaitaire/);
   });
 });

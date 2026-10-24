@@ -108,12 +108,13 @@ describe('le document que reçoit le client : le vrai générateur', () => {
     expect(mentions).toContain('Assurance décennale');
     expect(mentions.some((m) => m.includes('TVA'))).toBe(true);
     expect(mentions.some((m) => m.includes('rétractation'))).toBe(true);
+    // Le client de l'exemple, M. Martin, est un particulier : pas de « Pénalités de retard » (L441-10 et D441-5 ne
+    // valent qu'entre professionnels, src/lib/piedDePageDocument.js), mais la rétractation qui lui revient.
     expect(mentions).toEqual([
       'SIRET',
       'Assurance décennale',
       'TVA à taux réduit (10 %)',
       'Délai de paiement',
-      'Pénalités de retard',
       'Garanties légales',
       'Droit de rétractation',
     ]);
@@ -133,6 +134,9 @@ describe('le document que reçoit le client : le vrai générateur', () => {
     // Un client professionnel n'a pas de droit de rétractation : la mention disparaît
     const pro = buildDevisHtml({ ...micro, client: { ...micro.client, categorie: 'professionnel', entreprise: 'SCI Exemple' } });
     expect(mentionsDuDocument(pro)).not.toContain('Droit de rétractation');
+    // ... et il porte, lui, les pénalités de retard que le particulier n'a pas
+    expect(mentionsDuDocument(pro)).toContain('Pénalités de retard');
+    expect(mentionsDuDocument(html)).not.toContain('Pénalités de retard');
   });
 });
 

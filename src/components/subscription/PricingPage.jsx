@@ -11,8 +11,8 @@ import {
   Check, X, ChevronDown, ArrowRight, Zap, Hammer, Users,
   Shield, Clock, CreditCard, MapPin
 } from 'lucide-react';
-import { useSubscriptionStore, PLANS, PLAN_ORDER, YEARLY_DISCOUNT } from '../../stores/subscriptionStore';
-import { MENTION_TVA_ABONNEMENT, prixAbonnement } from '../../stores/prixAbonnement';
+import { useSubscriptionStore, PLANS, PLAN_ORDER } from '../../stores/subscriptionStore';
+import { MENTION_TVA_ABONNEMENT, prixAbonnement, economieAnnuelle, moisOffertsCommuns } from '../../stores/prixAbonnement';
 import { createCheckoutSession } from '../../services/subscriptionsApi';
 import { toast } from '../../stores/toastStore';
 import { isDemo } from '../../supabaseClient';
@@ -38,9 +38,9 @@ function PricingToggle({ billing, setBilling }) {
       <span className={`text-sm font-semibold transition-colors ${billing === 'yearly' ? 'text-slate-900' : 'text-slate-400'}`}>
         Annuel
       </span>
-      {billing === 'yearly' && (
+      {billing === 'yearly' && moisOffertsCommuns(PLANS) > 0 && (
         <span className="px-2.5 py-1 text-xs font-bold rounded-full bg-green-50 text-green-700 border border-green-200">
-          Economisez {YEARLY_DISCOUNT}%
+          {moisOffertsCommuns(PLANS)} mois offerts
         </span>
       )}
     </div>
@@ -117,7 +117,7 @@ function PricingCard({ plan, billing, isCurrent, isLoading, onSelect }) {
         {plan.priceMonthly === 0 ? (
           <div>
             <p className="text-3xl font-bold text-slate-900">Gratuit</p>
-            <p className="text-sm text-slate-500 mt-1">Pour toujours</p>
+            <p className="text-sm text-slate-500 mt-1">Sans limite de durée</p>
           </div>
         ) : (
           <div>
@@ -142,7 +142,7 @@ function PricingCard({ plan, billing, isCurrent, isLoading, onSelect }) {
             )}
             {billing === 'monthly' && (
               <p className="text-xs text-slate-400 mt-1">
-                ou {plan.priceYearly}€/an (économisez {YEARLY_DISCOUNT}%)
+                ou {prixAbonnement(plan, 'an')} par an (économisez {economieAnnuelle(plan)})
               </p>
             )}
           </div>
@@ -218,7 +218,7 @@ const FAQ_ITEMS = [
   },
   {
     q: 'Comment fonctionne la facturation ?',
-    a: 'Paiement sécurisé par Stripe. Facturation mensuelle ou annuelle (2 mois offerts). Vous recevez une facture par email à chaque échéance.'
+    a: `Paiement sécurisé par Stripe. Facturation mensuelle ou annuelle${moisOffertsCommuns(PLANS) > 0 ? ` (${moisOffertsCommuns(PLANS)} mois offerts)` : ''}. Vous recevez une facture par email à chaque échéance.`
   },
   {
     q: 'Que se passe-t-il si je dépasse les limites du plan Gratuit ?',

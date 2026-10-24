@@ -1,6 +1,5 @@
 import { ArrowLeft, Shield, FileText, Scale, Lock, Trash2 } from 'lucide-react';
-import { PLANS, PLAN_ORDER } from '../stores/subscriptionStore';
-import { MENTION_TVA_ABONNEMENT, prixAbonnement } from '../stores/prixAbonnement';
+import { CGV_ARTICLE_4_PLANS, CGV_ARTICLE_4_TVA, libelleVersionCgv } from '../lib/cgv';
 
 // ─── Mallettico SaaS Company Info (editor) ────────────────────────────────────
 // Update these values with the actual company details before launch
@@ -74,6 +73,9 @@ export default function LegalPages({ page, couleur, setPage }) {
 
   const renderCGV = () => (
     <>
+      {/* Version en vigueur : la date d'effet de ce texte (CGV_VERSION), pas la date du jour */}
+      <p className={`mb-8 text-sm font-medium ${textSecondary}`}>{libelleVersionCgv()}</p>
+
       <Section title="Article 1 - Éditeur">
         <P>
           Le site Mallettico est édité par : <strong className={textPrimary}>{COMPANY.nom}</strong>
@@ -130,34 +132,21 @@ export default function LegalPages({ page, couleur, setPage }) {
               </tr>
             </thead>
             <tbody>
-              {/* Description de chaque plan : sa liste de PLANS, mot pour mot (décision D-29 : une seule liste par plan,
-                  lue partout). Avant (20 oct. 2026) : « 2 chantiers actifs » (l'application compte tous les chantiers),
-                  « signatures électroniques, export comptable » sous Artisan (inclus dès le plan Gratuit) et « Jusqu'à
-                  10 utilisateurs, pointage, trésorerie, sous-traitants, statistiques avancées » sous Équipe (rien de cela
-                  n'est réservé à Équipe ; la limite est de 10 collaborateurs en plus du titulaire). */}
-              {PLAN_ORDER.map((id, i) => {
-                const plan = PLANS[id];
-                const payant = plan.priceMonthly > 0;
-                return (
-                  <tr key={id} className={i < PLAN_ORDER.length - 1 ? `border-b ${tableBorder}` : undefined}>
-                    <td className={`px-4 py-3 font-medium ${textPrimary}`}>{plan.name}</td>
-                    <td className={`px-4 py-3 ${textSecondary}`}>
-                      {/* Tous les prix par l'outil commun (« 0 € par mois » pour le plan Gratuit) */}
-                      {payant
-                        ? `${prixAbonnement(plan)} par mois (ou ${prixAbonnement(plan, 'an')} par an)${plan.offreLancement ? ` — ${plan.offreLancement.toLowerCase()}, conservé tant que l'abonnement reste actif` : ''}`
-                        : `${prixAbonnement(plan)} par mois`}
-                    </td>
-                    <td className={`px-4 py-3 ${textSecondary}`}>
-                      {/* Seulement ce que le plan comprend (un libellé `included: false` n'est pas une promesse) */}
-                      {plan.description}. {plan.featureLabels.filter((f) => f.included !== false).map((f) => f.name).join(' · ')}.
-                    </td>
-                  </tr>
-                );
-              })}
+              {/* Article 4 figé pour la version des CGV (src/lib/cgv.js) : il ne se recalcule plus depuis PLANS. Un test
+                  le compare à PLANS et échoue si PLANS change (relecture juridique du 20 oct. 2026 : changer PLANS
+                  modifiait le contrat en silence). Avant : « 2 chantiers actifs », « signatures électroniques, export
+                  comptable » sous Artisan et « Jusqu'à 10 utilisateurs… » sous Équipe, corrigés le 20 oct. */}
+              {CGV_ARTICLE_4_PLANS.map((ligne, i) => (
+                <tr key={ligne.plan} className={i < CGV_ARTICLE_4_PLANS.length - 1 ? `border-b ${tableBorder}` : undefined}>
+                  <td className={`px-4 py-3 font-medium ${textPrimary}`}>{ligne.plan}</td>
+                  <td className={`px-4 py-3 ${textSecondary}`}>{ligne.prix}</td>
+                  <td className={`px-4 py-3 ${textSecondary}`}>{ligne.description}</td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
-        <P>Les prix sont indiqués en euros, sans TVA : {MENTION_TVA_ABONNEMENT}.</P>
+        <P>{CGV_ARTICLE_4_TVA}</P>
         {/* D-19 : la sortie de franchise doit être écrite dans les CGV (relecture juriste du 20 oct. 2026) */}
         <P>
           Si l'éditeur cesse de bénéficier de la franchise en base de TVA, la TVA au taux en vigueur (20 % à ce jour)
@@ -250,7 +239,15 @@ export default function LegalPages({ page, couleur, setPage }) {
         </P>
       </Section>
 
-      <Section title="Article 10 - Droit applicable et litiges">
+      <Section title="Article 10 - Modification des conditions">
+        <P>
+          L'éditeur peut modifier les présentes conditions et le contenu des offres. Toute modification est notifiée
+          par e-mail au moins 30 jours avant son entrée en vigueur ; elle ne s'applique pas à la période déjà payée, et
+          l'utilisateur qui la refuse peut résilier sans frais avant cette date.
+        </P>
+      </Section>
+
+      <Section title="Article 11 - Droit applicable et litiges">
         <P>
           Les présentes CGV sont soumises au droit français. En cas de litige, les parties s'engagent à
           rechercher une solution amiable avant toute action judiciaire.
@@ -969,12 +966,8 @@ export default function LegalPages({ page, couleur, setPage }) {
         <div className={`border rounded-xl p-6 sm:p-8 ${cardBg}`}>
           {renderContent()}
 
-          {/* Last updated */}
-          <div className={`mt-12 pt-6 border-t border-bord`}>
-            <p className={`text-sm ${textSecondary}`}>
-              Dernière mise à jour : {new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
-            </p>
-          </div>
+          {/* Plus de « Dernière mise à jour » calculée à la date du jour : elle affichait toujours aujourd'hui, sur des
+              textes qui n'avaient pas changé. Les CGV portent leur version en tête (CGV_VERSION, src/lib/cgv.js). */}
         </div>
       </div>
     </div>

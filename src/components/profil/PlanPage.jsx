@@ -11,8 +11,8 @@ import {
   Users, CreditCard, LogOut, Check, ArrowRight,
   Zap, Hammer, ExternalLink, Clock,
 } from 'lucide-react';
-import { useSubscriptionStore, PLANS, PLAN_ORDER, YEARLY_DISCOUNT } from '../../stores/subscriptionStore';
-import { MENTION_TVA_ABONNEMENT, prixAbonnement } from '../../stores/prixAbonnement';
+import { useSubscriptionStore, PLANS, PLAN_ORDER } from '../../stores/subscriptionStore';
+import { MENTION_TVA_ABONNEMENT, prixAbonnement, economieAnnuelle, moisOffertsCommuns } from '../../stores/prixAbonnement';
 import { createCheckoutSession, createPortalSession, utiliserCodeTesteur } from '../../services/subscriptionsApi';
 import { toast } from '../../stores/toastStore';
 import { auth, isDemo } from '../../supabaseClient';
@@ -308,7 +308,7 @@ export default function PlanPage({ isDark, couleur = '#f97316', setPage }) {
               onChange={setBilling}
               options={[
                 { valeur: 'monthly', libelle: 'Mensuel' },
-                { valeur: 'yearly', libelle: `Annuel −${YEARLY_DISCOUNT} %` },
+                { valeur: 'yearly', libelle: moisOffertsCommuns(PLANS) > 0 ? `Annuel · ${moisOffertsCommuns(PLANS)} mois offerts` : 'Annuel' },
               ]}
             />
           </div>
@@ -361,7 +361,7 @@ export default function PlanPage({ isDark, couleur = '#f97316', setPage }) {
                       <>
                         <p className="text-sm mt-0.5 text-encre-3 tabular-nums">Facturé {String(p.priceYearly).replace('.', ',')} €/an</p>
                         <p className="text-sm mt-0.5 text-succes-texte font-medium tabular-nums">
-                          Économisez {Math.round(p.priceMonthly * 12 - p.priceYearly)} €/an
+                          Économisez {economieAnnuelle(p)} par an
                         </p>
                       </>
                     )}

@@ -57,6 +57,7 @@ import { Bouton } from './ui/Bouton';
 import { PastilleStatut } from './ui/Pastille';
 import { statut as libelleStatut } from '../lib/statuts';
 import { pourcent, blocConditionsPaiement, CONDITIONS_PAIEMENT, euros, quantite } from '../lib/formatDocument';
+import { natureDuDocument, piedDePageHtml } from '../lib/piedDePageDocument';
 import { echapperHtml as echap, couleurCss } from '../lib/echapperHtml';
 import { totauxDocument, lignesTotauxHtml, lignesAcompteHtml, calculerTotaux } from '../lib/totauxDocument';
 import { lignesFactureAcompte, lignesFactureSolde } from '../lib/facturation';
@@ -1898,7 +1899,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         ${E?.bic ? ` · <strong>BIC:</strong> ${E.bic}` : ''}
       </div>
       <div>
-        ${blocConditionsPaiement({ doc, entreprise, isFacture, dateEcheance: isFacture ? echeance(doc, { delaiJours: E?.delaiPaiement }) : null })}
+        ${blocConditionsPaiement({ doc, entreprise, isFacture, dateEcheance: isFacture ? echeance(doc, { delaiJours: E?.delaiPaiement }) : null, client })}
       </div>
     </div>
   </div>` : ''}
@@ -1977,7 +1978,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       ${E?.rcProAssureur ? `RC Pro: ${E.rcProAssureur}${E.rcProNumero ? ` N°${E.rcProNumero}` : ''}${E.rcProValidite ? ` (Valide jusqu'au ${dateLue(E.rcProValidite).toLocaleDateString('fr-FR')})` : ''}${E.rcProMontantGarantie ? ` — Garantie: ${E.rcProMontantGarantie} €` : ''}${E.rcProZone ? ` — Zone: ${E.rcProZone}` : ''}` : ''}
       ${E?.mentionRGE !== false && Array.isArray(E?.labels) && E.labels.filter(l => l.actif).length > 0 ? '<br>' + E.labels.filter(l => l.actif).map(l => `${echap(l.nom)}${l.numero ? ` N°${echap(l.numero)}` : ''}${l.organisme ? ` (${echap(l.organisme)})` : ''}${l.dateExpiration ? ` — Valide jusqu'au ${dateLue(l.dateExpiration).toLocaleDateString('fr-FR')}` : ''}`).join('<br>') : ''}
     </div>
-    ${isAvoirDoc ? `<div style="margin-top:6px;font-size:6.5pt;color:#666">Cet avoir rectifie la facture de référence citée ci-dessus ; il en réduit d'autant le montant dû.</div>` : !isFacture ? `<div style="margin-top:6px;font-size:6.5pt;color:#666">Devis reçu avant l'exécution des travaux. Conditions de paiement et pénalités de retard conformes à l'article L441-10 du Code de commerce.</div>` : ''}
+    ${piedDePageHtml({ nature: natureDuDocument(doc), client })}
   </div>
 </body>
 </html>`);

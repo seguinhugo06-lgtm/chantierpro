@@ -17,7 +17,7 @@
  * sécurité de Supabase, pas le code : tour de correction 1).
  */
 import { PLANS as PLANS_APP } from '../../stores/subscriptionStore';
-import { MENTION_TVA_ABONNEMENT, prixAbonnement } from '../../stores/prixAbonnement';
+import { MENTION_TVA_ABONNEMENT, prixAbonnement, moisOfferts } from '../../stores/prixAbonnement';
 import { DEFAULT_DEVIS_STEPS, DEFAULT_FACTURE_STEPS, delais } from './site/delaisRelance';
 
 export const CATEGORIES_FAQ = [
@@ -28,11 +28,8 @@ export const CATEGORIES_FAQ = [
   { id: 'tech', libelle: 'Technique' },
 ];
 
-/** Mois offerts par l'abonnement à l'année, par rapport à douze mois payés au mois (0 si le plan n'est pas vendu à l'année). */
-export function moisOfferts(plan) {
-  if (!(plan?.priceMonthly > 0) || !(plan?.priceYearly > 0)) return 0;
-  return Math.round((plan.priceMonthly * 12 - plan.priceYearly) / plan.priceMonthly);
-}
+// `moisOfferts` (mois offerts par l'abonnement à l'année) vit avec `prixAbonnement`, comme l'économie annuelle
+export { moisOfferts };
 
 /** « 99 € par an pour Artisan et 199 € par an pour Équipe, soit 2 mois offerts » (mois offerts lus dans PLANS). */
 function offreAnnuelle(plans) {

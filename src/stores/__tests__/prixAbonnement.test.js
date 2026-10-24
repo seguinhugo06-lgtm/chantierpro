@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { PLANS, PLAN_ORDER } from '../subscriptionStore';
-import { MENTION_TVA_ABONNEMENT, prixAbonnement } from '../prixAbonnement';
+import { MENTION_TVA_ABONNEMENT, prixAbonnement, economieAnnuelle, economieAnnuelleCentimes, moisOfferts, moisOffertsCommuns } from '../prixAbonnement';
 
 // Les espaces de `Intl` (insécable avant « € », fine insécable des milliers) : on compare après normalisation.
 const lu = (texte) => texte.replace(/[\s  ]+/g, ' ');
@@ -34,5 +34,45 @@ describe('prix d\'un abonnement (D-19 : franchise de TVA)', () => {
   it('ne dit jamais « HT » : le prix seul, la mention est à part', () => {
     expect(prixAbonnement(PLANS.artisan)).not.toMatch(/HT/);
     expect(MENTION_TVA_ABONNEMENT).not.toMatch(/\bHT\b/);
+  });
+});
+
+// Économie de l'abonnement à l'année : 12 × prix mensuel − prix annuel, calculée depuis PLANS (24 oct. 2026). Avant :
+// « Économisez 20 € » (19,80 € arrondi) et « 40 € » (39,80 €), « 17 % » (16,7 %) et « 2 mois offerts » écrits en dur.
+describe('économie de l\'abonnement annuel : calculée, jamais arrondie', () => {
+  it('Artisan : 19,80 € ; Équipe : 39,80 € (centimes entiers, sans erreur de flottant)', () => {
+    expect(economieAnnuelleCentimes(PLANS.artisan)).toBe(1980);
+    expect(economieAnnuelleCentimes(PLANS.equipe)).toBe(3980);
+    expect(lu(economieAnnuelle(PLANS.artisan))).toBe('19,80 €');
+    expect(lu(economieAnnuelle(PLANS.equipe))).toBe('39,80 €');
+  });
+
+  it('elle suit PLANS : un autre prix annuel change l\'économie', () => {
+    expect(lu(economieAnnuelle({ priceMonthly: 10, priceYearly: 100 }))).toBe('20 €');
+    expect(lu(economieAnnuelle({ priceMonthly: 12.5, priceYearly: 120 }))).toBe('30 €');
+    expect(lu(economieAnnuelle({ priceMonthly: 9.9, priceYearly: 99.5 }))).toBe('19,30 €');
+  });
+
+  it('pas d\'économie affichable : 0 pour le plan Gratuit, un plan sans prix annuel, ou un prix annuel plus cher', () => {
+    expect(economieAnnuelleCentimes(PLANS.gratuit)).toBe(0);
+    expect(economieAnnuelleCentimes({ priceMonthly: 5 })).toBe(0);
+    expect(economieAnnuelleCentimes({ priceMonthly: 5, priceYearly: 70 })).toBe(0);
+    expect(economieAnnuelleCentimes(undefined)).toBe(0);
+  });
+
+  it('mois offerts : 2 pour Artisan et pour Équipe, 0 sans offre annuelle ; commun aux deux plans payants', () => {
+    expect(moisOfferts(PLANS.artisan)).toBe(2);
+    expect(moisOfferts(PLANS.equipe)).toBe(2);
+    expect(moisOfferts(PLANS.gratuit)).toBe(0);
+    expect(moisOffertsCommuns(PLANS)).toBe(2);
+    // Le libellé qui ne nomme pas de plan n'existe que si tous offrent autant
+    expect(moisOffertsCommuns({ a: { priceMonthly: 10, priceYearly: 100 }, b: { priceMonthly: 10, priceYearly: 90 } })).toBe(0);
+    expect(moisOffertsCommuns({})).toBe(0);
+  });
+
+  it('l\'économie vaut exactement les mois offerts (aucun « 2 mois offerts » qui arrondirait)', () => {
+    for (const id of ['artisan', 'equipe']) {
+      expect(economieAnnuelleCentimes(PLANS[id])).toBe(moisOfferts(PLANS[id]) * Math.round(PLANS[id].priceMonthly * 100));
+    }
   });
 });

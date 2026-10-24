@@ -11,6 +11,7 @@ import { echeance } from './paiementsFacture';
 import { dateLue } from './dates';
 import { estFranchiseTva, tauxTvaDocument } from './franchiseTva';
 import { marquerDocumentFictif } from './donneesFictives';
+import { natureDuDocument, piedDePageHtml } from './piedDePageDocument';
 import { blocRetractationHtml, estConcerneParRetractation, lienRetractationEnLigne, mentionsSignatureClientHtml } from './retractation';
 
 /**
@@ -243,7 +244,7 @@ export function buildDocumentHTML(doc, client, chantier, entreprise, options = {
         ${entreprise?.bic ? ` · <strong>BIC:</strong> ${entreprise.bic}` : ''}
       </div>
       <div>
-        ${blocConditionsPaiement({ doc, entreprise, isFacture, dateEcheance: isFacture ? echeance(doc, { delaiJours: entreprise?.delaiPaiement }) : null })}
+        ${blocConditionsPaiement({ doc, entreprise, isFacture, dateEcheance: isFacture ? echeance(doc, { delaiJours: entreprise?.delaiPaiement }) : null, client })}
       </div>
     </div>
   </div>` : ''}
@@ -304,7 +305,7 @@ export function buildDocumentHTML(doc, client, chantier, entreprise, options = {
       ${entreprise?.decennaleAssureur && entreprise?.decennaleNumero && entreprise?.rcProAssureur ? '<br>' : ''}
       ${entreprise?.rcProAssureur ? `RC Pro: ${entreprise.rcProAssureur}${entreprise.rcProNumero ? ` N°${entreprise.rcProNumero}` : ''}${entreprise.rcProValidite ? ` (Valide jusqu'au ${dateLue(entreprise.rcProValidite).toLocaleDateString('fr-FR')})` : ''}` : ''}
     </div>
-    ${isAvoir ? `<div style="margin-top:6px;font-size:6.5pt;color:#666">Cet avoir rectifie la facture de référence citée ci-dessus ; il en réduit d'autant le montant dû.</div>` : !isFacture ? `<div style="margin-top:6px;font-size:6.5pt;color:#666">Devis reçu avant l'exécution des travaux. Conditions de paiement et pénalités de retard conformes à l'article L441-10 du Code de commerce.</div>` : ''}
+    ${piedDePageHtml({ nature: natureDuDocument(doc), client })}
   </div>
   ${subscription.isFree() ? `
   <div style="position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:999;display:flex;align-items:center;justify-content:center;">
