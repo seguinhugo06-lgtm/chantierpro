@@ -141,14 +141,23 @@ export function buildDocumentEmailBody({ doc, client, entreprise, couleur = '#f9
 }
 
 /**
+ * Mode de paiement écrit dans le reçu (« Reçu le 2 octobre 2026 — virement bancaire »). Un libellé par mode de la fenêtre
+ * « Encaisser » (src/lib/modesPaiement.js ; test modesPaiement.test.js) : « prélèvement » manquait, le reçu écrivait
+ * « prelevement » (relecture de la Task 4, 24 oct. 2026).
+ */
+export const LIBELLES_MODE_RECU = {
+  virement: 'virement bancaire', cheque: 'chèque', especes: 'espèces', cb: 'carte bancaire', carte: 'carte bancaire',
+  prelevement: 'prélèvement', autre: 'autre',
+};
+
+/**
  * Reçu de paiement envoyé au client quand l'artisan encaisse une facture.
  */
 export function buildPaymentReceiptEmailBody({ doc, client, entreprise, couleur = '#f97316', montantFormatte, modePaiement, datePaiement }) {
   const clientNom = echapperHtml(`${client.prenom || ''} ${client.nom || ''}`.trim()) || 'Madame, Monsieur';
   // Nom imprimé : « EI » pour un entrepreneur individuel, comme sur ses documents (C. com. R526-27)
   const nomEntreprise = echapperHtml(nomImprime(entreprise) || 'Votre artisan');
-  const modeLabels = { virement: 'virement bancaire', cheque: 'chèque', especes: 'espèces', cb: 'carte bancaire', carte: 'carte bancaire' };
-  const modeLabel = echapperHtml(modeLabels[modePaiement] || modePaiement || '');
+  const modeLabel = echapperHtml(LIBELLES_MODE_RECU[modePaiement] || modePaiement || '');
   const dateLabel = datePaiement
     ? dateLue(datePaiement).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
     : new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });

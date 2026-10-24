@@ -10,6 +10,7 @@ import { buildPaymentUrl } from '../lib/paymentUtils';
 import { jourLocal } from '../lib/dates';
 import { telInternational } from '../lib/messageRelance';
 import { FONCTIONS } from '../lib/fonctions';
+import { MODES_PAIEMENT } from '../lib/modesPaiement';
 
 // Check if Stripe is configured (either Connect or direct keys)
 const STRIPE_CONFIGURED = import.meta.env.VITE_STRIPE_PUBLIC_KEY && !import.meta.env.VITE_STRIPE_PUBLIC_KEY.includes('demo');
@@ -19,14 +20,8 @@ const STRIPE_CONFIGURED = import.meta.env.VITE_STRIPE_PUBLIC_KEY && !import.meta
  * « Carte banca… » tronqués à 375 px, et « Recommandé BTP », une affirmation invérifiable). Prélèvement : le
  * réglage « Mode de paiement par défaut » le propose.
  */
-const PAYMENT_MODES = [
-  { value: 'virement', label: 'Virement', icon: Building2 },
-  { value: 'cheque', label: 'Chèque', icon: FileText },
-  { value: 'especes', label: 'Espèces', icon: Banknote },
-  { value: 'cb', label: 'Carte', icon: CreditCard },
-  { value: 'prelevement', label: 'Prélèvement', icon: Repeat },
-  { value: 'autre', label: 'Autre', icon: Wallet },
-];
+const ICONES_MODE = { virement: Building2, cheque: FileText, especes: Banknote, cb: CreditCard, prelevement: Repeat, autre: Wallet };
+const PAYMENT_MODES = MODES_PAIEMENT.map((m) => ({ value: m.valeur, label: m.libelle, icon: ICONES_MODE[m.valeur] || Wallet }));
 
 /**
  * Crée un lien de paiement vers la page publique /pay/:token.
@@ -239,7 +234,7 @@ export default function PaymentModal({
   const champ = 'w-full h-12 px-4 border rounded-xl text-base bg-surface border-bord-fort text-encre placeholder:text-encre-3';
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} size="md">
+    <Modal isOpen={isOpen} onClose={onClose} size="md" closeOnBackdrop={false}>
       <ModalHeader>
         <ModalTitle>{FONCTIONS.paiementEnLigne ? 'Recevoir un paiement' : 'Enregistrer un paiement reçu'}</ModalTitle>
         <ModalDescription>{document.numero}</ModalDescription>

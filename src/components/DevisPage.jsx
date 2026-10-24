@@ -60,6 +60,7 @@ import Champ from './ui/Champ';
 import Modal, { ModalHeader, ModalTitle, ModalDescription, ModalBody, ModalFooter } from './ui/Modal';
 import FeuilleRelance from './devis/FeuilleRelance';
 import { texteDeHtml } from '../lib/texteDeHtml';
+import { libelleModePaiement } from '../lib/modesPaiement';
 import { pourcent, blocConditionsPaiement, CONDITIONS_PAIEMENT, euros, quantite } from '../lib/formatDocument';
 import { natureDuDocument, piedDePageHtml } from '../lib/piedDePageDocument';
 import { echapperHtml as echap, couleurCss } from '../lib/echapperHtml';
@@ -239,6 +240,18 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   const [nature, setNature] = useState('all');
   const [relanceDe, setRelanceDe] = useState(null); // document à relancer : feuille « Relancer » (canal, aperçu, envoi)
   const [choixFacturation, setChoixFacturation] = useState(false); // « Facturer » : acompte, échéancier, solde, situation
+  const optionsFacturationRef = useRef([]); // options calculées par la fiche (devis ouvert), lues par l'effet ci-dessous
+  // « Facturer » touché dans la liste ouvre la fiche avec le choix ; comme sur la fiche, une seule option part directement
+  // (relecture de la Task 4, 24 oct. 2026)
+  useEffect(() => {
+    if (!choixFacturation || mode !== 'preview') return;
+    const options = optionsFacturationRef.current || [];
+    if (options.length <= 1) {
+      setChoixFacturation(false);
+      if (options.length === 1) options[0].action();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [choixFacturation, mode, selected?.id]);
   const [periodFilter, setPeriodFilter] = useState('all'); // B7: all, month, quarter, year
   // Recherche / Filtres / Trier : boîte à outils commune (ui/Filtres.jsx). Période, client et chantier
   // dans le volet « Filtres » ; tri, vue et export dans « Trier et afficher » (recette du 9 oct.).
@@ -3146,6 +3159,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         detail: modeDiscret ? '' : `${formatMoney(soldeAvecAcomptes ? factureDeSolde(selected).totaux.totalTTC : selected.total_ttc)} TTC`, action: () => confirmAndCreateSolde() },
       canFacturer && hasChantier && setSelectedChantier && { cle: 'situation', icone: BarChart3, libelle: 'Situation de travaux', detail: 'Par avancement, depuis le chantier', action: () => { setSelectedChantier(selected.chantier_id); setPage?.('chantiers'); } },
     ].filter(Boolean);
+    optionsFacturationRef.current = optionsFacturation;
 
     return (
     <>
@@ -3384,7 +3398,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         </Volet>
 
         {/* Facturer : le choix (acompte, échéancier, solde, situation), en feuille du bas sur téléphone */}
-        <Volet ouvert={choixFacturation && optionsFacturation.length > 0} onFermer={() => setChoixFacturation(false)} titre="Facturer ce devis" largeur={360}>
+        <Volet ouvert={choixFacturation && optionsFacturation.length > 1} onFermer={() => setChoixFacturation(false)} titre="Facturer ce devis" largeur={360}>
           <ul className="-mx-2 space-y-1">
             {optionsFacturation.map(({ cle, icone: Icone, libelle, detail, action }) => (
               <li key={cle}>
@@ -3801,8 +3815,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                 const linkedPaiements = paiements.filter(p => p.facture_id === selected.id || p.document === selected.numero);
                 if (linkedPaiements.length === 0) return null;
                 const reste = resteAPayer(selected, paiements);
-                const MODES = { virement: 'Virement', cheque: 'Chèque', especes: 'Espèces', cb: 'Carte', carte: 'Carte', autre: 'Autre' };
-                const modeLu = (p) => { const m = p.mode || p.methode || p.mode_paiement || 'virement'; return MODES[m] || m; };
+                const modeLu = (p) => libelleModePaiement(p.mode || p.methode || p.mode_paiement);
                 return (
                   <section aria-label="Paiements reçus" className="mt-6 pt-4 border-t border-bord">
                     <h4 className="text-sm font-semibold text-encre mb-1">Paiements reçus</h4>
@@ -3821,12 +3834,18 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                         const corrigeable = correctionPossible(p, linkedPaiements, selected);
                         return (
                           <li key={p.id} className="flex items-center justify-between gap-3 text-sm min-h-[48px]">
-                            <span className="min-w-0 flex-1 text-encre-2 whitespace-nowrap truncate">{dateLue(p.date).toLocaleDateString('fr-FR')} · {modeLu(p)}</span>
+                            {/* La date, le mode dessous : au téléphone « Corriger » ne coupe plus le mode */}
+                            <span className="min-w-0 flex-1 py-1.5 sm:py-0">
+                              <span className="block sm:inline text-encre-2">{dateLue(p.date).toLocaleDateString('fr-FR')}</span>
+                              <span className="block sm:inline text-encre-3 sm:text-encre-2"><span className="hidden sm:inline"> · </span>{modeLu(p)}</span>
+                            </span>
                             <span className="font-semibold text-encre tabular-nums whitespace-nowrap">{formatMoney(p.montant)}</span>
                             {corrigeable > 0 && addPaiement ? (
-                              <BoutonIcone icone={Pen} taille={16} className="-mr-2"
-                                libelle={`Corriger l'encaissement du ${dateLue(p.date).toLocaleDateString('fr-FR')}`}
-                                onClick={() => setCorrectionDe({ paiement: p, max: corrigeable })} />
+                              <Bouton taille="compacte" variante="discret" icone={RotateCcw} className="-mr-2 flex-shrink-0"
+                                aria-label={`Corriger l'encaissement du ${dateLue(p.date).toLocaleDateString('fr-FR')}`}
+                                onClick={() => setCorrectionDe({ paiement: p, max: corrigeable })}>
+                                Corriger
+                              </Bouton>
                             ) : null}
                           </li>
                         );
@@ -4865,7 +4884,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
             )}
           </span>
         }
-        action={canPerform('devis', 'create') && (
+        action={canPerform('devis', 'create') && !aucunDocument && (
         <div className="flex items-center gap-2">
         <div className="relative">
           <div className="flex items-stretch">
@@ -4930,7 +4949,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           <AlertTriangle size={18} className="flex-shrink-0" aria-hidden="true" />
           <p className="flex-1 min-w-0 text-sm">
             <span className="font-semibold">Profil incomplet</span>
-            <span className="block sm:inline sm:ml-1 truncate">{manquesProfil.join(', ')}</span>
+            <span className="line-clamp-2 sm:inline sm:ml-1">{manquesProfil.join(', ')}</span>
           </p>
           {setPage && (
             <Bouton taille="compacte" variante="secondaire" onClick={() => setPage('settings')} className="flex-shrink-0">Compléter</Bouton>
@@ -4991,10 +5010,14 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
             variante="secondaire" icone={Send} chargement={actionLoading === 'bulk-relance'} className="flex-shrink-0"
             onClick={async () => {
               if (actionLoading) return;
-              const noms = [...new Set((relances.dueNow || []).map(p => formatClientName(p.client, '') || p.doc?.client_nom).filter(Boolean))];
+              // L'envoi groupé part par lots de 10 (relanceEngine, maxPerBatch) : annoncer ce qui partira vraiment
+              const PAR_ENVOI = 10;
+              const partent = (relances.dueNow || []).slice(0, PAR_ENVOI);
+              const nombre = Math.min(relances.counts.due, PAR_ENVOI);
+              const noms = [...new Set(partent.map(p => formatClientName(p.client, '') || p.doc?.client_nom).filter(Boolean))];
               const ok = await confirm({
-                title: `Envoyer ${relances.counts.due} relance${relances.counts.due > 1 ? 's' : ''} ?`,
-                message: `Par e-mail${noms.length ? `, à : ${noms.join(', ')}` : ''}.`,
+                title: `Envoyer ${nombre} relance${nombre > 1 ? 's' : ''} ?`,
+                message: `Par e-mail${noms.length ? `, à : ${noms.join(', ')}` : ''}.${relances.counts.due > PAR_ENVOI ? ` Les relances partent par ${PAR_ENVOI} : il en restera ${relances.counts.due - PAR_ENVOI} à envoyer ensuite.` : ''}`,
               });
               if (!ok) return;
               setActionLoading('bulk-relance');

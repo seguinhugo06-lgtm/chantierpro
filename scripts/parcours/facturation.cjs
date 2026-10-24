@@ -45,6 +45,76 @@ const texte = (page) => page.evaluate(() => document.body.innerText);
 
 module.exports = [
   {
+    // Audit UX du 20 oct. 2026 (P1) : « Relancer » partait en un toucher et « Échange ajouté » remplaçait le message
+    // de l'envoi. La feuille dit à qui et quoi, un seul message nomme le destinataire, l'échange est noté.
+    // Puis les actions rapides de la liste font ce qu'elles disent (« Encaisser », « Facturer »).
+    nom: 'relance : feuille « Relancer » (destinataire, objet), un seul message, échange noté ; actions rapides de la liste (375 px)',
+    async executer({ ouvrir, cliquer, attendre, verifier }) {
+      const { page } = await ouvrir({ page: 'devis', largeur: 375 });
+      await attendre(800);
+      verifier(await ouvrirDocument(page, 'DEV-2026-00005'), 'le devis envoyé de Marc Lefevre est dans la liste');
+      await attendre(800);
+      await cliquer(page, 'Relancer');
+      await attendre(700);
+      const feuille = await page.evaluate(() => document.querySelector('[role="dialog"]')?.innerText || '');
+      verifier(/Relancer Marc Lefevre/.test(feuille), `la feuille nomme le client (${feuille.slice(0, 40)}…)`);
+      verifier(feuille.includes('marc.lefevre@pro.fr'), 'la feuille montre l’adresse du destinataire');
+      verifier(/Objet : Rappel : Devis DEV-2026-00005/.test(feuille), 'la feuille montre l’objet de l’e-mail');
+      verifier(!/Échange ajouté/.test(feuille), 'rien n’est parti avant « Envoyer la relance »');
+
+      // Chaque message affiché à partir d'ici est noté, même s'il en remplace un autre
+      await page.evaluate(() => {
+        window.__messages = [];
+        const lire = () => {
+          const t = [...document.querySelectorAll('[role="status"][aria-live="polite"]')]
+            .map((e) => (e.innerText || '').trim()).filter(Boolean).join(' | ');
+          if (t && window.__messages[window.__messages.length - 1] !== t) window.__messages.push(t);
+        };
+        new MutationObserver(lire).observe(document.body, { childList: true, subtree: true, characterData: true });
+      });
+      const envoye = await page.evaluate(() => {
+        const b = [...document.querySelectorAll('[role="dialog"] button')].find((x) => (x.innerText || '').trim() === 'Envoyer la relance');
+        b?.click();
+        return !!b;
+      });
+      verifier(envoye, 'bouton « Envoyer la relance »');
+      await attendre(2500);
+      const messages = await page.evaluate(() => window.__messages);
+      verifier(messages.length === 1, `un seul message après l'envoi (${JSON.stringify(messages)})`);
+      verifier(/relance simulée à marc\.lefevre@pro\.fr/.test(messages[0] || ''), `le message nomme le destinataire (${messages[0]})`);
+      verifier(!messages.some((m) => /Échange ajouté/.test(m)), 'pas de « Échange ajouté » par-dessus');
+      verifier(!(await page.evaluate(() => !!document.querySelector('[role="dialog"]'))), 'la feuille s’est refermée');
+      const { echanges = [] } = await documentsEnregistres(page);
+      verifier(echanges.some((e) => e.objet === 'Relance devis DEV-2026-00005'), 'l’échange « Relance devis DEV-2026-00005 » est enregistré');
+
+      // Liste : « Encaisser » ouvre la fenêtre d'encaissement de la facture
+      await cliquer(page, 'Retour à la liste');
+      await attendre(700);
+      const actionDeLigne = (numero, libelle) => page.evaluate((n, l) => {
+        const ligne = [...document.querySelectorAll('[data-ui="LigneListe"]')].find((x) => (x.innerText || '').includes(n));
+        const b = [...(ligne?.querySelectorAll('button') || [])].find((x) => (x.innerText || '').trim() === l);
+        b?.click();
+        return !!b;
+      }, numero, libelle);
+      verifier(await actionDeLigne('FAC-2026-00003', 'Encaisser'), '« Encaisser » sur la ligne de la facture');
+      await attendre(1200);
+      const encaisser = await page.evaluate(() => document.querySelector('[role="dialog"]')?.innerText || '');
+      verifier(/Enregistrer un paiement reçu/.test(encaisser) && /Confirmer le paiement/.test(encaisser),
+        `« Encaisser » ouvre la fenêtre d'encaissement (${encaisser.slice(0, 40)}…)`);
+      await page.keyboard.press('Escape');
+      await attendre(500);
+      await cliquer(page, 'Retour à la liste');
+      await attendre(700);
+
+      // Liste : « Facturer » sur un devis signé ouvre le choix (plusieurs options) sur sa fiche
+      verifier(await actionDeLigne('DEV-2026-00006', 'Facturer'), '« Facturer » sur la ligne du devis signé');
+      await attendre(1200);
+      const choix = await page.evaluate(() => [...document.querySelectorAll('[role="dialog"]')].map((d) => d.innerText).join('\n'));
+      verifier(/Facturer ce devis/.test(choix) && /Facture d’acompte/.test(choix) && /Facture complète/.test(choix),
+        `« Facturer » ouvre le choix de facturation (${choix.slice(0, 60)}…)`);
+    },
+  },
+  {
     nom: 'acompte : deux appuis rapides sur « Facturer » ne créent qu’une facture (375 px)',
     async executer({ ouvrir, cliquer, attendre, verifier }) {
       const { page } = await ouvrir({ page: 'devis', largeur: 375, avantChargement: await demoAvec([DEVIS_SIGNE]) });

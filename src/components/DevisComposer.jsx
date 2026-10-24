@@ -33,6 +33,11 @@ const DRAFT_KEY = 'mallettico_devis_composer_draft';
 const MRU_KEY = 'mallettico_recent_clients';
 const RECENT_ARTICLES_KEY = 'mallettico_recent_articles';
 const UNITES = ['u', 'm²', 'ml', 'm³', 'h', 'j', 'forfait', 'ens.', 'pièce', 'kg', 'L', 'lot'];
+// Libellés de champ en casse normale, 14 px (audit UX du 20 oct. 2026 : capitales de 11 px, sous le minimum de 12 px)
+const LIBELLE = 'block mb-1.5 text-sm font-medium text-encre-2';
+// Une seule hauteur de champ, 48 px, texte de 16 px au téléphone (pas de zoom de Safari) ; le tableau des lignes au bureau
+// garde ses cellules de 36 px
+const CHAMP = 'w-full px-3 h-12 rounded-xl border text-base sm:text-sm';
 
 /** Modèles métier : squelettes de devis prêts à chiffrer (mêmes trames que le formulaire classique). */
 const METIER_TEMPLATES = [
@@ -154,8 +159,6 @@ export default function DevisComposer({
   const textPrimary = 'text-encre';
   const textMuted = 'text-encre-3';
   const rowHover = 'hover:bg-surface-2';
-  // Libellés en casse normale, 14 px (audit UX du 20 oct. 2026 : capitales de 11 px, sous le minimum de 12 px)
-  const LIBELLE = 'block mb-1.5 text-sm font-medium text-encre-2';
 
   // ── Load initialData / restore draft ──
   useEffect(() => {
@@ -762,7 +765,7 @@ export default function DevisComposer({
                 ligne._isSection ? (
                   <SectionRow key={ligne.id} ligne={ligne} index={index} total={form.lignes.length} subtotal={sectionSubtotals[index] || 0}
                     count={sectionCounts[index] || 0} collapsed={collapsedLots.has(ligne.id)} onToggle={() => toggleLot(ligne.id)}
-                    shouldFocus={ligne.id === focusLotId} isDark={isDark} couleur={accentPlein} textPrimary={textPrimary} textMuted={textMuted}
+                    shouldFocus={ligne.id === focusLotId} isDark={isDark} textPrimary={textPrimary} textMuted={textMuted}
                     onUpdate={(v) => updateLigne(ligne.id, 'description', v)} onRemove={() => removeLigne(ligne.id)}
                     onMoveUp={() => moveLigne(index, -1)} onMoveDown={() => moveLigne(index, 1)} {...dragProps(index)} />
                 ) : collapsedLots.has(lotOfLine[ligne.id]) ? null : (
@@ -824,7 +827,7 @@ export default function DevisComposer({
                   <p className="text-xs text-encre-2">TVA non applicable, art. 293 B du CGI (micro-entreprise) : aucune TVA n'est ajoutée.</p>
                 ) : (
                 <div>
-                  <label className={`block mb-1.5 text-sm font-medium text-encre-2`}>TVA — appliquer à tout le devis</label>
+                  <label className={LIBELLE}>TVA — appliquer à tout le devis</label>
                   <div className="flex gap-1.5 flex-wrap">
                     {[{ v: 20, sub: 'neuf' }, { v: 10, sub: 'réno' }, { v: 5.5, sub: 'éco-réno' }, { v: 0, sub: 'exonéré' }].map(({ v, sub }) => (
                       <button key={v} type="button"
@@ -839,30 +842,30 @@ export default function DevisComposer({
                 )}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className={`block mb-1.5 text-sm font-medium text-encre-2`}>Remise %</label>
+                    <label className={LIBELLE}>Remise %</label>
                     <input type="number" min="0" max="100" value={form.remise || ''} onChange={e => setForm(p => ({ ...p, remise: Math.min(100, Math.max(0, parseFloat(e.target.value) || 0)) }))}
-                      placeholder="0" className={`w-full px-3 h-10 rounded-xl border text-sm ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent`} />
+                      placeholder="0" className={`${CHAMP} ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent`} />
                   </div>
                   {!isFacture && (
                     <div>
-                      <label className={`block mb-1.5 text-sm font-medium text-encre-2`}>Validité (jours)</label>
+                      <label className={LIBELLE}>Validité (jours)</label>
                       <input type="number" min="1" value={form.validite} onChange={e => setForm(p => ({ ...p, validite: e.target.value.replace(/\D/g, '') }))}
-                        className={`w-full px-3 h-10 rounded-xl border text-sm ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent`} />
+                        className={`${CHAMP} ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent`} />
                     </div>
                   )}
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   {!isFacture && (
                     <div>
-                      <label className={`block mb-1.5 text-sm font-medium text-encre-2`}>Acompte demandé %</label>
+                      <label className={LIBELLE}>Acompte demandé %</label>
                       <input type="number" min="0" max="100" value={form.acompte || ''} onChange={e => setForm(p => ({ ...p, acompte: Math.min(100, Math.max(0, parseFloat(e.target.value) || 0)) }))}
-                        placeholder="0" className={`w-full px-3 h-10 rounded-xl border text-sm ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent`} />
+                        placeholder="0" className={`${CHAMP} ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent`} />
                     </div>
                   )}
                   <div>
-                    <label className={`block mb-1.5 text-sm font-medium text-encre-2`}>Conditions de règlement</label>
+                    <label className={LIBELLE}>Conditions de règlement</label>
                     <select value={form.conditions} onChange={e => setForm(p => ({ ...p, conditions: e.target.value }))}
-                      className={`w-full px-3 h-10 rounded-xl border text-sm ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent`}>
+                      className={`${CHAMP} ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent`}>
                       <option value="">Standard — délai de vos paramètres</option>
                       <option value="Paiement à réception de facture">À réception de facture</option>
                       <option value="Paiement à 30 jours">Paiement à 30 jours</option>
@@ -882,7 +885,7 @@ export default function DevisComposer({
                   </label>
                 )}
                 <div>
-                  <label className={`block mb-1.5 text-sm font-medium text-encre-2`}><StickyNote size={12} className="inline mr-1" />Notes (visibles sur le PDF)</label>
+                  <label className={LIBELLE}><StickyNote size={12} className="inline mr-1" />Notes (visibles sur le PDF)</label>
                   <textarea value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} rows={2}
                     placeholder="Conditions particulières, délais…" className={`w-full px-3 py-2 rounded-xl border text-sm resize-none ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent`} />
                 </div>
@@ -1040,7 +1043,7 @@ function ClientField({ selectedClient, couleur, isDark, textPrimary, textMuted, 
   const list = clientSearch.trim() ? filteredClients : (recentClients.length ? recentClients : filteredClients);
   return (
     <div className="relative" ref={ref}>
-      <span className="block mb-1.5 text-sm font-medium text-encre-2">Client</span>
+      <span className={LIBELLE}>Client</span>
       <button onClick={() => setOpen(o => !o)}
         className={`w-full flex items-center gap-2.5 px-3 h-12 rounded-xl border text-base sm:text-sm text-left transition-colors bg-surface hover:border-bord-fort focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${selectedClient ? 'border-bord-fort' : 'border-bord'}`}
         aria-haspopup="true" aria-expanded={open}>
@@ -1062,7 +1065,7 @@ function ClientField({ selectedClient, couleur, isDark, textPrimary, textMuted, 
             <div className="relative">
               <Search size={15} className={`absolute left-3 top-1/2 -translate-y-1/2 ${textMuted}`} />
               <input autoFocus value={clientSearch} onChange={e => setClientSearch(e.target.value)} placeholder="Rechercher un client…"
-                className={`w-full pl-9 pr-3 h-10 rounded-lg border text-sm ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent`} />
+                className={`w-full pl-9 pr-3 h-12 rounded-lg border text-base sm:text-sm ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent`} />
             </div>
           </div>
           <div className="max-h-56 overflow-y-auto py-1">
@@ -1110,7 +1113,7 @@ function ChantierField({ chantiers = [], clientId, valeur, onChange }) {
   const choisir = (id) => { onChange(id); setOpen(false); setQ(''); };
   return (
     <div className="relative" ref={ref}>
-      <span className="block mb-1.5 text-sm font-medium text-encre-2">Chantier — adresse des travaux</span>
+      <span className={LIBELLE}>Chantier — adresse des travaux</span>
       <button type="button" onClick={() => setOpen(o => !o)} aria-haspopup="listbox" aria-expanded={open}
         className={`w-full flex items-center gap-2.5 px-3 h-12 rounded-xl border text-base sm:text-sm text-left transition-colors bg-surface hover:border-bord-fort focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${choisi ? 'border-bord-fort' : 'border-bord'}`}>
         <Building2 size={16} className="text-encre-3 flex-shrink-0" aria-hidden="true" />
@@ -1124,7 +1127,7 @@ function ChantierField({ chantiers = [], clientId, valeur, onChange }) {
               <div className="relative">
                 <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-encre-3" aria-hidden="true" />
                 <input autoFocus value={q} onChange={e => setQ(e.target.value)} placeholder="Rechercher un chantier…" aria-label="Rechercher un chantier"
-                  className="w-full pl-9 pr-3 h-11 rounded-lg border text-base sm:text-sm bg-surface border-bord text-encre placeholder:text-encre-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent" />
+                  className="w-full pl-9 pr-3 h-12 rounded-lg border text-base sm:text-sm bg-surface border-bord text-encre placeholder:text-encre-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent" />
               </div>
             </div>
           )}
@@ -1153,7 +1156,7 @@ function ChantierField({ chantiers = [], clientId, valeur, onChange }) {
 }
 
 /* ── Titre de lot (section) ── */
-function SectionRow({ ligne, index, total, subtotal, count = 0, collapsed = false, onToggle, shouldFocus, isDark, couleur, textPrimary, textMuted, onUpdate, onRemove, onMoveUp, onMoveDown,
+function SectionRow({ ligne, index, total, subtotal, count = 0, collapsed = false, onToggle, shouldFocus, isDark, textPrimary, textMuted, onUpdate, onRemove, onMoveUp, onMoveDown,
   rowIndex, onGrab, isDragged, isDropTarget }) {
   const inputRef = useRef(null);
   useEffect(() => { if (shouldFocus) inputRef.current?.focus(); }, [shouldFocus]);
@@ -1280,13 +1283,13 @@ function LigneRow({ ligne, index, total, franchise = false, isDark, couleur, inp
           <label className="block min-w-0">
             <span className="block mb-1 text-xs font-medium text-encre-3">Qté</span>
             <input ref={qtyMobileRef} type="text" inputMode="decimal" value={ligne.quantite} onChange={e => onUpdate('quantite', e.target.value)} onKeyDown={numKeyDown} aria-label="Quantité"
-              className={`w-full h-11 px-1 rounded-xl border text-base text-center tabular-nums ${inputBg}`} />
+              className={`w-full h-12 px-1 rounded-xl border text-base text-center tabular-nums ${inputBg}`} />
           </label>
           <label className="block min-w-0">
             <span className="block mb-1 text-xs font-medium text-encre-3">Unité</span>
             <span className="relative block">
               <select value={UNITES.includes(ligne.unite) ? ligne.unite : (ligne.unite ? '__autre' : 'u')} onChange={e => onUpdate('unite', e.target.value === '__autre' ? (ligne.unite || '') : e.target.value)} aria-label="Unité"
-                className={`w-full h-11 pl-2.5 pr-6 rounded-xl border text-base appearance-none ${inputBg}`}>
+                className={`w-full h-12 pl-2.5 pr-6 rounded-xl border text-base appearance-none ${inputBg}`}>
                 {UNITES.map(u => <option key={u} value={u}>{u}</option>)}
                 {ligne.unite && !UNITES.includes(ligne.unite) && <option value="__autre">{ligne.unite}</option>}
               </select>
@@ -1298,21 +1301,21 @@ function LigneRow({ ligne, index, total, franchise = false, isDark, couleur, inp
             <span className="relative block">
               <input ref={puMobileRef} type="text" inputMode="decimal" value={ligne.prixUnitaire} onChange={e => onUpdate('prixUnitaire', e.target.value)} onKeyDown={numKeyDown}
                 placeholder="PU HT"
-                className={`w-full h-11 pl-2 pr-6 rounded-xl border text-base text-right tabular-nums ${inputBg}`} />
+                className={`w-full h-12 pl-2 pr-6 rounded-xl border text-base text-right tabular-nums ${inputBg}`} />
               <span aria-hidden="true" className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-base text-encre-3">€</span>
             </span>
           </label>
           {franchise ? (
             <span className="block min-w-0">
               <span className="block mb-1 text-xs font-medium text-encre-3">TVA</span>
-              <span className="h-11 flex items-center justify-center text-xs text-encre-3">Sans TVA</span>
+              <span className="h-12 flex items-center justify-center text-xs text-encre-3">Sans TVA</span>
             </span>
           ) : (
             <label className="block min-w-0">
               <span className="block mb-1 text-xs font-medium text-encre-3">TVA</span>
               <span className="relative block">
                 <select value={ligne.tva} onChange={e => onUpdate('tva', parseFloat(e.target.value))} aria-label="Taux de TVA"
-                  className={`w-full h-11 pl-2.5 pr-6 rounded-xl border text-base appearance-none ${inputBg}`}>
+                  className={`w-full h-12 pl-2.5 pr-6 rounded-xl border text-base appearance-none ${inputBg}`}>
                   {[0, 5.5, 10, 20].map(t => <option key={t} value={t}>{String(t).replace('.', ',')} %</option>)}
                 </select>
                 <ChevronDown size={14} aria-hidden="true" className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-encre-3" />
@@ -1372,8 +1375,8 @@ function MetreModal({ isDark, couleur, inputBg, textPrimary, textMuted, onClose,
   // Calcul partagé avec le site public (src/lib/metre.js) : mêmes règles, même arrondi
   const { quantite: qty, unite } = calculerMetre({ longueur: L, largeur: larg, hauteur: haut, nombre: nb, chutes });
   const card = 'bg-surface border-bord';
-  const fieldCls = `w-full px-3 h-11 rounded-xl border text-sm ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent`;
-  const labelCls = `block mb-1.5 text-sm font-medium text-encre-2`;
+  const fieldCls = `${CHAMP} ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent`;
+  const labelCls = LIBELLE;
   return (
     <div className="fixed inset-0 z-[1100] flex items-end sm:items-center justify-center sm:p-4" role="dialog" aria-modal="true" aria-label="Métré express">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
@@ -1456,7 +1459,7 @@ function LibraryPanel({ open, onClose, persoTemplates = [], articles = [], onApp
           <div className="relative">
             <Search size={15} className={`absolute left-3 top-1/2 -translate-y-1/2 ${textMuted}`} />
             <input value={q} onChange={e => setQ(e.target.value)} placeholder="Rechercher un métier, une prestation…"
-              className={`w-full pl-9 pr-3 h-10 rounded-xl border text-sm ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent`} />
+              className={`w-full pl-9 pr-3 h-12 rounded-xl border text-base sm:text-sm ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent`} />
           </div>
         </div>
 
@@ -1632,9 +1635,9 @@ function MargeModal({ isDark, couleur, inputBg, textPrimary, textMuted, ligne, o
         <div className="p-5 space-y-4">
           <p className={`text-sm truncate ${textMuted}`}>{ligne.description || 'Ligne sans désignation'} — vendu {eur(pu)}/{ligne.unite || 'u'}</p>
           <div>
-            <label className={`block mb-1.5 text-sm font-medium text-encre-2`}>Votre coût d'achat (HT, par {ligne.unite || 'u'})</label>
+            <label className={LIBELLE}>Votre coût d'achat (HT, par {ligne.unite || 'u'})</label>
             <input ref={ref} type="text" inputMode="decimal" value={pa} onChange={e => setPa(e.target.value)} placeholder="0"
-              className={`w-full px-3 h-11 rounded-xl border text-sm ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent`} />
+              className={`${CHAMP} ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent`} />
           </div>
           <div className={`rounded-xl px-4 py-3 flex items-center justify-between bg-fond`}>
             <span className={`text-sm ${textMuted}`}>Marge sur la ligne</span>
@@ -1665,8 +1668,8 @@ function SaveTemplateModal({ isDark, couleur, inputBg, textPrimary, textMuted, d
     return () => document.removeEventListener('keydown', onKey);
   }, [onClose]);
   const card = 'bg-surface border-bord';
-  const fieldCls = `w-full px-3 h-11 rounded-xl border text-sm ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent`;
-  const labelCls = `block mb-1.5 text-sm font-medium text-encre-2`;
+  const fieldCls = `${CHAMP} ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent`;
+  const labelCls = LIBELLE;
   return (
     <div className="fixed inset-0 z-[1100] flex items-end sm:items-center justify-center sm:p-4" role="dialog" aria-modal="true" aria-label="Enregistrer comme modèle">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
