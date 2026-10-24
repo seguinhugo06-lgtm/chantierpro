@@ -7,6 +7,7 @@
 > - **Rappel automatique par e-mail dans ce lot**, prochain ramonage un an après le passage (modifiable), rappel 30 jours avant (délai réglable), envoi activé par l'artisan, lien de désinscription sans compte (`/rappel-ramonage/:jeton`, migration 104) ; SMS pré-rempli et appel pour les clients sans e-mail ou en retard.
 > - Bibliothèque, métier à l'inscription et attestation d'entretien : plus tard (recommandations retenues par défaut).
 > - Livré dans la branche `claude/parcours-ramoneur-c107a1` ; rien de poussé sans l'accord d'Hugo.
+> - **Après les relectures du 24 oct.** (gardien-securite, juriste-btp, vérificateur) : pas de bouton « Appeler » pour un client particulier (C. conso. L. 223-1) ; case « le client refuse les rappels » à la saisie et bouton permanent sur la fiche ; identité de l'émetteur figée dans l'attestation ; signature reprise seulement pour le même intervenant ; pas d'envoi automatique sans e-mail sur la fiche entreprise ; rappel du devis obligatoire dans les Paramètres ; paragraphe « Rappels de ramonage » dans la politique de confidentialité (sous-traitant, RGPD art. 28).
 
 ## 1. Le problème, avec sa preuve
 
