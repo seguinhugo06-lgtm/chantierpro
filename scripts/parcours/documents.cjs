@@ -281,11 +281,12 @@ module.exports = [
     },
   },
   {
-    nom: 'aperçu PDF : la certification TVA réduite figure sur les documents à 10 % / 5,5 %',
+    nom: 'aperçu PDF : certification TVA réduite — signée sur le devis, « par le règlement » sur la facture',
     async executer({ ouvrir, attendre, verifier }) {
       const { page } = await ouvrir({ page: 'devis', largeur: 1440 });
       const vus = [];
-      for (let i = 0; i < 4; i++) {
+      const assez = () => vus.some((d) => d.reduit && d.numero.startsWith('DEV')) && vus.some((d) => d.reduit && d.numero.startsWith('FAC'));
+      for (let i = 0; i < 12 && !assez(); i++) {
         // Liste : une ligne par document (ui/LigneListe), ouverte par son bouton principal.
         const ouvert = await page.evaluate((index) => {
           const lignes = [...document.querySelectorAll('[data-ui="LigneListe"] > button')]
@@ -302,10 +303,17 @@ module.exports = [
         const doc = await page.evaluate(() => {
           const f = [...document.querySelectorAll('iframe')].find((x) => (x.getAttribute('srcdoc') || '').length > 100);
           const html = f?.getAttribute('srcdoc') || '';
+          // Le bloc de certification seul (src/lib/mentionTvaReduite.js), pour ne pas lire la signature du devis
+          const lu = new DOMParser().parseFromString(html, 'text/html');
+          const bloc = lu.querySelector('.tva-reduite')?.textContent.replace(/\s+/g, ' ') || '';
           return {
-            numero: (html.match(/(DEV|FAC)-\d{4}-\d{5}/) || [''])[0],
+            // Le titre du document (« Facture FAC-… ») : une facture cite aussi son devis d'origine
+            numero: (lu.title.match(/(DEV|FAC)-\d{4}-\d{5}/) || [''])[0],
             reduit: /TVA (10|5[,.]5)\s?%/.test(html),
-            mention: html.includes('CERTIFICATION DU CLIENT') && /Je soussigné\(e\) [^<]+ certifie/.test(html),
+            titre: bloc.includes('CERTIFICATION DU CLIENT'),
+            signe: /Je soussigné\(e\) .+ certifie/.test(bloc) && bloc.includes('La signature du présent devis vaut certification'),
+            regle: bloc.includes('Par le règlement de la présente facture, le client certifie, en qualité de preneur de la prestation'),
+            ligneSignature: /signature|soussigné/i.test(bloc),
           };
         });
         vus.push(doc);
@@ -319,9 +327,15 @@ module.exports = [
         await attendre(600);
       }
       verifier(vus.length > 0, 'au moins un document ouvert en aperçu');
-      const reduits = vus.filter((d) => d.reduit);
-      verifier(reduits.length > 0, 'au moins un document à taux réduit dans la démo');
-      for (const d of reduits) verifier(d.mention, `${d.numero} porte la certification du client`);
+      const devis = vus.filter((d) => d.reduit && d.numero.startsWith('DEV'));
+      const factures = vus.filter((d) => d.reduit && d.numero.startsWith('FAC'));
+      verifier(devis.length > 0, `au moins un devis à taux réduit dans la démo (vus : ${vus.map((d) => d.numero).join(', ')})`);
+      verifier(factures.length > 0, `au moins une facture à taux réduit dans la démo (vus : ${vus.map((d) => d.numero).join(', ')})`);
+      for (const d of devis) verifier(d.titre && d.signe, `${d.numero} porte la certification signée du client`);
+      for (const d of factures) {
+        verifier(d.titre && d.regle, `${d.numero} porte la certification « par le règlement de la présente facture »`);
+        verifier(!d.ligneSignature, `${d.numero} ne demande pas de signature au client`);
+      }
     },
   },
   {

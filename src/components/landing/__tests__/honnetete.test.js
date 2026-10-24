@@ -272,11 +272,11 @@ const EXCEPTIONS_DOCUMENT = [
   },
   {
     texte: 'CERTIFICATION DU CLIENT',
-    raison: "titre de l'attestation de TVA à taux réduit : depuis la loi n° 2025-127 (art. 41), le client certifie sur le devis (src/lib/mentionTvaReduite.js, modèles du BOFiP)",
+    raison: "titre de l'attestation de TVA à taux réduit : depuis la loi n° 2025-127 (art. 41), le client certifie sur le devis ou la facture (src/lib/mentionTvaReduite.js, modèles du BOFiP)",
   },
   {
     texte: 'M. Martin certifie',
-    raison: "« Je soussigné(e) M. Martin certifie… » : le texte du modèle I du BOFiP, signé par le client fictif",
+    raison: "« Je soussigné(e) M. Martin certifie… » : le modèle de devis du BOFiP (BOI-LETTRE-000280, § 10), signé par le client fictif",
   },
   {
     texte: 'vaut certification',
