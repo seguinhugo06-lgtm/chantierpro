@@ -43,6 +43,13 @@ export async function verifier({ db, q, en, commeAnonyme, compte, verifier }) {
   const facture = (await q(`INSERT INTO devis (user_id, organization_id, client_id, entreprise_id, numero, type, facture_type, statut, total_ttc, payment_token)
     VALUES ($1, $2, $3, $4, 'FAC-105', 'facture', 'totale', 'envoye', 500, 'pay-105') RETURNING id`, [ADMIN, ORG_PATRON, client, fiche])).rows[0].id;
   const brouillon = (await en(ADMIN, () => q(`INSERT INTO devis (user_id, organization_id, client_id, numero, type, statut, objet) VALUES ($1, $2, $3, 'DEV-105-B', 'devis', 'brouillon', 'Tableau électrique') RETURNING id`, [ADMIN, ORG_PATRON, client]))).rows[0].id;
+  // Un encaissement sur sa facture et une attestation de ramonage, saisis par lui (déclencheurs de 098 et 104)
+  const encaissement = await essayer(() => en(ADMIN, () => q(`INSERT INTO paiements (user_id, organization_id, devis_id, montant) VALUES ($1, $2, $3, 120) RETURNING id`, [ADMIN, ORG_PATRON, facture])));
+  const attestation = await essayer(() => en(ADMIN, () => q(`INSERT INTO ramonages (user_id, organization_id, client_id, appareil_ref, realise_le, intervenant_nom, client_nom,
+    qualite_client, adresse_intervention, appareil_type, combustible, conduit, methode, vacuite, prochain_avant, prix_ht)
+    VALUES ($1, $2, $3, gen_random_uuid(), now(), 'I', 'C', 'proprietaire', 'A', 'cheminee_ouverte', 'bois', 'maconne', 'mecanique_rotative', 'assuree', (now() + interval '1 year')::date, 100) RETURNING id`, [ADMIN, ORG_PATRON, client])));
+  verifier(encaissement.ok && attestation.ok, `105 : (préparation) un encaissement et une attestation de ramonage saisis par l'administrateur (${encaissement.e || attestation.e || 'ok'})`);
+  const payeAvant = (await q(`SELECT montant_paye FROM devis WHERE id = $1`, [facture])).rows[0].montant_paye;
   // Une facture du patron, et son client
   const clientPatron = (await q(`INSERT INTO clients (user_id, organization_id, nom) VALUES ($1, $2, 'Client patron 105') RETURNING id`, [PATRON, ORG_PATRON])).rows[0].id;
   const facturePatron = (await q(`INSERT INTO devis (user_id, organization_id, client_id, numero, type, facture_type, statut, total_ttc) VALUES ($1, $2, $3, 'FAC-105-P', 'facture', 'totale', 'envoye', 800) RETURNING id`, [PATRON, ORG_PATRON, clientPatron])).rows[0].id;
@@ -99,6 +106,10 @@ export async function verifier({ db, q, en, commeAnonyme, compte, verifier }) {
   // Tout est au patron ; ses factures montrent toujours la fiche de l'entreprise, pas sa fiche personnelle
   const auPatron = [await auteur('entreprise', fiche), await auteur('clients', client), await auteur('devis', devis.id), await auteur('devis', facture), await auteur('devis', brouillon)];
   verifier(auPatron.every((u) => u === PATRON), `105 : sa fiche, son client, ses devis et ses factures passent au patron (${auPatron.filter((u) => u !== PATRON).length} restant)`);
+  const encaisseApres = (await q(`SELECT (SELECT user_id FROM paiements WHERE devis_id = $1) AS p, (SELECT user_id FROM ramonages WHERE client_id = $2) AS r,
+    (SELECT montant_paye FROM devis WHERE id = $1) AS paye`, [facture, client])).rows[0];
+  verifier(encaisseApres.p === PATRON && encaisseApres.r === PATRON && Number(encaisseApres.paye) === Number(payeAvant) && Number(payeAvant) === 120,
+    `105 : son encaissement et son attestation aussi, l'encaissé de la facture ne bouge pas (${encaisseApres.paye} €)`);
   const apres = await paiement('pay-105');
   verifier(apres.entreprise?.nom === 'Patron SARL 105', `105 : la page de paiement de sa facture montre la fiche de l'entreprise, pas la sienne (${apres.entreprise?.nom})`);
   const signe = await signature(devis.signature_token);
@@ -195,6 +206,8 @@ export async function verifier({ db, q, en, commeAnonyme, compte, verifier }) {
   await q(`DELETE FROM relance_executions WHERE subject LIKE '%105' OR subject LIKE 'Relance FAC-105'`);
   await q(`DELETE FROM relance_exclusions WHERE client_id IN ($1, $2) OR document_id = $3`, [client, clientPatron, facture]);
   await q(`DROP TABLE compteur_105`);
+  await q(`DELETE FROM paiements WHERE devis_id = $1`, [facture]);
+  await q(`DELETE FROM ramonages WHERE client_id = $1`, [client]);
   await q(`DELETE FROM devis WHERE numero IN ('DEV-105', 'FAC-105', 'DEV-105-B', 'FAC-105-P', 'DEV-105-O')`);
   await q(`DELETE FROM clients WHERE nom LIKE 'Client%105'`);
   await q(`DELETE FROM entreprise WHERE nom LIKE '%105'`);

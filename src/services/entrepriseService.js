@@ -556,14 +556,19 @@ export async function archiveEntreprise(supabase, { id, userId, orgId } = {}) {
 
   const target = existing.find(e => e.id === id);
 
-  const { error } = await supabase
+  const { data: archivees, error } = await supabase
     .from('entreprise')
     .update({ archived_at: new Date().toISOString(), is_active: false })
-    .eq('id', id);
+    .eq('id', id)
+    .select('id');
 
   if (error) {
     console.error('[entrepriseService] archiveEntreprise error:', error);
     throw new Error('Erreur lors de l\'archivage : ' + error.message);
+  }
+  // Un refus RLS (compte qui n'est pas gérant) ne renvoie aucune erreur, seulement 0 ligne
+  if (!archivees?.length) {
+    throw new Error("Archivage refusé : votre compte n'a pas le droit de modifier cette entreprise.");
   }
 
   // If this was the active one, activate another
@@ -588,10 +593,27 @@ export async function setActiveEntreprise(supabase, { id, userId, orgId } = {}) 
     return;
   }
 
-  // Deactivate all for this user/org
+  // Activer d'abord la fiche choisie : si la base refuse (compte qui n'est pas gérant : 0 ligne, sans erreur), on
+  // s'arrête avant d'avoir désactivé les autres, et l'écran ne dit pas « activée »
+  const { data: activees, error } = await supabase
+    .from('entreprise')
+    .update({ is_active: true })
+    .eq('id', id)
+    .select('id');
+
+  if (error) {
+    console.error('[entrepriseService] setActiveEntreprise error:', error);
+    throw new Error("Erreur lors de l'activation : " + error.message);
+  }
+  if (!activees?.length) {
+    throw new Error("Activation refusée : votre compte n'a pas le droit de modifier cette entreprise.");
+  }
+
+  // Puis désactiver les autres de l'organisation (ou du compte)
   let deactivateQuery = supabase
     .from('entreprise')
-    .update({ is_active: false });
+    .update({ is_active: false })
+    .neq('id', id);
 
   if (orgId && orgId !== 'demo-org-id') {
     deactivateQuery = deactivateQuery.eq('organization_id', orgId);
@@ -599,16 +621,9 @@ export async function setActiveEntreprise(supabase, { id, userId, orgId } = {}) 
     deactivateQuery = deactivateQuery.eq('user_id', userId);
   }
 
-  await deactivateQuery;
-
-  // Activate the selected one
-  const { error } = await supabase
-    .from('entreprise')
-    .update({ is_active: true })
-    .eq('id', id);
-
-  if (error) {
-    console.error('[entrepriseService] setActiveEntreprise error:', error);
+  const { error: errDesactivation } = await deactivateQuery;
+  if (errDesactivation) {
+    throw new Error("Erreur lors de l'activation : " + errDesactivation.message);
   }
 }
 

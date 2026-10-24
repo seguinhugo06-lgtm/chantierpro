@@ -17,6 +17,7 @@ import { useOrg } from '../../context/OrgContext';
 import { isDemo } from '../../supabaseClient';
 import { canAccessPage, getRoleLabel } from '../../lib/permissions';
 import useKeepInViewport from '../../hooks/useKeepInViewport';
+import { captureException } from '../../lib/sentry';
 
 /**
  * Initiales d'un nom d'entreprise : « Martin Rénovation » → « MR », « Dupont » → « DU ».
@@ -110,7 +111,13 @@ const EntrepriseSwitcher = memo(function EntrepriseSwitcher({
   // ── Avec menu : organisations et/ou entreprises ──
   const choisirEntreprise = async (id) => {
     setIsOpen(false);
-    if (id !== activeEntreprise?.id) await switchEntreprise(id);
+    if (id === activeEntreprise?.id) return;
+    try {
+      await switchEntreprise(id);
+    } catch (err) {
+      // Refusée par la base : l'entreprise affichée reste la même (rien n'a changé)
+      captureException(err, { context: "changement d'entreprise" });
+    }
   };
   const choisirOrganisation = (id) => {
     setIsOpen(false);

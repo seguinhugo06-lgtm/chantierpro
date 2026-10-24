@@ -176,6 +176,7 @@ export function EntrepriseProvider({ children }) {
       }
     } catch (err) {
       console.error('[EntrepriseContext] switchEntreprise error:', err);
+      throw err;
     }
   }, [userId, orgId, entreprises, loadAll]);
 
