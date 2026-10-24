@@ -13,7 +13,6 @@ import {
   removeExclusion as engineRemoveExclusion,
   loadExecutions,
   loadExclusions,
-  saveRelanceConfigToDB,
 } from '../lib/relanceEngine';
 import {
   buildRelanceSummary,
@@ -159,13 +158,6 @@ export function useRelances({ devis = [], clients = [], entreprise, userId, orgI
     return sendRelance(doc, client, next.step, 'manual');
   }, [relanceConfig, executions, sendRelance]);
 
-  /**
-   * Save relance config to database (debounced externally).
-   */
-  const saveConfig = useCallback(async (config) => {
-    await saveRelanceConfigToDB(config, userId);
-  }, [userId]);
-
   // ── Getters ────────────────────────────────────────────────────────────────
 
   /**
@@ -237,7 +229,6 @@ export function useRelances({ devis = [], clients = [], entreprise, userId, orgI
     addExclusion,
     deleteExclusion,
     skipToNextStep,
-    saveConfig,
     refresh: fetchData,
 
     // Getters

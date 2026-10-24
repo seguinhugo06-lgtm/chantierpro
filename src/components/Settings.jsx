@@ -1281,7 +1281,6 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
           stats={relances.stats}
           exclusions={relances.exclusions}
           onRemoveExclusion={(id) => relances.deleteExclusion(id)}
-          onSaveConfig={(config) => relances.saveConfig(config)}
           clients={clients}
           devis={devis}
           modeDiscret={modeDiscret}

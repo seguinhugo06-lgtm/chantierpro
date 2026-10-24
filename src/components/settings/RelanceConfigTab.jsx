@@ -8,7 +8,7 @@
  * @module RelanceConfigTab
  */
 
-import { useState, useCallback, useMemo, useRef } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { FONCTIONS } from '../../lib/fonctions';
 import {
   Mail,
@@ -780,7 +780,7 @@ function ExclusionsCard({ exclusions = [], onRemove, clients = [], devis = [], i
  */
 export default function RelanceConfigTab({
   entreprise, setEntreprise, isDark, couleur = '#f97316',
-  stats, exclusions, onRemoveExclusion, onSaveConfig,
+  stats, exclusions, onRemoveExclusion,
   clients, devis, modeDiscret,
 }) {
   const textPrimary = 'text-encre';
@@ -795,26 +795,16 @@ export default function RelanceConfigTab({
     };
   }, [entreprise?.relanceConfig]);
 
-  // Debounce timer ref for saving to DB
-  const saveTimerRef = useRef(null);
-
   const updateConfig = useCallback(
     (updates) => {
       const newConfig = { ...relanceConfig, ...updates };
+      // Enregistré dans la colonne relance_config de la fiche active (celle que lit la relance automatique)
       setEntreprise(prev => ({
         ...prev,
         relanceConfig: newConfig,
       }));
-
-      // Debounced save to Supabase
-      if (onSaveConfig) {
-        if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-        saveTimerRef.current = setTimeout(() => {
-          onSaveConfig(newConfig);
-        }, 800);
-      }
     },
-    [relanceConfig, setEntreprise, onSaveConfig]
+    [relanceConfig, setEntreprise]
   );
 
   const handleGlobalToggle = useCallback(() => {

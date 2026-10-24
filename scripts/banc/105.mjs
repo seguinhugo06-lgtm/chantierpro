@@ -1,113 +1,150 @@
-// Vérifications de la migration 105 : un membre retiré de l'équipe (ou rétrogradé) ne garde pas la main sur la fiche
-// entreprise de l'organisation qu'il a créée. La fiche, son journal de relances et ses exclusions passent au propriétaire
-// de l'organisation ; la fiche d'une organisation ne se lit plus qu'en membre et ne se modifie plus qu'en gérant ; le
-// patron, l'artisan seul et une fiche sans organisation ne voient aucun changement.
+// Vérifications de la migration 105 : un membre qui quitte l'équipe ne garde rien de l'entreprise. Ce qu'il a créé dans
+// l'organisation (fiche entreprise, pièces, clients) passe au propriétaire, avec le journal et les exclusions de
+// relance qui portent sur ses pièces ; ses factures montrent toujours la fiche de l'entreprise ; un faux « déjà
+// relancé » écrit par un ouvrier sur une facture du patron ne lui est pas donné ; la fiche d'une organisation ne se lit
+// qu'en membre, ne se modifie qu'en gérant, et ne change ni d'organisation ni d'auteur depuis l'app.
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PATRON, SOLO, ORG_PATRON, ORG_SOLO } from './socle.mjs';
 
 const MIGRATION = path.resolve(path.dirname(fileURLToPath(import.meta.url)),
-  '../../supabase/migrations/105_fiche_entreprise_au_gerant_quand_son_auteur_quitte.sql');
+  '../../supabase/migrations/105_un_membre_qui_part_ne_garde_rien_de_l_equipe.sql');
 
-const ADMIN = '10500000-0000-4000-8000-000000000001';      // administrateur qui crée la fiche, puis est retiré
-const ADJOINT = '10500000-0000-4000-8000-000000000002';    // administrateur qui crée une fiche, puis est rétrogradé
-const ANCIEN = '10500000-0000-4000-8000-000000000003';     // auteur d'une fiche, déjà hors de l'équipe (état antérieur)
+const ADMIN = '10500000-0000-4000-8000-000000000001';      // administrateur auteur de la fiche, puis retiré
+const ADJOINT = '10500000-0000-4000-8000-000000000002';    // administrateur qui retire ADMIN, puis est rétrogradé
+const ANCIEN = '10500000-0000-4000-8000-000000000003';     // auteur de lignes, déjà hors de l'équipe (état antérieur)
 const PARTANT = '10500000-0000-4000-8000-000000000004';    // administrateur auteur d'une fiche qui supprime son compte
-const ORG_ADMIN ='10500000-0000-4000-8000-0000000000a1';  // organisation personnelle de l'administrateur
+const OUVRIER = '10500000-0000-4000-8000-000000000005';    // ouvrier qui écrit un faux journal, puis est retiré
+const ORG_ADMIN = '10500000-0000-4000-8000-0000000000a1';  // organisation personnelle de l'administrateur
 const ORG_JETABLE = '10500000-0000-4000-8000-0000000000a2';
-const FACTURE = '10500000-0000-4000-8000-0000000000f1';
 
-export async function verifier({ db, q, en, compte, verifier }) {
+export async function verifier({ db, q, en, commeAnonyme, compte, verifier }) {
   const essayer = async (fn) => { try { return { ok: true, r: await fn() }; } catch (e) { return { ok: false, e: e.message }; } };
   const iban = async (id) => (await q(`SELECT iban FROM entreprise WHERE id = $1`, [id])).rows[0].iban;
-  const auteur = async (id) => (await q(`SELECT user_id FROM entreprise WHERE id = $1`, [id])).rows[0].user_id;
+  const auteur = async (table, id) => (await q(`SELECT user_id FROM ${table} WHERE id = $1`, [id])).rows[0]?.user_id;
+  const paiement = (jeton) => commeAnonyme(async () => (await q('SELECT get_facture_for_payment($1) AS r', [jeton])).rows[0].r || {});
+  const signature = (jeton) => commeAnonyme(async () => (await q('SELECT get_devis_for_signature($1) AS j', [jeton])).rows[0].j || {});
 
-  await q(`INSERT INTO auth.users (id, email) VALUES ($1, 'admin@105.fr'), ($2, 'adjoint@105.fr'), ($3, 'ancien@105.fr')`, [ADMIN, ADJOINT, ANCIEN]);
-  await q(`INSERT INTO organization_members (organization_id, user_id, role) VALUES ($1, $2, 'admin'), ($1, $3, 'admin')`, [ORG_PATRON, ADMIN, ADJOINT]);
+  await q(`INSERT INTO auth.users (id, email) VALUES ($1, 'admin@105.fr'), ($2, 'adjoint@105.fr'), ($3, 'ancien@105.fr'), ($4, 'ouvrier@105.fr')`, [ADMIN, ADJOINT, ANCIEN, OUVRIER]);
+  await q(`INSERT INTO organization_members (organization_id, user_id, role) VALUES ($1, $2, 'admin'), ($1, $3, 'admin'), ($1, $4, 'ouvrier')`, [ORG_PATRON, ADMIN, ADJOINT, OUVRIER]);
   await q(`INSERT INTO organizations (id, name, slug, owner_id) VALUES ($1, 'Perso admin', 'perso-admin-105', $2)`, [ORG_ADMIN, ADMIN]);
   await q(`INSERT INTO organization_members (organization_id, user_id, role, joined_at) VALUES ($1, $2, 'owner', now() + interval '1 day')`, [ORG_ADMIN, ADMIN]);
 
-  // L'administrateur crée la fiche de l'organisation du patron (084 l'y autorise) et sa fiche personnelle ; le serveur
-  // journalise des relances et une exclusion à son nom, comme send-scheduled-relances (auteur de la fiche)
+  // Le patron a déjà sa fiche ; l'administrateur crée celle de l'entreprise (084 l'y autorise), et a sa fiche personnelle
+  const fichePatron = (await en(PATRON, () => q(`INSERT INTO entreprise (user_id, organization_id, nom, iban) VALUES ($1, $2, 'Patron perso 105', 'FR76-PATRON-PERSO') RETURNING id`, [PATRON, ORG_PATRON]))).rows[0].id;
   const fiche = (await en(ADMIN, () => q(`INSERT INTO entreprise (user_id, organization_id, nom, iban) VALUES ($1, $2, 'Patron SARL 105', 'FR76-PATRON') RETURNING id`, [ADMIN, ORG_PATRON]))).rows[0].id;
   const fichePerso = (await en(ADMIN, () => q(`INSERT INTO entreprise (user_id, organization_id, nom, iban) VALUES ($1, $2, 'Perso admin 105', 'FR76-ADMIN') RETURNING id`, [ADMIN, ORG_ADMIN]))).rows[0].id;
-  await q(`INSERT INTO relance_executions (user_id, organization_id, document_id, step_id, status, subject) VALUES
-    ($1, $2, $4, 'j+7', 'sent', 'Relance patron 105'), ($1, $3, NULL, 'j+7', 'sent', 'Relance perso 105')`, [ADMIN, ORG_PATRON, ORG_ADMIN, FACTURE]);
-  await q(`INSERT INTO relance_exclusions (user_id, organization_id, scope, document_id) VALUES ($1, $2, 'document', $3)`, [ADMIN, ORG_PATRON, FACTURE]);
-  verifier(await compte(`SELECT count(*) AS n FROM relance_executions WHERE subject = 'Relance patron 105'`) === 1, '105 : (préparation) journal écrit au nom de l\'auteur de la fiche');
 
-  // Encore gérant, il ne sort pas la fiche de l'organisation pour la garder après son départ (sans organisation, ou
-  // dans son organisation personnelle) ; il la modifie toujours
+  // Ses pièces dans l'organisation : un client, un devis envoyé par lien, une facture envoyée, un brouillon
+  const client = (await en(ADMIN, () => q(`INSERT INTO clients (user_id, organization_id, nom, prenom, email) VALUES ($1, $2, 'Client 105', 'Léa', 'lea@105.fr') RETURNING id`, [ADMIN, ORG_PATRON]))).rows[0].id;
+  const devis = (await q(`INSERT INTO devis (user_id, organization_id, client_id, entreprise_id, numero, type, statut, date, validite_jours, signature_token, signature_expires_at)
+    VALUES ($1, $2, $3, $4, 'DEV-105', 'devis', 'envoye', now()::date, 30, gen_random_uuid(), now() + interval '10 days') RETURNING id, signature_token`, [ADMIN, ORG_PATRON, client, fiche])).rows[0];
+  const facture = (await q(`INSERT INTO devis (user_id, organization_id, client_id, entreprise_id, numero, type, facture_type, statut, total_ttc, payment_token)
+    VALUES ($1, $2, $3, $4, 'FAC-105', 'facture', 'totale', 'envoye', 500, 'pay-105') RETURNING id`, [ADMIN, ORG_PATRON, client, fiche])).rows[0].id;
+  const brouillon = (await en(ADMIN, () => q(`INSERT INTO devis (user_id, organization_id, client_id, numero, type, statut, objet) VALUES ($1, $2, $3, 'DEV-105-B', 'devis', 'brouillon', 'Tableau électrique') RETURNING id`, [ADMIN, ORG_PATRON, client]))).rows[0].id;
+  // Une facture du patron, et son client
+  const clientPatron = (await q(`INSERT INTO clients (user_id, organization_id, nom) VALUES ($1, $2, 'Client patron 105') RETURNING id`, [PATRON, ORG_PATRON])).rows[0].id;
+  const facturePatron = (await q(`INSERT INTO devis (user_id, organization_id, client_id, numero, type, facture_type, statut, total_ttc) VALUES ($1, $2, $3, 'FAC-105-P', 'facture', 'totale', 'envoye', 800) RETURNING id`, [PATRON, ORG_PATRON, clientPatron])).rows[0].id;
+
+  // Relances : le serveur journalise au nom de l'auteur de la fiche (send-scheduled-relances), l'administrateur exclut
+  // son client ; l'ouvrier écrit un faux « déjà relancé » et une exclusion sur la facture et le client du patron
+  await q(`INSERT INTO relance_executions (user_id, organization_id, document_id, step_id, status, subject) VALUES
+    ($1, $2, $3, 'j+7', 'sent', 'Relance FAC-105'), ($1, $4, NULL, 'j+7', 'sent', 'Relance perso 105')`, [ADMIN, ORG_PATRON, facture, ORG_ADMIN]);
+  await en(ADMIN, () => q(`INSERT INTO relance_executions (user_id, document_id, step_id, subject) VALUES ($1, $2, 'manual', 'Relance manuelle 105')`, [ADMIN, facture]));
+  await q(`INSERT INTO relance_exclusions (user_id, organization_id, scope, client_id) VALUES ($1, $2, 'client', $3)`, [ADMIN, ORG_PATRON, client]);
+  await en(OUVRIER, () => q(`INSERT INTO relance_executions (user_id, organization_id, document_id, step_id, status, subject) VALUES ($1, $2, $3, 'j+7', 'sent', 'Faux 105')`, [OUVRIER, ORG_PATRON, facturePatron]));
+  await en(OUVRIER, () => q(`INSERT INTO relance_exclusions (user_id, organization_id, scope, client_id) VALUES ($1, $2, 'client', $3)`, [OUVRIER, ORG_PATRON, clientPatron]));
+
+  const avant = await paiement('pay-105');
+  verifier(avant.entreprise?.nom === 'Patron SARL 105', `105 : (préparation) la page de paiement de sa facture montre la fiche de l'entreprise (${avant.entreprise?.nom})`);
+
+  // Encore gérant, il ne sort pas la fiche de l'organisation, ni ne la met au nom d'un autre ; il la modifie toujours
   const sortie = await essayer(() => en(ADMIN, () => q(`UPDATE entreprise SET organization_id = NULL WHERE id = $1`, [fiche])));
   const versPerso = await essayer(() => en(ADMIN, () => q(`UPDATE entreprise SET organization_id = $2 WHERE id = $1`, [fiche, ORG_ADMIN])));
-  const ou = (await q(`SELECT organization_id FROM entreprise WHERE id = $1`, [fiche])).rows[0].organization_id;
-  verifier(!sortie.ok && !versPerso.ok && ou === ORG_PATRON, `105 : un gérant ne sort pas la fiche de l'organisation (${sortie.e || 'sortie autorisée'} ; ${versPerso.e || 'déplacement autorisé'})`);
+  const complice = await essayer(() => en(ADMIN, () => q(`UPDATE entreprise SET user_id = $2 WHERE id = $1`, [fiche, OUVRIER])));
+  const parPatron = await essayer(() => en(PATRON, () => q(`UPDATE entreprise SET user_id = $2 WHERE id = $1`, [fiche, ANCIEN])));
+  const ficheLue = (await q(`SELECT organization_id, user_id FROM entreprise WHERE id = $1`, [fiche])).rows[0];
+  verifier(!sortie.ok && !versPerso.ok && ficheLue.organization_id === ORG_PATRON,
+    `105 : un gérant ne sort pas la fiche de l'organisation (${sortie.e || 'sortie autorisée'})`);
+  verifier(!complice.ok && !parPatron.ok && ficheLue.user_id === ADMIN,
+    `105 : ni ne change son auteur, même le patron (${complice.e || 'autorisé'} ; ${parPatron.e || 'autorisé'})`);
   await en(ADMIN, () => q(`UPDATE entreprise SET telephone = '0102030405' WHERE id = $1`, [fiche]));
   verifier((await q(`SELECT telephone FROM entreprise WHERE id = $1`, [fiche])).rows[0].telephone === '0102030405', '105 : en gérant, il modifie toujours la fiche');
 
-  // Le patron retire l'administrateur de l'équipe (écran Équipe)
-  const retrait = await essayer(() => en(PATRON, () => q(`DELETE FROM organization_members WHERE organization_id = $1 AND user_id = $2 RETURNING id`, [ORG_PATRON, ADMIN])));
-  verifier(retrait.ok && retrait.r.rows.length === 1, `105 : le patron retire toujours un membre (${retrait.e || retrait.r.rows.length + ' ligne'})`);
+  // Un autre administrateur le retire de l'équipe (écran Équipe)
+  const retrait = await essayer(() => en(ADJOINT, () => q(`DELETE FROM organization_members WHERE organization_id = $1 AND user_id = $2 RETURNING id`, [ORG_PATRON, ADMIN])));
+  verifier(retrait.ok && retrait.r.rows.length === 1, `105 : un administrateur retire toujours un membre (${retrait.e || retrait.r.rows.length + ' ligne'})`);
 
-  // Le membre retiré ne change plus l'IBAN, ne lit plus la fiche, ni le journal des relances de l'organisation
+  // Le membre retiré ne change plus l'IBAN, ne lit plus la fiche, ses pièces, ses clients, ni le journal des relances
   await essayer(() => en(ADMIN, () => q(`UPDATE entreprise SET iban = 'FR76-PIRATE', email = 'pirate@x.fr' WHERE id = $1`, [fiche])));
   verifier(await iban(fiche) === 'FR76-PATRON', `105 : un membre retiré ne change plus l'IBAN de la fiche qu'il a créée (${await iban(fiche)})`);
-  const lue = await en(ADMIN, () => q(`SELECT id FROM entreprise WHERE id = $1`, [fiche]));
-  verifier(lue.rows.length === 0, `105 : ni ne la lit (${lue.rows.length} ligne)`);
-  const journal = await en(ADMIN, () => q(`SELECT id FROM relance_executions WHERE organization_id = $1`, [ORG_PATRON]));
-  verifier(journal.rows.length === 0, `105 : ni ne lit le journal des relances de l'organisation (${journal.rows.length} ligne)`);
-  await essayer(() => en(ADMIN, () => q(`DELETE FROM relance_executions WHERE organization_id = $1`, [ORG_PATRON])));
-  await essayer(() => en(ADMIN, () => q(`DELETE FROM relance_exclusions WHERE organization_id = $1`, [ORG_PATRON])));
-  verifier(await compte(`SELECT count(*) AS n FROM relance_executions WHERE subject = 'Relance patron 105'`) === 1
-    && await compte(`SELECT count(*) AS n FROM relance_exclusions WHERE organization_id = '${ORG_PATRON}'`) === 1,
-  '105 : ni n\'efface le journal ou les exclusions (une relance déjà envoyée repartirait)');
+  verifier((await en(ADMIN, () => q(`SELECT id FROM entreprise WHERE id = $1`, [fiche]))).rows.length === 0, '105 : ni ne la lit');
+  await essayer(() => en(ADMIN, () => q(`UPDATE devis SET objet = 'Modifié par l''ancien membre' WHERE id = $1`, [brouillon])));
+  verifier((await q(`SELECT objet FROM devis WHERE id = $1`, [brouillon])).rows[0].objet === 'Tableau électrique', '105 : ni ne modifie le brouillon qu\'il avait fait');
+  verifier((await en(ADMIN, () => q(`SELECT id FROM clients WHERE id = $1`, [client]))).rows.length === 0, '105 : ni ne lit son client de l\'entreprise');
+  const journal = await en(ADMIN, () => q(`SELECT id FROM relance_executions WHERE document_id = $1`, [facture]));
+  verifier(journal.rows.length === 0, `105 : ni le journal des relances de ses factures (${journal.rows.length} ligne)`);
+  await essayer(() => en(ADMIN, () => q(`DELETE FROM relance_executions WHERE document_id = $1`, [facture])));
+  verifier(await compte(`SELECT count(*) AS n FROM relance_executions WHERE document_id = '${facture}'`) === 2,
+    '105 : ni ne l\'efface (une relance déjà envoyée repartirait)');
 
-  // La fiche, son journal et ses exclusions sont au patron : la relance automatique lit désormais ceux du patron, et ce
-  // que le membre retiré écrit à son nom (sans organisation) ne compte plus pour elle
-  verifier(await auteur(fiche) === PATRON, `105 : la fiche passe au propriétaire de l'organisation (${await auteur(fiche)})`);
-  const auPatron = await en(PATRON, () => q(`SELECT id FROM relance_executions WHERE subject = 'Relance patron 105'`));
-  verifier(auPatron.rows.length === 1, `105 : le patron retrouve le journal des relances de la fiche (${auPatron.rows.length} ligne)`);
-  verifier(await compte(`SELECT count(*) AS n FROM relance_exclusions WHERE organization_id = '${ORG_PATRON}' AND user_id = '${PATRON}'`) === 1,
-    '105 : et ses exclusions');
-  const injecte = await essayer(() => en(ADMIN, () => q(`INSERT INTO relance_executions (user_id, document_id, step_id, status) VALUES ($1, $2, 'j+15', 'sent')`, [ADMIN, FACTURE])));
-  const luParLaRelance = await compte(`SELECT count(*) AS n FROM relance_executions WHERE user_id = (SELECT user_id FROM entreprise WHERE id = '${fiche}') AND step_id = 'j+15'`);
-  verifier(luParLaRelance === 0, `105 : un faux « déjà relancé » écrit par le membre retiré n'est plus lu pour la fiche (${injecte.ok ? 'écrit à son nom' : injecte.e}, ${luParLaRelance} lu)`);
-
-  // Le patron garde la main ; la fiche personnelle du membre retiré et son journal restent à lui
+  // Tout est au patron ; ses factures montrent toujours la fiche de l'entreprise, pas sa fiche personnelle
+  const auPatron = [await auteur('entreprise', fiche), await auteur('clients', client), await auteur('devis', devis.id), await auteur('devis', facture), await auteur('devis', brouillon)];
+  verifier(auPatron.every((u) => u === PATRON), `105 : sa fiche, son client, ses devis et ses factures passent au patron (${auPatron.filter((u) => u !== PATRON).length} restant)`);
+  const apres = await paiement('pay-105');
+  verifier(apres.entreprise?.nom === 'Patron SARL 105', `105 : la page de paiement de sa facture montre la fiche de l'entreprise, pas la sienne (${apres.entreprise?.nom})`);
+  const signe = await signature(devis.signature_token);
+  verifier(signe.entreprise?.nom === 'Patron SARL 105', `105 : comme la page de signature de son devis (${signe.entreprise?.nom})`);
+  verifier(await compte(`SELECT count(*) AS n FROM relance_executions WHERE document_id = '${facture}' AND user_id = '${PATRON}'`) === 2
+    && await compte(`SELECT count(*) AS n FROM relance_exclusions WHERE client_id = '${client}' AND user_id = '${PATRON}'`) === 1,
+  '105 : le journal (relance manuelle comprise) et l\'exclusion de ses pièces suivent ses pièces');
   await en(PATRON, () => q(`UPDATE entreprise SET iban = 'FR76-NOUVEAU' WHERE id = $1`, [fiche]));
-  verifier(await iban(fiche) === 'FR76-NOUVEAU', '105 : le patron modifie toujours la fiche');
-  verifier(await auteur(fichePerso) === ADMIN, '105 : la fiche de sa propre organisation reste au membre retiré');
+  verifier(await iban(fiche) === 'FR76-NOUVEAU', '105 : le patron modifie la fiche');
+  verifier(await auteur('entreprise', fichePatron) === PATRON && (await en(PATRON, () => q(`SELECT id FROM entreprise WHERE id IN ($1, $2) AND user_id = $3`, [fichePatron, fiche, PATRON]))).rows.length === 2,
+    '105 : le patron qui avait déjà sa fiche garde les deux');
+
+  // Sa fiche personnelle et son journal personnel restent à lui
+  verifier(await auteur('entreprise', fichePerso) === ADMIN, '105 : la fiche de sa propre organisation reste au membre retiré');
   await en(ADMIN, () => q(`UPDATE entreprise SET iban = 'FR76-ADMIN-2' WHERE id = $1`, [fichePerso]));
   verifier(await iban(fichePerso) === 'FR76-ADMIN-2', '105 : et il la modifie toujours');
-  const journalPerso = await en(ADMIN, () => q(`SELECT id FROM relance_executions WHERE subject = 'Relance perso 105'`));
-  verifier(journalPerso.rows.length === 1, '105 : comme son propre journal de relances');
+  verifier((await en(ADMIN, () => q(`SELECT id FROM relance_executions WHERE subject = 'Relance perso 105'`))).rows.length === 1, '105 : comme son propre journal de relances');
 
-  // Rétrogradé : un administrateur qui devient ouvrier ne garde pas la fiche qu'il a créée
+  // Le patron retire l'ouvrier : son faux « déjà relancé » et son exclusion sur les pièces du patron ne lui sont pas donnés
+  // (la relance automatique ne les lit donc pas)
+  const depart = await essayer(() => en(PATRON, () => q(`DELETE FROM organization_members WHERE organization_id = $1 AND user_id = $2 RETURNING id`, [ORG_PATRON, OUVRIER])));
+  verifier(depart.ok && depart.r.rows.length === 1, `105 : le patron retire un ouvrier (${depart.e || 'ok'})`);
+  const fauxAuPatron = await compte(`SELECT count(*) AS n FROM relance_executions WHERE document_id = '${facturePatron}' AND user_id = '${PATRON}'`)
+    + await compte(`SELECT count(*) AS n FROM relance_exclusions WHERE client_id = '${clientPatron}' AND user_id = '${PATRON}'`);
+  verifier(fauxAuPatron === 0, `105 : le faux journal d'un ouvrier sur les pièces du patron ne lui est pas donné (${fauxAuPatron} ligne)`);
+
+  // Rétrogradé : un administrateur qui devient ouvrier garde ses pièces (il reste dans l'équipe), mais ne change plus
+  // l'IBAN de la fiche qu'il a créée ; il la lit toujours
   const ficheAdjoint = (await en(ADJOINT, () => q(`INSERT INTO entreprise (user_id, organization_id, nom, iban) VALUES ($1, $2, 'Deuxième fiche 105', 'FR76-DEUX') RETURNING id`, [ADJOINT, ORG_PATRON]))).rows[0].id;
-  await q(`INSERT INTO relance_executions (user_id, organization_id, step_id, subject) VALUES ($1, $2, 'j+7', 'Relance adjoint 105')`, [ADJOINT, ORG_PATRON]);
-  const promu = await essayer(() => en(PATRON, () => q(`UPDATE organization_members SET role = 'admin' WHERE organization_id = $1 AND user_id = $2 RETURNING id`, [ORG_PATRON, ADJOINT])));
-  verifier(promu.ok && await auteur(ficheAdjoint) === ADJOINT, `105 : un changement de rôle qui reste gérant ne change rien (${promu.e || 'ok'})`);
   const retro = await essayer(() => en(PATRON, () => q(`UPDATE organization_members SET role = 'ouvrier' WHERE organization_id = $1 AND user_id = $2 RETURNING id`, [ORG_PATRON, ADJOINT])));
   verifier(retro.ok && retro.r.rows.length === 1, `105 : le patron rétrograde toujours un administrateur (${retro.e || 'ok'})`);
   await essayer(() => en(ADJOINT, () => q(`UPDATE entreprise SET iban = 'FR76-PIRATE' WHERE id = $1`, [ficheAdjoint])));
   verifier(await iban(ficheAdjoint) === 'FR76-DEUX', `105 : un administrateur rétrogradé ne change plus l'IBAN de sa fiche (${await iban(ficheAdjoint)})`);
-  verifier(await auteur(ficheAdjoint) === PATRON
-    && await compte(`SELECT count(*) AS n FROM relance_executions WHERE subject = 'Relance adjoint 105' AND user_id = '${PATRON}'`) === 1,
-  '105 : sa fiche et son journal passent au patron');
-  const vueOuvrier = await en(ADJOINT, () => q(`SELECT id FROM entreprise WHERE id = $1`, [ficheAdjoint]));
-  verifier(vueOuvrier.rows.length === 1, '105 : en membre, il lit toujours la fiche (devis, factures)');
+  verifier((await en(ADJOINT, () => q(`SELECT id FROM entreprise WHERE id = $1`, [ficheAdjoint]))).rows.length === 1
+    && await auteur('entreprise', ficheAdjoint) === ADJOINT, '105 : en membre, il la lit toujours, et elle reste à son nom');
 
-  // Défense en profondeur : une fiche dont l'auteur est hors de l'équipe (état laissé par le passé, écriture du
-  // serveur) ne se lit ni ne se modifie plus par lui, même sans passer par le retrait
+  // Défense en profondeur : des lignes dont l'auteur est déjà hors de l'équipe (état antérieur, écriture du serveur)
   const orpheline = (await q(`INSERT INTO entreprise (user_id, organization_id, nom, iban) VALUES ($1, $2, 'Orpheline 105', 'FR76-ORPH') RETURNING id`, [ANCIEN, ORG_PATRON])).rows[0].id;
+  const devisOrphelin = (await q(`INSERT INTO devis (user_id, organization_id, numero, type, statut) VALUES ($1, $2, 'DEV-105-O', 'devis', 'brouillon') RETURNING id`, [ANCIEN, ORG_PATRON])).rows[0].id;
   await essayer(() => en(ANCIEN, () => q(`UPDATE entreprise SET iban = 'FR76-PIRATE' WHERE id = $1`, [orpheline])));
   verifier(await iban(orpheline) === 'FR76-ORPH', '105 : un auteur hors de l\'équipe ne modifie pas la fiche (policy)');
   verifier((await en(ANCIEN, () => q(`SELECT id FROM entreprise WHERE id = $1`, [orpheline]))).rows.length === 0, '105 : ni ne la lit (policy)');
-  // … et l'application de la migration la rend au patron (rattrapage, rejouable)
+  // … et l'application de la migration les rend au patron (rattrapage, rejouable)
   const rejeu = await essayer(() => db.exec(fs.readFileSync(MIGRATION, 'utf8')));
   verifier(rejeu.ok, `105 : migration rejouée sans erreur (${rejeu.e || 'ok'})`);
-  verifier(await auteur(orpheline) === PATRON, `105 : le rattrapage rend au patron une fiche dont l'auteur a quitté l'équipe (${await auteur(orpheline)})`);
+  verifier(await auteur('entreprise', orpheline) === PATRON && await auteur('devis', devisOrphelin) === PATRON,
+    `105 : le rattrapage rend au patron ce qu'un ancien membre avait laissé (${await auteur('entreprise', orpheline)})`);
+
+  // Droits : la réattribution n'est exécutable que par le serveur
+  const droits = (await q(`SELECT has_function_privilege('anon', 'public.pieces_rendues_au_proprietaire(uuid, uuid)', 'execute') AS v,
+    has_function_privilege('authenticated', 'public.pieces_rendues_au_proprietaire(uuid, uuid)', 'execute') AS c`)).rows[0];
+  const appel = await essayer(() => en(PATRON, () => q(`SELECT public.pieces_rendues_au_proprietaire($1, $2)`, [ORG_SOLO, SOLO])));
+  verifier(!droits.v && !droits.c && !appel.ok, `105 : un compte connecté n'appelle pas la réattribution (${appel.e || 'appel autorisé'})`);
 
   // Rien ne change pour l'artisan seul, ni pour une fiche sans organisation
   const ficheSolo = (await en(SOLO, () => q(`INSERT INTO entreprise (user_id, organization_id, nom, iban) VALUES ($1, $2, 'Solo 105', 'FR76-SOLO') RETURNING id`, [SOLO, ORG_SOLO]))).rows[0].id;
@@ -118,7 +155,7 @@ export async function verifier({ db, q, en, compte, verifier }) {
   const vueSansOrg = await en(SOLO, () => q(`SELECT id FROM entreprise WHERE id = $1`, [sansOrg]));
   await en(SOLO, () => q(`UPDATE entreprise SET iban = 'FR76-NULL-2' WHERE id = $1`, [sansOrg]));
   verifier(vueSansOrg.rows.length === 1 && await iban(sansOrg) === 'FR76-NULL-2', '105 : une fiche sans organisation reste lue et modifiée par son auteur');
-  const journalSolo = await essayer(() => en(SOLO, () => q(`INSERT INTO relance_executions (user_id, organization_id, step_id) VALUES ($1, $2, 'manual') RETURNING id`, [SOLO, ORG_SOLO])));
+  const journalSolo = await essayer(() => en(SOLO, () => q(`INSERT INTO relance_executions (user_id, organization_id, step_id, subject) VALUES ($1, $2, 'manual', 'Solo 105') RETURNING id`, [SOLO, ORG_SOLO])));
   verifier(journalSolo.ok, `105 : l'artisan seul journalise toujours ses relances (${journalSolo.e || 'ok'})`);
 
   // Un administrateur auteur de la fiche supprime son compte (072) : la fiche reste à l'organisation, au patron
@@ -126,22 +163,24 @@ export async function verifier({ db, q, en, compte, verifier }) {
   await q(`INSERT INTO organization_members (organization_id, user_id, role) VALUES ($1, $2, 'admin')`, [ORG_PATRON, PARTANT]);
   const fichePartant = (await en(PARTANT, () => q(`INSERT INTO entreprise (user_id, organization_id, nom) VALUES ($1, $2, 'Fiche du partant 105') RETURNING id`, [PARTANT, ORG_PATRON]))).rows[0].id;
   const suppression = await essayer(() => en(PARTANT, () => q(`SELECT supprimer_mon_compte() AS b`)));
-  const restante = (await q(`SELECT user_id FROM entreprise WHERE id = $1`, [fichePartant])).rows[0];
-  verifier(suppression.ok && restante?.user_id === PATRON, `105 : un administrateur supprime toujours son compte, la fiche reste au patron (${suppression.e || restante?.user_id || 'fiche supprimée'})`);
+  const restante = await auteur('entreprise', fichePartant);
+  verifier(suppression.ok && restante === PATRON, `105 : un administrateur supprime toujours son compte, la fiche reste au patron (${suppression.e || restante || 'fiche supprimée'})`);
 
   // Supprimer une organisation qui a des membres et une fiche n'est pas bloqué par la réattribution
   await q(`INSERT INTO organizations (id, name, slug, owner_id) VALUES ($1, 'Jetable', 'jetable-105', $2)`, [ORG_JETABLE, ANCIEN]);
-  await q(`INSERT INTO organization_members (organization_id, user_id, role) VALUES ($1, $2, 'owner'), ($1, $3, 'admin')`, [ORG_JETABLE, ANCIEN, ADMIN]);
-  await q(`INSERT INTO entreprise (user_id, organization_id, nom) VALUES ($1, $2, 'Fiche jetable 105')`, [ADMIN, ORG_JETABLE]);
+  await q(`INSERT INTO organization_members (organization_id, user_id, role) VALUES ($1, $2, 'owner'), ($1, $3, 'admin')`, [ORG_JETABLE, ANCIEN, ADJOINT]);
+  await q(`INSERT INTO entreprise (user_id, organization_id, nom) VALUES ($1, $2, 'Fiche jetable 105')`, [ADJOINT, ORG_JETABLE]);
   const supprimee = await essayer(() => q(`DELETE FROM organizations WHERE id = $1`, [ORG_JETABLE]));
   verifier(supprimee.ok && await compte(`SELECT count(*) AS n FROM entreprise WHERE nom = 'Fiche jetable 105'`) === 0,
     `105 : supprimer une organisation emporte toujours sa fiche (${supprimee.e || 'ok'})`);
 
   // Ménage : les vérifications suivantes repartent des données de base
-  await q(`DELETE FROM relance_executions WHERE user_id IN ($1, $2, $3, $4) AND (subject LIKE '%105' OR step_id IN ('j+15', 'manual'))`, [ADMIN, ADJOINT, PATRON, SOLO]);
-  await q(`DELETE FROM relance_exclusions WHERE document_id = $1`, [FACTURE]);
+  await q(`DELETE FROM relance_executions WHERE subject LIKE '%105' OR subject LIKE 'Relance FAC-105'`);
+  await q(`DELETE FROM relance_exclusions WHERE client_id IN ($1, $2)`, [client, clientPatron]);
+  await q(`DELETE FROM devis WHERE numero IN ('DEV-105', 'FAC-105', 'DEV-105-B', 'FAC-105-P', 'DEV-105-O')`);
+  await q(`DELETE FROM clients WHERE nom LIKE 'Client%105'`);
   await q(`DELETE FROM entreprise WHERE nom LIKE '%105'`);
-  await q(`DELETE FROM organization_members WHERE user_id IN ($1, $2, $3, $4)`, [ADMIN, ADJOINT, ANCIEN, PARTANT]);
+  await q(`DELETE FROM organization_members WHERE user_id IN ($1, $2, $3, $4, $5)`, [ADMIN, ADJOINT, ANCIEN, PARTANT, OUVRIER]);
   await q(`DELETE FROM organizations WHERE id = $1`, [ORG_ADMIN]);
-  await q(`DELETE FROM auth.users WHERE id IN ($1, $2, $3, $4)`, [ADMIN, ADJOINT, ANCIEN, PARTANT]);
+  await q(`DELETE FROM auth.users WHERE id IN ($1, $2, $3, $4, $5)`, [ADMIN, ADJOINT, ANCIEN, PARTANT, OUVRIER]);
 }
