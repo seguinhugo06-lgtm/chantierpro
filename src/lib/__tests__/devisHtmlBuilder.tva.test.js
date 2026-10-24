@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { buildDevisHtml } from '../devisHtmlBuilder';
+import { donneesFacture } from '../../components/ramonage/actionsRamonage';
 
 const entreprise = { nom: 'Élec Seguin', formeJuridique: 'EI', siret: '12345678900011', adresse: '1 rue A, 33000 Bordeaux' };
 const client = { nom: 'Rousseau', prenom: 'Claire' };
@@ -43,6 +44,18 @@ describe('buildDevisHtml — TVA à taux réduit', () => {
     const html = buildDevisHtml({ doc: facture('acompte'), client, entreprise, couleur: '#f97316' });
     expect(html).toContain('Par le règlement de la présente facture, le client certifie');
     expect(html).toContain('qu’ils n’auront pas pour effet');
+  });
+
+  it('la facture d’un ramonage sans devis (D-30) : certification par le règlement, au passé', () => {
+    const ramonages = [{ id: 'r1', client_id: 'c1', numero: 'RAM-2026-00001', realise_le: '2026-10-20T09:00:00Z', prix_ht: 80 }];
+    const factureRamonage = { ...donneesFacture({ ramonages, entreprise, aujourdhui: '2026-10-24' }), numero: 'FAC-2026-00002' };
+    expect(factureRamonage.type).toBe('facture');
+    expect(factureRamonage.facture_type).toBeUndefined();
+    const html = buildDevisHtml({ doc: factureRamonage, client, entreprise, couleur: '#f97316' });
+    expect(html).toContain('TVA À TAUX RÉDUIT (10 %)');
+    expect(html).toContain('Par le règlement de la présente facture, le client certifie');
+    expect(html).toContain('qu’ils n’ont pas eu pour effet');
+    expect(html).not.toMatch(/Date et signature du client|Je soussigné/);
   });
 
   it('un avoir n’en porte pas', () => {
