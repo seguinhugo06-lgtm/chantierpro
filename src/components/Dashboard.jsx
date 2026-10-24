@@ -35,7 +35,7 @@ import {
 
 import { useData } from '../context/DataContext';
 import { isDemo } from '../supabaseClient';
-import { useToast } from '../context/AppContext';
+import { useToast, useConfirm } from '../context/AppContext';
 import { usePermissions } from '../hooks/usePermissions';
 import { useRelances } from '../hooks/useRelances';
 import { useOrg } from '../context/OrgContext';
@@ -156,6 +156,7 @@ export default function Dashboard({
     ? rappelsDus(ramonages, clients, { jours: Number(entreprise?.ramonageRappelJours) || DELAI_RAPPEL_DEFAUT, aujourdhui: jourLocal() })
     : []), [entreprise?.ramonageActif, entreprise?.ramonageRappelJours, ramonages, clients]);
   const { showToast } = useToast();
+  const { confirm } = useConfirm();
   const { canAccess, canPerform } = usePermissions();
   const canSeeFinances = canAccess('finances');
   const { orgId, orgName, role } = useOrg();
@@ -574,9 +575,16 @@ export default function Dashboard({
             <RappelRamonage
               rappel={rappelAffiche}
               entreprise={entreprise}
-              envoiAutoPrevu={!!entreprise?.ramonageEnvoiAuto}
+              envoiAutoPrevu={!!entreprise?.ramonageEnvoiAuto && String(entreprise?.email || '').includes('@')}
               suivreRamonage={suivreRamonage}
               refuserRappels={async (c) => {
+                const ok = await confirm({
+                  title: 'Ne plus rappeler ce client ?',
+                  message: `${[c.prenom, c.nom].filter(Boolean).join(' ')} ne recevra plus de rappel de ramonage (ni SMS proposé, ni e-mail automatique). Ce refus ne s'annule pas.`,
+                  confirmText: 'Ne plus rappeler',
+                  variant: 'warning',
+                });
+                if (!ok) return;
                 setRappelOuvert(null);
                 if ((await updateClient(c.id, { rappels_refuses_le: new Date().toISOString() })) !== false) showToast('Refus des rappels noté : plus aucun rappel pour ce client.', 'success');
               }}

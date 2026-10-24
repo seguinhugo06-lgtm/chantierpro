@@ -225,6 +225,58 @@ module.exports = [
     },
   },
   {
+    nom: 'ramonage (base) : les attestations en base reviennent sur la fiche ; facture liée et annulation partent en base',
+    reel: true,
+    async executer({ ouvrir, cliquer, attendre, verifier, sessionFactice }) {
+      const ORG = '0e0e0e0e-0e0e-4e0e-8e0e-0e0e0e0e0e0e';
+      const CLIENT = { id: 'c0c0c0c0-0000-4000-8000-000000000107', nom: 'Exemple', prenom: 'Rose', telephone: '0600000003', email: 'rose@exemple.fr',
+        adresse: '7 allée Imaginaire, 24000 Exempleville', created_at: '2026-10-01T08:00:00Z' };
+      const ENTREPRISE = { id: 'e0e0e0e0-0000-4000-8000-000000000107', user_id: UID, organization_id: ORG, nom: 'Ramonage Exemple', forme_juridique: 'Micro-entreprise',
+        siret: '00000000000000', telephone: '0500000000', email: 'contact@exemple.fr', is_active: true, is_default: true,
+        settings_json: { reglages: { ramonageActif: true, nomEntrepreneur: 'Jean Exemple' } }, cgu_accepted_at: '2026-01-01T00:00:00Z', cgu_version: '2025-02',
+        created_at: '2026-01-01T00:00:00Z' };
+      const ligne = (id, numero, le, prochain) => ({ id, user_id: UID, organization_id: ORG, numero, client_id: CLIENT.id, appareil_ref: 'f0f0f0f0-0000-4000-8000-000000000107',
+        realise_le: le, intervenant_nom: 'Jean Exemple', client_nom: 'Rose Exemple', qualite_client: 'locataire', adresse_intervention: CLIENT.adresse,
+        appareil_type: 'insert', combustible: 'bois', conduit: 'maconne', methode: 'mecanique_manuelle', complement_chimique: false, raccordement: 'ramone',
+        vacuite: 'assuree', constats: {}, conseils: { choix: ['usage'] }, prochain_avant: prochain, nb_dans_annee: 1, prix_ht: 95, jeton_rappel: `${id.slice(0, 30)}aaaaaa`,
+        emetteur: { nom: 'Ramonage Exemple', formeJuridique: 'Micro-entreprise', nomEntrepreneur: 'Jean Exemple', siret: '00000000000000' },
+        annulee_le: null, annulation_motif: null, rappel_fait_le: null, rappel_canal: null, facture_id: null, created_at: le });
+      const base = creerBase({ clients: [CLIENT], entreprise: [ENTREPRISE], ramonages: [
+        ligne('d0d0d0d0-0000-4000-8000-000000000001', `RAM-${AN - 1}-00003`, `${AN - 1}-10-12T09:00:00Z`, `${AN}-10-12`),
+        ligne('d0d0d0d0-0000-4000-8000-000000000002', `RAM-${AN}-00011`, `${AN}-10-14T09:00:00Z`, `${AN + 1}-10-14`),
+      ] });
+      const { page } = await ouvrir({ reel: true, largeur: 375, page: 'clients', session: sessionFactice(UID), supabase: base.reponse, avantChargement: sansInstallation });
+      await attendre(1500);
+      await ouvrirFiche(page, attendre, 'Exemple');
+      const fiche = await page.evaluate(() => document.querySelector('[data-testid="onglet-ramonage"]')?.innerText || '');
+      verifier(fiche.includes(`RAM-${AN - 1}-00003`) && fiche.includes(`RAM-${AN}-00011`) && fiche.includes('Insert'), 'les deux attestations en base reviennent sur la fiche');
+      // Facture tirée de la plus récente : la facture part, puis son lien
+      await page.evaluate((n) => [...document.querySelectorAll('[data-testid="onglet-ramonage"] [data-ui="LigneListe"] > button')].find((b) => b.innerText.includes(n))?.click(), `RAM-${AN}-00011`);
+      await attendre(800);
+      await cliquer(page, 'Faire la facture', { dans: '[role="dialog"]' });
+      await attendre(2000);
+      const factures = base.journal.filter((j) => j.m === 'POST' && j.table === 'devis');
+      const lien = base.journal.find((j) => j.m === 'PATCH' && j.table === 'ramonages' && j.corps?.facture_id);
+      verifier(factures.length === 1 && lien && lien.corps.facture_id === (Array.isArray(factures[0].corps) ? factures[0].corps[0] : factures[0].corps).id,
+        'la facture part en base, puis le lien de l’attestation vers elle');
+      verifier(lien && lien.corps.numero === undefined && lien.corps.jeton_rappel === undefined, 'le lien n’envoie ni numéro ni jeton');
+      // Annulation de l'ancienne, motivée
+      await page.evaluate(() => localStorage.setItem('cp_current_page', 'clients'));
+      await page.reload({ waitUntil: 'networkidle0' });
+      await attendre(1500);
+      await ouvrirFiche(page, attendre, 'Exemple');
+      await page.evaluate((n) => [...document.querySelectorAll('[data-testid="onglet-ramonage"] [data-ui="LigneListe"] > button')].find((b) => b.innerText.includes(n))?.click(), `RAM-${AN - 1}-00003`);
+      await attendre(800);
+      await cliquer(page, 'Annuler l’attestation (erreur de saisie)', { dans: '[role="dialog"]' });
+      await cliquer(page, 'Annuler l’attestation', { dans: '[role="dialog"]' });
+      await attendre(1200);
+      const annulation = base.journal.find((j) => j.m === 'PATCH' && j.table === 'ramonages' && j.corps?.annulee_le);
+      verifier(annulation && annulation.corps.annulation_motif === 'Erreur de saisie', 'l’annulation motivée part en base');
+      const pastille = await page.evaluate(() => document.querySelector('[role="dialog"]')?.innerText || '');
+      verifier(/Annulée/.test(pastille) && /Refaire à partir de celle-ci/.test(pastille), 'l’attestation est marquée annulée, « Refaire » proposé');
+    },
+  },
+  {
     nom: 'ramonage : sans le module, la fiche client et l’accueil ne changent pas (375 px)',
     async executer({ ouvrir, attendre, verifier }) {
       const { page } = await ouvrir({ page: 'clients', largeur: 375, avantChargement: sansInstallation });

@@ -516,9 +516,23 @@ serve(async (req) => {
       ramonage.entreprises++;
 
       const dansOrgR = (requete: any) => (ent.organization_id ? requete.eq('organization_id', ent.organization_id) : requete.eq('user_id', ent.user_id));
+      // Lecture complète, page par page : PostgREST s'arrête à 1 000 lignes, et une liste tronquée ferait prendre un
+      // ancien passage pour le dernier (relecture verificateur du 24 oct. 2026). Seules les échéances à venir comptent
+      // (pas d'e-mail après la date) : un passage plus récent du même appareil a une échéance plus tardive, il est lu aussi.
+      const toutLire = async (fabrique: (de: number, a: number) => any) => {
+        const lignes: any[] = [];
+        for (let de = 0; ; de += 1000) {
+          const { data, error } = await fabrique(de, de + 999);
+          if (error) return { data: null, error };
+          lignes.push(...(data || []));
+          if (!data || data.length < 1000) return { data: lignes, error: null };
+        }
+      };
       const [resR, resC] = await Promise.all([
-        dansOrgR(admin.from('ramonages').select('id, client_id, appareil_ref, realise_le, prochain_avant, appareil_type, localisation, annulee_le, rappel_fait_le, jeton_rappel').is('annulee_le', null)),
-        dansOrgR(admin.from('clients').select('id, nom, prenom, email, rappels_refuses_le')),
+        toutLire((de, a) => dansOrgR(admin.from('ramonages')
+          .select('id, client_id, appareil_ref, realise_le, prochain_avant, appareil_type, localisation, annulee_le, rappel_fait_le, jeton_rappel')
+          .is('annulee_le', null).gte('prochain_avant', aujourdhui)).order('id').range(de, a)),
+        toutLire((de, a) => dansOrgR(admin.from('clients').select('id, nom, prenom, email, rappels_refuses_le')).order('id').range(de, a)),
       ]);
       if (resR.error || resC.error) {
         const msg = [resR.error?.message, resC.error?.message].filter(Boolean).join(' | ');

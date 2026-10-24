@@ -43,8 +43,8 @@ export default function RappelRamonage({ rappel, entreprise, suivreRamonage, ref
         <div className="min-w-0 flex-1">
           <p className="font-semibold text-encre">Ramonage à prévoir avant le {jourFr(ramonage.prochain_avant)}</p>
           <p className="text-sm text-encre-2">{descriptionAppareil(ramonage)} — {echeanceLue(joursRestants)}</p>
-          {envoiAutoPrevu && client?.email && joursRestants >= 0 ? (
-            <p className="text-sm text-encre-2 mt-1">L’e-mail de rappel automatique part le matin à {client.email}.</p>
+          {envoiAutoPrevu && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(client?.email || '').trim()) && joursRestants >= 0 ? (
+            <p className="text-sm text-encre-2 mt-1">Envoi automatique activé : un e-mail de rappel est prévu le matin à {client.email}. Le SMS reste possible.</p>
           ) : null}
         </div>
       </div>

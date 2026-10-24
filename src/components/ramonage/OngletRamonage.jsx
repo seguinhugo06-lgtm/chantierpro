@@ -38,7 +38,10 @@ export default function OngletRamonage({ client, entreprise, setPage, setSelecte
 
   const appareils = useMemo(() => appareilsDuClient(ramonages, client.id), [ramonages, client.id]);
   const jours = Number(entreprise?.ramonageRappelJours) || DELAI_RAPPEL_DEFAUT;
-  const rappels = useMemo(() => rappelsDus(ramonages, [client], { jours, aujourdhui: jourLocal() }), [ramonages, client, jours]);
+  const dus = useMemo(() => rappelsDus(ramonages, [client], { jours, aujourdhui: jourLocal() }), [ramonages, client, jours]);
+  // Un rappel noté ici (SMS) reste affiché, avec « Annuler », tant que la fiche est ouverte
+  const [notes, setNotes] = useState({});
+  const rappels = [...dus, ...Object.values(notes).filter((n) => !dus.some((d) => d.ramonage.id === n.ramonage.id))];
   const fiche = ficheId ? ramonages.find((r) => r.id === ficheId) : null;
   const prix = (n) => (modeDiscret ? '·····' : formatMoney(n));
 
@@ -61,7 +64,7 @@ export default function OngletRamonage({ client, entreprise, setPage, setSelecte
   const refuserRappels = async (c) => {
     const ok = await confirm({
       title: 'Ne plus rappeler ce client ?',
-      message: `${c.prenom || ''} ${c.nom || ''}`.trim() + ' ne recevra plus de rappel de ramonage (ni SMS proposé, ni e-mail automatique).',
+      message: `${c.prenom || ''} ${c.nom || ''}`.trim() + ' ne recevra plus de rappel de ramonage (ni SMS proposé, ni e-mail automatique). Ce refus ne s\'annule pas.',
       confirmText: 'Ne plus rappeler',
       variant: 'warning',
     });
@@ -73,8 +76,9 @@ export default function OngletRamonage({ client, entreprise, setPage, setSelecte
   return (
     <div className="space-y-3" data-testid="onglet-ramonage">
       {rappels.map((r) => (
-        <RappelRamonage key={r.ramonage.id} rappel={r} entreprise={entreprise} suivreRamonage={suivreRamonage} refuserRappels={refuserRappels}
-          envoiAutoPrevu={!!entreprise?.ramonageEnvoiAuto} />
+        <RappelRamonage key={r.ramonage.id} rappel={r} entreprise={entreprise} refuserRappels={refuserRappels}
+          suivreRamonage={(id, suivi) => { setNotes((n) => ({ ...n, [id]: r })); return suivreRamonage(id, suivi); }}
+          envoiAutoPrevu={!!entreprise?.ramonageEnvoiAuto && String(entreprise?.email || '').includes('@')} />
       ))}
       {client.rappels_refuses_le ? (
         <p className="text-sm text-encre-2">Ce client a refusé les rappels de ramonage le {jourFr(jourDe(client.rappels_refuses_le))}.</p>

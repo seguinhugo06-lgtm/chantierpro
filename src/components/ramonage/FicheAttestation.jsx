@@ -86,7 +86,8 @@ export default function FicheAttestation({
 
   return createPortal(
     <div role="dialog" aria-modal="true" aria-labelledby="fiche-attestation-titre" className="fixed inset-0 z-[70] bg-fond flex flex-col">
-      <header className="flex items-center gap-2 px-2 sm:px-4 h-14 border-b border-bord bg-surface flex-shrink-0" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
+      <header className="flex items-center gap-2 px-2 sm:px-4 min-h-14 border-b border-bord bg-surface flex-shrink-0"
+        style={{ paddingTop: 'env(safe-area-inset-top)', minHeight: 'calc(3.5rem + env(safe-area-inset-top))' }}>
         <BoutonIcone icone={X} libelle="Fermer" onClick={onFermer} />
         <h2 id="fiche-attestation-titre" className="text-lg font-semibold text-encre truncate flex-1">
           Attestation {ramonage.numero || '(numéro en attente)'}

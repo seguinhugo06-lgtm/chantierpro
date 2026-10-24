@@ -10,6 +10,7 @@ import {
   conseilsExiges, ramonagePrecedent, jourDe, emetteurDe,
 } from '../../lib/ramonage';
 import { buildAttestationRamonageHtml } from '../../lib/attestationRamonageHtml';
+import { useConfirm } from '../../context/AppContext';
 
 /** Choix exclusif en boutons (44 px) ; `deselection` : toucher le choix actif le retire (constats facultatifs). */
 function Choix({ libelle, options, valeur, onChange, deselection = false, erreur, id }) {
@@ -131,6 +132,21 @@ export default function SaisieRamonage({ client, precedent = null, remplace = nu
   const [enCours, setEnCours] = useState(false);
   const corps = useRef(null);
 
+  const { confirm } = useConfirm();
+  // Une saisie commencée ne se perd pas d'un geste (fermer, Annuler, Échap) : confirmation d'abord
+  const initial = useRef(null);
+  const enConfirmation = useRef(false);
+  const fermer = async () => {
+    if (enConfirmation.current) return;
+    const touche = initial.current !== null && JSON.stringify(form) !== initial.current;
+    if (touche) {
+      enConfirmation.current = true;
+      const ok = await confirm({ title: 'Abandonner cette attestation ?', message: 'Ce qui a été saisi, signature comprise, sera perdu.', confirmText: 'Abandonner', cancelText: 'Continuer la saisie', variant: 'warning' });
+      enConfirmation.current = false;
+      if (!ok) return;
+    }
+    onFermer();
+  };
   const maj = (champs) => setForm((f) => ({ ...f, ...champs }));
   const changerIntervenant = (nom) => setForm((f) => ({ ...f, intervenant_nom: nom, ...(signatureReprise ? { signature: signaturePour(nom) } : {}) }));
   const nbCalcule = nbDansAnnee(ramonages, form.appareil_ref, form.realise_le, remplace?.id);
@@ -138,6 +154,7 @@ export default function SaisieRamonage({ client, precedent = null, remplace = nu
   const donnees = { ...form, nb_dans_annee: nb, emetteur: emetteurDe(entreprise) };
   const erreurDe = (champ) => erreurs.find((e) => e.champ === champ)?.message;
 
+  useEffect(() => { if (initial.current === null) initial.current = JSON.stringify(form); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { corps.current?.scrollTo?.(0, 0); }, [etape]);
   // La liste « À compléter » suit la saisie une fois affichée
   useEffect(() => {
@@ -145,10 +162,14 @@ export default function SaisieRamonage({ client, precedent = null, remplace = nu
   }, [form, nb]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     // Échap ferme cette fenêtre seulement (capturé avant la fiche client et l'app, qui fermeraient aussi la leur)
-    const echap = (e) => { if (e.key === 'Escape') { e.stopPropagation(); onFermer(); } };
+    const echap = (e) => {
+      if (e.key !== 'Escape' || enConfirmation.current) return; // la confirmation ouverte gère son Échap
+      e.stopPropagation();
+      fermer();
+    };
     window.addEventListener('keydown', echap, true);
     return () => window.removeEventListener('keydown', echap, true);
-  }, [onFermer]);
+  });
 
   const changerDate = (jour, heure) => {
     const d = new Date(`${jour || jourDe(form.realise_le)}T${heure || heureDe(form.realise_le) || '09:00'}`);
@@ -186,10 +207,11 @@ export default function SaisieRamonage({ client, precedent = null, remplace = nu
 
   return createPortal(
     <div role="dialog" aria-modal="true" aria-labelledby="saisie-ramonage-titre" className="fixed inset-0 z-[70] bg-fond flex flex-col">
-      <header className="flex items-center gap-2 px-2 sm:px-4 h-14 border-b border-bord bg-surface flex-shrink-0" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
+      <header className="flex items-center gap-2 px-2 sm:px-4 min-h-14 border-b border-bord bg-surface flex-shrink-0"
+        style={{ paddingTop: 'env(safe-area-inset-top)', minHeight: 'calc(3.5rem + env(safe-area-inset-top))' }}>
         {etape === 'apercu'
           ? <BoutonIcone icone={ArrowLeft} libelle="Revenir à la saisie" onClick={() => setEtape('saisie')} />
-          : <BoutonIcone icone={X} libelle="Fermer sans enregistrer" onClick={onFermer} />}
+          : <BoutonIcone icone={X} libelle="Fermer sans enregistrer" onClick={fermer} />}
         <h2 id="saisie-ramonage-titre" className="text-lg font-semibold text-encre truncate">
           {etape === 'apercu' ? 'Vérifier l’attestation' : remplace ? `Refaire l’attestation ${remplace.numero || ''}` : 'Nouveau ramonage'}
         </h2>
@@ -354,7 +376,7 @@ export default function SaisieRamonage({ client, precedent = null, remplace = nu
           </>
         ) : (
           <>
-            <Bouton variante="discret" onClick={onFermer}>Annuler</Bouton>
+            <Bouton variante="discret" onClick={fermer}>Annuler</Bouton>
             <Bouton variante="principal" onClick={verifier}>Vérifier l’attestation</Bouton>
           </>
         )}
