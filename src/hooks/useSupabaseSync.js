@@ -76,6 +76,9 @@ export const FIELD_MAPPINGS = {
       // par les plateformes agréées.
       siret: item.siret || null,
       tva_intra: item.tva_intra || null,
+      // Refus des rappels de ramonage (migration 104) : envoyé seulement quand il existe. L'enregistrement d'une fiche
+      // chargée avant le refus (posé par le client depuis le lien d'un rappel) ne doit jamais l'effacer.
+      ...(item.rappels_refuses_le ? { rappels_refuses_le: item.rappels_refuses_le } : {}),
     }),
     fromSupabase: (row) => ({
       id: row.id,
@@ -89,6 +92,7 @@ export const FIELD_MAPPINGS = {
       notes: row.notes || '',
       siret: row.siret || '',
       tva_intra: row.tva_intra || '',
+      rappels_refuses_le: row.rappels_refuses_le || null,
       type: 'particulier', // Default value for local use
       createdAt: row.created_at,
     }),
@@ -1000,6 +1004,87 @@ export const FIELD_MAPPINGS = {
     }),
   },
 
+  // ── Attestations de ramonage (migration 104) ────────────────────────
+  // Le numéro, le jeton du lien de désinscription et la date de création sont posés par la base, jamais envoyés.
+  // Une attestation est figée dès l'insertion : à la mise à jour, la base ignore tout sauf la facture liée,
+  // l'annulation et le suivi du rappel. Ceux-là ne partent que s'ils sont connus de la ligne : une création rejouée
+  // (upsert, file hors ligne) n'efface ni le rappel noté ni l'annulation faits entre-temps (relecture gardien-securite, F3).
+  ramonages: {
+    toSupabase: (item) => ({
+      id: item.id,
+      client_id: item.client_id || null,
+      appareil_ref: item.appareil_ref,
+      remplace_id: item.remplace_id || null,
+      ...Object.fromEntries(['facture_id', 'annulee_le', 'annulation_motif', 'rappel_fait_le', 'rappel_canal']
+        .filter((cle) => item[cle] !== undefined).map((cle) => [cle, item[cle] || null])),
+      realise_le: item.realise_le,
+      intervenant_nom: item.intervenant_nom || '',
+      emetteur: item.emetteur || null,
+      client_nom: item.client_nom || '',
+      client_contact: item.client_contact || null,
+      qualite_client: item.qualite_client,
+      qualite_precision: item.qualite_precision || null,
+      adresse_intervention: item.adresse_intervention || '',
+      appareil_type: item.appareil_type,
+      combustible: item.combustible,
+      conduit: item.conduit,
+      precisions: item.precisions || null,
+      localisation: item.localisation || null,
+      methode: item.methode,
+      complement_chimique: !!item.complement_chimique,
+      raccordement: item.raccordement || 'ramone',
+      vacuite: item.vacuite,
+      vacuite_precision: item.vacuite_precision || null,
+      constats: item.constats || {},
+      observations: item.observations || null,
+      conseils: item.conseils || {},
+      prochain_avant: item.prochain_avant,
+      nb_dans_annee: Number(item.nb_dans_annee) || 1,
+      prix_ht: item.prix_ht === '' || item.prix_ht === null || item.prix_ht === undefined ? null : Number(item.prix_ht),
+      signature: item.signature || null,
+    }),
+    fromSupabase: (row) => ({
+      id: row.id,
+      numero: row.numero || null,
+      client_id: row.client_id || null,
+      appareil_ref: row.appareil_ref,
+      remplace_id: row.remplace_id || null,
+      facture_id: row.facture_id || null,
+      realise_le: row.realise_le,
+      intervenant_nom: row.intervenant_nom || '',
+      emetteur: (typeof row.emetteur === 'string' ? JSON.parse(row.emetteur) : row.emetteur) || null,
+      client_nom: row.client_nom || '',
+      client_contact: row.client_contact || '',
+      qualite_client: row.qualite_client,
+      qualite_precision: row.qualite_precision || '',
+      adresse_intervention: row.adresse_intervention || '',
+      appareil_type: row.appareil_type,
+      combustible: row.combustible,
+      conduit: row.conduit,
+      precisions: row.precisions || '',
+      localisation: row.localisation || '',
+      methode: row.methode,
+      complement_chimique: !!row.complement_chimique,
+      raccordement: row.raccordement || 'ramone',
+      vacuite: row.vacuite,
+      vacuite_precision: row.vacuite_precision || '',
+      constats: (typeof row.constats === 'string' ? JSON.parse(row.constats) : row.constats) || {},
+      observations: row.observations || '',
+      conseils: (typeof row.conseils === 'string' ? JSON.parse(row.conseils) : row.conseils) || {},
+      prochain_avant: row.prochain_avant,
+      nb_dans_annee: row.nb_dans_annee || 1,
+      prix_ht: row.prix_ht === null || row.prix_ht === undefined ? null : Number(row.prix_ht),
+      signature: row.signature || null,
+      annulee_le: row.annulee_le || null,
+      annulation_motif: row.annulation_motif || '',
+      rappel_fait_le: row.rappel_fait_le || null,
+      rappel_canal: row.rappel_canal || null,
+      jeton_rappel: row.jeton_rappel || null,
+      user_id: row.user_id,
+      created_at: row.created_at,
+    }),
+  },
+
   // ── Devis Templates (user-saved quote templates) ────────────────────
   devis_templates: {
     toSupabase: (item) => ({
@@ -1166,6 +1251,7 @@ export async function loadAllData(userId, orgId, entrepriseId, onCore) {
       memosRes,
       devisTemplatesRes,
       templateUsagesRes,
+      ramonagesRes,
     ] = await Promise.all([
       pClients,
       pChantiers,
@@ -1192,6 +1278,8 @@ export async function loadAllData(userId, orgId, entrepriseId, onCore) {
       scopeToOrg(supabase.from('memos').select('*'), orgId, userId).order('position', { ascending: true }).then(r => r, (e) => ({ data: [], error: { message: e?.message || String(e) } })),
       scoped('devis_templates').then(r => r, () => ({ data: [] })),
       scopeToOrg(supabase.from('template_usages').select('*'), orgId, userId).order('used_at', { ascending: false }).limit(50).then(r => r, () => ({ data: [] })),
+      // Attestations de ramonage (104) : un échec de lecture se dit (l'historique vide ferait croire à des passages perdus)
+      scopeToOrg(supabase.from('ramonages').select('*'), orgId, userId).order('realise_le', { ascending: false }).then(r => r, (e) => ({ data: [], error: { message: e?.message || String(e) } })),
     ]);
 
     // Échecs de chargement : supabase-js ne lève pas, il renvoie `error` et `data: null`. Sans ce
@@ -1201,7 +1289,7 @@ export async function loadAllData(userId, orgId, entrepriseId, onCore) {
     const erreurs = detecterEchecsChargement({
       clients: clientsRes, chantiers: chantiersRes, devis: devisRes, depenses: depensesRes,
       equipe: equipeRes, pointages: pointagesRes, catalogue: catalogueRes, planningEvents: planningEventsRes,
-      paiements: paiementsRes, memos: memosRes,
+      paiements: paiementsRes, memos: memosRes, ramonages: ramonagesRes,
     });
 
     const data = {
@@ -1231,6 +1319,7 @@ export async function loadAllData(userId, orgId, entrepriseId, onCore) {
       memos: (memosRes?.data || []).map(FIELD_MAPPINGS.memos.fromSupabase),
       devisTemplates: (devisTemplatesRes?.data || []).map(FIELD_MAPPINGS.devis_templates.fromSupabase),
       templateUsages: (templateUsagesRes?.data || []).map(FIELD_MAPPINGS.template_usages.fromSupabase),
+      ramonages: (ramonagesRes?.data || []).map(FIELD_MAPPINGS.ramonages.fromSupabase),
     };
 
     logger.debug('Loaded data from Supabase:', {

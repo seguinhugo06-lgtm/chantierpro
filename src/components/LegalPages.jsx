@@ -523,6 +523,10 @@ export default function LegalPages({ page, couleur, setPage }) {
             </tbody>
           </table>
         </div>
+        {/* Rappels de ramonage (tâche ramonage, D-30 ; texte de la relecture juriste-btp du 24 oct. 2026) */}
+        <P>
+          <strong className={textPrimary}>Rappels de ramonage.</strong> Si un utilisateur active l'envoi automatique des rappels (Paramètres → Ramonage), Mallettico envoie en son nom, une seule fois par échéance, un e-mail à ses clients dont le prochain ramonage approche. Données utilisées : nom, prénom et adresse e-mail du client, date du dernier ramonage, type d'appareil et pièce, date conseillée du prochain ramonage. L'utilisateur est responsable de ce traitement ; Mallettico agit pour son compte, comme sous-traitant (RGPD, art. 28), et n'utilise ces données à aucune autre fin. Chaque e-mail contient un lien qui enregistre, sans compte, le refus du client ; la date du refus est conservée tant que le compte de l'utilisateur existe. Les e-mails sont envoyés par Resend (article 4).
+        </P>
       </Section>
 
       <Section title="Article 3 - Durée de conservation">

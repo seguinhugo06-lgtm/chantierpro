@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useToast, useConfirm } from '../context/AppContext';
-import { Download, FileText, RefreshCw, CheckCircle, AlertCircle, Calendar, Calculator, Building2, ArrowLeft, Shield, Search, ChevronDown, ChevronRight, Zap, Palette, FileCheck, BellRing, Package, Check, X, Loader2, Home, Smartphone, Fuel, Landmark, BarChart3, CreditCard, Users, Settings2, HardDrive, FolderOpen, Construction, Receipt, Mail, Sparkles, ClipboardList, GraduationCap } from 'lucide-react';
+import { Download, FileText, RefreshCw, CheckCircle, AlertCircle, Calendar, Calculator, Building2, ArrowLeft, Shield, Search, ChevronDown, ChevronRight, Zap, Palette, FileCheck, BellRing, Package, Check, X, Loader2, Home, Smartphone, Fuel, Landmark, BarChart3, CreditCard, Users, Settings2, HardDrive, FolderOpen, Construction, Receipt, Mail, Sparkles, ClipboardList, GraduationCap, Flame } from 'lucide-react';
 import { captureException } from '../lib/sentry';
 import AdminHelp from './admin-help/AdminHelp';
 import { calculateTVASummary } from '../lib/integrations/accounting';
@@ -8,6 +8,7 @@ import { estFranchiseTva, tvaARegulariser } from '../lib/franchiseTva';
 
 import Facture2026Tab from './settings/Facture2026Tab';
 import RelanceConfigTab from './settings/RelanceConfigTab';
+import RamonageTab from './settings/RamonageTab';
 import PaymentConfigTab from './settings/PaymentConfigTab';
 import EntrepriseSettingsPage from './settings/EntrepriseSettingsPage';
 import TeamManagement from './settings/TeamManagement';
@@ -43,6 +44,8 @@ const TAB_GROUPS = [
     { key: 'facture2026', label: 'Facture 2026', icon: Receipt },
     { key: 'relances', label: 'Relances', icon: Mail },
     { key: 'postchantier', label: 'Post-chantier', icon: Construction },
+    // Parcours ramoneur (D-30) : attestations, rappels, tarifs
+    { key: 'ramonage', label: 'Ramonage', icon: Flame },
   ]},
   { id: 'finance', label: 'Finance', icon: Calculator, tabs: [
     { key: 'comptabilite', label: 'Comptabilité', icon: Calculator },
@@ -1283,6 +1286,10 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
           devis={devis}
           modeDiscret={modeDiscret}
         />
+      )}
+
+      {tab === 'ramonage' && (
+        <RamonageTab entreprise={entreprise} setEntreprise={updateEntreprise} />
       )}
 
       {tab === 'postchantier' && (
