@@ -152,6 +152,11 @@ export async function verifier({ db, q, en, commeAnonyme, compte, verifier }) {
   verifier(await auteur('entreprise', orpheline) === ANCIEN && await auteur('devis', devisOrphelin) === ANCIEN,
     `105 : une ligne d'un compte jamais membre n'est pas donnée au patron (${await auteur('entreprise', orpheline)})`);
 
+  // Les pièces suivent toujours le partant : une exclusion silencieuse (index unique ajouté un jour) se verrait ici
+  const suivies = (await q(`SELECT array_agg(t ORDER BY t) AS l FROM public.tables_rendues_au_depart() t
+    WHERE t IN ('clients', 'devis', 'entreprise', 'paiements', 'ramonages')`)).rows[0].l || [];
+  verifier(suivies.length === 5, `105 : fiche, clients, devis, paiements et attestations suivent le partant (${suivies.join(', ')})`);
+
   // Droits : la réattribution n'est exécutable que par le serveur
   const droits = (await q(`SELECT has_function_privilege('anon', 'public.pieces_rendues_au_proprietaire(uuid, uuid)', 'execute') AS v,
     has_function_privilege('authenticated', 'public.pieces_rendues_au_proprietaire(uuid, uuid)', 'execute') AS c`)).rows[0];

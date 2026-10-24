@@ -33,8 +33,10 @@
 --   5. depuis l'app, une fiche se crée au nom de son auteur et ne change plus ni d'organisation ni d'auteur (l'app
 --      n'écrit ni l'une ni l'autre après la création) : un gérant ne la sort plus de l'organisation pour la garder, ni
 --      ne la crée ou ne la met au nom d'un complice.
---   Rien ne change pour un artisan seul. Limite connue, inchangée : la relance automatique ne suit que les pièces de
---   l'auteur de la fiche ; si le patron en a déjà une, il en a deux, relancées chacune avec ses propres réglages.
+--   Rien ne change pour un artisan seul. Limites connues (suite `pieces-par-organisation`) : la relance automatique ne
+--   suit que les pièces de l'auteur de la fiche ; si le patron en a déjà une, il en a deux, relancées chacune avec ses
+--   propres réglages ; les factures en retard du partant deviennent celles du patron et, si l'envoi automatique est
+--   activé, sont relancées au passage suivant ; l'exclusion d'un client posée par le partant ne le suit pas.
 --
 -- ─── Vérification après application (éditeur SQL) ───────────────────────────
 --   1) Déclencheurs — attendu 2 lignes :
@@ -44,7 +46,9 @@
 --   SELECT policyname, cmd, qual, with_check FROM pg_policies WHERE schemaname = 'public' AND tablename = 'entreprise' AND policyname LIKE 'Users can %' ORDER BY 1;
 --   3) Aucune ligne d'un non-membre dans une organisation, sur les tables qui suivent leur auteur — attendu : 'aucune' :
 --   DO $c$ DECLARE t TEXT; n BIGINT; r TEXT := ''; BEGIN FOR t IN SELECT public.tables_rendues_au_depart() LOOP EXECUTE format('SELECT count(*) FROM public.%I x WHERE x.organization_id IS NOT NULL AND x.user_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM public.organization_members m WHERE m.organization_id::text = x.organization_id::text AND m.user_id::text = x.user_id::text)', t) INTO n; IF n > 0 THEN r := r || t || '=' || n || ' '; END IF; END LOOP; RAISE NOTICE 'non-membres : %', coalesce(nullif(r, ''), 'aucune'); END $c$;
---   4) La réattribution n'est exécutable que par le serveur — attendu f, f :
+--   4) Les pièces suivent le partant — attendu 5 :
+--   SELECT count(*) FROM public.tables_rendues_au_depart() t WHERE t IN ('clients', 'devis', 'entreprise', 'paiements', 'ramonages');
+--   5) La réattribution n'est exécutable que par le serveur — attendu f, f :
 --   SELECT has_function_privilege('anon', 'public.pieces_rendues_au_proprietaire(uuid, uuid)', 'execute') AS visiteur, has_function_privilege('authenticated', 'public.pieces_rendues_au_proprietaire(uuid, uuid)', 'execute') AS connecte;
 -- ============================================================
 
