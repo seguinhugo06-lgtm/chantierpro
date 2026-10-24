@@ -100,7 +100,8 @@ describe('CGV : article « Modification des conditions »', () => {
 
   it('dit que la modification est notifiée 30 jours avant, ne touche pas la période payée, et ouvre la résiliation sans frais', () => {
     expect(texte).toContain('Modification des conditions');
-    expect(texte).toContain('L\'éditeur peut modifier les présentes conditions et le contenu des offres. Toute modification est notifiée par e-mail au moins 30 jours avant son entrée en vigueur ; elle ne s\'applique pas à la période déjà payée, et l\'utilisateur qui la refuse peut résilier sans frais avant cette date.');
+    expect(texte).toContain('Toute modification qui augmente le prix ou réduit les droits de l\'utilisateur lui est notifiée par e-mail, à l\'adresse de son compte, au moins 30 jours avant son entrée en vigueur');
+    expect(texte).toContain('Le prix hors taxes du tarif fondateur (article 4) n\'est pas modifié par cette faculté');
   });
 
   it('les articles se suivent de 1 à 11 sans trou ni doublon, « Droit applicable » en dernier', () => {

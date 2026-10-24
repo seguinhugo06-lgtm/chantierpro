@@ -241,9 +241,13 @@ export default function LegalPages({ page, couleur, setPage }) {
 
       <Section title="Article 10 - Modification des conditions">
         <P>
-          L'éditeur peut modifier les présentes conditions et le contenu des offres. Toute modification est notifiée
-          par e-mail au moins 30 jours avant son entrée en vigueur ; elle ne s'applique pas à la période déjà payée, et
-          l'utilisateur qui la refuse peut résilier sans frais avant cette date.
+          L'éditeur peut modifier les présentes conditions et le contenu des offres pour un motif légitime (évolution
+          du service, de la loi ou de la réglementation). Toute modification qui augmente le prix ou réduit les droits de
+          l'utilisateur lui est notifiée par e-mail, à l'adresse de son compte, au moins 30 jours avant son entrée en
+          vigueur ; elle ne s'applique pas à la période déjà payée. L'utilisateur qui la refuse peut résilier sans frais
+          avant cette date, selon l'article 7. Le prix hors taxes du tarif fondateur (article 4) n'est pas modifié par
+          cette faculté. Les corrections de forme et les modifications imposées par la loi s'appliquent dès leur
+          publication ou à la date que la loi fixe.
         </P>
       </Section>
 
@@ -447,6 +451,7 @@ export default function LegalPages({ page, couleur, setPage }) {
 
   const renderConfidentialite = () => (
     <>
+      <p className={`mb-8 text-sm font-medium ${textSecondary}`}>Version du 24 octobre 2026</p>
       <Section title="Article 1 - Responsable du traitement">
         <P>
           Le responsable du traitement des données à caractère personnel collectées sur Mallettico est :
