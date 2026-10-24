@@ -13,10 +13,10 @@ import {
   X, Check, Lock, ArrowRight, Zap, Hammer, Users
 } from 'lucide-react';
 import {
-  useSubscriptionStore, PLANS, PLAN_ORDER, YEARLY_DISCOUNT,
+  useSubscriptionStore, PLANS, PLAN_ORDER,
   UPGRADE_CONTEXTS
 } from '../../stores/subscriptionStore';
-import { MENTION_TVA_ABONNEMENT, prixAbonnement } from '../../stores/prixAbonnement';
+import { MENTION_TVA_ABONNEMENT, prixAbonnement, economieAnnuelle } from '../../stores/prixAbonnement';
 import { createCheckoutSession } from '../../services/subscriptionsApi';
 import { toast } from '../../stores/toastStore';
 import { isDemo } from '../../supabaseClient';
@@ -181,7 +181,7 @@ export default function UpgradeModal() {
                   )}
                   {billing === 'yearly' && (
                     <span className="inline-block mt-1 px-2 py-0.5 text-[10px] font-bold rounded-full bg-green-50 text-green-700">
-                      Economisez {YEARLY_DISCOUNT}%
+                      Économisez {economieAnnuelle(plan)} par an
                     </span>
                   )}
                 </div>

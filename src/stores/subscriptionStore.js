@@ -164,9 +164,6 @@ if (!FONCTIONS.portailClient) {
   }
 }
 
-// Yearly discount percentage
-export const YEARLY_DISCOUNT = 17;
-
 // Ordered plan tiers for comparison
 export const PLAN_ORDER = ['gratuit', 'artisan', 'equipe'];
 

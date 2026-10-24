@@ -14,8 +14,8 @@ import {
   Zap, Crown, FileText, Users, HardHat, Camera, HardDrive,
   RefreshCw, Package
 } from 'lucide-react';
-import { useSubscriptionStore, PLANS, PLAN_ORDER, YEARLY_DISCOUNT } from '../../stores/subscriptionStore';
-import { MENTION_TVA_ABONNEMENT, prixAbonnement } from '../../stores/prixAbonnement';
+import { useSubscriptionStore, PLANS, PLAN_ORDER } from '../../stores/subscriptionStore';
+import { MENTION_TVA_ABONNEMENT, prixAbonnement, moisOffertsCommuns } from '../../stores/prixAbonnement';
 import {
   createCheckoutSession,
   createPortalSession
@@ -250,7 +250,7 @@ export default function BillingDashboard({ isDark, couleur }) {
               <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${billing === 'yearly' ? 'translate-x-5' : 'translate-x-0.5'}`} />
             </button>
             <span className={billing === 'yearly' ? textPrimary : textSecondary}>
-              Annuel <span className="text-green-500 text-xs font-medium">-{YEARLY_DISCOUNT}%</span>
+              Annuel {moisOffertsCommuns(PLANS) > 0 && <span className="text-green-500 text-xs font-medium">{moisOffertsCommuns(PLANS)} mois offerts</span>}
             </span>
           </div>
         </div>

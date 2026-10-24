@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Check, Sparkles, Loader2, ArrowRight, Crown, Zap } from 'lucide-react';
 import { PLANS, PLAN_ORDER } from '../../stores/subscriptionStore';
 import { useSubscriptionStore } from '../../stores/subscriptionStore';
-import { MENTION_TVA_ABONNEMENT, prixAbonnement } from '../../stores/prixAbonnement';
+import { MENTION_TVA_ABONNEMENT, prixAbonnement, moisOffertsCommuns } from '../../stores/prixAbonnement';
 
 const FEATURE_LABELS = {
   devis_basic: 'Devis & Factures',
@@ -99,7 +99,7 @@ export default function UpgradeModal({ currentPlan, highlightFeature, onClose })
           }`}
         >
           Annuel
-          <span className="ml-1 text-xs opacity-80">-17%</span>
+          {moisOffertsCommuns(PLANS) > 0 && <span className="ml-1 text-xs opacity-80">{moisOffertsCommuns(PLANS)} mois offerts</span>}
         </button>
       </div>
 

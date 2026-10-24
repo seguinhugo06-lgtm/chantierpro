@@ -266,10 +266,9 @@ describe('honnêteté des textes de la bibliothèque affichés par le site', () 
  * relire par le juriste (T8), qui tranchera aussi le texte du générateur.
  */
 const EXCEPTIONS_DOCUMENT = [
-  {
-    texte: "Conditions de paiement et pénalités de retard conformes à l'article L441-10",
-    raison: "renvoi légal au pied du devis de l'artisan (art. L441-10 C. com.) : il porte sur ses conditions, pas sur Mallettico",
-  },
+  // Retirée le 24 oct. 2026 : « Conditions de paiement et pénalités de retard conformes à l'article L441-10 » ne
+  // s'imprime plus que sur un devis adressé à un professionnel (src/lib/piedDePageDocument.js) ; le client de
+  // l'exemple, M. Martin, est un particulier, et la phrase actuelle ne contient aucun mot interdit.
   {
     texte: 'CERTIFICATION DU CLIENT',
     raison: "titre de l'attestation de TVA à taux réduit : depuis la loi n° 2025-127 (art. 41), le client certifie sur le devis ou la facture (src/lib/mentionTvaReduite.js, modèles du BOFiP)",
@@ -320,8 +319,8 @@ describe('honnêteté du document affiché par « Les fonctionnalités en action
   it('cas témoin : un nouveau mot interdit ou un lien /pay/ est rapporté ; une exception ne couvre que son passage exact', () => {
     expect(controlerDocument('<p>Réglez par paiement en ligne</p>')).toEqual(['document — paiement en ligne : « …Réglez par paiement en ligne… »']);
     expect(controlerDocument('<p>Payer : <a href="https://mallettico.fr/pay/abc">ici</a></p>')).toHaveLength(1);
-    expect(controlerDocument("<p>Conditions de paiement et pénalités de retard conformes à l'article L441-10</p>")).toEqual([]);
-    expect(controlerDocument("<p>Conditions de paiement et pénalités de retard conformes à l'article L441-10 ; ouvrage conforme</p>")).toHaveLength(1);
+    expect(controlerDocument('<p>La signature du présent devis vaut certification.</p>')).toEqual([]);
+    expect(controlerDocument('<p>La signature du présent devis vaut certification ; ouvrage conforme</p>')).toHaveLength(1);
     expect(controlerDocument('<p>Le client certifie</p>')).toHaveLength(1);
   });
 });

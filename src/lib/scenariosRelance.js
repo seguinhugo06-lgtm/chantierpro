@@ -55,7 +55,7 @@ Cordialement,
 
 Je vous contacte une dernière fois concernant le devis n° {{devis_numero}} d'un montant de {{montant}} €.
 
-Si ce projet ne correspond plus à vos attentes, je comprendrai tout à fait. Dans le cas contraire, je reste disponible pour finaliser les details.
+Si ce projet ne correspond plus à vos attentes, je comprendrai tout à fait. Dans le cas contraire, je reste disponible pour finaliser les détails.
 
 Bien cordialement,
 {{entreprise_nom}}`,

@@ -27,6 +27,7 @@ import { dateLue } from './dates';
 import { signatureDuClient } from './signatureDocument';
 import { finValidite } from './validiteDevis';
 import { estClientPro } from './relanceUtils';
+import { natureDuDocument, piedDePageHtml } from './piedDePageDocument';
 import { blocRetractationHtml, estConcerneParRetractation, lienRetractationEnLigne, mentionsSignatureClientHtml } from './retractation';
 
 /**
@@ -369,7 +370,7 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mod
         ${e.bic ? ` · <strong>BIC:</strong> ${e.bic}` : ''}
       </div>
       <div>
-        ${blocConditionsPaiement({ doc, entreprise: { ...entreprise, delaiPaiement: e.delaiPaiement }, isFacture, dateEcheance: isFacture ? echeance(doc, { delaiJours: e.delaiPaiement }) : null })}
+        ${blocConditionsPaiement({ doc, entreprise: { ...entreprise, delaiPaiement: e.delaiPaiement }, isFacture, dateEcheance: isFacture ? echeance(doc, { delaiJours: e.delaiPaiement }) : null, client })}
       </div>
     </div>
   </div>
@@ -427,7 +428,7 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mod
   }) : ''}
 
   <!-- FOOTER -->
-  ${buildFooterHtml(e, rcsComplet, !isFacture, isClientMode)}
+  ${buildFooterHtml(e, rcsComplet, piedDePageHtml({ nature: natureDuDocument(doc), client }), isClientMode)}
 </body>
 </html>`);
 }
@@ -435,7 +436,7 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mod
 /**
  * Bloc footer réutilisable
  */
-function buildFooterHtml(e, rcsComplet, isDevis = false, isClientMode = false) {
+function buildFooterHtml(e, rcsComplet, piedDePage = '', isClientMode = false) {
   return `<div class="footer">
     <strong>${e.nom}</strong>
     ${e.formeJuridique ? ` · ${e.formeJuridique}` : ''}
@@ -451,7 +452,7 @@ function buildFooterHtml(e, rcsComplet, isDevis = false, isClientMode = false) {
       ${e.rcProAssureur ? `RC Pro: ${e.rcProAssureur}${e.rcProNumero ? ` N°${e.rcProNumero}` : ''}${e.rcProValidite ? ` (Valide jusqu'au ${dateLue(e.rcProValidite).toLocaleDateString('fr-FR')})` : ''}` : ''}
       ${e.mentionRGE !== false && Array.isArray(e.labels) && e.labels.filter(l => l.actif).length > 0 ? '<br>' + e.labels.filter(l => l.actif).map(l => `${l.nom}${l.numero ? ` N°${l.numero}` : ''}${l.organisme ? ` (${l.organisme})` : ''}${l.dateExpiration ? ` — Valide jusqu'au ${dateLue(l.dateExpiration).toLocaleDateString('fr-FR')}` : ''}`).join('<br>') : ''}
     </div>
-    ${isDevis ? `<div style="margin-top:6px;font-size:6.5pt;color:#666">Devis reçu avant l'exécution des travaux. Conditions de paiement et pénalités de retard conformes à l'article L441-10 du Code de commerce.</div>` : ''}
+    ${piedDePage}
   </div>`;
 }
 
@@ -711,7 +712,7 @@ export function buildSituationFactureHtml({ situation, parentDevis, client, chan
     <h4>CONDITIONS DE RÈGLEMENT</h4>
     Paiement à ${e.delaiPaiement} jours à compter de la date de facture.<br>
     ${e.iban ? `<strong>IBAN:</strong> ${e.iban}` : ''} ${e.bic ? ` · <strong>BIC:</strong> ${e.bic}` : ''}<br>
-    Pénalités de retard: taux BCE + 10 points. Indemnité forfaitaire de recouvrement: 40 €.
+    ${estClientPro(client) ? 'Pénalités de retard: taux BCE + 10 points. Indemnité forfaitaire de recouvrement: 40 €.' : ''}
     ${retenueGarantiePct > 0 ? `<br><br><strong>Retenue de garantie:</strong> ${pourcent(retenueGarantiePct)} retenus conformément à la loi n°71-584 du 16 juillet 1971. Libérable 1 an après la réception des travaux sauf réserves.` : ''}
   </div>
 
