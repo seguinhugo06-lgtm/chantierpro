@@ -17,6 +17,7 @@
 
 /* Clair par défaut ; un bloc [data-theme] redéfinit le thème pour son sous-arbre (styleguide clair + sombre côte à côte). */
 :root, [data-theme='clair'] {
+  color-scheme: light;
   /* Fonds */
   /* Charte « Glacier vif » (19 oct. 2026) : neutres légèrement bleutés, comme le reflet du logo */
   --fond: 247 250 253;       /* page — #F7FAFD */
@@ -58,6 +59,9 @@
 }
 
 [data-theme='sombre'] {
+  /* Contrôles natifs (icône du calendrier d'un champ date, listes, barres de défilement) en version sombre : l'icône
+     du calendrier, gris foncé sur le bleu-noir, ne se voyait plus (captures de la Task 4 « ancien code », 24 oct. 2026) */
+  color-scheme: dark;
   /* Bleu-noir profond, tiré du bleu nuit du logo */
   --fond: 11 19 36;          /* #0B1324 */
   --surface: 20 33 58;       /* #14213A */

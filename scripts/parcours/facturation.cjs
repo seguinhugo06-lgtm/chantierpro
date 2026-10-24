@@ -28,6 +28,18 @@ const ouvrirDocument = (page, numero) => page.evaluate((n) => {
   b?.click();
   return !!b;
 }, numero);
+// « Facturer » ouvre le choix du mode de facturation (audit UX du 20 oct. 2026 : une seule porte) ; on y prend l'option
+const facturerPar = async (page, cliquer, attendre, option) => {
+  await cliquer(page, 'Facturer');
+  await attendre(500);
+  const ok = await page.evaluate((o) => {
+    const b = [...document.querySelectorAll('[role="dialog"] button')].find((x) => (x.innerText || '').trim().startsWith(o));
+    b?.click();
+    return !!b;
+  }, option);
+  await attendre(600);
+  return ok;
+};
 const documentsEnregistres = (page) => page.evaluate(() => JSON.parse(localStorage.getItem('mallettico_demo_data') || '{}'));
 const texte = (page) => page.evaluate(() => document.body.innerText);
 
@@ -39,8 +51,7 @@ module.exports = [
       await attendre(800);
       verifier(await ouvrirDocument(page, 'DEV-2026-00095'), 'le devis signé est dans la liste');
       await attendre(800);
-      await cliquer(page, 'Facturer');
-      await attendre(600);
+      verifier(await facturerPar(page, cliquer, attendre, 'Facture d’acompte'), '« Facturer » propose la facture d’acompte');
       const deuxAppuis = await page.evaluate(() => {
         const b = [...document.querySelectorAll('button')].find((x) => /^Facturer\s.*€/.test(x.innerText.trim()));
         if (!b) return false;
@@ -99,9 +110,10 @@ module.exports = [
       const horsLigne = await page.evaluate(() => {
         const b = [...document.querySelectorAll('button')].find((x) => /Paiement reçu/.test(x.innerText));
         b?.click();
-        return !!b;
+        // Une seule façon d'encaisser (paiement en ligne coupé) : le formulaire du paiement reçu est ouvert d'emblée
+        return !!b || !!document.querySelector('[role="dialog"] [aria-label="Mode de paiement"]');
       });
-      verifier(horsLigne, 'option « Paiement reçu (hors ligne) »');
+      verifier(horsLigne, 'formulaire « paiement reçu » (mode, montant, date)');
       await attendre(500);
       await page.evaluate(() => {
         const champ = [...document.querySelectorAll('input')].find((i) => i.value === '1100.00');
@@ -123,7 +135,7 @@ module.exports = [
       verifier(!!p && Number(p.montant || p.amount) === 400, `paiement de 400 € enregistré (${JSON.stringify(p || null)})`);
       const f = devis.find((d) => d.id === 'f-parcours-emise');
       verifier(f && Number(f.montant_paye) === 400, `montant reçu sur la facture : ${f?.montant_paye}`);
-      verifier(/reste 700/.test((await texte(page)).replace(/ | /g, ' ')), 'la fiche affiche le reste dû (700 €)');
+      verifier(/Reste à payer\s*700/.test((await texte(page)).replace(/ | /g, ' ')), 'la fiche affiche le reste dû (700 €)');
     },
   },
   {
@@ -299,8 +311,7 @@ module.exports = [
       await attendre(800);
       verifier(await ouvrirDocument(page, 'DEV-2026-00097'), 'le devis signé sur place est dans la liste');
       await attendre(800);
-      await cliquer(page, 'Facturer');
-      await attendre(600);
+      verifier(await facturerPar(page, cliquer, attendre, 'Facture d’acompte'), '« Facturer » propose la facture d’acompte');
       const fenetre = await page.evaluate(() => ({
         raison: document.querySelector('[data-ui="AcompteSeptJours"]')?.innerText || '',
         bouton: [...document.querySelectorAll('button')].find((x) => /^Facturer\s.*€/.test(x.innerText.trim()))?.disabled ?? null,
@@ -316,8 +327,7 @@ module.exports = [
       await attendre(300);
       await page.evaluate(() => [...document.querySelectorAll('button')].find((b) => /^Annuler/.test((b.innerText || '').trim()))?.click());
       await attendre(400);
-      const cent = await page.evaluate(() => { const b = [...document.querySelectorAll('button')].find((x) => /^100 %/.test((x.innerText || '').trim())); b?.click(); return !!b; });
-      verifier(cent, 'option « 100 % » de la facturation');
+      verifier(await facturerPar(page, cliquer, attendre, 'Facture complète'), 'option « Facture complète » de « Facturer »');
       await attendre(500);
       const dialogue = await page.evaluate(() => document.querySelector('[role="dialog"]')?.innerText || '');
       verifier(/n'acceptez aucun paiement avant le/.test(dialogue), `la confirmation rappelle la règle (${dialogue.slice(0, 60)}…)`);

@@ -12,8 +12,8 @@ import { fileURLToPath } from 'node:url';
  *   dark:       : classes Tailwind `dark:` (le thème passe par isDark ou data-theme)
  */
 const PLAFONDS = {
-  'micro-texte': 161,
-  gris: 759,
+  'micro-texte': 95,
+  gris: 754,
   'dark:': 0,
 };
 const MOTIFS = {

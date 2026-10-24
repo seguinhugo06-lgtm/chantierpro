@@ -31,7 +31,7 @@ export default function DevisWizard({
   chantiers = [],
   entreprise = {},
   isDark = false,
-  couleur = '#f97316',
+  couleur,
   setPage,
   onSwitchToExpress
 }) {
@@ -148,7 +148,7 @@ export default function DevisWizard({
 
   // Theme classes
   const cardBg = 'bg-surface';
-  const inputBg = isDark ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400' : 'bg-white border-slate-200 text-slate-900';
+  const inputBg = 'bg-surface border-bord-fort text-encre placeholder:text-encre-3';
   const textPrimary = 'text-encre';
   const textSecondary = 'text-encre-2';
   const textMuted = 'text-encre-2';
@@ -349,28 +349,28 @@ export default function DevisWizard({
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-fade-in" onClick={onClose} />
 
       {/* Modal */}
-      <div className={`relative w-full sm:max-w-2xl max-h-[95vh] sm:max-h-[90vh] ${cardBg} rounded-t-3xl sm:rounded-2xl shadow-2xl flex flex-col animate-slide-up overflow-hidden`}>
+      <div role="dialog" aria-modal="true" aria-labelledby="assistant-devis-titre" className={`relative w-full sm:max-w-2xl max-h-[95vh] sm:max-h-[90vh] ${cardBg} rounded-t-3xl sm:rounded-2xl shadow-2xl flex flex-col animate-slide-up overflow-hidden`}>
 
         {/* Header with gradient and progress */}
-        <div className="px-5 pt-5 pb-4" style={{ background: `linear-gradient(135deg, ${couleur}, ${couleur}dd)` }}>
+        <div className="px-5 pt-5 pb-4 border-b border-bord">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
-                {form.type === 'facture' ? <Receipt size={20} className="text-white" /> : <FileText size={20} className="text-white" />}
+              <div className="w-10 h-10 bg-surface-2 rounded-xl flex items-center justify-center text-encre-2" aria-hidden="true">
+                {form.type === 'facture' ? <Receipt size={20} /> : <FileText size={20} />}
               </div>
               <div>
-                <h2 className="text-lg font-bold text-white">
+                <h2 id="assistant-devis-titre" className="text-lg font-bold text-encre">
                   {step === 0 ? 'Créer un document' : step === 1 ? 'Choisir le client' : step === 2 ? 'Ajouter les articles' : 'Finaliser'}
                 </h2>
-                <p className="text-white/80 text-sm">
+                <p className="text-encre-3 text-sm">
                   {isEditMode
                     ? `Modifier ${form.type === 'facture' ? 'la facture' : 'le devis'}`
                     : form.type === 'facture' ? 'Nouvelle facture' : 'Nouveau devis'}
                 </p>
               </div>
             </div>
-            <button onClick={onClose} className="p-3 hover:bg-white/20 rounded-xl transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center">
-              <X size={20} className="text-white" />
+            <button onClick={onClose} aria-label="Fermer" className="p-3 hover:bg-surface-2 rounded-xl transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center">
+              <X size={20} className="text-encre-3" />
             </button>
           </div>
 
@@ -389,8 +389,8 @@ export default function DevisWizard({
                     disabled={s.idx > step}
                     className={`flex-1 flex flex-col items-center gap-1 transition-all ${s.idx < step ? 'cursor-pointer hover:opacity-80' : s.idx === step ? '' : 'opacity-50 cursor-default'}`}
                   >
-                    <div className={`w-full h-1 rounded-full transition-all ${s.idx <= step ? 'bg-white' : 'bg-white/30'}`} />
-                    <span className={`text-[10px] font-medium transition-all ${s.idx <= step ? 'text-white' : 'text-white/40'}`}>
+                    <div className={`w-full h-1.5 rounded-full transition-all ${s.idx <= step ? 'bg-accent' : 'bg-surface-2'}`} />
+                    <span className={`text-xs transition-all ${s.idx === step ? 'font-semibold text-encre' : 'font-medium text-encre-3'}`}>
                       {s.label}
                     </span>
                   </button>
@@ -402,8 +402,8 @@ export default function DevisWizard({
 
         {/* Draft restored banner */}
         {draftRestored && (
-          <div className="mx-5 mt-3 px-4 py-3 rounded-xl bg-blue-500/10 border border-blue-500/30 flex items-center justify-between animate-slide-up">
-            <div className={`flex items-center gap-2 ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>
+          <div className="mx-5 mt-3 px-4 py-2 rounded-xl bg-info-fond text-info-texte flex items-center justify-between animate-slide-up">
+            <div className="flex items-center gap-2">
               <RotateCcw size={16} />
               <span className="text-sm font-medium">Brouillon restauré</span>
             </div>
@@ -424,7 +424,7 @@ export default function DevisWizard({
                 setStep(1);
                 setDraftRestored(false);
               }}
-              className={`text-xs hover:underline ${isDark ? 'text-blue-400' : 'text-blue-600'}`}
+              className="h-11 -my-2 text-sm font-semibold hover:underline"
             >
               Recommencer
             </button>
@@ -433,7 +433,7 @@ export default function DevisWizard({
 
         {/* Error banner */}
         {(errors.client || errors.lignes) && (
-          <div className="mx-5 mt-3 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/30 flex items-center gap-2 text-red-600 animate-shake">
+          <div role="alert" className="mx-5 mt-3 px-4 py-3 rounded-xl bg-danger-fond text-danger-texte flex items-center gap-2 animate-shake">
             <AlertCircle size={16} />
             <span className="text-sm font-medium">{errors.client || errors.lignes}</span>
           </div>
@@ -457,10 +457,10 @@ export default function DevisWizard({
                       onSwitchToExpress();
                     }
                   }}
-                  className={`p-5 rounded-2xl border-2 text-left transition-all hover:shadow-lg ${isDark ? 'border-slate-700 hover:border-amber-500 bg-slate-800/50' : 'border-slate-200 hover:border-amber-400 bg-white'}`}
+                  className="p-5 rounded-2xl border-2 text-left transition-all hover:shadow-lg border-bord hover:border-bord-fort bg-surface"
                 >
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white shrink-0">
+                    <div className="w-12 h-12 rounded-xl bg-surface-2 text-encre-2 flex items-center justify-center shrink-0">
                       <Zap size={24} />
                     </div>
                     <div className="flex-1">
@@ -473,10 +473,10 @@ export default function DevisWizard({
                 {/* Manuel */}
                 <button
                   onClick={() => setStep(1)}
-                  className={`p-5 rounded-2xl border-2 text-left transition-all hover:shadow-lg ${isDark ? 'border-slate-700 hover:border-slate-500 bg-slate-800/50' : 'border-slate-200 hover:border-slate-400 bg-white'}`}
+                  className="p-5 rounded-2xl border-2 text-left transition-all hover:shadow-lg border-bord hover:border-bord-fort bg-surface"
                 >
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white shrink-0" style={{ background: `linear-gradient(135deg, ${couleur}, ${couleur}bb)` }}>
+                    <div className="w-12 h-12 rounded-xl bg-surface-2 text-encre-2 flex items-center justify-center shrink-0">
                       <Edit3 size={24} />
                     </div>
                     <div className="flex-1">
@@ -501,14 +501,14 @@ export default function DevisWizard({
                   <button
                     key={opt.value}
                     onClick={() => setForm(p => ({ ...p, type: opt.value }))}
+                    aria-pressed={form.type === opt.value}
                     className={`flex-1 p-3 rounded-xl border-2 flex items-center justify-center gap-2 transition-all ${
                       form.type === opt.value
-                        ? 'border-current shadow-lg'
+                        ? 'border-accent bg-accent/10'
                         : 'border-bord'
                     }`}
-                    style={form.type === opt.value ? { borderColor: couleur, backgroundColor: `${couleur}10` } : {}}
                   >
-                    <opt.icon size={18} style={form.type === opt.value ? { color: couleur } : {}} className={form.type !== opt.value ? textMuted : ''} />
+                    <opt.icon size={18} className={form.type === opt.value ? 'text-accent-texte' : textMuted} />
                     <span className={`font-medium ${form.type === opt.value ? textPrimary : textMuted}`}>{opt.label}</span>
                   </button>
                 ))}
@@ -529,7 +529,7 @@ export default function DevisWizard({
               {/* Quick add button */}
               <button
                 onClick={() => setShowQuickClient(true)}
-                className={`w-full p-3 rounded-xl border-2 flex items-center justify-center gap-2 transition-all hover:shadow-lg ${isDark ? 'border-slate-600 hover:border-slate-500' : 'border-slate-300 hover:border-slate-400'}`}
+                className="w-full p-3 rounded-xl border-2 flex items-center justify-center gap-2 transition-all hover:shadow-lg border-bord-fort hover:border-encre-3"
               >
                 <Plus size={18} className="text-accent-texte" />
                 <span className={textSecondary}>Nouveau client</span>
@@ -547,12 +547,12 @@ export default function DevisWizard({
                       <button
                         key={`recent-${client.id}`}
                         onClick={() => selectClient(client.id)}
+                        aria-pressed={form.clientId === client.id}
                         className={`p-3 rounded-xl border-2 text-left transition-all hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] ${
                           form.clientId === client.id
-                            ? 'border-current shadow-lg'
+                            ? 'border-accent bg-accent/10 shadow-lg'
                             : 'border-bord hover:border-bord-fort'
                         }`}
-                        style={form.clientId === client.id ? { borderColor: couleur, backgroundColor: `${couleur}10` } : { borderColor: `${couleur}30` }}
                       >
                         <div className="flex items-center gap-2 mb-1">
                           <div
@@ -583,12 +583,12 @@ export default function DevisWizard({
                   <button
                     key={client.id}
                     onClick={() => selectClient(client.id)}
+                    aria-pressed={form.clientId === client.id}
                     className={`p-3 rounded-xl border-2 text-left transition-all hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] ${
                       form.clientId === client.id
-                        ? 'border-current shadow-lg'
+                        ? 'border-accent bg-accent/10 shadow-lg'
                         : 'border-bord hover:border-bord-fort'
                     }`}
-                    style={form.clientId === client.id ? { borderColor: couleur, backgroundColor: `${couleur}10` } : {}}
                   >
                     <div className="flex items-center gap-2 mb-1">
                       <div
@@ -628,7 +628,7 @@ export default function DevisWizard({
                     <p className={`font-medium ${textPrimary}`}>{formatClientName(selectedClient)}</p>
                     <p className={`text-xs ${textMuted}`}>{selectedClient.telephone}</p>
                   </div>
-                  <button onClick={() => setStep(1)} className={`text-xs px-2 py-1 rounded-lg ${isDark ? 'bg-slate-600' : 'bg-slate-200'}`}>
+                  <button onClick={() => setStep(1)} className="text-sm font-medium h-11 px-3 rounded-lg bg-surface text-encre border border-bord-fort">
                     Changer
                   </button>
                 </div>
@@ -637,17 +637,16 @@ export default function DevisWizard({
               {/* Add from catalog button */}
               <button
                 onClick={() => setShowCatalog(true)}
-                className="w-full p-4 rounded-xl border-2 flex items-center justify-center gap-3 transition-all hover:shadow-lg group"
-                style={{ borderColor: `${couleur}50` }}
+                className="w-full p-4 rounded-xl border-2 border-accent/40 flex items-center justify-center gap-3 transition-all hover:shadow-lg group"
               >
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform" style={{ backgroundColor: `${couleur}20` }}>
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform bg-accent/10">
                   <Sparkles size={20} className="text-accent-texte" />
                 </div>
                 <div className="text-left">
                   <p className={`font-medium ${textPrimary}`}>Ajouter depuis le catalogue</p>
-                  <p className={`text-xs ${catalogue.length === 0 ? 'text-amber-500 font-medium' : textMuted}`}>
+                  <p className={`text-sm ${catalogue.length === 0 ? 'text-alerte-texte font-medium' : textMuted}`}>
                     {catalogue.length === 0
-                      ? '⚠ Ajoutez des articles dans le Catalogue d\'abord'
+                      ? 'Ajoutez des articles dans le Catalogue d\'abord'
                       : `${catalogue.length} articles disponibles`}
                   </p>
                 </div>
@@ -763,12 +762,12 @@ export default function DevisWizard({
                     <button
                       key={taux}
                       onClick={() => setForm(p => ({ ...p, tvaDefaut: taux }))}
-                      className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${
+                      aria-pressed={form.tvaDefaut === taux}
+                      className={`flex-1 h-11 rounded-full text-sm font-medium transition-all ${
                         form.tvaDefaut === taux
-                          ? 'text-white'
+                          ? 'bg-encre text-surface'
                           : 'bg-surface-2 text-encre-2'
                       }`}
-                      style={form.tvaDefaut === taux ? { backgroundColor: couleur } : {}}
                     >
                       {taux}%
                     </button>
@@ -784,12 +783,12 @@ export default function DevisWizard({
                     <button
                       key={pct}
                       onClick={() => setForm(p => ({ ...p, remise: pct }))}
-                      className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${
+                      aria-pressed={form.remise === pct}
+                      className={`flex-1 h-11 rounded-full text-sm font-medium transition-all ${
                         form.remise === pct
-                          ? 'text-white'
+                          ? 'bg-encre text-surface'
                           : 'bg-surface-2 text-encre-2'
                       }`}
-                      style={form.remise === pct ? { backgroundColor: couleur } : {}}
                     >
                       {pct}%
                     </button>
@@ -852,14 +851,14 @@ export default function DevisWizard({
               )}
 
               {/* Totals */}
-              <div className={`p-4 rounded-xl ${isDark ? 'bg-emerald-900/30 border border-emerald-700' : 'bg-emerald-50 border border-emerald-200'}`}>
+              <div className="p-4 rounded-xl bg-fond border border-bord">
                 <div className="space-y-2">
                   <div className="flex justify-between">
                     <span className={textSecondary}>Total HT</span>
                     <span className={textPrimary}>{totals.totalHT.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR</span>
                   </div>
                   {form.remise > 0 && (
-                    <div className="flex justify-between text-red-500">
+                    <div className="flex justify-between text-danger-texte">
                       <span>Remise {form.remise}%</span>
                       <span>-{totals.remiseAmount.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR</span>
                     </div>
@@ -868,20 +867,20 @@ export default function DevisWizard({
                     <span className={textSecondary}>TVA {form.tvaDefaut}%</span>
                     <span className={textPrimary}>{totals.tvaApresRemise.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR</span>
                   </div>
-                  <div className={`flex justify-between pt-2 border-t ${isDark ? 'border-emerald-700' : 'border-emerald-200'}`}>
+                  <div className="flex justify-between pt-2 border-t border-bord">
                     <span className={`font-bold ${textPrimary}`}>Total TTC</span>
-                    <span className="text-xl font-bold text-accent-texte">
+                    <span className="text-xl font-bold tabular-nums text-encre">
                       {totals.totalTTC.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR
                     </span>
                   </div>
                   {/* Margin display - only show if cost data exists */}
                   {totals.totalCost > 0 && (
-                    <div className={`flex justify-between pt-2 mt-2 border-t ${isDark ? 'border-emerald-700' : 'border-emerald-200'}`}>
+                    <div className="flex justify-between pt-2 mt-2 border-t border-bord">
                       <span className={textSecondary}>Marge estimée</span>
                       <span className={`font-semibold ${
-                        totals.margePercent >= 25 ? 'text-emerald-600' :
-                        totals.margePercent >= 15 ? 'text-amber-600' :
-                        'text-red-500'
+                        totals.margePercent >= 25 ? 'text-succes-texte' :
+                        totals.margePercent >= 15 ? 'text-alerte-texte' :
+                        'text-danger-texte'
                       }`}>
                         {totals.marge.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR
                         <span className="ml-1 text-sm">
@@ -911,7 +910,7 @@ export default function DevisWizard({
 
             {/* Error message */}
             {errors.submit && (
-              <p className="text-red-500 text-sm flex-1">{errors.submit}</p>
+              <p role="alert" className="text-danger-texte text-sm flex-1">{errors.submit}</p>
             )}
 
             <button
@@ -922,7 +921,7 @@ export default function DevisWizard({
               {step === 3 ? (
                 <>
                   {isSubmitting ? (
-                    <span className="animate-spin w-5 h-5 border-2 border-white/30 border-t-white rounded-full" />
+                    <span className="animate-spin w-5 h-5 border-2 border-sur-accent/30 border-t-sur-accent rounded-full" />
                   ) : (
                     <Check size={18} />
                   )}
@@ -1011,7 +1010,7 @@ function LigneCard({ ligne, index, totalLignes, onUpdate, onRemove, onMoveUp, on
         )}
         <button
           onClick={onRemove}
-          className={`p-2 rounded-lg transition-colors ${isDark ? 'hover:bg-red-900/30 text-red-400' : 'hover:bg-red-50 text-red-500'}`}
+          className="p-2 rounded-lg transition-colors hover:bg-danger-fond text-danger-texte"
         >
           <Trash2 size={16} />
         </button>
@@ -1063,7 +1062,7 @@ function LigneCard({ ligne, index, totalLignes, onUpdate, onRemove, onMoveUp, on
           <span className={`absolute right-3 top-1/2 -translate-y-1/2 text-xs pointer-events-none ${textMuted}`}>EUR</span>
         </div>
 
-        <span className="text-lg font-bold min-w-[80px] text-right text-accent-texte">
+        <span className="text-lg font-bold min-w-[80px] text-right tabular-nums text-encre">
           {montant.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR
         </span>
       </div>
@@ -1074,12 +1073,12 @@ function LigneCard({ ligne, index, totalLignes, onUpdate, onRemove, onMoveUp, on
           <button
             key={taux}
             onClick={() => onUpdate('tva', taux)}
-            className={`px-2 py-1 rounded text-xs transition-all ${
+            aria-pressed={(ligne.tva !== undefined ? ligne.tva : tvaDefaut) === taux}
+            className={`px-2.5 h-8 rounded-full text-xs font-medium transition-all ${
               (ligne.tva !== undefined ? ligne.tva : tvaDefaut) === taux
-                ? 'text-white'
-                : 'bg-surface-2 text-encre-3'
+                ? 'bg-encre text-surface'
+                : 'bg-surface-2 text-encre-2'
             }`}
-            style={(ligne.tva !== undefined ? ligne.tva : tvaDefaut) === taux ? { backgroundColor: couleur } : {}}
           >
             {taux}%
           </button>

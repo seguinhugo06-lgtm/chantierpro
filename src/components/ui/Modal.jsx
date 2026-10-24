@@ -248,7 +248,7 @@ function Modal({
         {/* Bottom-sheet drag handle on mobile */}
         {bottomSheet && (
           <div className="sm:hidden flex justify-center pt-2 pb-1">
-            <div className={cn('w-10 h-1 rounded-full', isDark ? 'bg-slate-600' : 'bg-gray-300')} />
+            <div className="w-10 h-1 rounded-full bg-bord-fort" />
           </div>
         )}
 
@@ -274,7 +274,7 @@ function Modal({
                     <button
                       onClick={onClose}
                       className={cn(
-                        'p-2 rounded-lg transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500',
+                        'p-2 rounded-lg transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
                         'hover:bg-surface-2 text-encre-3'
                       )}
                       aria-label="Fermer"
@@ -403,7 +403,7 @@ export const ModalHeader = forwardRef(({
         <button
           onClick={onClose}
           className={cn(
-            'p-2 rounded-lg transition-colors flex-shrink-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500',
+            'p-2 rounded-lg transition-colors flex-shrink-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
             'hover:bg-surface-2 text-encre-3'
           )}
           aria-label="Fermer"
@@ -604,10 +604,8 @@ export function ConfirmModal({
           onClick={onClose}
           disabled={loading}
           className={cn(
-            'px-4 py-2.5 rounded-xl text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500',
-            isDark
-              ? 'bg-slate-700 text-gray-200 hover:bg-slate-600'
-              : 'bg-gray-100 text-gray-700 hover:bg-gray-200',
+            'px-4 py-2.5 rounded-xl text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
+            'bg-surface-2 text-encre-2 hover:bg-bord',
             'disabled:opacity-50'
           )}
         >
@@ -618,7 +616,7 @@ export function ConfirmModal({
           disabled={loading}
           className={cn(
             'px-4 py-2.5 rounded-xl text-sm font-medium text-white transition-colors',
-            'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500',
+            'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
             variantColors[variant],
             'disabled:opacity-50'
           )}
@@ -664,7 +662,7 @@ export function AlertModal({
       <ModalFooter>
         <button
           onClick={onClose}
-          className="px-4 py-2.5 rounded-xl text-sm font-medium text-white bg-primary-500 hover:bg-primary-600 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500"
+          className="px-4 py-2.5 rounded-xl text-sm font-medium text-white bg-primary-500 hover:bg-primary-600 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >
           {buttonText}
         </button>

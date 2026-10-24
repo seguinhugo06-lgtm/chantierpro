@@ -3,6 +3,8 @@ import { X, Receipt, AlertTriangle, Check, ChevronRight, ChevronLeft, FileText, 
 import { AVOIR_MOTIFS } from '../DevisPage';
 import { avoirTotal, avoirPartiel } from '../../lib/avoir';
 import { totalLigne } from '../../lib/totauxDocument';
+import Modal, { ModalHeader, ModalTitle, ModalDescription, ModalBody, ModalFooter } from '../ui/Modal';
+import { Bouton } from '../ui/Bouton';
 
 /**
  * AvoirCreationModal — Modale 2 étapes pour créer un avoir (note de crédit)
@@ -160,49 +162,27 @@ export default function AvoirCreationModal({
   if (!isOpen || !facture) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
-      <div
-        className={`relative w-full sm:max-w-lg max-h-[95vh] sm:max-h-[85vh] overflow-y-auto rounded-t-2xl sm:rounded-2xl shadow-2xl ${cardBg}`}
-        onClick={e => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="sticky top-0 z-10 px-5 py-4 border-b flex items-center justify-between" style={{ borderColor: isDark ? '#334155' : '#e2e8f0' }}>
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-red-100">
-              <RotateCcw size={18} className="text-red-600" />
-            </div>
-            <div>
-              <h2 className={`text-lg font-bold ${textPrimary}`}>Créer un avoir</h2>
-              <p className={`text-xs ${textMuted}`}>
-                {step === 1 ? 'Type et motif' : 'Sélection des lignes'}
-                {' '} — {facture.numero}
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className={`p-2 rounded-lg transition-colors hover:bg-surface-2`}
-          >
-            <X size={20} className={textMuted} />
-          </button>
-        </div>
+    <Modal isOpen={isOpen} onClose={onClose} size="md">
+      <ModalHeader>
+        <ModalTitle>Créer un avoir</ModalTitle>
+        <ModalDescription>{step === 1 ? 'Type et motif' : 'Sélection des lignes'} — {facture.numero}</ModalDescription>
+      </ModalHeader>
 
-        {/* Step indicator */}
-        <div className="px-5 py-3 flex items-center gap-2">
-          <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${step === 1 ? 'text-white' : 'bg-surface-2 text-encre-3'}`} style={step === 1 ? { background: couleur } : {}}>
+      <ModalBody className="space-y-4">
+        {/* Étapes : celle en cours en encre (l'accent reste à l'action) */}
+        <ol className="flex items-center gap-2" aria-label="Étapes">
+          <li aria-current={step === 1 ? 'step' : undefined} className={`flex items-center gap-1.5 px-3 h-7 rounded-full text-xs font-semibold ${step === 1 ? 'bg-encre text-surface' : 'bg-surface-2 text-encre-3'}`}>
             <span>1</span> Type & Motif
-          </div>
-          <ChevronRight size={14} className={textMuted} />
-          <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${step === 2 ? 'text-white' : 'bg-surface-2 text-encre-3'}`} style={step === 2 ? { background: couleur } : {}}>
+          </li>
+          <ChevronRight size={14} className={textMuted} aria-hidden="true" />
+          <li aria-current={step === 2 ? 'step' : undefined} className={`flex items-center gap-1.5 px-3 h-7 rounded-full text-xs font-semibold ${step === 2 ? 'bg-encre text-surface' : 'bg-surface-2 text-encre-3'}`}>
             <span>2</span> {avoirType === 'total' ? 'Confirmation' : 'Lignes'}
-          </div>
-        </div>
+          </li>
+        </ol>
 
-        <div className="px-5 pb-5 space-y-4">
           {/* Remaining alert */}
           {remaining < factureTTC && remaining > 0 && (
-            <div className={`flex items-start gap-2 p-3 rounded-xl text-sm ${isDark ? 'bg-amber-900/30 text-amber-300' : 'bg-amber-50 text-amber-800'}`}>
+            <div className="flex items-start gap-2 p-3 rounded-xl text-sm bg-alerte-fond text-alerte-texte">
               <Info size={16} className="flex-shrink-0 mt-0.5" />
               <div>
                 Des avoirs existent déjà ({fm(totalExistingAvoirs)}).
@@ -211,7 +191,7 @@ export default function AvoirCreationModal({
             </div>
           )}
           {remaining <= 0 && (
-            <div className={`flex items-start gap-2 p-3 rounded-xl text-sm ${isDark ? 'bg-red-900/30 text-red-300' : 'bg-red-50 text-red-700'}`}>
+            <div className="flex items-start gap-2 p-3 rounded-xl text-sm bg-danger-fond text-danger-texte">
               <AlertTriangle size={16} className="flex-shrink-0 mt-0.5" />
               <div>Cette facture est déjà intégralement couverte par des avoirs.</div>
             </div>
@@ -224,7 +204,7 @@ export default function AvoirCreationModal({
               <div className={`p-4 rounded-xl border ${borderColor} bg-fond`}>
                 <div className="flex items-center justify-between mb-2">
                   <span className={`text-sm font-medium ${textPrimary}`}>Facture source</span>
-                  <span className={`text-xs px-2 py-0.5 rounded font-medium ${isDark ? 'bg-purple-900/50 text-purple-400' : 'bg-purple-100 text-purple-700'}`}>
+                  <span className="text-xs px-2 py-0.5 rounded-full font-semibold bg-surface-2 text-encre-2">
                     {facture.numero}
                   </span>
                 </div>
@@ -247,17 +227,19 @@ export default function AvoirCreationModal({
                     return (
                       <button
                         key={opt.value}
+                        type="button"
+                        role="radio"
+                        aria-checked={isSelected}
                         onClick={() => setAvoirType(opt.value)}
                         disabled={opt.value === 'total' && !totalPossible}
                         title={opt.value === 'total' && !totalPossible ? 'Un avoir existe déjà sur cette facture : choisissez les lignes à créditer' : undefined}
-                        className={`p-4 rounded-xl border-2 text-left transition-all disabled:opacity-40 ${
+                        className={`p-4 rounded-xl border-2 text-left transition-colors disabled:opacity-40 ${
                           isSelected
-                            ? 'border-red-500 shadow-md'
+                            ? 'border-accent bg-accent/10'
                             : 'border-bord hover:border-bord-fort'
                         }`}
-                        style={isSelected ? { borderColor: '#ef4444', background: isDark ? 'rgba(239,68,68,0.1)' : 'rgba(239,68,68,0.05)' } : {}}
                       >
-                        <Icon size={20} className={isSelected ? 'text-red-500 mb-2' : `${textMuted} mb-2`} />
+                        <Icon size={20} className={isSelected ? 'text-encre mb-2' : `${textMuted} mb-2`} aria-hidden="true" />
                         <p className={`text-sm font-semibold ${textPrimary}`}>{opt.label}</p>
                         <p className={`text-xs mt-0.5 ${textMuted}`}>{opt.desc}</p>
                       </button>
@@ -268,13 +250,14 @@ export default function AvoirCreationModal({
 
               {/* Motif */}
               <div>
-                <label className={`text-sm font-medium ${textPrimary} mb-2 block`}>
-                  Motif <span className="text-red-500">*</span>
+                <label htmlFor="avoir-motif" className={`text-sm font-medium ${textPrimary} mb-2 block`}>
+                  Motif
                 </label>
                 <select
+                  id="avoir-motif"
                   value={motif}
                   onChange={e => setMotif(e.target.value)}
-                  className={`w-full px-4 py-2.5 rounded-xl border text-sm ${inputBg}`}
+                  className={`w-full px-4 h-12 rounded-xl border text-base sm:text-sm ${inputBg}`}
                 >
                   <option value="">Sélectionner un motif...</option>
                   {Object.entries(AVOIR_MOTIFS).map(([key, label]) => (
@@ -285,24 +268,25 @@ export default function AvoirCreationModal({
 
               {/* Motif detail */}
               <div>
-                <label className={`text-sm font-medium ${textPrimary} mb-2 block`}>
-                  Détail {motif === 'autre' && <span className="text-red-500">*</span>}
+                <label htmlFor="avoir-detail" className={`text-sm font-medium ${textPrimary} mb-2 block`}>
+                  Détail {motif === 'autre' ? null : <span className="font-normal text-encre-3">(facultatif)</span>}
                 </label>
                 <textarea
+                  id="avoir-detail"
                   value={motifDetail}
                   onChange={e => setMotifDetail(e.target.value)}
                   placeholder="Précisions sur le motif de l'avoir..."
                   rows={3}
-                  className={`w-full px-4 py-2.5 rounded-xl border text-sm resize-none ${inputBg}`}
+                  className={`w-full px-4 py-2.5 rounded-xl border text-base sm:text-sm resize-none ${inputBg}`}
                 />
               </div>
 
               {/* Amount preview */}
               {avoirType === 'total' && (
-                <div className={`p-4 rounded-xl border ${isDark ? 'bg-red-900/20 border-red-800' : 'bg-red-50 border-red-200'}`}>
+                <div className="p-4 rounded-xl border bg-fond border-bord">
                   <div className="flex items-center justify-between">
-                    <span className={`text-sm font-medium ${isDark ? 'text-red-300' : 'text-red-700'}`}>Montant de l'avoir</span>
-                    <span className="text-lg font-bold text-red-600">-{fm(remaining)}</span>
+                    <span className="text-sm font-medium text-encre-2">Montant de l'avoir</span>
+                    <span className="text-lg font-bold tabular-nums text-danger-texte">-{fm(remaining)}</span>
                   </div>
                 </div>
               )}
@@ -315,8 +299,8 @@ export default function AvoirCreationModal({
               {avoirType === 'total' ? (
                 /* Total confirmation */
                 <div className="space-y-4">
-                  <div className={`p-4 rounded-xl border ${isDark ? 'bg-red-900/20 border-red-800' : 'bg-red-50 border-red-200'}`}>
-                    <h3 className={`text-sm font-semibold mb-3 ${isDark ? 'text-red-300' : 'text-red-700'}`}>
+                  <div className="p-4 rounded-xl border bg-fond border-bord">
+                    <h3 className="text-sm font-semibold mb-3 text-encre">
                       Récapitulatif — Avoir total
                     </h3>
                     <div className="space-y-2">
@@ -337,21 +321,21 @@ export default function AvoirCreationModal({
                       <div className={`pt-2 mt-2 border-t ${borderColor}`}>
                         <div className="flex justify-between text-sm">
                           <span className={textMuted}>Total HT</span>
-                          <span className="font-semibold text-red-600">-{fm(Math.abs(avoirHT))}</span>
+                          <span className="font-semibold tabular-nums text-danger-texte">-{fm(Math.abs(avoirHT))}</span>
                         </div>
                         <div className="flex justify-between text-sm">
                           <span className={textMuted}>TVA</span>
-                          <span className="font-semibold text-red-600">-{fm(Math.abs(remaining - Math.abs(avoirHT)))}</span>
+                          <span className="font-semibold tabular-nums text-danger-texte">-{fm(Math.abs(remaining - Math.abs(avoirHT)))}</span>
                         </div>
                         <div className="flex justify-between text-base mt-1">
                           <span className={`font-bold ${textPrimary}`}>Total TTC</span>
-                          <span className="font-bold text-red-600">-{fm(remaining)}</span>
+                          <span className="font-bold tabular-nums text-danger-texte">-{fm(remaining)}</span>
                         </div>
                       </div>
                     </div>
                   </div>
 
-                  <div className={`flex items-start gap-2 p-3 rounded-xl text-xs bg-fond text-encre-3`}>
+                  <div className="flex items-start gap-2 p-3 rounded-xl text-sm bg-fond text-encre-3">
                     <Info size={14} className="flex-shrink-0 mt-0.5" />
                     L'avoir sera créé en brouillon. Vous pourrez le vérifier et l'émettre ensuite.
                   </div>
@@ -380,13 +364,13 @@ export default function AvoirCreationModal({
                           key={lineKey}
                           className={`p-3 transition-colors ${
                             isSelected
-                              ? isDark ? 'bg-red-900/10' : 'bg-red-50/50'
+                              ? 'bg-accent/5'
                               : 'bg-surface'
                           }`}
                         >
                           {/* Section header */}
                           {line._sectionName && i === 0 || (i > 0 && allLines[i - 1]?._sectionIndex !== line._sectionIndex) ? (
-                            <p className={`text-[10px] uppercase tracking-wider font-semibold mb-2 ${textMuted}`}>{line._sectionName}</p>
+                            <p className={`text-xs font-semibold mb-2 ${textMuted}`}>{line._sectionName}</p>
                           ) : null}
 
                           <div className="flex items-start gap-3">
@@ -395,9 +379,11 @@ export default function AvoirCreationModal({
                               onClick={() => creditable && toggleLine(lineKey, maxQty)}
                               disabled={!creditable}
                               aria-label={creditable ? `Créditer « ${line.description || 'la ligne'} »` : 'Remise ou déduction : prise en compte automatiquement'}
-                              className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition-colors disabled:opacity-30 ${
+                              role="checkbox"
+                              aria-checked={!!isSelected}
+                              className={`w-6 h-6 rounded-md border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition-colors disabled:opacity-30 ${
                                 isSelected
-                                  ? 'bg-red-500 border-red-500 text-white'
+                                  ? 'bg-accent border-accent text-sur-accent'
                                   : 'border-bord-fort'
                               }`}
                             >
@@ -431,7 +417,7 @@ export default function AvoirCreationModal({
                             )}
 
                             {/* Line total */}
-                            <span className={`text-sm font-semibold whitespace-nowrap ${isSelected ? 'text-red-600' : textMuted}`}>
+                            <span className={`text-sm font-semibold whitespace-nowrap tabular-nums ${isSelected ? 'text-danger-texte' : textMuted}`}>
                               {isSelected ? `-${fm(lineTotal)}` : fm(maxQty * pu)}
                             </span>
                           </div>
@@ -441,9 +427,9 @@ export default function AvoirCreationModal({
                   </div>
 
                   {/* Partial totals */}
-                  <div className={`p-4 rounded-xl border ${exceedsRemaining ? (isDark ? 'bg-red-900/30 border-red-800' : 'bg-red-50 border-red-300') : 'bg-fond border-bord'}`}>
+                  <div className={`p-4 rounded-xl border ${exceedsRemaining ? 'bg-danger-fond border-danger-point/40' : 'bg-fond border-bord'}`}>
                     {exceedsRemaining && (
-                      <div className="flex items-center gap-2 text-sm text-red-600 mb-3">
+                      <div role="alert" className="flex items-center gap-2 text-sm text-danger-texte mb-3">
                         <AlertTriangle size={14} />
                         Le montant dépasse le restant disponible ({fm(remaining)})
                       </div>
@@ -452,19 +438,19 @@ export default function AvoirCreationModal({
                     <div className="space-y-1.5">
                       <div className="flex justify-between text-sm">
                         <span className={textMuted}>Total HT</span>
-                        <span className={`font-semibold ${partialTotals.ht > 0 ? 'text-red-600' : textMuted}`}>
+                        <span className={`font-semibold tabular-nums ${partialTotals.ht > 0 ? 'text-danger-texte' : textMuted}`}>
                           {partialTotals.ht > 0 ? `-${fm(partialTotals.ht)}` : '0,00 €'}
                         </span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span className={textMuted}>TVA</span>
-                        <span className={`font-semibold ${partialTotals.tva > 0 ? 'text-red-600' : textMuted}`}>
+                        <span className={`font-semibold tabular-nums ${partialTotals.tva > 0 ? 'text-danger-texte' : textMuted}`}>
                           {partialTotals.tva > 0 ? `-${fm(partialTotals.tva)}` : '0,00 €'}
                         </span>
                       </div>
                       <div className={`flex justify-between text-base pt-1.5 border-t ${borderColor}`}>
                         <span className={`font-bold ${textPrimary}`}>Total TTC</span>
-                        <span className={`font-bold ${partialTotals.ttc > 0 ? 'text-red-600' : textMuted}`}>
+                        <span className={`font-bold tabular-nums ${partialTotals.ttc > 0 ? 'text-danger-texte' : textMuted}`}>
                           {partialTotals.ttc > 0 ? `-${fm(partialTotals.ttc)}` : '0,00 €'}
                         </span>
                       </div>
@@ -477,9 +463,9 @@ export default function AvoirCreationModal({
                           <span className={textMuted}>Couverture</span>
                           <span className={textMuted}>{((partialTotals.ttc / factureTTC) * 100).toFixed(1)}%</span>
                         </div>
-                        <div className={`h-2 rounded-full overflow-hidden ${isDark ? 'bg-slate-600' : 'bg-slate-200'}`}>
+                        <div className="h-2 rounded-full overflow-hidden bg-surface-2">
                           <div
-                            className="h-full rounded-full transition-all bg-red-500"
+                            className="h-full rounded-full transition-all bg-accent"
                             style={{ width: `${Math.min(100, (partialTotals.ttc / factureTTC) * 100)}%` }}
                           />
                         </div>
@@ -491,41 +477,22 @@ export default function AvoirCreationModal({
             </>
           )}
 
-          {/* Action buttons */}
-          {remaining > 0 && (
-            <div className="flex gap-3 pt-2">
-              {step === 2 && (
-                <button
-                  onClick={() => setStep(1)}
-                  className={`flex-1 px-4 py-3 rounded-xl text-sm font-medium flex items-center justify-center gap-2 min-h-[48px] ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
-                >
-                  <ChevronLeft size={16} /> Retour
-                </button>
-              )}
+      </ModalBody>
 
-              {step === 1 ? (
-                <button
-                  onClick={() => setStep(2)}
-                  disabled={!canProceedStep1}
-                  className="flex-1 px-4 py-3 rounded-xl text-sm font-medium text-white flex items-center justify-center gap-2 min-h-[48px] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-                  style={{ background: canProceedStep1 ? '#ef4444' : '#94a3b8' }}
-                >
-                  Suivant <ChevronRight size={16} />
-                </button>
-              ) : (
-                <button
-                  onClick={handleSubmit}
-                  disabled={!canProceedStep2}
-                  className="flex-1 px-4 py-3 rounded-xl text-sm font-bold text-white flex items-center justify-center gap-2 min-h-[48px] transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-lg"
-                  style={{ background: canProceedStep2 ? '#ef4444' : '#94a3b8' }}
-                >
-                  <RotateCcw size={16} /> Créer l'avoir
-                </button>
-              )}
-            </div>
+      {remaining > 0 && (
+        <ModalFooter>
+          {step === 2 ? (
+            <Bouton variante="discret" icone={ChevronLeft} onClick={() => setStep(1)}>Retour</Bouton>
+          ) : (
+            <Bouton variante="discret" onClick={onClose}>Annuler</Bouton>
           )}
-        </div>
-      </div>
-    </div>
+          {step === 1 ? (
+            <Bouton variante="principal" iconeFin={ChevronRight} onClick={() => setStep(2)} disabled={!canProceedStep1}>Suivant</Bouton>
+          ) : (
+            <Bouton variante="principal" icone={RotateCcw} onClick={handleSubmit} disabled={!canProceedStep2}>Créer l'avoir</Bouton>
+          )}
+        </ModalFooter>
+      )}
+    </Modal>
   );
 }

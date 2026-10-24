@@ -74,7 +74,7 @@ export default function RelanceTimelineWidget({
   isExcluded = false,
   isEnabled = false,
   isDark,
-  couleur = '#f97316',
+  couleur,
   modeDiscret,
   formatMoney: formatMoneyProp,
 }) {
@@ -86,8 +86,7 @@ export default function RelanceTimelineWidget({
   const borderColor = 'border-bord';
   // Anneau de focus clavier visible (a11y — WCAG 2.4.7), cohérent avec ui/
   const focusRing = cn(
-    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2',
-    isDark ? 'focus-visible:ring-offset-slate-800' : 'focus-visible:ring-offset-white'
+    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',
   );
 
   const showMoney = (v) => modeDiscret ? '***' : (formatMoneyProp ? formatMoneyProp(v) : `${v} €`);
@@ -265,8 +264,7 @@ export default function RelanceTimelineWidget({
                 </div>
                 {!isLast && (
                   <div className={cn(
-                    'w-0.5 flex-1 min-h-[16px]',
-                    isDark ? 'bg-slate-700' : 'bg-slate-200'
+                    'w-0.5 flex-1 min-h-[16px] bg-bord',
                   )} />
                 )}
               </div>
@@ -275,9 +273,9 @@ export default function RelanceTimelineWidget({
               <div className="flex-1 pb-3 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className={cn(
-                    'text-xs font-semibold uppercase tracking-wide',
-                    entry.type === 'executed' ? '' : textMuted
-                  )} style={entry.type === 'executed' ? { color: couleur } : undefined}>
+                    'text-xs font-semibold',
+                    entry.type === 'executed' ? 'text-encre' : textMuted
+                  )}>
                     J+{entry.step.delay}
                   </span>
                   <span className={cn('text-sm font-medium', textPrimary)}>
@@ -355,10 +353,9 @@ export default function RelanceTimelineWidget({
               type="button"
               onClick={onSendNow}
               className={cn(
-                'flex items-center gap-1.5 px-3 py-1.5 min-h-[40px] sm:min-h-[32px] rounded-lg text-xs font-medium transition-colors',
+                'flex items-center gap-1.5 px-3 min-h-[44px] sm:min-h-[36px] rounded-full text-sm font-semibold transition-colors bg-surface text-encre border border-bord-fort hover:bg-surface-2',
                 focusRing
               )}
-              style={{ backgroundColor: `${couleur}15`, color: couleur }}
             >
               <Zap className="w-3.5 h-3.5" />
               Relancer maintenant

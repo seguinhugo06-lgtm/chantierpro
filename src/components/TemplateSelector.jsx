@@ -54,23 +54,24 @@ export default function TemplateSelector({
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
-      <div className={`${cardBg} rounded-2xl w-full max-w-2xl max-h-[85vh] shadow-2xl overflow-hidden flex flex-col`}>
+      <div role="dialog" aria-modal="true" aria-label="Choisir un modèle" className={`${cardBg} rounded-2xl w-full max-w-2xl max-h-[85vh] shadow-2xl overflow-hidden flex flex-col`}>
         {/* Header */}
-        <div className="p-5 border-b flex items-center justify-between shrink-0" style={{ borderColor: isDark ? '#334155' : '#e2e8f0' }}>
+        <div className="p-5 border-b border-bord flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
             {selectedMetier && (
               <button
                 onClick={handleBack}
-                className={`p-2 rounded-xl hover:bg-surface-2 transition-colors`}
+                aria-label="Retour"
+                className="w-11 h-11 flex items-center justify-center rounded-xl hover:bg-surface-2 transition-colors"
               >
                 <ArrowLeft size={20} className={textSecondary} />
               </button>
             )}
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: selectedMetierData ? selectedMetierData.color + '20' : `${couleur}20` }}>
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-surface-2 text-encre-2" aria-hidden="true">
               {selectedMetierData ? (
                 <span className="text-xl">{selectedMetierData.icon}</span>
               ) : (
-                <FileText size={20} className="text-accent-texte" />
+                <FileText size={20} />
               )}
             </div>
             <div>
@@ -84,7 +85,8 @@ export default function TemplateSelector({
           </div>
           <button
             onClick={onClose}
-            className={`p-2 rounded-xl hover:bg-surface-2 transition-colors`}
+            aria-label="Fermer"
+            className="w-11 h-11 flex items-center justify-center rounded-xl hover:bg-surface-2 transition-colors"
           >
             <X size={20} className={textSecondary} />
           </button>
@@ -107,7 +109,7 @@ export default function TemplateSelector({
                     autoFocus
                   />
                   {searchQuery && (
-                    <button onClick={() => setSearchQuery('')} className={`p-0.5 rounded ${isDark ? 'hover:bg-slate-600' : 'hover:bg-slate-200'}`}>
+                    <button onClick={() => setSearchQuery('')} aria-label="Effacer la recherche" className="p-1 rounded hover:bg-bord">
                       <X size={14} className={textMuted} />
                     </button>
                   )}
@@ -179,7 +181,8 @@ export default function TemplateSelector({
                               {onDeleteTemplate && (
                                 <button
                                   onClick={(e) => { e.stopPropagation(); onDeleteTemplate(t.id); }}
-                                  className={`p-1.5 rounded-lg transition-colors ${isDark ? 'hover:bg-red-900/30 text-red-400' : 'hover:bg-red-50 text-red-400'}`}
+                                  aria-label={`Supprimer le modèle ${t.nom || ''}`.trim()}
+                                  className="w-11 h-11 flex items-center justify-center rounded-lg transition-colors text-danger-texte hover:bg-danger-fond"
                                 >
                                   <Trash2 size={14} />
                                 </button>
@@ -203,14 +206,11 @@ export default function TemplateSelector({
                         className={`relative p-4 rounded-xl border-2 flex flex-col items-center gap-3 transition-all hover:shadow-lg border-bord hover:border-bord-fort bg-surface`}
                       >
                         {metier.isNew && (
-                          <span className="absolute -top-1.5 -right-1.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold text-white bg-emerald-500 shadow-sm">
-                            NEW
+                          <span className="absolute -top-2 -right-1.5 px-2 py-0.5 rounded-full text-xs font-semibold bg-info-fond text-info-texte shadow-e1">
+                            Nouveau
                           </span>
                         )}
-                        <div
-                          className="w-12 h-12 rounded-xl flex items-center justify-center"
-                          style={{ background: metier.color + '20' }}
-                        >
+                        <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-surface-2">
                           <span className="text-2xl">{metier.icon}</span>
                         </div>
                         <div className="text-center">
@@ -231,7 +231,7 @@ export default function TemplateSelector({
                   key={template.id}
                   className={`rounded-xl border-2 overflow-hidden transition-all ${
                     hoveredTemplate === template.id
-                      ? (isDark ? 'border-slate-500' : 'border-slate-400')
+                      ? 'border-bord-fort'
                       : 'border-bord'
                   }`}
                   onMouseEnter={() => setHoveredTemplate(template.id)}
@@ -249,10 +249,10 @@ export default function TemplateSelector({
                         <span className={`text-xs px-2 py-0.5 rounded bg-surface-2 text-encre-2`}>
                           {template.lignes.length} lignes
                         </span>
-                        <span className="text-sm font-medium" style={{ color: selectedMetierData?.color }}>
+                        <span className="text-sm font-medium tabular-nums text-encre">
                           ~{formatMoney(calculateModeleTotal(template))} HT
                         </span>
-                        <span className={`text-xs flex items-center gap-1 ${calculateModeleMarge(template) >= 30 ? 'text-emerald-500' : 'text-amber-500'}`}>
+                        <span className={`text-xs font-medium flex items-center gap-1 ${calculateModeleMarge(template) >= 30 ? 'text-succes-texte' : 'text-alerte-texte'}`}>
                           <TrendingUp size={12} />
                           {calculateModeleMarge(template)}% marge
                         </span>
@@ -282,8 +282,7 @@ export default function TemplateSelector({
                       </div>
                       <button
                         onClick={() => handleSelectTemplate(selectedMetier, template)}
-                        className="w-full mt-3 py-2 text-white rounded-lg text-sm font-medium flex items-center justify-center gap-2"
-                        style={{ background: selectedMetierData?.color }}
+                        className="w-full mt-3 min-h-[44px] rounded-full text-sm font-semibold flex items-center justify-center gap-2 bg-surface text-encre border border-bord-fort hover:bg-surface-2"
                       >
                         <Check size={16} />
                         Utiliser ce modèle

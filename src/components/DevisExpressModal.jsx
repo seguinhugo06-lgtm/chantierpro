@@ -8,6 +8,8 @@ import { sansTva } from '../lib/franchiseTva';
 import { X, ChevronLeft, ChevronRight, Search, Check, FileText, Euro, TrendingUp, Minus, Plus, Trash2, Edit3, FolderOpen, UserPlus, Loader2, Star, Clock, RotateCcw } from 'lucide-react';
 import { MODELES_DEVIS, getMetiersWithModeles, getModelesByMetier, prepareModeleLignes, calculateModeleTotal, calculateModeleMarge, searchModeles } from '../lib/data/modeles-devis';
 import { formatClientName } from '../lib/formatters';
+import Modal, { ModalTitle } from './ui/Modal';
+import { Bouton } from './ui/Bouton';
 
 // Clé de sauvegarde du brouillon Express (distincte de celle du wizard)
 const EXPRESS_DRAFT_KEY = 'mallettico_devis_express_draft';
@@ -23,7 +25,7 @@ export default function DevisExpressModal({
   clients = [],
   addClient,
   isDark = false,
-  couleur = '#f97316',
+  couleur,
   tvaDefaut = 10,
   // Micro-entreprise en franchise (art. 293 B du CGI) : aucune TVA, même sur les lignes des modèles
   franchise = false,
@@ -343,22 +345,22 @@ export default function DevisExpressModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 sm:p-4">
-      <div className={`${bgMain} rounded-t-3xl sm:rounded-2xl w-full sm:max-w-4xl h-[95vh] sm:h-auto sm:max-h-[90vh] flex flex-col overflow-hidden shadow-2xl`}>
+    <Modal isOpen={isOpen} onClose={handleClose} size="xl" closeOnEscape={!showTemplateSelector && !showQuickClient}
+      className={`${bgMain} h-[92vh] sm:h-auto overflow-hidden`}>
         {/* Header */}
         <div className={`p-4 border-b ${borderColor} flex items-center justify-between`}>
           <div className="flex items-center gap-3">
             {step > 1 && (
-              <button onClick={handleBack} aria-label="Retour" className={`p-2.5 min-w-[44px] min-h-[44px] rounded-lg flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 ${isDark ? 'focus-visible:ring-offset-slate-900' : ''} ${bgHover} ${textSecondary}`}>
+              <button onClick={handleBack} aria-label="Retour" className={`p-2.5 min-w-[44px] min-h-[44px] rounded-lg flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${bgHover} ${textSecondary}`}>
                 <ChevronLeft size={20} />
               </button>
             )}
             <div>
-              <h2 className={`font-bold text-lg ${textPrimary}`}>
+              <ModalTitle className={`font-bold text-lg ${textPrimary}`}>
                 {step === 1 && 'Devis Express'}
                 {step === 2 && selectedMetier?.nom}
                 {step === 3 && selectedModele?.nom}
-              </h2>
+              </ModalTitle>
               <p className={`text-sm ${textMuted}`}>
                 {step === 1 && 'Choisissez votre métier'}
                 {step === 2 && 'Sélectionnez un modèle de devis'}
@@ -366,7 +368,7 @@ export default function DevisExpressModal({
               </p>
             </div>
           </div>
-          <button onClick={handleClose} aria-label="Fermer" className={`p-2.5 min-w-[44px] min-h-[44px] rounded-lg flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 ${isDark ? 'focus-visible:ring-offset-slate-900' : ''} ${bgHover} ${textMuted}`}>
+          <button onClick={handleClose} aria-label="Fermer" className={`p-2.5 min-w-[44px] min-h-[44px] rounded-lg flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${bgHover} ${textMuted}`}>
             <X size={20} />
           </button>
         </div>
@@ -377,8 +379,7 @@ export default function DevisExpressModal({
             {[1, 2, 3].map(s => (
               <div
                 key={s}
-                className={`h-1 flex-1 rounded-full transition-all ${s <= step ? '' : (isDark ? 'bg-slate-700' : 'bg-slate-200')}`}
-                style={{ backgroundColor: s <= step ? couleur : undefined }}
+                className={`h-1 flex-1 rounded-full transition-all ${s <= step ? 'bg-accent' : 'bg-surface-2'}`}
               />
             ))}
           </div>
@@ -386,14 +387,14 @@ export default function DevisExpressModal({
 
         {/* Brouillon restauré */}
         {draftRestored && (
-          <div className={`px-4 py-2.5 border-b ${borderColor} flex items-center justify-between gap-3 ${isDark ? 'bg-slate-800' : 'bg-amber-50'}`}>
+          <div className={`px-4 py-2 border-b ${borderColor} flex items-center justify-between gap-3 bg-alerte-fond text-alerte-texte`}>
             <div className="flex items-center gap-2 min-w-0">
-              <Clock size={16} className="flex-shrink-0 text-accent-texte" />
-              <p className={`text-xs sm:text-sm truncate ${textSecondary}`}>Brouillon restauré — reprenez où vous vous étiez arrêté.</p>
+              <Clock size={16} className="flex-shrink-0" aria-hidden="true" />
+              <p className="text-sm truncate">Brouillon restauré — reprenez où vous vous étiez arrêté.</p>
             </div>
             <button
               onClick={handleDiscardDraft}
-              className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-lg flex-shrink-0 ${bgHover} ${textMuted}`}
+              className="flex items-center gap-1.5 h-11 -my-1.5 text-sm font-semibold px-2.5 rounded-lg flex-shrink-0 hover:underline"
             >
               <RotateCcw size={14} /> Recommencer
             </button>
@@ -414,8 +415,7 @@ export default function DevisExpressModal({
                   aria-label="Rechercher un modèle"
                   value={globalSearch}
                   onChange={(e) => setGlobalSearch(e.target.value)}
-                  className={`w-full pl-10 pr-4 py-2.5 rounded-xl border ${inputBg} ${textPrimary} focus:outline-none focus:ring-2`}
-                  style={{ '--tw-ring-color': couleur }}
+                  className={`w-full pl-10 pr-4 py-2.5 rounded-xl border ${inputBg} ${textPrimary} focus:outline-none focus:ring-2 focus:ring-accent`}
                 />
               </div>
 
@@ -482,7 +482,7 @@ export default function DevisExpressModal({
                             className={`flex-shrink-0 px-3 py-2 rounded-lg border text-left ${borderColor} ${bgCard} ${bgHover} transition-all max-w-[200px]`}
                           >
                             <p className={`text-xs font-medium truncate ${textPrimary}`}>{rt.nom}</p>
-                            <p className={`text-[10px] ${textMuted} truncate`}>{rt.metierNom || rt.categorie || ''}</p>
+                            <p className={`text-xs ${textMuted} truncate`}>{rt.metierNom || rt.categorie || ''}</p>
                           </button>
                         ))}
                       </div>
@@ -492,13 +492,9 @@ export default function DevisExpressModal({
                   {/* Option: Charger un modèle existant */}
                   <button
                     onClick={() => setShowTemplateSelector(true)}
-                    className={`w-full p-4 rounded-xl border-2 ${bgHover} flex items-center gap-4 transition-all hover:shadow-md`}
-                    style={{ borderColor: `${couleur}60` }}
+                    className={`w-full p-4 rounded-xl border-2 border-accent/40 ${bgHover} flex items-center gap-4 transition-all hover:shadow-md`}
                   >
-                    <div
-                      className="w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0"
-                      style={{ backgroundColor: `${couleur}15` }}
-                    >
+                    <div className="w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0 bg-accent/10">
                       <FolderOpen size={24} className="text-accent-texte" />
                     </div>
                     <div className="text-left flex-1">
@@ -510,9 +506,9 @@ export default function DevisExpressModal({
 
                   {/* Séparateur */}
                   <div className="flex items-center gap-3">
-                    <div className={`flex-1 h-px ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`} />
+                    <div className="flex-1 h-px bg-bord" />
                     <span className={`text-xs ${textMuted}`}>ou choisir un métier</span>
-                    <div className={`flex-1 h-px ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`} />
+                    <div className="flex-1 h-px bg-bord" />
                   </div>
 
                   {/* Grille des métiers */}
@@ -524,14 +520,11 @@ export default function DevisExpressModal({
                         className={`relative p-4 rounded-xl border ${borderColor} ${bgCard} ${bgHover} text-center transition-all hover:scale-[1.02] hover:shadow-md`}
                       >
                         {metier.isNew && (
-                          <span className="absolute -top-1.5 -right-1.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold text-white bg-emerald-500 shadow-sm z-10">
-                            NEW
+                          <span className="absolute -top-2 -right-1.5 px-2 py-0.5 rounded-full text-xs font-semibold bg-info-fond text-info-texte shadow-e1 z-10">
+                            Nouveau
                           </span>
                         )}
-                        <div
-                          className="w-14 h-14 mx-auto mb-3 rounded-xl flex items-center justify-center text-2xl"
-                          style={{ backgroundColor: `${metier.color}20` }}
-                        >
+                        <div className="w-14 h-14 mx-auto mb-3 rounded-xl flex items-center justify-center text-2xl bg-surface-2">
                           {metier.icon}
                         </div>
                         <p className={`font-medium text-xs sm:text-sm leading-tight line-clamp-2 ${textPrimary}`}>{metier.nom}</p>
@@ -556,8 +549,7 @@ export default function DevisExpressModal({
                   aria-label="Rechercher un modele"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className={`w-full pl-10 pr-4 py-2.5 rounded-xl border ${inputBg} ${textPrimary} focus:outline-none focus:ring-2`}
-                  style={{ '--tw-ring-color': couleur }}
+                  className={`w-full pl-10 pr-4 py-2.5 rounded-xl border ${inputBg} ${textPrimary} focus:outline-none focus:ring-2 focus:ring-accent`}
                 />
               </div>
 
@@ -570,8 +562,7 @@ export default function DevisExpressModal({
                   return (
                     <div
                       key={modele.id}
-                      className={`p-4 rounded-xl border transition-all ${qty > 0 ? `ring-2 bg-surface` : `${bgCard}`} ${borderColor}`}
-                      style={qty > 0 ? { '--tw-ring-color': couleur, ringColor: couleur } : {}}
+                      className={`p-4 rounded-xl border transition-all ${qty > 0 ? 'ring-2 ring-accent bg-surface' : `${bgCard}`} ${borderColor}`}
                     >
                       <div className="flex items-start gap-3" onClick={() => { if (qty === 0) handleSelectModele(modele); }}>
                         <div className="flex-1 cursor-pointer">
@@ -581,14 +572,14 @@ export default function DevisExpressModal({
                             <span className={`text-xs px-2 py-1 rounded-full bg-surface-2 ${textMuted}`}>
                               {modele.lignes.length} lignes
                             </span>
-                            <span className={`text-xs flex items-center gap-1 ${marge >= 40 ? 'text-green-500' : marge >= 25 ? 'text-yellow-500' : 'text-red-500'}`}>
+                            <span className={`text-xs font-medium flex items-center gap-1 ${marge >= 40 ? 'text-succes-texte' : marge >= 25 ? 'text-alerte-texte' : 'text-danger-texte'}`}>
                               <TrendingUp size={12} />
                               {marge}%
                             </span>
                           </div>
                         </div>
                         <div className="flex flex-col items-end gap-2">
-                          <p className="font-bold text-lg text-accent-texte">
+                          <p className="font-bold text-lg tabular-nums text-encre">
                             ~{total.toLocaleString('fr-FR')} EUR
                           </p>
                           {/* Qty controls */}
@@ -596,7 +587,8 @@ export default function DevisExpressModal({
                             {qty > 0 && (
                               <button
                                 onClick={(e) => { e.stopPropagation(); setModeleQtys(p => ({ ...p, [modele.id]: Math.max(0, qty - 1) })); }}
-                                className={`w-9 h-9 rounded-lg flex items-center justify-center font-bold transition-colors ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-white' : 'bg-slate-200 hover:bg-slate-300 text-slate-700'}`}
+                                aria-label={`Une de moins : ${modele.nom}`}
+                                className="w-11 h-11 rounded-lg flex items-center justify-center font-bold transition-colors bg-surface-2 hover:bg-bord text-encre"
                               >
                                 <Minus size={16} />
                               </button>
@@ -606,7 +598,8 @@ export default function DevisExpressModal({
                             )}
                             <button
                               onClick={(e) => { e.stopPropagation(); setModeleQtys(p => ({ ...p, [modele.id]: qty + 1 })); if (qty === 0) handleSelectModele(modele); }}
-                              className="w-9 h-9 rounded-lg flex items-center justify-center font-bold transition-colors bg-accent text-sur-accent"
+                              aria-label={`Une de plus : ${modele.nom}`}
+                              className="w-11 h-11 rounded-lg flex items-center justify-center font-bold transition-colors bg-surface-2 hover:bg-bord text-encre"
                             >
                               <Plus size={16} />
                             </button>
@@ -623,7 +616,7 @@ export default function DevisExpressModal({
                 <div className={`sticky bottom-0 -mx-4 -mb-4 px-4 py-3 border-t ${borderColor} bg-surface/95 backdrop-blur-sm`}>
                   <div className="flex items-center justify-between">
                     <span className={`text-sm font-medium ${textSecondary}`}>Total estime HT</span>
-                    <span className="text-xl font-bold text-accent-texte">
+                    <span className="text-xl font-bold tabular-nums text-encre">
                       ~{step2Total.toLocaleString('fr-FR')} EUR
                     </span>
                   </div>
@@ -648,8 +641,7 @@ export default function DevisExpressModal({
                     aria-label="Rechercher un client"
                     value={clientSearch}
                     onChange={(e) => setClientSearch(e.target.value)}
-                    className={`w-full pl-10 pr-4 py-2.5 rounded-xl border ${inputBg} ${textPrimary} focus:outline-none focus:ring-2`}
-                    style={{ '--tw-ring-color': couleur }}
+                    className={`w-full pl-10 pr-4 py-2.5 rounded-xl border ${inputBg} ${textPrimary} focus:outline-none focus:ring-2 focus:ring-accent`}
                   />
                 </div>
                 <div className="flex flex-wrap gap-2 mt-2">
@@ -657,7 +649,7 @@ export default function DevisExpressModal({
                   {addClient && (
                     <button
                       onClick={() => setShowQuickClient(true)}
-                      className={`px-3 py-2 rounded-lg text-sm transition-all flex items-center gap-1.5 border-2 border-dashed font-medium ${isDark ? 'border-slate-600 text-slate-400 hover:border-slate-500 hover:text-slate-300' : 'border-slate-300 text-slate-500 hover:border-slate-400 hover:text-slate-700'}`}
+                      className="px-3 min-h-[44px] rounded-full text-sm transition-colors flex items-center gap-1.5 border-2 border-dashed font-medium border-bord-fort text-encre-2 hover:text-encre"
                     >
                       <UserPlus size={14} />
                       Nouveau client
@@ -667,12 +659,12 @@ export default function DevisExpressModal({
                     <button
                       key={client.id}
                       onClick={() => setSelectedClient(client)}
-                      className={`px-3 py-2 rounded-lg text-sm transition-all ${
+                      aria-pressed={selectedClient?.id === client.id}
+                      className={`px-3 min-h-[44px] rounded-full text-sm transition-colors border ${
                         selectedClient?.id === client.id
-                          ? 'text-white'
-                          : `${bgCard} ${textSecondary} ${bgHover} border ${borderColor}`
+                          ? 'bg-encre text-surface border-encre'
+                          : `${bgCard} ${textSecondary} ${bgHover} ${borderColor}`
                       }`}
-                      style={{ backgroundColor: selectedClient?.id === client.id ? couleur : undefined }}
                     >
                       {formatClientName(client)}
                     </button>
@@ -709,7 +701,8 @@ export default function DevisExpressModal({
                         />
                         <button
                           onClick={() => removeLigne(index)}
-                          className={`p-2.5 rounded-lg shrink-0 ${isDark ? 'hover:bg-red-900/40 text-slate-400 hover:text-red-400' : 'hover:bg-red-50 text-slate-400 hover:text-red-500'}`}
+                          aria-label="Supprimer la ligne"
+                          className="w-11 h-11 flex items-center justify-center rounded-lg shrink-0 text-encre-3 hover:bg-danger-fond hover:text-danger-texte"
                         >
                           <Trash2 size={16} />
                         </button>
@@ -720,7 +713,8 @@ export default function DevisExpressModal({
                         <div className="flex items-center gap-1">
                           <button
                             onClick={() => updateLigne(index, 'quantite', Math.max(0, (ligne.quantite || 1) - 1))}
-                            className={`min-w-[44px] min-h-[44px] rounded-lg flex items-center justify-center font-bold transition-colors ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-white' : 'bg-slate-200 hover:bg-slate-300 text-slate-700'}`}
+                            aria-label="Quantité moins un"
+                            className="min-w-[44px] min-h-[44px] rounded-lg flex items-center justify-center font-bold transition-colors bg-surface-2 hover:bg-bord text-encre"
                           >
                             <Minus size={18} />
                           </button>
@@ -729,7 +723,8 @@ export default function DevisExpressModal({
                           </div>
                           <button
                             onClick={() => updateLigne(index, 'quantite', (ligne.quantite || 0) + 1)}
-                            className="min-w-[44px] min-h-[44px] rounded-lg flex items-center justify-center font-bold transition-colors bg-accent text-sur-accent"
+                            aria-label="Quantité plus un"
+                            className="min-w-[44px] min-h-[44px] rounded-lg flex items-center justify-center font-bold transition-colors bg-surface-2 hover:bg-bord text-encre"
                           >
                             <Plus size={18} />
                           </button>
@@ -767,12 +762,12 @@ export default function DevisExpressModal({
                     <button
                       key={r}
                       onClick={() => setRemise(r)}
-                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                      aria-pressed={remise === r}
+                      className={`px-4 min-h-[44px] rounded-full text-sm font-medium transition-colors border ${
                         remise === r
-                          ? 'text-white'
-                          : `${bgCard} ${textSecondary} ${bgHover} border ${borderColor}`
+                          ? 'bg-encre text-surface border-encre'
+                          : `${bgCard} ${textSecondary} ${bgHover} ${borderColor}`
                       }`}
-                      style={{ backgroundColor: remise === r ? couleur : undefined }}
                     >
                       {r}%
                     </button>
@@ -789,8 +784,7 @@ export default function DevisExpressModal({
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   rows={3}
-                  className={`w-full px-4 py-3 rounded-xl border ${inputBg} ${textPrimary} focus:outline-none focus:ring-2`}
-                  style={{ '--tw-ring-color': couleur }}
+                  className={`w-full px-4 py-3 rounded-xl border ${inputBg} ${textPrimary} focus:outline-none focus:ring-2 focus:ring-accent`}
                   placeholder="Conditions particulières, durée des travaux..."
                 />
               </div>
@@ -803,7 +797,7 @@ export default function DevisExpressModal({
                     <span className={textPrimary}>{totals.totalHT.toLocaleString('fr-FR')} €</span>
                   </div>
                   {remise > 0 && (
-                    <div className="flex justify-between text-red-500">
+                    <div className="flex justify-between text-danger-texte">
                       <span>Remise ({remise}%)</span>
                       <span>-{totals.remiseAmount.toLocaleString('fr-FR')} €</span>
                     </div>
@@ -814,13 +808,13 @@ export default function DevisExpressModal({
                   </div>
                   <div className={`flex justify-between pt-2 border-t ${borderColor}`}>
                     <span className={`font-semibold ${textPrimary}`}>Total TTC</span>
-                    <span className="font-bold text-lg text-accent-texte">
+                    <span className="font-bold text-lg tabular-nums text-encre">
                       {totals.ttc.toLocaleString('fr-FR')} €
                     </span>
                   </div>
                   <div className="flex justify-between pt-2">
                     <span className={textMuted}>Marge estimée</span>
-                    <span className={`font-medium ${totals.marge >= 40 ? 'text-green-500' : totals.marge >= 25 ? 'text-yellow-500' : 'text-red-500'}`}>
+                    <span className={`font-medium ${totals.marge >= 40 ? 'text-succes-texte' : totals.marge >= 25 ? 'text-alerte-texte' : 'text-danger-texte'}`}>
                       {totals.marge}%
                     </span>
                   </div>
@@ -835,33 +829,22 @@ export default function DevisExpressModal({
           <div className={`p-4 border-t ${borderColor}`}>
             {/* Error message */}
             {creationError && (
-              <div className={`mb-3 p-3 rounded-xl border text-sm flex items-start gap-2 ${isDark ? 'bg-red-900/30 border-red-800 text-red-300' : 'bg-red-50 border-red-200 text-red-700'}`}>
+              <div role="alert" className="mb-3 p-3 rounded-xl text-sm flex items-start gap-2 bg-danger-fond text-danger-texte">
                 <X size={16} className="shrink-0 mt-0.5" />
                 <span>{creationError}</span>
               </div>
             )}
-            <button
+            <Bouton
+              variante="principal" taille="grande" pleineLargeur icone={FileText}
               onClick={handleCreateDevis}
-              disabled={!selectedClient || lignes.length === 0 || isCreating}
-              className={`w-full py-3 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all ${
-                !selectedClient || lignes.length === 0 || isCreating ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-90'
-              } bg-accent text-sur-accent`}
+              disabled={!selectedClient || lignes.length === 0}
+              chargement={isCreating}
             >
-              {isCreating ? (
-                <>
-                  <Loader2 size={20} className="animate-spin" />
-                  Création en cours...
-                </>
-              ) : (
-                <>
-                  <FileText size={20} />
-                  Créer le devis
-                </>
-              )}
-            </button>
+              {isCreating ? 'Création en cours...' : 'Créer le devis'}
+            </Bouton>
             {!selectedClient && lignes.length > 0 && !isCreating && (
-              <p className={`text-xs text-center mt-2 ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>
-                ⚠️ Veuillez sélectionner un client avant de créer le devis
+              <p className="text-sm text-center mt-2 text-alerte-texte">
+                Choisissez un client avant de créer le devis
               </p>
             )}
           </div>
@@ -877,7 +860,7 @@ export default function DevisExpressModal({
               <div
                 className="w-20 h-20 rounded-full flex items-center justify-center shadow-lg bg-accent"
               >
-                <Check size={40} className="text-white" strokeWidth={3} />
+                <Check size={40} className="text-sur-accent" strokeWidth={3} />
               </div>
               <div className="text-center">
                 <p className="text-white font-bold text-lg">Devis créé !</p>
@@ -892,7 +875,6 @@ export default function DevisExpressModal({
             `}</style>
           </div>
         )}
-      </div>
 
       {/* TemplateSelector Modal */}
       <TemplateSelector
@@ -921,6 +903,6 @@ export default function DevisExpressModal({
           existingClients={clients}
         />
       )}
-    </div>
+    </Modal>
   );
 }
