@@ -10,10 +10,11 @@ const doc = (tva) => ({
 });
 
 describe('buildDevisHtml — TVA à taux réduit', () => {
-  it('un devis à 10 % porte la certification du client (modèle I)', () => {
+  it('un devis à 10 % porte la certification du client, au futur (BOI-LETTRE-000280 § 10)', () => {
     const html = buildDevisHtml({ doc: doc(10), client, entreprise, couleur: '#f97316' });
     expect(html).toContain('CERTIFICATION DU CLIENT');
     expect(html).toContain('Je soussigné(e) Claire Rousseau certifie');
+    expect(html).toContain('qu’ils n’auront pas pour effet');
     expect(html).toContain('art. 279-0 bis');
   });
 
@@ -24,6 +25,28 @@ describe('buildDevisHtml — TVA à taux réduit', () => {
 
   it('une micro-entreprise en franchise n’en porte pas', () => {
     const html = buildDevisHtml({ doc: doc(10), client, entreprise: { ...entreprise, formeJuridique: 'Micro-entreprise' }, couleur: '#f97316' });
+    expect(html).not.toContain('CERTIFICATION DU CLIENT');
+  });
+
+  // Facture : modèle du BOI-LETTRE-000280 § 30 (« par le règlement »), au futur pour un acompte ; rien sur un avoir
+  const facture = (factureType) => ({ ...doc(10), type: 'facture', numero: 'FAC-2026-00001', facture_type: factureType });
+
+  it('une facture à 10 % : le règlement vaut certification, sans signature', () => {
+    const html = buildDevisHtml({ doc: facture('totale'), client, entreprise, couleur: '#f97316' });
+    expect(html).toContain('Par le règlement de la présente facture, le client certifie');
+    expect(html).toContain('qu’ils n’ont pas eu pour effet');
+    expect(html).not.toContain('Je soussigné(e)');
+    expect(html).not.toContain('Date et signature du client');
+  });
+
+  it('une facture d’acompte : certification au futur', () => {
+    const html = buildDevisHtml({ doc: facture('acompte'), client, entreprise, couleur: '#f97316' });
+    expect(html).toContain('Par le règlement de la présente facture, le client certifie');
+    expect(html).toContain('qu’ils n’auront pas pour effet');
+  });
+
+  it('un avoir n’en porte pas', () => {
+    const html = buildDevisHtml({ doc: { ...facture('avoir'), numero: 'AV-2026-00001' }, client, entreprise, couleur: '#f97316' });
     expect(html).not.toContain('CERTIFICATION DU CLIENT');
   });
 });

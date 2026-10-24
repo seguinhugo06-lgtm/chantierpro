@@ -14,9 +14,9 @@
  * - facture, § 30 et 40 : « Par le règlement de la présente facture, le client certifie … », sans
  *   signature — la facture d'un ramonage sans devis (D-30) part par e-mail et n'est jamais signée.
  * Reproduits mot pour mot, sauf deux écarts admis par la rédaction libre (§ 1 de la LETTRE ;
- * BOI-TVA-LIQ-30-20-90-40 § 85 : tous les éléments de fond du § 80 restent) : le § 10 omet « en
- * qualité de preneur de la prestation », que les § 20, 30 et 40 portent, et on le garde ; une facture
- * d'acompte précède les travaux, d'où le futur du devis (« n'auront pas ») dans le modèle de facture.
+ * BOI-TVA-LIQ-30-20-90-40 § 85 : tous les éléments de fond du § 80 restent) : le § 10 omet « (Nom,
+ * prénoms) » et « en qualité de preneur de la prestation », que le § 20 porte, et on les garde ; une
+ * facture d'acompte précède les travaux, d'où le futur du devis (« n'auront pas ») dans le modèle de facture.
  * Seul le nom du client est prérempli, sur le devis, quand il est connu.
  *
  * Utilisé par LES DEUX générateurs : src/lib/devisHtmlBuilder.js (page de signature) et le

@@ -285,8 +285,11 @@ module.exports = [
     async executer({ ouvrir, attendre, verifier }) {
       const { page } = await ouvrir({ page: 'devis', largeur: 1440 });
       const vus = [];
-      const assez = () => vus.some((d) => d.reduit && d.numero.startsWith('DEV')) && vus.some((d) => d.reduit && d.numero.startsWith('FAC'));
-      for (let i = 0; i < 12 && !assez(); i++) {
+      // Un devis et deux factures à taux réduit (acompte : travaux à venir ; autre : réalisés), un document à 20 %
+      const classes = (d) => [d.reduit && d.numero.startsWith('DEV') && 'devis', d.reduit && d.acompte && 'acompte',
+        d.reduit && d.numero.startsWith('FAC') && !d.acompte && 'facture', !d.reduit && d.numero && 'normal'].filter(Boolean);
+      const assez = () => ['devis', 'acompte', 'facture', 'normal'].every((c) => vus.some((d) => classes(d).includes(c)));
+      for (let i = 0; i < 15 && !assez(); i++) {
         // Liste : une ligne par document (ui/LigneListe), ouverte par son bouton principal.
         const ouvert = await page.evaluate((index) => {
           const lignes = [...document.querySelectorAll('[data-ui="LigneListe"] > button')]
@@ -309,8 +312,12 @@ module.exports = [
           return {
             // Le titre du document (« Facture FAC-… ») : une facture cite aussi son devis d'origine
             numero: (lu.title.match(/(DEV|FAC)-\d{4}-\d{5}/) || [''])[0],
+            acompte: /FACTURE D.ACOMPTE/.test(lu.querySelector('.doc-type h1')?.textContent || ''),
             reduit: /TVA (10|5[,.]5)\s?%/.test(html),
+            bloc: !!bloc,
             titre: bloc.includes('CERTIFICATION DU CLIENT'),
+            futur: bloc.includes('qu’ils n’auront pas pour effet'),
+            passe: bloc.includes('qu’ils n’ont pas eu pour effet'),
             signe: /Je soussigné\(e\) .+ certifie/.test(bloc) && bloc.includes('La signature du présent devis vaut certification'),
             regle: bloc.includes('Par le règlement de la présente facture, le client certifie, en qualité de preneur de la prestation'),
             ligneSignature: /signature|soussigné/i.test(bloc),
@@ -327,15 +334,16 @@ module.exports = [
         await attendre(600);
       }
       verifier(vus.length > 0, 'au moins un document ouvert en aperçu');
-      const devis = vus.filter((d) => d.reduit && d.numero.startsWith('DEV'));
-      const factures = vus.filter((d) => d.reduit && d.numero.startsWith('FAC'));
-      verifier(devis.length > 0, `au moins un devis à taux réduit dans la démo (vus : ${vus.map((d) => d.numero).join(', ')})`);
-      verifier(factures.length > 0, `au moins une facture à taux réduit dans la démo (vus : ${vus.map((d) => d.numero).join(', ')})`);
-      for (const d of devis) verifier(d.titre && d.signe, `${d.numero} porte la certification signée du client`);
-      for (const d of factures) {
+      const de = (c) => vus.filter((d) => classes(d).includes(c));
+      const liste = vus.map((d) => d.numero).join(', ');
+      for (const c of ['devis', 'acompte', 'facture', 'normal']) verifier(de(c).length > 0, `la démo montre un document « ${c} » (vus : ${liste})`);
+      for (const d of de('devis')) verifier(d.titre && d.signe && d.futur, `${d.numero} porte la certification signée du client, au futur`);
+      for (const d of [...de('acompte'), ...de('facture')]) {
         verifier(d.titre && d.regle, `${d.numero} porte la certification « par le règlement de la présente facture »`);
         verifier(!d.ligneSignature, `${d.numero} ne demande pas de signature au client`);
+        verifier(d.acompte ? d.futur : d.passe, `${d.numero} : travaux ${d.acompte ? 'à venir (acompte), au futur' : 'réalisés, au passé'}`);
       }
+      for (const d of de('normal')) verifier(!d.bloc, `${d.numero} (sans taux réduit) ne porte aucune certification`);
     },
   },
   {
