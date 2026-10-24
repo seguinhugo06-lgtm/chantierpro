@@ -1,11 +1,11 @@
 // src/components/settings/TeamManagement.jsx
 // Team management & invitation UI for org owners/admins
-import React, { useState, useEffect, useCallback } from 'react';
-import { Users, UserPlus, Mail, Phone, Shield, Trash2, Clock, Check, X, Copy, Loader2, AlertCircle, ChevronDown, RefreshCw } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Users, UserPlus, Mail, Phone, Trash2, Clock, Check, X, Copy, Loader2 } from 'lucide-react';
 import { supabase, isDemo } from '../../supabaseClient';
 import { useOrg } from '../../context/OrgContext';
 import { usePermissions } from '../../hooks/usePermissions';
-import { getRoleLabel, getRoleDescription, getInvitableRoles } from '../../lib/permissions';
+import { getRoleLabel, getInvitableRoles } from '../../lib/permissions';
 import { useConfirm, useToast } from '../../context/AppContext';
 import { useSubscriptionStore } from '../../stores/subscriptionStore';
 import { urlPublique } from '../../lib/urlPublique';
@@ -207,7 +207,7 @@ export default function TeamManagement({ isDark, couleur = '#F97316' }) {
   const handleRemoveMember = async (memberId, memberName) => {
     const ok = await confirm({
       title: 'Retirer ce membre ?',
-      message: `${memberName} n'aura plus accès à l'organisation.`
+      message: `${memberName} n'aura plus accès à l'organisation. Ses devis, factures et clients restent à l'entreprise : ils passent au nom du propriétaire.`
     });
     if (!ok) return;
     try {
@@ -221,7 +221,8 @@ export default function TeamManagement({ isDark, couleur = '#F97316' }) {
       refreshOrg();
       showToast('Membre retiré', 'success');
     } catch (err) {
-      showToast('Erreur', 'error');
+      captureException(err, { context: 'retrait d\'un membre' });
+      showToast(`Membre non retiré : ${err?.message || 'erreur inconnue'}`, 'error');
     }
   };
 

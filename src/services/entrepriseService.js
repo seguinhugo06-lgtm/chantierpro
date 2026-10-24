@@ -463,7 +463,7 @@ export async function createEntreprise(supabase, { data, userId, orgId } = {}) {
 /**
  * Update an existing entreprise.
  */
-export async function updateEntreprise(supabase, { id, data, userId } = {}) {
+export async function updateEntreprise(supabase, { id, data } = {}) {
   // Recompute initiales if nom changed
   const updates = { ...data };
   if (data.nom && !data.initiales) {
@@ -500,11 +500,12 @@ export async function updateEntreprise(supabase, { id, data, userId } = {}) {
     dbUpdates.settings_json = { ...settings, reglages: { ...(settings.reglages || {}), ...reglages } };
   }
 
+  // Par la fiche seule : la base décide qui la modifie (gérants de son organisation, ou auteur d'une fiche sans
+  // organisation). Filtrer aussi par auteur empêchait le patron de modifier une fiche créée par un autre membre.
   const { data: ecrites, error } = await supabase
     .from('entreprise')
     .update(dbUpdates)
     .eq('id', id)
-    .eq('user_id', userId)
     .select('id');
 
   if (error) {
@@ -558,8 +559,7 @@ export async function archiveEntreprise(supabase, { id, userId, orgId } = {}) {
   const { error } = await supabase
     .from('entreprise')
     .update({ archived_at: new Date().toISOString(), is_active: false })
-    .eq('id', id)
-    .eq('user_id', userId);
+    .eq('id', id);
 
   if (error) {
     console.error('[entrepriseService] archiveEntreprise error:', error);
@@ -605,8 +605,7 @@ export async function setActiveEntreprise(supabase, { id, userId, orgId } = {}) 
   const { error } = await supabase
     .from('entreprise')
     .update({ is_active: true })
-    .eq('id', id)
-    .eq('user_id', userId);
+    .eq('id', id);
 
   if (error) {
     console.error('[entrepriseService] setActiveEntreprise error:', error);

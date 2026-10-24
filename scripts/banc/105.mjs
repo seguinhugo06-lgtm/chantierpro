@@ -13,7 +13,7 @@ const MIGRATION = path.resolve(path.dirname(fileURLToPath(import.meta.url)),
 
 const ADMIN = '10500000-0000-4000-8000-000000000001';      // administrateur auteur de la fiche, puis retiré
 const ADJOINT = '10500000-0000-4000-8000-000000000002';    // administrateur qui retire ADMIN, puis est rétrogradé
-const ANCIEN = '10500000-0000-4000-8000-000000000003';     // auteur de lignes, déjà hors de l'équipe (état antérieur)
+const ANCIEN = '10500000-0000-4000-8000-000000000003';     // auteur de lignes glissées dans l'organisation sans en être membre
 const PARTANT = '10500000-0000-4000-8000-000000000004';    // administrateur auteur d'une fiche qui supprime son compte
 const OUVRIER = '10500000-0000-4000-8000-000000000005';    // ouvrier qui écrit un faux journal, puis est retiré
 const ORG_ADMIN = '10500000-0000-4000-8000-0000000000a1';  // organisation personnelle de l'administrateur
@@ -52,7 +52,12 @@ export async function verifier({ db, q, en, commeAnonyme, compte, verifier }) {
   await q(`INSERT INTO relance_executions (user_id, organization_id, document_id, step_id, status, subject) VALUES
     ($1, $2, $3, 'j+7', 'sent', 'Relance FAC-105'), ($1, $4, NULL, 'j+7', 'sent', 'Relance perso 105')`, [ADMIN, ORG_PATRON, facture, ORG_ADMIN]);
   await en(ADMIN, () => q(`INSERT INTO relance_executions (user_id, document_id, step_id, subject) VALUES ($1, $2, 'manual', 'Relance manuelle 105')`, [ADMIN, facture]));
+  await q(`INSERT INTO relance_exclusions (user_id, organization_id, scope, document_id) VALUES ($1, $2, 'document', $3)`, [ADMIN, ORG_PATRON, facture]);
   await q(`INSERT INTO relance_exclusions (user_id, organization_id, scope, client_id) VALUES ($1, $2, 'client', $3)`, [ADMIN, ORG_PATRON, client]);
+  // Une table où chacun n'a qu'une ligne (index unique sur user_id, comme usage_tracking) : le patron et
+  // l'administrateur y ont chacun la leur, à l'organisation du patron
+  await q(`CREATE TABLE compteur_105 (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), user_id UUID, organization_id UUID, periode TEXT, UNIQUE (user_id, periode))`);
+  await q(`INSERT INTO compteur_105 (user_id, organization_id, periode) VALUES ($1, $3, '2026-10'), ($2, $3, '2026-10')`, [PATRON, ADMIN, ORG_PATRON]);
   await en(OUVRIER, () => q(`INSERT INTO relance_executions (user_id, organization_id, document_id, step_id, status, subject) VALUES ($1, $2, $3, 'j+7', 'sent', 'Faux 105')`, [OUVRIER, ORG_PATRON, facturePatron]));
   await en(OUVRIER, () => q(`INSERT INTO relance_exclusions (user_id, organization_id, scope, client_id) VALUES ($1, $2, 'client', $3)`, [OUVRIER, ORG_PATRON, clientPatron]));
 
@@ -69,6 +74,8 @@ export async function verifier({ db, q, en, commeAnonyme, compte, verifier }) {
     `105 : un gérant ne sort pas la fiche de l'organisation (${sortie.e || 'sortie autorisée'})`);
   verifier(!complice.ok && !parPatron.ok && ficheLue.user_id === ADMIN,
     `105 : ni ne change son auteur, même le patron (${complice.e || 'autorisé'} ; ${parPatron.e || 'autorisé'})`);
+  const auNomDAutrui = await essayer(() => en(ADMIN, () => q(`INSERT INTO entreprise (user_id, organization_id, nom, iban) VALUES ($1, $2, 'Fiche complice 105', 'FR76-COMPLICE')`, [OUVRIER, ORG_PATRON])));
+  verifier(!auNomDAutrui.ok, `105 : ni ne crée une fiche au nom d'un autre membre (${auNomDAutrui.e || 'autorisé'})`);
   await en(ADMIN, () => q(`UPDATE entreprise SET telephone = '0102030405' WHERE id = $1`, [fiche]));
   verifier((await q(`SELECT telephone FROM entreprise WHERE id = $1`, [fiche])).rows[0].telephone === '0102030405', '105 : en gérant, il modifie toujours la fiche');
 
@@ -97,8 +104,12 @@ export async function verifier({ db, q, en, commeAnonyme, compte, verifier }) {
   const signe = await signature(devis.signature_token);
   verifier(signe.entreprise?.nom === 'Patron SARL 105', `105 : comme la page de signature de son devis (${signe.entreprise?.nom})`);
   verifier(await compte(`SELECT count(*) AS n FROM relance_executions WHERE document_id = '${facture}' AND user_id = '${PATRON}'`) === 2
-    && await compte(`SELECT count(*) AS n FROM relance_exclusions WHERE client_id = '${client}' AND user_id = '${PATRON}'`) === 1,
-  '105 : le journal (relance manuelle comprise) et l\'exclusion de ses pièces suivent ses pièces');
+    && await compte(`SELECT count(*) AS n FROM relance_exclusions WHERE document_id = '${facture}' AND user_id = '${PATRON}'`) === 1,
+  '105 : le journal (relance manuelle comprise) et l\'exclusion de sa facture suivent ses pièces');
+  verifier(await compte(`SELECT count(*) AS n FROM relance_exclusions WHERE client_id = '${client}' AND user_id = '${ADMIN}'`) === 1,
+    '105 : pas son exclusion d\'un client entier (elle couperait les relances des factures du patron à ce client)');
+  verifier(await compte(`SELECT count(*) AS n FROM compteur_105 WHERE user_id = '${ADMIN}'`) === 1,
+    '105 : une table à une ligne par compte n\'empêche pas le retrait ; sa ligne lui reste');
   await en(PATRON, () => q(`UPDATE entreprise SET iban = 'FR76-NOUVEAU' WHERE id = $1`, [fiche]));
   verifier(await iban(fiche) === 'FR76-NOUVEAU', '105 : le patron modifie la fiche');
   verifier(await auteur('entreprise', fichePatron) === PATRON && (await en(PATRON, () => q(`SELECT id FROM entreprise WHERE id IN ($1, $2) AND user_id = $3`, [fichePatron, fiche, PATRON]))).rows.length === 2,
@@ -134,11 +145,12 @@ export async function verifier({ db, q, en, commeAnonyme, compte, verifier }) {
   await essayer(() => en(ANCIEN, () => q(`UPDATE entreprise SET iban = 'FR76-PIRATE' WHERE id = $1`, [orpheline])));
   verifier(await iban(orpheline) === 'FR76-ORPH', '105 : un auteur hors de l\'équipe ne modifie pas la fiche (policy)');
   verifier((await en(ANCIEN, () => q(`SELECT id FROM entreprise WHERE id = $1`, [orpheline]))).rows.length === 0, '105 : ni ne la lit (policy)');
-  // … et l'application de la migration les rend au patron (rattrapage, rejouable)
+  // … et rejouer la migration ne les donne pas au patron : pas de rattrapage (une ligne glissée avant 084 par un compte
+  // jamais membre serait devenue celle du patron)
   const rejeu = await essayer(() => db.exec(fs.readFileSync(MIGRATION, 'utf8')));
   verifier(rejeu.ok, `105 : migration rejouée sans erreur (${rejeu.e || 'ok'})`);
-  verifier(await auteur('entreprise', orpheline) === PATRON && await auteur('devis', devisOrphelin) === PATRON,
-    `105 : le rattrapage rend au patron ce qu'un ancien membre avait laissé (${await auteur('entreprise', orpheline)})`);
+  verifier(await auteur('entreprise', orpheline) === ANCIEN && await auteur('devis', devisOrphelin) === ANCIEN,
+    `105 : une ligne d'un compte jamais membre n'est pas donnée au patron (${await auteur('entreprise', orpheline)})`);
 
   // Droits : la réattribution n'est exécutable que par le serveur
   const droits = (await q(`SELECT has_function_privilege('anon', 'public.pieces_rendues_au_proprietaire(uuid, uuid)', 'execute') AS v,
@@ -176,7 +188,8 @@ export async function verifier({ db, q, en, commeAnonyme, compte, verifier }) {
 
   // Ménage : les vérifications suivantes repartent des données de base
   await q(`DELETE FROM relance_executions WHERE subject LIKE '%105' OR subject LIKE 'Relance FAC-105'`);
-  await q(`DELETE FROM relance_exclusions WHERE client_id IN ($1, $2)`, [client, clientPatron]);
+  await q(`DELETE FROM relance_exclusions WHERE client_id IN ($1, $2) OR document_id = $3`, [client, clientPatron, facture]);
+  await q(`DROP TABLE compteur_105`);
   await q(`DELETE FROM devis WHERE numero IN ('DEV-105', 'FAC-105', 'DEV-105-B', 'FAC-105-P', 'DEV-105-O')`);
   await q(`DELETE FROM clients WHERE nom LIKE 'Client%105'`);
   await q(`DELETE FROM entreprise WHERE nom LIKE '%105'`);
