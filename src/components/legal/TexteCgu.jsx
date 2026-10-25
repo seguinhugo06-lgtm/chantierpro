@@ -63,7 +63,7 @@ export default function TexteCgu({ compact = false, versConfidentialite }) {
           réalisée depuis son compte.
         </p>
         <p className={p}>
-          Un seul compte par entreprise est autorisé, sauf dans le cadre d'un plan Entreprise prévoyant
+          Un seul compte par entreprise est autorisé, sauf dans le cadre d’un plan Équipe prévoyant
           des comptes multi-utilisateurs.
         </p>
       </section>
