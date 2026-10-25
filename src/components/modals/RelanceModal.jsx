@@ -26,6 +26,8 @@ import { toast } from '../../stores/toastStore';
 import { sendDocumentEmail } from '../../lib/emailSender';
 import { createRelanceRecord } from '../../services/RelanceService';
 import { supabase, isDemo } from '../../supabaseClient';
+import { useOrg } from '../../context/OrgContext';
+import { withOrgScope } from '../../lib/queryHelper';
 
 /**
  * @typedef {'devis' | 'facture'} ItemType
@@ -192,6 +194,7 @@ export default function RelanceModal({
   history = [],
   entreprise = { nom: 'Votre entreprise' },
 }) {
+  const { orgId } = useOrg();
   // State
   const [message, setMessage] = useState('');
   const [isCustomizing, setIsCustomizing] = useState(false);
@@ -284,12 +287,12 @@ export default function RelanceModal({
         hist[item.id].push(record);
         localStorage.setItem('cp_relance_history', JSON.stringify(hist));
 
-        // Also persist to relance_executions table
+        // Also persist to relance_executions table, dans l'organisation ouverte (comme relanceEngine) : sans elle, la
+        // relance manuelle n'apparaissait pas dans l'historique du document (lu par organisation)
         if (!isDemo && supabase) {
           const { data: { user } } = await supabase.auth.getUser();
           if (user?.id) {
-            await supabase.from('relance_executions').insert({
-              user_id: user.id,
+            await supabase.from('relance_executions').insert(withOrgScope({
               document_id: item.id,
               document_type: item.type || 'devis',
               document_numero: item.numero,
@@ -303,7 +306,7 @@ export default function RelanceModal({
               subject: subject || '',
               body: message || '',
               triggered_by: 'manual',
-            }).then(({ error }) => {
+            }, user.id, orgId)).then(({ error }) => {
               if (error) console.warn('Failed to save relance execution to DB:', error);
             });
           }
@@ -326,7 +329,7 @@ export default function RelanceModal({
     } finally {
       setIsLoading(false);
     }
-  }, [validate, item, message, entreprise, onClose, onSuccess]);
+  }, [validate, item, message, entreprise, onClose, onSuccess, orgId]);
 
   if (!item) return null;
 

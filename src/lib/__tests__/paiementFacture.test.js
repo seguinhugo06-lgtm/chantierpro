@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { estCleDeTest, refusFactureFictive } from '../../../supabase/functions/create-invoice-payment/regles.ts';
+import { compteQuiEncaisse, estCleDeTest, refusFactureFictive } from '../../../supabase/functions/create-invoice-payment/regles.ts';
 
 // Règles de la fonction Edge create-invoice-payment (page /pay/:token) : une facture du compte de
 // démonstration ne se paie qu'en mode test (D-26, D-27).
@@ -30,5 +30,22 @@ describe('paiement d’une facture : compte de démonstration', () => {
     expect(refusFactureFictive({ donnees_fictives: false }, false)).toBeNull();
     expect(refusFactureFictive({}, false)).toBeNull();
     expect(refusFactureFictive(undefined, false)).toBeNull();
+  });
+});
+
+// Migration 106 : la facture d'un salarié s'encaisse sur le compte Stripe du propriétaire de l'organisation
+describe('paiement d’une facture : compte qui encaisse', () => {
+  it('celui que la base désigne', () => {
+    expect(compteQuiEncaisse({ beneficiaire_id: 'patron', user_id: 'salarie' })).toBe('patron');
+  });
+
+  it('sinon l’auteur de la facture (base pas encore à jour)', () => {
+    expect(compteQuiEncaisse({ user_id: 'salarie' })).toBe('salarie');
+    expect(compteQuiEncaisse({ beneficiaire_id: null, user_id: 'salarie' })).toBe('salarie');
+  });
+
+  it('aucun compte : chaîne vide (la clé ne sera pas trouvée, le paiement refusé)', () => {
+    expect(compteQuiEncaisse({})).toBe('');
+    expect(compteQuiEncaisse({ beneficiaire_id: 42 })).toBe('');
   });
 });

@@ -403,6 +403,13 @@ export const SCHEMA = `
   REVOKE EXECUTE ON FUNCTION get_stripe_secret_for_user(UUID) FROM anon;           -- tel quel dans 029 :
   REVOKE EXECUTE ON FUNCTION get_stripe_secret_for_user(UUID) FROM authenticated;  -- PUBLIC garde le droit
 ${ORGANISATIONS}
+  -- stripe_config : policies de production relevées le 25 oct. 2026 (pg_policies ; « Org … » de 038, effacée du dépôt) :
+  -- tout membre de l'organisation lit, crée, modifie ou supprime la configuration Stripe des autres (106 les retire)
+  CREATE POLICY "Users manage own stripe_config" ON stripe_config FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+  CREATE POLICY "Org members can view stripe_config" ON stripe_config FOR SELECT TO authenticated USING (organization_id = ANY (user_org_ids(auth.uid())));
+  CREATE POLICY "Org members can insert stripe_config" ON stripe_config FOR INSERT TO authenticated WITH CHECK (organization_id = ANY (user_org_ids(auth.uid())));
+  CREATE POLICY "Org members can update stripe_config" ON stripe_config FOR UPDATE TO authenticated USING (organization_id = ANY (user_org_ids(auth.uid())));
+  CREATE POLICY "Org admins can delete stripe_config" ON stripe_config FOR DELETE TO authenticated USING (organization_id = ANY (user_org_ids(auth.uid())));
   -- Devis et paiements : RLS et policies de production (relevé du 18 oct. 2026, lues par 098). Les policies
   -- « Org members can insert » ne contrôlent pas user_id (038) : un membre écrit au nom d'un autre de son organisation.
   ALTER TABLE devis ENABLE ROW LEVEL SECURITY;
