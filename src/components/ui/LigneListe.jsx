@@ -12,16 +12,18 @@ import { ChevronRight } from 'lucide-react';
  * @param {React.ReactNode} [montant] valeur déjà formatée, chiffres tabulaires
  * @param {React.ReactNode} [pastille]
  * @param {React.ReactNode} [pied] ligne d'action sous la ligne (urgence à gauche, bouton à droite)
+ * @param {boolean} [piedEnLigne] à partir de 1 024 px, le pied passe sur la ligne, dans une colonne de largeur fixe (même
+ *   vide : les montants restent alignés) — une liste de documents gagne ainsi un tiers de hauteur (audit UX du 20 oct. 2026)
  * @param {Function} [onClick]
  * @param {boolean} [chevron]
  */
-export default function LigneListe({ debut, titre, meta, montant, pastille, pied, onClick, chevron = true, className = '', ...reste }) {
+export default function LigneListe({ debut, titre, meta, montant, pastille, pied, piedEnLigne = false, onClick, chevron = true, className = '', ...reste }) {
   const Corps = onClick ? 'button' : 'div';
   return (
-    <div data-ui="LigneListe" className={`bg-surface ${className}`} {...reste}>
+    <div data-ui="LigneListe" className={`bg-surface ${piedEnLigne ? 'lg:flex lg:items-center' : ''} ${className}`} {...reste}>
       <Corps
         {...(onClick ? { type: 'button', onClick } : {})}
-        className={`w-full min-h-[64px] flex items-center gap-3 px-4 py-3 text-left ${onClick ? 'transition-colors hover:bg-surface-2/60 active:bg-surface-2' : ''}`}
+        className={`w-full min-h-[64px] flex items-center gap-3 px-4 py-3 text-left ${piedEnLigne ? 'lg:flex-1 lg:min-w-0' : ''} ${onClick ? 'transition-colors hover:bg-surface-2/60 active:bg-surface-2' : ''}`}
       >
         {debut ? <span className="flex-shrink-0">{debut}</span> : null}
         <span className="flex-1 min-w-0">
@@ -40,7 +42,9 @@ export default function LigneListe({ debut, titre, meta, montant, pastille, pied
         </span>
         {onClick && chevron ? <ChevronRight size={18} aria-hidden="true" className="flex-shrink-0 text-encre-3 -mr-1" /> : null}
       </Corps>
-      {pied ? <div className="flex items-center justify-between gap-3 px-4 pb-3 -mt-1">{pied}</div> : null}
+      {pied ? (
+        <div className={`flex items-center justify-between gap-3 px-4 pb-3 -mt-1 ${piedEnLigne ? 'lg:w-80 lg:flex-shrink-0 lg:justify-end lg:mt-0 lg:pb-0 lg:pl-0' : ''}`}>{pied}</div>
+      ) : piedEnLigne ? <div className="hidden lg:block lg:w-80 lg:flex-shrink-0" aria-hidden="true" /> : null}
     </div>
   );
 }

@@ -208,6 +208,10 @@ export async function executeRelance(doc, client, step, entreprise, options = {}
 
 // ============ BULK EXECUTION ============
 
+/** Relances envoyées au plus par « Tout envoyer » : la confirmation de la liste des devis annonce ce nombre (une seule
+ *  valeur, partagée par useRelances et DevisPage). */
+export const RELANCES_PAR_ENVOI = 10;
+
 /**
  * Processes multiple pending relances with rate limiting.
  * Only sends relances that are due (isDue === true).
@@ -218,7 +222,7 @@ export async function executeRelance(doc, client, step, entreprise, options = {}
  * @returns {Object} { sent, failed, skipped, results }
  */
 export async function bulkExecuteRelances(pendingList, entreprise, options = {}) {
-  const { userId, orgId, maxPerBatch = 10 } = options;
+  const { userId, orgId, maxPerBatch = RELANCES_PAR_ENVOI } = options;
 
   const dueItems = pendingList.filter(p => p.isDue).slice(0, maxPerBatch);
   const results = [];

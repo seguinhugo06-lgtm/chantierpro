@@ -36,7 +36,7 @@ import KPICard from '../ui/KPICard';
 import TuileChiffre from '../ui/TuileChiffre';
 import { TitreSection } from '../ui/EnTete';
 import LigneListe, { GroupeListe } from '../ui/LigneListe';
-import Pastille from '../ui/Pastille';
+import Pastille, { PastilleStatut } from '../ui/Pastille';
 import { Segmente, Onglets } from '../ui/Onglets';
 import Carte from '../ui/Carte';
 import { Bouton, BoutonIcone } from '../ui/Bouton';
@@ -762,6 +762,9 @@ export default function TresorerieModule({
         joursRetard,
         isOverdue: joursRetard > 0,
         statut: f.statut,
+        // Le statut lu partout ailleurs (« Payée en partie », « En retard »…) : audit UX du 20 oct. 2026 (P1), la même
+        // facture était « Payée en partie » sur sa fiche et « À payer » ici
+        statutVu: statutFacture(f, paiements, now),
         type: f.type || 'devis',
       };
     }).filter(i => i.montant > 0).sort((a, b) => b.joursRetard - a.joursRetard);
@@ -1855,8 +1858,8 @@ export default function TresorerieModule({
                 chevron={false}
                 titre={item.clientNom}
                 montant={formatMoney(item.montant)}
-                meta={`${item.numero}${item.isOverdue ? '' : item.echeance ? ` · échéance ${dateLue(item.echeance).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}` : ''}`}
-                pastille={item.isOverdue ? <Pastille ton="danger">{item.joursRetard} j de retard</Pastille> : <Pastille ton="info">À payer</Pastille>}
+                meta={`${item.numero}${item.isOverdue ? ` · ${item.joursRetard} j de retard` : item.echeance ? ` · échéance ${dateLue(item.echeance).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}` : ''}`}
+                pastille={<PastilleStatut genre="facture" statut={item.statutVu} />}
                 pied={(
                   <>
                     <span />

@@ -13,6 +13,7 @@ import {
   removeExclusion as engineRemoveExclusion,
   loadExecutions,
   loadExclusions,
+  RELANCES_PAR_ENVOI,
 } from '../lib/relanceEngine';
 import {
   buildRelanceSummary,
@@ -117,7 +118,7 @@ export function useRelances({ devis = [], clients = [], entreprise, userId, orgI
    */
   const sendBulkRelances = useCallback(async () => {
     const result = await engineBulkExecute(pending, entreprise, {
-      userId, orgId, maxPerBatch: 10,
+      userId, orgId, maxPerBatch: RELANCES_PAR_ENVOI,
     });
 
     await fetchData();

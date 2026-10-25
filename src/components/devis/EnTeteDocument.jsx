@@ -14,6 +14,8 @@ import { Volet } from '../ui/Filtres';
  * @param {React.ReactNode} titre nom du client (ou bouton « Assigner un client »)
  * @param {string} [objet]
  * @param {string} montant TTC formaté
+ * @param {string} [mention] « TTC » ou « HT » après le montant (audit UX du 20 oct. 2026 : tout montant de document le dit)
+ * @param {string} [libelleMontant] au-dessus du montant quand ce n'est pas le total (« Reste à payer »)
  * @param {React.ReactNode} pastille <PastilleStatut taille="grande" />
  * @param {string} [contexte] « Échéance 24 oct. · reste 2 068 € »
  * @param {boolean} [contexteAlerte] contexte en rouge (retard)
@@ -26,7 +28,7 @@ import { Volet } from '../ui/Filtres';
  * @param {Function} onRetour
  */
 export default function EnTeteDocument({
-  surtitre, titre, objet, montant, pastille, contexte, contexteAlerte = false, alertes = [], etapes = [],
+  surtitre, titre, objet, montant, mention, libelleMontant, pastille, contexte, contexteAlerte = false, alertes = [], etapes = [],
   principal, secondaire, actions = [], extra, onRetour,
 }) {
   const [menu, setMenu] = useState(false);
@@ -61,8 +63,12 @@ export default function EnTeteDocument({
 
       {/* Combien, où on en est */}
       <div className="space-y-1.5">
+        {libelleMontant ? <p className="text-sm font-medium text-encre-2">{libelleMontant}</p> : null}
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-          <span className="text-4xl font-bold tabular-nums tracking-tight text-encre leading-none">{montant}</span>
+          <span className="text-4xl font-bold tabular-nums tracking-tight text-encre leading-none">
+            {montant}
+            {mention ? <span className="ml-1.5 text-base font-semibold tracking-normal text-encre-2">{mention}</span> : null}
+          </span>
           {pastille}
         </div>
         {contexte ? (
@@ -87,15 +93,18 @@ export default function EnTeteDocument({
         </ul>
       ) : null}
 
-      {/* Étapes : des segments, le nom de l'étape en cours seulement */}
+      {/* Étapes : un segment et son nom pour chacune (audit UX du 20 oct. 2026 : un seul mot sous quatre traits ne se
+          lisait pas) ; l'étape en cours en encre, les autres en encre pâle */}
       {etapes.length ? (
-        <div>
-          <div className="flex gap-1.5" role="img" aria-label={`Étape ${etapes.findIndex((e) => e.etat === 'courant') + 1} sur ${etapes.length}${courant ? ` : ${courant.libelle}` : ''}`}>
+        <div role="img" aria-label={`Étape ${etapes.findIndex((e) => e.etat === 'courant') + 1} sur ${etapes.length}${courant ? ` : ${courant.libelle}` : ''}`}>
+          <ol className="flex gap-1.5" aria-hidden="true">
             {etapes.map((e) => (
-              <span key={e.id} className={`h-1.5 flex-1 rounded-full ${e.etat === 'avenir' ? 'bg-surface-2' : 'bg-accent'} ${e.etat === 'courant' ? 'opacity-100' : ''}`} />
+              <li key={e.id} className="flex-1 min-w-0">
+                <span className={`block h-1.5 rounded-full ${e.etat === 'avenir' ? 'bg-bord' : 'bg-accent'}`} />
+                <span className={`mt-1.5 block truncate text-xs ${e.etat === 'courant' ? 'font-semibold text-encre' : 'font-medium text-encre-3'}`}>{e.libelle}</span>
+              </li>
             ))}
-          </div>
-          {courant ? <p className="mt-1.5 text-xs font-medium text-encre-3">{courant.libelle}</p> : null}
+          </ol>
         </div>
       ) : null}
 

@@ -1,6 +1,7 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { X, Check, Plus, Trash2, AlertTriangle, CreditCard, ClipboardList, GripVertical } from 'lucide-react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { useState, useMemo, useEffect } from 'react';
+import { Plus, Trash2, AlertTriangle, CreditCard, ClipboardList, GripVertical } from 'lucide-react';
+import Modal, { ModalHeader, ModalTitle, ModalDescription, ModalBody, ModalFooter } from '../ui/Modal';
+import { Bouton } from '../ui/Bouton';
 import {
   ECHEANCIER_TEMPLATES,
   TEMPLATE_KEYS,
@@ -11,6 +12,7 @@ import {
 import { formatMoney as defaultFormatMoney } from '../../lib/formatters';
 import supabase, { isDemo } from '../../supabaseClient';
 import { cn } from '../../lib/utils';
+import { avecMentionTtc } from '../../lib/mentionMontant';
 
 /**
  * AcompteEcheancierModal — Modal for creating a multi-step payment schedule.
@@ -22,16 +24,17 @@ export default function AcompteEcheancierModal({
   isOpen,
   onClose,
   devis,
-  isDark = false,
-  couleur = '#f97316',
+  isDark: _isDark = false,
+  couleur: _couleur,
   modeDiscret = false,
+  // Devis en franchise de TVA : le montant seul, sans « TTC » (relecture juriste-btp du 24 oct. 2026)
+  franchise = false,
   onEcheancierCreated,
 }) {
   // Theme
-  const cardBg = 'bg-surface';
   const textPrimary = 'text-encre';
   const textMuted = 'text-encre-3';
-  const inputBg = 'bg-surface border-bord-fort';
+  const inputBg = 'bg-surface border-bord-fort text-encre';
   const borderColor = 'border-bord';
 
   const fm = (amount) => {
@@ -146,222 +149,143 @@ export default function AcompteEcheancierModal({
 
   if (!isOpen || !devis) return null;
 
+  // Fenêtre : ui/Modal (rôle dialog, nom, Échap, feuille du bas au téléphone, pied collé) ; jetons du thème
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <motion.div
-          key="echeancier-backdrop"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-          onClick={(e) => e.target === e.currentTarget && onClose()}
-        >
-          <motion.div
-            key="echeancier-modal"
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className={cn(cardBg, 'rounded-2xl w-full max-w-lg max-h-[90vh] overflow-hidden flex flex-col shadow-2xl')}
-          >
-            {/* Header */}
-            <div className={cn('flex items-center justify-between p-5 border-b', borderColor)}>
-              <div>
-                <h3 className={cn('font-bold text-lg', textPrimary)}>
-                  <ClipboardList size={18} className="inline mr-2 text-accent-texte" />
-                  Échéancier d'acomptes
-                </h3>
-                <p className={cn('text-sm mt-0.5', textMuted)}>
-                  {devis.numero} · {fm(devis.total_ttc)} TTC
-                </p>
-              </div>
-              <button
-                onClick={onClose}
-                className={cn('p-2 rounded-xl transition-colors', 'hover:bg-surface-2')}
-              >
-                <X size={18} className={textMuted} />
-              </button>
-            </div>
+    <Modal isOpen={isOpen} onClose={onClose} size="md" closeOnBackdrop={!saving} closeOnEscape={!saving}>
+      <ModalHeader>
+        <ModalTitle>
+          <ClipboardList size={18} className="inline mr-2 text-encre-3" aria-hidden="true" />
+          Échéancier d'acomptes
+        </ModalTitle>
+        <ModalDescription>{devis.numero} · {avecMentionTtc(fm(devis.total_ttc), franchise)}</ModalDescription>
+      </ModalHeader>
 
-            {/* Body */}
-            <div className="flex-1 overflow-y-auto p-5 space-y-5">
-              {/* Template selector */}
-              <div>
-                <label className={cn('text-sm font-medium mb-2 block', textPrimary)}>Modèle</label>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {TEMPLATE_KEYS.map(key => {
-                    const tmpl = ECHEANCIER_TEMPLATES[key];
-                    const isActive = selectedTemplate === key;
-                    return (
-                      <button
-                        key={key}
-                        onClick={() => setSelectedTemplate(key)}
-                        className={cn(
-                          'p-3 rounded-xl border-2 text-left transition-all',
-                          isActive
-                            ? (isDark ? 'border-orange-500 bg-orange-900/20' : 'border-orange-500 bg-orange-50')
-                            : 'border-bord hover:border-bord-fort',
-                        )}
-                      >
-                        <span className={cn('font-medium text-sm block', textPrimary)}>{tmpl.label}</span>
-                        <span className={cn('text-xs', textMuted)}>{tmpl.description}</span>
-                      </button>
-                    );
-                  })}
-                  <button
-                    onClick={() => setSelectedTemplate('custom')}
-                    className={cn(
-                      'p-3 rounded-xl border-2 text-left transition-all',
-                      selectedTemplate === 'custom'
-                        ? (isDark ? 'border-orange-500 bg-orange-900/20' : 'border-orange-500 bg-orange-50')
-                        : 'border-bord hover:border-bord-fort',
-                    )}
-                  >
-                    <span className={cn('font-medium text-sm block', textPrimary)}>Personnalisé</span>
-                    <span className={cn('text-xs', textMuted)}>Définir manuellement</span>
-                  </button>
+      <ModalBody className="space-y-5">
+        {/* Modèle */}
+        <fieldset>
+          <legend className={cn('text-sm font-medium mb-2 block', textPrimary)}>Modèle</legend>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2" role="radiogroup" aria-label="Modèle d'échéancier">
+            {[...TEMPLATE_KEYS.map(key => ({ key, label: ECHEANCIER_TEMPLATES[key].label, description: ECHEANCIER_TEMPLATES[key].description })),
+              { key: 'custom', label: 'Personnalisé', description: 'Définir manuellement' }].map(({ key, label, description }) => {
+              const isActive = selectedTemplate === key;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  role="radio"
+                  aria-checked={isActive}
+                  onClick={() => setSelectedTemplate(key)}
+                  className={cn('p-3 rounded-xl border-2 text-left transition-colors', isActive ? 'border-accent bg-accent/10' : 'border-bord hover:border-bord-fort')}
+                >
+                  <span className={cn('font-medium text-sm block', textPrimary)}>{label}</span>
+                  <span className={cn('text-xs', textMuted)}>{description}</span>
+                </button>
+              );
+            })}
+          </div>
+        </fieldset>
+
+        {/* Étapes personnalisées */}
+        {selectedTemplate === 'custom' && (
+          <div className="space-y-2">
+            <p className={cn('text-sm font-medium', textPrimary)}>Étapes</p>
+            {customEtapes.map((etape, idx) => (
+              <div key={idx} className={cn('flex items-center gap-2 p-2.5 rounded-xl border', borderColor)}>
+                <GripVertical size={14} className={textMuted} aria-hidden="true" />
+                <span className={cn('text-sm font-medium w-6', textMuted)}>{idx + 1}.</span>
+                <input
+                  type="text"
+                  value={etape.label}
+                  onChange={e => updateCustomEtape(idx, 'label', e.target.value)}
+                  aria-label={`Libellé de l'étape ${idx + 1}`}
+                  className={cn('flex-1 min-w-0 text-base sm:text-sm px-2.5 h-11 rounded-lg border', inputBg)}
+                  placeholder="Libellé"
+                />
+                <div className="flex items-center gap-1">
+                  <input
+                    type="number"
+                    min="1"
+                    max="99"
+                    value={etape.pourcentage}
+                    onChange={e => updateCustomEtape(idx, 'pourcentage', parseInt(e.target.value) || 0)}
+                    aria-label={`Pourcentage de l'étape ${idx + 1}`}
+                    className={cn('w-16 text-base sm:text-sm px-2 h-11 rounded-lg border text-center', inputBg)}
+                  />
+                  <span className={cn('text-sm', textMuted)}>%</span>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => removeCustomEtape(idx)}
+                  disabled={customEtapes.length <= 2}
+                  aria-label={`Supprimer l'étape ${idx + 1}`}
+                  className="w-11 h-11 flex items-center justify-center rounded-lg transition-colors text-danger-texte hover:bg-danger-fond disabled:opacity-30 disabled:pointer-events-none"
+                >
+                  <Trash2 size={16} />
+                </button>
               </div>
+            ))}
+            {customEtapes.length < 10 && (
+              <button
+                type="button"
+                onClick={addCustomEtape}
+                className="w-full min-h-[44px] rounded-xl border-2 border-dashed text-sm font-medium transition-colors border-bord-fort text-encre-2 hover:text-encre"
+              >
+                <Plus size={14} className="inline mr-1" aria-hidden="true" /> Ajouter une étape
+              </button>
+            )}
+            <p className={cn('text-sm text-right font-medium', totalPct === 100 ? 'text-succes-texte' : 'text-danger-texte')}>
+              Total : {totalPct} %{totalPct !== 100 && ' ≠ 100 %'}
+            </p>
+          </div>
+        )}
 
-              {/* Custom étapes editor */}
-              {selectedTemplate === 'custom' && (
-                <div className="space-y-2">
-                  <label className={cn('text-sm font-medium', textPrimary)}>Étapes</label>
-                  {customEtapes.map((etape, idx) => (
-                    <div key={idx} className={cn('flex items-center gap-2 p-3 rounded-xl border', borderColor)}>
-                      <GripVertical size={14} className={textMuted} />
-                      <span className={cn('text-sm font-medium w-6', textMuted)}>
-                        {idx + 1}.
-                      </span>
-                      <input
-                        type="text"
-                        value={etape.label}
-                        onChange={e => updateCustomEtape(idx, 'label', e.target.value)}
-                        className={cn('flex-1 text-sm px-2 py-1.5 rounded-lg border', inputBg)}
-                        placeholder="Libellé"
-                      />
-                      <div className="flex items-center gap-1">
-                        <input
-                          type="number"
-                          min="1"
-                          max="99"
-                          value={etape.pourcentage}
-                          onChange={e => updateCustomEtape(idx, 'pourcentage', parseInt(e.target.value) || 0)}
-                          className={cn('w-16 text-sm px-2 py-1.5 rounded-lg border text-center', inputBg)}
-                        />
-                        <span className={cn('text-sm', textMuted)}>%</span>
-                      </div>
-                      <button
-                        onClick={() => removeCustomEtape(idx)}
-                        disabled={customEtapes.length <= 2}
-                        className={cn(
-                          'p-1.5 rounded-lg transition-colors',
-                          customEtapes.length <= 2 ? 'opacity-30 cursor-not-allowed' : (isDark ? 'hover:bg-red-900/30 text-red-400' : 'hover:bg-red-50 text-red-500'),
-                        )}
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                  ))}
-                  {customEtapes.length < 10 && (
-                    <button
-                      onClick={addCustomEtape}
-                      className={cn(
-                        'w-full py-2 rounded-xl border-2 border-dashed text-sm font-medium transition-colors',
-                        isDark ? 'border-slate-600 text-slate-400 hover:border-slate-500' : 'border-slate-300 text-slate-500 hover:border-slate-400',
-                      )}
-                    >
-                      <Plus size={14} className="inline mr-1" /> Ajouter une étape
-                    </button>
-                  )}
-                  {/* Total percentage indicator */}
-                  <div className={cn('text-sm text-right font-medium', totalPct === 100 ? 'text-emerald-500' : 'text-red-500')}>
-                    Total : {totalPct}%{totalPct !== 100 && ' ≠ 100%'}
+        {/* Aperçu */}
+        <div>
+          <p className={cn('text-sm font-medium mb-2', textPrimary)}>Aperçu</p>
+          <ol className={cn('rounded-xl border px-3 py-1', borderColor)}>
+            {previewEtapes.map((etape, idx) => (
+              <li key={idx} className={cn('flex items-center justify-between py-2', idx > 0 && `border-t ${borderColor}`)}>
+                <div className="flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold bg-surface-2 text-encre-2" aria-hidden="true">
+                    {etape.numero}
+                  </span>
+                  <div>
+                    <p className={cn('text-sm font-medium', textPrimary)}>{etape.label}</p>
+                    <p className={cn('text-xs', textMuted)}>{etape.pourcentage} %</p>
                   </div>
                 </div>
-              )}
+                <span className={cn('font-semibold text-sm tabular-nums', textPrimary)}>{fm(etape.montant_ttc)}</span>
+              </li>
+            ))}
+          </ol>
+        </div>
 
-              {/* Preview */}
-              <div>
-                <label className={cn('text-sm font-medium mb-2 block', textPrimary)}>Aperçu</label>
-                <div className={cn('rounded-xl border p-3 space-y-2', borderColor)}>
-                  {previewEtapes.map((etape, idx) => (
-                    <div key={idx} className={cn('flex items-center justify-between py-1.5', idx > 0 && `border-t ${borderColor}`)}>
-                      <div className="flex items-center gap-2">
-                        <div
-                          className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold bg-accent text-sur-accent"
-                        >
-                          {etape.numero}
-                        </div>
-                        <div>
-                          <p className={cn('text-sm font-medium', textPrimary)}>{etape.label}</p>
-                          <p className={cn('text-xs', textMuted)}>{etape.pourcentage}%</p>
-                        </div>
-                      </div>
-                      <span className={cn('font-semibold text-sm', textPrimary)}>
-                        {fm(etape.montant_ttc)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
+        {/* Il n'y a pas de plafond légal d'acompte pour des travaux (relecture juridique du 10 oct. 2026 :
+            l'ancien « limité à 30 %, art. L. 214-1 » était faux). Le devis signé fait foi (C. civ. art. 1103). */}
+        {premierAuDelaDuDevis && (
+          <div className="rounded-xl p-3 flex items-start gap-2 bg-alerte-fond text-alerte-texte">
+            <AlertTriangle size={16} className="flex-shrink-0 mt-0.5" aria-hidden="true" />
+            <p className="text-sm">
+              Le devis signé prévoit un acompte de {devis.acompte_pct} % : en facturer davantage demande l'accord du client.
+            </p>
+          </div>
+        )}
 
-              {/* Legal warnings */}
-              {/* Il n'y a pas de plafond légal d'acompte pour des travaux (relecture juridique du 10 oct. 2026 :
-                  l'ancien « limité à 30 %, art. L. 214-1 » était faux). Le devis signé fait foi (C. civ. art. 1103). */}
-              {premierAuDelaDuDevis && (
-                <div className={cn('rounded-xl p-3 border flex items-start gap-2', isDark ? 'bg-amber-900/20 border-amber-800 text-amber-300' : 'bg-amber-50 border-amber-200 text-amber-800')}>
-                  <AlertTriangle size={16} className="flex-shrink-0 mt-0.5" />
-                  <p className="text-xs">
-                    Le devis signé prévoit un acompte de {devis.acompte_pct} % : en facturer davantage demande l'accord du client.
-                  </p>
-                </div>
-              )}
+        {!validation.valid && (
+          <div role="alert" className="rounded-xl p-3 bg-danger-fond text-danger-texte">
+            {validation.errors.map((err, i) => (
+              <p key={i} className="text-sm">• {err}</p>
+            ))}
+          </div>
+        )}
+      </ModalBody>
 
-              {/* Validation errors */}
-              {!validation.valid && (
-                <div className={cn('rounded-xl p-3 border', isDark ? 'bg-red-900/20 border-red-800' : 'bg-red-50 border-red-200')}>
-                  {validation.errors.map((err, i) => (
-                    <p key={i} className={cn('text-xs', isDark ? 'text-red-300' : 'text-red-700')}>• {err}</p>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Footer */}
-            <div className={cn('flex gap-3 p-5 border-t', borderColor)}>
-              <button
-                onClick={onClose}
-                className={cn(
-                  'flex-1 px-4 py-2.5 rounded-xl font-medium transition-colors text-sm min-h-[44px]',
-                  isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-700 hover:bg-slate-200',
-                )}
-              >
-                Annuler
-              </button>
-              <button
-                onClick={handleSave}
-                disabled={!validation.valid || saving}
-                className={cn(
-                  'flex-1 px-4 py-2.5 rounded-xl font-semibold text-white transition-all text-sm min-h-[44px] flex items-center justify-center gap-2',
-                  !validation.valid || saving ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-lg',
-                )}
-                style={{ backgroundColor: couleur }}
-              >
-                {saving ? (
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <>
-                    <CreditCard size={16} />
-                    Créer l'échéancier
-                  </>
-                )}
-              </button>
-            </div>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+      <ModalFooter>
+        <Bouton variante="discret" onClick={onClose}>Annuler</Bouton>
+        <Bouton variante="principal" icone={CreditCard} onClick={handleSave} disabled={!validation.valid} chargement={saving}>
+          Créer l'échéancier
+        </Bouton>
+      </ModalFooter>
+    </Modal>
   );
 }

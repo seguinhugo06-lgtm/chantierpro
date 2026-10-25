@@ -563,7 +563,9 @@ export default function App() {
   const updateChantier = async (id, data) => { const ok = await dataUpdateChantier(id, data); if (ok) showToast('Chantier mis à jour', 'success'); return ok; };
   const addAjustement = async (data) => { const a = await dataAddAjustement(data); if (a) showToast('Ajustement enregistré', 'success'); return a; };
   const deleteAjustement = async (id) => { const ok = await dataDeleteAjustement(id); if (ok) showToast('Ajustement supprimé', 'info'); return ok; };
-  const addEchange = async (data) => { const e = await dataAddEchange(data); if (e) showToast('Échange ajouté', 'success'); return e; };
+  // silencieux : l'action principale (envoi, relance) a déjà dit ce qui s'est passé ; « Échange ajouté », arrivé après,
+  // remplaçait son message (audit UX du 20 oct. 2026, § 2.6)
+  const addEchange = async (data, { silencieux = false } = {}) => { const e = await dataAddEchange(data); if (e && !silencieux) showToast('Échange ajouté', 'success'); return e; };
   const addPaiement = async (data) => {
     const p = await dataAddPaiement(data);
     const montant = Number(data.amount ?? data.montant) || 0;

@@ -1,55 +1,49 @@
-import React, { useMemo } from 'react';
-import { CreditCard, Receipt, ClipboardList, CheckCircle, Circle, ChevronRight, BarChart3, AlertTriangle } from 'lucide-react';
+import React from 'react';
+import { CreditCard, Receipt, ClipboardList, CheckCircle, Circle, BarChart3 } from 'lucide-react';
 import {
   ETAPE_STATUT,
   ETAPE_STATUT_LABELS,
-  ETAPE_STATUT_COLORS,
   getEcheancierProgress,
   getNextEtapeAFacturer,
 } from '../../lib/acompteUtils';
 import { cn } from '../../lib/utils';
 import { dateLue } from '../../lib/dates';
+import { Bouton } from '../ui/Bouton';
+import Pastille from '../ui/Pastille';
+
+/** Ton de la pastille d'une étape d'échéancier : à facturer (neutre), facturée (chez le client), payée (acquise). */
+const TON_ETAPE = { a_facturer: 'neutre', facture: 'info', paye: 'succes' };
 
 /**
- * AcompteSuiviCard — Displays invoicing options or échéancier progress on a devis.
+ * AcompteSuiviCard — le suivi de la facturation d'un devis signé, sous l'en-tête de sa fiche.
  *
- * Two modes:
- * 1. With échéancier: shows progress bar + step list + "Facturer l'étape suivante" button
- * 2. Without échéancier: shows invoicing option cards (Acompte / Facturer 100% / Échéancier)
+ *  0. Facturé par situations de travaux : où en est le marché, lien vers le chantier ;
+ *  1. Échéancier : avancement, étapes, « Facturer l'étape suivante » (bouton secondaire : l'en-tête porte le seul plein) ;
+ *  2. Ancien acompte unique : ce qui reste à facturer (le solde se facture depuis l'en-tête).
  *
- * Also handles the legacy single-acompte display (backward compatibility).
+ * Audit UX du 20 oct. 2026 : le choix du mode de facturation (acompte, échéancier, solde, situation) n'est plus un
+ * encadré vert sous le bouton « Facturer » — c'est ce bouton qui l'ouvre ; et rien ne s'affiche avant la signature
+ * (« Options de facturation · Envoyer d'abord recommandé » occupait la fiche d'un brouillon). Les props de ces deux
+ * anciens modes restent acceptées (appelant inchangé).
  */
 export default function AcompteSuiviCard({
   devis,
   echeancier,
   facturesLiees = [],
   allDevis = [],
-  isDark = false,
-  couleur = '#f97316',
-  textPrimary,
-  textMuted,
+  textPrimary = 'text-encre',
+  textMuted = 'text-encre-3',
   modeDiscret = false,
   formatMoney: fm,
   // Actions
   onFacturerEtape,
-  onFacturerSolde,
-  onOpenAcompteSimple,
-  onOpenEcheancierModal,
   onSelectFacture,
-  onFacturer100,
   onOpenSituation,
-  // Status helpers
-  canAcompte = false,
-  canFacturer = false,
-  hasChantier = false,
   acompteFacture = null,
   resteAFacturer = 0,
-  soldeAFacturer = null, // montant TTC de la facture de solde quand des acomptes existent (sinon null)
   situationsFacturees = [], // factures de situation de travaux déjà émises sur ce devis
   situationsEnCours = false, // le chantier a des situations sur ce devis (même pas encore facturées)
 }) {
-  const borderColor = 'border-bord';
-
   // --- Mode 0 : facturé par situations de travaux ---
   // Plus de facture complète, d'acompte ni de solde : la dernière situation (décompte général définitif) solde le marché.
   if (situationsFacturees.length > 0 || situationsEnCours) {
@@ -64,16 +58,15 @@ export default function AcompteSuiviCard({
           {modeDiscret ? '' : ` · ${fm(cumul)} net à payer`}. Continuez depuis le chantier, onglet Situations, jusqu'à la dernière situation (DGD, tout à 100 %). La retenue de garantie éventuelle se règle à part, à sa libération.
         </p>
         {onOpenSituation && (
-          <button type="button" onClick={onOpenSituation}
-            className="mt-3 h-11 px-4 rounded-xl text-sm font-semibold bg-surface text-encre border border-bord-fort hover:bg-surface-2">
+          <Bouton variante="secondaire" className="mt-3" onClick={onOpenSituation}>
             Ouvrir les situations du chantier
-          </button>
+          </Bouton>
         )}
       </div>
     );
   }
 
-  // --- Mode 1: Échéancier exists ---
+  // --- Mode 1 : échéancier ---
   if (echeancier && echeancier.etapes?.length > 0) {
     const progress = getEcheancierProgress(echeancier.etapes);
     const nextEtape = getNextEtapeAFacturer(echeancier.etapes);
@@ -82,273 +75,113 @@ export default function AcompteSuiviCard({
       : 'Personnalisé';
 
     return (
-      <div className={cn('rounded-xl border p-4', isDark ? 'bg-blue-900/10 border-blue-800' : 'bg-blue-50/50 border-blue-200')}>
-        {/* Header */}
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <ClipboardList size={16} className={isDark ? 'text-blue-400' : 'text-blue-600'} />
-            <span className={cn('text-sm font-medium', isDark ? 'text-blue-400' : 'text-blue-700')}>
-              Échéancier {templateLabel}
-            </span>
-          </div>
-          <span className={cn('text-xs font-medium', textMuted)}>
-            {progress.etapesFacturees}/{progress.totalEtapes} facturé{progress.etapesFacturees > 1 ? 's' : ''}
+      <div className="rounded-2xl border border-bord bg-surface p-4 shadow-e1">
+        {/* En-tête */}
+        <div className="flex items-center justify-between gap-3 mb-3">
+          <p className="flex items-center gap-2 text-sm font-semibold text-encre">
+            <ClipboardList size={16} className="text-encre-3" aria-hidden="true" />
+            Échéancier {templateLabel}
+          </p>
+          <span className="text-sm text-encre-3 tabular-nums">
+            {progress.etapesFacturees}/{progress.totalEtapes} facturée{progress.etapesFacturees > 1 ? 's' : ''}
           </span>
         </div>
 
-        {/* Progress bar */}
-        <div className={cn('h-2 rounded-full mb-4', isDark ? 'bg-slate-700' : 'bg-blue-200')}>
-          <div
-            className="h-full rounded-full transition-all duration-500 bg-accent"
-            style={{
-              width: `${progress.pourcentageFacture}%`,
-            }}
-          />
+        {/* Avancement */}
+        <div className="h-2 rounded-full mb-4 bg-surface-2" role="img" aria-label={`${Math.round(progress.pourcentageFacture)} % facturé`}>
+          <div className="h-full rounded-full transition-all duration-500 bg-accent" style={{ width: `${progress.pourcentageFacture}%` }} />
         </div>
 
-        {/* Steps list */}
-        <div className="space-y-1.5">
+        {/* Étapes */}
+        <ul className="space-y-1">
           {echeancier.etapes.map((etape) => {
             const isFacture = etape.statut === ETAPE_STATUT.FACTURE || etape.statut === ETAPE_STATUT.PAYE;
             const isNext = nextEtape && etape.numero === nextEtape.numero;
             const linkedFacture = etape.facture_id
               ? allDevis.find(d => d.id === etape.facture_id) || facturesLiees.find(f => f.id === etape.facture_id)
               : null;
-            const colorClass = ETAPE_STATUT_COLORS[etape.statut] || ETAPE_STATUT_COLORS.a_facturer;
-
+            const ouvrable = isFacture && linkedFacture;
+            const Ligne = ouvrable ? 'button' : 'div';
             return (
-              <div
-                key={etape.numero}
-                className={cn(
-                  'flex items-center gap-2.5 px-3 py-2 rounded-lg transition-all',
-                  isNext && (isDark ? 'bg-slate-700/50' : 'bg-white shadow-sm'),
-                  isFacture && linkedFacture && 'cursor-pointer',
-                  isFacture && linkedFacture && (isDark ? 'hover:bg-slate-700/30' : 'hover:bg-blue-50'),
-                )}
-                onClick={() => isFacture && linkedFacture && onSelectFacture?.(linkedFacture)}
-              >
-                {/* Status icon */}
-                {isFacture ? (
-                  <CheckCircle size={16} className={etape.statut === ETAPE_STATUT.PAYE ? 'text-emerald-500' : 'text-blue-500'} />
-                ) : (
-                  <Circle size={16} className={isNext ? 'text-orange-400' : (isDark ? 'text-slate-600' : 'text-slate-300')} />
-                )}
-
-                {/* Info */}
-                <div className="flex-1 min-w-0">
-                  <p className={cn('text-sm font-medium truncate', textPrimary)}>
-                    {etape.label}
-                  </p>
-                  <p className={cn('text-xs', textMuted)}>
-                    {etape.pourcentage}%
-                    {linkedFacture ? ` · ${linkedFacture.numero}` : ''}
-                    {etape.date_facture ? ` · ${dateLue(etape.date_facture).toLocaleDateString('fr-FR')}` : ''}
-                  </p>
-                </div>
-
-                {/* Amount */}
-                <span className={cn('text-sm font-semibold whitespace-nowrap', isFacture ? (isDark ? 'text-blue-300' : 'text-blue-600') : textPrimary)}>
-                  {modeDiscret ? '·····' : fm(etape.montant_ttc)}
-                </span>
-
-                {/* Badge */}
-                <span className={cn('text-xs px-1.5 py-0.5 rounded-md font-medium whitespace-nowrap', isDark ? colorClass.dark : colorClass.light)}>
-                  {ETAPE_STATUT_LABELS[etape.statut]}
-                </span>
-              </div>
+              <li key={etape.numero}>
+                <Ligne
+                  {...(ouvrable ? { type: 'button', onClick: () => onSelectFacture?.(linkedFacture) } : {})}
+                  className={cn(
+                    'w-full text-left flex items-center gap-2.5 px-3 py-2 min-h-[48px] rounded-xl transition-colors',
+                    isNext && 'bg-fond',
+                    ouvrable && 'hover:bg-surface-2',
+                  )}
+                >
+                  {isFacture ? (
+                    <CheckCircle size={16} className={etape.statut === ETAPE_STATUT.PAYE ? 'text-succes-texte' : 'text-encre-2'} aria-hidden="true" />
+                  ) : (
+                    <Circle size={16} className={isNext ? 'text-encre' : 'text-encre-3'} aria-hidden="true" />
+                  )}
+                  <span className="flex-1 min-w-0">
+                    <span className={cn('block text-sm font-medium truncate', textPrimary)}>{etape.label}</span>
+                    <span className={cn('block text-sm', textMuted)}>
+                      {etape.pourcentage} %
+                      {linkedFacture ? ` · ${linkedFacture.numero}` : ''}
+                      {etape.date_facture ? ` · ${dateLue(etape.date_facture).toLocaleDateString('fr-FR')}` : ''}
+                    </span>
+                  </span>
+                  <span className="text-sm font-semibold whitespace-nowrap tabular-nums text-encre">
+                    {modeDiscret ? '·····' : fm(etape.montant_ttc)}
+                  </span>
+                  <Pastille ton={TON_ETAPE[etape.statut] || 'neutre'}>{ETAPE_STATUT_LABELS[etape.statut]}</Pastille>
+                </Ligne>
+              </li>
             );
           })}
-        </div>
+        </ul>
 
-        {/* Reste à facturer + Action button */}
-        {nextEtape && (
-          <div className="mt-3 space-y-2">
+        {/* Reste à facturer et étape suivante */}
+        {nextEtape ? (
+          <div className="mt-3 space-y-3">
             <div className="flex items-center justify-between">
-              <span className={cn('text-xs', textMuted)}>Reste à facturer</span>
-              <span className={cn('text-sm font-bold', textPrimary)}>
+              <span className="text-sm text-encre-3">Reste à facturer</span>
+              <span className="text-sm font-bold tabular-nums text-encre">
                 {modeDiscret ? '·····' : fm(progress.resteAFacturer)}
               </span>
             </div>
-            <button
-              onClick={() => onFacturerEtape?.(echeancier, nextEtape)}
-              className="w-full py-2.5 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 text-sm bg-accent text-sur-accent"
-            >
-              <Receipt size={16} />
-              Facturer : {nextEtape.label} ({nextEtape.pourcentage}%)
-            </button>
+            <Bouton variante="secondaire" icone={Receipt} pleineLargeur onClick={() => onFacturerEtape?.(echeancier, nextEtape)}>
+              Facturer : {nextEtape.label} ({nextEtape.pourcentage} %)
+            </Bouton>
           </div>
-        )}
-
-        {/* All invoiced */}
-        {!nextEtape && (
-          <div className={cn('mt-3 text-center py-2 rounded-lg', isDark ? 'bg-emerald-900/20' : 'bg-emerald-50')}>
-            <p className={cn('text-sm font-medium', isDark ? 'text-emerald-400' : 'text-emerald-700')}>
-              <CheckCircle size={14} className="inline mr-1" />
-              Échéancier terminé — Toutes les étapes facturées
-            </p>
-          </div>
+        ) : (
+          <p className="mt-3 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-succes-fond text-succes-texte text-sm font-medium">
+            <CheckCircle size={14} aria-hidden="true" />
+            Échéancier terminé : toutes les étapes sont facturées
+          </p>
         )}
       </div>
     );
   }
 
-  // --- Mode 2: Legacy single acompte (backward compat) ---
+  // --- Mode 2 : ancien acompte unique (le solde se facture depuis l'en-tête de la fiche) ---
   if (devis.statut === 'acompte_facture' && !echeancier) {
     return (
-      <div className={cn('rounded-xl border p-4', isDark ? 'bg-blue-900/20 border-blue-700' : 'bg-blue-50 border-blue-200')}>
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2">
-            <CreditCard size={16} className={isDark ? 'text-blue-400' : 'text-blue-600'} />
-            <span className={cn('text-sm font-medium', isDark ? 'text-blue-400' : 'text-blue-700')}>
-              Acompte {devis.acompte_pct}% facturé
-            </span>
+      <div className="rounded-2xl border border-bord bg-surface p-4 shadow-e1">
+        <div className="flex items-center justify-between gap-3 mb-2">
+          <p className="flex items-center gap-2 text-sm font-semibold text-encre">
+            <CreditCard size={16} className="text-encre-3" aria-hidden="true" />
+            Acompte {devis.acompte_pct} % facturé
             {acompteFacture && (
-              <button
-                onClick={() => onSelectFacture?.(acompteFacture)}
-                className="text-xs text-blue-500 hover:underline"
-              >
-                ({acompteFacture.numero})
+              <button type="button" onClick={() => onSelectFacture?.(acompteFacture)} className="min-h-[44px] font-medium underline underline-offset-2 text-encre-2 hover:text-encre">
+                {acompteFacture.numero}
               </button>
             )}
-          </div>
-          <span className={cn('font-bold', textPrimary)}>
+          </p>
+          <span className={cn('text-sm font-bold tabular-nums whitespace-nowrap', textPrimary)}>
             {modeDiscret ? '·····' : fm(resteAFacturer)} restant
           </span>
         </div>
-        <div className={cn('h-2 rounded-full mb-3', isDark ? 'bg-slate-700' : 'bg-blue-200')}>
-          <div className="h-full rounded-full bg-blue-500 transition-all" style={{ width: `${devis.acompte_pct}%` }} />
-        </div>
-        {canFacturer && (
-          <button
-            onClick={onFacturerSolde}
-            className="w-full py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2 text-sm"
-          >
-            <Receipt size={16} /> Facturer le solde
-          </button>
-        )}
-      </div>
-    );
-  }
-
-  // --- Mode 3: Devis accepted/signed — show invoicing options ---
-  if (canAcompte || canFacturer) {
-    return (
-      <div className={cn(
-        'rounded-xl border p-4',
-        (devis.statut === 'accepte' || devis.statut === 'signe')
-          ? (isDark ? 'bg-emerald-900/20 border-emerald-700' : 'bg-emerald-50 border-emerald-200')
-          : 'bg-fond border-bord',
-      )}>
-        <div className="flex items-center gap-2 mb-3">
-          {(devis.statut === 'accepte' || devis.statut === 'signe') ? (
-            <>
-              <CheckCircle size={18} className={isDark ? 'text-emerald-400' : 'text-emerald-600'} />
-              <p className={cn('text-sm font-medium', isDark ? 'text-emerald-400' : 'text-emerald-700')}>
-                Devis signé — Choisir le mode de facturation
-              </p>
-            </>
-          ) : (
-            <>
-              <Receipt size={18} className={textMuted} />
-              <p className={cn('text-sm font-medium', textMuted)}>Options de facturation</p>
-            </>
-          )}
-        </div>
-
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-          {canAcompte && (
-            <button
-              onClick={onOpenAcompteSimple}
-              className={cn(
-                'p-3 rounded-lg border text-left transition-all hover:shadow-md',
-                isDark ? 'border-purple-700 bg-purple-900/30 hover:bg-purple-900/50' : 'border-purple-200 bg-white hover:bg-purple-50',
-              )}
-            >
-              <div className="flex items-center gap-2 mb-1">
-                <CreditCard size={16} className="text-purple-500" />
-                <span className={cn('font-medium text-sm', textPrimary)}>Acompte %</span>
-              </div>
-              <p className={cn('text-xs', textMuted)}>Acompte unique</p>
-            </button>
-          )}
-
-          {canAcompte && (
-            <button
-              onClick={onOpenEcheancierModal}
-              className={cn(
-                'p-3 rounded-lg border text-left transition-all hover:shadow-md',
-                isDark ? 'border-blue-700 bg-blue-900/30 hover:bg-blue-900/50' : 'border-blue-200 bg-white hover:bg-blue-50',
-              )}
-            >
-              <div className="flex items-center gap-2 mb-1">
-                <ClipboardList size={16} className="text-blue-500" />
-                <span className={cn('font-medium text-sm', textPrimary)}>Échéancier</span>
-              </div>
-              <p className={cn('text-xs', textMuted)}>Multi-étapes</p>
-            </button>
-          )}
-
-          {canFacturer && (
-            <button
-              onClick={onFacturer100}
-              className={cn(
-                'p-3 rounded-lg border text-left transition-all hover:shadow-md',
-                isDark ? 'border-emerald-700 bg-emerald-900/30 hover:bg-emerald-900/50' : 'border-emerald-200 bg-white hover:bg-emerald-50',
-              )}
-            >
-              <div className="flex items-center gap-2 mb-1">
-                <Receipt size={16} className="text-emerald-500" />
-                <span className={cn('font-medium text-sm', textPrimary)}>{soldeAFacturer != null ? 'Solde' : '100 %'}</span>
-              </div>
-              {/* Le montant que l'action facturera : le solde (calculé comme la facture) s'il y a des acomptes */}
-              <p className={cn('text-sm', textMuted)}>{modeDiscret ? '·····' : `${fm(soldeAFacturer != null ? soldeAFacturer : devis.total_ttc)} TTC`}</p>
-            </button>
-          )}
-
-          {canFacturer && hasChantier && onOpenSituation && (
-            <button
-              onClick={onOpenSituation}
-              className={cn(
-                'p-3 rounded-lg border text-left transition-all hover:shadow-md',
-                'border-accent/30 bg-surface hover:bg-accent/10',
-              )}
-            >
-              <div className="flex items-center gap-2 mb-1">
-                <BarChart3 size={16} className="text-accent-texte" />
-                <span className={cn('font-medium text-sm', textPrimary)}>Situation</span>
-              </div>
-              <p className={cn('text-xs', textMuted)}>Par avancement</p>
-            </button>
-          )}
+        <div className="h-2 rounded-full bg-surface-2" role="img" aria-label={`Acompte de ${devis.acompte_pct} % facturé`}>
+          <div className="h-full rounded-full bg-accent transition-all" style={{ width: `${devis.acompte_pct}%` }} />
         </div>
       </div>
     );
   }
 
-  // --- Mode 4: Devis not yet accepted — show guidance ---
-  return (
-    <div className={cn('rounded-xl border p-4', 'bg-fond border-bord')}>
-      <div className="flex items-center gap-2 mb-1">
-        <Receipt size={18} className={textMuted} />
-        <p className={cn('text-sm font-medium', textMuted)}>Options de facturation</p>
-        {devis.statut === 'brouillon' && (
-          <span className={cn('text-xs px-2 py-0.5 rounded', isDark ? 'bg-amber-900/50 text-amber-400' : 'bg-amber-100 text-amber-700')}>
-            Envoyer d'abord recommandé
-          </span>
-        )}
-        {(devis.statut === 'envoye' || devis.statut === 'vu') && (
-          <span className={cn('text-xs px-2 py-0.5 rounded', isDark ? 'bg-blue-900/50 text-blue-400' : 'bg-blue-100 text-blue-700')}>
-            Signature recommandée
-          </span>
-        )}
-      </div>
-      <p className={cn('text-xs mt-1', textMuted)}>
-        {devis.statut === 'brouillon'
-          ? 'Envoyez le devis au client pour pouvoir le facturer ensuite.'
-          : devis.statut === 'envoye' || devis.statut === 'vu'
-            ? 'Le client doit d\'abord accepter le devis avant facturation.'
-            : 'Ce statut ne permet pas encore la facturation.'}
-      </p>
-    </div>
-  );
+  return null;
 }

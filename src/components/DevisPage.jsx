@@ -3,7 +3,7 @@ import { Plus, ArrowLeft, Download, Trash2, Send, Mail, MessageCircle, Edit3, Ch
 import supabase, { isDemo } from '../supabaseClient';
 import { useSubscriptionStore, PLANS } from '../stores/subscriptionStore';
 const PipelineKanban = lazy(() => import('./pipeline/PipelineKanban'));
-import { DEVIS_STATUS_COLORS, DEVIS_STATUS_LABELS } from '../lib/constants';
+import { DEVIS_STATUS_LABELS } from '../lib/constants';
 import { ChampRecherche, BoutonVolet, Volet, GroupeChoix, ListeChoix, PucesActives, SegmentDefilant } from './ui/Filtres';
 /**
  * Éditeurs et modales chargés à la demande.
@@ -48,14 +48,21 @@ import { generateId } from '../lib/utils';
 import { mapError } from '../lib/errorMapper';
 import { formatMoney as fmtMoney, filterValidLignes, formatClientName } from '../lib/formatters';
 import { normalizeNumero } from '../lib/devis-utils';
-import { calcConversion, formatConversion } from '../lib/statsUtils';
 import { apresPaiement, statutFacture, resteAPayer, dejaPaye, echeance, dateEcheance, joursDeRetard, paiementsDe, montantPaiement, estCorrection, correctionPossible, motifCorrection, resteSigne } from '../lib/paiementsFacture';
 import CorrectionEncaissementModal from './devis/CorrectionEncaissementModal';
 import EnTeteDocument from './devis/EnTeteDocument';
-import LigneListe from './ui/LigneListe';
-import { Bouton } from './ui/Bouton';
-import { PastilleStatut } from './ui/Pastille';
-import { statut as libelleStatut } from '../lib/statuts';
+import LigneListe, { GroupeListe, Avatar } from './ui/LigneListe';
+import { Bouton, BoutonIcone } from './ui/Bouton';
+import Pastille, { PastilleStatut } from './ui/Pastille';
+import TuileChiffre from './ui/TuileChiffre';
+import EtatVide from './ui/EtatVide';
+import Champ from './ui/Champ';
+import Modal, { ModalHeader, ModalTitle, ModalDescription, ModalBody, ModalFooter } from './ui/Modal';
+import FeuilleRelance from './devis/FeuilleRelance';
+import { texteDeHtml } from '../lib/texteDeHtml';
+import { libelleModePaiement } from '../lib/modesPaiement';
+import { avecMentionTtc } from '../lib/mentionMontant';
+import { RELANCES_PAR_ENVOI } from '../lib/relanceEngine';
 import { pourcent, blocConditionsPaiement, CONDITIONS_PAIEMENT, euros, quantite } from '../lib/formatDocument';
 import { natureDuDocument, piedDePageHtml } from '../lib/piedDePageDocument';
 import { echapperHtml as echap, couleurCss } from '../lib/echapperHtml';
@@ -67,11 +74,9 @@ import { blocRetractationHtml, estConcerneParRetractation, lienRetractationEnLig
 import { soldeDe, texteCourt, telInternational } from '../lib/messageRelance';
 import { useDebounce } from '../hooks/useDebounce';
 import { useDevisModals } from '../hooks/useDevisModals';
-import { isFacturXCompliant } from '../lib/facturx';
 import { usePermissions } from '../hooks/usePermissions';
 import { ReadOnlyBanner } from './ui/PermissionGate';
 import PageHeader from './ui/PageHeader';
-import KPICard from './ui/KPICard';
 import { printSituationFacture as printSitFacture, PAGE_CSS } from '../lib/devisHtmlBuilder';
 import { marquerDocumentFictif } from '../lib/donneesFictives';
 import { sendDocumentEmail, buildDocumentEmailBody, buildPaymentReceiptEmailBody } from '../lib/emailSender';
@@ -162,7 +167,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   const { showToast } = useToast();
 
   // RBAC permissions
-  const { canPerform, canViewPrices, canEditData, getPermission } = usePermissions();
+  const { canPerform, canViewPrices, getPermission } = usePermissions();
   const devisPermission = getPermission('devis');
   const isViewOnly = devisPermission === 'view' || devisPermission === 'view_no_prices';
 
@@ -217,7 +222,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 
   // Theme classes
   const cardBg = "bg-surface border-bord";
-  const inputBg = isDark ? "bg-slate-700 border-slate-600 text-white placeholder-slate-400" : "bg-white border-slate-300";
+  const inputBg = "bg-surface border-bord-fort text-encre placeholder:text-encre-3";
   const textPrimary = "text-encre";
   const textSecondary = "text-encre-2";
   const textMuted = "text-encre-2";
@@ -230,7 +235,24 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 
   const [mode, setMode] = useState(selectedDevis ? 'preview' : 'list');
   const [selected, setSelected] = useState(selectedDevis || null);
+  // État (puces : à traiter, en attente, brouillons, payés ; tuiles : à encaisser, devis en attente) et nature
+  // du document (volet « Filtres ») : deux filtres distincts depuis l'audit UX du 20 oct. 2026 (huit puces mêlaient les deux)
   const [filter, setFilter] = useState('all');
+  const [nature, setNature] = useState('all');
+  const [relanceDe, setRelanceDe] = useState(null); // document à relancer : feuille « Relancer » (canal, aperçu, envoi)
+  const [choixFacturation, setChoixFacturation] = useState(false); // « Facturer » : acompte, échéancier, solde, situation
+  const optionsFacturationRef = useRef([]); // options calculées par la fiche (devis ouvert), lues par l'effet ci-dessous
+  // « Facturer » touché dans la liste ouvre la fiche avec le choix ; comme sur la fiche, une seule option part directement
+  // (relecture de la Task 4, 24 oct. 2026)
+  useEffect(() => {
+    if (!choixFacturation || mode !== 'preview') return;
+    const options = optionsFacturationRef.current || [];
+    if (options.length <= 1) {
+      setChoixFacturation(false);
+      if (options.length === 1) options[0].action();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [choixFacturation, mode, selected?.id]);
   const [periodFilter, setPeriodFilter] = useState('all'); // B7: all, month, quarter, year
   // Recherche / Filtres / Trier : boîte à outils commune (ui/Filtres.jsx). Période, client et chantier
   // dans le volet « Filtres » ; tri, vue et export dans « Trier et afficher » (recette du 9 oct.).
@@ -321,7 +343,6 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   const [actionLoading, setActionLoading] = useState(null); // 'pdf' | 'duplicate' | null
   const [chantierForm, setChantierForm] = useState({ nom: '', adresse: '' });
   const [pdfContent, setPdfContent] = useState('');
-  const [tooltip, setTooltip] = useState(null); // { text, x, y }
   const [voletStatut, setVoletStatut] = useState(false); // fiche : « Changer le statut » (menu ⋯)
   const [showAvoirModal, setShowAvoirModal] = useState(false);
   const [assigningClientDevisId, setAssigningClientDevisId] = useState(null); // B1: assign client to orphan devis
@@ -337,9 +358,6 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   // Client & chantier filters
   const [clientFilter, setClientFilter] = useState('');
   const [chantierFilter, setChantierFilter] = useState('');
-
-  // Statuts déduits des paiements (src/lib/paiementsFacture.js) → couleurs de la table existante.
-  const COULEUR_STATUT_VU = { partielle: 'acompte_facture', en_retard: 'refuse' };
 
 
   // Versioning state
@@ -374,36 +392,10 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   const [templateName, setTemplateName] = useState('');
   const [templateCategory, setTemplateCategory] = useState('Mes modèles');
   const [showSignatureLinkModal, setShowSignatureLinkModal] = useState(false);
-  const [signatureLinkUrl, setSignatureLinkUrl] = useState(null);
+  const [signatureLinkUrl] = useState(null);
   const [showSendConfirmation, setShowSendConfirmation] = useState(null); // { clientName, montant, canal, doc }
   const [showCreationSuccess, setShowCreationSuccess] = useState(null); // { devis, numero }
 
-  // Tooltip component
-  const Tooltip = ({ text, children, position = 'top' }) => {
-    const [show, setShow] = useState(false);
-    return (
-      <div className="relative inline-block" onMouseEnter={() => setShow(true)} onMouseLeave={() => setShow(false)}>
-        {children}
-        {show && (
-          <div className={`absolute z-50 px-3 py-2 text-xs font-medium text-white bg-slate-900 rounded-lg shadow-lg whitespace-nowrap ${
-            position === 'top' ? 'bottom-full left-1/2 -translate-x-1/2 mb-2' :
-            position === 'bottom' ? 'top-full left-1/2 -translate-x-1/2 mt-2' :
-            position === 'left' ? 'right-full top-1/2 -translate-y-1/2 mr-2' :
-            'left-full top-1/2 -translate-y-1/2 ml-2'
-          }`}>
-            {text}
-            <div className={`absolute w-2 h-2 bg-slate-900 rotate-45 ${
-              position === 'top' ? 'top-full left-1/2 -translate-x-1/2 -mt-1' :
-              position === 'bottom' ? 'bottom-full left-1/2 -translate-x-1/2 -mb-1' :
-              position === 'left' ? 'left-full top-1/2 -translate-y-1/2 -ml-1' :
-              'right-full top-1/2 -translate-y-1/2 -mr-1'
-            }`} />
-          </div>
-        )}
-      </div>
-    );
-  };
-  
   // Si selectedDevis change depuis l'extérieur (ex: depuis Clients), mettre à jour
   useEffect(() => {
     if (selectedDevis) {
@@ -574,6 +566,25 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     return ['envoye', 'vu'].includes(d.statut) && jours > 7;
   };
 
+  const estDeNature = (d, n) => {
+    if (n === 'devis') return d.type === 'devis';
+    if (n === 'factures') return d.type === 'facture' && d.facture_type !== 'avoir' && d.facture_type !== 'situation';
+    if (n === 'situations') return d.facture_type === 'situation';
+    if (n === 'avoirs') return d.facture_type === 'avoir';
+    if (n === 'acomptes') return d.facture_type === 'acompte' || d.facture_type === 'solde' || (d.type === 'devis' && (d.statut === 'acompte_facture' || !!d.echeancier_id));
+    return true;
+  };
+  const estDansEtat = (d, e) => {
+    if (e === 'attente') return enAttente(d);
+    if (e === 'a_traiter') return aTraiter(d);
+    if (e === 'brouillons') return d.statut === 'brouillon';
+    if (e === 'payes') return d.type === 'facture' && d.facture_type !== 'avoir' && statutFacture(d, paiements) === 'payee';
+    if (e === 'a_encaisser') return estOuverte(d, paiements);
+    if (e === 'devis_attente') return d.type === 'devis' && ['envoye', 'vu'].includes(d.statut);
+    if (e === 'en_relance') return !!relances.getDocumentPending(d.id);
+    return true;
+  };
+
   // B7: Period date boundaries
   const periodStart = useMemo(() => {
     const now = new Date();
@@ -592,16 +603,10 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     if (d.numero && (/DUP\d*$/.test(d.numero) || /^DEV----/.test(d.numero))) return false;
     // B7: Period filter
     if (periodStart && new Date(d.date) < periodStart) return false;
-    if (filter === 'devis' && d.type !== 'devis') return false;
-    if (filter === 'factures' && (d.type !== 'facture' || d.facture_type === 'avoir' || d.facture_type === 'situation')) return false;
-    if (filter === 'situations' && d.facture_type !== 'situation') return false;
-    if (filter === 'avoirs' && d.facture_type !== 'avoir') return false;
-    if (filter === 'acomptes' && !(d.facture_type === 'acompte' || d.facture_type === 'solde' || (d.type === 'devis' && (d.statut === 'acompte_facture' || d.echeancier_id)))) return false;
-    if (filter === 'attente' && !enAttente(d)) return false;
-    if (filter === 'a_traiter') return aTraiter(d);
-    if (filter === 'factures_impayees' && !estOuverte(d, paiements)) return false;
-    if (filter === 'en_relance' && !relances.getDocumentPending(d.id)) return false;
-    if (filter === 'conversion' && !(d.type === 'devis' && ['envoye', 'vu', 'refuse'].includes(d.statut))) return false;
+    // Nature (volet « Filtres »)
+    if (!estDeNature(d, nature)) return false;
+    // État (puces) ; « à encaisser » et « devis en attente » viennent des tuiles
+    if (!estDansEtat(d, filter)) return false;
     // Client filter
     if (clientFilter && d.client_id !== clientFilter) return false;
     // Chantier filter
@@ -625,18 +630,25 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       if (periodStart && new Date(d.date) < periodStart) return false;
       return true;
     });
+    // Puces d'état : comptées dans la nature choisie ; natures : dans l'état choisi
+    const dansNature = base.filter(d => estDeNature(d, nature));
+    const dansEtat = base.filter(d => estDansEtat(d, filter));
     return {
-      all: base.length,
-      devis: base.filter(d => d.type === 'devis').length,
-      factures: base.filter(d => d.type === 'facture' && d.facture_type !== 'avoir' && d.facture_type !== 'situation').length,
-      situations: base.filter(d => d.facture_type === 'situation').length,
-      avoirs: base.filter(d => d.facture_type === 'avoir').length,
-      acomptes: base.filter(d => d.facture_type === 'acompte' || d.facture_type === 'solde' || (d.type === 'devis' && (d.statut === 'acompte_facture' || d.echeancier_id))).length,
-      attente: base.filter(enAttente).length,
-      a_traiter: base.filter(aTraiter).length,
+      all: dansNature.length,
+      attente: dansNature.filter(enAttente).length,
+      a_traiter: dansNature.filter(aTraiter).length,
+      brouillons: dansNature.filter(d => estDansEtat(d, 'brouillons')).length,
+      payes: dansNature.filter(d => estDansEtat(d, 'payes')).length,
+      devis: dansEtat.filter(d => estDeNature(d, 'devis')).length,
+      factures: dansEtat.filter(d => estDeNature(d, 'factures')).length,
+      situations: dansEtat.filter(d => estDeNature(d, 'situations')).length,
+      avoirs: dansEtat.filter(d => estDeNature(d, 'avoirs')).length,
+      acomptes: dansEtat.filter(d => estDeNature(d, 'acomptes')).length,
+      natures_tous: dansEtat.length,
+      a_traiter_tous: base.filter(aTraiter).length,
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [devis, clients, periodStart, paiements]);
+  }, [devis, clients, periodStart, paiements, nature, filter]);
 
   // Nettoyage affichage numéros — normalise les timestamps et padding court
   const cleanNumero = (numero) => {
@@ -1277,7 +1289,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           });
         }
 
-        const modeLabel = paymentData.mode_paiement ? ` (${paymentData.mode_paiement})` : '';
+        const modeLabel = paymentData.mode_paiement ? ` (${libelleModePaiement(paymentData.mode_paiement)})` : '';
         setSnackbar({ type: 'success', message: `Facture ${selected.numero} marquée comme payée${modeLabel}` });
 
         // Update échéancier étape to 'paye' if this is an acompte facture
@@ -1313,6 +1325,35 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   const getAllAcompteFactures = (devisId) => devis.filter(d => d.type === 'facture' && d.devis_source_id === devisId && d.facture_type === 'acompte');
   const getSoldeFacture = (devisId) => devis.find(d => d.type === 'facture' && d.devis_source_id === devisId && d.facture_type === 'solde');
   const getFacturesLiees = (devisId) => devis.filter(d => d.type === 'facture' && d.devis_source_id === devisId);
+
+  // Ce qu'un devis permet de facturer : la fiche et l'action « Facturer » de la liste suivent la même règle (relecture de
+  // la Task 4, 25 oct. 2026 : la liste proposait « Facturer » sur un devis déjà facturé ou facturé par situations)
+  const facturationDe = (doc) => {
+    const facturesLiees = getFacturesLiees(doc.id);
+    // Facturé par situations de travaux : la suite passe par les situations (le décompte général définitif
+    // solde le marché). Une facture « complète » ou un solde refacturerait le devis entier, situations comprises.
+    const situationsFacturees = facturesLiees.filter(f => f.facture_type === 'situation');
+    const chantierDesSituations = doc.chantier_id ? (chantiers || []).find(c => c.id === doc.chantier_id) : null;
+    const situationsEnCours = chantierDesSituations?.situations_data?.devis_source_id === doc.id
+      && (chantierDesSituations.situations_data.situations || []).length > 0;
+    const facturationParSituations = situationsFacturees.length > 0 || situationsEnCours;
+    const acompteFacture = getAcompteFacture(doc.id);
+    // Une facture entièrement annulée par avoir ne compte plus : le devis redevient facturable (avant, recette du
+    // 9 oct. 2026 : après un avoir total, le devis restait « Facturé » sans aucun moyen de le refacturer)
+    const soldeBrut = getSoldeFacture(doc.id);
+    const soldeFacture = soldeBrut && montantCredite(soldeBrut, devis) < Math.abs(Number(soldeBrut.total_ttc) || 0) - 0.01 ? soldeBrut : null;
+    const resteAFacturer = Math.round(((Number(doc.total_ttc) || 0) - dejaFactureTTC(doc.id, devis)) * 100) / 100;
+    const isDevis = doc.type === 'devis';
+    const hasEcheancier = !!doc.echeancier_id || !!echeancierCache[doc.id];
+    // Déjà facturé en entier (solde ou facture complète, même si le devis est resté « signé ») : plus de « Facturer »
+    const entierementFacture = isDevis && estEntierementFacture(doc, devis);
+    const canAcompte = isDevis && (doc.statut === 'accepte' || doc.statut === 'signe') && !acompteFacture && !hasEcheancier && !facturationParSituations && !entierementFacture;
+    // « Facturé » mais toutes ses factures annulées par avoir ; jamais pour un devis « facturé » sans facture rattachée
+    // (anciennes données) : il serait facturé deux fois
+    const factureAnnulee = doc.statut === 'facture' && facturesLiees.some(f => f.facture_type !== 'avoir') && !entierementFacture;
+    const canFacturer = isDevis && (['accepte', 'signe', 'acompte_facture'].includes(doc.statut) || factureAnnulee) && !soldeFacture && resteAFacturer > 0.005 && !facturationParSituations && !entierementFacture;
+    return { facturesLiees, situationsFacturees, situationsEnCours, facturationParSituations, acompteFacture, soldeFacture, resteAFacturer, hasEcheancier, entierementFacture, canAcompte, canFacturer };
+  };
 
   // Fetch échéancier for a given devis (with cache)
   const fetchEcheancier = async (devisId) => {
@@ -1543,7 +1584,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     if (!facturationAutorisee(allAcomptes.length > 0 ? 'solde' : 'totale', totaux.totalTTC)) return;
     const client = clients.find(c => c.id === selected.client_id);
     const clientName = client ? `${client.prenom || ''} ${client.nom || ''}`.trim() : 'le client';
-    const montant = `${formatMoney(totaux.totalTTC)}${isMicro ? '' : ' TTC'}`;
+    const montant = avecMentionTtc(formatMoney(totaux.totalTTC), isMicro);
     const label = allAcomptes.length > 0 ? `Facturer le solde de ${montant}` : `Créer la facture complète de ${montant}`;
     const ok = await confirm({
       title: allAcomptes.length > 0 ? 'Facturer le solde ?' : 'Créer la facture complète ?',
@@ -2070,7 +2111,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   const exportCSV = (docs) => {
     if (docs.length === 0) return;
     const BOM = '\uFEFF'; // UTF-8 BOM for Excel
-    const headers = ['Numéro', 'Type', 'Client', 'Date', 'Objet', 'Montant HT', 'TVA', 'Montant TTC', 'Statut', 'Date envoi', 'Date signature', 'Date paiement'];
+    const headers = ['Numéro', 'Type', 'Client', 'Date', 'Objet', 'Montant HT', 'TVA', isMicro ? 'Montant' : 'Montant TTC', 'Statut', 'Date envoi', 'Date signature', 'Date paiement'];
     const rows = docs.map(d => {
       const client = clients.find(c => c.id === d.client_id);
       const clientName = client ? `${client.prenom || ''} ${client.nom || ''}`.trim() : (d.client_nom || '');
@@ -2230,7 +2271,9 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 
   // Send helpers — update status FIRST, then open communication link in setTimeout
   // to prevent "Detached while handling command" crashes from simultaneous state updates + navigation
-  const sendWhatsApp = async (doc, { relanceDevis = false } = {}) => {
+  // depuisFeuille : appelé par la feuille « Relancer », qui a déjà montré destinataire et message : un seul retour, qui
+  // nomme le client (audit UX du 20 oct. 2026), au lieu de la fenêtre de confirmation
+  const sendWhatsApp = async (doc, { relanceDevis = false, depuisFeuille = false } = {}) => {
     const expire = blocageExpiration(doc);
     if (expire) { showToast(expire, 'error'); return; }
     const client = clients.find(c => c.id === doc.client_id);
@@ -2263,7 +2306,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     const relance = solde?.enRetard ? solde : null;
     const lienPaiement = FONCTIONS.paiementEnLigne && doc.type === 'facture' && doc.payment_token ? urlPublique(`/pay/${doc.payment_token}`) : '';
     // « Message préparé » : c'est l'artisan qui l'envoie depuis WhatsApp (relecture juridique du 10 oct. 2026)
-    if (addEchange) addEchange({ type: 'whatsapp', client_id: doc.client_id, devis_id: doc.id, document: doc.numero, montant: solde ? solde.reste : doc.total_ttc, objet: `Message préparé : ${relance || relanceDevis ? 'relance' : 'envoi'} ${doc.type === 'facture' ? 'facture' : 'devis'} ${doc.numero}` });
+    if (addEchange) addEchange({ type: 'whatsapp', client_id: doc.client_id, devis_id: doc.id, document: doc.numero, montant: solde ? solde.reste : doc.total_ttc, objet: `Message préparé : ${relance || relanceDevis ? 'relance' : 'envoi'} ${doc.type === 'facture' ? 'facture' : 'devis'} ${doc.numero}` }, { silencieux: true });
     // Indicatif international, chiffres seuls (avant : « 06.12… » ou « +33 6… » donnaient un lien cassé)
     const phone = telInternational(client.telephone);
     const url = `https://wa.me/${phone}?text=${encodeURIComponent(texteCourt(doc, { solde, lienPaiement, lienSignature, entrepriseNom: nomImprime(entreprise), relanceDevis }))}`;
@@ -2271,6 +2314,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     else ouvrirLienExterne(url);
     // Le message est PRÉPARÉ dans WhatsApp : c'est l'artisan qui l'envoie (avant : « Devis envoyé ! »)
     const clientName = `${client.prenom || ''} ${client.nom || ''}`.trim();
+    if (depuisFeuille) { showToast(`${relance || relanceDevis ? 'Relance prête' : 'Message prêt'} dans WhatsApp pour ${clientName} : appuyez sur « Envoyer »`, 'success'); return; }
     setShowSendConfirmation({ clientName, montant: doc.total_ttc, canal: 'WhatsApp', doc, prepare: true });
   };
 
@@ -2326,7 +2370,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       });
       const enregistre = await onUpdate(doc.id, { exemplaire_client_le: maintenant });
       setSelected(s => s?.id === doc.id ? { ...s, exemplaire_client_le: maintenant } : s);
-      if (addEchange) addEchange({ type: 'email', client_id: doc.client_id, devis_id: doc.id, document: doc.numero, montant: doc.total_ttc, objet: `Exemplaire signé ${doc.numero}` });
+      if (addEchange) addEchange({ type: 'email', client_id: doc.client_id, devis_id: doc.id, document: doc.numero, montant: doc.total_ttc, objet: `Exemplaire signé ${doc.numero}` }, { silencieux: true });
       showToast(enregistre
         ? `Exemplaire signé envoyé à ${message.a} ✓`
         : `L'exemplaire est parti à ${message.a}, mais la date d'envoi n'a pas été enregistrée : ne le renvoyez pas.`, enregistre ? 'success' : 'error');
@@ -2338,14 +2382,14 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     }
   };
 
-  const sendEmail = async (doc, emailOverride = null, { relanceDevis = false } = {}) => {
+  const sendEmail = async (doc, emailOverride = null, { relanceDevis = false, depuisFeuille = false } = {}) => {
     const expire = blocageExpiration(doc);
     if (expire) { showToast(expire, 'error'); return; }
     const client = clients.find(c => c.id === doc.client_id);
     if (!client) { showToast('Client introuvable. Veuillez associer un client au devis.', 'error'); return; }
     const toEmail = emailOverride || client?.email;
     // Pas d'email ? On le demande ici même (et on l'enregistre sur la fiche client) au lieu d'un cul-de-sac.
-    if (!toEmail) { setAskEmailValue(''); setAskEmail({ doc }); return; }
+    if (!toEmail) { setAskEmailValue(''); setAskEmail({ doc, options: { relanceDevis, depuisFeuille } }); return; }
     const isFacture = doc.type === 'facture';
     const label = isFacture ? 'Facture' : 'Devis';
     // Mode démo : pas de serveur d'envoi — on simule pour que la boucle complète soit vivable.
@@ -2354,14 +2398,17 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         onUpdate(doc.id, { statut: 'envoye', ...(doc.date_envoi ? {} : { date_envoi: jourLocal() }) });
         setSelected(s => s?.id === doc.id ? { ...s, statut: 'envoye', date_envoi: s.date_envoi || jourLocal() } : s);
       }
-      if (addEchange) addEchange({ type: 'email', client_id: doc.client_id, devis_id: doc.id, document: doc.numero, montant: doc.total_ttc, objet: `${relanceDevis && !isFacture ? 'Relance' : 'Envoi'} ${isFacture ? 'facture' : 'devis'} ${doc.numero}` });
+      // Relance : un devis relancé, ou une facture échue ; sinon un envoi (comme en mode réel)
+      const relanceDemo = (relanceDevis && !isFacture) || (isFacture && estEchue(doc));
+      if (addEchange) addEchange({ type: 'email', client_id: doc.client_id, devis_id: doc.id, document: doc.numero, montant: doc.total_ttc, objet: `${relanceDemo ? 'Relance' : 'Envoi'} ${isFacture ? 'facture' : 'devis'} ${doc.numero}` }, { silencieux: true });
       const clientName = `${client.prenom || ''} ${client.nom || ''}`.trim();
-      setShowSendConfirmation({ clientName, montant: doc.total_ttc, canal: 'Email (démo)', doc });
-      showToast(`Mode démo : envoi simulé à ${toEmail} ✓`, 'success');
+      if (depuisFeuille) { showToast(`Mode démo : ${relanceDemo ? 'relance simulée' : 'envoi simulé'} à ${toEmail} ✓`, 'success'); return; }
+      // Un seul message : la fenêtre dit ce qui est parti et à qui (avant : fenêtre + notification + « Échange ajouté »)
+      setShowSendConfirmation({ clientName, montant: doc.total_ttc, canal: 'Email (démo)', doc, destinataire: toEmail, relance: relanceDemo });
       return;
     }
     setActionLoading('email');
-    showToast(`Envoi du ${label.toLowerCase()} ${doc.numero}…`, 'info');
+    if (!depuisFeuille) showToast(`Envoi du ${label.toLowerCase()} ${doc.numero}…`, 'info');
     try {
       // Devis : générer (ou réutiliser) le lien de signature pour l'inclure dans l'email —
       // sans lui, le client reçoit le PDF mais ne peut pas signer en ligne.
@@ -2411,14 +2458,14 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         if (!statutEnregistre) setSelected(s => s?.id === doc.id ? { ...s, ...avant } : s);
       }
       const relanceFaite = relance || (relanceDevis && !isFacture);
-      if (addEchange) addEchange({ type: 'email', client_id: doc.client_id, devis_id: doc.id, document: doc.numero, montant: relance ? relance.reste : doc.total_ttc, objet: `${relanceFaite ? 'Relance' : 'Envoi'} ${isFacture ? 'facture' : 'devis'} ${doc.numero}` });
+      if (addEchange) addEchange({ type: 'email', client_id: doc.client_id, devis_id: doc.id, document: doc.numero, montant: relance ? relance.reste : doc.total_ttc, objet: `${relanceFaite ? 'Relance' : 'Envoi'} ${isFacture ? 'facture' : 'devis'} ${doc.numero}` }, { silencieux: true });
       if (!statutEnregistre) {
         showToast(`L'e-mail est parti à ${toEmail}, mais le statut « Envoyé » n'a pas été enregistré : ne le renvoyez pas, réessayez de changer le statut plus tard.`, 'error');
         return;
       }
       const clientName = `${client.prenom || ''} ${client.nom || ''}`.trim();
-      setShowSendConfirmation({ clientName, montant: relance ? relance.reste : doc.total_ttc, canal: 'Email', doc, relance: !!relanceFaite });
-      showToast(`${relanceFaite ? 'Relance' : label} ${doc.numero} ${relanceFaite || isFacture ? 'envoyée' : 'envoyé'} à ${toEmail} ✓`, 'success');
+      if (!depuisFeuille) setShowSendConfirmation({ clientName, montant: relance ? relance.reste : doc.total_ttc, canal: 'Email', doc, relance: !!relanceFaite, destinataire: toEmail });
+      else showToast(`${relanceFaite ? 'Relance' : label} ${doc.numero} ${relanceFaite || isFacture ? 'envoyée' : 'envoyé'} à ${toEmail} ✓`, 'success');
     } catch (e) {
       console.error('[sendEmail] Error:', e);
       showToast(`Échec de l'envoi : ${e?.message || 'erreur inconnue'}`, 'error');
@@ -2428,7 +2475,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   };
 
   // SMS via native protocol (mobile only)
-  const sendSMS = async (doc, { relanceDevis = false } = {}) => {
+  const sendSMS = async (doc, { relanceDevis = false, depuisFeuille = false } = {}) => {
     const expire = blocageExpiration(doc);
     if (expire) { showToast(expire, 'error'); return; }
     const client = clients.find(c => c.id === doc.client_id);
@@ -2457,12 +2504,13 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     const solde = soldeDe({ ...doc, statut: doc.statut === 'brouillon' ? 'envoye' : doc.statut }, paiements);
     const relance = solde?.enRetard ? solde : null;
     const lienPaiement = FONCTIONS.paiementEnLigne && doc.type === 'facture' && doc.payment_token ? urlPublique(`/pay/${doc.payment_token}`) : '';
-    if (addEchange) addEchange({ type: 'sms', client_id: doc.client_id, devis_id: doc.id, document: doc.numero, montant: solde ? solde.reste : doc.total_ttc, objet: `Message préparé : ${relance || relanceDevis ? 'relance' : 'envoi'} ${doc.type === 'facture' ? 'facture' : 'devis'} ${doc.numero}` });
+    if (addEchange) addEchange({ type: 'sms', client_id: doc.client_id, devis_id: doc.id, document: doc.numero, montant: solde ? solde.reste : doc.total_ttc, objet: `Message préparé : ${relance || relanceDevis ? 'relance' : 'envoi'} ${doc.type === 'facture' ? 'facture' : 'devis'} ${doc.numero}` }, { silencieux: true });
     const message = texteCourt(doc, { solde, lienPaiement, lienSignature, entrepriseNom: nomImprime(entreprise), relanceDevis });
     setTimeout(() => {
       window.open(`sms:${phone}?body=${encodeURIComponent(message)}`, '_self');
     }, 100);
     const clientName = `${client.prenom || ''} ${client.nom || ''}`.trim();
+    if (depuisFeuille) { showToast(`${relance || relanceDevis ? 'Relance prête' : 'Message prêt'} dans vos SMS pour ${clientName} : appuyez sur « Envoyer »`, 'success'); return; }
     setShowSendConfirmation({ clientName, montant: doc.total_ttc, canal: 'SMS', doc, prepare: true });
   };
 
@@ -2478,6 +2526,11 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   };
 
   // Devis envoyé sans réponse depuis 7 jours, encore valable (un devis expiré ne se relance pas : on le prolonge)
+  // Facture échue (reste dû après l'échéance) : seule une facture échue se « relance » (C. com. L441-10, II ; même calcul
+  // que texteCourt et buildDocumentEmailBody, src/lib/messageRelance.js)
+  const estEchue = (doc) => doc?.type === 'facture' && doc.facture_type !== 'avoir'
+    && !!soldeDe({ ...doc, statut: doc.statut === 'brouillon' ? 'envoye' : doc.statut }, paiements)?.enRetard;
+
   const needsFollowUp = (doc) => {
     if (doc.type !== 'devis') return false;
     if (!['envoye', 'vu'].includes(doc.statut)) return false;
@@ -2495,11 +2548,14 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 
   const Snackbar = () => snackbar && (
     <div className="fixed bottom-6 left-1/2 z-50 animate-snackbar">
-      <div className={`flex items-center gap-3 px-4 py-3 rounded-xl shadow-2xl backdrop-blur-sm ${snackbar.type === 'success' ? 'bg-emerald-600/95' : snackbar.type === 'error' ? 'bg-red-600/95' : 'bg-slate-800/95'} text-white min-w-[280px] max-w-[90vw]`}>
-        <span className="text-lg">{snackbar.type === 'success' ? '✅' : snackbar.type === 'error' ? '❌' : 'ℹ️'}</span>
+      {/* Encre sur le fond inversé du thème, une icône pour le ton (avant : aplats vert / rouge et émojis) */}
+      <div role={snackbar.type === 'error' ? 'alert' : 'status'} className="flex items-center gap-3 pl-4 pr-1 py-1.5 rounded-2xl shadow-e3 bg-encre text-surface min-w-[280px] max-w-[90vw]">
+        {snackbar.type === 'success' ? <CheckCircle size={18} aria-hidden="true" className="flex-shrink-0" />
+          : snackbar.type === 'error' ? <AlertTriangle size={18} aria-hidden="true" className="flex-shrink-0" />
+          : <Bell size={18} aria-hidden="true" className="flex-shrink-0" />}
         <span className="flex-1 text-sm font-medium">{snackbar.message}</span>
-        {snackbar.action && <button onClick={snackbar.action.onClick} className="px-3 py-1.5 bg-white/20 hover:bg-white/30 rounded-lg text-sm font-medium whitespace-nowrap transition-colors">{snackbar.action.label}</button>}
-        <button onClick={() => setSnackbar(null)} className="hover:bg-white/20 rounded-full p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors" aria-label="Fermer">
+        {snackbar.action && <button onClick={snackbar.action.onClick} className="h-11 px-3 rounded-full bg-surface/15 hover:bg-surface/25 text-sm font-semibold whitespace-nowrap transition-colors">{snackbar.action.label}</button>}
+        <button onClick={() => setSnackbar(null)} className="hover:bg-surface/15 rounded-full w-11 h-11 flex items-center justify-center transition-colors" aria-label="Fermer">
           <X size={18} />
         </button>
       </div>
@@ -2614,106 +2670,385 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 
   // Fenêtre « Sauvegarder comme modèle », montée par la liste ET par la fiche. Avant (recette du 9 oct. 2026), elle
   // n'existait que dans la liste : « Enregistrer comme modèle » du menu de la fiche ne faisait rien.
-  const fenetreModele = showSaveTemplateModal && selected ? createPortal(
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4 animate-fade-in">
-          <div className={`${cardBg} rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md shadow-2xl overflow-hidden`}>
-            <div className={`p-5 border-b flex items-center justify-between border-bord`}>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${couleur}20` }}>
-                  <Star size={20} className="text-accent-texte" />
-                </div>
-                <div>
-                  <h2 className={`font-bold text-lg ${textPrimary}`}>Sauvegarder comme modèle</h2>
-                  <p className={`text-sm ${textMuted}`}>{(selected.lignes || []).length} lignes · {selected.numero}</p>
-                </div>
-              </div>
-              <button onClick={() => setShowSaveTemplateModal(false)} className={`p-2 rounded-xl hover:bg-surface-2`}>
-                <X size={20} className={textSecondary} />
-              </button>
-            </div>
-            <div className="p-5 space-y-4">
-              <div>
-                <label className={`block text-sm font-medium mb-1.5 ${textPrimary}`}>Nom du modèle</label>
-                <input
-                  value={templateName}
-                  onChange={e => setTemplateName(e.target.value)}
-                  placeholder={selected.objet || selected.lignes?.[0]?.description || 'Mon modèle'}
-                  className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`}
-                  autoFocus
-                />
-              </div>
-              <div>
-                <label className={`block text-sm font-medium mb-1.5 ${textPrimary}`}>Catégorie</label>
-                <input
-                  value={templateCategory}
-                  onChange={e => setTemplateCategory(e.target.value)}
-                  placeholder="ex: Plomberie, Électricité, Rénovation..."
-                  className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`}
-                />
-              </div>
+  const fenetreModele = (
+    <Modal isOpen={!!(showSaveTemplateModal && selected)} onClose={() => setShowSaveTemplateModal(false)} size="sm">
+      <ModalHeader>
+        <ModalTitle>Sauvegarder comme modèle</ModalTitle>
+        <ModalDescription>{(selected?.lignes || []).length} lignes · {selected?.numero}</ModalDescription>
+      </ModalHeader>
+      <ModalBody className="space-y-4">
+        <Champ
+          libelle="Nom du modèle"
+          value={templateName}
+          onChange={e => setTemplateName(e.target.value)}
+          placeholder={selected?.objet || selected?.lignes?.[0]?.description || 'Mon modèle'}
+          autoFocus
+        />
+        <Champ
+          libelle="Catégorie" facultatif
+          value={templateCategory}
+          onChange={e => setTemplateCategory(e.target.value)}
+          placeholder="ex: Plomberie, Électricité, Rénovation..."
+        />
+      </ModalBody>
+      <ModalFooter>
+        <Bouton variante="discret" onClick={() => setShowSaveTemplateModal(false)}>Annuler</Bouton>
+        <Bouton
+          variante="principal" icone={Star}
+          onClick={async () => {
+            if (!templateName.trim()) return showToast('Donnez un nom au modèle', 'error');
+            const enregistre = await addTemplate({
+              nom: templateName.trim(),
+              categorie: templateCategory.trim() || 'Mes modèles',
+              description: `Créé depuis ${selected.numero}`,
+              lignes: (selected.lignes || []).map(l => ({
+                description: l.description,
+                quantite: l.quantite,
+                unite: l.unite,
+                prixUnitaire: Number(l.prixUnitaire) || 0, // une remise (ligne négative) reste négative
+                prixAchat: l.prixAchat || 0,
+                tva: l.tva,
+              })),
+              tva_defaut: selected.tvaRate ?? 10,
+              notes: selected.notes || '',
+            });
+            if (!enregistre) return; // refus de la base : DataContext l'a dit, la fenêtre reste ouverte
+            setShowSaveTemplateModal(false);
+            setTemplateName('');
+            setTemplateCategory('Mes modèles');
+            showToast(`Modèle "${templateName}" sauvegardé`, 'success');
+          }}
+          disabled={!templateName.trim()}
+        >
+          Sauvegarder le modèle
+        </Bouton>
+      </ModalFooter>
+    </Modal>
+  );
+
+  // « Assigner un client » : montée par la liste ET par la fiche (le bouton de la fiche n'ouvrait rien avant)
+  const fenetreAssigner = (
+    <Modal isOpen={!!assigningClientDevisId} onClose={() => setAssigningClientDevisId(null)} size="sm">
+      <ModalHeader>
+        <ModalTitle>Assigner un client</ModalTitle>
+        <ModalDescription>Choisissez le client de ce document.</ModalDescription>
+      </ModalHeader>
+      <ModalBody className="px-3 py-2">
+        <ul className="space-y-1">
+          {clients.filter(c => c.nom).map(c => (
+            <li key={c.id}>
               <button
-                onClick={async () => {
-                  if (!templateName.trim()) return showToast('Donnez un nom au modèle', 'error');
-                  const enregistre = await addTemplate({
-                    nom: templateName.trim(),
-                    categorie: templateCategory.trim() || 'Mes modèles',
-                    description: `Créé depuis ${selected.numero}`,
-                    lignes: (selected.lignes || []).map(l => ({
-                      description: l.description,
-                      quantite: l.quantite,
-                      unite: l.unite,
-                      prixUnitaire: Number(l.prixUnitaire) || 0, // une remise (ligne négative) reste négative
-                      prixAchat: l.prixAchat || 0,
-                      tva: l.tva,
-                    })),
-                    tva_defaut: selected.tvaRate ?? 10,
-                    notes: selected.notes || '',
-                  });
-                  if (!enregistre) return; // refus de la base : DataContext l'a dit, la fenêtre reste ouverte
-                  setShowSaveTemplateModal(false);
-                  setTemplateName('');
-                  setTemplateCategory('Mes modèles');
-                  showToast(`Modèle "${templateName}" sauvegardé`, 'success');
+                type="button"
+                onClick={() => {
+                  const d = devis.find(dv => dv.id === assigningClientDevisId);
+                  if (d) {
+                    onUpdate(d.id, { client_id: c.id, client_nom: `${c.prenom || ''} ${c.nom}`.trim() });
+                    if (selected?.id === d.id) setSelected(s => ({ ...s, client_id: c.id, client_nom: `${c.prenom || ''} ${c.nom}`.trim() }));
+                    showToast(`Client "${`${c.prenom || ''} ${c.nom}`.trim()}" assigné`, 'success');
+                  }
+                  setAssigningClientDevisId(null);
                 }}
-                disabled={!templateName.trim()}
-                className="w-full py-3.5 rounded-xl font-medium flex items-center justify-center gap-2 transition-all disabled:opacity-50 hover:shadow-lg bg-accent text-sur-accent"
+                className="w-full min-h-[52px] text-left px-3 py-2 rounded-xl flex items-center gap-3 transition-colors hover:bg-surface-2"
               >
-                <Star size={16} /> Sauvegarder le modèle
+                <Avatar nom={`${c.prenom || ''} ${c.nom}`} taille={36} />
+                <span className="min-w-0">
+                  <span className={`block text-sm font-medium truncate ${textPrimary}`}>{c.prenom ? `${c.prenom} ${c.nom}` : c.nom}</span>
+                  {c.entreprise && <span className="block text-sm truncate text-encre-3">{c.entreprise}</span>}
+                </span>
               </button>
-            </div>
+            </li>
+          ))}
+        </ul>
+        {clients.filter(c => c.nom).length === 0 && (
+          <p className="text-sm text-center py-4 text-encre-3">Aucun client disponible</p>
+        )}
+      </ModalBody>
+      <ModalFooter>
+        <Bouton variante="discret" onClick={() => setAssigningClientDevisId(null)}>Annuler</Bouton>
+      </ModalFooter>
+    </Modal>
+  );
+
+  // Aperçu du document (liste et fiche) : la page A4 reste blanche, c'est le papier ; le cadre suit le thème
+  const fenetreApercu = showPdfPreview ? createPortal(
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center z-[1050] p-0 sm:p-4 animate-fade-in" onClick={() => setShowPdfPreview(false)}>
+      <div role="dialog" aria-modal="true" aria-label="Aperçu du document" className="bg-fond rounded-t-2xl sm:rounded-2xl w-full sm:max-w-4xl h-[95vh] sm:h-[90vh] shadow-e3 flex flex-col overflow-hidden" onClick={e => e.stopPropagation()}>
+        <div className="p-3 sm:p-4 border-b border-bord bg-surface flex items-center justify-between gap-2 flex-shrink-0">
+          <div className="min-w-0">
+            <h2 className={`font-bold text-base sm:text-lg ${textPrimary} truncate`}>Aperçu du document</h2>
+            <p className="text-sm text-encre-3 hidden sm:block">Format A4, prêt à imprimer</p>
           </div>
-        </div>,
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+            <Bouton variante="principal" icone={Download} onClick={() => tryDownload(selected, printPDF)}>
+              <span className="hidden sm:inline">Imprimer / PDF</span>
+              <span className="sm:hidden">PDF</span>
+            </Bouton>
+            <BoutonIcone icone={X} libelle="Fermer l'aperçu" onClick={() => setShowPdfPreview(false)} />
+          </div>
+        </div>
+        <div className="flex-1 overflow-auto p-4 sm:p-8 flex justify-center">
+          <div className="bg-white shadow-e3 rounded-sm w-full max-w-[210mm] min-h-[297mm]">
+            <iframe srcDoc={pdfContent} sandbox="" className="w-full h-full min-h-[297mm] border-0" title="Aperçu du document" />
+          </div>
+        </div>
+      </div>
+    </div>,
     document.body
   ) : null;
+
+  // Feuille « Relancer » (liste, fiche devis, fiche facture) : canal, destinataire, aperçu, un seul bouton. Une facture
+  // pas encore échue se « Renvoie » : ce qui part n'est pas une relance (relecture juriste-btp du 24 oct. 2026)
+  const clientDeRelance = relanceDe ? clients.find(c => c.id === relanceDe.client_id) : null;
+  const estRelance = !!relanceDe && (relanceDe.type !== 'facture' || estEchue(relanceDe));
+  const apercuRelance = (canal) => {
+    const doc = relanceDe;
+    if (!doc) return null;
+    const relanceDevis = doc.type !== 'facture';
+    const solde = soldeDe({ ...doc, statut: doc.statut === 'brouillon' ? 'envoye' : doc.statut }, paiements);
+    const lienSignature = relanceDevis ? '[lien de signature]' : '';
+    if (canal !== 'email') {
+      return { texte: texteCourt(doc, { solde, lienSignature, entrepriseNom: nomImprime(entreprise), relanceDevis }) };
+    }
+    const relance = solde?.enRetard ? solde : null;
+    const label = doc.type === 'facture' ? 'Facture' : 'Devis';
+    return {
+      objet: `${relance || relanceDevis ? 'Rappel : ' : ''}${label} ${doc.numero}${relance ? ' — reste à régler' : ''}${entreprise?.nom ? ` — ${nomImprime(entreprise)}` : ''}`,
+      texte: texteDeHtml(buildDocumentEmailBody({
+        doc, client: clientDeRelance || {}, entreprise, couleur, signatureUrl: relanceDevis ? '[lien de signature]' : null,
+        montantFormatte: euros(doc.total_ttc), solde, relanceDevis,
+      })),
+    };
+  };
+  const envoyerRelance = async (canal) => {
+    const doc = relanceDe;
+    if (!doc) return;
+    const relanceDevis = doc.type !== 'facture';
+    if (canal === 'email') await sendEmail(doc, null, { relanceDevis, depuisFeuille: true });
+    else if (canal === 'sms') await sendSMS(doc, { relanceDevis, depuisFeuille: true });
+    else await sendWhatsApp(doc, { relanceDevis, depuisFeuille: true });
+    setRelanceDe(null);
+  };
+  const feuilleRelance = (
+    <FeuilleRelance doc={relanceDe} client={clientDeRelance} relance={estRelance} apercu={apercuRelance} onEnvoyer={envoyerRelance} onFermer={() => setRelanceDe(null)} />
+  );
+
+  // Fenêtres de l'envoi (création réussie, e-mail manquant, ce qui bloque, envoi fait) : montées par la liste ET par la
+  // fiche (avant, dans la fiche seulement : « Envoyer » depuis la liste ne montrait ni ce qui bloquait ni ce qui était parti)
+  const fenetresEnvoi = (
+    <>
+    {/* Après la création : envoyer tout de suite ou plus tard */}
+    <Modal isOpen={!!showCreationSuccess} onClose={() => setShowCreationSuccess(null)} size="sm">
+      <ModalBody className="pt-6 text-center">
+        <span className="mx-auto mb-4 w-14 h-14 rounded-full flex items-center justify-center bg-succes-fond text-succes-texte" aria-hidden="true">
+          <CheckCircle size={28} />
+        </span>
+        <ModalTitle className="text-xl">
+          {showCreationSuccess?.devis?.type === 'facture' ? 'Facture créée' : 'Devis créé'}
+        </ModalTitle>
+        <p className="mt-1 text-sm text-encre-3">N° {showCreationSuccess?.numero}</p>
+        <p className="mt-2 text-2xl font-bold tabular-nums text-encre">{formatMoney(showCreationSuccess?.devis?.total_ttc)}</p>
+      </ModalBody>
+      <ModalFooter className="flex-col-reverse sm:flex-row">
+        <Bouton variante="discret" pleineLargeur className="sm:w-auto" onClick={() => setShowCreationSuccess(null)}>Plus tard</Bouton>
+        <Bouton variante="principal" icone={Send} pleineLargeur className="sm:w-auto"
+          onClick={() => {
+            const doc = showCreationSuccess?.devis;
+            setShowCreationSuccess(null);
+            if (doc) trySend(doc, sendEmail);
+          }}>
+          Envoyer maintenant
+        </Bouton>
+      </ModalFooter>
+    </Modal>
+
+    {/* Email client manquant — saisie inline + enregistrement sur la fiche */}
+    <Modal isOpen={!!askEmail} onClose={() => setAskEmail(null)} size="sm">
+      <ModalHeader>
+        <ModalTitle>E-mail du client ?</ModalTitle>
+        <ModalDescription>
+          {(() => { const c = clients.find(x => x.id === askEmail?.doc?.client_id); return `${formatClientName(c) || 'Ce client'} n'a pas d'adresse e-mail enregistrée. Saisissez-la pour envoyer ${askEmail?.doc?.type === 'facture' ? 'la facture' : 'le devis'} : elle sera ajoutée à sa fiche.`; })()}
+        </ModalDescription>
+      </ModalHeader>
+      <ModalBody>
+        <Champ
+          libelle="Adresse e-mail"
+          type="email" autoFocus value={askEmailValue}
+          onChange={e => setAskEmailValue(e.target.value)}
+          placeholder="client@exemple.fr"
+        />
+      </ModalBody>
+      <ModalFooter>
+        <Bouton variante="discret" onClick={() => setAskEmail(null)}>Annuler</Bouton>
+        <Bouton
+          variante="principal" icone={Send}
+          disabled={!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(askEmailValue.trim())}
+          onClick={async () => {
+            const email = askEmailValue.trim();
+            const doc = askEmail.doc;
+            const options = askEmail.options || {};
+            setAskEmail(null);
+            try { await ctxUpdateClient?.(doc.client_id, { email }); } catch { /* l'envoi reste possible */ }
+            sendEmail(doc, email, options);
+          }}
+        >
+          Enregistrer et envoyer
+        </Bouton>
+      </ModalFooter>
+    </Modal>
+
+    {/* Ce qui manque avant d'envoyer (ou de télécharger) */}
+    <Modal isOpen={!!sendValidationIssues} onClose={() => setSendValidationIssues(null)} size="md">
+      <ModalHeader>
+        <div className="flex items-center gap-3">
+          <span className={`w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 ${sendValidationIssues?.isDownload ? 'bg-alerte-fond text-alerte-texte' : 'bg-danger-fond text-danger-texte'}`} aria-hidden="true">
+            <AlertTriangle size={22} />
+          </span>
+          <div>
+            <ModalTitle>{sendValidationIssues?.isDownload ? 'Profil incomplet' : 'Envoi impossible'}</ModalTitle>
+            <ModalDescription>{sendValidationIssues?.isDownload ? 'Votre profil entreprise est incomplet' : 'Corrigez ces éléments avant d\'envoyer'}</ModalDescription>
+          </div>
+        </div>
+      </ModalHeader>
+      <ModalBody className="space-y-4">
+        {/* Legal conformity warning */}
+        {sendValidationIssues?.issues.some(i => i.isLegal) && (
+          <div className="rounded-xl p-3 bg-alerte-fond text-alerte-texte text-sm">
+            <strong>Mentions obligatoires :</strong> sans ces informations, ce document n'aura pas toutes les mentions exigées par la loi.{' '}
+            <button
+              type="button"
+              onClick={() => {
+                const firstLegal = sendValidationIssues.issues.find(i => i.isLegal);
+                setSendValidationIssues(null);
+                setSelected(null);
+                setPage('settings');
+                if (firstLegal?.settingsTab) {
+                  setTimeout(() => {
+                    window.dispatchEvent(new CustomEvent('navigate-settings-tab', {
+                      detail: { tab: firstLegal.settingsTab, fieldId: firstLegal.settingsField }
+                    }));
+                  }, 200);
+                }
+              }}
+              className="underline font-semibold hover:opacity-80"
+            >
+              Compléter votre profil maintenant
+            </button>
+          </div>
+        )}
+
+        {/* Issues list */}
+        <ul className="space-y-2">
+          {(sendValidationIssues?.issues || []).map(issue => (
+            <li key={issue.id} className="flex items-center gap-3 pl-3 pr-1 py-1.5 min-h-[52px] rounded-xl border bg-fond border-bord">
+              <XCircle size={16} className="text-danger-texte shrink-0" aria-hidden="true" />
+              <p className={`flex-1 min-w-0 text-sm ${textPrimary}`}>{issue.label}</p>
+              {issue.action === 'settings' && (
+                <Bouton
+                  taille="compacte" variante="secondaire" className="shrink-0"
+                  onClick={() => {
+                    setSendValidationIssues(null);
+                    setSelected(null);
+                    setPage('settings');
+                    // Deep link to specific settings tab/field
+                    if (issue.settingsTab) {
+                      setTimeout(() => {
+                        window.dispatchEvent(new CustomEvent('navigate-settings-tab', {
+                          detail: { tab: issue.settingsTab, fieldId: issue.settingsField }
+                        }));
+                      }, 200);
+                    }
+                  }}
+                >
+                  {issue.actionLabel}
+                </Bouton>
+              )}
+              {issue.action === 'edit' && (
+                <Bouton
+                  taille="compacte" variante="secondaire" className="shrink-0"
+                  onClick={() => {
+                    const doc = sendValidationIssues.doc;
+                    setSendValidationIssues(null);
+                    if (doc) openEditor(doc);
+                  }}
+                >
+                  {issue.actionLabel}
+                </Bouton>
+              )}
+            </li>
+          ))}
+        </ul>
+      </ModalBody>
+      <ModalFooter>
+        <Bouton variante={sendValidationIssues?.sendFn && sendValidationIssues?.isDownload ? 'discret' : 'secondaire'} onClick={() => setSendValidationIssues(null)}>Compris</Bouton>
+        {sendValidationIssues?.sendFn && sendValidationIssues.isDownload && sendValidationIssues.issues.every(i => i.isLegal) && (
+          <Bouton variante="principal" onClick={() => { const fn = sendValidationIssues.sendFn; const doc = sendValidationIssues.doc; setSendValidationIssues(null); fn(doc); }}>
+            Télécharger quand même
+          </Bouton>
+        )}
+      </ModalFooter>
+    </Modal>
+
+    {/* Après un envoi : ce qui est parti, à qui, par où (un seul message : pas de notification en plus) */}
+    <Modal isOpen={!!showSendConfirmation} onClose={() => setShowSendConfirmation(null)} size="sm">
+      <ModalBody className="pt-6">
+        <div className="text-center">
+          <span className="mx-auto mb-4 w-14 h-14 rounded-full flex items-center justify-center bg-succes-fond text-succes-texte" aria-hidden="true">
+            <CheckCircle size={28} />
+          </span>
+          <ModalTitle>
+            {showSendConfirmation?.prepare
+              ? `Message prêt dans ${showSendConfirmation.canal}`
+              : showSendConfirmation?.relance ? 'Relance envoyée' : `${showSendConfirmation?.doc?.type === 'facture' ? 'Facture envoyée' : 'Devis envoyé'}`}
+          </ModalTitle>
+          <p className="mt-1 text-sm text-encre-3">
+            {showSendConfirmation?.prepare
+              ? `Appuyez sur « Envoyer » dans ${showSendConfirmation.canal} pour que votre client le reçoive.`
+              : `par ${showSendConfirmation?.canal}${showSendConfirmation?.destinataire ? ` à ${showSendConfirmation.destinataire}` : ''}`}
+          </p>
+        </div>
+        <dl className="mt-5 rounded-xl p-4 space-y-2 bg-fond text-sm">
+          <div className="flex justify-between gap-3"><dt className="text-encre-3">Client</dt><dd className="font-medium text-encre text-right">{showSendConfirmation?.clientName}</dd></div>
+          <div className="flex justify-between gap-3"><dt className="text-encre-3">Montant</dt><dd className="font-bold text-encre tabular-nums">{formatMoney(showSendConfirmation?.montant)}</dd></div>
+          <div className="flex justify-between gap-3"><dt className="text-encre-3">Canal</dt><dd className="font-medium text-encre">{showSendConfirmation?.canal}</dd></div>
+        </dl>
+        <div className="mt-4 grid gap-2">
+          {showSendConfirmation?.doc?.signature_token && (
+            <Bouton variante="secondaire" icone={Link2} pleineLargeur
+              onClick={() => {
+                const url = buildSignatureUrl(showSendConfirmation.doc.signature_token);
+                navigator.clipboard.writeText(url);
+                showToast('Lien de signature copié', 'success');
+              }}>
+              Copier le lien de signature
+            </Bouton>
+          )}
+          <div className="flex gap-2">
+            {showSendConfirmation?.canal !== 'WhatsApp' && (
+              <Bouton variante="secondaire" icone={MessageCircle} className="flex-1" onClick={() => { sendWhatsApp(showSendConfirmation.doc); }}>WhatsApp</Bouton>
+            )}
+            {!/^Email/.test(showSendConfirmation?.canal || '') && (
+              <Bouton variante="secondaire" icone={Mail} className="flex-1" onClick={() => { sendEmail(showSendConfirmation.doc); }}>E-mail</Bouton>
+            )}
+          </div>
+        </div>
+      </ModalBody>
+      <ModalFooter>
+        <Bouton variante="principal" pleineLargeur className="sm:w-auto" onClick={() => setShowSendConfirmation(null)}>OK</Bouton>
+      </ModalFooter>
+    </Modal>
+    </>
+  );
 
   // === PREVIEW VIEW ===
   if (mode === 'preview' && selected) {
     const client = clients.find(c => c.id === selected.client_id);
-    const facturesLiees = getFacturesLiees(selected.id);
-    // Facturé par situations de travaux : la suite passe par les situations (le décompte général définitif
-    // solde le marché). Une facture « complète » ou un solde refacturerait le devis entier, situations comprises.
-    const situationsFacturees = facturesLiees.filter(f => f.facture_type === 'situation');
-    const chantierDesSituations = selected.chantier_id ? (chantiers || []).find(c => c.id === selected.chantier_id) : null;
-    const situationsEnCours = chantierDesSituations?.situations_data?.devis_source_id === selected.id
-      && (chantierDesSituations.situations_data.situations || []).length > 0;
-    const facturationParSituations = situationsFacturees.length > 0 || situationsEnCours;
-    const acompteFacture = getAcompteFacture(selected.id);
-    // Une facture entièrement annulée par avoir ne compte plus : le devis redevient facturable (avant, recette du
-    // 9 oct. 2026 : après un avoir total, le devis restait « Facturé » sans aucun moyen de le refacturer)
-    const soldeBrut = getSoldeFacture(selected.id);
-    const soldeFacture = soldeBrut && montantCredite(soldeBrut, devis) < Math.abs(Number(soldeBrut.total_ttc) || 0) - 0.01 ? soldeBrut : null;
-    const resteAFacturer = Math.round(((Number(selected.total_ttc) || 0) - dejaFactureTTC(selected.id, devis)) * 100) / 100;
+    const {
+      facturesLiees, situationsFacturees, situationsEnCours, facturationParSituations, acompteFacture,
+      resteAFacturer, canAcompte, canFacturer,
+    } = facturationDe(selected);
     const isDevis = selected.type === 'devis';
     const isAvoir = selected.facture_type === 'avoir';
     const currentEcheancier = echeancierCache[selected.id] || null;
-    const hasEcheancier = !!selected.echeancier_id || !!currentEcheancier;
-    // Déjà facturé en entier (solde ou facture complète, même si le devis est resté « signé ») : plus de « Facturer »
-    const entierementFacture = isDevis && estEntierementFacture(selected, devis);
-    const canAcompte = isDevis && (selected.statut === 'accepte' || selected.statut === 'signe') && !acompteFacture && !hasEcheancier && !facturationParSituations && !entierementFacture;
-    // « Facturé » mais toutes ses factures annulées par avoir ; jamais pour un devis « facturé » sans facture rattachée
-    // (anciennes données) : il serait facturé deux fois
-    const factureAnnulee = selected.statut === 'facture' && facturesLiees.some(f => f.facture_type !== 'avoir') && !entierementFacture;
-    const canFacturer = isDevis && (['accepte', 'signe', 'acompte_facture'].includes(selected.statut) || factureAnnulee) && !soldeFacture && resteAFacturer > 0.005 && !facturationParSituations && !entierementFacture;
     const hasChantier = !!selected.chantier_id;
     const linkedChantier = chantiers.find(c => c.id === selected.chantier_id);
     const canCreateChantier = isDevis && !hasChantier && addChantier;
@@ -2776,7 +3111,10 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       { id: 'emis', label: 'Émis', statuses: ['envoye'] },
       { id: 'applique', label: 'Appliqué', statuses: ['payee'] },
     ] : [
-      { id: 'envoye', label: 'Envoyée', statuses: ['brouillon', 'envoye'] },
+      // Audit UX du 20 oct. 2026 (P1) : « Envoyée » couvrait aussi le brouillon, une facture jamais partie s'affichait
+      // « Envoyée ». Le paiement partiel se lit dans la pastille et sous le montant.
+      { id: 'brouillon', label: 'Brouillon', statuses: ['brouillon'] },
+      { id: 'envoye', label: 'Envoyée', statuses: ['envoye', 'vu'] },
       { id: 'payee', label: 'Payée', statuses: ['payee'] },
     ];
 
@@ -2790,34 +3128,37 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     const factureSoldee = factureVue === 'payee' || factureVue === 'annulee';
     const resteFacture = selected.type === 'facture' ? resteAPayer(selected, paiements) : 0;
 
-    // Get primary CTA based on status
+    // Action principale d'un avoir (les devis et factures ont la leur dans l'en-tête ; les branches qui calculaient des
+    // couleurs de bouton pour eux ne servaient plus depuis la refonte du 9 oct. 2026)
     const getPrimaryCTA = () => {
-      if (isDevis) {
-        if (selected.statut === 'brouillon') {
-          const ttc = selected.total_ttc || 0;
-          if (ttc <= 0) return { label: 'Envoyer', icon: Send, action: () => {}, color: 'bg-amber-500', disabled: true, tooltip: 'Ajoutez un montant avant d\'envoyer' };
-          return { label: 'Envoyer', icon: Send, action: () => trySend(selected, sendEmail), color: 'bg-amber-500 hover:bg-amber-600' };
-        }
-        if (selected.statut === 'envoye' || selected.statut === 'vu') return { label: 'Faire signer', icon: PenTool, action: () => setShowSignaturePad(true), color: `bg-[${couleur}]`, style: { background: couleur } };
-        if (selected.statut === 'accepte' || selected.statut === 'signe') return { label: 'Facturer', icon: Receipt, action: () => {
-          if (canAcompte) { ouvrirAcompte(); return; }
-          confirmAndCreateSolde();
-        }, color: 'bg-emerald-500 hover:bg-emerald-600' };
-        if (selected.statut === 'acompte_facture') return { label: `Facturer solde`, icon: Receipt, action: confirmAndCreateSolde, color: 'bg-emerald-500 hover:bg-emerald-600' };
-      } else if (isAvoir) {
-        if (selected.statut === 'brouillon') return { label: 'Émettre', icon: Send, action: async () => {
-          const ok = await confirm({ title: 'Émettre l\'avoir ?', message: `L'avoir ${selected.numero} sera émis et ne pourra plus être supprimé.` });
-          if (ok) { onUpdate(selected.id, { statut: 'envoye' }); setSelected(s => ({ ...s, statut: 'envoye' })); setSnackbar({ type: 'success', message: `Avoir ${selected.numero} émis` }); }
-        }, color: 'bg-amber-500 hover:bg-amber-600' };
-        if (selected.statut === 'envoye') return { label: 'Appliquer', icon: Check, action: async () => {
-          const ok = await confirm({ title: 'Appliquer l\'avoir ?', message: `L'avoir sera marqué comme appliqué. L'impact comptable sera enregistré.` });
-          if (ok) { onUpdate(selected.id, { statut: 'payee' }); setSelected(s => ({ ...s, statut: 'payee' })); setSnackbar({ type: 'success', message: `Avoir ${selected.numero} appliqué` }); }
-        }, color: 'bg-emerald-500 hover:bg-emerald-600' };
-      } else {
-        if (!factureSoldee) return { label: 'Encaisser', icon: CreditCard, action: () => setShowPaymentModal(true), color: '', style: { background: couleur } };
-      }
+      if (!isAvoir) return null;
+      if (selected.statut === 'brouillon') return { label: 'Émettre', icon: Send, action: async () => {
+        const ok = await confirm({ title: 'Émettre l\'avoir ?', message: `L'avoir ${selected.numero} sera émis et ne pourra plus être supprimé.` });
+        if (ok) { onUpdate(selected.id, { statut: 'envoye' }); setSelected(s => ({ ...s, statut: 'envoye' })); setSnackbar({ type: 'success', message: `Avoir ${selected.numero} émis` }); }
+      } };
+      if (selected.statut === 'envoye') return { label: 'Appliquer', icon: Check, action: async () => {
+        const ok = await confirm({ title: 'Appliquer l\'avoir ?', message: `L'avoir sera marqué comme appliqué. L'impact comptable sera enregistré.` });
+        if (ok) { onUpdate(selected.id, { statut: 'payee' }); setSelected(s => ({ ...s, statut: 'payee' })); setSnackbar({ type: 'success', message: `Avoir ${selected.numero} appliqué` }); }
+      } };
       return null;
     };
+
+    // « Facturer » (audit UX du 20 oct. 2026) : une seule porte. Le bouton de l'en-tête ouvre ce choix ; l'encadré vert
+    // « Devis signé — Choisir le mode de facturation » qui le doublait sous l'en-tête a disparu.
+    const soldeAvecAcomptes = isDevis && getAllAcompteFactures(selected.id).length > 0;
+    const septJoursFiche = isDevis ? septJoursDe(selected) : null;
+    const aucunPaiementAvant = septJoursFiche?.possibleLe ? `Aucun paiement avant le ${septJoursFiche.possibleLe.split('-').reverse().join('/')}` : '';
+    const optionsFacturation = !isDevis ? [] : [
+      // Relecture juriste-btp du 24 oct. 2026 : « avant les travaux » n'était pas toujours vrai ; pendant les sept jours d'un
+      // contrat signé sur place par un particulier (C. conso. L221-10), la date dès laquelle un paiement est possible
+      canAcompte && { cle: 'acompte', icone: CreditCard, libelle: 'Facture d’acompte', detail: aucunPaiementAvant || 'Un pourcentage du devis, à régler avant le solde', action: () => ouvrirAcompte() },
+      canAcompte && { cle: 'echeancier', icone: ClipboardList, libelle: 'Échéancier', detail: aucunPaiementAvant || 'Plusieurs acomptes, étape par étape', action: () => setShowEcheancierModal(true) },
+      // Le montant de la facture qui sera créée (celui que la confirmation annonce) ; « TTC » seulement hors franchise
+      canFacturer && { cle: 'solde', icone: Receipt, libelle: soldeAvecAcomptes ? 'Facture de solde' : 'Facture complète',
+        detail: modeDiscret ? '' : avecMentionTtc(formatMoney(factureDeSolde(selected).totaux.totalTTC), isMicro), action: () => confirmAndCreateSolde() },
+      canFacturer && hasChantier && setSelectedChantier && { cle: 'situation', icone: BarChart3, libelle: 'Situation de travaux', detail: 'Par avancement, depuis le chantier', action: () => { setSelectedChantier(selected.chantier_id); setPage?.('chantiers'); } },
+    ].filter(Boolean);
+    optionsFacturationRef.current = optionsFacturation;
 
     return (
     <>
@@ -2860,20 +3201,36 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
             if (st === 'brouillon') contexte = `Brouillon du ${dateCourte(selected.date)}`;
             else if (st === 'envoye' || st === 'vu') {
               const fin = finValidite(selected, entreprise);
-              if (isExpired(selected)) { contexte = `Expiré · n'était valable que jusqu'au ${dateCourte(fin)}`; contexteAlerte = true; }
+              if (isExpired(selected)) { contexte = `Expiré · n'était valable que jusqu'au ${dateCourte(fin)} : il ne peut plus être envoyé ni signé en ligne`; contexteAlerte = true; }
               else contexte = `Envoyé · valable jusqu'au ${dateCourte(fin)}`;
-            } else if (st === 'accepte' || st === 'signe') contexte = resteAFacturer > 0 ? `${formatMoney(resteAFacturer)} à facturer` : '';
+            } else if (st === 'accepte' || st === 'signe') {
+              // Ce qui est déjà facturé se dit (audit UX du 20 oct. 2026 : « 14 245 € à facturer » taisait l'acompte de 6 105 €)
+              const deja = Math.round(((Number(selected.total_ttc) || 0) - resteAFacturer) * 100) / 100;
+              const dejaTexte = facturesLiees.some(f => f.facture_type === 'acompte') ? `Acompte ${formatMoney(deja)} facturé` : `Déjà facturé ${formatMoney(deja)}`;
+              contexte = resteAFacturer > 0
+                ? `${deja > 0.005 ? `${dejaTexte} · ` : ''}${formatMoney(resteAFacturer)} à facturer`
+                : '';
+            }
             else if (st === 'acompte_facture') contexte = `Acompte facturé · ${formatMoney(resteAFacturer)} restent à facturer`;
             else if (st === 'facture') contexte = canFacturer ? `Facture annulée par avoir · ${formatMoney(resteAFacturer)} à refacturer` : 'Entièrement facturé';
             else if (st === 'refuse') contexte = 'Refusé par le client';
           } else {
             const ech = echeance(selected);
+            const recu = dejaPaye(selected, paiements);
+            const masque = (v) => (modeDiscret ? '•••' : formatMoney(v));
+            // Les chiffres se recoupent : total, avoirs (s'il y en a), reçu → reste (relecture juriste-btp du 24 oct. 2026) ;
+            // « TTC » seulement hors franchise
+            const credite = montantCredite(selected, devis);
+            const decompte = `sur ${avecMentionTtc(masque(ttc), franchiseAppliquee(selected, entreprise))}${credite > 0.005 ? ` · avoirs −${masque(credite)}` : ''} · reçu ${masque(recu)}`;
             if (factureVue === 'payee') contexte = selected.date_paiement ? `Payée le ${dateCourte(selected.date_paiement)}` : 'Soldée';
-            else if (factureVue === 'en_retard') { contexte = `En retard de ${joursDeRetard(selected, paiements)} j · reste ${modeDiscret ? '•••' : formatMoney(resteFacture)}`; contexteAlerte = true; }
-            else if (factureVue === 'partielle') contexte = `Reçu ${modeDiscret ? '•••' : formatMoney(dejaPaye(selected, paiements))} · reste ${modeDiscret ? '•••' : formatMoney(resteFacture)}${ech ? ` · échéance ${dateCourte(ech)}` : ''}`;
+            else if (factureVue === 'en_retard' && recu > 0.005) { contexte = `En retard de ${joursDeRetard(selected, paiements)} j · ${decompte}`; contexteAlerte = true; }
+            else if (factureVue === 'en_retard') { contexte = `En retard de ${joursDeRetard(selected, paiements)} j · reste ${masque(resteFacture)}`; contexteAlerte = true; }
+            // Payée en partie : le chiffre qui compte (le reste) devient le grand nombre, le total passe dessous
+            else if (factureVue === 'partielle') contexte = `${decompte}${ech ? ` · échéance ${dateCourte(ech)}` : ''}`;
             else if (factureVue === 'brouillon') contexte = `Brouillon du ${dateCourte(selected.date)}`;
-            else contexte = `${ech ? `Échéance ${dateCourte(ech)} · ` : ''}reste ${modeDiscret ? '•••' : formatMoney(resteFacture)}`;
+            else contexte = `${ech ? `Échéance ${dateCourte(ech)} · ` : ''}reste ${masque(resteFacture)}`;
           }
+          const resteEnGrand = !isAvoir && selected.type === 'facture' && !factureSoldee && dejaPaye(selected, paiements) > 0.005 && resteFacture > 0.005;
 
           // Étapes : faites, en cours, à venir (une facture soldée par ses paiements est « payée »)
           const ordre = { brouillon: 0, envoye: 1, vu: 1, accepte: 2, signe: 2, acompte_facture: 3, facture: 4, payee: 5 };
@@ -2891,9 +3248,11 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           // Avec un acompte déjà facturé, on facture le solde : la confirmation doit annoncer ce montant-là
           // (elle annonçait le total du devis). confirmAndCreateSolde calcule et annonce le bon.
           const facturer = async () => {
-            if (canAcompte) { ouvrirAcompte(); return; }
+            if (optionsFacturation.length > 1) { setChoixFacturation(true); return; }
+            if (optionsFacturation.length === 1) { await optionsFacturation[0].action(); return; }
             await confirmAndCreateSolde();
           };
+          const actModifier = peutModifier && peutModifierDocument(selected, devis) ? { libelle: 'Modifier', icone: Pen, onClick: () => openEditor(selected) } : null;
           let principal = null;
           let secondaire = actApercu;
           if (isAvoir) {
@@ -2906,12 +3265,14 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
               principal = ttc > 0
                 ? { libelle: 'Envoyer', icone: Send, onClick: () => trySend(selected, sendEmail) }
                 : { libelle: 'Compléter le devis', icone: Pen, onClick: () => openEditor(selected) };
+              // L'aperçu est déjà sous les boutons : l'action utile d'un brouillon est « Modifier » (audit UX du 20 oct.)
+              if (ttc > 0 && actModifier) secondaire = actModifier;
             } else if ((st === 'envoye' || st === 'vu') && isExpired(selected)) {
               principal = peutModifier && peutModifierDocument(selected, devis) ? { libelle: 'Prolonger la validité', icone: Pen, onClick: () => openEditor(selected) } : null;
               secondaire = actPdf;
             } else if (st === 'envoye' || st === 'vu') {
               principal = { libelle: 'Faire signer', icone: PenTool, onClick: () => setShowSignaturePad(true) };
-              if (peutEnvoyer) secondaire = { libelle: 'Relancer', icone: Mail, onClick: () => sendEmail(selected, null, { relanceDevis: true }) };
+              if (peutEnvoyer) secondaire = { libelle: 'Relancer', icone: Mail, onClick: () => setRelanceDe(selected) };
             } else if (facturationParSituations && ['accepte', 'signe', 'acompte_facture'].includes(st)) {
               principal = selected.chantier_id
                 ? { libelle: 'Situation suivante', icone: BarChart3, onClick: () => { setSelectedChantier?.(selected.chantier_id); setPage?.('chantiers'); } }
@@ -2938,9 +3299,11 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
             secondaire = actPdf;
           } else if (!factureSoldee && !isAvoir) {
             principal = { libelle: 'Encaisser', icone: CreditCard, onClick: () => setShowPaymentModal(true) };
+            // Avant l'échéance, ce qui part est un envoi, pas une relance (relecture juriste-btp du 24 oct. 2026 ; C. com.
+            // L441-10, II) : « Renvoyer » ; une facture échue se « Relance »
             if (peutEnvoyer) secondaire = selected.statut === 'brouillon'
               ? { libelle: 'Envoyer', icone: Send, onClick: () => trySend(selected, sendEmail) }
-              : { libelle: 'Relancer', icone: Mail, onClick: () => sendEmail(selected) };
+              : { libelle: estEchue(selected) ? 'Relancer' : 'Renvoyer', icone: Mail, onClick: () => setRelanceDe(selected) };
           } else {
             secondaire = actPdf;
           }
@@ -2950,7 +3313,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           const brouillon = selected.statut === 'brouillon';
           const envoyerPar = (fn) => () => (brouillon ? trySend(selected, fn) : fn(selected));
           const actions = [
-            peutModifier && peutModifierDocument(selected, devis) && { libelle: 'Modifier', icone: Pen, onClick: () => openEditor(selected) },
+            actModifier && secondaire !== actModifier && actModifier,
             secondaire !== actApercu && { libelle: 'Aperçu du document', icone: Eye, onClick: () => previewPDF(selected) },
             secondaire !== actPdf && { libelle: 'Télécharger le PDF', icone: Download, onClick: telechargerPdf },
             isDevis && !['facture', 'refuse'].includes(selected.statut) && { libelle: 'Voir comme le client', icone: Smartphone, onClick: async () => {
@@ -2989,12 +3352,12 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
               libelle: `${legal.length} mention${legal.length > 1 ? 's' : ''} légale${legal.length > 1 ? 's' : ''} manquante${legal.length > 1 ? 's' : ''} : ${legal.map((i) => i.label.toLowerCase()).join(', ')}`,
               onClick: setPage ? () => setPage('settings', { tab: 'legal' }) : undefined,
             },
-            isDevis && needsFollowUp(selected) && peutEnvoyer && { libelle: 'Sans réponse depuis plus de 7 jours : pensez à relancer', onClick: () => sendEmail(selected, null, { relanceDevis: true }) },
+            isDevis && needsFollowUp(selected) && peutEnvoyer && { libelle: 'Sans réponse depuis 7 jours ou plus : pensez à relancer', onClick: () => setRelanceDe(selected) },
           ].filter(Boolean);
 
           return (
             <EnTeteDocument
-              onRetour={() => { setMode('list'); setSelected(null); }}
+              onRetour={() => { setMode('list'); setSelected(null); setChoixFacturation(false); }}
               surtitre={`${genre} · ${cleanNumero(selected.numero)}`}
               extra={isDevis && devisSnapshots.length > 0 ? (
                 <VersionSelector snapshots={devisSnapshots} onSelectVersion={(snap) => setViewingSnapshot(snap)} onCompareVersions={(a, b) => setComparingSnapshots({ a, b })} isDark={isDark} couleur={couleur} />
@@ -3005,7 +3368,9 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                 </button>
               )}
               objet={selected.objet || linkedChantier?.nom || ''}
-              montant={canViewPrices ? (modeDiscret ? '···' : formatMoney(isAvoir ? -Math.abs(ttc) : ttc)) : '—'}
+              montant={canViewPrices ? (modeDiscret ? '···' : formatMoney(isAvoir ? -Math.abs(ttc) : resteEnGrand ? resteFacture : ttc)) : '—'}
+              mention={canViewPrices && !modeDiscret && !franchiseAppliquee(selected, entreprise) ? 'TTC' : undefined}
+              libelleMontant={resteEnGrand && canViewPrices ? 'Reste à payer' : undefined}
               pastille={<PastilleStatut genre={selected.type === 'facture' && !isAvoir ? 'facture' : 'devis'} statut={selected.type === 'facture' && !isAvoir ? factureVue : selected.statut} taille="grande" />}
               contexte={contexte}
               contexteAlerte={contexteAlerte}
@@ -3037,83 +3402,88 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           />
         </Volet>
 
-        {/* ============ AVOIR: Facture d'origine ============ */}
+        {/* Facturer : le choix (acompte, échéancier, solde, situation), en feuille du bas sur téléphone */}
+        <Volet ouvert={choixFacturation && optionsFacturation.length > 1} onFermer={() => setChoixFacturation(false)} titre="Facturer ce devis" largeur={360}>
+          <ul className="-mx-2 space-y-1">
+            {optionsFacturation.map(({ cle, icone: Icone, libelle, detail, action }) => (
+              <li key={cle}>
+                <button
+                  type="button"
+                  onClick={() => { setChoixFacturation(false); action(); }}
+                  className="w-full min-h-[60px] flex items-center gap-3 px-3 py-2 rounded-xl text-left transition-colors hover:bg-surface-2"
+                >
+                  <span className="w-10 h-10 rounded-xl bg-surface-2 text-encre-2 flex items-center justify-center flex-shrink-0" aria-hidden="true"><Icone size={18} /></span>
+                  <span className="flex-1 min-w-0">
+                    <span className="block text-base sm:text-sm font-semibold text-encre">{libelle}</span>
+                    {detail ? <span className="block text-sm text-encre-3 tabular-nums">{detail}</span> : null}
+                  </span>
+                  <ChevronRight size={18} className="text-encre-3 flex-shrink-0" aria-hidden="true" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        </Volet>
+
+        {/* ============ AVOIR : facture d'origine (carte neutre ; le montant de l'avoir dit déjà le crédit) ============ */}
         {isAvoir && sourceFacture && (
-          <div className={`rounded-xl border p-4 ${isDark ? 'bg-red-900/10 border-red-800/50' : 'bg-red-50 border-red-200'}`}>
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <RotateCcw size={16} className={isDark ? 'text-red-400' : 'text-red-600'} />
-                <span className={`text-sm font-semibold ${isDark ? 'text-red-300' : 'text-red-700'}`}>Facture d'origine</span>
-              </div>
-              <button
-                onClick={() => { setSelected(sourceFacture); }}
-                className={`text-sm font-medium px-3 py-1 rounded-lg transition-colors ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-200'}`}
-              >
-                {sourceFacture.numero} →
-              </button>
+          <div className="rounded-2xl border border-bord bg-surface shadow-e1 p-4">
+            <div className="flex items-center justify-between gap-3">
+              <p className="flex items-center gap-2 text-sm font-semibold text-encre">
+                <RotateCcw size={16} className="text-encre-3" aria-hidden="true" /> Facture d'origine
+              </p>
+              <Bouton taille="compacte" variante="secondaire" iconeFin={ChevronRight} onClick={() => { setSelected(sourceFacture); }}>
+                {sourceFacture.numero}
+              </Bouton>
             </div>
             {selected.avoir_motif && (
-              <div className={`text-sm text-encre-2`}>
-                <span className="font-medium">Motif :</span> {AVOIR_MOTIFS[selected.avoir_motif] || selected.avoir_motif}
-                {selected.avoir_motif_detail && <p className={`mt-1 text-xs ${textMuted}`}>{selected.avoir_motif_detail}</p>}
+              <div className="mt-3 text-sm text-encre-2">
+                <span className="font-medium text-encre">Motif :</span> {AVOIR_MOTIFS[selected.avoir_motif] || selected.avoir_motif}
+                {selected.avoir_motif_detail && <p className="mt-1 text-sm text-encre-3">{selected.avoir_motif_detail}</p>}
               </div>
             )}
             {selected.avoir_type && (
-              <div className="mt-2">
-                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                  selected.avoir_type === 'total'
-                    ? (isDark ? 'bg-red-900/50 text-red-300' : 'bg-red-100 text-red-700')
-                    : (isDark ? 'bg-amber-900/50 text-amber-300' : 'bg-amber-100 text-amber-700')
-                }`}>
-                  {selected.avoir_type === 'total' ? 'Avoir total' : 'Avoir partiel'}
-                </span>
+              <div className="mt-3">
+                <Pastille ton="neutre">{selected.avoir_type === 'total' ? 'Avoir total' : 'Avoir partiel'}</Pastille>
               </div>
             )}
           </div>
         )}
 
-        {/* ============ FACTURE: Avoirs liés ============ */}
+        {/* ============ FACTURE : avoirs liés ============ */}
         {!isAvoir && selected.type === 'facture' && avoirsLies.length > 0 && (
-          <div className={`rounded-xl border p-4 ${isDark ? 'bg-red-900/10 border-red-800/50' : 'bg-red-50 border-red-200'}`}>
-            <div className="flex items-center gap-2 mb-3">
-              <RotateCcw size={16} className={isDark ? 'text-red-400' : 'text-red-600'} />
-              <span className={`text-sm font-semibold ${isDark ? 'text-red-300' : 'text-red-700'}`}>
-                Avoirs émis ({avoirsLies.length})
-              </span>
-            </div>
-            <div className="space-y-2">
+          <div className="rounded-2xl border border-bord bg-surface shadow-e1 p-4">
+            <p className="flex items-center gap-2 mb-3 text-sm font-semibold text-encre">
+              <RotateCcw size={16} className="text-encre-3" aria-hidden="true" /> Avoirs émis ({avoirsLies.length})
+            </p>
+            <ul className="divide-y divide-bord">
               {avoirsLies.map(avoir => (
-                <div key={avoir.id} className={`flex items-center justify-between py-2 px-3 rounded-lg bg-surface`}>
-                  <div className="flex items-center gap-2">
-                    <button onClick={() => setSelected(avoir)} className="text-sm font-medium hover:underline text-accent-texte">
+                <li key={avoir.id} className="flex items-center justify-between gap-3 py-2">
+                  <span className="flex items-center gap-2 min-w-0">
+                    <button type="button" onClick={() => setSelected(avoir)} className="min-h-[44px] text-sm font-semibold underline underline-offset-2 text-encre hover:text-accent-texte">
                       {avoir.numero}
                     </button>
-                    <span className={`text-xs px-1.5 py-0.5 rounded ${
-                      avoir.statut === 'payee' ? (isDark ? 'bg-emerald-900/50 text-emerald-400' : 'bg-emerald-100 text-emerald-700') :
-                      avoir.statut === 'envoye' ? (isDark ? 'bg-blue-900/50 text-blue-400' : 'bg-blue-100 text-blue-700') :
-                      'bg-surface-2 text-encre-2'
-                    }`}>
+                    <Pastille ton={avoir.statut === 'payee' ? 'succes' : avoir.statut === 'envoye' ? 'info' : 'neutre'}>
                       {avoir.statut === 'payee' ? 'Appliqué' : avoir.statut === 'envoye' ? 'Émis' : 'Brouillon'}
-                    </span>
-                  </div>
-                  <span className="text-sm font-semibold text-red-600">{formatMoney(avoir.total_ttc)}</span>
-                </div>
+                    </Pastille>
+                  </span>
+                  <span className="text-sm font-semibold tabular-nums text-danger-texte">{formatMoney(avoir.total_ttc)}</span>
+                </li>
               ))}
-            </div>
-            <div className={`flex items-center justify-between pt-3 mt-3 border-t ${isDark ? 'border-slate-600' : 'border-red-200'}`}>
-              <div className="space-y-1">
-                <div className="flex justify-between gap-6 text-xs">
-                  <span className={textMuted}>Montant facturé</span>
-                  <span className={`font-medium ${textPrimary}`}>{formatMoney(selected.total_ttc)}</span>
+            </ul>
+            <div className="flex items-end justify-between gap-4 pt-3 mt-1 border-t border-bord">
+              <div className="space-y-1 text-sm">
+                <div className="flex justify-between gap-6">
+                  <span className="text-encre-3">Montant facturé</span>
+                  <span className="font-medium tabular-nums text-encre">{formatMoney(selected.total_ttc)}</span>
                 </div>
-                <div className="flex justify-between gap-6 text-xs">
-                  <span className={textMuted}>Total avoirs</span>
-                  <span className="font-medium text-red-600">-{formatMoney(totalAvoirs)}</span>
+                <div className="flex justify-between gap-6">
+                  <span className="text-encre-3">Total avoirs</span>
+                  <span className="font-medium tabular-nums text-danger-texte">-{formatMoney(totalAvoirs)}</span>
                 </div>
               </div>
               <div className="text-right">
-                <p className={`text-xs ${textMuted}`}>Restant dû</p>
-                <p className={`text-lg font-bold ${restantDu > 0 ? textPrimary : 'text-emerald-600'}`}>{formatMoney(restantDu)}</p>
+                <p className="text-sm text-encre-3">Restant dû</p>
+                <p className={`text-lg font-bold tabular-nums ${restantDu > 0 ? 'text-encre' : 'text-succes-texte'}`}>{formatMoney(restantDu)}</p>
               </div>
             </div>
           </div>
@@ -3153,56 +3523,20 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           />
         )}
 
-        {/* Devis follow-up alert */}
-        {isDevis && needsFollowUp(selected) && (
-          <div className={`rounded-xl p-4 border ${isDark ? 'bg-amber-900/30 border-amber-700' : 'bg-amber-50 border-amber-200'}`}>
-            <div className="flex items-center justify-between flex-wrap gap-3">
-              <div className="flex items-center gap-3">
-                <span className="text-xl">⏰</span>
-                <div>
-                  <p className={`font-medium text-sm ${isDark ? 'text-amber-300' : 'text-amber-800'}`}>
-                    Devis en attente · {getDaysSinceSent(selected)} jours
-                  </p>
-                  <p className={`text-xs ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>
-                    Envoyé le {dateLue(selected.date_envoi || selected.date).toLocaleDateString('fr-FR')} · {formatMoney(selected.total_ttc)}
-                  </p>
-                </div>
-              </div>
-              <div className="flex gap-2">
-                {/* Relance par les mêmes chemins que l'envoi : lien de signature, numéro international, e-mail
-                    avec le devis joint ; l'échange n'est consigné qu'une fois le message préparé ou parti (avant,
-                    recette du 9 oct. 2026 : wa.me/06…, mailto: sans devis ni lien, échange noté dès le clic) */}
-                <button
-                  onClick={() => sendWhatsApp(selected, { relanceDevis: true })}
-                  className="px-3 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors"
-                >
-                  <MessageCircle size={14} /> WhatsApp
-                </button>
-                <button
-                  onClick={() => sendEmail(selected, null, { relanceDevis: true })}
-                  className="px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors"
-                >
-                  <Mail size={14} /> Email
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Devis sans réponse : l'alerte de l'en-tête (« pensez à relancer ») ouvre la feuille « Relancer » ; l'encadré
+            orange qui la répétait ici, avec ses deux boutons pleins, a disparu (audit UX du 20 oct. 2026 : une alerte par fait) */}
 
-        {/* Devis expiry alert */}
-        {isDevis && (isExpiringSoon(selected) || isExpired(selected)) && (
-          <div className={`rounded-xl p-4 border ${isExpired(selected) ? 'bg-danger-fond border-danger-point/40' : 'bg-alerte-fond border-alerte-point/40'}`}>
-            <div className="flex items-center gap-3">
-              <span className="text-xl">{isExpired(selected) ? '❌' : '⏳'}</span>
-              <div>
-                <p className={`font-medium text-sm ${isExpired(selected) ? 'text-danger-texte' : 'text-alerte-texte'}`}>
-                  {isExpired(selected) ? 'Devis expiré' : getExpiryDaysLeft(selected) === 0 ? 'Dernier jour de validité' : `Expire dans ${getExpiryDaysLeft(selected)} jour${getExpiryDaysLeft(selected) > 1 ? 's' : ''}`}
-                </p>
-                <p className={`text-xs ${isExpired(selected) ? 'text-danger-texte' : 'text-alerte-texte'}`}>
-                  Valable jusqu'au {dateLue(finValidite(selected, entreprise)).toLocaleDateString('fr-FR')} · Émis le {dateLue(selected.date).toLocaleDateString('fr-FR')}
-                  {isExpired(selected) && ' · il ne peut plus être envoyé ni signé en ligne'}
-                </p>
-              </div>
+        {/* Devis bientôt expiré (un devis expiré le dit dans l'en-tête, en rouge, avec « Prolonger la validité ») */}
+        {isDevis && isExpiringSoon(selected) && !isExpired(selected) && (
+          <div role="note" className="rounded-2xl p-4 bg-alerte-fond text-alerte-texte flex items-start gap-3">
+            <Clock size={18} className="flex-shrink-0 mt-0.5" aria-hidden="true" />
+            <div>
+              <p className="font-semibold text-sm">
+                {getExpiryDaysLeft(selected) === 0 ? 'Dernier jour de validité' : `Expire dans ${getExpiryDaysLeft(selected)} jour${getExpiryDaysLeft(selected) > 1 ? 's' : ''}`}
+              </p>
+              <p className="text-sm">
+                Valable jusqu'au {dateLue(finValidite(selected, entreprise)).toLocaleDateString('fr-FR')} · Émis le {dateLue(selected.date).toLocaleDateString('fr-FR')}
+              </p>
             </div>
           </div>
         )}
@@ -3221,8 +3555,12 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
               executions={docExecs}
               steps={steps || []}
               doc={selected}
-              onSendNow={() => {
-                if (client) relances.skipToNextStep(selected, client).then(r => {
+              onSendNow={async () => {
+                if (!client) return;
+                // Ce qui part chez le client se confirme d'abord (audit UX du 20 oct. 2026, § 2.6)
+                const ok = await confirm({ title: 'Envoyer la relance maintenant ?', message: `À ${formatClientName(client, '') || 'votre client'}${client.email ? ` (${client.email})` : ''}, pour ${selected.numero}.` });
+                if (!ok) return;
+                relances.skipToNextStep(selected, client).then(r => {
                   if (r?.success) showToast('Relance envoyée !', 'success');
                   else showToast(r?.error || 'Erreur envoi relance', 'error');
                 });
@@ -3258,9 +3596,9 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           const pro = estClientPro(clientRetard);
           if (!pro && pen.joursRetard < 30) return null;
           return (
-            <div className="rounded-xl p-4 border bg-alerte-fond border-alerte-point/40">
+            <div className="rounded-2xl p-4 border bg-alerte-fond border-alerte-point/40">
               <div className="flex items-center gap-2 mb-3">
-                <AlertTriangle size={16} className="text-alerte-texte" />
+                <AlertTriangle size={16} className="text-alerte-texte" aria-hidden="true" />
                 <span className="font-medium text-sm text-alerte-texte">
                   {pro ? 'Pénalités de retard' : 'Retard de paiement'} · {pen.joursRetard} jour{pen.joursRetard > 1 ? 's' : ''}
                 </span>
@@ -3286,11 +3624,12 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                 </p>
               )}
               <div className="flex items-center justify-between gap-2 mt-3 pt-2 border-t border-alerte-point/40">
-                <p className="text-xs text-alerte-texte">
+                <p className="text-sm text-alerte-texte">
                   {pro ? 'Art. L441-10 C. com.' : 'Art. 1231-6 C. civ.'} — Échéance : {pen.echeance.toLocaleDateString('fr-FR')}
                 </p>
                 {pen.joursRetard >= 30 && (
-                  <button
+                  <Bouton
+                    taille="compacte" variante="secondaire" className="flex-shrink-0"
                     onClick={() => {
                       printMiseEnDemeure({
                         doc: { ...selected, montant_paye: dejaPaye(selected, paiements), date_echeance: selected.date_echeance || dateEcheance(selected.date, { conditionsPaiement: selected.conditionsPaiement || selected.conditions, delaiJours: entreprise?.delaiPaiement }) },
@@ -3301,10 +3640,9 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                         couleur,
                       });
                     }}
-                    className={`min-h-[44px] text-xs px-3 py-2 rounded-lg font-medium transition-colors flex-shrink-0 ${isDark ? 'bg-red-900/50 text-red-300 hover:bg-red-900/70' : 'bg-red-100 text-red-700 hover:bg-red-200'}`}
                   >
                     Mise en demeure
-                  </button>
+                  </Bouton>
                 )}
               </div>
             </div>
@@ -3312,7 +3650,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         })()}
 
         {/* ============ ZONE 3: TABBED DOCUMENT VIEW ============ */}
-        <div className={`rounded-xl sm:rounded-2xl border overflow-hidden ${cardBg}`}>
+        <div className={`rounded-2xl border overflow-hidden shadow-e1 ${cardBg}`}>
           <Tabs defaultValue="document" isDark={isDark}>
             <div className={`px-4 pt-4 border-b border-bord`}>
               <TabsList variant="underline" className="w-full justify-start gap-4">
@@ -3327,7 +3665,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                 )}
                 {getDocumentEmailStatus(selected.id).sent > 0 && (
                   <TabsTrigger value="emails" variant="underline" className="pb-3">
-                    Emails <span className={`ml-1 text-xs px-1.5 py-0.5 rounded-full ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`}>{getDocumentEmailStatus(selected.id).sent}</span>
+                    Emails <span className="ml-1 text-xs px-1.5 py-0.5 rounded-full bg-surface-2">{getDocumentEmailStatus(selected.id).sent}</span>
                   </TabsTrigger>
                 )}
               </TabsList>
@@ -3340,7 +3678,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                   {entreprise?.logo ? (
                     <img src={entreprise.logo} className="h-12 rounded-lg object-cover" alt={entreprise?.nom || ''} onError={(e) => { e.target.style.display = 'none'; }} />
                   ) : (
-                    <div className="w-12 h-12 rounded-lg flex items-center justify-center text-lg font-bold text-accent-texte" style={{background: `${couleur}20`}}>
+                    <div className="w-12 h-12 rounded-lg flex items-center justify-center text-lg font-bold bg-accent/10 text-accent-texte">
                       {(entreprise?.nom || 'E').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
                     </div>
                   )}
@@ -3350,7 +3688,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-lg font-bold text-accent-texte">{selected.type === 'facture' ? 'FACTURE' : 'DEVIS'}</p>
+                  <p className="text-lg font-bold text-accent-texte">{selected.facture_type === 'avoir' ? 'AVOIR' : selected.type === 'facture' ? 'FACTURE' : 'DEVIS'}</p>
                   <p className={`text-sm ${textMuted}`}>{selected.numero}</p>
                 </div>
               </div>
@@ -3358,7 +3696,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
               {/* Client info */}
               <div className={`mb-6 p-3 rounded-lg bg-fond`}>
                 <p className={`text-xs font-medium mb-1 ${textMuted}`}>Client</p>
-                <p className={`font-semibold ${client ? textPrimary : 'text-red-500'}`}>
+                <p className={`font-semibold ${client ? textPrimary : 'text-danger-texte'}`}>
                   {client ? `${client.prenom || ''} ${client.nom}`.trim() : (selected.client_nom || 'Client supprimé')}
                 </p>
                 {client?.adresse && <p className={`text-sm ${textMuted} whitespace-pre-line`}>{client.adresse}</p>}
@@ -3421,7 +3759,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                             <td className={`py-2.5 whitespace-pre-line ${textPrimary}`}>{l.description || ''}</td>
                             <td className={`text-right ${textSecondary}`}>{l.quantite || 0} {l.unite || ''}</td>
                             <td className={`text-right ${textSecondary}`}>{formatMoney(parseFloat(l.prixUnitaire || l.prix_unitaire || 0))}</td>
-                            <td className={`text-right font-medium ${getLineTotal(l) < 0 ? 'text-red-500' : textPrimary}`}>{formatMoney(getLineTotal(l))}</td>
+                            <td className={`text-right font-medium tabular-nums ${getLineTotal(l) < 0 ? 'text-danger-texte' : textPrimary}`}>{formatMoney(getLineTotal(l))}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -3472,57 +3810,65 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                     </>
                   )}
 
-                  {/* Paiements partiels reçus */}
-                  {(() => {
-                    if (selected.type !== 'facture') return null;
-                    const linkedPaiements = paiements.filter(p => p.facture_id === selected.id || p.document === selected.numero);
-                    if (linkedPaiements.length === 0) return null;
-                    const totalPaye = linkedPaiements.reduce((s, p) => s + (p.montant || 0), 0);
-                    const resteAPayer = (selected.total_ttc || 0) - totalPaye;
-                    return (
-                      <div className={`mt-3 pt-3 border-t border-bord`}>
-                        <p className={`text-xs font-medium mb-2 ${textMuted}`}>Paiements reçus</p>
-                        {linkedPaiements.map(p => {
-                          // Correction (098) : écriture négative motivée, jamais un encaissement effacé
-                          if (estCorrection(p)) {
-                            const corrige = linkedPaiements.find(x => x.id === p.reference);
-                            return (
-                              <div key={p.id} className="flex justify-between gap-3 text-sm py-1 text-danger-texte">
-                                <span className="min-w-0">{dateLue(p.date).toLocaleDateString('fr-FR')} · Correction{corrige ? ` de l'encaissement du ${dateLue(corrige.date).toLocaleDateString('fr-FR')}` : ''}{motifCorrection(p) ? ` : ${motifCorrection(p)}` : ''}</span>
-                                <span className="font-medium tabular-nums whitespace-nowrap">{formatMoney(p.montant)}</span>
-                              </div>
-                            );
-                          }
-                          const corrigeable = correctionPossible(p, linkedPaiements, selected);
-                          return (
-                            <div key={p.id} className={`flex items-center justify-between gap-3 text-sm py-1 ${textSecondary}`}>
-                              <span className="min-w-0">{dateLue(p.date).toLocaleDateString('fr-FR')} · {p.mode || 'Virement'}</span>
-                              <span className="flex items-center gap-2">
-                                <span className="font-medium text-emerald-600 tabular-nums whitespace-nowrap">{formatMoney(p.montant)}</span>
-                                {corrigeable > 0 && addPaiement && (
-                                  <button type="button" onClick={() => setCorrectionDe({ paiement: p, max: corrigeable })}
-                                    className="min-h-[44px] px-2 text-xs font-medium text-encre-2 hover:text-encre underline underline-offset-2"
-                                    aria-label={`Corriger l'encaissement du ${dateLue(p.date).toLocaleDateString('fr-FR')}`}>
-                                    Corriger
-                                  </button>
-                                )}
-                              </span>
-                            </div>
-                          );
-                        })}
-                        <div className={`flex justify-between font-bold pt-2 mt-1 border-t text-sm border-bord`}>
-                          <span className={resteAPayer <= 0 ? 'text-emerald-600' : ''}>
-                            {resteAPayer <= 0 ? '✅ Soldé' : 'Reste à payer'}
-                          </span>
-                          <span className={resteAPayer <= 0 ? 'text-emerald-600' : ''} style={resteAPayer > 0 ? {color: couleur} : {}}>
-                            {formatMoney(Math.max(0, resteAPayer))}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })()}
                 </div>
               </div>
+
+              {/* Paiements reçus (audit UX du 20 oct. 2026) : pleine largeur, une ligne par paiement — date et mode à gauche,
+                  montant à droite, « Corriger » à part (avant : dans la colonne des totaux, sur trois lignes, collé au montant) */}
+              {(() => {
+                if (selected.type !== 'facture') return null;
+                const linkedPaiements = paiements.filter(p => p.facture_id === selected.id || p.document === selected.numero);
+                if (linkedPaiements.length === 0) return null;
+                const reste = resteAPayer(selected, paiements);
+                const modeLu = (p) => libelleModePaiement(p.mode || p.methode || p.mode_paiement);
+                return (
+                  <section aria-label="Paiements reçus" className="mt-6 pt-4 border-t border-bord">
+                    <h4 className="text-sm font-semibold text-encre mb-1">Paiements reçus</h4>
+                    <ul className="divide-y divide-bord">
+                      {linkedPaiements.map(p => {
+                        // Correction (098) : écriture négative motivée, jamais un encaissement effacé
+                        if (estCorrection(p)) {
+                          const corrige = linkedPaiements.find(x => x.id === p.reference);
+                          return (
+                            <li key={p.id} className="flex items-start justify-between gap-3 text-sm py-2.5">
+                              <span className="min-w-0 text-encre-2">{dateLue(p.date).toLocaleDateString('fr-FR')} · Correction{corrige ? ` de l'encaissement du ${dateLue(corrige.date).toLocaleDateString('fr-FR')}` : ''}{motifCorrection(p) ? ` : ${motifCorrection(p)}` : ''}</span>
+                              <span className="font-semibold tabular-nums whitespace-nowrap text-danger-texte">{formatMoney(p.montant)}</span>
+                            </li>
+                          );
+                        }
+                        const corrigeable = correctionPossible(p, linkedPaiements, selected);
+                        return (
+                          <li key={p.id} className="flex items-center justify-between gap-3 text-sm min-h-[48px]">
+                            {/* La date, le mode dessous : au téléphone « Corriger » ne coupe plus le mode */}
+                            <span className="min-w-0 flex-1 py-1.5 sm:py-0">
+                              <span className="block sm:inline text-encre-2">{dateLue(p.date).toLocaleDateString('fr-FR')}</span>
+                              <span className="block sm:inline text-encre-3 sm:text-encre-2"><span className="hidden sm:inline"> · </span>{modeLu(p)}</span>
+                            </span>
+                            <span className="font-semibold text-encre tabular-nums whitespace-nowrap">{formatMoney(p.montant)}</span>
+                            {corrigeable > 0 && addPaiement ? (
+                              <Bouton taille="compacte" variante="discret" icone={RotateCcw} className="-mr-2 flex-shrink-0"
+                                aria-label={`Corriger l'encaissement du ${dateLue(p.date).toLocaleDateString('fr-FR')}`}
+                                onClick={() => setCorrectionDe({ paiement: p, max: corrigeable })}>
+                                Corriger
+                              </Bouton>
+                            ) : null}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                    <div className="flex items-center justify-between gap-3 pt-3 mt-1 border-t border-bord text-base font-bold">
+                      {reste <= 0.005 ? (
+                        <span className="inline-flex items-center gap-2 text-succes-texte"><CheckCircle size={18} aria-hidden="true" /> Soldée</span>
+                      ) : (
+                        <>
+                          <span className="text-encre">Reste à payer</span>
+                          <span className="text-encre tabular-nums">{formatMoney(reste)}</span>
+                        </>
+                      )}
+                    </div>
+                  </section>
+                );
+              })()}
 
               {/* Signature : sur place ou à distance (avant : rien pour un devis signé par le lien) */}
               {(() => {
@@ -3531,11 +3877,11 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                 return (
                   <div className={`mt-6 pt-4 border-t border-bord`}>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <CheckCircle size={16} className="text-emerald-500" />
-                      <span className="text-emerald-600 font-medium text-sm">
+                      <CheckCircle size={16} className="text-succes-texte" aria-hidden="true" />
+                      <span className="text-succes-texte font-medium text-sm">
                         Accepté{sig.nom ? ` par ${sig.nom}` : ' par le client'}
                       </span>
-                      {sig.date && <span className={`text-xs ${textMuted}`}>· {dateLue(sig.date).toLocaleDateString('fr-FR')}</span>}
+                      {sig.date && <span className="text-sm text-encre-3">· {dateLue(sig.date).toLocaleDateString('fr-FR')}</span>}
                     </div>
                     {sig.image && <img src={sig.image} alt={`Signature${sig.nom ? ` de ${sig.nom}` : ''}`} className="mt-2 max-h-20 max-w-[200px] rounded border border-bord bg-white p-1" />}
                   </div>
@@ -3609,24 +3955,23 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                         Factures d'acompte ({allAcomptesForSource.length})
                       </p>
                       <div className="space-y-2">
-                        {allAcomptesForSource.map((ac, idx) => {
+                        {allAcomptesForSource.map((ac) => {
                           const isCurrent = ac.id === selected.id;
                           return (
                             <div
                               key={ac.id}
                               onClick={() => !isCurrent && setSelected(ac)}
                               className={cn(
-                                'flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors',
-                                isCurrent ? (isDark ? 'bg-blue-900/30 border border-blue-700' : 'bg-blue-50 border border-blue-200') : 'cursor-pointer',
-                                !isCurrent && 'hover:bg-surface-2',
+                                'flex items-center justify-between px-3 py-2 min-h-[44px] rounded-lg text-sm transition-colors',
+                                isCurrent ? 'bg-surface-2 border border-bord-fort' : 'cursor-pointer hover:bg-surface-2',
                               )}
                             >
                               <div className="flex items-center gap-2">
-                                <span className={cn('font-medium', isCurrent ? (isDark ? 'text-blue-300' : 'text-blue-700') : textPrimary)}>
+                                <span className={cn('font-medium', textPrimary)}>
                                   {ac.numero}
                                 </span>
-                                {ac.acompte_pct && <span className={`text-xs ${textMuted}`}>{ac.acompte_pct}%</span>}
-                                {isCurrent && <span className={`text-xs px-1.5 py-0.5 rounded ${isDark ? 'bg-blue-900/50 text-blue-300' : 'bg-blue-100 text-blue-700'}`}>actuel</span>}
+                                {ac.acompte_pct && <span className="text-sm text-encre-3">{ac.acompte_pct} %</span>}
+                                {isCurrent && <Pastille ton="neutre">affichée</Pastille>}
                               </div>
                               <span className={cn('font-semibold', textPrimary)}>{formatMoney(ac.total_ttc)}</span>
                             </div>
@@ -3647,9 +3992,9 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 
                   {/* Échéancier progress if available */}
                   {sourceEcheancier && sourceEcheancier.etapes?.length > 0 && (
-                    <div className={`rounded-lg border p-4 ${isDark ? 'border-blue-800 bg-blue-900/10' : 'border-blue-200 bg-blue-50/50'}`}>
-                      <p className={`text-sm font-medium mb-2 ${isDark ? 'text-blue-400' : 'text-blue-700'}`}>
-                        <ClipboardList size={14} className="inline mr-1" />
+                    <div className="rounded-lg border p-4 border-bord bg-fond">
+                      <p className="text-sm font-medium mb-2 text-encre">
+                        <ClipboardList size={14} className="inline mr-1 text-encre-3" aria-hidden="true" />
                         Échéancier de paiement
                       </p>
                       <div className="space-y-1">
@@ -3657,7 +4002,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                           <div key={etape.numero} className={`flex items-center justify-between text-xs py-1 ${textMuted}`}>
                             <div className="flex items-center gap-1.5">
                               {(etape.statut === 'facture' || etape.statut === 'paye') ? (
-                                <CheckCircle size={12} className={etape.statut === 'paye' ? 'text-emerald-500' : 'text-blue-500'} />
+                                <CheckCircle size={12} className={etape.statut === 'paye' ? 'text-succes-texte' : 'text-encre-2'} aria-hidden="true" />
                               ) : (
                                 <span className={`w-3 h-3 rounded-full border border-bord-fort`} />
                               )}
@@ -3680,7 +4025,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                   <p className={`text-sm font-medium ${textPrimary}`}>Historique d'envoi</p>
                   {getDocumentEmailStatus(selected.id).records.map((rec, idx) => (
                     <div key={rec.id || idx} className={`flex items-center gap-3 p-3 rounded-lg bg-fond`}>
-                      <Mail size={16} className="text-sky-500 flex-shrink-0" />
+                      <Mail size={16} className="text-encre-3 flex-shrink-0" aria-hidden="true" />
                       <div className="flex-1 min-w-0">
                         <p className={`text-sm ${textPrimary} truncate`}>{rec.to}</p>
                         <p className={`text-xs ${textMuted}`}>{rec.subject}</p>
@@ -3689,9 +4034,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                         <p className={`text-xs ${textMuted}`}>{dateLue(rec.sentAt).toLocaleDateString('fr-FR')}</p>
                         <p className={`text-xs ${textMuted}`}>{new Date(rec.sentAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</p>
                       </div>
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${isDark ? 'bg-emerald-900/50 text-emerald-300' : 'bg-emerald-100 text-emerald-700'}`}>
-                        Envoyé
-                      </span>
+                      <Pastille ton="succes">Envoyé</Pastille>
                     </div>
                   ))}
                 </div>
@@ -3702,65 +4045,67 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         {/* (Bloc « Relances · + Programmer » retiré le 10 oct. 2026 : il annonçait « Relance programmée » sans rien
             programmer, et ses étapes J+7/J+15/J+30 s'affichaient même relances désactivées. Le vrai suivi est le
             RelanceTimelineWidget.) */}
-        {/* Modal Acompte */}
-        {showAcompteModal && (
-          <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
-            <div className={`${cardBg} rounded-t-2xl sm:rounded-2xl p-6 w-full sm:max-w-md`}>
-              <h3 className="font-bold text-lg mb-2"> Facture d'acompte</h3>
-              <p className={`mb-4 text-sm ${textMuted}`}>Sécurisez votre engagement avant les travaux</p>
-              <div className="space-y-3 mb-4">
-                {[20, 30, 40, 50].map(pct => (
-                  <button key={pct} onClick={() => setAcomptePct(pct)} className={`w-full flex items-center justify-between p-4 rounded-xl border-2 transition-all ${acomptePct === pct ? (isDark ? 'border-purple-500 bg-purple-900/30' : 'border-purple-500 bg-purple-50') : 'border-bord'}`}>
-                    <span className="font-medium">Acompte {pct}%</span>
-                    <span className="text-lg font-bold" style={{ color: acomptePct === pct ? couleur : '#64748b' }}>{formatMoney(ttcAcompte(pct))}</span>
+        {/* Facture d'acompte : feuille du bas au téléphone, pied collé (ui/Modal) */}
+        <Modal isOpen={!!showAcompteModal} onClose={() => setShowAcompteModal(false)} size="sm" closeOnBackdrop={!facturationEnCours} closeOnEscape={!facturationEnCours}>
+          <ModalHeader>
+            <ModalTitle>Facture d'acompte</ModalTitle>
+            <ModalDescription>Un pourcentage du devis {selected.numero}, à facturer avant le solde.</ModalDescription>
+          </ModalHeader>
+          <ModalBody className="space-y-3">
+            <div role="radiogroup" aria-label="Pourcentage d'acompte" className="space-y-2">
+              {[20, 30, 40, 50].map(pct => {
+                const oui = acomptePct === pct;
+                return (
+                  <button key={pct} type="button" role="radio" aria-checked={oui} onClick={() => setAcomptePct(pct)}
+                    className={`w-full min-h-[56px] flex items-center justify-between px-4 rounded-xl border-2 transition-colors ${oui ? 'border-accent bg-accent/10' : 'border-bord hover:border-bord-fort'}`}>
+                    <span className="font-medium text-encre">Acompte {pct} %</span>
+                    <span className={`text-lg font-bold tabular-nums ${oui ? 'text-encre' : 'text-encre-3'}`}>{formatMoney(ttcAcompte(pct))}</span>
                   </button>
-                ))}
-                <div className={`flex items-center gap-3 p-3 bg-fond rounded-xl`}>
-                  {/* Saisie libre : effacer puis taper ne remet plus 30 ; bornes vérifiées à la création (1 à 99 %) */}
-                  <input type="text" inputMode="decimal" aria-label="Pourcentage d'acompte" value={acomptePct} onChange={e => { const v = e.target.value.replace(',', '.').replace(/[^\d.]/g, ''); setAcomptePct(v === '' ? '' : (v.endsWith('.') ? v : Number(v))); }} className="w-20 px-3 py-2 border rounded-xl text-center" />
-                  <span className="text-slate-500">%</span>
-                  <span className="ml-auto font-bold">{pourcentageAcompteValide(acomptePct) ? formatMoney(ttcAcompte(acomptePct)) : '—'}</span>
-                </div>
-              </div>
-              {/* Relecture juridique du 10 oct. 2026 : il n'y a PAS de plafond légal d'acompte pour des travaux
-                  (l'ancien message « limité à 30 % par la loi, art. L. 214-1 » était faux). Le devis signé fait foi
-                  (C. civ. art. 1103) ; chez un particulier, contrat signé hors établissement : aucun paiement avant
-                  7 jours (C. conso. art. L221-10), sauf dépannage urgent demandé par le client. */}
-              {septJoursDe(selected) ? (
-                <div role="alert" data-ui="AcompteSeptJours" className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4 text-xs text-amber-800 flex items-start gap-2">
-                  <AlertTriangle size={14} className="flex-shrink-0 mt-0.5" />
-                  <span>{raisonSeptJours(septJoursDe(selected))}</span>
-                </div>
-              ) : Number(selected.acompte_pct) > 0 && Number(acomptePct) > Number(selected.acompte_pct) ? (
-                <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4 text-xs text-amber-800 flex items-center gap-2">
-                  <AlertTriangle size={14} className="flex-shrink-0" />
-                  <span>Le devis signé prévoit un acompte de {pourcent(Number(selected.acompte_pct))} : en facturer davantage demande l'accord du client.</span>
-                </div>
-              ) : !estClientPro(clients.find(c => c.id === selected.client_id)) ? (
-                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 mb-4 text-xs text-slate-600">
-                  Pas de plafond légal d'acompte pour des travaux. Devis signé chez le client : aucun paiement avant 7 jours après la signature (art. L221-10 du Code de la consommation), sauf dépannage urgent qu'il a demandé.
-                </div>
-              ) : (
-                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 mb-4 text-xs text-slate-600">
-                  Acompte de {pourcent(acomptePct)} · {formatMoney(ttcAcompte(acomptePct))}
-                </div>
-              )}
-              <div className="flex gap-3">
-                <button onClick={() => setShowAcompteModal(false)} className="flex-1 px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-xl flex items-center justify-center gap-1.5 min-h-[44px] transition-colors"><X size={16} />Annuler</button>
-                <button onClick={createAcompte} disabled={facturationEnCours || !pourcentageAcompteValide(acomptePct) || !!septJoursDe(selected)} className="flex-1 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white rounded-xl flex items-center justify-center gap-1.5 min-h-[44px] transition-colors font-semibold">
-                  {acomptePct > 30 ? <AlertTriangle size={16} /> : <Check size={16} />}
-                  {facturationEnCours ? 'Facturation…' : `Facturer ${pourcentageAcompteValide(acomptePct) ? formatMoney(ttcAcompte(acomptePct)) : ''}`}
-                </button>
-              </div>
+                );
+              })}
             </div>
-          </div>
-        )}
+            <label className="flex items-center gap-3 px-3 py-2 bg-surface-2 rounded-xl text-encre">
+              <span className="text-sm text-encre-2">Autre</span>
+              {/* Saisie libre : effacer puis taper ne remet plus 30 ; bornes vérifiées à la création (1 à 99 %) */}
+              <input type="text" inputMode="decimal" aria-label="Pourcentage d'acompte" value={acomptePct} onChange={e => { const v = e.target.value.replace(',', '.').replace(/[^\d.]/g, ''); setAcomptePct(v === '' ? '' : (v.endsWith('.') ? v : Number(v))); }}
+                className="w-20 h-11 px-3 border border-bord-fort rounded-xl text-center text-base bg-surface text-encre" />
+              <span className="text-encre-3">%</span>
+              <span className="ml-auto font-bold tabular-nums">{pourcentageAcompteValide(acomptePct) ? formatMoney(ttcAcompte(acomptePct)) : '—'}</span>
+            </label>
+            {/* Relecture juridique du 10 oct. 2026 : il n'y a PAS de plafond légal d'acompte pour des travaux
+                (l'ancien message « limité à 30 % par la loi, art. L. 214-1 » était faux). Le devis signé fait foi
+                (C. civ. art. 1103) ; chez un particulier, contrat signé hors établissement : aucun paiement avant
+                7 jours (C. conso. art. L221-10), sauf dépannage urgent demandé par le client. */}
+            {septJoursDe(selected) ? (
+              <div role="alert" data-ui="AcompteSeptJours" className="bg-alerte-fond rounded-xl p-3 text-sm text-alerte-texte flex items-start gap-2">
+                <AlertTriangle size={16} className="flex-shrink-0 mt-0.5" aria-hidden="true" />
+                <span>{raisonSeptJours(septJoursDe(selected))}</span>
+              </div>
+            ) : Number(selected.acompte_pct) > 0 && Number(acomptePct) > Number(selected.acompte_pct) ? (
+              <div className="bg-alerte-fond rounded-xl p-3 text-sm text-alerte-texte flex items-start gap-2">
+                <AlertTriangle size={16} className="flex-shrink-0 mt-0.5" aria-hidden="true" />
+                <span>Le devis signé prévoit un acompte de {pourcent(Number(selected.acompte_pct))} : en facturer davantage demande l'accord du client.</span>
+              </div>
+            ) : !estClientPro(clients.find(c => c.id === selected.client_id)) ? (
+              <p className="text-sm text-encre-3">
+                Pas de plafond légal d'acompte pour des travaux. Devis signé chez le client : aucun paiement avant 7 jours après la signature (art. L221-10 du Code de la consommation), sauf dépannage urgent qu'il a demandé.
+              </p>
+            ) : null}
+          </ModalBody>
+          <ModalFooter>
+            <Bouton variante="discret" onClick={() => setShowAcompteModal(false)}>Annuler</Bouton>
+            <Bouton variante="principal" icone={Check} onClick={createAcompte} chargement={facturationEnCours} disabled={!pourcentageAcompteValide(acomptePct) || !!septJoursDe(selected)}>
+              {facturationEnCours ? 'Facturation…' : `Facturer ${pourcentageAcompteValide(acomptePct) ? formatMoney(ttcAcompte(acomptePct)) : ''}`}
+            </Bouton>
+          </ModalFooter>
+        </Modal>
 
         {/* Modal Échéancier d'acomptes */}
         <AcompteEcheancierModal
           isOpen={showEcheancierModal}
           onClose={() => setShowEcheancierModal(false)}
           devis={selected}
+          franchise={franchiseAppliquee(selected, entreprise)}
           isDark={isDark}
           couleur={couleur}
           modeDiscret={modeDiscret}
@@ -3788,104 +4133,51 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           </div>
         )}
 
-        {/* Modal création chantier */}
-        {showChantierModal && (
-          <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={() => setShowChantierModal(false)}>
-            <div className={`bg-surface rounded-t-2xl sm:rounded-2xl p-6 w-full max-w-lg animate-slide-up sm:animate-fade-in`} onClick={e => e.stopPropagation()}>
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${couleur}15` }}>
-                  <Building2 size={20} className="text-accent-texte" />
-                </div>
-                <div>
-                  <h3 className={`text-lg font-bold ${textPrimary}`}>Créer un chantier</h3>
-                  <p className={`text-sm ${textMuted}`}>A partir du devis {selected.numero}</p>
-                </div>
-              </div>
-
-              {/* Récapitulatif financier */}
-              <div className={`rounded-xl p-4 mb-4 ${isDark ? 'bg-emerald-900/20 border border-emerald-800' : 'bg-emerald-50 border border-emerald-200'}`}>
-                <p className={`text-sm font-medium mb-2 ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>Revenu prévu</p>
-                <p className="text-2xl font-bold text-accent-texte">{modeDiscret ? '·····' : `${(selected.total_ht || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} € HT`}</p>
-                <p className={`text-sm ${textMuted}`}>{(selected.total_ttc || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} € TTC</p>
-              </div>
-
-              {/* Formulaire */}
-              <div className="space-y-4">
-                <div>
-                  <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Nom du chantier *</label>
-                  <input
-                    className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`}
-                    value={chantierForm.nom}
-                    onChange={e => setChantierForm(p => ({ ...p, nom: e.target.value }))}
-                    placeholder="Ex: Rénovation cuisine"
-                  />
-                </div>
-                <div>
-                  <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Adresse du chantier</label>
-                  <input
-                    className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`}
-                    value={chantierForm.adresse}
-                    onChange={e => setChantierForm(p => ({ ...p, adresse: e.target.value }))}
-                    placeholder="Ex: 12 rue des Lilas, 75011 Paris"
-                  />
-                </div>
-              </div>
-
-              {/* Info */}
-              <p className={`text-xs ${textMuted} mt-4`}>
-                Le chantier sera automatiquement lié à ce devis. Le revenu prévu ({modeDiscret ? '·····' : `${(selected.total_ht || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`}) sera utilisé pour calculer la marge.
-              </p>
-
-              {/* Actions */}
-              <div className="flex gap-3 mt-6">
-                <button onClick={() => setShowChantierModal(false)} className={`flex-1 px-4 py-2.5 rounded-xl bg-surface-2 text-encre-2`}>
-                  Annuler
-                </button>
-                <button
-                  onClick={createChantierFromDevis}
-                  disabled={!chantierForm.nom}
-                  className="flex-1 px-4 py-2.5 rounded-xl disabled:opacity-50 flex items-center justify-center gap-2 bg-accent text-sur-accent"
-                >
-                  <Building2 size={16} /> Créer le chantier
-                </button>
-              </div>
+        {/* Créer le chantier du devis : feuille du bas au téléphone (ui/Modal) */}
+        <Modal isOpen={!!showChantierModal} onClose={() => setShowChantierModal(false)} size="md">
+          <ModalHeader>
+            <ModalTitle>Créer un chantier</ModalTitle>
+            <ModalDescription>À partir du devis {selected.numero}</ModalDescription>
+          </ModalHeader>
+          <ModalBody className="space-y-4">
+            {/* Revenu prévu : une information, pas un statut (audit UX du 20 oct. 2026 : l'encadré vert « succès » décorait) */}
+            {/* En franchise de TVA : une seule ligne, le montant seul (ni HT ni TTC, relecture juriste-btp du 24 oct. 2026) */}
+            <div className="rounded-xl p-4 bg-surface-2">
+              <p className="text-sm font-medium text-encre-2">Revenu prévu</p>
+              {franchiseAppliquee(selected, entreprise) ? (
+                <p className="text-2xl font-bold tabular-nums text-encre">{modeDiscret ? '·····' : formatMoney(selected.total_ttc || selected.total_ht || 0)}</p>
+              ) : (
+                <>
+                  <p className="text-2xl font-bold tabular-nums text-encre">{modeDiscret ? '·····' : `${(selected.total_ht || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} € HT`}</p>
+                  <p className="text-sm text-encre-3 tabular-nums">{modeDiscret ? '·····' : `${(selected.total_ttc || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} € TTC`}</p>
+                </>
+              )}
             </div>
-          </div>
-        )}
+            <Champ
+              libelle="Nom du chantier"
+              value={chantierForm.nom}
+              onChange={e => setChantierForm(p => ({ ...p, nom: e.target.value }))}
+              placeholder="Ex: Rénovation cuisine"
+            />
+            <Champ
+              libelle="Adresse du chantier" facultatif
+              value={chantierForm.adresse}
+              onChange={e => setChantierForm(p => ({ ...p, adresse: e.target.value }))}
+              placeholder="Ex: 12 rue des Lilas, 75011 Paris"
+            />
+            <p className="text-sm text-encre-3">
+              Le chantier sera lié à ce devis. Le revenu prévu ({modeDiscret ? '·····' : `${(selected.total_ht || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`}) sert à calculer la marge.
+            </p>
+          </ModalBody>
+          <ModalFooter>
+            <Bouton variante="discret" onClick={() => setShowChantierModal(false)}>Annuler</Bouton>
+            <Bouton variante="principal" icone={Building2} onClick={createChantierFromDevis} disabled={!chantierForm.nom}>Créer le chantier</Bouton>
+          </ModalFooter>
+        </Modal>
 
-        {/* PDF Preview Modal */}
-        {showPdfPreview && (
-          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4 animate-fade-in" onClick={() => setShowPdfPreview(false)}>
-            <div className={`bg-surface-2 rounded-t-2xl sm:rounded-2xl w-full sm:max-w-4xl h-[95vh] sm:h-[90vh] shadow-2xl flex flex-col overflow-hidden`} onClick={e => e.stopPropagation()}>
-              <div className={`p-3 sm:p-4 border-b border-bord bg-surface flex items-center justify-between gap-2 flex-shrink-0`}>
-                <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                  <div className="p-2 rounded-lg flex-shrink-0" style={{ background: `${couleur}20` }}>
-                    <FileText size={18} className="sm:w-5 sm:h-5 text-accent-texte" />
-                  </div>
-                  <div className="min-w-0">
-                    <h2 className={`font-bold text-base sm:text-lg ${textPrimary} truncate`}>Aperçu du document</h2>
-                    <p className={`text-xs sm:text-sm ${textMuted} hidden sm:block`}>Format A4 - Pret pour impression</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
-                  <button onClick={() => tryDownload(selected, printPDF)} className="px-3 sm:px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl flex items-center gap-1.5 sm:gap-2 min-h-[44px] transition-colors text-sm">
-                    <Download size={16} className="sm:w-[18px] sm:h-[18px]" />
-                    <span className="hidden sm:inline">Imprimer / PDF</span>
-                    <span className="sm:hidden">PDF</span>
-                  </button>
-                  <button onClick={() => setShowPdfPreview(false)} className={`p-2.5 rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-200'}`}>
-                    <X size={20} className={textPrimary} />
-                  </button>
-                </div>
-              </div>
-              <div className="flex-1 overflow-auto p-4 sm:p-8 flex justify-center">
-                <div className="bg-white shadow-2xl rounded-sm w-full max-w-[210mm] min-h-[297mm]" style={{ boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.05)' }}>
-                  <iframe srcDoc={pdfContent} sandbox="" className="w-full h-full min-h-[297mm] border-0" title="Aperçu du document" />
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+      {fenetreAssigner}
+      {fenetreApercu}
+      {feuilleRelance}
 
         {fenetreModele}
       <Snackbar />
@@ -3902,273 +4194,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           couleur={couleur}
         />
 
-        {/* Signature Link Modal */}
-        {/* Creation success modal */}
-        {showCreationSuccess && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={() => setShowCreationSuccess(null)}>
-            <div className={`bg-surface rounded-t-2xl sm:rounded-2xl w-full sm:max-w-sm shadow-2xl p-6`} onClick={e => e.stopPropagation()}>
-              {/* Success animation */}
-              <div className="flex justify-center mb-4">
-                <div className="w-16 h-16 rounded-full flex items-center justify-center" style={{ backgroundColor: `${couleur}15` }}>
-                  <CheckCircle size={32} className="text-accent-texte" />
-                </div>
-              </div>
-              <h3 className={`text-xl font-bold text-center mb-1 text-encre`}>
-                {showCreationSuccess.devis?.type === 'facture' ? 'Facture' : 'Devis'} cree !
-              </h3>
-              <p className={`text-sm text-center mb-1 text-encre-3`}>
-                N&deg; {showCreationSuccess.numero}
-              </p>
-              <p className={`text-2xl font-bold text-center mb-5 text-accent-texte`}>
-                {formatMoney(showCreationSuccess.devis?.total_ttc)}
-              </p>
-
-              <button
-                onClick={() => {
-                  setShowCreationSuccess(null);
-                  if (showCreationSuccess.devis) trySend(showCreationSuccess.devis, sendEmail);
-                }}
-                className="w-full py-3 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all hover:opacity-90 shadow-md mb-3 bg-accent text-sur-accent"
-              >
-                <Send size={16} /> Envoyer maintenant
-              </button>
-              <button
-                onClick={() => setShowCreationSuccess(null)}
-                className={`w-full py-2.5 rounded-xl text-sm font-medium transition-colors text-encre-3 hover:text-encre-2`}
-              >
-                Plus tard
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Email client manquant — saisie inline + enregistrement sur la fiche */}
-        {askEmail && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={() => setAskEmail(null)}>
-            <div className={`bg-surface rounded-t-2xl sm:rounded-2xl w-full sm:max-w-sm shadow-2xl p-6`} onClick={e => e.stopPropagation()}>
-              <h3 className={`text-lg font-bold mb-1 ${textPrimary}`}>Email du client ?</h3>
-              <p className={`text-sm mb-4 ${textMuted}`}>
-                {(() => { const c = clients.find(x => x.id === askEmail.doc?.client_id); return `${formatClientName(c) || 'Ce client'} n'a pas d'email enregistré. Saisissez-le pour envoyer le ${askEmail.doc?.type === 'facture' ? 'la facture' : 'devis'} — il sera ajouté à sa fiche.`; })()}
-              </p>
-              <input
-                type="email" autoFocus value={askEmailValue}
-                onChange={e => setAskEmailValue(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Escape') setAskEmail(null); }}
-                placeholder="client@exemple.fr"
-                className={`w-full px-4 py-3 border rounded-xl mb-4 ${inputBg}`}
-              />
-              <button
-                disabled={!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(askEmailValue.trim())}
-                onClick={async () => {
-                  const email = askEmailValue.trim();
-                  const doc = askEmail.doc;
-                  setAskEmail(null);
-                  try { await ctxUpdateClient?.(doc.client_id, { email }); } catch { /* l'envoi reste possible */ }
-                  sendEmail(doc, email);
-                }}
-                className="w-full py-3 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all hover:opacity-90 shadow-md disabled:opacity-50 mb-2 bg-accent text-sur-accent"
-              >
-                <Send size={16} /> Enregistrer et envoyer
-              </button>
-              <button onClick={() => setAskEmail(null)} className={`w-full py-2.5 rounded-xl text-sm font-medium text-encre-3 hover:text-encre-2`}>
-                Annuler
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Pre-send validation issues modal */}
-        {sendValidationIssues && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={() => setSendValidationIssues(null)}>
-            <div className={`bg-surface rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md shadow-2xl`} onClick={e => e.stopPropagation()}>
-              <div className="p-6">
-                {/* Header */}
-                <div className="flex items-center gap-3 mb-4">
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center ${sendValidationIssues.isDownload ? (isDark ? 'bg-amber-900/40' : 'bg-amber-50') : (isDark ? 'bg-red-900/40' : 'bg-red-50')}`}>
-                    <AlertTriangle size={24} className={sendValidationIssues.isDownload ? 'text-amber-500' : 'text-red-500'} />
-                  </div>
-                  <div>
-                    <h3 className={`text-lg font-bold ${textPrimary}`}>{sendValidationIssues.isDownload ? 'Profil incomplet' : 'Envoi impossible'}</h3>
-                    <p className={`text-sm ${textMuted}`}>{sendValidationIssues.isDownload ? 'Votre profil entreprise est incomplet' : 'Corrigez ces éléments avant d\'envoyer'}</p>
-                  </div>
-                </div>
-
-                {/* Legal conformity warning */}
-                {sendValidationIssues.issues.some(i => i.isLegal) && (
-                  <div className={`rounded-xl p-3 mb-4 ${isDark ? 'bg-amber-900/20 border border-amber-800/50' : 'bg-amber-50 border border-amber-200'}`}>
-                    <p className={`text-xs ${isDark ? 'text-amber-300' : 'text-amber-800'}`}>
-                      <strong>⚖️ Conformité légale :</strong> Votre devis ne sera pas conforme à la réglementation française sans ces informations.
-                      <button
-                        onClick={() => {
-                          const firstLegal = sendValidationIssues.issues.find(i => i.isLegal);
-                          setSendValidationIssues(null);
-                          setSelected(null);
-                          setPage('settings');
-                          if (firstLegal?.settingsTab) {
-                            setTimeout(() => {
-                              window.dispatchEvent(new CustomEvent('navigate-settings-tab', {
-                                detail: { tab: firstLegal.settingsTab, fieldId: firstLegal.settingsField }
-                              }));
-                            }, 200);
-                          }
-                        }}
-                        className="ml-1 underline font-semibold hover:opacity-80"
-                        style={{ color: isDark ? '#fbbf24' : '#d97706' }}
-                      >
-                        Compléter votre profil maintenant →
-                      </button>
-                    </p>
-                  </div>
-                )}
-
-                {/* Issues list */}
-                <div className="space-y-2 mb-6">
-                  {sendValidationIssues.issues.map(issue => (
-                    <div key={issue.id} className={`flex items-start gap-3 p-3 rounded-xl border bg-fond border-bord`}>
-                      <XCircle size={16} className="text-red-500 shrink-0 mt-0.5" />
-                      <div className="flex-1 min-w-0">
-                        <p className={`text-sm ${textPrimary}`}>{issue.label}</p>
-                      </div>
-                      {issue.action === 'settings' && (
-                        <button
-                          onClick={() => {
-                            setSendValidationIssues(null);
-                            setSelected(null);
-                            setPage('settings');
-                            // Deep link to specific settings tab/field
-                            if (issue.settingsTab) {
-                              setTimeout(() => {
-                                window.dispatchEvent(new CustomEvent('navigate-settings-tab', {
-                                  detail: { tab: issue.settingsTab, fieldId: issue.settingsField }
-                                }));
-                              }, 200);
-                            }
-                          }}
-                          className="text-xs font-medium px-2.5 py-1 rounded-lg shrink-0 transition-colors text-accent-texte"
-                          style={{ backgroundColor: `${couleur}15` }}
-                        >
-                          {issue.actionLabel}
-                        </button>
-                      )}
-                      {issue.action === 'edit' && (
-                        <button
-                          onClick={() => {
-                            const doc = sendValidationIssues.doc;
-                            setSendValidationIssues(null);
-                            if (doc) openEditor(doc);
-                          }}
-                          className="text-xs font-medium px-2.5 py-1 rounded-lg shrink-0 transition-colors text-accent-texte"
-                          style={{ backgroundColor: `${couleur}15` }}
-                        >
-                          {issue.actionLabel}
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-
-                {/* Actions */}
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => setSendValidationIssues(null)}
-                    className={`flex-1 py-2.5 rounded-xl font-medium text-sm transition-colors ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
-                  >
-                    Compris
-                  </button>
-                  {sendValidationIssues.sendFn && sendValidationIssues.isDownload && sendValidationIssues.issues.every(i => i.isLegal) && (
-                    <button
-                      onClick={() => { const fn = sendValidationIssues.sendFn; const doc = sendValidationIssues.doc; setSendValidationIssues(null); fn(doc); }}
-                      className="flex-1 py-2.5 rounded-xl font-medium text-sm transition-colors hover:opacity-90 bg-accent text-sur-accent"
-                    >
-                      Télécharger quand même
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Post-send confirmation modal */}
-        {showSendConfirmation && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={() => setShowSendConfirmation(null)}>
-            <div className={`bg-surface rounded-t-2xl sm:rounded-2xl w-full sm:max-w-sm shadow-2xl p-6`} onClick={e => e.stopPropagation()}>
-              {/* Success icon */}
-              <div className="flex justify-center mb-4">
-                <div className="w-14 h-14 rounded-full flex items-center justify-center" style={{ backgroundColor: `${couleur}15` }}>
-                  <CheckCircle size={28} className="text-accent-texte" />
-                </div>
-              </div>
-              <h3 className={`text-lg font-bold text-center mb-1 text-encre`}>
-                {showSendConfirmation.prepare
-                  ? `Message prêt dans ${showSendConfirmation.canal}`
-                  : showSendConfirmation.relance ? 'Relance envoyée !' : `${showSendConfirmation.doc?.type === 'facture' ? 'Facture envoyée' : 'Devis envoyé'} !`}
-              </h3>
-              <p className={`text-sm text-center mb-5 text-encre-3`}>
-                {showSendConfirmation.prepare
-                  ? `Appuyez sur « Envoyer » dans ${showSendConfirmation.canal} pour que votre client le reçoive.`
-                  : `via ${showSendConfirmation.canal}`}
-              </p>
-
-              {/* Summary */}
-              <div className={`rounded-xl p-4 mb-4 space-y-2 bg-fond`}>
-                <div className="flex justify-between text-sm">
-                  <span className="text-encre-3">Client</span>
-                  <span className={`font-medium text-encre`}>{showSendConfirmation.clientName}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-encre-3">Montant</span>
-                  <span className={`font-bold text-encre`}>{formatMoney(showSendConfirmation.montant)}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-encre-3">Canal</span>
-                  <span className={`font-medium text-encre`}>{showSendConfirmation.canal}</span>
-                </div>
-              </div>
-
-              {/* Copy signature link */}
-              {showSendConfirmation.doc?.signature_token && (
-                <button
-                  onClick={() => {
-                    const url = buildSignatureUrl(showSendConfirmation.doc.signature_token);
-                    navigator.clipboard.writeText(url);
-                    showToast('Lien de signature copié !', 'success');
-                  }}
-                  className={`w-full px-4 py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2 mb-3 transition-colors ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-200' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'}`}
-                >
-                  <Link2 size={16} /> Copier le lien de signature
-                </button>
-              )}
-
-              {/* Send via other channel */}
-              <div className="flex gap-2 mb-3">
-                {showSendConfirmation.canal !== 'WhatsApp' && (
-                  <button
-                    onClick={() => { sendWhatsApp(showSendConfirmation.doc); }}
-                    className="flex-1 px-3 py-2 rounded-xl text-sm font-medium bg-green-500 hover:bg-green-600 text-white flex items-center justify-center gap-2 transition-colors"
-                  >
-                    <MessageCircle size={14} /> WhatsApp
-                  </button>
-                )}
-                {showSendConfirmation.canal !== 'Email' && (
-                  <button
-                    onClick={() => { sendEmail(showSendConfirmation.doc); }}
-                    className="flex-1 px-3 py-2 rounded-xl text-sm font-medium bg-blue-500 hover:bg-blue-600 text-white flex items-center justify-center gap-2 transition-colors"
-                  >
-                    <Mail size={14} /> Email
-                  </button>
-                )}
-              </div>
-
-              <button
-                onClick={() => setShowSendConfirmation(null)}
-                className="w-full py-2.5 rounded-xl text-sm font-semibold transition-all bg-accent text-sur-accent"
-              >
-                OK
-              </button>
-            </div>
-          </div>
-        )}
+        {fenetresEnvoi}
 
         {showSignatureLinkModal && signatureLinkUrl && (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={() => setShowSignatureLinkModal(false)}>
@@ -4836,78 +4862,86 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   }
 
   // === LIST VIEW ===
+  // Motif de liste (audit UX du 20 oct. 2026, § 2.4) : en-tête avec un fait et un bouton plein, deux tuiles qui filtrent,
+  // recherche · filtres · tri, puces d'état, puis la liste. Au premier usage : ni tuiles ni bandeau rouge, un état vide.
+  const documentsVisibles = devis.filter(d => {
+    if (!d.numero && !clients.find(c => c.id === d.client_id) && (!d.statut || d.statut === 'brouillon')) return false;
+    if (d.client_id && !clients.find(c => c.id === d.client_id) && d.statut === 'brouillon' && !d.total_ttc) return false;
+    return true;
+  });
+  const aucunDocument = documentsVisibles.length === 0;
+  const sousTitreListe = aucunDocument ? undefined
+    : `${documentsVisibles.length} document${documentsVisibles.length > 1 ? 's' : ''}${filterCounts.a_traiter_tous ? ` · ${filterCounts.a_traiter_tous} à traiter` : ''}`;
+  const manquesProfil = profilManquant(entreprise).map((m) => m.libelle);
   return (
     <div className="space-y-3">
-      {/* ========== HEADER COMPACT ========== */}
+      {/* ========== EN-TÊTE ========== */}
       <PageHeader
         icon={FileText}
         isDark={isDark}
         color={couleur}
-        subtitle="Gérez vos documents commerciaux"
+        subtitle={sousTitreListe}
         title={
           <span className="inline-flex items-center gap-2">
             Devis & Factures
-            {complianceDismissed && (() => {
-              const missing = profilManquant(entreprise).map((m) => m.libelle);
-              if (missing.length === 0) return null;
-              return (
-                <span
-                  className="relative inline-block cursor-pointer"
-                  title={`Profil incomplet : ${missing.join(', ')}`}
-                  onClick={() => setPage?.('settings')}
-                >
-                  <span className="w-2.5 h-2.5 rounded-full inline-block bg-accent" />
-                  <span className="absolute inset-0 w-2.5 h-2.5 rounded-full animate-ping opacity-50 bg-accent" />
-                </span>
-              );
-            })()}
+            {complianceDismissed && manquesProfil.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setPage?.('settings')}
+                aria-label={`Profil incomplet : ${manquesProfil.join(', ')}`}
+                title={`Profil incomplet : ${manquesProfil.join(', ')}`}
+                className="w-11 h-11 -my-2 inline-flex items-center justify-center rounded-full"
+              >
+                <span className="w-2.5 h-2.5 rounded-full bg-alerte-point" aria-hidden="true" />
+              </button>
+            )}
           </span>
         }
-        action={canPerform('devis', 'create') && (
+        action={canPerform('devis', 'create') && !aucunDocument && (
         <div className="flex items-center gap-2">
         <div className="relative">
           <div className="flex items-stretch">
             <button
               onClick={ouvrirNouveauDevis}
-              className="px-4 py-2.5 bg-accent text-sur-accent rounded-l-full text-sm font-semibold flex items-center gap-2 hover:brightness-95 transition-all"
+              className="h-11 px-4 bg-accent text-sur-accent rounded-l-full text-sm font-semibold flex items-center gap-2 hover:brightness-95 transition-all"
             >
-              <Plus size={16} />
+              <Plus size={16} aria-hidden="true" />
               <span className="hidden sm:inline">Nouveau devis</span>
               <span className="sm:hidden">Nouveau</span>
             </button>
             <button
               onClick={() => setShowCreateMenu(!showCreateMenu)}
-              className="pl-2 pr-3 bg-accent text-sur-accent rounded-r-full border-l border-white/20 hover:brightness-95 transition-all"
+              className="h-11 pl-2 pr-3 bg-accent text-sur-accent rounded-r-full border-l border-sur-accent/20 hover:brightness-95 transition-all"
               aria-label="Options de création"
               aria-haspopup="true"
               aria-expanded={showCreateMenu}
             >
-              <ChevronDown size={14} />
+              <ChevronDown size={14} aria-hidden="true" />
             </button>
           </div>
           {/* Dropdown menu */}
           {showCreateMenu && (
             <>
               <div className="fixed inset-0 z-40" aria-hidden="true" onClick={() => setShowCreateMenu(false)} />
-              <div ref={createMenuRef} onKeyDown={(e) => { if (e.key === 'Escape') setShowCreateMenu(false); }} className={`absolute right-0 mt-1 w-56 rounded-xl border shadow-xl z-50 overflow-hidden bg-surface border-bord`}>
+              <div ref={createMenuRef} onKeyDown={(e) => { if (e.key === 'Escape') setShowCreateMenu(false); }} className="absolute right-0 mt-1 w-60 rounded-xl border shadow-e3 z-50 overflow-hidden bg-surface border-bord">
                 <button
                   onClick={() => { setShowCreateMenu(false); setShowDevisExpressModal(true); }}
-                  className={`w-full px-4 py-3 flex items-center gap-3 text-left transition-colors hover:bg-surface-2`}
+                  className="w-full min-h-[56px] px-4 py-3 flex items-center gap-3 text-left transition-colors hover:bg-surface-2"
                 >
-                  <Zap size={16} className="text-amber-500" />
+                  <Zap size={18} className="text-encre-3" aria-hidden="true" />
                   <div>
                     <p className={`text-sm font-medium ${textPrimary}`}>Devis Express</p>
-                    <p className={`text-[11px] ${textMuted}`}>3 clics, c'est chiffré</p>
+                    <p className="text-xs text-encre-3">3 clics, c'est chiffré</p>
                   </div>
                 </button>
                 <button
                   onClick={() => { setShowCreateMenu(false); setEditingDevis(null); setShowDevisWizard(true); }}
-                  className={`w-full px-4 py-3 flex items-center gap-3 text-left transition-colors border-t hover:bg-surface-2 border-bord`}
+                  className="w-full min-h-[56px] px-4 py-3 flex items-center gap-3 text-left transition-colors border-t hover:bg-surface-2 border-bord"
                 >
-                  <Edit3 size={16} className="text-accent-texte" />
+                  <Edit3 size={18} className="text-encre-3" aria-hidden="true" />
                   <div>
                     <p className={`text-sm font-medium ${textPrimary}`}>Devis manuel</p>
-                    <p className={`text-[11px] ${textMuted}`}>Création détaillée</p>
+                    <p className="text-xs text-encre-3">Création détaillée</p>
                   </div>
                 </button>
               </div>
@@ -4921,125 +4955,84 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       {/* RBAC: ReadOnly banner for view-only users */}
       {isViewOnly && <ReadOnlyBanner />}
 
-      {/* === COMPLIANCE BANNER — compact + dismissable === */}
-      {!complianceDismissed && (() => {
-        const missingLegal = profilManquant(entreprise).map((m) => m.libelle);
-        if (missingLegal.length === 0) return null;
-        return (
-          <div className={`flex items-center gap-2 px-2 sm:px-3 py-2 rounded-xl border text-xs ${isDark ? 'bg-red-900/30 border-red-700 text-red-300' : 'bg-red-50 border-red-200 text-red-800'}`}>
-            <AlertTriangle size={14} className="text-red-500 flex-shrink-0" />
-            <div className="flex-1 min-w-0">
-              <span className="font-semibold">Profil incomplet</span>
-              <span className="hidden sm:inline mx-1">— {missingLegal.join(', ')}</span>
-              <span className={`sm:hidden block text-[10px] mt-0.5 truncate ${isDark ? 'text-red-400/70' : 'text-red-600/70'}`}>{missingLegal.join(', ')}</span>
-            </div>
-            {setPage && (
-              <button onClick={() => setPage('settings')} className={`shrink-0 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-semibold transition-colors ${isDark ? 'bg-red-600 hover:bg-red-500 text-white' : 'bg-red-600 hover:bg-red-700 text-white'}`}>Compléter</button>
-            )}
-            <button
-              onClick={() => { setComplianceDismissed(true); try { localStorage.setItem('cp_devis_banner_dismissed', new Date().toISOString()); } catch { /* préférence non enregistrée : quota plein ou navigation privée */ } }}
-              className={`shrink-0 p-1 rounded-lg transition-colors ${isDark ? 'hover:bg-red-800/50 text-red-400' : 'hover:bg-red-200 text-red-500'}`}
-              title="Masquer pendant 7 jours"
-            >
-              <X size={14} />
-            </button>
-          </div>
-        );
-      })()}
-      {/* === KPIs COMPACTS — ligne dense === */}
-      {(() => {
-        const cleanDevis = devis.filter(d => {
-          if (!d.numero && !clients.find(c => c.id === d.client_id) && (!d.statut || d.statut === 'brouillon')) return false;
-          if (d.client_id && !clients.find(c => c.id === d.client_id) && d.statut === 'brouillon' && !d.total_ttc) return false;
-          return true;
-        });
-        const devisEnvoye = cleanDevis.filter(d => d.type === 'devis' && ['envoye', 'vu'].includes(d.statut));
-        // Mêmes définitions que l'Accueil et la Trésorerie : reste dû, retard après l'échéance.
-        const facturesEnAttente = cleanDevis.filter(d => d.type === 'facture' && d.facture_type !== 'avoir' && !['payee', 'brouillon', 'annulee'].includes(statutFacture(d, paiements)));
-        const facturesPayees = cleanDevis.filter(d => d.type === 'facture' && d.facture_type !== 'avoir' && statutFacture(d, paiements) === 'payee');
-        const facturesEnRetard = facturesEnAttente.filter(f => statutFacture(f, paiements) === 'en_retard');
-        // Encaissé = l'argent reçu (acomptes partiels compris), pas seulement les factures soldées.
-        // Une facture marquée « payée » à la main, sans paiement saisi, compte pour son total.
-        const montantPayees = cleanDevis.filter(d => d.type === 'facture' && d.facture_type !== 'avoir')
-          .reduce((s, f) => s + (statutFacture(f, paiements) === 'payee' ? Math.max(dejaPaye(f, paiements), f.total_ttc || 0) : dejaPaye(f, paiements)), 0);
-        const montantEnCours = devisEnvoye.reduce((s, d) => s + (d.total_ttc || 0), 0);
-        const montantAEncaisser = facturesEnAttente.reduce((s, f) => s + resteAPayer(f, paiements), 0);
-        const avoirsEmis = cleanDevis.filter(d => d.facture_type === 'avoir');
-        const montantAvoirs = avoirsEmis.reduce((s, a) => s + Math.abs(a.total_ttc || 0), 0);
-        const conversionResult = calcConversion(cleanDevis);
-        const totalEnvoyes = conversionResult.envoyes;
-        const tauxConversion = totalEnvoyes > 0 ? conversionResult.taux : null;
+      {/* Profil incomplet : une alerte calme et un bouton secondaire (audit UX du 20 oct. 2026 : bouton rouge plein,
+          deuxième bouton plein de l'écran) ; masquable 7 jours, un point reste alors à côté du titre */}
+      {!complianceDismissed && manquesProfil.length > 0 && (
+        <div role="status" className="flex items-center gap-3 pl-4 pr-1 py-2 rounded-2xl bg-alerte-fond text-alerte-texte">
+          <AlertTriangle size={18} className="flex-shrink-0" aria-hidden="true" />
+          <p className="flex-1 min-w-0 text-sm">
+            <span className="font-semibold">Profil incomplet</span>
+            <span className="line-clamp-2 sm:inline sm:ml-1">{manquesProfil.join(', ')}</span>
+          </p>
+          {setPage && (
+            <Bouton taille="compacte" variante="secondaire" onClick={() => setPage('settings')} className="flex-shrink-0">Compléter</Bouton>
+          )}
+          <BoutonIcone
+            icone={X} libelle="Masquer pendant 7 jours" taille={18} className="text-alerte-texte hover:bg-transparent"
+            onClick={() => { setComplianceDismissed(true); try { localStorage.setItem('cp_devis_banner_dismissed', new Date().toISOString()); } catch { /* préférence non enregistrée : quota plein ou navigation privée */ } }}
+          />
+        </div>
+      )}
 
-        // Plus de tendance mois sur mois : comparée à un mois vide, elle affichait « -100 % » sans base (revue du 9 oct.).
-        const convColor = tauxConversion != null ? (tauxConversion >= 50 ? '#10b981' : tauxConversion >= 25 ? '#f59e0b' : '#ef4444') : '#64748b';
-        const hidePrice = (v) => !canViewPrices ? '—' : modeDiscret ? '···' : v;
-
+      {/* Deux tuiles qui filtrent la liste (audit UX du 20 oct. 2026) : mêmes définitions et même forme qu'à l'Accueil
+          (valeur = montant, contexte = nombre). Aucune tuile tant qu'il n'y a aucun document. */}
+      {!aucunDocument && (() => {
+        const ouvertes = documentsVisibles.filter(d => estOuverte(d, paiements));
+        const enRetard = ouvertes.filter(f => estEnRetard(f, paiements));
+        const devisEnvoyes = documentsVisibles.filter(d => d.type === 'devis' && ['envoye', 'vu'].includes(d.statut));
+        const cache = (v) => (!canViewPrices ? '—' : modeDiscret ? '···' : v);
+        const basculer = (cle) => setFilter(f => (f === cle ? 'all' : cle));
         return (
-          <div className={`bandeau-chiffres grid grid-cols-2 ${avoirsEmis.length > 0 ? 'sm:grid-cols-5' : 'sm:grid-cols-4'} gap-3 sm:gap-4`}>
-            <KPICard
-              icon={CheckCircle} tone="money" label="Encaissé"
-              value={hidePrice(fmtMoney(montantPayees, 0))}
-              sublabel={`${facturesPayees.length} facture${facturesPayees.length > 1 ? 's' : ''} payée${facturesPayees.length > 1 ? 's' : ''}`}
-              isDark={isDark}
-              onClick={() => setFilter('factures')}
+          <div className="bandeau-chiffres grid grid-cols-2 gap-3 sm:gap-4">
+            <TuileChiffre
+              libelle="À encaisser"
+              valeur={cache(fmtMoney(ouvertes.reduce((s, f) => s + resteAPayer(f, paiements), 0), 0))}
+              alerte={enRetard.length > 0 ? `${ouvertes.length} facture${ouvertes.length > 1 ? 's' : ''}, dont ${enRetard.length} en retard` : undefined}
+              contexte={`${ouvertes.length} facture${ouvertes.length > 1 ? 's' : ''}`}
+              onClick={() => basculer('a_encaisser')} actif={filter === 'a_encaisser'}
             />
-            <KPICard
-              icon={Send} tone="info" label="Devis en attente"
-              value={String(devisEnvoye.length)}
-              sublabel={hidePrice(fmtMoney(montantEnCours, 0))}
-              isDark={isDark}
-              onClick={() => setFilter('attente')}
+            <TuileChiffre
+              libelle="Devis en attente"
+              valeur={cache(fmtMoney(devisEnvoyes.reduce((s, d) => s + (d.total_ttc || 0), 0), 0))}
+              contexte={`${devisEnvoyes.length} envoyé${devisEnvoyes.length > 1 ? 's' : ''}`}
+              onClick={() => basculer('devis_attente')} actif={filter === 'devis_attente'}
             />
-            <KPICard
-              icon={TrendingUp} color={convColor} label="Conversion"
-              value={formatConversion(tauxConversion)}
-              sublabel={`${conversionResult.signes} signé${conversionResult.signes > 1 ? 's' : ''} sur ${totalEnvoyes}`}
-              isDark={isDark}
-              onClick={() => setFilter('conversion')}
-            />
-            <KPICard
-              icon={CreditCard} label="À encaisser"
-              value={hidePrice(fmtMoney(montantAEncaisser, 0))}
-              sublabel={facturesEnRetard.length > 0 ? `dont ${facturesEnRetard.length} en retard` : `${facturesEnAttente.length} facture${facturesEnAttente.length > 1 ? 's' : ''}`}
-              tone={facturesEnRetard.length > 0 ? 'danger' : undefined} isDark={isDark}
-              onClick={() => setFilter('factures_impayees')}
-            />
-            {avoirsEmis.length > 0 && (
-              <KPICard
-                icon={RotateCcw} tone="danger" label="Avoirs"
-                value={hidePrice(`-${fmtMoney(montantAvoirs, 0)}`)}
-                sublabel={`${avoirsEmis.length} avoir${avoirsEmis.length > 1 ? 's' : ''}`}
-                isDark={isDark}
-                onClick={() => setFilter('avoirs')}
-              />
-            )}
           </div>
         );
       })()}
 
-      {/* === BANDEAU RELANCES DU JOUR (envoi assisté en 1 clic) === */}
+      {/* === BANDEAU RELANCES DU JOUR : confirmées avant de partir (audit UX du 20 oct. 2026, § 2.6) === */}
       {relances.isEnabled && relances.counts.due > 0 && (
-        <div className={`rounded-xl sm:rounded-2xl border p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center gap-3 ${isDark ? 'bg-amber-900/20 border-amber-800' : 'bg-amber-50 border-amber-200'}`}>
+        <div className="rounded-2xl border border-bord bg-surface shadow-e1 p-4 flex flex-col sm:flex-row sm:items-center gap-3">
           <div className="flex items-center gap-3 flex-1 min-w-0">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${couleur}20` }}>
-              <BellRing size={18} className="text-accent-texte" />
-            </div>
+            <span className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 bg-alerte-fond text-alerte-texte" aria-hidden="true">
+              <BellRing size={18} />
+            </span>
             <div className="min-w-0">
               <p className={`text-sm font-semibold ${textPrimary}`}>
                 {relances.counts.due} relance{relances.counts.due > 1 ? 's' : ''} à envoyer aujourd'hui
               </p>
-              <p className={`text-xs ${textMuted}`}>
+              <p className="text-sm text-encre-3">
                 {canViewPrices
                   ? `${formatMoney(relances.totalAtRisk)} en attente de règlement ou de réponse`
                   : 'Documents en attente de suivi'}
               </p>
             </div>
           </div>
-          <button
-            type="button"
-            disabled={actionLoading === 'bulk-relance'}
+          <Bouton
+            variante="secondaire" icone={Send} chargement={actionLoading === 'bulk-relance'} className="flex-shrink-0"
             onClick={async () => {
               if (actionLoading) return;
+              // L'envoi groupé part par lots (relanceEngine, RELANCES_PAR_ENVOI) : annoncer ce qui partira vraiment
+              const PAR_ENVOI = RELANCES_PAR_ENVOI;
+              const partent = (relances.dueNow || []).slice(0, PAR_ENVOI);
+              const nombre = Math.min(relances.counts.due, PAR_ENVOI);
+              const noms = [...new Set(partent.map(p => formatClientName(p.client, '') || p.doc?.client_nom).filter(Boolean))];
+              const ok = await confirm({
+                title: `Envoyer ${nombre} relance${nombre > 1 ? 's' : ''} ?`,
+                message: `Par e-mail${noms.length ? `, à : ${noms.join(', ')}` : ''}.${relances.counts.due > PAR_ENVOI ? ` Les relances partent par ${PAR_ENVOI} : il en restera ${relances.counts.due - PAR_ENVOI} à envoyer ensuite.` : ''}`,
+              });
+              if (!ok) return;
               setActionLoading('bulk-relance');
               try {
                 const res = await relances.sendBulkRelances();
@@ -5059,37 +5052,39 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                 setActionLoading(null);
               }
             }}
-            className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm font-medium disabled:opacity-60 flex-shrink-0 bg-accent text-sur-accent"
           >
-            {actionLoading === 'bulk-relance' ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
-            {actionLoading === 'bulk-relance' ? 'Envoi…' : 'Tout envoyer'}
-          </button>
+            Tout envoyer
+          </Bouton>
         </div>
       )}
 
-      {/* === RECHERCHE, FILTRES, TRI — boîte à outils commune (ui/Filtres.jsx) === */}
-      {(() => {
+      {/* === RECHERCHE, FILTRES, TRI — boîte à outils commune (ui/Filtres.jsx) ===
+          Puces : l'état seulement ; la nature du document (devis, facture, avoir…) est dans « Filtres ». */}
+      {!aucunDocument && (() => {
         const PERIODES = [['all', 'Tout'], ['month', 'Ce mois'], ['quarter', 'Ce trimestre'], ['year', 'Cette année']];
         const TRIS = [['recent', 'Plus récents'], ['status', 'Par statut'], ['amount', 'Par montant']];
-        const VUES = [['cards', 'Cartes', LayoutGrid], ['table', 'Tableau', List], ['pipeline', 'Colonnes', Kanban]];
+        const VUES = [['cards', 'Liste', LayoutGrid], ['table', 'Tableau', List], ['pipeline', 'Colonnes', Kanban]];
+        const NATURES = [['all', 'Tous'], ['devis', 'Devis'], ['factures', 'Factures'], ['acomptes', 'Acomptes'], ['situations', 'Situations'], ['avoirs', 'Avoirs']];
         const nomClient = (c) => (c ? (c.prenom ? `${c.prenom} ${c.nom}` : c.nom) : '');
         const clientChoisi = clients.find(c => c.id === clientFilter);
         const chantierChoisi = chantiers.find(c => c.id === chantierFilter);
-        const nbFiltres = (periodFilter !== 'all') + !!clientFilter + !!chantierFilter;
-        const toutEffacer = () => { setPeriodFilter('all'); setClientFilter(''); setChantierFilter(''); setSelectedIds(new Set()); };
+        const nbFiltres = (nature !== 'all') + (periodFilter !== 'all') + !!clientFilter + !!chantierFilter;
+        const toutEffacer = () => { setNature('all'); setPeriodFilter('all'); setClientFilter(''); setChantierFilter(''); setSelectedIds(new Set()); };
         const puces = [
+          nature !== 'all' && { cle: 'nature', libelle: NATURES.find(x => x[0] === nature)?.[1], onRetirer: () => setNature('all') },
           periodFilter !== 'all' && { cle: 'periode', libelle: PERIODES.find(x => x[0] === periodFilter)?.[1], onRetirer: () => setPeriodFilter('all') },
           clientFilter && { cle: 'client', libelle: nomClient(clientChoisi) || 'Client', onRetirer: () => { setClientFilter(''); setSelectedIds(new Set()); } },
           chantierFilter && { cle: 'chantier', libelle: chantierChoisi?.nom || 'Chantier', onRetirer: () => { setChantierFilter(''); setSelectedIds(new Set()); } },
         ].filter(Boolean);
-        const TYPES = [
-          ['all', 'Tous'], ['devis', 'Devis'], ['factures', 'Factures'], ['acomptes', 'Acomptes', CreditCard], ['situations', 'Situations', BarChart3],
-          ['avoirs', 'Avoirs', RotateCcw], ['attente', 'En attente'], ['a_traiter', 'À traiter', Bell],
+        const ETATS = [
+          ['all', 'Tous'], ['a_traiter', 'À traiter', Bell], ['attente', 'En attente'], ['brouillons', 'Brouillons'], ['payes', 'Payés'],
           ...(relances.isEnabled && relances.counts.total > 0 ? [['en_relance', 'En relance', BellRing]] : []),
         ];
-        const typesOptions = TYPES
-          .map(([valeur, libelle, icone]) => ({ valeur, libelle, icone, compte: valeur === 'en_relance' ? relances.counts.total : (filterCounts[valeur] || 0) }))
-          .filter(o => !(o.valeur === 'acomptes' && o.compte === 0));
+        const etatsOptions = ETATS
+          .map(([valeur, libelle, icone]) => ({ valeur, libelle, icone, compte: valeur === 'en_relance' ? relances.counts.total : (filterCounts[valeur] || 0) }));
+        const naturesOptions = NATURES
+          .map(([valeur, libelle]) => ({ valeur, libelle, compte: valeur === 'all' ? filterCounts.natures_tous : (filterCounts[valeur] || 0) }))
+          .filter(o => o.valeur === 'all' || o.valeur === nature || o.compte > 0);
         const boutonSecondaire = `h-11 px-4 rounded-xl text-sm font-medium transition-colors disabled:opacity-40 text-encre-2 hover:bg-surface-2`;
         return (
           <div className="space-y-3">
@@ -5098,7 +5093,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
               <BoutonVolet ref={boutonFiltresRef} libelle="Filtres" compte={nbFiltres} ouvert={volet === 'filtres'} onClick={() => setVolet(v => (v === 'filtres' ? null : 'filtres'))} isDark={isDark} couleur={couleur} libelleCacheTelephone />
               <BoutonVolet ref={boutonTriRef} icone={ArrowUpDown} libelle="Trier" valeur={TRIS.find(x => x[0] === sortBy)?.[1]} ouvert={volet === 'tri'} onClick={() => setVolet(v => (v === 'tri' ? null : 'tri'))} isDark={isDark} couleur={couleur} libelleCacheTelephone />
             </div>
-            <SegmentDefilant ariaLabel="Type de document" options={typesOptions} valeur={filter} onChange={setFilter} isDark={isDark} couleur={couleur} />
+            <SegmentDefilant ariaLabel="État du document" options={etatsOptions} valeur={['a_encaisser', 'devis_attente'].includes(filter) ? null : filter} onChange={setFilter} isDark={isDark} couleur={couleur} />
             <PucesActives puces={puces} onToutEffacer={toutEffacer} isDark={isDark} couleur={couleur} />
 
             <Volet
@@ -5106,12 +5101,13 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
               pied={(
                 <>
                   <button type="button" onClick={toutEffacer} disabled={!nbFiltres} className={boutonSecondaire}>Tout effacer</button>
-                  <button type="button" onClick={() => setVolet(null)} className="flex-1 h-11 rounded-xl text-sm font-bold shadow-sm bg-accent text-sur-accent">
+                  <button type="button" onClick={() => setVolet(null)} className="flex-1 h-11 rounded-full text-sm font-bold shadow-sm bg-accent text-sur-accent">
                     Voir {filtered.length} document{filtered.length > 1 ? 's' : ''}
                   </button>
                 </>
               )}
             >
+              <GroupeChoix titre="Type de document" options={naturesOptions} valeur={nature} onChange={setNature} isDark={isDark} couleur={couleur} />
               <GroupeChoix titre="Période" options={PERIODES.map(([valeur, libelle]) => ({ valeur, libelle }))} valeur={periodFilter} onChange={setPeriodFilter} isDark={isDark} couleur={couleur} />
               <ListeChoix
                 titre="Client" placeholder="Rechercher un client" isDark={isDark} couleur={couleur}
@@ -5130,13 +5126,13 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
               <GroupeChoix titre="Affichage" options={VUES.map(([valeur, libelle, icone]) => ({ valeur, libelle, icone }))} valeur={viewMode} onChange={(v) => { setViewMode(v); setVolet(null); }} isDark={isDark} couleur={couleur} />
               {filtered.length > 0 && (
                 <fieldset>
-                  <legend className={`text-[11px] font-semibold uppercase tracking-wider mb-2.5 ${textMuted}`}>Exporter les {filtered.length} documents affichés</legend>
+                  <legend className="text-xs font-semibold uppercase tracking-wider mb-2.5 text-encre-3">Exporter les {filtered.length} documents affichés</legend>
                   <div className="flex flex-wrap gap-2">
-                    <button type="button" onClick={() => { exportCSV(filtered); setVolet(null); }} className={`min-h-[40px] inline-flex items-center gap-2 px-4 rounded-full border text-sm font-medium border-bord text-encre-2 hover:bg-surface-2`}>
-                      <Download size={15} /> Tableur (CSV)
+                    <button type="button" onClick={() => { exportCSV(filtered); setVolet(null); }} className="min-h-[44px] inline-flex items-center gap-2 px-4 rounded-full border text-sm font-medium border-bord text-encre-2 hover:bg-surface-2">
+                      <Download size={15} aria-hidden="true" /> Tableur (CSV)
                     </button>
-                    <button type="button" onClick={() => { batchExportPDF(filtered); setVolet(null); }} disabled={actionLoading === 'batch'} className={`min-h-[40px] inline-flex items-center gap-2 px-4 rounded-full border text-sm font-medium disabled:opacity-50 border-bord text-encre-2 hover:bg-surface-2`}>
-                      {actionLoading === 'batch' ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} />} PDF
+                    <button type="button" onClick={() => { batchExportPDF(filtered); setVolet(null); }} disabled={actionLoading === 'batch'} className="min-h-[44px] inline-flex items-center gap-2 px-4 rounded-full border text-sm font-medium disabled:opacity-50 border-bord text-encre-2 hover:bg-surface-2">
+                      {actionLoading === 'batch' ? <Loader2 size={15} className="animate-spin" aria-hidden="true" /> : <Download size={15} aria-hidden="true" />} PDF
                     </button>
                   </div>
                 </fieldset>
@@ -5146,96 +5142,34 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         );
       })()}
       {filtered.length === 0 ? (
-        <div className={`${cardBg} rounded-2xl border overflow-hidden`}>
-          {/* Header with gradient */}
-          <div className="p-8 sm:p-12 text-center relative" style={{ background: `linear-gradient(135deg, ${couleur}15, ${couleur}05)` }}>
-            <div className="absolute inset-0 opacity-5" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'40\' height=\'40\' viewBox=\'0 0 40 40\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'%23000000\' fill-opacity=\'0.3\' fill-rule=\'evenodd\'%3E%3Cpath d=\'M0 38.59l2.83-2.83 1.41 1.41L1.41 40H0v-1.41zM0 1.4l2.83 2.83 1.41-1.41L1.41 0H0v1.41zM38.59 40l-2.83-2.83 1.41-1.41L40 38.59V40h-1.41zM40 1.41l-2.83 2.83-1.41-1.41L38.59 0H40v1.41zM20 18.6l2.83-2.83 1.41 1.41L21.41 20l2.83 2.83-1.41 1.41L20 21.41l-2.83 2.83-1.41-1.41L18.59 20l-2.83-2.83 1.41-1.41L20 18.59z\'/%3E%3C/g%3E%3C/svg%3E")' }} />
-
-            <div className="relative">
-              {/* Icon */}
-              <div className="w-20 h-20 sm:w-24 sm:h-24 mx-auto mb-6 rounded-2xl flex items-center justify-center shadow-lg" style={{ background: `linear-gradient(135deg, ${couleur}, ${couleur}dd)` }}>
-                {filter === 'factures' ? <Receipt size={40} className="text-white" /> : <FileText size={40} className="text-white" />}
-              </div>
-
-              <h2 className={`text-xl sm:text-2xl font-bold mb-2 ${textPrimary}`}>
-                {search ? 'Aucun résultat' : filter === 'factures' ? 'Créez votre première facture' : filter === 'devis' ? 'Créez votre premier devis' : 'Commencez à facturer'}
-              </h2>
-              <p className={`text-sm sm:text-base ${textMuted} max-w-md mx-auto`}>
-                {search
-                  ? 'Modifiez votre recherche ou créez un nouveau document.'
-                  : 'Créez des devis professionnels, transformez-les en factures et suivez vos paiements.'}
-              </p>
-            </div>
-          </div>
-
-          {/* Features grid */}
-          {!search && filter === 'all' && (
-            <div className={`p-6 sm:p-8 border-t border-bord bg-fond/50`}>
-              <p className={`text-xs font-medium uppercase tracking-wider mb-4 ${textMuted}`}>Fonctionnalités</p>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-                <div className={`flex items-start gap-3 p-3 rounded-xl bg-surface`}>
-                  <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${couleur}20` }}>
-                    <Send size={18} className="text-accent-texte" />
-                  </div>
-                  <div>
-                    <p className={`font-medium text-sm ${textPrimary}`}>Envoi rapide</p>
-                    <p className={`text-xs ${textMuted}`}>Email, WhatsApp, PDF</p>
-                  </div>
-                </div>
-                <div className={`flex items-start gap-3 p-3 rounded-xl bg-surface`}>
-                  <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${couleur}20` }}>
-                    <CreditCard size={18} className="text-accent-texte" />
-                  </div>
-                  <div>
-                    <p className={`font-medium text-sm ${textPrimary}`}>Acomptes</p>
-                    <p className={`text-xs ${textMuted}`}>Factures d'acompte et solde</p>
-                  </div>
-                </div>
-                <div className={`flex items-start gap-3 p-3 rounded-xl bg-surface`}>
-                  <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${couleur}20` }}>
-                    <CheckCircle size={18} className="text-accent-texte" />
-                  </div>
-                  <div>
-                    <p className={`font-medium text-sm ${textPrimary}`}>Suivi des paiements</p>
-                    <p className={`text-xs ${textMuted}`}>Statuts et relances</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                <button onClick={ouvrirNouveauDevis} className="px-6 py-3 rounded-xl flex items-center justify-center gap-2 hover:shadow-lg transition-all font-medium bg-accent text-sur-accent">
-                  <FileText size={18} />
-                  Créer mon premier devis
-                </button>
-                <button onClick={() => { setMode('create'); setForm(p => ({...p, type: 'facture'})); }} className={`px-6 py-3 rounded-xl flex items-center justify-center gap-2 hover:shadow-lg transition-all font-medium border-2 border-bord text-encre-2 hover:bg-surface-2`}>
-                  <Receipt size={18} />
-                  Ou créer une facture
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Simple CTA for filtered empty state */}
-          {(search || filter !== 'all') && (
-            <div className={`p-6 border-t border-bord text-center`}>
-              <button onClick={ouvrirNouveauDevis} className="px-6 py-3 rounded-xl flex items-center justify-center gap-2 mx-auto hover:shadow-lg transition-all font-medium bg-accent text-sur-accent">
-                <Plus size={18} />
-                Créer un nouveau document
-              </button>
-            </div>
-          )}
-        </div>
+        // États vides (audit UX du 20 oct. 2026, § 2.7) : une icône neutre, un titre, une phrase, une action. Avant : un
+        // grand encart orange, une liste d'arguments et deux boutons pleins.
+        aucunDocument ? (
+          <EtatVide
+            icone={FileText}
+            titre="Aucun devis pour l'instant"
+            texte="Chiffrez votre premier devis : vous le transformerez en facture une fois signé."
+            action={canPerform('devis', 'create') ? <Bouton variante="principal" icone={Plus} onClick={ouvrirNouveauDevis}>Créer mon premier devis</Bouton> : null}
+          />
+        ) : (
+          <EtatVide
+            icone={Search}
+            titre="Aucun document"
+            texte={search ? 'Rien ne correspond à cette recherche.' : 'Aucun document ne correspond à ces filtres.'}
+            action={<Bouton variante="secondaire" onClick={() => { setSearch(''); setFilter('all'); setNature('all'); setPeriodFilter('all'); setClientFilter(''); setChantierFilter(''); }}>{search ? 'Effacer la recherche' : 'Effacer les filtres'}</Bouton>}
+          />
+        )
       ) : viewMode === 'pipeline' ? (
         /* ========== PIPELINE VIEW (Kanban) ========== */
         <div>
-          {/* Pipeline funnel bar */}
+          {/* Barre de répartition : les tons des statuts (src/lib/statuts.js), 12 px au moins */}
           {(() => {
             const pipelineStatuses = [
-              { id: 'brouillon', label: 'Brouillon', color: '#94a3b8' },
-              { id: 'envoye', label: 'Envoyé', color: '#3b82f6' },
-              { id: 'accepte', label: 'Signé', color: '#10b981' },
-              { id: 'facture', label: 'Facturé', color: '#8b5cf6' },
-              { id: 'refuse', label: 'Refusé', color: '#ef4444' },
+              { id: 'brouillon', label: 'Brouillon', point: 'bg-neutre-point' },
+              { id: 'envoye', label: 'Envoyé', point: 'bg-info-point' },
+              { id: 'accepte', label: 'Signé', point: 'bg-succes-point' },
+              { id: 'facture', label: 'Facturé', point: 'bg-encre-3' },
+              { id: 'refuse', label: 'Refusé', point: 'bg-danger-point' },
             ];
             const devisOnly = devis.filter(d => d.type === 'devis');
             const total = devisOnly.length || 1;
@@ -5245,15 +5179,15 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
             })).map(s => ({ ...s, pct: Math.max((s.count / total) * 100, s.count > 0 ? 2 : 0) }));
             return (
               <div className="mb-4">
-                <div className="flex rounded-full overflow-hidden h-2">
+                <div className="flex rounded-full overflow-hidden h-2 gap-0.5">
                   {pipeline.map(col => col.pct > 0 && (
-                    <div key={col.id} title={`${col.label}: ${col.count}`} style={{ width: `${col.pct}%`, backgroundColor: col.color }} className="transition-all duration-300" />
+                    <div key={col.id} title={`${col.label}: ${col.count}`} style={{ width: `${col.pct}%` }} className={`transition-all duration-300 ${col.point}`} />
                   ))}
                 </div>
-                <div className="flex justify-between mt-1">
+                <div className="flex flex-wrap gap-x-3 gap-y-1 justify-between mt-1.5">
                   {pipeline.filter(p => p.count > 0).map(p => (
-                    <span key={p.id} className={`text-[10px] ${textMuted} flex items-center gap-1`}>
-                      <span className="w-2 h-2 rounded-full inline-block" style={{ backgroundColor: p.color }} />
+                    <span key={p.id} className="text-xs text-encre-2 flex items-center gap-1.5">
+                      <span className={`w-2 h-2 rounded-full inline-block ${p.point}`} aria-hidden="true" />
                       {p.label} ({p.count})
                     </span>
                   ))}
@@ -5261,7 +5195,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
               </div>
             );
           })()}
-        <Suspense fallback={<div className="flex items-center justify-center py-12"><div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: `${couleur}33`, borderTopColor: couleur }} /></div>}>
+        <Suspense fallback={<div className="flex items-center justify-center py-12"><div className="w-8 h-8 border-4 border-bord border-t-accent rounded-full animate-spin" /></div>}>
           <PipelineKanban
             devis={devis}
             clients={clients}
@@ -5278,14 +5212,12 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         <div className="relative">
           {/* Multi-select action bar */}
           {selectedIds.size > 0 && (
-            <div className={`sticky top-0 z-20 flex items-center gap-3 px-4 py-2.5 rounded-xl mb-2 bg-surface-2 border border-bord`}>
+            <div className="sticky top-0 z-20 flex items-center gap-3 px-4 py-2 rounded-xl mb-2 bg-surface-2 border border-bord">
               <span className={`text-sm font-semibold ${textPrimary}`}>{selectedIds.size} élément{selectedIds.size > 1 ? 's' : ''} sélectionné{selectedIds.size > 1 ? 's' : ''}</span>
               <div className="flex-1" />
-              <button onClick={() => batchExportPDF(filtered.filter(d => selectedIds.has(d.id)))} className="px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 bg-accent text-sur-accent">
-                <Download size={13} /> Exporter PDF
-              </button>
+              <Bouton taille="compacte" variante="secondaire" icone={Download} onClick={() => batchExportPDF(filtered.filter(d => selectedIds.has(d.id)))}>Exporter PDF</Bouton>
               {!isViewOnly && canPerform('devis', 'delete') && (
-                <button onClick={async () => {
+                <Bouton taille="compacte" variante="discret" icone={Trash2} className="text-danger-texte hover:text-danger-texte" onClick={async () => {
                   const choisis = devis.filter(d => selectedIds.has(d.id));
                   const supprimables = choisis.filter(d => peutSupprimerDocument(d, devis));
                   const exclus = choisis.length - supprimables.length;
@@ -5300,109 +5232,94 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                     setSelectedIds(new Set());
                     if (faits) showToast(`${faits} document${faits > 1 ? 's' : ''} supprimé${faits > 1 ? 's' : ''}`, 'success');
                   }
-                }} className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 ${isDark ? 'bg-red-900/50 text-red-300 hover:bg-red-800/60' : 'bg-red-50 text-red-600 hover:bg-red-100'}`}>
-                  <Trash2 size={13} /> Supprimer
-                </button>
+                }}>Supprimer</Bouton>
               )}
-              <button onClick={() => setSelectedIds(new Set())} className={`p-1.5 rounded-lg ${isDark ? 'hover:bg-slate-600' : 'hover:bg-slate-200'}`}>
-                <X size={14} className={textMuted} />
-              </button>
+              <BoutonIcone icone={X} libelle="Annuler la sélection" taille={16} onClick={() => setSelectedIds(new Set())} />
             </div>
           )}
-        <div className={`${cardBg} rounded-xl border overflow-hidden`}>
+        <div className={`${cardBg} rounded-2xl border overflow-hidden shadow-e1`}>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-fond">
                   <th className="px-2 py-2.5 w-8">
-                    <input type="checkbox" checked={filtered.length > 0 && selectedIds.size === filtered.length} onChange={() => toggleSelectAll(filtered)} className="rounded border-slate-300 cursor-pointer" />
+                    <input type="checkbox" aria-label="Tout sélectionner" checked={filtered.length > 0 && selectedIds.size === filtered.length} onChange={() => toggleSelectAll(filtered)} className="w-4 h-4 rounded border-bord-fort cursor-pointer" />
                   </th>
                   {[
                     { key: 'numero', label: 'N°' },
                     { key: 'client', label: 'Client' },
                     { key: 'date', label: 'Date' },
-                    { key: 'montant', label: 'Montant TTC' },
+                    { key: 'montant', label: isMicro ? 'Montant' : 'Montant TTC' },
                     { key: 'statut', label: 'Statut' },
                   ].map(col => (
                     <th
                       key={col.key}
                       onClick={() => handleTableSort(col.key)}
-                      className={`px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wider cursor-pointer select-none transition-colors text-encre-3 hover:text-encre-2 ${col.key === 'montant' ? 'text-right' : ''}`}
+                      aria-sort={tableSortBy === col.key ? (tableSortDir === 'asc' ? 'ascending' : 'descending') : undefined}
+                      className={`px-3 py-2.5 text-left text-xs font-semibold cursor-pointer select-none transition-colors text-encre-3 hover:text-encre-2 ${col.key === 'montant' ? 'text-right' : ''}`}
                     >
                       <span className="inline-flex items-center gap-1">
                         {col.label}
                         {tableSortBy === col.key ? (
-                          tableSortDir === 'asc' ? <ChevronUp size={12} /> : <ChevronDown size={12} />
+                          tableSortDir === 'asc' ? <ChevronUp size={12} aria-hidden="true" /> : <ChevronDown size={12} aria-hidden="true" />
                         ) : (
-                          <ArrowUpDown size={10} className="opacity-30" />
+                          <ArrowUpDown size={12} className="opacity-40" aria-hidden="true" />
                         )}
                       </span>
                     </th>
                   ))}
-                  <th className={`px-3 py-2.5 text-right text-xs font-semibold uppercase tracking-wider text-encre-3`}>Actions</th>
+                  <th className="px-3 py-2.5 text-right text-xs font-semibold text-encre-3"><span className="sr-only">Actions</span></th>
                 </tr>
               </thead>
-              <tbody className={`divide-y ${isDark ? 'divide-slate-700' : 'divide-slate-100'}`}>
-                {getTableSorted(filtered).map((d, idx) => {
+              <tbody className="divide-y divide-bord">
+                {getTableSorted(filtered).map((d) => {
                   const client = clients.find(c => c.id === d.client_id);
                   const clientName = cleanClientName(client) || d.client_nom || '—';
                   const statutVu = d.type === 'facture' && d.facture_type !== 'avoir' ? statutFacture(d, paiements) : d.statut;
-                  const statusColor = DEVIS_STATUS_COLORS[COULEUR_STATUT_VU[statutVu] || statutVu] || DEVIS_STATUS_COLORS.brouillon;
-                  const statusLabel = d.type === 'facture' && d.facture_type !== 'avoir' ? libelleStatut('facture', statutVu).libelle : (d.statut === 'accepte' ? 'Signé' : (DEVIS_STATUS_LABELS[d.statut] || d.statut));
                   const isAvoirItem = d.facture_type === 'avoir';
-                  const isAcompteRow = d.facture_type === 'acompte' || d.facture_type === 'solde';
-                  const rowBorderColor = isAvoirItem ? '#f87171' : isAcompteRow ? '#8b5cf6' : d.type === 'facture' ? '#10b981' : couleur;
+                  const TypeIcone = isAvoirItem ? RotateCcw : d.type === 'facture' ? Receipt : FileText;
                   return (
                     <tr
                       key={d.id}
                       onClick={() => { setSelected(d); setMode('preview'); }}
-                      className={`cursor-pointer transition-colors ${isDark ? (idx % 2 === 0 ? 'bg-slate-800' : 'bg-slate-800/50') : (idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50')} hover:bg-surface-2`}
-                      style={{ borderLeft: `4px solid ${rowBorderColor}` }}
+                      className="cursor-pointer transition-colors bg-surface hover:bg-surface-2"
                     >
                       <td className="px-2 py-2.5 w-8">
-                        <input type="checkbox" checked={selectedIds.has(d.id)} onChange={(e) => { e.stopPropagation(); toggleSelectId(d.id); }} onClick={(e) => e.stopPropagation()} className="rounded border-slate-300 cursor-pointer" />
+                        <input type="checkbox" aria-label={`Sélectionner ${cleanNumero(d.numero)}`} checked={selectedIds.has(d.id)} onChange={(e) => { e.stopPropagation(); toggleSelectId(d.id); }} onClick={(e) => e.stopPropagation()} className="w-4 h-4 rounded border-bord-fort cursor-pointer" />
                       </td>
-                      <td className={`px-3 py-2.5 font-medium text-xs whitespace-nowrap ${textPrimary}`}>
+                      <td className={`px-3 py-2.5 font-medium whitespace-nowrap ${textPrimary}`}>
                         <span className="inline-flex items-center gap-1.5">
-                          {isAvoirItem ? <RotateCcw size={12} className="text-red-500" /> : d.type === 'facture' ? <Receipt size={12} className="text-violet-500" /> : <FileText size={12} style={{ color: couleur }} />}
+                          <TypeIcone size={14} className="text-encre-3" aria-hidden="true" />
                           {cleanNumero(d.numero)}
                         </span>
                       </td>
-                      <td className={`px-3 py-2.5 text-xs truncate max-w-[180px] ${textSecondary}`}>
+                      <td className={`px-3 py-2.5 truncate max-w-[200px] ${textSecondary}`}>
                         {clientName}
                       </td>
-                      <td className={`px-3 py-2.5 text-xs whitespace-nowrap ${textMuted}`}>
+                      <td className="px-3 py-2.5 whitespace-nowrap text-encre-3">
                         {dateLue(d.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
                       </td>
-                      <td className={`px-3 py-2.5 text-xs font-bold text-right whitespace-nowrap tabular-nums`} style={{ color: isAvoirItem ? '#dc2626' : couleur }}>
+                      <td className={`px-3 py-2.5 font-semibold text-right whitespace-nowrap tabular-nums ${isAvoirItem ? 'text-danger-texte' : 'text-encre'}`}>
                         {!canViewPrices ? '—' : modeDiscret ? '···' : isAvoirItem ? `-${formatMoney(Math.abs(getDevisTTC(d)))}` : formatMoney(getDevisTTC(d))}
                       </td>
                       <td className="px-3 py-2.5">
                         <div className="flex items-center gap-1.5">
-                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium whitespace-nowrap ${isDark ? `${statusColor.darkBg} ${statusColor.darkText}` : `${statusColor.bg} ${statusColor.text}`}`}>
-                            {statusLabel}
-                          </span>
+                          <PastilleStatut genre={d.type === 'facture' && !isAvoirItem ? 'facture' : 'devis'} statut={statutVu} />
                           {d.statut === 'envoye' && (() => {
-                            const sentDate = d.updated_at || d.date;
-                            const daysSent = Math.floor((Date.now() - new Date(sentDate)) / 86400000);
-                            if (daysSent <= 7) return null;
+                            const daysSent = getDaysSinceSent(d);
+                            if (daysSent < 7) return null;
                             return (
-                              <span className="text-[10px] text-amber-500 flex items-center gap-0.5 whitespace-nowrap">
-                                <Clock size={10} /> J+{daysSent}
+                              <span className="text-xs font-medium text-alerte-texte flex items-center gap-1 whitespace-nowrap">
+                                <Clock size={12} aria-hidden="true" /> J+{daysSent}
                               </span>
                             );
                           })()}
                         </div>
                       </td>
-                      <td className="px-3 py-2.5 text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          <button onClick={(e) => { e.stopPropagation(); setSelected(d); setMode('preview'); }} className={`p-1.5 rounded-lg transition-all ${isDark ? 'hover:bg-slate-600' : 'hover:bg-slate-200'}`} title="Voir">
-                            <Eye size={14} className="text-encre-3" />
-                          </button>
+                      <td className="px-3 py-1 text-right">
+                        <div className="flex items-center justify-end">
                           {!isViewOnly && canPerform('devis', 'edit') && peutModifierDocument(d, devis) && (
-                            <button onClick={(e) => { e.stopPropagation(); openEditor(d); }} className={`p-1.5 rounded-lg transition-all ${isDark ? 'hover:bg-slate-600' : 'hover:bg-slate-200'}`} title="Modifier">
-                              <Edit3 size={14} className="text-encre-3" />
-                            </button>
+                            <BoutonIcone icone={Edit3} libelle={`Modifier ${cleanNumero(d.numero)}`} taille={16} onClick={(e) => { e.stopPropagation(); openEditor(d); }} />
                           )}
                         </div>
                       </td>
@@ -5415,40 +5332,43 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         </div>
         </div>
       ) : (
-        <div className="flex flex-col gap-2 max-w-4xl">{filtered.map(d => {
+        // Une liste groupée (audit UX du 20 oct. 2026, § 2.4) : au bureau, l'action rapide passe sur la ligne du montant,
+        // environ dix documents par écran au lieu de six cartes séparées ; même largeur que les tuiles au-dessus.
+        <GroupeListe>{filtered.map(d => {
           const client = clients.find(c => c.id === d.client_id);
           const chantier = chantiers.find(ch => ch.id === d.chantier_id);
           const statutVu = d.type === 'facture' && d.facture_type !== 'avoir' ? statutFacture(d, paiements) : d.statut;
 
-          // Follow-up time indicator for sent devis
+          // Attente d'un devis envoyé : à partir de 7 jours, dite sous la ligne
           const getFollowUpInfo = () => {
             if (!['envoye', 'vu'].includes(d.statut) || d.type !== 'devis') return null;
-            const sentDate = d.updated_at || d.date;
-            const daysSent = Math.floor((Date.now() - new Date(sentDate)) / 86400000);
-            if (daysSent >= 30) return { text: `+${daysSent}j sans réponse`, cls: 'text-red-500 font-medium' };
-            if (daysSent >= 14) return { text: `${daysSent}j sans réponse`, cls: 'text-red-500' };
-            if (daysSent >= 7) return { text: `${daysSent}j en attente`, cls: isDark ? 'text-amber-400' : 'text-amber-600' };
-            if (daysSent >= 3) return { text: `Envoyé il y a ${daysSent}j`, cls: textMuted };
-            return { text: 'Envoyé récemment', cls: isDark ? 'text-emerald-400' : 'text-emerald-600' };
+            // Depuis l'envoi, comme l'alerte de la fiche (avant : depuis la dernière modification, remise à zéro par un rien)
+            const daysSent = getDaysSinceSent(d);
+            if (daysSent >= 14) return { texte: `${daysSent} j sans réponse`, ton: 'text-danger-texte' };
+            if (daysSent >= 7) return { texte: `${daysSent} j en attente`, ton: 'text-alerte-texte' };
+            return null;
           };
           const followUp = getFollowUpInfo();
 
           const isAvoirItem = d.facture_type === 'avoir';
           const isSituationItem = d.facture_type === 'situation';
 
-          // Contextual CTAs by status — gated by RBAC permissions
+          // Action rapide selon l'état (droits compris) : un libellé fait ce qu'il dit (audit UX du 20 oct. 2026)
           const getQuickAction = () => {
             if (isViewOnly) return null; // No actions for view-only roles
             // Un avoir ne s'encaisse pas et ne se « complète » pas (montant négatif) : sa fiche suffit (recette du 9 oct.)
             if (isAvoirItem) return null;
-            if (d.statut === 'brouillon' && getDevisTTC(d) > 0 && canPerform('devis', 'send')) return { label: 'Envoyer', Icon: Send, cls: 'text-white', style: { background: couleur }, fn: (e) => { e.stopPropagation(); trySend(d, sendEmail); } };
-            if (d.statut === 'brouillon' && getDevisTTC(d) <= 0 && canPerform('devis', 'edit')) return { label: 'Compléter', Icon: Edit3, cls: 'text-white', style: { background: couleur }, fn: (e) => { e.stopPropagation(); setSelected(d); setMode('preview'); } };
-            if (d.type === 'devis' && ['envoye', 'vu'].includes(d.statut) && isExpired(d) && canPerform('devis', 'edit') && peutModifierDocument(d, devis)) return { label: 'Prolonger', Icon: Edit3, cls: isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-200' : 'bg-slate-100 hover:bg-slate-200 text-slate-700', fn: (e) => { e.stopPropagation(); openEditor(d); } };
-            if (d.type === 'devis' && ['envoye', 'vu'].includes(d.statut) && !isExpired(d) && canPerform('devis', 'send')) return { label: 'Relancer', Icon: Mail, cls: isDark ? 'bg-amber-600 hover:bg-amber-500 text-white' : 'bg-amber-500 hover:bg-amber-600 text-white', fn: (e) => { e.stopPropagation(); sendEmail(d, null, { relanceDevis: true }); } };
-            if ((d.statut === 'accepte' || d.statut === 'signe') && d.type === 'devis') return { label: 'Facturer', Icon: Receipt, cls: 'bg-emerald-500 hover:bg-emerald-600 text-white', fn: (e) => { e.stopPropagation(); setSelected(d); setMode('preview'); } };
-            if (d.type === 'facture' && statutVu !== 'payee') return { label: 'Encaisser', Icon: CreditCard, cls: 'text-white', style: { background: couleur }, fn: (e) => { e.stopPropagation(); setSelected(d); setMode('preview'); } };
-            if (d.statut === 'refuse' && canPerform('devis', 'create')) return { label: 'Dupliquer', Icon: Copy, cls: isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600', fn: (e) => { e.stopPropagation(); duplicateDocument(d); } };
-            if (d.statut === 'payee') return null;
+            if (d.statut === 'brouillon' && getDevisTTC(d) > 0 && canPerform('devis', 'send')) return { label: 'Envoyer', Icon: Send, fn: (e) => { e.stopPropagation(); trySend(d, sendEmail); } };
+            if (d.statut === 'brouillon' && getDevisTTC(d) <= 0 && canPerform('devis', 'edit')) return { label: 'Compléter', Icon: Edit3, fn: (e) => { e.stopPropagation(); openEditor(d); } };
+            if (d.type === 'devis' && ['envoye', 'vu'].includes(d.statut) && isExpired(d) && canPerform('devis', 'edit') && peutModifierDocument(d, devis)) return { label: 'Prolonger', Icon: Edit3, fn: (e) => { e.stopPropagation(); openEditor(d); } };
+            if (d.type === 'devis' && ['envoye', 'vu'].includes(d.statut) && !isExpired(d) && canPerform('devis', 'send')) return { label: 'Relancer', Icon: Mail, fn: (e) => { e.stopPropagation(); setRelanceDe(d); } };
+            if ((d.statut === 'accepte' || d.statut === 'signe') && d.type === 'devis') {
+              // Même règle que la fiche (facturationDe) : rien à proposer pour un devis déjà facturé ou facturé par situations
+              const f = facturationDe(d);
+              if ((f.canAcompte || f.canFacturer) && !f.facturationParSituations) return { label: 'Facturer', Icon: Receipt, fn: (e) => { e.stopPropagation(); setSelected(d); setMode('preview'); setChoixFacturation(true); } };
+            }
+            if (d.type === 'facture' && !['payee', 'annulee', 'brouillon'].includes(statutVu)) return { label: 'Encaisser', Icon: CreditCard, fn: (e) => { e.stopPropagation(); setSelected(d); setMode('preview'); setShowPaymentModal(true); } };
+            if (d.statut === 'refuse' && canPerform('devis', 'create')) return { label: 'Dupliquer', Icon: Copy, fn: (e) => { e.stopPropagation(); duplicateDocument(d); } };
             return null;
           };
           const qa = getQuickAction();
@@ -5458,23 +5378,23 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           const isOrphan = !d.client_id || (d.client_id && !client);
           const isNameless = client && !clientName;
 
-          // Carte de liste (refonte du 9 oct. 2026) : client et montant, puis « type · n° · date » et UNE
-          // pastille ; dessous, seulement si une action est due, l'urgence et un bouton libellé.
-          // Avant : liseré, 3 pastilles de 10 px, montant orange, emoji, action réduite à une icône.
+          // Ligne de liste : client et montant, puis « type · n° · date · objet » (le plus distinctif d'abord : au
+          // téléphone, la troncature coupe l'objet, plus la nature du document) et UNE pastille ; dessous, seulement si une
+          // action est due, l'urgence et un bouton libellé.
           const typeDoc = isAvoirItem ? 'Avoir'
             : d.facture_type === 'acompte' ? `Acompte${d.acompte_pct ? ` ${d.acompte_pct} %` : ''}`
             : d.facture_type === 'solde' ? 'Solde'
             : isSituationItem ? `Situation${d.situation_numero ? ` n° ${d.situation_numero}` : ''}`
             : d.is_avenant ? `Avenant ${d.avenant_numero || ''}`.trim()
             : d.type === 'facture' ? 'Facture' : 'Devis';
-          const meta = [d.objet || chantier?.nom, typeDoc, cleanNumero(d.numero), dateLue(d.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })].filter(Boolean).join(' · ');
+          const meta = [typeDoc, cleanNumero(d.numero), dateLue(d.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }), d.objet || chantier?.nom].filter(Boolean).join(' · ');
           const genrePastille = d.type === 'facture' && !isAvoirItem ? 'facture' : 'devis';
           const statutPastille = d.type === 'devis' && isExpired(d) && ['envoye', 'vu'].includes(d.statut) ? 'expire' : statutVu;
           const relanceAuto = relances.getDocumentPending(d.id);
           const urgence = statutVu === 'en_retard'
             ? { texte: 'Échéance dépassée', ton: 'text-danger-texte' }
-            : followUp && ['envoye', 'vu'].includes(d.statut) && d.type === 'devis' && /sans réponse|en attente/.test(followUp.text)
-              ? { texte: followUp.text.replace(/(\d+)j/, '$1 j'), ton: /sans réponse/.test(followUp.text) ? 'text-danger-texte' : 'text-alerte-texte' }
+            : followUp
+              ? followUp
               : relanceAuto
                 ? { texte: relanceAuto.nextStep?.isDue ? 'Relance à envoyer' : `Relance auto ${relanceAuto.nextStep?.step?.name || ''}`.trim(), ton: relanceAuto.nextStep?.isDue ? 'text-alerte-texte' : 'text-encre-3' }
                 : (isOrphan || isNameless) && d.statut === 'brouillon' ? { texte: 'Client à renseigner', ton: 'text-alerte-texte' } : null;
@@ -5483,123 +5403,35 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
             : getDevisTTC(d) <= 0 ? '0 €' : formatMoney(getDevisTTC(d));
           const ouvrir = () => { setSelected(d); setMode('preview'); };
           return (
-            <div key={d.id} className="rounded-2xl border border-bord bg-surface shadow-e1 overflow-hidden">
-              <LigneListe
-                onClick={ouvrir}
-                aria-label={`Ouvrir ${d.numero || (d.type === 'facture' ? 'la facture' : 'le devis')}`}
-                titre={(isOrphan || isNameless) ? <span className="text-alerte-texte">{isOrphan ? 'Aucun client' : 'Client sans nom'}</span> : clientName}
-                montant={montantCarte}
-                meta={meta}
-                pastille={<PastilleStatut genre={genrePastille} statut={statutPastille} />}
-                pied={qa || urgence ? (
-                  <>
-                    <span className={`text-sm font-medium truncate ${urgence?.ton || ''}`}>{urgence?.texte || ''}</span>
-                    {qa ? (
-                      <Bouton taille="compacte" variante="secondaire" icone={qa.Icon} onClick={qa.fn} className="flex-shrink-0">{qa.label}</Bouton>
-                    ) : (isOrphan || isNameless) ? (
-                      <Bouton taille="compacte" variante="secondaire" onClick={() => setAssigningClientDevisId(d.id)} className="flex-shrink-0">Assigner</Bouton>
-                    ) : null}
-                  </>
-                ) : null}
-              />
-            </div>
+            <LigneListe
+              key={d.id}
+              onClick={ouvrir}
+              piedEnLigne
+              aria-label={`Ouvrir ${d.numero || (d.type === 'facture' ? 'la facture' : 'le devis')}`}
+              titre={(isOrphan || isNameless) ? <span className="text-alerte-texte">{isOrphan ? 'Aucun client' : 'Client sans nom'}</span> : clientName}
+              montant={montantCarte}
+              meta={meta}
+              pastille={<PastilleStatut genre={genrePastille} statut={statutPastille} />}
+              pied={qa || urgence ? (
+                <>
+                  <span className={`text-sm font-medium truncate ${urgence?.ton || ''}`}>{urgence?.texte || ''}</span>
+                  {qa ? (
+                    <Bouton taille="compacte" variante="secondaire" icone={qa.Icon} onClick={qa.fn} className="flex-shrink-0">{qa.label}</Bouton>
+                  ) : (isOrphan || isNameless) ? (
+                    <Bouton taille="compacte" variante="secondaire" onClick={() => setAssigningClientDevisId(d.id)} className="flex-shrink-0">Assigner</Bouton>
+                  ) : null}
+                </>
+              ) : null}
+            />
           );
-        })}</div>
+        })}</GroupeListe>
       )}
       <Snackbar />
 
-      {/* B1: Assign client dropdown modal */}
-      {assigningClientDevisId && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={() => setAssigningClientDevisId(null)}>
-          <div className={`${cardBg} border rounded-t-2xl sm:rounded-2xl w-full sm:max-w-sm shadow-2xl`} onClick={e => e.stopPropagation()}>
-            <div className={`p-4 border-b border-bord`}>
-              <h3 className={`font-bold ${textPrimary}`}>Assigner un client</h3>
-              <p className={`text-xs ${textMuted} mt-1`}>Sélectionnez le client pour ce devis</p>
-            </div>
-            <div className="p-3 max-h-64 overflow-y-auto space-y-1">
-              {clients.filter(c => c.nom).map(c => (
-                <button key={c.id} onClick={() => {
-                  const d = devis.find(dv => dv.id === assigningClientDevisId);
-                  if (d) {
-                    onUpdate(d.id, { client_id: c.id, client_nom: `${c.prenom || ''} ${c.nom}`.trim() });
-                    showToast(`Client "${`${c.prenom || ''} ${c.nom}`.trim()}" assigné`, 'success');
-                  }
-                  setAssigningClientDevisId(null);
-                }} className={`w-full text-left px-3 py-2.5 rounded-xl flex items-center gap-3 transition-all hover:bg-surface-2`}>
-                  <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 bg-accent text-sur-accent">
-                    {(c.prenom?.[0] || c.nom?.[0] || '?').toUpperCase()}
-                  </div>
-                  <div className="min-w-0">
-                    <p className={`text-sm font-medium truncate ${textPrimary}`}>{c.prenom ? `${c.prenom} ${c.nom}` : c.nom}</p>
-                    {c.entreprise && <p className={`text-xs truncate ${textMuted}`}>{c.entreprise}</p>}
-                  </div>
-                </button>
-              ))}
-              {clients.filter(c => c.nom).length === 0 && (
-                <p className={`text-sm text-center py-4 ${textMuted}`}>Aucun client disponible</p>
-              )}
-            </div>
-            <div className={`p-3 border-t border-bord`}>
-              <button onClick={() => setAssigningClientDevisId(null)} className={`w-full py-2 rounded-xl text-sm font-medium ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
-                Annuler
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* PDF Preview Modal */}
-      {showPdfPreview && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in" onClick={() => setShowPdfPreview(false)}>
-          <div className={`bg-surface-2 rounded-2xl w-full max-w-4xl h-[90vh] shadow-2xl flex flex-col overflow-hidden`} onClick={e => e.stopPropagation()}>
-            {/* Header */}
-            <div className={`p-3 sm:p-4 border-b border-bord bg-surface flex items-center justify-between gap-2 flex-shrink-0`}>
-              <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                <div className="p-2 rounded-lg flex-shrink-0" style={{ background: `${couleur}20` }}>
-                  <FileText size={18} className="sm:w-5 sm:h-5 text-accent-texte" />
-                </div>
-                <div className="min-w-0">
-                  <h2 className={`font-bold text-base sm:text-lg ${textPrimary} truncate`}>Aperçu du document</h2>
-                  <p className={`text-xs sm:text-sm ${textMuted} hidden sm:block`}>Format A4 - Pret pour impression</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
-                <button
-                  onClick={() => tryDownload(selected, printPDF)}
-                  className="px-3 sm:px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl flex items-center gap-1.5 sm:gap-2 min-h-[44px] transition-colors text-sm"
-                >
-                  <Download size={16} className="sm:w-[18px] sm:h-[18px]" />
-                  <span className="hidden sm:inline">Imprimer / PDF</span>
-                  <span className="sm:hidden">PDF</span>
-                </button>
-                <button
-                  onClick={() => setShowPdfPreview(false)}
-                  className={`p-2.5 rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-200'}`}
-                >
-                  <X size={20} className={textPrimary} />
-                </button>
-              </div>
-            </div>
-
-            {/* PDF Content - Paper style */}
-            <div className="flex-1 overflow-auto p-4 sm:p-8 flex justify-center">
-              <div
-                className="bg-white shadow-2xl rounded-sm w-full max-w-[210mm] min-h-[297mm]"
-                style={{
-                  boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.05)'
-                }}
-              >
-                <iframe
-                  srcDoc={pdfContent}
-                  sandbox=""
-                  className="w-full h-full min-h-[297mm] border-0"
-                  title="Aperçu PDF"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {fenetreAssigner}
+      {fenetreApercu}
+      {feuilleRelance}
+      {fenetresEnvoi}
 
       <CorrectionEncaissementModal
         paiement={correctionDe?.paiement || null}
@@ -5716,7 +5548,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 }
 
 // ── Devis Historique tab (extracted sub-component) ──
-function DevisHistoriqueTab({ selected, facturesLiees, setSelected, isDark, couleur, modeDiscret, formatMoney, textPrimary, textMuted }) {
+function DevisHistoriqueTab({ selected, facturesLiees, isDark, couleur, modeDiscret }) {
   const [auditEntries, setAuditEntries] = React.useState([]);
   const [isLoading, setIsLoading] = React.useState(true);
 

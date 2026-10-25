@@ -191,7 +191,9 @@ const GESTES_LOT = [
   // La liste n'affiche que les premiers clients : la recherche ramène celui-ci à l'écran
   ['__taper', 'Dubois'],
   ['Philippe Dubois'],
-  ['__choisir', 'Rénovation appartement Dubois'],
+  // Le chantier se choisit comme le client (sélecteur de l'éditeur, audit UX du 20 oct. 2026), plus dans une liste native
+  ['Aucun — adresse du client'],
+  ['Rénovation appartement Dubois'],
 ];
 
 // ─── Les vues de l'app ───────────────────────────────────────────────────────────────────────────────────
@@ -277,7 +279,7 @@ async function ecrireVignette(page, nom, vignette) {
 const VUES = [
   { nom: 'ordi-accueil', page: 'dashboard', largeur: 1440, vignette: { x: 340, y: 64 } },
   { nom: 'ordi-devis-lots', page: 'devis', largeur: 1440, gestes: GESTES_LOT, vignette: { x: 360, y: 60 } },
-  { nom: 'ordi-facture', page: 'devis', largeur: 1440, gestes: [['FAC-2026-00003']], vignette: { x: 268, y: 72, largeur: 800 } },
+  { nom: 'ordi-facture', page: 'devis', largeur: 1440, gestes: [['FAC-2026-00003']], vignette: { x: 268, y: 72, largeur: 816 } },
   { nom: 'ordi-chantier', page: 'chantiers', largeur: 1440, gestes: [['Rénovation cuisine Dupont']], vignette: { x: 268, y: 72, largeur: 904 } },
   { nom: 'ordi-catalogue', page: 'catalogue', largeur: 1440, vignette: { x: 268, y: 72, largeur: 744 } },
   { nom: 'ordi-clients', page: 'clients', largeur: 1440, vignette: { x: 268, y: 64, largeur: 856 } },

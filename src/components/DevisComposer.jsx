@@ -15,7 +15,7 @@ import {
   ArrowLeft, Plus, Search, Trash2, ChevronUp, ChevronDown, User,
   UserPlus, FileText, Receipt, Check, Loader2, Percent, StickyNote,
   Package, Zap, CornerDownLeft, Droplets, Paintbrush, Hammer, Star, Sparkles, Ruler, X,
-  Eye, AlertTriangle, Library, Layers, GripVertical,
+  Eye, AlertTriangle, Library, Layers, GripVertical, Building2,
 } from 'lucide-react';
 import QuickClientModal from './QuickClientModal';
 import { generateId } from '../lib/utils';
@@ -33,6 +33,11 @@ const DRAFT_KEY = 'mallettico_devis_composer_draft';
 const MRU_KEY = 'mallettico_recent_clients';
 const RECENT_ARTICLES_KEY = 'mallettico_recent_articles';
 const UNITES = ['u', 'm²', 'ml', 'm³', 'h', 'j', 'forfait', 'ens.', 'pièce', 'kg', 'L', 'lot'];
+// Libellés de champ en casse normale, 14 px (audit UX du 20 oct. 2026 : capitales de 11 px, sous le minimum de 12 px)
+const LIBELLE = 'block mb-1.5 text-sm font-medium text-encre-2';
+// Une seule hauteur de champ, 48 px, texte de 16 px au téléphone (pas de zoom de Safari) ; le tableau des lignes au bureau
+// garde ses cellules de 36 px
+const CHAMP = 'w-full px-3 h-12 rounded-xl border text-base sm:text-sm';
 
 /** Modèles métier : squelettes de devis prêts à chiffrer (mêmes trames que le formulaire classique). */
 const METIER_TEMPLATES = [
@@ -104,7 +109,7 @@ export default function DevisComposer({
   showToast,
   onCompleteProfile,
   isDark = false,
-  couleur = '#f97316',
+  couleur,
   onPreview,
 }) {
   const isEditMode = !!initialData;
@@ -657,22 +662,18 @@ export default function DevisComposer({
 
   return createPortal(
     <div role="dialog" aria-modal="true" aria-label={`${isEditMode ? 'Modifier' : (isFacture ? 'Nouvelle' : 'Nouveau')} ${isFacture ? 'facture' : 'devis'}`}
-      className="fixed inset-0 z-[1000] flex flex-col" style={{ background: isDark ? '#0b1220' : '#f8fafc' }}>
-      {/* ── Top bar ── */}
-      <header className={`flex items-center gap-3 px-3 sm:px-5 h-14 border-b border-bord bg-surface flex-shrink-0`}>
-        <button onClick={onClose} aria-label="Fermer" className={`p-2 rounded-lg ${rowHover} ${textMuted} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`}>
+      className="fixed inset-0 z-[1000] flex flex-col bg-fond">
+      {/* ── Top bar ──
+          Audit UX du 20 oct. 2026 : le titre au téléphone aussi ; plus de bouton « Créer » en haut (deux boutons pleins :
+          celui du bas, collé aux totaux, suffit) ; le choix devis / facture passe sous l'en-tête au téléphone. */}
+      <header className="flex items-center gap-2 sm:gap-3 px-2 sm:px-5 h-14 border-b border-bord bg-surface flex-shrink-0">
+        <button onClick={onClose} aria-label="Fermer" className={`w-11 h-11 flex items-center justify-center rounded-xl ${rowHover} ${textMuted} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent`}>
           <ArrowLeft size={20} />
         </button>
-        <div className="flex-1 min-w-0 flex items-center gap-2">
-          <h1 className={`${isEditMode ? '' : 'sr-only sm:not-sr-only'} text-base font-bold truncate ${textPrimary}`}>{isEditMode ? 'Modifier' : (isFacture ? 'Nouvelle' : 'Nouveau')} {isFacture ? 'facture' : 'devis'}</h1>
-          <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide text-white flex-shrink-0"
-            style={{ background: accentPlein }}>
-            {isFacture ? <><Receipt size={10} /> Facture</> : <><FileText size={10} /> Devis</>}
-          </span>
-        </div>
-        {/* Type toggle (visible aussi en mobile) */}
+        <h1 className={`flex-1 min-w-0 text-base font-bold truncate ${textPrimary}`}>{isEditMode ? 'Modifier' : (isFacture ? 'Nouvelle' : 'Nouveau')} {isFacture ? 'facture' : 'devis'}</h1>
+        {/* Type toggle (au téléphone : sous l'en-tête) */}
         {!isEditMode && (
-          <div className={`flex items-center rounded-xl p-0.5 bg-surface-2`}>
+          <div className="hidden sm:flex items-center rounded-xl p-0.5 bg-surface-2">
             {[{ v: 'devis', label: 'Devis', Icon: FileText }, { v: 'facture', label: 'Facture', Icon: Receipt }].map(({ v, label, Icon }) => (
               <button key={v} onClick={() => setForm(p => ({ ...p, type: v }))} aria-label={label} aria-pressed={form.type === v}
                 className={`flex items-center gap-1.5 px-3 h-9 rounded-lg text-sm font-semibold transition-colors ${form.type === v ? 'bg-surface text-encre shadow-e1' : 'text-encre-2 hover:text-encre'}`}>
@@ -682,14 +683,8 @@ export default function DevisComposer({
           </div>
         )}
         <button onClick={() => setShowLibrary(true)} aria-label="Ouvrir la bibliothèque de modèles"
-          className={`flex items-center gap-1.5 px-2.5 sm:px-3 h-9 rounded-xl text-xs font-semibold border transition-all border-bord text-encre-2 hover:bg-surface-2`}>
-          <Library size={15} /> <span className="hidden md:inline">Bibliothèque</span>
-        </button>
-        <button onClick={() => handleSubmit(false)} disabled={isSubmitting}
-          className="hidden sm:flex items-center gap-2 px-4 h-9 rounded-xl text-white text-sm font-semibold shadow-lg disabled:opacity-60 transition-all hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
-          style={{ background: accentPlein }}>
-          {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
-          <span>{isEditMode ? 'Enregistrer' : 'Créer'}</span>
+          className="flex items-center gap-1.5 px-3 h-11 rounded-full text-sm font-semibold border transition-colors border-bord text-encre-2 hover:bg-surface-2">
+          <Library size={16} aria-hidden="true" /> <span>Bibliothèque</span>
         </button>
       </header>
 
@@ -701,13 +696,13 @@ export default function DevisComposer({
       )}
 
       {legalMissing.length > 0 && (
-        <div className="px-3 sm:px-5 py-2 text-xs flex items-center gap-2 bg-amber-500/10 border-b border-amber-500/20">
-          <AlertTriangle size={13} className="text-amber-500 flex-shrink-0" />
-          <span className={`flex-1 min-w-0 sm:truncate ${isDark ? 'text-amber-300' : 'text-amber-700'}`}>
+        <div role="status" className="px-3 sm:px-5 py-2 text-sm flex items-center gap-2 bg-alerte-fond text-alerte-texte">
+          <AlertTriangle size={16} className="flex-shrink-0" aria-hidden="true" />
+          <span className="flex-1 min-w-0 sm:truncate">
             L'envoi sera bloqué — profil incomplet : {enPhrase(legalMissing)}.
           </span>
           {onCompleteProfile && (
-            <button onClick={onCompleteProfile} className={`font-semibold whitespace-nowrap ${isDark ? 'text-amber-300' : 'text-amber-700'} hover:underline`}>
+            <button onClick={onCompleteProfile} className="h-11 -my-2 font-semibold whitespace-nowrap hover:underline">
               Compléter →
             </button>
           )}
@@ -718,7 +713,20 @@ export default function DevisComposer({
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-3xl mx-auto px-3 sm:px-5 py-4 sm:py-6 space-y-4 pb-40">
 
-          {/* Client + date */}
+          {/* Devis ou facture, au téléphone (au bureau : dans l'en-tête) */}
+          {!isEditMode && (
+            <div className="sm:hidden grid grid-cols-2 rounded-xl p-0.5 bg-surface-2" role="group" aria-label="Type de document">
+              {[{ v: 'devis', label: 'Devis', Icon: FileText }, { v: 'facture', label: 'Facture', Icon: Receipt }].map(({ v, label, Icon }) => (
+                <button key={v} onClick={() => setForm(p => ({ ...p, type: v }))} aria-pressed={form.type === v}
+                  className={`flex items-center justify-center gap-1.5 h-11 rounded-lg text-sm font-semibold transition-colors ${form.type === v ? 'bg-surface text-encre shadow-e1' : 'text-encre-2'}`}>
+                  <Icon size={16} aria-hidden="true" /> {label}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Client, date, chantier : le client et le chantier se choisissent de la même façon, à la même hauteur
+              (audit UX du 20 oct. 2026 : sélecteur fait maison pour l'un, liste native pour l'autre) */}
           <div className={`rounded-2xl border p-3 sm:p-4 ${cardBg}`}>
             <div className="grid sm:grid-cols-2 gap-3">
               <ClientField
@@ -729,19 +737,17 @@ export default function DevisComposer({
                 onSelect={selectClient} onQuickAdd={() => { setShowClientPicker(false); setShowQuickClient(true); }}
               />
               <div>
-                <label className={`block text-[11px] font-semibold uppercase tracking-wide mb-1.5 ${textMuted}`}>Date</label>
-                <input type="date" value={form.date} onChange={e => setForm(p => ({ ...p, date: e.target.value }))}
-                  className={`w-full px-3 h-11 rounded-xl border text-sm ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`} />
+                <label htmlFor="composeur-date" className={LIBELLE}>Date</label>
+                <input id="composeur-date" type="date" value={form.date} onChange={e => setForm(p => ({ ...p, date: e.target.value }))}
+                  className={`w-full px-3 h-12 rounded-xl border text-base ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent`} />
               </div>
             </div>
             {chantiers.length > 0 && (
               <div className="mt-3">
-                <label className={`block text-[11px] font-semibold uppercase tracking-wide mb-1.5 ${textMuted}`}>Chantier — adresse des travaux</label>
-                <select value={form.chantierId} onChange={e => setForm(p => ({ ...p, chantierId: e.target.value }))}
-                  className={`w-full px-3 h-11 rounded-xl border text-sm ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`}>
-                  <option value="">Aucun — utiliser l'adresse du client</option>
-                  {chantiers.map(c => <option key={c.id} value={c.id}>{c.nom}</option>)}
-                </select>
+                <ChantierField
+                  chantiers={chantiers} clientId={form.clientId} valeur={form.chantierId}
+                  onChange={(id) => setForm(p => ({ ...p, chantierId: id }))}
+                />
               </div>
             )}
           </div>
@@ -750,7 +756,7 @@ export default function DevisComposer({
           <div className={`rounded-2xl border ${cardBg}`}>
             {/* header row (desktop) */}
             {form.lignes.length > 0 && (
-              <div className={`hidden sm:grid grid-cols-[14px_1fr_52px_60px_74px_54px_92px_30px] gap-2 px-4 py-2 rounded-t-2xl text-[11px] font-semibold uppercase tracking-wide ${textMuted} bg-fond border-b border-bord`}>
+              <div className={`hidden sm:grid grid-cols-[14px_1fr_52px_60px_74px_54px_92px_30px] gap-2 px-4 py-2 rounded-t-2xl text-xs font-semibold ${textMuted} bg-fond border-b border-bord`}>
                 <span /><span>Désignation</span><span className="text-center">Qté</span><span className="text-center">Unité</span><span className="text-center">PU HT</span><span className="text-center">TVA</span><span className="text-right">Total HT</span><span />
               </div>
             )}
@@ -759,7 +765,7 @@ export default function DevisComposer({
                 ligne._isSection ? (
                   <SectionRow key={ligne.id} ligne={ligne} index={index} total={form.lignes.length} subtotal={sectionSubtotals[index] || 0}
                     count={sectionCounts[index] || 0} collapsed={collapsedLots.has(ligne.id)} onToggle={() => toggleLot(ligne.id)}
-                    shouldFocus={ligne.id === focusLotId} isDark={isDark} couleur={accentPlein} textPrimary={textPrimary} textMuted={textMuted}
+                    shouldFocus={ligne.id === focusLotId} isDark={isDark} textPrimary={textPrimary} textMuted={textMuted}
                     onUpdate={(v) => updateLigne(ligne.id, 'description', v)} onRemove={() => removeLigne(ligne.id)}
                     onMoveUp={() => moveLigne(index, -1)} onMoveDown={() => moveLigne(index, 1)} {...dragProps(index)} />
                 ) : collapsedLots.has(lotOfLine[ligne.id]) ? null : (
@@ -794,7 +800,7 @@ export default function DevisComposer({
                     <Star size={13} /> Enregistrer comme modèle
                   </button>
                 )}
-                {!hasLots && <span className={`text-[11px] ${textMuted}`}>Regroupez par pièce ou corps d'état (Salle de bain, Cuisine…)</span>}
+                {!hasLots && <span className={`text-xs ${textMuted}`}>Regroupez par pièce ou corps d'état (Salle de bain, Cuisine…)</span>}
               </div>
             )}
 
@@ -821,13 +827,13 @@ export default function DevisComposer({
                   <p className="text-xs text-encre-2">TVA non applicable, art. 293 B du CGI (micro-entreprise) : aucune TVA n'est ajoutée.</p>
                 ) : (
                 <div>
-                  <label className={`block text-[11px] font-semibold uppercase tracking-wide mb-1.5 ${textMuted}`}>TVA — appliquer à tout le devis</label>
+                  <label className={LIBELLE}>TVA — appliquer à tout le devis</label>
                   <div className="flex gap-1.5 flex-wrap">
                     {[{ v: 20, sub: 'neuf' }, { v: 10, sub: 'réno' }, { v: 5.5, sub: 'éco-réno' }, { v: 0, sub: 'exonéré' }].map(({ v, sub }) => (
                       <button key={v} type="button"
                         onClick={() => setForm(p => ({ ...p, tvaDefaut: v, lignes: p.lignes.map(l => l._isSection ? l : { ...l, tva: v }) }))}
-                        className={`px-3 h-9 rounded-lg text-xs font-semibold border transition-all ${form.tvaDefaut === v && form.lignes.every(l => l._isSection || l.tva === v) ? 'text-white' : 'border-bord text-encre-2 hover:bg-surface-2'}`}
-                        style={form.tvaDefaut === v && form.lignes.every(l => l._isSection || l.tva === v) ? { background: couleur, borderColor: couleur } : undefined}>
+                        aria-pressed={form.tvaDefaut === v && form.lignes.every(l => l._isSection || l.tva === v)}
+                        className={`px-3 h-11 rounded-full text-sm font-semibold border transition-colors ${form.tvaDefaut === v && form.lignes.every(l => l._isSection || l.tva === v) ? 'bg-encre text-surface border-encre' : 'border-bord text-encre-2 hover:bg-surface-2'}`}>
                         {String(v).replace('.', ',')} % <span className="font-normal opacity-70">{sub}</span>
                       </button>
                     ))}
@@ -836,30 +842,30 @@ export default function DevisComposer({
                 )}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className={`block text-[11px] font-semibold uppercase tracking-wide mb-1.5 ${textMuted}`}>Remise %</label>
+                    <label className={LIBELLE}>Remise %</label>
                     <input type="number" min="0" max="100" value={form.remise || ''} onChange={e => setForm(p => ({ ...p, remise: Math.min(100, Math.max(0, parseFloat(e.target.value) || 0)) }))}
-                      placeholder="0" className={`w-full px-3 h-10 rounded-xl border text-sm ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`} />
+                      placeholder="0" className={`${CHAMP} ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent`} />
                   </div>
                   {!isFacture && (
                     <div>
-                      <label className={`block text-[11px] font-semibold uppercase tracking-wide mb-1.5 ${textMuted}`}>Validité (jours)</label>
+                      <label className={LIBELLE}>Validité (jours)</label>
                       <input type="number" min="1" value={form.validite} onChange={e => setForm(p => ({ ...p, validite: e.target.value.replace(/\D/g, '') }))}
-                        className={`w-full px-3 h-10 rounded-xl border text-sm ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`} />
+                        className={`${CHAMP} ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent`} />
                     </div>
                   )}
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   {!isFacture && (
                     <div>
-                      <label className={`block text-[11px] font-semibold uppercase tracking-wide mb-1.5 ${textMuted}`}>Acompte demandé %</label>
+                      <label className={LIBELLE}>Acompte demandé %</label>
                       <input type="number" min="0" max="100" value={form.acompte || ''} onChange={e => setForm(p => ({ ...p, acompte: Math.min(100, Math.max(0, parseFloat(e.target.value) || 0)) }))}
-                        placeholder="0" className={`w-full px-3 h-10 rounded-xl border text-sm ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`} />
+                        placeholder="0" className={`${CHAMP} ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent`} />
                     </div>
                   )}
                   <div>
-                    <label className={`block text-[11px] font-semibold uppercase tracking-wide mb-1.5 ${textMuted}`}>Conditions de règlement</label>
+                    <label className={LIBELLE}>Conditions de règlement</label>
                     <select value={form.conditions} onChange={e => setForm(p => ({ ...p, conditions: e.target.value }))}
-                      className={`w-full px-3 h-10 rounded-xl border text-sm ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`}>
+                      className={`${CHAMP} ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent`}>
                       <option value="">Standard — délai de vos paramètres</option>
                       <option value="Paiement à réception de facture">À réception de facture</option>
                       <option value="Paiement à 30 jours">Paiement à 30 jours</option>
@@ -879,16 +885,16 @@ export default function DevisComposer({
                   </label>
                 )}
                 <div>
-                  <label className={`block text-[11px] font-semibold uppercase tracking-wide mb-1.5 ${textMuted}`}><StickyNote size={12} className="inline mr-1" />Notes (visibles sur le PDF)</label>
+                  <label className={LIBELLE}><StickyNote size={12} className="inline mr-1" />Notes (visibles sur le PDF)</label>
                   <textarea value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} rows={2}
-                    placeholder="Conditions particulières, délais…" className={`w-full px-3 py-2 rounded-xl border text-sm resize-none ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`} />
+                    placeholder="Conditions particulières, délais…" className={`w-full px-3 py-2 rounded-xl border text-sm resize-none ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent`} />
                 </div>
               </div>
             )}
           </div>
 
           {error && (
-            <div className="rounded-xl px-4 py-3 text-sm bg-red-500/10 border border-red-500/30 text-red-500 font-medium">{error}</div>
+            <div role="alert" className="rounded-xl px-4 py-3 text-sm bg-danger-fond text-danger-texte font-medium">{error}</div>
           )}
         </div>
       </div>
@@ -904,7 +910,7 @@ export default function DevisComposer({
             </div>
             {form.remise > 0 && (
               <div className="hidden sm:flex items-baseline gap-1.5">
-                <span className="text-xs text-red-500">−{form.remise}%</span>
+                <span className="text-xs text-danger-texte">−{form.remise}%</span>
               </div>
             )}
             {franchise ? (
@@ -918,11 +924,11 @@ export default function DevisComposer({
               </div>
             )}
             <div className="flex flex-col sm:flex-row sm:items-baseline sm:gap-1.5">
-              <span className={`text-[10px] sm:text-xs font-semibold uppercase leading-none ${textMuted}`}>{franchise ? 'Total' : 'TTC'}</span>
+              <span className={`text-xs font-semibold leading-none ${textMuted}`}>{franchise ? 'Total' : 'Total TTC'}</span>
               <span className="text-lg sm:text-3xl font-extrabold tabular-nums whitespace-nowrap leading-tight" style={{ color: isFacture ? accent : 'rgb(var(--accent-texte))' }}>{eur(animatedTTC)}</span>
             </div>
             {totals.margePercent > 0 && form.lignes.some(l => l.prixAchat > 0) && (
-              <div className={`hidden md:flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold ${totals.margePercent >= 25 ? 'bg-emerald-500/15 text-emerald-500' : totals.margePercent >= 10 ? 'bg-amber-500/15 text-amber-500' : 'bg-red-500/15 text-red-500'}`}>
+              <div className={`hidden md:flex items-center gap-1 px-2.5 h-6 rounded-full text-xs font-semibold ${totals.margePercent >= 25 ? 'bg-succes-fond text-succes-texte' : totals.margePercent >= 10 ? 'bg-alerte-fond text-alerte-texte' : 'bg-danger-fond text-danger-texte'}`}>
                 <Zap size={11} /> {Math.round(totals.margePercent)}% marge
               </div>
             )}
@@ -935,8 +941,8 @@ export default function DevisComposer({
             </button>
           )}
           <button onClick={() => handleSubmit(false)} disabled={isSubmitting}
-            className="flex items-center gap-2 px-4 sm:px-5 h-11 rounded-xl text-white text-sm font-bold shadow-lg disabled:opacity-60 transition-all hover:opacity-90 whitespace-nowrap flex-shrink-0"
-            style={{ background: accentPlein }}>
+            className={`flex items-center gap-2 px-4 sm:px-5 h-11 rounded-full text-sm font-bold shadow-e1 disabled:opacity-60 transition-[filter] hover:brightness-95 whitespace-nowrap flex-shrink-0 ${isFacture ? 'text-white' : 'bg-accent text-sur-accent'}`}
+            style={isFacture ? { background: accentPlein } : undefined}>
             {isSubmitting ? <Loader2 size={18} className="animate-spin" /> : <Check size={18} />}
             {isEditMode ? 'Enregistrer' : (isFacture ? 'Créer la facture' : 'Créer le devis')}
           </button>
@@ -1026,7 +1032,7 @@ export default function DevisComposer({
 }
 
 /* ── Client field (inline picker) ── */
-function ClientField({ selectedClient, couleur, isDark, textPrimary, textMuted, open, setOpen, clientSearch, setClientSearch, inputBg, recentClients, filteredClients, onSelect, onQuickAdd }) {
+function ClientField({ selectedClient, couleur: _couleur, isDark: _isDark, textPrimary, textMuted, open, setOpen, clientSearch, setClientSearch, inputBg, recentClients, filteredClients, onSelect, onQuickAdd }) {
   const ref = useRef(null);
   useEffect(() => {
     if (!open) return;
@@ -1037,10 +1043,10 @@ function ClientField({ selectedClient, couleur, isDark, textPrimary, textMuted, 
   const list = clientSearch.trim() ? filteredClients : (recentClients.length ? recentClients : filteredClients);
   return (
     <div className="relative" ref={ref}>
-      <label className={`block text-[11px] font-semibold uppercase tracking-wide mb-1.5 ${textMuted}`}>Client</label>
+      <span className={LIBELLE}>Client</span>
       <button onClick={() => setOpen(o => !o)}
-        className={`w-full flex items-center gap-2.5 px-3 h-11 rounded-xl border text-sm text-left transition-all bg-surface border-bord hover:border-current focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`}
-        style={selectedClient ? { borderColor: `${couleur}55` } : undefined} aria-haspopup="true" aria-expanded={open}>
+        className={`w-full flex items-center gap-2.5 px-3 h-12 rounded-xl border text-base sm:text-sm text-left transition-colors bg-surface hover:border-bord-fort focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${selectedClient ? 'border-bord-fort' : 'border-bord'}`}
+        aria-haspopup="true" aria-expanded={open}>
         {selectedClient ? (
           <>
             <span className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 bg-accent text-sur-accent">
@@ -1059,15 +1065,15 @@ function ClientField({ selectedClient, couleur, isDark, textPrimary, textMuted, 
             <div className="relative">
               <Search size={15} className={`absolute left-3 top-1/2 -translate-y-1/2 ${textMuted}`} />
               <input autoFocus value={clientSearch} onChange={e => setClientSearch(e.target.value)} placeholder="Rechercher un client…"
-                className={`w-full pl-9 pr-3 h-10 rounded-lg border text-sm ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`} />
+                className={`w-full pl-9 pr-3 h-12 rounded-lg border text-base sm:text-sm ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent`} />
             </div>
           </div>
           <div className="max-h-56 overflow-y-auto py-1">
             {!clientSearch.trim() && recentClients.length > 0 && (
-              <p className={`px-3 pt-1 pb-1 text-[10px] font-semibold uppercase tracking-wide ${textMuted}`}>Récents</p>
+              <p className={`px-3 pt-1 pb-1 text-xs font-semibold ${textMuted}`}>Récents</p>
             )}
             {list.map(c => (
-              <button key={c.id} onClick={() => onSelect(c.id)} className={`w-full flex items-center gap-2.5 px-3 py-2 text-left text-sm hover:bg-surface-2`}>
+              <button key={c.id} onClick={() => onSelect(c.id)} className={`w-full min-h-[48px] flex items-center gap-2.5 px-3 py-2 text-left text-sm hover:bg-surface-2`}>
                 <span className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 bg-accent text-sur-accent">{(c.nom || '?')[0]?.toUpperCase()}</span>
                 <span className="flex-1 min-w-0">
                   <span className={`block truncate font-medium ${textPrimary}`}>{formatClientName(c)}</span>
@@ -1077,7 +1083,7 @@ function ClientField({ selectedClient, couleur, isDark, textPrimary, textMuted, 
             ))}
             {list.length === 0 && <p className={`px-3 py-4 text-center text-sm ${textMuted}`}>Aucun client</p>}
           </div>
-          <button onClick={onQuickAdd} className={`w-full flex items-center gap-2 px-3 py-2.5 text-sm font-semibold border-t border-bord hover:bg-surface-2 text-accent-texte`}>
+          <button onClick={onQuickAdd} className={`w-full min-h-[48px] flex items-center gap-2 px-3 py-2.5 text-sm font-semibold border-t border-bord hover:bg-surface-2 text-accent-texte`}>
             <UserPlus size={16} /> Nouveau client
           </button>
         </div>
@@ -1086,8 +1092,71 @@ function ClientField({ selectedClient, couleur, isDark, textPrimary, textMuted, 
   );
 }
 
+/* ── Chantier (adresse des travaux) : le même sélecteur que le client, à la même hauteur ──
+ * Audit UX du 20 oct. 2026 : le client se choisissait dans ce sélecteur, le chantier dans une liste native de 44 px.
+ * Les chantiers du client choisi viennent en premier ; une recherche apparaît au-delà de six chantiers. */
+function ChantierField({ chantiers = [], clientId, valeur, onChange }) {
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState('');
+  const ref = useRef(null);
+  useEffect(() => {
+    if (!open) return;
+    const h = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    const echap = (e) => { if (e.key === 'Escape') setOpen(false); };
+    document.addEventListener('mousedown', h);
+    document.addEventListener('keydown', echap);
+    return () => { document.removeEventListener('mousedown', h); document.removeEventListener('keydown', echap); };
+  }, [open]);
+  const choisi = chantiers.find(c => c.id === valeur);
+  const tries = [...chantiers].sort((a, b) => ((b.client_id === clientId) - (a.client_id === clientId)) || (a.nom || '').localeCompare(b.nom || '', 'fr'));
+  const liste = q.trim() ? tries.filter(c => norm(`${c.nom || ''} ${c.adresse || ''}`).includes(norm(q.trim()))) : tries;
+  const choisir = (id) => { onChange(id); setOpen(false); setQ(''); };
+  return (
+    <div className="relative" ref={ref}>
+      <span className={LIBELLE}>Chantier — adresse des travaux</span>
+      <button type="button" onClick={() => setOpen(o => !o)} aria-haspopup="listbox" aria-expanded={open}
+        className={`w-full flex items-center gap-2.5 px-3 h-12 rounded-xl border text-base sm:text-sm text-left transition-colors bg-surface hover:border-bord-fort focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${choisi ? 'border-bord-fort' : 'border-bord'}`}>
+        <Building2 size={16} className="text-encre-3 flex-shrink-0" aria-hidden="true" />
+        <span className={`flex-1 min-w-0 truncate ${choisi ? 'font-medium text-encre' : 'text-encre-3'}`}>{choisi ? (choisi.nom || 'Chantier sans nom') : 'Aucun — adresse du client'}</span>
+        <ChevronDown size={16} className="text-encre-3 flex-shrink-0" aria-hidden="true" />
+      </button>
+      {open && (
+        <div className="absolute left-0 right-0 top-full mt-1 z-30 rounded-xl border shadow-e3 overflow-hidden bg-surface border-bord">
+          {chantiers.length > 6 && (
+            <div className="p-2 border-b border-bord">
+              <div className="relative">
+                <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-encre-3" aria-hidden="true" />
+                <input autoFocus value={q} onChange={e => setQ(e.target.value)} placeholder="Rechercher un chantier…" aria-label="Rechercher un chantier"
+                  className="w-full pl-9 pr-3 h-12 rounded-lg border text-base sm:text-sm bg-surface border-bord text-encre placeholder:text-encre-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent" />
+              </div>
+            </div>
+          )}
+          <div role="listbox" aria-label="Chantier" className="max-h-60 overflow-y-auto py-1">
+            <button type="button" role="option" aria-selected={!valeur} onClick={() => choisir('')}
+              className="w-full min-h-[48px] flex items-center gap-2.5 px-3 py-2 text-left text-sm hover:bg-surface-2">
+              <span className="flex-1 text-encre-2">Aucun — utiliser l'adresse du client</span>
+              {!valeur && <Check size={16} className="text-encre flex-shrink-0" aria-hidden="true" />}
+            </button>
+            {liste.map(c => (
+              <button key={c.id} type="button" role="option" aria-selected={c.id === valeur} onClick={() => choisir(c.id)}
+                className="w-full min-h-[48px] flex items-center gap-2.5 px-3 py-2 text-left text-sm hover:bg-surface-2">
+                <span className="flex-1 min-w-0">
+                  <span className="block truncate font-medium text-encre">{c.nom || 'Chantier sans nom'}</span>
+                  {c.adresse && <span className="block truncate text-xs text-encre-3">{c.adresse}</span>}
+                </span>
+                {c.id === valeur && <Check size={16} className="text-encre flex-shrink-0" aria-hidden="true" />}
+              </button>
+            ))}
+            {liste.length === 0 && <p className="px-3 py-4 text-center text-sm text-encre-3">Aucun chantier</p>}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ── Titre de lot (section) ── */
-function SectionRow({ ligne, index, total, subtotal, count = 0, collapsed = false, onToggle, shouldFocus, isDark, couleur, textPrimary, textMuted, onUpdate, onRemove, onMoveUp, onMoveDown,
+function SectionRow({ ligne, index, total, subtotal, count = 0, collapsed = false, onToggle, shouldFocus, isDark: _isDark, textPrimary, textMuted, onUpdate, onRemove, onMoveUp, onMoveDown,
   rowIndex, onGrab, isDragged, isDropTarget }) {
   const inputRef = useRef(null);
   useEffect(() => { if (shouldFocus) inputRef.current?.focus(); }, [shouldFocus]);
@@ -1097,8 +1166,7 @@ function SectionRow({ ligne, index, total, subtotal, count = 0, collapsed = fals
     // Bandeau plein + liseré coloré : un lot structure le prix, il ne doit pas
     // se lire comme une ligne de plus.
     <div data-row-index={rowIndex}
-      className={`group border-y border-bord ${isDragged ? 'opacity-40' : ''}`}
-      style={{ background: `${couleur}14`, borderLeft: `3px solid ${couleur}`, ...(isDropTarget ? { boxShadow: `inset 0 0 0 2px ${couleur}` } : null) }}>
+      className={`group border-y border-bord bg-accent/10 border-l-[3px] border-l-accent ${isDropTarget ? 'ring-2 ring-inset ring-accent' : ''} ${isDragged ? 'opacity-40' : ''}`}>
       {/* Au téléphone, le titre prend toute la première ligne (sinon il était coupé à deux mots) ; le compte, le
           sous-total et les boutons passent dessous, à droite. */}
       <div className="flex flex-wrap sm:flex-nowrap items-center gap-1.5 px-2 sm:px-3 py-2.5">
@@ -1114,21 +1182,21 @@ function SectionRow({ ligne, index, total, subtotal, count = 0, collapsed = fals
           className={`p-1 rounded flex-shrink-0 ${textMuted} hover:bg-surface/70`}>
           <ChevronDown size={15} className={`transition-transform ${collapsed ? '-rotate-90' : ''}`} />
         </button>
-        <Layers size={14} style={{ color: couleur }} className="flex-shrink-0 hidden sm:block" />
+        <Layers size={14} className="flex-shrink-0 hidden sm:block text-accent-texte" aria-hidden="true" />
         {/* Zone de texte d'une ligne qui grandit : un titre long passe à la ligne au lieu d'être coupé (un titre
             reste sur une ligne : Entrée et retours collés ignorés) */}
         <textarea ref={inputRef} rows={1} value={ligne.description} placeholder="Titre du lot (ex : Salle de bain)"
           onChange={e => onUpdate(e.target.value.replace(/\s*\n\s*/g, ' '))} onInput={e => ajusterHauteur(e.target)}
           onKeyDown={e => { if (e.key === 'Enter') e.preventDefault(); }}
-          className={`grow min-w-0 basis-[calc(100%-4.5rem)] sm:basis-0 min-h-8 py-1.5 leading-5 resize-none overflow-hidden px-2 rounded-lg border-0 bg-transparent text-sm font-bold uppercase tracking-wide ${textPrimary} placeholder:font-normal placeholder:normal-case focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`} />
-        <span className={`ml-auto sm:ml-0 text-[10px] font-semibold whitespace-nowrap px-1.5 py-0.5 rounded-full flex-shrink-0 bg-surface/80 text-encre-3`}>
+          className={`grow min-w-0 basis-[calc(100%-4.5rem)] sm:basis-0 min-h-8 py-1.5 leading-5 resize-none overflow-hidden px-2 rounded-lg border-0 bg-transparent text-sm font-bold uppercase tracking-wide ${textPrimary} placeholder:font-normal placeholder:normal-case focus:outline-none focus-visible:ring-2 focus-visible:ring-accent`} />
+        <span className={`ml-auto sm:ml-0 text-xs font-semibold whitespace-nowrap px-2 py-0.5 rounded-full flex-shrink-0 bg-surface/80 text-encre-2`}>
           {count} ligne{count > 1 ? 's' : ''}
         </span>
         <span className={`text-sm font-extrabold tabular-nums whitespace-nowrap ${textPrimary}`}>{eur(subtotal)}</span>
         <div className="flex items-center flex-shrink-0">
           <button onClick={onMoveUp} disabled={index === 0} aria-label="Monter le lot" className={`p-1 rounded ${textMuted} disabled:opacity-30 hover:bg-surface/70`}><ChevronUp size={14} /></button>
           <button onClick={onMoveDown} disabled={index === total - 1} aria-label="Descendre le lot" className={`p-1 rounded ${textMuted} disabled:opacity-30 hover:bg-surface/70`}><ChevronDown size={14} /></button>
-          <button onClick={onRemove} aria-label="Supprimer le lot" className="p-1 rounded text-red-500 hover:bg-red-500/10"><Trash2 size={14} /></button>
+          <button onClick={onRemove} aria-label="Supprimer le lot" className="p-1 rounded text-danger-texte hover:bg-danger-fond"><Trash2 size={14} /></button>
         </div>
       </div>
     </div>
@@ -1143,10 +1211,10 @@ function ajusterHauteur(el) {
 }
 
 /* ── Editable line row ── */
-function LigneRow({ ligne, index, total, franchise = false, isDark, couleur, inputBg, textPrimary, textMuted, rowHover, onUpdate, onRemove, onMoveUp, onMoveDown, onDuplicate, onMetre, onInsertLot, onMarge, onToLot, focusField, onFocusHandled, onLineEnter,
+function LigneRow({ ligne, index, total, franchise = false, isDark, couleur: _couleur, inputBg, textPrimary, textMuted, rowHover, onUpdate, onRemove, onMoveUp, onMoveDown, onDuplicate, onMetre, onInsertLot, onMarge, onToLot, focusField, onFocusHandled, onLineEnter,
   rowIndex, onGrab, isDragged, isDropTarget }) {
   const lineTotal = num(ligne.quantite) * num(ligne.prixUnitaire);
-  const numCls = `w-full h-9 rounded-lg border text-sm text-center ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`;
+  const numCls = `w-full h-9 rounded-lg border text-sm text-center ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent`;
   // Boucle clavier : focus + sélection du champ demandé (desktop OU mobile selon visibilité)
   const qtyDesktopRef = useRef(null), qtyMobileRef = useRef(null), puDesktopRef = useRef(null), puMobileRef = useRef(null);
   // Désignation à la bonne hauteur aussi quand le texte vient d'un modèle, d'un lot de la bibliothèque ou d'un devis
@@ -1165,7 +1233,7 @@ function LigneRow({ ligne, index, total, franchise = false, isDark, couleur, inp
   return (
     <div data-row-index={rowIndex}
       className={`group border-b last:border-b-0 border-bord ${rowHover} transition-colors ${isDragged ? 'opacity-40' : ''}`}
-      style={isDropTarget ? { boxShadow: `inset 0 2px 0 0 ${couleur}` } : undefined}>
+      style={isDropTarget ? { boxShadow: 'inset 0 2px 0 0 rgb(var(--accent))' } : undefined}>
       {/* Desktop grid — la poignée n'apparaît qu'au survol pour ne pas charger la ligne */}
       <div className="hidden sm:grid grid-cols-[14px_1fr_52px_60px_74px_54px_92px_30px] gap-2 items-center px-4 py-2">
         <button type="button" aria-label="Déplacer la ligne"
@@ -1175,10 +1243,10 @@ function LigneRow({ ligne, index, total, franchise = false, isDark, couleur, inp
         </button>
         <textarea ref={desiDesktopRef} value={ligne.description} onChange={e => onUpdate('description', e.target.value)} placeholder="Désignation…" rows={1}
           onInput={e => ajusterHauteur(e.target)}
-          className={`w-full min-h-[36px] px-2 py-1.5 rounded-lg border text-sm resize-none overflow-hidden leading-snug ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`} />
+          className={`w-full min-h-[36px] px-2 py-1.5 rounded-lg border text-sm resize-none overflow-hidden leading-snug ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent`} />
         <input ref={qtyDesktopRef} type="text" inputMode="decimal" value={ligne.quantite} onChange={e => onUpdate('quantite', e.target.value)} onKeyDown={numKeyDown} aria-label="Quantité" className={numCls} />
         <select value={UNITES.includes(ligne.unite) ? ligne.unite : (ligne.unite ? '__autre' : 'u')} onChange={e => onUpdate('unite', e.target.value === '__autre' ? (ligne.unite || '') : e.target.value)} aria-label="Unité"
-          className={`w-full h-9 px-1 rounded-lg border text-xs text-center ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`}>
+          className={`w-full h-9 px-1 rounded-lg border text-xs text-center ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent`}>
           {UNITES.map(u => <option key={u} value={u}>{u}</option>)}
           {ligne.unite && !UNITES.includes(ligne.unite) && <option value="__autre">{ligne.unite}</option>}
         </select>
@@ -1186,7 +1254,7 @@ function LigneRow({ ligne, index, total, franchise = false, isDark, couleur, inp
         {franchise ? (
           <span className="text-xs text-center text-encre-3" title="TVA non applicable, art. 293 B du CGI">—</span>
         ) : (
-          <select value={ligne.tva} onChange={e => onUpdate('tva', parseFloat(e.target.value))} aria-label="Taux de TVA" className={`w-full h-9 rounded-lg border text-xs text-center ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`}>
+          <select value={ligne.tva} onChange={e => onUpdate('tva', parseFloat(e.target.value))} aria-label="Taux de TVA" className={`w-full h-9 rounded-lg border text-xs text-center ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent`}>
             {[0, 5.5, 10, 20].map(t => <option key={t} value={t}>{String(t).replace('.', ',')} %</option>)}
           </select>
         )}
@@ -1209,27 +1277,50 @@ function LigneRow({ ligne, index, total, franchise = false, isDark, couleur, inp
             className={`flex-1 min-w-0 min-h-[44px] px-3 py-2.5 rounded-xl border text-base resize-none overflow-hidden leading-snug ${inputBg}`} />
           <LineMenu toujoursVisible isDark={isDark} textMuted={textMuted} index={index} total={total} onMoveUp={onMoveUp} onMoveDown={onMoveDown} onDuplicate={onDuplicate} onRemove={onRemove} onMetre={onMetre} onInsertLot={onInsertLot} onMarge={onMarge} onToLot={onToLot} />
         </div>
-        <div className="grid grid-cols-[3.25rem_4rem_1fr_4.5rem] gap-1.5">
-          <input ref={qtyMobileRef} type="text" inputMode="decimal" value={ligne.quantite} onChange={e => onUpdate('quantite', e.target.value)} onKeyDown={numKeyDown} aria-label="Quantité"
-            className={`w-full h-11 px-1 rounded-xl border text-base text-center tabular-nums ${inputBg}`} />
-          <select value={UNITES.includes(ligne.unite) ? ligne.unite : (ligne.unite ? '__autre' : 'u')} onChange={e => onUpdate('unite', e.target.value === '__autre' ? (ligne.unite || '') : e.target.value)} aria-label="Unité"
-            className={`w-full h-11 px-1 rounded-xl border text-base text-center ${inputBg}`}>
-            {UNITES.map(u => <option key={u} value={u}>{u}</option>)}
-            {ligne.unite && !UNITES.includes(ligne.unite) && <option value="__autre">{ligne.unite}</option>}
-          </select>
-          <label className="relative block">
-            <span className="sr-only">Prix unitaire HT</span>
-            <input ref={puMobileRef} type="text" inputMode="decimal" value={ligne.prixUnitaire} onChange={e => onUpdate('prixUnitaire', e.target.value)} onKeyDown={numKeyDown}
-              className={`w-full h-11 pl-2 pr-7 rounded-xl border text-base text-right tabular-nums ${inputBg}`} />
-            <span aria-hidden="true" className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-base text-encre-3">€</span>
+        {/* Un libellé au-dessus de chaque champ (audit UX du 20 oct. 2026, P1 : « 1 », « u », « 0 € », « 10 % » sans nom,
+            l'artisan ne savait pas si le prix se saisit HT ou TTC). Listes sans flèche native : elle mordait « forfait ». */}
+        <div className="grid grid-cols-[3rem_5.25rem_1fr_4.75rem] gap-1.5 items-end">
+          <label className="block min-w-0">
+            <span className="block mb-1 text-xs font-medium text-encre-3">Qté</span>
+            <input ref={qtyMobileRef} type="text" inputMode="decimal" value={ligne.quantite} onChange={e => onUpdate('quantite', e.target.value)} onKeyDown={numKeyDown} aria-label="Quantité"
+              className={`w-full h-12 px-1 rounded-xl border text-base text-center tabular-nums ${inputBg}`} />
+          </label>
+          <label className="block min-w-0">
+            <span className="block mb-1 text-xs font-medium text-encre-3">Unité</span>
+            <span className="relative block">
+              <select value={UNITES.includes(ligne.unite) ? ligne.unite : (ligne.unite ? '__autre' : 'u')} onChange={e => onUpdate('unite', e.target.value === '__autre' ? (ligne.unite || '') : e.target.value)} aria-label="Unité"
+                className={`w-full h-12 pl-2.5 pr-6 rounded-xl border text-base appearance-none ${inputBg}`}>
+                {UNITES.map(u => <option key={u} value={u}>{u}</option>)}
+                {ligne.unite && !UNITES.includes(ligne.unite) && <option value="__autre">{ligne.unite}</option>}
+              </select>
+              <ChevronDown size={14} aria-hidden="true" className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-encre-3" />
+            </span>
+          </label>
+          <label className="block min-w-0">
+            <span className="block mb-1 text-xs font-medium text-encre-3">PU HT</span>
+            <span className="relative block">
+              <input ref={puMobileRef} type="text" inputMode="decimal" value={ligne.prixUnitaire} onChange={e => onUpdate('prixUnitaire', e.target.value)} onKeyDown={numKeyDown}
+                placeholder="PU HT"
+                className={`w-full h-12 pl-2 pr-6 rounded-xl border text-base text-right tabular-nums ${inputBg}`} />
+              <span aria-hidden="true" className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-base text-encre-3">€</span>
+            </span>
           </label>
           {franchise ? (
-            <span className="h-11 flex items-center justify-center text-xs text-encre-3">Sans TVA</span>
+            <span className="block min-w-0">
+              <span className="block mb-1 text-xs font-medium text-encre-3">TVA</span>
+              <span className="h-12 flex items-center justify-center text-xs text-encre-3">Sans TVA</span>
+            </span>
           ) : (
-            <select value={ligne.tva} onChange={e => onUpdate('tva', parseFloat(e.target.value))} aria-label="Taux de TVA"
-              className={`w-full h-11 px-1 rounded-xl border text-base text-center ${inputBg}`}>
-              {[0, 5.5, 10, 20].map(t => <option key={t} value={t}>{String(t).replace('.', ',')} %</option>)}
-            </select>
+            <label className="block min-w-0">
+              <span className="block mb-1 text-xs font-medium text-encre-3">TVA</span>
+              <span className="relative block">
+                <select value={ligne.tva} onChange={e => onUpdate('tva', parseFloat(e.target.value))} aria-label="Taux de TVA"
+                  className={`w-full h-12 pl-2.5 pr-6 rounded-xl border text-base appearance-none ${inputBg}`}>
+                  {[0, 5.5, 10, 20].map(t => <option key={t} value={t}>{String(t).replace('.', ',')} %</option>)}
+                </select>
+                <ChevronDown size={14} aria-hidden="true" className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-encre-3" />
+              </span>
+            </label>
           )}
         </div>
         <p className="flex items-baseline justify-end gap-2 text-sm">
@@ -1241,7 +1332,7 @@ function LigneRow({ ligne, index, total, franchise = false, isDark, couleur, inp
   );
 }
 
-function LineMenu({ isDark, textMuted, index, total, onMoveUp, onMoveDown, onDuplicate, onRemove, onMetre, onInsertLot, onMarge, onToLot, toujoursVisible = false }) {
+function LineMenu({ isDark: _isDark, textMuted, index, total, onMoveUp, onMoveDown, onDuplicate, onRemove, onMetre, onInsertLot, onMarge, onToLot, toujoursVisible = false }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
   useEffect(() => { if (!open) return; const h = e => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); }; document.addEventListener('mousedown', h); return () => document.removeEventListener('mousedown', h); }, [open]);
@@ -1260,7 +1351,7 @@ function LineMenu({ isDark, textMuted, index, total, onMoveUp, onMoveDown, onDup
           <button role="menuitem" disabled={index === 0} onClick={() => { onMoveUp(); setOpen(false); }} className={`w-full flex items-center gap-2 px-3 py-2 text-left disabled:opacity-40 hover:bg-surface-2`}><ChevronUp size={14} /> Monter</button>
           <button role="menuitem" disabled={index === total - 1} onClick={() => { onMoveDown(); setOpen(false); }} className={`w-full flex items-center gap-2 px-3 py-2 text-left disabled:opacity-40 hover:bg-surface-2`}><ChevronDown size={14} /> Descendre</button>
           <button role="menuitem" onClick={() => { onDuplicate(); setOpen(false); }} className={`w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-surface-2`}><Plus size={14} /> Dupliquer</button>
-          <button role="menuitem" onClick={() => { onRemove(); setOpen(false); }} className={`w-full flex items-center gap-2 px-3 py-2 text-left text-red-500 ${isDark ? 'hover:bg-red-900/30' : 'hover:bg-red-50'}`}><Trash2 size={14} /> Supprimer</button>
+          <button role="menuitem" onClick={() => { onRemove(); setOpen(false); }} className="w-full flex items-center gap-2 px-3 py-2 text-left text-danger-texte hover:bg-danger-fond"><Trash2 size={14} /> Supprimer</button>
         </div>
       )}
     </div>
@@ -1268,7 +1359,7 @@ function LineMenu({ isDark, textMuted, index, total, onMoveUp, onMoveDown, onDup
 }
 
 /* ── Métré express : quantité depuis les dimensions (L × l × h) ── */
-function MetreModal({ isDark, couleur, inputBg, textPrimary, textMuted, onClose, onApply }) {
+function MetreModal({ isDark: _isDark, couleur: _couleur, inputBg, textPrimary, textMuted, onClose, onApply }) {
   const [L, setL] = useState('');
   const [larg, setLarg] = useState('');
   const [haut, setHaut] = useState('');
@@ -1284,8 +1375,8 @@ function MetreModal({ isDark, couleur, inputBg, textPrimary, textMuted, onClose,
   // Calcul partagé avec le site public (src/lib/metre.js) : mêmes règles, même arrondi
   const { quantite: qty, unite } = calculerMetre({ longueur: L, largeur: larg, hauteur: haut, nombre: nb, chutes });
   const card = 'bg-surface border-bord';
-  const fieldCls = `w-full px-3 h-11 rounded-xl border text-sm ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`;
-  const labelCls = `block text-[11px] font-semibold uppercase tracking-wide mb-1.5 ${textMuted}`;
+  const fieldCls = `${CHAMP} ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent`;
+  const labelCls = LIBELLE;
   return (
     <div className="fixed inset-0 z-[1100] flex items-end sm:items-center justify-center sm:p-4" role="dialog" aria-modal="true" aria-label="Métré express">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
@@ -1326,7 +1417,7 @@ function MetreModal({ isDark, couleur, inputBg, textPrimary, textMuted, onClose,
  * ses missions et leurs prix AVANT de l'appliquer — on ne choisit pas « 9 lignes »
  * à l'aveugle. Tout s'ajoute à la suite, rien n'est jamais écrasé.
  */
-function LibraryPanel({ open, onClose, persoTemplates = [], articles = [], onAppendBloc, onAddArticle, isDark, couleur, textPrimary, textMuted, inputBg }) {
+function LibraryPanel({ open, onClose, persoTemplates = [], articles = [], onAppendBloc, onAddArticle, isDark: _isDark, couleur: _couleur, textPrimary, textMuted, inputBg }) {
   const [q, setQ] = useState('');
   const [openTrade, setOpenTrade] = useState(null);
 
@@ -1349,8 +1440,8 @@ function LibraryPanel({ open, onClose, persoTemplates = [], articles = [], onApp
   const articlesFiltered = articles.filter(a => !q.trim() || norm(a.nom || '').includes(norm(q)));
 
   const sectionTitle = (Icon, label) => (
-    <p className={`text-[11px] font-semibold uppercase tracking-wide mb-2 flex items-center gap-1.5 ${textMuted}`}>
-      <Icon size={12} style={{ color: couleur }} /> {label}
+    <p className={`text-sm font-semibold mb-2 flex items-center gap-1.5 text-encre-2`}>
+      <Icon size={14} className="text-accent-texte" aria-hidden="true" /> {label}
     </p>
   );
 
@@ -1368,7 +1459,7 @@ function LibraryPanel({ open, onClose, persoTemplates = [], articles = [], onApp
           <div className="relative">
             <Search size={15} className={`absolute left-3 top-1/2 -translate-y-1/2 ${textMuted}`} />
             <input value={q} onChange={e => setQ(e.target.value)} placeholder="Rechercher un métier, une prestation…"
-              className={`w-full pl-9 pr-3 h-10 rounded-xl border text-sm ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`} />
+              className={`w-full pl-9 pr-3 h-12 rounded-xl border text-base sm:text-sm ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent`} />
           </div>
         </div>
 
@@ -1385,7 +1476,7 @@ function LibraryPanel({ open, onClose, persoTemplates = [], articles = [], onApp
                       <div className="flex items-center gap-2 p-3">
                         <div className="flex-1 min-w-0">
                           <p className={`text-sm font-semibold truncate ${textPrimary}`}>{tpl.nom}</p>
-                          <p className={`text-[11px] ${textMuted}`}>{lignes.length} ligne{lignes.length > 1 ? 's' : ''}{total > 0 ? ` · ${eur(total)} HT` : ''}</p>
+                          <p className={`text-xs ${textMuted}`}>{lignes.length} ligne{lignes.length > 1 ? 's' : ''}{total > 0 ? ` · ${eur(total)} HT` : ''}</p>
                         </div>
                         <button type="button" onClick={() => onAppendBloc(lignes, tpl.nom)}
                           className="px-3 h-8 rounded-lg text-xs font-semibold flex-shrink-0 bg-accent text-sur-accent">
@@ -1411,7 +1502,7 @@ function LibraryPanel({ open, onClose, persoTemplates = [], articles = [], onApp
                       <span aria-hidden="true" className="text-lg flex-shrink-0">{t.icon}</span>
                       <span className="flex-1 min-w-0">
                         <span className={`block text-sm font-semibold truncate ${textPrimary}`}>{t.nom}</span>
-                        <span className={`block text-[11px] ${textMuted}`}>{t.lots.length} lots types · {t.prestations.length} prestations</span>
+                        <span className={`block text-xs ${textMuted}`}>{t.lots.length} lots types · {t.prestations.length} prestations</span>
                       </span>
                       <ChevronDown size={15} className={`flex-shrink-0 transition-transform ${textMuted} ${isOpen ? 'rotate-180' : ''}`} />
                     </button>
@@ -1419,7 +1510,7 @@ function LibraryPanel({ open, onClose, persoTemplates = [], articles = [], onApp
                     {isOpen && (
                       <div className={`border-t border-bord`}>
                         {/* Lots types : un chantier complet, déjà proportionné */}
-                        <p className={`px-3 pt-2.5 pb-1 text-[10px] font-semibold uppercase tracking-wide ${textMuted}`}>Lots types</p>
+                        <p className={`px-3 pt-2.5 pb-1 text-xs font-semibold ${textMuted}`}>Lots types</p>
                         {t.lots.map(lot => {
                           const total = lot.lignes.reduce((s, l) => s + l.quantite * l.prixUnitaire, 0);
                           return (
@@ -1429,12 +1520,12 @@ function LibraryPanel({ open, onClose, persoTemplates = [], articles = [], onApp
                               <Layers size={13} className="flex-shrink-0 mt-1 text-accent-texte" />
                               <span className="flex-1 min-w-0">
                                 <span className={`block text-sm font-medium ${textPrimary}`}>{lot.nom}</span>
-                                <span className={`block text-[11px] ${textMuted}`}>{lot.resume}</span>
-                                <span className={`block text-[10px] mt-0.5 ${textMuted}`}>
+                                <span className={`block text-xs ${textMuted}`}>{lot.resume}</span>
+                                <span className={`block text-xs mt-0.5 ${textMuted}`}>
                                   {lot.lignes.length} lignes · base {lot.base.quantite} {lot.base.unite}
                                 </span>
                               </span>
-                              <span className="text-xs font-bold whitespace-nowrap tabular-nums text-accent-texte">
+                              <span className="text-xs font-bold whitespace-nowrap tabular-nums text-encre">
                                 {Math.round(total).toLocaleString('fr-FR')} €
                               </span>
                             </button>
@@ -1442,7 +1533,7 @@ function LibraryPanel({ open, onClose, persoTemplates = [], articles = [], onApp
                         })}
 
                         {/* Prestations unitaires : une ligne à la fois */}
-                        <p className={`px-3 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-wide border-t ${textMuted} border-bord`}>Prestations</p>
+                        <p className={`px-3 pt-3 pb-1 text-xs font-semibold border-t ${textMuted} border-bord`}>Prestations</p>
                         {t.prestations.map((p, i) => (
                           <button key={`${t.id}-p${i}`} type="button"
                             onClick={() => onAddArticle(p)}
@@ -1451,12 +1542,12 @@ function LibraryPanel({ open, onClose, persoTemplates = [], articles = [], onApp
                             <span className={`flex-1 min-w-0 ${textPrimary}`}>{p.designation}</span>
                             {/* Prix AU M² (ou à l'unité du métier) : c'est ce qui rend
                                 la ligne ajustable une fois dans le devis. */}
-                            <span className="text-xs font-semibold whitespace-nowrap tabular-nums text-accent-texte">
+                            <span className="text-xs font-semibold whitespace-nowrap tabular-nums text-encre">
                               {p.prixUnitaire.toLocaleString('fr-FR')} €/{p.unite}
                             </span>
                           </button>
                         ))}
-                        <p className={`px-3 py-2 text-[10px] ${textMuted}`}>
+                        <p className={`px-3 py-2 text-xs ${textMuted}`}>
                           Prix indicatifs moyens du marché — ajustez-les à vos tarifs, puis « Enregistrer comme modèle ».
                         </p>
                       </div>
@@ -1471,14 +1562,14 @@ function LibraryPanel({ open, onClose, persoTemplates = [], articles = [], onApp
           {articlesFiltered.length > 0 && (
             <div>
               {sectionTitle(Star, 'Vos articles fréquents')}
-              <div className={`rounded-xl border divide-y ${isDark ? 'bg-slate-800/60 border-slate-700 divide-slate-700' : 'bg-white border-slate-200 divide-slate-100'}`}>
+              <div className="rounded-xl border divide-y bg-surface border-bord divide-bord">
                 {articlesFiltered.slice(0, 12).map(a => (
                   <button key={a.id || a.nom} type="button" onClick={() => onAddArticle(a)}
                     className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-left text-sm transition-colors hover:bg-surface-2`}>
                     <Plus size={13} className="flex-shrink-0 text-accent-texte" />
                     <span className={`flex-1 min-w-0 truncate ${textPrimary}`}>{a.nom}</span>
                     {(a.prix ?? a.prixUnitaire) > 0 && (
-                      <span className="text-xs font-semibold whitespace-nowrap tabular-nums text-accent-texte">
+                      <span className="text-xs font-semibold whitespace-nowrap tabular-nums text-encre">
                         {eur(a.prix ?? a.prixUnitaire)}
                       </span>
                     )}
@@ -1494,7 +1585,7 @@ function LibraryPanel({ open, onClose, persoTemplates = [], articles = [], onApp
 }
 
 /* ── Aperçu PDF live (ce que le client recevra), sans créer le devis ── */
-function PdfPreviewModal({ isDark, couleur, textPrimary, textMuted, html, onClose }) {
+function PdfPreviewModal({ isDark: _isDark, couleur: _couleur, textPrimary, textMuted, html, onClose }) {
   useEffect(() => {
     const onKey = e => { if (e.key === 'Escape') onClose(); };
     document.addEventListener('keydown', onKey);
@@ -1507,19 +1598,19 @@ function PdfPreviewModal({ isDark, couleur, textPrimary, textMuted, html, onClos
         <div className={`flex items-center justify-between px-4 sm:px-5 py-3 border-b flex-shrink-0 border-bord`}>
           <div className="min-w-0">
             <h3 className={`text-sm sm:text-base font-bold flex items-center gap-2 ${textPrimary}`}><Eye size={17} className="text-accent-texte" /> Ce que votre client recevra</h3>
-            <p className={`text-[11px] ${textMuted} hidden sm:block`}>Aperçu en direct — rien n'est encore créé</p>
+            <p className={`text-xs ${textMuted} hidden sm:block`}>Aperçu en direct — rien n'est encore créé</p>
           </div>
           <button onClick={onClose} aria-label="Fermer l'aperçu" className={`p-2 rounded-lg flex-shrink-0 ${textMuted} hover:bg-surface-2`}><X size={18} /></button>
         </div>
         {/* fond neutre : le document dessine lui-même sa feuille A4 sur fond gris */}
-        <iframe srcDoc={html} sandbox="" title="Aperçu du devis" className="flex-1 w-full border-0 bg-slate-200" />
+        <iframe srcDoc={html} sandbox="" title="Aperçu du devis" className="flex-1 w-full border-0 bg-surface-2" />
       </div>
     </div>
   );
 }
 
 /* ── Prix d'achat / marge d'une ligne ── */
-function MargeModal({ isDark, couleur, inputBg, textPrimary, textMuted, ligne, onClose, onApply }) {
+function MargeModal({ isDark: _isDark, couleur: _couleur, inputBg, textPrimary, textMuted, ligne, onClose, onApply }) {
   const [pa, setPa] = useState(ligne.prixAchat ? String(ligne.prixAchat) : '');
   const ref = useRef(null);
   useEffect(() => {
@@ -1544,17 +1635,17 @@ function MargeModal({ isDark, couleur, inputBg, textPrimary, textMuted, ligne, o
         <div className="p-5 space-y-4">
           <p className={`text-sm truncate ${textMuted}`}>{ligne.description || 'Ligne sans désignation'} — vendu {eur(pu)}/{ligne.unite || 'u'}</p>
           <div>
-            <label className={`block text-[11px] font-semibold uppercase tracking-wide mb-1.5 ${textMuted}`}>Votre coût d'achat (HT, par {ligne.unite || 'u'})</label>
+            <label className={LIBELLE}>Votre coût d'achat (HT, par {ligne.unite || 'u'})</label>
             <input ref={ref} type="text" inputMode="decimal" value={pa} onChange={e => setPa(e.target.value)} placeholder="0"
-              className={`w-full px-3 h-11 rounded-xl border text-sm ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`} />
+              className={`${CHAMP} ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent`} />
           </div>
           <div className={`rounded-xl px-4 py-3 flex items-center justify-between bg-fond`}>
             <span className={`text-sm ${textMuted}`}>Marge sur la ligne</span>
-            <span className={`text-xl font-extrabold tabular-nums ${margePct >= 25 ? 'text-emerald-500' : margePct >= 10 ? 'text-amber-500' : 'text-red-500'}`}>
+            <span className={`text-xl font-extrabold tabular-nums ${margePct >= 25 ? 'text-succes-texte' : margePct >= 10 ? 'text-alerte-texte' : 'text-danger-texte'}`}>
               {margePct} % <span className="text-sm font-semibold">({eur(margeEur)})</span>
             </span>
           </div>
-          <p className={`text-[11px] ${textMuted}`}>Jamais visible par le client — sert uniquement au badge de marge du devis.</p>
+          <p className={`text-xs ${textMuted}`}>Jamais visible par le client — sert uniquement au badge de marge du devis.</p>
         </div>
         <div className={`flex gap-2 px-5 py-4 border-t border-bord`}>
           <button onClick={onClose} className={`flex-1 h-11 rounded-xl border text-sm font-semibold border-bord text-encre-2 hover:bg-surface-2`}>Annuler</button>
@@ -1566,7 +1657,7 @@ function MargeModal({ isDark, couleur, inputBg, textPrimary, textMuted, ligne, o
 }
 
 /* ── Enregistrer le devis courant comme modèle perso ── */
-function SaveTemplateModal({ isDark, couleur, inputBg, textPrimary, textMuted, defaultName, onClose, onSave }) {
+function SaveTemplateModal({ isDark: _isDark, couleur: _couleur, inputBg, textPrimary, textMuted, defaultName, onClose, onSave }) {
   const [nom, setNom] = useState(defaultName || '');
   const [categorie, setCategorie] = useState('');
   const ref = useRef(null);
@@ -1577,8 +1668,8 @@ function SaveTemplateModal({ isDark, couleur, inputBg, textPrimary, textMuted, d
     return () => document.removeEventListener('keydown', onKey);
   }, [onClose]);
   const card = 'bg-surface border-bord';
-  const fieldCls = `w-full px-3 h-11 rounded-xl border text-sm ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`;
-  const labelCls = `block text-[11px] font-semibold uppercase tracking-wide mb-1.5 ${textMuted}`;
+  const fieldCls = `${CHAMP} ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent`;
+  const labelCls = LIBELLE;
   return (
     <div className="fixed inset-0 z-[1100] flex items-end sm:items-center justify-center sm:p-4" role="dialog" aria-modal="true" aria-label="Enregistrer comme modèle">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
@@ -1603,14 +1694,14 @@ function SaveTemplateModal({ isDark, couleur, inputBg, textPrimary, textMuted, d
 }
 
 /* ── Démarrage éclair : modèles métier + articles fréquents ── */
-function QuickStart({ templates, articles, persoTemplates = [], onApplyTemplate, onApplyPerso, onAddArticle, onOpenLibrary, isDark, couleur, textPrimary, textMuted }) {
+function QuickStart({ templates, articles, persoTemplates = [], onApplyTemplate, onApplyPerso, onAddArticle, onOpenLibrary, isDark: _isDark, couleur: _couleur, textPrimary, textMuted }) {
   const trades = Object.entries(TRADE_LIBRARY);
   const cardCls = `group flex flex-col items-center gap-1.5 p-3 rounded-xl border transition-all hover:-translate-y-0.5 hover:shadow-md active:scale-95 bg-surface border-bord hover:border-bord-fort`;
   return (
     <div className="space-y-4">
       {persoTemplates.length > 0 && (
         <div>
-          <p className={`text-[11px] font-semibold uppercase tracking-wide mb-2 flex items-center gap-1.5 ${textMuted}`}>
+          <p className={`text-sm font-semibold mb-2 flex items-center gap-1.5 text-encre-2`}>
             <FileText size={12} className="text-accent-texte" /> Vos modèles
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -1618,26 +1709,26 @@ function QuickStart({ templates, articles, persoTemplates = [], onApplyTemplate,
               <button key={tpl.id} type="button" onClick={() => onApplyPerso(tpl)}
                 className={`group flex flex-col items-start gap-0.5 p-3 rounded-xl border text-left transition-all hover:-translate-y-0.5 hover:shadow-md active:scale-95 bg-surface border-bord hover:border-bord-fort`}>
                 <span className={`text-sm font-semibold truncate w-full ${textPrimary}`}>{tpl.nom}</span>
-                <span className={`text-[10px] ${textMuted}`}>{(tpl.lignes || []).length} lignes{tpl.categorie ? ` · ${tpl.categorie}` : ''}</span>
+                <span className={`text-xs ${textMuted}`}>{(tpl.lignes || []).length} lignes{tpl.categorie ? ` · ${tpl.categorie}` : ''}</span>
               </button>
             ))}
           </div>
         </div>
       )}
       <div>
-        <p className={`text-[11px] font-semibold uppercase tracking-wide mb-2 flex items-center gap-1.5 ${textMuted}`}>
+        <p className={`text-sm font-semibold mb-2 flex items-center gap-1.5 text-encre-2`}>
           <Sparkles size={12} className="text-accent-texte" /> Démarrer avec un modèle métier
         </p>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           {templates.map(tpl => (
             <button key={tpl.label} type="button" onClick={() => onApplyTemplate(tpl)} className={cardCls}>
-              <span className="w-9 h-9 rounded-lg flex items-center justify-center transition-transform group-hover:scale-110 text-accent-texte" style={{ background: `${couleur}18` }}>
+              <span className="w-9 h-9 rounded-lg flex items-center justify-center transition-transform group-hover:scale-110 text-accent-texte bg-accent/10">
                 <tpl.Icon size={18} />
               </span>
               <span className={`text-xs font-medium text-center leading-tight ${textPrimary}`}>{tpl.label}</span>
               {/* « à chiffrer » : ces trames n'ont pas de prix — le dire évite
                   la déception d'un devis à 0 € après le clic. */}
-              <span className={`text-[10px] ${textMuted}`}>{tpl.lignes.length} lignes · à chiffrer</span>
+              <span className={`text-xs ${textMuted}`}>{tpl.lignes.length} lignes · à chiffrer</span>
             </button>
           ))}
         </div>
@@ -1652,16 +1743,18 @@ function QuickStart({ templates, articles, persoTemplates = [], onApplyTemplate,
 
       {articles.length > 0 && (
         <div>
-          <p className={`text-[11px] font-semibold uppercase tracking-wide mb-2 flex items-center gap-1.5 ${textMuted}`}>
+          <p className={`text-sm font-semibold mb-2 flex items-center gap-1.5 text-encre-2`}>
             <Star size={12} className="text-accent-texte" /> Vos articles fréquents
           </p>
           <div className="flex flex-wrap gap-2">
             {articles.map(a => (
               <button key={a.id} type="button" onClick={() => onAddArticle(a)}
-                className={`group flex items-center gap-2 pl-3 pr-2 h-9 rounded-full border text-sm transition-all hover:-translate-y-0.5 hover:shadow-sm active:scale-95 bg-surface border-bord hover:border-bord-fort`}>
-                <span className={`font-medium truncate max-w-[180px] ${textPrimary}`}>{a.nom}</span>
-                <span className="font-bold text-xs text-accent-texte">{eur(a.prix ?? a.prixUnitaire ?? 0)}</span>
-                <span className="w-5 h-5 rounded-full flex items-center justify-center transition-transform group-hover:scale-110 text-accent-texte" style={{ background: `${couleur}18` }}><Plus size={12} /></span>
+                className={`group flex items-center gap-2 pl-3.5 pr-2 py-1.5 min-h-[44px] max-w-full sm:max-w-[280px] rounded-2xl border text-sm text-left transition-all hover:-translate-y-0.5 hover:shadow-sm active:scale-95 bg-surface border-bord hover:border-bord-fort`}>
+                <span className="min-w-0">
+                  <span className={`block font-medium leading-snug line-clamp-2 ${textPrimary}`}>{a.nom}</span>
+                  <span className="block text-xs font-semibold tabular-nums text-encre-2">{eur(a.prix ?? a.prixUnitaire ?? 0)}</span>
+                </span>
+                <span className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 transition-transform group-hover:scale-110 text-accent-texte bg-accent/10" aria-hidden="true"><Plus size={14} /></span>
               </button>
             ))}
           </div>
@@ -1672,7 +1765,7 @@ function QuickStart({ templates, articles, persoTemplates = [], onApplyTemplate,
 }
 
 /* ── Add-line row with catalogue autocomplete ── */
-function AddLineRow({ catalogue, isDark, couleur, inputBg, textPrimary, textMuted, onAdd, empty, focusSignal }) {
+function AddLineRow({ catalogue, isDark: _isDark, couleur: _couleur, inputBg: _inputBg, textPrimary, textMuted, onAdd, empty, focusSignal }) {
   const [q, setQ] = useState('');
   const [highlight, setHighlight] = useState(0);
   const inputRef = useRef(null);
@@ -1714,7 +1807,7 @@ function AddLineRow({ catalogue, isDark, couleur, inputBg, textPrimary, textMute
   return (
     <div className="relative">
       <div className={`flex items-center gap-2 px-3 sm:px-4 py-2.5 ${empty ? '' : `border-t border-bord`}`}>
-        <span className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 text-accent-texte" style={{ background: `${couleur}18` }}>
+        <span className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 text-accent-texte bg-accent/10" aria-hidden="true">
           <Plus size={16} />
         </span>
         <input ref={inputRef} value={q} onChange={e => { setQ(e.target.value); setHighlight(0); }} onKeyDown={onKeyDown}

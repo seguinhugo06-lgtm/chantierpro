@@ -20,14 +20,15 @@ import {
 
 // ─── Column definitions ─────────────────────────────────────────────────────
 
+// Tons des statuts (src/lib/statuts.js) : un statut = un mot et un ton, partout ; plus de couleurs en dur
 const COLUMNS = [
-  { id: 'brouillon', label: 'Brouillon', icon: FileText, color: '#94a3b8', bgLight: 'bg-slate-50', bgDark: 'bg-slate-800/50' },
-  { id: 'envoye', label: 'Envoyé', icon: Send, color: '#3b82f6', bgLight: 'bg-blue-50', bgDark: 'bg-blue-900/20' },
-  { id: 'vu', label: 'Vu', icon: Eye, color: '#8b5cf6', bgLight: 'bg-purple-50', bgDark: 'bg-purple-900/20' },
-  { id: 'accepte', label: 'Signé', icon: CheckCircle, color: '#22c55e', bgLight: 'bg-green-50', bgDark: 'bg-green-900/20' },
-  { id: 'facture', label: 'Facturé', icon: Receipt, color: '#f97316', bgLight: 'bg-orange-50', bgDark: 'bg-orange-900/20' },
-  { id: 'payee', label: 'Payé', icon: Banknote, color: '#10b981', bgLight: 'bg-emerald-50', bgDark: 'bg-emerald-900/20' },
-  { id: 'refuse', label: 'Refusé', icon: XCircle, color: '#ef4444', bgLight: 'bg-red-50', bgDark: 'bg-red-900/20' },
+  { id: 'brouillon', label: 'Brouillon', icon: FileText, fond: 'bg-neutre-fond', texte: 'text-neutre-texte' },
+  { id: 'envoye', label: 'Envoyé', icon: Send, fond: 'bg-info-fond', texte: 'text-info-texte' },
+  { id: 'vu', label: 'Vu', icon: Eye, fond: 'bg-info-fond', texte: 'text-info-texte' },
+  { id: 'accepte', label: 'Signé', icon: CheckCircle, fond: 'bg-succes-fond', texte: 'text-succes-texte' },
+  { id: 'facture', label: 'Facturé', icon: Receipt, fond: 'bg-neutre-fond', texte: 'text-neutre-texte' },
+  { id: 'payee', label: 'Payé', icon: Banknote, fond: 'bg-succes-fond', texte: 'text-succes-texte' },
+  { id: 'refuse', label: 'Refusé', icon: XCircle, fond: 'bg-danger-fond', texte: 'text-danger-texte' },
 ];
 
 // Valid transitions for drag-and-drop
@@ -138,19 +139,18 @@ function KanbanColumn({ column, cards, clients, isDark, couleur, onOpenDevis, on
     <div
       className={`flex flex-col min-w-[240px] max-w-[280px] flex-1 rounded-2xl border transition-all ${
         isDragOver
-          ? 'ring-2 ring-offset-2'
+          ? 'ring-2 ring-accent'
           : ''
       } border-bord`}
-      style={isDragOver ? { ringColor: column.color } : {}}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
       {/* Column header */}
-      <div className={`px-3 py-3 rounded-t-2xl ${isDark ? column.bgDark : column.bgLight}`}>
+      <div className={`px-3 py-3 rounded-t-2xl ${column.fond}`}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Icon size={14} style={{ color: column.color }} />
+            <Icon size={14} className={column.texte} aria-hidden="true" />
             <span className={`text-sm font-semibold text-encre`}>
               {column.label}
             </span>
@@ -160,7 +160,7 @@ function KanbanColumn({ column, cards, clients, isDark, couleur, onOpenDevis, on
           </div>
         </div>
         {cards.length > 0 && (
-          <p className="text-xs mt-1 font-medium" style={{ color: column.color }}>
+          <p className={`text-xs mt-1 font-medium ${column.texte}`}>
             {total.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} €
           </p>
         )}
@@ -171,7 +171,7 @@ function KanbanColumn({ column, cards, clients, isDark, couleur, onOpenDevis, on
         isDragOver ? 'bg-fond' : ''
       }`}>
         {cards.length === 0 ? (
-          <div className={`text-center py-8 text-xs ${isDark ? 'text-slate-600' : 'text-slate-300'}`}>
+          <div className="text-center py-8 text-xs text-encre-3">
             Aucun devis
           </div>
         ) : (
@@ -213,10 +213,10 @@ function PipelineStats({ devis, isDark, couleur }) {
   }, [devis]);
 
   const statItems = [
-    { label: 'En cours', value: stats.enCours, icon: Send, color: '#3b82f6' },
-    { label: 'Montant en jeu', value: `${(stats.montantEnCours / 1000).toFixed(1)}k €`, icon: Euro, color: '#f97316' },
-    { label: 'Taux conversion', value: `${stats.tauxConversion}%`, icon: TrendingUp, color: '#22c55e' },
-    { label: 'Gagné', value: `${(stats.montantGagne / 1000).toFixed(1)}k €`, icon: CheckCircle, color: '#10b981' },
+    { label: 'En cours', value: stats.enCours, icon: Send },
+    { label: 'Montant en jeu', value: `${(stats.montantEnCours / 1000).toFixed(1)}k €`, icon: Euro },
+    { label: 'Taux conversion', value: `${stats.tauxConversion}%`, icon: TrendingUp },
+    { label: 'Gagné', value: `${(stats.montantGagne / 1000).toFixed(1)}k €`, icon: CheckCircle },
   ];
 
   return (
@@ -227,7 +227,7 @@ function PipelineStats({ devis, isDark, couleur }) {
           className={`rounded-xl border p-3 bg-surface border-bord`}
         >
           <div className="flex items-center gap-2 mb-1">
-            <item.icon size={14} style={{ color: item.color }} />
+            <item.icon size={14} className="text-encre-3" aria-hidden="true" />
             <span className={`text-xs text-encre-3`}>{item.label}</span>
           </div>
           <p className={`text-lg font-bold text-encre`}>
@@ -360,11 +360,8 @@ export default function PipelineKanban({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Rechercher..."
-              className={`pl-8 pr-3 py-1.5 text-sm rounded-lg border w-40 focus:outline-none focus:ring-2 focus:ring-offset-1 ${
-                isDark
-                  ? 'bg-slate-800 border-slate-700 text-white placeholder:text-slate-500 focus:ring-slate-500'
-                  : 'bg-white border-slate-200 text-slate-900 placeholder:text-slate-400 focus:ring-slate-300'
-              }`}
+              aria-label="Rechercher dans les colonnes"
+              className="pl-8 pr-3 h-11 text-sm rounded-lg border w-40 focus:outline-none focus:ring-2 focus:ring-accent bg-surface border-bord-fort text-encre placeholder:text-encre-3"
             />
           </div>
 

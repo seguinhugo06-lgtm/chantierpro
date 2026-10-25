@@ -14,8 +14,8 @@ export default function SignaturePad({
   document,
   client,
   entreprise,
-  isDark,
-  couleur
+  isDark: _isDark,
+  couleur: _couleur
 }) {
   const sigPad = useRef(null);
   const [isEmpty, setIsEmpty] = useState(true);
@@ -106,21 +106,22 @@ export default function SignaturePad({
 
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
-      <div className={`${cardBg} rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden`}>
+      <div role="dialog" aria-modal="true" aria-labelledby="signature-titre" className={`${cardBg} rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden`}>
         {/* Header */}
-        <div className="p-5 border-b flex items-center justify-between" style={{ borderColor: isDark ? '#334155' : '#e2e8f0' }}>
+        <div className="p-5 border-b border-bord flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${couleur}20` }}>
-              <Pen size={20} className="text-accent-texte" />
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-surface-2 text-encre-2" aria-hidden="true">
+              <Pen size={20} />
             </div>
             <div>
-              <h2 className={`font-bold text-lg ${textPrimary}`}>Signature electronique</h2>
+              <h2 id="signature-titre" className={`font-bold text-lg ${textPrimary}`}>Signature électronique</h2>
               <p className={`text-sm ${textMuted}`}>{document.numero}</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className={`p-2 rounded-xl hover:bg-surface-2 transition-colors`}
+            aria-label="Fermer"
+            className="w-11 h-11 flex items-center justify-center rounded-xl hover:bg-surface-2 transition-colors"
           >
             <X size={20} className={textSecondary} />
           </button>
@@ -176,7 +177,7 @@ export default function SignaturePad({
               {/* CGV */}
               <label className={`flex items-start gap-3 p-4 rounded-xl border cursor-pointer transition-colors ${
                 acceptCGV
-                  ? (isDark ? 'border-emerald-500 bg-emerald-900/20' : 'border-emerald-500 bg-emerald-50')
+                  ? 'border-accent bg-accent/10'
                   : 'border-bord'
               }`}>
                 <input
@@ -231,9 +232,9 @@ export default function SignaturePad({
           {step === 'sign' && (
             <>
               {/* Instructions */}
-              <div className={`flex items-center gap-3 mb-4 p-3 rounded-xl ${isDark ? 'bg-blue-900/20 border border-blue-800' : 'bg-blue-50 border border-blue-200'}`}>
-                <Info size={20} className="text-blue-500" />
-                <p className={`text-sm ${isDark ? 'text-blue-300' : 'text-blue-700'}`}>
+              <div className="flex items-center gap-3 mb-4 p-3 rounded-xl bg-info-fond text-info-texte">
+                <Info size={20} aria-hidden="true" className="flex-shrink-0" />
+                <p className="text-sm">
                   Signez dans le cadre ci-dessous avec votre doigt ou un stylet
                 </p>
               </div>
@@ -260,9 +261,7 @@ export default function SignaturePad({
               {/* Bouton effacer */}
               <button
                 onClick={handleClear}
-                className={`w-full py-2 rounded-xl text-sm font-medium flex items-center justify-center gap-2 mb-4 ${
-                  isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
-                }`}
+                className="w-full min-h-[44px] rounded-xl text-sm font-medium flex items-center justify-center gap-2 mb-4 bg-surface-2 hover:bg-bord text-encre-2"
               >
                 <RotateCcw size={16} />
                 Effacer

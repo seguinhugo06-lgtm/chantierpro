@@ -1,24 +1,29 @@
 import React, { useState, useEffect } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { X, CreditCard, QrCode, Copy, Check, Loader, ExternalLink, Smartphone, Mail, Share2, AlertTriangle, Info, Banknote, Building2, FileText, Wallet, Link2, MessageCircle } from 'lucide-react';
+import { CreditCard, QrCode, Copy, Check, ExternalLink, Smartphone, Mail, Share2, AlertTriangle, Banknote, Building2, FileText, Wallet, Link2, MessageCircle, Repeat } from 'lucide-react';
+import Modal, { ModalHeader, ModalTitle, ModalDescription, ModalBody, ModalFooter } from './ui/Modal';
+import { Bouton } from './ui/Bouton';
+import Pastille from './ui/Pastille';
 import { formatAmount, ACOMPTE_OPTIONS } from '../lib/stripe/payment';
 import supabase, { isDemo } from '../supabaseClient';
 import { buildPaymentUrl } from '../lib/paymentUtils';
 import { jourLocal } from '../lib/dates';
 import { telInternational } from '../lib/messageRelance';
 import { FONCTIONS } from '../lib/fonctions';
+import { MODES_PAIEMENT } from '../lib/modesPaiement';
+import { avecMentionTtc } from '../lib/mentionMontant';
+import { franchiseAppliquee } from '../lib/franchiseTva';
 
 // Check if Stripe is configured (either Connect or direct keys)
 const STRIPE_CONFIGURED = import.meta.env.VITE_STRIPE_PUBLIC_KEY && !import.meta.env.VITE_STRIPE_PUBLIC_KEY.includes('demo');
 
-/** Offline payment modes */
-const PAYMENT_MODES = [
-  { value: 'virement', label: 'Virement bancaire', icon: Building2, description: 'Recommandé BTP' },
-  { value: 'cheque', label: 'Chèque', icon: FileText, description: 'Précisez le numéro' },
-  { value: 'especes', label: 'Espèces', icon: Banknote, description: 'Paiement en main propre' },
-  { value: 'cb', label: 'Carte bancaire', icon: CreditCard, description: 'Terminal ou TPE' },
-  { value: 'autre', label: 'Autre', icon: Wallet, description: 'Prélèvement, etc.' },
-];
+/**
+ * Modes d'un paiement reçu : libellés courts, sans sous-titre (audit UX du 20 oct. 2026 : « Virement ba… »,
+ * « Carte banca… » tronqués à 375 px, et « Recommandé BTP », une affirmation invérifiable). Prélèvement : le
+ * réglage « Mode de paiement par défaut » le propose.
+ */
+const ICONES_MODE = { virement: Building2, cheque: FileText, especes: Banknote, cb: CreditCard, prelevement: Repeat, autre: Wallet };
+const PAYMENT_MODES = MODES_PAIEMENT.map((m) => ({ value: m.valeur, label: m.libelle, icon: ICONES_MODE[m.valeur] || Wallet }));
 
 /**
  * Crée un lien de paiement vers la page publique /pay/:token.
@@ -91,12 +96,6 @@ export default function PaymentModal({
   const [offlineAmount, setOfflineAmount] = useState('');
   const [sendReceipt, setSendReceipt] = useState(true);
 
-  // Theme classes
-  const cardBg = "bg-surface";
-  const textPrimary = "text-encre";
-  const textSecondary = "text-encre-2";
-  const textMuted = "text-encre-2";
-  const inputBg = "bg-surface border-bord-fort";
 
   // Reset state when modal opens
   useEffect(() => {
@@ -231,296 +230,201 @@ export default function PaymentModal({
     window.open(url, '_blank');
   };
 
-  const selectedModeInfo = PAYMENT_MODES.find(m => m.value === offlineMode);
+  // Une seule façon d'encaisser (paiement en ligne coupé, D-21) : pas de choix à une seule option (audit UX du 20 oct. 2026)
+  const choixMultiples = FONCTIONS.paiementEnLigne;
+  const carteChoix = (actif) => `w-full min-h-[64px] p-4 rounded-xl border-2 flex items-center justify-between gap-3 text-left transition-colors ${actif ? 'border-accent bg-accent/10' : 'border-bord hover:border-bord-fort'}`;
+  const champ = 'w-full h-12 px-4 border rounded-xl text-base bg-surface border-bord-fort text-encre placeholder:text-encre-3';
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
-      <div className={`${cardBg} rounded-2xl w-full max-w-md shadow-2xl overflow-hidden max-h-[90vh] flex flex-col`}>
-        {/* Header */}
-        <div className="p-5 border-b flex items-center justify-between flex-shrink-0" style={{ borderColor: isDark ? '#334155' : '#e2e8f0' }}>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${couleur}20` }}>
-              <CreditCard size={20} className="text-accent-texte" />
-            </div>
-            <div>
-              <h2 className={`font-bold text-lg ${textPrimary}`}>{FONCTIONS.paiementEnLigne ? 'Recevoir un paiement' : 'Enregistrer un paiement reçu'}</h2>
-              <p className={`text-sm ${textMuted}`}>{document.numero}</p>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className={`p-2 rounded-xl hover:bg-surface-2 transition-colors`}
-          >
-            <X size={20} className={textSecondary} />
-          </button>
-        </div>
+    <Modal isOpen={isOpen} onClose={onClose} size="md" closeOnBackdrop={false}>
+      <ModalHeader>
+        <ModalTitle>{FONCTIONS.paiementEnLigne ? 'Recevoir un paiement' : 'Enregistrer un paiement reçu'}</ModalTitle>
+        <ModalDescription>{document.numero}</ModalDescription>
+      </ModalHeader>
 
-        {/* Content — scrollable */}
-        <div className="p-5 overflow-y-auto">
+      <ModalBody>
           {step === 'amount' && (
             <>
-              {/* Montant total */}
-              <div className={`rounded-xl p-4 mb-5 bg-fond`}>
-                <p className={`text-sm ${textMuted} mb-1`}>{du < totalTTC - 0.005 ? 'Reste dû' : 'Montant de la facture'}</p>
-                <p className="text-2xl font-bold text-accent-texte">{formatAmount(du)}</p>
-                {du < totalTTC - 0.005 && <p className={`text-xs ${textMuted} mt-1`}>sur {formatAmount(totalTTC)} TTC</p>}
+              {/* Montant : le reste dû, et le total quand un acompte est déjà reçu */}
+              <div className="rounded-xl p-4 mb-5 bg-surface-2">
+                <p className="text-sm text-encre-2 mb-1">{du < totalTTC - 0.005 ? 'Reste dû' : 'Montant de la facture'}</p>
+                <p className="text-2xl font-bold tabular-nums text-encre">{formatAmount(du)}</p>
+                {du < totalTTC - 0.005 && <p className="text-sm text-encre-3 mt-1 tabular-nums">sur {avecMentionTtc(formatAmount(totalTTC), franchiseAppliquee(document, entreprise))}</p>}
               </div>
 
-              {/* Options de paiement */}
-              <div className="space-y-3 mb-5">
-                {/* Options 1 à 3 : paiement en ligne, masqué en v1 (D-21) */}
-                {FONCTIONS.paiementEnLigne && (<>
-                {/* Option 1: Envoyer un lien de paiement (NEW) */}
-                <button
-                  onClick={() => setPaymentType('link')}
-                  className={`w-full p-4 rounded-xl border-2 flex items-center justify-between transition-all ${
-                    paymentType === 'link'
-                      ? (isDark ? 'border-orange-500 bg-orange-900/20' : 'border-orange-500 bg-orange-50')
-                      : 'border-bord'
-                  }`}
-                >
-                  <div className="text-left">
-                    <div className="flex items-center gap-2">
-                      <p className={`font-medium ${textPrimary}`}>Envoyer un lien de paiement</p>
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold bg-accent/10 text-accent-texte`}>
-                        Recommandé
-                      </span>
-                    </div>
-                    <p className={`text-sm ${textMuted}`}>Par carte bancaire, sur une page de paiement</p>
-                  </div>
-                  <Link2 size={20} style={{ color: paymentType === 'link' ? couleur : '#94a3b8' }} />
-                </button>
-
-                {/* Option 2: Paiement intégral */}
-                <button
-                  onClick={() => setPaymentType('full')}
-                  className={`w-full p-4 rounded-xl border-2 flex items-center justify-between transition-all ${
-                    paymentType === 'full'
-                      ? (isDark ? 'border-emerald-500 bg-emerald-900/20' : 'border-emerald-500 bg-emerald-50')
-                      : 'border-bord'
-                  }`}
-                >
-                  <div className="text-left">
-                    <p className={`font-medium ${textPrimary}`}>Paiement intégral</p>
-                    <p className={`text-sm ${textMuted}`}>QR Code pour la totalité</p>
-                  </div>
-                  <span className="text-lg font-bold" style={{ color: paymentType === 'full' ? couleur : '#94a3b8' }}>
-                    {formatAmount(du)}
+              {/* Options de paiement (en ligne : masquées en v1, D-21) */}
+              {choixMultiples && (
+              <div className="space-y-3 mb-5" role="radiogroup" aria-label="Façon d'encaisser">
+                <button type="button" role="radio" aria-checked={paymentType === 'link'} onClick={() => setPaymentType('link')} className={carteChoix(paymentType === 'link')}>
+                  <span>
+                    <span className="flex items-center gap-2">
+                      <span className="font-medium text-encre">Envoyer un lien de paiement</span>
+                      <Pastille ton="neutre">Recommandé</Pastille>
+                    </span>
+                    <span className="block text-sm text-encre-3">Par carte bancaire, sur une page de paiement</span>
                   </span>
+                  <Link2 size={20} className={paymentType === 'link' ? 'text-encre' : 'text-encre-3'} aria-hidden="true" />
                 </button>
 
-                {/* Option 3: Paiement partiel */}
-                <button
-                  onClick={() => setPaymentType('custom')}
-                  className={`w-full p-4 rounded-xl border-2 flex items-center justify-between transition-all ${
-                    paymentType === 'custom'
-                      ? (isDark ? 'border-purple-500 bg-purple-900/20' : 'border-purple-500 bg-purple-50')
-                      : 'border-bord'
-                  }`}
-                >
-                  <div className="text-left">
-                    <p className={`font-medium ${textPrimary}`}>Paiement partiel</p>
-                    <p className={`text-sm ${textMuted}`}>Acompte ou montant personnalisé</p>
-                  </div>
-                  <span className="text-sm" style={{ color: paymentType === 'custom' ? couleur : '#94a3b8' }}>
-                    Personnaliser
+                <button type="button" role="radio" aria-checked={paymentType === 'full'} onClick={() => setPaymentType('full')} className={carteChoix(paymentType === 'full')}>
+                  <span>
+                    <span className="block font-medium text-encre">Paiement intégral</span>
+                    <span className="block text-sm text-encre-3">QR Code pour la totalité</span>
                   </span>
+                  <span className="text-lg font-bold tabular-nums text-encre">{formatAmount(du)}</span>
                 </button>
 
-                </>)}
+                <button type="button" role="radio" aria-checked={paymentType === 'custom'} onClick={() => setPaymentType('custom')} className={carteChoix(paymentType === 'custom')}>
+                  <span>
+                    <span className="block font-medium text-encre">Paiement partiel</span>
+                    <span className="block text-sm text-encre-3">Acompte ou montant personnalisé</span>
+                  </span>
+                  <span className="text-sm text-encre-2">Personnaliser</span>
+                </button>
 
-                {/* Option 4: Paiement reçu hors ligne */}
-                <button
-                  onClick={() => { setPaymentType('offline'); setOfflineAmount(du.toFixed(2)); }}
-                  className={`w-full p-4 rounded-xl border-2 flex items-center justify-between transition-all ${
-                    paymentType === 'offline'
-                      ? (isDark ? 'border-blue-500 bg-blue-900/20' : 'border-blue-500 bg-blue-50')
-                      : 'border-bord'
-                  }`}
-                >
-                  <div className="text-left">
-                    <p className={`font-medium ${textPrimary}`}>Paiement reçu (hors ligne)</p>
-                    <p className={`text-sm ${textMuted}`}>Virement, chèque, espèces...</p>
-                  </div>
-                  <Banknote size={20} style={{ color: paymentType === 'offline' ? '#3b82f6' : '#94a3b8' }} />
+                <button type="button" role="radio" aria-checked={paymentType === 'offline'} onClick={() => { setPaymentType('offline'); setOfflineAmount(du.toFixed(2)); }} className={carteChoix(paymentType === 'offline')}>
+                  <span>
+                    <span className="block font-medium text-encre">Paiement reçu (hors ligne)</span>
+                    <span className="block text-sm text-encre-3">Virement, chèque, espèces…</span>
+                  </span>
+                  <Banknote size={20} className={paymentType === 'offline' ? 'text-encre' : 'text-encre-3'} aria-hidden="true" />
                 </button>
               </div>
+              )}
 
               {/* Montant personnalisé (mode custom) */}
               {paymentType === 'custom' && (
                 <div className="mb-5 space-y-3">
-                  {/* Boutons raccourcis */}
-                  <div className="flex gap-3">
-                    {ACOMPTE_OPTIONS.map(opt => (
-                      <button
-                        key={opt.value}
-                        onClick={() => setCustomAmount((totalTTC * opt.value / 100).toFixed(2))}
-                        className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
-                          parseFloat(customAmount) === parseFloat((totalTTC * opt.value / 100).toFixed(2))
-                            ? 'text-white'
-                            : 'bg-surface-2 text-encre-2'
-                        }`}
-                        style={parseFloat(customAmount) === parseFloat((totalTTC * opt.value / 100).toFixed(2)) ? { background: couleur } : {}}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
+                  <div className="flex gap-2">
+                    {ACOMPTE_OPTIONS.map(opt => {
+                      const oui = parseFloat(customAmount) === parseFloat((totalTTC * opt.value / 100).toFixed(2));
+                      return (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          aria-pressed={oui}
+                          onClick={() => setCustomAmount((totalTTC * opt.value / 100).toFixed(2))}
+                          className={`flex-1 h-11 px-3 rounded-full text-sm font-medium transition-colors ${oui ? 'bg-encre text-surface' : 'bg-surface-2 text-encre-2 hover:bg-bord'}`}
+                        >
+                          {opt.label}
+                        </button>
+                      );
+                    })}
                   </div>
-
-                  {/* Input montant */}
                   <div className="relative">
                     <input
                       type="number"
+                      aria-label="Montant en euros"
                       value={customAmount}
                       onChange={e => setCustomAmount(e.target.value)}
                       placeholder="Montant en euros"
-                      className={`w-full px-4 py-3 pr-12 border rounded-xl text-lg font-medium ${inputBg}`}
+                      className={`${champ} pr-12 text-lg font-medium`}
                     />
-                    <span className={`absolute right-4 top-1/2 -translate-y-1/2 ${textMuted}`}>EUR</span>
+                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-encre-3">EUR</span>
                   </div>
                 </div>
               )}
 
-              {/* Offline payment form */}
+              {/* Paiement reçu : mode, montant, date, référence */}
               {paymentType === 'offline' && (
-                <div className="mb-5 space-y-4">
-                  {/* Mode de paiement */}
-                  <div>
-                    <label className={`block text-sm font-medium mb-2 ${textPrimary}`}>Mode de paiement</label>
-                    <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-4">
+                  <fieldset>
+                    <legend className="block text-sm font-medium mb-2 text-encre-2">Mode de paiement</legend>
+                    <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Mode de paiement">
                       {PAYMENT_MODES.map(mode => {
                         const Icon = mode.icon;
                         const isSelected = offlineMode === mode.value;
                         return (
                           <button
                             key={mode.value}
+                            type="button"
+                            role="radio"
+                            aria-checked={isSelected}
                             onClick={() => setOfflineMode(mode.value)}
-                            className={`p-3 rounded-xl border-2 flex items-center gap-2 transition-all text-left ${
-                              isSelected
-                                ? (isDark ? 'border-blue-500 bg-blue-900/20' : 'border-blue-500 bg-blue-50')
-                                : 'border-bord hover:border-bord-fort'
-                            }`}
+                            className={`h-12 px-3 rounded-xl border-2 flex items-center gap-2 transition-colors text-left ${isSelected ? 'border-accent bg-accent/10' : 'border-bord hover:border-bord-fort'}`}
                           >
-                            <Icon size={16} style={{ color: isSelected ? '#3b82f6' : '#94a3b8' }} />
-                            <div className="min-w-0">
-                              <p className={`text-sm font-medium truncate ${textPrimary}`}>{mode.label}</p>
-                              {isSelected && <p className={`text-xs ${textMuted} truncate`}>{mode.description}</p>}
-                            </div>
+                            <Icon size={18} className={isSelected ? 'text-encre' : 'text-encre-3'} aria-hidden="true" />
+                            <span className={`text-sm truncate text-encre ${isSelected ? 'font-semibold' : 'font-medium'}`}>{mode.label}</span>
                           </button>
                         );
                       })}
                     </div>
-                  </div>
+                  </fieldset>
 
-                  {/* Montant */}
-                  <div>
-                    <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Montant reçu</label>
-                    <div className="relative">
+                  <label className="block">
+                    <span className="block text-sm font-medium mb-1.5 text-encre-2">Montant reçu</span>
+                    <span className="relative block">
                       <input
                         type="number"
                         value={offlineAmount}
                         onChange={e => setOfflineAmount(e.target.value)}
-                        className={`w-full px-4 py-3 pr-12 border rounded-xl text-lg font-medium ${inputBg}`}
+                        className={`${champ} pr-12 text-lg font-medium tabular-nums`}
                       />
-                      <span className={`absolute right-4 top-1/2 -translate-y-1/2 ${textMuted}`}>EUR</span>
-                    </div>
-                  </div>
+                      <span className="absolute right-4 top-1/2 -translate-y-1/2 text-encre-3">EUR</span>
+                    </span>
+                  </label>
 
-                  {/* Date de réception */}
-                  <div>
-                    <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Date de réception</label>
+                  <label className="block">
+                    <span className="block text-sm font-medium mb-1.5 text-encre-2">Date de réception</span>
                     <input
                       type="date"
                       value={offlineDate}
                       onChange={e => setOfflineDate(e.target.value)}
-                      className={`w-full px-4 py-3 border rounded-xl ${inputBg}`}
+                      className={champ}
                     />
-                  </div>
+                  </label>
 
-                  {/* Référence (optionnel) */}
-                  <div>
-                    <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>
-                      Référence <span className={textMuted}>(optionnel)</span>
-                    </label>
+                  <label className="block">
+                    <span className="block text-sm font-medium mb-1.5 text-encre-2">Référence <span className="font-normal text-encre-3">(facultatif)</span></span>
                     <input
                       type="text"
                       value={offlineReference}
                       onChange={e => setOfflineReference(e.target.value)}
-                      placeholder={offlineMode === 'virement' ? 'Réf. virement bancaire' : offlineMode === 'cheque' ? 'N° du chèque' : 'Référence du paiement'}
-                      className={`w-full px-4 py-3 border rounded-xl ${inputBg}`}
+                      placeholder={offlineMode === 'virement' ? 'Réf. du virement' : offlineMode === 'cheque' ? 'N° du chèque' : 'Référence du paiement'}
+                      className={champ}
                     />
-                  </div>
+                  </label>
 
-                  {/* Reçu par email au client */}
+                  {/* Reçu par e-mail au client */}
                   {client?.email ? (
-                    <label className={`flex items-start gap-2.5 p-3 rounded-xl cursor-pointer bg-fond`}>
+                    <label className="flex items-start gap-3 p-3 rounded-xl cursor-pointer bg-surface-2">
                       <input
                         type="checkbox"
                         checked={sendReceipt}
                         onChange={e => setSendReceipt(e.target.checked)}
-                        className="mt-0.5 w-4 h-4 rounded accent-emerald-500"
+                        className="mt-0.5 w-5 h-5 rounded accent-accent flex-shrink-0"
                       />
-                      <span className={`text-sm ${textSecondary}`}>
-                        Envoyer un reçu de paiement par email à <strong>{client.email}</strong>
+                      <span className="text-sm text-encre-2">
+                        Envoyer un reçu de paiement par e-mail à <strong className="text-encre">{client.email}</strong>
                       </span>
                     </label>
                   ) : (
-                    <p className={`text-xs ${textMuted}`}>Pas d'email client — aucun reçu ne sera envoyé.</p>
+                    <p className="text-sm text-encre-3">Pas d'e-mail client : aucun reçu ne sera envoyé.</p>
                   )}
                 </div>
               )}
 
               {paiementBloque && (
-                <div role="alert" data-ui="PaiementSeptJours" className={`rounded-xl p-3 mb-4 flex items-start gap-2 ${isDark ? 'bg-amber-900/30 border border-amber-800' : 'bg-amber-50 border border-amber-200'}`}>
-                  <AlertTriangle size={16} className="flex-shrink-0 mt-0.5 text-amber-600" />
-                  <p className={`text-xs ${isDark ? 'text-amber-200' : 'text-amber-800'}`}>{paiementBloque}</p>
+                <div role="alert" data-ui="PaiementSeptJours" className="rounded-xl p-3 mt-4 flex items-start gap-2 bg-alerte-fond text-alerte-texte">
+                  <AlertTriangle size={16} className="flex-shrink-0 mt-0.5" aria-hidden="true" />
+                  <p className="text-sm">{paiementBloque}</p>
                 </div>
               )}
 
-              {/* Error message */}
               {error && (
-                <div className={`rounded-xl p-3 mb-4 flex items-start gap-2 ${isDark ? 'bg-red-900/30 border border-red-800' : 'bg-red-50 border border-red-200'}`}>
-                  <AlertTriangle size={16} className="flex-shrink-0 mt-0.5 text-red-500" />
-                  <p className={`text-xs ${isDark ? 'text-red-300' : 'text-red-700'}`}>{error}</p>
+                <div role="alert" className="rounded-xl p-3 mt-4 flex items-start gap-2 bg-danger-fond text-danger-texte">
+                  <AlertTriangle size={16} className="flex-shrink-0 mt-0.5" aria-hidden="true" />
+                  <p className="text-sm">{error}</p>
                 </div>
-              )}
-
-              {/* Action buttons */}
-              {paymentType === 'offline' ? (
-                <button
-                  onClick={handleConfirmOffline}
-                  disabled={(parseFloat(offlineAmount) || 0) <= 0 || !!paiementBloque}
-                  className="w-full py-4 text-white rounded-xl font-semibold flex items-center justify-center gap-2 disabled:opacity-50 transition-all hover:shadow-lg bg-emerald-500 hover:bg-emerald-600"
-                >
-                  <Check size={20} />
-                  Confirmer le paiement — {formatAmount(lireMontant(offlineAmount) || du)}
-                </button>
-              ) : (
-                <button
-                  onClick={handleGenerateLink}
-                  disabled={loading || amount <= 0 || !!paiementBloque}
-                  className="w-full py-4 rounded-xl font-medium flex items-center justify-center gap-2 disabled:opacity-50 transition-all hover:shadow-lg bg-accent text-sur-accent"
-                >
-                  {loading ? (
-                    <Loader size={20} className="animate-spin" />
-                  ) : paymentType === 'link' ? (
-                    <Link2 size={20} />
-                  ) : (
-                    <QrCode size={20} />
-                  )}
-                  {paymentType === 'link'
-                    ? `Générer le lien — ${formatAmount(amount)}`
-                    : `Générer le QR Code — ${formatAmount(amount)}`}
-                </button>
               )}
             </>
           )}
 
           {step === 'qr' && paymentLink && (
             <>
-              {/* QR Code */}
+              {/* QR Code (fond blanc : un QR code se lit noir sur blanc) */}
               <div className="flex flex-col items-center mb-5">
-                <div className={`p-4 rounded-2xl bg-fond mb-4`}>
+                <div className="p-4 rounded-2xl bg-white mb-4">
                   <QRCodeSVG
                     value={paymentLink.paymentUrl}
                     size={200}
@@ -530,106 +434,90 @@ export default function PaymentModal({
                     fgColor="#000000"
                   />
                 </div>
-
                 <div className="text-center">
-                  <p className={`text-lg font-bold ${textPrimary}`}>{formatAmount(amount)}</p>
-                  <p className={`text-sm ${textMuted}`}>
+                  <p className="text-lg font-bold tabular-nums text-encre">{formatAmount(amount)}</p>
+                  <p className="text-sm text-encre-3">
                     {paymentType === 'link' ? 'Envoyez ce lien à votre client' : 'Scannez pour payer'}
                   </p>
                 </div>
               </div>
 
-              {/* Info banner */}
-              <div className={`rounded-xl p-4 mb-5 ${isDark ? 'bg-blue-900/20 border border-blue-800' : 'bg-blue-50 border border-blue-200'}`}>
-                <div className="flex items-start gap-3">
-                  <Smartphone size={20} className="text-blue-500 mt-0.5" />
-                  <div>
-                    <p className={`font-medium text-sm ${isDark ? 'text-blue-300' : 'text-blue-800'}`}>
-                      {paymentType === 'link' ? 'Lien multi-méthode' : 'Comment ça marche ?'}
-                    </p>
-                    <p className={`text-xs mt-1 ${isDark ? 'text-blue-400' : 'text-blue-700'}`}>
-                      {paymentType === 'link'
-                        ? 'Votre client paiera par carte bancaire sur la page du lien.'
-                        : 'Le client scanne le QR code avec son téléphone, puis paie de manière sécurisée.'}
-                    </p>
-                  </div>
+              <div className="rounded-xl p-4 mb-5 bg-info-fond text-info-texte flex items-start gap-3">
+                <Smartphone size={20} className="mt-0.5 flex-shrink-0" aria-hidden="true" />
+                <div>
+                  <p className="font-medium text-sm">{paymentType === 'link' ? 'Lien multi-méthode' : 'Comment ça marche ?'}</p>
+                  <p className="text-sm mt-1">
+                    {paymentType === 'link'
+                      ? 'Votre client paiera par carte bancaire sur la page du lien.'
+                      : 'Le client scanne le QR code avec son téléphone, puis paie de manière sécurisée.'}
+                  </p>
                 </div>
               </div>
 
-              {/* Sharing actions */}
               <div className={`grid ${client?.email ? 'grid-cols-4' : 'grid-cols-3'} gap-2 mb-4`}>
-                <button
-                  onClick={copyLink}
-                  className={`flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl transition-colors ${
-                    isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'
-                  }`}
-                >
-                  {copied ? <Check size={18} className="text-green-500" /> : <Copy size={18} className={textSecondary} />}
-                  <span className={`text-xs ${textMuted}`}>{copied ? 'Copié !' : 'Copier'}</span>
-                </button>
-
-                <button
-                  onClick={sendByWhatsApp}
-                  className={`flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl transition-colors ${
-                    isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'
-                  }`}
-                >
-                  <MessageCircle size={18} className="text-green-500" />
-                  <span className={`text-xs ${textMuted}`}>WhatsApp</span>
-                </button>
-
-                {client?.email && (
-                  <button
-                    onClick={sendByEmail}
-                    className={`flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl transition-colors ${
-                      isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'
-                    }`}
-                  >
-                    <Mail size={18} className={textSecondary} />
-                    <span className={`text-xs ${textMuted}`}>Email</span>
+                {[
+                  { cle: 'copier', libelle: copied ? 'Copié' : 'Copier', icone: copied ? Check : Copy, onClick: copyLink },
+                  { cle: 'whatsapp', libelle: 'WhatsApp', icone: MessageCircle, onClick: sendByWhatsApp },
+                  client?.email && { cle: 'email', libelle: 'E-mail', icone: Mail, onClick: sendByEmail },
+                  { cle: 'partager', libelle: 'Partager', icone: Share2, onClick: shareLink },
+                ].filter(Boolean).map(({ cle, libelle, icone: Icone, onClick }) => (
+                  <button key={cle} type="button" onClick={onClick} className="flex flex-col items-center gap-1.5 min-h-[64px] py-3 px-2 rounded-xl transition-colors bg-surface-2 hover:bg-bord">
+                    <Icone size={18} className="text-encre-2" aria-hidden="true" />
+                    <span className="text-xs text-encre-2">{libelle}</span>
                   </button>
-                )}
-
-                <button
-                  onClick={shareLink}
-                  className={`flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl transition-colors ${
-                    isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'
-                  }`}
-                >
-                  <Share2 size={18} className={textSecondary} />
-                  <span className={`text-xs ${textMuted}`}>Partager</span>
-                </button>
+                ))}
               </div>
 
-              {/* Lien URL */}
-              <div className={`rounded-xl p-3 bg-surface-2 flex items-center gap-2`}>
+              <div className="rounded-xl p-3 bg-surface-2 flex items-center gap-2">
                 <input
                   type="text"
                   readOnly
+                  aria-label="Lien de paiement"
                   value={paymentLink.paymentUrl}
-                  className={`flex-1 bg-transparent text-xs truncate ${textMuted}`}
+                  className="flex-1 bg-transparent text-sm truncate text-encre-2"
                 />
                 <a
                   href={paymentLink.paymentUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className={`p-2 rounded-lg transition-colors ${isDark ? 'hover:bg-slate-600' : 'hover:bg-slate-200'}`}
+                  aria-label="Ouvrir le lien de paiement"
+                  className="w-11 h-11 flex items-center justify-center rounded-lg transition-colors hover:bg-bord"
                 >
-                  <ExternalLink size={16} className={textSecondary} />
+                  <ExternalLink size={16} className="text-encre-2" aria-hidden="true" />
                 </a>
               </div>
-
-              {/* Nouveau montant */}
-              <button
-                onClick={() => { setStep('amount'); setPaymentLink(null); }}
-                className={`w-full mt-4 py-3 rounded-xl font-medium ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}
-              >
-                Nouveau montant
-              </button>
             </>
           )}
-        </div>
-      </div>
-    </div>
+      </ModalBody>
+
+      {/* Pied collé : le bouton de validation reste visible au téléphone (avant : à faire défiler) */}
+      <ModalFooter>
+        {step === 'qr' && paymentLink ? (
+          <Bouton variante="secondaire" pleineLargeur onClick={() => { setStep('amount'); setPaymentLink(null); }}>
+            Nouveau montant
+          </Bouton>
+        ) : paymentType === 'offline' ? (
+          <Bouton
+            variante="principal" taille="grande" pleineLargeur className="whitespace-normal h-auto min-h-[48px] py-2 text-center"
+            onClick={handleConfirmOffline}
+            disabled={(parseFloat(offlineAmount) || 0) <= 0 || !!paiementBloque}
+          >
+            Confirmer le paiement — {formatAmount(lireMontant(offlineAmount) || du)}
+          </Bouton>
+        ) : (
+          <Bouton
+            variante="principal" taille="grande" pleineLargeur
+            icone={loading ? undefined : paymentType === 'link' ? Link2 : QrCode}
+            chargement={loading}
+            onClick={handleGenerateLink}
+            disabled={amount <= 0 || !!paiementBloque}
+          >
+            {paymentType === 'link'
+              ? `Générer le lien — ${formatAmount(amount)}`
+              : `Générer le QR Code — ${formatAmount(amount)}`}
+          </Bouton>
+        )}
+      </ModalFooter>
+    </Modal>
   );
 }
