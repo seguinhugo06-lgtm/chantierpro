@@ -74,7 +74,6 @@ import { blocRetractationHtml, estConcerneParRetractation, lienRetractationEnLig
 import { soldeDe, texteCourt, telInternational } from '../lib/messageRelance';
 import { useDebounce } from '../hooks/useDebounce';
 import { useDevisModals } from '../hooks/useDevisModals';
-import { isFacturXCompliant } from '../lib/facturx';
 import { usePermissions } from '../hooks/usePermissions';
 import { ReadOnlyBanner } from './ui/PermissionGate';
 import PageHeader from './ui/PageHeader';
@@ -168,7 +167,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   const { showToast } = useToast();
 
   // RBAC permissions
-  const { canPerform, canViewPrices, canEditData, getPermission } = usePermissions();
+  const { canPerform, canViewPrices, getPermission } = usePermissions();
   const devisPermission = getPermission('devis');
   const isViewOnly = devisPermission === 'view' || devisPermission === 'view_no_prices';
 
@@ -344,7 +343,6 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   const [actionLoading, setActionLoading] = useState(null); // 'pdf' | 'duplicate' | null
   const [chantierForm, setChantierForm] = useState({ nom: '', adresse: '' });
   const [pdfContent, setPdfContent] = useState('');
-  const [tooltip, setTooltip] = useState(null); // { text, x, y }
   const [voletStatut, setVoletStatut] = useState(false); // fiche : « Changer le statut » (menu ⋯)
   const [showAvoirModal, setShowAvoirModal] = useState(false);
   const [assigningClientDevisId, setAssigningClientDevisId] = useState(null); // B1: assign client to orphan devis
@@ -394,36 +392,10 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   const [templateName, setTemplateName] = useState('');
   const [templateCategory, setTemplateCategory] = useState('Mes modèles');
   const [showSignatureLinkModal, setShowSignatureLinkModal] = useState(false);
-  const [signatureLinkUrl, setSignatureLinkUrl] = useState(null);
+  const [signatureLinkUrl] = useState(null);
   const [showSendConfirmation, setShowSendConfirmation] = useState(null); // { clientName, montant, canal, doc }
   const [showCreationSuccess, setShowCreationSuccess] = useState(null); // { devis, numero }
 
-  // Tooltip component
-  const Tooltip = ({ text, children, position = 'top' }) => {
-    const [show, setShow] = useState(false);
-    return (
-      <div className="relative inline-block" onMouseEnter={() => setShow(true)} onMouseLeave={() => setShow(false)}>
-        {children}
-        {show && (
-          <div className={`absolute z-50 px-3 py-2 text-xs font-medium text-surface bg-encre rounded-lg shadow-lg whitespace-nowrap ${
-            position === 'top' ? 'bottom-full left-1/2 -translate-x-1/2 mb-2' :
-            position === 'bottom' ? 'top-full left-1/2 -translate-x-1/2 mt-2' :
-            position === 'left' ? 'right-full top-1/2 -translate-y-1/2 mr-2' :
-            'left-full top-1/2 -translate-y-1/2 ml-2'
-          }`}>
-            {text}
-            <div className={`absolute w-2 h-2 bg-encre rotate-45 ${
-              position === 'top' ? 'top-full left-1/2 -translate-x-1/2 -mt-1' :
-              position === 'bottom' ? 'bottom-full left-1/2 -translate-x-1/2 -mb-1' :
-              position === 'left' ? 'left-full top-1/2 -translate-y-1/2 -ml-1' :
-              'right-full top-1/2 -translate-y-1/2 -mr-1'
-            }`} />
-          </div>
-        )}
-      </div>
-    );
-  };
-  
   // Si selectedDevis change depuis l'extérieur (ex: depuis Clients), mettre à jour
   useEffect(() => {
     if (selectedDevis) {
@@ -3071,8 +3043,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   if (mode === 'preview' && selected) {
     const client = clients.find(c => c.id === selected.client_id);
     const {
-      facturesLiees, situationsFacturees, situationsEnCours, facturationParSituations, acompteFacture, soldeFacture,
-      resteAFacturer, hasEcheancier, entierementFacture, canAcompte, canFacturer,
+      facturesLiees, situationsFacturees, situationsEnCours, facturationParSituations, acompteFacture,
+      resteAFacturer, canAcompte, canFacturer,
     } = facturationDe(selected);
     const isDevis = selected.type === 'devis';
     const isAvoir = selected.facture_type === 'avoir';
@@ -3983,7 +3955,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                         Factures d'acompte ({allAcomptesForSource.length})
                       </p>
                       <div className="space-y-2">
-                        {allAcomptesForSource.map((ac, idx) => {
+                        {allAcomptesForSource.map((ac) => {
                           const isCurrent = ac.id === selected.id;
                           return (
                             <div
@@ -5576,7 +5548,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 }
 
 // ── Devis Historique tab (extracted sub-component) ──
-function DevisHistoriqueTab({ selected, facturesLiees, setSelected, isDark, couleur, modeDiscret, formatMoney, textPrimary, textMuted }) {
+function DevisHistoriqueTab({ selected, facturesLiees, isDark, couleur, modeDiscret }) {
   const [auditEntries, setAuditEntries] = React.useState([]);
   const [isLoading, setIsLoading] = React.useState(true);
 

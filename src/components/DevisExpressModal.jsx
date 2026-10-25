@@ -3,10 +3,10 @@
  * Flow: Métier → Modèle → Personnalisation → Création
  */
 
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { sansTva } from '../lib/franchiseTva';
-import { X, ChevronLeft, ChevronRight, Search, Check, FileText, Euro, TrendingUp, Minus, Plus, Trash2, Edit3, FolderOpen, UserPlus, Loader2, Star, Clock, RotateCcw } from 'lucide-react';
-import { MODELES_DEVIS, getMetiersWithModeles, getModelesByMetier, prepareModeleLignes, calculateModeleTotal, calculateModeleMarge, searchModeles } from '../lib/data/modeles-devis';
+import { X, ChevronLeft, ChevronRight, Search, Check, FileText, TrendingUp, Minus, Plus, Trash2, FolderOpen, UserPlus, Clock, RotateCcw } from 'lucide-react';
+import { getMetiersWithModeles, getModelesByMetier, prepareModeleLignes, calculateModeleTotal, calculateModeleMarge, searchModeles } from '../lib/data/modeles-devis';
 import { formatClientName } from '../lib/formatters';
 import Modal, { ModalTitle } from './ui/Modal';
 import { Bouton } from './ui/Bouton';

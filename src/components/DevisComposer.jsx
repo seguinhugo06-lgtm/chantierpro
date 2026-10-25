@@ -1032,7 +1032,7 @@ export default function DevisComposer({
 }
 
 /* ── Client field (inline picker) ── */
-function ClientField({ selectedClient, couleur, isDark, textPrimary, textMuted, open, setOpen, clientSearch, setClientSearch, inputBg, recentClients, filteredClients, onSelect, onQuickAdd }) {
+function ClientField({ selectedClient, couleur: _couleur, isDark: _isDark, textPrimary, textMuted, open, setOpen, clientSearch, setClientSearch, inputBg, recentClients, filteredClients, onSelect, onQuickAdd }) {
   const ref = useRef(null);
   useEffect(() => {
     if (!open) return;
@@ -1156,7 +1156,7 @@ function ChantierField({ chantiers = [], clientId, valeur, onChange }) {
 }
 
 /* ── Titre de lot (section) ── */
-function SectionRow({ ligne, index, total, subtotal, count = 0, collapsed = false, onToggle, shouldFocus, isDark, textPrimary, textMuted, onUpdate, onRemove, onMoveUp, onMoveDown,
+function SectionRow({ ligne, index, total, subtotal, count = 0, collapsed = false, onToggle, shouldFocus, isDark: _isDark, textPrimary, textMuted, onUpdate, onRemove, onMoveUp, onMoveDown,
   rowIndex, onGrab, isDragged, isDropTarget }) {
   const inputRef = useRef(null);
   useEffect(() => { if (shouldFocus) inputRef.current?.focus(); }, [shouldFocus]);
@@ -1211,7 +1211,7 @@ function ajusterHauteur(el) {
 }
 
 /* ── Editable line row ── */
-function LigneRow({ ligne, index, total, franchise = false, isDark, couleur, inputBg, textPrimary, textMuted, rowHover, onUpdate, onRemove, onMoveUp, onMoveDown, onDuplicate, onMetre, onInsertLot, onMarge, onToLot, focusField, onFocusHandled, onLineEnter,
+function LigneRow({ ligne, index, total, franchise = false, isDark, couleur: _couleur, inputBg, textPrimary, textMuted, rowHover, onUpdate, onRemove, onMoveUp, onMoveDown, onDuplicate, onMetre, onInsertLot, onMarge, onToLot, focusField, onFocusHandled, onLineEnter,
   rowIndex, onGrab, isDragged, isDropTarget }) {
   const lineTotal = num(ligne.quantite) * num(ligne.prixUnitaire);
   const numCls = `w-full h-9 rounded-lg border text-sm text-center ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent`;
@@ -1332,7 +1332,7 @@ function LigneRow({ ligne, index, total, franchise = false, isDark, couleur, inp
   );
 }
 
-function LineMenu({ isDark, textMuted, index, total, onMoveUp, onMoveDown, onDuplicate, onRemove, onMetre, onInsertLot, onMarge, onToLot, toujoursVisible = false }) {
+function LineMenu({ isDark: _isDark, textMuted, index, total, onMoveUp, onMoveDown, onDuplicate, onRemove, onMetre, onInsertLot, onMarge, onToLot, toujoursVisible = false }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
   useEffect(() => { if (!open) return; const h = e => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); }; document.addEventListener('mousedown', h); return () => document.removeEventListener('mousedown', h); }, [open]);
@@ -1359,7 +1359,7 @@ function LineMenu({ isDark, textMuted, index, total, onMoveUp, onMoveDown, onDup
 }
 
 /* ── Métré express : quantité depuis les dimensions (L × l × h) ── */
-function MetreModal({ isDark, couleur, inputBg, textPrimary, textMuted, onClose, onApply }) {
+function MetreModal({ isDark: _isDark, couleur: _couleur, inputBg, textPrimary, textMuted, onClose, onApply }) {
   const [L, setL] = useState('');
   const [larg, setLarg] = useState('');
   const [haut, setHaut] = useState('');
@@ -1417,7 +1417,7 @@ function MetreModal({ isDark, couleur, inputBg, textPrimary, textMuted, onClose,
  * ses missions et leurs prix AVANT de l'appliquer — on ne choisit pas « 9 lignes »
  * à l'aveugle. Tout s'ajoute à la suite, rien n'est jamais écrasé.
  */
-function LibraryPanel({ open, onClose, persoTemplates = [], articles = [], onAppendBloc, onAddArticle, isDark, couleur, textPrimary, textMuted, inputBg }) {
+function LibraryPanel({ open, onClose, persoTemplates = [], articles = [], onAppendBloc, onAddArticle, isDark: _isDark, couleur: _couleur, textPrimary, textMuted, inputBg }) {
   const [q, setQ] = useState('');
   const [openTrade, setOpenTrade] = useState(null);
 
@@ -1585,7 +1585,7 @@ function LibraryPanel({ open, onClose, persoTemplates = [], articles = [], onApp
 }
 
 /* ── Aperçu PDF live (ce que le client recevra), sans créer le devis ── */
-function PdfPreviewModal({ isDark, couleur, textPrimary, textMuted, html, onClose }) {
+function PdfPreviewModal({ isDark: _isDark, couleur: _couleur, textPrimary, textMuted, html, onClose }) {
   useEffect(() => {
     const onKey = e => { if (e.key === 'Escape') onClose(); };
     document.addEventListener('keydown', onKey);
@@ -1610,7 +1610,7 @@ function PdfPreviewModal({ isDark, couleur, textPrimary, textMuted, html, onClos
 }
 
 /* ── Prix d'achat / marge d'une ligne ── */
-function MargeModal({ isDark, couleur, inputBg, textPrimary, textMuted, ligne, onClose, onApply }) {
+function MargeModal({ isDark: _isDark, couleur: _couleur, inputBg, textPrimary, textMuted, ligne, onClose, onApply }) {
   const [pa, setPa] = useState(ligne.prixAchat ? String(ligne.prixAchat) : '');
   const ref = useRef(null);
   useEffect(() => {
@@ -1657,7 +1657,7 @@ function MargeModal({ isDark, couleur, inputBg, textPrimary, textMuted, ligne, o
 }
 
 /* ── Enregistrer le devis courant comme modèle perso ── */
-function SaveTemplateModal({ isDark, couleur, inputBg, textPrimary, textMuted, defaultName, onClose, onSave }) {
+function SaveTemplateModal({ isDark: _isDark, couleur: _couleur, inputBg, textPrimary, textMuted, defaultName, onClose, onSave }) {
   const [nom, setNom] = useState(defaultName || '');
   const [categorie, setCategorie] = useState('');
   const ref = useRef(null);
@@ -1694,7 +1694,7 @@ function SaveTemplateModal({ isDark, couleur, inputBg, textPrimary, textMuted, d
 }
 
 /* ── Démarrage éclair : modèles métier + articles fréquents ── */
-function QuickStart({ templates, articles, persoTemplates = [], onApplyTemplate, onApplyPerso, onAddArticle, onOpenLibrary, isDark, couleur, textPrimary, textMuted }) {
+function QuickStart({ templates, articles, persoTemplates = [], onApplyTemplate, onApplyPerso, onAddArticle, onOpenLibrary, isDark: _isDark, couleur: _couleur, textPrimary, textMuted }) {
   const trades = Object.entries(TRADE_LIBRARY);
   const cardCls = `group flex flex-col items-center gap-1.5 p-3 rounded-xl border transition-all hover:-translate-y-0.5 hover:shadow-md active:scale-95 bg-surface border-bord hover:border-bord-fort`;
   return (
@@ -1765,7 +1765,7 @@ function QuickStart({ templates, articles, persoTemplates = [], onApplyTemplate,
 }
 
 /* ── Add-line row with catalogue autocomplete ── */
-function AddLineRow({ catalogue, isDark, couleur, inputBg, textPrimary, textMuted, onAdd, empty, focusSignal }) {
+function AddLineRow({ catalogue, isDark: _isDark, couleur: _couleur, inputBg: _inputBg, textPrimary, textMuted, onAdd, empty, focusSignal }) {
   const [q, setQ] = useState('');
   const [highlight, setHighlight] = useState(0);
   const inputRef = useRef(null);

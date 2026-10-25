@@ -14,8 +14,8 @@ export default function SignaturePad({
   document,
   client,
   entreprise,
-  isDark,
-  couleur
+  isDark: _isDark,
+  couleur: _couleur
 }) {
   const sigPad = useRef(null);
   const [isEmpty, setIsEmpty] = useState(true);

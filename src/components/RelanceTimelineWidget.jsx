@@ -6,11 +6,9 @@
 
 import { useState, useMemo } from 'react';
 import {
-  Bell,
   BellRing,
   Check,
   Clock,
-  X,
   XCircle,
   Eye,
   MousePointer2,
@@ -19,7 +17,6 @@ import {
   Send,
   Phone,
   ChevronDown,
-  AlertTriangle,
   SkipForward,
   Ban,
   Zap,
@@ -29,7 +26,6 @@ import {
   RELANCE_STATUS_LABELS,
   RELANCE_STATUS_COLORS,
   CHANNEL_LABELS,
-  EXCLUSION_REASONS,
   getNextStep,
 } from '../lib/relanceUtils';
 import { dateLue } from '../lib/dates';
@@ -73,10 +69,10 @@ export default function RelanceTimelineWidget({
   onExclude,
   isExcluded = false,
   isEnabled = false,
-  isDark,
-  couleur,
-  modeDiscret,
-  formatMoney: formatMoneyProp,
+  isDark: _isDark,
+  couleur: _couleur,
+  modeDiscret: _modeDiscret,
+  formatMoney: _formatMoney,
 }) {
   const [showExcludeMenu, setShowExcludeMenu] = useState(false);
 
@@ -89,14 +85,9 @@ export default function RelanceTimelineWidget({
     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',
   );
 
-  const showMoney = (v) => modeDiscret ? '***' : (formatMoneyProp ? formatMoneyProp(v) : `${v} €`);
-
   // Build timeline entries from executions + future steps
   const timeline = useMemo(() => {
     const enabledSteps = steps.filter(s => s.enabled);
-    const executedStepIds = new Set(
-      executions.filter(e => e.status !== 'cancelled').map(e => e.step_id)
-    );
 
     const entries = [];
 

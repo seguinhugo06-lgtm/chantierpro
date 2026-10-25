@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { X, ChevronRight, FileText, ArrowLeft, Check, TrendingUp, Star, Trash2, Search } from 'lucide-react';
 import { MODELES_DEVIS, getMetiersWithModeles, prepareModeleLignes, calculateModeleTotal, calculateModeleMarge, searchModeles } from '../lib/data/modeles-devis';
 
@@ -13,8 +13,8 @@ export default function TemplateSelector({
   onSelectTemplate,
   customTemplates = [],
   onDeleteTemplate,
-  isDark,
-  couleur
+  isDark: _isDark,
+  couleur: _couleur
 }) {
   const [selectedMetier, setSelectedMetier] = useState(null);
   const [hoveredTemplate, setHoveredTemplate] = useState(null);

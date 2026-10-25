@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { ArrowLeft, ArrowRight, Check, X, Plus, User, FileText, Receipt, Search, Star, Trash2, ChevronDown, ChevronUp, ChevronRight, Sparkles, Clock, RotateCcw, AlertCircle, Zap, Edit3 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, X, Plus, User, FileText, Receipt, Search, Trash2, ChevronDown, ChevronUp, ChevronRight, Sparkles, Clock, RotateCcw, AlertCircle, Zap, Edit3 } from 'lucide-react';
 import FormError from './ui/FormError';
 import QuickClientModal from './QuickClientModal';
 import CatalogBrowser from './CatalogBrowser';
@@ -28,7 +28,6 @@ export default function DevisWizard({
   clients = [],
   addClient,
   catalogue = [],
-  chantiers = [],
   entreprise = {},
   isDark = false,
   couleur,
@@ -381,7 +380,7 @@ export default function DevisWizard({
               : [{ idx: 0, label: 'Méthode' }, { idx: 1, label: 'Client' }, { idx: 2, label: 'Articles' }, { idx: 3, label: 'Finaliser' }];
             return (
               <div className="flex gap-1">
-                {steps.map((s, i) => (
+                {steps.map((s) => (
                   <button
                     key={s.idx}
                     type="button"
@@ -973,8 +972,7 @@ export default function DevisWizard({
 }
 
 // Ligne card component
-function LigneCard({ ligne, index, totalLignes, onUpdate, onRemove, onMoveUp, onMoveDown, isDark, couleur, tvaDefaut }) {
-  const textPrimary = 'text-encre';
+function LigneCard({ ligne, index, totalLignes, onUpdate, onRemove, onMoveUp, onMoveDown, isDark: _isDark, couleur: _couleur, tvaDefaut }) {
   const textMuted = 'text-encre-2';
   const inputBg = 'bg-surface border-bord';
 

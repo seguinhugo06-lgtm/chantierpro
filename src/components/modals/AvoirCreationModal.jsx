@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { X, Receipt, AlertTriangle, Check, ChevronRight, ChevronLeft, FileText, Minus, Info, RotateCcw } from 'lucide-react';
+import { useState, useMemo, useEffect } from 'react';
+import { Receipt, AlertTriangle, Check, ChevronRight, ChevronLeft, FileText, Info, RotateCcw } from 'lucide-react';
 import { AVOIR_MOTIFS } from '../DevisPage';
 import { avoirTotal, avoirPartiel } from '../../lib/avoir';
 import { totalLigne } from '../../lib/totauxDocument';
@@ -18,13 +18,12 @@ export default function AvoirCreationModal({
   facture,
   devis = [],
   onCreateAvoir,
-  isDark,
-  couleur,
+  isDark: _isDark,
+  couleur: _couleur,
   modeDiscret,
   formatMoney: formatMoneyProp,
 }) {
   // Theme
-  const cardBg = 'bg-surface';
   const textPrimary = 'text-encre';
   const textMuted = 'text-encre-3';
   const inputBg = 'bg-surface border-bord-fort';
@@ -105,7 +104,6 @@ export default function AvoirCreationModal({
   }, [totalPossible, avoirType]);
 
   // Total avoir amount (for validation)
-  const avoirTTC = avoirType === 'total' ? remaining : partialTotals.ttc;
   const avoirHT = avoirType === 'total' ? (factureHT - existingAvoirs.reduce((s, a) => s + Math.abs(a.total_ht || 0), 0)) : partialTotals.ht;
 
   // Validation

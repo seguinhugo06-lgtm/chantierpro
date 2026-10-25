@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Plus, Trash2, AlertTriangle, CreditCard, ClipboardList, GripVertical } from 'lucide-react';
 import Modal, { ModalHeader, ModalTitle, ModalDescription, ModalBody, ModalFooter } from '../ui/Modal';
 import { Bouton } from '../ui/Bouton';
@@ -24,8 +24,8 @@ export default function AcompteEcheancierModal({
   isOpen,
   onClose,
   devis,
-  isDark = false,
-  couleur,
+  isDark: _isDark = false,
+  couleur: _couleur,
   modeDiscret = false,
   // Devis en franchise de TVA : le montant seul, sans « TTC » (relecture juriste-btp du 24 oct. 2026)
   franchise = false,
