@@ -1,20 +1,15 @@
 /**
- * analytics.js — Lightweight event tracking for Mallettico
+ * analytics.js — événements de produit (inscription, premier devis, plan…).
  *
- * Uses Plausible Analytics (privacy-first, no cookies).
- * Events are only sent if the user accepted analytics cookies.
- * Falls back to no-op if Plausible is not loaded.
+ * INERTE depuis le 25 oct. 2026 : aucun outil de mesure n'est chargé (le script Plausible a été retiré de index.html le
+ * 16 mars 2026, commit 227534e3) et le bandeau de consentement a été retiré avec lui (relecture juriste du 25 oct.,
+ * option A : pas de bandeau tant qu'aucun traceur facultatif n'existe). Ces événements suivent un parcours d'achat :
+ * ils demandent le consentement de l'utilisateur (loi 78-17, art. 82). Avant d'en réactiver un, remettre le bandeau
+ * (historique : src/components/CookieConsent.jsx au commit 319c95b4) et l'outil dans la politique de confidentialité —
+ * tâche « bandeau-traceurs » de docs/feuille-de-route.md. Les appels restent en place.
  */
-import { getCookieConsent } from '../components/CookieConsent';
-
-function track(eventName, props) {
-  try {
-    const consent = getCookieConsent();
-    if (!consent?.analytics) return;
-    if (typeof window !== 'undefined' && window.plausible) {
-      window.plausible(eventName, props ? { props } : undefined);
-    }
-  } catch { /* silent */ }
+function track() {
+  // Rien n'est lu ni écrit sur l'appareil, rien n'est envoyé.
 }
 
 const analytics = {

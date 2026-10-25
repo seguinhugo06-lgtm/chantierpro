@@ -73,8 +73,7 @@ import PortalLoader from './components/portal/PortalLoader';
 const GarantiesDashboard = lazyWithRetry(() => import('./components/chantiers/GarantiesDashboard'), 'Garanties');
 const PlanPage = lazyWithRetry(() => import('./components/profil/PlanPage'), 'Plan');
 const DicteeModal = lazyWithRetry(() => import('./components/voice/DicteeModal'), 'Dictée');
-import CookieConsent from './components/CookieConsent';
-import CGUAcceptanceModal, { CGU_VERSION } from './components/CGUAcceptanceModal';
+import CGUAcceptanceModal, { CGU_VERSION, CGU_VERSION_DATE } from './components/CGUAcceptanceModal';
 import { useConfirm, useToast } from './context/AppContext';
 import { useData } from './context/DataContext';
 import { useEntreprise } from './context/EntrepriseContext';
@@ -100,7 +99,7 @@ import { FONCTIONS } from './lib/fonctions';
 import { estNatif } from './lib/natif';
 import { appliquerTheme, COULEUR_DOCUMENTS_DEFAUT } from './lib/theme';
 import { dateEcheance, joursDeRetard, resteAPayer } from './lib/paiementsFacture';
-import { estEnRetard, aTraiter, estUrgent } from './lib/ventes';
+import { estEnRetard, aTraiter, estUrgent, devisARelancer, joursDepuisEnvoi } from './lib/ventes';
 import Modal, { ModalHeader, ModalTitle, ModalDescription, ModalBody, ModalFooter } from './components/ui/Modal';
 import EtatVide from './components/ui/EtatVide';
 import { Bouton } from './components/ui/Bouton';
@@ -171,6 +170,7 @@ export default function App() {
     generateNextNumero,
     loadError, retryLoad, rechargerDonnees,
     rejouerEcriture, userId: compteId,
+    exigerCgu: exigerCguData, enregistrerGardeCgu,
   } = useData();
 
   // Auth state
@@ -179,6 +179,8 @@ export default function App() {
   // /inscription et /connexion (liens de la vitrine) ouvrent directement le formulaire
   const [showSignUp, setShowSignUp] = useState(() => typeof window !== 'undefined' && window.location.pathname === '/inscription');
   const [authForm, setAuthForm] = useState({ email: '', password: '', nom: '' });
+  // Case des conditions à l'inscription (C. civ. 1119 ; relecture juriste du 25 oct. 2026, R-G1) : jamais cochée d'avance
+  const [accepteConditions, setAccepteConditions] = useState(false);
   // Un lien e-mail expiré arrive avec #error=… : on l'explique sur l'écran de connexion.
   const [authError, setAuthError] = useState(() => (lienEmail.erreur ? traduireErreurAuth(lienEmail.erreur) : ''));
   const [authInfo, setAuthInfo] = useState('');
@@ -287,6 +289,18 @@ export default function App() {
   const setEntreprise = useCallback((updater) => {
     const base = !entrepriseId && brouillonEntRef.current ? brouillonEntRef.current : entreprise;
     const newVal = typeof updater === 'function' ? updater(base) : updater;
+    // Rappels de ramonage et relances envoyés par e-mail au nom de l'artisan : leur activation demande les conditions
+    // d'utilisation, par la garde unique de DataContext (relecture juriste du 25 oct. 2026, G3)
+    const activeEnvois = (!base?.ramonageEnvoiAuto && newVal?.ramonageEnvoiAuto)
+      || (!base?.relanceConfig?.enabled && newVal?.relanceConfig?.enabled);
+    if (activeEnvois && !newVal?.__cguVerifiees) {
+      return exigerCguData().then((ok) => {
+        if (ok) return setEntreprise({ ...newVal, __cguVerifiees: true });
+        showToast('Envois automatiques non activés : les conditions d’utilisation n’ont pas été acceptées.', 'info');
+        return false;
+      });
+    }
+    if (newVal && newVal.__cguVerifiees) delete newVal.__cguVerifiees;
     if (entrepriseId) return ctxUpdateEntreprise(entrepriseId, newVal);
     brouillonEntRef.current = newVal;
     if (creationEntRef.current) {
@@ -300,7 +314,7 @@ export default function App() {
       if (enAttente && creee?.id) await ctxUpdateEntreprise(creee.id, enAttente);
     })().finally(() => { creationEntRef.current = null; });
     return creationEntRef.current;
-  }, [entreprise, entrepriseId, ctxUpdateEntreprise, ctxAddEntreprise]);
+  }, [entreprise, entrepriseId, ctxUpdateEntreprise, ctxAddEntreprise, exigerCguData, showToast]);
   // Track which notification IDs have been read (persisted in localStorage)
   const [readNotifIds, setReadNotifIds] = useState(() => {
     try { return JSON.parse(localStorage.getItem('cp_read_notifs') || '[]'); } catch { return []; }
@@ -333,25 +347,23 @@ export default function App() {
     const voitFinances = canAccess('finances');
     const montant = (n) => (modeDiscret ? '•••' : new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(n || 0));
 
-    // 1. Devis envoyés depuis >7 jours sans réponse (les factures ont leur propre alerte, ci-dessous :
-    //    avant, une facture payée apparaissait ici « à relancer », en double de l'alerte d'impayé)
+    // 1. Devis à relancer : la règle de la pastille et de l'Accueil (src/lib/ventes.js) — compté depuis l'envoi, jamais
+    //    expiré. Les factures ont leur propre alerte, ci-dessous (avant, une facture payée apparaissait ici « à relancer »).
     (devis || []).forEach(d => {
-      if (voitFinances && d.type !== 'facture' && (d.statut === 'envoye' || d.statut === 'vu') && d.date) {
-        const age = Math.floor((now - new Date(d.date)) / 86400000);
-        if (age >= 7) {
-          const cn = clientName(d.client_id);
-          items.push({
-            id: `devis-stale-${d.id}`,
-            message: `Devis ${d.numero || ''} envoyé à ${cn || 'un client'} depuis ${age} jours — à relancer`,
-            date: relDate(d.date),
-            type: 'warning',
-            link: 'devis',
-            itemId: d.id,
-            itemType: 'devis',
-            sortDate: new Date(d.date),
-            priority: 2,
-          });
-        }
+      if (voitFinances && devisARelancer(d, now, entreprise)) {
+        const age = joursDepuisEnvoi(d, now);
+        const cn = clientName(d.client_id);
+        items.push({
+          id: `devis-stale-${d.id}`,
+          message: `Devis ${d.numero || ''} envoyé à ${cn || 'un client'} depuis ${age} jours — à relancer`,
+          date: relDate(d.date_envoi || d.date),
+          type: 'warning',
+          link: 'devis',
+          itemId: d.id,
+          itemType: 'devis',
+          sortDate: new Date(d.date_envoi || d.date),
+          priority: 2,
+        });
       }
     });
 
@@ -558,36 +570,50 @@ export default function App() {
   // Settings state (entreprise declared earlier, before notifications useMemo)
   const [theme, setTheme] = useState('light');
 
-  // CGU (LEGAL-001) : demandées au moment d'un geste qui les exige — le premier document (devis ou facture), ou le
-  // suivant quand leur version a changé —, plus au chargement. Avant (retour d'Hugo sur « Au Bon Volt », 21-23 oct.
-  // 2026), la fenêtre bloquante surgissait au premier réglage enregistré (le clic sur la couleur du profil créait la
-  // fiche entreprise). Jamais en démo. L'éditeur les demande à son ouverture (DevisPage, ouvrirNouveauDevis) ;
-  // addDevis, par où passe tout document, est le filet.
+  // CGU (LEGAL-001). Décision du 25 oct. 2026 (relecture juriste, C. civ. 1119) : acceptées à l'INSCRIPTION, par une case,
+  // et enregistrées pour chaque utilisateur dans les métadonnées de son compte (cgu_version, cgu_accepted_at). La garde
+  // unique est dans DataContext (exigerCgu) : tout document et toute attestation y passent ; App y enregistre la fonction
+  // ci-dessous, qui ouvre la fenêtre d'acceptation pour les cas restants :
+  // - un compte créé avant la case (rien dans ses métadonnées, rien sur la fiche de l'entreprise) ;
+  // - une nouvelle version des CGU.
+  // Un membre invité accepte pour lui-même (ses métadonnées) : il n'a plus besoin d'écrire la fiche de l'entreprise.
+  // Jamais en démo. Avant (retour d'Hugo sur « Au Bon Volt »), la fenêtre surgissait au premier réglage enregistré.
   const [demandeCgu, setDemandeCgu] = useState(null); // { resolve, motif }
-  const cguAccepteeIci = useRef(false); // acceptée dans cette session : ne pas attendre que la fiche soit relue
-  const cguRef = useRef({ aJour: true, motif: 'premier' });
+  const cguRef = useRef({ aJour: true, motif: 'premier', chargement: false });
   cguRef.current = {
-    aJour: isDemo || !user || entrepriseLoading || cguAccepteeIci.current
+    aJour: isDemo || !user
+      || user?.user_metadata?.cgu_version === CGU_VERSION
       || (!!entreprise.cguAcceptedAt && entreprise.cguVersion === CGU_VERSION),
-    motif: entreprise.cguAcceptedAt ? 'version' : 'premier',
+    motif: user?.user_metadata?.cgu_version || entreprise.cguAcceptedAt ? 'version' : 'premier',
+    // Fiche de l'entreprise pas encore lue : on attend de savoir (avant, « en chargement » valait « accepté »)
+    chargement: entrepriseLoading,
   };
-  const exigerCgu = useCallback(() => {
+  const verifierCgu = useCallback(async () => {
+    for (let i = 0; i < 50 && cguRef.current.chargement && !cguRef.current.aJour; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
     const { aJour, motif } = cguRef.current;
-    if (aJour) return Promise.resolve(true);
+    if (aJour) return true;
     return new Promise((resolve) => setDemandeCgu({ resolve, motif }));
   }, []);
-  // Rend false si l'acceptation n'a pas été enregistrée : la fenêtre reste ouverte et le dit
+  useEffect(() => {
+    enregistrerGardeCgu?.(verifierCgu);
+    return () => enregistrerGardeCgu?.(null);
+  }, [enregistrerGardeCgu, verifierCgu]);
+  // Rend true, ou le message qui dit pourquoi l'acceptation n'a pas été enregistrée (la fenêtre reste ouverte)
   const accepterCgu = async (version) => {
-    const cguData = { cguAcceptedAt: new Date().toISOString(), cguVersion: version };
+    const acceptation = { cgu_version: version, cgu_accepted_at: new Date().toISOString() };
     try {
-      // Ces deux champs seulement ; sans fiche (compte neuf), la première écriture la crée
-      if (entrepriseId) await ctxUpdateEntreprise(entrepriseId, cguData);
-      else await setEntreprise(prev => ({ ...prev, ...cguData }));
+      const { data, error } = await supabase.auth.updateUser({ data: acceptation });
+      if (error) throw error;
+      if (data?.user) setUser(data.user);
     } catch (err) {
       captureException(err, { context: 'acceptation des CGU' });
-      return false;
+      const reseau = !navigator.onLine || /fetch|network|réseau/i.test(String(err?.message || err?.name || ''));
+      return reseau
+        ? 'Acceptation non enregistrée. Vérifiez votre connexion, puis réessayez.'
+        : `Acceptation non enregistrée : ${traduireErreurAuth(err)}`;
     }
-    cguAccepteeIci.current = true;
     demandeCgu?.resolve(true);
     setDemandeCgu(null);
     return true;
@@ -602,16 +628,14 @@ export default function App() {
   const deleteClient = async (id) => { const ok = await dataDeleteClient(id); if (ok) showToast('Client supprimé', 'success'); return ok; };
   // Une facture sans échéance en reçoit une à sa création, selon ses conditions de règlement ou le délai
   // de l'entreprise (art. L441-9 I C. com. : la date de règlement figure sur la facture).
-  const addDevis = async (data) => {
-    if (!(await exigerCgu())) {
-      showToast('Document non créé : les conditions d’utilisation n’ont pas été acceptées.', 'info');
-      return null;
-    }
+  // silencieux : la page qui crée le document (acompte, solde, avoir) dit déjà ce qui s'est passé (audit § 2.6). Les
+  // conditions d'utilisation sont vérifiées par DataContext (garde unique).
+  const addDevis = async (data, { silencieux = false } = {}) => {
     const avecEcheance = data?.type === 'facture' && !data.date_echeance && data.facture_type !== 'avoir'
       ? { ...data, date_echeance: dateEcheance(data.date || new Date(), { conditionsPaiement: data.conditionsPaiement || data.conditions, delaiJours: entreprise?.delaiPaiement }) }
       : data;
     const d = await dataAddDevis(avecEcheance);
-    if (d) showToast(`${data.facture_type === 'avoir' ? 'Avoir créé' : data.type === 'facture' ? 'Facture créée' : 'Devis créé'}`, 'success');
+    if (d && !silencieux) showToast(`${data.facture_type === 'avoir' ? 'Avoir créé' : data.type === 'facture' ? 'Facture créée' : 'Devis créé'}`, 'success');
     return d;
   };
   // silencieux : un envoi (e-mail, SMS, WhatsApp) enregistre aussi le statut et la date d'envoi ; « Document mis à
@@ -1001,6 +1025,10 @@ export default function App() {
     e.preventDefault();
     setAuthError('');
     setAuthInfo('');
+    if (!accepteConditions) {
+      setAuthError('Cochez la case pour accepter les conditions d\'utilisation et créer votre compte.');
+      return;
+    }
     if (!motDePasseValide(authForm.password)) {
       setAuthError('Mot de passe : au moins 8 caractères, avec des lettres et des chiffres.');
       return;
@@ -1008,7 +1036,8 @@ export default function App() {
     setIsSubmitting(true);
     try {
       // Un invité revient sur son invitation en ouvrant le lien de confirmation
-      const { data, error } = await auth.signUp(authForm.email, authForm.password, { nom: authForm.nom }, invitation ? `/invitation/${invitation.token}` : '/');
+      // L'acceptation des CGU est enregistrée dans les métadonnées du compte : la date et la version cochées
+      const { data, error } = await auth.signUp(authForm.email, authForm.password, { nom: authForm.nom, cgu_version: CGU_VERSION, cgu_accepted_at: new Date().toISOString() }, invitation ? `/invitation/${invitation.token}` : '/');
       if (error) setAuthError(traduireErreurAuth(error));
       else {
         // Sans session, Supabase attend la confirmation de l'adresse : le dire, sinon l'artisan
@@ -1274,7 +1303,6 @@ export default function App() {
           : <LegalPages page={page} isDark={false} couleur={couleur} setPage={(p) => { setPage(p); if (!publicPages.includes(p)) setShowLanding(true); }} />
         }
       </div>
-      <div data-theme="clair"><CookieConsent /></div>
     </Suspense>
   );
 
@@ -1294,7 +1322,6 @@ export default function App() {
         onSignup={() => { setShowLanding(false); setShowSignUp(true); }}
         onNavigate={(p) => { setPage(p); setShowLanding(false); }}
       />
-      <div data-theme="clair"><CookieConsent /></div>
     </>
   );
 
@@ -1447,6 +1474,22 @@ export default function App() {
                 </button>
               )}
             </div>
+            {showSignUp && (
+              // Case obligatoire, non cochée par défaut ; les liens ouvrent les textes dans un nouvel onglet (la saisie reste)
+              <label htmlFor="inscription-conditions" className="flex items-start gap-3 text-sm text-marque-encre-sombre">
+                <input
+                  id="inscription-conditions"
+                  type="checkbox"
+                  checked={accepteConditions}
+                  onChange={e => setAccepteConditions(e.target.checked)}
+                  aria-describedby="inscription-information"
+                  className="mt-0.5 h-5 w-5 flex-shrink-0 rounded border-marque-acier accent-marque-nuit-2"
+                />
+                <span>
+                  J'ai lu et j'accepte les <a href="/cgu" target="_blank" rel="noopener noreferrer" className={`${lien} underline`}>Conditions générales d'utilisation</a> de Mallettico (version de {CGU_VERSION_DATE}) et les <a href="/cgv" target="_blank" rel="noopener noreferrer" className={`${lien} underline`}>Conditions générales de vente</a>.
+                </span>
+              </label>
+            )}
             {authError && (
               <div role="alert" className="rounded-xl border border-danger-texte/20 bg-danger-fond p-3 text-sm text-danger-texte">
                 {safeStr(authError)}
@@ -1465,6 +1508,12 @@ export default function App() {
                 showSignUp ? 'Créer mon compte' : 'Se connecter'
               )}
             </button>
+            {showSignUp && (
+              // Information au moment de la collecte (RGPD art. 13), texte de la relecture juriste du 25 oct. 2026 (R-G1)
+              <p id="inscription-information" className="text-xs leading-relaxed text-encre-2">
+                Mallettico (Hugo Seguin EI) utilise votre e-mail et votre nom pour créer et sécuriser votre compte. Vos droits et la durée de conservation de vos données sont détaillés dans la <a href="/confidentialite" target="_blank" rel="noopener noreferrer" className={`${lien} underline`}>politique de confidentialité</a>.
+              </p>
+            )}
           </form>
 
           <p className="mt-6 text-center text-encre-2">
@@ -1498,7 +1547,7 @@ export default function App() {
   // était due, même dans ses délais (« 2 » rouge quand l'Accueil disait « Aucun retard ») ; et un « 5 » vert sur
   // Chantiers qui ne demandait rien.
   const maintenant = new Date();
-  const docsATraiter = devis.filter(d => aTraiter(d, paiements, maintenant));
+  const docsATraiter = devis.filter(d => aTraiter(d, paiements, maintenant, entreprise));
   const docsUrgents = docsATraiter.filter(d => estUrgent(d, paiements, maintenant));
   const aujourdHui = jourLocal(); // date du jour en heure locale (toISOString donnait la veille entre minuit et 2 h)
   const todayEvents = planningEvents.filter(e => e.date === aujourdHui).length;
@@ -1511,9 +1560,10 @@ export default function App() {
     {
       id: 'devis', icon: FileText, label: 'Devis & Factures',
       badge: docsATraiter.length,
-      badgeTon: docsUrgents.length > 0 ? 'danger' : 'neutre',
+      // Rouge : une facture en retard ; ambre : un devis à relancer ou un brouillon à finaliser (relecture du 25 oct.)
+      badgeTon: docsUrgents.length > 0 ? 'danger' : 'alerte',
       badgeTitle: docsATraiter.length > 0
-        ? `${pluriel(docsATraiter.length, 'document')} à traiter${docsUrgents.length > 0 ? `, dont ${docsUrgents.length} en retard ou à relancer` : ''}`
+        ? `${pluriel(docsATraiter.length, 'document')} à traiter${docsUrgents.length > 0 ? `, dont ${pluriel(docsUrgents.length, 'facture')} en retard` : ''}`
         : '',
     },
     { id: 'chantiers', icon: Building2, label: 'Chantiers' },
@@ -1521,7 +1571,7 @@ export default function App() {
     {
       id: 'tasks', icon: CalendarCheck, label: 'Tâches & Planning',
       badge: memosOverdueCount + todayEvents,
-      badgeTon: memosOverdueCount > 0 ? 'danger' : 'neutre',
+      badgeTon: memosOverdueCount > 0 ? 'alerte' : 'neutre',
       badgeTitle: [
         memosOverdueCount > 0 ? `${pluriel(memosOverdueCount, 'tâche')} en retard` : '',
         todayEvents > 0 ? `${pluriel(todayEvents, 'événement')} aujourd'hui` : '',
@@ -1558,7 +1608,9 @@ export default function App() {
     { titre: 'Compte', ids: ['settings', 'plan'] },
   ];
   const unreadNotifs = notifications.filter(n => !n.read);
-  const notifsUrgentes = unreadNotifs.some(n => n.type === 'alert');
+  // Cloche : rouge pour une facture en retard, ambre pour une autre alerte, neutre sinon
+  const tonCloche = unreadNotifs.some(n => n.itemType === 'facture' && n.type === 'alert') ? 'danger'
+    : unreadNotifs.some(n => n.type === 'alert' || n.type === 'warning') ? 'alerte' : 'neutre';
   const allerA = (id) => { setPage(id); setMenuPlus(false); setSelectedChantier(null); };
   const rubriquesPlus = nav.filter(n => !ONGLETS_BAS.includes(n.id));
   // Ouvre la page Devis & factures sur une demande : { relancer: id } (fiche + feuille « Relancer ») ou { etat } / { nature }
@@ -1577,7 +1629,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-fond">
-      {/* CGU : au premier document, ou à une nouvelle version (exigerCgu) */}
+      {/* CGU : compte d'avant la case de l'inscription, ou nouvelle version (garde de DataContext) */}
       {demandeCgu && (
         <CGUAcceptanceModal motif={demandeCgu.motif} onAccept={accepterCgu} onAnnuler={annulerCgu} />
       )}
@@ -1663,8 +1715,9 @@ export default function App() {
           )}
 
           <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
-            {/* Logo et entreprise : au téléphone seulement (au bureau, le menu latéral les porte déjà) */}
-            <div className="md:hidden min-w-0">
+            {/* Logo et entreprise : jusqu'à 1 279 px (au-delà, le menu latéral déplié les porte ; entre 768 et 1 279 px il
+                n'affiche que des icônes, et le sélecteur d'entreprise doit rester accessible) */}
+            <div className="xl:hidden min-w-0">
               <EntrepriseSwitcher
                 isDark={isDark}
                 compact
@@ -1758,7 +1811,7 @@ export default function App() {
             >
               <Bell size={20} />
               {unreadNotifs.length > 0 && (
-                <span className={`absolute top-0.5 right-0.5 min-w-[20px] h-5 px-1 text-xs font-bold rounded-full flex items-center justify-center ring-2 ring-surface ${notifsUrgentes ? 'bg-danger-fond text-danger-texte' : 'bg-neutre-fond text-neutre-texte'}`}>
+                <span className={`absolute top-0.5 right-0.5 min-w-[20px] h-5 px-1 text-xs font-bold rounded-full flex items-center justify-center ring-2 ring-surface ${{ danger: 'bg-danger-fond text-danger-texte', alerte: 'bg-alerte-fond text-alerte-texte', neutre: 'bg-neutre-fond text-neutre-texte' }[tonCloche]}`}>
                   {unreadNotifs.length > 9 ? '9+' : unreadNotifs.length}
                 </span>
               )}
@@ -1863,7 +1916,7 @@ export default function App() {
           <ErrorBoundary isDark={isDark} showDetails={true}>
             <Suspense fallback={<div className="flex items-center justify-center py-12"><div className="w-8 h-8 border-4 border-accent/20 border-t-accent rounded-full animate-spin" /></div>}>
               {page === 'dashboard' && <Dashboard clients={clients} devis={devis} chantiers={chantiers} events={planningEvents} depenses={depenses} pointages={pointages} equipe={equipe} ajustements={ajustements} catalogue={catalogue} entreprise={entreprise} getChantierBilan={getChantierBilan} addDevis={addDevis} setPage={setPage} setSelectedChantier={setSelectedChantier} setSelectedDevis={setSelectedDevis} setCreateMode={setCreateMode} modeDiscret={modeDiscret} couleur={couleur} isDark={isDark} user={user} memos={memos} addMemo={addMemo} toggleMemo={toggleMemo} ouvrirDevis={ouvrirDevis} />}
-              {page === 'devis' && <DevisPage clients={clients} setClients={setClients} addClient={addClient} devis={devis} setDevis={setDevis} chantiers={chantiers} catalogue={catalogue} entreprise={entreprise} onSubmit={addDevis} onUpdate={updateDevis} onDelete={deleteDevis} modeDiscret={modeDiscret} selectedDevis={selectedDevis} setSelectedDevis={setSelectedDevis} isDark={isDark} couleur={couleur} createMode={createMode.devis} setCreateMode={(v) => setCreateMode(p => ({...p, devis: v}))} addChantier={addChantier} setPage={setPage} setSelectedChantier={setSelectedChantier} addEchange={addEchange} paiements={paiements} addPaiement={addPaiement} generateNextNumero={generateNextNumero} aiPrefill={aiPrefill} setAiPrefill={setAiPrefill} editDevisId={editDevisId} setEditDevisId={setEditDevisId} exigerCgu={exigerCgu} demande={demandeDevis} setDemande={setDemandeDevis} />}
+              {page === 'devis' && <DevisPage clients={clients} setClients={setClients} addClient={addClient} devis={devis} setDevis={setDevis} chantiers={chantiers} catalogue={catalogue} entreprise={entreprise} onSubmit={addDevis} onUpdate={updateDevis} onDelete={deleteDevis} modeDiscret={modeDiscret} selectedDevis={selectedDevis} setSelectedDevis={setSelectedDevis} isDark={isDark} couleur={couleur} createMode={createMode.devis} setCreateMode={(v) => setCreateMode(p => ({...p, devis: v}))} addChantier={addChantier} setPage={setPage} setSelectedChantier={setSelectedChantier} addEchange={addEchange} paiements={paiements} addPaiement={addPaiement} generateNextNumero={generateNextNumero} aiPrefill={aiPrefill} setAiPrefill={setAiPrefill} editDevisId={editDevisId} setEditDevisId={setEditDevisId} demande={demandeDevis} setDemande={setDemandeDevis} />}
               {page === 'chantiers' && <Chantiers nouveauDevisPour={(clientId, chantierId) => { setCreateMode(p => ({ ...p, devis: { clientId, chantierId } })); setPage('devis'); }} chantiers={chantiers} addChantier={addChantier} updateChantier={updateChantier} clients={clients} depenses={depenses} setDepenses={setDepenses} pointages={pointages} setPointages={setPointages} equipe={equipe} devis={devis} ajustements={ajustements} addAjustement={addAjustement} deleteAjustement={deleteAjustement} getChantierBilan={getChantierBilan} couleur={couleur} modeDiscret={modeDiscret} entreprise={entreprise} selectedChantier={selectedChantier} setSelectedChantier={setSelectedChantier} catalogue={catalogue} deductStock={deductStock} isDark={isDark} createMode={createMode.chantier} setCreateMode={(v) => setCreateMode(p => ({...p, chantier: v}))} setPage={setPage} memos={memos} addMemo={addMemo} updateMemo={updateMemo} deleteMemo={deleteMemo} toggleMemo={toggleMemo} onPlanEvent={(data) => { setPlanningPrefill(data); setPage('planning'); }} addDevis={addDevis} generateNextNumero={generateNextNumero} />}
               {(page === 'tasks' || page === 'planning' || page === 'memos') && (
                 <TasksAndPlanning
@@ -1940,7 +1993,8 @@ export default function App() {
             {/* 5e onglet : « Plus » ouvre la feuille des autres rubriques (Planning, Catalogue, Équipe, Finances…) */}
             {(() => {
               const isPlusActive = !ONGLETS_BAS.includes(page);
-              const plusUrgent = rubriquesPlus.some(n => n.badge > 0 && n.badgeTon === 'danger');
+              const plusUrgent = rubriquesPlus.some(n => n.badge > 0 && ['danger', 'alerte'].includes(n.badgeTon));
+              const plusRouge = rubriquesPlus.some(n => n.badge > 0 && n.badgeTon === 'danger');
               return (
                 <button
                   onClick={() => setMenuPlus(true)}
@@ -1958,7 +2012,7 @@ export default function App() {
                     className={`flex items-center justify-center w-12 h-7 rounded-full transition-colors ${isPlusActive ? 'bg-accent/15' : ''}`}
                   >
                     <Menu size={20} strokeWidth={isPlusActive ? 2.5 : 1.5} />
-                    {plusUrgent && <span aria-hidden="true" className="absolute top-1.5 right-[calc(50%-1.1rem)] w-2 h-2 rounded-full bg-danger-point ring-2 ring-surface" />}
+                    {plusUrgent && <span aria-hidden="true" className={`absolute top-1.5 right-[calc(50%-1.1rem)] w-2 h-2 rounded-full ring-2 ring-surface ${plusRouge ? 'bg-danger-point' : 'bg-alerte-point'}`} />}
                   </div>
                   <span className={`text-xs mt-0.5 truncate max-w-full px-0.5 ${isPlusActive ? 'font-semibold' : 'font-medium'}`}>Plus</span>
                 </button>
@@ -2251,8 +2305,9 @@ export default function App() {
         isDark={isDark}
       />
 
-      {/* Cookie Consent Banner (RGPD) */}
-      <CookieConsent isDark={isDark} couleur={couleur} setPage={setPage} />
+      {/* Pas de bandeau de cookies : aucun traceur soumis à consentement n'est chargé (décision du 25 oct. 2026,
+          relecture juriste, option A). Il revient AVANT d'activer un traceur facultatif (Sentry Replay, mesure
+          d'audience) : docs/feuille-de-route.md, tâche « bandeau-traceurs ». */}
     </div>
   );
 }
@@ -2291,7 +2346,7 @@ function HelpModal({ setShowHelp, isDark: _isDark }) {
       icon: FileText,
       content: (
         <div className="space-y-4">
-          <p className="text-encre-2">Créez des devis professionnels et transformez-les en factures en un clic.</p>
+          <p className="text-encre-2">Créez vos devis, puis facturez-les sans ressaisir les lignes.</p>
           <div className="space-y-3">
             <div className={etape}>
               <h5 className="font-medium mb-1 text-encre">1. Créer un devis</h5>
@@ -2339,15 +2394,16 @@ function HelpModal({ setShowHelp, isDark: _isDark }) {
       icon: TrendingUp,
       content: (
         <div className="space-y-4">
-          <p className="text-encre-2">La marge nette est calculée automatiquement :</p>
+          <p className="text-encre-2">La marge sur chantier est calculée automatiquement, avant cotisations, impôts et frais généraux :</p>
           <div className="p-4 rounded-xl font-mono text-sm bg-surface-2">
             <p className="text-encre">Marge = CA - Dépenses - Main d'œuvre</p>
           </div>
           <div className="space-y-2">
+            <p className="text-sm font-medium text-encre">Repères indicatifs :</p>
             {[
-              { fond: 'bg-succes-fond text-succes-texte', point: 'bg-succes-point', seuil: `${'>'} 40% = Excellent`, texte: 'Vous êtes très rentable' },
-              { fond: 'bg-alerte-fond text-alerte-texte', point: 'bg-alerte-point', seuil: '20-40% = Correct', texte: 'Surveillez vos coûts' },
-              { fond: 'bg-danger-fond text-danger-texte', point: 'bg-danger-point', seuil: `${'<'} 20% = Attention`, texte: 'Revoyez vos prix ou coûts' },
+              { fond: 'bg-succes-fond text-succes-texte', point: 'bg-succes-point', seuil: 'Plus de 40 %', texte: 'Vous êtes très rentable' },
+              { fond: 'bg-alerte-fond text-alerte-texte', point: 'bg-alerte-point', seuil: 'Entre 20 et 40 %', texte: 'Surveillez vos coûts' },
+              { fond: 'bg-danger-fond text-danger-texte', point: 'bg-danger-point', seuil: 'Moins de 20 %', texte: 'Revoyez vos prix ou coûts' },
             ].map((r) => (
               <div key={r.seuil} className={`flex items-center gap-3 p-3 rounded-xl ${r.fond}`}>
                 <span aria-hidden="true" className={`w-3 h-3 rounded-full flex-shrink-0 ${r.point}`} />
@@ -2369,7 +2425,7 @@ function HelpModal({ setShowHelp, isDark: _isDark }) {
         <div className="space-y-4">
           <div className={encart}>
             <h4 className="font-semibold mb-2 text-encre flex items-center gap-2"><Smartphone size={18} className="text-encre-3" aria-hidden="true" />Utilisez-le sur mobile</h4>
-            <p className="text-sm text-encre-2">Mallettico fonctionne parfaitement sur téléphone. Ajoutez-le à votre écran d'accueil pour un accès rapide.</p>
+            <p className="text-sm text-encre-2">Mallettico fonctionne sur téléphone. Ajoutez-le à votre écran d'accueil pour un accès rapide.</p>
           </div>
           <div className={encart}>
             <h4 className="font-semibold mb-2 text-encre flex items-center gap-2"><Palette size={18} className="text-encre-3" aria-hidden="true" />Personnalisez</h4>
@@ -2389,16 +2445,17 @@ function HelpModal({ setShowHelp, isDark: _isDark }) {
       content: (() => {
         const faqItems = [
           { q: 'Comment créer mon premier devis ?', a: 'Allez dans Devis & Factures, cliquez "Nouveau devis", sélectionnez un client et ajoutez vos lignes depuis le catalogue ou manuellement.' },
-          { q: 'Comment transformer un devis en facture ?', a: 'Ouvrez le devis signé et touchez "Facturer" : facture d\'acompte, échéancier, facture complète ou situation de travaux. Les lignes sont reprises automatiquement.' },
+          { q: 'Comment transformer un devis en facture ?', a: 'Ouvrez le devis signé et touchez « Facturer » : facture d\'acompte, échéancier ou facture complète (ou de solde). Les lignes sont reprises automatiquement. Depuis un chantier, vous suivez aussi l\'avancement par situations de travaux ; leur facture n\'est pas encore disponible.' },
           { q: 'Comment ajouter mon logo ?', a: 'Dans Paramètres > Identité, uploadez votre logo. Il apparaîtra sur tous vos devis et factures PDF.' },
           { q: 'Comment suivre mes dépenses ?', a: 'Dans la fiche d\'un chantier, onglet Dépenses, ajoutez chaque achat de matériel ou paiement de sous-traitant.' },
           { q: 'Comment envoyer un devis par email ?', a: 'Générez le PDF du devis puis utilisez le bouton "Envoyer" pour l\'envoyer par email directement depuis l\'application.' },
-          { q: 'Puis-je utiliser Mallettico hors ligne ?', a: 'Oui ! Mallettico est une PWA. Installez-la sur votre téléphone et vos données se synchronisent automatiquement.' },
+          // Texte de la relecture juriste du 25 oct. 2026 (R-H), gardé après constat : parcours « hors ligne » (scripts/parcours/coque.cjs)
+          { q: 'Puis-je utiliser Mallettico hors ligne ?', a: 'En partie. Sans réseau, ce que vous saisissez est mis en attente sur votre appareil et envoyé au retour de la connexion (voir « N en attente »). L\'envoi d\'un document demande une connexion.' },
           { q: 'Comment fonctionne le planning ?', a: 'Le planning affiche vos chantiers et événements. Cliquez sur un jour pour ajouter un événement ou glissez-déposez pour réorganiser.' },
           { q: 'Comment gérer mes clients ?', a: 'Dans la section Clients, ajoutez les coordonnées de vos clients. Vous verrez leur historique de devis et chantiers.' },
           { q: 'Comment fonctionne le catalogue ?', a: 'Le catalogue stocke vos articles et prestations avec prix unitaires. Réutilisez-les dans vos devis en un clic.' },
           { q: 'Comment changer mon plan ?', a: 'Dans Mon plan, vous voyez votre plan actuel et pouvez évoluer vers Artisan ou Équipe pour débloquer plus de fonctionnalités.' },
-          { q: 'Comment exporter mes données comptables ?', a: 'Dans Finances > Export Comptable, exportez vos données au format FEC, CSV ou compatible Pennylane/Indy.' },
+          { q: 'Comment exporter mes données comptables ?', a: 'Dans Finances > Export Comptable, exportez vos écritures au format FEC, CSV ou Excel, à remettre à votre comptable.' },
           { q: 'Comment fonctionne la trésorerie ?', a: 'Dans Finances > Trésorerie, visualisez vos flux de trésorerie en temps réel avec un prévisionnel automatique.' },
           ...(FONCTIONS.ia ? [{ q: 'Comment utiliser l\'IA Devis ?', a: 'Prenez une photo du chantier ou décrivez les travaux. L\'IA génère automatiquement un devis détaillé. (Inclus dans tous les plans)' }] : []),
           { q: 'Comment relancer un client ?', a: 'Mallettico détecte les devis en attente et vous propose des relances automatiques par email.' },
@@ -2547,8 +2604,8 @@ function OnboardingModal({ setShowOnboarding, isDark: _isDark, couleur: _couleur
           </p>
           <div className="grid grid-cols-3 gap-3 mt-6">
             {[
-              { Icone: FileText, texte: 'Devis en 5 min' },
-              { Icone: TrendingUp, texte: 'Marge automatique' },
+              { Icone: FileText, texte: 'Devis rapides' },
+              { Icone: TrendingUp, texte: 'Marge calculée pour vous' },
               { Icone: Smartphone, texte: 'Sur téléphone' },
             ].map(({ Icone, texte }) => (
               <div key={texte} className={tuile}>
@@ -2563,10 +2620,11 @@ function OnboardingModal({ setShowOnboarding, isDark: _isDark, couleur: _couleur
     {
       icon: FileText,
       title: "Créez vos devis rapidement",
-      subtitle: "Du devis à la facture en 2 clics",
+      subtitle: "Du devis à la facture, sans ressaisie",
       content: (
         <div className="space-y-4">
           <div className="p-5 rounded-2xl bg-surface-2 border border-bord">
+            <p className="mb-3 inline-flex px-2.5 h-6 items-center rounded-full bg-neutre-fond text-neutre-texte text-xs font-semibold">Exemple</p>
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full flex items-center justify-center bg-accent/15">
@@ -2605,18 +2663,21 @@ function OnboardingModal({ setShowOnboarding, isDark: _isDark, couleur: _couleur
       content: (
         <div className="space-y-4">
           <div className="p-5 rounded-2xl bg-surface-2 border border-bord">
+            <p className="mb-3 inline-flex px-2.5 h-6 items-center rounded-full bg-neutre-fond text-neutre-texte text-xs font-semibold">Exemple</p>
             <div className="flex items-center justify-between mb-4">
               <div>
                 <p className="font-bold text-encre">Rénovation Dupont</p>
                 <p className="text-sm text-encre-2">En cours</p>
               </div>
               <div className="text-right">
-                <p className="text-2xl font-bold text-encre tabular-nums">67%</p>
-                <p className="text-xs text-encre-2">Marge nette</p>
+                <p className="text-2xl font-bold text-encre tabular-nums">60 %</p>
+                <p className="text-xs text-encre-2">Marge sur chantier</p>
               </div>
             </div>
-            <div className="grid grid-cols-3 gap-2">
-              {[['5 500€', 'CA'], ['1 200€', 'Dépenses'], ['3 685€', 'Marge']].map(([valeur, libelle]) => (
+            {/* En hors taxes (la TVA n'est pas un revenu) et juste : 5 000 − 1 200 − 800 = 3 000 ; 3 000 / 5 000 = 60 %
+                (relecture juriste du 25 oct. 2026, R-B ; avant : 5 500 € TTC, 3 685 € de marge, « marge nette 67 % ») */}
+            <div className="grid grid-cols-2 gap-2">
+              {[['5 000 €', 'Chiffre d\'affaires HT'], ['1 200 €', 'Dépenses'], ['800 €', 'Main-d\'œuvre'], ['3 000 €', 'Marge']].map(([valeur, libelle]) => (
                 <div key={libelle} className="p-3 rounded-xl text-center bg-surface">
                   <p className="font-bold text-encre tabular-nums">{valeur}</p>
                   <p className="text-xs text-encre-2">{libelle}</p>

@@ -1,13 +1,15 @@
 /**
- * Pastille de compte d'une rubrique (menu latéral, « Plus », cloche). Audit UX du 20 oct. 2026, § 2.1 : seulement ce
- * qui demande d'agir ; rouge (danger) pour un retard ou une relance due, neutre pour le reste. Avant : rouge, orange,
- * vert ou bleu en hexadécimal, et une pastille verte « 5 chantiers en cours » qui ne demandait rien.
+ * Pastille de compte d'une rubrique (menu latéral, « Plus »). Audit UX du 20 oct. 2026, § 2.1 : seulement ce qui
+ * demande d'agir. Relecture du 25 oct. : le rouge (danger) est réservé aux factures en retard ; un devis à relancer,
+ * un brouillon à finaliser ou une tâche en retard sont « à surveiller » (alerte, ambre) ; neutre pour le reste. Avant :
+ * rouge, orange, vert ou bleu en hexadécimal, et une pastille verte « 5 chantiers en cours » qui ne demandait rien.
  *
  * @param {number} n
- * @param {'danger'|'neutre'} [ton]
+ * @param {'danger'|'alerte'|'neutre'} [ton]
  */
 const TONS = {
   danger: 'bg-danger-fond text-danger-texte',
+  alerte: 'bg-alerte-fond text-alerte-texte',
   neutre: 'bg-neutre-fond text-neutre-texte',
 };
 

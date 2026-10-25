@@ -47,6 +47,7 @@ import Modal, { ModalHeader, ModalTitle, ModalBody } from './ui/Modal';
 import RappelRamonage, { echeanceLue } from './ramonage/RappelRamonage';
 import { rappelsDus, DELAI_RAPPEL_DEFAUT } from '../lib/ramonage';
 import { profilManquant, enPhrase } from '../lib/profilLegal';
+import { devisARelancer, joursDepuisEnvoi } from '../lib/ventes';
 import { formatClientName } from '../lib/formatters';
 import { RELANCES_PAR_ENVOI } from '../lib/relanceEngine';
 
@@ -73,16 +74,6 @@ function fmt(amount, discret = false) {
     currency: 'EUR',
     maximumFractionDigits: 0,
   }).format(amount || 0);
-}
-
-/**
- * Format money for compact display in pipeline segments
- * e.g. 12500 => "12,5k €", 950 => "950 €"
- */
-function daysSince(date) {
-  if (!date) return 0;
-  const d = date instanceof Date ? date : new Date(date);
-  return Math.floor((new Date() - d) / (1000 * 60 * 60 * 24));
 }
 
 function getPrenom(user) {
@@ -118,7 +109,7 @@ export default function Dashboard({
   // Ouvre la page Devis & factures sur une demande : { relancer: id } (fiche + feuille « Relancer »), { etat } (liste filtrée)
   ouvrirDevis,
 }) {
-  const { paiements = [], ramonages = [], suivreRamonage, updateClient } = useData();
+  const { paiements = [], ramonages = [], suivreRamonage, updateClient, dataLoading } = useData();
   // Rappels du prochain ramonage (module ramonage, D-30) : le client apparaît ici dès « prochain − délai »
   const [rappelOuvert, setRappelOuvert] = useState(null);
   const rappelsRamonage = useMemo(() => (entreprise?.ramonageActif
@@ -129,6 +120,8 @@ export default function Dashboard({
   const { canAccess, canPerform } = usePermissions();
   const canSeeFinances = canAccess('finances');
   const peutCreerDevis = canPerform('devis', 'create');
+  // Relancer, tout envoyer : réservé aux rôles qui envoient des documents (relecture du 25 oct., I3)
+  const peutEnvoyer = canPerform('devis', 'send');
   const { orgId, orgName, role } = useOrg();
   // Membre d'une équipe (invité) : on lui dit où il est ; le plan est l'affaire du gérant
   const membreEquipe = !isDemo && !!role && role !== 'owner';
@@ -232,16 +225,16 @@ export default function Dashboard({
           label: `Facture en retard de ${jours} j`,
           detail: client ? `${client.nom || client.name} — ${fmt(reste, modeDiscret)}` : fmt(reste, modeDiscret),
           onClick: () => ouvrirFiche(d),
-          action: { libelle: 'Relancer', icone: Send, onClick: () => relancer(d) },
+          action: peutEnvoyer ? { libelle: 'Relancer', icone: Send, onClick: () => relancer(d) } : undefined,
         });
       });
 
-    // 2. Devis envoyés sans réponse depuis plus de 7 jours
+    // 2. Devis à relancer : la règle commune (src/lib/ventes.js) — compté depuis l'envoi, jamais expiré
     devisEnAttente
-      .filter(d => d.date && daysSince(d.date) > 7)
-      .sort((a, b) => daysSince(b.date) - daysSince(a.date))
+      .filter(d => devisARelancer(d, now, entreprise))
+      .sort((a, b) => joursDepuisEnvoi(b, now) - joursDepuisEnvoi(a, now))
       .forEach(d => {
-        const jours = daysSince(d.date);
+        const jours = joursDepuisEnvoi(d, now);
         const client = clients.find(c => c.id === d.client_id);
         actions.push({
           priority: 2,
@@ -250,7 +243,7 @@ export default function Dashboard({
           label: `Devis sans réponse depuis ${jours} j`,
           detail: client ? `${client.nom || client.name} — ${fmt(d.total_ttc, modeDiscret)}` : fmt(d.total_ttc, modeDiscret),
           onClick: () => ouvrirFiche(d),
-          action: { libelle: 'Relancer', icone: Send, onClick: () => relancer(d) },
+          action: peutEnvoyer ? { libelle: 'Relancer', icone: Send, onClick: () => relancer(d) } : undefined,
         });
       });
 
@@ -292,7 +285,7 @@ export default function Dashboard({
       sparkData,
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps -- ouvrirFiche / relancer ne lisent que des setters stables
-  }, [devis, paiements, chantiers, clients, entreprise, modeDiscret, setSelectedDevis, setPage, canSeeFinances, ouvrirDevis]);
+  }, [devis, paiements, chantiers, clients, entreprise, modeDiscret, setSelectedDevis, setPage, canSeeFinances, ouvrirDevis, peutEnvoyer]);
 
   // ---- Greeting ----
   const prenom = getPrenom(user);
@@ -344,15 +337,15 @@ export default function Dashboard({
   // ============ RENDER ============
 
 
-  // Relances (impayés, devis sans réponse, envoi aux clients) : seulement pour un rôle qui voit les finances
-  const relancesDue = canSeeFinances ? (relances?.counts?.due || 0) : 0;
+  // Relances (impayés, devis sans réponse, envoi aux clients) : seulement pour un rôle qui voit les finances et envoie
+  const relancesDue = canSeeFinances && peutEnvoyer ? (relances?.counts?.due || 0) : 0;
   const relancesRisk = relances?.totalAtRisk || 0;
   const hasAnyAction = relancesDue > 0 || allActions.length > 0;
 
   // Premier usage (audit UX du 20 oct. 2026, P1) : tant qu'aucun document n'existe, l'Accueil guide vers le premier devis
   // au lieu de dire « Mallette bouclée — Rien ne traîne » (alors que le profil incomplet bloquait l'envoi). Ni tuiles à 0
   // ni graphique vide : rien n'existe encore (§ 2.7).
-  const premierUsage = peutCreerDevis && devis.length === 0;
+  const premierUsage = peutCreerDevis && !dataLoading && devis.length === 0;
   const manquantProfil = profilManquant(entreprise);
   const nouveauDevis = () => { setCreateMode?.(p => ({ ...p, devis: true })); setPage('devis'); };
   const etapesPremierDevis = [
@@ -360,7 +353,7 @@ export default function Dashboard({
       key: 'profil',
       label: 'Compléter mon profil',
       // Les mentions qui bloquent l'envoi (lib/profilLegal : la liste du contrôle d'envoi)
-      meta: manquantProfil.length === 0 ? 'Les mentions obligatoires sont prêtes' : `Manque : ${enPhrase(manquantProfil)}`,
+      meta: manquantProfil.length === 0 ? 'Les informations exigées avant l\'envoi sont renseignées' : `Manque : ${enPhrase(manquantProfil)}`,
       done: manquantProfil.length === 0,
       action: () => ouvrirReglages(manquantProfil[0]?.onglet, manquantProfil[0]?.champ),
     },
@@ -374,7 +367,7 @@ export default function Dashboard({
     {
       key: 'devis',
       label: 'Créer mon premier devis',
-      meta: 'Il partira dès que votre profil sera complet',
+      meta: manquantProfil.length === 0 ? 'Votre profil est prêt : il pourra partir dès qu\'il est rédigé' : 'Il partira dès que votre profil sera complet',
       done: false,
       action: nouveauDevis,
     },
@@ -452,7 +445,7 @@ export default function Dashboard({
             {etapesPremierDevis.map((etape, i) => (
               <LigneListe
                 key={etape.key}
-                onClick={etape.done ? undefined : etape.action}
+                onClick={etape.done || prochaineEtape?.key === etape.key ? undefined : etape.action}
                 debut={etape.done
                   ? <span className="w-10 h-10 rounded-xl bg-succes-fond text-succes-texte flex items-center justify-center"><CheckCircle size={20} aria-hidden="true" /><span className="sr-only">Fait :</span></span>
                   : <span className="w-10 h-10 rounded-xl bg-surface-2 text-encre-2 flex items-center justify-center text-base font-bold tabular-nums" aria-hidden="true">{i + 1}</span>}
@@ -532,9 +525,10 @@ export default function Dashboard({
           {relancesDue > 0 && (
             <LigneListe
               chevron={false}
-              debut={<span className="w-10 h-10 rounded-xl bg-danger-fond text-danger-texte flex items-center justify-center"><BellRing size={20} aria-hidden="true" /></span>}
+              debut={<span className="w-10 h-10 rounded-xl bg-alerte-fond text-alerte-texte flex items-center justify-center"><BellRing size={20} aria-hidden="true" /></span>}
               titre={`${relancesDue} relance${relancesDue > 1 ? 's' : ''} à envoyer`}
               titreEntier
+              piedEnLigne
               meta={relancesRisk > 0 ? `${fmt(relancesRisk, modeDiscret)} concernés` : 'Impayés et devis sans réponse'}
               pied={(
                 <>
@@ -555,6 +549,7 @@ export default function Dashboard({
                 debut={<span className={`w-10 h-10 rounded-xl flex items-center justify-center ${TON_ACTION[action.ton] || TON_ACTION.neutre}`}><Icone size={20} aria-hidden="true" /></span>}
                 titre={action.label}
                 titreEntier
+                piedEnLigne
                 meta={action.detail}
                 pied={action.action ? (
                   <>

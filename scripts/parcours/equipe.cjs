@@ -53,10 +53,14 @@ module.exports = [
       await saisir(page, 'input[placeholder="Votre prénom et nom"]', 'Léa Martin');
       await saisir(page, 'input[type="email"]', 'invitee@exemple.fr');
       await saisir(page, 'input[type="password"]', 'motdepasse123');
+      // Un invité accepte aussi les CGU à l'inscription (décision du 25 oct. 2026) : la case est là, non cochée
+      verifier(await page.evaluate(() => document.querySelector('#inscription-conditions')?.checked === false), 'la case des conditions, non cochée');
+      await page.evaluate(() => document.querySelector('#inscription-conditions').click());
       await page.evaluate(() => document.querySelector('input[type="password"]').form.requestSubmit());
       await attendre(1500);
       const ins = inscriptions[0];
       verifier(inscriptions.length === 1 && ins.corps.email === 'invitee@exemple.fr', 'compte demandé à Supabase');
+      verifier(ins.corps.data?.cgu_version === '2025-02', `l’acceptation des CGU part avec le compte de l’invité (${JSON.stringify(ins.corps.data)})`);
       verifier(ins.recherche.includes(`redirect_to=http://localhost:4999/invitation/${JETON}`), `le lien de confirmation ramène à l’invitation (${ins.recherche})`);
       const info = await page.evaluate(() => [...document.querySelectorAll('[role="status"]')].map((e) => e.innerText).join(' '));
       verifier(info.includes('il vous ramène à l\'invitation pour rejoindre Élec Durand'), `consigne après inscription (${info})`);

@@ -624,11 +624,24 @@ export function DataProvider({ children, initialData = {} }) {
     return clients.find(c => c.id === id);
   }, [clients]);
 
+  // ============ CONDITIONS D'UTILISATION ============
+  // UNE garde, ici : App y enregistre la fonction qui vérifie l'acceptation et, s'il le faut, ouvre la fenêtre des CGU
+  // (promesse : vrai si acceptées). Tout document (addDevis : éditeur, acompte, solde, avoir, facture d'une attestation)
+  // et toute attestation de ramonage (addRamonage) passent par elle. Relecture du 25 oct. 2026 : la garde était dans
+  // l'enveloppe d'App.jsx, et le parcours du ramoneur, qui appelle les fonctions d'ici, la contournait.
+  const gardeCguRef = useRef(null);
+  const enregistrerGardeCgu = useCallback((fn) => { gardeCguRef.current = fn; }, []);
+  const exigerCgu = useCallback(() => (gardeCguRef.current ? gardeCguRef.current() : Promise.resolve(true)), []);
+
   // ============ DEVIS OPERATIONS ============
   const addDevis = useCallback(async (data) => {
     // Seuls les devis comptent dans la limite : une facture prolonge un devis
     // déjà décompté, la bloquer empêcherait d'encaisser un travail réalisé.
     if (data.type !== 'facture' && !autoriserCreation('devis')) return null;
+    if (!(await exigerCgu())) {
+      toast.info('Document non créé', 'Les conditions d’utilisation n’ont pas été acceptées.');
+      return null;
+    }
     // Require client_id — reject if missing (ghost devis prevention)
     if (!data.client_id) {
       console.warn('addDevis: rejected ghost devis — missing client_id. Data:', { numero: data.numero, type: data.type, statut: data.statut });
@@ -666,7 +679,7 @@ export function DataProvider({ children, initialData = {} }) {
     _audit(isDemo ? null : supabase, { entityType: 'devis', entityId: newDevis.id, action: 'created', userId, orgId, userName });
 
     return creerEnBase('devis', newDevis, setDevis);
-  }, [userId, devis, entrepriseId, autoriserCreation, orgId, userName, creerEnBase]);
+  }, [userId, devis, entrepriseId, autoriserCreation, orgId, userName, creerEnBase, exigerCgu]);
 
   const updateDevis = useCallback(async (id, data) => {
     // Prevent removing client_id (BUG-001: DB NOT NULL constraint)
@@ -1072,6 +1085,11 @@ export function DataProvider({ children, initialData = {} }) {
   // Une attestation est figée dès l'enregistrement : la base lui attribue son numéro (RAM-AAAA-NNNNN) et ignore
   // ensuite toute réécriture de son contenu. Seuls changent la facture liée, l'annulation et le suivi du rappel.
   const addRamonage = useCallback(async (data) => {
+    // L'attestation est un document remis au client, comme un devis : conditions d'utilisation acceptées d'abord
+    if (!(await exigerCgu())) {
+      toast.info('Attestation non enregistrée', 'Les conditions d’utilisation n’ont pas été acceptées.');
+      return null;
+    }
     const nouveau = {
       ...data,
       id: crypto.randomUUID(),
@@ -1083,7 +1101,7 @@ export function DataProvider({ children, initialData = {} }) {
     };
     setRamonages(prev => [nouveau, ...prev]);
     return creerEnBase('ramonages', nouveau, setRamonages);
-  }, [ramonages, userId, creerEnBase]);
+  }, [ramonages, userId, creerEnBase, exigerCgu]);
 
   const suivreRamonage = useCallback(async (id, suivi) => {
     // Sans compte connu, la modification partirait par un upsert différé qui la perdrait (F3) : la dire plutôt
@@ -1372,6 +1390,10 @@ export function DataProvider({ children, initialData = {} }) {
     addRamonage,
     suivreRamonage,
 
+    // Conditions d'utilisation : la garde unique (App.jsx l'enregistre)
+    exigerCgu,
+    enregistrerGardeCgu,
+
     // Template operations
     customTemplates,
     setCustomTemplates,
@@ -1405,7 +1427,7 @@ export function DataProvider({ children, initialData = {} }) {
     addOuvrage, updateOuvrage, deleteOuvrage,
     addPlanningEvent, updatePlanningEvent, deletePlanningEvent,
     addMemo, updateMemo, deleteMemo, toggleMemo,
-    addRamonage, suivreRamonage,
+    addRamonage, suivreRamonage, exigerCgu, enregistrerGardeCgu,
     addTemplate, updateTemplate, deleteTemplate, toggleTemplateFavori, trackTemplateUsage,
     getChantierBilan, rejouerEcriture, userId,
   ]);

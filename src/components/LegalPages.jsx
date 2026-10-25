@@ -284,8 +284,7 @@ export default function LegalPages({ page, couleur, setPage }) {
 
       <Section title="Article 2 - Acceptation des conditions">
         <P>
-          L'inscription sur Mallettico vaut acceptation sans réserve des présentes CGU. L'utilisateur
-          reconnaît en avoir pris connaissance et s'engage à les respecter.
+          L'utilisateur accepte les présentes CGU en cochant la case prévue à la création de son compte ; pour un compte plus ancien, avant la création d'un premier document. Il reconnaît en avoir pris connaissance et s'engage à les respecter. La date d'acceptation et la version acceptée sont enregistrées.
         </P>
         <P>
           Mallettico se réserve le droit de modifier les présentes CGU à tout moment. Les utilisateurs
@@ -613,16 +612,11 @@ export default function LegalPages({ page, couleur, setPage }) {
         </P>
       </Section>
 
-      <Section title="Article 6 - Cookies">
-        <P>Mallettico utilise les cookies suivants :</P>
-        <UL>
-          <li><strong className={textPrimary}>Cookies essentiels :</strong> nécessaires au fonctionnement de l'application (session, authentification, préférences). Base légale : intérêt légitime.</li>
-          <li><strong className={textPrimary}>Cookies de performance :</strong> mesure d'audience anonymisée pour améliorer le service. Base légale : consentement.</li>
-        </UL>
+      {/* Texte de la relecture juriste du 25 oct. 2026 (R-C2) : aucun traceur soumis à consentement n'est chargé (le script
+          de mesure d'audience a été retiré le 16 mars 2026, et le bandeau avec lui). À réécrire AVANT d'en activer un. */}
+      <Section title="Article 6 - Cookies et autres traceurs">
         <P>
-          Mallettico n'utilise pas de cookies publicitaires ni de cookies de tracking tiers.
-          L'utilisateur peut gérer ses préférences de cookies depuis les paramètres de l'application
-          ou de son navigateur.
+          Mallettico n'enregistre sur votre appareil que ce qui est nécessaire au service que vous demandez : votre connexion, vos préférences d'affichage et vos brouillons en cours. Ces éléments ne demandent pas votre consentement (loi du 6 janvier 1978, art. 82). Mallettico n'utilise ni traceur de mesure d'audience, ni traceur publicitaire, ni suivi entre sites. Si cela change, cette page sera mise à jour et votre accord sera demandé avant tout traceur qui l'exige.
         </P>
       </Section>
 

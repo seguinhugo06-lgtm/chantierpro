@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { estEmise, estOuverte, estEnRetard, encaisse, resteAFacturer, creances, chiffreAffairesHT, tvaFacturee, facturesEmises, aTraiter, estUrgent } from '../ventes';
+import { estEmise, estOuverte, estEnRetard, encaisse, resteAFacturer, creances, chiffreAffairesHT, tvaFacturee, facturesEmises, aTraiter, estUrgent, devisARelancer, joursDepuisEnvoi } from '../ventes';
 
 // Scénario de la recette du 9 oct. 2026 (Finances, S1) : un devis signé à 12 000 € TTC avec sa facture
 // d'acompte de 3 600 €, une facture payée, un brouillon, une facture annulée par un avoir total.
@@ -57,18 +57,36 @@ describe('ventes : une définition pour toute l’app', () => {
     expect(tvaFacturee(DOCS, {}, { isMicro: true })).toEqual({ total: 0, parTaux: [] });
   });
 
-  it('à traiter (puce de la liste, pastille du menu) : brouillon ancien, facture en retard, devis sans réponse > 7 j', () => {
+  it('à traiter (puce de la liste, pastille, Accueil, cloche) : brouillon ancien, facture en retard, devis à relancer', () => {
     // MAINTENANT = 10 oct. : D3 envoyé le 15 sept. (25 j), F3 brouillon du 10 sept., A1 non échue, F2 payée
     expect(DOCS.filter((d) => aTraiter(d, PAIEMENTS, MAINTENANT)).map((d) => d.id)).toEqual(['F3', 'D3']);
     expect(aTraiter({ ...D3, date: '2026-10-05' }, PAIEMENTS, MAINTENANT)).toBe(false); // envoyé il y a 5 jours
     expect(aTraiter({ ...F3, date: '2026-10-09' }, PAIEMENTS, MAINTENANT)).toBe(false); // brouillon d'hier
-    expect(aTraiter({ ...A1, date_echeance: '2026-10-01' }, PAIEMENTS, MAINTENANT)).toBe(true); // échue
+    expect(aTraiter({ ...A1, date_echeance: '2026-10-01' }, PAIEMENTS, MAINTENANT)).toBe(true); // facture en retard
     expect(aTraiter(F2, PAIEMENTS, MAINTENANT)).toBe(false); // payée, même échue
   });
 
-  it('urgent (pastille rouge) : retard ou relance due, jamais un simple brouillon', () => {
-    expect(DOCS.filter((d) => estUrgent(d, PAIEMENTS, MAINTENANT)).map((d) => d.id)).toEqual(['D3']);
+  it('devis à relancer : compté depuis l’envoi, jamais expiré', () => {
+    // Créé le 10, envoyé le 24 : le 28, 4 jours depuis l'envoi (et non 18 depuis la création)
+    const envoyeLe24 = { ...D3, date: '2026-10-10', date_envoi: '2026-10-24', validite: 60 };
+    expect(joursDepuisEnvoi(envoyeLe24, new Date('2026-10-28T12:00:00'))).toBe(4);
+    expect(devisARelancer(envoyeLe24, new Date('2026-10-28T12:00:00'))).toBe(false);
+    expect(devisARelancer(envoyeLe24, new Date('2026-10-31T12:00:00'))).toBe(true); // 7 jours
+    // Sans date d'envoi (ancien devis) : depuis sa date
+    expect(devisARelancer({ ...envoyeLe24, date_envoi: undefined }, new Date('2026-10-28T12:00:00'))).toBe(true);
+    // Expiré (envoyé le 1er août, valable 30 jours) : ni à relancer, ni à traiter
+    const expire = { ...D3, date: '2026-08-01', date_envoi: '2026-08-01', validite: 30 };
+    expect(devisARelancer(expire, MAINTENANT)).toBe(false);
+    expect(aTraiter(expire, PAIEMENTS, MAINTENANT)).toBe(false);
+    // Une facture ou un devis signé ne se relancent pas ainsi
+    expect(devisARelancer(A1, MAINTENANT)).toBe(false);
+    expect(devisARelancer({ ...D3, statut: 'signe' }, MAINTENANT)).toBe(false);
+  });
+
+  it('urgent (pastille rouge) : seulement une facture en retard ; un devis à relancer ou un brouillon reste ambre', () => {
+    expect(DOCS.filter((d) => estUrgent(d, PAIEMENTS, MAINTENANT)).map((d) => d.id)).toEqual([]);
     expect(estUrgent({ ...A1, date_echeance: '2026-10-01' }, PAIEMENTS, MAINTENANT)).toBe(true);
+    expect(estUrgent(D3, PAIEMENTS, MAINTENANT)).toBe(false); // à relancer, mais pas rouge
     expect(estUrgent(F3, PAIEMENTS, MAINTENANT)).toBe(false);
   });
 });

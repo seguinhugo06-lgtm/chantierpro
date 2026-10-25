@@ -111,7 +111,7 @@ import { imprimerHtml } from '../lib/imprimerHtml';
 import { nomImprime, formeImprimee } from '../lib/identiteEntreprise';
 import { profilManquant } from '../lib/profilLegal';
 import { estFranchiseTva, sansTva, franchiseAppliquee, tvaARegulariser, premierTaux, tauxTvaParDefaut, tauxTvaDocument } from '../lib/franchiseTva';
-import { estOuverte, estEnRetard, aTraiter as docATraiter } from '../lib/ventes';
+import { estOuverte, estEnRetard, aTraiter as docATraiter, devisARelancer } from '../lib/ventes';
 import { urlPublique } from '../lib/urlPublique';
 import { FONCTIONS } from '../lib/fonctions';
 import { jourLocal, dateLue } from '../lib/dates';
@@ -162,7 +162,7 @@ export const AVOIR_MOTIFS = {
   autre: 'Autre',
 };
 
-export default function DevisPage({ clients, setClients, addClient, devis, setDevis, chantiers, catalogue, entreprise, onSubmit, onUpdate, onDelete, modeDiscret, selectedDevis, setSelectedDevis, isDark, couleur, createMode, setCreateMode, addChantier, setPage, setSelectedChantier, addEchange, paiements = [], addPaiement, generateNextNumero, aiPrefill, setAiPrefill, editDevisId, setEditDevisId, exigerCgu, demande, setDemande }) {
+export default function DevisPage({ clients, setClients, addClient, devis, setDevis, chantiers, catalogue, entreprise, onSubmit, onUpdate, onDelete, modeDiscret, selectedDevis, setSelectedDevis, isDark, couleur, createMode, setCreateMode, addChantier, setPage, setSelectedChantier, addEchange, paiements = [], addPaiement, generateNextNumero, aiPrefill, setAiPrefill, editDevisId, setEditDevisId, demande, setDemande }) {
   const { confirm } = useConfirm();
   const { showToast } = useToast();
 
@@ -296,16 +296,13 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
    * composé son devis. On préfère le prévenir avant qu'il travaille pour rien.
    */
   // clientId : ouvert depuis une fiche client, l'éditeur part avec ce client (sinon : un clic reçu).
-  const ouvrirNouveauDevis = async (clientId, chantierId = null) => {
+  const ouvrirNouveauDevis = (clientId, chantierId = null) => {
     const { planId, usage, openUpgradeModal } = useSubscriptionStore.getState();
     const limite = (PLANS[planId] || PLANS.gratuit).limits?.devis ?? -1;
     if (limite !== -1 && (usage?.devis ?? 0) >= limite) {
       openUpgradeModal('devis_limit');
       return;
     }
-    // Conditions d'utilisation : demandées avant le premier document, pas au chargement (App.jsx, exigerCgu) ;
-    // refusées, l'éditeur ne s'ouvre pas
-    if (exigerCgu && !(await exigerCgu())) return;
     setClientInitial(typeof clientId === 'string' ? clientId : null);
     // Depuis la fiche d'un chantier : le devis est rattaché à ce chantier (avant : la liste des devis, recette du 9 oct.)
     setChantierInitial(typeof chantierId === 'string' ? chantierId : null);
@@ -477,7 +474,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   };
 
   useEffect(() => { if (snackbar) { const t = setTimeout(() => setSnackbar(null), 8000); return () => clearTimeout(t); } }, [snackbar]);
-  useEffect(() => { if (createMode) { ouvrirNouveauDevis(createMode?.clientId, createMode?.chantierId); setCreateMode?.(false); } }, [createMode, setCreateMode]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (createMode) { ouvrirNouveauDevis(createMode?.clientId, createMode?.chantierId); setCreateMode?.(false); } /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [createMode, setCreateMode]);
 
   // Demande venue d'ailleurs (App.jsx, ouvrirDevis) : l'Accueil et la recherche ouvrent la fiche ET la feuille
   // « Relancer », ou la liste filtrée sur un état ou une nature (audit UX du 20 oct. 2026 : « Relancer » et
@@ -486,7 +483,11 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     if (!demande) return;
     if (demande.relancer) {
       const doc = devis.find(d => d.id === demande.relancer);
-      if (doc) { setSelected(doc); setMode('preview'); setRelanceDe(doc); }
+      if (!doc) return; // documents pas encore chargés : la demande attend
+      setSelected(doc);
+      setMode('preview');
+      // La feuille « Relancer » envoie au client : seulement pour un rôle qui envoie ; sinon, la fiche seule
+      if (canPerform('devis', 'send')) setRelanceDe(doc);
     } else {
       setSelected(null);
       setMode('list');
@@ -495,7 +496,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     }
     setDemande?.(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [demande]);
+  }, [demande, devis]);
 
   // Ouverture directe de l'éditeur sur un devis précis. Sert à la dictée : quand
   // l'artisan demande un devis sans donner de prix, on l'amène là où il peut le
@@ -581,7 +582,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   // le statut brut y mettait des factures payées. Facture : reste dû ; devis : envoyé sans réponse.
   const enAttente = (d) => (d.type === 'facture' ? estOuverte(d, paiements) : ['envoye', 'vu'].includes(d.statut));
   // La même règle que la pastille du menu (App.jsx) : src/lib/ventes.js
-  const aTraiter = (d) => docATraiter(d, paiements);
+  const aTraiter = (d) => docATraiter(d, paiements, new Date(), entreprise);
 
   const estDeNature = (d, n) => {
     if (n === 'devis') return d.type === 'devis';
@@ -1063,7 +1064,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   const draw = (e) => { if (!isDrawing) return; e.preventDefault(); const ctx = canvasRef.current?.getContext('2d'); if (!ctx) return; const rect = canvasRef.current.getBoundingClientRect(); ctx.lineTo((e.touches ? e.touches[0].clientX : e.clientX) - rect.left, (e.touches ? e.touches[0].clientY : e.clientY) - rect.top); ctx.stroke(); };
   const endDraw = () => setIsDrawing(false);
   const clearCanvas = () => canvasRef.current?.getContext('2d').clearRect(0, 0, 350, 180);
-  const saveSignature = () => { if (!selected) return; onUpdate(selected.id, { signature: canvasRef.current?.toDataURL() || 'signed', signataire: signataireName || '', signatureDate: new Date().toISOString(), statut: 'accepte' }); setMode('list'); setSelected(null); setSignataireName(''); setSnackbar({ type: 'success', message: 'Devis signé et accepté !' }); };
+  const saveSignature = () => { if (!selected) return; onUpdate(selected.id, { signature: canvasRef.current?.toDataURL() || 'signed', signataire: signataireName || '', signatureDate: new Date().toISOString(), statut: 'accepte' }, { silencieux: true }); setMode('list'); setSelected(null); setSignataireName(''); setSnackbar({ type: 'success', message: 'Devis signé et accepté !' }); };
 
   // New signature pad handler (react-signature-canvas)
   const handleSignatureSave = async (signatureData) => {
@@ -1457,7 +1458,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     };
 
     // Refus de la base : le devis reste tel quel (avant : « facturé » sans facture)
-    const enregistreeEtape = await onSubmit(facture);
+    const enregistreeEtape = await onSubmit(facture, { silencieux: true });
     if (!enregistreeEtape) return;
     // Numéro attribué par la base à l'enregistrement (migration 101) : celui de la ligne enregistrée fait foi
     if (enregistreeEtape.numero) facture.numero = enregistreeEtape.numero;
@@ -1511,7 +1512,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       montant_facture: Math.round(montantFacture * 100) / 100,
       ...(factureType === 'solde' ? { facture_solde_id: facture.id } : {}),
     };
-    onUpdate(selected.id, devisUpdate);
+    onUpdate(selected.id, devisUpdate, { silencieux: true });
     setSelected({ ...selected, ...devisUpdate });
 
     setSnackbar({
@@ -1556,7 +1557,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       total_ht: montantHT, tva, total_ttc: ttc, acompte_pct: acomptePct
     };
     // Refus de la base : le devis reste tel quel (avant : « facturé » sans facture)
-    const enregistreeAcompte = await onSubmit(facture);
+    const enregistreeAcompte = await onSubmit(facture, { silencieux: true });
     if (!enregistreeAcompte) return;
     // Numéro attribué par la base à l'enregistrement (migration 101) : celui de la ligne enregistrée fait foi
     if (enregistreeAcompte.numero) facture.numero = enregistreeAcompte.numero;
@@ -1568,7 +1569,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       acomptes_ids: [...(selected.acomptes_ids || []), facture.id],
       montant_facture: Math.round(ttc * 100) / 100,
     };
-    onUpdate(selected.id, acompteUpdate);
+    onUpdate(selected.id, acompteUpdate, { silencieux: true });
     setShowAcompteModal(false);
     setSelected({ ...selected, ...acompteUpdate });
     setSnackbar({ type: 'success', message: `Facture d'acompte ${facture.numero} créée`, action: { label: 'Voir', onClick: () => { setSelected(facture); setSnackbar(null); } } });
@@ -1639,7 +1640,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     // avant la fin du délai (échéance et phrase imprimée dans les trois générateurs)
     Object.assign(facture, echeanceApresSeptJours(septJoursDe(selected), facture.date_echeance, selected.conditionsPaiement || selected.conditions) || {});
     // Refus de la base : le devis reste tel quel (avant : « facturé » sans facture)
-    const enregistreeSolde = await onSubmit(facture);
+    const enregistreeSolde = await onSubmit(facture, { silencieux: true });
     if (!enregistreeSolde) return;
     // Numéro attribué par la base à l'enregistrement (migration 101) : celui de la ligne enregistrée fait foi
     if (enregistreeSolde.numero) facture.numero = enregistreeSolde.numero;
@@ -1649,7 +1650,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       montant_facture: Math.round((selected.total_ttc || 0) * 100) / 100,
       ...(hasAcomptes ? { mode_facturation: selected.mode_facturation || 'acompte' } : { mode_facturation: 'direct' }),
     };
-    await onUpdate(selected.id, soldeUpdate);
+    await onUpdate(selected.id, soldeUpdate, { silencieux: true });
     setSelected({ ...selected, ...soldeUpdate });
     setSnackbar({ type: 'success', message: `Facture ${hasAcomptes ? 'de solde' : ''} ${facture.numero} créée`, action: { label: 'Voir', onClick: () => { setSelected(facture); setSnackbar(null); } } });
   });
@@ -1690,7 +1691,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       conditionsPaiement: sourceFacture.conditionsPaiement,
     };
 
-    const enregistre = await onSubmit(avoir);
+    const enregistre = await onSubmit(avoir, { silencieux: true });
     if (!enregistre) return;
     // Numéro attribué par la base à l'enregistrement (migration 101) : celui de la ligne enregistrée fait foi
     if (enregistre.numero) avoir.numero = enregistre.numero;
@@ -2548,11 +2549,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   const estEchue = (doc) => doc?.type === 'facture' && doc.facture_type !== 'avoir'
     && !!soldeDe({ ...doc, statut: doc.statut === 'brouillon' ? 'envoye' : doc.statut }, paiements)?.enRetard;
 
-  const needsFollowUp = (doc) => {
-    if (doc.type !== 'devis') return false;
-    if (!['envoye', 'vu'].includes(doc.statut)) return false;
-    return getDaysSinceSent(doc) >= 7 && !estExpire(doc, undefined, entreprise);
-  };
+  // La règle commune (src/lib/ventes.js) : 7 jours ou plus depuis l'envoi, jamais un devis expiré
+  const needsFollowUp = (doc) => doc?.type === 'devis' && devisARelancer(doc, new Date(), entreprise);
 
   // Validité (src/lib/validiteDevis.js) : 0 = dernier jour, négatif = expiré. Seulement tant que le client
   // n'a pas répondu (avant : un devis signé à distance, « signe », pouvait s'afficher expiré).
@@ -3151,11 +3149,11 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       if (!isAvoir) return null;
       if (selected.statut === 'brouillon') return { label: 'Émettre', icon: Send, action: async () => {
         const ok = await confirm({ title: 'Émettre l\'avoir ?', message: `L'avoir ${selected.numero} sera émis et ne pourra plus être supprimé.` });
-        if (ok) { onUpdate(selected.id, { statut: 'envoye' }); setSelected(s => ({ ...s, statut: 'envoye' })); setSnackbar({ type: 'success', message: `Avoir ${selected.numero} émis` }); }
+        if (ok) { onUpdate(selected.id, { statut: 'envoye' }, { silencieux: true }); setSelected(s => ({ ...s, statut: 'envoye' })); setSnackbar({ type: 'success', message: `Avoir ${selected.numero} émis` }); }
       } };
       if (selected.statut === 'envoye') return { label: 'Appliquer', icon: Check, action: async () => {
         const ok = await confirm({ title: 'Appliquer l\'avoir ?', message: `L'avoir sera marqué comme appliqué. L'impact comptable sera enregistré.` });
-        if (ok) { onUpdate(selected.id, { statut: 'payee' }); setSelected(s => ({ ...s, statut: 'payee' })); setSnackbar({ type: 'success', message: `Avoir ${selected.numero} appliqué` }); }
+        if (ok) { onUpdate(selected.id, { statut: 'payee' }, { silencieux: true }); setSelected(s => ({ ...s, statut: 'payee' })); setSnackbar({ type: 'success', message: `Avoir ${selected.numero} appliqué` }); }
       } };
       return null;
     };

@@ -1,12 +1,12 @@
 /**
  * CGUAcceptanceModal — acceptation des conditions générales d'utilisation (LEGAL-001).
  *
- * Demandée au moment d'un geste qui l'exige, plus au chargement : le premier document (devis ou facture), ou le
- * suivant quand la version a changé (App.jsx, `exigerCgu`). Avant (retour d'Hugo sur son compte « Au Bon Volt »,
- * 21-23 oct. 2026), elle surgissait au premier enregistrement d'un réglage (au clic sur la couleur du profil) : la
- * fiche entreprise venait d'être créée, et la fenêtre bloquante avec elle.
- * L'acceptation est enregistrée sur la fiche entreprise (cgu_accepted_at, cgu_version) ; tant qu'elle ne l'est pas,
- * la fenêtre reste ouverte et le dit.
+ * Les CGU s'acceptent à l'inscription, par une case (App.jsx, décision du 25 oct. 2026). Cette fenêtre reste pour :
+ * - un compte créé avant la case, au premier document (garde unique de DataContext, `exigerCgu`) ;
+ * - une nouvelle version des CGU.
+ * L'acceptation est enregistrée dans les métadonnées du compte de l'utilisateur (cgu_version, cgu_accepted_at) : un
+ * membre invité accepte pour lui-même. Tant qu'elle ne l'est pas, la fenêtre reste ouverte et dit pourquoi.
+ * Avant (retour d'Hugo sur « Au Bon Volt », 21-23 oct. 2026), elle surgissait au premier réglage enregistré.
  */
 
 import { useState, useRef, useEffect } from 'react';
@@ -15,9 +15,10 @@ import Modal, { ModalHeader, ModalTitle, ModalDescription, ModalBody, ModalFoote
 import { Bouton } from './ui/Bouton';
 
 const CGU_VERSION = '2025-02'; // Bump this when CGU content changes
+const CGU_VERSION_DATE = 'février 2025'; // la date de cette version, telle que l'affichent la case et la fenêtre
 
 /**
- * @param {(version: string) => Promise<boolean>} onAccept  enregistre l'acceptation ; false = non enregistrée
+ * @param {(version: string) => Promise<true|string>} onAccept  enregistre l'acceptation ; sinon, le message qui dit pourquoi
  * @param {() => void} onAnnuler  l'artisan renonce au geste (le document n'est pas créé)
  * @param {'premier'|'version'} [motif]  premier document, ou nouvelle version des conditions
  */
@@ -50,7 +51,7 @@ export default function CGUAcceptanceModal({ onAccept, onAnnuler, motif = 'premi
     setErreur('');
     try {
       const enregistree = await onAccept(CGU_VERSION);
-      if (enregistree === false) setErreur('Acceptation non enregistrée. Vérifiez votre connexion, puis réessayez.');
+      if (enregistree !== true) setErreur(typeof enregistree === 'string' ? enregistree : 'Acceptation non enregistrée. Vérifiez votre connexion, puis réessayez.');
     } finally {
       setIsAccepting(false);
     }
@@ -62,7 +63,7 @@ export default function CGUAcceptanceModal({ onAccept, onAnnuler, motif = 'premi
         <ModalTitle>Conditions générales d'utilisation</ModalTitle>
         <ModalDescription>
           {motif === 'version'
-            ? 'Les conditions ont changé : lisez et acceptez la nouvelle version pour continuer.'
+            ? `Les conditions d'utilisation ont changé (version de ${CGU_VERSION_DATE}). Lisez-les et acceptez-les pour continuer à créer des documents. Vos données et vos documents restent accessibles et exportables, que vous acceptiez ou non.`
             : 'Avant votre premier document, lisez et acceptez les conditions d’utilisation de Mallettico.'}
         </ModalDescription>
       </ModalHeader>
@@ -71,7 +72,7 @@ export default function CGUAcceptanceModal({ onAccept, onAnnuler, motif = 'premi
           <section>
             <h3 className="text-base font-semibold text-encre mb-2">1. Objet</h3>
             <p>
-              Les présentes Conditions Générales d'Utilisation (CGU) régissent l'accès et l'utilisation du service Mallettico. En créant un compte ou en utilisant le service, l'utilisateur accepte sans réserve les présentes CGU.
+              Les présentes Conditions Générales d'Utilisation (CGU) régissent l'accès et l'utilisation du service Mallettico. Elles sont acceptées en cochant la case prévue à la création du compte ; pour un compte créé avant cette case, elles sont acceptées avant la création d'un premier document.
             </p>
           </section>
 
@@ -106,7 +107,7 @@ export default function CGUAcceptanceModal({ onAccept, onAnnuler, motif = 'premi
           <section>
             <h3 className="text-base font-semibold text-encre mb-2">6. Protection des données (RGPD)</h3>
             <p>
-              Conformément au Règlement Général sur la Protection des Données (RGPD), Mallettico s'engage à protéger les données personnelles de ses utilisateurs. Les données sont hébergées dans l'Union Européenne. L'utilisateur dispose d'un droit d'accès, de rectification, de portabilité et de suppression de ses données, exerçable depuis les paramètres du compte ou par email à contact@mallettico.fr.
+              Conformément au Règlement Général sur la Protection des Données (RGPD), Mallettico s'engage à protéger les données personnelles de ses utilisateurs. Les données de votre compte sont stockées dans une base hébergée à Paris. Certains prestataires techniques (envoi d'e-mails, diffusion du site) peuvent les traiter hors de l'Union, dans le cadre de clauses contractuelles types : la liste est dans la politique de confidentialité. L'utilisateur dispose d'un droit d'accès, de rectification, de portabilité et de suppression de ses données, exerçable depuis les paramètres du compte ou par email à contact@mallettico.fr.
             </p>
           </section>
 
@@ -158,7 +159,7 @@ export default function CGUAcceptanceModal({ onAccept, onAnnuler, motif = 'premi
             className="mt-0.5 w-5 h-5 rounded border-bord-fort accent-accent flex-shrink-0"
           />
           <span className="text-sm text-encre">
-            J'ai lu et j'accepte les <strong>Conditions Générales d'Utilisation</strong> de Mallettico
+            J'ai lu et j'accepte les <strong>Conditions Générales d'Utilisation</strong> de Mallettico (version de {CGU_VERSION_DATE})
           </span>
         </label>
         {erreur && <p role="alert" className="text-sm font-medium text-danger-texte">{erreur}</p>}
@@ -173,4 +174,4 @@ export default function CGUAcceptanceModal({ onAccept, onAnnuler, motif = 'premi
   );
 }
 
-export { CGU_VERSION };
+export { CGU_VERSION, CGU_VERSION_DATE };

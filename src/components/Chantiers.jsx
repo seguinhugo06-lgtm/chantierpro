@@ -293,7 +293,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
   const [chantierDuplicateDismissed, setChantierDuplicateDismissed] = useState(() => { try { return localStorage.getItem('chantierDuplicateDismissed') === 'true'; } catch { return false; } });
 
   useEffect(() => { if (selectedChantier) setView(selectedChantier); }, [selectedChantier]);
-  // Sync view → selectedChantier so App.jsx can hide global FABMenu
+  // Fiche ouverte → selectedChantier, gardé par App.jsx (une notification ou une recherche l'ouvre de la même façon)
   useEffect(() => { setSelectedChantier?.(view || null); }, [view, setSelectedChantier]);
   // createMode peut porter un client (ouvert depuis sa fiche) : le formulaire part avec lui.
   const [clientPourChantier, setClientPourChantier] = useState(null);

@@ -17,6 +17,8 @@
 import { statutFacture, resteAPayer, dejaPaye } from './paiementsFacture';
 import { dejaFactureTTC } from './gardeFacturation';
 import { totauxDocument } from './totauxDocument';
+import { estExpire } from './validiteDevis';
+import { dateLue, jourLocal } from './dates';
 
 const CENTIME = 0.005;
 const arrondi = (n) => Math.round((Number(n) || 0) * 100) / 100;
@@ -43,26 +45,46 @@ export function estEnRetard(f, paiements = [], maintenant = new Date()) {
 }
 
 const JOUR_MS = 86400000;
-const joursDepuis = (d, maintenant) => Math.floor((maintenant - new Date(d?.date)) / JOUR_MS);
+// Jours entiers écoulés depuis un jour « AAAA-MM-JJ » (lu en heure locale, comme la fiche du document)
+const joursDepuis = (jour, maintenant) => (jour ? Math.floor((maintenant - dateLue(String(jour).slice(0, 10))) / JOUR_MS) : 0);
 
-/**
- * Document « à traiter » : la puce de la liste Devis & factures ET la pastille du menu (audit UX du 20 oct. 2026 : la
- * pastille additionnait devis en attente et factures non soldées, et virait au rouge dès qu'une facture était due,
- * même dans ses délais, alors que l'Accueil disait « Aucun retard »).
- * - brouillon de plus de 2 jours (à finaliser) ;
- * - facture en retard (échéance passée, reste dû) ;
- * - devis envoyé sans réponse depuis plus de 7 jours (à relancer).
- */
-export function aTraiter(d, paiements = [], maintenant = new Date()) {
-  if (!d) return false;
-  if (d.statut === 'brouillon') return joursDepuis(d, maintenant) > 2;
-  if (estFacture(d)) return estEnRetard(d, paiements, maintenant);
-  return ['envoye', 'vu'].includes(d.statut) && joursDepuis(d, maintenant) > 7;
+/** Jours depuis l'envoi d'un devis : sa date d'envoi, sinon sa date (devis enregistrés avant la date d'envoi). */
+export function joursDepuisEnvoi(d, maintenant = new Date()) {
+  return Math.max(0, joursDepuis(d?.date_envoi || d?.date, maintenant));
 }
 
-/** À traiter ET urgent : un retard (facture) ou une relance due (devis). La pastille passe au rouge pour eux seuls. */
+/**
+ * Devis à relancer : envoyé (ou vu) depuis 7 jours ou plus, et encore valable — un devis expiré ne se relance pas,
+ * il se prolonge. Relecture de la Task 5 « ancien code » (25 oct. 2026) : l'Accueil et la pastille comptaient depuis la
+ * date du devis (un devis créé le 10 et envoyé le 24 était « sans réponse depuis 14 jours » le jour de l'envoi) et
+ * comptaient les devis expirés.
+ */
+export function devisARelancer(d, maintenant = new Date(), entreprise = null) {
+  if (!d || estFacture(d) || !['envoye', 'vu'].includes(d.statut)) return false;
+  if (estExpire(d, jourLocal(maintenant), entreprise)) return false;
+  return joursDepuisEnvoi(d, maintenant) >= 7;
+}
+
+/**
+ * Document « à traiter » — UNE règle pour la puce de la liste Devis & factures, la pastille du menu, « À faire
+ * aujourd'hui » de l'Accueil et la cloche (audit UX du 20 oct. 2026) :
+ * - brouillon de plus de 2 jours (à finaliser) ;
+ * - facture en retard (échéance passée, reste dû) ;
+ * - devis à relancer (devisARelancer).
+ */
+export function aTraiter(d, paiements = [], maintenant = new Date(), entreprise = null) {
+  if (!d) return false;
+  if (d.statut === 'brouillon') return joursDepuis(d.date, maintenant) > 2;
+  if (estFacture(d)) return estEnRetard(d, paiements, maintenant);
+  return devisARelancer(d, maintenant, entreprise);
+}
+
+/**
+ * Urgent : une facture en retard. Le rouge lui est réservé (audit, P2 de la coque) ; un devis à relancer ou un
+ * brouillon à finaliser est « à surveiller » (ambre).
+ */
 export function estUrgent(d, paiements = [], maintenant = new Date()) {
-  return aTraiter(d, paiements, maintenant) && d.statut !== 'brouillon';
+  return estFacture(d) && estEnRetard(d, paiements, maintenant);
 }
 
 /**

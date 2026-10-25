@@ -65,14 +65,14 @@ module.exports = [
       verifier(JSON.stringify(menuLateral[1].rubriques) === JSON.stringify(['Catalogue', 'Équipe', 'Finances']), `Gestion (${JSON.stringify(menuLateral[1].rubriques)})`);
       verifier(JSON.stringify(menuLateral[2].rubriques) === JSON.stringify(['Paramètres', 'Mon plan']), `Compte (${JSON.stringify(menuLateral[2].rubriques)})`);
 
-      // Pastilles : Devis & Factures compte les documents à traiter, en rouge s'il y a un retard ou une relance due (la démo a
-      // un devis sans réponse depuis plus de 7 jours) ; plus rien sur Chantiers (« 5 » vert qui ne demandait rien)
+      // Pastilles : Devis & Factures compte les documents à traiter ; le rouge est réservé aux factures en retard (la démo
+      // n'en a pas, mais un devis à relancer : ambre) ; plus rien sur Chantiers (« 5 » vert qui ne demandait rien)
       const pastilles = await page.evaluate(() => Object.fromEntries([...document.querySelectorAll('aside nav button')].map((b) => {
         const p = b.querySelector('span[title]');
         return [(b.querySelector('span.truncate')?.innerText || '').trim(), p ? { n: p.childNodes[0]?.textContent, classe: p.className, titre: p.title } : null];
       })));
-      verifier(pastilles['Devis & Factures'] && /bg-danger-fond/.test(pastilles['Devis & Factures'].classe) && /à traiter/.test(pastilles['Devis & Factures'].titre),
-        `pastille rouge « à traiter » sur Devis & Factures (${JSON.stringify(pastilles['Devis & Factures'])})`);
+      verifier(pastilles['Devis & Factures'] && /bg-alerte-fond/.test(pastilles['Devis & Factures'].classe) && /à traiter/.test(pastilles['Devis & Factures'].titre),
+        `pastille ambre « à traiter » sur Devis & Factures, sans facture en retard (${JSON.stringify(pastilles['Devis & Factures'])})`);
       verifier(!pastilles.Chantiers, 'pas de pastille sur Chantiers');
 
       await cliquer(page, 'Mon compte');
@@ -184,66 +184,199 @@ module.exports = [
     },
   },
   {
-    // Retour d'Hugo sur « Au Bon Volt » (21-23 oct. 2026) : la fenêtre des CGU surgissait au premier réglage enregistré.
-    // Elle vient maintenant au premier document ; refusée, l'éditeur ne s'ouvre pas ; une acceptation que la base refuse
-    // n'est pas annoncée comme faite ; acceptée, elle est enregistrée (cgu_version) et l'éditeur s'ouvre.
-    nom: 'CGU : rien au chargement d’un compte neuf ; demandées au premier document ; annulables ; acceptation enregistrée ou refus dit (1440 px)',
+    // Relecture du 25 oct. 2026 (M6) : les commandes « filtre » de la recherche ouvrent la liste filtrée (avant : la liste
+    // non filtrée, quel que soit le libellé)
+    nom: 'recherche : « Devis en attente de réponse » et « Voir les avoirs » ouvrent la liste filtrée (1440 px)',
+    async executer({ ouvrir, cliquer, attendre, verifier }) {
+      const { page } = await ouvrir({ page: 'dashboard', largeur: 1440 });
+      const commande = async (libelle) => {
+        await page.evaluate(() => [...document.querySelectorAll('header button')].find((b) => (b.innerText || '').trim().startsWith('Rechercher'))?.click());
+        await attendre(700);
+        const ok = await page.evaluate((l) => {
+          const b = [...document.querySelectorAll('[role="dialog"] button')].find((x) => (x.innerText || '').includes(l));
+          b?.click();
+          return !!b;
+        }, libelle);
+        verifier(ok, `commande « ${libelle} » dans la recherche`);
+        await attendre(1200);
+      };
+      await commande('Devis en attente de réponse');
+      verifier(await page.evaluate(() => localStorage.getItem('cp_current_page')) === 'devis', 'la commande ouvre les documents');
+      const tuile = await page.evaluate(() => document.querySelector('[data-ui="TuileChiffre"][aria-pressed="true"]')?.innerText || '');
+      verifier(/Devis en attente/.test(tuile), `filtrés sur les devis en attente (tuile active : « ${tuile.split('\n')[0]} »)`);
+      await commande('Voir les avoirs');
+      const filtre = await page.evaluate(() => [...document.querySelectorAll('[data-ui="PucesActives"] button')].map((b) => b.getAttribute('aria-label')));
+      verifier(filtre.includes('Retirer le filtre Avoirs'), `filtrés sur les avoirs (${JSON.stringify(filtre)})`);
+    },
+  },
+  {
+    // Décision du 25 oct. 2026 (relecture juriste, C. civ. 1119) : les CGU s'acceptent à l'inscription, par une case
+    // jamais cochée d'avance, avec l'information RGPD ; l'acceptation part dans les métadonnées du compte.
+    nom: 'inscription : impossible sans cocher la case des conditions ; l’acceptation (version) part avec le compte ; information RGPD (375 px)',
     reel: true,
-    async executer({ ouvrir, sessionFactice, cliquer, attendre, verifier }) {
-      const ORGA = '0e0e0e0e-0e0e-4e0e-8e0e-0e0e0e0e0e0e';
-      const ENT = '0f0f0f0f-0f0f-4f0f-8f0f-0f0f0f0f0f0f';
-      const ecritures = [];
-      let baseAccepte = false;
+    async executer({ ouvrir, cliquer, saisir, attendre, verifier }) {
+      const inscriptions = [];
       const { page } = await ouvrir({
-        reel: true, largeur: 1440, page: 'devis', session: sessionFactice(),
+        reel: true, largeur: 375, chemin: '/inscription',
         supabase: (req, u) => {
-          if (u.pathname === '/rest/v1/rpc/get_user_org_id') return json(ORGA);
-          if (u.pathname === '/rest/v1/entreprise') {
-            if (req.method() === 'PATCH') {
-              ecritures.push(JSON.parse(req.postData() || '{}'));
-              return json(baseAccepte ? [{ id: ENT }] : []); // refus RLS : 0 ligne, aucune erreur
-            }
-            return json([{ id: ENT, organization_id: ORGA, nom: 'Élec Test', is_active: true, archived_at: null }]);
+          if (u.pathname === '/auth/v1/signup') {
+            const corps = JSON.parse(req.postData() || '{}');
+            inscriptions.push(corps);
+            return json({ id: '22222222-2222-4222-8222-222222222222', aud: 'authenticated', role: '', email: corps.email, user_metadata: corps.data || {}, created_at: new Date().toISOString() });
           }
           return json([]);
         },
       });
-      await attendre(2500);
+      await attendre(1500);
+      const formulaire = await page.evaluate(() => document.querySelector('form')?.innerText || '');
+      verifier(/J'ai lu et j'accepte les Conditions générales d'utilisation de Mallettico \(version de février 2025\) et les Conditions générales de vente/.test(formulaire), 'la case des conditions, avec la version');
+      verifier(/Mallettico \(Hugo Seguin EI\) utilise votre e-mail et votre nom pour créer et sécuriser votre compte/.test(formulaire), 'l’information sur les données');
+      const liens = await page.evaluate(() => [...document.querySelectorAll('form a')].map((a) => a.getAttribute('href')));
+      verifier(['/cgu', '/cgv', '/confidentialite'].every((h) => liens.includes(h)), `liens vers les CGU, les CGV et la politique (${JSON.stringify(liens)})`);
+      verifier(await page.evaluate(() => document.querySelector('#inscription-conditions')?.checked === false), 'la case n’est pas cochée d’avance');
+      await saisir(page, 'input[autocomplete="organization"]', 'Élec Parcours');
+      await saisir(page, 'input[type="email"]', 'parcours@exemple.fr');
+      await saisir(page, 'input[type="password"]', 'motdepasse123');
+      await cliquer(page, 'Créer mon compte');
+      await attendre(800);
+      const refus = await page.evaluate(() => document.querySelector('[role="alert"]')?.innerText || '');
+      verifier(/Cochez la case pour accepter les conditions d'utilisation et créer votre compte/.test(refus), `sans la case, le compte n’est pas créé et le message le dit (${refus})`);
+      verifier(inscriptions.length === 0, 'rien n’est parti sans la case');
+      await page.evaluate(() => document.querySelector('#inscription-conditions')?.click());
+      await cliquer(page, 'Créer mon compte');
+      await attendre(1500);
+      verifier(inscriptions.length === 1, `le compte est demandé une fois la case cochée (${inscriptions.length})`);
+      const meta = inscriptions[0]?.data || {};
+      verifier(meta.cgu_version === '2025-02' && !!meta.cgu_accepted_at, `la version et la date acceptées partent avec le compte (${JSON.stringify(meta)})`);
+    },
+  },
+  {
+    // Un compte créé avant la case (ni métadonnées ni fiche) : rien au chargement ; la garde unique de DataContext demande
+    // les CGU au premier document — ici le cas du ramoneur, la facture tirée d'une attestation, qui la contournait.
+    nom: 'CGU d’un compte ancien : rien au chargement ; demandées au premier document ; annulables ; refus du serveur dit, acceptation enregistrée sur le compte (375 px)',
+    reel: true,
+    async executer({ ouvrir, sessionFactice, cliquer, attendre, verifier }) {
+      const { creerBase, UID } = require('../lib/fauxSupabase.cjs');
+      const AN = new Date().getFullYear();
+      const ORG = '0e0e0e0e-0e0e-4e0e-8e0e-0e0e0e0e0e0e';
+      const CLIENT = { id: 'c0c0c0c0-0000-4000-8000-000000000501', nom: 'Exemple', prenom: 'Rose', telephone: '0600000003', email: 'rose@exemple.fr',
+        adresse: '7 allée Imaginaire, 24000 Exempleville', created_at: '2026-10-01T08:00:00Z' };
+      // Fiche d'entreprise SANS acceptation (compte d'avant la case)
+      const ENTREPRISE = { id: 'e0e0e0e0-0000-4000-8000-000000000501', user_id: UID, organization_id: ORG, nom: 'Ramonage Exemple', forme_juridique: 'Micro-entreprise',
+        siret: '00000000000000', telephone: '0500000000', email: 'contact@exemple.fr', is_active: true, is_default: true,
+        settings_json: { reglages: { ramonageActif: true, nomEntrepreneur: 'Jean Exemple' } }, created_at: '2026-01-01T00:00:00Z' };
+      const RAMONAGE = { id: 'd0d0d0d0-0000-4000-8000-000000000501', user_id: UID, organization_id: ORG, numero: `RAM-${AN}-00021`, client_id: CLIENT.id,
+        appareil_ref: 'f0f0f0f0-0000-4000-8000-000000000501', realise_le: `${AN}-10-14T09:00:00Z`, intervenant_nom: 'Jean Exemple', client_nom: 'Rose Exemple',
+        qualite_client: 'locataire', adresse_intervention: CLIENT.adresse, appareil_type: 'insert', combustible: 'bois', conduit: 'maconne',
+        methode: 'mecanique_manuelle', complement_chimique: false, raccordement: 'ramone', vacuite: 'assuree', constats: {}, conseils: { choix: ['usage'] },
+        prochain_avant: `${AN + 1}-10-14`, nb_dans_annee: 1, prix_ht: 95, jeton_rappel: 'a0a0a0a0-0000-4000-8000-000000000501',
+        emetteur: { nom: 'Ramonage Exemple', formeJuridique: 'Micro-entreprise', nomEntrepreneur: 'Jean Exemple', siret: '00000000000000' },
+        annulee_le: null, annulation_motif: null, rappel_fait_le: null, rappel_canal: null, facture_id: null, created_at: `${AN}-10-14T09:00:00Z` };
+      const base = creerBase({ clients: [CLIENT], entreprise: [ENTREPRISE], ramonages: [RAMONAGE] });
+      const acceptations = [];
+      let serveurAccepte = false;
+      const { page } = await ouvrir({
+        reel: true, largeur: 375, page: 'clients', session: sessionFactice(UID),
+        supabase: (req, u) => {
+          if (u.pathname === '/auth/v1/user' && req.method() === 'PUT') {
+            const corps = JSON.parse(req.postData() || '{}');
+            acceptations.push(corps);
+            if (!serveurAccepte) return { status: 500, body: JSON.stringify({ code: 500, msg: 'Erreur du service' }) };
+            return json({ id: UID, aud: 'authenticated', role: 'authenticated', email: 'test@exemple.fr', user_metadata: corps.data || {} });
+          }
+          return base.reponse(req, u);
+        },
+        avantChargement: () => { try { localStorage.setItem('pwa-install-dismissed', String(Date.now())); } catch { /* */ } },
+      });
+      await attendre(2000);
       const cgu = () => page.evaluate(() => [...document.querySelectorAll('[role="dialog"]')].some((d) => /Conditions générales d'utilisation/.test(d.innerText)));
-      const editeur = () => page.evaluate(() => !!document.querySelector('[role="dialog"][aria-label="Nouveau devis"]'));
-      verifier(!(await cgu()), 'aucune fenêtre des CGU au chargement (la fiche entreprise existe, sans acceptation)');
-
-      await cliquer(page, 'Créer mon premier devis');
+      const factures = () => base.journal.filter((j) => j.m === 'POST' && j.table === 'devis').length;
+      verifier(!(await cgu()), 'aucune fenêtre des CGU au chargement');
+      await page.evaluate(() => [...document.querySelectorAll('[data-ui="LigneListe"] > button')].find((x) => x.innerText.includes('Exemple'))?.click());
+      await attendre(900);
+      await page.evaluate((n) => [...document.querySelectorAll('[data-testid="onglet-ramonage"] [data-ui="LigneListe"] > button')].find((b) => b.innerText.includes(n))?.click(), `RAM-${AN}-00021`);
       await attendre(800);
-      verifier(await cgu(), 'les CGU sont demandées au premier document');
-      verifier(!(await editeur()), 'l’éditeur attend l’acceptation');
+      const faireLaFacture = () => page.evaluate(() => {
+        const b = [...document.querySelectorAll('[role="dialog"] button')].find((x) => (x.innerText || '').trim() === 'Faire la facture');
+        b?.click();
+        return !!b;
+      });
+      verifier(await faireLaFacture(), '« Faire la facture » sur l’attestation');
+      await attendre(800);
+      verifier(await cgu(), 'les CGU sont demandées avant la facture tirée de l’attestation');
+      verifier(factures() === 0, 'la facture attend l’acceptation');
       await cliquer(page, 'Annuler');
-      await attendre(600);
-      verifier(!(await cgu()) && !(await editeur()), 'annulées : ni fenêtre, ni éditeur');
-
-      await cliquer(page, 'Créer mon premier devis');
       await attendre(800);
-      // Lire jusqu'au bout, cocher, accepter : la base refuse d'abord (0 ligne), puis accepte
+      verifier(!(await cgu()) && factures() === 0, 'annulées : pas de facture');
+
+      verifier(await faireLaFacture(), '« Faire la facture », une seconde fois');
+      await attendre(800);
       await page.evaluate(() => {
         const corps = [...document.querySelectorAll('[role="dialog"] .overflow-y-auto')].find((x) => /1\. Objet/.test(x.innerText));
         if (corps) corps.scrollTop = corps.scrollHeight;
       });
       await attendre(400);
-      await page.evaluate(() => document.querySelector('[role="dialog"] input[type="checkbox"]')?.click());
+      await page.evaluate(() => [...document.querySelectorAll('[role="dialog"] input[type="checkbox"]')].pop()?.click());
       await attendre(300);
       await cliquer(page, 'Accepter et continuer');
       await attendre(1500);
       const refus = await texteDialogue(page);
-      verifier(/Acceptation non enregistrée/.test(refus), 'une acceptation refusée par la base est dite, la fenêtre reste ouverte');
-      verifier(!(await editeur()), 'et l’éditeur ne s’ouvre pas');
-      baseAccepte = true;
+      verifier(/Acceptation non enregistrée/.test(refus) && !/Vérifiez votre connexion/.test(refus), `le refus du serveur est dit avec sa cause, pas « vérifiez votre connexion » (${(refus.match(/Acceptation non enregistrée[^\n]*/) || [''])[0]})`);
+      verifier(factures() === 0, 'et la facture n’est pas créée');
+      serveurAccepte = true;
       await cliquer(page, 'Accepter et continuer');
-      await attendre(1500);
-      const derniere = ecritures[ecritures.length - 1] || {};
-      verifier(derniere.cgu_version === '2025-02' && !!derniere.cgu_accepted_at, `acceptation envoyée à la base (${JSON.stringify(derniere)})`);
-      verifier(Object.keys(derniere).every((k) => ['cgu_version', 'cgu_accepted_at'].includes(k)), 'ces deux champs seulement');
+      await attendre(2500);
+      const derniere = acceptations[acceptations.length - 1] || {};
+      verifier(derniere.data?.cgu_version === '2025-02' && !!derniere.data?.cgu_accepted_at, `acceptation enregistrée sur le compte de l’utilisateur (${JSON.stringify(derniere.data)})`);
+      verifier(!base.journal.some((j) => j.m === 'PATCH' && j.table === 'entreprise' && j.corps?.cgu_version), 'sans écrire la fiche de l’entreprise (un membre invité peut accepter)');
       verifier(!(await cgu()), 'la fenêtre se ferme');
-      verifier(await editeur(), 'et l’éditeur du premier devis s’ouvre');
+      verifier(factures() === 1, `et la facture de l’attestation est créée (${factures()})`);
+    },
+  },
+  {
+    // Relecture juriste du 25 oct. 2026 (H5) : la FAQ ne dit « hors ligne » que ce qui est constaté ici — une saisie faite
+    // sans réseau est gardée sur l'appareil et part au retour de la connexion
+    nom: 'hors ligne : une saisie sans réseau est gardée sur l’appareil, puis part au retour de la connexion (1440 px)',
+    reel: true,
+    async executer({ ouvrir, sessionFactice, cliquer, saisir, attendre, verifier }) {
+      const ORGA = '0e0e0e0e-0e0e-4e0e-8e0e-0e0e0e0e0e0e';
+      const envois = [];
+      let horsLigne = false; // la requête interceptée ne voit pas le mode hors ligne du navigateur : on coupe ici aussi
+      const { page } = await ouvrir({
+        reel: true, largeur: 1440, page: 'clients', session: sessionFactice(),
+        supabase: (req, u) => {
+          if (horsLigne) return 'panne';
+          if (u.pathname === '/rest/v1/rpc/get_user_org_id') return json(ORGA);
+          if (u.pathname === '/rest/v1/clients' && req.method() === 'POST') {
+            const corps = JSON.parse(req.postData() || '{}');
+            envois.push(corps);
+            return json(Array.isArray(corps) ? corps[0] : corps, 201);
+          }
+          return json([]);
+        },
+      });
+      await attendre(2500);
+      await page.evaluate(() => {
+        window.__messages = [];
+        new MutationObserver(() => {
+          const t = document.body.innerText;
+          if (/Enregistré sur cet appareil/.test(t) && !window.__messages.includes('attente')) window.__messages.push('attente');
+        }).observe(document.body, { childList: true, subtree: true, characterData: true });
+      });
+      await cliquer(page, 'Ajouter un client'); // formulaire chargé avec le réseau
+      await attendre(800);
+      horsLigne = true;
+      await page.setOfflineMode(true);
+      await attendre(1500);
+      await saisir(page, '#client-nom', 'Client hors ligne');
+      await cliquer(page, 'Créer');
+      await attendre(2000);
+      verifier(envois.length === 0, 'rien ne part sans réseau');
+      verifier((await page.evaluate(() => window.__messages || [])).includes('attente'), 'l’app dit que la saisie est gardée sur l’appareil');
+      horsLigne = false;
+      await page.setOfflineMode(false);
+      await attendre(6000);
+      verifier(envois.some((c) => (Array.isArray(c) ? c[0] : c)?.nom === 'Client hors ligne'), `au retour du réseau, le client part en base (${envois.length} envoi(s))`);
     },
   },
 ];

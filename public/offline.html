@@ -175,44 +175,6 @@
         border: 1px solid var(--bord);
       }
 
-      .features {
-        margin-top: 40px;
-        padding-top: 28px;
-        border-top: 1px solid var(--bord);
-      }
-
-      .features h2 {
-        font-size: 14px;
-        font-weight: 600;
-        color: var(--encre-2);
-        margin-bottom: 16px;
-      }
-
-      .feature-list {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-        justify-content: center;
-        list-style: none;
-      }
-
-      .feature-item {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 6px 12px;
-        background: var(--surface);
-        border: 1px solid var(--bord);
-        border-radius: 9999px;
-        font-size: 14px;
-        color: var(--encre);
-      }
-
-      .feature-item svg {
-        width: 14px;
-        height: 14px;
-        color: var(--encre-2);
-      }
     </style>
   </head>
   <body>
@@ -226,8 +188,10 @@
       </div>
 
       <h1>Vous êtes hors ligne</h1>
+      <!-- Cette page ne s'affiche que si l'app n'a pas pu se charger : elle ne promet rien d'autre que ce qu'elle fait
+           (relecture du 25 oct. 2026 : elle listait « devis en brouillon, clients, photos, catalogue » disponibles) -->
       <p>
-        Pas de connexion internet détectée. Certaines fonctionnalités sont toujours disponibles en mode hors ligne.
+        Pas de connexion internet détectée. Cette page se recharge d'elle-même au retour du réseau.
       </p>
 
       <div class="status" role="status">
@@ -250,35 +214,6 @@
         </a>
       </div>
 
-      <section class="features">
-        <h2>Disponible hors ligne</h2>
-        <ul class="feature-list">
-          <li class="feature-item">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-            </svg>
-            Devis en brouillon
-          </li>
-          <li class="feature-item">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-            </svg>
-            Consulter clients
-          </li>
-          <li class="feature-item">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-            </svg>
-            Photos en attente
-          </li>
-          <li class="feature-item">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-            </svg>
-            Catalogue produits
-          </li>
-        </ul>
-      </section>
     </main>
 
     <script>

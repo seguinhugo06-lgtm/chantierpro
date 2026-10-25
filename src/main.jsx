@@ -196,8 +196,6 @@ if (isDemo) {
   logger.debug('🔐 Production mode - data from Supabase')
 }
 
-// Attente des pages publiques de l'artisan (signature, paiement, portail) : non modifiée par la refonte du site, ces
-// pages gardent la couleur de l'artisan.
 // Attente des pages de l'artisan (signature, paiement, portail) : cercle neutre, gris ardoise — sa couleur n'est pas
 // encore connue (avant : l'orange de l'ancienne charte, que ni l'artisan ni Mallettico n'affichent plus)
 const PublicFallback = () => (
