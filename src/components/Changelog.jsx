@@ -9,7 +9,9 @@ import { dateLue } from '../lib/dates';
 // 14 jours et la page de tarification (retirés), les infobulles des nouveaux utilisateurs (absentes), le module
 // Sous-traitants (absent : « sous-traitant » n'est qu'un rôle d'équipe) ; le module de signatures (retiré le 10 oct.)
 // devient la signature en ligne des devis, qui existe ; les nombres devenus faux (4 plans, 7 modules, « un plan
-// payant ») aussi.
+// payant ») aussi. Relecture du 25 oct., tour 3 : retirés aussi le tableau de bord de facturation (la page `billing`
+// mène aux Paramètres), les « feature gates » (inutilisés), la bibliothèque d'ouvrages (la page `ouvrages` mène au
+// Catalogue) ; la FAQ sans nombre (17 questions affichées) ; l'import réduit aux clients et aux articles.
 const CHANGELOG = [
   {
     version: '3.3.0',
@@ -20,7 +22,7 @@ const CHANGELOG = [
       { type: 'improve', text: 'Menu simplifié : les modules essentiels d\'abord' },
       { type: 'new', text: 'Page Finances unifiée (Trésorerie + Export + Analytique)' },
       { type: 'new', text: 'Planning accessible gratuitement pour tous' },
-      { type: 'new', text: 'FAQ enrichie avec recherche intégrée (18+ questions)' },
+      { type: 'new', text: 'FAQ avec recherche intégrée' },
       { type: 'new', text: 'Onglet Administratif dans les Paramètres' },
       { type: 'new', text: 'E-mail de bienvenue automatique' },
       { type: 'improve', text: 'Palette de commandes mise à jour' },
@@ -45,9 +47,7 @@ const CHANGELOG = [
     title: 'Abonnements & Monétisation',
     changes: [
       { type: 'new', text: 'Abonnement en ligne par Stripe' },
-      { type: 'new', text: 'Dashboard facturation avec historique' },
       { type: 'new', text: 'Alertes d\'utilisation par palier' },
-      { type: 'new', text: 'Feature gates par plan (accès conditionnel)' },
       { type: 'improve', text: 'Modal d\'upgrade contextuelle' },
     ],
   },
@@ -56,7 +56,7 @@ const CHANGELOG = [
     date: '2026-02-06',
     title: 'Import, Analytique & Commercialisation',
     changes: [
-      { type: 'new', text: 'Import CSV de clients, articles et ouvrages' },
+      { type: 'new', text: 'Import de clients et d\'articles (CSV)' },
       { type: 'new', text: 'Page Analytique avec KPIs et graphiques' },
       { type: 'new', text: 'Landing page marketing' },
       { type: 'new', text: 'Numérotation atomique des documents (PL/pgSQL)' },
@@ -74,7 +74,6 @@ const CHANGELOG = [
       ...(FONCTIONS.ia ? [{ type: 'new', text: 'IA Devis : analyse photo de chantier' }] : []),
       { type: 'new', text: 'Signature en ligne des devis' },
       { type: 'new', text: 'Export comptable (FEC, CSV, Excel)' },
-      { type: 'new', text: 'Bibliothèque d\'Ouvrages composites' },
     ],
   },
   {

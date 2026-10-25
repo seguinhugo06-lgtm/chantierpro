@@ -313,7 +313,7 @@ module.exports = [
       verifier(await faireLaFacture(), '« Faire la facture », une seconde fois');
       await attendre(800);
       await page.evaluate(() => {
-        const corps = [...document.querySelectorAll('[role="dialog"] .overflow-y-auto')].find((x) => /1\. Objet/.test(x.innerText));
+        const corps = [...document.querySelectorAll('[role="dialog"] .overflow-y-auto')].find((x) => /Article 1 - Objet/.test(x.innerText));
         if (corps) corps.scrollTop = corps.scrollHeight;
       });
       await attendre(400);
@@ -393,8 +393,22 @@ module.exports = [
       verifier(/Avant votre premier document, lisez et acceptez les conditions d’utilisation de Mallettico\./.test(fenetre || ''), `elle dit pourquoi : « Avant votre premier document » (${(fenetre || '').slice(0, 160)})`);
       verifier(!/Avant d’activer les envois automatiques/.test(fenetre || ''), 'et pas la raison des envois automatiques');
       verifier(devisCrees().length === 0, 'le devis attend l’acceptation');
+      // Un seul texte de CGU (avis juriste du 24 oct. 2026, H1) : la fenêtre affiche celui de la page /cgu
+      const texteCgu = (p) => p.evaluate(() => (document.querySelector('[data-texte-cgu]')?.innerText || '').replace(/\s+/g, ' ').trim());
+      const texteFenetre = await page.evaluate(() => (document.querySelector('[role="dialog"] [data-texte-cgu]')?.innerText || '').replace(/\s+/g, ' ').trim());
+      const publique = await ouvrir({ reel: true, largeur: 375, chemin: '/cgu', supabase: () => json([]) });
+      await attendre(800);
+      const textePage = await texteCgu(publique.page);
+      await publique.browser.close();
+      verifier(texteFenetre.length > 2000 && texteFenetre === textePage,
+        `la fenêtre et la page /cgu affichent le même texte (${texteFenetre.length} et ${textePage.length} caractères)`);
+      verifier(texteFenetre.startsWith(`Version du ${CGU_VERSION_DATE}`), `en tête, « Version du ${CGU_VERSION_DATE} »`);
+      verifier(texteFenetre.includes('Mallettico peut modifier les présentes CGU pour un motif légitime. Toute modification qui réduit les droits de l\'utilisateur lui est notifiée par e-mail au moins 30 jours avant son entrée en vigueur ; l\'utilisateur qui la refuse peut supprimer son compte avant cette date. Les corrections de forme et les modifications imposées par la loi s\'appliquent dès leur publication.'),
+        'article 10 : le texte H2 du juriste, mot pour mot');
+      verifier(!/poursuite de l'utilisation/.test(texteFenetre) && !/conservées pendant 30 jours/.test(texteFenetre),
+        'ni « la poursuite de l’utilisation vaut acceptation », ni l’ancienne conservation « 30 jours »');
       await page.evaluate(() => {
-        const corps = [...document.querySelectorAll('[role="dialog"] .overflow-y-auto')].find((x) => /1\. Objet/.test(x.innerText));
+        const corps = [...document.querySelectorAll('[role="dialog"] .overflow-y-auto')].find((x) => /Article 1 - Objet/.test(x.innerText));
         if (corps) corps.scrollTop = corps.scrollHeight;
       });
       await attendre(400);
@@ -453,7 +467,7 @@ module.exports = [
       // Le message « Modifications enregistrées » partait 800 ms après l'enregistrement : on attend au-delà
       await attendre(2000);
       const ecran = await page.evaluate(() => document.body.innerText);
-      verifier(!/Enregistré\b/.test(ecran) && !/Modifications enregistrées/.test(ecran), 'aucun « Enregistré » ni « Modifications enregistrées »');
+      verifier(!/Enregistré(?![a-z])/i.test(ecran) && !/Modifications enregistrées/.test(ecran), 'aucun « Enregistré » ni « Modifications enregistrées »');
       verifier(/Envois automatiques non activés/.test(ecran), 'l’app dit que les envois automatiques ne sont pas activés');
       verifier(await page.$eval('#ramonage-envoi-auto', (e) => e.getAttribute('aria-checked')) === 'false', 'l’interrupteur reste éteint');
       verifier(ecritures() === avant, `rien n’est écrit sur la fiche de l’entreprise (${ecritures() - avant} écriture)`);
@@ -509,6 +523,32 @@ module.exports = [
       verifier(!!enRetard && /bg-danger-fond/.test(enRetard.classe) && /en retard/.test(enRetard.titre), `une tâche en retard : pastille rouge (${JSON.stringify(enRetard)})`);
       const duJour = await lire([tache('a1a1a1a1-0000-4000-8000-000000000602', jour(0))]);
       verifier(!duJour || /bg-neutre-fond/.test(duJour.classe), `une tâche du jour : pas de rouge (${JSON.stringify(duJour)})`);
+    },
+  },
+  {
+    // Relecture du 25 oct. 2026, tour 3 : la vue « Tableau » marquait « J+N » sur des factures payées (statut « envoyé »
+    // et 7 jours, sans autre règle). Elle suit maintenant devisARelancer (src/lib/ventes.js), comme la liste et l'Accueil.
+    nom: 'documents, vue « Tableau » au bureau : « J+N » sur un devis à relancer, jamais sur une facture (1440 px)',
+    async executer({ ouvrir, attendre, verifier }) {
+      const { page } = await ouvrir({ page: 'devis', largeur: 1440 });
+      // La vue se choisit dans le volet « Trier et afficher »
+      await page.evaluate(() => [...document.querySelectorAll('button')].find((x) => /^Trier/.test((x.innerText || '').trim()) && x.getBoundingClientRect().width > 0)?.click());
+      await attendre(500);
+      const vue = await page.evaluate(() => {
+        const b = [...document.querySelectorAll('button')].find((x) => (x.innerText || '').trim() === 'Tableau' && x.getBoundingClientRect().width > 0);
+        b?.click();
+        return !!b;
+      });
+      verifier(vue, 'la vue « Tableau »');
+      await attendre(800);
+      const lignes = await page.evaluate(() => [...document.querySelectorAll('table tbody tr')].map((tr) => {
+        const texte = tr.innerText.replace(/\s+/g, ' ');
+        return { numero: (texte.match(/\b(DEV|FAC|AV)-\d{4}-\d+/) || [''])[0], relance: /J\+\d+/.test(texte) };
+      }));
+      verifier(lignes.length > 5, `des lignes dans le tableau (${lignes.length})`);
+      const marquees = lignes.filter((l) => l.relance);
+      verifier(marquees.length > 0 && marquees.every((l) => l.numero.startsWith('DEV-')),
+        `« J+N » seulement sur des devis (${JSON.stringify(marquees.map((l) => l.numero))})`);
     },
   },
   {

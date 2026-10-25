@@ -2535,13 +2535,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   // (« Vu » n'est plus posé à l'ouverture : c'était l'ARTISAN qui ouvrait son propre devis, pas le
   // client — relecture du 9 oct. 2026. La page de signature ne note pas l'ouverture par le client.)
 
-  // Calculate days since sent (for follow-up indicators)
-  // Jours depuis l'envoi (date_envoi, enregistrée au premier envoi ; un ancien devis : sa date)
-  const getDaysSinceSent = (doc) => {
-    const depuis = doc.date_envoi || doc.date;
-    if (!depuis) return 0;
-    return Math.max(0, Math.floor((Date.now() - dateLue(String(depuis).slice(0, 10))) / 86400000));
-  };
+  // (Jours depuis l'envoi : joursDepuisEnvoi de src/lib/ventes.js, la règle de la liste, du tableau et de l'Accueil)
 
   // Devis envoyé sans réponse depuis 7 jours, encore valable (un devis expiré ne se relance pas : on le prolonge)
   // Facture échue (reste dû après l'échéance) : seule une facture échue se « relance » (C. com. L441-10, II ; même calcul
@@ -5320,15 +5314,13 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                       <td className="px-3 py-2.5">
                         <div className="flex items-center gap-1.5">
                           <PastilleStatut genre={d.type === 'facture' && !isAvoirItem ? 'facture' : 'devis'} statut={statutVu} />
-                          {d.statut === 'envoye' && (() => {
-                            const daysSent = getDaysSinceSent(d);
-                            if (daysSent < 7) return null;
-                            return (
-                              <span className="text-xs font-medium text-alerte-texte flex items-center gap-1 whitespace-nowrap">
-                                <Clock size={12} aria-hidden="true" /> J+{daysSent}
-                              </span>
-                            );
-                          })()}
+                          {/* Devis à relancer, par la règle commune (src/lib/ventes.js) : depuis l'envoi, jamais un devis
+                              expiré, jamais une facture (avant, relecture du 25 oct. : « J+N » sur des factures payées) */}
+                          {devisARelancer(d, new Date(), entreprise) && (
+                            <span className="text-xs font-medium text-alerte-texte flex items-center gap-1 whitespace-nowrap" title="Jours depuis l'envoi, sans réponse">
+                              <Clock size={12} aria-hidden="true" /> J+{joursDepuisEnvoi(d)}
+                            </span>
+                          )}
                         </div>
                       </td>
                       <td className="px-3 py-1 text-right">

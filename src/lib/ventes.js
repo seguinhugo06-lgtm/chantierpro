@@ -92,7 +92,7 @@ export function aTraiter(d, paiements = [], maintenant = new Date(), entreprise 
 
 /**
  * Urgent : une facture en retard. Le rouge veut dire « en retard » (une facture, ou une tâche, comptée ailleurs) ; un
- * devis à relancer ou un brouillon à finaliser est « à surveiller » (ambre). Décision du contrôleur, 25 oct. 2026.
+ * devis à relancer ou un brouillon à finaliser est « à surveiller » (ambre). Relecture du 25 oct. 2026.
  */
 export function estUrgent(d, paiements = [], maintenant = new Date()) {
   return estFacture(d) && estEnRetard(d, paiements, maintenant);

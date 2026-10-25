@@ -7,6 +7,7 @@
  * L'acceptation est enregistrée dans les métadonnées du compte de l'utilisateur (cgu_version, cgu_accepted_at) : un
  * membre invité accepte pour lui-même. Tant qu'elle ne l'est pas, la fenêtre reste ouverte et dit pourquoi.
  * Avant (retour d'Hugo sur « Au Bon Volt », 21-23 oct. 2026), elle surgissait au premier réglage enregistré.
+ * Elle affiche le texte de la page /cgu (TexteCgu) : un seul texte sous une version (avant le 25 oct. 2026, un autre).
  */
 
 import { useState, useRef, useEffect } from 'react';
@@ -15,6 +16,7 @@ import Modal, { ModalHeader, ModalTitle, ModalDescription, ModalBody, ModalFoote
 import { Bouton } from './ui/Bouton';
 
 import { CGU_VERSION, CGU_VERSION_DATE } from '../lib/cgu';
+import TexteCgu from './legal/TexteCgu';
 
 /**
  * @param {(version: string) => Promise<true|string>} onAccept  enregistre l'acceptation ; sinon, le message qui dit pourquoi
@@ -71,78 +73,9 @@ export default function CGUAcceptanceModal({ onAccept, onAnnuler, motif = 'premi
         </ModalDescription>
       </ModalHeader>
 
-      <ModalBody ref={scrollRef} onScroll={handleScroll} className="text-sm text-encre-2 leading-relaxed space-y-5">
-          <section>
-            <h3 className="text-base font-semibold text-encre mb-2">1. Objet</h3>
-            <p>
-              Les présentes Conditions Générales d'Utilisation (CGU) régissent l'accès et l'utilisation du service Mallettico. Elles sont acceptées en cochant la case prévue à la création du compte ; pour un compte créé avant cette case, elles sont acceptées avant la création d'un premier document.
-            </p>
-          </section>
-
-          <section>
-            <h3 className="text-base font-semibold text-encre mb-2">2. Description du service</h3>
-            <p>
-              Mallettico est un logiciel en ligne (SaaS) de gestion de chantier destiné aux artisans et entreprises du BTP. Il permet notamment la création et gestion de devis et factures, le suivi de chantier et de rentabilité, la gestion d'équipe, le suivi de trésorerie, la gestion d'un catalogue de prestations, et la planification.
-            </p>
-          </section>
-
-          <section>
-            <h3 className="text-base font-semibold text-encre mb-2">3. Inscription et compte</h3>
-            <p>
-              L'accès au service nécessite la création d'un compte avec une adresse email valide et un mot de passe. L'utilisateur est responsable de la confidentialité de ses identifiants. Toute utilisation du compte est réputée faite par l'utilisateur.
-            </p>
-          </section>
-
-          <section>
-            <h3 className="text-base font-semibold text-encre mb-2">4. Offres et tarification</h3>
-            <p>
-              Mallettico propose plusieurs formules d'abonnement, dont une offre gratuite avec des fonctionnalités limitées. Les tarifs des offres payantes sont indiqués sur la page Tarifs et peuvent être modifiés avec un préavis de 30 jours.
-            </p>
-          </section>
-
-          <section>
-            <h3 className="text-base font-semibold text-encre mb-2">5. Données de l'utilisateur</h3>
-            <p>
-              L'utilisateur reste propriétaire de l'ensemble des données qu'il saisit dans le service. Mallettico s'engage à ne pas utiliser ces données à des fins commerciales. L'utilisateur peut à tout moment exporter ou supprimer ses données. En cas de résiliation, les données seront conservées pendant 30 jours puis supprimées définitivement.
-            </p>
-          </section>
-
-          <section>
-            <h3 className="text-base font-semibold text-encre mb-2">6. Protection des données (RGPD)</h3>
-            <p>
-              Conformément au Règlement Général sur la Protection des Données (RGPD), Mallettico s'engage à protéger les données personnelles de ses utilisateurs. Les données de votre compte sont stockées dans une base hébergée à Paris. Certains prestataires techniques (envoi d'e-mails, diffusion du site) peuvent les traiter hors de l'Union, dans le cadre de clauses contractuelles types : la liste est dans la politique de confidentialité. L'utilisateur dispose d'un droit d'accès, de rectification, de portabilité et de suppression de ses données, exerçable depuis les paramètres du compte ou par email à contact@mallettico.fr.
-            </p>
-          </section>
-
-          <section>
-            <h3 className="text-base font-semibold text-encre mb-2">7. Responsabilité</h3>
-            <p>
-              Mallettico fournit le service "en l'état" et ne garantit pas l'absence d'erreurs ou d'interruptions. L'utilisateur est seul responsable de la vérification des montants, calculs et informations générées par le service. Mallettico ne se substitue pas à un expert-comptable.
-            </p>
-          </section>
-
-          <section>
-            <h3 className="text-base font-semibold text-encre mb-2">8. Disponibilité</h3>
-            <p>
-              Mallettico s'efforce de maintenir le service accessible 24h/24, 7j/7, mais ne peut garantir une disponibilité permanente. Des interruptions pour maintenance pourront avoir lieu.
-            </p>
-          </section>
-
-          <section>
-            <h3 className="text-base font-semibold text-encre mb-2">9. Résiliation</h3>
-            <p>
-              L'utilisateur peut résilier son compte à tout moment depuis les paramètres. Mallettico se réserve le droit de suspendre un compte en cas de violation des CGU, après notification préalable.
-            </p>
-          </section>
-
-          <section>
-            <h3 className="text-base font-semibold text-encre mb-2">10. Droit applicable</h3>
-            <p>
-              Les présentes CGU sont régies par le droit français. En cas de litige, les parties s'engagent à rechercher une solution amiable.
-            </p>
-          </section>
-
-          <p className="text-xs text-encre-3 pt-2">Version {CGU_VERSION} — Dernière mise à jour : {CGU_VERSION_DATE}</p>
+      <ModalBody ref={scrollRef} onScroll={handleScroll} className="text-sm">
+        {/* Le texte même de la page /cgu (avis juriste du 24 oct. 2026, H1) : on accepte ce qu'on peut relire ensuite */}
+        <TexteCgu compact />
       </ModalBody>
 
       {!hasScrolledToEnd && (

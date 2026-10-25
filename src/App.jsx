@@ -119,13 +119,22 @@ const safeStr = (v, fallback = '') => {
 };
 
 // Notifications : un ton et une icône par nature (avant : des émojis ✅ ⚠️ ℹ️ 🔔 et un « Voir → » orange).
-// alert = retard, perte, assurance expirée : danger ; warning = à relancer, à surveiller : alerte.
+// Le rouge veut dire « en retard » (relecture du 25 oct. 2026) : seule une notification de retard (facture, chantier) le
+// prend, dans la liste comme sur la cloche ; les autres alertes (perte, assurance expirée…) et « à relancer » : ambre.
 const TONS_NOTIFICATION = {
   success: { icone: CheckCircle, classe: 'bg-succes-fond text-succes-texte' },
   warning: { icone: Clock, classe: 'bg-alerte-fond text-alerte-texte' },
   info: { icone: Info, classe: 'bg-info-fond text-info-texte' },
   message: { icone: MessageCircle, classe: 'bg-neutre-fond text-neutre-texte' },
   alert: { icone: AlertCircle, classe: 'bg-danger-fond text-danger-texte' },
+};
+const estNotifRetard = (n) => /^(facture-impayee|chantier-retard)-/.test(n?.id || '');
+// Une alerte qui n'est pas un retard garde son icône, en ambre
+const ALERTE_SANS_RETARD = { icone: AlertCircle, classe: 'bg-alerte-fond text-alerte-texte' };
+const tonNotification = (n) => {
+  if (estNotifRetard(n)) return TONS_NOTIFICATION.alert;
+  if (n?.type === 'alert') return ALERTE_SANS_RETARD;
+  return TONS_NOTIFICATION[n?.type] || TONS_NOTIFICATION.warning;
 };
 const TONS_TOAST = {
   success: { icone: CheckCircle, classe: 'bg-succes-fond text-succes-texte' },
@@ -1550,7 +1559,8 @@ export default function App() {
   );
 
   // Pastilles du menu (audit UX du 20 oct. 2026, § 2.1) : seulement ce qui demande d'agir ; rouge (danger) pour un
-  // retard ou une relance due, neutre pour le reste. Devis & factures : les documents « à traiter », la même règle que
+  // retard (facture, tâche), ambre (alerte) pour ce qui est à surveiller (devis à relancer, brouillon), neutre pour le
+  // reste (relecture du 25 oct. 2026). Devis & factures : les documents « à traiter », la même règle que
   // la puce de la liste (src/lib/ventes.js). Avant : devis en attente + factures non soldées, en rouge dès qu'une facture
   // était due, même dans ses délais (« 2 » rouge quand l'Accueil disait « Aucun retard ») ; et un « 5 » vert sur
   // Chantiers qui ne demandait rien.
@@ -1618,7 +1628,7 @@ export default function App() {
   ];
   const unreadNotifs = notifications.filter(n => !n.read);
   // Cloche : rouge pour un retard (facture, chantier), ambre pour une autre alerte, neutre sinon
-  const tonCloche = unreadNotifs.some(n => /^(facture-impayee|chantier-retard)-/.test(n.id)) ? 'danger'
+  const tonCloche = unreadNotifs.some(estNotifRetard) ? 'danger'
     : unreadNotifs.some(n => n.type === 'alert' || n.type === 'warning') ? 'alerte' : 'neutre';
   const allerA = (id) => { setPage(id); setMenuPlus(false); setSelectedChantier(null); };
   const rubriquesPlus = nav.filter(n => !ONGLETS_BAS.includes(n.id));
@@ -2158,7 +2168,7 @@ export default function App() {
           ) : (
             <ul className="divide-y divide-bord">
               {notifications.map(n => {
-                const ton = TONS_NOTIFICATION[n.type] || TONS_NOTIFICATION.alert;
+                const ton = tonNotification(n);
                 const Icone = ton.icone;
                 return (
                   <li key={n.id}>
