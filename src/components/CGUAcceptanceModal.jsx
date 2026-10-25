@@ -14,15 +14,16 @@ import { Check, ChevronDown } from 'lucide-react';
 import Modal, { ModalHeader, ModalTitle, ModalDescription, ModalBody, ModalFooter } from './ui/Modal';
 import { Bouton } from './ui/Bouton';
 
-const CGU_VERSION = '2025-02'; // Bump this when CGU content changes
-const CGU_VERSION_DATE = 'février 2025'; // la date de cette version, telle que l'affichent la case et la fenêtre
+import { CGU_VERSION, CGU_VERSION_DATE } from '../lib/cgu';
 
 /**
  * @param {(version: string) => Promise<true|string>} onAccept  enregistre l'acceptation ; sinon, le message qui dit pourquoi
  * @param {() => void} onAnnuler  l'artisan renonce au geste (le document n'est pas créé)
- * @param {'premier'|'version'} [motif]  premier document, ou nouvelle version des conditions
+ * @param {'premier'|'version'} [motif]  compte d'avant la case de l'inscription, ou nouvelle version des conditions
+ * @param {'document'|'envois'} [geste]  ce qui demande les conditions : un document (devis, facture, attestation) ou
+ *   l'activation des envois automatiques (rappels de ramonage, relances) — la fenêtre dit la bonne raison
  */
-export default function CGUAcceptanceModal({ onAccept, onAnnuler, motif = 'premier' }) {
+export default function CGUAcceptanceModal({ onAccept, onAnnuler, motif = 'premier', geste = 'document' }) {
   const [hasScrolledToEnd, setHasScrolledToEnd] = useState(false);
   const [checked, setChecked] = useState(false);
   const [isAccepting, setIsAccepting] = useState(false);
@@ -63,8 +64,10 @@ export default function CGUAcceptanceModal({ onAccept, onAnnuler, motif = 'premi
         <ModalTitle>Conditions générales d'utilisation</ModalTitle>
         <ModalDescription>
           {motif === 'version'
-            ? `Les conditions d'utilisation ont changé (version de ${CGU_VERSION_DATE}). Lisez-les et acceptez-les pour continuer à créer des documents. Vos données et vos documents restent accessibles et exportables, que vous acceptiez ou non.`
-            : 'Avant votre premier document, lisez et acceptez les conditions d’utilisation de Mallettico.'}
+            ? `Les conditions d'utilisation ont changé (version du ${CGU_VERSION_DATE}). Lisez-les et acceptez-les pour ${geste === 'envois' ? 'activer les envois automatiques' : 'continuer à créer des documents'}. Vos données et vos documents restent accessibles et exportables, que vous acceptiez ou non.`
+            : geste === 'envois'
+              ? 'Avant d’activer les envois automatiques, lisez et acceptez les conditions d’utilisation de Mallettico.'
+              : 'Avant votre premier document, lisez et acceptez les conditions d’utilisation de Mallettico.'}
         </ModalDescription>
       </ModalHeader>
 
@@ -139,7 +142,7 @@ export default function CGUAcceptanceModal({ onAccept, onAnnuler, motif = 'premi
             </p>
           </section>
 
-          <p className="text-xs text-encre-3 pt-2">Version {CGU_VERSION} — Dernière mise à jour : février 2025</p>
+          <p className="text-xs text-encre-3 pt-2">Version {CGU_VERSION} — Dernière mise à jour : {CGU_VERSION_DATE}</p>
       </ModalBody>
 
       {!hasScrolledToEnd && (
@@ -159,7 +162,7 @@ export default function CGUAcceptanceModal({ onAccept, onAnnuler, motif = 'premi
             className="mt-0.5 w-5 h-5 rounded border-bord-fort accent-accent flex-shrink-0"
           />
           <span className="text-sm text-encre">
-            J'ai lu et j'accepte les <strong>Conditions Générales d'Utilisation</strong> de Mallettico (version de {CGU_VERSION_DATE})
+            J'ai lu et j'accepte les <strong>Conditions Générales d'Utilisation</strong> de Mallettico (version du {CGU_VERSION_DATE})
           </span>
         </label>
         {erreur && <p role="alert" className="text-sm font-medium text-danger-texte">{erreur}</p>}

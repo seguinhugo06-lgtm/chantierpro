@@ -631,7 +631,8 @@ export function DataProvider({ children, initialData = {} }) {
   // l'enveloppe d'App.jsx, et le parcours du ramoneur, qui appelle les fonctions d'ici, la contournait.
   const gardeCguRef = useRef(null);
   const enregistrerGardeCgu = useCallback((fn) => { gardeCguRef.current = fn; }, []);
-  const exigerCgu = useCallback(() => (gardeCguRef.current ? gardeCguRef.current() : Promise.resolve(true)), []);
+  // geste : « document » (devis, facture, attestation) ou « envois » (activation des envois automatiques)
+  const exigerCgu = useCallback((geste = 'document') => (gardeCguRef.current ? gardeCguRef.current(geste) : Promise.resolve(true)), []);
 
   // ============ DEVIS OPERATIONS ============
   const addDevis = useCallback(async (data) => {

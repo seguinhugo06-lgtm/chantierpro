@@ -6,6 +6,7 @@
 const fs = require('fs');
 const path = require('path');
 const { creerBase, UID, json } = require('../lib/fauxSupabase.cjs');
+const { CGU_VERSION } = require('../lib/cgu.cjs');
 
 const AN = new Date().getFullYear();
 const sansInstallation = () => { try { localStorage.setItem('pwa-install-dismissed', String(Date.now())); } catch { /* */ } };
@@ -189,7 +190,7 @@ module.exports = [
       const CLIENT = { id: 'c0c0c0c0-0000-4000-8000-000000000106', nom: 'Exemple', prenom: 'Paul', telephone: '0600000002', adresse: '5 rue Imaginaire, 24000 Exempleville', created_at: '2026-10-01T08:00:00Z' };
       const ENTREPRISE = { id: 'e0e0e0e0-0000-4000-8000-000000000106', user_id: UID, organization_id: ORG, nom: 'Ramonage Exemple', forme_juridique: 'Micro-entreprise',
         siret: '00000000000000', telephone: '0500000000', email: 'contact@exemple.fr', is_active: true, is_default: true,
-        settings_json: { reglages: { ramonageActif: true, nomEntrepreneur: 'Jean Exemple' } }, cgu_accepted_at: '2026-01-01T00:00:00Z', cgu_version: '2025-02',
+        settings_json: { reglages: { ramonageActif: true, nomEntrepreneur: 'Jean Exemple' } }, cgu_accepted_at: '2026-01-01T00:00:00Z', cgu_version: CGU_VERSION,
         created_at: '2026-01-01T00:00:00Z' };
       const base = creerBase({ clients: [CLIENT], entreprise: [ENTREPRISE] }, {
         refuser: (m, table, { corps }) => {
@@ -233,7 +234,7 @@ module.exports = [
         adresse: '7 allée Imaginaire, 24000 Exempleville', created_at: '2026-10-01T08:00:00Z' };
       const ENTREPRISE = { id: 'e0e0e0e0-0000-4000-8000-000000000107', user_id: UID, organization_id: ORG, nom: 'Ramonage Exemple', forme_juridique: 'Micro-entreprise',
         siret: '00000000000000', telephone: '0500000000', email: 'contact@exemple.fr', is_active: true, is_default: true,
-        settings_json: { reglages: { ramonageActif: true, nomEntrepreneur: 'Jean Exemple' } }, cgu_accepted_at: '2026-01-01T00:00:00Z', cgu_version: '2025-02',
+        settings_json: { reglages: { ramonageActif: true, nomEntrepreneur: 'Jean Exemple' } }, cgu_accepted_at: '2026-01-01T00:00:00Z', cgu_version: CGU_VERSION,
         created_at: '2026-01-01T00:00:00Z' };
       const ligne = (id, numero, le, prochain) => ({ id, user_id: UID, organization_id: ORG, numero, client_id: CLIENT.id, appareil_ref: 'f0f0f0f0-0000-4000-8000-000000000107',
         realise_le: le, intervenant_nom: 'Jean Exemple', client_nom: 'Rose Exemple', qualite_client: 'locataire', adresse_intervention: CLIENT.adresse,
@@ -295,7 +296,7 @@ module.exports = [
       const ENTREPRISE = { id: 'e0e0e0e0-0000-4000-8000-000000000104', user_id: UID, organization_id: '0e0e0e0e-0e0e-4e0e-8e0e-0e0e0e0e0e0e',
         nom: 'Ramonage Exemple', forme_juridique: 'Micro-entreprise', siret: '00000000000000', telephone: '0500000000', email: 'contact@exemple.fr',
         adresse: '1 rue de l’Exemple', code_postal: '24000', ville: 'Imaginaire', is_active: true, is_default: true,
-        settings_json: { reglages: { ramonageActif: true, nomEntrepreneur: 'Jean Exemple' } }, cgu_accepted_at: '2026-01-01T00:00:00Z', cgu_version: '2025-02',
+        settings_json: { reglages: { ramonageActif: true, nomEntrepreneur: 'Jean Exemple' } }, cgu_accepted_at: '2026-01-01T00:00:00Z', cgu_version: CGU_VERSION,
         created_at: '2026-01-01T00:00:00Z' };
       let envoye = null;
       const base = creerBase({ clients: [CLIENT], entreprise: [ENTREPRISE] }, {

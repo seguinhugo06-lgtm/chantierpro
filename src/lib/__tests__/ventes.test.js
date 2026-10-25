@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { estEmise, estOuverte, estEnRetard, encaisse, resteAFacturer, creances, chiffreAffairesHT, tvaFacturee, facturesEmises, aTraiter, estUrgent, devisARelancer, joursDepuisEnvoi } from '../ventes';
+import { estEmise, estOuverte, estEnRetard, encaisse, resteAFacturer, creances, chiffreAffairesHT, tvaFacturee, facturesEmises, aTraiter, estUrgent, devisARelancer, joursDepuisEnvoi, premierDevisARelancer } from '../ventes';
 
 // Scénario de la recette du 9 oct. 2026 (Finances, S1) : un devis signé à 12 000 € TTC avec sa facture
 // d'acompte de 3 600 €, une facture payée, un brouillon, une facture annulée par un avoir total.
@@ -88,5 +88,16 @@ describe('ventes : une définition pour toute l’app', () => {
     expect(estUrgent({ ...A1, date_echeance: '2026-10-01' }, PAIEMENTS, MAINTENANT)).toBe(true);
     expect(estUrgent(D3, PAIEMENTS, MAINTENANT)).toBe(false); // à relancer, mais pas rouge
     expect(estUrgent(F3, PAIEMENTS, MAINTENANT)).toBe(false);
+  });
+
+  it('fiche client : le devis à relancer en premier suit la même règle (depuis l’envoi, jamais expiré)', () => {
+    const maintenant = new Date('2026-10-28T12:00:00');
+    const recent = { ...D3, id: 'R1', date: '2026-10-10', date_envoi: '2026-10-24', validite: 60 }; // 4 jours : pas encore
+    const ancien = { ...D3, id: 'R2', date: '2026-10-01', date_envoi: '2026-10-12', validite: 60 }; // 16 jours
+    const expire = { ...D3, id: 'R3', date: '2026-08-01', date_envoi: '2026-08-01', validite: 30 }; // expiré : jamais
+    expect(premierDevisARelancer([recent, ancien, expire], maintenant)).toEqual({ devis: ancien, jours: 16 });
+    expect(premierDevisARelancer([recent, expire], maintenant)).toBeNull();
+    // Un devis créé le 10 et envoyé le 24 : pas « sans réponse depuis 18 jours » le 28
+    expect(premierDevisARelancer([recent], maintenant)).toBeNull();
   });
 });

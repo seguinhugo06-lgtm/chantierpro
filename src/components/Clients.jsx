@@ -10,7 +10,7 @@ import Carte from './ui/Carte';
 import { Onglets } from './ui/Onglets';
 import EtatVide from './ui/EtatVide';
 import { statutFacture, resteAPayer, dejaPaye, dateLocale } from '../lib/paiementsFacture';
-import { encaisse, estOuverte, resteAFacturer, estSigne } from '../lib/ventes';
+import { encaisse, estOuverte, resteAFacturer, estSigne, premierDevisARelancer } from '../lib/ventes';
 import { ouvrirLienExterne } from '../lib/natif';
 import { colorForString } from '../lib/uiTheme';
 
@@ -91,7 +91,7 @@ function HighlightText({ text, query, className = '' }) {
   );
 }
 
-export default function Clients({ clients, setClients, updateClient, deleteClient: deleteClientProp, devis, chantiers, echanges = [], onSubmit, couleur, setPage, setSelectedChantier, setSelectedDevis, isDark, createMode, setCreateMode, modeDiscret, memos = [], addMemo, updateMemo, deleteMemo, toggleMemo, onImportClients, entreprise, nouveauDevisPour, nouveauChantierPour }) {
+export default function Clients({ clients, setClients, updateClient, deleteClient: deleteClientProp, devis, chantiers, echanges = [], onSubmit, couleur, setPage, setSelectedChantier, setSelectedDevis, isDark, createMode, setCreateMode, modeDiscret, memos = [], addMemo, updateMemo, deleteMemo, toggleMemo, onImportClients, entreprise, nouveauDevisPour, nouveauChantierPour, ouvrirDevis }) {
   const { confirm } = useConfirm();
   const { showToast } = useToast();
   const { addClient: ctxAddClient, updateDevis: ctxUpdateDevis, updateChantier: ctxUpdateChantier, paiements = [], ramonages = [] } = useData();
@@ -788,10 +788,8 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
 
         {/* Ce qui attend, en une phrase */}
         {(() => {
-          const pendingDevis = clientDevis.filter(d => d.type === 'devis' && (d.statut === 'envoye' || d.statut === 'vu'));
-          const oldestPending = [...pendingDevis].sort((a, b) => new Date(a.date || a.created_at) - new Date(b.date || b.created_at))[0];
-          // Attente comptée depuis l'envoi, pas depuis la création du devis
-          const daysSinceSent = oldestPending ? Math.floor((Date.now() - dateLue(oldestPending.date_envoi || oldestPending.date || oldestPending.created_at).getTime()) / 86400000) : 0;
+          // Le devis à relancer : la règle de la pastille et de l'Accueil (src/lib/ventes.js) — depuis l'envoi, jamais expiré
+          const aRelancer = premierDevisARelancer(clientDevis, new Date(), entreprise);
           // Signé et pas encore facturé : aucune facture rattachée au devis, hormis un acompte (le solde reste à faire).
           const acceptedNotInvoiced = clientDevis.filter(d => d.type === 'devis' && estSigne(d)
             && !clientDevis.some(f => f.type === 'facture' && f.devis_source_id === d.id && f.facture_type !== 'acompte'));
@@ -804,8 +802,15 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
           const monthsSinceActivity = lastActivityDate > 0 ? Math.floor((Date.now() - lastActivityDate) / (86400000 * 30)) : -1;
 
           let alert = null;
-          if (oldestPending && daysSinceSent > 7) {
-            alert = { icon: Clock, ton: 'alerte', message: `Devis ${oldestPending.numero || ''} sans réponse depuis ${daysSinceSent} jours`.replace('  ', ' '), action: 'Relancer', onAction: () => { setSelectedDevis?.(oldestPending); setPage?.('devis'); } };
+          if (aRelancer) {
+            const { devis: aRelancerDevis, jours } = aRelancer;
+            // « Relancer » envoie au client : seulement pour un rôle qui envoie, et il ouvre la feuille « Relancer »
+            const peutRelancer = canPerform('devis', 'send');
+            alert = {
+              icon: Clock, ton: 'alerte',
+              message: `Devis ${aRelancerDevis.numero || ''} sans réponse depuis ${jours} jours`.replace('  ', ' '),
+              ...(peutRelancer ? { action: 'Relancer', onAction: () => { if (ouvrirDevis) ouvrirDevis({ relancer: aRelancerDevis.id }); else { setSelectedDevis?.(aRelancerDevis); setPage?.('devis'); } } } : {}),
+            };
           } else if (acceptedNotInvoiced.length > 0) {
             alert = { icon: Zap, ton: 'succes', message: acceptedNotInvoiced.length > 1 ? `${acceptedNotInvoiced.length} devis signés à facturer` : 'Un devis signé à facturer', action: 'Facturer', onAction: () => { setSelectedDevis?.(acceptedNotInvoiced[0]); setPage?.('devis'); } };
           } else if (terminatedNoInvoice.length > 0) {

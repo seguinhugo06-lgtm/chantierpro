@@ -3,6 +3,13 @@ import { FONCTIONS } from '../lib/fonctions';
 import { ArrowLeft, Sparkles, Bug, Zap, Shield, Package, ChevronDown, ChevronUp } from 'lucide-react';
 import { dateLue } from '../lib/dates';
 
+// Journal public : une entrée ne promet rien qui n'existe pas aujourd'hui (relecture du 25 oct. 2026). Retirés : le
+// bandeau cookies et la mesure d'audience Plausible (retirés), l'export « Pennylane, Indy » (jamais fait), le bouton
+// d'action rapide (retiré), le carnet d'entretien et les commandes fournisseurs (absents de l'app), l'essai gratuit de
+// 14 jours et la page de tarification (retirés), les infobulles des nouveaux utilisateurs (absentes), le module
+// Sous-traitants (absent : « sous-traitant » n'est qu'un rôle d'équipe) ; le module de signatures (retiré le 10 oct.)
+// devient la signature en ligne des devis, qui existe ; les nombres devenus faux (4 plans, 7 modules, « un plan
+// payant ») aussi.
 const CHANGELOG = [
   {
     version: '3.3.0',
@@ -10,14 +17,12 @@ const CHANGELOG = [
     title: 'Simplification & Support',
     highlights: true,
     changes: [
-      { type: 'improve', text: 'Sidebar simplifiée : 7 modules essentiels (au lieu de 17)' },
+      { type: 'improve', text: 'Menu simplifié : les modules essentiels d\'abord' },
       { type: 'new', text: 'Page Finances unifiée (Trésorerie + Export + Analytique)' },
-      { type: 'improve', text: 'Tarification simplifiée : un plan gratuit et un plan payant' },
       { type: 'new', text: 'Planning accessible gratuitement pour tous' },
       { type: 'new', text: 'FAQ enrichie avec recherche intégrée (18+ questions)' },
       { type: 'new', text: 'Onglet Administratif dans les Paramètres' },
-      { type: 'new', text: 'Emails lifecycle automatiques (bienvenue, essai, paiement)' },
-      { type: 'new', text: 'Tooltips contextuels pour les nouveaux utilisateurs' },
+      { type: 'new', text: 'E-mail de bienvenue automatique' },
       { type: 'improve', text: 'Palette de commandes mise à jour' },
     ],
   },
@@ -27,12 +32,10 @@ const CHANGELOG = [
     title: 'Conformité & Lancement',
     changes: [
       { type: 'new', text: 'Pages légales complètes (CGV, CGU, Confidentialité, Mentions légales)' },
-      { type: 'new', text: 'Bandeau de consentement cookies RGPD' },
       { type: 'new', text: 'Export de données personnelles (RGPD)' },
       { type: 'new', text: 'Suppression de compte (droit à l\'effacement)' },
       { type: 'new', text: 'En-têtes de sécurité HTTP (HSTS, CSP, X-Frame-Options)' },
       { type: 'new', text: 'SEO : sitemap.xml, robots.txt, méta-données Open Graph' },
-      { type: 'new', text: 'Analytics Plausible (privacy-first, sans cookies)' },
       { type: 'improve', text: 'Landing page marketing optimisée' },
     ],
   },
@@ -41,10 +44,8 @@ const CHANGELOG = [
     date: '2026-02-07',
     title: 'Abonnements & Monétisation',
     changes: [
-      { type: 'new', text: 'Système d\'abonnement Stripe (4 plans)' },
-      { type: 'new', text: 'Page de tarification avec comparatif' },
+      { type: 'new', text: 'Abonnement en ligne par Stripe' },
       { type: 'new', text: 'Dashboard facturation avec historique' },
-      { type: 'new', text: 'Bannière d\'essai gratuit 14 jours' },
       { type: 'new', text: 'Alertes d\'utilisation par palier' },
       { type: 'new', text: 'Feature gates par plan (accès conditionnel)' },
       { type: 'improve', text: 'Modal d\'upgrade contextuelle' },
@@ -60,7 +61,7 @@ const CHANGELOG = [
       { type: 'new', text: 'Landing page marketing' },
       { type: 'new', text: 'Numérotation atomique des documents (PL/pgSQL)' },
       { type: 'new', text: 'Service d\'envoi d\'e-mails (Edge Function + Resend)' },
-      { type: 'improve', text: 'Validation de formulaires renforcée (DevisWizard, Équipe, Sous-traitants)' },
+      { type: 'improve', text: 'Validation de formulaires renforcée (devis, équipe)' },
       { type: 'fix', text: 'Correction des accents manquants (Expirée, Prénom, Électricien...)' },
     ],
   },
@@ -69,13 +70,10 @@ const CHANGELOG = [
     date: '2026-02-05',
     title: 'Modules métier avancés',
     changes: [
-      { type: 'new', text: 'Module Sous-Traitants avec conformité documentaire' },
-      { type: 'new', text: 'Commandes Fournisseurs avec gestion de stock' },
       { type: 'new', text: 'Trésorerie temps réel avec prévisionnel' },
       ...(FONCTIONS.ia ? [{ type: 'new', text: 'IA Devis : analyse photo de chantier' }] : []),
-      { type: 'new', text: 'Carnet d\'Entretien numérique' },
-      { type: 'new', text: 'Module Signatures électroniques' },
-      { type: 'new', text: 'Export comptable (FEC, CSV, Pennylane, Indy)' },
+      { type: 'new', text: 'Signature en ligne des devis' },
+      { type: 'new', text: 'Export comptable (FEC, CSV, Excel)' },
       { type: 'new', text: 'Bibliothèque d\'Ouvrages composites' },
     ],
   },
@@ -84,11 +82,10 @@ const CHANGELOG = [
     date: '2026-02-03',
     title: 'Refonte UX & Robustesse',
     changes: [
-      { type: 'new', text: 'Mode hors ligne avec synchronisation automatique' },
+      { type: 'new', text: 'Saisies sans réseau gardées sur l\'appareil, envoyées au retour de la connexion' },
       { type: 'new', text: 'PWA installable avec Service Worker' },
       { type: 'new', text: 'Système de design unifié (couleur, dark mode)' },
       { type: 'new', text: 'Palette de commandes (⌘K)' },
-      { type: 'new', text: 'Bouton d\'action rapide (FAB)' },
       { type: 'new', text: 'Onboarding interactif pour nouveaux utilisateurs' },
       { type: 'improve', text: 'Responsive mobile-first sur tous les modules' },
       { type: 'fix', text: 'Correction du bug d\'affichage récursif (#310)' },

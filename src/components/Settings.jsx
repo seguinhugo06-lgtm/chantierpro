@@ -182,12 +182,12 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
         },
         entreprise,
         donnees: { clients, devis_et_factures: devis, chantiers, depenses },
-        consentements: (() => {
-          try {
-            const c = localStorage.getItem('cp_cookie_consent');
-            return c ? JSON.parse(c) : { info: 'Aucun consentement enregistré' };
-          } catch { return { info: 'Consentements illisibles sur cet appareil' }; }
-        })(),
+        // Conditions d'utilisation acceptées (métadonnées du compte, depuis le 25 oct. 2026). Le bandeau des traceurs a été
+        // retiré : aucun traceur soumis à consentement n'est utilisé, il n'y a plus de choix à exporter.
+        conditions_utilisation: {
+          version: user?.user_metadata?.cgu_version || entreprise?.cguVersion || null,
+          acceptees_le: user?.user_metadata?.cgu_accepted_at || entreprise?.cguAcceptedAt || null,
+        },
       };
       const blob = new Blob([JSON.stringify(rgpdData, null, 2)], { type: 'application/json' });
       remettreFichier(blob, `mallettico_export_donnees_${jourLocal()}.json`)
@@ -237,7 +237,14 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
   const updateEntreprise = useCallback((updater) => {
     setSaveStatus('saving');
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-    return Promise.resolve(setEntreprise(updater)).then(() => {
+    return Promise.resolve(setEntreprise(updater)).then((ecrit) => {
+      // Rien n'a été écrit (envois automatiques refusés faute de conditions d'utilisation acceptées, App.jsx) : aucun
+      // « Enregistré » — l'app a déjà dit pourquoi (relecture du 25 oct. 2026 : « Enregistré » s'affichait quand même)
+      if (ecrit === false) {
+        if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+        setSaveStatus(null);
+        return false;
+      }
       // Debounce the toast to avoid spam
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
       saveTimeoutRef.current = setTimeout(() => {

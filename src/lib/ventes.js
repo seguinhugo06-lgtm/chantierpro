@@ -66,6 +66,17 @@ export function devisARelancer(d, maintenant = new Date(), entreprise = null) {
 }
 
 /**
+ * Le devis à relancer en premier parmi des documents (ceux d'un client : alerte de sa fiche) : celui qui attend depuis
+ * le plus longtemps, selon devisARelancer. Rend { devis, jours } ou null.
+ */
+export function premierDevisARelancer(documents = [], maintenant = new Date(), entreprise = null) {
+  const aRelancer = documents.filter((d) => devisARelancer(d, maintenant, entreprise));
+  if (aRelancer.length === 0) return null;
+  const devis = aRelancer.reduce((a, b) => (joursDepuisEnvoi(b, maintenant) > joursDepuisEnvoi(a, maintenant) ? b : a));
+  return { devis, jours: joursDepuisEnvoi(devis, maintenant) };
+}
+
+/**
  * Document « à traiter » — UNE règle pour la puce de la liste Devis & factures, la pastille du menu, « À faire
  * aujourd'hui » de l'Accueil et la cloche (audit UX du 20 oct. 2026) :
  * - brouillon de plus de 2 jours (à finaliser) ;
@@ -80,8 +91,8 @@ export function aTraiter(d, paiements = [], maintenant = new Date(), entreprise 
 }
 
 /**
- * Urgent : une facture en retard. Le rouge lui est réservé (audit, P2 de la coque) ; un devis à relancer ou un
- * brouillon à finaliser est « à surveiller » (ambre).
+ * Urgent : une facture en retard. Le rouge veut dire « en retard » (une facture, ou une tâche, comptée ailleurs) ; un
+ * devis à relancer ou un brouillon à finaliser est « à surveiller » (ambre). Décision du contrôleur, 25 oct. 2026.
  */
 export function estUrgent(d, paiements = [], maintenant = new Date()) {
   return estFacture(d) && estEnRetard(d, paiements, maintenant);

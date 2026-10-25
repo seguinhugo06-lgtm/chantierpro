@@ -1,5 +1,6 @@
 import { ArrowLeft, Shield, FileText, Scale, Lock, Trash2 } from 'lucide-react';
 import { CGV_ARTICLE_4_PLANS, CGV_ARTICLE_4_TVA, libelleVersionCgv } from '../lib/cgv';
+import { CGU_VERSION_DATE } from '../lib/cgu';
 
 // ─── Mallettico SaaS Company Info (editor) ────────────────────────────────────
 // Update these values with the actual company details before launch
@@ -271,6 +272,8 @@ export default function LegalPages({ page, couleur, setPage }) {
 
   const renderCGU = () => (
     <>
+      {/* La version que nomment la case de l'inscription et la fenêtre d'acceptation (src/lib/cgu.js) */}
+      <p className={`mb-8 text-sm font-medium ${textSecondary}`}>Version du {CGU_VERSION_DATE}</p>
       <Section title="Article 1 - Objet">
         <P>
           Les présentes Conditions Générales d'Utilisation (CGU) ont pour objet de définir les modalités
@@ -537,7 +540,6 @@ export default function LegalPages({ page, couleur, setPage }) {
           <li><strong className={textPrimary}>Factures de votre abonnement Mallettico :</strong> 10 ans à compter de la clôture de l'exercice (Code de commerce, Art. L123-22), chez notre prestataire de paiement Stripe. Les devis et factures que vous établissez pour vos clients sont les vôtres : vous devez les conserver 10 ans ; ils sont effacés avec votre compte, téléchargez-les avant</li>
           <li><strong className={textPrimary}>Données de connexion :</strong> 12 mois conformément à la législation en vigueur</li>
           <li><strong className={textPrimary}>Données de géolocalisation :</strong> 3 mois</li>
-          <li><strong className={textPrimary}>Cookies :</strong> 13 mois maximum</li>
         </UL>
         <P>
           À l'expiration de ces délais, les données sont supprimées ou anonymisées de manière irréversible.

@@ -73,7 +73,8 @@ import PortalLoader from './components/portal/PortalLoader';
 const GarantiesDashboard = lazyWithRetry(() => import('./components/chantiers/GarantiesDashboard'), 'Garanties');
 const PlanPage = lazyWithRetry(() => import('./components/profil/PlanPage'), 'Plan');
 const DicteeModal = lazyWithRetry(() => import('./components/voice/DicteeModal'), 'Dictée');
-import CGUAcceptanceModal, { CGU_VERSION, CGU_VERSION_DATE } from './components/CGUAcceptanceModal';
+import CGUAcceptanceModal from './components/CGUAcceptanceModal';
+import { CGU_VERSION, CGU_VERSION_DATE } from './lib/cgu';
 import { useConfirm, useToast } from './context/AppContext';
 import { useData } from './context/DataContext';
 import { useEntreprise } from './context/EntrepriseContext';
@@ -291,10 +292,12 @@ export default function App() {
     const newVal = typeof updater === 'function' ? updater(base) : updater;
     // Rappels de ramonage et relances envoyés par e-mail au nom de l'artisan : leur activation demande les conditions
     // d'utilisation, par la garde unique de DataContext (relecture juriste du 25 oct. 2026, G3)
+    // (relances : leur activation, et l'envoi « 100 % automatique », seul à faire partir les e-mails sans un clic)
     const activeEnvois = (!base?.ramonageEnvoiAuto && newVal?.ramonageEnvoiAuto)
-      || (!base?.relanceConfig?.enabled && newVal?.relanceConfig?.enabled);
+      || (!base?.relanceConfig?.enabled && newVal?.relanceConfig?.enabled)
+      || (!base?.relanceConfig?.autoSend && newVal?.relanceConfig?.autoSend);
     if (activeEnvois && !newVal?.__cguVerifiees) {
-      return exigerCguData().then((ok) => {
+      return exigerCguData('envois').then((ok) => {
         if (ok) return setEntreprise({ ...newVal, __cguVerifiees: true });
         showToast('Envois automatiques non activés : les conditions d’utilisation n’ont pas été acceptées.', 'info');
         return false;
@@ -578,7 +581,7 @@ export default function App() {
   // - une nouvelle version des CGU.
   // Un membre invité accepte pour lui-même (ses métadonnées) : il n'a plus besoin d'écrire la fiche de l'entreprise.
   // Jamais en démo. Avant (retour d'Hugo sur « Au Bon Volt »), la fenêtre surgissait au premier réglage enregistré.
-  const [demandeCgu, setDemandeCgu] = useState(null); // { resolve, motif }
+  const [demandeCgu, setDemandeCgu] = useState(null); // { resolve, motif, geste }
   const cguRef = useRef({ aJour: true, motif: 'premier', chargement: false });
   cguRef.current = {
     aJour: isDemo || !user
@@ -588,13 +591,13 @@ export default function App() {
     // Fiche de l'entreprise pas encore lue : on attend de savoir (avant, « en chargement » valait « accepté »)
     chargement: entrepriseLoading,
   };
-  const verifierCgu = useCallback(async () => {
+  const verifierCgu = useCallback(async (geste = 'document') => {
     for (let i = 0; i < 50 && cguRef.current.chargement && !cguRef.current.aJour; i++) {
       await new Promise((resolve) => setTimeout(resolve, 100));
     }
     const { aJour, motif } = cguRef.current;
     if (aJour) return true;
-    return new Promise((resolve) => setDemandeCgu({ resolve, motif }));
+    return new Promise((resolve) => setDemandeCgu({ resolve, motif, geste }));
   }, []);
   useEffect(() => {
     enregistrerGardeCgu?.(verifierCgu);
@@ -806,14 +809,18 @@ export default function App() {
       } catch { /* préférence non enregistrée : quota plein ou navigation privée */ }
     }
   }, [entreprise, activeEntreprise]);
-  useEffect(() => { try { localStorage.setItem('cp_theme', theme); } catch (e) { console.warn('Failed to save theme:', e.message); } }, [theme]);
+  // Visiteur anonyme de la vitrine : rien n'est écrit sur son appareil (ni préférences, ni page, ni base hors ligne)
+  // tant qu'il n'est pas connecté (relecture du 25 oct. 2026). Les écritures reprennent à la connexion.
+  const visiteurAnonyme = !user && !isDemo;
+  useEffect(() => { if (visiteurAnonyme) return; try { localStorage.setItem('cp_theme', theme); } catch (e) { console.warn('Failed to save theme:', e.message); } }, [theme, visiteurAnonyme]);
   // Racine du thème : data-theme + accent lisible sur <html>, lus par les primitives de ui/ (src/lib/theme.js).
   useEffect(() => { appliquerTheme(document.documentElement, { sombre: theme === 'dark', couleur: entreprise?.couleur }); }, [theme, entreprise?.couleur]);
-  useEffect(() => { try { localStorage.setItem('cp_mode_discret', JSON.stringify(modeDiscret)); } catch (e) { console.warn('Failed to save modeDiscret:', e.message); } }, [modeDiscret]);
+  useEffect(() => { if (visiteurAnonyme) return; try { localStorage.setItem('cp_mode_discret', JSON.stringify(modeDiscret)); } catch (e) { console.warn('Failed to save modeDiscret:', e.message); } }, [modeDiscret, visiteurAnonyme]);
   useEffect(() => {
     logger.debug('[NAV] page changed to:', page);
+    if (visiteurAnonyme) return;
     try { localStorage.setItem('cp_current_page', page); } catch (e) { console.warn('Failed to save page:', e.message); }
-  }, [page]);
+  }, [page, visiteurAnonyme]);
 
   // Browser history: support back/forward buttons in this SPA
   useEffect(() => {
@@ -1205,8 +1212,9 @@ export default function App() {
 
   synchroRef.current = handleManualSync;
 
-  // Network status listener for offline mode
+  // Network status listener for offline mode — pas pour un visiteur anonyme (la base hors ligne n'est pas créée)
   useEffect(() => {
+    if (visiteurAnonyme) return undefined;
     const updatePendingCount = async () => {
       // In demo mode, clear any stale mutations and set count to 0
       if (isDemo) {
@@ -1234,7 +1242,7 @@ export default function App() {
 
     updatePendingCount();
     return unsubscribe;
-  }, [compteId]);
+  }, [compteId, visiteurAnonyme]);
 
   // Notifications are now computed via useMemo (see above) — no useEffect needed
 
@@ -1486,7 +1494,7 @@ export default function App() {
                   className="mt-0.5 h-5 w-5 flex-shrink-0 rounded border-marque-acier accent-marque-nuit-2"
                 />
                 <span>
-                  J'ai lu et j'accepte les <a href="/cgu" target="_blank" rel="noopener noreferrer" className={`${lien} underline`}>Conditions générales d'utilisation</a> de Mallettico (version de {CGU_VERSION_DATE}) et les <a href="/cgv" target="_blank" rel="noopener noreferrer" className={`${lien} underline`}>Conditions générales de vente</a>.
+                  J'ai lu et j'accepte les <a href="/cgu" target="_blank" rel="noopener noreferrer" className={`${lien} underline`}>Conditions générales d'utilisation</a> de Mallettico (version du {CGU_VERSION_DATE}) et les <a href="/cgv" target="_blank" rel="noopener noreferrer" className={`${lien} underline`}>Conditions générales de vente</a>.
                 </span>
               </label>
             )}
@@ -1571,7 +1579,8 @@ export default function App() {
     {
       id: 'tasks', icon: CalendarCheck, label: 'Tâches & Planning',
       badge: memosOverdueCount + todayEvents,
-      badgeTon: memosOverdueCount > 0 ? 'alerte' : 'neutre',
+      // Rouge : une tâche en retard (comme l'Accueil) ; neutre : les événements du jour
+      badgeTon: memosOverdueCount > 0 ? 'danger' : 'neutre',
       badgeTitle: [
         memosOverdueCount > 0 ? `${pluriel(memosOverdueCount, 'tâche')} en retard` : '',
         todayEvents > 0 ? `${pluriel(todayEvents, 'événement')} aujourd'hui` : '',
@@ -1608,8 +1617,8 @@ export default function App() {
     { titre: 'Compte', ids: ['settings', 'plan'] },
   ];
   const unreadNotifs = notifications.filter(n => !n.read);
-  // Cloche : rouge pour une facture en retard, ambre pour une autre alerte, neutre sinon
-  const tonCloche = unreadNotifs.some(n => n.itemType === 'facture' && n.type === 'alert') ? 'danger'
+  // Cloche : rouge pour un retard (facture, chantier), ambre pour une autre alerte, neutre sinon
+  const tonCloche = unreadNotifs.some(n => /^(facture-impayee|chantier-retard)-/.test(n.id)) ? 'danger'
     : unreadNotifs.some(n => n.type === 'alert' || n.type === 'warning') ? 'alerte' : 'neutre';
   const allerA = (id) => { setPage(id); setMenuPlus(false); setSelectedChantier(null); };
   const rubriquesPlus = nav.filter(n => !ONGLETS_BAS.includes(n.id));
@@ -1631,7 +1640,7 @@ export default function App() {
     <div className="min-h-screen bg-fond">
       {/* CGU : compte d'avant la case de l'inscription, ou nouvelle version (garde de DataContext) */}
       {demandeCgu && (
-        <CGUAcceptanceModal motif={demandeCgu.motif} onAccept={accepterCgu} onAnnuler={annulerCgu} />
+        <CGUAcceptanceModal motif={demandeCgu.motif} geste={demandeCgu.geste} onAccept={accepterCgu} onAnnuler={annulerCgu} />
       )}
       {/* Skip to main content link for accessibility */}
       <a
@@ -1929,7 +1938,7 @@ export default function App() {
                   initialView={page === 'planning' ? 'calendar' : page === 'memos' ? 'list' : undefined}
                 />
               )}
-              {page === 'clients' && <Clients clients={clients} setClients={setClients} updateClient={updateClient} deleteClient={deleteClient} devis={devis} chantiers={chantiers} echanges={echanges} onSubmit={addClient} couleur={couleur} setPage={setPage} setSelectedChantier={setSelectedChantier} setSelectedDevis={setSelectedDevis} isDark={isDark} modeDiscret={modeDiscret} createMode={createMode.client} setCreateMode={(v) => setCreateMode(p => ({...p, client: v}))} nouveauDevisPour={(clientId) => { setCreateMode(p => ({ ...p, devis: { clientId } })); setPage('devis'); }} nouveauChantierPour={(clientId) => { setCreateMode(p => ({ ...p, chantier: { clientId } })); setPage('chantiers'); }} memos={memos} addMemo={addMemo} updateMemo={updateMemo} deleteMemo={deleteMemo} toggleMemo={toggleMemo} onImportClients={() => { setImportType('clients'); setShowImport(true); }} entreprise={entreprise} />}
+              {page === 'clients' && <Clients clients={clients} setClients={setClients} updateClient={updateClient} deleteClient={deleteClient} devis={devis} chantiers={chantiers} echanges={echanges} onSubmit={addClient} couleur={couleur} setPage={setPage} setSelectedChantier={setSelectedChantier} setSelectedDevis={setSelectedDevis} isDark={isDark} modeDiscret={modeDiscret} createMode={createMode.client} setCreateMode={(v) => setCreateMode(p => ({...p, client: v}))} nouveauDevisPour={(clientId) => { setCreateMode(p => ({ ...p, devis: { clientId } })); setPage('devis'); }} nouveauChantierPour={(clientId) => { setCreateMode(p => ({ ...p, chantier: { clientId } })); setPage('chantiers'); }} ouvrirDevis={ouvrirDevis} memos={memos} addMemo={addMemo} updateMemo={updateMemo} deleteMemo={deleteMemo} toggleMemo={toggleMemo} onImportClients={() => { setImportType('clients'); setShowImport(true); }} entreprise={entreprise} />}
               {page === 'catalogue' && <Catalogue entreprise={entreprise} catalogue={catalogue} setCatalogue={setCatalogue} addCatalogueItem={addCatalogueItem} updateCatalogueItem={updateCatalogueItem} deleteCatalogueItem={deleteCatalogueItem} chantiers={chantiers} equipe={equipe} devis={devis} updateDevis={updateDevis} clients={clients} couleur={couleur} isDark={isDark} modeDiscret={modeDiscret} setPage={setPage} />}
               {page === 'ouvrages' && <BibliothequeOuvrages catalogue={catalogue} ouvragesProp={ouvrages} setOuvragesProp={setOuvrages} addOuvrage={dataAddOuvrage} updateOuvrage={dataUpdateOuvrage} deleteOuvrage={dataDeleteOuvrage} isDark={isDark} couleur={couleur} />}
               {page === 'export' && <FeatureGuard feature="export_comptable"><ExportComptable devis={devis} depenses={depenses} chantiers={chantiers} clients={clients} entreprise={entreprise} isDark={isDark} couleur={couleur} /></FeatureGuard>}
@@ -2328,7 +2337,7 @@ function HelpModal({ setShowHelp, isDark: _isDark }) {
       icon: Home,
       content: (
         <div className="space-y-4">
-          <p className="text-encre-2">Mallettico est votre assistant de gestion quotidien. Suivez vos chantiers, vos devis et votre rentabilité en quelques clics.</p>
+          <p className="text-encre-2">Mallettico est votre assistant de gestion quotidien. Suivez vos chantiers, vos devis et votre rentabilité au même endroit.</p>
           <div className={encart}>
             <h4 className="font-semibold mb-2 text-encre">Par où commencer ?</h4>
             <ol className="text-sm space-y-2 text-encre-2">
@@ -2419,7 +2428,7 @@ function HelpModal({ setShowHelp, isDark: _isDark }) {
     },
     astuces: {
       title: "Astuces",
-      titleFull: "Astuces pour gagner du temps",
+      titleFull: "Astuces",
       icon: Lightbulb,
       content: (
         <div className="space-y-4">
@@ -2600,11 +2609,11 @@ function OnboardingModal({ setShowOnboarding, isDark: _isDark, couleur: _couleur
       content: (
         <div className="space-y-4">
           <p className="text-center text-encre-2">
-            Gérez vos devis, factures et chantiers en toute simplicité. Tout est pensé pour vous faire gagner du temps.
+            Vos devis à partir de vos prestations, la facture sans ressaisie, vos chantiers et vos encaissements au même endroit.
           </p>
           <div className="grid grid-cols-3 gap-3 mt-6">
             {[
-              { Icone: FileText, texte: 'Devis rapides' },
+              { Icone: FileText, texte: 'Devis depuis vos prestations' },
               { Icone: TrendingUp, texte: 'Marge calculée pour vous' },
               { Icone: Smartphone, texte: 'Sur téléphone' },
             ].map(({ Icone, texte }) => (
@@ -2619,7 +2628,7 @@ function OnboardingModal({ setShowOnboarding, isDark: _isDark, couleur: _couleur
     },
     {
       icon: FileText,
-      title: "Créez vos devis rapidement",
+      title: "Vos devis, puis vos factures",
       subtitle: "Du devis à la facture, sans ressaisie",
       content: (
         <div className="space-y-4">
@@ -2702,7 +2711,7 @@ function OnboardingModal({ setShowOnboarding, isDark: _isDark, couleur: _couleur
               {[
                 ['Configurez votre entreprise', 'Allez dans Paramètres pour ajouter votre logo et vos infos'],
                 ['Créez votre premier client', 'Ajoutez les coordonnées de vos clients pour les retrouver facilement'],
-                ['Créez votre premier devis', 'Générez un devis professionnel en quelques minutes'],
+                ['Créez votre premier devis', 'À partir de vos prestations ; la facture suivra sans ressaisie'],
               ].map(([titre, texte], i) => (
                 <li key={titre} className="flex items-start gap-3">
                   <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 bg-surface text-encre border border-bord-fort">{i + 1}</div>

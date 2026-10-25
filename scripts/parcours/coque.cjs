@@ -2,6 +2,7 @@
 // en-tête resserré, pastilles qui ne crient qu'en cas de retard, fond des fenêtres sans « petit jour », Accueil qui
 // guide un compte neuf et dont les boutons font ce qu'ils disent, conditions d'utilisation demandées au premier document.
 const json = (corps, status = 200) => ({ status, body: JSON.stringify(corps) });
+const { CGU_VERSION, CGU_VERSION_DATE } = require('../lib/cgu.cjs');
 const texteDialogue = (page) => page.evaluate(() => [...document.querySelectorAll('[role="dialog"]')].map((d) => d.innerText).join('\n'));
 
 module.exports = [
@@ -229,7 +230,7 @@ module.exports = [
       });
       await attendre(1500);
       const formulaire = await page.evaluate(() => document.querySelector('form')?.innerText || '');
-      verifier(/J'ai lu et j'accepte les Conditions générales d'utilisation de Mallettico \(version de février 2025\) et les Conditions générales de vente/.test(formulaire), 'la case des conditions, avec la version');
+      verifier(formulaire.includes(`J'ai lu et j'accepte les Conditions générales d'utilisation de Mallettico (version du ${CGU_VERSION_DATE}) et les Conditions générales de vente`), 'la case des conditions, avec la version');
       verifier(/Mallettico \(Hugo Seguin EI\) utilise votre e-mail et votre nom pour créer et sécuriser votre compte/.test(formulaire), 'l’information sur les données');
       const liens = await page.evaluate(() => [...document.querySelectorAll('form a')].map((a) => a.getAttribute('href')));
       verifier(['/cgu', '/cgv', '/confidentialite'].every((h) => liens.includes(h)), `liens vers les CGU, les CGV et la politique (${JSON.stringify(liens)})`);
@@ -247,7 +248,7 @@ module.exports = [
       await attendre(1500);
       verifier(inscriptions.length === 1, `le compte est demandé une fois la case cochée (${inscriptions.length})`);
       const meta = inscriptions[0]?.data || {};
-      verifier(meta.cgu_version === '2025-02' && !!meta.cgu_accepted_at, `la version et la date acceptées partent avec le compte (${JSON.stringify(meta)})`);
+      verifier(meta.cgu_version === CGU_VERSION && !!meta.cgu_accepted_at, `la version et la date acceptées partent avec le compte (${JSON.stringify(meta)})`);
     },
   },
   {
@@ -327,10 +328,187 @@ module.exports = [
       await cliquer(page, 'Accepter et continuer');
       await attendre(2500);
       const derniere = acceptations[acceptations.length - 1] || {};
-      verifier(derniere.data?.cgu_version === '2025-02' && !!derniere.data?.cgu_accepted_at, `acceptation enregistrée sur le compte de l’utilisateur (${JSON.stringify(derniere.data)})`);
+      verifier(derniere.data?.cgu_version === CGU_VERSION && !!derniere.data?.cgu_accepted_at, `acceptation enregistrée sur le compte de l’utilisateur (${JSON.stringify(derniere.data)})`);
       verifier(!base.journal.some((j) => j.m === 'PATCH' && j.table === 'entreprise' && j.corps?.cgu_version), 'sans écrire la fiche de l’entreprise (un membre invité peut accepter)');
       verifier(!(await cgu()), 'la fenêtre se ferme');
       verifier(factures() === 1, `et la facture de l’attestation est créée (${factures()})`);
+    },
+  },
+  {
+    // Le chemin principal (relecture du 25 oct. 2026, tour 2) : un compte sans acceptation crée un devis dans l'éditeur ;
+    // la garde unique de DataContext ouvre la fenêtre avant d'écrire, et le devis est créé une fois les CGU acceptées.
+    nom: 'CGU d’un compte sans acceptation : « Créer le devis » ouvre « Avant votre premier document » ; acceptées, le devis est créé (375 px)',
+    reel: true,
+    async executer({ ouvrir, sessionFactice, cliquer, attendre, verifier }) {
+      const { creerBase, UID } = require('../lib/fauxSupabase.cjs');
+      const ORG = '0e0e0e0e-0e0e-4e0e-8e0e-0e0e0e0e0e0e';
+      const CLIENT = { id: 'c0c0c0c0-0000-4000-8000-000000000502', nom: 'Exemple', prenom: 'Lou', telephone: '0600000004', email: 'lou@exemple.fr',
+        adresse: '9 rue Imaginaire, 24000 Exempleville', created_at: '2026-10-01T08:00:00Z' };
+      const ENTREPRISE = { id: 'e0e0e0e0-0000-4000-8000-000000000502', user_id: UID, organization_id: ORG, nom: 'Élec Exemple', forme_juridique: 'Micro-entreprise',
+        siret: '00000000000000', telephone: '0500000000', email: 'contact@exemple.fr', adresse: '1 rue Imaginaire', code_postal: '24000', ville: 'Exempleville',
+        is_active: true, is_default: true, settings_json: { reglages: { nomEntrepreneur: 'Jean Exemple' } }, created_at: '2026-01-01T00:00:00Z' };
+      const base = creerBase({ clients: [CLIENT], entreprise: [ENTREPRISE] });
+      const acceptations = [];
+      const { page } = await ouvrir({
+        reel: true, largeur: 375, page: 'clients', session: sessionFactice(UID),
+        supabase: (req, u) => {
+          if (u.pathname === '/auth/v1/user' && req.method() === 'PUT') {
+            const corps = JSON.parse(req.postData() || '{}');
+            acceptations.push(corps);
+            return json({ id: UID, aud: 'authenticated', role: 'authenticated', email: 'test@exemple.fr', user_metadata: corps.data || {} });
+          }
+          return base.reponse(req, u);
+        },
+        avantChargement: () => { try { localStorage.setItem('pwa-install-dismissed', String(Date.now())); } catch { /* */ } },
+      });
+      await attendre(1500);
+      const devisCrees = () => base.journal.filter((j) => j.m === 'POST' && j.table === 'devis');
+      const fenetreCgu = () => page.evaluate(() => [...document.querySelectorAll('[role="dialog"]')].map((d) => d.innerText).find((t) => /Conditions générales d'utilisation/.test(t)) || null);
+      verifier(!(await fenetreCgu()), 'aucune fenêtre des CGU au chargement');
+      await page.evaluate(() => [...document.querySelectorAll('[data-ui="LigneListe"] > button')].find((x) => x.innerText.includes('Exemple'))?.click());
+      await attendre(900);
+      await page.evaluate(() => [...document.querySelectorAll('button')].find((b) => b.innerText.trim() === 'Nouveau devis')?.click());
+      await attendre(1500);
+      // Catalogue vide (compte neuf) : « Ajouter une ligne… (désignation libre) »
+      const champ = await page.$('input[placeholder^="Ajouter une ligne"]');
+      const editeur = await page.evaluate(() => document.querySelector('[role="dialog"]')?.innerText || '');
+      verifier(!!champ && /Lou Exemple/.test(editeur), 'l’éditeur de devis est ouvert, avec ce client');
+      await champ.click(); await champ.type('Pose prise 2P+T', { delay: 15 }); await attendre(400);
+      await page.keyboard.press('Enter'); await attendre(600);
+      // Au téléphone, le prix visible de la ligne (celui du tableau du bureau est masqué)
+      const pu = await page.evaluate(() => {
+        const champ = [...document.querySelectorAll('input[aria-label="Prix unitaire HT"], input[placeholder="PU HT"]')].find((x) => x.getBoundingClientRect().width > 0);
+        if (!champ) return false;
+        champ.focus();
+        champ.select();
+        return true;
+      });
+      verifier(pu, 'une ligne à chiffrer');
+      await page.keyboard.type('100', { delay: 15 }); await attendre(400);
+      const creer = await page.evaluate(() => { const b = [...document.querySelectorAll('[role=dialog] button')].find((x) => /Créer le devis/.test(x.innerText || '')); b?.click(); return !!b; });
+      verifier(creer, '« Créer le devis »');
+      await attendre(1200);
+      const fenetre = await fenetreCgu();
+      verifier(!!fenetre, 'la fenêtre des CGU s’ouvre avant la création');
+      verifier(/Avant votre premier document, lisez et acceptez les conditions d’utilisation de Mallettico\./.test(fenetre || ''), `elle dit pourquoi : « Avant votre premier document » (${(fenetre || '').slice(0, 160)})`);
+      verifier(!/Avant d’activer les envois automatiques/.test(fenetre || ''), 'et pas la raison des envois automatiques');
+      verifier(devisCrees().length === 0, 'le devis attend l’acceptation');
+      await page.evaluate(() => {
+        const corps = [...document.querySelectorAll('[role="dialog"] .overflow-y-auto')].find((x) => /1\. Objet/.test(x.innerText));
+        if (corps) corps.scrollTop = corps.scrollHeight;
+      });
+      await attendre(400);
+      await page.evaluate(() => [...document.querySelectorAll('[role="dialog"] input[type="checkbox"]')].pop()?.click());
+      await attendre(300);
+      await cliquer(page, 'Accepter et continuer');
+      await attendre(2500);
+      const derniere = acceptations[acceptations.length - 1] || {};
+      verifier(derniere.data?.cgu_version === CGU_VERSION && !!derniere.data?.cgu_accepted_at, `acceptation enregistrée sur le compte, version ${CGU_VERSION} (${JSON.stringify(derniere.data)})`);
+      verifier(!(await fenetreCgu()), 'la fenêtre se ferme');
+      const crees = devisCrees();
+      const corps = crees.map((j) => (Array.isArray(j.corps) ? j.corps[0] : j.corps)).find(Boolean) || {};
+      verifier(crees.length === 1, `le devis est créé, une fois (${crees.length})`);
+      verifier(corps.client_id === CLIENT.id && JSON.stringify(corps.lignes || '').includes('Pose prise 2P+T'), `avec son client et sa ligne (${JSON.stringify({ client: corps.client_id, lignes: (corps.lignes || []).length })})`);
+    },
+  },
+  {
+    // Activer un envoi automatique (rappels de ramonage, relances) demande aussi les CGU (relecture juriste G3) ; annulée,
+    // la fenêtre ne laisse ni écriture ni « Enregistré » (relecture du 25 oct. 2026, tour 2 : le message s'affichait).
+    nom: 'CGU : activer les envois automatiques sans acceptation ouvre « Avant d’activer les envois automatiques » ; annulée, rien n’est écrit ni « Enregistré » (375 px)',
+    reel: true,
+    async executer({ ouvrir, sessionFactice, cliquer, attendre, verifier }) {
+      const { creerBase, UID } = require('../lib/fauxSupabase.cjs');
+      const ORG = '0e0e0e0e-0e0e-4e0e-8e0e-0e0e0e0e0e0e';
+      const ENTREPRISE = { id: 'e0e0e0e0-0000-4000-8000-000000000503', user_id: UID, organization_id: ORG, nom: 'Ramonage Exemple', forme_juridique: 'Micro-entreprise',
+        siret: '00000000000000', telephone: '0500000000', email: 'contact@exemple.fr', is_active: true, is_default: true,
+        settings_json: { reglages: { ramonageActif: true, nomEntrepreneur: 'Jean Exemple' } }, created_at: '2026-01-01T00:00:00Z' };
+      const base = creerBase({ entreprise: [ENTREPRISE] });
+      const acceptations = [];
+      const { page } = await ouvrir({
+        reel: true, largeur: 375, page: 'settings', session: sessionFactice(UID),
+        supabase: (req, u) => {
+          if (u.pathname === '/auth/v1/user' && req.method() === 'PUT') {
+            acceptations.push(JSON.parse(req.postData() || '{}'));
+            return json({ id: UID, aud: 'authenticated', role: 'authenticated', email: 'test@exemple.fr', user_metadata: {} });
+          }
+          return base.reponse(req, u);
+        },
+        avantChargement: () => { try { localStorage.setItem('pwa-install-dismissed', String(Date.now())); } catch { /* */ } },
+      });
+      await attendre(1500);
+      await page.evaluate(() => [...document.querySelectorAll('button')].find((b) => b.innerText.trim() === 'Documents')?.click());
+      await attendre(300);
+      await page.evaluate(() => [...document.querySelectorAll('button')].find((b) => b.innerText.trim() === 'Ramonage')?.click());
+      await attendre(600);
+      verifier(!!(await page.$('#ramonage-envoi-auto')), 'l’interrupteur « Envoyer les rappels automatiquement par e-mail »');
+      const ecritures = () => base.journal.filter((j) => j.m !== 'GET' && j.table === 'entreprise').length;
+      const avant = ecritures();
+      await page.click('#ramonage-envoi-auto');
+      await attendre(900);
+      const fenetre = await page.evaluate(() => [...document.querySelectorAll('[role="dialog"]')].map((d) => d.innerText).find((t) => /Conditions générales d'utilisation/.test(t)) || null);
+      verifier(!!fenetre, 'la fenêtre des CGU s’ouvre');
+      verifier(/Avant d’activer les envois automatiques, lisez et acceptez les conditions d’utilisation de Mallettico\./.test(fenetre || ''), `elle dit pourquoi : « Avant d’activer les envois automatiques » (${(fenetre || '').slice(0, 160)})`);
+      verifier(!/Avant votre premier document/.test(fenetre || ''), 'et pas « Avant votre premier document »');
+      await cliquer(page, 'Annuler', { dans: '[role="dialog"]' });
+      // Le message « Modifications enregistrées » partait 800 ms après l'enregistrement : on attend au-delà
+      await attendre(2000);
+      const ecran = await page.evaluate(() => document.body.innerText);
+      verifier(!/Enregistré\b/.test(ecran) && !/Modifications enregistrées/.test(ecran), 'aucun « Enregistré » ni « Modifications enregistrées »');
+      verifier(/Envois automatiques non activés/.test(ecran), 'l’app dit que les envois automatiques ne sont pas activés');
+      verifier(await page.$eval('#ramonage-envoi-auto', (e) => e.getAttribute('aria-checked')) === 'false', 'l’interrupteur reste éteint');
+      verifier(ecritures() === avant, `rien n’est écrit sur la fiche de l’entreprise (${ecritures() - avant} écriture)`);
+      verifier(acceptations.length === 0, 'aucune acceptation enregistrée');
+    },
+  },
+  {
+    // Hygiène (relecture du 25 oct. 2026, tour 2) : la vitrine est servie par l'app ; un visiteur non connecté n'y laisse
+    // ni la page, ni le thème, ni le mode confidentiel, ni la base des saisies hors ligne.
+    nom: 'vitrine : un visiteur anonyme ne laisse ni page, ni thème, ni mode confidentiel, ni base hors ligne sur son appareil (375 px)',
+    reel: true,
+    async executer({ ouvrir, attendre, verifier }) {
+      const { page } = await ouvrir({
+        reel: true, largeur: 375, supabase: () => json([]),
+        // Le navigateur de test pose la page au premier chargement : on la retire pour mesurer ce que la vitrine écrit
+        avantChargement: () => { try { localStorage.removeItem('cp_current_page'); } catch { /* */ } },
+      });
+      await attendre(1500);
+      const titre = await page.evaluate(() => document.querySelector('h1')?.innerText || '');
+      verifier(/rangé dans une mallette/.test(titre), `la vitrine est affichée (${titre})`);
+      const traces = await page.evaluate(async () => ({
+        cles: ['cp_current_page', 'cp_theme', 'cp_mode_discret'].filter((k) => localStorage.getItem(k) !== null),
+        bases: indexedDB.databases ? (await indexedDB.databases()).map((d) => d.name) : [],
+      }));
+      verifier(traces.cles.length === 0, `ni page, ni thème, ni mode confidentiel enregistrés (${JSON.stringify(traces.cles)})`);
+      verifier(!traces.bases.includes('mallettico-offline'), `pas de base des saisies hors ligne (${JSON.stringify(traces.bases)})`);
+    },
+  },
+  {
+    // Décision du 25 oct. 2026 (tour 2) : le rouge veut dire « en retard » — une facture, ou une tâche ; une tâche du jour
+    // reste neutre
+    nom: 'pastilles : une tâche en retard met « Tâches & Planning » en rouge ; une tâche du jour, non (1440 px)',
+    reel: true,
+    async executer({ ouvrir, sessionFactice, attendre, verifier }) {
+      const { creerBase, UID } = require('../lib/fauxSupabase.cjs');
+      const jour = (decalage) => {
+        const d = new Date(Date.now() + decalage * 864e5);
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      };
+      const tache = (id, echeance) => ({ id, text: `Tâche ${id}`, due_date: echeance, is_done: false, status: 'a_faire', position: 0, subtasks: '[]', created_at: '2026-10-01T08:00:00Z' });
+      const lire = async (memos) => {
+        const { page, browser } = await ouvrir({ reel: true, largeur: 1440, page: 'dashboard', session: sessionFactice(UID), supabase: creerBase({ memos }).reponse });
+        await attendre(1500);
+        const p = await page.evaluate(() => {
+          const b = [...document.querySelectorAll('aside nav button')].find((x) => (x.querySelector('span.truncate')?.innerText || '').trim() === 'Tâches & Planning');
+          const s = b?.querySelector('span[title]');
+          return s ? { classe: s.className, titre: s.title } : null;
+        });
+        await browser.close();
+        return p;
+      };
+      const enRetard = await lire([tache('a1a1a1a1-0000-4000-8000-000000000601', jour(-2))]);
+      verifier(!!enRetard && /bg-danger-fond/.test(enRetard.classe) && /en retard/.test(enRetard.titre), `une tâche en retard : pastille rouge (${JSON.stringify(enRetard)})`);
+      const duJour = await lire([tache('a1a1a1a1-0000-4000-8000-000000000602', jour(0))]);
+      verifier(!duJour || /bg-neutre-fond/.test(duJour.classe), `une tâche du jour : pas de rouge (${JSON.stringify(duJour)})`);
     },
   },
   {

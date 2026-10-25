@@ -111,7 +111,7 @@ import { imprimerHtml } from '../lib/imprimerHtml';
 import { nomImprime, formeImprimee } from '../lib/identiteEntreprise';
 import { profilManquant } from '../lib/profilLegal';
 import { estFranchiseTva, sansTva, franchiseAppliquee, tvaARegulariser, premierTaux, tauxTvaParDefaut, tauxTvaDocument } from '../lib/franchiseTva';
-import { estOuverte, estEnRetard, aTraiter as docATraiter, devisARelancer } from '../lib/ventes';
+import { estOuverte, estEnRetard, aTraiter as docATraiter, devisARelancer, joursDepuisEnvoi } from '../lib/ventes';
 import { urlPublique } from '../lib/urlPublique';
 import { FONCTIONS } from '../lib/fonctions';
 import { jourLocal, dateLue } from '../lib/dates';
@@ -5354,14 +5354,11 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           const chantier = chantiers.find(ch => ch.id === d.chantier_id);
           const statutVu = d.type === 'facture' && d.facture_type !== 'avoir' ? statutFacture(d, paiements) : d.statut;
 
-          // Attente d'un devis envoyé : à partir de 7 jours, dite sous la ligne
+          // Devis à relancer, dit sous la ligne : la règle commune (src/lib/ventes.js) — depuis l'envoi, jamais un devis
+          // expiré ; en ambre (le rouge veut dire « en retard » : une facture)
           const getFollowUpInfo = () => {
-            if (!['envoye', 'vu'].includes(d.statut) || d.type !== 'devis') return null;
-            // Depuis l'envoi, comme l'alerte de la fiche (avant : depuis la dernière modification, remise à zéro par un rien)
-            const daysSent = getDaysSinceSent(d);
-            if (daysSent >= 14) return { texte: `${daysSent} j sans réponse`, ton: 'text-danger-texte' };
-            if (daysSent >= 7) return { texte: `${daysSent} j en attente`, ton: 'text-alerte-texte' };
-            return null;
+            if (d.type !== 'devis' || !devisARelancer(d, new Date(), entreprise)) return null;
+            return { texte: `${joursDepuisEnvoi(d)} j sans réponse`, ton: 'text-alerte-texte' };
           };
           const followUp = getFollowUpInfo();
 

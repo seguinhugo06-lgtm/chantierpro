@@ -255,7 +255,8 @@ export default function Dashboard({
       actions.push({
         priority: 3,
         icon: ClipboardList,
-        ton: 'neutre',
+        // À surveiller (ambre), comme la pastille du compte : le rouge veut dire « en retard » (décision du 25 oct. 2026)
+        ton: 'alerte',
         label: `${brouillons.length} brouillon${brouillons.length > 1 ? 's' : ''} à finaliser`,
         detail: fmt(totalBrouillons, modeDiscret),
         onClick: voirBrouillons,

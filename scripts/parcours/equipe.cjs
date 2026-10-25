@@ -2,6 +2,7 @@
 // de la migration 078 (réponse réduite à ce que la page affiche, acceptation pour le compte
 // connecté), et l'écran Équipe quand la base refuse un geste (RLS : 0 ligne, sans erreur HTTP).
 const json = (corps, status = 200) => ({ status, body: JSON.stringify(corps) });
+const { CGU_VERSION } = require('../lib/cgu.cjs');
 
 const JETON = '5d0c8a52-3c1e-4f8e-9a57-0c2f6e1b9d44';
 const ORG = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
@@ -60,7 +61,7 @@ module.exports = [
       await attendre(1500);
       const ins = inscriptions[0];
       verifier(inscriptions.length === 1 && ins.corps.email === 'invitee@exemple.fr', 'compte demandé à Supabase');
-      verifier(ins.corps.data?.cgu_version === '2025-02', `l’acceptation des CGU part avec le compte de l’invité (${JSON.stringify(ins.corps.data)})`);
+      verifier(ins.corps.data?.cgu_version === CGU_VERSION, `l’acceptation des CGU part avec le compte de l’invité (${JSON.stringify(ins.corps.data)})`);
       verifier(ins.recherche.includes(`redirect_to=http://localhost:4999/invitation/${JETON}`), `le lien de confirmation ramène à l’invitation (${ins.recherche})`);
       const info = await page.evaluate(() => [...document.querySelectorAll('[role="status"]')].map((e) => e.innerText).join(' '));
       verifier(info.includes('il vous ramène à l\'invitation pour rejoindre Élec Durand'), `consigne après inscription (${info})`);

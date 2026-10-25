@@ -82,7 +82,6 @@ async function ouvrir(o = {}) {
         sessionStorage.setItem('navigateur-test', '1');
         localStorage.setItem('cp_current_page', p.page);
       }
-      localStorage.setItem('cp_cookie_consent', JSON.stringify({ necessary: true, timestamp: Date.now() }));
       localStorage.setItem('batigesti_onboarding_complete', 'true');
       localStorage.setItem('cp_trial_end_modal_shown', '1');
       localStorage.setItem('cp_catalogue_onboarding_dismissed', 'true');
