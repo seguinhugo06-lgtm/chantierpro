@@ -42,6 +42,29 @@ export function estEnRetard(f, paiements = [], maintenant = new Date()) {
   return estOuverte(f, paiements, maintenant) && statutFacture(f, paiements, maintenant) === 'en_retard';
 }
 
+const JOUR_MS = 86400000;
+const joursDepuis = (d, maintenant) => Math.floor((maintenant - new Date(d?.date)) / JOUR_MS);
+
+/**
+ * Document « à traiter » : la puce de la liste Devis & factures ET la pastille du menu (audit UX du 20 oct. 2026 : la
+ * pastille additionnait devis en attente et factures non soldées, et virait au rouge dès qu'une facture était due,
+ * même dans ses délais, alors que l'Accueil disait « Aucun retard »).
+ * - brouillon de plus de 2 jours (à finaliser) ;
+ * - facture en retard (échéance passée, reste dû) ;
+ * - devis envoyé sans réponse depuis plus de 7 jours (à relancer).
+ */
+export function aTraiter(d, paiements = [], maintenant = new Date()) {
+  if (!d) return false;
+  if (d.statut === 'brouillon') return joursDepuis(d, maintenant) > 2;
+  if (estFacture(d)) return estEnRetard(d, paiements, maintenant);
+  return ['envoye', 'vu'].includes(d.statut) && joursDepuis(d, maintenant) > 7;
+}
+
+/** À traiter ET urgent : un retard (facture) ou une relance due (devis). La pastille passe au rouge pour eux seuls. */
+export function estUrgent(d, paiements = [], maintenant = new Date()) {
+  return aTraiter(d, paiements, maintenant) && d.statut !== 'brouillon';
+}
+
 /**
  * Ce que la facture a reçu, plafonné à son total (« payée » sans paiement : son dû). Depuis la migration 099, la base
  * n'accepte « payée » que si les paiements soldent la facture : ce repli ne couvre plus que la tolérance d'un centime

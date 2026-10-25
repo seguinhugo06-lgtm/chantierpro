@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { estEmise, estOuverte, estEnRetard, encaisse, resteAFacturer, creances, chiffreAffairesHT, tvaFacturee, facturesEmises } from '../ventes';
+import { estEmise, estOuverte, estEnRetard, encaisse, resteAFacturer, creances, chiffreAffairesHT, tvaFacturee, facturesEmises, aTraiter, estUrgent } from '../ventes';
 
 // Scénario de la recette du 9 oct. 2026 (Finances, S1) : un devis signé à 12 000 € TTC avec sa facture
 // d'acompte de 3 600 €, une facture payée, un brouillon, une facture annulée par un avoir total.
@@ -55,5 +55,20 @@ describe('ventes : une définition pour toute l’app', () => {
     expect(t.parTaux).toEqual([{ taux: 20, base: 5000, montant: 1000 }]); // la ligne à 10 % s'annule avec son avoir
     expect(t.total).toBe(1000);
     expect(tvaFacturee(DOCS, {}, { isMicro: true })).toEqual({ total: 0, parTaux: [] });
+  });
+
+  it('à traiter (puce de la liste, pastille du menu) : brouillon ancien, facture en retard, devis sans réponse > 7 j', () => {
+    // MAINTENANT = 10 oct. : D3 envoyé le 15 sept. (25 j), F3 brouillon du 10 sept., A1 non échue, F2 payée
+    expect(DOCS.filter((d) => aTraiter(d, PAIEMENTS, MAINTENANT)).map((d) => d.id)).toEqual(['F3', 'D3']);
+    expect(aTraiter({ ...D3, date: '2026-10-05' }, PAIEMENTS, MAINTENANT)).toBe(false); // envoyé il y a 5 jours
+    expect(aTraiter({ ...F3, date: '2026-10-09' }, PAIEMENTS, MAINTENANT)).toBe(false); // brouillon d'hier
+    expect(aTraiter({ ...A1, date_echeance: '2026-10-01' }, PAIEMENTS, MAINTENANT)).toBe(true); // échue
+    expect(aTraiter(F2, PAIEMENTS, MAINTENANT)).toBe(false); // payée, même échue
+  });
+
+  it('urgent (pastille rouge) : retard ou relance due, jamais un simple brouillon', () => {
+    expect(DOCS.filter((d) => estUrgent(d, PAIEMENTS, MAINTENANT)).map((d) => d.id)).toEqual(['D3']);
+    expect(estUrgent({ ...A1, date_echeance: '2026-10-01' }, PAIEMENTS, MAINTENANT)).toBe(true);
+    expect(estUrgent(F3, PAIEMENTS, MAINTENANT)).toBe(false);
   });
 });

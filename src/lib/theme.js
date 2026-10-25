@@ -18,6 +18,12 @@
  */
 
 const ANCIEN_DEFAUT = '#f97316'; // orange par défaut jusqu'au 19 oct. 2026, enregistré sur les fiches jamais personnalisées
+/**
+ * Couleur des DOCUMENTS (devis, factures, e-mails) d'une entreprise qui n'en a jamais choisi : l'ancien orange, tant
+ * qu'Hugo n'a pas tranché (décision listée au rapport de la Task 4 « ancien code », 24 oct. 2026). L'écran, lui, ne
+ * l'affiche jamais : l'accent du thème le remplace par le bleu nuit (couleurDeBase).
+ */
+export const COULEUR_DOCUMENTS_DEFAUT = ANCIEN_DEFAUT;
 const NUIT = [18, 51, 111]; // #12336F, bleu nuit du logo : l'accent par défaut
 const SURFACE_CLAIRE = [255, 255, 255];
 const SURFACE_SOMBRE = [20, 33, 58]; // #14213A, la surface des cartes en sombre

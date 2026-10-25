@@ -1,15 +1,10 @@
 /**
- * Dashboard — Focus & Pulse
- *
- * 3-zone layout:
- * 1. Hero Pulse — greeting, score santé, 4 KPI cards, sparkline CA
- * 2. Actions Prioritaires — unified priority list
- * 3. Contexte — active chantier + pipeline funnel + onboarding bar
- *
- * 2-column layout on desktop (lg:):
- *  - Left column: KPIs, sparkline CA, pipeline, actions du jour, promo cards
- *  - Right column: chantier actif, onboarding
- *  - Banners (profile < 50%, urgent) stay full-width above the grid
+ * Accueil — de haut en bas :
+ * 1. salutation, date, une seule action pleine (« Nouveau devis ») ;
+ * 2. premier usage (aucun document) : « Pour envoyer votre premier devis », profil → client → devis ;
+ * 3. l'argent : À encaisser (tuile vedette), Encaissé du mois, Devis en attente ;
+ * 4. À faire aujourd'hui : la ligne ouvre la fiche, le bouton fait l'action (relancer, finaliser, cocher) ;
+ * 5. l'encaissé sur 6 mois, puis les chantiers en cours.
  *
  * @module Dashboard
  */
@@ -20,8 +15,6 @@ import {
   AlertCircle,
   Clock,
   ChevronRight,
-  Eye,
-  EyeOff,
   Receipt,
   Send,
   ClipboardList,
@@ -42,19 +35,20 @@ import { useOrg } from '../context/OrgContext';
 import { getRoleLabel } from '../lib/permissions';
 import { captureException } from '../lib/sentry';
 import { statutFacture, resteAPayer, joursDeRetard, echeance, encaisseEntre } from '../lib/paiementsFacture';
-import { calcConversion, formatConversion } from '../lib/statsUtils';
 import UsageAlerts from './subscription/UsageAlerts';
 import TuileChiffre from './ui/TuileChiffre';
 import { TitreSection } from './ui/EnTete';
 import LigneListe, { GroupeListe } from './ui/LigneListe';
-import { Bouton, BoutonIcone } from './ui/Bouton';
+import { Bouton } from './ui/Bouton';
 import EtatVide from './ui/EtatVide';
 import { useSubscriptionStore, PLANS } from '../stores/subscriptionStore';
 import { jourLocal, dateLue } from '../lib/dates';
 import Modal, { ModalHeader, ModalTitle, ModalBody } from './ui/Modal';
 import RappelRamonage, { echeanceLue } from './ramonage/RappelRamonage';
 import { rappelsDus, DELAI_RAPPEL_DEFAUT } from '../lib/ramonage';
-import { profilManquant } from '../lib/profilLegal';
+import { profilManquant, enPhrase } from '../lib/profilLegal';
+import { formatClientName } from '../lib/formatters';
+import { RELANCES_PAR_ENVOI } from '../lib/relanceEngine';
 
 /** La mallette — marque Mallettico, reprise du jeu d'icônes (grille 48, contour 3,2). */
 function Mallette({ size = 24, style, className }) {
@@ -103,21 +97,6 @@ function getPrenom(user) {
   return '';
 }
 
-/**
- * Compute the trend percentage between two values.
- * Returns an object { value, direction } where direction is 'up', 'down', or 'flat'.
- */
-function computeTrend(current, previous) {
-  if (!previous || previous === 0) {
-    if (current > 0) return { value: 100, direction: 'up' };
-    return { value: 0, direction: 'flat' };
-  }
-  const pct = Math.round(((current - previous) / previous) * 100);
-  if (pct > 0) return { value: pct, direction: 'up' };
-  if (pct < 0) return { value: Math.abs(pct), direction: 'down' };
-  return { value: 0, direction: 'flat' };
-}
-
 // ============ MAIN DASHBOARD ============
 
 
@@ -125,31 +104,21 @@ export default function Dashboard({
   chantiers = [],
   clients = [],
   devis = [],
-  depenses = [],
-  pointages = [],
-  equipe = [],
-  ajustements = [],
-  catalogue = [],
   entreprise,
-  getChantierBilan,
-  addDevis,
   couleur = '#8b5cf6',
   modeDiscret,
-  setModeDiscret,
   setSelectedChantier,
   setPage,
   setSelectedDevis,
   setCreateMode,
   isDark = false,
-  showHelp = false,
-  setShowHelp,
   user,
-  onOpenSearch,
   memos = [],
-  addMemo,
   toggleMemo,
+  // Ouvre la page Devis & factures sur une demande : { relancer: id } (fiche + feuille « Relancer »), { etat } (liste filtrée)
+  ouvrirDevis,
 }) {
-  const { dataLoading, paiements = [], ramonages = [], suivreRamonage, updateClient } = useData();
+  const { paiements = [], ramonages = [], suivreRamonage, updateClient } = useData();
   // Rappels du prochain ramonage (module ramonage, D-30) : le client apparaît ici dès « prochain − délai »
   const [rappelOuvert, setRappelOuvert] = useState(null);
   const rappelsRamonage = useMemo(() => (entreprise?.ramonageActif
@@ -159,6 +128,7 @@ export default function Dashboard({
   const { confirm } = useConfirm();
   const { canAccess, canPerform } = usePermissions();
   const canSeeFinances = canAccess('finances');
+  const peutCreerDevis = canPerform('devis', 'create');
   const { orgId, orgName, role } = useOrg();
   // Membre d'une équipe (invité) : on lui dit où il est ; le plan est l'affaire du gérant
   const membreEquipe = !isDemo && !!role && role !== 'owner';
@@ -171,6 +141,16 @@ export default function Dashboard({
   const [onboardingHidden, setOnboardingHidden] = useState(() => !!localStorage.getItem('cp_onboarding_dismissed'));
   const handleSendAllRelances = async () => {
     if (sendingRelances) return;
+    // Ce qui part chez les clients se confirme d'abord (audit UX du 20 oct. 2026, § 2.6) : le même texte que « Tout
+    // envoyer » de la liste des documents (DevisPage) ; l'envoi groupé part par lots (relanceEngine, RELANCES_PAR_ENVOI)
+    const partent = (relances.dueNow || []).slice(0, RELANCES_PAR_ENVOI);
+    const nombre = Math.min(relances.counts.due, RELANCES_PAR_ENVOI);
+    const noms = [...new Set(partent.map(p => formatClientName(p.client, '') || p.doc?.client_nom).filter(Boolean))];
+    const ok = await confirm({
+      title: `Envoyer ${nombre} relance${nombre > 1 ? 's' : ''} ?`,
+      message: `Par e-mail${noms.length ? `, à : ${noms.join(', ')}` : ''}.${relances.counts.due > RELANCES_PAR_ENVOI ? ` Les relances partent par ${RELANCES_PAR_ENVOI} : il en restera ${relances.counts.due - RELANCES_PAR_ENVOI} à envoyer ensuite.` : ''}`,
+    });
+    if (!ok) return;
     setSendingRelances(true);
     try {
       const res = await relances.sendBulkRelances();
@@ -194,6 +174,14 @@ export default function Dashboard({
 
   const [showAllActions, setShowAllActions] = useState(false);
 
+  // Ouvrir la fiche d'un document ; la relancer (fiche + feuille « Relancer » : destinataire, canal, aperçu)
+  const ouvrirFiche = (d) => { setSelectedDevis(d); setPage('devis'); };
+  const relancer = (d) => (ouvrirDevis ? ouvrirDevis({ relancer: d.id }) : ouvrirFiche(d));
+  // Réglages sur un onglet (et un champ) : l'événement que les Réglages écoutent une fois affichés
+  const ouvrirReglages = (tab, fieldId) => {
+    setPage('settings');
+    if (tab) setTimeout(() => window.dispatchEvent(new CustomEvent('navigate-settings-tab', { detail: { tab, fieldId } })), 400);
+  };
 
   // ---- Computed data ----
   const computed = useMemo(() => {
@@ -212,9 +200,6 @@ export default function Dashboard({
     const devisEnAttente = devis.filter(d => d.type !== 'facture' && ['envoye', 'vu'].includes(d.statut));
     const chantiersActifs = chantiers.filter(c => c.statut === 'en_cours');
 
-    const conversion = calcConversion(devis);
-    const tauxConversion = conversion.envoyes > 0 ? Math.round(conversion.taux) : 0;
-
     const jour = (x) => `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`;
     const debutMois = new Date(now.getFullYear(), now.getMonth(), 1);
     const finMois = new Date(now.getFullYear(), now.getMonth() + 1, 0);
@@ -222,47 +207,17 @@ export default function Dashboard({
 
     // Mois précédent, pour la comparaison
     const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const lastMonthKey = `${prevMonth.getFullYear()}-${String(prevMonth.getMonth() + 1).padStart(2, '0')}`;
     const lastMonthCA = encaisseEntre(devis, paiements, jour(prevMonth), jour(new Date(now.getFullYear(), now.getMonth(), 0)));
 
-    // Trend for "Ce mois" KPI
-    const caCeMoisTrend = computeTrend(caCeMois, lastMonthCA);
-
-    // Trend for "À encaisser" — compare to what was outstanding last month
-    const lastMonthEncaisser = devis
-      .filter(d => {
-        if (d.type !== 'facture') return false;
-        if (!['envoye', 'facture'].includes(d.statut)) return false;
-        return d.date?.startsWith(lastMonthKey);
-      })
-      .reduce((s, d) => s + (d.total_ttc || 0), 0);
-    const aEncaisserTrend = computeTrend(aEncaisser, lastMonthEncaisser);
-
-    // Pipeline des DEVIS (les statuts de calcConversion : « accepté » est un devis signé).
-    const devisSeuls = devis.filter(d => d.type !== 'facture');
-    const etape = (statuts) => {
-      const l = devisSeuls.filter(d => statuts.includes(d.statut));
-      return { count: l.length, total: l.reduce((s, d) => s + (d.total_ttc || 0), 0) };
-    };
-    const pipeline = {
-      brouillon: etape(['brouillon']),
-      envoye: etape(['envoye', 'vu']),
-      signe: etape(['accepte', 'signe', 'acompte_facture']),
-      facture: etape(['facture', 'payee', 'paye']),
-      paye: { count: 0, total: 0 },
-    };
-
-    // CA prévisionnel (signés non encore facturés + envoyés * 0.5)
-    const caPrevisionnel = pipeline.signe.total + Math.round(pipeline.envoye.total * 0.5);
-
-    // Actions prioritaires (GAP 5: differentiated icons + actionLabel)
+    // À faire aujourd'hui : un titre entier, la ligne ouvre la fiche, le bouton fait ce qu'il dit (audit UX du 20 oct.
+    // 2026 : « Relancer » et « Finaliser » remplaçaient le montant, coupaient le titre et n'ouvraient que la fiche).
     const actions = [];
 
     // Factures, devis et montants : seulement pour un rôle qui voit les finances. Avant (recette du 9 oct. 2026),
     // un ouvrier ou un chef de chantier voyait « Facture en retard — Martin — 2 000 € » et des boutons vers des
     // pages qui lui sont fermées.
     if (canSeeFinances) {
-    // 1. Factures en retard (reste dû, après l'échéance) — AlertTriangle icon, red color
+    // 1. Factures en retard (reste dû, après l'échéance)
     facturesEnRetard
       .slice()
       .sort((a, b) => echeance(a) - echeance(b))
@@ -272,16 +227,16 @@ export default function Dashboard({
         const reste = resteAPayer(d, paiements);
         actions.push({
           priority: 1,
-          icon: Receipt,  // GAP 5: Receipt for invoices
-          color: '#ef4444',
+          icon: Receipt,
+          ton: 'danger',
           label: `Facture en retard de ${jours} j`,
           detail: client ? `${client.nom || client.name} — ${fmt(reste, modeDiscret)}` : fmt(reste, modeDiscret),
-          actionLabel: 'Relancer',
-          onClick: () => { setSelectedDevis(d); setPage('devis'); },
+          onClick: () => ouvrirFiche(d),
+          action: { libelle: 'Relancer', icone: Send, onClick: () => relancer(d) },
         });
       });
 
-    // 2. Devis envoyés sans réponse > 7j — Clock icon, orange color
+    // 2. Devis envoyés sans réponse depuis plus de 7 jours
     devisEnAttente
       .filter(d => d.date && daysSince(d.date) > 7)
       .sort((a, b) => daysSince(b.date) - daysSince(a.date))
@@ -290,42 +245,31 @@ export default function Dashboard({
         const client = clients.find(c => c.id === d.client_id);
         actions.push({
           priority: 2,
-          icon: Send,  // GAP 5: Send for follow-ups
-          color: '#f97316',
+          icon: Send,
+          ton: 'alerte',
           label: `Devis sans réponse depuis ${jours} j`,
           detail: client ? `${client.nom || client.name} — ${fmt(d.total_ttc, modeDiscret)}` : fmt(d.total_ttc, modeDiscret),
-          actionLabel: 'Relancer',
-          onClick: () => { setSelectedDevis(d); setPage('devis'); },
+          onClick: () => ouvrirFiche(d),
+          action: { libelle: 'Relancer', icone: Send, onClick: () => relancer(d) },
         });
       });
 
-    // 3. Brouillons à finaliser (groupé) — FileText icon, yellow
+    // 3. Brouillons à finaliser (groupé) : la liste filtrée sur les brouillons
     const brouillons = devis.filter(d => d.statut === 'brouillon' && d.type !== 'facture');
     if (brouillons.length > 0) {
       const totalBrouillons = brouillons.reduce((s, d) => s + (d.total_ttc || 0), 0);
+      const voirBrouillons = () => (ouvrirDevis ? ouvrirDevis({ etat: 'brouillons' }) : setPage('devis'));
       actions.push({
         priority: 3,
-        icon: ClipboardList,  // GAP 5: ClipboardList for memos/brouillons
-        color: '#eab308',
+        icon: ClipboardList,
+        ton: 'neutre',
         label: `${brouillons.length} brouillon${brouillons.length > 1 ? 's' : ''} à finaliser`,
         detail: fmt(totalBrouillons, modeDiscret),
-        actionLabel: 'Finaliser',
-        onClick: () => setPage('devis'),
+        onClick: voirBrouillons,
+        action: { libelle: 'Finaliser', onClick: voirBrouillons },
       });
     }
     }
-
-    // Score santé /10
-    let score = 0;
-    if (retard === 0) score += 2;
-    if (entreprise?.siret) score += 2;
-    if (chantiersActifs.length > 0) score += 2;
-    if (tauxConversion >= 40) score += 2;
-    if (caCeMois > 0) score += 2;
-
-    // Chantier actif principal (le plus avancé)
-    const chantierPrincipal = chantiersActifs
-      .sort((a, b) => (b.avancement || 0) - (a.avancement || 0))[0] || null;
 
     // Encaissé par mois, 6 derniers mois : l'argent reçu (avant : la somme des devis signés, « CA »).
     const sparkData = [];
@@ -338,24 +282,17 @@ export default function Dashboard({
 
     return {
       aEncaisser,
-      aEncaisserTrend,
       retard,
       devisEnAttente,
       chantiersActifs,
-      tauxConversion,
-      conversion,
-      pipeline,
-      caPrevisionnel,
       actions: actions.sort((a, b) => a.priority - b.priority),
-      score,
-      chantierPrincipal,
       caCeMois,
-      caCeMoisTrend,
       lastMonthCA,
       facturesEnRetardCount: facturesEnRetard.length,
       sparkData,
     };
-  }, [devis, paiements, chantiers, clients, entreprise, modeDiscret, setSelectedDevis, setPage, canSeeFinances]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- ouvrirFiche / relancer ne lisent que des setters stables
+  }, [devis, paiements, chantiers, clients, entreprise, modeDiscret, setSelectedDevis, setPage, canSeeFinances, ouvrirDevis]);
 
   // ---- Greeting ----
   const prenom = getPrenom(user);
@@ -380,24 +317,25 @@ export default function Dashboard({
     const memoActions = memosJour.map(m => ({
       priority: 4,
       icon: CheckCircle,
-      color: '#10b981',
+      ton: m.due_date < jourLocal() ? 'danger' : 'neutre',
       label: m.text || m.titre || 'Tâche',
       detail: m.due_date < jourLocal() ? 'Tâche en retard' : 'Tâche du jour',
-      actionLabel: 'Fait',
-      onClick: () => toggleMemo?.(m.id),
+      // La ligne ouvre les tâches ; « Fait » coche la tâche (avant : toucher la ligne la cochait)
+      onClick: () => setPage('tasks'),
+      action: { libelle: 'Fait', icone: CheckCircle, onClick: () => toggleMemo?.(m.id) },
     }));
     const ramonageActions = rappelsRamonage.map((r) => ({
       priority: 2,
       icon: Flame,
-      color: '#f59e0b',
+      ton: 'alerte',
       label: `Ramonage à prévoir — ${[r.client.prenom, r.client.nom].filter(Boolean).join(' ') || r.client.entreprise || 'client'}`,
       detail: `Avant le ${dateLue(r.ramonage.prochain_avant).toLocaleDateString('fr-FR')} (${echeanceLue(r.joursRestants)})`,
-      actionLabel: 'Rappeler',
       // Le rappel ouvert est gardé tel quel : la fenêtre reste ouverte après « SMS » (pour « Annuler »)
       onClick: () => setRappelOuvert(r),
+      action: { libelle: 'Rappeler', onClick: () => setRappelOuvert(r) },
     }));
     return [...computed.actions, ...ramonageActions, ...memoActions].sort((a, b) => a.priority - b.priority);
-  }, [computed.actions, memosJour, toggleMemo, rappelsRamonage]);
+  }, [computed.actions, memosJour, toggleMemo, rappelsRamonage, setPage]);
   const rappelAffiche = rappelOuvert;
 
   const visibleActions = showAllActions ? allActions : allActions.slice(0, 5);
@@ -411,18 +349,51 @@ export default function Dashboard({
   const relancesRisk = relances?.totalAtRisk || 0;
   const hasAnyAction = relancesDue > 0 || allActions.length > 0;
 
-  // Onboarding (nouveaux comptes uniquement)
+  // Premier usage (audit UX du 20 oct. 2026, P1) : tant qu'aucun document n'existe, l'Accueil guide vers le premier devis
+  // au lieu de dire « Mallette bouclée — Rien ne traîne » (alors que le profil incomplet bloquait l'envoi). Ni tuiles à 0
+  // ni graphique vide : rien n'existe encore (§ 2.7).
+  const premierUsage = peutCreerDevis && devis.length === 0;
+  const manquantProfil = profilManquant(entreprise);
+  const nouveauDevis = () => { setCreateMode?.(p => ({ ...p, devis: true })); setPage('devis'); };
+  const etapesPremierDevis = [
+    {
+      key: 'profil',
+      label: 'Compléter mon profil',
+      // Les mentions qui bloquent l'envoi (lib/profilLegal : la liste du contrôle d'envoi)
+      meta: manquantProfil.length === 0 ? 'Les mentions obligatoires sont prêtes' : `Manque : ${enPhrase(manquantProfil)}`,
+      done: manquantProfil.length === 0,
+      action: () => ouvrirReglages(manquantProfil[0]?.onglet, manquantProfil[0]?.champ),
+    },
+    {
+      key: 'client',
+      label: 'Ajouter mon premier client',
+      meta: (clients?.length || 0) > 0 ? 'Fait' : 'Son nom et son e-mail suffisent pour commencer',
+      done: (clients?.length || 0) > 0,
+      action: () => { setCreateMode?.(p => ({ ...p, client: true })); setPage('clients'); },
+    },
+    {
+      key: 'devis',
+      label: 'Créer mon premier devis',
+      meta: 'Il partira dès que votre profil sera complet',
+      done: false,
+      action: nouveauDevis,
+    },
+  ];
+  const prochaineEtape = etapesPremierDevis.find(e => !e.done);
+
+  // Après le premier document : la suite des premiers pas (relances automatiques), masquable
   const onboardingSteps = [
     // « Fait » = les champs qui débloquent l'ENVOI d'un devis (lib/profilLegal, la liste du contrôle d'envoi),
     // pas un simple % de profil — sinon l'étape se coche alors que l'envoi restera bloqué.
-    { key: 'profil', label: 'Configurer mon entreprise', done: profilManquant(entreprise).length === 0, action: () => setPage('settings') },
+    { key: 'profil', label: 'Configurer mon entreprise', done: manquantProfil.length === 0, action: () => ouvrirReglages(manquantProfil[0]?.onglet, manquantProfil[0]?.champ) },
     { key: 'client', label: 'Ajouter mon premier client', done: (clients?.length || 0) > 0, action: () => setPage('clients') },
-    { key: 'devis', label: 'Créer mon premier devis', done: (devis?.length || 0) > 0, action: () => { setCreateMode?.(p => ({ ...p, devis: true })); setPage('devis'); } },
-    { key: 'relances', label: 'Activer les relances automatiques', done: !!(entreprise?.relanceConfig?.enabled), action: () => { try { localStorage.setItem('cp_settings_tab', 'relances'); } catch { /* noop */ } setPage('settings'); } },
+    { key: 'devis', label: 'Créer mon premier devis', done: (devis?.length || 0) > 0, action: nouveauDevis },
+    // Avant : une clé de stockage que les Réglages ne lisent pas ; l'onglet ne s'ouvrait pas
+    { key: 'relances', label: 'Activer les relances automatiques', done: !!(entreprise?.relanceConfig?.enabled), action: () => ouvrirReglages('relances') },
   ];
   const onboardingDone = onboardingSteps.filter(s => s.done).length;
   // En démo, un visiteur explore l'app — pas de checklist d'installation
-  const showOnboarding = canSeeFinances && !isDemo && !onboardingHidden && onboardingDone < onboardingSteps.length;
+  const showOnboarding = !premierUsage && canSeeFinances && !isDemo && !onboardingHidden && onboardingDone < onboardingSteps.length;
 
   const activeChantiers = computed.chantiersActifs;
 
@@ -434,8 +405,9 @@ export default function Dashboard({
   // Mois précédent : `new Date(a, m - 1, 1)`. Avant (vu sur le compte démo le 11 oct. 2026), `dateLue(a, m - 1, 1)`
   // ne lisait que l'année (2026 ms après 1970) : « janvier : … » sous « Encaissé · octobre », chaque mois.
   const moisPrecedent = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1).toLocaleDateString('fr-FR', { month: 'long' });
-  // Ton d'une action « à faire » d'après sa couleur historique (rouge = retard, etc.)
-  const tonAction = (c) => ({ '#ef4444': 'bg-danger-fond text-danger-texte', '#f59e0b': 'bg-alerte-fond text-alerte-texte', '#10b981': 'bg-succes-fond text-succes-texte' }[c] || 'bg-info-fond text-info-texte');
+  // Ton d'une ligne « à faire » : rouge = retard, ambre = à surveiller, neutre = le reste
+  const TON_ACTION = { danger: 'bg-danger-fond text-danger-texte', alerte: 'bg-alerte-fond text-alerte-texte', neutre: 'bg-surface-2 text-encre-2' };
+  const nbDevisAttente = computed.devisEnAttente.length;
 
   // Refonte du 9 oct. 2026 (revue visuelle, problème 14) : une hiérarchie — l'argent dû d'abord
   // (tuile héros), puis ce qu'il y a à faire, puis le pouls ; une seule couleur d'accent, des
@@ -462,18 +434,46 @@ export default function Dashboard({
             )}
           </p>
         </div>
-        <div className="flex items-center gap-1">
-          <BoutonIcone icone={modeDiscret ? EyeOff : Eye} libelle={modeDiscret ? 'Afficher les montants' : 'Masquer les montants'} onClick={() => setModeDiscret?.(!modeDiscret)} />
-          {/* Seulement pour un rôle qui crée des devis : pour un ouvrier, le bouton ne menait nulle part */}
-          {canPerform('devis', 'create') && (
-            <Bouton variante="principal" icone={Plus} onClick={() => { setCreateMode?.(p => ({ ...p, devis: true })); setPage('devis'); }}>
-              Nouveau devis
-            </Bouton>
-          )}
-        </div>
+        {/* Seulement pour un rôle qui crée des devis : pour un ouvrier, le bouton ne menait nulle part. Au premier
+            usage, le bouton plein est celui de l'étape suivante (un seul par écran). Le mode confidentiel est dans
+            l'en-tête de l'app (une seule commande, audit § 2.1). */}
+        {peutCreerDevis && !premierUsage && (
+          <Bouton variante="principal" icone={Plus} onClick={nouveauDevis}>
+            Nouveau devis
+          </Bouton>
+        )}
       </header>
 
-      {/* ===== ONBOARDING (nouveaux comptes) ===== */}
+      {/* ===== PREMIER USAGE : le chemin vers le premier devis envoyé ===== */}
+      {premierUsage && (
+        <section aria-label="Pour envoyer votre premier devis">
+          <TitreSection titre="Pour envoyer votre premier devis" compte={`${etapesPremierDevis.filter(e => e.done).length}/${etapesPremierDevis.length}`} />
+          <GroupeListe>
+            {etapesPremierDevis.map((etape, i) => (
+              <LigneListe
+                key={etape.key}
+                onClick={etape.done ? undefined : etape.action}
+                debut={etape.done
+                  ? <span className="w-10 h-10 rounded-xl bg-succes-fond text-succes-texte flex items-center justify-center"><CheckCircle size={20} aria-hidden="true" /><span className="sr-only">Fait :</span></span>
+                  : <span className="w-10 h-10 rounded-xl bg-surface-2 text-encre-2 flex items-center justify-center text-base font-bold tabular-nums" aria-hidden="true">{i + 1}</span>}
+                titre={etape.label}
+                titreEntier
+                meta={etape.meta}
+                pied={prochaineEtape?.key === etape.key ? (
+                  <>
+                    <span />
+                    <Bouton variante="principal" taille="compacte" iconeFin={ChevronRight} onClick={etape.action}>
+                      {etape.key === 'profil' ? 'Compléter' : etape.key === 'client' ? 'Ajouter un client' : 'Créer le devis'}
+                    </Bouton>
+                  </>
+                ) : undefined}
+              />
+            ))}
+          </GroupeListe>
+        </section>
+      )}
+
+      {/* ===== ONBOARDING (nouveaux comptes, après le premier document) ===== */}
       {showOnboarding && (
         <section aria-label="Premiers pas">
           <TitreSection titre="On remplit la mallette" compte={`${onboardingDone}/${onboardingSteps.length}`} action="Masquer" onAction={() => { try { localStorage.setItem('cp_onboarding_dismissed', '1'); } catch { /* préférence non enregistrée */ } setOnboardingHidden(true); }} />
@@ -493,7 +493,7 @@ export default function Dashboard({
       )}
 
       {/* ===== L'ARGENT : ce qu'on me doit, en grand ===== */}
-      {canSeeFinances && (
+      {canSeeFinances && !premierUsage && (
         <section aria-label="Argent" className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <TuileChiffre
             heros className="col-span-2"
@@ -509,19 +509,23 @@ export default function Dashboard({
             contexte={computed.lastMonthCA > 0 ? `${moisPrecedent} : ${fmt(computed.lastMonthCA, modeDiscret)}` : 'Premier mois suivi'}
             onClick={() => setPage('finances')}
           />
+          {/* Un seul chiffre par tuile : le montant, et le nombre de devis qu'il recouvre (avant : « 1 envoyé · 75 % signés »,
+              un taux de signature global sans rapport avec le montant affiché) */}
           <TuileChiffre
             libelle="Devis en attente"
             valeur={fmt(computed.devisEnAttente.reduce((s, d) => s + (d.total_ttc || 0), 0), modeDiscret)}
-            contexte={`${computed.devisEnAttente.length} envoyé${computed.devisEnAttente.length > 1 ? 's' : ''} · ${formatConversion(computed.tauxConversion)} signés`}
-            onClick={() => setPage('devis')}
+            contexte={`${nbDevisAttente} devis envoyé${nbDevisAttente > 1 ? 's' : ''}`}
+            onClick={() => (ouvrirDevis ? ouvrirDevis({ etat: 'devis_attente' }) : setPage('devis'))}
           />
         </section>
       )}
 
-      {/* Jauges d'usage — après l'argent, seulement quand une limite approche. */}
-      <UsageAlerts isDark={isDark} couleur={couleur} />
+      {/* Jauges d'usage — après l'argent, seulement quand une limite approche. Pas au premier usage : rien n'approche
+          d'une limite, et la carte du premier devis porte le seul bouton plein de l'écran. */}
+      {!premierUsage && <UsageAlerts isDark={isDark} couleur={couleur} />}
 
       {/* ===== À FAIRE AUJOURD'HUI ===== */}
+      {(hasAnyAction || !premierUsage) && (
       <section aria-label="À faire aujourd'hui">
         <TitreSection titre="À faire aujourd'hui" compte={hasAnyAction ? relancesDue + allActions.length : undefined} />
         <GroupeListe>
@@ -530,6 +534,7 @@ export default function Dashboard({
               chevron={false}
               debut={<span className="w-10 h-10 rounded-xl bg-danger-fond text-danger-texte flex items-center justify-center"><BellRing size={20} aria-hidden="true" /></span>}
               titre={`${relancesDue} relance${relancesDue > 1 ? 's' : ''} à envoyer`}
+              titreEntier
               meta={relancesRisk > 0 ? `${fmt(relancesRisk, modeDiscret)} concernés` : 'Impayés et devis sans réponse'}
               pied={(
                 <>
@@ -547,10 +552,18 @@ export default function Dashboard({
               <LigneListe
                 key={i}
                 onClick={action.onClick}
-                debut={<span className={`w-10 h-10 rounded-xl flex items-center justify-center ${tonAction(action.color)}`}><Icone size={20} aria-hidden="true" /></span>}
+                debut={<span className={`w-10 h-10 rounded-xl flex items-center justify-center ${TON_ACTION[action.ton] || TON_ACTION.neutre}`}><Icone size={20} aria-hidden="true" /></span>}
                 titre={action.label}
+                titreEntier
                 meta={action.detail}
-                montant={action.actionLabel ? <span className="text-sm font-semibold text-accent-texte">{action.actionLabel}</span> : undefined}
+                pied={action.action ? (
+                  <>
+                    <span />
+                    <Bouton taille="compacte" icone={action.action.icone} onClick={action.action.onClick}>
+                      {action.action.libelle}
+                    </Bouton>
+                  </>
+                ) : undefined}
               />
             );
           })}
@@ -559,11 +572,13 @@ export default function Dashboard({
               {showAllActions ? 'Voir moins' : `Voir tout (${allActions.length})`}
             </button>
           )}
+          {/* « Mallette bouclée » : seulement pour un compte qui a déjà travaillé (jamais au premier usage) */}
           {!hasAnyAction && (
             <EtatVide icone={Mallette} titre="Mallette bouclée" texte="Rien ne traîne. Vous pouvez la refermer." />
           )}
         </GroupeListe>
       </section>
+      )}
 
       {/* Rappel de ramonage ouvert depuis « À faire » */}
       <Modal isOpen={!!rappelAffiche} onClose={() => setRappelOuvert(null)} size="md">
@@ -594,7 +609,7 @@ export default function Dashboard({
       </Modal>
 
       {/* ===== LE POULS : l'argent reçu, mois par mois ===== */}
-      {canSeeFinances && (
+      {canSeeFinances && !premierUsage && (
         <section aria-label="Encaissé sur 6 mois">
           <TitreSection titre="Encaissé sur 6 mois" action="Finances" onAction={() => setPage('finances')} />
           <div className="bg-surface border border-bord rounded-2xl shadow-e1 p-4 sm:p-5">
@@ -639,10 +654,11 @@ export default function Dashboard({
                   meta={client ? [client.prenom, client.nom || client.name].filter(Boolean).join(' ') : undefined}
                   pied={(
                     <>
+                      {/* Une barre d'avancement n'est pas un statut : l'accent, pas le bleu « chez le client » (§ 2.8) */}
                       <span className="flex-1 h-1.5 rounded-full bg-surface-2 overflow-hidden" aria-hidden="true">
-                        <span className="block h-full rounded-full bg-info-point" style={{ width: `${av}%` }} />
+                        <span className="block h-full rounded-full bg-accent" style={{ width: `${av}%` }} />
                       </span>
-                      <span className="text-sm font-semibold text-encre tabular-nums">{av} %</span>
+                      <span className="text-sm font-semibold text-encre tabular-nums">Avancement {av} %</span>
                     </>
                   )}
                 />

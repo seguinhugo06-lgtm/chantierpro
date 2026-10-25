@@ -7,8 +7,10 @@ import { invitationEnAttente } from './lib/organisationActive';
 
 // Eager load critical components
 import Dashboard from './components/Dashboard';
-import FABMenu from './components/FABMenu';
 import PWAUpdatePrompt from './components/PWAUpdatePrompt';
+import MenuPlus from './components/layout/MenuPlus';
+import MenuCompte from './components/layout/MenuCompte';
+import PastilleCompte from './components/layout/PastilleCompte';
 import LandingPage from './components/landing/LandingPage';
 import { logger } from './lib/logger';
 
@@ -29,7 +31,13 @@ const lazyWithRetry = (importFn, name) => lazy(() =>
       }
     }
     console.error(`[LAZY] Failed to load ${name}:`, err);
-    return { default: () => <div style={{padding:'2rem',textAlign:'center',color:'#ef4444'}}>Erreur chargement {name}<br/><button onClick={() => window.location.reload()} style={{marginTop:'1rem',padding:'0.5rem 1rem',background:'#f97316',color:'white',borderRadius:'0.5rem',border:'none',cursor:'pointer'}}>Recharger</button></div> };
+    return { default: () => (
+      <div role="alert" className="p-8 text-center text-danger-texte">
+        Erreur de chargement : {name}
+        <br />
+        <button type="button" onClick={() => window.location.reload()} className="mt-4 h-11 px-5 rounded-full bg-accent text-sur-accent font-semibold">Recharger</button>
+      </div>
+    ) };
   })
 );
 
@@ -44,7 +52,6 @@ const Equipe = lazyWithRetry(() => import('./components/Equipe'), 'Équipe');
 const Catalogue = lazyWithRetry(() => import('./components/Catalogue'), 'Catalogue');
 const Settings = lazyWithRetry(() => import('./components/Settings'), 'Paramètres');
 const AdminHelp = lazyWithRetry(() => import('./components/admin-help/AdminHelp'), 'AdminHelp');
-const DevisWizard = lazyWithRetry(() => import('./components/DevisWizard'), 'DevisWizard');
 const QuickClientModal = lazyWithRetry(() => import('./components/QuickClientModal'), 'QuickClient');
 const QuickChantierModal = lazyWithRetry(() => import('./components/QuickChantierModal'), 'QuickChantier');
 const CommandPalette = lazyWithRetry(() => import('./components/CommandPalette'), 'CommandPalette');
@@ -82,8 +89,7 @@ import FeatureGuard from './components/subscription/FeatureGuard';
 import { useSubscriptionStore } from './stores/subscriptionStore';
 import { usePermissions } from './hooks/usePermissions';
 import { fetchSubscription, computeLiveUsage } from './services/subscriptionsApi';
-import { isDraftChantier } from './lib/utils';
-import { Home, FileText, Building2, Users, Package, HardHat, Settings as SettingsIcon, Eye, EyeOff, Sun, Moon, LogOut, Menu, Bell, Plus, ChevronRight, HelpCircle, Search, X, CheckCircle, AlertCircle, Info, Wifi, WifiOff, Wallet, ClipboardList, Smartphone, CreditCard, MessageCircle, CalendarCheck, Mic, PenLine } from 'lucide-react';
+import { Home, FileText, Building2, Users, Package, HardHat, Settings as SettingsIcon, Eye, EyeOff, Menu, Bell, Plus, ChevronRight, HelpCircle, Search, X, CheckCircle, AlertCircle, Info, Wifi, WifiOff, Wallet, ClipboardList, Smartphone, CreditCard, MessageCircle, CalendarCheck, Mic, PenLine, Clock, TrendingUp, Lightbulb, Mail, BookOpen, Hand, Rocket, Palette } from 'lucide-react';
 import { usePWA } from './hooks/usePWA';
 import { registerNetworkListeners, getPendingCount, syncQueue, clearAllMutations, clearMutationsDe, checkConnectivity } from './lib/offline/sync';
 import OfflineIndicator from './components/ui/OfflineIndicator';
@@ -92,9 +98,12 @@ import BandeauDonneesFictives from './components/ui/BandeauDonneesFictives';
 import { estDonneesFictives } from './lib/donneesFictives';
 import { FONCTIONS } from './lib/fonctions';
 import { estNatif } from './lib/natif';
-import { appliquerTheme } from './lib/theme';
+import { appliquerTheme, COULEUR_DOCUMENTS_DEFAUT } from './lib/theme';
 import { dateEcheance, joursDeRetard, resteAPayer } from './lib/paiementsFacture';
-import { estOuverte, estEnRetard } from './lib/ventes';
+import { estEnRetard, aTraiter, estUrgent } from './lib/ventes';
+import Modal, { ModalHeader, ModalTitle, ModalDescription, ModalBody, ModalFooter } from './components/ui/Modal';
+import EtatVide from './components/ui/EtatVide';
+import { Bouton } from './components/ui/Bouton';
 import { messageEcritureRefusee } from './lib/erreursEcriture';
 import { jourLocal } from './lib/dates';
 import { mentionsFacture } from './lib/mentionsFacture';
@@ -109,17 +118,21 @@ const safeStr = (v, fallback = '') => {
   return String(v);
 };
 
-// Theme classes helper — Linear-inspired palette
-const getThemeClasses = (isDark) => ({
-  card: "bg-surface border-bord/70",
-  cardHover: isDark ? "hover:bg-slate-700" : "hover:bg-[#f5f5f5]",
-  input: isDark ? "bg-slate-800 border-slate-700 text-slate-100 placeholder-slate-500" : "bg-white border-[#ebebeb] text-[#1a1a1a] placeholder-[#999]",
-  text: "text-encre",
-  textSecondary: isDark ? "text-slate-400" : "text-[#666]",
-  textMuted: isDark ? "text-slate-500" : "text-[#999]",
-  bg: isDark ? "bg-slate-900" : "bg-[#fafafa]",
-  border: isDark ? "border-slate-700" : "border-[#ebebeb]",
-});
+// Notifications : un ton et une icône par nature (avant : des émojis ✅ ⚠️ ℹ️ 🔔 et un « Voir → » orange).
+// alert = retard, perte, assurance expirée : danger ; warning = à relancer, à surveiller : alerte.
+const TONS_NOTIFICATION = {
+  success: { icone: CheckCircle, classe: 'bg-succes-fond text-succes-texte' },
+  warning: { icone: Clock, classe: 'bg-alerte-fond text-alerte-texte' },
+  info: { icone: Info, classe: 'bg-info-fond text-info-texte' },
+  message: { icone: MessageCircle, classe: 'bg-neutre-fond text-neutre-texte' },
+  alert: { icone: AlertCircle, classe: 'bg-danger-fond text-danger-texte' },
+};
+const TONS_TOAST = {
+  success: { icone: CheckCircle, classe: 'bg-succes-fond text-succes-texte' },
+  error: { icone: AlertCircle, classe: 'bg-danger-fond text-danger-texte' },
+  warning: { icone: AlertCircle, classe: 'bg-alerte-fond text-alerte-texte' },
+  info: { icone: Info, classe: 'bg-info-fond text-info-texte' },
+};
 
 // Noms des tables tels que l'artisan les connaît (bandeau d'échec de chargement).
 const LIBELLES_TABLES = {
@@ -221,7 +234,7 @@ export default function App() {
     } catch { /* noop */ }
   }, [user?.id, setPage]);
 
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [menuPlus, setMenuPlus] = useState(false); // « Plus » de la barre du bas (téléphone) : feuille des autres rubriques
   const [selectedChantier, setSelectedChantier] = useState(null);
   const [selectedDevis, setSelectedDevis] = useState(null);
   const [createMode, setCreateMode] = useState({ devis: false, chantier: false, client: false });
@@ -245,7 +258,7 @@ export default function App() {
   // onto a new user's devis/PDF as "Mallettico"). The "Profil incomplet" nudge
   // prompts them to fill it.
   const ENTREPRISE_DEFAULTS = {
-    nom: '', logo: '', couleur: '#f97316',
+    nom: '', logo: '', couleur: COULEUR_DOCUMENTS_DEFAUT,
     formeJuridique: '', capital: '', adresse: '', codePostal: '', ville: '',
     tel: '', email: '', siteWeb: '', siret: '', codeApe: '', rcs: '',
     tvaIntra: '', validiteDevis: 30, tvaDefaut: 10, delaiPaiement: 30,
@@ -519,10 +532,14 @@ export default function App() {
   }, [devis, paiements, chantiers, clients, entreprise, getChantierBilan, readNotifIds, canAccess, modeDiscret]);
   const [showNotifs, setShowNotifs] = useState(false);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [menuCompte, setMenuCompte] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [showRetour, setShowRetour] = useState(false);
-  const [showFABDevisWizard, setShowFABDevisWizard] = useState(false);
+  // Demande faite à la page Devis & factures depuis ailleurs (Accueil, recherche) : { relancer: id } ouvre la fiche et
+  // la feuille « Relancer » ; { etat } ou { nature } ouvre la liste filtrée (audit UX du 20 oct. 2026 : « Relancer » et
+  // « Finaliser » de l'Accueil n'ouvraient que la fiche, ou la liste non filtrée)
+  const [demandeDevis, setDemandeDevis] = useState(null);
   const [showFABQuickClient, setShowFABQuickClient] = useState(false);
   const [showFABQuickChantier, setShowFABQuickChantier] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -541,6 +558,42 @@ export default function App() {
   // Settings state (entreprise declared earlier, before notifications useMemo)
   const [theme, setTheme] = useState('light');
 
+  // CGU (LEGAL-001) : demandées au moment d'un geste qui les exige — le premier document (devis ou facture), ou le
+  // suivant quand leur version a changé —, plus au chargement. Avant (retour d'Hugo sur « Au Bon Volt », 21-23 oct.
+  // 2026), la fenêtre bloquante surgissait au premier réglage enregistré (le clic sur la couleur du profil créait la
+  // fiche entreprise). Jamais en démo. L'éditeur les demande à son ouverture (DevisPage, ouvrirNouveauDevis) ;
+  // addDevis, par où passe tout document, est le filet.
+  const [demandeCgu, setDemandeCgu] = useState(null); // { resolve, motif }
+  const cguAccepteeIci = useRef(false); // acceptée dans cette session : ne pas attendre que la fiche soit relue
+  const cguRef = useRef({ aJour: true, motif: 'premier' });
+  cguRef.current = {
+    aJour: isDemo || !user || entrepriseLoading || cguAccepteeIci.current
+      || (!!entreprise.cguAcceptedAt && entreprise.cguVersion === CGU_VERSION),
+    motif: entreprise.cguAcceptedAt ? 'version' : 'premier',
+  };
+  const exigerCgu = useCallback(() => {
+    const { aJour, motif } = cguRef.current;
+    if (aJour) return Promise.resolve(true);
+    return new Promise((resolve) => setDemandeCgu({ resolve, motif }));
+  }, []);
+  // Rend false si l'acceptation n'a pas été enregistrée : la fenêtre reste ouverte et le dit
+  const accepterCgu = async (version) => {
+    const cguData = { cguAcceptedAt: new Date().toISOString(), cguVersion: version };
+    try {
+      // Ces deux champs seulement ; sans fiche (compte neuf), la première écriture la crée
+      if (entrepriseId) await ctxUpdateEntreprise(entrepriseId, cguData);
+      else await setEntreprise(prev => ({ ...prev, ...cguData }));
+    } catch (err) {
+      captureException(err, { context: 'acceptation des CGU' });
+      return false;
+    }
+    cguAccepteeIci.current = true;
+    demandeCgu?.resolve(true);
+    setDemandeCgu(null);
+    return true;
+  };
+  const annulerCgu = () => { demandeCgu?.resolve(false); setDemandeCgu(null); };
+
   // CRUD wrappers with toasts (delegate to DataContext)
   // Chaque enveloppe n'annonce un succès que si la base a confirmé (ou mis en attente de réseau, ce que
   // DataContext dit lui-même) ; en cas de refus, DataContext a déjà affiché pourquoi. Elles rendent le résultat.
@@ -550,6 +603,10 @@ export default function App() {
   // Une facture sans échéance en reçoit une à sa création, selon ses conditions de règlement ou le délai
   // de l'entreprise (art. L441-9 I C. com. : la date de règlement figure sur la facture).
   const addDevis = async (data) => {
+    if (!(await exigerCgu())) {
+      showToast('Document non créé : les conditions d’utilisation n’ont pas été acceptées.', 'info');
+      return null;
+    }
     const avecEcheance = data?.type === 'facture' && !data.date_echeance && data.facture_type !== 'avoir'
       ? { ...data, date_echeance: dateEcheance(data.date || new Date(), { conditionsPaiement: data.conditionsPaiement || data.conditions, delaiJours: entreprise?.delaiPaiement }) }
       : data;
@@ -557,7 +614,9 @@ export default function App() {
     if (d) showToast(`${data.facture_type === 'avoir' ? 'Avoir créé' : data.type === 'facture' ? 'Facture créée' : 'Devis créé'}`, 'success');
     return d;
   };
-  const updateDevis = async (id, data) => { const ok = await dataUpdateDevis(id, data); if (ok) showToast('Document mis à jour', 'success'); return ok; };
+  // silencieux : un envoi (e-mail, SMS, WhatsApp) enregistre aussi le statut et la date d'envoi ; « Document mis à
+  // jour », arrivé après, remplaçait « Devis envoyé à … » (rapport de la Task 4 « ancien code », 24 oct. 2026)
+  const updateDevis = async (id, data, { silencieux = false } = {}) => { const ok = await dataUpdateDevis(id, data); if (ok && !silencieux) showToast('Document mis à jour', 'success'); return ok; };
   const deleteDevis = async (id) => { const ok = await dataDeleteDevis(id); if (ok) showToast('Document supprimé', 'info'); return ok; };
   const addChantier = async (data) => { const c = await dataAddChantier(data); if (c) showToast(`Chantier "${data.nom}" créé`, 'success'); return c; };
   const updateChantier = async (id, data) => { const ok = await dataUpdateChantier(id, data); if (ok) showToast('Chantier mis à jour', 'success'); return ok; };
@@ -742,7 +801,7 @@ export default function App() {
       if (target) {
         isPopstateNav.current = true;
         setPage(target);
-        setSidebarOpen(false);
+        setMenuPlus(false);
       }
     };
     window.addEventListener('popstate', handlePopstate);
@@ -901,11 +960,6 @@ export default function App() {
     setUsageData(liveUsage);
   }, [clients.length, devis.length, chantiers.length, equipe.length, setUsageData]);
 
-  const stats = {
-    devisAttente: devis.filter(d => d.type === 'devis' && ['envoye', 'vu'].includes(d.statut)).length,
-    chantiersEnCours: chantiers.filter(c => c.statut === 'en_cours' && !isDraftChantier(c)).length
-  };
-
   // Auth handlers
   const handleSignIn = async (e) => {
     e.preventDefault();
@@ -1025,10 +1079,11 @@ export default function App() {
         return;
       }
 
-      // Cmd/Ctrl + D for new devis
+      // Cmd/Ctrl + D : nouveau devis, dans l'éditeur (l'entrée principale ; avant : l'ancien assistant)
       if ((e.metaKey || e.ctrlKey) && e.key === 'd' && !isInput) {
         e.preventDefault();
-        setShowFABDevisWizard(true);
+        setCreateMode(p => ({ ...p, devis: true }));
+        setPage('devis');
         return;
       }
 
@@ -1069,12 +1124,12 @@ export default function App() {
       if (e.key === 'Escape') {
         setShowSearch(false);
         setShowQuickAdd(false);
+        setMenuCompte(false);
         setShowNotifs(false);
-        setShowFABDevisWizard(false);
         setShowFABQuickClient(false);
         setShowFABQuickChantier(false);
         setShowShortcuts(false);
-        setSidebarOpen(false);
+        setMenuPlus(false);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -1168,13 +1223,15 @@ export default function App() {
 
   // Loading screen
   if (loading) return (
-    <div className="min-h-screen bg-[#f5f5f5] flex items-center justify-center">
+    <div className="min-h-screen bg-fond flex items-center justify-center">
       <LogoMallettico taille={56} className="animate-bounce" />
     </div>
   );
 
   const isDark = theme === 'dark';
-  const tc = getThemeClasses(isDark);
+  // Couleur de l'entreprise telle que la reçoivent les pages : leurs documents (devis, factures) l'impriment ; sans
+  // couleur choisie, celle des documents par défaut (src/lib/theme.js). L'écran, lui, lit l'accent du thème.
+  const couleur = entreprise.couleur || COULEUR_DOCUMENTS_DEFAUT;
 
   // Client Portal — public page accessible via token (no auth required)
 
@@ -1192,12 +1249,11 @@ export default function App() {
 
     // PortalLoader handles its own loading/error states via manual dynamic import.
     // This bypasses React.lazy to catch TDZ errors during module evaluation.
-    // NOTE: use entreprise.couleur directly — `const couleur` is declared later in this scope
     return (
       <PortalLoader
         token={portalToken || 'demo'}
         entreprise={entreprise || {}}
-        couleur={entreprise?.couleur || '#f97316'}
+        couleur={couleur}
         client={portalClient}
         devis={portalDevis || []}
         chantiers={portalChantiers || []}
@@ -1211,14 +1267,14 @@ export default function App() {
   // Legal / public pages (accessible without auth)
   const publicPages = ['cgv', 'cgu', 'confidentialite', 'mentions-legales', 'accessibilite', 'supprimer-mon-compte', 'changelog'];
   if (!user && !isDemo && publicPages.includes(page)) return (
-    <Suspense fallback={<div className="min-h-screen bg-[#f5f5f5] flex items-center justify-center"><LogoMallettico taille={56} className="animate-bounce" /></div>}>
-      <div data-theme="clair" className="min-h-screen bg-[#f5f5f5] p-4 sm:p-6">
+    <Suspense fallback={<div className="min-h-screen bg-fond flex items-center justify-center"><LogoMallettico taille={56} className="animate-bounce" /></div>}>
+      <div data-theme="clair" className="min-h-screen bg-fond p-4 sm:p-6">
         {page === 'changelog'
-          ? <Changelog isDark={false} couleur={entreprise.couleur || '#f97316'} setPage={(p) => { setPage(p); if (!publicPages.includes(p)) setShowLanding(true); }} />
-          : <LegalPages page={page} isDark={false} couleur={entreprise.couleur || '#f97316'} setPage={(p) => { setPage(p); if (!publicPages.includes(p)) setShowLanding(true); }} />
+          ? <Changelog isDark={false} couleur={couleur} setPage={(p) => { setPage(p); if (!publicPages.includes(p)) setShowLanding(true); }} />
+          : <LegalPages page={page} isDark={false} couleur={couleur} setPage={(p) => { setPage(p); if (!publicPages.includes(p)) setShowLanding(true); }} />
         }
       </div>
-      <div data-theme="clair"><CookieConsent isDark={false} couleur={entreprise.couleur || '#f97316'} /></div>
+      <div data-theme="clair"><CookieConsent /></div>
     </Suspense>
   );
 
@@ -1233,12 +1289,12 @@ export default function App() {
   if (!user && !isDemo && showLanding) return (
     <>
       <LandingPage
-        couleur={entreprise.couleur || '#f97316'}
+        couleur={couleur}
         onLogin={() => setShowLanding(false)}
         onSignup={() => { setShowLanding(false); setShowSignUp(true); }}
         onNavigate={(p) => { setPage(p); setShowLanding(false); }}
       />
-      <div data-theme="clair"><CookieConsent isDark={false} couleur={entreprise.couleur || '#f97316'} /></div>
+      <div data-theme="clair"><CookieConsent /></div>
     </>
   );
 
@@ -1246,7 +1302,7 @@ export default function App() {
   // bleu nuit à texte blanc, orange du logo en décor seulement. Les points cités sont ceux que le site vérifie dans le
   // code (devis par prestations chiffrées, signature en ligne, facture sans ressaisie, relances préparées).
   if (!user) {
-    const champ = 'w-full rounded-xl border border-marque-acier bg-white px-4 py-3 text-marque-encre-sombre placeholder:text-slate-500 transition-colors focus:border-marque-nuit-2 focus:outline-none focus:ring-2 focus:ring-marque-nuit-2/20';
+    const champ = 'w-full rounded-xl border border-marque-acier bg-surface px-4 py-3 text-marque-encre-sombre placeholder:text-encre-3 transition-colors focus:border-marque-nuit-2 focus:outline-none focus:ring-2 focus:ring-marque-nuit-2/20';
     const boutonPlein = 'flex w-full items-center justify-center gap-2 rounded-full bg-marque-nuit-2 py-3.5 font-semibold text-white shadow-[0_8px_20px_-8px_rgba(18,51,111,0.6)] transition-all hover:-translate-y-px hover:bg-marque-nuit focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-marque-nuit-2 focus-visible:ring-offset-2 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-70';
     const lien = 'font-semibold text-marque-nuit-2 underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-marque-nuit-2 rounded';
     return (
@@ -1297,9 +1353,9 @@ export default function App() {
             <span className="text-2xl font-bold text-marque-nuit">Mallettico</span>
           </div>
 
-          <div className="rounded-3xl border border-marque-acier/60 bg-white p-6 shadow-[0_24px_48px_-24px_rgba(13,46,108,0.35)] sm:p-8">
+          <div className="rounded-3xl border border-marque-acier/60 bg-surface p-6 shadow-[0_24px_48px_-24px_rgba(13,46,108,0.35)] sm:p-8">
           <h2 className="mb-2 text-3xl font-bold tracking-tight text-marque-nuit">{showForgot ? 'Mot de passe oublié' : showSignUp ? 'Créer un compte' : 'Connexion'}</h2>
-          <p className="mb-8 text-slate-600">{showForgot ? 'Recevez par e-mail un lien pour en choisir un nouveau.' : invitation ? `Pour rejoindre ${invitation.organisation || "l'équipe qui vous invite"}` : showSignUp ? 'Commencez gratuitement' : 'Accédez à votre espace'}</p>
+          <p className="mb-8 text-encre-2">{showForgot ? 'Recevez par e-mail un lien pour en choisir un nouveau.' : invitation ? `Pour rejoindre ${invitation.organisation || "l'équipe qui vous invite"}` : showSignUp ? 'Commencez gratuitement' : 'Accédez à votre espace'}</p>
 
           {invitation && !showForgot && (
             <div role="note" className="mb-4 flex items-start gap-2 rounded-xl border border-marque-acier bg-marque-glacier-1 p-3 text-sm text-marque-encre-sombre">
@@ -1312,7 +1368,7 @@ export default function App() {
           )}
 
           {authInfo && (
-            <div role="status" className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
+            <div role="status" className="mb-4 rounded-xl border border-succes-texte/20 bg-succes-fond p-3 text-sm text-succes-texte">
               {authInfo}
             </div>
           )}
@@ -1331,7 +1387,7 @@ export default function App() {
                 autoComplete="email"
               />
               {authError && (
-                <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{safeStr(authError)}</div>
+                <div role="alert" className="rounded-xl border border-danger-texte/20 bg-danger-fond p-3 text-sm text-danger-texte">{safeStr(authError)}</div>
               )}
               <button type="submit" disabled={isSubmitting} className={boutonPlein}>
                 {isSubmitting ? 'Envoi…' : 'Envoyer le lien'}
@@ -1339,7 +1395,7 @@ export default function App() {
               <button
                 type="button"
                 onClick={() => { setShowForgot(false); setAuthError(''); setAuthInfo(''); }}
-                className="w-full py-2 text-sm text-slate-600 transition-colors hover:text-marque-nuit"
+                className="w-full py-2 text-sm text-encre-2 transition-colors hover:text-marque-nuit"
               >
                 Retour à la connexion
               </button>
@@ -1379,20 +1435,20 @@ export default function App() {
                 autoComplete={showSignUp ? "new-password" : "current-password"}
               />
               {showSignUp && (
-                <p className="mt-2 text-xs text-slate-600">Au moins 8 caractères, avec des lettres et des chiffres.</p>
+                <p className="mt-2 text-xs text-encre-2">Au moins 8 caractères, avec des lettres et des chiffres.</p>
               )}
               {!showSignUp && (
                 <button
                   type="button"
                   onClick={() => { setShowForgot(true); setAuthError(''); setAuthInfo(''); }}
-                  className="mt-2 self-end py-1 text-sm text-slate-600 transition-colors hover:text-marque-nuit-2"
+                  className="mt-2 self-end py-1 text-sm text-encre-2 transition-colors hover:text-marque-nuit-2"
                 >
                   Mot de passe oublié ?
                 </button>
               )}
             </div>
             {authError && (
-              <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+              <div role="alert" className="rounded-xl border border-danger-texte/20 bg-danger-fond p-3 text-sm text-danger-texte">
                 {safeStr(authError)}
               </div>
             )}
@@ -1411,7 +1467,7 @@ export default function App() {
             </button>
           </form>
 
-          <p className="mt-6 text-center text-slate-600">
+          <p className="mt-6 text-center text-encre-2">
             {showSignUp ? 'Déjà inscrit ?' : 'Pas de compte ?'}{' '}
             <button onClick={() => { setShowSignUp(!showSignUp); setAuthError(''); setAuthInfo(''); }} className={`${lien} py-2`}>
               {showSignUp ? 'Se connecter' : "S'inscrire"}
@@ -1427,7 +1483,7 @@ export default function App() {
 
   // Arrivée par le lien de réinitialisation : choisir le nouveau mot de passe avant d'entrer.
   if (recoveryMode) return (
-    <Suspense fallback={<div className="min-h-screen bg-slate-900" />}>
+    <Suspense fallback={<div className="min-h-screen bg-fond" />}>
       <NouveauMotDePasse
         email={user?.email}
         onTermine={() => { setRecoveryMode(false); showToast('Mot de passe modifié ✓', 'success'); }}
@@ -1436,54 +1492,44 @@ export default function App() {
     </Suspense>
   );
 
-  // Calculate stats for badges
-  // Factures à encaisser (reste dû), pas le statut brut : avant, des factures payées étaient « impayées »
-  const facturesImpayees = devis.filter(d => estOuverte(d, paiements)).length;
-  const devisEnAttenteCount = devis.filter(d => d.type === 'devis' && ['envoye', 'vu'].includes(d.statut)).length;
+  // Pastilles du menu (audit UX du 20 oct. 2026, § 2.1) : seulement ce qui demande d'agir ; rouge (danger) pour un
+  // retard ou une relance due, neutre pour le reste. Devis & factures : les documents « à traiter », la même règle que
+  // la puce de la liste (src/lib/ventes.js). Avant : devis en attente + factures non soldées, en rouge dès qu'une facture
+  // était due, même dans ses délais (« 2 » rouge quand l'Accueil disait « Aucun retard ») ; et un « 5 » vert sur
+  // Chantiers qui ne demandait rien.
+  const maintenant = new Date();
+  const docsATraiter = devis.filter(d => aTraiter(d, paiements, maintenant));
+  const docsUrgents = docsATraiter.filter(d => estUrgent(d, paiements, maintenant));
   const aujourdHui = jourLocal(); // date du jour en heure locale (toISOString donnait la veille entre minuit et 2 h)
   const todayEvents = planningEvents.filter(e => e.date === aujourdHui).length;
   const memosOverdueCount = memos.filter(m => !m.is_done && m.due_date && m.due_date < aujourdHui).length;
+  const pluriel = (n, mot) => `${n} ${mot}${n > 1 ? 's' : ''}`;
 
-  // Navigation items - full sidebar with all sections
-  // Badges now include explicit context for clarity
-  // Simplified sidebar: 7 core modules + settings (was 18 items)
-  // Filtered by role-based permissions (RBAC Phase 3)
+  // Rubriques, dans l'ordre du menu latéral (audit § 2.1) ; filtrées par les droits du rôle (RBAC)
   const allNav = [
     { id: 'dashboard', icon: Home, label: 'Accueil' },
     {
-      id: 'devis',
-      icon: FileText,
-      label: 'Devis & Factures',
-      badge: stats.devisAttente + facturesImpayees,
-      badgeColor: facturesImpayees > 0 ? '#ef4444' : '#f97316',
-      badgeTitle: facturesImpayees > 0
-        ? `${facturesImpayees} facture${facturesImpayees > 1 ? 's' : ''} impayée${facturesImpayees > 1 ? 's' : ''}, ${devisEnAttenteCount} devis en attente`
-        : `${devisEnAttenteCount} devis en attente de réponse`
+      id: 'devis', icon: FileText, label: 'Devis & Factures',
+      badge: docsATraiter.length,
+      badgeTon: docsUrgents.length > 0 ? 'danger' : 'neutre',
+      badgeTitle: docsATraiter.length > 0
+        ? `${pluriel(docsATraiter.length, 'document')} à traiter${docsUrgents.length > 0 ? `, dont ${docsUrgents.length} en retard ou à relancer` : ''}`
+        : '',
     },
-    {
-      id: 'chantiers',
-      icon: Building2,
-      label: 'Chantiers',
-      badge: stats.chantiersEnCours,
-      badgeColor: '#22c55e',
-      badgeTitle: `${stats.chantiersEnCours} chantier${stats.chantiersEnCours > 1 ? 's' : ''} en cours`
-    },
+    { id: 'chantiers', icon: Building2, label: 'Chantiers' },
     { id: 'clients', icon: Users, label: 'Clients' },
     {
-      id: 'tasks',
-      icon: CalendarCheck,
-      label: 'Tâches & Planning',
-      badge: (memosOverdueCount || 0) + (todayEvents || 0),
-      badgeColor: memosOverdueCount > 0 ? '#ef4444' : '#3b82f6',
+      id: 'tasks', icon: CalendarCheck, label: 'Tâches & Planning',
+      badge: memosOverdueCount + todayEvents,
+      badgeTon: memosOverdueCount > 0 ? 'danger' : 'neutre',
       badgeTitle: [
-        memosOverdueCount > 0 ? `${memosOverdueCount} tâche${memosOverdueCount > 1 ? 's' : ''} en retard` : '',
-        todayEvents > 0 ? `${todayEvents} événement${todayEvents > 1 ? 's' : ''} aujourd'hui` : '',
-      ].filter(Boolean).join(' · ')
+        memosOverdueCount > 0 ? `${pluriel(memosOverdueCount, 'tâche')} en retard` : '',
+        todayEvents > 0 ? `${pluriel(todayEvents, 'événement')} aujourd'hui` : '',
+      ].filter(Boolean).join(' · '),
     },
-    { id: 'equipe', icon: HardHat, label: 'Équipe' },
     { id: 'catalogue', icon: Package, label: 'Catalogue' },
+    { id: 'equipe', icon: HardHat, label: 'Équipe' },
     { id: 'finances', icon: Wallet, label: 'Finances' },
-    { id: 'plan', icon: CreditCard, label: 'Mon plan' },
     (() => {
       // Badge : la note de la jauge « Profil complété » et de l'onglet Facture 2026 (lib/mentionsFacture, D-25).
       // Avant, il calculait sa propre « Conformité Facture 2026 » (RCS et TVA intracom exigés de tous, RC Pro,
@@ -1491,268 +1537,124 @@ export default function App() {
       const { note, total, remplies } = mentionsFacture(entreprise);
       const manquantes = total - remplies;
       return {
-        id: 'settings', icon: SettingsIcon, label: 'Param\u00e8tres',
+        id: 'settings', icon: SettingsIcon, label: 'Paramètres',
         badge: manquantes,
-        badgeColor: note < 50 ? '#ef4444' : '#f59e0b',
+        badgeTon: 'neutre',
         badgeTitle: manquantes > 0
           ? `Profil complété : ${note} % — ${manquantes} mention${manquantes > 1 ? 's' : ''} obligatoire${manquantes > 1 ? 's' : ''} à compléter`
-          : ''
+          : '',
       };
     })(),
+    { id: 'plan', icon: CreditCard, label: 'Mon plan' },
   ];
-  // Filter nav by role-based permissions (RBAC)
   const nav = allNav.filter(item => canAccess(item.id));
-  const couleur = entreprise.couleur || '#f97316';
+  // Barre du bas (téléphone) : quatre onglets ; « Plus » ne montre que les autres rubriques (jamais ces quatre-là)
+  const ONGLETS_BAS = ['dashboard', 'devis', 'chantiers', 'clients'];
+  // Menu latéral (bureau) : aucun groupe d'un seul élément (avant : « Organisation » pour Tâches seul, Paramètres
+  // sous « Gestion », Mon plan sous « Profil »)
+  const GROUPES_NAV = [
+    { titre: null, ids: ['dashboard', 'devis', 'chantiers', 'clients', 'tasks'] },
+    { titre: 'Gestion', ids: ['catalogue', 'equipe', 'finances'] },
+    { titre: 'Compte', ids: ['settings', 'plan'] },
+  ];
   const unreadNotifs = notifications.filter(n => !n.read);
-
-  // LEGAL-001: CGU acceptance check — block app until accepted or when version changes
-  // Wait for entreprise context to finish loading before showing modal
-  const needsCguAcceptance = !isDemo && user && entrepriseId && !entrepriseLoading && (
-    !entreprise.cguAcceptedAt || entreprise.cguVersion !== CGU_VERSION
-  );
-
-  const handleCguAccept = async (version) => {
-    const now = new Date().toISOString();
-    const cguData = { cguAcceptedAt: now, cguVersion: version };
-    // Persist ONLY CGU fields to entreprises table (avoid sending entire object with unmapped columns)
-    if (entrepriseId) {
-      try {
-        await ctxUpdateEntreprise(entrepriseId, cguData);
-      } catch (err) {
-        // Silently continue — local state update below ensures UI unblocks
-      }
-    }
-    // Also update local state so the modal closes immediately
-    setEntreprise(prev => ({ ...prev, ...cguData }));
+  const notifsUrgentes = unreadNotifs.some(n => n.type === 'alert');
+  const allerA = (id) => { setPage(id); setMenuPlus(false); setSelectedChantier(null); };
+  const rubriquesPlus = nav.filter(n => !ONGLETS_BAS.includes(n.id));
+  // Ouvre la page Devis & factures sur une demande : { relancer: id } (fiche + feuille « Relancer ») ou { etat } / { nature }
+  const ouvrirDevis = (demande) => { setDemandeDevis(demande); setSelectedDevis(null); setPage('devis'); };
+  const basculerTheme = () => setTheme(t => (t === 'dark' ? 'light' : 'dark'));
+  // Mode confidentiel : une seule commande, l'œil de l'en-tête (avant : en-tête, Accueil, menu latéral, Finances)
+  const basculerDiscret = () => {
+    const next = !modeDiscret;
+    setModeDiscret(next);
+    showToast(next ? 'Mode confidentiel activé — Montants masqués' : 'Mode confidentiel désactivé — Montants visibles', 'info');
+  };
+  const installer = () => {
+    if (canInstall) install();
+    else showToast('Sur iPhone : Partager, puis « Sur l’écran d’accueil »', 'info');
   };
 
   return (
-    <div className={`min-h-screen ${tc.bg}`}>
-      {/* LEGAL-001: CGU acceptance modal — blocks app until accepted */}
-      {needsCguAcceptance && (
-        <CGUAcceptanceModal onAccept={handleCguAccept} couleur={couleur} />
+    <div className="min-h-screen bg-fond">
+      {/* CGU : au premier document, ou à une nouvelle version (exigerCgu) */}
+      {demandeCgu && (
+        <CGUAcceptanceModal motif={demandeCgu.motif} onAccept={accepterCgu} onAnnuler={annulerCgu} />
       )}
       {/* Skip to main content link for accessibility */}
       <a
         href="#main-content"
-        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[1030] focus:px-4 focus:py-2 focus:bg-white focus:text-[#1a1a1a] focus:rounded-lg focus:shadow-lg focus:outline-none"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[1030] focus:px-4 focus:py-2 focus:bg-surface focus:text-encre focus:rounded-lg focus:shadow-e2 focus:outline-none"
       >
         Aller au contenu principal
       </a>
 
-      {/* Mobile overlay */}
-      {sidebarOpen && <div className="fixed inset-0 bg-black/50 z-40 md:hidden" onClick={() => setSidebarOpen(false)} />}
-
-      {/* Sidebar - Optimized mobile layout with collapsed icons-only mode on md-xl */}
-      <aside className={`fixed top-0 left-0 z-50 h-full pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] bg-surface border-r border-bord transform transition-all duration-200 flex flex-col
-        ${sidebarOpen ? 'w-64 translate-x-0 shadow-2xl' : '-translate-x-full'}
-        md:translate-x-0 md:w-[72px] xl:w-64 md:shadow-none`}>
-        {/* Header with close button on mobile */}
-        <div className={`flex items-center gap-3 px-3 py-3 border-b border-bord flex-shrink-0 md:justify-center xl:justify-start`}>
+      {/* Menu latéral : à partir de 768 px (icônes seules jusqu'à 1 280 px). Au téléphone : la barre du bas et « Plus ». */}
+      <aside className="hidden md:flex fixed top-0 left-0 z-50 h-full pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] bg-surface border-r border-bord flex-col md:w-[72px] xl:w-64">
+        <div className="flex items-center gap-3 px-3 py-3 border-b border-bord flex-shrink-0 justify-center xl:justify-start">
           <div className="hidden xl:block flex-1 min-w-0">
             <EntrepriseSwitcher
               isDark={isDark}
               user={user}
-              onNavigateSettings={() => { setPage('settings'); setSidebarOpen(false); }}
+              onNavigateSettings={() => allerA('settings')}
             />
           </div>
-          {/* Collapsed logo icon for md-xl */}
-          <div className="hidden md:flex xl:hidden items-center justify-center w-10 h-10">
+          <div className="flex xl:hidden items-center justify-center w-10 h-10">
             <LogoMallettico taille={38} />
           </div>
-          {/* Mobile open: show full switcher */}
-          <div className="md:hidden flex-1 min-w-0">
-            <EntrepriseSwitcher
-              isDark={isDark}
-              user={user}
-              onNavigateSettings={() => { setPage('settings'); setSidebarOpen(false); }}
-            />
-          </div>
-          {/* Close button - mobile only */}
-          <button
-            onClick={() => setSidebarOpen(false)}
-            className={`md:hidden p-2 rounded-xl transition-colors text-encre-3 hover:bg-surface-2 hover:text-encre`}
-            aria-label="Fermer le menu"
-          >
-            <X size={18} />
-          </button>
         </div>
 
-        {/* Scrollable navigation area */}
         <div className="flex-1 overflow-y-auto py-2 px-2">
-          {/* Main navigation */}
-          <nav className="space-y-0.5" aria-label="Navigation principale">
-            {nav.slice(0, 2).map(n => (
-              <button
-                key={n.id}
-                onClick={() => { setPage(n.id); setSidebarOpen(false); setSelectedChantier(null); }}
-                className={`w-full flex items-center gap-3 justify-start md:justify-center xl:justify-start px-3 py-2.5 rounded-xl text-sm font-medium transition-all active:scale-95 ${page === n.id ? 'bg-accent/15 text-accent-texte font-semibold' : 'text-encre-2 hover:bg-surface-2 hover:text-encre'}`}
-                aria-current={page === n.id ? 'page' : undefined}
-                title={n.label}
-              >
-                <n.icon size={18} className="flex-shrink-0" aria-hidden="true" />
-                <span className="flex-1 text-left truncate md:hidden xl:inline">{n.label}</span>
-                {n.badge > 0 && (
-                  <span
-                    className="px-1.5 py-0.5 text-white text-xs rounded-full min-w-[22px] text-center font-semibold md:hidden xl:inline-block"
-                    style={{ background: n.badgeColor || '#dc2626' }}
-                    title={n.badgeTitle}
-                  >
-                    {n.badge > 99 ? '99+' : n.badge}
-                  </span>
+          {GROUPES_NAV.map((groupe, i) => {
+            const items = nav.filter(n => groupe.ids.includes(n.id)).sort((a, b) => groupe.ids.indexOf(a.id) - groupe.ids.indexOf(b.id));
+            if (items.length === 0) return null;
+            return (
+              <nav key={groupe.titre || 'principal'} aria-label={groupe.titre || 'Navigation principale'} className={`space-y-0.5 ${i > 0 ? 'mt-2 pt-2 border-t border-bord' : ''}`}>
+                {groupe.titre && (
+                  <p className="hidden xl:block px-3 pt-1.5 pb-1 text-xs font-semibold uppercase tracking-wider text-encre-3">{groupe.titre}</p>
                 )}
-              </button>
-            ))}
-            {nav.slice(2, 4).map(n => (
-              <button
-                key={n.id}
-                onClick={() => { setPage(n.id); setSidebarOpen(false); setSelectedChantier(null); }}
-                className={`w-full flex items-center gap-3 justify-start md:justify-center xl:justify-start px-3 py-2.5 rounded-xl text-sm font-medium transition-all active:scale-95 ${page === n.id ? 'bg-accent/15 text-accent-texte font-semibold' : 'text-encre-2 hover:bg-surface-2 hover:text-encre'}`}
-                aria-current={page === n.id ? 'page' : undefined}
-                title={n.label}
-              >
-                <n.icon size={18} className="flex-shrink-0" aria-hidden="true" />
-                <span className="flex-1 text-left truncate md:hidden xl:inline">{n.label}</span>
-                {n.badge > 0 && (
-                  <span
-                    className="px-1.5 py-0.5 text-white text-xs rounded-full min-w-[22px] text-center font-semibold md:hidden xl:inline-block"
-                    style={{ background: n.badgeColor || '#dc2626' }}
-                    title={n.badgeTitle}
+                {items.map(n => (
+                  <button
+                    key={n.id}
+                    type="button"
+                    onClick={() => allerA(n.id)}
+                    className={`w-full flex items-center gap-3 justify-center xl:justify-start px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${page === n.id ? 'bg-accent/15 text-accent-texte font-semibold' : 'text-encre-2 hover:bg-surface-2 hover:text-encre'}`}
+                    aria-current={page === n.id ? 'page' : undefined}
+                    title={n.badgeTitle ? `${n.label} — ${n.badgeTitle}` : n.label}
                   >
-                    {n.badge > 99 ? '99+' : n.badge}
-                  </span>
-                )}
-              </button>
-            ))}
-          </nav>
-
-          {/* Separator */}
-          <div className={`my-2 mx-3 border-t border-bord`} />
-
-          {/* Planning & Tâches group */}
-          <nav className="space-y-0.5 mb-1" aria-label="Organisation">
-            <p className={`px-3 pt-1.5 pb-1 text-xs font-semibold uppercase tracking-wider md:hidden xl:block text-encre-3`}>Organisation</p>
-            {nav.filter(n => n.id === 'tasks').map(n => (
-              <button
-                key={n.id}
-                onClick={() => { setPage(n.id); setSidebarOpen(false); setSelectedChantier(null); }}
-                className={`w-full flex items-center gap-3 justify-start md:justify-center xl:justify-start px-3 py-2.5 rounded-xl text-sm font-medium transition-all active:scale-95 ${page === n.id ? 'bg-accent/15 text-accent-texte font-semibold' : 'text-encre-2 hover:bg-surface-2 hover:text-encre'}`}
-                aria-current={page === n.id ? 'page' : undefined}
-                title={n.label}
-              >
-                <n.icon size={18} className="flex-shrink-0" aria-hidden="true" />
-                <span className="flex-1 text-left truncate md:hidden xl:inline">{n.label}</span>
-                {n.badge > 0 && (
-                  <span
-                    className="px-1.5 py-0.5 text-white text-xs rounded-full min-w-[22px] text-center font-semibold md:hidden xl:inline-block"
-                    style={{ background: n.badgeColor || '#dc2626' }}
-                    title={n.badgeTitle}
-                  >
-                    {n.badge > 99 ? '99+' : n.badge}
-                  </span>
-                )}
-              </button>
-            ))}
-          </nav>
-
-          {/* Secondary navigation */}
-          <nav className="space-y-0.5" aria-label="Gestion">
-            <p className={`px-3 pt-1.5 pb-1 text-xs font-semibold uppercase tracking-wider md:hidden xl:block text-encre-3`}>Gestion</p>
-            {nav.filter(n => !['dashboard','devis','chantiers','clients','tasks','planning','memos','profil','plan'].includes(n.id)).map(n => (
-              <button
-                key={n.id}
-                onClick={() => { setPage(n.id); setSidebarOpen(false); setSelectedChantier(null); }}
-                className={`w-full flex items-center gap-3 justify-start md:justify-center xl:justify-start px-3 py-2.5 rounded-xl text-sm font-medium transition-all active:scale-95 ${page === n.id ? 'bg-accent/15 text-accent-texte font-semibold' : 'text-encre-2 hover:bg-surface-2 hover:text-encre'}`}
-                aria-current={page === n.id ? 'page' : undefined}
-                title={n.label}
-              >
-                <n.icon size={18} className="flex-shrink-0" aria-hidden="true" />
-                <span className="flex-1 text-left truncate md:hidden xl:inline">{n.label}</span>
-                {n.badge > 0 && n.id === 'settings' ? (
-                  <span
-                    className="w-2 h-2 rounded-full md:hidden xl:inline-block flex-shrink-0"
-                    style={{ background: page === n.id ? 'rgba(255,255,255,0.5)' : (n.badgeColor || '#f97316') }}
-                    title={n.badgeTitle}
-                  />
-                ) : n.badge > 0 ? (
-                  <span
-                    className="px-1.5 py-0.5 text-white text-xs rounded-full min-w-[22px] text-center font-semibold md:hidden xl:inline-block"
-                    style={{ background: n.badgeColor || '#dc2626' }}
-                    title={n.badgeTitle}
-                  >
-                    {n.badge > 99 ? '99+' : n.badge}
-                  </span>
-                ) : null}
-              </button>
-            ))}
-          </nav>
-
-          {/* Separator */}
-          <div className={`my-2 mx-3 border-t border-bord`} />
-
-          {/* Profil section */}
-          <nav className="space-y-0.5" aria-label="Profil">
-            <p className={`px-3 pt-1.5 pb-1 text-xs font-semibold uppercase tracking-wider md:hidden xl:block text-encre-3`}>Profil</p>
-            {nav.filter(n => n.id === 'profil' || n.id === 'plan').map(n => (
-              <button
-                key={n.id}
-                onClick={() => { setPage(n.id); setSidebarOpen(false); }}
-                className={`w-full flex items-center gap-3 justify-start md:justify-center xl:justify-start px-3 py-2.5 rounded-xl text-sm font-medium transition-all active:scale-95 ${page === n.id ? 'bg-accent/15 text-accent-texte font-semibold' : 'text-encre-2 hover:bg-surface-2 hover:text-encre'}`}
-                aria-current={page === n.id ? 'page' : undefined}
-                title={n.label}
-              >
-                <n.icon size={18} className="flex-shrink-0" aria-hidden="true" />
-                <span className="flex-1 text-left truncate md:hidden xl:inline">{n.label}</span>
-              </button>
-            ))}
-          </nav>
+                    <n.icon size={18} className="flex-shrink-0" aria-hidden="true" />
+                    <span className="hidden xl:inline flex-1 text-left truncate">{n.label}</span>
+                    {n.badge > 0 && (
+                      <PastilleCompte n={n.badge} ton={n.badgeTon} titre={n.badgeTitle} className="hidden xl:inline-flex" />
+                    )}
+                  </button>
+                ))}
+              </nav>
+            );
+          })}
         </div>
 
-        {/* Bottom actions - fixed at bottom */}
-        <div className={`flex-shrink-0 p-2 border-t border-bord space-y-1`}>
+        {/* Le retour à Hugo reste à portée ; thème, confidentiel et déconnexion sont dans l'en-tête (œil, avatar) */}
+        <div className="flex-shrink-0 p-2 border-t border-bord">
           <button
-            onClick={() => { setShowRetour(true); setSidebarOpen(false); }}
-            className={`w-full flex items-center justify-center xl:justify-start gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-all active:scale-95 text-encre-2 hover:bg-surface-2`}
+            type="button"
+            onClick={() => setShowRetour(true)}
+            className="w-full flex items-center justify-center xl:justify-start gap-2 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors text-encre-2 hover:bg-surface-2 hover:text-encre"
             title="Signaler un problème ou proposer une idée"
           >
-            <MessageCircle size={16} className="text-accent-texte" />
-            <span className="md:hidden xl:inline">Un bug ? Une idée ?</span>
-          </button>
-          <div className="flex gap-1 md:flex-col xl:flex-row">
-            <button
-              onClick={() => { const next = !modeDiscret; setModeDiscret(next); showToast(next ? 'Mode confidentiel activé — Montants masqués' : 'Mode confidentiel désactivé — Montants visibles', 'info'); }}
-              className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-sm transition-all ${modeDiscret ? 'bg-amber-600 text-white shadow-md' : 'text-encre-2 hover:bg-surface-2 hover:text-encre'}`}
-              title={modeDiscret ? 'Désactiver mode confidentiel — Afficher les montants' : 'Activer mode confidentiel — Masquer tous les montants (€) à l\'écran'}
-            >
-              {modeDiscret ? <EyeOff size={15} /> : <Eye size={15} />}
-              <span className="md:hidden xl:inline text-xs">Confidentiel</span>
-            </button>
-            <button
-              onClick={() => setTheme(isDark ? 'light' : 'dark')}
-              className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-sm transition-all active:scale-95 text-encre-2 hover:bg-surface-2 hover:text-encre`}
-              title={isDark ? 'Mode clair' : 'Mode sombre'}
-            >
-              {isDark ? <Sun size={15} /> : <Moon size={15} />}
-              <span className="md:hidden xl:inline text-xs">{isDark ? 'Clair' : 'Sombre'}</span>
-            </button>
-          </div>
-          <button
-            onClick={handleSignOut}
-            className={`w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs transition-all active:scale-95 ${isDark ? 'text-slate-500 hover:bg-red-500/10 hover:text-red-400' : 'text-[#666] hover:bg-red-50 hover:text-red-500'}`}
-          >
-            <LogOut size={13} />
-            <span className="md:hidden xl:inline">Déconnexion</span>
+            <MessageCircle size={18} className="flex-shrink-0" aria-hidden="true" />
+            <span className="hidden xl:inline">Un bug ? Une idée ?</span>
           </button>
         </div>
       </aside>
 
       {/* Main content */}
-      <div className={`md:pl-[72px] xl:pl-64 min-h-screen overflow-x-hidden pb-14 lg:pb-0 bg-fond`}>
-        {/* Header - Optimized for mobile with proper left/right distribution */}
-        <header className={`sticky top-0 z-30 border-b px-2 sm:px-4 pb-2 pt-[calc(0.5rem_+_env(safe-area-inset-top))] flex items-center justify-between border-bord`}>
+      <div className="md:pl-[72px] xl:pl-64 min-h-screen overflow-x-hidden pb-14 lg:pb-0 bg-fond">
+        {/* En-tête : recherche, confidentiel, notifications, « + Nouveau », avatar (audit § 2.1 : il en portait 7) */}
+        <header className="sticky top-0 z-30 border-b border-bord px-2 sm:px-4 pb-2 pt-[calc(0.5rem_+_env(safe-area-inset-top))] flex items-center justify-between">
           {/* Le flou est porté par un calque et non par <header> : un backdrop-filter sur un ancêtre
               enfermerait les fonds et panneaux position:fixed des menus dans la hauteur de l'en-tête. */}
-          <div aria-hidden="true" className={`absolute inset-0 -z-10 backdrop-blur-xl bg-surface/90`} />
+          <div aria-hidden="true" className="absolute inset-0 -z-10 backdrop-blur-xl bg-surface/90" />
           {/* Compte de démonstration (D-26) : le bandeau suit l'en-tête collant, sur tous les écrans */}
           {estDonneesFictives(entreprise) && (
             <div className="absolute left-1/2 -translate-x-1/2 top-full mt-1">
@@ -1760,28 +1662,28 @@ export default function App() {
             </div>
           )}
 
-          {/* LEFT GROUP: Menu + Logo + Badges */}
           <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
-            {/* « ☰ » retiré : « Plus » dans la barre du bas ouvre le même menu (revue du 9 oct.). */}
+            {/* Logo et entreprise : au téléphone seulement (au bureau, le menu latéral les porte déjà) */}
+            <div className="md:hidden min-w-0">
+              <EntrepriseSwitcher
+                isDark={isDark}
+                compact
+                onNavigateSettings={() => setPage('settings')}
+              />
+            </div>
 
-            {/* Logo / Company switcher - compact on mobile */}
-            <EntrepriseSwitcher
-              isDark={isDark}
-              compact
-              onNavigateSettings={() => setPage('settings')}
-            />
-
-            {/* Status badges - compact on mobile */}
+            {/* État de la connexion */}
             <div className="hidden sm:flex items-center gap-1.5">
               {!isOnline && (
-                <span className="px-2 py-1 rounded-full text-[10px] sm:text-xs font-medium flex items-center gap-1 bg-amber-500 text-white">
-                  <WifiOff size={12} />
+                <span className="px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1 bg-alerte-fond text-alerte-texte">
+                  <WifiOff size={12} aria-hidden="true" />
                   <span className="hidden md:inline">Hors ligne</span>
                 </span>
               )}
               {isOnline && pendingSync > 0 && (
-                <span
-                  className={`px-2 py-1 rounded-full text-[10px] sm:text-xs font-medium flex items-center gap-1 cursor-pointer ${isDark ? 'bg-blue-900 text-blue-300 hover:bg-blue-800' : 'bg-blue-100 text-blue-700 hover:bg-blue-200'}`}
+                <button
+                  type="button"
+                  className="px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1 bg-info-fond text-info-texte hover:brightness-95"
                   onClick={() => {
                     // Synchroniser seulement. Avant : purge automatique après une tentative, sans
                     // confirmation, des écritures de TOUS les comptes de l'appareil.
@@ -1791,9 +1693,9 @@ export default function App() {
                   }}
                   title="Envoyer maintenant les modifications en attente"
                 >
-                  <Wifi size={12} className="animate-pulse" />
-                  <span className="hidden md:inline">{pendingSync} sync</span>
-                </span>
+                  <Wifi size={12} className="animate-pulse" aria-hidden="true" />
+                  <span className="hidden md:inline">{pendingSync} en attente</span>
+                </button>
               )}
             </div>
           </div>
@@ -1802,11 +1704,11 @@ export default function App() {
           <div className="hidden lg:flex flex-1 min-w-0 justify-center px-4">
             <button
               onClick={() => setShowSearch(true)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl border transition-all w-full max-w-[320px] border-bord hover:border-bord-fort bg-fond text-encre-3`}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl border transition-colors w-full max-w-[320px] border-bord hover:border-bord-fort bg-fond text-encre-3"
             >
-              <Search size={16} />
+              <Search size={16} aria-hidden="true" />
               <span className="text-sm truncate">Rechercher...</span>
-              <kbd className={`ml-auto text-xs px-1.5 py-0.5 rounded hidden lg:block bg-surface-2 text-encre-3`}>⌘K</kbd>
+              <kbd className="indication-clavier ml-auto text-xs px-1.5 py-0.5 rounded hidden lg:block bg-surface-2 text-encre-3">⌘K</kbd>
             </button>
           </div>
 
@@ -1828,66 +1730,23 @@ export default function App() {
             {/* Search button - mobile only (icon) */}
             <button
               onClick={() => setShowSearch(true)}
-              className={`lg:hidden w-11 h-11 rounded-xl flex items-center justify-center hover:bg-surface-2 text-encre-2`}
+              className="lg:hidden w-11 h-11 rounded-xl flex items-center justify-center hover:bg-surface-2 text-encre-2"
               title="Rechercher"
               aria-label="Rechercher"
             >
               <Search size={18} />
             </button>
 
-            {/* Theme toggle - hidden on mobile, shown in sidebar instead */}
+            {/* Mode confidentiel : la seule commande des montants masqués, au téléphone comme au bureau (audit § 2.1) */}
             <button
-              onClick={() => setTheme(isDark ? 'light' : 'dark')}
-              className={`hidden sm:flex w-11 h-11 rounded-xl items-center justify-center transition-all hover:bg-surface-2 text-encre-2`}
-              title={isDark ? 'Mode clair' : 'Mode sombre'}
-              aria-label={isDark ? 'Activer le mode clair' : 'Activer le mode sombre'}
-            >
-              {isDark ? <Sun size={18} /> : <Moon size={18} />}
-            </button>
-
-            {/* Help button - tablet and desktop only */}
-            <button
-              onClick={() => setShowHelp(true)}
-              className={`hidden lg:flex w-11 h-11 rounded-xl items-center justify-center transition-colors hover:bg-surface-2 text-encre-2`}
-              title="Aide"
-              aria-label="Ouvrir l'aide"
-            >
-              <HelpCircle size={18} />
-            </button>
-
-            {/* Mode confidentiel toggle — hidden on small mobile, visible sm+ */}
-            <button
-              onClick={() => { const next = !modeDiscret; setModeDiscret(next); showToast(next ? 'Mode confidentiel activé — Montants masqués' : 'Mode confidentiel désactivé — Montants visibles', 'info'); }}
-              className={`hidden sm:flex w-11 h-11 rounded-xl items-center justify-center transition-colors ${modeDiscret ? 'bg-alerte-fond text-alerte-texte' : 'hover:bg-surface-2 text-encre-2'}`}
+              onClick={basculerDiscret}
+              className={`w-11 h-11 rounded-xl flex items-center justify-center transition-colors ${modeDiscret ? 'bg-alerte-fond text-alerte-texte' : 'hover:bg-surface-2 text-encre-2'}`}
               title={modeDiscret ? 'Afficher les montants' : 'Masquer les montants'}
               aria-label={modeDiscret ? 'Afficher les montants' : 'Masquer les montants'}
               aria-pressed={modeDiscret}
             >
               {modeDiscret ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
-
-            {/* Install PWA button */}
-            {!isInstalled && (
-              <button
-                onClick={() => {
-                  if (canInstall) {
-                    install();
-                  } else {
-                    showToast('Sur iOS: Partager → "Sur l\'écran d\'accueil"', 'info');
-                  }
-                }}
-                className={`hidden lg:flex w-11 h-11 2xl:w-auto 2xl:px-3 rounded-xl items-center justify-center gap-2 text-sm font-medium transition-all flex-shrink-0 border-2 ${
-                  isDark
-                    ? 'border-slate-700 text-slate-400 hover:border-slate-600 hover:bg-slate-800/50'
-                    : 'border-[#ebebeb] text-[#666] hover:border-[#ddd] hover:bg-[#f5f5f5]'
-                }`}
-                title="Installer l'application"
-                aria-label="Installer l'application sur votre appareil"
-              >
-                <Smartphone size={18} className="flex-shrink-0" />
-                <span className="hidden 2xl:inline whitespace-nowrap">Installer</span>
-              </button>
-            )}
 
             {/* Notifications */}
             <button
@@ -1899,7 +1758,7 @@ export default function App() {
             >
               <Bell size={20} />
               {unreadNotifs.length > 0 && (
-                <span className="absolute top-0.5 right-0.5 min-w-[20px] h-5 px-1 bg-red-600 text-white text-xs font-bold rounded-full flex items-center justify-center ring-2 ring-surface">
+                <span className={`absolute top-0.5 right-0.5 min-w-[20px] h-5 px-1 text-xs font-bold rounded-full flex items-center justify-center ring-2 ring-surface ${notifsUrgentes ? 'bg-danger-fond text-danger-texte' : 'bg-neutre-fond text-neutre-texte'}`}>
                   {unreadNotifs.length > 9 ? '9+' : unreadNotifs.length}
                 </span>
               )}
@@ -1921,7 +1780,7 @@ export default function App() {
               {showQuickAdd && (
                 <>
                   <div className="fixed inset-0 z-40" aria-hidden="true" onClick={() => setShowQuickAdd(false)} />
-                  <div role="menu" aria-label="Créer" onKeyDown={(e) => { if (e.key === 'Escape') setShowQuickAdd(false); }} className={`absolute right-0 top-full mt-2 w-60 max-w-[calc(100vw-1rem)] rounded-2xl shadow-2xl z-50 py-1.5 overflow-hidden bg-surface border border-bord`}>
+                  <div role="menu" aria-label="Créer" onKeyDown={(e) => { if (e.key === 'Escape') setShowQuickAdd(false); }} className="absolute right-0 top-full mt-2 w-60 max-w-[calc(100vw-1rem)] rounded-2xl shadow-e3 z-50 py-1.5 overflow-hidden bg-surface border border-bord">
                     {[
                       { label: 'Nouveau devis', icon: FileText, p: 'devis', create: 'devis' },
                       { label: 'Nouveau client', icon: Users, p: 'clients', create: 'client' },
@@ -1936,7 +1795,7 @@ export default function App() {
                       >
                         <item.icon size={18} className="flex-shrink-0 text-encre-3" />
                         <span className="whitespace-nowrap">{item.label}</span>
-                        <ChevronRight size={16} className={`ml-auto ${tc.textMuted}`} />
+                        <ChevronRight size={16} className="ml-auto text-encre-3" />
                       </button>
                     ))}
                   </div>
@@ -1944,15 +1803,34 @@ export default function App() {
               )}
             </div>
 
-            {/* User avatar */}
-            <button
-              onClick={() => setPage('profil')}
-              className="w-11 h-11 rounded-full flex items-center justify-center font-semibold text-sm bg-surface-2 text-encre-2 transition-colors hover:bg-bord"
-              title={user?.email || 'Mon compte'}
-              aria-label="Mon compte"
-            >
-              {user?.email?.charAt(0).toUpperCase() || 'U'}
-            </button>
+            {/* Avatar : le compte et l'appareil (réglages, plan, thème, installation, aide, retours, déconnexion) */}
+            <div className="relative">
+              <button
+                onClick={() => setMenuCompte(v => !v)}
+                className="w-11 h-11 rounded-full flex items-center justify-center font-semibold text-sm bg-surface-2 text-encre-2 transition-colors hover:bg-bord"
+                title={user?.email || 'Mon compte'}
+                aria-label="Mon compte"
+                aria-haspopup="menu"
+                aria-expanded={menuCompte}
+              >
+                {user?.email?.charAt(0).toUpperCase() || 'U'}
+              </button>
+              <MenuCompte
+                ouvert={menuCompte}
+                onFermer={() => setMenuCompte(false)}
+                email={user?.email}
+                nomEntreprise={entreprise?.nom}
+                acces={{ settings: canAccess('settings'), plan: canAccess('plan') }}
+                onAller={allerA}
+                sombre={isDark}
+                onTheme={basculerTheme}
+                installable={!isInstalled && !estNatif()}
+                onInstaller={installer}
+                onAide={() => setShowHelp(true)}
+                onRetour={() => setShowRetour(true)}
+                onDeconnexion={handleSignOut}
+              />
+            </div>
           </div>
         </header>
         {/* Place du bandeau « Données fictives » (accroché à l'en-tête) : il ne recouvre pas le haut de l'écran */}
@@ -1960,22 +1838,18 @@ export default function App() {
 
         {/* Échec de chargement : sans ce bandeau, une coupure réseau ressemblait à des données perdues. */}
         {loadError && (
-          <div role="alert" className={`mx-3 sm:mx-4 lg:mx-6 mt-3 p-3 sm:p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center gap-3 ${isDark ? 'bg-red-950/40 border-red-800 text-red-200' : 'bg-red-50 border-red-200 text-red-800'}`}>
+          <div role="alert" className="mx-4 lg:mx-6 mt-3 p-3 sm:p-4 rounded-xl border border-danger-texte/20 bg-danger-fond text-danger-texte flex flex-col sm:flex-row sm:items-center gap-3">
             <div className="flex items-start gap-2 flex-1 min-w-0 text-sm">
-              <WifiOff size={18} className="flex-shrink-0 mt-0.5" />
+              <WifiOff size={18} className="flex-shrink-0 mt-0.5" aria-hidden="true" />
               <p>
                 <strong>Certaines données n’ont pas pu être chargées</strong>
                 {' '}({loadError.tables.map((t) => LIBELLES_TABLES[t] || t).join(', ')}).
                 {' '}Elles ne sont pas perdues : vérifiez votre connexion puis réessayez.
               </p>
             </div>
-            <button
-              type="button"
-              onClick={retryLoad}
-              className="self-start sm:self-auto px-4 py-2 rounded-xl text-sm font-semibold flex-shrink-0 bg-accent text-sur-accent"
-            >
+            <Bouton variante="secondaire" className="self-start sm:self-auto flex-shrink-0" onClick={retryLoad}>
               Réessayer
-            </button>
+            </Bouton>
           </div>
         )}
 
@@ -1985,11 +1859,11 @@ export default function App() {
         </ErrorBoundary>
 
         {/* Page content */}
-        <main id="main-content" key={page} className={`${page === 'dashboard' || page === 'profil' || page === 'plan' ? '' : 'p-3 sm:p-4 lg:p-6'} ${tc.text} max-w-[1800px] mx-auto pb-[calc(5rem_+_env(safe-area-inset-bottom))] md:pb-0 overflow-x-hidden animate-fade-in`}>
+        <main id="main-content" key={page} className={`${page === 'dashboard' || page === 'profil' || page === 'plan' ? '' : 'p-4 lg:p-6'} text-encre max-w-[1800px] mx-auto pb-[calc(5rem_+_env(safe-area-inset-bottom))] md:pb-0 overflow-x-hidden animate-fade-in`}>
           <ErrorBoundary isDark={isDark} showDetails={true}>
-            <Suspense fallback={<div className="flex items-center justify-center py-12"><div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: `${couleur}33`, borderTopColor: couleur }} /></div>}>
-              {page === 'dashboard' && <Dashboard clients={clients} devis={devis} chantiers={chantiers} events={planningEvents} depenses={depenses} pointages={pointages} equipe={equipe} ajustements={ajustements} catalogue={catalogue} entreprise={entreprise} getChantierBilan={getChantierBilan} addDevis={addDevis} setPage={setPage} setSelectedChantier={setSelectedChantier} setSelectedDevis={setSelectedDevis} setCreateMode={setCreateMode} modeDiscret={modeDiscret} setModeDiscret={setModeDiscret} couleur={couleur} isDark={isDark} showHelp={showHelp} setShowHelp={setShowHelp} user={user} onOpenSearch={() => setShowSearch(true)} memos={memos} addMemo={addMemo} toggleMemo={toggleMemo} />}
-              {page === 'devis' && <DevisPage clients={clients} setClients={setClients} addClient={addClient} devis={devis} setDevis={setDevis} chantiers={chantiers} catalogue={catalogue} entreprise={entreprise} onSubmit={addDevis} onUpdate={updateDevis} onDelete={deleteDevis} modeDiscret={modeDiscret} selectedDevis={selectedDevis} setSelectedDevis={setSelectedDevis} isDark={isDark} couleur={couleur} createMode={createMode.devis} setCreateMode={(v) => setCreateMode(p => ({...p, devis: v}))} addChantier={addChantier} setPage={setPage} setSelectedChantier={setSelectedChantier} addEchange={addEchange} paiements={paiements} addPaiement={addPaiement} generateNextNumero={generateNextNumero} aiPrefill={aiPrefill} setAiPrefill={setAiPrefill} editDevisId={editDevisId} setEditDevisId={setEditDevisId} />}
+            <Suspense fallback={<div className="flex items-center justify-center py-12"><div className="w-8 h-8 border-4 border-accent/20 border-t-accent rounded-full animate-spin" /></div>}>
+              {page === 'dashboard' && <Dashboard clients={clients} devis={devis} chantiers={chantiers} events={planningEvents} depenses={depenses} pointages={pointages} equipe={equipe} ajustements={ajustements} catalogue={catalogue} entreprise={entreprise} getChantierBilan={getChantierBilan} addDevis={addDevis} setPage={setPage} setSelectedChantier={setSelectedChantier} setSelectedDevis={setSelectedDevis} setCreateMode={setCreateMode} modeDiscret={modeDiscret} couleur={couleur} isDark={isDark} user={user} memos={memos} addMemo={addMemo} toggleMemo={toggleMemo} ouvrirDevis={ouvrirDevis} />}
+              {page === 'devis' && <DevisPage clients={clients} setClients={setClients} addClient={addClient} devis={devis} setDevis={setDevis} chantiers={chantiers} catalogue={catalogue} entreprise={entreprise} onSubmit={addDevis} onUpdate={updateDevis} onDelete={deleteDevis} modeDiscret={modeDiscret} selectedDevis={selectedDevis} setSelectedDevis={setSelectedDevis} isDark={isDark} couleur={couleur} createMode={createMode.devis} setCreateMode={(v) => setCreateMode(p => ({...p, devis: v}))} addChantier={addChantier} setPage={setPage} setSelectedChantier={setSelectedChantier} addEchange={addEchange} paiements={paiements} addPaiement={addPaiement} generateNextNumero={generateNextNumero} aiPrefill={aiPrefill} setAiPrefill={setAiPrefill} editDevisId={editDevisId} setEditDevisId={setEditDevisId} exigerCgu={exigerCgu} demande={demandeDevis} setDemande={setDemandeDevis} />}
               {page === 'chantiers' && <Chantiers nouveauDevisPour={(clientId, chantierId) => { setCreateMode(p => ({ ...p, devis: { clientId, chantierId } })); setPage('devis'); }} chantiers={chantiers} addChantier={addChantier} updateChantier={updateChantier} clients={clients} depenses={depenses} setDepenses={setDepenses} pointages={pointages} setPointages={setPointages} equipe={equipe} devis={devis} ajustements={ajustements} addAjustement={addAjustement} deleteAjustement={deleteAjustement} getChantierBilan={getChantierBilan} couleur={couleur} modeDiscret={modeDiscret} entreprise={entreprise} selectedChantier={selectedChantier} setSelectedChantier={setSelectedChantier} catalogue={catalogue} deductStock={deductStock} isDark={isDark} createMode={createMode.chantier} setCreateMode={(v) => setCreateMode(p => ({...p, chantier: v}))} setPage={setPage} memos={memos} addMemo={addMemo} updateMemo={updateMemo} deleteMemo={deleteMemo} toggleMemo={toggleMemo} onPlanEvent={(data) => { setPlanningPrefill(data); setPage('planning'); }} addDevis={addDevis} generateNextNumero={generateNextNumero} />}
               {(page === 'tasks' || page === 'planning' || page === 'memos') && (
                 <TasksAndPlanning
@@ -2027,28 +1901,6 @@ export default function App() {
           </ErrorBoundary>
         </main>
 
-        {/* Floating Action Button (FAB) for quick actions - hidden on form pages */}
-        {/* FAB Menu - hidden on mobile when bottom nav is visible */}
-        <FABMenu
-          onNewDevis={() => setShowFABDevisWizard(true)}
-          onNewClient={() => setShowFABQuickClient(true)}
-          onNewChantier={() => setShowFABQuickChantier(true)}
-          isDark={isDark}
-          couleur={couleur}
-          hidden={
-            createMode.devis || createMode.chantier || createMode.client ||
-            selectedChantier !== null ||
-            showFABDevisWizard || showFABQuickClient || showFABQuickChantier ||
-            showSearch ||
-            // Hide FAB on pages that have their own creation button
-            // Accueil : « Nouveau devis » et le « + » de l'en-tête suffisent ; le bouton flottant y recouvrait
-            // les boutons « Relancer » / « Finaliser » d'À faire aujourd'hui (recette du 9 oct.).
-            ['dashboard', 'devis', 'chantiers', 'clients', 'equipe', 'catalogue', 'settings', 'memos', 'finances'].includes(page) ||
-            // Pages qui ne servent pas à travailler (offre, compte, textes légaux) : rien à y créer.
-            ['plan', 'profil', 'billing', 'pricing', 'checkout-success', 'changelog', 'admin', 'cgu', 'cgv', 'confidentialite', 'mentions-legales', 'accessibilite'].includes(page)
-          }
-        />
-
         {/* Mobile Bottom Navigation Bar — replaces sidebar on small screens */}
         <nav className={`fixed bottom-0 left-0 right-0 z-40 md:hidden border-t backdrop-blur-lg bg-surface/95 border-bord pb-[env(safe-area-inset-bottom)]`}>
           <div className="flex items-stretch justify-around h-14">
@@ -2064,7 +1916,7 @@ export default function App() {
                   key={item.id}
                   onClick={() => {
                     setPage(item.id);
-                    setSidebarOpen(false);
+                    setMenuPlus(false);
                     setSelectedChantier(null);
                     setSelectedDevis(null);
                   }}
@@ -2085,17 +1937,19 @@ export default function App() {
                 </button>
               );
             })}
-            {/* 5th item: Plus / Menu — opens sidebar for all pages */}
+            {/* 5e onglet : « Plus » ouvre la feuille des autres rubriques (Planning, Catalogue, Équipe, Finances…) */}
             {(() => {
-              const mainTabs = ['dashboard', 'devis', 'chantiers', 'clients'];
-              const isPlusActive = !mainTabs.includes(page);
+              const isPlusActive = !ONGLETS_BAS.includes(page);
+              const plusUrgent = rubriquesPlus.some(n => n.badge > 0 && n.badgeTon === 'danger');
               return (
                 <button
-                  onClick={() => setSidebarOpen(true)}
+                  onClick={() => setMenuPlus(true)}
                   className={`flex flex-col items-center justify-center flex-1 min-w-0 h-full transition-colors relative ${
                     isPlusActive ? 'text-accent-texte' : 'text-encre-3 active:text-encre-2'
                   }`}
-                  aria-label="Plus : toutes les rubriques"
+                  aria-label={plusUrgent ? 'Plus : autres rubriques (une demande d’agir)' : 'Plus : autres rubriques'}
+                  aria-haspopup="dialog"
+                  aria-expanded={menuPlus}
                 >
                   {isPlusActive && (
                     <div className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full bg-accent" />
@@ -2104,6 +1958,7 @@ export default function App() {
                     className={`flex items-center justify-center w-12 h-7 rounded-full transition-colors ${isPlusActive ? 'bg-accent/15' : ''}`}
                   >
                     <Menu size={20} strokeWidth={isPlusActive ? 2.5 : 1.5} />
+                    {plusUrgent && <span aria-hidden="true" className="absolute top-1.5 right-[calc(50%-1.1rem)] w-2 h-2 rounded-full bg-danger-point ring-2 ring-surface" />}
                   </div>
                   <span className={`text-xs mt-0.5 truncate max-w-full px-0.5 ${isPlusActive ? 'font-semibold' : 'font-medium'}`}>Plus</span>
                 </button>
@@ -2111,34 +1966,18 @@ export default function App() {
             })()}
           </div>
         </nav>
+        <MenuPlus
+          ouvert={menuPlus}
+          onFermer={() => setMenuPlus(false)}
+          rubriques={rubriquesPlus}
+          page={page}
+          onAller={allerA}
+          sombre={isDark}
+          onTheme={basculerTheme}
+          onRetour={() => { setMenuPlus(false); setShowRetour(true); }}
+          onDeconnexion={handleSignOut}
+        />
       </div>
-
-      {/* FAB Devis Wizard */}
-      {showFABDevisWizard && (
-        <Suspense fallback={null}>
-          <DevisWizard
-            isOpen={showFABDevisWizard}
-            onClose={() => setShowFABDevisWizard(false)}
-            onSubmit={async (data) => {
-              const newDevis = await addDevis({
-                ...data,
-                date: jourLocal(),
-                statut: 'brouillon'
-              });
-              setShowFABDevisWizard(false);
-              if (newDevis?.id) {
-                setSelectedDevis(newDevis);
-                setPage('devis');
-              }
-            }}
-            clients={clients}
-            catalogue={catalogue}
-            chantiers={chantiers}
-            isDark={isDark}
-            couleur={couleur}
-          />
-        </Suspense>
-      )}
 
       {/* FAB Quick Client Modal */}
       {showFABQuickClient && (
@@ -2178,7 +2017,7 @@ export default function App() {
       )}
 
       {/* Global Help Modal */}
-      {showHelp && <HelpModal showHelp={showHelp} setShowHelp={setShowHelp} isDark={isDark} couleur={couleur} tc={tc} />}
+      {showHelp && <HelpModal setShowHelp={setShowHelp} isDark={isDark} />}
       {showRetour && (
         <Suspense fallback={null}>
           <RetourModal isOpen={showRetour} onClose={() => setShowRetour(false)} isDark={isDark} couleur={couleur} showToast={showToast} page={page} user={user} orgId={orgId} />
@@ -2229,10 +2068,11 @@ export default function App() {
           chantiers={chantiers}
           devis={devis}
           memos={memos}
-          onNewDevis={(type) => {
+          onNewDevis={() => {
             setCreateMode(p => ({ ...p, devis: true }));
             setPage('devis');
           }}
+          ouvrirDevis={ouvrirDevis}
           onNewClient={() => setShowFABQuickClient(true)}
           onNewChantier={() => setShowFABQuickChantier(true)}
           isDark={isDark}
@@ -2241,150 +2081,80 @@ export default function App() {
         />
       </Suspense>
 
-      {/* Notifications Modal - Rendered at root level for proper z-index */}
-      {showNotifs && (
-        <div className="fixed inset-0 z-[1030] flex items-center justify-center p-4 sm:p-6">
-          {/* Dark Backdrop */}
-          <div
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            onClick={() => setShowNotifs(false)}
-          />
-          {/* Modal */}
-          <div
-            className={`relative w-full max-w-lg max-h-[85vh] flex flex-col rounded-2xl shadow-2xl overflow-hidden bg-surface`}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="notif-title"
-          >
-            {/* Header */}
-            <div className="flex-shrink-0 px-4 sm:px-5 py-3 sm:py-4 border-b" style={{background: `linear-gradient(135deg, ${couleur}15, ${couleur}05)`, borderColor: isDark ? '#334155' : '#e2e8f0'}}>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{background: `${couleur}20`}}>
-                    <Bell size={20} className="text-accent-texte" />
-                  </div>
-                  <div>
-                    <h3 id="notif-title" className={`font-semibold text-base sm:text-lg ${tc.text}`}>Notifications</h3>
-                    <p className={`text-xs ${tc.textMuted}`}>
-                      {unreadNotifs.length > 0 ? `${unreadNotifs.length} non lue${unreadNotifs.length > 1 ? 's' : ''}` : 'Tout est à jour'}
-                    </p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setShowNotifs(false)}
-                  className={`p-2.5 rounded-xl transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-500' : 'hover:bg-[#f5f5f5] text-[#999]'}`}
-                  aria-label="Fermer"
-                >
-                  <X size={22} />
-                </button>
-              </div>
-            </div>
-
-            {/* Content — UX-011: "Tout marquer comme lu" uniquement en bas */}
-            <div className="flex-1 overflow-y-auto">
-              {notifications.length === 0 ? (
-                <div className="px-6 py-16 text-center">
-                  <div className="w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center" style={{background: `${couleur}15`}}>
-                    <Bell size={28} className="text-accent-texte" />
-                  </div>
-                  <p className={`text-lg font-medium ${tc.text}`}>Tout est à jour</p>
-                  <p className={`text-sm mt-2 ${tc.textMuted}`}>Aucune notification pour le moment</p>
-                </div>
-              ) : (
-                <div className={`divide-y ${isDark ? 'divide-slate-700' : 'divide-[#ebebeb]'}`}>
-                  {notifications.map(n => {
-                    const typeConfig = {
-                      success: { icon: '✅', bg: isDark ? 'bg-emerald-900/40' : 'bg-emerald-100' },
-                      warning: { icon: '⚠️', bg: isDark ? 'bg-amber-900/40' : 'bg-amber-100' },
-                      info: { icon: 'ℹ️', bg: isDark ? 'bg-blue-900/40' : 'bg-blue-100' },
-                      message: { icon: '💬', bg: isDark ? 'bg-purple-900/40' : 'bg-purple-100' },
-                      alert: { icon: '🔔', bg: 'bg-alerte-fond' }
-                    };
-                    const config = typeConfig[n.type] || typeConfig.alert;
-
-                    return (
-                      <button
-                        key={n.id}
-                        onClick={() => {
-                          markNotifRead(n.id);
-                          if (n.link) {
-                            setPage(n.link);
-                            // Navigation directe avec l'itemId
-                            if (n.itemType === 'devis' || n.itemType === 'facture') {
-                              const found = devis.find(d => d.id === n.itemId);
-                              if (found) setSelectedDevis(found);
-                            } else if (n.itemType === 'chantier') {
-                              const found = chantiers.find(c => c.id === n.itemId);
-                              if (found) setSelectedChantier(found);
-                            }
-                            setShowNotifs(false);
+      {/* Notifications : feuille du bas au téléphone (ui/Modal), icônes et tons au lieu des émojis (audit § Task 5, P3) */}
+      <Modal isOpen={showNotifs} onClose={() => setShowNotifs(false)} size="md">
+        <ModalHeader>
+          <ModalTitle>Notifications</ModalTitle>
+          <ModalDescription>
+            {unreadNotifs.length > 0 ? `${unreadNotifs.length} non lue${unreadNotifs.length > 1 ? 's' : ''}` : 'Tout est à jour'}
+          </ModalDescription>
+        </ModalHeader>
+        <ModalBody className="!px-0 !py-0">
+          {notifications.length === 0 ? (
+            <EtatVide icone={Bell} titre="Tout est à jour" texte="Aucune notification pour le moment." />
+          ) : (
+            <ul className="divide-y divide-bord">
+              {notifications.map(n => {
+                const ton = TONS_NOTIFICATION[n.type] || TONS_NOTIFICATION.alert;
+                const Icone = ton.icone;
+                return (
+                  <li key={n.id}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        markNotifRead(n.id);
+                        if (n.link) {
+                          setPage(n.link);
+                          // Navigation directe avec l'itemId
+                          if (n.itemType === 'devis' || n.itemType === 'facture') {
+                            const found = devis.find(d => d.id === n.itemId);
+                            if (found) setSelectedDevis(found);
+                          } else if (n.itemType === 'chantier') {
+                            const found = chantiers.find(c => c.id === n.itemId);
+                            if (found) setSelectedChantier(found);
                           }
-                        }}
-                        className={`w-full text-left px-5 py-4 transition-all ${!n.read ? (isDark ? 'bg-slate-700/40' : 'bg-orange-50/70') : ''} ${isDark ? 'hover:bg-slate-700/60' : 'hover:bg-[#fafafa]'}`}
-                      >
-                        <div className="flex items-start gap-4">
-                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${config.bg}`}>
-                            <span className="text-lg">{config.icon}</span>
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className={`text-sm leading-relaxed ${!n.read ? 'font-medium' : ''} ${tc.text}`}>{safeStr(n.message)}</p>
-                            <div className="flex items-center gap-2 mt-2">
-                              <p className={`text-xs ${tc.textMuted}`}>{safeStr(n.date)}</p>
-                              {n.link && (
-                                <span className="text-xs px-2 py-0.5 rounded-full text-accent-texte" style={{background: `${couleur}15`}}>
-                                  Voir →
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                          {!n.read && (
-                            <span className="w-3 h-3 rounded-full flex-shrink-0 mt-1 bg-accent" />
-                          )}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+                          setShowNotifs(false);
+                        }
+                      }}
+                      className={`w-full text-left px-5 py-4 flex items-start gap-3 transition-colors hover:bg-surface-2 ${!n.read ? 'bg-accent/5' : ''}`}
+                    >
+                      <span className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${ton.classe}`}>
+                        <Icone size={20} aria-hidden="true" />
+                      </span>
+                      <span className="flex-1 min-w-0">
+                        <span className={`block text-sm leading-relaxed text-encre ${!n.read ? 'font-semibold' : ''}`}>{safeStr(n.message)}</span>
+                        {n.date ? <span className="block mt-1 text-sm text-encre-3">{safeStr(n.date)}</span> : null}
+                      </span>
+                      {!n.read && <span className="sr-only">Non lue</span>}
+                      {!n.read && <span aria-hidden="true" className="w-2.5 h-2.5 rounded-full flex-shrink-0 mt-1.5 bg-accent" />}
+                      {n.link && <ChevronRight size={18} className="flex-shrink-0 mt-2.5 text-encre-3" aria-hidden="true" />}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </ModalBody>
+        {notifications.length > 0 && unreadNotifs.length > 0 && (
+          <ModalFooter className="pb-[calc(1rem+env(safe-area-inset-bottom))]">
+            <Bouton variante="secondaire" pleineLargeur onClick={() => { markAllNotifsRead(); setShowNotifs(false); }}>
+              Tout marquer comme lu
+            </Bouton>
+          </ModalFooter>
+        )}
+      </Modal>
 
-            {/* Footer */}
-            {notifications.length > 0 && (
-              <div className={`flex-shrink-0 px-5 py-4 border-t ${isDark ? 'border-slate-700 bg-slate-800/80' : 'border-[#ebebeb] bg-[#fafafa]'}`}>
-                <button
-                  onClick={() => {
-                    markAllNotifsRead();
-                    setShowNotifs(false);
-                  }}
-                  className={`w-full py-3 rounded-xl text-sm font-medium transition-colors ${isDark ? 'bg-slate-700 text-slate-400 hover:bg-slate-600' : 'bg-[#f0f0f0] text-[#666] hover:bg-[#ebebeb]'}`}
-                >
-                  Tout marquer comme lu
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Toast Notifications */}
-      {/* Téléphone : en haut, sous la barre d'état — en bas, la notification recouvrait le bouton
-          des fenêtres qui montent du bas, et restait cachée sous l'éditeur de devis (z-1000). */}
+      {/* Notification d'une action : en haut au téléphone, sous la barre d'état — en bas, elle recouvrait le bouton
+          des fenêtres qui montent du bas, et restait cachée sous l'éditeur de devis (z-1000). Carte calme, ton sur l'icône. */}
       {toast && (
         <div role="status" aria-live="polite" className="fixed z-[1100] left-3 right-3 top-[calc(env(safe-area-inset-top,0px)+0.75rem)] flex justify-center lg:left-auto lg:right-4 lg:top-auto lg:bottom-4 lg:block">
-          <div
-            className={`flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg animate-slide-up max-w-full lg:max-w-md ${
-              toast.type === 'success' ? (isDark ? 'bg-emerald-900/90 text-emerald-100' : 'bg-emerald-600 text-white') :
-              toast.type === 'error' ? (isDark ? 'bg-red-900/90 text-red-100' : 'bg-red-600 text-white') :
-              toast.type === 'warning' ? (isDark ? 'bg-amber-900/90 text-amber-100' : 'bg-amber-600 text-white') :
-              (isDark ? 'bg-slate-800 text-slate-100' : 'bg-[#161616] text-white')
-            }`}
-          >
-            {toast.type === 'success' && <CheckCircle size={18} />}
-            {toast.type === 'error' && <AlertCircle size={18} />}
-            {toast.type === 'warning' && <AlertCircle size={18} />}
-            {toast.type === 'info' && <Info size={18} />}
+          <div className="flex items-center gap-3 pl-3 pr-2 py-2.5 rounded-2xl shadow-e3 animate-slide-up max-w-full lg:max-w-md bg-surface border border-bord text-encre">
+            {(() => {
+              const t = TONS_TOAST[toast.type] || TONS_TOAST.info;
+              return <span className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${t.classe}`}><t.icone size={18} aria-hidden="true" /></span>;
+            })()}
             <span className="text-sm font-medium">{safeStr(toast.message)}</span>
-            <button onClick={hideToast} className="ml-2 opacity-70 hover:opacity-100" aria-label="Fermer la notification">
+            <button onClick={hideToast} className="ml-1 w-9 h-9 flex items-center justify-center rounded-full text-encre-3 hover:bg-surface-2 hover:text-encre flex-shrink-0" aria-label="Fermer la notification">
               <X size={16} />
             </button>
           </div>
@@ -2487,31 +2257,26 @@ export default function App() {
   );
 }
 
-// Help Modal Component
-function HelpModal({ showHelp, setShowHelp, isDark, couleur, tc }) {
+// Guide d'utilisation (menu de l'avatar › Aide). Charte « Glacier vif » : jetons, icônes lucide au lieu des émojis,
+// encarts neutres (les tons ne décorent pas, audit UX du 20 oct. 2026, § 2.8) ; ui/Modal (feuille du bas au téléphone).
+function HelpModal({ setShowHelp, isDark: _isDark }) {
   const [helpSection, setHelpSection] = useState('overview');
   const [searchQuery, setSearchQuery] = useState('');
 
-  const textPrimary = 'text-encre';
-  const textSecondary = isDark ? 'text-slate-400' : 'text-[#666]';
+  const encart = 'p-4 rounded-xl bg-surface-2';
+  const etape = 'p-3 rounded-xl bg-surface-2';
 
   const helpSections = {
     overview: {
       title: "Bienvenue",
       titleFull: "Bienvenue dans Mallettico",
-      icon: "🏠",
+      icon: Home,
       content: (
         <div className="space-y-4">
-          <p className={textSecondary}>Mallettico est votre assistant de gestion quotidien. Suivez vos chantiers, vos devis et votre rentabilité en quelques clics.</p>
-          <div className={`p-4 rounded-xl ${isDark ? 'bg-emerald-900/20' : 'bg-emerald-50'}`}>
-            <h4 className={`font-semibold mb-2 ${isDark ? 'text-emerald-300' : 'text-emerald-800'}`}>💡 Exemple concret</h4>
-            <p className={`text-sm ${isDark ? 'text-emerald-200' : 'text-emerald-700'}`}>
-              Jean, plombier, utilise Mallettico pour : créer ses devis en 5 min, suivre la marge de chaque chantier, et ne jamais oublier une relance client.
-            </p>
-          </div>
-          <div className={`p-4 rounded-xl ${isDark ? 'bg-slate-800' : 'bg-[#fafafa]'}`}>
-            <h4 className={`font-semibold mb-2 ${textPrimary}`}>📍 Par où commencer ?</h4>
-            <ol className={`text-sm space-y-2 ${textSecondary}`}>
+          <p className="text-encre-2">Mallettico est votre assistant de gestion quotidien. Suivez vos chantiers, vos devis et votre rentabilité en quelques clics.</p>
+          <div className={encart}>
+            <h4 className="font-semibold mb-2 text-encre">Par où commencer ?</h4>
+            <ol className="text-sm space-y-2 text-encre-2">
               <li>1. Configurez votre entreprise dans <strong>Paramètres</strong></li>
               <li>2. Ajoutez vos prestations dans le <strong>Catalogue</strong></li>
               <li>3. Créez votre premier <strong>Client</strong> et <strong>Devis</strong></li>
@@ -2523,22 +2288,22 @@ function HelpModal({ showHelp, setShowHelp, isDark, couleur, tc }) {
     devis: {
       title: "Devis & Factures",
       titleFull: "Créer et gérer vos devis",
-      icon: "📋",
+      icon: FileText,
       content: (
         <div className="space-y-4">
-          <p className={textSecondary}>Créez des devis professionnels et transformez-les en factures en un clic.</p>
+          <p className="text-encre-2">Créez des devis professionnels et transformez-les en factures en un clic.</p>
           <div className="space-y-3">
-            <div className={`p-3 rounded-lg ${isDark ? 'bg-slate-800' : 'bg-[#fafafa]'}`}>
-              <h5 className={`font-medium mb-1 ${textPrimary}`}>1. Créer un devis</h5>
-              <p className={`text-sm ${textSecondary}`}>Cliquez sur "Nouveau" puis ajoutez vos lignes depuis le catalogue ou manuellement.</p>
+            <div className={etape}>
+              <h5 className="font-medium mb-1 text-encre">1. Créer un devis</h5>
+              <p className="text-sm text-encre-2">Cliquez sur "Nouveau" puis ajoutez vos lignes depuis le catalogue ou manuellement.</p>
             </div>
-            <div className={`p-3 rounded-lg ${isDark ? 'bg-slate-800' : 'bg-[#fafafa]'}`}>
-              <h5 className={`font-medium mb-1 ${textPrimary}`}>2. Envoyer au client</h5>
-              <p className={`text-sm ${textSecondary}`}>Générez le PDF et envoyez-le par WhatsApp ou email directement.</p>
+            <div className={etape}>
+              <h5 className="font-medium mb-1 text-encre">2. Envoyer au client</h5>
+              <p className="text-sm text-encre-2">Générez le PDF et envoyez-le par WhatsApp ou email directement.</p>
             </div>
-            <div className={`p-3 rounded-lg ${isDark ? 'bg-slate-800' : 'bg-[#fafafa]'}`}>
-              <h5 className={`font-medium mb-1 ${textPrimary}`}>3. Convertir en facture</h5>
-              <p className={`text-sm ${textSecondary}`}>Devis accepté ? Demandez un acompte ou facturez directement.</p>
+            <div className={etape}>
+              <h5 className="font-medium mb-1 text-encre">3. Convertir en facture</h5>
+              <p className="text-sm text-encre-2">Devis accepté ? Demandez un acompte ou facturez directement.</p>
             </div>
           </div>
         </div>
@@ -2547,22 +2312,22 @@ function HelpModal({ showHelp, setShowHelp, isDark, couleur, tc }) {
     chantiers: {
       title: "Chantiers",
       titleFull: "Suivre vos chantiers",
-      icon: "🏗️",
+      icon: Building2,
       content: (
         <div className="space-y-4">
-          <p className={textSecondary}>Suivez chaque chantier : dépenses, heures, avancement et rentabilité.</p>
+          <p className="text-encre-2">Suivez chaque chantier : dépenses, heures, avancement et rentabilité.</p>
           <div className="space-y-3">
-            <div className={`p-3 rounded-lg ${isDark ? 'bg-slate-800' : 'bg-[#fafafa]'}`}>
-              <h5 className={`font-medium mb-1 ${textPrimary}`}>📊 Suivi financier</h5>
-              <p className={`text-sm ${textSecondary}`}>Ajoutez vos dépenses (matériaux, sous-traitance) et pointez les heures. La marge se calcule automatiquement.</p>
+            <div className={etape}>
+              <h5 className="font-medium mb-1 text-encre">Suivi financier</h5>
+              <p className="text-sm text-encre-2">Ajoutez vos dépenses (matériaux, sous-traitance) et pointez les heures. La marge se calcule automatiquement.</p>
             </div>
-            <div className={`p-3 rounded-lg ${isDark ? 'bg-slate-800' : 'bg-[#fafafa]'}`}>
-              <h5 className={`font-medium mb-1 ${textPrimary}`}>📸 Photos de chantier</h5>
-              <p className={`text-sm ${textSecondary}`}>Prenez des photos avant/pendant/après pour documenter votre travail.</p>
+            <div className={etape}>
+              <h5 className="font-medium mb-1 text-encre">Photos de chantier</h5>
+              <p className="text-sm text-encre-2">Prenez des photos avant/pendant/après pour documenter votre travail.</p>
             </div>
-            <div className={`p-3 rounded-lg ${isDark ? 'bg-slate-800' : 'bg-[#fafafa]'}`}>
-              <h5 className={`font-medium mb-1 ${textPrimary}`}>✅ To-do list</h5>
-              <p className={`text-sm ${textSecondary}`}>Créez des tâches pour ne rien oublier sur chaque chantier.</p>
+            <div className={etape}>
+              <h5 className="font-medium mb-1 text-encre">To-do list</h5>
+              <p className="text-sm text-encre-2">Créez des tâches pour ne rien oublier sur chaque chantier.</p>
             </div>
           </div>
         </div>
@@ -2571,35 +2336,27 @@ function HelpModal({ showHelp, setShowHelp, isDark, couleur, tc }) {
     rentabilite: {
       title: "Rentabilité",
       titleFull: "Comprendre votre marge",
-      icon: "💰",
+      icon: TrendingUp,
       content: (
         <div className="space-y-4">
-          <p className={textSecondary}>La marge nette est calculée automatiquement :</p>
-          <div className={`p-4 rounded-xl font-mono text-sm ${isDark ? 'bg-slate-800' : 'bg-[#f5f5f5]'}`}>
-            <p className={textPrimary}>Marge = CA - Dépenses - Main d'œuvre</p>
+          <p className="text-encre-2">La marge nette est calculée automatiquement :</p>
+          <div className="p-4 rounded-xl font-mono text-sm bg-surface-2">
+            <p className="text-encre">Marge = CA - Dépenses - Main d'œuvre</p>
           </div>
           <div className="space-y-2">
-            <div className={`flex items-center gap-3 p-3 rounded-lg ${isDark ? 'bg-emerald-900/20' : 'bg-emerald-50'}`}>
-              <span className="text-2xl">🟢</span>
-              <div>
-                <p className={`font-medium ${isDark ? 'text-emerald-300' : 'text-emerald-700'}`}>{">"} 40% = Excellent</p>
-                <p className={`text-xs ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>Vous êtes très rentable</p>
+            {[
+              { fond: 'bg-succes-fond text-succes-texte', point: 'bg-succes-point', seuil: `${'>'} 40% = Excellent`, texte: 'Vous êtes très rentable' },
+              { fond: 'bg-alerte-fond text-alerte-texte', point: 'bg-alerte-point', seuil: '20-40% = Correct', texte: 'Surveillez vos coûts' },
+              { fond: 'bg-danger-fond text-danger-texte', point: 'bg-danger-point', seuil: `${'<'} 20% = Attention`, texte: 'Revoyez vos prix ou coûts' },
+            ].map((r) => (
+              <div key={r.seuil} className={`flex items-center gap-3 p-3 rounded-xl ${r.fond}`}>
+                <span aria-hidden="true" className={`w-3 h-3 rounded-full flex-shrink-0 ${r.point}`} />
+                <div>
+                  <p className="font-medium">{r.seuil}</p>
+                  <p className="text-sm">{r.texte}</p>
+                </div>
               </div>
-            </div>
-            <div className={`flex items-center gap-3 p-3 rounded-lg ${isDark ? 'bg-amber-900/20' : 'bg-amber-50'}`}>
-              <span className="text-2xl">🟡</span>
-              <div>
-                <p className={`font-medium ${isDark ? 'text-amber-300' : 'text-amber-700'}`}>20-40% = Correct</p>
-                <p className={`text-xs ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>Marge standard du BTP</p>
-              </div>
-            </div>
-            <div className={`flex items-center gap-3 p-3 rounded-lg ${isDark ? 'bg-red-900/20' : 'bg-red-50'}`}>
-              <span className="text-2xl">🔴</span>
-              <div>
-                <p className={`font-medium ${isDark ? 'text-red-300' : 'text-red-700'}`}>{"<"} 20% = Attention</p>
-                <p className={`text-xs ${isDark ? 'text-red-400' : 'text-red-600'}`}>Revoyez vos prix ou coûts</p>
-              </div>
-            </div>
+            ))}
           </div>
         </div>
       )
@@ -2607,20 +2364,20 @@ function HelpModal({ showHelp, setShowHelp, isDark, couleur, tc }) {
     astuces: {
       title: "Astuces",
       titleFull: "Astuces pour gagner du temps",
-      icon: "⚡",
+      icon: Lightbulb,
       content: (
         <div className="space-y-4">
-          <div className={`p-4 rounded-xl ${isDark ? 'bg-blue-900/20' : 'bg-blue-50'}`}>
-            <h4 className={`font-semibold mb-2 ${isDark ? 'text-blue-300' : 'text-blue-800'}`}>📱 Utilisez le sur mobile</h4>
-            <p className={`text-sm ${isDark ? 'text-blue-200' : 'text-blue-700'}`}>Mallettico fonctionne parfaitement sur téléphone. Ajoutez-le à votre écran d'accueil pour un accès rapide.</p>
+          <div className={encart}>
+            <h4 className="font-semibold mb-2 text-encre flex items-center gap-2"><Smartphone size={18} className="text-encre-3" aria-hidden="true" />Utilisez-le sur mobile</h4>
+            <p className="text-sm text-encre-2">Mallettico fonctionne parfaitement sur téléphone. Ajoutez-le à votre écran d'accueil pour un accès rapide.</p>
           </div>
-          <div className={`p-4 rounded-xl ${isDark ? 'bg-purple-900/20' : 'bg-purple-50'}`}>
-            <h4 className={`font-semibold mb-2 ${isDark ? 'text-purple-300' : 'text-purple-800'}`}>🎨 Personnalisez</h4>
-            <p className={`text-sm ${isDark ? 'text-purple-200' : 'text-purple-700'}`}>Dans Paramètres, ajoutez votre logo et choisissez votre couleur. Vos devis auront un aspect professionnel unique.</p>
+          <div className={encart}>
+            <h4 className="font-semibold mb-2 text-encre flex items-center gap-2"><Palette size={18} className="text-encre-3" aria-hidden="true" />Personnalisez</h4>
+            <p className="text-sm text-encre-2">Dans Paramètres, ajoutez votre logo et choisissez votre couleur. Vos devis auront un aspect professionnel unique.</p>
           </div>
-          <div className={`p-4 rounded-xl ${isDark ? 'bg-emerald-900/20' : 'bg-emerald-50'}`}>
-            <h4 className={`font-semibold mb-2 ${isDark ? 'text-emerald-300' : 'text-emerald-800'}`}>📊 Mode confidentiel</h4>
-            <p className={`text-sm ${isDark ? 'text-emerald-200' : 'text-emerald-700'}`}>Cliquez sur l'œil pour masquer les montants. Pratique quand un client regarde votre écran !</p>
+          <div className={encart}>
+            <h4 className="font-semibold mb-2 text-encre flex items-center gap-2"><EyeOff size={18} className="text-encre-3" aria-hidden="true" />Mode confidentiel</h4>
+            <p className="text-sm text-encre-2">Touchez l'œil, en haut de l'écran, pour masquer les montants. Pratique quand un client regarde votre écran !</p>
           </div>
         </div>
       )
@@ -2628,11 +2385,11 @@ function HelpModal({ showHelp, setShowHelp, isDark, couleur, tc }) {
     faq: {
       title: "FAQ",
       titleFull: "Questions fréquentes",
-      icon: "❓",
+      icon: HelpCircle,
       content: (() => {
         const faqItems = [
           { q: 'Comment créer mon premier devis ?', a: 'Allez dans Devis & Factures, cliquez "Nouveau devis", sélectionnez un client et ajoutez vos lignes depuis le catalogue ou manuellement.' },
-          { q: 'Comment transformer un devis en facture ?', a: 'Ouvrez le devis accepté et cliquez "Convertir en facture". Toutes les lignes sont reprises automatiquement.' },
+          { q: 'Comment transformer un devis en facture ?', a: 'Ouvrez le devis signé et touchez "Facturer" : facture d\'acompte, échéancier, facture complète ou situation de travaux. Les lignes sont reprises automatiquement.' },
           { q: 'Comment ajouter mon logo ?', a: 'Dans Paramètres > Identité, uploadez votre logo. Il apparaîtra sur tous vos devis et factures PDF.' },
           { q: 'Comment suivre mes dépenses ?', a: 'Dans la fiche d\'un chantier, onglet Dépenses, ajoutez chaque achat de matériel ou paiement de sous-traitant.' },
           { q: 'Comment envoyer un devis par email ?', a: 'Générez le PDF du devis puis utilisez le bouton "Envoyer" pour l\'envoyer par email directement depuis l\'application.' },
@@ -2640,7 +2397,7 @@ function HelpModal({ showHelp, setShowHelp, isDark, couleur, tc }) {
           { q: 'Comment fonctionne le planning ?', a: 'Le planning affiche vos chantiers et événements. Cliquez sur un jour pour ajouter un événement ou glissez-déposez pour réorganiser.' },
           { q: 'Comment gérer mes clients ?', a: 'Dans la section Clients, ajoutez les coordonnées de vos clients. Vous verrez leur historique de devis et chantiers.' },
           { q: 'Comment fonctionne le catalogue ?', a: 'Le catalogue stocke vos articles et prestations avec prix unitaires. Réutilisez-les dans vos devis en un clic.' },
-          { q: 'Comment changer mon plan ?', a: 'Dans Paramètres, vous pouvez voir votre plan actuel et évoluer vers Artisan ou Équipe pour débloquer plus de fonctionnalités.' },
+          { q: 'Comment changer mon plan ?', a: 'Dans Mon plan, vous voyez votre plan actuel et pouvez évoluer vers Artisan ou Équipe pour débloquer plus de fonctionnalités.' },
           { q: 'Comment exporter mes données comptables ?', a: 'Dans Finances > Export Comptable, exportez vos données au format FEC, CSV ou compatible Pennylane/Indy.' },
           { q: 'Comment fonctionne la trésorerie ?', a: 'Dans Finances > Trésorerie, visualisez vos flux de trésorerie en temps réel avec un prévisionnel automatique.' },
           ...(FONCTIONS.ia ? [{ q: 'Comment utiliser l\'IA Devis ?', a: 'Prenez une photo du chantier ou décrivez les travaux. L\'IA génère automatiquement un devis détaillé. (Inclus dans tous les plans)' }] : []),
@@ -2660,17 +2417,18 @@ function HelpModal({ showHelp, setShowHelp, isDark, couleur, tc }) {
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               placeholder="Rechercher une question..."
-              className={`w-full px-4 py-2.5 rounded-xl border text-sm ${isDark ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-400' : 'bg-[#fafafa] border-[#ebebeb] text-[#1a1a1a] placeholder-[#999]'}`}
+              aria-label="Rechercher une question"
+              className="w-full px-4 py-2.5 rounded-xl border text-sm bg-surface border-bord-fort text-encre placeholder:text-encre-3"
             />
             {filtered.length === 0 && (
-              <p className={`text-sm text-center py-4 ${textSecondary}`}>Aucun résultat. Contactez-nous à contact@mallettico.fr</p>
+              <p className="text-sm text-center py-4 text-encre-2">Aucun résultat. Contactez-nous à contact@mallettico.fr</p>
             )}
             {filtered.map((item, i) => (
-              <details key={i} className={`rounded-xl border overflow-hidden ${isDark ? 'border-slate-700' : 'border-[#ebebeb]'}`}>
-                <summary className={`px-4 py-3 cursor-pointer text-sm font-medium ${isDark ? 'hover:bg-slate-700' : 'hover:bg-[#fafafa]'} ${textPrimary}`}>
+              <details key={i} className="rounded-xl border border-bord overflow-hidden">
+                <summary className="px-4 py-3 cursor-pointer text-sm font-medium text-encre hover:bg-surface-2">
                   {item.q}
                 </summary>
-                <div className={`px-4 pb-3 text-sm ${textSecondary}`}>{item.a}</div>
+                <div className="px-4 pb-3 text-sm text-encre-2">{item.a}</div>
               </details>
             ))}
           </div>
@@ -2680,36 +2438,28 @@ function HelpModal({ showHelp, setShowHelp, isDark, couleur, tc }) {
     contact: {
       title: "Contact",
       titleFull: "Contacter le support",
-      icon: "📧",
+      icon: Mail,
       content: (
         <div className="space-y-4">
-          <p className={textSecondary}>Notre équipe répond sous 48h ouvrées.</p>
-          <div className={`p-5 rounded-xl ${isDark ? 'bg-slate-800' : 'bg-[#fafafa]'} space-y-3`}>
-            <div className="flex items-center gap-3">
-              <span className="text-2xl">📧</span>
-              <div>
-                <p className={`font-medium ${textPrimary}`}>Email</p>
-                <p className={`text-sm ${textSecondary}`}>contact@mallettico.fr</p>
+          <p className="text-encre-2">Notre équipe répond sous 48h ouvrées.</p>
+          <div className="p-5 rounded-xl bg-surface-2 space-y-3">
+            {[
+              { Icone: Mail, titre: 'Email', texte: 'contact@mallettico.fr' },
+              { Icone: Clock, titre: 'Délai de réponse', texte: 'Sous 48h ouvrées' },
+              { Icone: BookOpen, titre: 'Documentation', texte: 'Consultez la FAQ ci-dessus pour une réponse immédiate' },
+            ].map(({ Icone, titre, texte }) => (
+              <div key={titre} className="flex items-center gap-3">
+                <Icone size={22} className="flex-shrink-0 text-encre-3" aria-hidden="true" />
+                <div>
+                  <p className="font-medium text-encre">{titre}</p>
+                  <p className="text-sm text-encre-2">{texte}</p>
+                </div>
               </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="text-2xl">⏰</span>
-              <div>
-                <p className={`font-medium ${textPrimary}`}>Délai de réponse</p>
-                <p className={`text-sm ${textSecondary}`}>Sous 48h ouvrées (prioritaire pour les abonnés Pro)</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="text-2xl">📖</span>
-              <div>
-                <p className={`font-medium ${textPrimary}`}>Documentation</p>
-                <p className={`text-sm ${textSecondary}`}>Consultez la FAQ ci-dessus pour une réponse immédiate</p>
-              </div>
-            </div>
+            ))}
           </div>
           <a
             href="mailto:contact@mallettico.fr?subject=Support Mallettico"
-            className="block w-full py-3 rounded-xl text-center font-semibold text-sm transition-all hover:opacity-90 bg-accent text-sur-accent"
+            className="flex w-full h-11 items-center justify-center rounded-full text-center font-semibold text-sm transition-[filter] hover:brightness-95 bg-accent text-sur-accent"
           >
             Envoyer un email au support
           </a>
@@ -2719,233 +2469,192 @@ function HelpModal({ showHelp, setShowHelp, isDark, couleur, tc }) {
   };
 
   const currentSection = helpSections[helpSection];
+  const ongletClasse = (actif) => `flex items-center gap-2 rounded-xl text-sm transition-colors ${actif ? 'bg-accent/15 text-accent-texte font-semibold' : 'text-encre-2 hover:bg-surface-2 hover:text-encre'}`;
 
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in" onClick={() => setShowHelp(false)}>
-      <div className={`bg-surface rounded-2xl w-full max-w-3xl shadow-2xl animate-slide-up max-h-[90vh] overflow-hidden flex flex-col`} onClick={e => e.stopPropagation()}>
-        {/* Header */}
-        <div className={`p-4 sm:p-5 border-b ${isDark ? 'border-slate-700' : 'border-[#ebebeb]'}`}>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${couleur}20` }}>
-                <span className="text-xl">❓</span>
-              </div>
-              <div>
-                <h2 className={`font-bold text-lg ${textPrimary}`}>Guide d'utilisation</h2>
-                <p className={`text-sm ${textSecondary}`}>Tout savoir sur Mallettico</p>
-              </div>
-            </div>
-            <button onClick={() => setShowHelp(false)} className={`p-2.5 rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center ${isDark ? 'hover:bg-slate-700' : 'hover:bg-[#f5f5f5]'}`}>
-              <span className={textPrimary}>✕</span>
-            </button>
-          </div>
-        </div>
+    <Modal isOpen onClose={() => setShowHelp(false)} size="xl">
+      <ModalHeader>
+        <ModalTitle>Guide d'utilisation</ModalTitle>
+        <ModalDescription>Tout savoir sur Mallettico</ModalDescription>
+      </ModalHeader>
 
-        {/* Tabs - Mobile only */}
-        <div className={`md:hidden border-b ${isDark ? 'border-slate-700' : 'border-[#ebebeb]'}`}>
-          <div className="flex overflow-x-auto p-2 gap-1 scrollbar-hide">
+      {/* Onglets — téléphone */}
+      <div className="md:hidden border-b border-bord">
+        <div className="flex overflow-x-auto p-2 gap-1 scrollbar-hide">
+          {Object.entries(helpSections).map(([key, section]) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setHelpSection(key)}
+              aria-pressed={helpSection === key}
+              className={`${ongletClasse(helpSection === key)} px-3 min-h-[44px] whitespace-nowrap flex-shrink-0`}
+            >
+              <section.icon size={16} aria-hidden="true" />
+              <span>{section.title}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex flex-1 min-h-0 overflow-hidden">
+        {/* Rubriques — bureau */}
+        <nav aria-label="Rubriques du guide" className="hidden md:block w-48 border-r border-bord bg-fond p-3 overflow-y-auto">
+          <div className="space-y-1">
             {Object.entries(helpSections).map(([key, section]) => (
               <button
                 key={key}
+                type="button"
                 onClick={() => setHelpSection(key)}
-                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm whitespace-nowrap min-h-[40px] transition-colors flex-shrink-0 ${
-                  helpSection === key
-                    ? 'text-white'
-                    : isDark
-                      ? 'bg-slate-700 text-slate-400 hover:bg-slate-600'
-                      : 'bg-[#f5f5f5] text-[#666] hover:bg-[#f0f0f0]'
-                }`}
-                style={helpSection === key ? { background: couleur } : {}}
+                aria-current={helpSection === key ? 'true' : undefined}
+                className={`${ongletClasse(helpSection === key)} w-full px-3 py-2.5 text-left`}
               >
-                <span>{section.icon}</span>
+                <section.icon size={16} aria-hidden="true" />
                 <span>{section.title}</span>
               </button>
             ))}
           </div>
-        </div>
+        </nav>
 
-        {/* Content with sidebar for desktop */}
-        <div className="flex flex-1 overflow-hidden">
-          {/* Sidebar - Desktop only */}
-          <div className={`hidden md:block w-48 border-r ${isDark ? 'border-slate-700 bg-slate-800/50' : 'border-[#ebebeb] bg-[#fafafa]'} p-3`}>
-            <div className="space-y-1">
-              {Object.entries(helpSections).map(([key, section]) => (
-                <button
-                  key={key}
-                  onClick={() => setHelpSection(key)}
-                  className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm text-left transition-colors ${
-                    helpSection === key
-                      ? 'text-white'
-                      : isDark
-                        ? 'text-slate-500 hover:bg-slate-700 hover:text-slate-400'
-                        : 'text-[#666] hover:bg-[#f5f5f5] hover:text-[#1a1a1a]'
-                  }`}
-                  style={helpSection === key ? { background: couleur } : {}}
-                >
-                  <span>{section.icon}</span>
-                  <span>{section.title}</span>
-                </button>
-              ))}
-            </div>
+        <div className="flex-1 p-5 sm:p-6 overflow-y-auto pb-[calc(1.25rem+env(safe-area-inset-bottom))]">
+          <div className="flex items-center gap-3 mb-4">
+            <span className="w-10 h-10 rounded-xl flex items-center justify-center bg-surface-2 text-encre-2 flex-shrink-0">
+              <currentSection.icon size={20} aria-hidden="true" />
+            </span>
+            <h3 className="text-xl font-bold text-encre">{currentSection.titleFull || currentSection.title}</h3>
           </div>
-
-          {/* Main content */}
-          <div className="flex-1 p-5 sm:p-6 overflow-y-auto">
-            <div className="flex items-center gap-3 mb-4">
-              <span className="text-3xl">{currentSection.icon}</span>
-              <h3 className={`text-xl font-bold ${textPrimary}`}>{currentSection.titleFull || currentSection.title}</h3>
-            </div>
-            {currentSection.content}
-          </div>
+          {currentSection.content}
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }
 
-// Onboarding Modal for first-time users
-function OnboardingModal({ setShowOnboarding, isDark, couleur }) {
+// Bienvenue d'un nouveau compte (première connexion, jamais en démo) : quatre écrans, sur ui/Modal et les jetons.
+function OnboardingModal({ setShowOnboarding, isDark: _isDark, couleur: _couleur }) {
   const [step, setStep] = useState(0);
 
-  const textPrimary = 'text-encre';
-  const textSecondary = isDark ? 'text-slate-400' : 'text-[#666]';
+  const tuile = 'p-4 rounded-xl text-center bg-surface-2';
 
   const steps = [
     {
-      icon: "👋",
+      icon: Hand,
       title: "Bienvenue sur Mallettico",
       subtitle: "Votre assistant de gestion pour artisan",
       content: (
         <div className="space-y-4">
-          <p className={`text-center ${textSecondary}`}>
+          <p className="text-center text-encre-2">
             Gérez vos devis, factures et chantiers en toute simplicité. Tout est pensé pour vous faire gagner du temps.
           </p>
           <div className="grid grid-cols-3 gap-3 mt-6">
-            <div className={`p-4 rounded-xl text-center ${isDark ? 'bg-blue-900/30' : 'bg-blue-50'}`}>
-              <span className="text-3xl mb-2 block">📋</span>
-              <p className={`text-sm font-medium ${isDark ? 'text-blue-300' : 'text-blue-700'}`}>Devis en 5 min</p>
-            </div>
-            <div className={`p-4 rounded-xl text-center ${isDark ? 'bg-emerald-900/30' : 'bg-emerald-50'}`}>
-              <span className="text-3xl mb-2 block">💰</span>
-              <p className={`text-sm font-medium ${isDark ? 'text-emerald-300' : 'text-emerald-700'}`}>Marge automatique</p>
-            </div>
-            <div className={`p-4 rounded-xl text-center ${isDark ? 'bg-purple-900/30' : 'bg-purple-50'}`}>
-              <span className="text-3xl mb-2 block">📱</span>
-              <p className={`text-sm font-medium ${isDark ? 'text-purple-300' : 'text-purple-700'}`}>Mobile friendly</p>
-            </div>
+            {[
+              { Icone: FileText, texte: 'Devis en 5 min' },
+              { Icone: TrendingUp, texte: 'Marge automatique' },
+              { Icone: Smartphone, texte: 'Sur téléphone' },
+            ].map(({ Icone, texte }) => (
+              <div key={texte} className={tuile}>
+                <Icone size={26} className="mx-auto mb-2 text-encre-2" aria-hidden="true" />
+                <p className="text-sm font-medium text-encre">{texte}</p>
+              </div>
+            ))}
           </div>
         </div>
       )
     },
     {
-      icon: "📋",
+      icon: FileText,
       title: "Créez vos devis rapidement",
       subtitle: "Du devis à la facture en 2 clics",
       content: (
         <div className="space-y-4">
-          <div className={`p-5 rounded-2xl ${isDark ? 'bg-slate-800' : 'bg-[#fafafa]'} border ${isDark ? 'border-slate-700' : 'border-[#ebebeb]'}`}>
+          <div className="p-5 rounded-2xl bg-surface-2 border border-bord">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: couleur + '30' }}>
+                <div className="w-10 h-10 rounded-full flex items-center justify-center bg-accent/15">
                   <FileText size={18} className="text-accent-texte" />
                 </div>
                 <div>
-                  <p className={`font-medium ${textPrimary}`}>DEV-2025-001</p>
-                  <p className={`text-sm ${textSecondary}`}>Client: Dupont Marie</p>
+                  <p className="font-medium text-encre">DEV-2025-001</p>
+                  <p className="text-sm text-encre-2">Client: Dupont Marie</p>
                 </div>
               </div>
-              <span className={`px-3 py-1 rounded-full text-xs ${isDark ? 'bg-emerald-900/50 text-emerald-400' : 'bg-emerald-100 text-emerald-700'}`}>Accepté</span>
+              <span className="px-3 py-1 rounded-full text-xs font-semibold bg-succes-fond text-succes-texte">Accepté</span>
             </div>
-            <div className={`p-3 rounded-xl bg-surface space-y-2`}>
+            <div className="p-3 rounded-xl bg-surface space-y-2">
               <div className="flex justify-between text-sm">
-                <span className={textSecondary}>Rénovation cuisine complète</span>
-                <span className={textPrimary}>5 000 €</span>
+                <span className="text-encre-2">Rénovation cuisine complète</span>
+                <span className="text-encre tabular-nums">5 000 €</span>
               </div>
-              <div className={`pt-2 border-t ${isDark ? 'border-slate-700' : 'border-[#ebebeb]'} flex justify-between`}>
-                <span className={`font-medium ${textPrimary}`}>Total TTC</span>
-                <span className="font-bold text-lg text-accent-texte">5 500 €</span>
+              <div className="pt-2 border-t border-bord flex justify-between">
+                <span className="font-medium text-encre">Total TTC</span>
+                <span className="font-bold text-lg text-encre tabular-nums">5 500 €</span>
               </div>
             </div>
           </div>
           <div className="flex items-center justify-center gap-2 text-sm">
-            <span className={`px-3 py-1.5 rounded-lg ${isDark ? 'bg-emerald-900/30 text-emerald-400' : 'bg-emerald-100 text-emerald-700'}`}>✓ Accepté</span>
-            <span className={textSecondary}>→</span>
-            <span className={`px-3 py-1.5 rounded-lg ${isDark ? 'bg-blue-900/30 text-blue-400' : 'bg-blue-100 text-blue-700'}`}>💰 Facturer</span>
+            <span className="px-3 py-1.5 rounded-lg bg-succes-fond text-succes-texte inline-flex items-center gap-1"><CheckCircle size={14} aria-hidden="true" /> Accepté</span>
+            <ChevronRight size={16} className="text-encre-3" aria-hidden="true" />
+            <span className="px-3 py-1.5 rounded-lg bg-surface-2 text-encre inline-flex items-center gap-1"><Wallet size={14} aria-hidden="true" /> Facturer</span>
           </div>
         </div>
       )
     },
     {
-      icon: "🏗️",
+      icon: Building2,
       title: "Suivez vos chantiers",
       subtitle: "Dépenses, heures et rentabilité",
       content: (
         <div className="space-y-4">
-          <div className={`p-5 rounded-2xl ${isDark ? 'bg-slate-800' : 'bg-[#fafafa]'} border ${isDark ? 'border-slate-700' : 'border-[#ebebeb]'}`}>
+          <div className="p-5 rounded-2xl bg-surface-2 border border-bord">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <p className={`font-bold ${textPrimary}`}>Rénovation Dupont</p>
-                <p className={`text-sm ${textSecondary}`}>En cours</p>
+                <p className="font-bold text-encre">Rénovation Dupont</p>
+                <p className="text-sm text-encre-2">En cours</p>
               </div>
               <div className="text-right">
-                <p className="text-2xl font-bold text-emerald-500">67%</p>
-                <p className={`text-xs ${textSecondary}`}>Marge nette</p>
+                <p className="text-2xl font-bold text-encre tabular-nums">67%</p>
+                <p className="text-xs text-encre-2">Marge nette</p>
               </div>
             </div>
             <div className="grid grid-cols-3 gap-2">
-              <div className={`p-3 rounded-xl text-center bg-surface`}>
-                <p className="font-bold text-blue-500">5 500€</p>
-                <p className={`text-xs ${textSecondary}`}>CA</p>
-              </div>
-              <div className={`p-3 rounded-xl text-center bg-surface`}>
-                <p className="font-bold text-red-500">1 200€</p>
-                <p className={`text-xs ${textSecondary}`}>Dépenses</p>
-              </div>
-              <div className={`p-3 rounded-xl text-center bg-surface`}>
-                <p className="font-bold text-emerald-500">3 685€</p>
-                <p className={`text-xs ${textSecondary}`}>Marge</p>
-              </div>
+              {[['5 500€', 'CA'], ['1 200€', 'Dépenses'], ['3 685€', 'Marge']].map(([valeur, libelle]) => (
+                <div key={libelle} className="p-3 rounded-xl text-center bg-surface">
+                  <p className="font-bold text-encre tabular-nums">{valeur}</p>
+                  <p className="text-xs text-encre-2">{libelle}</p>
+                </div>
+              ))}
             </div>
           </div>
-          <p className={`text-center text-sm ${textSecondary}`}>
+          <p className="text-center text-sm text-encre-2">
             Ajoutez vos dépenses et heures pour calculer automatiquement votre rentabilité
           </p>
         </div>
       )
     },
     {
-      icon: "🚀",
+      icon: Rocket,
       title: "Prêt à commencer ?",
       subtitle: "Votre première étape",
       content: (
         <div className="space-y-4">
-          <div className={`p-5 rounded-2xl ${isDark ? 'bg-gradient-to-br from-slate-800 to-slate-800/80' : 'bg-gradient-to-br from-[#fafafa] to-white'} border ${isDark ? 'border-slate-700' : 'border-[#ebebeb]'}`}>
+          <div className="p-5 rounded-2xl bg-surface-2 border border-bord">
             <ol className="space-y-4">
-              <li className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 bg-accent text-sur-accent">1</div>
-                <div>
-                  <p className={`font-medium ${textPrimary}`}>Configurez votre entreprise</p>
-                  <p className={`text-sm ${textSecondary}`}>Allez dans Paramètres pour ajouter votre logo et vos infos</p>
-                </div>
-              </li>
-              <li className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 bg-accent text-sur-accent">2</div>
-                <div>
-                  <p className={`font-medium ${textPrimary}`}>Créez votre premier client</p>
-                  <p className={`text-sm ${textSecondary}`}>Ajoutez les coordonnées de vos clients pour les retrouver facilement</p>
-                </div>
-              </li>
-              <li className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 bg-accent text-sur-accent">3</div>
-                <div>
-                  <p className={`font-medium ${textPrimary}`}>Créez votre premier devis</p>
-                  <p className={`text-sm ${textSecondary}`}>Générez un devis professionnel en quelques minutes</p>
-                </div>
-              </li>
+              {[
+                ['Configurez votre entreprise', 'Allez dans Paramètres pour ajouter votre logo et vos infos'],
+                ['Créez votre premier client', 'Ajoutez les coordonnées de vos clients pour les retrouver facilement'],
+                ['Créez votre premier devis', 'Générez un devis professionnel en quelques minutes'],
+              ].map(([titre, texte], i) => (
+                <li key={titre} className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 bg-surface text-encre border border-bord-fort">{i + 1}</div>
+                  <div>
+                    <p className="font-medium text-encre">{titre}</p>
+                    <p className="text-sm text-encre-2">{texte}</p>
+                  </div>
+                </li>
+              ))}
             </ol>
           </div>
-          <p className={`text-center text-sm ${textSecondary}`}>
-            Besoin d'aide ? Cliquez sur <strong>?</strong> en haut à droite à tout moment
+          <p className="text-center text-sm text-encre-2">
+            Besoin d'aide ? Touchez votre initiale, en haut à droite, puis <strong>Aide</strong>.
           </p>
         </div>
       )
@@ -2954,84 +2663,51 @@ function OnboardingModal({ setShowOnboarding, isDark, couleur }) {
 
   const currentStep = steps[step];
 
-  const completeOnboarding = () => {
-    localStorage.setItem('mallettico_onboarding_complete', 'true');
-    setShowOnboarding(false);
-  };
-
-  const skipOnboarding = () => {
-    localStorage.setItem('mallettico_onboarding_complete', 'true');
+  const terminer = () => {
+    try { localStorage.setItem('mallettico_onboarding_complete', 'true'); } catch { /* préférence non enregistrée : la bienvenue reviendra */ }
     setShowOnboarding(false);
   };
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[1050] p-4 animate-fade-in">
-      <div className={`bg-surface rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden relative`}>
-        {/* Close button */}
-        <button
-          onClick={skipOnboarding}
-          className={`absolute top-4 right-4 p-2 rounded-xl z-10 transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-500 hover:text-slate-400' : 'hover:bg-[#f5f5f5] text-[#666] hover:text-[#666]'}`}
-          aria-label="Fermer"
-        >
-          <X size={20} />
-        </button>
-
-        {/* Progress bar */}
-        <div className={`h-1 ${isDark ? 'bg-slate-700' : 'bg-[#ebebeb]'}`}>
-          <div className="h-full transition-all duration-300 bg-accent" style={{ width: `${((step + 1) / steps.length) * 100}%` }}></div>
-        </div>
-
-        {/* Content */}
-        <div className="p-6 sm:p-8">
-          <div className="text-center mb-6">
-            <span className="text-5xl mb-4 block">{currentStep.icon}</span>
-            <h2 className={`text-2xl font-bold mb-2 ${textPrimary}`}>{currentStep.title}</h2>
-            <p className={textSecondary}>{currentStep.subtitle}</p>
-          </div>
-
-          {currentStep.content}
-        </div>
-
-        {/* Footer */}
-        <div className={`px-4 py-3 border-t ${isDark ? 'border-slate-700 bg-slate-800/50' : 'border-[#ebebeb] bg-[#fafafa]'}`}>
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1">
-                {steps.map((_, i) => (
-                  <div
-                    key={i}
-                    onClick={() => setStep(i)}
-                    className={`w-2 h-2 rounded-full cursor-pointer transition-all ${i === step ? '' : isDark ? 'bg-[#333]' : 'bg-[#ddd]'}`}
-                    style={i === step ? { background: couleur } : {}}
-                  />
-                ))}
-              </div>
-              <button
-                onClick={skipOnboarding}
-                className={`text-xs ${isDark ? 'text-slate-400 hover:text-slate-300' : 'text-[#666] hover:text-[#666]'}`}
-              >
-                Passer
-              </button>
-            </div>
-            <div className="flex gap-2">
-              {step > 0 && (
-                <button
-                  onClick={() => setStep(step - 1)}
-                  className={`px-3 py-2 rounded-xl text-sm ${isDark ? 'bg-slate-700 text-slate-400 hover:bg-slate-600' : 'bg-[#f5f5f5] text-[#666] hover:bg-[#f0f0f0]'}`}
-                >
-                  Retour
-                </button>
-              )}
-              <button
-                onClick={() => step < steps.length - 1 ? setStep(step + 1) : completeOnboarding()}
-                className="px-4 py-2 rounded-xl text-sm hover:shadow-lg transition-all bg-accent text-sur-accent"
-              >
-                {step < steps.length - 1 ? 'Suivant' : 'Terminer'}
-              </button>
-            </div>
-          </div>
-        </div>
+    <Modal isOpen onClose={terminer} size="md" closeOnBackdrop={false}>
+      {/* Avancement */}
+      <div className="h-1 bg-surface-2 rounded-t-3xl sm:rounded-t-2xl overflow-hidden" aria-hidden="true">
+        <div className="h-full transition-all duration-300 bg-accent" style={{ width: `${((step + 1) / steps.length) * 100}%` }}></div>
       </div>
-    </div>
+      <ModalHeader>
+        <ModalTitle className="sr-only">{currentStep.title}</ModalTitle>
+        <ModalDescription className="sr-only">Étape {step + 1} sur {steps.length}</ModalDescription>
+      </ModalHeader>
+
+      <ModalBody className="!pt-0">
+        <div className="text-center mb-6">
+          <span className="w-14 h-14 mx-auto mb-4 rounded-2xl flex items-center justify-center bg-accent/10 text-accent-texte">
+            <currentStep.icon size={28} aria-hidden="true" />
+          </span>
+          <h2 className="text-2xl font-bold mb-2 text-encre">{currentStep.title}</h2>
+          <p className="text-encre-2">{currentStep.subtitle}</p>
+        </div>
+        {currentStep.content}
+      </ModalBody>
+
+      <ModalFooter className="justify-between pb-[calc(1rem+env(safe-area-inset-bottom))]">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1" aria-hidden="true">
+            {steps.map((_, i) => (
+              <span key={i} className={`w-2 h-2 rounded-full transition-colors ${i === step ? 'bg-accent' : 'bg-bord-fort'}`} />
+            ))}
+          </div>
+          <Bouton variante="discret" taille="compacte" onClick={terminer}>Passer</Bouton>
+        </div>
+        <div className="flex gap-2">
+          {step > 0 && (
+            <Bouton variante="secondaire" onClick={() => setStep(step - 1)}>Retour</Bouton>
+          )}
+          <Bouton variante="principal" onClick={() => (step < steps.length - 1 ? setStep(step + 1) : terminer())}>
+            {step < steps.length - 1 ? 'Suivant' : 'Terminer'}
+          </Bouton>
+        </div>
+      </ModalFooter>
+    </Modal>
   );
 }

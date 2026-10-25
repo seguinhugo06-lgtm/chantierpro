@@ -11,6 +11,7 @@ import { cn } from '../lib/utils';
 import LogoMallettico from './ui/LogoMallettico';
 import { usePWA } from '../hooks/usePWA';
 import { Button } from './ui/Button';
+import { Bouton } from './ui/Bouton';
 
 /**
  * @typedef {Object} PWAUpdatePromptProps
@@ -63,7 +64,7 @@ function setDismissedInStorage() {
  * PWAUpdatePrompt - Shows prompts for PWA updates and install
  * @param {PWAUpdatePromptProps} props
  */
-export default function PWAUpdatePrompt({ syncHandlers = {}, className, isDark = false, couleur = '#f97316' }) {
+export default function PWAUpdatePrompt({ syncHandlers = {}, className, isDark: _isDark = false, couleur: _couleur }) {
   const {
     canInstall,
     install,
@@ -127,7 +128,7 @@ export default function PWAUpdatePrompt({ syncHandlers = {}, className, isDark =
   const closeBtnHover = 'hover:bg-surface-2';
 
   return (
-    <div className={cn('fixed bottom-4 left-4 right-4 z-50 flex flex-col gap-3 sm:left-auto sm:right-4 sm:w-96', className)}>
+    <div className={cn('fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom))] md:bottom-4 left-4 right-4 z-50 flex flex-col gap-3 sm:left-auto sm:right-4 sm:w-96', className)}>
       <AnimatePresence mode="popLayout">
         {/* Offline indicator */}
         {isOffline && (
@@ -136,14 +137,14 @@ export default function PWAUpdatePrompt({ syncHandlers = {}, className, isDark =
             initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            className="flex items-center gap-3 p-3 rounded-xl bg-amber-500 text-white shadow-lg"
+            className="flex items-center gap-3 p-3 rounded-xl bg-alerte-fond text-alerte-texte border border-alerte-texte/20 shadow-e2"
           >
-            <WifiOff className="w-5 h-5 flex-shrink-0" />
+            <WifiOff className="w-5 h-5 flex-shrink-0" aria-hidden="true" />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold">Mode hors ligne</p>
               {pendingSyncCount > 0 && (
-                <p className="text-xs opacity-90">
-                  {pendingSyncCount} operation{pendingSyncCount > 1 ? 's' : ''} en attente
+                <p className="text-xs">
+                  {pendingSyncCount} opération{pendingSyncCount > 1 ? 's' : ''} en attente
                 </p>
               )}
             </div>
@@ -157,13 +158,13 @@ export default function PWAUpdatePrompt({ syncHandlers = {}, className, isDark =
             initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            className="flex items-center gap-3 p-3 rounded-xl bg-emerald-500 text-white shadow-lg"
+            className="flex items-center gap-3 p-3 rounded-xl bg-info-fond text-info-texte border border-info-texte/20 shadow-e2"
           >
-            <RefreshCw className="w-5 h-5 flex-shrink-0 animate-spin" />
+            <RefreshCw className="w-5 h-5 flex-shrink-0 animate-spin" aria-hidden="true" />
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold">Synchronisation...</p>
-              <p className="text-xs opacity-90">
-                {pendingSyncCount} operation{pendingSyncCount > 1 ? 's' : ''} en cours
+              <p className="text-sm font-semibold">Synchronisation…</p>
+              <p className="text-xs">
+                {pendingSyncCount} opération{pendingSyncCount > 1 ? 's' : ''} en cours
               </p>
             </div>
           </motion.div>
@@ -196,28 +197,19 @@ export default function PWAUpdatePrompt({ syncHandlers = {}, className, isDark =
             </button>
 
             <div className="flex items-start gap-3 pr-6">
-              <div
-                className="flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center"
-                style={{ backgroundColor: `${couleur}20` }}
-              >
-                <Sparkles className="w-6 h-6 text-accent-texte" />
+              <div className="flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center bg-accent/10">
+                <Sparkles className="w-6 h-6 text-accent-texte" aria-hidden="true" />
               </div>
               <div className="flex-1 min-w-0">
                 <p className={cn('text-base font-bold mb-1', textPrimary)}>
                   Nouvelle version disponible
                 </p>
                 <p className={cn('text-sm mb-3', textSecondary)}>
-                  Des ameliorations sont pretes !
+                  Des améliorations sont prêtes.
                 </p>
-                <Button
-                  size="sm"
-                  onClick={refresh}
-                  className="w-full text-white font-semibold py-2.5 rounded-xl shadow-md transition-all active:scale-[0.98]"
-                  style={{ backgroundColor: couleur }}
-                >
-                  <RefreshCw className="w-4 h-4 mr-2" />
+                <Bouton variante="principal" pleineLargeur icone={RefreshCw} onClick={refresh}>
                   Mettre à jour
-                </Button>
+                </Bouton>
               </div>
             </div>
           </motion.div>
@@ -267,33 +259,9 @@ export default function PWAUpdatePrompt({ syncHandlers = {}, className, isDark =
 
               {/* Native install button for Chrome/Android */}
               {canInstall ? (
-                <>
-                  <Button
-                    size="lg"
-                    onClick={install}
-                    className="w-full text-white font-bold py-4 rounded-xl shadow-lg transition-all active:scale-[0.98] text-base"
-                    style={{ backgroundColor: couleur }}
-                  >
-                    <Download className="w-5 h-5 mr-2" />
-                    Installer l'application
-                  </Button>
-
-                  {/* Benefits */}
-                  <div className={cn('flex items-center justify-center gap-4 mt-4 text-xs font-medium', textMuted)}>
-                    <span className="flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                      100% Gratuit
-                    </span>
-                    <span className="flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full bg-blue-500" />
-                      Hors-ligne
-                    </span>
-                    <span className="flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full bg-purple-500" />
-                      Rapide
-                    </span>
-                  </div>
-                </>
+                <Bouton variante="principal" taille="grande" pleineLargeur icone={Download} onClick={install}>
+                  Installer l'application
+                </Bouton>
               ) : platform.isIOS ? (
                 /* iOS Instructions */
                 <div className="space-y-3">
@@ -302,7 +270,7 @@ export default function PWAUpdatePrompt({ syncHandlers = {}, className, isDark =
                   </p>
                   <div className={cn('flex items-center gap-4 p-3 rounded-xl', stepBg)}>
                     <div
-                      className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm bg-accent text-sur-accent"
+                      className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm bg-surface text-encre border border-bord-fort"
                     >
                       1
                     </div>
@@ -316,7 +284,7 @@ export default function PWAUpdatePrompt({ syncHandlers = {}, className, isDark =
                   </div>
                   <div className={cn('flex items-center gap-4 p-3 rounded-xl', stepBg)}>
                     <div
-                      className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm bg-accent text-sur-accent"
+                      className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm bg-surface text-encre border border-bord-fort"
                     >
                       2
                     </div>
@@ -337,7 +305,7 @@ export default function PWAUpdatePrompt({ syncHandlers = {}, className, isDark =
                   </p>
                   <div className={cn('flex items-center gap-4 p-3 rounded-xl', stepBg)}>
                     <div
-                      className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm bg-accent text-sur-accent"
+                      className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm bg-surface text-encre border border-bord-fort"
                     >
                       1
                     </div>
@@ -351,7 +319,7 @@ export default function PWAUpdatePrompt({ syncHandlers = {}, className, isDark =
                   </div>
                   <div className={cn('flex items-center gap-4 p-3 rounded-xl', stepBg)}>
                     <div
-                      className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm bg-accent text-sur-accent"
+                      className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm bg-surface text-encre border border-bord-fort"
                     >
                       2
                     </div>
@@ -366,13 +334,12 @@ export default function PWAUpdatePrompt({ syncHandlers = {}, className, isDark =
                 </div>
               )}
 
-              {/* Bottom hint for manual install */}
-              {!canInstall && (
-                <div className={cn('flex items-center justify-center gap-2 mt-4 pt-4 border-t text-xs', cardBorder, textMuted)}>
-                  <Smartphone className="w-3.5 h-3.5" />
-                  <span>Accès instantané • Fonctionne hors ligne</span>
-                </div>
-              )}
+              {/* Ce que l'installation apporte (avant, pour l'installation directe : « 100% Gratuit · Hors-ligne · Rapide »
+                  sur trois points de couleur) */}
+              <div className={cn('flex items-center justify-center gap-2 mt-4 pt-4 border-t text-xs', cardBorder, textMuted)}>
+                <Smartphone className="w-3.5 h-3.5" aria-hidden="true" />
+                <span>Accès instantané • Fonctionne hors ligne</span>
+              </div>
             </div>
           </motion.div>
         )}
@@ -384,7 +351,7 @@ export default function PWAUpdatePrompt({ syncHandlers = {}, className, isDark =
 /**
  * PWAInstallButton - Compact install button for header/menu
  */
-export function PWAInstallButton({ className, couleur = '#f97316' }) {
+export function PWAInstallButton({ className }) {
   const { canInstall, install, isInstalled } = usePWA();
 
   if (isInstalled || !canInstall) {
@@ -396,8 +363,7 @@ export function PWAInstallButton({ className, couleur = '#f97316' }) {
       variant="outline"
       size="sm"
       onClick={install}
-      className={cn('gap-1.5', className)}
-      style={{ borderColor: couleur, color: couleur }}
+      className={cn('gap-1.5 border-accent text-accent-texte', className)}
     >
       <Download className="w-4 h-4" />
       Installer
@@ -408,7 +374,7 @@ export function PWAInstallButton({ className, couleur = '#f97316' }) {
 /**
  * OfflineIndicator - Small badge showing offline status
  */
-export function OfflineIndicator({ className, isDark = false }) {
+export function OfflineIndicator({ className }) {
   const { isOffline, pendingSyncCount } = usePWA();
 
   if (!isOffline) {
@@ -419,14 +385,14 @@ export function OfflineIndicator({ className, isDark = false }) {
     <div
       className={cn(
         'inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium',
-        isDark ? 'bg-amber-900/30 text-amber-400' : 'bg-amber-100 text-amber-800',
+        'bg-alerte-fond text-alerte-texte',
         className
       )}
     >
       <WifiOff className="w-3 h-3" />
       Hors ligne
       {pendingSyncCount > 0 && (
-        <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${isDark ? 'bg-amber-800' : 'bg-amber-200'}`}>
+        <span className="px-1.5 py-0.5 rounded-full text-xs bg-surface/60">
           {pendingSyncCount}
         </span>
       )}

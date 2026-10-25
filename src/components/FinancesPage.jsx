@@ -1,5 +1,5 @@
 import React, { lazy, Suspense, useState, useEffect } from 'react';
-import { Wallet, Download, BarChart3, Landmark, CreditCard, Eye, EyeOff, FileText, AlertTriangle, RefreshCw } from 'lucide-react';
+import { Wallet, Download, BarChart3, Landmark, CreditCard, FileText, AlertTriangle, RefreshCw } from 'lucide-react';
 import TabBar from './ui/TabBar';
 import ErrorBoundary from './ui/ErrorBoundary';
 import PageHeader from './ui/PageHeader';
@@ -61,8 +61,9 @@ export default function FinancesPage({ devis, depenses, clients, chantiers, entr
   useEffect(() => {
     try { sessionStorage.removeItem('cp_finances_onglet'); } catch (e) { captureException(e, { contexte: 'FinancesPage.ongletDemande' }); }
   }, []);
-  const [localDiscret, setLocalDiscret] = useState(false);
-  const modeDiscret = modeDiscretGlobal || localDiscret;
+  // Mode confidentiel : une seule commande, l'œil de l'en-tête de l'app (audit UX du 20 oct. 2026, § 2.1 ; avant, Finances
+  // avait aussi son propre « Masquer les montants », qui ne masquait que cette page)
+  const modeDiscret = modeDiscretGlobal;
 
   // RBAC permissions
   const { getPermission, canExportData } = usePermissions();
@@ -77,19 +78,6 @@ export default function FinancesPage({ devis, depenses, clients, chantiers, entr
         subtitle="Trésorerie, export comptable et analyses"
         isDark={isDark}
         color={couleur}
-        action={
-          <button
-            onClick={() => setLocalDiscret(d => !d)}
-            aria-label={modeDiscret ? 'Afficher les montants' : 'Masquer les montants'}
-            title={modeDiscret ? 'Afficher les montants' : 'Masquer les montants'}
-            className={`hidden sm:flex items-center gap-1.5 h-11 px-3.5 rounded-xl border text-sm font-semibold transition-colors ${
-              modeDiscret ? 'bg-alerte-fond text-alerte-texte border-transparent' : 'bg-surface border-bord-fort text-encre hover:bg-surface-2'
-            }`}
-          >
-            {modeDiscret ? <EyeOff size={16} /> : <Eye size={16} />}
-            <span className="hidden sm:inline">{modeDiscret ? 'Montants masqués' : 'Masquer les montants'}</span>
-          </button>
-        }
       />
 
       {/* Tab navigation */}

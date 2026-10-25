@@ -56,6 +56,11 @@ textarea:focus-visible {
   }
 }
 
+/* Indications clavier (⌘K, ↑↓, ⌘1-9…) : rien à en faire sur un écran tactile (audit UX du 20 oct. 2026, § 2.5) */
+@media (pointer: coarse) {
+  .indication-clavier { display: none !important; }
+}
+
 /* Smooth scrolling */
 html {
   scroll-behavior: smooth;
@@ -208,9 +213,16 @@ button:active {
   animation: fade-in 0.2s ease-out;
 }
 
-/* Better text selection */
+/* Sélection de texte : l'accent du thème (avant : l'orange en dur, reporté par la Task 4 « ancien code ») */
 ::selection {
-  background: rgba(249, 115, 22, 0.3);
+  background: rgb(var(--accent) / 0.25);
+}
+
+/* Fond plein écran (fenêtres, feuilles, menus) : jamais décalé par l'espacement de son parent. Posé dans un conteneur
+   .space-y-*, il recevait sa marge (margin-top: 1rem) et laissait en haut une bande de page non assombrie, le « petit
+   jour » au-dessus des formulaires (retour d'Hugo sur « Au Bon Volt », 23 oct. 2026 ; mesuré : fond à 16 px du haut). */
+.fixed.inset-0 {
+  margin: 0 !important;
 }
 
 /* Disable text selection on buttons */
@@ -401,7 +413,7 @@ button {
     background-color: transparent;
   }
   50% {
-    background-color: rgba(249, 115, 22, 0.2);
+    background-color: rgb(var(--accent) / 0.2);
   }
 }
 
@@ -411,7 +423,7 @@ button {
 
 /* Card selection glow */
 .card-selected {
-  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.3);
+  box-shadow: 0 0 0 3px rgb(var(--accent) / 0.3);
 }
 
 /* Quick action ripple effect */
@@ -523,7 +535,7 @@ button {
     box-shadow: none;
   }
   50% {
-    box-shadow: 0 0 20px rgba(249, 115, 22, 0.4);
+    box-shadow: 0 0 20px rgb(var(--accent) / 0.4);
   }
   100% {
     box-shadow: none;
@@ -578,9 +590,9 @@ button {
   animation: delta-pop 1.5s ease-out forwards;
 }
 
-/* Input focus glow */
+/* Lueur d'un champ actif : l'accent du thème (avant : l'orange en dur) */
 input:focus, select:focus, textarea:focus {
-  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.15);
+  box-shadow: 0 0 0 3px rgb(var(--accent) / 0.15);
 }
 
 /* Card hover lift - subtle transform */

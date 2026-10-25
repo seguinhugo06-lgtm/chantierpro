@@ -111,7 +111,7 @@ import { imprimerHtml } from '../lib/imprimerHtml';
 import { nomImprime, formeImprimee } from '../lib/identiteEntreprise';
 import { profilManquant } from '../lib/profilLegal';
 import { estFranchiseTva, sansTva, franchiseAppliquee, tvaARegulariser, premierTaux, tauxTvaParDefaut, tauxTvaDocument } from '../lib/franchiseTva';
-import { estOuverte, estEnRetard } from '../lib/ventes';
+import { estOuverte, estEnRetard, aTraiter as docATraiter } from '../lib/ventes';
 import { urlPublique } from '../lib/urlPublique';
 import { FONCTIONS } from '../lib/fonctions';
 import { jourLocal, dateLue } from '../lib/dates';
@@ -162,7 +162,7 @@ export const AVOIR_MOTIFS = {
   autre: 'Autre',
 };
 
-export default function DevisPage({ clients, setClients, addClient, devis, setDevis, chantiers, catalogue, entreprise, onSubmit, onUpdate, onDelete, modeDiscret, selectedDevis, setSelectedDevis, isDark, couleur, createMode, setCreateMode, addChantier, setPage, setSelectedChantier, addEchange, paiements = [], addPaiement, generateNextNumero, aiPrefill, setAiPrefill, editDevisId, setEditDevisId }) {
+export default function DevisPage({ clients, setClients, addClient, devis, setDevis, chantiers, catalogue, entreprise, onSubmit, onUpdate, onDelete, modeDiscret, selectedDevis, setSelectedDevis, isDark, couleur, createMode, setCreateMode, addChantier, setPage, setSelectedChantier, addEchange, paiements = [], addPaiement, generateNextNumero, aiPrefill, setAiPrefill, editDevisId, setEditDevisId, exigerCgu, demande, setDemande }) {
   const { confirm } = useConfirm();
   const { showToast } = useToast();
 
@@ -296,13 +296,16 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
    * composé son devis. On préfère le prévenir avant qu'il travaille pour rien.
    */
   // clientId : ouvert depuis une fiche client, l'éditeur part avec ce client (sinon : un clic reçu).
-  const ouvrirNouveauDevis = (clientId, chantierId = null) => {
+  const ouvrirNouveauDevis = async (clientId, chantierId = null) => {
     const { planId, usage, openUpgradeModal } = useSubscriptionStore.getState();
     const limite = (PLANS[planId] || PLANS.gratuit).limits?.devis ?? -1;
     if (limite !== -1 && (usage?.devis ?? 0) >= limite) {
       openUpgradeModal('devis_limit');
       return;
     }
+    // Conditions d'utilisation : demandées avant le premier document, pas au chargement (App.jsx, exigerCgu) ;
+    // refusées, l'éditeur ne s'ouvre pas
+    if (exigerCgu && !(await exigerCgu())) return;
     setClientInitial(typeof clientId === 'string' ? clientId : null);
     // Depuis la fiche d'un chantier : le devis est rattaché à ce chantier (avant : la liste des devis, recette du 9 oct.)
     setChantierInitial(typeof chantierId === 'string' ? chantierId : null);
@@ -474,7 +477,25 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   };
 
   useEffect(() => { if (snackbar) { const t = setTimeout(() => setSnackbar(null), 8000); return () => clearTimeout(t); } }, [snackbar]);
-  useEffect(() => { if (createMode) { ouvrirNouveauDevis(createMode?.clientId, createMode?.chantierId); setCreateMode?.(false); } /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [createMode, setCreateMode]);
+  useEffect(() => { if (createMode) { ouvrirNouveauDevis(createMode?.clientId, createMode?.chantierId); setCreateMode?.(false); } }, [createMode, setCreateMode]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Demande venue d'ailleurs (App.jsx, ouvrirDevis) : l'Accueil et la recherche ouvrent la fiche ET la feuille
+  // « Relancer », ou la liste filtrée sur un état ou une nature (audit UX du 20 oct. 2026 : « Relancer » et
+  // « Finaliser » de l'Accueil n'ouvraient que la fiche, ou la liste non filtrée)
+  useEffect(() => {
+    if (!demande) return;
+    if (demande.relancer) {
+      const doc = devis.find(d => d.id === demande.relancer);
+      if (doc) { setSelected(doc); setMode('preview'); setRelanceDe(doc); }
+    } else {
+      setSelected(null);
+      setMode('list');
+      if (demande.etat) setFilter(demande.etat);
+      if (demande.nature) setNature(demande.nature);
+    }
+    setDemande?.(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [demande]);
 
   // Ouverture directe de l'éditeur sur un devis précis. Sert à la dictée : quand
   // l'artisan demande un devis sans donner de prix, on l'amène là où il peut le
@@ -559,12 +580,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   // « En attente » et « À traiter » d'après le reste dû (src/lib/ventes.js) : avant (recette du 9 oct.),
   // le statut brut y mettait des factures payées. Facture : reste dû ; devis : envoyé sans réponse.
   const enAttente = (d) => (d.type === 'facture' ? estOuverte(d, paiements) : ['envoye', 'vu'].includes(d.statut));
-  const aTraiter = (d) => {
-    const jours = Math.floor((Date.now() - new Date(d.date)) / 86400000);
-    if (d.statut === 'brouillon') return jours > 2;
-    if (d.type === 'facture') return estEnRetard(d, paiements);
-    return ['envoye', 'vu'].includes(d.statut) && jours > 7;
-  };
+  // La même règle que la pastille du menu (App.jsx) : src/lib/ventes.js
+  const aTraiter = (d) => docATraiter(d, paiements);
 
   const estDeNature = (d, n) => {
     if (n === 'devis') return d.type === 'devis';
@@ -2297,7 +2314,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     }
     const wasBrouillon = doc.statut === 'brouillon';
     if (wasBrouillon) {
-      onUpdate(doc.id, { statut: 'envoye', ...(doc.date_envoi ? {} : { date_envoi: jourLocal() }) });
+      onUpdate(doc.id, { statut: 'envoye', ...(doc.date_envoi ? {} : { date_envoi: jourLocal() }) }, { silencieux: true });
       setSelected(s => s?.id === doc.id ? { ...s, statut: 'envoye', date_envoi: s.date_envoi || jourLocal() } : s);
     }
     // Facture émise et due : une relance (reste dû, échéance, retard, lien de paiement), pas le total
@@ -2345,7 +2362,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     if (!message) { showToast('La fiche du client n\'a pas d\'adresse e-mail valide : ajoutez-la pour lui envoyer son exemplaire.', 'error'); return; }
     const maintenant = new Date().toISOString();
     if (isDemo || !supabase) {
-      await onUpdate(doc.id, { exemplaire_client_le: maintenant });
+      await onUpdate(doc.id, { exemplaire_client_le: maintenant }, { silencieux: true });
       setSelected(s => s?.id === doc.id ? { ...s, exemplaire_client_le: maintenant } : s);
       showToast(`Mode démo : envoi simulé à ${message.a} ✓`, 'success');
       return;
@@ -2368,7 +2385,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         pdfHtml: downloadPDF(doc),
         pdfFilename: nomFichierExemplaire(doc.numero),
       });
-      const enregistre = await onUpdate(doc.id, { exemplaire_client_le: maintenant });
+      const enregistre = await onUpdate(doc.id, { exemplaire_client_le: maintenant }, { silencieux: true });
       setSelected(s => s?.id === doc.id ? { ...s, exemplaire_client_le: maintenant } : s);
       if (addEchange) addEchange({ type: 'email', client_id: doc.client_id, devis_id: doc.id, document: doc.numero, montant: doc.total_ttc, objet: `Exemplaire signé ${doc.numero}` }, { silencieux: true });
       showToast(enregistre
@@ -2395,7 +2412,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     // Mode démo : pas de serveur d'envoi — on simule pour que la boucle complète soit vivable.
     if (isDemo || !supabase) {
       if (doc.statut === 'brouillon') {
-        onUpdate(doc.id, { statut: 'envoye', ...(doc.date_envoi ? {} : { date_envoi: jourLocal() }) });
+        onUpdate(doc.id, { statut: 'envoye', ...(doc.date_envoi ? {} : { date_envoi: jourLocal() }) }, { silencieux: true });
         setSelected(s => s?.id === doc.id ? { ...s, statut: 'envoye', date_envoi: s.date_envoi || jourLocal() } : s);
       }
       // Relance : un devis relancé, ou une facture échue ; sinon un envoi (comme en mode réel)
@@ -2454,7 +2471,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         setSelected(s => s?.id === doc.id ? { ...s, statut: s.statut === 'brouillon' ? 'envoye' : s.statut, date_envoi: s.date_envoi || jourLocal() } : s);
         // Attendu : si la base refuse, la fiche ne doit pas rester « Envoyé » (avant : « Devis envoyé ! » puis
         // « Brouillon » au rechargement, et l'artisan le renvoyait — recette du 9 oct. 2026)
-        statutEnregistre = await onUpdate(doc.id, { ...(doc.statut === 'brouillon' ? { statut: 'envoye' } : {}), ...(doc.date_envoi ? {} : { date_envoi: jourLocal() }) });
+        statutEnregistre = await onUpdate(doc.id, { ...(doc.statut === 'brouillon' ? { statut: 'envoye' } : {}), ...(doc.date_envoi ? {} : { date_envoi: jourLocal() }) }, { silencieux: true });
         if (!statutEnregistre) setSelected(s => s?.id === doc.id ? { ...s, ...avant } : s);
       }
       const relanceFaite = relance || (relanceDevis && !isFacture);
@@ -2498,7 +2515,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       }
     }
     if (doc.statut === 'brouillon') {
-      onUpdate(doc.id, { statut: 'envoye', ...(doc.date_envoi ? {} : { date_envoi: jourLocal() }) });
+      onUpdate(doc.id, { statut: 'envoye', ...(doc.date_envoi ? {} : { date_envoi: jourLocal() }) }, { silencieux: true });
       setSelected(s => s?.id === doc.id ? { ...s, statut: 'envoye', date_envoi: s.date_envoi || jourLocal() } : s);
     }
     const solde = soldeDe({ ...doc, statut: doc.statut === 'brouillon' ? 'envoye' : doc.statut }, paiements);

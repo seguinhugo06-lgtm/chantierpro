@@ -198,9 +198,11 @@ if (isDemo) {
 
 // Attente des pages publiques de l'artisan (signature, paiement, portail) : non modifiée par la refonte du site, ces
 // pages gardent la couleur de l'artisan.
+// Attente des pages de l'artisan (signature, paiement, portail) : cercle neutre, gris ardoise — sa couleur n'est pas
+// encore connue (avant : l'orange de l'ancienne charte, que ni l'artisan ni Mallettico n'affichent plus)
 const PublicFallback = () => (
-  <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
+  <div className="min-h-screen bg-fond flex items-center justify-center" role="status" aria-label="Chargement">
+    <div className="animate-spin rounded-full h-8 w-8 border-[3px] border-bord border-t-encre-3"></div>
   </div>
 )
 

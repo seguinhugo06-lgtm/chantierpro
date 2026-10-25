@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Bug, Lightbulb, MessageCircle, Loader2, CheckCircle } from 'lucide-react';
+import { Bug, Lightbulb, MessageCircle, CheckCircle } from 'lucide-react';
 import Modal, { ModalHeader, ModalTitle, ModalDescription, ModalBody, ModalFooter } from '../ui/Modal';
+import Pastille from '../ui/Pastille';
+import { Bouton } from '../ui/Bouton';
 import { envoyerRetour, listerMesRetours, TYPES_RETOUR, STATUTS_RETOUR } from '../../services/retoursService';
 import { dateLue } from '../../lib/dates';
 
@@ -10,18 +12,14 @@ const AIDE = {
   idee: 'Qu’est-ce qui vous ferait gagner du temps sur vos devis, factures ou chantiers ?',
   autre: 'Votre message',
 };
-const COULEURS_STATUT = {
-  nouveau: 'bg-slate-100 text-slate-700',
-  lu: 'bg-blue-100 text-blue-700',
-  en_cours: 'bg-amber-100 text-amber-800',
-  fait: 'bg-emerald-100 text-emerald-700',
-  refuse: 'bg-slate-200 text-slate-600',
-};
+// Un statut = un mot et un ton (src/lib/statuts.js) : envoyé et refusé neutres, lu « chez Hugo » (info), en cours à
+// surveiller (alerte), fait acquis (succès)
+const TONS_STATUT = { nouveau: 'neutre', lu: 'info', en_cours: 'alerte', fait: 'succes', refuse: 'neutre' };
 
 /**
  * « Un bug ? Une idée ? » — envoi d'un retour et suivi de ses retours (statut, réponse).
  */
-export default function RetourModal({ isOpen, onClose, isDark, couleur = '#f97316', showToast, page, user, orgId }) {
+export default function RetourModal({ isOpen, onClose, isDark, couleur: _couleur, showToast, page, user, orgId }) {
   const [type, setType] = useState('bug');
   const [message, setMessage] = useState('');
   const [enCours, setEnCours] = useState(false);
@@ -37,7 +35,7 @@ export default function RetourModal({ isOpen, onClose, isDark, couleur = '#f9731
 
   const textMuted = 'text-encre-2';
   const textPrimary = 'text-encre';
-  const inputBg = isDark ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400' : 'bg-white border-slate-300';
+  const inputBg = 'bg-surface border-bord-fort text-encre placeholder:text-encre-3';
 
   const envoyer = async () => {
     setErreur('');
@@ -68,8 +66,7 @@ export default function RetourModal({ isOpen, onClose, isDark, couleur = '#f9731
                 role="radio"
                 aria-checked={actif}
                 onClick={() => setType(cle)}
-                className={`flex flex-col items-center gap-1 px-2 py-3 rounded-xl border text-sm font-medium transition-colors ${actif ? 'text-white border-transparent' : 'border-bord text-encre-2 hover:bg-surface-2'}`}
-                style={actif ? { background: couleur } : undefined}
+                className={`flex flex-col items-center gap-1 px-2 py-3 rounded-xl border text-sm font-medium transition-colors ${actif ? 'border-accent bg-accent/10 text-accent-texte font-semibold' : 'border-bord text-encre-2 hover:bg-surface-2'}`}
               >
                 <Icone size={18} />
                 {libelle}
@@ -91,7 +88,7 @@ export default function RetourModal({ isOpen, onClose, isDark, couleur = '#f9731
         </label>
         <p className={`text-xs ${textMuted}`}>La page ouverte et le type d’appareil sont joints pour aider à comprendre. Rien d’autre.</p>
         {erreur && (
-          <div role="alert" className={`p-3 rounded-xl border text-sm ${isDark ? 'bg-red-900/30 border-red-800 text-red-200' : 'bg-red-50 border-red-200 text-red-700'}`}>{erreur}</div>
+          <div role="alert" className="p-3 rounded-xl border border-danger-texte/20 bg-danger-fond text-danger-texte text-sm">{erreur}</div>
         )}
 
         {mesRetours.length > 0 && (
@@ -104,13 +101,13 @@ export default function RetourModal({ isOpen, onClose, isDark, couleur = '#f9731
                     <span className={`text-xs ${textMuted}`}>
                       {TYPES_RETOUR[r.type] || r.type} · {dateLue(r.created_at).toLocaleDateString('fr-FR')}
                     </span>
-                    <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${COULEURS_STATUT[r.statut] || COULEURS_STATUT.nouveau}`}>
+                    <Pastille ton={TONS_STATUT[r.statut] || 'neutre'}>
                       {STATUTS_RETOUR[r.statut] || r.statut}
-                    </span>
+                    </Pastille>
                   </div>
                   <p className={`${textPrimary} line-clamp-2 whitespace-pre-line`}>{r.message}</p>
                   {r.reponse && (
-                    <p className={`mt-2 pl-3 border-l-2 text-sm whitespace-pre-line ${textMuted}`} style={{ borderColor: couleur }}>
+                    <p className={`mt-2 pl-3 border-l-2 border-accent text-sm whitespace-pre-line ${textMuted}`}>
                       <CheckCircle size={13} className="inline mr-1 -mt-0.5 text-accent-texte" />
                       {r.reponse}
                     </p>
@@ -121,19 +118,13 @@ export default function RetourModal({ isOpen, onClose, isDark, couleur = '#f9731
           </div>
         )}
       </ModalBody>
-      <ModalFooter>
-        <button type="button" onClick={onClose} disabled={enCours} className={`px-4 py-2.5 rounded-xl text-sm font-medium text-encre-2 hover:bg-surface-2`}>
+      <ModalFooter className="pb-[calc(1rem+env(safe-area-inset-bottom))]">
+        <Bouton variante="discret" onClick={onClose} disabled={enCours}>
           Fermer
-        </button>
-        <button
-          type="button"
-          onClick={envoyer}
-          disabled={enCours || message.trim().length < 3}
-          className="px-4 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 bg-accent text-sur-accent"
-        >
-          {enCours && <Loader2 size={16} className="animate-spin" />}
+        </Bouton>
+        <Bouton variante="principal" onClick={envoyer} disabled={message.trim().length < 3} chargement={enCours}>
           {enCours ? 'Envoi…' : 'Envoyer'}
-        </button>
+        </Bouton>
       </ModalFooter>
     </Modal>
   );

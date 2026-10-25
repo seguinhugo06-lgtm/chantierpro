@@ -16,8 +16,10 @@ import { ChevronRight } from 'lucide-react';
  *   vide : les montants restent alignés) — une liste de documents gagne ainsi un tiers de hauteur (audit UX du 20 oct. 2026)
  * @param {Function} [onClick]
  * @param {boolean} [chevron]
+ * @param {boolean} [titreEntier] le titre et la méta passent à la ligne au lieu d'être coupés (« À faire aujourd'hui » de
+ *   l'Accueil : « Devis sans répons… » au téléphone, audit UX du 20 oct. 2026)
  */
-export default function LigneListe({ debut, titre, meta, montant, pastille, pied, piedEnLigne = false, onClick, chevron = true, className = '', ...reste }) {
+export default function LigneListe({ debut, titre, meta, montant, pastille, pied, piedEnLigne = false, onClick, chevron = true, titreEntier = false, className = '', ...reste }) {
   const Corps = onClick ? 'button' : 'div';
   return (
     <div data-ui="LigneListe" className={`bg-surface ${piedEnLigne ? 'lg:flex lg:items-center' : ''} ${className}`} {...reste}>
@@ -28,14 +30,14 @@ export default function LigneListe({ debut, titre, meta, montant, pastille, pied
         {debut ? <span className="flex-shrink-0">{debut}</span> : null}
         <span className="flex-1 min-w-0">
           <span className="flex items-baseline justify-between gap-3">
-            <span className="text-base font-semibold text-encre truncate">{titre}</span>
+            <span className={`text-base font-semibold text-encre ${titreEntier ? 'break-words min-w-0' : 'truncate'}`}>{titre}</span>
             {montant !== undefined && montant !== null ? (
               <span className="text-base font-bold text-encre tabular-nums whitespace-nowrap flex-shrink-0">{montant}</span>
             ) : null}
           </span>
           {meta || pastille ? (
             <span className="mt-1 flex items-center justify-between gap-3">
-              <span className="text-sm text-encre-2 truncate min-w-0">{meta}</span>
+              <span className={`text-sm text-encre-2 min-w-0 ${titreEntier ? 'break-words' : 'truncate'}`}>{meta}</span>
               {pastille ? <span className="flex-shrink-0">{pastille}</span> : null}
             </span>
           ) : null}

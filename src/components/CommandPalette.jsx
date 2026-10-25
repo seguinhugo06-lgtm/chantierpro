@@ -88,9 +88,11 @@ export default function CommandPalette({
   onNewDevis,
   onNewClient,
   onNewChantier,
-  // Theme
-  isDark = false,
-  couleur = '#f97316',
+  // Ouvre la page Devis & factures filtrée : { etat } ou { nature } (App.jsx)
+  ouvrirDevis,
+  // Thème : lu sur <html> (jetons) ; gardés dans la signature
+  isDark: _isDark = false,
+  couleur: _couleur,
   // Mode discret : pas de montant dans les résultats (recette du 9 oct. 2026 : « Dupont • 4 136 € »)
   modeDiscret = false,
 }) {
@@ -119,25 +121,29 @@ export default function CommandPalette({
     setRecentItems(getRecentItems());
   }, [isOpen]);
 
-  // Quick actions (always available)
+  // Quick actions (always available). Audit UX du 20 oct. 2026 (P3) : icônes neutres (avant : une couleur par ligne) ;
+  // un raccourci affiché est un raccourci qui marche (⌘F et ⌘C n'existaient pas : recherche et copie du navigateur) ;
+  // une commande fait ce qu'elle dit (les « filtres » ouvraient la liste non filtrée, « Saisir un pointage » l'Accueil).
+  const ouvrirListe = (demande) => () => { if (ouvrirDevis) ouvrirDevis(demande); else setPage('devis'); onClose(); };
   const quickActions = useMemo(() => [
-    { id: 'new-devis', label: 'Créer un devis', keywords: 'nouveau devis créer estimer chiffrer', icon: FileText, shortcut: '⌘D', action: () => { onNewDevis?.(); onClose(); }, color: '#f97316' },
-    { id: 'new-facture', label: 'Créer une facture', keywords: 'nouvelle facture créer facturer encaisser', icon: Receipt, shortcut: '⌘F', action: () => { onNewDevis?.('facture'); onClose(); }, color: '#8b5cf6' },
-    { id: 'new-client', label: 'Ajouter un client', keywords: 'nouveau client ajouter contact prospect', icon: Users, shortcut: '⌘C', action: () => { onNewClient?.(); onClose(); }, color: '#3b82f6' },
-    { id: 'new-chantier', label: 'Créer un chantier', keywords: 'nouveau chantier créer projet travaux intervention', icon: Building2, shortcut: '⌘H', action: () => { onNewChantier?.(); onClose(); }, color: '#22c55e' },
-    { id: 'new-memo', label: 'Nouveau mémo', keywords: 'memo note rappel tâche todo', icon: ClipboardList, shortcut: '⌘M', action: () => { setPage('tasks'); onClose(); }, color: '#f59e0b' },
-    { id: 'filter-devis-attente', label: 'Devis en attente de réponse', keywords: 'devis envoyés attente relancer relance', icon: Clock, action: () => { setPage('devis'); onClose(); }, color: '#f59e0b' },
-    { id: 'filter-en-relance', label: 'Documents en relance auto', keywords: 'relance automatique rappel impayé suivi', icon: Bell, action: () => { setPage('devis'); onClose(); }, color: '#f97316' },
-    { id: 'filter-factures-impayees', label: 'Factures impayées', keywords: 'factures impayées retard paiement encaissement', icon: Wallet, action: () => { setPage('devis'); onClose(); }, color: '#ef4444' },
-    { id: 'filter-avoirs', label: 'Voir les avoirs', keywords: 'avoirs notes crédit remboursement annulation avoir', icon: RotateCcw, action: () => { setPage('devis'); onClose(); }, color: '#dc2626' },
-    { id: 'filter-situations', label: 'Factures de situation', keywords: 'situations avancement travaux progressif facturation situation', icon: BarChart3, action: () => { setPage('devis'); onClose(); }, color: '#f97316' },
-    { id: 'action-planning', label: 'Planifier une intervention', keywords: 'planifier rdv rendez-vous intervention agenda', icon: Calendar, action: () => { setPage('tasks'); onClose(); }, color: '#6366f1' },
-    { id: 'action-pointage', label: 'Saisir un pointage', keywords: 'pointage heures temps travail equipe', icon: Clock, action: () => { setPage('dashboard'); onClose(); }, color: '#14b8a6' },
-  ], [onNewDevis, onNewClient, onNewChantier, onClose, setPage]);
+    { id: 'new-devis', label: 'Créer un devis', keywords: 'nouveau devis créer estimer chiffrer', icon: FileText, shortcut: '⌘D', action: () => { onNewDevis?.(); onClose(); } },
+    { id: 'new-facture', label: 'Créer une facture', keywords: 'nouvelle facture créer facturer encaisser', icon: Receipt, action: () => { onNewDevis?.('facture'); onClose(); } },
+    { id: 'new-client', label: 'Ajouter un client', keywords: 'nouveau client ajouter contact prospect', icon: Users, action: () => { onNewClient?.(); onClose(); } },
+    { id: 'new-chantier', label: 'Créer un chantier', keywords: 'nouveau chantier créer projet travaux intervention', icon: Building2, shortcut: '⌘H', action: () => { onNewChantier?.(); onClose(); } },
+    { id: 'new-memo', label: 'Nouvelle tâche', keywords: 'memo note rappel tâche todo', icon: ClipboardList, shortcut: '⌘M', action: () => { setPage('tasks'); onClose(); } },
+    { id: 'filter-devis-attente', label: 'Devis en attente de réponse', keywords: 'devis envoyés attente relancer relance', icon: Clock, action: ouvrirListe({ etat: 'devis_attente' }) },
+    { id: 'filter-en-relance', label: 'Documents en relance auto', keywords: 'relance automatique rappel impayé suivi', icon: Bell, action: ouvrirListe({ etat: 'en_relance' }) },
+    { id: 'filter-factures-impayees', label: 'Factures à encaisser', keywords: 'factures impayées retard paiement encaissement', icon: Wallet, action: ouvrirListe({ etat: 'a_encaisser' }) },
+    { id: 'filter-avoirs', label: 'Voir les avoirs', keywords: 'avoirs notes crédit remboursement annulation avoir', icon: RotateCcw, action: ouvrirListe({ nature: 'avoirs' }) },
+    { id: 'filter-situations', label: 'Factures de situation', keywords: 'situations avancement travaux progressif facturation situation', icon: BarChart3, action: ouvrirListe({ nature: 'situations' }) },
+    { id: 'action-planning', label: 'Planifier une intervention', keywords: 'planifier rdv rendez-vous intervention agenda', icon: Calendar, action: () => { setPage('tasks'); onClose(); } },
+    { id: 'action-pointage', label: 'Saisir un pointage', keywords: 'pointage heures temps travail equipe', icon: Clock, action: () => { setPage('equipe'); onClose(); } },
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- ouvrirListe ne lit que ouvrirDevis, setPage et onClose
+  ], [onNewDevis, onNewClient, onNewChantier, onClose, setPage, ouvrirDevis]);
 
   // Navigation items
   const navigationItems = useMemo(() => [
-    { id: 'nav-dashboard', label: 'Dashboard', keywords: 'accueil tableau de bord résumé', icon: Home, action: () => { setPage('dashboard'); onClose(); } },
+    { id: 'nav-dashboard', label: 'Accueil', keywords: 'accueil tableau de bord résumé dashboard', icon: Home, action: () => { setPage('dashboard'); onClose(); } },
     { id: 'nav-devis', label: 'Devis & Factures', keywords: 'documents devis factures liste', icon: FileText, action: () => { setPage('devis'); onClose(); } },
     { id: 'nav-chantiers', label: 'Chantiers', keywords: 'projets travaux chantier oeuvre', icon: Building2, action: () => { setPage('chantiers'); onClose(); } },
     { id: 'nav-clients', label: 'Clients', keywords: 'contacts clients annuaire sous-traitants', icon: Users, action: () => { setPage('clients'); onClose(); } },
@@ -145,8 +151,8 @@ export default function CommandPalette({
     { id: 'nav-catalogue', label: 'Catalogue', keywords: 'produits articles fournitures matériaux stock ouvrages bibliothèque', icon: Package, action: () => { setPage('catalogue'); onClose(); } },
     { id: 'nav-finances', label: 'Finances', keywords: 'trésorerie cash flow finances tréso banque export comptabilité fec csv statistiques analytique', icon: Wallet, action: () => { setPage('finances'); onClose(); } },
     // Paiement en ligne éteint en v1 (D-21) : la commande ne revient qu'avec l'interrupteur (relecture juriste-btp du 17 oct. 2026)
-    ...(FONCTIONS.paiementEnLigne ? [{ id: 'nav-paiements', label: 'Paiements en ligne', keywords: 'paiements stripe carte bancaire lien paiement', icon: CreditCard, action: () => { setPage('finances'); onClose(); }, color: '#8b5cf6' }] : []),
-    { id: 'nav-rapports', label: 'Rapports PDF', keywords: 'rapport pdf export activite financier synthese bilan chantier', icon: FileText, action: () => { setPage('finances'); onClose(); }, color: '#f97316' },
+    ...(FONCTIONS.paiementEnLigne ? [{ id: 'nav-paiements', label: 'Paiements en ligne', keywords: 'paiements stripe carte bancaire lien paiement', icon: CreditCard, action: () => { setPage('finances'); onClose(); } }] : []),
+    { id: 'nav-rapports', label: 'Rapports PDF', keywords: 'rapport pdf export activite financier synthese bilan chantier', icon: FileText, action: () => { setPage('finances'); onClose(); } },
     { id: 'nav-settings', label: 'Paramètres', keywords: 'configuration réglages paramètres entreprise profil admin', icon: Settings, action: () => { setPage('settings'); onClose(); } },
   ], [setPage, onClose]);
 
@@ -193,7 +199,6 @@ export default function CommandPalette({
         label: item.label,
         sublabel: item.sublabel,
         icon: item.icon?.name || 'FileText',
-        color: item.color,
         entityType: item.entityType,
         entityId: item.entityId,
       });
@@ -239,7 +244,6 @@ export default function CommandPalette({
             label: r.label,
             sublabel: r.sublabel,
             icon: Icon,
-            color: r.color || couleur,
             action: () => {
               if (r.entityType === 'client') {
                 setPage('clients');
@@ -286,7 +290,6 @@ export default function CommandPalette({
           label: `${c.nom} ${c.prenom || ''}`.trim(),
           sublabel: c.entreprise || c.telephone,
           icon: Users,
-          color: '#3b82f6',
           action: () => { setPage('clients'); onClose(); }
         }));
       }
@@ -301,7 +304,6 @@ export default function CommandPalette({
           label: c.nom,
           sublabel: c.adresse?.substring(0, 40),
           icon: Building2,
-          color: c.statut === 'en_cours' ? '#22c55e' : c.statut === 'termine' ? '#64748b' : '#3b82f6',
           action: () => { setPage('chantiers'); setSelectedChantier?.(c.id); onClose(); }
         }));
       }
@@ -318,23 +320,21 @@ export default function CommandPalette({
             label: d.numero || `#${d.id?.slice(-6)}`,
             sublabel: (modeDiscret || !voitPrix) ? (client?.nom || '') : `${client?.nom || ''} • ${(d.total_ttc || 0).toLocaleString('fr-FR')} €`,
             icon: d.facture_type === 'avoir' ? RotateCcw : d.facture_type === 'situation' ? BarChart3 : d.type === 'facture' ? Receipt : FileText,
-            color: d.facture_type === 'avoir' ? '#dc2626' : d.facture_type === 'situation' ? '#f97316' : d.type === 'facture' ? '#8b5cf6' : '#f97316',
             action: () => { setPage('devis'); setSelectedDevis?.(d); onClose(); }
           });
         });
       }
 
       if (searchResults.memos.length > 0) {
-        items.push({ type: 'header', label: 'Mémos' });
+        items.push({ type: 'header', label: 'Tâches' });
         searchResults.memos.forEach(m => items.push({
           type: 'result',
           id: `memo-${m.id}`,
           entityType: 'memo',
           entityId: m.id,
-          label: m.text?.substring(0, 60) || 'Mémo sans texte',
-          sublabel: m.category || (m.due_date ? `📅 ${dateLue(m.due_date).toLocaleDateString('fr-FR')}` : ''),
+          label: m.text?.substring(0, 60) || 'Tâche sans texte',
+          sublabel: m.category || (m.due_date ? `Pour le ${dateLue(m.due_date).toLocaleDateString('fr-FR')}` : ''),
           icon: ClipboardList,
-          color: '#f59e0b',
           action: () => { setPage('tasks'); onClose(); }
         }));
       }
@@ -343,7 +343,7 @@ export default function CommandPalette({
     }
 
     return items;
-  }, [debouncedQuery, quickActions, navigationItems, searchResults, recentItems, clients, couleur, setPage, setSelectedChantier, setSelectedDevis, onClose]);
+  }, [debouncedQuery, quickActions, navigationItems, searchResults, recentItems, clients, setPage, setSelectedChantier, setSelectedDevis, onClose, modeDiscret, voitClients, voitDocuments, voitPrix]);
 
   // Selectable items (exclude headers)
   const selectableItems = allItems.filter(i => i.type !== 'header');
@@ -453,12 +453,18 @@ export default function CommandPalette({
               />
               {query && (
                 <button
+                  type="button"
                   onClick={() => setQuery('')}
-                  className={`p-1 rounded-md hover:bg-slate-100 ${textMuted}`}
+                  aria-label="Effacer la recherche"
+                  className={`w-9 h-9 flex items-center justify-center rounded-lg hover:bg-surface-2 ${textMuted}`}
                 >
                   <X size={18} />
                 </button>
               )}
+              {/* Au téléphone la palette couvre l'écran : un moyen visible d'en sortir */}
+              <button type="button" onClick={onClose} className="sm:hidden h-11 px-2 text-sm font-semibold text-accent-texte flex-shrink-0">
+                Fermer
+              </button>
             </div>
 
             {/* Results list */}
@@ -497,29 +503,20 @@ export default function CommandPalette({
                       animate={{ opacity: 1, x: 0 }}
                       exit={{ opacity: 0, x: 10 }}
                       transition={{ duration: 0.1, delay: Math.min(currentIndex * 0.02, 0.1) }}
-                      className={`w-full flex items-center gap-2 sm:gap-3 px-2 sm:px-4 py-2.5 mx-1 rounded-xl transition-colors ${
-                        isSelected ? selectedBg : 'hover:bg-slate-50/50'
+                      className={`w-[calc(100%-0.5rem)] flex items-center gap-2 sm:gap-3 px-2 sm:px-4 py-2.5 mx-1 rounded-xl transition-colors ${
+                        isSelected ? selectedBg : 'hover:bg-surface-2/60'
                       }`}
-                      style={isSelected ? { backgroundColor: isDark ? '#334155' : '#f1f5f9' } : {}}
                       onMouseEnter={() => setSelectedIndex(currentIndex)}
                     >
-                      {/* Number badge for quick select */}
-                      {currentIndex < 9 && (
-                        <span className={`w-5 h-5 text-[10px] font-medium rounded flex items-center justify-center flex-shrink-0 bg-surface-2 text-encre-3`}>
-                          {currentIndex + 1}
-                        </span>
-                      )}
-                      {currentIndex >= 9 && <span className="w-5" />}
+                      {/* Numéro d'accès rapide (⌘1-9) : clavier seulement */}
+                      <span className={`indication-clavier w-5 h-5 text-xs font-medium rounded flex items-center justify-center flex-shrink-0 ${currentIndex < 9 ? 'bg-surface-2 text-encre-3' : ''}`}>
+                        {currentIndex < 9 ? currentIndex + 1 : null}
+                      </span>
 
-                      {/* Icon */}
-                      <motion.div
-                        className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
-                        style={{ backgroundColor: `${item.color || couleur}15` }}
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                      >
-                        <Icon size={18} style={{ color: item.color || couleur }} />
-                      </motion.div>
+                      {/* Icône neutre (avant : une couleur par ligne) */}
+                      <span className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 bg-surface-2 text-encre-2">
+                        <Icon size={18} aria-hidden="true" />
+                      </span>
 
                       {/* Label */}
                       <div className="flex-1 text-left min-w-0">
@@ -531,9 +528,7 @@ export default function CommandPalette({
 
                       {/* Shortcut or arrow */}
                       {item.shortcut && (
-                        <kbd className={`text-xs px-2 py-1 rounded font-mono ${
-                          isDark ? 'bg-slate-700 text-slate-400' : 'bg-slate-200 text-slate-500'
-                        }`}>
+                        <kbd className="indication-clavier text-xs px-2 py-1 rounded font-mono bg-surface-2 text-encre-3">
                           {item.shortcut}
                         </kbd>
                       )}
@@ -560,35 +555,15 @@ export default function CommandPalette({
               )}
             </div>
 
-            {/* Footer */}
-            <div className={`flex items-center justify-between px-5 py-3 border-t ${borderColor} bg-fond`}>
+            {/* Pied : les touches du clavier, sur un écran à clavier seulement (audit § 2.5) */}
+            <div className={`indication-clavier flex items-center justify-between px-5 py-3 border-t ${borderColor} bg-fond`}>
               <div className="flex items-center gap-4 text-xs">
-                <span className={`flex items-center gap-1 ${textMuted}`}>
-                  <kbd className={`px-1.5 py-0.5 rounded ${isDark ? 'bg-slate-700' : 'bg-white border'}`}>↑</kbd>
-                  <kbd className={`px-1.5 py-0.5 rounded ${isDark ? 'bg-slate-700' : 'bg-white border'}`}>↓</kbd>
-                  <span className="ml-1">naviguer</span>
-                </span>
-                <span className={`flex items-center gap-1 ${textMuted}`}>
-                  <kbd className={`px-1.5 py-0.5 rounded ${isDark ? 'bg-slate-700' : 'bg-white border'}`}>↵</kbd>
-                  <span className="ml-1">sélectionner</span>
-                </span>
-                <span className={`flex items-center gap-1 ${textMuted}`}>
-                  <kbd className={`px-1.5 py-0.5 rounded ${isDark ? 'bg-slate-700' : 'bg-white border'}`}>⌘</kbd>
-                  <kbd className={`px-1.5 py-0.5 rounded ${isDark ? 'bg-slate-700' : 'bg-white border'}`}>1-9</kbd>
-                  <span className="ml-1">accès rapide</span>
-                </span>
-                <span className={`flex items-center gap-1 ${textMuted}`}>
-                  <kbd className={`px-1.5 py-0.5 rounded ${isDark ? 'bg-slate-700' : 'bg-white border'}`}>esc</kbd>
-                  <span className="ml-1">fermer</span>
-                </span>
-                <span className={`flex items-center gap-1 ${textMuted}`}>
-                  <kbd className={`px-1.5 py-0.5 rounded ${isDark ? 'bg-slate-700' : 'bg-white border'}`}>?</kbd>
-                  <span className="ml-1">raccourcis</span>
-                </span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <Zap size={14} className="text-accent-texte" />
-                <span className={`text-xs font-medium text-accent-texte`}>Mallettico</span>
+                {[[['↑', '↓'], 'naviguer'], [['↵'], 'sélectionner'], [['⌘', '1-9'], 'accès rapide'], [['esc'], 'fermer'], [['?'], 'raccourcis']].map(([touches, libelle]) => (
+                  <span key={libelle} className={`flex items-center gap-1 ${textMuted}`}>
+                    {touches.map((t) => <kbd key={t} className="px-1.5 py-0.5 rounded bg-surface border border-bord">{t}</kbd>)}
+                    <span className="ml-1">{libelle}</span>
+                  </span>
+                ))}
               </div>
             </div>
           </motion.div>

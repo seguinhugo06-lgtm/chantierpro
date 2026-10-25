@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Cookie, X, ChevronDown, ChevronUp, Shield } from 'lucide-react';
+import { Bouton } from './ui/Bouton';
 
 const STORAGE_KEY = 'cp_cookie_consent';
 const TWELVE_MONTHS_MS = 365 * 24 * 60 * 60 * 1000;
@@ -29,11 +30,13 @@ export function getCookieConsent() {
 }
 
 /**
- * CookieConsent - GDPR-compliant cookie consent banner
- * Shows a bottom banner with accept/refuse/customize options.
- * Stores preferences in localStorage for 12 months.
+ * CookieConsent — bandeau de consentement aux cookies (choix gardé 12 mois sur l'appareil).
+ * Charte « Glacier vif » (Task 5 « ancien code », 25 oct. 2026) : jetons ; « Refuser » et « Accepter tout » de même poids
+ * (aucun des deux mis en avant, et pas de second bouton plein sur l'écran) ; plus de « RGPD conforme » (une affirmation
+ * que l'écran ne prouve pas) ni de catégorie « marketing » (aucun pixel publicitaire n'existe : la politique de
+ * confidentialité le dit, « Mallettico n'utilise pas de cookies publicitaires ni de cookies de tracking tiers »).
  */
-export default function CookieConsent({ isDark = false, couleur = '#f97316', setPage }) {
+export default function CookieConsent({ isDark: _isDark = false, couleur: _couleur, setPage }) {
   const [visible, setVisible] = useState(false);
   const [showCustomize, setShowCustomize] = useState(false);
   const [showReopenButton, setShowReopenButton] = useState(false);
@@ -86,7 +89,7 @@ export default function CookieConsent({ isDark = false, couleur = '#f97316', set
   }, []);
 
   const handleAcceptAll = useCallback(() => {
-    saveConsent({ necessary: true, analytics: true, marketing: true });
+    saveConsent({ necessary: true, analytics: true, marketing: false });
   }, [saveConsent]);
 
   const handleRefuse = useCallback(() => {
@@ -125,12 +128,6 @@ export default function CookieConsent({ isDark = false, couleur = '#f97316', set
       description: 'Plausible Analytics — données anonymisées, pas de cookies tiers. Nous aide à améliorer l\u2019expérience.',
       locked: false,
     },
-    {
-      key: 'marketing',
-      label: 'Cookies marketing',
-      description: 'Pixel de retargeting pour vous proposer des offres pertinentes sur d\u2019autres plateformes.',
-      locked: false,
-    },
   ];
 
   return (
@@ -164,32 +161,24 @@ export default function CookieConsent({ isDark = false, couleur = '#f97316', set
             className="fixed bottom-0 left-0 right-0 z-[1050] p-0 sm:p-4"
           >
             <div
-              className={`max-w-2xl mx-auto rounded-t-2xl sm:rounded-2xl border shadow-2xl backdrop-blur-sm ${cardBg}`}
+              className={`max-w-2xl mx-auto rounded-t-2xl sm:rounded-2xl border shadow-e3 pb-[env(safe-area-inset-bottom)] ${cardBg}`}
             >
               {/* Header */}
               <div className="flex items-start justify-between p-4 pb-2 sm:p-5 sm:pb-3">
                 <div className="flex items-center gap-2.5">
-                  <div
-                    className="flex items-center justify-center w-9 h-9 rounded-xl"
-                    style={{ backgroundColor: `${couleur}15` }}
-                  >
-                    <Shield className="w-4.5 h-4.5 text-accent-texte" />
+                  <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-accent/10">
+                    <Shield size={18} className="text-accent-texte" aria-hidden="true" />
                   </div>
-                  <div>
-                    <h3 className={`text-sm font-semibold ${textPrimary}`}>
-                      Respect de votre vie privée
-                    </h3>
-                    <p className={`text-xs ${textMuted}`}>
-                      RGPD conforme
-                    </p>
-                  </div>
+                  <h3 className={`text-sm font-semibold ${textPrimary}`}>
+                    Respect de votre vie privée
+                  </h3>
                 </div>
                 <button
                   onClick={handleRefuse}
-                  className={`p-1.5 rounded-lg transition-colors hover:bg-surface-2 text-encre-3`}
-                  aria-label="Fermer"
+                  className="w-9 h-9 flex items-center justify-center rounded-lg transition-colors hover:bg-surface-2 text-encre-3"
+                  aria-label="Fermer (refuser les cookies facultatifs)"
                 >
-                  <X className="w-4 h-4" />
+                  <X size={16} />
                 </button>
               </div>
 
@@ -200,7 +189,7 @@ export default function CookieConsent({ isDark = false, couleur = '#f97316', set
                   {setPage && (
                     <>
                       {' '}
-                      <button onClick={() => { setPage('confidentialite'); setVisible(false); }} className="underline hover:no-underline text-accent-texte">
+                      <button onClick={() => { setPage('confidentialite'); setVisible(false); }} className="cible-compacte underline hover:no-underline text-accent-texte">
                         Politique de confidentialité
                       </button>
                     </>
@@ -218,9 +207,7 @@ export default function CookieConsent({ isDark = false, couleur = '#f97316', set
                     transition={{ duration: 0.25, ease: 'easeInOut' }}
                     className="overflow-hidden"
                   >
-                    <div className={`mx-4 mb-3 sm:mx-5 border rounded-xl divide-y ${categoryBorder} ${
-                      isDark ? 'divide-slate-700' : 'divide-slate-200'
-                    }`}>
+                    <div className={`mx-4 mb-3 sm:mx-5 border rounded-xl divide-y divide-bord ${categoryBorder}`}>
                       {categories.map((cat) => (
                         <div key={cat.key} className="p-3">
                           <div className="flex items-center justify-between">
@@ -239,23 +226,16 @@ export default function CookieConsent({ isDark = false, couleur = '#f97316', set
                                     [cat.key]: !prev[cat.key],
                                   }))
                                 }
-                                className={`relative w-10 h-5.5 rounded-full transition-colors duration-200 ${
-                                  preferences[cat.key]
-                                    ? ''
-                                    : toggleBg
+                                className={`cible-compacte relative flex-shrink-0 w-11 h-6 rounded-full transition-colors duration-200 ${
+                                  preferences[cat.key] ? 'bg-accent' : toggleBg
                                 }`}
-                                style={
-                                  preferences[cat.key]
-                                    ? { backgroundColor: couleur }
-                                    : undefined
-                                }
                                 role="switch"
                                 aria-checked={preferences[cat.key]}
                                 aria-label={cat.label}
                               >
                                 <span
-                                  className={`absolute top-0.5 left-0.5 w-4.5 h-4.5 rounded-full bg-white shadow-sm transition-transform duration-200 ${
-                                    preferences[cat.key] ? 'translate-x-[18px]' : 'translate-x-0'
+                                  className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full shadow-e1 transition-transform duration-200 ${
+                                    preferences[cat.key] ? 'translate-x-5 bg-sur-accent' : 'translate-x-0 bg-encre-3'
                                   }`}
                                 />
                               </button>
@@ -273,40 +253,27 @@ export default function CookieConsent({ isDark = false, couleur = '#f97316', set
 
               {/* Actions */}
               <div className="px-4 pb-4 sm:px-5 sm:pb-5">
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={handleRefuse}
-                    className={`flex-1 px-4 py-2.5 text-sm font-medium rounded-xl border transition-colors border-bord-fort text-encre-2 hover:bg-surface-2`}
-                  >
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  <Bouton variante="secondaire" className="!px-2" onClick={handleRefuse}>
                     Refuser
-                  </button>
-
-                  <button
+                  </Bouton>
+                  <Bouton
+                    variante="discret"
+                    className="!px-2 col-span-2 sm:col-span-1 order-last sm:order-none"
+                    iconeFin={showCustomize ? ChevronUp : ChevronDown}
+                    aria-expanded={showCustomize}
                     onClick={() => setShowCustomize((prev) => !prev)}
-                    className={`flex items-center justify-center gap-1.5 flex-1 px-4 py-2.5 text-sm font-medium rounded-xl border transition-colors border-bord-fort text-encre-2 hover:bg-surface-2`}
                   >
                     Personnaliser
-                    {showCustomize ? (
-                      <ChevronUp className="w-3.5 h-3.5" />
-                    ) : (
-                      <ChevronDown className="w-3.5 h-3.5" />
-                    )}
-                  </button>
-
+                  </Bouton>
                   {showCustomize ? (
-                    <button
-                      onClick={handleSavePreferences}
-                      className="flex-1 px-4 py-2.5 text-sm font-semibold rounded-xl transition-opacity hover:opacity-90 bg-accent text-sur-accent"
-                    >
+                    <Bouton variante="principal" className="!px-2" onClick={handleSavePreferences}>
                       Enregistrer
-                    </button>
+                    </Bouton>
                   ) : (
-                    <button
-                      onClick={handleAcceptAll}
-                      className="flex-1 px-4 py-2.5 text-sm font-semibold rounded-xl transition-opacity hover:opacity-90 bg-accent text-sur-accent"
-                    >
+                    <Bouton variante="secondaire" className="!px-2" onClick={handleAcceptAll}>
                       Accepter tout
-                    </button>
+                    </Bouton>
                   )}
                 </div>
               </div>
