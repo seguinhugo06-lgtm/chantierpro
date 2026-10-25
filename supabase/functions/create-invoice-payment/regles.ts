@@ -20,3 +20,14 @@ export function refusFactureFictive(entreprise: { donnees_fictives?: unknown } |
   }
   return null;
 }
+
+/**
+ * Compte dont la clé Stripe encaisse le paiement par carte : celui que la base désigne (get_facture_for_payment,
+ * migration 106 : le propriétaire de l'organisation de la facture, quand son auteur en est membre), sinon l'auteur
+ * de la facture (base pas encore à jour). Avant, toujours l'auteur : la facture d'un salarié s'encaissait sur son
+ * propre compte Stripe.
+ */
+export function compteQuiEncaisse(facture: { beneficiaire_id?: unknown; user_id?: unknown }): string {
+  const compte = facture.beneficiaire_id || facture.user_id;
+  return typeof compte === 'string' ? compte : '';
+}

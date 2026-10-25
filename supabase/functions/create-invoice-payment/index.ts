@@ -3,8 +3,9 @@
  *
  * Endpoint public (appelé avec l'anon key depuis la page /pay/:token).
  * La sécurité repose sur la possession du payment_token (UUID non devinable).
- * L'argent va sur le compte Stripe de l'ARTISAN : sa clé secrète est lue
- * depuis Vault via la RPC get_stripe_secret_for_user (service_role).
+ * L'argent va sur le compte Stripe de l'ARTISAN : celui du propriétaire de l'organisation de la facture
+ * (`beneficiaire_id`, migration 106), sinon de son auteur ; sa clé secrète est lue depuis Vault via la RPC
+ * get_stripe_secret_for_user (service_role).
  *
  * Actions :
  *   - create : { payment_token, amount_cents? }
@@ -25,7 +26,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import Stripe from 'https://esm.sh/stripe@14.14.0?target=deno';
 import { corsHeaders } from '../_shared/cors.ts';
-import { estCleDeTest, refusFactureFictive } from './regles.ts';
+import { compteQuiEncaisse, estCleDeTest, refusFactureFictive } from './regles.ts';
 
 const APP_URL = Deno.env.get('APP_URL') || 'https://mallettico.fr';
 
@@ -90,7 +91,7 @@ async function handleCreate(req: Request, paymentToken: string, amountCents?: nu
     return json({ error: "Cette facture n'est pas à payer (annulée, en brouillon ou déjà soldée)" }, 400);
   }
 
-  const artisan = await getArtisanStripe(facture.user_id as string);
+  const artisan = await getArtisanStripe(compteQuiEncaisse(facture));
   if (!artisan) return json({ error: 'Configuration Stripe incomplète' }, 400);
   // Compte de démonstration (D-26, migration 085) : une facture fictive ne se paie qu'en mode test
   const refus = refusFactureFictive(data.entreprise, artisan.test);
@@ -180,7 +181,7 @@ async function handleVerify(paymentToken: string, sessionId: string) {
     return json({ status: 'paid', already: true, facture: { numero: facture.numero, statut: 'payee' } });
   }
 
-  const artisan = await getArtisanStripe(facture.user_id as string);
+  const artisan = await getArtisanStripe(compteQuiEncaisse(facture));
   if (!artisan) return json({ error: 'Configuration Stripe incomplète' }, 400);
   const stripe = artisan.stripe;
 
