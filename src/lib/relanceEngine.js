@@ -409,32 +409,3 @@ export async function loadExclusions(userId, orgId) {
   }
 }
 
-/**
- * Saves the relance config to the entreprise table in Supabase.
- */
-export async function saveRelanceConfigToDB(config, userId) {
-  if (isDemo || !userId) return;
-
-  try {
-    // relanceConfig is stored inside settings_json (no dedicated column)
-    const { data: current } = await supabase
-      .from('entreprise')
-      .select('settings_json')
-      .eq('user_id', userId)
-      .maybeSingle();
-
-    const settings = current?.settings_json || {};
-    settings.relanceConfig = config;
-
-    const { error } = await supabase
-      .from('entreprise')
-      .update({ settings_json: settings })
-      .eq('user_id', userId);
-
-    if (error && !error.message?.includes('schema cache')) {
-      console.warn('[relanceEngine] Save config:', error.message);
-    }
-  } catch (e) {
-    console.warn('[relanceEngine] Save config error:', e?.message);
-  }
-}

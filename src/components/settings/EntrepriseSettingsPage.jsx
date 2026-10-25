@@ -87,7 +87,7 @@ const EntrepriseSettingsPage = memo(function EntrepriseSettingsPage({
       await switchEntreprise(id);
       showToast?.('Entreprise activée', 'success');
     } catch (err) {
-      showToast?.('Erreur lors de l\'activation', 'error');
+      showToast?.(err?.message || 'Erreur lors de l\'activation', 'error');
     } finally {
       setIsProcessing(false);
     }
@@ -113,7 +113,7 @@ const EntrepriseSettingsPage = memo(function EntrepriseSettingsPage({
       await archiveEntreprise(ent.id);
       showToast?.(`${ent.nom} archivée`, 'success');
     } catch (err) {
-      showToast?.('Erreur lors de l\'archivage', 'error');
+      showToast?.(err?.message || 'Erreur lors de l\'archivage', 'error');
     } finally {
       setIsProcessing(false);
     }

@@ -164,6 +164,20 @@ export const SCHEMA = `
     entreprises_auto_send INTEGER DEFAULT 0, total_due INTEGER DEFAULT 0, sent INTEGER DEFAULT 0, failed INTEGER DEFAULT 0,
     skipped_autosend_off INTEGER DEFAULT 0, error TEXT, created_at TIMESTAMPTZ DEFAULT now());
   ALTER TABLE relance_cron_runs ENABLE ROW LEVEL SECURITY;
+  -- Journal et exclusions des relances (057), policies de production relevées le 24 oct. 2026 (pg_policies) : par compte
+  -- seulement. send-scheduled-relances lit et écrit les deux au nom de l'auteur de la fiche entreprise (105).
+  CREATE TABLE relance_executions (id UUID DEFAULT gen_random_uuid() PRIMARY KEY, user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    organization_id UUID, document_id UUID, document_type TEXT, document_numero TEXT, client_id UUID, step_id TEXT, step_name TEXT,
+    step_delay INTEGER, sequence_type TEXT, channel TEXT DEFAULT 'email', status TEXT DEFAULT 'sent', subject TEXT, body TEXT,
+    sms_body TEXT, tracking_token UUID, triggered_by TEXT DEFAULT 'manual', error_message TEXT, metadata JSONB DEFAULT '{}'::jsonb,
+    opened_at TIMESTAMPTZ, clicked_at TIMESTAMPTZ, created_at TIMESTAMPTZ DEFAULT now());
+  ALTER TABLE relance_executions ENABLE ROW LEVEL SECURITY;
+  CREATE POLICY "users_own_relance_executions" ON relance_executions FOR ALL USING (user_id = auth.uid());
+  CREATE TABLE relance_exclusions (id UUID DEFAULT gen_random_uuid() PRIMARY KEY, user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    organization_id UUID, scope TEXT NOT NULL, document_id UUID, client_id UUID, reason TEXT DEFAULT 'manual', notes TEXT,
+    created_by TEXT DEFAULT 'user', excluded_until TIMESTAMPTZ, created_at TIMESTAMPTZ DEFAULT now());
+  ALTER TABLE relance_exclusions ENABLE ROW LEVEL SECURITY;
+  CREATE POLICY "users_own_relance_exclusions" ON relance_exclusions FOR ALL USING (user_id = auth.uid());
   -- Plan d'un compte et limites par plan : définitions de production relevées le 16 oct. 2026 (get_user_plan
   -- réécrite hors dépôt ; get_plan_limit de 059, abrégée aux ressources lues par les migrations).
   CREATE FUNCTION get_user_plan(p_user_id UUID) RETURNS TEXT LANGUAGE plpgsql STABLE SECURITY DEFINER AS $$
@@ -199,8 +213,9 @@ export const SCHEMA = `
     organization_id UUID REFERENCES organizations(id), nom TEXT);
   CREATE TABLE echanges (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
     organization_id UUID REFERENCES organizations(id), objet TEXT);
+  -- Fiche entreprise : supprimée avec son organisation (clé de production relevée le 24 oct. 2026), jamais avec son auteur.
   CREATE TABLE entreprise (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), user_id UUID REFERENCES auth.users(id),
-    organization_id UUID REFERENCES organizations(id), nom TEXT);
+    organization_id UUID REFERENCES organizations(id) ON DELETE CASCADE, nom TEXT);
   -- Pointages et équipe, colonnes de production relevées le 10 oct. 2026 (080 y ajoute validation, verrou, assureur).
   CREATE TABLE equipe (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
     organization_id UUID REFERENCES organizations(id), nom TEXT NOT NULL, type TEXT, siret TEXT, decennale_numero TEXT);

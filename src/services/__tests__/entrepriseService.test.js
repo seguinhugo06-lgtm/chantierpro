@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { fromSupabase, toSupabase, REGLAGES_SANS_COLONNE, createEntreprise } from '../entrepriseService';
+import { fromSupabase, toSupabase, REGLAGES_SANS_COLONNE, createEntreprise, updateEntreprise, archiveEntreprise, setActiveEntreprise } from '../entrepriseService';
 
 // Ligne de production telle que relue : assurances anciennes, réglages déjà rangés dans settings_json
 const LIGNE = {
@@ -58,5 +58,57 @@ describe('entreprise : ce qui est saisi dans les Paramètres revient au recharge
     expect(insere.nom).toBe('Élec Durand');
     expect(cree.acompteDefaut).toBe(30);
     expect(cree.decennaleNonSoumis).toBe(true);
+  });
+});
+
+// Faux client Supabase : enregistre chaque écriture (valeurs, filtres) ; une écriture suivie de `.select()` renvoie
+// `lignesEcrites` (une ligne = accepté, aucune = refus RLS, qui ne lève pas d'erreur) ; une lecture renvoie `liste`
+const fauxSupabase = ({ lignesEcrites = [{ id: 'e1' }], liste = [] } = {}) => {
+  const ecritures = [];
+  const lecture = () => {
+    const b = { is: () => b, order: () => b, eq: () => b, then: (ok, ko) => Promise.resolve({ data: liste, error: null }).then(ok, ko) };
+    return b;
+  };
+  const ecriture = (valeurs) => {
+    const e = { valeurs, filtres: [] };
+    ecritures.push(e);
+    const b = {
+      eq: (c, v) => { e.filtres.push(['eq', c, v]); return b; },
+      neq: (c, v) => { e.filtres.push(['neq', c, v]); return b; },
+      select: () => Promise.resolve({ data: lignesEcrites, error: null }),
+      then: (ok, ko) => Promise.resolve({ data: null, error: null }).then(ok, ko),
+    };
+    return b;
+  };
+  return { ecritures, from: () => ({ select: lecture, update: ecriture }) };
+};
+
+describe('entreprise : une écriture refusée par la base ne s\'affiche pas comme faite (105, 24 oct. 2026)', () => {
+  it('modification : par la fiche seule, la base décide (le patron modifie une fiche créée par un autre membre)', async () => {
+    const faux = fauxSupabase();
+    await updateEntreprise(faux, { id: 'e1', data: { nom: 'Élec Durand' } });
+    expect(faux.ecritures[0].filtres).toEqual([['eq', 'id', 'e1']]);
+  });
+
+  it('modification refusée (0 ligne, sans erreur) : une erreur, pas « enregistré »', async () => {
+    await expect(updateEntreprise(fauxSupabase({ lignesEcrites: [] }), { id: 'e1', data: { nom: 'X' } })).rejects.toThrow(/refusée/);
+  });
+
+  it('activation refusée : une erreur, et les autres fiches ne sont pas désactivées', async () => {
+    const faux = fauxSupabase({ lignesEcrites: [] });
+    await expect(setActiveEntreprise(faux, { id: 'e2', userId: 'u1', orgId: 'o1' })).rejects.toThrow(/Activation refusée/);
+    expect(faux.ecritures.filter((e) => e.valeurs.is_active === false)).toHaveLength(0);
+  });
+
+  it('activation acceptée : la fiche choisie, puis les autres de l\'organisation désactivées', async () => {
+    const faux = fauxSupabase();
+    await setActiveEntreprise(faux, { id: 'e2', userId: 'u1', orgId: 'o1' });
+    expect(faux.ecritures[0]).toMatchObject({ valeurs: { is_active: true }, filtres: [['eq', 'id', 'e2']] });
+    expect(faux.ecritures[1]).toMatchObject({ valeurs: { is_active: false }, filtres: [['neq', 'id', 'e2'], ['eq', 'organization_id', 'o1']] });
+  });
+
+  it('archivage refusé : une erreur, pas « archivée »', async () => {
+    const liste = [{ id: 'e1', nom: 'A', is_active: false }, { id: 'e2', nom: 'B', is_active: true }];
+    await expect(archiveEntreprise(fauxSupabase({ lignesEcrites: [], liste }), { id: 'e1', userId: 'u1', orgId: 'o1' })).rejects.toThrow(/Archivage refusé/);
   });
 });
