@@ -61,6 +61,8 @@ import Modal, { ModalHeader, ModalTitle, ModalDescription, ModalBody, ModalFoote
 import FeuilleRelance from './devis/FeuilleRelance';
 import { texteDeHtml } from '../lib/texteDeHtml';
 import { libelleModePaiement } from '../lib/modesPaiement';
+import { avecMentionTtc } from '../lib/mentionMontant';
+import { RELANCES_PAR_ENVOI } from '../lib/relanceEngine';
 import { pourcent, blocConditionsPaiement, CONDITIONS_PAIEMENT, euros, quantite } from '../lib/formatDocument';
 import { natureDuDocument, piedDePageHtml } from '../lib/piedDePageDocument';
 import { echapperHtml as echap, couleurCss } from '../lib/echapperHtml';
@@ -1315,7 +1317,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           });
         }
 
-        const modeLabel = paymentData.mode_paiement ? ` (${paymentData.mode_paiement})` : '';
+        const modeLabel = paymentData.mode_paiement ? ` (${libelleModePaiement(paymentData.mode_paiement)})` : '';
         setSnackbar({ type: 'success', message: `Facture ${selected.numero} marquée comme payée${modeLabel}` });
 
         // Update échéancier étape to 'paye' if this is an acompte facture
@@ -1351,6 +1353,35 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   const getAllAcompteFactures = (devisId) => devis.filter(d => d.type === 'facture' && d.devis_source_id === devisId && d.facture_type === 'acompte');
   const getSoldeFacture = (devisId) => devis.find(d => d.type === 'facture' && d.devis_source_id === devisId && d.facture_type === 'solde');
   const getFacturesLiees = (devisId) => devis.filter(d => d.type === 'facture' && d.devis_source_id === devisId);
+
+  // Ce qu'un devis permet de facturer : la fiche et l'action « Facturer » de la liste suivent la même règle (relecture de
+  // la Task 4, 25 oct. 2026 : la liste proposait « Facturer » sur un devis déjà facturé ou facturé par situations)
+  const facturationDe = (doc) => {
+    const facturesLiees = getFacturesLiees(doc.id);
+    // Facturé par situations de travaux : la suite passe par les situations (le décompte général définitif
+    // solde le marché). Une facture « complète » ou un solde refacturerait le devis entier, situations comprises.
+    const situationsFacturees = facturesLiees.filter(f => f.facture_type === 'situation');
+    const chantierDesSituations = doc.chantier_id ? (chantiers || []).find(c => c.id === doc.chantier_id) : null;
+    const situationsEnCours = chantierDesSituations?.situations_data?.devis_source_id === doc.id
+      && (chantierDesSituations.situations_data.situations || []).length > 0;
+    const facturationParSituations = situationsFacturees.length > 0 || situationsEnCours;
+    const acompteFacture = getAcompteFacture(doc.id);
+    // Une facture entièrement annulée par avoir ne compte plus : le devis redevient facturable (avant, recette du
+    // 9 oct. 2026 : après un avoir total, le devis restait « Facturé » sans aucun moyen de le refacturer)
+    const soldeBrut = getSoldeFacture(doc.id);
+    const soldeFacture = soldeBrut && montantCredite(soldeBrut, devis) < Math.abs(Number(soldeBrut.total_ttc) || 0) - 0.01 ? soldeBrut : null;
+    const resteAFacturer = Math.round(((Number(doc.total_ttc) || 0) - dejaFactureTTC(doc.id, devis)) * 100) / 100;
+    const isDevis = doc.type === 'devis';
+    const hasEcheancier = !!doc.echeancier_id || !!echeancierCache[doc.id];
+    // Déjà facturé en entier (solde ou facture complète, même si le devis est resté « signé ») : plus de « Facturer »
+    const entierementFacture = isDevis && estEntierementFacture(doc, devis);
+    const canAcompte = isDevis && (doc.statut === 'accepte' || doc.statut === 'signe') && !acompteFacture && !hasEcheancier && !facturationParSituations && !entierementFacture;
+    // « Facturé » mais toutes ses factures annulées par avoir ; jamais pour un devis « facturé » sans facture rattachée
+    // (anciennes données) : il serait facturé deux fois
+    const factureAnnulee = doc.statut === 'facture' && facturesLiees.some(f => f.facture_type !== 'avoir') && !entierementFacture;
+    const canFacturer = isDevis && (['accepte', 'signe', 'acompte_facture'].includes(doc.statut) || factureAnnulee) && !soldeFacture && resteAFacturer > 0.005 && !facturationParSituations && !entierementFacture;
+    return { facturesLiees, situationsFacturees, situationsEnCours, facturationParSituations, acompteFacture, soldeFacture, resteAFacturer, hasEcheancier, entierementFacture, canAcompte, canFacturer };
+  };
 
   // Fetch échéancier for a given devis (with cache)
   const fetchEcheancier = async (devisId) => {
@@ -1581,7 +1612,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     if (!facturationAutorisee(allAcomptes.length > 0 ? 'solde' : 'totale', totaux.totalTTC)) return;
     const client = clients.find(c => c.id === selected.client_id);
     const clientName = client ? `${client.prenom || ''} ${client.nom || ''}`.trim() : 'le client';
-    const montant = `${formatMoney(totaux.totalTTC)}${isMicro ? '' : ' TTC'}`;
+    const montant = avecMentionTtc(formatMoney(totaux.totalTTC), isMicro);
     const label = allAcomptes.length > 0 ? `Facturer le solde de ${montant}` : `Créer la facture complète de ${montant}`;
     const ok = await confirm({
       title: allAcomptes.length > 0 ? 'Facturer le solde ?' : 'Créer la facture complète ?',
@@ -2108,7 +2139,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   const exportCSV = (docs) => {
     if (docs.length === 0) return;
     const BOM = '\uFEFF'; // UTF-8 BOM for Excel
-    const headers = ['Numéro', 'Type', 'Client', 'Date', 'Objet', 'Montant HT', 'TVA', 'Montant TTC', 'Statut', 'Date envoi', 'Date signature', 'Date paiement'];
+    const headers = ['Numéro', 'Type', 'Client', 'Date', 'Objet', 'Montant HT', 'TVA', isMicro ? 'Montant' : 'Montant TTC', 'Statut', 'Date envoi', 'Date signature', 'Date paiement'];
     const rows = docs.map(d => {
       const client = clients.find(c => c.id === d.client_id);
       const clientName = client ? `${client.prenom || ''} ${client.nom || ''}`.trim() : (d.client_nom || '');
@@ -2311,7 +2342,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     else ouvrirLienExterne(url);
     // Le message est PRÉPARÉ dans WhatsApp : c'est l'artisan qui l'envoie (avant : « Devis envoyé ! »)
     const clientName = `${client.prenom || ''} ${client.nom || ''}`.trim();
-    if (depuisFeuille) { showToast(`Relance prête dans WhatsApp pour ${clientName} : appuyez sur « Envoyer »`, 'success'); return; }
+    if (depuisFeuille) { showToast(`${relance || relanceDevis ? 'Relance prête' : 'Message prêt'} dans WhatsApp pour ${clientName} : appuyez sur « Envoyer »`, 'success'); return; }
     setShowSendConfirmation({ clientName, montant: doc.total_ttc, canal: 'WhatsApp', doc, prepare: true });
   };
 
@@ -2395,11 +2426,13 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         onUpdate(doc.id, { statut: 'envoye', ...(doc.date_envoi ? {} : { date_envoi: jourLocal() }) });
         setSelected(s => s?.id === doc.id ? { ...s, statut: 'envoye', date_envoi: s.date_envoi || jourLocal() } : s);
       }
-      if (addEchange) addEchange({ type: 'email', client_id: doc.client_id, devis_id: doc.id, document: doc.numero, montant: doc.total_ttc, objet: `${relanceDevis && !isFacture ? 'Relance' : 'Envoi'} ${isFacture ? 'facture' : 'devis'} ${doc.numero}` }, { silencieux: true });
+      // Relance : un devis relancé, ou une facture échue ; sinon un envoi (comme en mode réel)
+      const relanceDemo = (relanceDevis && !isFacture) || (isFacture && estEchue(doc));
+      if (addEchange) addEchange({ type: 'email', client_id: doc.client_id, devis_id: doc.id, document: doc.numero, montant: doc.total_ttc, objet: `${relanceDemo ? 'Relance' : 'Envoi'} ${isFacture ? 'facture' : 'devis'} ${doc.numero}` }, { silencieux: true });
       const clientName = `${client.prenom || ''} ${client.nom || ''}`.trim();
-      if (depuisFeuille) { showToast(`Mode démo : relance simulée à ${toEmail} ✓`, 'success'); return; }
+      if (depuisFeuille) { showToast(`Mode démo : ${relanceDemo ? 'relance simulée' : 'envoi simulé'} à ${toEmail} ✓`, 'success'); return; }
       // Un seul message : la fenêtre dit ce qui est parti et à qui (avant : fenêtre + notification + « Échange ajouté »)
-      setShowSendConfirmation({ clientName, montant: doc.total_ttc, canal: 'Email (démo)', doc, destinataire: toEmail, relance: relanceDevis && !isFacture });
+      setShowSendConfirmation({ clientName, montant: doc.total_ttc, canal: 'Email (démo)', doc, destinataire: toEmail, relance: relanceDemo });
       return;
     }
     setActionLoading('email');
@@ -2505,7 +2538,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       window.open(`sms:${phone}?body=${encodeURIComponent(message)}`, '_self');
     }, 100);
     const clientName = `${client.prenom || ''} ${client.nom || ''}`.trim();
-    if (depuisFeuille) { showToast(`Relance prête dans vos SMS pour ${clientName} : appuyez sur « Envoyer »`, 'success'); return; }
+    if (depuisFeuille) { showToast(`${relance || relanceDevis ? 'Relance prête' : 'Message prêt'} dans vos SMS pour ${clientName} : appuyez sur « Envoyer »`, 'success'); return; }
     setShowSendConfirmation({ clientName, montant: doc.total_ttc, canal: 'SMS', doc, prepare: true });
   };
 
@@ -2521,6 +2554,11 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   };
 
   // Devis envoyé sans réponse depuis 7 jours, encore valable (un devis expiré ne se relance pas : on le prolonge)
+  // Facture échue (reste dû après l'échéance) : seule une facture échue se « relance » (C. com. L441-10, II ; même calcul
+  // que texteCourt et buildDocumentEmailBody, src/lib/messageRelance.js)
+  const estEchue = (doc) => doc?.type === 'facture' && doc.facture_type !== 'avoir'
+    && !!soldeDe({ ...doc, statut: doc.statut === 'brouillon' ? 'envoye' : doc.statut }, paiements)?.enRetard;
+
   const needsFollowUp = (doc) => {
     if (doc.type !== 'devis') return false;
     if (!['envoye', 'vu'].includes(doc.statut)) return false;
@@ -2786,8 +2824,10 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     document.body
   ) : null;
 
-  // Feuille « Relancer » (liste, fiche devis, fiche facture) : canal, destinataire, aperçu, un seul bouton
+  // Feuille « Relancer » (liste, fiche devis, fiche facture) : canal, destinataire, aperçu, un seul bouton. Une facture
+  // pas encore échue se « Renvoie » : ce qui part n'est pas une relance (relecture juriste-btp du 24 oct. 2026)
   const clientDeRelance = relanceDe ? clients.find(c => c.id === relanceDe.client_id) : null;
+  const estRelance = !!relanceDe && (relanceDe.type !== 'facture' || estEchue(relanceDe));
   const apercuRelance = (canal) => {
     const doc = relanceDe;
     if (!doc) return null;
@@ -2817,7 +2857,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     setRelanceDe(null);
   };
   const feuilleRelance = (
-    <FeuilleRelance doc={relanceDe} client={clientDeRelance} apercu={apercuRelance} onEnvoyer={envoyerRelance} onFermer={() => setRelanceDe(null)} />
+    <FeuilleRelance doc={relanceDe} client={clientDeRelance} relance={estRelance} apercu={apercuRelance} onEnvoyer={envoyerRelance} onFermer={() => setRelanceDe(null)} />
   );
 
   // Fenêtres de l'envoi (création réussie, e-mail manquant, ce qui bloque, envoi fait) : montées par la liste ET par la
@@ -2901,7 +2941,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         {/* Legal conformity warning */}
         {sendValidationIssues?.issues.some(i => i.isLegal) && (
           <div className="rounded-xl p-3 bg-alerte-fond text-alerte-texte text-sm">
-            <strong>Conformité légale :</strong> votre devis ne sera pas conforme à la réglementation française sans ces informations.{' '}
+            <strong>Mentions obligatoires :</strong> sans ces informations, ce document n'aura pas toutes les mentions exigées par la loi.{' '}
             <button
               type="button"
               onClick={() => {
@@ -3030,31 +3070,13 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   // === PREVIEW VIEW ===
   if (mode === 'preview' && selected) {
     const client = clients.find(c => c.id === selected.client_id);
-    const facturesLiees = getFacturesLiees(selected.id);
-    // Facturé par situations de travaux : la suite passe par les situations (le décompte général définitif
-    // solde le marché). Une facture « complète » ou un solde refacturerait le devis entier, situations comprises.
-    const situationsFacturees = facturesLiees.filter(f => f.facture_type === 'situation');
-    const chantierDesSituations = selected.chantier_id ? (chantiers || []).find(c => c.id === selected.chantier_id) : null;
-    const situationsEnCours = chantierDesSituations?.situations_data?.devis_source_id === selected.id
-      && (chantierDesSituations.situations_data.situations || []).length > 0;
-    const facturationParSituations = situationsFacturees.length > 0 || situationsEnCours;
-    const acompteFacture = getAcompteFacture(selected.id);
-    // Une facture entièrement annulée par avoir ne compte plus : le devis redevient facturable (avant, recette du
-    // 9 oct. 2026 : après un avoir total, le devis restait « Facturé » sans aucun moyen de le refacturer)
-    const soldeBrut = getSoldeFacture(selected.id);
-    const soldeFacture = soldeBrut && montantCredite(soldeBrut, devis) < Math.abs(Number(soldeBrut.total_ttc) || 0) - 0.01 ? soldeBrut : null;
-    const resteAFacturer = Math.round(((Number(selected.total_ttc) || 0) - dejaFactureTTC(selected.id, devis)) * 100) / 100;
+    const {
+      facturesLiees, situationsFacturees, situationsEnCours, facturationParSituations, acompteFacture, soldeFacture,
+      resteAFacturer, hasEcheancier, entierementFacture, canAcompte, canFacturer,
+    } = facturationDe(selected);
     const isDevis = selected.type === 'devis';
     const isAvoir = selected.facture_type === 'avoir';
     const currentEcheancier = echeancierCache[selected.id] || null;
-    const hasEcheancier = !!selected.echeancier_id || !!currentEcheancier;
-    // Déjà facturé en entier (solde ou facture complète, même si le devis est resté « signé ») : plus de « Facturer »
-    const entierementFacture = isDevis && estEntierementFacture(selected, devis);
-    const canAcompte = isDevis && (selected.statut === 'accepte' || selected.statut === 'signe') && !acompteFacture && !hasEcheancier && !facturationParSituations && !entierementFacture;
-    // « Facturé » mais toutes ses factures annulées par avoir ; jamais pour un devis « facturé » sans facture rattachée
-    // (anciennes données) : il serait facturé deux fois
-    const factureAnnulee = selected.statut === 'facture' && facturesLiees.some(f => f.facture_type !== 'avoir') && !entierementFacture;
-    const canFacturer = isDevis && (['accepte', 'signe', 'acompte_facture'].includes(selected.statut) || factureAnnulee) && !soldeFacture && resteAFacturer > 0.005 && !facturationParSituations && !entierementFacture;
     const hasChantier = !!selected.chantier_id;
     const linkedChantier = chantiers.find(c => c.id === selected.chantier_id);
     const canCreateChantier = isDevis && !hasChantier && addChantier;
@@ -3152,11 +3174,16 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     // « Facturer » (audit UX du 20 oct. 2026) : une seule porte. Le bouton de l'en-tête ouvre ce choix ; l'encadré vert
     // « Devis signé — Choisir le mode de facturation » qui le doublait sous l'en-tête a disparu.
     const soldeAvecAcomptes = isDevis && getAllAcompteFactures(selected.id).length > 0;
+    const septJoursFiche = isDevis ? septJoursDe(selected) : null;
+    const aucunPaiementAvant = septJoursFiche?.possibleLe ? `Aucun paiement avant le ${septJoursFiche.possibleLe.split('-').reverse().join('/')}` : '';
     const optionsFacturation = !isDevis ? [] : [
-      canAcompte && { cle: 'acompte', icone: CreditCard, libelle: 'Facture d’acompte', detail: 'Un pourcentage du devis, avant les travaux', action: () => ouvrirAcompte() },
-      canAcompte && { cle: 'echeancier', icone: ClipboardList, libelle: 'Échéancier', detail: 'Plusieurs acomptes, étape par étape', action: () => setShowEcheancierModal(true) },
+      // Relecture juriste-btp du 24 oct. 2026 : « avant les travaux » n'était pas toujours vrai ; pendant les sept jours d'un
+      // contrat signé sur place par un particulier (C. conso. L221-10), la date dès laquelle un paiement est possible
+      canAcompte && { cle: 'acompte', icone: CreditCard, libelle: 'Facture d’acompte', detail: aucunPaiementAvant || 'Un pourcentage du devis, à régler avant le solde', action: () => ouvrirAcompte() },
+      canAcompte && { cle: 'echeancier', icone: ClipboardList, libelle: 'Échéancier', detail: aucunPaiementAvant || 'Plusieurs acomptes, étape par étape', action: () => setShowEcheancierModal(true) },
+      // Le montant de la facture qui sera créée (celui que la confirmation annonce) ; « TTC » seulement hors franchise
       canFacturer && { cle: 'solde', icone: Receipt, libelle: soldeAvecAcomptes ? 'Facture de solde' : 'Facture complète',
-        detail: modeDiscret ? '' : `${formatMoney(soldeAvecAcomptes ? factureDeSolde(selected).totaux.totalTTC : selected.total_ttc)} TTC`, action: () => confirmAndCreateSolde() },
+        detail: modeDiscret ? '' : avecMentionTtc(formatMoney(factureDeSolde(selected).totaux.totalTTC), isMicro), action: () => confirmAndCreateSolde() },
       canFacturer && hasChantier && setSelectedChantier && { cle: 'situation', icone: BarChart3, libelle: 'Situation de travaux', detail: 'Par avancement, depuis le chantier', action: () => { setSelectedChantier(selected.chantier_id); setPage?.('chantiers'); } },
     ].filter(Boolean);
     optionsFacturationRef.current = optionsFacturation;
@@ -3219,11 +3246,15 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
             const ech = echeance(selected);
             const recu = dejaPaye(selected, paiements);
             const masque = (v) => (modeDiscret ? '•••' : formatMoney(v));
+            // Les chiffres se recoupent : total, avoirs (s'il y en a), reçu → reste (relecture juriste-btp du 24 oct. 2026) ;
+            // « TTC » seulement hors franchise
+            const credite = montantCredite(selected, devis);
+            const decompte = `sur ${avecMentionTtc(masque(ttc), franchiseAppliquee(selected, entreprise))}${credite > 0.005 ? ` · avoirs −${masque(credite)}` : ''} · reçu ${masque(recu)}`;
             if (factureVue === 'payee') contexte = selected.date_paiement ? `Payée le ${dateCourte(selected.date_paiement)}` : 'Soldée';
-            else if (factureVue === 'en_retard' && recu > 0.005) { contexte = `En retard de ${joursDeRetard(selected, paiements)} j · sur ${masque(ttc)} TTC · reçu ${masque(recu)}`; contexteAlerte = true; }
+            else if (factureVue === 'en_retard' && recu > 0.005) { contexte = `En retard de ${joursDeRetard(selected, paiements)} j · ${decompte}`; contexteAlerte = true; }
             else if (factureVue === 'en_retard') { contexte = `En retard de ${joursDeRetard(selected, paiements)} j · reste ${masque(resteFacture)}`; contexteAlerte = true; }
             // Payée en partie : le chiffre qui compte (le reste) devient le grand nombre, le total passe dessous
-            else if (factureVue === 'partielle') contexte = `sur ${masque(ttc)} TTC · reçu ${masque(recu)}${ech ? ` · échéance ${dateCourte(ech)}` : ''}`;
+            else if (factureVue === 'partielle') contexte = `${decompte}${ech ? ` · échéance ${dateCourte(ech)}` : ''}`;
             else if (factureVue === 'brouillon') contexte = `Brouillon du ${dateCourte(selected.date)}`;
             else contexte = `${ech ? `Échéance ${dateCourte(ech)} · ` : ''}reste ${masque(resteFacture)}`;
           }
@@ -3296,9 +3327,11 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
             secondaire = actPdf;
           } else if (!factureSoldee && !isAvoir) {
             principal = { libelle: 'Encaisser', icone: CreditCard, onClick: () => setShowPaymentModal(true) };
+            // Avant l'échéance, ce qui part est un envoi, pas une relance (relecture juriste-btp du 24 oct. 2026 ; C. com.
+            // L441-10, II) : « Renvoyer » ; une facture échue se « Relance »
             if (peutEnvoyer) secondaire = selected.statut === 'brouillon'
               ? { libelle: 'Envoyer', icone: Send, onClick: () => trySend(selected, sendEmail) }
-              : { libelle: 'Relancer', icone: Mail, onClick: () => setRelanceDe(selected) };
+              : { libelle: estEchue(selected) ? 'Relancer' : 'Renvoyer', icone: Mail, onClick: () => setRelanceDe(selected) };
           } else {
             secondaire = actPdf;
           }
@@ -3347,7 +3380,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
               libelle: `${legal.length} mention${legal.length > 1 ? 's' : ''} légale${legal.length > 1 ? 's' : ''} manquante${legal.length > 1 ? 's' : ''} : ${legal.map((i) => i.label.toLowerCase()).join(', ')}`,
               onClick: setPage ? () => setPage('settings', { tab: 'legal' }) : undefined,
             },
-            isDevis && needsFollowUp(selected) && peutEnvoyer && { libelle: 'Sans réponse depuis plus de 7 jours : pensez à relancer', onClick: () => setRelanceDe(selected) },
+            isDevis && needsFollowUp(selected) && peutEnvoyer && { libelle: 'Sans réponse depuis 7 jours ou plus : pensez à relancer', onClick: () => setRelanceDe(selected) },
           ].filter(Boolean);
 
           return (
@@ -4044,7 +4077,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         <Modal isOpen={!!showAcompteModal} onClose={() => setShowAcompteModal(false)} size="sm" closeOnBackdrop={!facturationEnCours} closeOnEscape={!facturationEnCours}>
           <ModalHeader>
             <ModalTitle>Facture d'acompte</ModalTitle>
-            <ModalDescription>Un pourcentage du devis {selected.numero}, à facturer avant les travaux.</ModalDescription>
+            <ModalDescription>Un pourcentage du devis {selected.numero}, à facturer avant le solde.</ModalDescription>
           </ModalHeader>
           <ModalBody className="space-y-3">
             <div role="radiogroup" aria-label="Pourcentage d'acompte" className="space-y-2">
@@ -4100,6 +4133,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           isOpen={showEcheancierModal}
           onClose={() => setShowEcheancierModal(false)}
           devis={selected}
+          franchise={franchiseAppliquee(selected, entreprise)}
           isDark={isDark}
           couleur={couleur}
           modeDiscret={modeDiscret}
@@ -4135,10 +4169,17 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           </ModalHeader>
           <ModalBody className="space-y-4">
             {/* Revenu prévu : une information, pas un statut (audit UX du 20 oct. 2026 : l'encadré vert « succès » décorait) */}
+            {/* En franchise de TVA : une seule ligne, le montant seul (ni HT ni TTC, relecture juriste-btp du 24 oct. 2026) */}
             <div className="rounded-xl p-4 bg-surface-2">
               <p className="text-sm font-medium text-encre-2">Revenu prévu</p>
-              <p className="text-2xl font-bold tabular-nums text-encre">{modeDiscret ? '·····' : `${(selected.total_ht || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} € HT`}</p>
-              <p className="text-sm text-encre-3 tabular-nums">{(selected.total_ttc || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} € TTC</p>
+              {franchiseAppliquee(selected, entreprise) ? (
+                <p className="text-2xl font-bold tabular-nums text-encre">{modeDiscret ? '·····' : formatMoney(selected.total_ttc || selected.total_ht || 0)}</p>
+              ) : (
+                <>
+                  <p className="text-2xl font-bold tabular-nums text-encre">{modeDiscret ? '·····' : `${(selected.total_ht || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} € HT`}</p>
+                  <p className="text-sm text-encre-3 tabular-nums">{modeDiscret ? '·····' : `${(selected.total_ttc || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} € TTC`}</p>
+                </>
+              )}
             </div>
             <Champ
               libelle="Nom du chantier"
@@ -5010,8 +5051,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
             variante="secondaire" icone={Send} chargement={actionLoading === 'bulk-relance'} className="flex-shrink-0"
             onClick={async () => {
               if (actionLoading) return;
-              // L'envoi groupé part par lots de 10 (relanceEngine, maxPerBatch) : annoncer ce qui partira vraiment
-              const PAR_ENVOI = 10;
+              // L'envoi groupé part par lots (relanceEngine, RELANCES_PAR_ENVOI) : annoncer ce qui partira vraiment
+              const PAR_ENVOI = RELANCES_PAR_ENVOI;
               const partent = (relances.dueNow || []).slice(0, PAR_ENVOI);
               const nombre = Math.min(relances.counts.due, PAR_ENVOI);
               const noms = [...new Set(partent.map(p => formatClientName(p.client, '') || p.doc?.client_nom).filter(Boolean))];
@@ -5236,7 +5277,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                     { key: 'numero', label: 'N°' },
                     { key: 'client', label: 'Client' },
                     { key: 'date', label: 'Date' },
-                    { key: 'montant', label: 'Montant TTC' },
+                    { key: 'montant', label: isMicro ? 'Montant' : 'Montant TTC' },
                     { key: 'statut', label: 'Statut' },
                   ].map(col => (
                     <th
@@ -5293,9 +5334,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                         <div className="flex items-center gap-1.5">
                           <PastilleStatut genre={d.type === 'facture' && !isAvoirItem ? 'facture' : 'devis'} statut={statutVu} />
                           {d.statut === 'envoye' && (() => {
-                            const sentDate = d.updated_at || d.date;
-                            const daysSent = Math.floor((Date.now() - new Date(sentDate)) / 86400000);
-                            if (daysSent <= 7) return null;
+                            const daysSent = getDaysSinceSent(d);
+                            if (daysSent < 7) return null;
                             return (
                               <span className="text-xs font-medium text-alerte-texte flex items-center gap-1 whitespace-nowrap">
                                 <Clock size={12} aria-hidden="true" /> J+{daysSent}
@@ -5330,8 +5370,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           // Attente d'un devis envoyé : à partir de 7 jours, dite sous la ligne
           const getFollowUpInfo = () => {
             if (!['envoye', 'vu'].includes(d.statut) || d.type !== 'devis') return null;
-            const sentDate = d.updated_at || d.date;
-            const daysSent = Math.floor((Date.now() - new Date(sentDate)) / 86400000);
+            // Depuis l'envoi, comme l'alerte de la fiche (avant : depuis la dernière modification, remise à zéro par un rien)
+            const daysSent = getDaysSinceSent(d);
             if (daysSent >= 14) return { texte: `${daysSent} j sans réponse`, ton: 'text-danger-texte' };
             if (daysSent >= 7) return { texte: `${daysSent} j en attente`, ton: 'text-alerte-texte' };
             return null;
@@ -5350,7 +5390,11 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
             if (d.statut === 'brouillon' && getDevisTTC(d) <= 0 && canPerform('devis', 'edit')) return { label: 'Compléter', Icon: Edit3, fn: (e) => { e.stopPropagation(); openEditor(d); } };
             if (d.type === 'devis' && ['envoye', 'vu'].includes(d.statut) && isExpired(d) && canPerform('devis', 'edit') && peutModifierDocument(d, devis)) return { label: 'Prolonger', Icon: Edit3, fn: (e) => { e.stopPropagation(); openEditor(d); } };
             if (d.type === 'devis' && ['envoye', 'vu'].includes(d.statut) && !isExpired(d) && canPerform('devis', 'send')) return { label: 'Relancer', Icon: Mail, fn: (e) => { e.stopPropagation(); setRelanceDe(d); } };
-            if ((d.statut === 'accepte' || d.statut === 'signe') && d.type === 'devis') return { label: 'Facturer', Icon: Receipt, fn: (e) => { e.stopPropagation(); setSelected(d); setMode('preview'); setChoixFacturation(true); } };
+            if ((d.statut === 'accepte' || d.statut === 'signe') && d.type === 'devis') {
+              // Même règle que la fiche (facturationDe) : rien à proposer pour un devis déjà facturé ou facturé par situations
+              const f = facturationDe(d);
+              if ((f.canAcompte || f.canFacturer) && !f.facturationParSituations) return { label: 'Facturer', Icon: Receipt, fn: (e) => { e.stopPropagation(); setSelected(d); setMode('preview'); setChoixFacturation(true); } };
+            }
             if (d.type === 'facture' && !['payee', 'annulee', 'brouillon'].includes(statutVu)) return { label: 'Encaisser', Icon: CreditCard, fn: (e) => { e.stopPropagation(); setSelected(d); setMode('preview'); setShowPaymentModal(true); } };
             if (d.statut === 'refuse' && canPerform('devis', 'create')) return { label: 'Dupliquer', Icon: Copy, fn: (e) => { e.stopPropagation(); duplicateDocument(d); } };
             return null;

@@ -147,7 +147,8 @@ export function buildDocumentEmailBody({ doc, client, entreprise, couleur = '#f9
  */
 export const LIBELLES_MODE_RECU = {
   virement: 'virement bancaire', cheque: 'chèque', especes: 'espèces', cb: 'carte bancaire', carte: 'carte bancaire',
-  prelevement: 'prélèvement', autre: 'autre',
+  // « autre » : rien après la date (« — autre » ne disait rien au client ; relecture juriste-btp du 24 oct. 2026)
+  prelevement: 'prélèvement', autre: '',
 };
 
 /**
@@ -157,7 +158,7 @@ export function buildPaymentReceiptEmailBody({ doc, client, entreprise, couleur 
   const clientNom = echapperHtml(`${client.prenom || ''} ${client.nom || ''}`.trim()) || 'Madame, Monsieur';
   // Nom imprimé : « EI » pour un entrepreneur individuel, comme sur ses documents (C. com. R526-27)
   const nomEntreprise = echapperHtml(nomImprime(entreprise) || 'Votre artisan');
-  const modeLabel = echapperHtml(LIBELLES_MODE_RECU[modePaiement] || modePaiement || '');
+  const modeLabel = echapperHtml(Object.prototype.hasOwnProperty.call(LIBELLES_MODE_RECU, modePaiement || '') ? LIBELLES_MODE_RECU[modePaiement] : (modePaiement || ''));
   const dateLabel = datePaiement
     ? dateLue(datePaiement).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
     : new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });

@@ -17,8 +17,12 @@ export const MODES_PAIEMENT = [
 // Valeurs anciennes ou d'autres écrans (carte = cb)
 const ALIAS = { carte: 'cb' };
 
-/** Libellé d'un mode enregistré ; un mode inconnu reste tel quel, une absence vaut « Virement » (ancien défaut). */
+/**
+ * Libellé d'un mode enregistré ; un mode inconnu reste tel quel ; sans mode, « Mode non précisé » (relecture juriste-btp
+ * du 24 oct. 2026 : « Virement » par défaut affichait un fait qui n'a pas été saisi, D-02).
+ */
 export function libelleModePaiement(mode) {
-  const valeur = ALIAS[mode] || mode || 'virement';
+  if (!mode) return 'Mode non précisé';
+  const valeur = ALIAS[mode] || mode;
   return MODES_PAIEMENT.find((m) => m.valeur === valeur)?.libelle || String(mode);
 }

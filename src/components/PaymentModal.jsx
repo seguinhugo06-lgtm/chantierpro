@@ -11,6 +11,8 @@ import { jourLocal } from '../lib/dates';
 import { telInternational } from '../lib/messageRelance';
 import { FONCTIONS } from '../lib/fonctions';
 import { MODES_PAIEMENT } from '../lib/modesPaiement';
+import { avecMentionTtc } from '../lib/mentionMontant';
+import { franchiseAppliquee } from '../lib/franchiseTva';
 
 // Check if Stripe is configured (either Connect or direct keys)
 const STRIPE_CONFIGURED = import.meta.env.VITE_STRIPE_PUBLIC_KEY && !import.meta.env.VITE_STRIPE_PUBLIC_KEY.includes('demo');
@@ -247,7 +249,7 @@ export default function PaymentModal({
               <div className="rounded-xl p-4 mb-5 bg-surface-2">
                 <p className="text-sm text-encre-2 mb-1">{du < totalTTC - 0.005 ? 'Reste dû' : 'Montant de la facture'}</p>
                 <p className="text-2xl font-bold tabular-nums text-encre">{formatAmount(du)}</p>
-                {du < totalTTC - 0.005 && <p className="text-sm text-encre-3 mt-1 tabular-nums">sur {formatAmount(totalTTC)} TTC</p>}
+                {du < totalTTC - 0.005 && <p className="text-sm text-encre-3 mt-1 tabular-nums">sur {avecMentionTtc(formatAmount(totalTTC), franchiseAppliquee(document, entreprise))}</p>}
               </div>
 
               {/* Options de paiement (en ligne : masquées en v1, D-21) */}

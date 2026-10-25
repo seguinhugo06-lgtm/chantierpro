@@ -40,6 +40,17 @@ const facturerPar = async (page, cliquer, attendre, option) => {
   await attendre(600);
   return ok;
 };
+// Note chaque message affiché à partir de l'appel, même s'il en remplace un autre ; messagesNotes(page) les rend
+const noterMessages = (page) => page.evaluate(() => {
+  window.__messages = [];
+  const lire = () => {
+    const t = [...document.querySelectorAll('[role="status"][aria-live="polite"]')]
+      .map((e) => (e.innerText || '').trim()).filter(Boolean).join(' | ');
+    if (t && window.__messages[window.__messages.length - 1] !== t) window.__messages.push(t);
+  };
+  new MutationObserver(lire).observe(document.body, { childList: true, subtree: true, characterData: true });
+});
+const messagesNotes = (page) => page.evaluate(() => window.__messages || []);
 const documentsEnregistres = (page) => page.evaluate(() => JSON.parse(localStorage.getItem('mallettico_demo_data') || '{}'));
 const texte = (page) => page.evaluate(() => document.body.innerText);
 
@@ -63,15 +74,7 @@ module.exports = [
       verifier(!/Échange ajouté/.test(feuille), 'rien n’est parti avant « Envoyer la relance »');
 
       // Chaque message affiché à partir d'ici est noté, même s'il en remplace un autre
-      await page.evaluate(() => {
-        window.__messages = [];
-        const lire = () => {
-          const t = [...document.querySelectorAll('[role="status"][aria-live="polite"]')]
-            .map((e) => (e.innerText || '').trim()).filter(Boolean).join(' | ');
-          if (t && window.__messages[window.__messages.length - 1] !== t) window.__messages.push(t);
-        };
-        new MutationObserver(lire).observe(document.body, { childList: true, subtree: true, characterData: true });
-      });
+      await noterMessages(page);
       const envoye = await page.evaluate(() => {
         const b = [...document.querySelectorAll('[role="dialog"] button')].find((x) => (x.innerText || '').trim() === 'Envoyer la relance');
         b?.click();
@@ -79,7 +82,7 @@ module.exports = [
       });
       verifier(envoye, 'bouton « Envoyer la relance »');
       await attendre(2500);
-      const messages = await page.evaluate(() => window.__messages);
+      const messages = await messagesNotes(page);
       verifier(messages.length === 1, `un seul message après l'envoi (${JSON.stringify(messages)})`);
       verifier(/relance simulée à marc\.lefevre@pro\.fr/.test(messages[0] || ''), `le message nomme le destinataire (${messages[0]})`);
       verifier(!messages.some((m) => /Échange ajouté/.test(m)), 'pas de « Échange ajouté » par-dessus');
@@ -112,6 +115,39 @@ module.exports = [
       const choix = await page.evaluate(() => [...document.querySelectorAll('[role="dialog"]')].map((d) => d.innerText).join('\n'));
       verifier(/Facturer ce devis/.test(choix) && /Facture d’acompte/.test(choix) && /Facture complète/.test(choix),
         `« Facturer » ouvre le choix de facturation (${choix.slice(0, 60)}…)`);
+    },
+  },
+  {
+    // Relecture juriste-btp du 24 oct. 2026 : avant l'échéance, ce qui part est un envoi, pas une relance (C. com. L441-10,
+    // II : rien n'est exigible avant) — « Renvoyer », « Renvoyer la facture à … », « Envoyer la facture », « envoi simulé »
+    nom: 'facture pas encore échue : « Renvoyer » (pas « Relancer »), feuille et message d’envoi, échange « Envoi facture » (375 px)',
+    async executer({ ouvrir, cliquer, attendre, verifier }) {
+      const { page } = await ouvrir({ page: 'devis', largeur: 375 });
+      await attendre(800);
+      verifier(await ouvrirDocument(page, 'FAC-2026-00003'), 'la facture payée en partie (échéance à venir) est dans la liste');
+      await attendre(800);
+      const boutons = await page.evaluate(() => [...document.querySelectorAll('main button')].filter((b) => b.offsetParent).map((b) => b.innerText.trim()));
+      verifier(boutons.includes('Renvoyer') && !boutons.includes('Relancer'), `« Renvoyer », pas « Relancer » (${JSON.stringify(boutons.slice(0, 8))})`);
+      await cliquer(page, 'Renvoyer');
+      await attendre(700);
+      const feuille = await page.evaluate(() => document.querySelector('[role="dialog"]')?.innerText || '');
+      verifier(/Renvoyer la facture à Marie Dupont/.test(feuille), `titre « Renvoyer la facture à Marie Dupont » (${feuille.slice(0, 50)}…)`);
+      verifier(!/Relancer|relance/.test(feuille.split('Message')[0]), 'aucun « relance » dans le titre ni les boutons');
+      verifier(feuille.includes('marie.dupont@email.fr'), 'la feuille montre l’adresse du destinataire');
+      verifier(/Objet : Facture FAC-2026-00003/.test(feuille) && !/Rappel/.test(feuille), 'objet sans « Rappel »');
+      await noterMessages(page);
+      const envoye = await page.evaluate(() => {
+        const b = [...document.querySelectorAll('[role="dialog"] button')].find((x) => (x.innerText || '').trim() === 'Envoyer la facture');
+        b?.click();
+        return !!b;
+      });
+      verifier(envoye, 'bouton « Envoyer la facture »');
+      await attendre(2500);
+      const messages = await messagesNotes(page);
+      verifier(messages.length === 1 && /envoi simulé à marie\.dupont@email\.fr/.test(messages[0]) && !/relance/i.test(messages[0]),
+        `un seul message, d’envoi (${JSON.stringify(messages)})`);
+      const { echanges = [] } = await documentsEnregistres(page);
+      verifier(echanges.some((e) => e.objet === 'Envoi facture FAC-2026-00003'), 'l’échange « Envoi facture FAC-2026-00003 » est enregistré');
     },
   },
   {

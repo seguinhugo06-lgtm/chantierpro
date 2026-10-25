@@ -15,9 +15,11 @@ const estTelephone = () => typeof navigator !== 'undefined' && /Mobi|Android|iPh
  * @param {object} [client]
  * @param {(canal: 'email'|'sms'|'whatsapp') => { objet?: string, texte: string }} apercu
  * @param {(canal: 'email'|'sms'|'whatsapp') => Promise<void>|void} onEnvoyer
+ * @param {boolean} [relance] faux pour une facture pas encore échue : ce qui part est un envoi, pas une relance (« Renvoyer
+ *   la facture à … », « Envoyer la facture » ; relecture juriste-btp du 24 oct. 2026). Un devis se relance toujours.
  * @param {Function} onFermer
  */
-export default function FeuilleRelance({ doc, client, apercu, onEnvoyer, onFermer }) {
+export default function FeuilleRelance({ doc, client, relance = true, apercu, onEnvoyer, onFermer }) {
   const email = (client?.email || '').trim();
   const tel = (client?.telephone || client?.tel || '').trim();
   const smsPossible = !!tel && estTelephone();
@@ -39,7 +41,7 @@ export default function FeuilleRelance({ doc, client, apercu, onEnvoyer, onFerme
     { cle: 'sms', icone: Smartphone, libelle: 'SMS', detail: !tel ? 'pas de téléphone sur la fiche' : smsPossible ? tel : 'depuis un téléphone seulement', desactive: !smsPossible },
     { cle: 'whatsapp', icone: MessageCircle, libelle: 'WhatsApp', detail: tel || 'pas de téléphone sur la fiche', desactive: !tel },
   ];
-  const libelleBouton = canal === 'email' ? 'Envoyer la relance' : canal === 'sms' ? 'Préparer le SMS' : 'Préparer dans WhatsApp';
+  const libelleBouton = canal === 'email' ? (relance ? 'Envoyer la relance' : 'Envoyer la facture') : canal === 'sms' ? 'Préparer le SMS' : 'Préparer dans WhatsApp';
 
   const envoyer = async () => {
     if (enCours) return;
@@ -54,7 +56,7 @@ export default function FeuilleRelance({ doc, client, apercu, onEnvoyer, onFerme
   return (
     <Modal isOpen={!!doc} onClose={onFermer} size="md" closeOnBackdrop={!enCours} closeOnEscape={!enCours}>
       <ModalHeader>
-        <ModalTitle>Relancer {nom}</ModalTitle>
+        <ModalTitle>{relance ? `Relancer ${nom}` : `Renvoyer la facture à ${nom}`}</ModalTitle>
         <ModalDescription>{doc.type === 'facture' ? 'Facture' : 'Devis'} {doc.numero}</ModalDescription>
       </ModalHeader>
       <ModalBody className="space-y-5">

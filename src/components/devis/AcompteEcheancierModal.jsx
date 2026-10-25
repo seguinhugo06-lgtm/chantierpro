@@ -12,6 +12,7 @@ import {
 import { formatMoney as defaultFormatMoney } from '../../lib/formatters';
 import supabase, { isDemo } from '../../supabaseClient';
 import { cn } from '../../lib/utils';
+import { avecMentionTtc } from '../../lib/mentionMontant';
 
 /**
  * AcompteEcheancierModal — Modal for creating a multi-step payment schedule.
@@ -26,6 +27,8 @@ export default function AcompteEcheancierModal({
   isDark = false,
   couleur,
   modeDiscret = false,
+  // Devis en franchise de TVA : le montant seul, sans « TTC » (relecture juriste-btp du 24 oct. 2026)
+  franchise = false,
   onEcheancierCreated,
 }) {
   // Theme
@@ -154,7 +157,7 @@ export default function AcompteEcheancierModal({
           <ClipboardList size={18} className="inline mr-2 text-encre-3" aria-hidden="true" />
           Échéancier d'acomptes
         </ModalTitle>
-        <ModalDescription>{devis.numero} · {fm(devis.total_ttc)} TTC</ModalDescription>
+        <ModalDescription>{devis.numero} · {avecMentionTtc(fm(devis.total_ttc), franchise)}</ModalDescription>
       </ModalHeader>
 
       <ModalBody className="space-y-5">
