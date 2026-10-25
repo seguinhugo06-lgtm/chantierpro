@@ -48,6 +48,12 @@ describe('fiche entreprise d\'une pièce, côté serveur (notify-signature)', ()
     expect(choisirFicheEntreprise([], { user_id: SALARIE, organization_id: ORG }, membres)).toBeNull();
   });
 
+  it('à égalité, la plus ancienne ; une fiche sans date de création passe en dernier (comme en SQL)', () => {
+    const sansDate = { id: 'f-sans-date', user_id: PATRON, organization_id: ORG };
+    expect(choisirFicheEntreprise([sansDate, ficheDepannage, ficheEntreprise], { user_id: PATRON, organization_id: ORG }, membres).id).toBe('f-ent');
+    expect(choisirFicheEntreprise([sansDate, ficheDepannage], { user_id: PATRON, organization_id: ORG }, membres).id).toBe('f-dep');
+  });
+
   it('l\'artisan seul : sa fiche, comme avant', () => {
     const solo = { id: 'f-solo', user_id: 'solo', organization_id: 'org-solo' };
     expect(choisirFicheEntreprise([solo], { user_id: 'solo', organization_id: 'org-solo', entreprise_id: 'f-solo' }, ['solo']).id).toBe('f-solo');

@@ -13,7 +13,7 @@ const MIGRATION = path.resolve(path.dirname(fileURLToPath(import.meta.url)),
 const ANCIEN = '10600000-0000-4000-8000-000000000003';     // auteur d'une pièce glissée dans l'organisation sans en être membre
 const ORG_PERSO = '10600000-0000-4000-8000-0000000000a1';  // organisation personnelle du salarié
 
-export async function verifier({ db, q, commeAnonyme, verifier }) {
+export async function verifier({ db, q, en, commeAnonyme, verifier }) {
   // Les vérifications de 085 et 098 rejouent leur migration, qui réécrit la page de paiement : la remettre à jour
   let rejeu = true;
   try { await db.exec(fs.readFileSync(MIGRATION, 'utf8')); await db.exec(fs.readFileSync(MIGRATION, 'utf8')); } catch { rejeu = false; }
@@ -49,7 +49,8 @@ export async function verifier({ db, q, commeAnonyme, verifier }) {
   // La configuration Stripe du patron posée par 076 est rétablie au ménage (072 la vérifie à la fin)
   const stripePatron = (await q(`SELECT to_jsonb(s) AS l FROM stripe_config s WHERE user_id = $1`, [PATRON])).rows[0]?.l;
   await q(`INSERT INTO stripe_config (user_id, organization_id, stripe_enabled, commission_model) VALUES ($1, $2, true, 'client'), ($3, $4, true, 'artisan')
-    ON CONFLICT (user_id) DO UPDATE SET stripe_enabled = EXCLUDED.stripe_enabled, commission_model = EXCLUDED.commission_model`, [PATRON, ORG_PATRON, SALARIE, ORG_PERSO]);
+    ON CONFLICT (user_id) DO UPDATE SET organization_id = EXCLUDED.organization_id, stripe_enabled = EXCLUDED.stripe_enabled,
+      commission_model = EXCLUDED.commission_model`, [PATRON, ORG_PATRON, SALARIE, ORG_PERSO]);
 
   // ── Page de paiement d'une facture faite par le salarié pour l'entreprise ──
   const fac = await facture({ user: SALARIE, org: ORG_PATRON, jeton: 'pay-106-salarie' });
@@ -69,12 +70,58 @@ export async function verifier({ db, q, commeAnonyme, verifier }) {
   verifier(Number(apresAvoir.facture?.montant_credite) === 200 && Number(apresAvoir.facture?.reste_du) === 300,
     `106 : l'avoir du patron sur la facture du salarié est déduit (crédité ${apresAvoir.facture?.montant_credite}, reste ${apresAvoir.facture?.reste_du})`);
 
+  // Ni un avoir d'une autre organisation sur cette facture, ni un avoir brouillon de l'entreprise
+  await q(`INSERT INTO devis (user_id, organization_id, numero, type, facture_type, statut, total_ttc, avoir_source_id) VALUES
+    ($1, $2, 'AV-106-2', 'facture', 'avoir', 'envoye', -150, $5), ($3, $4, 'AV-106-3', 'facture', 'avoir', 'brouillon', -100, $5)`,
+  [SOLO, ORG_SOLO, PATRON, ORG_PATRON, fac]);
+  const apresAutres = await paiement('pay-106-salarie');
+  verifier(Number(apresAutres.facture?.montant_credite) === 200,
+    `106 : ni l'avoir d'une autre organisation, ni un avoir brouillon (crédité ${apresAutres.facture?.montant_credite})`);
+
+  // Une fiche glissée dans l'organisation par un non-membre, même désignée par la facture, n'est pas montrée
+  const glissee = (await q(`INSERT INTO entreprise (user_id, organization_id, nom, iban, is_default) VALUES ($1, $2, 'Glissée 106', 'FR76-GLISSEE', true) RETURNING id`, [ANCIEN, ORG_PATRON])).rows[0].id;
+  await facture({ user: SALARIE, org: ORG_PATRON, entreprise: glissee, jeton: 'pay-106-glissee' });
+  const vueGlissee = await paiement('pay-106-glissee');
+  verifier(vueGlissee.entreprise?.iban === 'FR76-PATRON', `106 : une fiche glissée par un non-membre n'est jamais montrée, même désignée (${vueGlissee.entreprise?.nom})`);
+  await q(`DELETE FROM devis WHERE payment_token = 'pay-106-glissee'`);
+  await q(`DELETE FROM entreprise WHERE id = $1`, [glissee]);
+
+  // Une fiche archivée de l'entreprise passe après les autres (quand la facture n'en désigne aucune)
+  await q(`UPDATE entreprise SET archived_at = now() WHERE id = $1`, [ficheEntreprise]);
+  const vueArchivee = await paiement('pay-106-salarie');
+  await q(`UPDATE entreprise SET archived_at = NULL WHERE id = $1`, [ficheEntreprise]);
+  verifier(vueArchivee.entreprise?.nom && vueArchivee.entreprise?.nom !== 'Patron SARL 106' && vueArchivee.entreprise?.iban !== 'FR76-PERSO',
+    `106 : une fiche archivée passe après une fiche active de l'entreprise (${vueArchivee.entreprise?.nom})`);
+
   // Paiement par carte : la configuration du patron (ouvert, modèle « client »), et le serveur seul reçoit le compte qui encaisse
   verifier(apresAvoir.stripe_enabled === true && apresAvoir.commission_model === 'client' && apresAvoir.facture?.beneficiaire_id == null,
     `106 : la page suit la configuration Stripe du patron, sans dire au visiteur qui encaisse (${apresAvoir.commission_model})`);
   const serveur = await commeServeur('pay-106-salarie');
   verifier(serveur.facture?.beneficiaire_id === PATRON && serveur.facture?.user_id === SALARIE,
     `106 : le serveur encaisse sur le compte du patron, pas du salarié (${serveur.facture?.beneficiaire_id})`);
+
+  // Patron sans paiement en ligne : fermé, même si le salarié a branché le sien (pas de repli sur l'auteur)
+  await q(`UPDATE stripe_config SET stripe_enabled = false WHERE user_id = $1`, [PATRON]);
+  const sansStripe = await paiement('pay-106-salarie');
+  await q(`UPDATE stripe_config SET stripe_enabled = true WHERE user_id = $1`, [PATRON]);
+  verifier(sansStripe.stripe_enabled === false, '106 : patron sans paiement en ligne : fermé, même si le salarié a le sien');
+
+  // La configuration Stripe du patron : ni lue, ni modifiée, ni effacée, ni remplacée par un membre (ouvrier)
+  const vueOuvrier = await en(SALARIE, () => q(`SELECT user_id FROM stripe_config WHERE user_id = $1`, [PATRON]));
+  const modifOuvrier = await en(SALARIE, () => q(`UPDATE stripe_config SET secret_key_vault_id = gen_random_uuid(), commission_model = 'artisan' WHERE user_id = $1 RETURNING user_id`, [PATRON]));
+  const effaceOuvrier = await en(SALARIE, () => q(`DELETE FROM stripe_config WHERE user_id = $1 RETURNING user_id`, [PATRON]));
+  verifier(vueOuvrier.rows.length === 0 && modifOuvrier.rows.length === 0 && effaceOuvrier.rows.length === 0,
+    `106 : un ouvrier ne lit, ne modifie ni n'efface la configuration Stripe du patron (${vueOuvrier.rows.length}/${modifOuvrier.rows.length}/${effaceOuvrier.rows.length})`);
+  const sauve = (await q(`SELECT to_jsonb(s) AS l FROM stripe_config s WHERE user_id = $1`, [PATRON])).rows[0].l;
+  await q(`DELETE FROM stripe_config WHERE user_id = $1`, [PATRON]);
+  let creeOuvrier = 'acceptée';
+  try { await en(SALARIE, () => q(`INSERT INTO stripe_config (user_id, organization_id, stripe_enabled, secret_key_vault_id) VALUES ($1, $2, true, gen_random_uuid())`, [PATRON, ORG_PATRON])); }
+  catch (e) { creeOuvrier = e.message; }
+  await q(`DELETE FROM stripe_config WHERE user_id = $1`, [PATRON]);
+  await q(`INSERT INTO stripe_config SELECT * FROM jsonb_populate_record(NULL::stripe_config, $1)`, [sauve]);
+  verifier(creeOuvrier !== 'acceptée', `106 : ni ne la crée à sa place (${creeOuvrier})`);
+  const modifPatron = await en(PATRON, () => q(`UPDATE stripe_config SET commission_model = 'client' WHERE user_id = $1 RETURNING user_id`, [PATRON]));
+  verifier(modifPatron.rows.length === 1, '106 : le patron gère toujours la sienne');
 
   // ── Page de signature d'un devis fait par le salarié ──
   const jetonSig = await devisSigne({ user: SALARIE, org: ORG_PATRON });
@@ -83,6 +130,8 @@ export async function verifier({ db, q, commeAnonyme, verifier }) {
     `106 : la page de signature d'un devis du salarié montre la fiche de l'entreprise (avant : sa fiche « par défaut ») (${sig.entreprise?.nom})`);
   const sigDesigne = await signature(await devisSigne({ user: SALARIE, org: ORG_PATRON, entreprise: ficheSeconde }));
   verifier(sigDesigne.entreprise?.nom === 'Patron Dépannage 106', '106 : celle que le devis désigne, parmi celles de l\'entreprise');
+  const sigPerso = await signature(await devisSigne({ user: SALARIE, org: ORG_PATRON, entreprise: fichePerso }));
+  verifier(sigPerso.entreprise?.nom === 'Patron SARL 106', `106 : même si le devis désigne la fiche personnelle du salarié (${sigPerso.entreprise?.nom})`);
 
   // ── Une pièce de son organisation personnelle montre toujours sa fiche personnelle ──
   await facture({ user: SALARIE, org: ORG_PERSO, jeton: 'pay-106-perso' });

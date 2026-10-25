@@ -15,20 +15,27 @@
 --   2. la page de paiement déduit les avoirs de l'organisation sur cette facture, quel qu'en soit l'auteur ;
 --   3. le paiement par carte va au compte Stripe du propriétaire de l'organisation : la page dit si le paiement en
 --      ligne est ouvert d'après sa configuration, et renvoie au serveur seul (create-invoice-payment) le compte qui
---      encaisse (`beneficiaire_id`).
+--      encaisse (`beneficiaire_id`) ;
+--   4. la configuration Stripe de chacun n'est plus lisible ni modifiable par les autres membres : les policies
+--      « Org members can view / insert / update » et « Org admins can delete » de stripe_config (038, relevées en
+--      production le 25 oct. 2026) laissaient un ouvrier écrire la configuration du patron avec SA clé (relecture
+--      gardien-securite du 25 oct. : avec le 3, elle encaissait toutes les factures de l'entreprise). L'app ne lit
+--      que la configuration du compte connecté et l'écrit par store_stripe_key / update_stripe_config (SECURITY
+--      DEFINER, au nom de auth.uid()) ; « Users manage own stripe_config » reste.
 --   Rien ne change pour un artisan seul (il est l'auteur, le propriétaire et l'unique membre). Une pièce dont l'auteur
 --   n'est pas membre de l'organisation qu'elle porte (ligne glissée avant 084) garde l'ancien comportement : son
 --   compte seulement. Ce que les pages renvoient au visiteur ne change pas de forme.
 --
 -- ─── Vérification après application (éditeur SQL) ───────────────────────────
---   1) Corps — attendu t, t, t :
---   SELECT position('v_beneficiaire' in prosrc) > 0 AS paiement_beneficiaire, position('organization_id = v_org' in prosrc) > 0 AS paiement_avoirs FROM pg_proc WHERE proname = 'get_facture_for_payment'
---   UNION ALL SELECT position('COALESCE(en.organization_id = v_org, false) DESC' in prosrc) > 0, true FROM pg_proc WHERE proname = 'get_devis_for_signature';
---   2) Droits inchangés — attendu t, t (pages publiques) :
+--   1) Corps — attendu t, t puis t :
+--   SELECT position('v_beneficiaire' in prosrc) > 0 AS paiement_beneficiaire, position('organization_id = v_org' in prosrc) > 0 AS paiement_avoirs FROM pg_proc WHERE proname = 'get_facture_for_payment';
+--   SELECT position('COALESCE(en.organization_id = v_org, false) DESC' in prosrc) > 0 AS signature_fiche FROM pg_proc WHERE proname = 'get_devis_for_signature';
+--   2) Pages toujours publiques — attendu t, t :
 --   SELECT has_function_privilege('anon', 'public.get_facture_for_payment(text)', 'execute'), has_function_privilege('anon', 'public.get_devis_for_signature(uuid)', 'execute');
---   3) Rien ne change pour un artisan seul — attendu 0 : factures dont la fiche affichée changerait, hors organisations
---      à plusieurs membres (à lancer avant ET après, en comparant) :
---   SELECT count(*) FROM public.devis d WHERE d.type = 'facture' AND d.payment_token IS NOT NULL AND (SELECT count(*) FROM public.organization_members m WHERE m.organization_id = d.organization_id) > 1;
+--   3) stripe_config — attendu une seule ligne, « Users manage own stripe_config » :
+--   SELECT policyname FROM pg_policies WHERE schemaname = 'public' AND tablename = 'stripe_config';
+--   4) Chaque facture payable montre la fiche de son entreprise — attendu : pour chacune, le nom de l'entreprise :
+--   SELECT d.numero, public.get_facture_for_payment(d.payment_token) -> 'entreprise' ->> 'nom' AS fiche_affichee FROM public.devis d WHERE d.type = 'facture' AND d.payment_token IS NOT NULL ORDER BY d.created_at DESC LIMIT 10;
 -- ============================================================
 
 -- Idempotente : CREATE OR REPLACE ; les droits (exécution par un visiteur, 092) sont conservés.
@@ -315,3 +322,13 @@ BEGIN
   );
 END;
 $function$;
+
+-- 3. Configuration Stripe : chacun la sienne (le paiement par carte d'une facture suit celle du propriétaire, 1)
+DO $$
+BEGIN
+  IF to_regclass('public.stripe_config') IS NULL THEN RETURN; END IF;
+  DROP POLICY IF EXISTS "Org members can view stripe_config" ON public.stripe_config;
+  DROP POLICY IF EXISTS "Org members can insert stripe_config" ON public.stripe_config;
+  DROP POLICY IF EXISTS "Org members can update stripe_config" ON public.stripe_config;
+  DROP POLICY IF EXISTS "Org admins can delete stripe_config" ON public.stripe_config;
+END $$;

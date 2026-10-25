@@ -49,6 +49,12 @@ export function choisirFicheEntreprise<F extends FicheCandidate>(
     const ra = rang(a);
     const rb = rang(b);
     for (let i = 0; i < ra.length; i++) if (ra[i] !== rb[i]) return ra[i] - rb[i];
-    return String(a.created_at ?? '').localeCompare(String(b.created_at ?? ''));
+    // La plus ancienne ; sans date de création, en dernier (comme NULLS LAST en SQL)
+    const da = a.created_at ?? null;
+    const db = b.created_at ?? null;
+    if (da === db) return 0;
+    if (da === null) return 1;
+    if (db === null) return -1;
+    return da < db ? -1 : 1;
   })[0] ?? null;
 }

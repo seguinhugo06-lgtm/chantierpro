@@ -98,7 +98,8 @@ function limiteJour(): number {
  * L'entreprise du devis, comme les pages publiques (migration 106, _shared/ficheEntreprise.ts) : une fiche de son
  * organisation si son auteur en est membre (celle qu'il désigne d'abord), sinon une fiche de l'auteur. Avant, la
  * fiche personnelle d'un salarié passait devant celle de l'entreprise. Nom tel qu'imprimé (« EI » d'un entrepreneur
- * individuel, C. com. R526-27), coordonnées, adresse de réponse.
+ * individuel, C. com. R526-27), coordonnées, adresse de réponse. Une lecture en échec lève une erreur : mieux vaut ne
+ * rien envoyer (l'appelant rend sa réservation, le passage suivant réessaie) qu'un e-mail au nom d'une autre société.
  */
 // deno-lint-ignore no-explicit-any
 async function ficheEntreprise(supabase: any, devis: Piece) {
@@ -106,7 +107,7 @@ async function ficheEntreprise(supabase: any, devis: Piece) {
   if (devis.organization_id) {
     const { data: lignes, error: errMembres } = await supabase
       .from('organization_members').select('user_id').eq('organization_id', devis.organization_id);
-    if (errMembres) console.error('[notify-signature] Lecture des membres :', errMembres.message);
+    if (errMembres) throw new Error(`lecture des membres : ${errMembres.message}`);
     membres = (lignes || []).map((l: { user_id: string }) => l.user_id);
   }
   const org = organisationSure(devis, membres);
@@ -116,7 +117,7 @@ async function ficheEntreprise(supabase: any, devis: Piece) {
   const { data: fiches, error: errFiches } = await (org
     ? requete.or(`user_id.eq.${devis.user_id},organization_id.eq.${org}`)
     : requete.eq('user_id', devis.user_id));
-  if (errFiches) console.error('[notify-signature] Lecture des fiches entreprise :', errFiches.message);
+  if (errFiches) throw new Error(`lecture des fiches entreprise : ${errFiches.message}`);
   // deno-lint-ignore no-explicit-any
   const fiche: any = choisirFicheEntreprise(fiches || [], devis, membres) || {};
   const nomEntrepreneur = fiche.settings_json?.reglages?.nomEntrepreneur || null;
@@ -162,7 +163,14 @@ async function traiterExemplaire(supabase: any, token: string, pdf: unknown): Pr
     : { data: null };
   const duCompte = client && (client.user_id === devis.user_id || (devis.organization_id && client.organization_id === devis.organization_id));
   if (!duCompte) return json({ error: 'client introuvable' }, 404);
-  const fiche = await ficheEntreprise(supabase, devis);
+  // deno-lint-ignore no-explicit-any
+  let fiche: any;
+  try {
+    fiche = await ficheEntreprise(supabase, devis);
+  } catch (e) {
+    console.error('[notify-signature] Exemplaire non envoyé :', (e as Error).message);
+    return json({ error: 'exemplaire non envoyé' }, 500);
+  }
   // Particulier signé en ligne (éligibilité figée à la signature, 086) : le lien de la page où il peut renoncer
   const enLigne = devis.retractation_en_ligne === true;
   const message = messageExemplaire({
@@ -341,7 +349,15 @@ async function traiterRetractation(supabase: any, token: string): Promise<Respon
   if (!reserve || reserve.length === 0) return json({ success: true, deja: true });
   const rendre = () => supabase.from('devis').update({ retractation_accuse_le: null }).eq('id', devis.id);
 
-  const fiche = await ficheEntreprise(supabase, devis);
+  // deno-lint-ignore no-explicit-any
+  let fiche: any;
+  try {
+    fiche = await ficheEntreprise(supabase, devis);
+  } catch (e) {
+    const { error: errRendre } = await rendre();
+    console.error(`[notify-signature] Accusé non envoyé devis=${devis.id} : ${(e as Error).message}${errRendre ? ` ; RÉSERVATION GARDÉE : ${errRendre.message}` : ''}`);
+    return json({ error: 'accusé non envoyé' }, 500);
+  }
 
   const echec = async (statut: number, message: string) => {
     const { error: errRendre } = await rendre();
