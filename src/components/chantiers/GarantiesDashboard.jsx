@@ -5,7 +5,7 @@
  * Sorted by expiration date ascending (soonest first).
  */
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Shield,
   Calendar,
@@ -13,8 +13,6 @@ import {
   Search,
   ChevronRight,
   AlertTriangle,
-  Clock,
-  CheckCircle,
   Building2,
   Loader2,
   X,
@@ -28,10 +26,10 @@ import { dateLue } from '../../lib/dates';
 // ── Status badge config ────────────────────────────────────────────────────────
 
 const STATUS_BADGES = {
-  active: { label: 'Active', icon: '🟢', color: 'text-green-700 bg-green-50 border-green-200' },
-  expireSoon: { label: 'Expire bientot', icon: '🟠', color: 'text-orange-700 bg-orange-50 border-orange-200' },
-  expiree: { label: 'Expiree', icon: '🔴', color: 'text-red-700 bg-red-50 border-red-200' },
-  litige: { label: 'En litige', icon: '⚖️', color: 'text-purple-700 bg-purple-50 border-purple-200' },
+  active: { label: 'Active', icon: '🟢', color: 'text-succes-texte bg-succes-fond border-transparent' },
+  expireSoon: { label: 'Expire bientot', icon: '🟠', color: 'text-alerte-texte bg-alerte-fond border-transparent' },
+  expiree: { label: 'Expiree', icon: '🔴', color: 'text-danger-texte bg-danger-fond border-transparent' },
+  litige: { label: 'En litige', icon: '⚖️', color: 'text-neutre-texte bg-neutre-fond border-transparent' },
 };
 
 function getWarrantyStatus(garantie) {
@@ -45,17 +43,14 @@ function getWarrantyStatus(garantie) {
 
 // ── KPI Card ────────────────────────────────────────────────────────────────────
 
-function KPICard({ label, value, dot, alert, isDark }) {
+function KPICard({ label, value, dot, alert }) {
   const isAlert = alert && value > 0;
 
   return (
     <div
       className={`
-        rounded-2xl border p-4 transition-all
-        ${isDark
-          ? `bg-slate-800 border-slate-700 ${isAlert ? 'border-orange-500/50 shadow-orange-500/10 shadow-lg' : ''}`
-          : `bg-white border-slate-200 ${isAlert ? 'border-orange-400 shadow-orange-100 shadow-lg' : ''}`
-        }
+        rounded-2xl border p-4 transition-all bg-surface
+        ${isAlert ? 'border-alerte-point shadow-e2' : 'border-bord'}
       `}
     >
       <div className="flex items-center gap-2 mb-1">
@@ -79,12 +74,10 @@ function KPICard({ label, value, dot, alert, isDark }) {
 
 // ── Warranty Card ───────────────────────────────────────────────────────────────
 
-function WarrantyCard({ garantie, isDark, couleur, onViewDetail }) {
+function WarrantyCard({ garantie, onViewDetail }) {
   const status = getWarrantyStatus(garantie);
   const badge = STATUS_BADGES[status];
   const typeInfo = GARANTIE_TYPES[garantie.typeGarantie];
-  const progress = getGarantieProgress(garantie);
-
   // Count interventions (if available)
   const interventionCount = garantie.interventions?.length || 0;
 
@@ -106,7 +99,7 @@ function WarrantyCard({ garantie, isDark, couleur, onViewDetail }) {
             {typeInfo?.label || garantie.typeGarantie}
           </span>
         </div>
-        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium border ${badge.color}`}>
+        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${badge.color}`}>
           {badge.icon} {badge.label}
         </span>
       </div>
@@ -118,7 +111,6 @@ function WarrantyCard({ garantie, isDark, couleur, onViewDetail }) {
           dateFin={garantie.dateFin}
           statut={garantie.statut}
           size="compact"
-          isDark={isDark}
         />
       </div>
 
@@ -131,15 +123,14 @@ function WarrantyCard({ garantie, isDark, couleur, onViewDetail }) {
               {interventionCount} intervention{interventionCount > 1 ? 's' : ''}
             </span>
           )}
-          <span className={`text-[11px] text-encre-3`}>
+          <span className={`text-xs text-encre-3`}>
             {typeInfo?.duration}
           </span>
         </div>
         {onViewDetail && (
           <button
             onClick={() => onViewDetail(garantie)}
-            className="inline-flex items-center gap-0.5 text-xs font-medium transition-colors"
-            style={{ color: couleur || '#3b82f6' }}
+            className="inline-flex items-center gap-0.5 text-xs font-medium transition-colors text-accent-texte"
           >
             Voir detail
             <ChevronRight className="w-3 h-3" />
@@ -152,7 +143,7 @@ function WarrantyCard({ garantie, isDark, couleur, onViewDetail }) {
 
 // ── Chantier Group ──────────────────────────────────────────────────────────────
 
-function ChantierGroup({ chantierNom, receptionDate, garanties, isDark, couleur, onViewDetail }) {
+function ChantierGroup({ chantierNom, receptionDate, garanties, onViewDetail }) {
   return (
     <div className={`rounded-2xl border overflow-hidden bg-fond border-bord`}>
       {/* Chantier Header */}
@@ -179,8 +170,6 @@ function ChantierGroup({ chantierNom, receptionDate, garanties, isDark, couleur,
           <WarrantyCard
             key={g.id}
             garantie={g}
-            isDark={isDark}
-            couleur={couleur}
             onViewDetail={onViewDetail}
           />
         ))}
@@ -191,7 +180,7 @@ function ChantierGroup({ chantierNom, receptionDate, garanties, isDark, couleur,
 
 // ── Empty State ─────────────────────────────────────────────────────────────────
 
-function EmptyState({ isDark }) {
+function EmptyState() {
   return (
     <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
       <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-4 bg-surface-2`}>
@@ -211,7 +200,7 @@ function EmptyState({ isDark }) {
 
 // ── Main Dashboard ──────────────────────────────────────────────────────────────
 
-export default function GarantiesDashboard({ isDark = false, couleur, showToast, user: userProp, chantiers = [] }) {
+export default function GarantiesDashboard({ isDark = false, couleur: _couleur, showToast, user: userProp, chantiers: _chantiers = [] }) {
   const [stats, setStats] = useState(null);
   const [garanties, setGaranties] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -347,7 +336,7 @@ export default function GarantiesDashboard({ isDark = false, couleur, showToast,
         {/* ── Header ──────────────────────────────────────────────────────────── */}
         <div>
           <h1 className={`text-2xl font-bold flex items-center gap-2 ${textPrimary}`}>
-            <Shield className="w-7 h-7" style={{ color: couleur || '#3b82f6' }} />
+            <Shield className="w-7 h-7 text-accent-texte" />
             Garanties
           </h1>
           <p className={`text-sm mt-1 ${textSecondary}`}>
@@ -399,7 +388,7 @@ export default function GarantiesDashboard({ isDark = false, couleur, showToast,
             <select
               value={filters.type}
               onChange={(e) => handleFilterChange('type', e.target.value)}
-              className={`rounded-lg border px-3 py-1.5 text-sm ${bgInput} focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none`}
+              className={`rounded-lg border px-3 py-1.5 text-sm ${bgInput} focus:ring-2 focus:ring-accent/40 focus:border-accent outline-none`}
             >
               <option value="">Toutes les types</option>
               <option value="parfait_achevement">Parfait achèvement</option>
@@ -411,7 +400,7 @@ export default function GarantiesDashboard({ isDark = false, couleur, showToast,
             <select
               value={filters.statut}
               onChange={(e) => handleFilterChange('statut', e.target.value)}
-              className={`rounded-lg border px-3 py-1.5 text-sm ${bgInput} focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none`}
+              className={`rounded-lg border px-3 py-1.5 text-sm ${bgInput} focus:ring-2 focus:ring-accent/40 focus:border-accent outline-none`}
             >
               <option value="">Tous les statuts</option>
               <option value="active">Actives</option>
@@ -427,7 +416,7 @@ export default function GarantiesDashboard({ isDark = false, couleur, showToast,
                 placeholder="Rechercher un chantier..."
                 value={filters.search}
                 onChange={(e) => handleFilterChange('search', e.target.value)}
-                className={`w-full rounded-lg border pl-9 pr-3 py-1.5 text-sm ${bgInput} focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none`}
+                className={`w-full rounded-lg border pl-9 pr-3 py-1.5 text-sm ${bgInput} focus:ring-2 focus:ring-accent/40 focus:border-accent outline-none`}
               />
             </div>
 
@@ -435,11 +424,7 @@ export default function GarantiesDashboard({ isDark = false, couleur, showToast,
             {hasActiveFilters && (
               <button
                 onClick={clearFilters}
-                className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                  isDark
-                    ? 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                }`}
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors bg-surface-2 text-encre-2 hover:bg-bord"
               >
                 <X className="w-3 h-3" />
                 Effacer
@@ -451,10 +436,10 @@ export default function GarantiesDashboard({ isDark = false, couleur, showToast,
         {/* ── Warranty List ───────────────────────────────────────────────────── */}
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <Loader2 className="w-8 h-8 animate-spin" style={{ color: couleur || '#3b82f6' }} />
+            <Loader2 className="w-8 h-8 animate-spin text-accent-texte" />
           </div>
         ) : groupedByChantier.length === 0 ? (
-          <EmptyState isDark={isDark} />
+          <EmptyState />
         ) : (
           <div className="space-y-4">
             {groupedByChantier.map((group) => (
@@ -463,8 +448,6 @@ export default function GarantiesDashboard({ isDark = false, couleur, showToast,
                 chantierNom={group.chantierNom}
                 receptionDate={group.receptionDate}
                 garanties={group.garanties}
-                isDark={isDark}
-                couleur={couleur}
                 onViewDetail={(g) => {
                   // Can be extended with navigation to detail page
                   if (showToast) showToast(`Detail: ${GARANTIE_TYPES[g.typeGarantie]?.label || g.typeGarantie}`, 'info');

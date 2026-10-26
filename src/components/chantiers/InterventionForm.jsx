@@ -26,7 +26,7 @@ const InterventionForm = memo(function InterventionForm({
   onSubmit,
   onClose,
   isDark = false,
-  couleur = '#f97316',
+  couleur: _couleur,
 }) {
   const today = jourLocal();
 
@@ -39,9 +39,7 @@ const InterventionForm = memo(function InterventionForm({
 
   const textPrimary = 'text-encre';
   const textMuted = 'text-encre-3';
-  const inputBg = isDark
-    ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400'
-    : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400';
+  const inputBg = 'bg-surface border-bord-fort text-encre placeholder:text-encre-3';
   const cardBg = 'bg-surface';
   const overlayBg = 'bg-black/50';
 
@@ -128,10 +126,10 @@ const InterventionForm = memo(function InterventionForm({
         <div className="flex-1 overflow-y-auto p-5 space-y-5">
           {/* Garantie concernee */}
           {garantieInfo && (
-            <div className={`p-3 rounded-xl ${isDark ? 'bg-slate-700 border border-slate-600' : 'bg-blue-50 border border-blue-200'}`}>
+            <div className="p-3 rounded-xl bg-info-fond">
               <div className="flex items-center gap-2 mb-1">
-                <AlertCircle size={14} className={isDark ? 'text-blue-400' : 'text-blue-600'} />
-                <span className={`text-xs font-semibold ${isDark ? 'text-blue-300' : 'text-blue-700'}`}>
+                <AlertCircle size={14} className="text-info-texte" />
+                <span className="text-xs font-semibold text-info-texte">
                   Garantie concernee
                 </span>
               </div>
@@ -209,11 +207,7 @@ const InterventionForm = memo(function InterventionForm({
               Photos
             </label>
             <div
-              className={`relative border-2 border-dashed rounded-xl p-4 text-center transition-colors ${
-                isDark
-                  ? 'border-slate-600 hover:border-slate-500'
-                  : 'border-gray-300 hover:border-gray-400'
-              }`}
+              className="relative border-2 border-dashed rounded-xl p-4 text-center transition-colors border-bord-fort hover:border-encre-3"
             >
               <Camera size={20} className={`mx-auto mb-1 ${textMuted}`} />
               <p className={`text-xs ${textMuted}`}>Cliquez ou glissez vos photos ici</p>
@@ -238,7 +232,7 @@ const InterventionForm = memo(function InterventionForm({
                     <button
                       type="button"
                       onClick={() => removePhoto(idx)}
-                      className={`p-0.5 rounded ${isDark ? 'hover:bg-slate-600' : 'hover:bg-gray-200'}`}
+                      className="p-0.5 rounded hover:bg-surface-2"
                     >
                       <X size={12} />
                     </button>

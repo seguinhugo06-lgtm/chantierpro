@@ -26,17 +26,17 @@ import { dateLue } from '../../lib/dates';
 // ── Intervention status badges ────────────────────────────────────────────────
 
 const STATUT_INTERVENTION = {
-  signale: { label: 'Signale', color: 'bg-red-100 text-red-700', darkColor: 'bg-red-900/50 text-red-300', icon: AlertTriangle },
-  planifie: { label: 'Planifie', color: 'bg-blue-100 text-blue-700', darkColor: 'bg-blue-900/50 text-blue-300', icon: Calendar },
-  en_cours: { label: 'En cours', color: 'bg-orange-100 text-orange-700', darkColor: 'bg-orange-900/50 text-orange-300', icon: Clock },
-  cloture: { label: 'Cloture', color: 'bg-green-100 text-green-700', darkColor: 'bg-green-900/50 text-green-300', icon: CheckCircle },
-  refuse: { label: 'Refuse', color: 'bg-slate-100 text-slate-600', darkColor: 'bg-slate-700 text-slate-400', icon: XCircle },
+  signale: { label: 'Signale', color: 'bg-danger-fond text-danger-texte', icon: AlertTriangle },
+  planifie: { label: 'Planifie', color: 'bg-info-fond text-info-texte', icon: Calendar },
+  en_cours: { label: 'En cours', color: 'bg-alerte-fond text-alerte-texte', icon: Clock },
+  cloture: { label: 'Cloture', color: 'bg-succes-fond text-succes-texte', icon: CheckCircle },
+  refuse: { label: 'Refuse', color: 'bg-neutre-fond text-neutre-texte', icon: XCircle },
 };
 
 const PRISE_EN_CHARGE = {
-  garantie: { label: 'Sous garantie', color: 'bg-green-100 text-green-700', darkColor: 'bg-green-900/50 text-green-300' },
-  hors_garantie: { label: 'Hors garantie', color: 'bg-red-100 text-red-700', darkColor: 'bg-red-900/50 text-red-300' },
-  en_attente: { label: 'En attente', color: 'bg-slate-100 text-slate-600', darkColor: 'bg-slate-700 text-slate-400' },
+  garantie: { label: 'Sous garantie', color: 'bg-succes-fond text-succes-texte' },
+  hors_garantie: { label: 'Hors garantie', color: 'bg-danger-fond text-danger-texte' },
+  en_attente: { label: 'En attente', color: 'bg-neutre-fond text-neutre-texte' },
 };
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -57,17 +57,17 @@ function getGarantieStatut(garantie) {
 }
 
 const STATUT_BADGE = {
-  active: { label: 'Active', emoji: '\ud83d\udfe2', color: 'bg-green-100 text-green-700', darkColor: 'bg-green-900/50 text-green-300' },
-  expire_bientot: { label: 'Expire bientot', emoji: '\ud83d\udfe0', color: 'bg-orange-100 text-orange-700', darkColor: 'bg-orange-900/50 text-orange-300' },
-  expiree: { label: 'Expiree', emoji: '\ud83d\udd34', color: 'bg-red-100 text-red-700', darkColor: 'bg-red-900/50 text-red-300' },
+  active: { label: 'Active', emoji: '\ud83d\udfe2', color: 'bg-succes-fond text-succes-texte' },
+  expire_bientot: { label: 'Expire bientot', emoji: '\ud83d\udfe0', color: 'bg-alerte-fond text-alerte-texte' },
+  expiree: { label: 'Expiree', emoji: '\ud83d\udd34', color: 'bg-danger-fond text-danger-texte' },
 };
 
 // ── Reception type display ────────────────────────────────────────────────────
 
 const RECEPTION_TYPE_CONFIG = {
-  sans_reserve: { label: 'Sans reserve', icon: '\u2705', color: 'text-green-600' },
-  avec_reserves: { label: 'Avec reserves', icon: '\u26a0\ufe0f', color: 'text-orange-500' },
-  refusee: { label: 'Refusee', icon: '\u274c', color: 'text-red-500' },
+  sans_reserve: { label: 'Sans reserve', icon: '\u2705', color: 'text-succes-texte' },
+  avec_reserves: { label: 'Avec reserves', icon: '\u26a0\ufe0f', color: 'text-alerte-texte' },
+  refusee: { label: 'Refusee', icon: '\u274c', color: 'text-danger-texte' },
 };
 
 // ── Main component ────────────────────────────────────────────────────────────
@@ -82,7 +82,7 @@ const ChantierGarantiesTab = memo(function ChantierGarantiesTab({
   onUpdateReserve,
   onLeverToutesReserves,
   isDark = false,
-  couleur = '#f97316',
+  couleur,
   modeDiscret = false,
 }) {
   const textPrimary = 'text-encre';
@@ -286,13 +286,10 @@ function ReceptionSection({
 
 // ── Empty Reception State ─────────────────────────────────────────────────────
 
-function EmptyReceptionState({ onReceptionner, isDark, couleur, textPrimary, textMuted, cardBg }) {
+function EmptyReceptionState({ onReceptionner, isDark: _isDark, couleur: _couleur, textPrimary, textMuted, cardBg }) {
   return (
     <div className={`p-8 text-center rounded-xl border ${cardBg}`}>
-      <div
-        className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4"
-        style={{ background: `${couleur}15` }}
-      >
+      <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4 bg-accent/10">
         <FileText size={28} className="text-accent-texte" />
       </div>
       <h3 className={`text-base font-semibold mb-1 ${textPrimary}`}>
@@ -346,7 +343,7 @@ function GarantieCard({
             {typeMeta.label} ({typeMeta.duration})
           </h4>
           <span
-            className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${isDark ? badge.darkColor : badge.color}`}
+            className={`text-xs px-2 py-0.5 rounded-full font-medium ${badge.color}`}
           >
             {badge.emoji} {badge.label}
           </span>
@@ -441,13 +438,13 @@ function InterventionRow({
                 : (intervention.titre || intervention.typeDesordre || 'Intervention')}
             </span>
             <span
-              className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isDark ? statutConfig.darkColor : statutConfig.color}`}
+              className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${statutConfig.color}`}
             >
               {statutConfig.label}
             </span>
             {priseConfig && (
               <span
-                className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isDark ? priseConfig.darkColor : priseConfig.color}`}
+                className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${priseConfig.color}`}
               >
                 {priseConfig.label}
               </span>

@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useRef } from 'react';
-import { ChevronLeft, ChevronRight, Calendar, Plus, Edit2, Trash2, X, Check, Users, Building2, Clock, AlertTriangle, GripVertical } from 'lucide-react';
+import { useState, useMemo, useRef } from 'react';
+import { ChevronLeft, ChevronRight, Plus, Trash2, X, Check, Users, Building2 } from 'lucide-react';
 import { useConfirm } from '../context/AppContext';
 import { generateId } from '../lib/utils';
 import { jourLocal } from '../lib/dates';
@@ -13,9 +13,9 @@ export default function GanttView({
   equipe = [],
   taches = [],
   setTaches,
-  onUpdateChantier,
-  isDark = false,
-  couleur = '#f97316'
+  onUpdateChantier: _onUpdateChantier,
+  isDark: _isDark = false,
+  couleur: _couleur,
 }) {
   const { confirm } = useConfirm();
 
@@ -23,7 +23,7 @@ export default function GanttView({
   const [currentDate, setCurrentDate] = useState(new Date());
   const [showAddTask, setShowAddTask] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
-  const [draggedTask, setDraggedTask] = useState(null);
+
   const containerRef = useRef(null);
   const [form, setForm] = useState({
     nom: '',
@@ -33,7 +33,6 @@ export default function GanttView({
     duree: 1,
     assignes: [],
     statut: 'planifie', // planifie, en_cours, termine
-    couleur: couleur,
     notes: ''
   });
 
@@ -158,8 +157,6 @@ export default function GanttView({
     return {
       left: startOffset * cellWidth,
       width: Math.max(duration * cellWidth - 4, 20),
-      background: task.couleur || couleur,
-      opacity: task.statut === 'termine' ? 0.6 : 1
     };
   };
 
@@ -200,7 +197,6 @@ export default function GanttView({
       duree: 1,
       assignes: [],
       statut: 'planifie',
-      couleur: couleur,
       notes: ''
     });
     setShowAddTask(false);
@@ -220,12 +216,14 @@ export default function GanttView({
     setShowAddTask(true);
   };
 
-  // Task status colors
-  const statusColors = {
-    planifie: { bg: 'bg-blue-100', text: 'text-blue-700' },
-    en_cours: { bg: 'bg-amber-100', text: 'text-amber-700' },
-    termine: { bg: 'bg-emerald-100', text: 'text-emerald-700' }
+  // Un statut = un ton (src/lib/statuts.js) : la barre d'une tâche et la légende disent la même chose
+  const barreStatut = {
+    planifie: 'bg-neutre-fond text-neutre-texte border-neutre-point',
+    en_cours: 'bg-info-fond text-info-texte border-info-point',
+    termine: 'bg-succes-fond text-succes-texte border-succes-point',
   };
+  const pointStatut = { planifie: 'bg-neutre-point', en_cours: 'bg-info-point', termine: 'bg-succes-point' };
+  const libelleStatut = { planifie: 'Planifié', en_cours: 'En cours', termine: 'Terminé' };
 
   // Render header with dates
   const cellWidth = viewMode === 'week' ? 60 : 30;
@@ -242,12 +240,12 @@ export default function GanttView({
               <button
                 key={mode}
                 onClick={() => setViewMode(mode)}
-                className={`px-3 py-1.5 text-sm font-medium ${
+                aria-pressed={viewMode === mode}
+                className={`px-3 py-1.5 min-h-[44px] sm:min-h-0 text-sm font-medium ${
                   viewMode === mode
-                    ? 'text-white'
+                    ? 'bg-accent text-sur-accent'
                     : 'bg-surface text-encre-2'
                 }`}
-                style={viewMode === mode ? { background: couleur } : {}}
               >
                 {mode === 'week' ? 'Semaine' : 'Mois'}
               </button>
@@ -276,7 +274,7 @@ export default function GanttView({
             className="px-4 py-2 rounded-xl font-medium flex items-center gap-2 bg-accent text-sur-accent"
           >
             <Plus size={18} />
-            Tache
+            Tâche
           </button>
         </div>
       </div>
@@ -334,7 +332,7 @@ export default function GanttView({
                         <span className={`font-medium truncate ${textPrimary}`}>{chantier.nom}</span>
                       </div>
                       <p className={`text-xs ${textMuted} mt-1`}>
-                        {chantier.avancement || 0}% complete
+                        {chantier.avancement || 0} % d'avancement
                       </p>
                     </div>
                     <div className={`relative flex-1 h-16 ${gridBg}`}>
@@ -360,11 +358,8 @@ export default function GanttView({
                         if (!barStyle) return null;
                         return (
                           <div
-                            className="absolute top-2 h-4 rounded-full opacity-30"
-                            style={{
-                              ...barStyle,
-                              background: couleur
-                            }}
+                            className="absolute top-2 h-4 rounded-full opacity-30 bg-accent"
+                            style={barStyle}
                           />
                         );
                       })()}
@@ -380,7 +375,7 @@ export default function GanttView({
                       <div key={task.id} className="flex">
                         <div className={`w-[200px] flex-shrink-0 px-4 py-2 pl-8 border-r border-bord`}>
                           <div className="flex items-center gap-2">
-                            <div className="w-2 h-2 rounded-full" style={{ background: task.couleur || couleur }} />
+                            <div className={`w-2 h-2 rounded-full ${pointStatut[task.statut] || pointStatut.planifie}`} />
                             <span className={`text-sm truncate ${textSecondary}`}>{task.nom}</span>
                           </div>
                         </div>
@@ -400,11 +395,11 @@ export default function GanttView({
 
                           {/* Task bar */}
                           <div
-                            className="absolute top-1.5 h-7 rounded-md flex items-center px-2 cursor-pointer hover:opacity-80 transition-opacity shadow-sm"
+                            className={`absolute top-1.5 h-7 rounded-md border flex items-center px-2 cursor-pointer hover:opacity-80 transition-opacity shadow-sm ${barreStatut[task.statut] || barreStatut.planifie}`}
                             style={style}
                             onClick={() => openEdit(task)}
                           >
-                            <span className="text-xs text-white truncate font-medium">
+                            <span className="text-xs truncate font-medium">
                               {task.nom}
                             </span>
                           </div>
@@ -421,12 +416,10 @@ export default function GanttView({
 
       {/* Legend */}
       <div className="flex flex-wrap gap-4 justify-center">
-        {Object.entries(statusColors).map(([status, colors]) => (
+        {Object.entries(barreStatut).map(([status, classes]) => (
           <div key={status} className="flex items-center gap-2">
-            <div className={`w-4 h-4 rounded ${colors.bg}`} />
-            <span className={`text-sm ${textSecondary}`}>
-              {status === 'planifie' ? 'Planifie' : status === 'en_cours' ? 'En cours' : 'Termine'}
-            </span>
+            <div className={`w-4 h-4 rounded border ${classes}`} />
+            <span className={`text-sm ${textSecondary}`}>{libelleStatut[status]}</span>
           </div>
         ))}
       </div>
@@ -437,7 +430,7 @@ export default function GanttView({
           <div className={`bg-surface rounded-2xl w-full max-w-lg p-6`}>
             <div className="flex items-center justify-between mb-6">
               <h2 className={`text-lg font-bold ${textPrimary}`}>
-                {editingTask ? 'Modifier la tache' : 'Nouvelle tache'}
+                {editingTask ? 'Modifier la tâche' : 'Nouvelle tâche'}
               </h2>
               <button onClick={resetForm} className={`p-2 rounded-lg ${hoverBg}`}>
                 <X size={20} className={textSecondary} />
@@ -463,7 +456,7 @@ export default function GanttView({
                   onChange={e => setForm(p => ({ ...p, chantierId: e.target.value }))}
                   className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`}
                 >
-                  <option value="">Selectionner un chantier</option>
+                  <option value="">Sélectionner un chantier</option>
                   {chantiers.filter(c => c.statut === 'en_cours' || c.statut === 'planifie').map(c => (
                     <option key={c.id} value={c.id}>{c.nom}</option>
                   ))}
@@ -472,7 +465,7 @@ export default function GanttView({
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Date de debut</label>
+                  <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Date de début</label>
                   <input
                     type="date"
                     value={form.debut}
@@ -481,7 +474,7 @@ export default function GanttView({
                   />
                 </div>
                 <div>
-                  <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Duree (jours)</label>
+                  <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Durée (jours)</label>
                   <input
                     type="number"
                     min="1"
@@ -499,29 +492,16 @@ export default function GanttView({
                   onChange={e => setForm(p => ({ ...p, statut: e.target.value }))}
                   className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`}
                 >
-                  <option value="planifie">Planifie</option>
+                  <option value="planifie">Planifié</option>
                   <option value="en_cours">En cours</option>
-                  <option value="termine">Termine</option>
+                  <option value="termine">Terminé</option>
                 </select>
               </div>
 
-              <div>
-                <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Couleur</label>
-                <div className="flex gap-2">
-                  {['#f97316', '#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899'].map(color => (
-                    <button
-                      key={color}
-                      onClick={() => setForm(p => ({ ...p, couleur: color }))}
-                      className={`w-8 h-8 rounded-lg ${form.couleur === color ? 'ring-2 ring-offset-2' : ''}`}
-                      style={{ background: color, ringColor: color }}
-                    />
-                  ))}
-                </div>
-              </div>
 
               {equipe.length > 0 && (
                 <div>
-                  <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Assigner a</label>
+                  <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Assigner à</label>
                   <div className="flex flex-wrap gap-2">
                     {equipe.map(e => (
                       <button
@@ -534,12 +514,12 @@ export default function GanttView({
                               : [...p.assignes, e.id]
                           }));
                         }}
-                        className={`px-3 py-1.5 rounded-full text-sm flex items-center gap-2 ${
+                        aria-pressed={form.assignes.includes(e.id)}
+                        className={`px-3 py-1.5 min-h-[44px] rounded-full text-sm flex items-center gap-2 ${
                           form.assignes.includes(e.id)
-                            ? 'text-white'
+                            ? 'bg-accent text-sur-accent'
                             : 'bg-surface-2 text-encre-2'
                         }`}
-                        style={form.assignes.includes(e.id) ? { background: couleur } : {}}
                       >
                         <Users size={14} />
                         {e.prenom}
@@ -565,7 +545,8 @@ export default function GanttView({
               {editingTask && (
                 <button
                   onClick={() => handleDelete(editingTask.id)}
-                  className={`px-4 py-2.5 rounded-xl ${isDark ? 'bg-red-900/30 text-red-400' : 'bg-red-100 text-red-600'}`}
+                  aria-label="Supprimer la tâche"
+                  className="px-4 py-2.5 rounded-xl bg-danger-fond text-danger-texte"
                 >
                   <Trash2 size={18} />
                 </button>

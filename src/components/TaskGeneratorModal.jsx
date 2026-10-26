@@ -1,6 +1,8 @@
 import { useState } from 'react';
-import { X, Check, Sparkles, ChevronRight, Building2, Droplets, Zap, Paintbrush, LayoutGrid, Landmark, DoorOpen, Thermometer, Home, Layers, Wrench, CheckSquare, AlertCircle } from 'lucide-react';
-import { PHASES, TASKS_BY_METIER, TASKS_BY_PROJECT_TYPE, COMMON_TASKS, getAllTasksByPhase, generateSmartTasks } from '../lib/templates/task-templates-v2';
+import { Check, Sparkles, ChevronRight, Building2, Droplets, Zap, Paintbrush, LayoutGrid, Landmark, DoorOpen, Thermometer, Home, Layers, Wrench, CheckSquare, AlertCircle } from 'lucide-react';
+import Modal, { ModalHeader, ModalTitle, ModalDescription, ModalBody, ModalFooter } from './ui/Modal';
+import { Bouton } from './ui/Bouton';
+import { PHASES, TASKS_BY_METIER, TASKS_BY_PROJECT_TYPE, getAllTasksByPhase, generateSmartTasks } from '../lib/templates/task-templates-v2';
 import { generateId } from '../lib/utils';
 
 // Icons mapping
@@ -27,6 +29,13 @@ const PROJECT_ICONS = {
   'plomberie': Droplets
 };
 
+const CARTE_CHOIX = 'flex items-center gap-3 p-3 min-h-[56px] rounded-xl text-left transition-colors bg-surface border border-bord hover:bg-surface-2';
+
+/**
+ * « Générer les tâches » d'un chantier : on choisit un type de chantier (ou un métier), puis on coche les tâches à garder.
+ * Passée sur ui/Modal le 25 oct. 2026 (audit UX du 20 oct. : fenêtre faite main sans rôle « dialogue » ni nom sur la croix) et
+ * sur les jetons : l'icône n'est plus à la couleur de l'entreprise, la sélection est à l'accent.
+ */
 export default function TaskGeneratorModal({
   isOpen,
   onClose,
@@ -34,19 +43,16 @@ export default function TaskGeneratorModal({
   existingTasks = [],
   entrepriseMetier = null,
   devisLignes = null,
-  isDark = false,
-  couleur = '#f97316'
+  isDark: _isDark = false,
+  couleur: _couleur,
 }) {
   const [step, setStep] = useState(1); // 1: Choose type, 2: Select tasks
   const [selectedProjectType, setSelectedProjectType] = useState(null);
   const [selectedTasks, setSelectedTasks] = useState([]);
   const [expandedPhase, setExpandedPhase] = useState(null);
 
-  // Theme classes
-  const cardBg = 'bg-surface';
   const textPrimary = 'text-encre';
   const textMuted = 'text-encre-3';
-  const borderColor = 'border-bord';
 
   const existingTexts = existingTasks.map(t => t.text.toLowerCase());
 
@@ -121,6 +127,15 @@ export default function TaskGeneratorModal({
     );
   };
 
+  // Reset on close
+  const handleClose = () => {
+    setStep(1);
+    setSelectedProjectType(null);
+    setSelectedTasks([]);
+    setExpandedPhase(null);
+    onClose();
+  };
+
   // Confirm and add selected tasks
   const handleConfirm = () => {
     const tasksToAdd = selectedTasks
@@ -135,243 +150,168 @@ export default function TaskGeneratorModal({
       }));
 
     onGenerateTasks(tasksToAdd);
-    onClose();
+    handleClose();
   };
-
-  // Reset on close
-  const handleClose = () => {
-    setStep(1);
-    setSelectedProjectType(null);
-    setSelectedTasks([]);
-    setExpandedPhase(null);
-    onClose();
-  };
-
-  if (!isOpen) return null;
 
   const selectedCount = selectedTasks.filter(t => t.selected).length;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={handleClose} />
+    <Modal isOpen={isOpen} onClose={handleClose} size="md">
+      <ModalHeader>
+        <ModalTitle>{step === 1 ? 'Générer les tâches' : 'Sélectionner les tâches'}</ModalTitle>
+        <ModalDescription>{step === 1 ? 'Choisissez un type de chantier' : `${selectedCount} tâche${selectedCount > 1 ? 's' : ''} sélectionnée${selectedCount > 1 ? 's' : ''}`}</ModalDescription>
+      </ModalHeader>
 
-      {/* Modal */}
-      <div className={`relative w-full sm:max-w-lg max-h-[85vh] ${cardBg} rounded-t-3xl sm:rounded-2xl shadow-2xl flex flex-col`}>
-        {/* Header */}
-        <div className={`px-5 pt-5 pb-4 border-b ${borderColor} flex items-center justify-between flex-shrink-0`}>
-          <div className="flex items-center gap-3">
-            <div
-              className="w-10 h-10 rounded-xl flex items-center justify-center"
-              style={{ backgroundColor: `${couleur}20` }}
-            >
-              <Sparkles size={20} className="text-accent-texte" />
-            </div>
+      <ModalBody>
+        {step === 1 ? (
+          <div className="space-y-6">
+            {/* Par type de projet */}
             <div>
-              <h2 className={`text-lg font-bold ${textPrimary}`}>
-                {step === 1 ? 'Générer les tâches' : 'Sélectionner les tâches'}
-              </h2>
-              <p className={`text-sm ${textMuted}`}>
-                {step === 1 ? 'Choisissez un type de chantier' : `${selectedCount} tâches sélectionnées`}
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={handleClose}
-            className={`p-3 rounded-xl transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-surface-2`}
-          >
-            <X size={20} className={textMuted} />
-          </button>
-        </div>
-
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-5">
-          {step === 1 ? (
-            <div className="space-y-6">
-              {/* Par type de projet */}
-              <div>
-                <h3 className={`text-sm font-semibold uppercase tracking-wide mb-3 ${textMuted}`}>
-                  Par type de projet
-                </h3>
-                <div className="grid grid-cols-2 gap-2">
-                  {projectTypes.map(pt => {
-                    const Icon = pt.icon;
-                    return (
-                      <button
-                        key={pt.key}
-                        onClick={() => handleSelectProjectType(pt.key)}
-                        className={`flex items-center gap-3 p-3 rounded-xl text-left transition-all ${
-                          isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-50 hover:bg-slate-100 border'
-                        }`}
-                      >
-                        <div
-                          className="w-10 h-10 rounded-lg flex items-center justify-center"
-                          style={{ backgroundColor: `${couleur}20` }}
-                        >
-                          <Icon size={20} style={{ color: couleur }} />
-                        </div>
-                        <span className={`text-sm font-medium ${textPrimary}`}>{pt.label}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Par métier */}
-              <div>
-                <h3 className={`text-sm font-semibold uppercase tracking-wide mb-3 ${textMuted}`}>
-                  Par métier / activité
-                </h3>
-                <div className="grid grid-cols-2 gap-2">
-                  {metiers.map(m => {
-                    const Icon = m.icon;
-                    return (
-                      <button
-                        key={m.key}
-                        onClick={() => handleSelectMetier(m.key)}
-                        className={`flex items-center gap-3 p-3 rounded-xl text-left transition-all ${
-                          isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-50 hover:bg-slate-100 border'
-                        }`}
-                      >
-                        <div
-                          className="w-10 h-10 rounded-lg flex items-center justify-center"
-                          style={{ backgroundColor: `${couleur}20` }}
-                        >
-                          <Icon size={20} style={{ color: couleur }} />
-                        </div>
-                        <span className={`text-sm font-medium ${textPrimary}`}>{m.label}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Génération intelligente */}
-              {entrepriseMetier && (
-                <div className={`p-4 rounded-xl border-2 border-dashed border-bord-fort`}>
-                  <p className={`text-sm font-medium mb-2 ${textPrimary}`}>
-                    <Sparkles size={14} className="inline mr-1 text-accent-texte" />
-                    Génération automatique
-                  </p>
-                  <p className={`text-xs mb-3 ${textMuted}`}>
-                    Basé sur votre métier et le devis associé
-                  </p>
-                  <button
-                    onClick={() => handleGenerateSmart(null)}
-                    className="w-full py-3 rounded-xl font-medium transition-all hover:opacity-90 bg-accent text-sur-accent"
-                  >
-                    Générer automatiquement
-                  </button>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {/* Tasks grouped by phase */}
-              {PHASES.map(phase => {
-                const phaseTasks = selectedTasks.filter(t => t.phase === phase.id);
-                if (phaseTasks.length === 0) return null;
-
-                const selectedInPhase = phaseTasks.filter(t => t.selected).length;
-                const isExpanded = expandedPhase === phase.id;
-
-                return (
-                  <div key={phase.id} className={`rounded-xl border ${borderColor} overflow-hidden`}>
-                    {/* Phase header */}
-                    <button
-                      onClick={() => setExpandedPhase(isExpanded ? null : phase.id)}
-                      className={`w-full flex items-center gap-3 p-3 bg-fond`}
-                    >
-                      <div
-                        className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold"
-                        style={{ background: phase.color }}
-                      >
-                        {selectedInPhase}
-                      </div>
-                      <span className={`flex-1 text-left font-medium ${textPrimary}`}>{phase.label}</span>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); togglePhase(phase.id); }}
-                        className={`px-2 py-1 text-xs rounded-lg ${
-                          selectedInPhase === phaseTasks.length
-                            ? 'bg-emerald-100 text-emerald-700'
-                            : isDark ? 'bg-slate-600 text-slate-300' : 'bg-slate-200 text-slate-600'
-                        }`}
-                      >
-                        {selectedInPhase === phaseTasks.length ? 'Tout' : `${selectedInPhase}/${phaseTasks.length}`}
-                      </button>
-                      <ChevronRight
-                        size={16}
-                        className={`${textMuted} transition-transform ${isExpanded ? 'rotate-90' : ''}`}
-                      />
+              <h3 className="text-base font-semibold mb-3 text-encre">Par type de projet</h3>
+              <div className="grid grid-cols-2 gap-2">
+                {projectTypes.map(pt => {
+                  const Icon = pt.icon;
+                  return (
+                    <button key={pt.key} type="button" onClick={() => handleSelectProjectType(pt.key)} className={CARTE_CHOIX}>
+                      <span className="hidden sm:flex w-10 h-10 rounded-lg items-center justify-center flex-shrink-0 bg-surface-2 text-encre-2" aria-hidden="true">
+                        <Icon size={20} />
+                      </span>
+                      <span className={`text-sm font-medium min-w-0 ${textPrimary}`}>{pt.label}</span>
                     </button>
-
-                    {/* Phase tasks */}
-                    {isExpanded && (
-                      <div className="p-2 space-y-1">
-                        {phaseTasks.map((task, idx) => {
-                          const taskIndex = selectedTasks.findIndex(t => t.text === task.text);
-                          return (
-                            <button
-                              key={idx}
-                              onClick={() => toggleTask(taskIndex)}
-                              className={`w-full flex items-center gap-3 p-2 rounded-lg text-left transition-all ${
-                                task.selected
-                                  ? (isDark ? 'bg-blue-900/30' : 'bg-blue-50')
-                                  : 'bg-surface opacity-50'
-                              }`}
-                            >
-                              <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${
-                                task.selected
-                                  ? 'bg-blue-500 border-blue-500'
-                                  : 'border-bord-fort'
-                              }`}>
-                                {task.selected && <Check size={12} className="text-white" />}
-                              </div>
-                              <span className={`flex-1 text-sm ${task.selected ? textPrimary : textMuted}`}>
-                                {task.text}
-                              </span>
-                              {task.critical && (
-                                <AlertCircle size={14} className="text-red-500" />
-                              )}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-
-              {selectedTasks.length === 0 && (
-                <div className={`text-center py-8 ${textMuted}`}>
-                  <CheckSquare size={48} className="mx-auto mb-3 opacity-30" />
-                  <p>Aucune nouvelle tâche disponible</p>
-                  <p className="text-sm">Toutes les tâches sont déjà ajoutées</p>
-                </div>
-              )}
+                  );
+                })}
+              </div>
             </div>
-          )}
-        </div>
 
-        {/* Footer */}
-        {step === 2 && selectedTasks.length > 0 && (
-          <div className={`px-5 py-4 border-t ${borderColor} flex gap-3 flex-shrink-0`}>
-            <button
-              onClick={() => setStep(1)}
-              className={`flex-1 py-3 rounded-xl font-medium bg-surface-2 text-encre-2`}
-            >
-              Retour
-            </button>
-            <button
-              onClick={handleConfirm}
-              disabled={selectedCount === 0}
-              className="flex-1 py-3 rounded-xl font-medium transition-all hover:opacity-90 disabled:opacity-50 bg-accent text-sur-accent"
-            >
-              Ajouter {selectedCount} tâche{selectedCount > 1 ? 's' : ''}
-            </button>
+            {/* Par métier */}
+            <div>
+              <h3 className="text-base font-semibold mb-3 text-encre">Par métier / activité</h3>
+              <div className="grid grid-cols-2 gap-2">
+                {metiers.map(m => {
+                  const Icon = m.icon;
+                  return (
+                    <button key={m.key} type="button" onClick={() => handleSelectMetier(m.key)} className={CARTE_CHOIX}>
+                      <span className="hidden sm:flex w-10 h-10 rounded-lg items-center justify-center flex-shrink-0 bg-surface-2 text-encre-2" aria-hidden="true">
+                        <Icon size={20} />
+                      </span>
+                      <span className={`text-sm font-medium ${textPrimary}`}>{m.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Génération selon le métier de l'entreprise et le devis lié */}
+            {entrepriseMetier && (
+              <div className="p-4 rounded-xl border-2 border-dashed border-bord-fort">
+                <p className={`text-sm font-semibold mb-1 ${textPrimary}`}>
+                  <Sparkles size={14} aria-hidden="true" className="inline mr-1 text-encre-3" />
+                  Génération automatique
+                </p>
+                <p className={`text-sm mb-3 ${textMuted}`}>
+                  Basé sur votre métier et le devis associé
+                </p>
+                <Bouton variante="principal" pleineLargeur onClick={() => handleGenerateSmart(null)}>
+                  Générer automatiquement
+                </Bouton>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {/* Tasks grouped by phase */}
+            {PHASES.map(phase => {
+              const phaseTasks = selectedTasks.filter(t => t.phase === phase.id);
+              if (phaseTasks.length === 0) return null;
+
+              const selectedInPhase = phaseTasks.filter(t => t.selected).length;
+              const isExpanded = expandedPhase === phase.id;
+
+              return (
+                <div key={phase.id} className="rounded-xl border border-bord overflow-hidden">
+                  {/* Phase header : le bouton « Tout » est à côté du bouton de dépliage, pas dedans */}
+                  <div className="flex items-center gap-2 pr-3 bg-fond">
+                    <button
+                      type="button"
+                      onClick={() => setExpandedPhase(isExpanded ? null : phase.id)}
+                      aria-expanded={isExpanded}
+                      className="flex-1 min-w-0 min-h-[56px] flex items-center gap-3 p-3 text-left"
+                    >
+                      <span className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 bg-surface-2 text-encre tabular-nums">
+                        {selectedInPhase}
+                      </span>
+                      <span className={`flex-1 text-left font-medium ${textPrimary}`}>{phase.label}</span>
+                      <ChevronRight size={16} aria-hidden="true" className={`${textMuted} transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => togglePhase(phase.id)}
+                      aria-label={`${phase.label} : ${selectedInPhase === phaseTasks.length ? 'tout désélectionner' : 'tout sélectionner'}`}
+                      className={`px-3 min-h-[44px] text-sm rounded-lg font-medium ${
+                        selectedInPhase === phaseTasks.length
+                          ? 'bg-succes-fond text-succes-texte'
+                          : 'bg-surface-2 text-encre-2'
+                      }`}
+                    >
+                      {selectedInPhase === phaseTasks.length ? 'Tout' : `${selectedInPhase}/${phaseTasks.length}`}
+                    </button>
+                  </div>
+
+                  {/* Phase tasks */}
+                  {isExpanded && (
+                    <div className="p-2 space-y-1">
+                      {phaseTasks.map((task, idx) => {
+                        const taskIndex = selectedTasks.findIndex(t => t.text === task.text);
+                        return (
+                          <button
+                            key={idx}
+                            type="button"
+                            role="checkbox"
+                            aria-checked={!!task.selected}
+                            onClick={() => toggleTask(taskIndex)}
+                            className={`w-full flex items-center gap-3 p-2 min-h-[44px] rounded-lg text-left transition-colors ${
+                              task.selected ? 'bg-accent/10' : 'bg-surface opacity-60'
+                            }`}
+                          >
+                            <span className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${
+                              task.selected ? 'bg-accent border-accent text-sur-accent' : 'border-bord-fort'
+                            }`}>
+                              {task.selected && <Check size={12} aria-hidden="true" />}
+                            </span>
+                            <span className={`flex-1 text-sm ${task.selected ? textPrimary : textMuted}`}>
+                              {task.text}
+                            </span>
+                            {task.critical && (
+                              <AlertCircle size={16} aria-label="Tâche prioritaire" className="text-alerte-texte" />
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+
+            {selectedTasks.length === 0 && (
+              <div className={`text-center py-8 ${textMuted}`}>
+                <CheckSquare size={40} aria-hidden="true" className="mx-auto mb-3 opacity-40" />
+                <p>Aucune nouvelle tâche disponible</p>
+                <p className="text-sm">Toutes les tâches sont déjà ajoutées</p>
+              </div>
+            )}
           </div>
         )}
-      </div>
-    </div>
+      </ModalBody>
+
+      {step === 2 && selectedTasks.length > 0 && (
+        <ModalFooter>
+          <Bouton variante="secondaire" onClick={() => setStep(1)}>Retour</Bouton>
+          <Bouton variante="principal" onClick={handleConfirm} disabled={selectedCount === 0}>
+            Ajouter {selectedCount} tâche{selectedCount > 1 ? 's' : ''}
+          </Bouton>
+        </ModalFooter>
+      )}
+    </Modal>
   );
 }

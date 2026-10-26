@@ -488,6 +488,13 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       setMode('preview');
       // La feuille « Relancer » envoie au client : seulement pour un rôle qui envoie ; sinon, la fiche seule
       if (canPerform('devis', 'send')) setRelanceDe(doc);
+    } else if (demande.ouvrir || demande.facturer) {
+      // Depuis la fiche d'un chantier : le document, et pour « Facturer » le choix acompte / solde / situation
+      const doc = devis.find(d => d.id === (demande.ouvrir || demande.facturer));
+      if (!doc) return;
+      setSelected(doc);
+      setMode('preview');
+      if (demande.facturer && canPerform('devis', 'create')) setChoixFacturation(true);
     } else {
       setSelected(null);
       setMode('list');

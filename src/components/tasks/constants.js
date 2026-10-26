@@ -1,18 +1,34 @@
 // ── Tâches : constantes partagées ──
+//
+// Un statut, une priorité ou une catégorie = un mot et un ton (src/lib/statuts.js) : plus de couleur propre à chaque
+// valeur. Le rouge est réservé à « en retard » (une tâche dont l'échéance est passée) ; l'ambre dit « à surveiller ».
+
+/**
+ * Classes de chaque ton, écrites en entier : Tailwind ne génère pas une classe composée (`bg-${ton}-fond`).
+ * pastille = fond teinté + texte ; point = pastille pleine ; texte = texte seul.
+ */
+export const CLASSES_TON = {
+  neutre: { pastille: 'bg-neutre-fond text-neutre-texte', point: 'bg-neutre-point', texte: 'text-neutre-texte' },
+  info: { pastille: 'bg-info-fond text-info-texte', point: 'bg-info-point', texte: 'text-info-texte' },
+  succes: { pastille: 'bg-succes-fond text-succes-texte', point: 'bg-succes-point', texte: 'text-succes-texte' },
+  alerte: { pastille: 'bg-alerte-fond text-alerte-texte', point: 'bg-alerte-point', texte: 'text-alerte-texte' },
+  danger: { pastille: 'bg-danger-fond text-danger-texte', point: 'bg-danger-point', texte: 'text-danger-texte' },
+};
+export const classesTon = (ton) => CLASSES_TON[ton] || CLASSES_TON.neutre;
 
 export const CATEGORIES = [
-  { value: 'rappel', label: 'Rappel', color: '#3b82f6' },
-  { value: 'achat', label: 'Achat', color: '#f59e0b' },
-  { value: 'rdv', label: 'RDV', color: '#8b5cf6' },
-  { value: 'admin', label: 'Admin', color: '#6366f1' },
-  { value: 'idee', label: 'Idée', color: '#22c55e' },
-  { value: 'urgent', label: 'Urgent', color: '#ef4444' },
+  { value: 'rappel', label: 'Rappel', ton: 'neutre' },
+  { value: 'achat', label: 'Achat', ton: 'neutre' },
+  { value: 'rdv', label: 'RDV', ton: 'neutre' },
+  { value: 'admin', label: 'Admin', ton: 'neutre' },
+  { value: 'idee', label: 'Idée', ton: 'neutre' },
+  { value: 'urgent', label: 'Urgent', ton: 'alerte' },
 ];
 
 export const PRIORITIES = [
-  { value: 'haute', label: 'Haute', color: '#ef4444', dot: '🔴' },
-  { value: 'moyenne', label: 'Moyenne', color: '#f59e0b', dot: '🟡' },
-  { value: 'basse', label: 'Basse', color: '#22c55e', dot: '🟢' },
+  { value: 'haute', label: 'Haute', ton: 'alerte', dot: '🟠' },
+  { value: 'moyenne', label: 'Moyenne', ton: 'neutre', dot: '🟡' },
+  { value: 'basse', label: 'Basse', ton: 'neutre', dot: '🟢' },
 ];
 
 export const PRIORITY_ORDER = { haute: 0, moyenne: 1, basse: 2 };
@@ -33,7 +49,7 @@ export const RECURRENCE_OPTIONS = [
 ];
 
 export const TASK_STATUSES = [
-  { value: 'a_faire', label: 'À faire', color: '#3b82f6', icon: 'Circle' },
-  { value: 'en_cours', label: 'En cours', color: '#f59e0b', icon: 'Clock' },
-  { value: 'termine', label: 'Terminé', color: '#10b981', icon: 'CheckCircle' },
+  { value: 'a_faire', label: 'À faire', ton: 'neutre', icon: 'Circle' },
+  { value: 'en_cours', label: 'En cours', ton: 'info', icon: 'Clock' },
+  { value: 'termine', label: 'Terminé', ton: 'succes', icon: 'CheckCircle' },
 ];

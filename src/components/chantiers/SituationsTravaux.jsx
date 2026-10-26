@@ -9,7 +9,8 @@
  * Factures generated as standard devis entries via addDevis.
  */
 
-import React, { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback } from 'react';
+import { COULEUR_DOCUMENTS_DEFAUT } from '../../lib/theme';
 import {
   X,
   Plus,
@@ -28,8 +29,6 @@ import {
   BarChart3,
   Shield,
   AlertTriangle,
-  Eye,
-  EyeOff
 } from 'lucide-react';
 import { generateId } from '../../lib/utils';
 import { verifierNouvelleFacture } from '../../lib/gardeFacturation';
@@ -79,8 +78,8 @@ export default function SituationsTravaux({
   entreprise,
   modeDiscret = false,
   isDark = false,
-  couleur = '#f97316',
-  setPage,
+  couleur = COULEUR_DOCUMENTS_DEFAUT,
+  setPage: _setPage,
   onClose,
 }) {
   // ---- Data from chantier.situations_data ---------------------------------
@@ -516,8 +515,8 @@ export default function SituationsTravaux({
               Activer le mode situation
             </button>
           ) : (
-            <div className={`text-sm ${textMuted} p-4 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-amber-50'}`}>
-              <AlertTriangle size={16} className="inline -mt-0.5 mr-1 text-amber-500" />
+            <div className={`text-sm p-4 rounded-xl bg-alerte-fond text-alerte-texte`}>
+              <AlertTriangle size={16} className="inline -mt-0.5 mr-1" />
               {exclusFactures.length > 0
                 ? `Le devis ${exclusFactures.map((d) => d.numero).filter(Boolean).join(', ')} a déjà un acompte ou une facture : facturez la suite depuis le devis (solde), pas en situations.`
                 : "Aucun devis signé lié à ce chantier. Créez et faites signer un devis d'abord."}
@@ -675,7 +674,7 @@ export default function SituationsTravaux({
             </div>
             <div className={`p-3 rounded-xl bg-fond`}>
               <p className={`text-xs ${textMuted} mb-0.5`}>Retenue retenue</p>
-              <p className={`text-sm font-bold text-amber-500 tabular-nums`}>
+              <p className="text-sm font-bold text-alerte-texte tabular-nums">
                 {showMoney(cumulInvoiced.retenueRetenue)}
               </p>
             </div>
@@ -687,17 +686,14 @@ export default function SituationsTravaux({
           <div className="mt-3">
             <div className="flex items-center justify-between mb-1">
               <span className={`text-xs font-medium ${textSecondary}`}>Avancement global</span>
-              <span className={`text-xs font-bold tabular-nums`} style={{ color: globalAvancement >= 100 ? '#10b981' : couleur }}>
+              <span className={`text-xs font-bold tabular-nums ${globalAvancement >= 100 ? 'text-succes-texte' : 'text-accent-texte'}`}>
                 {globalAvancement.toFixed(0)}%
               </span>
             </div>
-            <div className={`h-2 rounded-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`}>
+            <div className={`h-2 rounded-full overflow-hidden bg-bord`}>
               <div
-                className="h-full rounded-full transition-all duration-500"
-                style={{
-                  width: `${Math.min(globalAvancement, 100)}%`,
-                  backgroundColor: globalAvancement >= 100 ? '#10b981' : couleur,
-                }}
+                className={`h-full rounded-full transition-all duration-500 ${globalAvancement >= 100 ? 'bg-succes-point' : 'bg-accent'}`}
+                style={{ width: `${Math.min(globalAvancement, 100)}%` }}
               />
             </div>
           </div>
@@ -727,7 +723,7 @@ export default function SituationsTravaux({
                 </p>
               </div>
             ) : (
-              <ul className={`divide-y ${isDark ? 'divide-slate-700' : 'divide-slate-200'}`}>
+              <ul className={`divide-y divide-bord`}>
                 {[...situations].sort((a, b) => b.numero - a.numero).map((sit) => {
                   const isActive = selectedId === sit.id;
                   const totals = sit.totaux || calculateSituationTotals(sit.lignes, sit.isDGD ? 0 : (sit.retenuePct || retenuePct), sit.isDGD);
@@ -749,7 +745,7 @@ export default function SituationsTravaux({
                         <span className={`text-sm font-semibold ${textPrimary}`}>
                           Situation n°{sit.numero}
                           {sit.isDGD && (
-                            <span className="ml-1.5 text-xs px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700">
+                            <span className="ml-1.5 text-xs px-1.5 py-0.5 rounded bg-succes-fond text-succes-texte">
                               DGD
                             </span>
                           )}
@@ -778,15 +774,13 @@ export default function SituationsTravaux({
                           <>
                             <button
                               onClick={(e) => { e.stopPropagation(); handleEditExisting(sit); }}
-                              className={`text-xs px-2 py-1 rounded-lg ${
-                                isDark ? 'bg-slate-600 text-slate-200' : 'bg-slate-200 text-slate-700'
-                              } hover:opacity-80 transition-opacity`}
+                              className="text-xs px-2 py-1 rounded-lg bg-surface-2 text-encre-2 hover:bg-bord transition-colors"
                             >
                               Modifier
                             </button>
                             <button
                               onClick={(e) => { e.stopPropagation(); handleDelete(sit.id); }}
-                              className="text-xs px-2 py-1 rounded-lg bg-red-100 text-red-600 hover:bg-red-200 transition-colors"
+                              className="text-xs px-2 py-1 rounded-lg bg-danger-fond text-danger-texte hover:brightness-95 transition-colors"
                             >
                               <Trash2 size={12} />
                             </button>
@@ -806,9 +800,7 @@ export default function SituationsTravaux({
                         {FONCTIONS.facturesSituation && (sit.statut === SITUATION_STATUS.FACTUREE || sit.statut === SITUATION_STATUS.PAYEE) && (
                           <button
                             onClick={(e) => { e.stopPropagation(); handlePrintSituation(sit); }}
-                            className={`text-xs px-2 py-1 rounded-lg flex items-center gap-1 ${
-                              isDark ? 'bg-slate-600 text-slate-200' : 'bg-slate-200 text-slate-700'
-                            } hover:opacity-80 transition-opacity`}
+                            className="text-xs px-2 py-1 rounded-lg flex items-center gap-1 bg-surface-2 text-encre-2 hover:bg-bord transition-colors"
                           >
                             <Printer size={12} />
                             PDF
@@ -867,7 +859,7 @@ export default function SituationsTravaux({
                       <Hash size={16} className="inline -mt-0.5 mr-1" />
                       Situation n°{draft.numero}
                       {isDGD && (
-                        <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">
+                        <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-succes-fond text-succes-texte">
                           Décompte Général Définitif
                         </span>
                       )}
@@ -891,8 +883,8 @@ export default function SituationsTravaux({
                       onClick={handleSetAllTo100}
                       className={`text-xs px-3 py-1.5 rounded-lg flex items-center gap-1 transition-colors ${
                         isDGD
-                          ? 'bg-emerald-100 text-emerald-700'
-                          : isDark ? 'bg-slate-600 text-slate-300 hover:bg-slate-500' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                          ? 'bg-succes-fond text-succes-texte'
+                          : 'bg-surface-2 text-encre-2 hover:bg-bord'
                       }`}
                     >
                       <CheckCircle size={14} />
@@ -928,7 +920,7 @@ export default function SituationsTravaux({
                         </th>
                       </tr>
                     </thead>
-                    <tbody className={`divide-y ${isDark ? 'divide-slate-700' : 'divide-slate-100'}`}>
+                    <tbody className={`divide-y divide-bord`}>
                       {draft.lignes.map((l) => {
                         const marcheHT = (l.quantite || 0) * (l.prixUnitaire || 0);
                         const montantCumul = marcheHT * (l.cumulActuel || 0) / 100;
@@ -962,12 +954,12 @@ export default function SituationsTravaux({
                                   onChange={(e) => handleCumulChange(l.ligneId, e.target.value)}
                                   className="flex-1 h-2 rounded-full appearance-none cursor-pointer"
                                   style={{
-                                    accentColor: couleur,
-                                    background: `linear-gradient(to right, ${couleur} 0%, ${couleur} ${
+                                    accentColor: 'rgb(var(--accent))',
+                                    background: `linear-gradient(to right, rgb(var(--accent)) 0%, rgb(var(--accent)) ${
                                       ((l.cumulActuel - (l.cumulPrecedent || 0)) / (100 - (l.cumulPrecedent || 0) || 1)) * 100
-                                    }%, ${isDark ? '#334155' : '#e2e8f0'} ${
+                                    }%, rgb(var(--bord)) ${
                                       ((l.cumulActuel - (l.cumulPrecedent || 0)) / (100 - (l.cumulPrecedent || 0) || 1)) * 100
-                                    }%, ${isDark ? '#334155' : '#e2e8f0'} 100%)`,
+                                    }%, rgb(var(--bord)) 100%)`,
                                   }}
                                 />
                                 <input
@@ -979,7 +971,7 @@ export default function SituationsTravaux({
                                   className={`w-16 text-center text-sm rounded-lg border px-1 py-1 ${inputBg} tabular-nums`}
                                 />
                               </div>
-                              <div className={`mt-1.5 h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`}>
+                              <div className={`mt-1.5 h-1.5 rounded-full overflow-hidden bg-bord`}>
                                 <div
                                   className="h-full rounded-full transition-all duration-300 bg-accent"
                                   style={{ width: `${l.cumulActuel || 0}%` }}
@@ -1037,7 +1029,7 @@ export default function SituationsTravaux({
                           value={l.cumulActuel || 0}
                           onChange={(e) => handleCumulChange(l.ligneId, e.target.value)}
                           className="flex-1 h-3 rounded-full appearance-none cursor-pointer"
-                          style={{ accentColor: couleur }}
+                          style={{ accentColor: 'rgb(var(--accent))' }}
                         />
                         <input
                           type="number"
@@ -1050,7 +1042,7 @@ export default function SituationsTravaux({
                       </div>
 
                       {/* Progress bar */}
-                      <div className={`h-2 rounded-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-200'} mb-2`}>
+                      <div className={`h-2 rounded-full overflow-hidden bg-bord mb-2`}>
                         <div
                           className="h-full rounded-full transition-all duration-300 bg-accent"
                           style={{ width: `${l.cumulActuel || 0}%` }}
@@ -1104,10 +1096,10 @@ export default function SituationsTravaux({
                       <div className={`border-t pt-2.5 border-bord`}>
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <Shield size={14} className="text-amber-500" />
+                            <Shield size={14} className="text-alerte-texte" />
                             <span className={textSecondary}>Retenue de garantie ({retenuePctLocal}%)</span>
                           </div>
-                          <span className="text-amber-500 tabular-nums">- {showMoney(draftTotals.retenueGarantie)}</span>
+                          <span className="text-alerte-texte tabular-nums">- {showMoney(draftTotals.retenueGarantie)}</span>
                         </div>
                       </div>
                     )}
@@ -1115,10 +1107,10 @@ export default function SituationsTravaux({
                       <div className={`border-t pt-2.5 border-bord`}>
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <Shield size={14} className="text-emerald-500" />
-                            <span className="text-emerald-600 text-sm font-medium">Retenue de garantie libérée (DGD)</span>
+                            <Shield size={14} className="text-succes-texte" />
+                            <span className="text-succes-texte text-sm font-medium">Retenue de garantie libérée (DGD)</span>
                           </div>
-                          <span className="text-emerald-500 tabular-nums">0 €</span>
+                          <span className="text-succes-texte tabular-nums">0 €</span>
                         </div>
                       </div>
                     )}
@@ -1127,8 +1119,7 @@ export default function SituationsTravaux({
 
                     {/* NET À PAYER */}
                     <div
-                      className="flex justify-between items-center text-base font-bold py-1 px-3 -mx-3 rounded-xl text-accent-texte"
-                      style={{ backgroundColor: `${couleur}15` }}
+                      className="flex justify-between items-center text-base font-bold py-1 px-3 -mx-3 rounded-xl text-accent-texte bg-accent/10"
                     >
                       <span>NET À PAYER</span>
                       <span className="tabular-nums">{showMoney(draftTotals.netAPayer)}</span>
@@ -1149,9 +1140,7 @@ export default function SituationsTravaux({
 
                 <button
                   onClick={handleSaveBrouillon}
-                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-                    isDark ? 'bg-slate-700 text-slate-200 hover:bg-slate-600' : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
-                  }`}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors bg-surface-2 text-encre-2 hover:bg-bord"
                 >
                   <Save size={16} />
                   Enregistrer brouillon
@@ -1181,8 +1170,8 @@ export default function SituationsTravaux({
 function SituationDetail({
   situation,
   retenuePct,
-  isDark,
-  couleur,
+  isDark: _isDark,
+  couleur: _couleur,
   cardBg,
   textPrimary,
   textSecondary,
@@ -1209,7 +1198,7 @@ function SituationDetail({
             <h2 className={`text-lg font-bold ${textPrimary} flex items-center gap-2`}>
               Situation n°{situation.numero}
               {situation.isDGD && (
-                <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">DGD</span>
+                <span className="text-xs px-2 py-0.5 rounded-full bg-succes-fond text-succes-texte">DGD</span>
               )}
               <StatusBadge statut={situation.statut} />
             </h2>
@@ -1223,9 +1212,7 @@ function SituationDetail({
           {onPrint && (
             <button
               onClick={onPrint}
-              className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm transition-colors ${
-                isDark ? 'bg-slate-700 text-slate-200 hover:bg-slate-600' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-              }`}
+              className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm transition-colors bg-surface-2 text-encre-2 hover:bg-bord"
             >
               <Printer size={16} />
               Imprimer
@@ -1248,7 +1235,7 @@ function SituationDetail({
                 <th className={`text-right px-4 py-3 font-semibold ${textSecondary} text-xs uppercase tracking-wide w-28`}>Mt situation</th>
               </tr>
             </thead>
-            <tbody className={`divide-y ${isDark ? 'divide-slate-700' : 'divide-slate-100'}`}>
+            <tbody className={`divide-y divide-bord`}>
               {(situation.lignes || []).map((l) => {
                 const marcheHT = (l.quantite || 0) * (l.prixUnitaire || 0);
                 const montantCumul = marcheHT * (l.cumulActuel || 0) / 100;
@@ -1259,7 +1246,7 @@ function SituationDetail({
                   <tr key={l.ligneId} className={`${hoverBg} transition-colors`}>
                     <td className={`px-4 py-3 ${textPrimary}`}>
                       <div className="font-medium text-sm">{l.description}</div>
-                      <div className={`mt-1.5 h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`}>
+                      <div className={`mt-1.5 h-1.5 rounded-full overflow-hidden bg-bord`}>
                         <div className="h-full rounded-full transition-all duration-300 bg-accent" style={{ width: `${l.cumulActuel || 0}%` }} />
                       </div>
                     </td>
@@ -1285,7 +1272,7 @@ function SituationDetail({
             return (
               <div key={l.ligneId} className={`p-3 rounded-xl bg-fond`}>
                 <div className={`font-medium text-sm ${textPrimary} mb-1`}>{l.description}</div>
-                <div className={`h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-200'} mb-1.5`}>
+                <div className={`h-1.5 rounded-full overflow-hidden bg-bord mb-1.5`}>
                   <div className="h-full rounded-full transition-all duration-300 bg-accent" style={{ width: `${l.cumulActuel || 0}%` }} />
                 </div>
                 <div className="flex justify-between text-xs">
@@ -1311,14 +1298,13 @@ function SituationDetail({
           </div>
           {totals.retenueGarantie > 0 && (
             <div className="flex justify-between">
-              <span className="text-amber-500 flex items-center gap-1"><Shield size={12} /> Retenue de garantie</span>
-              <span className="text-amber-500 tabular-nums">- {showMoney(totals.retenueGarantie)}</span>
+              <span className="text-alerte-texte flex items-center gap-1"><Shield size={12} /> Retenue de garantie</span>
+              <span className="text-alerte-texte tabular-nums">- {showMoney(totals.retenueGarantie)}</span>
             </div>
           )}
           <div className={`border-t pt-2 border-bord`}>
             <div
-              className="flex justify-between font-bold text-base py-1 px-3 -mx-3 rounded-xl text-accent-texte"
-              style={{ backgroundColor: `${couleur}15` }}
+              className="flex justify-between font-bold text-base py-1 px-3 -mx-3 rounded-xl text-accent-texte bg-accent/10"
             >
               <span>{situation.isDGD ? 'SOLDE DGD' : 'NET À PAYER'}</span>
               <span className="tabular-nums">{showMoney(totals.netAPayer)}</span>

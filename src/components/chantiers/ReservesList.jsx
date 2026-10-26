@@ -10,15 +10,15 @@ import { AlertTriangle, CheckCircle, Clock, MapPin, Camera, X, ChevronDown, Chev
 import { jourLocal, dateLue } from '../../lib/dates';
 
 const PRIORITE_CONFIG = {
-  mineure: { label: 'Mineure', color: 'bg-blue-100 text-blue-700', darkColor: 'bg-blue-900/50 text-blue-300' },
-  normale: { label: 'Normale', color: 'bg-orange-100 text-orange-700', darkColor: 'bg-orange-900/50 text-orange-300' },
-  majeure: { label: 'Majeure', color: 'bg-red-100 text-red-700', darkColor: 'bg-red-900/50 text-red-300' },
+  mineure: { label: 'Mineure', color: 'bg-info-fond text-info-texte' },
+  normale: { label: 'Normale', color: 'bg-alerte-fond text-alerte-texte' },
+  majeure: { label: 'Majeure', color: 'bg-danger-fond text-danger-texte' },
 };
 
 const STATUT_CONFIG = {
-  ouverte: { label: 'Ouverte', icon: AlertTriangle, color: 'text-red-500' },
-  en_cours: { label: 'En cours', icon: Clock, color: 'text-orange-500' },
-  levee: { label: 'Levée', icon: CheckCircle, color: 'text-green-500' },
+  ouverte: { label: 'Ouverte', icon: AlertTriangle, color: 'text-danger-texte' },
+  en_cours: { label: 'En cours', icon: Clock, color: 'text-alerte-texte' },
+  levee: { label: 'Levée', icon: CheckCircle, color: 'text-succes-texte' },
 };
 
 const ReservesList = memo(function ReservesList({
@@ -26,8 +26,8 @@ const ReservesList = memo(function ReservesList({
   onUpdateReserve,
   onLeverToutes,
   readOnly = false,
-  isDark = false,
-  couleur = '#f97316',
+  isDark: _isDark = false,
+  couleur: _couleur,
 }) {
   const [expanded, setExpanded] = useState({});
 
@@ -57,7 +57,7 @@ const ReservesList = memo(function ReservesList({
   if (reserves.length === 0) {
     return (
       <div className={`p-4 text-center rounded-xl bg-fond`}>
-        <CheckCircle size={24} className={`mx-auto mb-2 text-green-500`} />
+        <CheckCircle size={24} className="mx-auto mb-2 text-succes-texte" />
         <p className={`text-sm ${textMuted}`}>Aucune réserve</p>
       </div>
     );
@@ -72,7 +72,7 @@ const ReservesList = memo(function ReservesList({
             {leveesCount}/{totalCount} réserves levées
           </span>
           {allLevees && (
-            <span className="text-[10px] px-2 py-0.5 rounded-full bg-green-100 text-green-700 font-medium">
+            <span className="text-xs px-2 py-0.5 rounded-full bg-succes-fond text-succes-texte font-medium">
               ✅ Toutes levées
             </span>
           )}
@@ -88,9 +88,9 @@ const ReservesList = memo(function ReservesList({
       </div>
 
       {/* Progress bar */}
-      <div className={`w-full h-2 rounded-full mb-4 ${isDark ? 'bg-slate-600' : 'bg-slate-200'}`}>
+      <div className="w-full h-2 rounded-full mb-4 bg-bord">
         <div
-          className="h-full rounded-full transition-all duration-500 bg-green-500"
+          className="h-full rounded-full transition-all duration-500 bg-succes-point"
           style={{ width: `${(leveesCount / totalCount) * 100}%` }}
         />
       </div>
@@ -117,7 +117,7 @@ const ReservesList = memo(function ReservesList({
                     <span className={`text-sm font-medium ${textPrimary} ${reserve.statut === 'levee' ? 'line-through' : ''}`}>
                       {idx + 1}. {reserve.description}
                     </span>
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isDark ? prioriteConfig.darkColor : prioriteConfig.color}`}>
+                    <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${prioriteConfig.color}`}>
                       {prioriteConfig.label}
                     </span>
                   </div>
@@ -127,7 +127,7 @@ const ReservesList = memo(function ReservesList({
                     </p>
                   )}
                   {reserve.dateLevee && (
-                    <p className={`text-xs text-green-500 mt-1`}>
+                    <p className="text-xs text-succes-texte mt-1">
                       Levée le {dateLue(reserve.dateLevee).toLocaleDateString('fr-FR')}
                     </p>
                   )}
@@ -136,7 +136,7 @@ const ReservesList = memo(function ReservesList({
                   {!readOnly && reserve.statut === 'ouverte' && (
                     <button
                       onClick={() => handleEnCours(reserve)}
-                      className={`text-xs px-2 py-1 rounded-lg ${isDark ? 'bg-slate-600 text-slate-300 hover:bg-slate-500' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}
+                      className="text-xs px-2 py-1 rounded-lg bg-surface-2 text-encre-2 hover:bg-bord"
                       title="En cours"
                     >
                       <Clock size={12} />
@@ -145,7 +145,7 @@ const ReservesList = memo(function ReservesList({
                   {!readOnly && reserve.statut !== 'levee' && (
                     <button
                       onClick={() => handleLever(reserve)}
-                      className="text-xs px-2 py-1 rounded-lg bg-green-100 text-green-700 hover:bg-green-200"
+                      className="text-xs px-2 py-1 rounded-lg bg-succes-fond text-succes-texte hover:brightness-95"
                       title="Lever la réserve"
                     >
                       <CheckCircle size={12} />

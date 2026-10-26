@@ -10,45 +10,23 @@
  *  - Responsive mobile (scroll horizontal)
  */
 
-import React, { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import {
   Circle, Clock, CheckCircle, Plus, GripVertical,
-  Calendar, Tag, AlertCircle, ListTodo,
+  Calendar, Tag, ListTodo,
 } from 'lucide-react';
 import TaskDetail from './TaskDetail';
+import { CATEGORIES, PRIORITIES, TASK_STATUSES, classesTon } from './constants';
 import { jourLocal } from '../../lib/dates';
 
 // ─── Column definitions ─────────────────────────────────────────────────────
 
-const COLUMNS = [
-  { id: 'a_faire', label: 'À faire', color: '#3b82f6', icon: Circle },
-  { id: 'en_cours', label: 'En cours', color: '#f59e0b', icon: Clock },
-  { id: 'termine', label: 'Terminé', color: '#10b981', icon: CheckCircle },
-];
-
-const PRIORITY_COLORS = {
-  haute: '#ef4444',
-  moyenne: '#f59e0b',
-  basse: '#22c55e',
-};
-
-const PRIORITY_LABELS = {
-  haute: 'Haute',
-  moyenne: 'Moyenne',
-  basse: 'Basse',
-};
-
-const CATEGORY_COLORS = {
-  chantier: '#3b82f6',
-  administratif: '#8b5cf6',
-  achat: '#f97316',
-  client: '#ec4899',
-  autre: '#6b7280',
-};
+const ICONES_COLONNE = { a_faire: Circle, en_cours: Clock, termine: CheckCircle };
+const COLUMNS = TASK_STATUSES.map((s) => ({ id: s.value, label: s.label, ton: s.ton, icon: ICONES_COLONNE[s.value] }));
 
 // ─── KanbanCard ──────────────────────────────────────────────────────────────
 
-function KanbanCard({ memo, chantier, isDark, couleur, onSelect, onDragStart, isTermine }) {
+function KanbanCard({ memo, chantier, onSelect, onDragStart, isTermine }) {
   const isOverdue = useMemo(() => {
     if (!memo.due_date) return false;
     return String(memo.due_date).slice(0, 10) < jourLocal() && memo.status !== 'termine'; // due aujourd'hui : pas en retard
@@ -60,8 +38,8 @@ function KanbanCard({ memo, chantier, isDark, couleur, onSelect, onDragStart, is
     return { done, total: memo.subtasks.length };
   }, [memo.subtasks]);
 
-  const priorityColor = PRIORITY_COLORS[memo.priority] || PRIORITY_COLORS.moyenne;
-  const categoryColor = CATEGORY_COLORS[memo.category] || CATEGORY_COLORS.autre;
+  const priorite = PRIORITIES.find(p => p.value === memo.priority) || PRIORITIES.find(p => p.value === 'moyenne');
+  const categorie = CATEGORIES.find(c => c.value === memo.category);
 
   const formatDate = (dateStr) => {
     if (!dateStr) return '';
@@ -83,16 +61,15 @@ function KanbanCard({ memo, chantier, isDark, couleur, onSelect, onDragStart, is
         isTermine
           ? 'bg-fond border-bord opacity-60'
           : 'bg-surface border-bord hover:border-bord-fort'
-      } ${isOverdue ? (isDark ? 'border-red-500/50' : 'border-red-300') : ''}`}
+      } ${isOverdue ? 'border-danger-point/60' : ''}`}
     >
       {/* Header: priority dot + grip */}
       <div className="flex items-center justify-between mb-1.5">
         <div className="flex items-center gap-2 min-w-0 flex-1">
           {/* Priority dot */}
           <span
-            className="w-2 h-2 rounded-full flex-shrink-0"
-            style={{ background: priorityColor }}
-            title={PRIORITY_LABELS[memo.priority] || 'Moyenne'}
+            className={`w-2 h-2 rounded-full flex-shrink-0 ${classesTon(priorite.ton).point}`}
+            title={`Priorité ${priorite.label.toLowerCase()}`}
           />
           {/* Title */}
           <p className={`text-sm font-medium line-clamp-2 ${isTermine ? 'line-through' : ''} text-encre`}>
@@ -101,7 +78,7 @@ function KanbanCard({ memo, chantier, isDark, couleur, onSelect, onDragStart, is
         </div>
         <GripVertical
           size={14}
-          className="text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 ml-1"
+          className="text-encre-3 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 ml-1"
         />
       </div>
 
@@ -109,35 +86,29 @@ function KanbanCard({ memo, chantier, isDark, couleur, onSelect, onDragStart, is
       <div className="flex items-center gap-1.5 flex-wrap mt-2">
         {/* Completed badge */}
         {isTermine && (
-          <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-green-100 text-green-600">
-            <CheckCircle size={8} />
-            Termine
+          <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-succes-fond text-succes-texte">
+            <CheckCircle size={12} aria-hidden="true" />
+            Terminé
           </span>
         )}
         {/* Category badge */}
         {memo.category && (
-          <span
-            className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full"
-            style={{
-              background: `${categoryColor}15`,
-              color: categoryColor,
-            }}
-          >
-            <Tag size={8} />
-            {memo.category}
+          <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${classesTon(categorie?.ton).pastille}`}>
+            <Tag size={12} aria-hidden="true" />
+            {categorie?.label || memo.category}
           </span>
         )}
 
         {/* Due date */}
         {memo.due_date && (
           <span
-            className={`inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
+            className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium ${
               isOverdue
-                ? 'bg-red-100 text-red-600'
+                ? 'bg-danger-fond text-danger-texte'
                 : 'bg-surface-2 text-encre-3'
             }`}
           >
-            <Calendar size={8} />
+            <Calendar size={12} aria-hidden="true" />
             {formatDate(memo.due_date)}
           </span>
         )}
@@ -145,9 +116,9 @@ function KanbanCard({ memo, chantier, isDark, couleur, onSelect, onDragStart, is
         {/* Subtask progress */}
         {subtaskProgress && (
           <span
-            className={`inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-surface-2 text-encre-3`}
+            className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium bg-surface-2 text-encre-3"
           >
-            <ListTodo size={8} />
+            <ListTodo size={12} aria-hidden="true" />
             {subtaskProgress.done}/{subtaskProgress.total}
           </span>
         )}
@@ -211,10 +182,9 @@ function KanbanColumn({
     <div
       className={`flex flex-col min-w-[280px] sm:min-w-0 sm:flex-1 snap-center rounded-xl border transition-all ${
         isDragOver
-          ? `ring-2 ring-offset-1 ${isDark ? 'ring-offset-slate-900' : 'ring-offset-white'}`
+          ? 'ring-2 ring-accent ring-offset-1 ring-offset-fond'
           : ''
       } border-bord`}
-      style={isDragOver ? { '--tw-ring-color': column.color } : {}}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
@@ -222,11 +192,8 @@ function KanbanColumn({
       {/* Column header */}
       <div className={`px-3 py-3 rounded-t-xl bg-fond/80`}>
         <div className="flex items-center gap-2">
-          <div
-            className="w-1 h-5 rounded-full flex-shrink-0"
-            style={{ background: column.color }}
-          />
-          <Icon size={14} style={{ color: column.color }} />
+          <div className={`w-1 h-5 rounded-full flex-shrink-0 ${classesTon(column.ton).point}`} />
+          <Icon size={14} aria-hidden="true" className={classesTon(column.ton).texte} />
           <span className={`text-sm font-semibold text-encre`}>
             {column.label}
           </span>
@@ -245,7 +212,7 @@ function KanbanColumn({
         }`}
       >
         {cards.length === 0 ? (
-          <div className={`text-center py-8 text-xs ${isDark ? 'text-slate-600' : 'text-slate-300'}`}>
+          <div className="text-center py-8 text-xs text-encre-3">
             Aucune tâche
           </div>
         ) : (
@@ -287,7 +254,7 @@ export default function TaskKanbanView({
   updateMemo,
   addMemo,
   deleteMemo,
-  toggleMemo,
+  toggleMemo: _toggleMemo,
   chantiers = [],
   clients = [],
   isDark,

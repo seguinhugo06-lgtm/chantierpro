@@ -5,7 +5,7 @@
  * Compact mode for lists, full mode for detail pages.
  */
 
-import React, { memo, useMemo } from 'react';
+import { memo, useMemo } from 'react';
 import { dateLue } from '../../lib/dates';
 
 const GarantieProgressBar = memo(function GarantieProgressBar({
@@ -13,7 +13,7 @@ const GarantieProgressBar = memo(function GarantieProgressBar({
   dateFin,
   statut = 'active',
   size = 'full', // 'compact' | 'full'
-  isDark = false,
+  isDark: _isDark = false,
   showDates = true,
   showDaysRemaining = true,
 }) {
@@ -28,18 +28,20 @@ const GarantieProgressBar = memo(function GarantieProgressBar({
     const daysRemaining = Math.max(0, totalDays - elapsedDays);
     const percentElapsed = Math.min(100, Math.max(0, (elapsedMs / totalMs) * 100));
 
-    let statusColor = '#22c55e'; // green
+    // Le ton dit l'urgence : vert tant qu'il reste du temps, ambre à surveiller, rouge à l'échéance
+    let statusTon = 'succes';
     if (statut === 'expiree' || daysRemaining <= 0) {
-      statusColor = '#ef4444'; // red
+      statusTon = 'danger';
     } else if (daysRemaining <= 30) {
-      statusColor = '#ef4444'; // red
-    } else if (daysRemaining <= 90) {
-      statusColor = '#f97316'; // orange
-    } else if (percentElapsed > 75) {
-      statusColor = '#eab308'; // yellow
+      statusTon = 'danger';
+    } else if (daysRemaining <= 90 || percentElapsed > 75) {
+      statusTon = 'alerte';
     }
 
-    return { percentElapsed, daysRemaining, totalDays, elapsedDays, statusColor };
+    const barre = { succes: 'bg-succes-point', alerte: 'bg-alerte-point', danger: 'bg-danger-point' }[statusTon];
+    const texte = { succes: 'text-succes-texte', alerte: 'text-alerte-texte', danger: 'text-danger-texte' }[statusTon];
+
+    return { percentElapsed, daysRemaining, totalDays, elapsedDays, barre, texte };
   }, [dateDebut, dateFin, statut]);
 
   const formatDate = (d) => {
@@ -58,14 +60,13 @@ const GarantieProgressBar = memo(function GarantieProgressBar({
   };
 
   const isExpired = statut === 'expiree' || progress.daysRemaining <= 0;
-  const textPrimary = 'text-encre-2';
   const textMuted = 'text-encre-3';
 
   if (size === 'compact') {
     return (
       <div className="flex items-center gap-2">
         <div
-          className={`flex-1 h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`}
+          className="flex-1 h-1.5 rounded-full overflow-hidden bg-bord"
           role="progressbar"
           aria-valuenow={Math.round(progress.percentElapsed)}
           aria-valuemin={0}
@@ -73,12 +74,12 @@ const GarantieProgressBar = memo(function GarantieProgressBar({
           aria-label={`${Math.round(progress.percentElapsed)}% écoulé, ${formatDaysRemaining(progress.daysRemaining)}`}
         >
           <div
-            className="h-full rounded-full transition-all duration-500"
-            style={{ width: `${progress.percentElapsed}%`, backgroundColor: progress.statusColor }}
+            className={`h-full rounded-full transition-all duration-500 ${progress.barre}`}
+            style={{ width: `${progress.percentElapsed}%` }}
           />
         </div>
         {showDaysRemaining && (
-          <span className={`text-[10px] font-medium whitespace-nowrap ${textMuted}`}>
+          <span className={`text-xs font-medium whitespace-nowrap ${textMuted}`}>
             {isExpired ? 'Expirée' : `${progress.daysRemaining}j`}
           </span>
         )}
@@ -95,16 +96,13 @@ const GarantieProgressBar = memo(function GarantieProgressBar({
           </span>
         )}
         {showDaysRemaining && (
-          <span
-            className="text-xs font-semibold"
-            style={{ color: progress.statusColor }}
-          >
+          <span className={`text-xs font-semibold ${progress.texte}`}>
             {isExpired ? '❌ Expirée' : formatDaysRemaining(progress.daysRemaining)}
           </span>
         )}
       </div>
       <div
-        className={`w-full h-2.5 rounded-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`}
+        className="w-full h-2.5 rounded-full overflow-hidden bg-bord"
         role="progressbar"
         aria-valuenow={Math.round(progress.percentElapsed)}
         aria-valuemin={0}
@@ -112,15 +110,15 @@ const GarantieProgressBar = memo(function GarantieProgressBar({
         aria-label={`Garantie: ${Math.round(progress.percentElapsed)}% écoulé, ${formatDaysRemaining(progress.daysRemaining)}`}
       >
         <div
-          className="h-full rounded-full transition-all duration-500"
-          style={{ width: `${progress.percentElapsed}%`, backgroundColor: progress.statusColor }}
+          className={`h-full rounded-full transition-all duration-500 ${progress.barre}`}
+          style={{ width: `${progress.percentElapsed}%` }}
         />
       </div>
       <div className={`flex items-center justify-between mt-1`}>
-        <span className={`text-[10px] ${textMuted}`}>
+        <span className={`text-xs ${textMuted}`}>
           {Math.round(progress.percentElapsed)}% écoulé
         </span>
-        <span className={`text-[10px] ${textMuted}`}>
+        <span className={`text-xs ${textMuted}`}>
           {progress.elapsedDays}/{progress.totalDays}j
         </span>
       </div>

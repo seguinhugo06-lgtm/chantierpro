@@ -5,16 +5,16 @@ import {
 } from 'lucide-react';
 import { useDebounce } from '../../hooks/useDebounce';
 import { useConfirm, useToast } from '../../context/AppContext';
-import { CATEGORIES, PRIORITIES, RECURRENCE_OPTIONS, TASK_STATUSES } from './constants';
+import { CATEGORIES, PRIORITIES, RECURRENCE_OPTIONS, TASK_STATUSES, classesTon } from './constants';
 import { formatDateFR, formatTimeFR } from './helpers';
 import { dateLue } from '../../lib/dates';
 
 // ── SubtaskList ──
-function SubtaskList({ subtasks = [], onUpdate, couleur, isDark }) {
+function SubtaskList({ subtasks = [], onUpdate, couleur: _couleur, isDark: _isDark }) {
   const [newText, setNewText] = useState('');
   const tc = {
     muted: 'text-encre-3',
-    input: 'bg-surface text-encre border-bord-fort',
+    input: 'bg-surface text-encre border-bord-fort focus:ring-accent/40',
   };
 
   const done = subtasks.filter(s => s.done).length;
@@ -49,8 +49,8 @@ function SubtaskList({ subtasks = [], onUpdate, couleur, isDark }) {
       {total > 0 && (
         <div className={`h-1 rounded-full mb-2 bg-surface-2`}>
           <div
-            className="h-full rounded-full transition-all duration-300"
-            style={{ width: `${progress}%`, backgroundColor: done === total ? '#22c55e' : couleur }}
+            className={`h-full rounded-full transition-all duration-300 ${done === total ? 'bg-succes-point' : 'bg-accent'}`}
+            style={{ width: `${progress}%` }}
           />
         </div>
       )}
@@ -62,7 +62,7 @@ function SubtaskList({ subtasks = [], onUpdate, couleur, isDark }) {
               onClick={() => toggleSubtask(st.id)}
               className={`flex-shrink-0 w-4 h-4 rounded border flex items-center justify-center transition-colors ${
                 st.done
-                  ? 'border-green-500 bg-green-500 text-white'
+                  ? 'border-succes-texte bg-succes-texte text-white'
                   : 'border-bord-fort'
               }`}
             >
@@ -73,7 +73,7 @@ function SubtaskList({ subtasks = [], onUpdate, couleur, isDark }) {
             </span>
             <button
               onClick={() => deleteSubtask(st.id)}
-              className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-red-400 hover:text-red-500 transition-opacity"
+              className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-encre-3 hover:text-danger-texte transition-opacity"
             >
               <X size={12} />
             </button>
@@ -89,10 +89,9 @@ function SubtaskList({ subtasks = [], onUpdate, couleur, isDark }) {
           onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addSubtask(); } }}
           placeholder="Ajouter une sous-tâche..."
           className={`flex-1 px-2 py-1.5 rounded-lg border text-xs focus:outline-none focus:ring-1 ${tc.input}`}
-          style={{ '--tw-ring-color': couleur }}
           aria-label="Ajouter une sous-tâche"
         />
-        <span className={`text-[10px] flex-shrink-0 ${tc.muted}`}>↵ pour ajouter</span>
+        <span className={`indication-clavier text-xs flex-shrink-0 ${tc.muted}`}>↵ pour ajouter</span>
         <button
           onClick={addSubtask}
           disabled={!newText.trim()}
@@ -260,7 +259,7 @@ export default function TaskDetail({ memo, onUpdate, onDelete, onClose, chantier
       title: 'Supprimer cette tâche ?',
       message: `"${memo.text?.substring(0, 50)}${memo.text?.length > 50 ? '...' : ''}"`,
       confirmText: 'Supprimer',
-      confirmColor: '#ef4444',
+      variant: 'danger',
     });
     if (ok) {
       onDelete(memo.id);
@@ -315,7 +314,7 @@ export default function TaskDetail({ memo, onUpdate, onDelete, onClose, chantier
     text: 'text-encre',
     muted: 'text-encre-3',
     border: 'border-bord',
-    input: 'bg-surface text-encre border-bord-fort',
+    input: 'bg-surface text-encre border-bord-fort focus:ring-accent/40',
   };
 
   return (
@@ -339,12 +338,12 @@ export default function TaskDetail({ memo, onUpdate, onDelete, onClose, chantier
           {/* Auto-save indicator */}
           <div className="flex items-center gap-1.5" role="status" aria-live="polite">
             {saveStatus === 'saving' && (
-              <span className={`text-xs flex items-center gap-1 ${isDark ? 'text-amber-400' : 'text-amber-500'}`}>
+              <span className="text-xs flex items-center gap-1 text-alerte-texte">
                 <RefreshCw size={11} className="animate-spin" /> Sauvegarde...
               </span>
             )}
             {saveStatus === 'saved' && (
-              <span className={`text-xs flex items-center gap-1 ${isDark ? 'text-green-400' : 'text-green-600'}`}>
+              <span className="text-xs flex items-center gap-1 text-succes-texte">
                 <CheckCircle2 size={11} /> Sauvegardé
               </span>
             )}
@@ -390,7 +389,7 @@ export default function TaskDetail({ memo, onUpdate, onDelete, onClose, chantier
                       } text-encre-2`}
                     >
                       <ExternalLink size={14} /> Partager par SMS/Email
-                      {!hasNativeShare && <span className={`text-[10px] ml-auto ${tc.muted}`}>Non disponible</span>}
+                      {!hasNativeShare && <span className={`text-xs ml-auto ${tc.muted}`}>Non disponible</span>}
                     </button>
                   </div>
                 </>
@@ -398,7 +397,7 @@ export default function TaskDetail({ memo, onUpdate, onDelete, onClose, chantier
             </div>
             <button
               onClick={handleDelete}
-              className={`p-1.5 rounded-lg text-red-500 ${isDark ? 'hover:bg-red-500/10' : 'hover:bg-red-50'}`}
+              className="p-1.5 rounded-lg text-danger-texte hover:bg-danger-fond"
               aria-label="Supprimer cette tâche définitivement"
             >
               <Trash2 size={18} />
@@ -421,10 +420,9 @@ export default function TaskDetail({ memo, onUpdate, onDelete, onClose, chantier
                     onClick={() => handleStatusChange(st.value)}
                     className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-all border ${
                       isActive
-                        ? 'text-white border-transparent'
+                        ? `${classesTon(st.ton).pastille} border-transparent`
                         : 'border-bord text-encre-2 hover:bg-surface-2'
                     }`}
-                    style={isActive ? { backgroundColor: st.color } : {}}
                   >
                     <Icon size={14} />
                     {st.label}
@@ -442,7 +440,6 @@ export default function TaskDetail({ memo, onUpdate, onDelete, onClose, chantier
               onChange={(e) => setText(e.target.value)}
               rows={3}
               className={`w-full px-3 py-2 rounded-lg border text-sm resize-none focus:outline-none focus:ring-2 ${tc.input}`}
-              style={{ '--tw-ring-color': couleur }}
               placeholder="Contenu de la tâche..."
             />
           </div>
@@ -455,7 +452,6 @@ export default function TaskDetail({ memo, onUpdate, onDelete, onClose, chantier
               onChange={(e) => setNotes(e.target.value)}
               rows={4}
               className={`w-full px-3 py-2 rounded-lg border text-sm resize-none focus:outline-none focus:ring-2 ${tc.input}`}
-              style={{ '--tw-ring-color': couleur }}
               placeholder="Détails, liens, références..."
             />
           </div>
@@ -477,7 +473,6 @@ export default function TaskDetail({ memo, onUpdate, onDelete, onClose, chantier
                 value={memo.due_date || ''}
                 onChange={(e) => handleImmediateUpdate('due_date', e.target.value)}
                 className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${tc.input}`}
-                style={{ '--tw-ring-color': couleur }}
               />
             </div>
             <div>
@@ -487,7 +482,6 @@ export default function TaskDetail({ memo, onUpdate, onDelete, onClose, chantier
                 value={memo.due_time || ''}
                 onChange={(e) => handleImmediateUpdate('due_time', e.target.value)}
                 className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${tc.input}`}
-                style={{ '--tw-ring-color': couleur }}
               />
             </div>
           </div>
@@ -500,10 +494,9 @@ export default function TaskDetail({ memo, onUpdate, onDelete, onClose, chantier
               value={memo.due_date_end || ''}
               onChange={(e) => handleImmediateUpdate('due_date_end', e.target.value)}
               className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${tc.input}`}
-              style={{ '--tw-ring-color': couleur }}
             />
             {memo.due_date && memo.due_date_end && memo.due_date_end < memo.due_date && (
-              <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+              <p className="text-xs text-danger-texte mt-1 flex items-center gap-1">
                 <AlertCircle size={12} />
                 La date de fin est antérieure à la date de début
               </p>
@@ -526,7 +519,6 @@ export default function TaskDetail({ memo, onUpdate, onDelete, onClose, chantier
               value={recType}
               onChange={(e) => handleRecurrenceChange(e.target.value)}
               className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${tc.input}`}
-              style={{ '--tw-ring-color': couleur }}
             >
               {RECURRENCE_OPTIONS.map(o => (
                 <option key={o.value} value={o.value}>{o.label}</option>
@@ -561,7 +553,6 @@ export default function TaskDetail({ memo, onUpdate, onDelete, onClose, chantier
               value={memo.priority || ''}
               onChange={(e) => handleImmediateUpdate('priority', e.target.value)}
               className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${tc.input}`}
-              style={{ '--tw-ring-color': couleur }}
             >
               <option value="">Aucune</option>
               {PRIORITIES.map(p => (
@@ -577,7 +568,6 @@ export default function TaskDetail({ memo, onUpdate, onDelete, onClose, chantier
               value={memo.category || ''}
               onChange={(e) => handleImmediateUpdate('category', e.target.value)}
               className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${tc.input}`}
-              style={{ '--tw-ring-color': couleur }}
             >
               <option value="">Aucune</option>
               {CATEGORIES.map(c => (
@@ -593,7 +583,6 @@ export default function TaskDetail({ memo, onUpdate, onDelete, onClose, chantier
               value={memo.chantier_id || ''}
               onChange={(e) => handleImmediateUpdate('chantier_id', e.target.value)}
               className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${tc.input}`}
-              style={{ '--tw-ring-color': couleur }}
             >
               <option value="">Aucun</option>
               {chantiers.map(ch => (
@@ -609,7 +598,6 @@ export default function TaskDetail({ memo, onUpdate, onDelete, onClose, chantier
               value={memo.client_id || ''}
               onChange={(e) => handleImmediateUpdate('client_id', e.target.value)}
               className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${tc.input}`}
-              style={{ '--tw-ring-color': couleur }}
             >
               <option value="">Aucun</option>
               {clients.map(cl => (
@@ -625,7 +613,6 @@ export default function TaskDetail({ memo, onUpdate, onDelete, onClose, chantier
               value={memo.assigned_to || ''}
               onChange={(e) => handleImmediateUpdate('assigned_to', e.target.value)}
               className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${tc.input}`}
-              style={{ '--tw-ring-color': couleur }}
             >
               <option value="">Non assigné</option>
               {(equipe || []).map(m => (

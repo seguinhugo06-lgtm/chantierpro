@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { MapPin, Navigation, ExternalLink, AlertTriangle } from 'lucide-react';
+import { PastilleStatut } from '../ui/Pastille';
 
 // Fix default Leaflet marker icons (broken with bundlers)
 delete L.Icon.Default.prototype._getIconUrl;
@@ -27,13 +28,16 @@ const createColoredIcon = (color, isActive = false) => {
   });
 };
 
-const STATUS_COLORS = {
-  en_cours: '#f97316',
-  prospect: '#3b82f6',
-  termine: '#22c55e',
-  abandonne: '#ef4444',
-  archive: '#6b7280',
+// Marqueurs et pastilles de la carte : le ton du statut (src/lib/statuts.js), lu dans les jetons du thème
+// (--{ton}-point) pour que les marqueurs SVG suivent le mode clair ou sombre.
+const TON_STATUT = { en_cours: 'info', prospect: 'neutre', termine: 'succes', abandonne: 'danger', archive: 'neutre' };
+const pointDeTon = (ton) => {
+  const brut = typeof document !== 'undefined' ? getComputedStyle(document.documentElement).getPropertyValue(`--${ton}-point`).trim() : '';
+  return brut ? `rgb(${brut.split(/\s+/).join(',')})` : 'rgb(100,116,139)';
 };
+const couleurStatut = (statut) => pointDeTon(TON_STATUT[statut] || 'neutre');
+const TUILE_SOMBRE = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+const TUILE_CLAIRE = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
 
 // Geocode an address using Nominatim (free, no API key)
 const geocodeAddress = async (address) => {
@@ -68,7 +72,7 @@ function FitBounds({ positions }) {
 /**
  * ChantierMap - Interactive map displaying all chantiers
  */
-export default function ChantierMap({ chantiers, clients, onSelectChantier, isDark, couleur, formatMoney, modeDiscret }) {
+export default function ChantierMap({ chantiers, clients, onSelectChantier, isDark, couleur: _couleur, formatMoney, modeDiscret: _modeDiscret }) {
   const [positions, setPositions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [userPos, setUserPos] = useState(null);
@@ -149,7 +153,6 @@ export default function ChantierMap({ chantiers, clients, onSelectChantier, isDa
 
   const textPrimary = 'text-encre';
   const textMuted = 'text-encre-2';
-  const cardBg = 'bg-surface';
 
   // Default center: France
   const defaultCenter = positions.length > 0
@@ -169,18 +172,18 @@ export default function ChantierMap({ chantiers, clients, onSelectChantier, isDa
       />
       <style>{`
         .custom-marker { background: none !important; border: none !important; }
-        .leaflet-popup-content-wrapper { border-radius: 12px !important; ${isDark ? 'background: #1e293b !important; color: #e2e8f0 !important;' : ''} }
-        .leaflet-popup-tip { ${isDark ? 'background: #1e293b !important;' : ''} }
+        .leaflet-popup-content-wrapper { border-radius: 12px !important; background: rgb(var(--surface)) !important; color: rgb(var(--encre)) !important; }
+        .leaflet-popup-tip { background: rgb(var(--surface)) !important; }
         .leaflet-popup-content { margin: 8px 12px !important; }
-        .leaflet-control-zoom a { ${isDark ? 'background: #334155 !important; color: #e2e8f0 !important; border-color: #475569 !important;' : ''} }
-        .leaflet-control-attribution { font-size: 9px !important; ${isDark ? 'background: #1e293b99 !important; color: #94a3b8 !important;' : ''} }
-        .leaflet-control-attribution a { ${isDark ? 'color: #60a5fa !important;' : ''} }
+        .leaflet-control-zoom a { background: rgb(var(--surface)) !important; color: rgb(var(--encre)) !important; border-color: rgb(var(--bord)) !important; }
+        .leaflet-control-attribution { font-size: 12px !important; background: rgb(var(--surface) / 0.85) !important; color: rgb(var(--encre-3)) !important; }
+        .leaflet-control-attribution a { color: rgb(var(--accent-texte)) !important; }
       `}</style>
 
       {loading && (
         <div className={`absolute top-3 left-1/2 -translate-x-1/2 z-[1030] px-4 py-2 rounded-xl text-sm font-medium shadow-lg bg-surface text-encre-2`}>
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: `${couleur} transparent ${couleur} ${couleur}` }} />
+            <div className="w-4 h-4 border-2 border-accent border-t-transparent rounded-full animate-spin" />
             Géolocalisation des chantiers...
           </div>
         </div>
@@ -189,19 +192,19 @@ export default function ChantierMap({ chantiers, clients, onSelectChantier, isDa
       {/* Filter overlay buttons */}
       <div className={`absolute top-3 left-3 z-[1030] flex gap-1.5`}>
         {[
-          { key: 'all', label: 'Tous', color: couleur },
-          { key: 'en_cours', label: 'En cours', color: STATUS_COLORS.en_cours },
-          { key: 'prospect', label: 'Prospects', color: STATUS_COLORS.prospect },
+          { key: 'all', label: 'Tous' },
+          { key: 'en_cours', label: 'En cours' },
+          { key: 'prospect', label: 'Prospects' },
         ].map(f => (
           <button
             key={f.key}
             onClick={() => setMapFilter(f.key)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium shadow-md transition-all ${
+            aria-pressed={mapFilter === f.key}
+            className={`px-3 py-1.5 min-h-[36px] rounded-lg text-xs font-medium shadow-md transition-all ${
               mapFilter === f.key
-                ? 'text-white'
+                ? 'bg-accent text-sur-accent'
                 : 'bg-surface/90 text-encre-2 hover:bg-surface'
             }`}
-            style={mapFilter === f.key ? { backgroundColor: f.color } : {}}
           >
             {f.label}
           </button>
@@ -214,16 +217,16 @@ export default function ChantierMap({ chantiers, clients, onSelectChantier, isDa
           <MapPin size={12} />
           <span className="font-medium">{positions.filter(ch => mapFilter === 'all' || ch.statut === mapFilter).length} sur la carte</span>
           {failedCount > 0 && (
-            <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${isDark ? 'bg-amber-900/50 text-amber-400' : 'bg-amber-100 text-amber-700'}`}>
+            <span className="text-xs px-1.5 py-0.5 rounded-full bg-alerte-fond text-alerte-texte">
               {failedCount} sans adresse
             </span>
           )}
         </div>
         <div className="flex flex-wrap gap-x-3 gap-y-1">
           {[
-            { label: 'En cours', color: STATUS_COLORS.en_cours },
-            { label: 'Prospect', color: STATUS_COLORS.prospect },
-            { label: 'Terminé', color: STATUS_COLORS.termine },
+            { label: 'En cours', color: couleurStatut('en_cours') },
+            { label: 'Prospect', color: couleurStatut('prospect') },
+            { label: 'Terminé', color: couleurStatut('termine') },
           ].map(item => (
             <div key={item.label} className="flex items-center gap-1.5">
               <div className="w-2.5 h-2.5 rounded-full" style={{ background: item.color }} />
@@ -248,14 +251,10 @@ export default function ChantierMap({ chantiers, clients, onSelectChantier, isDa
         zoom={positions.length > 0 ? 10 : 6}
         scrollWheelZoom={true}
         style={{ height: '500px', width: '100%', borderRadius: '12px', zIndex: 1 }}
-        className={isDark ? 'map-dark' : ''}
       >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-          url={isDark
-            ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-            : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
-          }
+          url={isDark ? TUILE_SOMBRE : TUILE_CLAIRE}
         />
 
         {positions.length > 0 && <FitBounds positions={positions} />}
@@ -265,7 +264,7 @@ export default function ChantierMap({ chantiers, clients, onSelectChantier, isDa
           <Marker
             position={[userPos.lat, userPos.lng]}
             icon={L.divIcon({
-              html: `<div style="width:16px;height:16px;background:${couleur};border:3px solid white;border-radius:50%;box-shadow:0 0 8px ${couleur}88;"></div>`,
+              html: '<div style="width:16px;height:16px;background:rgb(var(--accent));border:3px solid white;border-radius:50%;box-shadow:0 0 8px rgb(var(--accent) / 0.55);"></div>',
               className: 'custom-marker',
               iconSize: [16, 16],
               iconAnchor: [8, 8],
@@ -285,8 +284,8 @@ export default function ChantierMap({ chantiers, clients, onSelectChantier, isDa
           .filter(ch => mapFilter === 'all' || ch.statut === mapFilter)
           .map(ch => {
           const client = clients?.find(c => c.id === ch.client_id);
-          const color = STATUS_COLORS[ch.statut] || STATUS_COLORS.prospect;
-          const statusLabel = ch.statut === 'en_cours' ? 'En cours' : ch.statut === 'termine' ? 'Terminé' : ch.statut === 'prospect' ? 'Prospect' : ch.statut;
+          const color = couleurStatut(ch.statut);
+
 
           // Calculate avancement
           const allTasks = ch.taches || [];
@@ -310,18 +309,13 @@ export default function ChantierMap({ chantiers, clients, onSelectChantier, isDa
                 <div style={{ minWidth: '200px' }}>
                   {/* Name + Status badge */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                    <p className="font-bold text-sm" style={{ color: isDark ? '#e2e8f0' : '#1e293b', margin: 0, flex: 1 }}>{ch.nom}</p>
-                    <span
-                      className="text-[10px] px-2 py-0.5 rounded-full font-medium whitespace-nowrap"
-                      style={{ background: `${color}20`, color }}
-                    >
-                      {statusLabel}
-                    </span>
+                    <p className="font-bold text-sm text-encre" style={{ margin: 0, flex: 1 }}>{ch.nom}</p>
+                    <PastilleStatut genre="chantier" statut={ch.statut} />
                   </div>
 
                   {/* Client */}
                   {client && (
-                    <p className="text-xs mb-1" style={{ color: isDark ? '#94a3b8' : '#64748b', margin: '0 0 4px 0' }}>
+                    <p className="text-xs mb-1 text-encre-3" style={{ margin: '0 0 4px 0' }}>
                       {client.nom} {client.prenom || ''}
                     </p>
                   )}
@@ -330,10 +324,10 @@ export default function ChantierMap({ chantiers, clients, onSelectChantier, isDa
                   {ch.statut === 'en_cours' && allTasks.length > 0 && (
                     <div style={{ marginBottom: '8px' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3px' }}>
-                        <span className="text-[10px]" style={{ color: isDark ? '#94a3b8' : '#64748b' }}>Avancement</span>
-                        <span className="text-[10px] font-semibold text-accent-texte">{avancement}%</span>
+                        <span className="text-xs text-encre-3">Avancement</span>
+                        <span className="text-xs font-semibold text-accent-texte">{avancement}%</span>
                       </div>
-                      <div style={{ height: '4px', borderRadius: '2px', background: isDark ? '#334155' : '#e2e8f0', overflow: 'hidden' }}>
+                      <div className="bg-bord" style={{ height: '4px', borderRadius: '2px', overflow: 'hidden' }}>
                         <div className="bg-accent" style={{ height: '100%', borderRadius: '2px', width: `${Math.max(3, avancement)}%`, transition: 'width 0.3s' }} />
                       </div>
                     </div>
@@ -347,6 +341,7 @@ export default function ChantierMap({ chantiers, clients, onSelectChantier, isDa
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={(e) => e.stopPropagation()}
+                        className="text-encre bg-surface-2"
                         style={{
                           flex: 1,
                           display: 'flex',
@@ -357,9 +352,7 @@ export default function ChantierMap({ chantiers, clients, onSelectChantier, isDa
                           borderRadius: '8px',
                           fontSize: '11px',
                           fontWeight: 600,
-                          color: '#f97316',
-                          background: isDark ? '#431407' : '#fff7ed',
-                          border: `1px solid ${isDark ? '#9a3412' : '#fed7aa'}`,
+                          border: '1px solid rgb(var(--bord-fort))',
                           textDecoration: 'none',
                           cursor: 'pointer',
                         }}
@@ -400,8 +393,7 @@ export default function ChantierMap({ chantiers, clients, onSelectChantier, isDa
       {selectedChantier && (() => {
         const sch = selectedChantier;
         const client = clients?.find(c => c.id === sch.client_id);
-        const color = STATUS_COLORS[sch.statut] || STATUS_COLORS.prospect;
-        const statusLabel = sch.statut === 'en_cours' ? 'En cours' : sch.statut === 'termine' ? 'Terminé' : sch.statut === 'prospect' ? 'Prospect' : sch.statut;
+
         const allTasks = sch.taches || [];
         const tasksDone = allTasks.filter(t => t.done).length;
         const avancement = sch.statut === 'termine' ? 100 : allTasks.length > 0 ? Math.round((tasksDone / allTasks.length) * 100) : 0;
@@ -414,9 +406,7 @@ export default function ChantierMap({ chantiers, clients, onSelectChantier, isDa
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
                   <h3 className={`font-bold text-base truncate ${textPrimary}`}>{sch.nom}</h3>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full font-medium whitespace-nowrap" style={{ background: `${color}20`, color }}>
-                    {statusLabel}
-                  </span>
+                  <PastilleStatut genre="chantier" statut={sch.statut} />
                 </div>
                 {client && <p className={`text-sm ${textMuted} mb-1`}>{client.nom} {client.prenom || ''}</p>}
                 {gpsAddr && <p className={`text-xs ${textMuted} flex items-center gap-1`}><MapPin size={11} />{gpsAddr}</p>}

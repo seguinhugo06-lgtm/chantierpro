@@ -1,77 +1,53 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
-  Plus, ChevronDown, ChevronRight, Calendar, Clock,
+  Plus, ChevronDown, ChevronRight, Clock,
   ClipboardList, AlertCircle, CheckCircle2, StickyNote,
-  GripVertical, Mic, MicOff, Archive, X, ArrowUpDown,
+  GripVertical, Mic, MicOff, Trash2, ArrowUpDown, SearchX,
 } from 'lucide-react';
 import { useDebounce } from '../../hooks/useDebounce';
 import { useConfirm, useToast } from '../../context/AppContext';
 import TaskItem from './TaskItem';
 import TaskDetail from './TaskDetail';
-import BulkActionBar from './BulkActionBar';
+import TuileChiffre from '../ui/TuileChiffre';
+import EtatVide from '../ui/EtatVide';
+import { Bouton } from '../ui/Bouton';
 import { BoutonVolet, Volet, ListeChoix, SegmentDefilant } from '../ui/Filtres';
-import { CATEGORIES, PRIORITIES, PRIORITY_ORDER, SORT_OPTIONS } from './constants';
-import { today, isOverdue, isToday, isFuture, isUndated, getNextOccurrence } from './helpers';
+import { PRIORITY_ORDER, SORT_OPTIONS, classesTon } from './constants';
+import { today, isOverdue, getNextOccurrence } from './helpers';
 import { jourLocal } from '../../lib/dates';
 
-// ── StatsBar ──
-function StatsBar({ memos, isDark, couleur }) {
+// ── Les chiffres : seulement quand il y a des tâches, et ils filtrent la liste (audit UX du 20 oct. 2026 : quatre tuiles
+// à zéro, « 0% » en rouge pour 0 sur 0, libellés de 10 px, et un chiffre dit deux fois) ──
+function Chiffres({ memos, quickFilter, onQuickFilter }) {
   const stats = useMemo(() => {
     const now = new Date();
-    const weekStart = new Date(now);
-    weekStart.setDate(now.getDate() - now.getDay() + (now.getDay() === 0 ? -6 : 1));
-    weekStart.setHours(0, 0, 0, 0);
+    const debutSemaine = new Date(now);
+    debutSemaine.setDate(now.getDate() - now.getDay() + (now.getDay() === 0 ? -6 : 1));
+    debutSemaine.setHours(0, 0, 0, 0);
+    const faitesCetteSemaine = memos.filter((m) => m.is_done && m.done_at && new Date(m.done_at) >= debutSemaine).length;
+    const enRetard = memos.filter((m) => !m.is_done && m.due_date && m.due_date < today()).length;
 
-    const completedThisWeek = memos.filter(m =>
-      m.is_done && m.done_at && new Date(m.done_at) >= weekStart
-    ).length;
-
-    const total = memos.length;
-    const completed = memos.filter(m => m.is_done).length;
-    const overdueCount = memos.filter(m => !m.is_done && m.due_date && m.due_date < today()).length;
-
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    monthStart.setHours(0, 0, 0, 0);
-    const createdThisMonth = memos.filter(m => {
+    const debutMois = new Date(now.getFullYear(), now.getMonth(), 1);
+    const creeesCeMois = memos.filter((m) => {
       const d = new Date(m.created_at || m.createdAt || m.id?.substring?.(0, 8));
-      return !isNaN(d.getTime()) && d >= monthStart;
+      return !Number.isNaN(d.getTime()) && d >= debutMois;
     });
-    const completedThisMonth = createdThisMonth.filter(m => m.is_done).length;
-    const totalThisMonth = createdThisMonth.length;
-    const completionRate = totalThisMonth > 0 ? Math.round((completedThisMonth / totalThisMonth) * 100) : (total > 0 ? Math.round((completed / total) * 100) : 0);
-
-    return { completedThisWeek, completionRate, overdueCount, completedThisMonth, totalThisMonth, completed, total };
+    const faitesCeMois = creeesCeMois.filter((m) => m.is_done).length;
+    return { faitesCetteSemaine, enRetard, faitesCeMois, creeesCeMois: creeesCeMois.length };
   }, [memos]);
 
-  const completionColor = stats.completionRate <= 30 ? '#EF4444' : stats.completionRate <= 70 ? '#F97316' : '#22C55E';
-  const overdueNeutral = stats.overdueCount === 0;
-
   return (
-    <div className="bandeau-chiffres grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
-      <div className={`rounded-xl border px-3 py-2.5 text-center transition-all bg-surface border-bord`} style={{ borderLeftWidth: '3px', borderLeftColor: couleur }}>
-        <div className="text-lg font-bold text-accent-texte">{stats.completedThisWeek}</div>
-        <div className={`text-[10px] font-medium text-encre-3`}>Cette semaine</div>
-      </div>
-      <div className={`rounded-xl border px-3 py-2.5 text-center transition-all bg-surface border-bord`} style={{ borderLeftWidth: '3px', borderLeftColor: completionColor }}>
-        <div className="text-lg font-bold" style={{ color: completionColor }}>{stats.completionRate}%</div>
-        <div className={`h-1 rounded-full mt-1 mb-0.5 bg-surface-2`}>
-          <div className="h-full rounded-full transition-all" style={{ width: `${stats.completionRate}%`, background: `linear-gradient(90deg, ${completionColor}, ${completionColor}cc)` }} />
-        </div>
-        <div className={`text-[10px] font-medium text-encre-3`}>
-          {stats.completedThisMonth} / {stats.totalThisMonth || stats.total} ce mois
-        </div>
-      </div>
-      <div className={`rounded-xl border px-3 py-2.5 text-center transition-all bg-surface border-bord`} style={{ borderLeftWidth: '3px', borderLeftColor: overdueNeutral ? (isDark ? '#475569' : '#cbd5e1') : '#ef4444' }}>
-        <div className={`text-lg font-bold ${overdueNeutral ? 'text-encre-3' : 'text-red-500'}`}>{stats.overdueCount}</div>
-        <div className={`text-[10px] font-medium text-encre-3`}>En retard</div>
-      </div>
-      <div className={`rounded-xl border px-3 py-2.5 text-center transition-all bg-surface border-bord`} style={{ borderLeftWidth: '3px', borderLeftColor: '#3b82f6' }}>
-        <div className="text-lg font-bold text-blue-500 flex items-center justify-center gap-1">
-          <CheckCircle2 size={14} className="text-emerald-500" />
-          {stats.completedThisMonth}
-        </div>
-        <div className={`text-[10px] font-medium text-encre-3`}>Complétées ce mois</div>
-      </div>
+    <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-4">
+      <TuileChiffre
+        libelle="En retard" valeur={stats.enRetard}
+        alerte={stats.enRetard > 0 ? 'Échéance dépassée' : undefined} contexte={stats.enRetard === 0 ? 'Rien en retard' : undefined}
+        onClick={() => onQuickFilter(quickFilter === 'overdue' ? 'all' : 'overdue')} actif={quickFilter === 'overdue'}
+      />
+      <TuileChiffre libelle="Cette semaine" valeur={stats.faitesCetteSemaine} contexte="faites depuis lundi" />
+      <TuileChiffre
+        libelle="Ce mois" valeur={stats.faitesCeMois}
+        contexte={stats.creeesCeMois > 0 ? `faites sur ${stats.creeesCeMois} créée${stats.creeesCeMois > 1 ? 's' : ''}` : undefined}
+      />
     </div>
   );
 }
@@ -89,7 +65,7 @@ export default function TaskListView({
   clients = [],
   equipe = [],
   isDark = false,
-  couleur = '#f97316',
+  couleur: _couleur,
   filters = {},
   selectedMemoId,
   onSelectMemo,
@@ -101,8 +77,6 @@ export default function TaskListView({
   const [quickFilter, setQuickFilter] = useState('all');
   const [triOuvert, setTriOuvert] = useState(false);
   const boutonTriRef = useRef(null);
-  const [selectionMode, setSelectionMode] = useState(false);
-  const [selectedIds, setSelectedIds] = useState(new Set());
   const [dragOverIndex, setDragOverIndex] = useState(null);
   const [isListening, setIsListening] = useState(false);
   const inputRef = useRef(null);
@@ -113,17 +87,17 @@ export default function TaskListView({
 
   const debouncedSearch = useDebounce(filters.search || '', 300);
 
-  const tc = {
-    bg: 'bg-fond',
-    card: 'bg-surface',
-    text: 'text-encre',
-    muted: 'text-encre-3',
-    border: 'border-bord',
-    input: 'bg-surface text-encre placeholder:text-encre-3 border-bord-fort',
-  };
-
   // ── Web Speech API ──
   const hasSpeechAPI = typeof window !== 'undefined' && ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
+
+  const stopListening = useCallback(() => {
+    clearTimeout(silenceTimerRef.current);
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+      recognitionRef.current = null;
+    }
+    setIsListening(false);
+  }, []);
 
   const startListening = useCallback(() => {
     if (!hasSpeechAPI) {
@@ -146,11 +120,12 @@ export default function TaskListView({
 
       clearTimeout(silenceTimerRef.current);
       if (event.results[event.results.length - 1].isFinal) {
-        silenceTimerRef.current = setTimeout(() => {
+        silenceTimerRef.current = setTimeout(async () => {
           stopListening();
           const trimmed = transcript.trim();
           if (trimmed) {
-            addMemo({ text: trimmed });
+            const cree = await addMemo({ text: trimmed });
+            if (!cree) return; // refus : le texte dicté reste dans le champ
             setNewMemoText('');
             showToast('Tâche vocale ajoutée', 'success');
           }
@@ -174,16 +149,7 @@ export default function TaskListView({
     recognitionRef.current = recognition;
     recognition.start();
     setIsListening(true);
-  }, [hasSpeechAPI, isListening, addMemo, showToast]);
-
-  const stopListening = useCallback(() => {
-    clearTimeout(silenceTimerRef.current);
-    if (recognitionRef.current) {
-      recognitionRef.current.stop();
-      recognitionRef.current = null;
-    }
-    setIsListening(false);
-  }, []);
+  }, [hasSpeechAPI, isListening, addMemo, showToast, stopListening]);
 
   useEffect(() => {
     return () => {
@@ -222,21 +188,15 @@ export default function TaskListView({
     toggleMemo(id);
   }, [memos, toggleMemo, addMemo, showToast]);
 
-  // ── Quick capture ──
+  // ── Quick capture : « Tâche ajoutée » seulement si la base l'a prise ──
   const handleQuickAdd = useCallback(async () => {
     const trimmed = newMemoText.trim();
     if (!trimmed) return;
     const result = await addMemo({ text: trimmed });
-    const newId = result?.id;
+    if (!result) return; // refus : le texte reste dans le champ, DataContext a dit pourquoi
     setNewMemoText('');
-    showToast(
-      newId ? 'Tâche ajoutée' : 'Tâche ajoutée',
-      'success',
-      3000
-    );
-    if (newId) {
-      setTimeout(() => onSelectMemo(newId), 300);
-    }
+    showToast('Tâche ajoutée', 'success', 3000);
+    if (result.id) setTimeout(() => onSelectMemo(result.id), 300);
     inputRef.current?.focus();
   }, [newMemoText, addMemo, showToast, onSelectMemo]);
 
@@ -265,60 +225,11 @@ export default function TaskListView({
       title: 'Supprimer cette tâche ?',
       message: `"${memo?.text?.substring(0, 50)}${memo?.text?.length > 50 ? '...' : ''}"`,
       confirmText: 'Supprimer',
-      confirmColor: '#ef4444',
+      variant: 'danger',
     });
     if (ok) {
       deleteMemo(id);
       showToast('Tâche supprimée', 'success');
-    }
-  };
-
-  // ── Multi-select ──
-  const toggleMultiSelect = (id) => {
-    setSelectedIds(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
-
-  const handleBulkDate = (date) => {
-    selectedIds.forEach(id => updateMemo(id, { due_date: date || null }));
-    showToast(`Date mise à jour pour ${selectedIds.size} tâche(s)`, 'success');
-    setSelectedIds(new Set());
-    setSelectionMode(false);
-  };
-  const handleBulkCategory = (cat) => {
-    selectedIds.forEach(id => updateMemo(id, { category: cat || null }));
-    showToast(`Catégorie mise à jour pour ${selectedIds.size} tâche(s)`, 'success');
-    setSelectedIds(new Set());
-    setSelectionMode(false);
-  };
-  const handleBulkPriority = (p) => {
-    selectedIds.forEach(id => updateMemo(id, { priority: p || null }));
-    showToast(`Priorité mise à jour pour ${selectedIds.size} tâche(s)`, 'success');
-    setSelectedIds(new Set());
-    setSelectionMode(false);
-  };
-  const handleBulkComplete = () => {
-    selectedIds.forEach(id => handleToggle(id));
-    showToast(`${selectedIds.size} tâche(s) terminée(s)`, 'success');
-    setSelectedIds(new Set());
-    setSelectionMode(false);
-  };
-  const handleBulkDelete = async () => {
-    const ok = await confirm({
-      title: 'Supprimer les tâches ?',
-      message: `${selectedIds.size} tâche(s) seront supprimées.`,
-      confirmText: 'Supprimer',
-      confirmColor: '#ef4444',
-    });
-    if (ok) {
-      selectedIds.forEach(id => deleteMemo(id));
-      showToast(`${selectedIds.size} tâche(s) supprimée(s)`, 'success');
-      setSelectedIds(new Set());
-      setSelectionMode(false);
     }
   };
 
@@ -372,20 +283,9 @@ export default function TaskListView({
       });
     }
 
-    // Category
-    if (filters.category) {
-      list = list.filter(m => m.category === filters.category);
-    }
-
-    // Priority
-    if (filters.priority) {
-      list = list.filter(m => m.priority === filters.priority);
-    }
-
-    // Assigned to
-    if (filters.assignedTo) {
-      list = list.filter(m => m.assigned_to === filters.assignedTo);
-    }
+    if (filters.category) list = list.filter(m => m.category === filters.category);
+    if (filters.priority) list = list.filter(m => m.priority === filters.priority);
+    if (filters.assignedTo) list = list.filter(m => m.assigned_to === filters.assignedTo);
 
     // Status filter
     if (filters.status) {
@@ -461,29 +361,25 @@ export default function TaskListView({
 
   const selectedMemo = memos.find(m => m.id === selectedMemoId);
 
-  // Section renderer
-  const renderSection = (title, items, key, color, icon, draggable = false) => {
+  // Section renderer : un titre, un ton (le rouge est pour « en retard »)
+  const renderSection = (title, items, key, ton, icon, draggable = false) => {
     if (items.length === 0) return null;
     const isCollapsed = collapsedSections[key];
     const Icon = icon;
 
-    const sectionBg = key === 'overdue' ? (isDark ? 'bg-red-900/20 rounded-xl p-2' : 'bg-red-50 rounded-xl p-2') : '';
-
     return (
-      <div key={key} className={`mb-3 ${sectionBg}`}>
-        <div className="flex items-center gap-1">
-          <button
-            onClick={() => toggleSection(key)}
-            className={`flex items-center gap-2 flex-1 text-left px-2 py-1.5 rounded-md text-xs font-semibold uppercase tracking-wide text-encre-3 hover:bg-surface-2`}
-          >
-            {isCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
-            {Icon && <Icon size={13} style={{ color }} />}
-            <span style={{ color }}>{title}</span>
-            <span className={`ml-auto text-xs font-normal text-encre-3`}>
-              {items.length}
-            </span>
-          </button>
-        </div>
+      <div key={key} className={`mb-3 ${key === 'overdue' ? 'bg-danger-fond/40 rounded-xl p-2' : ''}`}>
+        <button
+          type="button"
+          onClick={() => toggleSection(key)}
+          aria-expanded={!isCollapsed}
+          className="w-full flex items-center gap-2 text-left px-2 min-h-[44px] rounded-md text-sm font-semibold hover:bg-surface-2"
+        >
+          {isCollapsed ? <ChevronRight size={16} aria-hidden="true" className="text-encre-3" /> : <ChevronDown size={16} aria-hidden="true" className="text-encre-3" />}
+          {Icon && <Icon size={16} aria-hidden="true" className={classesTon(ton).texte} />}
+          <span className={ton === 'neutre' ? 'text-encre' : classesTon(ton).texte}>{title}</span>
+          <span className="ml-auto text-sm font-normal text-encre-3 tabular-nums">{items.length}</span>
+        </button>
         {!isCollapsed && (
           <div className="space-y-0.5 mt-1">
             {items.map((m, idx) => (
@@ -496,12 +392,12 @@ export default function TaskListView({
                 onDrop={draggable ? (e) => handleDrop(e, m.id) : undefined}
               >
                 {draggable && dragOverIndex === idx && (
-                  <div className="h-0.5 bg-blue-500 rounded-full mx-3 my-0.5" />
+                  <div className="h-0.5 bg-accent rounded-full mx-3 my-0.5" />
                 )}
                 <div className={`flex items-start ${draggable ? 'gap-1' : ''}`}>
                   {draggable && (
-                    <div className={`mt-3 cursor-grab flex-shrink-0 ${isDark ? 'text-slate-600' : 'text-slate-300'}`}>
-                      <GripVertical size={14} />
+                    <div className="mt-3 cursor-grab flex-shrink-0 text-encre-3 hidden sm:block">
+                      <GripVertical size={14} aria-hidden="true" />
                     </div>
                   )}
                   <div className="flex-1">
@@ -513,15 +409,11 @@ export default function TaskListView({
                       chantiers={chantiers}
                       clients={clients}
                       equipe={equipe}
-                      couleur={couleur}
                       isDark={isDark}
                       onQuickDate={handleQuickDate}
                       onQuickPriority={handleQuickPriority}
                       onQuickDelete={handleQuickDelete}
                       setPage={setPage}
-                      selectionMode={selectionMode}
-                      isMultiSelected={selectedIds.has(m.id)}
-                      onMultiSelect={toggleMultiSelect}
                     />
                   </div>
                 </div>
@@ -535,35 +427,23 @@ export default function TaskListView({
 
   return (
     <div>
-      {/* CSS for slide-in animation */}
-      <style>{`
-        @keyframes slide-in-right {
-          from { transform: translateX(100%); }
-          to { transform: translateX(0); }
-        }
-        .animate-slide-in-right {
-          animation: slide-in-right 0.25s ease-out;
-        }
-      `}</style>
+      {/* Les chiffres : seulement quand il y a des tâches */}
+      {memos.length > 0 && <Chiffres memos={memos} quickFilter={quickFilter} onQuickFilter={setQuickFilter} />}
 
-      {/* Stats bar */}
-      <StatsBar memos={memos} isDark={isDark} couleur={couleur} />
-
-      {/* Quick capture */}
-      <div className={`${tc.card} rounded-xl border ${tc.border} p-3 mb-4`}>
+      {/* Saisie rapide : une tâche, une dictée */}
+      <div className="bg-surface rounded-2xl border border-bord shadow-e1 p-3 mb-4">
         <div className="flex items-center gap-2">
           <button
+            type="button"
             onClick={isListening ? stopListening : startListening}
-            className={`flex-shrink-0 w-11 h-11 rounded-xl flex items-center justify-center transition-all ${
-              isListening
-                ? 'text-white'
-                : isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+            className={`flex-shrink-0 w-11 h-11 rounded-xl flex items-center justify-center transition-colors ${
+              isListening ? 'bg-accent text-sur-accent animate-pulse' : 'bg-surface-2 text-encre-2 hover:bg-bord'
             }`}
-            style={isListening ? { backgroundColor: couleur, animation: 'pulse 1.5s infinite' } : {}}
             aria-label={isListening ? 'Arrêter la dictée vocale' : 'Démarrer la dictée vocale'}
+            aria-pressed={isListening}
             title={isListening ? 'Arrêter la dictée' : 'Dictée vocale'}
           >
-            {isListening ? <MicOff size={18} /> : <Mic size={18} />}
+            {isListening ? <MicOff size={18} aria-hidden="true" /> : <Mic size={18} aria-hidden="true" />}
           </button>
           <input
             ref={inputRef}
@@ -572,26 +452,27 @@ export default function TaskListView({
             onChange={(e) => setNewMemoText(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={isListening ? 'En écoute...' : 'Nouvelle tâche'}
-            className={`flex-1 bg-transparent border-none outline-none text-sm min-w-0 text-encre placeholder:text-encre-3`}
+            className="flex-1 bg-transparent border-none outline-none text-base min-w-0 text-encre placeholder:text-encre-3"
             aria-label="Créer une nouvelle tâche"
           />
           <button
+            type="button"
             onClick={handleQuickAdd}
             disabled={!newMemoText.trim()}
-            className="flex-shrink-0 w-11 h-11 rounded-xl flex items-center justify-center transition-all disabled:opacity-40 bg-accent text-sur-accent"
+            className="flex-shrink-0 w-11 h-11 rounded-xl flex items-center justify-center transition-colors disabled:opacity-40 bg-accent text-sur-accent"
             aria-label="Ajouter la tâche"
           >
-            <Plus size={20} strokeWidth={2.5} />
+            <Plus size={20} strokeWidth={2.5} aria-hidden="true" />
           </button>
         </div>
         {isListening && (
-          <div className="flex items-center gap-2 mt-2 px-1">
-            <div className="flex gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-bounce" style={{ animationDelay: '0ms' }} />
-              <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-bounce" style={{ animationDelay: '150ms' }} />
-              <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-bounce" style={{ animationDelay: '300ms' }} />
+          <div className="flex items-center gap-2 mt-2 px-1" role="status">
+            <div className="flex gap-1" aria-hidden="true">
+              <span className="w-1.5 h-1.5 rounded-full bg-accent animate-bounce" style={{ animationDelay: '0ms' }} />
+              <span className="w-1.5 h-1.5 rounded-full bg-accent animate-bounce" style={{ animationDelay: '150ms' }} />
+              <span className="w-1.5 h-1.5 rounded-full bg-accent animate-bounce" style={{ animationDelay: '300ms' }} />
             </div>
-            <span className={`text-xs text-accent-texte`}>
+            <span className="text-sm text-accent-texte">
               En écoute... (envoi automatique après 2s de silence)
             </span>
           </div>
@@ -599,89 +480,79 @@ export default function TaskListView({
       </div>
 
       {/* Échéance (raccourcis) + tri sur une seule rangée — boîte à outils commune (ui/Filtres.jsx) */}
-      <div className="flex items-center gap-2 mb-3">
-        <div className="flex-1 min-w-0">
-          <SegmentDefilant
-            ariaLabel="Échéance des tâches" isDark={isDark} couleur={couleur}
-            options={[
-              { valeur: 'all', libelle: 'Tout' },
-              { valeur: 'today', libelle: "Aujourd'hui" },
-              { valeur: 'week', libelle: 'Cette semaine' },
-              { valeur: 'overdue', libelle: 'En retard', compte: nbEnRetard },
-            ]}
-            valeur={quickFilter} onChange={setQuickFilter}
-          />
-        </div>
-        <BoutonVolet
-          ref={boutonTriRef} icone={ArrowUpDown} libelle="Trier" valeur={SORT_OPTIONS.find(o => o.value === sortBy)?.label}
-          ouvert={triOuvert} onClick={() => setTriOuvert(o => !o)} isDark={isDark} couleur={couleur} libelleCacheTelephone
-        />
-      </div>
-      <Volet ouvert={triOuvert} onFermer={() => setTriOuvert(false)} titre="Trier les tâches" ancreRef={boutonTriRef} largeur={300} isDark={isDark}>
-        <ListeChoix
-          titre="Trier par" rechercheAuDela={99} isDark={isDark} couleur={couleur}
-          options={SORT_OPTIONS.map(o => ({ valeur: o.value, libelle: o.label }))}
-          valeur={sortBy} onChange={(v) => { setSortBy(v); setTriOuvert(false); }}
-        />
-      </Volet>
+      {memos.length > 0 && (
+        <>
+          <div className="flex items-center gap-2 mb-3">
+            <div className="flex-1 min-w-0">
+              <SegmentDefilant
+                ariaLabel="Échéance des tâches" isDark={isDark}
+                options={[
+                  { valeur: 'all', libelle: 'Tout' },
+                  { valeur: 'today', libelle: "Aujourd'hui" },
+                  { valeur: 'week', libelle: 'Cette semaine' },
+                  { valeur: 'overdue', libelle: 'En retard', compte: nbEnRetard },
+                ]}
+                valeur={quickFilter} onChange={setQuickFilter}
+              />
+            </div>
+            <BoutonVolet
+              ref={boutonTriRef} icone={ArrowUpDown} libelle="Trier" valeur={SORT_OPTIONS.find(o => o.value === sortBy)?.label}
+              ouvert={triOuvert} onClick={() => setTriOuvert(o => !o)} isDark={isDark} libelleCacheTelephone
+            />
+          </div>
+          <Volet ouvert={triOuvert} onFermer={() => setTriOuvert(false)} titre="Trier les tâches" ancreRef={boutonTriRef} largeur={300} isDark={isDark}>
+            <ListeChoix
+              titre="Trier par" rechercheAuDela={99} isDark={isDark}
+              options={SORT_OPTIONS.map(o => ({ valeur: o.value, libelle: o.label }))}
+              valeur={sortBy} onChange={(v) => { setSortBy(v); setTriOuvert(false); }}
+            />
+          </Volet>
+        </>
+      )}
 
       {/* Sections grouped by status */}
-      <div className={`${tc.card} rounded-xl border ${tc.border} p-3 min-h-[300px]`}>
-        {renderSection('En retard', sections.overdue, 'overdue', '#ef4444', AlertCircle)}
-        {renderSection('À faire', sections.aFaire, 'aFaire', '#3b82f6', StickyNote)}
-        {renderSection('En cours', sections.enCours, 'enCours', '#f59e0b', Clock)}
-        {renderSection('Terminés', sections.done, 'done', '#10b981', CheckCircle2)}
+      <div className="bg-surface rounded-2xl border border-bord shadow-e1 p-3">
+        {renderSection('En retard', sections.overdue, 'overdue', 'danger', AlertCircle)}
+        {renderSection('À faire', sections.aFaire, 'aFaire', 'neutre', StickyNote)}
+        {renderSection('En cours', sections.enCours, 'enCours', 'info', Clock)}
+        {renderSection('Terminées', sections.done, 'done', 'succes', CheckCircle2)}
 
-        {/* Archive completed */}
+        {/* Supprimer les terminées : la tâche est effacée, pas rangée (avant : « Archiver » qui supprimait) */}
         {sections.done.length > 2 && (
           <div className="flex justify-center py-2">
-            <button
+            <Bouton
+              variante="discret"
+              taille="compacte"
+              icone={Trash2}
               onClick={async () => {
                 const ok = await confirm({
-                  title: 'Archiver les terminés',
+                  title: 'Supprimer les tâches terminées',
                   message: `Supprimer définitivement ${sections.done.length} tâche${sections.done.length > 1 ? 's' : ''} terminée${sections.done.length > 1 ? 's' : ''} ?`,
-                  confirmText: 'Archiver',
+                  confirmText: 'Supprimer',
                   variant: 'danger',
                 });
                 if (ok) {
                   sections.done.forEach(m => deleteMemo(m.id));
-                  showToast(`${sections.done.length} tâches archivées`, 'success');
+                  showToast(`${sections.done.length} tâches supprimées`, 'success');
                 }
               }}
-              className={`text-xs flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors text-encre-3 hover:bg-surface-2 hover:text-encre-2`}
             >
-              <Archive size={13} />
-              Archiver les {sections.done.length} terminés
-            </button>
+              Supprimer les {sections.done.length} terminées
+            </Bouton>
           </div>
         )}
 
         {filteredMemos.length === 0 && (
-          <div className={`text-center py-12 ${tc.muted}`}>
-            <ClipboardList size={40} className="mx-auto mb-3 opacity-30" />
-            <p className="font-medium">Aucune tâche</p>
-            <p className="text-xs mt-1">Tapez ci-dessus pour créer votre première tâche</p>
-          </div>
+          memos.length === 0 ? (
+            <EtatVide icone={ClipboardList} titre="Aucune tâche" texte="Tapez dans le champ ci-dessus pour ajouter votre première tâche." />
+          ) : (
+            <EtatVide icone={SearchX} titre="Aucune tâche ne correspond" texte="Changez les filtres ou la recherche pour les voir." />
+          )
         )}
       </div>
 
-      {/* Bulk action bar */}
-      {selectionMode && selectedIds.size > 0 && (
-        <BulkActionBar
-          count={selectedIds.size}
-          onDate={handleBulkDate}
-          onCategory={handleBulkCategory}
-          onPriority={handleBulkPriority}
-          onComplete={handleBulkComplete}
-          onDelete={handleBulkDelete}
-          onCancel={() => { setSelectionMode(false); setSelectedIds(new Set()); }}
-          isDark={isDark}
-          couleur={couleur}
-        />
-      )}
-
       {/* Detail panel */}
-      {selectedMemo && !selectionMode && (
+      {selectedMemo && (
         <TaskDetail
           memo={selectedMemo}
           onUpdate={updateMemo}
@@ -690,7 +561,6 @@ export default function TaskListView({
           chantiers={chantiers}
           clients={clients}
           equipe={equipe}
-          couleur={couleur}
           isDark={isDark}
         />
       )}

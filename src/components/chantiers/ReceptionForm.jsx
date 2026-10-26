@@ -5,7 +5,7 @@
  * Triggers the 3 legal warranties: parfait achevement (1yr), biennale (2yr), decennale (10yr).
  */
 
-import React, { useState, useCallback, memo } from 'react';
+import { useState, useCallback, memo } from 'react';
 import { Calendar, Plus, X, AlertTriangle, FileText, Upload, Check } from 'lucide-react';
 import { jourLocal } from '../../lib/dates';
 
@@ -13,9 +13,9 @@ const ReceptionForm = memo(function ReceptionForm({
   chantier,
   onSubmit,
   onClose,
-  isDark = false,
-  couleur = '#f97316',
-  user,
+  isDark: _isDark = false,
+  couleur: _couleur,
+  user: _user,
 }) {
   const today = jourLocal();
 
@@ -32,9 +32,7 @@ const ReceptionForm = memo(function ReceptionForm({
 
   const textPrimary = 'text-encre';
   const textMuted = 'text-encre-3';
-  const inputBg = isDark
-    ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400'
-    : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400';
+  const inputBg = 'bg-surface border-bord-fort text-encre placeholder:text-encre-3';
   const cardBg = 'bg-surface';
   const overlayBg = 'bg-black/50';
 
@@ -152,10 +150,9 @@ const ReceptionForm = memo(function ReceptionForm({
                     key={opt.value}
                     className={`flex items-start gap-2 p-3 rounded-xl border cursor-pointer transition-all ${
                       isSelected
-                        ? 'ring-2 ring-offset-1'
+                        ? 'border-accent ring-2 ring-accent ring-offset-1'
                         : 'border-bord hover:border-bord-fort'
                     } bg-surface`}
-                    style={isSelected ? { borderColor: couleur, ringColor: couleur } : undefined}
                   >
                     <input
                       type="radio"
@@ -164,11 +161,11 @@ const ReceptionForm = memo(function ReceptionForm({
                       checked={isSelected}
                       onChange={e => setTypeReception(e.target.value)}
                       className="mt-0.5"
-                      style={{ accentColor: couleur }}
+                      style={{ accentColor: 'rgb(var(--accent))' }}
                     />
                     <div>
                       <span className={`text-sm font-medium ${textPrimary}`}>{opt.label}</span>
-                      <p className={`text-[10px] ${textMuted}`}>{opt.desc}</p>
+                      <p className={`text-xs ${textMuted}`}>{opt.desc}</p>
                     </div>
                   </label>
                 );
@@ -246,7 +243,7 @@ const ReceptionForm = memo(function ReceptionForm({
                       <button
                         type="button"
                         onClick={() => removeReserve(reserve.id)}
-                        className={`p-1 rounded-lg ${isDark ? 'hover:bg-slate-600 text-slate-400' : 'hover:bg-gray-200 text-gray-400'}`}
+                        className="p-1 rounded-lg hover:bg-surface-2 text-encre-3"
                       >
                         <X size={14} />
                       </button>
@@ -292,11 +289,7 @@ const ReceptionForm = memo(function ReceptionForm({
               PV de reception (optionnel)
             </label>
             <div
-              className={`relative border-2 border-dashed rounded-xl p-4 text-center transition-colors ${
-                isDark
-                  ? 'border-slate-600 hover:border-slate-500'
-                  : 'border-gray-300 hover:border-gray-400'
-              }`}
+              className="relative border-2 border-dashed rounded-xl p-4 text-center transition-colors border-bord-fort hover:border-encre-3"
             >
               {pvFile ? (
                 <div className="flex items-center justify-center gap-2">
@@ -305,7 +298,7 @@ const ReceptionForm = memo(function ReceptionForm({
                   <button
                     type="button"
                     onClick={() => setPvFile(null)}
-                    className={`p-1 rounded-lg ${isDark ? 'hover:bg-slate-600 text-slate-400' : 'hover:bg-gray-200 text-gray-400'}`}
+                    className="p-1 rounded-lg hover:bg-surface-2 text-encre-3"
                   >
                     <X size={14} />
                   </button>
@@ -326,9 +319,9 @@ const ReceptionForm = memo(function ReceptionForm({
           </div>
 
           {/* Warning notice */}
-          <div className={`flex items-start gap-2 p-3 rounded-xl ${isDark ? 'bg-amber-900/30 border border-amber-700/50' : 'bg-amber-50 border border-amber-200'}`}>
-            <AlertTriangle size={16} className="text-amber-500 flex-shrink-0 mt-0.5" />
-            <p className={`text-xs ${isDark ? 'text-amber-300' : 'text-amber-700'}`}>
+          <div className="flex items-start gap-2 p-3 rounded-xl bg-alerte-fond text-alerte-texte">
+            <AlertTriangle size={16} className="flex-shrink-0 mt-0.5" />
+            <p className="text-xs">
               La reception declenche automatiquement les 3 garanties legales (parfait achevement 1 an, biennale 2 ans, decennale 10 ans)
             </p>
           </div>

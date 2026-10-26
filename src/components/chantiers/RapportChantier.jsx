@@ -21,6 +21,7 @@ import {
 import { generateId } from '../../lib/utils';
 import { downloadRapportPDF } from '../../lib/rapportChantierPdf';
 import { jourLocal, dateLue } from '../../lib/dates';
+import { COULEUR_DOCUMENTS_DEFAUT } from '../../lib/theme';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -49,10 +50,10 @@ const CORPS_METIER = [
 ];
 
 const GRAVITE_OPTIONS = [
-  { value: 'mineur', label: 'Mineur', classes: 'bg-yellow-100 text-yellow-800' },
-  { value: 'modere', label: 'Modéré', classes: 'bg-orange-100 text-orange-800' },
-  { value: 'majeur', label: 'Majeur', classes: 'bg-red-100 text-red-800' },
-  { value: 'critique', label: 'Critique', classes: 'bg-red-200 text-red-900 animate-pulse' },
+  { value: 'mineur', label: 'Mineur', classes: 'bg-neutre-fond text-neutre-texte' },
+  { value: 'modere', label: 'Modéré', classes: 'bg-alerte-fond text-alerte-texte' },
+  { value: 'majeur', label: 'Majeur', classes: 'bg-danger-fond text-danger-texte' },
+  { value: 'critique', label: 'Critique', classes: 'bg-danger-fond text-danger-texte font-bold' },
 ];
 
 /** Return a localStorage key scoped to the given chantier ID. */
@@ -104,14 +105,15 @@ const createEmptyRapport = (numero) => ({
 // ---------------------------------------------------------------------------
 
 /** Badge displaying the report type with appropriate color. */
-function TypeBadge({ type, isDark }) {
+function TypeBadge({ type, isDark: _isDark }) {
   const cfg = TYPES_RAPPORT.find((t) => t.value === type) || TYPES_RAPPORT[0];
+  // Un type de rapport = un ton (l'incident est le seul en rouge, la réception en vert)
   const colorMap = {
-    blue: isDark ? 'bg-blue-900/40 text-blue-300' : 'bg-blue-100 text-blue-800',
-    purple: isDark ? 'bg-purple-900/40 text-purple-300' : 'bg-purple-100 text-purple-800',
-    orange: isDark ? 'bg-orange-900/40 text-orange-300' : 'bg-orange-100 text-orange-800',
-    red: isDark ? 'bg-red-900/40 text-red-300' : 'bg-red-100 text-red-800',
-    green: isDark ? 'bg-green-900/40 text-green-300' : 'bg-green-100 text-green-800',
+    blue: 'bg-info-fond text-info-texte',
+    purple: 'bg-neutre-fond text-neutre-texte',
+    orange: 'bg-alerte-fond text-alerte-texte',
+    red: 'bg-danger-fond text-danger-texte',
+    green: 'bg-succes-fond text-succes-texte',
   };
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${colorMap[cfg.color]}`}>
@@ -121,10 +123,10 @@ function TypeBadge({ type, isDark }) {
 }
 
 /** Badge showing report status (brouillon / validé). */
-function StatutBadge({ statut, isDark }) {
+function StatutBadge({ statut, isDark: _isDark }) {
   if (statut === 'valide') {
     return (
-      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${isDark ? 'bg-green-900/40 text-green-300' : 'bg-green-100 text-green-700'}`}>
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-succes-fond text-succes-texte">
         <CheckCircle size={12} /> Validé
       </span>
     );
@@ -136,20 +138,20 @@ function StatutBadge({ statut, isDark }) {
   );
 }
 
-/** Collapsible card section wrapper with a colored left border. */
-function Section({ title, icon: Icon, borderColor, isDark, children, collapsible = false, defaultOpen = true }) {
+/** Collapsible card section wrapper. */
+function Section({ title, icon: Icon, isDark: _isDark, children, collapsible = false, defaultOpen = true }) {
   const [open, setOpen] = useState(defaultOpen);
   const cardBg = 'bg-surface border-bord';
 
   return (
-    <div className={`rounded-lg border ${cardBg} overflow-hidden`} style={{ borderLeftWidth: '4px', borderLeftColor: borderColor }}>
+    <div className={`rounded-lg border ${cardBg} overflow-hidden`}>
       <button
         type="button"
         className={`w-full flex items-center justify-between px-4 py-3 text-encre font-semibold text-sm`}
         onClick={() => collapsible && setOpen((o) => !o)}
       >
         <span className="flex items-center gap-2">
-          <Icon size={16} style={{ color: borderColor }} />
+          <Icon size={16} aria-hidden="true" className="text-encre-3" />
           {title}
         </span>
         {collapsible && (open ? <ChevronUp size={16} /> : <ChevronDown size={16} />)}
@@ -163,12 +165,10 @@ function Section({ title, icon: Icon, borderColor, isDark, children, collapsible
 // Main Component
 // ---------------------------------------------------------------------------
 
-export default function RapportChantier({ chantier, equipe = [], isDark = false, couleur = '#f97316', onClose }) {
+export default function RapportChantier({ chantier, equipe = [], isDark = false, couleur = COULEUR_DOCUMENTS_DEFAUT, onClose }) {
   // Theme helpers
   const cardBg = 'bg-surface border-bord';
-  const inputCls = isDark
-    ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400'
-    : 'bg-white border-slate-300 text-slate-900';
+  const inputCls = 'bg-surface border-bord-fort text-encre placeholder:text-encre-3';
   const textPrimary = 'text-encre';
   const textSecondary = 'text-encre-2';
 
@@ -405,20 +405,20 @@ export default function RapportChantier({ chantier, equipe = [], isDark = false,
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h2 className={`text-xl font-bold ${textPrimary}`}>
-            Rapports de Chantier — {chantier?.nom || 'Chantier'}
+          <h2 className={`text-lg font-semibold ${textPrimary}`}>
+            Rapports de chantier
           </h2>
           <p className={`text-sm ${textSecondary}`}>{rapports.length} rapport{rapports.length !== 1 ? 's' : ''}</p>
         </div>
         <div className="flex gap-2">
           <button
             onClick={handleNew}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-accent text-sur-accent"
+            className="inline-flex items-center gap-2 px-4 min-h-[44px] rounded-full text-sm font-semibold transition-colors bg-surface text-encre border border-bord-fort hover:bg-surface-2"
           >
-            <Plus size={16} /> Nouveau rapport
+            <Plus size={16} aria-hidden="true" /> Nouveau rapport
           </button>
           {onClose && (
-            <button onClick={onClose} className={`inline-flex items-center gap-1 px-3 py-2 rounded-lg text-sm ${isDark ? 'bg-slate-700 text-slate-200 hover:bg-slate-600' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'} transition-colors`}>
+            <button onClick={onClose} className={`inline-flex items-center gap-1 px-3 py-2 rounded-lg text-sm bg-surface-2 text-encre-2 hover:bg-bord transition-colors`}>
               <ArrowLeft size={16} /> Retour
             </button>
           )}
@@ -478,10 +478,10 @@ export default function RapportChantier({ chantier, equipe = [], isDark = false,
               )}
               <button
                 onClick={(e) => { e.stopPropagation(); handleDelete(rapport.id); }}
-                className="p-2 rounded-lg hover:bg-red-100 transition-colors"
+                className="p-2 rounded-lg hover:bg-danger-fond transition-colors"
                 title="Supprimer"
               >
-                <Trash2 size={16} className="text-red-500" />
+                <Trash2 size={16} className="text-danger-texte" />
               </button>
             </div>
           </div>
@@ -512,7 +512,7 @@ export default function RapportChantier({ chantier, equipe = [], isDark = false,
           <div className="flex flex-wrap gap-2">
             <button
               onClick={handleSaveDraft}
-              className={`inline-flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${isDark ? 'bg-slate-700 text-slate-200 hover:bg-slate-600' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+              className={`inline-flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors bg-surface-2 text-encre-2 hover:bg-bord`}
             >
               <Save size={14} /> Enregistrer brouillon
             </button>
@@ -524,7 +524,7 @@ export default function RapportChantier({ chantier, equipe = [], isDark = false,
             </button>
             <button
               onClick={() => { try { downloadRapportPDF(draft, chantier, { couleur }); showToast('PDF téléchargé', 'success'); } catch (e) { showToast('Erreur export PDF', 'error'); } }}
-              className={`inline-flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${isDark ? 'bg-slate-700 text-slate-200 hover:bg-slate-600' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+              className={`inline-flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors bg-surface-2 text-encre-2 hover:bg-bord`}
             >
               <FileText size={14} /> Exporter PDF
             </button>
@@ -534,7 +534,7 @@ export default function RapportChantier({ chantier, equipe = [], isDark = false,
         {/* Form sections in a responsive two-column grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {/* Section 1 — Informations générales */}
-          <Section title="Informations générales" icon={Calendar} borderColor={couleur} isDark={isDark}>
+          <Section title="Informations générales" icon={Calendar} isDark={isDark}>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <label className="block">
                 <span className={`text-xs font-medium ${textSecondary}`}>Date du rapport</span>
@@ -586,7 +586,7 @@ export default function RapportChantier({ chantier, equipe = [], isDark = false,
           </Section>
 
           {/* Section 2 — Personnel présent */}
-          <Section title="Personnel présent" icon={Users} borderColor="#6366f1" isDark={isDark}>
+          <Section title="Personnel présent" icon={Users} isDark={isDark}>
             {equipe.length === 0 ? (
               <p className={`text-sm ${textSecondary}`}>Aucun membre dans l'équipe.</p>
             ) : (
@@ -594,12 +594,12 @@ export default function RapportChantier({ chantier, equipe = [], isDark = false,
                 {equipe.map((membre) => {
                   const present = draft.personnelPresent.find((p) => p.id === membre.id);
                   return (
-                    <div key={membre.id} className={`flex items-center gap-3 p-2 rounded-md ${present ? (isDark ? 'bg-slate-700/50' : 'bg-indigo-50') : ''}`}>
+                    <div key={membre.id} className={`flex items-center gap-3 p-2 rounded-md ${present ? 'bg-surface-2' : ''}`}>
                       <input
                         type="checkbox"
                         checked={!!present}
                         onChange={() => togglePersonnel(membre.id)}
-                        className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                        className="h-4 w-4 rounded border-bord-fort accent-[rgb(var(--accent))]"
                       />
                       <div className="flex-1 min-w-0">
                         <span className={`text-sm font-medium ${textPrimary}`}>{membre.prenom} {membre.nom}</span>
@@ -626,7 +626,7 @@ export default function RapportChantier({ chantier, equipe = [], isDark = false,
             )}
 
             {/* External workers */}
-            <div className="pt-2 border-t border-slate-200">
+            <div className="pt-2 border-t border-bord">
               <p className={`text-xs font-medium ${textSecondary} mb-2`}>Intervenants externes</p>
               {draft.intervenantsExternes.map((ext) => (
                 <div key={ext.id} className="flex items-center gap-2 mb-2">
@@ -637,12 +637,12 @@ export default function RapportChantier({ chantier, equipe = [], isDark = false,
                     placeholder="Nom de l'intervenant"
                     className={`flex-1 rounded-md border px-3 py-1.5 text-sm ${inputCls}`}
                   />
-                  <button onClick={() => removeExterne(ext.id)} className="p-1 text-red-500 hover:bg-red-50 rounded">
+                  <button onClick={() => removeExterne(ext.id)} className="p-1 text-danger-texte hover:bg-danger-fond rounded">
                     <X size={14} />
                   </button>
                 </div>
               ))}
-              <button onClick={addExterne} className={`text-xs font-medium flex items-center gap-1 ${isDark ? 'text-indigo-400' : 'text-indigo-600'} hover:underline`}>
+              <button onClick={addExterne} className="text-xs font-medium flex items-center gap-1 text-accent-texte hover:underline">
                 <Plus size={12} /> Ajouter intervenant externe
               </button>
             </div>
@@ -650,7 +650,7 @@ export default function RapportChantier({ chantier, equipe = [], isDark = false,
 
           {/* Section 3 — Travaux réalisés (full width) */}
           <div className="lg:col-span-2">
-            <Section title="Travaux réalisés" icon={Hammer} borderColor="#f59e0b" isDark={isDark}>
+            <Section title="Travaux réalisés" icon={Hammer} isDark={isDark}>
               {draft.travaux.length === 0 && (
                 <p className={`text-sm ${textSecondary}`}>Aucun travail renseigné.</p>
               )}
@@ -665,7 +665,7 @@ export default function RapportChantier({ chantier, equipe = [], isDark = false,
                         rows={2}
                         className={`flex-1 rounded-md border px-3 py-2 text-sm resize-none ${inputCls}`}
                       />
-                      <button onClick={() => removeTravail(travail.id)} className="p-1 text-red-500 hover:bg-red-50 rounded flex-shrink-0">
+                      <button onClick={() => removeTravail(travail.id)} className="p-1 text-danger-texte hover:bg-danger-fond rounded flex-shrink-0">
                         <Trash2 size={14} />
                       </button>
                     </div>
@@ -699,7 +699,7 @@ export default function RapportChantier({ chantier, equipe = [], isDark = false,
                           step="5"
                           value={travail.avancement}
                           onChange={(e) => updateTravail(travail.id, 'avancement', parseInt(e.target.value, 10))}
-                          className="mt-2 block w-full accent-amber-500"
+                          className="mt-2 block w-full accent-[rgb(var(--accent))]"
                         />
                       </label>
                     </div>
@@ -714,7 +714,7 @@ export default function RapportChantier({ chantier, equipe = [], isDark = false,
 
           {/* Section 4 — Observations et incidents */}
           <div className="lg:col-span-2">
-            <Section title="Observations et incidents" icon={AlertTriangle} borderColor="#ef4444" isDark={isDark}>
+            <Section title="Observations et incidents" icon={AlertTriangle} isDark={isDark}>
               <label className="block">
                 <span className={`text-xs font-medium ${textSecondary}`}>Observations</span>
                 <textarea
@@ -733,7 +733,7 @@ export default function RapportChantier({ chantier, equipe = [], isDark = false,
                 )}
                 <div className="space-y-3">
                   {draft.incidents.map((incident) => (
-                    <div key={incident.id} className={`rounded-lg border p-3 space-y-2 ${isDark ? 'border-slate-600 bg-slate-700/30' : 'border-slate-200 bg-red-50/30'}`}>
+                    <div key={incident.id} className={`rounded-lg border p-3 space-y-2 border-bord bg-danger-fond/30`}>
                       <div className="flex justify-between items-start gap-2">
                         <input
                           type="text"
@@ -742,7 +742,7 @@ export default function RapportChantier({ chantier, equipe = [], isDark = false,
                           placeholder="Description de l'incident"
                           className={`flex-1 rounded-md border px-3 py-1.5 text-sm ${inputCls}`}
                         />
-                        <button onClick={() => removeIncident(incident.id)} className="p-1 text-red-500 hover:bg-red-50 rounded flex-shrink-0">
+                        <button onClick={() => removeIncident(incident.id)} className="p-1 text-danger-texte hover:bg-danger-fond rounded flex-shrink-0">
                           <Trash2 size={14} />
                         </button>
                       </div>
@@ -775,7 +775,7 @@ export default function RapportChantier({ chantier, equipe = [], isDark = false,
                     </div>
                   ))}
                 </div>
-                <button onClick={addIncident} className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-red-600 hover:underline">
+                <button onClick={addIncident} className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-danger-texte hover:underline">
                   <Plus size={14} /> Ajouter incident
                 </button>
               </div>
@@ -784,13 +784,13 @@ export default function RapportChantier({ chantier, equipe = [], isDark = false,
 
           {/* Section 5 — Matériaux reçus (collapsible) */}
           <div className="lg:col-span-2">
-            <Section title="Matériaux reçus" icon={Package} borderColor="#8b5cf6" isDark={isDark} collapsible defaultOpen={draft.materiaux.length > 0}>
+            <Section title="Matériaux reçus" icon={Package} isDark={isDark} collapsible defaultOpen={draft.materiaux.length > 0}>
               {draft.materiaux.length === 0 && (
                 <p className={`text-sm ${textSecondary}`}>Aucune livraison enregistrée.</p>
               )}
               <div className="space-y-3">
                 {draft.materiaux.map((mat) => (
-                  <div key={mat.id} className={`flex flex-col sm:flex-row gap-2 p-2 rounded-lg ${isDark ? 'bg-slate-700/30' : 'bg-purple-50/30'}`}>
+                  <div key={mat.id} className={`flex flex-col sm:flex-row gap-2 p-2 rounded-lg bg-surface-2`}>
                     <input
                       type="text"
                       value={mat.description}
@@ -812,13 +812,13 @@ export default function RapportChantier({ chantier, equipe = [], isDark = false,
                       placeholder="Fournisseur"
                       className={`flex-1 rounded-md border px-3 py-1.5 text-sm ${inputCls}`}
                     />
-                    <button onClick={() => removeMateriau(mat.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded self-center flex-shrink-0">
+                    <button onClick={() => removeMateriau(mat.id)} className="p-1.5 text-danger-texte hover:bg-danger-fond rounded self-center flex-shrink-0">
                       <Trash2 size={14} />
                     </button>
                   </div>
                 ))}
               </div>
-              <button onClick={addMateriau} className="mt-2 inline-flex items-center gap-1 text-sm font-medium hover:underline" style={{ color: '#8b5cf6' }}>
+              <button onClick={addMateriau} className="mt-2 inline-flex items-center gap-1 text-sm font-medium hover:underline text-accent-texte">
                 <Plus size={14} /> Ajouter livraison
               </button>
             </Section>
@@ -826,7 +826,7 @@ export default function RapportChantier({ chantier, equipe = [], isDark = false,
 
           {/* Section 6 — Signature */}
           <div className="lg:col-span-2">
-            <Section title="Signature" icon={PenTool} borderColor="#10b981" isDark={isDark}>
+            <Section title="Signature" icon={PenTool} isDark={isDark}>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <label className="block">
                   <span className={`text-xs font-medium ${textSecondary}`}>Signé par</span>
@@ -881,14 +881,14 @@ export default function RapportChantier({ chantier, equipe = [], isDark = false,
             {draft.statut !== 'valide' && (
               <button
                 onClick={() => { setMode('edit'); }}
-                className={`inline-flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium ${isDark ? 'bg-slate-700 text-slate-200 hover:bg-slate-600' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'} transition-colors`}
+                className={`inline-flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium bg-surface-2 text-encre-2 hover:bg-bord transition-colors`}
               >
                 <Edit3 size={14} /> Modifier
               </button>
             )}
             <button
               onClick={() => { try { downloadRapportPDF(draft, chantier, { couleur }); showToast('PDF téléchargé', 'success'); } catch (e) { showToast('Erreur export PDF', 'error'); } }}
-              className={`inline-flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium ${isDark ? 'bg-slate-700 text-slate-200 hover:bg-slate-600' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'} transition-colors`}
+              className={`inline-flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium bg-surface-2 text-encre-2 hover:bg-bord transition-colors`}
             >
               <FileText size={14} /> Exporter PDF
             </button>
@@ -926,7 +926,7 @@ export default function RapportChantier({ chantier, equipe = [], isDark = false,
               <h3 className={`text-sm font-semibold uppercase tracking-wide mb-3 ${textSecondary}`}>Personnel présent</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {draft.personnelPresent.map((p) => (
-                  <div key={p.id} className={`flex items-center justify-between px-3 py-2 rounded-md ${isDark ? 'bg-slate-700/40' : 'bg-indigo-50'}`}>
+                  <div key={p.id} className={`flex items-center justify-between px-3 py-2 rounded-md bg-surface-2`}>
                     <span className={`text-sm ${textPrimary}`}>{p.prenom} {p.nom} <span className={`text-xs ${textSecondary}`}>({p.role})</span></span>
                     <span className={`text-sm font-medium ${textPrimary}`}>{p.heures}h</span>
                   </div>
@@ -949,7 +949,7 @@ export default function RapportChantier({ chantier, equipe = [], isDark = false,
               <h3 className={`text-sm font-semibold uppercase tracking-wide mb-3 ${textSecondary}`}>Travaux réalisés</h3>
               <div className="space-y-3">
                 {draft.travaux.map((t) => (
-                  <div key={t.id} className={`rounded-lg border p-3 ${isDark ? 'border-slate-600 bg-slate-700/30' : 'border-slate-200 bg-amber-50/30'}`}>
+                  <div key={t.id} className={`rounded-lg border p-3 border-bord bg-alerte-fond/30`}>
                     <p className={`text-sm font-medium ${textPrimary}`}>{t.description || 'Sans description'}</p>
                     <div className="flex flex-wrap gap-4 mt-2 text-xs">
                       {t.zone && <span className={textSecondary}>Zone: <strong className={textPrimary}>{t.zone}</strong></span>}
@@ -957,7 +957,7 @@ export default function RapportChantier({ chantier, equipe = [], isDark = false,
                       <span className={textSecondary}>Avancement: <strong className={textPrimary}>{t.avancement}%</strong></span>
                     </div>
                     {/* Progress bar */}
-                    <div className={`mt-2 h-2 rounded-full ${isDark ? 'bg-slate-600' : 'bg-slate-200'}`}>
+                    <div className={`mt-2 h-2 rounded-full bg-bord`}>
                       <div className="h-full rounded-full transition-all bg-accent" style={{ width: `${t.avancement}%` }} />
                     </div>
                   </div>
@@ -978,7 +978,7 @@ export default function RapportChantier({ chantier, equipe = [], isDark = false,
                   {draft.incidents.map((inc) => {
                     const grav = GRAVITE_OPTIONS.find((g) => g.value === inc.gravite);
                     return (
-                      <div key={inc.id} className={`rounded-lg border p-3 ${isDark ? 'border-slate-600 bg-slate-700/30' : 'border-red-200 bg-red-50/30'}`}>
+                      <div key={inc.id} className={`rounded-lg border p-3 border-bord bg-danger-fond/30`}>
                         <div className="flex items-start justify-between gap-2">
                           <p className={`text-sm font-medium ${textPrimary}`}>{inc.description || 'Sans description'}</p>
                           <span className={`flex-shrink-0 px-2 py-0.5 rounded-full text-xs font-medium ${grav?.classes || ''}`}>

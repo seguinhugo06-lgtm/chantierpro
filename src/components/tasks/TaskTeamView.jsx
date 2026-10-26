@@ -15,7 +15,7 @@ import {
   ChevronLeft, ChevronRight, ChevronDown, ChevronUp,
   Tag, Calendar, User, Users, UserX,
 } from 'lucide-react';
-import { CATEGORIES, PRIORITIES } from './constants';
+import { CATEGORIES, PRIORITIES, classesTon } from './constants';
 import TaskDetail from './TaskDetail';
 import { jourLocal } from '../../lib/dates';
 
@@ -60,33 +60,14 @@ function formatWeekRange(monday) {
   return `${mDay} ${mMonth} - ${fDay} ${fMonth} ${year}`;
 }
 
-const PRIORITY_COLORS = {
-  haute: '#ef4444',
-  moyenne: '#f59e0b',
-  basse: '#22c55e',
-};
-
-const CATEGORY_COLORS = {
-  rappel: '#3b82f6',
-  achat: '#f59e0b',
-  rdv: '#8b5cf6',
-  admin: '#6366f1',
-  idee: '#22c55e',
-  urgent: '#ef4444',
-  chantier: '#3b82f6',
-  administratif: '#8b5cf6',
-  client: '#ec4899',
-  autre: '#6b7280',
-};
 
 const DEFAULT_CAPACITY = 8; // heures/jour
 
 // ─── MiniTaskCard ────────────────────────────────────────────────────────────
 
 function MiniTaskCard({ memo, isDark, couleur, onSelect, onDragStart }) {
-  const priorityColor = PRIORITY_COLORS[memo.priority] || PRIORITY_COLORS.moyenne;
+  const priorite = PRIORITIES.find(p => p.value === memo.priority) || PRIORITIES.find(p => p.value === 'moyenne');
   const category = CATEGORIES.find(c => c.value === memo.category);
-  const categoryColor = category?.color || CATEGORY_COLORS[memo.category] || CATEGORY_COLORS.autre;
 
   return (
     <div
@@ -105,20 +86,14 @@ function MiniTaskCard({ memo, isDark, couleur, onSelect, onDragStart }) {
       className={`group cursor-grab active:cursor-grabbing rounded-md border px-2 py-1.5 text-xs transition-all hover:shadow-sm mb-1 bg-surface border-bord hover:border-bord-fort`}
     >
       <div className="flex items-center gap-1.5 min-w-0">
-        <span
-          className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-          style={{ background: priorityColor }}
-        />
+        <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${classesTon(priorite.ton).point}`} />
         <span className={`truncate font-medium text-encre`}>
           {memo.title || memo.text || 'Sans titre'}
         </span>
       </div>
       {memo.category && (
-        <span
-          className="inline-flex items-center gap-0.5 text-[9px] font-medium px-1 py-0 rounded mt-0.5"
-          style={{ background: `${categoryColor}15`, color: categoryColor }}
-        >
-          <Tag size={7} />
+        <span className={`inline-flex items-center gap-0.5 text-xs font-medium px-1.5 py-0 rounded mt-0.5 ${classesTon(category?.ton).pastille}`}>
+          <Tag size={10} aria-hidden="true" />
           {category?.label || memo.category}
         </span>
       )}
@@ -130,16 +105,13 @@ function MiniTaskCard({ memo, isDark, couleur, onSelect, onDragStart }) {
 
 function LoadIndicator({ hours, capacity, isDark }) {
   const pct = capacity > 0 ? (hours / capacity) * 100 : 0;
-  const color = pct > 100 ? '#ef4444' : pct >= 80 ? '#f59e0b' : '#22c55e';
-  const dot = pct > 100 ? '#ef4444' : pct >= 80 ? '#f59e0b' : '#22c55e';
+  // Charge de la semaine : vert tant qu'il reste de la marge, ambre à partir de 80 % (à surveiller)
+  const dot = pct >= 80 ? 'bg-alerte-point' : 'bg-succes-point';
 
   return (
     <div className="flex items-center gap-1.5">
-      <span
-        className="w-2 h-2 rounded-full flex-shrink-0"
-        style={{ background: dot }}
-      />
-      <span className={`text-[10px] font-medium text-encre-3`}>
+      <span className={`w-2 h-2 rounded-full flex-shrink-0 ${dot}`} />
+      <span className="text-xs font-medium text-encre-3">
         {hours}h / {capacity}h
       </span>
     </div>
@@ -179,9 +151,9 @@ function DayCell({ memos, dateStr, isToday, isDark, couleur, onSelect, onDragSta
       onDrop={handleDrop}
       className={`min-h-[60px] p-1 border-r last:border-r-0 transition-colors ${
         isDragOver
-          ? isDark ? 'bg-slate-700/50' : 'bg-blue-50/50'
+          ? 'bg-accent/10'
           : isToday
-            ? isDark ? 'bg-slate-700/30' : 'bg-orange-50/30'
+            ? 'bg-accent/5'
             : ''
       } border-bord`}
     >
@@ -223,7 +195,7 @@ function MemberRow({ membre, weekDays, memosByDay, totalHours, isDark, couleur, 
               {(membre.prenom || '?')[0]}{(membre.nom || '?')[0]}
             </div>
           ) : (
-            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs flex-shrink-0 ${isDark ? 'bg-slate-600 text-slate-300' : 'bg-slate-200 text-slate-500'}`}>
+            <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs flex-shrink-0 bg-neutre-fond text-neutre-texte">
               <UserX size={14} />
             </div>
           )}
@@ -232,7 +204,7 @@ function MemberRow({ membre, weekDays, memosByDay, totalHours, isDark, couleur, 
               {displayName}
             </p>
             {membre?.role && (
-              <p className={`text-[10px] truncate text-encre-3`}>
+              <p className="text-xs truncate text-encre-3">
                 {membre.role}
               </p>
             )}
@@ -289,7 +261,7 @@ function MemberAccordion({ membre, weekDays, memosByDay, totalHours, isDark, cou
             {(membre.prenom || '?')[0]}{(membre.nom || '?')[0]}
           </div>
         ) : (
-          <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${isDark ? 'bg-slate-600 text-slate-300' : 'bg-slate-200 text-slate-500'}`}>
+          <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 bg-neutre-fond text-neutre-texte">
             <UserX size={16} />
           </div>
         )}
@@ -299,7 +271,7 @@ function MemberAccordion({ membre, weekDays, memosByDay, totalHours, isDark, cou
           </p>
           <div className="flex items-center gap-2">
             <LoadIndicator hours={totalHours} capacity={weekCapacity} isDark={isDark} />
-            <span className={`text-[10px] text-encre-3`}>
+            <span className="text-xs text-encre-3">
               {allMemos.length} tache{allMemos.length !== 1 ? 's' : ''}
             </span>
           </div>
@@ -315,7 +287,7 @@ function MemberAccordion({ membre, weekDays, memosByDay, totalHours, isDark, cou
             if (dayMemos.length === 0) return null;
             return (
               <div key={dateStr} className="mb-2">
-                <p className={`text-[10px] font-semibold uppercase tracking-wide px-1 mb-1 ${
+                <p className={`text-xs font-semibold px-1 mb-1 ${
                   dateStr === todayStr
                     ? 'text-accent-texte'
                     : 'text-encre-3'
@@ -355,7 +327,7 @@ export default function TaskTeamView({
   updateMemo,
   equipe = [],
   isDark,
-  couleur = '#f97316',
+  couleur,
   filters = {},
   onSelectMemo,
   chantiers = [],
@@ -549,10 +521,9 @@ export default function TaskTeamView({
               }}
               className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${
                 rangeMode === m.id
-                  ? 'text-white shadow-sm'
+                  ? 'bg-accent text-sur-accent shadow-sm'
                   : 'text-encre-3 hover:text-encre-2'
               }`}
-              style={rangeMode === m.id ? { background: couleur } : {}}
             >
               {m.label}
             </button>
@@ -581,7 +552,7 @@ export default function TaskTeamView({
                   isTodayCol ? 'bg-accent/5' : ''
                 }`}
               >
-                <p className={`text-[10px] uppercase tracking-wide font-medium ${
+                <p className={`text-xs font-medium ${
                   isTodayCol
                     ? 'text-accent-texte'
                     : 'text-encre-3'

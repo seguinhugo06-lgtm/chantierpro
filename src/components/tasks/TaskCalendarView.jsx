@@ -2,8 +2,8 @@ import React from 'react';
 import Planning from '../Planning';
 
 /**
- * TaskCalendarView — Wrapper around Planning for the calendar view
- * within the unified TasksAndPlanning component.
+ * TaskCalendarView — le planning, sous la rubrique « Tâches & Planning ».
+ * `demandeAjout` : un compteur que l'en-tête de la page incrémente pour ouvrir « Nouvel événement ».
  */
 export default function TaskCalendarView({
   events, setEvents, addEvent, updateEvent, deleteEvent,
@@ -11,7 +11,7 @@ export default function TaskCalendarView({
   chantiers, clients, equipe, devis,
   setPage, setSelectedChantier, updateChantier,
   couleur, isDark,
-  prefill, clearPrefill,
+  prefill, clearPrefill, demandeAjout,
 }) {
   return (
     <Planning
@@ -34,6 +34,7 @@ export default function TaskCalendarView({
       prefill={prefill}
       clearPrefill={clearPrefill}
       devis={devis}
+      demandeAjout={demandeAjout}
     />
   );
 }

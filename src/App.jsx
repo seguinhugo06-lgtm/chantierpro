@@ -166,7 +166,7 @@ export default function App() {
     clients, setClients, addClient: dataAddClient, updateClient: dataUpdateClient, deleteClient: dataDeleteClient,
     devis, setDevis, addDevis: dataAddDevis, updateDevis: dataUpdateDevis, deleteDevis: dataDeleteDevis,
     chantiers, setChantiers, addChantier: dataAddChantier, updateChantier: dataUpdateChantier, deleteChantier: dataDeleteChantier,
-    depenses, setDepenses, addDepense: dataAddDepense, updateDepense: dataUpdateDepense, deleteDepense: dataDeleteDepense,
+    depenses, addDepense: dataAddDepense, updateDepense: dataUpdateDepense, deleteDepense: dataDeleteDepense,
     pointages, setPointages, addPointage: dataAddPointage, updatePointage: dataUpdatePointage, deletePointage: dataDeletePointage,
     equipe, setEquipe, addEmployee: dataAddEmployee, updateEmployee: dataUpdateEmployee, deleteEmployee: dataDeleteEmployee,
     ajustements, addAjustement: dataAddAjustement, deleteAjustement: dataDeleteAjustement,
@@ -655,7 +655,8 @@ export default function App() {
   const updateDevis = async (id, data, { silencieux = false } = {}) => { const ok = await dataUpdateDevis(id, data); if (ok && !silencieux) showToast('Document mis à jour', 'success'); return ok; };
   const deleteDevis = async (id) => { const ok = await dataDeleteDevis(id); if (ok) showToast('Document supprimé', 'info'); return ok; };
   const addChantier = async (data) => { const c = await dataAddChantier(data); if (c) showToast(`Chantier "${data.nom}" créé`, 'success'); return c; };
-  const updateChantier = async (id, data) => { const ok = await dataUpdateChantier(id, data); if (ok) showToast('Chantier mis à jour', 'success'); return ok; };
+  // { silencieux: true } : le geste dit déjà ce qu'il a fait (« Chantier archivé », « Photo ajoutée ») ; un seul message
+  const updateChantier = async (id, data, { silencieux = false } = {}) => { const ok = await dataUpdateChantier(id, data); if (ok && !silencieux) showToast('Chantier mis à jour', 'success'); return ok; };
   const addAjustement = async (data) => { const a = await dataAddAjustement(data); if (a) showToast('Ajustement enregistré', 'success'); return a; };
   const deleteAjustement = async (id) => { const ok = await dataDeleteAjustement(id); if (ok) showToast('Ajustement supprimé', 'info'); return ok; };
   // silencieux : l'action principale (envoi, relance) a déjà dit ce qui s'est passé ; « Échange ajouté », arrivé après,
@@ -1632,7 +1633,8 @@ export default function App() {
     : unreadNotifs.some(n => n.type === 'alert' || n.type === 'warning') ? 'alerte' : 'neutre';
   const allerA = (id) => { setPage(id); setMenuPlus(false); setSelectedChantier(null); };
   const rubriquesPlus = nav.filter(n => !ONGLETS_BAS.includes(n.id));
-  // Ouvre la page Devis & factures sur une demande : { relancer: id } (fiche + feuille « Relancer ») ou { etat } / { nature }
+  // Ouvre la page Devis & factures sur une demande : { relancer: id } (fiche + feuille « Relancer »), { ouvrir: id } (la fiche),
+  // { facturer: id } (la fiche et le choix « Facturer ce devis ») ou { etat } / { nature } (la liste filtrée)
   const ouvrirDevis = (demande) => { setDemandeDevis(demande); setSelectedDevis(null); setPage('devis'); };
   const basculerTheme = () => setTheme(t => (t === 'dark' ? 'light' : 'dark'));
   // Mode confidentiel : une seule commande, l'œil de l'en-tête (avant : en-tête, Accueil, menu latéral, Finances)
@@ -1936,7 +1938,7 @@ export default function App() {
             <Suspense fallback={<div className="flex items-center justify-center py-12"><div className="w-8 h-8 border-4 border-accent/20 border-t-accent rounded-full animate-spin" /></div>}>
               {page === 'dashboard' && <Dashboard clients={clients} devis={devis} chantiers={chantiers} events={planningEvents} depenses={depenses} pointages={pointages} equipe={equipe} ajustements={ajustements} catalogue={catalogue} entreprise={entreprise} getChantierBilan={getChantierBilan} addDevis={addDevis} setPage={setPage} setSelectedChantier={setSelectedChantier} setSelectedDevis={setSelectedDevis} setCreateMode={setCreateMode} modeDiscret={modeDiscret} couleur={couleur} isDark={isDark} user={user} memos={memos} addMemo={addMemo} toggleMemo={toggleMemo} ouvrirDevis={ouvrirDevis} />}
               {page === 'devis' && <DevisPage clients={clients} setClients={setClients} addClient={addClient} devis={devis} setDevis={setDevis} chantiers={chantiers} catalogue={catalogue} entreprise={entreprise} onSubmit={addDevis} onUpdate={updateDevis} onDelete={deleteDevis} modeDiscret={modeDiscret} selectedDevis={selectedDevis} setSelectedDevis={setSelectedDevis} isDark={isDark} couleur={couleur} createMode={createMode.devis} setCreateMode={(v) => setCreateMode(p => ({...p, devis: v}))} addChantier={addChantier} setPage={setPage} setSelectedChantier={setSelectedChantier} addEchange={addEchange} paiements={paiements} addPaiement={addPaiement} generateNextNumero={generateNextNumero} aiPrefill={aiPrefill} setAiPrefill={setAiPrefill} editDevisId={editDevisId} setEditDevisId={setEditDevisId} demande={demandeDevis} setDemande={setDemandeDevis} />}
-              {page === 'chantiers' && <Chantiers nouveauDevisPour={(clientId, chantierId) => { setCreateMode(p => ({ ...p, devis: { clientId, chantierId } })); setPage('devis'); }} chantiers={chantiers} addChantier={addChantier} updateChantier={updateChantier} clients={clients} depenses={depenses} setDepenses={setDepenses} pointages={pointages} setPointages={setPointages} equipe={equipe} devis={devis} ajustements={ajustements} addAjustement={addAjustement} deleteAjustement={deleteAjustement} getChantierBilan={getChantierBilan} couleur={couleur} modeDiscret={modeDiscret} entreprise={entreprise} selectedChantier={selectedChantier} setSelectedChantier={setSelectedChantier} catalogue={catalogue} deductStock={deductStock} isDark={isDark} createMode={createMode.chantier} setCreateMode={(v) => setCreateMode(p => ({...p, chantier: v}))} setPage={setPage} memos={memos} addMemo={addMemo} updateMemo={updateMemo} deleteMemo={deleteMemo} toggleMemo={toggleMemo} onPlanEvent={(data) => { setPlanningPrefill(data); setPage('planning'); }} addDevis={addDevis} generateNextNumero={generateNextNumero} />}
+              {page === 'chantiers' && <Chantiers nouveauDevisPour={(clientId, chantierId) => { setCreateMode(p => ({ ...p, devis: { clientId, chantierId } })); setPage('devis'); }} chantiers={chantiers} addChantier={addChantier} updateChantier={updateChantier} clients={clients} depenses={depenses} pointages={pointages} equipe={equipe} devis={devis} paiements={paiements} ajustements={ajustements} addAjustement={addAjustement} deleteAjustement={deleteAjustement} getChantierBilan={getChantierBilan} couleur={couleur} modeDiscret={modeDiscret} entreprise={entreprise} selectedChantier={selectedChantier} setSelectedChantier={setSelectedChantier} catalogue={catalogue} deductStock={deductStock} isDark={isDark} createMode={createMode.chantier} setCreateMode={(v) => setCreateMode(p => ({...p, chantier: v}))} setPage={setPage} memos={memos} addMemo={addMemo} toggleMemo={toggleMemo} onPlanEvent={(data) => { setPlanningPrefill(data); setPage('planning'); }} addDevis={addDevis} generateNextNumero={generateNextNumero} ouvrirDevis={ouvrirDevis} />}
               {(page === 'tasks' || page === 'planning' || page === 'memos') && (
                 <TasksAndPlanning
                   memos={memos} addMemo={addMemo} updateMemo={updateMemo} deleteMemo={deleteMemo} toggleMemo={toggleMemo}

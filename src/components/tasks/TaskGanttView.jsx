@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, useCallback } from 'react';
-import { ZoomIn, ZoomOut, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { CATEGORIES } from './constants';
 
 // ════════════════════════════════════════════════════════
@@ -17,9 +17,9 @@ const BAR_HEIGHT = 28;
 const BAR_Y_OFFSET = (ROW_HEIGHT - BAR_HEIGHT) / 2;
 const NAME_COL_WIDTH = 200;
 
-const CATEGORY_COLORS = Object.fromEntries(
-  CATEGORIES.map(c => [c.value, c.color])
-);
+// Une barre est à l'accent ; une tâche « urgent » passe à l'ambre (à surveiller). Classes écrites en entier.
+const BARRE_ACCENT = { fond: 'bg-accent/25 border-accent/50', progres: 'bg-accent/60' };
+const BARRE_ALERTE = { fond: 'bg-alerte-point/30 border-alerte-point/60', progres: 'bg-alerte-point/60' };
 
 // ── Date helpers ──
 
@@ -156,7 +156,7 @@ function Tooltip({ memo, x, y, isDark }) {
 
 // ── Main component ──
 
-export default function TaskGanttView({ memos, updateMemo, chantiers, clients, isDark, couleur, filters, onSelectMemo }) {
+export default function TaskGanttView({ memos, updateMemo: _updateMemo, chantiers: _chantiers, clients: _clients, isDark, couleur: _couleur, filters, onSelectMemo }) {
   const [zoom, setZoom] = useState('day');
   const scrollRef = useRef(null);
   const [tooltip, setTooltip] = useState(null);
@@ -247,12 +247,7 @@ export default function TaskGanttView({ memos, updateMemo, chantiers, clients, i
   };
 
   // Bar color by category
-  const getBarColor = (memo) => {
-    if (memo.category && CATEGORY_COLORS[memo.category]) {
-      return CATEGORY_COLORS[memo.category];
-    }
-    return couleur || '#f97316';
-  };
+  const getBarColor = (memo) => (CATEGORIES.find(c => c.value === memo.category)?.ton === 'alerte' ? BARRE_ALERTE : BARRE_ACCENT);
 
   const handleMouseEnter = (e, memo) => {
     setTooltip({ memo, x: e.clientX, y: e.clientY });
@@ -338,10 +333,9 @@ export default function TaskGanttView({ memos, updateMemo, chantiers, clients, i
               onClick={() => setZoom(z.id)}
               className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
                 zoom === z.id
-                  ? 'text-white shadow-sm'
+                  ? 'bg-accent text-sur-accent shadow-sm'
                   : 'text-encre-3 hover:text-encre-2 hover:bg-surface-2'
               }`}
-              style={zoom === z.id ? { background: couleur } : {}}
             >
               {z.label}
             </button>
@@ -451,8 +445,8 @@ export default function TaskGanttView({ memos, updateMemo, chantiers, clients, i
             {/* Today line */}
             {todayOffset >= 0 && todayOffset <= totalWidth && (
               <div
-                className="absolute top-0 bottom-0 z-20 pointer-events-none"
-                style={{ left: todayOffset, width: 2, background: '#ef4444', opacity: 0.5 }}
+                className="absolute top-0 bottom-0 z-20 pointer-events-none bg-accent opacity-50"
+                style={{ left: todayOffset, width: 2 }}
               />
             )}
 
@@ -468,14 +462,12 @@ export default function TaskGanttView({ memos, updateMemo, chantiers, clients, i
               return (
                 <div
                   key={memo.id}
-                  className="absolute rounded-md cursor-pointer transition-opacity hover:opacity-90 overflow-hidden"
+                  className={`absolute rounded-md cursor-pointer transition-opacity hover:opacity-90 overflow-hidden border ${color.fond}`}
                   style={{
                     left: x,
                     top: y,
                     width: Math.max(width, 4),
                     height: BAR_HEIGHT,
-                    background: `${color}40`,
-                    border: `1px solid ${color}80`,
                   }}
                   onClick={() => onSelectMemo?.(memo.id)}
                   onMouseEnter={(e) => handleMouseEnter(e, memo)}
@@ -484,17 +476,13 @@ export default function TaskGanttView({ memos, updateMemo, chantiers, clients, i
                   {/* Progress fill */}
                   {progress > 0 && (
                     <div
-                      className="absolute inset-y-0 left-0 rounded-l-md"
-                      style={{
-                        width: `${progress * 100}%`,
-                        background: `${color}90`,
-                      }}
+                      className={`absolute inset-y-0 left-0 rounded-l-md ${color.progres}`}
+                      style={{ width: `${progress * 100}%` }}
                     />
                   )}
                   {/* Title text */}
                   <span
-                    className="absolute inset-0 flex items-center px-1.5 text-[10px] font-medium truncate z-10"
-                    style={{ color: isDark ? '#f1f5f9' : '#1e293b' }}
+                    className="absolute inset-0 flex items-center px-1.5 text-xs font-medium truncate z-10 text-encre"
                   >
                     {/* On mobile, always show name; on desktop, only if bar is wide enough */}
                     <span className="sm:hidden truncate">{memo.title || memo.text || 'Sans titre'}</span>

@@ -78,8 +78,8 @@ module.exports = [
       const base = creerBase({ clients: [CLIENT] });
       const { page } = await ouvrir({ reel: true, largeur: 390, page: 'planning', session: sessionFactice(UID), supabase: base.reponse });
       await attendre(2000);
-      const ouvert = await page.evaluate(() => { const b = document.querySelector('button[aria-label="Nouvel événement"]'); if (b) b.click(); return !!b; });
-      verifier(ouvert, 'bouton « Nouvel événement »');
+      const ouvert = await page.evaluate(() => { const b = [...document.querySelectorAll('button')].find((x) => x.innerText.trim() === 'Événement'); if (b) b.click(); return !!b; });
+      verifier(ouvert, 'bouton « Événement »');
       await attendre(600);
       await page.click('input[placeholder^="Ex: RDV"]');
       await page.keyboard.type('RDV chaudière Dupont');

@@ -1,7 +1,12 @@
-import React, { useState, useMemo, lazy, Suspense } from 'react';
-import { List, Kanban, Calendar, CalendarCheck, GanttChart, Users } from 'lucide-react';
+import React, { useState, useMemo, useRef, useEffect, lazy, Suspense } from 'react';
+import { Plus, LayoutList } from 'lucide-react';
 import TaskFilters from './TaskFilters';
-import PageHeader from '../ui/PageHeader';
+import { EnTetePage } from '../ui/EnTete';
+import { Bouton } from '../ui/Bouton';
+import { Segmente } from '../ui/Onglets';
+import { BoutonVolet, Volet, ListeChoix } from '../ui/Filtres';
+import { usePermissions } from '../../hooks/usePermissions';
+import { evenementsDuJour } from '../../lib/evenementsPlanning';
 import { jourLocal } from '../../lib/dates';
 
 const TaskListView = lazy(() => import('./TaskListView'));
@@ -11,193 +16,158 @@ const TaskGanttView = lazy(() => import('./TaskGanttView'));
 const TaskTeamView = lazy(() => import('./TaskTeamView'));
 
 // ════════════════════════════════════════════════════════
-// TasksAndPlanning — Unified parent for tasks + planning
-// Combines MemosPage (list/kanban) and Planning (calendar/agenda)
+// TasksAndPlanning — Tâches et planning sous une seule rubrique (audit UX du 20 oct. 2026)
+//
+// Avant : trois niveaux de navigation empilés (cinq vues, puis « ← Planning », puis Mois / Semaine / Jour / Agenda), la vue
+// active coupée au téléphone, trois « + » et trois compteurs qui se contredisaient (« 0 tâches », « 38 évén. », « 4 évén. »).
+// Maintenant : un choix à deux (Planning ou Tâches) ; dans Tâches, la façon de les voir (Liste, Colonnes, Frise, Équipe) est
+// dans un menu « Vue » ; dans Planning, Mois / Semaine / Jour / Agenda. Le sous-titre dit un fait : « 5 rendez-vous aujourd'hui ».
 // ════════════════════════════════════════════════════════
 
-const VIEW_MODES = [
-  { id: 'list', icon: List, label: 'Liste' },
-  { id: 'kanban', icon: Kanban, label: 'Colonnes' },
-  { id: 'gantt', icon: GanttChart, label: 'Frise' },
-  { id: 'team', icon: Users, label: 'Équipe' },
-  { id: 'calendar', icon: Calendar, label: 'Calendrier' },
+const VUES_TACHES = [
+  { valeur: 'list', libelle: 'Liste' },
+  { valeur: 'kanban', libelle: 'Colonnes' },
+  { valeur: 'gantt', libelle: 'Frise' },
+  { valeur: 'team', libelle: 'Équipe' },
 ];
+const RUBRIQUES = [{ valeur: 'planning', libelle: 'Planning' }, { valeur: 'taches', libelle: 'Tâches' }];
+const pluriel = (n, mot) => `${n} ${mot}${n > 1 ? 's' : ''}`;
 
 export default function TasksAndPlanning({
-  // Memos
+  // Mémos (les tâches)
   memos, addMemo, updateMemo, deleteMemo, toggleMemo,
-  // Planning events
+  // Événements du planning
   events, setEvents, addEvent, updateEvent, deleteEvent,
-  // Shared data
+  // Données partagées
   chantiers, clients, equipe, devis,
   // Navigation
   setPage, setSelectedChantier, updateChantier,
-  // UI
-  isDark, couleur, showToast,
-  // Planning specifics
+  // Interface
+  isDark, couleur, showToast: _showToast,
+  // Planning
   prefill, clearPrefill,
-  // Initial view (for redirects from planning/memos)
+  // Vue de départ (redirections depuis « planning » et « memos »)
   initialView,
 }) {
+  const { canPerform } = usePermissions();
   const [viewMode, setViewMode] = useState(() => {
     const raw = initialView || localStorage.getItem('cp_tasks_view') || 'list';
-    // 'agenda' view removed — fallback to calendar
+    // L'ancienne vue « agenda » est devenue une vue du planning
     return raw === 'agenda' ? 'calendar' : raw;
   });
+  const [derniereVueTaches, setDerniereVueTaches] = useState(() => (VUES_TACHES.some((v) => v.valeur === viewMode) ? viewMode : 'list'));
   const [filters, setFilters] = useState({ search: '', category: '', priority: '', status: '', assignedTo: '' });
   const [selectedMemoId, setSelectedMemoId] = useState(null);
+  const [demandeAjout, setDemandeAjout] = useState(0);
+  const [voletVue, setVoletVue] = useState(false);
+  const boutonVueRef = useRef(null);
 
-  const handleViewChange = (v) => {
-    // If user had 'agenda' saved, fallback to 'calendar'
-    const resolved = v === 'agenda' ? 'calendar' : v;
-    setViewMode(resolved);
-    localStorage.setItem('cp_tasks_view', resolved);
+  // Une redirection (page « planning », page « memos ») change la rubrique
+  useEffect(() => {
+    if (!initialView) return;
+    const resolue = initialView === 'agenda' ? 'calendar' : initialView;
+    setViewMode(resolue);
+    if (resolue !== 'calendar') setDerniereVueTaches(resolue);
+  }, [initialView]);
+
+  const choisirVue = (v) => {
+    setViewMode(v);
+    if (v !== 'calendar') setDerniereVueTaches(v);
+    try { localStorage.setItem('cp_tasks_view', v); } catch { /* préférence non enregistrée : quota plein ou navigation privée */ }
   };
 
-  // Fix 12: Global task counters
-  const taskStats = useMemo(() => {
-    const todayStr = jourLocal();
-    const totalActive = memos.filter(m => !m.is_done).length;
-    const overdueCount = memos.filter(m => !m.is_done && m.due_date && m.due_date < todayStr).length;
-    return { totalActive, overdueCount };
-  }, [memos]);
+  const rubrique = viewMode === 'calendar' ? 'planning' : 'taches';
+  const changerRubrique = (r) => choisirVue(r === 'planning' ? 'calendar' : derniereVueTaches);
 
-  const cardBg = 'bg-surface border-bord';
+  const stats = useMemo(() => {
+    const aujourdhui = jourLocal();
+    const actives = memos.filter((m) => !m.is_done);
+    return {
+      aFaire: actives.length,
+      enRetard: actives.filter((m) => m.due_date && m.due_date < aujourdhui).length,
+      rdvAujourdhui: evenementsDuJour(events || [], aujourdhui).length,
+    };
+  }, [memos, events]);
+
+  const sousTitre = rubrique === 'planning'
+    ? (stats.rdvAujourdhui > 0 ? `${pluriel(stats.rdvAujourdhui, 'rendez-vous')} aujourd'hui` : "Aucun rendez-vous aujourd'hui")
+    : (stats.aFaire > 0 ? `${pluriel(stats.aFaire, 'tâche')} à faire${stats.enRetard > 0 ? ` · ${stats.enRetard} en retard` : ''}` : 'Aucune tâche à faire');
+
+  const peutCreerEvenement = canPerform('planning', 'create');
+  const libelleVue = VUES_TACHES.find((v) => v.valeur === viewMode)?.libelle;
 
   return (
     <div className="pb-4">
-      {/* Header (design system) */}
-      <PageHeader
-        icon={CalendarCheck}
-        title="Tâches & Planning"
-        subtitle={`${taskStats.totalActive} tâche${taskStats.totalActive !== 1 ? 's' : ''}${taskStats.overdueCount > 0 ? ` · ${taskStats.overdueCount} en retard` : ''}`}
-        isDark={isDark}
-        color={couleur}
-        action={
-        /* View toggle */
-        <div className="flex max-w-full overflow-x-auto scrollbar-hide rounded-xl p-1 gap-1 bg-surface-2">
-          {VIEW_MODES.map(v => (
-            <button
-              key={v.id}
-              onClick={() => handleViewChange(v.id)}
-              aria-label={`Vue ${v.label}`}
-              aria-pressed={viewMode === v.id}
-              // La vue active reste visible dans la rangée défilante (sinon « Calendrier » était hors écran au téléphone).
-              // On fait défiler la rangée seule : scrollIntoView décalait aussi toute la page (conteneurs parents).
-              ref={viewMode === v.id ? (el) => {
-                const rangee = el?.parentElement;
-                if (rangee && rangee.scrollWidth > rangee.clientWidth) rangee.scrollLeft = Math.max(0, el.offsetLeft + el.offsetWidth - rangee.clientWidth + 8);
-              } : undefined}
-              className={`flex flex-shrink-0 items-center gap-1.5 px-3 rounded-lg text-sm transition-colors min-w-[44px] min-h-[40px] ${
-                viewMode === v.id ? 'bg-surface text-encre font-semibold shadow-e1' : 'text-encre-2 font-medium hover:text-encre'
-              }`}
-            >
-              <v.icon size={14} className="flex-shrink-0" />
-              {/* Nom toujours affiché : sur téléphone, cinq icônes seules étaient à deviner (recette du 9 oct.). */}
-              <span className="whitespace-nowrap">{v.label}</span>
-            </button>
-          ))}
-        </div>
-        }
+      <EnTetePage
+        titre="Tâches & Planning" sousTitre={sousTitre}
+        actions={(
+          <>
+            <Segmente ariaLabel="Rubrique" valeur={rubrique} onChange={changerRubrique} options={RUBRIQUES} className="hidden sm:inline-flex" />
+            {rubrique === 'planning' && peutCreerEvenement && (
+              <Bouton variante="principal" icone={Plus} onClick={() => setDemandeAjout((n) => n + 1)}>Événement</Bouton>
+            )}
+          </>
+        )}
       />
+      <Segmente ariaLabel="Rubrique" pleineLargeur valeur={rubrique} onChange={changerRubrique} options={RUBRIQUES} className="sm:hidden mb-4 -mt-1" />
 
-      {/* Filters (for list/kanban/gantt/team views) */}
-      {(viewMode === 'list' || viewMode === 'kanban' || viewMode === 'gantt' || viewMode === 'team') && (
+      {/* Tâches : recherche, filtres et façon de les voir sur une seule rangée */}
+      {rubrique === 'taches' && (
         <div className="mb-4">
-          <TaskFilters filters={filters} onFiltersChange={setFilters} equipe={equipe || []} isDark={isDark} couleur={couleur} />
+          <TaskFilters
+            filters={filters} onFiltersChange={setFilters} equipe={equipe || []} isDark={isDark} couleur={couleur}
+            extra={(
+              <BoutonVolet
+                ref={boutonVueRef} icone={LayoutList} libelle="Vue" valeur={libelleVue} ouvert={voletVue} onClick={() => setVoletVue((o) => !o)} isDark={isDark} libelleCacheTelephone
+              />
+            )}
+          />
+          <Volet ouvert={voletVue} onFermer={() => setVoletVue(false)} titre="Voir les tâches en" ancreRef={boutonVueRef} largeur={300} isDark={isDark}>
+            <ListeChoix
+              titre="Vue" rechercheAuDela={99} isDark={isDark} options={VUES_TACHES} valeur={viewMode}
+              onChange={(v) => { choisirVue(v); setVoletVue(false); }}
+            />
+          </Volet>
         </div>
       )}
 
-      {/* View content */}
-      <Suspense fallback={
+      <Suspense fallback={(
         <div className="flex items-center justify-center py-12">
-          <div
-            className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin"
-            style={{ borderColor: `${couleur}33`, borderTopColor: couleur }}
-          />
+          <div className="w-8 h-8 border-4 border-accent/30 border-t-accent rounded-full animate-spin" role="status" aria-label="Chargement" />
         </div>
-      }>
+      )}>
         {viewMode === 'list' && (
           <TaskListView
-            memos={memos}
-            addMemo={addMemo}
-            updateMemo={updateMemo}
-            deleteMemo={deleteMemo}
-            toggleMemo={toggleMemo}
-            chantiers={chantiers}
-            clients={clients}
-            isDark={isDark}
-            couleur={couleur}
-            filters={filters}
-            selectedMemoId={selectedMemoId}
-            onSelectMemo={setSelectedMemoId}
-            setPage={setPage}
+            memos={memos} addMemo={addMemo} updateMemo={updateMemo} deleteMemo={deleteMemo} toggleMemo={toggleMemo}
+            chantiers={chantiers} clients={clients} isDark={isDark} couleur={couleur} filters={filters}
+            selectedMemoId={selectedMemoId} onSelectMemo={setSelectedMemoId} setPage={setPage}
           />
         )}
         {viewMode === 'kanban' && (
           <TaskKanbanView
-            memos={memos}
-            updateMemo={updateMemo}
-            addMemo={addMemo}
-            deleteMemo={deleteMemo}
-            toggleMemo={toggleMemo}
-            chantiers={chantiers}
-            clients={clients}
-            isDark={isDark}
-            couleur={couleur}
-            filters={filters}
-            selectedMemoId={selectedMemoId}
-            onSelectMemo={setSelectedMemoId}
+            memos={memos} updateMemo={updateMemo} addMemo={addMemo} deleteMemo={deleteMemo} toggleMemo={toggleMemo}
+            chantiers={chantiers} clients={clients} isDark={isDark} couleur={couleur} filters={filters}
+            selectedMemoId={selectedMemoId} onSelectMemo={setSelectedMemoId}
           />
         )}
         {viewMode === 'gantt' && (
           <TaskGanttView
-            memos={memos}
-            updateMemo={updateMemo}
-            chantiers={chantiers}
-            clients={clients}
-            isDark={isDark}
-            couleur={couleur}
-            filters={filters}
-            onSelectMemo={setSelectedMemoId}
+            memos={memos} updateMemo={updateMemo} chantiers={chantiers} clients={clients} isDark={isDark} couleur={couleur}
+            filters={filters} onSelectMemo={setSelectedMemoId}
           />
         )}
         {viewMode === 'team' && (
           <TaskTeamView
-            memos={memos}
-            updateMemo={updateMemo}
-            deleteMemo={deleteMemo}
-            equipe={equipe}
-            chantiers={chantiers}
-            clients={clients}
-            isDark={isDark}
-            couleur={couleur}
-            filters={filters}
-            selectedMemoId={selectedMemoId}
-            onSelectMemo={setSelectedMemoId}
+            memos={memos} updateMemo={updateMemo} deleteMemo={deleteMemo} equipe={equipe} chantiers={chantiers} clients={clients}
+            isDark={isDark} couleur={couleur} filters={filters} selectedMemoId={selectedMemoId} onSelectMemo={setSelectedMemoId}
           />
         )}
         {viewMode === 'calendar' && (
           <TaskCalendarView
-            events={events}
-            setEvents={setEvents}
-            addEvent={addEvent}
-            updateEvent={updateEvent}
-            deleteEvent={deleteEvent}
-            memos={memos}
-            toggleMemo={toggleMemo}
-            updateMemo={updateMemo}
-            chantiers={chantiers}
-            clients={clients}
-            equipe={equipe}
-            devis={devis}
-            setPage={setPage}
-            setSelectedChantier={setSelectedChantier}
-            updateChantier={updateChantier}
-            couleur={couleur}
-            isDark={isDark}
-            prefill={prefill}
-            clearPrefill={clearPrefill}
+            events={events} setEvents={setEvents} addEvent={addEvent} updateEvent={updateEvent} deleteEvent={deleteEvent}
+            memos={memos} toggleMemo={toggleMemo} updateMemo={updateMemo} chantiers={chantiers} clients={clients} equipe={equipe} devis={devis}
+            setPage={setPage} setSelectedChantier={setSelectedChantier} updateChantier={updateChantier}
+            couleur={couleur} isDark={isDark} prefill={prefill} clearPrefill={clearPrefill} demandeAjout={demandeAjout}
           />
         )}
       </Suspense>

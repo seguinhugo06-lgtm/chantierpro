@@ -1,12 +1,12 @@
 import { Calendar, Tag, Building2, Users, CheckCircle2, Circle, Clock, Repeat } from 'lucide-react';
-import { CATEGORIES, PRIORITIES, TASK_STATUSES } from './constants';
+import { CATEGORIES, PRIORITIES, TASK_STATUSES, classesTon } from './constants';
 import { isOverdue, isToday, formatDateFR, formatTimeFR, today } from './helpers';
 
 // ════════════════════════════════════════════════════════
 // TaskItem — Single task row with quick actions + status badge
 // ════════════════════════════════════════════════════════
 export default function TaskItem({
-  memo, onToggle, onSelect, isSelected, chantiers, clients, equipe, couleur, isDark,
+  memo, onToggle, onSelect, isSelected, chantiers, clients, equipe, couleur: _couleur, isDark: _isDark,
   onQuickDate, onQuickPriority, onQuickDelete, setPage,
   selectionMode, isMultiSelected, onMultiSelect,
 }) {
@@ -26,16 +26,16 @@ export default function TaskItem({
   const StatusIcon = status?.value === 'termine' ? CheckCircle2 : status?.value === 'en_cours' ? Clock : Circle;
 
   const dateColor = isOverdue(memo)
-    ? 'text-red-500'
+    ? 'text-danger-texte font-semibold'
     : isToday(memo)
-      ? 'text-amber-500'
+      ? 'text-alerte-texte'
       : 'text-encre-3';
 
   return (
     <div
       className={`group flex items-start gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-all ${
         isSelected
-          ? isDark ? 'bg-slate-700 ring-1 ring-slate-600' : 'bg-slate-100 ring-1 ring-slate-200'
+          ? 'bg-surface-2 ring-1 ring-bord'
           : 'hover:bg-surface-2'
       } ${memo.is_done ? 'opacity-60' : ''}`}
       onClick={() => selectionMode ? onMultiSelect(memo.id) : onSelect(memo.id)}
@@ -46,7 +46,7 @@ export default function TaskItem({
           onClick={(e) => { e.stopPropagation(); onMultiSelect(memo.id); }}
           className={`mt-0.5 flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
             isMultiSelected
-              ? 'border-blue-500 bg-blue-500 text-white'
+              ? 'border-accent bg-accent text-sur-accent'
               : 'border-bord-fort'
           }`}
         >
@@ -60,8 +60,8 @@ export default function TaskItem({
         >
           <span className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
             memo.is_done
-              ? 'border-green-500 bg-green-500 text-white'
-              : isDark ? 'border-slate-500 hover:border-slate-400' : 'border-slate-300 hover:border-slate-400'
+              ? 'border-succes-texte bg-succes-texte text-white'
+              : 'border-bord-fort hover:border-encre-3'
           }`}>
             {memo.is_done && <CheckCircle2 size={12} />}
           </span>
@@ -81,12 +81,9 @@ export default function TaskItem({
             {memo.text}
           </p>
           {/* Status badge — visible for ALL statuses */}
-          {status && (
-            <span
-              className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full flex-shrink-0"
-              style={{ backgroundColor: status.color + '18', color: status.color }}
-            >
-              <StatusIcon size={10} />
+          {status && status.value !== 'a_faire' && (
+            <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full flex-shrink-0 ${classesTon(status.ton).pastille}`}>
+              <StatusIcon size={12} aria-hidden="true" />
               {status.label}
             </span>
           )}
@@ -111,11 +108,8 @@ export default function TaskItem({
             </span>
           )}
           {category && (
-            <span
-              className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-full"
-              style={{ backgroundColor: category.color + '18', color: category.color }}
-            >
-              <Tag size={9} />
+            <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full ${classesTon(category.ton).pastille}`}>
+              <Tag size={10} aria-hidden="true" />
               {category.label}
             </span>
           )}
@@ -143,7 +137,7 @@ export default function TaskItem({
             <span
               className={`inline-flex items-center gap-1 text-xs font-medium px-1.5 py-0.5 rounded-md ${
                 stDone === stTotal
-                  ? isDark ? 'bg-green-900/30 text-green-400' : 'bg-green-50 text-green-600'
+                  ? 'bg-succes-fond text-succes-texte'
                   : 'bg-surface-2 text-encre-2'
               }`}
             >
@@ -152,7 +146,7 @@ export default function TaskItem({
           )}
           {assignedMember && (
             <span
-              className="w-5 h-5 rounded-full bg-slate-600 text-white text-[10px] flex items-center justify-center flex-shrink-0"
+              className="w-6 h-6 rounded-full bg-neutre-fond text-neutre-texte text-xs font-semibold flex items-center justify-center flex-shrink-0"
               title={`${assignedMember.prenom} ${assignedMember.nom}`}
             >
               {assignedMember.prenom?.[0]}{assignedMember.nom?.[0]}
@@ -166,17 +160,17 @@ export default function TaskItem({
         <div className="hidden sm:flex opacity-0 group-hover:opacity-100 items-center gap-0.5 flex-shrink-0 transition-opacity">
           <button
             onClick={(e) => { e.stopPropagation(); onQuickDate(memo.id); }}
-            className={`p-1 rounded text-xs ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-200'}`}
+            className="p-1 rounded text-xs hover:bg-surface-2"
             title="Mettre à aujourd'hui"
           >📅</button>
           <button
             onClick={(e) => { e.stopPropagation(); onQuickPriority(memo.id); }}
-            className={`p-1 rounded text-xs ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-200'}`}
+            className="p-1 rounded text-xs hover:bg-surface-2"
             title="Priorité haute"
-          >🔴</button>
+          >🟠</button>
           <button
             onClick={(e) => { e.stopPropagation(); onQuickDelete(memo.id); }}
-            className={`p-1 rounded text-xs ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-200'}`}
+            className="p-1 rounded text-xs hover:bg-surface-2"
             title="Supprimer"
           >🗑️</button>
         </div>
